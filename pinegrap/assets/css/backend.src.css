@@ -12452,11 +12452,6 @@ body.workspace .ws-shell-main > #button_bar {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.ws-cha-summary {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 .ws-cha-state {
   flex: none;
   max-width: 40%;
@@ -12539,11 +12534,20 @@ body.workspace .ws-shell-main > #button_bar {
   .ws-cha-body {
     padding: 4px 12px 16px;
   }
-  .ws-cha-state {
-    max-width: 34%;
+  /* The state's pill goes under the name and summary, in full. */
+  .ws-cha-head {
+    flex-wrap: wrap;
   }
-  .ws-cha-summary {
-    white-space: normal;
+  .ws-cha-main {
+    flex-basis: calc(100% - 92px);
+  }
+  .ws-cha-chevron {
+    order: 2;
+  }
+  .ws-cha-state {
+    order: 3;
+    max-width: calc(100% - 52px);
+    margin-inline-start: 52px;
   }
 }
 .ws-info-badge {

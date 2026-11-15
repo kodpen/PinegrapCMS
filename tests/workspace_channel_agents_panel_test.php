@@ -49,7 +49,7 @@ function test_workspace_channel_agent_panel_row()
 		'loop_guard'  => false,
 		'seen'        => '',
 		'not_seen'    => false,
-		'seen_words'  => lang('Not knocked yet'),
+		'state_words' => lang('Not knocked yet'),
 	), $row, 'no door, address or secret reaches the screen');
 }
 
@@ -69,6 +69,12 @@ function test_workspace_channel_agent_panel_row_role_picture_state()
 	$late = ws_channel_agent_panel_row(ws_channel_agent_shape(array(), ws_agent_shape(array('id' => '5', 'kind' => 'app', 'status' => 'active', 'door_kind' => 'poll'))), $now);
 
 	pg_assert_same('late', $late['state'], 'never seen');
+	pg_assert_same(lang('Never seen'), $late['state_words'], 'the pill says what its time is');
+	pg_assert_same(lang('Last seen a moment ago'), $row['state_words'], 'seen half a minute ago');
+
+	$model = ws_channel_agent_panel_row(ws_channel_agent_shape(array(), ws_agent_shape(array('id' => '6', 'kind' => 'model', 'status' => 'active'))), $now);
+
+	pg_assert_same(lang('Always ready'), $model['state_words']);
 }
 
 function test_workspace_channel_agent_panel_state()

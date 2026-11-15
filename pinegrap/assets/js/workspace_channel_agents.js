@@ -81,7 +81,7 @@
                 waiting: t('cha_state_waiting'),
                 paused: t('cha_paused')
             };
-            var pill = el('span', 'pg-pill ws-cha-state ' + STATE_TONES[state], words[state] || agent.seen_words || agent.seen || '');
+            var pill = el('span', 'pg-pill ws-cha-state ' + STATE_TONES[state], words[state] || agent.state_words || '');
 
             if (agent.seen) {
                 pill.title = agent.seen;

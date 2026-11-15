@@ -64,9 +64,7 @@ function ws_channel_agent_panel_row($row, $now = null)
         'loop_guard'  => (bool) $row['loop_guard'],
         'seen'        => $seen['label'],
         'not_seen'    => $seen['not_seen'],
-        // The member list's short words for the state's pill: a poll
-        // agent's last call, a push agent's last knock, "Always ready".
-        'seen_words'  => $member['seen'],
+        'state_words' => ws_channel_agent_state_words($row['agent'], $seen, $member['seen']),
     );
 }
 
@@ -89,6 +87,26 @@ function ws_channel_agent_panel_state($active, $seen_state)
     $seen_state = (string) $seen_state;
 
     return in_array($seen_state, array('on', 'off', 'late', 'ready'), true) ? $seen_state : 'off';
+}
+
+/**
+ * The words of the state's pill on a row, each saying what its time is: a
+ * poll agent's "Seen 6 min ago" (ws_agent_seen_words()), "Never seen" for
+ * one that never called; else the member list's words, a push agent's
+ * "Last knock …" or a model agent's "Always ready". Pure but for lang().
+ *
+ * @param array  $agent  ws_agent_shape()
+ * @param array  $seen   ws_agent_seen_words()
+ * @param string $member ws_channel_member_agent()'s seen
+ * @return string
+ */
+function ws_channel_agent_state_words($agent, $seen, $member)
+{
+    if (((string) ($agent['kind'] ?? '') === 'app') && ((string) ($agent['door_kind'] ?? '') === 'poll')) {
+        return ((int) ($agent['seen_at'] ?? 0) <= 0) ? lang('Never seen') : (string) $seen['label'];
+    }
+
+    return (string) $member;
 }
 
 /**
@@ -319,11 +337,11 @@ function ws_channel_agents_js_strings()
         'cha_choose'      => lang('Choose an agent'),
         'cha_remove'      => lang('Remove from the channel'),
         'cha_remove_ask'  => lang('Take this agent out of the channel? It is no longer woken here.'),
-        'cha_save'        => lang('Save'),
+        'cha_save'        => lang('Save this agent'),
         'cha_saved'       => lang('Saved.'),
         'cha_paused'      => lang('Paused'),
-        'cha_state_working' => lang('Working'),
-        'cha_state_waiting' => lang('Waiting'),
+        'cha_state_working' => lang('Working on a request'),
+        'cha_state_waiting' => lang('A request is waiting'),
         'cha_wake'        => lang('When is it woken?'),
         'cha_wake_mention' => lang('When its name is written'),
         'cha_wake_all'    => lang('On every message'),
