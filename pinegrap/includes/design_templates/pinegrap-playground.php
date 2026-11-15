@@ -1635,10 +1635,10 @@ $pages[] = array_merge($mail_settings, array(
 // The comment an e-mail is about, in a box: who wrote it and when, its
 // stars, the comment it answers, its words and its file, then its View or
 // Reply button. The button is bound to the comment's own address, with no
-// flag over it: an e-mail whose card has no such link keeps the fixed
-// comment the System region carries. No form, no control; every colour
-// written for mail programs that drop the stylesheet, with its fallback
-// inside var().
+// flag over it: with it the card always draws the comment, so the comment
+// e-mail pages need no System region. No form, no control; every colour
+// written for mail programs that drop the stylesheet, with its fallback inside
+// var().
 $mail_comment_tree = $widget_root(array(
     $el('div', '', lang('Comment List'), array(
         $loop(array(
@@ -1672,9 +1672,8 @@ $mail_comment_tree = $widget_root(array(
 
 // A new comment on a blog post: sent to Jane and to the visitors who follow
 // the post. Its Comments widget draws the comment in the layout above, with
-// its "View or Reply" button; the System region after it keeps the fixed
-// comment and its own button for an e-mail the widget does not draw (a card
-// edited so it lost its link to the comment).
+// its "View or Reply" button. The page has no System region: the card always
+// draws the comment.
 $pages[] = array_merge($mail_settings, array(
     'key'   => 'email_comment',
     'name'  => lang('email-new-comment'),
@@ -1683,12 +1682,11 @@ $pages[] = array_merge($mail_settings, array(
         $mail_heading(lang('Someone left a comment!')),
         $mail_para(lang('There is something new under a blog post you follow. Read it below and answer on the page.')),
         $widget('email_comment_card'),
-        array('type' => 'region', 'props' => array('regionType' => 'system', 'regionName' => ''), 'children' => array()),
     )),
 ));
 // A new reply in a conversation: sent to whoever started it and to the
-// staff. Its Comments widget draws the reply as the comment e-mail does; the
-// System region after it stays for an e-mail the widget does not draw.
+// staff. Its Comments widget draws the reply as the comment e-mail does. The
+// page has no System region: the card always draws the comment.
 $pages[] = array_merge($mail_settings, array(
     'key'   => 'email_reply',
     'name'  => lang('email-new-reply'),
@@ -1697,7 +1695,6 @@ $pages[] = array_merge($mail_settings, array(
         $mail_heading(lang('There is a new reply')),
         $mail_para(lang('Something new was written on a page you follow. You can read it below and answer it on the page.')),
         $widget('email_reply_card'),
-        array('type' => 'region', 'props' => array('regionType' => 'system', 'regionName' => ''), 'children' => array()),
     )),
 ));
 
@@ -2605,7 +2602,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('Playground'),
-    'version'     => '1.1.3',
+    'version'     => '1.1.4',
     'framework'   => 'bootstrap5',
     'order'       => 15,
     'icon'        => 'bi-emoji-smile',

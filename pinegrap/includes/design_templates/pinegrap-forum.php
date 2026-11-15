@@ -3878,10 +3878,7 @@ foreach ($mail_pages as $m) {
 }
 // The comment e-mails. Their Comments widget draws the comment the e-mail
 // is about in the template's layout, with its "View or Reply" button. The
-// System region after it keeps the fixed comment and its own View or Reply
-// button for an e-mail the widget does not draw: a comment of a product or
-// an event, or a card edited so it lost its link to the comment.
-$mail_system = array('type' => 'region', 'props' => array('regionType' => 'system', 'regionName' => ''), 'children' => array());
+// pages have no System region: the card always draws the comment.
 // Something new on a page the member follows: a reply under a topic they
 // started or follow, feedback a moderator published under a guide they
 // wrote or follow, a comment under a blog post they commented on or follow,
@@ -3894,7 +3891,6 @@ $pages[] = array_merge($mail_settings, array(
         $mail_heading(lang('There is something new for you')),
         $mail_para(lang('Someone wrote on a page you follow: a reply under a topic, feedback under a guide, a comment under a blog post or an answer from the moderators in your conversation. Read it below and answer on the page.')),
         $widget('email_comment'),
-        $mail_system,
     )),
 ));
 // A message under a guide sent to the docs: to its author, to whoever
@@ -3907,7 +3903,6 @@ $pages[] = array_merge($mail_settings, array(
         $mail_heading(lang('New message about a guide sent to the docs')),
         $mail_para(lang('There is a new message under a guide sent to the docs. Read it below and answer on the guide\'s page.')),
         $widget('email_comment'),
-        $mail_system,
     )),
 ));
 
@@ -4518,10 +4513,10 @@ $reply_sources = array('{{tab:topic}}', '{{tab:doc}}');
 // guide), drawn for the comment the e-mail is about: who wrote it and when,
 // its stars, the post it answers, its words and its file in the e-mail's
 // box, then its View or Reply button. The button is bound to the comment's
-// own address, with no flag over it: an e-mail whose card has no such link
-// keeps the fixed comment the System region carries. No form, no control,
-// no capitals by CSS; every colour written for mail programs that drop the
-// stylesheet, with its fallback inside var().
+// own address, with no flag over it: with it the card always draws the
+// comment, so the comment e-mail pages need no System region. No form, no
+// control, no capitals by CSS; every colour written for mail programs that
+// drop the stylesheet, with its fallback inside var().
 $mail_comment_tree = $widget_root(array(
     $el('div', '', lang('Comment List'), array(
         $loop(array(
@@ -6200,7 +6195,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('Community Forum & Docs'),
-    'version'     => '1.3.4',
+    'version'     => '1.3.5',
     'framework'   => 'bootstrap5',
     'order'       => 90,
     'icon'        => 'bi-chat-square-text',

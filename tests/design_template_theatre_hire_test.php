@@ -138,7 +138,7 @@ function test_theatre_hire_request_pages()
 		pg_assert_contains('{{page:hire_view}}?r=^^reference_code^^', json_encode($d['widgets'][$key]['tree']), "$key opens the enquiry");
 	}
 	pg_assert_same('comments', $d['widgets']['email_comment']['config']['regionType'], 'the reply e-mail draws its comment');
-	pg_assert_contains('"regionType":"system"', json_encode($d['pages']['email_reply']['tree']), 'the reply e-mail keeps its System region');
+	pg_assert_false(strpos(json_encode($d['pages']['email_reply']['tree']), '"regionType":"system"'), 'the reply e-mail has no System region: its card always draws the comment');
 }
 
 function test_theatre_hire_links_ids_and_classes()

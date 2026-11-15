@@ -229,7 +229,7 @@ function test_campsite_stays_records_lists_and_mail()
 	foreach (array('record_found', 'record_not_found', 'can_edit', 'has_new_account', 'submitted_this_session') as $flag) {
 		pg_assert_contains('"eo_visible_if":"' . $flag . '"', $json, "the request page: $flag");
 	}
-	pg_assert_contains('"regionType":"system"', json_encode($d['pages']['email_reply']['tree']), 'the reply e-mail keeps the fixed comment');
+	pg_assert_false(strpos(json_encode($d['pages']['email_reply']['tree']), '"regionType":"system"'), 'the reply e-mail has no System region: its card always draws the comment');
 }
 
 function test_campsite_stays_links_ids_and_classes()

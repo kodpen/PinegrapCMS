@@ -179,7 +179,7 @@ function test_photo_bookings_record_and_mail()
 	$json = json_encode($d['widgets']['booking_detail']['tree']);
 	pg_assert_contains('"eo_visible_if":"record_found"', $json, 'the record');
 	pg_assert_contains('"eo_visible_if":"record_not_found"', $json, 'the not-found note');
-	pg_assert_contains('"regionType":"system"', json_encode($d['pages']['email_reply']['tree']), 'the reply e-mail keeps the fixed comment');
+	pg_assert_false(strpos(json_encode($d['pages']['email_reply']['tree']), '"regionType":"system"'), 'the reply e-mail has no System region: its card always draws the comment');
 }
 
 function test_photo_bookings_links_ids_and_classes()

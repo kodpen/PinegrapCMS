@@ -226,7 +226,7 @@ function test_architecture_enquiries_bindings()
 			pg_assert_contains('{{page:' . $f['view'] . '}}?r=^^reference_code^^', json_encode($d['widgets'][$f[$role]]['tree'], JSON_UNESCAPED_SLASHES), "{$f[$role]} opens the request");
 		}
 	}
-	pg_assert_contains('"regionType":"system"', json_encode($d['pages']['email_reply']['tree']), 'the reply e-mail keeps the fixed comment');
+	pg_assert_false(strpos(json_encode($d['pages']['email_reply']['tree']), '"regionType":"system"'), 'the reply e-mail has no System region: its card always draws the comment');
 }
 
 function test_architecture_enquiries_links_ids_and_classes()

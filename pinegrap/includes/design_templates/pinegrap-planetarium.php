@@ -224,7 +224,7 @@ $planetarium_css = implode("\n", array(
 
 return array(
     'name'        => lang('Planetarium'),
-    'version'     => '1.0.2',
+    'version'     => '1.0.3',
     'framework'   => 'bootstrap5',
     'order'       => 145,
     'icon'        => 'bi-stars',

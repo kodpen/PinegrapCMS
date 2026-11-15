@@ -567,8 +567,8 @@ $event_pages[] = array_merge($mail_settings, array(
 ));
 // A new message or reply: sent to the sender of a request, the sender of a
 // conversation and the visitors watching a page. Its Comments widget draws
-// the comment in the card of mail.php; the System region after it keeps
-// the fixed comment for an e-mail the widget does not draw.
+// the comment in the card of mail.php. The page has no System region: the card
+// always draws the comment.
 $event_pages[] = array_merge($mail_settings, array(
     'key'   => 'email_reply',
     'name'  => lang('email-new-reply'),
@@ -577,7 +577,6 @@ $event_pages[] = array_merge($mail_settings, array(
         $mail_heading(lang('There is a new message')),
         $mail_para(lang('Something new was written on a page you follow: your place request, your school visit, a conversation or a news post. You can read it below and answer it on the page.')),
         $widget('email_comment'),
-        array('type' => 'region', 'props' => array('regionType' => 'system', 'regionName' => ''), 'children' => array()),
     )),
 ));
 

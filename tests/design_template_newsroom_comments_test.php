@@ -8,7 +8,7 @@
  * under a piece on the desk are
  * drawn by the Comments widget, not the fixed comments block; the comment
  * e-mails (new reply, desk message) draw their comment with a Comments
- * widget card before the System region, which stays. Each thread is drawn
+ * widget card, with no System region after it. Each thread is drawn
  * by the renderer's own steps for a member, a visitor and a staff member,
  * and the e-mail card as an e-mail draws it.
  *
@@ -380,8 +380,8 @@ function test_newsroom_comments_threads_draw()
 	}
 }
 
-// The comment e-mails: the card right before the System region, which
-// stays, on each; drawn as an e-mail draws it, with the one link to the
+// The comment e-mails: the card and no System region on each; drawn as an
+// e-mail draws it, with the one link to the
 // comment that makes the e-mail take it.
 function test_newsroom_comments_email_card()
 {
@@ -404,9 +404,7 @@ function test_newsroom_comments_email_card()
 				pg_assert_same('{{tab:' . $mail . '}}', $page['comments']['email_page'], $id . ' ' . $key . ': e-mails through ' . $mail);
 			}
 			$order = _newsroom_comments_order(_newsroom_comments_page($tpl, $mail)['tree']);
-			$at = array_search('#system', $order, true);
-			pg_assert_true($at !== false, $id . ' ' . $mail . ': the System region stays');
-			pg_assert_same('email_comment', ($at !== false && $at > 0) ? $order[$at - 1] : null, $id . ' ' . $mail . ': the card right before it');
+			pg_assert_false(in_array('#system', $order, true), $id . ' ' . $mail . ': no System region: the card always draws the comment');
 			pg_assert_same(1, count(array_keys($order, 'email_comment', true)), $id . ' ' . $mail . ': one card');
 		}
 

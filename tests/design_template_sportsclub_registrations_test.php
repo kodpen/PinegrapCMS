@@ -216,7 +216,7 @@ function test_sportsclub_registrations_record_and_mail()
 		pg_assert_contains('"eo_visible_if":"record_not_found"', $json, "$key: the not-found note");
 		pg_assert_contains('__edit_url', $json, "$key: the staff's Edit button");
 	}
-	pg_assert_contains('"regionType":"system"', json_encode($d['pages']['email_reply']['tree']), 'the reply e-mail keeps the fixed comment');
+	pg_assert_false(strpos(json_encode($d['pages']['email_reply']['tree']), '"regionType":"system"'), 'the reply e-mail has no System region: its card always draws the comment');
 	foreach (array('email_registration_admin', 'email_registration_parent', 'email_trial_admin', 'email_trial_player') as $key) {
 		pg_assert_same('public', $d['widgets'][$key]['config']['access_control'], "$key is drawn for the submission just sent");
 		$view = strpos($key, 'registration') !== false ? 'registration_view' : 'trial_view';

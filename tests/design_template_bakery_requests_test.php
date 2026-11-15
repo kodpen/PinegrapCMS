@@ -271,7 +271,7 @@ function test_bakery_requests_record_and_mail()
 		pg_assert_contains('"text":"reference_code"', json_encode($d['widgets'][$widgets[3]]['tree']), "{$widgets[3]}: the reference line");
 		pg_assert_contains('"eo_visible_if":"has_new_account"', json_encode($d['widgets'][$widgets[4]]['tree']), "{$widgets[4]}: the new-account note");
 	}
-	pg_assert_contains('"regionType":"system"', json_encode($d['pages']['email_reply']['tree']), 'the reply e-mail keeps the fixed comment');
+	pg_assert_false(strpos(json_encode($d['pages']['email_reply']['tree']), '"regionType":"system"'), 'the reply e-mail has no System region: its card always draws the comment');
 	pg_assert_contains('"href":"__comment_url"', json_encode($d['widgets']['email_comment']['tree']), 'the comment card opens the comment');
 }
 

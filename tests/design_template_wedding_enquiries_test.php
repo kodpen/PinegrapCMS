@@ -187,7 +187,7 @@ function test_wedding_enquiries_record_and_mail()
 	$json = json_encode($d['widgets']['enquiry_detail']['tree']);
 	pg_assert_contains('"eo_visible_if":"record_found"', $json, 'the record');
 	pg_assert_contains('"eo_visible_if":"record_not_found"', $json, 'the not-found note');
-	pg_assert_contains('"regionType":"system"', json_encode($d['pages']['email_reply']['tree']), 'the reply e-mail keeps the fixed comment');
+	pg_assert_false(strpos(json_encode($d['pages']['email_reply']['tree']), '"regionType":"system"'), 'the reply e-mail has no System region: its card always draws the comment');
 }
 
 // The venue visit is the booking widget's starter on its own page; it and

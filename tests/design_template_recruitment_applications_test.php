@@ -133,7 +133,7 @@ function test_recruitment_applications_pages_and_widgets()
 	pg_assert_same('submitter_only', $d['widgets']['application_detail']['config']['access_control'], 'an application is its candidate\'s');
 	pg_assert_true(!empty($d['widgets']['my_applications_list']['config']['viewer_filter_submitter']), 'My Applications lists the own records');
 	pg_assert_true(!empty($d['widgets']['staff_applications_list']['config']['search_enabled']), 'the staff search');
-	pg_assert_contains('"regionType":"system"', json_encode($d['pages']['email_reply']['tree']), 'the reply e-mail keeps the fixed comment');
+	pg_assert_false(strpos(json_encode($d['pages']['email_reply']['tree']), '"regionType":"system"'), 'the reply e-mail has no System region: its card always draws the comment');
 }
 
 // The application: its fields, the job from ?job= as the job page sends

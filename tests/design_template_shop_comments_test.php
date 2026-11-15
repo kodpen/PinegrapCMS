@@ -7,7 +7,7 @@
  * pinegrap-bookshop.php, hello-pinegrap.php): a blog post's comments and a
  * conversation's replies are drawn by the Comments widget, not the fixed
  * comments block; the reply e-mail draws its comment with a Comments widget
- * card before the System region, which stays; the product reviews ship a
+ * card, with no System region; the product reviews ship a
  * layout worded as reviews. Each thread is drawn by the renderer's own steps
  * for a member, a visitor and a staff member, and the e-mail card as an
  * e-mail draws it.
@@ -377,8 +377,8 @@ function test_shop_comments_threads_draw()
 	}
 }
 
-// The reply e-mail: the card right before the System region, which stays;
-// drawn as an e-mail draws it, with the one link to the comment that makes
+// The reply e-mail: the card and no System region, since the card always
+// draws; drawn as an e-mail draws it, with the one link to the comment that makes
 // the e-mail take it.
 function test_shop_comments_email_card()
 {
@@ -399,9 +399,8 @@ function test_shop_comments_email_card()
 			pg_assert_same('{{tab:email_reply}}', $page['comments']['email_page'], $id . ' ' . $key . ': e-mails through it');
 		}
 		$order = _shop_comments_order(_shop_comments_page($tpl, 'email_reply')['tree']);
-		$at = array_search('#system', $order, true);
-		pg_assert_true($at !== false, $id . ': the System region stays');
-		pg_assert_same('email_comment', ($at !== false && $at > 0) ? $order[$at - 1] : null, $id . ': the card right before it');
+		pg_assert_false(in_array('#system', $order, true), $id . ': no System region: the card always draws the comment');
+		pg_assert_true(in_array('email_comment', $order, true), $id . ': the card is on the page');
 
 		$links = 0;
 		foreach (_shop_comments_nodes($w['tree']) as $n) {

@@ -2989,10 +2989,10 @@ foreach ($mail_pages as $m) {
 // The comment an e-mail is about, in a box: who wrote it and when, its
 // stars, the comment it answers, its words and its file, then its View or
 // Reply button. The button is bound to the comment's own address, with no
-// flag over it: an e-mail whose card has no such link keeps the fixed
-// comment the System region carries. No form, no control; every colour
-// written for mail programs that drop the stylesheet, with its fallback
-// inside var().
+// flag over it: with it the card always draws the comment, so the comment
+// e-mail pages need no System region. No form, no control; every colour
+// written for mail programs that drop the stylesheet, with its fallback inside
+// var().
 $mail_comment_tree = $widget_root(array(
     $el('div', '', lang('Comment List'), array(
         $loop(array(
@@ -3027,9 +3027,8 @@ $mail_comment_tree = $widget_root(array(
 // A new reply, comment or message: sent to the guest of a booking, the
 // company of a catering request, the sender of a conversation and the
 // visitors watching a page. Its Comments widget draws the comment in the
-// layout above, with its "View or Reply" button; the System region after it
-// keeps the fixed comment and its own button for an e-mail the widget does
-// not draw (a card edited so it lost its link to the comment).
+// layout above, with its "View or Reply" button. The page has no System
+// region: the card always draws the comment.
 $pages[] = array_merge($mail_settings, array(
     'key'   => 'email_reply',
     'name'  => lang('email-new-reply'),
@@ -3038,7 +3037,6 @@ $pages[] = array_merge($mail_settings, array(
         $mail_heading(lang('There is a new message')),
         $mail_para(lang('Something new was written on a page you follow: your booking, your catering request, a conversation or a post. You can read it below and answer it on the page.')),
         $widget('email_comment'),
-        array('type' => 'region', 'props' => array('regionType' => 'system', 'regionName' => ''), 'children' => array()),
     )),
 ));
 // The newsletter's welcome, sent to a new subscriber.
@@ -4622,7 +4620,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('Café'),
-    'version'     => '1.2.1',
+    'version'     => '1.2.2',
     'framework'   => 'bootstrap5',
     'order'       => 60,
     'icon'        => 'bi-cup-hot',

@@ -2755,10 +2755,10 @@ foreach ($mail_pages as $m) {
 // The comment an e-mail is about, in a box: who wrote it and when, its
 // stars, the comment it answers, its words and its file, then its View or
 // Reply button. The button is bound to the comment's own address, with no
-// flag over it: an e-mail whose card has no such link keeps the fixed
-// comment the System region carries. No form, no control; every colour
-// written for mail programs that drop the stylesheet, with its fallback
-// inside var().
+// flag over it: with it the card always draws the comment, so the comment
+// e-mail pages need no System region. No form, no control; every colour
+// written for mail programs that drop the stylesheet, with its fallback inside
+// var().
 $mail_comment_tree = $widget_root(array(
     $el('div', '', lang('Comment List'), array(
         $loop(array(
@@ -2791,11 +2791,10 @@ $mail_comment_tree = $widget_root(array(
 ));
 
 // The comment e-mails. Their Comments widget draws the comment in the
-// layout above, with its "View or Reply" button; the System region after it
-// keeps the fixed comment and its own button for an e-mail the widget does
-// not draw (a card edited so it lost its link to the comment). A message on
-// an article on the desk goes to its author and to every editor who follows
-// it, with the same words for both.
+// layout above, with its "View or Reply" button. The page has no System
+// region: the card always draws the comment. A message on an article on the
+// desk goes to its author and to every editor who follows it, with the same
+// words for both.
 $pages[] = array_merge($mail_settings, array(
     'key'   => 'email_desk_message',
     'name'  => lang('email-desk-message'),
@@ -2804,7 +2803,6 @@ $pages[] = array_merge($mail_settings, array(
         $mail_heading(lang('New message about an article')),
         $mail_para(lang('There is a new message on an article on the desk.')),
         $widget('email_comment'),
-        array('type' => 'region', 'props' => array('regionType' => 'system', 'regionName' => ''), 'children' => array()),
     )),
 ));
 // A new comment on an article the reader follows, or a new reply in a
@@ -2817,7 +2815,6 @@ $pages[] = array_merge($mail_settings, array(
         $mail_heading(lang('There is a new message')),
         $mail_para(lang('Something new was written on a page you follow: an article you commented on, or your conversation with the newsroom. Read it below and answer on the page.')),
         $widget('email_comment'),
-        array('type' => 'region', 'props' => array('regionType' => 'system', 'regionName' => ''), 'children' => array()),
     )),
 ));
 // The newsletter's welcome, sent to a new subscriber.
@@ -4310,7 +4307,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('News Portal'),
-    'version'     => '1.2.2',
+    'version'     => '1.2.3',
     'framework'   => 'bootstrap5',
     'order'       => 70,
     'icon'        => 'bi-newspaper',

@@ -213,7 +213,7 @@ function test_school_admissions_record_and_mail()
 	$json = json_encode($d['widgets']['application_detail']['tree']);
 	pg_assert_contains('"eo_visible_if":"record_found"', $json, 'the record');
 	pg_assert_contains('"eo_visible_if":"record_not_found"', $json, 'the not-found note');
-	pg_assert_contains('"regionType":"system"', json_encode($d['pages']['email_reply']['tree']), 'the reply e-mail keeps the fixed comment');
+	pg_assert_false(strpos(json_encode($d['pages']['email_reply']['tree']), '"regionType":"system"'), 'the reply e-mail has no System region: its card always draws the comment');
 	foreach (array('email_application_admin', 'email_application_parent', 'email_visit_admin', 'email_visit_parent') as $key) {
 		pg_assert_same('public', $d['widgets'][$key]['config']['access_control'], "$key is drawn for the submission just sent");
 	}

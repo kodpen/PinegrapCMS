@@ -94,8 +94,8 @@ $mail_new_account = function () use ($el, $span, $link, $bind, $show_when, $mail
 // The comment an e-mail is about, in a box: who wrote it and when, its
 // stars, the comment it answers, its words and its file, then its View or
 // Reply button. The button is bound to the comment's own address, with no
-// flag over it: an e-mail whose card has no such link keeps the fixed
-// comment the System region carries. No form, no control.
+// flag over it: with it the card always draws the comment, so the comment
+// e-mail pages need no System region. No form, no control.
 $mail_comment_tree = $widget_root(array(
     $el('div', '', lang('Comment List'), array(
         $loop(array(

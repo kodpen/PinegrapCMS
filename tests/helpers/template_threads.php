@@ -7,7 +7,7 @@
  * Google Reviews): no fixed comments block left, each thread under its
  * page's record view with its options and a layout of its own, each drawn
  * by the renderer's own steps for a member, a visitor and a staff member,
- * and the reply e-mail's card before the System region, drawn as an e-mail
+ * and the reply e-mail's card, with no System region, drawn as an e-mail
  * draws it. The shop templates keep their own table
  * (design_template_shop_comments_test.php).
  *
@@ -342,8 +342,8 @@ function _tpl_threads_check_draws($id, $key, $t)
 	pg_assert_false(strpos($staff, '^^'), $at . 'no token left');
 }
 
-// The reply e-mail of $id: its Comments widget card (widget key $key)
-// right before the System region, which stays; one link to the comment and
+// The reply e-mail of $id: its Comments widget card (widget key $key) and
+// no System region, since the card always draws; one link to the comment and
 // nothing a mail program cannot show; listed among the template's e-mails
 // and drawn in the installer's preview; drawn as an e-mail draws it, so the
 // e-mail takes the widget's comment. $pages: the pages that e-mail through
@@ -366,9 +366,8 @@ function _tpl_threads_check_email_card($id, $key, $mail_page, $pages)
 		pg_assert_same('{{tab:' . $mail_page . '}}', $page['comments']['email_page'], $id . ' ' . $page_key . ': e-mails through it');
 	}
 	$order = _tpl_threads_order(_tpl_threads_page($tpl, $mail_page)['tree']);
-	$pos = array_search('#system', $order, true);
-	pg_assert_true($pos !== false, $id . ': the System region stays');
-	pg_assert_same($key, ($pos !== false && $pos > 0) ? $order[$pos - 1] : null, $id . ': the card right before it');
+	pg_assert_false(in_array('#system', $order, true), $id . ': no System region: the card always draws the comment');
+	pg_assert_true(in_array($key, $order, true), $id . ': the card is on the page');
 
 	$links = 0;
 	foreach (_tpl_threads_nodes($w['tree']) as $n) {

@@ -347,7 +347,6 @@ $request_pages[] = array_merge($mail_settings, array(
         $mail_heading(lang('There is a new message')),
         $mail_para(lang('Something new was written on a page you follow: your trade-in, your support request, a conversation or a press release. You can read it below and answer it on the page.')),
         $widget('email_comment'),
-        array('type' => 'region', 'props' => array('regionType' => 'system', 'regionName' => ''), 'children' => array()),
     )),
 ));
 

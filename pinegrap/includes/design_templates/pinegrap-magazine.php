@@ -2761,10 +2761,10 @@ foreach ($mail_pages as $m) {
 // The comment an e-mail is about, in a box: who wrote it and when, its
 // stars, the one it answers, its words and its file, then its View or
 // Reply button. The button is bound to the comment's own address, with no
-// flag over it: an e-mail whose card has no such link keeps the fixed
-// comment the System region carries. No form, no control; every colour
-// written for mail programs that drop the stylesheet, with its fallback
-// inside var().
+// flag over it: with it the card always draws the comment, so the comment
+// e-mail pages need no System region. No form, no control; every colour
+// written for mail programs that drop the stylesheet, with its fallback inside
+// var().
 $mail_comment_tree = $widget_root(array(
     $el('div', '', lang('Comment List'), array(
         $loop(array(
@@ -2797,13 +2797,11 @@ $mail_comment_tree = $widget_root(array(
 ));
 
 // The comment e-mails. Their Comments widget draws the message in the
-// layout above, with its "View or Reply" button; the System region after it
-// keeps the fixed message and its own button for an e-mail the widget does
-// not draw (a card edited so it lost its link to the comment). A message
-// under a story sent to the magazine goes to its author and to every editor
-// who follows it, with the same words for both and for every status (it is
-// also how an author hears a story is live).
-$mail_system = array('type' => 'region', 'props' => array('regionType' => 'system', 'regionName' => ''), 'children' => array());
+// layout above, with its "View or Reply" button. The pages have no System
+// region: the card always draws the comment. A message under a story sent
+// to the magazine goes to its author and to every editor who follows it,
+// with the same words for both and for every status (it is also how an
+// author hears a story is live).
 $pages[] = array_merge($mail_settings, array(
     'key'   => 'email_desk_message',
     'name'  => lang('email-editors-message'),
@@ -2812,7 +2810,6 @@ $pages[] = array_merge($mail_settings, array(
         $mail_heading(lang('New message about a story sent to the magazine')),
         $mail_para(lang('There is a new message under a story sent to the magazine.')),
         $widget('email_comment'),
-        $mail_system,
     )),
 ));
 // A new letter under a story the reader follows, or a new reply in a
@@ -2825,7 +2822,6 @@ $pages[] = array_merge($mail_settings, array(
         $mail_heading(lang('There is a new message')),
         $mail_para(lang('Something new was written on a page you follow: a story you wrote a letter under, or your conversation with the editors. Read it below and answer on the page.')),
         $widget('email_comment'),
-        $mail_system,
     )),
 ));
 // The newsletter's welcome, sent to a new subscriber.
@@ -4227,7 +4223,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('Long-Read Magazine'),
-    'version'     => '1.2.2',
+    'version'     => '1.2.3',
     'framework'   => 'bootstrap5',
     'order'       => 80,
     'icon'        => 'bi-journal-richtext',
