@@ -11486,7 +11486,6 @@ var pgSettingsModal = (function () {
     var seq = 0;                // the pane request that is allowed to paint
     var leaving = false;        // a close the operator has already agreed to
     var pending = '';           // a card to scroll to once the pane is in
-    var savedToast = null;      // the toast that said the last save went through
     var address = null;         // the page's own fragment while the dialog holds the address
 
     function byId(id) { return document.getElementById(id); }
@@ -11712,6 +11711,7 @@ var pgSettingsModal = (function () {
             clearExtras();
             drawer(false);
             unlocate();
+            $('#pg_settings_modal_saved').empty();
 
             // The next opening asks for the pane again rather than showing
             // values that may have been changed by the work done in between.
@@ -13436,36 +13436,59 @@ window.pgCodeEditorReady = function (markup, done) {
 
 
     /**
-     * One toast says the save went through. The endpoint ends every save
-     * with the general confirmation; a card that said something of its own
-     * ("The agent was saved.") is heard instead of it. A toast still up from
-     * the last save goes first, so there is never more than one. A long
-     * confirmation (an address to note) stays until it is closed.
+     * One toast in the dialog says the save went through: under the head of
+     * the pane, or of the drawer the save came from, where the operator is
+     * looking. The endpoint ends every save with the general
+     * confirmation; a card that said something of its own ("The agent was
+     * saved.") is heard instead of it. A toast still up from the last save
+     * goes first, so there is never more than one. A long confirmation (an
+     * address to note) stays until it is closed.
      */
     function confirmSave(notices) {
 
+        var host = byId('pg_settings_modal_saved');
         var list = (notices && notices.length) ? notices.slice() : [];
 
         if (list.length > 1) {
             list.pop();
         }
 
-        var said = list.join(' ');
+        var said = list.join(' ') || say('saved');
 
         notice('');
 
-        if (savedToast) {
-            try {
-                savedToast.hide();
-            } catch (error) {
-                // Already gone with its dialog: nothing to take down.
-            }
-            savedToast = null;
+        if (!host) {
+            return;
         }
 
-        if (typeof window.pgToast === 'function') {
-            said = said || say('saved');
-            savedToast = window.pgToast({ message: said, variant: 'success', delay: (said.length > 80) ? 600000 : 5000 });
+        $(host).empty();
+
+        // Just under the head of the drawer or of the pane, never over the
+        // buttons at their foot: on a phone the drawer's Save sits there.
+        var open = cardDrawer();
+        var head = open ? open.querySelector('.pg-sm-drawer-head') : el.querySelector('.pg-sm-head');
+
+        if (head) {
+            host.style.top = Math.round(head.getBoundingClientRect().bottom - el.getBoundingClientRect().top + 12) + 'px';
+        }
+
+        var toast = $('<div class="toast align-items-center bg-success fg-contrast-success border-0" role="status" aria-live="polite" aria-atomic="true">'
+            + '<div class="d-flex"><div class="toast-body flex-grow-1"><i class="bi bi-check-circle-fill me-3" aria-hidden="true"></i></div>'
+            + '<button type="button" class="btn-close ms-2 me-3 my-auto flex-shrink-0 no-popover" data-bs-dismiss="toast"></button></div></div>');
+
+        toast.find('.toast-body').append(document.createTextNode(said));
+        toast.find('.btn-close').attr('aria-label', say('close'));
+        host.appendChild(toast[0]);
+
+        var shown = window.pgUI ? pgUI.toast.get(toast[0], { delay: (said.length > 80) ? 600000 : 5000, autohide: true }) : null;
+
+        if (shown) {
+            pgUI.toast.on(toast[0], 'hidden', function () {
+                toast.remove();
+            });
+            shown.show();
+        } else {
+            toast.addClass('show');
         }
     }
 

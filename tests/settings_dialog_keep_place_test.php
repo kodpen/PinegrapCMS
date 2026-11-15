@@ -99,7 +99,11 @@ function test_settings_dialog_keep_place_save_path()
 	pg_assert_contains('window.pgSettingsKeepDrawer(from.id, button)', $source, 'the save asks which drawer opens again');
 	pg_assert_contains('load(pane, place).done(', $source, 'the pane is read back with the place to return to');
 	pg_assert_contains('form.scrollTop = place.scroll;', $source, 'paint() puts the form\'s scroll back');
-	pg_assert_contains("savedToast = window.pgToast({ message: said, variant: 'success'", $source, 'saved is one toast');
-	pg_assert_contains('savedToast.hide();', $source, 'the toast of the last save goes before the next one');
-	pg_assert_contains('data-pgsaved=', (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/modal.php'), 'the dialog carries the plain confirmation');
+	pg_assert_contains("var host = byId('pg_settings_modal_saved');", $source, 'saved is a toast in the dialog');
+	pg_assert_contains('$(host).empty();', $source, 'the toast of the last save goes before the next one');
+
+	$modal = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/modal.php');
+
+	pg_assert_contains('data-pgsaved=', $modal, 'the dialog carries the plain confirmation');
+	pg_assert_contains('id="pg_settings_modal_saved"', $modal, 'the dialog has the toast\'s place');
 }

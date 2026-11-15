@@ -293,6 +293,12 @@ function pg_settings_modal_markup($user)
             <div class="pg-sm-dscrim" id="pg_settings_modal_dscrim"></div>
             <div class="pg-sm-drawers" id="pg_settings_modal_drawers"></div>
 
+            <!--
+                "Saved": one toast after a save, under the head of the pane
+                or of the open drawer, above both.
+            -->
+            <div class="pg-sm-saved" id="pg_settings_modal_saved"></div>
+
 </dialog>
 
 <!--
