@@ -10,7 +10,7 @@ description: Steps of plans/report-screens.md: RS1-RS7 landed; RS8 the look (RS8
 - RS8 (S) The look and the close-out: the asked steps below, then the lasting rules into the topic files and this plan's two files deleted.
   - Look request: channel 25 message 4150 (2026-11-15): the four screens from a sandbox with demo data, light and dark, 1440 and 390 px.
   - The look is the architect's (delegated by the owner's 2645), answered in channel 25 message 4223: the screens stand in their shape, light and dark; nothing is redrawn. RS8a, RS8b and RS8c below; RS8b and RS8c may run beside RS8a. After the three land, two pictures per changed screen (light 1440 and 390) in the 4150 thread; then RS8 closes the plan.
-- RS8a (S) The shared parts, mostly on a phone:
+- RS8a (S) Done: #9700. The shared parts, mostly on a phone:
   1. A segmented control that does not fit its row (ready reports, periods) is one row that scrolls sideways; it never wraps into a box of three or four rows (4153, 4161).
   2. An odd last figure card takes the whole row on a phone (shipping's Total, VAT's Difference).
   3. The report's title wraps and is never cut with an ellipsis ("Kaynağa göre ziyaret..."); the pill goes under it. The breadcrumb's last part ends with an ellipsis, not mid-letter.
