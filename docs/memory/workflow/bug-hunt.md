@@ -23,3 +23,5 @@ description: A bug hunt is given out again (owner 2026-11-15), only in an area t
 - Both ended on 2026-11-15 with their issues (mail: channel message 4152; calendar: #9662 to #9667).
 - Given after them on 2026-11-15: team device sessions over the API (#9678, #9679); cart and checkout totals; the agent channel's requests, approvers and wake doors (channel message 4877; the agent card #9730 and the stale door error, AS2 of `plans/agents-card-settings`, are known and not reported again).
 - That last hunt ended the same day with #9740 to #9743 (approvals asked twice, two agents on one application, an approver never asked, requests left open after an approval is settled).
+- Given after those on 2026-11-15 (channel message 5402): polls and agent questions over the API. It ended the same day with #9807 to #9812 (channel message 5416).
+- Next: a channel's settings and members over the API, once CA13 to CA16 of `plans/channel-api-gaps` have landed.
