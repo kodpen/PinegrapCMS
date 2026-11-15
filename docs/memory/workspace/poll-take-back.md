@@ -20,7 +20,7 @@ description: Take back and Ask again on a poll (poll_again.php): the asker (a pe
 
 ## What do the box and the API get?
 - `ws_polls_map()`: `can_edit`, `can_withdraw` and `can_ask_again` all rest on `ws_poll_person_asked()` (the person who asked, with the question their own message): an application's poll gives its owner all three false, as the change refuses them; the application changes it through its key.
-- Before #9811 `can_edit` asked only `created_by`, so an application's owner saw Edit and `can_edit: true`, then got 403 "Only the person who asked can change the poll."
+- Before #9819 (issue #9811) `can_edit` asked only `created_by`, so an application's owner saw Edit and `can_edit: true`, then got 403 "Only the person who asked can change the poll."
 - Also `withdrawn`, `withdrawn_at`, `again_of` / `again_of_message`, `asked_again` / `asked_again_message` (the newest poll asking it again, `ws_poll_again_links()`). `can_vote`, `can_edit`, `can_close` are false on a taken-back poll.
 - `WorkspacePoll`: the same, ids as `again_of`, `again_of_message_id`, `asked_again`, `asked_again_message_id` (null for none), `withdrawn_at` as a time.
 - Panel actions `ws_poll_withdraw` and `ws_poll_again` (`poll_id`, and for an ask-again `question`, `options`, `multiple`, `anonymous`); the box draws the buttons (`poll-box.md`).
