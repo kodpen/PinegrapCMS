@@ -102,7 +102,9 @@
         (approval.people || []).forEach(function (person) {
             var state = STATES[person.decision] || STATES.pending;
             var row = el('li', 'ws-approval-person ws-approval-' + person.decision);
-            var face = h.avatar(person);
+            // An agent with no picture of its own shows the robot, as its
+            // tag does (approval_agents.php).
+            var face = (person.agent && !person.avatar) ? h.icon(person.icon || 'bi-robot') : h.avatar(person);
 
             face.classList.add('ws-approval-face');
             row.appendChild(face);
@@ -110,6 +112,14 @@
 
             // Somebody outside the team: asked by e-mail; staff see the
             // address and the link it went through on hover.
+            if (person.agent) {
+                row.appendChild(el('span', 'badge rounded-pill badge-subtle theme-info ws-approval-agent', t('apv_agent_badge')));
+
+                if (person.handle) {
+                    row.title = person.handle;
+                }
+            }
+
             if (person.guest) {
                 row.appendChild(el('span', 'badge rounded-pill badge-subtle theme-secondary ws-approval-guest', t('apv_guest_badge')));
 
@@ -295,6 +305,19 @@
         peopleRow.appendChild(el('div', 'form-text', t('apv_people_help')));
         body.appendChild(peopleRow);
 
+        // The channel's agents, under the people: each one asked is woken at
+        // once (approval_agents.php). Drawn as the people are.
+        var agents = agentPicker(h, channel.approval_agents || []);
+
+        if (agents) {
+            var agentsRow = el('div', 'mb-5');
+
+            agentsRow.appendChild(el('div', 'form-label', t('apv_agents')));
+            agentsRow.appendChild(agents);
+            agentsRow.appendChild(el('div', 'form-text', t('apv_agents_help')));
+            body.appendChild(agentsRow);
+        }
+
         // Customers outside the team, for staff: a name and an e-mail each.
         var guests = guestRows(h, (h.cfg.approvals && h.cfg.approvals.guests) || 0);
 
@@ -362,6 +385,7 @@
                 title: title.value,
                 text: rich ? rich.value() : area.value,
                 approvers: people.value(),
+                agents: agents ? agents.value() : [],
                 guests: guests ? guests.value() : [],
                 rule: rule,
                 closes_date: date.value,
@@ -382,6 +406,42 @@
         if (!h.touchScreen()) {
             setTimeout(function () { title.focus(); }, 250);
         }
+    }
+
+    // The agents of the channel as toggles, the people picker's look; null
+    // when the channel has none. value() gives their request values.
+    function agentPicker(h, list) {
+        if (!list.length) {
+            return null;
+        }
+
+        var box = h.el('div', 'ws-people-select');
+        var chosen = {};
+
+        box.setAttribute('role', 'group');
+        box.setAttribute('aria-label', h.t('apv_agents'));
+
+        list.forEach(function (agent) {
+            var toggle = h.el('button', 'ws-person-toggle');
+
+            toggle.type = 'button';
+            toggle.setAttribute('aria-pressed', 'false');
+            toggle.title = agent.name;
+            toggle.appendChild(agent.avatar ? h.avatar({ name: agent.name, avatar: agent.avatar }) : h.icon('bi-robot'));
+            toggle.appendChild(document.createTextNode(agent.handle));
+            toggle.addEventListener('click', function () {
+                chosen[agent.value] = !chosen[agent.value];
+                toggle.classList.toggle('active', chosen[agent.value]);
+                toggle.setAttribute('aria-pressed', chosen[agent.value] ? 'true' : 'false');
+            });
+            box.appendChild(toggle);
+        });
+
+        box.value = function () {
+            return Object.keys(chosen).filter(function (value) { return chosen[value]; });
+        };
+
+        return box;
     }
 
     // The rows of the form that name customers outside the team, up to `max`;

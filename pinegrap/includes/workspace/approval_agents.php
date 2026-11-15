@@ -128,6 +128,34 @@ function ws_approval_agent_options($channel)
 }
 
 /**
+ * The agents the form offers: value, @handle, name and picture, nothing a
+ * reader of the channel may not see.
+ *
+ * @param array $channel
+ * @return array[] value, handle, name, avatar
+ */
+function ws_approval_agent_choices($channel)
+{
+    if (!ws_approval_agents_ready()) {
+        return array();
+    }
+
+    $out = array();
+
+    foreach (ws_approval_agent_options($channel) as $option) {
+        $row = ws_approval_agent_row($option['value']);
+        $out[] = array(
+            'value'  => $option['value'],
+            'handle' => '@' . $option['handle'],
+            'name'   => $option['name'],
+            'avatar' => $row ? (string) $row['avatar'] : '',
+        );
+    }
+
+    return $out;
+}
+
+/**
  * The agents asked by one request, in the order they answered, the ones
  * still to answer last.
  *

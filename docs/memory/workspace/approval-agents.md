@@ -22,6 +22,7 @@ description: Agents asked to approve (AE2): ws_approval_agents, who may be asked
 
 ## How does an agent count and show?
 - `ws_approval_decisions()` keys every answer (user, guest, agent) and feeds `ws_approval_outcome()`: an agent counts as a person under "Any one of them", "All of them" and the deadline. A removed or paused agent stays asked and counts as not answering.
-- The card (`ws_approvals_map()`) lists the agents after the people and guests (`ws_approval_agents_card()`: `agent` true, name, `@handle`, icon `bi-robot`); the result line names an agent by `@handle`; `workspace.approval.requested` and `.decided` carry `agents`.
+- The form (workspace_approvals.js, AE3 #9586) shows "Agents who approve" under the people, the people picker's toggles with the robot (or the agent's picture) and `@handle`, from the channel's `approval_agents` (`ws_approval_agent_choices()`, empty in guest rooms and shared channels); it sends `agents`. The label is its own text: a bare `Agents` is the estate agents' key (`tests/workspace_agent_word_test.php`).
+- The card (`ws_approvals_map()`) lists the agents after the people and guests (`ws_approval_agents_card()`: `agent` true, name, `@handle`, icon `bi-robot`), with the pill badge "agent" beside the customer's; the result line names an agent by `@handle`; `workspace.approval.requested` and `.decided` carry `agents`.
 - Today, reminders, the calendar feed, the dashboard cards and the briefing count read people only: an agent has no Today.
 - A discussion's delete removes its agent rows too.
