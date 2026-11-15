@@ -3335,6 +3335,8 @@
         (channel.agents || []).forEach(function (agent) {
             out.push({
                 key: 'agent-' + agent.id,
+                id: agent.id,
+                app_id: agent.app_id,
                 tone: agent.id,
                 name: agent.name || ('@' + agent.handle),
                 handle: agent.handle,
@@ -3380,6 +3382,366 @@
         return face;
     }
 
+    // ── The agent card (agent_card.php, ws_agent_card) ──
+    // Opened on an agent's name or picture by hover, keyboard focus or a
+    // tap; one at a time; Escape, a click outside or leaving it closes it.
+    // The figures are the agent's own report, as the card says.
+    var agentCardOpen = { node: null, anchor: null, timer: 0, key: '' };
+    var agentCardCache = {};
+
+    // The registry agent a channel has for an application, or null.
+    function agentOfApp(channel, appId) {
+        var found = null;
+
+        (channel && channel.agents || []).forEach(function (agent) {
+            if (!found && appId && (agent.app_id === appId)) {
+                found = agent;
+            }
+        });
+
+        return found;
+    }
+
+    function agentCardClose() {
+        clearTimeout(agentCardOpen.timer);
+
+        if (agentCardOpen.anchor) {
+            agentCardOpen.anchor.setAttribute('aria-expanded', 'false');
+        }
+
+        if (agentCardOpen.node && agentCardOpen.node.parentNode) {
+            agentCardOpen.node.parentNode.removeChild(agentCardOpen.node);
+        }
+
+        agentCardOpen.node = null;
+        agentCardOpen.anchor = null;
+        agentCardOpen.key = '';
+    }
+
+    // Where the card stands: under the anchor, or over it when the room
+    // below is short; kept 8px inside the window. Pure
+    // (tests/workspace_agent_card_js_test.php).
+    function agentCardPlace(anchor, size, view) {
+        var gap = 6;
+        var left = Math.min(Math.max(8, anchor.left), Math.max(8, view.width - size.width - 8));
+        var below = view.height - anchor.bottom - gap - 8;
+        var top = ((below >= size.height) || (anchor.top - gap - 8 < size.height && below >= anchor.top))
+            ? anchor.bottom + gap
+            : anchor.top - gap - size.height;
+
+        return { left: Math.round(left), top: Math.round(Math.max(8, top)) };
+    }
+
+    function agentCardRow(box, label, value) {
+        var row = el('div', 'ws-agent-card-row');
+
+        row.appendChild(el('span', 'ws-agent-card-key', label));
+
+        if (value && value.nodeType) {
+            row.appendChild(value);
+        } else {
+            row.appendChild(el('span', 'ws-agent-card-value', value));
+        }
+
+        box.appendChild(row);
+    }
+
+    var AGENT_CARD_TONES = { working: 'blue', waiting: 'amber', late: 'amber', paused: 'gray', idle: 'teal' };
+
+    // The card's body from what ws_agent_card answers; until then, from the
+    // member row the channel already holds.
+    function agentCardBody(node, agent, card, channel) {
+        var data = card || {};
+
+        clear(node);
+
+        var head = el('div', 'ws-agent-card-head');
+        var face = agentFace({ tone: agent.id, assistant: agent.assistant });
+
+        face.classList.add('ws-agent-card-face');
+
+        if (data.avatar) {
+            clear(face);
+            var img = el('img', 'avatar-img');
+
+            img.src = data.avatar;
+            img.alt = '';
+            face.appendChild(img);
+        }
+
+        head.appendChild(face);
+
+        var who = el('div', 'ws-agent-card-who');
+
+        who.appendChild(el('div', 'pg-title-status ws-agent-card-name', data.name || agent.name || ('@' + agent.handle)));
+
+        var line = el('div', 'pg-text-meta ws-agent-card-handle', '@' + (data.handle || agent.handle));
+        var role = data.role || agent.role || '';
+
+        if (role) {
+            line.appendChild(el('span', 'pg-pill pg-tone-violet', role));
+        }
+
+        who.appendChild(line);
+        head.appendChild(who);
+        node.appendChild(head);
+
+        if (!card) {
+            node.appendChild(el('div', 'pg-text-meta ws-agent-card-loading', t('loading')));
+            return;
+        }
+
+        var facts = el('div', 'ws-agent-card-box');
+        var state = el('span', 'pg-pill pg-tone-' + (AGENT_CARD_TONES[data.state] || 'gray'), data.state_words);
+
+        agentCardRow(facts, t('ac_state'), state);
+
+        if (data.waiting > 0) {
+            agentCardRow(facts, t('ac_waiting'), t('ac_requests', data.waiting));
+        }
+
+        if (data.model) {
+            agentCardRow(facts, t('ac_model'), data.model);
+
+            // Part of the report: muted with it once older than a day.
+            if (data.stale) {
+                facts.lastChild.classList.add('opacity-50');
+            }
+        }
+
+        if (data.seen) {
+            agentCardRow(facts, t('ac_seen'), data.seen);
+        }
+
+        agentCardRow(facts, t('ac_today'), t('ac_today_counts', data.today.answered, data.today.failed));
+        node.appendChild(facts);
+
+        if (data.windows && data.windows.length) {
+            var windows = el('div', 'ws-agent-card-box' + (data.stale ? ' is-stale' : ''));
+
+            data.windows.forEach(function (window) {
+                var item = el('div', 'ws-agent-card-window' + (window.high ? ' is-high' : ''));
+                var top = el('div', 'ws-agent-card-row');
+                var label = el('span', 'ws-agent-card-value', window.label);
+
+                if (window.high) {
+                    var mark = icon('bi-exclamation-triangle-fill', 'ws-agent-card-high');
+
+                    mark.removeAttribute('aria-hidden');
+                    mark.setAttribute('role', 'img');
+                    mark.setAttribute('aria-label', t('ac_high'));
+                    mark.title = t('ac_high');
+                    label.appendChild(mark);
+                }
+
+                top.appendChild(label);
+                top.appendChild(el('span', 'pg-tabular ws-agent-card-key', window.percent + '% · ' + window.resets));
+                item.appendChild(top);
+
+                var bar = el('div', 'ws-agent-card-bar');
+                var fill = el('span', '');
+
+                fill.style.width = Math.max(0, Math.min(100, window.percent)) + '%';
+                bar.appendChild(fill);
+                bar.setAttribute('role', 'meter');
+                bar.setAttribute('aria-valuemin', '0');
+                bar.setAttribute('aria-valuemax', '100');
+                bar.setAttribute('aria-valuenow', String(window.percent));
+                bar.setAttribute('aria-label', window.label);
+                item.appendChild(bar);
+                windows.appendChild(item);
+            });
+
+            node.appendChild(windows);
+        }
+
+        var more = el('div', 'ws-agent-card-box');
+
+        if (data.wake) {
+            agentCardRow(more, t('ac_wakes'), data.wake);
+        }
+
+        if (data.last_message) {
+            var last = el('button', 'pg-button pg-button-quiet pg-button-sm', data.last_message.when);
+
+            last.type = 'button';
+            last.addEventListener('click', function () {
+                agentCardClose();
+                app.jumpTo(data.last_message.id, true);
+            });
+            agentCardRow(more, t('ac_last'), last);
+        }
+
+        if (data.channels && data.channels.length) {
+            var list = el('span', 'ws-agent-card-channels');
+
+            data.channels.forEach(function (item) {
+                var link = el('button', 'pg-button pg-button-ghost pg-button-sm', '#' + item.name);
+
+                link.type = 'button';
+                link.addEventListener('click', function () {
+                    agentCardClose();
+                    app.open(item.id, 0);
+                });
+                list.appendChild(link);
+            });
+            agentCardRow(more, t('ac_channels'), list);
+        }
+
+        node.appendChild(more);
+
+        if (data.reported) {
+            var note = el('div', 'pg-text-meta ws-agent-card-note' + (data.stale ? ' opacity-50' : ''));
+
+            note.appendChild(icon('bi-info-circle', 'me-1'));
+            note.appendChild(document.createTextNode(data.reported));
+            node.appendChild(note);
+        }
+
+        if (channel && channel.can_post) {
+            var mention = el('button', 'pg-button pg-button-quiet pg-button-sm ws-agent-card-mention');
+
+            mention.type = 'button';
+            mention.appendChild(icon('bi-at', 'me-1'));
+            mention.appendChild(document.createTextNode(t('ac_mention')));
+            mention.addEventListener('click', function () {
+                agentCardClose();
+
+                if (app.input) {
+                    app.insertText('@' + (data.handle || agent.handle) + ' ');
+                }
+            });
+            node.appendChild(mention);
+        }
+    }
+
+    function agentCardShow(anchor, channel, agent) {
+        var key = channel.id + ':' + agent.id;
+
+        clearTimeout(agentCardOpen.timer);
+
+        if (agentCardOpen.key === key && agentCardOpen.anchor === anchor) {
+            return;
+        }
+
+        agentCardClose();
+
+        var node = el('div', 'pg-card ws-agent-card');
+
+        node.setAttribute('role', 'dialog');
+        node.setAttribute('aria-label', agent.name || ('@' + agent.handle));
+        node.addEventListener('mouseenter', function () { clearTimeout(agentCardOpen.timer); });
+        node.addEventListener('mouseleave', function () { agentCardOpen.timer = setTimeout(agentCardClose, 250); });
+        node.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape') {
+                event.stopPropagation();
+                agentCardClose();
+                anchor.focus();
+            }
+        });
+
+        agentCardOpen.node = node;
+        agentCardOpen.anchor = anchor;
+        agentCardOpen.key = key;
+        anchor.setAttribute('aria-expanded', 'true');
+
+        var place = function () {
+            if (agentCardOpen.node !== node) {
+                return;
+            }
+
+            var box = anchor.getBoundingClientRect();
+            var spot = agentCardPlace(box, { width: node.offsetWidth, height: node.offsetHeight }, { width: window.innerWidth, height: window.innerHeight });
+
+            node.style.left = spot.left + 'px';
+            node.style.top = spot.top + 'px';
+        };
+        var cached = agentCardCache[key];
+
+        agentCardBody(node, agent, (cached && (Date.now() - cached.at < 30000)) ? cached.card : null, channel);
+        document.body.appendChild(node);
+        place();
+
+        if (!cached || (Date.now() - cached.at >= 30000)) {
+            api('ws_agent_card', { channel_id: channel.id, agent_id: agent.id }).then(function (data) {
+                agentCardCache[key] = { at: Date.now(), card: data.card };
+
+                if (agentCardOpen.node === node) {
+                    agentCardBody(node, agent, data.card, channel);
+                    place();
+                }
+            }).catch(function () {
+                if (agentCardOpen.node === node) {
+                    agentCardClose();
+                }
+            });
+        }
+    }
+
+    // Makes a name or a picture open the agent's card. keyboard: the
+    // anchor is a Tab stop and opens on focus (a picture hidden from
+    // screen readers is not).
+    function agentCardHook(target, channel, agent, keyboard) {
+        if (!target || !channel || !agent || !agent.id) {
+            return target;
+        }
+
+        target.classList.add('ws-agent-card-anchor');
+
+        if (keyboard) {
+            target.tabIndex = 0;
+            target.setAttribute('role', 'button');
+            target.setAttribute('aria-haspopup', 'dialog');
+            target.setAttribute('aria-expanded', 'false');
+            target.addEventListener('focus', function () {
+                if (target.matches(':focus-visible')) {
+                    agentCardShow(target, channel, agent);
+                }
+            });
+            target.addEventListener('keydown', function (event) {
+                if ((event.key === 'Enter') || (event.key === ' ')) {
+                    event.preventDefault();
+                    agentCardShow(target, channel, agent);
+                } else if ((event.key === 'Escape') && agentCardOpen.anchor === target) {
+                    event.stopPropagation();
+                    agentCardClose();
+                }
+            });
+        }
+
+        target.addEventListener('mouseenter', function () {
+            clearTimeout(agentCardOpen.timer);
+            agentCardOpen.timer = setTimeout(function () { agentCardShow(target, channel, agent); }, 350);
+        });
+        target.addEventListener('mouseleave', function () {
+            clearTimeout(agentCardOpen.timer);
+            agentCardOpen.timer = setTimeout(agentCardClose, 250);
+        });
+        target.addEventListener('click', function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+
+            if (agentCardOpen.anchor === target) {
+                agentCardClose();
+            } else {
+                agentCardShow(target, channel, agent);
+            }
+        });
+
+        return target;
+    }
+
+    document.addEventListener('click', function (event) {
+        if (agentCardOpen.node && !agentCardOpen.node.contains(event.target)) {
+            agentCardClose();
+        }
+    });
+    window.addEventListener('scroll', function () {
+        if (agentCardOpen.node) {
+            agentCardClose();
+        }
+    }, true);
+
     // The channel head's faces: its people, then its agents as squares, and
     // one count for both.
     function memberFaces(node, channel) {
@@ -3394,7 +3756,7 @@
                 var face = agentFace(agent);
 
                 face.title = agent.name;
-                stack.appendChild(face);
+                stack.appendChild(agentCardHook(face, channel, agent, false));
             });
             node.appendChild(stack);
         }
@@ -10111,7 +10473,12 @@
                         name.appendChild(el('span', 'badge badge-subtle theme-secondary ws-info-badge', t('cha_paused')));
                     }
 
-                    var row = personRow(agentFace(agent), name, agent.line, agentList);
+                    // A registry agent's name and face open its card.
+                    if (agent.id) {
+                        agentCardHook(name, channel, agent, true);
+                    }
+
+                    var row = personRow(agent.id ? agentCardHook(agentFace(agent), channel, agent, false) : agentFace(agent), name, agent.line, agentList);
 
                     if (agent.seen) {
                         row.appendChild(seenNode(agent.seen, agent.seen_state));
@@ -10751,6 +11118,9 @@
             var person = (message.sender_kind === 'user') ? message.sender : null;
             var agentMarks = messageAgentMarks(message, self.channel);
             var picture = avatar(message.sender);
+            // A registry agent of the channel: its name and picture open its
+            // card (agentCardHook()).
+            var cardAgent = (message.sender_kind === 'app' && message.sender) ? agentOfApp(self.channel, message.sender.app_id) : null;
 
             // An agent of this channel: its state dot in the picture's
             // corner, named for a screen reader and on hover.
@@ -10763,7 +11133,7 @@
                 picture.appendChild(stateDot);
             }
 
-            face.appendChild(personLink(picture, person));
+            face.appendChild(cardAgent ? agentCardHook(picture, self.channel, cardAgent, false) : personLink(picture, person));
 
             // Read out with the name in the hidden head; shown on hover.
             if (follow) {
@@ -10779,7 +11149,9 @@
             var meta = el('div', 'ws-msg-meta');
             meta.id = 'ws-msg-meta-' + (++messageMetaSeq);
             node.setAttribute('aria-labelledby', meta.id);
-            meta.appendChild(personLink(el('b', '', agentMarks ? agentMarks.name : (message.sender ? message.sender.name : '')), person));
+            var senderName = el('b', '', agentMarks ? agentMarks.name : (message.sender ? message.sender.name : ''));
+
+            meta.appendChild(cardAgent ? agentCardHook(senderName, self.channel, cardAgent, true) : personLink(senderName, person));
 
             // An agent of this channel: its role in place of "(application)".
             if (agentMarks && agentMarks.role) {
