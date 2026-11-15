@@ -109,6 +109,30 @@ function test_workspace_agent_picker_entries()
 	pg_assert_same('@mimar', $entries[0]['shown']);
 	pg_assert_same('ADNAN Mimar', $entries[0]['meta']);
 	pg_assert_same(array(), ws_agent_picker_entries(array()));
+	pg_assert_false(isset($entries[0]['state']), 'no brief: the entry stays as it was');
+}
+
+// The @ menu draws an agent's role, state dot and usage mark from the
+// brief of its member row (agent_card.php ws_agent_card_brief()).
+function test_workspace_agent_picker_entries_brief()
+{
+	$briefs = array(7 => array('role' => 'Developer', 'role_key' => 'developer', 'state' => 'late', 'state_words' => 'Not seen', 'waiting' => 2, 'usage_high' => true));
+	$entries = ws_agent_picker_entries(array(
+		array('handle' => 'mimar', 'name' => 'ADNAN Mimar', 'app_id' => 7),
+		array('handle' => 'zeta', 'name' => 'Zeta', 'app_id' => 9),
+	), $briefs);
+
+	pg_assert_same('ADNAN Mimar · Developer', $entries[0]['meta'], 'the role follows the name');
+	pg_assert_same('late', $entries[0]['state']);
+	pg_assert_same('Not seen', $entries[0]['state_words']);
+	pg_assert_true($entries[0]['usage_high']);
+	pg_assert_false(isset($entries[0]['waiting']), 'only what the menu draws');
+	pg_assert_same('Zeta', $entries[1]['meta'], 'an agent with no brief stays as it was');
+	pg_assert_false(isset($entries[1]['state']));
+
+	$plain = ws_agent_picker_entries(array(array('handle' => 'zeta', 'name' => 'Zeta', 'app_id' => 9)), array(9 => array('role' => '', 'state' => 'idle', 'state_words' => 'Ready', 'usage_high' => false)));
+	pg_assert_same('Zeta', $plain[0]['meta'], 'no role: the name alone');
+	pg_assert_false($plain[0]['usage_high']);
 }
 
 function test_workspace_agent_tag()
