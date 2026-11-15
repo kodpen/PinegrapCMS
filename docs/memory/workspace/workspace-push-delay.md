@@ -1,6 +1,6 @@
 ---
 name: workspace-push-delay
-description: When a Workspace push wakes a person's devices: at once, a minute later while they look at the screen, or at the end of their quiet hours (QH1); ws_profiles.quiet_hours, pg_quiet_hours_left()
+description: When a Workspace push wakes a person's devices: at once, a minute later while they look at the screen, or at the end of their quiet hours (QH1, #9844); ws_profiles.quiet_hours, pg_quiet_hours_left()
 module: quiet_hours
 ---
 
@@ -15,7 +15,7 @@ module: quiet_hours
 - The setting: `ws_profiles.quiet_hours` TEXT NULL (step 11.0.219), JSON `{"start": "HH:MM", "end": "HH:MM", "off_days": 0|1}`. Empty, broken, or a start equal to the end: no quiet range (`pg_quiet_hours_decode()`). A site whose update has not run (`pg_schema_has()` false) works as before.
 - `pg_quiet_hours_left($setting, $zone, $workdays, $now)` (`includes/fn/quiet_hours.php`, pure): 0 outside the range, else seconds to the first moment no longer quiet. The range runs over midnight when its end comes first; with `off_days` a day that is not a working day (`ws_capacity()['workdays']`, bit 0 Monday) is quiet all day.
 - It is counted in the person's zone (`user.timezone` through `pg_timezone_canonical()`, else the site's, as the person card's local time), so it keeps its clock times on the days the clock changes. Looks 8 days ahead at most.
-- Tests: `tests/quiet_hours_test.php`.
+- Tests: `tests/quiet_hours_test.php`. Added by #9844 (QH1 of plan quiet-hours).
 
 ## Who sets it?
 - The person, for themselves: the setting's screen is QH2 of plan quiet-hours. No site-wide default.
