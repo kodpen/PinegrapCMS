@@ -41929,7 +41929,7 @@ const StyleDesigner = (function () {
     // that does not open.
     function _sdSectionOpenRow(kind, section) {
         if (!_sdSectionOpensAsList(kind, section)) return '';
-        return '<button type="button" class="btn btn-sm btn-outline theme-primary w-100 mt-2" data-sd-section-open>' +
+        return '<button type="button" class="btn btn-sm btn-outline theme-primary w-100 mt-2 text-wrap" data-sd-section-open>' +
                 '<span class="bi bi-magic me-1"></span>' + esc(_sdT('Convert to design elements')) + '</button>' +
             '<div style="font-size:.66rem;color:#888;margin-top:3px">' +
                 esc(_sdT('Puts page links you design here: previous, one link per page, next. The site then draws them instead of its own pagination.')) +
