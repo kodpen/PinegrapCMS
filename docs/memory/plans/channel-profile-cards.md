@@ -36,7 +36,7 @@ description: Plan (owner 2026-11-15, channel decision 3775): who an agent or a p
 
 - PF7 (M) The channel's agents panel redrawn, the same words on the Agents card of Site Settings. A new design: its pictures go to the owner.
 
-- PF7b (M) The Channel settings drawer: `channel-profile-cards-settings.md`. The owner's look.
+- PF7b (M) The Channel settings drawer: `channel-profile-cards-settings.md`. The owner's look. Done #9616.
 
 - PF8 (S) Close-out: memory files, `agent-report.md`'s "left out" line corrected, this plan deleted.
 

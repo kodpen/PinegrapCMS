@@ -12556,9 +12556,6 @@ b.ws-agent-card-anchor:focus-visible {
   font-weight: 550;
   line-height: 1.5rem;
 }
-.ws-info-manage {
-  margin-top: .25rem;
-}
 /* The reader's notifications: three choices side by side. */
 .ws-seg {
   display: inline-flex;
@@ -13385,18 +13382,75 @@ html[data-bs-theme="dark"] .ws-group-icon {
   flex-direction: column;
   min-width: 0;
 }
-/* Versions of a conversation. */
-.ws-era-row {
+/* Versions of a conversation: one list in a settings card, the current
+   conversation first. */
+.ws-era-row > .btn {
+  flex-shrink: 0;
+}
+/* Channel settings: the segmented control at the top places its tabs
+   across the drawer. */
+.ws-settings-tabs {
+  display: flex;
+  width: 100%;
+  margin-bottom: var(--ws-space-4);
+}
+.ws-settings-tabs .pg-seg-item {
+  flex: 1 1 0;
+  min-width: 0;
+}
+/* On a phone the chosen tab takes the room its name needs, the others
+   keep their icon; a name too long for even that ends in an ellipsis. */
+@media (max-width: 575.98px) {
+  .ws-settings-tabs .pg-seg-item.is-active {
+    flex: 0 1 auto;
+  }
+  .ws-settings-tabs .pg-seg-item.is-active .pg-seg-label {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+/* The channel's name with its icon button at the left and its colour
+   button at the right; each opens its list in a floating box. */
+.ws-look-row {
   display: flex;
   align-items: center;
-  gap: .5rem;
-  padding: .5rem .6rem;
-  margin-bottom: .35rem;
+  gap: var(--ws-space-2);
+}
+.ws-look-row > .form-control {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+/* As tall as the name's field, a square tile on the field's surface. */
+.ws-look-row > .ws-look-button {
+  flex-shrink: 0;
+  align-self: stretch;
+  width: 2.6rem;
+  height: auto;
   border: 1px solid var(--pg-border-color);
   border-radius: var(--ws-radius-sm);
+  background: var(--pg-bg-body);
+  font-size: 1.1rem;
 }
-.ws-era-current {
-  background: var(--pg-bg-1);
+.ws-look-dot {
+  display: block;
+  width: 1.1rem;
+  height: 1.1rem;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px var(--pg-border-color-translucent);
+}
+.ws-look-none {
+  color: var(--pg-fg-2);
+}
+.ws-ctx.contextmenu.popover.ws-look-picker {
+  width: 19.5rem;
+  max-width: calc(100vw - 16px);
+}
+.ws-look-pop {
+  padding: var(--ws-space-2);
+  border-radius: inherit;
+  background: var(--pg-surface-float);
 }
 .ws-count {
   flex-shrink: 0;

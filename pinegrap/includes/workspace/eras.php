@@ -437,7 +437,8 @@ function ws_eras_js_strings()
 {
     return array(
         'era_clear'          => lang('Clear the conversation'),
-        'era_clear_help'     => lang('The conversation starts again. Nothing is deleted: what was written so far is kept as an earlier version, listed here, that everybody in the channel can read as it was.'),
+        'era_clear_short'    => lang('Clear'),
+        'era_help'           => lang('Clearing starts the conversation again. Nothing is deleted: what was written here is kept as a version that everybody in the channel can read.'),
         'era_clear_confirm'  => lang('Clear the conversation of this channel? What was written so far is kept as an earlier version in the channel\'s settings and can still be read; the conversation starts again.'),
         'era_title'          => lang('A name for the version kept'),
         'era_title_help'     => lang('Optional, like “Before the launch”. Without one it is called by its number.'),
@@ -445,7 +446,7 @@ function ws_eras_js_strings()
         'era_list'           => lang('Versions of the conversation'),
         'era_current'        => lang('The current conversation'),
         'era_current_since'  => ws_js_template('Since {var:1}', 1),
-        'era_none'           => lang('The conversation has never been cleared.'),
+        'era_current_count'  => ws_js_template('{var:1} messages', 1),
         'era_open'           => lang('Read'),
         'era_rename'         => lang('Rename'),
         'era_meta'           => ws_js_template('{var:1} – {var:2} · {var:3} messages · cleared by {var:4}', 4),
