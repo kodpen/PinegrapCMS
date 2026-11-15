@@ -153,6 +153,9 @@
 - personal-calendar-more-census-template.md: PC10 census (2026-11-14) for PC12 team roadmap templates: how a roadmap is copied today, what Save as team template and Move the following steps too need, the tables proposed
 - personal-calendar-more-census-write.md: PC10 census (2026-11-14) for PC13: own plans written to Google or Outlook by the task writer (calendar_sync.php), what it keeps per person, the switch in My calendar, no column
 - plan-board-grid.md: Planning Board (workspace_board.php) Turkish name, grid columns and why .ws-board's min-width equals the grid minimum (#3815) [decision: here]
+- poll-agent-questions-census-columns.md: AQ1 census: the columns the poll's new parts need (description, picture, links, recommended, "Other", take back, ask again), older polls, API, export, guests [decision: here]
+- poll-agent-questions-census-today.md: AQ1 census of the poll today: its three tables, the box, ws_poll_vote(), ws_poll_close(), who may change or close, a guest's vote, who asks as an agent, export, ws_poll.php
+- poll-agent-questions-census-wake.md: AQ1 census for the agent question: an agent changing its poll, the answer's request row and brief, the memory index, the ring; the answered behaviour questions [decision: here]
 - voice-browser-to-text.md: "Convert to text" for a voice message by the browser's own model (pg_voice_text.js, owner request 2026-10-29): where it shows, Prompt API with audio input, pieces of 30 s, nothing sent or kept
 - workflow-table-board.md: Board view of a workflow table (T2, #2994): rows as cards by a status column via the channel board's mountSource(); a move writes the status cell with ws_wtable_row_update()
 - workflow-table-channel.md: A workflow table of a channel (ws_wtables.channel_id, 11.0.191): rights from the channel, made in or moved to a channel, lists, bin, screen card, API, webhooks [decision: here]
