@@ -120,6 +120,7 @@
 - workspace-api-scheduled-message-changes.md: Workspace API scheduled messages: change one (POST …/update), schedule a reply (parent_id), send one now (POST …/send), and the checks shared with the panel
 - workspace-assistant-requests-agents.md: GET /workspace/assistant-requests agent filter (CA5 #9770): agent:<id> and model:<id>, both row shapes, proposals kept out, the reader's reach first, label on a registry agent's row
 - workspace-canvas-api.md: The canvas as one thing in the API and MCP (CO7, #9231): GET /workspace/canvases/{id} with its parts and one list of versions, tables bound and taken off, a new version of a part
+- workspace-channel-agent-wake-api.md: POST /workspace/channels/{id}/agents/{agent_id}/wake (PR #9798): a person sets an application agent's scheduled wakes over the API as /wake does, person only, off MCP, refusals
 - workspace-channel-agents-api-reads.md: The agents a channel can still take (addable on GET /workspace/channels/{id}/agents) and the agent card route over the API and MCP: fields, readers, refusals (PR #9766)
 - workspace-channel-reads-api.md: CA12 (#9790) channel reads (api_channel_reads.php): GET /workspace/channels/{id}, its files, board and eras, the Markdown export (REST only), channel_id on the tables list
 - workspace-mcp-small-file.md: Posting a file into a channel over MCP (workspace_files_create, PR #1830): content_base64 and name only, at most 1 MB measured before decoding, larger files over REST, why
