@@ -22,6 +22,10 @@ description: Steps PF7 and PF7b of channel-profile-cards (owner 2026-11-15): Cha
 - The icon is chosen from a button at the left of the channel's name, showing the current icon in the current colour; the colour from a button in the same row or right under it. Each opens a popover: the icon list with its search, the colour swatches with "no colour". Neither list stands open in the drawer.
 - Every switch of the drawer sits at the end of its row with its title and help line at the left, as a row of Site Settings does ("Write the linked records' events into the channel" and the others).
 - The lists, the search, who may choose and what is stored stay (`workspace/workspace-channel-icon.md`).
+- "Conversation versions". Owner (2026-11-15, with its picture): "bu alanda biraz daha mantıklı tasarlanabilir". The architect's proposal, his to approve on the pictures: one list, newest first.
+  - First the current conversation (since when, how many messages) with Clear at the row's end: the act belongs to that row.
+  - Under it each earlier version (name, days, message count, who cleared it) with Read at its end and Rename in the row.
+  - One help line under the title: clearing starts the conversation again, deletes nothing, and keeps what was written here as a version.
 
 ## What stays?
 - The stored values, who may change them (a channel manager) and what each does: `workspace/agent-risk-tiers.md`, `agent-registry.md`, `channel-members-agents.md`. No schema change.
