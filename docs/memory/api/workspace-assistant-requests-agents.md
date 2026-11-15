@@ -1,10 +1,10 @@
 ---
 name: workspace-assistant-requests-agents
-description: GET /workspace/assistant-requests agent filter (CA5): agent:<id> and model:<id> beside claude, ai, mcp; both row shapes, proposals kept out, the reader's reach first, label on a registry agent's row
+description: GET /workspace/assistant-requests agent filter (CA5 #9770): agent:<id> and model:<id>, both row shapes, proposals kept out, the reader's reach first, label on a registry agent's row
 ---
 
 ## What does the agent filter take?
-- `claude`, `ai`, `mcp` as before (`ws_ai_agent_where()`), and since CA5 `agent:<id>` (a registry app agent's requests) and `model:<id>` (a model assistant's); the id is `agent_id` of `GET /workspace/channels/{id}/agents`. Any other value answers 422 on `agent`.
+- `claude`, `ai`, `mcp` as before (`ws_ai_agent_where()`), and since CA5 (#9770) `agent:<id>` (a registry app agent's requests) and `model:<id>` (a model assistant's); the id is `agent_id` of `GET /workspace/channels/{id}/agents`. Any other value answers 422 on `agent`.
 - The param is a string (max 32), not an enum: the validator has no pattern type, so the handler refuses other shapes.
 
 ## Which rows does agent:<id> match?
