@@ -312,6 +312,7 @@ if (!$_POST) {
             /* The star is a mask painted with the text colour, so it follows
                the theme; it sits on ::before because a mask on the label would
                also clip the focus outline of the label. */
+            .rating label{cursor: pointer; min-width: 16px; min-height: 16px;}
             .rating label::before{
                 content: "";
                 display: block;
@@ -341,15 +342,15 @@ if (!$_POST) {
         <label id="comment_rating_label" class="form-label d-block">' . lang('Rating') . '</label>
         <div class="rating btn-group d-inline-flex w-auto" role="radiogroup" aria-labelledby="comment_rating_label">
             ' . $liveform->output_field(array('type'=>'radio', 'name'=>'rating', 'id'=>'comment_rating_1', 'value'=>'1', 'class'=>'btn-check radio', 'aria-label'=>lang(array('string'=>'Rated {var:1} out of 5', 'vars'=>array('1'))))) . '
-            <label for="comment_rating_1" style="cursor:pointer;min-width: 16px;min-height: 16px;"></label>
+            <label for="comment_rating_1" ></label>
             ' . $liveform->output_field(array('type'=>'radio', 'name'=>'rating', 'id'=>'comment_rating_2', 'value'=>'2', 'class'=>'btn-check radio', 'aria-label'=>lang(array('string'=>'Rated {var:1} out of 5', 'vars'=>array('2'))))) . '
-            <label for="comment_rating_2" style="cursor:pointer;min-width: 16px;min-height: 16px;"></label>
+            <label for="comment_rating_2" ></label>
             ' . $liveform->output_field(array('type'=>'radio', 'name'=>'rating', 'id'=>'comment_rating_3', 'value'=>'3', 'class'=>'btn-check radio', 'aria-label'=>lang(array('string'=>'Rated {var:1} out of 5', 'vars'=>array('3'))))) . '
-            <label for="comment_rating_3" style="cursor:pointer;min-width: 16px;min-height: 16px;"></label>
+            <label for="comment_rating_3" ></label>
             ' . $liveform->output_field(array('type'=>'radio', 'name'=>'rating', 'id'=>'comment_rating_4', 'value'=>'4', 'class'=>'btn-check radio', 'aria-label'=>lang(array('string'=>'Rated {var:1} out of 5', 'vars'=>array('4'))))) . '
-            <label for="comment_rating_4" style="cursor:pointer;min-width: 16px;min-height: 16px;"></label>
+            <label for="comment_rating_4" ></label>
             ' . $liveform->output_field(array('type'=>'radio', 'name'=>'rating', 'id'=>'comment_rating_5', 'value'=>'5', 'checked'=>'checked', 'class'=>'btn-check radio', 'aria-label'=>lang(array('string'=>'Rated {var:1} out of 5', 'vars'=>array('5'))))) . '
-            <label for="comment_rating_5" style="cursor:pointer;min-width: 16px;min-height: 16px;"></label>
+            <label for="comment_rating_5" ></label>
         </div>
         </div>';
     }
@@ -412,7 +413,7 @@ if (!$_POST) {
                                 </h2>
                                 <div class="card-body pt-0">
                                     <div class="row">
-                                        <div class="col-12 md:col-6 my-3">
+                                        <div class="col-12 my-3">
                                             <label for="name" class="form-label">' . lang('Display Name') . '</label>
                                             ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'class'=>'form-control', 'maxlength'=>'100')) . '
                                         </div>

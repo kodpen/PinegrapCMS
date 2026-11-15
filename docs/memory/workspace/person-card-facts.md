@@ -24,4 +24,4 @@ description: A person's card facts in a channel (person_card.php, PF6a): the ws_
 
 ## What is not on it?
 - Open tasks: the owner chose them (`agent-card-look.md`), the architect left them out (channel 3989).
-- No schema change, no API route. Tests: `tests/workspace_person_card_test.php`, `workspace_person_card_js_test.php`.
+- No schema change. The API route is `GET /workspace/channels/{id}/members/{user_id}` (`workspace-api-person-card.md`). Tests: `tests/workspace_person_card_test.php`, `workspace_person_card_js_test.php`.

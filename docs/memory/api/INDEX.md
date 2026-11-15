@@ -99,8 +99,9 @@
 - channel-api-census-channel-gaps.md: CA1a gap list, part 1: a channel's messages, threads, approvals and the channel itself - each panel action with no route, the route it would be and the function that already does the write
 - channel-api-census-channel-itself.md: CA1a census, part 2: the channel itself (make, rename, icon, colour, switches, versions, archive, members, guests, export, tabs) beside the /workspace/ routes, or none
 - channel-api-census-channel-messages.md: CA1a census, part 1: a channel's messages, polls, threads, scheduled and forwarded messages - each panel action (actions.php case) beside its /workspace/ route and MCP tool, or none
-- channel-api-census-channel-no-route.md: CA1a list 2: what of a channel's own side has no route on purpose or by its nature, with the memory file that says why, and the guest links whose reason no memory file records
+- channel-api-census-channel-no-route.md: CA1a list 2: what of a channel's own side has no route on purpose or by its nature, with the memory file that says why, and the guest links whose reason no memory file records [decision: here]
 - channel-api-census-channel.md: CA1a census (2026-11-15) of a channel's own side: panel actions beside the /workspace/ routes and MCP tools; what was counted, totals, the parts and the 33-line gap list
+- channel-api-not-built.md: What of channels the API does not do on purpose after the 2026-11-15 censuses: an administrator opening a private channel, a channel saved as a template, a guest's links, the Workspace Settings card [decision: here]
 - channel-api-overview.md: The channel API census files (plan channel-api-gaps, owner 2026-11-15): what the two censuses compare, the rules that bind a new route, and which file holds each part [decision: here]
 - claude-plugin-census.md: Claude plugin bundle as Anthropic's pages state it (read 2026-11-14): folder and manifest, directory checks and policy, which Claude app loads what, and how a bundle can (not) ask for a site's address [decision: here]
 - claude-plugin-tool-check.md: The site's MCP tools checked against Claude's directory rules (2026-11-14): name length, annotations, and the routes that move money or issue stored value, by route id and scope [decision: here]
@@ -118,4 +119,6 @@
 - workspace-api-message-people.md: Workspace API routes for a message's readers (seen by and read receipts), bringing its mentioned people into the channel, and forwarding messages into a note (note_id on the forward route)
 - workspace-assistant-requests-agents.md: GET /workspace/assistant-requests agent filter (CA5 #9770): agent:<id> and model:<id>, both row shapes, proposals kept out, the reader's reach first, label on a registry agent's row
 - workspace-canvas-api.md: The canvas as one thing in the API and MCP (CO7, #9231): GET /workspace/canvases/{id} with its parts and one list of versions, tables bound and taken off, a new version of a part
+- workspace-channel-agents-api-reads.md: The agents a channel can still take (addable on GET /workspace/channels/{id}/agents) and the agent card route over the API and MCP: fields, readers, refusals (PR #9766)
 - workspace-mcp-small-file.md: Posting a file into a channel over MCP (workspace_files_create, PR #1830): content_base64 and name only, at most 1 MB measured before decoding, larger files over REST, why
+- workspace-message-file-api.md: The API routes for files in a message: post a file of the file manager, put an edited file in place of the old one (own words, no tool), list a file's earlier versions

@@ -1,6 +1,6 @@
 ---
 name: decisions-made-workspace-33
-description: Decisions made, workspace part 33 (2026-11-15): the guest page shows agents' files, a canvas as its picture, task cards and live pages, read only, and an agent's role and model
+description: Decisions made, workspace part 33 (2026-11-15): what a guest sees of agents and canvases in a room; the four agent work features of poll 49; the open items line above a channel
 ---
 
 ## What does a guest see of what agents and canvases put in a room? (owner, 2026-11-15, in the architect's window)
@@ -16,3 +16,12 @@ description: Decisions made, workspace part 33 (2026-11-15): the guest page show
 - So beside an agent's name the guest page shows the badge, then the agent's role and the model it reported; an empty fact is left out.
 - The architect's reading: no usage, no state dot and no card for a guest, as `workspace/agent-card-look.md` keeps them from a guest.
 - Plan: guest-page-content in the plans folder (GP1 to GP3), brought by GP1's PR #9693.
+
+## Which of the R&D agent's four proposals are built? (owner, 2026-11-15, agent channel poll 49)
+- Asked in channel message 5089 as a poll with several answers; he chose all four: "1 Görev metni", "2 İlerleme notu", "3 Ajana görev verme", "4 Doğru / Yanlış". Why (the proposals, messages 5084 to 5087): a site with several agents must say who does what, show where a long request stands, give work as tasks and know which agent answers well.
+- Built by `plans/agent-work-features.md` in the order he was told: the duty text and the progress note, the task hand-over, Right or Wrong last.
+- The architect's readings, not his words: the card shows the duty to whoever may read the channel; only a person hands a task to an agent; the asker and the channel's managers mark an answer; a Wrong only counts and wakes nobody.
+
+## What stands above a channel's conversation for its open items? (owner, 2026-11-15, agent channel message 5143)
+- His words: "oylama ve ajan sorusu, checkin ve onay isteği gibi özellikler bir kanalda kullanılmışsa kanalın üst tarafında kısaca ne olduğu ile kaydırma düğmesi yer alsın."
+- So a line in the strip above the conversation names the channel's open polls, agent questions, check-ins and approval requests, each with a button that scrolls to it: `plans/channel-open-items.md`. Its pictures go to him before it lands.

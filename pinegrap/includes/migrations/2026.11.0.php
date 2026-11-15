@@ -206,6 +206,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ws_poll_parts();           // 11.0.213
 	upgrade_2026_11_0_ws_poll_agent_question();  // 11.0.214
 	upgrade_2026_11_0_push_provider();           // 11.0.215
+	upgrade_2026_11_0_cart_recovery_touch();     // 11.0.216
 
 }
 
@@ -6872,5 +6873,39 @@ function upgrade_2026_11_0_push_provider() {
 	install_add_column('push_subscriptions', 'provider', "VARCHAR(8) NOT NULL DEFAULT ''");
 
 	install_note('Push notifications: a team device can register for native push through the Pinegrap push service.');
+
+}
+
+// Touches of a left cart (11.0.216): one row per message sent or offer shown
+// to an incomplete order. channel is email, whatsapp, sms or page;
+// source_type and source_id name what sent it (an email_campaigns row, a
+// template, a pop-up). The times are unix seconds, 0 while not reached.
+// pg_order_complete() writes completed_at and completed_total (the order's
+// total in minor units) on every touch of the order and recovered = 1 on the
+// one touch that takes the completion. A left cart completed with no touch
+// gets one row with channel '' so it is counted apart, never as recovered.
+// No backfill: nothing recorded touches before this step.
+function upgrade_2026_11_0_cart_recovery_touch() {
+
+	install_create_table('cart_recovery_touch', "CREATE TABLE cart_recovery_touch (
+		id              INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		order_id        INT UNSIGNED NOT NULL DEFAULT 0,
+		channel         VARCHAR(16) NOT NULL DEFAULT '',
+		source_type     VARCHAR(16) NOT NULL DEFAULT '',
+		source_id       INT UNSIGNED NOT NULL DEFAULT 0,
+		sent_at         INT UNSIGNED NOT NULL DEFAULT 0,
+		clicked_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		restored_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		completed_at    INT UNSIGNED NOT NULL DEFAULT 0,
+		completed_total INT NOT NULL DEFAULT 0,
+		recovered       TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_order (order_id, sent_at),
+		KEY idx_sent (sent_at, channel),
+		KEY idx_completed (completed_at, recovered),
+		KEY idx_source (source_type, source_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Store: e-mails sent to left carts and the carts they brought back are recorded.');
 
 }

@@ -125,7 +125,7 @@ function test_file_withheld_is_asked_by_the_workspace_doors()
 
 	pg_assert_true(file_withheld_test_asks_first(file_withheld_test_section($library, 'function ws_library_refusal('), 'pg_file_withheld($name)', 'ws_upload_refused('), 'the picker shows it as one that cannot be picked');
 	pg_assert_true(file_withheld_test_asks_first(file_withheld_test_section($library, 'function ws_library_file('), "pg_file_withheld(\$row['name'])", "'ok' => true"), 'the picker does not hand it on');
-	pg_assert_true(file_withheld_test_asks_first(file_withheld_test_section($library, 'function ws_library_send('), 'ws_library_file(', 'file_get_contents('), 'the copy is only read once the picker handed the file on');
+	pg_assert_true(file_withheld_test_asks_first(file_withheld_test_section($library, 'function ws_library_send_check('), 'ws_library_file(', 'file_get_contents('), 'the copy is only read once the picker handed the file on');
 }
 
 // The mailer signs with whatever file is called dkim.key, so who may give a
