@@ -267,6 +267,11 @@ function ws_openapi_objects()
         'WorkspaceMessageNoteCard'  => 'ws_api_message_note_card_schema',
         'WorkspaceMessageNoteGroupCard' => 'ws_api_message_note_group_card_schema',
         'WorkspaceMessageCheck'     => 'ws_api_message_check_schema',
+        'WorkspaceMessageReaders'   => 'ws_api_message_readers_schema',
+        'WorkspaceMessageReaderAgent'  => 'ws_api_message_reader_agent_schema',
+        'WorkspaceMessageReadReceipts' => 'ws_api_message_read_receipts_schema',
+        'WorkspaceMessageReadReceipt'  => 'ws_api_message_read_receipt_schema',
+        'WorkspaceMessageMentionInvite' => 'ws_api_message_mention_invite_schema',
         'WorkspaceApprovalRecord'   => 'ws_api_approval_record_schema',
         'WorkspaceChannelGroupMemberships'  => 'ws_api_channel_group_memberships_schema',
         'WorkspaceChannelGroupChange'       => 'ws_api_channel_group_change_schema',
@@ -620,11 +625,12 @@ function ws_api_routes()
             'returns'     => 'WorkspaceMessage',
             'status'      => 201,
             'summary'     => 'Forward messages to a channel',
-            'description' => 'Forwards messages into a channel, as Forward does in the panel: id is the channel they go to, message_ids the messages, all of one channel the owner reads, written by people or applications, not deleted, at most 20. The channel they go to must be one the owner may post in and not archived (403 otherwise); a room with a guest takes no forwards. A new message is written there carrying a copy of each forwarded message as it is now - its words, who wrote it, when and where - so a later change or deletion of the original does not reach the copy; a file goes as its name, the file itself stays in its channel. text puts a few words above them. Who it is written as follows POST /workspace/channels/{id}/messages: the application with an application key or an OAuth connection, the person from a team devices session (POST /auth/login), with their limit of twenty messages a minute. Whoever reads the channel it goes to reads the copies too, so forwarding out of a private channel shares its words. A dry run makes every check and its detail gives source_channel_id and how many messages would be forwarded. Send an Idempotency-Key so a retried call does not forward twice.',
+            'description' => 'Forwards messages into a channel, as Forward does in the panel: id is the channel they go to, message_ids the messages, all of one channel the owner reads, written by people or applications, not deleted, at most 20. The channel they go to must be one the owner may post in and not archived (403 otherwise); a room with a guest takes no forwards. A new message is written there carrying a copy of each forwarded message as it is now - its words, who wrote it, when and where - so a later change or deletion of the original does not reach the copy; a file goes as its name, the file itself stays in its channel. text puts a few words above them. Who it is written as follows POST /workspace/channels/{id}/messages: the application with an application key or an OAuth connection, the person from a team devices session (POST /auth/login), with their limit of twenty messages a minute. Whoever reads the channel it goes to reads the copies too, so forwarding out of a private channel shares its words. A dry run makes every check and its detail gives source_channel_id and how many messages would be forwarded. Send an Idempotency-Key so a retried call does not forward twice. note_id sends them into a note of the owner\'s instead, as Forward to a note does in the panel: then id is the channel the messages come from (422 on message_ids when they are of another), note_id 0 writes a new note called From #channel and a note id adds them at the end of that note, which the owner must be able to change (403 for one shared with them to read, 423 while it is locked, 409 when it changed meanwhile). Each message goes into the note with who wrote it, when and where, below text. The answer is then the note (WorkspaceNote, as GET /workspace/notes/{id} gives it) rather than a message, and a dry run\'s detail gives note_id, source_channel_id and forwards.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'message_ids', 'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 20, 'required' => true, 'description' => 'Ids of the messages to forward (GET /workspace/channels/{id}/messages), all of one channel; they are forwarded oldest first.'),
                 array('name' => 'text', 'in' => 'body', 'type' => 'string', 'max_length' => 4000, 'description' => 'A few words above the forwarded messages. Tags are written as tokens, as when writing.'),
+                array('name' => 'note_id', 'in' => 'body', 'type' => 'int', 'min' => 0, 'nullable' => true, 'description' => 'Forward into a note instead of a channel: 0 for a new note, or a note id (GET /workspace/notes) to add them at its end. Left out or null, they go to the channel id.'),
             ),
         ),
 
@@ -1209,6 +1215,36 @@ function ws_api_routes()
             'description' => 'Gives the read receipt a message asks for, in the name of the person signed in. Only a device session may - a team devices session (a Bearer token from POST /auth/login) or an OAuth connection: an application key is refused with 403 forbidden, since an integration saying its owner read something would be a receipt nobody gave. The person has to be in the message\'s channel and not its writer. ack on the message says how many of the channel\'s members have read it. A dry run\'s detail.changes is false when the person already said so.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.messages.readers',
+            'method'      => 'GET',
+            'path'        => '/workspace/messages/{id}/readers',
+            'scope'       => 'workspace:read',
+            'handler'     => 'ws_api_messages_readers',
+            'returns'     => 'WorkspaceMessageReaders',
+            'summary'     => 'Who has seen a message, and who said they read it',
+            'description' => 'Who of the channel\'s members has seen as far as the message and who not yet, as Seen by in the message menu shows it: seen is a member whose screen had this message or a later one, the writer is left out, and in a public channel only its members count. agents are the channel\'s assistants and agents beside them, state saying what the message made each do (answered, reacted, claimed, running, failed, waiting for one woken that has not taken it, quiet for one not woken); none in a room with a guest. ack is null unless read receipts were asked on the message (POST /workspace/messages/{id}/ack-request); then read lists who said they read it, with when, and unread who has not - for the writer, whoever asked and staff only: anybody else gets listed false and empty lists. The message must be one of a channel the owner reads and not deleted (404 otherwise).',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.messages.mention_invite',
+            'method'      => 'POST',
+            'path'        => '/workspace/messages/{id}/mention-invite',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_messages_mention_invite',
+            'dry_run'     => true,
+            'returns'     => 'WorkspaceMessageMentionInvite',
+            'summary'     => 'Bring the people a message mentions into its channel',
+            'description' => 'Brings the colleagues a message mentions by name (<@user:12>) who are not in its channel in, as the line under such a message does in the panel: they become members, are told they were added and are handed the mention they could not have had outside it, and the channel gets a line naming them. The owner must be allowed to bring people into the channel - a private one only when they are in it (403 otherwise); in an archived channel nobody is brought in. user_ids brings some of them only; ids the message does not mention, or of people already in, are left out, and added says who came in. A dry run makes every check and its detail.user_ids says who would be brought in.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'user_ids', 'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 100, 'description' => 'Some of the people mentioned only. Left out, every one mentioned who is outside the channel.'),
             ),
         ),
 

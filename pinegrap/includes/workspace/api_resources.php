@@ -1625,6 +1625,13 @@ function ws_api_messages_create($params)
  */
 function ws_api_messages_forward($params)
 {
+    // note_id sends the messages into a note instead of a channel.
+    if (array_key_exists('note_id', $params) && ($params['note_id'] !== null)) {
+        ws_api_messages_forward_into_note($params);
+
+        return;
+    }
+
     $viewer = ws_api_viewer();
     $target = ws_api_channel_or_404($viewer, $params['id']);
     $text = (string) ($params['text'] ?? '');
@@ -1664,6 +1671,65 @@ function ws_api_messages_forward($params)
     $row = ws_message($result['message_id']);
 
     api_ok(ws_api_message_present($viewer, $row, ws_refs_resolve($viewer, ws_tokens($row['body']))), 201);
+}
+
+/**
+ * Forwards messages into a note of the owner's, as Forward to a note does in
+ * the panel: a new one (note_id 0) or, at its end, one they may change. id
+ * is the channel the messages come from.
+ */
+function ws_api_messages_forward_into_note($params)
+{
+    $viewer = ws_api_viewer();
+    $source = ws_api_channel_or_404($viewer, $params['id']);
+    $note_id = (int) $params['note_id'];
+    $text = (string) ($params['text'] ?? '');
+
+    if (!ws_notes_ready()) {
+        api_fail(503, 'service_unavailable', lang('The database has to be updated first.'));
+    }
+
+    // A note is found, opened and changed as POST /workspace/notes/{id} finds it.
+    if ($note_id > 0) {
+        $note = ws_api_note_or_404($viewer, $note_id);
+        ws_api_note_locked_stop($viewer, $note);
+
+        if (!in_array($note['access'], array('owner', 'edit'), true)) {
+            api_fail(403, 'forbidden', lang('This note was shared with you to read only.'));
+        }
+    }
+
+    $checked = ws_forward_to_note_check($viewer, (array) $params['message_ids'], $note_id, $text);
+
+    if (!$checked['ok']) {
+        if ($checked['field'] === '') {
+            api_fail(503, 'service_unavailable', $checked['error']);
+        }
+
+        if ($checked['conflict']) {
+            api_fail(409, 'changed_meanwhile', $checked['error'], 'note_id');
+        }
+
+        api_fail_validation($checked['error'], $checked['field']);
+    }
+
+    if ((int) $checked['channel']['id'] !== (int) $source['id']) {
+        api_fail_validation(lang('That message could not be found.'), 'message_ids');
+    }
+
+    api_dry_run_stop(($note_id > 0) ? 'updated' : 'created', 'workspace_note', array(
+        'note_id'           => $note_id,
+        'source_channel_id' => (int) $source['id'],
+        'forwards'          => count($checked['rows']),
+    ));
+
+    $result = ws_forward_to_note($viewer, (array) $params['message_ids'], $note_id, $text);
+
+    if (!$result['ok']) {
+        api_fail_validation($result['error'], 'note_id');
+    }
+
+    api_ok(ws_api_note_present($viewer, ws_note_present($viewer, ws_note_for($viewer, $result['note_id'], 'view'))), 201);
 }
 
 /**
@@ -3459,6 +3525,202 @@ function ws_api_messages_ack($params)
     $row = ws_message($message['id']);
 
     api_ok(ws_api_message_present($viewer, $row, ws_refs_resolve($viewer, ws_tokens($row['body']))));
+}
+
+// What ws_api_messages_readers() answers.
+function ws_api_message_readers_schema()
+{
+    return array(
+        'message_id' => 'integer',
+        'channel_id' => 'integer',
+        'seen'       => 'WorkspacePerson[]',
+        'unseen'     => 'WorkspacePerson[]',
+        'agents'     => 'WorkspaceMessageReaderAgent[]',
+        'ack'        => 'WorkspaceMessageReadReceipts?',
+    );
+}
+
+// An agent of the channel beside the message (ws_message_seen_agents()).
+function ws_api_message_reader_agent_schema()
+{
+    return array(
+        'key'    => 'string',
+        'app_id' => 'integer?',
+        'name'   => 'string',
+        'handle' => 'string',
+        'state'  => 'string',
+        'at'     => 'string?',
+    );
+}
+
+// The read receipts of a message (ws_ack_people()).
+function ws_api_message_read_receipts_schema()
+{
+    return array(
+        'listed' => 'boolean',
+        'read'   => 'WorkspaceMessageReadReceipt[]',
+        'unread' => 'WorkspacePerson[]',
+    );
+}
+
+// One read receipt given.
+function ws_api_message_read_receipt_schema()
+{
+    return array('user_id' => 'integer', 'name' => 'string', 'read_at' => 'string?');
+}
+
+// What ws_api_messages_mention_invite() answers.
+function ws_api_message_mention_invite_schema()
+{
+    return array(
+        'message_id' => 'integer',
+        'channel_id' => 'integer',
+        'added'      => 'integer[]',
+        'message'    => 'WorkspaceMessage',
+    );
+}
+
+/**
+ * An agent of ws_message_seen_by() as the readers route gives it. Pure.
+ *
+ * @param array $agent key, app_id, name, handle, state, at
+ * @return array
+ */
+function ws_api_message_reader_agent($agent)
+{
+    return array(
+        'key'    => (string) ($agent['key'] ?? ''),
+        'app_id' => ((int) ($agent['app_id'] ?? 0) > 0) ? (int) $agent['app_id'] : null,
+        'name'   => (string) ($agent['name'] ?? ''),
+        'handle' => (string) ($agent['handle'] ?? ''),
+        'state'  => (string) ($agent['state'] ?? ''),
+        'at'     => api_time($agent['at'] ?? 0),
+    );
+}
+
+/**
+ * The read receipts of ws_ack_people() as the readers route gives them,
+ * or the empty lists of somebody who may not see them. Pure.
+ *
+ * @param array|null $people ws_ack_people() when it answered, null when the
+ *                           owner may not list them
+ * @return array listed, read, unread
+ */
+function ws_api_message_read_receipts($people)
+{
+    if (!is_array($people)) {
+        return array('listed' => false, 'read' => array(), 'unread' => array());
+    }
+
+    $brief = function ($entry) {
+        return array('user_id' => (int) $entry['id'], 'name' => (string) $entry['name']);
+    };
+
+    return array(
+        'listed' => true,
+        'read'   => array_map(function ($entry) use ($brief) {
+            return $brief($entry) + array('read_at' => api_time($entry['at'] ?? 0));
+        }, (array) ($people['read'] ?? array())),
+        'unread' => array_map($brief, (array) ($people['unread'] ?? array())),
+    );
+}
+
+/**
+ * GET /workspace/messages/{id}/readers: who of the channel's members has
+ * seen as far as the message and who not, its agents beside them
+ * (ws_message_seen_by()), and when read receipts were asked, who gave one
+ * (ws_ack_people(), for the writer, whoever asked and staff).
+ */
+function ws_api_messages_readers($params)
+{
+    $viewer = ws_api_viewer();
+    $message = ws_message((int) $params['id']);
+
+    if (!$message || ((int) $message['deleted_at'] > 0) || !ws_can_read_channel($viewer, ws_channel($message['channel_id']))) {
+        api_fail_not_found(lang('Message'));
+    }
+
+    // The limits of the application Claude works through.
+    ws_api_channel_or_404($viewer, $message['channel_id']);
+
+    $seen = ws_message_seen_by($viewer, $message);
+
+    if (!$seen['ok']) {
+        api_fail_not_found(lang('Message'));
+    }
+
+    $ack = null;
+
+    if (function_exists('ws_acks_map') && ws_acks_ready()) {
+        $map = ws_acks_map(array($message), $viewer);
+
+        if (isset($map[(int) $message['id']])) {
+            $people = ws_ack_people($viewer, $message);
+            $ack = ws_api_message_read_receipts($people['ok'] ? $people : null);
+        }
+    }
+
+    api_ok(array(
+        'message_id' => (int) $message['id'],
+        'channel_id' => (int) $message['channel_id'],
+        'seen'       => array_values(array_map('ws_api_person_brief_ref', $seen['seen'])),
+        'unseen'     => array_values(array_map('ws_api_person_brief_ref', $seen['unseen'])),
+        'agents'     => array_map('ws_api_message_reader_agent', array_merge($seen['agents_seen'], $seen['agents_waiting'], $seen['agents_quiet'])),
+        'ack'        => $ack,
+    ));
+}
+
+/**
+ * POST /workspace/messages/{id}/mention-invite: brings the people a message
+ * mentions who are outside its channel in, as the line under the message in
+ * the panel does; each is handed the mention.
+ */
+function ws_api_messages_mention_invite($params)
+{
+    $viewer = ws_api_viewer();
+    $message = ws_message((int) $params['id']);
+
+    if (!$message || ((int) $message['deleted_at'] > 0) || !ws_can_read_channel($viewer, ws_channel($message['channel_id']))) {
+        api_fail_not_found(lang('Message'));
+    }
+
+    // The limits of the application Claude works through.
+    ws_api_channel_or_404($viewer, $message['channel_id']);
+
+    $user_ids = (array_key_exists('user_ids', $params) && ($params['user_ids'] !== null)) ? ws_api_user_ids($params['user_ids'], 'user_ids') : null;
+
+    // The checks ws_message_mention_invite() makes, made first so that a dry
+    // run meets the same refusals.
+    $checked = ws_message_mention_invite_check($viewer, $message, $user_ids);
+
+    if (!$checked['ok']) {
+        if ($checked['forbidden']) {
+            api_fail(403, 'forbidden', $checked['error']);
+        }
+
+        api_fail_not_found(lang('Message'));
+    }
+
+    api_dry_run_stop('added', 'workspace_channel_member', array(
+        'message_id' => (int) $message['id'],
+        'channel_id' => (int) $message['channel_id'],
+        'user_ids'   => $checked['user_ids'],
+    ));
+
+    $result = ws_message_mention_invite($viewer, $message, $user_ids);
+
+    if (!$result['ok']) {
+        api_fail(403, 'forbidden', $result['error']);
+    }
+
+    $row = ws_message($message['id']);
+
+    api_ok(array(
+        'message_id' => (int) $message['id'],
+        'channel_id' => (int) $message['channel_id'],
+        'added'      => array_values(array_map('intval', $result['added'])),
+        'message'    => ws_api_message_present($viewer, $row, ws_refs_resolve($viewer, ws_tokens($row['body']))),
+    ));
 }
 
 /**
