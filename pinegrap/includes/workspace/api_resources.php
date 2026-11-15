@@ -3995,6 +3995,13 @@ function ws_api_approval_present($viewer, $row, $asked = null)
         $guests[] = ws_api_approval_guest_present($guest, $staff);
     }
 
+    // The channel's agents asked (approval_agents.php), after the people.
+    $agents = array();
+
+    foreach (function_exists('ws_approval_agents_of') ? ws_approval_agents_of($row['id']) : array() as $asked_agent) {
+        $agents[] = ws_api_approval_agent_present($asked_agent, ws_approval_agent_row($asked_agent['agent']));
+    }
+
     $message = ws_message($row['message_id']);
     $asks = ws_api_approval_answer($row, ($asked !== null) ? $asked : ws_approval_answers_asked(ws_api_approval_open_ids(array($row))));
 
@@ -4012,6 +4019,7 @@ function ws_api_approval_present($viewer, $row, $asked = null)
         'record'            => ((string) $row['record_type'] !== '') ? array('type' => (string) $row['record_type'], 'id' => (int) $row['record_id']) : null,
         'people'            => $people,
         'guests'            => $guests,
+        'agents'            => $agents,
         'outcome'           => (string) $row['outcome'],
         'requested_by'      => ws_api_person_ref($row['created_by'], $briefs),
         'closed_by'         => ws_api_person_ref($row['closed_by'], $briefs),
@@ -4060,6 +4068,68 @@ function ws_api_approval_guest_present($guest, $staff)
     );
 }
 
+/**
+ * One agent asked, with its answer. Pure.
+ *
+ * @param array      $answer ws_approval_agents row: agent, decision, note, decided_at
+ * @param array|null $agent  its ws_agents row, null when it is gone
+ * @return array
+ */
+function ws_api_approval_agent_present($answer, $agent)
+{
+    return array(
+        'agent'      => (string) $answer['agent'],
+        'handle'     => is_array($agent) ? (string) $agent['handle'] : null,
+        'name'       => is_array($agent) ? (string) $agent['name'] : (string) $answer['agent'],
+        'decision'   => (string) $answer['decision'],
+        'note'       => ((string) $answer['note'] !== '') ? (string) $answer['note'] : null,
+        'decided_at' => api_time($answer['decided_at']),
+    );
+}
+
+/**
+ * The agents a create call names, each by its handle (with or without @, in
+ * any case) or its request value (agent:<id>), as the request values of the
+ * channel's agents that may be asked; each once, in the order given. The
+ * first name the channel does not offer is given back so that it is refused,
+ * never dropped. Pure.
+ *
+ * @param mixed   $given   the agents body field
+ * @param array[] $options ws_approval_agent_options(): value, handle
+ * @return array values (string[]), unknown ('' when every name is known)
+ */
+function ws_api_approval_agent_values($given, $options)
+{
+    $by_name = array();
+
+    foreach ((array) $options as $option) {
+        $by_name[strtolower((string) $option['value'])] = (string) $option['value'];
+        $by_name[strtolower((string) $option['handle'])] = (string) $option['value'];
+    }
+
+    $values = array();
+
+    foreach ((array) $given as $name) {
+        $name = ltrim(trim((string) $name), '@');
+
+        if ($name === '') {
+            continue;
+        }
+
+        $value = $by_name[strtolower($name)] ?? null;
+
+        if ($value === null) {
+            return array('values' => $values, 'unknown' => $name);
+        }
+
+        if (!in_array($value, $values, true)) {
+            $values[] = $value;
+        }
+    }
+
+    return array('values' => $values, 'unknown' => '');
+}
+
 // What ws_api_approval_present() returns.
 function ws_api_approval_schema()
 {
@@ -4075,6 +4145,7 @@ function ws_api_approval_schema()
         'record'            => 'WorkspaceApprovalRecord?',
         'people'            => array(array('user_id' => 'integer', 'name' => 'string', 'decision' => 'string', 'note' => 'string?', 'decided_at' => 'string?')),
         'guests'            => array(array('id' => 'integer', 'name' => 'string', 'email' => 'string?', 'decision' => 'string', 'note' => 'string?', 'decided_at' => 'string?', 'link_expires_at' => 'string?')),
+        'agents'            => array(array('agent' => 'string', 'handle' => 'string?', 'name' => 'string', 'decision' => 'string', 'note' => 'string?', 'decided_at' => 'string?')),
         'outcome'           => 'string',
         'requested_by'      => 'WorkspacePerson?',
         'closed_by'         => 'WorkspacePerson?',
@@ -4167,15 +4238,36 @@ function ws_api_approvals_create($params)
         'closes_at' => (int) ($params['closes_at'] ?? 0),
     );
 
+    // The channel's agents: only a request the person makes by hand, from
+    // their own team devices session, may ask them. A key and an OAuth
+    // connection (an MCP client among them) are an application asking, which
+    // asks people only (approval_agents.php).
+    $named = array_filter(array_map('trim', array_map('strval', (array) ($params['agents'] ?? array()))), 'strlen');
+
+    if (!empty($named)) {
+        if (!function_exists('ws_approval_agents_allowed') || !ws_approval_agents_allowed(true, ws_api_writer_app_id())) {
+            api_fail_validation(lang('Only a request a person makes by hand can ask agents to approve.'), 'agents');
+        }
+
+        $resolved = ws_api_approval_agent_values($named, ws_approval_agent_options($channel));
+
+        if ($resolved['unknown'] !== '') {
+            api_fail_validation(lang('Only the channel\'s active agents can be asked to approve.'), 'agents');
+        }
+
+        $data['agents'] = $resolved['values'];
+        $data['may_ask_agents'] = true;
+    }
+
     // The checks ws_approval_create() makes, made first so that a dry run
     // meets the same refusals.
-    $checked = ws_approval_input($viewer, $channel, $data);
+    $checked = ws_approval_input($viewer, $channel, $data, true, ws_api_writer_app_id());
 
     if (!$checked['ok']) {
         api_fail_validation($checked['error'], (($checked['field'] ?? '') !== '') ? $checked['field'] : null);
     }
 
-    api_dry_run_stop('created', 'workspace_approval', array('title' => $checked['title'], 'rule' => $checked['rule'], 'approvers' => $checked['approvers'], 'guests' => $checked['guests']));
+    api_dry_run_stop('created', 'workspace_approval', array('title' => $checked['title'], 'rule' => $checked['rule'], 'approvers' => $checked['approvers'], 'guests' => $checked['guests'], 'agents' => $checked['agents']));
 
     $result = ws_approval_create($viewer, $channel, $data, ws_api_writer_app_id());
 
@@ -4192,6 +4284,15 @@ function ws_api_approvals_decide($params)
 {
     $viewer = ws_api_viewer();
     $approval = ws_api_approval_or_404($viewer, $params['id']);
+
+    // An application agent asked answers with its own key; any other key is
+    // refused, as an integration does not approve in its owner's name.
+    $agent = ws_api_agent_caller_row();
+
+    if ($agent !== null) {
+        ws_agent_seen_mark($agent);
+        ws_api_approvals_agent_decide($viewer, $agent, $approval, $params);
+    }
 
     ws_api_person_only();
 
@@ -4221,6 +4322,47 @@ function ws_api_approvals_decide($params)
     if (!$result['ok']) {
         api_fail_validation($result['error'], 'decision');
     }
+
+    api_ok(ws_api_approval_present($viewer, ws_approval($approval['id'])));
+}
+
+/**
+ * An agent's answer to a request it was asked (ws_approval_agent_decide()),
+ * with the same refusals on a dry run. Ends the call.
+ *
+ * @param array $viewer   the owner of the agent's application
+ * @param array $agent    the calling agent's ws_agents row
+ * @param array $approval
+ * @param array $params
+ */
+function ws_api_approvals_agent_decide($viewer, $agent, $approval, $params)
+{
+    $decision = (string) $params['decision'];
+    $note = (string) ($params['note'] ?? '');
+    $checked = ws_approval_agent_decide_check($agent, $approval, $decision, $note);
+
+    if (!$checked['ok']) {
+        if ($checked['expired'] && !api_dry_run_requested()) {
+            ws_approval_evaluate($approval);
+        }
+
+        api_fail_validation($checked['error'], 'decision');
+    }
+
+    api_dry_run_stop('decided', 'workspace_approval', array(
+        'id'         => (int) $approval['id'],
+        'message_id' => (int) $approval['message_id'],
+        'decision'   => $decision,
+        'outcome'    => $checked['outcome'],
+    ));
+
+    $result = ws_approval_agent_decide($agent, $approval, $decision, $note);
+
+    if (!$result['ok']) {
+        api_fail_validation($result['error'], 'decision');
+    }
+
+    ws_api_log(lang(array('string' => '@{var:1} answered an approval request', 'vars' => (string) $agent['handle'])));
 
     api_ok(ws_api_approval_present($viewer, ws_approval($approval['id'])));
 }

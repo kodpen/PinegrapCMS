@@ -325,18 +325,32 @@ function ws_api_agent_request_brief($params)
  */
 function ws_api_agent_caller()
 {
-    $app_id = ws_api_app_id();
-    $row = (ws_agents_ready() && ($app_id > 0) && (!function_exists('api_current_device') || (api_current_device() === null)))
-        ? db_item("SELECT * FROM ws_agents WHERE kind = 'app' AND status = 'active' AND app_id = '" . $app_id . "' ORDER BY id LIMIT 1")
-        : null;
+    $row = ws_api_agent_caller_row();
 
-    if (!$row) {
+    if ($row === null) {
         api_fail(403, 'forbidden', lang('Only an active application agent, with its own key, may use this endpoint.'));
     }
 
     ws_agent_seen_mark((array) $row);
 
-    return (array) $row;
+    return $row;
+}
+
+/**
+ * The calling agent, or null when the caller is no active app agent using
+ * its application's own key: for a route a person and an agent share. It
+ * does not mark the agent seen; the route does once it acts as the agent.
+ *
+ * @return array|null the raw ws_agents row
+ */
+function ws_api_agent_caller_row()
+{
+    $app_id = ws_api_app_id();
+    $row = (function_exists('ws_agents_ready') && ws_agents_ready() && ($app_id > 0) && (!function_exists('api_current_device') || (api_current_device() === null)))
+        ? db_item("SELECT * FROM ws_agents WHERE kind = 'app' AND status = 'active' AND app_id = '" . $app_id . "' ORDER BY id LIMIT 1")
+        : null;
+
+    return is_array($row) ? $row : null;
 }
 
 /**

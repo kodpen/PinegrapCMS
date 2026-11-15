@@ -1,6 +1,6 @@
 ---
 name: agent-approvers-everyone
-description: Plan (owner 2026-11-14): an approval request can ask a channel's agents and assistants, and the tag @herkes mentions everyone in the room but the writer; steps AE1 to AE6
+description: Plan (owner 2026-11-14): an approval request can ask a channel's agents and assistants, and the tag @herkes mentions everyone in the room but the writer; steps AE1 to AE6 (AE4b split from AE4)
 ---
 
 ## What is asked?
@@ -23,7 +23,8 @@ description: Plan (owner 2026-11-14): an approval request can ask a channel's ag
 - AE1 (S, no product code) Census of approvals, mentions and the wake; the store asked of the owner (a table of its own, channel 3501). Done (#9555): `agent-approvers-everyone-census*.md`.
 - AE2 (M, schema) Agent approvers on the server: who may be asked, the wake, the answer of an asked agent, the bound with its tests (a flow's request refuses an agent, an agent's own request refuses it). Exact scope: `-census-steps.md`. Done (#9567): `workspace/approval-agents.md`.
 - AE3 (S) The form and the card: agents under the people, the badge on the card (workspace_approvals.js, `ws_approvals_map()`). Done (#9586). Look A, the pictures in the agent channel.
-- AE4 (S) API: `approvers` takes agents on create; `POST /workspace/approvals/{id}/decide` opens to the asked application agent's own key and stays closed to MCP; the assistants' answers (AE2 offers application agents only); the dry run; `php tools/check_api_schema.php` passes. Exact scope: `-census-steps.md`.
+- AE4 (S) API for application agents: `agents` on create, the decide route for the asked agent's own key (off MCP), `WorkspaceApproval.agents`, the dry run. Done (#9584): `workspace/approval-agents-api.md`.
+- AE4b (S) The assistants as approvers: model agents, Claude and Pinegrap AI offered and answering through the site that carries them on. Scope: `-census-steps.md`.
 - AE5 (M) `@herkes` on the server: tag, lines, wake, reserved handles. Done (#9571): `workspace/workspace-everyone-mention.md`.
 - AE5b (S) The @ menu's "Everyone" entry. Done (#9578), look request channel 3659.
 - AE6 (S) Close-out: the memory files; `workflow/agent-channel-wake.md` drops `@hepsi` and its text waiters; this plan deleted.
@@ -31,4 +32,4 @@ description: Plan (owner 2026-11-14): an approval request can ask a channel's ag
 ## What does every step keep?
 - A request made before, and a request that asks people only, works as today. A poll's votes and read receipts stay people's.
 - No table or column without asking the architect. Texts through `lang()`, Turkish by `tools/tr_add.php`.
-- AE1 first; AE2 after the owner's answer on the column, AE3 and AE4 after AE2; AE5 after AE1, beside the rest; AE5b after AE5. Claim as `[plan:agent-approvers-everyone] <step> — <topic>`.
+- AE1 first; AE2 after the owner's answer on the column, AE3 and AE4 after AE2, AE4b after AE4; AE5 after AE1, beside the rest; AE5b after AE5. Claim as `[plan:agent-approvers-everyone] <step> — <topic>`.
