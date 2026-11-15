@@ -182,6 +182,10 @@ function ws_channel_detail($viewer, $channel)
     // (app_handles.php).
     $brief['apps'] = function_exists('ws_channel_app_picker') ? ws_channel_app_picker($channel) : array();
 
+    // The agents "Ask for approval" offers beside the people
+    // (approval_agents.php).
+    $brief['approval_agents'] = function_exists('ws_approval_agent_choices') ? ws_approval_agent_choices($channel) : array();
+
     // A room with a guest in it (guests.php): who, where their link stands,
     // what the reader may do. The assistants are never asked there.
     $brief['guest'] = function_exists('ws_guest_channel_state') ? ws_guest_channel_state($viewer, $channel) : null;
@@ -195,6 +199,7 @@ function ws_channel_detail($viewer, $channel)
         $brief['claude'] = null;
         $brief['ai'] = null;
         $brief['apps'] = array();
+        $brief['approval_agents'] = array();
     }
     $brief['audit'] = !$membership && ($channel['kind'] === 'private');
     $brief['summary'] = (string) $channel['summary'];
