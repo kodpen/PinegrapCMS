@@ -3416,7 +3416,7 @@
         box.appendChild(row);
     }
 
-    var AGENT_CARD_TONES = { working: 'teal', waiting: 'blue', late: 'amber', paused: 'gray', idle: 'gray' };
+    var AGENT_CARD_TONES = { working: 'blue', waiting: 'amber', late: 'amber', paused: 'gray', idle: 'teal' };
 
     // The card's body from what ws_agent_card answers; until then, from the
     // member row the channel already holds.
@@ -3472,6 +3472,11 @@
 
         if (data.model) {
             agentCardRow(facts, t('ac_model'), data.model);
+
+            // Part of the report: muted with it once older than a day.
+            if (data.stale) {
+                facts.lastChild.classList.add('opacity-50');
+            }
         }
 
         if (data.seen) {
@@ -3525,8 +3530,6 @@
         if (data.wake) {
             agentCardRow(more, t('ac_wakes'), data.wake);
         }
-
-        agentCardRow(more, t('ac_tier'), t('cha_tier_' + (data.tier || 1)));
 
         if (data.last_message) {
             var last = el('button', 'pg-button pg-button-quiet pg-button-sm', data.last_message.when);

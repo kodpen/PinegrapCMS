@@ -291,7 +291,7 @@ function ws_agent_card_avatar($avatar)
 function ws_agent_card_js_strings()
 {
     return array(
-        'ac_state'        => lang('State'),
+        'ac_state'        => lang('State now'),
         'ac_waiting'      => lang('Waiting for it'),
         'ac_requests'     => ws_js_template('{var:1} requests', 1),
         'ac_model'        => lang('Model'),
@@ -300,7 +300,6 @@ function ws_agent_card_js_strings()
         'ac_today_counts' => ws_js_template('{var:1} answered · {var:2} failed', 2),
         'ac_high'         => lang('This window is at 90% or more of its limit.'),
         'ac_wakes'        => lang('Wakes'),
-        'ac_tier'         => lang('May do by itself'),
         'ac_last'         => lang('Last answer here'),
         'ac_channels'     => lang('Channels'),
         'ac_mention'      => lang('Mention'),
