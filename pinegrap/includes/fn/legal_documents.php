@@ -1837,10 +1837,10 @@ function pg_legal_documents_panel_card($order_id)
                     </div>';
     }
 
-    return '<div class="card mt-5">
-                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+    return '<div class="card pg-card mt-5">
+                <h2 class="card-header bg-reset border-0 pg-title-section">
                     ' . h(lang('Legal Documents')) . '
-                </div>
+                </h2>
                 <div class="card-body">
                     ' . $rows . '
                 </div>

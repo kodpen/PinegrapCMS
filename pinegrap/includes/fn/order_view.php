@@ -44,7 +44,7 @@ function pg_order_view_row($label, $value_html, $wide = false)
     if ($wide) {
         return '<div class="row">
                                         <span class="translateable col-auto fg-secondary">' . $label . '</span>
-                                        <span class="col offset-1" style="font-size:110%;font-weight:500">' . $value_html . '</span>
+                                        <span class="col offset-1 fw-medium">' . $value_html . '</span>
                                     </div>';
     }
 
@@ -71,7 +71,7 @@ function pg_order_view_card_column($cards)
 {
     $html = implode("\n", array_filter(array_map('trim', array_map('strval', (array) $cards)), 'strlen'));
 
-    return preg_replace('/^<div class="card mt-5"/', '<div class="card"', $html, 1);
+    return preg_replace('/^<div class="card( pg-card)? mt-5"/', '<div class="card$1"', $html, 1);
 }
 
 /**
