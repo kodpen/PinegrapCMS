@@ -283,6 +283,7 @@ function ws_openapi_objects()
         'WorkspaceMessageFile'      => 'ws_api_message_file_schema',
         'WorkspaceMessageVoice'     => 'ws_api_message_voice_schema',
         'WorkspaceMessageCanvas'    => 'ws_api_message_canvas_schema',
+        'WorkspaceCanvasTableChoice' => 'ws_api_canvas_table_choice_schema',
         'WorkspaceMessageThread'    => 'ws_api_message_thread_schema',
         'WorkspaceMessageNoteCard'  => 'ws_api_message_note_card_schema',
         'WorkspaceMessageNoteGroupCard' => 'ws_api_message_note_group_card_schema',

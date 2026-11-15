@@ -139,11 +139,12 @@ function ws_page_source($message, $version)
  * ($version; 409 otherwise).
  *
  * @param array $viewer
- * @param array $message ws_messages row
- * @param int   $version the version_no of the agent's edit
+ * @param array $message    ws_messages row
+ * @param int   $version    the version_no of the agent's edit
+ * @param bool  $check_only make every check and write nothing (the API's dry run)
  * @return array ok, status (HTTP), error
  */
-function ws_page_undo($viewer, $message, $version)
+function ws_page_undo($viewer, $message, $version, $check_only = false)
 {
     $refuse = function ($error, $status) {
         return array('ok' => false, 'status' => $status, 'error' => $error);
@@ -168,6 +169,10 @@ function ws_page_undo($viewer, $message, $version)
 
     if (!is_string($html) || ($html === '') || !$by) {
         return $refuse(lang('There is no version before this edit.'), 409);
+    }
+
+    if ($check_only) {
+        return array('ok' => true, 'status' => 200, 'error' => '');
     }
 
     if (!ws_page_write($message, $html, $by, (int) $viewer['id'], ws_page_version_libraries($before['doc_json'] ?? ''), 'restore')) {
