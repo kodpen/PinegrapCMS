@@ -63,6 +63,14 @@ define('WS_TASK_REMIND_DAY_TIME', '09:00');
 /** The longest a reminder can be set before the due time: 60 days, in minutes. */
 define('WS_TASK_REMIND_MAX', 86400);
 
+/**
+ * How long after the due time a claimed reminder still goes, in seconds. A
+ * reminder at the due time is only reached once that moment has passed, and
+ * the general job may reach any reminder a few runs late; past this the
+ * overdue notice has told the people on the task already.
+ */
+define('WS_TASK_REMIND_LATE', 3600);
+
 /** How many reminders one run sends at most. */
 define('WS_TASK_REMIND_BATCH', 20);
 
@@ -629,6 +637,26 @@ function ws_task_reminder_mail($task, $channel_name = '')
 }
 
 /**
+ * Is a claimed reminder still to be sent at $now? The task is open, has a due
+ * moment, and that moment is not more than WS_TASK_REMIND_LATE behind: a
+ * reminder at the due time, or one the job reaches a little late, still goes.
+ *
+ * @param array|null $task
+ * @param int $now
+ * @return bool
+ */
+function ws_task_reminder_still_worth_sending($task, $now)
+{
+    if (!is_array($task) || !ws_task_is_open((string) ($task['status'] ?? ''))) {
+        return false;
+    }
+
+    $due = ws_task_due_at($task);
+
+    return ($due > 0) && ((int) $now <= $due + WS_TASK_REMIND_LATE);
+}
+
+/**
  * Sends the reminders whose time has come: a line in the inbox of each
  * person told, and an e-mail to each of them with an address.
  *
@@ -670,8 +698,7 @@ function ws_task_reminders_run($limit = WS_TASK_REMIND_BATCH)
 
         $task = ws_task($task_id);
 
-        // Finished, or due already: there is nothing left to remind of.
-        if (!$task || !ws_task_is_open((string) $task['status']) || (ws_task_due_at($task) <= $now)) {
+        if (!ws_task_reminder_still_worth_sending($task, $now)) {
             $result['skipped']++;
             continue;
         }
