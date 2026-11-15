@@ -1955,6 +1955,8 @@ echo pg_page_shell(array(
    a question and its answer keep the line breaks of the buyer. */
 .mp-question { padding: 11px 14px; border-top: 1px solid var(--pg-border-color-translucent); }
 .mp-pre { white-space: pre-wrap; }
+/* The webhook sentence keeps its icon on its first line; the button wraps below. */
+.mp-webhook-text { flex: 1 1 12rem; min-width: 0; }
 .mp-fail-name { flex: 1 1 150px; min-width: 0; }
 .mp-fail .mp-err { flex: 1 1 100%; }
 @media (min-width: 768px) { .mp-fail .mp-err { flex: 1 1 0; min-width: 0; } }
@@ -2252,8 +2254,8 @@ if ($selected) {
 
 		$webhook_block = '
 			<div class="d-flex align-items-center flex-wrap gap-3 px-3 pb-5 mb-5 border-bottom" id="mp-webhook">
-				<i class="bi bi-broadcast"></i>
-				<div class="flex-grow-1">' . $webhook_text . '</div>
+				<i class="bi bi-broadcast align-self-start"></i>
+				<div class="mp-webhook-text">' . $webhook_text . '</div>
 				<form method="post" action="marketplace_settings.php" class="d-inline"' . $webhook_onsubmit . '>
 					' . get_token_field() . '
 					<input type="hidden" name="mp_action" value="' . $webhook_action . '">
@@ -2664,7 +2666,7 @@ if ($selected) {
 	echo '
 			</div>
 		</div>
-		<div class="card-body px-5 py-5">';
+		<div class="card-body py-5">';
 
 	if (!$failures) {
 
