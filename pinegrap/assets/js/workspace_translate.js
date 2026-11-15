@@ -250,7 +250,7 @@
             bar.appendChild(document.createTextNode(h.t('tr_mark', languageName(entry.source, entry.target)) + ' · '));
         }
 
-        var toggle = h.el('button', 'btn btn-link btn-sm p-0 align-baseline ws-msg-tr-toggle', entry.original ? h.t('tr_show_translation') : h.t('tr_show_original'));
+        var toggle = h.el('button', 'btn btn-link p-0 ws-msg-tr-toggle', entry.original ? h.t('tr_show_translation') : h.t('tr_show_original'));
         toggle.type = 'button';
         toggle.addEventListener('click', function (event) {
             event.stopPropagation();
