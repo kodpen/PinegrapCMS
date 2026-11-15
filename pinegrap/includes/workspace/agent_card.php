@@ -7,8 +7,8 @@
  * waiting for it, the usage mark of a window at WS_AGENT_USAGE_HIGH or more,
  * and the agent card opened on its name or picture (role, reported model and
  * windows, last seen, today's answered and failed requests, its last message
- * in the channel, the channels the reader may read it in, what it may do and
- * what wakes it). Every fact is the agent's own report or a stored row; a
+ * in the channel, the channels the reader may read it in, its tier and what
+ * wakes it). Every fact is the agent's own report or a stored row; a
  * guest is never sent any of it.
  *
  * @author      Erdal Güral (Kodpen)
@@ -128,47 +128,6 @@ function ws_agent_card_windows($windows)
     }
 
     return $out;
-}
-
-/**
- * What a tier lets an agent do by itself, in the plain words of the
- * channel's agents panel. Pure but for lang().
- *
- * @param int $tier 1-3; out of range reads as 1 (ws_agent_tier_allows())
- * @return string
- */
-function ws_agent_tier_words($tier)
-{
-    switch ((int) $tier) {
-        case 3:
-            return lang('It applies every change, deletions and money included; these cannot be undone.');
-        case 2:
-            return lang('It applies changes that can be undone, for seven days; the rest wait for approval.');
-    }
-
-    return lang('It only reads and writes messages; every change of a record waits for a person\'s approval.');
-}
-
-/**
- * What wakes an agent in a channel, in the member list's short words. Pure
- * but for lang().
- *
- * @param string $rule   mention | all | prefix | replies
- * @param string $prefix the prefix of the prefix rule
- * @return string
- */
-function ws_agent_wake_words($rule, $prefix)
-{
-    switch ((string) $rule) {
-        case 'all':
-            return lang('wakes on every message');
-        case 'prefix':
-            return lang(array('string' => 'wakes on {var:1}', 'vars' => (string) $prefix));
-        case 'replies':
-            return lang('wakes on replies to it');
-    }
-
-    return lang('wakes when mentioned');
 }
 
 /**
@@ -361,7 +320,6 @@ function ws_agent_card($viewer, $channel, $agent_id, $now)
         'last_message' => $last ? array('id' => $last['id'], 'when' => ws_seen_ago_words($last['at'], $now)) : null,
         'channels'     => ws_agent_reader_channels($viewer, $agent['id']),
         'tier'         => (int) $row['tier'],
-        'tier_words'   => ws_agent_tier_words($row['tier']),
         'wake'         => $member['wake'],
     ) + ws_agent_card_brief($agent, $member['seen_state'], $mine, $now);
 }

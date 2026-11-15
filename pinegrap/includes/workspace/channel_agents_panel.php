@@ -369,7 +369,19 @@ function ws_channel_member_agent($row, $now, $counts = null)
         $state = ((string) ($agent['door_error'] ?? '') !== '') ? 'late' : 'off';
     }
 
-    $wake = ws_agent_wake_words($row['wake_rule'] ?? 'mention', $row['wake_prefix'] ?? '');
+    switch ((string) ($row['wake_rule'] ?? 'mention')) {
+        case 'all':
+            $wake = lang('wakes on every message');
+            break;
+        case 'prefix':
+            $wake = lang(array('string' => 'wakes on {var:1}', 'vars' => (string) ($row['wake_prefix'] ?? '')));
+            break;
+        case 'replies':
+            $wake = lang('wakes on replies to it');
+            break;
+        default:
+            $wake = lang('wakes when mentioned');
+    }
 
     $out = array(
         'id'         => (int) ($agent['id'] ?? 0),

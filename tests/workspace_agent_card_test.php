@@ -4,8 +4,7 @@
  *
  * Tests for what a channel shows about one of its agents (agent_card.php):
  * the state its dot draws, the usage mark, the request counts, the light
- * brief on a member row, the plain words of a tier and a wake rule, the
- * panel action's name, and the same facts in the API's channel-agent row.
+ * brief on a member row, the panel action's name, and the same facts in the API's channel-agent row.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -89,7 +88,7 @@ function test_workspace_agent_card_brief_on_member_row()
 	pg_assert_same('waiting', $member['state']);
 	pg_assert_same(3, $member['waiting']);
 	pg_assert_true($member['usage_high']);
-	pg_assert_same(ws_agent_wake_words('prefix', '[ci]'), $member['wake']);
+	pg_assert_same(lang(array('string' => 'wakes on {var:1}', 'vars' => '[ci]')), $member['wake']);
 
 	$api = ws_api_channel_agent_present(25, $row + array('loop_guard' => true, 'added_by' => 1, 'added_at' => $now), array(), $now);
 
@@ -103,11 +102,7 @@ function test_workspace_agent_card_brief_on_member_row()
 	}
 }
 
-function test_workspace_agent_card_words_and_action()
+function test_workspace_agent_card_action()
 {
-	pg_assert_same(lang('wakes when mentioned'), ws_agent_wake_words('mention', ''));
-	pg_assert_same(lang('wakes on every message'), ws_agent_wake_words('all', ''));
-	pg_assert_same(ws_agent_tier_words(1), ws_agent_tier_words(9), 'out of range reads as tier 1');
-	pg_assert_true(ws_agent_tier_words(2) !== ws_agent_tier_words(3));
 	pg_assert_true(in_array('ws_agent_card', ws_channel_agents_actions(), true), 'the card is a panel action of the channel');
 }

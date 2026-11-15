@@ -17,10 +17,10 @@ description: An agent's card, state dot and usage mark in a channel (agent_card.
 - Owner (2026-11-15, channel decision 3775): the mark takes back "no warning on plan usage" of 2026-11-13 (`agent-report.md`).
 
 ## What does the card read?
-- Panel action `ws_agent_card` (channel_id, agent_id), answered by `ws_channel_agents_action()` for any team reader of the channel (`ws_action_channel()`); `ws_agent_card()` gives id, app_id, handle, name, kind, role, seen, model, windows (label, percent, "resets …", high), `reported` ("As the agent reported it … the site cannot check it."), stale, today (answered, failed), last_message (id, when), channels, tier, tier_words, wake, and the brief.
+- Panel action `ws_agent_card` (channel_id, agent_id), answered by `ws_channel_agents_action()` for any team reader of the channel (`ws_action_channel()`); `ws_agent_card()` gives id, app_id, handle, name, kind, role, seen, model, windows (label, percent, "resets …", high), `reported` ("As the agent reported it … the site cannot check it."), stale, today (answered, failed), last_message (id, when), channels, tier, wake, and the brief.
 - `last_message`: the agent's application's newest not-deleted message in the channel (`ws_agent_last_message()`, through `idx_channel`).
 - `channels`: its `ws_channel_agents` rows the reader may read (`ws_agent_reader_channels()`, `ws_can_read_channel()`).
-- `ws_agent_tier_words()` and `ws_agent_wake_words()` are the plain words; the agents panel (PF7) reads the same functions.
+- What it may do and what wakes it in plain words come from the agents panel's own word functions (PF7, #9615); the card sends the tier and the member row's wake words until both have landed.
 - The model and windows only for an `app` agent that reported (`agent-report.md`).
 
 ## And the API?
