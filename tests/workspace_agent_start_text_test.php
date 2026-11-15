@@ -37,6 +37,7 @@ function test_workspace_agent_start_text_names_the_route_and_basic()
 	pg_assert_contains('"text"', $text, 'follows the answer\'s text');
 	pg_assert_contains('instructions_version', $text, 'reads again on another version');
 	pg_assert_contains('cannot be read, stop', $text);
+	pg_assert_contains('If they are not set, ask the person who set you up', $text, 'unset variables: ask, never guess');
 }
 
 function test_workspace_agent_start_text_holds_no_credential()

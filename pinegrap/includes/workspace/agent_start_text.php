@@ -39,7 +39,8 @@ Site API: {$base}
 Authenticate with HTTP Basic, the application's key and secret, from the
 environment variables PINEGRAP_KEY and PINEGRAP_SECRET:
 curl -sS -u "\$PINEGRAP_KEY:\$PINEGRAP_SECRET". Never print them or write them
-into a message.
+into a message. If they are not set, ask the person who set you up which
+variables hold the key and the secret; never guess or search for a key.
 
 1. GET {$base}/workspace/agent-instructions
    The answer is JSON; its "text" holds your instructions: who you are, your

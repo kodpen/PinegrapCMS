@@ -5,6 +5,7 @@ description: The "Start text for the agent" box in an application agent's drawer
 
 ## What does the box hold?
 - `ws_agent_start_text($base)` (includes/workspace/agent_start_text.php), a pure function, English: the Site API (`ws_claude_api_base()`), HTTP Basic with the application's key and secret from the environment variables `PINEGRAP_KEY` / `PINEGRAP_SECRET`, `GET <Site API>/workspace/agent-instructions` and follow its `text`, read it again when a brief names another `instructions_version`, stop when it cannot be read.
+- When the variables are not set, the text has the agent ask the person who set it up which variables hold them; it never guesses or searches for a key.
 - Never the key, the secret or the door token: only the variables' names. What the agent does lives in the route's text, so the box changes only when the bootstrap itself changes.
 
 ## Who gets the box?
