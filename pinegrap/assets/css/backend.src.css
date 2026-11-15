@@ -19812,7 +19812,7 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
     border: 0;
     background: transparent;
   }
-  .ws-strip:has(.ws-open-bar):has(.ws-catchup, .ws-pin-bar) .ws-open-bar > :not(.ws-open-count) {
+  .ws-strip:has(.ws-open-bar):has(.ws-catchup, .ws-pin-bar) :is(.ws-open-text, .ws-open-go) {
     display: none;
   }
   .ws-strip:has(.ws-open-bar):has(.ws-catchup, .ws-pin-bar) .ws-open-bar .ws-open-count {

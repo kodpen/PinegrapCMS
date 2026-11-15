@@ -7929,7 +7929,7 @@
                 ctxMenu(Math.max(8, box.right - 320), box.bottom + 4, [{ header: t('open_list') }].concat(items.map(function (item) {
                     return {
                         icon: icons[item.kind] || 'bi-dot',
-                        label: t('open_kind_' + item.kind) + ': ' + item.text + (item.mine ? ' · ' + t('open_yours') : ''),
+                        label: t('open_kind_' + item.kind) + (item.mine ? ' (' + t('open_yours') + ')' : '') + ': ' + item.text,
                         action: function () { go(item); }
                     };
                 })));
