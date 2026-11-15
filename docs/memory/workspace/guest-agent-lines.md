@@ -6,10 +6,11 @@ description: The guest page lists the agents' and assistants' messages beside pe
 ## Which lines does a guest read? (GV1, #9401)
 - In a guest's room and in every channel shared with a guest, earlier ones included: people's and guests' lines, and the lines of the registry agents (`ws_agents` app and model, any status), Claude, Pinegrap AI and an MCP agent's answer (kept in its asker's name, found with `ws_mcp_agent_answers_map()`). Owner decision: `workflow/decisions-made-workspace-24.md`.
 - Left out: other applications' lines (CI, integrations), system lines, an agent's task card, change cards, buttons, request ("Waiting for") lines. An agent's file is not served; an agent line with no text and no poll is skipped.
-- `ws_guest_line_sender()` (pure) says person, guest, agent or ''; `ws_guest_lines_sql()` (pure) is the WHERE part; `ws_guest_agent_apps()` gives each application's name, `@tag` and badge.
+- `ws_guest_line_sender()` (pure) says person, guest, agent or ''; `ws_guest_lines_sql()` (pure) is the WHERE part; `ws_guest_agent_apps()` gives each application's name, `@tag`, badge, role and model.
 
 ## How is an agent's line drawn?
 - By the staff's engine (`ws_render_body()`), under the agent's name with a badge: "AI agent", "AI assistant" or "MCP agent" (`pg-guest-badge` in `workspace_guest.css`). An MCP answer loses its first line naming the tool.
+- Beside the badge, muted (`pg-guest-agent-facts`): the agent's role label and its model, joined by " · "; an empty fact is left out (GP1, #9693). `ws_guest_agent_facts()` (pure): an application agent's last reported model (`agent-report.md`), a model assistant's from its form, none for Claude, Pinegrap AI or an MCP answer. No usage, state dot, report age or card.
 - A tag `<@app:N>` reads as `@handle` (`@Claude`, `@ai`), never a link; any other application's tag as "@Application".
 
 ## What may a guest do on an agent's line?
