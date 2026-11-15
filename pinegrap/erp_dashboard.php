@@ -272,7 +272,7 @@ if (erp_edoc_installed()) {
 
             $output_edoc_rows .= '
                         <tr>
-                            <th scope="row"><i class="bi ' . $edoc_filter['icon'] . ' me-3 fg-' . $edoc_tone . '" aria-hidden="true"></i>' . h($edoc_filter['label']) . '</th>
+                            <td><i class="bi ' . $edoc_filter['icon'] . ' me-3 fg-' . $edoc_tone . '" aria-hidden="true"></i>' . h($edoc_filter['label']) . '</td>
                             <td class="text-end">' . (($edoc_count > 0)
                                 ? '<a href="erp_invoices.php?edoc=' . $edoc_key . '" class="badge rounded-pill theme-' . $edoc_tone . ' text-decoration-none">' . pg_format_number($edoc_count, 0) . '</a>'
                                 : '<span class="fg-secondary">0</span>') . '</td>
