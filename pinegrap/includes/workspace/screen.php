@@ -311,6 +311,16 @@ function ws_js_strings()
         'poll_result_help'       => lang('When it closes, a clear winner is written into the channel as a decision and lands on the Decisions tab. A tie is left to the team.'),
         'poll_share'             => ws_js_template('{var:1} · {var:2}%', 2),
         'poll_title'             => lang('Poll'),
+        // The agent question's box (agent_question.php).
+        'aq_answered'            => lang('Answered'),
+        'aq_answered_by'         => ws_js_template('{var:1} answered · {var:2}', 2),
+        'aq_asks'                => ws_js_template('asks {var:1}', 1),
+        'aq_choose_first'        => lang('Tick an answer or write your own first.'),
+        'aq_click_answers'       => lang('The option you choose is the answer.'),
+        'aq_only'                => ws_js_template('Only {var:1} can answer.', 1),
+        'aq_taken_back_note'     => lang('The question was taken back.'),
+        'aq_title'               => lang('Agent question'),
+        'aq_waiting'             => lang('Not answered yet'),
         'poll_voters'            => ws_js_template('{var:1} people voted', 1),
         'poll_withdraw'          => lang('Take back my vote'),
         // The poll box's option parts, take back and ask again (AQ2).

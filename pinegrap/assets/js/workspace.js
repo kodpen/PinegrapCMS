@@ -14568,9 +14568,65 @@
             return text;
         },
 
+        // The asker's own actions: Edit, Ask again (from the newest box only)
+        // and Take back.
+        pollAskerItems: function (message) {
+            var self = this;
+            var poll = message.poll;
+            var asker = [];
+
+            // An agent question is the application's words: it changes it
+            // through its key, never from the panel.
+            if (poll.can_edit && !poll.agent_question) {
+                asker.push({ icon: 'bi-pencil', label: t('edit'), action: function () { self.pollForm(null, null, message); } });
+            }
+
+            if (poll.can_ask_again && !poll.asked_again_message) {
+                asker.push({ icon: 'bi-arrow-repeat', label: t('poll_ask_again'), action: function () { self.pollForm(null, null, message, true); } });
+            }
+
+            if (poll.can_withdraw) {
+                asker.push({ icon: 'bi-x-circle', label: t('poll_take_back'), danger: true, action: function () {
+                    ask(t('poll_take_back_confirm'), t('poll_take_back'), true).then(function (yes) {
+                        if (!yes) {
+                            return;
+                        }
+
+                        api('ws_poll_withdraw', { poll_id: poll.id }).then(function (data) {
+                            self.replaceMessage(data.message);
+                            self.sync(true);
+                        }).catch(fail);
+                    });
+                } });
+            }
+
+            return asker;
+        },
+
+        // The three-dot button that opens the asker's actions.
+        pollAskerMenu: function (items) {
+            var more = menuButton(button('btn btn-sm btn-text theme-secondary', '', 'bi-three-dots', t('more')));
+
+            more.addEventListener('click', function (event) {
+                var box = more.getBoundingClientRect();
+
+                event.stopPropagation();
+                ctxMenu(Math.max(8, box.right - 220), box.bottom + 4, items);
+            });
+
+            return more;
+        },
+
         pollNode: function (message) {
             var self = this;
             var poll = message.poll;
+
+            // A poll an application asked is an agent question: its own,
+            // simpler box.
+            if (poll.agent_question) {
+                return self.agentQuestionNode(message);
+            }
+
             var shape = self.pollShape(poll);
             var card = el('div', 'ws-poll ws-poll-shape-' + shape + (poll.closed ? ' ws-poll-closed' : '') + (poll.withdrawn ? ' ws-poll-withdrawn' : ''));
             var head = el('div', 'ws-poll-head');
@@ -14786,32 +14842,7 @@
                 foot.appendChild(newer);
             }
 
-            // The asker's own actions, in one menu at the foot's end. A poll
-            // asked again is asked again from the newest box.
-            var asker = [];
-
-            if (poll.can_edit) {
-                asker.push({ icon: 'bi-pencil', label: t('edit'), action: function () { self.pollForm(null, null, message); } });
-            }
-
-            if (poll.can_ask_again && !poll.asked_again_message) {
-                asker.push({ icon: 'bi-arrow-repeat', label: t('poll_ask_again'), action: function () { self.pollForm(null, null, message, true); } });
-            }
-
-            if (poll.can_withdraw) {
-                asker.push({ icon: 'bi-x-circle', label: t('poll_take_back'), danger: true, action: function () {
-                    ask(t('poll_take_back_confirm'), t('poll_take_back'), true).then(function (yes) {
-                        if (!yes) {
-                            return;
-                        }
-
-                        api('ws_poll_withdraw', { poll_id: poll.id }).then(function (data) {
-                            self.replaceMessage(data.message);
-                            self.sync(true);
-                        }).catch(fail);
-                    });
-                } });
-            }
+            var asker = self.pollAskerItems(message);
 
             if (poll.can_close) {
                 var shut = button('btn btn-sm btn-outline theme-secondary', t('poll_close'), 'bi-lock');
@@ -14835,20 +14866,274 @@
             foot.classList.toggle('ws-poll-foot-tight', !!(asker.length || poll.can_close));
 
             if (asker.length) {
-                var more = menuButton(button('btn btn-sm btn-text theme-secondary', '', 'bi-three-dots', t('more')));
-
-                more.addEventListener('click', function (event) {
-                    var box = more.getBoundingClientRect();
-
-                    event.stopPropagation();
-                    ctxMenu(Math.max(8, box.right - 220), box.bottom + 4, asker);
-                });
-                foot.appendChild(more);
+                foot.appendChild(self.pollAskerMenu(asker));
             }
 
             card.appendChild(foot);
 
             return card;
+        },
+
+        // An agent question (agent_question.php): asked of named people,
+        // with no counts, bars or closing. One answer is the click; several
+        // answers or "Other" go with one Send. Once answered, the box shows
+        // what was chosen and by whom, and writes no outcome line.
+        agentQuestionNode: function (message) {
+            var self = this;
+            var poll = message.poll;
+            var shape = self.pollShape(poll);
+            var answered = !poll.withdrawn && (poll.closed || !!poll.answered_by);
+            var card = el('div', 'ws-poll ws-poll-agent ws-poll-shape-' + shape + (answered ? ' ws-poll-answered' : '') + (poll.withdrawn ? ' ws-poll-withdrawn' : ''));
+            var head = el('div', 'ws-poll-head');
+            var names = (poll.asked || []).map(function (person) { return person.name; }).join(', ');
+
+            head.appendChild(icon('bi-question-circle'));
+            head.appendChild(el('span', 'fw-semibold', t('aq_title')));
+
+            if (names) {
+                head.appendChild(el('span', 'ws-poll-asks', t('aq_asks', names)));
+            }
+
+            if (poll.multiple) {
+                head.appendChild(el('span', 'ws-poll-tag', t('poll_multiple')));
+            }
+
+            head.appendChild(el('span', 'ws-poll-when', poll.withdrawn ? t('poll_taken_back') : (answered ? t('aq_answered') : t('aq_waiting'))));
+            card.appendChild(head);
+
+            var foot = el('div', 'ws-poll-foot');
+            var asker = self.pollAskerItems(message);
+
+            function finish() {
+                if (poll.again_of_message) {
+                    var earlier = button('btn btn-sm btn-text theme-secondary', t('poll_earlier'), 'bi-arrow-up');
+                    earlier.addEventListener('click', function () { self.jumpTo(poll.again_of_message); });
+                    foot.appendChild(earlier);
+                }
+
+                if (poll.asked_again_message) {
+                    var newer = button('btn btn-sm btn-text theme-secondary', t('poll_asked_again'), 'bi-arrow-down');
+                    newer.addEventListener('click', function () { self.jumpTo(poll.asked_again_message); });
+                    foot.appendChild(newer);
+                }
+
+                if (asker.length) {
+                    foot.appendChild(self.pollAskerMenu(asker));
+                }
+
+                card.appendChild(foot);
+
+                return card;
+            }
+
+            // Answered: the choices stay in the box under the person's name.
+            if (answered) {
+                var chosen = el('div', 'ws-poll-options');
+
+                poll.options.forEach(function (option) {
+                    if (!option.count) {
+                        return;
+                    }
+
+                    var row = el('div', 'ws-poll-answer');
+
+                    row.appendChild(icon('bi-check-lg'));
+
+                    if (option.picture && option.picture.image) {
+                        var thumb = button('ws-poll-thumb', '', '', t('poll_picture_open', option.label));
+                        var image = el('img');
+
+                        image.src = option.picture.url;
+                        image.alt = '';
+                        thumb.appendChild(image);
+                        thumb.addEventListener('click', function () { self.pollPictures(poll, option.id); });
+                        row.appendChild(thumb);
+                    }
+
+                    if (option.other) {
+                        var words = (option.voters || []).map(function (voter) { return voter.text; }).filter(Boolean).join('; ');
+                        var text = el('span', 'ws-poll-text');
+
+                        text.appendChild(el('span', 'ws-poll-label', words ? option.label + ': ' + words : option.label));
+                        row.appendChild(text);
+                    } else {
+                        row.appendChild(self.pollOptionText(option, true));
+                    }
+
+                    chosen.appendChild(row);
+                });
+
+                card.appendChild(chosen);
+                foot.appendChild(el('span', 'ws-grow', t('aq_answered_by', poll.answered_by ? poll.answered_by.name : '', poll.closed_on || '')));
+
+                return finish();
+            }
+
+            var canAnswer = !!poll.can_answer;
+            var otherOption = poll.options.filter(function (option) { return option.other; })[0] || null;
+            // With one answer and no "Other", the click is the answer.
+            var direct = canAnswer && !poll.multiple && !otherOption;
+            var list = el('div', 'ws-poll-options');
+            var group = nextId('ws-poll-' + poll.id + '-');
+            var figure = null;
+            var otherInput = null;
+            var error = el('div', 'ws-poll-error d-none');
+
+            function showPicture(option) {
+                if (!figure || !option || !option.picture) {
+                    return;
+                }
+
+                var image = figure.querySelector('img');
+
+                image.src = option.picture.url;
+                image.alt = option.label;
+                figure.setAttribute('data-option-id', String(option.id));
+                figure.title = t('poll_picture_open', option.label);
+                figure.setAttribute('aria-label', figure.title);
+            }
+
+            if (shape === 'split') {
+                var split = el('div', 'ws-poll-split');
+
+                figure = button('ws-poll-figure');
+                figure.appendChild(el('img'));
+                figure.addEventListener('click', function () {
+                    self.pollPictures(poll, parseInt(figure.getAttribute('data-option-id') || '0', 10));
+                });
+                split.appendChild(figure);
+                split.appendChild(list);
+                card.appendChild(split);
+                showPicture(poll.options.filter(function (option) { return option.recommended; })[0] || poll.options[0]);
+            } else {
+                card.appendChild(list);
+            }
+
+            function busy(on) {
+                Array.prototype.forEach.call(card.querySelectorAll('input, button.ws-poll-send-button'), function (field) {
+                    field.disabled = on;
+                });
+            }
+
+            function answer(ids, words) {
+                busy(true);
+                api('ws_poll_vote', { poll_id: poll.id, option_ids: ids, other_text: words || '' }).then(function (data) {
+                    self.replaceMessage(data.message);
+                    self.sync(true);
+                }).catch(function (failure) {
+                    busy(false);
+                    fail(failure);
+                    self.sync();
+                });
+            }
+
+            poll.options.forEach(function (option) {
+                // "Other" is the words field under the options, for whoever answers.
+                if (option.other && canAnswer) {
+                    return;
+                }
+
+                var row = el('label', 'ws-poll-option');
+                var input = el('input', poll.multiple ? 'check' : 'radio');
+
+                input.type = poll.multiple ? 'checkbox' : 'radio';
+                input.name = group;
+                input.value = String(option.id);
+                input.disabled = !canAnswer;
+                input.addEventListener('change', function () {
+                    error.classList.add('d-none');
+
+                    if (direct && input.checked) {
+                        answer([option.id], '');
+                    } else if (!poll.multiple && otherInput) {
+                        otherInput.value = '';
+                    }
+                });
+                row.appendChild(input);
+
+                if ((shape === 'rows') && option.picture && option.picture.image) {
+                    var thumb = el('span', 'ws-poll-thumb');
+                    var image = el('img');
+
+                    image.src = option.picture.url;
+                    image.alt = '';
+                    image.loading = 'lazy';
+                    thumb.appendChild(image);
+                    thumb.title = t('poll_picture_open', option.label);
+                    thumb.addEventListener('click', function (event) {
+                        event.preventDefault();
+                        self.pollPictures(poll, option.id);
+                    });
+                    row.appendChild(thumb);
+                }
+
+                row.appendChild(self.pollOptionText(option, true));
+
+                if (figure) {
+                    row.addEventListener('mouseenter', function () { showPicture(option); });
+                    row.addEventListener('focusin', function () { showPicture(option); });
+                }
+
+                list.appendChild(row);
+            });
+
+            // Several answers or "Other": tick, write, and one Send.
+            if (canAnswer && !direct) {
+                var sendRow = el('div', 'ws-poll-send');
+                var send = button('btn btn-sm btn-solid theme-primary ws-poll-send-button', t('send'));
+
+                if (otherOption) {
+                    otherInput = el('input', 'form-control form-control-sm');
+                    otherInput.maxLength = 255;
+                    otherInput.placeholder = t('poll_other_placeholder');
+                    otherInput.setAttribute('aria-label', otherOption.label);
+                    otherInput.addEventListener('input', function () {
+                        error.classList.add('d-none');
+
+                        // One answer: the words take the place of a ticked option.
+                        if (!poll.multiple && otherInput.value.trim()) {
+                            Array.prototype.forEach.call(list.querySelectorAll('input:checked'), function (field) { field.checked = false; });
+                        }
+                    });
+                    otherInput.addEventListener('keydown', function (event) {
+                        if ((event.key === 'Enter') && !event.isComposing) {
+                            event.preventDefault();
+                            send.click();
+                        }
+                    });
+                    sendRow.appendChild(otherInput);
+                }
+
+                send.addEventListener('click', function () {
+                    var ids = Array.prototype.map.call(list.querySelectorAll('input:checked'), function (field) { return parseInt(field.value, 10); });
+                    var words = otherInput ? otherInput.value.trim() : '';
+
+                    if (words) {
+                        ids.push(otherOption.id);
+                    }
+
+                    if (!ids.length) {
+                        error.textContent = t('aq_choose_first');
+                        error.classList.remove('d-none');
+                        return;
+                    }
+
+                    answer(ids, words);
+                });
+                sendRow.appendChild(send);
+                card.appendChild(sendRow);
+                card.appendChild(error);
+            }
+
+            var note = poll.withdrawn ? t('aq_taken_back_note') : (names ? t('aq_only', names) : '');
+
+            if (direct) {
+                note += (note ? ' · ' : '') + t('aq_click_answers');
+            }
+
+            foot.appendChild(el('span', 'ws-grow', note));
+
+            return finish();
         },
 
         // Sends the ticked options, with the words of the "Other" row; an

@@ -2558,6 +2558,7 @@
     "Not an e-Invoice taxpayer": "e-Fatura mükellefi değil",
     "Not an e-mail address: {var:1}": "E-posta adresi değil: {var:1}",
     "Not an e-mail block: mail programs draw it without its look. Use a block of the E-mail group.": "E-posta bloğu değil: e-posta programları bunu görünümü olmadan çizer. E-posta grubundan bir blok kullanın.",
+    "Not answered yet": "Henüz yanıtlanmadı",
     "Not applicable": "Uygulanmaz",
     "Not approved": "Onaylanmadı",
     "Not at all: most clients say so. We guide you through every pose and leave time for you to relax.": "Hiç olmaz: müşterilerin çoğu böyle söyler. Her pozda sizi yönlendirir, rahatlamanız için zaman tanırız.",
