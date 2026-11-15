@@ -8,7 +8,7 @@ description: Decisions list, schema part 21 (2026-11-15 on): ws_mail_reminders a
 
 ## Which schema do remind later, remind when no answer and "I am away" get? (owner, 2026-11-15, in the architect's window)
 - Asked as agent channel poll 3450 after the census IB9 (#9554), with "Evet, ikisi de eklensin" recommended. He did not vote; in the architect's window he said: "Oylama 31 ve 32 önerdiğin gibi ilerle". The poll was closed with the decision under it (channel message 3500).
-- Table `ws_mail_reminders`: `id`, `conversation_id`, `user_id`, `kind` VARCHAR(10) (`later` or `no_answer`), `item_id`, `due_at`, `woken_at`, `created_at`; UNIQUE (`conversation_id`, `user_id`, `kind`); KEY `idx_due` (`woken_at`, `due_at`). Added by IB10 of `plans/mail-inbox-more.md`; IB10b reads the same table.
+- Table `ws_mail_reminders`: `id`, `conversation_id`, `user_id`, `kind` VARCHAR(10) (`later` or `no_answer`), `item_id`, `due_at`, `woken_at`, `created_at`; UNIQUE (`conversation_id`, `user_id`, `kind`); KEY `idx_due` (`woken_at`, `due_at`). Added by IB10 (#9592, `workspace/mail-remind-later.md`); IB10b reads the same table (#9625, `workspace/mail-no-answer.md`).
 - Why a table: the only per-person state was `ws_mail_reads`, whose mark never moves back, so it cannot take a conversation out of one person's list and bring it back at a time.
 - Column `ws_profiles.mail_away` TEXT NULL, a JSON of the range, the text and the stand-in, beside the person's own signature. Added by IB12.
 - Incoming rules (IB11) and undo send (IB13) add no schema; the rules stay in the box's settings JSON.

@@ -37,7 +37,7 @@ Each (a) (architect, under the owner's delegation, #2444):
 
 ## What do a mailbox's features keep? (plan closed, IB1-IB8)
 - Owner (2026-11-14, `workflow/decisions-made-workspace-27.md`): Check e-mail, own signature, block list, recipient suggestions, Send later, a box's Sent folder. Team accounts only; a running site works as before until a button is pressed or a setting written; no API route or MCP tool.
-- Kept out: phone numbers on the block list. Later: an HTML signature. Next: `plans/mail-inbox-more.md`.
+- Kept out: phone numbers on the block list. Later: an HTML signature. Additions IB9-IB14: `mail-prs.md`.
 
 ## What stays unverified?
 - G4 against a Microsoft 365 tenant (`mail-microsoft.md`), G8 on a site with an AI key (`mail-triage.md`), and a run against the dedicated test box of answer 11, which is not set up. No IMAP or SMTP server was reached from the cloud sessions.
