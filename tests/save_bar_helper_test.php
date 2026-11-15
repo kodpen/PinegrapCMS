@@ -58,6 +58,10 @@ function test_save_bar_helper_frame_rules_exist()
 	) as $selector) {
 		pg_assert_contains($selector, $css, $selector . ' is drawn');
 	}
+
+	// The column keeps the bar's 16 px bottom margin inside it, so the bar
+	// floats above the window's edge on screens where it is not a flex item.
+	pg_assert_contains(".pg-savebar {\n  display: flow-root;\n}", $css, 'the column holds the bar\'s bottom margin');
 }
 
 function test_save_bar_helper_no_bare_sticky_rows()

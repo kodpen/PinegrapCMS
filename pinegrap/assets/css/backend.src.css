@@ -27220,6 +27220,12 @@ body.pg-measure-edit .row > .order-3 > nav.buttons.navigation,
   backdrop-filter: blur(16px);
   box-shadow: var(--pg-shadow-float);
 }
+/* pg_save_bar()'s sticky column holds the bar's bottom margin: outside a
+   flex row (straight in a form, after a card) the margin would collapse out
+   of the column and the bar would sit on the window's bottom edge. */
+.pg-savebar {
+  display: flow-root;
+}
 
 /* Field: label above, help under, a unit or counter at the right end. */
 .pg-field-label {
