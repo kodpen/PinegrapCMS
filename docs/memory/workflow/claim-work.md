@@ -5,6 +5,7 @@ description: How a session claims work before starting it: the open-PR check, th
 
 ## How is work claimed?
 - With a draft PR on GitHub, never an issue. The only issues between sessions are decision questions (`architect.md`) and the test coordinator's `bug` reports (`test-coordinator.md`).
+- A third kind comes from outside the sessions: a need of Pinegrap Mobile arrives as an issue of the owner's account, titled `[iş] <topic>` or `[plan:mobile-api-shelved.md] <step> — <topic>`, with no label (`plans/mobile-api-shelved.md`; owner, 2026-11-14, `decisions-made-product-52.md`). It claims nothing and no session starts it: the architect takes its questions to the owner, then gives it to a coordinator in the agent channel; its PR says `Fixes #n`.
 - Use REST (`gh api repos/kodpen/pinegrapcms/…`): `gh issue`, `gh pr` (GraphQL) and the search API are blocked in cloud sessions.
 
 ## 1. What is checked first?
