@@ -280,7 +280,7 @@ if ((int) $user['role'] === 0) {
                                     <input type="hidden" name="private_label_card" value="1" />
                                     <div class="row gy-5">
                                         <div class="col-12">
-                                            <div class="form-field">
+                                            <div class="form-field">' . pg_settings_tile('tag', 'content') . '
                                                 <div class="switch"><input value="1"' . ($private_label_on ? ' checked="checked"' : '') . ' class="collapse-switcher" type="checkbox" id="private_label" name="private_label" data-bs-target="#private_label_fields"/></div>
                                                 <label class="" for="private_label">' . lang('Enable private label branding') . '</label>
                                             </div>

@@ -649,12 +649,8 @@ if (!$_POST) {
         $start_date = get_absolute_time(array('timestamp' => $start_timestamp, 'type' => 'date'));
         $stop_date = get_absolute_time(array('timestamp' => $stop_timestamp, 'type' => 'date'));
         
-        $output_date_range = $start_date;
-        
-        // if the stop date is different from the start date, then add stop date to date range
-        if ($stop_date != $start_date) {
-            $output_date_range .= ' - ' . $stop_date;
-        }
+        // The panel's date text, the same shape on every report screen.
+        $output_date_range = pg_report_view_range($start_date, $stop_date);
 
 
 

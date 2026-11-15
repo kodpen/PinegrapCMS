@@ -3386,7 +3386,7 @@
     // Opened on an agent's name or picture by hover, keyboard focus or a
     // tap; one at a time; Escape, a click outside or leaving it closes it.
     // The figures are the agent's own report, as the card says.
-    var agentCardOpen = { node: null, anchor: null, timer: 0, key: '' };
+    var agentCardOpen = { node: null, anchor: null, timer: 0, key: '', place: null };
     var agentCardCache = {};
 
     // The registry agent a channel has for an application, or null.
@@ -3416,6 +3416,51 @@
         agentCardOpen.node = null;
         agentCardOpen.anchor = null;
         agentCardOpen.key = '';
+        agentCardOpen.place = null;
+    }
+
+    // Draws a card's body in a guard of its own: an exception goes to the
+    // console and the card stays open. Returns false when draw() threw.
+    function agentCardGuard(draw) {
+        try {
+            draw();
+        } catch (error) {
+            if (window.console && console.error) {
+                console.error(error);
+            }
+
+            return false;
+        }
+
+        return true;
+    }
+
+    // A card whose facts could not be read keeps what it shows and writes
+    // the refusal's words in place of "Loading…", in the same quiet text.
+    function agentCardRefused(node, words) {
+        var line = node.querySelector('.ws-agent-card-loading');
+
+        if (!line) {
+            line = el('div', 'pg-text-meta ws-agent-card-loading');
+            node.appendChild(line);
+        }
+
+        line.textContent = words || t('error_generic');
+        line.setAttribute('role', 'status');
+    }
+
+    // Does a scroll close the open card? Only the reader's own scroll (a
+    // wheel, a touch, a scroll key or a held pointer on the scrollbar,
+    // inputAt its time) of the list holding the anchor; a scroll the
+    // screen makes for a new message only moves the card along. Pure
+    // (tests/workspace_agent_card_js_test.php).
+    function agentCardScrollCloses(holdsAnchor, inputAt, pointerHeld, now) {
+        return !!holdsAnchor && (!!pointerHeld || ((now - inputAt) >= 0 && (now - inputAt) < 800));
+    }
+
+    // Keys that scroll the list when no field has the focus. Pure.
+    function agentCardScrollKey(key, editable) {
+        return !editable && ['PageUp', 'PageDown', 'ArrowUp', 'ArrowDown', 'Home', 'End', ' ', 'Spacebar'].indexOf(key) !== -1;
     }
 
     // Where the card stands: under the anchor, or over it when the room
@@ -3615,9 +3660,10 @@
         }
     }
 
-    function agentCardShow(anchor, channel, agent) {
-        var key = channel.id + ':' + agent.id;
-
+    // Opens a card on its anchor, one at a time: drawn at once from what
+    // the screen holds, then again from load()'s answer, kept 30 s by key.
+    // draw(node, card) draws the body (card null until load() answers).
+    function cardShow(anchor, key, label, className, draw, load) {
         clearTimeout(agentCardOpen.timer);
 
         if (agentCardOpen.key === key && agentCardOpen.anchor === anchor) {
@@ -3626,10 +3672,10 @@
 
         agentCardClose();
 
-        var node = el('div', 'pg-card ws-agent-card');
+        var node = el('div', 'pg-card ws-agent-card' + (className ? ' ' + className : ''));
 
         node.setAttribute('role', 'dialog');
-        node.setAttribute('aria-label', agent.name || ('@' + agent.handle));
+        node.setAttribute('aria-label', label);
         node.addEventListener('mouseenter', function () { clearTimeout(agentCardOpen.timer); });
         node.addEventListener('mouseleave', function () { agentCardOpen.timer = setTimeout(agentCardClose, 250); });
         node.addEventListener('keydown', function (event) {
@@ -3658,34 +3704,49 @@
         };
         var cached = agentCardCache[key];
 
-        agentCardBody(node, agent, (cached && (Date.now() - cached.at < 30000)) ? cached.card : null, channel);
+        agentCardOpen.place = place;
+        draw(node, (cached && (Date.now() - cached.at < 30000)) ? cached.card : null);
         document.body.appendChild(node);
         place();
 
         if (!cached || (Date.now() - cached.at >= 30000)) {
-            api('ws_agent_card', { channel_id: channel.id, agent_id: agent.id }).then(function (data) {
+            load().then(function (data) {
+                if (!data.card) {
+                    throw new Error(t('error_generic'));
+                }
+
                 agentCardCache[key] = { at: Date.now(), card: data.card };
 
                 if (agentCardOpen.node === node) {
-                    agentCardBody(node, agent, data.card, channel);
+                    draw(node, data.card);
                     place();
                 }
-            }).catch(function () {
+            }).catch(function (error) {
                 if (agentCardOpen.node === node) {
-                    agentCardClose();
+                    agentCardRefused(node, error && error.message);
+                    place();
                 }
             });
         }
     }
 
-    // Makes a name or a picture open the agent's card. keyboard: the
+    // A card that cannot be drawn falls back to the member row and says so;
+    // the drawing's own error is on the console.
+    function agentCardShow(anchor, channel, agent) {
+        cardShow(anchor, channel.id + ':' + agent.id, agent.name || ('@' + agent.handle), '', function (node, card) {
+            if (!agentCardGuard(function () { agentCardBody(node, agent, card, channel); }) && card) {
+                agentCardGuard(function () { agentCardBody(node, agent, null, channel); });
+                agentCardRefused(node, t('error_generic'));
+            }
+        }, function () {
+            return api('ws_agent_card', { channel_id: channel.id, agent_id: agent.id });
+        });
+    }
+
+    // Makes a name or a picture open a card: open() shows it. keyboard: the
     // anchor is a Tab stop and opens on focus (a picture hidden from
     // screen readers is not).
-    function agentCardHook(target, channel, agent, keyboard) {
-        if (!target || !channel || !agent || !agent.id) {
-            return target;
-        }
-
+    function cardHook(target, open, keyboard) {
         target.classList.add('ws-agent-card-anchor');
 
         if (keyboard) {
@@ -3695,13 +3756,13 @@
             target.setAttribute('aria-expanded', 'false');
             target.addEventListener('focus', function () {
                 if (target.matches(':focus-visible')) {
-                    agentCardShow(target, channel, agent);
+                    open();
                 }
             });
             target.addEventListener('keydown', function (event) {
                 if ((event.key === 'Enter') || (event.key === ' ')) {
                     event.preventDefault();
-                    agentCardShow(target, channel, agent);
+                    open();
                 } else if ((event.key === 'Escape') && agentCardOpen.anchor === target) {
                     event.stopPropagation();
                     agentCardClose();
@@ -3711,7 +3772,7 @@
 
         target.addEventListener('mouseenter', function () {
             clearTimeout(agentCardOpen.timer);
-            agentCardOpen.timer = setTimeout(function () { agentCardShow(target, channel, agent); }, 350);
+            agentCardOpen.timer = setTimeout(open, 350);
         });
         target.addEventListener('mouseleave', function () {
             clearTimeout(agentCardOpen.timer);
@@ -3724,11 +3785,192 @@
             if (agentCardOpen.anchor === target) {
                 agentCardClose();
             } else {
-                agentCardShow(target, channel, agent);
+                open();
             }
         });
 
         return target;
+    }
+
+    // Makes a name or a picture open the agent's card.
+    function agentCardHook(target, channel, agent, keyboard) {
+        if (!target || !channel || !agent || !agent.id) {
+            return target;
+        }
+
+        return cardHook(target, function () { agentCardShow(target, channel, agent); }, keyboard);
+    }
+
+    // ── A person's card (person_card.php, ws_person_card) ──
+    // The agent card's frame with a team member's facts: role, title,
+    // departments and their leads, working day, local time, away days, last
+    // seen for a channel manager; Message and, for whoever may change the
+    // account, Edit the user.
+
+    // The working days (Monday 1) in short names; a run of three or more
+    // days is one span ("Mon–Fri"). Pure
+    // (tests/workspace_person_card_js_test.php).
+    function personCardDays(days, names) {
+        var sorted = (days || []).map(Number).filter(function (day) { return day >= 1 && day <= 7; }).sort();
+        var parts = [];
+        var i = 0;
+
+        while (i < sorted.length) {
+            var j = i;
+
+            while ((j + 1 < sorted.length) && (sorted[j + 1] === sorted[j] + 1)) {
+                j++;
+            }
+
+            if (j - i >= 2) {
+                parts.push(names[sorted[i] - 1] + '–' + names[sorted[j] - 1]);
+            } else {
+                for (var k = i; k <= j; k++) {
+                    parts.push(names[sorted[k] - 1]);
+                }
+            }
+
+            i = j + 1;
+        }
+
+        return parts.join(', ');
+    }
+
+    function personCardBody(node, person, card, channel) {
+        var data = card || person;
+
+        clear(node);
+
+        var head = el('div', 'ws-agent-card-head');
+        var face = avatar(data, null, true);
+
+        face.classList.add('ws-agent-card-face');
+        head.appendChild(face);
+
+        var who = el('div', 'ws-agent-card-who');
+
+        who.appendChild(el('div', 'pg-title-status ws-agent-card-name', data.name));
+
+        var line = el('div', 'pg-text-meta ws-agent-card-handle', data.username ? '@' + data.username : '');
+
+        if (data.role_label) {
+            line.appendChild(el('span', 'pg-pill pg-tone-blue', data.role_label));
+        }
+
+        who.appendChild(line);
+
+        if (data.title) {
+            who.appendChild(el('div', 'pg-text-meta', data.title));
+        }
+
+        head.appendChild(who);
+        node.appendChild(head);
+
+        if (!card) {
+            node.appendChild(el('div', 'pg-text-meta ws-agent-card-loading', t('loading')));
+            return;
+        }
+
+        var facts = el('div', 'ws-agent-card-box');
+
+        if (card.departments && card.departments.length) {
+            var list = el('span', 'ws-person-card-departments');
+
+            card.departments.forEach(function (department) {
+                var item = el('span', 'ws-agent-card-value', department.name);
+
+                if (department.lead) {
+                    item.appendChild(el('span', 'pg-pill pg-tone-teal ms-1', t('pc_leads_it')));
+                }
+
+                list.appendChild(item);
+
+                if (department.leads && department.leads.length) {
+                    list.appendChild(el('span', 'pg-text-meta', t('pc_led_by', department.leads.map(function (lead) { return lead.name; }).join(', '))));
+                }
+            });
+            agentCardRow(facts, t('pc_departments'), list);
+        }
+
+        if (card.workday && card.workday.days && card.workday.days.length) {
+            agentCardRow(facts, t('pc_workday'), card.workday.hours + ' · ' + personCardDays(card.workday.days, t('pc_days')));
+        }
+
+        if (card.clock && card.clock.time) {
+            agentCardRow(facts, t('pc_local_time'), card.clock.time + (card.clock.other ? ' · ' + card.clock.zone : ''));
+        }
+
+        if (card.seen) {
+            agentCardRow(facts, t('ac_seen'), card.seen);
+        }
+
+        if (facts.childNodes.length) {
+            node.appendChild(facts);
+        }
+
+        if (card.away && card.away.length) {
+            var away = el('div', 'ws-agent-card-box');
+
+            card.away.forEach(function (range) {
+                var words = el('span', 'ws-agent-card-value', dmy(range.start) + ((range.end !== range.start) ? ' – ' + dmy(range.end) : ''));
+
+                if (range.now) {
+                    words.appendChild(el('span', 'pg-pill pg-tone-amber ms-1', t('pc_away_now')));
+                }
+
+                agentCardRow(away, (range.source === 'mail') ? t('pc_away_mail') : (range.title || t('pc_away')), words);
+            });
+            node.appendChild(away);
+        }
+
+        var actions = el('div', 'ws-person-card-actions');
+
+        if (person.id !== BOOT.me.id) {
+            var message = el('button', 'pg-button pg-button-quiet pg-button-sm');
+
+            message.type = 'button';
+            message.appendChild(icon('bi-chat-dots', 'me-1'));
+            message.appendChild(document.createTextNode(t('pc_message')));
+            message.addEventListener('click', function () {
+                agentCardClose();
+                directMessage(person.id);
+            });
+            actions.appendChild(message);
+        }
+
+        var account = personEditUrl(card);
+
+        if (account) {
+            var edit = el('a', 'pg-button pg-button-ghost pg-button-sm');
+
+            edit.href = account;
+            edit.appendChild(icon('bi-person-gear', 'me-1'));
+            edit.appendChild(document.createTextNode(t('edit_user')));
+            actions.appendChild(edit);
+        }
+
+        if (actions.childNodes.length) {
+            node.appendChild(actions);
+        }
+    }
+
+    function personCardShow(anchor, channel, person) {
+        cardShow(anchor, 'p' + channel.id + ':' + person.id, person.name, 'ws-person-card', function (node, card) {
+            personCardBody(node, person, card, channel);
+        }, function () {
+            return api('ws_person_card', { channel_id: channel.id, user_id: person.id });
+        });
+    }
+
+    // Makes a person's name or picture open their card in a channel; a
+    // guest, an application or somebody no longer here has none, and the
+    // node is left as it is.
+    function personCardHook(target, channel, person, keyboard) {
+        if (!target || !channel || !channel.id || !person || !person.id || person.guest || person.gone) {
+            return target;
+        }
+
+        return cardHook(target, function () { personCardShow(target, channel, person); }, keyboard);
     }
 
     document.addEventListener('click', function (event) {
@@ -3736,9 +3978,41 @@
             agentCardClose();
         }
     });
-    window.addEventListener('scroll', function () {
-        if (agentCardOpen.node) {
+    // The reader's own scrolling, told from the screen's: the last wheel,
+    // touch or scroll key, and a pointer held down (a scrollbar dragged).
+    var agentCardInput = { at: -Infinity, held: false };
+    var agentCardTouched = function () {
+        agentCardInput.at = Date.now();
+    };
+
+    window.addEventListener('wheel', agentCardTouched, { capture: true, passive: true });
+    window.addEventListener('touchmove', agentCardTouched, { capture: true, passive: true });
+    window.addEventListener('keydown', function (event) {
+        var field = event.target;
+        var editable = !!(field && field.closest && field.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"])'));
+
+        if (agentCardScrollKey(event.key, editable)) {
+            agentCardTouched();
+        }
+    }, true);
+    window.addEventListener('pointerdown', function () { agentCardInput.held = true; }, true);
+    window.addEventListener('pointerup', function () { agentCardInput.held = false; }, true);
+    window.addEventListener('pointercancel', function () { agentCardInput.held = false; }, true);
+    window.addEventListener('blur', function () { agentCardInput.held = false; });
+    window.addEventListener('scroll', function (event) {
+        if (!agentCardOpen.node || agentCardOpen.node.contains(event.target)) {
+            return;
+        }
+
+        var list = (event.target === document) ? document.documentElement : event.target;
+        var holds = !!(list && list.contains && agentCardOpen.anchor && list.contains(agentCardOpen.anchor));
+
+        // Moved along with its anchor, but never from under the pointer
+        // reading it: leaving the card would close it.
+        if (agentCardScrollCloses(holds, agentCardInput.at, agentCardInput.held, Date.now())) {
             agentCardClose();
+        } else if (holds && agentCardOpen.place && !agentCardOpen.node.matches(':hover')) {
+            agentCardOpen.place();
         }
     }, true);
 
@@ -10730,8 +11004,10 @@
 
             channel.members.forEach(function (member) {
                 var role = [(member.id === channel.owner_id) ? t('owner') : '', member.title || ''].filter(Boolean).join(' · ');
-                var name = personLink(el('div', 'ws-info-person-name', member.name), member);
-                var row = personRow(avatar(member, null, true), name, role);
+                var name = el('div', 'ws-info-person-name', member.name);
+                var row = personRow(personCardHook(avatar(member, null, true), channel, member, false), name, role);
+
+                personCardHook(name, channel, member, true);
 
                 // Online or not is the dot on the face; said in words too.
                 name.appendChild(el('span', 'visually-hidden', ' (' + t('presence_' + member.presence) + ')'));
@@ -11462,7 +11738,7 @@
                 picture.appendChild(stateDot);
             }
 
-            face.appendChild(cardAgent ? agentCardHook(picture, self.channel, cardAgent, false) : personLink(picture, person));
+            face.appendChild(cardAgent ? agentCardHook(picture, self.channel, cardAgent, false) : personCardHook(picture, self.channel, person, false));
 
             // Read out with the name in the hidden head; shown on hover.
             if (follow) {
@@ -11480,7 +11756,7 @@
             node.setAttribute('aria-labelledby', meta.id);
             var senderName = el('b', '', agentMarks ? agentMarks.name : (message.sender ? message.sender.name : ''));
 
-            meta.appendChild(cardAgent ? agentCardHook(senderName, self.channel, cardAgent, true) : personLink(senderName, person));
+            meta.appendChild(cardAgent ? agentCardHook(senderName, self.channel, cardAgent, true) : personCardHook(senderName, self.channel, person, true));
 
             // An agent of this channel: its role in place of "(application)".
             if (agentMarks && agentMarks.role) {
@@ -28231,6 +28507,7 @@
             dateShown: dateShown,
             avatar: avatar,
             avatarStack: avatarStack,
+            agentFace: agentFace,
             peoplePicker: peoplePicker,
             api: api,
             toast: toast,

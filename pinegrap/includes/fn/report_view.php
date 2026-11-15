@@ -225,6 +225,21 @@ function pg_report_view_strings()
 }
 
 /**
+ * The period beside the calendar icon, one shape on every report screen:
+ * the panel's date text (get_absolute_time(), type date) of the first and
+ * the last day joined by an en dash; a period of one day names it once.
+ * Pure.
+ *
+ * @param string $start the first day's date text (HTML)
+ * @param string $stop  the last day's date text (HTML)
+ * @return string HTML
+ */
+function pg_report_view_range($start, $stop)
+{
+    return ($stop === $start) ? (string) $start : $start . ' – ' . $stop;
+}
+
+/**
  * The summary figures over the chart: the order count and every money
  * column the table's Grand Total row prints, in its order (the charge
  * columns only when the table shows them). Pure.
@@ -410,12 +425,13 @@ function pg_report_view_vat_figures($totals, $withholding, $names, $money)
  * calculated tax by month with the deductible tax dashed beside it, the
  * gap between them the month's difference (both from the By month table).
  * Over one month: the tax of each kind of document as rows (sales, sales
- * returns, purchases, returns to suppliers, the expenses' deductible tax).
- * The line draws from zero up, so a month below zero (more returns than
+ * returns, purchases, returns to suppliers, the expenses' deductible tax),
+ * only with two kinds or more. The line draws from zero up, so a month below zero (more returns than
  * sales) is drawn at zero; its tip says the real figure. Pure.
  *
  * @param array    $report erp_vat_report(): 'months', 'kinds', 'totals'
- * @param array    $names  'calculated', 'deductible' captions, 'kinds'
+ * @param array    $names  'tax' (the tax's name, the line's title),
+ *                         'calculated', 'deductible' captions, 'kinds'
  *                         (erp_vat_kind_labels()), 'months' (month =>
  *                         its name)
  * @param callable $money  minor units => text
@@ -426,7 +442,8 @@ function pg_report_view_vat_chart($report, $names, $money)
     $months = (array) ($report['months'] ?? array());
 
     if (count($months) > 1) {
-        $chart = array('kind' => 'line', 'label' => lang(array('string' => '{var:1} by month', 'vars' => $names['calculated'])), 'series' => (string) $names['calculated'], 'compare_label' => (string) $names['deductible'], 'values' => array(), 'compare' => array(), 'names' => array(), 'notes' => array(), 'compare_notes' => array(), 'extras' => array(), 'tips' => array());
+        // The title names both lines (calculated and deductible): the tax.
+        $chart = array('kind' => 'line', 'label' => lang(array('string' => '{var:1} by month', 'vars' => (string) ($names['tax'] ?? $names['calculated']))), 'series' => (string) $names['calculated'], 'compare_label' => (string) $names['deductible'], 'values' => array(), 'compare' => array(), 'names' => array(), 'notes' => array(), 'compare_notes' => array(), 'extras' => array(), 'tips' => array());
         $any = false;
 
         foreach ($months as $month => $figures) {
@@ -466,7 +483,8 @@ function pg_report_view_vat_chart($report, $names, $money)
         }
     }
 
-    return $rows ? array('kind' => 'bars', 'label' => lang('Tax by document type'), 'rows' => $rows) : null;
+    // One kind of document is one bar: it compares nothing.
+    return (count($rows) > 1) ? array('kind' => 'bars', 'label' => lang('Tax by document type'), 'rows' => $rows) : null;
 }
 
 /**

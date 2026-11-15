@@ -31,30 +31,151 @@ function ws_channel_agents_actions()
 }
 
 /**
- * A channel-agent row as the settings draw it, with the agent's last seen
- * (ws_agent_seen_words()). Pure but for lang() and the clock.
+ * A channel-agent row as the settings draw it: the agent's last seen
+ * (ws_agent_seen_words()), its role, picture and state, and in a few words
+ * what wakes it and what it may do by itself. Pure but for lang() and the
+ * clock.
  *
- * @param array    $row ws_channel_agent_shape()
- * @param int|null $now
+ * @param array      $row    ws_channel_agent_shape()
+ * @param int|null   $now
+ * @param array|null $counts ws_agent_request_counts() of the channel's agents, for the card's state
  * @return array
  */
-function ws_channel_agent_panel_row($row, $now = null)
+function ws_channel_agent_panel_row($row, $now = null, $counts = null)
 {
-    $seen = ws_agent_seen_words($row['agent'], ($now === null) ? time() : (int) $now);
+    $now = ($now === null) ? time() : (int) $now;
+    $seen = ws_agent_seen_words($row['agent'], $now);
+    $member = ws_channel_member_agent($row, $now, $counts);
+    $active = ((string) $row['agent']['status'] === 'active');
 
     return array(
         'agent_id'    => (int) $row['agent']['id'],
         'kind'        => (string) $row['agent']['kind'],
         'handle'      => (string) $row['agent']['handle'],
         'name'        => (string) $row['agent']['name'],
-        'active'      => ((string) $row['agent']['status'] === 'active'),
+        'role'        => $member['role'],
+        'avatar'      => ws_channel_agent_avatar_url($row['agent']['avatar'] ?? ''),
+        'active'      => $active,
+        'state'       => ws_channel_agent_panel_state($active, $member['seen_state'], $member['state'] ?? ''),
+        'waiting'     => (int) ($member['waiting'] ?? 0),
         'wake_rule'   => (string) $row['wake_rule'],
         'wake_prefix' => (string) $row['wake_prefix'],
+        'wake_words'  => $member['wake'],
         'tier'        => (int) $row['tier'],
+        'tier_words'  => ws_channel_agent_tier_words($row['tier']),
         'loop_guard'  => (bool) $row['loop_guard'],
         'seen'        => $seen['label'],
         'not_seen'    => $seen['not_seen'],
+        'state_words' => ws_channel_agent_state_words($row['agent'], $seen, $member['seen']),
     );
+}
+
+/**
+ * The state the agents panel shows on a row: 'paused' for an agent not
+ * active, first of all; then the agent card's working or waiting
+ * (ws_agent_card_state()); else its last-seen state as the member list
+ * reads it ('on', 'off', 'late', 'ready'), so an idle agent's pill still
+ * says when it was seen. Pure.
+ *
+ * @param bool   $active
+ * @param string $seen_state ws_channel_member_agent()'s seen_state
+ * @param string $card_state ws_agent_card_state(), '' when not read
+ * @return string
+ */
+function ws_channel_agent_panel_state($active, $seen_state, $card_state = '')
+{
+    if (!$active) {
+        return 'paused';
+    }
+
+    if (in_array((string) $card_state, array('working', 'waiting'), true)) {
+        return (string) $card_state;
+    }
+
+    $seen_state = (string) $seen_state;
+
+    return in_array($seen_state, array('on', 'off', 'late', 'ready'), true) ? $seen_state : 'off';
+}
+
+/**
+ * The words of the state's pill on a row, each saying what its time is: a
+ * poll agent's "Seen 6 min ago" (ws_agent_seen_words()), "Never seen" for
+ * one that never called; else the member list's words, a push agent's
+ * "Last knock …" or a model agent's "Always ready". Pure but for lang().
+ *
+ * @param array  $agent  ws_agent_shape()
+ * @param array  $seen   ws_agent_seen_words()
+ * @param string $member ws_channel_member_agent()'s seen
+ * @return string
+ */
+function ws_channel_agent_state_words($agent, $seen, $member)
+{
+    if (((string) ($agent['kind'] ?? '') === 'app') && ((string) ($agent['door_kind'] ?? '') === 'poll')) {
+        return ((int) ($agent['seen_at'] ?? 0) <= 0) ? lang('Never seen') : (string) $seen['label'];
+    }
+
+    return (string) $member;
+}
+
+/**
+ * What an agent may do by itself in a channel, in the few words of its row:
+ * tier 1 asks before every change of a record, 2 makes the changes that
+ * can be undone, 3 every change. A value out of range counts as 1, as
+ * ws_agent_tier_allows() reads it. Pure but for lang().
+ *
+ * @param int $tier
+ * @return string
+ */
+function ws_channel_agent_tier_words($tier)
+{
+    switch ((int) $tier) {
+        case 2:
+            return lang('makes changes that can be undone');
+        case 3:
+            return lang('makes every change by itself');
+    }
+
+    return lang('asks before any change');
+}
+
+/**
+ * What wakes an agent in a channel, in the short words of its row and of
+ * Channel info. Pure but for lang().
+ *
+ * @param string $rule   mention, all, prefix, replies
+ * @param string $prefix the word of the prefix rule
+ * @return string
+ */
+function ws_channel_agent_wake_words($rule, $prefix = '')
+{
+    switch ((string) $rule) {
+        case 'all':
+            return lang('wakes on every message');
+        case 'prefix':
+            return lang(array('string' => 'wakes on {var:1}', 'vars' => (string) $prefix));
+        case 'replies':
+            return lang('wakes on replies to it');
+    }
+
+    return lang('wakes when mentioned');
+}
+
+/**
+ * An agent's own picture for the panel: a web address or a path of the
+ * site, else '' and the screen draws the robot tile. Pure.
+ *
+ * @param string $avatar ws_agents.avatar
+ * @return string
+ */
+function ws_channel_agent_avatar_url($avatar)
+{
+    $avatar = trim((string) $avatar);
+
+    if (preg_match('~^(https://|/(?!/))[^\s"\'<>]+$~i', $avatar)) {
+        return $avatar;
+    }
+
+    return '';
 }
 
 /**
@@ -103,15 +224,22 @@ function ws_channel_agents_panel_state($viewer, $channel)
 
     $rows = ws_channel_agents($channel['id']);
     $in = array();
+    $agents = array();
 
     foreach ($rows as $row) {
         $in[] = (int) $row['agent']['id'];
+        $agents[] = $row['agent'];
     }
+
+    $now = time();
+    // One grouped read of the requests for every agent of the channel, for
+    // the card's working and waiting states.
+    $counts = ws_agent_request_counts($agents, $now);
 
     return array(
         'ready'    => true,
-        'agents'   => array_map(function ($row) {
-            return ws_channel_agent_panel_row($row);
+        'agents'   => array_map(function ($row) use ($now, $counts) {
+            return ws_channel_agent_panel_row($row, $now, $counts);
         }, $rows),
         'addable'  => ws_channel_agents_addable(ws_agents_list(), $in),
         'can_edit' => (ws_channel_agent_add_problem($viewer, $channel) === ''),
@@ -226,28 +354,38 @@ function ws_channel_agents_js_strings()
     return array(
         'cha_title'       => lang('Agents in this channel'),
         'cha_not_seen'    => lang('Not seen'),
-        'cha_help'        => lang('An agent added here is woken in this channel by the rule you choose. Adding it changes only when it wakes, never what it may read.'),
+        'cha_help'        => lang('Open an agent to choose when it is woken here and what it may do by itself. Adding it changes only when it wakes, never what it may read.'),
         'cha_empty'       => lang('No agent in this channel yet.'),
         'cha_add'         => lang('Add an agent'),
         'cha_choose'      => lang('Choose an agent'),
         'cha_remove'      => lang('Remove from the channel'),
         'cha_remove_ask'  => lang('Take this agent out of the channel? It is no longer woken here.'),
-        'cha_save'        => lang('Save'),
+        'cha_save'        => lang('Save this agent'),
         'cha_saved'       => lang('Saved.'),
         'cha_paused'      => lang('Paused'),
-        'cha_wake'        => lang('Wakes on'),
-        'cha_wake_mention' => lang('A mention of its handle'),
-        'cha_wake_all'    => lang('Every message'),
-        'cha_wake_prefix' => lang('Messages starting with a prefix'),
-        'cha_wake_replies' => lang('Replies to its messages'),
-        'cha_prefix'      => lang('Prefix to wake on'),
-        'cha_prefix_help' => lang('Such as [ci], up to 32 characters.'),
-        'cha_tier'        => lang('Tier'),
-        'cha_tier_1'      => lang('1: reading and messages'),
-        'cha_tier_2'      => lang('2: changes that can be undone'),
-        'cha_tier_3'      => lang('3: changes that cannot be undone'),
-        'cha_tier_help'   => lang('Only the owner of the channel changes the tier.'),
-        'cha_loop_guard'  => lang('Add the loop-guard text to its requests'),
+        'cha_state_working' => lang('Working on a request'),
+        'cha_state_waiting' => lang('A request is waiting'),
+        'cha_state_waiting_n' => lang('{1} requests are waiting'),
+        'cha_wake'        => lang('When is it woken?'),
+        'cha_wake_mention' => lang('When its name is written'),
+        'cha_wake_all'    => lang('On every message'),
+        'cha_wake_prefix' => lang('On messages starting with a word'),
+        'cha_wake_replies' => lang('On answers to its messages'),
+        'cha_wake_mention_help' => lang('It reads a message only when someone writes @{1} in it.'),
+        'cha_wake_all_help' => lang('Every message written here wakes it, which can be many requests in a busy channel. Writing its name always wakes it too.'),
+        'cha_wake_prefix_help' => lang('A message that starts with the word below wakes it. Writing its name always wakes it too.'),
+        'cha_wake_replies_help' => lang('An answer to one of its messages wakes it, also when another agent writes it. Writing its name always wakes it too.'),
+        'cha_prefix'      => lang('The word a message starts with'),
+        'cha_tier'        => lang('What may it do by itself?'),
+        'cha_tier_1'      => lang('Only read and write messages'),
+        'cha_tier_1_help' => lang('Every change of a record waits for a person\'s approval.'),
+        'cha_tier_2'      => lang('Make changes that can be undone'),
+        'cha_tier_2_help' => lang('It applies changes that can be undone, for seven days; the rest wait for approval.'),
+        'cha_tier_3'      => lang('Make every change'),
+        'cha_tier_3_help' => lang('It applies every change, deletions and money included; these cannot be undone.'),
+        'cha_tier_help'   => lang('Only the manager of the channel changes what it may do by itself.'),
+        'cha_loop_guard'  => lang('Stop long agent conversations'),
+        'cha_loop_guard_help' => lang('Agents answering one another are told to stop after a few turns and wait for a person.'),
         'cha_readonly'    => lang('Only whoever may post here, and in a private channel only a member, changes the agents.'),
         // Channel info and the channel head: people and agents.
         'cm_people'       => lang('People here'),
@@ -369,19 +507,7 @@ function ws_channel_member_agent($row, $now, $counts = null)
         $state = ((string) ($agent['door_error'] ?? '') !== '') ? 'late' : 'off';
     }
 
-    switch ((string) ($row['wake_rule'] ?? 'mention')) {
-        case 'all':
-            $wake = lang('wakes on every message');
-            break;
-        case 'prefix':
-            $wake = lang(array('string' => 'wakes on {var:1}', 'vars' => (string) ($row['wake_prefix'] ?? '')));
-            break;
-        case 'replies':
-            $wake = lang('wakes on replies to it');
-            break;
-        default:
-            $wake = lang('wakes when mentioned');
-    }
+    $wake = ws_channel_agent_wake_words($row['wake_rule'] ?? 'mention', $row['wake_prefix'] ?? '');
 
     $out = array(
         'id'         => (int) ($agent['id'] ?? 0),

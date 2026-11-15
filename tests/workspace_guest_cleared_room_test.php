@@ -112,3 +112,54 @@ function test_ws_guest_canvas_view_puts_the_version_into_the_address()
 	pg_assert_same(array('canvas' => true, 'pending' => false, 'v' => '4s'), ws_guest_canvas_view(array('version_no' => 4, 'pending' => false, 'server' => true)));
 	pg_assert_same(array('canvas' => true, 'pending' => false, 'v' => '5'), ws_guest_canvas_view(array('version_no' => 5, 'pending' => false, 'server' => false)));
 }
+
+function test_ws_guest_page_reached_runs_the_page_of_an_agents_line()
+{
+	pg_assert_same(true, ws_guest_page_reached(ws_guest_file_test_row(), 7, 100, array(9), true, 2048, 512000));
+	pg_assert_same(true, ws_guest_page_reached(ws_guest_file_test_row(), 7, 100, array(9), true, 512000, 512000));
+}
+
+function test_ws_guest_page_reached_refuses_a_file_that_is_no_page()
+{
+	pg_assert_same(false, ws_guest_page_reached(ws_guest_file_test_row(), 7, 100, array(9), false, 2048, 512000));
+}
+
+function test_ws_guest_page_reached_refuses_a_hidden_applications_page()
+{
+	pg_assert_same(false, ws_guest_page_reached(ws_guest_file_test_row(array('sender_id' => 4)), 7, 100, array(9), true, 2048, 512000));
+	pg_assert_same(false, ws_guest_page_reached(ws_guest_file_test_row(), 7, 100, array(), true, 2048, 512000));
+}
+
+function test_ws_guest_page_reached_refuses_a_page_of_another_channel()
+{
+	pg_assert_same(false, ws_guest_page_reached(ws_guest_file_test_row(array('channel_id' => 8)), 7, 100, array(9), true, 2048, 512000));
+}
+
+function test_ws_guest_page_reached_refuses_a_page_of_an_earlier_conversation()
+{
+	pg_assert_same(false, ws_guest_page_reached(ws_guest_file_test_row(array('id' => 100)), 7, 100, array(9), true, 2048, 512000));
+}
+
+function test_ws_guest_page_reached_refuses_a_deleted_line()
+{
+	pg_assert_same(false, ws_guest_page_reached(ws_guest_file_test_row(array('deleted_at' => 3)), 7, 100, array(9), true, 2048, 512000));
+}
+
+function test_ws_guest_page_reached_refuses_a_person_or_a_guest_carrying_a_page()
+{
+	// Only the page routes keep a page, under an application's line.
+	pg_assert_same(false, ws_guest_page_reached(ws_guest_file_test_row(array('sender_kind' => 'user', 'sender_id' => 3)), 7, 100, array(9), true, 2048, 512000));
+	pg_assert_same(false, ws_guest_page_reached(ws_guest_file_test_row(array('sender_kind' => 'guest', 'sender_id' => 2)), 7, 100, array(9), true, 2048, 512000));
+}
+
+function test_ws_guest_page_reached_refuses_a_page_over_the_frames_bound_or_empty()
+{
+	pg_assert_same(false, ws_guest_page_reached(ws_guest_file_test_row(), 7, 100, array(9), true, 512001, 512000));
+	pg_assert_same(false, ws_guest_page_reached(ws_guest_file_test_row(), 7, 100, array(9), true, 0, 512000));
+}
+
+function test_ws_guest_page_reached_refuses_no_row()
+{
+	pg_assert_same(false, ws_guest_page_reached(null, 7, 100, array(9), true, 2048, 512000));
+	pg_assert_same(false, ws_guest_page_reached(false, 7, 100, array(9), true, 2048, 512000));
+}

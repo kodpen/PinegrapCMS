@@ -69,11 +69,11 @@ function test_marketplace_products_status_text_uses_emphasis_inks()
 {
 	$style = marketplace_products_names_test_style();
 
-	foreach (array('.mpp-stat.good b', '.mpp-score.sure b, .mpp-score.matched', '.mpp-sure-tag') as $selector) {
+	foreach (array('.mpp-score.sure b, .mpp-score.matched', '.mpp-sure-tag') as $selector) {
 		pg_assert_true((bool) preg_match('/' . preg_quote($selector, '/') . ' \{[^}]*color: var\(--pg-success-fg-emphasis\)/', $style), $selector . ' in the success ink');
 	}
 
-	foreach (array('.mpp-stat.bad b', '.mpp-err') as $selector) {
+	foreach (array('.mpp-err') as $selector) {
 		pg_assert_true((bool) preg_match('/' . preg_quote($selector, '/') . ' \{[^}]*color: var\(--pg-danger-fg-emphasis\)/', $style), $selector . ' in the danger ink');
 	}
 

@@ -4,7 +4,8 @@
  *
  * Tests for what a channel shows about one of its agents (agent_card.php):
  * the state its dot draws, the usage mark, the request counts, the light
- * brief on a member row, the panel action's name, and the same facts in the API's channel-agent row.
+ * brief on a member row, the panel action's name and its route, and the same
+ * facts in the API's channel-agent row.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -18,6 +19,7 @@ if (!defined('PG_TEST_RUNNER')) {
 
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_agents.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/panel/actions.php');
 
 function test_workspace_agent_card_state_order()
 {
@@ -105,6 +107,15 @@ function test_workspace_agent_card_brief_on_member_row()
 function test_workspace_agent_card_action()
 {
 	pg_assert_true(in_array('ws_agent_card', ws_channel_agents_actions(), true), 'the card is a panel action of the channel');
+
+	// An action api.php's table does not list is answered "Invalid action."
+	// before the module sees it: the card then never got its facts.
+	foreach (ws_channel_agents_actions() as $action) {
+		$entry = pg_panel_action($action);
+
+		pg_assert_true(is_array($entry), 'routed by the panel: ' . $action);
+		pg_assert_same('pg_panel_ws', is_array($entry) ? $entry['handler'] : '', 'handled by the workspace: ' . $action);
+	}
 }
 
 // One "function name(" of workspace.js up to the closing brace at its own

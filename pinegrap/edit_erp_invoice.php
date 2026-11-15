@@ -1621,21 +1621,21 @@ pg_page_shell([
                 <div class="card-body">
                     <div class="row">
                         <div class="col-12 sm:col-3 my-3">
-                            <div class="form-label fg-secondary">' . lang('Invoice Total') . '</div>
-                            <div class="h5 mb-0">' . $money((int) $invoice['grand_total']) . '</div>
-                            ' . ($is_foreign ? '<div class="fg-secondary small">' . h(erp_money_out((int) $invoice['grand_total_base'])) . '</div>' : '') . '
+                            <div class="pg-figure-label">' . lang('Invoice Total') . '</div>
+                            <div class="pg-figure-value">' . $money((int) $invoice['grand_total']) . '</div>
+                            ' . ($is_foreign ? '<div class="pg-figure-note">' . h(erp_money_out((int) $invoice['grand_total_base'])) . '</div>' : '') . '
                         </div>
                         <div class="col-12 sm:col-3 my-3">
-                            <div class="form-label fg-secondary">' . lang('Paid') . '</div>
-                            <div class="h5 mb-0 fg-success">' . $money((int) $invoice['paid_total']) . '</div>
+                            <div class="pg-figure-label">' . lang('Paid') . '</div>
+                            <div class="pg-figure-value fg-success">' . $money((int) $invoice['paid_total']) . '</div>
                         </div>
                         <div class="col-12 sm:col-3 my-3">
-                            <div class="form-label fg-secondary">' . lang('Returned') . '</div>
-                            <div class="h5 mb-0 ' . (($returned_total > 0) ? 'fg-warning' : 'fg-secondary') . '">' . $money($returned_total) . '</div>
+                            <div class="pg-figure-label">' . lang('Returned') . '</div>
+                            <div class="pg-figure-value ' . (($returned_total > 0) ? 'fg-warning' : 'fg-secondary') . '">' . $money($returned_total) . '</div>
                         </div>
                         <div class="col-12 sm:col-3 my-3">
-                            <div class="form-label fg-secondary">' . lang('Outstanding') . '</div>
-                            <div class="h5 mb-0 ' . (($open_amount > 0) ? 'fg-danger' : 'fg-secondary') . '">' . $money($open_amount) . '</div>
+                            <div class="pg-figure-label">' . lang('Outstanding') . '</div>
+                            <div class="pg-figure-value ' . (($open_amount > 0) ? 'fg-danger' : 'fg-secondary') . '">' . $money($open_amount) . '</div>
                         </div>
                     </div>
                     ' . $output_settlements . '

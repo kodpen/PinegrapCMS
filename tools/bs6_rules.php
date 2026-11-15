@@ -798,6 +798,7 @@ function bs6_site_functions()
 		'includes/fn/custom_form.php' => array('pg_cf_validation_script'),
 		'includes/fn/custom_form_steps.php' => array('_pg_cf_steps_progress_html', '_pg_cf_steps_nav_html', 'pg_cf_steps_script'),
 		'includes/fn/design_themes.php' => array('pg_design_looks'),
+		'includes/fn/designer_messages.php' => array('pg_messages_alert_html'),
 		'includes/fn/form_payment_step.php' => array('pg_form_payment_render', 'pg_form_payment_retry_html', 'pg_form_payment_step_html'),
 		'includes/fn/passkeys.php' => array('pg_passkey_account_section', 'pg_passkey_add_form_script'),
 		'includes/fn/payments.php' => array('pg_payment_box'),

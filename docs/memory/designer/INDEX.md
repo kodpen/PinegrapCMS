@@ -76,6 +76,7 @@
 - comments-widget-form.md: The comments widget's add-comment form: bindings, slots, server sections and their fallbacks, binding-off twins, Messages, frontend init
 - comments-widget-hand-off.md: How the comments widget and the classic comments block share a page: the page type left to the classic block, the per-pass claim record, what a claim silences, lists that never claim
 - comments-widget-item-threads.md: The comments widget on catalog, catalog detail and calendar event view pages (slices 20a, 20b): the item in the address, its check, the product review rules, the item's flags and name, the canvas
+- comments-widget-open-slots.md: Comments widget slots opened (CB2, #9716): Pagination as page links a designer builds, shared with Search results; CAPTCHA, star rating, publish options drawn true [decision: here]
 - comments-widget-pages.md: Pages and permalinks of the comments widget: per_page units, ?comments_page and ?comment=, the pagination section and fallback, the URL builders, comment=<id> in the redirect, mails and panel
 - comments-widget-panel.md: The comments widget's panel: page comment settings shared with the fixed block, display options, inner-node shortcut, the 15 page settings (pg_comment_editor_keys), save, templates
 - comments-widget-preview.md: The comments widget in the designer's Preview: the editor's unsaved comment settings, the page id and ?r= it draws with, an unsaved page, lists of recent comments, anonymous background renders
@@ -486,6 +487,7 @@
 - member-widgets-tokens-and-fields.md: Membership widget tokens/sections, Google rules, core vs contacts-column fields, login-screen redirect, register-link tri-state, reset screens, page-name box. [decision: decisions-made-product-13.md]
 - menu-sequence-widget.md: Menu Sequence widget (menu_sequence_region, #1817): the classic <menu_sequence> region in the designer; reading order of a menu's pages, previous and next links, wrap to the first, tokens, flags.
 - menu-widget.md: Menu widget (menu_region, #1781): a classic menu region in the designer; items stay in the menu screen; menu.children lists, row tokens, current item, access, window, edit chip, gaps.
+- messages-node-settings.md: The Messages node's settings (Alert look, Dismiss button) and its sample error on the designer canvas; PHP and JS twins, placeholder form, defaults that keep a published page's output (CB5, #9723)
 - migration-carries-designs.md: Migration screen Designs switch (LD4): get_designs via the template export, managed files, install with target ids, skipped bin/drafts/Workspace folders, what stays behind [decision: decisions-made-product-21.md]
 - multi-page-design-model.md: Data model of multi-page visual designer designs (style + page_style, page_tree_json), tree-reading helpers, design-page detection, start screen, recycle bin rules.
 - multi-page-designer-editor.md: Editor screen code, save flow, JSON api.php body, the dirty check and unchanged pages, tab switching/menu/rename DOM rules, toolbar overflow, palette order and designer texts.

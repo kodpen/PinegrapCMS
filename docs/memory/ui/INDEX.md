@@ -397,9 +397,12 @@
 - look-edit-screens-wrapped-cards.md: Add and edit screens in look A: a card takes the look card only straight in its column; how wrapped cards, forms and full-width cards are handled
 - look-edit-screens.md: Add and edit screens in look A (DL5c, #8934): the edit width on every add/edit screen, columns 1300 and 376 from the shared classes, look cards and titles, the floating save bar; what is not done yet
 - look-field-widths.md: Field widths of the add and edit screens in look A (DL5c, #9658): the 16 px field grid, the span per field kind from md up, pg-field-span-N for a field alone in its row, who sets which screen's spans [decision: here]
+- look-figure-cards.md: Look A's figure cards (SH4, #9725): .pg-figures, .pg-figure, -label, -value, -note as the report's figure; Orders, Commissions, Edit Invoice Settlement, Receipt amount, Marketplace Products hero
+- look-list-title-settings-tile.md: Look A shared recipes (SH9, #9726): a list screen's count beside its title, a list's filters as a segmented control (pg_list_seg_filters()), the 34 px icon tile of a settings row (pg_settings_tile()) [decision: here]
 - look-mapping-grids.md: Column-mapping grids (one small select per column of an uploaded file) keep their own narrow columns in look A; the field widths of add and edit screens are for a record's fields [decision: here]
 - look-order-screens.md: The order screens in look A (C1, #9681): View Order and View Return on the edit measure, cards that take pg-card, order lines as a card, status values, field widths
 - look-page-widths.md: Look A's page widths: edit screens centred at 1700 px (1300 + 24 + 376), lists as wide as their columns (1700 px to the window, details panel added), held while searching; tokens, rail [decision: decisions-made-panel-7.md, decisions-made-panel-8.md, decisions-made-product-48.md]
+- look-people-screens.md: Users, contacts, privacy and campaign screens in look A (S2, #9692): titles, group labels, field spans per field, campaign cards unwrapped, what stayed [decision: here]
 - look-report-erp-screens.md: ERP Dashboard, Cash Flow, Profit and Aging on look A's report recipes (#9696): server-drawn figure cards, the tools rows, the profit chart on the report view, what stayed [decision: here]
 - look-report-screens.md: Report screens in look A (DL5e, #8981): order, visitor, shipping and ERP tax reports; head, strip, tools row, table frame, drawer, the choices made and what is not done
 - look-screen-widths.md: Root panel screens outside the look's widths (no pg-measure-edit, -list or -report, or a container of their own) on 2026-11-13, and the PR that took each (#9230, #9330, #9249) [decision: decisions-made-panel-7.md, decisions-made-panel-8.md]
@@ -554,6 +557,7 @@
 - referral-source-shared-form.md: add_referral_source.php and edit_referral_source.php draw the referral source columns and save bar and read its posted values through includes/forms/referral_source_form.php; what each screen keeps
 - report-date-range-badge.md: The order and visitor reports' date range badge under the period controls: two get_absolute_time() <time> elements printed as markup, never through h() (#9042)
 - report-dynamic-date-filter.md: Order and Visitor reports: a 'Day(s) Ago' filter on a date field compares a bare Y-m-d date through pg_report_dynamic_value() (#3725)
+- report-period-text.md: The period beside the calendar icon on the order, visitor, shipping and ERP VAT report screens: one shape, pg_report_view_range(), the panel's date text and an en dash (RS8c)
 - report-screen-controls.md: Report and panel controls on Bootstrap 6: period changers, named arrows, labelled layout and date selects (#2716), calendar controls, comment rating, accessibility tables (#2900)
 - report-settings-drawer.md: The order and visitor reports' Report settings drawer (#8709, #8764): the form inside it, when it opens by itself, Close, no Edit / Cancel Edit pair
 - report-table-rows.md: Order, visitor and shipping report tables: group names and Grand Total as row headers, detail rows and product names as links, percent figures through '{var:1}%' (Search Console too), named yes marks

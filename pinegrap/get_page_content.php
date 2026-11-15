@@ -744,7 +744,11 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     // ── Messages placeholder expansion ─────────────────────────────────────────
     // Visual-designer `messages` content nodes baked into style_code as
     // `<!--pg-messages-placeholder-->`. Replace with live session messages.
-    if (strpos($content, '<!--pg-messages-placeholder-->') !== false) {
+    // A placeholder may carry the node's alert look and dismiss button
+    // (`<!--pg-messages-placeholder:<look>:<0|1>-->`, pg_messages_marker_settings()).
+    if (strpos($content, '<!--pg-messages-placeholder') !== false
+        && preg_match('/<!--pg-messages-placeholder(?::[a-z]*:[01])?-->/', $content, $pg_messages_marker)) {
+        $pg_messages_set  = pg_messages_marker_settings($pg_messages_marker[0]);
         $pg_messages_html = '';
         // An e-mail body never shows (or uses up) the visitor's messages.
         if (!$email && !empty($_SESSION['software']['liveforms']) && is_array($_SESSION['software']['liveforms'])) {
@@ -777,12 +781,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                         }
                     }
                     if ($err_count > 0) {
-                        $pg_messages_html .=
-                            '<div class="software_error alert alert-danger alert-dismissible show" role="alert">' .
-                                '<button type="button" style="display:none;" class="btn-close no-popover" data-bs-dismiss="alert" aria-label="' . (function_exists('lang') ? h(lang('Close')) : 'Close') . '"></button>' .
-                                '<h5 class="alert-heading description">' . (function_exists('lang') ? lang('An error occurred') : 'An error occurred') . ':</h5>' .
-                                $err_lines .
-                            '</div>';
+                        $pg_messages_html .= pg_messages_alert_html('error', $err_lines, $pg_messages_set);
                     }
                     // Notices and warnings are plain string arrays at the index root.
                     if (!empty($lf_data['notices']) && is_array($lf_data['notices'])) {
@@ -791,11 +790,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                             $ntc_lines .= '<p class="notice">' . pg_defuse_page_message($ntc) . '</p>';
                         }
                         if ($ntc_lines !== '') {
-                            $pg_messages_html .=
-                                '<div class="software_notice alert alert-success alert-dismissible show" role="alert">' .
-                                    '<button type="button" style="display:none;" class="btn-close no-popover" data-bs-dismiss="alert" aria-label="' . (function_exists('lang') ? h(lang('Close')) : 'Close') . '"></button>' .
-                                    $ntc_lines .
-                                '</div>';
+                            $pg_messages_html .= pg_messages_alert_html('notice', $ntc_lines, $pg_messages_set);
                         }
                     }
                     if (!empty($lf_data['warnings']) && is_array($lf_data['warnings'])) {
@@ -804,11 +799,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                             $wrn_lines .= '<p class="warning">' . pg_defuse_page_message($wrn) . '</p>';
                         }
                         if ($wrn_lines !== '') {
-                            $pg_messages_html .=
-                                '<div class="software_warning alert alert-warning alert-dismissible show" role="alert">' .
-                                    '<button type="button" style="display:none;" class="btn-close no-popover" data-bs-dismiss="alert" aria-label="' . (function_exists('lang') ? h(lang('Close')) : 'Close') . '"></button>' .
-                                    $wrn_lines .
-                                '</div>';
+                            $pg_messages_html .= pg_messages_alert_html('warning', $wrn_lines, $pg_messages_set);
                         }
                     }
                 }
@@ -821,8 +812,8 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         // messages region. Stripping the remaining markers prevents the same
         // alert from showing up multiple times when several widgets sit on
         // the same page.
-        $content = preg_replace('/<!--pg-messages-placeholder-->/', pg_regex_replacement($pg_messages_html), $content, 1);
-        $content = str_replace('<!--pg-messages-placeholder-->', '', $content);
+        $content = preg_replace('/<!--pg-messages-placeholder(?::[a-z]*:[01])?-->/', pg_regex_replacement($pg_messages_html), $content, 1);
+        $content = preg_replace('/<!--pg-messages-placeholder(?::[a-z]*:[01])?-->/', '', $content);
     }
 
     // Find all designer regions and replace them with their content.

@@ -279,10 +279,11 @@ function test_list_period_range_from_dates()
 function test_list_period_shipping_report_heading()
 {
 	// It printed date('j F, Y'): English month names and a comma after the
-	// month, and the text could not wrap at 375 px.
+	// month, and the text could not wrap at 375 px. Since RS8c it is the
+	// panel's date text, the same shape as the other report screens.
 	$source = file_get_contents(dirname(__DIR__) . '/pinegrap/view_shipping_report.php');
 
-	pg_assert_contains('pg_list_period_heading(pg_list_period_range_from_dates(', $source, 'the period in the panel language and the date order');
+	pg_assert_contains('$output_date_range = pg_report_view_range(', $source, 'the period in the panel language, one shape on every report');
 	pg_assert_false(strpos($source, '$month_and_day_format . \', Y\'') !== false, 'no English date() of its own');
 	pg_assert_false(strpos($source, 'text-nowrap">\' . $output_date_range') !== false, 'the period text can wrap');
 }

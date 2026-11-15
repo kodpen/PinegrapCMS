@@ -12526,6 +12526,167 @@ body.workspace .ws-shell-main > #button_bar {
 .ws-agent-stack {
   margin-left: .45rem;
 }
+/* Channel settings' "Agents in this channel": one compact row an agent in
+   an inner card (look A), which opens its settings under it, one agent at
+   a time; the row's own classes only place things. */
+.ws-cha-intro {
+  margin: 0 0 12px;
+}
+.ws-cha-list {
+  overflow: hidden;
+}
+.ws-cha-item + .ws-cha-item {
+  border-top: 1px solid var(--pg-border-color-translucent);
+}
+.ws-cha-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 16px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: start;
+}
+.ws-cha-head:hover {
+  background: var(--pg-surface-hi);
+}
+.ws-cha-head:focus-visible {
+  outline: 0;
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--pg-accent) 50%, transparent);
+}
+.ws-cha-face {
+  position: relative;
+  flex: none;
+  overflow: hidden;
+}
+.ws-cha-picture {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.ws-cha-main {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  gap: 2px;
+  min-width: 0;
+}
+.ws-cha-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  min-width: 0;
+}
+.ws-cha-name > .pg-list-row-title {
+  flex: 0 0 auto;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ws-cha-state {
+  flex: none;
+  max-width: 40%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ws-cha-chevron {
+  flex: none;
+  color: var(--pg-fg-3);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .ws-cha-chevron {
+    transition: transform 0.15s ease;
+  }
+}
+.ws-cha-item.is-open .ws-cha-chevron {
+  transform: rotate(180deg);
+}
+.ws-cha-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 4px 16px 16px 62px;
+}
+.ws-cha-choices {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.ws-cha-choice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 6px 0;
+  cursor: pointer;
+}
+.ws-cha-radio {
+  flex: none;
+  margin-top: 3px;
+  accent-color: var(--pg-accent);
+}
+.ws-cha-choice-text,
+.ws-cha-switch-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.ws-cha-choice-title {
+  font-weight: 550;
+}
+.ws-cha-tier-note {
+  margin-top: -10px;
+}
+.ws-cha-switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.ws-cha-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.ws-cha-remove {
+  margin-inline-end: auto;
+  color: var(--pg-tone-rose-text);
+}
+.ws-cha-add {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+@media (max-width: 575.98px) {
+  .ws-cha-head {
+    padding: 12px;
+  }
+  .ws-cha-body {
+    padding: 4px 12px 16px;
+  }
+  /* The state's pill goes under the name and summary, in full. */
+  .ws-cha-head {
+    flex-wrap: wrap;
+  }
+  .ws-cha-main {
+    flex-basis: calc(100% - 92px);
+  }
+  .ws-cha-chevron {
+    order: 2;
+  }
+  .ws-cha-state {
+    order: 3;
+    max-width: calc(100% - 52px);
+    margin-inline-start: 52px;
+  }
+}
 /* The agent card (workspace.js agentCardShow()): a floating .pg-card on
    the float surface, placed by script; boxes of rows, one bar a usage
    window, amber from WS_AGENT_USAGE_HIGH. */
@@ -12650,6 +12811,20 @@ b.ws-agent-card-anchor:focus-visible {
   margin-top: .75rem;
 }
 .ws-agent-card-mention {
+  margin-top: .75rem;
+}
+/* A person's card: departments one under another at the row's end, then
+   Message and Edit the user side by side. */
+.ws-person-card-departments {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  text-align: right;
+}
+.ws-person-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
   margin-top: .75rem;
 }
 .ws-info-badge {
@@ -25288,6 +25463,12 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
   .pg-list-table-grid > tbody > tr > td:is(.text-end, [data-pg-col]) {
     text-align: start !important;
   }
+  /* The row's buttons keep the label column too: the wide rule's 10 px
+     sides would start them at the left edge, over their "Action" label.
+     Offers is left as it is drawn today: its look waits for the owner. */
+  .pg-list-table:not([data-pg-list-table="view_offers"]) .pg-list-table-grid > tbody > tr > td[data-pg-col="actions"] {
+    padding-inline: calc(14px + var(--pg-list-table-label) + 0.75rem) 14px;
+  }
   .pg-list-table-grid > tbody > tr > td::before {
     content: attr(data-pg-label);
     position: absolute;
@@ -26854,6 +27035,9 @@ select.pg-list-table-field option.private {
   --pg-text-status-title: 0.9375rem;
   --pg-text-section-title: 1.0625rem;
   --pg-text-screen-title: 1.5rem;
+  /* A figure's value (the report's figure, a figure card), and on a phone. */
+  --pg-text-figure: 1.625rem;
+  --pg-text-figure-sm: 1.3125rem;
   --pg-weight-regular: var(--bs-font-weight-normal);
   --pg-weight-medium: var(--bs-font-weight-medium);
   --pg-weight-strong: 550;
@@ -28471,6 +28655,18 @@ body.erp_aging .pg-report-table th[scope="row"] {
   color: var(--pg-fg-2);
 }
 
+/* A note over the figures (the tax report's orders without an invoice):
+   the alert's tone in body text, its icon beside the words. */
+.pg-report-note {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin: 0 0 16px;
+  padding: 14px 18px;
+  font-size: var(--pg-text-base);
+  line-height: 1.45;
+}
+
 /* The table's frame: a 48 px head (the levels, a note), then the table. */
 .pg-report-frame {
   min-width: 0;
@@ -28582,6 +28778,20 @@ body.erp_aging .pg-report-table th[scope="row"] {
 .pg-report-table > tfoot > tr:last-child > * {
   border-bottom: 0;
 }
+/* The shipping report's day columns: fourteen of them fit at 1440 px;
+   a longer period scrolls inside the frame. */
+.pg-report-table .pg-report-day {
+  padding: 0 6px;
+  min-width: 3.25rem;
+}
+/* The frame's foot: Show all under a table that lists its first rows. */
+.pg-report-frame-foot:not([hidden]) {
+  display: flex;
+  justify-content: center;
+  padding: 12px 18px;
+  border-top: 1px solid var(--pg-border-color-translucent);
+}
+
 /* A phone: the first column (a row's name, after its level's indent)
    stays in place while the figures scroll under it, at most half the
    width, its words wrapping; the cell is drawn opaque, its row's tint
@@ -29395,6 +29605,104 @@ textarea.pg-campaign-text {
 }
 
 /* ==========================================================================
+   Look A: figure cards.
+   A figure outside the report block, drawn as the report's figure is
+   (".pg-report-fig" in "Look A: report screens"): a label, the value in the
+   Display cut with tabular digits, a note under it. .pg-figures lays cards
+   out as the report does: four in a row, fewer share it, two on a phone.
+   The label, value and note also stand alone: a record's amount in a
+   status card, the figures inside a card, a hero's counts.
+   ========================================================================== */
+@layer custom {
+
+.pg-figures {
+  display: grid;
+  grid-template-columns: repeat(var(--pg-figures, 4), minmax(0, 1fr));
+  gap: 16px;
+  margin: 0 0 16px;
+}
+.pg-figure {
+  min-width: 0;
+  padding: 15px 18px 14px;
+}
+.pg-figure-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-size: var(--pg-text-2);
+  font-weight: var(--pg-weight-regular);
+  color: var(--pg-fg-2);
+}
+.pg-figure-value {
+  display: block;
+  margin: 7px 0 5px;
+  overflow: hidden;
+  font-size: var(--pg-text-figure);
+  font-weight: var(--pg-weight-title);
+  line-height: 1.2;
+  letter-spacing: var(--pg-tracking-screen-title);
+  font-variation-settings: var(--pg-opsz-display);
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* A value above its label (a hero's counts) starts the block. */
+.pg-figure-value:first-child {
+  margin-top: 0;
+}
+.pg-figure-value:last-child {
+  margin-bottom: 0;
+}
+.pg-figure-value > small {
+  font-size: var(--pg-text-status-title);
+  font-weight: var(--pg-weight-strong);
+  letter-spacing: 0;
+  color: var(--pg-fg-2);
+}
+.pg-figure-value.is-good {
+  color: var(--pg-success-fg-emphasis);
+}
+.pg-figure-value.is-bad {
+  color: var(--pg-danger-fg-emphasis);
+}
+.pg-figure-note {
+  margin: 0;
+  font-size: var(--pg-text-meta);
+  color: var(--pg-fg-3);
+}
+.pg-figure-note.is-bad {
+  color: var(--pg-tone-rose-text);
+}
+@media (max-width: 991.98px) {
+  .pg-figures {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
+  }
+}
+/* A phone: two smaller cards a row, an odd last card the whole row. */
+@media (max-width: 575.98px) {
+  .pg-figures {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .pg-figure {
+    padding: 12px 14px 11px;
+  }
+  .pg-figure-value {
+    margin: 5px 0 3px;
+    font-size: var(--pg-text-figure-sm);
+  }
+  .pg-figure-value > small {
+    font-size: var(--pg-text-2);
+  }
+  .pg-figures > .pg-figure:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+}
+
+}
+
+/* ==========================================================================
    Look A: WhatsApp template designer.
    whatsapp_template.php as drawn in the plan's template-designer.html: the
    stages line, the cards of the form column, the message box with its
@@ -29917,6 +30225,112 @@ button.pg-var-chip:focus-visible {
 }
 .pg-wa-editor:focus-within {
   box-shadow: inset 0 0 0 1px var(--pg-accent), 0 0 0 3px color-mix(in srgb, var(--pg-accent) 18%, transparent);
+}
+
+}
+
+/* ==========================================================================
+   Look A: list title and settings tile.
+   A list screen's count beside its title in the header (written by the
+   list table driver, assets/js/pg_list_table.js), a list's filters as a
+   segmented control (pg_list_seg_filters()), and the 34 px icon tile at a
+   settings row's left (pg_settings_tile(), includes/fn/look_list.php).
+   ========================================================================== */
+@layer custom {
+
+/* The count sits on the title's line, in the third text colour; the
+   description keeps the line under both. Only the title gives up its width
+   (ellipsis), never the count. A phone's header has room for the title
+   alone, so the count is left out there. */
+#header .pg-navhead:has(> .pg-navhead-count) {
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  align-content: center;
+  align-items: baseline;
+  column-gap: 8px;
+}
+#header .pg-navhead:has(> .pg-navhead-count) > .pg-navhead-title {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+#header .pg-navhead:has(> .pg-navhead-count) > .pg-navhead-desc {
+  flex: 1 0 100%;
+}
+#header .pg-navhead-count {
+  flex: none;
+  color: var(--pg-fg-3);
+  font-size: var(--pg-text-meta);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+@media (max-width: 575.98px) {
+  #header .pg-navhead-count {
+    display: none;
+  }
+}
+
+/* A list's segmented filters scroll sideways on a narrow screen instead of
+   wrapping into a second row of segments. */
+.pg-list-seg {
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.pg-list-seg::-webkit-scrollbar {
+  display: none;
+}
+.pg-list-seg > .pg-seg-item {
+  flex: none;
+}
+
+/* Site Log: the range segments, the type segments and the range on screen
+   in one row over the list, as the sheet's tools row. */
+.pg-log-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.pg-log-range {
+  color: var(--pg-fg-3);
+  white-space: nowrap;
+}
+
+@supports selector(:has(*)) {
+
+  /* A settings row with a tile: the tile in a column of its own left of the
+     name and its description, centred on them, 13 px from the text (the
+     row's column gap, given back by the tile's margin). */
+  .pg-set-card .row > [class]:has(> .form-field > :is(input[type="checkbox"], .switch)) > .form-field:has(> .pg-set-tile),
+  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-adorn, > .form-range):has(> .pg-set-tile) {
+    grid-template-columns: 34px minmax(0, 1fr) minmax(7rem, 19rem);
+    grid-template-areas:
+      "pgtile pgname pgctrl"
+      "pgtile pgnote pgnote";
+  }
+  .pg-set-card .row > [class]:has(> .form-field > :is(input[type="checkbox"], .switch)) > .form-field > .pg-set-tile.pg-icon-tile,
+  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-adorn, > .form-range) > .pg-set-tile.pg-icon-tile {
+    grid-area: pgtile;
+    align-self: center;
+    margin-inline-end: calc(13px - 1.5rem);
+  }
+
+  @container (max-width: 34rem) {
+    .pg-set-card .row > [class]:has(> .form-field > :is(input[type="checkbox"], .switch)) > .form-field:has(> .pg-set-tile),
+    .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-adorn, > .form-range):has(> .pg-set-tile) {
+      grid-template-columns: 34px minmax(0, 1fr);
+      grid-template-areas:
+        "pgtile pgname"
+        "pgtile pgnote"
+        "pgtile pgctrl";
+    }
+    .pg-set-card .row > [class]:has(> .form-field > :is(input[type="checkbox"], .switch)) > .form-field > .pg-set-tile.pg-icon-tile,
+    .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-adorn, > .form-range) > .pg-set-tile.pg-icon-tile {
+      align-self: start;
+    }
+  }
 }
 
 }

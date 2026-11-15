@@ -30,11 +30,10 @@
 - design-template-own-looks-order.md: Order of the polishing round after Launch: every shipped template's family and pages steps, in which order, and where each template stands
 - design-template-own-looks.md: Plan (owner 2026-11-07): block families in their own source files (B0), Launch as an Apple-like product page (L1-L3), then a polishing round for every template
 - designer-closed-blocks-steps.md: Steps CB2 to CB10 of designer-closed-blocks, written from the owner's answer of 2026-11-15 (the proposed order): one block family per step, what each opens, which run side by side
-- designer-closed-blocks.md: Plan (owner 2026-11-13, #9076): components the designer canvas draws as one closed block are listed, then opened into element trees; CB0, CB1 done, CB2 on in designer-closed-blocks-steps.md
+- designer-closed-blocks.md: Plan (owner 2026-11-13, #9076): components the designer canvas draws as one closed block are listed, then opened into element trees; CB0, CB1 done, CB2 and on in designer-closed-blocks-steps.md
 - erp-edocument-leftovers.md: Open ERP work (e-document phase 3): Paraşüt send path, queue worker, İşbaşı live key, code lists, e-waybill, accountant sign-off; owner works on it locally
 - erp-parasut-open-work.md: Paraşüt work left after the rounds of 2026-10-23 to 26 (#1405-#1682): one live round when a new demo key comes, three decisions (#2440-#2442), the queue worker, incoming e-invoices; where to start
 - github-channel-connection.md: Plan (owner 2026-11-08): connect GitHub with OAuth from Settings › Connections, the site sets its own webhook on chosen repositories and writes CI, pull request and label lines into a channel
-- guest-page-content.md: Plan (owner 2026-11-15): the guest page shows an agent's role and model, agents' pictures and files, a canvas as its picture, the agent's task card and live pages, all read only; GP1 to GP3
 - kodpen-vendor-api-client-design-update.md: Update contract of plans/kodpen-vendor-api-client.md still to build: which keys verify (P5c) and P2's release workflow; the built check, pin, download and beta builds are in platform/
 - kodpen-vendor-api-client-steps.md: Open steps of plans/kodpen-vendor-api-client.md: P2 and P5c before the 2026.11.0 release branch, P9 (api2 client removal) in the next open version; claim as [plan:kodpen-vendor-api-client] P<n>
 - kodpen-vendor-api-client.md: Plan (owner 2026-10-25 to 27): the Kodpen API client is on (P8); left are P2 and P5c before the 2026.11.0 release branch and P9, the api2 client removal in the next open version; steps in -steps
@@ -60,7 +59,7 @@
 - panel-old-screens.md: Plan (owner 2026-11-15): the panel screens still drawn the old way move to look A; censuses done, LM2 the shared buttons, then one census group per step (C1 to C5, E1 to E5, S1 to S6)
 - php-error-log-clean.md: Plan (owner 2026-11-14): the PHP error log of the owner's dev machine read for Pinegrap's own deprecations and warnings on PHP 8.5, and their causes fixed; steps EL1 to EL6
 - poll-agent-questions.md: Plan (owner 2026-11-14): the poll gains described, pictured and linked options, "Other", taking back and asking again; a poll an agent asks is an agent question, answered in its box; AQ1 to AQ6
-- report-screens-steps.md: Steps of plans/report-screens.md: RS1-RS7 landed; RS8 the look (RS8a phone and shared parts, RS8b order and visitor, RS8c shipping and ERP VAT) and close-out
+- report-screens-steps.md: Steps of plans/report-screens.md: RS1-RS8c landed or done; the close-out (RS9) left
 - report-screens.md: Plan (owner 2026-11-11, #8673): the order, visitor, shipping and ERP VAT report screens drawn as the dashboard: figures, a chart, the table, settings in a drawer, ready reports; steps RS1-RS8
 - reverse-oauth-leftovers.md: Remaining outside-account connections (Meta, Business Profile, social posting, AI accounts), the connect.pinegrap.com broker and open decisions
 - storefront-api-acp-ucp.md: Storefront API design note: OpenAI ACP checkout_sessions mapped onto the storefront routes, the UCP manifest after checkout exists, MCP tools under the customer's consent, WAF agent verification
