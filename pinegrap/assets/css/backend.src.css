@@ -29758,8 +29758,10 @@ textarea.pg-campaign-text {
   padding: 12px 14px;
   border-top: 1px solid var(--pg-border-color-translucent);
 }
-/* A phone: the table scrolls sideways, so the sides are 8 px and a cell
-   keeps at least 6rem but the tight ones. */
+/* A phone: the table scrolls sideways, so the sides are 8 px, a cell
+   keeps at least 6rem but the tight ones, and a text cell (a name, a
+   short description) 10rem, so a three-word name wraps to two lines at
+   most and the rows do not grow. */
 @media (max-width: 575.98px) {
   .pg-embedded-table > thead > tr > th,
   .pg-embedded-table > tbody > tr > td {
@@ -29767,6 +29769,9 @@ textarea.pg-campaign-text {
   }
   .pg-embedded-table > tbody > tr > td:not(.pg-embedded-table-tight) {
     min-width: 6rem;
+  }
+  .pg-embedded-table > tbody > tr > td.pg-embedded-table-text {
+    min-width: 10rem;
   }
 }
 

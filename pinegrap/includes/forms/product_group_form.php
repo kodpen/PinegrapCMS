@@ -98,8 +98,8 @@ function pg_product_group_form_row($item, $in_group, $image_cell)
         '<td class="select-all text-start pg-embedded-table-tight">' . $checkbox . '</td>' .
         '<td class="text-start pg-embedded-table-tight"><a class="pg-icon-button pg-icon-button-sm" href="' . h($edit_url) . '" title="' . h(lang('Edit')) . '" aria-label="' . h(lang('Edit') . ': ' . $item['name']) . '"><i class="bi bi-pencil" aria-hidden="true"></i></a></td>' .
         $image_cell .
-        '<td class="chart_label ' . $status_class . '">' . h($item['name']) . (($item['enabled'] == 1) ? '' : pg_list_status_word(lang('Disabled'))) . '</td>' .
-        '<td class="' . $status_class . '">' . h($item['short_description']) . '</td>' .
+        '<td class="chart_label pg-embedded-table-text ' . $status_class . '">' . h($item['name']) . (($item['enabled'] == 1) ? '' : pg_list_status_word(lang('Disabled'))) . '</td>' .
+        '<td class="pg-embedded-table-text ' . $status_class . '">' . h($item['short_description']) . '</td>' .
         $price .
         '<td><input class="pg-input pg-input-sm pg-embedded-table-number" type="text" name="sort_order_' . h($item['type']) . '_' . $id . '" size="5" value="' . h((string) $item['sort_order']) . '" maxlength="5" inputmode="numeric" data-inputmask-alias="integer" data-inputmask-min="0" data-inputmask-max="65535" data-inputmask-placeholder="0" aria-label="' . h(lang('Sort Order') . ': ' . $item['name']) . '" /></td>' .
         '<td></td>' .

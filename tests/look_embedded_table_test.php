@@ -38,6 +38,7 @@ function test_embedded_table_block_reads_the_list_tokens()
 	pg_assert_contains('font-weight: var(--pg-weight-strong);', $block);
 	pg_assert_contains('color: var(--pg-fg-3);', $block);
 	pg_assert_contains('height: 52px;', $block, 'rows of the list table');
+	pg_assert_contains("td.pg-embedded-table-text {\n    min-width: 10rem;", $block, 'a text cell holds three words on two lines on a phone');
 	pg_assert_same(0, preg_match('/var\(--bs-/', $block), 'no --bs-* variable read');
 }
 
@@ -54,6 +55,7 @@ function test_product_row_draws_the_look_parts()
 	pg_assert_contains('class="pg-input pg-input-sm pg-embedded-table-number" type="text" name="sort_order_product_7"', $row);
 	pg_assert_contains('value="3"', $row);
 	pg_assert_contains('data-sort="12.5"', $row, 'price sorts by its number');
+	pg_assert_same(2, substr_count($row, 'pg-embedded-table-text'), 'name and short description are text cells');
 	pg_assert_false(strpos($row, 'style=') !== false, 'no inline style');
 	pg_assert_false(strpos($row, 'btn-data-control') !== false, 'no old row button');
 	pg_assert_false(strpos($row, 'Tea <b>') !== false, 'the name is escaped');
