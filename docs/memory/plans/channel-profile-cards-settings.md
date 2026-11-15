@@ -14,8 +14,9 @@ description: Step PF7b of channel-profile-cards (owner 2026-11-15): the Channel 
 
 ## What leaves Channel info?
 - Owner (2026-11-15, with a picture of Channel info): "kanal bilgisi ve kanal ayarları 2 ayrı menu ama kanal bilgisi kısmında ayar sızmış".
-- Channel info only tells: the purpose, the people and the agents with their state (the cards of PF3 and PF6 open from them), and one way into Channel settings.
-- The architect's proposal, his to approve on the pictures: Add a person and Manage (agents) move to the People and agents tab. The reader's own notification level and "Read assistant answers aloud to me" move to a tab "My settings", which every member sees; the other tabs stay a manager's. So Channel settings opens for every member, with the tabs that member may use.
+- Channel info tells: the purpose, the people and the agents with their state (the cards of PF3 and PF6 open from them), the reader's own notifications, and one way into Channel settings.
+- The reader's notification level and "Read assistant answers aloud to me" stay in Channel info. Owner (2026-11-15), to the proposal of a "My settings" tab open to every member: "bildirim ayarları kanal bilgisinde kalsın o zaman aksi taktirde daha büyük karışıklık olur". Channel settings stays a manager's.
+- The architect's proposal, his to approve on the pictures: Add a person and Manage (agents) move to the People and agents tab.
 
 ## How are icon, colour and switches drawn?
 - Owner (2026-11-15, with a picture of the Colour and Icon parts): "bu alanlarıda modernize edelim. switchler sağda ayarlardaki gibi olabilir. renkler ve ikonlar genişlemiş olmasına gerek yok. Kanal adı solunda ikonu seçicisi ve altında veya aynı sırada renk seçicisi daha bütün olurdu. ikonlar ve renkler popover gibi gelebilir".
