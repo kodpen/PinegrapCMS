@@ -13,12 +13,13 @@ description: The @herkes tag (AE5 #9571, AE5b #9578): who gets a mention line, w
 - A person's and an application's `@herkes` both ring the people; an application's leaves out nobody (as for its other mentions). An edit rings the room only when it adds the tag.
 
 ## Which agents does it wake?
+- Owner (2026-11-14): only a person's `@herkes` wakes agents; the roll call checklist still wakes nobody (`agent-checklist-questions.md`). In the agent channel it wakes every session's agent (`workflow/agent-channel-wake.md`).
 - A person's `@herkes` wakes every active application agent of the room under any wake rule (`ws_agent_wake_matches()`, its `$by_person`), within the usual brakes (`ws_agent_brake()`).
 - Left out: model agents, Claude, Pinegrap AI, the MCP aliases, a paused agent, and in a discussion an agent reached only through its channel (asked by name only).
 - An application's or an agent's `@herkes` wakes no agent. A person's edit that adds it, and a tag outside a message's body that may wake (`agent-words-wake.md`), wake as a mention does.
 
 ## Which handles are reserved?
-- `ws_mcp_reserved_aliases()` (mcp.php) holds `herkes`, `everyone` and, since AE5, `hepsi`: no MCP alias or agent handle may take them.
+- `ws_mcp_reserved_aliases()` (mcp.php) holds `herkes`, `everyone` and, since AE5, `hepsi`: no MCP alias or agent handle may take them. A department tag (`<@dept:N>`) rings its members and wakes no agent.
 - An agent or MCP server that already held `hepsi` keeps it until renamed; the check runs only when a handle is set.
 
 ## Where is it offered?
