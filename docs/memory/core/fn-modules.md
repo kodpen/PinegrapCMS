@@ -181,7 +181,7 @@ description: Generated from the module field of the memory files: each includes/
 - `order_report`: [[order-report-screen]], [[order-report-totals]]
 - `order_status`: [[shipworks-order-feed]]
 - `order_view`: [[order-screen-shipping-input]], [[order-screen-wide-layout]], [[order-view-screen-rows]], [[print-order-shipping-card]]
-- `output`: [[designer-left-panel-hide]], [[list-status-words]], [[look-shared-buttons]], [[main-menu-communication-icon]], [[main-menu-drawer-only]], [[panel-old-browser-notice]], [[settings-pane-stale-page]]
+- `output`: [[designer-left-panel-hide]], [[list-status-words]], [[look-erp-lists]], [[look-shared-buttons]], [[main-menu-communication-icon]], [[main-menu-drawer-only]], [[panel-old-browser-notice]], [[settings-pane-stale-page]]
 - `page_audience`: [[audience-conditions]]
 - `page_bulk`: [[page-bulk-edit]], [[page-bulk-edit-dialog]]
 - `page_facts`: [[page-conditions]]
