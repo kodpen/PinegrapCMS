@@ -27,7 +27,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  */
 function ws_channel_agents_actions()
 {
-    return array('ws_channel_agents_list', 'ws_channel_agents_set', 'ws_channel_agents_remove');
+    return array('ws_channel_agents_list', 'ws_channel_agents_set', 'ws_channel_agents_remove', 'ws_agent_card');
 }
 
 /**
@@ -150,6 +150,14 @@ function ws_channel_agents_action($action, $request)
 
     if ($action === 'ws_channel_agents_list') {
         return ws_action_ok(ws_channel_agents_panel_state($viewer, $channel));
+    }
+
+    // The agent card on an agent's name or picture: every reader of the
+    // channel (agent_card.php).
+    if ($action === 'ws_agent_card') {
+        $card = ws_agents_ready() ? ws_agent_card($viewer, $channel, (int) ($request['agent_id'] ?? 0), time()) : null;
+
+        return is_array($card) ? ws_action_ok(array('card' => $card)) : ws_action_error(lang('That agent could not be found.'));
     }
 
     if (!ws_agents_ready()) {
@@ -334,11 +342,15 @@ function ws_channel_member_seen($can_manage, $user_ids, $now)
  * (ws_agent_seen_words()'s rule: amber once unseen for ten minutes), a push
  * agent's last knock, a model assistant always ready. Pure but for lang().
  *
- * @param array $row ws_channel_agent_shape()
- * @param int   $now
+ * With the agent's request counts it also carries ws_agent_card_brief():
+ * role_key, state, state_words, waiting, usage_high.
+ *
+ * @param array      $row    ws_channel_agent_shape()
+ * @param int        $now
+ * @param array|null $counts ws_agent_request_counts() of the channel's agents; null leaves the brief out
  * @return array id, handle, name, role (its label, '' for none), kind, assistant, active, wake, seen, seen_state ('on', 'off', 'late', 'ready')
  */
-function ws_channel_member_agent($row, $now)
+function ws_channel_member_agent($row, $now, $counts = null)
 {
     $agent = (array) $row['agent'];
     $kind = (string) ($agent['kind'] ?? '');
@@ -357,21 +369,9 @@ function ws_channel_member_agent($row, $now)
         $state = ((string) ($agent['door_error'] ?? '') !== '') ? 'late' : 'off';
     }
 
-    switch ((string) ($row['wake_rule'] ?? 'mention')) {
-        case 'all':
-            $wake = lang('wakes on every message');
-            break;
-        case 'prefix':
-            $wake = lang(array('string' => 'wakes on {var:1}', 'vars' => (string) ($row['wake_prefix'] ?? '')));
-            break;
-        case 'replies':
-            $wake = lang('wakes on replies to it');
-            break;
-        default:
-            $wake = lang('wakes when mentioned');
-    }
+    $wake = ws_agent_wake_words($row['wake_rule'] ?? 'mention', $row['wake_prefix'] ?? '');
 
-    return array(
+    $out = array(
         'id'         => (int) ($agent['id'] ?? 0),
         // The application it writes as, so the screen can tell its
         // messages in this channel (workspace.js speaksAnswer()).
@@ -386,6 +386,12 @@ function ws_channel_member_agent($row, $now)
         'seen'       => $seen,
         'seen_state' => $state,
     );
+
+    if (is_array($counts)) {
+        $out += ws_agent_card_brief($agent, $state, $counts[ws_agent_request_value($agent)] ?? array(), $now);
+    }
+
+    return $out;
 }
 
 /**
@@ -402,7 +408,12 @@ function ws_channel_member_agents($channel, $now)
         return array();
     }
 
-    return array_map(function ($row) use ($now) {
-        return ws_channel_member_agent($row, $now);
-    }, ws_channel_agents($channel['id']));
+    $rows = ws_channel_agents($channel['id']);
+    $counts = ws_agent_request_counts(array_map(function ($row) {
+        return $row['agent'];
+    }, $rows), $now);
+
+    return array_map(function ($row) use ($now, $counts) {
+        return ws_channel_member_agent($row, $now, $counts);
+    }, $rows);
 }
