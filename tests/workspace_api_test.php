@@ -444,6 +444,24 @@ function test_ws_api_proposals_are_decided_by_the_person()
 	}
 }
 
+// An OAuth connection passes ws_api_person_only() as the person who approved
+// it, so the application that asked an agent question is refused its own
+// answer before the rehearsal stops.
+function test_ws_api_agent_question_is_not_answered_by_its_asker()
+{
+	$source = preg_replace('~^\s*//.*$~m', '', ws_api_test_handler_source('ws_api_polls_vote'));
+	$found = strpos($source, 'ws_api_poll_is_callers(');
+
+	pg_assert_true($found !== false, 'the vote checks whether the caller asked the poll');
+	pg_assert_true(($found !== false) && ($found > strpos($source, 'ws_api_poll_or_404(')) && ($found < strpos($source, 'api_dry_run_stop(')), 'after the poll is found, before the rehearsal stops');
+	pg_assert_contains('ws_agent_question_is(', $source, 'only an agent question');
+	pg_assert_contains('An application cannot answer the question it asked.', $source, 'says why');
+	pg_assert_contains('ws_api_person_only(', $source, 'still refuses an application key');
+
+	pg_assert_true(ws_agent_question_is(array('agent_question' => 1)), 'an agent question');
+	pg_assert_false(ws_agent_question_is(array('agent_question' => 0)), 'a person\'s poll keeps its gate');
+}
+
 // An OAuth connection is a device row too, so a refusal of the team devices
 // gate says which session it wants and that a connection is refused as well,
 // not "signed in on a device".

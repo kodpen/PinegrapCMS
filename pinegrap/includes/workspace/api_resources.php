@@ -3735,6 +3735,14 @@ function ws_api_polls_vote($params)
 
     ws_api_person_only();
 
+    // An OAuth connection passes the gate above as the person who approved
+    // it, who is usually one of the people an agent question asks; the
+    // application that asked would then settle its own question in their
+    // name. Checked before the dry run stops, so a rehearsal meets it too.
+    if (ws_agent_question_is($poll) && ws_api_poll_is_callers($poll)) {
+        api_fail(403, 'forbidden', lang('An application cannot answer the question it asked.'));
+    }
+
     $checked = ws_poll_vote_check($viewer, $poll);
 
     if (!$checked['ok']) {
