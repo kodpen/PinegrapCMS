@@ -1,6 +1,6 @@
 ---
 name: mail-check
-description: Check e-mail on Communication › Incoming e-mail (IB2): which boxes a press reads, the fetch's lock and budget, the 15-second gap, presses a minute, the line over the list
+description: Check e-mail on Communication › Incoming e-mail (IB2, #9481): which boxes a press reads, the fetch's lock and budget, the 15-second gap, presses a minute, the line over the list
 ---
 
 ## What does Check e-mail do?

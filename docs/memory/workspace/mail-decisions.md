@@ -1,18 +1,15 @@
 ---
 name: mail-decisions
-description: Incoming e-mail decisions: the name rule, IMAP (#2444) and a later push endpoint (G9), the eleven answers, defaults, scope, the E-mails screen and what is left, what stays unverified
+description: Incoming e-mail decisions: the name rule, IMAP (#2444), the eleven answers, defaults, scope, the E-mails screen, a mailbox's features (IB), what stays unverified
 ---
 
 ## What is the feature called?
 - "Gelen e-posta" / "E-posta kutuları" in the UI, `ws_mail_*` in code, `/workspace/mail/*` in the API; never "inbox": "gelen kutusu", `ws_inbox` and `GET /workspace/inbox` already mean notifications.
-- Mail to a box such as `support@company.com` becomes a card in a Workspace channel; the team discusses it, opens tasks and answers by e-mail from there.
+- Mail to a box such as `support@company.com` becomes a card in a Workspace channel; the team discusses it and answers from there.
 
 ## Which transport, and why?
-- A, IMAP pull (#2444 answer 1, owner 2026-10-27): the site reads the mailbox every minute with its own client; mail stays in the box (`mail-fetch.md`, `mail-imap-client.md`). Owner's reason: every installation runs under its own operators' responsibility, so the data-processor question does not concern Kodpen, and turning the feature on is the site administrators' call.
-- Left: B, Cloudflare Email Routing + Worker push (Cloudflare DNS per site), and C, a Kodpen broker (Kodpen becomes a data processor; Microsoft 365 blocks external forwarding).
-
-## When would a push endpoint (G9) come?
-- Only if B or C is chosen later; it replaces G2's fetch for such a box and feeds the same `ws_mail_ingest()`. Its design: `POST /workspace/mail/inbound`, raw `message/rfc822` body, new scope `mail:inbound`, HMAC of the body with a 5-minute timestamp window, `'mcp' => false`. The `push` value of `ws_mail_boxes.transport` waits for it.
+- A, IMAP pull (#2444 answer 1, owner 2026-10-27): the site reads the mailbox every minute with its own client; mail stays in the box (`mail-fetch.md`, `mail-imap-client.md`). Owner's reason: every installation runs under its own operators' responsibility, so the data-processor question does not concern Kodpen; turning it on is the administrators' call.
+- Left: B, Cloudflare Email Routing + Worker push, and C, a Kodpen broker (Kodpen becomes a data processor; Microsoft 365 blocks external forwarding). A push endpoint (G9) comes only with B or C: `mail-push-endpoint.md`.
 
 ## What did the owner answer to questions 2-11?
 Each (a) (architect, under the owner's delegation, #2444):
@@ -36,7 +33,11 @@ Each (a) (architect, under the owner's delegation, #2444):
 ## What is the E-mails screen? (plan closed, WM1-WM14)
 - Owner (2026-11-10, #8604): one list of every e-mail, writing and forwarding from the Workspace through the mail queue, for the mailboxes, not the site's own. Architect (2026-11-10): the screen grows, no second screen; first view "Incoming".
 - A channel decides who sends, not the box (`ws_mail_can_answer()`); team accounts only; every sent mail is a conversation with a card. Owner (2026-11-11, #8765): a row opens the mail, never a channel; HTML drawn; a box may be kept in no channel.
-- Since: drafts on the server and a chat's mail tools (MT1-MT6); HTML: `mail-html-written.md`; the PRs: `mail-overview.md`.
+- Since: drafts on the server and a chat's mail tools (MT1-MT6); HTML: `mail-html-written.md`; the PRs: `mail-prs.md`.
+
+## What do a mailbox's features keep? (plan closed, IB1-IB8)
+- Owner (2026-11-14, `workflow/decisions-made-workspace-27.md`): Check e-mail, own signature, block list, recipient suggestions, Send later, a box's Sent folder. Team accounts only; a running site works as before until a button is pressed or a setting written; no API route or MCP tool.
+- Kept out: phone numbers on the block list. Later: an HTML signature. Next: `plans/mail-inbox-more.md`.
 
 ## What stays unverified?
 - G4 against a Microsoft 365 tenant (`mail-microsoft.md`), G8 on a site with an AI key (`mail-triage.md`), and a run against the dedicated test box of answer 11, which is not set up. No IMAP or SMTP server was reached from the cloud sessions.
