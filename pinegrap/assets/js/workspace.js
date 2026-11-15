@@ -7862,6 +7862,90 @@
             holder.appendChild(bar);
         },
 
+        // ── The open items line (includes/workspace/open_items.php) ──
+
+        // The polls, agent questions, check-in and approval requests still
+        // open in the channel: the first one's kind and text with Go, and
+        // with more than one the count, which lists them all; each goes to
+        // its message. The ones waiting for the reader are marked and come
+        // first. On a phone, beside the catch-up line or the pin, only the
+        // count stays, as a button that opens the list.
+        drawOpenItems: function () {
+            var self = this;
+            var holder = self.openHolder;
+            var items = self.openItems || [];
+            var icons = { poll: 'bi-bar-chart-line', question: 'bi-robot', checkin: 'bi-person-raised-hand', approval: 'bi-patch-question' };
+
+            if (!holder) {
+                return;
+            }
+
+            clear(holder);
+
+            if (!items.length || self.era) {
+                return;
+            }
+
+            var first = items[0];
+            var bar = el('div', 'ws-open-bar' + (items.length === 1 ? ' ws-open-single' : '') + (first.mine ? ' ws-open-mine' : ''));
+            var text = el('button', 'ws-open-text');
+            var words = el('span', 'ws-open-words');
+            var go = function (item) { self.jumpTo(item.message_id, true); };
+
+            text.type = 'button';
+            text.title = t('open_go_title');
+            text.appendChild(icon(icons[first.kind] || 'bi-dot', 'ws-open-icon'));
+            words.appendChild(el('b', 'me-1', t('open_kind_' + first.kind) + ':'));
+            words.appendChild(document.createTextNode(first.text));
+            text.appendChild(words);
+
+            if (first.mine) {
+                text.appendChild(el('span', 'badge rounded-pill badge-subtle theme-warning ws-open-yours', t('open_yours')));
+            }
+
+            text.addEventListener('click', function () { go(first); });
+            bar.appendChild(text);
+
+            var goButton = button('btn btn-sm btn-outline theme-secondary rounded-pill ws-open-go', '', 'bi-arrow-down-circle', t('open_go_title'));
+
+            goButton.appendChild(el('span', 'ws-open-label', t('open_go')));
+            goButton.addEventListener('click', function () { go(first); });
+            bar.appendChild(goButton);
+
+            // The count, which lists every item; on a phone also for one.
+            var count = menuButton(button('btn btn-sm btn-outline theme-secondary rounded-pill ws-open-count', '', 'bi-list-ul', t('open_list')));
+            var mine = items.filter(function (item) { return item.mine; }).length;
+
+            count.appendChild(el('span', 'ws-open-number', String(items.length)));
+
+            if (mine) {
+                count.classList.add('ws-open-count-mine');
+            }
+
+            count.addEventListener('click', function (event) {
+                var box = count.getBoundingClientRect();
+
+                event.stopPropagation();
+                ctxMenu(Math.max(8, box.right - 320), box.bottom + 4, [{ header: t('open_list') }].concat(items.map(function (item) {
+                    return {
+                        icon: icons[item.kind] || 'bi-dot',
+                        label: t('open_kind_' + item.kind) + (item.mine ? ' (' + t('open_yours') + ')' : '') + ': ' + item.text,
+                        action: function () { go(item); }
+                    };
+                })));
+
+                // Opaque, as wide as its longest row up to 30rem, its right
+                // edge under the count; a cut row ends with "…".
+                if (ctxNode) {
+                    ctxNode.classList.remove('backdrop');
+                    ctxNode.classList.add('ws-open-menu');
+                    ctxNode.style.left = Math.max(8, Math.min(box.right - ctxNode.offsetWidth, window.innerWidth - ctxNode.offsetWidth - 8)) + 'px';
+                }
+            });
+            bar.appendChild(count);
+            holder.appendChild(bar);
+        },
+
         // message null takes the pin off.
         pinMessage: function (message) {
             var self = this;
@@ -9875,6 +9959,7 @@
                 self.flowsHere = !!data.flows_here;
                 self.messages = data.messages;
                 self.briefing = data.briefing || null;
+                self.openItems = data.open_items || [];
 
                 // Opening a channel reads it; the sidebar says so at once
                 // rather than on the next sync. (An earlier version of its
@@ -10402,8 +10487,12 @@
 
                 self.pinHolder = el('div', 'ws-pin-holder');
                 strip.appendChild(self.pinHolder);
+                // What is still open here, under the pin (drawOpenItems()).
+                self.openHolder = el('div', 'ws-open-holder');
+                strip.appendChild(self.openHolder);
                 center.appendChild(strip);
                 self.drawPinBar();
+                self.drawOpenItems();
             }
 
             var pane = el('div', 'ws-pane ws-pane-' + self.tab);
@@ -20052,6 +20141,12 @@
                 if (data.pin !== undefined && self.channel && (JSON.stringify(data.pin) !== JSON.stringify(self.channel.pin || null))) {
                     self.channel.pin = data.pin;
                     self.drawPinBar();
+                }
+
+                // The open items line, as a vote, an answer or a close moved it.
+                if ((data.open_items !== undefined) && self.channel && (JSON.stringify(data.open_items) !== JSON.stringify(self.openItems || []))) {
+                    self.openItems = data.open_items;
+                    self.drawOpenItems();
                 }
 
                 // Who outside the team reads along, as it changes.

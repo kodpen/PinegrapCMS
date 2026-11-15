@@ -13503,7 +13503,7 @@ html[data-bs-theme="dark"] .ws-group-icon {
   flex-direction: column;
   flex-shrink: 0;
 }
-.ws-strip:not(:has(.ws-catchup, .ws-pin-bar)) {
+.ws-strip:not(:has(.ws-catchup, .ws-pin-bar, .ws-open-bar)) {
   display: none;
 }
 /* The pinned message: one line, a click opens it in the conversation. */
@@ -13537,6 +13537,72 @@ html[data-bs-theme="dark"] .ws-group-icon {
 }
 .ws-pin-words {
   min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* The open items line under the pin (drawOpenItems()): the pin bar's look,
+   the first item with Go and, for more than one, the count that lists them. */
+.ws-open-bar {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  margin: .5rem 1rem 0;
+  padding: .3rem .4rem .3rem .65rem;
+  border: 1px solid var(--pg-border-color-translucent);
+  border-left: 3px solid var(--ws-accent);
+  border-radius: var(--ws-radius-sm);
+  background: var(--pg-bg-1);
+  font-size: var(--pg-text-2);
+}
+.ws-open-mine {
+  border-left-color: var(--pg-warning);
+}
+.ws-open-icon {
+  flex: 0 0 auto;
+  color: var(--ws-accent);
+}
+.ws-open-text {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: .45rem;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+.ws-open-words {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ws-open-yours {
+  flex: 0 0 auto;
+}
+.ws-open-go,
+.ws-open-count {
+  flex: 0 0 auto;
+  gap: .3rem;
+  font-size: var(--pg-text-meta);
+  white-space: nowrap;
+}
+.ws-open-count-mine .ws-open-number {
+  font-weight: var(--pg-weight-title);
+}
+.ws-open-single .ws-open-count {
+  display: none;
+}
+/* The list the count opens: the panel menu, opaque, as wide as its
+   longest row up to 30rem; a row too long ends with an ellipsis. */
+.ws-ctx.contextmenu.popover.ws-open-menu {
+  max-width: min(30rem, calc(100vw - 16px));
+}
+.ws-ctx.ws-open-menu .ws-ctx-item {
+  display: block;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -19713,8 +19779,22 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
   .ws-catchup-text strong {
     display: none;
   }
-  .ws-pin-bar {
+  .ws-pin-bar,
+  .ws-open-bar {
     margin: .35rem .5rem 0;
+  }
+  /* The open items line alone keeps its text; Go keeps its icon. */
+  .ws-open-label,
+  .ws-open-yours {
+    display: none;
+  }
+  .ws-open-go,
+  .ws-open-count {
+    min-width: 2.5rem;
+    min-height: 2.5rem;
+    margin-block: -.35rem;
+    justify-content: center;
+    padding: .2rem .45rem;
   }
   /* Both there: one row, the catch-up line first and the pin a button
      beside it. */
@@ -19738,6 +19818,43 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
   .ws-strip:has(.ws-catchup) .ws-pin-words,
   .ws-strip:has(.ws-catchup) .ws-pin-bar > :not(.ws-pin-text) {
     display: none;
+  }
+  /* Open items beside the catch-up line or the pin: the same row, only the
+     count, a button that lists them (one item too). */
+  .ws-strip:has(.ws-open-bar):has(.ws-catchup, .ws-pin-bar) {
+    flex-direction: row;
+    align-items: center;
+    gap: .35rem;
+    margin: .35rem .5rem 0;
+  }
+  .ws-strip:has(.ws-open-bar):has(.ws-catchup, .ws-pin-bar) > .ws-catchup {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin: 0;
+  }
+  .ws-strip:has(.ws-open-bar):not(:has(.ws-catchup)) > .ws-pin-holder {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .ws-strip:has(.ws-open-bar):has(.ws-catchup, .ws-pin-bar) .ws-pin-bar {
+    margin: 0;
+  }
+  .ws-strip:has(.ws-open-bar):has(.ws-catchup, .ws-pin-bar) > .ws-open-holder {
+    display: flex;
+    flex: 0 0 auto;
+  }
+  .ws-strip:has(.ws-open-bar):has(.ws-catchup, .ws-pin-bar) .ws-open-bar {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+  .ws-strip:has(.ws-open-bar):has(.ws-catchup, .ws-pin-bar) :is(.ws-open-text, .ws-open-go) {
+    display: none;
+  }
+  .ws-strip:has(.ws-open-bar):has(.ws-catchup, .ws-pin-bar) .ws-open-bar .ws-open-count {
+    display: inline-flex;
+    margin-block: 0;
   }
   /* While the keyboard is up the tabs wait too: the conversation keeps
      the height between the header and the box. */
