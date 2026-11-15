@@ -2598,7 +2598,7 @@ function ws_handle_action($action, $request)
             }
 
             $result = ($action === 'ws_poll_vote')
-                ? ws_poll_vote($viewer, $poll, (array) ($request['option_ids'] ?? array()))
+                ? ws_poll_vote($viewer, $poll, (array) ($request['option_ids'] ?? array()), $request['other_text'] ?? '')
                 : ws_poll_close($viewer, $poll);
 
             if (!$result['ok']) {
