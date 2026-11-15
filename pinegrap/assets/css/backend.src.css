@@ -15143,6 +15143,40 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
   align-items: center;
   gap: .4rem;
 }
+/* The agent question: no counts; the answer stays in the box. */
+.ws-poll-asks {
+  color: var(--pg-fg-2);
+}
+.ws-poll-answer {
+  display: flex;
+  align-items: flex-start;
+  gap: .5rem;
+  padding: .45rem .6rem;
+  border-radius: var(--ws-radius-xs);
+  background: color-mix(in srgb, var(--pg-success) 12%, transparent);
+}
+.ws-poll-answer > .bi {
+  margin-top: .15rem;
+  color: var(--pg-success);
+}
+.ws-poll-answer > .ws-poll-thumb {
+  padding: 0;
+  border: 0;
+}
+.ws-poll-send {
+  display: flex;
+  gap: .4rem;
+  margin-top: .4rem;
+}
+.ws-poll-send > .btn {
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+.ws-poll-error {
+  margin-top: .25rem;
+  font-size: var(--pg-text-meta);
+  color: var(--pg-danger);
+}
 .ws-poll-meta {
   display: flex;
   flex: 0 0 auto;

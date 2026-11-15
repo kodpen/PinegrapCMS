@@ -1262,6 +1262,7 @@
     "Only your own work and plans; nobody else sees them.": "Yalnızca kendi işleriniz ve planlarınız; başkası görmez.",
     "Only yourselves": "Yalnızca kendiniz",
     "Only {types} files can be chosen here.": "Burada yalnız {types} dosyaları seçilebilir.",
+    "Only {var:1} can answer.": "Yalnızca {var:1} yanıtlayabilir.",
     "Only {var:1} files can be chosen here.": "Burada yalnız {var:1} dosyaları seçilebilir.",
     "Only {var:1} in stock; lower the quantity.": "Stokta {var:1} adet var; miktarı düşürün.",
     "Only {var:1} in stock; no more can be added.": "Stokta {var:1} adet var; daha fazla eklenemez.",

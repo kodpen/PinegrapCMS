@@ -437,6 +437,38 @@ function ws_agent_question_decisions($viewer, $channel, $limit)
 }
 
 /**
+ * The messages of a channel's answered agent questions (not taken back),
+ * newest first, for the Decisions tab. Each row's marked_at is the moment
+ * it was answered, so it sorts among the decisions
+ * (ws_agent_question_decisions_merge()).
+ *
+ * @param int $channel_id
+ * @param int $limit
+ * @return array[] ws_messages rows
+ */
+function ws_agent_question_decision_messages($channel_id, $limit)
+{
+    if (!ws_interact_ready() || !ws_agent_question_ready()) {
+        return array();
+    }
+
+    $rows = array();
+
+    foreach ((array) db_items("SELECT m.*, p.closed_at AS answered_at FROM ws_polls p
+        INNER JOIN ws_messages m ON m.id = p.message_id
+        WHERE p.channel_id = '" . (int) $channel_id . "' AND p.agent_question = 1 AND p.closed_at > 0"
+        . (ws_poll_again_ready() ? ' AND p.withdrawn_at = 0' : '') . " AND m.deleted_at = 0
+        ORDER BY p.closed_at DESC, p.id DESC
+        LIMIT " . max(1, (int) $limit)) as $row) {
+        $row['marked_at'] = (int) $row['answered_at'];
+        unset($row['answered_at']);
+        $rows[] = $row;
+    }
+
+    return $rows;
+}
+
+/**
  * The fields an agent question adds to its ws_polls_map() entry: who is
  * asked (names), whether this reader may answer, who answered and when, and
  * the answer as a line. A person's poll gets agent_question false and empty
