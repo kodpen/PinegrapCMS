@@ -7,7 +7,7 @@
 - agent-approvers-everyone-census-mentions.md: AE1 census (2026-11-14) for @herkes: how the @ menu, the mention lines and ws_agent_wake_matches() read a tag, how a department mention rings, the reserved handles, AE5's scope
 - agent-approvers-everyone-census-steps.md: AE1 census (2026-11-14): the exact scope of AE2 to AE4 (agent approvers on the server, the form and card, the API) and the store an agent approver needs (a table of its own, decided)
 - agent-approvers-everyone-census.md: AE1 census (2026-11-14) for agent approvers: ws_approval_people and its readers, who may be asked, the routes that ask and decide, where the bound sits
-- agent-approvers-everyone.md: Plan (owner 2026-11-14): an approval request can ask a channel's agents and assistants, and the tag @herkes mentions everyone in the room but the writer; steps AE1 to AE6
+- agent-approvers-everyone.md: Plan (owner 2026-11-14): an approval request can ask a channel's agents and assistants, and the tag @herkes mentions everyone in the room but the writer; steps AE1 to AE6 (AE4b split from AE4)
 - agent-channel-steps-2.md: Steps A0-A9 of plans/agent-channel.md: registry, doors, wakes, channel memory, model assistants, risk tiers, the canvas as a tool, further doors (Claude Code plugin, per-person sessions, chat box)
 - agent-channel-steps-7.md: Step A22 of plans/agent-channel.md (owner 2026-11-12, #8880): a channel's agents among its members in the head's faces and in Channel info, last seen for people and agents
 - agent-channel-trial.md: Live trial of the agent channel on dev (2026-11-10): what is still to try and what the trial found wrong, fixed or not

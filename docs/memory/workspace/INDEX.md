@@ -38,6 +38,7 @@
 - agent-questions.md: How an agent asks the people with a poll or an approval; a one-answer question as a one-choice poll closed once the vote is read; why the outcome is written in the agent's name [decision: decisions-made-workspace-12.md]
 - agent-registry.md: The agent registry (ws_agents) and the channel-agent row (ws_channel_agents): fields, Claude's routine as the first push agent, where the membership rules are, the depth and hourly brakes [decision: decisions-made-workspace-7.md, decisions-made-workspace-8.md]
 - agent-report.md: An application agent's report of its model and plan usage (POST /workspace/agent-report, #9322): the rules that refuse it whole, the window names, the last report only, the card line and its age [decision: decisions-made-schema-17.md, decisions-made-workspace-22.md]
+- agent-requests-kept-version.md: No agent request, claim, answer, emoji or eye on a message of an earlier version of a cleared conversation; the clear cancels the open requests it freezes (#9593, bug #9588)
 - agent-risk-tiers.md: Agent risk tiers (agent_tiers.php, A7): the tier of a change, when an application agent's proposal is applied at once, the undo journal in ws_ai_changes (step 11.0.174), who may undo and when
 - agent-role.md: An agent's role from a fixed list (ws_agents.role, step 11.0.195, #9302): the list in code, an unknown key as no role, form, Agents card, member list, API; report columns for AP2 [decision: decisions-made-workspace-22.md]
 - agent-sessions.md: The asker's own Claude session over OAuth: @Claude waits 2 min for the asker's online connection, then the routine; claimed_device_id; via_client_id in the depth brake
@@ -45,6 +46,7 @@
 - agent-token-limit.md: A model assistant's monthly token limit (ws_agents.token_limit): set on its form, checked before each step, the request fails with a sentence naming the limit; the card shows used of limit [decision: decisions-made-schema-14.md]
 - agent-wakes.md: An app agent's scheduled wakes (every N minutes, once at a time) made by the general job, /wake in a channel, the agent-wake API routes, and the brief an app agent reads (A4b1, #8246) [decision: decisions-made-workspace-10.md]
 - agent-words-wake.md: An application's API message and an agent's answer wake the agents they name or answer: only a mention or a reply counts, the asking application named, the braked line once an hour [decision: decisions-made-workspace-23.md]
+- approval-agents-api.md: Agents asked to approve over the external API (AE4, #9584): the agents field on create and who may send it, the decide route for an agent's own key, off MCP, WorkspaceApproval.agents
 - approval-agents.md: Agents asked to approve (AE2): ws_approval_agents, who may be asked, the by-hand bound, the wake and brief, an agent's answer and its checks, where agents show [decision: here]
 - approval-guest-frozen-channel.md: An approval link sent outside the team opens as closed while the channel is gone or archived, or the request is in an earlier version of a cleared conversation
 - automation-flows-api.md: Automation flows in the external API and MCP with the Workspace off (#9257): the flows module of api_modules(), what it merges, the scopes and their ceiling, how it is tested
@@ -111,6 +113,7 @@
 - mail-reply.md: Answering a Workspace e-mail by e-mail (WM7): the queued answer, Cc, Bcc, files, Reply to all, the drawer, route, headers and subject, the API's answer sent at once
 - mail-room.md: A mailbox kept in no channel (WM13, #8985): its room of kind mailbox, the box form's Kept in, who reads and answers, where the room never shows, the inventory test [decision: decisions-made-workspace-17.md]
 - mail-routing.md: Routing incoming Workspace e-mail (G6, mail_route.php): box routes by address or +tag to a channel, recipients read, the known customer's line in their channels
+- mail-rules.md: A support box's incoming mail rules (IB11): one condition and one action, kept in the box's settings JSON, run at ingest on a new conversation, the list and Add rule on the Mailboxes card
 - mail-screen-pane-wrap.md: Long file names and addresses without spaces wrap inside a mail of the E-mails reading pane (text-break on each mail, #9009)
 - mail-screen-pane.md: The Workspace E-mails reading pane (mail_pane.php) and the per-person unread marks (mail_reads.php): the unread rule, the floor, where marks are written, the menu count
 - mail-send-later.md: Send later (IB6): a time on the New e-mail form and the reply drawer, send_state later and ws_mail_items.send_at, the job that hands due mail to the queue, Send now and Cancel, the step 11.0.207 [decision: here]
@@ -461,6 +464,7 @@
 - workspace-personal-plan-customer.md: A person's own plan made for a customer (PC6): contact_id, the drawer field, Roadmaps on the card and history, New roadmap, merge and erasure, not in the API [decision: here]
 - workspace-personal-plan-export.md: A contact's data export lists the person's own plans naming them only when shared with the whole team (PC6b, owner 3361): title, days, owner, roadmap steps [decision: here]
 - workspace-personal-plan-mail.md: Add to my calendar on a mail (PC7): the button, the filled New plan drawer, one plan a person, the invitation column 11.0.204 and its card states [decision: here]
+- workspace-personal-plan-repeat.md: Repeating plans on My calendar (PC11a): the Repeat field of the plan drawer, step 11.0.209, times worked out on read, This one / This and the following, a reminder for each time [decision: here]
 - workspace-personal-plan-roadmap.md: The roadmap of a person's own plan (PC5): dated steps in ws_personal_plan_steps, the bar and its progress, "Make a task" and a step that follows its task
 - workspace-personal-plan-sharing.md: Who can see a person's plan (PC4): Only me, chosen team members, the whole team; what the others see and may not do
 - workspace-personal-plans-api.md: A person's own plans in the external API and MCP (PC8): /workspace/personal-plans, scope workspace:personal_plans, only the person's own device or OAuth connection, own plans only
