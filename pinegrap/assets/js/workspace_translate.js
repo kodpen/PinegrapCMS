@@ -216,7 +216,7 @@
         var bar = body.parentNode ? body.parentNode.querySelector(':scope > .ws-msg-tr') : null;
 
         if (!bar) {
-            bar = h.el('div', 'ws-msg-tr small text-body-secondary');
+            bar = h.el('div', 'ws-msg-tr small fg-secondary');
             bar.setAttribute('aria-live', 'polite');
             body.parentNode.insertBefore(bar, body.nextSibling);
         }
