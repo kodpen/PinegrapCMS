@@ -60,11 +60,11 @@ if (!$_POST) {
         }
 
         $output_link_mode = '
-                                                <div class="col-12 md:col-8 lg:col-6 my-3" id="link_mode_row">
+                                                <div class="col-12 md:col-6 my-3" id="link_mode_row">
                                                     <label for="link_mode" class="form-label">' . lang('How it opens') . '</label>
                                                     ' . $liveform->output_field(array('type'=>'select', 'name'=>'link_mode', 'id'=>'link_mode', 'class'=>'form-control', 'options'=>$link_mode_options, 'onchange'=>'change_short_link_mode(this.options[this.selectedIndex].value)')) . '
                                                 </div>
-                                                <div class="col-12 md:col-4 lg:col-3 my-3" id="duration_row" style="display: none">
+                                                <div class="col-12 md:col-6 my-3" id="duration_row" style="display: none">
                                                     <label for="duration" class="form-label">' . lang('Valid for') . '</label>
                                                     ' . $liveform->output_field(array('type'=>'select', 'name'=>'duration', 'id'=>'duration', 'class'=>'form-control', 'options'=>$duration_options)) . '
                                                 </div>
