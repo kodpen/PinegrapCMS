@@ -923,6 +923,7 @@
     "Only a paused flow can be resumed.": "Yalnızca duraklatılmış bir akış sürdürülebilir.",
     "Only a paused subscription can be resumed.": "Yalnızca duraklatılmış bir abonelik devam ettirilebilir.",
     "Only a person in the discussion can ask an agent to conclude it.": "Bir ajandan tartışmayı sonuçlandırmasını yalnız tartışmadaki bir kişi isteyebilir.",
+    "Only a person signed in on a device can set an agent's wakes; an application key cannot.": "Bir ajanın uyanmalarını yalnızca bir cihazda oturum açmış bir kişi ayarlayabilir; bir uygulama anahtarı ayarlayamaz.",
     "Only a picture has a smaller copy.": "Küçük kopyası yalnız görselin olur.",
     "Only a product question can be answered here.": "Burada yalnızca bir ürün sorusu yanıtlanabilir.",
     "Only a product, form record or event view lends parts: this part shows nothing.": "Yalnızca ürün, form kaydı veya etkinlik görünümü parça verir: bu parça hiçbir şey göstermez.",
