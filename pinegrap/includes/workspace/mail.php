@@ -1093,6 +1093,12 @@ function ws_mail_ingest($raw, $box, $options = array())
         db("UPDATE ws_mail_items SET body_html = '" . e($html) . "' WHERE id = '" . $item_id . "'");
     }
 
+    // A conversation set aside with Remind me later comes back at once
+    // (mail_remind.php).
+    if (!$opened && function_exists('ws_mail_remind_new_mail')) {
+        ws_mail_remind_new_mail($conversation_id, $now);
+    }
+
     // Whoever holds an ongoing conversation hears the customer wrote again.
     if (!$opened && ((int) $conversation['assignee_id'] > 0)) {
         ws_notify((int) $conversation['assignee_id'], 'mail_customer', array('channel_id' => (int) $channel['id'], 'message_id' => (int) $message_id, 'actor_id' => 0));
@@ -1128,10 +1134,13 @@ function ws_mail_ingest($raw, $box, $options = array())
         'verified'        => ($auth === 'pass'),
     ));
 
-    // A new conversation may get the box's automatic answer (mail_status.php).
-    // A conversation a rule closed is not answered.
+    // A new conversation may get the box's automatic answer (mail_status.php),
+    // unless a rule closed it; an ongoing one whose holder is away, their
+    // away text (mail_away.php).
     if ($opened && ($ruled !== 'close') && function_exists('ws_mail_auto_reply')) {
         ws_mail_auto_reply($box, $item_id);
+    } elseif (!$opened && function_exists('ws_mail_away_reply')) {
+        ws_mail_away_reply($box, $item_id, $conversation);
     }
 
     // Pinegrap AI's suggestion on a new conversation, where the box switched

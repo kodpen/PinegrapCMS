@@ -142,7 +142,7 @@ function test_ws_personal_plans_api_scopes()
 	pg_assert_same(array_keys(ws_api_personal_plan_schema()), array_keys(array(
 		'id' => 1, 'title' => '', 'note' => '', 'start' => '', 'end' => '', 'start_time' => '', 'end_time' => '',
 		'all_day' => false, 'remind' => '', 'visibility' => '', 'owner_id' => 0, 'mine' => true, 'people' => array(), 'owner_name' => '',
-		'time_day' => '', 'repeat' => '', 'repeat_every' => 1, 'repeat_end' => '', 'repeat_until' => '', 'repeat_count' => '',
+		'time_day' => '', 'repeat' => '', 'repeat_every' => 1, 'repeat_end' => '', 'repeat_until' => '', 'repeat_count' => '', 'times' => array(),
 	)), 'the schema names what ws_personal_plan_for_reader() gives');
 }
 
@@ -188,4 +188,45 @@ function test_ws_personal_plans_api_merge()
 	pg_assert_same('me', $clean['visibility'], 'a new plan is the person\'s alone');
 	pg_assert_same(strtotime('2026-11-20 15:00:00'), $clean['ends_at'], 'one hour when no end');
 	pg_assert_true(isset(ws_personal_plan_clean(ws_api_personal_plan_merge(null, array('start' => '2026-11-20')))['error']), 'a title is needed');
+}
+
+// A repeating plan over the API: its rule is written and kept like the other
+// fields, its times are listed by day, and a change or a delete names one
+// time with mode and day (personal_plan_repeat.php does the rest).
+function test_ws_personal_plans_api_repeat()
+{
+	$current = array(
+		'id' => 7, 'title' => 'Stand-up', 'note' => '', 'start' => '2026-11-02', 'end' => '2026-11-02',
+		'start_time' => '09:00', 'end_time' => '09:15', 'all_day' => false, 'remind' => '',
+		'visibility' => 'me', 'people' => array(), 'repeat' => 'weekly', 'repeat_every' => 1,
+		'repeat_end' => 'count', 'repeat_until' => '', 'repeat_count' => '4',
+	);
+	$data = ws_api_personal_plan_merge($current, array('title' => 'Stand-up (short)'));
+
+	pg_assert_same('weekly', $data['repeat'], 'a change that sends no rule keeps the plan\'s');
+	pg_assert_same('4', $data['repeat_count']);
+	pg_assert_same('', ws_api_personal_plan_merge($current, array('repeat' => ''))['repeat'], 'an empty repeat ends it');
+
+	$plan = array(
+		'id' => 7, 'all_day' => 0, 'starts_at' => strtotime('2026-11-02 09:00:00'), 'ends_at' => strtotime('2026-11-02 09:15:00'),
+		'repeat_frequency' => 'weekly', 'repeat_interval' => 1, 'repeat_until' => strtotime('2026-11-23 09:15:00'), 'repeat_count' => 4,
+	);
+	$times = ws_api_personal_plan_times($plan, strtotime('2026-11-08'), strtotime('2026-12-31'), array('2026-11-16'));
+
+	pg_assert_same(array('2026-11-09', '2026-11-23'), array_column($times, 'day'), 'the times in the span, a skipped one left out');
+	pg_assert_same(array('day' => '2026-11-09', 'start' => '2026-11-09', 'end' => '2026-11-09', 'start_time' => '09:00', 'end_time' => '09:15'), $times[0]);
+
+	$all_day = array_merge($plan, array('all_day' => 1, 'repeat_frequency' => '', 'starts_at' => strtotime('2026-11-20 00:00:00'), 'ends_at' => strtotime('2026-11-22 00:00:00')));
+	pg_assert_same(array(array('day' => '2026-11-20', 'start' => '2026-11-20', 'end' => '2026-11-21', 'start_time' => '', 'end_time' => '')), ws_api_personal_plan_times($all_day, strtotime('2026-11-01'), strtotime('2026-12-01')), 'a plan that does not repeat has its one time');
+
+	$routes = array();
+
+	foreach (ws_personal_plan_api_routes() as $route) {
+		$routes[$route['id']] = array_column($route['params'], 'in', 'name');
+	}
+
+	pg_assert_same(array('body', 'body'), array($routes['workspace.personal_plans.update']['mode'], $routes['workspace.personal_plans.update']['day']), 'a change names its time in the body');
+	pg_assert_same(array('query', 'query'), array($routes['workspace.personal_plans.delete']['mode'], $routes['workspace.personal_plans.delete']['day']), 'DELETE in the query');
+	pg_assert_same('body', $routes['workspace.personal_plans.delete_post']['mode']);
+	pg_assert_true(isset($routes['workspace.personal_plans.create']['repeat']), 'a new plan may repeat');
 }

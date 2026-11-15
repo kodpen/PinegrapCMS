@@ -8,15 +8,15 @@ description: The agents' request queue: wake rules make one ws_ai_requests row p
 - Each allowed `ws_channel_agents` row of an active `app` or `model` agent is matched by `ws_agent_wake_matches()`: its `@handle` as a word or its application's `<@app:N>` tag under every rule; `all` every non-empty message; `prefix` a message starting with the prefix (any case); `replies` an answer to one of the agent's own messages. Its own message never wakes it. A discussion with no own row: the channel's, by name only (`agent-discussion-reach.md`).
 - One row per woken agent: `ws_ai_requests.agent` = `agent:<agent id>` or `model:<agent id>` (the registry row's id; `app:<n>` is a proposal's, #8410), status queued, the channel and message, `requested_by` the writer.
 - The brakes come first (`ws_agent_brake()`): the reply chain read back through `parent_id` (`ws_agent_chain()`, agent messages counted until a person's; a message written through an OAuth connection counts as an agent's, `agent-sessions.md`) and the agent's requests of the last hour. A braked wake leaves a system line naming the agent.
-- Claude, Pinegrap AI and the MCP agents keep their own queues.
+- Claude, Pinegrap AI and MCP agents keep own queues.
 
 ## How is a push door knocked?
 - At once for an `app` agent with door `push`, never the words, 10 s timeout. `ws_agent_knock_request()` picks the form by the address (#9273):
 - Webhook form: `{"event":"workspace.agent_request","site":<integration.php address>,"agent":<handle>,"request_id":N}`; with a secret `Authorization: Bearer`, `X-Pinegrap-Timestamp`, `X-Pinegrap-Signature: sha256=hmac(timestamp + "." + body)`.
-- Routine form, for an address `ws_claude_url_valid()` accepts: the headers `ws_claude_fire()` sends with the secret as token, body `{"text":"site: <address> · agent: @<handle> · request: <id>"}`. Each knock is one routine run.
+- Routine form, for an address `ws_claude_url_valid()` accepts: the headers `ws_claude_fire()` sends with the secret as token, body `{"text":"site: <address> · agent: @<handle> · request: <id>"}`. Each knock starts a new session ([[agent-door-routine-trial]]).
 - A 2xx clears `door_failures` and `door_error`; anything else counts a failure with `ws_agent_knock_refusal()`'s sentence (a routine's 401/403/404/429 in `ws_claude_fire()`'s words; else the status and the answer's reason, ≤120 chars), `door_last_knock` the time.
 - `ws_agent_knocks_retry()` (top of `ws_ai_kick()`, so screens and the hourly job) knocks again for the newest queued request once `ws_model_hold_seconds(failures)` has passed (1 min doubling, 1 h at most). The request stays queued for a poll meanwhile.
-- A poll door gets no knock: the agent reads `GET /workspace/agent-requests`.
+- A poll door gets no knock: the agent reads the list.
 - A request whose message is being edited is held (no knock, not listed, `409 editing`): [[agent-edit-hold]].
 
 ## Which routes does an app agent use?

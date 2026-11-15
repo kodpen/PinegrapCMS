@@ -307,18 +307,15 @@ function ws_question_ring_pick($mentioned, $owners)
 }
 
 /**
- * Rings the people an application asks with a checklist question or a poll
- * (question_asked), whatever their channel's notify level: an approval
- * request rings its approvers the same way. Somebody who already holds an
- * unread mention of the message is not rung twice. People's own checklists
- * and polls ring nobody beyond their mentions.
+ * The people an application's question is asked of: those it mentions (a
+ * department's members too), else the owners of the channel (of the channel
+ * a discussion was started in). Only team members who read the channel.
  *
  * @param array $channel
- * @param int   $message_id
  * @param array $tokens ws_tokens() of the message
- * @return int[] the people rung
+ * @return int[]
  */
-function ws_question_ring($channel, $message_id, $tokens)
+function ws_question_asked_ids($channel, $tokens)
 {
     $mentioned = array();
 
@@ -340,13 +337,34 @@ function ws_question_ring($channel, $message_id, $tokens)
     $place = (function_exists('ws_thread_parent_channel') ? ws_thread_parent_channel($channel) : null) ?: $channel;
     $owners = $mentioned ? array() : array_map('intval', (array) db_values("SELECT user_id FROM ws_channel_members
         WHERE channel_id = '" . (int) $place['id'] . "' AND role = 'owner'"));
-    $rung = array();
+    $asked = array();
 
     foreach (ws_question_ring_pick($mentioned, $owners) as $user_id) {
-        if (!ws_is_team_member($user_id) || !ws_can_read_channel(ws_rights_for_id($user_id), $channel)) {
-            continue;
+        if (ws_is_team_member($user_id) && ws_can_read_channel(ws_rights_for_id($user_id), $channel)) {
+            $asked[] = (int) $user_id;
         }
+    }
 
+    return $asked;
+}
+
+/**
+ * Rings the people an application asks with a checklist question or a poll
+ * (question_asked), whatever their channel's notify level: an approval
+ * request rings its approvers the same way. Somebody who already holds an
+ * unread mention of the message is not rung twice. People's own checklists
+ * and polls ring nobody beyond their mentions.
+ *
+ * @param array $channel
+ * @param int   $message_id
+ * @param array $tokens ws_tokens() of the message
+ * @return int[] the people rung
+ */
+function ws_question_ring($channel, $message_id, $tokens)
+{
+    $rung = array();
+
+    foreach (ws_question_asked_ids($channel, $tokens) as $user_id) {
         $mention = (int) db_value("SELECT id FROM ws_inbox
             WHERE user_id = '" . $user_id . "' AND kind = 'mention' AND message_id = '" . (int) $message_id . "' AND read_at = 0 LIMIT 1");
 
@@ -607,8 +625,8 @@ function ws_poll($poll_id)
  * the same refusals: a question that fits in a message, two to ten different
  * options, and a closing moment later than now.
  *
- * @param array $data question, options (texts), closes_at (timestamp, 0 = open until closed)
- * @return array ok, error, field, question, options, closes_at
+ * @param array $data question, options (texts, or objects as ws_poll_option_part() takes them), closes_at (timestamp, 0 = open until closed)
+ * @return array ok, error, field, question, options (labels), parts, closes_at
  */
 function ws_poll_input($data)
 {
@@ -626,27 +644,16 @@ function ws_poll_input($data)
         return $fail(lang(array('string' => 'A message can be at most {var:1} characters long.', 'vars' => WS_MESSAGE_MAX)), 'question');
     }
 
-    $options = array();
-    // "Elma" and "elma" are one option: compared folded (ws_fold()).
-    $seen = array();
+    // Texts or objects with an option's parts (poll_parts.php); "Elma" and
+    // "elma" are one option: compared folded (ws_fold()).
+    $listed = ws_poll_parts_list($data['options'] ?? array());
 
-    foreach ((array) ($data['options'] ?? array()) as $option) {
-        $option = mb_substr(trim(preg_replace('/\s+/u', ' ', (string) $option)), 0, 255);
-        $key = ws_fold($option);
-
-        if (($option !== '') && !isset($seen[$key])) {
-            $seen[$key] = true;
-            $options[] = $option;
-        }
+    if (!$listed['ok']) {
+        return $fail($listed['error'], $listed['field']);
     }
 
-    if (count($options) < 2) {
-        return $fail(lang('A poll needs at least two different options.'), 'options');
-    }
-
-    if (count($options) > 10) {
-        return $fail(lang('A poll can have at most ten options.'), 'options');
-    }
+    $parts = $listed['parts'];
+    $options = array_column($parts, 'label');
 
     $closes_at = (int) ($data['closes_at'] ?? 0);
 
@@ -654,7 +661,7 @@ function ws_poll_input($data)
         return $fail(lang('The poll has to close later than now.'), 'closes_at');
     }
 
-    return array('ok' => true, 'error' => '', 'field' => '', 'question' => $question, 'options' => $options, 'closes_at' => max(0, $closes_at));
+    return array('ok' => true, 'error' => '', 'field' => '', 'question' => $question, 'options' => $options, 'parts' => $parts, 'closes_at' => max(0, $closes_at));
 }
 
 /**
@@ -663,7 +670,7 @@ function ws_poll_input($data)
  *
  * @param array $viewer
  * @param array $channel
- * @param array $data question, options (texts), multiple, anonymous, closes_at (timestamp, 0 = open until closed)
+ * @param array $data question, options (texts or objects, ws_poll_option_part()), multiple, anonymous, closes_at (timestamp, 0 = open until closed)
  * @param int   $app_id
  * @return array ok, error, field, message_id, poll_id
  */
@@ -685,6 +692,17 @@ function ws_poll_create($viewer, $channel, $data, $app_id = 0)
 
     $options = $checked['options'];
     $closes_at = $checked['closes_at'];
+    $stored = ws_poll_parts_store_check((int) $channel['id'], $checked['parts']);
+
+    if (!$stored['ok']) {
+        return $fail($stored['error'], $stored['field']);
+    }
+
+    // An application asking makes it an agent question (agent_question.php):
+    // set here, never from the request, with no anonymous vote or closing time.
+    $flag = ws_agent_question_ready() ? ws_agent_question_flag($app_id) : 0;
+    $data = ws_agent_question_settings(array('multiple' => $data['multiple'] ?? 0, 'anonymous' => $data['anonymous'] ?? 0, 'closes_at' => $closes_at), $flag === 1);
+    $closes_at = (int) $data['closes_at'];
 
     $sent = ws_message_send($viewer, $channel, $checked['question'], array('app_id' => $app_id));
 
@@ -692,14 +710,14 @@ function ws_poll_create($viewer, $channel, $data, $app_id = 0)
         return $fail($sent['error'], 'question');
     }
 
-    db("INSERT INTO ws_polls (message_id, channel_id, multiple, anonymous, closes_at, created_by, created_at)
+    db("INSERT INTO ws_polls (message_id, channel_id, multiple, anonymous, closes_at, created_by, created_at" . (ws_agent_question_ready() ? ', agent_question' : '') . ")
         VALUES ('" . (int) $sent['message_id'] . "', '" . (int) $channel['id'] . "', '" . (empty($data['multiple']) ? 0 : 1) . "',
-            '" . (empty($data['anonymous']) ? 0 : 1) . "', '" . $closes_at . "', '" . (int) $viewer['id'] . "', '" . time() . "')");
+            '" . (empty($data['anonymous']) ? 0 : 1) . "', '" . $closes_at . "', '" . (int) $viewer['id'] . "', '" . time() . "'" . (ws_agent_question_ready() ? ", '" . $flag . "'" : '') . ")");
 
     $poll_id = (int) mysqli_insert_id(db::$con);
 
-    foreach ($options as $sort => $label) {
-        db("INSERT INTO ws_poll_options (poll_id, sort, label) VALUES ('" . $poll_id . "', '" . (int) $sort . "', '" . e($label) . "')");
+    foreach ($checked['parts'] as $sort => $part) {
+        db("INSERT INTO ws_poll_options SET poll_id = '" . $poll_id . "', sort = '" . (int) $sort . "', label = '" . e($part['label']) . "'" . ws_poll_part_sql($part));
     }
 
     // An application's poll rings the people it asks.
@@ -724,12 +742,13 @@ function ws_poll_create($viewer, $channel, $data, $app_id = 0)
  *
  * @param array $viewer
  * @param array $poll
- * @param array $data question, options (list of {id, label}; id 0 for a new one), multiple, anonymous, closes_at (timestamp, 0 = open until closed)
+ * @param array $data question, options (list of {id, label} and an option's parts; id 0 for a new one), multiple, anonymous, closes_at (timestamp, 0 = open until closed)
+ * @param int   $as_app the asking application changing its own poll, 0 for a person
  * @return array ok, error, field
  */
-function ws_poll_edit($viewer, $poll, $data)
+function ws_poll_edit($viewer, $poll, $data, $as_app = 0)
 {
-    $checked = ws_poll_edit_check($viewer, $poll, $data);
+    $checked = ws_poll_edit_check($viewer, $poll, $data, $as_app);
 
     if (!$checked['ok']) {
         return array('ok' => false, 'error' => $checked['error'], 'field' => $checked['field']);
@@ -746,7 +765,7 @@ function ws_poll_edit($viewer, $poll, $data)
     // The question is the message: its edit keeps tags, mentions and
     // checklists right and tells whoever it newly mentions.
     if ($question !== trim((string) $message['body'])) {
-        $edited = ws_message_edit($viewer, $message, $question);
+        $edited = ws_message_edit($viewer, $message, $question, $as_app);
 
         if (!$edited['ok']) {
             return array('ok' => false, 'error' => $edited['error'], 'field' => 'question');
@@ -760,11 +779,11 @@ function ws_poll_edit($viewer, $poll, $data)
 
     foreach ($options as $sort => $option) {
         if ($option['id'] > 0) {
-            db("UPDATE ws_poll_options SET sort = '" . (int) $sort . "', label = '" . e($option['label']) . "'
+            db("UPDATE ws_poll_options SET sort = '" . (int) $sort . "', label = '" . e($option['label']) . "'" . ws_poll_part_sql($option) . "
                 WHERE id = '" . (int) $option['id'] . "' AND poll_id = '" . (int) $poll['id'] . "'");
             $keep[] = (int) $option['id'];
         } else {
-            db("INSERT INTO ws_poll_options (poll_id, sort, label) VALUES ('" . (int) $poll['id'] . "', '" . (int) $sort . "', '" . e($option['label']) . "')");
+            db("INSERT INTO ws_poll_options SET poll_id = '" . (int) $poll['id'] . "', sort = '" . (int) $sort . "', label = '" . e($option['label']) . "'" . ws_poll_part_sql($option));
             $keep[] = (int) mysqli_insert_id(db::$con);
         }
     }
@@ -776,7 +795,7 @@ function ws_poll_edit($viewer, $poll, $data)
         WHERE id = '" . (int) $poll['id'] . "'");
 
     // Only the tags the edit adds to the question or the options ask.
-    ws_message_ask_item($viewer, ws_channel($poll['channel_id']), (int) $message['id'], $before, ws_poll_tag_text($question, $options));
+    ws_message_ask_item($viewer, ws_channel($poll['channel_id']), (int) $message['id'], $before, ws_poll_tag_text($question, $options), ws_message_by_app($as_app));
 
     return array('ok' => true, 'error' => '', 'field' => '');
 }
@@ -807,9 +826,10 @@ function ws_poll_tag_text($question, $options)
  * @param array $viewer
  * @param array $poll
  * @param array $data as ws_poll_edit() takes it
- * @return array ok, error, field, message, question, options (list of {id, label}), multiple, anonymous, closes_at
+ * @param int   $as_app the asking application changing its own poll, 0 for a person
+ * @return array ok, error, field, message, question, options (parts with id: ws_poll_option_part()), multiple, anonymous, closes_at
  */
-function ws_poll_edit_check($viewer, $poll, $data)
+function ws_poll_edit_check($viewer, $poll, $data, $as_app = 0)
 {
     $fail = function ($error, $field = '') {
         return array('ok' => false, 'error' => $error, 'field' => $field);
@@ -825,8 +845,12 @@ function ws_poll_edit_check($viewer, $poll, $data)
         return $fail(lang('That poll could not be found.'));
     }
 
-    if (((int) $poll['created_by'] !== (int) $viewer['id']) || ($message['sender_kind'] !== 'user') || ((int) $message['sender_id'] !== (int) $viewer['id'])) {
+    if (!ws_poll_is_asker($poll, $message, (int) $viewer['id'], $as_app)) {
         return $fail(lang('Only the person who asked can change the poll.'));
+    }
+
+    if ((int) ($poll['withdrawn_at'] ?? 0) > 0) {
+        return $fail(lang('The poll was taken back.'), 'withdrawn_at');
     }
 
     if (((int) $poll['closed_at'] > 0) || (((int) $poll['closes_at'] > 0) && ((int) $poll['closes_at'] <= time()))) {
@@ -847,11 +871,13 @@ function ws_poll_edit_check($viewer, $poll, $data)
         return $fail(lang(array('string' => 'A message can be at most {var:1} characters long.', 'vars' => WS_MESSAGE_MAX)), 'question');
     }
 
-    $existing = array();
-
-    foreach ((array) db_items("SELECT id, label FROM ws_poll_options WHERE poll_id = '" . (int) $poll['id'] . "'") as $row) {
-        $existing[(int) $row['id']] = (string) $row['label'];
-    }
+    // Each option's stored parts: a field an existing option is sent
+    // without keeps its value, so a form that knows only the labels does not
+    // wipe a description or a picture.
+    $stored = ws_poll_parts_stored((int) $poll['id']);
+    $existing = array_map(function ($part) {
+        return $part['label'];
+    }, $stored);
 
     $votes = array();
 
@@ -860,32 +886,34 @@ function ws_poll_edit_check($viewer, $poll, $data)
     }
 
     $voted = (array_sum($votes) > 0);
-    $options = array();
-    $labels = array();
+    $items = array();
 
     foreach ((array) ($data['options'] ?? array()) as $option) {
-        $option_id = is_array($option) ? (int) ($option['id'] ?? 0) : 0;
-        $label = mb_substr(trim(preg_replace('/\s+/u', ' ', (string) (is_array($option) ? ($option['label'] ?? '') : $option))), 0, 255);
+        $option = is_array($option) ? $option : array('label' => $option);
+        $option_id = (int) ($option['id'] ?? 0);
 
-        if (($option_id > 0) && !isset($existing[$option_id])) {
-            return $fail(lang('Invalid request.'), 'options');
+        if ($option_id > 0) {
+            if (!isset($stored[$option_id])) {
+                return $fail(lang('Invalid request.'), 'options');
+            }
+
+            $option += $stored[$option_id];
         }
 
-        // Compared folded (ws_fold()), so "Elma" and "elma" are one option.
-        if (($label === '') || in_array(ws_fold($label), $labels, true)) {
-            continue;
-        }
-
-        $labels[] = ws_fold($label);
-        $options[] = array('id' => $option_id, 'label' => $label);
+        $items[] = $option;
     }
 
-    if (count($options) < 2) {
-        return $fail(lang('A poll needs at least two different options.'), 'options');
+    $listed = ws_poll_parts_list($items);
+
+    if (!$listed['ok']) {
+        return $fail($listed['error'], $listed['field']);
     }
 
-    if (count($options) > 10) {
-        return $fail(lang('A poll can have at most ten options.'), 'options');
+    $options = $listed['parts'];
+    $storable = ws_poll_parts_store_check((int) $poll['channel_id'], $options);
+
+    if (!$storable['ok']) {
+        return $fail($storable['error'], $storable['field']);
     }
 
     // What people voted for stays, word for word.
@@ -893,7 +921,7 @@ function ws_poll_edit_check($viewer, $poll, $data)
         $kept = false;
 
         foreach ($options as $option) {
-            if (($option['id'] === $option_id) && ($option['label'] === ($existing[$option_id] ?? null))) {
+            if (($option['id'] === $option_id) && ($option['label'] === ($existing[$option_id] ?? null)) && ($option['other'] === ($stored[$option_id]['other'] ?? false))) {
                 $kept = true;
             }
         }
@@ -903,6 +931,8 @@ function ws_poll_edit_check($viewer, $poll, $data)
         }
     }
 
+    // An agent question keeps no anonymous vote and no closing time.
+    $data = ws_agent_question_settings($data, ws_agent_question_is($poll));
     $multiple = !empty($data['multiple']);
     $anonymous = !empty($data['anonymous']);
 
@@ -918,7 +948,7 @@ function ws_poll_edit_check($viewer, $poll, $data)
 
     // A new wording of the question is held to the rules of a message edit.
     if ($question !== trim((string) $message['body'])) {
-        $editable = ws_message_edit_check($viewer, $message, $question);
+        $editable = ws_message_edit_check($viewer, $message, $question, $as_app);
 
         if (!$editable['ok']) {
             return $fail($editable['error'], 'question');
@@ -970,8 +1000,20 @@ function ws_polls_map($message_ids, $viewer)
     // guest_id.
     $guest_votes = function_exists('ws_guest_votes_ready') && ws_guest_votes_ready();
     $guest_reader = (int) ($viewer['guest_id'] ?? 0);
+    // The option parts (poll_parts.php): plain labels before the upgrade.
+    $parts_ready = ws_poll_parts_ready();
+    $file_ids = array();
 
-    foreach ((array) db_items("SELECT poll_id, option_id, user_id" . ($guest_votes ? ', guest_id' : ', 0 AS guest_id') . " FROM ws_poll_votes WHERE poll_id IN (" . implode(',', $poll_ids) . ") ORDER BY created_at") as $row) {
+    foreach ($options as $rows) {
+        foreach ($rows as $row) {
+            $file_ids[] = $parts_ready ? (int) ($row['file_id'] ?? 0) : 0;
+        }
+    }
+
+    $pictures = ws_poll_pictures_map($file_ids);
+    $again = ws_poll_again_links($polls);
+
+    foreach ((array) db_items("SELECT poll_id, option_id, user_id" . ($guest_votes ? ', guest_id' : ', 0 AS guest_id') . ($parts_ready ? ', other_text' : ", '' AS other_text") . " FROM ws_poll_votes WHERE poll_id IN (" . implode(',', $poll_ids) . ") ORDER BY created_at") as $row) {
         $votes[(int) $row['poll_id']][] = $row;
         $user_ids[] = (int) $row['user_id'];
     }
@@ -986,6 +1028,7 @@ function ws_polls_map($message_ids, $viewer)
         $counts = array();
         $voters = array();
         $mine = array();
+        $my_text = '';
         $people_voted = array();
 
         foreach ($votes[$poll_id] ?? array() as $vote) {
@@ -994,16 +1037,21 @@ function ws_polls_map($message_ids, $viewer)
             $counts[$option_id] = ($counts[$option_id] ?? 0) + 1;
             $people_voted[($voter_guest > 0) ? 'g' . $voter_guest : (int) $vote['user_id']] = true;
 
+            // The words on the "Other" row go with the voter's name, so an
+            // anonymous poll shows none of them.
+            $text = (string) $vote['other_text'];
+
             if (!$anonymous && ($voter_guest > 0) && function_exists('ws_guest_sender')) {
                 $voter = ws_guest_sender($voter_guest);
-                $voters[$option_id][] = array('id' => 0, 'name' => (string) $voter['name'], 'avatar' => (string) $voter['avatar'], 'guest' => true);
+                $voters[$option_id][] = array('id' => 0, 'name' => (string) $voter['name'], 'avatar' => (string) $voter['avatar'], 'guest' => true, 'text' => $text);
             } elseif (!$anonymous) {
                 $voters[$option_id][] = array('id' => (int) $vote['user_id'], 'name' => $people[(int) $vote['user_id']]['name'] ?? ws_person_name($vote['user_id']),
-                    'avatar' => $people[(int) $vote['user_id']]['avatar'] ?? '');
+                    'avatar' => $people[(int) $vote['user_id']]['avatar'] ?? '', 'text' => $text);
             }
 
             if (($guest_reader > 0) ? ($voter_guest === $guest_reader) : (($voter_guest === 0) && ((int) $vote['user_id'] === (int) $viewer['id']))) {
                 $mine[] = $option_id;
+                $my_text = ($text !== '') ? $text : $my_text;
             }
         }
 
@@ -1014,19 +1062,38 @@ function ws_polls_map($message_ids, $viewer)
             $option_id = (int) $option['id'];
             $count = $counts[$option_id] ?? 0;
 
+            $part = ws_poll_part_of_row($option, $parts_ready);
+            $is_mine = in_array($option_id, $mine, true);
+
             $list[] = array(
-                'id'      => $option_id,
-                'label'   => (string) $option['label'],
-                'count'   => $count,
-                'mine'    => in_array($option_id, $mine, true),
-                'leading' => ($top > 0) && ($count === $top),
-                'voters'  => $voters[$option_id] ?? array(),
+                'id'          => $option_id,
+                'label'       => (string) $option['label'],
+                'count'       => $count,
+                'mine'        => $is_mine,
+                'leading'     => ($top > 0) && ($count === $top),
+                'voters'      => $voters[$option_id] ?? array(),
+                'description' => $part['description'],
+                'picture'     => $pictures[$part['file_id']] ?? null,
+                'links'       => $part['links'],
+                'recommended' => $part['recommended'],
+                'other'       => $part['other'],
+                // The reader's own words on the "Other" row, for the form.
+                'my_text'     => ($part['other'] && $is_mine) ? $my_text : '',
             );
         }
 
         $channel = ws_channel($poll['channel_id']);
+        $withdrawn = ((int) ($poll['withdrawn_at'] ?? 0) > 0);
+        $links = $again[$poll_id] ?? array('again_of' => 0, 'again_of_message' => 0, 'asked_again' => 0, 'asked_again_message' => 0);
+        // The person who asked; an agent's poll is taken back through its key.
+        $asker = ((int) $poll['created_by'] === (int) $viewer['id']) && (ws_message_app_id($poll['message_id']) === 0)
+            && ws_can_post_channel($viewer, $channel) && ws_poll_again_ready();
 
-        $out[(int) $poll['message_id']] = array(
+        // Asked of named people, settled by the first answer (agent_question.php).
+        $question = ws_agent_question_map_fields($poll, $viewer);
+        $can_vote = ws_poll_vote_state($poll, ws_poll_in_past($poll))['ok'] && ws_can_post_channel($viewer, $channel);
+
+        $out[(int) $poll['message_id']] = $question + array(
             'id'         => $poll_id,
             'multiple'   => ((int) $poll['multiple'] === 1),
             'anonymous'  => $anonymous,
@@ -1040,10 +1107,19 @@ function ws_polls_map($message_ids, $viewer)
             'voted'      => !empty($mine),
             // Refused past closes_at before anything closes the poll, and in an
             // earlier version of the conversation, as the vote refuses it.
-            'can_vote'   => ws_poll_vote_state($poll, ws_poll_in_past($poll))['ok'] && ws_can_post_channel($viewer, $channel),
-            'can_close'  => !$closed && ws_can_close_poll($viewer, $poll, $channel),
+            'can_vote'   => $can_vote && (!$question['agent_question'] || $question['can_answer']),
+            'can_close'  => !$closed && !$withdrawn && !$question['agent_question'] && ws_can_close_poll($viewer, $poll, $channel),
             // The asker changes it while it is open; the form is filled from these.
-            'can_edit'   => !$closed && ((int) $poll['created_by'] === (int) $viewer['id']) && ws_can_post_channel($viewer, $channel),
+            'can_edit'   => !$closed && !$withdrawn && ((int) $poll['created_by'] === (int) $viewer['id']) && ws_can_post_channel($viewer, $channel),
+            // Taken back and asked again (poll_again.php).
+            'withdrawn'           => $withdrawn,
+            'withdrawn_at'        => (int) ($poll['withdrawn_at'] ?? 0),
+            'can_withdraw'        => $asker && !$closed && !$withdrawn,
+            'can_ask_again'       => $asker,
+            'again_of'            => $links['again_of'],
+            'again_of_message'    => $links['again_of_message'],
+            'asked_again'         => $links['asked_again'],
+            'asked_again_message' => $links['asked_again_message'],
             'closes_date' => ((int) $poll['closes_at'] > 0) ? date('Y-m-d', (int) $poll['closes_at']) : '',
             'closes_time' => ((int) $poll['closes_at'] > 0) ? date('H:i', (int) $poll['closes_at']) : '',
             'result_id'  => (int) $poll['result_message_id'],
@@ -1090,6 +1166,11 @@ function ws_poll_vote_state($poll, $in_past, $now = null)
         return array('ok' => false, 'error' => lang('This message is in an earlier version of the conversation, which is kept as it was.'), 'field' => 'message_id', 'expired' => false);
     }
 
+    // Taken back by its asker (poll_again.php): greyed, no vote, no result.
+    if ((int) ($poll['withdrawn_at'] ?? 0) > 0) {
+        return array('ok' => false, 'error' => lang('The poll was taken back.'), 'field' => 'withdrawn_at', 'expired' => false);
+    }
+
     if ((int) $poll['closed_at'] > 0) {
         return array('ok' => false, 'error' => lang('The poll is closed.'), 'field' => 'closes_at', 'expired' => false);
     }
@@ -1132,19 +1213,28 @@ function ws_poll_vote_check($viewer, $poll)
         return array('ok' => false, 'error' => lang('You cannot post in that channel.'), 'field' => '', 'expired' => false);
     }
 
+    // Only the people an agent question asks answer it.
+    $refusal = ws_agent_question_is($poll) ? ws_agent_question_answer_check($viewer, $poll) : '';
+
+    if ($refusal !== '') {
+        return array('ok' => false, 'error' => $refusal, 'field' => '', 'expired' => false);
+    }
+
     return $state;
 }
 
 /**
  * Casts this person's vote, replacing the one they cast before. An empty
- * choice takes the vote back.
+ * choice takes the vote back. Choosing the "Other" row needs the voter's
+ * own words.
  *
- * @param array $viewer
- * @param array $poll
- * @param int[] $option_ids
- * @return array ok, error
+ * @param array  $viewer
+ * @param array  $poll
+ * @param int[]  $option_ids
+ * @param string $other_text the words on the "Other" row
+ * @return array ok, error, field
  */
-function ws_poll_vote($viewer, $poll, $option_ids)
+function ws_poll_vote($viewer, $poll, $option_ids, $other_text = '')
 {
     $checked = ws_poll_vote_check($viewer, $poll);
 
@@ -1153,7 +1243,7 @@ function ws_poll_vote($viewer, $poll, $option_ids)
             ws_poll_close(null, $poll);
         }
 
-        return array('ok' => false, 'error' => $checked['error']);
+        return array('ok' => false, 'error' => $checked['error'], 'field' => $checked['field']);
     }
 
     $valid = array_map('intval', (array) db_values("SELECT id FROM ws_poll_options WHERE poll_id = '" . (int) $poll['id'] . "'"));
@@ -1163,16 +1253,44 @@ function ws_poll_vote($viewer, $poll, $option_ids)
         $chosen = array($chosen[0]);
     }
 
+    $other_id = ws_poll_other_id((int) $poll['id']);
+    $text = ws_poll_other_text($other_text);
+    $worded = ws_poll_other_check($chosen, $other_id, $text);
+
+    if (!$worded['ok']) {
+        return array('ok' => false, 'error' => $worded['error'], 'field' => $worded['field']);
+    }
+
+    // An agent question is settled by its first answer: closed before the
+    // answer is written, with no outcome line, and the asking agent woken.
+    $question = ws_agent_question_is($poll);
+
+    if ($question) {
+        $refusal = ws_agent_question_choice_refusal($chosen);
+
+        if ($refusal !== '') {
+            return array('ok' => false, 'error' => $refusal, 'field' => 'option_ids');
+        }
+
+        if (!ws_agent_question_settle($viewer, $poll)) {
+            return array('ok' => false, 'error' => lang('The question was already answered.'), 'field' => 'closes_at');
+        }
+    }
+
     db("DELETE FROM ws_poll_votes WHERE poll_id = '" . (int) $poll['id'] . "' AND user_id = '" . (int) $viewer['id'] . "'");
 
     foreach ($chosen as $option_id) {
-        db("INSERT IGNORE INTO ws_poll_votes (poll_id, option_id, user_id, created_at)
-            VALUES ('" . (int) $poll['id'] . "', '" . (int) $option_id . "', '" . (int) $viewer['id'] . "', '" . time() . "')");
+        db("INSERT IGNORE INTO ws_poll_votes SET poll_id = '" . (int) $poll['id'] . "', option_id = '" . (int) $option_id . "', user_id = '" . (int) $viewer['id'] . "',
+            created_at = '" . time() . "'" . ((($other_id > 0) && ($option_id === $other_id)) ? ", other_text = '" . e($text) . "'" : ''));
     }
 
     ws_message_touch($poll['message_id']);
 
-    return array('ok' => true, 'error' => '');
+    if ($question) {
+        ws_agent_question_wake($viewer, $poll);
+    }
+
+    return array('ok' => true, 'error' => '', 'field' => '');
 }
 
 /**
@@ -1189,6 +1307,18 @@ function ws_poll_close($viewer, $poll)
 {
     if ((int) $poll['closed_at'] > 0) {
         return array('ok' => true, 'error' => '', 'result_message_id' => (int) $poll['result_message_id']);
+    }
+
+    // A poll taken back writes no result (poll_again.php).
+    if ((int) ($poll['withdrawn_at'] ?? 0) > 0) {
+        return array('ok' => true, 'error' => '', 'result_message_id' => 0);
+    }
+
+    // An agent question closes itself when it is answered (agent_question.php).
+    $refusal = ws_agent_question_close_refusal($poll);
+
+    if ($refusal !== '') {
+        return array('ok' => false, 'error' => $refusal, 'result_message_id' => 0);
     }
 
     $channel = ws_channel($poll['channel_id']);
@@ -1297,7 +1427,8 @@ function ws_polls_autoclose($channel_id)
     }
 
     foreach ((array) db_items("SELECT * FROM ws_polls
-        WHERE channel_id = '" . (int) $channel_id . "' AND closed_at = 0 AND closes_at > 0 AND closes_at <= '" . time() . "'
+        WHERE channel_id = '" . (int) $channel_id . "' AND closed_at = 0 AND closes_at > 0 AND closes_at <= '" . time() . "'"
+        . (ws_poll_again_ready() ? ' AND withdrawn_at = 0' : '') . "
         LIMIT 10") as $poll) {
         ws_poll_close(null, $poll);
     }

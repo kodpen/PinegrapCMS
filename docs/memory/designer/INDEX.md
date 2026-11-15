@@ -411,7 +411,7 @@
 - email-designs-copies.md: Pages offered as copies of a new e-mail design (MA5d2 #9542): the installed template's e-mail pages and earlier campaigns' pages, which are left out, what a copy keeps
 - email-designs-editor.md: How the visual editor shows an e-mail design (MA5c #9465): the 600 px canvas and Phone view, the mail palette group, what a mail cannot carry hidden, the note on style sheets
 - email-designs-parts.md: The E-mail group's parts in the palette (MA5c, MA5c2 #9520): what each holds, the footer filled when a campaign is stored, the greeting's merge field, the product card written by hand
-- email-designs-ready.md: The five ready e-mail designs (MA5d #9525): page trees in code, Use this design, the previews on the Templates tab drawn as sent in the site's colours (MA5d2)
+- email-designs-ready.md: The five ready e-mail designs (MA5d #9525): page trees in code, Use this design, the previews on the Templates tab drawn as sent in the site's colours (MA5d2) [decision: decisions-made-workspace-26.md]
 - email-designs.md: E-mail designs (MA5c #9465): the private folder, props.pgEmail, the 600 px canvas and Phone view, mail blocks as presentation tables, their inline look map and canvas twin
 - error-page-widget.md: The error page system widget: when it is shown, which block shows for 404, maintenance and other errors, its tokens, and the maintenance screen's title.
 - express-order-legal-documents.md: Checkout document boxes and KVKK lines in the designer's express order tree: legal_* field bindings, has_legal_documents / has_legal_kvkk* flags, __legal_* tokens, sentence split of the label

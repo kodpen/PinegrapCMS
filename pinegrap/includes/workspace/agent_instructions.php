@@ -240,6 +240,32 @@ function ws_agent_instructions_never_lines()
 }
 
 /**
+ * The brief's line that points to the instructions and names their version,
+ * so an agent that follows an older text reads them again. Pure.
+ *
+ * @param string $version ws_agent_instructions_version() of the current text
+ * @return string
+ */
+function ws_agent_instructions_brief_line($version)
+{
+    return 'Your instructions: GET /workspace/agent-instructions, version ' . (string) $version . '. If the instructions you follow carry another version, read them again before you start on this request.';
+}
+
+/**
+ * The brief's instructions line for an agent, with the version of the text
+ * the route serves it now.
+ *
+ * @param array $agent the raw ws_agents row
+ * @return string
+ */
+function ws_agent_instructions_brief_line_for($agent)
+{
+    $present = ws_agent_instructions_present($agent, ws_agent_instructions_channels((int) $agent['id']), ws_claude_api_base());
+
+    return ws_agent_instructions_brief_line($present['instructions_version']);
+}
+
+/**
  * The instructions an application agent follows: who it is, its channels
  * and what wakes it, how it waits, each request, the never-list and the
  * assistant rules. English, as the routine's are. It names nothing of this

@@ -182,8 +182,10 @@ function ws_channel_app_picker($channel)
     // The registry agents the channel allows (agent_shown.php; in a
     // discussion also those of the channel it is about) come first;
     // an application that is one is not offered twice.
-    $agents = (function_exists('ws_agent_picker_entries') && function_exists('ws_agent_reach_rows'))
-        ? ws_agent_picker_entries(ws_agent_reach_rows($channel))
+    // Each with its role, state and usage mark (ws_agent_picker_briefs()).
+    $rows = function_exists('ws_agent_reach_rows') ? ws_agent_reach_rows($channel) : array();
+    $agents = function_exists('ws_agent_picker_entries')
+        ? ws_agent_picker_entries($rows, function_exists('ws_agent_picker_briefs') ? ws_agent_picker_briefs($rows, time()) : array())
         : array();
     $tokens = array_column($agents, 'token');
 

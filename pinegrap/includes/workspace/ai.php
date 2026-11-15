@@ -1569,6 +1569,22 @@ function ws_ai_step($row)
         }
     }
 
+    // Asked to approve, a model that writes words instead of deciding is
+    // asked again, then the request is given up: words are no approval.
+    if (empty($calls) && function_exists('ws_approval_agent_request_of') && ws_approval_agent_request_of($row)) {
+        if ((int) ($state['nudged'] ?? 0) >= 2) {
+            ws_ai_finish_fail($row, lang('The approval request was not answered with Approve or Reject.'));
+            return 'done';
+        }
+
+        $state['nudged'] = (int) ($state['nudged'] ?? 0) + 1;
+        $state['messages'][] = array('role' => 'assistant', 'content' => $content);
+        $state['messages'][] = array('role' => 'user', 'content' => 'Answer with the decide tool: decision approve or reject, and a note saying why.');
+
+        ws_ai_save($row, $state, $steps + 1);
+        return 'step';
+    }
+
     // A model that writes its answer instead of calling the tool: the words
     // are the answer.
     if (empty($calls)) {
@@ -1692,6 +1708,24 @@ function ws_ai_step($row)
             }
 
             return $done;
+        }
+
+        // An approval's answer (approval_agents.php): recorded, and the
+        // request closed with it; a refusal is told back while steps remain.
+        if (($name === 'decide') && function_exists('ws_approval_agent_run_decide')) {
+            $refused = ws_approval_agent_run_decide($row, (array) $call['args']);
+
+            if ($refused === '') {
+                return 'done';
+            }
+
+            if ($steps >= WS_AI_MAX_STEPS - 2) {
+                ws_ai_finish_fail($row, $refused);
+                return 'done';
+            }
+
+            $state['messages'][] = ws_ai_tool_message($call['id'], array('error' => $refused));
+            continue;
         }
 
         if ($name === 'fail') {
@@ -3925,6 +3959,23 @@ function ws_ai_briefing($row, $asker, $agent = 'ai')
             $parts[] = '';
             $parts = array_merge($parts, ws_item_brief_lines($item));
         }
+
+        // Asked to approve (approval_agents.php): the site's own run answers
+        // with the decide tool, any other agent over the API.
+        $approval = function_exists('ws_approval_agent_request_of') ? ws_approval_agent_request_of($row) : null;
+
+        if ($approval) {
+            $parts[] = '';
+            $parts = array_merge($parts, ws_approval_agent_brief_lines($approval, $agent === 'ai'));
+        }
+
+        // A person answered the question this assistant asked (agent_question.php).
+        $answered = function_exists('ws_agent_question_request_of') ? ws_agent_question_request_of($row) : null;
+
+        if ($answered) {
+            $parts[] = '';
+            $parts = array_merge($parts, ws_agent_question_brief_lines($answered));
+        }
     }
 
     $text = array_merge(ws_ai_briefing_head($asker, $agent), array(''), $parts);
@@ -4048,6 +4099,14 @@ function ws_ai_start($row)
         $state['live_page_tools'] = 1;
     }
 
+    // Asked to approve (approval_agents.php): the approval stays in the
+    // state the run saves, so every step answers it with the decide tool.
+    $approval = function_exists('ws_approval_agent_request_of') ? ws_approval_agent_request_of($row) : null;
+
+    if ($approval) {
+        $state['approval'] = $approval;
+    }
+
     return array('ok' => true, 'error' => '', 'state' => $state);
 }
 
@@ -4083,6 +4142,12 @@ function ws_ai_tools($row)
             'reason' => array('type' => 'string'),
         ), array('reason')),
     );
+
+    // Asked to approve (approval_agents.php): decide in place of answer, and
+    // nothing to propose.
+    if (function_exists('ws_approval_agent_request_of') && ws_approval_agent_request_of($row)) {
+        return array(ws_approval_agent_decide_tool(), $tools[1]);
+    }
 
     // A model assistant asked by a channel message: one fitting emoji for
     // that message, beside the words or in place of them.

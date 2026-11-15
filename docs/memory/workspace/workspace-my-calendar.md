@@ -18,7 +18,7 @@ description: My calendar (workspace_my_calendar.php, PC2): the Work Calendar ope
 - The Work Calendar, the planning board and capacity are unchanged (`workspace-personal-calendar-rules.md`).
 
 ## Where are its ways in?
-- The E-mails toolbar, on Communication › Incoming e-mail (`messages_mail.php`): `ws_mail_list_my_calendar_html()` in the `secondary` slot of `ws_mail_list_filters_html()` (`mail_list.php`), after Mark all as read. "Check e-mail" (IB2, `plans/mail-inbox-features.md`) goes beside it in the same slot.
+- The E-mails toolbar, on Communication › Incoming e-mail (`messages_mail.php`): `ws_mail_list_my_calendar_html()` in the `secondary` slot of `ws_mail_list_filters_html()` (`mail_list.php`), after Mark all as read. "Check e-mail" (IB2, `mail-check.md`) stands beside it in the same slot.
 - The Workspace menu: a Tools tile `my_calendar` right after Work Calendar (`ws_nav_groups()`), marked by `ws_side_screen()`. The screen links back to the Work Calendar.
 
 Test: `tests/workspace_my_calendar_test.php`.

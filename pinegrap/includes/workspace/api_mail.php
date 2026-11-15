@@ -603,10 +603,12 @@ function ws_api_mail_unread_map($user_id, $conversation_ids)
     $floor = ws_mail_read_floor($user_id);
     $marks = ws_mail_read_marks($user_id, $ids);
     $out = array_fill_keys($ids, false);
+    // Back from Remind me later and not read since (mail_remind.php).
+    $woken = function_exists('ws_mail_remind_woken_ids') ? ws_mail_remind_woken_ids($user_id, $ids) : array();
 
     foreach ((array) db_items("SELECT conversation_id, MAX(id) AS last_in_id FROM ws_mail_items
         WHERE direction = 'in' AND conversation_id IN (" . implode(',', $ids) . ") GROUP BY conversation_id") as $row) {
-        $out[(int) $row['conversation_id']] = ws_mail_unread((int) $row['last_in_id'], (int) ($marks[(int) $row['conversation_id']] ?? 0), $floor);
+        $out[(int) $row['conversation_id']] = isset($woken[(int) $row['conversation_id']]) || ws_mail_unread((int) $row['last_in_id'], (int) ($marks[(int) $row['conversation_id']] ?? 0), $floor);
     }
 
     return $out;

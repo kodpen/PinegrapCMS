@@ -12386,6 +12386,17 @@ body.workspace .ws-shell-main > #button_bar {
   font-size: 13px;
   line-height: 1;
 }
+/* An agent's state in a message: the agents' dot (.ws-agent-dot, its colour
+   map) in the face's lower right corner; its role is a violet pill after the
+   name. */
+.ws-msg-avatar .ws-msg-agent-state {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+}
+.ws-msg-meta .ws-msg-agent-role {
+  align-self: center;
+}
 .ws-agent-stack {
   margin-left: .45rem;
 }
@@ -16375,6 +16386,61 @@ a.ws-chip:hover {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* A registry agent in the @ menu: its icon with the state mark in the
+   corner, its name cut before its role, and the usage mark of a window at
+   90% or more. */
+.ws-picker-agent {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+}
+.ws-picker-agent .ws-agent-dot {
+  position: absolute;
+  right: -4px;
+  bottom: -3px;
+}
+.ws-picker-item .ws-picker-meta-role {
+  display: inline-flex;
+  min-width: 0;
+}
+.ws-picker-meta-role > span {
+  flex: none;
+  white-space: pre;
+}
+.ws-picker-meta-role > .ws-picker-meta-name {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ws-picker-item .ws-picker-usage {
+  flex: none;
+  height: 18px;
+  padding: 0 7px 0 6px;
+  font-size: .7rem;
+}
+/* An agent's state mark, the one map of the plan for the menu and the
+   message: working a blue dot, waiting an amber dot, not seen an amber
+   square, paused a grey square; ready draws none. Tones of the agents
+   panel; the square tells not seen from waiting without words. */
+.ws-agent-dot {
+  display: inline-block;
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--pg-tone, var(--pg-tone-gray));
+  box-shadow: 0 0 0 2px var(--pg-bg-body);
+}
+.ws-agent-dot.is-late,
+.ws-agent-dot.is-paused {
+  border-radius: 2px;
+}
+.ws-agent-dot.is-working { --pg-tone: var(--pg-tone-blue); }
+.ws-agent-dot.is-waiting,
+.ws-agent-dot.is-late { --pg-tone: var(--pg-tone-amber); }
+.ws-agent-dot.is-paused { --pg-tone: var(--pg-tone-gray); }
 .ws-picker-empty {
   padding: .6rem .75rem;
   font-size: .85rem;

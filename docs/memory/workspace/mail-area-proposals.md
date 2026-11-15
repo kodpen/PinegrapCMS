@@ -10,7 +10,7 @@ description: Incoming e-mail in the messages area as decided after MA10a (#9077,
 - With the Workspace off: a new box is kept in "The mailbox itself" only (no channel to pick); a box kept in a channel goes on writing its cards (they anchor the conversations) and that channel's members read it in the area; no "Open in channel", no AI suggestion (a channel message); the notices reach the panel's bell (`pg_notification_mail_kinds()`, `mail-workspace-off.md`).
 - The Mailboxes card moves in MA10b to a place in Site Settings that the Workspace's switch does not hide (the owner: "ayarları da ayarlara taşınsın"), shown to holders of the Workspace settings right as read from the account (`ws_rights()['settings']`), whatever the switch.
 
-## Which gate does the tab ask? (decided: `plans/messages-area-decided-2.md`)
+## Which gate does the tab ask? (architect, 2026-11-13, #9077)
 - `ws_mail_list_visible()`, as the menu entry does today. Not the campaigns' right: somebody who answers mail without campaign rights sees the area with Incoming e-mail alone; the area's row shows to whoever may open one of its tabs.
 
 ## What does the card keep beside its link? (decided, MA10b)

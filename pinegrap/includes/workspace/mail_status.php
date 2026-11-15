@@ -239,6 +239,12 @@ function ws_mail_conversation_check($viewer, $conversation_id, $changes)
         }
     }
 
+    // Given to somebody who is away: their stand-in holds it, where the
+    // stand-in may answer (mail_away.php). Taking it oneself stays.
+    if (ctype_digit($assign) && ((int) $assign > 0) && ((int) $assign !== (int) $viewer['id']) && function_exists('ws_mail_away_stand_in')) {
+        $changes['assign'] = (string) ws_mail_away_stand_in((int) $assign, $channel);
+    }
+
     $changed = ws_mail_conversation_changes($conversation, $changes, (int) $viewer['id'], time());
 
     if (!$changed['ok']) {
@@ -546,6 +552,27 @@ function ws_mail_auto_reply($box, $item_id)
         return false;
     }
 
+    $text = mb_substr(trim((string) $box['auto_reply_text']), 0, WS_MAIL_AUTO_REPLY_MAX);
+
+    return ws_mail_auto_reply_send($box, $item, $conversation, $text, (string) $conversation['customer_email'], (string) $conversation['customer_name']);
+}
+
+/**
+ * Sends an automatic answer to a mail and keeps it under the card as an
+ * out item with no writer (user_id 0): the box's own answer and a holder's
+ * "I am away" text (mail_away.php). Through the box's route (none: nothing
+ * sent), queued, threaded like an answer, marked Auto-Submitted.
+ *
+ * @param array  $box          ws_mail_boxes row
+ * @param array  $item         the incoming ws_mail_items row answered
+ * @param array  $conversation ws_mail_conversations row
+ * @param string $text
+ * @param string $to           the address answered
+ * @param string $to_name
+ * @return bool sent
+ */
+function ws_mail_auto_reply_send($box, $item, $conversation, $text, $to, $to_name)
+{
     $route = ws_mail_reply_route($box, ws_mail_reply_site_domain());
 
     if (!$route['ok']) {
@@ -559,13 +586,13 @@ function ws_mail_auto_reply($box, $item_id)
         $host = (string) substr(strrchr((string) $box['address'], '@'), 1);
     }
 
-    $text = mb_substr(trim((string) $box['auto_reply_text']), 0, WS_MAIL_AUTO_REPLY_MAX);
+    $text = mb_substr(trim((string) $text), 0, WS_MAIL_AUTO_REPLY_MAX);
     $message_id = ws_mail_reply_message_id($conversation_id, bin2hex(random_bytes(8)), $host);
     $headers = ws_mail_reply_headers($item, $message_id);
     $subject = ws_mail_reply_subject((string) $item['subject'], $conversation_id);
     $properties = array(
-        'to'                 => (string) $conversation['customer_email'],
-        'to_name'            => (string) $conversation['customer_name'],
+        'to'                 => (string) $to,
+        'to_name'            => (string) $to_name,
         'from_name'          => (string) $box['name'],
         'from_email_address' => (string) $box['address'],
         'subject'            => $subject,
@@ -595,7 +622,7 @@ function ws_mail_auto_reply($box, $item_id)
             from_email, from_name, to_list, subject, body_text, auth, user_id, sent_at, created_at)
         VALUES ('" . (int) $box['id'] . "', '" . $conversation_id . "', 'out', '" . e($message_id) . "', '" . e(ws_mail_hash($message_id, '')) . "',
             '" . e((string) $item['rfc_message_id']) . "', '" . e($references) . "',
-            '" . e((string) $box['address']) . "', '" . e(mb_substr((string) $box['name'], 0, 255)) . "', '" . e((string) $conversation['customer_email']) . "',
+            '" . e((string) $box['address']) . "', '" . e(mb_substr((string) $box['name'], 0, 255)) . "', '" . e((string) $to) . "',
             '" . e($subject) . "', '" . e($text) . "', 'pass', 0, '" . $now . "', '" . $now . "')");
 
     $out_id = (int) mysqli_insert_id(db::$con);

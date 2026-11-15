@@ -330,7 +330,7 @@ function pg_panel_actions()
         'ws_conflicts', 'ws_calendar', 'ws_my_calendar', 'ws_personal_plan_get', 'ws_personal_plan_save', 'ws_personal_plan_mail', 'ws_personal_plan_delete', 'ws_personal_plan_roadmap', 'ws_personal_plan_steps_save', 'ws_personal_plan_step_task', 'ws_personal_plan_contact', 'ws_personal_plan_contact_save', 'ws_personal_plan_copy_draft', 'ws_event_save', 'ws_event_get',
         'ws_roadmap_templates', 'ws_roadmap_template_save', 'ws_roadmap_template_delete', 'ws_roadmap_template_draft',
         'ws_event_delete', 'ws_meeting_note', 'ws_meeting_transfer', 'ws_inbox', 'ws_inbox_read', 'ws_react',
-        'ws_check', 'ws_check_task', 'ws_poll_create', 'ws_poll_vote', 'ws_poll_close',
+        'ws_check', 'ws_check_task', 'ws_poll_create', 'ws_poll_vote', 'ws_poll_close', 'ws_poll_withdraw', 'ws_poll_again',
         'ws_poll_edit', 'ws_approval_create', 'ws_approval_decide',
         'ws_approval_close', 'ws_ack_request', 'ws_ack', 'ws_ack_people',
         'ws_status_facts', 'ws_status_ai', 'ws_status_post', 'ws_checkin_start',
@@ -364,8 +364,8 @@ function pg_panel_actions()
         'ws_flow_scheduled_edit',
         'ws_channel_customer', 'ws_channel_customer_history',
         'ws_channel_customer_followup',
-        'ws_mail_reply', 'ws_mail_resend', 'ws_mail_conversation', 'ws_mail_rows', 'ws_mail_pane', 'ws_mail_read_all', 'ws_mail_check', 'ws_mail_suggest', 'ws_mail_block', 'ws_mail_unblock', 'ws_mail_draft_open', 'ws_mail_draft_save', 'ws_mail_draft_remove', 'ws_mail_later_send', 'ws_mail_later_cancel',
-        'ws_mail_compose', 'ws_mail_new', 'ws_mail_forward', 'ws_mail_reply_form', 'ws_mail_my_settings', 'ws_mail_my_settings_save',
+        'ws_mail_reply', 'ws_mail_resend', 'ws_mail_conversation', 'ws_mail_rows', 'ws_mail_pane', 'ws_mail_read_all', 'ws_mail_check', 'ws_mail_suggest', 'ws_mail_block', 'ws_mail_unblock', 'ws_mail_draft_open', 'ws_mail_draft_save', 'ws_mail_draft_remove', 'ws_mail_later_send', 'ws_mail_later_cancel', 'ws_mail_undo_send',
+        'ws_mail_compose', 'ws_mail_new', 'ws_mail_forward', 'ws_mail_reply_form', 'ws_mail_my_settings', 'ws_mail_my_settings_save', 'ws_mail_remind',
         'ws_whatsapp_reply_form', 'ws_whatsapp_reply', 'ws_sms_reply_form', 'ws_sms_reply',
     ) as $ws_action) {
         $actions[$ws_action] = array('file' => 'workspace.php', 'handler' => 'pg_panel_ws', 'exempt' => true, 'token' => true, 'write' => true);
