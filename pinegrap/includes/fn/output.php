@@ -1295,12 +1295,12 @@ function pg_period_nav($url, $range, $periods, $range_html, $class = '', $query 
 
     return '
                     <div class="d-inline-block' . h($class) . '" role="group" aria-label="' . h(lang('Period')) . '">
-                        <a class="btn btn-sm btn-text theme-secondary" href="' . h($link($periods[$unit][0])) . '" title="' . h(lang('Previous')) . '" aria-label="' . h(lang('Previous')) . '"><i class="bi bi-chevron-left" aria-hidden="true"></i></a>
+                        <a class="pg-icon-button" href="' . h($link($periods[$unit][0])) . '" title="' . h(lang('Previous')) . '" aria-label="' . h(lang('Previous')) . '"><i class="bi bi-chevron-left" aria-hidden="true"></i></a>
                         <div class="pg-menu-wrap">
                             <button type="button" class="btn btn-sm btn-text theme-secondary pg-menu-caret" data-bs-toggle="menu" data-bs-placement="bottom-end" aria-expanded="false"><i class="bi bi-calendar3 me-1" aria-hidden="true"></i>' . h($labels[$unit][0]) . '</button>
                             <ul class="menu pg-menu-end">' . $items . '</ul>
                         </div>
-                        <a class="btn btn-sm btn-text theme-secondary" href="' . h($link($periods[$unit][2])) . '" title="' . h(lang('Next')) . '" aria-label="' . h(lang('Next')) . '"><i class="bi bi-chevron-right" aria-hidden="true"></i></a>
+                        <a class="pg-icon-button" href="' . h($link($periods[$unit][2])) . '" title="' . h(lang('Next')) . '" aria-label="' . h(lang('Next')) . '"><i class="bi bi-chevron-right" aria-hidden="true"></i></a>
                         <span class="small fg-secondary text-nowrap">' . $range_html . '</span>
                     </div>';
 }

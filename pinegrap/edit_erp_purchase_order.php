@@ -483,7 +483,7 @@ $output_toolbar = pg_screen_toolbar(array(
     'secondary' => (($output_invoice_button !== '') ? $pdf_link('pg-button pg-button-ghost') : '') . $output_mail_button,
     'grow' => '<div class="small d-flex flex-wrap align-items-center column-gap-5 row-gap-1"><span>' . implode('</span><span>', $facts) . '</span></div>',
     'overflow' => '<div class="pg-menu-wrap">
-                <button type="button" class="btn btn-sm btn-text theme-secondary" data-bs-toggle="menu" data-bs-display="static" data-bs-placement="bottom-end" aria-expanded="false" title="' . h(lang('More')) . '" aria-label="' . h(lang('More')) . '"><i class="bi bi-three-dots-vertical" aria-hidden="true"></i></button>
+                <button type="button" class="pg-icon-button" data-bs-toggle="menu" data-bs-display="static" data-bs-placement="bottom-end" aria-expanded="false" title="' . h(lang('More')) . '" aria-label="' . h(lang('More')) . '"><i class="bi bi-three-dots-vertical" aria-hidden="true"></i></button>
                 <ul class="menu pg-menu-end">
                     <li>' . implode('</li>
                     <li>', $toolbar_more) . '</li>
