@@ -12,6 +12,11 @@ description: Step PF7b of channel-profile-cards (owner 2026-11-15): the Channel 
 - The architect's proposal, his to approve on the pictures; PF1 lists the drawer's parts and may regroup them: General (name, icon, colour, kind, topic, customer), People and agents (members, "Agents in this channel" of PF7), Conversation (versions, Clear, memory), Events (the linked records' events and the other switches).
 - Save keeps every tab's fields: changing tab loses nothing typed.
 
+## What leaves Channel info?
+- Owner (2026-11-15, with a picture of Channel info): "kanal bilgisi ve kanal ayarları 2 ayrı menu ama kanal bilgisi kısmında ayar sızmış".
+- Channel info only tells: the purpose, the people and the agents with their state (the cards of PF3 and PF6 open from them), and one way into Channel settings.
+- The architect's proposal, his to approve on the pictures: Add a person and Manage (agents) move to the People and agents tab. The reader's own notification level and "Read assistant answers aloud to me" move to a tab "My settings", which every member sees; the other tabs stay a manager's. So Channel settings opens for every member, with the tabs that member may use.
+
 ## How are icon, colour and switches drawn?
 - Owner (2026-11-15, with a picture of the Colour and Icon parts): "bu alanlarıda modernize edelim. switchler sağda ayarlardaki gibi olabilir. renkler ve ikonlar genişlemiş olmasına gerek yok. Kanal adı solunda ikonu seçicisi ve altında veya aynı sırada renk seçicisi daha bütün olurdu. ikonlar ve renkler popover gibi gelebilir".
 - The icon is chosen from a button at the left of the channel's name, showing the current icon in the current colour; the colour from a button in the same row or right under it. Each opens a popover: the icon list with its search, the colour swatches with "no colour". Neither list stands open in the drawer.
