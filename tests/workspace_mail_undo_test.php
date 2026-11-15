@@ -51,6 +51,13 @@ function test_workspace_mail_undo_only_the_writers_own_waiting_mail()
 	pg_assert_true(!ws_mail_undo_is_own(null, 3), 'no row');
 }
 
+function test_workspace_mail_undo_subject_as_typed()
+{
+	pg_assert_same('Spring offer', ws_mail_undo_subject(ws_mail_send_subject('Spring offer', 7), 7), 'the tag sending added goes');
+	pg_assert_same('Re: order [#T3]', ws_mail_undo_subject('Re: order [#T3]', 7), 'another conversation\'s tag stays');
+	pg_assert_same('Spring offer', ws_mail_undo_subject('Spring offer', 7), 'no tag');
+}
+
 function test_workspace_mail_undo_conversation_after_an_answer_is_taken_back()
 {
 	$conversation = array('status' => 'waiting', 'first_reply_at' => 1800000000, 'last_out_at' => 1800000000);

@@ -376,6 +376,22 @@ function ws_mail_undo_offered($request, $later_at, $state)
 }
 
 /**
+ * The subject as it was typed: the conversation's tag that sending added
+ * (ws_mail_send_subject()) taken off its end. Pure.
+ *
+ * @param string $subject
+ * @param int    $conversation_id
+ * @return string
+ */
+function ws_mail_undo_subject($subject, $conversation_id)
+{
+    $tag = ' [#T' . (int) $conversation_id . ']';
+    $subject = (string) $subject;
+
+    return (substr($subject, -strlen($tag)) === $tag) ? substr($subject, 0, -strlen($tag)) : $subject;
+}
+
+/**
  * Whether a mail can be taken back by this person: their own outgoing mail
  * that still waits. Pure.
  *
@@ -442,6 +458,7 @@ function ws_mail_undo_send($viewer, $item_id)
     // Claimed first, as Send now and the job claim it: one of them wins.
     db("UPDATE ws_mail_items SET send_state = '" . WS_MAIL_DRAFT_STATE . "', send_at = 0, message_id = 0, rfc_message_id = '',
             rfc_message_hash = '" . e(ws_mail_draft_hash()) . "', in_reply_to = '', reference_ids = '', refused_files = '',
+            subject = '" . e(ws_mail_undo_subject((string) $item['subject'], (int) $item['conversation_id'])) . "',
             conversation_id = '" . ($first ? 0 : (int) $item['conversation_id']) . "', created_at = '" . $now . "'
         WHERE id = '" . (int) $item['id'] . "' AND send_state = '" . WS_MAIL_LATER_STATE . "'");
 
