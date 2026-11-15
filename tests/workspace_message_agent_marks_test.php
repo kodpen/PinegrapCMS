@@ -5,7 +5,8 @@
  * Tests for an agent's marks in a message (messageAgentMarks() of
  * workspace.js, run under node): the agent's own name without the
  * "(application)" suffix, its role badge and its state dot, read from the
- * channel's member row of the agent (ws_agent_card_brief()). A person's, a
+ * channel's member row of the agent (ws_agent_card_brief()); ready draws no
+ * mark. A person's, a
  * guest's or a plain application's message, an agent of another channel and
  * a channel without the brief get nothing.
  *
@@ -100,16 +101,16 @@ function test_ws_message_agent_marks()
 		return;
 	}
 
-	pg_assert_same(array('name' => 'PR Merge', 'role' => 'Merger', 'dot' => 'online', 'words' => 'Words working'), $results[0], 'working: green dot');
-	pg_assert_same('away', $results[1]['dot'], 'waiting: amber dot');
-	pg_assert_same('busy', $results[2]['dot'], 'not seen: the alarm dot');
-	pg_assert_same('offline', $results[3]['dot'], 'paused: grey dot');
-	pg_assert_same(array('name' => 'PR Merge', 'role' => '', 'dot' => '', 'words' => ''), $results[4], 'ready and no role: the name alone');
+	pg_assert_same(array('name' => 'PR Merge', 'role' => 'Merger', 'state' => 'working', 'words' => 'Words working'), $results[0], 'working: its dot');
+	pg_assert_same('waiting', $results[1]['state'], 'waiting: its dot');
+	pg_assert_same('late', $results[2]['state'], 'not seen: its dot');
+	pg_assert_same('paused', $results[3]['state'], 'paused: its dot');
+	pg_assert_same(array('name' => 'PR Merge', 'role' => '', 'state' => '', 'words' => ''), $results[4], 'ready and no role: the name alone, no mark');
 
 	for ($i = 5; $i <= 9; $i++) {
 		pg_assert_same(null, $results[$i], 'no marks for case ' . $i);
 	}
 
-	pg_assert_same(array('name' => 'PR Merge', 'role' => 'Merger', 'dot' => '', 'words' => ''), $results[10], 'no brief: name and role, no dot');
+	pg_assert_same(array('name' => 'PR Merge', 'role' => 'Merger', 'state' => '', 'words' => ''), $results[10], 'no brief: name and role, no dot');
 	pg_assert_same(null, $results[11], 'no channel: nothing');
 }

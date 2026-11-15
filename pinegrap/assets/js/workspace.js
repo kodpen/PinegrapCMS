@@ -3420,14 +3420,14 @@
     // the application's "(application)" suffix), its role label and its
     // state dot, read from the channel's member row of the agent, matched by
     // the application it writes as (ws_channel_member_agent(), the brief of
-    // ws_agent_card_brief()). The dot is the avatar's status dot: working
-    // green, waiting amber, not seen the alarm square, paused grey; ready
-    // draws none. Null for anything else: a person's, a guest's, Claude's,
+    // ws_agent_card_brief()). The state is drawn with the agents' one dot
+    // (.ws-agent-dot, its colour map); ready, or a state the screen does not
+    // know, draws no mark. Null for anything else: a person's, a guest's, Claude's,
     // Pinegrap AI's, an MCP agent's, a plain application's, an agent's that
     // is not in this channel. Pure.
     function messageAgentMarks(message, channel) {
         var sender = (message && message.sender) || {};
-        var dots = { working: 'online', waiting: 'away', late: 'busy', paused: 'offline' };
+        var marked = ['working', 'waiting', 'late', 'paused'];
         var row = null;
 
         if (!message || (message.sender_kind !== 'app') || !sender.agent || !(sender.app_id > 0)
@@ -3445,13 +3445,13 @@
             return null;
         }
 
-        var dot = Object.prototype.hasOwnProperty.call(dots, row.state) ? dots[row.state] : '';
+        var state = (marked.indexOf(row.state) !== -1) ? row.state : '';
 
         return {
             name: row.name || sender.name || '',
             role: row.role || '',
-            dot: dot,
-            words: dot ? (row.state_words || '') : ''
+            state: state,
+            words: state ? (row.state_words || '') : ''
         };
     }
 
@@ -10722,10 +10722,10 @@
             var agentMarks = messageAgentMarks(message, self.channel);
             var picture = avatar(message.sender);
 
-            // An agent of this channel: its state on the picture's status
-            // dot, named for a screen reader and on hover.
-            if (agentMarks && agentMarks.dot) {
-                var stateDot = el('span', 'avatar-status status-' + agentMarks.dot + ' ws-msg-agent-state');
+            // An agent of this channel: its state dot in the picture's
+            // corner, named for a screen reader and on hover.
+            if (agentMarks && agentMarks.state) {
+                var stateDot = el('span', 'ws-agent-dot is-' + agentMarks.state + ' ws-msg-agent-state');
 
                 stateDot.setAttribute('role', 'img');
                 stateDot.setAttribute('aria-label', agentMarks.words);
