@@ -14520,23 +14520,24 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
   flex: 0 0 auto;
   white-space: nowrap;
 }
-/* On a phone a row with a picture gives the title its width: the pill,
-   the voters and the count go to the row's last line. */
+/* On a phone the title takes the row's width: the pill, the voters and
+   the count go to the row's last line. A foot shared with the asker's
+   buttons shows the plain ones by their icon. */
 @media (max-width: 575.98px) {
-  .ws-poll-shape-rows .ws-poll-option {
+  .ws-poll-option {
     flex-wrap: wrap;
   }
-  .ws-poll-shape-rows .ws-poll-text {
+  .ws-poll-text {
     flex: 1 1 0;
   }
-  .ws-poll-shape-rows .ws-poll-meta {
+  .ws-poll-meta {
     flex-basis: 100%;
     padding-left: 1.5rem;
   }
   .ws-poll-foot > .btn {
     padding-inline: .35rem;
   }
-  .ws-poll-foot-label {
+  .ws-poll-foot-tight .ws-poll-foot-label {
     display: none;
   }
 }

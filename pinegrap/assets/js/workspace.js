@@ -14047,8 +14047,9 @@
 
             var foot = el('div', 'ws-poll-foot');
 
-            // A plain foot button: its label hides on a phone, where the
-            // icon stays with the label as its name, so the foot keeps one line.
+            // A plain foot button: on a phone beside the asker's buttons its
+            // label hides and the icon keeps it as its name, so the foot
+            // keeps one line.
             function footButton(label, iconName) {
                 var node = button('btn btn-sm btn-text theme-secondary', '', iconName, label);
 
@@ -14127,6 +14128,10 @@
                 });
                 foot.appendChild(shut);
             }
+
+            // The plain buttons give up their words on a phone only where
+            // the asker's buttons share the line.
+            foot.classList.toggle('ws-poll-foot-tight', !!(asker.length || poll.can_close));
 
             if (asker.length) {
                 var more = menuButton(button('btn btn-sm btn-text theme-secondary', '', 'bi-three-dots', t('more')));
