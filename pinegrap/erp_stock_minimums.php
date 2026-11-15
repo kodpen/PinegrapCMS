@@ -89,7 +89,7 @@ foreach ($rows as $row) {
         'cells' => array(
             'product' => pg_list_cell(pg_commerce_list_open_link('erp_stock.php?product_id=' . $product_id . '#erp_stock_moves', h($label))
                 . ((($sku !== '') && ($sku !== trim($label))) ? '<div class="pg-text-meta font-monospace">' . h($sku) . '</div>' : '')
-                . ($enabled ? '' : '<span class="badge theme-secondary">' . lang('Not on sale') . '</span>'), 'align-middle text-wrap text-break', array('data-pg-sort-value' => $label)),
+                . ($enabled ? '' : pg_pill(lang('Not on sale'), 'secondary')), 'align-middle text-wrap text-break', array('data-pg-sort-value' => $label)),
             'stock' => pg_list_cell($cells['stock']['html'], $cells['stock']['class'], array('data-pg-sort-value' => (string) $cells['stock']['sort'])),
             'min_quantity' => pg_list_cell($cells['min_quantity']['html'], $cells['min_quantity']['class'], pg_list_edit_cell_attributes($quick_edit, 'min_quantity', $product_id, ($minimum > 0) ? $minimum : '') + array('data-pg-sort-value' => (string) $cells['min_quantity']['sort'])),
         ),

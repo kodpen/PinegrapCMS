@@ -65,7 +65,7 @@ foreach (erp_stock_count_list() as $row) {
             <td class="text-nowrap" data-sort="' . (int) $row['created_at'] . '">' . h(prepare_form_data_for_output(date('Y-m-d H:i:s', (int) $row['created_at']), 'date and time')) . '</td>
             <td>' . h((string) $row['created_by_name']) . '</td>
             <td class="text-end">' . (int) $row['line_count'] . '</td>
-            <td><span class="badge theme-' . h($status[1]) . '">' . h($status[0]) . '</span></td>
+            <td>' . pg_pill($status[0], $status[1]) . '</td>
         </tr>';
 }
 
@@ -73,11 +73,11 @@ if ($output_rows === '') {
     $output_rows = '<tr data-pg-sort-fixed><td colspan="5" class="text-center fg-secondary py-7">' . lang('No count yet. Start one and scan the shelf.') . '</td></tr>';
 }
 
-// Each status with its badge and how many counts carry it.
+// Each status with its pill and how many counts carry it.
 $summary_rows = '';
 foreach ($statuses as $key => $status) {
     $summary_rows .= '
-                                <dt class="col-8 fw-normal mb-2"><span class="badge theme-' . h($status[1]) . '">' . h($status[0]) . '</span></dt>
+                                <dt class="col-8 fw-normal mb-2">' . pg_pill($status[0], $status[1]) . '</dt>
                                 <dd class="col-4 text-end mb-2">' . pg_format_number($summary_by_status[$key], 0) . '</dd>';
 }
 
@@ -117,7 +117,7 @@ pg_page_shell([
                 </div>' : '') . '
                 <div class="card pg-card erp-list-card my-7">
                     <div class="card-body p-0 table-responsive">
-                        <table class="table table-hover align-middle mb-0" data-pg-sort>
+                        <table class="table erp-list-table table-hover align-middle mb-0" data-pg-sort>
                             <thead>
                                 <tr>
                                     <th>' . lang('Stock count') . '</th>

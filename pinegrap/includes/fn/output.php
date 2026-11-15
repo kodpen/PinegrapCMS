@@ -2099,6 +2099,47 @@ function pg_list_status_word($text)
 
 
 /**
+ * The look's tone for a Bootstrap theme name a status list carries
+ * (success, warning, danger, primary, info, secondary …): the status pill
+ * reads tones, the older badges read theme names.
+ *
+ * @param string $theme a theme name, or already a tone (teal, amber …)
+ * @return string
+ */
+function pg_pill_tone($theme)
+{
+    $theme = (string) $theme;
+    $tones = array(
+        'success' => 'teal',
+        'warning' => 'amber',
+        'danger' => 'rose',
+        'primary' => 'blue',
+        'info' => 'violet',
+    );
+
+    if (isset($tones[$theme])) {
+        return $tones[$theme];
+    }
+
+    return in_array($theme, array('blue', 'violet', 'amber', 'teal', 'rose', 'gray'), true) ? $theme : 'gray';
+}
+
+
+/**
+ * A status pill (.pg-pill) in the tone of a theme name.
+ *
+ * @param string $text       translated, not escaped
+ * @param string $theme      see pg_pill_tone()
+ * @param string $attributes extra attributes, already escaped (title="…")
+ * @return string
+ */
+function pg_pill($text, $theme = 'secondary', $attributes = '')
+{
+    return '<span class="pg-pill pg-tone-' . pg_pill_tone($theme) . '"' . (($attributes !== '') ? ' ' . $attributes : '') . '>' . h($text) . '</span>';
+}
+
+
+/**
  * Where to send a browser that has finished with a tool and wants the settings.
  *
  * There is no settings screen to redirect TO any more, so the address names a

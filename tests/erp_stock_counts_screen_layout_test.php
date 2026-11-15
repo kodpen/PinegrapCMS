@@ -37,7 +37,7 @@ function test_erp_stock_counts_screen_has_form_and_status_columns()
 	pg_assert_contains('<div class="card pg-card my-7 position-sticky" style="top:3.3rem;">', $source, 'the status card sticks below the top bar');
 	pg_assert_false(strpos($source, 'col-12 2xl:col-9"') !== false, 'the single capped column is gone');
 
-	foreach (array('name="title"', '<table class="table table-hover align-middle mb-0" data-pg-sort>') as $part) {
+	foreach (array('name="title"', '<table class="table erp-list-table table-hover align-middle mb-0" data-pg-sort>') as $part) {
 		$at = strpos($source, $part);
 		pg_assert_true($at !== false && $at > $form && $at < $status, $part . ' sits in the form column');
 	}

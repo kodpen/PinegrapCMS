@@ -139,13 +139,13 @@ if (!empty($low_products)) {
     }
 
     $output_low = '
-            <div class="card pg-card my-7 border-subtle-danger">
+            <div class="card pg-card erp-list-card my-7 border-subtle-danger">
                 <div class="card-header bg-reset border-0 d-flex flex-wrap justify-content-between align-items-center gap-3">
                     <h2 class="pg-title-section fg-danger mb-0"><i class="bi bi-exclamation-triangle me-3" aria-hidden="true"></i>' . h(lang(array('string' => 'Low stock: {var:1} product(s)', 'vars' => $low_count))) . '</h2>
                     <a class="btn btn-sm btn-outline theme-danger m-1" href="erp_stock_minimums.php?show=low">' . lang('All of them') . '</a>
                 </div>
                 <div class="card-body p-0 table-responsive">
-                    <table class="table align-middle mb-0">
+                    <table class="table erp-list-table align-middle mb-0">
                         <thead><tr><th>' . lang('Product') . '</th><th class="text-end">' . lang('Stock') . '</th><th class="text-end">' . lang('Minimum') . '</th></tr></thead>
                         <tbody>' . $low_rows . '</tbody>
                     </table>
@@ -197,12 +197,12 @@ pg_page_shell(array(
                 ' . $output_notes . '
             </div>
 
-            <div class="card pg-card my-7" id="erp_stock_moves">
+            <div class="card pg-card erp-list-card my-7" id="erp_stock_moves">
                 <h2 class="card-header bg-reset border-0 pg-title-section">' . (($product_id > 0)
                         ? h(lang(array('string' => 'Movements: {var:1}', 'vars' => $product_title)))
                         : lang('Stock movements')) . '</h2>
                 <div class="card-body p-0 table-responsive">
-                    <table class="table table-hover align-middle mb-0" data-pg-sort>
+                    <table class="table erp-list-table table-hover align-middle mb-0" data-pg-sort>
                         <thead>
                             <tr>
                                 <th>' . lang('Date') . '</th>

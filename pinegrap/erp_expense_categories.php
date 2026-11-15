@@ -189,7 +189,7 @@ pg_page_shell([
                 <div class="col-12 lg:col-8 2xl:col-9 order-1">
                 <div class="card pg-card erp-list-card my-7">
                     <div class="card-body p-0 table-responsive">
-                        <table class="table align-middle mb-0">
+                        <table class="table erp-list-table align-middle mb-0">
                             <thead>
                                 <tr>
                                     <th>' . lang('Sort Order') . '</th>

@@ -104,7 +104,7 @@ foreach (erp_bank_statements_list() as $row) {
             <td>' . h((string) $row['till_name']) . '</td>
             <td class="small text-break">' . h((string) $row['file_name']) . '</td>
             <td class="text-end">' . (int) $row['line_count'] . '</td>
-            <td class="text-end">' . (((string) $row['status'] === 'mapping') ? '<span class="badge theme-warning">' . lang('Columns to choose') . '</span>' : (((int) $row['open_lines'] > 0) ? '<span class="badge theme-warning">' . (int) $row['open_lines'] . '</span>' : '<span class="badge theme-success">' . lang('Done') . '</span>')) . '</td>
+            <td class="text-end">' . (((string) $row['status'] === 'mapping') ? pg_pill(lang('Columns to choose'), 'warning') : (((int) $row['open_lines'] > 0) ? pg_pill((string) (int) $row['open_lines'], 'warning') : pg_pill(lang('Done'), 'success'))) . '</td>
         </tr>';
 }
 
@@ -135,7 +135,7 @@ pg_page_shell([
         <div class="col-12 lg:col-8 2xl:col-9 order-1">
             <div class="card pg-card erp-list-card my-7" id="erp_bank_statements">
                 <div class="card-body p-0 table-responsive">
-                    <table class="table table-hover align-middle mb-0" data-pg-sort>
+                    <table class="table erp-list-table table-hover align-middle mb-0" data-pg-sort>
                         <thead>
                             <tr>
                                 <th>' . lang('Taken in on') . '</th>
