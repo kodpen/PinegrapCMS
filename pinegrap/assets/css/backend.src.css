@@ -12627,6 +12627,7 @@ body.workspace .ws-shell-main > #button_bar {
     max-width: calc(100% - 52px);
     margin-inline-start: 52px;
   }
+}
 /* The agent card (workspace.js agentCardShow()): a floating .pg-card on
    the float surface, placed by script; boxes of rows, one bar a usage
    window, amber from WS_AGENT_USAGE_HIGH. */
