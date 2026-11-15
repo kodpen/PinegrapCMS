@@ -287,6 +287,8 @@ function ws_openapi_objects()
         'WorkspaceMessageNoteCard'  => 'ws_api_message_note_card_schema',
         'WorkspaceMessageNoteGroupCard' => 'ws_api_message_note_group_card_schema',
         'WorkspaceMessageCheck'     => 'ws_api_message_check_schema',
+        'WorkspaceCheckin'          => 'ws_api_checkin_schema',
+        'WorkspaceCheckinAnswer'    => 'ws_api_checkin_answer_schema',
         'WorkspaceMessageReaders'   => 'ws_api_message_readers_schema',
         'WorkspaceMessageReaderAgent'  => 'ws_api_message_reader_agent_schema',
         'WorkspaceMessageReadReceipts' => 'ws_api_message_read_receipts_schema',
@@ -1260,6 +1262,58 @@ function ws_api_routes()
             'description' => 'Posts one of the person\'s own scheduled messages now, before its time, as Send now does in the list beside the clock; a failed one is tried again. It is written as the person, with their rights and their limit of twenty messages a minute, and asks the assistants it names as a message written now does. The answer is the message it became. Only a team devices session (a Bearer token from POST /auth/login) may: an application key and an OAuth connection are refused with 403 forbidden. Somebody else\'s, or one already posted, is answered with 404; one being posted at this moment, or one that cannot be posted (the channel is gone or may no longer be written in), is refused with 422 and left as it is. A dry run makes the checks the posting makes.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.channels.status',
+            'method'      => 'POST',
+            'path'        => '/workspace/channels/{id}/status',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_channel_status_post',
+            'dry_run'     => true,
+            'returns'     => 'WorkspaceMessage',
+            'status'      => 201,
+            'summary'     => 'Post a status update in a channel',
+            'description' => 'Says how the channel\'s work stands, as Status update in the channel menu does: a message headed Status: On track, At risk or Off track, with text below it, and the state the channel\'s header shows until the next update. A channel only - a discussion is refused with 422 - that the owner may post in (403 otherwise). Who it is written as follows POST /workspace/channels/{id}/messages: the application with an application key or an OAuth connection, the person from a team devices session (POST /auth/login), with their limit of twenty messages a minute. A dry run makes every check. The answer is the message.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'health', 'in' => 'body', 'type' => 'enum', 'values' => array('on_track', 'at_risk', 'off_track'), 'required' => true, 'description' => 'How the work stands.'),
+                array('name' => 'text', 'in' => 'body', 'type' => 'string', 'max_length' => 3800, 'description' => 'What has happened, what comes next. Tags are written as tokens, as when writing.'),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.checkins.start',
+            'method'      => 'POST',
+            'path'        => '/workspace/channels/{id}/checkins',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_channel_checkins_start',
+            'dry_run'     => true,
+            'returns'     => 'WorkspaceCheckin',
+            'status'      => 201,
+            'summary'     => 'Ask the channel a check-in question',
+            'description' => 'Asks the channel\'s people a question, as Check-in in the channel menu does: a message headed Check-in with a card under it where each member answers, and the names of those still to answer. Left out, the question is the panel\'s own (what was finished, what comes next, what is in the way). A channel only - a discussion is refused with 422 - that the owner may post in (403 otherwise); who it is asked as follows POST /workspace/channels/{id}/messages. Answers are given with POST /workspace/checkins/{id}/answer. A dry run makes every check and its detail gives the question. The answer is the check-in.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'question', 'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'One line; the panel\'s question when left out.'),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.checkins.answer',
+            'method'      => 'POST',
+            'path'        => '/workspace/checkins/{id}/answer',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_checkins_answer',
+            'dry_run'     => true,
+            'mcp'         => false,
+            'returns'     => 'WorkspaceCheckin',
+            'summary'     => 'Answer a check-in',
+            'description' => 'Keeps the person\'s answer to a check-in, as the card under its message does: it replaces their earlier answer, and an empty text takes it back. id is the check-in\'s (id of POST /workspace/channels/{id}/checkins). Only a device session may - a team devices session (a Bearer token from POST /auth/login) or an OAuth connection: an application key is refused with 403 forbidden, since an answer is the person\'s own. A check-in of a channel the person cannot read, or deleted, is answered with 404; one they may only read with 403; one of an earlier version of the conversation with 422. A dry run makes every check and its detail.changes says whether the answer would change. The answer is the check-in with its answers.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'text', 'in' => 'body', 'type' => 'string', 'max_length' => 2000, 'description' => 'The answer; empty takes it back.'),
             ),
         ),
 

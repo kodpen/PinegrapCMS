@@ -784,6 +784,222 @@ function ws_api_scheduled_messages_delete($params)
 }
 
 /* ---------------------------------------------------------------------------
+   Status updates and check-ins (status.php)
+   --------------------------------------------------------------------------- */
+
+// What ws_api_checkin_shape() returns.
+function ws_api_checkin_schema()
+{
+    return array(
+        'id'         => 'integer',
+        'message_id' => 'integer',
+        'channel_id' => 'integer',
+        'question'   => 'string',
+        'answers'    => 'WorkspaceCheckinAnswer[]',
+        'waiting'    => 'string[]',
+        'count'      => 'integer',
+        'total'      => 'integer',
+        'mine'       => 'string?',
+        'can_answer' => 'boolean',
+    );
+}
+
+// One answer to a check-in.
+function ws_api_checkin_answer_schema()
+{
+    return array('user_id' => 'integer', 'name' => 'string', 'text' => 'string');
+}
+
+/**
+ * A check-in as the API shows it, from the card the channel shows under
+ * its message (ws_status_cards_map()). Pure.
+ *
+ * @param array $card       kind checkin: id, question, answers, waiting, count, total, mine, can_answer
+ * @param int   $message_id
+ * @param int   $channel_id
+ * @return array
+ */
+function ws_api_checkin_shape($card, $message_id, $channel_id)
+{
+    return array(
+        'id'         => (int) $card['id'],
+        'message_id' => (int) $message_id,
+        'channel_id' => (int) $channel_id,
+        'question'   => (string) $card['question'],
+        'answers'    => array_map(function ($answer) {
+            return array('user_id' => (int) $answer['id'], 'name' => (string) $answer['name'], 'text' => (string) $answer['text']);
+        }, (array) $card['answers']),
+        'waiting'    => array_values(array_map('strval', (array) $card['waiting'])),
+        'count'      => (int) $card['count'],
+        'total'      => (int) $card['total'],
+        'mine'       => ((string) $card['mine'] !== '') ? (string) $card['mine'] : null,
+        'can_answer' => !empty($card['can_answer']),
+    );
+}
+
+/**
+ * The check-in a message carries, as the API shows it, or a 404.
+ *
+ * @param array $viewer
+ * @param int   $message_id
+ * @return array
+ */
+function ws_api_checkin_present($viewer, $message_id)
+{
+    $card = ws_status_cards_map($viewer, array((int) $message_id))[(int) $message_id] ?? null;
+    $message = ws_message((int) $message_id);
+
+    if (!is_array($card) || ($card['kind'] !== 'checkin') || !$message) {
+        api_fail_not_found(lang('Check-in'));
+    }
+
+    return ws_api_checkin_shape($card, (int) $message_id, (int) $message['channel_id']);
+}
+
+/**
+ * Status updates and check-ins are there, or a 503.
+ */
+function ws_api_status_ready()
+{
+    if (!function_exists('ws_status_ready') || !ws_status_ready()) {
+        api_fail(503, 'service_unavailable', lang('The database has to be updated first.'));
+    }
+}
+
+/**
+ * POST /workspace/channels/{id}/status: a status update, as Status update
+ * in the channel menu writes it - the message, then the state.
+ */
+function ws_api_channel_status_post($params)
+{
+    $viewer = ws_api_viewer();
+
+    ws_api_status_ready();
+
+    $channel = ws_api_channel_or_404($viewer, $params['id']);
+
+    if (!ws_can_post_channel($viewer, $channel)) {
+        api_fail(403, 'forbidden', lang('You cannot post in that channel.'));
+    }
+
+    $writer = ws_api_message_writer();
+    $health = (string) $params['health'];
+    $text = (string) ($params['text'] ?? '');
+
+    // The checks ws_status_post() makes, made first so that a dry run meets
+    // the same refusals.
+    $checked = ws_status_post_check($viewer, $channel, $health, $text, $writer);
+
+    if (!$checked['ok']) {
+        api_fail_validation($checked['error'], in_array($checked['field'], array('health', 'text'), true) ? $checked['field'] : null);
+    }
+
+    api_dry_run_stop('created', 'workspace_message', array('channel_id' => (int) $channel['id'], 'health' => $health));
+
+    $result = ws_status_post($viewer, $channel, $health, $text, $writer);
+
+    if (!$result['ok']) {
+        api_fail_validation($result['error'], in_array($result['field'], array('health', 'text'), true) ? $result['field'] : null);
+    }
+
+    $row = ws_message($result['message_id']);
+
+    api_ok(ws_api_message_present($viewer, $row, ws_refs_resolve($viewer, ws_tokens($row['body']))), 201);
+}
+
+/**
+ * POST /workspace/channels/{id}/checkins: asks the channel's people a
+ * question, as Check-in in the channel menu does; the panel's question when
+ * none is written.
+ */
+function ws_api_channel_checkins_start($params)
+{
+    $viewer = ws_api_viewer();
+
+    ws_api_status_ready();
+
+    $channel = ws_api_channel_or_404($viewer, $params['id']);
+
+    if (!ws_can_post_channel($viewer, $channel)) {
+        api_fail(403, 'forbidden', lang('You cannot post in that channel.'));
+    }
+
+    $writer = ws_api_message_writer();
+    $question = ws_checkin_question((string) ($params['question'] ?? ''));
+
+    if ($question === '') {
+        $question = ws_checkin_default_question();
+    }
+
+    // The checks ws_checkin_start() makes, made first so that a dry run
+    // meets the same refusals.
+    $checked = ws_checkin_start_check($viewer, $channel, $question, $writer);
+
+    if (!$checked['ok']) {
+        api_fail_validation($checked['error'], ($checked['field'] === 'question') ? 'question' : null);
+    }
+
+    api_dry_run_stop('created', 'workspace_checkin', array('channel_id' => (int) $channel['id'], 'question' => $checked['question']));
+
+    $result = ws_checkin_start($viewer, $channel, $question, $writer['app_id'], $writer['via_client_id']);
+
+    if (!$result['ok']) {
+        api_fail_validation($result['error'], 'question');
+    }
+
+    api_ok(ws_api_checkin_present($viewer, $result['message_id']), 201);
+}
+
+/**
+ * POST /workspace/checkins/{id}/answer: the person's own answer to a
+ * check-in, as the card under its message keeps it; an empty text takes
+ * it back.
+ */
+function ws_api_checkins_answer($params)
+{
+    $viewer = ws_api_viewer();
+
+    ws_api_status_ready();
+
+    // An answer is the person's own, never an application's for them.
+    ws_api_person_only();
+
+    $text = (string) ($params['text'] ?? '');
+
+    // The checks ws_checkin_answer() makes, made first so that a dry run
+    // meets the same refusals.
+    $checked = ws_checkin_answer_check($viewer, (int) $params['id'], $text);
+
+    if (!$checked['ok']) {
+        if ($checked['reason'] === 'missing') {
+            api_fail_not_found(lang('Check-in'));
+        }
+
+        if ($checked['reason'] === 'forbidden') {
+            api_fail(403, 'forbidden', $checked['error']);
+        }
+
+        api_fail_validation($checked['error'], 'text');
+    }
+
+    // The limits of the application Claude works through.
+    ws_api_channel_or_404($viewer, $checked['channel']['id']);
+
+    api_dry_run_stop(($checked['text'] === '') ? 'deleted' : 'updated', 'workspace_checkin_answer', array(
+        'checkin_id' => (int) $checked['checkin']['id'],
+        'changes'    => ($checked['text'] !== $checked['before']),
+    ));
+
+    $result = ws_checkin_answer($viewer, (int) $params['id'], $text);
+
+    if (!$result['ok']) {
+        api_fail_validation($result['error'], 'text');
+    }
+
+    api_ok(ws_api_checkin_present($viewer, $result['message_id']));
+}
+
+/* ---------------------------------------------------------------------------
    Earlier versions of a note (notes.php)
    --------------------------------------------------------------------------- */
 
