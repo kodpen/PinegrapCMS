@@ -318,6 +318,7 @@ function ws_openapi_objects()
         'WorkspaceTableColumn'      => 'ws_api_wtable_column_schema',
         'WorkspaceTableRow'         => 'ws_api_wtable_row_schema',
         'WorkspaceTableBinRow'      => 'ws_api_wtable_bin_row_schema',
+        'WorkspaceBlock'            => 'ws_api_block_schema',
         'WorkspaceDeletedTable'     => 'ws_api_wtable_deleted_schema',
         'WorkspaceTableShare'       => 'ws_api_wtable_share_schema',
         'WorkspaceTableImport'      => 'ws_api_wtable_import_schema',
@@ -479,6 +480,55 @@ function ws_api_routes()
                 array('name' => 'claude', 'in' => 'body', 'type' => 'bool', 'description' => 'Whether Claude may be asked in the channel.'),
                 array('name' => 'ai', 'in' => 'body', 'type' => 'bool', 'description' => 'Whether Pinegrap AI may be asked in the channel.'),
                 array('name' => 'voice', 'in' => 'body', 'type' => 'bool', 'description' => 'Whether the channel\'s voice messages are transcribed.'),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.channels.customer_followup',
+            'method'      => 'POST',
+            'path'        => '/workspace/channels/{id}/customer/followup',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_channel_customer_followup',
+            'dry_run' => true,
+            'returns'     => 'WorkspaceTask',
+            'status'      => 201,
+            'summary'     => 'Remind me about this customer',
+            'description' => 'The customer card\'s Remind me button: a follow-up task for the owner of the application, on the channel, tagged with the record the channel is about, due on the day sent (at the time sent, or the day\'s reminder time) and reminded then. For anybody who may write in the channel (403 otherwise); a channel about no customer is refused with 422. Left empty, the title names the channel, never the customer. The answer is the task.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'due_date', 'in' => 'body', 'type' => 'string', 'max_length' => 10, 'required' => true, 'description' => 'YYYY-MM-DD, the day to be reminded.'),
+                array('name' => 'due_time', 'in' => 'body', 'type' => 'string', 'max_length' => 5, 'description' => 'HH:MM; left out, the day\'s reminder time.'),
+                array('name' => 'title', 'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'The task\'s title; empty names the channel.'),
+            ),
+        ),
+
+        // Titled blocks (blocks.php): the tables, checklists, code and
+        // calculations with a title in the channels and notes the owner reads.
+        array(
+            'id'          => 'workspace.blocks.list',
+            'method'      => 'GET',
+            'path'        => '/workspace/blocks',
+            'scope'       => 'workspace:read',
+            'handler'     => 'ws_api_blocks_list',
+            'returns'     => array('list' => 'WorkspaceBlock'),
+            'summary'     => 'Find titled blocks',
+            'description' => 'The titled blocks (a table, checklist, code or calculation written with a title) whose title holds q, newest first, from the messages and notes the owner of the application reads, as the writing box\'s From elsewhere list finds them: at most 20. where names the channel or note, author and time how the panel shows them. Read one with GET /workspace/blocks/{id}.',
+            'params'      => array(
+                array('name' => 'q', 'in' => 'query', 'type' => 'string', 'max_length' => 100, 'description' => 'Words of the title; empty lists the newest.'),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.blocks.get',
+            'method'      => 'GET',
+            'path'        => '/workspace/blocks/{id}',
+            'scope'       => 'workspace:read',
+            'handler'     => 'ws_api_blocks_get',
+            'returns'     => array('id' => 'integer', 'kind' => 'string', 'markup' => 'string', 'from' => 'string'),
+            'summary'     => 'Read a titled block',
+            'description' => 'One titled block as the writing box pulls it in as a copy: kind (table, checklist or code; a calculation reads as code), its markup as written now, and from, the line that says where it came from. 404 for a block in a place the owner does not read, or whose text no longer holds it.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
             ),
         ),
 
