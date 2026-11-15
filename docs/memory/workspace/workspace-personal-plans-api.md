@@ -6,6 +6,8 @@ description: A person's own plans in the external API and MCP (PC8): /workspace/
 ## Which routes are there?
 - `includes/workspace/api_personal_plans.php`: GET /workspace/personal-plans (`from`, `to` as YYYY-MM-DD; today and 30 days on by default, at most 366 days), GET/POST(PATCH) /workspace/personal-plans/{id}, POST /workspace/personal-plans, DELETE and POST …/{id}/delete. Object `WorkspacePersonalPlan`, what `ws_personal_plan_for_reader()` gives the owner.
 - Fields as the drawer's (`ws_personal_plan_clean()`): title, note, start, end, all_day, start_time, end_time, remind (minutes as text, '' for none), visibility, people. An update lays the fields sent over the plan (`ws_api_personal_plan_merge()`, pure).
+- Repeating plans (PC11b): repeat, repeat_every, repeat_end, repeat_until, repeat_count are written as the drawer's (`ws_api_personal_plan_check()` runs `ws_personal_plan_repeat_clean()` for the dry run); an update that sends no rule keeps it. The list gives a series once with its rule and `times` (day, start, end, start_time, end_time) inside from..to, `ws_api_personal_plan_times()` (pure), skipped days out; a plan that does not repeat has its one time.
+- `mode` (one, following) and `day` (a time's day) on update (body), DELETE (query) and POST …/delete (body), as "This one" / "This and the following": `ws_api_personal_plan_time_asked()`; an update with them lays the fields sent over that time; a day with no time, or a mode on a plan that does not repeat, is 422 `day`/`mode`. Without them the whole series.
 - Delete and its POST twin carry `'mcp' => false` (cannot be undone); list, get, create and update are tools. Every write is rehearsable.
 
 ## Who reaches a plan?
