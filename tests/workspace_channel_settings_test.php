@@ -150,9 +150,10 @@ function test_workspace_channel_settings_frame()
 	$body = workspace_channel_settings_test_function('channelForm');
 
 	pg_assert_true($body !== '', 'channelForm() is found');
-	pg_assert_contains("'pg-seg ws-settings-tabs'", $body, 'the sheet\'s segmented control');
+	pg_assert_contains("'pg-seg pg-seg-icons ws-settings-tabs'", $body, 'the sheet\'s segmented control');
 	pg_assert_contains("'pg-seg-item'", $body);
-	pg_assert_contains('aria-pressed', $body);
+	pg_assert_contains("setAttribute('role', 'tablist')", $body);
+	pg_assert_contains("setAttribute('aria-selected'", $body);
 	pg_assert_contains('channelSettingsTabs(', $body);
 	pg_assert_contains('.hidden = ', $body, 'a pane is hidden, never removed');
 	pg_assert_true(strpos($body, 'formRow(t(\'color\')') === false, 'no colour list stands open');

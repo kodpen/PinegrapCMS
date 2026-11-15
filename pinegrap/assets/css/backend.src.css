@@ -12419,9 +12419,6 @@ body.workspace .ws-shell-main > #button_bar {
   font-weight: 550;
   line-height: 1.5rem;
 }
-.ws-info-manage {
-  margin-top: .25rem;
-}
 /* The reader's notifications: three choices side by side. */
 .ws-seg {
   display: inline-flex;
@@ -13248,18 +13245,56 @@ html[data-bs-theme="dark"] .ws-group-icon {
   flex-direction: column;
   min-width: 0;
 }
-/* Versions of a conversation. */
+/* Versions of a conversation: one list in a settings card, the current
+   conversation first. */
 .ws-era-row {
+  flex-wrap: wrap;
+}
+.ws-era-row > .flex-grow-1 {
+  flex-basis: 12rem;
+}
+/* Channel settings: the segmented control at the top places its tabs
+   across the drawer. */
+.ws-settings-tabs {
+  display: flex;
+  width: 100%;
+  margin-bottom: var(--ws-space-4);
+}
+.ws-settings-tabs .pg-seg-item {
+  flex: 1 1 0;
+  min-width: 0;
+}
+/* The channel's name with its icon button at the left and its colour
+   button at the right; each opens its list in a floating box. */
+.ws-look-row {
   display: flex;
   align-items: center;
-  gap: .5rem;
-  padding: .5rem .6rem;
-  margin-bottom: .35rem;
-  border: 1px solid var(--pg-border-color);
-  border-radius: var(--ws-radius-sm);
+  gap: var(--ws-space-2);
 }
-.ws-era-current {
-  background: var(--pg-bg-1);
+.ws-look-row > .form-control {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.ws-look-button {
+  flex-shrink: 0;
+  border: 1px solid var(--pg-border-color);
+}
+.ws-look-dot {
+  display: block;
+  width: 1.1rem;
+  height: 1.1rem;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px var(--pg-border-color-translucent);
+}
+.ws-look-dot-none {
+  background: linear-gradient(135deg, transparent 45%, var(--pg-fg-2) 45%, var(--pg-fg-2) 55%, transparent 55%);
+}
+.ws-ctx.contextmenu.popover.ws-look-picker {
+  width: 19.5rem;
+  max-width: calc(100vw - 16px);
+}
+.ws-look-pop {
+  padding: var(--ws-space-2);
 }
 .ws-count {
   flex-shrink: 0;

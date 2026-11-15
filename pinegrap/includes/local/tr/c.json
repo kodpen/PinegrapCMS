@@ -2324,6 +2324,7 @@
     "Cleared.": "Temizlendi.",
     "Clearing": "Temizleniyor",
     "Clearing Cache": "Önbellek Temizleniyor",
+    "Clearing starts the conversation again. Nothing is deleted: what was written here is kept as a version that everybody in the channel can read.": "Temizlemek görüşmeyi yeniden başlatır. Hiçbir şey silinmez: burada yazılanlar, kanaldaki herkesin okuyabileceği bir sürüm olarak saklanır.",
     "Clearing up after the work": "İşten sonra ortalığın toparlanması",
     "Clears every reference and deletes it from the database. This cannot be undone.": "Tüm referansları temizler ve veritabanından siler. Geri alınamaz.",
     "Clears in {var:1} minutes.": "{var:1} dakika içinde kendiliğinden açılır.",

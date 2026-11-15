@@ -5514,101 +5514,327 @@
         return box;
     }
 
-    // The versions of a channel's conversation (includes/workspace/eras.php):
-    // the current one, the earlier ones to read, and clearing it for staff.
-    // ownDrawer: the section fills a drawer titled with the same words, so
-    // its own heading is left out.
+    // "Conversation versions" as one list: the current conversation first,
+    // with Clear for whoever may clear it, then every earlier version newest
+    // first, each with Rename (whoever may clear) and Read. Pure.
+    function eraRows(data) {
+        var rows = [{
+            kind: 'current',
+            since_text: data.since_text || '',
+            count: parseInt(data.count, 10) || 0,
+            actions: data.can_clear ? ['clear'] : []
+        }];
+
+        (data.eras || []).slice().sort(function (a, b) {
+            return (b.number || 0) - (a.number || 0);
+        }).forEach(function (era) {
+            rows.push({
+                kind: 'era',
+                id: era.id,
+                era: era,
+                actions: data.can_clear ? ['rename', 'read'] : ['read']
+            });
+        });
+
+        return rows;
+    }
+
+    // The tabs of the Channel settings drawer: General always, the others
+    // when the channel has something to show there, in the drawer's order.
+    // Pure.
+    function channelSettingsTabs(has) {
+        return ['general', 'people', 'conversation', 'events'].filter(function (key) {
+            return (key === 'general') || !!(has || {})[key];
+        });
+    }
+
+    // The versions of a channel's conversation (includes/workspace/eras.php)
+    // as one list (eraRows()). ownDrawer: the section fills a drawer titled
+    // with the same words, so its own heading is left out.
     function eraSection(channel, node, ownDrawer) {
         var box = el('div', 'mb-5 ws-era-section');
-        var list = el('div', 'ws-era-list');
+        var list = el('div', 'pg-card-inner ws-era-list');
 
         if (!ownDrawer) {
-            box.appendChild(el('div', 'form-label', t('era_list')));
+            box.appendChild(el('div', 'pg-list-row-title', t('era_list')));
         }
+        box.appendChild(el('div', 'pg-text-meta mb-3', t('era_help')));
         list.appendChild(skeleton(2, 'ws-skeleton-sm'));
         box.appendChild(list);
+
+        function closeDrawer() {
+            if (node) {
+                hideOffcanvas(node);
+            }
+        }
+
+        function currentRow(row) {
+            var line = el('div', 'pg-card-inner-row ws-era-row ws-era-current');
+            var text = el('div', 'flex-grow-1 min-w-0');
+            var meta = [row.since_text ? t('era_current_since', row.since_text) : '', t('era_current_count', row.count)].filter(Boolean).join(' · ');
+
+            line.appendChild(icon('bi-chat-square-text', 'fg-secondary'));
+            text.appendChild(el('div', 'pg-list-row-title', t('era_current')));
+            text.appendChild(el('div', 'pg-text-meta', meta));
+            line.appendChild(text);
+
+            if (row.actions.indexOf('clear') !== -1) {
+                var clearButton = button('btn btn-sm btn-outline theme-warning rounded-pill px-4', t('era_clear_short'), 'bi-eraser');
+
+                clearButton.title = t('era_clear');
+                clearButton.addEventListener('click', function () {
+                    app.clearConversation(channel, closeDrawer);
+                });
+                line.appendChild(clearButton);
+            }
+
+            return line;
+        }
+
+        function versionRow(row) {
+            var era = row.era;
+            var line = el('div', 'pg-card-inner-row ws-era-row');
+            var text = el('div', 'flex-grow-1 min-w-0');
+
+            line.appendChild(icon('bi-clock-history', 'fg-secondary'));
+            text.appendChild(el('div', 'pg-list-row-title text-truncate', era.label));
+            text.appendChild(el('div', 'pg-text-meta', t('era_meta', era.from_text, era.to_text, era.count, era.cleared_by || '—')));
+            line.appendChild(text);
+
+            if (row.actions.indexOf('rename') !== -1) {
+                var rename = button('btn btn-sm btn-text theme-secondary', '', 'bi-pencil', t('era_rename'));
+
+                rename.addEventListener('click', function () {
+                    var input = el('input', 'form-control form-control-sm');
+                    input.maxLength = 160;
+                    input.value = era.title || '';
+                    input.placeholder = t('era_title');
+
+                    ask(t('era_rename') + ': ' + era.label, t('save'), false, input).then(function (yes) {
+                        if (yes) {
+                            api('ws_channel_era_rename', { channel_id: channel.id, era_id: era.id, title: input.value }).then(load).catch(fail);
+                        }
+                    });
+                });
+                line.appendChild(rename);
+            }
+
+            var read = button('btn btn-sm btn-outline theme-secondary rounded-pill px-4', t('era_open'), 'bi-book');
+
+            read.addEventListener('click', function () {
+                closeDrawer();
+                app.open(channel.id, 0, era.id);
+            });
+            line.appendChild(read);
+
+            return line;
+        }
 
         function draw(data) {
             clear(list);
 
-            var current = el('div', 'ws-era-row ws-era-current');
-            var currentText = el('div', 'flex-grow-1 min-w-0');
-            current.appendChild(icon('bi-chat-square-text', 'fg-secondary'));
-            currentText.appendChild(el('div', 'fw-semibold', t('era_current')));
-
-            if (data.since_text) {
-                currentText.appendChild(el('div', 'small fg-secondary', t('era_current_since', data.since_text)));
-            }
-
-            current.appendChild(currentText);
-            list.appendChild(current);
-
-            if (!data.eras.length) {
-                list.appendChild(el('div', 'small fg-secondary mb-3', t('era_none')));
-            }
-
-            data.eras.forEach(function (era) {
-                var row = el('div', 'ws-era-row');
-                var info = el('div', 'flex-grow-1 min-w-0');
-
-                row.appendChild(icon('bi-clock-history', 'fg-secondary'));
-                info.appendChild(el('div', 'fw-semibold text-truncate', era.label));
-                info.appendChild(el('div', 'small fg-secondary', t('era_meta', era.from_text, era.to_text, era.count, era.cleared_by || '—')));
-                row.appendChild(info);
-
-                if (data.can_clear) {
-                    var rename = button('btn btn-sm btn-text theme-secondary', '', 'bi-pencil', t('era_rename'));
-                    rename.addEventListener('click', function () {
-                        var input = el('input', 'form-control form-control-sm');
-                        input.maxLength = 160;
-                        input.value = era.title || '';
-                        input.placeholder = t('era_title');
-
-                        ask(t('era_rename') + ': ' + era.label, t('save'), false, input).then(function (yes) {
-                            if (yes) {
-                                api('ws_channel_era_rename', { channel_id: channel.id, era_id: era.id, title: input.value }).then(load).catch(fail);
-                            }
-                        });
-                    });
-                    row.appendChild(rename);
-                }
-
-                var read = button('btn btn-sm btn-outline theme-secondary rounded-pill px-5', t('era_open'), 'bi-book');
-                read.addEventListener('click', function () {
-                    if (node) {
-                        hideOffcanvas(node);
-                    }
-
-                    app.open(channel.id, 0, era.id);
-                });
-                row.appendChild(read);
-                list.appendChild(row);
+            eraRows(data).forEach(function (row) {
+                list.appendChild((row.kind === 'current') ? currentRow(row) : versionRow(row));
             });
-
-            if (data.can_clear) {
-                var clearBox = el('div', 'mt-3');
-                var clearButton = button('btn btn-sm btn-outline theme-warning rounded-pill px-5', t('era_clear'), 'bi-eraser');
-                clearButton.addEventListener('click', function () {
-                    app.clearConversation(channel, function () {
-                        if (node) {
-                            hideOffcanvas(node);
-                        }
-                    });
-                });
-                clearBox.appendChild(clearButton);
-                clearBox.appendChild(el('div', 'form-text', t('era_clear_help')));
-                list.appendChild(clearBox);
-            }
         }
 
         function load() {
             api('ws_channel_eras', { channel_id: channel.id }).then(draw).catch(function (error) {
                 clear(list);
-                list.appendChild(el('div', 'small fg-danger', error.message));
+                list.appendChild(el('div', 'small fg-danger p-4', error.message));
             });
         }
 
         load();
+
+        return box;
+    }
+
+    // The channel's name with its look at the left: a button showing the
+    // icon in the colour opens the icon list, one showing the colour opens
+    // the swatches. Each list floats like a popover (floatBox()); neither
+    // stands open in the drawer. Gives the row and the two pickers (null
+    // where the site has no palette or no icon list).
+    function channelLook(name, color, iconName, kindIcon) {
+        var row = el('div', 'ws-look-row');
+        var colors = (CFG.palette || []).length ? colorPicker(color) : null;
+        var icons = (CFG.channel_icons || []).length ? iconPicker(iconName, kindIcon) : null;
+        var kind = kindIcon || 'bi-hash';
+        var iconButton = null;
+        var colorButton = null;
+
+        function hex() {
+            var id = colors ? colors.value() : 0;
+            var found = (CFG.palette || []).filter(function (one) { return one.id === id; })[0];
+
+            return found ? found.hex : '';
+        }
+
+        function paint() {
+            if (iconButton) {
+                clear(iconButton);
+                iconButton.appendChild(icon((icons && icons.value()) || kind));
+                iconButton.style.color = hex();
+            }
+
+            if (colorButton) {
+                var dot = colorButton.firstChild;
+
+                dot.style.background = hex();
+                dot.classList.toggle('ws-look-dot-none', !hex());
+            }
+        }
+
+        function opener(className, label, picker, pickClass) {
+            var node = button('pg-icon-button ws-look-button ' + className, '', '', label);
+
+            node.setAttribute('aria-haspopup', 'dialog');
+            node.setAttribute('aria-expanded', 'false');
+
+            // A pick paints the button; a click on one closes the list.
+            picker.addEventListener('click', function (event) {
+                if (event.target.closest('.' + pickClass)) {
+                    paint();
+                    closeCtx();
+                }
+            });
+            picker.addEventListener('keydown', function (event) {
+                paint();
+
+                if ((event.key === 'Enter') && event.target.matches('input')) {
+                    closeCtx();
+                }
+            });
+
+            node.addEventListener('click', function (event) {
+                event.stopPropagation();
+
+                if (ctxNode && ctxNode.contains(picker)) {
+                    closeCtx();
+                    return;
+                }
+
+                var holder = el('div', 'ws-look-pop');
+                var rect = node.getBoundingClientRect();
+
+                holder.setAttribute('role', 'dialog');
+                holder.setAttribute('aria-label', label);
+                holder.appendChild(picker);
+                floatBox(rect.left, rect.bottom + 6, holder, 'ws-look-picker');
+
+                var first = picker.querySelector('input') || picker.querySelector('.active') || picker.querySelector('button');
+
+                if (first) {
+                    first.focus();
+                }
+            });
+
+            return node;
+        }
+
+        if (icons) {
+            iconButton = opener('ws-look-icon', t('icon'), icons, 'ws-icon-choice');
+            row.appendChild(iconButton);
+        }
+
+        row.appendChild(name);
+
+        if (colors) {
+            colorButton = opener('ws-look-color', t('color'), colors, 'ws-swatch');
+            colorButton.appendChild(el('span', 'ws-look-dot'));
+            row.appendChild(colorButton);
+        }
+
+        paint();
+
+        // A template's colour, or a new channel's kind, repaints the row.
+        if (colors) {
+            var setColor = colors.set;
+
+            colors.set = function (value) {
+                setColor(value);
+                paint();
+            };
+        }
+
+        if (icons) {
+            var setKind = icons.setKindIcon;
+
+            icons.setKindIcon = function (value) {
+                kind = value || 'bi-hash';
+                setKind(value);
+                paint();
+            };
+        }
+
+        return { node: row, colors: colors, icons: icons };
+    }
+
+    // The channel's people in the People and agents tab: each with the
+    // remove button, then Add people. Both act at once, as in Channel info
+    // before; refresh() reads the channel again.
+    function channelPeople(channel, refresh) {
+        var box = el('div', 'mb-5 ws-settings-people');
+        var list = el('div', 'pg-card-inner');
+
+        box.appendChild(el('div', 'pg-list-row-title mb-2', t('cm_people') + ' · ' + channel.members.length));
+
+        channel.members.forEach(function (member) {
+            var row = el('div', 'pg-card-inner-row');
+            var text = el('div', 'flex-grow-1 min-w-0');
+            var role = [(member.id === channel.owner_id) ? t('owner') : '', member.title || ''].filter(Boolean).join(' · ');
+
+            row.appendChild(avatar(member, null, true));
+            text.appendChild(el('div', 'pg-list-row-title text-truncate', member.name));
+
+            if (role) {
+                text.appendChild(el('div', 'pg-text-meta', role));
+            }
+
+            row.appendChild(text);
+
+            if (member.seen) {
+                row.appendChild(el('span', 'pg-text-meta', member.seen));
+            }
+
+            if (member.id !== channel.owner_id && member.id !== BOOT.me.id) {
+                var remove = button('btn btn-sm btn-text theme-secondary', '', 'bi-x-lg', t('member_remove', member.name));
+
+                remove.addEventListener('click', function () {
+                    api('ws_channel_member_remove', { channel_id: channel.id, user_id: member.id }).then(refresh).catch(fail);
+                });
+                row.appendChild(remove);
+            }
+
+            list.appendChild(row);
+        });
+
+        box.appendChild(list);
+
+        var inside = channel.members.map(function (member) { return member.id; });
+        var outside = BOOT.people.filter(function (member) { return inside.indexOf(member.id) === -1; }).map(function (member) { return member.id; });
+
+        if (outside.length && (channel.kind === 'public' || channel.joined)) {
+            var picker = peoplePicker([], outside);
+            var add = button('btn btn-sm btn-solid theme-primary rounded-pill px-4 mt-2', t('add_people_confirm'), 'bi-person-plus');
+
+            add.addEventListener('click', function () {
+                var ids = picker.value();
+
+                if (ids.length) {
+                    api('ws_channel_members_add', { channel_id: channel.id, user_ids: ids }).then(refresh).catch(fail);
+                }
+            });
+
+            var adding = el('div', 'mt-4');
+
+            var addRow = formRow(t('add_people'), picker);
+
+            addRow.classList.remove('mb-5');
+            adding.appendChild(addRow);
+            adding.appendChild(add);
+            box.appendChild(adding);
+        }
 
         return box;
     }
@@ -5622,11 +5848,35 @@
         node.querySelector('.drawer-title').textContent = channel ? t('edit_channel') : t('new_channel');
         defaults = defaults || {};
 
+        // A channel's settings are four tabs (channelSettingsTabs()); a pane
+        // is only hidden while another is shown, so Save reads every tab's
+        // fields. A new channel is the General pane alone.
+        var panes = {
+            general: el('div', 'ws-settings-pane'),
+            people: el('div', 'ws-settings-pane'),
+            conversation: el('div', 'ws-settings-pane'),
+            events: el('div', 'ws-settings-pane')
+        };
+        var general = panes.general;
+
+        body.appendChild(general);
+
         var name = el('input', 'form-control');
         name.id = nextId('ws-ch-name-');
         name.maxLength = 80;
         name.value = channel ? channel.name : (defaults.name || '');
-        body.appendChild(formRow(t('channel_name'), name, t('channel_name_help')));
+
+        // The icon at the left of the name, the colour at its right, the
+        // same for everybody; whoever may rename the channel may choose them.
+        var look = channelLook(name, channel ? channel.color : (defaults.color || 0),
+            channel && channel.icon_chosen ? channel.icon : (defaults.icon || ''),
+            channel ? channel.kind_icon : ((defaults.kind === 'private') ? 'bi-lock' : 'bi-hash'));
+        var colors = look.colors;
+        var icons = look.icons;
+        var nameRow = formRow(t('channel_name'), look.node, t('channel_name_help'));
+
+        nameRow.querySelector('label').htmlFor = name.id;
+        general.appendChild(nameRow);
 
         var kind = null;
 
@@ -5650,7 +5900,16 @@
                 kind.appendChild(wrap);
             });
 
-            body.appendChild(kind);
+            general.appendChild(kind);
+
+            // A new channel's "none" icon follows the kind picked.
+            if (icons) {
+                kind.addEventListener('change', function () {
+                    var picked = kind.querySelector('input:checked');
+
+                    icons.setKindIcon((picked && (picked.value === 'private')) ? 'bi-lock' : 'bi-hash');
+                });
+            }
 
             // A conversation with somebody who has no account is a room of
             // its own, made by its own form.
@@ -5663,7 +5922,7 @@
                     }, { once: true });
                     hideOffcanvas(node);
                 });
-                body.appendChild(toGuest);
+                general.appendChild(toGuest);
             }
         }
 
@@ -5671,7 +5930,7 @@
         topic.id = nextId('ws-ch-topic-');
         topic.maxLength = 255;
         topic.value = channel ? channel.topic : (defaults.topic || '');
-        body.appendChild(formRow(t('channel_topic'), topic));
+        general.appendChild(formRow(t('channel_topic'), topic));
 
         // The customer the channel is about: a contact, a user or a current
         // account, with the records tied to it through its contact.
@@ -5781,44 +6040,17 @@
         }
 
         contactBox.appendChild(el('div', 'form-text', CFG.customer ? t('cust_help') : t('customer_help')));
-        body.appendChild(contactBox);
+        general.appendChild(contactBox);
 
         var dept = select(departmentOptions(), channel && channel.department ? channel.department.id : (defaults.department_id || 0));
         dept.id = nextId('ws-ch-dept-');
-        body.appendChild(formRow(t('department'), dept));
-
-        // The channel's colour in the list, the same for everybody.
-        var colors = null;
-
-        if ((CFG.palette || []).length) {
-            colors = colorPicker(channel ? channel.color : (defaults.color || 0));
-            body.appendChild(formRow(t('color'), colors, t('color_help')));
-        }
-
-        // Its own icon beside the colour, the same for everybody; whoever may
-        // rename the channel may choose it.
-        var icons = null;
-
-        if ((CFG.channel_icons || []).length) {
-            icons = iconPicker(channel && channel.icon_chosen ? channel.icon : (defaults.icon || ''),
-                channel ? channel.kind_icon : ((defaults.kind === 'private') ? 'bi-lock' : 'bi-hash'));
-            body.appendChild(formRow(t('icon'), icons, t('icon_help')));
-
-            // A new channel's "none" follows the kind picked above.
-            if (kind) {
-                kind.addEventListener('change', function () {
-                    var picked = kind.querySelector('input:checked');
-
-                    icons.setKindIcon((picked && (picked.value === 'private')) ? 'bi-lock' : 'bi-hash');
-                });
-            }
-        }
+        general.appendChild(formRow(t('department'), dept));
 
         var members = null;
 
         if (!channel) {
             members = peoplePicker(defaults.members || []);
-            body.appendChild(formRow(t('invite_people'), members));
+            general.appendChild(formRow(t('invite_people'), members));
         }
 
         // Made from a group's menu: it goes into that group.
@@ -5830,11 +6062,11 @@
         var watch = (channel && window.PGWsEvents) ? window.PGWsEvents.watchField(channel) : null;
 
         if (watch) {
-            body.appendChild(watch.node);
+            panes.events.appendChild(watch.node);
         }
 
         if (channel && CFG.eras) {
-            body.appendChild(eraSection(channel, node));
+            panes.conversation.appendChild(eraSection(channel, node));
         }
 
         // Opened from a note, the note is its first message.
@@ -5857,23 +6089,124 @@
         // The channel's memory (assets/js/workspace_memory.js): a channel
         // with an agent shows it as a tab, any other opens it from here.
         if (channel && channel.memory && !channel.memory.tab && window.PGWsMemory && app.channel && (app.channel.id === channel.id)) {
-            var memoryRow = el('div', 'mb-5');
-            var memoryOpen = button('btn btn-sm btn-outline theme-secondary rounded-pill px-5', t('mem_open'), 'bi-journal-bookmark');
+            var memoryCard = el('div', 'pg-card-inner mb-5');
+            var memoryRow = memoryCard.appendChild(el('div', 'pg-card-inner-row ws-switch-row'));
+            var memoryText = el('div', 'flex-grow-1 min-w-0');
+            var memoryOpen = button('btn btn-sm btn-outline theme-secondary rounded-pill px-4', t('cs_open'), 'bi-journal-bookmark');
             memoryOpen.addEventListener('click', function () {
                 hideOffcanvas(node, function () {
                     app.tab = 'memory';
                     app.drawCenter();
                 });
             });
+            memoryText.appendChild(el('div', 'pg-list-row-title', t('mem_open')));
+            memoryText.appendChild(el('div', 'pg-text-meta', t('mem_help')));
+            memoryRow.appendChild(memoryText);
             memoryRow.appendChild(memoryOpen);
-            memoryRow.appendChild(el('div', 'form-text', t('mem_help')));
-            body.appendChild(memoryRow);
+            panes.conversation.appendChild(memoryCard);
         }
 
-        // The channel's agents and what wakes each here
-        // (assets/js/workspace_channel_agents.js); it saves on its own.
+        // The people and the agents, each acting at once: a person added or
+        // removed, an agent's settings saved by its own panel
+        // (assets/js/workspace_channel_agents.js).
+        if (channel && channel.members) {
+            var peopleBox = channelPeople(channel, function refreshPeople() {
+                api('ws_channel_get', { channel_id: channel.id }).then(function (data) {
+                    if (!data || !data.channel) {
+                        return;
+                    }
+
+                    Object.keys(data.channel).forEach(function (key) {
+                        channel[key] = data.channel[key];
+                    });
+
+                    var fresh = channelPeople(channel, refreshPeople);
+
+                    peopleBox.replaceWith(fresh);
+                    peopleBox = fresh;
+
+                    if (app.channel === channel) {
+                        app.refreshHead();
+
+                        if (app.infoOpen) {
+                            app.drawInfo(false);
+                        }
+                    }
+                }).catch(fail);
+            });
+
+            panes.people.appendChild(peopleBox);
+        }
+
         if (channel && window.PGWsChannelAgents) {
-            window.PGWsChannelAgents.mount(body, channel, { reveal: !!defaults.agents });
+            window.PGWsChannelAgents.mount(panes.people, channel, {});
+        }
+
+        if (channel) {
+            var shown = channelSettingsTabs({
+                people: panes.people.childNodes.length > 0,
+                conversation: panes.conversation.childNodes.length > 0,
+                events: panes.events.childNodes.length > 0
+            });
+            var tabNames = { general: 'cs_tab_general', people: 'cs_tab_people', conversation: 'cs_tab_conversation', events: 'cs_tab_events' };
+            var tabIcons = { general: 'bi-sliders', people: 'bi-people', conversation: 'bi-chat-square-text', events: 'bi-broadcast' };
+            var tabs = el('div', 'pg-seg pg-seg-icons ws-settings-tabs');
+            var tabButtons = {};
+
+            tabs.setAttribute('role', 'tablist');
+            tabs.setAttribute('aria-label', t('edit_channel'));
+
+            var showTab = function (key, focus) {
+                shown.forEach(function (one) {
+                    var on = (one === key);
+
+                    panes[one].hidden = !on;
+                    tabButtons[one].classList.toggle('is-active', on);
+                    tabButtons[one].setAttribute('aria-selected', on ? 'true' : 'false');
+                    tabButtons[one].tabIndex = on ? 0 : -1;
+                });
+
+                if (focus) {
+                    tabButtons[key].focus();
+                }
+            };
+
+            shown.forEach(function (key, index) {
+                var tab = el('button', 'pg-seg-item');
+                var label = el('span', 'pg-seg-label');
+
+                tab.type = 'button';
+                tab.id = nextId('ws-cs-tab-');
+                tab.setAttribute('role', 'tab');
+                label.appendChild(icon(tabIcons[key]));
+                label.appendChild(document.createTextNode(t(tabNames[key])));
+                tab.appendChild(label);
+                panes[key].setAttribute('role', 'tabpanel');
+                panes[key].setAttribute('aria-labelledby', tab.id);
+                tab.addEventListener('click', function () {
+                    showTab(key, false);
+                });
+                tab.addEventListener('keydown', function (event) {
+                    var moves = { ArrowLeft: -1, ArrowRight: 1 };
+
+                    if (moves[event.key]) {
+                        event.preventDefault();
+                        showTab(shown[(index + moves[event.key] + shown.length) % shown.length], true);
+                    }
+                });
+                tabButtons[key] = tab;
+                tabs.appendChild(tab);
+
+                if (key !== 'general') {
+                    body.appendChild(panes[key]);
+                }
+            });
+
+            if (shown.length > 1) {
+                body.insertBefore(tabs, body.firstChild);
+            }
+
+            showTab((shown.indexOf(defaults.tab) !== -1) ? defaults.tab : 'general', false);
         }
 
         var save = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', channel ? t('save') : t('create_channel'), 'bi-check2');
@@ -9941,22 +10274,15 @@
                     row.appendChild(seenNode(member.seen, (member.presence === 'online') ? 'on' : ''));
                 }
 
-                if (channel.can_manage && member.id !== channel.owner_id && member.id !== BOOT.me.id) {
-                    var remove = button('btn btn-sm btn-text theme-secondary', '', 'bi-x-lg', t('member_remove', member.name));
-                    remove.setAttribute('data-info-key', 'remove-' + member.id);
-                    remove.addEventListener('click', function () {
-                        api('ws_channel_member_remove', { channel_id: channel.id, user_id: member.id }).then(function () {
-                            self.refreshInfo('add-open');
-                        }).catch(fail);
-                    });
-                    row.appendChild(remove);
-                }
+                // Removing someone is a manager's, in Channel settings.
             });
 
             body.appendChild(people);
 
-            // Adding people: a button that opens the picker in place.
-            if (channel.can_post && (channel.kind === 'public' || channel.joined)) {
+            // Adding people: a button that opens the picker in place. A
+            // manager adds them in Channel settings (People and agents); a
+            // member who may add people but not manage keeps it here.
+            if (!channel.can_manage && channel.can_post && (channel.kind === 'public' || channel.joined)) {
                 var inside = channel.members.map(function (member) { return member.id; });
                 var outside = BOOT.people.filter(function (member) { return inside.indexOf(member.id) === -1; }).map(function (member) { return member.id; });
 
@@ -10027,17 +10353,6 @@
                 });
 
                 body.appendChild(agentList);
-
-                if (channel.can_manage && window.PGWsChannelAgents) {
-                    var manage = button('btn btn-sm btn-text theme-secondary ws-info-manage', t('cm_manage'), 'bi-sliders');
-
-                    manage.title = t('cm_manage_label');
-                    manage.setAttribute('data-info-key', 'agents-manage');
-                    manage.addEventListener('click', function () {
-                        channelForm(channel, { agents: true }, function () { self.refreshInfo(); });
-                    });
-                    body.appendChild(manage);
-                }
             }
 
             // The guests with an open share (ws_channel_info_guests()): read

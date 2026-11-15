@@ -578,6 +578,7 @@
     "Record deleted successfully.": "Kayıt başarıyla silindi.",
     "Record details": "Kayıt ayrıntıları",
     "Record does not match its seal": "Kayıt mührüyle uyuşmuyor",
+    "Record events": "Kayıt olayları",
     "Record exported": "Dışa aktarıldı",
     "Record field: {var:1}": "Kayıt alanı: {var:1}",
     "Record filters": "Kayıt filtreleri",
