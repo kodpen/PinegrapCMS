@@ -12389,6 +12389,132 @@ body.workspace .ws-shell-main > #button_bar {
 .ws-agent-stack {
   margin-left: .45rem;
 }
+/* The agent card (workspace.js agentCardShow()): a floating .pg-card on
+   the float surface, placed by script; boxes of rows, one bar a usage
+   window, amber from WS_AGENT_USAGE_HIGH. */
+.ws-agent-card-anchor {
+  cursor: pointer;
+}
+b.ws-agent-card-anchor:hover,
+b.ws-agent-card-anchor:focus-visible {
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+}
+.pg-card.ws-agent-card {
+  position: fixed;
+  z-index: 1070;
+  width: min(20rem, calc(100vw - 1rem));
+  max-height: calc(100vh - 1rem);
+  overflow-y: auto;
+  padding: 1rem;
+  background: var(--pg-surface-float);
+  box-shadow: var(--pg-shadow-float);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+}
+.ws-agent-card-head {
+  display: flex;
+  gap: .75rem;
+  align-items: center;
+}
+.avatar.ws-agent-card-face {
+  --bs-avatar-size: 3rem;
+  flex: none;
+}
+.avatar.ws-agent-card-face .bi {
+  font-size: var(--pg-text-section-title);
+}
+.ws-agent-card-who {
+  min-width: 0;
+}
+.ws-agent-card-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ws-agent-card-handle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .375rem;
+  align-items: center;
+}
+.ws-agent-card-loading {
+  margin-top: .75rem;
+}
+.ws-agent-card-box {
+  margin-top: .75rem;
+  padding: .25rem .75rem;
+  border-radius: .75rem;
+  background: var(--pg-surface-inset);
+}
+.ws-agent-card-box.is-stale {
+  opacity: .5;
+}
+.ws-agent-card-row {
+  display: flex;
+  gap: .75rem;
+  justify-content: space-between;
+  align-items: center;
+  padding: .375rem 0;
+  font-size: var(--pg-text-2);
+}
+.ws-agent-card-box > .ws-agent-card-row + .ws-agent-card-row,
+.ws-agent-card-window + .ws-agent-card-window {
+  border-top: 1px solid var(--pg-field-line);
+}
+.ws-agent-card-key {
+  color: var(--pg-fg-3);
+}
+.ws-agent-card-value {
+  display: inline-flex;
+  gap: .375rem;
+  align-items: center;
+  min-width: 0;
+  text-align: end;
+  overflow-wrap: anywhere;
+}
+.ws-agent-card-window {
+  padding: .25rem 0 .5rem;
+}
+.ws-agent-card-window .ws-agent-card-row {
+  padding-bottom: .25rem;
+}
+.ws-agent-card-window .ws-agent-card-value {
+  flex: none;
+}
+.ws-agent-card-window .ws-agent-card-key {
+  white-space: nowrap;
+}
+.ws-agent-card-high {
+  color: var(--pg-tone-amber);
+}
+.ws-agent-card-bar {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: var(--pg-quiet);
+}
+.ws-agent-card-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--pg-tone-blue);
+}
+.ws-agent-card-window.is-high .ws-agent-card-bar > span {
+  background: var(--pg-tone-amber);
+}
+.ws-agent-card-channels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .25rem;
+  justify-content: flex-end;
+}
+.ws-agent-card-note {
+  margin-top: .75rem;
+}
+.ws-agent-card-mention {
+  margin-top: .75rem;
+}
 .ws-info-badge {
   margin-left: .4rem;
   font-size: 11px;

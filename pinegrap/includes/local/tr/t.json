@@ -9360,6 +9360,7 @@
     "This will replace your current work. Are you sure?": "Mevcut çalışman yerini alacak. Emin misin?",
     "This will void the payment via iyzico.": "Bu işlem ödemeyi iyzico üzerinden iptal edecektir.",
     "This will void the payment via {var:1}.": "Bu işlem ödemeyi {var:1} üzerinden iptal edecektir.",
+    "This window is at 90% or more of its limit.": "Bu pencere sınırının %90'ına veya fazlasına ulaştı.",
     "This work could not be found. It may have been sold or taken off the list.": "Bu eser bulunamadı. Satılmış ya da listeden kaldırılmış olabilir.",
     "This work could not be found. It may have been taken down.": "Bu çalışma bulunamadı. Kaldırılmış olabilir.",
     "This work could not be found. It may have gone on loan or been taken off the list.": "Bu eser bulunamadı. Ödünç verilmiş ya da listeden kaldırılmış olabilir.",
