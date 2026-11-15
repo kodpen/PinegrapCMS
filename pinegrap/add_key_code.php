@@ -51,7 +51,9 @@ if (!$_POST) {
         'extra classes'=>'products pg-measure-edit',
         'icon'=>'store',
         'heading'=>lang('Create Key Code'),
+        'heading_description' => lang('Create one or more key codes (offer code alias) to allow redeemed offers to be tracked by customer segments.'),
         'cancel'=>array('enable'=>'true','url'=>'view_key_codes.php'),
+        'breadcrumb' => array(array('label' => lang('All Key Codes'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_key_codes.php'), array('label' => lang('Create Key Code'))),
     ]);
 
     require('includes/templates/edit_key_code.php');

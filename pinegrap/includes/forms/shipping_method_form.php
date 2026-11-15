@@ -1105,17 +1105,13 @@ function pg_shipping_method_form_cards($values, $zone_options)
                                             <input type="text" id="excluded_transit_date_pick" class="form-control mt-2" data-pg-date data-pg-add-to-chips="excluded_transit_dates" autocomplete="off" placeholder="' . h(lang('Add Date')) . '" aria-label="' . h(lang('Add Date')) . '"/>
                                             <div class="form-text">' . lang('Excluded Dates for Shipping & Handling (e.g. Holidays). Split dates with enter key or \',\' key') . ' (' . get_date_format_help() . ')</div>
                                         </div>
-                                        <div class="col-12 my-3">
-                                            <div class="row">
-                                                <div class="col-12 md:col-4">
-                                                    <label for="start_time" class="form-label">' . lang('Start Time') . '</label>
-                                                    <input value="' . $value('start_time') . '" type="text" name="start_time" id="start_time" class="form-control" autocomplete="off" data-pg-datetime/>
-                                                </div>
-                                                <div class="col-12 md:col-4">
-                                                    <label for="end_time" class="form-label">' . lang('End Time') . '</label>
-                                                    <input value="' . $value('end_time') . '" type="text" name="end_time" id="end_time" class="form-control" autocomplete="off" data-pg-datetime/>
-                                                </div>
-                                            </div>
+                                        <div class="col-12 md:col-4 my-3">
+                                            <label for="start_time" class="form-label">' . lang('Start Time') . '</label>
+                                            <input value="' . $value('start_time') . '" type="text" name="start_time" id="start_time" class="form-control" autocomplete="off" data-pg-datetime/>
+                                        </div>
+                                        <div class="col-12 md:col-4 my-3">
+                                            <label for="end_time" class="form-label">' . lang('End Time') . '</label>
+                                            <input value="' . $value('end_time') . '" type="text" name="end_time" id="end_time" class="form-control" autocomplete="off" data-pg-datetime/>
                                         </div>
                                         <div class="col-12 my-3">
                                             <h3 class="pg-group-label mt-5 mb-3">' . lang('Available on') . '</h3>

@@ -21,20 +21,6 @@ if (!defined('PG_INIT_LOADED')) {
     <div class="row">
         <div class="col-12">
 			<?=$liveform->get_messages()?>
-            <div class="row mb-3  flex-wrap">
-                <div class="col-12 sm:col-12 text-center md:text-start">
-                    <nav class="navigation" aria-label="breadcrumb">
-                        <ol class="breadcrumb justify-content-center md:justify-content-start "> 
-                            <li class="breadcrumb-item"><a class="pg-link-secondary " href="<?=OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY?>/view_key_codes.php"><?=lang('All Key Codes')?></a></li>
-                            <li class="breadcrumb-item active" aria-current="page"><?php if ($screen == 'create'): ?><?=lang('Create Key Code')?><?php else: ?><?=lang('Edit Key Code')?><?php endif ?></li>
-                        </ol> 
-                    </nav>
-                    <h2 class="d-inline-block text-break header-content-for-add-page">
-						[<?php if ($screen == 'create'): ?><?=lang('Key Code')?><?php else: ?><?=h($key_code['code'])?><?php endif ?>]
-					</h2>
-					<p class="form-text mt-0"><?php if ($screen == 'create'): ?><?=lang('Create one or more key codes (offer code alias) to allow redeemed offers to be tracked by customer segments.')?><?php else: ?><?=lang('Edit a key code (offer code alias) to allow redeemed offers to be tracked by customer segments.')?><?php endif ?></p>
-                </div>
-            </div>
             <form method="post">
 				<?=get_token_field()?>
 				<?php if ($screen == 'create'): ?>

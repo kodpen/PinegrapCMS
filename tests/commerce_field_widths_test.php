@@ -42,14 +42,15 @@ function test_commerce_forms_span_their_content()
 		array('shipping_method_form.php', 'code', 'col-12 pg-field-span-4 my-3'),
 		array('shipping_method_form.php', 'handle_days', 'col-12 md:col-3 my-3'),
 		array('shipping_method_form.php', 'base_transit_days', 'col-12 pg-field-span-3 my-3'),
-		array('shipping_method_form.php', 'start_time', 'col-12 md:col-4'),
+		array('shipping_method_form.php', 'start_time', 'col-12 md:col-4 my-3'),
 		array('zone_form.php', '\' . $rate . \'', 'col-12 md:col-3 my-3'),
 		array('tax_zone_form.php', 'tax_rate', 'col-12 pg-field-span-3 my-3'),
 		array('currency_form.php', 'code', 'col-12 md:col-4 my-3'),
 		array('arrival_date_form.php', 'start_date', 'col-12 md:col-3 my-3'),
 		array('container_form.php', 'cost', 'col-12 pg-field-span-3 my-3'),
 		array('referral_source_form.php', 'sort_order', 'col-12 pg-field-span-3 my-3'),
-		array('verified_shipping_address_form.php', 'state_id', 'col-12 md:col-6 my-3'),
+		array('verified_shipping_address_form.php', 'state_id', 'col-12 md:col-3 my-3'),
+		array('verified_shipping_address_form.php', 'city', 'col-12 md:col-3 my-3'),
 	);
 
 	foreach ($cases as $case) {
