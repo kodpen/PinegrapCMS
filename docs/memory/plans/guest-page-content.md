@@ -19,7 +19,7 @@ description: Plan (owner 2026-11-15): the guest page shows an agent's role and m
 - A guest's own abilities do not change, and nothing a guest does asks an agent (`workflow/decisions-made-workspace-24.md`).
 
 ## Which steps?
-- GP1 (S) Role and model beside the badge: `ws_guest_agent_apps()` carries them, `workspace_guest.js` draws them. Tests.
+- GP1 (S) Role and model beside the badge: `ws_guest_agent_apps()` carries them, `workspace_guest.js` draws them. Tests. Done: #9693.
 - GP2 (M) Agents' files and pictures, the canvas preview, the agent's task card: `ws_guest_messages()` and `ws_guest_file_send()` serve the file of an agent's line the guest reads, inside the room's current conversation (`workspace/workspace-guest-cleared-room.md`). Tests of reach: the file of a hidden application, of another channel and of an earlier conversation stays 404.
 - GP3 (M) The live page for a guest: the card on the guest page; the frame's address answers a guest's cookie only for the page of a line that guest reads, with the panel's sandbox and size bound. A test for each refusal.
 - Close-out, with GP3: `workspace/guest-agent-lines.md` and a new `workspace/guest-page-content.md` say what a guest sees; this plan is deleted.
