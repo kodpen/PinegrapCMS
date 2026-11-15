@@ -8513,6 +8513,8 @@
     "This change would serve the folder as {var:1} instead of {var:2}, which opens what is in it to more people. Change it on the folder screen.": "Bu değişiklik klasörü {var:2} yerine {var:1} olarak sunar ve içindekileri daha çok kişiye açar. Bunu klasör ekranından değiştirin.",
     "This change would serve the page as {var:1} instead of {var:2}, which opens it to more people. Move it on the page screen.": "Bu değişiklik sayfayı {var:2} yerine {var:1} olarak sunar ve daha çok kişiye açar. Sayfayı sayfa ekranından taşıyın.",
     "This changes {var:1} records at once. Go on?": "Bu, {var:1} kaydı birden değiştirir. Devam edilsin mi?",
+    "This channel cannot watch records: only a public or private channel can.": "Bu kanal kayıtları izleyemez: yalnızca herkese açık veya özel bir kanal izleyebilir.",
+    "This channel does not offer that switch.": "Bu kanalda bu anahtar yok.",
     "This channel follows the website from the first content to the training.": "Bu kanal web sitesini ilk içerikten eğitime kadar takip eder.",
     "This channel has no board.": "Bu kanalın panosu yok.",
     "This channel is archived. It can be read but not written in.": "Bu kanal arşivlendi. Okunabilir ama yazılamaz.",
