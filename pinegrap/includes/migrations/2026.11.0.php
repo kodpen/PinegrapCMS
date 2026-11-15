@@ -208,6 +208,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_push_provider();           // 11.0.215
 	upgrade_2026_11_0_cart_recovery_touch();     // 11.0.216
 	upgrade_2026_11_0_ws_agent_duty();           // 11.0.217
+	upgrade_2026_11_0_ws_quiet_hours();          // 11.0.219
 
 }
 
@@ -6928,5 +6929,25 @@ function upgrade_2026_11_0_ws_agent_duty() {
 	install_add_column('ws_agents', 'duty', 'TEXT NULL');
 
 	install_note('Workspace: an agent can be given a duty on its form; its instructions and its card carry it.');
+
+}
+
+// A person's quiet hours (11.0.219, includes/fn/quiet_hours.php): the range
+// in which no Workspace push wakes their devices, as JSON (start, end as
+// HH:MM, off_days) beside their working day. No backfill: an empty value is
+// no quiet range, and a push goes at once as before.
+function upgrade_2026_11_0_ws_quiet_hours() {
+
+	if (!install_table_exists('ws_profiles')) {
+
+		install_skipped('ws_profiles does not exist, skipped');
+
+		return;
+
+	}
+
+	install_add_column('ws_profiles', 'quiet_hours', 'TEXT NULL');
+
+	install_note('Workspace: a person can keep quiet hours; outside their hours a Workspace notification reaches their phone when the quiet range ends.');
 
 }
