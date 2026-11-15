@@ -26524,6 +26524,17 @@ textarea.pg-input {
   font: inherit;
   outline: 0;
 }
+/* A native select's opened list is drawn by the browser on the select's own
+   background. A field background that is see-through in the dark theme
+   (--pg-field-bg, a bare select inside .pg-input) is laid over white there,
+   which leaves the light option text on light grey. The options get the
+   opaque surface instead. In the light theme they stay transparent, so the
+   list keeps the select's own background as before. Lists that are always
+   open (multiple, size above 1) sit in the page on the select's background
+   and keep it. */
+select:not([multiple], [size]:not([size="1"])) :is(option, optgroup) {
+  background-color: light-dark(rgba(0, 0, 0, 0), var(--pg-surface-1));
+}
 .pg-input-end {
   margin-left: auto;
   font-size: var(--pg-text-2);
