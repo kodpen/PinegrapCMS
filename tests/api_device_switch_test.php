@@ -26,7 +26,25 @@ require_once(PG_FUNCTIONS_DIR . '/includes/api/device_switch.php');
 // The ceiling with the Workspace on, as the switch asks for it.
 function api_device_switch_test_ceiling()
 {
-	return array('customers:read', 'meta:read', 'orders:read', 'products:read', 'tasks:write', 'workspace:write');
+	return array(
+		'bookings:read', 'comments:read', 'commissions:read', 'customers:read', 'files:read', 'meta:read',
+		'orders:read', 'products:read', 'tasks:write', 'workspace:write'
+	);
+}
+
+// The ceiling holds the four read scopes a team device shows (bookings,
+// files, comments, commissions) and no write scope beyond the Workspace's.
+function test_api_device_switch_ceiling_read_scopes()
+{
+	$ceiling = api_device_switch_ceiling();
+
+	foreach (array('bookings:read', 'files:read', 'comments:read', 'commissions:read') as $scope) {
+		pg_assert_true(in_array($scope, $ceiling, true), $scope);
+	}
+
+	foreach (array('bookings:write', 'files:write', 'comments:write', 'commissions:write', 'orders:write') as $scope) {
+		pg_assert_false(in_array($scope, $ceiling, true), $scope);
+	}
 }
 
 // A device application row as api_device_switch_apps() reads it.
@@ -67,7 +85,10 @@ function test_api_device_switch_on_widens_active_app()
 	pg_assert_same(4, $steps[0]['id']);
 	pg_assert_same('active', $steps[0]['status']);
 	pg_assert_false($steps[0]['clear_expiry'], 'expiry untouched');
-	pg_assert_same(array('calendars:read', 'customers:read', 'meta:read', 'orders:read', 'products:read', 'tasks:write', 'workspace:write'), $steps[0]['scopes']);
+	pg_assert_same(array(
+		'bookings:read', 'calendars:read', 'comments:read', 'commissions:read', 'customers:read', 'files:read',
+		'meta:read', 'orders:read', 'products:read', 'tasks:write', 'workspace:write'
+	), $steps[0]['scopes']);
 }
 
 // Saving again with nothing new writes nothing, so no audit line either.

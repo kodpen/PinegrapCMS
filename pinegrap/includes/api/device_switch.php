@@ -31,13 +31,15 @@ if (!defined('PG_API_ENTRY') && !defined('PG_API_PANEL')) {
 require_once(dirname(__FILE__) . '/keys.php');
 require_once(dirname(__FILE__) . '/scopes.php');
 
-// What a team device needs: its Workspace and tasks, the orders, contacts and
-// products it shows, and the site information. Each person still gets only
-// what their own account may do (api_device_scopes()).
+// What a team device needs: its Workspace and tasks, the orders, contacts,
+// products, bookings, files, comments and commissions it shows (read only),
+// and the site information. Each person still gets only what their own
+// account may do (api_device_scopes()).
 function api_device_switch_ceiling() {
 
 	return api_scopes_normalise(array(
-		'workspace:write', 'tasks:write', 'orders:read', 'meta:read', 'customers:read', 'products:read'
+		'workspace:write', 'tasks:write', 'orders:read', 'meta:read', 'customers:read', 'products:read',
+		'bookings:read', 'files:read', 'comments:read', 'commissions:read'
 	));
 
 }

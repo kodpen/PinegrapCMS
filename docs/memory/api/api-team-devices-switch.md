@@ -14,7 +14,8 @@ description: The Team devices switch in Settings › API (includes/api/device_sw
 - Scopes the operator chose are never removed; only the ceiling is added.
 
 ## What is the ceiling?
-- `workspace:write`, `tasks:write`, `orders:read`, `meta:read`, `customers:read`, `products:read` through `api_scopes_normalise()` (`api_device_switch_ceiling()`). Module scopes are valid only while the module is on, so a site that turns the Workspace on later gains them on its next save. Each person still gets only their own rights (`api_device_scopes()`).
+- `workspace:write`, `tasks:write`, `orders:read`, `meta:read`, `customers:read`, `products:read`, `bookings:read`, `files:read`, `comments:read`, `commissions:read` through `api_scopes_normalise()` (`api_device_switch_ceiling()`). Module scopes are valid only while the module is on, so a site that turns the Workspace on later gains them on its next save. Each person still gets only their own rights (`api_device_scopes()`).
+- Owner (2026-11-15): bookings, files, comments and commissions joined the ceiling read only, so a team device shows booking and file records, product questions and reviews, and an order's commission without an operator adding each scope by hand in Application Access. Their write scopes stay the operator's choice. Issue #9606.
 
 ## How does a person pair a device once it is on?
 - With a password at `POST /auth/login`, or with a QR code from `device_pairing.php` at `POST /auth/pair` (`api/api-device-pairing.md`).
