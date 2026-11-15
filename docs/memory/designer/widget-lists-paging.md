@@ -22,6 +22,7 @@ module: widgets_lists_paging
 ## What does the editor offer?
 - Palette "Lists in a record": Page links. Starter (`_sdPagingListStarter()`): a Bootstrap `nav` / `ul.pagination`, a previous item on `has_prev_page`, the list with three `li` (a link on `__pager_url` not empty, an active span on `__pager_is_current`, a disabled gap on `__pager_is_gap`), a next item on `has_next_page`.
 - It lands anywhere in a form list (`_sdListNeedsMainLoop(kind, source)` is false for it). Sample rows on the canvas: current, link, gap, link.
+- On the canvas the list is one item of the pagination's line: [[paging-list-canvas-line]].
 
 ## How is it tested?
 - `tests/widget_lists_paging_test.php`: source and kinds, rows against the built-in pagination's numbers, a list in a surround drawn by the finish pass (escaped once, no marker left), the same in a catalog surround with its paging flags, the three renderers' wiring, the editor. No database or browser run.
