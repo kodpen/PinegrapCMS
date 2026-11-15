@@ -11409,12 +11409,10 @@ body.pg-side-panel-open .pg-chat-launcher {
   align-items: center;
   gap: .75rem;
 }
+/* A card title of the sale screen: the look's section title in the form
+   column, its status title beside it (pg-title-section, pg-title-status). */
 .pg-sale-ch {
   margin: 0;
-  font-size: .95rem;
-  font-weight: 700;
-  letter-spacing: .05em;
-  text-transform: uppercase;
 }
 .pg-sale kbd,
 .pg-sale-keys kbd {

@@ -200,14 +200,14 @@ if ($subscription_id > 0) {
 
     $output_content = '
             ' . pg_screen_toolbar(array('primary' => $output_actions)) . '
-            <div class="card my-7">
+            <div class="card pg-card my-7">
                 <div class="card-body">
                     <dl class="row mb-0">' . $output_facts . '
                     </dl>
                 </div>
             </div>
-            <div class="card my-7">
-                <div class="card-header"><h2 class="h6 mb-0">' . h(lang('Renewal orders')) . '</h2></div>
+            <div class="card pg-card my-7">
+                <h2 class="card-header bg-reset border-0 pg-title-section">' . h(lang('Renewal orders')) . '</h2>
                 <div class="card-body p-0">' . (($output_orders !== '') ? '
                     <table class="table table-hover mb-0">
                         <thead>
@@ -224,8 +224,8 @@ if ($subscription_id > 0) {
                     <p class="p-12 mb-0 fg-secondary">' . h(lang('No renewal order yet.')) . '</p>') . '
                 </div>
             </div>
-            <div class="card my-7">
-                <div class="card-header"><h2 class="h6 mb-0">' . h(lang('History')) . '</h2></div>
+            <div class="card pg-card my-7">
+                <h2 class="card-header bg-reset border-0 pg-title-section">' . h(lang('History')) . '</h2>
                 <div class="card-body p-0">
                     <table class="table table-hover mb-0">
                         <thead>

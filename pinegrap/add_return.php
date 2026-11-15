@@ -161,7 +161,7 @@ if ($order_id <= 0) {
                 </div>
                 <div class="card-body">
                     <form method="get" action="add_return.php" class="row g-5 align-items-end">
-                        <div class="col-12 md:col-6">
+                        <div class="col-12 md:col-4">
                             <label for="order_number" class="form-label">' . h(lang('Order Number')) . '</label>
                             ' . $liveform->output_field(array('type' => 'text', 'name' => 'order_number', 'id' => 'order_number', 'maxlength' => '30', 'inputmode' => 'numeric', 'class' => 'form-control', 'autocomplete' => 'off', 'autofocus' => true, 'required' => 'required')) . '
                         </div>
@@ -376,7 +376,7 @@ if ($order_id <= 0) {
                         <span>' . h(lang('Reason for the return')) . '</span>
                     </div>
                     <div class="card-body">
-                        <div class="mb-5">
+                        <div class="mb-5 pg-field-span-6">
                             <label for="reason" class="form-label">' . h(lang('Reason')) . '</label>
                             ' . $liveform->output_field(array('type' => 'select', 'name' => 'reason', 'id' => 'reason', 'options' => pg_return_reason_options(lang('Choose a reason')), 'class' => 'form-control', 'required' => 'required')) . '
                         </div>

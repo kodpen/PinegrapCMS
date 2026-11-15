@@ -1364,10 +1364,10 @@ function local_sale_render_ledger($user)
     }
 
     $account_id = local_sale_billing_account();
-    $header = '<div class="card-header"><h2 class="pg-sale-ch fg-primary">' . lang('Ledger account') . '</h2>';
+    $header = '<div class="card-header"><h2 class="pg-sale-ch pg-title-status">' . lang('Ledger account') . '</h2>';
 
     if ($account_id <= 0) {
-        return '<div class="card pg-belge-block">' . $header . '</div><div class="card-body"><div class="pg-sale-note"><i class="bi bi-info-circle" aria-hidden="true"></i><span>'
+        return '<div class="card pg-card pg-belge-block">' . $header . '</div><div class="card-body"><div class="pg-sale-note"><i class="bi bi-info-circle" aria-hidden="true"></i><span>'
             . lang('This contact has no account yet; one is opened from the contact card when the sale is invoiced.') . '</span></div></div></div>';
     }
 
@@ -1404,7 +1404,7 @@ function local_sale_render_ledger($user)
         }
     }
 
-    return '<div class="card pg-belge-block">' . $header
+    return '<div class="card pg-card pg-belge-block">' . $header
         . '<button type="button" class="btn btn-sm btn-text theme-secondary no-submit" data-sale-ledger="' . $account_id . '"><i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>' . lang('Account summary') . '</button></div>'
         . '<div class="card-body">'
         . '<div class="pg-sale-balance"><b class="' . $balance_class . '">' . h(erp_money_out(abs($balance))) . '</b><span class="fg-secondary">' . h($balance_side) . '</span></div>'
@@ -1504,7 +1504,7 @@ function local_sale_render_pay($user)
     $output .= '<button type="button" class="btn btn-solid theme-success pg-sale-go no-submit" id="pg_sale_complete" disabled>'
         . '<i class="bi bi-check2-circle" aria-hidden="true"></i><span>' . lang('Complete the sale') . '</span><kbd>F9</kbd></button>';
 
-    return '<div class="card pg-sale-pay-card" id="pg_sale_pay"><div class="card-header"><h2 class="pg-sale-ch fg-primary">' . ($erp ? lang('Payment') : lang('Change due')) . '</h2></div>'
+    return '<div class="card pg-card pg-sale-pay-card" id="pg_sale_pay"><div class="card-header"><h2 class="pg-sale-ch pg-title-status">' . ($erp ? lang('Payment') : lang('Change due')) . '</h2></div>'
         . '<div class="card-body pg-sale-pay" data-method="' . h($method) . '">' . $output . '</div></div>';
 }
 
@@ -1527,7 +1527,7 @@ function local_sale_render_done($r, $user)
         $how .= ' · ' . lang(array('string' => '{var:1} left on the account', 'vars' => local_sale_money_text((int) $r['rest'])));
     }
 
-    $output = '<div class="card pg-sale-done" id="pg_sale_done_card">'
+    $output = '<div class="card pg-card pg-sale-done" id="pg_sale_done_card">'
         . '<div class="pg-sale-done-head"><i class="bi bi-check-circle-fill" aria-hidden="true"></i><div><b>' . lang('Sale complete') . '</b><small>'
         . h(lang(array('string' => 'Order #{var:1} · {var:2}', 'vars' => array($r['order_number'], ($r['who'] !== '') ? $r['who'] : lang('Walk-in sale'))))) . '</small></div></div>'
         . '<div class="pg-sale-total pb-3"><div class="pg-sale-total-label">' . lang('Total') . '</div><div class="pg-sale-total-amount pg-sale-total-sm">' . local_sale_money($r['total']) . '</div><div class="pg-sale-total-sub">' . h($how) . '</div></div>';
