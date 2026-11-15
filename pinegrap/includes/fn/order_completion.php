@@ -861,6 +861,10 @@ function pg_order_complete($order_id, array $values, array $documents = array(),
         return null;
     }
 
+    // The cart's start time, before the write below rewrites order_date:
+    // whether the cart was left is counted from it.
+    $cart_started_at = pg_cart_recovery_order_date($order_id);
+
     db_q($query['sql'], $query['params']) or output_error('Query failed.');
 
     // The lock: a row that was no longer incomplete was not changed.
@@ -1028,6 +1032,9 @@ function pg_order_complete($order_id, array $values, array $documents = array(),
     // The customer completed an order: the order_abandoned campaigns of this
     // order and of the same customer are cancelled.
     pg_order_complete_abandoned_campaigns($order_id, $contact_id, $billing_email_address);
+
+    // Which touch of the left cart brought it back, if any.
+    pg_cart_recovery_completed($order_id, $cart_started_at, $values['total']);
 
     // The visit that placed the order, when visitor tracking keeps one.
     pg_order_complete_visitor(
