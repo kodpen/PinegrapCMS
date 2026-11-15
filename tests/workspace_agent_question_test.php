@@ -145,6 +145,27 @@ function test_ws_agent_question_decision_lines()
 	pg_assert_contains('ws_agent_question_decisions(', ws_agent_question_test_source('ws_memory_brief'));
 }
 
+// The Decisions tab: answered agent questions' messages among the decision
+// messages by the time they were answered, each row kept whole.
+function test_ws_channel_decisions_lists_answered_agent_questions()
+{
+	$merged = ws_agent_question_decisions_merge(
+		array(array('id' => 5, 'kind' => 'decision', 'marked_at' => 300), array('id' => 2, 'kind' => 'note', 'marked_at' => 100)),
+		array(array('id' => 9, 'kind' => 'message', 'marked_at' => 200)),
+		300
+	);
+
+	pg_assert_same(array(5, 9, 2), array_column($merged, 'id'));
+	pg_assert_same('message', $merged[1]['kind'], 'the question message stays as it is');
+	pg_assert_contains('ws_agent_question_decision_messages(', ws_agent_question_test_source('ws_channel_decisions'));
+
+	$source = ws_agent_question_test_source('ws_agent_question_decision_messages');
+
+	pg_assert_contains('p.agent_question = 1 AND p.closed_at > 0', $source);
+	pg_assert_contains('p.withdrawn_at = 0', $source);
+	pg_assert_contains("\$row['marked_at'] = (int) \$row['answered_at']", $source);
+}
+
 // The request's state carries the question and the answer to the brief.
 function test_ws_agent_question_request_state_and_brief()
 {
