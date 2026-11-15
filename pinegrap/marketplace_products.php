@@ -892,11 +892,11 @@ function mp_products_shop_view($account, $filters, $counts, $view, $search, $pag
 			<div class="mpp-hero">
 				<div class="flex-grow-1">
 					<div class="mpp-stats">
-						<div class="mpp-stat"><b data-mp-count="all">' . pg_format_number($counts['all'], 0) . '</b><span>' . h(lang('products in this shop')) . '</span></div>
-						<div class="mpp-stat good"><b data-mp-count="matched">' . pg_format_number($counts['matched'], 0) . '</b><span>'
+						<div class="mpp-stat"><b class="pg-figure-value" data-mp-count="all">' . pg_format_number($counts['all'], 0) . '</b><span class="pg-figure-label">' . h(lang('products in this shop')) . '</span></div>
+						<div class="mpp-stat"><b class="pg-figure-value is-good" data-mp-count="matched">' . pg_format_number($counts['matched'], 0) . '</b><span class="pg-figure-label">'
 							. h(lang(array('string' => 'matched on {var:1}', 'vars' => array($provider_name)))) . '</span></div>
-						<div class="mpp-stat"><b data-mp-count="unmatched">' . pg_format_number($counts['unmatched'], 0) . '</b><span>' . h(lang('not matched')) . '</span></div>
-						<div class="mpp-stat' . ($counts['errors'] ? ' bad' : '') . '"><b data-mp-count="errors">' . pg_format_number($counts['errors'], 0) . '</b><span>' . h(lang('not sent')) . '</span></div>
+						<div class="mpp-stat"><b class="pg-figure-value" data-mp-count="unmatched">' . pg_format_number($counts['unmatched'], 0) . '</b><span class="pg-figure-label">' . h(lang('not matched')) . '</span></div>
+						<div class="mpp-stat"><b class="pg-figure-value' . ($counts['errors'] ? ' is-bad' : '') . '" data-mp-count="errors">' . pg_format_number($counts['errors'], 0) . '</b><span class="pg-figure-label">' . h(lang('not sent')) . '</span></div>
 					</div>
 					<div class="mpp-meter" id="mpp-meter" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' . $matched_share . '"'
 						. ' aria-label="' . h(lang('Matched')) . '"><i style="width:' . $matched_share . '%"></i></div>
@@ -1327,10 +1327,10 @@ function mp_products_listings_view($account, $counts, $category_count, $view, $s
 			<div class="mpp-hero">
 				<div class="flex-grow-1">
 					<div class="mpp-stats">
-						<div class="mpp-stat"><b data-mp-count="all">' . pg_format_number($counts['all'], 0) . '</b><span>' . h(lang('articles')) . '</span></div>
-						<div class="mpp-stat good"><b data-mp-count="ready">' . pg_format_number($counts['ready'], 0) . '</b><span>' . h(lang('ready to list')) . '</span></div>
-						<div class="mpp-stat"><b data-mp-count="none">' . pg_format_number($counts['none'], 0) . '</b><span>' . h(lang('without a category')) . '</span></div>
-						<div class="mpp-stat' . ($counts['errors'] ? ' bad' : '') . '"><b data-mp-count="errors">' . pg_format_number($counts['errors'], 0) . '</b><span>' . h(lang('refused')) . '</span></div>
+						<div class="mpp-stat"><b class="pg-figure-value" data-mp-count="all">' . pg_format_number($counts['all'], 0) . '</b><span class="pg-figure-label">' . h(lang('articles')) . '</span></div>
+						<div class="mpp-stat"><b class="pg-figure-value is-good" data-mp-count="ready">' . pg_format_number($counts['ready'], 0) . '</b><span class="pg-figure-label">' . h(lang('ready to list')) . '</span></div>
+						<div class="mpp-stat"><b class="pg-figure-value" data-mp-count="none">' . pg_format_number($counts['none'], 0) . '</b><span class="pg-figure-label">' . h(lang('without a category')) . '</span></div>
+						<div class="mpp-stat"><b class="pg-figure-value' . ($counts['errors'] ? ' is-bad' : '') . '" data-mp-count="errors">' . pg_format_number($counts['errors'], 0) . '</b><span class="pg-figure-label">' . h(lang('refused')) . '</span></div>
 					</div>
 					<div class="mpp-meter" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' . $ready_share . '"'
 						. ' aria-label="' . h(lang('Ready to list')) . '"><i style="width:' . $ready_share . '%"></i></div>
@@ -1608,10 +1608,6 @@ echo pg_page_shell(array(
    hide .mpp-bulk (display: flex) and the bulk bar stayed on screen. */
 .mpp-hero { display: flex; flex-wrap: wrap; gap: 20px 32px; align-items: center; }
 .mpp-stats { display: flex; flex-wrap: wrap; gap: 14px 32px; flex: 1 1 420px; }
-.mpp-stat b { display: block; font-size: 1.625rem; font-weight: var(--pg-weight-title); line-height: 1.2; letter-spacing: var(--pg-tracking-screen-title);
-	font-variation-settings: var(--pg-opsz-display); font-variant-numeric: tabular-nums; }
-.mpp-stat span { font-size: var(--pg-text-meta); color: var(--pg-fg-2); }
-.mpp-stat.good b { color: var(--pg-success-fg-emphasis); }
 .mpp-meter { height: 6px; border-radius: var(--pg-radius-pill); background: var(--pg-bg-2); overflow: hidden; margin-top: 12px; }
 .mpp-meter > i { display: block; height: 100%; background: var(--pg-success); transition: width .4s ease; }
 .mpp-meter.busy > i { background: var(--pg-primary); }
@@ -1676,7 +1672,6 @@ a.mpp-title:hover { text-decoration: underline; }
 	border: 1px solid var(--pg-border-color); color: inherit; text-decoration: none; font-weight: var(--pg-weight-strong); font-size: var(--pg-text-base); }
 .mpp-mode:hover { border-color: var(--pg-primary); }
 .mpp-mode.active { background: var(--pg-primary-bg-subtle); border-color: var(--pg-primary); color: var(--pg-primary-fg-emphasis); }
-.mpp-stat.bad b { color: var(--pg-danger-fg-emphasis); }
 .mpp-row.is-error { background: color-mix(in srgb, var(--pg-danger) 6%, transparent); }
 .mpp-code code { font-size: var(--pg-text-base); font-weight: var(--pg-weight-strong); color: var(--pg-fg-emphasis); }
 .mpp-err { margin-top: 4px; font-size: var(--pg-text-meta); color: var(--pg-danger-fg-emphasis); word-break: break-word; }
@@ -1804,11 +1799,11 @@ if (!$account) {
 			<div class="mpp-hero">
 				<div class="flex-grow-1">
 					<div class="mpp-stats">
-						<div class="mpp-stat"><b data-mp-count="all">' . pg_format_number($counts['all'], 0) . '</b><span>'
+						<div class="mpp-stat"><b class="pg-figure-value" data-mp-count="all">' . pg_format_number($counts['all'], 0) . '</b><span class="pg-figure-label">'
 							. h(lang(array('string' => 'products on {var:1}', 'vars' => array($provider_name)))) . '</span></div>
-						<div class="mpp-stat good"><b data-mp-count="matched">' . pg_format_number($counts['matched'], 0) . '</b><span>' . h(lang('matched')) . '</span></div>
-						<div class="mpp-stat"><b data-mp-count="suggested">' . pg_format_number($counts['suggested'], 0) . '</b><span>' . h(lang('waiting for a look')) . '</span></div>
-						<div class="mpp-stat"><b data-mp-count="sure">' . pg_format_number($counts['sure'], 0) . '</b><span>' . h(lang('sure suggestions')) . '</span></div>
+						<div class="mpp-stat"><b class="pg-figure-value is-good" data-mp-count="matched">' . pg_format_number($counts['matched'], 0) . '</b><span class="pg-figure-label">' . h(lang('matched')) . '</span></div>
+						<div class="mpp-stat"><b class="pg-figure-value" data-mp-count="suggested">' . pg_format_number($counts['suggested'], 0) . '</b><span class="pg-figure-label">' . h(lang('waiting for a look')) . '</span></div>
+						<div class="mpp-stat"><b class="pg-figure-value" data-mp-count="sure">' . pg_format_number($counts['sure'], 0) . '</b><span class="pg-figure-label">' . h(lang('sure suggestions')) . '</span></div>
 					</div>
 					<div class="mpp-meter" id="mpp-meter" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' . $matched_share . '"'
 						. ' aria-label="' . h(lang('Matched')) . '"><i style="width:' . $matched_share . '%"></i></div>

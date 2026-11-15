@@ -195,8 +195,8 @@ $output_header = '
                         </div>
                         <div class="col-12 sm:col-6 lg:col-12 my-3">
                             <div class="form-label fg-secondary">' . lang('Amount') . '</div>
-                            <div class="h5 mb-0 ' . ($is_cancelled ? 'text-decoration-line-through fg-secondary' : '') . '">' . $money((int) $receipt['amount']) . '</div>
-                            ' . ($is_foreign ? '<div class="fg-secondary small">' . h(erp_money_out((int) $receipt['amount_base'])) . ' &middot; ' . h(erp_fx_rate_text($receipt['exchange_rate'])) . '</div>' : '') . '
+                            <div class="pg-figure-value ' . ($is_cancelled ? 'text-decoration-line-through fg-secondary' : '') . '">' . $money((int) $receipt['amount']) . '</div>
+                            ' . ($is_foreign ? '<div class="pg-figure-note">' . h(erp_money_out((int) $receipt['amount_base'])) . ' &middot; ' . h(erp_fx_rate_text($receipt['exchange_rate'])) . '</div>' : '') . '
                         </div>
                         <div class="col-12 sm:col-6 lg:col-12 my-3">
                             <div class="form-label fg-secondary">' . lang('Account') . '</div>
