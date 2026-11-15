@@ -7,7 +7,7 @@ priority: 6
 ## What is asked?
 - Owner (2026-11-15, agent channel message 5096): "tasarım stüdyosunda popup tarzı bir component olmadığını fark ettim bu şekilde birkaç popup comp. i de eklemeyi düşünelim." His vote on poll 51: "Evet, ikisi de".
 - Owner (5139): pop-ups are built by growing Auto Dialogs, new columns where needed, the jQuery dialog gone, the screens improved. His words are in `workflow/decisions-made-product-56.md`.
-- The shape is the R&D agent's (agent channel message 5160) with the architect's four changes (5179).
+- The shape is the R&D agent's (agent channel message 5160) with the architect's changes (5179, corrected in 5215).
 
 ## What is the shape?
 - The frame: the browser's `<dialog>` opened by a small script: `showModal()` for a centred pop-up, `show()` for a bar or a corner card; no library. Classes `auto_dialog` and `auto_dialog_<id>` stay, the `ui-dialog` classes go. jQuery UI stays for the edit-region, share-comment and kiosk dialogs.
@@ -20,9 +20,9 @@ priority: 6
 - Cookie: one for all pop-ups (id, last shown, state; a year), written only with the notice off or marketing allowed, in the catalogue and the revoke names; otherwise `sessionStorage`, once a visit. The old per-row cookie is read for its last-shown time and joins the revoke names.
 - Counts: one row per pop-up and site day (shown, closed, taken); a beacon to `page_view.php` once per pop-up, event and page load, none for staff, crawlers or a preview. Taken = a press on the marked action or a form sent inside; an address kind knows shown and closed only.
 
-## Does a pop-up wait for the cookie notice's answer?
-- No (architect, 2026-11-15): it opens on its trigger as today, answered or not, and the notice stays answerable while a pop-up is open.
-- Why: running sites keep what they do, and the visit works without consent, only remembering beyond it waits (`platform/cookie-consent-new-cookies.md`).
+## Does a pop-up wait for the cookie notice's answer? (owner, 2026-11-15, agent channel poll 51)
+- Yes: with the notice on, no pop-up opens before the visitor has answered it; the script starts on the `pg:consent` event. With the notice off it opens on its trigger. Old rows too.
+- His vote and the outcome line: `workflow/decisions-made-product-56.md`.
 
 ## What does every step keep?
 - Schema only through a step that states its columns, types and indexes in its draft PR's body; the architect confirms them there before the rest is written (`workflow/decisions-made-schema-21.md`).
