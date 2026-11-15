@@ -6550,7 +6550,9 @@ function _render_content_html($props, $pad, $kids = '')
             if (function_exists('pg_sw_messages_held_back') ? pg_sw_messages_held_back()
                 : (function_exists('pg_seo_rendering') && pg_seo_rendering())) break;
             $msg_form  = !empty($props['formName']) ? $props['formName'] : '';
-            $msg_cls   = !empty($props['cssClass']) ? ' ' . h($props['cssClass']) : '';
+            $msg_cls   = !empty($props['cssClass']) ? (string)$props['cssClass'] : '';
+            // Alert look and dismiss button (pg_messages_settings()).
+            $msg_set   = pg_messages_settings($props);
             $msg_parts = array();
             $msg_consume_targets = array();  // [[lf_name, lf_idx], …]
 
@@ -6580,12 +6582,7 @@ function _render_content_html($props, $pad, $kids = '')
                             }
                         }
                         if ($err_lines !== '') {
-                            $msg_parts[] =
-                                '<div class="software_error alert alert-danger alert-dismissible show' . $msg_cls . '" role="alert">' .
-                                    '<button type="button" style="display:none;" class="btn-close no-popover" data-bs-dismiss="alert" aria-label="' . h(lang('Close')) . '"></button>' .
-                                    '<h5 class="alert-heading description">' . (function_exists('lang') ? lang('An error occurred') : 'An error occurred') . ':</h5>' .
-                                    $err_lines .
-                                '</div>';
+                            $msg_parts[] = pg_messages_alert_html('error', $err_lines, $msg_set, $msg_cls);
                             $rendered_anything = true;
                         }
                         // Notices
@@ -6595,11 +6592,7 @@ function _render_content_html($props, $pad, $kids = '')
                                 $ntc_lines .= '<p class="notice">' . pg_defuse_page_message($ntc) . '</p>';
                             }
                             if ($ntc_lines !== '') {
-                                $msg_parts[] =
-                                    '<div class="software_notice alert alert-success alert-dismissible show' . $msg_cls . '" role="alert">' .
-                                        '<button type="button" style="display:none;" class="btn-close no-popover" data-bs-dismiss="alert" aria-label="' . h(lang('Close')) . '"></button>' .
-                                        $ntc_lines .
-                                    '</div>';
+                                $msg_parts[] = pg_messages_alert_html('notice', $ntc_lines, $msg_set, $msg_cls);
                                 $rendered_anything = true;
                             }
                         }
@@ -6610,11 +6603,7 @@ function _render_content_html($props, $pad, $kids = '')
                                 $wrn_lines .= '<p class="warning">' . pg_defuse_page_message($wrn) . '</p>';
                             }
                             if ($wrn_lines !== '') {
-                                $msg_parts[] =
-                                    '<div class="software_warning alert alert-warning alert-dismissible show' . $msg_cls . '" role="alert">' .
-                                        '<button type="button" style="display:none;" class="btn-close no-popover" data-bs-dismiss="alert" aria-label="' . h(lang('Close')) . '"></button>' .
-                                        $wrn_lines .
-                                    '</div>';
+                                $msg_parts[] = pg_messages_alert_html('warning', $wrn_lines, $msg_set, $msg_cls);
                                 $rendered_anything = true;
                             }
                         }

@@ -1328,10 +1328,147 @@ function ws_guest_line_sender($row, $agent_apps, $mcp_answer = false)
             return $mcp_answer ? 'agent' : 'person';
 
         case 'app':
-            return (($row['kind'] !== 'task') && in_array((int) ($row['sender_id'] ?? 0), array_map('intval', (array) $agent_apps), true)) ? 'agent' : '';
+            // An agent's task card reads like a person's (title, state, due).
+            return in_array((int) ($row['sender_id'] ?? 0), array_map('intval', (array) $agent_apps), true) ? 'agent' : '';
     }
 
     return '';
+}
+
+/**
+ * Whether the file of a message is the guest's to open: a line the guest
+ * page lists (a person's, an agent's, an MCP agent's answer, never a
+ * guest's own upload or another application's line), in the guest's room,
+ * after its clear floor, not deleted. A live page is never served here.
+ * The page's payload and the file address both ask it. Pure.
+ *
+ * @param array|null|false $row        id, channel_id, deleted_at, sender_kind, sender_id, kind, file_id
+ * @param int              $channel_id the guest's room
+ * @param int              $floor      ws_guest_room_floor()
+ * @param int[]            $agent_apps ws_guest_agent_apps() keys
+ * @param bool             $mcp_answer the message is an MCP agent's answer
+ * @param bool             $page       the file is a live page (ws_page_is_page())
+ * @return bool
+ */
+function ws_guest_file_reached($row, $channel_id, $floor, $agent_apps, $mcp_answer = false, $page = false)
+{
+    if (!is_array($row) || $page || ((int) ($row['file_id'] ?? 0) <= 0) || ((int) ($row['deleted_at'] ?? 0) !== 0)) {
+        return false;
+    }
+
+    if (((int) $channel_id <= 0) || ((int) ($row['channel_id'] ?? 0) !== (int) $channel_id) || !ws_guest_message_in_reach((int) ($row['id'] ?? 0), $floor)) {
+        return false;
+    }
+
+    return in_array(ws_guest_line_sender($row, $agent_apps, $mcp_answer), array('person', 'agent'), true);
+}
+
+/**
+ * How a guest is shown a canvas: its drawn picture only (no editor, layers,
+ * versions or document), or a line saying the preview is not ready while
+ * an agent's picture waits to be drawn. The version goes into the file's
+ * address, so a picture drawn later is fetched again. Pure.
+ *
+ * @param array|null $state ws_canvas_message_states() entry (version_no, pending, server)
+ * @return array canvas, pending, v ('' for a file that is no canvas)
+ */
+function ws_guest_canvas_view($state)
+{
+    if (!is_array($state) || ((int) ($state['version_no'] ?? 0) <= 0)) {
+        return array('canvas' => false, 'pending' => false, 'v' => '');
+    }
+
+    $pending = !empty($state['pending']);
+
+    return array(
+        'canvas'  => true,
+        'pending' => $pending,
+        'v'       => (int) $state['version_no'] . ($pending ? 'p' : (!empty($state['server']) ? 's' : '')),
+    );
+}
+
+/**
+ * Whether a live page is the guest's to run in the guarded frame: the
+ * page of an agent's line the guest page lists (an application's message,
+ * never a person's, a guest's or another application's), in the guest's
+ * room, after its clear floor, not deleted, its file a page the routes
+ * wrote and no larger than the frame takes. Pure.
+ *
+ * @param array|null|false $row        id, channel_id, deleted_at, sender_kind, sender_id, kind, file_id
+ * @param int              $channel_id the guest's room
+ * @param int              $floor      ws_guest_room_floor()
+ * @param int[]            $agent_apps ws_guest_agent_apps() keys
+ * @param bool             $page       the file is a live page (ws_page_is_page())
+ * @param int              $size       the file's size in bytes
+ * @param int              $max        the frame's limit (PG_GUARDED_FRAME_MAX_BYTES)
+ * @return bool
+ */
+function ws_guest_page_reached($row, $channel_id, $floor, $agent_apps, $page, $size, $max)
+{
+    if (!$page || ((int) $size <= 0) || ((int) $size > (int) $max) || !is_array($row) || ((string) ($row['sender_kind'] ?? '') !== 'app')) {
+        return false;
+    }
+
+    // The same reach as a file's, with the page let through.
+    return ws_guest_file_reached($row, $channel_id, $floor, $agent_apps, false, false)
+        && (ws_guest_line_sender($row, $agent_apps) === 'agent');
+}
+
+/**
+ * Answers a guest's frame with an agent's live page in the guarded frame
+ * (includes/fn/guarded_frame.php, script mode), as live_page.php answers a
+ * member: only a frame's request, only the page of a line this guest reads.
+ * Anything else is the same 404 line, nothing of the page.
+ *
+ * @param array|null $context ws_guest_context()
+ * @param int        $message_id
+ * @param array      $server  $_SERVER
+ */
+function ws_guest_page_send($context, $message_id, $server)
+{
+    $refuse = function () {
+        http_response_code(404);
+        header('Content-Type: text/plain; charset=utf-8');
+        header('Cache-Control: private, no-store');
+        header('X-Content-Type-Options: nosniff');
+        echo lang('That page could not be found.');
+        exit;
+    };
+
+    if (!$context || !pg_guarded_frame_request_framed($server)) {
+        $refuse();
+    }
+
+    $channel_id = (int) $context['channel']['id'];
+    $floor = ws_guest_room_floor($channel_id);
+    $row = db_item("SELECT m.id, m.channel_id, m.deleted_at, m.sender_kind, m.sender_id, m.kind, m.file_id, f.name AS stored_name, f.size AS stored_size
+        FROM ws_messages m
+        INNER JOIN files f ON f.id = m.file_id
+        WHERE m.id = '" . (int) $message_id . "' AND " . ws_guest_message_reach_sql($channel_id, $floor, 'm.') . "
+        AND m.file_id > 0");
+
+    $page = is_array($row) && pg_guarded_frame_is_page_name((string) $row['stored_name']) && ws_page_is_page((int) $row['file_id']);
+
+    if (!ws_guest_page_reached($row, $channel_id, $floor, array_keys(ws_guest_agent_apps()), $page, is_array($row) ? (int) $row['stored_size'] : 0, PG_GUARDED_FRAME_MAX_BYTES)) {
+        $refuse();
+    }
+
+    $path = pg_file_reader_path((string) $row['stored_name']);
+    $html = ($path !== '') ? @file_get_contents($path, false, null, 0, PG_GUARDED_FRAME_MAX_BYTES + 1) : false;
+
+    if (!is_string($html) || (strlen($html) > PG_GUARDED_FRAME_MAX_BYTES)) {
+        $refuse();
+    }
+
+    // The site's own copy of each library the page names, as for a member.
+    require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_chart.php');
+
+    $html = ws_page_with_libraries($html, ws_page_libraries_of((int) $row['file_id']), array(
+        'channel_hex' => ws_canvas_chart_channel_tone($context['channel']),
+    ));
+
+    pg_guarded_frame_send($html, 'script', lang('Live page'));
+    exit;
 }
 
 /**
@@ -1351,7 +1488,7 @@ function ws_guest_lines_sql($agent_apps, $alias = '')
         return $people;
     }
 
-    return '(' . $people . ' OR (' . $alias . "sender_kind = 'app' AND " . $alias . "kind <> 'task' AND " . $alias . 'sender_id IN (' . implode(',', $ids) . ')))';
+    return '(' . $people . ' OR (' . $alias . "sender_kind = 'app' AND " . $alias . 'sender_id IN (' . implode(',', $ids) . ')))';
 }
 
 /**
@@ -1379,7 +1516,7 @@ function ws_guest_messages($context, $after = 0, $limit = 80)
     $floor = ws_guest_room_floor($channel_id);
     $agent_apps = ws_guest_agent_apps();
 
-    $rows = array_reverse((array) db_items("SELECT id, parent_id, sender_kind, sender_id, kind, body, task_id, file_id, file_name, edited_at, created_at
+    $rows = array_reverse((array) db_items("SELECT id, channel_id, deleted_at, parent_id, sender_kind, sender_id, kind, body, task_id, file_id, file_name, edited_at, created_at
         FROM ws_messages
         WHERE channel_id = '" . $channel_id . "' AND deleted_at = 0
         AND kind IN ('message', 'decision', 'note', 'task') AND " . ws_guest_lines_sql(array_keys($agent_apps)) . "
@@ -1424,6 +1561,28 @@ function ws_guest_messages($context, $after = 0, $limit = 80)
         : array_flip(array_map('intval', (array) db_values("SELECT DISTINCT checklist_message_id FROM ws_tasks WHERE checklist_message_id IN (" . implode(',', $ids) . ")")));
 
     $people = ws_people(array_map(function ($row) { return ($row['sender_kind'] === 'user') ? (int) $row['sender_id'] : 0; }, $rows));
+
+    // Files of the page: which are canvases (one query) and which live pages.
+    $file_ids = array_values(array_filter(array_map(function ($row) { return (int) $row['file_id']; }, $rows)));
+    $canvases = (!empty($file_ids) && function_exists('ws_canvas_message_states')) ? ws_canvas_message_states($file_ids) : array();
+    $pages = array();
+
+    if (!empty($file_ids) && function_exists('pg_file_versions_ready') && pg_file_versions_ready()) {
+        $pages = array_flip(array_map('intval', (array) db_values("SELECT DISTINCT file_id FROM file_versions
+            WHERE file_id IN (" . implode(',', array_map('intval', $file_ids)) . ") AND format = 'html'")));
+    }
+
+    $page_sizes = array();
+
+    if (!empty($pages)) {
+        foreach ((array) db_items("SELECT id, name, size FROM files WHERE id IN (" . implode(',', array_keys($pages)) . ")") as $file) {
+            // Only a page the routes wrote: an .html name.
+            if (pg_guarded_frame_is_page_name((string) $file['name'])) {
+                $page_sizes[(int) $file['id']] = (int) $file['size'];
+            }
+        }
+    }
+
     $endpoint = PATH . SOFTWARE_DIRECTORY . '/workspace_guest.php';
     $out = array();
 
@@ -1460,10 +1619,6 @@ function ws_guest_messages($context, $after = 0, $limit = 80)
         $can_tick = ($line === 'person') && !isset($listed[$id]);
         $html = $staff ? ws_render_body($body, $refs, $checks[$id] ?? array(), $can_tick) : ws_guest_render($body);
 
-        if ($agent && (trim(strip_tags($html)) === '') && !isset($polls[$id])) {
-            continue;
-        }
-
         $message = array(
             'id'        => $id,
             'mine'      => $mine,
@@ -1485,6 +1640,7 @@ function ws_guest_messages($context, $after = 0, $limit = 80)
             'poll'      => null,
             'approval'  => null,
             'task'      => null,
+            'page'      => null,
             'reactions' => array_values($reactions[$id] ?? array()),
         );
 
@@ -1518,14 +1674,20 @@ function ws_guest_messages($context, $after = 0, $limit = 80)
             }
         }
 
-        // A file or a picture staff put in the room, from the guest's own
-        // address: the channel's folder opens to its members only.
-        if (($line === 'person') && ((int) $row['file_id'] > 0) && ((string) db_value("SELECT name FROM files WHERE id = '" . (int) $row['file_id'] . "'") !== '')) {
+        // A file or a picture staff or an agent put in the room, from the
+        // guest's own address: the channel's folder opens to its members
+        // only. A canvas is its drawn picture; a live page is not a file here.
+        if (ws_guest_file_reached($row, $channel_id, $floor, array_keys($agent_apps), isset($mcp[$id]), isset($pages[(int) $row['file_id']]))
+            && ((string) db_value("SELECT name FROM files WHERE id = '" . (int) $row['file_id'] . "'") !== '')) {
+            $canvas = ws_guest_canvas_view($canvases[(int) $row['file_id']] ?? null);
+
             $message['file'] = array(
-                'name' => (string) $row['file_name'],
-                'url'  => $endpoint . '?file=' . $id,
-                'kind' => ws_file_kind($row['file_name']),
-                'ext'  => strtolower((string) pathinfo((string) $row['file_name'], PATHINFO_EXTENSION)),
+                'name'    => (string) $row['file_name'],
+                'url'     => $endpoint . '?file=' . $id . (($canvas['v'] !== '') ? '&v=' . $canvas['v'] : ''),
+                'kind'    => ws_file_kind($row['file_name']),
+                'ext'     => strtolower((string) pathinfo((string) $row['file_name'], PATHINFO_EXTENSION)),
+                'canvas'  => $canvas['canvas'],
+                'pending' => $canvas['pending'],
             );
         }
 
@@ -1583,6 +1745,22 @@ function ws_guest_messages($context, $after = 0, $limit = 80)
                     'open'   => function_exists('ws_task_is_open') ? ws_task_is_open($task['status']) : true,
                 );
             }
+        }
+
+        // An agent's live page: its card, run in the guarded frame from the
+        // guest's own address on Open. No source, versions, Undo or download.
+        if (isset($pages[(int) $row['file_id']]) && ws_guest_page_reached($row, $channel_id, $floor, array_keys($agent_apps), true, (int) ($page_sizes[(int) $row['file_id']] ?? 0), PG_GUARDED_FRAME_MAX_BYTES)) {
+            $message['page'] = array(
+                'name'    => (string) $row['file_name'],
+                'by'      => ltrim((string) $agent_apps[(int) $row['sender_id']]['tag'], '@'),
+                'frame'   => $endpoint . '?page=' . $id,
+                'sandbox' => pg_guarded_frame_panel_sandbox('script'),
+            );
+        }
+
+        // An agent's line with nothing a guest reads is left out.
+        if ($agent && (trim(strip_tags($html)) === '') && ($message['poll'] === null) && ($message['file'] === null) && ($message['task'] === null) && ($message['page'] === null)) {
+            continue;
         }
 
         $out[] = $message;
@@ -1796,10 +1974,23 @@ function ws_guest_votes_ready()
 function ws_guest_file_send($context, $message_id)
 {
     // MySQL 8 reserves STORED: the stored name is aliased stored_name.
-    $row = $context ? db_item("SELECT m.file_name, f.name AS stored_name FROM ws_messages m
+    $channel_id = $context ? (int) $context['channel']['id'] : 0;
+    $row = $context ? db_item("SELECT m.id, m.channel_id, m.deleted_at, m.sender_kind, m.sender_id, m.kind, m.file_id, m.file_name, f.name AS stored_name
+        FROM ws_messages m
         INNER JOIN files f ON f.id = m.file_id
-        WHERE m.id = '" . (int) $message_id . "' AND " . ws_guest_message_reach_sql($context['channel']['id'], ws_guest_room_floor($context['channel']['id']), 'm.') . "
-        AND m.sender_kind = 'user' AND m.file_id > 0") : null;
+        WHERE m.id = '" . (int) $message_id . "' AND " . ws_guest_message_reach_sql($channel_id, ws_guest_room_floor($channel_id), 'm.') . "
+        AND m.file_id > 0") : null;
+
+    // Only the file of a line the guest page lists: a person's, an agent's
+    // (never another application's), not a live page.
+    if (is_array($row)) {
+        $mcp = function_exists('ws_mcp_agent_answers_map') ? ws_mcp_agent_answers_map(array((int) $row['id'])) : array();
+        $page = ws_page_is_page((int) $row['file_id']);
+
+        if (!ws_guest_file_reached($row, $channel_id, ws_guest_room_floor($channel_id), array_keys(ws_guest_agent_apps()), !empty($mcp), $page)) {
+            $row = null;
+        }
+    }
 
     // The local file, or a copy of one moved to the object store: the guest
     // page streams it, the store's address is never shown to a guest.
@@ -2175,6 +2366,11 @@ function ws_guest_page_strings()
         'hint'         => lang('Enter sends, Shift+Enter starts a new line.'),
         'download'     => lang('Download'),
         'task'         => lang('Task'),
+        'preview_not_ready' => lang('The preview is not ready yet.'),
+        'page_by'      => ws_js_template('Live page by @{var:1}. It is the agent\'s work, not the site\'s.', 1),
+        'page_open'    => lang('Open page'),
+        'page_close'   => lang('Close'),
+        'page_full_screen' => lang('Full screen'),
         'poll_voters'  => ws_js_template('{var:1} people voted', 1),
         'poll_closed'  => lang('The poll is closed.'),
         'poll_closes'  => ws_js_template('Closes {var:1}', 1),

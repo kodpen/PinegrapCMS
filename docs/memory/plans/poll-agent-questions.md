@@ -36,7 +36,8 @@ description: Plan (owner 2026-11-14): the poll gains described, pictured and lin
 - The approval and the checklist do not change; a question one agent asks another stays a checklist.
 - A guest never answers an agent question.
 - No table or column without asking the architect. Texts through `lang()`, Turkish by `tools/tr_add.php`.
-- Order: AQ5 after AQ4. Claim as `[plan:poll-agent-questions] <step> — <topic>`.
+- AQ4b and AQ6 go before other work. Owner (2026-11-15, in the architect's window): "ajan sorularını bir an önce bitebilir mi artık. karışık geliyor şu anda sorular".
+- Claim as `[plan:poll-agent-questions] <step> — <topic>`.
 
 ## What do AQ3 and AQ4 take from AQ2?
 - AQ3: drawn (`workspace/poll-box.md`); AQ4b branches from its `pollShape()` and `pollOptionText()`.

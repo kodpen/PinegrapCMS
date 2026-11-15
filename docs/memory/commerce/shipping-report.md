@@ -15,5 +15,8 @@ description: Shipping report (view_shipping_report.php): which orders it counts,
 - The toolbar keeps the status and the period arrows: the screen has no saved settings, so no settings drawer and no ready report. Query, period rule and the heading links are untouched.
 - Since #8981 (look A, `ui/look-report-screens.md`) the status is a segmented row of links (`?status=any|unshipped|shipped`, kept in the session as before) in place of the select that sent itself; "Ship Date Adjustments" stays in slot 2. Seen on a sandbox in both themes and on a phone.
 
+## How wide is the table?
+- The day columns are `.pg-report-day` (6 px sides, RS8c): fourteen days fit at 1440 px; a longer period scrolls inside the table's frame. The period beside the calendar is the shared shape (`ui/report-period-text.md`).
+
 ## Where are the rules pinned?
 - The period rule in `tests/shipping_report_period_test.php`, the status filter by a source check there.

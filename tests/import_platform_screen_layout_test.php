@@ -30,7 +30,7 @@ function test_import_platform_screen_has_form_and_status_columns()
 
 	$form = strpos($markup, '<div class="col-12 lg:col-8 2xl:col-9 order-1">');
 	$status = strpos($markup, '<div class="col-12 lg:col-4 2xl:col-3 order-2">');
-	$bar = strpos($markup, '<div class="col-12 order-3">');
+	$bar = strpos($markup, 'pg_save_bar(');
 
 	pg_assert_true($main !== false, 'the screen markup is there');
 	pg_assert_true($form !== false && $status !== false && $bar !== false, 'form column, status column and save bar are there');

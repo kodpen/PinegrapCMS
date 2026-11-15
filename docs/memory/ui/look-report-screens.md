@@ -20,7 +20,7 @@ module: report_view
 - The range is text, not a 34 px field: there is no range picker, and a field would promise one.
 - Shipping and ERP tax print no `h2`: the top bar names them already. They drop `pg_dash.min.js` and the dashboard sheet (no map); order and visitor keep both for the map.
 - Figures: up to five share a row, more go in two even rows of at most four; a phone draws two a row, an odd last card the whole row (RS8a, #9700).
-- A level with no chart prints one line saying so (`p.pg-report-nochart`), never an empty plot.
+- A level with no chart prints one line saying so (`p.pg-report-nochart`, 620 px at most), never an empty plot. Bars take the whole row, as the map (#9718).
 - The drawer's Bootstrap `.switch` is the look's switch (`look-switch.md`).
 
 ## What does a phone get? (RS8a, #9700, the architect's look 4223)

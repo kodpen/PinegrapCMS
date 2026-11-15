@@ -55,7 +55,7 @@ if (!$_POST) {
                                     <div class="row">
                                         <div class="col-12 pg-field-span-6 my-3">
                                             <label for="email_address" class="form-label">' . lang('Email') . '</label>
-                                            <input type="text" name="email_address" autocomplete="off" id="email_address" class="form-control text-end" maxlength="100" inputmode="email" data-inputmask-alias="email" />
+                                            <input type="text" name="email_address" autocomplete="off" id="email_address" class="form-control" maxlength="100" inputmode="email" data-inputmask-alias="email" />
                                         </div>
                                         <div class="col-12 my-1">
                                             <div class="form-field">

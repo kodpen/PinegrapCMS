@@ -1,6 +1,6 @@
 ---
 name: report-screens-steps
-description: Steps of plans/report-screens.md: RS1-RS7 landed; RS8 the look (RS8a phone and shared parts, RS8b order and visitor, RS8c shipping and ERP VAT) and close-out
+description: Steps of plans/report-screens.md: RS1-RS8c landed or done; the close-out (RS9) left
 ---
 
 ## Which steps are there?
@@ -16,12 +16,12 @@ description: Steps of plans/report-screens.md: RS1-RS7 landed; RS8 the look (RS8
   3. The report's title wraps and is never cut with an ellipsis ("Kaynağa göre ziyaret..."); the pill goes under it. The breadcrumb's last part ends with an ellipsis, not mid-letter.
   4. A table on a phone: the first column stays in place and takes at most half the width, its header wraps; today the order report shows only names, every figure is off the screen.
   5. The charts' x-axis: ticks at even steps (shipping jumps 15, 17, 19, 22; the VAT year shows Temmuz and then Ağustos).
-- RS8b (S) Order and visitor reports:
+- RS8b (S) Done: #9718. Order and visitor reports:
   1. A ready order report shows its period and the period control as every order report does; "Sales by region" shows 153 orders of no named days.
   2. Country names in place of codes in the map's list and the table's group rows, where the site knows the name; the export keeps the code.
   3. The visitor report's bars card, alone in its row, takes the whole row as the map card does.
   4. The visitor report's "Average Order Amount" is the order total divided by visitors (25.818,54 / 1.762 = 14,65), in the card and in the table, as it always was. The figure stays; its label says what it is: "Order amount per visitor" (tr_add). The export keeps its header.
-- RS8c (S) Shipping and ERP VAT:
+- RS8c (S) Done: #9738. Shipping and ERP VAT:
   1. Shipping, 1440: the products table is cut at the card's edge (one letter of the column after "Cmt 28 Kas"). Fourteen days fit at 1440 with narrower day columns; below that the table scrolls inside its card.
   2. One shape for the period beside the calendar icon on the four screens: the panel's date text (`get_absolute_time()`, type date) and an en dash. Today there are three ("Cmt 17 Eki 2026 - Paz 15 Kas 2026", "15 Kasım 2026 – 28 Kasım 2026", "1/11/2026 – 30/11/2026"). Table cells keep the site's date format.
   3. The VAT notice about orders without an invoice: body text size, the look's note; today its text is larger than everything around it.

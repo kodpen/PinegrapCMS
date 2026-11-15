@@ -39,9 +39,16 @@ function panel_chart_colours_assert_inked($path, $scales)
 		$path . ' hands no --pg-* custom property text to Chart.js');
 }
 
-function test_panel_chart_colours_erp_profit()
+// The profit report's chart is the report view's line plot (drawn in look
+// A's tokens by pg_report_view.js); no Chart.js canvas is left to ink.
+function test_panel_chart_colours_erp_profit_on_the_report_view()
 {
-	panel_chart_colours_assert_inked('erp_profit.php', 2);
+	$source = panel_chart_colours_source('erp_profit.php');
+
+	pg_assert_contains('pg_report_view_profit_chart(', $source, 'the chart comes from the report view');
+	pg_assert_contains("pg_js_bundle_tags('assets/js/pg_report_view.min.js')", $source, 'drawn by the report view script');
+	pg_assert_false(strpos($source, 'chartjs') !== false, 'no Chart.js script');
+	pg_assert_false(strpos($source, '<canvas') !== false, 'no canvas');
 }
 
 function test_panel_chart_colours_search_console()
@@ -86,23 +93,4 @@ function test_panel_chart_colours_search_console_clicks_ink()
 	panel_chart_colours_assert_tone($source, $path, '--pg-primary-ink', 'primaryInk');
 	pg_assert_true((bool) preg_match('/label: [^\n]*Clicks[^\n]*borderColor: primaryInk, backgroundColor: primaryInk/', $source), 'the Clicks line is drawn in the primary ink');
 	pg_assert_false(strpos($source, 'color("--bs-primary"') !== false, 'the Clicks line no longer reads the pastel fill');
-}
-
-function test_panel_chart_colours_erp_profit_series()
-{
-	$path = 'erp_profit.php';
-	$source = panel_chart_colours_source($path);
-
-	panel_chart_colours_assert_tone($source, $path, '--pg-primary-ink', 'primaryInk');
-	panel_chart_colours_assert_tone($source, $path, '--pg-secondary-ink', 'secondaryInk');
-	panel_chart_colours_assert_tone($source, $path, '--pg-success-ink', 'successInk');
-	pg_assert_true((bool) preg_match('/Net sales[^\n]*borderColor: primaryInk, borderWidth: 2/', $source), 'Net sales bars have an ink edge');
-	// Costs are outlined, so the two bar series differ by fill, not by tint.
-	pg_assert_true((bool) preg_match('/Costs and expenses[^\n]*backgroundColor: "transparent", borderColor: secondaryInk, borderWidth: 2/', $source), 'Costs and expenses bars are outlined in ink');
-	pg_assert_true((bool) preg_match('/Net profit[^\n]*borderColor: successInk, backgroundColor: successInk/', $source), 'the Net profit line is drawn in the success ink');
-	pg_assert_false(strpos($source, 'color("--bs-success"') !== false, 'the Net profit line no longer reads the pastel fill');
-	pg_assert_false(strpos($source, 'color("--bs-secondary-bg"') !== false, 'Costs and expenses no longer take a grey tint of the Net sales fill');
-	// The month table under the chart carries the figures; the canvas only
-	// repeated the card heading as its name.
-	pg_assert_contains('<canvas id="erp_profit_chart" aria-hidden="true"></canvas>', $source, 'the ERP canvas is hidden from readers');
 }

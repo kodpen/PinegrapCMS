@@ -20,7 +20,7 @@ description: An agent's card, state dot and usage mark in a channel (agent_card.
 - Panel action `ws_agent_card` (channel_id, agent_id), answered by `ws_channel_agents_action()` for any team reader of the channel (`ws_action_channel()`); `ws_agent_card()` gives id, app_id, handle, name, kind, role, seen, model, windows (label, percent, "resets …", high), `reported` ("As the agent reported it … the site cannot check it."), stale, today (answered, failed), last_message (id, when), channels, tier, wake, and the brief.
 - `last_message`: the agent's application's newest not-deleted message in the channel (`ws_agent_last_message()`, through `idx_channel`).
 - `channels`: its `ws_channel_agents` rows the reader may read (`ws_agent_reader_channels()`, `ws_can_read_channel()`).
-- What it may do and what wakes it in plain words come from the agents panel's own word functions (PF7, #9615); the card sends the tier and the member row's wake words until both have landed.
+- It sends the tier as a number and the member row's wake words; the panel's tier words are not on the card (`agent-card-look.md`).
 - The model and windows only for an `app` agent that reported (`agent-report.md`).
 
 ## And the API?
@@ -28,6 +28,7 @@ description: An agent's card, state dot and usage mark in a channel (agent_card.
 - Tests: `tests/workspace_agent_card_test.php`.
 
 ## Where does the card open? (PF3)
-- `agentCardHook()` in `workspace.js`: a message's name and face when its application is a registry agent of the channel (`agentOfApp()` over `channel.agents`), Channel info's agent rows, the channel head's agent faces. Hover (350 ms), keyboard focus or Enter on the name, a tap; one at a time; Escape, a click outside, a scroll or leaving it closes it.
+- `agentCardHook()` in `workspace.js`: a message's name and face when its application is a registry agent of the channel (`agentOfApp()` over `channel.agents`), Channel info's agent rows, the channel head's agent faces. Hover (350 ms), keyboard focus or Enter on the name, a tap; one at a time; Escape, a click outside, the reader's own scroll or leaving it closes it.
 - `agentCardShow()` draws the member row at once, then `ws_agent_card` (kept 30 s); `agentCardPlace()` (pure, tested) puts it under the anchor, over it when short of room. Style `.ws-agent-card*` beside `.ws-agent-face`.
-- Mention puts `@handle ` into the composer (typed text wakes it too). Look: owner's layout of channel decision 3796; pictures `Approval: channel`.
+
+- What it does on a failed load and which scroll closes it: `agent-card-behaviour.md`; the look and the owner's choices: `agent-card-look.md`; the dot and the role badge: `agent-state-marks.md`.

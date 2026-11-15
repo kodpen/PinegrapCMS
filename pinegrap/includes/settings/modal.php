@@ -181,6 +181,7 @@ function pg_settings_modal_markup($user)
     data-pgstay="' . h(lang('Keep Editing')) . '"
     data-pgclose="' . h(lang('Close')) . '"
     data-pgfailed="' . h(lang('The request could not be completed. Please try again.')) . '"
+    data-pgsaved="' . h(lang('The Site Settings have been saved.')) . '"
     data-pgsearching="' . h(lang('Searching...')) . '"
     data-pgnohits="' . h(lang('No settings match.')) . '"
     data-pgfilled="' . h(lang('A password manager filled in a field nobody was editing, so it has been put back.')) . '">
@@ -291,6 +292,12 @@ function pg_settings_modal_markup($user)
             -->
             <div class="pg-sm-dscrim" id="pg_settings_modal_dscrim"></div>
             <div class="pg-sm-drawers" id="pg_settings_modal_drawers"></div>
+
+            <!--
+                "Saved": one toast after a save, under the head of the pane
+                or of the open drawer, above both.
+            -->
+            <div class="pg-sm-saved" id="pg_settings_modal_saved"></div>
 
 </dialog>
 

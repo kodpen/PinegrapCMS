@@ -75,9 +75,9 @@ function test_folder_tour_texts_named_labels_are_printed()
 {
 	$source = folder_tour_texts_source();
 
-	pg_assert_contains('title="<?php echo lang(\'Filters\'); ?>"', $source, 'Filters is the filter button name');
-	pg_assert_contains('title="<?php echo lang(\'Grid view\'); ?>"', $source, 'Grid view is printed');
-	pg_assert_contains('title="<?php echo lang(\'List view\'); ?>"', $source, 'List view is printed');
+	pg_assert_contains('title="<?php echo h(lang(\'Filters\')); ?>"', $source, 'Filters is the filter button name');
+	pg_assert_contains('title="<?php echo h(lang(\'Grid view\')); ?>"', $source, 'Grid view is printed');
+	pg_assert_contains('title="<?php echo h(lang(\'List view\')); ?>"', $source, 'List view is printed');
 	pg_assert_contains("'more_actions' => lang('More actions')", $source, 'More actions is the status bar overflow name');
 	pg_assert_contains("aria-label=\"' + esc(L.more_actions) + '\"", $source, 'the overflow button carries it');
 	pg_assert_contains("'clear_filters' => lang('Clear filters')", $source, 'Clear filters is printed');
@@ -88,7 +88,7 @@ function test_folder_tour_texts_named_labels_are_printed()
 function test_folder_tour_texts_more_button_has_a_name()
 {
 	$source = folder_tour_texts_source();
-	pg_assert_true(preg_match('~<button type="button" id="explorer_more_button"[^>]*\btitle="<\?php echo lang\(\'More\'\); \?>"[^>]*\baria-label="<\?php echo lang\(\'More\'\); \?>"~', $source) === 1, 'the toolbar More button has a title and an aria-label');
+	pg_assert_true(preg_match('~<button type="button" id="explorer_more_button"[^>]*\btitle="<\?php echo h\(lang\(\'More\'\)\); \?>"[^>]*\baria-label="<\?php echo h\(lang\(\'More\'\)\); \?>"~', $source) === 1, 'the toolbar More button has a title and an aria-label');
 }
 
 function test_folder_tour_texts_keys_and_targets()

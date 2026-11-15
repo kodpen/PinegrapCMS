@@ -236,11 +236,8 @@ if ($editable) {
                 <input type="hidden" name="id" value="' . $order_id . '" />
                 <input type="hidden" name="erp_action" value="save" />
                 ' . erp_invoice_form_cards($liveform, array('purchase_order' => true, 'keep_account_id' => (int) $order['account_id'], 'lines' => erp_invoice_form_lines($liveform, erp_purchase_order_editor_rows($order)))) . '
-                <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                    <div class="container">
-                        <button type="submit" data-pg-save-shortcut class="btn my-1 btn-solid theme-success"><i class="bi bi-check-circle me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string' => 'Save')) . '</span></button>
-                    </div>
-                </nav>
+                ' . pg_save_bar('
+                    <button type="submit" data-pg-save-shortcut class="btn my-1 btn-solid theme-success"><i class="bi bi-check-circle me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string' => 'Save')) . '</span></button>', array('group' => '')) . '
             </form>
             ' . erp_account_quick_modal();
 } else {
@@ -483,7 +480,7 @@ $output_toolbar = pg_screen_toolbar(array(
     'secondary' => (($output_invoice_button !== '') ? $pdf_link('pg-button pg-button-ghost') : '') . $output_mail_button,
     'grow' => '<div class="small d-flex flex-wrap align-items-center column-gap-5 row-gap-1"><span>' . implode('</span><span>', $facts) . '</span></div>',
     'overflow' => '<div class="pg-menu-wrap">
-                <button type="button" class="btn btn-sm btn-text theme-secondary" data-bs-toggle="menu" data-bs-display="static" data-bs-placement="bottom-end" aria-expanded="false" title="' . h(lang('More')) . '" aria-label="' . h(lang('More')) . '"><i class="bi bi-three-dots-vertical" aria-hidden="true"></i></button>
+                <button type="button" class="pg-icon-button" data-bs-toggle="menu" data-bs-display="static" data-bs-placement="bottom-end" aria-expanded="false" title="' . h(lang('More')) . '" aria-label="' . h(lang('More')) . '"><i class="bi bi-three-dots-vertical" aria-hidden="true"></i></button>
                 <ul class="menu pg-menu-end">
                     <li>' . implode('</li>
                     <li>', $toolbar_more) . '</li>

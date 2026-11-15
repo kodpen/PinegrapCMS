@@ -52,26 +52,58 @@ function pg_product_group_form_unselected_rows($products, $show_image)
 
     foreach ($products as $urow) {
         $urow['price'] = $urow['price'] / 100;
-        $ustatus_class = $urow['enabled'] == 1 ? 'fg-success' : 'fg-danger';
-        $uoutput_image_column = '';
+        $urow['type'] = 'product';
+        $urow['sort_order'] = '';
+        $image_cell = '';
         if ($show_image) {
-            $uoutput_image_column = pg_product_image_cell('product-' . (int) $urow['id'], $urow['image_name'], $urow['name'], $urow['short_description'],
+            $image_cell = pg_product_image_cell('product-' . (int) $urow['id'], $urow['image_name'], $urow['name'], $urow['short_description'],
                 isset($more_images[(int) $urow['id']]) ? $more_images[(int) $urow['id']] : array());
         }
-        $output_rows .=
-            '<tr id="' . $urow['id'] . '">' .
-            '<td class="select-all align-middle text-start"><input class="check" type="checkbox" name="products[]" value="' . $urow['id'] . '" aria-label="' . h(lang(array('string' => 'Select {var:1}', 'vars' => array($urow['name'])))) . '"/></td>' .
-            '<td class="align-middle text-start"><button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2" title="' . lang('Edit') . '" onclick="window.location.href=\'edit_product.php?id=' . $urow['id'] . '\'"><i class="bi bi-pencil"></i></button></td>' .
-            $uoutput_image_column .
-            '<td class="chart_label align-middle ' . $ustatus_class . '">' . h($urow['name']) . (($urow['enabled'] == 1) ? '' : pg_list_status_word(lang('Disabled'))) . '</td>' .
-            '<td class="align-middle ' . $ustatus_class . '">' . h($urow['short_description']) . '</td>' .
-            '<td class="align-middle text-end" data-sort="' . h((string) $urow['price']) . '">' . prepare_amount($urow['price']) . '</td>' .
-            '<td class="align-middle"><input class="form-control text-end" type="text" name="sort_order_product_' . $urow['id'] . '" size="5" value="" maxlength="5" inputmode="numeric" data-inputmask-alias="integer" data-inputmask-min="0" data-inputmask-max="65535" data-inputmask-placeholder="0" aria-label="' . h(lang('Sort Order') . ': ' . $urow['name']) . '" style="text-align: right;width:60px;" /></td>' .
-            '<td></td>' .
-            '</tr>';
+        $output_rows .= pg_product_group_form_row($urow, false, $image_cell);
     }
 
     return $output_rows;
+}
+
+/**
+ * One row of the products table (pg_product_group_form_products_card()):
+ * the tick box, Edit, the image cell, name, short description, price and
+ * the sort order field. A child product group is in the group by being a
+ * child, so its tick box is a fixed mark.
+ *
+ * @param array  $item       'id', 'type' (product or product_group), 'name',
+ *                           'enabled', 'short_description', 'price' (major
+ *                           units), 'sort_order' ('' when not in the group)
+ * @param bool   $in_group   The product is in the group (ticked)
+ * @param string $image_cell The image cell's markup, '' without images
+ * @return string
+ */
+function pg_product_group_form_row($item, $in_group, $image_cell)
+{
+    $id = (int) $item['id'];
+    $is_product = ($item['type'] === 'product');
+    $status_class = ($item['enabled'] == 1) ? 'fg-success' : 'fg-danger';
+
+    if ($is_product) {
+        $checkbox = '<input class="check pg-checkbox" type="checkbox" name="products[]"' . ($in_group ? ' checked="checked"' : '') . ' value="' . $id . '" aria-label="' . h(lang(array('string' => 'Select {var:1}', 'vars' => array($item['name'])))) . '" />';
+        $edit_url = 'edit_product.php?id=' . $id;
+        $price = '<td class="text-end pg-tabular" data-sort="' . h((string) $item['price']) . '">' . prepare_amount($item['price']) . '</td>';
+    } else {
+        $checkbox = '<span class="material-icons disabled-checkbox">check_box</span>';
+        $edit_url = 'edit_product_group.php?id=' . $id;
+        $price = '<td class="text-end" data-sort=""></td>';
+    }
+
+    return '<tr id="' . $id . '"' . ($is_product ? '' : ' class="unselectable selected"') . '>' .
+        '<td class="select-all text-start pg-embedded-table-tight">' . $checkbox . '</td>' .
+        '<td class="text-start pg-embedded-table-tight"><a class="pg-icon-button pg-icon-button-sm" href="' . h($edit_url) . '" title="' . h(lang('Edit')) . '" aria-label="' . h(lang('Edit') . ': ' . $item['name']) . '"><i class="bi bi-pencil" aria-hidden="true"></i></a></td>' .
+        $image_cell .
+        '<td class="chart_label pg-embedded-table-text ' . $status_class . '">' . h($item['name']) . (($item['enabled'] == 1) ? '' : pg_list_status_word(lang('Disabled'))) . '</td>' .
+        '<td class="pg-embedded-table-text ' . $status_class . '">' . h($item['short_description']) . '</td>' .
+        $price .
+        '<td><input class="pg-input pg-input-sm pg-embedded-table-number" type="text" name="sort_order_' . h($item['type']) . '_' . $id . '" size="5" value="' . h((string) $item['sort_order']) . '" maxlength="5" inputmode="numeric" data-inputmask-alias="integer" data-inputmask-min="0" data-inputmask-max="65535" data-inputmask-placeholder="0" aria-label="' . h(lang('Sort Order') . ': ' . $item['name']) . '" /></td>' .
+        '<td></td>' .
+        '</tr>';
 }
 
 /**
@@ -327,15 +359,11 @@ function pg_product_group_form_products_card($form)
                                 <h2 class="card-header bg-reset border-0 pg-title-section">' . $form['title'] . '</h2>
                                 <div class="card-body p-0 position-relative">
                                     <div class="table-responsive">
-                                    <table id="' . $form['table_id'] . '" class="table table-hover mb-0" data-pg-sort>
+                                    <table id="' . $form['table_id'] . '" class="table table-hover mb-0 pg-embedded-table" data-pg-sort>
                                         <thead>
                                             <tr>
-                                                <th data-pg-sort="none">
-                                                    <div class="form-field">
-                                                        <div class="switch"><input class="no-popover" data-bs-toggle="tooltip" title="' . h(lang('Select/Deselect All')) . '" aria-label="' . h(lang('Select/Deselect All')) . '" type="checkbox" id="select_all"></div>
-                                                    </div>
-                                                </th>
-                                                <th data-pg-sort="none">' . lang('Action') . '</th>
+                                                <th data-pg-sort="none" class="pg-embedded-table-tight"><input class="pg-checkbox no-popover" data-bs-toggle="tooltip" title="' . h(lang('Select/Deselect All')) . '" aria-label="' . h(lang('Select/Deselect All')) . '" type="checkbox" id="select_all"></th>
+                                                <th data-pg-sort="none" class="pg-embedded-table-tight">' . lang('Action') . '</th>
                                                 ' . $form['image_header'] . '
                                                 <th>' . lang('Name') . '</th>
                                                 <th>' . lang('Short Description') . '</th>
@@ -349,9 +377,9 @@ function pg_product_group_form_products_card($form)
                                     </div>
                                 </div>
                                 ' . ($form['total_unselected'] > $form['loaded'] ? '
-                                <div class="p-5 border-top">
-                                    <button id="btn_load_more_products" type="button" class="btn btn-outline theme-secondary btn-sm">
-                                        <i class="bi bi-arrow-down-circle me-3"></i>' . lang('Load More Products') . '
+                                <div class="pg-embedded-table-foot">
+                                    <button id="btn_load_more_products" type="button" class="pg-button pg-button-quiet pg-button-sm">
+                                        <i class="bi bi-arrow-down-circle" aria-hidden="true"></i>' . lang('Load More Products') . '
                                     </button>
                                 </div>' : '') . '
                             </div>
@@ -452,7 +480,7 @@ function pg_product_group_form_products_card($form)
                                         loadedOffset += parseInt(response.loaded, 10) || 0;
                                         loadMoreBusy = false;
                                         if (!response.has_more) {
-                                            $btn.closest(".border-top").hide();
+                                            $btn.closest(".pg-embedded-table-foot").hide();
                                         } else {
                                             loadMoreRestore($btn);
                                         }

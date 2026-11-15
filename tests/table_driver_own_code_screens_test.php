@@ -21,7 +21,7 @@ function test_product_group_products_table_is_plain()
 {
 	$src = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/product_group_form.php');
 
-	pg_assert_contains('class="table table-hover mb-0" data-pg-sort>', $src, 'a plain table sorted by its headings');
+	pg_assert_contains('class="table table-hover mb-0 pg-embedded-table" data-pg-sort>', $src, 'a plain table sorted by its headings');
 	pg_assert_false((bool) preg_match('/class="chart[ "]/', $src), 'not a table.chart');
 	pg_assert_false(strpos($src, 'DataTable') !== false, 'no DataTables call');
 	pg_assert_contains('$table.children("tbody").append($rows);', $src, 'loaded rows join the table');

@@ -48,7 +48,7 @@ foreach ($rows as $row) {
             <td style="max-width:280px" class="text-break">' . h((string) $row['account_title']) . '</td>
             <td class="text-nowrap" data-sort="' . h(str_replace('-', '', (string) $row['valid_until'])) . '">' . h(prepare_form_data_for_output((string) $row['valid_until'], 'date')) . '</td>
             <td class="text-end text-nowrap" data-sort="' . (int) $row['grand_total'] . '">' . h(erp_money_out_currency((int) $row['grand_total'], (string) $row['currency'])) . '</td>
-            <td><span class="badge theme-' . h($status[1]) . '">' . h($status[0]) . '</span>'
+            <td>' . pg_pill($status[0], $status[1])
                 . (!empty($row['signed']) ? ' <i class="bi bi-pen fg-success" title="' . h(lang('Signed')) . '" aria-hidden="true"></i><span class="visually-hidden">' . h(lang('Signed')) . '</span>' : '')
                 . (($row_state === 'invoiced')
                     ? ' <a class="pg-text-2 pg-link-body-emphasis" href="' . (((string) $row['invoice_status'] === 'draft') ? 'edit_erp_invoice_draft.php' : 'edit_erp_invoice.php') . '?id=' . (int) $row['invoice_id'] . '">'
@@ -117,7 +117,7 @@ pg_page_shell([
 
             <div class="card pg-card erp-list-card my-7">
                 <div class="card-body p-0 table-responsive position-relative">
-                    <table class="table table-hover align-middle mb-0" data-pg-sort>
+                    <table class="table erp-list-table table-hover align-middle mb-0" data-pg-sort>
                         <thead>
                             <tr>
                                 <th>' . lang('Quote No') . '</th>

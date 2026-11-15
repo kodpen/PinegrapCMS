@@ -5,7 +5,7 @@ module: widgets_lists_paging
 ---
 
 ## What does a designer build the page links from?
-- A list (`loop_area`, `props.source = 'paging.pages'`, family `paging`, `includes/fn/widgets_lists_paging.php`, engine [[widget-lists]]), offered in the form list, the catalog listing and the search results (`pg_sw_kind_lists()`; JS `kinds` of `SW_LIST_SOURCES['paging.pages']`).
+- A list (`loop_area`, `props.source = 'paging.pages'`, family `paging`, `includes/fn/widgets_lists_paging.php`, engine [[widget-lists]]), offered in the form list, the catalog listing, the search results and the Comments widget (`pg_sw_kind_lists()`; JS `kinds` of `SW_LIST_SOURCES['paging.pages']`). The Comments widget's links end at `#software_comments` (optional `$fragment`, [[comments-widget-open-slots]]).
 - One row per link, as `pg_sw_pagination_html()` draws them: the first page, a gap, two pages either side of the page shown, a gap, the last page. Previous and next are not rows: the widget's `__prev_page_url` / `__next_page_url` with `has_prev_page` / `has_next_page` ([[widget-list-paging]]).
 - No rows for a single page (the built-in pagination prints nothing then); an empty list is a cut point.
 

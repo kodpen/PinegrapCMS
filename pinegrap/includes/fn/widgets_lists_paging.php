@@ -9,8 +9,8 @@
  */
 
 // A module of functions.php: the page links of a list widget as a list
-// (widgets_lists.php), drawn in the form list, catalog listing and search
-// results widgets.
+// (widgets_lists.php), drawn in the form list, catalog listing, search
+// results and comments widgets.
 //
 // Loaded by functions.php through require_once, never on its own.
 //
@@ -56,18 +56,20 @@ function pg_sw_list_paging_sources()
 // query values kept; none for the page shown, which the built-in
 // pagination does not link either, so a condition on the address tells a
 // link from the current page and a gap. Raw values, escaped once by the
-// list pass.
-function pg_sw_list_paging_rows($page_param, $current, $pages)
+// list pass. $fragment: the anchor the links land on, as the pagination
+// takes it.
+function pg_sw_list_paging_rows($page_param, $current, $pages, $fragment = '')
 {
     $current = (int)$current;
     $pages   = (int)$pages;
     if ($pages <= 1) return array('paging.pages' => array());
     $current = max(1, min($pages, $current));
 
-    $link = function ($n) use ($page_param, $current) {
+    $hash = ($fragment !== '') ? '#' . $fragment : '';
+    $link = function ($n) use ($page_param, $current, $hash) {
         return array(
             '__pager_number'     => (string)$n,
-            '__pager_url'        => ($n === $current) ? '' : '?' . _pg_sw_build_query($page_param, $n),
+            '__pager_url'        => ($n === $current) ? '' : '?' . _pg_sw_build_query($page_param, $n) . $hash,
             '__pager_is_current' => ($n === $current) ? '1' : '',
             '__pager_is_gap'     => '',
         );

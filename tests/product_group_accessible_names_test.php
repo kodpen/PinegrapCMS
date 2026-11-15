@@ -91,18 +91,15 @@ function test_product_group_accessible_names_image_tile_and_barcode_dialogs()
 
 function test_product_group_accessible_names_products_table_rows()
 {
-	$files = array(
-		'edit_product_group.php' => '$item[\'name\']',
-		'includes/forms/product_group_form.php' => '$urow[\'name\']',
-		'includes/panel/commerce.php' => '$product[\'name\']',
-	);
+	$php = product_group_accessible_names_source('includes/forms/product_group_form.php');
+	pg_assert_contains('name="products[]"', $php);
+	pg_assert_contains('aria-label="\' . h(lang(array(\'string\' => \'Select {var:1}\', \'vars\' => array($item[\'name\'])))) . \'"', $php, 'row checkbox');
+	pg_assert_contains('aria-label="\' . h(lang(\'Sort Order\') . \': \' . $item[\'name\']) . \'"', $php, 'sort order input');
+	pg_assert_contains('aria-label="\' . h(lang(\'Edit\') . \': \' . $item[\'name\']) . \'"', $php, 'the row\'s Edit names its product');
 
-	foreach ($files as $path => $name) {
-		$php = product_group_accessible_names_source($path);
-		pg_assert_contains('name="products[]"', $php, $path);
-		pg_assert_contains('aria-label="\' . h(lang(array(\'string\' => \'Select {var:1}\', \'vars\' => array(' . $name . ')))) . \'"', $php, $path . ' row checkbox');
-		pg_assert_contains('aria-label="\' . h(lang(\'Sort Order\') . \': \' . ' . $name . ') . \'"', $php, $path . ' sort order input');
-	}
+	// The other two places print the same row.
+	pg_assert_contains('pg_product_group_form_row(', product_group_accessible_names_source('edit_product_group.php'));
+	pg_assert_contains('pg_product_group_form_unselected_rows(', product_group_accessible_names_source('includes/panel/commerce.php'));
 }
 
 function test_product_group_accessible_names_group_screen_buttons_and_landmarks()

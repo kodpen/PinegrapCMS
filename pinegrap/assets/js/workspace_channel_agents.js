@@ -1,13 +1,14 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Workspace - the agents of a channel in its settings drawer: the agents
- * added to it, each with what wakes it here (a mention, every message, a
- * prefix, replies to its own messages), its tier and the loop-guard switch,
- * and the registered agents it can still take. Whoever may post in the
- * channel, in a private one only a member, adds, changes and removes them;
- * the tier is the channel owner's. The server decides both
- * (includes/workspace/channel_agents_panel.php).
+ * Workspace - the agents of a channel in its settings drawer: one compact
+ * row an agent (picture, name, handle, role, state, and in a few words what
+ * wakes it and what it may do by itself), which opens its settings, one
+ * agent at a time: when it is woken, what it may do by itself (the tier)
+ * and the loop guard; then the registered agents it can still take.
+ * Whoever may post in the channel, in a private one only a member, adds,
+ * changes and removes them; the tier is the channel manager's. The server
+ * decides both (includes/workspace/channel_agents_panel.php).
  *
  * assets/js/workspace.js mounts it through window.PGWsChannelAgents.mount()
  * and lends its helpers through window.PGWsKit. Every text comes from the
@@ -55,117 +56,233 @@
 
         holder.appendChild(root);
 
-        function labelled(label, field, help) {
-            var row = el('div', 'mb-3');
-            var caption = el('label', 'form-label small', label);
+        // The section's one open agent: opening another row closes it.
+        var openId = 0;
 
-            field.id = nextId();
-            caption.setAttribute('for', field.id);
-            row.appendChild(caption);
-            row.appendChild(field);
+        // The state's pill on a row (ws_channel_agent_panel_state()): paused,
+        // the agent card's working and waiting, a poll agent not seen for
+        // ten minutes or a push door in error (late), seen recently (on), a
+        // model agent (ready), a push agent knocked as usual (off).
+        var STATE_TONES = {
+            working: 'pg-tone-blue',
+            waiting: 'pg-tone-amber',
+            late: 'pg-tone-amber',
+            paused: 'pg-tone-gray',
+            on: 'pg-tone-teal',
+            ready: 'pg-tone-teal',
+            off: 'pg-tone-gray'
+        };
 
-            if (help) {
-                row.appendChild(el('div', 'form-text', help));
-            }
-
-            return row;
-        }
-
-        function agentTitle(agent) {
-            var head = el('div', 'd-flex align-items-center gap-2 flex-wrap');
-
-            head.appendChild(el('span', 'fw-semibold', agent.name || agent.handle));
-            head.appendChild(el('span', 'small fg-secondary', '@' + agent.handle));
-
-            if (!agent.active) {
-                head.appendChild(el('span', 'badge theme-warning', t('cha_paused')));
-            }
-
-            // When a poll agent last called with its key; marked once it has
-            // not been seen for ten minutes.
-            if (agent.not_seen) {
-                head.appendChild(el('span', 'badge badge-subtle theme-warning', t('cha_not_seen')));
-            }
+        function statePill(agent) {
+            var state = STATE_TONES[agent.state] ? agent.state : (agent.active ? 'off' : 'paused');
+            var words = {
+                working: t('cha_state_working'),
+                waiting: (agent.waiting > 1) ? t('cha_state_waiting_n', agent.waiting) : t('cha_state_waiting'),
+                paused: t('cha_paused')
+            };
+            var pill = el('span', 'pg-pill ws-cha-state ' + STATE_TONES[state], words[state] || agent.state_words || '');
 
             if (agent.seen) {
-                head.appendChild(el('span', 'small fg-secondary', agent.seen));
+                pill.title = agent.seen;
             }
+
+            return pill;
+        }
+
+        // The agent's own picture, else the robot in a quiet tile of its
+        // colour, as Channel info draws it; never a face.
+        function agentPicture(agent) {
+            var face = h.agentFace({ tone: agent.agent_id, assistant: false });
+
+            face.classList.add('ws-cha-face');
+
+            if (agent.avatar) {
+                var img = el('img', 'ws-cha-picture');
+
+                img.src = agent.avatar;
+                img.alt = '';
+                img.loading = 'lazy';
+                img.addEventListener('error', function () {
+                    if (img.parentNode) {
+                        img.parentNode.removeChild(img);
+                    }
+                });
+                face.appendChild(img);
+            }
+
+            return face;
+        }
+
+        function headNode(agent, bodyId) {
+            var head = el('button', 'ws-cha-head');
+            var main = el('span', 'ws-cha-main');
+            var top = el('span', 'ws-cha-name');
+
+            head.type = 'button';
+            head.setAttribute('aria-controls', bodyId);
+            head.setAttribute('aria-expanded', 'false');
+
+            top.appendChild(el('strong', 'pg-list-row-title', agent.name || ('@' + agent.handle)));
+            top.appendChild(el('span', 'pg-text-meta', '@' + agent.handle));
+
+            if (agent.role) {
+                top.appendChild(el('span', 'pg-pill pg-tone-violet', agent.role));
+            }
+
+            main.appendChild(top);
+            main.appendChild(el('span', 'pg-text-meta ws-cha-summary', [agent.wake_words, agent.tier_words].filter(Boolean).join(' · ')));
+
+            head.appendChild(agentPicture(agent));
+            head.appendChild(main);
+            head.appendChild(statePill(agent));
+            head.appendChild(h.icon('bi-chevron-down', 'ws-cha-chevron'));
 
             return head;
         }
 
-        function rowNode(agent, state) {
-            var item = el('div', 'list-group-item');
-            var top = el('div', 'd-flex align-items-start gap-3 mb-3');
-            var title = agentTitle(agent);
+        // A question with its choices as radio rows, each with its line
+        // under it.
+        function choices(name, question, items, value, disabled) {
+            var set = el('fieldset', 'ws-cha-choices');
 
-            title.classList.add('flex-grow-1', 'min-w-0');
-            top.appendChild(title);
-            item.appendChild(top);
+            set.appendChild(el('legend', 'pg-field-label', question));
 
+            items.forEach(function (item) {
+                var row = el('label', 'ws-cha-choice');
+                var input = el('input', 'ws-cha-radio');
+                var text = el('span', 'ws-cha-choice-text');
+
+                input.type = 'radio';
+                input.name = name;
+                input.value = item[0];
+                input.checked = (String(item[0]) === String(value));
+                input.disabled = !!disabled;
+                text.appendChild(el('span', 'pg-text-2 ws-cha-choice-title', item[1]));
+
+                if (item[2]) {
+                    text.appendChild(el('span', 'pg-text-meta', item[2]));
+                }
+
+                row.appendChild(input);
+                row.appendChild(text);
+                set.appendChild(row);
+            });
+
+            return set;
+        }
+
+        function chosen(set) {
+            var on = set.querySelector('input:checked');
+
+            return on ? on.value : '';
+        }
+
+        function bodyNode(agent, state, bodyId) {
+            var body = el('div', 'ws-cha-body');
+            var wakeName = nextId();
+            var wakeHelp = {
+                mention: t('cha_wake_mention_help', agent.handle),
+                all: t('cha_wake_all_help'),
+                prefix: t('cha_wake_prefix_help'),
+                replies: t('cha_wake_replies_help')
+            };
+
+            body.id = bodyId;
+            body.hidden = true;
+
+            // When is it woken? A select, with a help line for the chosen
+            // rule under it.
+            var wakeRow = el('div', 'ws-cha-field');
+            var wakeLabel = el('label', 'pg-field-label', t('cha_wake'));
             var wake = h.select([
                 ['mention', t('cha_wake_mention')],
                 ['all', t('cha_wake_all')],
                 ['prefix', t('cha_wake_prefix')],
                 ['replies', t('cha_wake_replies')]
             ], agent.wake_rule);
-            item.appendChild(labelled(t('cha_wake'), wake));
+            var wakeLine = el('div', 'pg-field-help');
 
+            wake.id = nextId();
+            wake.name = wakeName;
+            wakeLabel.htmlFor = wake.id;
+            wakeRow.appendChild(wakeLabel);
+            wakeRow.appendChild(wake);
+            wakeRow.appendChild(wakeLine);
+            body.appendChild(wakeRow);
+
+            var prefixRow = el('div', 'ws-cha-field');
+            var prefixLabel = el('label', 'pg-field-label', t('cha_prefix'));
             var prefix = el('input', 'form-control form-control-sm');
+
             prefix.type = 'text';
             prefix.maxLength = 32;
+            prefix.id = nextId();
             prefix.value = agent.wake_prefix || '';
-            var prefixRow = labelled(t('cha_prefix'), prefix, t('cha_prefix_help'));
-            item.appendChild(prefixRow);
+            prefix.placeholder = '[ci]';
+            prefixLabel.htmlFor = prefix.id;
+            prefixRow.appendChild(prefixLabel);
+            prefixRow.appendChild(prefix);
+            body.appendChild(prefixRow);
 
-            function showPrefix() {
+            function showWake() {
+                wakeLine.textContent = wakeHelp[wake.value] || '';
                 prefixRow.classList.toggle('d-none', wake.value !== 'prefix');
             }
 
-            wake.addEventListener('change', showPrefix);
-            showPrefix();
+            wake.addEventListener('change', showWake);
+            showWake();
 
-            var tier = h.select([
-                ['1', t('cha_tier_1')],
-                ['2', t('cha_tier_2')],
-                ['3', t('cha_tier_3')]
-            ], String(agent.tier));
-            tier.disabled = !state.can_tier;
-            item.appendChild(labelled(t('cha_tier'), tier, state.can_tier ? '' : t('cha_tier_help')));
+            // What may it do by itself? The three tiers as choices, each
+            // with what it means; only the channel's manager changes it.
+            var tier = choices(nextId(), t('cha_tier'), [
+                ['1', t('cha_tier_1'), t('cha_tier_1_help')],
+                ['2', t('cha_tier_2'), t('cha_tier_2_help')],
+                ['3', t('cha_tier_3'), t('cha_tier_3_help')]
+            ], String(agent.tier || 1), !state.can_tier || !state.can_edit);
 
-            var guardWrap = el('div', 'form-field mb-3');
-            var guard = el('input', '');
-            var guardLabel = el('label', '', t('cha_loop_guard'));
+            body.appendChild(tier);
+
+            if (!state.can_tier) {
+                body.appendChild(el('div', 'pg-field-help ws-cha-tier-note', t('cha_tier_help')));
+            }
+
+            // The loop guard: a switch at the row's end, its reason at the
+            // left.
+            var guardRow = el('div', 'ws-cha-switch-row');
+            var guardText = el('div', 'ws-cha-switch-text');
+            var guard = el('input', 'pg-switch');
+            var guardTitle = el('label', 'pg-text-2 ws-cha-choice-title', t('cha_loop_guard'));
+
             guard.type = 'checkbox';
             guard.id = nextId();
             guard.setAttribute('role', 'switch');
             guard.checked = !!agent.loop_guard;
-            guardLabel.htmlFor = guard.id;
-            guardWrap.appendChild(el('div', 'switch')).appendChild(guard);
-            guardWrap.appendChild(guardLabel);
-            item.appendChild(guardWrap);
+            guardTitle.htmlFor = guard.id;
+            guardText.appendChild(guardTitle);
+            guardText.appendChild(el('div', 'pg-text-meta', t('cha_loop_guard_help')));
+            guardRow.appendChild(guardText);
+            guardRow.appendChild(guard);
+            body.appendChild(guardRow);
 
-            var error = el('div', 'small fg-emphasis-danger d-none mb-3');
+            var error = el('div', 'pg-field-help pg-field-error d-none');
             error.setAttribute('role', 'alert');
-            item.appendChild(error);
-
-            [wake, prefix, tier, guard].forEach(function (field) {
-                if (!state.can_edit) {
-                    field.disabled = true;
-                }
-            });
+            body.appendChild(error);
 
             if (!state.can_edit) {
-                return item;
+                [wake, prefix, guard].forEach(function (field) {
+                    field.disabled = true;
+                });
+
+                return body;
             }
 
-            var actions = el('div', 'd-flex gap-3 justify-content-end');
-            var remove = h.button('btn btn-sm btn-text theme-danger', t('cha_remove'), 'bi-x-lg');
-            var save = h.button('btn btn-sm btn-outline theme-primary rounded-pill px-5', t('cha_save'), 'bi-check2');
+            var actions = el('div', 'ws-cha-actions');
+            var remove = h.button('pg-button pg-button-ghost pg-button-sm ws-cha-remove', t('cha_remove'), 'bi-x-lg');
+            var save = h.button('pg-button pg-button-quiet pg-button-sm', t('cha_save'), 'bi-check2');
 
             actions.appendChild(remove);
             actions.appendChild(save);
-            item.appendChild(actions);
+            body.appendChild(actions);
 
             remove.addEventListener('click', function () {
                 h.ask(t('cha_remove_ask'), t('cha_remove'), true).then(function (yes) {
@@ -175,7 +292,10 @@
 
                     remove.disabled = true;
                     h.api('ws_channel_agents_remove', { channel_id: channel.id, agent_id: agent.agent_id })
-                        .then(changed)
+                        .then(function (next) {
+                            openId = 0;
+                            changed(next);
+                        })
                         .catch(function (problem) {
                             remove.disabled = false;
                             h.fail(problem);
@@ -192,10 +312,10 @@
                     loop_guard: guard.checked ? 1 : 0
                 };
 
-                // The tier goes only from the channel owner: the server
+                // The tier goes only from the channel's manager: the server
                 // refuses any other change of it.
                 if (state.can_tier) {
-                    data.tier = parseInt(tier.value, 10) || 1;
+                    data.tier = parseInt(chosen(tier), 10) || 1;
                 }
 
                 save.disabled = true;
@@ -211,16 +331,54 @@
                 });
             });
 
+            return body;
+        }
+
+        // One agent: its compact row, and under it its settings, open for
+        // one agent at a time.
+        function rowNode(agent, state, list) {
+            var item = el('div', 'ws-cha-item');
+            var bodyId = nextId();
+            var head = headNode(agent, bodyId);
+            var body = bodyNode(agent, state, bodyId);
+
+            item.appendChild(head);
+            item.appendChild(body);
+
+            function show(open) {
+                item.classList.toggle('is-open', open);
+                head.setAttribute('aria-expanded', open ? 'true' : 'false');
+                body.hidden = !open;
+            }
+
+            head.addEventListener('click', function () {
+                var open = head.getAttribute('aria-expanded') !== 'true';
+
+                Array.prototype.forEach.call(list.querySelectorAll('.ws-cha-item.is-open'), function (other) {
+                    if (other !== item && other.closeAgent) {
+                        other.closeAgent();
+                    }
+                });
+                show(open);
+                openId = open ? agent.agent_id : 0;
+            });
+
+            item.closeAgent = function () {
+                show(false);
+            };
+
+            show(openId === agent.agent_id);
+
             return item;
         }
 
         function addNode(state) {
-            var wrap = el('div', 'd-flex gap-3 align-items-center mt-3');
+            var wrap = el('div', 'ws-cha-add');
             var options = [['', t('cha_choose')]].concat(state.addable.map(function (agent) {
                 return [String(agent.agent_id), (agent.name || agent.handle) + ' (@' + agent.handle + ')'];
             }));
             var pick = h.select(options, '');
-            var add = h.button('btn btn-sm btn-outline theme-primary rounded-pill px-5 text-nowrap', t('cha_add'), 'bi-plus-lg');
+            var add = h.button('pg-button pg-button-quiet pg-button-sm text-nowrap', t('cha_add'), 'bi-plus-lg');
 
             pick.setAttribute('aria-label', t('cha_choose'));
             add.disabled = true;
@@ -274,22 +432,24 @@
             }
 
             root.classList.remove('d-none');
+            // The drawer's other parts keep .form-label titles until the drawer is
+            // redrawn; the section's title matches them.
             var title = root.appendChild(el('div', 'form-label', t('cha_title')));
-            root.appendChild(el('div', 'form-text mt-0 mb-3', t('cha_help')));
+            root.appendChild(el('div', 'pg-field-help ws-cha-intro', t('cha_help')));
 
             if (!state.agents.length) {
-                root.appendChild(el('div', 'small fg-secondary', t('cha_empty')));
+                root.appendChild(el('div', 'pg-text-meta', t('cha_empty')));
             } else {
-                var list = el('div', 'list-group');
+                var list = el('div', 'pg-card-inner ws-cha-list');
 
                 state.agents.forEach(function (agent) {
-                    list.appendChild(rowNode(agent, state));
+                    list.appendChild(rowNode(agent, state, list));
                 });
                 root.appendChild(list);
             }
 
             if (!state.can_edit) {
-                root.appendChild(el('div', 'form-text', t('cha_readonly')));
+                root.appendChild(el('div', 'pg-field-help', t('cha_readonly')));
             } else if (state.addable.length) {
                 root.appendChild(addNode(state));
             }

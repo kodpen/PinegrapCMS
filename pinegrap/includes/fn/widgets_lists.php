@@ -104,8 +104,8 @@ function pg_sw_list_sources()
 // the menu widget (widgets_lists_menu.php), the entries of a folder in
 // the folder view (widgets_folder_view.php), the member's passkeys in the
 // account security widget (widgets_account.php), and in the form list the
-// page links too, as in the catalog listing and the search results
-// (widgets_lists_paging.php), each kind publishing its
+// page links too, as in the catalog listing, the search results and the
+// comments widget (widgets_lists_paging.php), each kind publishing its
 // data; none in any other kind.
 function pg_sw_kind_lists($kind)
 {
@@ -113,7 +113,8 @@ function pg_sw_kind_lists($kind)
                       'catalog_item_view' => array('product', 'crumbs'), 'catalog_listing' => array('product', 'crumbs', 'filter_chips', 'paging'), 'calendar_view' => 'calendar',
                       'order_view' => 'order', 'my_account' => 'account', 'cart_link' => 'cart', 'shopping_cart' => 'cart',
                       'express_order' => array('cart', 'checkout'),
-                      'menu_region' => 'menu', 'folder_view' => 'folder_view', 'account_security' => 'security', 'search_results' => 'paging');
+                      'menu_region' => 'menu', 'folder_view' => 'folder_view', 'account_security' => 'security', 'search_results' => 'paging',
+                      'comments' => 'paging');
     $except   = array('catalog_listing' => array('product.related' => true), 'cart_link' => array('cart.item_gift_cards' => true, 'cart.item_schedule' => true,
                           'cart.item_forms' => true, 'cart.item_form_fields' => true, 'cart.item_form_field_options' => true),
                       'express_order' => array('cart.item_gift_cards' => true, 'cart.item_schedule' => true,

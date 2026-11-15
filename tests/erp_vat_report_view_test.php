@@ -25,6 +25,7 @@ function pg_test_vat_view_money($kurus)
 function pg_test_vat_view_names()
 {
 	return array(
+		'tax' => 'VAT',
 		'calculated' => 'Calculated VAT',
 		'deductible' => 'Deductible VAT',
 		'kinds' => array('sales' => 'Sales invoices', 'sales_return' => 'Sales returns', 'purchase' => 'Purchase invoices', 'purchase_return' => 'Returns to suppliers', 'expense' => 'Expenses'),
@@ -66,7 +67,7 @@ function test_erp_vat_report_view_chart_by_month()
 	$chart = pg_report_view_vat_chart($report, pg_test_vat_view_names(), 'pg_test_vat_view_money');
 
 	pg_assert_same('line', $chart['kind']);
-	pg_assert_same('Calculated VAT by month', $chart['label']);
+	pg_assert_same('VAT by month', $chart['label'], 'the title names both lines');
 	pg_assert_same('Deductible VAT', $chart['compare_label']);
 	pg_assert_same(array(100.0, 0.0), $chart['values'], 'a month below zero is drawn at zero');
 	pg_assert_same(array(50.0, 30.0), $chart['compare'], 'purchases and expenses');
@@ -97,6 +98,28 @@ function test_erp_vat_report_view_chart_by_kind()
 	pg_assert_same('12.00 TL', $chart['rows'][3]['note'], 'the expenses deductible tax only');
 
 	pg_assert_same(null, pg_report_view_vat_chart(array('months' => array(), 'kinds' => array(), 'totals' => array()), pg_test_vat_view_names(), 'pg_test_vat_view_money'), 'an empty period');
+
+	$one = array('months' => array('2026-10' => array()), 'kinds' => array('sales' => array('vat' => 18000)), 'totals' => array());
+	pg_assert_same(null, pg_report_view_vat_chart($one, pg_test_vat_view_names(), 'pg_test_vat_view_money'), 'one bar says nothing');
+}
+
+// The notice about orders without an invoice is a note in body text; the
+// documents card counts its rows and opens the rest with Show all; on a
+// phone the Document type label stays with its select.
+function test_erp_vat_report_notes_and_documents()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/erp_vat_report.php');
+
+	pg_assert_contains('<div class="alert theme-warning pg-report-note">', $source, 'the notice is the look\'s note');
+	pg_assert_false(strpos($source, 'max-height:40rem') !== false, 'no window of 15 rows inside the card');
+	pg_assert_contains('id="erp_vat_count"', $source, 'a count in the card\'s head');
+	pg_assert_contains('id="erp_vat_all"', $source, 'Show all');
+	pg_assert_contains("'tax' => erp_tax_label('tax'),", $source, 'the line\'s title names the tax');
+	pg_assert_contains('<span class="pg-report-field ms-auto"><label class="pg-report-label" for="erp_vat_kind">', $source, 'the label with its select');
+
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css');
+	pg_assert_contains(".pg-report-note {\n  display: flex;", $css);
+	pg_assert_contains("font-size: var(--pg-text-base);", substr($css, (int) strpos($css, '.pg-report-note {'), 200), 'body text size');
 }
 
 // The screen draws the view where the cards stood; the period form, the

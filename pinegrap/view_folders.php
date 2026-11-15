@@ -1583,7 +1583,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
              and a toolbar with four transfer buttons on it would be mostly
              greyed out wherever you stood. -->
         <div class="pg-menu-wrap" id="explorer_transfer_wrap">
-            <button type="button" id="transfer_menu_button" class="btn btn-sm btn-text theme-secondary no-popover" data-bs-toggle="menu" data-bs-display="static" aria-expanded="false" title="<?php echo lang('Import / Export'); ?>"><span class="bi bi-arrow-down-up"></span></button>
+            <button type="button" id="transfer_menu_button" class="pg-icon-button no-popover" data-bs-toggle="menu" data-bs-display="static" aria-expanded="false" title="<?php echo h(lang('Import / Export')); ?>" aria-label="<?php echo h(lang('Import / Export')); ?>"><span class="bi bi-arrow-down-up" aria-hidden="true"></span></button>
             <ul class="menu shadow" style="border-radius:.75rem;">
                 <li id="import_zip_item"><button type="button" class="menu-item" id="import_zip_button"><span class="bi bi-file-earmark-zip me-3"></span><?php echo lang('Import ZIP File'); ?></button></li>
                 <li id="import_design_zip_item"><button type="button" class="menu-item" id="import_design_zip_button"><span class="bi bi-magic me-3"></span><?php echo lang('Import ZIP for the Page Design Studio'); ?></button></li>
@@ -1593,7 +1593,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 <li id="export_products_xlsx_item"><button type="button" class="menu-item" data-export-scope="all" data-export-format="xlsx"><span class="bi bi-file-earmark-excel me-3"></span><?php echo lang('Export Products'); ?> (Excel)</button></li>
             </ul>
         </div>
-        <button type="button" id="up_button" class="btn btn-sm btn-text theme-secondary no-popover" title="<?php echo lang('Up'); ?>"><span class="bi bi-arrow-90deg-up"></span></button>
+        <button type="button" id="up_button" class="pg-icon-button no-popover" title="<?php echo h(lang('Up')); ?>" aria-label="<?php echo h(lang('Up')); ?>"><span class="bi bi-arrow-90deg-up" aria-hidden="true"></span></button>
         <div id="explorer_breadcrumb" class="pg-toolbar-grow"></div>
         <label class="form-control form-control-sm form-adorn rounded-pill pg-toolbar-search" id="explorer_search_wrap">
             <span class="form-adorn-text" aria-hidden="true"><i class="bi bi-search"></i></span>
@@ -1606,7 +1606,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
              sitemap. Every test runs on the listing that is already on screen,
              so it costs a redraw and no request. -->
         <div class="pg-menu-wrap" id="explorer_filter_wrap">
-            <button type="button" id="explorer_filter_button" class="btn btn-sm btn-text theme-secondary no-popover position-relative" data-bs-toggle="menu" data-bs-display="static" aria-expanded="false" title="<?php echo lang('Filters'); ?>"><span class="bi bi-sliders"></span><span id="explorer_filter_count" class="position-absolute top-0 start-100 translate-middle badge rounded-pill theme-primary d-none" style="font-size:.6rem;"></span></button>
+            <button type="button" id="explorer_filter_button" class="pg-icon-button no-popover position-relative" data-bs-toggle="menu" data-bs-display="static" aria-expanded="false" title="<?php echo h(lang('Filters')); ?>" aria-label="<?php echo h(lang('Filters')); ?>"><span class="bi bi-sliders" aria-hidden="true"></span><span id="explorer_filter_count" class="position-absolute top-0 start-100 translate-middle badge rounded-pill theme-primary d-none" style="font-size:.6rem;"></span></button>
             <!-- Aligned to the button's left edge rather than its right: the
                  toolbar wraps on a narrow screen and this button can end up
                  near the left, where a right-aligned menu hangs off the side
@@ -1633,13 +1633,13 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 <li><button type="button" class="menu-item" data-scope="private"><span class="bi bi-check2 me-3" data-role="check" aria-hidden="true"></span><?php echo lang('Private'); ?></button></li>
             </ul>
         </div>
-        <div class="btn-group btn-group-sm" id="explorer_view_group" role="group" aria-label="<?php echo lang('View'); ?>">
-            <button type="button" id="view_grid_button" class="btn btn-text theme-secondary no-popover" aria-pressed="false" title="<?php echo lang('Grid view'); ?>"><span class="bi bi-grid-3x3-gap"></span></button>
-            <button type="button" id="view_list_button" class="btn btn-text theme-secondary no-popover" aria-pressed="false" title="<?php echo lang('List view'); ?>"><span class="bi bi-list-ul"></span></button>
+        <div class="d-inline-flex gap-1" id="explorer_view_group" role="group" aria-label="<?php echo lang('View'); ?>">
+            <button type="button" id="view_grid_button" class="pg-icon-button no-popover" aria-pressed="false" title="<?php echo h(lang('Grid view')); ?>" aria-label="<?php echo h(lang('Grid view')); ?>"><span class="bi bi-grid-3x3-gap" aria-hidden="true"></span></button>
+            <button type="button" id="view_list_button" class="pg-icon-button no-popover" aria-pressed="false" title="<?php echo h(lang('List view')); ?>" aria-label="<?php echo h(lang('List view')); ?>"><span class="bi bi-list-ul" aria-hidden="true"></span></button>
         </div>
-        <button type="button" id="recycle_bin_button" class="btn btn-sm btn-text theme-secondary no-popover position-relative d-none" title="<?php echo lang('Recycle Bin'); ?>"><span class="bi bi-trash3"></span><span id="recycle_bin_count" class="position-absolute top-0 start-100 translate-middle badge rounded-pill theme-danger d-none" style="font-size:.6rem;"></span></button>
+        <button type="button" id="recycle_bin_button" class="pg-icon-button no-popover position-relative d-none" title="<?php echo h(lang('Recycle Bin')); ?>" aria-label="<?php echo h(lang('Recycle Bin')); ?>"><span class="bi bi-trash3" aria-hidden="true"></span><span id="recycle_bin_count" class="position-absolute top-0 start-100 translate-middle badge rounded-pill theme-danger d-none" style="font-size:.6rem;"></span></button>
         <div class="pg-menu-wrap" id="explorer_more_wrap">
-            <button type="button" id="explorer_more_button" class="btn btn-sm btn-text theme-secondary no-popover" data-bs-toggle="menu" data-bs-placement="bottom-end" data-bs-display="static" aria-expanded="false" title="<?php echo lang('More'); ?>" aria-label="<?php echo lang('More'); ?>"><span class="bi bi-three-dots-vertical"></span></button>
+            <button type="button" id="explorer_more_button" class="pg-icon-button no-popover" data-bs-toggle="menu" data-bs-placement="bottom-end" data-bs-display="static" aria-expanded="false" title="<?php echo h(lang('More')); ?>" aria-label="<?php echo h(lang('More')); ?>"><span class="bi bi-three-dots-vertical" aria-hidden="true"></span></button>
             <ul class="menu pg-menu-end shadow" style="border-radius:.75rem;">
                 <li class="d-none lg:d-block"><button type="button" class="menu-item" id="preview_toggle_button" aria-pressed="false"><span class="bi bi-check2 me-3 opacity-0" data-role="check" aria-hidden="true"></span><?php echo lang('Preview panel'); ?></button></li>
                 <li class="d-none lg:d-block"><hr class="menu-divider" /></li>
