@@ -1,6 +1,6 @@
 ---
 name: workspace-channel-reads-api
-description: CA12 channel reads (api_channel_reads.php): GET /workspace/channels/{id}, its files, board and eras, the Markdown export (REST only), channel_id on the tables list; who reads what
+description: CA12 (#9790) channel reads (api_channel_reads.php): GET /workspace/channels/{id}, its files, board and eras, the Markdown export (REST only), channel_id on the tables list
 ---
 
 ## Which routes are there?
@@ -16,4 +16,4 @@ description: CA12 channel reads (api_channel_reads.php): GET /workspace/channels
 - A guest's last seen only for a manager of the channel (`seen` null otherwise), as in Channel info. The rest of the panel's detail (summary, switches, watch, customer, mail, sales quote) is left out: summary and switches are CA13's routes, the customer has `/customer`.
 
 ## Which PR?
-- CA12 of plan channel-api-gaps (G14, G23, G33, G19's list, G24).
+- #9790, CA12 of plan channel-api-gaps (G14, G23, G33, G19's list, G24).
