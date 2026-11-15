@@ -564,12 +564,7 @@ if (!$_POST) {
         // Two <time> elements (get_absolute_time() draws HTML), printed as
         // they are under the period buttons: their text is date() output and
         // the translated day and month names.
-        $output_date_range = $start_date;
-
-        // if the stop date is different from the start date, then add stop date to date range
-        if ($stop_date != $start_date) {
-            $output_date_range .= ' - ' . $stop_date;
-        }
+        $output_date_range = pg_report_view_range($start_date, $stop_date);
 
         // Every preset link keeps the report id; the active one is marked.
         $active_preset = pg_visitor_report_active_preset($stored_range, $report_now);
