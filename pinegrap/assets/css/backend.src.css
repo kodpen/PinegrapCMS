@@ -30214,3 +30214,109 @@ button.pg-var-chip:focus-visible {
 }
 
 }
+
+/* ==========================================================================
+   Look A: list title and settings tile.
+   A list screen's count beside its title in the header (written by the
+   list table driver, assets/js/pg_list_table.js), a list's filters as a
+   segmented control (pg_list_seg_filters()), and the 34 px icon tile at a
+   settings row's left (pg_settings_tile(), includes/fn/look_list.php).
+   ========================================================================== */
+@layer custom {
+
+/* The count sits on the title's line, in the third text colour; the
+   description keeps the line under both. Only the title gives up its width
+   (ellipsis), never the count. A phone's header has room for the title
+   alone, so the count is left out there. */
+#header .pg-navhead:has(> .pg-navhead-count) {
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  align-content: center;
+  align-items: baseline;
+  column-gap: 8px;
+}
+#header .pg-navhead:has(> .pg-navhead-count) > .pg-navhead-title {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+#header .pg-navhead:has(> .pg-navhead-count) > .pg-navhead-desc {
+  flex: 1 0 100%;
+}
+#header .pg-navhead-count {
+  flex: none;
+  color: var(--pg-fg-3);
+  font-size: var(--pg-text-meta);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+@media (max-width: 575.98px) {
+  #header .pg-navhead-count {
+    display: none;
+  }
+}
+
+/* A list's segmented filters scroll sideways on a narrow screen instead of
+   wrapping into a second row of segments. */
+.pg-list-seg {
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.pg-list-seg::-webkit-scrollbar {
+  display: none;
+}
+.pg-list-seg > .pg-seg-item {
+  flex: none;
+}
+
+/* Site Log: the range segments, the type segments and the range on screen
+   in one row over the list, as the sheet's tools row. */
+.pg-log-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.pg-log-range {
+  color: var(--pg-fg-3);
+  white-space: nowrap;
+}
+
+@supports selector(:has(*)) {
+
+  /* A settings row with a tile: the tile in a column of its own left of the
+     name and its description, centred on them, 13 px from the text (the
+     row's column gap, given back by the tile's margin). */
+  .pg-set-card .row > [class]:has(> .form-field > :is(input[type="checkbox"], .switch)) > .form-field:has(> .pg-set-tile),
+  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-adorn, > .form-range):has(> .pg-set-tile) {
+    grid-template-columns: 34px minmax(0, 1fr) minmax(7rem, 19rem);
+    grid-template-areas:
+      "pgtile pgname pgctrl"
+      "pgtile pgnote pgnote";
+  }
+  .pg-set-card .row > [class]:has(> .form-field > :is(input[type="checkbox"], .switch)) > .form-field > .pg-set-tile.pg-icon-tile,
+  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-adorn, > .form-range) > .pg-set-tile.pg-icon-tile {
+    grid-area: pgtile;
+    align-self: center;
+    margin-inline-end: calc(13px - 1.5rem);
+  }
+
+  @container (max-width: 34rem) {
+    .pg-set-card .row > [class]:has(> .form-field > :is(input[type="checkbox"], .switch)) > .form-field:has(> .pg-set-tile),
+    .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-adorn, > .form-range):has(> .pg-set-tile) {
+      grid-template-columns: 34px minmax(0, 1fr);
+      grid-template-areas:
+        "pgtile pgname"
+        "pgtile pgnote"
+        "pgtile pgctrl";
+    }
+    .pg-set-card .row > [class]:has(> .form-field > :is(input[type="checkbox"], .switch)) > .form-field > .pg-set-tile.pg-icon-tile,
+    .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-adorn, > .form-range) > .pg-set-tile.pg-icon-tile {
+      align-self: start;
+    }
+  }
+}
+
+}
