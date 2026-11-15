@@ -14454,28 +14454,33 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
 .ws-app-fold .btn {
   font-size: .78rem;
 }
-/* A channel's message boxes stop growing on a wide pane; on a screen wider
-   than 1700px each box takes a very faint tint of its sender's colour (the
-   theme of the face, data-ws-tone from senderTone() in workspace.js). The
-   tint sits under :where() and its hover skips a highlighted or selected
-   message, so those still show as such; one sender's grouped lines join
-   into one box. */
+/* A channel's message boxes stop growing on a wide pane and stand half a
+   rem apart; one sender's grouped lines (.ws-msg-follow) keep no gap, so a
+   group reads as one box. On a screen wider than 1700px each box takes a
+   very faint tint of its sender's colour (the theme of the face,
+   data-ws-tone from senderTone() in workspace.js). The tint sits under
+   :where() and its hover skips a highlighted or selected message, so those
+   still show as such. */
 .ws-pane-messages:not(.ws-thread-pane) > .ws-msg {
   max-width: 90rem;
+  margin-bottom: .5rem;
+}
+.ws-pane-messages:not(.ws-thread-pane) > .ws-msg:has(+ .ws-msg.ws-msg-follow) {
+  margin-bottom: 0;
 }
 @media (min-width: 1700px) {
   :where(.ws-pane-messages:not(.ws-thread-pane) > .ws-msg[data-ws-tone]) {
     --ws-msg-tone: var(--pg-primary);
-    background: color-mix(in srgb, var(--ws-msg-tone) 5%, transparent);
+    background: color-mix(in srgb, var(--ws-msg-tone) 1.6%, transparent);
   }
   .ws-pane-messages:not(.ws-thread-pane) > .ws-msg[data-ws-tone]:hover:not(.ws-msg-highlight, .ws-msg-selected) {
-    background: color-mix(in srgb, var(--ws-msg-tone) 8%, transparent);
+    background: color-mix(in srgb, var(--ws-msg-tone) 2.6%, transparent);
   }
   :where(html[data-bs-theme="dark"] .ws-pane-messages:not(.ws-thread-pane) > .ws-msg[data-ws-tone]) {
-    background: color-mix(in srgb, var(--ws-msg-tone) 7%, transparent);
+    background: color-mix(in srgb, var(--ws-msg-tone) 2.2%, transparent);
   }
   html[data-bs-theme="dark"] .ws-pane-messages:not(.ws-thread-pane) > .ws-msg[data-ws-tone]:hover:not(.ws-msg-highlight, .ws-msg-selected) {
-    background: color-mix(in srgb, var(--ws-msg-tone) 11%, transparent);
+    background: color-mix(in srgb, var(--ws-msg-tone) 3.5%, transparent);
   }
   .ws-msg[data-ws-tone="info"] { --ws-msg-tone: var(--pg-info); }
   .ws-msg[data-ws-tone="warning"] { --ws-msg-tone: var(--pg-warning); }
