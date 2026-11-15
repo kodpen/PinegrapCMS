@@ -1000,6 +1000,11 @@ function ws_approval_settle($approval, $outcome, $actor_id = 0)
         return 0;
     }
 
+    // The agents still to answer are asked no more, whatever the outcome.
+    if (function_exists('ws_approval_agent_requests_close')) {
+        ws_approval_agent_requests_close($approval);
+    }
+
     $channel = ws_channel($approval['channel_id']);
     $answers = ws_approval_people($approval['id']);
     $outsiders = function_exists('ws_approval_guests_of') ? ws_approval_guests_of($approval['id']) : array();
