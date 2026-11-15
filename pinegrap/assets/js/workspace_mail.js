@@ -2033,8 +2033,75 @@
         return '-- \n' + [lines, under].filter(function (line) { return line !== ''; }).join('\n');
     }
 
-    // My e-mail settings: the person's own signature in a drawer, with the
-    // lines a mail will carry under it as it is typed.
+    // The "I am away" part of My e-mail settings: first and last day, the
+    // answer and a stand-in from the team. No first day switches it off;
+    // Clear empties the days.
+    function awayPart(h, form, data) {
+        var t = h.t;
+        var el = h.el;
+        var away = data.away || {};
+        var part = el('div', 'ws-mail-away mt-6');
+        var grid = el('div', 'row g-3');
+        var startCell = el('div', 'col-6');
+        var endCell = el('div', 'col-6');
+        var start = el('input', 'form-control form-control-sm');
+        var end = el('input', 'form-control form-control-sm');
+        var text = el('textarea', 'form-control');
+        var people = [['', t('mail_away_nobody')]].concat((data.people || []).map(function (person) {
+            return [String(person.id), person.name];
+        }));
+        var standIn = h.select(people, away.stand_in ? String(away.stand_in) : '');
+        var clear = h.button('btn btn-link btn-sm px-0', t('mail_away_clear'), 'bi-x-circle');
+
+        h.dateField(start, 'date');
+        h.dateField(end, 'date');
+        start.id = h.nextId('ws-mail-away-start-');
+        end.id = h.nextId('ws-mail-away-end-');
+        start.name = 'away_start';
+        end.name = 'away_end';
+        start.value = away.start || '';
+        end.value = away.end || '';
+        text.id = h.nextId('ws-mail-away-text-');
+        text.name = 'away_text';
+        text.rows = 5;
+        text.maxLength = data.away_max || 5000;
+        text.value = away.text || '';
+        standIn.id = h.nextId('ws-mail-away-stand-in-');
+        standIn.name = 'away_stand_in';
+        clear.type = 'button';
+
+        part.appendChild(el('div', 'pg-title-section mb-1', t('mail_away_title')));
+        part.appendChild(el('div', 'form-text mt-0 mb-4', t('mail_away_hint')));
+        startCell.appendChild(h.formRow(t('mail_away_start'), start));
+        endCell.appendChild(h.formRow(t('mail_away_end'), end));
+        grid.appendChild(startCell);
+        grid.appendChild(endCell);
+        part.appendChild(grid);
+        part.appendChild(h.formRow(t('mail_away_text'), text, t('mail_away_text_hint')));
+        part.appendChild(h.formRow(t('mail_away_stand_in'), standIn));
+        part.appendChild(clear);
+        form.appendChild(part);
+
+        start.addEventListener('change', function () {
+            if (start.value && (!end.value || end.value < start.value)) {
+                end.value = start.value;
+            }
+        });
+        clear.addEventListener('click', function () {
+            start.value = '';
+            end.value = '';
+        });
+
+        return {
+            values: function () {
+                return { away_start: start.value, away_end: end.value, away_text: text.value, away_stand_in: standIn.value };
+            }
+        };
+    }
+
+        // My e-mail settings: the person's own signature in a drawer, with the
+    // lines a mail will carry under it as it is typed, and "I am away" (a
+    // range, the answer senders get, a stand-in) once the site has it.
     function mySettings(h) {
         var t = h.t;
         var el = h.el;
@@ -2070,15 +2137,24 @@
             preview.appendChild(el('div', '', t('mail_my_signature_preview')));
             preview.appendChild(lines);
             form.appendChild(preview);
+
+            var away = data.away_ready ? awayPart(h, form, data) : null;
+
             body.appendChild(form);
             footer.appendChild(save);
             draw();
             field.addEventListener('input', draw);
 
             function submit() {
+                var payload = { signature: field.value };
+
                 save.disabled = true;
 
-                h.api('ws_mail_my_settings_save', { signature: field.value }).then(function () {
+                if (away) {
+                    Object.assign(payload, away.values());
+                }
+
+                h.api('ws_mail_my_settings_save', payload).then(function () {
                     h.hideOffcanvas(node);
                     h.toast(t('mail_my_settings_saved'), 'success');
                 }).catch(function (error) {

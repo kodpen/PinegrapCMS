@@ -1122,9 +1122,12 @@ function ws_mail_ingest($raw, $box, $options = array())
         'verified'        => ($auth === 'pass'),
     ));
 
-    // A new conversation may get the box's automatic answer (mail_status.php).
+    // A new conversation may get the box's automatic answer (mail_status.php);
+    // an ongoing one whose holder is away, their away text (mail_away.php).
     if ($opened && function_exists('ws_mail_auto_reply')) {
         ws_mail_auto_reply($box, $item_id);
+    } elseif (!$opened && function_exists('ws_mail_away_reply')) {
+        ws_mail_away_reply($box, $item_id, $conversation);
     }
 
     // Pinegrap AI's suggestion on a new conversation, where the box switched

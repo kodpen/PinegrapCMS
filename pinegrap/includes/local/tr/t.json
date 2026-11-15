@@ -9057,6 +9057,7 @@
     "This quote request could not be found, or it is not yours to see.": "Bu teklif talebi bulunamadı ya da onu görme yetkiniz yok.",
     "This quote request was not found.": "Bu teklif talebi bulunamadı.",
     "This range holds more than {var:1} messages. Choose a shorter range.": "Bu aralıkta {var:1} mesajdan fazlası var. Daha kısa bir aralık seçin.",
+    "This range is already over.": "Bu tarih aralığı zaten geçti.",
     "This reason needs a document: attach a photo, video or report of what came back.": "Bu neden için belge gerekir: geri gelen ürünün fotoğrafını, videosunu veya raporunu ekleyin.",
     "This receipt has not been allocated to any invoice.": "Bu tahsilat hiçbir faturaya tahsis edilmemiş.",
     "This receipt is your ticket: show it at the door of the dome or the observatory. For a membership, show it at the box office, which adds your name to the members' list.": "Bu makbuz biletinizdir: kubbenin ya da gözlemevinin kapısında gösterin. Üyelik için gişede gösterin; gişe adınızı üye listesine ekler.",
