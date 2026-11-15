@@ -44,6 +44,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_customer.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_templates.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_flows.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_threads.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_channel_reads.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_day.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_sync.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_inbox.php');
@@ -187,6 +188,11 @@ function ws_openapi_objects()
 {
     return array(
         'WorkspaceChannel'    => 'ws_api_channel_schema',
+        'WorkspaceChannelDetail'    => 'ws_api_channel_detail_schema',
+        'WorkspaceChannelBoard'     => 'ws_api_channel_board_schema',
+        'WorkspaceChannelBoardCard' => 'ws_api_channel_board_card_schema',
+        'WorkspaceChannelEras'      => 'ws_api_channel_eras_schema',
+        'WorkspaceChannelExport'    => 'ws_api_channel_export_schema',
         'WorkspaceMessage'    => 'ws_api_message_schema',
         'WorkspaceDecision'   => 'ws_api_decision_schema',
         'WorkspaceTask'       => 'ws_api_task_schema',
@@ -2789,6 +2795,10 @@ function ws_api_routes()
         ),
 
     );
+
+    // One channel's detail, its Files and Board tabs, the versions of its
+    // conversation and its export (api_channel_reads.php).
+    $routes = array_merge($routes, ws_channel_read_api_routes());
 
     // Asking Claude in a channel (api_claude.php), the changes an
     // application proposes (api_proposals.php), workflow tables

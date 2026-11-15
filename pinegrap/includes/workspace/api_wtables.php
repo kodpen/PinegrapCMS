@@ -67,6 +67,7 @@ function ws_wtable_api_routes()
             'description' => 'The workflow tables of the owner of the application, those of the channels they read and those shared with them, themselves or in a channel they read, the latest changed first. access says owner, edit (they change its columns and rows) or view. A person\'s table (channel_id 0) is its owner\'s alone: nobody else reaches it but through a share, administrators included, and a table whose owner left the team reaches nobody. A channel\'s table (channel_id the channel) is nobody\'s alone: whoever reads the channel reads it, whoever may write there has edit, whoever may manage the channel has owner, and owner_id only says who made it. columns is null in the listing; GET /workspace/tables/{id} carries them.',
             'params'      => array(
                 array('name' => 'scope', 'in' => 'query', 'type' => 'enum', 'values' => array('all', 'mine', 'channels', 'shared'), 'default' => 'all', 'description' => 'mine keeps the owner\'s own, channels the ones that belong to a channel they read, shared the ones that reach them only through a share.'),
+                array('name' => 'channel_id', 'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only the tables that belong to this channel, as its Tables tab lists them; a channel the owner may not read answers 404.'),
             ),
         ),
 
@@ -947,6 +948,21 @@ function ws_api_wtable_input($params, $fields)
    Tables
    --------------------------------------------------------------------------- */
 
+/**
+ * The tables of a list that belong to one channel (channel_id), in the
+ * list's order. Pure.
+ *
+ * @param array[] $tables ws_wtables rows
+ * @param int     $channel_id
+ * @return array[]
+ */
+function ws_api_wtables_of_channel($tables, $channel_id)
+{
+    return array_values(array_filter((array) $tables, function ($table) use ($channel_id) {
+        return (int) ($table['channel_id'] ?? 0) === (int) $channel_id;
+    }));
+}
+
 function ws_api_wtables_list($params)
 {
     $viewer = ws_api_viewer();
@@ -954,8 +970,15 @@ function ws_api_wtables_list($params)
     ws_api_wtables_ready();
 
     $rows = array();
+    $tables = ws_wtables_reached($viewer, (string) ($params['scope'] ?? 'all'));
 
-    foreach (ws_wtables_reached($viewer, (string) ($params['scope'] ?? 'all')) as $table) {
+    // One channel's own tables, read only where the channel is.
+    if (!empty($params['channel_id'])) {
+        $channel = ws_api_channel_or_404($viewer, (int) $params['channel_id']);
+        $tables = ws_api_wtables_of_channel($tables, (int) $channel['id']);
+    }
+
+    foreach ($tables as $table) {
         if (ws_api_wtable_reachable($viewer, $table)) {
             $rows[] = ws_api_wtable_present($table);
         }

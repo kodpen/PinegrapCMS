@@ -2705,12 +2705,22 @@ function ws_channel_decisions($viewer, $channel_id)
  */
 function ws_channel_files($viewer, $channel_id)
 {
-    $rows = (array) db_items("SELECT * FROM ws_messages
+    return ws_message_payloads($viewer, ws_channel_file_rows($channel_id));
+}
+
+/**
+ * The rows of the messages with a file posted in a channel, newest first:
+ * the Files tab's, read by the panel and the API alike.
+ *
+ * @param int $channel_id
+ * @return array[] ws_messages rows
+ */
+function ws_channel_file_rows($channel_id)
+{
+    return (array) db_items("SELECT * FROM ws_messages
         WHERE channel_id = '" . (int) $channel_id . "' AND file_id > 0 AND deleted_at = 0
         ORDER BY id DESC
         LIMIT 300");
-
-    return ws_message_payloads($viewer, $rows);
 }
 
 /**
