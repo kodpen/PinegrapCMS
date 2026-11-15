@@ -3873,6 +3873,36 @@ function ws_api_poll_refused($error, $field = '')
 }
 
 /**
+ * What a dry run of POST /workspace/channels/{id}/polls reports: the values
+ * after ws_agent_question_settings(), as ws_poll_create() will store them, so
+ * an application's question is rehearsed without anonymous and closes_at.
+ * Pure; closes_at stays a timestamp for the caller to format.
+ *
+ * @param int   $channel_id
+ * @param array $checked    ws_poll_input() result (options, closes_at)
+ * @param array $data       the request (multiple, anonymous)
+ * @param int   $flag       1 when the poll will be an agent question
+ * @return array channel_id, options, multiple, anonymous, closes_at, agent_question
+ */
+function ws_api_poll_create_rehearsal($channel_id, $checked, $data, $flag)
+{
+    $kept = ws_agent_question_settings(array(
+        'multiple'  => !empty($data['multiple']),
+        'anonymous' => !empty($data['anonymous']),
+        'closes_at' => (int) ($checked['closes_at'] ?? 0),
+    ), (int) $flag === 1);
+
+    return array(
+        'channel_id'     => (int) $channel_id,
+        'options'        => $checked['options'] ?? array(),
+        'multiple'       => !empty($kept['multiple']),
+        'anonymous'      => !empty($kept['anonymous']),
+        'closes_at'      => (int) $kept['closes_at'],
+        'agent_question' => (int) $flag === 1,
+    );
+}
+
+/**
  * Asks a poll in a channel, the way Poll by the composer and the /poll
  * command do: the question is the person's message, and the options, the
  * settings and the votes are the poll's. The answer is that message.
@@ -3938,13 +3968,13 @@ function ws_api_polls_create($params)
         api_fail_validation($stored['error'], 'options');
     }
 
-    api_dry_run_stop('created', 'workspace_poll', array(
-        'channel_id' => (int) $channel['id'],
-        'options'    => $checked['options'],
-        'multiple'   => $data['multiple'],
-        'anonymous'  => $data['anonymous'],
-        'closes_at'  => api_time($checked['closes_at']),
-    ));
+    // The flag ws_poll_create() stores, so that the rehearsal reports the
+    // settings an agent question is kept to rather than the ones sent.
+    $flag = ws_agent_question_ready() ? ws_agent_question_flag($app_id) : 0;
+    $rehearsal = ws_api_poll_create_rehearsal((int) $channel['id'], $checked, $data, $flag);
+    $rehearsal['closes_at'] = api_time($rehearsal['closes_at']);
+
+    api_dry_run_stop('created', 'workspace_poll', $rehearsal);
 
     $result = ws_poll_create($viewer, $channel, $data, $app_id);
 
