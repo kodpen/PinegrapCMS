@@ -13261,6 +13261,19 @@ html[data-bs-theme="dark"] .ws-group-icon {
   flex: 1 1 0;
   min-width: 0;
 }
+/* On a phone the chosen tab takes the room its name needs, the others
+   keep their icon; a name too long for even that ends in an ellipsis. */
+@media (max-width: 575.98px) {
+  .ws-settings-tabs .pg-seg-item.is-active {
+    flex: 0 1 auto;
+  }
+  .ws-settings-tabs .pg-seg-item.is-active .pg-seg-label {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
 /* The channel's name with its icon button at the left and its colour
    button at the right; each opens its list in a floating box. */
 .ws-look-row {
@@ -13290,8 +13303,8 @@ html[data-bs-theme="dark"] .ws-group-icon {
   border-radius: 50%;
   box-shadow: inset 0 0 0 1px var(--pg-border-color-translucent);
 }
-.ws-look-dot-none {
-  background: linear-gradient(135deg, transparent 45%, var(--pg-fg-2) 45%, var(--pg-fg-2) 55%, transparent 55%);
+.ws-look-none {
+  color: var(--pg-fg-2);
 }
 .ws-ctx.contextmenu.popover.ws-look-picker {
   width: 19.5rem;

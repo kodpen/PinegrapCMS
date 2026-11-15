@@ -5677,11 +5677,19 @@
                 iconButton.style.color = hex();
             }
 
+            // The colour itself: a filled dot, or the crossed ring of "no
+            // colour" as in the swatches.
             if (colorButton) {
-                var dot = colorButton.firstChild;
+                clear(colorButton);
 
-                dot.style.background = hex();
-                dot.classList.toggle('ws-look-dot-none', !hex());
+                if (hex()) {
+                    var dot = el('span', 'ws-look-dot');
+
+                    dot.style.background = hex();
+                    colorButton.appendChild(dot);
+                } else {
+                    colorButton.appendChild(icon('bi-slash-circle', 'ws-look-none'));
+                }
             }
         }
 
@@ -5741,7 +5749,6 @@
 
         if (colors) {
             colorButton = opener('ws-look-color', t('color'), colors, 'ws-swatch');
-            colorButton.appendChild(el('span', 'ws-look-dot'));
             row.appendChild(colorButton);
         }
 
@@ -5847,6 +5854,12 @@
         footer.classList.remove('d-none');
         node.querySelector('.drawer-title').textContent = channel ? t('edit_channel') : t('new_channel');
         defaults = defaults || {};
+
+        var save = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', channel ? t('save') : t('create_channel'), 'bi-check2');
+        var cancel = button('btn btn-sm btn-text theme-secondary', t('cancel'));
+        cancel.setAttribute('data-bs-dismiss', 'drawer');
+        footer.appendChild(cancel);
+        footer.appendChild(save);
 
         // A channel's settings are four tabs (channelSettingsTabs()); a pane
         // is only hidden while another is shown, so Save reads every tab's
@@ -6156,7 +6169,14 @@
             tabs.setAttribute('role', 'tablist');
             tabs.setAttribute('aria-label', t('edit_channel'));
 
+            // People and agents and Conversation act at once: their footer
+            // only closes. Save stays where the form has fields.
             var showTab = function (key, focus) {
+                var atOnce = (key === 'people') || (key === 'conversation');
+
+                save.style.display = atOnce ? 'none' : '';
+                cancel.textContent = t(atOnce ? 'close' : 'cancel');
+
                 shown.forEach(function (one) {
                     var on = (one === key);
 
@@ -6209,11 +6229,6 @@
             showTab((shown.indexOf(defaults.tab) !== -1) ? defaults.tab : 'general', false);
         }
 
-        var save = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', channel ? t('save') : t('create_channel'), 'bi-check2');
-        var cancel = button('btn btn-sm btn-text theme-secondary', t('cancel'));
-        cancel.setAttribute('data-bs-dismiss', 'drawer');
-        footer.appendChild(cancel);
-        footer.appendChild(save);
 
         save.addEventListener('click', function () {
             var data = {

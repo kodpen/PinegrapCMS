@@ -128,7 +128,7 @@ function ws_js_strings()
         'edit_channel'           => lang('Channel settings'),
         'cs_tab_general'         => lang('General'),
         'cs_tab_people'          => lang('People and agents'),
-        'cs_tab_conversation'    => lang('Conversation'),
+        'cs_tab_conversation'    => lang('The conversation'),
         'cs_tab_events'          => lang('Record events'),
         'cs_open'                => lang('Open the memory'),
         'edit_plan_item'         => lang('Plan item'),
