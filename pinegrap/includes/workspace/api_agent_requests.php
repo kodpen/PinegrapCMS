@@ -147,7 +147,7 @@ function ws_agent_request_api_routes()
             'dry_run'     => true,
             'returns'     => ws_api_agent_wake_schema(),
             'summary'     => 'Set the calling agent\'s scheduled wakes',
-            'description' => 'The same as /wake @agent in a channel, for the agent itself: every (minutes, 1-1440) wakes it every so often from now; at (a moment to come) once; off clears the schedule. Give exactly one of them. Each wake makes a request with no message, carrying the note, and knocks a push door; the hourly brake holds. A person sets it with /wake in a channel or on the Agents card.' . $only,
+            'description' => 'The same as /wake @agent in a channel, for the agent itself: every (minutes, 1-1440) wakes it every so often from now; at (a moment to come) once; off clears the schedule. Give exactly one of them. Each wake makes a request with no message, carrying the note, and knocks a push door; the hourly brake holds. A person sets it with /wake in a channel, on the Agents card or with POST /workspace/channels/{id}/agents/{agent_id}/wake.' . $only,
             'params'      => array(
                 array('name' => 'every', 'in' => 'body', 'type' => 'int', 'min' => 1, 'max' => WS_AGENT_WAKE_EVERY_MAX),
                 array('name' => 'at', 'in' => 'body', 'type' => 'datetime'),
@@ -281,10 +281,18 @@ function ws_api_agent_wake_get($params)
     api_ok(ws_api_agent_wake_present(ws_api_agent_caller()));
 }
 
-function ws_api_agent_wake_set($params)
+/**
+ * The every, at, off and note of a wake route as a /wake line's parse
+ * (ws_agent_wake_parse()), or the refusal: exactly one of every, at and
+ * off, and at a moment to come. The agent's own route and a person's
+ * channel route read their input the same way.
+ *
+ * @param array $params
+ * @param int   $now
+ * @return array action, every, at, note
+ */
+function ws_api_agent_wake_parsed($params, $now)
 {
-    $agent = ws_api_agent_caller();
-    $now = time();
     $given = array_values(array_filter(array('every', 'at', 'off'), function ($name) use ($params) {
         return isset($params[$name]) && ($params[$name] !== null) && ($params[$name] !== false);
     }));
@@ -295,11 +303,18 @@ function ws_api_agent_wake_set($params)
 
     $parsed = array('action' => $given[0], 'every' => (int) ($params['every'] ?? 0), 'at' => (int) ($params['at'] ?? 0), 'note' => trim((string) ($params['note'] ?? '')));
 
-    if (($parsed['action'] === 'at') && ($parsed['at'] <= $now)) {
+    if (($parsed['action'] === 'at') && ($parsed['at'] <= (int) $now)) {
         api_fail_validation(lang('That time has passed. Choose a time to come.'), 'at');
     }
 
-    $values = ws_agent_wake_values($parsed, $now);
+    return $parsed;
+}
+
+function ws_api_agent_wake_set($params)
+{
+    $agent = ws_api_agent_caller();
+    $now = time();
+    $values = ws_agent_wake_values(ws_api_agent_wake_parsed($params, $now), $now);
 
     api_dry_run_stop('set', 'workspace_agent_wake', ws_api_agent_wake_present(array('handle' => $agent['handle']) + $values));
 
