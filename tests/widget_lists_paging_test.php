@@ -135,6 +135,19 @@ function test_widget_lists_paging_editor()
 	pg_assert_true((bool) preg_match("/'paging.pages':\s+_sdT\('One row for every page link/", $js), 'the panel explains the list');
 }
 
+// On the canvas the list shares the pagination's line with Previous and
+// Next: a loop area in a flex row that does not wrap, beside other items,
+// takes its records' width, not a full line (_sdFxLoopArea()).
+function test_widget_lists_paging_canvas_line()
+{
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	pg_assert_contains("var shared = row && cs.flexWrap === 'nowrap' && _sdFxLoopHasSiblings(lw, p);", $js);
+	pg_assert_contains("'flex': shared ? '0 1 auto' : (row ? '0 0 100%' : '0 0 auto'), 'min-width': '0px'", $js);
+	pg_assert_contains("if (shared) want.width = 'auto';", $js);
+	pg_assert_true((bool) preg_match("/var _SD_FX_LOOP_PROPS = \[[^\]]*'width'/", $js), 'the width is written and cleared with the rest');
+	pg_assert_contains('function _sdFxLoopHasSiblings(lw, p) {', $js);
+}
+
 // In the catalog listing's surround: its paging flags are marked before the
 // render and resolved after the count (_render_system_widget_catalog_listing()),
 // so the starter's previous / next items and the list drawn by the finish

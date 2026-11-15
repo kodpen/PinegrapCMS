@@ -10412,8 +10412,12 @@ const StyleDesigner = (function () {
     // .row. On the canvas it is laid out the way that parent lays out its
     // children, so the card being designed and the real records after it sit
     // in the same columns the page gives them.
+    // A row that wraps gives the area a line of its own; one that does not
+    // (a pagination: Previous, the page links list, Next) keeps its other
+    // items on the same line, so the area is only as wide as its records:
+    // at a full line it pushed Previous and Next out of the widget's frame.
     var _SD_FX_LOOP_PROPS = ['display', 'flex-direction', 'flex-wrap', 'justify-content', 'align-items', 'align-content',
-        'row-gap', 'column-gap', 'flex', 'min-width', 'grid-column', 'grid-template-columns', 'justify-items'];
+        'row-gap', 'column-gap', 'flex', 'width', 'min-width', 'grid-column', 'grid-template-columns', 'justify-items'];
     function _sdFxLoopArea(la, win) {
         var want = {};
         var lw = la.parentElement;
@@ -10421,12 +10425,15 @@ const StyleDesigner = (function () {
         var p = (lw && lw.classList.contains('sd-loop-single')) ? null : _sdLayoutParent(la);
         var cs = p ? win.getComputedStyle(p) : null;
         if (cs && (cs.display === 'flex' || cs.display === 'inline-flex')) {
+            var row = cs.flexDirection.indexOf('row') === 0;
+            var shared = row && cs.flexWrap === 'nowrap' && _sdFxLoopHasSiblings(lw, p);
             want = {
                 'display': 'flex', 'flex-direction': cs.flexDirection, 'flex-wrap': cs.flexWrap,
                 'justify-content': cs.justifyContent, 'align-items': cs.alignItems, 'align-content': cs.alignContent,
                 'row-gap': cs.rowGap, 'column-gap': cs.columnGap,
-                'flex': (cs.flexDirection.indexOf('row') === 0) ? '0 0 100%' : '0 0 auto', 'min-width': '0px'
+                'flex': shared ? '0 1 auto' : (row ? '0 0 100%' : '0 0 auto'), 'min-width': '0px'
             };
+            if (shared) want.width = 'auto';
         } else if (cs && (cs.display === 'grid' || cs.display === 'inline-grid')) {
             want = {
                 'display': 'grid', 'grid-column': '1 / -1', 'grid-template-columns': 'subgrid',
@@ -10441,6 +10448,19 @@ const StyleDesigner = (function () {
             if (la.style.getPropertyValue(k) === v) return;
             if (v) la.style.setProperty(k, v); else la.style.removeProperty(k);
         });
+    }
+
+    // Whether the loop area's wrapper `lw` shares its layout parent `p` with
+    // another element (a pagination's Previous and Next items). Wrappers
+    // between them are display:contents, so only the wrapper's own siblings
+    // and the parent's children are looked at.
+    function _sdFxLoopHasSiblings(lw, p) {
+        if (!lw || !p) return false;
+        var box = lw.parentElement === p ? p : lw.parentElement;
+        for (var c = box.firstElementChild; c; c = c.nextElementSibling) {
+            if (c !== lw && c.classList.contains('sd-wrap')) return true;
+        }
+        return false;
     }
 
     // A bound picture in the card being designed has no record behind it,
