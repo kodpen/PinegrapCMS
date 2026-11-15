@@ -491,7 +491,7 @@ if (!$_POST) {
     // Find out if password hint is enabled in the settings
     if (PASSWORD_HINT == TRUE) {
         $output_password_hint_field = 
-            '<div class="col-12 my-3">
+            '<div class="col-12 xl:col-6 my-3">
                 <label for="password_hint" class="form-label">' . lang('User Password Hint') . '</label>
                 <input value="' . h($password_hint) . '" type="text" name="password_hint" id="password_hint" class="form-control" maxlength="100" />
             </div>';
@@ -1146,7 +1146,7 @@ if (!$_POST) {
     $output_sessions_panel =
         '<dialog class="drawer drawer-end pg-perm-panel" id="pg_sessions_panel" aria-labelledby="pg_sessions_panel_title">
             <div class="drawer-header">
-                <span class="pg-perm-icon" style="--pg-perm-color: var(--pg-tone-blue)"><i class="bi bi-shield-lock"></i></span>
+                <span class="pg-perm-icon" style="--pg-perm-color:#64b5f6"><i class="bi bi-shield-lock"></i></span>
                 <h5 class="drawer-title ms-3" id="pg_sessions_panel_title">' . h(lang('Sign-in and Sessions')) . '</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="drawer" aria-label="' . h(lang('Close')) . '"></button>
             </div>
@@ -1162,7 +1162,7 @@ if (!$_POST) {
         . (($log_count > 5)
             ? '<dialog class="drawer drawer-end pg-perm-panel" id="pg_activity_panel" aria-labelledby="pg_activity_panel_title">
                 <div class="drawer-header">
-                    <span class="pg-perm-icon" style="--pg-perm-color: var(--pg-tone-gray)"><i class="bi bi-clock-history"></i></span>
+                    <span class="pg-perm-icon" style="--pg-perm-color:#9aa3ab"><i class="bi bi-clock-history"></i></span>
                     <h5 class="drawer-title ms-3" id="pg_activity_panel_title">' . h(lang('Recent Activity')) . '</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="drawer" aria-label="' . h(lang('Close')) . '"></button>
                 </div>
@@ -1244,17 +1244,17 @@ if (!$_POST) {
                                 </div>
                                 <div class="card-body">
                                     <div class="row g-5">
-                                        <div class="col-12">
+                                        <div class="col-12 lg:col-4">
                                             <label for="username" class="form-label">' . lang('Username') . '</label>
                                             <input value="' . h($username) . '" type="text" name="username" placeholder="' . lang('Username') . '" id="username" maxlength="100" class="form-control" required' . pg_user_form_no_autofill(true) . ' />
                                             <div class="form-text">' . lang('Used when signing in.') . '</div>
                                         </div>
-                                        <div class="col-12 md:col-6">
+                                        <div class="col-12 lg:col-4">
                                             <label class="form-label" for="email">' . lang('User Email') . '</label>
                                             <input value="' . h($email) . '" type="email" class="form-control" id="email" name="email" maxlength="100" inputmode="email" data-inputmask-alias="email" required' . pg_user_form_no_autofill() . '/>
                                             <div class="form-text">' . lang('Password reset goes to this address.') . '</div>
                                         </div>
-                                        <div class="col-12 md:col-6">
+                                        <div class="col-12 lg:col-4">
                                             <label for="home_page" class="form-label">' . lang('User Start Page') . '</label>
                                             ' . pg_picker_field('page', 'home_page', $home) . pg_picker_script() . '
                                             <div class="form-text">' . lang('Opened after signing in.') . '</div>
@@ -1262,11 +1262,11 @@ if (!$_POST) {
                                     </div>
 
                                     <hr class="border-subtle-secondary opacity-50 my-5">
-                                    <div class="pg-group-label mb-3">' . lang('Optional') . '</div>
+                                    <div class="text-uppercase small fw-semibold fg-secondary mb-3">' . lang('Optional') . '</div>
 
                                     <div class="row g-5">
                                         ' . $output_password_hint_field . '
-                                        <div class="col-12 pg-field-span-3">
+                                        <div class="col-12 sm:col-6 lg:col-4">
                                             <label class="form-label" for="reward_points">' . lang('Reward Program, Reward Points') . '</label>
                                             <input value="' . h($reward_points) . '" type="number" min="0" max="4294967295" step="1" class="form-control" id="reward_points" name="reward_points"/>
                                             <input type="hidden" name="reward_points_original" value="' . h($reward_points) . '"/>
