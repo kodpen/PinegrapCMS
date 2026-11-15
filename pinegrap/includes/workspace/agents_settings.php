@@ -316,8 +316,8 @@ function ws_agents_settings_form($self_url, $agent, $apps, $admin, $form = null)
     // The door as two described choices: what each is for, not how it works.
     $doors = function ($chosen, $when) use ($p, $disabled, $name) {
         $choices = array(
-            'poll' => array(lang('It waits on its queue'), lang('For a session that stays open, a cloud session too: it reads its requests itself.')),
-            'push' => array(lang('The site knocks at an address'), lang('For an agent that starts work on each knock. A knock starts a new run; it never wakes a session that is already open.')),
+            'poll' => array(lang('Poll: it waits on its queue'), lang('For a session that stays open, a cloud session too: it reads its requests itself.')),
+            'push' => array(lang('Push: the site knocks at an address'), lang('For an agent that starts work on each knock. A knock starts a new run; it never wakes a session that is already open.')),
         );
         $out = '';
 

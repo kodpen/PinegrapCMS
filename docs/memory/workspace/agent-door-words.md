@@ -5,9 +5,10 @@ description: The agent form's "Door" field as two described choices, the door's 
 
 ## What does the "Door" field say?
 - In an application agent's form (Site Settings › "Assistants and agents" › Edit, and the Workspace Settings card) "Door" is two radio choices with a line each (`ws_agents_settings_form()`, `$doors`):
-- "It waits on its queue": for a session that stays open, a cloud session too; it reads its requests itself (value `poll`).
-- "The site knocks at an address": for an agent that starts work on each knock; a knock starts a new run and never wakes an open session (value `push`).
+- "Poll: it waits on its queue" (Turkish "Yoklama: kendi kuyruğunu bekler"): for a session that stays open, a cloud session too; it reads its requests itself (value `poll`).
+- "Push: the site knocks at an address" (Turkish "Dürtme: site bir adrese haber gönderir"): for an agent that starts work on each knock; a knock starts a new run and never wakes an open session (value `push`).
 - Why: a knock never reaches a session that is already open, so a cloud session waits on its queue (`agent-door-routine-double.md`). Owner (2026-11-15): the agents' settings say plainly what each door is for (`workflow/decisions-made-panel-9.md`).
+- Architect (2026-11-15): each choice keeps its door's name in front; in Turkish a knock is "dürtme" and the poll door "yoklama" (the owner's words, as "Dürtme adresi" under them), never "çalma", which reads as "steals". The card's routine help and "Last knock" in Channel settings say "dürtme" too.
 - The field name `ws_agent[<id>][door_kind]` and the stored values stay. The form's script reads a radio group's checked value, so "Push address" and "Push token" still hang on `door_kind=push`.
 
 ## What does the drawer say about the door?
