@@ -442,6 +442,7 @@
     "@person": "@kişi",
     "@{var:1} answered": "@{var:1} yanıtladı",
     "@{var:1} answered a request in #{var:2}": "@{var:1}, #{var:2} kanalındaki bir isteği yanıtladı",
+    "@{var:1} answered an approval request": "@{var:1} bir onay isteğini yanıtladı",
     "@{var:1} answered through {var:2}:": "@{var:1}, {var:2} aracıyla yanıtladı:",
     "@{var:1} answered with {var:2} tools.": "@{var:1} {var:2} araçla yanıt verdi.",
     "@{var:1} answered with {var:2} tools. Turn on the ones that may be used.": "@{var:1} {var:2} araçla yanıt verdi. Kullanılabilecek olanları açın.",
