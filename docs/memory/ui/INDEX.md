@@ -565,10 +565,11 @@
 - report-dynamic-date-filter.md: Order and Visitor reports: a 'Day(s) Ago' filter on a date field compares a bare Y-m-d date through pg_report_dynamic_value() (#3725)
 - report-period-text.md: The period beside the calendar icon on the order, visitor, shipping and ERP VAT report screens: one shape, pg_report_view_range(), the panel's date text and an en dash (RS8c)
 - report-screen-controls.md: Report and panel controls on Bootstrap 6: period changers, named arrows, labelled layout and date selects (#2716), calendar controls, comment rating, accessibility tables (#2900)
+- report-screens-look-review.md: Look review of the order, visitor, shipping and ERP VAT report screens (2026-11-15): the architect's answer, what RS8a-RS8c changed, the pictures, what was left [decision: decisions-made-panel-5.md]
 - report-settings-drawer.md: The order and visitor reports' Report settings drawer (#8709, #8764): the form inside it, when it opens by itself, Close, no Edit / Cancel Edit pair
 - report-table-rows.md: Order, visitor and shipping report tables: group names and Grand Total as row headers, detail rows and product names as links, percent figures through '{var:1}%' (Search Console too), named yes marks
 - report-view-country-names.md: The report screens name a country level's places by the site's countries list (#9718): where, which levels, what keeps the stored code
-- report-view.md: The report screens' shared view (report_view.php, pg_report_view.js): figures and a chart over the table, the chart per level, its data keys and bundles; order (#8709) and visitor (#8764) reports [decision: decisions-made-panel-8.md]
+- report-view.md: The report screens' shared view (report_view.php, pg_report_view.js): figures and a chart over the table, the chart per level, its data keys and bundles; order (#8709) and visitor (#8764) reports [decision: decisions-made-panel-5.md, decisions-made-panel-8.md]
 - required-boxes-and-seo-counter.md: Boxes the server refuses blank carry required (Delete in the same form gets formnovalidate); the SEO character counter is the field's description and says count, target and state in words
 - return-key-default-button.md: Return in a drawer form or SMTP Settings saves through a hidden first submit button; Enter in the guided tour leaves a focused Skip or Back button alone
 - rich-text-editor-files.md: Who the rich text editor (CKEditor 4) offers file browsing and uploading to; the upload addresses carry the session token

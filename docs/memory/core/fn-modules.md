@@ -210,7 +210,7 @@ description: Generated from the module field of the memory files: each includes/
 - `record_revisions`: [[collection-history]], [[collection-revisions]]
 - `referral_source_list_edit`: [[list-table-quick-edit-referral-sources]]
 - `region_list`: [[list-table-region-lists]]
-- `report_view`: [[look-report-erp-screens]], [[look-report-screens]], [[report-period-text]], [[report-view]], [[report-view-country-names]]
+- `report_view`: [[look-report-erp-screens]], [[look-report-screens]], [[report-period-text]], [[report-screens-look-review]], [[report-view]], [[report-view-country-names]]
 - `request_scheme`: [[proxy-https-trust]], [[secure-mode-proxy-offer]]
 - `reseal`: [[encryption-key-reseal-registry]]
 - `returns`: [[api-returns]], [[bootstrap-6-runtime-markup]], [[order-returns-refund-cancelled-order]]

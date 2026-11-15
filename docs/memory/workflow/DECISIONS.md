@@ -568,6 +568,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - commerce/checkout-contact-card-update.md: What a checkout writes on the contact card: the "Update my contact info" box, tax fields only when on the form, a typed tax number filling an empty card
 - commerce/merchant-center-push.md: Per-product push to Google Merchant Center on the outbound marketplace layer (#4389, #4423): managed provider, mapping from the feed, queue, supplemental source
 - commerce/n11-warehouse.md: Products n11 ships from its own warehouse (n11depom): read into the catalogue with sender=ALL and marked, their stock never pushed, their orders not pulled
+- commerce/order-report-ready-reports.md: Ready reports: the registry in includes/fn/ready_reports.php, view_order_report.php?ready=<key> opening one as a new unsaved report, sales by region counted as the Sales map card counts (#8691)
 - commerce/order-returns-api-timing.md: Returns over the API and the customer's timing rules (owner 2026-10-24): staff-like by default, customer_rules and its 409s, repeat before timing, OrderReturn.withdrawal, pg_return_timing()
 - commerce/order-returns-refund-columns.md: The refund kept on a return (order_returns.refund_*, step 11.0.34, owner 2026-10-24): columns, the one writer, the backfill from audit trail and order_refunds, OrderReturn.refund, panel
 - commerce/order-returns-scope.md: What customer returns cover and leave out (no exchanges; any quantity per line), the Turkish rules they follow, who decided what, and the PRs of the finished returns plan
@@ -754,6 +755,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - ui/picker-field.md: The picker field pg_picker_field() (PK5): combobox with the chosen value and its picture, search list, Browse, clear, phone sheet, marks; which screens use it and who prints the script
 - ui/picker-overview.md: The one picker for a file or a page as a whole: what it is, the decisions that bind it, its two faces and bridges, which file holds each part, what stays outside it, how a new kind is added
 - ui/picker-pages.md: Pages in the picker dialog (kind page, PK4): rows with address and type, the page type chips, archived and binned marks that cannot be chosen, a caller's own entries (extra)
+- ui/report-screens-look-review.md: Look review of the order, visitor, shipping and ERP VAT report screens (2026-11-15): the architect's answer, what RS8a-RS8c changed, the pictures, what was left
 - ui/rich-text-path-placeholder.md: How rich text is stored with the {path} placeholder (prepare_rich_text_editor_content_for_input()): which addresses fold, why a //host address (Media Embed's YouTube player) keeps its two slashes
 - ui/settings-modal-save-place.md: After a save the Site Settings dialog keeps the form's scroll, opens the drawer the save came from again and says "saved" in one toast; when the drawer stays shut (#9751)
 - ui/settings-system-tools.md: The System tools screen (system_tools.php): the screens beside Site Settings as cards, the dialog's one row to it, the palette rows; gates from pg_settings_tool_groups()
