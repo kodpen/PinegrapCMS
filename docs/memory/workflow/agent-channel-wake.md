@@ -1,14 +1,14 @@
 ---
 name: agent-channel-wake
-description: How a session waits on the agent channel: on its request queue (tools/ws_wait.php --requests; a person's or an agent's message makes the request), on text and changes, the handles typed in it
+description: How a session waits on the agent channel: on its request queue (tools/ws_wait.php --requests), what makes a request (a mention, @herkes, a reply), on changes, the handles typed
 ---
 
 ## How does a session wake on the channel? (architect, 2026-11-11)
 - On its request queue. When a person writes, every wake rule makes a request for the agent (`workspace/agent-doors.md`): a mention, an answer to one of its messages (rule "Replies to its messages"), a scheduled wake. Only a mention carries the `@handle`, so a waiter on the message text misses the rest: on 2026-11-11 the owner's reply to the architect was queued while the session slept.
 - `php tools/ws_wait.php --requests --timeout=7000` waits on that queue: exit 0 on the oldest queued request, printed as one line; what it prints, its exits and its restart: [[agent-channel-request-wait]].
-- A message to all (`@hepsi`) is no agent's handle and makes no request: for it a waiter on the text, `php tools/ws_wait.php --from=person --regex='/@hepsi\b/i' --timeout=7000`.
+- A message to all is a person's `@herkes` (#9571, `workspace/workspace-everyone-mention.md`): a request for every active application agent, so the request waiter covers it; `@hepsi` and its text waiter are gone.
 - Another agent's message makes a request too (#8806): an application's message or an agent's answer that names the agent (`@handle`, `<@app:N>`), or answers one of its messages under the rule "Replies to its messages". `all` and `prefix` never match an application's line, so CI's lines wake nobody. The request waiter alone covers it; no `--from=app` text waiter is needed for an agent's words.
-- Every waiter (request or text) runs with Bash `run_in_background` (timeout 7200000). It exits on a match and so wakes the session, which answers and starts it again (the request waiter once the request is claimed, the text waiter with `--after-id=<last id>`); exit 3 (timeout) starts it again; each check-in makes sure they run. Each wake is one turn.
+- Every waiter runs with Bash `run_in_background` (timeout 7200000). It exits on a match and so wakes the session, which answers and starts it again (the request waiter once the request is claimed, a text or `--changed` waiter with `--after-id=<last id>`); exit 3 (timeout) starts it again; each check-in makes sure it runs. Each wake is one turn.
 - This repository's sessions keep `tools/ws_wait.php`; a shipped site's agent learns to wait from `workspace/agent-instructions.md`.
 - A request is answered through its own routes (brief, claim, answer), never as a plain message. The architect asks owner questions here as one-choice polls (`workspace/agent-questions.md`) and keeps its window for the rest (`architect.md`).
 
@@ -25,7 +25,7 @@ description: How a session waits on the agent channel: on its request queue (too
 - At its start and on its round, at most once an hour: `php tools/ws_profile.php --model=<model> [--windows=five_hour:<percent>:<reset>,weekly:<percent>:<reset>]` (`workspace/agent-report.md`). A session that cannot read its plan's usage sends the model alone; one without its own key sends nothing.
 
 ## Which handles are typed?
-- `@mimar`, `@prmerge` (the merging session), `@koordinator-<account>`, `@test`, `@hepsi` (all); a text rule matches them by `--regex`. CI writes its lines into the same agent channel (owner, 2026-11-08); such a line wakes nobody (an application's words wake only by a mention or a reply).
+- `@mimar`, `@prmerge` (the merging session), `@koordinator-<account>`, `@test`; a person's `@herkes` for all. CI writes its lines into the same agent channel (owner, 2026-11-08); such a line wakes nobody (an application's words wake only by a mention or a reply).
 
 ## What does a session need?
 - The four `PG_WS_*` variables of its cloud environment (`agent-channel-experiment.md`), an application per session that joins (`ADNAN Mimar`, `PR Merge` today).
