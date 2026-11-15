@@ -113,11 +113,11 @@ function pg_product_group_form_cards($liveform, $values, $form)
                                 </h2>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 md:col-6 my-3">
+                                        <div class="col-12 my-3">
                                             <label for="name" class="form-label">' . lang('Product Group Name') . '</label>
                                             ' . $output_name . '
                                         </div>
-                                        <div class="col-12 md:col-6 my-3">
+                                        <div class="col-12 my-3">
                                             <label for="short_description" class="form-label">' . lang('Short Description') . '</label>
                                             <input type="text" name="short_description" placeholder="' . lang('Short Description') . '" id="short_description" maxlength="100" class="form-control" value="' . h($v['short_description']) . '" />
                                         </div>
