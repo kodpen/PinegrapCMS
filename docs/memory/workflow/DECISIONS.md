@@ -69,6 +69,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-panel-9.md: Where are the rules and the earlier parts?
 - decisions-made-panel-9.md: Does the dashboard's assistant chat keep its talk after a reload? (owner, 2026-11-14, agent channel messages 3230 and 3236)
 - decisions-made-panel-9.md: How does a link that opens something read in Turkish? (owner, 2026-11-14, agent channel message 3236)
+- decisions-made-panel-9.md: Do the kept screens' two buttons and Add Product's field widths take the new look? (owner, 2026-11-15, agent channel message 4662)
+- decisions-made-panel-9.md: Does the Site Settings dialog keep its place after a save? (owner, 2026-11-15, in the architect's window)
 - decisions-made-panel.md: Why do the panel's own media queries break at 1024 and 1280 px?
 - decisions-made-panel.md: Why do the product and user screens use the narrower layout at 1440 px?
 - decisions-made-panel.md: Which date-and-time picker does the software use? (#2693, 2026-10-28)
@@ -292,6 +294,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-54.md: In which order are the designer's closed blocks opened? (owner, 2026-11-15, channel message 4146)
 - decisions-made-product-54.md: Does the visitor AI assistant start now? (owner, 2026-11-15, channel message 4147)
 - decisions-made-product-55.md: Does a Send later e-mail leave after its writer lost the right to answer there? (owner, 2026-11-15, channel message 4238)
+- decisions-made-product-55.md: How does the comment form's star rating input look? (owner, 2026-11-15, channel message 4700)
+- decisions-made-product-55.md: Do Workspace's message boxes stop growing on a wide screen? (owner, 2026-11-15, in the architect's window)
 - decisions-made-product-6.md: What happens to a recurring line that starts after the order date? (#3310)
 - decisions-made-product-6.md: How is a subscription price change noticed and applied? (#3311)
 - decisions-made-product-6.md: Does the panel get an operator Subscriptions screen? (#3343)
@@ -724,7 +728,10 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - ui/list-table-overview.md: The panel list table driver as a whole: the decision behind it, its parts by label, which file holds what, the recipe for a new list, its filter, where a new screen is registered
 - ui/list-table-quick-edit-values.md: Which values of each driver list change in quick edit, which stay text and why, how such an edit is checked, written and drawn (includes/fn/list_table_edit.php)
 - ui/list-table-rollout.md: How the panel lists moved from DataTables to the list table driver (TD1-TD14, done with #8253): the driver, the rules that still hold, where each batch is noted, what the removal took out
+- ui/look-field-widths.md: Field widths of the add and edit screens in look A (DL5c, #9658): the 16 px field grid, the span per field kind from md up, pg-field-span-N for a field alone in its row, who sets which screen's spans
+- ui/look-mapping-grids.md: Column-mapping grids (one small select per column of an uploaded file) keep their own narrow columns in look A; the field widths of add and edit screens are for a record's fields
 - ui/look-page-widths.md: Look A's page widths: edit screens centred at 1700 px (1300 + 24 + 376), lists as wide as their columns (1700 px to the window, details panel added), held while searching; tokens, rail
+- ui/look-report-erp-screens.md: ERP Dashboard, Cash Flow, Profit and Aging on look A's report recipes (#9696): server-drawn figure cards, the tools rows, the profit chart on the report view, what stayed
 - ui/look-shared-buttons.md: LM2 (#9680): the toolbar's primary pill and labelled text buttons as look A's .pg-button, the save bar's buttons by role; what was left and why
 - ui/main-menu-automation-flows-row.md: Main menu row 26, Automation flows (#9169): its place at the top, its gate (the Flows screen's), the quiet count of flows running, the screen it lights, icon A and its motion
 - ui/main-menu-communication-icon.md: The Communication row's own drawing (row 9): a speech bubble with an arrow out and an arrow in, its colours and hover movement; the megaphone it replaced

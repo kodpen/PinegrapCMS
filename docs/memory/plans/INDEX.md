@@ -16,6 +16,7 @@
 - agent-channel-steps-7.md: Step A22 of plans/agent-channel.md (owner 2026-11-12, #8880): a channel's agents among its members in the head's faces and in Channel info, last seen for people and agents
 - agent-channel-trial.md: Live trial of the agent channel on dev (2026-11-10): what is still to try and what the trial found wrong, fixed or not
 - agent-channel.md: Plan (owner 2026-11-06, wake doors 2026-11-07): the Workspace channel from which the owner runs coordinators and agents: registry with @handles, wake rules and doors, scheduled wakes, queue, memory
+- agents-card-settings.md: Plan (owner 2026-11-15): the Site Settings dialog keeps its place after a save; the agents' settings say what each door is for and are redrawn in the panel's look; AS1 to AS5
 - channel-profile-cards-census-facts.md: PF1 census of channel-profile-cards: where each fact of the agent card and the person card is stored, who may see it, what the state dot and the 90% usage mark read from; no schema need found
 - channel-profile-cards-census-scope.md: PF1 census of channel-profile-cards: the card's look (no popover in the design sheet), the exact files and functions of PF2 to PF7, and further facts for the owner's poll
 - channel-profile-cards-census.md: PF1 census of channel-profile-cards (agent card on a name or picture in channels): where a sender's name and picture are drawn in workspace.js, what the message and member payloads carry today
@@ -54,8 +55,8 @@
 - panel-old-screens-census-site-settings.md: Census LM1b against look A (S5): the Site Settings categories in includes/settings/ (dialog and settings_<key>.php pages): inline styles, old classes, rows without icon tiles
 - panel-old-screens-census-site-system.md: Census LM1b against look A: visitors and logs (S4: Site Log, Audit Trail, Firewall log, Performance, Search Console), System tools, Translations, settings pages outside the dialog (S6)
 - panel-old-screens-census-site.md: Census LM1b of old panel screens (pages, files, forms, comments, users, visitors, tools, Site Settings) against look A: what each draws its own way, sizes, six step groups
-- panel-old-screens-rules.md: Old panel screens to look A: what the architect's looks decided beyond the sheet (2026-11-15): the owner's kept screens, address parts, a narrow field alone in its row, values the sheet does not name
-- panel-old-screens-shared-steps.md: Old panel screens to look A: the shared steps cut after the groups: field label and input, status list, ERP list table and badges, figure cards, buttons after LM2, list title
+- panel-old-screens-rules.md: Old panel screens to look A: what the looks decided beyond the sheet: the owner's kept screens, address parts, a narrow field alone in its row, mapping grids, values the sheet does not name
+- panel-old-screens-shared-steps.md: Old panel screens to look A: the shared steps cut after the groups, SH1 to SH10 (field, status list, ERP lists, figure cards, icon buttons, save bar, list title) and KS1, KS2 on kept screens
 - panel-old-screens.md: Plan (owner 2026-11-15): the panel screens still drawn the old way move to look A; censuses done, LM2 the shared buttons, then one census group per step (C1 to C5, E1 to E5, S1 to S6)
 - php-error-log-clean.md: Plan (owner 2026-11-14): the PHP error log of the owner's dev machine read for Pinegrap's own deprecations and warnings on PHP 8.5, and their causes fixed; steps EL1 to EL6
 - poll-agent-questions.md: Plan (owner 2026-11-14): the poll gains described, pictured and linked options, "Other", taking back and asking again; a poll an agent asks is an agent question, answered in its box; AQ1 to AQ6

@@ -182,6 +182,16 @@ function ws_mail_later_run($now, $limit = 50)
 
     foreach ((array) db_items("SELECT * FROM ws_mail_items WHERE send_state = '" . WS_MAIL_LATER_STATE . "' AND send_at <= '" . (int) $now . "'
         ORDER BY send_at, id LIMIT " . max(1, (int) $limit)) as $item) {
+        // It leaves in the mailbox's name only while its writer may still
+        // answer where it is kept, read for the account as it is now.
+        $channel = ws_mail_later_channel($item);
+        $writer = ws_rights_for_id((int) $item['user_id']);
+
+        if (ws_mail_later_fate((int) $item['user_id'], ws_mail_later_may_answer($writer, $channel)) === 'hold') {
+            ws_mail_later_hold($item, $channel);
+            continue;
+        }
+
         if (ws_mail_later_release($item) !== '') {
             $done++;
         }
@@ -205,10 +215,148 @@ function ws_mail_later_reached($viewer, $item_id)
     }
 
     $item = db_item("SELECT * FROM ws_mail_items WHERE id = '" . (int) $item_id . "' AND direction = 'out' AND send_state = '" . WS_MAIL_LATER_STATE . "'");
-    $conversation = $item ? db_item("SELECT channel_id FROM ws_mail_conversations WHERE id = '" . (int) $item['conversation_id'] . "'") : null;
-    $channel = $conversation ? ws_channel((int) $conversation['channel_id']) : null;
 
-    return ($channel && ws_can_read_channel($viewer, $channel) && ws_mail_can_answer($viewer, $channel)) ? $item : null;
+    return ($item && ws_mail_later_may_answer($viewer, ws_mail_later_channel($item))) ? $item : null;
+}
+
+/**
+ * The channel a waiting mail's conversation is kept in, null for none.
+ *
+ * @param array $item ws_mail_items row
+ * @return array|null
+ */
+function ws_mail_later_channel($item)
+{
+    $conversation = db_item("SELECT channel_id FROM ws_mail_conversations WHERE id = '" . (int) $item['conversation_id'] . "'");
+
+    return is_array($conversation) ? ws_channel((int) $conversation['channel_id']) : null;
+}
+
+/**
+ * May this person answer where a waiting mail is kept: read the channel and
+ * answer mail there.
+ *
+ * @param array      $rights ws_rights() of the person
+ * @param array|null $channel
+ * @return bool
+ */
+function ws_mail_later_may_answer($rights, $channel)
+{
+    return !empty($rights['member']) && is_array($channel) && ws_can_read_channel($rights, $channel) && ws_mail_can_answer($rights, $channel);
+}
+
+/**
+ * What the job does with a mail whose time has come: it leaves only while
+ * its writer may still answer where it is kept; otherwise it is held and
+ * turns back into its draft. An account that is gone has no writer. Pure.
+ *
+ * @param int  $writer_id  ws_mail_items.user_id
+ * @param bool $may_answer ws_mail_later_may_answer() for the writer as now
+ * @return string leave | hold
+ */
+function ws_mail_later_fate($writer_id, $may_answer)
+{
+    return (((int) $writer_id > 0) && $may_answer) ? 'leave' : 'hold';
+}
+
+/**
+ * Who hears of a mail held at its time: its writer, and whoever answers for
+ * it - the conversation's holder when that is somebody else; when nobody
+ * else holds it, the owners of the channel it is kept in, or in a mailbox's
+ * own room its members who hold the Workspace settings right. Pure.
+ *
+ * @param int   $writer_id
+ * @param int   $holder_id the conversation's assignee_id
+ * @param int[] $owner_ids the channel's owners
+ * @param bool  $in_room   kept in a mailbox's own room
+ * @param int[] $room_ids  the room's members with the settings right
+ * @return int[]
+ */
+function ws_mail_later_held_people($writer_id, $holder_id, $owner_ids, $in_room, $room_ids)
+{
+    $writer_id = (int) $writer_id;
+    $holder_id = (int) $holder_id;
+    $people = array($writer_id);
+
+    if (($holder_id > 0) && ($holder_id !== $writer_id)) {
+        $people[] = $holder_id;
+    } else {
+        foreach ($in_room ? (array) $room_ids : (array) $owner_ids as $id) {
+            $people[] = (int) $id;
+        }
+    }
+
+    return array_values(array_unique(array_filter($people, function ($id) {
+        return $id > 0;
+    })));
+}
+
+/**
+ * A waiting mail whose writer may no longer answer where it is kept: it is
+ * not sent but turns back into its draft as Undo turns one back, its files
+ * kept since no form holds them, and its writer and whoever answers for it
+ * hear of it (mail_held).
+ *
+ * @param array      $item    ws_mail_items row, waiting
+ * @param array|null $channel ws_mail_later_channel()
+ * @return bool turned into its draft (false when another runner took it)
+ */
+function ws_mail_later_hold($item, $channel)
+{
+    if (!function_exists('ws_mail_draft_hash')) {
+        return false;
+    }
+
+    $holder = (int) db_value("SELECT assignee_id FROM ws_mail_conversations WHERE id = '" . (int) $item['conversation_id'] . "'");
+    $card = (int) $item['message_id'];
+
+    if (!ws_mail_later_to_draft($item, true)['ok']) {
+        return false;
+    }
+
+    $channel_id = is_array($channel) ? (int) $channel['id'] : 0;
+    $in_room = is_array($channel) && ws_channel_is_mailbox($channel);
+    $members = ($channel_id > 0) ? array_map('intval', (array) db_values("SELECT user_id FROM ws_channel_members WHERE channel_id = '" . $channel_id . "'")) : array();
+    $owners = ($channel_id > 0) ? array_map('intval', (array) db_values("SELECT user_id FROM ws_channel_members WHERE channel_id = '" . $channel_id . "' AND role = 'owner'")) : array();
+    $room = array();
+
+    foreach ($in_room ? $members : array() as $user_id) {
+        if (!empty(ws_rights_for_id($user_id)['settings'])) {
+            $room[] = $user_id;
+        }
+    }
+
+    foreach (ws_mail_later_held_people((int) $item['user_id'], $holder, $owners, $in_room, $room) as $user_id) {
+        ws_notify($user_id, 'mail_held', array('channel_id' => $channel_id, 'message_id' => $card, 'actor_id' => 0));
+    }
+
+    return true;
+}
+
+/**
+ * An inbox line about a mail held at its time (mail_held): the mailbox and
+ * the subject, why it did not leave and where it is now. The line keeps the
+ * id of the card that left the channel; the draft is found by it.
+ *
+ * @param array  $row  ws_inbox row
+ * @param string $base the panel's address
+ * @return array title, body, url, icon
+ */
+function ws_mail_held_describe($row, $base)
+{
+    $item = ((int) $row['message_id'] > 0)
+        ? db_item("SELECT i.subject, i.box_id FROM ws_messages m INNER JOIN ws_mail_items i ON i.id = m.sender_id
+            WHERE m.id = '" . (int) $row['message_id'] . "' AND m.sender_kind = 'mail' LIMIT 1")
+        : null;
+    $box = is_array($item) ? ws_mail_box((int) $item['box_id']) : null;
+    $subject = (is_array($item) && (trim((string) $item['subject']) !== '')) ? (string) $item['subject'] : lang('(no subject)');
+
+    return array(
+        'title' => lang(array('string' => 'Not sent from {var:1}: {var:2}', 'vars' => array($box ? (string) $box['name'] : '', $subject))),
+        'body'  => lang('Its writer may no longer answer there, so it was not sent. It is in Drafts.'),
+        'url'   => $base . 'messages_mail.php?view=drafts',
+        'icon'  => 'bi-envelope-exclamation',
+    );
 }
 
 /**
@@ -451,38 +599,10 @@ function ws_mail_undo_send($viewer, $item_id)
         return $gone;
     }
 
-    $conversation = db_item("SELECT * FROM ws_mail_conversations WHERE id = '" . (int) $item['conversation_id'] . "'");
-    $first = is_array($conversation) && ((int) $conversation['message_id'] === (int) $item['message_id']);
-    $now = time();
+    $turned = ws_mail_later_to_draft($item, false);
 
-    // Claimed first, as Send now and the job claim it: one of them wins.
-    db("UPDATE ws_mail_items SET send_state = '" . WS_MAIL_DRAFT_STATE . "', send_at = 0, message_id = 0, rfc_message_id = '',
-            rfc_message_hash = '" . e(ws_mail_draft_hash()) . "', in_reply_to = '', reference_ids = '', refused_files = '',
-            subject = '" . e(ws_mail_undo_subject((string) $item['subject'], (int) $item['conversation_id'])) . "',
-            conversation_id = '" . ($first ? 0 : (int) $item['conversation_id']) . "', created_at = '" . $now . "'
-        WHERE id = '" . (int) $item['id'] . "' AND send_state = '" . WS_MAIL_LATER_STATE . "'");
-
-    if (mysqli_affected_rows(db::$con) !== 1) {
+    if (!$turned['ok']) {
         return $gone;
-    }
-
-    foreach ((array) db_items("SELECT id, parent_id, file_id FROM ws_messages
-        WHERE sender_kind = 'mail' AND sender_id = '" . (int) $item['id'] . "' AND deleted_at = 0") as $message) {
-        db("UPDATE ws_messages SET body = '', file_id = 0, file_name = '', deleted_at = '" . $now . "' WHERE id = '" . (int) $message['id'] . "'");
-
-        if ((int) $message['file_id'] > 0) {
-            ws_upload_discard((int) $message['file_id']);
-        }
-
-        ws_message_touch((int) $message['id']);
-
-        if ((int) $message['parent_id'] > 0) {
-            ws_message_touch((int) $message['parent_id']);
-        }
-    }
-
-    if (is_array($conversation)) {
-        ws_mail_undo_conversation($conversation, $item, $first, $now);
     }
 
     $draft = ws_mail_draft((int) $item['id']);
@@ -492,7 +612,7 @@ function ws_mail_undo_send($viewer, $item_id)
     }
 
     // A new mail's form opens on the channel it was to be kept in.
-    $fields = ws_mail_draft_form_fields($draft, (int) ($conversation['channel_id'] ?? 0));
+    $fields = ws_mail_draft_form_fields($draft, $turned['channel_id']);
     $fields['labels'] = array('save' => lang('Save draft'), 'saved' => lang('The draft was saved.'));
 
     return array('ok' => true, 'error' => '', 'draft' => $fields);
@@ -529,4 +649,70 @@ function ws_mail_undo_conversation($conversation, $item, $first, $now)
     db("UPDATE ws_mail_conversations SET status = '" . e($fields['status']) . "', first_reply_at = '" . (int) $fields['first_reply_at'] . "',
             last_out_at = '" . (int) $fields['last_out_at'] . "', updated_at = '" . (int) $now . "'
         WHERE id = '" . $id . "'");
+}
+
+/**
+ * Turns a waiting mail back into its draft (mail_drafts.php), for Undo and
+ * for the job's held mail: claimed later to draft in one UPDATE, so Undo,
+ * Send now and the job never both win; message id, threading and send time
+ * cleared; its messages in the channel (the card or the answer, its files,
+ * a forward's line) deleted; a new mail's conversation gone when nothing
+ * else is in it, an answer's taking back what the answer changed.
+ *
+ * Undo's form still holds its files and gives them back, so the files
+ * stored in the channel are removed. With $keep_files nothing holds them:
+ * they stay, named in draft_files, and the deleted file lines keep their
+ * file (ws_mail_send_file_reach() reaches a draft's own).
+ *
+ * @param array $item       ws_mail_items row, waiting
+ * @param bool  $keep_files
+ * @return array ok, channel_id (the conversation's, 0 for none)
+ */
+function ws_mail_later_to_draft($item, $keep_files)
+{
+    $conversation = db_item("SELECT * FROM ws_mail_conversations WHERE id = '" . (int) $item['conversation_id'] . "'");
+    $first = is_array($conversation) && ((int) $conversation['message_id'] === (int) $item['message_id']);
+    $now = time();
+    $messages = (array) db_items("SELECT id, parent_id, file_id FROM ws_messages
+        WHERE sender_kind = 'mail' AND sender_id = '" . (int) $item['id'] . "' AND deleted_at = 0");
+    $file_ids = array();
+
+    foreach ($messages as $message) {
+        if ((int) $message['file_id'] > 0) {
+            $file_ids[] = (int) $message['file_id'];
+        }
+    }
+
+    $files = ($keep_files && $file_ids && ws_mail_draft_files_ready()) ? ", draft_files = '" . e(implode(',', $file_ids)) . "'" : '';
+
+    // Claimed first, as Send now and the job claim it: one of them wins.
+    db("UPDATE ws_mail_items SET send_state = '" . WS_MAIL_DRAFT_STATE . "', send_at = 0, message_id = 0, rfc_message_id = '',
+            rfc_message_hash = '" . e(ws_mail_draft_hash()) . "', in_reply_to = '', reference_ids = '', refused_files = '',
+            subject = '" . e(ws_mail_undo_subject((string) $item['subject'], (int) $item['conversation_id'])) . "',
+            conversation_id = '" . ($first ? 0 : (int) $item['conversation_id']) . "', created_at = '" . $now . "'" . $files . "
+        WHERE id = '" . (int) $item['id'] . "' AND send_state = '" . WS_MAIL_LATER_STATE . "'");
+
+    if (mysqli_affected_rows(db::$con) !== 1) {
+        return array('ok' => false, 'channel_id' => 0);
+    }
+
+    foreach ($messages as $message) {
+        db("UPDATE ws_messages SET body = ''" . ($keep_files ? '' : ", file_id = 0, file_name = ''") . ", deleted_at = '" . $now . "' WHERE id = '" . (int) $message['id'] . "'");
+
+        if (!$keep_files && ((int) $message['file_id'] > 0)) {
+            ws_upload_discard((int) $message['file_id']);
+        }
+
+        ws_message_touch((int) $message['id']);
+
+        if ((int) $message['parent_id'] > 0) {
+            ws_message_touch((int) $message['parent_id']);
+        }
+    }
+
+    if (is_array($conversation)) {
+        ws_mail_undo_conversation($conversation, $item, $first, $now);
+    }
+
+    return array('ok' => true, 'channel_id' => (int) ($conversation['channel_id'] ?? 0));
 }

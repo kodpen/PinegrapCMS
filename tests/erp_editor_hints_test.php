@@ -54,5 +54,5 @@ function test_erp_editor_hints_inbox_marks()
 
 	pg_assert_true(strpos($source, 'aria-hidden="true" title="') === false, 'the inbox line marks keep no hover-only title');
 	pg_assert_contains('<div class="small fg-emphasis-warning"><i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i>', $source);
-	pg_assert_contains('<div class="small fg-secondary"><i class="bi bi-info-circle me-1" aria-hidden="true"></i>', $source);
+	pg_assert_contains('<div class="pg-text-2"><i class="bi bi-info-circle me-1" aria-hidden="true"></i>', $source);
 }

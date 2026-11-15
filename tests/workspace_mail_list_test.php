@@ -181,7 +181,8 @@ function test_workspace_mail_unread_rule()
 	pg_assert_false(ws_mail_unread(0, 0, 0), 'no incoming mail');
 
 	$sql = ws_mail_unread_sql(7, 30);
-	pg_assert_contains("(SELECT MAX(i.id) FROM ws_mail_items i WHERE i.conversation_id = ws_mail_conversations.id AND i.direction = 'in') > GREATEST('30', ", $sql);
+	pg_assert_contains("(SELECT MAX(i.id) FROM ws_mail_items i WHERE i.conversation_id = ws_mail_conversations.id AND i.direction = 'in') > GREATEST(30, ", $sql, 'the floor is a number, so MySQL 8 compares GREATEST() as integers');
+	pg_assert_false(strpos($sql, "GREATEST('") !== false, 'no quoted floor: a string beside an integer is compared as text');
 	pg_assert_contains("r.user_id = '7'), 0))", $sql);
 
 	pg_assert_same(array(11, 12), ws_mail_read_item_ids(array(

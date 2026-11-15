@@ -3,8 +3,9 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Source pins for ERP list cells that hold account, supplier, till and
- * product names or IBANs: they wrap (text-break) inside their max-width
- * instead of being cut, and cells inside DataTables (table.chart, whose td
+ * product names or IBANs: they wrap (text-break) inside their max-width or,
+ * in a report table, as its row header taking the free width, instead of
+ * being cut, and cells inside DataTables (table.chart, whose td
  * is nowrap) also carry text-wrap. The account drawer title wraps too.
  *
  * @author      Erdal Güral (Kodpen)
@@ -32,7 +33,7 @@ function erp_list_names_wrap_pins()
 			'data-pg-open>\' . h($account[\'title\']) . \'</a>\' . $output_edoc_flag, \'align-middle text-wrap text-break\'',
 		),
 		'erp_aging.php' => array(
-			'<td class="text-wrap text-break" style="max-width:280px" data-sort="\' . h($account[\'title\']) . \'">',
+			'<th scope="row" class="text-wrap" data-sort="\' . h($account[\'title\']) . \'">',
 		),
 		'erp_cash.php' => array(
 			'\'iban\' => pg_list_cell(h($till[\'iban\']), \'align-middle text-wrap text-break\'),',
@@ -41,11 +42,10 @@ function erp_list_names_wrap_pins()
 			'<td class="text-break pg-cell-wrap erp-cheque-cell-account">\' . h((string) $row[\'account_title\']) . (((string) $row[\'drawer\'] !== \'\') ? \'<div class="small fg-secondary text-break">',
 		),
 		'erp_dashboard.php' => array(
-			'<td class="text-break" style="max-width:200px">\' . h($till[\'name\']) . \'</td>',
-			'<td class="text-break" style="max-width:200px">\' . h($till[\'name\']) . \' <span class="small">\' . h(lang(\'not added in\')) . \'</span></td>',
-			'<td class="text-break" style="max-width:220px"><a href="edit_erp_account.php?id=\' . (int) $account[\'id\']',
-			'<td class="text-break" style="max-width:220px">\' . (((int) $movement[\'account_id\'] > 0)',
-			'<div class="small fg-secondary">\' . h((string) $movement[\'till_name\']) . \'</div>',
+			'<th scope="row" class="text-wrap text-break">\' . h($till[\'name\']) . \'</th>',
+			'<th scope="row" class="text-wrap text-break">\' . h($till[\'name\']) . \' <span class="pg-text-meta">\' . h(lang(\'not added in\')) . \'</span></th>',
+			'<th scope="row" class="text-wrap text-break"><a href="edit_erp_account.php?id=\' . (int) $account[\'id\']',
+			'<div class="pg-text-meta fg-secondary">\' . h((string) $movement[\'till_name\']) . \'</div>',
 		),
 		'erp_inbox.php' => array(
 			'<div class="text-break">\' . h($row[\'supplier_title\']) . \'</div><div class="small fg-secondary">\' . h($row[\'supplier_tax_number\']) . \'</div>\', \'align-middle text-wrap text-break\'',

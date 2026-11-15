@@ -42,8 +42,8 @@ function test_ws_guest_line_sender_leaves_out_other_applications_and_system_line
 	pg_assert_same('', ws_guest_line_sender(array('sender_kind' => 'system', 'sender_id' => 0, 'kind' => 'system'), array(7)));
 	pg_assert_same('', ws_guest_line_sender(array('sender_kind' => 'mail', 'sender_id' => 1, 'kind' => 'message'), array(7)));
 	pg_assert_same('', ws_guest_line_sender(array('sender_kind' => 'user', 'sender_id' => 3, 'kind' => 'system'), array(7)));
-	// An agent's task card stays the team's.
-	pg_assert_same('', ws_guest_line_sender(array('sender_kind' => 'app', 'sender_id' => 7, 'kind' => 'task'), array(7)));
+	// A task card of an application that is no agent stays the team's.
+	pg_assert_same('', ws_guest_line_sender(array('sender_kind' => 'app', 'sender_id' => 4, 'kind' => 'task'), array(7)));
 }
 
 function test_ws_guest_lines_sql_without_agents_takes_people_and_guests()
@@ -53,7 +53,7 @@ function test_ws_guest_lines_sql_without_agents_takes_people_and_guests()
 
 function test_ws_guest_lines_sql_adds_the_agents_applications_as_numbers()
 {
-	pg_assert_same("(m.sender_kind IN ('user', 'guest') OR (m.sender_kind = 'app' AND m.kind <> 'task' AND m.sender_id IN (7,9)))",
+	pg_assert_same("(m.sender_kind IN ('user', 'guest') OR (m.sender_kind = 'app' AND m.sender_id IN (7,9)))",
 		ws_guest_lines_sql(array(7, '9', "9' OR '1", 0, -2), 'm.'));
 }
 
@@ -167,4 +167,14 @@ function test_ws_guest_agent_facts_carry_no_usage_state_or_report_age()
 	$facts = ws_guest_agent_facts(array('kind' => 'app', 'role' => 'worker', 'report_model' => 'm', 'report_usage' => '[{"name":"weekly","percent":61,"resets_at":1}]', 'report_at' => 5, 'status' => 'active', 'seen_at' => 9), array('worker' => 'Worker'));
 
 	pg_assert_same(array('role', 'model'), array_keys($facts));
+}
+
+function test_ws_guest_line_sender_reads_an_agents_task_card()
+{
+	pg_assert_same('agent', ws_guest_line_sender(array('sender_kind' => 'app', 'sender_id' => 7, 'kind' => 'task'), array(7)));
+}
+
+function test_ws_guest_lines_sql_lists_an_agents_task_card()
+{
+	pg_assert_same(false, strpos(ws_guest_lines_sql(array(7), 'm.'), "kind <> 'task'"));
 }

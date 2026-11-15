@@ -340,9 +340,8 @@ function test_dashboard_v2_shop_days_match_the_ready_report()
 	foreach (array(0, 1, 2) as $period) {
 		$days = pg_dashboard_v2_shop_days($period);
 		$windows = pg_dashboard_v2_shop_windows($period, 0, $midnight);
-		$filters = pg_ready_report_filters(pg_ready_reports()['sales_over_time'], $days);
-		$date = end($filters);
+		$range = pg_ready_report_range(pg_ready_reports()['sales_over_time'], $days, $now);
 
-		pg_assert_same(date('Y-m-d', $windows['now'][0]), pg_report_dynamic_value('days ago', $date['dynamic_value_attribute'], 'date', $now), 'period ' . $period);
+		pg_assert_same($windows['now'][0], mktime(0, 0, 0, (int) $range['start_month'], (int) $range['start_day'], (int) $range['start_year']), 'period ' . $period);
 	}
 }

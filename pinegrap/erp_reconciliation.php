@@ -108,7 +108,7 @@ $output_send_card = '';
 if (!(defined('USER_ERP_READONLY') && USER_ERP_READONLY)) {
     $output_send_card = '
                     <div class="card mb-7">
-                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Send by e-mail') . '</div>
+                        <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('Send by e-mail') . '</h2>
                         <div class="card-body">
                             <form name="form" method="post" action="erp_reconciliation.php">
                                 ' . get_token_field() . '
@@ -162,26 +162,26 @@ pg_page_shell([
         -->
         <div class="col-12 lg:col-8 2xl:col-9 order-1">
             <div class="card my-7">
-                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Letter') . '</div>
+                <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('Letter') . '</h2>
                 <div class="card-body">
                     <form method="get" action="erp_reconciliation.php">
                         <input type="hidden" name="id" value="' . $account_id . '" />
                         <div class="row">
-                            <div class="col-12 md:col-4 my-3">
+                            <div class="col-12 md:col-3 my-3">
                                 <div class="form-field">
                                     <label for="as_of" class="form-label">' . lang('Balance as of') . '</label>
                                     <input type="date" data-pg-date id="as_of" name="as_of" class="form-control" value="' . h($options['as_of']) . '" max="' . h(date('Y-m-d')) . '" />
                                     <div class="form-text">' . lang('The balance and the movements are read as of this date; later postings are left out.') . '</div>
                                 </div>
                             </div>
-                            <div class="col-12 md:col-4 my-3">
+                            <div class="col-12 md:col-3 my-3">
                                 <div class="form-field">
                                     <label for="from" class="form-label">' . lang('List movements from') . '</label>
                                     <input type="date" data-pg-date id="from" name="from" class="form-control" value="' . h($options['from']) . '" max="' . h($options['as_of']) . '" />
                                     <div class="form-text">' . lang('Everything before this date is one opening balance.') . '</div>
                                 </div>
                             </div>
-                            <div class="col-12 md:col-4 my-3">
+                            <div class="col-12 md:col-3 my-3">
                                 <div class="form-field">
                                     <label for="reply_days" class="form-label">' . lang('Days to reply') . '</label>
                                     <input type="number" id="reply_days" name="reply_days" class="form-control" value="' . (int) $options['reply_days'] . '" min="0" max="' . (int) ERP_RECONCILIATION_MAX_REPLY_DAYS . '" step="1" />
@@ -197,7 +197,7 @@ pg_page_shell([
             </div>
 
             <div class="card mb-7">
-                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold d-flex align-items-center">
+                <div class="card-header bg-reset border-0 pg-title-section d-flex align-items-center">
                     <span>' . lang('Preview') . '</span>
                     <a class="btn btn-sm btn-link ms-auto" href="' . $pdf_url . '&amp;html=1" target="_blank" rel="noopener">' . lang('Open in a new tab') . '</a>
                 </div>
@@ -216,15 +216,15 @@ pg_page_shell([
             <!-- 3.3rem: the fixed control panel header covers the top of the window. -->
             <div class="position-sticky" style="top:3.3rem;">
                 <div class="card my-7">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Balance') . '</div>
+                    <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('Balance') . '</h2>
                     <div class="card-body">
-                        <div class="fg-secondary small">' . h(lang(array('string' => 'Balance as of {var:1}', 'vars' => prepare_form_data_for_output($options['as_of'], 'date', false)))) . '</div>
+                        <div class="pg-text-2">' . h(lang(array('string' => 'Balance as of {var:1}', 'vars' => prepare_form_data_for_output($options['as_of'], 'date', false)))) . '</div>
                         <div class="d-flex flex-wrap align-items-baseline gap-3 my-3">
                             <span class="h4 mb-0 ' . $balance_class . '">' . h(erp_money_out(abs($balance['base']))) . '</span>
                             <span class="fg-secondary">' . h($balance_side) . '</span>
                         </div>
                         ' . (($output_balance_fc !== '') ? '<div class="mb-3">' . $output_balance_fc . '</div>' : '') . '
-                        <div class="fg-secondary small">' . h(lang(array('string' => '{var:1} movement(s) between {var:2} and {var:3}', 'vars' => array($movement_count, prepare_form_data_for_output($options['from'], 'date', false), prepare_form_data_for_output($options['as_of'], 'date', false))))) . '</div>
+                        <div class="pg-text-2">' . h(lang(array('string' => '{var:1} movement(s) between {var:2} and {var:3}', 'vars' => array($movement_count, prepare_form_data_for_output($options['from'], 'date', false), prepare_form_data_for_output($options['as_of'], 'date', false))))) . '</div>
                     </div>
                     ' . (($output_late_fee !== '') ? '<div class="card-footer bg-reset">' . $output_late_fee . '</div>' : '') . '
                 </div>

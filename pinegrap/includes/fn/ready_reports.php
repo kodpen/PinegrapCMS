@@ -236,17 +236,15 @@ function pg_ready_report_requested($value, $screen)
 }
 
 /**
- * The filters a ready report opens with: its own, then its period as an
- * order date filter "is greater than or equal to N day(s) ago", N being one
- * less than the days counted, so today is the last of them. Pure.
+ * The filters a ready report opens with: its own. Its period is no filter
+ * but the date changer's range (pg_ready_report_range()), so the report
+ * shows its period and the period control as every order report does. Pure.
  *
  * @param array $report an entry of pg_ready_reports()
- * @param int   $days   days to count instead of its period (0: its own;
- *                      pg_ready_report_days())
  * @return array field, operator, value, dynamic_value and
  *               dynamic_value_attribute of each filter
  */
-function pg_ready_report_filters($report, $days = 0)
+function pg_ready_report_filters($report)
 {
     $filters = array();
 
@@ -260,25 +258,48 @@ function pg_ready_report_filters($report, $days = 0)
         );
     }
 
+    return $filters;
+}
+
+/**
+ * The date changer's range a ready report opens with: its days through
+ * today, the first of them at midnight, in the default time zone (the
+ * site's). The dashboard cards' windows start at that same midnight.
+ * Pure but for the clock when $now is not given.
+ *
+ * @param array    $report an entry of pg_ready_reports()
+ * @param int      $days   days to count instead of its period (0: its own;
+ *                         pg_ready_report_days())
+ * @param int|null $now    the moment to count back from (default: now)
+ * @return array start_month, start_day, start_year, stop_month, stop_day,
+ *               stop_year as zero-padded text, as the date changer keeps
+ *               them; empty without a period (the range last chosen stays)
+ */
+function pg_ready_report_range($report, $days = 0, $now = null)
+{
     $days = ((int) $days > 0) ? (int) $days : (int) ($report['period'] ?? 0);
 
-    if ($days > 0) {
-        $filters[] = array(
-            'field' => 'order_date',
-            'operator' => 'is greater than or equal to',
-            'value' => '',
-            'dynamic_value' => 'days ago',
-            'dynamic_value_attribute' => (string) ($days - 1),
-        );
+    if ($days < 1) {
+        return array();
     }
 
-    return $filters;
+    $now = ($now === null) ? time() : (int) $now;
+    $start = strtotime('-' . ($days - 1) . ' days', strtotime(date('Y-m-d', $now)));
+
+    return array(
+        'start_month' => date('m', $start),
+        'start_day' => date('d', $start),
+        'start_year' => date('Y', $start),
+        'stop_month' => date('m', $now),
+        'stop_day' => date('d', $now),
+        'stop_year' => date('Y', $now),
+    );
 }
 
 /**
  * The address that opens a ready report on its screen. Pure.
  *
- * An order report counts its days by a date filter (&days=N); a visitor
+ * An order report counts its days in its date changer's range (&days=N); a visitor
  * report by its date changer's preset (&p=<preset>), its own period's when
  * no days are given, none when the count has no preset (the range the
  * person last chose stays).

@@ -97,7 +97,7 @@ function test_menu_header_draws_a_navigator_screen_from_its_own_cookie()
 	pg_assert_same(1, substr_count($header, 'output_menu(array('), 'built once, not again in the sidebar');
 	pg_assert_contains("if (pg_menu_navigator()) {\n            \$menu_state = pg_menu_navigator_state(isset(\$_COOKIE['softwaremenunav'])", $header, 'its own cookie');
 	pg_assert_contains("\$menu_navigator_attribute = ' data-pg-menu-navigator';", $header, 'marked for the script');
-	pg_assert_contains("\$menu_hidden_class . '\"' . \$menu_navigator_attribute . '>", $header, 'on the container');
+	pg_assert_contains("\$menu_drawer_class . '\"' . \$menu_navigator_attribute . '>", $header, 'on the container');
 
 	// Only a panel that opens by itself makes a navigator screen.
 	$menu = pg_test_function_source('output_menu');

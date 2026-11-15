@@ -38,7 +38,7 @@
 - decisions-made-panel-6.md: Decisions list, panel part 6 (2026-11-12 on): the panel's design language from look A (#8842); the names Design Canvas and Page Design Studio, the design menu with Other (#8849)
 - decisions-made-panel-7.md: Decisions list, panel part 7 (2026-11-12 on): look A's second pass and dialogs page as reference (#8860); add, edit, list widths, no pager; Design Canvas icon (#8903); dashboard keeps its look (#8938)
 - decisions-made-panel-8.md: Decisions list, panel part 8 (2026-11-12 on): report page reference (#8955); switch thumb (#9070); Design Canvas icon in one colour (#9250); form column cards (#9271); the Communication row's drawing
-- decisions-made-panel-9.md: Decisions list, panel part 9 (2026-11-14 on): the dashboard's assistant chat keeps its last lines after a reload; a link that opens reads "Aç", not "Açık"
+- decisions-made-panel-9.md: Decisions list, panel part 9 (2026-11-14 on): assistant chat after a reload; a link that opens reads "Aç"; kept screens' two buttons and widths; Site Settings keeps its place after a save
 - decisions-made-panel.md: Decisions list, panel part: Bootstrap 6 breakpoints kept on purpose; the one date-and-time picker; the main menu in category headings; navigator screens; the front-end editing button box
 - decisions-made-product-10.md: Decisions list, product part 10 (2026-10-30 evening on): Turkish i-fold in panel lists, public invoice PDF address, e-mail triage suggestion, Workspace uploads, no collection schedule columns
 - decisions-made-product-11.md: Decisions list, product part 11 (2026-10-30 night on): CRM shape, storefront API timing, the two support e-mail fields, slash commands over the API, e-mail-a-friend limit off the log
@@ -89,7 +89,7 @@
 - decisions-made-product-52.md: Decisions made, product part 52: deleting a user ends the account's open store credit; a Void button for a card with no account; the add-on hook system and mobile API come after the running plans
 - decisions-made-product-53.md: Decisions made, product part 53: a team device gets the person's own plans scope; the Team devices ceiling gains four read scopes; M7 native push is moved forward with its one column
 - decisions-made-product-54.md: Decisions made, product part 54: the designer's closed blocks are opened in the proposed order, most met first; the visitor AI assistant does not start now
-- decisions-made-product-55.md: Decisions made, product part 55 (2026-11-15): a Send later e-mail whose writer lost the right to answer there is not sent; it turns back into its draft, with a notice
+- decisions-made-product-55.md: Decisions made, product part 55 (2026-11-15): a Send later e-mail of a writer who lost the right turns back into its draft; the star rating input as five stars; message boxes' width on a wide screen
 - decisions-made-product-6.md: Decisions list, product part 6 (2026-10-29 night on): subscriptions (later-starting lines, price notice, operator screen), AI assistant and add-ons wait, printed order's shipping card
 - decisions-made-product-7.md: Decisions list, product part 7 (2026-10-30 on): customs data on international labels, carrier pickup requests from the panel, ShipWorks through the shipment write path
 - decisions-made-product-8.md: Decisions list, product part 8 (2026-10-30 midday on): Trendyol-carried packages refused by Create Label, starter dump corrections for #3330, marketing SMS in 2026.11.0, forum template wording

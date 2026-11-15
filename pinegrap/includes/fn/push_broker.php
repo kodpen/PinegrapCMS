@@ -75,16 +75,7 @@ function pg_push_broker_base($value)
  */
 function pg_push_broker_has_provider()
 {
-    static $available = null;
-
-    if ($available === null) {
-        $available = pg_push_schema_available() && ((int) db_value("SELECT COUNT(*) FROM information_schema.COLUMNS
-            WHERE TABLE_SCHEMA = DATABASE()
-            AND TABLE_NAME = 'push_subscriptions'
-            AND COLUMN_NAME = 'provider'") > 0);
-    }
-
-    return $available;
+    return pg_push_schema_available() && pg_push_has_provider();
 }
 
 /**
@@ -268,13 +259,14 @@ function pg_push_broker_call($action, array $payload, $send = null)
     $body = json_encode($payload, JSON_UNESCAPED_SLASHES);
 
     if ($send === null) {
-        $send = function ($url, $body, $headers) {
+        $send = function ($url, $body, $headers) use ($action) {
             include_once(PG_FUNCTIONS_DIR . '/includes/api/outbound/http.php');
 
             return api_http_request('POST', $url, array(
                 'body'             => $body,
                 'headers'          => $headers,
-                'timeout'          => 10,
+                // A forget runs inside a sign-out; it does not hold it long.
+                'timeout'          => ($action === 'forget') ? 5 : 10,
                 'agent'            => 'push',
                 'response_headers' => true,
             ));
@@ -284,4 +276,29 @@ function pg_push_broker_call($action, array $payload, $send = null)
     $result = call_user_func($send, $url, $body, $headers);
 
     return pg_push_broker_answer($action, is_array($result) ? $result : array('status' => 0));
+}
+
+/**
+ * Has the broker forget native push endpoints whose rows the site is about to
+ * delete: a device signed out or revoked, its registration deleted, a row an
+ * operator stopped. Asks nothing while no broker is set; a broker that does
+ * not answer is not asked again, and the endpoint, never used again, expires
+ * there. The caller deletes the rows itself. Needs includes/push.php.
+ *
+ * @param string[] $endpoints
+ * @return void
+ */
+function pg_push_broker_forget_endpoints($endpoints)
+{
+    if (pg_push_broker_base(PG_PUSH_BROKER_URL) === '') {
+        return;
+    }
+
+    foreach ((array) $endpoints as $endpoint) {
+        $answer = pg_push_broker_call('forget', array('endpoint' => (string) $endpoint));
+
+        if ($answer['reason'] === 'unreachable') {
+            return;
+        }
+    }
 }

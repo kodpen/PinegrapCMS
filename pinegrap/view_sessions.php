@@ -115,6 +115,18 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
 
     } elseif ($session_action === 'revoke_push') {
 
+        // A native push row is an endpoint at the push broker, which is told
+        // to forget it first.
+        if (pg_push_has_provider()) {
+            $broker_endpoints = db_values("SELECT endpoint FROM push_subscriptions
+                WHERE id = '" . $target_push_id . "' AND provider <> ''");
+
+            if ($broker_endpoints) {
+                require_once(PG_FUNCTIONS_DIR . '/includes/fn/push_broker.php');
+                pg_push_broker_forget_endpoints($broker_endpoints);
+            }
+        }
+
         db("DELETE FROM push_subscriptions WHERE id = '" . $target_push_id . "'");
 
         log_activity(lang(array('string' => 'stopped notifications on one device of user ({var:1})', 'vars' => array($target_username))), USER_USERNAME);
@@ -126,10 +138,15 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         // push carries no text, as every push here does; the device wakes, asks
         // this site what is waiting, and shows whatever that is - the generic
         // wording when nothing is.
-        $test_subscription = db_item("SELECT id, endpoint, p256dh, auth, user_agent
+        $test_subscription = db_item("SELECT id, user_id, endpoint, p256dh, auth, user_agent, "
+            . ((pg_push_has_provider()) ? "provider" : "'' AS provider") . ", "
+            . ((pg_push_has_last_error()) ? "last_error" : "'' AS last_error") . "
             FROM push_subscriptions WHERE id = '" . $target_push_id . "'");
 
-        $test_result = ($test_subscription) ? pg_push_send_to_subscription($test_subscription) : array('ok' => false);
+        // A native push row shows the person's unread count as its badge.
+        $test_badge = ($test_subscription && ((string) $test_subscription['provider'] !== '')) ? pg_push_badge((int) $test_subscription['user_id']) : 0;
+
+        $test_result = ($test_subscription) ? pg_push_send_to_subscription($test_subscription, $test_badge) : array('ok' => false);
 
         log_activity(lang(array('string' => 'sent a test notification to one device of user ({var:1})', 'vars' => array($target_username))), USER_USERNAME);
 
