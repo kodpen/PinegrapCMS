@@ -4,7 +4,7 @@ description: Agents asked to approve over the external API (AE4, #9584): the age
 ---
 
 ## How does an API call ask agents to approve?
-- `POST /workspace/channels/{id}/approvals` takes `agents`, each a handle (with or without @, any case) or `agent:<id>`, up to ten. `ws_api_approval_agent_values()` resolves them against `ws_approval_agent_options($channel)`; an unknown name is refused with 422 at `agents`, never dropped.
+- `POST /workspace/channels/{id}/approvals` takes `agents`, each a handle (with or without @, any case), `agent:<id>`, `model:<id>` or `ai` for Pinegrap AI (`approval-assistants.md`), up to ten. `ws_api_approval_agent_values()` resolves them against `ws_approval_agent_options($channel)`; an unknown name is refused with 422 at `agents`, never dropped.
 - Only the person's own team devices session may name agents (`ws_api_writer_app_id()` 0, the by-hand bound of `approval-agents.md`). An application key or an OAuth connection, MCP clients among them, is an application asking and is refused with the bound's 422.
 - The dry run checks the same through `ws_approval_input()` and lists `agents` in its detail.
 

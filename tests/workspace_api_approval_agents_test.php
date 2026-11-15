@@ -52,6 +52,15 @@ function test_workspace_api_approval_agent_values_unknown()
 	pg_assert_same('claude', ws_api_approval_agent_values(array('claude'), array())['unknown'], 'no agent offered');
 }
 
+// Pinegrap AI has no handle: it is named ai, and an empty name never matches it.
+function test_workspace_api_approval_agent_values_pinegrap_ai()
+{
+	$options = array(array('value' => 'ai', 'handle' => '', 'name' => 'Pinegrap AI'), array('value' => 'model:3', 'handle' => 'gemini', 'name' => 'Gemini'));
+
+	pg_assert_same(array('values' => array('ai', 'model:3'), 'unknown' => ''), ws_api_approval_agent_values(array('AI', '@gemini'), $options));
+	pg_assert_same(null, ws_api_approval_agent_present(array('agent' => 'ai', 'decision' => 'pending', 'note' => '', 'decided_at' => 0), array('handle' => '', 'name' => 'Pinegrap AI'))['handle'], 'no handle shown');
+}
+
 // One agent asked, with its answer.
 function test_workspace_api_approval_agent_present()
 {

@@ -10,8 +10,8 @@ description: Agents asked to approve (AE2): ws_approval_agents, who may be asked
 
 
 ## Which agents may be asked?
-- `ws_approval_agent_options($channel)`: the channel's active `app` agents of the registry it allows (a discussion: its own and its channel's rows, `ws_agent_reach_rows()`), each as its request value `agent:<id>`. Up to 10 agents beside up to 10 people.
-- Model agents, Claude and Pinegrap AI are not offered yet: they answer through the site that carries them on (plan step AE4b).
+- `ws_approval_agent_options($channel)`: the channel's active `app` agents of the registry it allows (and the assistants, `approval-assistants.md`) (a discussion: its own and its channel's rows, `ws_agent_reach_rows()`), each as its request value `agent:<id>`. Up to 10 agents beside up to 10 people.
+- Model assistants and Pinegrap AI are offered too and answer in the site's own run: `approval-assistants.md`. Claude is not offered yet (plan step AE4c).
 
 ## What happens when an agent is asked?
 - `ws_approval_agents_ask()`: one `ws_approval_agents` row (approval_id, agent, request_id, decision, note, decided_at) and one request in its queue through `ws_agent_after_send()` in followed mode, so it is asked by name whatever its wake rule; brakes and the push knock as for any request. `request_id` keeps that request.

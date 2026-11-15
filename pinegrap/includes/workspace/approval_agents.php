@@ -3,9 +3,11 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Workspace - agents asked to approve. A request a person makes by hand may
- * ask the channel's active application agents of the registry beside its
- * people. Model agents, Claude and Pinegrap AI answer through the site that
- * carries them on, which this file does not do yet: they are not offered. Each agent asked is one ws_approval_agents
+ * ask the channel's active application agents and model assistants of the
+ * registry, and Pinegrap AI, beside its people. An application agent answers
+ * with its own key; a model assistant and Pinegrap AI answer in the site's
+ * own run (ws_ai_step()) with the decide tool. Claude is not offered yet.
+ * Each agent asked is one ws_approval_agents
  * row and one request in its queue (ws_ai_requests), made at once with the
  * approval told in its brief; it answers Approve or Reject with a note, and
  * its answer counts in the request's rule as a person's does
@@ -57,7 +59,7 @@ function ws_approval_agents_allowed($by_hand, $app_id)
 
 /**
  * The agents a form or the API names, kept as their request values
- * (agent:<id>, model:<id>), each once, in the order given; anything of
+ * (agent:<id>, model:<id>, ai), each once, in the order given; anything of
  * another shape is left out. Pure.
  *
  * @param mixed $given
@@ -70,12 +72,43 @@ function ws_approval_agents_clean($given)
     foreach ((array) $given as $value) {
         $value = strtolower(trim((string) $value));
 
-        if ((preg_match('/^(agent|model):([1-9][0-9]{0,9})$/', $value) === 1) && !in_array($value, $out, true)) {
+        if ((preg_match('/^((agent|model):[1-9][0-9]{0,9}|ai)$/', $value) === 1) && !in_array($value, $out, true)) {
             $out[] = $value;
         }
     }
 
     return $out;
+}
+
+/**
+ * The request value an agent asked answers under: agent:<id>, model:<id>,
+ * or ai for Pinegrap AI (ws_approval_agent_ai_row()). Pure.
+ *
+ * @param array $agent ws_agents row, or Pinegrap AI's row
+ * @return string '' for any other kind
+ */
+function ws_approval_agent_value($agent)
+{
+    return ((string) ($agent['kind'] ?? '') === 'ai') ? 'ai' : ws_agent_request_value($agent);
+}
+
+/**
+ * Pinegrap AI as an agent asked: it has no registry row, so this one stands
+ * for it, with the application it writes through.
+ *
+ * @return array id, kind, handle, name, app_id, status, avatar
+ */
+function ws_approval_agent_ai_row()
+{
+    return array(
+        'id'     => 0,
+        'kind'   => 'ai',
+        'handle' => '',
+        'name'   => 'Pinegrap AI',
+        'app_id' => function_exists('ws_ai_config') ? (int) ws_ai_config()['app_id'] : 0,
+        'status' => 'active',
+        'avatar' => '',
+    );
 }
 
 /**
@@ -93,24 +126,29 @@ function ws_approval_agent_may_answer($agent_app_id, $message_app_id)
 
 /**
  * The agents of a channel that may be asked: its active application agents
- * the channel allows (a discussion: its own and its channel's), as the form
- * lists them. An application agent answers with its own key.
+ * and model assistants the channel allows (a discussion: its own and its
+ * channel's), then Pinegrap AI where it may be asked, as the form lists
+ * them. An application agent answers with its own key, the others in the
+ * site's run.
  *
  * @param array $channel
  * @return array[] value, id, kind, handle, name, app_id
  */
 function ws_approval_agent_options($channel)
 {
-    if (!function_exists('ws_agent_reach_rows') || !function_exists('ws_agents_ready') || !ws_agents_ready()) {
-        return array();
-    }
-
     $out = array();
+    $rows = (function_exists('ws_agent_reach_rows') && function_exists('ws_agents_ready') && ws_agents_ready()) ? ws_agent_reach_rows($channel) : array();
 
-    foreach (ws_agent_reach_rows($channel) as $row) {
+    foreach ($rows as $row) {
         $value = ws_agent_request_value($row);
+        $kind = (string) $row['kind'];
 
-        if (($value === '') || ((string) $row['kind'] !== 'app') || ((string) ($row['status'] ?? 'active') !== 'active') || isset($out[$value])) {
+        if (($value === '') || !in_array($kind, array('app', 'model'), true) || ((string) ($row['status'] ?? 'active') !== 'active') || isset($out[$value])) {
+            continue;
+        }
+
+        // A model assistant is never asked where a guest reads along.
+        if (($kind === 'model') && function_exists('ws_model_channel_allowed') && !ws_model_channel_allowed($row, $channel)) {
             continue;
         }
 
@@ -122,6 +160,12 @@ function ws_approval_agent_options($channel)
             'name'   => (string) $row['name'],
             'app_id' => (int) $row['app_id'],
         );
+    }
+
+    if (function_exists('ws_ai_ready') && ws_ai_ready() && ws_ai_channel_allowed($channel)) {
+        $ai = ws_approval_agent_ai_row();
+
+        $out['ai'] = array('value' => 'ai', 'id' => 0, 'kind' => 'ai', 'handle' => '', 'name' => $ai['name'], 'app_id' => $ai['app_id']);
     }
 
     return array_values($out);
@@ -173,13 +217,17 @@ function ws_approval_agents_of($approval_id)
 }
 
 /**
- * The registry row behind a request value, or null.
+ * The registry row behind a request value, Pinegrap AI's for ai, or null.
  *
- * @param string $value agent:<id> | model:<id>
+ * @param string $value agent:<id> | model:<id> | ai
  * @return array|null
  */
 function ws_approval_agent_row($value)
 {
+    if ((string) $value === 'ai') {
+        return ws_approval_agent_ai_row();
+    }
+
     $parts = explode(':', (string) $value);
 
     if ((count($parts) !== 2) || !function_exists('ws_agent')) {
@@ -202,6 +250,10 @@ function ws_approval_agent_label($value)
 {
     $row = ws_approval_agent_row($value);
 
+    if ($row && ((string) $row['handle'] === '')) {
+        return (string) $row['name'];
+    }
+
     return $row ? '@' . (string) $row['handle'] : (string) $value;
 }
 
@@ -210,9 +262,11 @@ function ws_approval_agent_label($value)
  * rest of the brief. Pure.
  *
  * @param array $approval id, title, rule, closes_at
+ * @param bool  $tool     answered in the site's run with the decide tool,
+ *                        not over the API
  * @return string[]
  */
-function ws_approval_agent_brief_lines($approval)
+function ws_approval_agent_brief_lines($approval, $tool = false)
 {
     $closes = (int) ($approval['closes_at'] ?? 0);
     $lines = array();
@@ -226,7 +280,9 @@ function ws_approval_agent_brief_lines($approval)
         $lines[] = 'It closes on ' . gmdate('Y-m-d H:i', $closes) . ' UTC.';
     }
 
-    $lines[] = 'Answer with POST /workspace/approvals/' . (int) ($approval['id'] ?? 0) . '/decide, decision approve or reject, and a note saying why. Do not answer it with a message.';
+    $lines[] = $tool
+        ? 'Answer with the decide tool, decision approve or reject, and a note saying why. Do not answer it with a message.'
+        : 'Answer with POST /workspace/approvals/' . (int) ($approval['id'] ?? 0) . '/decide, decision approve or reject, and a note saying why. Do not answer it with a message.';
 
     return $lines;
 }
@@ -283,7 +339,18 @@ function ws_approval_agents_ask($viewer, $channel, $approval, $agents)
         db("INSERT IGNORE INTO ws_approval_agents (approval_id, agent) VALUES ('" . (int) $approval['id'] . "', '" . e($value) . "')");
 
         // Followed mode: the agent is asked by name, whatever its wake rule.
-        $made = ws_agent_after_send($viewer, $channel, (int) $approval['message_id'], $body, $value, false, array('state' => $state));
+        // Pinegrap AI has a queue of its own; its request is given the
+        // approval once made.
+        if ($value === 'ai') {
+            $made = ws_ai_after_send($viewer, $channel, (int) $approval['message_id'], $body, true) ? array('ai') : array();
+
+            if (!empty($made)) {
+                db("UPDATE ws_ai_requests SET ai_state = '" . e($state) . "'
+                    WHERE agent = 'ai' AND message_id = '" . (int) $approval['message_id'] . "' AND status = 'queued' ORDER BY id DESC LIMIT 1");
+            }
+        } else {
+            $made = ws_agent_after_send($viewer, $channel, (int) $approval['message_id'], $body, $value, false, array('state' => $state));
+        }
 
         if (in_array($value, $made, true)) {
             $request_id = (int) db_value("SELECT MAX(id) FROM ws_ai_requests
@@ -311,7 +378,7 @@ function ws_approval_agent_decide_check($agent, $approval, $decision, $note = nu
     $fail = function ($error, $expired = false) {
         return array('ok' => false, 'error' => $error, 'expired' => $expired);
     };
-    $value = ws_agent_request_value($agent);
+    $value = ws_approval_agent_value($agent);
 
     if (!in_array($decision, array('approve', 'reject'), true)) {
         return $fail(lang('Invalid request.'));
@@ -397,7 +464,7 @@ function ws_approval_agent_decide($agent, $approval, $decision, $note = '')
         return array('ok' => false, 'error' => $checked['error']);
     }
 
-    $value = ws_agent_request_value($agent);
+    $value = ws_approval_agent_value($agent);
     $note = mb_substr(trim(preg_replace('/\s+/u', ' ', (string) $note)), 0, 255);
     $now = time();
 
@@ -450,7 +517,7 @@ function ws_approval_agents_card($approval_ids)
             'agent'    => true,
             'value'    => (string) $row['agent'],
             'name'     => $agent ? (string) $agent['name'] : (string) $row['agent'],
-            'handle'   => $agent ? '@' . (string) $agent['handle'] : '',
+            'handle'   => ($agent && ((string) $agent['handle'] !== '')) ? '@' . (string) $agent['handle'] : '',
             'icon'     => 'bi-robot',
             'avatar'   => $agent ? (string) $agent['avatar'] : '',
             'decision' => (string) $row['decision'],
@@ -460,4 +527,64 @@ function ws_approval_agents_card($approval_ids)
     }
 
     return $out;
+}
+
+/**
+ * The agent a request in the site's own run answers as: Pinegrap AI or a
+ * model assistant; null for any other request.
+ *
+ * @param array $row ws_ai_requests: agent
+ * @return array|null
+ */
+function ws_approval_agent_run_agent($row)
+{
+    $value = (string) ($row['agent'] ?? '');
+
+    if (($value !== 'ai') && (strpos($value, 'model:') !== 0)) {
+        return null;
+    }
+
+    return ws_approval_agent_row($value);
+}
+
+/**
+ * The tool the site's run answers an approval request with, in place of
+ * answer: the decision and why. Pure.
+ *
+ * @return array an OpenAI-style function tool
+ */
+function ws_approval_agent_decide_tool()
+{
+    return array('type' => 'function', 'function' => array(
+        'name'        => 'decide',
+        'description' => 'Approve or reject the approval request you were asked, once, at the end. This is your whole answer: no message is written.',
+        'parameters'  => array('type' => 'object', 'properties' => (object) array(
+            'decision' => array('type' => 'string', 'enum' => array('approve', 'reject')),
+            'note'     => array('type' => 'string', 'description' => 'Why, in a sentence, in the language of the request. When the request asks for an answer (a text or a number), the approval carries that answer here.'),
+        ), 'required' => array('decision', 'note')),
+    ));
+}
+
+/**
+ * The decide tool of the site's run (ws_ai_step()): records the answer of
+ * the agent the request was made for through ws_approval_agent_decide(),
+ * which also closes the request.
+ *
+ * @param array $row  ws_ai_requests
+ * @param array $args decision, note
+ * @return string '' once recorded, else why not
+ */
+function ws_approval_agent_run_decide($row, $args)
+{
+    $asked = ws_approval_agent_request_of($row);
+    $approval = $asked ? ws_approval((int) ($asked['id'] ?? 0)) : null;
+    $agent = ws_approval_agent_run_agent($row);
+
+    if (!$approval || !$agent) {
+        return lang('That approval request could not be found.');
+    }
+
+    $result = ws_approval_agent_decide($agent, $approval, strtolower(trim((string) ($args['decision'] ?? ''))), (string) ($args['note'] ?? ''));
+
+    return $result['ok'] ? '' : (string) $result['error'];
 }
