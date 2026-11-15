@@ -89,6 +89,7 @@
 - decisions-made-product-52.md: Decisions made, product part 52: deleting a user ends the account's open store credit; a Void button for a card with no account; the add-on hook system and mobile API come after the running plans
 - decisions-made-product-53.md: Decisions made, product part 53: a team device gets the person's own plans scope; the Team devices ceiling gains four read scopes; M7 native push is moved forward with its one column
 - decisions-made-product-54.md: Decisions made, product part 54: the designer's closed blocks are opened in the proposed order, most met first; the visitor AI assistant does not start now
+- decisions-made-product-55.md: Decisions made, product part 55 (2026-11-15): a Send later e-mail whose writer lost the right to answer there is not sent; it turns back into its draft, with a notice
 - decisions-made-product-6.md: Decisions list, product part 6 (2026-10-29 night on): subscriptions (later-starting lines, price notice, operator screen), AI assistant and add-ons wait, printed order's shipping card
 - decisions-made-product-7.md: Decisions list, product part 7 (2026-10-30 on): customs data on international labels, carrier pickup requests from the panel, ShipWorks through the shipment write path
 - decisions-made-product-8.md: Decisions list, product part 8 (2026-10-30 midday on): Trendyol-carried packages refused by Create Label, starter dump corrections for #3330, marketing SMS in 2026.11.0, forum template wording
@@ -144,6 +145,7 @@
 - decisions-made-workspace-30.md: Decisions made, workspace part 30 (2026-11-14 on): agents and assistants as approvers, within a bound; the tag @herkes; plans go to a second calendar; an orphan roadmap template stays
 - decisions-made-workspace-31.md: Decisions made, workspace part 31 (2026-11-14 on): the conversion of e-mail campaign profiles into flows (MA9e2) was shown to the owner on a local copy and he let it land
 - decisions-made-workspace-32.md: Decisions made, workspace part 32 (2026-11-15): the site tells an application agent how it works; who an agent or a person is shows in channels; Channel settings and Channel info redrawn
+- decisions-made-workspace-33.md: Decisions made, workspace part 33 (2026-11-15): the guest page shows agents' files, a canvas as its picture, task cards and live pages, read only, and an agent's role and model
 - decisions-made-workspace-4.md: Decisions list, workspace part 4 (2026-10-30 on): webhook URL digits exception, CRM seams 10 (N-days start, lead_source), flow run notices per chain
 - decisions-made-workspace-5.md: Decisions list, workspace part 5 (from 2026-10-30 evening): Workspace list and channel redrawn; who builds the design; one inbox; panel colours; a deleted Flows box takes its values; Today page
 - decisions-made-workspace-6.md: Decisions list, workspace part 6 (2026-11-01 on): calendar move writes a due date back; the pinned My Notes row opens the Workspace list; the list's top and the tour's place; flow draft card read-only

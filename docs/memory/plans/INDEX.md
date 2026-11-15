@@ -53,6 +53,8 @@
 - panel-old-screens-census-site-settings.md: Census LM1b against look A (S5): the Site Settings categories in includes/settings/ (dialog and settings_<key>.php pages): inline styles, old classes, rows without icon tiles
 - panel-old-screens-census-site-system.md: Census LM1b against look A: visitors and logs (S4: Site Log, Audit Trail, Firewall log, Performance, Search Console), System tools, Translations, settings pages outside the dialog (S6)
 - panel-old-screens-census-site.md: Census LM1b of old panel screens (pages, files, forms, comments, users, visitors, tools, Site Settings) against look A: what each draws its own way, sizes, six step groups
+- panel-old-screens-rules.md: Old panel screens to look A: what the architect's looks decided beyond the sheet (2026-11-15): the owner's kept screens, address parts, a narrow field alone in its row, values the sheet does not name
+- panel-old-screens-shared-steps.md: Old panel screens to look A: the shared steps cut after the groups: field label and input, status list, ERP list table and badges, figure cards, buttons after LM2, list title
 - panel-old-screens.md: Plan (owner 2026-11-15): the panel screens still drawn the old way move to look A; censuses done, LM2 the shared buttons, then one census group per step (C1 to C5, E1 to E5, S1 to S6)
 - php-error-log-clean.md: Plan (owner 2026-11-14): the PHP error log of the owner's dev machine read for Pinegrap's own deprecations and warnings on PHP 8.5, and their causes fixed; steps EL1 to EL6
 - poll-agent-questions.md: Plan (owner 2026-11-14): the poll gains described, pictured and linked options, "Other", taking back and asking again; a poll an agent asks is an agent question, answered in its box; AQ1 to AQ6

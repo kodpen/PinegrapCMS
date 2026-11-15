@@ -291,6 +291,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-53.md: Why were these two taken before the running plans?
 - decisions-made-product-54.md: In which order are the designer's closed blocks opened? (owner, 2026-11-15, channel message 4146)
 - decisions-made-product-54.md: Does the visitor AI assistant start now? (owner, 2026-11-15, channel message 4147)
+- decisions-made-product-55.md: Does a Send later e-mail leave after its writer lost the right to answer there? (owner, 2026-11-15, channel message 4238)
 - decisions-made-product-6.md: What happens to a recurring line that starts after the order date? (#3310)
 - decisions-made-product-6.md: How is a subscription price change noticed and applied? (#3311)
 - decisions-made-product-6.md: Does the panel get an operator Subscriptions screen? (#3343)
@@ -494,6 +495,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-workspace-32.md: Does the site itself tell an application agent how it works? (owner, 2026-11-15, agent channel message 3748)
 - decisions-made-workspace-32.md: Is who an agent or a person is shown in channels? (owner, 2026-11-15, agent channel messages 3775 and 3796)
 - decisions-made-workspace-32.md: How are Channel settings and Channel info redrawn? (owner, 2026-11-15, agent channel messages 3780, 3781, 3783, 3784 and 3786)
+- decisions-made-workspace-33.md: What does a guest see of what agents and canvases put in a room? (owner, 2026-11-15, in the architect's window)
+- decisions-made-workspace-33.md: Does the guest page say an agent's role and model? (owner, 2026-11-15, in the architect's window)
 - decisions-made-workspace-4.md: May a thread end in a webhook box's URL? (#3410)
 - decisions-made-workspace-4.md: How does a customer with no order in N days produce a follow-up? (#3416, part 2)
 - decisions-made-workspace-4.md: Is `contacts.lead_source` picked from `referral_sources`? (#3416, part 3)
