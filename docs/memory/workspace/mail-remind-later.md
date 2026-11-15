@@ -11,7 +11,7 @@ description: Remind me later (IB10): the pane's menu and times, ws_mail_reminder
 
 ## How does it come back?
 - At its time `ws_mail_reminders_run()` (hooked into `ws_task_reminders_waiting()` / `_run()` in reminders.php, loaded by job.php, run before the Workspace switch is asked, so it works with the Workspace off) wakes it; no new job.
-- At once when the customer writes again: `ws_mail_remind_new_mail()` in `ws_mail_ingest()` (e-mail) and in `ws_mail_phone_ingest()` (WhatsApp and SMS, PR #NNNN; before it a set-aside phone conversation stayed hidden until its time, issue #9660), for an ongoing conversation only, before the holder's notice.
+- At once when the customer writes again: `ws_mail_remind_new_mail()` in `ws_mail_ingest()` (e-mail) and in `ws_mail_phone_ingest()` (WhatsApp and SMS, PR #9683; before it a set-aside phone conversation stayed hidden until its time, issue #9660), for an ongoing conversation only, before the holder's notice.
 - A wake is claimed (`woken_at` set where 0), then inbox kind `mail_remind` ("Reminder: {subject}", the customer as body, opens `messages_mail.php?conversation=`). A person who can no longer read the channel is told nothing and the row goes.
 - A woken conversation reads unread (`ws_mail_unread_sql()` ORs `ws_mail_remind_woken_sql()`; list rows and the API's unread map ask `ws_mail_remind_woken_ids()`) until it is read: `ws_mail_read_mark()` for a conversation deletes its woken row, Mark all as read deletes them all.
 
