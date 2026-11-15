@@ -5467,6 +5467,32 @@ nav.buttons.navigation .btn-solid.theme-secondary {
     padding-bottom: 0.5rem !important;
   }
 
+  /* Three actions share one row: at half a row each a long third label
+     (Save & Return) took a row of its own and pushed the last one under it,
+     three full rows of a 390 px screen. Each takes its label's width and the
+     rest of the row is shared out; their icons give way so three Turkish or
+     English labels fit, and a label still too long ends in an ellipsis. The
+     sibling counts read only .btn, so a hidden first submit is not counted.
+     .pg-bar-rows keeps a bar on two per row (screens kept as they are). */
+  nav.buttons.navigation:not(.pg-bar-icons, .pg-bar-rows) .btn:nth-child(1 of .btn):nth-last-child(3 of .btn),
+  nav.buttons.navigation:not(.pg-bar-icons, .pg-bar-rows) .btn:nth-child(1 of .btn):nth-last-child(3 of .btn) ~ .btn {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding-inline: 10px;
+  }
+
+  nav.buttons.navigation:not(.pg-bar-icons, .pg-bar-rows) .btn:nth-child(1 of .btn):nth-last-child(3 of .btn) :is(.bi, .material-icons),
+  nav.buttons.navigation:not(.pg-bar-icons, .pg-bar-rows) .btn:nth-child(1 of .btn):nth-last-child(3 of .btn) ~ .btn :is(.bi, .material-icons) {
+    display: none;
+  }
+
+  nav.buttons.navigation:not(.pg-bar-icons, .pg-bar-rows) .btn:nth-child(1 of .btn):nth-last-child(3 of .btn) .pg-btn-label,
+  nav.buttons.navigation:not(.pg-bar-icons, .pg-bar-rows) .btn:nth-child(1 of .btn):nth-last-child(3 of .btn) ~ .btn .pg-btn-label {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
   /* A bar with many actions (the orders list) shows icons only: half a row
      each still made it four rows and a fifth of the screen. The label stays
      the accessible name and the button's title names it on hover. */
