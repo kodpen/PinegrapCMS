@@ -512,6 +512,20 @@ function ws_personal_plan_at_time($plan, $day)
 }
 
 /**
+ * Where a series cut before one of its times ends (repeat_until): the end
+ * of the time before it, as ws_personal_plan_repeat_until() writes it, so
+ * the drawer reads its last day back and a save keeps the cut. Pure.
+ *
+ * @param array $plan
+ * @param array $time ws_personal_plan_time(), never the first (k >= 1)
+ * @return int
+ */
+function ws_personal_plan_cut_until($plan, $time)
+{
+    return (int) ws_personal_plan_time($plan, max(1, (int) $time['k']) - 1)['ends_at'];
+}
+
+/**
  * Ends a series before one of its times: the times changed out of it from
  * then on and the days skipped from then on are handed to $to (0 deletes
  * them).
@@ -525,7 +539,7 @@ function ws_personal_plan_series_cut($plan, $time, $to)
     $plan_id = (int) $plan['id'];
     $owner = (int) $plan['user_id'];
 
-    db("UPDATE ws_personal_plans SET repeat_until = '" . (int) $time['starts_at'] . "', repeat_count = 0, updated_at = '" . time() . "'
+    db("UPDATE ws_personal_plans SET repeat_until = '" . ws_personal_plan_cut_until($plan, $time) . "', repeat_count = 0, updated_at = '" . time() . "'
         WHERE id = '" . $plan_id . "' AND user_id = '" . $owner . "'");
 
     $later = array_map('intval', (array) db_values("SELECT id FROM ws_personal_plans
