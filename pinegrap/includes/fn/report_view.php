@@ -144,6 +144,72 @@ function pg_report_view_figure($label, $text, $icon, $tint, $note = '', $tone = 
 }
 
 /**
+ * A figure's text as its card prints it: the unit (a currency symbol or a
+ * percent sign) at the start or the end is drawn smaller than the number,
+ * as assets/js/pg_report_view.js figureValue() does. Pure.
+ *
+ * @param string $text "₺12.632,91", "-1.250,00 TL", "45.23%", "7"
+ * @return string HTML, escaped
+ */
+function pg_report_figure_value_html($text)
+{
+    $text = (string) $text;
+    $space = '[\s\x{00A0}\x{202F}]';
+
+    if (preg_match('/^(-?)([^\d\s\x{00A0}\x{202F}.,-]+)' . $space . '?(\d[\d.,\s\x{00A0}\x{202F}]*)$/u', $text, $match)) {
+        return h($match[1]) . '<small>' . h($match[2]) . '</small>' . h($match[3]);
+    }
+
+    if (preg_match('/^(-?\d[\d.,\s\x{00A0}\x{202F}]*?)' . $space . '?([^\d\s\x{00A0}\x{202F}.,-]+)$/u', $text, $match)) {
+        return h($match[1]) . '<small>' . h($match[2]) . '</small>';
+    }
+
+    return h($text);
+}
+
+/**
+ * The summary figures drawn on the server, the same cards the report view
+ * draws in the browser: up to five share one row, more go in two even rows
+ * of at most four. Pure.
+ *
+ * Each figure is pg_report_view_figure()'s array and may add 'url' (the
+ * card then leads there) and 'class' (classes of the figure itself, such
+ * as fg-danger for a figure below zero).
+ *
+ * @param array $figures
+ * @return string '' when there is none
+ */
+function pg_report_figures_html(array $figures)
+{
+    $tints = array('blue', 'violet', 'amber', 'teal', 'rose', 'gray');
+    $html = '';
+
+    foreach ($figures as $figure) {
+        $tint = in_array((string) ($figure['tint'] ?? ''), $tints, true) ? (string) $figure['tint'] : 'gray';
+        $url = (string) ($figure['url'] ?? '');
+        $label = h((string) ($figure['label'] ?? ''));
+        $class = trim((string) ($figure['class'] ?? ''));
+        $note = (string) ($figure['note'] ?? '');
+
+        $html .= '<div class="pg-card pg-report-fig' . (($url !== '') ? ' position-relative' : '') . '">'
+            . '<dt class="pg-report-fig-name"><span class="pg-icon-tile pg-tone-' . $tint . '" aria-hidden="true"><span class="bi ' . h((string) ($figure['icon'] ?? '')) . '"></span></span>'
+            . (($url !== '') ? '<a class="stretched-link pg-link-body-emphasis text-decoration-none" href="' . h($url) . '">' . $label . '</a>' : $label) . '</dt>'
+            . '<dd class="pg-report-fig-value' . (($class !== '') ? ' ' . h($class) : '') . '">' . pg_report_figure_value_html((string) ($figure['text'] ?? '')) . '</dd>'
+            . (($note !== '') ? '<dd class="pg-report-fig-note' . ((($figure['tone'] ?? '') === 'bad') ? ' is-bad' : '') . '">' . h($note) . '</dd>' : '')
+            . '</div>';
+    }
+
+    if ($html === '') {
+        return '';
+    }
+
+    $count = count($figures);
+    $columns = ($count <= 5) ? $count : min(4, (int) ceil($count / 2));
+
+    return '<dl class="pg-report-figs" style="--pg-report-figs: ' . $columns . '">' . $html . '</dl>';
+}
+
+/**
  * The texts the view's script writes itself: the figures' name, the map's
  * legend ends and the line a level without a chart gets.
  *
