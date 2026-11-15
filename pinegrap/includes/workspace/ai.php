@@ -3968,6 +3968,14 @@ function ws_ai_briefing($row, $asker, $agent = 'ai')
             $parts[] = '';
             $parts = array_merge($parts, ws_approval_agent_brief_lines($approval, $agent === 'ai'));
         }
+
+        // A person answered the question this assistant asked (agent_question.php).
+        $answered = function_exists('ws_agent_question_request_of') ? ws_agent_question_request_of($row) : null;
+
+        if ($answered) {
+            $parts[] = '';
+            $parts = array_merge($parts, ws_agent_question_brief_lines($answered));
+        }
     }
 
     $text = array_merge(ws_ai_briefing_head($asker, $agent), array(''), $parts);

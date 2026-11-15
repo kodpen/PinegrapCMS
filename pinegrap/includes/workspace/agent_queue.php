@@ -468,7 +468,10 @@ function ws_agent_chain($message_id, $agent_apps)
  *                              prefix or replies rule
  * @param array  $extra state: ai_state the request carries (a tag outside a
  *                      message, ws_item_request_state()); skip: agent
- *                      values asked already by the same save
+ *                      values asked already by the same save; answer: a
+ *                      person's answer to the agent's own question
+ *                      (agent_question.php), which wakes it although the
+ *                      message is its own and starts the depth count again
  * @return string[] the agent values a request was made for
  */
 function ws_agent_after_send($viewer, $channel, $message_id, $body, $followed = '', $mentions_only = false, $extra = array())
@@ -498,6 +501,7 @@ function ws_agent_after_send($viewer, $channel, $message_id, $body, $followed = 
     $parent = $chain[1] ?? null;
     $by_app = ($sender['sender_kind'] === 'app') || !empty($sender['by_agent']);
     $made = array();
+    $answer = !empty($extra['answer']);
 
     foreach ($rows as $row) {
         $value = ws_agent_request_value($row);
@@ -508,7 +512,7 @@ function ws_agent_after_send($viewer, $channel, $message_id, $body, $followed = 
         }
 
         // Its own words never wake it.
-        if (($own_app > 0) && ($sender['sender_kind'] === 'app') && ($sender['sender_id'] === $own_app)) {
+        if (!$answer && ($own_app > 0) && ($sender['sender_kind'] === 'app') && ($sender['sender_id'] === $own_app)) {
             continue;
         }
 
@@ -520,7 +524,7 @@ function ws_agent_after_send($viewer, $channel, $message_id, $body, $followed = 
         }
 
         $last_hour = (int) db_value("SELECT COUNT(*) FROM ws_ai_requests WHERE agent = '" . e($value) . "' AND created_at > '" . (time() - 3600) . "'");
-        $brake = ws_agent_brake(ws_agent_chain_depth($chain), $last_hour);
+        $brake = ws_agent_brake($answer ? 0 : ws_agent_chain_depth($chain), $last_hour);
 
         if ($brake !== '') {
             $line = ($brake === 'depth')
@@ -1050,6 +1054,14 @@ function ws_agent_brief($agent, $row, $scopes)
         if ($asked) {
             $lines[] = '';
             $lines = array_merge($lines, ws_approval_agent_brief_lines($asked));
+        }
+
+        // A person answered the agent's own question (agent_question.php).
+        $answered = function_exists('ws_agent_question_request_of') ? ws_agent_question_request_of($row) : null;
+
+        if ($answered) {
+            $lines[] = '';
+            $lines = array_merge($lines, ws_agent_question_brief_lines($answered));
         }
     }
 
