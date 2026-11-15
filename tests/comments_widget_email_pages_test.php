@@ -2,9 +2,9 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * The comment e-mail pages of the design templates: where the Comments
- * widget card always draws the comment, the page carries no System region
- * (the fixed comment markup has nowhere to go and is never needed), and the
+ * The comment e-mail pages of the design templates: their Comments widget
+ * card always draws the comment, and their System region stays as the
+ * fallback for a page whose card cannot (the fixed comment markup); the
  * canvas note a page that keeps its System region gets
  * (_sdCommentsEmailPageOf(), style_designer.src.js).
  *
@@ -97,9 +97,10 @@ function comments_widget_email_pages_test_mail_pages($tpl)
 // always draws the comment: the pages naming it hold their own thread or a
 // record's (no product page: under one a review may be refused, as
 // pg_comments_email_decision() refuses an unverified one), and the card
-// keeps its link to the comment (pg_comments_email_drew()). So the fixed
-// markup is never needed there and the page has no System region.
-function test_comments_widget_email_pages_templates_drop_the_system_region()
+// keeps its link to the comment (pg_comments_email_drew()). The page keeps
+// its System region (owner, 2026-11-01): the fixed markup's place for a
+// comment the card does not draw.
+function test_comments_widget_email_pages_templates_draw_the_comment()
 {
 	if (!comments_widget_email_test_has(array('pg_comments_email_drew', 'pg_comments_email_strip', 'pg_comments_widget_draw', '_pg_tpl_include'))) {
 		return;
@@ -144,7 +145,7 @@ function test_comments_widget_email_pages_templates_drop_the_system_region()
 				pg_assert_true(pg_comments_email_drew($html, 12, $url), "$id: the $key card draws the comment with its link");
 			}
 
-			pg_assert_false(comments_widget_email_pages_test_has_system($tree), "$id: $mail has no System region");
+			pg_assert_true(comments_widget_email_pages_test_has_system($tree), "$id: $mail keeps its System region");
 		}
 	}
 
