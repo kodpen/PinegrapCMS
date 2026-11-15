@@ -2237,7 +2237,11 @@ function test_ws_message_send_file_checks_before_storing()
 
 	pg_assert_contains('ws_message_send_file_bytes(', $library, 'a file of the file manager goes through it');
 	pg_assert_false(strpos($library, 'ws_store_upload') !== false, 'a file of the file manager keeps no file of its own');
-	pg_assert_true(strpos($library, 'ws_library_file(') < strpos($library, 'file_get_contents('), 'the file is checked before it is read');
+	pg_assert_contains('ws_library_send_check(', $library, 'a file of the file manager is checked first');
+
+	$library_check = ws_api_test_handler_source('ws_library_send_check');
+
+	pg_assert_true(strpos($library_check, 'ws_library_file(') < strpos($library_check, 'file_get_contents('), 'the file is checked before it is read');
 
 	$start = strpos($actions, "case 'ws_library_attach':");
 	$picked = ($start === false) ? '' : substr($actions, $start, strpos($actions, 'case \'', $start + 26) - $start);
