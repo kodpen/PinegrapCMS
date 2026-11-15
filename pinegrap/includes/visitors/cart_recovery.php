@@ -49,7 +49,7 @@ function pg_visitors_section_cart_recovery(array $period, array $user)
         $tiles .= pg_visitors_tile(
             $tile['label'],
             ($tile['format'] === 'money') ? pg_visitors_cart_recovery_money($tile['value']) : pg_format_number($tile['value'], 0),
-            ($before !== null) ? pg_visitors_change($tile['value'], $tile['before']) : '',
+            ($before !== null) ? pg_visitors_change($tile['value'], $tile['before'], !empty($tile['lower_is_better'])) : '',
             $tile['note']
         );
     }
@@ -105,8 +105,9 @@ function pg_visitors_cart_recovery_money($minor_units)
 }
 
 /**
- * The tiles: label, value, the earlier value, format and the note under it
- * (the share of the step before). Pure.
+ * The tiles: label, value, the earlier value, format, the note under it
+ * (the share of the step before) and, for the left carts only,
+ * lower_is_better. Pure.
  *
  * @param array      $now    pg_cart_recovery_figures()
  * @param array|null $before the earlier period's, or null
@@ -125,7 +126,8 @@ function pg_visitors_cart_recovery_tiles(array $now, $before)
     };
 
     return array(
-        array('label' => lang('Left carts'), 'value' => (int) $now['left'], 'before' => $earlier('left'), 'format' => 'number', 'note' => ''),
+        // More left carts is worse news, so a rise is drawn as a fall.
+        array('label' => lang('Left carts'), 'value' => (int) $now['left'], 'before' => $earlier('left'), 'format' => 'number', 'note' => '', 'lower_is_better' => true),
         array('label' => lang('Reached'), 'value' => (int) $now['reached'], 'before' => $earlier('reached'), 'format' => 'number', 'note' => $share($now['reached'], $now['left'], '{var:1}% of left carts')),
         array('label' => lang('Came back'), 'value' => (int) $now['returned'], 'before' => $earlier('returned'), 'format' => 'number', 'note' => $share($now['returned'], $now['reached'], '{var:1}% of reached')),
         array('label' => lang('Recovered'), 'value' => (int) $now['recovered'], 'before' => $earlier('recovered'), 'format' => 'number', 'note' => $share($now['recovered'], $now['reached'], '{var:1}% of reached')),

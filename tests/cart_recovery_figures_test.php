@@ -198,6 +198,8 @@ function test_cart_recovery_section_rows()
 	pg_assert_same(5, count($tiles), 'five tiles');
 	pg_assert_same(null, $tiles[0]['before'], 'no earlier figure without a compare');
 	pg_assert_same('money', $tiles[4]['format'], 'revenue as money');
+	pg_assert_true(!empty($tiles[0]['lower_is_better']), 'fewer left carts is the good direction');
+	pg_assert_same(1, count(array_filter(array_column($tiles, 'lower_is_better'))), 'only the left carts tile');
 
 	$tiles = pg_visitors_cart_recovery_tiles($now, array('left' => 8, 'reached' => 3, 'returned' => 1, 'recovered' => 0, 'revenue' => 0));
 	pg_assert_same(8, $tiles[0]['before'], 'the earlier left carts');
