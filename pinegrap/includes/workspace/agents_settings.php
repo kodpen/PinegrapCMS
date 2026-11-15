@@ -42,7 +42,7 @@ function ws_agents_settings_input($source)
 {
     $input = array();
 
-    foreach (array('kind', 'handle', 'name', 'role', 'app_id', 'provider', 'model', 'status', 'door_kind', 'door_url', 'base', 'wake_every', 'wake_note',
+    foreach (array('kind', 'handle', 'name', 'role', 'duty', 'app_id', 'provider', 'model', 'status', 'door_kind', 'door_url', 'base', 'wake_every', 'wake_note',
         'key', 'key_clear', 'door_secret', 'door_secret_clear', 'token_limit') as $field) {
         $value = is_array($source) ? ($source[$field] ?? null) : null;
         $input[$field] = is_scalar($value) ? (string) $value : '';
@@ -354,6 +354,13 @@ function ws_agents_settings_form($self_url, $agent, $apps, $admin, $form = null)
     // Shown once the upgrade has added the column; before, nothing would keep it.
     if (pg_schema_has('ws_agents', 'role')) {
         $rows .= $field('role', lang('Role'), $select('role', array('' => lang('No role')) + ws_agent_roles(), $agent ? $agent['role'] : ''), lang('A label: it gives no right and changes no wake rule.'));
+    }
+
+    // The same for the duty. Claude's routine has instructions of its own.
+    if (!$claude && pg_schema_has('ws_agents', 'duty')) {
+        $rows .= '<div class="col-12"><label class="form-label" for="' . $p . 'duty">' . h(lang('Duty')) . '</label>'
+            . '<textarea class="form-control form-control-sm" name="' . h($name('duty')) . '" id="' . $p . 'duty" rows="4" maxlength="' . WS_AGENT_DUTY_MAX . '"' . $disabled . '>' . $value('duty') . '</textarea>'
+            . '<div class="form-text">' . h(lang(array('string' => 'What the agent is there for, in your words, up to {var:1} characters. The agent card shows it to the channel\'s readers; an application agent also reads it in its instructions.', 'vars' => WS_AGENT_DUTY_MAX))) . '</div></div>';
     }
 
     if (!$claude && ($kind === 'app')) {

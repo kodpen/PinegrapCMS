@@ -12812,6 +12812,18 @@ b.ws-agent-card-anchor:focus-visible {
 .ws-agent-card-loading {
   margin-top: .75rem;
 }
+.ws-agent-card-duty {
+  margin-top: .75rem;
+}
+.ws-agent-card-duty-text {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: var(--pg-text-2);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+}
 .ws-agent-card-box {
   margin-top: .75rem;
   padding: .25rem .75rem;

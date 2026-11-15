@@ -3536,6 +3536,17 @@
             return;
         }
 
+        // What it is there for, in the words of whoever set it up: four
+        // lines at most on the card, the whole text in its title.
+        if (data.duty) {
+            var duty = el('div', 'ws-agent-card-duty');
+
+            duty.appendChild(el('div', 'pg-text-meta', t('ac_duty')));
+            duty.appendChild(el('div', 'ws-agent-card-duty-text', data.duty));
+            duty.title = data.duty;
+            node.appendChild(duty);
+        }
+
         var facts = el('div', 'ws-agent-card-box');
         var state = el('span', 'pg-pill pg-tone-' + (AGENT_CARD_TONES[data.state] || 'gray'), data.state_words);
 
