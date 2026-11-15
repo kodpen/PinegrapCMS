@@ -10,7 +10,7 @@ description: Anonymous page cache gate (PR #1382): PAGE_CACHE_TTL, which page an
 
 ## When is a page not cacheable (reason)?
 - In this order (`pg_page_cache_decide()`): `off`, `method` (not GET/HEAD), `status` (not 200), `query` (any `?` in `REQUEST_URI`, or a `$_GET` key but `page`, which the router writes, so `/about?page=x` is no new CDN entry), `not_html` (PDF/RSS/iCal), `toolbar` (staff), `access` (not public), `mobile` (`MOBILE` on: no Vary on User-Agent, Cloudflare ignores Vary), `marker` (`pg_nc`), `consent` (`pg_consent`), `signed_in` (`software[auth]`), `session`, `set_cookie` (any cookie but the session's), `token` (the CSRF token still in the HTML: forms, CAPTCHA, cart/account widgets), `personal_<why>`.
-- `session`: `pg_page_cache_session_anonymous()` allows only `software.{token, device_type, visitor_id, http_referer, tracking_code, affiliate_code, utm_*, cookie_id, wishlist_cookie}`. Sign-in, order, currency, offer code, notices, guest, auto-dialog `visit_start_timestamp`, `software.urls` all bypass; a key added later bypasses too (fails closed, never leaks).
+- `session`: `pg_page_cache_session_anonymous()` allows only `software.{token, device_type, visitor_id, http_referer, tracking_code, affiliate_code, utm_*, cookie_id, wishlist_cookie, visit_start_timestamp}` (auto dialogs' old key, unread since #NNNN). Sign-in, order, currency, offer code, notices, guest, `software.urls` all bypass; a key added later bypasses too (fails closed, never leaks).
 - `personal_*` comes from `pg_page_cache_personal($why)`: `php_region` (PHP regions, `custom_php` designer block), `dynamic_region`, `language_redirect` (`pg_lang_redirect_page()` on a page the first-visit redirect may answer for, set before the browser/staff/referer returns), `crawler` (`pg_consent_inject()` drops the notice for `IS_BOT`), `wishlist` (Favourites widget). A new visitor-dependent renderer must call it.
 
 ## Why is a consent choice a bypass but the banner cached?
@@ -26,6 +26,6 @@ description: Anonymous page cache gate (PR #1382): PAGE_CACHE_TTL, which page an
 - `init_tracking()`, record views, the perf log, the WAF (bans, country rule). Stale content up to the TTL; a purge reaches no CDN.
 - Setting on, CDN or not: a new visitor's session is dropped on each cacheable page, so visitor rows use the 30-minute IP match; `INET_ATON()` is NULL (0) for IPv6, so cookieless IPv6 visitors in 30 minutes share one row. The help text does not say this yet.
 - Sessions personal before the switch-on lack `pg_nc` until their next origin answer: a CDN may show them the anonymous copy once; nothing leaks.
-- Fail-closed cost: `software.urls`, an empty `software.liveforms` or an auto dialog keep the session personal for the visit (a site with an auto dialog caches nothing); `/` with the language redirect never caches. Unchecked on a real session.
+- Fail-closed cost: `software.urls` or an empty `software.liveforms` keep the session personal for the visit; an auto dialog no longer (#NNNN); `/` with the language redirect never caches. Unchecked on a real session.
 
 Related: page-cache-decisions.md, page-file-cache.md, page-cache-invalidation.md

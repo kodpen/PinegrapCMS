@@ -242,3 +242,72 @@ function test_auto_dialog_page_and_api_use_the_address_checks()
 	pg_assert_contains("api_fail_validation(\$problem, 'url')", $prepare, 'a refused address is 422 on url');
 	pg_assert_contains("((\$row === null) || array_key_exists('url', \$params))", $prepare, 'on a create and whenever a URL is sent');
 }
+
+function auto_dialog_test_lacks($needle, $haystack, $label)
+{
+	pg_assert_true(strpos($haystack, $needle) === false, $label);
+}
+
+function test_auto_dialog_page_rows_are_the_same_for_every_visitor()
+{
+	$rows = array(
+		array('id' => '2', 'url' => '/ebook', 'width' => '400', 'height' => '650', 'delay' => '15', 'frequency' => '24', 'page' => ''),
+		array('id' => '3', 'url' => '/ticket', 'width' => '0', 'height' => '0', 'delay' => '0', 'frequency' => '0', 'page' => 'Shop'),
+		array('id' => '4', 'url' => '/sayfa', 'width' => '1', 'height' => '1', 'delay' => '1', 'frequency' => '1', 'page' => 'ürün'),
+		'not a row',
+	);
+
+	$home = pg_auto_dialogs_on_page($rows, 'home');
+	pg_assert_same(array(2), array_column($home, 'id'), 'a row without a page belongs everywhere');
+	pg_assert_same(array('id' => 2, 'url' => '/ebook', 'width' => 400, 'height' => 650, 'delay' => 15, 'frequency' => 24), $home[0], 'the numbers the script needs, as numbers, without the page');
+	pg_assert_same(array(2, 3), array_column(pg_auto_dialogs_on_page($rows, 'online-shop-sale'), 'id'), 'a page that is part of the name, case-blind');
+	pg_assert_same(array(2, 4), array_column(pg_auto_dialogs_on_page($rows, 'ÜRÜN-listesi'), 'id'), 'multibyte page names');
+	pg_assert_same(array(), pg_auto_dialogs_on_page(false, 'home'), 'a failed query');
+
+	$saved = $_COOKIE;
+	$_COOKIE['software']['auto_dialog_2'] = (string) time();
+	pg_assert_same($home, pg_auto_dialogs_on_page($rows, 'home'), 'a dialog already shown is still printed: the script reads the cookie');
+	$_COOKIE = $saved;
+}
+
+function test_auto_dialog_page_keeps_nothing_in_the_session()
+{
+	$page = (string) file_get_contents(PG_FUNCTIONS_DIR . '/get_page_content.php');
+	$start = strpos($page, 'if (AUTO_DIALOGS) {');
+	$block = substr($page, $start, strpos($page, '// If there is JS to output', $start) - $start);
+
+	auto_dialog_test_lacks('visit_start_timestamp', $block, 'no visit start in the session');
+	auto_dialog_test_lacks('$_SESSION', $block, 'nothing in the session');
+	auto_dialog_test_lacks('$_COOKIE', $block, 'the cookie is read by the script');
+	pg_assert_contains('encode_json(pg_auto_dialogs_on_page($auto_dialogs, $page_name))', $block, 'the page prints the rows for the page');
+	auto_dialog_test_lacks('visit_start_timestamp', $page, 'no other place writes it');
+}
+
+function test_auto_dialog_script_picks_in_the_browser_and_opens_the_browsers_dialog()
+{
+	$src = (string) file_get_contents(PG_FUNCTIONS_DIR . '/frontend.src.js');
+	$init = substr($src, strpos($src, 'init_auto_dialogs: function('), 6000);
+	$init = substr($init, 0, strpos($init, "\n    },\n"));
+	$open = substr($src, strpos($src, 'open_dialog: function('), 9000);
+	$open = substr($open, 0, strpos($open, "\n    },\n"));
+
+	pg_assert_contains("sessionStorage.getItem('pg_visit_start')", $init, 'the delay counts from the visit\'s first page');
+	pg_assert_contains("'software[auto_dialog_' + id + ']'", $init, 'the cookie of a dialog already shown');
+	pg_assert_contains('(now - last) >= (frequency * 3600)', $init, 'a recurring dialog opens again after its hours');
+	pg_assert_contains("disable_auto_dialog_' + auto_dialog.id", $init, 'the body class of one dialog');
+	pg_assert_contains("'disable_auto_dialogs'", $init, 'the body class of all dialogs');
+	pg_assert_contains("expires=Tue, 01 Jan 2030 06:00:00 GMT; path=/'", $init, 'the per-row cookie stays as it was');
+
+	pg_assert_contains("document.createElement('dialog')", $open, 'the browser\'s own dialog');
+	pg_assert_contains('dialog.showModal();', $open, 'centred and modal by default');
+	pg_assert_contains('dialog.show();', $open, 'modal false keeps the page usable');
+	pg_assert_contains("addEventListener('pg:consent'", $open, 'it waits while the cookie notice asks');
+	auto_dialog_test_lacks('.dialog(', $open, 'no jQuery UI');
+	auto_dialog_test_lacks('ui-', $open, 'no ui- classes');
+	pg_assert_contains('dialog_style: function(', $src, 'the frame\'s rules');
+
+	$min = (string) file_get_contents(PG_FUNCTIONS_DIR . '/frontend.min.js');
+	pg_assert_contains('sessionStorage.getItem("pg_visit_start")', $min, 'the served script picks in the browser');
+	pg_assert_contains('createElement("dialog")', $min, 'the served script opens the browser\'s dialog');
+	pg_assert_contains('"pg-dialog-style"', $min, 'the served script has the frame\'s rules');
+}

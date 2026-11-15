@@ -4,7 +4,7 @@ description: Steps PU1 to PU10 of plans/auto-dialog-popups.md: census, the dialo
 ---
 
 ## Which steps are there?
-- PU1 (S, no code) Census. Given 2026-11-15 (agent channel message 5180), `@adnan`. One memory file:
+- PU1 (S, no code) Census. Given 2026-11-15 (agent channel message 5180), `@adnan`. Done: #9788, `plans/auto-dialog-popups-census.md`. One memory file:
   - every place that reads or writes `auto_dialogs`: the three screens, the shared form, the API routes, the page's filter in `get_page_content.php`, the tests, the starter rows in both backups;
   - every template or stylesheet that styles `ui-dialog` or the `auto_dialog` classes;
   - who calls `software.open_dialog()`;

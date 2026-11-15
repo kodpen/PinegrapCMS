@@ -128,6 +128,47 @@ function pg_auto_dialogs_for_page($rows)
 }
 
 /**
+ * The enabled auto dialogs a page prints for software.init_auto_dialogs():
+ * the rows whose page is blank or a part of the page's name (case-blind),
+ * with the numbers the script needs. Nothing here depends on the visitor:
+ * the script reads the cookie of a dialog already shown and counts the
+ * delay from the visit's first page itself, so every visitor gets the same
+ * page and a cached copy stays right for all of them.
+ *
+ * @param array  $rows       auto_dialogs rows (id, url, width, height, delay, frequency, page)
+ * @param string $page_name  the page being drawn
+ * @return array a JSON list of id, url, width, height, delay, frequency
+ */
+function pg_auto_dialogs_on_page($rows, $page_name)
+{
+    $page_name = mb_strtolower((string) $page_name);
+    $kept = array();
+
+    foreach ((array) $rows as $row) {
+        if (!is_array($row)) {
+            continue;
+        }
+
+        $page = mb_strtolower(isset($row['page']) ? (string) $row['page'] : '');
+
+        if (($page !== '') && (mb_strpos($page_name, $page) === false)) {
+            continue;
+        }
+
+        $kept[] = array(
+            'id' => (int) ($row['id'] ?? 0),
+            'url' => (string) ($row['url'] ?? ''),
+            'width' => (int) ($row['width'] ?? 0),
+            'height' => (int) ($row['height'] ?? 0),
+            'delay' => (int) ($row['delay'] ?? 0),
+            'frequency' => (int) ($row['frequency'] ?? 0),
+        );
+    }
+
+    return $kept;
+}
+
+/**
  * @param int $auto_dialog_id
  * @return bool
  */
