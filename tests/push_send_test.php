@@ -65,3 +65,14 @@ function test_push_send_hold_is_read_back_from_last_error()
 		pg_assert_same(0, pg_push_held_until($other), $other);
 	}
 }
+
+// The queue's wait goes into GREATEST() as a number: a quoted one makes MySQL
+// compare the arguments as strings ('60' > '300'), so a rate-limited row would
+// spend its six tries in minutes.
+function test_push_send_queue_wait_is_a_number_in_greatest()
+{
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/includes/push.php');
+
+	pg_assert_contains('GREATEST(" . (int) $wait . ", CASE', $source);
+	pg_assert_same(0, preg_match("/(GREATEST|LEAST)\\(\\s*'/", $source), 'no quoted argument in GREATEST or LEAST');
+}

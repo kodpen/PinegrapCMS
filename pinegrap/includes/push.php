@@ -963,7 +963,7 @@ function pg_push_queue_run($budget_seconds = 10)
 			// its Retry-After.
 			db("UPDATE push_queue
 				SET attempts = attempts + 1,
-					send_after = '" . $now . "' + GREATEST('" . (int) $wait . "', CASE
+					send_after = '" . $now . "' + GREATEST(" . (int) $wait . ", CASE
 						WHEN attempts < 1 THEN 60
 						WHEN attempts < 2 THEN 300
 						WHEN attempts < 3 THEN 1800
