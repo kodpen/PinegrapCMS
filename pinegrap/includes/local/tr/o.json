@@ -434,6 +434,7 @@
     "On this catalog detail page it shows the comments of the product or product group in the address. A product's are reviews: verified purchases only, newest first, written by a customer who bought it. E-mails about them link to the item's address.": "Bu katalog detay sayfasında adresteki ürünün ya da ürün grubunun yorumlarını gösterir. Bir ürününkiler incelemedir: yalnız doğrulanmış satın almalar, en yenisi önce, ürünü satın alan müşteri tarafından yazılır. Bunlarla ilgili e-postalar öğenin adresine bağlantı verir.",
     "On this catalog page it shows the comments of the product group in the address, else of the page's own group. E-mails about them keep the fixed comment markup.": "Bu katalog sayfasında adresteki ürün grubunun, yoksa sayfanın kendi grubunun yorumlarını gösterir. Bunlarla ilgili e-postalar sabit yorum biçimini korur.",
     "On this catalog page it shows the comments of the product group in the address, else of the page's own group. E-mails about them link to the group's address.": "Bu katalog sayfasında adresteki ürün grubunun, yoksa sayfanın kendi grubunun yorumlarını gösterir. Bunlarla ilgili e-postalar grubun adresine bağlantı verir.",
+    "On this comment e-mail it prints the comment and its View or Reply link when no Comments card on the page draws it.": "Bu yorum e-postasında, sayfadaki hiçbir Yorumlar kartı yorumu çizmediğinde yorumu ve Görüntüle veya Yanıtla bağlantısını yazdırır.",
     "On this crossing": "Bu geçişte",
     "On this element": "Bu öğede",
     "On this page": "Bu sayfada",
