@@ -322,36 +322,45 @@ function api_auth_refresh($params) {
 
 	}
 
-	// An OAuth connection renews at the OAuth token endpoint, which checks
-	// the client it belongs to. Turned away before anything is rotated, so a
-	// client that called the wrong address keeps the token it holds.
-	if (pg_oauth_ready()) {
+	$presented = api_account_raw_input('refresh_token');
 
-		$found = api_device_find_refresh(api_account_raw_input('refresh_token'));
+	// Everything that can refuse for a reason that passes is asked before the
+	// exchange. Exchanged first, the new pair would never reach the client,
+	// which would hold only the row's previous token; presented again after
+	// the grace period, that revokes the device as a replayed copy.
+	$found = api_device_find_refresh($presented);
 
-		if (($found !== null) && ((int)$found['oauth_client_id'] > 0)) {
+	if ($found === null) {
 
-			api_fail(401, 'unauthorized', lang('This token belongs to an OAuth connection. Renew it at the OAuth token endpoint.'));
-
-		}
+		api_fail(401, 'unauthorized', lang('The refresh token is not valid. Sign in again.'));
 
 	}
 
-	$rotated = api_device_rotate(api_account_raw_input('refresh_token'));
+	// An OAuth connection renews at the OAuth token endpoint, which checks
+	// the client it belongs to.
+	if (pg_oauth_ready() && ((int)$found['oauth_client_id'] > 0)) {
 
-	$row = $rotated['row'];
+		api_fail(401, 'unauthorized', lang('This token belongs to an OAuth connection. Renew it at the OAuth token endpoint.'));
+
+	}
 
 	// Signing in is not all that is checked: the application must still be
-	// switched on and the account still able to use a device. Otherwise a
+	// switched on, unexpired and reachable from this address. Otherwise a
 	// refresh token would outlive the operator's decision by a month.
 	$app = api_row("SELECT id, name, api_key, owner_user_id, scopes, ip_allowlist,
 			status, expires_at, rate_limit_per_min, kind
-		FROM api_apps WHERE id = '" . (int)$row['app_id'] . "' AND kind = 'device' LIMIT 1");
+		FROM api_apps WHERE id = '" . (int)$found['app_id'] . "' AND kind = 'device' LIMIT 1");
 
 	api_device_app_check($app);
 
+	$rotated = api_device_rotate($presented);
+
+	$row = $rotated['row'];
+
 	api_current_app($app);
 
+	// The account must still be able to use a device. Revoking ends the
+	// session anyway, so this may follow the exchange.
 	$owner = api_load_owner((int)$row['user_id']);
 
 	if (($owner === null) || !api_device_account_has_rights($owner)) {
