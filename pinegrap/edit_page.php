@@ -657,7 +657,7 @@ if (!$_POST) {
                 </div>
                 <div class="form-text">' . lang('Asks search engines not to keep or show a cached copy of the page. Like the snippet length, it is left out while the page is closed to search engines.') . '</div>
             </div>
-            <div class="col-12 md:col-6 mt-1 mb-3" id="max_snippet_row">
+            <div class="col-12 md:col-3 mt-1 mb-3" id="max_snippet_row">
                 <label for="max_snippet" class="form-label">' . lang('Snippet Length (max-snippet)') . '</label>
                 <input type="number" value="' . h($page_max_snippet) . '" name="max_snippet" id="max_snippet" class="form-control' . $max_snippet_invalid . '" min="-1" max="' . pg_page_max_snippet_limit() . '" step="1">
                 <div class="form-text">' . lang('The most characters of text a search result may quote from the page. Leave empty to let the search engine decide; -1 is no limit, 0 is no text snippet.') . '</div>
@@ -860,7 +860,7 @@ if (!$_POST) {
                                         </div>
                                         <div class="card-body">
                                             <div class="row">
-                                                <div class="col-12 md:col-8 lg:col-6 my-3">
+                                                <div class="col-12 my-3">
                                                     <label for="name" class="form-label">' . lang('Page Name') . '</label>
                                                     <div class="input-group ">
                                                         <span class="input-group-text material-icons" aria-hidden="true">public</span>
@@ -966,11 +966,11 @@ if (!$_POST) {
                                                     </div>
                                                     <div class="collapse border rounded p-5 mt-3 mb-3" id="show_or_hide_comments">
                                                         <div class="row">
-                                                            <div class="col-12 md:col-6 lg:col-4 my-3">
+                                                            <div class="col-12 my-3">
                                                                 <label for="comments_label" class="form-label">' . lang('Comment Label') . '</label>
                                                                 <input value="' . h($comments_label) . '" type="text" name="comments_label" id="comments_label" class="form-control" maxlength="100" placeholder="' . h(lang('Comment')) . '"/>
                                                             </div>
-                                                            <div class="col-12 md:col-6 lg:col-8 my-3">
+                                                            <div class="col-12 my-3">
                                                                 <label for="comments_message" class="form-label">' . lang('Add Comment Message') . '</label>
                                                                 <input value="' . h($comments_message) . '" type="text" name="comments_message" id="comments_message" class="form-control" maxlength="255"/>
                                                             </div>
@@ -1030,11 +1030,11 @@ if (!$_POST) {
                                                             <div class="col-12 my-3 mt-7' . $comments_administrator_email_row_style . '" id="comments_administrator_email_row">
                                                                 <h5>' . lang('E-mail moderator when a comment is added') . '</h5>
                                                                 <div class="row">
-                                                                    <div class="col-12 md:col-6 lg:col-4 my-3">
+                                                                    <div class="col-12 md:col-6 my-3">
                                                                         <label for="comments_administrator_email_to_email_address" class="form-label">' . lang('To E-mail Address') . '</label>
                                                                         <input value="' . h($comments_administrator_email_to_email_address) . '" type="email" class="form-control' . ($liveform->check_field_error('comments_administrator_email_to_email_address') ? ' is-invalid' : '') . '" id="comments_administrator_email_to_email_address" name="comments_administrator_email_to_email_address" maxlength="100" inputmode="email" data-inputmask-alias="email"/>
                                                                     </div>
-                                                                    <div class="col-12 md:col-6 lg:col-8 my-3">
+                                                                    <div class="col-12 my-3">
                                                                         <label for="comments_administrator_email_subject" class="form-label">' . lang('Subject') . '</label>
                                                                         <input value="' . h($comments_administrator_email_subject) . '" type="text" name="comments_administrator_email_subject" id="comments_administrator_email_subject" class="form-control" maxlength="255"/>
                                                                     </div> 
@@ -1050,11 +1050,11 @@ if (!$_POST) {
                                                             <div class="col-12 my-3 mt-7' . $comments_submitter_email_row_style . '" id="comments_submitter_email_row">
                                                                 <h5>' . lang('E-mail custom form submitter when a comment is published') . '</h5>
                                                                 <div class="row">
-                                                                    <div class="col-12 lg:col-6 my-3">
+                                                                    <div class="col-12 md:col-6 my-3">
                                                                         <label for="comments_submitter_email_page_id" class="form-label">' . lang('Page') . '</label>
                                                                         ' . pg_picker_field('page', 'comments_submitter_email_page_id', $comments_submitter_email_page_id) . '
                                                                     </div>
-                                                                    <div class="col-12 md:col-6 lg:col-8 my-3">
+                                                                    <div class="col-12 my-3">
                                                                         <label for="comments_submitter_email_subject" class="form-label">' . lang('Subject') . '</label>
                                                                         <input value="' . h($comments_submitter_email_subject) . '" type="text" name="comments_submitter_email_subject" id="comments_submitter_email_subject" class="form-control" maxlength="255"/>
                                                                     </div> 
@@ -1063,11 +1063,11 @@ if (!$_POST) {
                                                             <div class="col-12 my-3 mt-7' . $comments_watcher_email_row_style . '" id="comments_watcher_email_row">
                                                                 <h5>' . lang('E-mail watchers when a comment is published') . '</h5>
                                                                 <div class="row">
-                                                                    <div class="col-12 lg:col-6 my-3">
+                                                                    <div class="col-12 md:col-6 my-3">
                                                                         <label for="comments_watcher_email_page_id" class="form-label">' . lang('Page') . '</label>
                                                                         ' . pg_picker_field('page', 'comments_watcher_email_page_id', $comments_watcher_email_page_id) . pg_picker_script() . '
                                                                     </div>
-                                                                    <div class="col-12 md:col-6 lg:col-8 my-3">
+                                                                    <div class="col-12 my-3">
                                                                         <label for="comments_watcher_email_subject" class="form-label">' . lang('Subject') . '</label>
                                                                         <input value="' . h($comments_watcher_email_subject) . '" type="text" name="comments_watcher_email_subject" id="comments_watcher_email_subject" class="form-control" maxlength="255"/>
                                                                     </div> 

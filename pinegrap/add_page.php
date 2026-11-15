@@ -127,7 +127,7 @@ if (!$_POST) {
                 </div>
                 <div class="form-text">' . lang('Asks search engines not to keep or show a cached copy of the page. Like the snippet length, it is left out while the page is closed to search engines.') . '</div>
             </div>
-            <div class="col-12 md:col-6 mt-1 mb-3" id="max_snippet_row">
+            <div class="col-12 md:col-3 mt-1 mb-3" id="max_snippet_row">
                 <label for="max_snippet" class="form-label">' . lang('Snippet Length (max-snippet)') . '</label>
                 <input type="number" value="' . h((string) $form_values['max_snippet']) . '" name="max_snippet" id="max_snippet" class="form-control' . $max_snippet_invalid . '" min="-1" max="' . pg_page_max_snippet_limit() . '" step="1">
                 <div class="form-text">' . lang('The most characters of text a search result may quote from the page. Leave empty to let the search engine decide; -1 is no limit, 0 is no text snippet.') . '</div>
@@ -186,7 +186,7 @@ if (!$_POST) {
                                         </div>
                                         <div class="card-body">
                                             <div class="row">
-                                                <div class="col-12 md:col-8 lg:col-6 my-3">
+                                                <div class="col-12 my-3">
                                                     <label for="name" class="form-label">' . lang('Page Name') . '</label>
                                                     <div class="input-group ">
                                                         <span class="input-group-text material-icons" aria-hidden="true">public</span>
