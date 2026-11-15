@@ -25,7 +25,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 /**
  * The registry agent a ws_ai_requests.agent value names. Pure.
  *
- * @param string $value agent:<id> | model:<id>; app:<n> is a proposal's
+ * @param string $value agent:<id> | model:<id>; app:<n> stays null (also a proposal's key; ws_agent_request_line_value() reads the old agent shape)
  * @return array|null kind (app | model), id; null for any other value
  */
 function ws_agent_request_parse($value)
@@ -35,6 +35,23 @@ function ws_agent_request_parse($value)
     }
 
     return array('kind' => ($match[1] === 'agent') ? 'app' : 'model', 'id' => (int) $match[2]);
+}
+
+/**
+ * The value the line under a message reads a request by: a registry app
+ * agent's request written before agent:<id> carries app:<id> (the same
+ * agents.id, as ws_agent_activity_keys() reads it) and is read as agent:<id>.
+ * Proposals carry app:<api app id> too, but on no message, so they never get
+ * this line; ws_agent_request_parse() keeps app:<n> out for them. Pure.
+ *
+ * @param string $value ws_ai_requests.agent
+ * @return string
+ */
+function ws_agent_request_line_value($value)
+{
+    $value = (string) $value;
+
+    return preg_match('/^app:([1-9][0-9]*)$/', $value, $match) ? 'agent:' . $match[1] : $value;
 }
 
 /**

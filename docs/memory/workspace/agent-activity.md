@@ -7,7 +7,7 @@ description: The Agents card's activity per app and model agent: counts of 7 and
 - `includes/workspace/agent_activity.php` (loaded from ai.php), drawn by `ws_agent_activity_block()` inside each agent's row of `ws_agents_settings_card()`; in the Site Settings drawer the buttons post `ws_agent_request_*` = the request's id, run after the pane's save ([[workspace-agent-settings]]). Tests: `tests/workspace_agent_activity_test.php`.
 
 ## How are an agent's requests found?
-- By every value its rows may carry (`ws_agent_activity_keys()`): an app agent's `agent:<id>` and the older `app:<id>`, a model agent's `model:<id>`; `ws_agent_activity_agent_id()` reads either back. No other writer puts `app:<n>` in `ws_ai_requests` (an application's proposal key lives in the proposals), so the old shape is safe to match. Claude's row shows no block.
+- By every value its rows may carry (`ws_agent_activity_keys()`): an app agent's `agent:<id>` and the older `app:<id>`, a model agent's `model:<id>`; `ws_agent_activity_agent_id()` reads either back. Proposals also write `app:<n>` (the API application's id, `ws_proposal_agent_key()`), but with no message and status answered, so the waiting and failed lists do not take them; the answered count can, where an agent and an application share an id. Claude's row shows no block.
 
 ## What does the block show?
 - One line: the last 7 and 30 days by bucket (`ws_agent_activity_bucket()`: queued, sent and running count as waiting; answered, failed, cancelled), the next wake (`wake_next_at`) and, for a push door or a model, the failures in a row. One grouped query for all agents (`ws_agent_activity_read_counts()`).
