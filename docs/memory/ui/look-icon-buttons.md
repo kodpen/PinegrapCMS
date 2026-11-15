@@ -1,6 +1,6 @@
 ---
 name: look-icon-buttons
-description: SH5: icon-only toolbar buttons and menu toggles of the old panel screens as look A's .pg-icon-button with a lang() name; one filled button per view on Marketplace Settings; what was left and why
+description: SH5: icon-only toolbar buttons and menu toggles of the old panel screens as look A's .pg-icon-button with a lang() name; what was left and why
 ---
 
 ## Which buttons are icon buttons?
@@ -12,10 +12,8 @@ description: SH5: icon-only toolbar buttons and menu toggles of the old panel sc
 - Pressed: `aria-pressed="true"`, `aria-expanded="true"` or `.is-active` (never `.active`: the recipe does not read it). The advanced filters toggle of Submitted Forms sets ` is-active`.
 - Disabled: the recipe has no disabled look, so a disabled icon button adds `opacity-50` (settings screen's first and last category).
 
-## Which filled buttons changed?
-- Marketplace Settings had three filled buttons in one view; only the toolbar's New stays `pg-button-fill`. The status column's Settings is `pg-button-quiet pg-button-sm`, Test connection `pg-button-ghost pg-button-sm`; the Matched products card's Match in bulk with pictures (or Products in this shop when the connector cannot read the catalogue) is quiet, the rest ghost.
-
 ## What was left as it was?
+- Button ranks (one filled button per view, a card's own actions one rank), Marketplace Settings among them: SH10, not an icon-button change. Architect (2026-11-15).
 - Row actions of list tables (`btn-data-control`, row links): the list row steps.
 - Site output: `booking_manage.php` is a visitor's page on Bootstrap 5.3.8, not panel.
 - Files held by open PRs when SH5 was cut (view_orders, view_commissions, marketplace_products, edit_erp_invoice, erp_receipt, view_log, edit_contact, view_contacts): a later step.
