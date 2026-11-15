@@ -16,9 +16,9 @@ description: Steps CA2 to CA16 of plans/channel-api-gaps.md: the agents' side (C
 - CA6 (`@adnan`) G6 and G7, the words an agent reads: the brief says its own routes are HTTP only; the answer route's refusals name the next step; a paused agent's 403 says why.
 
 ## A channel's own side, `@elcin`?
-- CA7 Messages: G1 `note_id` on forward, G3 who has seen and acknowledged, G4 bring the mentioned people in.
+- CA7 Messages: G1 `note_id` on forward, G3 who has seen and acknowledged, G4 bring the mentioned people in. Done #9767.
 - CA8 Files in a message: G2 post a file of the file manager, G29 an edited file in place of the old, G30 a file's edit history.
-- CA9 Scheduled messages: G6 change one, G7 schedule a reply, G8 send now. Own words, as create is.
+- CA9 Scheduled messages: G6 change one, G7 schedule a reply, G8 send now. Own words, as create is. Done #9786.
 - CA10 Discussions and approvals: G9 conclude, G10 rename, G11 take back or close an approval (who may is the function's own rule).
 - CA11 Status and check-ins: G12 status update, G13 start a check-in and answer one (the answer person only).
 
