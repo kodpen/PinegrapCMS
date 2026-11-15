@@ -169,7 +169,7 @@ function test_workspace_mail_status_wiring()
 	pg_assert_contains("\$mail->addCustomHeader('Auto-Submitted', 'auto-replied');", $mail, 'email() marks an automatic answer');
 	pg_assert_contains("'auto_submitted'     => true,", $status);
 	pg_assert_contains("'queue'              => true,", $status, 'a reader never waits on a server');
-	pg_assert_contains("if (\$opened && function_exists('ws_mail_auto_reply'))", $ingest, 'only a new conversation');
+	pg_assert_contains("if (\$opened && (\$ruled !== 'close') && function_exists('ws_mail_auto_reply'))", $ingest, 'only a new conversation, not one a rule closed');
 	pg_assert_contains("status = 'waiting', closed_at = 0,", $reply, 'an answer waits for the customer');
 	pg_assert_contains("case 'ws_mail_conversation':", $actions);
 	pg_assert_contains("'mail_state'  => (\$mail && !\$deleted && function_exists('ws_mail_state_offer'))", $messages);

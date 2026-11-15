@@ -1032,6 +1032,12 @@ function ws_mail_ingest($raw, $box, $options = array())
         }
     }
 
+    // The box's incoming mail rules, for a conversation this mail opened:
+    // the first that fits gives it to a person or closes it (mail_rules.php).
+    $ruled = ($opened && function_exists('ws_mail_rules_run'))
+        ? ws_mail_rules_run($box, $conversation_id, $channel, $message_id, $from_email, $subject, $now)
+        : '';
+
     // Each attachment is a message of its own under the card, carrying the
     // file the way an upload does; a picture the HTML shows names its file.
     $sorted = ws_mail_attachments_sort($parsed['attachments'], 'ws_upload_refused', ws_upload_max_bytes(), $html_kept ? pg_mail_html_cids($html) : array());
@@ -1123,7 +1129,8 @@ function ws_mail_ingest($raw, $box, $options = array())
     ));
 
     // A new conversation may get the box's automatic answer (mail_status.php).
-    if ($opened && function_exists('ws_mail_auto_reply')) {
+    // A conversation a rule closed is not answered.
+    if ($opened && ($ruled !== 'close') && function_exists('ws_mail_auto_reply')) {
         ws_mail_auto_reply($box, $item_id);
     }
 

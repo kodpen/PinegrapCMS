@@ -14,7 +14,7 @@ description: Exact scope of IB10, IB10b and IB13 of plans/mail-inbox-more.md aft
 - An incoming mail in the conversation cancels it (`ws_mail_ingest()`). Due without one: inbox kind `mail_no_answer` ("No answer yet: {subject}") to the writer, and "No answer yet" on the writer's list row and in the pane until an answer comes. Same run and module as IB10.
 
 ## Which schema do IB10 and IB10b need?
-- Owner (2026-11-15, channel decision 3500 under poll 3450; shape 3505): A. IB10 adds the table in the open version with the idempotent helpers, its [SCHEME] item in the PR body, no backfill; IB10b adds nothing.
+- Owner (2026-11-15, `workflow/decisions-made-schema-21.md`): A. IB10 adds the table in the open version with the idempotent helpers, its [SCHEME] item in the PR body, no backfill; IB10b adds nothing.
 - A, chosen: table `ws_mail_reminders` (id, conversation_id, user_id, kind VARCHAR(10) later | no_answer, item_id, due_at, woken_at, created_at; UNIQUE (conversation_id, user_id, kind); KEY idx_due (woken_at, due_at)). One table, one run, nothing added to `ws_mail_items`, which grows with every mail.
 - B, not chosen: `ws_mail_reads.remind_at` and `woken_at` for IB10, `ws_mail_items.no_answer_at` with an index for IB10b.
 

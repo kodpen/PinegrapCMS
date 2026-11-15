@@ -16137,6 +16137,19 @@ a.ws-chip:hover {
   white-space: normal;
   overflow-wrap: anywhere;
 }
+/* A rule's line on the same card breaks the same way. */
+.ws-mail-rules .pg-list-row-title {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+/* The Add rule form of the incoming mail rules: its fields side by side on
+   a wide card, one under another on a phone; the button sits on their line. */
+.ws-mail-rule-add {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: .75rem;
+  align-items: end;
+}
 .ws-mail-item-head {
   display: flex;
   flex-wrap: wrap;
