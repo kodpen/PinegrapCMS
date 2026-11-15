@@ -20,6 +20,7 @@
   --pg-border-color-translucent: var(--bs-border-color-translucent);
   --pg-danger: var(--bs-danger-base);
   --pg-fg-2: var(--bs-fg-2);
+  --pg-fg-3: var(--bs-fg-3);
   --pg-fg-body: var(--bs-fg-body);
   --pg-info-bg-subtle: var(--bs-info-bg-subtle);
   --pg-info-fg-emphasis: var(--bs-info-fg-emphasis);
@@ -194,6 +195,11 @@ body.pg-guest {
   font-size: .6875rem;
   font-weight: 600;
   line-height: 1.5;
+}
+
+/* The agent's role and model beside the badge. */
+.pg-guest-agent-facts {
+  color: var(--pg-fg-3);
 }
 
 .pg-guest-body {
@@ -838,6 +844,27 @@ div.pg-guest-poll-option {
 }
 
 .pg-guest-task-text span {
+  font-size: .78rem;
+  color: var(--pg-fg-2);
+}
+
+/* A canvas whose picture is not drawn yet: a line in place of a blank. */
+.pg-guest-canvas-wait {
+  display: flex;
+  align-items: flex-start;
+  gap: .5rem;
+  padding: .45rem .6rem;
+  border: 1px dashed var(--pg-border-color);
+  border-radius: .5rem;
+  background: var(--pg-bg-body);
+}
+
+.pg-guest-canvas-wait-text b,
+.pg-guest-canvas-wait-text span {
+  display: block;
+}
+
+.pg-guest-canvas-wait-text span {
   font-size: .78rem;
   color: var(--pg-fg-2);
 }

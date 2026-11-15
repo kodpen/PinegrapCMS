@@ -1817,7 +1817,7 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 	</div></div>
 
 	' . pg_screen_toolbar(array(
-		'primary'   => '<button type="button" class="btn btn-sm btn-solid theme-primary rounded-pill px-5" data-bs-toggle="dialog" data-bs-target="#api_new"><i class="bi bi-key me-1" aria-hidden="true"></i>' . lang('New Application') . '</button>',
+		'primary'   => '<button type="button" class="pg-button pg-button-fill" data-bs-toggle="dialog" data-bs-target="#api_new"><i class="bi bi-key" aria-hidden="true"></i>' . lang('New Application') . '</button>',
 		'secondary' => array(
 			array('label' => lang('API Documentation'), 'url' => 'api_docs.php', 'icon' => 'bi-file-earmark-text'),
 			array('label' => lang('API Settings'), 'url' => 'settings_api.php', 'icon' => 'bi-sliders'),

@@ -466,6 +466,10 @@ function pg_designer_screen_render($ctx)
             'heading'      => lang('Page Design Studio'),
             'heading_description' => lang('The pages of the design are the tabs; drop blocks from the palette on the left, edit their options on the right.'),
             'hide_menu'    => true,
+            // The main menu as the phone's drawer at every width, opened by
+            // the toolbar's first button (#sd-left-toggle): the designer
+            // keeps its whole width.
+            'menu_drawer'  => true,
             // The shared curtain hides itself when the document is ready.
             // Here the document being ready is the START of the work: panels
             // are built, the canvas iframe is written, the tree is laid out.
@@ -531,11 +535,12 @@ function pg_designer_screen_render($ctx)
                          the header link and the browser back button all go through
                          the unsaved-changes guard. -->
                     <div class="sd-toolbar sd-toolbar-tabs">
-                        <!-- Hides the whole left panel (and its docking rail)
-                             and brings it back; outside the page group so the
-                             component editor keeps it. Wired by
-                             _sdLeftHideInit(). -->
-                        <button type="button" id="sd-left-toggle" class="sd-icon-btn sd-left-toggle" aria-controls="sd-components" aria-expanded="true" title="' . h(lang('Hide the left panel')) . '" aria-label="' . h(lang('Hide the left panel')) . '"><span class="bi bi-layout-sidebar" aria-hidden="true"></span></button>
+                        <!-- Opens and shuts the panel main menu, the drawer
+                             output_header() prints for menu_drawer; outside the
+                             page group so the component editor and read-only
+                             mode keep it. Wired by backend.src.js
+                             (data-pg-menu-drawer-toggle). -->
+                        <button type="button" id="sd-left-toggle" class="sd-icon-btn sd-left-toggle no-popover" data-pg-menu-drawer-toggle aria-controls="menu" aria-expanded="false" title="' . h(lang('Show menu')) . '" aria-label="' . h(lang('Show menu')) . '" data-label-show="' . h(lang('Show menu')) . '" data-label-hide="' . h(lang('Hide menu')) . '"><span class="bi bi-layout-sidebar pg-mt-shut" aria-hidden="true"></span><span class="bi bi-layout-sidebar-inset pg-mt-open" aria-hidden="true"></span></button>
                         <div class="sd-toolbar-group sd-toolbar-pages"' . ($sd_component ? ' hidden' : '') . '>
                             <div class="pg-menu-wrap sd-tabs-add">
                                 <button type="button" class="sd-tabs-add-btn" data-bs-toggle="menu" aria-expanded="false" title="' . lang('Add Page') . '">
@@ -2040,7 +2045,7 @@ function pg_designer_template_modal($templates, $from_pages)
                             <div class="d-flex align-items-center gap-3 ms-auto">
                                 ' . $delete_btn . '
                                 ' . $tour_btn . '
-                                <a href="' . h($use_now) . '" class="btn btn-sm btn-solid theme-primary rounded-pill px-5 text-nowrap sd-tpl-use" data-href="' . h($use_href) . '"><i class="bi bi-magic me-1" aria-hidden="true"></i>' . lang('Use This Template') . '</a>
+                                <a href="' . h($use_now) . '" class="pg-button pg-button-fill text-nowrap sd-tpl-use" data-href="' . h($use_href) . '"><i class="bi bi-magic" aria-hidden="true"></i>' . lang('Use This Template') . '</a>
                             </div>
                         </div>
                         <span class="small fg-secondary text-truncate">' . h($s['description']) . '</span>

@@ -48,13 +48,13 @@ foreach ($recurrences as $row) {
             <td data-sort="' . (int) $row['every_months'] . '">' . h($periods[(int) $row['every_months']] ?? '') . '</td>
             <td>' . h($modes[(string) $row['mode']] ?? '') . '</td>
             <td class="text-nowrap" data-sort="' . ($active ? h(str_replace('-', '', (string) $row['next_date'])) : '') . '">' . ($active ? h(prepare_form_data_for_output((string) $row['next_date'], 'date')) : '<span class="badge theme-secondary">' . lang('Stopped') . '</span>')
-                . (((string) $row['end_date'] !== '0000-00-00') ? '<div class="small fg-secondary">' . h(lang(array('string' => 'Until {var:1}.', 'vars' => prepare_form_data_for_output((string) $row['end_date'], 'date', false)))) . '</div>' : '') . '</td>
+                . (((string) $row['end_date'] !== '0000-00-00') ? '<div class="pg-text-meta">' . h(lang(array('string' => 'Until {var:1}.', 'vars' => prepare_form_data_for_output((string) $row['end_date'], 'date', false)))) . '</div>' : '') . '</td>
             <td class="text-end text-nowrap" data-sort="' . (int) $row['grand_total'] . '">' . h(erp_money_out_currency((int) $row['grand_total'], (string) $row['currency'])) . '</td>
             <td class="text-end">' . (int) $row['occurrences'] . '</td>
             <td>' . (((int) ($row['last_id'] ?? 0) > 0)
                 ? '<a class="pg-link-body-emphasis" href="' . h((((string) $row['last_status'] === 'draft') ? 'edit_erp_invoice_draft.php' : 'edit_erp_invoice.php') . '?id=' . (int) $row['last_invoice_id'] . $output_send_to) . '">' . h(((string) $row['last_number'] !== '') ? (string) $row['last_number'] : lang('Draft')) . '</a>'
                 : '—')
-                . (((string) $row['last_error'] !== '') ? '<div class="small fg-danger">' . h((string) $row['last_error']) . '</div>' : '') . '</td>
+                . (((string) $row['last_error'] !== '') ? '<div class="pg-text-meta fg-danger">' . h((string) $row['last_error']) . '</div>' : '') . '</td>
         </tr>';
 }
 
@@ -82,7 +82,7 @@ pg_page_shell([
 ]) . '
 <main id="content" class="container-fluid">
     ' . pg_screen_toolbar(array(
-        'grow'   => '<span class="small fg-secondary">' . h(lang(array('string' => '{var:1} repeating invoice(s)', 'vars' => array(count($recurrences))))) . '</span>',
+        'grow'   => '<span class="pg-text-meta">' . h(lang(array('string' => '{var:1} repeating invoice(s)', 'vars' => array(count($recurrences))))) . '</span>',
         'search' => pg_filter_select('all', array('' => lang('Running'), '1' => lang('All')), $show_stopped ? '1' : '', array('label' => lang('Show'), 'icon' => 'funnel', 'action' => 'erp_invoice_recurrences.php')),
     )) . '
     <div class="row">
@@ -91,7 +91,7 @@ pg_page_shell([
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
 
-            <div class="card my-7">
+            <div class="card pg-card erp-list-card my-7">
                 <div class="card-body p-0 table-responsive">
                     <table class="table table-hover align-middle mb-0" data-pg-sort>
                         <thead>

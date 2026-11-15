@@ -2688,7 +2688,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
 
         if (AFFILIATE_PROGRAM == true) {
             $output_affiliate ='
-                <div class="col-12"><h5 class="fg-success fw-bold mt-7 mb-3">' . lang('Affiliate') . '</h5></div>
+                <div class="col-12"><h3 class="pg-group-label mt-7 mb-3">' . lang('Affiliate') . '</h3></div>
                 <div class="col-12">
                     <label for="filter_affiliate_code" class="form-label">' . lang('Affiliate Code') . '</label>
                     <input class="form-control" type="text" id="filter_affiliate_code" name="affiliate_code" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['affiliate_code'] ?? '')) . '" />
@@ -2768,7 +2768,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                 </div>
                 <form class="advanced-filter-body p-3 pt-0 disable_shortcut" id="search_advanced" action="view_orders.php" method="get">
                     <div class="row">
-                        <div class="col-12"><h5 class="fg-success fw-bold mt-7 mb-3">' . lang('Order') . '</h5></div>
+                        <div class="col-12"><h3 class="pg-group-label mt-7 mb-3">' . lang('Order') . '</h3></div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="filter_order_number" class="form-label">' . lang('Order Number') . '</label>
                             <input class="form-control" type="text" id="filter_order_number" name="order_number" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['order_number'] ?? '')) . '" />
@@ -2806,12 +2806,12 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                             <label for="filter_ip_address" class="form-label">' . lang('Customer\'s IP Address') . '</label>
                             <input class="form-control" type="text" id="filter_ip_address" name="ip_address" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['ip_address'] ?? '')) . '" />
                         </div>
-                        <div class="col-12"><h5 class="fg-success fw-bold mt-7 mb-3">' . lang('Product') . '</h5></div>
+                        <div class="col-12"><h3 class="pg-group-label mt-7 mb-3">' . lang('Product') . '</h3></div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="filter_product_name" class="form-label">' . lang('Product Name') . '</label>
                             <input class="form-control" type="text" id="filter_product_name" name="product_name" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['product_name'] ?? '')) . '" />
                         </div>
-                        <div class="col-12"><h5 class="fg-success fw-bold mt-7 mb-3">' . lang('Payment') . '</h5></div>
+                        <div class="col-12"><h3 class="pg-group-label mt-7 mb-3">' . lang('Payment') . '</h3></div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="filter_payment_method" class="form-label">' . lang('Payment Method') . '</label>
                             <select class="form-control" id="filter_payment_method" name="payment_method"><option value="any"' . $payment_method_any_selected . '>' . lang('Any') . '</option><option value=""' . $payment_method_none_selected . '>' . lang('None') . '</option><option value="Credit/Debit Card"' . $payment_method_credit_debit_card_selected . '>' . lang('Credit/Debit Card') . '</option><option value="PayPal Express Checkout"' . $payment_method_paypal_express_checkout_selected . '>' . lang('PayPal Express Checkout') . '</option><option value="Offline Payment"' . $payment_method_offline_selected . '>' . lang('Offline Payment') . '</option>' . $output_payment_method_driver_options . '</select>
@@ -2829,7 +2829,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                             <input class="form-control" type="text" id="filter_card_number" name="card_number" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['card_number'] ?? '')) . '" />
                         </div>
                         ' . $output_affiliate . '
-                        <div class="col-12"><h5 class="fg-success fw-bold mt-7 mb-3">' . lang('Billing') . '</h5></div>
+                        <div class="col-12"><h3 class="pg-group-label mt-7 mb-3">' . lang('Billing') . '</h3></div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="filter_custom_field_1" class="form-label">' . lang('Custom Field') . '  #1</label>
                             <input class="form-control" type="text" id="filter_custom_field_1" name="custom_field_1" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['custom_field_1'] ?? '')) . '" />
@@ -2902,7 +2902,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                             <label for="filter_tax_status" class="form-label">' . lang('Tax Status') . '</label>
                             <select class="form-control" id="filter_tax_status" name="tax_status"><option value="any"' . $tax_status_any_selected . '>' . lang('Any') . '</option><option value="tax_exempt"' . $tax_status_tax_exempt_selected . '>' . lang('Tax-Exempt') . '</option><option value="not_tax_exempt"' . $tax_status_not_tax_exempt_selected . '>' . lang('Not Tax-Exempt') . '</option></select>
                         </div>
-                        <div class="col-12"><h5 class="fg-success fw-bold mt-7 mb-3">' . lang('Shipping') . '</h5></div>
+                        <div class="col-12"><h3 class="pg-group-label mt-7 mb-3">' . lang('Shipping') . '</h3></div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="filter_shipping_salutation" class="form-label">' . lang('Salutation') . '</label>
                             <input class="form-control" type="text" id="filter_shipping_salutation" name="shipping_salutation" autocomplete="pg-no-autofill" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['shipping_salutation'] ?? '')) . '" />
@@ -2967,7 +2967,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                             <label for="filter_shipping_status" class="form-label">' . lang('Shipping Status') . '</label>
                             <select class="form-control" id="filter_shipping_status" name="shipping_status"><option value="any"' . $shipping_status_any_selected . '>' . lang('Any') . '</option><option value="unshipped"' . $shipping_status_unshipped_selected . '>' . lang('Unshipped') . '</option><option value="shipped"' . $shipping_status_shipped_selected . '>' . lang('Shipped') . '</option></select>
                         </div>
-                        <div class="col-12"><h5 class="fg-success fw-bold mt-7 mb-3">' . lang('Date Range') . '</h5></div>
+                        <div class="col-12"><h3 class="pg-group-label mt-7 mb-3">' . lang('Date Range') . '</h3></div>
                         <div class="col-12">' . $output_date_type_field . '</div>
                         <fieldset class="col-12" data-pg-date-selects>
                             <legend class="form-label">' . lang('Start') . '</legend>
@@ -3205,7 +3205,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
     $stat_card = function ($icon, $value, $label, $canvas, $value_class = '') {
         return '
                     <div class="col-6 lg:col-3">
-                        <div class="card h-100 shadow-sm border-0">
+                        <div class="card pg-card h-100">
                             <div class="card-body p-5 pb-3">
                                 <div class="d-flex align-items-start gap-3 small fg-secondary mb-1"><i class="bi ' . $icon . '" aria-hidden="true"></i><span>' . $label . '</span></div>
                                 <div class="h5 mb-1 text-nowrap' . $value_class . '">' . $value . '</div>
@@ -3224,7 +3224,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                 </div>
                 <div class="row g-3 mb-3">
                     <div class="col-12 lg:col-6">
-                        <div class="card h-100 shadow-sm border-0">
+                        <div class="card pg-card h-100">
                             <div class="card-body p-5">
                                 <div class="small fg-secondary mb-3"><i class="bi bi-trophy me-1" aria-hidden="true"></i>' . h(lang('Top 5 products')) . '</div>
                                 ' . (!empty($top_products)
@@ -3234,7 +3234,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                         </div>
                     </div>
                     <div class="col-12 lg:col-6">
-                        <div class="card h-100 shadow-sm border-0">
+                        <div class="card pg-card h-100">
                             <div class="card-body p-5">
                                 <div class="small fg-secondary mb-3"><i class="bi bi-credit-card me-1" aria-hidden="true"></i>' . h(lang('Payment methods')) . '</div>
                                 ' . (!empty($payment_split)
@@ -3263,7 +3263,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                 ' . $liveform->get_warnings() . '
                 ' . $liveform->output_notices() . '
                 <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . h(lang('Button Bar')) . '">
-                    <a class="btn btn-sm btn-solid theme-primary rounded-pill px-5" href="add_order.php"><i class="bi bi-cart-plus me-1" aria-hidden="true"></i>' . lang(array('string' => 'Add {var:1}', 'vars' => array(lang('Order')))) . '</a>
+                    <a class="pg-button pg-button-fill" href="add_order.php"><i class="bi bi-cart-plus" aria-hidden="true"></i>' . lang(array('string' => 'Add {var:1}', 'vars' => array(lang('Order')))) . '</a>
                     <form id="search" action="view_orders.php" class="disable_shortcut" method="get">
                         ' . get_token_field() . '
                         <div class="pg-menu-wrap d-inline-block">

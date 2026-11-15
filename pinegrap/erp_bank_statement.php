@@ -193,7 +193,7 @@ $post_form = function ($fields, $button, $class, $attributes = '') use ($stateme
     return '<form method="post" action="erp_bank_statement.php" class="d-inline-flex flex-wrap gap-1 align-items-center"' . $attributes . '>' . get_token_field()
         . '<input type="hidden" name="id" value="' . $statement_id . '" />' . $fields
         . '<button type="submit" class="btn btn-sm ' . $class . '">' . $button . '</button>'
-        . (($attributes !== '') ? '<span class="small fg-secondary" role="status" aria-live="polite" data-erp-send-once-status></span>' : '') . '</form>';
+        . (($attributes !== '') ? '<span class="pg-text-2" role="status" aria-live="polite" data-erp-send-once-status></span>' : '') . '</form>';
 };
 
 $output_body = '';
@@ -270,7 +270,7 @@ if ((string) $statement['status'] === 'mapping') {
 
     $output_status = '
                 <div class="card my-7">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Statement') . '</div>
+                    <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('Statement') . '</h2>
                     <div class="card-body pt-0">
                         ' . $status_line(lang('Bank account'), h((string) $statement['till_name'])) . '
                         ' . $status_line(lang('File'), h((string) $statement['file_name'])) . '
@@ -281,7 +281,7 @@ if ((string) $statement['status'] === 'mapping') {
 
     $output_body = '
             <div class="card my-7">
-                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('The first lines of the file') . '</div>
+                <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('The first lines of the file') . '</h2>
                 ' . $separator_form . '
                 <div class="card-body p-0 table-responsive"><table class="table table-sm table-bordered mb-0"><thead>' . $head . '</thead><tbody>' . $body . '</tbody></table></div>
             </div>
@@ -289,7 +289,7 @@ if ((string) $statement['status'] === 'mapping') {
                 ' . get_token_field() . '
                 <input type="hidden" name="id" value="' . $statement_id . '" />
                 <input type="hidden" name="erp_action" value="map" />
-                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Which column is which') . '</div>
+                <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('Which column is which') . '</h2>
                 <div class="card-body">
                     <div class="row g-3 align-items-end">
                     ' . $select('col_date', 'date', lang('Date'), false) . '
@@ -300,7 +300,7 @@ if ((string) $statement['status'] === 'mapping') {
                     <div class="col-6 md:col-2"><label class="form-label small" for="date_order">' . lang('Dates are written') . '</label><select class="form-control form-control-sm" id="date_order" name="date_order"><option value="dmy">' . lang('day first') . '</option><option value="mdy"' . (((string) $chosen('date_order', 'date_order') === 'mdy') ? ' selected' : '') . '>' . lang('month first') . '</option></select></div>
                     <div class="col-12"><div class="form-field"><input class="check" type="checkbox" id="header_row" name="header" value="1"' . (($posted ? !empty($liveform->get_field_value('header')) : !empty($mapping['header'])) ? ' checked' : '') . ' /><label class="" for="header_row">' . lang('The first line is the column names') . '</label></div></div>
                     <div class="col-12 form-text">' . lang('Either one amount column, with money out as a minus, or a money-out and a money-in column. Lines without a date or an amount (totals, balances, headings) are left out.') . '</div>
-                    <div class="col-12 d-flex flex-wrap gap-3 align-items-center"><button type="submit" class="btn btn-solid theme-primary">' . lang('Take the lines in') . '</button><span class="small fg-secondary" role="status" aria-live="polite" data-erp-send-once-status></span></div>
+                    <div class="col-12 d-flex flex-wrap gap-3 align-items-center"><button type="submit" class="btn btn-solid theme-primary">' . lang('Take the lines in') . '</button><span class="pg-text-2" role="status" aria-live="polite" data-erp-send-once-status></span></div>
                     </div>
                 </div>
             </form>' : '');
@@ -345,13 +345,13 @@ if ((string) $statement['status'] === 'mapping') {
             $suggestion = $suggestions[(int) $line['id']] ?? array('account_id' => 0);
 
             if ($line_locked !== '') {
-                $action .= '<div class="small fg-secondary" style="max-width:24rem">' . h(lang(array('string' => 'The books are locked up to {var:1}, so this line cannot be recorded. Set it aside, or ask whoever keeps the books to move the lock.', 'vars' => prepare_form_data_for_output(erp_lock_date(), 'date', false)))) . '</div>';
+                $action .= '<div class="pg-text-2" style="max-width:24rem">' . h(lang(array('string' => 'The books are locked up to {var:1}, so this line cannot be recorded. Set it aside, or ask whoever keeps the books to move the lock.', 'vars' => prepare_form_data_for_output(erp_lock_date(), 'date', false)))) . '</div>';
             } elseif ($suggestion['account_id'] > 0) {
                 $suggested++;
                 $title = (string) db_value("SELECT title FROM erp_accounts WHERE id = '" . (int) $suggestion['account_id'] . "' LIMIT 1");
                 $action .= $post_form($hidden . '<input type="hidden" name="erp_action" value="record" /><input type="hidden" name="account_id" value="' . (int) $suggestion['account_id'] . '" /><input type="hidden" name="invoice_id" value="' . (int) $suggestion['invoice_id'] . '" />',
                     '<i class="bi bi-check2 me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Record for {var:1}', 'vars' => $title))), 'btn-outline theme-success')
-                    . '<div class="small fg-secondary">' . h($suggestion['why']) . '</div>';
+                    . '<div class="pg-text-2">' . h($suggestion['why']) . '</div>';
             }
 
             if ($line_locked !== '') {
@@ -389,7 +389,7 @@ if ((string) $statement['status'] === 'mapping') {
         } elseif ((int) $line['cash_id'] > 0) {
             $link = in_array((string) $line['cash_doc_type'], array('collection', 'payment'), true) ? 'erp_receipt.php?id=' . (int) $line['cash_id'] : 'erp_cash.php';
             $action = '<a class="small pg-link-body-emphasis" href="' . h($link) . '">' . h(trim((string) $line['cash_description'])) . '</a>'
-                . (((string) $line['account_title'] !== '') ? '<div class="small fg-secondary">' . h((string) $line['account_title']) . '</div>' : '');
+                . (((string) $line['account_title'] !== '') ? '<div class="pg-text-2">' . h((string) $line['account_title']) . '</div>' : '');
 
             // A wrong match (another movement of the same amount) is undone
             // here, so the line can be recorded.
@@ -430,7 +430,7 @@ if ((string) $statement['status'] === 'mapping') {
 
     $output_status = '
                 <div class="card my-7">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Summary') . '</div>
+                    <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('Summary') . '</h2>
                     <div class="card-body pt-0">
                         ' . $status_line(lang('Lines'), (string) count($lines)) . '
                         ' . $output_status_counts . '

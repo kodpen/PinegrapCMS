@@ -29,6 +29,8 @@ if (!defined('PG_FUNCTIONS_DIR')) {
     exit;
 }
 
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/ical_zone.php');
+
 /** The most addresses one person keeps. */
 define('WS_PERSONAL_ICAL_MAX', 5);
 
@@ -39,7 +41,7 @@ define('WS_PERSONAL_ICAL_AHEAD_DAYS', 366);
 /** The most bytes the kept events take before sealing: the sealed blob stays within url (TEXT). */
 define('WS_PERSONAL_ICAL_PAYLOAD_MAX', 40000);
 
-/** The most occurrences one repeating event gives. */
+/** The most occurrences one repeating event gives inside the read window. */
 define('WS_PERSONAL_ICAL_REPEAT_MAX', 500);
 
 /**
@@ -504,8 +506,9 @@ function ws_personal_ical_trim($events)
 /**
  * A DTSTART, DTEND, EXDATE or RECURRENCE-ID value as a moment: a date is
  * midnight in the site's zone, a time ending in Z is UTC, one with a TZID is
- * in that zone (the site's when PHP does not know the name, as with
- * Outlook's Windows names), a floating time is in the site's zone.
+ * in that zone (an Outlook Windows name or display label through
+ * ws_ical_zone(); the site's zone for a name that matches nothing), a
+ * floating time is in the site's zone.
  *
  * @param array $property value, params
  * @return DateTime|null
@@ -523,11 +526,7 @@ function ws_personal_ical_moment($property)
     if (!empty($match[3])) {
         $zone = new DateTimeZone('UTC');
     } elseif (preg_match('/(?:^|;)TZID="?([^";]+)"?/i', (string) ($property['params'] ?? ''), $tzid)) {
-        try {
-            $zone = new DateTimeZone($tzid[1]);
-        } catch (Exception $e) {
-            $zone = null;
-        }
+        $zone = ws_ical_zone($tzid[1]);
     }
 
     $moment = DateTime::createFromFormat('!YmdHis', $match[1] . (isset($match[2]) && $match[2] !== '' ? $match[2] : '000000'), $zone ?: new DateTimeZone(date_default_timezone_get()));
@@ -636,9 +635,23 @@ function ws_personal_ical_events($text, $from, $to)
             sort($days);
         }
 
-        $given = 0;
+        // Without COUNT the walk starts at the last period that cannot reach
+        // $from, so a rule begun years ago still gives the window's
+        // occurrences; the step is taken at its longest (31-day month, 366-day
+        // year), so the jump never passes a period that reaches the window.
+        // COUNT counts from the first occurrence, so then the walk starts there.
+        $first = 0;
+        $longest = array('DAILY' => 1, 'WEEKLY' => 7, 'MONTHLY' => 31, 'YEARLY' => 366);
 
-        for ($period = 0; $period < WS_PERSONAL_ICAL_REPEAT_MAX; $period++) {
+        if (($frequency !== '') && !$count) {
+            $gap = ($from - $length - $start->getTimestamp()) / 86400;
+            $first = max(0, (int) floor($gap / ($longest[$frequency] * $interval)) - 1);
+        }
+
+        $given = 0;
+        $kept = 0;
+
+        for ($period = $first; ($period < $first + WS_PERSONAL_ICAL_REPEAT_MAX) && ($kept < WS_PERSONAL_ICAL_REPEAT_MAX); $period++) {
             $base = clone $start;
 
             if ($period > 0) {
@@ -689,6 +702,7 @@ function ws_personal_ical_events($text, $from, $to)
                     continue;
                 }
 
+                $kept++;
                 $out[] = array(
                     'title'     => $title,
                     'starts_at' => $at,

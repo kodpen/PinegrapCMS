@@ -111,7 +111,7 @@ pg_page_shell([
             ' . $liveform->output_notices() . '
 
             <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
-                        ' . ($readonly ? '' : '<a class="btn btn-sm btn-solid theme-primary rounded-pill px-5" href="add_erp_receipt.php?direction=collection"><i class="bi bi-box-arrow-in-down me-1" aria-hidden="true"></i>' . lang('Record a Receipt') . '</a>
+                        ' . ($readonly ? '' : '<a class="pg-button pg-button-fill" href="add_erp_receipt.php?direction=collection"><i class="bi bi-box-arrow-in-down" aria-hidden="true"></i>' . lang('Record a Receipt') . '</a>
                         <a class="btn btn-sm btn-outline theme-secondary" href="add_erp_receipt.php?direction=payment"><i class="bi bi-box-arrow-up me-1" aria-hidden="true"></i>' . lang('Record a Payment') . '</a>
                         <a class="btn btn-sm btn-outline theme-secondary" href="add_erp_transfer.php"><i class="bi bi-arrow-left-right me-1" aria-hidden="true"></i>' . lang('Transfer') . '</a>
                         <a class="btn btn-sm btn-outline theme-secondary" href="add_erp_till.php"><i class="bi bi-plus-circle me-1" aria-hidden="true"></i>' . lang('Open a Till') . '</a>') . '

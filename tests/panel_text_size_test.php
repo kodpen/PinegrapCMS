@@ -75,11 +75,14 @@ function test_panel_text_size_marketplace_products_in_rem()
 	pg_assert_contains('grid-template-columns: 22px minmax(0, 1fr) 6rem minmax(0, 1fr); }', $style);
 }
 
-function test_panel_text_size_marketplace_settings_in_rem()
+// The screen's own sizes are look A's type tokens, no literal size.
+function test_panel_text_size_marketplace_settings_on_tokens()
 {
 	$source = panel_text_size_test_source('marketplace_settings.php');
+	$style = panel_text_size_test_style('marketplace_settings.php');
 
-	panel_text_size_test_no_px_font_size(panel_text_size_test_style('marketplace_settings.php'), 'marketplace_settings.php');
+	pg_assert_same(0, preg_match_all('/font-size:\s*[0-9.]+(px|rem)/', $style), 'marketplace_settings.php has no literal font-size');
+	pg_assert_true(preg_match_all('/font-size: var\(--pg-text-[a-z0-9-]+\)/', $style) > 0, 'marketplace_settings.php sizes its text with the type tokens');
 	pg_assert_true(strpos($source, 'font-size:34px') === false, 'the empty state icon is not in px');
 	pg_assert_contains('font-size:2.125rem', $source);
 }

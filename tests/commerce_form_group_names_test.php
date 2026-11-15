@@ -50,8 +50,8 @@ function test_shipping_method_day_sets_are_named_groups()
 	foreach (array('Handling on', 'Ships on', 'Available on') as $heading) {
 		pg_assert_contains('role="group" aria-label="\' . h(lang(\'' . $heading . '\')) . \'"', $src, $heading . ' names its day boxes');
 	}
-	pg_assert_contains('<h3 class="h5 fg-secondary">\' . lang(\'Handling on\') . \'</h3>', $src, 'the Handling on heading is unchanged');
-	pg_assert_contains('<h3 class="h5 fg-secondary mt-5">\' . lang(\'Ships on\') . \'</h3>', $src, 'the Ships on heading is unchanged');
+	pg_assert_contains('<h3 class="pg-group-label mb-3">\' . lang(\'Handling on\') . \'</h3>', $src, 'the Handling on heading is the group label');
+	pg_assert_contains('<h3 class="pg-group-label mt-5 mb-3">\' . lang(\'Ships on\') . \'</h3>', $src, 'the Ships on heading is the group label');
 }
 
 function test_shipping_method_rate_tiers_and_rate_boxes_are_named_groups()

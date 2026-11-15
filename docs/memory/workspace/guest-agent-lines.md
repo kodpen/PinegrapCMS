@@ -5,11 +5,15 @@ description: The guest page lists the agents' and assistants' messages beside pe
 
 ## Which lines does a guest read? (GV1, #9401)
 - In a guest's room and in every channel shared with a guest, earlier ones included: people's and guests' lines, and the lines of the registry agents (`ws_agents` app and model, any status), Claude, Pinegrap AI and an MCP agent's answer (kept in its asker's name, found with `ws_mcp_agent_answers_map()`). Owner decision: `workflow/decisions-made-workspace-24.md`.
-- Left out: other applications' lines (CI, integrations), system lines, an agent's task card, change cards, buttons, request ("Waiting for") lines. An agent's file is not served; an agent line with no text and no poll is skipped.
-- `ws_guest_line_sender()` (pure) says person, guest, agent or ''; `ws_guest_lines_sql()` (pure) is the WHERE part; `ws_guest_agent_apps()` gives each application's name, `@tag` and badge.
+- Left out: other applications' lines (CI, integrations), system lines, change cards, buttons, request ("Waiting for") lines. An agent line with nothing a guest reads (no text, poll, file or task card; a live page alone) is skipped.
+- An agent's task card reads as a person's: title, state and due date (GP2).
+- An agent's file and picture as a person's (GP2): `ws_guest_file_reached()` (pure) decides for the payload and `workspace_guest.php?file=`: a person's, an agent's or an MCP answer's line, in the room, after the clear floor, not deleted, never a live page (`ws_page_is_page()`); anything else 404. HTML and SVG are downloads (`ws_file_type()`), never run.
+- A canvas is its drawn picture only (`ws_guest_canvas_view()`: `file.canvas`, `file.pending`, `&v=<version>` in the address): no Design Canvas, layers, versions or Undo, for a guest who may write too. While an agent's picture is pending: "The preview is not ready yet." in place of the picture.
+- `ws_guest_line_sender()` (pure) says person, guest, agent or ''; `ws_guest_lines_sql()` (pure) is the WHERE part; `ws_guest_agent_apps()` gives each application's name, `@tag`, badge, role and model.
 
 ## How is an agent's line drawn?
 - By the staff's engine (`ws_render_body()`), under the agent's name with a badge: "AI agent", "AI assistant" or "MCP agent" (`pg-guest-badge` in `workspace_guest.css`). An MCP answer loses its first line naming the tool.
+- Beside the badge, muted (`pg-guest-agent-facts`): the agent's role label and its model, joined by " · "; an empty fact is left out (GP1, #9693). `ws_guest_agent_facts()` (pure): an application agent's last reported model (`agent-report.md`), a model assistant's from its form, none for Claude, Pinegrap AI or an MCP answer. No usage, state dot, report age or card.
 - A tag `<@app:N>` reads as `@handle` (`@Claude`, `@ai`), never a link; any other application's tag as "@Application".
 
 ## What may a guest do on an agent's line?

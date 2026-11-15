@@ -887,7 +887,7 @@ function mp_products_shop_view($account, $filters, $counts, $view, $search, $pag
 	};
 
 	echo '
-	<div class="card mb-5">
+	<div class="card pg-card mb-5">
 		<div class="card-body">
 			<div class="mpp-hero">
 				<div class="flex-grow-1">
@@ -900,7 +900,7 @@ function mp_products_shop_view($account, $filters, $counts, $view, $search, $pag
 					</div>
 					<div class="mpp-meter" id="mpp-meter" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' . $matched_share . '"'
 						. ' aria-label="' . h(lang('Matched')) . '"><i style="width:' . $matched_share . '%"></i></div>
-					<div class="small mt-3">' . h(lang('Only matched products are sent. Their stock and price go from here; the rest is left alone on the marketplace.')) . '</div>
+					<div class="pg-text-2 mt-3">' . h(lang('Only matched products are sent. Their stock and price go from here; the rest is left alone on the marketplace.')) . '</div>
 				</div>
 				<div class="mpp-hero-actions">
 					<button type="button" class="btn btn-outline theme-secondary" data-mp-bulk="shop_send_all"' . ($counts['matched'] ? '' : ' disabled') . '>'
@@ -913,7 +913,7 @@ function mp_products_shop_view($account, $filters, $counts, $view, $search, $pag
 				: '') . '
 		</div>
 	</div>
-	<div class="card">
+	<div class="card pg-card">
 		<div class="mpp-list-head">
 			<nav class="mpp-tabs" aria-label="' . h(lang('Filters')) . '">';
 
@@ -933,7 +933,7 @@ function mp_products_shop_view($account, $filters, $counts, $view, $search, $pag
 				<input type="hidden" name="account" value="' . $account_id . '">
 				<input type="hidden" name="mode" value="shop">
 				<input type="hidden" name="view" value="' . h($view) . '">
-				<input type="search" name="q" value="' . h($search) . '" class="form-control form-control-sm" style="min-width:220px"'
+				<input type="search" name="q" value="' . h($search) . '" class="form-control form-control-sm mpp-search"'
 					. ' placeholder="' . h(lang('Search by name, code or barcode')) . '" aria-label="' . h(lang('Search')) . '">
 				<button type="submit" class="btn btn-sm btn-outline theme-secondary" aria-label="' . h(lang('Search')) . '"><i class="bi bi-search" aria-hidden="true"></i></button>
 			</form>
@@ -1204,7 +1204,7 @@ function mp_products_attribute_field($group_id, $attribute, $value, $required) {
 
 	$variant = !empty($attribute['is_variant']);
 
-	$output = '<div class="col-12 md:col-6"><label class="form-label small mb-1" for="' . h($field) . '">' . h((string) $attribute['name'])
+	$output = '<div class="col-12 md:col-6"><label class="pg-field-label" for="' . h($field) . '">' . h((string) $attribute['name'])
 		. ($required ? ' <span class="fg-danger">*</span>' : '') . '</label>';
 
 	if (!empty($attribute['values'])) {
@@ -1289,7 +1289,7 @@ function mp_products_article_sections($group_id, $sections, $chosen) {
 
 		$output .= ($key === 'optional')
 			? '<details class="mpa-optional"><summary>' . h($headings[$key]) . ' (' . count($definitions) . ')</summary><div class="mt-3">' . $fields . '</div></details>'
-			: '<h3 class="h6">' . h($headings[$key]) . '</h3>' . $fields;
+			: '<h3 class="pg-group-label mb-3">' . h($headings[$key]) . '</h3>' . $fields;
 
 	}
 
@@ -1322,7 +1322,7 @@ function mp_products_listings_view($account, $counts, $category_count, $view, $s
 	);
 
 	echo '
-	<div class="card mb-5">
+	<div class="card pg-card mb-5">
 		<div class="card-body">
 			<div class="mpp-hero">
 				<div class="flex-grow-1">
@@ -1334,7 +1334,7 @@ function mp_products_listings_view($account, $counts, $category_count, $view, $s
 					</div>
 					<div class="mpp-meter" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' . $ready_share . '"'
 						. ' aria-label="' . h(lang('Ready to list')) . '"><i style="width:' . $ready_share . '%"></i></div>
-					<div class="small mt-3">' . h(lang('An article is listed once, with its products as options. Pick its category and answer what the category asks.')) . '</div>
+					<div class="pg-text-2 mt-3">' . h(lang('An article is listed once, with its products as options. Pick its category and answer what the category asks.')) . '</div>
 				</div>
 				<div class="mpp-hero-actions">
 					<button type="button" class="btn ' . ($category_count ? 'btn-outline theme-secondary' : 'btn-solid theme-primary') . '" id="mpa-fetch">'
@@ -1350,7 +1350,7 @@ function mp_products_listings_view($account, $counts, $category_count, $view, $s
 	if (!$category_count || !$counts['all']) {
 
 		echo '
-	<div class="card"><div class="text-center fg-secondary py-12">'
+	<div class="card pg-card"><div class="text-center fg-secondary py-12">'
 		. h(!$category_count
 			? lang('Fetch the marketplace category list first. It is downloaded once and kept.')
 			: lang('This shop has no product group with products in it, so there is no article to list.')) . '</div></div>';
@@ -1360,7 +1360,7 @@ function mp_products_listings_view($account, $counts, $category_count, $view, $s
 	}
 
 	echo '
-	<div class="card">
+	<div class="card pg-card">
 		<div class="mpp-list-head">
 			<nav class="mpp-tabs" aria-label="' . h(lang('Filters')) . '">';
 
@@ -1380,7 +1380,7 @@ function mp_products_listings_view($account, $counts, $category_count, $view, $s
 				<input type="hidden" name="account" value="' . $account_id . '">
 				<input type="hidden" name="mode" value="listings">
 				<input type="hidden" name="view" value="' . h($view) . '">
-				<input type="search" name="q" value="' . h($search) . '" class="form-control form-control-sm" style="min-width:220px"'
+				<input type="search" name="q" value="' . h($search) . '" class="form-control form-control-sm mpp-search"'
 					. ' placeholder="' . h(lang('Search by code or title')) . '" aria-label="' . h(lang('Search')) . '">
 				<button type="submit" class="btn btn-sm btn-outline theme-secondary" aria-label="' . h(lang('Search')) . '"><i class="bi bi-search" aria-hidden="true"></i></button>
 			</form>
@@ -1608,8 +1608,9 @@ echo pg_page_shell(array(
    hide .mpp-bulk (display: flex) and the bulk bar stayed on screen. */
 .mpp-hero { display: flex; flex-wrap: wrap; gap: 20px 32px; align-items: center; }
 .mpp-stats { display: flex; flex-wrap: wrap; gap: 14px 32px; flex: 1 1 420px; }
-.mpp-stat b { display: block; font-size: 1.625rem; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
-.mpp-stat span { font-size: 0.75rem; color: var(--pg-fg-2); }
+.mpp-stat b { display: block; font-size: 1.625rem; font-weight: var(--pg-weight-title); line-height: 1.2; letter-spacing: var(--pg-tracking-screen-title);
+	font-variation-settings: var(--pg-opsz-display); font-variant-numeric: tabular-nums; }
+.mpp-stat span { font-size: var(--pg-text-meta); color: var(--pg-fg-2); }
 .mpp-stat.good b { color: var(--pg-success-fg-emphasis); }
 .mpp-meter { height: 6px; border-radius: var(--pg-radius-pill); background: var(--pg-bg-2); overflow: hidden; margin-top: 12px; }
 .mpp-meter > i { display: block; height: 100%; background: var(--pg-success); transition: width .4s ease; }
@@ -1618,10 +1619,10 @@ echo pg_page_shell(array(
 .mpp-hero-actions small { color: var(--pg-fg-2); }
 .mpp-tabs { display: flex; flex-wrap: wrap; gap: 6px; }
 .mpp-tab { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; border: 1px solid var(--pg-border-color);
-	border-radius: var(--pg-radius-pill); color: inherit; text-decoration: none; font-size: 0.8125rem; white-space: nowrap; }
+	border-radius: var(--pg-radius-pill); color: inherit; text-decoration: none; font-size: var(--pg-text-2); white-space: nowrap; }
 .mpp-tab:hover { border-color: var(--pg-primary); }
-.mpp-tab.active { background: var(--pg-primary-bg-subtle); border-color: var(--pg-primary); color: var(--pg-primary-fg-emphasis); font-weight: 600; }
-.mpp-tab .mpp-n { font-size: 0.6875rem; font-weight: 600; padding: 1px 8px; border-radius: var(--pg-radius-pill); background: var(--pg-bg-2); }
+.mpp-tab.active { background: var(--pg-primary-bg-subtle); border-color: var(--pg-primary); color: var(--pg-primary-fg-emphasis); font-weight: var(--pg-weight-strong); }
+.mpp-tab .mpp-n { font-size: var(--pg-text-count); font-weight: var(--pg-weight-strong); padding: 1px 8px; border-radius: var(--pg-radius-pill); background: var(--pg-bg-2); }
 .mpp-list-head { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 12px 16px; }
 .mpp-row { display: grid; grid-template-columns: 22px minmax(0, 1fr) 7rem minmax(0, 1fr) 16.25rem; gap: 16px; align-items: center;
 	padding: 14px 16px; border-top: 1px solid var(--pg-border-color); transition: background-color .2s; }
@@ -1634,22 +1635,22 @@ echo pg_page_shell(array(
 .mpp-img { display: block; width: 76px; height: 76px; object-fit: cover; border-radius: var(--pg-radius-lg);
 	background: var(--pg-bg-2); border: 1px solid var(--pg-border-color); flex: 0 0 76px; }
 .mpp-noimg { display: flex; align-items: center; justify-content: center; color: var(--pg-fg-3); font-size: 1.5rem; }
-.mpp-origin { font-size: 0.65625rem; letter-spacing: .05em; text-transform: uppercase; color: var(--pg-fg-3); margin-bottom: 2px; }
+.mpp-origin { font-size: var(--pg-text-count); letter-spacing: .05em; text-transform: uppercase; color: var(--pg-fg-3); margin-bottom: 2px; }
 .mpp-title { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
-	font-weight: 600; font-size: 0.84375rem; line-height: 1.35; color: inherit; text-decoration: none; }
+	font-weight: var(--pg-weight-strong); font-size: var(--pg-text-base); line-height: 1.35; color: inherit; text-decoration: none; }
 a.mpp-title:hover { text-decoration: underline; }
-.mpp-meta { display: flex; flex-wrap: wrap; gap: 2px 12px; margin-top: 4px; font-size: 0.75rem; color: var(--pg-fg-2); }
-.mpp-meta code { font-size: 0.71875rem; color: inherit; }
+.mpp-meta { display: flex; flex-wrap: wrap; gap: 2px 12px; margin-top: 4px; font-size: var(--pg-text-meta); color: var(--pg-fg-2); }
+.mpp-meta code { font-size: var(--pg-text-count); color: inherit; }
 .mpp-link { display: flex; justify-content: center; }
 .mpp-score { display: inline-flex; flex-direction: column; align-items: center; gap: 2px; text-align: center; color: var(--pg-fg-2); }
-.mpp-score b { font-size: 1.25rem; line-height: 1; color: var(--pg-fg-emphasis); font-variant-numeric: tabular-nums; }
-.mpp-score small { font-size: 0.6875rem; }
+.mpp-score b { font-size: var(--pg-text-section-title); font-weight: var(--pg-weight-title); line-height: 1; color: var(--pg-fg-emphasis); font-variant-numeric: tabular-nums; }
+.mpp-score small { font-size: var(--pg-text-count); }
 .mpp-score.sure b, .mpp-score.matched { color: var(--pg-success-fg-emphasis); }
 .mpp-score.matched i { font-size: 1.375rem; }
 .mpp-score.none i { font-size: 1.125rem; opacity: .5; }
-.mpp-sure-tag { font-size: 0.65625rem; font-weight: 600; color: var(--pg-success-fg-emphasis); }
+.mpp-sure-tag { font-size: var(--pg-text-count); font-weight: var(--pg-weight-strong); color: var(--pg-success-fg-emphasis); }
 .mpp-empty { display: flex; gap: 10px; align-items: center; min-height: 76px; padding: 12px 14px; width: 100%;
-	border: 1px dashed var(--pg-border-color); border-radius: var(--pg-radius-lg); font-size: 0.78125rem; color: var(--pg-fg-2); }
+	border: 1px dashed var(--pg-border-color); border-radius: var(--pg-radius-lg); font-size: var(--pg-text-meta); color: var(--pg-fg-2); }
 .mpp-actions { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
 .mpp-bulk { position: sticky; bottom: 12px; z-index: 5; display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
 	margin: 12px auto 0; padding: 10px 14px; max-width: 960px; border-radius: var(--pg-radius-lg);
@@ -1657,8 +1658,8 @@ a.mpp-title:hover { text-decoration: underline; }
 .mpp-intro { max-width: 640px; margin: 0 auto; text-align: center; padding: 48px 16px; }
 .mpp-intro .bi { font-size: 2.5rem; color: var(--pg-primary); }
 .mpp-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 24px 0; text-align: left; }
-.mpp-steps div { border: 1px solid var(--pg-border-color); border-radius: var(--pg-radius-lg); padding: 12px; font-size: 0.78125rem; color: var(--pg-fg-2); }
-.mpp-steps b { display: block; color: var(--pg-fg-emphasis); margin-bottom: 4px; font-size: 0.8125rem; }
+.mpp-steps div { border: 1px solid var(--pg-border-color); border-radius: var(--pg-radius-lg); padding: 12px; font-size: var(--pg-text-meta); color: var(--pg-fg-2); }
+.mpp-steps b { display: block; color: var(--pg-fg-emphasis); margin-bottom: 4px; font-size: var(--pg-text-2); font-weight: var(--pg-weight-strong); }
 .mpp-pick-head { display: flex; gap: 12px; align-items: center; padding-bottom: 12px; margin-bottom: 12px; border-bottom: 1px solid var(--pg-border-color); }
 .mpp-pick-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 12px; margin-top: 12px; }
 .mpp-pick { display: flex; flex-direction: column; gap: 6px; padding: 10px; text-align: left; color: inherit; cursor: pointer;
@@ -1667,18 +1668,19 @@ a.mpp-title:hover { text-decoration: underline; }
 .mpp-pick:hover, .mpp-pick:focus-visible { border-color: var(--pg-primary); }
 .mpp-pick:disabled { opacity: .5; cursor: not-allowed; --pg-lift-y: 0px; --pg-lift-shadow: none; }
 .mpp-pick .mpp-img { width: 100%; height: auto; aspect-ratio: 1; flex: none; }
-.mpp-pick .mpp-title { font-size: 0.78125rem; }
-.mpp-pick .mpp-meta { font-size: 0.71875rem; margin-top: 0; }
+.mpp-pick .mpp-title { font-size: var(--pg-text-meta); }
+.mpp-pick .mpp-meta { font-size: var(--pg-text-count); margin-top: 0; }
+.mpp-search { min-width: 220px; }
 .mpp-modes { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
 .mpp-mode { display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: var(--pg-radius-lg);
-	border: 1px solid var(--pg-border-color); color: inherit; text-decoration: none; font-weight: 600; font-size: 0.875rem; }
+	border: 1px solid var(--pg-border-color); color: inherit; text-decoration: none; font-weight: var(--pg-weight-strong); font-size: var(--pg-text-base); }
 .mpp-mode:hover { border-color: var(--pg-primary); }
 .mpp-mode.active { background: var(--pg-primary-bg-subtle); border-color: var(--pg-primary); color: var(--pg-primary-fg-emphasis); }
 .mpp-stat.bad b { color: var(--pg-danger-fg-emphasis); }
 .mpp-row.is-error { background: color-mix(in srgb, var(--pg-danger) 6%, transparent); }
-.mpp-code code { font-size: 0.875rem; font-weight: 600; color: var(--pg-fg-emphasis); }
-.mpp-err { margin-top: 4px; font-size: 0.75rem; color: var(--pg-danger-fg-emphasis); word-break: break-word; }
-.mpp-pill { display: inline-flex; align-items: center; padding: 1px 9px; border-radius: var(--pg-radius-pill); font-size: 0.6875rem; font-weight: 600;
+.mpp-code code { font-size: var(--pg-text-base); font-weight: var(--pg-weight-strong); color: var(--pg-fg-emphasis); }
+.mpp-err { margin-top: 4px; font-size: var(--pg-text-meta); color: var(--pg-danger-fg-emphasis); word-break: break-word; }
+.mpp-pill { display: inline-flex; align-items: center; padding: 1px 9px; border-radius: var(--pg-radius-pill); font-size: var(--pg-text-count); font-weight: var(--pg-weight-strong);
 	border: 1px solid var(--pg-border-color); }
 .mpp-pill.success { color: var(--pg-success-fg-emphasis); background: var(--pg-success-bg-subtle); border-color: var(--pg-success-border-subtle); }
 .mpp-pill.danger { color: var(--pg-danger-fg-emphasis); background: var(--pg-danger-bg-subtle); border-color: var(--pg-danger-border-subtle); }
@@ -1698,8 +1700,8 @@ a.mpp-title:hover { text-decoration: underline; }
 .mpa-card .mpp-img-btn, .mpa-card > .mpp-img { width: 100%; }
 .mpa-card .mpp-img { width: 100%; height: auto; aspect-ratio: 4 / 3; flex: none; }
 .mpa-body { display: flex; flex-direction: column; gap: 6px; min-width: 0; flex: 1 1 auto; }
-.mpa-cat { font-size: 0.78125rem; line-height: 1.35; }
-.mpa-cat small { display: block; color: var(--pg-fg-2); font-size: 0.71875rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mpa-cat { font-size: var(--pg-text-meta); line-height: 1.35; }
+.mpa-cat small { display: block; color: var(--pg-fg-2); font-size: var(--pg-text-count); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mpa-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 .mpp-pill.warning { color: var(--pg-warning-fg-emphasis); background: var(--pg-warning-bg-subtle); border-color: var(--pg-warning-border-subtle); }
 .mpa-results { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
@@ -1707,7 +1709,7 @@ a.mpp-title:hover { text-decoration: underline; }
 	border: 1px solid var(--pg-border-color); border-radius: var(--pg-radius-lg); }
 .mpa-result:hover, .mpa-result:focus-visible { border-color: var(--pg-primary); }
 .mpa-result small { display: block; color: var(--pg-fg-2); }
-.mpa-optional > summary { cursor: pointer; font-weight: 600; margin-bottom: 8px; }
+.mpa-optional > summary { cursor: pointer; font-weight: var(--pg-weight-strong); margin-bottom: 8px; }
 @media (max-width: 1279.98px) {
 	.mpp-row { grid-template-columns: 22px minmax(0, 1fr) 6rem minmax(0, 1fr); }
 	.mpp-actions { grid-column: 2 / -1; justify-content: flex-start; }
@@ -1797,7 +1799,7 @@ if (!$account) {
 	$read_label = $read_at ? lang('Read again') : lang(array('string' => 'Read products from {var:1}', 'vars' => array($provider_name)));
 
 	echo '
-	<div class="card mb-5">
+	<div class="card pg-card mb-5">
 		<div class="card-body">
 			<div class="mpp-hero">
 				<div class="flex-grow-1">
@@ -1810,7 +1812,7 @@ if (!$account) {
 					</div>
 					<div class="mpp-meter" id="mpp-meter" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' . $matched_share . '"'
 						. ' aria-label="' . h(lang('Matched')) . '"><i style="width:' . $matched_share . '%"></i></div>
-					<div class="small mt-3" id="mpp-progress-text" role="status">'
+					<div class="pg-text-2 mt-3" id="mpp-progress-text" role="status">'
 						. ($read_at
 							// get_relative_time() answers a <time> element.
 							? lang(array('string' => '{var:1}% matched. Read {var:2}.', 'vars' => array($matched_share, get_relative_time(array('timestamp' => $read_at)))))
@@ -1829,11 +1831,11 @@ if (!$account) {
 	if (!$read_at && !$counts['all']) {
 
 		echo '
-	<div class="card">
+	<div class="card pg-card">
 		<div class="mpp-intro">
 			<i class="bi bi-boxes" aria-hidden="true"></i>
-			<h2 class="h5 mt-5">' . h(lang(array('string' => 'Bring in what you sell on {var:1}', 'vars' => array($provider_name)))) . '</h2>
-			<p class="fg-secondary">' . h(lang('Your products there are read with their pictures, codes, barcodes and prices. Nothing is changed on the marketplace, and nothing is matched until you say so.')) . '</p>
+			<h2 class="pg-title-section mt-5">' . h(lang(array('string' => 'Bring in what you sell on {var:1}', 'vars' => array($provider_name)))) . '</h2>
+			<p class="pg-text-2">' . h(lang('Your products there are read with their pictures, codes, barcodes and prices. Nothing is changed on the marketplace, and nothing is matched until you say so.')) . '</p>
 			<div class="mpp-steps">
 				<div><b>1. ' . h(lang('Read')) . '</b>' . h(lang('Every product of yours on the marketplace comes in, a page at a time.')) . '</div>
 				<div><b>2. ' . h(lang('Compare')) . '</b>' . h(lang('Each one is put beside the shop product it most likely is: same barcode, same code or a similar title.')) . '</div>
@@ -1853,7 +1855,7 @@ if (!$account) {
 		};
 
 		echo '
-	<div class="card">
+	<div class="card pg-card">
 		<div class="mpp-list-head">
 			<nav class="mpp-tabs" aria-label="' . h(lang('Filters')) . '">';
 
@@ -1872,7 +1874,7 @@ if (!$account) {
 			<form method="get" action="marketplace_products.php" class="d-flex gap-3 disable_shortcut" role="search">
 				<input type="hidden" name="account" value="' . $account_id . '">
 				<input type="hidden" name="view" value="' . h($view) . '">
-				<input type="search" name="q" value="' . h($search) . '" class="form-control form-control-sm" style="min-width:220px"'
+				<input type="search" name="q" value="' . h($search) . '" class="form-control form-control-sm mpp-search"'
 					. ' placeholder="' . h(lang('Search by title, code or barcode')) . '" aria-label="' . h(lang('Search')) . '">
 				<button type="submit" class="btn btn-sm btn-outline theme-secondary" aria-label="' . h(lang('Search')) . '"><i class="bi bi-search" aria-hidden="true"></i></button>
 			</form>

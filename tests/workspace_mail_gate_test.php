@@ -163,7 +163,7 @@ function test_workspace_mail_gate_api_routes()
 // writes into the inbox is one of them.
 function test_workspace_mail_gate_bell()
 {
-	pg_assert_same(array('mail_assigned', 'mail_customer', 'mail_unsent', 'mail_remind', 'mail_no_answer'), pg_notification_mail_kinds(), 'given to you, the customer wrote, not sent, back from a reminder, no answer yet');
+	pg_assert_same(array('mail_assigned', 'mail_customer', 'mail_unsent', 'mail_remind', 'mail_no_answer', 'mail_held'), pg_notification_mail_kinds(), 'given to you, the customer wrote, not sent, back from a reminder, no answer yet, held at its time');
 	pg_assert_same(array(), pg_notification_off_kinds(false, false), 'neither flows nor mail');
 	pg_assert_same(pg_notification_mail_kinds(), pg_notification_off_kinds(false, true), 'mail alone');
 	pg_assert_same(array_merge(pg_notification_flow_kinds(), pg_notification_mail_kinds()), pg_notification_off_kinds(true, true), 'both');

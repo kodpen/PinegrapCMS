@@ -257,7 +257,7 @@ if (!$_POST) {
     // The Parasut contact id: shown read-only-ish once the first invoice set
     // it, else a note; posted back unchanged either way.
     $output_parasut = (ENABLE_PARASUT ? ($parasut_contact_id ? '
-                                        <div class="col-12 md:col-4 my-3">
+                                        <div class="col-12 pg-field-span-4 my-3">
                                             <label for="parasut_contact_id" class="form-label fg-secondary small">' . lang('Parasut Contact ID') . '</label>
                                             <div class="input-group">
                                                 <input value="' . $parasut_contact_id . '" type="text" name="parasut_contact_id" id="parasut_contact_id" aria-describedby="parasut_contact_id_hint" class="form-control form-control-sm font-monospace fg-secondary" />
@@ -299,7 +299,7 @@ if (!$_POST) {
                                 </h2>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 md:col-6 my-3">
+                                        <div class="col-12 pg-field-span-6 my-3">
                                             <label for="email_address" class="form-label">' . lang('Email') . '</label>
                                             <div class="input-group">
                                                 <input value="' . $email_address . '" type="text" name="email_address" id="email_address" autocomplete="off" class="form-control text-end" maxlength="100" inputmode="email" data-inputmask-alias="email" />

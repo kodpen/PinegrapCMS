@@ -179,7 +179,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
                 ' . $liveform->output_notices() . '
                
                 <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . h(lang('Button Bar')) . '">
-                            <a class="btn btn-sm btn-solid theme-primary rounded-pill px-5" href="add_product.php"><i class="bi bi-plus-circle me-2" aria-hidden="true"></i>' . lang(array('string'=>'Create') ) . '</a>
+                            <a class="pg-button pg-button-fill" href="add_product.php"><i class="bi bi-plus-circle" aria-hidden="true"></i>' . lang(array('string'=>'Create') ) . '</a>
                             <a class="btn btn-sm btn-text theme-secondary" href="view_products.php?mode=variant_sets"><i class="bi bi-grid me-2" aria-hidden="true"></i>' . lang('Variant Sets') . '</a>
                             <a class="btn btn-sm btn-text theme-secondary" href="import_products.php"><i class="bi bi-box-arrow-in-right me-2" aria-hidden="true"></i>' . lang(array('string'=>'Import') ) . '</a>
                             <form id="export_form" class="disable_shortcut d-inline-block" method="get">

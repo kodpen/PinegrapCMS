@@ -51,7 +51,12 @@ function test_panel_drawer_focus_menu_escape_returns_focus()
 {
 	$init = panel_drawer_focus_function('initMenuDrawer');
 	pg_assert_contains("closest('.software-sidebar')", $init);
-	pg_assert_contains("getElementById('menu_mode_toggle')", $init);
+	pg_assert_contains('var toggle = menuDrawerToggle();', $init, 'back to the button that opened it');
+
+	$back = panel_drawer_focus_function('menuDrawerToggle');
+	pg_assert_contains('menuDrawerOpener', $back, 'the opener last used');
+	pg_assert_contains('document.querySelector(MENU_TOGGLES)', $back, 'else the first opener');
+	pg_assert_contains("var MENU_TOGGLES = '#menu_mode_toggle, [data-pg-menu-drawer-toggle]';", panel_drawer_focus_source(), 'the bar button and a screen\'s own');
 }
 
 function test_panel_drawer_focus_settings_drawer_returns_focus()
@@ -85,7 +90,7 @@ function test_panel_drawer_focus_menu_drawer_shuts_when_focus_leaves()
 	$lost = panel_drawer_focus_function('drawerLostFocus');
 	pg_assert_contains('!isMenuDrawerMode() || !isMenuDrawerOpen()', $lost);
 	pg_assert_contains("closest('[data-pg-menu-hold]')", $lost);
-	pg_assert_contains("'menu_mode_toggle'", $lost);
+	pg_assert_contains('next.closest(MENU_TOGGLES)', $lost, 'not on moving to an opener');
 	pg_assert_contains('closeMenuDrawer();', $lost);
 
 	$init = panel_drawer_focus_function('initMenuDrawer');

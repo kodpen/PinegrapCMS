@@ -155,7 +155,7 @@ if (!$_POST) {
                     </h2>
                     <div class="card-body">
                         <div class="row">
-                            <div class="col-12 sm:col-6 lg:col-4 my-3">
+                            <div class="col-12 pg-field-span-3 my-3">
                                 <label for="issue_date" class="form-label">' . lang('Date') . '</label>
                                 ' . $liveform->output_field(array(
                                     'type' => 'text', 'id' => 'issue_date', 'data-pg-date' => '', 'name' => 'issue_date',

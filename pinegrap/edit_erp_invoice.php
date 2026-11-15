@@ -912,9 +912,9 @@ if (((string) $invoice['direction'] === 'sales') && !$is_return && !$is_cancelle
     }
 
     if ($invoice_waybills) {
-        $output_waybill_button = '<a class="btn btn-sm btn-text theme-secondary" href="edit_erp_waybill.php?id=' . (int) $invoice_waybills[0]['id'] . '"><i class="bi bi-truck me-1" aria-hidden="true"></i>' . h($invoice_waybills[0]['full_number']) . '</a>';
+        $output_waybill_button = '<a class="pg-button pg-button-ghost" href="edit_erp_waybill.php?id=' . (int) $invoice_waybills[0]['id'] . '"><i class="bi bi-truck" aria-hidden="true"></i>' . h($invoice_waybills[0]['full_number']) . '</a>';
     } elseif (!$erp_readonly) {
-        $output_waybill_button = '<a class="btn btn-sm btn-text theme-secondary" href="add_erp_waybill.php?invoice_id=' . $invoice_id . '"><i class="bi bi-truck me-1" aria-hidden="true"></i>' . lang('Issue the Delivery Note') . '</a>';
+        $output_waybill_button = '<a class="pg-button pg-button-ghost" href="add_erp_waybill.php?invoice_id=' . $invoice_id . '"><i class="bi bi-truck" aria-hidden="true"></i>' . lang('Issue the Delivery Note') . '</a>';
     }
 }
 
@@ -1372,7 +1372,7 @@ if (($mail_invoice !== null) && ((string) $invoice['direction'] === 'sales') && 
                     <span class="small fg-secondary" role="status" aria-live="polite" data-erp-send-once-status></span>
                 </div>
             </form>';
-        $output_mail_button = '<a class="btn btn-sm btn-text theme-secondary" href="#erp-mail"><i class="bi bi-envelope me-1" aria-hidden="true"></i>' . lang('E-mail') . '</a>';
+        $output_mail_button = '<a class="pg-button pg-button-ghost" href="#erp-mail"><i class="bi bi-envelope" aria-hidden="true"></i>' . lang('E-mail') . '</a>';
     } elseif ($mail_refusal !== '') {
         $output_mail_form = '<p class="fg-secondary mb-0">' . h($mail_refusal) . '</p>';
     }
@@ -1500,7 +1500,7 @@ if (function_exists('erp_audit_ready') && erp_audit_ready() && (((int) $user['ro
 
 $output_toolbar = pg_screen_toolbar(array(
     'primary' => $has_own_pdf
-        ? '<a class="btn btn-sm btn-solid theme-primary rounded-pill px-5" href="get_erp_invoice_pdf.php?id=' . $invoice_id . '" target="_blank" rel="noopener"><i class="bi bi-file-earmark-pdf me-1" aria-hidden="true"></i>' . lang('PDF') . '</a>'
+        ? '<a class="pg-button pg-button-fill" href="get_erp_invoice_pdf.php?id=' . $invoice_id . '" target="_blank" rel="noopener"><i class="bi bi-file-earmark-pdf" aria-hidden="true"></i>' . lang('PDF') . '</a>'
         : '',
     'secondary' => $output_mail_button . $output_waybill_button,
     'overflow' => $toolbar_more

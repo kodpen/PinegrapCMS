@@ -143,7 +143,7 @@ if (($user['role'] < '3') || ($user['create_pages'] == TRUE)) {
         // A designer adds a visual page to a design of their choosing
         // (pg_designer_target_modal()); the classic page screen stays in the
         // tools menu.
-        $view_pages_primary = '<button type="button" class="btn btn-sm btn-solid theme-primary rounded-pill px-5" data-pg-design-target="add" data-from="pages"><i class="bi bi-plus-circle me-2" aria-hidden="true"></i>' . lang('Add Page') . '</button>';
+        $view_pages_primary = '<button type="button" class="pg-button pg-button-fill" data-pg-design-target="add" data-from="pages"><i class="bi bi-plus-circle" aria-hidden="true"></i>' . lang('Add Page') . '</button>';
         $view_pages_tools[] = '<li><a class="menu-item pg-link-body-emphasis" href="add_page.php"><i class="bi bi-plus-circle me-3" aria-hidden="true"></i>' . lang('Add Page (Legacy)') . '</a></li>';
     } else {
         $view_pages_primary = array('label' => lang('Add Page'), 'url' => 'add_page.php', 'icon' => 'bi-plus-circle');

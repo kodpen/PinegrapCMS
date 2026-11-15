@@ -211,13 +211,13 @@ for ($row = 1; $row <= ADD_CART_QUOTE_ROWS; $row++) {
 
     $output_rows .= '
                     <div class="row g-5 mb-5">
-                        <div class="col-12 sm:col-9">
+                        <div class="col-12 md:col-6">
                             <select class="form-control" id="product_' . $row . '" name="product_' . $row . '" aria-label="' . h(lang(array('string' => 'Product {var:1}', 'vars' => $row))) . '" data-pg-combobox data-pg-source="add_cart_quote.php?request=products" data-pg-min-length="2" data-placeholder="' . h(lang('Search for a product')) . '">
                                 <option value=""></option>
                                 ' . (is_array($product_row) ? $selected($product_row['id'], trim($product_row['short_description'] . ' (' . $product_row['name'] . ')')) : '') . '
                             </select>
                         </div>
-                        <div class="col-12 sm:col-3">
+                        <div class="col-12 md:col-3">
                             <input class="form-control' . ($liveform->check_field_error('quantity_' . $row) ? ' is-invalid' : '') . '" type="number" min="1" max="' . PG_CART_QUOTE_MAX_QUANTITY . '" step="1" id="quantity_' . $row . '" name="quantity_' . $row . '" value="' . h($quantity) . '" aria-label="' . h(lang(array('string' => 'Quantity {var:1}', 'vars' => $row))) . '">
                         </div>
                     </div>';
@@ -246,12 +246,16 @@ echo
                 <div class="card mb-7">
                     <h2 class="card-header bg-reset border-0 pg-title-section">' . h(lang('Customer')) . '</h2>
                     <div class="card-body pt-0">
+                        <div class="row">
+                        <div class="col-12 pg-field-span-6">
                         <label class="form-label visually-hidden" for="contact_id">' . h(lang('Customer')) . '</label>
                         <select class="form-control' . ($liveform->check_field_error('contact_id') ? ' is-invalid' : '') . '" id="contact_id" name="contact_id" aria-describedby="contact_id_help" data-pg-combobox data-pg-source="add_cart_quote.php?request=contacts" data-pg-min-length="2" data-placeholder="' . h(lang('Search for a contact')) . '">
                             <option value=""></option>
                             ' . (is_array($contact_row) ? $selected($contact_row['id'], add_cart_quote_contact_text($contact_row)) : '') . '
                         </select>
                         <div id="contact_id_help" class="form-text">' . h(lang('Optional. The link never shows whom the quote was made for.')) . '</div>
+                        </div>
+                        </div>
                     </div>
                 </div>
                 <div class="card mb-7">

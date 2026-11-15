@@ -916,7 +916,8 @@ function pg_download_marker_watch()
 /**
  * The page shell of a panel screen: output_header() with the screen's tour
  * named in its head. It takes output_header()'s keys (title, extra classes,
- * icon, heading, heading_description, cancel, breadcrumb, head, hide_menu)
+ * icon, heading, heading_description, cancel, breadcrumb, head, hide_menu,
+ * menu_drawer)
  * plus 'tour' and 'pre_main_html'. The screen's actions are not drawn here:
  * they go into its toolbar, pg_screen_toolbar(), inside <main>.
  *
@@ -982,13 +983,14 @@ function pg_page_shell($properties = array())
  */
 function pg_screen_toolbar($slots, $opts = array())
 {
+    // Look A's buttons: the slot's one main action filled, the rest ghost.
     $recipes = array(
-        'primary'   => 'btn btn-sm btn-solid theme-primary rounded-pill px-5',
-        'secondary' => 'btn btn-sm btn-text theme-secondary',
-        'grow'      => 'btn btn-sm btn-text theme-secondary',
-        'search'    => 'btn btn-sm btn-text theme-secondary',
-        'view'      => 'btn btn-sm btn-text theme-secondary',
-        'overflow'  => 'btn btn-sm btn-text theme-secondary',
+        'primary'   => 'pg-button pg-button-fill',
+        'secondary' => 'pg-button pg-button-ghost',
+        'grow'      => 'pg-button pg-button-ghost',
+        'search'    => 'pg-button pg-button-ghost',
+        'view'      => 'pg-button pg-button-ghost',
+        'overflow'  => 'pg-button pg-button-ghost',
     );
 
     $drawn = array();
@@ -1004,7 +1006,7 @@ function pg_screen_toolbar($slots, $opts = array())
                 if (!isset($item['label']) || (string) $item['label'] === '') {
                     continue;
                 }
-                $icon = (isset($item['icon']) && $item['icon'] !== '') ? '<i class="bi ' . h((string) $item['icon']) . ' me-2" aria-hidden="true"></i>' : '';
+                $icon = (isset($item['icon']) && $item['icon'] !== '') ? '<i class="bi ' . h((string) $item['icon']) . '" aria-hidden="true"></i>' : '';
                 $id = (isset($item['id']) && $item['id'] !== '') ? ' id="' . h((string) $item['id']) . '"' : '';
                 $url = isset($item['url']) ? (string) $item['url'] : '#';
                 $html .= '<a class="' . $recipe . '"' . $id . ' href="' . h($url) . '">' . $icon . h((string) $item['label']) . '</a>';
@@ -2793,7 +2795,9 @@ function output_header($properties = false)
     // (open and mini only on a navigator screen, below).
     $output_menu_mode_button = '';
     $output_software_sidebar = '';
-    if (isset($properties['hide_menu']) && $properties['hide_menu'] == true) {
+    $menu_drawer_class = '';
+    $menu_parts = pg_menu_shell_parts($properties);
+    if (!$menu_parts['sidebar']) {
         $output_software_sidebar = '';
     } else {
         // The menu first: a screen whose own navigation sits in one of its
@@ -2808,10 +2812,20 @@ function output_header($properties = false)
             $menu_navigator_attribute = ' data-pg-menu-navigator';
         }
 
-        $output_menu_mode_button = pg_menu_mode_button($menu_state);
+        if ($menu_parts['drawer_only']) {
+            // A screen that needs its whole width (Page Design Studio) keeps
+            // the menu as the phone's drawer at every width: no column, no
+            // wide-screen state, opened by a button of the screen's own
+            // (data-pg-menu-drawer-toggle, backend.src.js).
+            $menu_expanded_class = '';
+            $menu_navigator_attribute = '';
+            $menu_drawer_class = ' menu-drawer-only';
+        } else {
+            $output_menu_mode_button = pg_menu_mode_button($menu_state);
 
-        // Only a screen that draws the menu gives up its column for it.
-        $menu_hidden_class = ($menu_state === 'hidden') ? ' menu-hidden' : '';
+            // Only a screen that draws the menu gives up its column for it.
+            $menu_hidden_class = ($menu_state === 'hidden') ? ' menu-hidden' : '';
+        }
 
         $output_software_sidebar = '
         <div class="software-sidebar position-fixed pg-print-none bg-software-navbar backdrop">
@@ -2975,7 +2989,7 @@ function output_header($properties = false)
     ' . pg_output_email_off_open() . '
     ' . pg_preloader_markup() . '
     <a class="pg-skip-link" href="#content">' . lang('Skip to main content') . '</a>
-    <div class="software-container ' . $menu_expanded_class . $menu_hidden_class . '"' . $menu_navigator_attribute . '>
+    <div class="software-container ' . $menu_expanded_class . $menu_hidden_class . $menu_drawer_class . '"' . $menu_navigator_attribute . '>
         <div class="software-navbar fixed-top pg-print-none ">
             <nav id="header" class="z-1 position-sticky h-100 p-0 top-0 start-100 navbar navbar-expand bg-software-navbar backdrop" >
                 <ul class="navbar-nav">
@@ -3228,7 +3242,7 @@ function pg_account_menu($user, $options = array())
             . ($photo_only ? '' : '<span class="small fg-secondary text-nowrap">' . lang('Optional') . '</span>') . '
                                     </div>
                                     <div class="d-flex align-items-center gap-3">
-                                        <button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5">' . lang('Save') . '</button>'
+                                        <button type="submit" class="pg-button pg-button-fill">' . lang('Save') . '</button>'
             . ($photo_only ? '<button type="button" class="btn btn-sm btn-link fg-secondary px-1" data-pg-contact-later>' . lang('Not now') . '</button>' : '') . '
                                         <span class="small fg-danger" data-pg-contact-error role="alert"></span>
                                     </div>
@@ -3450,6 +3464,35 @@ function pg_menu_navigator($set = null)
     }
 
     return $navigator;
+}
+
+/**
+ * Which parts of the main menu output_header() draws for a screen.
+ *
+ * hide_menu draws no menu and no bar button (the section rail and the search
+ * field read it on their own). menu_drawer draws the menu as the phone's
+ * drawer at every width: the sidebar is printed, the bar button is not (the
+ * screen brings its own opener, marked data-pg-menu-drawer-toggle) and the
+ * container carries menu-drawer-only, under which the menu takes no column
+ * and no wide-screen state applies. menu_drawer wins over hide_menu.
+ *
+ * @param array $properties output_header()'s properties
+ * @return array sidebar, button and drawer_only, each a bool
+ */
+function pg_menu_shell_parts($properties)
+{
+    if (!is_array($properties)) {
+        $properties = array();
+    }
+
+    $drawer = !empty($properties['menu_drawer']);
+    $hidden = !empty($properties['hide_menu']);
+
+    return array(
+        'sidebar' => ($drawer || !$hidden),
+        'button' => (!$drawer && !$hidden),
+        'drawer_only' => $drawer,
+    );
 }
 
 /**

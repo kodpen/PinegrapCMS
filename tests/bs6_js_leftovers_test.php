@@ -55,7 +55,7 @@ function test_bs6_js_leftovers_image_tiles()
 
 function test_bs6_js_leftovers_text_colours()
 {
-	pg_assert_contains('text-uppercase h5 fg-primary fw-bold', bs6_js_leftovers_source('erp_dashboard.php'));
+	pg_assert_contains("(\$movement_amount < 0) ? 'fg-danger' : 'fg-success'", bs6_js_leftovers_source('erp_dashboard.php'));
 	pg_assert_contains('bi bi-house fg-success', bs6_js_leftovers_source('toolbar.php'));
 }
 

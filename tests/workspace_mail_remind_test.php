@@ -128,6 +128,7 @@ function test_workspace_mail_remind_step()
 function test_workspace_mail_remind_wiring()
 {
 	pg_assert_contains("ws_mail_remind_new_mail(\$conversation_id, \$now);", workspace_mail_remind_test_source('includes/workspace/mail.php'), 'a new mail brings it back');
+	pg_assert_contains("ws_mail_remind_new_mail(\$conversation_id, \$now);", workspace_mail_remind_test_source('includes/workspace/mail_phone.php'), 'a new WhatsApp or SMS message brings it back');
 
 	$reminders = workspace_mail_remind_test_source('includes/workspace/reminders.php');
 	pg_assert_contains('ws_mail_reminders_waiting()', $reminders, 'the job\'s first look');
@@ -167,6 +168,9 @@ function test_workspace_mail_no_answer_left()
 	foreach (array('draft', 'failed') as $state) {
 		pg_assert_false(ws_mail_no_answer_left($state), $state . ': nothing to wait for');
 	}
+
+	// The item's row is gone: its draft was deleted, or sent again as a new item.
+	pg_assert_false(ws_mail_no_answer_left(null), 'no item row: nothing to wait for');
 
 	pg_assert_contains('No answer yet', ws_mail_no_answer_badge_html(), 'the row\'s and pane\'s words');
 	pg_assert_contains('badge theme-warning', ws_mail_no_answer_badge_html());

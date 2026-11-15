@@ -585,10 +585,10 @@ function erp_quote_templates_box($liveform, $user_id)
                     <div class="form-text">' . lang('Replaces the lines below; the account, dates and currency stay as they are.') . '</div>';
 
     return '
-    <div class="card my-7">
-        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+    <div class="card pg-card my-7">
+        <h2 class="card-header bg-reset border-0 pg-title-section">
             ' . lang('Quote templates') . '
-        </div>
+        </h2>
         <div class="card-body">
             <div class="row gy-3">
                 <div class="col-12 lg:col-6">

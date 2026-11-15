@@ -89,7 +89,7 @@ function test_erp_lists_td13_aging_plain_report()
 {
 	$source = erp_lists_td13_source('erp_aging.php');
 
-	pg_assert_contains('<table class="table table-hover align-middle mb-0" data-pg-sort>', $source, 'aging: a plain sortable report');
+	pg_assert_contains('<table class="pg-report-table" data-pg-sort>', $source, 'aging: a plain sortable report table');
 	pg_assert_contains('<tfoot>', $source, 'aging: the totals row stays');
 	pg_assert_false(strpos($source, 'class="chart') !== false, 'aging: no DataTables table left');
 }

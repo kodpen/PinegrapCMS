@@ -127,7 +127,7 @@ if (($_SESSION['software']['ecommerce']['view_commissions']['advanced_filters'] 
         </div>
         <form class="advanced-filter-body p-3 pt-0 disable_shortcut" id="search_advanced" action="view_commissions.php" method="get" name="form">
             <div class="row">
-                <div class="col-12"><h5 class="fg-success fw-bold mt-7 mb-3">' . lang('Date Range') . '</h5></div>
+                <div class="col-12"><h5 class="pg-group-label mt-7 mb-3">' . lang('Date Range') . '</h5></div>
                 <fieldset class="col-12" data-pg-date-selects>
                     <legend class="form-label">' . lang('Start') . '</legend>
                     <select class="form-control my-1" name="start_month" aria-label="' . h(lang('Month')) . '">' . select_month(($_SESSION['software']['ecommerce']['view_commissions']['start_month'] ?? '')) . '</select>
@@ -180,33 +180,33 @@ pg_page_shell([
             ' . $output_advanced_filters . '
             <div class="row g-5 my-3">
                 <div class="col-6 md:col-3">
-                    <div class="card h-100">
+                    <div class="card pg-card h-100">
                         <div class="card-body">
-                            <div class="small fg-secondary">' . lang('Pending Total') . '</div>
+                            <div class="pg-text-2">' . lang('Pending Total') . '</div>
                             <div class="fs-2xl fw-bold fg-body">' . pg_format_money($pending_total / 100, BASE_CURRENCY_SYMBOL) . '</div>
                         </div>
                     </div>
                 </div>
                 <div class="col-6 md:col-3">
-                    <div class="card h-100">
+                    <div class="card pg-card h-100">
                         <div class="card-body">
-                            <div class="small fg-secondary">' . lang('Payable Total') . '</div>
+                            <div class="pg-text-2">' . lang('Payable Total') . '</div>
                             <div class="fs-2xl fw-bold fg-primary">' . pg_format_money($payable_total / 100, BASE_CURRENCY_SYMBOL) . '</div>
                         </div>
                     </div>
                 </div>
                 <div class="col-6 md:col-3">
-                    <div class="card h-100">
+                    <div class="card pg-card h-100">
                         <div class="card-body">
-                            <div class="small fg-secondary">' . lang('Ineligible Total') . '</div>
+                            <div class="pg-text-2">' . lang('Ineligible Total') . '</div>
                             <div class="fs-2xl fw-bold fg-danger">' . pg_format_money($ineligible_total / 100, BASE_CURRENCY_SYMBOL) . '</div>
                         </div>
                     </div>
                 </div>
                 <div class="col-6 md:col-3">
-                    <div class="card h-100">
+                    <div class="card pg-card h-100">
                         <div class="card-body">
-                            <div class="small fg-secondary">' . lang('Paid Total') . '</div>
+                            <div class="pg-text-2">' . lang('Paid Total') . '</div>
                             <div class="fs-2xl fw-bold fg-success">' . pg_format_money($paid_total / 100, BASE_CURRENCY_SYMBOL) . '</div>
                         </div>
                     </div>

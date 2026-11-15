@@ -305,7 +305,7 @@ function test_workspace_personal_ical_quoted_param()
 		'DTEND;TZID="(UTC+03:00) Istanbul":20261104T110000',
 		'SUMMARY:Review',
 		'END:VEVENT',
-	)), 'an unknown quoted zone falls back to the site zone');
+	)), 'a display label is read at its offset');
 
 	$vevents = ws_ical_vevents("BEGIN:VEVENT\nATTENDEE;CN=\"Doe; John: CEO\";ROLE=CHAIR:mailto:j@example.com\nEND:VEVENT");
 	pg_assert_same('mailto:j@example.com', $vevents[0]['ATTENDEE']['value'], 'the value starts after the first colon outside quotes');
@@ -420,4 +420,95 @@ function test_workspace_personal_ical_all_day_clock_change()
 		'2027-03-21 00:00:00 -> 2027-03-21 23:59:59 Run',
 		'2027-03-28 00:00:00 -> 2027-03-28 23:59:59 Run',
 	), $lines, 'the 25-hour and 23-hour days end at their own midnight');
+}
+
+// A rule that began long before the window still gives every occurrence inside it.
+function test_workspace_personal_ical_old_rule_in_window()
+{
+	$previous = date_default_timezone_get();
+	date_default_timezone_set('Europe/Istanbul');
+	$from = strtotime('2026-11-15 -62 days');
+	$to = strtotime('2026-11-15 +366 days');
+	$read = function ($start, $rule) use ($from, $to) {
+		$text = implode("\r\n", array(
+			'BEGIN:VCALENDAR', 'VERSION:2.0',
+			'BEGIN:VEVENT', 'UID:a', 'SUMMARY:Standup',
+			'DTSTART;TZID=Europe/Istanbul:' . $start . 'T093000',
+			'DTEND;TZID=Europe/Istanbul:' . $start . 'T094500',
+			'RRULE:' . $rule,
+			'END:VEVENT', 'END:VCALENDAR',
+		));
+
+		return ws_personal_ical_events($text, $from, $to);
+	};
+
+	$daily = $read('20250101', 'FREQ=DAILY');
+	pg_assert_same(428, count($daily), 'one a day over the whole window');
+	pg_assert_same('2026-09-14 09:30', date('Y-m-d H:i', $daily[0]['starts_at']), 'from the window\'s first day');
+	pg_assert_same('2027-11-15 09:30', date('Y-m-d H:i', $daily[427]['starts_at']), 'to its last');
+
+	$weekly = $read('20150105', 'FREQ=WEEKLY;BYDAY=MO,TH');
+	pg_assert_same('2026-09-14 09:30', date('Y-m-d H:i', $weekly[0]['starts_at']), 'a ten-year-old weekly rule starts in the window');
+	pg_assert_same(123, count($weekly), 'two a week over the whole window');
+
+	$monthly = $read('19800115', 'FREQ=MONTHLY');
+	pg_assert_same('2026-09-15 09:30', date('Y-m-d H:i', $monthly[0]['starts_at']), 'a 46-year-old monthly rule starts in the window');
+	pg_assert_same(15, count($monthly), 'one a month over the whole window');
+
+	$yearly = $read('19000920', 'FREQ=YEARLY');
+	pg_assert_same(array('2026-09-20 09:30', '2027-09-20 09:30'), array_map(function ($event) {
+		return date('Y-m-d H:i', $event['starts_at']);
+	}, $yearly), 'a yearly rule of 1900 still gives this and next year');
+
+	pg_assert_same(0, count($read('20250101', 'FREQ=DAILY;COUNT=100')), 'COUNT still counts from the first occurrence');
+	pg_assert_same(3, count($read('20260912', 'FREQ=DAILY;COUNT=5')), 'and keeps those inside the window');
+
+	date_default_timezone_set($previous);
+}
+
+// Outlook's Windows zone names and display labels keep the sender's time.
+function test_workspace_personal_ical_windows_zone()
+{
+	pg_assert_same(array('2026-12-01 13:00 -> 14:00 London'), ws_personal_ical_test_read(array(
+		'BEGIN:VEVENT', 'UID:w1', 'SUMMARY:London',
+		'DTSTART;TZID="GMT Standard Time":20261201T100000',
+		'DTEND;TZID="GMT Standard Time":20261201T110000',
+		'END:VEVENT',
+	)), 'GMT Standard Time is London, read on an Istanbul site');
+	pg_assert_same(array('2026-11-04 12:00 -> 13:00 Berlin'), ws_personal_ical_test_read(array(
+		'BEGIN:VEVENT', 'UID:w2', 'SUMMARY:Berlin',
+		'DTSTART;TZID=W. Europe Standard Time:20261104T100000',
+		'DTEND;TZID=W. Europe Standard Time:20261104T110000',
+		'END:VEVENT',
+	)), 'an unquoted Windows name');
+	pg_assert_same(array('2026-11-04 14:30 -> 15:30 Label'), ws_personal_ical_test_read(array(
+		'BEGIN:VEVENT', 'UID:w3', 'SUMMARY:Label',
+		'DTSTART;TZID="(UTC-05:00) Eastern Time (US & Canada)":20261104T063000',
+		'DTEND;TZID="(UTC-05:00) Eastern Time (US & Canada)":20261104T073000',
+		'END:VEVENT',
+	)), 'a display label at its offset');
+	pg_assert_same(array('2026-11-04 10:00 -> 11:00 Unknown'), ws_personal_ical_test_read(array(
+		'BEGIN:VEVENT', 'UID:w4', 'SUMMARY:Unknown',
+		'DTSTART;TZID=Custom Zone 1:20261104T100000',
+		'DTEND;TZID=Custom Zone 1:20261104T110000',
+		'END:VEVENT',
+	)), 'a name that matches nothing stays in the site zone');
+
+	pg_assert_same('Europe/Istanbul', ws_ical_zone('turkey standard time')->getName(), 'any case');
+	pg_assert_same('UTC', ws_ical_zone('(UTC) Coordinated Universal Time')->getName(), 'a label without an offset is UTC');
+	pg_assert_same('America/New_York', ws_ical_zone('America/New_York')->getName(), 'an IANA name as it is');
+	pg_assert_same(null, ws_ical_zone(''), 'no name');
+	pg_assert_same(null, ws_ical_zone('(UTC+99:00) Nowhere'), 'an offset beyond any real one gives no zone');
+	pg_assert_same(null, ws_ical_zone('(UTC+03:99) Nowhere'), 'and so do minutes past 59');
+	pg_assert_same(array('2026-11-04 10:00 -> 11:00 Far'), ws_personal_ical_test_read(array(
+		'BEGIN:VEVENT', 'UID:w5', 'SUMMARY:Far',
+		'DTSTART;TZID="(UTC+99:00) Nowhere":20261104T100000',
+		'DTEND;TZID="(UTC+99:00) Nowhere":20261104T110000',
+		'END:VEVENT',
+	)), 'such an event is read in the site zone, not dropped');
+
+	foreach (ws_ical_windows_zones() as $windows => $iana) {
+		$zone = ws_ical_zone($windows);
+		pg_assert_true($zone && in_array($zone->getName(), explode('|', $iana), true), $windows . ' maps to a zone PHP knows');
+	}
 }
