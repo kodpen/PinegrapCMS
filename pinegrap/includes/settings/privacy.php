@@ -32,7 +32,7 @@ $pg_settings_cards[] = '
                                 <div class="card-body">
                                    <div class="row gy-5">
                                         <div class="col-12 ">
-                                            <div class="form-field">' . pg_settings_tile('graph-up', 'reports') . '
+                                            <div class="form-field">
                                                 <div class="switch"><input value="1"' . $visitor_tracking_checked . ' class="collapse-switcher" type="checkbox" id="visitor_tracking" name="visitor_tracking" data-bs-target="#visitor_tracking_row"/></div>
                                                 <label class="" for="visitor_tracking">' . lang('Enable Visitor Tracking') . '</label>
                                             </div>

@@ -1977,7 +1977,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 
         $output_login_throttle = '
                                         <div class="col-12 ">
-                                            <div class="form-field">' . pg_settings_tile('hourglass-split', 'system') . '
+                                            <div class="form-field">
                                                 <div class="switch"><input value="1"' . $login_throttle_checked . ' class="collapse-switcher" type="checkbox" id="login_throttle" name="login_throttle" data-bs-target="#login_throttle_row"/></div>
                                                 <label class="" for="login_throttle">' . lang('Limit Failed Sign-in Attempts') . '</label>
                                                 <div class="form-text">' . lang('Counts failed sign-ins against both the visitor\'s address and the account being tried, and locks that pair out for a while once the limit is passed. Successful sign-ins are never counted.') . '</div>

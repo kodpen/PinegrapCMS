@@ -17,6 +17,7 @@ if (!defined('PG_TEST_RUNNER')) {
 }
 
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/look_list.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
 
 function test_look_list_seg_filters()
 {
@@ -38,4 +39,9 @@ function test_look_list_settings_tile()
 	pg_assert_same('<span class="pg-icon-tile pg-icon-tile-lg pg-set-tile pg-tone-shop" aria-hidden="true"><i class="bi bi-truck"></i></span>', pg_settings_tile('truck', 'shop'), 'a toned tile');
 	pg_assert_same(pg_settings_tile('truck'), pg_settings_tile('bi-truck', 'nope'), 'the bi- prefix is optional; an unknown tone is gray');
 	pg_assert_same('', pg_settings_tile('x" onclick="y'), 'a name that is no icon name prints nothing');
+}
+
+function test_look_list_offers_keeps_its_title()
+{
+	pg_assert_true(in_array('view_offers', pg_list_table_no_head_count(), true), 'All Offers keeps its title without the count until the owner has seen it');
 }

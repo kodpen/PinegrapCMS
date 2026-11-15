@@ -522,7 +522,7 @@ if ($security_ready) {
 
     $output_security_headers_block = '
                                         <div class="col-12 ">
-                                            <div class="form-field">' . pg_settings_tile('file-earmark-lock', 'system') . '
+                                            <div class="form-field">
                                                 <div class="switch"><input value="1"' . $security_headers_checked . ' class="collapse-switcher" type="checkbox" id="security_headers" name="security_headers" data-bs-target="#security_headers_row"/></div>
                                                 <label class="" for="security_headers">' . lang('Send Security Headers') . '</label>
                                                 <div class="form-text">' . lang('Adds X-Content-Type-Options, Referrer-Policy and Permissions-Policy to every response, plus the options below. These tell the browser what your pages are not allowed to do, and cost nothing.') . '</div>
@@ -584,7 +584,7 @@ if ($security_ready) {
                                             </div>
                                         </div>
                                         <div class="col-12 ">
-                                            <div class="form-field">' . pg_settings_tile('journal-text', 'system') . '
+                                            <div class="form-field">
                                                 <div class="switch"><input value="1"' . $waf_text_log_checked . ' class="collapse-switcher" type="checkbox" id="waf_text_log" name="waf_text_log" data-bs-target="#waf_text_log_row"/></div>
                                                 <label class="" for="waf_text_log">' . lang('Plain-text Block Log') . '</label>
                                                 <div class="form-text">' . lang('Writes one line per refused request and per automatic ban to a file that fail2ban can follow, so a server you manage yourself can drop a banned address at the network level instead of answering it. Kept under five megabytes; one older copy is retained.') . '</div>

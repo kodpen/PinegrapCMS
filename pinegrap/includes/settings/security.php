@@ -444,7 +444,7 @@ $pg_settings_cards[] = '
                                             <input type="text" name="membership_email_address" id="membership_email_address" class="form-control" value="' . h($membership_email_address) . '" inputmode="email" data-inputmask-alias="email"/>
                                         </div>
                                         <div class="col-12  ">
-                                            <div class="form-field">' . pg_settings_tile('envelope-exclamation', 'system') . '
+                                            <div class="form-field">
                                                 <div class="switch"><input type="checkbox" name="membership_expiration_warning_email" id="membership_expiration_warning_email" value="1"' . $membership_expiration_warning_email_checked . ' class="collapse-switcher" data-bs-target="#membership_expiration_warning_email_row"/></div>
                                                 <label class="" for="membership_expiration_warning_email">' . lang('Send Expiration Warning E-mail to Members') . '</label>
                                             </div>

@@ -166,7 +166,7 @@ $pg_settings_cards[] = '
                         <div class="form-text">' . lang('How an order\'s shipping, surcharge and installment charge are written on its invoice. The customer paid them with no tax added, so a taxed charge carries its tax inside the amount (50.00 at 20% is 41.67 + 8.33) and the invoice total stays the same; goods at several rates share the charge between them. By the store\'s country: untaxed in the United States, included everywhere else.') . '</div>
                     </div>
                     <div class="col-12">
-                        <div class="form-field">' . pg_settings_tile('currency-exchange', 'accounting') . '
+                        <div class="form-field">
                             <div class="switch"><input value="1"' . $erp_fx_enabled_checked . ' class="collapse-switcher" type="checkbox" id="erp_fx_enabled" name="erp_fx_enabled" data-bs-target="#erp_fx_row" /></div>
                             <label class="" for="erp_fx_enabled">' . lang('Enable foreign-currency invoices and accounts') . '</label>
                         </div>
@@ -309,7 +309,7 @@ $pg_settings_cards[] = '
                         <div class="form-text">' . lang('A document created through a provider\'s API is only a draft there; it becomes a legal document when it is handed to the tax authority. Left on, one click does both. Turned off, the invoice screen gets a second button for the hand-over, so the draft can be looked over at the provider first.') . '</div>
                     </div>' : '') . '
                     <div class="col-12">
-                                                            <div class="form-field">' . pg_settings_tile('cloud-arrow-up', 'accounting') . '
+                                                            <div class="form-field">
                                                                 <div class="switch"><input value="1"' . $enable_parasut_checked . ' class="collapse-switcher" type="checkbox" id="enable_parasut" name="enable_parasut" data-bs-target="#ecommerce_parasut_configration_row"/></div>
                                                                 <label class="" for="enable_parasut">' . lang('Enable Parasut Configuration') . '</label>
                                                             </div>

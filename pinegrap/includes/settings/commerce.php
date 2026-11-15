@@ -75,9 +75,9 @@ $pg_settings_cards[] = '
 
                                                         <!-- ── Barcode ── -->
                                                         <div class="col-12 ">
-                                                            <div class="form-field">' . pg_settings_tile('upc-scan', 'shop') . '
+                                                            <div class="form-field">
                                                                 <div class="switch"><input value="1"' . $barcode_enabled_checked . ' class="collapse-switcher" type="checkbox" id="barcode_enabled" name="barcode_enabled" data-bs-target="#barcode_settings_row"/></div>
-                                                                <label class="fw-semibold" for="barcode_enabled">' . lang('Enable Barcode Feature') . '</label>
+                                                                <label class="fw-semibold" for="barcode_enabled"><i class="bi bi-upc-scan me-1"></i>' . lang('Enable Barcode Feature') . '</label>
                                                             </div>
                                                             <div class="collapse popover fade bs-popover-bottom p-0 " id="barcode_settings_row">
                                                                 <div class="popover-arrow" style="position:absolute;left:0px;transform:translate(30px,0px);"></div>
@@ -99,7 +99,7 @@ $pg_settings_cards[] = '
                                                         <!-- ── /Barcode ── -->
 
                                                         <div class="col-12 ">
-                                                            <div class="form-field">' . pg_settings_tile('percent', 'shop') . '
+                                                            <div class="form-field">
                                                                 <div class="switch"><input value="1"' . $ecommerce_tax_checked . ' class="collapse-switcher" type="checkbox" id="ecommerce_tax" name="ecommerce_tax" data-bs-target="#ecommerce_tax_row"/></div>
                                                                 <label class="" for="ecommerce_tax">' . lang('Tax') . '</label>
                                                             </div>
@@ -356,7 +356,7 @@ $pg_settings_cards[] = '
             <div class="card-body">
                 <div class="row gy-5">
                     <div class="col-12">
-                                                            <div class="form-field">' . pg_settings_tile('gift', 'shop') . '
+                                                            <div class="form-field">
                                                                 <div class="switch"><input value="1"' . $ecommerce_gift_card_checked . ' class="collapse-switcher" type="checkbox" id="ecommerce_gift_card" name="ecommerce_gift_card" data-bs-target="#ecommerce_gift_card_row"/></div>
                                                                 <label class="" for="ecommerce_gift_card">' . lang('Accept Gift Cards') . '</label>
                                                             </div>
@@ -415,7 +415,7 @@ $pg_settings_cards[] = '
                                                             <div class="form-text">(' . lang('leave blank for no bonus') . ')</div>
                                                         </div>
                                                         <div class="col-12 ">
-                                                            <div class="form-field">' . pg_settings_tile('award', 'shop') . '
+                                                            <div class="form-field">
                                                                 <div class="switch"><input value="1"' . $ecommerce_reward_program_checked . ' class="collapse-switcher" type="checkbox" id="ecommerce_reward_program" name="ecommerce_reward_program" data-bs-target="#ecommerce_reward_program_row"/></div>
                                                                 <label class="" for="ecommerce_reward_program">' . lang('Enable Reward Program') . '</label>
                                                             </div>
@@ -510,7 +510,7 @@ $pg_settings_cards[] = '
             <div class="card-body">
                 <div class="row gy-5">
                     <div class="col-12">
-                                                            <div class="form-field">' . pg_settings_tile('credit-card', 'shop') . '
+                                                            <div class="form-field">
                                                                 <div class="switch"><input value="1"' . $ecommerce_credit_debit_card_checked . ' class="collapse-switcher" type="checkbox" id="ecommerce_credit_debit_card" name="ecommerce_credit_debit_card" data-bs-target="#ecommerce_credit_debit_card_row"/></div>
                                                                 <label class="" for="ecommerce_credit_debit_card">' . lang('Credit/Debit Card') . '</label>
                                                             </div>
@@ -749,7 +749,7 @@ $pg_settings_cards[] = '
                                                             </div>
                                                         </div>
                                                         <div class="col-12 ">
-                                                            <div class="form-field">' . pg_settings_tile('paypal', 'shop') . '
+                                                            <div class="form-field">
                                                                 <div class="switch"><input value="1"' . $ecommerce_paypal_express_checkout_checked . ' class="collapse-switcher" type="checkbox" id="ecommerce_paypal_express_checkout" name="ecommerce_paypal_express_checkout" data-bs-target="#ecommerce_paypal_express_checkout_row"/></div>
                                                                 <label class="" for="ecommerce_paypal_express_checkout">' . lang('PayPal Express Checkout') . '</label>
                                                             </div>
@@ -799,7 +799,7 @@ $pg_settings_cards[] = '
                                                             </div>
                                                         </div>' . pg_payment_settings_redirect_rows() . '
                                                         <div class="col-12 ">
-                                                            <div class="form-field">' . pg_settings_tile('cash-coin', 'shop') . '
+                                                            <div class="form-field">
                                                                 <div class="switch"><input value="1"' . $ecommerce_offline_payment_checked . ' class="collapse-switcher" type="checkbox" id="ecommerce_offline_payment" name="ecommerce_offline_payment" data-bs-target="#ecommerce_offline_payment_row"/></div>
                                                                 <label class="" for="ecommerce_offline_payment">' . lang('Allow Offline Payments') . '</label>
                                                             </div>

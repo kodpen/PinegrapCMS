@@ -1405,14 +1405,16 @@
     /**
      * The list's count beside the screen's title (#header .pg-navhead), on a
      * list screen (body.pg-measure-list) that holds this one list: the rows
-     * of the condition, so it follows the search and the filters.
+     * of the condition, so it follows the search and the filters. A list
+     * marked data-pg-list-head-count="0" (pg_list_table_no_head_count())
+     * leaves the title alone.
      */
     Driver.prototype.headCount = function () {
         var head = document.querySelector('#header .pg-navhead');
         var title = head ? head.querySelector('.pg-navhead-title') : null;
         var box;
 
-        if (!title || !document.body.classList.contains('pg-measure-list') || (document.querySelectorAll('.pg-list-table').length !== 1)) {
+        if (!title || (this.root.getAttribute('data-pg-list-head-count') === '0') || !document.body.classList.contains('pg-measure-list') || (document.querySelectorAll('.pg-list-table').length !== 1)) {
             return;
         }
 
