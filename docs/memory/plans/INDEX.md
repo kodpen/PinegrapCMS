@@ -32,6 +32,9 @@
 - mail-inbox-features-census.md: IB1 census (2026-11-14) of plans/mail-inbox-features.md: a read on request, a person's own setting, a blocked mail, a later send, a box's Sent folder, phone numbers; the questions asked
 - mail-inbox-features-scopes.md: Exact scope of IB3-IB7 of plans/mail-inbox-features.md after the IB1 census: the functions each step changes, what waits on a schema answer, what stays out
 - mail-inbox-features.md: Plan (owner 2026-11-14): the E-mails screen gains Check e-mail, a person's own signature, a block list, recipient suggestions, Send later and the Sent folder; steps IB1 to IB8
+- mail-inbox-more-census.md: IB9 census of plans/mail-inbox-more.md (2026-11-14): per-person conversation state, My e-mail settings, Send later, ingest order, labels, notices and the job, Not sent
+- mail-inbox-more-scopes-rules.md: Exact scope of IB11 and IB12 of plans/mail-inbox-more.md after the IB9 census: incoming mail rules and "I am away"; files, functions, texts, schema asked
+- mail-inbox-more-scopes-wait.md: Exact scope of IB10, IB10b and IB13 of plans/mail-inbox-more.md after the IB9 census: remind later, remind when no answer comes, undo send; files, functions, texts, schema asked
 - mail-inbox-more.md: Plan (owner 2026-11-14, poll 3363): the E-mails screen gains remind later, a reminder when no answer comes, incoming mail rules, "I am away" and undo send; steps IB9 to IB14
 - marketplace-trendyol-hepsiburada.md: Plan (approved 2026-10-19): Trendyol (V2) and Hepsiburada on the n11 layer
 - messages-area-decided-2.md: The architect's decisions on the proposals of MA9a and MA10a (#9077): campaign profiles into flows (boxes first, what stays, one flow per chain, the switch, the owner), incoming e-mail in the area
