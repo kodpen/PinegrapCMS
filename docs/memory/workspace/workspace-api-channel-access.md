@@ -1,6 +1,6 @@
 ---
 name: workspace-api-channel-access
-description: Make a channel private or public, join a public channel, clear the conversation and rename a version in the API (api_channel_access.php): person only, no MCP tool, the panel's checks, who comes in and leaves
+description: Channel kind, join, clear and version rename in the API (api_channel_access.php): person only, no MCP tool, the panel checks, who comes in and leaves
 ---
 
 ## Which routes, and who may call them?
