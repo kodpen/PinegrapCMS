@@ -571,16 +571,9 @@ if (!$already_complete && (mysqli_num_rows($result) > 0)) {
                 </div>
             </div>
             ' . send_email_campaign_information_html($subject_template, $from_name, $from_email_address, $reply_email_address) . '
-            <div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">
-                <nav class="buttons navigation text-center mb-7" aria-label="' . h(lang('data edit buttons')) . '">
-                    <div class="container">
-                        <div class=" btn-group btn-group-sm flex-wrap justify-content-center mb-0">
+            ' . pg_save_bar('
                             <button id="campaign_send_stop" type="button" name="submit_save" onclick="pgSendClose(false)" value="Stop &amp; Close" class="btn mb-1 mt-1  btn-solid theme-danger submit-primary" ><span class="bi bi-x-lg me-3" aria-hidden="true"></span>' . lang(array('string'=>'Stop & Close') ) . '</button>
-                            <button id="campaign_send_close" type="button" name="submit_save" value="Close" onclick="pgSendClose(true)" class="btn mb-1 mt-1  btn-solid theme-secondary submit-primary" hidden><span class="bi bi-x-lg me-3" aria-hidden="true"></span>' . lang(array('string'=>'Close') ) . '</button>
-                        </div>
-                    </div>
-                </nav>
-            </div>
+                            <button id="campaign_send_close" type="button" name="submit_save" value="Close" onclick="pgSendClose(true)" class="btn mb-1 mt-1  btn-solid theme-secondary submit-primary" hidden><span class="bi bi-x-lg me-3" aria-hidden="true"></span>' . lang(array('string'=>'Close') ) . '</button>', array('group' => 'btn-group btn-group-sm flex-wrap justify-content-center mb-0')) . '
         </div>
     </main>
     ' . send_email_campaign_close_script($id) . '
@@ -797,15 +790,8 @@ if (!$already_complete && (mysqli_num_rows($result) > 0)) {
                 </div>
             </div>
             ' . send_email_campaign_information_html($subject_template, $from_name, $from_email_address, $reply_email_address) . '
-            <div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">
-                <nav class="buttons navigation text-center mb-7" aria-label="' . h(lang('data edit buttons')) . '">
-                    <div class="container">
-                        <div class=" btn-group btn-group-sm flex-wrap justify-content-center mb-0">
-                            <button type="button" name="submit_save" value="Close" onclick="pgSendClose(true)" class="btn mb-1 mt-1  btn-solid theme-secondary submit-primary" ><span class="bi bi-x-lg me-3" aria-hidden="true"></span>' . lang(array('string'=>'Close') ) . '</button>
-                        </div>
-                    </div>
-                </nav>
-            </div>
+            ' . pg_save_bar('
+                            <button type="button" name="submit_save" value="Close" onclick="pgSendClose(true)" class="btn mb-1 mt-1  btn-solid theme-secondary submit-primary" ><span class="bi bi-x-lg me-3" aria-hidden="true"></span>' . lang(array('string'=>'Close') ) . '</button>', array('group' => 'btn-group btn-group-sm flex-wrap justify-content-center mb-0')) . '
         </div>
     </main>' . send_email_campaign_close_script($id) . output_footer_secure();
 }
@@ -829,13 +815,8 @@ function output_error_in_popup($error_message)
                 <div class="alert theme-danger" role="alert"><p>' . lang('Error') . ': ' . $error_message . '</p></div>
             </div>
         </div>
-        <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-            <div class="container">
-                <div class=" btn-group btn-group-sm flex-wrap justify-content-center mb-0">
-                    <button type="button" name="submit_save" value="Close" onclick="pgSendClose(true)" class="btn mb-1 mt-1  btn-solid theme-secondary submit-primary" ><span class="bi bi-x-lg me-3" aria-hidden="true"></span>' . lang(array('string'=>'Close') ) . '</button>
-                </div>
-            </div>
-        </nav>
+        ' . pg_save_bar('
+                    <button type="button" name="submit_save" value="Close" onclick="pgSendClose(true)" class="btn mb-1 mt-1  btn-solid theme-secondary submit-primary" ><span class="bi bi-x-lg me-3" aria-hidden="true"></span>' . lang(array('string'=>'Close') ) . '</button>', array('group' => 'btn-group btn-group-sm flex-wrap justify-content-center mb-0')) . '
     </main>' . send_email_campaign_close_script(0) . output_footer_secure();
     exit();
 }

@@ -646,15 +646,8 @@ pg_page_shell(
                 ' . $side . '
             </div>
         </div>
-        ' . (($buttons !== '') ? '<div class="col-12 order-3">
-            <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                <div class="container">
-                    <div class="btn-group flex-wrap justify-content-center">
-                        ' . $buttons . '
-                    </div>
-                </div>
-            </nav>
-        </div>' : '') . '
+        ' . (($buttons !== '') ? pg_save_bar('
+                        ' . $buttons) : '') . '
     </div>
     ' . $form_close . '
 </main>

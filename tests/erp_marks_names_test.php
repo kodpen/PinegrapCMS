@@ -38,7 +38,7 @@ function test_erp_marks_names_accounts_list()
 	$source = erp_marks_names_source('erp_accounts.php');
 
 	pg_assert_contains('<i class="bi bi-exclamation-triangle-fill fg-warning" aria-hidden="true" title="\' . h($edoc_gap_text) . \'"></i><span class="visually-hidden">\' . h($edoc_gap_text) . \'</span>', $source);
-	pg_assert_contains('<span class="badge theme-danger" title="\' . h($credit_text) . \'">\' . lang(\'Over limit\') . \'</span><span class="visually-hidden"> \' . h($credit_text) . \'</span>', $source);
+	pg_assert_contains('pg_pill(lang(\'Over limit\'), \'danger\', \'title="\' . h($credit_text) . \'"\') . \'<span class="visually-hidden"> \' . h($credit_text) . \'</span>', $source);
 }
 
 function test_erp_marks_names_snoozed_bell()

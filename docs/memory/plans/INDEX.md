@@ -17,13 +17,7 @@
 - agent-channel-trial.md: Live trial of the agent channel on dev (2026-11-10): what is still to try and what the trial found wrong, fixed or not
 - agent-channel.md: Plan (owner 2026-11-06, wake doors 2026-11-07): the Workspace channel from which the owner runs coordinators and agents: registry with @handles, wake rules and doors, scheduled wakes, queue, memory
 - agents-card-settings.md: Plan (owner 2026-11-15): the Site Settings dialog keeps its place after a save; the agents' settings say what each door is for and are redrawn in the panel's look; AS1 to AS5
-- channel-profile-cards-census-facts.md: PF1 census of channel-profile-cards: where each fact of the agent card and the person card is stored, who may see it, what the state dot and the 90% usage mark read from; no schema need found
-- channel-profile-cards-census-scope.md: PF1 census of channel-profile-cards: the card's look (no popover in the design sheet), the exact files and functions of PF2 to PF7, and further facts for the owner's poll
-- channel-profile-cards-census.md: PF1 census of channel-profile-cards (agent card on a name or picture in channels): where a sender's name and picture are drawn in workspace.js, what the message and member payloads carry today
-- channel-profile-cards-facts.md: channel-profile-cards (owner 2026-11-15, channel decision 3796): the card's layout, the agent's picture and the further facts he chose for the agent card and the person card
-- channel-profile-cards-panel.md: Step PF7 of channel-profile-cards (owner 2026-11-15): "Agents in this channel" redrawn, the tier, wake rule and loop guard asked in plain words; what stays
-- channel-profile-cards-settings.md: Step PF7b of channel-profile-cards (owner 2026-11-15): the Channel settings drawer redrawn: tabs, icon and colour as popovers, switches at the row's end, one list of versions
-- channel-profile-cards.md: Plan (owner 2026-11-15, channel decision 3775): who an agent or a person is, shown in channels: a card on the name, role badge, state, usage mark, a clearer agents panel; PF1 to PF8
+- channel-api-gaps.md: Plan (owner 2026-11-15, agent channel message 5039): the API side of channels and the agent channel completed: two censuses of what the panel does that no route does, then one small step per gap
 - claude-plugin-bundle.md: Plan (owner 2026-11-14): a Pinegrap plugin bundle for Claude's directory: a site's MCP server connected by its address, skills for common site work, the listing; the repository is the owner's to open
 - design-template-bikeshop-design.md: Design of plans/design-template-bikeshop.md: the shipped features the Bike Shop template reuses, what it does not build, its look and Turkish words
 - design-template-bikeshop.md: Plan: the Bike Shop design template (pinegrap-bikeshop): bikes and parts catalog, repair and service requests, bike fitting, group rides calendar, news; small steps

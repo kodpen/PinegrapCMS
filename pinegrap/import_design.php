@@ -336,16 +336,10 @@ if ($action != 'import') {
     // settings markup leaves open. The scan step streams its result in one
     // full-width card, so its bar stays outside a row.
     echo
-        ($action == '' ? '<div class="col-12 order-3">' : '') . '
-                <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                    <div class="container">
-                        <div class="btn-group flex-wrap justify-content-center">
-                            ' . $output_buttons . '
-                        </div>
-                        ' . ($action == 'scan' ? '<p class="small fg-secondary mt-2 mb-0" id="import_design_status" role="status" aria-live="polite"></p>' : '') . '
-                    </div>
-                </nav>
-                ' . ($action == '' ? '</div></div>' : '') . '
+        pg_save_bar('
+                            ' . $output_buttons, array('after' => ($action == 'scan' ? '
+                        <p class="small fg-secondary mt-2 mb-0" id="import_design_status" role="status" aria-live="polite"></p>' : ''))) . '
+                ' . ($action == '' ? '</div>' : '') . '
             </form>
                 </div>
             </div>

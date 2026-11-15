@@ -137,7 +137,7 @@ foreach ($accounts as $account) {
         ? lang(array('string' => 'Credit limit {var:1}, over by {var:2}', 'vars' => array(erp_money_out($over_limit[$id]['limit']), erp_money_out($over_limit[$id]['balance'] - $over_limit[$id]['limit']))))
         : '';
     $output_credit_flag = isset($over_limit[$id])
-        ? ' <span class="badge theme-danger" title="' . h($credit_text) . '">' . lang('Over limit') . '</span><span class="visually-hidden"> ' . h($credit_text) . '</span>'
+        ? ' ' . pg_pill(lang('Over limit'), 'danger', 'title="' . h($credit_text) . '"') . '<span class="visually-hidden"> ' . h($credit_text) . '</span>'
         : '';
 
     // The gap is named in the tooltip and in visually-hidden text: "not

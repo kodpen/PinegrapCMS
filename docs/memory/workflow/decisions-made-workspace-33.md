@@ -14,5 +14,5 @@ description: Decisions made, workspace part 33 (2026-11-15): the guest page show
 ## Does the guest page say an agent's role and model? (owner, 2026-11-15, in the architect's window)
 - His words, on a picture of the guest page: "ajan yazıyor ama rol leri ve modelleri yazmıyor o konuda da bir düzeltme yapalım".
 - So beside an agent's name the guest page shows the badge, then the agent's role and the model it reported; an empty fact is left out.
-- The architect's reading: no usage, no state dot and no card for a guest, as `plans/channel-profile-cards.md` keeps them from a guest.
+- The architect's reading: no usage, no state dot and no card for a guest, as `workspace/agent-card-look.md` keeps them from a guest.
 - Plan: guest-page-content in the plans folder (GP1 to GP3), brought by GP1's PR #9693.

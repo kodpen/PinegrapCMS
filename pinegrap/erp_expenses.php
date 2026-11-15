@@ -168,13 +168,13 @@ foreach ($expenses as $expense) {
     $overdue = ($status === 'unpaid') && ((string) $expense['due_date'] > '0000-00-00') && ((string) $expense['due_date'] < $today);
 
     if ($status === 'paid') {
-        $output_status = '<span class="badge theme-success">' . h($statuses['paid']) . '</span>'
+        $output_status = pg_pill($statuses['paid'], 'success')
             . '<div class="small fg-secondary">' . h((string) $expense['till_name']) . '</div>';
     } elseif ($status === 'cancelled') {
-        $output_status = '<span class="badge theme-secondary">' . h($statuses['cancelled']) . '</span>';
+        $output_status = pg_pill($statuses['cancelled'], 'secondary');
     } else {
-        $output_status = '<span class="badge ' . ($overdue ? 'theme-danger' : 'theme-warning') . '">' . h($statuses['unpaid']) . '</span>'
-            . ($overdue ? ' <span class="badge theme-danger">' . lang('Overdue') . '</span>' : '')
+        $output_status = pg_pill($statuses['unpaid'], $overdue ? 'danger' : 'warning')
+            . ($overdue ? ' ' . pg_pill(lang('Overdue'), 'danger') : '')
             . (((string) $expense['due_date'] > '0000-00-00')
                 ? '<div class="small ' . ($overdue ? 'fg-danger' : 'fg-secondary') . '">' . h(lang(array('string' => 'due {var:1}', 'vars' => prepare_form_data_for_output((string) $expense['due_date'], 'date', false)))) . '</div>'
                 : '');
@@ -321,27 +321,27 @@ pg_page_shell([
                 <div class="card-body">
                     <div class="row g-3 align-items-end">
                     <div class="col-12 md:col-3">
-                        <label class="form-label small fg-secondary mb-1" for="period">' . lang('Period') . '</label>
+                        <label class="pg-field-label" for="period">' . lang('Period') . '</label>
                         <select class="form-control form-control-sm" id="period" name="period">' . $output_periods . '</select>
                     </div>
                     <div class="col-6 md:col-2 erp-expense-dates"' . (($period_choice === 'dates') ? '' : ' hidden') . '>
-                        <label class="form-label small fg-secondary mb-1" for="from">' . lang('Start') . '</label>
+                        <label class="pg-field-label" for="from">' . lang('Start') . '</label>
                         <input type="date" data-pg-date class="form-control form-control-sm" id="from" name="from" value="' . h($period['from']) . '" />
                     </div>
                     <div class="col-6 md:col-2 erp-expense-dates"' . (($period_choice === 'dates') ? '' : ' hidden') . '>
-                        <label class="form-label small fg-secondary mb-1" for="to">' . lang('End') . '</label>
+                        <label class="pg-field-label" for="to">' . lang('End') . '</label>
                         <input type="date" data-pg-date class="form-control form-control-sm" id="to" name="to" value="' . h($period['to']) . '" />
                     </div>
                     <div class="col-6 md:col-2">
-                        <label class="form-label small fg-secondary mb-1" for="category_id">' . lang('Category') . '</label>
+                        <label class="pg-field-label" for="category_id">' . lang('Category') . '</label>
                         <select class="form-control form-control-sm" id="category_id" name="category_id">' . $output_category_options . '</select>
                     </div>
                     <div class="col-6 md:col-2">
-                        <label class="form-label small fg-secondary mb-1" for="status">' . lang('Status') . '</label>
+                        <label class="pg-field-label" for="status">' . lang('Status') . '</label>
                         <select class="form-control form-control-sm" id="status" name="status">' . $output_status_options . '</select>
                     </div>
                     <div class="col-12 md:col">
-                        <label class="form-label small fg-secondary mb-1" for="q">' . lang('Search') . '</label>
+                        <label class="pg-field-label" for="q">' . lang('Search') . '</label>
                         <div class="input-group input-group-sm">
                             <input type="search" class="form-control" id="q" name="q" value="' . h($filters['query']) . '" placeholder="' . h(lang('Supplier, receipt number, words')) . '" />
                             <button type="submit" class="btn btn-outline theme-primary"><i class="bi bi-funnel" aria-hidden="true"></i><span class="visually-hidden">' . lang('Filter') . '</span></button>
@@ -383,7 +383,7 @@ pg_page_shell([
                         <h2 class="card-header bg-reset border-0 pg-title-section">'
                             . h(lang('Expenses') . ' · ' . erp_profit_period_title($period['from'], $period['to'])) . '</h2>
                         <div class="card-body p-0 table-responsive">
-                            <table class="table table-hover align-middle mb-0" data-pg-sort id="erp_expenses_list">
+                            <table class="table erp-list-table table-hover align-middle mb-0" data-pg-sort id="erp_expenses_list">
                                 <thead>
                                     <tr>
                                         <th>' . lang('Date') . '</th>

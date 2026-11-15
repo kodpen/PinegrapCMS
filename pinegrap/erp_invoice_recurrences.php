@@ -47,7 +47,7 @@ foreach ($recurrences as $row) {
             <td class="text-nowrap"><a class="pg-link-body-emphasis" href="' . h('edit_erp_invoice.php?id=' . (int) $row['source_invoice_id'] . $output_send_to . '#erp-recurring') . '">' . h((string) $row['source_number']) . '</a></td>
             <td data-sort="' . (int) $row['every_months'] . '">' . h($periods[(int) $row['every_months']] ?? '') . '</td>
             <td>' . h($modes[(string) $row['mode']] ?? '') . '</td>
-            <td class="text-nowrap" data-sort="' . ($active ? h(str_replace('-', '', (string) $row['next_date'])) : '') . '">' . ($active ? h(prepare_form_data_for_output((string) $row['next_date'], 'date')) : '<span class="badge theme-secondary">' . lang('Stopped') . '</span>')
+            <td class="text-nowrap" data-sort="' . ($active ? h(str_replace('-', '', (string) $row['next_date'])) : '') . '">' . ($active ? h(prepare_form_data_for_output((string) $row['next_date'], 'date')) : pg_pill(lang('Stopped'), 'secondary'))
                 . (((string) $row['end_date'] !== '0000-00-00') ? '<div class="pg-text-meta">' . h(lang(array('string' => 'Until {var:1}.', 'vars' => prepare_form_data_for_output((string) $row['end_date'], 'date', false)))) . '</div>' : '') . '</td>
             <td class="text-end text-nowrap" data-sort="' . (int) $row['grand_total'] . '">' . h(erp_money_out_currency((int) $row['grand_total'], (string) $row['currency'])) . '</td>
             <td class="text-end">' . (int) $row['occurrences'] . '</td>
@@ -93,7 +93,7 @@ pg_page_shell([
 
             <div class="card pg-card erp-list-card my-7">
                 <div class="card-body p-0 table-responsive">
-                    <table class="table table-hover align-middle mb-0" data-pg-sort>
+                    <table class="table erp-list-table table-hover align-middle mb-0" data-pg-sort>
                         <thead>
                             <tr>
                                 <th>' . lang('Account') . '</th>

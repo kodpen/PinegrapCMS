@@ -96,9 +96,8 @@ function test_arrival_dates_and_gift_cards_name_their_state()
 
 function test_overdue_expense_has_a_badge()
 {
-	foreach (array('erp_expenses.php', 'edit_erp_expense.php') as $file) {
-		pg_assert_contains("(\$overdue ? ' <span class=\"badge theme-danger\">' . lang('Overdue') . '</span>' : '')", list_status_words_source($file), $file . ' says Overdue');
-	}
+	pg_assert_contains("(\$overdue ? ' ' . pg_pill(lang('Overdue'), 'danger') : '')", list_status_words_source('erp_expenses.php'), 'erp_expenses.php says Overdue');
+	pg_assert_contains("(\$overdue ? ' <span class=\"badge theme-danger\">' . lang('Overdue') . '</span>' : '')", list_status_words_source('edit_erp_expense.php'), 'edit_erp_expense.php says Overdue');
 }
 
 function test_list_status_word_shipping_methods()

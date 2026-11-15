@@ -214,7 +214,7 @@ $card_cell = function ($row) use ($open_link) {
 
 $gone = function ($row) use ($provider_label) {
     return !empty($row['gone'])
-        ? ' <span class="badge rounded-pill theme-danger" title="' . h(lang(array('string' => 'The last complete read of {var:1} did not find this card.', 'vars' => $provider_label))) . '">' . lang(array('string' => 'Not at {var:1} any more', 'vars' => h($provider_label))) . '</span>'
+        ? ' ' . pg_pill(lang(array('string' => 'Not at {var:1} any more', 'vars' => $provider_label)), 'danger', 'title="' . h(lang(array('string' => 'The last complete read of {var:1} did not find this card.', 'vars' => $provider_label))) . '"')
         : '';
 };
 
@@ -286,7 +286,7 @@ switch ($tab) {
                 'cells' => array(
                     'name' => $name,
                     'city' => pg_list_cell(h($row['city'])),
-                    'kind' => pg_list_cell(h(erp_edoc_account_value_text('kind', $row['kind'])) . (empty($row['is_active']) ? ' <span class="badge rounded-pill badge-subtle theme-secondary">' . lang('Passive') . '</span>' : '')),
+                    'kind' => pg_list_cell(h(erp_edoc_account_value_text('kind', $row['kind'])) . (empty($row['is_active']) ? ' ' . pg_pill(lang('Passive'), 'secondary') : '')),
                     'note' => pg_list_cell(implode('<br />', $note), 'align-middle small text-wrap'),
                 ),
             );

@@ -93,13 +93,13 @@ foreach ($waybills as $waybill) {
     $invoice_state = erp_waybill_invoice_state($waybill);
 
     if ($is_cancelled) {
-        $output_state = '<span class="fg-danger">' . lang('Cancelled') . '</span>';
+        $output_state = pg_pill(lang('Cancelled'), 'danger');
     } elseif ($invoice_state === 'invoiced') {
-        $output_state = '<span class="fg-success">' . lang('Invoiced') . '</span>';
+        $output_state = pg_pill(lang('Invoiced'), 'success');
     } elseif ($invoice_state === 'draft') {
-        $output_state = '<span class="fg-warning">' . lang('Invoice drafted') . '</span>';
+        $output_state = pg_pill(lang('Invoice drafted'), 'warning');
     } else {
-        $output_state = '<span class="fg-primary">' . lang('Not yet invoiced') . '</span>';
+        $output_state = pg_pill(lang('Not yet invoiced'), 'primary');
     }
 
     $output_invoice = '';

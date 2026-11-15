@@ -5669,6 +5669,56 @@ body.pg-code-field-open {
 .erp-list-card > .list-group {
   --bs-list-group-bg: transparent;
 }
+/* An ERP list drawn as a plain table (erp-list-table, not on the list
+   table driver) takes the list table's heading row and rows: a 38 px
+   heading in small strong text in the third text colour, the sorted
+   column's heading in the text colour, rows at least 52 px under a faint
+   line, the cells 14 px from the edges. Rows keep their own wrapping. The
+   cells lie on the card's ground, not a fill of their own (the panel's
+   .table cell rule paints the card colour, which differs from pg-card's
+   gradient); the hover tone stays. */
+.erp-list-table {
+  --bs-table-bg: transparent;
+}
+.erp-list-table > thead > tr > th,
+.erp-list-table > tbody > tr > td {
+  background-color: transparent;
+}
+.erp-list-table > thead > tr > th {
+  height: 38px;
+  padding: 0 14px;
+  border-bottom: 0;
+  box-shadow: inset 0 -1px 0 var(--pg-border-color-translucent);
+  font-size: var(--pg-text-meta);
+  font-weight: var(--pg-weight-strong);
+  color: var(--pg-fg-3);
+  white-space: nowrap;
+  vertical-align: middle;
+}
+.erp-list-table > thead > tr > th[aria-sort] {
+  color: var(--pg-fg-body);
+}
+.erp-list-table > tbody > tr > td {
+  height: 52px;
+  padding: 6px 14px;
+  border-bottom: 1px solid var(--pg-border-color-translucent);
+}
+.erp-list-table > tbody > tr:last-child > td {
+  border-bottom: 0;
+}
+/* A phone: the table scrolls sideways, so a cell keeps at least 6rem and
+   a name that may break anywhere (text-break) is not squeezed to a few
+   letters a line; the sides are the table's 8 px (the driver lists are
+   cards there). */
+@media (max-width: 575.98px) {
+  .erp-list-table > thead > tr > th,
+  .erp-list-table > tbody > tr > td {
+    padding-inline: 8px;
+  }
+  .erp-list-table > tbody > tr > td {
+    min-width: 6rem;
+  }
+}
 
 .object-fit,
 .img-thumbnail {
@@ -11344,6 +11394,29 @@ body.pg-side-panel-open .pg-chat-launcher {
 .pg-sm.is-drawer-open .pg-sm-dscrim {
   opacity: 1;
   pointer-events: auto;
+}
+/* "Saved" after a save (confirmSave() in backend.src.js): one toast just
+   under the head of the pane, or of the open drawer; the script sets its top
+   from the head. Above the drawer and its scrim; only the toast takes clicks. */
+.pg-sm-saved {
+  position: absolute;
+  z-index: 6;
+  top: 5rem;
+  right: 0;
+  left: 0;
+  display: flex;
+  justify-content: center;
+  padding-inline: 1rem;
+  pointer-events: none;
+}
+.pg-sm-saved > .toast {
+  max-width: 100%;
+  box-shadow: var(--pg-shadow-lg);
+  pointer-events: auto;
+}
+.pg-sm.is-drawer-open .pg-sm-saved {
+  left: auto;
+  width: min(42rem, 100%);
 }
 @media (max-width: 575.98px) {
   .pg-sm-drawer { width: 100%; }
@@ -27211,6 +27284,7 @@ body.pg-measure-edit .row > .order-2 > .position-sticky > .card,
 /* Floating bar (the save bar's surface), also an add or edit screen's
    save bar. */
 .pg-floatbar,
+.pg-savebar > nav.buttons.navigation,
 body.pg-measure-edit .row > .order-3 > nav.buttons.navigation,
 #pg_settings_page_form > nav.buttons.navigation {
   border-radius: var(--pg-radius-card);
@@ -27218,6 +27292,12 @@ body.pg-measure-edit .row > .order-3 > nav.buttons.navigation,
   -webkit-backdrop-filter: blur(16px);
   backdrop-filter: blur(16px);
   box-shadow: var(--pg-shadow-float);
+}
+/* pg_save_bar()'s sticky column holds the bar's bottom margin: outside a
+   flex row (straight in a form, after a card) the margin would collapse out
+   of the column and the bar would sit on the window's bottom edge. */
+.pg-savebar {
+  display: flow-root;
 }
 
 /* Field: label above, help under, a unit or counter at the right end. */
@@ -28054,6 +28134,7 @@ body.pg-measure-edit .order-1 .card-body .row {
    shared two-per-row bar. The shared bar rounds its buttons into pills with
    !important, hence the same here. */
 @media (min-width: 576px) {
+  .pg-savebar > nav.buttons.navigation,
   body.pg-measure-edit .row > .order-3 > nav.buttons.navigation {
     justify-content: flex-end;
     min-height: 56px;
@@ -28061,6 +28142,7 @@ body.pg-measure-edit .order-1 .card-body .row {
     padding: 0 12px 0 18px;
     border: 1px solid var(--pg-border-color-translucent);
   }
+  .pg-savebar > nav.buttons.navigation > .container,
   body.pg-measure-edit .row > .order-3 > nav.buttons.navigation > .container {
     justify-content: flex-end;
     max-width: none;
@@ -28069,9 +28151,11 @@ body.pg-measure-edit .order-1 .card-body .row {
   }
   /* The chat launcher floats over the window's bottom right corner, where
      the bar puts its buttons: they end before it. */
+  body:has(#pg-chat-root) .pg-savebar > nav.buttons.navigation > .container,
   body.pg-measure-edit:has(#pg-chat-root) .row > .order-3 > nav.buttons.navigation > .container {
     margin-inline-end: var(--pg-chat-clearance);
   }
+  .pg-savebar > nav.buttons.navigation .btn,
   body.pg-measure-edit .row > .order-3 > nav.buttons.navigation .btn {
     --bs-btn-min-height: 34px;
     --bs-btn-padding-y: 0;
@@ -28080,7 +28164,9 @@ body.pg-measure-edit .order-1 .card-body .row {
     --bs-btn-font-weight: var(--pg-weight-strong);
     border-radius: 10px !important;
   }
+  .pg-savebar > nav.buttons.navigation .btn .bi,
   body.pg-measure-edit .row > .order-3 > nav.buttons.navigation .btn .bi,
+  .pg-savebar > nav.buttons.navigation .btn .material-icons,
   body.pg-measure-edit .row > .order-3 > nav.buttons.navigation .btn .material-icons {
     font-size: var(--pg-text-base);
   }
@@ -28091,31 +28177,98 @@ body.pg-measure-edit .order-1 .card-body .row {
    .pg-button-fill, delete (danger, solid or outline) a ghost in the danger
    recipe's rose, every other button .pg-button-quiet. The markup keeps its
    Bootstrap classes; at every width, a phone included. */
+.pg-savebar > nav.buttons.navigation .btn,
 body.pg-measure-edit .row > .order-3 > nav.buttons.navigation .btn {
   border: 0;
   background: var(--pg-quiet);
   color: var(--pg-fg-body);
   box-shadow: inset 0 0 0 1px var(--pg-border-color-translucent), inset 0 1px 0 var(--pg-surface-hi);
 }
+.pg-savebar > nav.buttons.navigation .btn-solid:is(.theme-success, .theme-primary),
 body.pg-measure-edit .row > .order-3 > nav.buttons.navigation .btn-solid:is(.theme-success, .theme-primary) {
   color: var(--pg-on-accent-fill);
   background: linear-gradient(180deg, var(--pg-accent-1), var(--pg-accent-2));
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.38), 0 1px 2px rgba(0, 0, 0, 0.25), 0 8px 18px -8px var(--pg-accent-glow);
 }
+.pg-savebar > nav.buttons.navigation .btn.theme-danger,
 body.pg-measure-edit .row > .order-3 > nav.buttons.navigation .btn.theme-danger {
   background: none;
   color: var(--pg-tone-rose-text);
   box-shadow: none;
 }
+.pg-savebar > nav.buttons.navigation .btn.theme-danger:hover,
 body.pg-measure-edit .row > .order-3 > nav.buttons.navigation .btn.theme-danger:hover {
   background: var(--pg-hover);
 }
+.pg-savebar > nav.buttons.navigation .btn:focus-visible,
 body.pg-measure-edit .row > .order-3 > nav.buttons.navigation .btn:focus-visible {
   outline: 2px solid var(--pg-accent);
   outline-offset: 2px;
 }
+.pg-savebar > nav.buttons.navigation .btn:is(:disabled, .disabled),
 body.pg-measure-edit .row > .order-3 > nav.buttons.navigation .btn:is(:disabled, .disabled) {
   opacity: 0.5;
+}
+
+}
+
+/* ==========================================================================
+   Look A: the field of add and edit screens.
+   The Bootstrap label and field in the cards of an add or edit screen
+   (.form-label, .form-control: inputs, selects, textareas, adorned wrappers)
+   take the values of .pg-field-label and .pg-input, so no screen changes
+   its markup. Settings cards (.pg-settings-body, .pg-set-card) keep their
+   32 px row fields, a drawer or dialog opened from the screen keeps its
+   own, and the bare input inside an adorned wrapper (.form-ghost) stays
+   bare, so the wrapper draws the one frame and ring; the designer and the
+   site side load other stylesheets. The field is
+   drawn through Bootstrap's control variables, so the panel's invalid and
+   valid borders still win over it.
+   ========================================================================== */
+@layer custom {
+
+body.pg-measure-edit main .card .form-label:not(dialog *, .drawer *, .pg-settings-body *, .pg-set-card *) {
+  --bs-label-margin-bottom: 6px;
+  font-size: var(--pg-text-2);
+  font-weight: var(--pg-weight-strong);
+}
+body.pg-measure-edit main .card .form-control:not(.form-ghost, dialog *, .drawer *, .pg-settings-body *, .pg-set-card *) {
+  --bs-control-min-height: 36px;
+  --bs-control-padding-y: 6px;
+  --bs-control-padding-x: 12px;
+  --bs-control-font-size: var(--pg-text-base);
+  --bs-control-border-radius: 10px;
+  --bs-control-bg: var(--pg-field-bg);
+  --bs-control-border-color: var(--pg-field-line);
+  --bs-control-box-shadow: var(--pg-field-shadow);
+  --bs-control-placeholder-color: var(--pg-fg-3);
+}
+/* The corners as a property, as the panel's own .form-control rule sets
+   them; a field inside an input group keeps the group's joined corners. */
+body.pg-measure-edit main .card .form-control:not(.form-ghost, .input-group > *, dialog *, .drawer *, .pg-settings-body *, .pg-set-card *) {
+  border-radius: 10px;
+}
+body.pg-measure-edit main .card textarea.form-control:not(.form-ghost, dialog *, .drawer *, .pg-settings-body *, .pg-set-card *) {
+  --bs-control-padding-y: 9px;
+  line-height: 1.5;
+}
+/* A field in a row (Bootstrap's small field) is the look's .pg-input-sm. */
+body.pg-measure-edit main .card .form-control.form-control-sm:not(.form-ghost, dialog *, .drawer *, .pg-settings-body *, .pg-set-card *) {
+  --bs-control-min-height: 32px;
+  --bs-control-padding-y: 4px;
+  --bs-control-padding-x: 10px;
+  --bs-control-font-size: var(--pg-text-2);
+  --bs-control-border-radius: 9px;
+}
+body.pg-measure-edit main .card .form-control.form-control-sm:not(.form-ghost, .input-group > *, dialog *, .drawer *, .pg-settings-body *, .pg-set-card *) {
+  border-radius: 9px;
+}
+/* Focus in the look's accent with its 4 px ring; a marked field keeps the
+   panel's invalid or valid ring. */
+body.pg-measure-edit main .card .form-control:is(:focus, .form-adorn:focus-within):not(.form-ghost, .is-invalid, .is-valid, dialog *, .drawer *, .pg-settings-body *, .pg-set-card *) {
+  border-color: var(--pg-accent);
+  outline: 0;
+  box-shadow: var(--pg-field-shadow), 0 0 0 4px color-mix(in srgb, var(--pg-accent) 24%, transparent);
 }
 
 }

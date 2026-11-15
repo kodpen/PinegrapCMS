@@ -175,13 +175,8 @@ if (!$_POST) {
                                 </div>
                             </div>
                         </div>
-                        <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                            <div class="container">
-                                <div class=" btn-group flex-wrap justify-content-center">
-                                    <button type="submit" id="continue_button" name="continue_button" value="Continue" class="btn my-1  btn-solid theme-success " ><span class="material-icons me-3">arrow_forward</span><span class="pg-btn-label" >' . lang(array('string'=>'Continue') ) . '</span></button>
-                                </div>
-                            </div>
-                        </nav>
+                        ' . pg_save_bar('
+                                    <button type="submit" id="continue_button" name="continue_button" value="Continue" class="btn my-1  btn-solid theme-success " ><span class="material-icons me-3">arrow_forward</span><span class="pg-btn-label" >' . lang(array('string'=>'Continue') ) . '</span></button>') . '
                     </form>
                 </div>
             </div>
