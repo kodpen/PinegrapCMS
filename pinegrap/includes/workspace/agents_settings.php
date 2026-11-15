@@ -117,7 +117,8 @@ function ws_agents_settings_check($viewer, $id, $input)
         $fields['door_url'] = $input['base'];
     }
 
-    $check = ws_agent_save_check($fields, $current, $taken, $user_names, array_column(ws_agents_settings_apps(), 'id'));
+    $agent_apps = (array) db_items("SELECT id, kind, app_id FROM ws_agents WHERE kind = 'app'");
+    $check = ws_agent_save_check($fields, $current, $taken, $user_names, array_column(ws_agents_settings_apps(), 'id'), ws_agent_apps_taken($agent_apps, $id));
 
     if (!$check['ok']) {
         $field = (string) $check['field'];
