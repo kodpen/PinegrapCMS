@@ -116,3 +116,22 @@ function test_ws_api_scheduled_message_field()
 	pg_assert_same('send_at', ws_api_scheduled_message_field('time'));
 	pg_assert_same(null, ws_api_scheduled_message_field(''));
 }
+
+function test_ws_scheduled_message_save_refuses_a_row_being_posted()
+{
+	$busy = "lang('It is being posted right now.')";
+
+	// The check, and so the API's dry run, refuses a claimed row as Delete
+	// and Send now do.
+	$check = ws_api_scheduled_changes_test_source('ws_scheduled_message_save_check');
+	pg_assert_contains("running_at", $check, 'the check looks at running_at');
+	pg_assert_contains($busy, $check, 'the check refuses a row being posted');
+
+	// A change whose UPDATE lost the race to the run is refused, never
+	// answered as saved.
+	$save = ws_api_scheduled_changes_test_source('ws_scheduled_message_save');
+	$update = strpos($save, 'UPDATE ws_scheduled_actions');
+	$affected = strpos($save, 'mysqli_affected_rows(');
+	pg_assert_true(($update !== false) && ($affected !== false) && ($affected > $update), 'the save reads the affected rows after the UPDATE');
+	pg_assert_contains($busy, $save, 'the save refuses a row claimed meanwhile');
+}
