@@ -236,7 +236,8 @@ function ws_assistants()
     }
 
     // The registry's app and model agents (agent_shown.php), for their
-    // names and pictures; delegate false: no task is handed to one.
+    // names and pictures; delegate false keeps them out of the drawer's
+    // list, while ws_task_delegate() takes one the task's channel allows.
     if (function_exists('ws_agent_assistants')) {
         $list += ws_agent_assistants();
     }
@@ -245,8 +246,9 @@ function ws_assistants()
 }
 
 /**
- * Can a task be handed to this assistant? A registry agent is asked in its
- * channels only.
+ * Is this assistant offered in the task drawer's list? A registry agent is
+ * not (delegate false); a task is handed to one by its key, for a task of a
+ * channel it is allowed in (ws_agent_task_problem()).
  *
  * @param array $assistant a ws_assistants() entry
  * @return bool
@@ -442,6 +444,12 @@ function ws_assistant_task_problem($viewer, $key, $task)
         return lang('Invalid request.');
     }
 
+    // A registry agent takes the tasks of a channel it is allowed in: no
+    // other connection or channel switch is asked.
+    if (ws_assistant_is_agent($key)) {
+        return ws_agent_task_problem($key, $task);
+    }
+
     if (!ws_assistant_takes_tasks(ws_assistant($key))) {
         return lang('An agent is asked in its channels; a task is not handed to it.');
     }
@@ -478,6 +486,86 @@ function ws_assistant_task_problem($viewer, $key, $task)
         if (!$allowed) {
             return lang(array('string' => '{var:1} may not be asked in the channel of this task. Somebody who manages the channel can allow it from the channel menu.', 'vars' => ws_assistant_name(($agent === 'mcp') ? $key : $agent)));
         }
+    }
+
+    return '';
+}
+
+/**
+ * Is a key a registry agent's (agent:<id>, model:<id>)? Pure.
+ *
+ * @param string $key
+ * @return bool
+ */
+function ws_assistant_is_agent($key)
+{
+    return (bool) preg_match('/^(agent|model):[1-9][0-9]{0,9}$/', (string) $key);
+}
+
+/**
+ * Why a registry agent may not take a task, from where the task is: an
+ * agent takes only the tasks of a channel whose agent row allows it (in a
+ * discussion, the channel it is about too). Pure.
+ *
+ * @param bool $has_channel the task is in a channel
+ * @param bool $allowed     that channel allows the agent
+ * @return string '' | no_channel | not_allowed
+ */
+function ws_agent_task_refusal($has_channel, $allowed)
+{
+    if (!$has_channel) {
+        return 'no_channel';
+    }
+
+    return $allowed ? '' : 'not_allowed';
+}
+
+/**
+ * The raw ws_agents row a registry agent's key stands for, while it is
+ * active and shown.
+ *
+ * @param string $key agent:<id> | model:<id>
+ * @return array|null
+ */
+function ws_assistant_agent_row($key)
+{
+    $assistant = ws_assistant($key);
+
+    if (!$assistant || !ws_assistant_is_agent($key) || !function_exists('ws_agents_shown')) {
+        return null;
+    }
+
+    $rows = ws_agents_shown();
+
+    return $rows[(int) ($assistant['agent_id'] ?? 0)] ?? null;
+}
+
+/**
+ * What keeps a registry agent from taking a task: the task is in no
+ * channel, or its channel does not allow the agent.
+ *
+ * @param string $key agent:<id> | model:<id>
+ * @param array  $task
+ * @return string a sentence, '' when nothing does
+ */
+function ws_agent_task_problem($key, $task)
+{
+    $agent = ws_assistant_agent_row($key);
+
+    if (!$agent) {
+        return lang('Invalid request.');
+    }
+
+    $channel = ((int) ($task['channel_id'] ?? 0) > 0) ? ws_channel($task['channel_id']) : null;
+    $row = ($channel && function_exists('ws_agent_reach_row')) ? ws_agent_reach_row($channel, (int) $agent['id']) : null;
+    $refusal = ws_agent_task_refusal((bool) $channel, $row && ((int) $row['allowed'] === 1));
+
+    if ($refusal === 'no_channel') {
+        return lang('An agent takes only the tasks of a channel it is allowed in; this task is in no channel.');
+    }
+
+    if ($refusal === 'not_allowed') {
+        return lang(array('string' => '{var:1} may not be asked in the channel of this task. Somebody who manages the channel can allow it from the channel menu.', 'vars' => ws_assistant_name($key)));
     }
 
     return '';
@@ -591,6 +679,18 @@ function ws_task_delegation_run_check($viewer, $task, $key)
         return $fail(lang('An assistant is already working on this task. Wait for its answer or stop it first.'));
     }
 
+    // A registry agent's runs go by the brake its channel requests have:
+    // so many requests an hour, whoever asked.
+    if (ws_assistant_is_agent($key)) {
+        $last_hour = (int) db_value("SELECT COUNT(*) FROM ws_ai_requests WHERE agent = '" . e($key) . "' AND created_at > '" . (time() - 3600) . "'");
+
+        if (ws_agent_brake(0, $last_hour) !== '') {
+            return $fail(lang(array('string' => '@{var:1} was not woken: it was woken too often in the last hour.', 'vars' => ltrim((string) ws_assistant($key)['handle'], '@'))));
+        }
+
+        return array('ok' => true, 'error' => '');
+    }
+
     $agent = ws_assistant_agent($key);
     $waiting = (int) db_value("SELECT COUNT(*) FROM ws_ai_requests
         WHERE requested_by = '" . (int) $viewer['id'] . "' AND status IN ('queued', 'sent', 'running')" . ws_ai_agent_where($agent));
@@ -650,6 +750,15 @@ function ws_task_delegation_run($viewer, $task, $key, $instruction)
 
     if ($request_id <= 0) {
         return array('ok' => false, 'error' => lang('Invalid request.'), 'request_id' => 0);
+    }
+
+    // An app agent with a push door is knocked at once, as for a message
+    // that wakes it; a poll door reads its list, a model agent is run by
+    // the site (model_agents.php).
+    $row = ws_assistant_is_agent($key) ? ws_assistant_agent_row($key) : null;
+
+    if ($row && ((string) $row['kind'] === 'app') && ((string) $row['door_kind'] === 'push') && function_exists('ws_agent_knock')) {
+        ws_agent_knock($row, $request_id);
     }
 
     return array('ok' => true, 'error' => '', 'request_id' => $request_id);
