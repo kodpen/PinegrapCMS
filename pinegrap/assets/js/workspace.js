@@ -7933,6 +7933,14 @@
                         action: function () { go(item); }
                     };
                 })));
+
+                // Opaque, as wide as its longest row up to 30rem, its right
+                // edge under the count; a cut row ends with "…".
+                if (ctxNode) {
+                    ctxNode.classList.remove('backdrop');
+                    ctxNode.classList.add('ws-open-menu');
+                    ctxNode.style.left = Math.max(8, Math.min(box.right - ctxNode.offsetWidth, window.innerWidth - ctxNode.offsetWidth - 8)) + 'px';
+                }
             });
             bar.appendChild(count);
             holder.appendChild(bar);

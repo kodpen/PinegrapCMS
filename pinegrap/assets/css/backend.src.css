@@ -13570,6 +13570,17 @@ html[data-bs-theme="dark"] .ws-group-icon {
 .ws-open-single .ws-open-count {
   display: none;
 }
+/* The list the count opens: the panel menu, opaque, as wide as its
+   longest row up to 30rem; a row too long ends with an ellipsis. */
+.ws-ctx.contextmenu.popover.ws-open-menu {
+  max-width: min(30rem, calc(100vw - 16px));
+}
+.ws-ctx.ws-open-menu .ws-ctx-item {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .ws-msg-pinned {
   color: var(--ws-accent);
   font-size: .75rem;
