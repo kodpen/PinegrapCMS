@@ -29703,6 +29703,57 @@ textarea.pg-campaign-text {
 }
 
 /* ==========================================================================
+   Look A: label and value list.
+   What a status column reads, one row a fact: <dl class="pg-kv"> with a
+   <dt> and a <dd> per row. The label column is as wide as the longest
+   label up to about half the card, so the values line up at the right
+   edge; a long value wraps inside its own column. A <div> may group a pair
+   (display: contents keeps it in the grid). A second list right after the
+   first, .pg-kv.pg-kv-rule, starts a group under a hairline (a foreign
+   currency's rate); a value's second line is .pg-kv-note.
+   ========================================================================== */
+@layer custom {
+
+.pg-kv {
+  display: grid;
+  grid-template-columns: fit-content(55%) minmax(0, 1fr);
+  column-gap: 16px;
+  row-gap: 10px;
+  align-items: center;
+  margin: 0;
+  font-size: var(--pg-text-2);
+  line-height: var(--pg-leading);
+}
+.pg-kv > div {
+  display: contents;
+}
+.pg-kv dt {
+  min-width: 0;
+  font-weight: var(--pg-weight-regular);
+  color: var(--pg-fg-3);
+}
+.pg-kv dd {
+  min-width: 0;
+  margin: 0;
+  text-align: end;
+  font-weight: var(--pg-weight-medium);
+  overflow-wrap: anywhere;
+}
+.pg-kv-note {
+  display: block;
+  font-size: var(--pg-text-meta);
+  font-weight: var(--pg-weight-regular);
+  color: var(--pg-fg-3);
+}
+.pg-kv + .pg-kv-rule {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: var(--pg-border-width) solid var(--pg-border-color);
+}
+
+}
+
+/* ==========================================================================
    Look A: WhatsApp template designer.
    whatsapp_template.php as drawn in the plan's template-designer.html: the
    stages line, the cards of the form column, the message box with its
