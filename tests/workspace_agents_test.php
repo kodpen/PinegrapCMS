@@ -306,3 +306,45 @@ function test_workspace_agent_apps_taken()
 	pg_assert_same(array(4), ws_agent_apps_taken($rows, 8));
 	pg_assert_same(array(6), ws_agent_apps_taken(array(array('id' => 2, 'kind' => 'app', 'app_id' => 6, 'status' => 'off')), 0), 'an agent switched off still holds its application');
 }
+
+// A push door's last error belongs to the door it was met at: a new kind,
+// address or token starts it clean.
+function test_workspace_agent_door_error_clears()
+{
+	$current = array('kind' => 'app', 'door_kind' => 'push', 'door_url' => 'https://hooks.example.com/a');
+	$same = array('door_kind' => 'push', 'door_url' => 'https://hooks.example.com/a');
+
+	pg_assert_false(ws_agent_door_error_clears($current, $same, null), 'nothing of the door changed');
+	pg_assert_true(ws_agent_door_error_clears($current, array('door_kind' => 'poll', 'door_url' => ''), null), 'push to poll');
+	pg_assert_true(ws_agent_door_error_clears(array('door_kind' => 'poll', 'door_url' => '') + $current, $same, null), 'poll to push');
+	pg_assert_true(ws_agent_door_error_clears($current, array('door_url' => 'https://hooks.example.com/b') + $same, null), 'a new address');
+	pg_assert_true(ws_agent_door_error_clears($current, $same, 'sealed'), 'a new token');
+	pg_assert_true(ws_agent_door_error_clears($current, $same, ''), 'the token removed');
+	pg_assert_false(ws_agent_door_error_clears(null, $same, 'sealed'), 'a new agent has no error yet');
+	pg_assert_false(ws_agent_door_error_clears(array('kind' => 'model') + $current, array('door_url' => 'https://x.example.com/v1') + $same, null), 'a model agent\'s error is its model\'s, cleared by a call');
+}
+
+// Only a push door shows its last error; a model agent's error stays shown.
+function test_workspace_agent_door_error_shown()
+{
+	pg_assert_same('Refused (403)', ws_agent_door_error_shown(array('kind' => 'app', 'door_kind' => 'push', 'door_error' => 'Refused (403)')));
+	pg_assert_same('', ws_agent_door_error_shown(array('kind' => 'app', 'door_kind' => 'poll', 'door_error' => 'Refused (403)')), 'a poll door is never knocked');
+	pg_assert_same('Quota', ws_agent_door_error_shown(array('kind' => 'model', 'door_kind' => 'push', 'door_error' => 'Quota')));
+	pg_assert_same('', ws_agent_door_error_shown(array('kind' => 'app', 'door_kind' => 'push', 'door_error' => '')));
+}
+
+// The drawer's one sentence on the door.
+function test_workspace_agent_door_state_words()
+{
+	$now = 1800000000;
+	$poll = array('kind' => 'app', 'door_kind' => 'poll', 'door_url' => '', 'door_error' => '', 'door_failures' => 0, 'door_last_knock' => 0, 'seen_at' => 0);
+	$push = array('door_kind' => 'push', 'door_url' => 'https://hooks.example.com/pinegrap') + $poll;
+
+	pg_assert_same('', ws_agent_door_state_words(array('kind' => 'model') + $poll, $now), 'a model agent has no door of its own');
+	pg_assert_true(strpos(ws_agent_door_state_words($poll, $now), 'has not read it yet') !== false, 'poll, never seen');
+	pg_assert_true(strpos(ws_agent_door_state_words(array('seen_at' => $now - 120) + $poll, $now), '2 min ago') !== false, 'poll, seen');
+	pg_assert_true(strpos(ws_agent_door_state_words($push, $now), 'hooks.example.com') !== false, 'push names the address\'s host');
+	pg_assert_true(strpos(ws_agent_door_state_words($push, $now), 'No knock yet') !== false, 'push, no knock');
+	pg_assert_true(strpos(ws_agent_door_state_words(array('door_last_knock' => $now - 60) + $push, $now), 'answered') !== false, 'push, answered');
+	pg_assert_true(strpos(ws_agent_door_state_words(array('door_last_knock' => $now - 60, 'door_error' => 'x', 'door_failures' => 3) + $push, $now), '3') !== false, 'push, failing');
+}

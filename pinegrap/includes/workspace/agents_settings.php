@@ -313,6 +313,23 @@ function ws_agents_settings_form($self_url, $agent, $apps, $admin, $form = null)
             . ($set ? '<div class="form-field mt-2"><input class="check" type="checkbox" name="' . h($name($field . '_clear')) . '" value="1" id="' . $p . $field . '-clear"' . $disabled . '><label class="small" for="' . $p . $field . '-clear">' . h(lang('Remove the stored one')) . '</label></div>' : '');
     };
 
+    // The door as two described choices: what each is for, not how it works.
+    $doors = function ($chosen, $when) use ($p, $disabled, $name) {
+        $choices = array(
+            'poll' => array(lang('It waits on its queue'), lang('For a session that stays open, a cloud session too: it reads its requests itself.')),
+            'push' => array(lang('The site knocks at an address'), lang('For an agent that starts work on each knock. A knock starts a new run; it never wakes a session that is already open.')),
+        );
+        $out = '';
+
+        foreach ($choices as $key => $words) {
+            $out .= '<div class="form-field mt-2"><input class="radio" type="radio" name="' . h($name('door_kind')) . '" value="' . $key . '" id="' . $p . 'door_kind-' . $key . '" data-ws-agent-field="door_kind"'
+                . (($key === (string) $chosen) ? ' checked' : '') . $disabled . '>'
+                . '<label for="' . $p . 'door_kind-' . $key . '"><span class="d-block">' . h($words[0]) . '</span><span class="d-block small fg-secondary">' . h($words[1]) . '</span></label></div>';
+        }
+
+        return '<div class="col-12"' . (($when !== '') ? ' data-ws-agent-when="' . h($when) . '"' : '') . '><fieldset><legend class="form-label">' . h(lang('Door')) . '</legend>' . $out . '</fieldset></div>';
+    };
+
     $app_options = array(0 => lang('Choose an application'));
 
     foreach ($apps as $app) {
@@ -343,7 +360,7 @@ function ws_agents_settings_form($self_url, $agent, $apps, $admin, $form = null)
         $push = $agent && ($agent['door_kind'] === 'push');
 
         $rows .= $field('app_id', lang('Application'), $select('app_id', $app_options, $agent ? $agent['app_id'] : 0), lang('The application it reads and writes through, with that application\'s permissions.'), $when_kind('app'));
-        $rows .= $field('door_kind', lang('Door'), $select('door_kind', array('poll' => lang('Poll: it reads its requests itself'), 'push' => lang('Push: the site knocks at its address')), $agent ? $agent['door_kind'] : 'poll'), '', $when_kind('app'));
+        $rows .= $doors($agent ? $agent['door_kind'] : 'poll', $when_kind('app'));
         // Shown while the address is a routine's (the script follows the typing).
         $routine = $agent && ws_claude_url_valid(trim((string) $agent['door_url']));
         $routine_help = '<div class="form-text' . ($routine ? '' : ' d-none') . '" data-ws-agent-routine-help>'
@@ -460,7 +477,10 @@ function ws_agents_settings_script()
                 var values = {};
 
                 box.querySelectorAll(\'[data-ws-agent-field]\').forEach(function (field) {
-                    values[field.getAttribute(\'data-ws-agent-field\')] = field.value;
+                    // A radio group (the door) gives the checked one\'s value.
+                    if (field.type !== \'radio\' || field.checked) {
+                        values[field.getAttribute(\'data-ws-agent-field\')] = field.value;
+                    }
                 });
 
                 box.querySelectorAll(\'[data-ws-agent-when]\').forEach(function (part) {
@@ -542,7 +562,8 @@ function ws_agents_settings_card($self_url, $viewer, $form = null)
     $intro = h(lang('Agents act as members of the channels they are added to, each through its own application. In each channel its manager chooses when it is woken and what it may do by itself.'));
 
     foreach ($agents as $agent) {
-        $error = ($agent['door_error'] !== '') ? '<div class="small fg-danger">' . h($agent['door_error']) . '</div>' : '';
+        $door_error = ws_agent_door_error_shown($agent);
+        $error = ($door_error !== '') ? '<div class="small fg-danger">' . h($door_error) . '</div>' : '';
         $error .= ws_agent_door_double($agent) ? '<div class="small fg-danger" data-ws-agent-door-double>' . h(ws_agent_door_double_words()) . '</div>' : '';
 
         if ($form !== null) {
@@ -598,7 +619,8 @@ function ws_agents_settings_card($self_url, $viewer, $form = null)
 }
 
 /**
- * A Site Settings drawer of the agents card: an agent's (its door error,
+ * A Site Settings drawer of the agents card: an agent's (its door's state
+ * in one sentence and a push door's error,
  * an application agent's start text, its activity with the request rows'
  * buttons, its form) or, with $agent null, Add an agent's.
  *
@@ -618,7 +640,10 @@ function ws_settings_agent_drawer($agent, $viewer, $apps, $counts, $form, $in_di
         return pg_settings_drawer('pgset-ws-agent-0', h(lang('Add an agent')), ws_agents_settings_form('', null, $apps, $admin, $form), $in_dialog);
     }
 
-    $error = ($agent['door_error'] !== '') ? '<div class="alert theme-danger small py-3">' . h($agent['door_error']) . '</div>' : '';
+    $state = ws_agent_door_state_words($agent, time());
+    $door_error = ws_agent_door_error_shown($agent);
+    $error = ($state !== '') ? '<p class="small fg-secondary" data-ws-agent-door-state>' . h($state) . '</p>' : '';
+    $error .= ($door_error !== '') ? '<div class="alert theme-danger small py-3">' . h($door_error) . '</div>' : '';
     $error .= ws_agent_door_double($agent) ? '<div class="alert theme-danger small py-3" data-ws-agent-door-double>' . h(ws_agent_door_double_words()) . '</div>' : '';
 
     return pg_settings_drawer('pgset-ws-agent-' . (int) $agent['id'], '@' . h($agent['handle']) . ' · ' . h($agent['name']),
