@@ -12891,18 +12891,29 @@ body.workspace .ws-shell-main > #button_bar {
   margin-inline-start: auto;
 }
 @media (max-width: 575.98px) {
-  /* As in the channel's rows: the state's pill goes under the name and
-     summary; Edit keeps the row's end. */
+  /* On a phone the name and Edit share the first line; the summary, the
+     warnings and the state's pill take the row's full width under them. */
   .ws-agset-row {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr) auto;
     column-gap: 12px;
-    row-gap: 8px;
+    row-gap: 6px;
     padding: 12px;
   }
+  .ws-agset-main {
+    display: contents;
+  }
+  .ws-agset-main > * {
+    grid-column: 1 / -1;
+  }
   .ws-agset-face {
-    grid-row: 1 / span 2;
+    grid-column: 1;
+    grid-row: 1;
     align-self: start;
+  }
+  .ws-agset-main > .ws-agset-name {
+    grid-column: 2;
+    grid-row: 1;
   }
   .ws-agset-edit {
     grid-column: 3;
@@ -12910,8 +12921,7 @@ body.workspace .ws-shell-main > #button_bar {
     align-self: start;
   }
   .ws-agset-state {
-    grid-column: 2 / span 2;
-    grid-row: 2;
+    grid-column: 1 / -1;
     justify-self: start;
     max-width: 100%;
   }
