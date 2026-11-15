@@ -1,6 +1,6 @@
 ---
 name: agent-route-words
-description: The words an application agent reads on its own routes: the brief's tool line (HTTP only, not MCP), the answer route's 403 and no-channel 422 and its description, a paused agent's 403 (CA6)
+description: The words an application agent reads on its own routes: the brief's tool line (HTTP only, not MCP), the answer route's 403 and no-channel 422 and its description, a paused agent's 403 (CA6, #9768)
 ---
 
 ## What does the brief's tool line say?
@@ -19,4 +19,4 @@ description: The words an application agent reads on its own routes: the brief's
 - No route sets the status: the Agents card has no endpoint on purpose (`api/api-settings-no-endpoint.md`).
 
 ## Where are they pinned?
-- `tests/workspace_agent_words_test.php`. No route, scope or column was added.
+- `tests/workspace_agent_words_test.php` (#9768). No route, scope or column was added.
