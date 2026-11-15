@@ -17,6 +17,7 @@
 - agent-canvas-split-parts.md: Layers "split": a text as a text layer, a site file's picture as a picture layer (canvas_split_parts.php): what converts, fonts, placement, which files
 - agent-canvas-svg.md: Agents draw Workspace canvases from SVG (POST channels/{id}/canvases) and read any canvas (GET messages/{id}/canvas): Import port, blank picture, pending, who may [decision: decisions-made-workspace-7.md, decisions-made-workspace-9.md]
 - agent-canvas-templates.md: Canvas templates (CV5): Save as template, the config_text list, the settings card, GET workspace/canvas/templates, a canvas made from template and fill, refusals
+- agent-card-facts.md: An agent's card, state dot and usage mark in a channel (agent_card.php, PF2): state order, request counts, the 90% mark, the ws_agent_card action, the API row fields [decision: here]
 - agent-channel-flag.md: Agent channel switch (ws_channels.agent_channel, #8440): /agent-channel on|off, its decisions kept apart on the decisions screen, the dashboard and GET /workspace/decisions [decision: decisions-made-schema-13.md, decisions-made-workspace-9.md]
 - agent-checklist-questions.md: Checklist questions over a poll; reading ticks (checks) and an application ticking a line (POST …/checks, app_id), a roll call, the wake on a tick, the closing decision; who a question rings [decision: decisions-made-workspace-10.md, decisions-made-workspace-12.md, decisions-made-workspace-16.md]
 - agent-conclude-discussion.md: An agent concludes a discussion when a person in it asks (conclude, #9404) and unasked only offers a Conclude button a person presses (offer_conclude, #9416); who may ask, the lines, the button [decision: decisions-made-workspace-25.md]
@@ -115,6 +116,7 @@
 - mail-phone-media.md: A customer's WhatsApp picture, video, voice message or document fetched by the general job into the conversation card's files (WA14c, #9480), no new column; what is given up and why
 - mail-phone-reply-files.md: A WhatsApp answer's file and template (WA14b, #9446): Meta's kinds and sizes before the queue, the upload at the send, templates with typed values after the 24 hours, Send again
 - mail-phone-reply.md: Reply by WhatsApp from a Workspace conversation (WA14a #9405, WA14b #9446): text or a file inside the 24 hours, a template after them, the queue row, its outcome, Send again, the drawer
+- mail-remind-later.md: Remind me later (IB10): the pane's menu and times, ws_mail_reminders, what leaves the person's list and comes back unread, the wake, inbox kind mail_remind, step 11.0.212 [decision: here]
 - mail-reply.md: Answering a Workspace e-mail by e-mail (WM7): the queued answer, Cc, Bcc, files, Reply to all, the drawer, route, headers and subject, the API's answer sent at once
 - mail-room.md: A mailbox kept in no channel (WM13, #8985): its room of kind mailbox, the box form's Kept in, who reads and answers, where the room never shows, the inventory test [decision: decisions-made-workspace-17.md]
 - mail-routing.md: Routing incoming Workspace e-mail (G6, mail_route.php): box routes by address or +tag to a channel, recipients read, the known customer's line in their channels
