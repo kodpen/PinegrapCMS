@@ -12,7 +12,7 @@ description: Remind me if no answer comes (IB10b): the field on Reply by e-mail 
 - The panel's actions `ws_mail_reply` and `ws_mail_new` call `ws_mail_no_answer_set()` after a stored mail with the form's `remind_days` (`ws_mail_no_answer_days()`: 1, 3 or 7, anything else none). The API and MCP send none.
 - Due = the days from the sending (`ws_mail_no_answer_due()`): a mail sent later, or waiting for Undo (`mail-undo-send.md`), counts from its `send_at`.
 - One row per writer and conversation in `ws_mail_reminders`, kind `no_answer` (`mail-remind-later.md` holds the table); a later mail with the choice moves it to the new item and time.
-- Woken by the same run as Remind me later (`ws_mail_reminders_run()`, both kinds). A mail undone into a draft or cancelled before its time (`ws_mail_no_answer_left()`), or a channel the writer can no longer read, drops the row with nothing told.
+- Woken by the same run as Remind me later (`ws_mail_reminders_run()`, both kinds). A mail undone into a draft, cancelled before its time, or whose item row is gone because the undone draft was deleted or sent again (`ws_mail_no_answer_left(null)`, #9684), or a channel the writer can no longer read, drops the row with nothing told.
 - Any incoming mail in the conversation deletes its no-answer rows, waiting or told (`ws_mail_remind_new_mail()` in `ws_mail_ingest()`).
 
 ## Schema?
