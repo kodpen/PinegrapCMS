@@ -3466,7 +3466,9 @@ html[data-bs-theme="dark"] #menu .menu-body .pg-menu-panel[data-pg-menu-tone] .p
    The flex rule is for every button in the bar, not only its direct
    children: a dissolved group's buttons are items of the bar while still
    matching .btn-group > .btn, and a child selector misses them. */
-#button_bar .btn {
+#button_bar .btn,
+.pg-toolbar .pg-button,
+#button_bar .pg-button {
   flex: 0 0 auto;
 }
 
@@ -3551,6 +3553,13 @@ html[data-bs-theme="dark"] #menu .menu-body .pg-menu-panel[data-pg-menu-tone] .p
 #button_bar .btn .bi {
   margin: 0 !important;
   font-size: 1rem;
+  line-height: 1;
+}
+/* The look's buttons keep their own type size for the icon; only the margin
+   the markup carries goes, the recipe's gap spaces it. */
+.pg-toolbar .pg-button .bi,
+#button_bar .pg-button .bi {
+  margin: 0 !important;
   line-height: 1;
 }
 /* A finger needs more than the 26px a mouse is happy with. Only the links need
@@ -27572,6 +27581,38 @@ body.pg-measure-edit .row > .order-2 .card-header.pg-title-section {
   body.pg-measure-edit .row > .order-3 > nav.buttons.navigation .btn .material-icons {
     font-size: var(--pg-text-base);
   }
+}
+
+/* The save bar's buttons by their role, in the values of the button recipes:
+   the save action (the bar's one solid success or primary button) is
+   .pg-button-fill, delete (danger, solid or outline) a ghost in the danger
+   recipe's rose, every other button .pg-button-quiet. The markup keeps its
+   Bootstrap classes; at every width, a phone included. */
+body.pg-measure-edit .row > .order-3 > nav.buttons.navigation .btn {
+  border: 0;
+  background: var(--pg-quiet);
+  color: var(--pg-fg-body);
+  box-shadow: inset 0 0 0 1px var(--pg-border-color-translucent), inset 0 1px 0 var(--pg-surface-hi);
+}
+body.pg-measure-edit .row > .order-3 > nav.buttons.navigation .btn-solid:is(.theme-success, .theme-primary) {
+  color: var(--pg-on-accent-fill);
+  background: linear-gradient(180deg, var(--pg-accent-1), var(--pg-accent-2));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.38), 0 1px 2px rgba(0, 0, 0, 0.25), 0 8px 18px -8px var(--pg-accent-glow);
+}
+body.pg-measure-edit .row > .order-3 > nav.buttons.navigation .btn.theme-danger {
+  background: none;
+  color: var(--pg-tone-rose-text);
+  box-shadow: none;
+}
+body.pg-measure-edit .row > .order-3 > nav.buttons.navigation .btn.theme-danger:hover {
+  background: var(--pg-hover);
+}
+body.pg-measure-edit .row > .order-3 > nav.buttons.navigation .btn:focus-visible {
+  outline: 2px solid var(--pg-accent);
+  outline-offset: 2px;
+}
+body.pg-measure-edit .row > .order-3 > nav.buttons.navigation .btn:is(:disabled, .disabled) {
+  opacity: 0.5;
 }
 
 }

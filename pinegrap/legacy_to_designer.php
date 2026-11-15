@@ -435,7 +435,7 @@ if ($plan !== null) {
         if ($hidden !== '') {
             $output_convert .= '
         <form method="post" action="legacy_to_designer.php" class="card-footer d-flex flex-wrap align-items-center gap-3">' . get_token_field() . $hidden . '
-            <button type="submit" name="convert" value="1" class="btn btn-sm btn-solid theme-primary rounded-pill px-5"><i class="bi bi-magic me-1"></i>' . h(lang('Move to the Page Design Studio')) . '</button>
+            <button type="submit" name="convert" value="1" class="pg-button pg-button-fill"><i class="bi bi-magic"></i>' . h(lang('Move to the Page Design Studio')) . '</button>
             <span class="small fg-secondary">' . h(lang('Writes what is listed above. A page somebody holds is skipped; undo is a page\'s revision history and deleting a shared component.')) . '</span>
         </form>';
         }
@@ -550,7 +550,7 @@ foreach (pg_ltc_designs() as $d) {
     if ($ready > 0) {
         $all = '<form method="post" action="legacy_to_designer.php" class="mb-3">' . get_token_field()
             . '<input type="hidden" name="back" value="1"><input type="hidden" name="design" value="' . (int)$d['id'] . '">'
-            . '<button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5"' . ($busy ? ' disabled' : '') . '>'
+            . '<button type="submit" class="pg-button pg-button-fill"' . ($busy ? ' disabled' : '') . '>'
             . '<i class="bi bi-arrow-counterclockwise me-2" aria-hidden="true"></i>'
             . h(lang(array('string' => 'Send {var:1} pages back', 'vars' => array($ready)))) . '</button></form>';
     }
@@ -608,7 +608,7 @@ $output_form = '';
 $toolbar_primary = '';
 $toolbar_grow = '';
 if ($report && !$busy) {
-    $toolbar_primary = '<button type="submit" form="ltd_dry_run" class="btn btn-sm btn-solid theme-primary rounded-pill px-5"><i class="bi bi-clipboard-check me-2" aria-hidden="true"></i>' . h(lang('Dry run')) . '</button>';
+    $toolbar_primary = '<button type="submit" form="ltd_dry_run" class="pg-button pg-button-fill"><i class="bi bi-clipboard-check" aria-hidden="true"></i>' . h(lang('Dry run')) . '</button>';
     $toolbar_grow = '<span class="small fg-secondary">' . h(lang('Tick a set or the styles to move, then see what would be written for each.')) . '</span>';
     $output_form = '<form id="ltd_dry_run" method="post" action="legacy_to_designer.php#ltd-dry-run" hidden>' . get_token_field() . '</form>';
 }

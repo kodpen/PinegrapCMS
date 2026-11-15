@@ -621,7 +621,7 @@ pg_page_shell([
             ' . $liveform->output_notices() . '
 
             <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
-                ' . ($can_change ? '<a class="btn btn-sm btn-solid theme-primary rounded-pill px-5" href="add_erp_expense.php?id=' . $id . h($send_to_query) . '"><i class="bi bi-pencil me-1" aria-hidden="true"></i>' . lang('Change') . '</a>' : '') . '
+                ' . ($can_change ? '<a class="pg-button pg-button-fill" href="add_erp_expense.php?id=' . $id . h($send_to_query) . '"><i class="bi bi-pencil" aria-hidden="true"></i>' . lang('Change') . '</a>' : '') . '
                 ' . (!$readonly ? '<a class="btn btn-sm btn-outline theme-secondary" href="add_erp_expense.php"><i class="bi bi-plus-circle me-1" aria-hidden="true"></i>' . lang('New expense') . '</a>' : '') . '
             </nav>
 

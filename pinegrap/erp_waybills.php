@@ -175,7 +175,7 @@ pg_page_shell([
             ' . $liveform->output_notices() . '
 
             <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
-                <a class="btn btn-sm btn-solid theme-primary rounded-pill px-5" href="add_erp_waybill.php"><i class="bi bi-plus-lg me-1"></i>' . lang('New Delivery Note') . '</a>
+                <a class="pg-button pg-button-fill" href="add_erp_waybill.php"><i class="bi bi-plus-lg"></i>' . lang('New Delivery Note') . '</a>
                 <form action="add_erp_waybill.php" method="get" class="d-flex align-items-center gap-1">
                     <select name="order_id" class="form-control form-control-sm" aria-label="' . lang('Order') . '" style="max-width:20rem">' . $output_order_options . '</select>
                     <button type="submit" class="btn btn-sm btn-outline theme-secondary text-nowrap"><i class="bi bi-cart me-1"></i>' . lang('Open it') . '</button>

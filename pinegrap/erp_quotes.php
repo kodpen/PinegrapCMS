@@ -101,7 +101,7 @@ pg_page_shell([
             ' . $liveform->output_notices() . '
 
             <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
-                ' . ((!$readonly && erp_quotes_ready()) ? '<a class="btn btn-sm btn-solid theme-primary rounded-pill px-5" href="add_erp_quote.php' . (($account_id > 0) ? '?account_id=' . $account_id : '') . '"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . lang('New quote') . '</a>' : '') . '
+                ' . ((!$readonly && erp_quotes_ready()) ? '<a class="pg-button pg-button-fill" href="add_erp_quote.php' . (($account_id > 0) ? '?account_id=' . $account_id : '') . '"><i class="bi bi-plus-lg" aria-hidden="true"></i>' . lang('New quote') . '</a>' : '') . '
                 <div class="pg-toolbar-grow"></div>
                 <form method="get" action="erp_quotes.php" class="pg-toolbar-search disable_shortcut" role="search">
                     ' . (($state !== '') ? '<input type="hidden" name="state" value="' . h($state) . '" />' : '') . '

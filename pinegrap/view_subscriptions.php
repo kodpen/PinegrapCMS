@@ -323,7 +323,7 @@ if ($subscription_id > 0) {
                         <input type="date" data-pg-date name="next_to" value="' . h($filter['next_to']) . '" class="form-control form-control-sm w-auto flex-fill min-w-0" aria-label="' . h(lang('Next charge to')) . '" title="' . h(lang('Next charge to')) . '">
                     </span>
                     <input type="search" name="q" value="' . h($filter['q']) . '" maxlength="100" class="form-control form-control-sm w-auto" placeholder="' . h(lang('Customer name or e-mail')) . '" aria-label="' . h(lang('Customer name or e-mail')) . '">
-                    <button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-12"><i class="bi bi-funnel me-1" aria-hidden="true"></i>' . h(lang('Filter')) . '</button>
+                    <button type="submit" class="pg-button pg-button-fill"><i class="bi bi-funnel" aria-hidden="true"></i>' . h(lang('Filter')) . '</button>
                     ' . ($filtered ? '<a class="btn btn-sm btn-text theme-secondary" href="view_subscriptions.php">' . h(lang('Clear')) . '</a>' : '') . '
                 </form>
             </nav>
