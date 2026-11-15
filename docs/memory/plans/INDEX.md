@@ -30,7 +30,7 @@
 - design-template-own-looks-order.md: Order of the polishing round after Launch: every shipped template's family and pages steps, in which order, and where each template stands
 - design-template-own-looks.md: Plan (owner 2026-11-07): block families in their own source files (B0), Launch as an Apple-like product page (L1-L3), then a polishing round for every template
 - designer-closed-blocks-steps.md: Steps CB2 to CB10 of designer-closed-blocks, written from the owner's answer of 2026-11-15 (the proposed order): one block family per step, what each opens, which run side by side
-- designer-closed-blocks.md: Plan (owner 2026-11-13, #9076): components the designer canvas draws as one closed block are listed, then opened into element trees; CB0, CB1 done, CB2 on in designer-closed-blocks-steps.md
+- designer-closed-blocks.md: Plan (owner 2026-11-13, #9076): components the designer canvas draws as one closed block are listed, then opened into element trees; CB0, CB1 done, CB2 and on in designer-closed-blocks-steps.md
 - erp-edocument-leftovers.md: Open ERP work (e-document phase 3): Paraşüt send path, queue worker, İşbaşı live key, code lists, e-waybill, accountant sign-off; owner works on it locally
 - erp-parasut-open-work.md: Paraşüt work left after the rounds of 2026-10-23 to 26 (#1405-#1682): one live round when a new demo key comes, three decisions (#2440-#2442), the queue worker, incoming e-invoices; where to start
 - github-channel-connection.md: Plan (owner 2026-11-08): connect GitHub with OAuth from Settings › Connections, the site sets its own webhook on chosen repositories and writes CI, pull request and label lines into a channel
