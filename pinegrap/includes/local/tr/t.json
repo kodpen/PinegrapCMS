@@ -2196,6 +2196,7 @@
     "The approval request is gone.": "Onay isteği artık yok.",
     "The approval request was not answered with Approve or Reject.": "Onay isteği Onayla veya Reddet ile yanıtlanmadı.",
     "The approval request was sent.": "Onay isteği gönderildi.",
+    "The approval request was settled before this agent answered.": "Onay isteği bu ajan yanıtlamadan sonuçlandı.",
     "The approval request “{var:1}” expired without a decision.": "“{var:1}” onay isteğinin süresi karar verilmeden doldu.",
     "The approval request “{var:1}” was approved.": "“{var:1}” onay isteği onaylandı.",
     "The approval request “{var:1}” was closed without a decision.": "“{var:1}” onay isteği karar verilmeden kapatıldı.",

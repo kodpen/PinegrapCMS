@@ -77,7 +77,8 @@ function test_workspace_agent_kept_version_guards()
 	pg_assert_contains('ws_agent_requests_freeze(', $clear);
 	pg_assert_true(strpos($clear, 'ws_agent_requests_freeze(') > strpos($clear, 'era_floor'), 'after the floor moved');
 
-	$freeze = workspace_agent_kept_version_test_source('ws_agent_requests_freeze') . workspace_agent_kept_version_test_source('ws_agent_request_freeze');
+	$freeze = workspace_agent_kept_version_test_source('ws_agent_requests_freeze') . workspace_agent_kept_version_test_source('ws_agent_request_freeze')
+		. workspace_agent_kept_version_test_source('ws_agent_request_cancel');
 
 	pg_assert_contains("status = 'cancelled'", $freeze);
 	pg_assert_contains("'queued', 'sent', 'running'", $freeze);
