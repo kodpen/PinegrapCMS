@@ -10,19 +10,25 @@ description: Add and edit screens in look A (DL5c, #8934): the edit width on eve
 
 ## How are the columns sized?
 - Block "Look A: add and edit screens" at the end of `backend.src.css`. From 1024 px the status column is `flex: 0 0 calc(var(--pg-measure-status) + var(--pg-measure-gap))` (376 px plus the two 12 px gutter paddings) and the form column `flex: 1 1 0%`: at the full 1700 px measure 1300 and 376 with the 24 px gutter; narrower, the form column gives way first; below lg they stack as before. No row needs `pg-edit-columns` (only `product_builder.php` keeps that grid).
-- Before #9269 both columns shrank in the 760:336 ratio of a 1120 px measure.
-- Both columns also carry `min-width: 0`. Without it a column whose content does not wrap (the Tax Zone and Shipping Zone state comboboxes listing every chosen state, a long address) widened the page to 3,000–17,000 px from 1024 px up; fixed in #9107 (`grid-column-min-width.md`).
+- Both columns carry `min-width: 0`, or content that does not wrap (state comboboxes, a long address) widened the page past the window (#9107, `grid-column-min-width.md`).
 
 ## What do the cards and titles look like?
 - The cards straight in the form column (`.order-1 > .card`) and in the status column's sticky box (`.order-2 > .position-sticky > .card`) are the look card: their selectors sit beside `.pg-card` in the recipe block. 16 px apart; padding 20 / 22 (16 / 18 in the status column).
 - Card titles in `includes/forms/` and the add/edit screens are `h2.card-header.bg-reset.border-0.pg-title-section` (17 / 650, sentence case); in the status column the block sets the status title (15 / 650). The old `text-uppercase h5 fg-primary fw-bold` had to leave the markup: Bootstrap 6's utilities layer comes after `custom`, so no panel rule can beat them.
 
+## How wide is a field?
+- Architect, 2026-11-15: a date or a time 3 columns (3 + 3 side by side), a date with its time in one input 4.
+- Architect, 2026-11-15: a phone 4, an e-mail 6, a web address the whole row.
+- Architect, 2026-11-15: spans from md (768 px), whole row below; a value cut at 1024 px may take the next span up from lg.
+- Architect, 2026-11-15: one 16 px column gap rule; `my-3` leaves all fields in one later step.
+- Architect, 2026-11-15: a narrow field alone in its row keeps the row (`pg-field-span-N`): label on one line, help the row's width, only the control spans. How: `look-field-widths.md`.
+
 ## What is the save bar?
 - The shared `nav.buttons.navigation` straight in the `order-3` column is the floating bar; a bar left in the form column or in `order-4` stays the old centred pill. Under a full-width table the bar's column is a second `order-3` after the table's (product group) (selector beside `.pg-floatbar`): from 576 px 56 px high, buttons at the right, 34 px high with 10 px corners (the shared bar's pill `!important` is overridden). A phone keeps the shared two-per-row bar.
 
 ## What is not done yet?
-- Field widths on the 12-column grid (a price 3 columns, a code 4, a select 6) and the card's line under the title: per-field markup, screen by screen.
-- The buttons keep their Bootstrap colours (success, danger), not the look's fill, quiet and ghost; the unsaved note at the bar's left is not drawn.
-- `product_builder.php`'s own section titles (icon, accent colour) stay its own.
+- The card's line under the title. Field widths on screens other than the product screen: with their group of the panel-old-screens plan.
+- The bar's buttons keep their Bootstrap colours, not fill, quiet and ghost; no unsaved note at its left.
+- `product_builder.php`'s own section titles stay its own.
 
-Related: docs/memory/ui/look-page-widths.md, docs/memory/ui/look-edit-screens-wrapped-cards.md
+Related: docs/memory/ui/look-page-widths.md, docs/memory/ui/look-edit-screens-wrapped-cards.md, docs/memory/ui/look-field-widths.md
