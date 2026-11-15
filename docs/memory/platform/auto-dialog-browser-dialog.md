@@ -5,7 +5,7 @@ description: Auto dialogs on the site: the browser's <dialog> in place of jQuery
 
 ## What does the page print?
 - `get_page_content.php` (under `if (AUTO_DIALOGS)`): the enabled rows through `pg_auto_dialogs_for_page()` (web addresses only) and `pg_auto_dialogs_on_page($rows, $page_name)` (`includes/fn/auto_dialogs.php`): page blank or part of the page name, case-blind; id, url, width, height, delay, frequency as numbers. The same for every visitor; printed with an empty list too while any row is enabled, so the visit start is kept from the first page.
-- Nothing goes into the session: `visit_start_timestamp` is gone (PR #NNNN), so a site with an auto dialog is cached again (`page-cache-gate.md`).
+- Nothing goes into the session: `visit_start_timestamp` is gone (PR #9805), so a site with an auto dialog is cached again (`page-cache-gate.md`).
 - Preview `?preview_auto_dialog=<id>` (role < 3): one row, no delay, no cookie, as before.
 
 ## What does the script pick?
