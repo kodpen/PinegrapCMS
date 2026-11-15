@@ -18,4 +18,5 @@ priority: 6
 
 ## Whose look?
 - The owner's: Workspace is a kept screen and the line is new on it. OI1 posts its pictures (one item, several, the open list; 1440 and 390, light and dark) in the agent channel, the architect brings them to him, and the step is not marked ready before his look.
+- OI1's look is given: Owner (2026-11-15, agent channel poll 52): "Evet, böyle çıksın" (`workflow/decisions-made-workspace-34.md`).
 - The architect's readings, not his words: only open items show, the reader's own first, a list behind a count when there are several.
