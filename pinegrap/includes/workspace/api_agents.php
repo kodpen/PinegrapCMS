@@ -43,7 +43,7 @@ function ws_agent_api_routes()
             'handler'     => 'ws_api_channel_agents_list',
             'returns'     => array('list' => 'WorkspaceChannelAgent'),
             'summary'     => 'The agents in a channel',
-            'description' => 'The agents added to a channel the owner of the application may read, in the order they were added, each with what wakes it there, its tier and whether the loop-guard text is on. Claude is no channel agent and is not listed: it answers where the channel\'s claude_access allows.',
+            'description' => 'The agents added to a channel the owner of the application may read, in the order they were added, each with what wakes it there, its tier and whether the loop-guard text is on, and what the channel\'s agent card shows: state (paused, working, late for not seen, waiting or idle), waiting (requests queued for it), seen_at (its last call with its key), and its last report of model and usage windows (reported_at; usage_high when a window of a report younger than a day is at 90% or more). The report is the agent\'s own: the site cannot check it. Claude is no channel agent and is not listed: it answers where the channel\'s claude_access allows.',
             'params'      => array($id),
         ),
 
@@ -102,6 +102,13 @@ function ws_api_channel_agent_schema()
         'loop_guard'  => 'boolean',
         'added_by'    => 'integer',
         'added_at'    => 'string?',
+        'state'       => 'string',
+        'waiting'     => 'integer',
+        'seen_at'     => 'string?',
+        'model'       => 'string',
+        'usage'       => array(array('name' => 'string', 'percent' => 'integer', 'resets_at' => 'string?')),
+        'reported_at' => 'string?',
+        'usage_high'  => 'boolean',
     );
 }
 
@@ -115,14 +122,29 @@ function ws_api_channel_agent_removal_schema()
 }
 
 /**
- * A channel-agent row as the API gives it.
+ * A channel-agent row as the API gives it, with what the channel's agent
+ * card shows (agent_card.php): state, requests waiting, last seen, and the
+ * agent's last report of its model and usage windows.
  *
  * @param int   $channel_id
- * @param array $row ws_channel_agent_shape()
+ * @param array $row    ws_channel_agent_shape()
+ * @param array $counts ws_agent_request_counts() of the channel's agents
+ * @param int   $now
  * @return array
  */
-function ws_api_channel_agent_present($channel_id, $row)
+function ws_api_channel_agent_present($channel_id, $row, $counts = array(), $now = 0)
 {
+    $now = ($now > 0) ? (int) $now : time();
+    $agent = (array) $row['agent'];
+    $member = ws_channel_member_agent($row, $now);
+    $brief = ws_agent_card_brief($agent, $member['seen_state'], $counts[ws_agent_request_value($agent)] ?? array(), $now);
+    $report_at = ((string) $agent['kind'] === 'app') ? (int) ($agent['report_at'] ?? 0) : 0;
+    $usage = array();
+
+    foreach (($report_at > 0) ? ws_agent_report_windows($agent['report_usage'] ?? '') : array() as $window) {
+        $usage[] = array('name' => (string) $window['name'], 'percent' => (int) $window['percent'], 'resets_at' => api_time($window['resets_at']));
+    }
+
     return array(
         'channel_id'  => (int) $channel_id,
         'agent_id'    => (int) $row['agent']['id'],
@@ -137,6 +159,13 @@ function ws_api_channel_agent_present($channel_id, $row)
         'loop_guard'  => (bool) $row['loop_guard'],
         'added_by'    => (int) $row['added_by'],
         'added_at'    => api_time($row['added_at']),
+        'state'       => $brief['state'],
+        'waiting'     => $brief['waiting'],
+        'seen_at'     => ((int) ($agent['seen_at'] ?? 0) > 0) ? api_time($agent['seen_at']) : null,
+        'model'       => ($report_at > 0) ? (string) ($agent['report_model'] ?? '') : '',
+        'usage'       => $usage,
+        'reported_at' => ($report_at > 0) ? api_time($report_at) : null,
+        'usage_high'  => $brief['usage_high'],
     );
 }
 
@@ -179,9 +208,14 @@ function ws_api_channel_agents_list($params)
     $viewer = ws_api_viewer();
     $channel = ws_api_channel_or_404($viewer, $params['id']);
     $out = array();
+    $rows = ws_channel_agents($channel['id']);
+    $now = time();
+    $counts = ws_agent_request_counts(array_map(function ($row) {
+        return $row['agent'];
+    }, $rows), $now);
 
-    foreach (ws_channel_agents($channel['id']) as $row) {
-        $out[] = ws_api_channel_agent_present($channel['id'], $row);
+    foreach ($rows as $row) {
+        $out[] = ws_api_channel_agent_present($channel['id'], $row, $counts, $now);
     }
 
     api_ok_list($out, count($out));
