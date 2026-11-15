@@ -155,6 +155,7 @@
 - personal-calendar-census-tables.md: PC1 proposal (2026-11-14), shaped by the architect and approved by the owner (decisions-made-schema-18): the tables and columns a person's private plans need, each with its reason and step [decision: here]
 - personal-calendar-census-words.md: PC1 census (2026-11-14): words taken beside "plan" (Plan item, Planning Board, /workspace/plan, "#plan") and the names proposed for a private plan [decision: here]
 - plan-board-grid.md: Planning Board (workspace_board.php) Turkish name, grid columns and why .ws-board's min-width equals the grid minimum (#3815) [decision: here]
+- poll-agent-question-reach.md: Where an agent question reaches the person it asks: the ring, Today, the Assistant card, the channel export, and tools/ws_poll.php ask, again, withdraw
 - poll-agent-question.md: The agent question on the server (agent_question.php, step 11.0.214): the flag, who answers, settling by the first answer, the wake and brief, the memory index, map and API fields
 - poll-agent-questions-census-columns.md: AQ1 census: the columns the poll's new parts need (description, picture, links, recommended, "Other", take back, ask again), older polls, API, export, guests [decision: here]
 - poll-agent-questions-census-today.md: AQ1 census of the poll today: its three tables, the box, ws_poll_vote(), ws_poll_close(), who may change or close, a guest's vote, who asks as an agent, export, ws_poll.php
