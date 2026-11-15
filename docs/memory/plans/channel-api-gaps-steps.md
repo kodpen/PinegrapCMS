@@ -10,7 +10,7 @@ description: Steps CA2 to CA16 of plans/channel-api-gaps.md: the agents' side (C
 
 ## The agents' side?
 - CA2 (`@elcin`) G1 the "Add an agent" list (`addable` on the channel's agents) and G2 the agent card (`GET /workspace/channels/{id}/agents/{agent_id}`), with MCP tools.
-- CA3 (`@adnan`) G3 the person card (`GET /workspace/channels/{id}/members/{user_id}`): team readers only, `seen` for a manager.
+- CA3 (`@adnan`) G3 the person card (`GET /workspace/channels/{id}/members/{user_id}`): team readers only, `seen` for a manager. Done: PR #9771.
 - CA4 (`@elcin`, after CA2) G4 a person sets an agent's wake (`POST /workspace/channels/{id}/agents/{agent_id}/wake`: every, at, off; dry run). Person only: an application key sets no other agent's wake.
 - CA5 (`@adnan`) G5 `agent:<id>` and `model:<id>` as `agent` values on `GET /workspace/assistant-requests`.
 - CA6 (`@adnan`) G6 and G7, the words an agent reads: the brief says its own routes are HTTP only; the answer route's refusals name the next step; a paused agent's 403 says why.
