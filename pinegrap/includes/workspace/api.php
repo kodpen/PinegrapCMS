@@ -1155,11 +1155,12 @@ function ws_api_routes()
             'returns'     => 'WorkspaceScheduledMessage',
             'status'      => 201,
             'summary'     => 'Schedule a message',
-            'description' => 'Writes a message to be posted later in a channel the person may post in, the way the clock beside the send button does. It is posted in the person\'s own name when its time comes, with their rights as they are then, so only a team devices session (a Bearer token from POST /auth/login) may schedule one: an application key and an OAuth connection write as the application and are refused with 403 forbidden. send_at is read to the minute on the site\'s clock and must be later than now and at most a year ahead. A command (text starting with /) cannot be scheduled, except /ai and /claude, which ask the assistant when the message is posted. Fifty messages may wait per person.',
+            'description' => 'Writes a message to be posted later in a channel the person may post in, the way the clock beside the send button does. It is posted in the person\'s own name when its time comes, with their rights as they are then, so only a team devices session (a Bearer token from POST /auth/login) may schedule one: an application key and an OAuth connection write as the application and are refused with 403 forbidden. send_at is read to the minute on the site\'s clock and must be later than now and at most a year ahead. A command (text starting with /) cannot be scheduled, except /ai and /claude, which ask the assistant when the message is posted. Fifty messages may wait per person. parent_id makes it an answer to a message, as scheduling from Reply does; a dry run checks it too and its detail gives parent_id. Change one with POST /workspace/scheduled-messages/{id}/update and post it before its time with POST /workspace/scheduled-messages/{id}/send.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'text', 'in' => 'body', 'type' => 'string', 'max_length' => 4000, 'required' => true, 'description' => 'Tags such as <#order:1045> or <@user:12> are kept as tags.'),
                 array('name' => 'send_at', 'in' => 'body', 'type' => 'datetime', 'required' => true, 'description' => 'When to post it, as an ISO-8601 moment; seconds are dropped.'),
+                array('name' => 'parent_id', 'in' => 'body', 'type' => 'int', 'min' => 0, 'nullable' => true, 'description' => 'The message it answers when it is posted (GET /workspace/channels/{id}/messages), as Reply does: one of this channel or discussion, not deleted and not in an earlier version of the conversation, or the call is refused with 422 on parent_id. Left out, it is a message of its own. If that message is deleted before the time comes, it is posted as a message of its own.'),
             ),
         ),
 
@@ -1175,6 +1176,43 @@ function ws_api_routes()
             'summary'      => 'Delete a scheduled message',
             'description'  => 'Deletes one of the owner\'s scheduled messages before it is posted, waiting or failed, and answers with it as it was. Somebody else\'s, or one already posted, is answered with 404; one being posted at this very moment is refused with 422. POST is accepted as well, because a default IIS install answers DELETE itself before PHP is reached.',
             'params'       => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        // Both post in the person's own name, so from their team devices
+        // session only and offered as no tool, as create.
+        array(
+            'id'          => 'workspace.scheduled_messages.update',
+            'method'      => 'POST',
+            'path'        => '/workspace/scheduled-messages/{id}/update',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_scheduled_messages_update',
+            'dry_run'     => true,
+            'mcp'         => false,
+            'returns'     => 'WorkspaceScheduledMessage',
+            'summary'     => 'Change a scheduled message',
+            'description' => 'Changes one of the person\'s own scheduled messages before it is posted, as the list beside the clock does: only the fields sent change - text, send_at, parent_id (0 makes it a message of its own again). The same rules as POST /workspace/channels/{id}/scheduled-messages hold, send_at included: it must be later than now even when it is not sent, so a failed one whose time went by needs a new one, and once saved a failed one waits again. Only a team devices session (a Bearer token from POST /auth/login) may: an application key and an OAuth connection are refused with 403 forbidden. Somebody else\'s, or one already posted, is answered with 404. A dry run makes every check and its detail gives send_at and parent_id.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'text', 'in' => 'body', 'type' => 'string', 'max_length' => 4000, 'description' => 'The new words. Tags such as <#order:1045> or <@user:12> are kept as tags.'),
+                array('name' => 'send_at', 'in' => 'body', 'type' => 'datetime', 'description' => 'The new moment, as an ISO-8601 moment; seconds are dropped.'),
+                array('name' => 'parent_id', 'in' => 'body', 'type' => 'int', 'min' => 0, 'nullable' => true, 'description' => 'The message it answers, in its channel; 0 for none. Left out or null, it stays as it is.'),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.scheduled_messages.send',
+            'method'      => 'POST',
+            'path'        => '/workspace/scheduled-messages/{id}/send',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_scheduled_messages_send',
+            'dry_run'     => true,
+            'mcp'         => false,
+            'returns'     => 'WorkspaceMessage',
+            'summary'     => 'Send a scheduled message now',
+            'description' => 'Posts one of the person\'s own scheduled messages now, before its time, as Send now does in the list beside the clock; a failed one is tried again. It is written as the person, with their rights and their limit of twenty messages a minute, and asks the assistants it names as a message written now does. The answer is the message it became. Only a team devices session (a Bearer token from POST /auth/login) may: an application key and an OAuth connection are refused with 403 forbidden. Somebody else\'s, or one already posted, is answered with 404; one being posted at this moment, or one that cannot be posted (the channel is gone or may no longer be written in), is refused with 422 and left as it is. A dry run makes the checks the posting makes.',
+            'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
             ),
         ),

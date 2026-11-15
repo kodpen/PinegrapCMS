@@ -668,15 +668,9 @@ function ws_handle_action($action, $request)
                 return $result['ok'] ? ws_action_ok() : ws_action_error($result['error']);
             }
 
-            $ran = ws_scheduled_execute($scheduled['id'], true);
+            $result = ws_scheduled_message_send_now($viewer, $scheduled);
 
-            if ($ran !== 'ran') {
-                $again = ws_scheduled_message_mine($viewer, $scheduled['id']);
-
-                return ws_action_error(($again && ($again['status'] === 'failed')) ? ws_scheduled_message_present($viewer, $again)['error'] : lang('It is being posted right now.'));
-            }
-
-            return ws_action_ok();
+            return $result['ok'] ? ws_action_ok() : ws_action_error($result['error']);
 
         // Works out a table as it is typed (the table window), the lines of a
         // writing box that end with "=", or draws a text the way a message
