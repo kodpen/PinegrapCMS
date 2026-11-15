@@ -8596,6 +8596,7 @@
     "This e-mail cannot be forwarded.": "Bu e-posta iletilemez.",
     "This e-mail cannot be found.": "Bu e-posta bulunamadı.",
     "This e-mail could not be brought in. It stays blocked.": "Bu e-posta içeri alınamadı. Engelli kalıyor.",
+    "This e-mail has already left; it cannot be taken back.": "Bu e-posta gönderildi; geri alınamaz.",
     "This e-mail is already in the mailbox.": "Bu e-posta kutuda zaten var.",
     "This e-mail is already in your calendar.": "Bu e-posta zaten takviminizde.",
     "This e-mail is no longer available.": "Bu e-posta artık yok.",

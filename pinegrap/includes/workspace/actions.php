@@ -406,7 +406,7 @@ function ws_mail_actions_without_workspace()
         'ws_bootstrap', 'ws_tick',
         'ws_mail_rows', 'ws_mail_pane', 'ws_mail_read_all', 'ws_mail_conversation', 'ws_mail_check',
         'ws_mail_reply_form', 'ws_mail_reply', 'ws_mail_resend',
-        'ws_mail_compose', 'ws_mail_new', 'ws_mail_forward', 'ws_mail_suggest', 'ws_mail_block', 'ws_mail_unblock', 'ws_mail_draft_open', 'ws_mail_draft_save', 'ws_mail_draft_remove', 'ws_mail_later_send', 'ws_mail_later_cancel',
+        'ws_mail_compose', 'ws_mail_new', 'ws_mail_forward', 'ws_mail_suggest', 'ws_mail_block', 'ws_mail_unblock', 'ws_mail_draft_open', 'ws_mail_draft_save', 'ws_mail_draft_remove', 'ws_mail_later_send', 'ws_mail_later_cancel', 'ws_mail_undo_send',
         'ws_mail_my_settings', 'ws_mail_my_settings_save',
         'ws_whatsapp_reply_form', 'ws_whatsapp_reply',
     );
@@ -2785,7 +2785,7 @@ function ws_handle_action($action, $request)
             $mail = function_exists('ws_mail_draft_sent_mail') ? ws_mail_draft_sent_mail($viewer, $mail, $request) : $mail;
             $result = ws_mail_send($viewer, array('conversation_id' => $conversation_id, 'cc' => $mail['cc'], 'bcc' => $mail['bcc'],
                 'text' => $mail['text'], 'html' => $mail['html'] ?? '', 'files' => $mail['files'], 'send_anyway' => $mail['send_anyway'],
-                'send_at' => $later['at']));
+                'send_at' => ws_mail_undo_send_at($request, $later['at'], ws_mail_later_ready(), time())));
 
             if (!$result['ok']) {
                 return ws_action_error(ws_mail_send_error_text($result['error'], $result['detail']), in_array($result['error'], array('empty', 'too_long'), true) ? 'text' : '')
@@ -2797,7 +2797,8 @@ function ws_handle_action($action, $request)
                 ws_mail_draft_remove($viewer, (int) $request['draft_id'], $conversation_id);
             }
 
-            return ws_action_ok(array('message_id' => $result['message_id'], 'state' => $result['state']));
+            return ws_action_ok(array('message_id' => $result['message_id'], 'item_id' => $result['item_id'], 'state' => $result['state'],
+                'undo' => ws_mail_undo_offered($request, $later['at'], $result['state'])));
 
         // Send again: an outgoing mail that could not leave (mail_send.php).
         // Reply by WhatsApp inside the customer's 24 hours (mail_phone.php):
@@ -2944,7 +2945,8 @@ function ws_handle_action($action, $request)
             $mail = ws_mail_markup_apply($viewer, ws_mail_compose_mail($request, array_merge($forward['files'], $files['files'])), $request);
             // Sent from a draft: its own HTML while the text is unchanged.
             $mail = function_exists('ws_mail_draft_sent_mail') ? ws_mail_draft_sent_mail($viewer, $mail, $request) : $mail;
-            $result = ws_mail_send($viewer, $mail + array('send_at' => $later['at']));
+            // Undo send (mail_later.php): the panel's Send waits a few seconds.
+            $result = ws_mail_send($viewer, $mail + array('send_at' => ws_mail_undo_send_at($request, $later['at'], ws_mail_later_ready(), time())));
 
             if (!$result['ok']) {
                 return ws_action_error(ws_mail_send_error_text($result['error'], $result['detail'])) + array('code' => $result['error']);
@@ -2961,7 +2963,9 @@ function ws_handle_action($action, $request)
                 'conversation_id' => $result['conversation_id'],
                 'message_id'      => $result['message_id'],
                 'channel_id'      => $mail['channel_id'],
+                'item_id'         => $result['item_id'],
                 'state'           => $result['state'],
+                'undo'            => ws_mail_undo_offered($request, $later['at'], $result['state']),
             ));
 
         // Forward as e-mail: the New e-mail form filled from chosen channel
@@ -3055,6 +3059,17 @@ function ws_handle_action($action, $request)
                 : ws_mail_later_cancel($viewer, (int) ($request['item_id'] ?? 0));
 
             return $result['ok'] ? ws_action_ok(array('state' => $result['state'] ?? 'failed')) : ws_action_error($result['error']);
+
+        // Undo, while a mail the panel sent still waits (mail_later.php):
+        // the mail turns back into its draft, which the form opens again.
+        case 'ws_mail_undo_send':
+            if (!function_exists('ws_mail_undo_send')) {
+                return ws_action_error(lang('The database has not been upgraded yet.'));
+            }
+
+            $result = ws_mail_undo_send($viewer, (int) ($request['item_id'] ?? 0));
+
+            return $result['ok'] ? ws_action_ok(array('draft' => $result['draft'])) : ws_action_error($result['error']);
 
         // The Drafts view (mail_drafts_screen.php): a draft opened into its
         // form, its changes saved there, or deleted without being sent.
