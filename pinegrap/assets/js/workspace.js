@@ -439,16 +439,24 @@
 
     // An icon with a small mark in its corner (ws_icon_badged_html() in
     // includes/workspace/channel_icons.php); the plain icon without one.
-    // An agent's icon in the @ menu with its state dot in the corner:
-    // working, waiting, not seen, paused or ready (ws_agent_card_state()).
+    // An agent's icon in the @ menu with its state on Bootstrap's avatar
+    // status dot, as an agent's message draws it: working green, waiting
+    // amber, not seen the alarm square, paused grey; ready draws none
+    // (ws_agent_card_state()).
     function pickerAgentFace(item) {
+        var dots = { working: 'online', waiting: 'away', late: 'busy', paused: 'offline' };
         var node = el('span', 'ws-picker-agent');
-        var dot = el('span', 'ws-agent-dot is-' + item.state);
 
         node.appendChild(icon(item.icon || 'bi-robot'));
-        dot.title = item.stateWords;
-        dot.setAttribute('aria-hidden', 'true');
-        node.appendChild(dot);
+
+        if (Object.prototype.hasOwnProperty.call(dots, item.state)) {
+            var dot = el('span', 'avatar-status status-' + dots[item.state]);
+
+            dot.title = item.stateWords;
+            dot.setAttribute('aria-hidden', 'true');
+            node.appendChild(dot);
+        }
+
         return node;
     }
 
@@ -17569,7 +17577,7 @@
                 }
 
                 // The state in words for a screen reader; the dot shows it.
-                if (item.stateWords) {
+                if (item.stateWords && (item.state !== 'idle')) {
                     row.lastChild.appendChild(el('span', 'visually-hidden', ' (' + item.stateWords + ')'));
                 }
 
