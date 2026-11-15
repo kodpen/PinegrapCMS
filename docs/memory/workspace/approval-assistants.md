@@ -11,6 +11,7 @@ description: Model assistants, Pinegrap AI (AE4b, #9608) and Claude (AE4c, #9622
 
 ## How is an assistant asked?
 - A model assistant through `ws_agent_after_send()` in followed mode, as an application agent (`approval-agents.md`). Pinegrap AI through `ws_ai_after_send(..., true)` and Claude through `ws_claude_after_send(..., true)`, each under its own per-person limit; the new request is then given the approval in `ai_state`.
+- A full limit is refused before anything is written (#9742): `ws_approval_input()` returns the limit's own sentence ("Pinegrap AI already has 5 requests of yours waiting…") on the `agents` field through `ws_approval_agent_limit_problem()`, so the form and the API (dry run too) say why. If the request is still not made, `ws_approval_agents_ask()` writes "Pinegrap AI could not be asked to approve this request and will not answer it." in the channel (`ws_approval_agent_not_asked()`).
 
 ## How does the site's run answer?
 - `ws_ai_start()` keeps the approval in the run's state (`$state['approval']`): the run saves its state into `ai_state`, so `ws_approval_agent_request_of()` reads it on every step.
