@@ -112,7 +112,7 @@ function api_pairing_usable($row, $app_id, $now) {
 function api_pairing_device_app() {
 
 	$app = db_item("SELECT id, name, status, expires_at FROM api_apps
-		WHERE kind = 'device' AND status = 'active'
+		WHERE kind = 'device' AND " . api_device_app_usable_where(time()) . "
 		ORDER BY id ASC
 		LIMIT 1");
 
