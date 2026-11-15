@@ -28231,6 +28231,7 @@
             dateShown: dateShown,
             avatar: avatar,
             avatarStack: avatarStack,
+            agentFace: agentFace,
             peoplePicker: peoplePicker,
             api: api,
             toast: toast,
