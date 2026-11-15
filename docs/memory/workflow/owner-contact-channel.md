@@ -12,6 +12,7 @@ description: Where sessions reach the owner (2026-11-13): no coordinator writes 
 ## Where do visuals go?
 - Drawings and screenshots that wait for his eye are posted straight into the agent channel, with the PR and the step named; he looks and answers there.
 - How: `php tools/ws_post.php --file=<path> [--parent=<id>] "<PR, step, what to look at>"` (`POST /workspace/channels/{id}/files`, form part `file`; prints the message id). One file a call: the first screenshot carries the text, the rest answer it with `--parent=<its id>`. A refusal (size, kind) prints the API's message and exits 1; the key rule of [[agent-channel-post-repeat]] holds (#9377).
+- A change of a few pixels is shown to him as a close-up pair: before and after side by side at three times the size, under one short question. Owner (2026-11-15, channel message 4655), of full-screen pairs of a button's fill: "açıkcası görselleri inceledim ve bir fark göremedim"; in the architect's window the same day: "karışık geliyor şu anda sorular".
 - A link only the making account opens does not count: on 2026-11-13 the artifact links of three questions opened for neither him nor the architect (#9271, #9274).
 
 ## Who looks at a screen's pictures? (owner, 2026-11-14, channel message 2645)
