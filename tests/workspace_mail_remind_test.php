@@ -144,3 +144,49 @@ function test_workspace_mail_remind_wiring()
 	pg_assert_contains("'remind'     => function_exists('ws_mail_remind_tool')", workspace_mail_remind_test_source('includes/workspace/mail_pane.php'), 'offered on the pane');
 	pg_assert_contains("h.api('ws_mail_remind'", workspace_mail_remind_test_source('assets/js/workspace_mail.js'), 'the screen asks for it');
 }
+
+function test_workspace_mail_no_answer_days_and_due()
+{
+	foreach (array(array('1', 1), array(3, 3), array('7', 7), array('', 0), array('2', 0), array('30', 0), array(array('3'), 0), array(null, 0)) as $case) {
+		pg_assert_same($case[1], ws_mail_no_answer_days($case[0]), 'offered: ' . json_encode($case[0]));
+	}
+
+	$now = gmmktime(12, 0, 0, 11, 15, 2026);
+	pg_assert_same($now + 3 * 86400, ws_mail_no_answer_due(3, 0, $now), 'sent at once: from now');
+	pg_assert_same($now + 3600 + 86400, ws_mail_no_answer_due(1, $now + 3600, $now), 'sent later: from its sending');
+	pg_assert_same($now + 10 + 7 * 86400, ws_mail_no_answer_due(7, $now + 10, $now), 'waiting for Undo: from its sending');
+	pg_assert_same($now + 86400, ws_mail_no_answer_due(1, $now - 50, $now), 'a past send time counts from now');
+}
+
+function test_workspace_mail_no_answer_left()
+{
+	foreach (array('', 'sent', 'queued', 'later', 'external') as $state) {
+		pg_assert_true(ws_mail_no_answer_left($state), $state . ' left or is leaving');
+	}
+
+	foreach (array('draft', 'failed') as $state) {
+		pg_assert_false(ws_mail_no_answer_left($state), $state . ': nothing to wait for');
+	}
+
+	pg_assert_contains('No answer yet', ws_mail_no_answer_badge_html(), 'the row\'s and pane\'s words');
+	pg_assert_contains('badge theme-warning', ws_mail_no_answer_badge_html());
+}
+
+function test_workspace_mail_no_answer_wiring()
+{
+	$actions = workspace_mail_remind_test_source('includes/workspace/actions.php');
+	pg_assert_same(2, substr_count($actions, "ws_mail_no_answer_set(\$viewer, \$result, \$request['remind_days'] ?? 0, time());"), 'Reply by e-mail and New e-mail');
+
+	$module = workspace_mail_remind_test_source('includes/workspace/mail_remind.php');
+	pg_assert_contains("db(\"DELETE FROM ws_mail_reminders WHERE conversation_id = '\" . (int) \$conversation_id . \"' AND kind = '\" . WS_MAIL_REMIND_NO_ANSWER . \"'\");", $module, 'an incoming mail ends it');
+	pg_assert_contains("\$no_answer ? 'mail_no_answer' : 'mail_remind'", $module, 'its own inbox kind');
+
+	pg_assert_contains("case 'mail_no_answer':", workspace_mail_remind_test_source('includes/workspace/notify.php'));
+	pg_assert_true(in_array('mail_no_answer', pg_notification_mail_kinds(), true), 'the bell shows it with the Workspace off');
+	pg_assert_contains('ws_mail_no_answer_ids($viewer_id, $ids)', workspace_mail_remind_test_source('includes/workspace/mail_list.php'), 'the writer\'s row');
+	pg_assert_contains("\$pane['no_answer']", workspace_mail_remind_test_source('includes/workspace/mail_pane.php'), 'the pane');
+
+	$script = workspace_mail_remind_test_source('assets/js/workspace_mail.js');
+	pg_assert_same(2, substr_count($script, 'var noAnswer = noAnswerField(h);'), 'on both forms');
+	pg_assert_same(2, substr_count($script, 'post.remind_days = noAnswer.value();'), 'posted by both');
+}

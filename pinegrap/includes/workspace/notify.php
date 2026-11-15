@@ -50,6 +50,8 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  *                         | mail_unsent (an e-mail one wrote could not be sent: mail_send.php)
  *                         | mail_remind (a conversation set aside with Remind me later came
  *                           back: mail_remind.php)
+ *                         | mail_no_answer (no answer came in time to a mail one wrote with
+ *                           Remind me if no answer comes: mail_remind.php)
  *                         | canvas_edited (an agent edited one's canvas: canvas_edit.php)
  *                         | question_asked (an application asks one with a checklist
  *                           or a poll: interact.php)
@@ -661,6 +663,7 @@ function ws_inbox_describe($viewer, $row)
         // An e-mail conversation set aside with Remind me later came back
         // (mail_remind.php).
         case 'mail_remind':
+        case 'mail_no_answer':
             if (function_exists('ws_mail_remind_describe')) {
                 return ws_mail_remind_describe($row, $base);
             }
