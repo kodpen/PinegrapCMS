@@ -6070,6 +6070,7 @@
     "The reading room seats thirty. Schools, clubs and launches can book it in the evenings.": "Okuma odası otuz kişilik. Okullar, kulüpler ve kitap lansmanları akşamları kiralayabilir.",
     "The reading room, upstairs": "Okuma odası, üst kat",
     "The reason for the error is written above.": "Hatanın nedeni yukarıda yazılmıştır.",
+    "The reason is at most {var:1} characters.": "Gerekçe en çok {var:1} karakter olabilir.",
     "The reason is required.": "Sebep zorunludur.",
     "The reasons for rejecting a return could not be read: {var:1}": "İade ret nedenleri okunamadı: {var:1}",
     "The reasons for rejecting a return were not read. Read the returns again.": "İade ret nedenleri okunmadı. İadeleri yeniden okuyun.",

@@ -233,6 +233,7 @@ function ws_agent_instructions_request_lines()
         '   - POST /workspace/agent-requests/{id}/fail with {"reason": "..."}: you cannot do it; the reason is told to the person who asked.',
         'A 409 edited answer means the message was changed after your claim: claim the request again and read the new words. A 403 answer means the channel no longer lets you answer there: give the request up with fail.',
         'A wake request has no message: your schedule woke you, and its brief carries the note of the wake. Do what the note says, write where you need with POST /workspace/channels/{id}/messages, then close the request with no_answer. Your schedule is GET /workspace/agent-wake; change it with POST /workspace/agent-wake.',
+        'The person who asked and the channel\'s managers may mark an answer of yours right or wrong, with a short reason. GET /workspace/agent-feedback gives your marks and the counts of the last 7 and 30 days; read it now and then, and learn from a wrong one.',
     );
 }
 
