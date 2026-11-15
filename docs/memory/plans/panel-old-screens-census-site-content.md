@@ -16,6 +16,7 @@ description: Census LM1b, content screens against look A: pages, comments, short
 - Pop-ups: `view_auto_dialogs.php` → 13; `add_auto_dialog.php`, `edit_auto_dialog.php`, `includes/forms/auto_dialog_form.php` clean.
 - 404 log `view_not_found_log.php` 319 / 12 → 28 (seven Bootstrap buttons); Accessibility `view_accessibility.php` 214 / 10 / 0 / 0 / 4 → 30, two own tables; Page tests `page_experiments.php` 450 / 15 / 2 / 5 / 6 → 37, upper-case titles, an own table.
 - `edit_pages.php` (page bulk edit endpoint) draws nothing.
+- Add Page, Edit Page and `page_form.php` are out (owner, `ui/look-field-widths.md`: classic page screens get no look work): S1 is one step of about 250 lines, not cut.
 
 ## S4: which menu, region, ad and design screens, and what is old? (430; 9,280 lines)
 - Lists, toolbar only (→ 12 to 15 each): `view_menus.php`, `view_regions.php`, `view_ads.php`, `view_styles.php`, `view_themes.php`, `view_design_files.php`.

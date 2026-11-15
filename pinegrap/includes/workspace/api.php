@@ -63,6 +63,8 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_agent_instructions.php'
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_canvas.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_page.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_canvases.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_person_card.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_message_files.php');
 
 /**
  * The permission rows on the Application Access screen.
@@ -224,6 +226,11 @@ function ws_openapi_objects()
         'WorkspaceRecordLine'     => 'ws_api_claude_record_line_schema',
         'WorkspaceChannelMember'  => 'ws_api_channel_member_schema',
         'WorkspaceChannelMembers' => 'ws_api_channel_members_schema',
+        'WorkspacePersonCard'           => 'ws_api_person_card_schema',
+        'WorkspacePersonCardDepartment' => 'ws_api_person_card_department_schema',
+        'WorkspacePersonCardWorkday'    => 'ws_api_person_card_workday_schema',
+        'WorkspacePersonCardAway'       => 'ws_api_person_card_away_schema',
+        'WorkspacePersonCardClock'      => 'ws_api_person_card_clock_schema',
         'WorkspaceChange'         => 'ws_api_change_schema',
         'WorkspaceProposal'       => 'ws_api_proposal_schema',
         'WorkspaceAssistantRequest' => 'ws_api_assistant_request_schema',
@@ -239,6 +246,9 @@ function ws_openapi_objects()
         'WorkspacePersonalPlan'    => 'ws_api_personal_plan_schema',
         'WorkspaceChannelAgent'        => 'ws_api_channel_agent_schema',
         'WorkspaceChannelAgentRemoval' => 'ws_api_channel_agent_removal_schema',
+        'WorkspaceAddableAgent'        => 'ws_api_addable_agent_schema',
+        'WorkspaceAgentCard'           => 'ws_api_agent_card_schema',
+        'WorkspaceAgentCardMessage'    => 'ws_api_agent_card_message_schema',
         'WorkspaceMemoryIndexEntry'    => 'ws_api_memory_index_entry_schema',
         'WorkspaceMemoryEntry'         => 'ws_api_memory_entry_schema',
         'WorkspaceMemoryWriter'        => 'ws_api_memory_writer_schema',
@@ -2798,7 +2808,8 @@ function ws_api_routes()
     // the agents of a channel (api_agents.php), a channel's memory with the
     // decision mark (api_memory.php), the agents' requests
     // (api_agent_requests.php) and instructions (api_agent_instructions.php), the agents' canvases (api_canvas.php) and
-    // live pages (api_page.php), and the canvas as one thing with its
-    // parts (api_canvases.php).
-    return array_merge($routes, ws_claude_api_routes(), ws_proposal_api_routes(), ws_wtable_api_routes(), ws_mail_api_routes(), ws_mail_draft_api_routes(), ws_saved_reply_api_routes(), ws_personal_plan_api_routes(), ws_note_group_api_routes(), ws_agent_api_routes(), ws_memory_api_routes(), ws_agent_request_api_routes(), ws_agent_instructions_api_routes(), ws_canvas_api_routes(), ws_page_api_routes(), ws_canvases_api_routes());
+    // live pages (api_page.php), the canvas as one thing with its
+    // parts (api_canvases.php), a person's card (api_person_card.php) and the
+    // files in a message (api_message_files.php).
+    return array_merge($routes, ws_claude_api_routes(), ws_proposal_api_routes(), ws_wtable_api_routes(), ws_mail_api_routes(), ws_mail_draft_api_routes(), ws_saved_reply_api_routes(), ws_personal_plan_api_routes(), ws_note_group_api_routes(), ws_agent_api_routes(), ws_memory_api_routes(), ws_agent_request_api_routes(), ws_agent_instructions_api_routes(), ws_canvas_api_routes(), ws_page_api_routes(), ws_canvases_api_routes(), ws_person_card_api_routes(), ws_message_file_api_routes());
 }

@@ -840,10 +840,11 @@ function ws_message_send_file_bytes($viewer, $channel, $body, $original_name, $b
         // A voice message waits to be written out (voice.php), with the
         // length and waveform its recorder measured; the assistants its
         // words ask are asked once it is, or now when it will not be. Any
-        // other file's words ask now. An application's words are asked by
-        // its own route (files.create, canvases), Pinegrap AI's by nobody.
+        // other file's words ask now. An application's or an OAuth
+        // connection's words are asked by its own route (files.create,
+        // canvases, library-files), Pinegrap AI's by nobody.
         $queued = ws_voice_queue($channel, $result['message_id'], $stored['file_id'], $stored['name'], (array) ($options['voice'] ?? array()));
-        $result['asked'] = empty($options['app_id']) ? ws_voice_posted($viewer, $channel, $result['message_id'], $body, $stored['name'], $queued) : array();
+        $result['asked'] = (empty($options['app_id']) && empty($options['via_client_id'])) ? ws_voice_posted($viewer, $channel, $result['message_id'], $body, $stored['name'], $queued) : array();
     }
 
     return $result;
