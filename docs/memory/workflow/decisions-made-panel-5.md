@@ -27,4 +27,4 @@ description: Decisions list, panel part 5 (2026-11-11 on): the dashboard's notes
 
 ## Are there ready reports on a report screen? (owner, 2026-11-11, #8673)
 - Yes: a strip of ready reports on top of the screen, and each dashboard card's "See all" opens its own ready report (the Sales map: sales by region, last 30 days). Owner (2026-11-11): "Evet, hazır raporlar şeridi (Önerilen)".
-- Building and saving an own report stays as it is. Built by `plans/report-screens.md`.
+- Building and saving an own report stays as it is. Built #8691 to #9738: `ui/report-view.md`, `commerce/order-report-ready-reports.md`, `ui/report-screens-look-review.md`.

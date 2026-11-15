@@ -10,7 +10,8 @@ module: ready_reports
 - No sales by product: the order report has no product level (its levels are the order's own columns), so the strip cannot give it; adding one changes the report's query and grouping, a step of its own.
 
 ## What is the strip?
-- `pg_ready_report_strip($screen, $levels, $current)`: every entry of the screen whose levels are all in the screen's summarize-by values, with its address and whether it is the one open. `view_order_report.php` prints it under the toolbar as `<nav class="pg-ready-strip" aria-label="Ready reports">` with a wrapping list of pill links; the open one is solid with `aria-current="page"`. The strip's links open each entry with its own period.
+- `pg_ready_report_strip($screen, $levels, $current)`: every entry of the screen whose levels are all in the screen's summarize-by values, with its address and whether it is the one open.
+- `view_order_report.php` prints it under the head as `<nav class="pg-report-strip" aria-label="Ready reports">`, a label and a `.pg-seg` of links, the open one `is-active` with `aria-current="page"` (look A, #8981); a strip wider than its row scrolls sideways, never wraps (RS8a, `ui/look-report-screens.md`). The strip's links open each entry with its own period.
 
 ## How does an address set the period?
 - `&days=N` with `?ready=`: `pg_ready_report_days()` takes digits only, 1 to 366 (`7`, not ` 7`, `7.5`, `0007`, an array); anything else is 0 and the entry's own period applies. Read only with a ready report open; `pg_ready_report_range($report, $days)` makes it the date changer's range, `days - 1` days before today through today, so `days=1` is today.
