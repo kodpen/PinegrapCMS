@@ -34,9 +34,9 @@ if (!defined('PG_INIT_LOADED')) {
             </div>
         </div>
 
-        <div class="card pg-card mb-5">
+        <div class="card border-0 border-start border-4 rounded-0 border-primary shadow-sm mb-5">
             <div class="card-body py-5 px-5">
-                <div class="pg-group-label mb-1"><?=lang('Summary')?></div>
+                <div class="small fw-bold text-uppercase fg-secondary mb-1"><?=lang('Summary')?></div>
                 <div class="fs-md lh-md" id="pg-if-sentence"></div>
             </div>
         </div>
@@ -75,15 +75,15 @@ if (!defined('PG_INIT_LOADED')) {
         ?>
         <div class="mb-5 d-none" id="pg-if-quick">
             <div class="d-flex flex-wrap align-items-baseline gap-3 mb-3">
-                <span class="pg-group-label"><?=lang('Template')?></span>
-                <span class="pg-text-meta"><?=lang('Pick a template, or start from scratch.')?></span>
+                <span class="small fw-bold text-uppercase fg-secondary"><?=lang('Template')?></span>
+                <span class="fg-secondary small"><?=lang('Pick a template, or start from scratch.')?></span>
             </div>
             <div class="row row-cols-1 sm:row-cols-2 lg:row-cols-4 2xl:row-cols-5 g-5 overflow-x-scroll flex-nowrap pb-5 pt-5">
                 <?php foreach ($templates as $t): ?>
                 <div class="col">
                     <button type="button" class="list-group-item list-group-item-action rounded-4 border h-100 text-start p-3" data-on="quick" data-template="<?=$t['key']?>">
                         <span class="d-flex align-items-center gap-3 fw-semibold"><i class="bi <?=$t['icon']?> fg-primary" aria-hidden="true"></i><?=h($t['title'])?></span>
-                        <span class="d-block pg-text-meta mt-1"><?=h($t['text'])?></span>
+                        <span class="d-block small fg-secondary mt-1"><?=h($t['text'])?></span>
                     </button>
                 </div>
                 <?php endforeach ?>
@@ -94,10 +94,10 @@ if (!defined('PG_INIT_LOADED')) {
 
             <!-- 1 · Offer -->
             <li class="stepper-item active theme-secondary" id="pg-if-step-offer">
-                <div class="card pg-card theme-reset mb-12">
+                <div class="card theme-reset mb-12">
                     <div class="card-header d-flex flex-wrap align-items-center gap-3">
-                        <span class="pg-title-section"><?=lang('Offer')?></span>
-                        <span class="pg-text-2"><?=lang('What does the customer see?')?></span>
+                        <span class="h5 text-uppercase fg-primary fw-bold mb-0"><?=lang('Offer')?></span>
+                        <span class="fg-secondary small"><?=lang('What does the customer see?')?></span>
                         <div class="ms-auto form-field mb-0">
                             <div class="switch"><input class="" type="checkbox" role="switch" id="pg-if-enabled" data-on="enabled"></div>
                             <label class="" for="pg-if-enabled"><?=lang('Enabled')?></label>
@@ -105,14 +105,14 @@ if (!defined('PG_INIT_LOADED')) {
                     </div>
                     <div class="card-body">
                         <div class="row g-5">
-                            <div class="col-12 pg-field-span-4">
-                                <label for="pg-if-code" class="form-label"><?=lang('Offer Code')?> <span class="pg-field-label-note">· <?=lang('the name shown in reports and at checkout')?></span></label>
+                            <div class="col-12 lg:col-5 2xl:col-4">
+                                <label for="pg-if-code" class="form-label"><?=lang('Offer Code')?> <span class="fg-secondary small">· <?=lang('the name shown in reports and at checkout')?></span></label>
                                 <input type="text" class="form-control" id="pg-if-code" maxlength="50" data-on="code">
-                                <div class="pg-field-help pg-field-error d-none" id="pg-if-code-error"></div>
-                                <div class="pg-field-help d-none" id="pg-if-code-follow" aria-live="polite"></div>
+                                <div class="small fg-emphasis-danger mt-1 d-none" id="pg-if-code-error"></div>
+                                <div class="small fg-secondary mt-1 d-none" id="pg-if-code-follow" aria-live="polite"></div>
                             </div>
-                            <div class="col-12">
-                                <label for="pg-if-description" class="form-label"><?=lang('Message')?> <span class="pg-field-label-note">· <?=lang('shown in the cart and on the receipt')?></span></label>
+                            <div class="col-12 lg:col-7 2xl:col-8">
+                                <label for="pg-if-description" class="form-label"><?=lang('Message')?> <span class="fg-secondary small">· <?=lang('shown in the cart and on the receipt')?></span></label>
                                 <input type="text" class="form-control" id="pg-if-description" maxlength="255" data-on="description">
                             </div>
                             <div class="col-12 d-flex flex-wrap align-items-center gap-5">
@@ -120,10 +120,10 @@ if (!defined('PG_INIT_LOADED')) {
                                     <div class="switch"><input class="" type="checkbox" role="switch" id="pg-if-require-code" data-on="require-code"></div>
                                     <label class="" for="pg-if-require-code"><?=lang('The customer must enter this code')?></label>
                                 </div>
-                                <span class="pg-text-meta" id="pg-if-require-code-hint"></span>
+                                <span class="fg-secondary small" id="pg-if-require-code-hint"></span>
                             </div>
                             <div class="col-12 d-none" id="pg-if-orders">
-                                <span class="pg-text-meta"><i class="bi bi-receipt me-1" aria-hidden="true"></i><span id="pg-if-orders-count"></span></span>
+                                <span class="small fg-secondary"><i class="bi bi-receipt me-1" aria-hidden="true"></i><span id="pg-if-orders-count"></span></span>
                             </div>
                             <div class="col-12 d-none" id="pg-if-keycodes">
                                 <div class="row g-3 align-items-center">
@@ -149,7 +149,7 @@ if (!defined('PG_INIT_LOADED')) {
                                     <div class="col-auto">
                                         <a class="btn btn-sm btn-text theme-secondary" href="<?=OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY?>/view_key_codes.php"><?=lang('Manage key codes')?></a>
                                     </div>
-                                    <div class="col-12 xl:col pg-text-meta"><?=lang('single-use or per-customer aliases of this code')?></div>
+                                    <div class="col-12 xl:col small fg-secondary"><?=lang('single-use or per-customer aliases of this code')?></div>
                                     <div class="col-12 d-none" id="pg-if-keycodes-new">
                                         <label class="form-label small" for="pg-if-keycodes-list"><?=lang('The codes just created')?></label>
                                         <textarea class="form-control form-control-sm" id="pg-if-keycodes-list" rows="4" readonly></textarea>
@@ -163,10 +163,10 @@ if (!defined('PG_INIT_LOADED')) {
 
             <!-- 2 · If -->
             <li class="stepper-item active theme-secondary" id="pg-if-step-conditions">
-                <div class="card pg-card theme-reset mb-12">
+                <div class="card theme-reset mb-12">
                     <div class="card-header d-flex flex-wrap align-items-center gap-3">
-                        <span class="pg-title-section"><?=lang('If')?></span>
-                        <span class="pg-text-2"><?=lang('the cart meets these conditions')?><span class="d-none" id="pg-if-conditions-all"> · <?=lang('all of them')?></span></span>
+                        <span class="h5 text-uppercase fg-primary fw-bold mb-0"><?=lang('If')?></span>
+                        <span class="fg-secondary small"><?=lang('the cart meets these conditions')?><span class="d-none" id="pg-if-conditions-all"> · <?=lang('all of them')?></span></span>
                         <div class="pg-menu-wrap ms-auto">
                             <button type="button" class="btn btn-sm btn-outline theme-secondary pg-menu-caret" data-bs-toggle="menu" data-bs-placement="bottom-end" aria-expanded="false"><i class="bi bi-plus-lg" aria-hidden="true"></i> <?=lang('Add condition')?></button>
                             <ul class="menu pg-menu-end" id="pg-if-add-condition-menu"></ul>
@@ -178,10 +178,10 @@ if (!defined('PG_INIT_LOADED')) {
 
             <!-- 3 · Then -->
             <li class="stepper-item active theme-secondary" id="pg-if-step-actions">
-                <div class="card pg-card theme-reset mb-12">
+                <div class="card theme-reset mb-12">
                     <div class="card-header d-flex flex-wrap align-items-center gap-3">
-                        <span class="pg-title-section"><?=lang('Then')?></span>
-                        <span class="pg-text-2"><?=lang('these results apply')?> · <?=lang('all of them')?></span>
+                        <span class="h5 text-uppercase fg-primary fw-bold mb-0"><?=lang('Then')?></span>
+                        <span class="fg-secondary small"><?=lang('these results apply')?> · <?=lang('all of them')?></span>
                         <div class="pg-menu-wrap ms-auto">
                             <button type="button" class="btn btn-sm btn-outline theme-secondary pg-menu-caret" data-bs-toggle="menu" data-bs-placement="bottom-end" aria-expanded="false"><i class="bi bi-plus-lg" aria-hidden="true"></i> <?=lang('Add result')?></button>
                             <ul class="menu pg-menu-end" id="pg-if-add-action-menu"></ul>
@@ -193,11 +193,11 @@ if (!defined('PG_INIT_LOADED')) {
 
             <!-- 4 · Options -->
             <li class="stepper-item active theme-secondary" id="pg-if-step-options">
-                <div class="card pg-card theme-reset mb-12">
+                <div class="card theme-reset mb-12">
                     <div class="card-header p-0">
                         <button type="button" class="btn btn-link text-decoration-none pg-link-body-emphasis d-flex flex-wrap align-items-center gap-3 w-100 text-start px-5 py-3" data-bs-toggle="collapse" data-bs-target="#pg-if-options" aria-expanded="false" aria-controls="pg-if-options">
-                            <span class="pg-title-section"><?=lang('Options')?></span>
-                            <span class="pg-text-2 text-truncate" id="pg-if-options-summary"></span>
+                            <span class="h5 text-uppercase fg-primary fw-bold mb-0"><?=lang('Options')?></span>
+                            <span class="fg-secondary small text-truncate" id="pg-if-options-summary"></span>
                             <i class="bi bi-chevron-down ms-auto fg-secondary" aria-hidden="true"></i>
                         </button>
                     </div>
@@ -205,7 +205,7 @@ if (!defined('PG_INIT_LOADED')) {
                         <div class="card-body">
 
                             <div class="row g-3 align-items-start">
-                                <div class="col-12 md:col-3 xl:col-2 pg-field-label pt-1"><?=lang('Validity')?></div>
+                                <div class="col-12 md:col-3 xl:col-2 fg-secondary small pt-1"><?=lang('Validity')?></div>
                                 <div class="col-12 md:col-9 xl:col-10">
                                     <div class="row g-3 align-items-center">
                                         <div class="col-auto">
@@ -221,38 +221,38 @@ if (!defined('PG_INIT_LOADED')) {
                                                 <input type="text" class="form-control" id="pg-if-end" maxlength="10" autocomplete="off" data-on="end" data-pg-date placeholder="<?=lang('End Date')?>">
                                             </div>
                                         </div>
-                                        <div class="col-12 pg-field-help pg-field-error d-none" id="pg-if-dates-error"></div>
+                                        <div class="col-12 small fg-emphasis-danger d-none" id="pg-if-dates-error"></div>
                                     </div>
                                 </div>
                             </div>
 
                             <div class="row g-3 align-items-start border-top mt-3 pt-3" id="pg-if-upsell-row">
-                                <div class="col-12 md:col-3 xl:col-2 pg-field-label pt-1"><?=lang('Up-sell message')?></div>
+                                <div class="col-12 md:col-3 xl:col-2 fg-secondary small pt-1"><?=lang('Up-sell message')?></div>
                                 <div class="col-12 md:col-9 xl:col-10">
                                     <div class="form-field mb-0">
                                         <div class="switch"><input class="" type="checkbox" role="switch" id="pg-if-upsell" data-on="upsell"></div>
                                         <label class="" for="pg-if-upsell"><?=lang('Show a message when the conditions are not met but close')?></label>
                                     </div>
                                     <div class="row g-5 mt-0 d-none" id="pg-if-upsell-body">
-                                        <div class="col-12">
+                                        <div class="col-12 xl:col-8">
                                             <label class="form-label" for="pg-if-upsell-message"><?=lang('Message')?></label>
                                             <input type="text" class="form-control form-control-sm" id="pg-if-upsell-message" maxlength="255" data-on="upsell-message">
                                         </div>
-                                        <div class="col-12 md:col-3">
-                                            <label class="form-label" for="pg-if-upsell-subtotal"><?=lang('Show when the subtotal is within')?> <span class="pg-field-label-note">· <?=lang('of the required subtotal')?></span></label>
+                                        <div class="col-12 sm:col-6 xl:col-4">
+                                            <label class="form-label" for="pg-if-upsell-subtotal"><?=lang('Show when the subtotal is within')?> <span class="fg-secondary small">· <?=lang('of the required subtotal')?></span></label>
                                             <label class="form-control form-control-sm form-adorn form-adorn-end"><span class="form-adorn-text" aria-hidden="true"><?=h(_pg_offer_currency())?></span><input type="text" class="form-ghost text-end" id="pg-if-upsell-subtotal" inputmode="decimal" data-on="upsell-subtotal"></label>
-                                            <div class="pg-field-help pg-field-error d-none" id="pg-if-upsell-subtotal-error"></div>
+                                            <div class="small fg-emphasis-danger mt-1 d-none" id="pg-if-upsell-subtotal-error"></div>
                                         </div>
-                                        <div class="col-12 md:col-3" id="pg-if-upsell-quantity-wrap">
-                                            <label class="form-label" for="pg-if-upsell-quantity"><?=lang('Show when the quantity is within')?> <span class="pg-field-label-note">· <?=lang('of the required quantity')?></span></label>
+                                        <div class="col-12 sm:col-6 xl:col-4" id="pg-if-upsell-quantity-wrap">
+                                            <label class="form-label" for="pg-if-upsell-quantity"><?=lang('Show when the quantity is within')?> <span class="fg-secondary small">· <?=lang('of the required quantity')?></span></label>
                                             <input type="text" class="form-control form-control-sm" id="pg-if-upsell-quantity" inputmode="numeric" data-on="upsell-quantity">
-                                            <div class="pg-field-help pg-field-error d-none" id="pg-if-upsell-quantity-error"></div>
+                                            <div class="small fg-emphasis-danger mt-1 d-none" id="pg-if-upsell-quantity-error"></div>
                                         </div>
-                                        <div class="col-12">
-                                            <label class="form-label" for="pg-if-upsell-button"><?=lang('Button label')?> <span class="pg-field-label-note">· <?=lang('leave blank for no button')?></span></label>
+                                        <div class="col-12 sm:col-6 xl:col-4">
+                                            <label class="form-label" for="pg-if-upsell-button"><?=lang('Button label')?> <span class="fg-secondary small">· <?=lang('leave blank for no button')?></span></label>
                                             <input type="text" class="form-control form-control-sm" id="pg-if-upsell-button" maxlength="50" data-on="upsell-button">
                                         </div>
-                                        <div class="col-12 pg-field-span-6">
+                                        <div class="col-12 sm:col-6 xl:col-4">
                                             <label class="form-label" for="pg-if-upsell-page"><?=lang('Button page')?></label>
                                             <?=pg_picker_field('page', 'upsell_page_id', $editor['state']['offer']['upsell']['page_id'], array('id' => 'pg-if-upsell-page', 'value_attributes' => array('data-on' => 'upsell-page'))) . pg_picker_script()?>
                                         </div>
@@ -261,7 +261,7 @@ if (!defined('PG_INIT_LOADED')) {
                             </div>
 
                             <div class="row g-3 align-items-start border-top mt-3 pt-3 d-none" id="pg-if-best-row">
-                                <div class="col-12 md:col-3 xl:col-2 pg-field-label pt-1"><?=lang('Offers sharing this code')?></div>
+                                <div class="col-12 md:col-3 xl:col-2 fg-secondary small pt-1"><?=lang('Offers sharing this code')?></div>
                                 <div class="col-12 md:col-9 xl:col-10">
                                     <div class="form-field mb-0">
                                         <input class="check" type="checkbox" id="pg-if-best" data-on="best">
@@ -271,7 +271,7 @@ if (!defined('PG_INIT_LOADED')) {
                             </div>
 
                             <div class="row g-3 align-items-start border-top mt-3 pt-3 d-none" id="pg-if-scope-row">
-                                <div class="col-12 md:col-3 xl:col-2 pg-field-label pt-1"><?=lang('Scope')?></div>
+                                <div class="col-12 md:col-3 xl:col-2 fg-secondary small pt-1"><?=lang('Scope')?></div>
                                 <div class="col-12 md:col-9 xl:col-10">
                                     <div class="row g-3 align-items-center">
                                         <div class="col-auto">

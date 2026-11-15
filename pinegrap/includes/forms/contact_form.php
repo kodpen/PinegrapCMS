@@ -460,12 +460,12 @@ function pg_contact_form_detail_cards($values, $is_new, $work_extra, $groups_htm
                                         <div class="col-12 pg-field-span-4 my-3">
                                             <label for="member_id" class="form-label">' . h(MEMBER_ID_LABEL) . '</label>
                                             <input value="' . pg_contact_form_value($values, 'member_id') . '" type="text" name="member_id" id="member_id" class="form-control" maxlength="50" />
-                                            <div class="form-text text-end">' . lang('leave blank for no membership') . '</div>
+                                            <div class="form-text">' . lang('leave blank for no membership') . '</div>
                                         </div>
                                         <div class="col-12 pg-field-span-3 my-3">
                                             <label for="expiration_date" class="form-label">' . lang('Membership Expiration Date') . '</label>
                                             <input value="' . pg_contact_form_value($values, 'expiration_date') . '" type="text" name="expiration_date" id="expiration_date" class="form-control" data-pg-date />
-                                            <div class="form-text text-end">' . lang('leave blank for lifetime membership') . '</div>
+                                            <div class="form-text">' . lang('leave blank for lifetime membership') . '</div>
                                             ' . get_date_picker_format() . pg_fields_script() . '
                                         </div>
                                     </div>
@@ -533,7 +533,7 @@ function pg_contact_form_affiliate_card($values)
                         <div class="col-12 md:col-4 my-3">
                             <label for="affiliate_code" class="form-label">' . lang('Affiliate Code') . '</label>
                             <input value="' . pg_contact_form_value($values, 'affiliate_code') . '" type="text" name="affiliate_code" id="affiliate_code" class="form-control" maxlength="100" />
-                            <div class="form-text text-end">' . lang('leave blank to generate a code when the affiliate is approved') . '</div>
+                            <div class="form-text">' . lang('leave blank to generate a code when the affiliate is approved') . '</div>
                         </div>
                         <div class="col-12 md:col-3 my-3">
                             <label for="affiliate_commission_rate" class="form-label">' . lang('Commission Rate') . '</label>
@@ -541,7 +541,7 @@ function pg_contact_form_affiliate_card($values)
                                 <span class="form-adorn-text" aria-hidden="true">%</span>
                                 <input value="' . h(pg_contact_form_commission_rate_value($values['affiliate_commission_rate'] ?? '')) . '" type="text" name="affiliate_commission_rate" id="affiliate_commission_rate" class="form-ghost" size="6" maxlength="6" inputmode="decimal" data-inputmask-alias="decimal" data-inputmask-allowminus="false" data-inputmask-max="100" data-inputmask-placeholder="0" style="text-align: right;">
                             </label>
-                            <div class="form-text text-end">' . lang(array('string'=>'leave blank for default: {var:1}%','vars'=>pg_format_number(AFFILIATE_DEFAULT_COMMISSION_RATE, 2))) . '</div>
+                            <div class="form-text">' . lang(array('string'=>'leave blank for default: {var:1}%','vars'=>pg_format_number(AFFILIATE_DEFAULT_COMMISSION_RATE, 2))) . '</div>
                         </div>
                     </div>
                 </div>

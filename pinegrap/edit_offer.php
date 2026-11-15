@@ -186,7 +186,7 @@ if (defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED) {
 
 echo pg_page_shell(array(
     'title'               => $heading,
-    'extra classes'       => 'products pg-measure-edit pg-measure-single',
+    'extra classes'       => 'products',
     'icon'                => 'store',
     'heading'             => $heading,
     'heading_description' => lang('One screen: the offer, the conditions the cart must meet and the results that apply.'),
