@@ -417,8 +417,8 @@ if ($provider !== '') {
                     <button type="submit" class="pg-button pg-button-fill text-nowrap"><i class="bi bi-cloud-download" aria-hidden="true"></i>' . h(lang(array('string' => 'Read from {var:1}', 'vars' => $provider_label))) . '</button>
                 </form>') . '
                 ' . (($read_at > 0)
-                    ? '<span class="small fg-secondary">' . lang(array('string' => 'Last read {var:1}', 'vars' => prepare_form_data_for_output(date('Y-m-d H:i:s', $read_at), 'date and time'))) . '</span>'
-                    : '<span class="small fg-secondary">' . lang('Not read yet.') . '</span>');
+                    ? '<span class="pg-text-meta">' . lang(array('string' => 'Last read {var:1}', 'vars' => prepare_form_data_for_output(date('Y-m-d H:i:s', $read_at), 'date and time'))) . '</span>'
+                    : '<span class="pg-text-meta">' . lang('Not read yet.') . '</span>');
 
     $tab_notes = array(
         'differ' => lang('Linked pairs whose details differ. Open one to choose, field by field, which side is right; nothing is written until you confirm.'),
@@ -427,7 +427,7 @@ if ($provider !== '') {
         'same' => lang('Linked pairs whose details agree.'),
         'ignored' => lang('Cards and accounts you put aside. They are not offered again until you bring them back.'),
     );
-    $output_tab_note = '<p class="fg-secondary small mt-5 mb-0">' . $tab_notes[$tab] . ' ' . lang('Balances are never exchanged.') . '</p>';
+    $output_tab_note = '<p class="pg-text-meta mt-5 mb-0">' . $tab_notes[$tab] . ' ' . lang('Balances are never exchanged.') . '</p>';
 }
 
 echo

@@ -101,7 +101,7 @@ foreach ($page['entries'] as $entry) {
                 : h($label);
         }
 
-        $records .= '<div class="small d-flex flex-wrap gap-3 align-items-baseline">'
+        $records .= '<div class="pg-text-2 d-flex flex-wrap gap-3 align-items-baseline">'
             . '<span class="badge badge-subtle theme-secondary border">' . h(erp_audit_event_text($row)) . '</span>'
             . '<span class="text-break">' . $link . '</span>'
             . (((int) $row['amount'] !== 0) ? '<span class="fg-secondary">' . h(erp_money_out_currency((int) $row['amount'], (string) $row['currency'])) . '</span>' : '')
@@ -116,7 +116,7 @@ foreach ($page['entries'] as $entry) {
             <td class="text-nowrap align-top" data-sort="' . (int) $first['created_at'] . '">' . h(prepare_form_data_for_output(date('Y-m-d H:i:s', (int) $first['created_at']), 'date and time')) . '</td>
             <td class="align-top">' . $who
                 . (((string) $first['source'] === 'api') ? ' <span class="badge theme-info">' . h($sources['api']) . '</span>' : '')
-                . (((string) $first['ip'] !== '') ? '<div class="small fg-secondary font-monospace">' . h((string) $first['ip']) . '</div>' : '') . '</td>
+                . (((string) $first['ip'] !== '') ? '<div class="pg-text-meta font-monospace">' . h((string) $first['ip']) . '</div>' : '') . '</td>
             <td class="align-top">' . $lines . $records . '</td>
         </tr>';
 }
@@ -168,31 +168,31 @@ pg_page_shell([
             <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
                 ' . (erp_audit_ready() ? '<a class="btn btn-sm btn-outline theme-secondary" href="erp_audit.php?' . h(http_build_query($query + array('format' => 'csv'))) . '"><i class="bi bi-filetype-csv me-1" aria-hidden="true"></i>' . lang('Download as CSV') . '</a>' : '') . '
                 ' . (!empty($query) ? '<a class="btn btn-sm btn-outline theme-secondary" href="erp_audit.php">' . lang('Clear filters') . '</a>' : '') . '
-                <div class="pg-toolbar-grow small fg-secondary">' . lang('Newest first; the lines one action wrote are shown together.') . '</div>
+                <div class="pg-toolbar-grow pg-text-meta">' . lang('Newest first; the lines one action wrote are shown together.') . '</div>
             </nav>
 
-            <form method="get" action="erp_audit.php" class="card my-7" role="search">
+            <form method="get" action="erp_audit.php" class="card pg-card my-7" role="search">
                 <div class="card-body">
                     <div class="row g-3 align-items-end">
                     <div class="col-6 md:col-2">
-                        <label class="form-label small" for="audit_from">' . lang('Start date') . '</label>
+                        <label class="pg-field-label" for="audit_from">' . lang('Start date') . '</label>
                         <input type="date" data-pg-date class="form-control form-control-sm" id="audit_from" name="from" value="' . h($filters['from']) . '" />
                     </div>
                     <div class="col-6 md:col-2">
-                        <label class="form-label small" for="audit_to">' . lang('End date') . '</label>
+                        <label class="pg-field-label" for="audit_to">' . lang('End date') . '</label>
                         <input type="date" data-pg-date class="form-control form-control-sm" id="audit_to" name="to" value="' . h($filters['to']) . '" />
                     </div>
                     <div class="col-6 md:col-2">
-                        <label class="form-label small" for="audit_user">' . lang('User') . '</label>
+                        <label class="pg-field-label" for="audit_user">' . lang('User') . '</label>
                         <select class="form-control form-control-sm" id="audit_user" name="user">' . $user_options . '</select>
                     </div>
                     <div class="col-6 md:col-2">
-                        <label class="form-label small" for="audit_type">' . lang('Record') . '</label>
+                        <label class="pg-field-label" for="audit_type">' . lang('Record') . '</label>
                         <select class="form-control form-control-sm" id="audit_type" name="type">' . $type_options . '</select>
                         ' . (($filters['id'] > 0) ? '<input type="hidden" name="id" value="' . (int) $filters['id'] . '" />' : '') . '
                     </div>
                     <div class="col-12 md:col-4">
-                        <label class="form-label small" for="audit_search">' . lang('Search') . '</label>
+                        <label class="pg-field-label" for="audit_search">' . lang('Search') . '</label>
                         <div class="input-group input-group-sm">
                             <input type="search" class="form-control" id="audit_search" name="search" value="' . h($filters['search']) . '" placeholder="' . h(lang('Number, name, user or IP')) . '" />
                             <button type="submit" class="btn btn-outline theme-secondary"><i class="bi bi-search" aria-hidden="true"></i><span class="visually-hidden">' . lang('Search') . '</span></button>
@@ -204,7 +204,7 @@ pg_page_shell([
 
             ' . $output_record . '
 
-            <div class="card my-7">
+            <div class="card pg-card erp-list-card my-7">
                 <div class="card-body p-0 table-responsive">
                     <table class="table table-hover mb-0" data-pg-sort>
                         <thead>
