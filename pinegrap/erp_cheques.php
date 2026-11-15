@@ -168,11 +168,11 @@ $output_new = (!$ready || $readonly) ? '' : '
                         <label class="form-label" for="serial_no">' . lang('Serial number') . '</label>
                         ' . $liveform->output_field(array('type' => 'text', 'id' => 'serial_no', 'name' => 'serial_no', 'class' => 'form-control', 'maxlength' => '40')) . '
                     </div>
-                    <div class="col-12">
+                    <div class="col-12 md:col-6">
                         <label class="form-label" for="bank_name">' . lang('Bank') . '</label>
                         ' . $liveform->output_field(array('type' => 'text', 'id' => 'bank_name', 'name' => 'bank_name', 'class' => 'form-control', 'maxlength' => '100')) . '
                     </div>
-                    <div class="col-12">
+                    <div class="col-12 md:col-6">
                         <label class="form-label" for="branch">' . lang('Branch') . '</label>
                         ' . $liveform->output_field(array('type' => 'text', 'id' => 'branch', 'name' => 'branch', 'class' => 'form-control', 'maxlength' => '100')) . '
                     </div>
@@ -181,7 +181,7 @@ $output_new = (!$ready || $readonly) ? '' : '
                         ' . $liveform->output_field(array('type' => 'text', 'id' => 'drawer', 'name' => 'drawer', 'class' => 'form-control', 'maxlength' => '150')) . '
                         <div class="form-text">' . lang('Whose cheque or note it is, when it is not the account\'s own.') . '</div>
                     </div>
-                    <div class="col-12 md:col-6">
+                    <div class="col-12 pg-field-span-6">
                         <label class="form-label" for="till_id">' . lang('Kept in') . '</label>
                         ' . $liveform->output_field(array('type' => 'select', 'id' => 'till_id', 'name' => 'till_id', 'class' => 'form-control', 'options' => $tills, 'required' => 'required')) . '
                         <div class="form-text">' . lang('A till the store keeps for cheques and notes: the portfolio for the ones taken, one for the ones given. Add it under Cash and Bank first.') . '</div>

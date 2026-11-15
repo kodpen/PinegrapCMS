@@ -20,5 +20,6 @@ description: Expenses, Expense Categories, Cheques and Bank Statements in look A
 - Left inline: the status column's sticky `top:3.3rem` (the shared pattern of the panel's status columns) and the save bar's `bottom:.5rem`.
 
 ## Which field widths?
-- New cheque or note, by the field widths of DL5c (#9658): Direction, Type, Account, Kept in 6; Amount, Date, Due Date 3; Serial number 4; Bank, Branch, Drawn by, Notes the whole row.
+- New cheque or note, by the field widths of DL5c (#9658): Direction, Type, Account 6; Amount, Date, Due Date 3; Serial number 4; Bank and Branch 6 + 6 on one row (two short names that belong together); Drawn by and Notes the whole row.
+- Kept in is alone in its row: `col-12 pg-field-span-6`, so its help runs the row's width (architect, channel 25 message 4459). The span rule comes with #9658; before it lands the select is the whole row.
 - The Expenses filter bar and the Take in form in the status column keep theirs.
