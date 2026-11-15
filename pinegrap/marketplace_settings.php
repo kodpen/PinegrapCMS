@@ -1925,6 +1925,8 @@ echo pg_page_shell(array(
    fit a phone, so the block scrolls sideways rather than stacking every row
    into a paragraph nobody can scan. Type and colours are the tokens of look A:
    the column heads as the head of a report table, the rows at the base size. */
+/* The screen reads at the base size of look A (14 px), not the 16 px body. */
+.mp-screen main#content { font-size: var(--pg-text-base); }
 .mp-scroll { overflow-x: auto; overflow-y: hidden; }
 .mp-head, .mp-row { display: grid; grid-template-columns: 2fr 1.4fr 1fr .9fr .9fr 40px;
 	gap: 12px; align-items: center; min-width: 760px; }
