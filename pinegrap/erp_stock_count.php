@@ -130,7 +130,7 @@ foreach ($items as $item) {
         <tr>
             <td class="text-wrap text-break" style="max-width:14rem">' . h($name) . ((trim((string) $item['product_sku']) !== '' && trim((string) $item['product_sku']) !== trim($name)) ? '<div class="pg-text-2 font-monospace">' . h((string) $item['product_sku']) . '</div>' : '') . '</td>
             <td class="text-end" data-sort="' . $system . '">' . h(erp_quantity_text($system)) . '</td>
-            <td style="width:9rem" data-sort="' . (int) $item['counted'] . '">' . ($open
+            <td style="width:6rem" data-sort="' . (int) $item['counted'] . '">' . ($open
                 ? '<input type="text" class="form-control form-control-sm text-end" name="counted[' . (int) $item['product_id'] . ']" value="' . (int) $item['counted'] . '" inputmode="numeric" maxlength="7" aria-label="' . h(lang('Counted')) . '" />'
                 : '<span class="d-block text-end">' . h(erp_quantity_text((int) $item['counted'])) . '</span>') . '</td>
             <td class="text-end fw-semibold ' . (($diff < 0) ? 'fg-danger' : (($diff > 0) ? 'fg-success' : 'fg-secondary')) . '" data-sort="' . $diff . '">' . (($diff > 0) ? '+' : '') . h(erp_quantity_text($diff)) . '</td>
