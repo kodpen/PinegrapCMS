@@ -25289,8 +25289,9 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
     text-align: start !important;
   }
   /* The row's buttons keep the label column too: the wide rule's 10 px
-     sides would start them at the left edge, over their "Action" label. */
-  .pg-list-table-grid > tbody > tr > td[data-pg-col="actions"] {
+     sides would start them at the left edge, over their "Action" label.
+     Offers is left as it is drawn today: its look waits for the owner. */
+  .pg-list-table:not([data-pg-list-table="view_offers"]) .pg-list-table-grid > tbody > tr > td[data-pg-col="actions"] {
     padding-inline: calc(14px + var(--pg-list-table-label) + 0.75rem) 14px;
   }
   .pg-list-table-grid > tbody > tr > td::before {
