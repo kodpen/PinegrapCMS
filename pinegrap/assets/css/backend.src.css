@@ -28641,6 +28641,18 @@ body.erp_aging .pg-report-table th[scope="row"] {
   color: var(--pg-fg-2);
 }
 
+/* A note over the figures (the tax report's orders without an invoice):
+   the alert's tone in body text, its icon beside the words. */
+.pg-report-note {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin: 0 0 16px;
+  padding: 14px 18px;
+  font-size: var(--pg-text-base);
+  line-height: 1.45;
+}
+
 /* The table's frame: a 48 px head (the levels, a note), then the table. */
 .pg-report-frame {
   min-width: 0;
@@ -28752,6 +28764,20 @@ body.erp_aging .pg-report-table th[scope="row"] {
 .pg-report-table > tfoot > tr:last-child > * {
   border-bottom: 0;
 }
+/* The shipping report's day columns: fourteen of them fit at 1440 px;
+   a longer period scrolls inside the frame. */
+.pg-report-table .pg-report-day {
+  padding: 0 6px;
+  min-width: 3.25rem;
+}
+/* The frame's foot: Show all under a table that lists its first rows. */
+.pg-report-frame-foot:not([hidden]) {
+  display: flex;
+  justify-content: center;
+  padding: 12px 18px;
+  border-top: 1px solid var(--pg-border-color-translucent);
+}
+
 /* A phone: the first column (a row's name, after its level's indent)
    stays in place while the figures scroll under it, at most half the
    width, its words wrapping; the cell is drawn opaque, its row's tint

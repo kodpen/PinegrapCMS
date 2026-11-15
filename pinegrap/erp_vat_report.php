@@ -282,6 +282,10 @@ foreach ($labels as $key => $label) {
     }
 }
 
+// The table opens on its first rows; Show all lists the rest.
+$documents_listed = min(count($report['documents']), $shown_limit);
+$documents_first = 25;
+
 $more_documents = (count($report['documents']) > $shown_limit)
     ? '<p class="small fg-secondary m-5">' . h(lang(array('string' => 'The first {var:1} of {var:2} are shown; the workbook has them all.', 'vars' => array($shown_limit, count($report['documents']))))) . '</p>'
     : '';
@@ -289,7 +293,7 @@ $more_documents = (count($report['documents']) > $shown_limit)
 // What the reader should know about the figures.
 $output_notes = '';
 if ((int) $report['orders']['count'] > 0) {
-    $output_notes .= '<div class="alert theme-warning my-5"><i class="bi bi-cart-check me-1" aria-hidden="true"></i>' . h(lang(array(
+    $output_notes .= '<div class="alert theme-warning pg-report-note"><i class="bi bi-cart-check" aria-hidden="true"></i>' . h(lang(array(
         'string' => '{var:1} completed order(s) of this period have no invoice (about {var:2} of tax), so their tax is not in these figures.',
         'vars' => array((int) $report['orders']['count'], erp_money_out((int) $report['orders']['tax'])),
     ))) . '</div>';
@@ -321,6 +325,7 @@ foreach (array_keys($report['months']) as $month) {
 }
 
 $report_view_names = array(
+    'tax' => erp_tax_label('tax'),
     'calculated' => erp_tax_label('calculated'),
     'deductible' => erp_tax_label('deductible'),
     'kinds' => $labels,
@@ -374,7 +379,7 @@ pg_page_shell([
                     <input type="date" data-pg-date class="form-control" id="to" name="to" min="' . ERP_PROFIT_FIRST_YEAR . '-01-01" max="' . ERP_PROFIT_LAST_YEAR . '-12-31" value="' . h($period['to']) . '" />
                 </span>
                 <button type="submit" class="pg-button pg-button-quiet"><i class="bi bi-arrow-repeat" aria-hidden="true"></i>' . lang('Show') . '</button>
-                <span class="pg-report-range"><i class="bi bi-calendar3" aria-hidden="true"></i>' . h(prepare_form_data_for_output($period['from'], 'date', false) . ' – ' . prepare_form_data_for_output($period['to'], 'date', false)) . '</span>
+                <span class="pg-report-range"><i class="bi bi-calendar3" aria-hidden="true"></i>' . pg_report_view_range(get_absolute_time(array('timestamp' => strtotime($period['from']), 'type' => 'date')), get_absolute_time(array('timestamp' => strtotime($period['to']), 'type' => 'date'))) . '</span>
                 <a class="pg-button pg-button-quiet ms-auto" href="' . $export_url . '"><i class="bi bi-file-earmark-spreadsheet" aria-hidden="true"></i>' . lang('Excel') . '</a>
             </form>
 
@@ -422,12 +427,12 @@ pg_page_shell([
             <section class="pg-card pg-report-frame">
                 <div class="pg-report-frame-head">
                     <h3 class="pg-report-frame-title">' . lang('Documents of the period') . '</h3>
-                    <label class="pg-report-label ms-auto" for="erp_vat_kind">' . lang('Document type') . '</label>
-                    <select class="form-control" id="erp_vat_kind">' . $kind_options . '</select>
+                    <span class="pg-report-frame-note" id="erp_vat_count" aria-live="polite" data-shown="' . h(lang(array('string' => '{var:1} of {var:2} documents shown', 'vars' => array('{shown}', '{all}')))) . '" data-all="' . h(lang(array('string' => '{var:1} documents', 'vars' => '{all}'))) . '">' . h(lang(array('string' => '{var:1} documents', 'vars' => $documents_listed))) . '</span>
+                    <span class="pg-report-field ms-auto"><label class="pg-report-label" for="erp_vat_kind">' . lang('Document type') . '</label><select class="form-control" id="erp_vat_kind">' . $kind_options . '</select></span>
                 </div>
-                <div class="pg-report-frame-body table-responsive" style="max-height:40rem;scroll-padding-top:2.5rem">
+                <div class="pg-report-frame-body table-responsive">
                     <table class="pg-report-table" data-pg-sort id="erp_vat_documents">
-                        <thead class="sticky-top">
+                        <thead>
                             <tr>
                                 <th>' . lang('Date') . '</th>
                                 <th>' . lang('Document Number') . '</th>
@@ -444,6 +449,7 @@ pg_page_shell([
                         <tbody>' . $output_documents . '</tbody>
                     </table>
                 </div>
+                <div class="pg-report-frame-foot" hidden><button type="button" class="pg-button pg-button-quiet" id="erp_vat_all"><i class="bi bi-chevron-down" aria-hidden="true"></i>' . lang('Show all') . '</button></div>
                 ' . $more_documents . '
             </section>
 
@@ -466,14 +472,31 @@ pg_page_shell([
         });
     }
 
+    // The documents: the kind chosen, then the first rows of it until Show
+    // all; the count in the head says how many of how many are shown. A
+    // sort reorders the rows, so the first ones are counted again.
     var kind = document.getElementById("erp_vat_kind");
     var table = document.getElementById("erp_vat_documents");
-    if (kind && table) {
-        kind.addEventListener("change", function () {
-            table.querySelectorAll("tbody tr[data-kind]").forEach(function (row) {
-                row.hidden = (kind.value !== "") && (row.getAttribute("data-kind") !== kind.value);
-            });
+    var count = document.getElementById("erp_vat_count");
+    var all = document.getElementById("erp_vat_all");
+    var first = ' . (int) $documents_first . ';
+    var open = false;
+    function show() {
+        var matching = 0, shown = 0;
+        table.querySelectorAll("tbody tr[data-kind]").forEach(function (row) {
+            var match = (kind.value === "") || (row.getAttribute("data-kind") === kind.value);
+            if (match) { matching++; }
+            row.hidden = !match || (!open && matching > first);
+            if (!row.hidden) { shown++; }
         });
+        count.textContent = (shown < matching ? count.getAttribute("data-shown").replace("{shown}", shown) : count.getAttribute("data-all")).replace("{all}", matching);
+        all.parentNode.hidden = (shown >= matching);
+    }
+    if (kind && table && count && all) {
+        kind.addEventListener("change", show);
+        all.addEventListener("click", function () { open = true; show(); });
+        new MutationObserver(show).observe(table.tBodies[0], { childList: true });
+        show();
     }
 })();
 </script>
