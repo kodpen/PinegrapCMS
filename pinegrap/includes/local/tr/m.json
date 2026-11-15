@@ -934,6 +934,7 @@
     "Mesh": "Işık Ağı",
     "Mesh point": "Ağ noktası",
     "Message": "Mesaj",
+    "Message #{var:1}": "Mesaj #{var:1}",
     "Message (HTML)": "Mesaj (HTML)",
     "Message Field": "Mesaj Alanı",
     "Message Label": "Mesaj Etiketi",

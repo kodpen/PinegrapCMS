@@ -127,7 +127,15 @@ function ws_note_export_tokens($body, $refs, $base = '')
             $url = rtrim($base, '/') . $url;
         }
 
-        return ($url !== '') ? '[' . $label . '](' . $url . ')' : $label;
+        // A message pointed at keeps who wrote it and its words after its
+        // number (ws_message_ref()): the file is read away from the channel.
+        $rest = '';
+
+        if (isset($ref['plain']) && (strpos((string) $ref['plain'], (string) $ref['label']) === 0)) {
+            $rest = str_replace(array('[', ']'), array('(', ')'), substr((string) $ref['plain'], strlen((string) $ref['label'])));
+        }
+
+        return (($url !== '') ? '[' . $label . '](' . $url . ')' : $label) . $rest;
     }, (string) $body);
 }
 
