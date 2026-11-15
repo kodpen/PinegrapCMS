@@ -52,6 +52,21 @@ function ws_poll_is_asker($poll, $message, $viewer_id, $as_app = 0)
 }
 
 /**
+ * Did this person ask the poll with their own message? False on an
+ * application's poll, whose owner is its created_by but not its asker, so
+ * the box offers no change or take-back the change would refuse. Pure.
+ *
+ * @param array $poll           ws_polls row
+ * @param int   $viewer_id
+ * @param int   $message_app_id the application whose message the poll is, 0 for a person's
+ * @return bool
+ */
+function ws_poll_person_asked($poll, $viewer_id, $message_app_id)
+{
+    return ((int) $poll['created_by'] === (int) $viewer_id) && ((int) $message_app_id === 0);
+}
+
+/**
  * Was the poll taken back? Pure.
  *
  * @param array $poll ws_polls row

@@ -1085,9 +1085,12 @@ function ws_polls_map($message_ids, $viewer)
         $channel = ws_channel($poll['channel_id']);
         $withdrawn = ((int) ($poll['withdrawn_at'] ?? 0) > 0);
         $links = $again[$poll_id] ?? array('again_of' => 0, 'again_of_message' => 0, 'asked_again' => 0, 'asked_again_message' => 0);
-        // The person who asked; an agent's poll is taken back through its key.
-        $asker = ((int) $poll['created_by'] === (int) $viewer['id']) && (ws_message_app_id($poll['message_id']) === 0)
-            && ws_can_post_channel($viewer, $channel) && ws_poll_again_ready();
+        // The person who asked, with the question their own message; an
+        // application's poll is changed and taken back through its key, never
+        // by its owner (ws_poll_is_asker()).
+        $own_question = ws_poll_person_asked($poll, $viewer['id'], ws_message_app_id($poll['message_id']));
+        $can_post = ws_can_post_channel($viewer, $channel);
+        $asker = $own_question && $can_post && ws_poll_again_ready();
 
         // Asked of named people, settled by the first answer (agent_question.php).
         $question = ws_agent_question_map_fields($poll, $viewer);
@@ -1110,7 +1113,7 @@ function ws_polls_map($message_ids, $viewer)
             'can_vote'   => $can_vote && (!$question['agent_question'] || $question['can_answer']),
             'can_close'  => !$closed && !$withdrawn && !$question['agent_question'] && ws_can_close_poll($viewer, $poll, $channel),
             // The asker changes it while it is open; the form is filled from these.
-            'can_edit'   => !$closed && !$withdrawn && ((int) $poll['created_by'] === (int) $viewer['id']) && ws_can_post_channel($viewer, $channel),
+            'can_edit'   => !$closed && !$withdrawn && $own_question && $can_post,
             // Taken back and asked again (poll_again.php).
             'withdrawn'           => $withdrawn,
             'withdrawn_at'        => (int) ($poll['withdrawn_at'] ?? 0),
