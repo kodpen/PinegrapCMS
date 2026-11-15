@@ -168,6 +168,9 @@ function test_workspace_mail_no_answer_left()
 		pg_assert_false(ws_mail_no_answer_left($state), $state . ': nothing to wait for');
 	}
 
+	// The item's row is gone: its draft was deleted, or sent again as a new item.
+	pg_assert_false(ws_mail_no_answer_left(null), 'no item row: nothing to wait for');
+
 	pg_assert_contains('No answer yet', ws_mail_no_answer_badge_html(), 'the row\'s and pane\'s words');
 	pg_assert_contains('badge theme-warning', ws_mail_no_answer_badge_html());
 }
