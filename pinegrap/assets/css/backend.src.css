@@ -5955,9 +5955,10 @@ div#software_image_picker_container {
   -webkit-backdrop-filter: brightness(0.7) saturate(1.7) blur(100px); backdrop-filter: brightness(0.7) saturate(1.7) blur(100px);
 }
 
+/* The order's lines: a flush list framed as the look's card (pg-card), its
+   rows on the card's surface. */
 .list-group.order-list-group {
-  border-radius: var(--pg-radius-2xl);
-  --bs-list-group-border-width: 2px;
+  --bs-list-group-bg: transparent;
   --bs-list-group-item-padding-x: 1rem;
   --bs-list-group-item-padding-y: 1rem;
 }
@@ -11476,12 +11477,10 @@ body.pg-side-panel-open .pg-chat-launcher {
   align-items: center;
   gap: .75rem;
 }
+/* A card title of the sale screen: the look's section title in the form
+   column, its status title beside it (pg-title-section, pg-title-status). */
 .pg-sale-ch {
   margin: 0;
-  font-size: .95rem;
-  font-weight: 700;
-  letter-spacing: .05em;
-  text-transform: uppercase;
 }
 .pg-sale kbd,
 .pg-sale-keys kbd {
