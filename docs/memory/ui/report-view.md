@@ -9,7 +9,7 @@ module: report_view
 
 ## Where do the figures come from?
 - `pg_report_view_figures($grand, $charge_columns, $symbol)`: Orders, then the Grand Total row's money columns in the table's order (Subtotal, Discount, Tax, Shipping, the shown charge columns, Total). Read from the same buckets the table prints, so a figure always equals its Grand Total cell; the queries are untouched. Money is `pg_money_text()` text (the symbol decoded, tiles are written with textContent).
-- The visitor report: `pg_report_view_visitor_figures($grand, $ecommerce, $symbol)` from the Grand Total row's own sums (`$grand_count`, `$grand_page_views`, ...): Visitors, Page Views, Custom Form Submitted %, and only with `ECOMMERCE` (`$output_order_cells`) Order Completed %, Order Total and Average Order Amount, each the text of its cell (a share over visitors, 0% with none; money rounded, never cut).
+- The visitor report: `pg_report_view_visitor_figures($grand, $ecommerce, $symbol)` from the Grand Total row's own sums: Visitors, Page Views, Custom Form Submitted %, and only with `ECOMMERCE` Order Completed %, Order Total and Order amount per visitor (order total over visitors; "Average Order Amount" before #9718), each the text of its cell (a share over visitors, 0% with none; money rounded, never cut).
 
 ## Which chart does a level get?
 - `pg_report_view_chart_kind($level)` on the first summarize-by level: `line` for year, month, day; `map` for billing country (world map, `pg_sales_map_country_code()`, two spellings of a country are one place); `none` without a level or for a level of one person's details (names, addresses, phone, e-mail, card, IP, PO, reference and tracking codes); `bars` for every other named level (billing state included: a state has no country beside it to pick a map).
@@ -17,6 +17,8 @@ module: report_view
 - The order report measures money (`pg_report_view_chart()`, "Total by …"); the visitor report counts visitors (`pg_report_view_visitor_chart()`, "Visitors by …", its country level the map). Both go through `pg_report_view_chart_by()` with a measure: what is ranked, drawn, written in a row and said on hover.
 - Bars and the map's rows list the ten largest totals (`PG_REPORT_VIEW_ROWS`); map shading is four steps by rank (`pg_report_view_steps()`), a lone place the darkest.
 - A point says its figures on hover and keyboard focus (the plot's tip), a bar prints them, a country says them through `pgDash.chartTips` (`dashboard-v2-chart-tips.md`).
+
+- A country level names its places by the site's countries list: `report-view-country-names.md`.
 
 ## How is it drawn?
 - The server prints the data as `<script type="application/json" id="pg_report_view_data">` (JSON_HEX_TAG) inside `<section class="pg-report-view">`. `assets/js/pg_report_view.js` draws the figures, the line (SVG: grid, fill, dashed compare, crosshair, tip) and the bars itself; the map comes from `pgDash.mapShapes` and `chartTips`.

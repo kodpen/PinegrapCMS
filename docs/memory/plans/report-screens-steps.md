@@ -16,7 +16,7 @@ description: Steps of plans/report-screens.md: RS1-RS7 landed; RS8 the look (RS8
   3. The report's title wraps and is never cut with an ellipsis ("Kaynağa göre ziyaret..."); the pill goes under it. The breadcrumb's last part ends with an ellipsis, not mid-letter.
   4. A table on a phone: the first column stays in place and takes at most half the width, its header wraps; today the order report shows only names, every figure is off the screen.
   5. The charts' x-axis: ticks at even steps (shipping jumps 15, 17, 19, 22; the VAT year shows Temmuz and then Ağustos).
-- RS8b (S) Order and visitor reports:
+- RS8b (S) Done: #9718. Order and visitor reports:
   1. A ready order report shows its period and the period control as every order report does; "Sales by region" shows 153 orders of no named days.
   2. Country names in place of codes in the map's list and the table's group rows, where the site knows the name; the export keeps the code.
   3. The visitor report's bars card, alone in its row, takes the whole row as the map card does.
