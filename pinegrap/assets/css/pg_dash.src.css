@@ -5180,6 +5180,16 @@
     text-decoration: none;
   }
 
+  /* An agent question: its words wrap to two lines, then the ellipsis. */
+  .pg-dash-ai-chip[data-kind="question"] {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
   a.pg-dash-ai-chip:hover {
     border-color: var(--pgd-warn);
   }

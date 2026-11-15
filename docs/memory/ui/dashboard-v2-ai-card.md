@@ -11,6 +11,7 @@ description: New dashboard Assistant card (cards/ai.php, pg_dash_cards_assistant
 - The header chip fills the frame's `.pg-dash-card-chip` slot from the renderer.
 
 ## Which proposals are counted?
+- Agent questions sit above them: `workspace/poll-agent-question-reach.md`.
 - Record changes `ws_ai_changes` pending with `requested_by` the person (only they apply them, `ws_change_apply_check()`), in a channel they may post in, or on a task they still see; task drafts `ws_ai_drafts` pending from the person's own `ws_ai_requests`, in a channel they may post in. Any agent's, not only Claude's.
 - Chips "Task: …" / "Change: …" (a change's reason, else "Update/New/Delete <kind>"), newest four, cut to 60 characters; each opens its card (`workspace.php?channel=&message=`, or `workspace_tasks.php?task=`). The title carries the full count, "n more in the Workspace" below.
 
@@ -19,7 +20,7 @@ description: New dashboard Assistant card (cards/ai.php, pg_dash_cards_assistant
 - Channel: the one the person last asked Claude in, else the oldest public unarchived channel; only where they may post and `ws_claude_channel_allowed()`. None: a line saying a channel manager can allow Claude. The note names the channel; after sending, "Sent to #x" with an Open link to the message.
 
 ## How does the chat box work?
-- A8b, #8575: a section under the job box, "Chat with an assistant", on the same catalogue: no list, store or tool of its own. Choice made by the session (owner away, architect: "decide what fits best").
+- A8b, #8575: a section under the job box, "Chat with an assistant", on the same catalogue: no list, store or tool of its own.
 - Who: the `ws_assistants()` entries a message can ask (`pg_dashboard_v2_ai_chat_askable()`): Claude and Pinegrap AI by their tag and channel switch, an MCP alias as `@alias` where Pinegrap AI may be asked, a registry agent by `<@app:N>` where the channel allows it. A picker shows "name · #channel" when there are several.
 - Where: per assistant the first channel of `pg_dashboard_v2_ai_channels()` (the one the person last asked any assistant in, then the oldest public ones; unarchived, may post) where it may be asked. The note says everybody who reads the channel sees the talk. Its note keeps the job box's 8 px under the field: `.pg-dash-ai-talk` has no flex gap to absorb the job box's -.375rem pull-up, so `.pg-dash-ai-chat-form + .pg-dash-ai-status` sets .5rem (#8625).
 - How: the first line is a new message `<tag> text` through `ws_send`, the next ones reply to it (`parent_id`), each with the tag; then the kick the answer names (`claude`, `ai`, `agent`). Text limit `pg_dashboard_v2_ai_chat_max()`: 2000, or `WS_MESSAGE_MAX` less the tag.

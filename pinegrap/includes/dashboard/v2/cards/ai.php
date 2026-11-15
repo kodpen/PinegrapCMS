@@ -151,6 +151,32 @@ function pg_dashboard_v2_ai_chip($kind, $title, $url, $time)
 }
 
 /**
+ * The agent questions waiting for the person's answer as chips: "Question:
+ * …", the asking agent named. Pure.
+ *
+ * @param array[] $questions ws_agent_questions_for() rows
+ * @return array[] kind (question), text, url, time
+ */
+function pg_dashboard_v2_ai_question_chips($questions)
+{
+    $chips = array();
+
+    foreach ((array) $questions as $question) {
+        $asker = trim((string) ($question['asker']['name'] ?? ''));
+        $text = pg_dashboard_v2_ai_cut((string) ($question['question'] ?? ''));
+
+        $chips[] = array(
+            'kind' => 'question',
+            'text' => lang('Question') . ': ' . (($asker !== '') ? $asker . ' · ' : '') . $text,
+            'url'  => (string) ($question['url'] ?? ''),
+            'time' => (int) ($question['created_at'] ?? 0),
+        );
+    }
+
+    return $chips;
+}
+
+/**
  * The newest chips first, at most $limit of them. Pure.
  *
  * @param array $chips pg_dashboard_v2_ai_chip() rows
@@ -586,6 +612,8 @@ function pg_dashboard_v2_card_ai($user, $period, $compare)
     }
 
     $chips = pg_dashboard_v2_ai_proposals($viewer);
+    // Agent questions asked of the person (agent_question.php), above the proposals.
+    $questions = pg_dashboard_v2_ai_question_chips(function_exists('ws_agent_questions_for') ? ws_agent_questions_for($viewer, 20) : array());
     $channel = pg_dashboard_v2_ai_job_channel($viewer);
     $assistants = ws_assistants();
     $chat_channels = pg_dashboard_v2_ai_channels($viewer);
@@ -616,6 +644,13 @@ function pg_dashboard_v2_card_ai($user, $period, $compare)
                 ? lang(array('string' => '{var:1} more in the Workspace', 'vars' => pg_format_number(count($chips) - PG_DASHBOARD_V2_AI_CHIPS, 0)))
                 : '',
             'none'  => lang('Nothing is waiting for your approval.'),
+        ),
+        'questions' => array(
+            'title' => lang(array('string' => 'Agent questions waiting for your answer · {var:1}', 'vars' => pg_format_number(count($questions), 0))),
+            'chips' => pg_dashboard_v2_ai_chips_order($questions),
+            'more'  => (count($questions) > PG_DASHBOARD_V2_AI_CHIPS)
+                ? lang(array('string' => '{var:1} more in the Workspace', 'vars' => pg_format_number(count($questions) - PG_DASHBOARD_V2_AI_CHIPS, 0)))
+                : '',
         ),
         'summary'   => pg_dashboard_v2_ai_summary($viewer),
         'job'       => $job,
