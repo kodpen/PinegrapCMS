@@ -13395,6 +13395,17 @@
             line.appendChild(icon(state.icon));
             line.appendChild(el('span', '', state.label));
 
+            // While an agent holds the request: its last progress note and
+            // since when it holds it (agent_shown.php). The answer's line
+            // takes their place.
+            if (state.note) {
+                line.appendChild(el('span', 'ws-claude-note', '· ' + state.note));
+            }
+
+            if (state.since) {
+                line.appendChild(el('span', 'ws-claude-since', '· ' + state.since));
+            }
+
             // A request to an MCP agent can be stopped while it waits or
             // runs, by the one who asked or an administrator (mcp_agent.php).
             if (state.cancel) {
