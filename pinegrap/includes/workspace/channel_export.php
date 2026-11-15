@@ -155,23 +155,58 @@ function ws_channel_export_sender($message)
 }
 
 /**
- * A poll as one line: its question, each answer with its votes, and whether
- * it is closed.
+ * A poll as one line: its question, each answer with its votes (the words
+ * of "Other" beside it unless the poll is anonymous), and whether it is
+ * closed or taken back. An agent question has no counts: its answer and who
+ * gave it, or whom it waits for.
  *
  * @param string $question the question, tags written out already
- * @param array  $poll     the payload's poll
+ * @param array  $poll     the payload's poll (ws_polls_map())
  * @return string
  */
 function ws_channel_export_poll_line($question, $poll)
 {
+    $question = trim((string) $question);
+    $withdrawn = !empty($poll['withdrawn']);
+
+    if (!empty($poll['agent_question'])) {
+        if ($withdrawn) {
+            return lang(array('string' => 'Agent question (taken back): {var:1}', 'vars' => $question));
+        }
+
+        if (!empty($poll['closed'])) {
+            $who = trim((string) ($poll['answered_by']['name'] ?? ''));
+
+            return lang(array('string' => 'Agent question: {var:1} — {var:2} ({var:3})', 'vars' => array($question, trim((string) ($poll['answer'] ?? '')), $who)));
+        }
+
+        $asked = array();
+
+        foreach ((array) ($poll['asked'] ?? array()) as $person) {
+            $asked[] = trim((string) ($person['name'] ?? ''));
+        }
+
+        return lang(array('string' => 'Agent question: {var:1} (waiting for {var:2})', 'vars' => array($question, implode(', ', array_filter($asked)))));
+    }
+
     $answers = array();
 
     foreach ((array) ($poll['options'] ?? array()) as $option) {
-        $answers[] = trim((string) $option['label']) . ' ' . (int) $option['count'];
+        $line = trim((string) $option['label']) . ' ' . (int) $option['count'];
+        $words = array();
+
+        foreach ((array) ($option['voters'] ?? array()) as $voter) {
+            if (trim((string) ($voter['text'] ?? '')) !== '') {
+                $words[] = trim((string) $voter['text']);
+            }
+        }
+
+        $answers[] = (!empty($option['other']) && $words) ? $line . ' (' . implode('; ', $words) . ')' : $line;
     }
 
-    return lang(array('string' => empty($poll['closed']) ? 'Poll: {var:1} — {var:2}' : 'Poll (closed): {var:1} — {var:2}',
-        'vars' => array(trim($question), implode(' · ', $answers))));
+    $sentence = $withdrawn ? 'Poll (taken back): {var:1} — {var:2}' : (empty($poll['closed']) ? 'Poll: {var:1} — {var:2}' : 'Poll (closed): {var:1} — {var:2}');
+
+    return lang(array('string' => $sentence, 'vars' => array($question, implode(' · ', $answers))));
 }
 
 /**

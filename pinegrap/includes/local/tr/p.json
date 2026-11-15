@@ -1918,6 +1918,7 @@
     "Politics": "Politika",
     "Poll": "Oylama",
     "Poll (closed): {var:1} — {var:2}": "Anket (kapandı): {var:1} — {var:2}",
+    "Poll (taken back): {var:1} — {var:2}": "Oylama (geri alındı): {var:1} — {var:2}",
     "Poll door": "Yoklama kapısı",
     "Poll result: **{var:1}** ({var:2} of {var:3} voters) - {var:4}": "Oylama sonucu: **{var:1}** ({var:3} kişiden {var:2} oy) - {var:4}",
     "Poll: it reads its requests itself": "Yoklama: isteklerini kendisi okur",
