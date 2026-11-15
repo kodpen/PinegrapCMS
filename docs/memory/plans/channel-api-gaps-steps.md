@@ -9,7 +9,7 @@ description: Steps CA2 to CA16 of plans/channel-api-gaps.md: the agents' side (C
 - Given 2026-11-15 (agent channel messages 5101 and 5119). A done step gets its PR number here.
 
 ## The agents' side?
-- CA2 (`@elcin`) G1 the "Add an agent" list (`addable` on the channel's agents) and G2 the agent card (`GET /workspace/channels/{id}/agents/{agent_id}`), with MCP tools.
+- CA2 (`@elcin`) G1 the "Add an agent" list (`addable` on the channel's agents) and G2 the agent card (`GET /workspace/channels/{id}/agents/{agent_id}`), with MCP tools. Done: #9766.
 - CA3 (`@adnan`) G3 the person card (`GET /workspace/channels/{id}/members/{user_id}`): team readers only, `seen` for a manager. Done: PR #9771.
 - CA4 (`@elcin`, after CA2) G4 a person sets an agent's wake (`POST /workspace/channels/{id}/agents/{agent_id}/wake`: every, at, off; dry run). Person only: an application key sets no other agent's wake. Done #9798.
 - CA5 (`@adnan`) G5 `agent:<id>` and `model:<id>` as `agent` values on `GET /workspace/assistant-requests`. Done (#9770).
