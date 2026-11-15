@@ -396,8 +396,10 @@
 - look-design-examples.md: The Design examples screen (design_examples.php, DL2 #8907): every look A recipe live in a light and a dark pane, the classes under each, what is not a recipe yet; where a step copies markup from [decision: decisions-made-workspace-26.md]
 - look-edit-screens-wrapped-cards.md: Add and edit screens in look A: a card takes the look card only straight in its column; how wrapped cards, forms and full-width cards are handled
 - look-edit-screens.md: Add and edit screens in look A (DL5c, #8934): the edit width on every add/edit screen, columns 1300 and 376 from the shared classes, look cards and titles, the floating save bar; what is not done yet
+- look-mapping-grids.md: Column-mapping grids (one small select per column of an uploaded file) keep their own narrow columns in look A; the field widths of add and edit screens are for a record's fields [decision: here]
 - look-order-screens.md: The order screens in look A (C1, #9681): View Order and View Return on the edit measure, cards that take pg-card, order lines as a card, status values, field widths
 - look-page-widths.md: Look A's page widths: edit screens centred at 1700 px (1300 + 24 + 376), lists as wide as their columns (1700 px to the window, details panel added), held while searching; tokens, rail [decision: decisions-made-panel-7.md, decisions-made-panel-8.md, decisions-made-product-48.md]
+- look-report-erp-screens.md: ERP Dashboard, Cash Flow, Profit and Aging on look A's report recipes (#9696): server-drawn figure cards, the tools rows, the profit chart on the report view, what stayed [decision: here]
 - look-report-screens.md: Report screens in look A (DL5e, #8981): order, visitor, shipping and ERP tax reports; head, strip, tools row, table frame, drawer, the choices made and what is not done
 - look-screen-widths.md: Root panel screens outside the look's widths (no pg-measure-edit, -list or -report, or a container of their own) on 2026-11-13, and the PR that took each (#9230, #9330, #9249) [decision: decisions-made-panel-7.md, decisions-made-panel-8.md]
 - look-settings-screens.md: Settings screens in look A (DL5d, #8952): dialog size, rail, head and foot; cards as a title over an inner card of rows, page and dialog; 32 px fields, switch; what is not done
@@ -410,6 +412,7 @@
 - main-menu-communication-icon.md: The Communication row's own drawing (row 9): a speech bubble with an arrow out and an arrow in, its colours and hover movement; the megaphone it replaced [decision: here]
 - main-menu-design-studio-row.md: Main menu row 21, Page Design Studio: its Other entry holding the old Page Styles and Ads entries in a second-level panel, the gates, how Other's screens mark it, retired slots 16 and 17 [decision: decisions-made-panel-6.md]
 - main-menu-drawer-focus.md: The phone main menu drawer (below lg) is inert while shut, Escape gives focus back to the bar button, focus leaving it shuts it; the symptoms they fixed
+- main-menu-drawer-only.md: A drawer-only screen (output_header()'s menu_drawer, Page Design Studio): the main menu as the phone drawer at every width, opened by the screen's own button (#9712)
 - main-menu-entry-gates.md: Main menu entries follow the gate of the screen they open: the screens that had no menu path for some of the people they admit, the entries that led to a refusal, and how both were checked
 - main-menu-icons.md: Main menu icons in two colours: row drawings (pg_menu_icon()), grid, module and accent colours, hover motion, the System tools toolbox, the panel entries' coloured tiles [decision: decisions-made-panel-2.md]
 - main-menu-navigator-screens.md: Screens whose own navigation is a main menu panel (workspace, File Manager, Catalog Manager): the menu open or narrowed, never hidden, softwaremenunav, pg_menu_navigator() [decision: decisions-made-panel.md]
@@ -553,6 +556,7 @@
 - report-screen-controls.md: Report and panel controls on Bootstrap 6: period changers, named arrows, labelled layout and date selects (#2716), calendar controls, comment rating, accessibility tables (#2900)
 - report-settings-drawer.md: The order and visitor reports' Report settings drawer (#8709, #8764): the form inside it, when it opens by itself, Close, no Edit / Cancel Edit pair
 - report-table-rows.md: Order, visitor and shipping report tables: group names and Grand Total as row headers, detail rows and product names as links, percent figures through '{var:1}%' (Search Console too), named yes marks
+- report-view-country-names.md: The report screens name a country level's places by the site's countries list (#9718): where, which levels, what keeps the stored code
 - report-view.md: The report screens' shared view (report_view.php, pg_report_view.js): figures and a chart over the table, the chart per level, its data keys and bundles; order (#8709) and visitor (#8764) reports [decision: decisions-made-panel-8.md]
 - required-boxes-and-seo-counter.md: Boxes the server refuses blank carry required (Delete in the same form gets formnovalidate); the SEO character counter is the field's description and says count, target and state in words
 - return-key-default-button.md: Return in a drawer form or SMTP Settings saves through a hidden first submit button; Enter in the guided tour leaves a focused Skip or Back button alone
