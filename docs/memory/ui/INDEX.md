@@ -427,6 +427,7 @@
 - messages-area-campaigns-tab.md: Communication › Campaigns (MA3, #9215): e-mail and SMS campaigns in one list, the channel and state filters, the merged row ids and Delete Selected, New campaign's channel menu
 - messages-area-look.md: Communication area look (MA12 #9363): pill tab strip, filter segments, notices under the strip, Sends figures and pills, Channels grid, old screens left inside [decision: here]
 - messages-area-mail-tab.md: Communication › Incoming e-mail (MA10b #9453): the tab and its gate, the moved list and pane, the door from workspace_mail.php, the menu row and its unread badge, what MA10b2 and MA10c add [decision: decisions-made-product-47.md, decisions-made-workspace-20.md, decisions-made-workspace-21.md]
+- messages-area-sends-calendar.md: Communication › Sends › Calendar (MA13 #9575): what waits to be sent by day and hour, its four sources, rights, the same-group-same-hour mark, the Work Calendar's grid reused, read only
 - messages-area-shell.md: The Communication area (MA1 #9182, MA7 #9200, MA10b #9453): menu row 9, Incoming e-mail and the five tabs with their gates, the tab strip, doors, the interim tabs, the Channels cards
 - messages-area-templates-tab.md: Communication › Templates (MA6 #9294, WA3b #9355): SMS texts edited on their card, WhatsApp templates with state, reason and Refresh, e-mail designs (MA5d) [decision: here]
 - migration-screen.md: The Migration screen (migration.php): source password handling, API URL check, error details, wording
