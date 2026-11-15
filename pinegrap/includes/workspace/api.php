@@ -426,6 +426,42 @@ function ws_api_routes()
                 array('name' => 'archived', 'in' => 'body', 'type' => 'bool'),
                 array('name' => 'customer_type', 'in' => 'body', 'type' => 'enum', 'values' => array('contact', 'user_account', 'erp_account'), 'nullable' => true, 'description' => 'The kind of record the channel is about, with customer_id: contact, user_account or erp_account. Sent together with customer_id (one alone is refused unless it clears); null or empty, or customer_id 0, takes the customer off.'),
                 array('name' => 'customer_id', 'in' => 'body', 'type' => 'int', 'min' => 0, 'nullable' => true, 'description' => 'The id of that record. With the user role, a contact must be filed in one of the owner\'s contact groups. Left out with customer_type, the customer is left alone.'),
+                array('name' => 'watch', 'in' => 'body', 'type' => 'bool', 'description' => 'Whether the events of the channel\'s records (its customer, its tasks) are written in it, the settings drawer\'s switch. A public or private channel only: a discussion or a guest\'s room is refused with 422.'),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.channels.summary',
+            'method'      => 'POST',
+            'path'        => '/workspace/channels/{id}/summary',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_channel_summary_set',
+            'dry_run' => true,
+            'returns'     => 'WorkspaceChannel',
+            'summary'     => 'Write a channel\'s summary',
+            'description' => 'Replaces the summary of the Summary tab (the plan, the people to call, the rules) for anybody who may write in the channel, as the tab does; it is kept with the caller\'s owner and the time. Tags (<#task:12>, <@user:3>) stay as written. Empty clears it. The answer is the channel with summary and summary_updated_at.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'summary', 'in' => 'body', 'type' => 'string', 'max_length' => 20000, 'required' => true, 'description' => 'The whole summary; empty clears it.'),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.channels.switches',
+            'method'      => 'POST',
+            'path'        => '/workspace/channels/{id}/switches',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_channel_switches_set',
+            'mcp'         => false,
+            'dry_run' => true,
+            'returns'     => 'WorkspaceChannel',
+            'summary'     => 'Let Claude, Pinegrap AI or voice transcripts in a channel, or stop them',
+            'description' => 'The channel menu\'s three switches, for a person who may manage the channel, signed in on a device: an application key gets 403, and no MCP tool sets them. Send only the switches to change; one that does not change leaves no line, one that does leaves the line the menu leaves. A switch the channel does not offer (its claude_allowed, ai_allowed or voice_allowed is null: the assistant is not set up, a guest\'s room, a channel shared with guests, a discussion for voice) is refused with 422.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'claude', 'in' => 'body', 'type' => 'bool', 'description' => 'Whether Claude may be asked in the channel.'),
+                array('name' => 'ai', 'in' => 'body', 'type' => 'bool', 'description' => 'Whether Pinegrap AI may be asked in the channel.'),
+                array('name' => 'voice', 'in' => 'body', 'type' => 'bool', 'description' => 'Whether the channel\'s voice messages are transcribed.'),
             ),
         ),
 
