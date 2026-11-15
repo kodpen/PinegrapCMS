@@ -1238,7 +1238,7 @@ function ws_guest_refs($bodies)
  * paused agent stay). Any other application (CI, an integration) is left
  * out. Read once per request.
  *
- * @return array app_id => name, tag (@handle), badge
+ * @return array app_id => name, tag (@handle), badge, role, model
  */
 function ws_guest_agent_apps()
 {
@@ -1249,12 +1249,21 @@ function ws_guest_agent_apps()
     }
 
     $apps = array();
+    $claude_facts = array('role' => '', 'model' => '');
 
     if (function_exists('ws_agents_ready') && ws_agents_ready()) {
-        foreach ((array) db_items("SELECT app_id, handle, name FROM ws_agents WHERE app_id > 0 AND kind IN ('app', 'model') ORDER BY id") as $row) {
-            if (!isset($apps[(int) $row['app_id']])) {
+        $roles = function_exists('ws_agent_roles') ? ws_agent_roles() : array();
+
+        // SELECT * so a site before the profile step (no role or report
+        // columns yet) reads the same: the facts are then empty.
+        foreach ((array) db_items("SELECT * FROM ws_agents WHERE kind IN ('app', 'model', 'claude') ORDER BY id") as $row) {
+            $facts = ws_guest_agent_facts($row, $roles);
+
+            if ($row['kind'] === 'claude') {
+                $claude_facts = $facts;
+            } elseif (((int) $row['app_id'] > 0) && !isset($apps[(int) $row['app_id']])) {
                 $name = trim((string) $row['name']);
-                $apps[(int) $row['app_id']] = array('name' => ($name !== '') ? $name : '@' . $row['handle'], 'tag' => '@' . $row['handle'], 'badge' => lang('AI agent'));
+                $apps[(int) $row['app_id']] = array('name' => ($name !== '') ? $name : '@' . $row['handle'], 'tag' => '@' . $row['handle'], 'badge' => lang('AI agent')) + $facts;
             }
         }
     }
@@ -1263,14 +1272,35 @@ function ws_guest_agent_apps()
     $ai_app_id = (function_exists('ws_ai_schema_ready') && ws_ai_schema_ready()) ? (int) ws_ai_config()['app_id'] : 0;
 
     if ($claude_app_id > 0) {
-        $apps[$claude_app_id] = array('name' => 'Claude', 'tag' => '@Claude', 'badge' => lang('AI assistant'));
+        $apps[$claude_app_id] = array('name' => 'Claude', 'tag' => '@Claude', 'badge' => lang('AI assistant')) + $claude_facts;
     }
 
     if ($ai_app_id > 0) {
-        $apps[$ai_app_id] = array('name' => 'Pinegrap AI', 'tag' => '@ai', 'badge' => lang('AI assistant'));
+        $apps[$ai_app_id] = array('name' => 'Pinegrap AI', 'tag' => '@ai', 'badge' => lang('AI assistant'), 'role' => '', 'model' => '');
     }
 
     return $apps;
+}
+
+/**
+ * The two facts a guest reads beside an agent's badge: its role's label
+ * (a key off the list reads as none) and its model: the one an application
+ * agent last reported, a model assistant's from its form, none for Claude.
+ * Usage, state and the report's age stay the team's. Pure.
+ *
+ * @param array $row   a ws_agents row
+ * @param array $roles ws_agent_roles(): role key => label
+ * @return array role, model ('' when unknown)
+ */
+function ws_guest_agent_facts($row, $roles)
+{
+    $key = is_string($row['role'] ?? null) ? $row['role'] : '';
+    $role = ($key !== '' && isset($roles[$key])) ? trim((string) $roles[$key]) : '';
+    $kind = (string) ($row['kind'] ?? '');
+    $model = ($kind === 'app') ? ($row['report_model'] ?? '') : (($kind === 'model') ? ($row['model'] ?? '') : '');
+    $model = is_string($model) ? trim(preg_replace('/[\x00-\x1F\x7F]+/', ' ', $model)) : '';
+
+    return array('role' => $role, 'model' => mb_substr($model, 0, 100));
 }
 
 /**
@@ -1410,6 +1440,7 @@ function ws_guest_messages($context, $after = 0, $limit = 80)
         $mine = !$staff && ((int) $row['sender_id'] === $guest_id);
         $body = (string) $row['body'];
         $badge = '';
+        $facts = array('role' => '', 'model' => '');
 
         if ($agent && isset($mcp[$id])) {
             // Under the agent's own name, without the line naming its tool.
@@ -1420,6 +1451,7 @@ function ws_guest_messages($context, $after = 0, $limit = 80)
         } elseif ($agent) {
             $sender = array('name' => $agent_apps[(int) $row['sender_id']]['name']) + ws_app_sender((int) $row['sender_id']);
             $badge = $agent_apps[(int) $row['sender_id']]['badge'];
+            $facts = array('role' => (string) $agent_apps[(int) $row['sender_id']]['role'], 'model' => (string) $agent_apps[(int) $row['sender_id']]['model']);
         } else {
             $sender = $staff ? ($people[(int) $row['sender_id']] ?? null) : ws_guest_sender((int) $row['sender_id']);
         }
@@ -1438,6 +1470,8 @@ function ws_guest_messages($context, $after = 0, $limit = 80)
             'staff'     => $staff,
             'agent'     => $agent,
             'badge'     => $badge,
+            'role'      => $facts['role'],
+            'model'     => $facts['model'],
             'name'      => (string) ($sender['name'] ?? ''),
             'avatar'    => (string) ($sender['avatar'] ?? ''),
             'avatar_kind' => (string) ($sender['avatar_kind'] ?? ''),

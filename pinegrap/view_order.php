@@ -2187,7 +2187,7 @@ if (!$_POST) {
                 ' . get_token_field() . '
                 <input type="hidden" name="id" value="' . h($_GET['id']) . '">
                 <input type="hidden" name="send_to" value="' . h($_GET['send_to'] ?? '') . '">
-                <button type="submit" name="submit_mark_paid" value="paid" class="btn btn-sm btn-solid theme-primary rounded-pill px-5" data-confirm-content="' . ($order_payment_pending ? lang('Record that PayPal completed the payment for this order?') : lang('Record that the bank transfer for this order has arrived?')) . '"><i class="bi bi-cash-coin me-1"></i>' . lang('Payment Received') . '</button>
+                <button type="submit" name="submit_mark_paid" value="paid" class="pg-button pg-button-fill" data-confirm-content="' . ($order_payment_pending ? lang('Record that PayPal completed the payment for this order?') : lang('Record that the bank transfer for this order has arrived?')) . '"><i class="bi bi-cash-coin"></i>' . lang('Payment Received') . '</button>
             </form>';
     }
 

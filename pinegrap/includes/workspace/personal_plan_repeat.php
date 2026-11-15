@@ -252,6 +252,23 @@ function ws_personal_plan_repeat_until($plan, $end, $day, $count)
 }
 
 /**
+ * A plan's length on the wall clock, in seconds: the local date and time of
+ * its end less those of its start, so an all-day plan on a day with a clock
+ * change lasts 86400. Pure.
+ *
+ * @param array $plan starts_at, ends_at
+ * @return int
+ */
+function ws_personal_plan_wall_length($plan)
+{
+    $wall = function ($ts) {
+        return gmmktime((int) date('G', $ts), (int) date('i', $ts), (int) date('s', $ts), (int) date('n', $ts), (int) date('j', $ts), (int) date('Y', $ts));
+    };
+
+    return $wall((int) $plan['ends_at']) - $wall((int) $plan['starts_at']);
+}
+
+/**
  * Reads and checks the rule the drawer sends, for a plan already cleaned by
  * ws_personal_plan_clean(). Pure.
  *
@@ -288,7 +305,9 @@ function ws_personal_plan_repeat_clean($clean, $data)
     $rule = array('starts_at' => $clean['starts_at'], 'ends_at' => $clean['ends_at'], 'repeat_frequency' => $frequency, 'repeat_interval' => (int) $every);
 
     // Two times never overlap: the plan ends before its next time starts.
-    if (($clean['ends_at'] - $clean['starts_at']) > ws_personal_plan_repeat_step_days($frequency, (int) $every)[0] * 86400) {
+    // Times move by calendar days, so the length is read on the wall clock:
+    // a day holding a clock change is still one day.
+    if (ws_personal_plan_wall_length($clean) > ws_personal_plan_repeat_step_days($frequency, (int) $every)[0] * 86400) {
         return array('error' => lang('A repeating plan has to end before its next time starts.'));
     }
 
@@ -512,6 +531,20 @@ function ws_personal_plan_at_time($plan, $day)
 }
 
 /**
+ * Where a series cut before one of its times ends (repeat_until): the end
+ * of the time before it, as ws_personal_plan_repeat_until() writes it, so
+ * the drawer reads its last day back and a save keeps the cut. Pure.
+ *
+ * @param array $plan
+ * @param array $time ws_personal_plan_time(), never the first (k >= 1)
+ * @return int
+ */
+function ws_personal_plan_cut_until($plan, $time)
+{
+    return (int) ws_personal_plan_time($plan, max(1, (int) $time['k']) - 1)['ends_at'];
+}
+
+/**
  * Ends a series before one of its times: the times changed out of it from
  * then on and the days skipped from then on are handed to $to (0 deletes
  * them).
@@ -525,7 +558,7 @@ function ws_personal_plan_series_cut($plan, $time, $to)
     $plan_id = (int) $plan['id'];
     $owner = (int) $plan['user_id'];
 
-    db("UPDATE ws_personal_plans SET repeat_until = '" . (int) $time['starts_at'] . "', repeat_count = 0, updated_at = '" . time() . "'
+    db("UPDATE ws_personal_plans SET repeat_until = '" . ws_personal_plan_cut_until($plan, $time) . "', repeat_count = 0, updated_at = '" . time() . "'
         WHERE id = '" . $plan_id . "' AND user_id = '" . $owner . "'");
 
     $later = array_map('intval', (array) db_values("SELECT id FROM ws_personal_plans

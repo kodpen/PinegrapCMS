@@ -63,11 +63,11 @@ foreach ($products as $row) {
         'id' => (int) $row['product_id'],
         'cells' => array(
             'product' => pg_list_cell('<a href="erp_stock.php?product_id=' . (int) $row['product_id'] . '#erp_stock_moves" data-pg-open>' . h($name) . '</a>'
-                . ((trim((string) $row['product_sku']) !== '') ? '<div class="small fg-secondary font-monospace">' . h($row['product_sku']) . '</div>' : ''), 'align-middle text-wrap text-break', array('data-pg-sort-value' => $name)),
+                . ((trim((string) $row['product_sku']) !== '') ? '<div class="pg-text-meta font-monospace">' . h($row['product_sku']) . '</div>' : ''), 'align-middle text-wrap text-break', array('data-pg-sort-value' => $name)),
             'stock' => pg_list_cell($tracked ? h(erp_quantity_text($row['inventory_quantity'])) : '<span class="fg-secondary">' . lang('Stock not tracked') . '</span>', 'align-middle', array('data-pg-sort-value' => (string) ($tracked ? (int) $row['inventory_quantity'] : -1))),
             'avg_cost' => pg_list_cell(h(erp_money_out((int) $row['avg_cost'])), 'align-middle', array('data-pg-sort-value' => (string) (int) $row['avg_cost'])),
             'last_cost' => pg_list_cell(h(erp_money_out((int) $row['last_cost']))
-                . (((string) $row['last_cost_date'] > '0000-00-00') ? '<div class="small fg-secondary">' . h(prepare_form_data_for_output((string) $row['last_cost_date'], 'date')) . '</div>' : ''), 'align-middle', array('data-pg-sort-value' => (string) (int) $row['last_cost'])),
+                . (((string) $row['last_cost_date'] > '0000-00-00') ? '<div class="pg-text-meta">' . h(prepare_form_data_for_output((string) $row['last_cost_date'], 'date')) . '</div>' : ''), 'align-middle', array('data-pg-sort-value' => (string) (int) $row['last_cost'])),
             'value' => pg_list_cell($tracked ? h(erp_money_out($value)) : '<span class="fg-secondary">—</span>', 'align-middle fw-bold', array('data-pg-sort-value' => (string) $value)),
         ),
     );
@@ -139,13 +139,13 @@ if (!empty($low_products)) {
     }
 
     $output_low = '
-            <div class="card my-7 border-subtle-danger">
-                <div class="card-header bg-reset border-0 text-uppercase h5 fg-danger fw-bold d-flex flex-wrap justify-content-between align-items-center gap-3">
-                    <span><i class="bi bi-exclamation-triangle me-3" aria-hidden="true"></i>' . h(lang(array('string' => 'Low stock: {var:1} product(s)', 'vars' => $low_count))) . '</span>
+            <div class="card pg-card my-7 border-subtle-danger">
+                <div class="card-header bg-reset border-0 d-flex flex-wrap justify-content-between align-items-center gap-3">
+                    <h2 class="pg-title-section fg-danger mb-0"><i class="bi bi-exclamation-triangle me-3" aria-hidden="true"></i>' . h(lang(array('string' => 'Low stock: {var:1} product(s)', 'vars' => $low_count))) . '</h2>
                     <a class="btn btn-sm btn-outline theme-danger m-1" href="erp_stock_minimums.php?show=low">' . lang('All of them') . '</a>
                 </div>
                 <div class="card-body p-0 table-responsive">
-                    <table class="table table-sm align-middle mb-0">
+                    <table class="table align-middle mb-0">
                         <thead><tr><th>' . lang('Product') . '</th><th class="text-end">' . lang('Stock') . '</th><th class="text-end">' . lang('Minimum') . '</th></tr></thead>
                         <tbody>' . $low_rows . '</tbody>
                     </table>
@@ -186,7 +186,7 @@ pg_page_shell(array(
                 ' . (!$readonly ? '<a class="btn btn-sm btn-outline theme-secondary" href="add_erp_manual_invoice.php?direction=purchase"><i class="bi bi-bag-plus me-1"></i>' . lang('New purchase invoice') . '</a>' : '') . '
                 ' . ((function_exists('erp_stock_minimums_ready') && erp_stock_minimums_ready()) ? '<a class="btn btn-sm btn-outline theme-secondary" href="erp_stock_minimums.php"><i class="bi bi-sliders me-1"></i>' . lang('Minimum stock') . '</a>' : '') . '
                 ' . ((function_exists('erp_stock_counts_ready') && erp_stock_counts_ready()) ? '<a class="btn btn-sm btn-outline theme-secondary" href="erp_stock_counts.php"><i class="bi bi-upc-scan me-1"></i>' . lang('Stock counts') . '</a>' : '') . '
-                <div class="pg-toolbar-grow small fg-secondary text-truncate">
+                <div class="pg-toolbar-grow pg-text-meta text-truncate">
                     ' . h(lang(array('string' => '{var:1} product(s) with a cost; stock on hand worth {var:2}', 'vars' => array(count($products), erp_money_out($total_value))))) . '
                 </div>
             </nav>
@@ -197,12 +197,10 @@ pg_page_shell(array(
                 ' . $output_notes . '
             </div>
 
-            <div class="card my-7" id="erp_stock_moves">
-                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold d-flex flex-wrap justify-content-between align-items-center gap-3">
-                    <span>' . (($product_id > 0)
+            <div class="card pg-card my-7" id="erp_stock_moves">
+                <h2 class="card-header bg-reset border-0 pg-title-section">' . (($product_id > 0)
                         ? h(lang(array('string' => 'Movements: {var:1}', 'vars' => $product_title)))
-                        : lang('Stock movements')) . '</span>
-                </div>
+                        : lang('Stock movements')) . '</h2>
                 <div class="card-body p-0 table-responsive">
                     <table class="table table-hover align-middle mb-0" data-pg-sort>
                         <thead>

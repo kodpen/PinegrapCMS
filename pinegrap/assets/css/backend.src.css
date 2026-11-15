@@ -3466,7 +3466,9 @@ html[data-bs-theme="dark"] #menu .menu-body .pg-menu-panel[data-pg-menu-tone] .p
    The flex rule is for every button in the bar, not only its direct
    children: a dissolved group's buttons are items of the bar while still
    matching .btn-group > .btn, and a child selector misses them. */
-#button_bar .btn {
+#button_bar .btn,
+.pg-toolbar .pg-button,
+#button_bar .pg-button {
   flex: 0 0 auto;
 }
 
@@ -3551,6 +3553,13 @@ html[data-bs-theme="dark"] #menu .menu-body .pg-menu-panel[data-pg-menu-tone] .p
 #button_bar .btn .bi {
   margin: 0 !important;
   font-size: 1rem;
+  line-height: 1;
+}
+/* The look's buttons keep their own type size for the icon; only the margin
+   the markup carries goes, the recipe's gap spaces it. */
+.pg-toolbar .pg-button .bi,
+#button_bar .pg-button .bi {
+  margin: 0 !important;
   line-height: 1;
 }
 /* A finger needs more than the 26px a mouse is happy with. Only the links need
@@ -3820,6 +3829,19 @@ html[data-bs-theme="dark"] #menu .menu-body .pg-menu-panel[data-pg-menu-tone] .p
 .pg-breadcrumb .breadcrumb-item.active {
   color: var(--pg-fg-body);
   font-weight: 500;
+}
+/* The trail's last part gives way first and ends with an ellipsis rather
+   than being cut mid-letter at the bar's edge; the parts before it keep
+   their width (and scroll, on a trail too deep for the bar). */
+.pg-breadcrumb .breadcrumb-item {
+  flex: none;
+}
+.pg-breadcrumb .breadcrumb-item:last-child {
+  display: block;
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 /* The trail is the only thing allowed to shrink; the back control keeps its
    footprint so it never collapses on a deep crumb list. */
@@ -5545,6 +5567,48 @@ body.pg-code-field-open {
    width, so the table's auto layout cannot squeeze it to a sliver. */
 .pg-cell-wrap {
   min-width: 8rem;
+}
+
+/* ERP lists (Expenses, Expense categories, Cheques): the column widths
+   their cells held inline. */
+.erp-expense-cell-category {
+  min-width: 8rem;
+  max-width: 14rem;
+}
+.erp-expense-cell-supplier {
+  min-width: 8rem;
+  max-width: 18rem;
+}
+.erp-expense-cell-text {
+  max-width: 18rem;
+}
+.erp-category-cell-order,
+.erp-category-cell-count {
+  width: 6rem;
+}
+.erp-category-cell-name {
+  min-width: 12rem;
+}
+.erp-category-cell-code {
+  min-width: 8rem;
+}
+.erp-category-cell-tax {
+  width: 11rem;
+}
+.erp-category-cell-on {
+  width: 7rem;
+}
+.erp-cheque-cell-account {
+  max-width: 240px;
+}
+/* An ERP list card (pg-card) holding a table or a flush list: clipped to
+   the card's corners as the report frame is, the list rows on the card's
+   surface. */
+.erp-list-card {
+  overflow: hidden;
+}
+.erp-list-card > .list-group {
+  --bs-list-group-bg: transparent;
 }
 
 .object-fit,
@@ -11233,6 +11297,10 @@ body.pg-side-panel-open .pg-chat-launcher {
 /* The same content in Bootstrap's drawer on the page path
    (settings_maintenance.php and the like, with no settings dialog around it). */
 .pg-set-drawer { --pg-drawer-width: min(42rem, 100vw); }
+/* The ERP lists' quick look (includes/erp/drawer.php): 560 px wide, its
+   tables straight under their section title. */
+.pg-erp-drawer { --pg-drawer-width: min(560px, 100vw); }
+.pg-erp-drawer table.table { margin-top: 0; }
 
 /* ── Dashboard sales map (widget 1) ─────────────────────────────────────────
    The left panel of a two-track card: a period head and the outlines, with the
@@ -27574,6 +27642,38 @@ body.pg-measure-edit .row > .order-2 .card-header.pg-title-section {
   }
 }
 
+/* The save bar's buttons by their role, in the values of the button recipes:
+   the save action (the bar's one solid success or primary button) is
+   .pg-button-fill, delete (danger, solid or outline) a ghost in the danger
+   recipe's rose, every other button .pg-button-quiet. The markup keeps its
+   Bootstrap classes; at every width, a phone included. */
+body.pg-measure-edit .row > .order-3 > nav.buttons.navigation .btn {
+  border: 0;
+  background: var(--pg-quiet);
+  color: var(--pg-fg-body);
+  box-shadow: inset 0 0 0 1px var(--pg-border-color-translucent), inset 0 1px 0 var(--pg-surface-hi);
+}
+body.pg-measure-edit .row > .order-3 > nav.buttons.navigation .btn-solid:is(.theme-success, .theme-primary) {
+  color: var(--pg-on-accent-fill);
+  background: linear-gradient(180deg, var(--pg-accent-1), var(--pg-accent-2));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.38), 0 1px 2px rgba(0, 0, 0, 0.25), 0 8px 18px -8px var(--pg-accent-glow);
+}
+body.pg-measure-edit .row > .order-3 > nav.buttons.navigation .btn.theme-danger {
+  background: none;
+  color: var(--pg-tone-rose-text);
+  box-shadow: none;
+}
+body.pg-measure-edit .row > .order-3 > nav.buttons.navigation .btn.theme-danger:hover {
+  background: var(--pg-hover);
+}
+body.pg-measure-edit .row > .order-3 > nav.buttons.navigation .btn:focus-visible {
+  outline: 2px solid var(--pg-accent);
+  outline-offset: 2px;
+}
+body.pg-measure-edit .row > .order-3 > nav.buttons.navigation .btn:is(:disabled, .disabled) {
+  opacity: 0.5;
+}
+
 }
 
 /* ==========================================================================
@@ -27680,17 +27780,24 @@ body.pg-measure-report #content {
 }
 .pg-report-head > .pg-toolbar-grow {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  gap: 6px 10px;
 }
+/* The name wraps, never cut: it is the report's only name on the screen. */
 .pg-report-head .pg-title-screen {
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: break-word;
 }
 .pg-report-head .pg-pill {
   flex: none;
+}
+/* A phone: the pill goes under the name. */
+@media (max-width: 575.98px) {
+  .pg-report-head > .pg-toolbar-grow {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 }
 
 /* Ready reports and the period: a label in the third text colour beside a
@@ -27711,10 +27818,23 @@ body.pg-measure-report #content {
   color: var(--pg-fg-3);
   white-space: nowrap;
 }
+/* A segmented control wider than its row stays one row that scrolls
+   sideways; it never wraps into a box of rows. */
 .pg-report-strip .pg-seg,
 .pg-report-tools .pg-seg {
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.pg-report-strip .pg-seg::-webkit-scrollbar,
+.pg-report-tools .pg-seg::-webkit-scrollbar {
+  display: none;
+}
+.pg-report-strip .pg-seg-item,
+.pg-report-tools .pg-seg-item {
+  flex: none;
+  white-space: nowrap;
 }
 .pg-report-step {
   padding: 0 7px;
@@ -27836,6 +27956,10 @@ body.pg-measure-report #content {
   }
   .pg-report-fig-value > small {
     font-size: 13px;
+  }
+  /* An odd last card takes the whole row. */
+  .pg-report-fig:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
   }
 }
 
@@ -28191,6 +28315,49 @@ body.pg-measure-report #content {
 .pg-report-table > tbody:last-child > tr:last-child > *,
 .pg-report-table > tfoot > tr:last-child > * {
   border-bottom: 0;
+}
+/* A phone: the first column (a row's name, after its level's indent)
+   stays in place while the figures scroll under it, at most half the
+   width, its words wrapping; the cell is drawn opaque, its row's tint
+   laid over the card's fill. */
+@media (max-width: 575.98px) {
+  .pg-report-frame .pg-report-table > * > tr > :first-child,
+  .pg-report-frame .pg-report-table th[scope="row"] {
+    --pg-report-sticky-tint: transparent;
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    width: auto;
+    min-width: min(9rem, 40vw);
+    max-width: 50vw;
+    background-color: var(--pg-surface-1);
+    background-image: linear-gradient(var(--pg-report-sticky-tint), var(--pg-report-sticky-tint));
+    white-space: normal;
+    overflow-wrap: break-word;
+  }
+  .pg-report-frame .pg-report-table tr.pg-report-l2 > th[scope="row"] {
+    left: 26px;
+  }
+  .pg-report-frame .pg-report-table tr.pg-report-l3 > th[scope="row"] {
+    left: 52px;
+  }
+  .pg-report-frame .pg-report-table tr.pg-report-l3 > td:nth-child(2) {
+    position: sticky;
+    left: 26px;
+    z-index: 1;
+    background-color: var(--pg-surface-1);
+  }
+  .pg-report-frame .pg-report-table > thead > tr > :first-child,
+  .pg-report-frame .pg-report-table tr.pg-report-l1 > :first-child {
+    --pg-report-sticky-tint: var(--pg-surface-inset);
+  }
+  .pg-report-frame .pg-report-table tr.pg-report-total > :first-child {
+    --pg-report-sticky-tint: color-mix(in srgb, var(--pg-accent) 6%, transparent);
+  }
+  .pg-report-frame .pg-report-table > tbody > tr:hover > :first-child,
+  .pg-report-frame .pg-report-table > tbody > tr:hover > th[scope="row"] {
+    --pg-report-sticky-tint: var(--pg-hover);
+  }
 }
 
 /* The report settings: a 430 px drawer floating off the right edge with

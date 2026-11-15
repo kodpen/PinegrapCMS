@@ -10,7 +10,8 @@
 - addon-hook-system-census-slots.md: Add-on hook system AH1 census, UI slot places: how the order screen draws its actions and cards and the orders list its row actions, toolbar and bulk actions today
 - addon-hook-system-census.md: Add-on hook system AH1 census from the code: announced events, driver registries, UI slot places, what integrity, backup, System Status and the migration runner read
 - addon-hook-system-site.md: Add-on hook system, the owner's additions of 2026-11-14: the start in two parts, UI slots on core screens, a site's own add-on that updates never touch, an add-on prepared from the panel
-- addon-hook-system.md: Plan (approved 2026-10-19; not to be started before the running plans end, owner 2026-11-14): add-on packages under includes/addons/ with manifest and hooks, so drivers add without forking
+- addon-hook-system-steps.md: Steps of plans/addon-hook-system.md, started 2026-11-15: AH1 the census, AH2 the design note for the owner's look, the slices written after his answer
+- addon-hook-system.md: Plan (approved 2026-10-19; started 2026-11-15 with the census, addon-hook-system-steps.md): add-on packages under includes/addons/ with manifest and hooks, so drivers add without forking
 - agent-channel-steps-2.md: Steps A0-A9 of plans/agent-channel.md: registry, doors, wakes, channel memory, model assistants, risk tiers, the canvas as a tool, further doors (Claude Code plugin, per-person sessions, chat box)
 - agent-channel-steps-7.md: Step A22 of plans/agent-channel.md (owner 2026-11-12, #8880): a channel's agents among its members in the head's faces and in Channel info, last seen for people and agents
 - agent-channel-trial.md: Live trial of the agent channel on dev (2026-11-10): what is still to try and what the trial found wrong, fixed or not
@@ -27,10 +28,12 @@
 - design-template-bikeshop.md: Plan: the Bike Shop design template (pinegrap-bikeshop): bikes and parts catalog, repair and service requests, bike fitting, group rides calendar, news; small steps
 - design-template-own-looks-order.md: Order of the polishing round after Launch: every shipped template's family and pages steps, in which order, and where each template stands
 - design-template-own-looks.md: Plan (owner 2026-11-07): block families in their own source files (B0), Launch as an Apple-like product page (L1-L3), then a polishing round for every template
-- designer-closed-blocks.md: Plan (owner 2026-11-13, #9076): the components the designer canvas still draws as one closed block are listed, then opened into editable element trees; steps CB0-CB2
+- designer-closed-blocks-steps.md: Steps CB2 to CB10 of designer-closed-blocks, written from the owner's answer of 2026-11-15 (the proposed order): one block family per step, what each opens, which run side by side
+- designer-closed-blocks.md: Plan (owner 2026-11-13, #9076): components the designer canvas draws as one closed block are listed, then opened into element trees; CB0, CB1 done, CB2 on in designer-closed-blocks-steps.md
 - erp-edocument-leftovers.md: Open ERP work (e-document phase 3): Paraşüt send path, queue worker, İşbaşı live key, code lists, e-waybill, accountant sign-off; owner works on it locally
 - erp-parasut-open-work.md: Paraşüt work left after the rounds of 2026-10-23 to 26 (#1405-#1682): one live round when a new demo key comes, three decisions (#2440-#2442), the queue worker, incoming e-invoices; where to start
 - github-channel-connection.md: Plan (owner 2026-11-08): connect GitHub with OAuth from Settings › Connections, the site sets its own webhook on chosen repositories and writes CI, pull request and label lines into a channel
+- guest-page-content.md: Plan (owner 2026-11-15): the guest page shows an agent's role and model, agents' pictures and files, a canvas as its picture, the agent's task card and live pages, all read only; GP1 to GP3
 - kodpen-vendor-api-client-design-update.md: Update contract of plans/kodpen-vendor-api-client.md still to build: which keys verify (P5c) and P2's release workflow; the built check, pin, download and beta builds are in platform/
 - kodpen-vendor-api-client-steps.md: Open steps of plans/kodpen-vendor-api-client.md: P2 and P5c before the 2026.11.0 release branch, P9 (api2 client removal) in the next open version; claim as [plan:kodpen-vendor-api-client] P<n>
 - kodpen-vendor-api-client.md: Plan (owner 2026-10-25 to 27): the Kodpen API client is on (P8); left are P2 and P5c before the 2026.11.0 release branch and P9, the api2 client removal in the next open version; steps in -steps
@@ -41,9 +44,22 @@
 - panel-design-language-report.md: Look A's report screen (#8955): ready reports and the period on top, four figures, the chart against the previous period, the grouped table and its total, the bars card, the settings drawer
 - panel-design-language-sheet.md: The reference sheet of the panel's design language: its pages (basics, add page, table page, the bell's drawer), the page widths they set (#8860, #9070), the list rules, what is only a placeholder
 - panel-design-language-steps.md: Steps DL1-DL6 of the panel's design language (look A, #8842, #8860): typeface and recipes, the page widths, the Design examples screen, the bell's drawer, the check, the screen families, close-out
+- panel-old-screens-census-commerce-done.md: LM1a census: commerce and ERP panel screens already on look A (no step needed) and screen families neither LM1a nor LM1b names
+- panel-old-screens-census-commerce-erp.md: LM1a census, ERP groups E1–E5: invoice and quote documents, lists off the list table driver, ERP reports, records, imports and settings; what each draws its own way, estimated product lines
+- panel-old-screens-census-commerce-shop.md: LM1a census, commerce groups C1–C5: orders, products, customers and offers, marketplaces, shipping and tax forms; screens by root file, what each draws its own way, estimated product lines
+- panel-old-screens-census-commerce.md: LM1a census of old commerce and ERP panel screens against look A (2026-11-15): how it was checked, what every group changes, the twelve groups in order
+- panel-old-screens-census-site-content.md: Census LM1b, content screens against look A: pages, comments, short links, pop-ups, 404 log, accessibility, page tests (S1); menus, regions, ads, styles, themes, design files (S4)
+- panel-old-screens-census-site-forms.md: Census LM1b against look A (S3): submitted forms, form fields, the form list and item views, files (Create File, Edit File, Import Zip), calendars, events, locations, bookings
+- panel-old-screens-census-site-people.md: Census LM1b, people screens against look A (S2): users, sessions, contacts, contact groups, privacy export and erase, email and SMS campaigns, Messages, WhatsApp templates
+- panel-old-screens-census-site-settings.md: Census LM1b against look A (S5): the Site Settings categories in includes/settings/ (dialog and settings_<key>.php pages): inline styles, old classes, rows without icon tiles
+- panel-old-screens-census-site-system.md: Census LM1b against look A: visitors and logs (S4: Site Log, Audit Trail, Firewall log, Performance, Search Console), System tools, Translations, settings pages outside the dialog (S6)
+- panel-old-screens-census-site.md: Census LM1b of old panel screens (pages, files, forms, comments, users, visitors, tools, Site Settings) against look A: what each draws its own way, sizes, six step groups
+- panel-old-screens-rules.md: Old panel screens to look A: what the architect's looks decided beyond the sheet (2026-11-15): the owner's kept screens, address parts, a narrow field alone in its row, values the sheet does not name
+- panel-old-screens-shared-steps.md: Old panel screens to look A: the shared steps cut after the groups: field label and input, status list, ERP list table and badges, figure cards, buttons after LM2, list title
+- panel-old-screens.md: Plan (owner 2026-11-15): the panel screens still drawn the old way move to look A; censuses done, LM2 the shared buttons, then one census group per step (C1 to C5, E1 to E5, S1 to S6)
 - php-error-log-clean.md: Plan (owner 2026-11-14): the PHP error log of the owner's dev machine read for Pinegrap's own deprecations and warnings on PHP 8.5, and their causes fixed; steps EL1 to EL6
 - poll-agent-questions.md: Plan (owner 2026-11-14): the poll gains described, pictured and linked options, "Other", taking back and asking again; a poll an agent asks is an agent question, answered in its box; AQ1 to AQ6
-- report-screens-steps.md: Steps of plans/report-screens.md: RS1 the Sales map card's See all, RS2 the shared view on the order report, RS3 its ready reports, RS4-RS5 the visitor report, RS6 shipping, RS7 ERP VAT, RS8 close-out
+- report-screens-steps.md: Steps of plans/report-screens.md: RS1-RS7 landed; RS8 the look (RS8a phone and shared parts, RS8b order and visitor, RS8c shipping and ERP VAT) and close-out
 - report-screens.md: Plan (owner 2026-11-11, #8673): the order, visitor, shipping and ERP VAT report screens drawn as the dashboard: figures, a chart, the table, settings in a drawer, ready reports; steps RS1-RS8
 - reverse-oauth-leftovers.md: Remaining outside-account connections (Meta, Business Profile, social posting, AI accounts), the connect.pinegrap.com broker and open decisions
 - storefront-api-acp-ucp.md: Storefront API design note: OpenAI ACP checkout_sessions mapped onto the storefront routes, the UCP manifest after checkout exists, MCP tools under the customer's consent, WAF agent verification

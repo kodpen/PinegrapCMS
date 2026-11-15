@@ -34,7 +34,7 @@ function test_erp_expense_categories_screen_has_form_and_status_columns()
 	pg_assert_true($status !== false, 'the status column is there');
 	pg_assert_true($bar !== false, 'the save bar has its own column');
 	pg_assert_true($form < $status && $status < $bar, 'form column, status column, save bar in source order');
-	pg_assert_contains('<div class="card my-7 position-sticky" style="top:3.3rem;">', $source, 'the status card sticks below the top bar');
+	pg_assert_contains('<div class="card pg-card my-7 position-sticky" style="top:3.3rem;">', $source, 'the status card sticks below the top bar');
 
 	foreach (array('<table class="table align-middle mb-0">', 'name="new_name"', 'name="new_code"') as $field) {
 		$at = strpos($source, $field);

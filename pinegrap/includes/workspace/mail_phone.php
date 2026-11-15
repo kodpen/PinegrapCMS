@@ -384,6 +384,12 @@ function ws_mail_phone_ingest($box, $message, $now)
 
     db("UPDATE ws_mail_items SET conversation_id = '" . $conversation_id . "', message_id = '" . (int) $message_id . "' WHERE id = '" . $item_id . "'");
 
+    // A conversation set aside with Remind me later comes back at once, as
+    // for a new e-mail (mail_remind.php).
+    if (!$opened && function_exists('ws_mail_remind_new_mail')) {
+        ws_mail_remind_new_mail($conversation_id, $now);
+    }
+
     // Whoever holds an ongoing conversation hears the customer wrote again.
     if (!$opened && ((int) $conversation['assignee_id'] > 0)) {
         ws_notify((int) $conversation['assignee_id'], 'mail_customer', array('channel_id' => (int) $channel['id'], 'message_id' => (int) $message_id, 'actor_id' => 0));

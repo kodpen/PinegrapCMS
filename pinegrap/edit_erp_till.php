@@ -195,9 +195,9 @@ if (!$_POST) {
     <div class="row">
         <div class="col-12">
             <div class="card pg-card my-7">
-                <div class="card-header bg-reset border-0 pg-title-section">
+                <h2 class="card-header bg-reset border-0 pg-title-section">
                     ' . lang('Cash Book') . '
-                </div>
+                </h2>
                 <div class="card-body p-0 position-relative table-responsive">
                     <table class="table table-hover align-middle mb-0" data-pg-sort>
                         <thead>

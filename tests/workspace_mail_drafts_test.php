@@ -229,5 +229,5 @@ function test_ws_mail_send_scope_is_offered_but_never_to_a_key()
 {
 	pg_assert_true(in_array('workspace:mail_send', array_column(ws_scope_groups(), 'write'), true), 'a row on the consent screen');
 	pg_assert_true(in_array('workspace:mail_send', api_plugin_writes(), true), 'in the assistant plugin\'s set');
-	pg_assert_contains("'workspace:mail_send'", ws_mail_drafts_test_source('api_device_scopes'), 'a devices session keeps sending as before');
+	pg_assert_contains("'workspace:mail_send'", ws_mail_drafts_test_source('api_device_scopes_adjust'), 'a devices session keeps sending as before');
 }

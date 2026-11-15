@@ -129,7 +129,8 @@ an agent of the agent channel waits on its request queue
    `gh api 'repos/kodpen/pinegrapcms/pulls?state=open&per_page=100' --jq '[.[]|select(.draft|not)|select(.head.ref|startswith("merge-train")|not)]|length'`
 9. **Coordinators.** One per account keeps 8 cloud workers on plan steps
    (design templates paused); it writes no code, merges nothing, and gives
-   out no bug hunt. Open `bug` issues are work for every coordinator: one
+   out a bug hunt only in an area the architect named
+   (`workflow/bug-hunt.md`). Open `bug` issues are work for every coordinator: one
    issue per worker and PR (`Fixes #n` in the body), inside the queue limit
    and its 8 places. The test coordinator starts no workers: it opens `bug`
    issues; the merging session closes one when its PR lands. No session reopens closed

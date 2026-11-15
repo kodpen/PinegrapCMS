@@ -146,7 +146,7 @@ $stock_field_error = function ($field) use ($liveform) {
 
 $stock_toolbar = pg_screen_toolbar(array(
     'primary' => $stock_locations
-        ? '<button type="button" class="btn btn-sm btn-solid theme-primary rounded-pill px-5" data-bs-toggle="dialog" data-bs-target="#stock_transfer_dialog"><i class="bi bi-arrow-left-right me-1" aria-hidden="true"></i>' . lang('Transfer') . '</button>'
+        ? '<button type="button" class="pg-button pg-button-fill" data-bs-toggle="dialog" data-bs-target="#stock_transfer_dialog"><i class="bi bi-arrow-left-right" aria-hidden="true"></i>' . lang('Transfer') . '</button>'
         : array('label' => lang('Add a stock location'), 'url' => 'settings.php#pgset-stock-locations', 'icon' => 'bi-plus-circle'),
     'search' => '<label class="form-control form-control-sm form-adorn rounded-pill pg-toolbar-search">
                     <span class="form-adorn-text" aria-hidden="true"><i class="bi bi-search"></i></span>

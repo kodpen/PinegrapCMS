@@ -252,7 +252,7 @@ pg_page_shell([
             ' . $liveform->output_notices() . '
 
             <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
-                ' . (!$readonly ? '<a class="btn btn-sm btn-solid theme-primary rounded-pill px-5" href="add_erp_account.php"><i class="bi bi-plus-circle me-1" aria-hidden="true"></i>' . lang(array('string' => 'Create')) . '</a>' : '') . '
+                ' . (!$readonly ? '<a class="pg-button pg-button-fill" href="add_erp_account.php"><i class="bi bi-plus-circle" aria-hidden="true"></i>' . lang(array('string' => 'Create')) . '</a>' : '') . '
                 ' . (!$readonly ? '<a class="btn btn-sm btn-outline theme-secondary" href="erp_accounts_import.php"><i class="bi bi-upload me-1"></i>' . lang('Import CSV') . '</a>' : '') . '
                 ' . ((!$readonly && ($unlinked_contacts > 0)) ? '
                 <form method="post" action="erp_accounts.php" class="d-inline">

@@ -1027,7 +1027,7 @@ print pg_page_shell([
         <h2 id="cf_dns_title" class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('DNS Records') . '</h2>
         <div class="ms-auto d-flex flex-wrap justify-content-end gap-3 align-items-center">
           ' . pg_list_table_search_box('cloudflare_dns') . '
-          <button type="button" class="btn btn-sm btn-solid theme-primary rounded-pill px-5" data-bs-toggle="dialog" data-bs-target="#addModal"><i class="bi bi-plus-circle" aria-hidden="true"></i> <span class="pg-btn-label">' . lang('Add Record') . '</span></button>
+          <button type="button" class="pg-button pg-button-fill" data-bs-toggle="dialog" data-bs-target="#addModal"><i class="bi bi-plus-circle" aria-hidden="true"></i> <span class="pg-btn-label">' . lang('Add Record') . '</span></button>
         </div>
       </div>
       <div class="card-body p-0">

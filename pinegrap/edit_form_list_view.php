@@ -192,14 +192,16 @@ if (!$_POST) {
     // If the style is set to collection b, then get page type properties for that collection.
     if ($collection == 'b') {
 
-        $properties = get_page_type_properties($page['id'], 'form list view', 'b');
+        // A view never saved while a collection B style was previewed has no
+        // collection B row yet: its four fields start empty.
+        $properties = get_page_type_properties($page['id'], 'form list view', 'b') ?: array();
 
         // We only currently support collections for the 4 fields below,
         // so that is why we only override those properties for collection B.
-        $header = $properties['header'];
-        $layout = $properties['layout'];
-        $footer = $properties['footer'];
-        $search_advanced_layout = $properties['search_advanced_layout'];
+        $header = $properties['header'] ?? '';
+        $layout = $properties['layout'] ?? '';
+        $footer = $properties['footer'] ?? '';
+        $search_advanced_layout = $properties['search_advanced_layout'] ?? '';
 
     }
 

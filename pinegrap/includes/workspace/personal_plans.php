@@ -338,6 +338,71 @@ function ws_personal_plan_clean($data)
 }
 
 /**
+ * The refusals of a save after cleaning, or '': a roadmap given a rule,
+ * people with nobody on the team, the plan limit for a new plan. The API's
+ * dry run runs it too, so a rehearsal meets what the save turns down.
+ *
+ * @param int   $user_id the owner
+ * @param array $clean   ws_personal_plan_clean()
+ * @param array $rule    ws_personal_plan_repeat_clean(), or none
+ * @param int   $plan_id the plan changed, 0 for a new one
+ * @return string
+ */
+function ws_personal_plan_save_check($user_id, $clean, $rule, $plan_id)
+{
+    $user_id = (int) $user_id;
+    $plan_id = (int) $plan_id;
+    $has_steps = ($plan_id > 0) && !empty($rule['repeat_frequency']) && function_exists('ws_personal_plan_step_rows')
+        && !empty(ws_personal_plan_step_rows(array($plan_id))[$plan_id]);
+    $count = ($plan_id > 0) ? 0 : (int) db_value("SELECT COUNT(*) FROM ws_personal_plans WHERE user_id = '" . $user_id . "'");
+
+    return ws_personal_plan_save_problem($user_id, $clean, $rule, $plan_id === 0, ws_team_ids(), $has_steps, $count);
+}
+
+/**
+ * ws_personal_plan_save_check() on what it read. Pure.
+ *
+ * @param int   $user_id
+ * @param array $clean
+ * @param array $rule
+ * @param bool  $is_new    a new plan
+ * @param int[] $team_ids  ws_team_ids()
+ * @param bool  $has_steps the plan changed is a roadmap
+ * @param int   $count     the owner's plans (read for a new plan)
+ * @return string
+ */
+function ws_personal_plan_save_problem($user_id, $clean, $rule, $is_new, $team_ids, $has_steps, $count)
+{
+    if (!empty($rule['repeat_frequency']) && $has_steps) {
+        return lang('A roadmap does not repeat. Remove its steps first.');
+    }
+
+    if ((($clean['visibility'] ?? '') === 'people') && empty(ws_personal_plan_people_kept($user_id, $clean['people'] ?? array(), $team_ids))) {
+        return lang('Choose who may see the plan.');
+    }
+
+    if ($is_new && ((int) $count >= WS_PERSONAL_PLAN_MAX)) {
+        return lang('You have too many plans. Delete some first.');
+    }
+
+    return '';
+}
+
+/**
+ * The people a plan keeps: team members other than the owner, a guest
+ * never. Pure.
+ *
+ * @param int   $user_id
+ * @param array $people
+ * @param int[] $team_ids
+ * @return int[]
+ */
+function ws_personal_plan_people_kept($user_id, $people, $team_ids)
+{
+    return array_values(array_diff(array_intersect(array_map('intval', (array) $people), array_map('intval', (array) $team_ids)), array((int) $user_id)));
+}
+
+/**
  * Saves a plan of the viewer: a new one, or their own.
  *
  * @param array $viewer
@@ -388,12 +453,6 @@ function ws_personal_plan_save($viewer, $data, $plan_id = 0)
             return $rule;
         }
 
-        // A roadmap does not repeat.
-        if (($rule['repeat_frequency'] !== '') && $plan && function_exists('ws_personal_plan_step_rows')
-            && !empty(ws_personal_plan_step_rows(array($plan_id))[$plan_id])) {
-            return array('error' => lang('A roadmap does not repeat. Remove its steps first.'));
-        }
-
         $rule['remind_minutes'] = ($clean['remind'] === '') ? 0 : (int) $clean['remind'];
 
         // A series reminds at its next time; with none left, it stays told.
@@ -405,12 +464,13 @@ function ws_personal_plan_save($viewer, $data, $plan_id = 0)
         }
     }
 
-    // Only team members other than the owner can be chosen: a guest never.
-    $people = array_values(array_diff(array_intersect($clean['people'], ws_team_ids()), array($user_id)));
+    $problem = ws_personal_plan_save_check($user_id, $clean, $rule, $plan ? $plan_id : 0);
 
-    if (($clean['visibility'] === 'people') && empty($people)) {
-        return array('error' => lang('Choose who may see the plan.'));
+    if ($problem !== '') {
+        return array('error' => $problem);
     }
+
+    $people = ws_personal_plan_people_kept($user_id, $clean['people'], ws_team_ids());
 
     // A reminder already gone stays gone unless its moment moved.
     $values = "title = '" . e($clean['title']) . "', note = '" . e($clean['note']) . "',
@@ -429,10 +489,6 @@ function ws_personal_plan_save($viewer, $data, $plan_id = 0)
             : (((int) $plan['remind_at'] !== $clean['remind_at']) ? ", reminded_at = 0" : '');
         db("UPDATE ws_personal_plans SET " . $values . $rearm . " WHERE id = '" . $plan_id . "' AND user_id = '" . $user_id . "'");
     } else {
-        if ((int) db_value("SELECT COUNT(*) FROM ws_personal_plans WHERE user_id = '" . $user_id . "'") >= WS_PERSONAL_PLAN_MAX) {
-            return array('error' => lang('You have too many plans. Delete some first.'));
-        }
-
         // Add to my calendar: a new plan made from a mail the person may
         // read is tied to its conversation (personal_plan_mail.php).
         $mail = ((int) ($data['mail_item'] ?? 0) > 0) ? ws_personal_plan_mail_item($viewer, (int) $data['mail_item']) : null;
@@ -736,6 +792,33 @@ function ws_personal_plan_reminders_run($limit = 50)
 }
 
 /**
+ * The time of a series a reminder written at a moment is for: the one with
+ * the latest reminder moment not after it. The first time still running is
+ * not it when the lead reaches the next time. Null before the first
+ * reminder. Pure.
+ *
+ * @param array    $plan       with remind_minutes
+ * @param int      $written_at
+ * @param string[] $skips
+ * @return array|null ws_personal_plan_time()
+ */
+function ws_personal_plan_reminded_time($plan, $written_at, $skips = array())
+{
+    $lead = max(0, (int) ($plan['remind_minutes'] ?? 0)) * 60;
+    $found = null;
+
+    // A time reminding by the moment starts no later than the lead (and a
+    // day for the 09:00 of an all-day time) after it.
+    foreach (ws_personal_plan_times($plan, $written_at - $lead - 86400, $written_at + $lead + 86400, $skips) as $time) {
+        if (ws_personal_plan_time_remind_at($plan, $time) <= $written_at) {
+            $found = $time;
+        }
+    }
+
+    return $found;
+}
+
+/**
  * What a reminder line says (ws_inbox_describe()): read through the gate, so
  * a line nobody may read any more says nothing of the plan.
  *
@@ -752,16 +835,15 @@ function ws_personal_plan_inbox_describe($viewer, $row, $base)
         return array('title' => lang('Reminder'), 'body' => '', 'url' => $base . 'workspace_my_calendar.php', 'icon' => 'bi-alarm');
     }
 
-    // A series: the first time after the line was written is the one it
-    // reminded of.
+    // A series: the time whose reminder moment the line was written for.
     $day = '';
 
     if (ws_personal_plan_repeat_ready() && ws_personal_plan_repeats($plan)) {
-        $times = ws_personal_plan_times($plan, (int) ($row['created_at'] ?? 0), PHP_INT_MAX, ws_personal_plan_skips(array((int) $plan['id']))[(int) $plan['id']] ?? array(), 1);
+        $time = ws_personal_plan_reminded_time($plan, (int) ($row['created_at'] ?? 0), ws_personal_plan_skips(array((int) $plan['id']))[(int) $plan['id']] ?? array());
 
-        if (!empty($times)) {
-            $plan = array_merge($plan, array('starts_at' => $times[0]['starts_at'], 'ends_at' => $times[0]['ends_at']));
-            $day = '&day=' . $times[0]['day'];
+        if ($time) {
+            $plan = array_merge($plan, array('starts_at' => $time['starts_at'], 'ends_at' => $time['ends_at']));
+            $day = '&day=' . $time['day'];
         }
     }
 

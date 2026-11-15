@@ -411,7 +411,7 @@ if (!$_POST) {
 
         $output_attributes =
             '<div class="col-12 mt-5 mb-3">
-                <h6 class="fg-secondary">' . lang('Attributes') . '</h6>
+                <h6 class="pg-group-label">' . lang('Attributes') . '</h6>
                 <input type="hidden" name="enable_attributes_exists" value="true">
                 <div class="form-field">
                     <div class="switch"><input value="1" ' . $output_enable_attributes_checked . ' id="enable_attributes" name="enable_attributes" class="collapse-switcher" type="checkbox" role="switch" data-bs-target="#enable_attributes_row" /></div>

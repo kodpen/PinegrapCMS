@@ -40,39 +40,39 @@ function erp_till_form_cards($liveform, $currency_locked = false, $with_status =
         </h2>
         <div class="card-body">
             <div class="row">
-                <div class="col-12 ' . ($with_status ? 'lg:col-5' : 'lg:col-7') . ' my-3">
+                <div class="col-12 my-3">
                     <label for="name" class="form-label">' . lang('Name') . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'text', 'id' => 'name', 'name' => 'name',
                         'class' => 'form-control', 'maxlength' => '100',
                         'autocomplete' => 'off', 'required' => 'required')) . '
                 </div>
-                <div class="col-12 ' . ($with_status ? 'sm:col-6 lg:col-4' : 'lg:col-5') . ' my-3">
+                <div class="col-12 ' . ($with_status ? 'md:col-6' : 'pg-field-span-6') . ' my-3">
                     <label for="kind" class="form-label">' . lang('Type') . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'select', 'id' => 'kind', 'name' => 'kind',
                         'class' => 'form-control', 'options' => $kind_options)) . '
                 </div>' . ($with_status ? '
-                <div class="col-12 sm:col-6 lg:col-3 my-3">
+                <div class="col-12 md:col-6 my-3">
                     <label for="is_active" class="form-label">' . lang('Status') . '</label>
                     ' . erp_till_form_status_field($liveform) . '
                 </div>' : '') . '
             </div>
             <div class="row">
-                <div class="col-12 lg:col-4 my-3">
+                <div class="col-12 my-3">
                     <label for="bank_name" class="form-label">' . lang('Bank') . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'text', 'id' => 'bank_name', 'name' => 'bank_name',
                         'class' => 'form-control', 'maxlength' => '100', 'autocomplete' => 'off')) . '
                 </div>
-                <div class="col-12 lg:col-5 my-3">
+                <div class="col-12 md:col-6 my-3">
                     <label for="iban" class="form-label">' . lang('IBAN') . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'text', 'id' => 'iban', 'name' => 'iban',
                         'class' => 'form-control', 'maxlength' => '42', 'autocomplete' => 'off',
                         'spellcheck' => 'false', 'autocapitalize' => 'characters')) . '
                 </div>
-                <div class="col-12 sm:col-4 lg:col-3 my-3">
+                <div class="col-12 md:col-3 my-3">
                     <label for="opening_balance" class="form-label">' . lang('Opening Balance') . '</label>
                     <label class="form-control form-adorn form-adorn-end">
                         <span class="form-adorn-text" aria-hidden="true">' . (erp_fx_enabled() ? lang('in the till currency') : BASE_CURRENCY_SYMBOL) . '</span>

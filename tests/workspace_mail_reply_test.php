@@ -159,6 +159,22 @@ function test_workspace_mail_reply_error_texts()
 	pg_assert_same(ws_mail_reply_error_text('not_sent'), ws_mail_reply_error_text('anything'), 'an unknown reason');
 }
 
+function test_workspace_mail_reply_keeps_the_send_limits()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/mail_reply.php');
+	$start = strpos($source, 'function ws_mail_reply_check(');
+	$check = substr($source, $start, strpos($source, 'function ws_mail_reply_target(') - $start);
+
+	pg_assert_contains("ws_mail_send_limits(array((string) \$target['conversation']['customer_email'])", $check, 'the bounce list holds the customer');
+	pg_assert_contains("ws_mail_send_last_hour((int) \$viewer['id'], time())", $check, 'the hourly limit counts the writer');
+
+	pg_assert_same(array('status' => 429, 'code' => 'rate_limited', 'field' => null), ws_api_mail_reply_refusal('hourly'));
+	pg_assert_same(array('status' => 422, 'code' => 'validation_failed', 'field' => null), ws_api_mail_reply_refusal('blocked'));
+
+	pg_assert_same(ws_mail_send_error_text('hourly'), ws_mail_reply_error_text('hourly'), 'the words of a new mail');
+	pg_assert_same(ws_mail_send_error_text('blocked', 'a@shop.test'), ws_mail_reply_error_text('blocked', 'a@shop.test'), 'the address named');
+}
+
 function test_mail_thread_headers_lets_only_threading_ids_through()
 {
 	pg_assert_same(array('Message-ID' => '<a@b.test>', 'In-Reply-To' => '<c@d.test>', 'References' => '<e@f.test> <c@d.test>'),

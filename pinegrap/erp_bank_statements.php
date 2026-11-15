@@ -133,7 +133,7 @@ pg_page_shell([
             ' . $liveform->output_notices() . '
         </div>
         <div class="col-12 lg:col-8 2xl:col-9 order-1">
-            <div class="card my-7" id="erp_bank_statements">
+            <div class="card pg-card erp-list-card my-7" id="erp_bank_statements">
                 <div class="card-body p-0 table-responsive">
                     <table class="table table-hover align-middle mb-0" data-pg-sort>
                         <thead>
@@ -152,9 +152,9 @@ pg_page_shell([
         </div>
         <div class="col-12 lg:col-4 2xl:col-3 order-2">
             <div class="position-sticky my-7" style="top:3.3rem;">
-                ' . (($ready && !$readonly) ? '<form method="post" action="erp_bank_statements.php" enctype="multipart/form-data" class="card mb-7" data-erp-send-once>
+                ' . (($ready && !$readonly) ? '<form method="post" action="erp_bank_statements.php" enctype="multipart/form-data" class="card pg-card mb-7" data-erp-send-once>
                     ' . get_token_field() . '
-                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('Take in')) . '</div>
+                    <h2 class="card-header bg-reset border-0 pg-title-status">' . h(lang('Take in')) . '</h2>
                     <div class="card-body">
                         <div class="form-field mb-5">
                             <label class="form-label" for="cash_account_id">' . lang('Bank account') . '</label>
@@ -170,8 +170,8 @@ pg_page_shell([
                         <p class="small fg-secondary mt-3 mb-0" role="status" aria-live="polite" data-erp-send-once-status></p>
                     </div>
                 </form>' : '') . '
-                <div class="card">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('Summary')) . '</div>
+                <div class="card pg-card">
+                    <h2 class="card-header bg-reset border-0 pg-title-status">' . h(lang('Summary')) . '</h2>
                     <div class="card-body">
                         <dl class="row small mb-0">
                             <dt class="col-8 fw-normal fg-secondary">' . h(lang('Bank statements')) . '</dt>

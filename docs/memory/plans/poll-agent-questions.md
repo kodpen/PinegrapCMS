@@ -28,7 +28,7 @@ description: Plan (owner 2026-11-14): the poll gains described, pictured and lin
 - AQ3 (M) The poll box in its three shapes and the "New poll" form. Look A; the whole picture set goes to the owner.
 - AQ4a Step 11.0.214, the server side, done #9646 (`workspace/poll-agent-question.md`).
 - AQ4b (S, after AQ3; it owns the box files) The agent-question box (no counts or closing) and the Decisions tab line; one answer the click, several or "Other" one Send; the answered state. Pictures to the owner.
-- AQ5 (S) The asked person is rung whatever their notify level (`ws_question_ring()`), the question stands in Today and on the dashboard's Assistant card; a channel's export writes it; `tools/ws_poll.php` asks with the new fields, takes back and asks again.
+- AQ5 Ring, Today, the Assistant card, the export and `tools/ws_poll.php`, done #9650 (`workspace/poll-agent-question-reach.md`).
 - AQ6 (S) Close-out: `workspace/agent-questions.md`, the working rules, this plan deleted.
 
 ## What does every step keep?

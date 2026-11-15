@@ -157,8 +157,8 @@ if (($search !== '') && $ready && !$readonly) {
     foreach (erp_product_search($search, 20, 0) as $product) {
         $found .= '
             <li class="list-group-item d-flex flex-wrap align-items-center gap-3">
-                <span class="me-auto">' . h((string) $product['name']) . ' <span class="small fg-secondary font-monospace">' . h((string) $product['sku']) . '</span></span>
-                <span class="small fg-secondary">' . h(erp_money_out((int) $product['price'])) . '</span>
+                <span class="me-auto">' . h((string) $product['name']) . ' <span class="pg-text-meta font-monospace">' . h((string) $product['sku']) . '</span></span>
+                <span class="pg-text-meta">' . h(erp_money_out((int) $product['price'])) . '</span>
                 <form method="post" action="erp_account_prices.php" class="d-inline">' . get_token_field() . '
                     <input type="hidden" name="account_id" value="' . $account_id . '" /><input type="hidden" name="erp_action" value="add" /><input type="hidden" name="product_id" value="' . (int) $product['id'] . '" />
                     <button type="submit" class="btn btn-sm btn-outline theme-primary"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . lang('Add') . '</button>
@@ -198,8 +198,8 @@ pg_page_shell([
                 <div class="form-text px-5 pb-5">' . lang('A price replaces the list price; with no price, the discount applies to the list price. Clear both to take the product off the list. Prices are in the catalogue\'s basis, the way the list price is.'). '</div>
             </div>
 
-            ' . ((!$readonly && $ready) ? '<div class="card my-7">
-                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Add a product') . '</div>
+            ' . ((!$readonly && $ready) ? '<div class="card pg-card my-7">
+                <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('Add a product') . '</h2>
                 <div class="card-body">
                     <form method="get" action="erp_account_prices.php" class="d-flex gap-1" role="search">
                         <input type="hidden" name="account_id" value="' . $account_id . '" />
@@ -212,11 +212,11 @@ pg_page_shell([
         </div>
         <div class="col-12 lg:col-4 2xl:col-3 order-2">
             <div class="position-sticky my-7" style="top:3.3rem;">
-                <form method="post" action="erp_account_prices.php" class="card mb-7">
+                <form method="post" action="erp_account_prices.php" class="card pg-card mb-7">
                     ' . get_token_field() . '
                     <input type="hidden" name="account_id" value="' . $account_id . '" />
                     <input type="hidden" name="erp_action" value="save" />
-                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('Discount')) . '</div>
+                    <h2 class="card-header bg-reset border-0 pg-title-status">' . h(lang('Discount')) . '</h2>
                     <div class="card-body">
                         <div class="form-field">
                             <label class="form-label" for="account_discount">' . lang('Discount on everything else (%)') . '</label>
@@ -226,10 +226,10 @@ pg_page_shell([
                         ' . ((!$readonly && $ready) ? '<button type="submit" class="btn btn-solid theme-success w-100 mt-5"><i class="bi bi-check-circle me-3" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Save')) . '</span></button>' : '') . '
                     </div>
                 </form>
-                <div class="card">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('Summary')) . '</div>
+                <div class="card pg-card">
+                    <h2 class="card-header bg-reset border-0 pg-title-status">' . h(lang('Summary')) . '</h2>
                     <div class="card-body">
-                        <dl class="row small mb-0">
+                        <dl class="row pg-text-2 mb-0">
                             <dt class="col-8 fw-normal fg-secondary">' . h(lang('Products')) . '</dt>
                             <dd class="col-4 text-end mb-2">' . pg_format_number($summary_products, 0) . '</dd>
                             <dt class="col-8 fw-normal fg-secondary">' . h(lang('Account price')) . '</dt>

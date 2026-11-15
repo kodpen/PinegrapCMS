@@ -896,7 +896,7 @@ function pg_lbs_trial_card_html($design_id, $trial, $info)
     if ($trial === null) {
         return array('below' => '', 'actions' => '<form method="post" action="legacy_to_designer.php" class="d-inline">' . get_token_field()
             . '<input type="hidden" name="bootstrap_trial" value="make"><input type="hidden" name="design" value="' . $id . '">'
-            . '<button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-4"' . ($running ? ' disabled' : '') . '>'
+            . '<button type="submit" class="pg-button pg-button-fill"' . ($running ? ' disabled' : '') . '>'
             . '<i class="bi bi-bootstrap me-2" aria-hidden="true"></i>' . h(lang('Make a trial design')) . '</button></form>');
     }
 

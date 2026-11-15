@@ -82,7 +82,7 @@ function bs6_switch_style_files()
 {
 	return array(
 		'edit_comment.php', 'includes/api/console.php',
-		'includes/erp/drawer.php', 'install/index.php', 'marketplace_settings.php', 'print_order.php',
+		'install/index.php', 'marketplace_settings.php', 'print_order.php',
 		'print_packing_slip.php', 'product_builder.php', 'router.php', 'theme_designer.php', 'translations.php',
 		'view_folders.php', 'view_log.php',
 	);

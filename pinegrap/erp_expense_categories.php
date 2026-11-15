@@ -144,17 +144,17 @@ foreach ($ready ? erp_expense_categories() : array() as $category) {
 
     $output_rows .= '
         <tr' . (((int) $category['is_active'] !== 1) ? ' class="opacity-75"' : '') . '>
-            <td style="width:6rem"><input type="number" class="form-control form-control-sm text-end" name="' . h($field) . '[sort_order]" value="' . (int) $category['sort_order'] . '" step="1" min="-2147483648" max="2147483647" aria-label="' . h(lang('Sort Order')) . '" /></td>
-            <td style="min-width:12rem"><input type="text" class="form-control form-control-sm' . ($name_invalid ? ' is-invalid' : '') . '" name="' . h($field) . '[name]" value="' . h((string) $category['name']) . '" maxlength="100" required aria-label="' . h(lang('Name')) . '"' . ($name_invalid ? ' aria-invalid="true" autofocus' : '') . ' /></td>
-            <td style="min-width:8rem"><input type="text" class="form-control form-control-sm font-monospace" name="' . h($field) . '[code]" value="' . h((string) $category['code']) . '" maxlength="32" placeholder="770" aria-label="' . h(lang('Account code')) . '" /></td>
-            <td class="text-end fg-secondary" style="width:6rem">' . (int) ($counts[$category_id] ?? 0) . '</td>
-            ' . ($with_deductible ? '<td style="width:11rem">
+            <td class="erp-category-cell-order"><input type="number" class="form-control form-control-sm text-end" name="' . h($field) . '[sort_order]" value="' . (int) $category['sort_order'] . '" step="1" min="-2147483648" max="2147483647" aria-label="' . h(lang('Sort Order')) . '" /></td>
+            <td class="erp-category-cell-name"><input type="text" class="form-control form-control-sm' . ($name_invalid ? ' is-invalid' : '') . '" name="' . h($field) . '[name]" value="' . h((string) $category['name']) . '" maxlength="100" required aria-label="' . h(lang('Name')) . '"' . ($name_invalid ? ' aria-invalid="true" autofocus' : '') . ' /></td>
+            <td class="erp-category-cell-code"><input type="text" class="form-control form-control-sm font-monospace" name="' . h($field) . '[code]" value="' . h((string) $category['code']) . '" maxlength="32" placeholder="770" aria-label="' . h(lang('Account code')) . '" /></td>
+            <td class="text-end fg-secondary erp-category-cell-count">' . (int) ($counts[$category_id] ?? 0) . '</td>
+            ' . ($with_deductible ? '<td class="erp-category-cell-tax">
                 <div class="form-field mb-0">
                     <div class="switch"><input class="" type="checkbox" id="category_deductible_' . $category_id . '" name="' . h($field) . '[tax_deductible]" value="1"' . (((int) $category['tax_deductible'] === 1) ? ' checked' : '') . ' /></div>
                     <label class="small" for="category_deductible_' . $category_id . '">' . lang('Tax taken back') . '</label>
                 </div>
             </td>' : '') . '
-            <td style="width:7rem">
+            <td class="erp-category-cell-on">
                 <div class="form-field mb-0">
                     <div class="switch"><input class="" type="checkbox" id="category_active_' . $category_id . '" name="' . h($field) . '[is_active]" value="1"' . (((int) $category['is_active'] === 1) ? ' checked' : '') . ' /></div>
                     <label class="small" for="category_active_' . $category_id . '">' . lang('Offered') . '</label>
@@ -187,7 +187,7 @@ pg_page_shell([
                 ' . get_token_field() . '
                 <div class="row">
                 <div class="col-12 lg:col-8 2xl:col-9 order-1">
-                <div class="card my-7">
+                <div class="card pg-card erp-list-card my-7">
                     <div class="card-body p-0 table-responsive">
                         <table class="table align-middle mb-0">
                             <thead>
@@ -204,7 +204,7 @@ pg_page_shell([
                                 <tr class="pg-table-light">
                                     <td class="fg-secondary small">' . lang('New') . '</td>
                                     <td><input type="text" class="form-control form-control-sm" name="new_name" value="' . h((string) ($sent_new['name'] ?? '')) . '" maxlength="100" placeholder="' . h(lang('A new category')) . '" aria-label="' . h(lang('A new category')) . '" /></td>
-                                    <td style="min-width:8rem"><input type="text" class="form-control form-control-sm font-monospace" name="new_code" value="' . h((string) ($sent_new['code'] ?? '')) . '" maxlength="32" aria-label="' . h(lang('Account code')) . '" /></td>
+                                    <td class="erp-category-cell-code"><input type="text" class="form-control form-control-sm font-monospace" name="new_code" value="' . h((string) ($sent_new['code'] ?? '')) . '" maxlength="32" aria-label="' . h(lang('Account code')) . '" /></td>
                                     <td></td>
                                     ' . ($with_deductible ? '<td>
                                         <div class="form-field mb-0">
@@ -220,8 +220,8 @@ pg_page_shell([
                 </div>
                 </div>
                 <div class="col-12 lg:col-4 2xl:col-3 order-2">
-                    <div class="card my-7 position-sticky" style="top:3.3rem;">
-                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('Summary')) . '</div>
+                    <div class="card pg-card my-7 position-sticky" style="top:3.3rem;">
+                        <h2 class="card-header bg-reset border-0 pg-title-status">' . h(lang('Summary')) . '</h2>
                         <div class="card-body">
                             <dl class="row small mb-0">
                                 <dt class="col-8 fw-normal fg-secondary">' . h(lang('Categories')) . '</dt>
