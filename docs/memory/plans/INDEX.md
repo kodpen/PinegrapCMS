@@ -24,7 +24,6 @@
 - cart-recovery.md: Plan (owner 2026-11-15, agent channel message 5096 and poll 50): recovered carts: the record of touches, the figures by channel and message, what weakens recovery; steps CR1 to CR4
 - channel-api-gaps-steps.md: Steps CA2 to CA16 of plans/channel-api-gaps.md: the agents' side (CA2 to CA6) and a channel's own side (CA7 to CA16), each a group of the censuses' gaps with who may call it
 - channel-api-gaps.md: Plan (owner 2026-11-15, agent channel message 5039): the API side of channels and the agent channel completed: both censuses done, steps CA2 to CA16 in channel-api-gaps-steps.md, then the close-out
-- channel-open-items.md: Plan (owner 2026-11-15, agent channel message 5143): a line above a channel's conversation naming its open polls, agent questions, check-ins and approval requests, each with a scroll button
 - claude-plugin-bundle.md: Plan (owner 2026-11-14): a Pinegrap plugin bundle for Claude's directory: a site's MCP server connected by its address, skills for common site work, the listing; the repository is the owner's to open
 - design-template-bikeshop-design.md: Design of plans/design-template-bikeshop.md: the shipped features the Bike Shop template reuses, what it does not build, its look and Turkish words
 - design-template-bikeshop.md: Plan: the Bike Shop design template (pinegrap-bikeshop): bikes and parts catalog, repair and service requests, bike fitting, group rides calendar, news; small steps
@@ -34,7 +33,6 @@
 - designer-closed-blocks.md: Plan (owner 2026-11-13, #9076): components the designer canvas draws as one closed block are listed, then opened into element trees; CB0, CB1 done, CB2 and on in designer-closed-blocks-steps.md
 - erp-edocument-leftovers.md: Open ERP work (e-document phase 3): Paraşüt send path, queue worker, İşbaşı live key, code lists, e-waybill, accountant sign-off; owner works on it locally
 - erp-parasut-open-work.md: Paraşüt work left after the rounds of 2026-10-23 to 26 (#1405-#1682): one live round when a new demo key comes, three decisions (#2440-#2442), the queue worker, incoming e-invoices; where to start
-- files-video-edit.md: Plan (owner 2026-11-15, agent channel message 5103): Design Canvas on a video in Files, the door the finished video plan left out; one step, FV1
 - github-channel-connection.md: Plan (owner 2026-11-08): connect GitHub with OAuth from Settings › Connections, the site sets its own webhook on chosen repositories and writes CI, pull request and label lines into a channel
 - kodpen-vendor-api-client-design-update.md: Update contract of plans/kodpen-vendor-api-client.md still to build: which keys verify (P5c) and P2's release workflow; the built check, pin, download and beta builds are in platform/
 - kodpen-vendor-api-client-steps.md: Open steps of plans/kodpen-vendor-api-client.md: P2 and P5c before the 2026.11.0 release branch, P9 (api2 client removal) in the next open version; claim as [plan:kodpen-vendor-api-client] P<n>
