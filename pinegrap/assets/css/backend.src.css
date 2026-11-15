@@ -12823,6 +12823,11 @@ b.ws-agent-card-anchor:focus-visible {
   overflow-wrap: anywhere;
   -webkit-line-clamp: 4;
   -webkit-box-orient: vertical;
+  cursor: pointer;
+}
+.ws-agent-card-duty-text.is-open {
+  display: block;
+  -webkit-line-clamp: unset;
 }
 .ws-agent-card-box {
   margin-top: .75rem;

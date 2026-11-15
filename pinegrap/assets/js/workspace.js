@@ -3537,13 +3537,34 @@
         }
 
         // What it is there for, in the words of whoever set it up: four
-        // lines at most on the card, the whole text in its title.
+        // lines at most on the card, the whole text in its title. A click,
+        // tap or Enter opens it whole and closes it again, as a phone has no
+        // hover.
         if (data.duty) {
             var duty = el('div', 'ws-agent-card-duty');
+            var dutyText = el('div', 'ws-agent-card-duty-text', data.duty);
+            var dutyToggle = function () {
+                dutyText.setAttribute('aria-expanded', dutyText.classList.toggle('is-open') ? 'true' : 'false');
+
+                // The card grows: set it again under or over its anchor.
+                if (agentCardOpen.place) {
+                    agentCardOpen.place();
+                }
+            };
 
             duty.appendChild(el('div', 'pg-text-meta', t('ac_duty')));
-            duty.appendChild(el('div', 'ws-agent-card-duty-text', data.duty));
-            duty.title = data.duty;
+            dutyText.title = data.duty;
+            dutyText.tabIndex = 0;
+            dutyText.setAttribute('role', 'button');
+            dutyText.setAttribute('aria-expanded', 'false');
+            dutyText.addEventListener('click', dutyToggle);
+            dutyText.addEventListener('keydown', function (event) {
+                if ((event.key === 'Enter') || (event.key === ' ')) {
+                    event.preventDefault();
+                    dutyToggle();
+                }
+            });
+            duty.appendChild(dutyText);
             node.appendChild(duty);
         }
 
