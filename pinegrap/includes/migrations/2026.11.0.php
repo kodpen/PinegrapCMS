@@ -201,6 +201,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ws_roadmap_templates();    // 11.0.208
 	upgrade_2026_11_0_ws_approval_agents();      // 11.0.210
 	upgrade_2026_11_0_ws_personal_plan_repeat(); // 11.0.209
+	upgrade_2026_11_0_ws_mail_away();            // 11.0.211
 
 }
 
@@ -6752,5 +6753,24 @@ function upgrade_2026_11_0_ws_personal_plan_repeat() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Workspace: a personal plan on My calendar can repeat every day, week, month or year.');
+
+}
+
+// "I am away" under My e-mail settings (11.0.211): a person's range, text and
+// stand-in as JSON beside their own signature (includes/workspace/mail_away.php).
+// No backfill: nobody is away until they say so.
+function upgrade_2026_11_0_ws_mail_away() {
+
+	if (!install_table_exists('ws_profiles')) {
+
+		install_skipped('ws_profiles does not exist, skipped');
+
+		return;
+
+	}
+
+	install_add_column('ws_profiles', 'mail_away', "TEXT NULL");
+
+	install_note('Workspace: a person can say they are away under My e-mail settings; senders get their text once and a stand-in takes conversations given to them.');
 
 }

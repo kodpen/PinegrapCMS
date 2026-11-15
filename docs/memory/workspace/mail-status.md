@@ -20,7 +20,7 @@ description: State of a Workspace e-mail conversation (G5a, G5b, mail_status.php
 ## When does a box answer by itself?
 - Columns `auto_reply` (0 by default) and `auto_reply_text` (owner answer 8: per box, off, editable). Box form "Automatic answer": switch and text; on needs a text, at most `WS_MAIL_AUTO_REPLY_MAX` (5,000) characters (`ws_mail_auto_reply_input()`).
 - `ws_mail_auto_reply($box, $item_id)` from `ws_mail_ingest()` only when the mail opened a new conversation. `ws_mail_auto_reply_due()`: on with a text, the mail's `auth` is not `fail` (an answer to a forged address reaches a stranger), and no automatic answer to that address from this box in `WS_MAIL_AUTO_REPLY_EVERY` (a day).
-- Sent through the box's route (`ws_mail_reply_route()`; none: nothing sent), `'queue' => true` so a mailbox reader never waits on a server, threading headers and the `[#T<id>]` subject like an answer, `'auto_submitted' => true`: `email()` adds `Auto-Submitted: auto-replied` (RFC 3834), and our own loop gate refuses such mail too.
+- Sent by `ws_mail_auto_reply_send()`, shared with a holder's away text (`mail-away.md`): through the box's route (`ws_mail_reply_route()`; none: nothing sent), `'queue' => true` so a mailbox reader never waits on a server, threading headers and the `[#T<id>]` subject like an answer, `'auto_submitted' => true`: `email()` adds `Auto-Submitted: auto-replied` (RFC 3834), and our own loop gate refuses such mail too.
 - Kept as an `out` item with `user_id = 0` (`ws_mail_item_is_auto_reply()`; a person's answer always has a writer), drawn under the card with badge "Automatic answer" and the box's name. It is not the first answer (`first_reply_at` untouched) and leaves the status open.
 
 ## Tests?

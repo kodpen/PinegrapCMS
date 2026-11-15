@@ -15,7 +15,7 @@ description: Workspace e-mail as a whole: mailboxes, the card or a box's room, t
 - The card in a channel and the Mailboxes card of the settings: `mail-card.md`, `workspace-mail-settings-dialog.md`; a box kept in no channel: `mail-room.md`; the "Support box" switch: `mail-support-box.md`.
 - The E-mails screen (Incoming, Sent, Not sent, filters, the row, the menu): `mail-list.md`; the reading pane and unread marks: `mail-screen-pane.md`, `mail-html-preview.md`.
 - Sending: `mail-send.md`, `mail-send-outcome.md`, `core/mail-queue-outcome.md`, `mail-email-fields.md`, `mail-sent-and-bounces.md`; a box's Sent folder read back: `mail-sent-folder.md`; New e-mail: `mail-compose.md`, its address suggestions `mail-suggest.md`; a person's own signature: `mail-own-signature.md`; Forward as e-mail: `mail-forward.md`; Reply by e-mail: `mail-reply.md`.
-- Status, holder, first-answer time, automatic answer: `mail-status.md`; incoming mail rules: `mail-rules.md`; who is told and the event: `mail-notices-and-event.md`; Pinegrap AI's suggestion: `mail-triage.md`; the API and MCP: `mail-api.md`.
+- Status, holder, first-answer time, automatic answer: `mail-status.md`; incoming mail rules: `mail-rules.md`; "I am away" and its stand-in: `mail-away.md`; who is told and the event: `mail-notices-and-event.md`; Pinegrap AI's suggestion: `mail-triage.md`; the API and MCP: `mail-api.md`.
 - Tables: `mail-tables.md`, `mail-tables-sending.md`.
 
 ## Where is each part?

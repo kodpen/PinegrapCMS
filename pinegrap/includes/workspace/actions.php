@@ -2870,9 +2870,29 @@ function ws_handle_action($action, $request)
                 return ws_action_error(lang('Only team members have e-mail settings.'));
             }
 
+            // "I am away" (mail_away.php) is offered once its column is there.
+            $away_ready = function_exists('ws_mail_away_ready') && ws_mail_away_ready();
+
             if ($action === 'ws_mail_my_settings') {
                 return ws_action_ok(array('signature' => ws_mail_own_signature((int) $viewer['id']), 'writer' => ws_person_name((int) $viewer['id']),
-                    'max' => WS_MAIL_SIGNATURE_MAX, 'lines' => WS_MAIL_SIGNATURE_LINES));
+                    'max' => WS_MAIL_SIGNATURE_MAX, 'lines' => WS_MAIL_SIGNATURE_LINES,
+                    'away_ready' => $away_ready, 'away' => $away_ready ? ws_mail_away_offer((int) $viewer['id']) : null,
+                    'people' => $away_ready ? ws_mail_away_people($viewer) : array(), 'away_max' => WS_MAIL_AUTO_REPLY_MAX));
+            }
+
+            // Both parts are checked before either is kept.
+            $signature = ws_mail_signature_input($request['signature'] ?? '');
+
+            if (!$signature['ok']) {
+                return ws_action_error($signature['error'], 'signature');
+            }
+
+            if ($away_ready && isset($request['away_start'])) {
+                $away = ws_mail_away_save($viewer, $request);
+
+                if (!$away['ok']) {
+                    return ws_action_error($away['error'], 'away_' . $away['field']);
+                }
             }
 
             $saved = ws_mail_own_signature_save($viewer, $request['signature'] ?? '');
