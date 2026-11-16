@@ -996,6 +996,15 @@ if (pg_cron_job_is_enabled('push_job')) {
 
 }
 
+// Visitor notifications (includes/fn/site_push.php): with their own switch,
+// not the device notifications job's, since a site may offer one and not the
+// other. push_job.php runs the same pass; its lock lets one run at a time.
+if (pg_site_push_ready() && pg_site_push_switch_on()) {
+
+    pg_site_push_queue_run(10);
+
+}
+
 // Booking reminders (pg_booking_reminders_run() in
 // includes/fn/booking_messages.php): the confirmed bookings whose reminder
 // moment fell since the last pass get their mail and text. Before the mail

@@ -118,9 +118,11 @@ function test_site_push_secret_reads_only_its_own_message()
 
 	pg_assert_contains('q.subscription_id = ?', $sql, 'scoped to the subscription');
 	pg_assert_same('7', $params[0], 'the subscription the secret named');
-	pg_assert_same((string) PG_SITE_PUSH_PUSHED, $params[1], 'only a pushed row');
+	pg_assert_same((string) PG_SITE_PUSH_PUSHED, $params[1], 'a pushed row');
 	pg_assert_same((string) (1794868200 - PG_SITE_PUSH_MESSAGE_TTL), $params[2], 'within a day');
-	pg_assert_same(3, substr_count($sql, '?'), 'every value is bound');
+	pg_assert_same((string) PG_SITE_PUSH_READ, $params[3], 'or a row already read');
+	pg_assert_same((string) (1794868200 - PG_SITE_PUSH_REREAD), $params[4], 'within the last few minutes');
+	pg_assert_same(5, substr_count($sql, '?'), 'every value is bound');
 
 	pg_assert_true(pg_site_push_secret_valid(pg_site_push_secret_new()), 'a new secret has the shape');
 	pg_assert_false(pg_site_push_secret_new() === pg_site_push_secret_new(), 'secrets differ');
@@ -130,7 +132,7 @@ function test_site_push_secret_reads_only_its_own_message()
 
 	$body = pg_test_function_source('pg_site_push_waiting_message');
 	pg_assert_contains('pg_site_push_subscription_by_secret($secret)', $body, 'the subscription comes from the secret');
-	pg_assert_contains('AND subscription_id = ?', $body, 'it marks only its own row read');
+	pg_assert_contains('AND subscription_id = ? AND status = ?', $body, 'it marks only its own pushed row read, so a second read keeps the first time');
 }
 
 function test_site_push_nothing_written_with_the_switch_off()
@@ -187,4 +189,98 @@ function test_site_push_never_in_the_panel_queue()
 	foreach (array('site_push_message', 'site_push_queue', 'site_push_subscription') as $table) {
 		pg_assert_contains("'" . $table . "',", $install, $table . ' in get_tables()');
 	}
+}
+
+function test_site_push_message_check()
+{
+	$hosts = array('shop.test', 'www.shop.test');
+	$ok = pg_site_push_message_check(array('title' => '  New season ', 'body' => "Line one\nline two", 'url' => 'https://www.shop.test/new?x=1#top'), $hosts);
+
+	pg_assert_same(array('title' => 'New season', 'body' => 'Line one line two', 'url' => '/new?x=1#top'), $ok, 'cleaned, the link kept as a path');
+	pg_assert_same('title', pg_site_push_message_check(array('title' => '', 'url' => '/'), $hosts), 'a title is needed');
+	pg_assert_same('title', pg_site_push_message_check(array('title' => str_repeat('ş', 61)), $hosts), 'at most 60 characters');
+	pg_assert_true(is_array(pg_site_push_message_check(array('title' => str_repeat('ş', 60), 'body' => str_repeat('ğ', 200)), $hosts)), '60 and 200 characters, not bytes');
+	pg_assert_same('body', pg_site_push_message_check(array('title' => 'x', 'body' => str_repeat('a', 201)), $hosts), 'at most 200');
+
+	pg_assert_same('/', pg_site_push_url_path('', $hosts), 'empty is the home page');
+	pg_assert_same('/a/b', pg_site_push_url_path('/a/b', $hosts), 'a path');
+	pg_assert_same('/', pg_site_push_url_path('http://SHOP.test', $hosts), 'the site\'s address');
+
+	foreach (array('https://evil.test/a', '//evil.test/a', '/\\evil.test', 'javascript:alert(1)', 'a/b', "/a\nb", 'https://u:p@shop.test/a', 'ftp://shop.test/a', '/' . str_repeat('a', 500)) as $bad) {
+		pg_assert_same('', pg_site_push_url_path($bad, $hosts), var_export($bad, true));
+	}
+}
+
+function test_site_push_batches()
+{
+	$batches = pg_site_push_batches(range(1, 1001), 500);
+
+	pg_assert_same(3, count($batches), '1001 subscriptions are three batches');
+	pg_assert_same(500, count($batches[0]), 'a full batch');
+	pg_assert_same(array(1001), $batches[2], 'the rest');
+	pg_assert_same(array(), pg_site_push_batches(array()), 'no subscribers, nothing written');
+
+	list($sql, $params) = pg_site_push_queue_insert(9, array(4, 5));
+	pg_assert_contains('INSERT IGNORE INTO site_push_queue', $sql, 'a batch written twice queues each browser once');
+	pg_assert_same(2, substr_count($sql, '(?, ?, 0, 0, 0)'), 'one row each, waiting');
+	pg_assert_same(array('9', '4', '9', '5'), $params, 'every value bound');
+
+	$body = pg_test_function_source('pg_site_push_message_send');
+	pg_assert_true(strpos($body, 'pg_site_push_enabled()') < strpos($body, 'db_'), 'nothing is written with the switch off');
+	pg_assert_contains('PG_SITE_PUSH_KIND_NEWS, PG_SITE_PUSH_KIND_TEST', $body, 'only news and a test are written here');
+	pg_assert_same('off', pg_site_push_message_send(array('title' => 'x'), PG_SITE_PUSH_KIND_NEWS, 1), 'refused with the switch off');
+}
+
+function test_site_push_send_plan()
+{
+	pg_assert_same(array('action' => 'sent', 'count' => 'sent_count', 'wait' => 0), pg_site_push_send_plan('ok', 0), 'accepted: pushed, counted');
+	pg_assert_same(array('action' => 'remove', 'count' => 'removed_count', 'wait' => 0), pg_site_push_send_plan('gone', 2), 'a gone subscription is removed and counted');
+	pg_assert_same(array('action' => 'hold', 'count' => '', 'wait' => 0), pg_site_push_send_plan('busy', 4), 'a held service counts no try');
+	pg_assert_same(array('action' => 'retry', 'count' => '', 'wait' => 60), pg_site_push_send_plan('failed', 0), 'a first failure waits a minute');
+	pg_assert_same(array('action' => 'retry', 'count' => '', 'wait' => 7200), pg_site_push_send_plan('failed', 3), 'the fourth waits two hours');
+	pg_assert_same(array('action' => 'fail', 'count' => 'failed_count', 'wait' => 0), pg_site_push_send_plan('failed', PG_SITE_PUSH_ATTEMPTS - 1), 'the last try gives up and counts');
+	pg_assert_same('gone', pg_push_outcome(410), '410 is gone');
+	pg_assert_same('busy', pg_push_outcome(429), '429 is busy');
+
+	$run = pg_test_function_source('pg_site_push_queue_run');
+	pg_assert_contains('isset($held[$row[\'service\']])', $run, 'a held service is skipped for the rest of the pass');
+	pg_assert_contains('s.service = ?', $run, 'every waiting row of the held service waits');
+	pg_assert_contains('pg_cron_claim(PG_SITE_PUSH_LOCK', $run, 'one run at a time');
+	pg_assert_true(strpos($run, 'pg_cron_claim(') < strpos($run, 'pg_site_push_deliver('), 'claimed before sending');
+	pg_assert_false(strpos($run, 'push_subscriptions') !== false, 'never the panel\'s table');
+}
+
+function test_site_push_dropped_after_a_day_and_tidied()
+{
+	pg_assert_false(pg_site_push_expired(1000 - PG_SITE_PUSH_MESSAGE_TTL, 1000), 'exactly a day: still sent');
+	pg_assert_true(pg_site_push_expired(999 - PG_SITE_PUSH_MESSAGE_TTL, 1000), 'past the day: dropped');
+	pg_assert_same(7 * 86400, PG_SITE_PUSH_KEEP, 'finished rows are kept a week');
+
+	$tidy = pg_test_function_source('pg_site_push_queue_tidy');
+	pg_assert_contains('failed_count = failed_count + ?', $tidy, 'a dropped row counts as failed');
+	pg_assert_contains('PG_SITE_PUSH_KEEP', $tidy, 'finished rows go after a week');
+	pg_assert_contains('q.status <> ?', $tidy, 'a waiting row is never deleted by the tidy-up');
+}
+
+function test_site_push_counts()
+{
+	$body = pg_test_function_source('pg_site_push_count');
+	pg_assert_contains("array('sent_count', 'failed_count', 'removed_count')", $body, 'only the three counts are raised');
+
+	foreach (array('ok', 'gone', 'busy', 'failed') as $outcome) {
+		$plan = pg_site_push_send_plan($outcome, PG_SITE_PUSH_ATTEMPTS - 1);
+		pg_assert_true(in_array($plan['count'], array('', 'sent_count', 'failed_count', 'removed_count'), true), $outcome);
+	}
+
+	pg_assert_contains('queued_count', pg_test_function_source('pg_site_push_message_send'), 'the queued count is written');
+}
+
+function test_site_push_runners()
+{
+	$job = file_get_contents(PG_FUNCTIONS_DIR . '/job.php');
+	$push_job = file_get_contents(PG_FUNCTIONS_DIR . '/push_job.php');
+
+	pg_assert_contains('pg_site_push_queue_run(10)', $job, 'the general job runs the pass');
+	pg_assert_contains('pg_site_push_queue_run(20)', $push_job, 'push_job.php runs the pass');
+	pg_assert_contains('pg_site_push_switch_on()', $job, 'only with the switch on');
 }

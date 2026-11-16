@@ -18,6 +18,7 @@ description: Plan visitor-push, steps VP1 to VP8: the tables and the door, the s
   - Tests: batches, a gone subscription removed, a held service, a message dropped after a day, counts.
   - Features: N10, N11, N12 (the server's side).
   - Architect (2026-11-16, message 6528): writes `kind` 0 or 1 only, `url` as a path without host; deletes finished rows (2, 3) and a dropped message's rows after 7 days; one `pg_cron_claim()` over both runners (`platform/job-script-claims.md`), row set to 1 once pushed; the door gives a row read in the last few minutes again.
+  - Done: #9957 (`platform/visitor-push-sender.md`).
 
 - VP3 (M) after VP1: the block and the switch.
   - Existing files: `get_page_content.php` (the script for a page whose markup carries `data-pg-push`), `assets/js/style_designer.src.js` (one row in `_SD_PAGE_SCRIPTS`), `includes/settings/features.php` and `features.save.php` (the card).
