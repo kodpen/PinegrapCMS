@@ -71549,10 +71549,10 @@ const StyleDesigner = (function () {
             if (!ui || !_sdProto.open) return;
             var ids = Object.keys(P.near).filter(function (id) { return P.near[id] && P.boxes[id]; });
             var vr = ui.viewport.getBoundingClientRect();
-            var fresh = window.PGProtoHotspots.picOrder(ids.map(function (id) {
+            var fresh = window.PGProtoHotspots.picRefill(ids.map(function (id) {
                 var r = P.boxes[id].getBoundingClientRect();
                 return { id: id, x: r.left, y: r.top, w: r.width, h: r.height };
-            }), { x: vr.left, y: vr.top, w: vr.width, h: vr.height }).slice(0, SD_PROTO_PIC.alive).filter(function (id) { return !P.live[id]; });
+            }), { x: vr.left, y: vr.top, w: vr.width, h: vr.height }, P.live, SD_PROTO_PIC.alive);
             P.wait = fresh.concat(P.wait.filter(function (id) { return fresh.indexOf(id) < 0; }));
             _sdProtoPicPump();
         }, 300);

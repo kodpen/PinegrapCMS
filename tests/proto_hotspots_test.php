@@ -1074,6 +1074,24 @@ function test_proto_hotspots_view_marks_on_the_picture()
 	}
 }
 
+// After a pan or zoom, the pictures near the view come back: a frame in
+// view is never left a sketch once the queue is empty while no more frames
+// are near than the cap; past the cap, the nearest first, as the cap drops.
+function test_proto_hotspots_picture_refill_after_the_view_moves()
+{
+	$out = proto_hotspots_test_node('var b = [{ id: "far", x: 2000, y: 0, w: 100, h: 100 }, { id: "mid", x: 400, y: 0, w: 100, h: 100 }, { id: "in", x: 0, y: 0, w: 100, h: 100 }, { id: "live", x: 50, y: 0, w: 100, h: 100 }]; var v = { x: 0, y: 0, w: 100, h: 100 };'
+		. ' out = { all: H.picRefill(b, v, { live: true }, 48), capped: H.picRefill(b, v, { live: true }, 2), none: H.picRefill(b, v, {}, 0), empty: H.picRefill([], v, {}, 48) };');
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array('in', 'mid', 'far'), $out['all'], 'under the cap every frame near the view that is not alive comes back, nearest first');
+	pg_assert_same(array('in'), $out['capped'], 'past the cap only the nearest, the alive one counted');
+	pg_assert_same(array(), $out['none'], 'a cap of none');
+	pg_assert_same(array(), $out['empty'], 'nothing near');
+}
+
 // Which marks a picture shows (F5, F13): the selected frame all of its own;
 // another frame those starting an arrow into it; a shared part's link into
 // the selected page in amber. Nothing selected shows none.

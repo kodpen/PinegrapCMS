@@ -1347,6 +1347,19 @@
         });
     }
 
+    // Which pictures to make again after the view has moved: of the boxes
+    // near it ({ id, x, y, w, h }), the `cap` nearest the view's centre (the
+    // order the cap drops by, so nothing is made only to be dropped), less
+    // those alive (`live`, id => truthy). With no more boxes near the view
+    // than the cap, every one that is not alive comes back.
+    function picRefill(boxes, view, live, cap) {
+        live = isObject(live) ? live : {};
+
+        return picOrder(boxes, view).slice(0, Math.max(0, parseInt(cap, 10) || 0)).filter(function (id) {
+            return !live[id];
+        });
+    }
+
     // ── Drawing an arrow ──
 
     // The marks of the chips a link may be pointed at: what the href of
@@ -1793,6 +1806,7 @@
         markPort: markPort,
         markState: markState,
         picOrder: picOrder,
+        picRefill: picRefill,
         picLong: picLong,
         PIC_FRAME: PIC_FRAME,
         picHead: picHead,

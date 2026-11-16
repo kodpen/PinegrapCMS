@@ -18,7 +18,7 @@ description: The Prototype view's page picture in a frame (PV8): how it is built
 ## When is a picture made and dropped?
 - An IntersectionObserver on the stage's viewport (margin 200 px) queues a box; at most 6 load at once (`SD_PROTO_PIC`), the widget request among them; a picture that never loads frees its place after 15 s.
 - At most 48 alive; past that `picOrder()` drops the ones farthest from the view's centre back to the sketch. Measured on the Store template: 3.7 MB a picture (prototype-picture-check-numbers.md).
-- (#10040) The observer never calls again for a box that stayed near the view, so one dropped at Fit stayed a sketch after zooming in. The core reads the view on every pan and zoom: `_sdProtoPicSoon()`, 300 ms after it settles, queues the 48 near boxes nearest the centre that are not alive (same order as the cap, so nothing churns).
+- (#10040) The observer never calls again for a box that stayed near the view, so one dropped at Fit stayed a sketch after zooming in. The core reads the view on every pan and zoom: `_sdProtoPicSoon()`, 300 ms after it settles, queues `picRefill()`: the 48 near boxes nearest the centre that are not alive (same order as the cap, so nothing churns). The cap counts shared frames too (`test_proto_hotspots_picture_refill_after_the_view_moves`).
 - A redraw of the map (Read the links again, an arrow drawn, Tidy up) drops the frames and makes them again; a frame whose markup, widget payload and light/dark are unchanged takes its document from `_sdProto.pics.cache` without a request. Closing the view removes the frames.
 
 ## How is the foot counted?
