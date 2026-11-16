@@ -383,6 +383,7 @@
 - designer-node-ids.md: The designer's node ids (sd_N): each saved tree numbers its own, the counter kept above every loaded tree, a filled-in id never repeats one of its tree, issue badges on the issue's own node (#9958)
 - designer-note-author-stamping.md: Node notes get their author stamped in pg_designer_save_page via pg_stamp_note_authors, not in save_system_style; unchanged notes keep their stamp.
 - designer-options-panel-names.md: How controls of the visual editor's Options/Appearance panel get their accessible names (one naming pass), keyboard section headers, per-screen-size toggles, Styles inspector names
+- designer-options-panel-search.md: The Search... box at the top of the designer's Options panel (#sd-props-search, filterPropertiesPanel()): what it matches, how Turkish İ/ı and capitals are folded, the test
 - designer-overview-follows-selection.md: The designer's Overview tree follows the selection from every panel: one place opens and scrolls to the row (_sdTreeRevealSelection), identity lookup, instant scroll, when it must not move.
 - designer-page-names.md: Which names a visual-editor page may take: other pages, files, short links, site root entries, sitemap.xml/robots.txt, site language codes; why check_name_availability() is not used on the save path.
 - designer-page-pickers.md: How widget page pickers are built (_swPageOptions/_swPageVal, tab:<key>, tabs without the widget), how unsaved-tab references resolve on save, and why a page may reach the save without its tree.
@@ -422,6 +423,7 @@
 - designer-theme-part.md: The Themes tab of the designer's assets panel as the part 'theme' (D5 part 5): what moved, what the core keeps, the host the part works through
 - designer-turkish-terms-2.md: More Turkish designer words, continued from designer-turkish-terms: Parola (never Şifre) in the account widgets, their Bind Data labels and the account e-mails; tests/designer_password_word_test.php
 - designer-turkish-terms.md: Turkish terms for designer layer names, palette labels and panel rows; how a shared language key with a misfit Turkish is fixed (in place or a narrower key); tests/designer_turkish_terms_test.php
+- designer-undo-keeps-selection.md: Undo and Redo in the designer keep the selected element (found again by _id in the restored tree) and the Options panel's scroll; dropped only when the step removed it.
 - designer-video-autoplay.md: Play by itself on a Video item (B9): the autoplay interaction, muted and looping, its pause button (data-pg-video-toggle, pg-video-toggle rule), still under reduced motion and without script [decision: decisions-made-product-44.md]
 - designer-video-item.md: Palette > Content > Video: a <video> with controls, no autoplay; its panel (file from the Files tab, poster, switches), the "Fill its box" switch for a hero, what a player holds.
 - designer-widget-ghosts-and-edit-chips.md: Canvas ghost records of listing widgets (designer/widget_ghosts); the edit pencil on records (pg_sw_add_edit_chip()): who sees it, inline !important look, its page stylesheet.
@@ -571,6 +573,9 @@
 - record-view-counts.md: Views on record pages (form counters, people only, counted after sending) and form lists ordered by views, comments, recent views or newest activity; why not visitor_content_hourly
 - record-view-filters.md: form_item_view filters (opt-in record visibility, e.g. Status = Published): where they apply, fail-closed cases, the e-mail bypass, viewer_filter lists without feed or sitemap (#1194)
 - region-node-to-widget.md: "Make designable" on a classic menu, menu sequence, ad or tag cloud region node: the widget kind and setting per type, where the widget goes, what stays the same.
+- release-bundle-dialogs.md: The publish and take-back dialogs of a release bundle: what they post, the "changed since" choice, Publish disabled until chosen, focus on Cancel, their words [decision: here]
+- release-bundle-publish.md: Publishing and taking back a release bundle: checks before any write, the writes, a failure taken back, partly published, what cannot come back
+- release-bundle-screen.md: The Bundles screen (page_bundles.php): the list, a bundle's pages with "Changed since", its three dialogs, Remove and Delete, what later steps add [decision: here]
 - release-bundle-tables.md: Release bundles' two tables, statuses and moves, the hold on a bundled draft, the copy of a live page and "changed since" (includes/fn/page_bundles.php) [decision: decisions-made-schema-26.md]
 - responsive-images.md: Designer and widget images with srcset/sizes, AVIF/WebP <picture> on the Image element: which images, sizes rule, widget pass, variant swap, version stamp, e-mail strip (loading order: image-loading)
 - rich-text-profiles.md: pg_sanitize_rich_text() profiles: visitor (default, site output) drops class, layout styles and outside images and marks links ugc; staff keeps the shared allow-list; which callers pass staff. [decision: decisions-made-product-39.md]

@@ -652,6 +652,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 
 ## Topic files that record a dated owner or architect decision
 
+- api/api-content-review.md: GET /content-review and POST /content-review/{kind}/{id} (CH4): the screen's filters, the keyset over its branches, the fields, partial writes, the dry run, the scope and a user-role caller's rows
 - api/api-device-sessions.md: The three external API callers (application key, team devices session, OAuth connection): who the owner is, which scopes each holds, public token routes, account scopes, owner rights, revocation
 - api/api-mcp-no-tool-routes.md: Which API routes carry 'mcp' => false and are no MCP tools: the polled sync, file downloads, own-words routes, Claude's queues, the person's decisions on a card, and why
 - api/api-oauth-consent-presets.md: OAuth consent screen presets (Workspace, Store, Accounting, All, PR #1716): what each ticks, why record writes are ticked only by hand, the propose route always ticked
@@ -763,6 +764,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - designer/prototype-page-picture.md: The Prototype view's page picture in a frame (PV8): how it is built, the sandboxed frame, the link marker, the queue and the cap, the foot's count, what a redraw reuses
 - designer/prototype-picture-check.md: The prototype canvas page picture (PV7, architect 2026-11-16): the Preview document in a script-free readable frame, its sandbox and CSP, the link marker, the cap on live pictures
 - designer/prototype-view-decisions.md: What was decided for the designer's Prototype view (owner 2026-10-24, #2446, 2026-11-01): where it lives, hrefs by name or page id, who draws, read-only sources, breakpoint, how an arrow saves
+- designer/release-bundle-dialogs.md: The publish and take-back dialogs of a release bundle: what they post, the "changed since" choice, Publish disabled until chosen, focus on Cancel, their words
+- designer/release-bundle-screen.md: The Bundles screen (page_bundles.php): the list, a bundle's pages with "Changed since", its three dialogs, Remove and Delete, what later steps add
 - designer/rich-text-profiles.md: pg_sanitize_rich_text() profiles: visitor (default, site output) drops class, layout styles and outside images and marks links ugc; staff keeps the shared allow-list; which callers pass staff.
 - designer/shared-component-content-editing.md: Shared components opened to content editors (the designer's common region): content_editable flag, users_shared_components_xref grants, the rule, content_update under the page merge, schema 11.0.8
 - designer/shared-component-opened-alone.md: A shared component opened on its own in the designer (edit_system_style.php ?component=): who may, which design draws it, the one synthetic tab, Save writing only the component, the edit links
@@ -803,6 +806,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - platform/notification-channels.md: Chat notification channels (includes/fn/notify_channels.php): Slack, Teams and Telegram targets, the pure builders, the settings card and the Test button
 - platform/office-files.md: Word and Excel previews (includes/fn/office.php, pg_office_view.js): read on the server without a library, drawn in the file manager and the Workspace; limits, security, what is not read
 - platform/panel-picture-change-stamp.md: A panel picture drawn by a file's own address carries its change stamp (?v=, pg_file_stamped_address()), so a picture saved again under its name shows at once (#8913)
+- platform/place-coordinates.md: Coordinates of a collection's places: fields found by name, "Find from the address" on a record, "Find missing coordinates" on the record list, place_coordinates.php, always Photon
 - platform/proxy-https-trust.md: HTTPS behind a proxy: pg_forwarded_https() parses the headers, pg_https_peer_trusted() says whose word counts (Trusted Proxies, Cloudflare, the constant); who asks which.
 - platform/search-and-audits-screen.md: Search and audits screen (search_audits.php): engine cards, state, progress and failure sources, the job switch, Run now, where it is linked
 - platform/secure-mode-proxy-offer.md: Turning Secure Mode on through a proxy not yet trusted: the Add this proxy to Trusted Proxies box, what the save lists and checks, the log line, what test_secure_mode.php reports.
@@ -938,7 +942,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/agent-door-words.md: The agent form's "Door" field as two described choices, the door's state sentence in its drawer, door_error cleared on a door change and shown only for a push door (#9759)
 - workspace/agent-duty.md: An agent's duty text (AF1 #9785, AF3 #9821): the "Duty" box on the agent's form, ws_agents.duty TEXT NULL, "Your duty" and the channel's other agents in its instructions, the agent card
 - workspace/agent-edit-hold.md: An agent waits while its message is edited: the edit box's beat, held_until, "Being edited, @agent is waiting", 409 editing / edited, a save in each status (#8869)
-- workspace/agent-feedback.md: Right or Wrong on an agent's reply (AF5a #9814): the ws_agent_feedback table, who marks, one mark per reply, GET /workspace/agent-feedback with the 7- and 30-day counts
+- workspace/agent-feedback.md: Right or Wrong on an agent's reply (AF5a #9814, AF5b #9850): the ws_agent_feedback table, who marks, the buttons under a reply, the counts on the cards, GET /workspace/agent-feedback
 - workspace/agent-instructions.md: How an application agent learns its work from the site: GET /workspace/agent-instructions with its own key, the text's parts, the three doors, the version and the brief's line, the Start text box
 - workspace/agent-key-trial-memory.md: Channel memory written live on dev (2026-11-11) with an application agent's key: create, read, list, update and delete by POST, dry runs, refusals, the entry's line in the brief
 - workspace/agent-last-seen.md: An agent's last seen: ws_agents.seen_at set by every call with an app agent's own key, once a minute at most, and the words on the Agents card and in "Agents in this channel" (#8828)
@@ -1029,7 +1033,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/workspace-channel-screen.md: The Workspace channel screen as redrawn (C1–C8) and its card look (CL1-CL4, what it left alone): what every change keeps, the phone rules, who changes the design, where each part is
 - workspace/workspace-channel-summary-board-memory.md: The channel's Summary, Board and Memory tabs as cards and the channel panes' empty states in a dashed card (CL3 #8703); the workflow table's board and other screens' empty states unchanged
 - workspace/workspace-command-live-line.md: The live line under a /task and a /status (ws_command_suggest: "Will create: …", warnings), a typed @username assigning, and what the parser reads: next week, datives, 14:00, "1.5 saat" as an estimate
-- workspace/workspace-command-registry.md: The built-in / command registry ws_command_registry() (command_registry.php, CC1a): an entry's fields, which functions read it, what a new command adds, shadowed application commands
+- workspace/workspace-command-registry.md: The built-in / command registry ws_command_registry() (command_registry.php, CC1): an entry's fields, which functions read it, what a new command adds, shadowed application commands
 - workspace/workspace-create-commands.md: /create (/oluştur) product|group and its alias /product (/ürün) in a channel: kind word, parsers, the single-create card through ws_quick_create_input()/_save(), what Create sends
 - workspace/workspace-discussion-follow.md: The assistant a discussion follows (ws_threads.follow_agent, step 11.0.113, decision #2419, PR #2924): who is followed, which message asks it, the no-pile-up rule, scheduled sends
 - workspace/workspace-everyone-mention.md: The @herkes tag (AE5 #9571, AE5b #9578): who gets a mention line, which agents it wakes, the reserved handles, the @ menu's Everyone row

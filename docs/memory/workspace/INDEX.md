@@ -33,7 +33,7 @@
 - agent-duty.md: An agent's duty text (AF1 #9785, AF3 #9821): the "Duty" box on the agent's form, ws_agents.duty TEXT NULL, "Your duty" and the channel's other agents in its instructions, the agent card [decision: here]
 - agent-edit-hold.md: An agent waits while its message is edited: the edit box's beat, held_until, "Being edited, @agent is waiting", 409 editing / edited, a save in each status (#8869) [decision: decisions-made-schema-16.md, decisions-made-workspace-14.md]
 - agent-emoji.md: The one fitting emoji an agent leaves on the message that asked it (#8932): the brief, the answer route's emoji, a model assistant's answer tool, what is refused [decision: decisions-made-workspace-19.md]
-- agent-feedback.md: Right or Wrong on an agent's reply (AF5a #9814): the ws_agent_feedback table, who marks, one mark per reply, GET /workspace/agent-feedback with the 7- and 30-day counts [decision: here]
+- agent-feedback.md: Right or Wrong on an agent's reply (AF5a #9814, AF5b #9850): the ws_agent_feedback table, who marks, the buttons under a reply, the counts on the cards, GET /workspace/agent-feedback [decision: here]
 - agent-flows.md: The flows part of the agent risk tiers (flow_agent_box.php, A7b): the Ask an agent box (kind agent) and runs an application agent starts within its channel tier
 - agent-instructions.md: How an application agent learns its work from the site: GET /workspace/agent-instructions with its own key, the text's parts, the three doors, the version and the brief's line, the Start text box [decision: decisions-made-workspace-32.md]
 - agent-key-trial-2.md: The agent's own side tried live on dev (2026-11-11) with an application agent's key: POST agent-wake and its dry run, a wake's request, brief and text answer, the agent's edit of its own message
@@ -295,7 +295,7 @@
 - workspace-command-other-chats.md: What other team chats do with / commands (read 2026-11-16 for plan channel-commands): their built-ins, application commands, no-code commands, record lookups, and what goes wrong there
 - workspace-command-picker.md: What ws_commands($viewer) gives the / picker, /help, palette and API; the Tab argument popup after "/name "; an unknown /word refused with the closest names; "//" posts it
 - workspace-command-plan-items.md: /timer (/süre), /away (/izin) and /meeting (/toplantı) in a Workspace channel (PR #1938): what each reads, the functions they write through, who is told, their live lines
-- workspace-command-registry.md: The built-in / command registry ws_command_registry() (command_registry.php, CC1a): an entry's fields, which functions read it, what a new command adds, shadowed application commands [decision: here]
+- workspace-command-registry.md: The built-in / command registry ws_command_registry() (command_registry.php, CC1): an entry's fields, which functions read it, what a new command adds, shadowed application commands [decision: here]
 - workspace-command-schedule.md: /schedule (/zamanla) in a Workspace channel: when it reads (+30dk, a day, 14:00), the 09:00 and tomorrow defaults, ws_scheduled_message_save(), its writer-only answer and live line
 - workspace-command-status.md: /status (/durum) in a Workspace channel (PR #1896): the status words it reads, ws_task_set_status(), the lines it posts, its live line and the statuses popup
 - workspace-composer-expanded.md: The composer's "Aa" expanded box (Editor.expand()): Enter a new line, Ctrl/Cmd+Enter sends, every tool shown, the per-viewer choice in localStorage, how the switch gets on the row without workspace.js
