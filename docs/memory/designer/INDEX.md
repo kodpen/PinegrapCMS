@@ -12,6 +12,7 @@
 - billing-information-widget.md: The Billing Information widget (third classic checkout step): handler and page row, prefill from order and contact, parts the page turns off, helpers shared with step 1.
 - booking-templates.md: The online booking page of the Salon, Clinic and Law templates (BK10): book_online with the booking widget's starter layout beside the request form, the links between them, new installs only
 - booking-widget-confirm.md: Booking widget details step and confirm (#6596): form fields by name, signed-in prefill, auto_confirm status, expired hold rebooked when free, taken path, privacy page link
+- booking-widget-open-parts.md: Booking widget's twelve parts on the canvas (CB8): steps and details form drawn as their elements, the six parts the script fills drawn as samples from the server's words (settings only)
 - booking-widget.md: The booking system widget (#6224): parts by binding, data-pg-booking settings, booking_slots.php (month, day, hold), "anyone" picks the freest, one hold per session
 - bootstrap-direct-child-canvas.md: Bootstrap direct-child selectors break on the canvas because of .sd-wrap: two-part fix (display:contents + re-applied rule), the td display:flex ban, the selected-child lift.
 - bound-href-scheme.md: A form field bound to a link's, form's, picture's or player's address never prints a javascript:, vbscript: or data: address
