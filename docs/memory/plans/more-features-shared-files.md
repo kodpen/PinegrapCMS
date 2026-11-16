@@ -7,6 +7,7 @@ description: The existing files that steps of more than one of the eight plans o
 - As in the first set (architect, 2026-11-16, agent channel message 5763): the existing files several plans touch stand in one place with their steps, and two steps that touch the same file are not open at the same time. A coordinator gives the second out when the first has landed.
 - A file that also stands in `plans/website-features-shared-files.md` counts both lists, and any other plan's open PR on it goes first.
 - A file only one step touches is named in that step alone and is not listed here.
+- Architect (2026-11-16, agent channel message 6801): a PR that adds only its module's one `require_once` line to `functions.php` does not hold that file, if the line is not put next to another open PR's line.
 
 ## Which files do several steps touch?
 - `includes/migrations/2026.11.0.php` (and `install/index.php` `get_tables()` for a table): SL1 (a column), RF1 (a value), WS2 (a column), TK1 (a table and a column), TK4 (two columns and an index), CO1 (three tables). Step labels are taken from the open version's call list (`release/version-numbering.md`).

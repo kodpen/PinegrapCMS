@@ -1,33 +1,34 @@
 ---
 name: picture-text-translation
-description: Plan (owner 2026-11-16): the texts in pictures translated: a Design Canvas picture's text layers enter the site translation, a page in another language shows its picture; census PT0 first
+description: Plan (owner 2026-11-16): the texts in pictures translated: a Design Canvas picture's text layers enter the site translation, a page in another language shows its picture; steps PT1 to PT7
 priority: 6
 ---
 
 ## What is asked?
-- Owner (2026-11-16, to the architect): "görsellerdeki metinlerde çeviri olayını da 6/10 olarak öne alalım". No earlier record of the wish was found in memory, the plans, the issues or the agent channel, so what it covers is the architect's reading below, told to him the same day.
+- Owner (2026-11-16, to the architect): "görsellerdeki metinlerde çeviri olayını da 6/10 olarak öne alalım".
 - Today a page in another language translates its words and a picture's alt and title (`core/translation-attribute-texts.md`); the picture itself stays, so a banner's words stay in the source language.
+- The census PT0 (PR #9962): `plans/picture-text-translation-census.md` and its four files. The steps read them; the close-out deletes them.
 
-## What is the architect's reading?
-- T1 A picture saved from the Design Canvas keeps its texts as layers in its document (`ui/image-editor-text.md`, `ui/image-editor-versions.md`). Those words enter the site translation as the file's texts: same engines, jobs, glossary and review on the Translations screen as a page's words.
-- T2 The Design Canvas shows the site's languages for such a picture with each one's state (not translated, translated, drawn, out of date). Picking one shows the layers in that language; a text can be corrected there and given a size or box for that language only, since a longer word may not fit.
-- T3 A language's picture is drawn by the renderer a save uses and kept as that language's version of the file.
-- T4 A page drawn in a language shows that language's version wherever the picture is drawn, the source picture where there is none.
-- T5 When the source is saved again with other words, the changed texts go back to pending; what a visitor sees until the language's picture is drawn again is the owner's choice.
-- Left out of the first version: a flat picture whose letters are pixels (a photo, a scan, an uploaded PNG): there is no document to read, and reading letters from pixels and painting over them needs a model or a service, which the canvas does not use (`ui/image-editor-overview.md`). Saved animations and videos. Pictures in e-mails.
+## What did the owner decide? (agent channel poll 98, message 6808, 2026-11-16: "Evet, böyle olsun")
+- Which pictures: those made in the Design Canvas whose text stands as layers and which a page opened in another language shows. Writing inside a photo or a scan is not in the first version.
+- Who draws: a signed-in person in the panel, in their browser. Nothing is drawn by itself with nobody there.
+- While a language's picture is not ready, or once the source changed, a visitor sees the source picture until the new one is drawn. Not chosen: the older translated picture meanwhile.
+- The languages' pictures are kept in a small table of their own; the architect confirms its columns.
 
-## Which step is first?
-- PT0 (S) Done (PR #9962). The census, memory only: `plans/picture-text-translation-census.md`, no product code. It answers, from the code:
-  - where a document with text layers lives for a file, a canvas and a workspace canvas, and how many text fields a layer has that hold words;
-  - every path that writes a picture's address into a visitor's page (designer nodes, stored HTML, product pictures, `srcset`, backgrounds, the share picture) and which of them the finished-page pass (`pg_tr_render_db_texts()`) sees;
-  - how the file's texts would enter the store (`translation_strings`, `translations`, `translation_uses`: owner type, a field per layer), what the Translations screen and a job need for them, what `pg_tr_translatable()` does with a banner's short words and prices;
-  - who can draw a language's picture: the browser's renderer without the editor open, or the server (`platform/image-server-draw.md`: only fonts the server has a file of, three scripts), and what of a document each cannot draw;
-  - what a longer or shorter translation does to a text layer's box, and what a right-to-left language needs;
-  - three ways to keep a language's version (a table of its own; named in the source's document; a naming rule beside the file), each with its schema, the page pass's cost, and what a rename, a move, a delete, the Recycle Bin, Disk Usage and a private folder do to it.
-- PT0 ends with the questions for the owner. The architect asks them; the steps PT1 on are written by the architect after his answers.
+## What did the architect decide? (2026-11-16, agent channel message 6748, and with the steps)
+- Right-to-left languages are not in the first version: the editor has no text direction and its letter spacing breaks Arabic joining. A visitor sees the source picture there and the panel says so.
+- No box or size per language. A translated text is fitted to the source's box: the size shrinks, never under 70% of the source's; a text that still does not fit is drawn and its row marked "Look by hand".
+- The texts enter the store as owner type `file` (`translation_uses`: the owner is the file's id, the node the layer's id, the field `text` or `label`); the three translation tables do not change. The same words as a page's are the same string, so a translation, the glossary and a review apply at once.
+- Only a picture a page in another language has shown is counted, sent to an engine and drawn: the page pass notes it, nobody marks pictures by hand.
+- A language's picture is a `files` row of its own in the source's folder, so widths, formats and the object store work as for any picture. It is found only through the table, never by a rule in its name, and no file list shows it.
+- The table and its columns: `workflow/decisions-made-schema-25.md`.
 
-## What is the owner's, asked by the architect after PT0?
-- Where a language's version is kept, if it needs a table or a column (schema).
-- What a visitor sees while a language's picture is out of date: the older translated picture or the source.
-- Whether a picture drawn by a person at the screen is enough at first, or it must be drawn with nobody there.
-- Every new screen's look.
+## Whose look is each screen?
+- The owner's: the "Pictures" group on the Translations screen (PT3), the languages list in the Design Canvas (PT4), the drawing queue (PT5). The architect looks first and brings him one sheet a step; a PR stays a draft until his look.
+
+## What is left out?
+- A flat picture whose letters are pixels (a photo, a scan, an uploaded PNG); saved animations and videos; pictures in e-mails and in RSS; a Workspace canvas; the words inside an svg layer; right-to-left languages; a picture drawn with nobody there; correcting one language's picture by hand (a later step, the owner's look).
+- Places the page pass does not read: a `<style>` block, the design's custom CSS file, the `image` of JSON-LD, a variant's photos in the page's script data.
+
+## Where are the steps?
+- PT1 to PT4b: `plans/picture-text-translation-steps.md`; PT5 to PT7: `plans/picture-text-translation-steps-2.md`.
