@@ -745,6 +745,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - platform/backup-age-rule.md: When a backup's age is a problem - pg_backup_age_state() (none fail, over a month warn, else pass) and its readers: System Status tile, ops alert, greeting, API, agents
 - platform/ca-store-choice.md: pg_ca_bundle_effective() chooses the CA store: the CURL_CA_BUNDLE override, the shipped data/cacert.pem when PHP has no store or the probe failed, else the server's store; the probe record.
 - platform/consent-anonymous-counts.md: The one cookie notice check of the anonymous counts (clicks and scroll depth, a pop-up's events): counted unless statistics were refused; why it is not pg_consent_allows()
+- platform/content-review-rules.md: Content review (content_review, 11.0.226, #9934): the table, which items count, date states in the site's time, the next date, the person, the daily sweep
 - platform/image-editor-jpeg-start-quality.md: A JPEG turned, flipped or cropped (Design Canvas, rotate buttons, Optimize) starts at the lower of 92 and its own quality, so a save is not heavier (#9118)
 - platform/import-decisions.md: Why the content importers (WordPress, WooCommerce, Shopify) are built as they are: tables, nothing overwritten, readers on fixtures, reused writers, authors, what stays out
 - platform/iys-client.md: İYS client (PR #1895): account in connect_apps iys, dry run, daily push of e-mail consent answers and pull of refusals, contacts.iys_email_status, campaign filter
@@ -829,7 +830,9 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - ui/settings-system-tools.md: The System tools screen (system_tools.php): the screens beside Site Settings as cards, the dialog's one row to it, the palette rows; gates from pg_settings_tool_groups()
 - ui/site-editor-picker-frame.md: On a site page in Edit mode the editor's Link and Image dialogs open the picker in a same-origin frame (picker_frame.php) inside a native dialog (#9117); the messages, the rights, what was refused
 - ui/variable-chips.md: Variable chips (WA8b): a message's {{n}} drawn as chips naming what they stand for, the shared pgVarChips editor and pg_var_chip_html(), drag, click, move and remove, what the textarea keeps
+- ui/visitors-clicks-section.md: The Clicks and scrolling section of the Visitors overview (includes/visitors/clicks.php, CM3): the switch-off empty state, the pages list, a page's own view, the device filter, labels as text
 - ui/visitors-screen-look.md: How the Visitors overview is drawn: reference pictures, frames and blocks, one change column, folding lists, quiet dashes, anchors, calm charts, the menu's section links, the traps
+- visitors/page-clicks-switch.md: The Clicks and scrolling switch (CM3 #9913): the page_clicks settings text, its one reader and one saver in page_clicks.php, who may turn it on and from where
 - visitors/page-clicks.md: Clicks and scroll depth counter (page_click_daily, 11.0.224, #9902): four row kinds, the beacon in page_view.php, the fold, the 200-element bound, figures, 400-day sweep
 - visitors/translation-index-verdict.md: The "reviewed" policy's one rule for a translated page's robots meta, alternates and sitemap.xml: only the page's own words count; no kept answer means not offered; what drops or keeps it
 - visitors/web-vitals-ai-visibility-decisions.md: Decisions behind the page speed figures and the AI visibility view (owner 2026-11-02, #5040): privacy, where the beacon is off, derived data, table shapes, unverified bots, where the screens go
