@@ -695,6 +695,17 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
         }
     }
 
+    // A signed-in customer below their contact group's minimum order value is
+    // told before checkout, with the words the refusal at submit uses
+    // (includes/fn/minimum_order.php); added before the messages are drawn.
+    if ($_pg_cart_form_lf && !$_pg_cart_empty) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/minimum_order.php');
+        $_pg_cart_minimum = pg_minimum_order_check(pg_minimum_order_customer(), (int) round((float) get_order_subtotal()), 1.0, 'cart');
+        if (!$_pg_cart_minimum['ok']) {
+            $_pg_cart_form_lf->add_warning($_pg_cart_minimum['message']);
+        }
+    }
+
     // Per-widget messages safety net — same pattern as the other system widgets.
     if (function_exists('_pg_inject_messages_node')) {
         _pg_inject_messages_node($tree_decoded, 'shopping_cart');
