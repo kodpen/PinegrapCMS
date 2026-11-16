@@ -4,7 +4,7 @@ description: Plan prototype-canvas, the view steps PV2, PV4 and PV6: the grid ar
 ---
 
 ## Which steps are there?
-- PV2 (M) The arrangement. After PV1.
+- PV2 (M) The arrangement. After PV1. Done (#9883).
   - `layout()` hands `G.arrange()` the sections of F7, the shared column of F4 and the chip column of F8, and `G.order()` the arrows between tabs. The eight-a-row constant and the gaps sit beside `FRAME`. `saved` still overrides a place (K6).
   - "Tidy up" (F9): after the confirmation it empties `_pgTabProto` through `_pgTabsLayoutSave()` and the browser's places, then draws again. For an operator who may not arrange tabs it clears only the browser's and says so.
   - "Start" on the first tab's frame (F2). Frames keep today's sketch and link rows.

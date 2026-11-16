@@ -190,6 +190,8 @@ function ws_message_payloads($viewer, $rows, $options = array())
 
     $extra = array(
         'reactions'  => ws_reactions_map($ids, $viewer),
+        // Readers' highlights: everyone's, and the reader's own (highlights.php).
+        'highlights' => function_exists('ws_highlights_map') ? ws_highlights_map($ids, $viewer) : array(),
         'checks'     => ws_checks_map($ids),
         'polls'      => ws_polls_map($ids, $viewer),
         // Approval requests and read receipts (approvals.php, acks.php).
@@ -390,6 +392,7 @@ function ws_message_payload($viewer, $row, $refs, $people, $tasks, $assignees, $
         'can_mark'    => !$past && !$deleted && in_array($row['sender_kind'], array('user', 'app'), true) && in_array($row['kind'], array('message', 'note', 'decision'), true) && (empty($row['locked']) || ($viewer['role'] < 3)),
         'can_react'   => !$deleted && $can_post && ($row['kind'] !== 'system') && ws_interact_ready(),
         'reactions'   => $deleted ? array() : ($extra['reactions'][$id] ?? array()),
+        'highlights'  => $deleted ? array() : ($extra['highlights'][$id] ?? array()),
         'poll'        => $deleted ? null : ($extra['polls'][$id] ?? null),
         'approval'    => $deleted ? null : ($extra['approvals'][$id] ?? null),
         'status_card' => $deleted ? null : ($extra['status'][$id] ?? null),
@@ -980,6 +983,11 @@ function ws_message_send($viewer, $channel, $body, $options = array())
 
     $tokens = ws_tokens($body);
     ws_refs_store('message', $message_id, $channel['id'], $tokens);
+
+    // Its first web address waits for the general job (link_preview.php).
+    if (function_exists('ws_link_preview_message_sent')) {
+        ws_link_preview_message_sent($message_id, $channel['id'], $body);
+    }
 
     // Its titled blocks, to be found and pulled elsewhere (blocks.php).
     if (function_exists('ws_blocks_index') && (strpos($body, ':::') !== false)) {
@@ -2294,6 +2302,11 @@ function ws_message_edit($viewer, $message, $body, $as_app = 0)
 
     ws_checks_remap($message['id'], $message['body'], $body);
 
+    // Readers' highlights follow their text, or go with it (highlights.php).
+    if (function_exists('ws_highlights_remap')) {
+        ws_highlights_remap($viewer, $message, $message['body'], $body);
+    }
+
     // The agents that waited while it was edited read the new words.
     if (function_exists('ws_edit_hold_release')) {
         ws_edit_hold_release((int) $message['id'], true);
@@ -2304,6 +2317,11 @@ function ws_message_edit($viewer, $message, $body, $as_app = 0)
 
     $tokens = ws_tokens($body);
     ws_refs_store('message', $message['id'], $message['channel_id'], $tokens);
+
+    // Another first web address is read again; none takes the preview away.
+    if (function_exists('ws_link_preview_message_edited')) {
+        ws_link_preview_message_edited($message['id'], $message['channel_id'], $body);
+    }
 
     // Only the people the edit newly mentions are told.
     $new = array();
@@ -2394,10 +2412,20 @@ function ws_message_delete($viewer, $message, $as_app = 0)
     db("UPDATE ws_messages SET body = '', file_id = 0, file_name = '', deleted_at = '" . time() . "' WHERE id = '" . (int) $message['id'] . "'");
     db("DELETE FROM ws_refs WHERE source_type = 'message' AND source_id = '" . (int) $message['id'] . "'");
 
+    if (function_exists('ws_link_preview_message_deleted')) {
+        ws_link_preview_message_deleted($message['id']);
+    }
+
     if (function_exists('ws_blocks_index')) {
         ws_blocks_index('message', (int) $message['id'], '');
     }
     ws_inbox_delete("message_id = '" . (int) $message['id'] . "' AND kind = 'mention'");
+
+    // Its readers' highlights go with its text (highlights.php).
+    if (function_exists('ws_highlights_message_deleted')) {
+        ws_highlights_message_deleted($message['id']);
+    }
+
     ws_message_touch($message['id']);
 
     // A decision of a discussion takes its copy in the channel with it.

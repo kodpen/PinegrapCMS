@@ -298,7 +298,7 @@ if (!defined('PG_INIT_LOADED')) {
         </ol>
 
         <?php // Same sticky footer the other edit screens use, so Save is where the operator expects it. ?>
-        <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="<?=lang('Save')?>">
+        <nav class="buttons navigation pg-bar-rows text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="<?=lang('Save')?>">
             <div class="container">
                 <div class="btn-group flex-wrap justify-content-center">
                     <button type="button" id="pg-if-save" data-on="save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3"><?php if ($is_new): ?>add<?php else: ?>save<?php endif ?></span><span class="pg-btn-label"><?php if ($is_new): ?><?=lang('Create')?><?php else: ?><?=lang('Save')?><?php endif ?></span></button>

@@ -9,7 +9,7 @@ priority: 6
 - Today only the site's own records have tags. Parts at hand: the address check of scheduled web calls (`ws_scheduled_host()`), the reader of what a page says about itself (`ws_note_html_meta()`).
 
 ## Which steps are there?
-- LP1 (M) The record, the reader and the switch.
+- LP1 (M) The record, the reader and the switch. Done: #9843.
   - A migration step adds one small table, one row per message whose first web address was read: the message, the address, title, description, site name, a state, when. Its columns and indexes go into the draft PR's body for the architect's confirmation before the step is written.
   - The general job, never the request, reads a new message's first http or https address once. Refused: an address inside the network (the resolved address is the one called, every redirect checked again, few redirects), anything but HTML, a body or a wait over the limits. An hourly cap per site. Texts are cut, kept plain and escaped where drawn.
   - A link to the site's own page takes its card from the site's data with no call. An edited message whose first address changed is read again; a deleted one loses its row.

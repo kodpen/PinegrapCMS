@@ -5470,6 +5470,32 @@ nav.buttons.navigation .btn-solid.theme-secondary {
     padding-bottom: 0.5rem !important;
   }
 
+  /* Three actions share one row: at half a row each a long third label
+     (Save & Return) took a row of its own and pushed the last one under it,
+     three full rows of a 390 px screen. Each takes its label's width and the
+     rest of the row is shared out; their icons give way so three Turkish or
+     English labels fit, and a label still too long ends in an ellipsis. The
+     sibling counts read only .btn, so a hidden first submit is not counted.
+     .pg-bar-rows keeps a bar on two per row (screens kept as they are). */
+  nav.buttons.navigation:not(.pg-bar-icons, .pg-bar-rows) .btn:nth-child(1 of .btn):nth-last-child(3 of .btn),
+  nav.buttons.navigation:not(.pg-bar-icons, .pg-bar-rows) .btn:nth-child(1 of .btn):nth-last-child(3 of .btn) ~ .btn {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding-inline: 10px;
+  }
+
+  nav.buttons.navigation:not(.pg-bar-icons, .pg-bar-rows) .btn:nth-child(1 of .btn):nth-last-child(3 of .btn) :is(.bi, .material-icons),
+  nav.buttons.navigation:not(.pg-bar-icons, .pg-bar-rows) .btn:nth-child(1 of .btn):nth-last-child(3 of .btn) ~ .btn :is(.bi, .material-icons) {
+    display: none;
+  }
+
+  nav.buttons.navigation:not(.pg-bar-icons, .pg-bar-rows) .btn:nth-child(1 of .btn):nth-last-child(3 of .btn) .pg-btn-label,
+  nav.buttons.navigation:not(.pg-bar-icons, .pg-bar-rows) .btn:nth-child(1 of .btn):nth-last-child(3 of .btn) ~ .btn .pg-btn-label {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
   /* A bar with many actions (the orders list) shows icons only: half a row
      each still made it four rows and a fifth of the screen. The label stays
      the accessible name and the button's title names it on hover. */
@@ -13039,6 +13065,17 @@ b.ws-agent-card-anchor:focus-visible {
 .ws-info-check {
   margin-top: .85rem;
   font-size: .85rem;
+}
+/* The person's own quiet hours under a channel's notifications. */
+.ws-info-qh .form-label {
+  margin-bottom: .25rem;
+  font-size: .85em;
+}
+.ws-info-qh-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  margin-top: .85rem;
 }
 .ws-info-time-line {
   margin: 0;
@@ -24017,7 +24054,9 @@ html.ws-flow-layer-on body {
    --pgc-radius, --pgc-radius-sm, --pgc-shadow, --pgc-shadow-accent,
    --pgc-line (arrows), --pgc-ring (selection ring), --pgc-node-accent (a
    box's border and ports), --pgc-marker and --pgc-marker-on (the url() of
-   the arrowhead markers the user draws). */
+   the arrowhead markers the user draws); with a focus --pgc-in (arrows
+   into the box in focus), --pgc-faint and --pgc-dim (opacities) and
+   --pgc-group (a heading's label). */
 .pgc-stage {
   position: relative;
   height: 100%;
@@ -24104,6 +24143,48 @@ html.ws-flow-layer-on body {
 }
 .pgc-edge-temp.pgc-hidden {
   display: none;
+}
+/* A canvas with a focus (adapter.focus): the arrows of the box in focus,
+   out solid in the accent and in dashed in --pgc-in; the others hidden, or
+   faint under them; the boxes and targets at neither end dimmed. */
+.pgc-edge.pgc-hidden {
+  display: none;
+}
+.pgc-edge.pgc-edge-out .pgc-edge-line {
+  stroke: var(--pgc-accent, var(--pg-primary));
+  marker-end: var(--pgc-marker-on, var(--pgc-marker, none));
+}
+.pgc-edge.pgc-edge-in .pgc-edge-line {
+  stroke: var(--pgc-in, var(--pg-warning));
+  stroke-dasharray: 6 4;
+}
+.pgc-edge.pgc-edge-faint {
+  opacity: var(--pgc-faint, 0.3);
+}
+.pgc-boxes .pgc-dim {
+  opacity: var(--pgc-dim, 0.45);
+}
+/* Group headings behind the boxes (groups()): a label and a rule. */
+.pgc-groups {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+}
+.pgc-group {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.pgc-group-label {
+  font-weight: var(--pg-weight-strong);
+  color: var(--pgc-group, var(--pg-fg-2));
+  white-space: nowrap;
+}
+.pgc-group-rule {
+  flex: 1;
+  border-top: 1px solid var(--pgc-line, var(--pg-border-color));
 }
 .pgc-node {
   position: absolute;

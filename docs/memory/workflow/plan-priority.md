@@ -28,4 +28,4 @@ description: Every plan carries a priority from 1 to 10 (owner 2026-11-15, agent
 - Without a line anywhere it uses the rule above: 2 for `design-template-*`, `panel-old-screens*`, `report-screens*` or a description saying "low priority"; 6 when the description names the owner and a date; else 4, below the owner's requests and above the look steps, until the architect writes the line.
 - The queue line, the held-by list, the shelved plans and the paused design templates' line are printed as before.
 
-Related: docs/memory/workflow/coordinator-channel-first.md, docs/memory/workflow/coordinator-no-plans.md, docs/memory/workflow/coordinator.md
+Related: docs/memory/workflow/plan-order-begun-first.md, docs/memory/workflow/coordinator-channel-first.md, docs/memory/workflow/coordinator-no-plans.md, docs/memory/workflow/coordinator.md

@@ -26,7 +26,7 @@ priority: 6
 - (G10) Outside the Workspace screen (the side panel, a mail, the bell on other screens) a link opens the Workspace by its address as today.
 
 ## Which step is there?
-- ML1 (S) The whole of it, in one PR.
+- ML1 (S) The whole of it, in one PR. Given 2026-11-16 (agent channel message 5765), `@adnan`.
   - Existing files: `assets/js/workspace.js` (`messageRefGo()`, the card's button, the chip's click in `messageRefHook()`, one click listener for G4, the places of G5). No server change, no new text.
   - Tests, red first, in `tests/workspace_message_ref_js_test.php`: the function's cases (open channel, other channel, no conversation, a foreign address, a modifier key, a message not to be seen); the chip's click by pointer kind.
   - No new look: nothing goes to the owner. The PR body lists G1 to G10, each with its test or the hand check done on a dev site.

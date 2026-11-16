@@ -534,16 +534,18 @@ function pg_settings_categories()
             'group' => 'workspace',
             'gate'  => 'workspace',
             'icon'  => 'bi-chat-square-text',
-            'description' => lang('Channel templates, voice transcripts and GitHub links.'),
+            'description' => lang('Channel templates, voice transcripts, GitHub links and link previews.'),
             'sections' => array(
                 'pgset-ws-templates'       => lang('Channel templates'),
                 'pgset-ws-voice'           => lang('Voice message transcripts'),
                 'pgset-ws-github'          => lang('GitHub repositories'),
+                'pgset-ws-link-preview'    => lang('Link previews'),
             ),
             'keywords' => array(
                 'pgset-ws-templates'       => pg_settings_keywords(lang('workspace, channel template, templates, archive')),
                 'pgset-ws-voice'           => pg_settings_keywords(lang('workspace, voice, transcript, speech, spoken answers, key')),
                 'pgset-ws-github'          => pg_settings_keywords(lang('workspace, github, repository, webhook, pull request')),
+                'pgset-ws-link-preview'    => pg_settings_keywords(lang('workspace, link, preview, card, web address')),
             ),
             'lists' => array(
                 'ws_github' => 2,

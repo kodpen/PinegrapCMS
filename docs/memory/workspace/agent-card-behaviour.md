@@ -16,4 +16,4 @@ description: The agent card in a channel when its facts cannot be read or the li
 - Mention puts `@handle ` into the composer (typed text wakes it too). Look: owner's layout of channel decision 3796; pictures `Approval: channel`.
 
 ## Why does leaving not close a card opened by a tap? (#9846)
-- A tap brings mouse events with it; when the layout then moved the anchor (a message's tool bar opening under it) the card got a mouseleave and closed 250 ms later. `cardHook()` remembers whether the anchor's last pointer was a finger and then leaves the card open: it closes on a tap outside, Escape or the reader's scroll. Seen on the message chip's card in a 390 px browser (`message-reference-tag.md`).
+- A tap brings mouse events with it; when the layout then moved the anchor (a message's tool bar opening under it) the card got a mouseleave and closed 250 ms later. `cardHook()` remembers whether the anchor's last pointer was a finger and then leaves the card open: it closes on a tap outside, Escape or the reader's scroll. Seen on the message chip's card in a 390 px browser (`message-reference-card.md`).

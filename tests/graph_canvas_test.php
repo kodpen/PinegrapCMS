@@ -68,7 +68,7 @@ function test_graph_canvas_css_on_pgc_tokens()
 
 	pg_assert_true((bool) preg_match('/var CLASSES = \{(.*?)\};/s', $core, $block), 'the core names its classes');
 	preg_match_all("/(\w+): '([\w-]+)'/", $block[1], $names, PREG_SET_ORDER);
-	pg_assert_same(9, count($names), 'nine class names');
+	pg_assert_same(14, count($names), 'fourteen class names');
 
 	foreach ($names as $name) {
 		pg_assert_same(0, strpos($name[2], 'pgc-'), $name[1] . ' is a pgc- class');
@@ -347,7 +347,7 @@ function test_graph_canvas_texts_are_handed_over_and_translated()
 
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/graph_canvas.php');
 
-	preg_match_all("/lang\\(\\s*'((?:[^'\\\\]|\\\\.)*)'/", $source, $texts);
+	preg_match_all("/lang\\(\\s*(?:array\\(\\s*'string'\\s*=>\\s*)?'((?:[^'\\\\]|\\\\.)*)'/", $source, $texts);
 
 	pg_assert_same(count($strings), count($texts[1]), 'each text through lang()');
 
@@ -632,6 +632,141 @@ JS
 	pg_assert_same(array(0, array('b pgc-thumb'), true), $result['lazy'], 'a picture asked for once in sight, once; destroy() stops watching');
 }
 
+// The focus (adapter.focus): with no box in focus no arrow is drawn; a box
+// in focus draws its arrows out and in, dims the boxes and targets at
+// neither end and is announced with its counts; allEdges() draws the others
+// faint, under them; a focus change touches only the arrows that change; a
+// click on the empty canvas takes the focus away; groups() draws headings
+// behind the boxes; without the field every arrow is drawn as before.
+function test_graph_canvas_focus()
+{
+	$result = graph_canvas_test_node(graph_canvas_test_dom() . <<<'JS'
+var out = {};
+function setup(focusField) {
+    var layer = new El('div');
+    ui.layer = layer;
+    ui.boxes = layer.appendChild(new El('div'));
+    ui.svg = layer.appendChild(new El('svg'));
+    ui.temp = ui.svg.appendChild(new El('path'));
+    ui.temp.className = 'pgc-hidden';
+    ui.live = new El('div');
+    var listeners = {};
+    ui.viewport.addEventListener = function (type, handler) { listeners[type] = handler; };
+    ui.viewport.removeEventListener = function () {};
+    document.removeEventListener = function () {};
+    ui.viewport.classList = { add: function () {}, remove: function () {} };
+    ui.viewport.setPointerCapture = function () {};
+    ui.viewport.focus = function () {};
+    var items = { a: { id: 'a', x: 0, y: 0 }, b: { id: 'b', x: 300, y: 0 }, c: { id: 'c', x: 600, y: 0 }, d: { id: 'd', x: 900, y: 0 } };
+    var chip = { id: 'mail', x: 300, y: 200 };
+    var adapter = {
+        ui: ui,
+        view: function (next) { if (next) { state.view = next; } return state.view; },
+        items: function () { return Object.keys(items).map(function (k) { return items[k]; }); },
+        text: function (key, a, b, c) { return key + '|' + a + '|' + b + '|' + c; },
+        item: function (id) { return items[id] || null; },
+        label: function (item) { return 'Box ' + item.id.toUpperCase(); },
+        editable: function () { return false; },
+        select: function () {},
+        targets: '[data-target]',
+        target: function (element) { return element.getAttribute('data-target') === 'mail' ? chip : null; },
+        groups: function () { return [{ id: 'g1', label: 'Shop', x: 0, y: -40, w: 900, kind: 'group' }, { id: 'side', label: 'Outside', x: 1200, y: -40, w: 160, kind: 'side' }]; },
+        press: function () { return true; },
+        move: function () {}, release: function () {}, cancel: function () {}, key: function () { return false; }
+    };
+    if (focusField) { adapter.focus = true; }
+    var canvas = G.create(adapter);
+    canvas.bind();
+    var els = {};
+    Object.keys(items).forEach(function (k) { els[k] = ui.boxes.appendChild(canvas.box(items[k], { into: true })); });
+    els.mail = ui.boxes.appendChild(new El('div'));
+    els.mail.setAttribute('data-target', 'mail');
+    var edges = {};
+    [['ab', 'a', 'b'], ['ca', 'c', 'a'], ['bc', 'b', 'c'], ['cd', 'c', 'd'], ['am', 'a', 'mail']].forEach(function (e) {
+        edges[e[0]] = canvas.edge(e[0], items[e[1]], e[2] === 'mail' ? chip : items[e[2]]).group;
+    });
+    return { canvas: canvas, els: els, edges: edges, listeners: listeners };
+}
+function classesOf(map) { var o = {}; Object.keys(map).forEach(function (k) { o[k] = map[k].className; }); return o; }
+function order() { return ui.svg.children.filter(function (g) { return g.attrs['data-edge']; }).map(function (g) { return g.attrs['data-edge']; }); }
+
+var plain = setup(false);
+plain.canvas.focus('a');
+out.plain = [classesOf(plain.edges), plain.canvas.focused(), classesOf(plain.els)];
+
+var f = setup(true);
+out.none = [classesOf(f.edges), f.canvas.focused()];
+f.canvas.focus('a');
+out.a = [classesOf(f.edges), classesOf(f.els), f.canvas.focused(), f.canvas.focused() === 'a', ui.live.textContent];
+var touched = [];
+Object.keys(f.edges).forEach(function (k) { var g = f.edges[k]; var add = g.classList.add; g.classList.add = function (n) { touched.push(k); add(n); }; });
+f.canvas.allEdges(true);
+out.faint = [classesOf(f.edges), order(), touched.slice().sort()];
+touched = [];
+f.canvas.focus('c');
+out.c = [classesOf(f.edges), order().slice(-3), classesOf(f.els), touched.slice().sort(), ui.live.textContent];
+touched = [];
+ui.live.textContent = 'kept';
+f.canvas.focus('c');
+out.same = [touched.slice(), ui.live.textContent];
+var late = f.canvas.edge('db', { id: 'd', x: 900, y: 0 }, { id: 'b', x: 300, y: 0 });
+out.late = [late.group.className, order().indexOf('db') < Math.min(order().indexOf('ca'), order().indexOf('bc'), order().indexOf('cd'))];
+var newBox = f.canvas.box({ id: 'e', x: 0, y: 300 }, {});
+out.newBox = newBox.className;
+f.canvas.allEdges(false);
+f.listeners.pointerdown({ type: 'pointerdown', pointerId: 7, clientX: 10, clientY: 10, button: 0, target: f.els.b, preventDefault: function () {} });
+f.listeners.pointerup({ type: 'pointerup', pointerId: 7, clientX: 10, clientY: 10, button: 0, target: f.els.b, preventDefault: function () {} });
+out.pressed = [f.canvas.focused(), ui.live.textContent];
+f.listeners.pointerdown({ type: 'pointerdown', pointerId: 8, clientX: 10, clientY: 10, button: 0, target: ui.viewport, preventDefault: function () {} });
+f.listeners.pointermove({ type: 'pointermove', pointerId: 8, clientX: 60, clientY: 10, button: 0, target: ui.viewport, preventDefault: function () {} });
+f.listeners.pointerup({ type: 'pointerup', pointerId: 8, clientX: 60, clientY: 10, button: 0, target: ui.viewport, preventDefault: function () {} });
+out.panned = f.canvas.focused();
+f.listeners.pointerdown({ type: 'pointerdown', pointerId: 9, clientX: 10, clientY: 10, button: 0, target: ui.viewport, preventDefault: function () {} });
+f.listeners.pointerup({ type: 'pointerup', pointerId: 9, clientX: 10, clientY: 10, button: 0, target: ui.viewport, preventDefault: function () {} });
+out.cleared = [f.canvas.focused(), classesOf(f.edges), f.els.d.className];
+f.canvas.groups();
+var holder = f.canvas.groups();
+out.groups = [ui.layer.children[0] === holder, ui.layer.children.filter(function (c) { return c.className === 'pgc-groups'; }).length, ui.layer.children[0].children.map(function (h) { return [h.className, h.attrs['data-group'], h.style.left, h.style.top, h.style.width, h.children[0].className, h.children[0].textContent, h.children[1].className]; }), ui.layer.children[0].attrs['aria-hidden']];
+console.log(JSON.stringify(out));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	$all = array('ab' => 'pgc-edge', 'ca' => 'pgc-edge', 'bc' => 'pgc-edge', 'cd' => 'pgc-edge', 'am' => 'pgc-edge');
+	pg_assert_same(array($all, null, array('a' => 'pgc-node', 'b' => 'pgc-node', 'c' => 'pgc-node', 'd' => 'pgc-node', 'mail' => '')), $result['plain'], 'without the field every arrow is drawn as before and focus() does nothing');
+	pg_assert_same(array(array('ab' => 'pgc-edge pgc-hidden', 'ca' => 'pgc-edge pgc-hidden', 'bc' => 'pgc-edge pgc-hidden', 'cd' => 'pgc-edge pgc-hidden', 'am' => 'pgc-edge pgc-hidden'), null), $result['none'], 'with the field and no focus no arrow is drawn');
+	pg_assert_same(array(
+		array('ab' => 'pgc-edge pgc-edge-out', 'ca' => 'pgc-edge pgc-edge-in', 'bc' => 'pgc-edge pgc-hidden', 'cd' => 'pgc-edge pgc-hidden', 'am' => 'pgc-edge pgc-edge-out'),
+		array('a' => 'pgc-node', 'b' => 'pgc-node', 'c' => 'pgc-node', 'd' => 'pgc-node pgc-dim', 'mail' => ''),
+		'a', true, 'pgc_focus|Box A|2|1',
+	), $result['a'], 'a box in focus: its arrows out and in, the boxes and targets at neither end dimmed, announced with its counts');
+	pg_assert_same(array(
+		array('ab' => 'pgc-edge pgc-edge-out', 'ca' => 'pgc-edge pgc-edge-in', 'bc' => 'pgc-edge pgc-edge-faint', 'cd' => 'pgc-edge pgc-edge-faint', 'am' => 'pgc-edge pgc-edge-out'),
+		array('bc', 'cd', 'ab', 'ca', 'am'),
+		array('bc', 'cd'),
+	), $result['faint'], 'allEdges(true): the others faint, under those of the box in focus; only they are touched');
+	pg_assert_same(array(
+		array('ab' => 'pgc-edge pgc-edge-faint', 'ca' => 'pgc-edge pgc-edge-out', 'bc' => 'pgc-edge pgc-edge-in', 'cd' => 'pgc-edge pgc-edge-out', 'am' => 'pgc-edge pgc-edge-faint'),
+		array('ca', 'bc', 'cd'),
+		array('a' => 'pgc-node', 'b' => 'pgc-node', 'c' => 'pgc-node', 'd' => 'pgc-node', 'mail' => 'pgc-dim'),
+		array('ab', 'am', 'bc', 'ca', 'cd'),
+		'pgc_focus|Box C|2|1',
+	), $result['c'], 'another focus: every arrow whose part changed drawn again, the target at neither end dimmed');
+	pg_assert_same(array(array(), 'kept'), $result['same'], 'the same focus again touches no arrow and announces nothing');
+	pg_assert_same(array('pgc-edge pgc-edge-faint', true), $result['late'], 'an arrow drawn later takes its state, a faint one under the rest');
+	pg_assert_same('pgc-node pgc-dim', $result['newBox'], 'a box drawn later at neither end is dimmed');
+	pg_assert_same(array('b', 'pgc_focus|Box B|1|2'), $result['pressed'], 'a press on a box puts it in focus, counted with the arrow drawn later');
+	pg_assert_same('b', $result['panned'], 'a pan keeps the focus');
+	pg_assert_same(array(null, array('ab' => 'pgc-edge pgc-hidden', 'ca' => 'pgc-edge pgc-hidden', 'bc' => 'pgc-edge pgc-hidden', 'cd' => 'pgc-edge pgc-hidden', 'am' => 'pgc-edge pgc-hidden'), 'pgc-node'), $result['cleared'], 'a click on the empty canvas takes the focus away: no arrow, nothing dimmed');
+	pg_assert_same(array(true, 1, array(
+		array('pgc-group pgc-group-group', 'g1', '0px', '-40px', '900px', 'pgc-group-label', 'Shop', 'pgc-group-rule'),
+		array('pgc-group pgc-group-side', 'side', '1200px', '-40px', '160px', 'pgc-group-label', 'Outside', 'pgc-group-rule'),
+	), 'true'), $result['groups'], 'groups(): headings with a label and a rule behind the boxes, drawn again in place');
+}
+
 // The autosave (autosave()): a change is sent once the changes pause; a
 // change made while a save is on its way goes in a second one; a failure is
 // kept and nothing is sent again by itself; a conflict holds every later
@@ -749,7 +884,10 @@ El.prototype.names = function () { return this.className.split(' ').filter(Boole
 El.prototype.setAttribute = function (name, value) { if (name === 'class') { this.className = String(value); } else { this.attrs[name] = String(value); } };
 El.prototype.getAttribute = function (name) { return (name === 'class') ? this.className : ((name in this.attrs) ? this.attrs[name] : null); };
 El.prototype.removeAttribute = function (name) { delete this.attrs[name]; };
-El.prototype.appendChild = function (child) { child.parent = this; child.parentNode = this; this.children.push(child); return child; };
+El.prototype.removeChild = function (child) { this.children = this.children.filter(function (item) { return item !== child; }); child.parent = null; child.parentNode = null; return child; };
+El.prototype.appendChild = function (child) { if (child.parentNode) { child.parentNode.removeChild(child); } child.parent = this; child.parentNode = this; this.children.push(child); return child; };
+El.prototype.insertBefore = function (child, before) { if (child.parentNode) { child.parentNode.removeChild(child); } var at = before ? this.children.indexOf(before) : -1; child.parent = this; child.parentNode = this; if (at < 0) { this.children.push(child); } else { this.children.splice(at, 0, child); } return child; };
+Object.defineProperty(El.prototype, 'firstChild', { get: function () { return this.children[0] || null; } });
 El.prototype.focus = function () { focused = this; };
 El.prototype.matches = function (selector) {
     var self = this;
@@ -776,4 +914,137 @@ var document = {
 };
 window.setTimeout = function (handler) { handler(); };
 JS;
+}
+
+// The pure graph logic: order() ranks boxes breadth-first from a start, the
+// given order between equals, the unreached last with no rank; a loop, a
+// self-arrow and an arrow to no box change nothing; linksOf() gives a box's
+// arrows out and in as given.
+function test_graph_canvas_order_and_links()
+{
+	$result = graph_canvas_test_node(<<<'JS'
+var out = {};
+var ids = ['a', 'b', 'c', 'd', 'e', 'f'];
+var edges = [{ from: 'a', to: 'c' }, { from: 'a', to: 'b' }, { from: 'b', to: 'd' }, { from: 'c', to: 'd' }, { from: 'd', to: 'a' }, { from: 'e', to: 'f' }, { from: 'x', to: 'a' }, { from: 'b', to: 'b' }];
+out.empty = G.order([], [], 'a');
+out.order = G.order(ids, edges, 'a');
+out.again = JSON.stringify(G.order(ids, edges, 'a')) === JSON.stringify(out.order);
+out.noStart = G.order(ids, edges, 'zz');
+out.island = G.order(ids, edges, 'e');
+out.links = G.linksOf(edges, 'a');
+out.none = G.linksOf(edges, 'zz');
+console.log(JSON.stringify(out));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array('ids' => array(), 'rank' => array()), $result['empty'], 'an empty graph');
+	pg_assert_same(array('a', 'b', 'c', 'd', 'e', 'f'), $result['order']['ids'], 'by rank, the given order between equals, the unreached last');
+	pg_assert_same(array('a' => 0, 'b' => 1, 'c' => 1, 'd' => 2, 'e' => null, 'f' => null), $result['order']['rank'], 'breadth-first ranks through a loop, none for an island');
+	pg_assert_true($result['again'], 'the same answer for the same input');
+	pg_assert_same(array('a', 'b', 'c', 'd', 'e', 'f'), $result['noStart']['ids'], 'a start that is no box keeps the given order');
+	pg_assert_same(array(null, null, null, null, null, null), array_values($result['noStart']['rank']), 'and ranks nothing');
+	pg_assert_same(array('e', 'f', 'a', 'b', 'c', 'd'), $result['island']['ids'], 'from an island its own boxes come first');
+	pg_assert_same(array(array('from' => 'a', 'to' => 'c'), array('from' => 'a', 'to' => 'b')), $result['links']['out'], 'arrows out in the given order');
+	pg_assert_same(array(array('from' => 'd', 'to' => 'a'), array('from' => 'x', 'to' => 'a')), $result['links']['in'], 'arrows in in the given order');
+	pg_assert_same(array('out' => array(), 'in' => array()), $result['none'], 'a box with no arrows');
+}
+
+// arrange(): groups as bands of a wrapped grid, each with its heading's
+// place; a group longer than a row wraps; an empty group is left out, one
+// without a label gets no heading; a side column before the grid and one
+// after it with sub-groups; a row as high as its tallest box; whole units;
+// forty boxes in three groups never overlap; the same answer each time.
+function test_graph_canvas_arrange()
+{
+	$result = graph_canvas_test_node(<<<'JS'
+var out = {};
+function range(prefix, n) { var list = []; for (var i = 1; i <= n; i++) { list.push(prefix + i); } return list; }
+out.empty = G.arrange([], {});
+out.small = G.arrange([
+    { id: 'g1', label: 'A', items: range('a', 10) },
+    { id: 'g2', label: null, items: ['b1'] },
+    { id: 'e', label: 'E', items: [] }
+], {
+    cols: 4, w: 100, h: 50, gapX: 20, gapY: 10, head: 30,
+    before: { id: 'shared', label: 'Shared', w: 80, h: 40, items: ['s1', 's2'] },
+    after: { id: 'out', label: 'Out', w: 120, h: 20, groups: [{ id: 'o1', label: 'Mail', items: ['m1'] }, { id: 'o2', label: 'Web', items: ['w1', 'w2'] }] }
+});
+out.tall = G.arrange([{ id: 'g', items: ['p', 'q', 'r'] }], { cols: 2, size: function (id) { return id === 'p' ? { w: 208, h: 100 } : null; } });
+out.whole = G.arrange([{ id: 'g', items: ['p', 'q'] }], { x: 0.4, y: 0.6, w: 100.5, gapX: 20.3 });
+var groups = [{ id: 'x', label: 'X', items: range('x', 20) }, { id: 'y', label: 'Y', items: range('y', 12) }, { id: 'z', label: 'Pages', items: range('z', 8) }];
+var big = G.arrange(groups, { w: 248, h: 320 });
+var boxes = Object.keys(big.places).map(function (id) { return big.places[id]; });
+var overlap = false;
+boxes.forEach(function (a, i) { boxes.forEach(function (b, j) { if (i < j && a.x < b.x + 248 && b.x < a.x + 248 && a.y < b.y + 320 && b.y < a.y + 320) { overlap = true; } }); });
+out.big = [boxes.length, overlap, big.headings.length, big.bounds, big.places.x9, big.places.y1, big.places.z8];
+out.again = JSON.stringify(G.arrange(groups, { w: 248, h: 320 })) === JSON.stringify(big);
+console.log(JSON.stringify(out));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array('places' => array(), 'headings' => array(), 'bounds' => array('x' => 0, 'y' => 0, 'w' => 0, 'h' => 0)), $result['empty'], 'nothing to place');
+
+	$small = $result['small'];
+	$p = function ($x, $y) {
+		return array('x' => $x, 'y' => $y);
+	};
+	pg_assert_same(array(
+		's1' => $p(0, 30), 's2' => $p(0, 80),
+		'a1' => $p(120, 30), 'a2' => $p(240, 30), 'a3' => $p(360, 30), 'a4' => $p(480, 30),
+		'a5' => $p(120, 90), 'a6' => $p(240, 90), 'a7' => $p(360, 90), 'a8' => $p(480, 90),
+		'a9' => $p(120, 150), 'a10' => $p(240, 150),
+		'b1' => $p(120, 210),
+		'm1' => $p(620, 60), 'w1' => $p(620, 120), 'w2' => $p(620, 150),
+	), $small['places'], 'the side columns and the bands of the wrapped grid');
+	pg_assert_same(array(
+		array('id' => 'shared', 'label' => 'Shared', 'x' => 0, 'y' => 0, 'w' => 80, 'kind' => 'side'),
+		array('id' => 'g1', 'label' => 'A', 'x' => 120, 'y' => 0, 'w' => 460, 'kind' => 'group'),
+		array('id' => 'out', 'label' => 'Out', 'x' => 620, 'y' => 0, 'w' => 120, 'kind' => 'side'),
+		array('id' => 'o1', 'label' => 'Mail', 'x' => 620, 'y' => 30, 'w' => 120, 'kind' => 'sub'),
+		array('id' => 'o2', 'label' => 'Web', 'x' => 620, 'y' => 90, 'w' => 120, 'kind' => 'sub'),
+	), $small['headings'], 'a heading for each labelled group and column, none for the empty group');
+	pg_assert_same(array('x' => 0, 'y' => 0, 'w' => 740, 'h' => 260), $small['bounds'], 'the bounds hold everything');
+
+	pg_assert_same(array('p' => $p(0, 0), 'q' => $p(256, 0), 'r' => $p(0, 148)), $result['tall']['places'], 'a row as high as its tallest box');
+	pg_assert_same(array('p' => $p(0, 1), 'q' => $p(121, 1)), $result['whole']['places'], 'whole units');
+
+	pg_assert_same(40, $result['big'][0], 'forty boxes placed');
+	pg_assert_false($result['big'][1], 'none overlaps another');
+	pg_assert_same(3, $result['big'][2], 'three headings');
+	pg_assert_same(array('x' => 0, 'y' => 0, 'w' => 2320, 'h' => 2280), $result['big'][3], 'eight a row, three bands');
+	pg_assert_same(array($p(0, 408), $p(0, 1184), $p(2072, 1960)), array_slice($result['big'], 4, 3), 'a group longer than a row wraps; the next band starts below it');
+	pg_assert_true($result['again'], 'the same answer for the same input');
+}
+
+// check(): arrows whose end is no box, boxes no other box reaches (never
+// the start, a self-arrow not counted), boxes with no way out; an empty
+// graph has none.
+function test_graph_canvas_check()
+{
+	$result = graph_canvas_test_node(<<<'JS'
+var out = {};
+out.empty = G.check([], [], null);
+out.check = G.check(['a', 'b', 'c', 'd'], [{ from: 'a', to: 'b' }, { from: 'b', to: 'a' }, { from: 'c', to: 'c' }, { from: 'd', to: 'zz' }, { from: 'yy', to: 'd' }], 'a');
+out.alone = G.check(['a'], [], 'a');
+console.log(JSON.stringify(out));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array('dangling' => array(), 'unreached' => array(), 'stuck' => array()), $result['empty'], 'an empty graph has no problem');
+	pg_assert_same(array(array('from' => 'd', 'to' => 'zz'), array('from' => 'yy', 'to' => 'd')), $result['check']['dangling'], 'arrows whose end is no box');
+	pg_assert_same(array('c', 'd'), $result['check']['unreached'], 'boxes no other box reaches');
+	pg_assert_same(array('c'), $result['check']['stuck'], 'a box with no way out but itself');
+	pg_assert_same(array('dangling' => array(), 'unreached' => array(), 'stuck' => array('a')), $result['alone'], 'the start is never unreached');
 }

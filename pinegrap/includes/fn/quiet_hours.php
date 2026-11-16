@@ -157,3 +157,60 @@ function pg_quiet_hours_left($setting, $zone, $workdays, $now)
     // Never quiet for longer than the look ahead: the push goes then.
     return 0;
 }
+
+/**
+ * Checks the setting a person sends from the "Quiet hours" part: From and To
+ * as HH:MM and the "Also quiet on the days I do not work" switch. Both times
+ * empty, or equal, is no quiet range (the value null clears it). Pure.
+ *
+ * @param mixed $start
+ * @param mixed $end
+ * @param mixed $off_days
+ * @return array ok, value (start, end, off_days, or null), error, field
+ */
+function pg_quiet_hours_input($start, $end, $off_days)
+{
+    $start = is_scalar($start) ? trim((string) $start) : '';
+    $end = is_scalar($end) ? trim((string) $end) : '';
+
+    if (($start === '') && ($end === '')) {
+        return array('ok' => true, 'value' => null, 'error' => '', 'field' => '');
+    }
+
+    foreach (array('start' => $start, 'end' => $end) as $field => $time) {
+        if (pg_quiet_hours_minutes($time) < 0) {
+            return array('ok' => false, 'value' => null, 'error' => lang('Enter a time as hours and minutes, such as 22:00.'), 'field' => $field);
+        }
+    }
+
+    // The rule pg_quiet_hours_decode() reads: a start equal to the end is off.
+    $value = pg_quiet_hours_decode(array('start' => $start, 'end' => $end, 'off_days' => $off_days));
+
+    return array('ok' => true, 'value' => $value, 'error' => '', 'field' => '');
+}
+
+/**
+ * Checks a save of quiet hours before it is written: only a team member, and
+ * only for their own profile (a request naming another person is refused,
+ * never written for them). Pure.
+ *
+ * @param array $viewer  ws_viewer(): id, member
+ * @param array $request start, end, off_days, and an optional user_id
+ * @return array ok, user_id, value, error, field
+ */
+function pg_quiet_hours_save_check($viewer, $request)
+{
+    $user_id = (int) ($viewer['id'] ?? 0);
+
+    if (empty($viewer['member']) || ($user_id <= 0)) {
+        return array('ok' => false, 'user_id' => 0, 'value' => null, 'error' => lang('Only team members have quiet hours.'), 'field' => '');
+    }
+
+    if (isset($request['user_id']) && ((int) $request['user_id'] !== $user_id)) {
+        return array('ok' => false, 'user_id' => 0, 'value' => null, 'error' => lang('You can only set your own quiet hours.'), 'field' => '');
+    }
+
+    $input = pg_quiet_hours_input($request['start'] ?? '', $request['end'] ?? '', $request['off_days'] ?? 0);
+
+    return array('ok' => $input['ok'], 'user_id' => $input['ok'] ? $user_id : 0, 'value' => $input['value'], 'error' => $input['error'], 'field' => $input['field']);
+}

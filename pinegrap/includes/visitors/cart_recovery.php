@@ -5,8 +5,10 @@
  * The Recovered carts section of the Visitors overview: carts left in the
  * period, how many a message reached, how many came back and how many it
  * recovered with their revenue, each against the earlier period; the same
- * as a funnel, by channel and by message. The figures are
- * pg_cart_recovery_period() (includes/fn/cart_recovery_figures.php).
+ * as a funnel, by channel and by message; above them, what weakens recovery
+ * when a rule finds something. The figures are pg_cart_recovery_period()
+ * (includes/fn/cart_recovery_figures.php), the rules
+ * pg_cart_recovery_weak_period() (includes/fn/cart_recovery_weak.php).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -55,6 +57,12 @@ function pg_visitors_section_cart_recovery(array $period, array $user)
     }
 
     $body = '<div class="pg-visitors-tiles">' . $tiles . '</div>';
+
+    $weak = pg_cart_recovery_weak_period($now, (int) $period['from_ts'], (int) $period['to_ts']);
+
+    if ($weak) {
+        $body .= '<div class="pg-visitors-grid">' . pg_visitors_block(lang('What weakens recovery'), pg_visitors_cart_recovery_weak_list($weak)) . '</div>';
+    }
 
     $body .= '<div class="pg-visitors-grid is-split">';
 
@@ -257,4 +265,100 @@ function pg_visitors_cart_recovery_message_rows(array $messages)
     }
 
     return $rows;
+}
+
+/**
+ * A checkout step's name. Pure.
+ *
+ * @param string $step pg_cart_recovery_weak_steps()
+ * @return string
+ */
+function pg_visitors_cart_recovery_step_label($step)
+{
+    $labels = array(
+        'cart'     => lang('the cart'),
+        'shipping' => lang('the shipping address'),
+        'billing'  => lang('the billing details'),
+        'payment'  => lang('the payment'),
+    );
+
+    return isset($labels[$step]) ? $labels[$step] : (string) $step;
+}
+
+/**
+ * The text of a finding of pg_cart_recovery_weak().
+ *
+ * @param array $finding
+ * @return string plain text
+ */
+function pg_visitors_cart_recovery_weak_text(array $finding)
+{
+    $count = function ($value) {
+        return pg_format_number((int) $value, 0);
+    };
+
+    switch ($finding['rule']) {
+
+        case 'unreachable':
+            if ((int) $finding['no_consent'] === 0) {
+                return lang(array('string' => '{var:1} of {var:2} left carts ({var:3} %) could not be reached: they have no e-mail address.', 'vars' => array($count($finding['carts']), $count($finding['left']), $finding['percent'])));
+            }
+
+            if ((int) $finding['no_address'] === 0) {
+                return lang(array('string' => '{var:1} of {var:2} left carts ({var:3} %) could not be reached: they have no consent to commercial mail.', 'vars' => array($count($finding['carts']), $count($finding['left']), $finding['percent'])));
+            }
+
+            return lang(array('string' => '{var:1} of {var:2} left carts ({var:3} %) could not be reached: {var:4} with no e-mail address, {var:5} with no consent to commercial mail.', 'vars' => array($count($finding['carts']), $count($finding['left']), $finding['percent'], $count($finding['no_address']), $count($finding['no_consent']))));
+
+        case 'stalled':
+            $text = lang(array('string' => '{var:1} of {var:2} carts that came back were not recovered: {var:3} are still open, {var:4} were completed after the 7 days.', 'vars' => array($count($finding['carts']), $count($finding['returned']), $count($finding['open']), $count($finding['late']))));
+
+            if ($finding['step'] !== '') {
+                $text .= ' ' . lang(array('string' => 'Most open ones stopped at {var:1}.', 'vars' => array(pg_visitors_cart_recovery_step_label($finding['step']))));
+            }
+
+            return $text;
+
+        case 'late':
+            return lang(array('string' => 'The first message reached {var:1} of {var:2} open carts ({var:3} %) more than a day after they were left.', 'vars' => array($count($finding['carts']), $count($finding['timed']), $finding['percent'])));
+
+        case 'stock':
+            return lang(array('string' => '{var:1} of {var:2} left carts ({var:3} %) hold a product that is out of stock.', 'vars' => array($count($finding['carts']), $count($finding['left']), $finding['percent'])));
+
+        case 'message':
+            return lang(array('string' => '{var:1} ({var:2}) was sent {var:3} times, but only {var:4} of the {var:5} carts it reached came back ({var:6} %).', 'vars' => array($finding['label'], pg_visitors_cart_recovery_channel_label($finding['channel']), $count($finding['sent']), $count($finding['returned']), $count($finding['reached']), $finding['percent'])));
+    }
+
+    return '';
+}
+
+/**
+ * The findings as alert lines.
+ *
+ * @param array $findings pg_cart_recovery_weak()
+ * @return string HTML
+ */
+function pg_visitors_cart_recovery_weak_list(array $findings)
+{
+    $icons = array(
+        'unreachable' => 'bi-envelope-slash',
+        'stalled'     => 'bi-sign-stop',
+        'late'        => 'bi-hourglass-split',
+        'stock'       => 'bi-box-seam',
+        'message'     => 'bi-envelope-exclamation',
+    );
+
+    $items = '';
+
+    foreach ($findings as $finding) {
+        $icon = isset($icons[$finding['rule']]) ? $icons[$finding['rule']] : 'bi-exclamation-triangle';
+
+        $items .= '
+            <li class="pg-visitors-alert is-' . h($finding['rule']) . '">
+                <i class="bi ' . $icon . '" aria-hidden="true"></i>
+                <span class="pg-visitors-alert-text">' . h(pg_visitors_cart_recovery_weak_text($finding)) . '</span>
+            </li>';
+    }
+
+    return '<ul class="pg-visitors-alert-list">' . $items . '</ul>';
 }

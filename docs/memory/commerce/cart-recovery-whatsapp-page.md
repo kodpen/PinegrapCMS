@@ -17,10 +17,10 @@ module: cart_recovery
 - A key used on another order than the touched one marks nothing; the completion rule still decides recovery by the completed order's own touches.
 
 ## Which senders pass a cart today?
-- Only the inbox's template reply (`mail_phone.php`) passes `contact_id`. The flow box and the order moments pass neither, so their keys write no touch until a cart-left flow start (a later plan) names the order.
+- Only the inbox's template reply (`mail_phone.php`) passes `contact_id`. The flow box and the order moments pass neither, so their keys write no touch until a cart-left flow start (a later plan, `core/campaign-profile-flow-gaps.md`) names the order.
 
 ## How does a pop-up become a touch?
-- The pop-up plan (PU9) calls `pg_cart_recovery_touch($order_id, 'page', 'popup', <pop-up id>)` when a visitor with a cart takes one up. The writer accepts it as it is; pure `pg_cart_recovery_touch_args()` checks the names (`test_cart_recovery_touch_args` in `tests/cart_recovery_test.php`).
+- Not built yet: the pop-up plan's take-up step (PU9, `plans/auto-dialog-popups-steps.md`) is to call `pg_cart_recovery_touch($order_id, 'page', 'popup', <pop-up id>)` when a visitor with a cart takes one up. The writer accepts it as it is; pure `pg_cart_recovery_touch_args()` checks the names (`test_cart_recovery_touch_args` in `tests/cart_recovery_test.php`).
 
 ## How was it verified?
 - `tests/cart_recovery_test.php` (touch arguments, left test). No database in the cloud session: the enqueue touch, the left-cart query and the key's use were not run against MySQL.

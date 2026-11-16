@@ -14,7 +14,7 @@ description: Plan publish-approval, features A1 to A16: the switch, which saves 
 - (A6) On opening the page again the editor's own waiting change is laid on the canvas and saved by nothing but a new save. Nobody else's canvas shows it.
 
 ## What does a designer do?
-- (A7) Roles 0 and 1 see a count on the page's tab and the waiting changes where the assistant's proposals are listed, each with the editor's name and "Compare": the page as it is and as proposed.
+- (A7) Roles 0 and 1 see a count on the page's tab; it opens the waiting changes, the module's own list, shown whether or not an assistant or the Workspace is set up (architect, agent channel message 5857), each with the editor's name and "Compare": the page as it is and as proposed.
 - (A8) "Apply" is the proposal's own: the page lock is checked, one revision is written, and the page's History names the editor and the designer.
 - (A9) A waiting change whose node the page no longer has cannot be applied: it says the page changed since, and the editor is told.
 - (A10) "Dismiss" takes a reason of at most 300 characters. A dismissed change stays in the list for 30 days.

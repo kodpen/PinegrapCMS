@@ -21,7 +21,6 @@ module: save_bar
 ## What stays out?
 - `includes/templates/edit_offer.php`: an owner's kept screen (`decisions-made-panel-3.md`).
 - `includes/settings/screen.php`: the settings page frames its own bar (`#pg_settings_page_form > nav`).
-- The phone bar is SH6c (`plans/panel-old-screens-shared-steps.md`).
 
 ## In which order are the buttons? (SH6b)
 - Ghost, quiet, filled, in the markup, never by CSS order: the danger delete first, the save last. The roles are the stylesheet's (`look-edit-screens.md`, "What is the save bar?"). `tests/save_bar_order_test.php` checks every inline bar and the screens that hand their buttons to a form layout.
@@ -32,4 +31,7 @@ module: save_bar
 - A bar whose buttons each sit on a form of their own (account sync item, inbox document), or whose form has no field (delivery note), needs none.
 - Add Expense's Save carries `data-pg-save-shortcut`: "Save and add another" (same `submit_save` name) now comes first and Ctrl+S would take it.
 
-Related: docs/memory/ui/look-edit-screens.md, docs/memory/ui/save-bar-chat-launcher.md
+
+- The phone bar: `save-bar-phone.md`.
+
+Related: docs/memory/ui/look-edit-screens.md, docs/memory/ui/save-bar-phone.md, docs/memory/ui/save-bar-chat-launcher.md

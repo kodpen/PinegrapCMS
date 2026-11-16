@@ -4,14 +4,14 @@ description: Plan prototype-canvas, the engine steps PV1, PV3 and PV5: graph log
 ---
 
 ## Which steps are there?
-- PV1 (M) Graph logic in the core, pure.
+- PV1 (M) Graph logic in the core, pure. Done (#9865).
   - `G.order(ids, edges, start)`: breadth-first ranks from `start`, the given order between equals, unreached ids last with no rank.
   - `G.arrange(groups, opts)`: places in a wrapped grid: `cols`, the box size, the gaps; each group a band with a heading's place; one side column before the grid and one after it. Answers `{ places, headings, bounds }` in whole units.
   - `G.linksOf(edges, id)`: `{ out, in }` in the order given.
   - `G.check(ids, edges, start)`: arrows whose end is no box, boxes nothing reaches, boxes with no way out. Reported only: PV11a shows the boxes nothing reaches; no screen shows the last.
   - Tests: an empty graph, a loop, islands, forty boxes in three groups, a group longer than a row, the same answer for the same input.
   - Memory: a new `ui/graph-canvas-core-logic.md`.
-- PV3 (M) Focus in the core. After PV1.
+- PV3 (M) Focus in the core. Done (#9886).
   - Adapter `focus: true`; `canvas.focus(id or null)`, `canvas.focused()`. With a focus only that box's arrows are in the drawing, classed `pgc-edge-out` and `pgc-edge-in`; boxes and targets at neither end of one get `pgc-dim`. With no focus and the field set, no arrow is drawn. Without the field every arrow is drawn, as today.
   - `canvas.allEdges(on)`: the others drawn too, classed `pgc-edge-faint`, under the focused ones.
   - `adapter.groups()`: headings (`pgc-group`: a label and a rule) drawn behind the boxes at the places `arrange()` gave.

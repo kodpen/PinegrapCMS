@@ -86,6 +86,11 @@ $renderer_patterns = array(
 );
 
 $renderer_files = glob($root_real . '/' . $renderer_glob);
+// A designed form's step buttons resolve their flags step by step
+// (pg_cf_step_nav_node()), outside the widget renderers.
+if ($renderer_files && is_file($root_real . '/includes/fn/custom_form_steps.php')) {
+	$renderer_files[] = $root_real . '/includes/fn/custom_form_steps.php';
+}
 
 if (!$renderer_files) {
 	fwrite(STDERR, "No renderer files matched: $renderer_glob\n");

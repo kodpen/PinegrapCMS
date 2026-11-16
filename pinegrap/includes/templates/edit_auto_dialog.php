@@ -235,6 +235,12 @@ if (!defined('PG_INIT_LOADED')) {
                                             </div>
                                         <?php endforeach ?>
                                         <?php if ($screen == 'edit'): ?>
+                                            <?php foreach (array('shown' => lang('Shown (30 days)'), 'closed' => lang('Closed (30 days)'), 'taken' => lang('Taken (30 days)')) as $count_field => $count_label): ?>
+                                                <div class="d-flex justify-content-between gap-3 py-2 border-bottom" data-pg-auto-dialog-count="<?=$count_field?>">
+                                                    <dt class="fw-normal"><?=h($count_label)?></dt>
+                                                    <dd class="mb-0 fw-bold text-end"><?=h(pg_format_number($auto_dialog_counts[$count_field], 0))?></dd>
+                                                </div>
+                                            <?php endforeach ?>
                                             <div class="d-flex justify-content-between gap-3 py-2">
                                                 <dt class="fw-normal"><?=lang('Last Modified')?></dt>
                                                 <dd class="mb-0 fw-bold text-end text-break"><?php if ((int) $auto_dialog['last_modified_timestamp'] > 0): ?><?=get_relative_time(array('timestamp' => (int) $auto_dialog['last_modified_timestamp']))?><?php if ((string) $auto_dialog['user_username'] !== ''): ?> <?=h($auto_dialog['user_username'])?><?php endif ?><?php else: ?>-<?php endif ?></dd>

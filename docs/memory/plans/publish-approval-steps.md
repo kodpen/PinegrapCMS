@@ -6,26 +6,22 @@ description: Plan publish-approval, steps PA1 to PA6 (PA0, the owner's answer, i
 ## Which steps are there?
 - PA0 Done (2026-11-16, agent channel poll 64, message 5749): the owner's answer that a site may choose that a content editor's change waits for a designer, "Evet, anahtarla seçilebilsin" (`plans/publish-approval.md`).
 
-- PA1 (S, no code) after PA0: census. One memory file, `plans/publish-approval-census.md`:
-  - how the result of `pg_designer_merge_restricted_tree()` is written as operations a proposal takes (a text, a picture's address, per node), and what is lost if it cannot be;
-  - what `design_proposals` and its apply, take-back and stale rules need for a proposal a person made;
-  - every place that lists or draws a proposal: the Assistant panel, the Workspace message card, the API;
-  - what a content-level editor sees after a save today, and what a change inside a shared component would take.
-  - The architect confirms the shape on it before PA2; a feature the census finds cannot be built as written comes back as a question.
+- PA1 Done (#9882): the census, `plans/publish-approval-census.md` and its parts `publish-approval-census-gate.md`, `-table.md`, `-places.md`, `-features.md`; the architect's decisions on it: agent channel message 5857.
 
 - PA2 (M) after PA1: the switch and the held save.
   - Existing files: `includes/fn/designer.php` (in `pg_designer_save_page()`, the content-level save of a live page hands the gate's result to the module and writes no page), `includes/settings/features.php` and `features.save.php` (the card).
+  - Also: the assistant's readers taking the one condition `agent <> 'editor'` (`includes/designer_ai.php`: the panel's requests, `pg_design_ai_proposals_map()`, the dry run; `includes/api/resources/design.php`: the proposal routes and `pending_proposals`; `includes/workspace/ai.php`; `includes/workspace/threads.php`), with a test that none returns an editor row.
   - New: `includes/fn/content_proposals.php`, `tests/content_proposals_test.php`.
   - Tests, red first: the switch off changing nothing, each save A2 leaves alone, one waiting change per page and editor, a second save replacing it, an unchanged save withdrawing it.
   - Features: A1 to A4, A16.
 
 - PA3 (M) after PA2: the editor's side. Existing files: `assets/js/style_designer.src.js` (the tab's state, the waiting change laid on the canvas, "Withdraw"), the page load of the designer's panel actions. Pictures to the owner. Features: A5, A6.
 
-- PA4 (M) after PA2: the designer's side. Existing files: the Assistant panel's proposal list (`assets/js/designer_ai.js`), the tab's count. New: the bell lines. Tests: apply writing one revision with both names, a stale change refused, dismiss with its reason, take back refused after a later save. Pictures to the owner. Features: A7 to A12.
+- PA4 (M) after PA2: the designer's side. Existing files: the tab's count, `includes/notifications.php` (a third set in `pg_notification_off_kinds()` and `pg_notification_off_lines_on()`). New: the module's own list of waiting changes, the bell lines. The Assistant panel and `designer_ai.js` are not touched. Tests: apply writing one revision with both names, a stale change refused, dismiss with its reason, take back refused after a later save. Pictures to the owner. Features: A7 to A12.
 
 - PA5 (S) after PA4: the Workspace request. Existing files: `includes/workspace/approvals.php` (one call in `ws_approval_settle()` to a function of the module, `workspace/workspace-approval-decide-checks.md`). Tests: a designer's yes applying, another member's yes only noted, a no dismissing, a withdrawn change taking its request back. Features: A13, A14, A15.
 
-- PA6 (S) close-out: every A number checked against the code with its PR; `designer/content-proposals.md`; this plan's files and the census deleted and its line in `plans/website-features.md` removed.
+- PA6 (S) close-out: every A number checked against the code with its PR; `designer/content-proposals.md`; this plan's files and the census files (`publish-approval-census*.md`) deleted and its line in `plans/website-features.md` removed.
 
 ## Which steps run side by side?
 - PA3 and PA4 run beside each other once PA2 has landed.

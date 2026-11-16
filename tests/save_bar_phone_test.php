@@ -65,3 +65,27 @@ function test_save_bar_phone_keeps_chat_clearance()
 
 	pg_assert_true(strpos($bar, 'bottom: calc(0.5rem + var(--pg-chat-clearance)) !important') !== false, 'bar stays above the chat bubble');
 }
+
+function test_save_bar_phone_three_actions_share_one_row()
+{
+	$block = save_bar_phone_test_block();
+	$three = 'nav.buttons.navigation:not(.pg-bar-icons, .pg-bar-rows) .btn:nth-child(1 of .btn):nth-last-child(3 of .btn)';
+
+	pg_assert_contains($three . ",\n  " . $three . ' ~ .btn {', $block, 'exactly three .btn siblings are selected, a hidden submit not counted');
+
+	$rule = save_bar_phone_test_rule($block, $three . ' ~ .btn');
+
+	pg_assert_true(strpos($rule, 'flex: 1 1 auto') !== false, 'each takes its label\'s width and shares the rest');
+	pg_assert_true(strpos($rule, 'min-width: 0') !== false, 'a long label may shrink');
+	pg_assert_contains($three . ' ~ .btn :is(.bi, .material-icons) {' . "\n    display: none;", $block, 'icons give way in a three-action row');
+	pg_assert_contains($three . " ~ .btn .pg-btn-label {\n    min-width: 0;\n    overflow: hidden;\n    text-overflow: ellipsis;", $block, 'a label still too long ends in an ellipsis');
+}
+
+function test_save_bar_phone_kept_screens_keep_two_per_row()
+{
+	foreach (array('product_builder.php', 'includes/templates/edit_offer.php') as $file) {
+		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
+
+		pg_assert_contains('<nav class="buttons navigation pg-bar-rows ', $source, $file . ' opts out of the three-action row');
+	}
+}

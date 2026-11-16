@@ -8,6 +8,7 @@ module: graph_canvas
 - `assets/js/pg_graph_canvas.js`, bundle `pg_graph_canvas.min.js`, printed before its user (the flows screen: `ws_screen_assets()`).
 - It owns what a box-and-arrow canvas needs whatever its boxes mean: geometry helpers, undo history, `viewport(host)`, and `create(adapter)` (pointer, pinch, Space, zoom keys, `destroy()`).
 - Sizes per box, named ports, other targets, stable arrow ids, partial redraw, thumbnails (slice 4): `ui/graph-canvas-core-sizes-ports.md`.
+- Focus, faint arrows, headings: `ui/graph-canvas-core-focus.md`.
 
 ## Why a core with adapters?
 - Owner, 2026-10-24 (#2445): the Flows canvas serves other features too, so the generic part is one core named `pg_graph_canvas` / `pgc-` and each user brings an adapter; the second user is the designer's Prototype view (`designer/prototype-view.md`).

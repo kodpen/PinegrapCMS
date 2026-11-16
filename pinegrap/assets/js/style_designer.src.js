@@ -2125,8 +2125,31 @@ const StyleDesigner = (function () {
         reference: ['text box', 'pick list', 'radio button', 'check box'],
         product:   ['pick list'],
         page:      ['pick list'],
-        slug:      ['text box']
+        slug:      ['text box'],
+        rows:      ['text box']
     };
+    // A rows field (_CF_KINDS.rows) has no control on the site yet
+    // (pg_cf_apply_field_bindings() leaves it out); the canvas shows three
+    // sample rows in place of its text box.
+    /* @pg-site-output */
+    function _cfRowsSample(doc, node, wrapper, innerEl) {
+        var p = node && node.props;
+        if (!p || node.type !== 'semantic' || String(p.tag || '').toLowerCase() !== 'input') return;
+        if (!p._cf || typeof p._cf !== 'object' || p._cf.kind !== 'rows' || innerEl === wrapper) return;
+        innerEl.style.display = 'none';
+        var list = doc.createElement('ol');
+        list.className = 'list-group list-group-numbered';
+        list.setAttribute('data-sd-rows-sample', '');
+        // The numbers come from the list; the words say it is a sample.
+        [1, 2, 3].forEach(function () {
+            var li = doc.createElement('li');
+            li.className = 'list-group-item text-body-secondary';
+            li.textContent = _sdT('Sample row');
+            list.appendChild(li);
+        });
+        wrapper.appendChild(list);
+    }
+
     // The [kind, label] pairs a field of `type` may take.
     function _cfKindsFor(type) {
         var labels = {
@@ -2135,7 +2158,8 @@ const StyleDesigner = (function () {
             reference: _sdT('Reference to another form'),
             product:   _sdT('Product'),
             page:      _sdT('Page'),
-            slug:      _sdT('Address name (slug)')
+            slug:      _sdT('Address name (slug)'),
+            rows:      _sdT('Record rows')
         };
         return Object.keys(_CF_KINDS).filter(function (k) { return _CF_KINDS[k].indexOf(type) !== -1; })
             .map(function (k) { return [k, labels[k]]; });
@@ -2643,7 +2667,7 @@ const StyleDesigner = (function () {
         // field that already has a kind.
         var kinds = _cfKindsFor(leadType);
         if (kinds.length && (parseInt(settings.collection || 0, 10) || rec.kind)) {
-            if (rec.kind === 'reference' && !_customFormsCache && typeof _fetchCustomForms === 'function') {
+            if ((rec.kind === 'reference' || rec.kind === 'rows') && !_customFormsCache && typeof _fetchCustomForms === 'function') {
                 _fetchCustomForms(function () { _sdSchedulePropsRefresh(); });
             }
             var kindNow = (kinds.some(function (k) { return k[0] === rec.kind; })) ? rec.kind : '';
@@ -2655,6 +2679,15 @@ const StyleDesigner = (function () {
                           _swFormOptions(parseInt(rec.ref || 0, 10) || 0) +
                       '</select>' +
                       _cfHint(esc(_sdT('The field holds the reference code or the address name of a record of that form; several are separated by commas.')))
+                    : '') +
+                // A rows field keeps its rows as records of another
+                // collection, never of this form (pg_coll_rows_spec()).
+                (kindNow === 'rows'
+                    ? '<select class="form-control form-control-sm mt-1 sd-cf-ref" aria-label="' + esc(_sdT('Collection the rows are kept in')) + '">' +
+                          '<option value="0">' + esc(_sdT('— Choose a collection —')) + '</option>' +
+                          _swFormOptions(parseInt(rec.ref || 0, 10) || 0, (_pgActivePage() || {}).page_id, true) +
+                      '</select>' +
+                      _cfHint(esc(_sdT('Each row is a record of that collection, added, removed and ordered on this record\'s form. Only forms used as a collection are listed.')))
                     : '') +
                 '');
         }
@@ -2962,7 +2995,7 @@ const StyleDesigner = (function () {
         on('sd-cf-kind', 'change', function (el) {
             var r = _cfRec(lead);
             if (el.value) r.kind = el.value; else delete r.kind;
-            if (el.value !== 'reference') delete r.ref;
+            if (el.value !== 'reference' && el.value !== 'rows') delete r.ref;
             // An empty `_cf` turns into an array on the server's round trip.
             if (!Object.keys(r).length) delete lead.props._cf;
             commit(true);
@@ -5923,7 +5956,20 @@ const StyleDesigner = (function () {
                 itemClass:    '',
                 cssClass:     'mb-3'
             },
+            // In a catalog widget the canvas draws what the site prints for
+            // it with sample attributes (_sdVariantAttrHtml()); elsewhere the
+            // box naming its style.
+            /* @pg-site-output */
             render: function (doc, p) {
+                if (_sdCatalogKindDrawn()) {
+                    var s = doc.createElement('div');
+                    // sd-editor-ph: a sample, left out of the canvas audit.
+                    s.className = 'sd-editor-ph';
+                    s.setAttribute('inert', '');
+                    s.innerHTML = _sdVariantAttrHtml(_sdVariantAttrCfg(p), SD_VARIANT_ATTR_SAMPLE, SD_VARIANT_ATTR_PICKED)
+                        + '<div class="small text-body-secondary fst-italic">' + esc(_sdT('The backend fills one copy for each attribute (Color, Size, …)')) + '</div>';
+                    return s;
+                }
                 var d = doc.createElement('div');
                 // sd-editor-ph: editor chrome, left out of the canvas audit.
                 d.className = 'border border-primary border-dashed rounded p-2 sd-editor-ph ' + (p.cssClass || '');
@@ -5943,13 +5989,7 @@ const StyleDesigner = (function () {
                 return d;
             },
             toHTML: function (p, pad) {
-                var cfg = {
-                    renderStyle:  p.renderStyle  || 'select',
-                    labelClass:   p.labelClass   || 'form-label fw-semibold',
-                    controlClass: p.controlClass || '',
-                    itemClass:    p.itemClass    || '',
-                    cssClass:     p.cssClass     || 'mb-3'
-                };
+                var cfg = _sdVariantAttrCfg(p);
                 var b64 = btoa(unescape(encodeURIComponent(JSON.stringify(cfg))));
                 return pad + '<!--pg-variant-attr:' + b64 + '-->\n';
             }
@@ -11718,7 +11758,7 @@ const StyleDesigner = (function () {
     // recipient picker is only a marker (_apply_catalog_item_view_bindings()),
     // the watcher list adds its rows before them (widgets_comments.php).
     // Every other section's children give way to what the server draws.
-    var _SD_SECTION_KEEPS_CHILDREN = { recipient_picker: 1, comment_watchers: 1 };
+    var _SD_SECTION_KEEPS_CHILDREN = { recipient_picker: 1, comment_watchers: 1, form_step_nav: 1 };
 
     var _SD_CHIP_KINDS = [['data-sd-cond', 'sd-chip-cond'], ['data-sd-off-reason', 'sd-chip-off'], ['data-sd-cf-shown', 'sd-chip-shown']];
     function _sdChipRow(doc, wrapper) {
@@ -14132,6 +14172,8 @@ const StyleDesigner = (function () {
                 }
             }
             if (innerEl !== wrapper) wrapper.appendChild(innerEl);
+            // A rows field draws three sample rows in place of its text box.
+            _cfRowsSample(doc, node, wrapper, innerEl);
 
             // Image wrapper expansion: when p.width is a percentage the wrapper's inline-block
             // default would prevent the percentage from taking effect (circular constraint).
@@ -14193,9 +14235,16 @@ const StyleDesigner = (function () {
                         : doc.createTextNode(piece));
                 });
             } else if (node.children && node.children.length > 0) {
-                node.children.forEach(function (child) {
+                // A stepped form's progress and buttons (_sdFormStepSamples()).
+                var _stepPlan = _sdFormStepPlan(node);
+                var _stepAdd = function (i) {
+                    if (_stepPlan) _sdFormStepSamples(_stepPlan, i, node.children.length, doc).forEach(function (el) { innerEl.appendChild(el); });
+                };
+                node.children.forEach(function (child, ci) {
+                    _stepAdd(ci);
                     innerEl.appendChild(buildNodeEl(child));
                 });
+                _stepAdd(node.children.length);
                 // A list's sample rows after its card (_sdListGhostEls()).
                 if (node.type === 'loop_area') _sdListGhostEls(node).forEach(function (g) { innerEl.appendChild(g); });
             }
@@ -14346,6 +14395,19 @@ const StyleDesigner = (function () {
                 if (!_hasChildren && _getSystemWidgetRegionType(node) === 'comments') {
                     var _sample = _sdCommentsSectionSample(_sec, doc);
                     if (_sample) _hint = _sample;
+                }
+                // A form's CAPTCHA as a sample; a step break with a title is
+                // drawn as the title the site gives its step.
+                if (!_hasChildren && _getSystemWidgetRegionType(node) === 'custom_form') {
+                    var _fSample = _sdFormSectionSample(_sec, doc);
+                    if (_fSample) _hint = _fSample;
+                    else if (_sec === 'form_step' && String(node.props.text || '').trim() !== '') _hint = null;
+                }
+                // A catalog listing's category tree and filters, likewise
+                // (_sdCatalogSectionSample()).
+                if (!_hasChildren && _getSystemWidgetRegionType(node) === 'catalog_listing') {
+                    var _catSample = _sdCatalogSectionSample(_sec, doc, _sysWidgetRenderCfg);
+                    if (_catSample) _hint = _catSample;
                 }
                 if (_hint) innerEl.appendChild(_hint);
             }
@@ -15268,6 +15330,8 @@ const StyleDesigner = (function () {
     // Preview only: never saved to the tree, never sent to the server.
     /* @pg-site-output */
     var _SD_HTML_PREVIEW_TOKENS = {
+        // The sample product's price block: an offer lowers it (_sdPriceBlockHtml()).
+        '__price_block_html': function () { return _sdPriceBlockHtml(500, 450); },
         // The comment's text and the store's reply, as the page draws them
         // (convert_text_to_html()).
         '__comment_message_html': function () {
@@ -15489,10 +15553,8 @@ const StyleDesigner = (function () {
         // The catalog's blocks, in the markup widgets_catalog.php gives them;
         // controls disabled.
         '__group_tree_html': function () {
-            return '<nav class="pg-sw-cl-group-tree"><ul class="list-unstyled mb-0">' +
-                   '<li class="pg-sw-cl-tree-item active"><a href="#" class="text-decoration-none fw-bold">' + esc(_sdT('Shirts')) + '</a></li>' +
-                   '<li class="pg-sw-cl-tree-item"><a href="#" class="text-decoration-none">' + esc(_sdT('Trousers')) + '</a></li>' +
-                   '<li class="pg-sw-cl-tree-item"><a href="#" class="text-decoration-none">' + esc(_sdT('Accessories')) + '</a></li></ul></nav>';
+            return '<nav class="pg-sw-cl-group-tree" aria-label="' + esc(_sdT('Categories')) + '">'
+                + _sdCatalogGroupTreeHtml(SD_CATALOG_GROUPS_SAMPLE, SD_CATALOG_ACTIVE_GROUP, 0) + '</nav>';
         },
         '__filters_button': function () {
             return '<button type="button" class="btn btn-outline-secondary" disabled><i class="bi bi-funnel me-1"></i>' +
@@ -15502,17 +15564,12 @@ const StyleDesigner = (function () {
             return '<a href="#" class="btn btn-sm btn-outline-danger"><i class="bi bi-x-circle me-1"></i>' + esc(_sdT('Clear Filters')) + '</a>';
         },
         '__attribute_filters_html': function () {
-            var box = function (label, on) {
-                return '<div class="form-check"><input class="form-check-input" type="checkbox" disabled' + (on ? ' checked' : '') + '>' +
-                       '<label class="form-check-label">' + esc(label) + '</label></div>';
-            };
-            return '<div class="pg-sw-cl-attr-filters"><div class="fw-semibold small mb-1">' + esc(_sdT('Colour')) + '</div>' +
-                   box(_sdT('Natural'), true) + box(_sdT('Navy'), false) + '</div>';
+            return _sdCatalogSectionHtml('attribute_filters', { show_attribute_filters: true });
         },
         // The filters panel opens from the Filters button; drawn open here.
         '__filters_offcanvas': function () {
-            return '<div class="border rounded p-3"><div class="fw-semibold mb-2">' + esc(_sdT('Filters')) + '</div>' +
-                   _SD_HTML_PREVIEW_TOKENS.__attribute_filters_html() + '</div>';
+            return '<div class="pg-sw-filters-offcanvas border rounded">'
+                + _sdCatalogSectionHtml('filters_offcanvas', { price_filter_enabled: true, stock_filter_enabled: true, show_attribute_filters: true }) + '</div>';
         },
         '__variant_picker': function () {
             return '<div class="pg-civ-variant-picker mb-3"><label class="form-label">' + esc(_sdT('Size')) + '</label>' +
@@ -41932,6 +41989,9 @@ const StyleDesigner = (function () {
             out.push(['captcha',           _sdT('CAPTCHA (depends on the site setting; hidden for a signed-in visitor)')]);
             // A break: what follows it is the next step of the form.
             out.push(['form_step',         _sdT('Step break (the controls after it are the next step)')]);
+            // Back and Next a designer builds, drawn under every step
+            // (pg_cf_step_nav_node()); without it the site draws its own.
+            out.push(['form_step_nav',     _sdT('Step buttons (Back and Next under every step)')]);
         } else if (type === 'login_form') {
             // Each block is the server's ready-made element and is
             // absent - container included - when its feature is off.
@@ -42007,7 +42067,8 @@ const StyleDesigner = (function () {
 
     // The panel's button under the Section binding list, '' for a section
     // that does not open.
-    function _sdSectionOpenRow(kind, section) {
+    function _sdSectionOpenRow(kind, section, node) {
+        if (kind === 'custom_form' && section === 'form_step') return _sdFormStepNavRow(node);
         if (!_sdSectionOpensAsList(kind, section)) return '';
         return '<button type="button" class="btn btn-sm btn-outline theme-primary w-100 mt-2 text-wrap" data-sd-section-open>' +
                 '<span class="bi bi-magic me-1"></span>' + esc(_sdT('Convert to design elements')) + '</button>' +
@@ -42033,6 +42094,144 @@ const StyleDesigner = (function () {
         parent.children.splice(idx, 1, nav);
         if (hit.sid) _sharedDirty[hit.sid] = true;
         return nav;
+    }
+
+    // ── A designed form's steps (custom_form) ───────────────────────────────
+    // On the canvas a stepped form is drawn as the site draws it
+    // (pg_cf_apply_steps()): the progress line above the first step, each
+    // break as its step's title, Back / Next at the end of every step. The
+    // buttons are the site's own until the designer puts the Step buttons
+    // (section form_step_nav) in the form: one design for every step, Back
+    // shown on has_prev_step and Next on has_next_step. The CAPTCHA is drawn
+    // as a sample (settings only).
+
+    // The step buttons node of the widget `node` stands in, or null.
+    function _sdFormStepNavOf(node) {
+        var sid = _sdValueSidOf(node);
+        var root = (sid && _sharedCache[sid]) ? _sharedCache[sid].tree : null;
+        var found = null;
+        (function walk(n) {
+            if (!n || found) return;
+            if (n.props && n.props._bindings && n.props._bindings.section === 'form_step_nav') { found = n; return; }
+            (n.children || []).forEach(walk);
+        })(root);
+        return found;
+    }
+
+    // The panel's button under a step break's Section binding: puts the step
+    // buttons in the form; '' once the form has them.
+    function _sdFormStepNavRow(node) {
+        if (!node || _sdFormStepNavOf(node)) return '';
+        return '<button type="button" class="btn btn-sm btn-outline theme-primary w-100 mt-2 text-wrap" data-sd-step-nav-open>' +
+                '<span class="bi bi-magic me-1"></span>' + esc(_sdT('Design the step buttons')) + '</button>' +
+            '<div style="font-size:.66rem;color:#888;margin-top:3px">' +
+                esc(_sdT('Puts Back and Next you design at the end of the form. The site draws them under every step instead of its own: Back from the second step, Next up to the last.')) +
+            '</div>';
+    }
+
+    // A new step buttons box, as the site's own (_pg_cf_steps_nav_html()).
+    /* @pg-site-output */
+    function _sdFormStepNavStarter(bs) {
+        var btn = function (cls, text, flag) {
+            return createNode('semantic', { tag: 'button', cssClass: bs ? cls : '', text: text, customName: text,
+                _attrs: [{ name: 'type', value: 'button' }], _bindings: { eo_visible_if: flag } });
+        };
+        return createNode('semantic', { tag: 'div', cssClass: bs ? 'pg-cf-step-nav d-flex gap-2 mt-3' : '',
+            customName: _sdT('Step buttons'), _bindings: { section: 'form_step_nav' } }, [
+            btn('btn btn-outline-secondary', _sdT('Back'), 'has_prev_step'),
+            btn('btn btn-primary ms-auto', _sdT('Next'), 'has_next_step')
+        ]);
+    }
+
+    // Puts the step buttons after the last element of the container the
+    // break `node` stands in. Returns the new box, or null.
+    function _sdFormAddStepNav(node, bs) {
+        var b = (node && node.props && node.props._bindings) || {};
+        if (b.section !== 'form_step' || _sdFormStepNavOf(node)) return null;
+        var hit = _sdAnyParent(node);
+        var parent = hit ? hit.parent : null;
+        if (!parent || !Array.isArray(parent.children)) return null;
+        var nav = _sdFormStepNavStarter(bs);
+        parent.children.push(nav);
+        if (hit.sid) _sharedDirty[hit.sid] = true;
+        return nav;
+    }
+
+    function _sdIsFormStepBreak(n) {
+        return !!(n && n.props && n.props._bindings && n.props._bindings.section === 'form_step');
+    }
+
+    // The steps of container `node` in a custom_form widget, as
+    // pg_cf_step_groups() makes them: [{at: index of its break, title}],
+    // a step with nothing in it left out. null when it holds no break.
+    function _sdFormStepPlan(node) {
+        var kids = (node && node.children) || [];
+        if (!kids.some(_sdIsFormStepBreak) || _getSystemWidgetRegionType(node) !== 'custom_form') return null;
+        var steps = [];
+        var cur = null;
+        kids.forEach(function (c, i) {
+            if (_sdIsFormStepBreak(c)) {
+                if (cur && cur.size) steps.push(cur);
+                cur = { at: i, title: String(c.props.text || '').trim(), size: 0 };
+            } else if (cur) {
+                cur.size++;
+            }
+        });
+        if (cur && cur.size) steps.push(cur);
+        return { steps: steps, design: !!_sdFormStepNavOf(node) };
+    }
+
+    // What the site draws before child `i` of a stepped container (i equal
+    // to the number of children: after the last): the progress line before
+    // the first step, the built-in Back / Next before every later step and
+    // at the end. Inert samples, never saved.
+    /* @pg-site-output */
+    function _sdFormStepSamples(plan, i, count, doc) {
+        var total = plan.steps.length;
+        if (total < 2) return [];
+        var stepText = function (k) { return _sdT('Step {var:1} of {var:2}', [String(k + 1), String(total)]); };
+        var box = function (html) {
+            var el = doc.createElement('div');
+            el.className = 'sd-section-sample';
+            el.setAttribute('inert', '');
+            el.style.cssText = 'pointer-events:none';
+            el.innerHTML = html;
+            return el;
+        };
+        var nav = function (k) {
+            return box('<div class="pg-cf-step-nav d-flex gap-2 mt-3 mb-3">' +
+                (k > 0 ? '<button type="button" class="btn btn-outline-secondary" tabindex="-1">' + esc(_sdT('Back')) + '</button>' : '') +
+                (k < total - 1 ? '<button type="button" class="btn btn-primary ms-auto" tabindex="-1">' + esc(_sdT('Next')) + '</button>' : '') +
+                '</div>');
+        };
+        var out = [];
+        if (i === count) {
+            if (!plan.design) out.push(nav(total - 1));
+            return out;
+        }
+        plan.steps.forEach(function (st, k) {
+            if (st.at !== i) return;
+            if (k === 0) {
+                var items = plan.steps.map(function (s2, j) {
+                    return '<li class="list-inline-item' + (j === 0 ? ' fw-semibold' : ' text-body-secondary') + '">' +
+                        esc(s2.title || stepText(j)) + '</li>';
+                }).join('');
+                out.push(box('<nav class="pg-cf-progress mb-3">' +
+                    '<p class="small text-body-secondary mb-1">' + esc(stepText(0)) + '</p>' +
+                    '<div class="progress mb-2"><div class="progress-bar" style="width:' + (Math.round(10000 / total) / 100) + '%"></div></div>' +
+                    '<ol class="list-inline small mb-0">' + items + '</ol></nav>'));
+            } else if (!plan.design) {
+                out.push(nav(k - 1));
+            }
+        });
+        return out;
+    }
+
+    // A form section the server fills, drawn as a sample: the CAPTCHA
+    // question as get_captcha_fields() prints it. null for any other.
+    /* @pg-site-output */
+    function _sdFormSectionSample(section, doc) {
+        return section === 'captcha' ? _sdCommentsSectionSample('comment_captcha', doc) : null;
     }
 
     // What the site prints in a comment form section the server builds
@@ -42253,6 +42452,255 @@ const StyleDesigner = (function () {
             body.insertBefore(copy, after.nextSibling);
             after = copy;
         });
+    }
+
+    // The price block a catalog widget prints for ^^__price_block_html^^
+    // (_pg_format_price_with_discount()): the sticker price struck through
+    // and the price paid while an offer lowers it, else the price alone.
+    // The look of pg_carousel_layout.css, which the canvas does not load, is
+    // inline. A variant switch writes the whole block (pg_civ_variants.js),
+    // so it stays one value: drawn true, never a tree.
+    /* @pg-site-output */
+    function _sdPriceBlockHtml(original, paid) {
+        var off = paid < original;
+        var inner = off
+            ? '<span class="pg-price-original" style="color:#dc3545;text-decoration:line-through;font-weight:400;opacity:.85">' + esc(_sdMoney(original)) + '</span>'
+                + '<span class="pg-price-current" style="color:#198754;font-weight:600">' + esc(_sdMoney(paid)) + '</span>'
+            : '<span class="pg-price" style="font-weight:600">' + esc(_sdMoney(paid)) + '</span>';
+        return '<span class="pg-price-block' + (off ? ' has-discount' : '') + '" style="display:inline-flex;gap:.5rem;align-items:baseline;flex-wrap:wrap">' + inner + '</span>';
+    }
+
+    // A Variant Attribute node's settings as its marker carries them
+    // (CONTENT.variant_attr.toHTML()): an empty class field takes its
+    // default, as the server reads it.
+    function _sdVariantAttrCfg(p) {
+        return {
+            renderStyle:  p.renderStyle  || 'select',
+            labelClass:   p.labelClass   || 'form-label fw-semibold',
+            controlClass: p.controlClass || '',
+            itemClass:    p.itemClass    || '',
+            cssClass:     p.cssClass     || 'mb-3'
+        };
+    }
+
+    // The attributes the canvas draws a Variant Attribute node with: a
+    // product in a variant group of colours and sizes, its first variant
+    // picked.
+    var SD_VARIANT_ATTR_SAMPLE = [
+        { id: 1, label: _sdT('Colour'), options: [[11, _sdT('Red')], [12, _sdT('Blue')], [13, _sdT('Green')]] },
+        { id: 2, label: _sdT('Size'), options: [[21, 'S'], [22, 'M'], [23, 'L']] }
+    ];
+    var SD_VARIANT_ATTR_PICKED = { 1: 11, 2: 21 };
+
+    // What the site prints for a Variant Attribute node
+    // (_civ_expand_variant_attr_markers()): one copy per attribute of
+    // `vattrs` ([{ id, label, options: [[id, label], …] }]) in the style and
+    // classes of `cfg`, `picked` (attribute id => option id) chosen. The
+    // variant script finds the controls by these classes and data
+    // attributes, so the site keeps building them: the node opens by its
+    // settings and this drawing, not as a tree.
+    /* @pg-site-output */
+    function _sdVariantAttrHtml(cfg, vattrs, picked) {
+        var style = cfg.renderStyle || 'select';
+        if (style === 'checkbox') style = 'radio';
+        if (['select', 'radio', 'button_group', 'button_list'].indexOf(style) === -1) style = 'select';
+        var lblCls = (cfg.labelClass != null) ? String(cfg.labelClass) : 'form-label fw-semibold';
+        var ctlCls = (cfg.controlClass != null) ? String(cfg.controlClass) : '';
+        var itmCls = (cfg.itemClass != null) ? String(cfg.itemClass) : '';
+        var rootCls = (cfg.cssClass != null) ? String(cfg.cssClass) : 'mb-3';
+        var out = '';
+        (vattrs || []).forEach(function (a) {
+            var aid = parseInt(a.id, 10) || 0;
+            var sel = (picked && picked[a.id] != null) ? (parseInt(picked[a.id], 10) || 0) : 0;
+            var name = 'pg_civ_attr_' + aid;
+            var options = a.options || [];
+            var mirror = function (cls) {
+                var s = '<select class="' + cls + '" data-pg-civ-attr="' + aid + '">'
+                    + '<option value="">' + esc(_sdT('Select...')) + '</option>';
+                options.forEach(function (o) {
+                    var oid = parseInt(o[0], 10) || 0;
+                    s += '<option value="' + oid + '"' + (oid === sel ? ' selected' : '') + '>' + esc(String(o[1])) + '</option>';
+                });
+                return s + '</select>';
+            };
+            out += '<div class="pg-civ-variant-attr-wrap ' + esc(rootCls) + '" data-pg-civ-attr-wrap="' + aid + '">'
+                + '<label class="' + esc(lblCls) + '">' + esc(String(a.label)) + '</label>';
+            if (style === 'radio') {
+                out += '<div class="' + esc(ctlCls) + '" data-pg-civ-attr-control="' + aid + '">' + mirror('pg-civ-variant-attr d-none');
+                options.forEach(function (o) {
+                    var oid = parseInt(o[0], 10) || 0, rid = name + '_' + oid;
+                    out += '<div class="form-check ' + esc(itmCls) + '">'
+                        + '<input class="form-check-input pg-civ-variant-attr-radio" type="radio" name="' + esc(name) + '" id="' + esc(rid) + '"'
+                        + ' value="' + oid + '" data-pg-civ-attr-mirror="' + aid + '"' + (oid === sel ? ' checked' : '') + '>'
+                        + '<label class="form-check-label" for="' + esc(rid) + '">' + esc(String(o[1])) + '</label></div>';
+                });
+                out += '</div>';
+            } else if (style === 'button_group' || style === 'button_list') {
+                out += mirror('pg-civ-variant-attr d-none')
+                    + '<div class="' + (style === 'button_list' ? 'btn-group-vertical w-100' : 'btn-group') + ' ' + esc(ctlCls) + '" role="group" data-pg-civ-attr-control="' + aid + '">';
+                options.forEach(function (o) {
+                    var oid = parseInt(o[0], 10) || 0, rid = name + '_' + oid;
+                    out += '<input type="radio" class="btn-check pg-civ-variant-attr-radio" name="' + esc(name) + '" id="' + esc(rid) + '"'
+                        + ' value="' + oid + '" data-pg-civ-attr-mirror="' + aid + '" autocomplete="off"' + (oid === sel ? ' checked' : '') + '>'
+                        + '<label class="btn btn-outline-primary' + (oid === sel ? ' active' : '') + ' ' + esc(itmCls) + '" for="' + esc(rid) + '">' + esc(String(o[1])) + '</label>';
+                });
+                out += '</div>';
+            } else {
+                out += mirror('form-select pg-civ-variant-attr ' + esc(ctlCls));
+            }
+            out += '</div>';
+        });
+        return out;
+    }
+
+    // ── Catalog listing: the category tree and the filters ──────────────
+    // The site builds them per request (the visitor's group, the products'
+    // attributes, the filters picked), so their sections keep their settings
+    // and the canvas draws what the site prints, from twins of the PHP
+    // builders in widgets_catalog.php and these sample rows.
+
+    // A catalog of shirts with two sub groups, the visitor in Shirts.
+    var SD_CATALOG_GROUPS_SAMPLE = [
+        { id: 12, name: _sdT('Shirts'), children: [{ id: 121, name: _sdT('Linen') }, { id: 122, name: _sdT('Oxford') }] },
+        { id: 13, name: _sdT('Trousers') },
+        { id: 14, name: _sdT('Accessories') }
+    ];
+    var SD_CATALOG_ACTIVE_GROUP = 12;
+    // The attributes the sample products carry, Natural picked.
+    var SD_CATALOG_FILTER_ATTRS = {
+        1: { attr_label: _sdT('Colour'), options: [{ option_id: 11, option_label: _sdT('Natural') }, { option_id: 12, option_label: _sdT('Navy') }] },
+        2: { attr_label: _sdT('Size'), options: [{ option_id: 21, option_label: 'S' }, { option_id: 22, option_label: 'M' }, { option_id: 23, option_label: 'L' }] }
+    };
+    var SD_CATALOG_FILTER_PICKED = { 1: 11 };
+
+    // One level of the group tree (pg_catalog_group_tree_level()): `groups`
+    // [{ id, name, url, children }], `active` the visitor's group.
+    /* @pg-site-output */
+    function _sdCatalogGroupTreeHtml(groups, active, depth) {
+        var out = '<ul class="' + (depth === 0 ? 'pg-sw-cl-tree pg-sw-cl-tree-root list-unstyled mb-0' : 'pg-sw-cl-tree-sub list-unstyled ms-3') + '">';
+        (groups || []).forEach(function (g) {
+            var on = (parseInt(g.id, 10) || 0) === (parseInt(active, 10) || 0);
+            out += '<li class="pg-sw-cl-tree-item' + (on ? ' active' : '') + '">'
+                + '<a href="' + esc(g.url || '#') + '" class="text-decoration-none' + (on ? ' fw-bold' : '') + '">' + esc(String(g.name)) + '</a>'
+                + ((g.children && g.children.length) ? _sdCatalogGroupTreeHtml(g.children, active, depth + 1) : '')
+                + '</li>';
+        });
+        return out + '</ul>';
+    }
+
+    // The price filter form (pg_catalog_price_filter_html()).
+    /* @pg-site-output */
+    function _sdCatalogPriceFilterHtml(hidden, min, max, step) {
+        var st = parseInt(step, 10) || 0;
+        return '<form method="get" class="pg-sw-price-filter mb-3 d-flex align-items-center gap-2 flex-wrap">' + hidden
+            + '<span class="form-label mb-0 small text-muted">' + esc(_sdT('Price')) + ':</span>'
+            + '<input type="number" class="form-control form-control-sm" name="pmin" value="' + esc(min) + '" placeholder="' + esc(_sdT('Min')) + '" aria-label="' + esc(_sdT('Minimum price')) + '" min="0" step="' + st + '" style="max-width:100px">'
+            + '<span class="text-muted" aria-hidden="true">–</span>'
+            + '<input type="number" class="form-control form-control-sm" name="pmax" value="' + esc(max) + '" placeholder="' + esc(_sdT('Max')) + '" aria-label="' + esc(_sdT('Maximum price')) + '" min="0" step="' + st + '" style="max-width:100px">'
+            + '<button type="submit" class="btn btn-sm btn-outline-secondary">' + esc(_sdT('Apply')) + '</button>'
+            + '</form>';
+    }
+
+    // The in-stock filter (pg_catalog_stock_filter_html()).
+    /* @pg-site-output */
+    function _sdCatalogStockFilterHtml(widgetId, active, linkQuery) {
+        var id = 'pg-sw-stock-' + (parseInt(widgetId, 10) || 0);
+        return '<div class="pg-sw-stock-filter form-check mb-3">'
+            + '<input class="form-check-input" type="checkbox" id="' + id + '"' + (active ? ' checked' : '')
+            + ' onclick="window.location.search=\'?' + esc(linkQuery) + '\'">'
+            + '<label class="form-check-label" for="' + id + '">' + esc(_sdT('In stock only')) + '</label>'
+            + '</div>';
+    }
+
+    // The attribute filters (pg_catalog_attribute_filters_html()); `query`
+    // gives the query string of an attribute's parameter and value.
+    /* @pg-site-output */
+    function _sdCatalogAttrFiltersHtml(attrs, picked, style, query, widgetId) {
+        var out = '<div class="pg-sw-attr-filters mb-3">';
+        Object.keys(attrs || {}).forEach(function (aid) {
+            var def = attrs[aid], pk = 'pg_attr_' + aid;
+            var act = (picked && picked[aid] != null) ? (parseInt(picked[aid], 10) || 0) : 0;
+            out += '<div class="pg-sw-attr-group mb-2"><div class="small fw-semibold mb-1">' + esc(String(def.attr_label)) + '</div>';
+            if (style === 'buttons') {
+                out += '<div class="d-flex flex-wrap gap-1">'
+                    + '<a href="?' + esc(query(pk, '')) + '" class="btn btn-sm ' + (act === 0 ? 'btn-secondary' : 'btn-outline-secondary') + '">' + esc(_sdT('All')) + '</a>';
+                (def.options || []).forEach(function (o) {
+                    var oid = parseInt(o.option_id, 10) || 0;
+                    out += '<a href="?' + esc(query(pk, oid)) + '" class="btn btn-sm ' + (act === oid ? 'btn-secondary' : 'btn-outline-secondary') + '">' + esc(String(o.option_label)) + '</a>';
+                });
+                out += '</div>';
+            } else {
+                (def.options || []).forEach(function (o) {
+                    var oid = parseInt(o.option_id, 10) || 0, on = (act === oid);
+                    var cb = 'pg-af-' + (parseInt(widgetId, 10) || 0) + '-' + aid + '-' + oid;
+                    out += '<div class="form-check"><input class="form-check-input" type="checkbox"' + (on ? ' checked' : '')
+                        + ' id="' + cb + '" onclick="window.location.search=\'?' + esc(query(pk, on ? '' : String(oid))) + '\'">'
+                        + '<label class="form-check-label" for="' + cb + '">' + esc(String(o.option_label)) + '</label></div>';
+                });
+            }
+            out += '</div>';
+        });
+        return out + '</div>';
+    }
+
+    // The filters offcanvas's header and body
+    // (pg_catalog_filters_offcanvas_inner_html()).
+    /* @pg-site-output */
+    function _sdCatalogFiltersInnerHtml(offId, chips, price, stock, attrs) {
+        return '<div class="offcanvas-header border-bottom">'
+            + '<h5 class="offcanvas-title mb-0" id="' + esc(offId) + 'Title"><i class="bi bi-funnel me-2"></i>' + esc(_sdT('Filters')) + '</h5>'
+            + '<button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="' + esc(_sdT('Close')) + '"></button>'
+            + '</div>'
+            + '<div class="offcanvas-body">'
+            + (chips !== '' ? '<div class="border-bottom pb-2 mb-3">' + chips + '</div>' : '')
+            + price + stock + attrs
+            + '</div>';
+    }
+
+    // The sample query string of a filter link (the canvas opens nothing).
+    function _sdCatalogSampleQuery(param, value) {
+        return (value === '' || value == null) ? '' : param + '=' + value;
+    }
+
+    // What a catalog listing prints in a section the server fills, with the
+    // widget's settings `cfg`: the category tree, the filters offcanvas
+    // (drawn open) or the legacy attribute filters; '' when the setting
+    // leaves it empty on the site.
+    /* @pg-site-output */
+    function _sdCatalogSectionHtml(section, cfg) {
+        var c = cfg || {};
+        var attrs = function () {
+            return c.show_attribute_filters ? _sdCatalogAttrFiltersHtml(SD_CATALOG_FILTER_ATTRS, SD_CATALOG_FILTER_PICKED,
+                c.attribute_filter_style === 'buttons' ? 'buttons' : 'checkboxes', _sdCatalogSampleQuery, 0) : '';
+        };
+        if (section === 'group_tree') {
+            return (c.group_navigation === 'none') ? '' : _sdCatalogGroupTreeHtml(SD_CATALOG_GROUPS_SAMPLE, SD_CATALOG_ACTIVE_GROUP, 0);
+        }
+        if (section === 'attribute_filters') return attrs();
+        if (section === 'filters_offcanvas') {
+            if (!c.price_filter_enabled && !c.stock_filter_enabled && !c.show_attribute_filters) return '';
+            return _sdCatalogFiltersInnerHtml('pgFilters0', '',
+                c.price_filter_enabled ? _sdCatalogPriceFilterHtml('', '', '', Math.max(1, parseInt(c.price_filter_step, 10) || 1)) : '',
+                c.stock_filter_enabled ? _sdCatalogStockFilterHtml(0, !!c.stock_filter_default, c.stock_filter_default ? '' : 'stock=1') : '',
+                attrs());
+        }
+        return '';
+    }
+
+    // The sample of a catalog section as a canvas box: inert, never saved,
+    // the words under it saying it is filled per visitor. null when the
+    // site prints nothing for it.
+    function _sdCatalogSectionSample(section, doc, cfg) {
+        var html = _sdCatalogSectionHtml(section, cfg);
+        if (!html) return null;
+        var box = doc.createElement('div');
+        box.className = 'sd-section-binding-hint sd-section-sample';
+        box.setAttribute('inert', '');
+        box.style.cssText = 'pointer-events:none';
+        box.innerHTML = html + '<div class="small text-body-secondary fst-italic mt-1">'
+            + esc(section === 'group_tree' ? _sdT('The site draws the catalog\'s groups, the visitor\'s group in bold.')
+                : _sdT('The site draws the filters the widget\'s settings turn on, with the attributes of the products shown.')) + '</div>';
+        return box;
     }
 
     // Resolve the regionType of the system widget that contains `node`.
@@ -43427,6 +43875,11 @@ const StyleDesigner = (function () {
     // — order view $_ov_vis_ctx, express order $_eo_vis_ctx (both in PHP),
     // the cart's recurring summary, the calendar event's own flags.
     var SW_VISIBILITY_FLAGS = {
+        // The step buttons' own flags, resolved per step (pg_cf_step_nav_node()).
+        custom_form: [
+            ['has_prev_step', _sdT('A previous step exists')],
+            ['has_next_step', _sdT('A next step exists')]
+        ],
         order_view: [
             ['has_shipping',            _sdT('The order is shipped')],
             ['has_shipping_method',     _sdT('A shipping method is recorded')],
@@ -46479,7 +46932,7 @@ const StyleDesigner = (function () {
                         return '<option value="' + o[0] + '"' + (o[0] === _curSection ? ' selected' : '') + '>' + o[1] + '</option>';
                     }).join('') + '</select>' +
                     '<div style="font-size:.66rem;color:#888;margin-top:3px">' + _sdT('The backend fills this container with the ready-made HTML of the chosen system section. The element\'s own style and class settings are kept.') + '</div>' +
-                    _sdSectionOpenRow(_semSwRegion, _curSection)
+                    _sdSectionOpenRow(_semSwRegion, _curSection, n)
                 );
             }
         }
@@ -52540,6 +52993,21 @@ const StyleDesigner = (function () {
                 selectedNode = list;
                 selectedNodes = [];
                 if (typeof expandAncestorsAnywhere === 'function') expandAncestorsAnywhere(list);
+                render();
+                renderProperties();
+            });
+        });
+
+        // The step buttons put in a stepped form (_sdFormAddStepNav()).
+        document.querySelectorAll('#sd-properties [data-sd-step-nav-open]').forEach(function (el) {
+            el.addEventListener('click', function () {
+                if (!selectedNode) return;
+                saveState();
+                var nav = _sdFormAddStepNav(selectedNode, _sdUsesBootstrap());
+                if (!nav) return;
+                selectedNode = nav;
+                selectedNodes = [];
+                if (typeof expandAncestorsAnywhere === 'function') expandAncestorsAnywhere(nav);
                 render();
                 renderProperties();
             });
@@ -60358,12 +60826,14 @@ const StyleDesigner = (function () {
     // appears more than once gets " — <page name> (<folder>)" so the forms
     // of different designs can be told apart; a label still equal gets the
     // form id (the twin of pg_submitted_form_list_labels()).
-    function _swFormOptions(cur, skip) {
+    // `collections` lists only forms used as a collection (and the current one).
+    function _swFormOptions(cur, skip, collections) {
         cur  = parseInt(cur || 0, 10) || 0;
         skip = parseInt(skip || 0, 10) || 0;
         var shown = (_customFormsCache || []).filter(function (f) {
             var fid = parseInt(f.page_id, 10);
             if (skip && fid === skip) return false;
+            if (collections && fid !== cur && !(parseInt(f.collection || 0, 10) > 0)) return false;
             return !_swPageBinned(f) || fid === cur;
         });
         var labels = _swFormLabels(shown);
@@ -68341,6 +68811,12 @@ const StyleDesigner = (function () {
         tools.appendChild(ui.zoomLabel);
         tools.appendChild(_sdProtoButton('bi-zoom-in', _sdT('Zoom In'), function () { if (_sdProto.canvas) _sdProto.canvas.view.zoomBy(1.2); }));
         tools.appendChild(_sdProtoButton('bi-arrows-fullscreen', _sdT('Fit to screen'), function () { if (_sdProto.canvas) _sdProto.canvas.view.fit(); }));
+        // Tidy up changes every editor's arrangement, so it carries its name
+        // beside the icon (hidden on a phone, where the title and the label
+        // still name it).
+        var tidy = _sdProtoButton('bi-grid-3x3-gap', _sdT('Tidy up'), function () { _sdProtoTidy(); });
+        tidy.appendChild(_sdProtoEl('span', 'sd-proto-btn-label', _sdT('Tidy up')));
+        tools.appendChild(tidy);
         tools.appendChild(_sdProtoButton('bi-arrow-clockwise', _sdT('Read the links again'), function () { _sdProtoLoad(); }));
         tools.appendChild(_sdProtoButton('bi-x-lg', _sdT('Close the prototype view'), function () { _sdProtoClose(); }));
         bar.appendChild(tools);
@@ -68547,6 +69023,7 @@ const StyleDesigner = (function () {
         head.appendChild(_sdProtoEl('span', 'bi ' + (item.kind === 'shared' ? 'bi-puzzle' : 'bi-file-earmark') + ' sd-proto-kind'));
         head.lastChild.setAttribute('aria-hidden', 'true');
         head.appendChild(_sdProtoEl('span', 'sd-proto-name', _sdProtoFrameName(item)));
+        if (item.start) head.appendChild(_sdProtoEl('span', 'sd-proto-start', _sdT('Start')));
         var meta = '';
         if (item.kind === 'shared') {
             meta = !item.loaded ? _sdT('Not loaded') : (item.pages === 1 ? _sdT('On 1 page') : _sdT('On {var:1} pages', item.pages));
@@ -68629,15 +69106,56 @@ const StyleDesigner = (function () {
         return chip.href;
     }
 
+    // The bands of the arrangement: one per tab group in the strip's order,
+    // the tabs in none under "Pages"; the side columns' headings.
+    function _sdProtoSections() {
+        var sections = [];
+        var byGroup = {};
+        _pages.forEach(function (p) {
+            var gid = (p.tabGroup && _pgTabGroups[p.tabGroup]) ? p.tabGroup : '';
+            if (!gid) return;
+            if (!byGroup[gid]) {
+                byGroup[gid] = { id: gid, label: _pgTabGroupLabel(gid), keys: [] };
+                sections.push(byGroup[gid]);
+            }
+            byGroup[gid].keys.push(p.key);
+        });
+        return { sections: sections, rest: _sdT('Pages'), shared: _sdT('Shared parts'), outside: _sdT('Outside this design') };
+    }
+
+    // Tidy up: every frame and chip back in the arrangement, after a
+    // confirmation. An operator who may arrange the tabs clears the places
+    // shared on the design and this browser's; anyone else, and anyone in
+    // view mode (the design is being edited in another tab), only this
+    // browser's, and is told the shared ones stay.
+    function _sdProtoTidy() {
+        var shared = _pgTabLayoutEditable() && !!(_design && _design.styleId) && _collab.mayEdit !== false;
+        var msg = shared
+            ? _sdT('Put every page and address back in its place? Places moved by hand are cleared for every editor of this design.')
+            : _sdT('Put every page and address back in its place in this browser? Places shared on the design stay as they are.');
+        if (!window.confirm(msg)) return;
+        if (shared && Object.keys(_pgTabProto).length) {
+            _pgTabProto = {};
+            _pgTabsLayoutSave();
+        }
+        _sdProtoLocalWrite({});
+        if (!shared) sdToast(esc(_sdT('Only the places in this browser were cleared.')), 'info', 4000);
+        if (_sdProto.marked) {
+            _sdProto.layout = null;
+            _sdProtoDraw(_sdProto.marked);
+        }
+    }
+
     function _sdProtoDraw(marked) {
         var H = window.PGProtoHotspots;
         var G = window.PGGraphCanvas;
         var canvas = _sdProto.canvas;
         var ui = _sdProto.ui;
         var first = !_sdProto.layout;
-        var l = H.layout(marked, _sdProtoSaved());
+        var l = H.layout(marked, _sdProtoSaved(), _sdProtoSections());
 
         _sdProtoMenuClose(false);
+        _sdProto.marked = marked;
         _sdProto.layout = l;
         _sdProto.items = l.frames.concat(l.chips);
         _sdProto.byId = {};

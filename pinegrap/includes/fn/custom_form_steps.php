@@ -40,6 +40,79 @@ function pg_cf_is_step_break($node)
         && $node['props']['_bindings']['section'] === 'form_step';
 }
 
+// Is $node the designed step buttons (bound to section form_step_nav)?
+function pg_cf_is_step_nav($node)
+{
+    return is_array($node)
+        && isset($node['props']['_bindings']['section'])
+        && $node['props']['_bindings']['section'] === 'form_step_nav';
+}
+
+/**
+ * Takes every step buttons node out of $tree and returns the first one, or
+ * null when the design has none (the built-in Back / Next are drawn then).
+ * A second one is dropped: one design serves every step.
+ */
+function pg_cf_take_step_nav(&$tree)
+{
+    if (!is_array($tree) || empty($tree['children']) || !is_array($tree['children'])) return null;
+    $found = null;
+    $kept  = array();
+    foreach ($tree['children'] as $c) {
+        if (pg_cf_is_step_nav($c)) {
+            if ($found === null) $found = $c;
+            continue;
+        }
+        $inner = pg_cf_take_step_nav($c);
+        if ($found === null && $inner !== null) $found = $inner;
+        $kept[] = $c;
+    }
+    $tree['children'] = $kept;
+    return $found;
+}
+
+/**
+ * The designed step buttons under step $index of $total: a copy of $nav
+ * whose children shown when has_prev_step / has_next_step is false are
+ * dropped, the rest marked for the steps script (data-pg-step-back on
+ * has_prev_step, data-pg-step-next on has_next_step). The box is drawn
+ * hidden with data-pg-step-nav, as the built-in buttons are.
+ */
+function pg_cf_step_nav_node($nav, $index, $total)
+{
+    $flags = array('has_prev_step' => $index > 0, 'has_next_step' => $index < $total - 1);
+    _eo_apply_visibility_bindings($nav, $flags);
+    _pg_cf_mark_step_buttons($nav);
+    unset($nav['props']['_bindings']['section']);
+    if (empty($nav['props']['_bindings'])) unset($nav['props']['_bindings']);
+    $attrs = (isset($nav['props']['_attrs']) && is_array($nav['props']['_attrs'])) ? $nav['props']['_attrs'] : array();
+    $attrs[] = array('name' => 'data-pg-step-nav', 'value' => '');
+    $attrs[] = array('name' => 'hidden', 'value' => '');
+    $nav['props']['_attrs'] = $attrs;
+    return $nav;
+}
+
+// The step flag on a kept button becomes the attribute the steps script
+// listens for; the flag itself is spent.
+function _pg_cf_mark_step_buttons(&$node)
+{
+    if (!is_array($node) || empty($node['children']) || !is_array($node['children'])) return;
+    $marks = array('has_prev_step' => 'data-pg-step-back', 'has_next_step' => 'data-pg-step-next');
+    foreach ($node['children'] as $i => $c) {
+        if (!is_array($c)) continue;
+        $flag = isset($c['props']['_bindings']['eo_visible_if']) ? (string)$c['props']['_bindings']['eo_visible_if'] : '';
+        if (isset($marks[$flag])) {
+            unset($c['props']['_bindings']['eo_visible_if']);
+            if (empty($c['props']['_bindings'])) unset($c['props']['_bindings']);
+            $attrs = (isset($c['props']['_attrs']) && is_array($c['props']['_attrs'])) ? $c['props']['_attrs'] : array();
+            $attrs[] = array('name' => $marks[$flag], 'value' => '');
+            $c['props']['_attrs'] = $attrs;
+        }
+        _pg_cf_mark_step_buttons($c);
+        $node['children'][$i] = $c;
+    }
+}
+
 /**
  * A children list split at its step breaks, or null when it holds none.
  *
@@ -100,12 +173,20 @@ function pg_cf_step_groups($children)
  */
 function pg_cf_apply_steps(&$tree, $draft_key = '')
 {
+    // A tree without step buttons is left byte for byte as before.
+    $nav = pg_cf_take_step_nav($tree);
+    return _pg_cf_apply_steps($tree, $draft_key, $nav);
+}
+
+// pg_cf_apply_steps() below the design's step buttons ($nav, or null).
+function _pg_cf_apply_steps(&$tree, $draft_key, $nav)
+{
     if (!is_array($tree) || empty($tree['children']) || !is_array($tree['children'])) return 0;
 
     $groups = pg_cf_step_groups($tree['children']);
     if ($groups === null) {
         foreach ($tree['children'] as $i => $child) {
-            $n = pg_cf_apply_steps($tree['children'][$i], $draft_key);
+            $n = _pg_cf_apply_steps($tree['children'][$i], $draft_key, $nav);
             if ($n > 0) {
                 // Only the first container is stepped.
                 for ($j = $i + 1; $j < count($tree['children']); $j++) _pg_cf_drop_step_breaks($tree['children'][$j]);
@@ -134,7 +215,9 @@ function pg_cf_apply_steps(&$tree, $draft_key = '')
                 'tag' => 'legend', 'cssClass' => ($s['class'] !== '' ? $s['class'] : 'h5'), 'text' => $s['title']));
         }
         $inner = array_merge($inner, $s['children']);
-        if ($total > 1) {
+        if ($total > 1 && $nav !== null) {
+            $inner[] = pg_cf_step_nav_node($nav, $i, $total);
+        } elseif ($total > 1) {
             $inner[] = array('type' => 'content', 'children' => array(), 'props' => array(
                 'contentType' => 'custom_html', 'html' => _pg_cf_steps_nav_html($i, $total)));
         }

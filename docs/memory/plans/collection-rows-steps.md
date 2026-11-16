@@ -4,7 +4,7 @@ description: Plan collection-rows, steps RW1 to RW7: the kind and writer, the pa
 ---
 
 ## Which steps are there?
-- RW1 (M) The kind and the writer. No schema.
+- RW1 (M) The kind and the writer. No schema. Done: #9884.
   - Existing files: `includes/fn/collections.php` (`rows` in `pg_coll_kinds()`, the child form kept by `pg_coll_field_reference()`, the field's check in `pg_coll_check_field()`), `assets/js/style_designer.src.js` (the twin `_CF_KINDS`, the Kind panel, the canvas sample), `includes/fn/custom_form.php` (`pg_cf_apply_field_bindings()`: a rows control draws nothing).
   - New: `includes/fn/collection_rows.php` (the spec, a record's rows in order, the writer), `tests/collections_rows_test.php`; `tests/collections_kinds_test.php` covers the twin.
   - Tests, red first: the spec's refusals, the writer's order of writes, a foreign code refused, the limit, a refused row writing nothing, a failure midway leaving no row behind.

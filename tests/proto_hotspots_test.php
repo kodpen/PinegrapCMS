@@ -21,8 +21,8 @@ if (!defined('PG_TEST_RUNNER')) {
 
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/prototype.php');
 
-// Runs `$code` in Node with window.PGLinkResolve and window.PGProtoHotspots
-// loaded (as H and R); its `out` comes back decoded. Null when Node cannot run.
+// Runs `$code` in Node with window.PGGraphCanvas, window.PGLinkResolve and
+// window.PGProtoHotspots loaded (as H and R); its `out` comes back decoded. Null when Node cannot run.
 function proto_hotspots_test_node($code)
 {
 	if (!function_exists('exec')) {
@@ -38,6 +38,7 @@ function proto_hotspots_test_node($code)
 	}
 
 	$script = "var window = {};\n"
+		. file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_graph_canvas.js') . "\n"
 		. file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_link_resolve.js') . "\n"
 		. file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_proto_hotspots.js') . "\n"
 		. "var R = window.PGLinkResolve, H = window.PGProtoHotspots, out = null;\n"
@@ -296,10 +297,10 @@ function test_proto_hotspots_mark_a_design()
 	pg_assert_true($result['untouched'], 'the design handed in is not changed');
 }
 
-// layout(): frames side by side as tall as their rows, a menu expanded
-// into rows, an unknown menu one broken row, one chip per mark and href
-// grouped by mark, an arrow from each row to its tab frame or chip, saved
-// positions kept.
+// layout(): frames as tall as their rows, the shared ones in a column left
+// of the pages, a menu expanded into rows, an unknown menu one broken row,
+// one chip per mark and href in a column right of them grouped by mark, an
+// arrow from each row to its tab frame or chip, saved positions kept.
 function test_proto_hotspots_layout()
 {
 	$marked = array(
@@ -332,17 +333,82 @@ function test_proto_hotspots_layout()
 	}
 
 	pg_assert_same(array(
-		array('p:p1', 0, 0, 44 + 5 * 30 + 10, array('h0 About tab', 'h1 https://x.org/ external', 'h2 Home tab', 'h3 Private hidden', 'h4 Gone broken')),
-		array('p:p2', 408, 0, 44 + 30 + 10, array()),
+		array('p:p1', 408, 0, 44 + 5 * 30 + 10, array('h0 About tab', 'h1 https://x.org/ external', 'h2 Home tab', 'h3 Private hidden', 'h4 Gone broken')),
+		array('p:p2', 752, 0, 44 + 30 + 10, array()),
 		array('s:5', 10, 900, 44 + 3 * 30 + 10, array('h0 X external', 'h1 Old broken', 'h2 Top anchor')),
 	), $result['frames'], 'the frames, their rows and places');
 	pg_assert_same(array(
-		array('c:2', 'anchor', '#top', 1224, 0),
-		array('c:0', 'external', 'https://x.org/', 1224, 48),
-		array('c:1', 'broken', '/old', 1224, 96),
+		array('c:2', 'anchor', '#top', 1160, 0),
+		array('c:0', 'external', 'https://x.org/', 1160, 48),
+		array('c:1', 'broken', '/old', 1160, 96),
 	), $result['chips'], 'one chip per mark and href, grouped by mark; a bad saved place ignored');
 	pg_assert_same(array('p:p1|h0>p:p2', 'p:p1|h1>c:0', 'p:p1|h2>p:p1', 's:5|h0>c:0', 's:5|h1>c:1', 's:5|h2>c:2'), $result['edges'], 'an arrow per row that leads somewhere');
 	pg_assert_same(44 + 2 * 30 + 15, $result['y'], 'a row port in the middle of its row');
+
+	// With the view's labels: a heading over each side column.
+	$labelled = proto_hotspots_test_node('var l = H.layout(' . proto_hotspots_test_js($marked) . ', {}, { shared: "Shared parts", outside: "Outside this design" });'
+		. 'out = { at: ["p:p1", "s:5", "c:2", "c:0", "c:1"].map(function (id) { var f = l.frames.concat(l.chips).filter(function (i) { return i.id === id; })[0]; return [f.x, f.y]; }), headings: l.headings, start: l.start };');
+
+	pg_assert_same(array(array(408, 0), array(0, 40), array(1160, 40), array(1160, 88), array(1160, 136)), $labelled['at'], 'shared frames left under their heading, chips right under theirs');
+	pg_assert_same(array(
+		array('id' => 'shared', 'label' => 'Shared parts', 'x' => 0, 'y' => 0, 'w' => 248, 'kind' => 'side'),
+		array('id' => 'outside', 'label' => 'Outside this design', 'x' => 1160, 'y' => 0, 'w' => 200, 'kind' => 'side'),
+	), $labelled['headings'], 'the side columns\' headings');
+	pg_assert_same('p:p1', $labelled['start'], 'the first tab is the start');
+}
+
+// The arrangement of a large design: forty pages in three sections (two
+// tab groups and the pages in none) give eight a row in three bands, each
+// band headed; inside a band the flow from the first tab, breadth-first,
+// the strip's order between equals, unreached pages last; the start frame
+// is marked; a saved place wins.
+function test_proto_hotspots_layout_arranges_sections_in_flow_order()
+{
+	$pages = array();
+
+	for ($i = 1; $i <= 40; $i++) {
+		$pages[] = array('key' => 't' . $i, 'name' => 'page' . $i, 'hotspots' => array());
+	}
+
+	$link = function ($to) {
+		return array('nodeId' => 'n' . $to, 'source' => 'href', 'href' => '/page' . $to, 'label' => 'Go', 'mark' => 'tab', 'tab' => 't' . $to, 'draft' => false);
+	};
+	$pages[0]['hotspots'] = array($link(5), $link(30), $link(1));
+	$pages[4]['hotspots'] = array($link(2));
+	$sections = array(
+		array('id' => 'g1', 'label' => 'Shop', 'keys' => array_map(function ($i) { return 't' . $i; }, range(1, 20))),
+		array('id' => 'g2', 'label' => 'Blog', 'keys' => array_map(function ($i) { return 't' . $i; }, range(21, 32))),
+	);
+	$result = proto_hotspots_test_node('var d = ' . proto_hotspots_test_js(array('pages' => $pages, 'shared' => array())) . ';'
+		. ' var opts = { sections: ' . proto_hotspots_test_js($sections) . ', rest: "Pages" };'
+		. ' var l = H.layout(d, { "p:t40": { x: 5, y: 6 } }, opts);'
+		. ' var at = {}; l.frames.forEach(function (f) { at[f.id.substr(2)] = [f.x, f.y]; });'
+		. ' out = { at: at, headings: l.headings.map(function (h) { return [h.id, h.label, h.x, h.y, h.w]; }), start: l.frames.filter(function (f) { return f.start; }).map(function (f) { return f.id; }),'
+		. ' again: JSON.stringify(H.layout(d, {}, opts)) === JSON.stringify(H.layout(d, {}, opts)), plain: H.layout(d, {}).headings.length };');
+
+	if ($result === null) {
+		return;
+	}
+
+	$at = $result['at'];
+	pg_assert_same(array(0, 40), $at['t1'], 'the start first');
+	pg_assert_same(array(array(344, 40), array(688, 40), array(1032, 40)), array($at['t5'], $at['t2'], $at['t3']), 'then the flow, then the unreached in the strip\'s order');
+	pg_assert_same(array(array(0, 280), array(0, 460)), array($at['t9'], $at['t17']), 'eight a row, a row as high as its tallest frame');
+	pg_assert_same(array(array(0, 680), array(344, 680), array(344, 860)), array($at['t30'], $at['t21'], $at['t29']), 'a page reached from the start leads its own band');
+	pg_assert_same(array(0, 1080), $at['t33'], 'the pages in no group last');
+	pg_assert_same(array(5, 6), $at['t40'], 'a saved place wins');
+	pg_assert_same(array(array('g1', 'Shop', 0, 0, 2656), array('g2', 'Blog', 0, 640, 2656), array('pages', 'Pages', 0, 1040, 2656)), $result['headings'], 'a heading for each band');
+	pg_assert_same(array('p:t1'), $result['start'], 'only the first tab is the start');
+	pg_assert_true($result['again'], 'the same answer for the same design');
+	pg_assert_same(0, $result['plain'], 'without sections one band and no heading');
+
+	// A first tab in no group: the pages in none lead, the start in the
+	// grid's first cell; the groups follow in the strip's order.
+	$lead = proto_hotspots_test_node('var d = { pages: ["home", "a1", "a2", "about"].map(function (k) { return { key: k, name: k, hotspots: [] }; }), shared: [] };'
+		. ' var l = H.layout(d, {}, { sections: [{ id: "g", label: "Group", keys: ["a1", "a2"] }], rest: "Pages" });'
+		. ' out = { at: l.frames.map(function (f) { return [f.id, f.x, f.y]; }), headings: l.headings.map(function (h) { return [h.id, h.y]; }) };');
+	pg_assert_same(array(array('p:home', 0, 40), array('p:a1', 0, 260), array('p:a2', 344, 260), array('p:about', 344, 40)), $lead['at'], 'the start\'s band first, the start in its first cell');
+	pg_assert_same(array(array('pages', 0), array('g', 220)), $lead['headings'], '"Pages" first, then the group');
 }
 
 // Which rows an arrow may be drawn from and where it may end: a link of
@@ -488,6 +554,30 @@ function test_proto_hotspots_view_draws_arrows()
 	pg_assert_contains('H.applyPatch(node.props, patch);', $source, 'the patch is written with its page binding');
 	pg_assert_contains('if (row && menuKey) return _sdProtoMenuOpen(row);', $source, 'L on a row opens its target menu');
 	pg_assert_contains('_sdProtoConnect(item, target, row.port);', $source, 'a menu choice goes the drawn arrow\'s way');
+}
+
+// The view hands layout() the tab groups as sections and the side
+// columns' headings, says "Start" on the start frame, and Tidy up clears
+// the places after a confirmation: the shared ones only for an operator who
+// may arrange the tabs, else only this browser's, saying so.
+function test_proto_hotspots_view_arrangement_and_tidy_up()
+{
+	$source = str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js'));
+	$start = strpos($source, '    function _sdProtoTidy() {');
+	$tidy = ($start !== false) ? substr($source, $start, strpos($source, "\n    }\n", $start) - $start) : '';
+
+	pg_assert_contains('var l = H.layout(marked, _sdProtoSaved(), _sdProtoSections());', $source, 'the view hands the sections');
+	pg_assert_contains("byGroup[gid] = { id: gid, label: _pgTabGroupLabel(gid), keys: [] };", $source, 'a section per tab group, named as the strip names it');
+	pg_assert_contains("return { sections: sections, rest: _sdT('Pages'), shared: _sdT('Shared parts'), outside: _sdT('Outside this design') };", $source, 'the headings are translated');
+	pg_assert_contains("if (item.start) head.appendChild(_sdProtoEl('span', 'sd-proto-start', _sdT('Start')));", $source, 'the start frame says so');
+	pg_assert_contains("var tidy = _sdProtoButton('bi-grid-3x3-gap', _sdT('Tidy up'), function () { _sdProtoTidy(); });\n        tidy.appendChild(_sdProtoEl('span', 'sd-proto-btn-label', _sdT('Tidy up')));", $source, 'Tidy up sits in the bar with its name');
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/style_designer.css');
+	pg_assert_true((bool) preg_match('/@media \(max-width: 767\.98px\) \{\s*\.sd-proto-btn-label \{ display: none; \}/', $css), 'the name is hidden on a phone only');
+	pg_assert_contains('var shared = _pgTabLayoutEditable() && !!(_design && _design.styleId) && _collab.mayEdit !== false;', $tidy, 'the shared places only for an operator who may arrange the tabs, never in view mode');
+	pg_assert_contains('if (!window.confirm(msg)) return;', $tidy, 'nothing before the confirmation');
+	pg_assert_contains("_pgTabProto = {};\n            _pgTabsLayoutSave();", $tidy, 'the shared places cleared through the tab layout save');
+	pg_assert_contains('_sdProtoLocalWrite({});', $tidy, 'and this browser\'s');
+	pg_assert_contains("if (!shared) sdToast(esc(_sdT('Only the places in this browser were cleared.'))", $tidy, 'anyone else is told only the browser\'s were');
 }
 
 // The collector is a bundle of its own.

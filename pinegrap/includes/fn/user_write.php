@@ -571,6 +571,12 @@ function pg_user_delete($user_id)
         db("DELETE FROM ws_saved_replies WHERE user_id = '" . $user_id . "'");
     }
 
+    // So do the highlights the person made on messages, for everyone and
+    // for themselves.
+    if (pg_schema_has('ws_highlights')) {
+        db("DELETE FROM ws_highlights WHERE user_id = '" . $user_id . "'");
+    }
+
     // A person's own plans go with the account, with the lines naming them,
     // and the account is taken off plans shared with it (personal_plans.php).
     if (is_file(PG_FUNCTIONS_DIR . '/includes/workspace/personal_plans.php')) {

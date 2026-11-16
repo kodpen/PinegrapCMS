@@ -11,6 +11,9 @@
  * hands the core what it needs through small adapters:
  *
  *  - the geometry helpers (snap, clamp, svgEl, curve, freeId, typing, bytes);
+ *  - the pure graph logic: order() ranks boxes breadth-first from a start,
+ *    arrange() places groups of boxes in a wrapped grid with side columns,
+ *    linksOf() gives a box's arrows, check() finds what may be wrong;
  *  - the undo history of a graph kept as text (historyOf, historyRecord,
  *    historyStep);
  *  - viewport(host): pan, zoom about a point, fit, pinch and the wheel on a
@@ -121,6 +124,263 @@
         });
 
         return out;
+    }
+
+    // The pure graph logic below reads a graph as ids (the boxes, in an
+    // order that means something to the caller) and edges ({ from, to },
+    // other fields kept as given). Nothing in it touches the DOM.
+
+    // The box ids as a lookup of their first place in ids.
+    function indexOf(ids) {
+        var at = {};
+
+        ids.forEach(function (id, index) {
+            if (!Object.prototype.hasOwnProperty.call(at, id)) {
+                at[id] = index;
+            }
+        });
+
+        return at;
+    }
+
+    // Breadth-first ranks from start: { ids, rank }, rank[id] the number of
+    // arrows on the shortest way from start (0 for it), null for a box
+    // nothing reaches from it; ids sorted by rank, the given order between
+    // equal ranks, the unreached last in the given order. An arrow whose
+    // end is no box is skipped.
+    function order(ids, edges, start) {
+        var at = indexOf(ids);
+        var next = {};
+        var rank = {};
+
+        ids.forEach(function (id) {
+            rank[id] = null;
+            next[id] = [];
+        });
+
+        (edges || []).forEach(function (edge) {
+            if (Object.prototype.hasOwnProperty.call(at, edge.from) && Object.prototype.hasOwnProperty.call(at, edge.to) && edge.from !== edge.to) {
+                next[edge.from].push(edge.to);
+            }
+        });
+
+        if (Object.prototype.hasOwnProperty.call(at, start)) {
+            var queue = [start];
+
+            rank[start] = 0;
+
+            for (var i = 0; i < queue.length; i++) {
+                var from = queue[i];
+
+                next[from].forEach(function (to) {
+                    if (rank[to] === null) {
+                        rank[to] = rank[from] + 1;
+                        queue.push(to);
+                    }
+                });
+            }
+        }
+
+        var sorted = ids.filter(function (id, index) { return at[id] === index; }).sort(function (a, b) {
+            var ra = (rank[a] === null) ? Infinity : rank[a];
+            var rb = (rank[b] === null) ? Infinity : rank[b];
+
+            return (ra === rb) ? (at[a] - at[b]) : (ra - rb);
+        });
+
+        return { ids: sorted, rank: rank };
+    }
+
+    // The arrows leaving and reaching one box, in the given order.
+    function linksOf(edges, id) {
+        var out = [];
+        var into = [];
+
+        (edges || []).forEach(function (edge) {
+            if (edge.from === id) {
+                out.push(edge);
+            }
+
+            if (edge.to === id) {
+                into.push(edge);
+            }
+        });
+
+        return { out: out, in: into };
+    }
+
+    // What may be wrong with a graph, reported only: dangling, the arrows
+    // whose start or end is no box; unreached, the boxes no arrow from
+    // another box reaches (never start); stuck, the boxes with no arrow out
+    // but to themselves (an arrow to something that is no box is a way out).
+    function check(ids, edges, start) {
+        var at = indexOf(ids);
+        var reached = {};
+        var leaves = {};
+        var dangling = [];
+
+        (edges || []).forEach(function (edge) {
+            var from = Object.prototype.hasOwnProperty.call(at, edge.from);
+            var to = Object.prototype.hasOwnProperty.call(at, edge.to);
+
+            if (!from || !to) {
+                dangling.push(edge);
+            }
+
+            if (edge.from !== edge.to) {
+                if (from) {
+                    leaves[edge.from] = true;
+                }
+
+                if (from && to) {
+                    reached[edge.to] = true;
+                }
+            }
+        });
+
+        var boxes = ids.filter(function (id, index) { return at[id] === index; });
+
+        return {
+            dangling: dangling,
+            unreached: boxes.filter(function (id) { return (id !== start) && !reached[id]; }),
+            stuck: boxes.filter(function (id) { return !leaves[id]; })
+        };
+    }
+
+    // Places boxes in groups as bands of a wrapped grid, with a side column
+    // before the grid and one after it. groups: [{ id, label, items }], a
+    // group with no items left out, one with no label given no heading.
+    // opts (all optional): cols (8), w and h (the box, 208 x 80), gapX and
+    // gapY (48), head (a heading's height, 40), bandGap (gapY, between
+    // bands), sideGap (2 x gapX, between a side column and the grid), x and
+    // y (the top left, 0), size(id) → { w, h } or null (a row is as high as
+    // its tallest box), before and after ({ id, label, w, h, gap, items or
+    // groups }: items stacked one under another, each group of them with
+    // its own heading). Answers { places: { id: { x, y } }, headings:
+    // [{ id, label, x, y, w, kind: 'side' | 'group' | 'sub' }], bounds:
+    // { x, y, w, h } }, in whole units.
+    function arrange(groups, opts) {
+        opts = opts || {};
+
+        var cols = Math.max(1, opts.cols || 8);
+        var w = opts.w || BOX_W;
+        var h = opts.h || BOX_H;
+        var gapX = (opts.gapX === undefined) ? 48 : opts.gapX;
+        var gapY = (opts.gapY === undefined) ? 48 : opts.gapY;
+        var head = (opts.head === undefined) ? 40 : opts.head;
+        var bandGap = (opts.bandGap === undefined) ? gapY : opts.bandGap;
+        var sideGap = (opts.sideGap === undefined) ? 2 * gapX : opts.sideGap;
+        var x0 = opts.x || 0;
+        var y0 = opts.y || 0;
+        var places = {};
+        var headings = [];
+        var boxes = [];
+        var bands = (groups || []).filter(function (group) { return group && group.items && group.items.length; });
+
+        function sized(id) {
+            return opts.size ? opts.size(id) : null;
+        }
+
+        function place(id, x, y, bw, bh) {
+            places[id] = { x: Math.round(x), y: Math.round(y) };
+            boxes.push({ x: x, y: y, w: bw, h: bh });
+        }
+
+        function title(id, label, x, y, width, kind) {
+            headings.push({ id: id, label: label, x: Math.round(x), y: Math.round(y), w: Math.round(width), kind: kind });
+            boxes.push({ x: x, y: y, w: width, h: head });
+        }
+
+        function filled(column) {
+            return !!column && !!((column.items && column.items.length) || (column.groups || []).some(function (group) { return group && group.items && group.items.length; }));
+        }
+
+        function side(column, x) {
+            var cw = column.w || w;
+            var ch = column.h || h;
+            var gap = (column.gap === undefined) ? gapY : column.gap;
+            var y = y0;
+
+            if (column.label) {
+                title(column.id, column.label, x, y, cw, 'side');
+                y += head;
+            }
+
+            (column.groups || [{ items: column.items }]).forEach(function (group) {
+                if (!group || !group.items || !group.items.length) {
+                    return;
+                }
+
+                if (group.label) {
+                    title(group.id, group.label, x, y, cw, 'sub');
+                    y += head;
+                }
+
+                group.items.forEach(function (id) {
+                    var size = sized(id);
+                    var bh = (size && size.h) || ch;
+
+                    place(id, x, y, (size && size.w) || cw, bh);
+                    y += bh + gap;
+                });
+            });
+        }
+
+        var before = filled(opts.before) ? opts.before : null;
+        var after = filled(opts.after) ? opts.after : null;
+        var gridX = before ? x0 + (before.w || w) + sideGap : x0;
+        var gridCols = Math.min(cols, bands.reduce(function (most, group) { return Math.max(most, group.items.length); }, 0));
+        var gridW = gridCols ? gridCols * w + (gridCols - 1) * gapX : 0;
+        var y = y0;
+
+        if (before) {
+            side(before, x0);
+        }
+
+        bands.forEach(function (group, band) {
+            if (band) {
+                y += bandGap;
+            }
+
+            if (group.label) {
+                title(group.id, group.label, gridX, y, gridW, 'group');
+                y += head;
+            }
+
+            for (var row = 0; row * cols < group.items.length; row++) {
+                var rowH = 0;
+
+                if (row) {
+                    y += gapY;
+                }
+
+                group.items.slice(row * cols, (row + 1) * cols).forEach(function (id, col) {
+                    var size = sized(id);
+                    var bh = (size && size.h) || h;
+
+                    place(id, gridX + col * (w + gapX), y, (size && size.w) || w, bh);
+                    rowH = Math.max(rowH, bh);
+                });
+                y += rowH;
+            }
+        });
+
+        if (after) {
+            side(after, gridW ? gridX + gridW + sideGap : gridX);
+        }
+
+        var bounds = { x: 0, y: 0, w: 0, h: 0 };
+
+        if (boxes.length) {
+            var left = Math.round(Math.min.apply(null, boxes.map(function (box) { return box.x; })));
+            var top = Math.round(Math.min.apply(null, boxes.map(function (box) { return box.y; })));
+            var right = Math.round(Math.max.apply(null, boxes.map(function (box) { return box.x + box.w; })));
+            var bottom = Math.round(Math.max.apply(null, boxes.map(function (box) { return box.y + box.h; })));
+
+            bounds = { x: left, y: top, w: right - left, h: bottom - top };
+        }
+
+        return { places: places, headings: headings, bounds: bounds };
     }
 
     function freeId(prefix, list) {
@@ -484,6 +744,16 @@
     //    gets its picture put into holder once it first comes into sight;
     //  - ownClicks: a selector of what keeps its own clicks and keys (a link
     //    on a box): the canvas takes no pointer and no key from it;
+    //  - focus (optional, true): only the arrows of the box in focus are
+    //    drawn, <edge>-out and <edge>-in, the boxes and targets at neither
+    //    end of one dimmed; none with no box in focus; allEdges(true) draws
+    //    the others too, <edge>-faint, under them. A press on a box puts it
+    //    in focus, a click on the empty canvas takes the focus away. Without
+    //    the field every arrow is drawn as before;
+    //  - label(item) (optional): a box's name in what the focus announces
+    //    (else its aria-label, else its id);
+    //  - groups() (optional): the headings groups() draws behind the boxes,
+    //    [{ id, label, x, y, w, kind }] as G.arrange() gives them;
     //  - classes (optional, each name else its CLASSES default, styled by
     //    the pgc- block of backend.src.css): { panning, space } put on the
     //    viewport while it pans and while Space is held; box, port, edge (a
@@ -516,7 +786,12 @@
         selected: 'pgc-selected',
         target: 'pgc-target',
         hidden: 'pgc-hidden',
-        thumb: 'pgc-thumb'
+        thumb: 'pgc-thumb',
+        edgeOut: 'pgc-edge-out',
+        edgeIn: 'pgc-edge-in',
+        faint: 'pgc-edge-faint',
+        dim: 'pgc-dim',
+        group: 'pgc-group'
     };
 
     function merge(base, over) {
@@ -541,6 +816,11 @@
         // The arrows drawn by id, to draw the ones of a box moved again.
         var drawn = {};
         var watcher = null;
+        // The focus (adapter.focus): the box in focus, null for none, and
+        // whether the other arrows are drawn faintly.
+        var focusing = !!adapter.focus;
+        var focusId = null;
+        var faint = false;
 
         function text() {
             return adapter.text.apply(null, arguments);
@@ -667,6 +947,10 @@
 
             place(node, item);
 
+            if (focusing && (focusId !== null) && !ends()[String(item.id)]) {
+                node.classList.add(classes.dim);
+            }
+
             return node;
         }
 
@@ -732,11 +1016,245 @@
             hit.setAttribute('d', path.d);
             group.appendChild(line);
             group.appendChild(hit);
-            ui.svg.appendChild(group);
             one.group = group;
+            one.state = '';
             drawn[String(id)] = one;
 
+            if (focusing) {
+                show(one, stateOf(one));
+
+                // A faint arrow goes under those of the box in focus.
+                var over = (one.state === 'faint') ? ui.svg.querySelector('.' + classes.edgeOut + ', .' + classes.edgeIn) : null;
+
+                if (over) {
+                    ui.svg.insertBefore(group, over);
+                } else {
+                    ui.svg.appendChild(group);
+                }
+
+                if ((one.state === 'out') || (one.state === 'in')) {
+                    undim(one);
+                }
+            } else {
+                ui.svg.appendChild(group);
+            }
+
             return { group: group, path: path };
+        }
+
+        // ── Focus ──
+
+        // What an arrow is with the focus as it is: 'out' or 'in' of the box
+        // in focus, 'faint' while every arrow is drawn, else 'hidden'.
+        function stateOf(one) {
+            if (focusId === null) {
+                return 'hidden';
+            }
+
+            if (String(one.from.id) === focusId) {
+                return 'out';
+            }
+
+            if (String(one.to.id) === focusId) {
+                return 'in';
+            }
+
+            return faint ? 'faint' : 'hidden';
+        }
+
+        // An arrow's classes for its state; nothing is touched when the
+        // state is the one it has.
+        function show(one, state) {
+            if (one.state === state) {
+                return false;
+            }
+
+            var list = one.group.classList;
+
+            list.remove(classes.edgeOut);
+            list.remove(classes.edgeIn);
+            list.remove(classes.faint);
+            list.remove(classes.hidden);
+            list.add({ out: classes.edgeOut, 'in': classes.edgeIn, faint: classes.faint, hidden: classes.hidden }[state]);
+            one.state = state;
+
+            return true;
+        }
+
+        // The arrows still on the canvas.
+        function live() {
+            return Object.keys(drawn).map(function (key) { return drawn[key]; }).filter(function (one) {
+                return one.group.parentNode === ui.svg;
+            });
+        }
+
+        // The ids at an end of an arrow of the box in focus, the box itself
+        // among them.
+        function ends() {
+            var out = {};
+
+            if (focusId === null) {
+                return out;
+            }
+
+            out[focusId] = true;
+            live().forEach(function (one) {
+                if ((one.state === 'out') || (one.state === 'in')) {
+                    out[String(one.from.id)] = true;
+                    out[String(one.to.id)] = true;
+                }
+            });
+
+            return out;
+        }
+
+        // The id of a box or of a target (adapter.targets) element.
+        function idOf(element) {
+            var raw = element.getAttribute('data-node');
+
+            if (raw !== null) {
+                return raw;
+            }
+
+            var item = adapter.target ? adapter.target(element) : null;
+
+            return item ? String(item.id) : null;
+        }
+
+        function elementsOf() {
+            return ui.boxes.querySelectorAll('[data-node]' + (adapter.targets ? ', ' + adapter.targets : ''));
+        }
+
+        // Every box and target at neither end of an arrow of the box in
+        // focus dimmed; none while nothing is in focus.
+        function dim() {
+            var near = ends();
+
+            Array.prototype.forEach.call(elementsOf(), function (element) {
+                var id = idOf(element);
+
+                if ((focusId !== null) && (id !== null) && !near[id]) {
+                    element.classList.add(classes.dim);
+                } else {
+                    element.classList.remove(classes.dim);
+                }
+            });
+        }
+
+        // The two ends of an arrow of the box in focus drawn in full.
+        function undim(one) {
+            Array.prototype.forEach.call(elementsOf(), function (element) {
+                var id = idOf(element);
+
+                if ((id === String(one.from.id)) || (id === String(one.to.id))) {
+                    element.classList.remove(classes.dim);
+                }
+            });
+        }
+
+        // The arrows of the box in focus put last, over the faint ones.
+        function lift() {
+            live().forEach(function (one) {
+                if ((one.state === 'out') || (one.state === 'in')) {
+                    ui.svg.appendChild(one.group);
+                }
+            });
+        }
+
+        // The arrows whose state changed drawn again, the boxes dimmed.
+        function refocus() {
+            var changed = false;
+
+            live().forEach(function (one) {
+                changed = show(one, stateOf(one)) || changed;
+            });
+
+            if (changed) {
+                lift();
+            }
+
+            dim();
+        }
+
+        // A box (its id) in focus, null for none; again with the same id it
+        // dims the boxes drawn since. A box put in focus is announced with
+        // its name and its arrows' counts.
+        function focus(id) {
+            if (!focusing) {
+                return;
+            }
+
+            var next = (id === null || id === undefined) ? null : String(id);
+            var moved = next !== focusId;
+
+            focusId = next;
+            refocus();
+
+            if (moved && (next !== null)) {
+                announceFocus();
+            }
+        }
+
+        function announceFocus() {
+            var item = adapter.item(focusId);
+            var node = ui.boxes.querySelector('[data-node="' + focusId.replace(/"/g, '') + '"]');
+            var name = (item && adapter.label) ? adapter.label(item) : ((node && node.getAttribute('aria-label')) || focusId);
+            var outs = 0;
+            var ins = 0;
+
+            live().forEach(function (one) {
+                if (one.state === 'out') {
+                    outs++;
+                } else if (one.state === 'in') {
+                    ins++;
+                }
+            });
+
+            announce(text('pgc_focus', name, outs, ins));
+        }
+
+        // The arrows of the boxes out of focus drawn faintly (on) or not.
+        function allEdges(on) {
+            faint = !!on;
+
+            if (focusing) {
+                refocus();
+            }
+        }
+
+        // The headings of adapter.groups() drawn behind the boxes: a label
+        // and a rule each, at its place and width; drawn again on each call.
+        function groups() {
+            var old = ui.layer.querySelector('.' + classes.group + 's');
+            var holder = document.createElement('div');
+
+            if (old) {
+                old.parentNode.removeChild(old);
+            }
+
+            holder.className = classes.group + 's';
+            holder.setAttribute('aria-hidden', 'true');
+            ui.layer.insertBefore(holder, ui.layer.firstChild);
+
+            (adapter.groups ? adapter.groups() : []).forEach(function (one) {
+                var head = document.createElement('div');
+                var label = document.createElement('span');
+                var rule = document.createElement('span');
+
+                head.className = classes.group + (one.kind ? ' ' + classes.group + '-' + one.kind : '');
+                head.setAttribute('data-group', String(one.id));
+                head.style.left = one.x + 'px';
+                head.style.top = one.y + 'px';
+                head.style.width = one.w + 'px';
+                label.className = classes.group + '-label';
+                label.textContent = one.label || '';
+                rule.className = classes.group + '-rule';
+                head.appendChild(label);
+                head.appendChild(rule);
+                holder.appendChild(head);
+            });
+
+            return holder;
         }
 
         // The arrows from or into the boxes of these ids drawn again where
@@ -848,6 +1366,7 @@
                 drag = next;
                 adapter.select({ type: 'node', id: next.item.id });
                 node.focus({ preventScroll: true });
+                focus(next.item.id);
             } else if (arrow) {
                 next.kind = 'none';
                 adapter.select({ type: 'edge', id: edgeId(arrow.getAttribute('data-edge')) });
@@ -906,6 +1425,11 @@
             if ((done.kind === 'move') && done.moved) {
                 adapter.moved(done.item);
                 return true;
+            }
+
+            // A click on the empty canvas (not a pan) takes the focus away.
+            if ((done.kind === 'pan') && done.empty && !done.moved && (event.type === 'pointerup')) {
+                focus(null);
             }
 
             return false;
@@ -1145,6 +1669,10 @@
             size: size,
             mark: mark,
             announce: announce,
+            focus: focus,
+            focused: function () { return focusId; },
+            allEdges: allEdges,
+            groups: groups,
             bind: bind,
             destroy: destroy,
             cancel: cancel,
@@ -1165,6 +1693,10 @@
         ZOOM_FLOOR: ZOOM_FLOOR,
         snap: snap,
         spread: spread,
+        order: order,
+        arrange: arrange,
+        linksOf: linksOf,
+        check: check,
         clamp: clamp,
         svgEl: svgEl,
         curve: curve,
