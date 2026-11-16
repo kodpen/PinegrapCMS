@@ -1110,7 +1110,7 @@ function ws_api_message_canvas($row, $canvases)
     );
 }
 
-function ws_api_message_present($viewer, $row, $refs, $reactions = null, $acks = null, $threads = null, $hidden = null, $polls = null, $proposals = null, $note_cards = null, $checks = null, $forwards = null, $group_cards = null, $canvases = null)
+function ws_api_message_present($viewer, $row, $refs, $reactions = null, $acks = null, $threads = null, $hidden = null, $polls = null, $proposals = null, $note_cards = null, $checks = null, $forwards = null, $group_cards = null, $canvases = null, $link_previews = null)
 {
     // Who ticked its checklist (interact.php).
     if ($checks === null) {
@@ -1262,6 +1262,8 @@ function ws_api_message_present($viewer, $row, $refs, $reactions = null, $acks =
         'forwards'       => ws_api_message_forwards($row, $forwards),
         // The OAuth client a person's message was written through.
         'via'            => ws_api_message_via($row, ws_message_via_names(array($row))),
+        // The card of its first web address (link_preview.php).
+        'link_preview'   => ws_api_message_link_preview($row, $link_previews),
         'created_at'  => api_time($row['created_at']),
     );
 }
@@ -1304,8 +1306,37 @@ function ws_api_message_schema()
             'created_at'          => 'string?',
         )),
         'via'         => 'WorkspaceMessageVia?',
+        'link_preview'   => 'WorkspaceMessageLinkPreview?',
         'created_at'  => 'string',
     );
+}
+
+/**
+ * The card of a message's first web address, the fields the screen draws
+ * (ws_link_preview_card_fields()): null for a deleted message, one with no
+ * card, and every message while previews are switched off.
+ *
+ * @param array      $row           ws_messages row
+ * @param array|null $link_previews ws_link_preview_card_rows_map() of the page
+ * @return array|null url, title, description, site_name
+ */
+function ws_api_message_link_preview($row, $link_previews)
+{
+    if (((int) $row['deleted_at'] > 0) || !function_exists('ws_link_preview_card_rows_map')) {
+        return null;
+    }
+
+    if ($link_previews === null) {
+        $link_previews = ws_link_preview_card_rows_map(array((int) $row['id']));
+    }
+
+    return $link_previews[(int) $row['id']] ?? null;
+}
+
+// What ws_api_message_link_preview() returns: plain texts, never HTML.
+function ws_api_message_link_preview_schema()
+{
+    return array('url' => 'string', 'title' => 'string', 'description' => 'string', 'site_name' => 'string');
 }
 
 // A message of sender_kind mail: the mail it carries (GET
@@ -1791,12 +1822,13 @@ function ws_api_messages_present($viewer, $rows)
     $forwards = ws_api_message_forwards_map($viewer, $ids);
     $group_cards = function_exists('ws_note_group_cards_map') ? ws_note_group_cards_map($viewer, $ids) : array();
     $canvases = function_exists('ws_canvas_message_states') ? ws_canvas_message_states(ws_api_message_canvas_file_ids($rows)) : array();
+    $link_previews = function_exists('ws_link_preview_card_rows_map') ? ws_link_preview_card_rows_map($ids) : array();
     $out = array();
 
     // A message the person deleted for themselves stays in the page, marked
     // hidden, so that since_id and before_id still page past it.
     foreach ($rows as $row) {
-        $out[] = ws_api_message_present($viewer, $row, $refs, $reactions, $acks, $threads, $hidden, $polls, $proposals, $note_cards, $checks, $forwards, $group_cards, $canvases);
+        $out[] = ws_api_message_present($viewer, $row, $refs, $reactions, $acks, $threads, $hidden, $polls, $proposals, $note_cards, $checks, $forwards, $group_cards, $canvases, $link_previews);
     }
 
     return $out;

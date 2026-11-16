@@ -1,6 +1,6 @@
 ---
 name: workspace-link-preview
-description: A Workspace message's link preview (LP1 #9843, LP2): the ws_link_previews row, the general job's one read of the first web address, the card under the message, Remove preview, the switch
+description: A Workspace message's link preview (#9843): the ws_link_previews row, the general job's one read of the first web address, the switch; pointers to the card and the API
 ---
 
 ## What is kept, and where?
@@ -19,10 +19,10 @@ description: A Workspace message's link preview (LP1 #9843, LP2): the ws_link_pr
 - Fields (`ws_link_preview_fields()`): og:title, twitter:title, else `<title>`; og:description, description, twitter:description; og:site_name, else the host without www. The page's charset is honoured. `ws_link_preview_cut()` keeps them plain (no tags, entities decoded, control and direction marks out) and cuts at 300 / 500 / 100 characters; they are escaped where drawn. No title: `none`.
 
 ## Where is the card?
-- Drawn under the message and removed by its writer: `workspace-link-preview-card.md`.
+- Drawn under the message, removed by its writer, and what is left out for a later yes of the owner: `workspace-link-preview-card.md`. Over the API: `api/workspace-api-link-preview.md`.
 
 ## Where is it switched off?
 - Site Settings, Channels, mail and voice, card "Link previews" (`pgset-ws-link-preview`), switch "Show a card under a message's web address", on by default; saved with the pane's Save by anyone with the Workspace settings right (`ws_link_preview_settings_save()`, the marker field `ws_link_preview_card`). Stored as `config_text` `ws_link_preview_off` = `1`; no column.
 - Off, or a demonstration site (`pg_demo()`): no row is written, the job reads nothing (`ws_link_preview_on()`), and no card is drawn anywhere; rows already there stay.
 
-Tests: `tests/workspace_link_preview_test.php`. Plan: `plans/link-preview.md`.
+Tests: `tests/workspace_link_preview_test.php`. Asked by the owner in poll 54 (`workflow/decisions-made-workspace-35.md`).
