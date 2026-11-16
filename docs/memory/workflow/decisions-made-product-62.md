@@ -1,6 +1,6 @@
 ---
 name: decisions-made-product-62
-description: Decisions list, product part 62 (2026-11-16 on): the owner's looks at built screens from poll 79 on (the "Clicks and scrolling" section of Visitors, the share card)
+description: Decisions list, product part 62 (2026-11-16 on): the owner's looks at built screens from poll 79 on (the "Clicks and scrolling" section of Visitors, the share card, My highlights)
 ---
 
 ## Where are the rules and the earlier parts?
@@ -16,3 +16,8 @@ description: Decisions list, product part 62 (2026-11-16 on): the owner's looks 
 - Yes. Asked "Paylaşılan bağlantılarda görünen paylaşım kartı (OG2, #9929) bu sayfadaki gibi çıksın mı?" with the sheet inside the question's own box (the picture of channel message 6426 on both options), his own vote: "Evet, böyle çıksın".
 - The sheet showed OG2 #9929 of the share card plan: the card a shared link shows for a page without a share picture of its own (the logo when there is one, the title on at most three lines, the site name; the two colours chosen in the settings), in four samples: short and long title, with and without a logo.
 - Also on it: the "Share card" switch, off on every site, with "Card Background" and "Card Text Color" in the site settings' social sharing part; switched on, the home page's sample card under it; the sentence that says why a server cannot draw the card, pages keeping the Default Share Image; a phone, dark.
+
+## Does "My highlights" in My Notes go out as built? (owner, 2026-11-16, agent channel poll 83)
+- Yes. Asked "Notlarım içindeki Vurgulamalarım listesi (HL4, #9935) bu sayfadaki gibi çıksın mı?" with the sheet inside the question's own box (the picture of channel message 6436 on both options), his own vote: "Evet, böyle çıksın".
+- The sheet showed HL4 #9935 of the message highlights plan: the "My highlights" button beside "Import" in the bar of My Notes; the list where a note opens, each row with the highlighted text in its colour, the channel or chat, the writer, the date, the chip "Everyone" or "Only me" and the note.
+- Also on it: the chips "All", "Everyone" and "Only me" with their counts; "Select all" and "Remove (2)" with the one confirmation; the line shown when there is no highlight; dark; a phone, with "Back to notes" in the header.
