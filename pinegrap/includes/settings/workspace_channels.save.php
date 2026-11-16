@@ -60,6 +60,9 @@ if ($ws_voice !== null) {
     ws_voice_settings_write($ws_voice, $liveform, $ws_warn);
 }
 
+// The link previews switch (link_preview.php), with the pane's Save.
+ws_link_preview_settings_save($ws_viewer, $_POST);
+
 // A channel template's Archive or Bring it back.
 foreach (array('ws_template_archive' => true, 'ws_template_restore' => false) as $ws_button => $ws_archive) {
     $ws_value = post_value($ws_button);

@@ -9267,6 +9267,7 @@ function get_tables() {
 		'ws_scheduled_notices',
 		'ws_message_quotes',
 		'ws_message_forwards',
+		'ws_link_previews',
 		'ws_blocks',
 		'ws_guests',
 		'ws_guest_sessions',

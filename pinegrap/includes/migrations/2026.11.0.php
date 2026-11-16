@@ -210,6 +210,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ws_agent_duty();           // 11.0.217
 	upgrade_2026_11_0_ws_agent_feedback();       // 11.0.218
 	upgrade_2026_11_0_ws_quiet_hours();          // 11.0.219
+	upgrade_2026_11_0_ws_link_previews();        // 11.0.220
 	upgrade_2026_11_0_auto_dialog_open();        // 11.0.221
 	upgrade_2026_11_0_ws_highlights();           // 11.0.222
 
@@ -6978,6 +6979,36 @@ function upgrade_2026_11_0_ws_quiet_hours() {
 	install_add_column('ws_profiles', 'quiet_hours', 'TEXT NULL');
 
 	install_note('Workspace: a person can keep quiet hours; outside their hours a Workspace notification reaches their phone when the quiet range ends.');
+
+}
+// The link preview of a Workspace message (11.0.220,
+// includes/workspace/link_preview.php): one row per message whose first web
+// address is to be read or was read. state: waiting (written at send or edit,
+// read by the general job), shown (the card's fields kept), none (read,
+// nothing to show; never read again), removed (the writer took the card
+// away). An edit that changes the address writes the row again as waiting;
+// a deleted message loses it, a discussion purged with its messages loses its
+// rows by channel_id. Times are unix seconds, read_at 0 while waiting. No
+// backfill: messages sent before this step get no card.
+function upgrade_2026_11_0_ws_link_previews() {
+
+	install_create_table('ws_link_previews', "CREATE TABLE ws_link_previews (
+		message_id  INT UNSIGNED NOT NULL,
+		channel_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		url         VARCHAR(2048) NOT NULL DEFAULT '',
+		title       VARCHAR(300) NOT NULL DEFAULT '',
+		description VARCHAR(500) NOT NULL DEFAULT '',
+		site_name   VARCHAR(100) NOT NULL DEFAULT '',
+		state       ENUM('waiting','shown','none','removed') NOT NULL DEFAULT 'waiting',
+		created_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		read_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (message_id),
+		KEY idx_state (state, created_at),
+		KEY idx_read (read_at),
+		KEY idx_channel (channel_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Workspace: the first web address of a new message is read once for a preview card; it can be switched off in the Workspace settings.');
 
 }
 
