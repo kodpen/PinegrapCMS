@@ -289,6 +289,9 @@ function test_page_clicks_features_card_uses_the_one_reader_and_saver()
 	pg_assert_contains('id="pgset-page-clicks"', $card, 'the card');
 	pg_assert_contains("(pg_page_clicks_switch_on() ? ' checked=\"checked\"' : '')", $card, 'drawn from the one reader');
 	pg_assert_contains('id="page_clicks_privacy"', $card, 'with the sentence for the privacy text');
+	pg_assert_true(strpos($card, '<textarea class="form-control" id="page_clicks_privacy"') === false, 'shown whole as text, never cut inside a box');
+	pg_assert_contains('day and device type (desktop, phone or tablet)', $card, 'counted per device type, not per device');
+	pg_assert_contains('no IP address, no identifier', $card, 'the address it does not keep is named');
 	pg_assert_contains("pg_page_clicks_switch_save((bool) post_value('page_clicks_on'));", $save, 'saved through the one saver');
 	pg_assert_contains("array_key_exists('page_clicks_card', \$_POST)", $save, 'only when its card was on the form');
 	pg_assert_true(strpos($card . $save, "pg_config_text('page_clicks')") === false && strpos($card . $save, "pg_config_text_save('page_clicks'") === false, 'no second reader or saver');

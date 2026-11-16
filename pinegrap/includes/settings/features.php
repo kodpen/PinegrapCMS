@@ -489,12 +489,12 @@ if (function_exists('pg_page_clicks_ready') && pg_page_clicks_ready()) {
                                             <div class="form-field">
                                                 <div class="switch"><input value="1"' . (pg_page_clicks_switch_on() ? ' checked="checked"' : '') . ' type="checkbox" id="page_clicks_on" name="page_clicks_on"/></div>
                                                 <label for="page_clicks_on">' . h(lang('Count clicks and scrolling on public pages')) . '</label>
-                                                <div class="form-text">' . h(lang('Which links and buttons visitors click on each page and how far down they scroll, per page, day and device, shown in Visitors. Signed-in members and visitors who refused statistics in the cookie notice are not counted.')) . '</div>
+                                                <div class="form-text">' . h(lang('Which links and buttons visitors click on each page and how far down they scroll, per page, day and device type, shown in Visitors. Signed-in members and visitors who refused statistics in the cookie notice are not counted.')) . '</div>
                                             </div>
                                         </div>
                                         <div class="col-12">
-                                            <label class="form-label" for="page_clicks_privacy">' . h(lang('For your privacy text')) . '</label>
-                                            <textarea class="form-control" id="page_clicks_privacy" rows="5" readonly="readonly">' . h(lang('We count which links and buttons are clicked on our pages and how far down they are scrolled, as totals per page, day and device. No cookie is set and nothing that identifies you is kept: no address, no identifier and no record per visitor. Nothing is counted if you refuse statistics in our cookie notice.')) . '</textarea>
+                                            <div class="form-label" id="page_clicks_privacy_label">' . h(lang('For your privacy text')) . '</div>
+                                            <p class="form-text border rounded p-3 mb-0 user-select-all" id="page_clicks_privacy" aria-labelledby="page_clicks_privacy_label">' . h(lang('We count which links and buttons are clicked on our pages and how far down they are scrolled, as totals per page, day and device type (desktop, phone or tablet). No cookie is set and nothing that identifies you is kept: no IP address, no identifier and no record per visitor. Nothing is counted if you refuse statistics in our cookie notice.')) . '</p>
                                         </div>
                                     </div>
                                 </div>
