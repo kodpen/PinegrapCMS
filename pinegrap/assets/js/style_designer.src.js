@@ -10264,10 +10264,15 @@ const StyleDesigner = (function () {
         p.classList.toggle('sd-chip-row-mark', !!on);
         var first = p.firstElementChild;
         if (!first) return;
+        // The dot is the first chip itself, so a click does what a click
+        // on that chip does (it reaches the element's wrapper); its words
+        // are its title and its accessible name.
         if (on) {
             first.title = Array.prototype.map.call(p.children, function (c) { return c.textContent; }).join('\n');
+            first.setAttribute('aria-label', first.title);
         } else {
             first.title = first.textContent;
+            first.removeAttribute('aria-label');
         }
     }
 

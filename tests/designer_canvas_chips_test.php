@@ -197,6 +197,8 @@ function test_designer_canvas_chip_row_spot()
 	pg_assert_contains('if (moved && !again) _sdPlaceChromeOf(ws, true);', $place, 'the boxes are measured again once a row leaves the flow');
 	$mark = designer_canvas_chips_test_function($source, '_sdChipRowMark');
 	pg_assert_contains("classList.toggle('sd-chip-row-mark', !!on)", $mark);
+	pg_assert_contains("first.setAttribute('aria-label', first.title);", $mark, 'the dot\'s words are its accessible name');
+	pg_assert_contains("first.removeAttribute('aria-label');", $mark, 'a row again has no extra name');
 	pg_assert_contains(".join('\\n')", $mark, 'the dot keeps every chip\'s full text in its title');
 	pg_assert_contains("'.sd-chip-row.sd-chip-row-mark > .sd-chip:first-child {", $source, 'the mark is the first chip drawn as a dot');
 }
