@@ -12643,6 +12643,14 @@
 
             main.appendChild(body);
 
+            // The card of its first web address, read once by the server
+            // (link_preview.php); the server escapes it.
+            if (message.link_preview && !message.deleted) {
+                var linkCard = el('div', 'ws-link-card-wrap');
+                setHtml(linkCard, message.link_preview);
+                main.appendChild(linkCard);
+            }
+
             // Readers' highlights drawn into the text, the toolbar on a
             // selection and the card on one (workspace_highlights.js).
             if (window.PGWsHighlights && !message.deleted && !message.note_card && !message.note_group_card && !message.scheduled) {
@@ -13052,11 +13060,27 @@
                 items.push({ icon: 'bi-pencil', label: t('edit'), action: function () { self.editMessage(message); } });
             }
 
+            // The writer takes the card of the message's web address away
+            // for everyone (link_preview.php).
+            if (message.can_remove_preview) {
+                items.push({ icon: 'bi-x-square', label: t('link_preview_remove'), action: function () { self.removePreview(message); } });
+            }
+
             if (message.can_delete || message.can_hide) {
                 items.push({ icon: 'bi-trash', label: t('delete'), danger: true, action: function () { self.deleteMessage(message); } });
             }
 
             return items;
+        },
+
+        // "Remove preview": the card goes for everyone; the message comes
+        // back as the server now draws it.
+        removePreview: function (message) {
+            var self = this;
+
+            api('ws_link_preview_remove', { message_id: message.id }).then(function (data) {
+                self.replaceMessage(data.message);
+            }).catch(fail);
         },
 
         // Deleting: in a private channel of one's own there is nobody else,
