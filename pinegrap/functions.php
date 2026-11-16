@@ -237,6 +237,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/ai_visibility.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/site_search_tuning.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/page_vitals.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/page_clicks.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/content_review.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/experiments.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/experiments_sheet.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/experiments_results.php');
