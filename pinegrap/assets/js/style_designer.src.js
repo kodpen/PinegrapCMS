@@ -70466,6 +70466,7 @@ const StyleDesigner = (function () {
     // undo history and content rights answer; the normal Save writes it.
     // Classic menus and regions stay read-only.
     var _sdProto = { open: false, ui: null, canvas: null, items: [], byId: {}, layout: null, view: { x: 40, y: 40, k: 1 }, seq: 0, selected: null, env: {}, warned: {}, menu: null,
+        link: null, broken: { list: [], count: {} }, problems: null,
         pics: { gen: 0, io: null, boxes: {}, near: {}, live: {}, wait: [], loading: 0, cache: {} } };
 
     // Pictures (_sdProtoPicMake()): at most this many loading at once, the
@@ -70572,7 +70573,26 @@ const StyleDesigner = (function () {
         ui.status = _sdProtoEl('span', 'sd-proto-status');
         ui.status.setAttribute('role', 'status');
         bar.appendChild(ui.status);
+        // "N broken" (F19): every broken link of the design, in a list.
+        ui.broken = _sdProtoEl('button', 'sd-proto-broken');
+        ui.broken.type = 'button';
+        ui.broken.hidden = true;
+        ui.broken.setAttribute('aria-haspopup', 'dialog');
+        ui.broken.addEventListener('click', function () {
+            if (_sdProto.problems) _sdProtoProblemsClose(true);
+            else _sdProtoProblemsOpen();
+        });
+        bar.appendChild(ui.broken);
         var tools = _sdProtoEl('div', 'sd-proto-tools');
+        // Play (F24): the prototype viewer at the selected page, else at
+        // the first page it has; hidden when it has none.
+        ui.play = _sdProtoButton('bi-play-fill', _sdT('Play the prototype from the selected page'), function () {
+            var url = _sdProtoPlayUrl();
+            if (url) window.open(url, '_blank', 'noopener');
+        });
+        ui.play.appendChild(_sdProtoEl('span', 'sd-proto-btn-label', _sdT('Play')));
+        ui.play.hidden = true;
+        tools.appendChild(ui.play);
         ui.zoomLabel = _sdProtoEl('span', 'sd-vb-zoom', '100%');
         tools.appendChild(_sdProtoButton('bi-zoom-out', _sdT('Zoom Out'), function () { if (_sdProto.canvas) _sdProto.canvas.view.zoomBy(1 / 1.2); }));
         tools.appendChild(ui.zoomLabel);
@@ -70590,6 +70610,10 @@ const StyleDesigner = (function () {
         var tidy = _sdProtoButton('bi-grid-3x3-gap', _sdT('Tidy up'), function () { _sdProtoTidy(); });
         tidy.appendChild(_sdProtoEl('span', 'sd-proto-btn-label', _sdT('Tidy up')));
         tools.appendChild(tidy);
+        // The links panel (F18): open or closed kept in this browser.
+        ui.listToggle = _sdProtoButton('bi-layout-sidebar-inset-reverse', _sdT('Show or hide the links of the selected page'), function () { _sdProtoListShow(!ui.root.classList.contains('sd-proto-list-open'), true); });
+        ui.listToggle.appendChild(_sdProtoEl('span', 'sd-proto-btn-label', _sdT('Links')));
+        tools.appendChild(ui.listToggle);
         tools.appendChild(_sdProtoButton('bi-arrow-clockwise', _sdT('Read the links again'), function () { _sdProtoLoad(); }));
         tools.appendChild(_sdProtoButton('bi-x-lg', _sdT('Close the prototype view'), function () { _sdProtoClose(); }));
         bar.appendChild(tools);
@@ -70601,7 +70625,7 @@ const StyleDesigner = (function () {
         ui.viewport.tabIndex = -1;
         ui.viewport.setAttribute('role', 'application');
         ui.viewport.setAttribute('aria-roledescription', _sdT('Prototype map'));
-        ui.viewport.setAttribute('aria-label', _sdT('Drag to move the map, Ctrl and the mouse wheel to zoom; a link row selects its element.'));
+        ui.viewport.setAttribute('aria-label', _sdT('Drag to move the map, Ctrl and the mouse wheel to zoom; a link row selects the link, the links panel opens it in the editor.'));
         ui.layer = _sdProtoEl('div', 'pgc-layer');
         ui.svg = G.svgEl('svg', 'pgc-edges');
         ui.svg.setAttribute('aria-hidden', 'true');
@@ -70622,10 +70646,19 @@ const StyleDesigner = (function () {
         ui.stage = _sdProtoEl('div', 'pgc-stage sd-proto-stage');
         ui.stage.appendChild(ui.viewport);
         ui.stage.appendChild(ui.live);
-        ui.root.appendChild(ui.stage);
+        // The stage and, right of it, the selected page's links (F15).
+        ui.body = _sdProtoEl('div', 'sd-proto-body');
+        ui.body.appendChild(ui.stage);
+        ui.list = _sdProtoEl('aside', 'sd-proto-list');
+        ui.list.id = 'sd-proto-list';
+        ui.list.setAttribute('aria-label', _sdT('Links of the selected page'));
+        ui.listToggle.setAttribute('aria-controls', ui.list.id);
+        ui.body.appendChild(ui.list);
+        ui.root.appendChild(ui.body);
         area.appendChild(ui.root);
 
         _sdProto.ui = ui;
+        _sdProtoListShow(_sdProtoListStored(), false);
         _sdProto.canvas = G.create({
             ui: ui,
             text: function (key, a, b, c) {
@@ -70636,7 +70669,7 @@ const StyleDesigner = (function () {
             // Only the selected frame's arrows are drawn (focus); a press on
             // a frame selects it, on the empty canvas none.
             focus: true,
-            focusChanged: function (id) { _sdProtoFocusMarks(id); },
+            focusChanged: function (id) { _sdProtoFocused(id); },
             label: function (item) { return item.kind === 'chip' ? _sdProtoChipText(item) : _sdProtoFrameName(item); },
             groups: function () { return _sdProto.layout ? _sdProto.layout.headings : []; },
             boxRole: function () { return _sdT('Frame'); },
@@ -70675,7 +70708,7 @@ const StyleDesigner = (function () {
             },
             move: function () {},
             release: function (event, done) {
-                if (done.kind === 'row' && !done.moved && event.type === 'pointerup') _sdProtoOpenRow(done.row);
+                if (done.kind === 'row' && !done.moved && event.type === 'pointerup') _sdProtoPickRow(done.row);
             },
             cancel: function () {},
             key: function (event) {
@@ -70690,7 +70723,7 @@ const StyleDesigner = (function () {
                     return true;
                 }
                 var row = event.target.closest ? event.target.closest('.sd-proto-row') : null;
-                if (row && (event.key === 'Enter' || event.key === ' ')) { _sdProtoOpenRow(row); return true; }
+                if (row && (event.key === 'Enter' || event.key === ' ')) { _sdProtoPickRow(row); return true; }
                 // L, the context menu key or Shift+F10: where the link goes,
                 // chosen from a list (the keyboard's way to draw its arrow).
                 var menuKey = (name === 'l' && !event.ctrlKey && !event.metaKey && !event.shiftKey) || event.key === 'ContextMenu' || (event.key === 'F10' && event.shiftKey);
@@ -70702,6 +70735,7 @@ const StyleDesigner = (function () {
         // A press outside the target menu closes it.
         ui.root.addEventListener('pointerdown', function (event) {
             if (_sdProto.menu && !_sdProto.menu.el.contains(event.target)) _sdProtoMenuClose(false);
+            if (_sdProto.problems && !_sdProto.problems.contains(event.target) && !ui.broken.contains(event.target)) _sdProtoProblemsClose(false);
         }, true);
         return ui;
     }
@@ -70745,6 +70779,7 @@ const StyleDesigner = (function () {
     function _sdProtoClose() {
         if (!_sdProto.open) return;
         _sdProtoMenuClose(false);
+        _sdProtoProblemsClose(false);
         _sdProto.open = false;
         _sdProto.seq++;
         if (_sdProto.canvas) _sdProto.canvas.cancel();
@@ -70818,6 +70853,13 @@ const StyleDesigner = (function () {
         head.lastChild.setAttribute('aria-hidden', 'true');
         head.appendChild(_sdProtoEl('span', 'sd-proto-name', _sdProtoFrameName(item)));
         if (item.start) head.appendChild(_sdProtoEl('span', 'sd-proto-start', _sdT('Start')));
+        // A red count of the frame's broken links (F20).
+        var brokenHere = _sdProto.broken.count[item.id] || 0;
+        if (brokenHere) {
+            var badge = _sdProtoEl('span', 'sd-proto-badge', String(brokenHere));
+            badge.title = _sdT('{var:1} broken', brokenHere);
+            head.appendChild(badge);
+        }
         var meta = '';
         if (item.kind === 'shared') {
             meta = !item.loaded ? _sdT('Not loaded') : (item.pages === 1 ? _sdT('On 1 page') : _sdT('On {var:1} pages', item.pages));
@@ -71000,6 +71042,305 @@ const StyleDesigner = (function () {
         });
     }
 
+    // ── The links panel and the problems (F15-F20, F24) ──
+
+    // Why a broken link is broken, in words (PGProtoHotspots.brokenWhy()).
+    function _sdProtoWhy(why) {
+        if (why === 'menu') return _sdT('The menu or region could not be found');
+        if (why === 'kept') return _sdT('The page this link was kept by is gone');
+        if (why === 'address') return _sdT('The link has no address');
+        return _sdT('No page at this address');
+    }
+
+    // A frame's link row on the canvas by its port, null when not drawn.
+    function _sdProtoRowEl(frameId, port) {
+        var item = _sdProto.byId[frameId];
+        var ui = _sdProto.ui;
+        if (!item || !item.rows || !ui) return null;
+        for (var i = 0; i < item.rows.length; i++) {
+            if (item.rows[i].port === port) {
+                return ui.boxes.querySelector('[data-node="' + String(frameId).replace(/"/g, '') + '"] .sd-proto-row[data-row="' + i + '"]');
+            }
+        }
+        return null;
+    }
+
+    // The panel open by default from 1,100 px, closed below; a choice made
+    // with the bar's button is kept in this browser.
+    function _sdProtoListStored() {
+        try {
+            var kept = window.localStorage.getItem('pg_proto_list');
+            if (kept === '1' || kept === '0') return kept === '1';
+        } catch (e) { /* storage blocked: the width decides */ }
+        return !window.matchMedia || window.matchMedia('(min-width: 1100px)').matches;
+    }
+
+    function _sdProtoListShow(open, keep) {
+        var ui = _sdProto.ui;
+        if (!ui) return;
+        ui.root.classList.toggle('sd-proto-list-open', !!open);
+        ui.listToggle.setAttribute('aria-pressed', open ? 'true' : 'false');
+        ui.listToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+        if (keep) {
+            try { window.localStorage.setItem('pg_proto_list', open ? '1' : '0'); } catch (e) { /* kept for this visit only */ }
+        }
+    }
+
+    // A change of the selected frame: the row marks, the panel, Play; a
+    // picked link that is not the frame's own nor one into it is let go.
+    function _sdProtoFocused(id) {
+        var l = _sdProto.link;
+        if (l) {
+            var edge = (_sdProto.layout ? _sdProto.layout.edges : []).filter(function (e) { return e.id === l.frame + '|' + l.port; })[0];
+            if (id === null || (String(id) !== l.frame && !(edge && edge.to === String(id)))) _sdProto.link = null;
+        }
+        _sdProtoFocusMarks(id);
+        _sdProtoPicked();
+        _sdProtoListDraw();
+        _sdProtoPlayState();
+    }
+
+    // One link picked (F16) by its frame and port, from a row of the panel
+    // or a link row on the canvas (fromCanvas: its panel row scrolls into
+    // view). The frame is selected unless the selected one is the link's
+    // target; the link's row and arrow are marked, the other end brought
+    // into view.
+    function _sdProtoPick(frameId, port, fromCanvas) {
+        var canvas = _sdProto.canvas;
+        var ui = _sdProto.ui;
+        frameId = String(frameId);
+        if (!canvas || !_sdProto.byId[frameId] || !_sdProto.layout) return;
+        var edge = _sdProto.layout.edges.filter(function (e) { return e.id === frameId + '|' + port; })[0] || null;
+        var focused = canvas.focused();
+        _sdProto.link = { frame: frameId, port: port };
+        if (focused !== frameId && !(edge && focused === edge.to)) canvas.focus(frameId);
+        _sdProtoPicked();
+        _sdProtoListDraw();
+        var other = edge ? _sdProto.byId[(canvas.focused() === edge.to) ? frameId : edge.to] : null;
+        if (other) canvas.view.reveal(other);
+        if (fromCanvas) {
+            var li = ui.list.querySelector('.sd-proto-li[data-link="' + (frameId + '|' + port).replace(/"/g, '') + '"]');
+            if (li) li.scrollIntoView({ block: 'nearest' });
+        }
+    }
+
+    function _sdProtoPickRow(rowEl) {
+        var box = rowEl.closest('[data-node]');
+        var item = box ? _sdProto.byId[box.getAttribute('data-node')] : null;
+        var row = item && item.rows ? item.rows[parseInt(rowEl.getAttribute('data-row'), 10) || 0] : null;
+        if (row) _sdProtoPick(item.id, row.port, true);
+    }
+
+    // The picked link's row and arrow marked.
+    function _sdProtoPicked() {
+        var ui = _sdProto.ui;
+        if (!ui) return;
+        Array.prototype.slice.call(ui.root.querySelectorAll('.sd-proto-row-picked, .sd-proto-edge-picked')).forEach(function (n) {
+            n.classList.remove('sd-proto-row-picked', 'sd-proto-edge-picked');
+        });
+        var l = _sdProto.link;
+        if (!l) return;
+        var rowEl = _sdProtoRowEl(l.frame, l.port);
+        if (rowEl) rowEl.classList.add('sd-proto-row-picked');
+        var group = ui.svg.querySelector('[data-edge="' + (l.frame + '|' + l.port).replace(/"/g, '') + '"]');
+        if (group) group.classList.add('sd-proto-edge-picked');
+    }
+
+    function _sdProtoListButton(cls, icon, label, onClick) {
+        var b = _sdProtoEl('button', cls);
+        b.type = 'button';
+        b.title = label;
+        b.setAttribute('aria-label', label);
+        b.innerHTML = '<span class="bi ' + icon + '" aria-hidden="true"></span>';
+        b.addEventListener('click', onClick);
+        return b;
+    }
+
+    // The name a list row shows for where a link goes.
+    function _sdProtoTargetName(row) {
+        var target = row.to ? _sdProto.byId[row.to] : null;
+        if (!target) return row.href || '';
+        return target.kind === 'chip' ? _sdProtoChipText(target) : _sdProtoFrameName(target);
+    }
+
+    // The selected frame's links (F15): out, each with "Change target" and
+    // "Open in the editor" (F17); in, a shared part's said so; a page's
+    // shared parts, each selecting its frame. From the marked layout
+    // (PGProtoHotspots.listOf()), never from the canvas.
+    function _sdProtoListDraw() {
+        var ui = _sdProto.ui;
+        if (!ui || !ui.list) return;
+        var canvas = _sdProto.canvas;
+        var data = (_sdProto.layout && canvas) ? window.PGProtoHotspots.listOf(_sdProto.layout, canvas.focused()) : null;
+        var picked = _sdProto.link ? _sdProto.link.frame + '|' + _sdProto.link.port : '';
+        ui.list.textContent = '';
+        if (!data) {
+            ui.list.appendChild(_sdProtoEl('p', 'sd-proto-list-empty', _sdT('Select a page to see its links.')));
+            return;
+        }
+        var item = _sdProto.byId[data.id];
+        var head = _sdProtoEl('h2', 'sd-proto-list-head');
+        head.appendChild(_sdProtoEl('span', 'bi ' + (data.kind === 'shared' ? 'bi-puzzle' : 'bi-file-earmark')));
+        head.lastChild.setAttribute('aria-hidden', 'true');
+        head.appendChild(_sdProtoEl('span', 'sd-proto-list-name', _sdProtoFrameName(item)));
+        ui.list.appendChild(head);
+
+        var section = function (title) {
+            ui.list.appendChild(_sdProtoEl('h3', 'sd-proto-list-title', title));
+            var box = _sdProtoEl('div', 'sd-proto-list-rows');
+            ui.list.appendChild(box);
+            return box;
+        };
+        var line = function (box, linkId, main) {
+            var li = _sdProtoEl('div', 'sd-proto-li');
+            li.setAttribute('data-link', linkId);
+            if (linkId === picked) {
+                li.classList.add('sd-proto-li-picked');
+                main.setAttribute('aria-current', 'true');
+            }
+            li.appendChild(main);
+            box.appendChild(li);
+            return li;
+        };
+
+        var outBox = section(_sdT('Outgoing · {var:1}', data.outgoing.length));
+        if (!data.outgoing.length) outBox.appendChild(_sdProtoEl('p', 'sd-proto-list-none', _sdT('No links')));
+        data.outgoing.forEach(function (row) {
+            var main = _sdProtoEl('button', 'sd-proto-li-main');
+            main.type = 'button';
+            main.appendChild(_sdProtoMarkIcon(row.mark));
+            var text = _sdProtoEl('span', 'sd-proto-li-text');
+            text.appendChild(_sdProtoEl('span', 'sd-proto-li-label', row.label));
+            text.appendChild(_sdProtoEl('span', 'sd-proto-li-to', row.why ? _sdProtoWhy(row.why) : '→ ' + _sdProtoTargetName(row)));
+            main.appendChild(text);
+            main.addEventListener('click', function () { _sdProtoPick(data.id, row.port, false); });
+            var change = function (anchor) {
+                var rowEl = _sdProtoRowEl(data.id, row.port);
+                return rowEl ? _sdProtoMenuOpen(rowEl, anchor) : false;
+            };
+            // L, the menu key or Shift+F10: the target menu, as on the canvas.
+            main.addEventListener('keydown', function (event) {
+                var name = String(event.key || '').toLowerCase();
+                var menuKey = (name === 'l' && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey) || event.key === 'ContextMenu' || (event.key === 'F10' && event.shiftKey);
+                if (menuKey && row.drawable && change(main)) event.preventDefault();
+            });
+            var li = line(outBox, data.id + '|' + row.port, main);
+            if (row.why) li.classList.add('sd-proto-li-broken');
+            var acts = _sdProtoEl('span', 'sd-proto-li-acts');
+            if (row.drawable) {
+                main.setAttribute('aria-keyshortcuts', 'L');
+                var changeBtn = _sdProtoListButton('sd-proto-li-act', 'bi-signpost-split', _sdT('Change target'), function () { change(changeBtn); });
+                acts.appendChild(changeBtn);
+            }
+            acts.appendChild(_sdProtoListButton('sd-proto-li-act', 'bi-box-arrow-in-up-left', _sdT('Open in the editor'), function () {
+                var rowEl = _sdProtoRowEl(data.id, row.port);
+                if (rowEl) _sdProtoOpenRow(rowEl);
+            }));
+            li.appendChild(acts);
+        });
+
+        var inBox = section(_sdT('Incoming · {var:1}', data.incoming.length));
+        if (!data.incoming.length) inBox.appendChild(_sdProtoEl('p', 'sd-proto-list-none', _sdT('No page leads here')));
+        data.incoming.forEach(function (link) {
+            var main = _sdProtoEl('button', 'sd-proto-li-main');
+            main.type = 'button';
+            main.appendChild(_sdProtoEl('span', 'bi ' + (link.shared ? 'bi-puzzle' : 'bi-file-earmark') + ' sd-proto-icon'));
+            main.lastChild.setAttribute('aria-hidden', 'true');
+            var text = _sdProtoEl('span', 'sd-proto-li-text');
+            text.appendChild(_sdProtoEl('span', 'sd-proto-li-label', _sdProtoFrameName(_sdProto.byId[link.frame]) + ' · ' + link.label));
+            if (link.shared) text.appendChild(_sdProtoEl('span', 'sd-proto-li-to', _sdT('shared part')));
+            main.appendChild(text);
+            main.addEventListener('click', function () { _sdProtoPick(link.frame, link.port, false); });
+            line(inBox, link.frame + '|' + link.port, main);
+        });
+
+        if (data.parts.length) {
+            var partsBox = section(_sdT('Shared parts on this page'));
+            data.parts.forEach(function (part) {
+                var main = _sdProtoEl('button', 'sd-proto-li-main');
+                main.type = 'button';
+                main.appendChild(_sdProtoEl('span', 'bi bi-puzzle sd-proto-icon'));
+                main.lastChild.setAttribute('aria-hidden', 'true');
+                main.appendChild(_sdProtoEl('span', 'sd-proto-li-label', _sdProtoFrameName(_sdProto.byId[part.id])));
+                main.addEventListener('click', function () {
+                    canvas.focus(part.id);
+                    canvas.view.reveal(_sdProto.byId[part.id]);
+                });
+                line(partsBox, part.id, main);
+            });
+        }
+    }
+
+    // Every broken link of the design (F19), under the bar's "N broken": a
+    // row picks the link.
+    function _sdProtoProblemsOpen() {
+        var ui = _sdProto.ui;
+        var list = _sdProto.broken.list;
+        _sdProtoProblemsClose(false);
+        if (!ui || !list.length) return;
+        var el = _sdProtoEl('div', 'sd-proto-problems');
+        el.setAttribute('role', 'dialog');
+        el.setAttribute('aria-label', _sdT('Broken links'));
+        el.appendChild(_sdProtoEl('div', 'sd-proto-menu-head', _sdT('Broken links')));
+        list.forEach(function (one) {
+            var b = _sdProtoEl('button', 'sd-proto-problem');
+            b.type = 'button';
+            b.appendChild(_sdProtoEl('span', 'sd-proto-li-label', _sdProtoFrameName(_sdProto.byId[one.frame]) + ' · ' + one.label));
+            b.appendChild(_sdProtoEl('span', 'sd-proto-li-to', _sdProtoWhy(one.why) + (one.href ? ' (' + one.href + ')' : '')));
+            b.addEventListener('click', function () {
+                _sdProtoProblemsClose(false);
+                _sdProtoPick(one.frame, one.port, true);
+            });
+            el.appendChild(b);
+        });
+        el.addEventListener('keydown', function (event) {
+            var items = Array.prototype.slice.call(el.querySelectorAll('.sd-proto-problem'));
+            var at = items.indexOf(document.activeElement);
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                event.stopPropagation();
+                _sdProtoProblemsClose(true);
+            } else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+                event.preventDefault();
+                items[(at + (event.key === 'ArrowDown' ? 1 : items.length - 1)) % items.length].focus();
+            }
+        });
+        ui.root.appendChild(el);
+        _sdProto.problems = el;
+        ui.broken.setAttribute('aria-expanded', 'true');
+        var r = ui.broken.getBoundingClientRect();
+        var o = ui.root.getBoundingClientRect();
+        el.style.top = (r.bottom - o.top + 2) + 'px';
+        el.style.left = Math.max(4, Math.min(r.left - o.left, o.width - el.offsetWidth - 4)) + 'px';
+        el.querySelector('.sd-proto-problem').focus({ preventScroll: true });
+    }
+
+    function _sdProtoProblemsClose(refocus) {
+        var el = _sdProto.problems;
+        if (!el) return;
+        _sdProto.problems = null;
+        if (el.parentNode) el.parentNode.removeChild(el);
+        if (_sdProto.ui) {
+            _sdProto.ui.broken.setAttribute('aria-expanded', 'false');
+            if (refocus) _sdProto.ui.broken.focus({ preventScroll: true });
+        }
+    }
+
+    // Where Play opens the viewer: the selected page, else the first page
+    // the viewer can show; '' for none (_pgPrototypeUrl()).
+    function _sdProtoPlayUrl() {
+        var id = _sdProto.canvas ? _sdProto.canvas.focused() : null;
+        var item = id ? _sdProto.byId[id] : null;
+        var page = (item && item.kind === 'page') ? _pgPageByKey(item.key) : null;
+        var url = page ? _pgPrototypeUrl(page) : '';
+        for (var i = 0; !url && i < _pages.length; i++) url = _pgPrototypeUrl(_pages[i]);
+        return url;
+    }
+
+    function _sdProtoPlayState() {
+        if (_sdProto.ui) _sdProto.ui.play.hidden = !_sdProtoPlayUrl();
+    }
+
     function _sdProtoDraw(marked) {
         var H = window.PGProtoHotspots;
         var G = window.PGGraphCanvas;
@@ -71009,8 +71350,11 @@ const StyleDesigner = (function () {
         var l = H.layout(marked, _sdProtoSaved(), _sdProtoSections());
 
         _sdProtoMenuClose(false);
+        _sdProtoProblemsClose(false);
         _sdProto.marked = marked;
         _sdProto.layout = l;
+        // The broken links before the frames are drawn: their badges (F20).
+        _sdProto.broken = H.brokenOf(l);
         _sdProto.items = l.frames.concat(l.chips);
         _sdProto.byId = {};
         _sdProto.items.forEach(function (item) { _sdProto.byId[item.id] = item; });
@@ -71053,9 +71397,14 @@ const StyleDesigner = (function () {
         canvas.groups();
 
         var count = l.edges.length;
-        var broken = l.chips.filter(function (c) { return c.mark === 'broken'; }).length;
-        _sdProtoStatus(_sdT('{var:1} links', count) + (broken ? ' · ' + _sdT('{var:1} broken', broken) : ''));
-        canvas.announce(_sdT('{var:1} links', count));
+        var broken = _sdProto.broken.list.length;
+        // "N links", and "N broken" in red when there are any (F19).
+        _sdProtoStatus(_sdT('{var:1} links', count));
+        ui.broken.hidden = !broken;
+        ui.broken.textContent = broken ? _sdT('{var:1} broken', broken) : '';
+        canvas.announce(_sdT('{var:1} links', count) + (broken ? ' · ' + _sdT('{var:1} broken', broken) : ''));
+        // A picked link of a frame no longer there, or no longer a link, goes.
+        if (_sdProto.link && !_sdProtoRow(_sdProto.byId[_sdProto.link.frame], _sdProto.link.port)) _sdProto.link = null;
         // Opening selects the open tab's frame; a redraw keeps the selected
         // frame while it is there.
         var focusOn = (first || _sdProto.focusOpen) ? 'p:' + _activeKey : canvas.focused();
@@ -71064,7 +71413,7 @@ const StyleDesigner = (function () {
         if (focusOn !== canvas.focused()) canvas.focus(focusOn);
         else {
             canvas.focus(focusOn);
-            _sdProtoFocusMarks(focusOn);
+            _sdProtoFocused(focusOn);
         }
         _sdProtoAllEdges(_sdProtoAllEdgesOn());
         if (first) canvas.view.fit();
@@ -71376,7 +71725,9 @@ const StyleDesigner = (function () {
     // the current one checked; a choice goes through _sdProtoConnect() like
     // a drawn arrow. Arrows, Home and End move, Escape closes and gives the
     // focus back to the row. Answers whether it opened.
-    function _sdProtoMenuOpen(rowEl) {
+    // The target menu of a frame's link row; anchor (optional) is where it
+    // opens and what takes the focus back (a row of the links panel).
+    function _sdProtoMenuOpen(rowEl, anchor) {
         var H = window.PGProtoHotspots;
         var box = rowEl.closest('[data-node]');
         var item = box ? _sdProto.byId[box.getAttribute('data-node')] : null;
@@ -71436,10 +71787,10 @@ const StyleDesigner = (function () {
             }
         });
         ui.root.appendChild(el);
-        _sdProto.menu = { el: el, rowEl: rowEl };
+        _sdProto.menu = { el: el, rowEl: anchor || rowEl };
 
         // Under the row, or above it when it would leave the view.
-        var r = rowEl.getBoundingClientRect();
+        var r = (anchor || rowEl).getBoundingClientRect();
         var o = ui.root.getBoundingClientRect();
         var top = r.bottom - o.top + 2;
         if (top + el.offsetHeight > o.height) top = Math.max(4, r.top - o.top - el.offsetHeight - 2);
