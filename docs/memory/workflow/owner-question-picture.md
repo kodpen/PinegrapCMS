@@ -9,7 +9,7 @@ description: A question to the owner about a picture or an earlier message says 
 
 ## How does a question name its picture until the feature lands?
 - The picture is posted as a file right above the question (`php tools/ws_post.php --file=PATH "text"`), and the question's own text names that message's number.
-- Or the picture sits in the question's box: an option's `file_id` on `POST /workspace/channels/{id}/polls`, a picture posted in the same channel (`workspace/poll-option-parts.md`). `tools/ws_poll.php` has no flag for it.
+- Or the picture sits in the question's box: an option's `file_id` on `POST /workspace/channels/{id}/polls`, a picture posted in the same channel (`workspace/poll-option-parts.md`). `tools/ws_poll.php ask` writes it as an option ending in `:: #N`, N the picture's message number in the poll's channel.
 - One picture a question: several screens are stacked into one picture with their names written on it.
 - A question already asked is not asked again for this; he is not reminded (`workflow/owner-contact-channel.md`).
 
