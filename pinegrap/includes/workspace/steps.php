@@ -165,6 +165,10 @@ function ws_step_kinds()
         // Its fields follow from the kind of record it reads (ws_step_outputs()).
         'record_get' => array('label' => lang('Read a record'), 'type' => 'record_get', 'texts' => array('id'), 'lines' => array('id'),
             'outputs' => array($number('record_id', lang('Record')), $number('found', lang('Record found (1 or 0)')))),
+        // The records a list page's feed gives, or those new since the last
+        // run (flow_records.php).
+        'list_records' => array('label' => lang('Read the records of a list'), 'type' => 'list_records', 'texts' => array(), 'lines' => array(),
+            'outputs' => array($number('count', lang('Records read')), $number('left_out', lang('Records left out')), $text('records', lang('The records as a list')))),
         // A contact put into a group or taken out (flow_contact_group.php).
         'contact_group' => array('label' => lang('Add to or take out of a contact group'), 'type' => 'contact_group', 'texts' => array('contact'), 'lines' => array('contact'),
             'outputs' => array($number('contact_id', lang('Contact')), $number('changed', lang('Group changed (1 or 0)')))),
@@ -414,6 +418,7 @@ function ws_step_outcomes()
  *            another), id (the record's id, or one value such as
  *            {{trigger.record_id}})
  * contact_group: ws_step_contact_group_normalize()
+ * list_records: ws_flow_records_normalize()
  *
  * @param string $kind
  * @param mixed  $config
@@ -665,6 +670,9 @@ function ws_step_config_normalize($kind, $config)
         case 'contact_group':
             return ws_step_contact_group_normalize($config);
 
+        case 'list_records':
+            return ws_flow_records_normalize($config);
+
         case 'ai':
             return ws_step_ai_normalize($config);
 
@@ -904,6 +912,10 @@ function ws_step_config_problems($kind, $config, $name, $joined = false)
             $problems = ws_step_contact_group_problems($config, $name);
             break;
 
+        case 'list_records':
+            $problems = ws_flow_records_problems($config, $name);
+            break;
+
         case 'ai':
             $problems = ws_step_ai_problems($config, $name);
             break;
@@ -999,6 +1011,11 @@ function ws_step_check($viewer, $kind, $config, $joined = false)
 
     if ($kind === 'contact_group') {
         return ws_step_contact_group_check($viewer, ws_step_config_normalize('contact_group', $config));
+    }
+
+    // Nor is a box that reads a list page: only a page everybody may open.
+    if ($kind === 'list_records') {
+        return ws_step_list_records_check($viewer, ws_step_config_normalize('list_records', $config));
     }
 
     // Nor is an SMS box: it queues its message itself (flow_sms_box.php).
@@ -2258,6 +2275,8 @@ function ws_step_run($run, $step, $node, $graph, $owner)
         $done = ws_step_whatsapp_do($action, $step_context + array('viewer' => $owner, 'row' => $row), ws_step_whatsapp_reference($run['id'], $step['node_id'], $step['pass'] ?? 0), $whatsapp_person);
     } elseif ($kind === 'contact_group') {
         $done = ws_step_contact_group_do($owner, $action, $run);
+    } elseif ($kind === 'list_records') {
+        $done = ws_step_list_records_do($owner, $action, $run);
     } else {
         $done = ws_scheduled_do($owner, $row, $action, $step_context);
     }
@@ -2504,6 +2523,12 @@ function ws_flow_box_try($viewer, $flow, $data)
         }
 
         $action = $tried['action'];
+
+        // A list page's records are read as a run now would read them: its
+        // window from the last run that sent to now, which nothing moves.
+        if ($kind === 'list_records') {
+            return array('outcome' => 'done', 'texts' => $tried['texts'], 'empty' => $tried['empty']) + ws_step_list_records_try($action, $flow) + $answer;
+        }
 
         // As the run sends it: a notice names the flow it comes from.
         if ($kind === 'notify') {
