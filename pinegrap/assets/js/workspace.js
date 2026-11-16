@@ -24658,7 +24658,14 @@
                 share.appendChild(note);
                 var send = button('btn btn-sm btn-outline theme-secondary mt-3', t('share'), 'bi-send');
                 send.addEventListener('click', function () {
-                    api('ws_send', { channel_id: parseInt(target.value, 10), body: (note.value.trim() ? note.value.trim() + ' ' : '') + token }).then(function () {
+                    api('ws_send', { channel_id: parseInt(target.value, 10), body: (note.value.trim() ? note.value.trim() + ' ' : '') + token, as_text: 1 }).then(function (result) {
+                        // The line is a message, never a command: say it was
+                        // shared only when the answer carries the message.
+                        if (!result || !result.message_id) {
+                            fail();
+                            return;
+                        }
+
                         toast(t('shared'), 'success');
                         reopen();
                     }).catch(fail);
