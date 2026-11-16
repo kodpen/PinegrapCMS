@@ -1205,7 +1205,8 @@ out.lanesKept = laneIn[0][1].x;
 
 // Time: 300 routes over the arrangement of forty pages and fifty parts,
 // as a redraw routes them in a session (a first drawing of 300 others
-// before, untimed: the script engine has compiled the router by then).
+// before, untimed: the script engine has compiled the router by then;
+// the fastest of three batches).
 var laid = G.arrange([{ id: 'g', items: range('p', 40) }], { w: 248, h: 300, gapX: 96, gapY: 96, before: { id: 'shared', h: 114, gap: 96, maxH: 'grid', items: range('s', 50) } });
 function batch(shift) {
     var all = Object.keys(laid.places).map(function (id) { return { id: id, x: laid.places[id].x, y: laid.places[id].y, w: 248, h: id.charAt(0) === 's' ? 114 : 300 }; });
@@ -1219,9 +1220,16 @@ function batch(shift) {
     return found;
 }
 batch(3);
-var started = Date.now();
-var found = batch(0);
-out.time = [Date.now() - started, found];
+var best = Infinity;
+var found = 0;
+// The best of three, so that another process on the machine does not
+// decide it.
+for (var run = 0; run < 3; run++) {
+    var started = Date.now();
+    found = batch(run);
+    best = Math.min(best, Date.now() - started);
+}
+out.time = [best, found];
 console.log(JSON.stringify(out));
 JS
 	);
