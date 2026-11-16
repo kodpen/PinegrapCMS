@@ -6529,6 +6529,32 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
 .sd-proto-sk-shared { fill: rgba(111,91,214,.45); }
 .sd-proto-sk-region { fill: none; stroke: #5b6472; stroke-dasharray: 3 2; }
 .sd-proto-sk-link { fill: var(--sd-accent); }
+/* A frame's page picture (_sdProtoPicBox()): the page 1280 wide in a
+   sandboxed frame scaled into the box's 228 x 285 (PGProtoHotspots.picSize()),
+   over its sketch until it has loaded; a fade and the foot over the cut. */
+.sd-proto-pic { position: relative; }
+.sd-proto-pic-page {
+    position: absolute; top: 6px; left: 10px; border: 0;
+    transform-origin: 0 0; background: #fff; opacity: 0; transition: opacity .2s ease;
+}
+.sd-proto-pic-on .sd-proto-pic-page { opacity: 1; }
+.sd-proto-pic-on svg { visibility: hidden; }
+.sd-proto-pic-fade {
+    position: absolute; left: 10px; right: 10px; bottom: 7px; height: 36px; display: none;
+    background: linear-gradient(to bottom, transparent, #2a2f36); pointer-events: none;
+}
+.sd-proto-pic-on.sd-proto-pic-long .sd-proto-pic-fade { display: block; }
+.sd-proto-pic-foot {
+    position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%);
+    padding: 1px 8px; border-radius: 10px; white-space: nowrap;
+    background: #2a2f36; color: var(--sd-text); font-size: .7rem; font-weight: 600;
+}
+.sd-proto-pic-foot[hidden] { display: none; }
+/* The selected frame's name in the accent colour (F2). */
+.sd-proto .pgc-selected .sd-proto-name { color: var(--sd-accent); }
+@media (prefers-reduced-motion: reduce) {
+    .sd-proto-pic-page { transition: none; }
+}
 .sd-proto-draft {
     padding: 0 5px; border-radius: 3px; font-size: .65rem;
     background: rgba(255,193,7,.18); color: #ffc107;

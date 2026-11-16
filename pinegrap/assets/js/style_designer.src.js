@@ -67167,9 +67167,11 @@ const StyleDesigner = (function () {
                     // stops at the one already open.
                     _sdSharedOpen[_prId] = true;
                     var _prScope = sink ? sink.scope : 0;
+                    var _prPic = _sdPicShared;
                     if (sink) sink.scope = _prId;
+                    _sdPicShared = _prId;
                     try { h += _sdEmitNode(_prCached.tree, indent, base + h.length, sink); }
-                    finally { delete _sdSharedOpen[_prId]; if (sink) sink.scope = _prScope; }
+                    finally { delete _sdSharedOpen[_prId]; if (sink) sink.scope = _prScope; _sdPicShared = _prPic; }
                 }
                 break; }
             // The code view's picture of a system widget: the page prints
@@ -67190,6 +67192,54 @@ const StyleDesigner = (function () {
                 break;
         }
         if (rec) rec.to = base + h.length;
+        if (_sdPicMarkers && !sink && h) h = _sdPicMarkHtml(n, h);
+        return h;
+    }
+
+    // The Prototype view's picture of a page marks each link's element with
+    // data-pg-pic (PGProtoHotspots.picMark()), so the view can find it in
+    // the picture. Set only around the picture's own generateHTML() call
+    // (_sdProtoPicRaw()), in try/finally: left on, Save and Publish would
+    // write the marker into the page. _sdPicShared is the shared component
+    // being written (0 for the page's own nodes).
+    var _sdPicMarkers = false;
+    var _sdPicShared = 0;
+
+    // `h`, a node's markup, with the markers of its links: its own link on
+    // its first tag, the links of its text or custom HTML on their <a> tags
+    // when the markup holds exactly the text's links (a node whose children
+    // add links of their own gets none there; the view counts those as not
+    // seen).
+    /* @pg-site-output */
+    function _sdPicMarkHtml(n, h) {
+        var H = window.PGProtoHotspots;
+        if (!H || !n || n._id === undefined || n._id === null) return h;
+        var marks = H.picMarks(n);
+        if (!marks.own && !marks.text.length) return h;
+        var attr = function (index) {
+            var v = H.picMark(n._id, index, _sdPicShared);
+            return v ? ' data-pg-pic="' + esc(v) + '"' : '';
+        };
+        if (marks.text.length) {
+            var spans = [];
+            var p = n.props || {};
+            var src = (n.type === 'content' && p.contentType === 'custom_html') ? p.html : p.text;
+            H.htmlLinks(h, spans);
+            if (spans.length === H.htmlLinks(String(src || '')).length) {
+                var lower = h.toLowerCase();
+                // From the last, so the earlier positions stay valid.
+                marks.text.slice().sort(function (a, b) { return b - a; }).forEach(function (i) {
+                    if (!spans[i]) return;
+                    var at = lower.lastIndexOf('<a', spans[i].start);
+                    if (at < 0) return;
+                    h = h.slice(0, at + 2) + attr(i) + h.slice(at + 2);
+                });
+            }
+        }
+        if (marks.own) {
+            var m = /<([a-zA-Z][\w:-]*)/.exec(h);
+            if (m) h = h.slice(0, m.index + m[0].length) + attr(null) + h.slice(m.index + m[0].length);
+        }
         return h;
     }
 
@@ -68450,7 +68500,7 @@ const StyleDesigner = (function () {
 
     // The request body of designer/preview_widgets for the system widgets
     // in a marked-up page, or null when the page has none.
-    function _sdPreviewWidgetPayload(raw) {
+    function _sdPreviewWidgetPayload(raw, pageId) {
         var ids = [];
         raw.replace(/<!--pg-sw-preview:(\d+)-->/g, function (m, id) {
             if (ids.indexOf(id) === -1) ids.push(id);
@@ -68459,7 +68509,7 @@ const StyleDesigner = (function () {
         if (!ids.length) return null;
         var page = (typeof _pgActivePage === 'function') ? _pgActivePage() : null;
         var payload = {
-            page_id: (page && page.page_id) ? parseInt(page.page_id, 10) : 0,
+            page_id: (pageId !== undefined) ? (parseInt(pageId, 10) || 0) : ((page && page.page_id) ? parseInt(page.page_id, 10) : 0),
             widgets: ids.map(function (id) {
                 var c = _sharedCache[id] || {};
                 return { id: parseInt(id, 10), tree_json: c.tree ? JSON.stringify(c.tree) : '', system_region_config: c.system_region_config || '' };
@@ -68556,7 +68606,14 @@ const StyleDesigner = (function () {
     // target from a list, _sdProtoMenuOpen()): on the row's tab, opened first, so its lock,
     // undo history and content rights answer; the normal Save writes it.
     // Classic menus and regions stay read-only.
-    var _sdProto = { open: false, ui: null, canvas: null, items: [], byId: {}, layout: null, view: { x: 40, y: 40, k: 1 }, seq: 0, selected: null, env: {}, warned: {}, menu: null };
+    var _sdProto = { open: false, ui: null, canvas: null, items: [], byId: {}, layout: null, view: { x: 40, y: 40, k: 1 }, seq: 0, selected: null, env: {}, warned: {}, menu: null,
+        pics: { gen: 0, io: null, boxes: {}, near: {}, live: {}, wait: [], loading: 0, cache: {} } };
+
+    // Pictures (_sdProtoPicMake()): at most this many loading at once, the
+    // widget requests among them, and at most this many alive; past it the
+    // one farthest from view goes back to its sketch. Made within this many
+    // pixels of the view.
+    var SD_PROTO_PIC = { loading: 6, alive: 48, margin: 200 };
 
     var SD_PROTO_MARKS = {
         tab: { icon: 'bi-file-earmark-arrow-right', text: function () { return _sdT('Opens a page of this design'); } },
@@ -68806,6 +68863,7 @@ const StyleDesigner = (function () {
         _sdProto.open = false;
         _sdProto.seq++;
         if (_sdProto.canvas) _sdProto.canvas.cancel();
+        _sdProtoPicReset(true);
         if (_sdProto.ui) _sdProto.ui.root.hidden = true;
         _sdProtoButtonState();
         var btn = document.getElementById('sd-vb-proto');
@@ -68884,7 +68942,8 @@ const StyleDesigner = (function () {
         if (meta) head.appendChild(_sdProtoEl('span', 'sd-proto-meta', meta));
         node.appendChild(head);
         node.setAttribute('aria-label', _sdProtoFrameName(item));
-        if (item.thumb) node.appendChild(_sdProtoThumb(item));
+        if (item.pic) node.appendChild(_sdProtoPicBox(item));
+        else if (item.thumb) node.appendChild(_sdProtoThumb(item));
 
         if (!item.rows.length) {
             node.appendChild(_sdProtoEl('div', 'sd-proto-empty', _sdT('No links')));
@@ -69013,6 +69072,7 @@ const StyleDesigner = (function () {
         _sdProto.items.forEach(function (item) { _sdProto.byId[item.id] = item; });
 
         Array.prototype.slice.call(ui.svg.querySelectorAll('g.pgc-edge')).forEach(function (g) { g.parentNode.removeChild(g); });
+        _sdProtoPicReset(false);
         ui.boxes.innerHTML = '';
 
         l.frames.forEach(function (item) {
@@ -69051,6 +69111,202 @@ const StyleDesigner = (function () {
         if (first) canvas.view.fit();
         else canvas.view.apply();
         _sdProtoSelect(_sdProto.selected);
+        _sdProtoPicWatch();
+    }
+
+    // ── The page picture (F1, F3) ──
+    // A frame shows its page as the Preview draws it: the Preview's own
+    // document for the tab's tree (system widgets from preview_widgets, the
+    // canvas's dark view), in a frame that runs no script and takes no
+    // pointer or focus (PGProtoHotspots.PIC_FRAME, picHead()), 1280 wide,
+    // cut at 1600 and scaled into the frame. Made when it comes within
+    // SD_PROTO_PIC.margin of the view; the sketch stands in while it loads
+    // and when it cannot be drawn. A drawing of the map makes the pictures
+    // again, a tab whose document is unchanged from its cache without a
+    // request.
+
+    // The picture's box: the sketch underneath (the loading state), the
+    // fade and the foot over the picture's bottom.
+    function _sdProtoPicBox(item) {
+        var box = _sdProtoThumb(item);
+        box.classList.add('sd-proto-pic');
+        box.style.height = item.thumb + 'px';
+        box.setAttribute('data-pic', item.id);
+        box.appendChild(_sdProtoEl('div', 'sd-proto-pic-fade'));
+        var foot = _sdProtoEl('div', 'sd-proto-pic-foot');
+        foot.hidden = true;
+        box.appendChild(foot);
+        _sdProto.pics.boxes[item.id] = box;
+        return box;
+    }
+
+    // The page markup of a page frame's picture with the widget markers and
+    // the link markers in, or null without the tab's tree.
+    function _sdProtoPicRaw(item) {
+        var p = _pgPageByKey(item.key);
+        var t = p ? _pgTreeOf(p) : null;
+        if (!t) return null;
+        var nameEl = document.querySelector('[name="name"]');
+        var bcEl = document.querySelector('[name="additional_body_classes"]');
+        _sdPreviewWidgetMarkers = true;
+        _sdPicMarkers = true;
+        _sdPicShared = 0;
+        try {
+            return generateHTML(nameEl ? nameEl.value.trim() : '', bcEl ? bcEl.value.trim() : '', t);
+        } finally {
+            _sdPreviewWidgetMarkers = false;
+            _sdPicMarkers = false;
+            _sdPicShared = 0;
+        }
+    }
+
+    // Drops the pictures before the frames are drawn again (and, with
+    // `all`, when the view closes): the observer, the queue, the live
+    // frames. A picture's widget request still out finishes on its own
+    // and is thrown away.
+    function _sdProtoPicReset(all) {
+        var P = _sdProto.pics;
+        P.gen++;
+        if (P.io) P.io.disconnect();
+        P.io = null;
+        P.wait = [];
+        P.near = {};
+        Object.keys(P.live).forEach(function (id) {
+            var pic = P.live[id];
+            if (pic.frame && pic.job.stage === 'frame') pic.job.finish();
+            if (all && pic.frame && pic.frame.parentNode) pic.frame.parentNode.removeChild(pic.frame);
+        });
+        P.live = {};
+        P.boxes = {};
+    }
+
+    // Watches the drawn picture boxes: one coming within the margin of
+    // the view joins the queue.
+    function _sdProtoPicWatch() {
+        var P = _sdProto.pics;
+        var ui = _sdProto.ui;
+        if (!ui || typeof IntersectionObserver !== 'function') return;
+        var gen = P.gen;
+        P.io = new IntersectionObserver(function (entries) {
+            if (gen !== P.gen) return;
+            entries.forEach(function (e) {
+                var id = e.target.getAttribute('data-pic');
+                P.near[id] = e.isIntersecting;
+                if (e.isIntersecting && !P.live[id] && P.wait.indexOf(id) < 0) P.wait.push(id);
+            });
+            _sdProtoPicPump();
+        }, { root: ui.viewport, rootMargin: SD_PROTO_PIC.margin + 'px' });
+        Object.keys(P.boxes).forEach(function (id) { P.io.observe(P.boxes[id]); });
+    }
+
+    // Starts the waiting pictures still near the view, up to the cap of
+    // those loading at once.
+    function _sdProtoPicPump() {
+        var P = _sdProto.pics;
+        while (P.loading < SD_PROTO_PIC.loading && P.wait.length) {
+            var id = P.wait.shift();
+            var box = P.boxes[id];
+            var item = _sdProto.byId[id];
+            if (box && item && P.near[id] && !P.live[id]) _sdProtoPicMake(item, box);
+        }
+    }
+
+    // One picture: its document (from the cache when the markup and the
+    // widgets asked for are unchanged), the frame, then on load the
+    // markers read for the foot. On any failure the sketch stays.
+    function _sdProtoPicMake(item, box) {
+        var P = _sdProto.pics;
+        var H = window.PGProtoHotspots;
+        var gen = P.gen;
+        var raw = _sdProtoPicRaw(item);
+        if (raw === null) return;
+        var payload = _sdPreviewWidgetPayload(raw, item.pageId || 0);
+        var key = raw + '\n' + (payload ? JSON.stringify(payload) : '') + '\n' + (canvasDarkTheme ? 'dark' : 'light');
+        var job = { stage: 'doc', done: false };
+        var pic = { box: box, frame: null, job: job, marks: [] };
+        var timer = 0;
+        job.finish = function () {
+            if (job.done) return;
+            job.done = true;
+            clearTimeout(timer);
+            P.loading--;
+            _sdProtoPicPump();
+        };
+        P.loading++;
+        P.live[item.id] = pic;
+
+        var show = function (doc) {
+            if (gen !== P.gen || !doc) { job.finish(); return; }
+            P.cache[item.id] = { key: key, doc: doc };
+            var f = document.createElement('iframe');
+            Object.keys(H.PIC_FRAME).forEach(function (name) { f.setAttribute(name, H.PIC_FRAME[name]); });
+            f.className = 'sd-proto-pic-page';
+            f.style.transform = 'scale(' + H.picSize().scale + ')';
+            f.addEventListener('load', function () {
+                if (gen !== P.gen) { job.finish(); return; }
+                _sdProtoPicLoaded(item, pic);
+                job.finish();
+                _sdProtoPicCap();
+            });
+            job.stage = 'frame';
+            // A picture that never loads frees its place in the queue.
+            timer = setTimeout(job.finish, 15000);
+            pic.frame = f;
+            f.srcdoc = doc;
+            box.insertBefore(f, box.firstChild);
+        };
+
+        var hit = P.cache[item.id];
+        if (hit && hit.key === key) { show(hit.doc); return; }
+        if (!payload) { show(H.picDoc(_sdPreviewDocHtml({}, raw))); return; }
+        _pgApiPost('preview_widgets', payload).then(function (res) {
+            var ok = !!(res && res.status === 'success' && res.html);
+            show(gen === P.gen ? H.picDoc(_sdPreviewDocHtml(ok ? res.html : {}, raw)) : '');
+        }, function () {
+            show(gen === P.gen ? H.picDoc(_sdPreviewDocHtml({}, raw)) : '');
+        });
+    }
+
+    // A loaded picture: its markers read in page pixels (kept for the
+    // marks on the picture), the fade when the page runs past the cut,
+    // the foot's count of links it cannot show.
+    function _sdProtoPicLoaded(item, pic) {
+        var H = window.PGProtoHotspots;
+        var doc = null;
+        try { doc = pic.frame.contentDocument; } catch (e) { doc = null; }
+        if (!doc || !doc.documentElement) return;
+        pic.marks = Array.prototype.map.call(doc.querySelectorAll('[data-pg-pic]'), function (el) {
+            var r = el.getBoundingClientRect();
+            return { pic: el.getAttribute('data-pg-pic'), left: r.left, top: r.top, w: r.width, h: r.height };
+        });
+        pic.box.classList.add('sd-proto-pic-on');
+        pic.box.classList.toggle('sd-proto-pic-long', doc.documentElement.scrollHeight > H.picSize().cut);
+        var foot = H.picFoot(item.rows, pic.marks, item.sharedId);
+        var footEl = pic.box.querySelector('.sd-proto-pic-foot');
+        if (!footEl) return;
+        footEl.hidden = !foot.below;
+        footEl.textContent = foot.below === 1 ? _sdT('+1 link below') : _sdT('+{var:1} links below', foot.below);
+    }
+
+    // Past the cap of pictures alive, the ones farthest from the view's
+    // centre go back to their sketch.
+    function _sdProtoPicCap() {
+        var P = _sdProto.pics;
+        var ids = Object.keys(P.live).filter(function (id) { return P.live[id].frame && P.live[id].job.done; });
+        if (ids.length <= SD_PROTO_PIC.alive || !_sdProto.ui) return;
+        var vr = _sdProto.ui.viewport.getBoundingClientRect();
+        var order = window.PGProtoHotspots.picOrder(ids.map(function (id) {
+            var r = P.live[id].box.getBoundingClientRect();
+            return { id: id, x: r.left, y: r.top, w: r.width, h: r.height };
+        }), { x: vr.left, y: vr.top, w: vr.width, h: vr.height });
+        order.slice(SD_PROTO_PIC.alive).forEach(function (id) {
+            var pic = P.live[id];
+            if (pic.frame && pic.frame.parentNode) pic.frame.parentNode.removeChild(pic.frame);
+            pic.box.classList.remove('sd-proto-pic-on', 'sd-proto-pic-long');
+            var footEl = pic.box.querySelector('.sd-proto-pic-foot');
+            if (footEl) footEl.hidden = true;
+            delete P.live[id];
+        });
     }
 
     // The tab a frame's links are edited on: a page's own, a shared

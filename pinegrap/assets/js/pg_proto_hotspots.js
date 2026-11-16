@@ -914,9 +914,10 @@
             group[1].forEach(function (frame) {
                 var rows = rowsOf(frame);
                 var bands = Array.isArray(frame.sketch) ? frame.sketch : [];
-                // A page, or a shared component once fetched, is drawn as
-                // its picture; the sketch stands in while it loads.
-                var pic = (group[0] === 'page') ? Array.isArray(frame.sketch) : !!frame.loaded;
+                // A page with a tree is drawn as its picture, the sketch
+                // standing in while it loads; a shared component keeps its
+                // sketch (a column of pictures would outgrow the grid).
+                var pic = (group[0] === 'page') && Array.isArray(frame.sketch);
                 var thumb = pic ? picSize().box : (bands.length ? FRAME.thumb : 0);
                 var item = {
                     id: (group[0] === 'page') ? 'p:' + frame.key : 's:' + frame.id,
@@ -1148,6 +1149,42 @@
         });
 
         return { links: links, below: below };
+    }
+
+    // The attributes of a picture's frame: only `allow-same-origin`, so the
+    // view reads its document and no script of it runs; it takes no focus
+    // and no pointer and says nothing to a screen reader (the rows list the
+    // links).
+    var PIC_FRAME = { sandbox: 'allow-same-origin', tabindex: '-1', 'aria-hidden': 'true', scrolling: 'no', width: '1280', height: '1600', style: 'pointer-events:none' };
+
+    // What a picture's document gets first in its <head>: a second lock in
+    // case the sandbox ever allows scripts (no script, plugin, frame, media
+    // or form post), and the stilling rule (same-origin frames share the
+    // editor's main thread, so nothing in them moves). An embedded frame or
+    // player keeps its place but shows no "blocked" box.
+    function picHead() {
+        return '<meta http-equiv="Content-Security-Policy" content="script-src \'none\'; object-src \'none\'; frame-src \'none\'; media-src \'none\'; form-action \'none\'">'
+            + '<style>*,*::before,*::after{animation:none!important;transition:none!important}'
+            + 'html,body{overflow:hidden!important}'
+            + 'iframe,embed,object,video,audio{visibility:hidden!important}</style>';
+    }
+
+    // A preview document as a picture's: its <script> elements left out
+    // (none would run; each would log a blocked script and be parsed for
+    // nothing), picHead() right after its <head>, before anything it
+    // loads. '' for a document without one.
+    function picDoc(html) {
+        html = String(html || '').replace(/<script\b[\s\S]*?<\/script\s*>/gi, '');
+
+        var m = /<head(\s[^>]*)?>/i.exec(html);
+
+        if (!m) {
+            return '';
+        }
+
+        var at = m.index + m[0].length;
+
+        return html.substring(0, at) + picHead() + html.substring(at);
     }
 
     // The ids of `boxes` ({ id, x, y, w, h }) nearest the centre of `view`
@@ -1425,6 +1462,9 @@
         picMarks: picMarks,
         picFoot: picFoot,
         picOrder: picOrder,
+        PIC_FRAME: PIC_FRAME,
+        picHead: picHead,
+        picDoc: picDoc,
         placeKey: placeKey,
         places: places,
         rowY: rowY,

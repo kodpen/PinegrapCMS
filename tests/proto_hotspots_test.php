@@ -335,7 +335,7 @@ function test_proto_hotspots_layout()
 	pg_assert_same(array(
 		array('p:p1', 408, 0, 44 + 5 * 30 + 10, array('h0 About tab', 'h1 https://x.org/ external', 'h2 Home tab', 'h3 Private hidden', 'h4 Gone broken')),
 		array('p:p2', 752, 0, 44 + 30 + 10, array()),
-		array('s:5', 10, 900, 44 + 298 + 3 * 30 + 10, array('h0 X external', 'h1 Old broken', 'h2 Top anchor')),
+		array('s:5', 10, 900, 44 + 3 * 30 + 10, array('h0 X external', 'h1 Old broken', 'h2 Top anchor')),
 	), $result['frames'], 'the frames, their rows and places');
 	pg_assert_same(array(
 		array('c:2', 'anchor', '#top', 1160, 0),
@@ -698,12 +698,12 @@ function test_proto_hotspots_sketch_boxes_fill_the_box()
 }
 
 // A page frame is its head and its picture (1280 wide, cut at 1600, scaled
-// to 228 units); a shared frame too once fetched; one not fetched keeps the
+// to 228 units); a shared frame keeps its sketch strip, one not fetched the
 // head alone. The rows' ports sit below the picture.
 function test_proto_hotspots_layout_makes_room_for_the_picture()
 {
 	$out = proto_hotspots_test_node('var d = { pages: [{ key: "p1", name: "a", sketch: [{ role: "block", weight: 1, links: 0 }], hotspots: [{ nodeId: "n", source: "href", href: "/x", label: "X", mark: "page" }] }, { key: "p2", name: "b", sketch: [], hotspots: [] }, { key: "p3", name: "c", sketch: null, hotspots: [] }],'
-		. ' shared: [{ id: 4, name: "s", loaded: true, pages: 1, sketch: [], hotspots: [] }, { id: 5, name: "t", loaded: false, pages: 1, sketch: null, hotspots: [] }] };'
+		. ' shared: [{ id: 4, name: "s", loaded: true, pages: 1, sketch: [{ role: "block", weight: 1, links: 0 }], hotspots: [] }, { id: 5, name: "t", loaded: false, pages: 1, sketch: null, hotspots: [] }] };'
 		. ' var l = H.layout(d, {}); var f = l.frames;'
 		. ' out = { size: H.picSize(), pic: f.map(function (x) { return x.pic; }), thumb: f.map(function (x) { return x.thumb; }), h: [f[0].h, f[1].h, f[2].h], port: H.rowY(f[0], "h0"), plain: H.rowY(f[2], "h0") };');
 
@@ -712,8 +712,8 @@ function test_proto_hotspots_layout_makes_room_for_the_picture()
 	}
 
 	pg_assert_same(array('w' => 228, 'h' => 285, 'scale' => 0.178125, 'box' => 298, 'page' => 1280, 'cut' => 1600), $out['size'], 'the picture: 1280 x 1600 at 228 wide, its box 13 more');
-	pg_assert_same(array(true, true, false, true, false), $out['pic'], 'pages with a tree and fetched shared parts get a picture');
-	pg_assert_same(array(298, 298, 0, 298, 0), $out['thumb'], 'a picture frame makes room for the box, an empty page too');
+	pg_assert_same(array(true, true, false, false, false), $out['pic'], 'pages with a tree get a picture');
+	pg_assert_same(array(298, 298, 0, 84, 0), $out['thumb'], 'a picture frame makes room for the box, an empty page too; a shared frame keeps the strip');
 	pg_assert_same(array(44 + 298 + 30 + 10, 44 + 298 + 30 + 10, 44 + 30 + 10), $out['h'], 'its height grows by it');
 	pg_assert_same(44 + 298 + 15, $out['port'], 'its row ports sit below the picture');
 	pg_assert_same(44 + 15, $out['plain'], 'a frame without a tree is unchanged');
@@ -925,4 +925,91 @@ function test_proto_hotspots_bind_data_offers_a_page_outside_widgets()
 	pg_assert_contains("var linkable = !!(window.PGProtoHotspots && window.PGProtoHotspots.pageLinkable(node));", $source, 'the panel asks the collector which links may be kept by id');
 	pg_assert_contains("var extra = (withPage && current === SW_PAGE_LINK_TOKEN) ? _sdPageLinkPageRow(node) : '';", $source, 'the page select sits under the chosen option');
 	pg_assert_contains("params: inWidget ? [{ name: '', token: '' }] : []", $source, 'outside a widget no value row is started');
+}
+
+// A picture's frame: exactly `allow-same-origin`, no focus, no pointer,
+// hidden from screen readers; its document's head locks scripts, plugins,
+// frames, media and form posts out and stills every animation, first.
+function test_proto_hotspots_picture_frame_and_head()
+{
+	$out = proto_hotspots_test_node('out = { frame: H.PIC_FRAME, head: H.picHead(), doc: H.picDoc("<!DOCTYPE html><html><head>\n<meta charset=\"utf-8\"><link rel=\"stylesheet\" href=\"/a.css\"><script>var a = \"<\\/script>\";</script></head><body><header>x</header><SCRIPT src=\"/b.js\" defer></SCRIPT></body></html>"), none: H.picDoc("<p>x</p>") };');
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same('allow-same-origin', $out['frame']['sandbox'], 'the sandbox allows nothing but reading the document');
+	pg_assert_same('-1', $out['frame']['tabindex'], 'no focus');
+	pg_assert_same('true', $out['frame']['aria-hidden'], 'hidden from screen readers');
+	pg_assert_same('pointer-events:none', $out['frame']['style'], 'no pointer');
+
+	foreach (array("script-src 'none'", "object-src 'none'", "frame-src 'none'", "media-src 'none'", "form-action 'none'") as $directive) {
+		pg_assert_true(strpos($out['head'], $directive) !== false, 'the CSP carries ' . $directive);
+	}
+
+	pg_assert_true(strpos($out['head'], 'animation:none!important;transition:none!important') !== false, 'the stilling rule');
+	pg_assert_same(0, strpos($out['doc'], '<!DOCTYPE html><html><head>' . $out['head'] . "\n<meta charset"), 'the head goes first, before what the page loads');
+	pg_assert_same(1, substr_count($out['doc'], 'Content-Security-Policy'), 'once, not into <header>');
+	pg_assert_same(0, stripos($out['doc'], '<script') === false ? 0 : 1, 'no script element is left');
+	pg_assert_true(strpos($out['doc'], '<header>x</header></body>') !== false, 'the rest of the page stays');
+	pg_assert_same('', $out['none'], 'no head, no picture');
+}
+
+// The source of one function of style_designer.src.js (four-space indent).
+function proto_hotspots_test_designer_fn($name)
+{
+	$source = str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js'));
+	$at = strpos($source, "\n    function " . $name . '(');
+
+	if ($at === false) {
+		return '';
+	}
+
+	$end = strpos($source, "\n    }\n", $at);
+
+	return ($end === false) ? '' : substr($source, $at, $end + 7 - $at);
+}
+
+// The link marker is written only for the picture: set and cleared in
+// try/finally around the picture's own build, so a build that throws
+// leaves it off, and the emitter writes it only while it is on.
+function test_proto_hotspots_picture_marker_flag_never_reaches_save()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	$raw = proto_hotspots_test_designer_fn('_sdProtoPicRaw');
+	$mark = proto_hotspots_test_designer_fn('_sdPicMarkHtml');
+
+	pg_assert_true($raw !== '' && $mark !== '', 'both functions found');
+	pg_assert_same(1, substr_count($source, '_sdPicMarkers = true'), 'one place turns the marker on');
+	pg_assert_true(strpos($source, 'if (_sdPicMarkers && !sink && h) h = _sdPicMarkHtml(n, h);') !== false, 'the emitter marks only while it is on');
+
+	$out = proto_hotspots_test_node('var _sdPreviewWidgetMarkers = false, _sdPicMarkers = false, _sdPicShared = 0, _sharedCache = {}, seen = null;'
+		. ' var document = { querySelector: function () { return null; } };'
+		. ' function _pgPageByKey() { return { key: "k" }; } function _pgTreeOf() { return { children: [] }; }'
+		. ' function generateHTML() { seen = [_sdPicMarkers, _sdPreviewWidgetMarkers]; _sdPicShared = 4; throw new Error("x"); }'
+		. ' function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;"); }'
+		. $raw . $mark
+		. ' var threw = false; try { _sdProtoPicRaw({ kind: "page", key: "k" }); } catch (e) { threw = true; }'
+		. ' var link = { _id: "l1", type: "content", props: { contentType: "link", href: "/go" } };'
+		. ' var text = { _id: "t1", type: "content", props: { contentType: "text", text: "<p><a href=\"/a\">A</a> <a href=\"/b\">B</a></p>" } };'
+		. ' var plain = { _id: "p1", type: "content", props: { contentType: "text", text: "Hi" } };'
+		. ' var during = _sdPicMarkHtml(link, "  <a class=\"x\" href=\"/go\">Go</a>\n");'
+		. ' _sdPicShared = 9; var shared = _sdPicMarkHtml(link, "<a href=\"/go\">Go</a>"); _sdPicShared = 0;'
+		. ' out = { threw: threw, seen: seen, after: [_sdPicMarkers, _sdPreviewWidgetMarkers, _sdPicShared], own: during, shared: shared,'
+		. ' text: _sdPicMarkHtml(text, "<div class=\"t\"><p><a href=\"/a\">A</a> <a href=\"/b\">B</a></p></div>"),'
+		. ' extra: _sdPicMarkHtml(text, "<div><a href=\"/z\">Z</a><p><a href=\"/a\">A</a> <a href=\"/b\">B</a></p></div>"),'
+		. ' plain: _sdPicMarkHtml(plain, "<p>Hi</p>") };');
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_true($out['threw'], 'the build threw');
+	pg_assert_same(array(true, true), $out['seen'], 'both markers were on during the build');
+	pg_assert_same(array(false, false, 0), $out['after'], 'and are off after it threw');
+	pg_assert_same("  <a data-pg-pic=\"l1\" class=\"x\" href=\"/go\">Go</a>\n", $out['own'], 'a link\'s own tag');
+	pg_assert_same('<a data-pg-pic="s9:l1" href="/go">Go</a>', $out['shared'], 'inside a shared component');
+	pg_assert_same('<div class="t"><p><a data-pg-pic="t1.0" href="/a">A</a> <a data-pg-pic="t1.1" href="/b">B</a></p></div>', $out['text'], 'each link of a text by its index');
+	pg_assert_same('<div><a href="/z">Z</a><p><a href="/a">A</a> <a href="/b">B</a></p></div>', $out['extra'], 'markup with links the text lacks gets none');
+	pg_assert_same('<p>Hi</p>', $out['plain'], 'no link, unchanged');
 }
