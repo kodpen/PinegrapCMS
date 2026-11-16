@@ -19,9 +19,9 @@ description: The Workspace kit's drawer form parts in look A (formParts, h.form,
 - `save(text)` `pg-button pg-button-fill pg-button-sm`; `remove(text)` `pg-button pg-button-danger pg-button-sm me-auto`.
 
 ## How do the two drawers line up? (#9909)
-- One order: Title; First day and Last day (a pair); All day; Start time and End time (a pair); the drawer's own fields; Note; Customer. "Add to the plan" puts Kind above Title, and Who (a `pg-seg` `ws-plan-who`: People, Department, Company as each is offered today, then the people picker or the Department select), then after Customer the meeting link and the Meeting note button.
+- The shared look and its rule: `workspace-plan-drawers-look.md`. One order: Title; First day and Last day (a pair); All day; Start time and End time (a pair); the drawer's own fields; Note; Customer. "Add to the plan" puts Kind above Title, and Who (a `pg-seg` `ws-plan-who`: People, Department, Company as each is offered today, then the people picker or the Department select), then after Customer the meeting link and the Meeting note button.
 - One wording: "Add to the plan" says "First day" (`first_day`), "Start time" and "End time" (`start_time`, `end_time`, used by no other form); the task form keeps "Starts" (`start_date`).
-- The line under the header (`ws-plan-private`): "Add to the plan" shows `bi-people` and who sees the item on the Planning Board, following Who (`event_where_people`, `_dept`, `_company`).
+- The line under the header (`ws-plan-private`): "Add to the plan" shows `bi-people` and where the item goes, following Who (`event_where_people`, `_dept`, `_company`).
 - The footer: Delete (`remove()`) at the left on an existing item, Save (`save()`) at the right; no Cancel, the cross or Esc closes it.
 - The meeting link row `.ws-plan-meeting` (box, Jitsi, Join) wraps on a phone; "Repeat every" is `.ws-plan-every`, the number and its unit (`pg-text-meta`) on one line. A button in a field's place keeps its width (`.ws-plan-field > .pg-button`).
 - What is posted to `ws_event_save` / `ws_event_delete` is unchanged; no caller of `eventForm()` changed.

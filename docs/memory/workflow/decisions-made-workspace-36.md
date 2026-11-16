@@ -9,7 +9,7 @@ description: Decisions made, workspace part 36 (2026-11-16 on): the two plan dra
 ## Do the "Add to the plan" and the "New plan" drawers look the same? (owner, 2026-11-16, to the architect)
 - Yes. His words, with a picture of the "New plan" drawer: "evet planını yaz, iki çekmece aynı görünsün" and "ayrıca bu çekmecede bir sorun var. bileşenleri iyi ama modern".
 - Right before it he asked "panoda plana ekle ile takvimlerimdeki yeni plan ayrı motor mu kullanıyor?". They do, and stay so: a plan is never a `ws_events` row (his decision of 2026-11-14, `workspace/workspace-personal-calendar-rules.md`). Only the look becomes one.
-- Plan: `plans/plan-drawers-one-look.md`.
+- What was built and the rule it left: `workspace/workspace-plan-drawers-look.md` (#9887, #9909).
 
 ## What is the architect's reading here, not his words?
 - The "New plan" drawer is the model and "Add to the plan" is brought to it.
