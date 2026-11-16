@@ -870,9 +870,12 @@
         function drawChips() {
             h.clear(chips);
 
+            // With no highlight at all the empty line stands alone.
+            chips.classList.toggle('d-none', !counts.every);
+
             [['', 'hl_mine_all'], ['all', 'hl_mine_everyone'], ['me', 'hl_mine_only_me']].forEach(function (option) {
                 var on = option[0] === filter;
-                var chip = h.button('btn btn-sm rounded-pill ' + (on ? 'btn-solid theme-secondary' : 'btn-outline theme-secondary'), h.t(option[1]));
+                var chip = h.button('btn btn-sm rounded-pill ' + (on ? 'btn-solid theme-primary' : 'btn-outline theme-secondary'), h.t(option[1]));
 
                 chip.setAttribute('aria-pressed', on ? 'true' : 'false');
                 chip.appendChild(h.el('span', 'ms-2 ws-hl-mine-count', String(counts[countKey(option[0])] || 0)));
@@ -902,7 +905,7 @@
             var link = h.el('a', 'ws-hl-mine-link ws-grow');
             var quote = h.el('div', 'ws-hl-mine-quote');
             var mark = h.el('mark', 'ws-hl' + (row.scope === 'me' ? ' ws-hl-me' : ''), row.quote);
-            var meta = h.el('div', 'small fg-secondary d-flex flex-wrap gap-x-3 gap-y-1 mt-1');
+            var meta = h.el('div', 'small fg-secondary d-flex flex-wrap align-items-center column-gap-5 row-gap-1 mt-1');
             var when = row.message_at ? new Date(row.message_at * 1000).toLocaleDateString((h.cfg && h.cfg.locale) || undefined) : '';
 
             box.type = 'checkbox';
@@ -932,7 +935,8 @@
             link.appendChild(quote);
             meta.appendChild(h.el('span', 'text-truncate', placeLabel(row)));
 
-            if (row.writer) {
+            // A chat is named after the person: the writer is not said twice.
+            if (row.writer && row.writer !== placeLabel(row)) {
                 meta.appendChild(h.el('span', '', row.writer));
             }
 
