@@ -66,6 +66,12 @@ function test_workspace_message_ref_js_card()
 	pg_assert_contains("text.scrollHeight > text.clientHeight + 1", $body, 'a long message is cut');
 	pg_assert_contains("t('mr_go')", $body, 'Go to the message');
 
+	// A tap's card is not closed by the mouse events the tap brings when the
+	// layout moves the anchor; it closes on a tap outside, Escape or a scroll.
+	$hook_frame = workspace_agent_card_js_test_function('cardHook');
+	pg_assert_contains("touched = (event.pointerType === 'touch');", $hook_frame, 'a tap is told apart');
+	pg_assert_contains('if (!touched) {', $hook_frame, 'leaving closes only a hover\'s card');
+
 	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css');
 	pg_assert_contains('.pg-card.ws-agent-card.ws-msgref-card', $css, 'the float frame of the agent card');
 	pg_assert_contains('.ws-msgref-text.ws-msgref-cut', $css);

@@ -3823,13 +3823,25 @@
             });
         }
 
+        // A finger never leaves the anchor: the mouse events a tap brings
+        // with it would close the card as soon as the layout moves the
+        // anchor (a message's tool bar opening under it). A tap's card
+        // closes on a tap outside, Escape or a scroll.
+        var touched = false;
+
+        target.addEventListener('pointerdown', function (event) {
+            touched = (event.pointerType === 'touch');
+        });
         target.addEventListener('mouseenter', function () {
             clearTimeout(agentCardOpen.timer);
             agentCardOpen.timer = setTimeout(open, 350);
         });
         target.addEventListener('mouseleave', function () {
             clearTimeout(agentCardOpen.timer);
-            agentCardOpen.timer = setTimeout(agentCardClose, 250);
+
+            if (!touched) {
+                agentCardOpen.timer = setTimeout(agentCardClose, 250);
+            }
         });
         target.addEventListener('click', function (event) {
             event.preventDefault();
