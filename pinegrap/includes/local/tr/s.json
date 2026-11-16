@@ -4924,6 +4924,7 @@
     "Status checks": "Durum kontrolleri",
     "Status code": "Durum kodu",
     "Status code (requested, approved, rejected, shipped, received, refunded, closed)": "Durum kodu (requested, approved, rejected, shipped, received, refunded, closed)",
+    "Status colour (warning, success or secondary)": "Durum rengi (warning, success ya da secondary)",
     "Status column title": "Durum sütunu başlığı",
     "Status it moves to": "Geçtiği durum",
     "Status line read out to screen readers": "Ekran okuyucuların okuduğu durum satırı",
