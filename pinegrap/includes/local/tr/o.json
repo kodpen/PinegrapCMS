@@ -959,6 +959,7 @@
     "Only a submitted form brings a customer in.": "Müşteriyi yalnızca gönderilen bir form getirir.",
     "Only a table on InnoDB is rebuilt this way; a table on MyISAM gets a smaller file when it is moved to InnoDB.": "Bu yolla yalnız InnoDB'deki tablo yeniden kurulur; MyISAM'daki tablonun dosyası InnoDB'ye taşınınca küçülür.",
     "Only a team devices session can register a device for native push.": "Yerel anlık bildirime yalnızca bir ekip cihazı oturumu cihaz kaydedebilir.",
+    "Only a team member who sends campaigns can write to a contact group.": "Bir kişi grubuna yalnız kampanya gönderen bir ekip üyesi yazabilir.",
     "Only a text layer takes text, at most 2000 letters.": "Metin yalnızca metin katmanına yazılır, en fazla 2000 harf.",
     "Only a text or number column can be the key.": "Yalnızca metin ya da sayı sütunu anahtar olabilir.",
     "Only a timed link can be given a new time.": "Yalnız süreli bir linke yeni süre verilebilir.",
