@@ -13043,14 +13043,6 @@ b.ws-agent-card-anchor:focus-visible {
   padding-top: .85rem;
   border-top: 1px solid var(--pg-border-color-translucent);
 }
-.ws-info-qh-title {
-  margin-bottom: .2rem;
-  font-size: .85rem;
-  font-weight: 600;
-}
-.ws-info-qh .form-label {
-  font-size: .8rem;
-}
 .ws-info-qh-actions {
   display: flex;
   flex-wrap: wrap;
