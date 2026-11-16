@@ -27,6 +27,7 @@ description: Plan content-review, steps CH1 to CH5: the table and its rules, the
   - Tests: one announce per item and day, none for an item gone or not set, the task's fields, the open task handed back, no button with the Workspace off.
   - Features: V14, V15, V16.
   - Architect (6410): the announce first claims the row with one UPDATE writing `announced_on = review_on` only where `announced_on` is NULL or differs, and announces only when that write changed a row; a new date (Mark reviewed, a set date) separates them again. Today goes in as `pg_content_review_today()`, never `CURDATE()`.
+  - Done: #10008 with V14 and V15 (`platform/content-review-announce.md`). Architect (2026-11-16, agent channel message 7026): the gallery template (V16) moves to CH3b, after a general "assign to the person the event names" setting on flow task boxes. Owner (poll 102, message 7036): the row menu's "Make a task" stands as shown.
 
 - CH3b (S) after CH3: the task box setting "the person the event names" (`steps.php`, `workspace_flow.js`), then the gallery template; pictures to the architect (`workflow/decisions-made-product-66.md`).
 

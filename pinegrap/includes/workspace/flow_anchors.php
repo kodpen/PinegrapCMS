@@ -326,6 +326,8 @@ function ws_flow_event_outputs()
         'campaign.sent'          => array($value('id', 'number', lang('Campaign')), $value('channel', 'text', lang('Channel')), $value('type', 'text', lang('Type'))),
         'page.created'           => array($value('name', 'text', lang('Page'))),
         'page.updated'           => array($value('name', 'text', lang('Page'))),
+        'content.review_due'     => array($value('kind', 'text', lang('Kind')), $value('name', 'text', lang('Name')), $value('user_id', 'number', lang('Assigned person')),
+            $value('person', 'text', lang('The name of the assigned person')), $value('review_on', 'text', lang('Review by'))),
         'calendar_event.reserved' => array($value('recurrence_number', 'number', lang('Repeat')), $value('quantity', 'number', lang('Quantity')), $value('order_id', 'number', lang('Order')), $order, $value('contact_id', 'number', lang('Contact')),
             $value('start_at', 'text', lang('The reserved start'))),
         'booking.created'        => $booking,

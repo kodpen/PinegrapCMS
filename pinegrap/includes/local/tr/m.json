@@ -164,6 +164,7 @@
     "Make a task": "Göreve dönüştür",
     "Make a task of it": "Göreve dönüştür",
     "Make a task repeat": "Bir görevi tekrarlayın",
+    "Make a task works on one item at a time.": "Görev yap bir seferde tek öğe için çalışır.",
     "Make a template": "Bir şablon hazırlayın",
     "Make a template of this channel": "Bu kanaldan şablon yap",
     "Make a token on {var:1} and paste it here. A read-only one is enough for the tools that read.": "{var:1} üzerinde bir jeton oluşturup buraya yapıştırın. Okuyan araçlar için yalnızca okuma izinli bir jeton yeterlidir.",
