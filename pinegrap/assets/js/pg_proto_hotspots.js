@@ -817,7 +817,9 @@
     }
 
     // The sizes of what layout() places, in canvas units.
-    var FRAME = { w: 248, head: 44, thumb: 84, row: 30, pad: 10, chipW: 200, chipH: 36, chipGap: 12 };
+    // `pic`: a page's picture, drawn 1280 wide and cut 1600 high, scaled to
+    // `inner` units inside a box with the thumbnail's padding and border.
+    var FRAME = { w: 248, head: 44, thumb: 84, row: 30, pad: 10, chipW: 200, chipH: 36, chipGap: 12, pic: { page: 1280, cut: 1600, inner: 228, edge: 13 } };
 
     // How layout() arranges the frames: eight a row, the gap between frames
     // and between rows, a section heading's height, and the gap between a
@@ -912,7 +914,10 @@
             group[1].forEach(function (frame) {
                 var rows = rowsOf(frame);
                 var bands = Array.isArray(frame.sketch) ? frame.sketch : [];
-                var thumb = bands.length ? FRAME.thumb : 0;
+                // A page, or a shared component once fetched, is drawn as
+                // its picture; the sketch stands in while it loads.
+                var pic = (group[0] === 'page') ? Array.isArray(frame.sketch) : !!frame.loaded;
+                var thumb = pic ? picSize().box : (bands.length ? FRAME.thumb : 0);
                 var item = {
                     id: (group[0] === 'page') ? 'p:' + frame.key : 's:' + frame.id,
                     kind: group[0],
@@ -924,6 +929,7 @@
                     loaded: (group[0] === 'shared') ? frame.loaded : true,
                     rows: rows,
                     sketch: bands,
+                    pic: pic,
                     thumb: thumb,
                     x: 0,
                     y: 0,
@@ -1053,6 +1059,114 @@
         var index = parseInt(String(port).replace(/^h/, ''), 10) || 0;
 
         return FRAME.head + ((frame && frame.thumb) || 0) + index * FRAME.row + FRAME.row / 2;
+    }
+
+    // ── The page picture ──
+
+    // The picture's size in canvas units: w x h inside its box, the scale
+    // from page pixels, and the box's height (h with the padding and
+    // border, what layout() gives a frame as `thumb`).
+    function picSize() {
+        var p = FRAME.pic;
+        var scale = p.inner / p.page;
+
+        return { w: p.inner, h: Math.round(p.cut * scale), scale: scale, box: Math.round(p.cut * scale) + p.edge, page: p.page, cut: p.cut };
+    }
+
+    // The marker a picture's element carries for a link: the node's id, its
+    // n-th link of text or custom HTML as '<id>.<n>' (htmlLinks()' index),
+    // inside a shared component 's<shared id>:' before it. '' without an id.
+    function picMark(nodeId, index, sharedId) {
+        var id = (typeof nodeId === 'number' && isFinite(nodeId)) ? String(nodeId) : str(nodeId);
+
+        if (id === '') {
+            return '';
+        }
+
+        var shared = parseInt(sharedId, 10) || 0;
+        var n = (index === null || index === undefined || index === '') ? -1 : parseInt(index, 10);
+
+        return (shared > 0 ? 's' + shared + ':' : '') + id + (n >= 0 ? '.' + n : '');
+    }
+
+    // Which markers a node's own markup gets: `own` when its link is its
+    // own (href, the Attributes panel's href, a button), `text` the
+    // indexes of the links written in its text or custom HTML. Bootstrap
+    // toggles are no links (nodeLinks()).
+    function picMarks(node) {
+        var out = { own: false, text: [] };
+
+        nodeLinks(node).forEach(function (spot) {
+            if (spot.source === 'text') {
+                out.text.push(parseInt(spot.index, 10) || 0);
+            } else {
+                out.own = true;
+            }
+        });
+
+        return out;
+    }
+
+    // The foot of a frame's picture: of its rows that a picture marks (a
+    // link of the tree, not a menu or region), how many cannot be seen.
+    // `marks` are the picture's marked elements, { pic, top, w, h } in page
+    // pixels; a link is seen when one of its elements has a size and starts
+    // above the cut. A link with no element at all (hidden, not written)
+    // counts too. A page's frame reads no shared component's marker.
+    // Answers { links, below }.
+    function picFoot(rows, marks, sharedId) {
+        var seen = {};
+        var cut = FRAME.pic.cut;
+        var links = 0;
+        var below = 0;
+
+        (Array.isArray(marks) ? marks : []).forEach(function (m) {
+            if (isObject(m) && Number(m.w) > 0 && Number(m.h) > 0 && Number(m.top) < cut) {
+                seen[str(m.pic)] = true;
+            }
+        });
+
+        var counted = {};
+
+        (Array.isArray(rows) ? rows : []).forEach(function (row) {
+            if (!isObject(row) || ['href', 'attrs', 'btn', 'text'].indexOf(row.source) < 0) {
+                return;
+            }
+
+            var key = picMark(row.nodeId, row.source === 'text' ? row.index : null, sharedId);
+
+            if (key === '' || counted[key]) {
+                return;
+            }
+
+            counted[key] = true;
+            links++;
+
+            if (!seen[key]) {
+                below++;
+            }
+        });
+
+        return { links: links, below: below };
+    }
+
+    // The ids of `boxes` ({ id, x, y, w, h }) nearest the centre of `view`
+    // ({ x, y, w, h }) first, by the distance between centres; equal ones
+    // in the order given. A picture beyond the cap is dropped from the end.
+    function picOrder(boxes, view) {
+        var cx = Number(view && view.x) + Number(view && view.w) / 2;
+        var cy = Number(view && view.y) + Number(view && view.h) / 2;
+
+        return (Array.isArray(boxes) ? boxes : []).map(function (b, i) {
+            var dx = Number(b.x) + Number(b.w) / 2 - cx;
+            var dy = Number(b.y) + Number(b.h) / 2 - cy;
+
+            return { id: b.id, d: dx * dx + dy * dy, i: i };
+        }).sort(function (a, b) {
+            return (a.d - b.d) || (a.i - b.i);
+        }).map(function (e) {
+            return e.id;
+        });
     }
 
     // ── Drawing an arrow ──
@@ -1306,6 +1420,11 @@
         layout: layout,
         sketch: sketch,
         sketchBoxes: sketchBoxes,
+        picSize: picSize,
+        picMark: picMark,
+        picMarks: picMarks,
+        picFoot: picFoot,
+        picOrder: picOrder,
         placeKey: placeKey,
         places: places,
         rowY: rowY,
