@@ -119,7 +119,7 @@
 
             buf.width = Math.max(2, Math.round((l.width || 640) * k));
             buf.height = Math.max(2, Math.round((l.height || 360) * k));
-            st = this.clipStates[l.id] = { src: l.src, buf: buf, views: [], nodes: [], strips: [], want: null, asked: null, shown: null, busy: false };
+            st = this.clipStates[l.id] = { src: l.src, buf: buf, views: [], nodes: [], strips: [], want: null, asked: null, shown: null, sample: null, source: null, busy: false };
         }
 
         return st;
@@ -127,11 +127,17 @@
 
     // The frame at source time ms into the clip's canvases. One request at
     // a time per clip: while one decodes, the newest time waits and is
-    // asked for next, so playing and scrubbing never queue stale frames.
+    // asked for next, so playing and scrubbing never queue stale frames. A
+    // time whose sample is the one shown is not asked for again (the stage
+    // ticks faster than most videos change frame).
     Editor.prototype.clipDraw = function (l, ms) {
-        var self = this, st = this.clipState(l);
+        var self = this, st = this.clipState(l), sample = st.source ? M.videoSeek(st.source.track, Math.round(ms * 1000)) : null;
 
         st.want = ms;
+
+        if (!st.busy && sample && (sample.frame === st.sample)) {
+            st.shown = ms;
+        }
 
         if (st.busy || (ms === st.shown)) {
             return;
@@ -140,6 +146,9 @@
         st.busy = true;
         st.asked = ms;
         this.clipSource(l.src).then(function (source) {
+            st.source = source;
+            sample = M.videoSeek(source.track, Math.round(ms * 1000));
+
             return source.frameAt(ms);
         }).then(function (frame) {
             if (!frame) {
@@ -149,6 +158,7 @@
             if (!self.finished) {
                 st.buf.getContext('2d').drawImage(frame, 0, 0, st.buf.width, st.buf.height);
                 st.shown = ms;
+                st.sample = sample ? sample.frame : null;
                 self.clipShow(st);
             }
 
