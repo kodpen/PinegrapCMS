@@ -25,7 +25,7 @@ function prototype_comments_test_facts($over = array())
 {
 	return array_merge(array(
 		'method' => 'POST', 'same_origin' => true, 'token_ok' => true, 'state' => 'ok',
-		'session' => true, 'password_ok' => true, 'team_ok' => true, 'allowed' => true, 'page_shown' => true,
+		'session' => true, 'team_ok' => true, 'allowed' => true, 'page_shown' => true,
 	), $over);
 }
 
@@ -55,7 +55,6 @@ function test_prototype_comments_door_refuses_each_gate()
 	pg_assert_same('link', pg_proto_comment_door(prototype_comments_test_facts(array('state' => 'gone'))));
 	pg_assert_same('link', pg_proto_comment_door(prototype_comments_test_facts(array('state' => 'unknown'))));
 	pg_assert_same('session', pg_proto_comment_door(prototype_comments_test_facts(array('session' => false))), 'another session');
-	pg_assert_same('session', pg_proto_comment_door(prototype_comments_test_facts(array('password_ok' => false))), 'password cookie gone');
 	pg_assert_same('session', pg_proto_comment_door(prototype_comments_test_facts(array('team_ok' => false))), 'signed out of a team link');
 	pg_assert_same('comments_off', pg_proto_comment_door(prototype_comments_test_facts(array('allowed' => false))));
 	pg_assert_same('page', pg_proto_comment_door(prototype_comments_test_facts(array('page_shown' => false))), 'a page the link does not show');
@@ -149,6 +148,7 @@ function test_prototype_comments_node_and_page_shapes()
 	pg_assert_same('node', pg_proto_comment_check(prototype_comments_test_input(array('node' => 'a"b')), $link)['error']);
 	pg_assert_same('node', pg_proto_comment_check(prototype_comments_test_input(array('node' => str_repeat('a', 65))), $link)['error']);
 	pg_assert_same('node', pg_proto_comment_check(prototype_comments_test_input(array('node' => null)), $link)['error']);
+	pg_assert_same('node', pg_proto_comment_check(prototype_comments_test_input(array('node' => "n1\n")), $link)['error'], 'a trailing line feed');
 	pg_assert_same('page', pg_proto_comment_check(prototype_comments_test_input(array('page_id' => '')), $link)['error']);
 	pg_assert_same('page', pg_proto_comment_check(prototype_comments_test_input(array('page_id' => '1x')), $link)['error']);
 	pg_assert_same('parent', pg_proto_comment_check(prototype_comments_test_input(array('parent' => '-3')), $link)['error']);
@@ -208,16 +208,48 @@ function test_prototype_comments_public_shape()
 	pg_assert_false(isset($public['resolved_by']));
 }
 
-function test_prototype_comments_stamp_changes_for_two_comments_in_one_second()
+function test_prototype_comments_stamp_is_the_newest_id()
 {
-	$first = array('id' => 41, 'page_id' => 120, 'created_at' => 1900000000);
-	$second = array('id' => 42, 'page_id' => 120, 'created_at' => 1900000000);
-
-	pg_assert_same(41, pg_proto_comments_stamp_of_rows(array($first)));
-	pg_assert_same(42, pg_proto_comments_stamp_of_rows(array($first, $second)), 'the same second, another stamp');
-	pg_assert_same(0, pg_proto_comments_stamp_of_rows(array()));
+	// Two comments written in the same second have two ids: the stamp reads
+	// the id, never created_at, so the second one changes it too.
 	pg_assert_same("SELECT MAX(id) FROM prototype_comments WHERE page_id IN (120,121)", pg_proto_comments_page_stamp_sql(array(120, '121', 0)));
+	pg_assert_same(false, strpos(pg_proto_comments_page_stamp_sql(120), 'created_at'));
 	pg_assert_same('', pg_proto_comments_page_stamp_sql(array()));
+}
+
+function test_prototype_comments_door_reads_the_mark_the_viewer_writes()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/prototype_links.php');
+
+	$link = array('id' => 7, 'token_hash' => str_repeat('a', 64));
+	$saved = isset($_SESSION) ? $_SESSION : null;
+	$_SESSION = array();
+
+	pg_assert_false(pg_proto_comment_session_opens($_SESSION, $link), 'no mark yet');
+
+	pg_proto_link_session_mark($link);
+
+	pg_assert_true(pg_proto_comment_session_opens($_SESSION, $link), 'the viewer\'s mark opens the door');
+	pg_assert_false(pg_proto_comment_session_opens($_SESSION, array('token_hash' => str_repeat('b', 64)) + $link), 'another token');
+	pg_assert_false(pg_proto_comment_session_opens($_SESSION, array('id' => 8) + $link), 'another link');
+
+	$_SESSION = $saved;
+}
+
+function test_prototype_comments_password_proof_is_the_session_mark()
+{
+	// The password's cookie is set for prototype.php alone, so the door never
+	// receives it: the proof is the session mark, written only past the
+	// password and team gates.
+	$door = (string) file_get_contents(PG_FUNCTIONS_DIR . '/prototype_comment.php');
+	$viewer = (string) file_get_contents(PG_FUNCTIONS_DIR . '/prototype.php');
+
+	pg_assert_same(false, strpos($door, 'pg_proto_link_pass_cookie_name'), 'the door reads no password cookie');
+	pg_assert_same(false, strpos($door, '$_COOKIE'), 'the door reads no cookie at all');
+	pg_assert_contains('pg_proto_comment_session_opens(isset($_SESSION)', $door);
+	pg_assert_true(strpos($viewer, 'pg_proto_link_session_mark($pg_proto_link)') > strpos($viewer, 'pg_proto_link_pass_valid('), 'the mark is written after the password gate');
+	pg_assert_true(strpos($viewer, 'pg_proto_link_session_mark($pg_proto_link)') > strpos($viewer, 'pg_proto_viewer_role_allowed('), 'and after the team gate');
+	pg_assert_same(1, substr_count($viewer, 'pg_proto_link_session_mark($'), 'written in one place');
 }
 
 function test_prototype_comments_burst_counts_only_counted_addresses()

@@ -8,6 +8,9 @@ description: Prototype comments: what a later change must keep (a deleted link t
 - A deleted page's comments stay until the design is deleted; accepted, no separate sweep.
 - Personal data erase: a guest's typed name ties to no person, so the erase engine cannot reach it; the designer deletes the comment or the link's comments by hand. A deleted user's staff answers get a `pg_privacy_erase_tables()` entry in PN3.
 
+## Why is the password's proof the session mark?
+- The password's proof is that mark, never the `pg_proto_pass_<id>` cookie: it is set for `prototype.php` alone and never reaches the door, so every password link's comment was refused (found in review of #9915). A browser without `Sec-Fetch-Site` (Safari before 16.4) sends `Origin: null` under the viewer's no-referrer policy and is refused 'origin'.
+
 ## Who approved the schema?
 - Architect (2026-11-16, agent channel message 6207): the table and `prototype_links.allow_comments` as built in 11.0.225; idx_page is `page_id, id` so the heartbeat's stamp is the newest id; no second column on the link (P15's hourly bell is a `waf_rate_exceeded()` counter on the link id).
 

@@ -11,9 +11,11 @@
  * token, and is taken only
  *  - as a POST from this site's own pages (pg_consent_answer_same_origin()),
  *  - with the session's form token, the one the viewer was drawn with,
- *  - from the session that opened the link past its gates
- *    (pg_proto_link_session_mark(): the token's hash), with the password's
- *    cookie still valid and, for a team link, still signed in as role 0-2,
+ *  - from the session that opened the link past its password and team gates
+ *    (pg_proto_comment_session_opens(): the mark prototype.php writes after
+ *    them, the token's hash; the password's cookie is set for prototype.php
+ *    alone and never reaches this file) and, for a team link, still signed
+ *    in as role 0-2,
  *  - for a link that opens now and has "Allow comments" on,
  *  - about a draft page of the link's design that the link shows,
  *  - within the burst per address (a burst counts a firewall offence) and the
@@ -81,17 +83,7 @@ if (($pg_pc_state === 'ok') && $pg_pc_facts['same_origin'] && $pg_pc_facts['toke
         $pg_pc_facts['state'] = 'gone';
     }
 
-    $pg_pc_mark = isset($_SESSION['software']['prototype_link_open'][(int) $pg_pc_link['id']]) ? $_SESSION['software']['prototype_link_open'][(int) $pg_pc_link['id']] : null;
-    $pg_pc_facts['session'] = pg_proto_link_session_opens($pg_pc_mark, $pg_pc_link);
-
-    $pg_pc_password_ok = true;
-
-    if ((string) $pg_pc_link['password_hash'] !== '') {
-        $pg_pc_cookie = pg_proto_link_pass_cookie_name($pg_pc_link['id']);
-        $pg_pc_password_ok = pg_proto_link_pass_valid(isset($_COOKIE[$pg_pc_cookie]) ? $_COOKIE[$pg_pc_cookie] : '', $pg_pc_link['id'], (string) $pg_pc_link['password_hash'], defined('ENCRYPTION_KEY') ? (string) ENCRYPTION_KEY : '', $pg_pc_now);
-    }
-
-    $pg_pc_facts['password_ok'] = $pg_pc_password_ok;
+    $pg_pc_facts['session'] = pg_proto_comment_session_opens(isset($_SESSION) ? $_SESSION : array(), $pg_pc_link);
     $pg_pc_facts['team_ok'] = ((string) $pg_pc_link['audience'] !== 'team')
         || (defined('USER_LOGGED_IN') && USER_LOGGED_IN && defined('USER_ROLE') && pg_proto_viewer_role_allowed(USER_ROLE));
     $pg_pc_facts['allowed'] = pg_proto_link_comments_allowed($pg_pc_link);

@@ -9,7 +9,8 @@ module: prototype_comments
 - A link takes comments only with "Allow comments" on (`prototype_links.allow_comments`, `pg_proto_link_comments_allowed()`); before the step runs `pg_proto_comments_ready()` is false and every write is refused.
 
 ## What does the guest's door check?
-- `prototype_comment.php`, POST only, JSON answer. The link is named by id (`l`), never by its token (P9). Gates in order (`pg_proto_comment_door()`): method, same origin (`pg_consent_answer_same_origin()`), the session's form token, the link opens now, this session opened the link (`pg_proto_link_session_opens()`) with its password cookie valid and, for a team link, still role 0-2, "Allow comments", a draft page of the design the link shows (`pg_proto_link_page_shown()`).
+- `prototype_comment.php`, POST only, JSON answer. The link is named by id (`l`), never by its token (P9).
+- Gates in order (`pg_proto_comment_door()`): method, same origin (`pg_consent_answer_same_origin()`), the session's form token, the link opens now, this session opened the link past its gates (`pg_proto_comment_session_opens()`: the mark `prototype.php` writes only after the password and team gates) and, for a team link, still role 0-2, "Allow comments", a draft page of the design the link shows (`pg_proto_link_page_shown()`).
 - Revoked, expired, gone and unknown share one answer ('link', 404), as the viewer gives.
 
 ## Which limits apply?

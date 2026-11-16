@@ -140,7 +140,7 @@ function pg_proto_comment_id($value)
  */
 function pg_proto_comment_node_shape($value)
 {
-    return is_string($value) && (bool) preg_match('/^[A-Za-z0-9_-]{1,64}$/', $value);
+    return is_string($value) && (bool) preg_match('/^[A-Za-z0-9_-]{1,64}$/D', $value);
 }
 
 /**
@@ -158,6 +158,26 @@ function pg_proto_comment_token_ok($session_token, $posted)
 }
 
 /**
+ * Whether a session opened a link past its gates: the mark prototype.php
+ * writes (pg_proto_link_session_mark()) only after the password and the team
+ * gate, holding the hash of the link's own token. It is the password's proof
+ * at the door: the cookie a right password leaves is set for prototype.php
+ * alone and never reaches prototype_comment.php, and a link's password is
+ * never changed after it is made.
+ *
+ * @param mixed $session    $_SESSION
+ * @param array $link       prototype_links row
+ * @return bool
+ */
+function pg_proto_comment_session_opens($session, $link)
+{
+    $id = (is_array($link) && isset($link['id'])) ? (int) $link['id'] : 0;
+    $mark = (is_array($session) && isset($session['software']['prototype_link_open'][$id])) ? $session['software']['prototype_link_open'][$id] : null;
+
+    return ($id > 0) && pg_proto_link_session_opens($mark, $link);
+}
+
+/**
  * Which gate of the door a post stops at, in the order they are passed; ''
  * when it passes them all. Pure: the request's facts are read by the caller.
  *
@@ -166,8 +186,8 @@ function pg_proto_comment_token_ok($session_token, $posted)
  * token_ok     pg_proto_comment_token_ok()
  * state        pg_proto_link_state() of the link named, 'gone' when its
  *              design is gone, 'unknown' when there is no such link
- * session      pg_proto_link_session_opens(): this session opened the link
- * password_ok  no password, or the cookie a right one left is valid
+ * session      pg_proto_comment_session_opens(): this session opened the
+ *              link past its password (the mark is written only there)
  * team_ok      not a team link, or a signed-in role 0-2
  * allowed      the link's "Allow comments"
  * page_shown   the page is one of the link's drafts and the link shows it
@@ -179,7 +199,7 @@ function pg_proto_comment_door($facts)
 {
     $f = array_merge(array(
         'method' => '', 'same_origin' => false, 'token_ok' => false, 'state' => 'unknown',
-        'session' => false, 'password_ok' => false, 'team_ok' => false, 'allowed' => false, 'page_shown' => false,
+        'session' => false, 'team_ok' => false, 'allowed' => false, 'page_shown' => false,
     ), (array) $facts);
 
     if (strtoupper((string) $f['method']) !== 'POST') {
@@ -199,9 +219,9 @@ function pg_proto_comment_door($facts)
         return 'link';
     }
 
-    // The session never opened the link, or was signed out of a team link,
-    // or its password cookie ran out: the viewer would not draw it now.
-    if (!$f['session'] || !$f['password_ok'] || !$f['team_ok']) {
+    // The session never opened the link past its gates, or was signed out
+    // of a team link since: the viewer would not draw it now.
+    if (!$f['session'] || !$f['team_ok']) {
         return 'session';
     }
 
@@ -717,24 +737,6 @@ function pg_proto_comments_page_stamp_sql($page_ids)
     }
 
     return $ids ? "SELECT MAX(id) FROM prototype_comments WHERE page_id IN (" . implode(',', $ids) . ")" : '';
-}
-
-/**
- * The stamp of some comment rows as the statement above reads it from the
- * table: the highest id, 0 for none.
- *
- * @param array[] $rows prototype_comments rows
- * @return int
- */
-function pg_proto_comments_stamp_of_rows($rows)
-{
-    $stamp = 0;
-
-    foreach ((array) $rows as $row) {
-        $stamp = max($stamp, (int) (isset($row['id']) ? $row['id'] : 0));
-    }
-
-    return $stamp;
 }
 
 /**
