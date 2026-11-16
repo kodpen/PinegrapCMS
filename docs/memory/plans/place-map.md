@@ -26,7 +26,8 @@ priority: 6
 - Architect (agent channel messages 6553 and 6554), after the owner asked that what exists be grown instead of a table (poll 84): no table and no pass of the general job. Latitude and longitude are two number fields of the collection.
 - "Find from the address" asks the provider once, on the server, when it is pressed; the bulk action is bounded per call and says what is left; nothing is looked up at view. The plan states how many places the block carries and what happens above that (X8).
 - Architect (message 6590): the bound of 500 and the cut stand. With a cut list "Near me" is not drawn, since the position never leaves the browser and the nearest place could be among those cut; the block tells the designer both.
-- Architect (message 6794), on the census: "Find from the address" and a typed address use Photon only (X5, X12); the map is a `marketing` service of the notice, no third class (X9); the headers do not change (X14).
+- Architect (message 6927): "Find from the address" always asks Photon, its public instance while another provider is on, and the button is always drawn (X5; `workflow/decisions-made-product-66.md`).
+- Architect (message 6794), on the census: a typed address uses Photon only (X12); the map is a `marketing` service of the notice, no third class (X9); the headers do not change (X14).
 
 ## What did the owner decide?
 - Owner (2026-11-16, agent channel poll 99, message 6821): "OpenStreetMap ile başlasın, site isterse kendi sağlayıcısını yazar". The default tiles are OpenStreetMap's; a provider's address and key are the site's option (X13). Not chosen: no map until a key is entered. MP3 and MP4 no longer wait for him.
