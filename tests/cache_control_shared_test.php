@@ -41,6 +41,7 @@ function cache_control_shared_test_public_files()
 	return array(
 		'connect_client.php',
 		'get_file.php',
+		'get_share_card.php',
 		'get_site_icon.php',
 		'get_sitemap.xml.php',
 		'manifest_icon.php',
