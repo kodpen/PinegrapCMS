@@ -160,4 +160,7 @@ function test_workspace_my_calendar_drawer_builds_from_the_form_parts()
 	}
 
 	pg_assert_same(2, substr_count($kit, 'form: formParts,'), 'featureHelpers() and PGWsKit hand the parts over');
+	// People and the customer are chosen with the pickers the panel shares.
+	pg_assert_contains('h.peoplePicker(', $drawer, 'Who can see: the shared people picker');
+	pg_assert_contains('h.customerPicker(result.contact', $drawer, 'Customer: the shared customer picker');
 }
