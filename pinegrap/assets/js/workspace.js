@@ -11029,7 +11029,7 @@
             }, '', sounding);
             divider();
 
-            if (BOOT.claude && channel.claude && channel.can_manage && !channel.archived) {
+            if (BOOT.claude && channel.claude && channel.can_manage && !channel.archived && channel.kind !== 'thread') {
                 item(t('claude_allow'), 'bi-stars', function () {
                     var allow = !channel.claude.allowed;
                     var asked = (allow && channel.kind === 'private') ? ask(t('claude_allow_private'), t('claude_allow'), false) : Promise.resolve(true);
@@ -11043,7 +11043,7 @@
                 divider();
             }
 
-            if (BOOT.ai && channel.ai && channel.can_manage && !channel.archived) {
+            if (BOOT.ai && channel.ai && channel.can_manage && !channel.archived && channel.kind !== 'thread') {
                 item(t('ai_allow'), 'bi-cpu', function () {
                     var allow = !channel.ai.allowed;
                     var asked = (allow && channel.kind === 'private') ? ask(t('ai_allow_private'), t('ai_allow'), false) : Promise.resolve(true);
