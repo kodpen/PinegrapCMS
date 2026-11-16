@@ -34,6 +34,7 @@ $sort_columns = array(
     'width'         => lang('Size'),
     'frequency'     => lang('Frequency'),
     'page'          => lang('Only on Page'),
+    'created'       => lang('Created'),
     'last_modified' => lang('Last Modified'),
 );
 
@@ -52,6 +53,7 @@ $order_by = pg_list_order_by($sort_levels, array(
     'delay'         => 'auto_dialogs.delay',
     'frequency'     => 'auto_dialogs.frequency',
     'page'          => 'auto_dialogs.page',
+    'created'       => 'auto_dialogs.created_timestamp',
     'last_modified' => 'auto_dialogs.last_modified_timestamp',
 ));
 
@@ -86,9 +88,8 @@ $home_page_name = db_value("SELECT page_name FROM page WHERE page_home = 'yes' O
 $list_rows = array();
 
 // The last 30 days' counts of every auto dialog, in one grouped query
-// (includes/fn/auto_dialog_counts.php): each row shows how often it was
-// shown; the figure row over the list sums all three, the edit screen has
-// a pop-up's own.
+// (includes/fn/auto_dialog_counts.php): each row carries all three, closed
+// and taken hidden at first; the figure row over the list sums them.
 $auto_dialog_figures = pg_auto_dialog_count_figures();
 
 foreach ($auto_dialogs as $auto_dialog) {
@@ -109,8 +110,11 @@ foreach ($auto_dialogs as $auto_dialog) {
             'width' => pg_list_cell(pg_auto_dialog_size_label($width, $height), 'align-middle text-nowrap', array('data-pg-sort-value' => $width)),
             'frequency' => pg_list_cell($frequency ? lang(array('string' => '{var:1} hour{suffix:1}', 'vars' => pg_format_number($frequency, 0), 'suffix' => array(($frequency > 1) ? 's' : ''))) : '', 'align-middle', array('data-pg-sort-value' => $frequency)),
             'page' => pg_list_cell(h($auto_dialog['page'])),
+            'created' => pg_list_table_when_cell($auto_dialog['created_timestamp'], (string) $auto_dialog['created_username']),
             'last_modified' => pg_list_table_when_cell($auto_dialog['last_modified_timestamp'], (string) $auto_dialog['last_modified_username']),
             'shown' => pg_list_cell(h(pg_format_number($counts['shown'], 0)), 'align-middle', array('data-pg-sort-value' => $counts['shown'])),
+            'closed' => pg_list_cell(h(pg_format_number($counts['closed'], 0)), 'align-middle', array('data-pg-sort-value' => $counts['closed'])),
+            'taken' => pg_list_cell(h(pg_format_number($counts['taken'], 0)), 'align-middle', array('data-pg-sort-value' => $counts['taken'])),
             'preview' => pg_list_cell('<a class="btn-data-control btn btn-outline theme-secondary border-2" href="' . h(PATH . encode_url_path($home_page_name) . '?preview_auto_dialog=' . $id) . '" target="_blank" title="' . h(lang('Preview')) . '" aria-label="' . h(lang('Preview')) . '"><i class="bi bi-link" aria-hidden="true"></i></a>', 'align-middle text-end'),
         ),
     );
@@ -126,8 +130,13 @@ $list = pg_list_table_printed(array(
         'width' => array('heading' => lang('Size'), 'kind' => 'number'),
         'frequency' => array('heading' => lang('Frequency'), 'kind' => 'number'),
         'page' => array('heading' => lang('Only on Page')),
+        // Hidden at first so the list fits 1440 px; the column menu opens
+        // them and the Details panel shows them.
+        'created' => array('heading' => lang('Created'), 'kind' => 'date', 'hidden' => true),
         'last_modified' => array('heading' => lang('Last Modified'), 'kind' => 'date'),
         'shown' => array('heading' => lang('Shown (30 days)'), 'kind' => 'number'),
+        'closed' => array('heading' => lang('Closed (30 days)'), 'kind' => 'number', 'hidden' => true),
+        'taken' => array('heading' => lang('Taken (30 days)'), 'kind' => 'number', 'hidden' => true),
         'preview' => array('heading' => lang('Preview'), 'kind' => 'actions'),
     ),
     'levels' => $sort_levels,

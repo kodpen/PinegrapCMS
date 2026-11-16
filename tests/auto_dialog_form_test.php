@@ -434,7 +434,8 @@ function test_auto_dialog_screens_in_look_a()
 	$form = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/templates/edit_auto_dialog.php');
 	pg_assert_false(strpos($form, 'breadcrumb') !== false, 'the breadcrumb is the shell\'s');
 	pg_assert_false(strpos($form, 'material-icons') !== false, 'bi icons on the save bar');
-	pg_assert_contains('<div class="col-12 pg-field-span-6 my-3">', $form, 'the page name alone at 6');
+	pg_assert_contains('<div class="col-12 md:col-6 my-3">', $form, 'the page name at 6, its help line under it in its own column');
+	pg_assert_false(strpos($form, 'pg-field-span-') !== false, 'no field whose help runs the row\'s width');
 	pg_assert_same(4, substr_count($form, '<div class="col-12 md:col-3 my-3">'), 'width, height, delay and frequency at 3');
 	pg_assert_contains("<?=(\$open_field === 'open_scroll') ? 'md:col-3' : 'md:col-6'?>", $form, 'a select at 6, the scroll share at 3');
 	pg_assert_contains('<div class="pg-figures mb-0" style="--pg-figures: 3;">', $form, 'the 30-day figures in the status column');
@@ -444,4 +445,20 @@ function test_auto_dialog_screens_in_look_a()
 		pg_assert_contains("'breadcrumb' => array(", $source, $screen . ' passes its breadcrumb to the shell');
 		pg_assert_contains("'heading_description' =>", $source, $screen . ' and its description');
 	}
+}
+
+function test_auto_dialog_list_keeps_hidden_columns()
+{
+	$list = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_auto_dialogs.php');
+
+	foreach (array("'created' => array('heading' => lang('Created'), 'kind' => 'date', 'hidden' => true)", "'closed' => array('heading' => lang('Closed (30 days)'), 'kind' => 'number', 'hidden' => true)", "'taken' => array('heading' => lang('Taken (30 days)'), 'kind' => 'number', 'hidden' => true)") as $column) {
+		pg_assert_contains($column, $list, 'defined and hidden at first: ' . $column);
+	}
+
+	foreach (array("'created' => pg_list_table_when_cell(", "'closed' => pg_list_cell(", "'taken' => pg_list_cell(") as $cell) {
+		pg_assert_contains($cell, $list, 'each row fills it: ' . $cell);
+	}
+
+	pg_assert_contains("'created'       => lang('Created'),", $list, 'Created stays in the sort list');
+	pg_assert_contains("'created'       => 'auto_dialogs.created_timestamp',", $list, 'and orders by its time');
 }

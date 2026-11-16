@@ -57,7 +57,7 @@ if (!defined('PG_INIT_LOADED')) {
                                             'maxlength' => '255',
                                             'required' => 'required'))?>
                                     </div>
-                                    <div class="col-12 pg-field-span-6 my-3">
+                                    <div class="col-12 md:col-6 my-3">
                                         <label for="page" class="form-label"><?=lang('Only on Page')?></label>
                                         <?=$liveform->output_field(array(
                                             'type' => 'text',
