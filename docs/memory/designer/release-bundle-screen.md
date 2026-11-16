@@ -1,6 +1,6 @@
 ---
 name: release-bundle-screen
-description: The Bundles screen (page_bundles.php): the list, one bundle's pages with "Changed since", the Add a copy of a page / Add a draft / Bundle settings dialogs, Remove and Delete, what it leaves to later steps
+description: The Bundles screen (page_bundles.php): the list, a bundle's pages with "Changed since", its three dialogs, Remove and Delete, what later steps add
 module: page_bundles_screen
 ---
 
