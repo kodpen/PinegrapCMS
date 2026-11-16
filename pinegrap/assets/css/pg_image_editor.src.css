@@ -3907,15 +3907,19 @@ button.pgie-sndfile:hover {
 /* Follow beside Record in the Path tab; while armed the stage draws a box
    with a crosshair; while running a pill over the stage's top holds the
    share done and Cancel. */
+/* The row wraps by its own width: each button keeps its label on one line
+   with its padding (it never shrinks), shares the row while both fit and
+   takes a row of its own at the panel's width when they do not. */
 .pgie .pgie-recact {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
 .pgie .pgie-recact .pgie-btn {
-  flex: 1 1 0;
-  min-width: 0;
+  flex: 1 0 auto;
   justify-content: center;
+  white-space: nowrap;
 }
 
 .pgie .pgie-followbtn svg {
