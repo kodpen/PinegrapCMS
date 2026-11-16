@@ -218,6 +218,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_prototype_comments();      // 11.0.225
 	upgrade_2026_11_0_content_review();          // 11.0.226
 	upgrade_2026_11_0_site_push();               // 11.0.227
+	upgrade_2026_11_0_page_bundle();             // 11.0.228
 
 }
 
@@ -7267,5 +7268,64 @@ function upgrade_2026_11_0_site_push() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Visitor notifications: the tables for browsers subscribed to the site\'s news and the messages sent to them are ready; nothing is offered to visitors until the switch is turned on in Features.');
+
+}
+
+// Release bundles (11.0.228, includes/fn/page_bundles.php): several drafts of
+// a visual design prepared together, published at one moment and taken back
+// together. page_bundle is the named list: its status (open, scheduled,
+// published, partial, reverted), an optional publish time for the general
+// job and who set it (the job publishes in that person's name), who made,
+// published and took it back, and the last failure named on it.
+// page_bundle_item is one draft in it: a new page (live_page_id 0) or a
+// replacement standing for a live page, with that page's state when the copy
+// was made (live_state, the SHA-1 of its tree, title and description) so a
+// hand publish since is seen as "changed since". revision_before and
+// written_state are filled when the bundle is published, for the take-back.
+// A draft is in one open bundle and a live page has one replacement in one
+// open bundle; that is checked in code, since a closed bundle keeps its rows.
+// idx_status_publish serves the job's pass, idx_draft and idx_live the holds.
+// No backfill: nothing was bundled before this step. Columns confirmed by the
+// architect.
+function upgrade_2026_11_0_page_bundle() {
+
+	install_create_table('page_bundle', "CREATE TABLE page_bundle (
+		id             INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		name           VARCHAR(100) NOT NULL DEFAULT '',
+		status         VARCHAR(16) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT 'open',
+		publish_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		scheduled_by   INT UNSIGNED NOT NULL DEFAULT 0,
+		created_by     INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		published_by   INT UNSIGNED NOT NULL DEFAULT 0,
+		published_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		reverted_by    INT UNSIGNED NOT NULL DEFAULT 0,
+		reverted_at    INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		failed_page_id INT UNSIGNED NOT NULL DEFAULT 0,
+		failed_reason  VARCHAR(500) NOT NULL DEFAULT '',
+		PRIMARY KEY (id),
+		KEY idx_status_publish (status, publish_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('page_bundle_item', "CREATE TABLE page_bundle_item (
+		id              INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		bundle_id       INT UNSIGNED NOT NULL DEFAULT 0,
+		draft_page_id   INT UNSIGNED NOT NULL DEFAULT 0,
+		live_page_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		live_state      CHAR(40) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT '',
+		status          VARCHAR(16) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT 'waiting',
+		revision_before INT UNSIGNED NOT NULL DEFAULT 0,
+		written_state   CHAR(40) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT '',
+		added_by        INT UNSIGNED NOT NULL DEFAULT 0,
+		added_at        INT UNSIGNED NOT NULL DEFAULT 0,
+		written_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uq_bundle_draft (bundle_id, draft_page_id),
+		KEY idx_draft (draft_page_id),
+		KEY idx_live (live_page_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Release bundles: the tables for drafts prepared, published and taken back together are ready; nothing changes on the site until a bundle is made.');
 
 }
