@@ -202,15 +202,15 @@ if (!$bundle) {
             <td class="align-middle"><a class="text-break" href="' . h($list_url . '?id=' . (int) $row['id']) . '">' . h($row['name']) . '</a></td>
             <td class="align-middle">' . $status_badge($row['status']) . '</td>
             <td class="align-middle text-end">' . pg_format_number((int) $row['item_count'], 0) . '</td>
-            <td class="align-middle text-nowrap">' . $when . '</td>
-            <td class="align-middle text-nowrap fg-secondary">' . h(get_relative_time(array('timestamp' => (int) $row['updated_at']))) . '</td>
+            <td class="align-middle text-nowrap d-none md:d-table-cell">' . $when . '</td>
+            <td class="align-middle text-nowrap fg-secondary d-none md:d-table-cell">' . get_relative_time(array('timestamp' => (int) $row['updated_at'])) . '</td>
         </tr>';
     }
 
     $output_list = $rows
         ? '<div class="table-responsive">
                 <table class="table table-sm mb-0 pg-card-table">
-                    <thead><tr><th>' . h(lang('Name')) . '</th><th>' . h(lang('Status')) . '</th><th class="text-end">' . h(lang('Pages')) . '</th><th>' . h(lang('Publish time')) . '</th><th>' . h(lang('Changed')) . '</th></tr></thead>
+                    <thead><tr><th>' . h(lang('Name')) . '</th><th>' . h(lang('Status')) . '</th><th class="text-end">' . h(lang('Pages')) . '</th><th class="d-none md:d-table-cell">' . h(lang('Publish time')) . '</th><th class="d-none md:d-table-cell">' . h(lang('Changed')) . '</th></tr></thead>
                     <tbody>' . $rows . '</tbody>
                 </table>
             </div>'
@@ -294,17 +294,17 @@ foreach ($items as $item) {
         : '';
 
     $rows .= '<tr>
-        <td class="align-middle">' . $name . '</td>
-        <td class="align-middle">' . $kind . '</td>
-        <td class="align-middle">' . $state . '</td>
-        <td class="align-middle text-end">' . $remove . '</td>
+        <td class="align-middle">' . $name . '<div class="small fg-secondary md:d-none">' . $kind . '</div><div class="mt-1 md:d-none">' . $state . (($remove !== '') ? ' <span class="ms-2">' . $remove . '</span>' : '') . '</div></td>
+        <td class="align-middle d-none md:d-table-cell">' . $kind . '</td>
+        <td class="align-middle d-none md:d-table-cell">' . $state . '</td>
+        <td class="align-middle text-end d-none md:d-table-cell">' . $remove . '</td>
     </tr>';
 }
 
 $output_items = $rows
     ? '<div class="table-responsive">
             <table class="table table-sm mb-0 pg-card-table">
-                <thead><tr><th>' . h(lang('Draft')) . '</th><th>' . h(lang('On the site')) . '</th><th>' . h(lang('Status')) . '</th><th></th></tr></thead>
+                <thead><tr><th>' . h(lang('Draft')) . '</th><th class="d-none md:d-table-cell">' . h(lang('On the site')) . '</th><th class="d-none md:d-table-cell">' . h(lang('Status')) . '</th><th class="d-none md:d-table-cell"></th></tr></thead>
                 <tbody>' . $rows . '</tbody>
             </table>
         </div>
@@ -372,7 +372,7 @@ $summary = '
                             <dt class="col-6 fw-normal fg-secondary">' . h(lang('Publish time')) . '</dt>
                             <dd class="col-6 text-end mb-2">' . (((int) $bundle['publish_at'] > 0) ? h($time_text($bundle['publish_at'])) . (($person($bundle['scheduled_by']) !== '') ? '<div class="small fg-secondary">' . h($person($bundle['scheduled_by'])) . '</div>' : '') : h(lang('By hand'))) . '</dd>
                             <dt class="col-6 fw-normal fg-secondary">' . h(lang('Made')) . '</dt>
-                            <dd class="col-6 text-end mb-2">' . h(get_relative_time(array('timestamp' => (int) $bundle['created_at']))) . (($person($bundle['created_by']) !== '') ? '<div class="small fg-secondary">' . h($person($bundle['created_by'])) . '</div>' : '') . '</dd>';
+                            <dd class="col-6 text-end mb-2">' . get_relative_time(array('timestamp' => (int) $bundle['created_at'])) . (($person($bundle['created_by']) !== '') ? '<div class="small fg-secondary">' . h($person($bundle['created_by'])) . '</div>' : '') . '</dd>';
 
 if ((int) $bundle['published_at'] > 0) {
     $summary .= '
