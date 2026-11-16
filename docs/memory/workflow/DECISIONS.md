@@ -332,6 +332,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-62.md: Where are the rules and the earlier parts?
 - decisions-made-product-62.md: Does the "Clicks and scrolling" section of Visitors go out as built? (owner, 2026-11-16, agent channel poll 79)
 - decisions-made-product-62.md: Does the share card go out as built? (owner, 2026-11-16, agent channel poll 81)
+- decisions-made-product-62.md: Does "My highlights" in My Notes go out as built? (owner, 2026-11-16, agent channel poll 83)
 - decisions-made-product-7.md: Do international labels carry customs data? (#3408)
 - decisions-made-product-7.md: Can a merchant request a carrier pickup from the panel? (#3415)
 - decisions-made-product-7.md: Does ShipWorks record tracking numbers through the shipment write path? (#3443)

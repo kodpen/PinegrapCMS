@@ -117,3 +117,5 @@
 - website-features-rules.md: The rules every step of the nine website-side plans keeps (plans/website-features.md): fewest existing files, schema, switches, numbered features in a step's PR body, looks, texts, tests
 - website-features-shared-files.md: The existing files that steps of more than one website-side plan touch (plans/website-features.md), each with its steps; two steps on the same file are never open together
 - website-features.md: Start file of the nine website-side plans (owner 2026-11-16, agent channel messages 5651 and 5667): his words, how each plan is laid out, the plans and the order their steps are given in
+- website-second-set-conditions-per-plan.md: What the architect asked of each of the eight website plans of poll 82 before they were written: newsletter, appointment link, map, customer value, referral, wholesale, event tickets, courses
+- website-second-set-conditions.md: The architect's conditions for the eight website plans of poll 82, set before they were written: tables, no second engine, scheduled work, mail, money, personal data, cache, first steps
