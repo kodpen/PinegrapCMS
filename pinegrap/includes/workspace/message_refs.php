@@ -297,7 +297,8 @@ function ws_message_ref_popup($viewer, $id)
 }
 
 /**
- * The texts of the message tag's card in workspace.js.
+ * The texts of the message tag in workspace.js and workspace_editor.js: its
+ * card, Copy as reference and the chip a pasted reference becomes.
  *
  * @return array key => text
  */
@@ -306,5 +307,8 @@ function ws_message_ref_js_strings()
     return array(
         'mr_title' => lang('Referenced message'),
         'mr_go'    => lang('Go to the message'),
+        'mr_copy'  => lang('Copy as reference'),
+        // The chip's words, as ws_message_ref_label() writes them.
+        'mr_label' => ws_js_template('Message #{var:1}', 1),
     );
 }
