@@ -500,6 +500,118 @@ function _pg_op_payment_periods_html($periods)
         . '<th class="text-end">' . h(lang('Total')) . '</th></tr></thead><tbody>' . $rows . '</tbody></table></div>';
 }
 
+// A price get_order_preview() wrote as HTML (prepare_price_for_output()'s
+// nowrap span) as the text a list row carries: the pass escapes row values
+// once, so the markup and the entity are taken off here.
+function _pg_op_price_text($html)
+{
+    return html_entity_decode(strip_tags((string)$html), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+}
+
+/**
+ * The rows of the order preview's lists (widgets_lists_checkout.php), as
+ * pg_sw_list_publish('checkout') files them, from get_order_preview()'s
+ * data: the offers applied, the gift cards applied (only those the order
+ * takes an amount from, as the section lists them) and the recurring
+ * payments by period. Raw values; amounts as text.
+ *
+ * @param array $d get_order_preview()'s layout data
+ * @return array source => array(0 => rows)
+ */
+function pg_op_list_rows($d)
+{
+    $out = array('checkout.offers' => array(0 => array()), 'checkout.gift_cards' => array(0 => array()),
+                 'checkout.periods' => array(0 => array()));
+    foreach ((array)($d['applied_offers'] ?? array()) as $offer) {
+        if (!is_array($offer)) continue;
+        $out['checkout.offers'][0][] = array('__offer_code' => (string)($offer['code'] ?? ''), '__offer_text' => (string)($offer['description'] ?? ''));
+    }
+    foreach ((array)($d['applied_gift_cards'] ?? array()) as $card) {
+        if (!is_array($card) || !isset($card['amount_info'])) continue;
+        $out['checkout.gift_cards'][0][] = array(
+            '__gift_card_code'       => (string)$card['protected_code'],
+            '__gift_card_amount'     => _pg_op_price_text($card['amount_info']),
+            '__gift_card_balance'    => _pg_op_price_text($card['remaining_balance_info']),
+            '__gift_card_remove_url' => (string)$card['remove_url'],
+        );
+    }
+    foreach ((array)($d['payment_periods'] ?? array()) as $p) {
+        if (!is_array($p) || empty($p['exists'])) continue;
+        $out['checkout.periods'][0][] = array(
+            '__period_name'     => (string)lang((string)$p['name']),
+            '__period_subtotal' => _pg_op_price_text($p['subtotal_info']),
+            '__period_tax'      => _pg_op_price_text($p['tax_info'] ?? ''),
+            '__period_total'    => _pg_op_price_text($p['total_info']),
+        );
+    }
+    return $out;
+}
+
+/**
+ * The elements that take an order preview section's place when the designer
+ * opens it ("Convert to design elements"), the twin of
+ * _sdOrderPreviewPart(): the applied offers, the applied gift cards and the
+ * recurring payments by period, each a list of pg_op_list_rows()'s rows in
+ * the markup the section prints. Empty for any other section.
+ *
+ * @param string $section
+ * @return array tree nodes
+ */
+function pg_op_part($section)
+{
+    $list = function ($source, $kids) {
+        return array('type' => 'loop_area', 'props' => array('source' => $source), 'children' => $kids);
+    };
+    $bound = function ($tag, $class, $name, $token) {
+        return pg_sw_part_el($tag, $class, $name, array('_bindings' => array('text' => $token)));
+    };
+    if ($section === 'applied_offers') {
+        return array(pg_sw_part_el('ul', 'mb-0', lang('Offers applied to the order'), array(), array(
+            $list('checkout.offers', array($bound('li', '', lang('Offer text'), '__offer_text'))),
+        )));
+    }
+    if ($section === 'applied_gift_cards') {
+        return array(pg_sw_part_el('ul', 'list-group mb-3', lang('Gift cards applied to the order'), array(), array(
+            $list('checkout.gift_cards', array(
+                pg_sw_part_el('li', 'list-group-item d-flex flex-wrap justify-content-between gap-2', lang('Gift Card'), array(), array(
+                    pg_sw_part_el('span', '', lang('Gift Card'), array(), array(
+                        pg_sw_part_sentence('span', '', lang('Gift card code (masked)'), lang('Gift Card') . ' {var:1}', '__gift_card_code'),
+                        pg_sw_part_sentence('span', 'small text-muted', lang('Remaining Balance'), '(' . lang('Remaining Balance') . ': {var:1})', '__gift_card_balance'),
+                    )),
+                    pg_sw_part_el('span', '', lang('Amount taken from the card'), array(), array(
+                        pg_sw_part_sentence('span', '', lang('Amount taken from the card'), '-{var:1}', '__gift_card_amount'),
+                        pg_sw_part_el('a', 'small ms-2', lang('Remove'), array('text' => lang('Remove'), 'href' => '#',
+                            '_bindings' => array('href' => '__gift_card_remove_url'))),
+                    )),
+                )),
+            )),
+        )));
+    }
+    if ($section === 'recurring_payments') {
+        $th = function ($class, $text) { return pg_sw_part_el('th', $class, $text, array('text' => $text)); };
+        return array(pg_sw_part_el('div', 'table-responsive', lang('Recurring payments by period'), array(), array(
+            pg_sw_part_el('table', 'table table-sm mb-0', lang('Table'), array(), array(
+                pg_sw_part_el('thead', '', lang('Head'), array(), array(
+                    pg_sw_part_el('tr', '', lang('Row'), array(), array(
+                        $th('', lang('Payment Period')), $th('text-end', lang('Subtotal')), $th('text-end', lang('Tax')), $th('text-end', lang('Total')),
+                    )),
+                )),
+                pg_sw_part_el('tbody', '', lang('Body'), array(), array(
+                    $list('checkout.periods', array(
+                        pg_sw_part_el('tr', '', lang('Payment Period'), array(), array(
+                            $bound('td', '', lang('Payment Period'), '__period_name'),
+                            $bound('td', 'text-end', lang('Subtotal'), '__period_subtotal'),
+                            $bound('td', 'text-end', lang('Tax'), '__period_tax'),
+                            $bound('td', 'text-end fw-semibold', lang('Total'), '__period_total'),
+                        )),
+                    )),
+                )),
+            )),
+        )));
+    }
+    return array();
+}
+
 // The page's order_preview_pages row, made when missing and brought in line
 // with the widget's settings.
 function _pg_op_page_settings($page_id, $cfg)
@@ -546,6 +658,8 @@ function _pg_op_page_settings($page_id, $cfg)
 // ^^__cart_url^^.
 // Sections: order_recipients, applied_gift_cards, recurring_payments,
 // applied_offers, billing_form, installment_table, card_installments.
+// Lists (pg_op_list_rows()): checkout.offers, checkout.gift_cards,
+// checkout.periods; key ^^__ship_to_key^^ (0).
 // Controls by name: payment_method (radios with the method's value),
 // card_number, expiration, card_verification_number, installment,
 // threedsecure, gift_card_code with the submit_apply_gift_card button, terms,
@@ -637,6 +751,9 @@ function _render_system_widget_order_preview($tree_json, $widget_id, $cfg = arra
     ));
     pg_cf_link_labels($tree);
     _pg_inject_messages_node($tree, 'order_preview');
+    // The offers, gift cards and payment periods as lists of the designer's
+    // own elements, filed only when the tree drew one.
+    if (pg_sw_list_wanted('checkout')) pg_sw_list_publish('checkout', pg_op_list_rows($d));
 
     // The Messages node uses the form up as it prints it; the values the
     // classic computation set on it (the totals posted back, a single
@@ -680,6 +797,8 @@ function _render_system_widget_order_preview($tree_json, $widget_id, $cfg = arra
         '__offline_payment_label'   => h((string)$d['offline_payment_label']),
         '__paypal_image_url'        => h((string)$d['paypal_express_checkout_image_url']),
         '__iyzico_image_url'        => h((string)$d['pay_with_iyzico_image_url']),
+        // The key of the checkout lists: their rows are the whole order's.
+        '__ship_to_key'             => '0',
     );
     foreach ($links as $k => $v) $tokens[$k] = h($v);
     $rendered = _pg_member_apply_tokens($rendered, $tokens);

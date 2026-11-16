@@ -732,7 +732,8 @@ function _pg_st_op_order()
         _pg_st_keep('section:order_recipients'),
         _pg_st_keep('eo_visible_if:has_applied_offers'),
         _pg_st_op_totals('border-top pt-2 mb-4'),
-        _pg_st_keep('section:applied_gift_cards'),
+        _pg_st_el('div', 'mb-3', lang('Applied Gift Cards'), pg_op_part('applied_gift_cards'),
+            array('_bindings' => array('eo_visible_if' => 'has_gift_card_discount'))),
         _pg_st_keep('eo_visible_if:has_recurring'),
     );
 }

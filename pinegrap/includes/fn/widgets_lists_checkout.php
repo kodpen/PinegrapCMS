@@ -19,14 +19,18 @@
 //   checkout.gift_cards   the gift cards applied to the order: masked code,
 //                         the amount taken, the balance left, a remove link;
 //   checkout.recipients   the recipients of the order; a list of the cart's
-//                         products (cart.items) inside a row lists theirs.
+//                         products (cart.items) inside a row lists theirs;
+//   checkout.periods      the recurring payments by period (the order
+//                         preview's only): subtotal, tax and total of each.
 //
 // The lists read ^^__ship_to_key^^, as the cart and order lists do: 0 (the
 // static value) is the whole order, a recipient row's id that recipient.
 // The recipient tokens carry the names of the express order's recipient
 // loop (^^__recipient_name^^ ...). The address controls, the shipping
 // method, the delivery date and the checkout flow stay the widget's own.
-// _render_system_widget_express_order() publishes the rows.
+// _render_system_widget_express_order() publishes the rows; the order
+// preview's offers, gift cards and periods are published by
+// _render_system_widget_order_preview() (pg_op_list_rows()).
 //
 // Loaded by functions.php through require_once, never on its own.
 
@@ -95,6 +99,19 @@ function pg_sw_list_checkout_sources()
                 array('__recipient_address_country', lang('Country')),
                 array('__recipient_address_phone_number', lang('Phone')),
                 array('__ship_to_item_count', lang('Number of items')),
+            ),
+        ),
+        'checkout.periods' => array(
+            'family'       => 'checkout',
+            'key'          => '__ship_to_key',
+            'label'        => lang('Recurring payments by period'),
+            'arg'          => '',
+            'arg_required' => false,
+            'tokens'       => array(
+                array('__period_name', lang('Payment Period')),
+                array('__period_subtotal', lang('Subtotal')),
+                array('__period_tax', lang('Tax')),
+                array('__period_total', lang('Total')),
             ),
         ),
     );
