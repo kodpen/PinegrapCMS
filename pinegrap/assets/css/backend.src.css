@@ -12823,6 +12823,7 @@ b.ws-agent-card-anchor:focus-visible {
 }
 .ws-agent-card-who {
   min-width: 0;
+  overflow-wrap: anywhere;
 }
 .ws-agent-card-name {
   overflow: hidden;
@@ -12917,11 +12918,31 @@ b.ws-agent-card-anchor:focus-visible {
 .ws-agent-card-window.is-high .ws-agent-card-bar > span {
   background: var(--pg-tone-amber);
 }
+/* A row whose value is a list (channels, departments): the label stands at
+   the top of the row and the list takes the rest of the line, free to shrink,
+   so no long name widens the card. */
+.ws-agent-card-row:has(> .ws-agent-card-channels, > .ws-person-card-departments) {
+  align-items: flex-start;
+}
+.ws-agent-card-channels,
+.ws-person-card-departments {
+  flex: 1 1 0;
+  min-width: 0;
+}
 .ws-agent-card-channels {
   display: flex;
   flex-wrap: wrap;
   gap: .25rem;
   justify-content: flex-end;
+}
+/* A channel name too long for the line ends with an ellipsis; the button's
+   title holds the whole name. Block, as an ellipsis needs a block box. */
+.ws-agent-card-channels > .pg-button {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 28px;
 }
 .ws-agent-card-note {
   margin-top: .75rem;
@@ -12936,6 +12957,14 @@ b.ws-agent-card-anchor:focus-visible {
   flex-direction: column;
   align-items: flex-end;
   text-align: right;
+}
+/* A department and its "Leads it" pill: side by side while both fit, else
+   the pill goes under the name; a name breaks inside a word only when one
+   word is wider than the row. */
+.ws-person-card-departments > .ws-agent-card-value {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  overflow-wrap: break-word;
 }
 .ws-person-card-actions {
   display: flex;
@@ -14453,6 +14482,50 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
 }
 .ws-app-fold .btn {
   font-size: .78rem;
+}
+/* A channel's message boxes stop growing on a wide pane and stand half a
+   rem apart; one sender's grouped lines (.ws-msg-follow) keep no gap, so a
+   group reads as one box. On a screen wider than 1700px each box takes a
+   very faint tint of its sender's colour (the theme of the face,
+   data-ws-tone from senderTone() in workspace.js). The tint sits under
+   :where() and its hover skips a highlighted or selected message, so those
+   still show as such. */
+.ws-pane-messages:not(.ws-thread-pane) > .ws-msg {
+  max-width: 90rem;
+  margin-bottom: .5rem;
+}
+.ws-pane-messages:not(.ws-thread-pane) > .ws-msg:has(+ .ws-msg.ws-msg-follow) {
+  margin-bottom: 0;
+}
+@media (min-width: 1700px) {
+  :where(.ws-pane-messages:not(.ws-thread-pane) > .ws-msg[data-ws-tone]) {
+    --ws-msg-tone: var(--pg-primary);
+    background: color-mix(in srgb, var(--ws-msg-tone) 1.6%, transparent);
+  }
+  .ws-pane-messages:not(.ws-thread-pane) > .ws-msg[data-ws-tone]:hover:not(.ws-msg-highlight, .ws-msg-selected) {
+    background: color-mix(in srgb, var(--ws-msg-tone) 2.6%, transparent);
+  }
+  :where(html[data-bs-theme="dark"] .ws-pane-messages:not(.ws-thread-pane) > .ws-msg[data-ws-tone]) {
+    background: color-mix(in srgb, var(--ws-msg-tone) 2.2%, transparent);
+  }
+  html[data-bs-theme="dark"] .ws-pane-messages:not(.ws-thread-pane) > .ws-msg[data-ws-tone]:hover:not(.ws-msg-highlight, .ws-msg-selected) {
+    background: color-mix(in srgb, var(--ws-msg-tone) 3.5%, transparent);
+  }
+  .ws-msg[data-ws-tone="info"] { --ws-msg-tone: var(--pg-info); }
+  .ws-msg[data-ws-tone="warning"] { --ws-msg-tone: var(--pg-warning); }
+  .ws-msg[data-ws-tone="accent"] { --ws-msg-tone: var(--pg-tone-violet); }
+  .ws-msg[data-ws-tone="danger"] { --ws-msg-tone: var(--pg-danger); }
+  .ws-msg[data-ws-tone="secondary"] { --ws-msg-tone: var(--pg-secondary); }
+  .ws-msg[data-ws-tone="success"] { --ws-msg-tone: var(--pg-success); }
+  .ws-msg[data-ws-tone="inverse"] { --ws-msg-tone: var(--pg-fg-emphasis); }
+  .ws-pane-messages:not(.ws-thread-pane) > .ws-msg.ws-msg-follow {
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+  }
+  .ws-pane-messages:not(.ws-thread-pane) > .ws-msg:has(+ .ws-msg.ws-msg-follow) {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+  }
 }
 .ws-msg-avatar .avatar {
   --bs-avatar-size: var(--ws-avatar);

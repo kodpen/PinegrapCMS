@@ -159,21 +159,22 @@ function ws_canvas_joined_card($message, $can_post, $viewer)
  * write in the channel; the newest version is already there.
  *
  * @param array  $viewer
- * @param array  $message ws_messages row
- * @param string $part    drawing | page
- * @param int    $version the version_no to put back
- * @return array ok, error
+ * @param array  $message    ws_messages row
+ * @param string $part       drawing | page
+ * @param int    $version    the version_no to put back
+ * @param bool   $check_only make every check and write nothing (the API's dry run)
+ * @return array ok, status (HTTP), error
  */
-function ws_canvas_part_restore($viewer, $message, $part, $version)
+function ws_canvas_part_restore($viewer, $message, $part, $version, $check_only = false)
 {
-    $refuse = function ($error) {
-        return array('ok' => false, 'error' => $error);
+    $refuse = function ($error, $status = 409) {
+        return array('ok' => false, 'status' => $status, 'error' => $error);
     };
 
     $channel = ws_channel($message['channel_id']);
 
     if (!$channel || ((int) $message['deleted_at'] > 0) || !ws_can_post_channel($viewer, $channel)) {
-        return $refuse(lang('You cannot write in this channel.'));
+        return $refuse(lang('You cannot write in this channel.'), 403);
     }
 
     $target = in_array($part, ws_canvas_part_names(), true) ? ws_canvas_part_message($message, $part) : null;
@@ -182,7 +183,7 @@ function ws_canvas_part_restore($viewer, $message, $part, $version)
     $newest = ($file_id > 0) ? pg_file_versions_newest($file_id) : null;
 
     if (!$row || !$newest || !is_file(pg_file_versions_path($row))) {
-        return $refuse(lang('That version could not be read.'));
+        return $refuse(lang('That version could not be read.'), 404);
     }
 
     if ((int) $row['version_no'] === (int) $newest['version_no']) {
@@ -192,18 +193,26 @@ function ws_canvas_part_restore($viewer, $message, $part, $version)
     $data = @file_get_contents(pg_file_versions_path($row));
 
     if (!is_string($data) || ($data === '')) {
-        return $refuse(lang('That version could not be read.'));
+        return $refuse(lang('That version could not be read.'), 500);
     }
 
     if ($part === 'page') {
         $by = ws_page_version_by($row['doc_json'] ?? '');
 
+        if ($check_only) {
+            return array('ok' => true, 'status' => 200, 'error' => '');
+        }
+
         return ws_page_write($target, $data, $by ?: array('id' => 0, 'kind' => 'ai', 'handle' => ''), (int) $viewer['id'], ws_page_version_libraries($row['doc_json'] ?? ''), 'restore')
-            ? array('ok' => true, 'error' => '') : $refuse(lang('The file could not be saved.'));
+            ? array('ok' => true, 'status' => 200, 'error' => '') : $refuse(lang('The file could not be saved.'), 500);
     }
 
     if (ws_canvas_doc_pending(json_decode((string) $row['doc_json'], true), $row['source'])) {
         return $refuse(lang('That version has no picture yet. Try again in a moment.'));
+    }
+
+    if ($check_only) {
+        return array('ok' => true, 'status' => 200, 'error' => '');
     }
 
     // Written in the file directory, as the picture's take writes it.
@@ -211,7 +220,7 @@ function ws_canvas_part_restore($viewer, $message, $part, $version)
     $path = FILE_DIRECTORY_PATH . '/' . $name;
 
     if (!pg_image_editor_put($path, $data) || !pg_file_versions_add($file_id, $path, (string) $row['doc_json'], 'restore', (int) $viewer['id'], (int) $row['redacted'] === 1)) {
-        return $refuse(lang('The file could not be saved.'));
+        return $refuse(lang('The file could not be saved.'), 500);
     }
 
     pg_file_versions_prune($file_id);
@@ -223,5 +232,5 @@ function ws_canvas_part_restore($viewer, $message, $part, $version)
 
     ws_message_touch((int) $message['id']);
 
-    return array('ok' => true, 'error' => '');
+    return array('ok' => true, 'status' => 200, 'error' => '');
 }

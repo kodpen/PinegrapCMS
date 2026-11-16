@@ -4,8 +4,8 @@ description: A poll option's description, picture, links, Recommended mark and t
 ---
 
 ## What can an option carry?
-- Beside its label (`includes/workspace/poll_parts.php`, AQ2a of `plans/poll-agent-questions.md`): `description` (a line, up to 500), `file_id` (a picture), `links` (up to `WS_POLL_LINKS_MAX` (3) `{url, label}`, http or https; a missing label is the address), `recommended`, `other`.
-- Columns of step 11.0.213 (`upgrade_2026_11_0_ws_poll_parts()`), which also adds `ws_polls.withdrawn_at`, `withdrawn_by` and `again_of` for AQ2b. Shapes: `workflow/decisions-made-schema-20.md`.
+- Beside its label (`includes/workspace/poll_parts.php`, #9635): `description` (a line, up to 500), `file_id` (a picture), `links` (up to `WS_POLL_LINKS_MAX` (3) `{url, label}`, http or https; a missing label is the address), `recommended`, `other`.
+- Columns of step 11.0.213 (`upgrade_2026_11_0_ws_poll_parts()`), which also adds `ws_polls.withdrawn_at`, `withdrawn_by` and `again_of` for taking back and asking again (`poll-take-back.md`). Shapes: `workflow/decisions-made-schema-20.md`.
 - Read with `ws_poll_parts_ready()` first: before the upgrade a poll with any part is refused ("The database has to be updated first.", 503 over the API); a plain poll still works.
 
 ## Which rules hold the options together?

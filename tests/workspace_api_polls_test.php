@@ -22,6 +22,7 @@ if (!defined('PG_API_PANEL')) {
 
 require_once(PG_FUNCTIONS_DIR . '/includes/api/scopes.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/agent_question.php');
 
 // A ws_polls row as the vote finds it.
 function ws_api_polls_test_row($closes_at = 0, $closed_at = 0)
@@ -118,4 +119,39 @@ function test_ws_api_poll_refusals_name_their_field()
 	pg_assert_true(strpos($vote, "ws_api_poll_refused(\$checked['error']") < strpos($vote, 'api_dry_run_stop('), 'a dry run meets it');
 	pg_assert_contains('ws_api_poll_or_404(', ws_api_polls_test_source('ws_api_polls_update'), 'the change');
 	pg_assert_contains('ws_api_poll_or_404(', ws_api_polls_test_source('ws_api_polls_close'), 'the close');
+}
+
+// An application's question is rehearsed with the settings it will be kept
+// to: no anonymous vote and no closing time, and agent_question reported.
+function test_ws_api_poll_create_rehearsal_agent_question()
+{
+	$closes = time() + 86400;
+	$checked = array('options' => array('a', 'b'), 'closes_at' => $closes);
+	$data = array('multiple' => true, 'anonymous' => true);
+
+	$agent = ws_api_poll_create_rehearsal(7, $checked, $data, 1);
+
+	pg_assert_same(7, $agent['channel_id']);
+	pg_assert_same(array('a', 'b'), $agent['options']);
+	pg_assert_true($agent['multiple'], 'multiple is kept');
+	pg_assert_false($agent['anonymous'], 'an agent question is never anonymous');
+	pg_assert_same(0, $agent['closes_at'], 'an agent question has no closing time');
+	pg_assert_true($agent['agent_question'], 'reported as an agent question');
+
+	$person = ws_api_poll_create_rehearsal(7, $checked, $data, 0);
+
+	pg_assert_true($person['anonymous'], 'a person\'s poll keeps anonymous');
+	pg_assert_same($closes, $person['closes_at'], 'a person\'s poll keeps its closing time');
+	pg_assert_false($person['agent_question']);
+}
+
+// The rehearsal is built with the flag ws_poll_create() stores, before the
+// dry run stops.
+function test_ws_api_polls_create_rehearses_kept_settings()
+{
+	$create = ws_api_polls_test_source('ws_api_polls_create');
+
+	pg_assert_contains('ws_agent_question_ready() ? ws_agent_question_flag($app_id) : 0', $create, 'the stored flag');
+	pg_assert_true(strpos($create, 'ws_api_poll_create_rehearsal(') < strpos($create, 'api_dry_run_stop('), 'built before the stop');
+	pg_assert_contains('ws_agent_question_settings(', ws_api_polls_test_source('ws_api_poll_create_rehearsal'), 'the settings applied');
 }

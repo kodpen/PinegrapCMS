@@ -41,7 +41,8 @@ function test_look_list_settings_tile()
 	pg_assert_same('', pg_settings_tile('x" onclick="y'), 'a name that is no icon name prints nothing');
 }
 
-function test_look_list_offers_keeps_its_title()
+function test_look_list_offers_shows_its_count()
 {
-	pg_assert_true(in_array('view_offers', pg_list_table_no_head_count(), true), 'All Offers keeps its title without the count until the owner has seen it');
+	pg_assert_true(is_array(pg_list_table_no_head_count()), 'the left-out lists are a list');
+	pg_assert_true(!in_array('view_offers', pg_list_table_no_head_count(), true), 'All Offers shows its count beside the title');
 }

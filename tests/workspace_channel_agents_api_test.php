@@ -116,3 +116,56 @@ function test_workspace_channel_agents_api_card_present()
 	pg_assert_same(null, $plain['last_message']);
 	pg_assert_same(array(), $plain['windows']);
 }
+
+function workspace_channel_agents_api_test_source($function)
+{
+	$reflection = new ReflectionFunction($function);
+	$lines = file($reflection->getFileName());
+	$body = implode('', array_slice($lines, $reflection->getStartLine() - 1, $reflection->getEndLine() - $reflection->getStartLine() + 1));
+
+	return (string) preg_replace('~^\s*//.*$~m', '', $body);
+}
+
+function test_workspace_channel_agents_api_wake_route()
+{
+	$route = workspace_channel_agents_api_test_route('workspace.channels.agents.wake');
+
+	pg_assert_true(is_array($route), 'the channel wake route');
+	pg_assert_same('POST', $route['method']);
+	pg_assert_same('/workspace/channels/{id}/agents/{agent_id}/wake', $route['path']);
+	pg_assert_same('workspace:write', $route['scope']);
+	pg_assert_true(!empty($route['dry_run']), 'a write rehearses');
+	pg_assert_true(isset($route['mcp']) && ($route['mcp'] === false), 'a person\'s write: no MCP tool');
+	pg_assert_same(array('id', 'agent_id', 'every', 'at', 'off', 'note'), array_column($route['params'], 'name'), 'the same input as the agent\'s own agent-wake');
+
+	foreach (array('channel_id', 'agent_id', 'message_id', 'handle', 'every', 'next_at', 'note') as $field) {
+		pg_assert_true(array_key_exists($field, $route['returns']), 'declared: ' . $field);
+	}
+
+	// The agent keeps its own route.
+	$own = workspace_channel_agents_api_test_route('workspace.agent_wake.set');
+
+	pg_assert_true(is_array($own) && ($own['mcp'] === false), 'the agent\'s own agent-wake stays');
+}
+
+// The person's gate comes first; the panel's check and its writer and
+// system line are the ones /wake uses, and the rehearsal stops after every
+// check, just above the write.
+function test_workspace_channel_agents_api_wake_handler_order()
+{
+	$source = workspace_channel_agents_api_test_source('ws_api_channel_agent_wake');
+	$gate = strpos($source, 'ws_api_person_only(');
+	$check = strpos($source, 'ws_agent_wake_problem(');
+	$parse = strpos($source, 'ws_api_agent_wake_parsed(');
+	$stop = strpos($source, 'api_dry_run_stop(');
+	$save = strpos($source, 'ws_agent_wake_save(');
+	$line = strpos($source, 'ws_agent_wake_system_line(');
+
+	pg_assert_true($gate !== false && $check !== false && $parse !== false && $stop !== false && $save !== false && $line !== false, 'gate, check, input, rehearsal, writer and line');
+	pg_assert_true(($gate < strpos($source, 'ws_api_channel_or_404(')) && ($gate < $check), 'an application key is refused before anything is read');
+	pg_assert_true(($check < $stop) && ($parse < $stop), 'the rehearsal stops after every check');
+	pg_assert_true(($stop < $save) && ($save < $line), 'then the write and its line');
+
+	pg_assert_contains('ws_agent_wake_system_line(', workspace_channel_agents_api_test_source('ws_command_wake'), '/wake leaves the same line');
+	pg_assert_contains('ws_api_agent_wake_parsed(', workspace_channel_agents_api_test_source('ws_api_agent_wake_set'), 'the agent\'s own route reads its input the same way');
+}

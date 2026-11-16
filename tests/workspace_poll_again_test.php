@@ -48,6 +48,21 @@ function test_ws_poll_is_asker()
 	pg_assert_false(ws_poll_is_asker($poll, $person, 4, 21), 'an application never changes a person\'s poll');
 }
 
+// The box's can_edit and can_withdraw follow the change's asker: an
+// application's poll is not the owner's to change.
+function test_ws_poll_person_asked()
+{
+	$poll = array('created_by' => 4);
+
+	pg_assert_true(ws_poll_person_asked($poll, 4, 0), 'the person who asked with their own message');
+	pg_assert_false(ws_poll_person_asked($poll, 5, 0), 'somebody else');
+	pg_assert_false(ws_poll_person_asked($poll, 4, 21), 'the application\'s owner on the application\'s poll');
+
+	$source = ws_poll_again_test_source('ws_polls_map');
+	pg_assert_true(strpos($source, "'can_edit'   => !\$closed && !\$withdrawn && \$own_question && \$can_post") !== false, 'can_edit uses the asker test');
+	pg_assert_true(strpos($source, '$asker = $own_question && $can_post') !== false, 'can_withdraw uses the same test');
+}
+
 // A poll taken back takes no vote, before its closing time is looked at.
 function test_ws_poll_vote_state_withdrawn()
 {

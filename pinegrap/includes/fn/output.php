@@ -4165,8 +4165,9 @@ function output_menu($properties = false)
         $menu_items[6]['title'] = 'Visitors';
         $menu_items[6]['context'] = true;
         // VISITORS > Overview, then its sections as anchors. Site Search, Page
-        // Speed and AI Visibility are listed only once their figures are ready;
-        // their old screens answer a redirect to the anchor. The anchors are
+        // Speed, AI Visibility and Recovered carts are listed only once their
+        // figures are ready (Recovered carts also needs commerce); the first
+        // three's old screens answer a redirect to the anchor. The anchors are
         // jump points inside the overview, not screens: smaller, without an
         // icon tile, under the Overview entry (.pg-menu-anchor).
         $menu_items[6]['data-bs-content'] = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/visitors.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-speedometer bi-me-2\'>' . lang('Overview') . '</a>';
@@ -4174,6 +4175,7 @@ function output_menu($properties = false)
             'site_search' => pg_site_search_stats_ready(),
             'speed'       => pg_vitals_ready(),
             'ai'          => pg_ai_visibility_ready(),
+            'cart_recovery' => (ECOMMERCE === true) && pg_cart_recovery_ready(),
         );
         foreach (pg_visitors_sections() as $visitor_section => $visitor_section_label) {
             if (pg_visitors_section_exists($visitor_section) && (!isset($visitor_ready[$visitor_section]) || $visitor_ready[$visitor_section])) {

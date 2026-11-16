@@ -305,11 +305,12 @@ function ws_record_kinds()
 
 /**
  * @return string[] people, records and the workspace's own things; app is an
- *                  application that can be asked (Claude, <@app:N>)
+ *                  application that can be asked (Claude, <@app:N>); message
+ *                  is another message pointed at (message_refs.php)
  */
 function ws_tag_type_keys()
 {
-    return array_merge(array('user', 'dept', 'app'), ws_record_type_keys(), array('task', 'plan', 'channel'));
+    return array_merge(array('user', 'dept', 'app'), ws_record_type_keys(), array('task', 'plan', 'channel', 'message'));
 }
 
 /**
@@ -1051,7 +1052,8 @@ function ws_cart_quote_ref($row, $now, $base)
  * @param array $viewer
  * @param array $tokens ws_tokens() rows, from any number of texts
  * @return array "type:id" => label, url, meta, status, known (the reader may see it), icon;
- *               a channel also badge (ws_channel_icon_badge()); a tag whose
+ *               a channel also badge (ws_channel_icon_badge()); a message
+ *               also plain and, when known, message (ws_message_ref()); a tag whose
  *               record is gone (or whose module is off) also gone (true)
  */
 function ws_refs_resolve($viewer, $tokens)
@@ -1594,6 +1596,12 @@ function ws_refs_resolve($viewer, $tokens)
                 $put('channel', $row['id'], lang('Private channel'), '', '', '', false, 'bi-lock');
             }
         }
+    }
+
+    // Another message pointed at: seen only by a reader of its channel
+    // (message_refs.php).
+    if (!empty($ids['message'])) {
+        $out = ws_message_refs_resolve($viewer, $ids['message']) + $out;
     }
 
     // Tags whose record is gone are still drawn, and say so. gone tells them

@@ -323,7 +323,7 @@ function ws_js_strings()
         'aq_waiting'             => lang('Not answered yet'),
         'poll_voters'            => ws_js_template('{var:1} people voted', 1),
         'poll_withdraw'          => lang('Take back my vote'),
-        // The poll box's option parts, take back and ask again (AQ2).
+        // The poll box's option parts, take back and ask again.
         'poll_again_help'        => lang('The new poll goes to the end of the channel. This one is taken back if it is still open.'),
         'poll_ask_again'         => lang('Ask again'),
         'poll_asked_again'       => lang('Asked again'),

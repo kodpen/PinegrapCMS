@@ -84,3 +84,45 @@ function test_workspace_agent_duty_card_string()
 {
 	pg_assert_true(isset(ws_agent_card_js_strings()['ac_duty']), 'the card labels the duty');
 }
+
+// Another agent is told the first line of a duty, cut at the limit.
+function test_workspace_agent_duty_first_line()
+{
+	pg_assert_same('', ws_agent_duty_first_line(null));
+	pg_assert_same('Keep the plans.', ws_agent_duty_first_line("\r\n  Keep the plans.  \r\nAnswer in Turkish."));
+	$cut = ws_agent_duty_first_line(str_repeat('ğ', WS_AGENT_DUTY_LINE_MAX + 20));
+	pg_assert_same(WS_AGENT_DUTY_LINE_MAX, mb_strlen($cut), 'cut to the limit, in characters');
+	pg_assert_same('…', mb_substr($cut, -1), 'the cut is marked');
+}
+
+// One line for another agent of a channel: handle, name, role, duty.
+function test_workspace_agent_duty_peer_line()
+{
+	pg_assert_same('Also here: @mimar (Mimar, role: Architect): Keep the plans.', ws_agent_instructions_peer_line(array('handle' => 'mimar', 'name' => 'Mimar', 'role' => 'architect', 'duty' => "Keep the plans.\nAnswer in Turkish.")));
+	pg_assert_same('Also here: @prmerge (PR Merge): Lands the merge trains.', ws_agent_instructions_peer_line(array('handle' => 'prmerge', 'name' => 'PR Merge', 'role' => '', 'duty' => 'Lands the merge trains')));
+	pg_assert_same('Also here: @bot (Bot).', ws_agent_instructions_peer_line(array('handle' => 'bot', 'name' => "Bot\n", 'role' => 'captain', 'duty' => '')), 'no duty, an unknown role left out');
+}
+
+// The instructions name each channel's other agents under it, and say what
+// to do with them only when there are some.
+function test_workspace_agent_duty_instructions_name_peers()
+{
+	$agent = array('id' => 7, 'kind' => 'app', 'handle' => 'elcin', 'name' => 'Elçin', 'door_kind' => 'poll', 'door_url' => '');
+	$base = 'https://shop.example/pinegrap/integration.php';
+	$channels = array(
+		array('id' => 25, 'name' => 'dev', 'wake_rule' => 'mention', 'wake_prefix' => '', 'agents' => array(
+			array('handle' => 'mimar', 'name' => 'Mimar', 'role' => 'architect', 'duty' => 'Keep the plans.'),
+		)),
+		array('id' => 31, 'name' => 'ops', 'wake_rule' => 'mention', 'wake_prefix' => '', 'agents' => array()),
+	);
+	$with = ws_agent_instructions_text($agent, $channels, $base);
+
+	pg_assert_contains("- #dev (id 25): ", $with);
+	pg_assert_contains("\n  Also here: @mimar (Mimar, role: Architect): Keep the plans.\n- #ops (id 31): ", $with, 'under its own channel');
+	pg_assert_contains('leave to it what its duty covers', $with);
+
+	$channels[0]['agents'] = array();
+	$alone = ws_agent_instructions_text($agent, $channels, $base);
+	pg_assert_false(strpos($alone, 'Also here') !== false, 'no other agent, no line');
+	pg_assert_true(ws_agent_instructions_version($alone) !== ws_agent_instructions_version($with), 'the version changes with the other agents');
+}

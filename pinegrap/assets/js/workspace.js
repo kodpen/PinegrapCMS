@@ -3299,6 +3299,19 @@
         return face;
     }
 
+    // The theme a sender's face is drawn in (avatar()), without its
+    // "theme-" prefix: a message's box takes a faint tint of it on a wide
+    // screen.
+    function senderTone(personData) {
+        var data = personData || {};
+
+        if ((data.avatar_kind || '') === 'user') {
+            return 'secondary';
+        }
+
+        return AVATAR_THEMES[((parseInt(data.tone, 10) || 0) % 8 + 8) % 8].slice(6);
+    }
+
     // Overlapping faces in an .avatar-stack. The stack is row-reverse (the
     // last child sits leftmost and on top), so the faces go in backwards
     // and the first person still reads first.
@@ -3656,6 +3669,9 @@
                 var link = el('button', 'pg-button pg-button-ghost pg-button-sm', '#' + item.name);
 
                 link.type = 'button';
+                // A long name is cut with an ellipsis on the card: the title
+                // carries it whole.
+                link.title = '#' + item.name;
                 link.addEventListener('click', function () {
                     agentCardClose();
                     app.open(item.id, 0);
@@ -11834,6 +11850,7 @@
             var node = el('div', 'ws-msg' + (follow ? ' ws-msg-follow' : '') + (message.deleted ? ' ws-msg-deleted' : '')
                 + ((message.kind === 'decision' || message.kind === 'note') ? ' ws-msg-' + message.kind : ''));
             node.setAttribute('data-ws-message', message.id);
+            node.setAttribute('data-ws-tone', senderTone(message.sender));
 
             // A Tab stop of the pane's one (messageKeys()), named by its
             // sender and time row.

@@ -608,9 +608,12 @@ function ws_claude_answers_claude($message_id)
  * @param bool   $followed a discussion Claude follows asks it without its
  *                         name (ws_thread_follow_ask()); a refusal is not
  *                         written after every message there
+ * @param bool   $answer   a person's answer to the assistant's own question
+ *                         (ws_agent_question_wake()): not a request of theirs,
+ *                         so their per-person limit does not apply
  * @return bool a request was queued
  */
-function ws_claude_after_send($viewer, $channel, $message_id, $body, $followed = false)
+function ws_claude_after_send($viewer, $channel, $message_id, $body, $followed = false, $answer = false)
 {
     // Asked by name, or an answer to one of Claude's own answers: the
     // conversation goes on without writing @Claude again.
@@ -636,8 +639,10 @@ function ws_claude_after_send($viewer, $channel, $message_id, $body, $followed =
         return false;
     }
 
-    $waiting = (int) db_value("SELECT COUNT(*) FROM ws_ai_requests
-        WHERE requested_by = '" . (int) $viewer['id'] . "' AND status IN ('queued', 'sent', 'running')" . ws_claude_only());
+    $waiting = ws_assistant_per_person_limit_applies($answer)
+        ? (int) db_value("SELECT COUNT(*) FROM ws_ai_requests
+            WHERE requested_by = '" . (int) $viewer['id'] . "' AND status IN ('queued', 'sent', 'running')" . ws_claude_only())
+        : 0;
 
     if ($waiting >= WS_CLAUDE_PER_PERSON) {
         if (!$followed) {

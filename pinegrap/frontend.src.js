@@ -1933,7 +1933,6 @@ var software = {
     },
 
     init_auto_dialogs: function(properties) {
-        var visit_length = properties.visit_length;
         var auto_dialogs = properties.auto_dialogs;
         var preview = properties.preview;
 
@@ -1953,11 +1952,52 @@ var software = {
             return false;
         }
 
+        var now = Math.floor(Date.now() / 1000);
+
+        // The visit starts on its first page: the page prints this call on
+        // every page while a dialog is enabled, so the start is kept even
+        // where no dialog belongs. sessionStorage lives as long as the tab's
+        // visit; where it is refused, the visit starts on each page.
+        var visit_start = now;
+
+        if (!preview) {
+            try {
+                visit_start = parseInt(window.sessionStorage.getItem('pg_visit_start'), 10);
+
+                if (!(visit_start > 0) || (visit_start > now)) {
+                    visit_start = now;
+                    window.sessionStorage.setItem('pg_visit_start', String(now));
+                }
+            } catch (e) {
+                visit_start = now;
+            }
+        }
+
+        var visit_length = now - visit_start;
+
         // If there is a class in the body tag that says to disable auto dialogs,
         // then abort and don't show auto dialogs on this page.
         if (software_$('body').hasClass('disable_auto_dialogs')) {
             return false;
         };
+
+        // When this visitor last saw a dialog (seconds), from the cookie
+        // written when it opened; 0 when never.
+        function shown_at(id) {
+            var names = ['software[auto_dialog_' + id + ']', 'software%5Bauto_dialog_' + id + '%5D'];
+            var pairs = document.cookie ? document.cookie.split(';') : [];
+
+            for (var i = 0; i < pairs.length; i++) {
+                var pair = pairs[i].replace(/^\s+/, '');
+                var at = pair.indexOf('=');
+
+                if ((at > 0) && (names.indexOf(pair.slice(0, at)) !== -1)) {
+                    return parseInt(pair.slice(at + 1), 10) || 0;
+                }
+            }
+
+            return 0;
+        }
 
         software_$.each(auto_dialogs, function(index, auto_dialog) {
             // If there is a class in the body tag that says to specifically disable
@@ -1965,6 +2005,17 @@ var software = {
             if (software_$('body').hasClass('disable_auto_dialog_' + auto_dialog.id)) {
                 return true;
             };
+
+            // A dialog already shown opens again only when it recurs and
+            // enough hours have passed since. A preview always opens.
+            if (!preview) {
+                var last = shown_at(auto_dialog.id);
+                var frequency = parseInt(auto_dialog.frequency, 10) || 0;
+
+                if (last && !(frequency && ((now - last) >= (frequency * 3600)))) {
+                    return true;
+                }
+            }
 
             // If the visitor is previewing an auto dialog, then ignore the delay property
             // for the auto dialog, and just force the dialog to appear immediately.
@@ -1978,8 +2029,8 @@ var software = {
                 var delay = auto_dialog.delay - visit_length;
             }
 
-            // If the auto dialog should be shown immediately, then set a minimum delay
-            // of 1 second, because dialog position seems to be messed up, if opened too quickly.
+            // If the auto dialog should be shown immediately, then still wait
+            // a second, as the dialog has always done.
             if (delay <= 0) {
                 delay = 1;
             }
@@ -2012,12 +2063,6 @@ var software = {
                 // If the visitor is not previewing an auto dialog, then store cookie,
                 // to remember that the visitor saw this dialog and at what time.
                 if (!preview) {
-                    // If this is an old browser (e.g. IE 8), then create Date.now function,
-                    // so that we can get the current timestamp below.
-                    if (!Date.now) {
-                        Date.now = function() { return new Date().getTime(); }
-                    }
-
                     var current_timestamp = Math.floor(Date.now() / 1000);
 
                     document.cookie = 'software[auto_dialog_' + auto_dialog.id + ']=' + current_timestamp + '; expires=Tue, 01 Jan 2030 06:00:00 GMT; path=/';
@@ -5449,7 +5494,10 @@ var software = {
         }
     },
 
-    // Create a function that will open a jQuery dialog that contains an iframe.
+    // Opens an address in the browser's own <dialog>: centred over the page,
+    // which it blocks (showModal()), or with modal false over a page that
+    // stays usable (show()). Auto dialogs call it, and so may a site's own
+    // script. The frame is drawn like the jQuery UI dialog it replaces.
     open_dialog: function(properties) {
         var class_name = properties.class_name;
         var modal = properties.modal;
@@ -5464,112 +5512,154 @@ var software = {
             return false;
         }
 
-        if (class_name === undefined) {
-            class_name = '';
-        } else {
-            class_name = ' ' + class_name;
-        }
-
-        // If the height is not set, or the visitor is using a mobile device,
-        // then set height as a percentage of the browser height.
-        if (
-            (height === undefined)
-            || (software_device_type == 'mobile')
-        ) {
-            height = software_$(window).height() * .75;
-
-        // Otherwise the height is set and the visitor is using a desktop device,
-        // so use height parameter and add 25px to make up for the jQuery dialog iframe height.
-        } else {
-            height = height + 25;
-        }
-
         // If modal is not set, then enable it by default.
         if (modal === undefined) {
             modal = true;
         }
 
-        // If the width is not set, or the visitor is using a mobile device,
-        // then set width as a percentage of the browser width.
-        if (
-            (width === undefined)
-            || (software_device_type == 'mobile')
-        ) {
-            width = software_$(window).width() * .75;
+        // A modal dialog makes the rest of the page inert, the cookie notice
+        // included: while the notice waits for an answer, the dialog opens
+        // once it is given. The event comes just before the notice hides,
+        // so the dialog opens a moment later.
+        var notice = document.getElementById('pg-cc-card');
+
+        if (modal && notice && !notice.hidden) {
+            document.addEventListener('pg:consent', function answered() {
+                document.removeEventListener('pg:consent', answered);
+                setTimeout(function() {
+                    software.open_dialog(properties);
+                }, 0);
+            });
+
+            return true;
         }
 
-        // Create unique id from number of milliseconds since epoch
-        // so that multiple dialogs can exist at once.
-        var date = new Date;
-        var unique_id = date.getTime();
+        software.dialog_style();
 
-        // Add iframe to body.
+        // If the height is not set, or the visitor is using a mobile device,
+        // then set height as a percentage of the browser height.
+        // Otherwise add the title bar's 25px to it, as before.
+        if ((height === undefined) || (software_device_type == 'mobile')) {
+            height = window.innerHeight * .75;
+        } else {
+            height = height + 25;
+        }
 
-        var iframe = software_$('<iframe id="software_dialog_' + unique_id + '" src="' + software.h(url) + '" frameBorder="0" style="border: none; display: block; margin: 0" allowfullscreen></iframe>');
+        // If the width is not set, or the visitor is using a mobile device,
+        // then set width as a percentage of the browser width.
+        if ((width === undefined) || (software_device_type == 'mobile')) {
+            width = window.innerWidth * .75;
+        }
 
-        software_$('body').append(iframe);
+        var dialog = document.createElement('dialog');
+        var bar = document.createElement('div');
+        var heading = document.createElement('span');
+        var close = document.createElement('button');
+        var frame = document.createElement('iframe');
+        var label = lang('Close');
 
-        // Open jQuery dialog.
-        software_$('#software_dialog_' + unique_id).dialog({
-            autoOpen: true,
+        dialog.className = 'pg-dialog' + (modal ? '' : ' pg-dialog-plain') + (class_name ? ' ' + class_name : '');
+        dialog.style.width = width + 'px';
+        dialog.style.height = height + 'px';
 
-            open: function() {
-                // Add container around iframe so we can set overflow and webkit overflow scrolling,
-                // so that the iframe does not go outside the dialog horizontally in iOS and so
-                // visitors can scroll in the iframe in iOS.
-                // We have not yet solved the iframe being extended vertically in iOS.
-                // We add the container div for other environments also just because it does not appear
-                // to have any side effects.  We could probably add container up above when iframe is created,
-                // instead of placing it in this open function, however we have not tested that.
-                software_$('#software_dialog_' + unique_id).wrap('<div id="software_dialog_' + unique_id + '_container" />');
-                software_$('#software_dialog_' + unique_id + '_container').css({
-                    'overflow': 'auto',
-                    '-webkit-overflow-scrolling': 'touch'
-                });
+        if (title) {
+            dialog.setAttribute('aria-label', title);
+            frame.title = title;
+        }
 
-                // If this is a modal dialog, then when the visitor clicks outside
-                // of the dialog, close it.
-                if (modal) {
-                    software_$('.ui-widget-overlay').bind('click', function() {
-                        software_$('#software_dialog_' + unique_id).dialog('close');
-                    });
-                }
-            },
+        bar.className = 'pg-dialog-bar';
+        heading.className = 'pg-dialog-title';
+        heading.textContent = title || '';
+        close.type = 'button';
+        close.className = 'pg-dialog-close';
+        close.title = label;
+        close.setAttribute('aria-label', label);
+        close.innerHTML = '<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false"><path d="M5 5l6 6m0-6l-6 6" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"/></svg>';
+        frame.className = 'pg-dialog-frame';
+        frame.setAttribute('frameborder', '0');
+        frame.setAttribute('allowfullscreen', '');
+        frame.src = url;
 
-            // Add an overlay over the whole page while the user is dragging the dialog,
-            // so that the drag will work correctly with an iframe.
-            dragStart: function() {
-                software_$('body').append('<div class="software_overlay" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 2147483647"></div>');
-            },
+        bar.appendChild(heading);
+        bar.appendChild(close);
+        dialog.appendChild(bar);
+        dialog.appendChild(frame);
 
-            dragStop: function() {
-                software_$('.software_overlay').remove();
-            },
+        function shut() {
+            if (typeof dialog.close === 'function') {
+                dialog.close();
+            } else if (dialog.parentNode) {
+                dialog.parentNode.removeChild(dialog);
+            }
+        }
 
-            // Add an overlay over the whole page while the user is resizing the dialog,
-            // so that the resize will work correctly with an iframe.
-            resizeStart: function() {
-                software_$('body').append('<div class="software_overlay" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 2147483647"></div>');
-            },
+        close.addEventListener('click', shut);
 
-            resizeStop: function() {
-                software_$('.software_overlay').remove();
-            },
-
-            close: function() {
-                // Remove iframe and iframe container.
-                software_$('#software_dialog_' + unique_id).remove();
-                software_$('#software_dialog_' + unique_id + '_container').remove();
-            },
-
-            dialogClass: 'software mobile_dialog' + class_name,
-            height: height,
-            modal: modal,
-            title: title,
-            width: width,
-            show: {effect: 'fade'},
-            hide: {effect: 'fade'}
+        // Closed by its button, Escape or the backdrop: gone with its page.
+        dialog.addEventListener('close', function() {
+            if (dialog.parentNode) {
+                dialog.parentNode.removeChild(dialog);
+            }
         });
+
+        // A press on the backdrop closes a modal dialog, as a press on the
+        // overlay did: the backdrop's clicks reach the dialog itself, outside
+        // its box.
+        if (modal) {
+            dialog.addEventListener('click', function(event) {
+                if (event.target !== dialog) {
+                    return;
+                }
+
+                var box = dialog.getBoundingClientRect();
+
+                if ((event.clientX < box.left) || (event.clientX > box.right) || (event.clientY < box.top) || (event.clientY > box.bottom)) {
+                    shut();
+                }
+            });
+        }
+
+        document.body.appendChild(dialog);
+
+        if (typeof dialog.showModal !== 'function') {
+            dialog.setAttribute('open', '');
+        } else if (modal) {
+            dialog.showModal();
+        } else {
+            dialog.show();
+        }
+
+        return dialog;
+    },
+
+    // The dialog frame's rules, added to the page once, the first time a
+    // dialog opens. They match the jQuery UI dialog the sites showed before
+    // (white box, grey line, dark shadow, 20px close button, grey backdrop)
+    // and hold their own against a theme's button and iframe rules.
+    dialog_style: function() {
+        if (document.getElementById('pg-dialog-style')) {
+            return;
+        }
+
+        var style = document.createElement('style');
+
+        style.id = 'pg-dialog-style';
+        style.textContent =
+            'dialog.pg-dialog{box-sizing:border-box;display:flex;flex-direction:column;margin:auto;padding:.2em .2em 1em;max-width:calc(100% - 16px);max-height:calc(100% - 16px);overflow:hidden;border:1px solid #c5c5c5;border-radius:0;background:#fff;color:#333;box-shadow:0 0 20px #000;font:13px/24px Arial,Helvetica,sans-serif;text-align:left}' +
+            'dialog.pg-dialog:not([open]){display:none}' +
+            'dialog.pg-dialog-plain{position:fixed;inset:0;z-index:2147482000}' +
+            'dialog.pg-dialog::backdrop{background:rgba(170,170,170,.3)}' +
+            'dialog.pg-dialog[open],dialog.pg-dialog[open]::backdrop{animation:pg-dialog-in .4s}' +
+            '@keyframes pg-dialog-in{from{opacity:0}}' +
+            '@media (prefers-reduced-motion:reduce){dialog.pg-dialog[open],dialog.pg-dialog[open]::backdrop{animation:none}}' +
+            'dialog.pg-dialog .pg-dialog-bar{position:relative;flex:none;box-sizing:border-box;min-height:37px;margin:0;padding:.4em 1em;font-weight:bold}' +
+            'dialog.pg-dialog .pg-dialog-title{display:block;margin:.1em 24px .1em 0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-weight:normal}' +
+            'dialog.pg-dialog .pg-dialog-close{position:absolute;top:50%;right:4px;display:flex;align-items:center;justify-content:center;box-sizing:border-box;width:20px;height:20px;min-width:0;min-height:0;margin:-10px 0 0;padding:0;border:1px solid #ccc;border-radius:3px;background:#ededed;color:#555;box-shadow:none;line-height:0;text-transform:none;cursor:pointer;-webkit-appearance:none;appearance:none}' +
+            'dialog.pg-dialog .pg-dialog-close:hover{border-color:#ccc;background:#ededed;color:#2b2b2b}' +
+            'dialog.pg-dialog .pg-dialog-close svg{display:block;width:16px;height:16px}' +
+            'dialog.pg-dialog .pg-dialog-frame{display:block;flex:1 1 auto;box-sizing:border-box;width:100%;max-width:none;min-height:0;height:auto;margin:0;padding:0;border:0}';
+
+        (document.head || document.documentElement).appendChild(style);
     },
 
     // Create a function that will be responsible for taking an encrypted email link, decrypting it,

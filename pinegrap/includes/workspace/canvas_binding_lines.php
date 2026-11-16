@@ -308,16 +308,17 @@ function ws_canvas_binding_lines_map($viewer, $ids)
  * had; the line then says who undid it.
  *
  * @param array $viewer
- * @param int   $line_id the line's message id
- * @return array ok, error (words)
+ * @param int   $line_id    the line's message id
+ * @param bool  $check_only make every check and write nothing (the API's dry run)
+ * @return array ok, status (HTTP), error (words)
  */
-function ws_canvas_binding_undo($viewer, $line_id)
+function ws_canvas_binding_undo($viewer, $line_id, $check_only = false)
 {
     $lines = ws_canvas_binding_line_refs(array((int) $line_id));
     $message = ws_message((int) $line_id);
 
     if (empty($lines[(int) $line_id]) || !$message || !ws_can_read_channel($viewer, ws_channel($message['channel_id']))) {
-        return array('ok' => false, 'error' => lang('That message could not be found.'));
+        return array('ok' => false, 'status' => 404, 'error' => lang('That message could not be found.'));
     }
 
     $line = $lines[(int) $line_id];
@@ -325,15 +326,19 @@ function ws_canvas_binding_undo($viewer, $line_id)
     $code = ws_canvas_binding_undo_check($viewer, $line, $canvas);
 
     if ($code === 'done') {
-        return array('ok' => false, 'error' => lang('This binding was undone already.'));
+        return array('ok' => false, 'status' => 409, 'error' => lang('This binding was undone already.'));
     }
 
     if ($code === 'changed') {
-        return array('ok' => false, 'error' => lang('The binding changed since, so it is not undone.'));
+        return array('ok' => false, 'status' => 409, 'error' => lang('The binding changed since, so it is not undone.'));
     }
 
     if ($code !== '') {
-        return array('ok' => false, 'error' => ws_canvas_table_refusal_text($code));
+        return array('ok' => false, 'status' => 403, 'error' => ws_canvas_table_refusal_text($code));
+    }
+
+    if ($check_only) {
+        return array('ok' => true, 'status' => 200, 'error' => '');
     }
 
     $result = ($line['was'] === '')
@@ -341,7 +346,7 @@ function ws_canvas_binding_undo($viewer, $line_id)
         : ws_canvas_table_bind($viewer, $canvas, $line['table'], $line['was']);
 
     if (!$result['ok']) {
-        return array('ok' => false, 'error' => $result['text']);
+        return array('ok' => false, 'status' => 500, 'error' => $result['text']);
     }
 
     $types = ws_canvas_binding_ref_types();
@@ -353,7 +358,7 @@ function ws_canvas_binding_undo($viewer, $line_id)
     ws_message_touch((int) $canvas['id']);
     ws_message_touch((int) $line_id);
 
-    return array('ok' => true, 'error' => '');
+    return array('ok' => true, 'status' => 200, 'error' => '');
 }
 
 /**

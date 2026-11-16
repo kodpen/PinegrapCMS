@@ -67,6 +67,7 @@ function ws_wtable_api_routes()
             'description' => 'The workflow tables of the owner of the application, those of the channels they read and those shared with them, themselves or in a channel they read, the latest changed first. access says owner, edit (they change its columns and rows) or view. A person\'s table (channel_id 0) is its owner\'s alone: nobody else reaches it but through a share, administrators included, and a table whose owner left the team reaches nobody. A channel\'s table (channel_id the channel) is nobody\'s alone: whoever reads the channel reads it, whoever may write there has edit, whoever may manage the channel has owner, and owner_id only says who made it. columns is null in the listing; GET /workspace/tables/{id} carries them.',
             'params'      => array(
                 array('name' => 'scope', 'in' => 'query', 'type' => 'enum', 'values' => array('all', 'mine', 'channels', 'shared'), 'default' => 'all', 'description' => 'mine keeps the owner\'s own, channels the ones that belong to a channel they read, shared the ones that reach them only through a share.'),
+                array('name' => 'channel_id', 'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only the tables that belong to this channel, as its Tables tab lists them; a channel the owner may not read answers 404.'),
             ),
         ),
 
@@ -410,6 +411,44 @@ function ws_wtable_api_routes()
             'summary'     => 'Restore a deleted row of a workflow table',
             'description' => 'Brings a row back from the table\'s bin at the end of the table, with its cells and its links to site records; the answer is the row. It keeps its id, unless another row was given that id meanwhile: then it has a new one. A full table refuses it with 409 too_many_rows.',
             'params'      => array($id, array('name' => 'bin_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)),
+        ),
+
+        // Deleting a binned row for good cannot be undone: the person's own,
+        // from a device, and no MCP tool.
+        array(
+            'id'          => 'workspace.table_rows.purge',
+            'method'      => 'POST',
+            'path'        => '/workspace/tables/{id}/deleted-rows/{bin_id}/delete',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_wtable_rows_purge',
+            'dry_run' => true,
+            'mcp'         => false,
+            'returns'     => 'WorkspaceTableBinRow',
+            'summary'     => 'Delete a deleted row of a workflow table for good',
+            'description' => 'Takes a row out of the table\'s bin before its days are up, as the bin\'s Delete for good button does; the answer is the row as the bin held it. It cannot be undone, so only the person, signed in on a device, may do it: an application key gets 403, and no MCP tool does it. Whoever may change the table may; a table shared with them at view is refused with 403, a row not in its bin with 404.',
+            'params'      => array($id, array('name' => 'bin_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)),
+        ),
+
+        // A draft flow made from a table's rows (wtable_flow.php), as the
+        // table's Make a flow window does.
+        array(
+            'id'          => 'workspace.tables.flow',
+            'method'      => 'POST',
+            'path'        => '/workspace/tables/{id}/flow',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_wtable_flow',
+            'dry_run' => true,
+            'returns'     => array('flow' => 'WorkspaceFlow?', 'tasks' => 'integer', 'notes' => 'string[]'),
+            'status'      => 201,
+            'summary'     => 'Make a draft flow from a workflow table',
+            'description' => 'Compiles the table\'s rows once into a new draft flow of the owner\'s, named after the table: a Started by hand box, then a task box for each row whose step cell is not empty, in row order. Name one column for each part: step (a text column, required), person (a person column, the task\'s assignee when they are a member), days (a number column, the days the task takes), after (a number column, the row number it comes after). A column of another type, or one named twice, is left out. Whoever reads the table and builds flows (staff in the team) may: anybody else is refused with 403, a table they do not reach with 404. A draft never runs: the person reviews and publishes it on the canvas. tasks is the number of task boxes, notes what the rows could not give. A dry run answers tasks and notes, with flow null.',
+            'params'      => array(
+                $id,
+                array('name' => 'step', 'in' => 'body', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The text column that names each step.'),
+                array('name' => 'person', 'in' => 'body', 'type' => 'int', 'min' => 0, 'description' => 'The person column of the assignee; 0 or left out for none.'),
+                array('name' => 'days', 'in' => 'body', 'type' => 'int', 'min' => 0, 'description' => 'The number column of the days each task takes.'),
+                array('name' => 'after', 'in' => 'body', 'type' => 'int', 'min' => 0, 'description' => 'The number column of the row each step comes after.'),
+            ),
         ),
 
         // The shares of a table (wtable_shares.php). Sharing widens who reads
@@ -947,6 +986,21 @@ function ws_api_wtable_input($params, $fields)
    Tables
    --------------------------------------------------------------------------- */
 
+/**
+ * The tables of a list that belong to one channel (channel_id), in the
+ * list's order. Pure.
+ *
+ * @param array[] $tables ws_wtables rows
+ * @param int     $channel_id
+ * @return array[]
+ */
+function ws_api_wtables_of_channel($tables, $channel_id)
+{
+    return array_values(array_filter((array) $tables, function ($table) use ($channel_id) {
+        return (int) ($table['channel_id'] ?? 0) === (int) $channel_id;
+    }));
+}
+
 function ws_api_wtables_list($params)
 {
     $viewer = ws_api_viewer();
@@ -954,8 +1008,15 @@ function ws_api_wtables_list($params)
     ws_api_wtables_ready();
 
     $rows = array();
+    $tables = ws_wtables_reached($viewer, (string) ($params['scope'] ?? 'all'));
 
-    foreach (ws_wtables_reached($viewer, (string) ($params['scope'] ?? 'all')) as $table) {
+    // One channel's own tables, read only where the channel is.
+    if (!empty($params['channel_id'])) {
+        $channel = ws_api_channel_or_404($viewer, (int) $params['channel_id']);
+        $tables = ws_api_wtables_of_channel($tables, (int) $channel['id']);
+    }
+
+    foreach ($tables as $table) {
         if (ws_api_wtable_reachable($viewer, $table)) {
             $rows[] = ws_api_wtable_present($table);
         }
@@ -1710,6 +1771,101 @@ function ws_api_wtable_rows_restore($params)
     }
 
     api_ok(ws_api_wtable_row_answer(ws_api_wtable_or_404($viewer, $table['id']), $result['row_id']));
+}
+
+function ws_api_wtable_rows_purge($params)
+{
+    ws_api_person_only(lang('Only the person, signed in on a device, can delete a row for good; an application cannot do it for them.'));
+
+    $viewer = ws_api_viewer();
+    $table = ws_api_wtable_writable($viewer, $params['id']);
+    $bin = ws_wtable_bin_row((int) $table['id'], (int) $params['bin_id']);
+    $checked = ws_wtable_bin_row_delete_check($viewer, $table, $bin);
+
+    if (!$checked['ok']) {
+        ws_api_wtable_refused($checked, lang('Deleted row'));
+    }
+
+    // The row as the bin lists it (its expiry included), for the answer.
+    $was = null;
+
+    foreach ((array) ws_wtable_bin_rows($viewer, $table) as $row) {
+        if ((int) $row['bin_id'] === (int) $bin['id']) {
+            $was = $row;
+        }
+    }
+
+    if ($was === null) {
+        api_fail_not_found(lang('Deleted row'));
+    }
+
+    api_dry_run_stop('deleted', 'workspace_table_row', array('bin_id' => (int) $bin['id'], 'id' => (int) $bin['row_id'], 'table_id' => (int) $table['id']));
+
+    $result = ws_wtable_bin_row_delete($viewer, $table, $bin);
+
+    if (!$result['ok']) {
+        ws_api_wtable_refused($result, lang('Deleted row'));
+    }
+
+    api_ok(ws_api_wtable_bin_row_present($was));
+}
+
+function ws_api_wtable_flow($params)
+{
+    $viewer = ws_api_viewer();
+    $table = ws_api_wtable_or_404($viewer, $params['id']);
+    $chosen = array();
+
+    foreach (array_keys(ws_wtable_flow_roles()) as $role) {
+        $chosen[$role] = (int) ($params[$role] ?? 0);
+    }
+
+    // Every check of the window, the save's included, before the dry run.
+    $checked = ws_wtable_flow_create($viewer, $table, $chosen, true);
+
+    if (!$checked['ok']) {
+        ws_api_wtable_flow_refused($checked);
+    }
+
+    $answer = function ($result, $flow) {
+        return array(
+            'flow'  => $flow,
+            'tasks' => (int) ($result['compiled']['tasks'] ?? 0),
+            'notes' => ws_wtable_flow_notes($result['compiled']),
+        );
+    };
+
+    api_dry_run_stop('created', 'workspace_flow', $answer($checked, null));
+
+    $result = ws_api_as_owner(function () use ($viewer, $table, $chosen) {
+        return ws_wtable_flow_create($viewer, $table, $chosen);
+    });
+
+    if (!$result['ok']) {
+        ws_api_wtable_flow_refused($result);
+    }
+
+    api_ok($answer($result, ws_api_flow_answer($viewer, $result['flow_id'])), 201);
+}
+
+/**
+ * A refusal of ws_wtable_flow_create() as the API answers it.
+ *
+ * @param array $result ok, error, status
+ */
+function ws_api_wtable_flow_refused($result)
+{
+    $status = (int) ($result['status'] ?? 422);
+
+    if ($status === 404) {
+        api_fail_not_found(lang('Table'));
+    }
+
+    if (in_array($status, array(403, 503), true)) {
+        api_fail($status, ($status === 403) ? 'forbidden' : 'service_unavailable', (string) $result['error']);
+    }
+
+    api_fail_validation((string) $result['error'], 'step');
 }
 
 /* ---------------------------------------------------------------------------
