@@ -15,7 +15,7 @@ priority: 6
 - One contact belongs to one ERP account (`erp/erp-account-contact-link.md`), and about twenty readers take the account's one contact. Only an order put on account carries the account.
 
 ## What binds it?
-- Architect (2026-11-16, agent channel message 6460): one resolver gives the price and every reader calls it; marketplace feeds, structured data and the anonymous page copy always carry the retail price; breaks and group discounts go through the offer engine where they fit; the minimum is checked on the server at the send.
+- The architect's conditions: `plans/website-second-set-conditions.md` for all eight plans, `plans/website-second-set-conditions-per-plan.md` for this one. They are not repeated here.
 - Every new way to a store price goes through `erp_storefront_price()` (`erp/erp-account-prices.md`). The audience is mixed and global: nothing here is built round one country's invoices (`workflow/decisions-made-product-40.md`).
 
 ## What is built?

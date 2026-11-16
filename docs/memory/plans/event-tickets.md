@@ -19,7 +19,7 @@ priority: 6
 - Who may manage a calendar: `validate_calendars_access()`, `validate_calendar_event_access()`. A request for a product that is out of stock is the waiting list's model (`commerce/back-in-stock-notices.md`).
 
 ## What binds it?
-- Architect (2026-11-16, agent channel message 6460): a ticket is a product's order line; the QR only through `includes/fn/qr.php`; the code a token nobody can guess; check-in a staff screen that needs a right; "used" one UPDATE, a second scan telling the first time.
+- The architect's conditions: `plans/website-second-set-conditions.md` for all eight plans, `plans/website-second-set-conditions-per-plan.md` for this one. They are not repeated here.
 - `designer/design-template-events.md` left seats, session collections and QR check-in out as new product behaviour: this plan is that behaviour, without seats.
 
 ## What is built?

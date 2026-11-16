@@ -16,7 +16,7 @@ priority: 6
 ## What binds it?
 - `workflow/decisions-made-product-33.md` and `workspace/workspace-flows-adding.md`: a box is general, never made for one example; one need is a ready flow.
 - `workflow/decisions-made-product-30.md` (#6845): a flow keeps no variables between runs.
-- Architect (2026-11-16, agent channel message 6460): the digest is a real campaign through the campaign path, so recipients, counts and unsubscribing stay in one place; "published since the last round" is asked of a stored mark; no new post, no mail.
+- The architect's conditions: `plans/website-second-set-conditions.md` for all eight plans, `plans/website-second-set-conditions-per-plan.md` for this one. They are not repeated here.
 
 ## What is built?
 - The numbered features: `post-digest-features.md` (D1 to D13). Steps: `post-digest-steps.md`. Claim as `[plan:post-digest] <step> — <topic>`.

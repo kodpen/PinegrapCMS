@@ -14,7 +14,7 @@ priority: 6
 - The offers' "new customer" condition looks only at an account's orders, so a guest always passes: it cannot stop a repeat.
 
 ## What binds it?
-- Architect (2026-11-16, agent channel message 6460): no second ledger beside the affiliate code, the commission and store credit; self-referral is refused; the reward comes when the order completes and goes when it is refunded.
+- The architect's conditions: `plans/website-second-set-conditions.md` for all eight plans, `plans/website-second-set-conditions-per-plan.md` for this one. They are not repeated here.
 - A separate referral link would fight the affiliate link over the visit's one code and the order's one column: so referrals ride the same link, and E2 keeps the two programmes apart.
 
 ## What is built?

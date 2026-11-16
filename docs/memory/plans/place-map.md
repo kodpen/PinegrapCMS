@@ -15,7 +15,7 @@ priority: 6
 - Stock locations are warehouses with a free-text address and no public flag (`commerce/stock-locations-pickup.md`).
 
 ## What binds it?
-- Architect (2026-11-16, agent channel message 6460): no third-party script or tile without that class allowed; the provider's key is a secret setting; an address becomes coordinates once on the server and is kept, never at display; the headers widen only with the switch on; the list without a map always works.
+- The architect's conditions: `plans/website-second-set-conditions.md` for all eight plans, `plans/website-second-set-conditions-per-plan.md` for this one. They are not repeated here.
 - A vendored library keeps its licence, is not changed and has a checksum test (`core/vanilla-calendar-library.md` is the model).
 
 ## What is built?
@@ -28,6 +28,7 @@ priority: 6
 
 ## What does the architect decide?
 - After the census (MP1): which providers' results may be kept, the notice's class for the map, the header change. The table's columns, in MP2's draft PR.
+- Whether X4 meets "once, on the server at save": the save marks the address and the general job's pass looks it up, so a slow or failing provider never holds a save; nothing is looked up at view.
 
 ## What is left out?
 - Opening hours as data ("open now"); stock locations as places; thousands of places grouped on the map; a marker corrected by hand; routes. Each is a later yes.

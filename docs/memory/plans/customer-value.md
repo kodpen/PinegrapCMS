@@ -15,7 +15,7 @@ priority: 6
 - No single place sees an order completed, cancelled and refunded: the refund amount has three writers and one of them announces nothing.
 
 ## What binds it?
-- Architect (2026-11-16, agent channel message 6460): it only reads and adds no write to the order path; heavy figures come from a summary the general job fills page by page, as rule-filled groups are recomputed (`core/audiences-recompute.md`); currencies are never mixed; the cancel and refund rule sits in one function.
+- The architect's conditions: `plans/website-second-set-conditions.md` for all eight plans, `plans/website-second-set-conditions-per-plan.md` for this one. They are not repeated here.
 - Summary data is rebuilt from its source, never repaired in place (`visitors/visitor-rollup-consistency.md`). A long backfill runs in the job with a cursor, not in a migration step.
 
 ## What is built?

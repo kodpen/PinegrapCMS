@@ -15,7 +15,7 @@ priority: 6
 - `pg_calendar_days_later()` counts calendar days; the QR maker is `includes/fn/qr.php`; `pg_privacy_export_pdf()` makes a PDF on the server with the embedded library.
 
 ## What binds it?
-- Architect (2026-11-16, agent channel message 6460): on the arrangement that exists (a course is a product opening a private folder, a lesson a page); progress in a new table (person, lesson) with a rate-limited write; a timed lesson computed at read from the enrolment date, no job script; the certificate first as HTML with print styles, a server PDF only with a reason.
+- The architect's conditions: `plans/website-second-set-conditions.md` for all eight plans, `plans/website-second-set-conditions-per-plan.md` for this one. They are not repeated here.
 - Owner (2026-11-05, #7204, `workflow/decisions-made-product-34.md`): a table of grants per order was refused. So the enrolment day is read from the orders and is not kept per grant (Z5).
 
 ## What is built?

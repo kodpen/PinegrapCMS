@@ -9,19 +9,13 @@ priority: 6
 - Owner (2026-11-16, agent channel poll 82, message 6434), asked which of nine to plan: "Yeni yazılardan otomatik bülten, Kişisel randevu bağlantısı, Harita ve mağaza bulucu, Müşteri değer raporları, Tavsiye programı, Toptan satış, Etkinlik bileti, Kurslar". He left out the first-steps list.
 - Laid out as the first set is (`plans/website-features.md`): `<plan>.md`, `<plan>-features.md`, `<plan>-steps.md`. The rules of `plans/website-features-rules.md` hold for every step; the existing files several plans touch are in `plans/more-features-shared-files.md`.
 
-## Which conditions did the architect bind? (2026-11-16, agent channel message 6460)
-- No second engine: each plan opens with what is there today and what it reuses, by file and function. No second sender, ledger, calendar, QR maker or PDF library.
-- Timed work hangs on the general job or a job script that takes its turn with `pg_cron_claim()`, before anything is sent: a job that runs twice sends once (`platform/job-script-claims.md`).
-- Mail leaves through the mail queue or the campaign path, where the bounce gate and consent are (`core/mail-bounces.md`); never a direct `email()`.
-- Money moves only through an order: a product and an order line, whole minor units, `round()`. A refund takes the right back too.
-- A new table that keeps a person's data is in the personal data export and in `privacy_erase.php`, and says how long it is kept.
-- What differs by person or group (a wholesale price, progress) never enters the anonymous page copy; the plan says how.
-- Capacity, stock and the use of a code are taken with one conditional UPDATE, never read then written.
-- A plan's first step is server and data only. The cart and checkout files, `workspace.js` and `style_designer.src.js` are held by other open PRs: a step that enters them names the clash.
-- Steps stay near 1,000 product lines; every plan says what is left out and whose look it is.
+## Which conditions did the architect bind?
+- `plans/website-second-set-conditions.md` holds the conditions for all eight plans and `plans/website-second-set-conditions-per-plan.md` what each plan adds (architect, 2026-11-16, agent channel message 6460). Each plan names the two files under "What binds it?" and does not repeat them.
 
-## Which tables may be added?
-- Architect (message 6460): the owner's yes of poll 65 covered the first set's tables only; this set's are asked of him in one question. Until his answer no step that adds a table starts; the columns then go through each step's draft PR to the architect, as before.
+## Which tables do the plans count?
+- Whether they may be added is the owner's, asked in one question with the count per plan (the first of the two files above). No step that adds a table starts before his answer.
+- One table each: the digest, the meeting link (and a place for a booking's meeting address), the map, the referral programme (and a new kind of store credit).
+- Two each: customer value, event tickets (and a mark on a product). Three each: wholesale, courses. Fourteen in all.
 
 ## Which plans are there?
 - `post-digest.md`: new posts of a list sent by themselves as an e-mail to a contact group.

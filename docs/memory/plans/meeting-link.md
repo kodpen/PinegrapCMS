@@ -16,7 +16,7 @@ priority: 6
 ## What binds it?
 - `commerce/bookings-decisions.md` (#6302): no second calendar engine, and a booking makes no Workspace event.
 - The personal calendar's census proposed leaving private plans out of booking busy times (`workspace/personal-calendar-census-readers.md`): M6 turns that round and waits for the owner.
-- Architect (2026-11-16, agent channel message 6460): on the booking engine, no new time calculator; the link cannot be guessed and its write is rate limited.
+- The architect's conditions: `plans/website-second-set-conditions.md` for all eight plans, `plans/website-second-set-conditions-per-plan.md` for this one. They are not repeated here.
 
 ## What is built?
 - The numbered features: `meeting-link-features.md` (M1 to M14). Steps: `meeting-link-steps.md`. Claim as `[plan:meeting-link] <step> — <topic>`.
