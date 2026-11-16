@@ -18,7 +18,7 @@ module: booking_links
 - Only the engine: `pg_booking_link_busy()` is `pg_booking_busy_between()` for the one member, `pg_booking_link_times()` is `pg_booking_day_times()` with that member alone. A team event the member is in takes its time; a private plan (`ws_personal_plans`) is never read, so it never takes one (owner, poll 85).
 
 ## Where is the meeting address kept?
-- `ws_profiles.meeting_url` (step 11.0.232, type the architect's). `pg_booking_link_meeting_url()` reads it, `pg_booking_link_meeting_url_save()` writes it cleaned by `ws_meeting_url_clean()` (empty is NULL). `pg_booking_link_booking_meeting_url()` gives it only for a booking with `source = 'link'` (`PG_BOOKING_LINK_SOURCE`), read and cleaned when shown.
+- `ws_profiles.meeting_url VARCHAR(500) NULL` (step 11.0.232, architect, agent channel message 7221; no index, no backfill; NULL and an empty string are both no address). `pg_booking_link_meeting_url()` reads it, `pg_booking_link_meeting_url_save()` writes it cleaned by `ws_meeting_url_clean()` (empty is NULL). `pg_booking_link_booking_meeting_url()` gives it only for a booking with `source = 'link'` (`PG_BOOKING_LINK_SOURCE`), read and cleaned when shown.
 
 Test: `tests/booking_links_test.php`.
 
