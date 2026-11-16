@@ -10,18 +10,19 @@ description: CB0 list, region nodes and classic page types the canvas draws clos
 - Use: no template places one on a site page (only on comment e-mail pages, `canvas-closed-blocks-emails.md`); met on sites moved from classic styles.
 
 ## What opens it today?
-- 24 layout page types: "Put a "{kind}" widget beside it", then "Remove the classic region" (`layout-widget-offer.md`).
-- Custom form: "Convert to design elements" (`layout-form-converter-editor.md`).
-- A classic page with no custom layout: no offer and no preview; the widget is dropped from the palette by hand.
+- Every page type a widget stands in for (CB10, #10060), custom layout or not: "Convert to design elements" on the page's own System region puts that widget in the region's place, after a confirm, one undo step (`_sdClassicConvert()`).
+- Offers: `_design.classicWidgets` from `pg_classic_widget_offers()` (`includes/fn/layouts.php`) for every tab's page, roles 0-1; kinds `pg_classic_widget_kinds()` = the layout kinds plus `pg_sw_page_type_widgets()` (calendar view and event view, folder view, logout, affiliate sign up form added). Settings carried as the layout offer's (`pg_layout_widget_seed()`).
+- 24 layout page types keep "Put a "{kind}" widget beside it", then "Remove the classic region" (`layout-widget-offer.md`), under the converter.
+- Custom form: "Convert to design elements" of the layout tab (`layout-form-converter-editor.md`).
 
 ## Which page types have no widget?
 - E-mail a friend, form view directory, affiliate confirmation and affiliate welcome (#2436 answer 2a, `system-widget-page-types.md`); order receipt (the order view widget draws the receipt e-mail page, but a classic receipt page type gets no offer).
+- Also no converter (listed for the architect with CB10, #10060): custom form confirmation, registration confirmation, membership confirmation, error, standard.
 - Opening: new widget kinds, one per step; #2436 decided they stay `system` nodes, so a step for them needs an owner decision first.
 
 ## Which legacy regions does a classic style bring?
 - Opened with "Open in the designer" (`classic-style-to-design.md`), they keep their region nodes, marked Legacy (`SD_LEGACY_REGIONS`): Menu, Menu Sequence, Ad Region, Tag Cloud, Mobile Switch, PDF, Common, Designer and Dynamic regions; Login and Cart regions and the Comments Block are not marked.
 - Canvas: a label box; the site prints the classic region.
-- Open today: Menu, Menu Sequence, Ad and Tag Cloud by "Make designable" (`region-node-to-widget.md`); a Common region by its shared component (`common-region-to-shared-component.md`); a Designer region (`designer-region-to-shared-component.md`).
-- No way yet: Login region (the Login Region widget exists, no converter), Cart region (the Cart Link widget exists, no converter), Comments Block (the Comments widget exists; hand-off in `comments-widget-hand-off.md`), Dynamic region (PHP), Mobile Switch, PDF.
-- Opening: a converter like "Make designable" for Login, Cart and Comments Block; Dynamic stays code; Mobile Switch and PDF are a question for CB1 (keep or retire).
+- Open today: Menu, Menu Sequence, Ad and Tag Cloud by "Make designable" (`region-node-to-widget.md`); Login, Cart and Comments Block by the same button (CB10, #10060); a Common region by its shared component (`common-region-to-shared-component.md`); a Designer region (`designer-region-to-shared-component.md`).
+- No way yet: Dynamic region (PHP, stays code), Mobile Switch, PDF (a question for CB1: keep or retire).
 - Page Region (`pregion`): the page's own content area, edited as the page; not closed.
