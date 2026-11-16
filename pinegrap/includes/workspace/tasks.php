@@ -1142,12 +1142,13 @@ function ws_tasks_agent_sql($rule, $column = 't.channel_id')
  * people's tasks (the dashboard's figures), as the task lists leave them out
  * by default; '' when there is nothing to leave out.
  *
- * @param string $column the task's channel column
+ * @param string     $column the task's channel column
+ * @param array[]|null $agents ws_tasks_agent_channels(); null reads them
  * @return string
  */
-function ws_tasks_agent_out_sql($column = 't.channel_id')
+function ws_tasks_agent_out_sql($column = 't.channel_id', $agents = null)
 {
-    return ws_tasks_agent_sql(ws_tasks_agent_rule(ws_tasks_agent_channels(), ''), $column);
+    return ws_tasks_agent_sql(ws_tasks_agent_rule(($agents === null) ? ws_tasks_agent_channels() : $agents, ''), $column);
 }
 
 /**
