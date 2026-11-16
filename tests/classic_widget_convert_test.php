@@ -74,6 +74,31 @@ function test_classic_widget_convert_editor_wiring()
 	pg_assert_contains("_sdClassicConvertPropsHtml(n) + _sdLayoutPropsHtml() + _sdLayoutWidgetPropsHtml(n)", $js, 'the system region panel offers the converter first');
 	pg_assert_contains("_sdClassicConvert(selectedNode); });", $js, 'the button is wired');
 	pg_assert_contains("var o = _design.classicWidgets[p.page_id];", $js, 'the offer comes from the design');
-	pg_assert_contains("_sdRegionToWidget(regionNode, o.kind, _sdLayoutWidgetCfg(o), function (newName) {", $js, 'the carried settings, then the defaults');
+	pg_assert_contains("_sdRegionToWidget(regionNode, o.kind, _sdLayoutWidgetCfg(o), function () {", $js, 'the carried settings, then the defaults');
 	pg_assert_contains("parent.children.splice(idx, 1, ref);", $js, 'the widget takes the region\'s place');
+}
+
+// The page types with no widget keep their System region and get a muted
+// line in its panel, never a dead button.
+function test_classic_no_widget_types_get_a_line()
+{
+	$none = pg_classic_no_widget_types();
+	$kinds = pg_classic_widget_kinds();
+
+	foreach (array('email a friend', 'form view directory', 'affiliate sign up confirmation', 'affiliate welcome', 'order receipt',
+		'custom form confirmation', 'registration confirmation', 'membership confirmation', 'error') as $type) {
+		pg_assert_true(in_array($type, $none, true), $type . ' is listed');
+	}
+	foreach ($none as $type) {
+		pg_assert_true(!isset($kinds[$type]), $type . ' has no converter');
+	}
+	pg_assert_same(array(), pg_classic_no_widget_page_ids(array()), 'no pages, no query');
+
+	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/designer_screen.php');
+	pg_assert_contains("'classicNoWidget' => ((int)\$user['role'] <= 1) ? pg_classic_no_widget_page_ids(\$tab_page_ids) : array(),", $screen);
+
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	pg_assert_contains("(_design.classicNoWidget || []).indexOf(p.page_id) === -1) return '';", $js, 'the line only on those pages');
+	pg_assert_contains("_sdT('This page type has no design widget; its layout is edited in the Layout tab.')", $js);
+	pg_assert_contains("_sdT('The page is now drawn by a \"{var}\" widget; save the page to keep it.', label)", $js, 'the toast names the widget by its label');
 }

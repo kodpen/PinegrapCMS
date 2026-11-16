@@ -51732,7 +51732,18 @@ const StyleDesigner = (function () {
 
     function _sdClassicConvertPropsHtml(n) {
         var o = _sdClassicWidgetOffer(n);
-        if (!o) return '';
+        if (!o) {
+            // A classic page type no widget stands in for: no button, a
+            // muted line saying where its page is set up.
+            var p = _pgActivePage();
+            if (!_design || !p || !(p.page_id > 0) || !_sdLegacyRegionOwn(n) || (_design.classicNoWidget || []).indexOf(p.page_id) === -1) return '';
+            var withLayout = (_design.layoutPages || []).indexOf(p.page_id) !== -1;
+            return '<div class="sd-prop-row"><div style="font-size:.66rem;color:#888;line-height:1.3">' +
+                    esc(withLayout
+                        ? _sdT('This page type has no design widget; its layout is edited in the Layout tab.')
+                        : _sdT('This page type has no design widget; the region keeps drawing it from the page type\'s settings.')) +
+                '</div></div>';
+        }
         return '<div class="sd-prop-row">' +
                 '<button type="button" class="btn btn-sm btn-outline theme-primary w-100" id="sd-classic-convert">' +
                     '<span class="bi bi-magic me-1"></span>' + esc(_sdT('Convert to design elements')) +
@@ -51751,8 +51762,8 @@ const StyleDesigner = (function () {
         if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
         var label = _swTypeInfo(o.kind).label;
         if (!window.confirm(_sdT('Put a "{var}" widget in the place of the classic region? The widget draws the page from then on; undo brings the region back.', label))) return;
-        _sdRegionToWidget(regionNode, o.kind, _sdLayoutWidgetCfg(o), function (newName) {
-            sdToast(esc(_sdT('"{var}" draws the page now; save the page to keep it.', newName)), 'success', 7000);
+        _sdRegionToWidget(regionNode, o.kind, _sdLayoutWidgetCfg(o), function () {
+            sdToast(esc(_sdT('The page is now drawn by a "{var}" widget; save the page to keep it.', label)), 'success', 7000);
         });
     }
 

@@ -17,7 +17,8 @@ description: CB0 list, region nodes and classic page types the canvas draws clos
 
 ## Which page types have no widget?
 - E-mail a friend, form view directory, affiliate confirmation and affiliate welcome (#2436 answer 2a, `system-widget-page-types.md`); order receipt (the order view widget draws the receipt e-mail page, but a classic receipt page type gets no offer).
-- Also no converter (listed for the architect with CB10, #10060): custom form confirmation, registration confirmation, membership confirmation, error, standard.
+- Also no converter (listed for the architect with CB10, #10060): custom form confirmation, registration confirmation, membership confirmation, error. All nine are `pg_classic_no_widget_types()`.
+- Architect (2026-11-16, CB10): they stay System regions (#2436); a widget kind for one needs the owner's decision first, not asked while nobody wants one. Their Region panel shows no button, only a muted line: the type has no design widget, its layout is edited in the Layout tab (a page with a custom layout) or the region keeps drawing it from the page type's settings (`_design.classicNoWidget`, `pg_classic_no_widget_page_ids()`).
 - Opening: new widget kinds, one per step; #2436 decided they stay `system` nodes, so a step for them needs an owner decision first.
 
 ## Which legacy regions does a classic style bring?

@@ -506,6 +506,49 @@ function pg_classic_widget_offers(array $page_ids)
     return _pg_widget_offers($page_ids, pg_classic_widget_kinds());
 }
 
+// The classic page types with a System region that no widget stands in for:
+// #2436 keeps them System regions, and a widget kind for one needs the
+// owner's decision first. The designer shows a muted line instead of a
+// converter on them. Pure.
+function pg_classic_no_widget_types()
+{
+    return array(
+        'email a friend', 'form view directory', 'affiliate sign up confirmation', 'affiliate welcome', 'order receipt',
+        'custom form confirmation', 'registration confirmation', 'membership confirmation', 'error',
+    );
+}
+
+// Of the given pages, the ids of those whose type is in
+// pg_classic_no_widget_types().
+function pg_classic_no_widget_page_ids(array $page_ids)
+{
+    $ids = array();
+
+    foreach ($page_ids as $id) {
+        if ((int) $id > 0) {
+            $ids[(int) $id] = true;
+        }
+    }
+
+    if (!$ids) {
+        return array();
+    }
+
+    $types = array();
+
+    foreach (pg_classic_no_widget_types() as $type) {
+        $types[] = "'" . e($type) . "'";
+    }
+
+    $out = array();
+
+    foreach ((array) db_items("SELECT page_id FROM page WHERE page_id IN (" . implode(',', array_keys($ids)) . ") AND page_type IN (" . implode(',', $types) . ")") as $page) {
+        $out[] = (int) $page['page_id'];
+    }
+
+    return $out;
+}
+
 // The offers of pg_layout_widget_offers() for the given pages and kinds.
 function _pg_widget_offers(array $page_ids, array $kinds)
 {
