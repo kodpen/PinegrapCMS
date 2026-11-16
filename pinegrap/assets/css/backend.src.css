@@ -16028,7 +16028,7 @@ html[data-bs-theme="dark"] .ws-hl {
 }
 .ws-hl-bar-note {
   padding: 0 .5rem;
-  color: var(--bs-secondary-color);
+  color: var(--bs-secondary-fg);
 }
 .ws-hl-card {
   width: min(20rem, calc(100vw - 1rem));

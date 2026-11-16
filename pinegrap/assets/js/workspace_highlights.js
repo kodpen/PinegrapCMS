@@ -353,7 +353,7 @@
 
         closeCard();
 
-        var card = h.el('div', 'ws-hl-card card shadow-sm');
+        var card = h.el('div', 'ws-hl-card card');
         card.setAttribute('role', 'dialog');
         card.setAttribute('aria-label', h.t('hl_card'));
 
@@ -364,7 +364,7 @@
             swatch.setAttribute('data-ws-tone', tone(one));
             head.appendChild(swatch);
             head.appendChild(h.el('strong', '', one.name));
-            head.appendChild(h.el('span', 'text-body-secondary small', one.scope === 'me' ? h.t('hl_only_you') : h.t('hl_for_everyone')));
+            head.appendChild(h.el('span', 'fg-secondary small', one.scope === 'me' ? h.t('hl_only_you') : h.t('hl_for_everyone')));
             row.appendChild(head);
 
             if (one.note) {
@@ -374,13 +374,13 @@
             var tools = h.el('div', 'ws-hl-card-tools');
 
             if (one.mine) {
-                tools.appendChild(press('btn btn-sm btn-link px-0', one.note ? h.t('hl_edit_note') : h.t('hl_add_note'), '', function () {
+                tools.appendChild(press('btn btn-sm btn-text theme-primary px-0', one.note ? h.t('hl_edit_note') : h.t('hl_add_note'), '', function () {
                     noteForm(row, tools, one, body);
                 }));
             }
 
             if (one.can_remove) {
-                tools.appendChild(press('btn btn-sm btn-link px-0 text-danger', h.t('hl_remove'), '', function () {
+                tools.appendChild(press('btn btn-sm btn-text theme-danger px-0', h.t('hl_remove'), '', function () {
                     send('ws_highlight_remove', { id: one.id }, body).then(closeCard, function () {});
                 }));
             }
@@ -415,10 +415,10 @@
         form.appendChild(field);
 
         var buttons = h.el('div', 'ws-hl-card-tools');
-        var save = h.el('button', 'btn btn-sm btn-primary', h.t('hl_save'));
+        var save = h.el('button', 'btn btn-sm btn-solid theme-primary', h.t('hl_save'));
         save.type = 'submit';
         buttons.appendChild(save);
-        buttons.appendChild(press('btn btn-sm btn-link', h.t('hl_cancel'), '', function () {
+        buttons.appendChild(press('btn btn-sm btn-text theme-secondary', h.t('hl_cancel'), '', function () {
             row.replaceChild(tools, form);
         }));
         form.appendChild(buttons);
@@ -508,12 +508,12 @@
 
         var message = spot.body.wsHlMessage;
         var tooLong = chars(spot.quote) > QUOTE_MAX;
-        var bar = h.el('div', 'ws-hl-bar btn-group shadow-sm');
+        var bar = h.el('div', 'ws-hl-bar btn-group');
         bar.setAttribute('role', 'toolbar');
         bar.setAttribute('aria-label', h.t('hl_toolbar'));
 
         var add = function (scope, label) {
-            var button = press('btn btn-sm btn-light', label, 'bi-highlighter', function () {
+            var button = press('btn btn-sm btn-subtle theme-secondary', label, 'bi-highlighter', function () {
                 var selection = window.getSelection();
 
                 closeBar();
