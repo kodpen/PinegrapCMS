@@ -910,6 +910,7 @@
     "{var:1} deleted": "{var:1} silindi",
     "{var:1} delivered": "{var:1} teslim edildi",
     "{var:1} demoting": "{var:1} geri plana düşüren",
+    "{var:1} depth": "{var:1} derinlik",
     "{var:1} design files have been uploaded.": "{var:1} tasarım dosyası yüklendi.",
     "{var:1} design styles and {var:2} design pages were not copied. Tick Designs to carry them.": "{var:1} tasarım stili ve {var:2} tasarım sayfası taşınmadı. Bunları taşımak için Tasarımlar'ı işaretleyin.",
     "{var:1} detected in front of this site.": "Bu sitenin önünde {var:1} tespit edildi.",

@@ -29,6 +29,22 @@ if (!defined('PG_VISITORS_SCREEN')) {
 const PG_VISITORS_CLICKS_PAGES = 20;
 
 /**
+ * Whether the "Clicks and scrolling" switch is on: the settings text
+ * page_clicks = '1'. A stand-in until the switch's own reader lands with
+ * its Features card; then the section calls that one.
+ *
+ * @return bool
+ */
+function pg_visitors_clicks_on()
+{
+    if (!function_exists('pg_config_text')) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/config_text.php');
+    }
+
+    return pg_config_text('page_clicks') === '1';
+}
+
+/**
  * The device choices of the filter, value => label.
  *
  * @return array
@@ -173,8 +189,9 @@ function pg_visitors_clicks_off(array $user)
 }
 
 /**
- * The rows of the pages table. Pure: labels and addresses go in as text
- * cells, which pg_visitors_table() escapes.
+ * The rows of the pages table: the page with its most clicked element and
+ * that element's share as a quiet line under it, so the figures fit a phone.
+ * Pure: every text is escaped here.
  *
  * @param array  $pages   pg_page_clicks_pages(), each with 'top' (an
  *                        element or null) added
@@ -189,13 +206,15 @@ function pg_visitors_clicks_page_rows(array $pages, array $period, $device)
     foreach ($pages as $page) {
         $name = ((string) $page['page_name'] !== '') ? (string) $page['page_name'] : lang('Untitled page');
         $top = isset($page['top']) && is_array($page['top']) ? $page['top'] : null;
+        $note = $top
+            ? lang(array('string' => 'Most clicked: {var:1} ({var:2})', 'vars' => array(pg_visitors_clicks_name($top), pg_visitors_clicks_share($top['share']))))
+            : lang('No clicks counted');
 
         $rows[] = array(
-            array('html' => '<a href="' . h(pg_visitors_clicks_url($period, (int) $page['page_id'], $device)) . '">' . h($name) . '</a>', 'sort' => $name),
+            array('html' => '<a href="' . h(pg_visitors_clicks_url($period, (int) $page['page_id'], $device)) . '">' . h($name) . '</a>'
+                . '<span class="pg-visitors-cell-note text-break">' . h($note) . '</span>', 'sort' => $name),
             array('html' => h(pg_format_number((int) $page['views'], 0)), 'sort' => (int) $page['views']),
             ($page['half_tenth'] === null) ? '–' : pg_visitors_clicks_tenth($page['half_tenth']),
-            $top ? pg_visitors_clicks_name($top) : '–',
-            $top ? pg_visitors_clicks_share($top['share']) : '–',
         );
     }
 
@@ -203,8 +222,9 @@ function pg_visitors_clicks_page_rows(array $pages, array $period, $device)
 }
 
 /**
- * The rows of a page's elements table, "other" as one line at the end.
- * Pure: label and address go in as text cells.
+ * The rows of a page's elements table: the label first with the part, the
+ * kind and the address as a quiet line under it, then clicks and share;
+ * "other" as one line at the end. Pure: every text is escaped here.
  *
  * @param array $figures pg_page_clicks_page()
  * @return array
@@ -214,11 +234,15 @@ function pg_visitors_clicks_element_rows(array $figures)
     $rows = array();
 
     foreach ($figures['elements'] as $element) {
+        $label = ((string) $element['label'] !== '') ? (string) $element['label'] : pg_visitors_clicks_name($element);
+        $note = array(pg_visitors_clicks_area((string) $element['area']), ($element['role'] === 'button') ? lang('Button') : lang('Link'));
+
+        if ((string) $element['url'] !== '') {
+            $note[] = (string) $element['url'];
+        }
+
         $rows[] = array(
-            pg_visitors_clicks_area((string) $element['area']),
-            ($element['role'] === 'button') ? lang('Button') : lang('Link'),
-            ((string) $element['label'] !== '') ? (string) $element['label'] : '–',
-            ((string) $element['url'] !== '') ? (string) $element['url'] : '–',
+            array('html' => h($label) . '<span class="pg-visitors-cell-note text-break">' . h(implode(' · ', $note)) . '</span>', 'sort' => $label),
             array('html' => h(pg_format_number((int) $element['clicks'], 0)), 'sort' => (int) $element['clicks']),
             pg_visitors_clicks_share($element['share']),
         );
@@ -226,10 +250,7 @@ function pg_visitors_clicks_element_rows(array $figures)
 
     if ((int) $figures['other'] > 0) {
         $rows[] = array(
-            lang('Other elements'),
-            '–',
-            '–',
-            '–',
+            array('html' => h(lang('Other elements')) . '<span class="pg-visitors-cell-note">' . h(lang('Clicks past the elements a page keeps in a day')) . '</span>'),
             array('html' => h(pg_format_number((int) $figures['other'], 0)), 'sort' => (int) $figures['other']),
             pg_visitors_clicks_share(function_exists('pg_page_clicks_share') ? pg_page_clicks_share((int) $figures['other'], (int) $figures['views']) : null),
         );
@@ -256,7 +277,7 @@ function pg_visitors_clicks_reach_rows(array $reach)
         }
 
         $rows[] = array(
-            'label' => lang(array('string' => 'Down to {var:1}', 'vars' => array(pg_visitors_clicks_tenth($tenth)))),
+            'label' => lang(array('string' => '{var:1} depth', 'vars' => array(pg_visitors_clicks_tenth($tenth)))),
             'value' => round((float) $share * 100, 1),
             'text'  => pg_visitors_clicks_share($share),
         );
@@ -289,13 +310,11 @@ function pg_visitors_clicks_list(array $period, $device)
         array(
             lang('Page'),
             array('label' => lang('Views'), 'end' => true),
-            array('label' => lang('Half of the views reach'), 'end' => true),
-            lang('Most clicked'),
-            array('label' => lang('Share of views'), 'end' => true),
+            array('label' => lang('Half depth'), 'end' => true),
         ),
         pg_visitors_clicks_page_rows($pages, $period, $device),
         array('caption' => lang('Clicks and scrolling by page'), 'limit' => PG_VISITORS_LIST_ROWS * 2)
-    ) . '<p class="pg-visitors-note">' . h(lang('Each element counts once a page view, so its share is never more than all the views.')) . '</p>';
+    ) . '<p class="pg-visitors-note">' . h(lang('Half depth: how far down the page half of its views came. Each element counts once a page view, so its share is never more than all the views.')) . '</p>';
 }
 
 /**
@@ -326,16 +345,13 @@ function pg_visitors_clicks_page(array $period, $page_id, $device)
     $half = pg_page_clicks_half_tenth($figures['reach']);
     $tiles = '<div class="pg-visitors-tiles">'
         . pg_visitors_tile(lang('Views'), pg_format_number($figures['views'], 0))
-        . pg_visitors_tile(lang('Half of the views reach'), ($half === null) ? '–' : pg_visitors_clicks_tenth($half))
+        . pg_visitors_tile(lang('Half the views reach'), ($half === null) ? '–' : pg_visitors_clicks_tenth($half))
         . pg_visitors_tile(lang('Elements clicked'), pg_format_number(count($figures['elements']), 0))
         . '</div>';
 
     $elements = pg_visitors_table(
         array(
-            lang('Part'),
-            lang('Kind'),
-            lang('Label'),
-            lang('Address'),
+            lang('Element'),
             array('label' => lang('Clicks'), 'end' => true),
             array('label' => lang('Share of views'), 'end' => true),
         ),
@@ -346,7 +362,8 @@ function pg_visitors_clicks_page(array $period, $page_id, $device)
     return $back . $title . $tiles . '
         <div class="pg-visitors-grid is-split">
             ' . pg_visitors_block(lang('Elements clicked'), $elements) . '
-            ' . pg_visitors_block(lang('How far down the views came'), pg_visitors_bars(pg_visitors_clicks_reach_rows($figures['reach']), array('label' => lang('How far down the views came')))) . '
+            ' . pg_visitors_block(lang('Scroll depth'), '<p class="pg-visitors-note mt-0 mb-2">' . h(lang('The share of views that came down at least this far on the page.')) . '</p>'
+                . pg_visitors_bars(pg_visitors_clicks_reach_rows($figures['reach']), array('label' => lang('Scroll depth')))) . '
         </div>';
 }
 
@@ -362,7 +379,7 @@ function pg_visitors_section_clicks(array $period, array $user)
     $sections = pg_visitors_sections();
     $title = $sections['clicks'];
 
-    if (!pg_page_clicks_switch_on()) {
+    if (!pg_visitors_clicks_on()) {
         return pg_visitors_section('clicks', $title, pg_visitors_clicks_off($user));
     }
 
