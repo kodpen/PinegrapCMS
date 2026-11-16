@@ -7052,6 +7052,11 @@ const StyleDesigner = (function () {
         '.sd-chip-cond { background:#6f42c1; }',
         '.sd-chip-shown { background:#0d6efd; }',
         '.sd-chip-off { background:#64748b; letter-spacing:.02em; text-transform:uppercase; }',
+        // A placed row over a short element (_sdChipRowSpot()): a dot on its
+        // corner, the chips' text in the dot's title.
+        '.sd-chip-row.sd-chip-row-mark { width:auto; gap:0; margin:0; pointer-events:none; }',
+        '.sd-chip-row.sd-chip-row-mark > .sd-chip:first-child { display:block; width:10px; height:10px; padding:0; border-radius:50%; font-size:0; line-height:0; box-shadow:0 0 0 2px #fff; pointer-events:auto; }',
+        '.sd-chip-row.sd-chip-row-mark > .sd-chip + .sd-chip { display:none; }',
         '.sd-wrap-inline > .sd-chip-row { display:inline-flex; vertical-align:middle; width:auto; min-width:0; max-width:16rem; margin:0 4px 0 0; }',
         '.sd-wrap[data-sd-self].sd-cond { position:relative; }',
         '.sd-wrap[data-sd-self].sd-cond::before { content:attr(data-sd-cond); position:absolute; top:2px; left:2px; z-index:5; max-width:calc(100% - 4px); overflow:hidden; text-overflow:ellipsis; padding:1px 6px; border-radius:3px; background:#6f42c1; color:#fff; font-size:.6rem; font-weight:700; line-height:1.5; pointer-events:none; white-space:nowrap; }',
@@ -10137,7 +10142,7 @@ const StyleDesigner = (function () {
 
     // The same for several wrappers: every position is measured first and
     // written after, so the canvas is laid out once, not once per wrapper.
-    function _sdPlaceChromeOf(ws) {
+    function _sdPlaceChromeOf(ws, again) {
         if (!canvasDoc) return;
         var win = canvasDoc.defaultView;
         if (!win) return;
@@ -10179,7 +10184,7 @@ const StyleDesigner = (function () {
                     bx = -win.scrollX;
                     by = -win.scrollY;
                 }
-                var top, left, width;
+                var top, left, width, mark = false;
                 if (p.classList.contains('sd-tb')) {
                     // Above the element; below it when there is no room
                     // above, inside it with no room below either.
@@ -10191,24 +10196,37 @@ const StyleDesigner = (function () {
                     top = er.top - by + 2;
                     left = er.right - bx - 18;
                 } else if (p.classList.contains('sd-chip-row')) {
-                    top = er.top - by;
-                    left = er.left - bx;
+                    // The row's own height, read while it is a row (a mark
+                    // is a dot): over a short element it would cover the
+                    // words, so it becomes a mark on the element's corner.
+                    if (!p.classList.contains('sd-chip-row-mark')) p._sdRowH = p.offsetHeight;
+                    mark = _sdChipRowSpot(er.height, p._sdRowH || 15) === 'mark';
+                    top = er.top - by - (mark ? 5 : 0);
+                    left = er.left - bx - (mark ? 5 : 0);
                     width = er.width;
                 } else {
                     top = er.top - by - 7;
                     left = er.left - bx - 7;
                 }
-                writes.push({ p: p, top: Math.round(top), left: Math.round(left), width: width });
+                writes.push({ p: p, top: Math.round(top), left: Math.round(left), width: width, mark: mark });
             });
         });
+        // A row taken out of the flow lets its parent lay the row out again
+        // (a flex row's link moves back beside its heading); the boxes are
+        // measured once more so the chips land on where the elements are.
+        var moved = false;
         writes.forEach(function (x) {
             var p = x.p;
             var row = p.classList.contains('sd-chip-row');
+            if (row && x.top !== undefined && !p._sdPlaced) moved = true;
             if (x.top === undefined) {
                 p.style.removeProperty('top');
                 p.style.removeProperty('left');
                 p.style.removeProperty('right');
-                if (row) ['position', 'z-index', 'width', 'min-width'].forEach(function (k) { p.style.removeProperty(k); });
+                if (row) {
+                    ['position', 'z-index', 'width', 'min-width'].forEach(function (k) { p.style.removeProperty(k); });
+                    _sdChipRowMark(p, false);
+                }
                 p._sdPlaced = false;
                 return;
             }
@@ -10217,14 +10235,45 @@ const StyleDesigner = (function () {
             if (row) {
                 p.style.setProperty('position', 'absolute', 'important');
                 p.style.setProperty('z-index', '5', 'important');
-                p.style.setProperty('width', Math.max(0, Math.floor(x.width || 0)) + 'px', 'important');
+                if (x.mark) p.style.removeProperty('width');
+                else p.style.setProperty('width', Math.max(0, Math.floor(x.width || 0)) + 'px', 'important');
                 p.style.setProperty('min-width', '0', 'important');
+                _sdChipRowMark(p, x.mark);
             }
             p.style.setProperty('top', x.top + 'px', 'important');
             p.style.setProperty('left', x.left + 'px', 'important');
             p.style.setProperty('right', 'auto', 'important');
             p._sdPlaced = true;
         });
+        if (moved && !again) _sdPlaceChromeOf(ws, true);
+    }
+
+    // Where a chip row put beside its element goes: 'over' the element's
+    // top-left corner when the element is at least two rows tall (its words
+    // stay readable under the row), else 'mark', a dot on the corner.
+    function _sdChipRowSpot(elHeight, rowHeight) {
+        var h = Number(elHeight) || 0;
+        var r = Number(rowHeight) || 0;
+        if (h <= 0) return 'mark';
+        return (h >= 2 * r) ? 'over' : 'mark';
+    }
+
+    // Draws a placed chip row as a mark (its first chip as a dot, the
+    // others hidden, every chip's text in the dot's title) or as the row.
+    function _sdChipRowMark(p, on) {
+        p.classList.toggle('sd-chip-row-mark', !!on);
+        var first = p.firstElementChild;
+        if (!first) return;
+        // The dot is the first chip itself, so a click does what a click
+        // on that chip does (it reaches the element's wrapper); its words
+        // are its title and its accessible name.
+        if (on) {
+            first.title = Array.prototype.map.call(p.children, function (c) { return c.textContent; }).join('\n');
+            first.setAttribute('aria-label', first.title);
+        } else {
+            first.title = first.textContent;
+            first.removeAttribute('aria-label');
+        }
     }
 
     // The chrome that shows without a hover: the selection's toolbar, note
