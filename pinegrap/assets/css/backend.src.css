@@ -15991,6 +15991,23 @@ a.ws-person-link:hover .avatar {
 .ws-msg-edited .bi {
   font-size: 11px;
 }
+/* Translate on a message (workspace_translate.js): the line under it. */
+.ws-msg-tr {
+  margin-top: .15rem;
+  font-size: .75rem;
+  color: var(--pg-fg-2);
+}
+.ws-msg-tr:empty {
+  display: none;
+}
+.ws-msg-tr .bi {
+  font-size: 11px;
+}
+.ws-msg-tr-toggle {
+  font-size: inherit;
+  line-height: inherit;
+  vertical-align: baseline;
+}
 /* The messages a reply answers, lit up for a moment when it is followed. */
 @keyframes ws-msg-flash {
   0%, 35% { background: rgba(var(--ws-accent-rgb), .28); box-shadow: inset 3px 0 0 var(--ws-accent); }
