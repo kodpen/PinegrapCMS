@@ -39,6 +39,14 @@ require_once(dirname(__FILE__) . '/includes/push.php');
 
 $woken = pg_push_queue_run(20);
 
+// Visitor notifications ride on the same entry point: an operator who points
+// a cron line here gets them within a minute too (includes/fn/site_push.php).
+if (pg_site_push_ready() && pg_site_push_switch_on()) {
+
+    $woken += pg_site_push_queue_run(20);
+
+}
+
 // Scheduled-task health, the same as the other jobs record.
 if (function_exists('pg_cron_ran')) {
 
