@@ -94,6 +94,11 @@
 - panel-old-screens-shared-steps.md: Old panel screens to look A: the shared steps cut after the groups, SH1 to SH10 (field, status list, ERP lists, figure cards, icon buttons, save bar, list title) and KS1, KS2 on kept screens
 - panel-old-screens.md: Plan (owner 2026-11-15): the panel screens still drawn the old way move to look A; censuses done, LM2 the shared buttons, then one census group per step (C1 to C5, E1 to E5, S1 to S6)
 - php-error-log-clean.md: Plan (owner 2026-11-14): the PHP error log of the owner's dev machine read for Pinegrap's own deprecations and warnings on PHP 8.5, and their causes fixed; steps EL1 to EL6
+- picture-text-translation-census-draw.md: Picture text translation PT0 census, drawing: browser renderer without the editor, the server (fonts, three scripts), a longer text box, right-to-left
+- picture-text-translation-census-keep.md: Picture text translation PT0 census: keeping a language version (own table, source document, named file): schema, page pass cost, rename, delete, Recycle Bin, Disk Usage
+- picture-text-translation-census-places.md: Picture text translation PT0 census: every path writing a picture address into a page (nodes, HTML, products, srcset, backgrounds, og:image), what the page pass sees
+- picture-text-translation-census-store.md: Picture text translation PT0 census, store: picture texts in translation_uses, the Translations screen group, a job, pg_tr_translatable() on short words and prices
+- picture-text-translation-census.md: Picture text translation PT0 census start: where a Design Canvas document with text layers lives, which layer fields hold words, the parts, the questions for the owner
 - picture-text-translation.md: Plan (owner 2026-11-16): the texts in pictures translated: a Design Canvas picture's text layers enter the site translation, a page in another language shows its picture; census PT0 first
 - place-map-features.md: Plan place-map, features X1 to X16: the map block and its list, coordinates as two fields of the record, the places endpoint, consent before tiles, near me and a typed address, the library, headers
 - place-map-steps.md: Plan place-map, steps MP1 to MP6: the census of providers and consent, "Find from the address" on a record, the endpoint and the block, the map and the switch, near me and a typed address, close-out
