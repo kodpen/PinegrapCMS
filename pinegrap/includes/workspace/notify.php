@@ -174,6 +174,63 @@ function ws_quiet_hours_delay($user_id, $now = null)
 }
 
 /**
+ * Whether the site has the quiet hours column (step 11.0.219).
+ *
+ * @return bool
+ */
+function ws_quiet_hours_ready()
+{
+    return function_exists('pg_quiet_hours_decode') && pg_schema_has('ws_profiles', 'quiet_hours');
+}
+
+/**
+ * A person's own quiet hours for the "Quiet hours" part of a channel's
+ * Notifications: null with no range set.
+ *
+ * @param int $user_id
+ * @return array|null start, end (HH:MM), off_days
+ */
+function ws_quiet_hours_get($user_id)
+{
+    $user_id = (int) $user_id;
+
+    if (($user_id <= 0) || !ws_quiet_hours_ready()) {
+        return null;
+    }
+
+    return pg_quiet_hours_decode(db_value("SELECT quiet_hours FROM ws_profiles WHERE user_id = '" . $user_id . "'"));
+}
+
+/**
+ * Saves the signed-in person's own quiet hours (pg_quiet_hours_save_check():
+ * a team member, their own profile, clock times). No range clears the value.
+ * Reached only from the panel's own session; no API route or MCP tool.
+ *
+ * @param array $viewer  ws_viewer()
+ * @param array $request start, end, off_days
+ * @return array ok, value, error, field
+ */
+function ws_quiet_hours_save($viewer, $request)
+{
+    if (!ws_quiet_hours_ready()) {
+        return array('ok' => false, 'value' => null, 'error' => lang('The database has not been upgraded yet.'), 'field' => '');
+    }
+
+    $check = pg_quiet_hours_save_check($viewer, is_array($request) ? $request : array());
+
+    if (!$check['ok']) {
+        return array('ok' => false, 'value' => null, 'error' => $check['error'], 'field' => $check['field']);
+    }
+
+    $json = ($check['value'] === null) ? null : json_encode($check['value']);
+
+    db_q("INSERT INTO ws_profiles (user_id, quiet_hours, updated_at) VALUES (?, ?, ?)
+        ON DUPLICATE KEY UPDATE quiet_hours = VALUES(quiet_hours)", array($check['user_id'], $json, time()));
+
+    return array('ok' => true, 'value' => $check['value'], 'error' => '', 'field' => '');
+}
+
+/**
  * Sends an unread line again: its created_at moves, so it rises in the
  * inbox and GET /workspace/inbox?changed_since= reports it once more, and
  * its bell row takes its title now. A line read meanwhile is left as the

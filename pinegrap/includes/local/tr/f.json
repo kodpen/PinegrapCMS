@@ -1332,6 +1332,7 @@
     "For a visitor whose languages the site is not served in, for example English for every visitor who does not read the source language. A visitor whose browser and location say nothing stays on the page.": "Sitenin, dillerinin hiçbirinde yayınlanmadığı ziyaretçi için; örneğin kaynak dili okumayan her ziyaretçi için İngilizce. Tarayıcısı ve konumu hiçbir ipucu vermeyen ziyaretçi sayfada kalır.",
     "For adults; no experience needed": "Yetişkinler için; deneyim gerekmez",
     "For ages 12 to 17": "12-17 yaş için",
+    "For all your channels. Phone and browser notifications wait until the quiet hours end; the inbox, the badge and e-mail notices do not change.": "Tüm kanallarınız için. Telefon ve tarayıcı bildirimleri sessiz saatler bitene kadar bekler; gelen kutusu, rozet ve e-posta bildirimleri değişmez.",
     "For an agent that runs on a model.": "Bir modelde çalışan ajan için.",
     "For an agent that starts work on each knock. A knock starts a new run; it never wakes a session that is already open.": "Her dürtmede işe yeniden başlayan bir ajan için. Her dürtme yeni bir çalışma başlatır; açık olan bir oturumu asla uyandırmaz.",
     "For an invoice, a team or a course you would rather not pay for online. We answer within a working day and open the course for you.": "Fatura, ekip ya da çevrim içi ödemek istemediğiniz bir kurs için. Bir iş günü içinde yanıtlar ve kursu sizin için açarız.",
