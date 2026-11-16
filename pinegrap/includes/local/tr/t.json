@@ -6816,6 +6816,7 @@
     "The site knocks at {var:1} on each request. The last knock, {var:2}, was answered.": "Site her istekte {var:1} adresini dürter. Son dürtme ({var:2}) yanıtlandı.",
     "The site levelled, the foundations and the truck yard's base laid.": "Arazi tesviye edildi, temeller ve tır sahasının altyapısı döşendi.",
     "The site lists a row for each payment period of the order's recurring products.": "Site, siparişteki yinelenen ürünlerin her ödeme dönemi için bir satır listeler.",
+    "The site lists each recipient of the visitor's order with where it ships and its items.": "Site, ziyaretçinin siparişindeki her alıcıyı nereye gönderildiği ve ürünleriyle listeler.",
     "The site lists the gift cards applied to the visitor's order, each with its Remove link.": "Site, ziyaretçinin siparişine uygulanan hediye kartlarını her birinin Kaldır bağlantısıyla listeler.",
     "The site lists the gifts the visitor's cart has earned, each with its Add button; nothing when none.": "Site, ziyaretçinin sepetinin kazandığı hediyeleri Ekle düğmeleriyle listeler; yoksa hiçbir şey göstermez.",
     "The site lists the offers applied to the visitor's cart; nothing when none applies.": "Site, ziyaretçinin sepetine uygulanan kampanyaları listeler; uygulanan yoksa hiçbir şey göstermez.",

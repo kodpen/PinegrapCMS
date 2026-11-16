@@ -15,7 +15,7 @@ description: Steps CB2 to CB10 of designer-closed-blocks, written from the owner
 - CB6a (M) Shop, catalog detail. Done (#9849, #9871).
 - CB6b (M) Shop, catalog: category tree, filter offcanvas and its buttons. Done (#9890).
 - CB6c (M) Shop, cart: offers, quick add, gifts. Done (#9901).
-- CB6d (M) Shop, checkout: order preview parts as trees, installments settings only. CB6d1 done (#9920). CB6d2: the recipients; offers list inner padding (6539).
+- CB6d (M) Shop, checkout: order preview parts as trees, installments settings only. Done (#9920, #9966); the order preview is settled.
 - CB6e (M) Shop, after the order: order view's return actions; My Account's order history, subscriptions, bookings, store credit.
 - CB7 (M) Login and sign-up. Done (#9895): `designer/member-widgets-open-slots.md`.
 - CB8 (M) Booking widget: the twelve `booking_*` steps and parts. Done (#9918): `designer/booking-widget-open-parts.md`.
