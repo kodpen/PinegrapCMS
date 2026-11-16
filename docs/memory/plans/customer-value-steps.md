@@ -4,7 +4,7 @@ description: Plan customer-value, steps CV1 to CV4: the measured rebuild and the
 ---
 
 ## Which steps are there?
-- CV1 (M) The summary and its rebuild, server only. No schema.
+- CV1 (M) The summary and its rebuild, server only. No schema. Done in #9995 (`commerce/customer-value-summary.md`).
   - First the measurement: a whole rebuild on a seeded shop of at least 200,000 orders, its times and the summary's size written in the PR body. With a bad figure the step stops and the architect is asked for a table, with the measurement.
   - Existing files: `job.php` (one guarded call), `functions.php` (the module).
   - New: `includes/fn/customer_values.php` (what counts, the key, the runs and their place, the claim, the summary and its one write), `tests/customer_values_test.php`.
