@@ -16,6 +16,7 @@ module: graph_canvas
 ## What does adapter route 'elbow' do?
 - `create()` routes each drawn arrow over the boxes of `items()` (with `size()`) to the nearest edge of its target; `settle()` runs once the edges of a drawing are in (a microtask), on each focus or "All arrows" change, and from `reroute()` (a moved box routes its own arrows; others keep their way). Ways sharing a gap go through `lanes()`.
 - An arrow keeps today's curve while hidden, while it is faint with more than `ROUTE_MOST` (150) drawn, and when `route()` finds no way. Every arrow is a curve at first and becomes a way when the drawing settles.
+- `adapter.routeMargin` (16) is the room an arrow keeps round a box. Lanes spread 6 apart round a line that far out, so many arrows in one gap need more: the Prototype view passes 40 (about a dozen side by side in its 96 gaps; with 16, nine Header arrows ran over the heads of the frames beside their gap).
 - `portAt(item, name)` may answer `{ x, y, side }` from the box's top left: the arrow leaves there, by that side. `{ y }` alone is the right edge as before.
 - Flows passes no `route`: every arrow a curve as before (its harness 40 of 40, with and without `--min`).
 

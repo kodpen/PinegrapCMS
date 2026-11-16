@@ -486,6 +486,7 @@ function test_proto_hotspots_view_routes_arrows()
 	$adapter = substr($source, (int) $start, 4000);
 	pg_assert_true($start !== false, 'the view makes its canvas');
 	pg_assert_contains("route: 'elbow',", $adapter, 'the view asks for right-angle arrows');
+	pg_assert_contains('routeMargin: 40,', $adapter, 'arrows keep 40 clear of a frame, room for lanes in a 96 gap');
 	pg_assert_contains('size: function (item) { return { w: item.w, h: item.h }; },', $adapter, 'the core knows each frame\'s size to keep clear of it');
 }
 

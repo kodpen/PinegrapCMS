@@ -1521,7 +1521,10 @@
     //    (G.route(), G.path()), arrows sharing a gap side by side
     //    (G.lanes()), to the nearest edge of their target; an arrow with no
     //    way, a hidden one and, past 150 drawn, a faint one keep the curve.
-    //    A box moved routes its own arrows again;
+    //    A box moved routes its own arrows again; routeMargin (optional,
+    //    16) is the room an arrow keeps round a box: arrows sharing a gap
+    //    spread 6 apart round a line that far from the box, so a canvas
+    //    with wide gaps and many arrows gives more;
     //  - thumb(item, holder) (optional): a box drawn with options.thumb
     //    gets its picture put into holder once it first comes into sight;
     //  - ownClicks: a selector of what keeps its own clicks and keys (a link
@@ -1851,7 +1854,7 @@
                     var end = into(one.to, one.options.slot || 0, one.options.slots || 1);
                     var box = size(one.to);
 
-                    one.points = route(start, { x: one.to.x, y: one.to.y, w: box.w, h: box.h }, boxList(), { y: end.y }) || false;
+                    one.points = route(start, { x: one.to.x, y: one.to.y, w: box.w, h: box.h }, boxList(), { y: end.y, margin: adapter.routeMargin }) || false;
 
                     if (!one.points) {
                         draw(one, pathOf(one));
