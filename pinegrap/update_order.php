@@ -335,6 +335,7 @@ function update_order($request) {
         if ($mails_customer && !empty($shipped_recipient['shipped']) && !empty($shipped_recipient['tracking_numbers'])) {
             pg_sms_order_shipped((int) $order['id'], (int) $shipped_recipient['id'], $shipped_recipient['tracking_numbers']);
             pg_whatsapp_order_shipped((int) $order['id'], (int) $shipped_recipient['id'], $shipped_recipient['tracking_numbers']);
+            pg_site_push_order_moment((int) $order['id'], (int) $shipped_recipient['id'], 'shipped');
         }
     }
 

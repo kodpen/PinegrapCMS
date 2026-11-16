@@ -218,6 +218,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_prototype_comments();      // 11.0.225
 	upgrade_2026_11_0_content_review();          // 11.0.226
 	upgrade_2026_11_0_site_push();               // 11.0.227
+	upgrade_2026_11_0_site_push_watch();         // 11.0.229
 
 }
 
@@ -7267,5 +7268,32 @@ function upgrade_2026_11_0_site_push() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Visitor notifications: the tables for browsers subscribed to the site\'s news and the messages sent to them are ready; nothing is offered to visitors until the switch is turned on in Features.');
+
+}
+
+// Visitor notifications for one device (11.0.229, includes/fn/site_push.php):
+// a browser that asked to be told about one record waits for it here, a
+// back-in-stock request (kind 2, record_id stock_notify.id) or an order's
+// address (kind 3, record_id ship_tos.id; an order's rows are found by its
+// addresses, so there is no order_id). kind is the message kind the wait
+// ends in. moments holds the bits of the moments already sent, so each is
+// sent once; the last moment deletes the row, so the table is no history.
+// Rows go with the subscription, the record and, after 180 days, the
+// sender's tidy-up. idx_subscription serves the delete by subscription.
+// No backfill: nothing waited for a record before this step. Columns
+// confirmed by the architect.
+function upgrade_2026_11_0_site_push_watch() {
+
+	install_create_table('site_push_watch', "CREATE TABLE site_push_watch (
+		kind            TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		record_id       INT UNSIGNED NOT NULL DEFAULT 0,
+		subscription_id INT UNSIGNED NOT NULL DEFAULT 0,
+		moments         TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		created_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (kind, record_id, subscription_id),
+		KEY idx_subscription (subscription_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Visitor notifications: a browser can now wait for one product to come back or one order to ship; nothing changes until the switch is turned on in Features.');
 
 }

@@ -34,6 +34,11 @@ description: Plan visitor-push, steps VP1 to VP8: the tables and the door, the s
 - VP5 (S) after VP2: stock. Existing files: `includes/fn/stock_notify.php` (the push branch of `pg_stock_notify_send()`, `commerce/back-in-stock-sms.md`), the product page's request. Its message is `kind` 2 (6528). Features: N15.
 
 - VP6 (S) after VP2: an order. Existing files: `includes/fn/events.php` (one listener in `pg_event_record()`), the order's own pages. Its message is `kind` 3 (6528). Features: N16.
+  - Owner (poll 94, message 6781) and architect (message 6785): the shared table `site_push_watch` (11.0.229), added here; VP5 uses it once this lands.
+  - Sent beside the order's SMS (`update_order()`, `pg_shipment_delivered()`), not from `pg_event_record()`: the event also hears marketplace orders and saves that keep the customer's notice back.
+  - Done: #9976, the server's side (`platform/visitor-push-watch.md`, `platform/visitor-push-order.md`).
+
+- VP6b (S) after VP3 and VP6: the button "Notify me on this device" on the receipt page and My Account's order view, posting `action=order` with the secret VP3's script keeps. Features: N16 (the page's side).
 
 - VP7 (S) after VP3: app mode. Existing files: `get_site_icon.php` (the manifest's `display`), the worker file (the offline page). Features: N17.
 
