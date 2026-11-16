@@ -3821,6 +3821,7 @@
     "The field team in front of a finished classroom": "Biten bir dersliğin önünde saha ekibi",
     "The field {var:1} cannot be changed through the API: only text, e-mail address and single-choice fields can.": "{var:1} alanı API üzerinden değiştirilemez: yalnızca metin, e-posta adresi ve tek seçimli alanlar değiştirilebilir.",
     "The field {var:1} is not a text field and cannot be written through the API.": "{var:1} alanı bir metin alanı değil; API üzerinden yazılamaz.",
+    "The field {var:1} keeps rows of a form you cannot open, so it cannot be changed through the API.": "{var:1} alanı açamadığınız bir formun satırlarını tutuyor; bu yüzden API ile değiştirilemez.",
     "The field {var:1} keeps rows: only reference codes of records of its rows collection, at most {var:2}, separated by commas.": "{var:1} alanı satır tutar: yalnızca satır koleksiyonundaki kayıtların referans kodları, en fazla {var:2} tane, virgülle ayrılarak.",
     "The field {var:1} names rows another record keeps: {var:2}.": "{var:1} alanı başka bir kaydın satırlarını içeriyor: {var:2}.",
     "The field {var:1} takes a file or a drawn signature and cannot be sent through the API.": "{var:1} alanı bir dosya ya da çizilmiş bir imza alır ve API üzerinden gönderilemez.",

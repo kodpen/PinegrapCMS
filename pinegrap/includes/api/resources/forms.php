@@ -832,17 +832,44 @@ function api_form_row_present($row, $child_fields) {
 
 }
 
+// Whether the owner may open the child form of a rows field: $reach is
+// api_form_owner_filter() on page.page_id, '' from the manager role up and
+// '0' for an owner with no folder (neither reads the database).
+function api_form_child_in_reach($child_page_id, $reach) {
+
+	$child_page_id = (int)$child_page_id;
+
+	if ($child_page_id <= 0 || $reach === '0') {
+
+		return false;
+
+	}
+
+	if ($reach === '') {
+
+		return true;
+
+	}
+
+	return api_row("SELECT page.page_id FROM page WHERE page.page_id = '" . $child_page_id . "' AND " . $reach . " LIMIT 1") !== null;
+
+}
+
 // A record's values as the API gives them: with the codes of its rows
-// fields, and on a single record's read ($single) their rows in order.
-function api_form_submission_values_out($row, $values, $single) {
+// fields, and on a single record's read ($single) their rows in order. A
+// rows field whose child form is outside the owner's folders keeps its codes
+// and gives no rows, as a direct read of those records is answered 404.
+function api_form_submission_values_out($row, $values, $single, $owner) {
 
 	$kinds = function_exists('pg_coll_field_kinds') ? pg_coll_field_kinds((int)$row['page_id']) : array();
+
+	$reach = api_form_owner_filter($owner, 'page.page_id');
 
 	$rows = array();
 
 	foreach ($kinds as $field_id => $kind) {
 
-		if (!$single || ($kind['kind'] !== 'rows')) {
+		if (!$single || ($kind['kind'] !== 'rows') || !api_form_child_in_reach($kind['reference_page_id'], $reach)) {
 
 			continue;
 
@@ -871,9 +898,14 @@ function api_form_submission_values_out($row, $values, $single) {
 // $answers  field id => the value to write
 // $names    field id => the field's name
 // $form_id  the record written, 0 for a new one
-function api_form_rows_refusal($answers, $names, $page_id, $form_id) {
+// $owner    the key's owner: a rows field whose child form is outside its
+//           folders is refused before any code is looked up, so the answer
+//           says nothing about the records of a form it cannot open
+function api_form_rows_refusal($answers, $names, $page_id, $form_id, $owner) {
 
 	$kinds = function_exists('pg_coll_field_kinds') ? pg_coll_field_kinds((int)$page_id) : array();
+
+	$reach = api_form_owner_filter($owner, 'page.page_id');
 
 	foreach ($answers as $field_id => $value) {
 
@@ -883,7 +915,15 @@ function api_form_rows_refusal($answers, $names, $page_id, $form_id) {
 
 		}
 
-		$refusal = pg_coll_rows_outside_refusal($value, $kinds[(int)$field_id]['reference_page_id'], $form_id, $field_id, isset($names[$field_id]) ? $names[$field_id] : '');
+		$name = isset($names[$field_id]) ? $names[$field_id] : '';
+
+		if (!api_form_child_in_reach($kinds[(int)$field_id]['reference_page_id'], $reach)) {
+
+			return lang(array('string' => 'The field {var:1} keeps rows of a form you cannot open, so it cannot be changed through the API.', 'vars' => (string)$name));
+
+		}
+
+		$refusal = pg_coll_rows_outside_refusal($value, $kinds[(int)$field_id]['reference_page_id'], $form_id, $field_id, $name);
 
 		if ($refusal !== '') {
 
@@ -1001,7 +1041,7 @@ function api_form_submissions($params) {
 
 		$row['record_url'] = api_form_submission_url($row);
 
-		$out[] = api_form_submission_present($row, api_form_submission_values_out($row, isset($values[$key]) ? $values[$key] : array(), false));
+		$out[] = api_form_submission_present($row, api_form_submission_values_out($row, isset($values[$key]) ? $values[$key] : array(), false, $app['owner']));
 
 	}
 
@@ -1082,11 +1122,13 @@ function api_form_submission_owned($form_id, $submission_id) {
 
 function api_form_submission_get($params) {
 
+	$app = api_current_app();
+
 	$row = api_form_submission_owned($params['id'], $params['submission_id']);
 
 	$values = api_form_submission_values(array($row['id']));
 
-	api_ok(api_form_submission_present($row, api_form_submission_values_out($row, isset($values[(int)$row['id']]) ? $values[(int)$row['id']] : array(), true)));
+	api_ok(api_form_submission_present($row, api_form_submission_values_out($row, isset($values[(int)$row['id']]) ? $values[(int)$row['id']] : array(), true, $app['owner'])));
 
 }
 
@@ -1226,7 +1268,7 @@ function api_form_submission_update($params) {
 
 	}
 
-	$refusal = api_form_rows_refusal($rows_answers, $rows_names, (int)$row['page_id'], $id);
+	$refusal = api_form_rows_refusal($rows_answers, $rows_names, (int)$row['page_id'], $id, $app['owner']);
 
 	if ($refusal !== '') {
 
@@ -1300,7 +1342,7 @@ function api_form_submission_update($params) {
 
 	$values = api_form_submission_values(array($id));
 
-	api_ok(api_form_submission_present($row, api_form_submission_values_out($row, isset($values[$id]) ? $values[$id] : array(), true)));
+	api_ok(api_form_submission_present($row, api_form_submission_values_out($row, isset($values[$id]) ? $values[$id] : array(), true, $app['owner'])));
 
 }
 
@@ -1671,7 +1713,7 @@ function api_form_submission_revision_restore($params) {
 	$current = api_form_submission_values(array($id));
 
 	api_ok(array(
-		'submission'    => api_form_submission_present($row, api_form_submission_values_out($row, isset($current[$id]) ? $current[$id] : array(), true)),
+		'submission'    => api_form_submission_present($row, api_form_submission_values_out($row, isset($current[$id]) ? $current[$id] : array(), true, $app['owner'])),
 		'restored_from' => (int)$revision['revision_no'],
 		'revision_no'   => ($revision_no > 0) ? (int)$revision_no : null,
 		'changed'       => $changed,
@@ -1971,7 +2013,7 @@ function api_form_submission_create($params) {
 
 	}
 
-	$refusal = api_form_rows_refusal($answers, $field_names, $id, 0);
+	$refusal = api_form_rows_refusal($answers, $field_names, $id, 0, $app['owner']);
 
 	if ($refusal !== '') {
 
@@ -2092,7 +2134,7 @@ function api_form_submission_create($params) {
 
 	$values = api_form_submission_values(array($created['id']));
 
-	api_ok(api_form_submission_present($row, api_form_submission_values_out($row, isset($values[(int)$created['id']]) ? $values[(int)$created['id']] : array(), true)), 201);
+	api_ok(api_form_submission_present($row, api_form_submission_values_out($row, isset($values[(int)$created['id']]) ? $values[(int)$created['id']] : array(), true, $app['owner'])), 201);
 
 }
 

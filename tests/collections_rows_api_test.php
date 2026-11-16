@@ -94,7 +94,7 @@ function test_collections_rows_api_single_read_gives_the_rows()
 	pg_assert_same(array(), $values[0]['rows'], 'a plain field has none');
 
 	pg_assert_true(strpos(_collections_rows_api_source('api_form_submission_get'), 'api_form_submission_values_out($row') !== false, 'a single read gives the rows');
-	pg_assert_true(preg_match('/api_form_submission_values_out\(\$row, [^;]*, false\)/', _collections_rows_api_source('api_form_submissions')) === 1, 'a list read gives the codes only');
+	pg_assert_true(preg_match('/api_form_submission_values_out\(\$row, [^;]*, false, /', _collections_rows_api_source('api_form_submissions')) === 1, 'a list read gives the codes only');
 }
 
 // (R13) GET /forms/{id}/fields names the kind and the child form.
@@ -160,7 +160,7 @@ function test_collections_rows_api_writes_check_rows()
 	$refusal = _collections_rows_api_source('api_form_rows_refusal');
 	pg_assert_true(strpos($refusal, 'pg_coll_is_rows_field(') !== false && strpos($refusal, 'pg_coll_rows_outside_refusal(') !== false, 'the shared check');
 
-	foreach (array('api_form_submission_update' => '$id)', 'api_form_submission_create' => '$id, 0)') as $handler => $form_arg) {
+	foreach (array('api_form_submission_update' => '$id, $app', 'api_form_submission_create' => '$id, 0, $app') as $handler => $form_arg) {
 		$source = _collections_rows_api_source($handler);
 		$check = strpos($source, 'api_form_rows_refusal(');
 		pg_assert_true($check !== false, $handler . ' checks rows');
@@ -186,4 +186,43 @@ function test_collections_rows_api_import_skips_the_rows_cell()
 	pg_assert_true($skip !== false, 'the column is matched');
 	pg_assert_true($skip < strpos($import, '$mapped_field_ids[$field_id] = true;'), 'and left out before it is mapped');
 	pg_assert_true(strpos($import, 'These columns fill a rows field and were left out') !== false, 'the import names it');
+}
+
+// (R13) A child collection outside the owner's folders gives no rows: the
+// condition is the one every form read keeps (api_form_owner_filter()).
+function test_collections_rows_api_child_outside_the_owner_folders_gives_no_rows()
+{
+	pg_assert_true(api_form_child_in_reach(40, ''), 'the manager role up opens every form');
+	pg_assert_same(false, api_form_child_in_reach(40, '0'), 'an owner with no folder opens none');
+	pg_assert_same(false, api_form_child_in_reach(0, ''), 'no child form');
+
+	$out = _collections_rows_api_source('api_form_submission_values_out');
+	pg_assert_true(strpos($out, 'function api_form_submission_values_out($row, $values, $single, $owner)') !== false, 'the owner is passed in');
+	pg_assert_true(strpos($out, "api_form_owner_filter(\$owner, 'page.page_id')") !== false, 'its folder rule');
+	$reach = strpos($out, 'api_form_child_in_reach(');
+	pg_assert_true($reach !== false && $reach < strpos($out, 'pg_coll_rows_of('), 'checked before the rows are read');
+
+	// The codes stay, as a reference field's codes do; the rows are left out.
+	$values = api_form_values_rows(_collections_rows_api_values(), _collections_rows_api_kinds(), array());
+	pg_assert_same(array('a1', 'b2'), $values[1]['codes']);
+	pg_assert_same(array(), $values[1]['rows']);
+
+	foreach (array('api_form_submission_get', 'api_form_submissions', 'api_form_submission_update', 'api_form_submission_create', 'api_form_submission_revision_restore') as $handler) {
+		pg_assert_true(preg_match('/api_form_submission_values_out\([^;]*, (true|false), \$[a-z_]*(\[\'owner\'\]|owner\))/', _collections_rows_api_source($handler)) === 1, $handler . ' passes the owner');
+	}
+}
+
+// (R14) A write to a rows field whose child collection is outside the
+// owner's folders is refused before the codes are looked up, so the answer
+// says nothing about the records of a form the owner cannot open.
+function test_collections_rows_api_write_outside_the_owner_folders_refused()
+{
+	$refusal = _collections_rows_api_source('api_form_rows_refusal');
+	pg_assert_true(strpos($refusal, 'function api_form_rows_refusal($answers, $names, $page_id, $form_id, $owner)') !== false, 'the owner is passed in');
+	$reach = strpos($refusal, 'api_form_child_in_reach(');
+	pg_assert_true($reach !== false && $reach < strpos($refusal, 'pg_coll_rows_outside_refusal('), 'refused before the codes are looked up');
+
+	foreach (array('api_form_submission_update', 'api_form_submission_create') as $handler) {
+		pg_assert_true(preg_match('/api_form_rows_refusal\([^;]*\$app\[\'owner\'\]\)/', _collections_rows_api_source($handler)) === 1, $handler . ' passes the owner');
+	}
 }
