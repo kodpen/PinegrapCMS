@@ -18,7 +18,7 @@ description: Plan click-scroll-map, steps CM1 to CM5: the table and counter, the
   - Features: C1 to C11, C16.
   - The switch through `pg_page_clicks_switch_on()` and `pg_page_clicks_switch_save()` (CM3 #9913, `page_clicks.php`); the card writes no reader or saver of its own (architect, message 6222).
 
-- CM3 (M) after CM1: the Visitors section and the report route. It lands before CM2 and adds the switch's reader and saver (message 6222).
+- CM3 (M) after CM1: the Visitors section and the report route. It lands before CM2 and adds the switch's reader and saver (message 6222). Done in #9913.
   - Existing files: `includes/fn/visitor_periods.php` (one line in `pg_visitors_sections()`), `assets/css/pg_visitors.src.css` (its labelled block), the report rows of the API schema.
   - New: `includes/visitors/clicks.php`, `tests/visitors_clicks_test.php`.
   - Tests: a label holding markup printed as text in the section and the route.
