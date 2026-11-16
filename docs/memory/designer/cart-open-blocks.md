@@ -19,7 +19,7 @@ module: widgets_cart
 
 ## Does a running site change?
 - No. The sandbox's Online Store cart was dumped before and after (quick add on an empty cart, then a cart with an automatic 10% offer and a gift waiting with its picker): every block and the page's text were byte-identical but the cart's reference code.
-- Seen, not changed: after a gift's Add, `cart_action.php` sends the visitor to the home page instead of back to the cart, on development too.
+- `test_cart_blocks_markup_as_development_printed` keeps the branches the dump does not reach fixed in CI: development's quick add box with quantity, amount and recipient rows and an option out of stock, two offers, a gift with a decided recipient.
 
 ## How was it checked?
 - `tests/cart_closed_blocks_test.php`: each twin byte for byte against its builder (one and two offers, a gift with a decided recipient, a picker, a picker with a new name; quick add options in and out of stock with quantity, amount and recipient rows), the sample's settings and the wiring.

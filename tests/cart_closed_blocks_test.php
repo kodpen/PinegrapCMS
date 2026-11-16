@@ -171,3 +171,33 @@ function test_cart_blocks_canvas_sample()
 	pg_assert_contains('return pg_cart_pending_offers_html($rows,', $php, 'the gifts box too');
 	pg_assert_contains('return pg_cart_quick_add_html($label, $options,', $php, 'and the quick add box');
 }
+
+// The markup development printed, fixed here so the builders cannot drift
+// from it in CI: the quick add box of a group with a product that asks for
+// a quantity and where it goes, one out of stock, a donation asking for an
+// amount (taken from development's _pg_render_quick_add() on a sandbox
+// cart, its words put back through lang()); two applied offers (the plural
+// heading); a gift row whose recipient the cart already decided.
+function test_cart_blocks_markup_as_development_printed()
+{
+	$quick = strtr('<form class="pg-cart-quick-add card card-body mb-3" method="post" action="/pinegrap/cart_action.php"><input type="hidden" name="quick_add" value="1"><input type="hidden" name="send_to" value="/sepet"><div class="fw-semibold mb-2"><i class="bi bi-lightning-charge me-1"></i>Quick Add</div><div class="row g-2 align-items-end"><div class="col-12 col-sm"><label class="form-label small mb-1 visually-hidden" for="pg-qa-product">%PRODUCT%</label><select class="form-select form-select-sm" id="pg-qa-product" name="quick_add_product_id"><option value=""></option><option value="41" data-qty="1" data-amount="0" data-recipient="1" data-default-qty="0">CGB-076 - Platin Hediye Sepeti (₺29,95) - GERI SIPARIŞ EDILEN RN. Bununla birlikte, bugün ha...</option><option value="42" data-qty="1" data-amount="0" data-recipient="1" data-default-qty="0" disabled>CGB-077 - Premium Hediye Sepeti (₺49,95) - STOK TKENDI</option><option value="43" data-qty="1" data-amount="0" data-recipient="1" data-default-qty="0">CGB-078 - Mega Hediye Sepeti (₺79,95)</option><option value="29" data-qty="0" data-amount="1" data-recipient="0" data-default-qty="0">D10 - Düzenli Bağış</option></select></div><div class="col-6 col-sm-3 pg-qa-row pg-qa-qty" style="display:none"><label class="form-label small mb-1" for="pg-qa-qty">%QTY%</label><input type="text" inputmode="numeric" class="form-control form-control-sm" id="pg-qa-qty" name="quick_add_quantity" value="1" size="4"></div><div class="col-6 col-sm-3 pg-qa-row pg-qa-amount" style="display:none"><label class="form-label small mb-1" for="pg-qa-amount">%AMT%</label><div class="input-group input-group-sm"><span class="input-group-text">₺</span><input type="text" inputmode="decimal" class="form-control" id="pg-qa-amount" name="quick_add_amount" size="6"></div></div><div class="col-12 col-sm-4 pg-qa-row pg-qa-ship-to" style="display:none"><label class="form-label small mb-1" for="pg-qa-ship-to">%SHIP%</label><select class="form-select form-select-sm" id="pg-qa-ship-to" name="quick_add_ship_to"><option value=""></option><option value="%ME%">%ME%</option><option value="Mia">Mia</option></select><input type="text" class="form-control form-control-sm mt-1" name="quick_add_add_name" maxlength="50" placeholder="%NEW%"></div><div class="col-auto"><button type="submit" class="btn btn-primary btn-sm">%ADD%</button></div></div></form>', array(
+		'%PRODUCT%' => h(lang('Product')), '%QTY%' => h(lang('Quantity')), '%AMT%' => h(lang('Amount')),
+		'%SHIP%' => h(lang('Ship to')), '%ME%' => h(lang('myself')), '%NEW%' => h(lang('or add name')), '%ADD%' => h(lang('Add')),
+	));
+	$options = pg_cart_quick_add_option_html(41, 'CGB-076 - Platin Hediye Sepeti (₺29,95) - GERI SIPARIŞ EDILEN RN. Bununla birlikte, bugün ha...', 'quantity', 1, 0, true)
+		. pg_cart_quick_add_option_html(42, 'CGB-077 - Premium Hediye Sepeti (₺49,95) - STOK TKENDI', 'quantity', 1, 0, false)
+		. pg_cart_quick_add_option_html(43, 'CGB-078 - Mega Hediye Sepeti (₺79,95)', 'quantity', 1, 0, true)
+		. pg_cart_quick_add_option_html(29, 'D10 - Düzenli Bağış', 'donation', 0, 0, true);
+	pg_assert_same($quick, pg_cart_quick_add_html('Quick Add', $options, true, true, array('Mia'), '₺', '/pinegrap/cart_action.php', '/sepet', ''),
+		'the quick add box as development printed it: quantity, amount and recipient rows, an option out of stock');
+
+	pg_assert_same('<div class="pg-cart-applied-offers alert alert-success py-2 px-3 mb-2"><div class="fw-semibold small mb-1"><i class="bi bi-tag-fill me-1"></i>'
+		. h(lang('Applied Offers')) . '</div><ul class="mb-0 ps-3 small"><li>Yaz indirimi: siparişe %10</li><li>Her siparişe hediye kupa</li></ul></div>',
+		pg_cart_applied_offers_html(array('Yaz indirimi: siparişe %10', 'Her siparişe hediye kupa')), 'two offers: the plural heading');
+
+	pg_assert_same('<div class="pg-cart-pending-offer d-flex flex-wrap align-items-end gap-2 py-2 border-bottom"><div class="flex-grow-1 min-width-0"><span class="fw-semibold">Her siparişe hediye kupa</span></div>'
+		. '<div class="pg-cart-pending-offer-recipient"><span class="small text-body-secondary">' . h(lang('Ship to')) . ' <span class="fw-semibold">Mia</span></span></div>'
+		. '<div><button type="submit" class="btn btn-primary btn-sm" name="add_pending_offer_12_15" value="1">' . h(lang('Add')) . '</button></div></div>',
+		pg_cart_pending_offer_row_html(12, 15, 'Her siparişe hediye kupa', pg_cart_pending_offer_recipient_html('pending_offer_12_15', 'Mia', array(), false)),
+		'a gift whose recipient the cart decided: named, not asked');
+}
