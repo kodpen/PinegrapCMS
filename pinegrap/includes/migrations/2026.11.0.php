@@ -220,6 +220,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_site_push();               // 11.0.227
 	upgrade_2026_11_0_page_bundle();             // 11.0.228
 	upgrade_2026_11_0_site_push_watch();         // 11.0.229
+	upgrade_2026_11_0_ws_task_app();             // 11.0.230
 
 }
 
@@ -7355,5 +7356,29 @@ function upgrade_2026_11_0_site_push_watch() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Visitor notifications: a browser can now wait for one product to come back or one order to ship; nothing changes until the switch is turned on in Features.');
+
+}
+
+// The application that created a task (11.0.230, includes/workspace/tasks.php,
+// ws_task_create()): an API key, an OAuth connection, a flow run one started,
+// an assistant's proposal; 0 for a person. It only says who created the task,
+// never who may read or change it; a deleted application's id stays and reads
+// "Made by an application". idx_app serves the "Made by agents" filter, which
+// the task lists combine with status, as idx_delegate and idx_department do.
+// No backfill: earlier tasks do not know their application.
+function upgrade_2026_11_0_ws_task_app() {
+
+	if (!install_table_exists('ws_tasks')) {
+
+		install_skipped('ws_tasks does not exist, skipped');
+
+		return;
+
+	}
+
+	install_add_column('ws_tasks', 'app_id', "INT UNSIGNED NOT NULL DEFAULT 0 AFTER creator_id");
+	install_add_index('ws_tasks', 'idx_app', "INDEX idx_app (app_id, status)");
+
+	install_note('Workspace: a task an application creates from now on says "Made by" that application, and My Tasks can show or leave out the tasks agents made. Earlier tasks read as made by a person.');
 
 }
