@@ -361,6 +361,34 @@ function ws_link_preview_own_page($url, $host, $path)
 }
 
 /**
+ * The page of this site an address names (ws_link_preview_own_page() with
+ * the site's host and path), null for any other address.
+ *
+ * @param string $url
+ * @return string|null
+ */
+function ws_link_preview_site_page($url)
+{
+    if (!defined('HOSTNAME_SETTING')) {
+        return null;
+    }
+
+    return ws_link_preview_own_page($url, HOSTNAME_SETTING, defined('PATH') ? PATH : '/');
+}
+
+/**
+ * Whether an address gets a row: this site's page (read from its data, so
+ * its host may be a local one), or an address that may be read.
+ *
+ * @param string $url
+ * @return bool
+ */
+function ws_link_preview_wanted($url)
+{
+    return ($url !== '') && ((ws_link_preview_site_page($url) !== null) || ws_link_preview_url_allowed($url));
+}
+
+/**
  * Whether the table is there (2026.11.0, step 11.0.220).
  *
  * @return bool
@@ -404,7 +432,7 @@ function ws_link_preview_message_sent($message_id, $channel_id, $body)
 
     $url = ws_link_preview_first_url($body);
 
-    if (($url === '') || !ws_link_preview_url_allowed($url)) {
+    if (!ws_link_preview_wanted($url)) {
         return;
     }
 
@@ -432,7 +460,7 @@ function ws_link_preview_message_edited($message_id, $channel_id, $body)
 
     $url = ws_link_preview_first_url($body);
 
-    if (($url === '') || !ws_link_preview_url_allowed($url)) {
+    if (!ws_link_preview_wanted($url)) {
         ws_link_preview_message_deleted($message_id);
 
         return;
@@ -569,12 +597,10 @@ function ws_link_preview_run($limit = WS_LINK_PREVIEW_BATCH)
  */
 function ws_link_preview_read($url)
 {
-    if (defined('HOSTNAME_SETTING')) {
-        $page = ws_link_preview_own_page($url, HOSTNAME_SETTING, defined('PATH') ? PATH : '/');
+    $page = ws_link_preview_site_page($url);
 
-        if ($page !== null) {
-            return ws_link_preview_own_fields($page);
-        }
+    if ($page !== null) {
+        return ws_link_preview_own_fields($page);
     }
 
     return ws_link_preview_fetch($url);
