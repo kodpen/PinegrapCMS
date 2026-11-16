@@ -1,7 +1,12 @@
 ---
 name: agent-card-behaviour
-description: The agent card in a channel when its facts cannot be read or the list scrolls (#9730): the panel route of ws_agent_card, the refusal in place of Loading…, the drawing guard, which scroll closes it
+description: The agent card in a channel: an agent's mention tag opens it (#10017), its panel route ws_agent_card, the refusal in place of Loading…, the drawing guard, which scroll closes it
 ---
+## Does an agent's mention tag open the card? (#10017)
+- Yes, the card its name opens, nothing of its own (`workflow/decisions-made-product-67.md`): hover, focus or Enter, a tap; it closes as the name's card does, and the tag's context menu stays.
+- `chipMenus(container, channel)` hooks a tag `app:N` with `agentCardHook()`; `chipAgent()` (pure, `tests/workspace_agent_card_js_test.php`) maps the tag's application id to the channel's member row (`agentOfApp()`), whose agent id the card asks with.
+- A muted tag, an application the channel does not offer and a text drawn with no channel (`chipMenus()` without one: a forward, a note, the timeline) stay plain tags. A channel's or discussion's message passes `self.channel`. People's tags stay plain.
+
 ## Why did the card write "Loading…" and close by itself? (#9730)
 - `ws_agent_card` was in `ws_channel_agents_actions()` but not in the panel's action table (`pg_panel_actions()`, `includes/panel/actions.php`): every load was answered "Invalid action." and the failed load closed the card. Seen in a browser on a sandbox; `test_workspace_agent_card_action` now checks every action of the module list is routed to `pg_panel_ws`.
 - A new `ws_*` action of a module's own list goes into that table too, or the panel answers "Invalid action." before the module sees it.

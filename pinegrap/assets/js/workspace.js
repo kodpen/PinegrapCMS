@@ -2977,13 +2977,38 @@
         keepStop();
     }
 
+    // The channel's agent a tag names: an application's tag (app:N, N the
+    // application's id) of an agent the channel offers, as its member row
+    // (agentOfApp()); null for any other tag, a muted one or a channel
+    // without agents. Pure (tests/workspace_agent_card_js_test.php).
+    function chipAgent(ref, muted, channel) {
+        var parts = String(ref || '').split(':');
+        var appId = parseInt(parts[1], 10);
+
+        if (muted || (parts.length !== 2) || (parts[0] !== 'app') || !(appId > 0)) {
+            return null;
+        }
+
+        var agent = agentOfApp(channel, appId);
+
+        return (agent && agent.id) ? agent : null;
+    }
+
     // Tags inside a message, and the head of a lone tag's card: open the
-    // record, see where else it came up.
-    function chipMenus(container) {
+    // record, see where else it came up. channel: the channel the text is
+    // read in, when there is one; an agent's tag then opens its card.
+    function chipMenus(container, channel) {
         Array.prototype.forEach.call(container.querySelectorAll('.ws-chip[data-ws-ref], .ws-tag-card-head[data-ws-ref]'), function (chip) {
             // Another message pointed at opens it in a card (messageRefHook()).
             if (chip.classList.contains('ws-chip-message')) {
                 messageRefHook(chip);
+            }
+
+            // An agent of the channel opens the card its name opens.
+            var agent = channel ? chipAgent(chip.getAttribute('data-ws-ref'), chip.classList.contains('ws-chip-muted'), channel) : null;
+
+            if (agent) {
+                agentCardHook(chip, channel, agent, true);
             }
 
             onContext(chip, function () {
@@ -12628,7 +12653,7 @@
                 }));
             } else {
                 setHtml(body, message.html);
-                chipMenus(body);
+                chipMenus(body, self.channel);
                 self.bindChecks(body, message);
             }
 

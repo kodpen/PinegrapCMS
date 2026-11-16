@@ -120,3 +120,53 @@ function test_workspace_agent_card_js_failed_load_keeps_card()
 	pg_assert_contains('console.error(error)', $guard, 'a drawing error goes to the console');
 	pg_assert_contains('agentCardGuard(function () { agentCardBody(node, agent, card, channel); })', $show, 'the drawing is guarded');
 }
+
+function test_workspace_agent_card_js_mention_tag()
+{
+	$chip = workspace_agent_card_js_test_function('chipAgent');
+	$of_app = workspace_agent_card_js_test_function('agentOfApp');
+	$menus = workspace_agent_card_js_test_function('chipMenus');
+
+	pg_assert_true($chip !== '', 'chipAgent() is in workspace.js');
+	pg_assert_true($of_app !== '', 'agentOfApp() is in workspace.js');
+
+	// The tag's id is the application's; the card asks with the agent's.
+	$result = workspace_agent_card_js_test_node($of_app . $chip . '
+var channel = { id: 25, agents: [{ id: 7, app_id: 12, handle: "prmerge" }, { id: 0, app_id: 14, handle: "old" }] };
+function id(agent) { return agent ? agent.id : null; }
+console.log(JSON.stringify({
+	agent: id(chipAgent("app:12", false, channel)),
+	muted: id(chipAgent("app:12", true, channel)),
+	notOffered: id(chipAgent("app:13", false, channel)),
+	noRow: id(chipAgent("app:14", false, channel)),
+	agentId: id(chipAgent("app:7", false, channel)),
+	person: id(chipAgent("user:12", false, channel)),
+	message: id(chipAgent("message:12", false, channel)),
+	bad: id(chipAgent("app:", false, channel)),
+	empty: id(chipAgent(null, false, channel)),
+	noAgents: id(chipAgent("app:12", false, { id: 3 })),
+	noChannel: id(chipAgent("app:12", false, null))
+}));
+');
+
+	if ($result !== null) {
+		pg_assert_same(7, $result['agent'], 'an agent tag names its member row, by the application id');
+		pg_assert_same(null, $result['muted'], 'a muted tag stays plain');
+		pg_assert_same(null, $result['notOffered'], 'an application the channel does not offer stays plain');
+		pg_assert_same(null, $result['noRow'], 'an agent without a registry id stays plain');
+		pg_assert_same(null, $result['agentId'], 'the agent id is not read as an application id');
+		pg_assert_same(null, $result['person'], 'a person tag stays plain');
+		pg_assert_same(null, $result['message'], 'a message tag is not an agent');
+		pg_assert_same(null, $result['bad'], 'a broken reference stays plain');
+		pg_assert_same(null, $result['empty'], 'no reference stays plain');
+		pg_assert_same(null, $result['noAgents'], 'a channel without agents has no card');
+		pg_assert_same(null, $result['noChannel'], 'no channel, no card');
+	}
+
+	// The tag is hooked as the name is, keeping its context menu; only with
+	// a channel at hand, and the channel's messages pass it.
+	pg_assert_contains('agentCardHook(chip, channel, agent, true)', $menus, 'the tag opens the agent card');
+	pg_assert_contains('channel ? chipAgent(', $menus, 'no card without a channel');
+	pg_assert_contains('onContext(chip,', $menus, 'the context menu stays');
+	pg_assert_contains('chipMenus(body, self.channel);', workspace_agent_card_js_test_source(), 'a channel message passes its channel');
+}
