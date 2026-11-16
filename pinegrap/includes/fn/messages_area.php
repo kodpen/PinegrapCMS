@@ -450,7 +450,8 @@ function pg_messages_health_worst($states)
 }
 
 /**
- * The Channels tab's four cards from the facts read now
+ * The Channels tab's cards (four, and visitor notifications when their facts
+ * are given) from the facts read now
  * (pg_messages_channel_facts()). Each card: key, title, icon, tone, state
  * (on, check, off), state label, line, url. Pure, so tested without a site.
  *
@@ -461,6 +462,7 @@ function pg_messages_health_worst($states)
  *             (an account is switched on but incomplete)
  *   whatsapp  ready, number, name, started
  *   iys       ready, brand, test, started
+ *   site_push pg_site_push_card_facts(); no card without it
  *
  * @param array $facts
  * @param array $urls  key => settings address
@@ -519,6 +521,14 @@ function pg_messages_channel_cards($facts, $urls)
         (bool) $get('iys', 'ready', false), (bool) $get('iys', 'started', false),
         $get('iys', 'ready', false) ? $join(array(($brand !== '') ? lang(array('string' => 'Brand code {var:1}', 'vars' => array($brand))) : '', $get('iys', 'test', false) ? lang('Test environment') : '')) : lang('Consent is not kept in step with İYS'),
         $url('iys'));
+
+    // Visitor notifications: a card of their own, leading to their screen
+    // (includes/fn/site_push_panel.php).
+    if (isset($facts['site_push']) && is_array($facts['site_push'])) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/site_push_panel.php');
+
+        $cards[] = pg_site_push_channel_card($facts['site_push']);
+    }
 
     return $cards;
 }
@@ -635,6 +645,9 @@ function pg_messages_channel_facts()
         'test'    => is_array($iys) && ($iys['env'] === 'test'),
         'started' => is_array($iys) && $iys['enabled'],
     );
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/site_push_panel.php');
+    $facts['site_push'] = pg_site_push_card_facts();
 
     return $facts;
 }

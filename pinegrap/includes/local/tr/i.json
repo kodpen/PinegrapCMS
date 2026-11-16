@@ -1525,6 +1525,7 @@
     "It reached the moderators. A moderator reads every report and acts on the posts that break the community guidelines.": "Şikâyetiniz moderatörlere ulaştı. Bir moderatör her şikâyeti okur ve topluluk yönergelerine aykırı gönderiler için gereğini yapar.",
     "It reached the moderators. A moderator reads every report and takes off the site the posts that break the community guidelines.": "Şikâyetiniz moderatörlere ulaştı. Bir moderatör her şikâyeti okur ve topluluk kurallarına aykırı gönderileri siteden kaldırır.",
     "It reached the moderators; no one has opened it yet.": "Moderatörlere ulaştı; henüz kimse açmadı.",
+    "It reaches every browser that pressed Notify me on the site, even when the site is closed.": "Sitede Bana haber ver'e basan her tarayıcıya, site kapalıyken bile ulaşır.",
     "It reads a message only when someone writes @{1} in it.": "Bir mesajı yalnızca biri içine @{1} yazdığında okur.",
     "It reads no records: Claude sees the channels and the tasks only.": "Hiçbir kaydı okumuyor: Claude yalnız kanalları ve görevleri görür.",
     "It reads no records: Pinegrap AI sees the channels and the tasks only.": "Hiçbir kaydı okumaz: Pinegrap AI yalnız kanalları ve görevleri görür.",

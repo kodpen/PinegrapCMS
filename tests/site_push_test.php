@@ -284,3 +284,61 @@ function test_site_push_runners()
 	pg_assert_contains('pg_site_push_queue_run(20)', $push_job, 'push_job.php runs the pass');
 	pg_assert_contains('pg_site_push_switch_on()', $job, 'only with the switch on');
 }
+
+function test_site_push_panel_channel_card()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/site_push_panel.php');
+
+	$off = pg_site_push_channel_card(array('ready' => true, 'on' => false, 'subscribers' => 0, 'last_title' => '', 'last_at' => 0));
+	pg_assert_same('site_push', $off['key'], 'its own key');
+	pg_assert_same('off', $off['state'], 'off while the switch is off');
+	pg_assert_same('messages_notifications.php', $off['url'], 'it leads to the screen');
+
+	$on = pg_site_push_channel_card(array('ready' => true, 'on' => true, 'subscribers' => 1234, 'last_title' => 'Spring <sale>', 'last_at' => 0));
+	pg_assert_same('on', $on['state'], 'on');
+	pg_assert_contains('1,234', $on['line'], 'the subscribers, formatted');
+	pg_assert_contains('Spring <sale>', $on['line'], 'the last message, raw (the card escapes)');
+
+	$none = pg_site_push_channel_card(array('ready' => true, 'on' => true, 'subscribers' => 3, 'last_title' => '', 'last_at' => 0));
+	pg_assert_contains(lang('No notification sent yet'), $none['line'], 'nothing sent yet');
+
+	$not_ready = pg_site_push_channel_card(array('ready' => false));
+	pg_assert_same('off', $not_ready['state'], 'before the upgrade');
+
+	$cards = pg_messages_channel_cards(array('site_push' => array('ready' => true, 'on' => true, 'subscribers' => 2)), array());
+	pg_assert_same('site_push', $cards[count($cards) - 1]['key'], 'the Channels tab shows the card last');
+	pg_assert_same(4, count(pg_messages_channel_cards(array(), array())), 'no card without its facts');
+	pg_assert_contains('Spring &lt;sale&gt;', pg_messages_channel_cards_html(array($on)), 'escaped on the tab');
+}
+
+function test_site_push_panel_pick_items()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/site_push_panel.php');
+
+	$items = pg_site_push_pick_items(array(
+		array('url' => 'spring', 'title' => 'Spring', 'description' => str_repeat('d', 300), 'page_id' => 4, 'page_name' => 'spring'),
+		array('url' => 'a.pdf', 'title' => 'A file', 'description' => '', 'page_id' => 0, 'page_name' => null),
+		array('url' => 'shoes?r=7', 'title' => 'Red shoes', 'description' => 'Soft', 'page_id' => 5, 'page_name' => 'shoes'),
+		array('url' => 'https://elsewhere.test/x', 'title' => 'Away', 'description' => '', 'page_id' => 6, 'page_name' => 'x'),
+	), array('shop.test'), '/');
+
+	pg_assert_same(2, count($items), 'a file and an address elsewhere are left out');
+	pg_assert_same(array('title' => 'Spring', 'body' => str_repeat('d', 200), 'url' => '/spring', 'kind' => 'page'), $items[0], 'a page fills the form, the text cut to 200');
+	pg_assert_same('record', $items[1]['kind'], 'a record');
+	pg_assert_same('/shoes?r=7', $items[1]['url'], 'its address');
+
+	$sub = pg_site_push_pick_items(array(array('url' => 'spring', 'title' => 'S', 'description' => '', 'page_id' => 4, 'page_name' => 'spring')), array(), '/shop/');
+	pg_assert_same('/shop/spring', $sub[0]['url'], 'a site in a folder keeps its folder');
+}
+
+function test_site_push_panel_send_errors()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/site_push_panel.php');
+
+	foreach (array('off', 'kind', 'subscription', 'save', 'title', 'body', 'url', 'device') as $code) {
+		pg_assert_true(pg_site_push_send_error($code) !== '', $code . ' has a sentence');
+	}
+
+	pg_assert_same(lang('The notification was not sent.'), pg_site_push_send_error('unknown'), 'anything else');
+	pg_assert_same(array(PG_SITE_PUSH_KIND_NEWS, PG_SITE_PUSH_KIND_TEST), pg_site_push_listed_kinds(), 'stock and order messages are not listed');
+}
