@@ -11,7 +11,7 @@ description: Which cookies the cookie notice lists (pg_consent_catalogue()), the
   - necessary, while `wishlist_items` exists (`pg_wishlist_ready()`): `pg_wishlist` (`PG_WISHLIST_COOKIE`, a visitor's favourites before signing in, set on the first saved product, 1 year, HttpOnly; `commerce/wishlist.md`);
   - analytics with `VISITOR_TRACKING`: `software[number_of_visits]`, `software[tracking_code]`, `lsid`; with Google Analytics `_ga, _ga_*`;
   - marketing with tracking and the affiliate program: `software[affiliate_code]`;
-  - marketing while Auto Dialogs are on (`AUTO_DIALOGS`): `pg_popup, software[auto_dialog_*]` (`pg_consent_popup_row()`): the pop-ups' one cookie and the per-row ones before it, both in `pg_consent_revoke_names()` (PR #NNNN, `auto-dialog-browser-dialog.md`);
+  - marketing while Auto Dialogs are on (`AUTO_DIALOGS`): `pg_popup, software[auto_dialog_*]` (`pg_consent_popup_row()`): the pop-ups' one cookie and the per-row ones before it, both in `pg_consent_revoke_names()` (PR #9852, `auto-dialog-browser-dialog.md`);
   - necessary, while `CAPTCHA` is on with a provider: "Cloudflare Turnstile" or "hCaptcha" as a service (not held: a form cannot be sent without it, `waf/form-captcha-providers.md`);
   - every script the page holds with `data-pg-consent` (`pg_consent_page_services()`), as a service of the site.
 - Before PR #1090 (issue #768) `software[view_page_mode]` and `pg_language` were written but not listed.
