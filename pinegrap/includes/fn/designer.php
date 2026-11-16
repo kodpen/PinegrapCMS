@@ -2859,6 +2859,7 @@ function pg_designer_delete_design($style_id, $user, $collab_key = '')
     // Its prototype share links end with it: a later design may get its id.
     require_once(PG_FUNCTIONS_DIR . '/includes/fn/prototype_links.php');
     pg_proto_links_revoke_design($style_id, (int)$user['id']);
+    pg_proto_comments_delete_design($style_id);
     log_activity(lang(array('string' => 'style ({var:1}) was deleted', 'vars' => array($out['name']))), isset($_SESSION['sessionusername']) ? $_SESSION['sessionusername'] : '');
 
     $out['ok'] = true;
