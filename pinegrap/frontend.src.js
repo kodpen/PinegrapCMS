@@ -1973,31 +1973,59 @@ var software = {
             }
         }
 
-        var visit_length = now - visit_start;
-
         // If there is a class in the body tag that says to disable auto dialogs,
         // then abort and don't show auto dialogs on this page.
         if (software_$('body').hasClass('disable_auto_dialogs')) {
             return false;
         };
 
-        // When this visitor last saw a dialog (seconds), from the cookie
-        // written when it opened; 0 when never.
-        function shown_at(id) {
-            var names = ['software[auto_dialog_' + id + ']', 'software%5Bauto_dialog_' + id + '%5D'];
-            var pairs = document.cookie ? document.cookie.split(';') : [];
+        // With the cookie notice on, no dialog opens before the visitor has
+        // answered it: the dialogs start on pg:consent, which pg_consent.js
+        // sends on each page that has a stored answer and after each answer.
+        // The dialogs remember what was shown in a cookie only with
+        // marketing allowed or the notice off. A preview opens at once.
+        var notice = document.getElementById('pg-cc');
 
-            for (var i = 0; i < pairs.length; i++) {
-                var pair = pairs[i].replace(/^\s+/, '');
-                var at = pair.indexOf('=');
-
-                if ((at > 0) && (names.indexOf(pair.slice(0, at)) !== -1)) {
-                    return parseInt(pair.slice(at + 1), 10) || 0;
-                }
-            }
-
-            return 0;
+        if (preview || !notice) {
+            software.start_auto_dialogs(auto_dialogs, preview, visit_start, true);
+            return true;
         }
+
+        var started = false;
+
+        function begin(choices) {
+            if (!started) {
+                started = true;
+                software.start_auto_dialogs(auto_dialogs, false, visit_start, !!(choices && choices.marketing));
+            }
+        }
+
+        document.addEventListener('pg:consent', function(event) {
+            begin(event.detail);
+        });
+
+        // pg_consent.js is deferred, so it normally runs after this; if it
+        // ran first, the answer it read is in its cookie ("1.a1.m0").
+        if (notice.getAttribute('data-ready')) {
+            var card = document.getElementById('pg-cc-card');
+            var answer = software.read_cookie('pg_consent');
+
+            if (answer && card && card.hidden) {
+                begin({marketing: /(^|\.)m1(\.|$)/.test(answer)});
+            }
+        }
+
+        return true;
+    },
+
+    // Opens the auto dialogs the visitor has not seen too recently, each
+    // after its delay counted from the visit's start. With remember, what
+    // was shown is kept in the pg_popup cookie for a year and a recurring
+    // dialog opens again after its hours; without it, in sessionStorage,
+    // so each dialog opens once a visit.
+    start_auto_dialogs: function(auto_dialogs, preview, visit_start, remember) {
+        var visit_length = preview ? 0 : (Math.floor(Date.now() / 1000) - visit_start);
+        var memory = software.popup_memory(remember);
 
         software_$.each(auto_dialogs, function(index, auto_dialog) {
             // If there is a class in the body tag that says to specifically disable
@@ -2006,40 +2034,25 @@ var software = {
                 return true;
             };
 
-            // A dialog already shown opens again only when it recurs and
-            // enough hours have passed since. A preview always opens.
             if (!preview) {
-                var last = shown_at(auto_dialog.id);
+                var last = memory.last(auto_dialog.id);
                 var frequency = parseInt(auto_dialog.frequency, 10) || 0;
 
-                if (last && !(frequency && ((now - last) >= (frequency * 3600)))) {
+                if (last && !(remember && frequency && ((Math.floor(Date.now() / 1000) - last) >= (frequency * 3600)))) {
                     return true;
                 }
             }
 
-            // If the visitor is previewing an auto dialog, then ignore the delay property
-            // for the auto dialog, and just force the dialog to appear immediately.
-            if (preview) {
-                var delay = 0;
+            // A preview opens at once; otherwise the delay counts from the
+            // visit's start, and an immediate dialog still waits a second,
+            // as the dialog has always done.
+            var delay = preview ? 0 : (auto_dialog.delay - visit_length);
 
-            // Otherwise the visitor is not previewing so calculate delay,
-            // based on delay property for auto dialog and how long visitor has
-            // been visiting site.
-            } else {
-                var delay = auto_dialog.delay - visit_length;
-            }
-
-            // If the auto dialog should be shown immediately, then still wait
-            // a second, as the dialog has always done.
             if (delay <= 0) {
                 delay = 1;
             }
 
-            // Convert the delay from seconds to milliseconds.
-            delay = delay * 1000;
-
-            // Open the dialog after the appropriate delay.
-            setTimeout (function () {
+            setTimeout(function() {
                 var dialog = {url: auto_dialog.url};
 
                 var width = parseInt(auto_dialog.width);
@@ -2058,18 +2071,121 @@ var software = {
                 // auto dialog id so that this auto dialog can be targeted for styling.
                 dialog.class_name = 'auto_dialog auto_dialog_' + auto_dialog.id;
 
-                software.open_dialog(dialog);
+                var opened = software.open_dialog(dialog);
 
-                // If the visitor is not previewing an auto dialog, then store cookie,
-                // to remember that the visitor saw this dialog and at what time.
-                if (!preview) {
-                    var current_timestamp = Math.floor(Date.now() / 1000);
-
-                    document.cookie = 'software[auto_dialog_' + auto_dialog.id + ']=' + current_timestamp + '; expires=Tue, 01 Jan 2030 06:00:00 GMT; path=/';
+                // Remembered once it is on the screen: not for a preview,
+                // a refused address or a dialog still waiting.
+                if (preview || !opened || !opened.addEventListener) {
+                    return;
                 }
 
-            }, delay);
+                memory.mark(auto_dialog.id, 's');
+
+                opened.addEventListener('close', function() {
+                    memory.mark(auto_dialog.id, 'c');
+                });
+            }, delay * 1000);
         });
+    },
+
+    // The auto dialogs' memory: per dialog id, when it was last shown and
+    // its state (s shown, c closed), as "id:time:state" joined by "|". With
+    // remember it is the pg_popup cookie (a year; PG_POPUP_COOKIE, in the
+    // cookie notice's marketing row), and the per-row cookie written before
+    // (software[auto_dialog_<id>]) still gives a dialog's last time;
+    // without it, sessionStorage, for this visit only.
+    popup_memory: function(remember) {
+        var name = 'pg_popup';
+
+        function load() {
+            var value = '';
+
+            if (remember) {
+                value = software.read_cookie(name);
+            } else {
+                try {
+                    value = window.sessionStorage.getItem(name) || '';
+                } catch (e) {
+                    value = '';
+                }
+            }
+
+            var entries = {};
+
+            software_$.each(String(value).split('|'), function(index, part) {
+                var bits = part.split(':');
+                var id = parseInt(bits[0], 10);
+
+                if (id > 0) {
+                    entries[id] = {at: parseInt(bits[1], 10) || 0, state: bits[2] || 's'};
+                }
+            });
+
+            return entries;
+        }
+
+        function save(entries) {
+            var parts = [];
+
+            for (var id in entries) {
+                if (entries.hasOwnProperty(id)) {
+                    parts.push(id + ':' + entries[id].at + ':' + entries[id].state);
+                }
+            }
+
+            if (remember) {
+                document.cookie = name + '=' + parts.join('|') + '; Max-Age=31536000; Path=/; SameSite=Lax' + (location.protocol === 'https:' ? '; Secure' : '');
+            } else {
+                try {
+                    window.sessionStorage.setItem(name, parts.join('|'));
+                } catch (e) {}
+            }
+        }
+
+        return {
+            last: function(id) {
+                var entry = load()[id];
+                var at = entry ? entry.at : 0;
+
+                if (remember) {
+                    var old = parseInt(software.read_cookie('software[auto_dialog_' + id + ']') || software.read_cookie('software%5Bauto_dialog_' + id + '%5D'), 10) || 0;
+
+                    if (old > at) {
+                        at = old;
+                    }
+                }
+
+                return at;
+            },
+
+            mark: function(id, state) {
+                var entries = load();
+                var at = Math.floor(Date.now() / 1000);
+
+                if ((state !== 's') && entries[id]) {
+                    at = entries[id].at;
+                }
+
+                entries[id] = {at: at, state: state};
+                save(entries);
+            }
+        };
+    },
+
+    // A cookie's value by its exact name, '' when the browser has none.
+    read_cookie: function(name) {
+        var pairs = document.cookie ? document.cookie.split(';') : [];
+
+        for (var i = 0; i < pairs.length; i++) {
+            var pair = pairs[i].replace(/^\s+/, '');
+            var at = pair.indexOf('=');
+
+            if ((at > 0) && (pair.slice(0, at) === name)) {
+                return pair.slice(at + 1);
+            }
+        }
+
+        return '';
     },
 
     // Used by express order to allow visitor to copy shipping info to billing info
