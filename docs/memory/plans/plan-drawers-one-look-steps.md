@@ -10,7 +10,7 @@ description: Plan plan-drawers-one-look, steps PD1 to PD3: the shared form parts
   - Tests: a source test that `workspace_my_calendar.js` defines no `field()` or `input()` of its own and takes them from the kit; the drawer's tests of today stay green, `test_workspace_personal_plan_drawer_fits_a_phone` among them.
   - Pictures, light and dark, 1280 and 390, before and after: a new plan, a repeating plan with chosen people, somebody else's plan read only, a plan with a roadmap. Each pair is the same picture.
   - Features: D1, D3, D10, D12, D14.
-- PD2 (M) "Add to the plan" on the parts. After PD1. Claimed: its draft PR.
+- PD2 (M) "Add to the plan" on the parts. After PD1. Done: #9909 (sheet approved by the owner, agent channel message 6411).
   - `eventForm()` builds from the parts; `formRow()` stays for the other forms. The order, wording, line under the header and footer of D4 to D7 and D9.
   - What "New plan" still draws with Bootstrap after PD1 goes to look A (D2), none left out:
     - the select part's `form-control` / `form-control-sm`: Reminder, Repeat, Repeat ends and the roadmap's template select ("Save as team template" with a saved template);
