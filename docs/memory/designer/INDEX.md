@@ -489,6 +489,7 @@
 - loop-band-canvas.md: The loop band and the element chips on the canvas: band height and tooltips, the chip row (Only when, Off, Shown when) in the flow, see-through wrappers, the Turkish band terms (#2523) [decision: decisions-made-product-48.md]
 - member-email-asked-once.md: Registration and membership activation ask for the email once: email_verify optional, a typed copy must match; starter layouts, templates, classic screens and the starter site changed
 - member-widgets-handlers-and-forms.md: Membership widgets (login/forgot/registration/membership): legacy handlers, pg_member_register/activate, control naming, form wrap, validation script.
+- member-widgets-open-slots.md: Sign-in and sign-up widgets' slots opened (CB7, #9895): password rules and the three links as elements, the sign-in buttons drawn true (settings only)
 - member-widgets-rendering.md: Membership widget render rules: closed feature = no output, canvas twin _sdMemberBindingOff, Messages node stamping, always render own tree, signed-in state.
 - member-widgets-tokens-and-fields.md: Membership widget tokens/sections, Google rules, core vs contacts-column fields, login-screen redirect, register-link tri-state, reset screens, page-name box. [decision: decisions-made-product-13.md]
 - menu-sequence-widget.md: Menu Sequence widget (menu_sequence_region, #1817): the classic <menu_sequence> region in the designer; reading order of a menu's pages, previous and next links, wrap to the first, tokens, flags.

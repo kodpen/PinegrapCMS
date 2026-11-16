@@ -38,6 +38,7 @@
 - cloudflare-image-vary-rule.md: WebP at the own address through a CDN: Cloudflare Tools Cache Rule (Vary Accept), the token-free self-test that sets bit 8 only on cache hits, or picks private or original (#5536, #6144, #6667) [decision: decisions-made-product-21.md]
 - cloudflare-tools-failed-reads.md: Cloudflare Tools says why a Cloudflare read or action failed: unread zone switches disabled, firewall and analytics reasons, Cloudflare's text on every failed action
 - comment-attachment-upload-refusal.md: The comment form's attachment (add_comment.php) refuses a file PHP did not take in whole before the comment is written, and writes a files row only after a successful copy.
+- consent-anonymous-counts.md: The one cookie notice check of the anonymous counts (clicks and scroll depth, a pop-up's events): counted unless statistics were refused; why it is not pg_consent_allows() [decision: here]
 - cookie-consent-catalogue.md: Which cookies the cookie notice lists (pg_consent_catalogue()), the conditional rows, and what a new cookie needs
 - cookie-consent-new-cookies.md: Adding a front-end cookie or third-party tag under the cookie notice: necessary or not, pg_consent_setcookie() plus a session copy, pg_consent_catalogue(), revoke names, pg_consent_hold_scripts().
 - cookie-consent-notice.md: Cookie notice: Settings, Reject all and Accept all drawn alike, nothing pre-ticked; Consent Mode v2 default at the top of <head>, update before held scripts start; focus [decision: decisions-made-product.md]
