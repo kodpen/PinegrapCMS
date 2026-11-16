@@ -3,7 +3,7 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Tests for the command registry (includes/workspace/command_registry.php):
- * every entry names functions that exist, the commands keep today's order
+ * every entry's gate and API class name functions that exist, the commands keep today's order
  * and names, and an application's command named as a built-in one is
  * shadowed: kept, never offered, listed by the API as shadowed.
  *
@@ -33,9 +33,9 @@ require_once(PG_FUNCTIONS_DIR . '/includes/mcp/tools.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/api/scopes.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api.php');
 
-// No name without a runner: every entry's runner, gate, live line and API
-// class name functions that are there, and every field is filled.
-function test_workspace_command_registry_every_key_has_a_runner()
+// Every entry's gate and API class name functions that are there, and every
+// field is filled.
+function test_workspace_command_registry_every_function_exists()
 {
 	$registry = ws_command_registry();
 
@@ -44,14 +44,13 @@ function test_workspace_command_registry_every_key_has_a_runner()
 	foreach ($registry as $key => $entry) {
 		pg_assert_same($key, $entry['key'], $key . ' is listed under its key');
 
-		foreach (array('key', 'tr', 'en', 'label', 'description', 'example', 'args', 'names', 'group', 'where', 'gate', 'runner', 'live', 'api', 'order') as $field) {
+		foreach (array('key', 'tr', 'en', 'label', 'description', 'example', 'args', 'names', 'group', 'where', 'gate', 'live', 'api', 'order') as $field) {
 			pg_assert_true(array_key_exists($field, $entry), $key . ' has ' . $field);
 		}
 
 		pg_assert_true(in_array($entry['group'], ws_command_groups(), true), $key . ' is in a known group');
-		pg_assert_true(is_string($entry['runner']) && function_exists($entry['runner']), $key . ' runs: ' . $entry['runner']);
 		pg_assert_true(($entry['gate'] === '') || function_exists($entry['gate']), $key . ' gate: ' . $entry['gate']);
-		pg_assert_true(($entry['live'] === '') || function_exists($entry['live']), $key . ' live line: ' . $entry['live']);
+		pg_assert_true(is_bool($entry['live']), $key . ' live line is said');
 		pg_assert_true(in_array($entry['api'], array('preview', 'run'), true) || function_exists($entry['api']), $key . ' API class: ' . $entry['api']);
 	}
 
