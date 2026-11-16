@@ -699,6 +699,12 @@ function ws_api_channel_switches_set($params)
         api_fail(403, 'forbidden', lang('Only the owner of the channel can change it.'));
     }
 
+    // The channel menu hides the switches on an archived channel; the dry
+    // run is refused the same way.
+    if ((int) $channel['archived_at'] > 0) {
+        api_fail(403, 'forbidden', lang('This channel is archived. It can be read but not written in.'));
+    }
+
     $now = ws_api_channel_settings_present(ws_api_channel_settings_states($viewer, $channel));
     $fields = array('claude' => 'claude_allowed', 'ai' => 'ai_allowed', 'voice' => 'voice_allowed');
     $changes = array();
