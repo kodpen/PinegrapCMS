@@ -62,6 +62,7 @@
     "Waited until": "Beklenen zaman",
     "Waited until {var:1}.": "{var:1} saatine kadar beklendi.",
     "Waiting": "Bekliyor",
+    "Waiting Content Changes": "Bekleyen İçerik Değişiklikleri",
     "Waiting List": "Bekleme Listesi",
     "Waiting List Link": "Bekleme Listesi Bağlantısı",
     "Waiting and failed requests": "Bekleyen ve başarısız istekler",
