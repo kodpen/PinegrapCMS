@@ -13,7 +13,7 @@ description: Plan channel-commands, steps CC1 to CC6: the registry with no chang
   - Features: K1 to K3.
 
 - CC2 (M) after CC1: the gate, /help, the list in groups, commands as a reply.
-  - CC2a done (#PR): the server side, K4 gate, K5 /help, K7 replies (`workspace/workspace-command-help.md`).
+  - CC2a done (#10057): the server side, K4 gate, K5 /help, K7 replies (`workspace/workspace-command-help.md`).
   - CC2b, when no open PR holds `assets/js/workspace.js`: `drawPicker()` header rows (never picked) and the list filtered by the open channel; Node tests; the list's picture. Features K4, K6.
 
 - CC3 (M) after CC2: /hatırlat and /özet.
