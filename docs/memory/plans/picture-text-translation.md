@@ -17,7 +17,7 @@ priority: 6
 - Left out of the first version: a flat picture whose letters are pixels (a photo, a scan, an uploaded PNG): there is no document to read, and reading letters from pixels and painting over them needs a model or a service, which the canvas does not use (`ui/image-editor-overview.md`). Saved animations and videos. Pictures in e-mails.
 
 ## Which step is first?
-- PT0 (S) The census, memory only: `plans/picture-text-translation-census.md`, no product code. It answers, from the code:
+- PT0 (S) Done (PR #9962). The census, memory only: `plans/picture-text-translation-census.md`, no product code. It answers, from the code:
   - where a document with text layers lives for a file, a canvas and a workspace canvas, and how many text fields a layer has that hold words;
   - every path that writes a picture's address into a visitor's page (designer nodes, stored HTML, product pictures, `srcset`, backgrounds, the share picture) and which of them the finished-page pass (`pg_tr_render_db_texts()`) sees;
   - how the file's texts would enter the store (`translation_strings`, `translations`, `translation_uses`: owner type, a field per layer), what the Translations screen and a job need for them, what `pg_tr_translatable()` does with a banner's short words and prices;
