@@ -4,7 +4,7 @@ description: Plan course-progress, steps CO1 to CO6: the tables and the rule of 
 ---
 
 ## Which steps are there?
-- CO1 (M) The tables and the rules, server and data only.
+- CO1 (M) The tables and the rules, server and data only. Done in #10063.
   - A migration step adds the courses, lessons and progress tables, listed in `get_tables()`; the draft PR's body carries their columns and indexes for the architect.
   - Existing files: `functions.php` (the module), `includes/fn/privacy.php` (the export and erasure lists).
   - New: `includes/fn/courses.php` (ready check, a course and its lessons, the enrolment day, the pure rule of an open lesson, the done and complete writers, the certificate's code), `tests/courses_test.php`.

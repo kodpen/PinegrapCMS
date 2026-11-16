@@ -7204,11 +7204,14 @@ function upgrade_2026_11_0_content_review() {
 
 // Courses (11.0.234, includes/fn/courses.php). course: a private folder a
 // product already opens, its classroom page, "Lessons in order" (in_order)
-// and "Certificate" (certificate); idx_folder finds a folder's course.
+// and "Certificate" (certificate); idx_folder finds a folder's courses
+// (one folder may hold several).
 // course_lesson: a page of that folder, its place (sort_order), the days
 // after enrolment it opens (open_days, 0 at once) and an optional quiz form
-// page with the score it needs (0-100); idx_course_page keeps a page once
-// per course, idx_page serves the page's access gate. course_progress: one
+// page with the score it needs (quiz_pass_score, 0-100, 0 with no quiz;
+// forms.quiz_score is the score a member got). idx_page keeps a page a
+// lesson of one course only and serves the page's access gate; idx_course
+// lists a course's lessons in order. course_progress: one
 // row per fact, written once by its key with INSERT IGNORE: kind 1 a lesson
 // done, 2 the first open of a course given by hand (lesson_id 0), 3 the
 // completion (lesson_id 0); idx_course serves the course's learners list.
@@ -7233,16 +7236,16 @@ function upgrade_2026_11_0_courses() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_create_table('course_lesson', "CREATE TABLE course_lesson (
-		id           INT UNSIGNED NOT NULL AUTO_INCREMENT,
-		course_id    INT UNSIGNED NOT NULL DEFAULT 0,
-		page_id      INT UNSIGNED NOT NULL DEFAULT 0,
-		sort_order   SMALLINT UNSIGNED NOT NULL DEFAULT 0,
-		open_days    SMALLINT UNSIGNED NOT NULL DEFAULT 0,
-		quiz_page_id INT UNSIGNED NOT NULL DEFAULT 0,
-		quiz_score   TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		id              INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		course_id       INT UNSIGNED NOT NULL DEFAULT 0,
+		page_id         INT UNSIGNED NOT NULL DEFAULT 0,
+		sort_order      SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+		open_days       SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+		quiz_page_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		quiz_pass_score TINYINT UNSIGNED NOT NULL DEFAULT 0,
 		PRIMARY KEY (id),
-		UNIQUE KEY idx_course_page (course_id, page_id),
-		KEY idx_page (page_id)
+		UNIQUE KEY idx_page (page_id),
+		KEY idx_course (course_id, sort_order)
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_create_table('course_progress', "CREATE TABLE course_progress (

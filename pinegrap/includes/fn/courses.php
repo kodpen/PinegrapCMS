@@ -30,6 +30,12 @@ if (!defined('PG_FUNCTIONS_DIR')) {
     exit;
 }
 
+// The kinds of a progress row (course_progress.kind). A query names them
+// through these, never as bare numbers.
+const PG_COURSE_KIND_DONE = 1;
+const PG_COURSE_KIND_FIRST_OPEN = 2;
+const PG_COURSE_KIND_COMPLETE = 3;
+
 /**
  * Whether the courses tables exist (2026.11.0, step 11.0.234). Files land
  * before the upgrade runs, so every reader asks this first.
@@ -52,7 +58,11 @@ function pg_course_ready()
  */
 function pg_course_kind($name)
 {
-    $kinds = array('done' => 1, 'first_open' => 2, 'complete' => 3);
+    $kinds = array(
+        'done'       => PG_COURSE_KIND_DONE,
+        'first_open' => PG_COURSE_KIND_FIRST_OPEN,
+        'complete'   => PG_COURSE_KIND_COMPLETE,
+    );
 
     return $kinds[(string) $name] ?? 0;
 }
@@ -296,7 +306,8 @@ function pg_course_get($course_id)
  * A course's lessons in their order.
  *
  * @param int $course_id
- * @return array rows: id, course_id, page_id, sort_order, open_days, quiz_page_id, quiz_score
+ * @return array rows: id, course_id, page_id, sort_order, open_days, quiz_page_id, quiz_pass_score
+ *               (the score the lesson needs, 0 with no quiz)
  */
 function pg_course_lessons($course_id)
 {
@@ -305,7 +316,7 @@ function pg_course_lessons($course_id)
     }
 
     $rows = db_items(
-        "SELECT id, course_id, page_id, sort_order, open_days, quiz_page_id, quiz_score
+        "SELECT id, course_id, page_id, sort_order, open_days, quiz_page_id, quiz_pass_score
         FROM course_lesson
         WHERE course_id = '" . (int) $course_id . "'
         ORDER BY sort_order ASC, id ASC");
@@ -327,7 +338,7 @@ function pg_course_lesson_for_page($page_id)
     }
 
     $lesson = db_item(
-        "SELECT id, course_id, page_id, sort_order, open_days, quiz_page_id, quiz_score
+        "SELECT id, course_id, page_id, sort_order, open_days, quiz_page_id, quiz_pass_score
         FROM course_lesson
         WHERE page_id = '" . (int) $page_id . "'
         ORDER BY id ASC
@@ -371,11 +382,11 @@ function pg_course_member_progress($user_id, $course_id)
     foreach (is_array($rows) ? $rows : array() as $row) {
         $kind = (int) $row['kind'];
 
-        if ($kind === pg_course_kind('done')) {
+        if ($kind === PG_COURSE_KIND_DONE) {
             $out['done_ids'][] = (int) $row['lesson_id'];
-        } elseif ($kind === pg_course_kind('first_open')) {
+        } elseif ($kind === PG_COURSE_KIND_FIRST_OPEN) {
             $out['first_open_at'] = (int) $row['created_at'];
-        } elseif ($kind === pg_course_kind('complete')) {
+        } elseif ($kind === PG_COURSE_KIND_COMPLETE) {
             $out['completed_at'] = (int) $row['created_at'];
         }
     }
@@ -440,7 +451,8 @@ function pg_course_record_first_open($user_id, $course_id, $has_folder)
 
 /**
  * Marks a lesson done for a member, once, and completes the course when it
- * was the last lesson left. The caller has checked the folder access, that
+ * was the last lesson left. A completion row is never rewritten, not even
+ * when lessons are added later: the certificate's day and code hang on it. The caller has checked the folder access, that
  * the lesson is open and, for a quiz lesson, the score.
  *
  * @param int $user_id
@@ -459,6 +471,44 @@ function pg_course_mark_done($user_id, $course_id, $lesson_id)
     $out['completed'] = pg_course_write_row(pg_course_completion_row($user_id, $course_id, $lesson_ids, $progress['done_ids'], $progress['completed_at'] > 0, $now));
 
     return $out;
+}
+
+/**
+ * The course a page is already a lesson of, for the writer that adds a
+ * lesson: a page is a lesson of one course only (course_lesson.idx_page),
+ * so the gate has one classroom to send a closed lesson to.
+ *
+ * @param int $page_id
+ * @return array|null the course row, or null when the page is free
+ */
+function pg_course_page_taken($page_id)
+{
+    $lesson = pg_course_lesson_for_page($page_id);
+
+    return ($lesson === null) ? null : $lesson['course'];
+}
+
+/**
+ * Deletes a lesson with its done rows. Used when the lesson is removed, its
+ * page is deleted or the page leaves the course's folder. A completion row
+ * already written stays.
+ *
+ * @param int $lesson_id
+ * @return bool
+ */
+function pg_course_lesson_delete($lesson_id)
+{
+    $lesson_id = (int) $lesson_id;
+
+    if (($lesson_id <= 0) || !pg_course_ready()) {
+        return false;
+    }
+
+    if (!db_q("DELETE FROM course_progress WHERE (lesson_id = ?) AND (kind = ?)", array((string) $lesson_id, (string) PG_COURSE_KIND_DONE))) {
+        return false;
+    }
+
+    return (bool) db_q("DELETE FROM course_lesson WHERE id = ?", array((string) $lesson_id));
 }
 
 /**

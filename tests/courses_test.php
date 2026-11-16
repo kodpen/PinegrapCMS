@@ -153,6 +153,12 @@ function test_courses_rows_are_written_once()
 
 	$schema = (string) file_get_contents(dirname(__DIR__) . '/pinegrap/includes/migrations/2026.11.0.php');
 	pg_assert_contains('PRIMARY KEY (user_id, course_id, kind, lesson_id)', $schema, 'the key the write meets');
+	pg_assert_contains('UNIQUE KEY idx_page (page_id)', $schema, 'a page is a lesson of one course only');
+	pg_assert_contains('quiz_pass_score', $schema, 'the needed score is named apart from forms.quiz_score');
+
+	pg_assert_same(PG_COURSE_KIND_DONE, pg_course_kind('done'), 'done constant');
+	pg_assert_same(PG_COURSE_KIND_FIRST_OPEN, pg_course_kind('first_open'), 'first open constant');
+	pg_assert_same(PG_COURSE_KIND_COMPLETE, pg_course_kind('complete'), 'complete constant');
 }
 
 function test_courses_done_row()
