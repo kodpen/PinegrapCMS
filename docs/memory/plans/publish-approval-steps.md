@@ -19,7 +19,7 @@ description: Plan publish-approval, steps PA1 to PA6 (PA0, the owner's answer, i
 
 - PA4 (M) after PA2: the designer's side. Existing files: the tab's count, `includes/notifications.php` (a third set in `pg_notification_off_kinds()` and `pg_notification_off_lines_on()`). New: the module's own list of waiting changes, the bell lines. The Assistant panel and `designer_ai.js` are not touched. Tests: apply writing one revision with both names, a stale change refused, dismiss with its reason, take back refused after a later save. Pictures to the owner. Features: A7 to A12.
 
-- PA5 (S) after PA4: the Workspace request. Existing files: `includes/workspace/approvals.php` (one call in `ws_approval_settle()` to a function of the module, `workspace/workspace-approval-decide-checks.md`). Tests: a designer's yes applying, another member's yes only noted, a no dismissing, a withdrawn change taking its request back. Features: A13, A14, A15.
+- PA5 (S) after PA4: the Workspace request. Existing files: `includes/workspace/approvals.php` (one call in `ws_approval_settle()` to a function of the module, `workspace/workspace-approval-decide-checks.md`). Tests: a designer's yes applying, another member's yes only noted, a no dismissing, a withdrawn change taking its request back, a named channel that is archived or gone asking nowhere. Features: A13, A14, A15.
 
 - PA6 (S) close-out: every A number checked against the code with its PR; `designer/content-proposals.md`; this plan's files and the census files (`publish-approval-census*.md`) deleted and its line in `plans/website-features.md` removed.
 
