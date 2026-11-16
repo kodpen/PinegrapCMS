@@ -57,6 +57,7 @@
 - collection-references.md: A form list or detail element prints a field of the record, product or page a reference points at (__ref binding, spec, one read per form, escaping, what is never read)
 - collection-revisions.md: Collection item revisions (record_revisions, 11.0.123, C7a #3068; History and restore C7b #3099): which items, which writers, what a row holds, the History section, restore, retention, erasure
 - collection-rows-list.md: A record's rows listed on its record page: the dynamic value "Rows of the shown record" (shown record rows) and the record view's "Rows of this record" button
+- collection-rows-outside.md: Collection "Rows" field outside its editor: the API read (codes, rows, kind), the check of an API or Workspace write, the import leaving the column out
 - collection-rows-writer.md: Collection "Rows" field kind: rows as child collection records, codes in order on the parent, the spec, the writer and its order of writes, the 100-row limit
 - collection-template-refs.md: A template's reference into another tab's form (_cf.ref tab:<key>): Publish, forms target first, sample references by label, blog categories, export (C6b1, C6b2)
 - collections-decisions.md: Typed collections over designer forms: why a form with a flag, the approved schema (#2393, #3051), why items have no schedule columns (#3746), what C1–C7 built and where it is described [decision: decisions-made-product-10.md, decisions-made-schema-3.md]
@@ -542,10 +543,11 @@
 - prototype-hotspots.md: The Prototype view's hotspot collector (assets/js/pg_proto_hotspots.js, window.PGProtoHotspots): which nodes are hotspots, shared frames, the map read's request, the marks, the layout
 - prototype-links-in-code.md: Where a design's links sit in the code, page-name hrefs and renames, the resolver, editor state, rights and Publish: what the Prototype view reads
 - prototype-map-read.md: The Prototype view's server read (api.php designer prototype_map, includes/fn/prototype_map.php): what it is asked, what it answers, how hidden pages stay hidden
+- prototype-page-picture.md: The Prototype view's page picture in a frame (PV8): how it is built, the sandboxed frame, the link marker, the queue and the cap, the foot's count, what a redraw reuses [decision: here]
 - prototype-picture-check-numbers.md: The prototype canvas page picture check's measurements (PV7): both ways on a 41-page design, how and where each number was taken
 - prototype-picture-check.md: The prototype canvas page picture (PV7, architect 2026-11-16): the Preview document in a script-free readable frame, its sandbox and CSP, the link marker, the cap on live pictures [decision: here]
 - prototype-places.md: Where the Prototype view keeps a moved frame or chip: frames shared on the design in the tab layout's proto (#6232), the rest per browser; the twin normalisers
-- prototype-thumbnails.md: The Prototype view's frame thumbnails: PGProtoHotspots.sketch() bands from a tree, sketchBoxes(), the 84-high strip above a frame's rows, how it is drawn
+- prototype-thumbnails.md: The Prototype view's frame sketch (PGProtoHotspots.sketch() bands, sketchBoxes()): the picture's loading state and fallback, and the 84-high strip of a frame without a picture
 - prototype-view-decisions.md: What was decided for the designer's Prototype view (owner 2026-10-24, #2446, 2026-11-01): where it lives, hrefs by name or page id, who draws, read-only sources, breakpoint, how an arrow saves [decision: decisions-made-product-23.md]
 - prototype-view.md: The designer's Prototype view (_sdProtoOpen()): toolbar toggle, frames and chips on the graph canvas core, row clicks, arrows drawn by hand, where positions are kept
 - record-media-field-share-image.md: A form's RSS media upload opens with the record; og:image comes from the form's share image field, then the media field, and skips an upload an anonymous visitor cannot open (#2191, #2174, #2891)
