@@ -1138,6 +1138,20 @@ function ws_tasks_agent_sql($rule, $column = 't.channel_id')
 }
 
 /**
+ * The condition that leaves agent channels' tasks out of a count of other
+ * people's tasks (the dashboard's figures), as the task lists leave them out
+ * by default; '' when there is nothing to leave out.
+ *
+ * @param string     $column the task's channel column
+ * @param array[]|null $agents ws_tasks_agent_channels(); null reads them
+ * @return string
+ */
+function ws_tasks_agent_out_sql($column = 't.channel_id', $agents = null)
+{
+    return ws_tasks_agent_sql(ws_tasks_agent_rule(($agents === null) ? ws_tasks_agent_channels() : $agents, ''), $column);
+}
+
+/**
  * Whether ws_tasks_agent_rule() keeps a task in this channel (a task in no
  * channel is no agent channel's task).
  *

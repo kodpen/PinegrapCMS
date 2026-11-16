@@ -10,7 +10,8 @@ description: Features W1 to W12 of plan agent-work-apart: an agent channel's tas
 - W4 `GET /workspace/tasks` leaves them out unless `agent_channels=include|only` or `channel_id` names the channel, as `GET /workspace/decisions` does; the schema names the parameter. An agent's own reads of its channel are unchanged.
 
 ## Which counts follow?
-- W5 Today's task lines and count, the dashboard's task figures and the Workspace list's task sums count as the lists of W1 do, so a number never names tasks its list hides. The channel's own greeting and Tasks tab count as before.
+- W5 The counts follow the lists of W1, so a number never names tasks its list hides: the dashboard's Team card (its people's open and late tasks, Who works on what, the day's load) and the Pipeline card's tasks box (tasks the reader opened) leave agent channels' tasks out.
+- W5 (continued) A task assigned to the reader counts whatever its channel (W3), so Today's task lines and count, the My tasks and Week cards, the tasks done figure and widgets 27 and 29 are unchanged. The channel's own greeting and Tasks tab count as before.
 - W6 Notifications are not filtered: a bell line, a mention or a hand-over addressed to a person arrives whatever the channel.
 
 ## How is a task an application created marked?
