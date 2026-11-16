@@ -198,13 +198,14 @@
             send();
         }
 
-        // The box sits beside the spot (vx, vy in the frame), kept inside
+        // The box sits beside the spot (vx, vy in the frame), clear of the
+        // pin drawn there (28 px wide, its point at the spot) and kept inside
         // the window; on a phone it is a sheet at the bottom (CSS).
         function position(vx, vy) {
             var r = frame.getBoundingClientRect();
             var w = box.offsetWidth, h = box.offsetHeight;
-            var left = r.left + vx + 16, top = r.top + vy - 12;
-            if (left + w > window.innerWidth - 8) left = r.left + vx - w - 16;
+            var left = r.left + vx + 40, top = r.top + vy - 40;
+            if (left + w > window.innerWidth - 8) left = r.left + vx - w - 12;
             left = Math.max(8, Math.min(left, window.innerWidth - w - 8));
             top = Math.max(r.top + 8, Math.min(top, window.innerHeight - h - 8));
             box.style.left = left + 'px';

@@ -1204,7 +1204,7 @@ function pg_proto_frame_comment_script()
         . 'pgComment.click = function (e) {'
         . 'e.preventDefault(); e.stopImmediatePropagation();'
         . 'var t = e.target, pin = (t && t.closest) ? t.closest("[data-pg-pin]") : null;'
-        . 'if (pin) { var pr = pin.getBoundingClientRect(); window.parent.postMessage({ pgPrototype: "pin", id: parseInt(pin.getAttribute("data-pg-pin"), 10), vx: pr.left, vy: pr.top }, "*"); return; }'
+        . 'if (pin) { var pr = pin.getBoundingClientRect(); window.parent.postMessage({ pgPrototype: "pin", id: parseInt(pin.getAttribute("data-pg-pin"), 10), vx: pr.left, vy: pr.bottom }, "*"); return; }'
         . 'var el = (t && t.closest) ? t.closest("[data-pg-node]") : null, r = drawn(el);'
         . 'if (!r) return;'
         . 'var x = Math.min(100, Math.max(0, (e.clientX - r.left) / (r.width || 1) * 100)), y = Math.min(100, Math.max(0, (e.clientY - r.top) / (r.height || 1) * 100));'
