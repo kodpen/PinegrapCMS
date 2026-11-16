@@ -13,7 +13,8 @@ module: prototype_comments
 - Revoked, expired, gone and unknown share one answer ('link', 404), as the viewer gives.
 
 ## Which limits apply?
-- `pg_proto_comment_limits()`: name 1-60, text 1-1,000 characters; 10 comments in 10 minutes per address (`waf_rate_exceeded()` scope `prototype_comment`; past it a burst offence, 429); 200 open guest comments a link (409). The burst is counted only for a post that passed the door and the field check.
+- `pg_proto_comment_limits()`: name 1-60, text 1-1,000 characters; 30 comments in 10 minutes per address (`waf_rate_exceeded()` scope `prototype_comment`; past it a burst offence, 429); 200 open guest comments a link (409), staff answers not counted. The burst is counted only for a post that passed the door and the field check, and only for an address `waf_ip_is_counted()` counts (a proxy's or a private network's address is everyone's).
+- Architect (2026-11-16, agent channel message 6207): 30, not 10: a comment a minute is a customer's normal pace and an office writes from one address; at 10 an honest reviewer got 429 and, trying on, a ban. The flood is bounded by the 200 and the hourly bell.
 
 ## How is the text kept?
 - Plain (`pg_proto_comment_plain()`): valid UTF-8 only, line breaks `\n` (the name on one line), control characters and direction overrides taken out, trimmed. Markup stays as the characters typed and is escaped wherever it is shown.
@@ -27,4 +28,6 @@ module: prototype_comments
 - With their design: every style delete path calls `pg_proto_comments_delete_design()` beside `pg_proto_links_revoke_design()` (a later design may get the id). The Recycle Bin's delete is one of them, so a restored design comes back without its links and comments. A revoked or expired link keeps its comments; `pg_proto_comments_delete_link()` is the links list's "Delete this link's comments".
 
 ## What does the designer's side read?
-- `pg_proto_comments_of_page()` (all links), `pg_proto_comments_of_link()`, and `pg_proto_comments_page_stamp()`: the newest `created_at` over the open pages, for the presence heartbeat.
+- `pg_proto_comments_of_page()` (all links), `pg_proto_comments_of_link_page()` (the viewer: one page of one link, idx_page), `pg_proto_comments_of_link()`, and `pg_proto_comments_page_stamp()`: the newest id (`MAX(id)`, idx_page is `page_id, id`) over the open pages, for the presence heartbeat. Not the newest time: a second comment in the same second would not change it.
+
+Related: docs/memory/designer/designer-prototype-comments-rules.md, docs/memory/designer/designer-prototype-share-links.md

@@ -18,6 +18,7 @@ if (!defined('PG_TEST_RUNNER')) {
 }
 
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/prototype_comments.php');
+require_once(__DIR__ . '/helpers/source_reader.php');
 
 // The facts of a post that passes every gate, laid over the given ones.
 function prototype_comments_test_facts($over = array())
@@ -75,7 +76,7 @@ function test_prototype_comments_limits()
 {
 	$limits = pg_proto_comment_limits();
 
-	pg_assert_same(10, $limits['burst']);
+	pg_assert_same(30, $limits['burst']);
 	pg_assert_same(600, $limits['burst_window']);
 	pg_assert_same(200, $limits['open_per_link']);
 	pg_assert_same('', pg_proto_comment_limit_refusal(false, 199));
@@ -205,4 +206,25 @@ function test_prototype_comments_public_shape()
 	pg_assert_same(99, (int) $public['y']);
 	pg_assert_false($public['staff']);
 	pg_assert_false(isset($public['resolved_by']));
+}
+
+function test_prototype_comments_stamp_changes_for_two_comments_in_one_second()
+{
+	$first = array('id' => 41, 'page_id' => 120, 'created_at' => 1900000000);
+	$second = array('id' => 42, 'page_id' => 120, 'created_at' => 1900000000);
+
+	pg_assert_same(41, pg_proto_comments_stamp_of_rows(array($first)));
+	pg_assert_same(42, pg_proto_comments_stamp_of_rows(array($first, $second)), 'the same second, another stamp');
+	pg_assert_same(0, pg_proto_comments_stamp_of_rows(array()));
+	pg_assert_same("SELECT MAX(id) FROM prototype_comments WHERE page_id IN (120,121)", pg_proto_comments_page_stamp_sql(array(120, '121', 0)));
+	pg_assert_same('', pg_proto_comments_page_stamp_sql(array()));
+}
+
+function test_prototype_comments_burst_counts_only_counted_addresses()
+{
+	$source = pg_test_function_source('pg_proto_comment_burst');
+
+	pg_assert_contains('waf_ip_is_counted(', $source);
+	pg_assert_true(strpos($source, 'waf_ip_is_counted(') < strpos($source, 'waf_rate_exceeded('), 'gated before it counts');
+	pg_assert_false(waf_ip_is_counted('10.0.0.8'), 'a private network shares one address');
 }

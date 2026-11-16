@@ -50,7 +50,7 @@ function pg_proto_comment_limits()
     return array(
         'name' => 60,
         'text' => 1000,
-        'burst' => 10,
+        'burst' => 30,
         'burst_window' => 600,
         'open_per_link' => 200,
     );
@@ -510,6 +510,26 @@ function pg_proto_comments_of_link($link_id)
 }
 
 /**
+ * The comments of one page as a link's viewer shows them, oldest first: read
+ * by page and link (idx_page), never the link's whole list, which grows as
+ * resolved comments are kept.
+ *
+ * @param int $link_id
+ * @param int $page_id
+ * @return array[] prototype_comments rows
+ */
+function pg_proto_comments_of_link_page($link_id, $page_id)
+{
+    if (!pg_proto_comments_ready()) {
+        return array();
+    }
+
+    $rows = db_items("SELECT * FROM prototype_comments WHERE page_id = '" . (int) $page_id . "' AND link_id = '" . (int) $link_id . "' ORDER BY id LIMIT 2000");
+
+    return is_array($rows) ? $rows : array();
+}
+
+/**
  * The comments of a draft page over all its design's links, oldest first,
  * as the designer's list shows them.
  *
@@ -679,14 +699,14 @@ function pg_proto_comments_delete_design($style_ids)
 }
 
 /**
- * The newest comment's time over some draft pages, 0 for none: what the
- * designer's presence answer carries, so the open editor fetches the list
- * only when it changes.
+ * The statement that reads the stamp of some draft pages; '' for no page.
+ * The stamp is the newest comment's id, not its time: a second comment
+ * written in the same second changes it too (idx_page is page_id, id).
  *
  * @param int|int[] $page_ids
- * @return int
+ * @return string
  */
-function pg_proto_comments_page_stamp($page_ids)
+function pg_proto_comments_page_stamp_sql($page_ids)
 {
     $ids = array();
 
@@ -696,11 +716,44 @@ function pg_proto_comments_page_stamp($page_ids)
         }
     }
 
-    if (!$ids || !pg_proto_comments_ready()) {
+    return $ids ? "SELECT MAX(id) FROM prototype_comments WHERE page_id IN (" . implode(',', $ids) . ")" : '';
+}
+
+/**
+ * The stamp of some comment rows as the statement above reads it from the
+ * table: the highest id, 0 for none.
+ *
+ * @param array[] $rows prototype_comments rows
+ * @return int
+ */
+function pg_proto_comments_stamp_of_rows($rows)
+{
+    $stamp = 0;
+
+    foreach ((array) $rows as $row) {
+        $stamp = max($stamp, (int) (isset($row['id']) ? $row['id'] : 0));
+    }
+
+    return $stamp;
+}
+
+/**
+ * The newest comment's id over some draft pages, 0 for none: what the
+ * designer's presence answer carries, so the open editor fetches the list
+ * only when it changes.
+ *
+ * @param int|int[] $page_ids
+ * @return int
+ */
+function pg_proto_comments_page_stamp($page_ids)
+{
+    $sql = pg_proto_comments_page_stamp_sql($page_ids);
+
+    if (($sql === '') || !pg_proto_comments_ready()) {
         return 0;
     }
 
-    return (int) db_value("SELECT MAX(created_at) FROM prototype_comments WHERE page_id IN (" . implode(',', $ids) . ")");
+    return (int) db_value($sql);
 }
 
 /**
@@ -711,13 +764,16 @@ function pg_proto_comments_page_stamp($page_ids)
  */
 function pg_proto_comment_burst()
 {
-    if (!function_exists('waf_rate_exceeded') || !function_exists('waf_client_ip') || !function_exists('waf_ip_subject')) {
+    if (!function_exists('waf_rate_exceeded') || !function_exists('waf_client_ip') || !function_exists('waf_ip_subject') || !function_exists('waf_ip_is_counted')) {
         return false;
     }
 
     $ip = (string) waf_client_ip();
 
-    if ($ip === '') {
+    // An address the firewall does not count (a listed or unlisted proxy, a
+    // private network) is shared by everyone behind it: counted, one bucket
+    // would hold every visitor.
+    if (($ip === '') || !waf_ip_is_counted($ip)) {
         return false;
     }
 
