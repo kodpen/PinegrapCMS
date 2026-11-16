@@ -518,6 +518,8 @@
 
             this.stageBar.style.right = cover + 'px';
             this.stageBar.classList.toggle('pgie-mshort', (this.stage.clientWidth - cover) < 480);
+            // From 1024 px the bar's buttons show their labels.
+            this.stageBar.classList.toggle('pgie-mwide', (this.stage.clientWidth - cover) >= 1024);
         }
 
         // The bar takes the stage's bottom: a fitted picture moves up.
@@ -838,8 +840,9 @@
     // K plays and pauses, J and L play backward and forward; Left and Right
     // step the playhead a frame (Shift: a second), Home and End go to the
     // ends (M.timelineKey()), which pauses as a scrub does; I and O trim the
-    // selected clip's start and end to the playhead. In this tool J, K, L, I
-    // and O are the timeline's, not the Line, Image or Ellipse tool letters
+    // selected clip's start and end to the playhead; S splits a clip there
+    // (the clip part's clipSplitHere()). In this tool J, K, L, I, O and S are
+    // the timeline's, not the Line, Image, Ellipse or Sticker tool letters
     // (the access part lets them through). Up and Down still nudge the
     // selection; Space keeps moving the view. A recording keeps its own clock.
     Editor.prototype.motionKey = function (e, mod, k) {
@@ -868,6 +871,14 @@
         if ((low === 'i') || (low === 'o')) {
             if (!e.repeat && !e.shiftKey && this.clipMark) {
                 this.clipMark((low === 'i') ? 'start' : 'end');
+            }
+
+            return true;
+        }
+
+        if (low === 's') {
+            if (!e.repeat && !e.shiftKey && this.clipSplitHere) {
+                this.clipSplitHere();
             }
 
             return true;
