@@ -464,6 +464,11 @@ rateText: "2/10"}`. İşbaşı'nın okuduğu: `total 1279.99`, `withholdingAmoun
 `eGovernmentInvoice.eGovernmentType 4`. Pinegrap'in toplamlarıyla birebir.
 `master/withholdings` ve `master/vatexcepts` GET → 404 (uç yok).
 
+## Test ortamı turu (2026-11-17)
+
+Sürüyor: `GetOutgoingInvoiceDataList` süzgeçleri, hand-over yanıtı, panelden
+internet satışı e-Arşiv, satış iadesi ve e-Arşiv iptali.
+
 ## Doğrulanmadı / Logo desteğine sorulacak
 
 - **e-Arşiv (mükellef olmayan alıcı) hiç denenmedi:** test ortamındaki GİB
