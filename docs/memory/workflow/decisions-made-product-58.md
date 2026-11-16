@@ -12,7 +12,7 @@ description: Decisions list, product part 58 (2026-11-16 on): a reader's highlig
 - A new table is approved for it ("bunun için yeni tablo onaylıyorum"); highlights of deleted chats and channels are cleaned ("db yükü olmasın").
 - My Notes gets a small My highlights area ("notlarımdaki 3 nokta menüsünde olabilir") with his own highlights of both kinds, each as long as the highlighted part; a click goes to the message in its channel; there is a quick way to remove many at once.
 - The colour may be the person's own colour ("vurgulama rengi kullanıcı rengi ile eşit olabilir").
-- The architect's readings, not his words (`plans/message-highlights.md`): the place is kept as the quoted text and its occurrence; who may make and remove one follows reactions and message deletion; the limits; a button in My Notes' bar, as that screen has no menu of its own. The two looks at the screens are his.
+- The architect's readings, not his words (`workspace/workspace-message-highlights.md`): the place is kept as the quoted text and its occurrence; who may make and remove one follows reactions and message deletion; the limits; a button in My Notes' bar, as that screen has no menu of its own. The two looks at the screens are his.
 
 ## Who writes the plans for the website features the R&D agent proposed? (owner, 2026-11-16, agent channel messages 5651, 5667, 5694, 5697, 5739)
 - He asked the R&D agent for features a CMS should have on the website side ("website tarafımız güçlenmeli", high value, effort no matter); its list of eleven is channel message 5657.

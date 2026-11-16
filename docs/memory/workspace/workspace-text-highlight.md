@@ -3,6 +3,9 @@ name: workspace-text-highlight
 description: ==x== as a highlight (<mark>): the pair rule, old shapes that stay text, server and editor twins, plain text, guest page, notes import, sums, table cells
 ---
 
+## Is this a reader's highlight?
+- No: `==text==` is the writer's own mark, part of the message's text. A reader's highlight of part of someone's message is a row beside it and never changes the text: `workspace-message-highlights.md`.
+
 ## Which text becomes a highlight?
 - `==words==` on one line, the signs touching the words and no third `=` beside either pair: `(?<!=)==(?=\S)([^=\n]{1,300}?)(?<=\S)==(?!=)`, the notes import's rule. The same regex sits in every place below; change them together.
 - Stays text, as stored before highlights were drawn: `a == b`, `x === y`, `== Title ==`, `=====`, `===x===`, a pair across two lines. `tests/workspace_render_test.php` keeps those equal to `ws_render_text()`.

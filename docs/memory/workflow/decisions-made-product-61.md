@@ -8,7 +8,7 @@ description: Decisions list, product part 61 (2026-11-16 on): the owner's looks 
 
 ## Does the highlight on a message go out as built? (owner, 2026-11-16, agent channel poll 76)
 - Yes. Asked "Mesajda vurgu (seçince çıkan çubuk, çizilmiş vurgu ve kartı) … sayfasındaki görünümle çıksın mı?" on one sheet (channel message 5946, `owner-question-picture.md`), his own vote: "Evet, bu görünümle çıksın".
-- The sheet showed HL3 #9889 of `plans/message-highlights.md` (features H10 to H16): the mini toolbar on a selection with "For everyone" and "For me"; a highlight for everyone in its maker's colour and one for himself with the dotted underline; two people's highlights on the same words.
+- The sheet showed HL3 #9889 of `workspace/workspace-message-highlights.md` (features H10 to H16): the mini toolbar on a selection with "For everyone" and "For me"; a highlight for everyone in its maker's colour and one for himself with the dotted underline; two people's highlights on the same words.
 - Also on it: the card on hover or a tap (the maker's name, the note, "Edit note", "Remove"), overlapping ones in one card; his own without a note ("Only you", "Add a note"); on a phone in dark the toolbar below the selection and the card inside the message.
 - My highlights (HL4) is a look of its own, asked when it is built.
 
