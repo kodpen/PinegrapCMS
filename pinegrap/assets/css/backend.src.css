@@ -16073,6 +16073,139 @@ a.ws-chip:hover {
   background: var(--pg-bg-2);
   color: var(--pg-fg-2);
 }
+/* Another message pointed at (<#message:N>): a chip of its own tone that
+   opens the message in the agent card's frame (messageRefShow()). */
+.ws-chip-message {
+  background: color-mix(in srgb, var(--pg-info) 14%, transparent);
+  color: var(--pg-info-fg-emphasis);
+  cursor: pointer;
+}
+a.ws-chip-message:hover,
+.ws-chip-message[aria-expanded="true"] {
+  background: color-mix(in srgb, var(--pg-info) 24%, transparent);
+}
+.ws-chip-message.ws-chip-muted {
+  background: var(--pg-bg-2);
+  color: var(--pg-fg-2);
+}
+.pg-card.ws-agent-card.ws-msgref-card {
+  width: min(24rem, calc(100vw - 1rem));
+}
+.ws-msgref-head {
+  display: flex;
+  gap: .625rem;
+  align-items: center;
+}
+.ws-msgref-head > .avatar {
+  flex: none;
+}
+.ws-msgref-mark {
+  display: inline-flex;
+  flex: none;
+  justify-content: center;
+  align-items: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: .625rem;
+  background: var(--pg-surface-inset);
+  color: var(--pg-fg-3);
+}
+.ws-msgref-who {
+  min-width: 0;
+}
+.ws-msgref-name {
+  overflow: hidden;
+  font-weight: var(--pg-weight-strong);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ws-msgref-meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ws-msgref-none {
+  margin-top: .75rem;
+}
+/* The words as the channel draws them, cut at a height and faded out. */
+.ws-msgref-text {
+  max-height: 12rem;
+  margin-top: .75rem;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+.ws-msgref-text.ws-msgref-cut {
+  -webkit-mask-image: linear-gradient(to bottom, var(--pg-fg-emphasis) 75%, transparent);
+  mask-image: linear-gradient(to bottom, var(--pg-fg-emphasis) 75%, transparent);
+}
+.ws-msgref-picture {
+  display: block;
+  margin-top: .75rem;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: .75rem;
+  background: var(--pg-surface-inset);
+  cursor: zoom-in;
+}
+.ws-msgref-picture img {
+  display: block;
+  max-width: 100%;
+  max-height: 12rem;
+  object-fit: contain;
+}
+.ws-msgref-file {
+  display: flex;
+  gap: .5rem;
+  align-items: center;
+  margin-top: .75rem;
+  padding: .5rem .75rem;
+  border-radius: .75rem;
+  background: var(--pg-surface-inset);
+  font-size: var(--pg-text-2);
+}
+.ws-msgref-poll {
+  margin-top: .75rem;
+  padding: .5rem .75rem;
+  border-radius: .75rem;
+  background: var(--pg-surface-inset);
+  font-size: var(--pg-text-2);
+}
+.ws-msgref-poll-head {
+  display: flex;
+  gap: .5rem;
+  align-items: center;
+  margin-bottom: .25rem;
+}
+.ws-msgref-poll-head .pg-text-meta {
+  margin-inline-start: auto;
+}
+.ws-msgref-poll-option {
+  position: relative;
+  display: flex;
+  gap: .75rem;
+  justify-content: space-between;
+  padding: .25rem .5rem;
+  overflow: hidden;
+  border-radius: .5rem;
+}
+.ws-msgref-poll-option > .ws-poll-bar {
+  position: absolute;
+  inset: 0 auto 0 0;
+}
+.ws-msgref-poll-label {
+  position: relative;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.ws-msgref-poll-count {
+  position: relative;
+  flex: none;
+  color: var(--pg-fg-3);
+}
+.ws-msgref-go {
+  margin-top: .75rem;
+}
 .ws-task-card {
   margin-top: .35rem;
   max-width: 36rem;
