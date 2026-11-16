@@ -352,3 +352,69 @@ function test_page_bundle_publish_dialog_waits_for_choices()
 	pg_assert_contains('button.disabled = open', $script, 'then Publish is enabled');
 	pg_assert_contains('data-bs-dismiss="dialog" autofocus>', pg_test_function_source('pg_page_bundle_take_back_dialog'), 'the take-back dialog too');
 }
+
+// The Recycle Bin functions a publish and an "add a copy" call, as a fresh
+// PHP process finds them after pg_page_bundle_load_recycle_bin(): this run
+// has loaded the explorer's files for other tests already, so only a process
+// of its own shows what the module loads. Null when PHP cannot be started
+// again.
+function pg_test_bundle_recycle_functions()
+{
+	if (!function_exists('exec') || !defined('PHP_BINARY') || (PHP_BINARY === '')) {
+		return null;
+	}
+
+	$file = @tempnam(sys_get_temp_dir(), 'pgbundle');
+
+	if ($file === false) {
+		return null;
+	}
+
+	$names = array('pg_recycle_page', 'pg_delete_page_record', 'pg_recycle_folder_id', 'pg_explorer_root_folder_id');
+
+	file_put_contents($file, '<?php' . "\n"
+		. "define('PG_TEST_RUNNER', true);\n"
+		. 'require ' . var_export(PG_FUNCTIONS_DIR . '/functions.php', true) . ";\n"
+		. "pg_page_bundle_load_recycle_bin();\n"
+		. 'foreach (' . var_export($names, true) . " as \$name) {\n"
+		. "\techo \$name, '=', (function_exists(\$name) ? 'yes' : 'no'), \"\n\";\n"
+		. "}\n");
+
+	$out = array();
+	$code = 1;
+	@exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg($file) . ' 2>&1', $out, $code);
+	@unlink($file);
+
+	return ($code === 0) ? implode("\n", $out) : 'error: ' . implode("\n", $out);
+}
+
+// A publish that replaced a live page bins the used replacement with
+// pg_recycle_page(), which lives in recycle_pages_styles.php and needs
+// pg_explorer_root_folder_id() for a bin made on first use; loading
+// recycle_bin.php alone ended the publish in a fatal error after the pages
+// and the bundle were written.
+function test_page_bundle_publish_loads_the_recycle_bin()
+{
+	$found = pg_test_bundle_recycle_functions();
+
+	if ($found === null) {
+		pg_assert_true(true, 'PHP cannot be started again here');
+		return;
+	}
+
+	foreach (array('pg_recycle_page', 'pg_delete_page_record', 'pg_recycle_folder_id', 'pg_explorer_root_folder_id') as $name) {
+		pg_assert_contains($name . '=yes', $found, $name . ' is loaded');
+	}
+
+	$publish = pg_test_function_source('pg_page_bundle_publish');
+	$load = strpos($publish, 'pg_page_bundle_load_recycle_bin();');
+	$bin = strpos($publish, 'pg_recycle_page(');
+
+	pg_assert_true(($load !== false) && ($bin !== false) && ($load < $bin), 'a publish loads the bin before it bins a replacement');
+
+	$add = pg_test_function_source('pg_page_bundle_add_copy');
+	$load = strpos($add, 'pg_page_bundle_load_recycle_bin();');
+	$delete = strpos($add, 'pg_delete_page_record(');
+
+	pg_assert_true(($load !== false) && ($delete !== false) && ($load < $delete), 'a copy given back is deleted after the bin is loaded');
+}

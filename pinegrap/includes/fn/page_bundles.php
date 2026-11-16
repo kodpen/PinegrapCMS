@@ -720,7 +720,7 @@ function pg_page_bundle_add_copy($bundle, $live_page_id, $user)
     if ($written['error'] !== '') {
         // Somebody added a replacement of this page at the same moment: the
         // copy made for this one is taken back with its row.
-        require_once(PG_FUNCTIONS_DIR . '/includes/explorer/recycle_bin.php');
+        pg_page_bundle_load_recycle_bin();
         pg_delete_page_record($draft_page_id, $user);
 
         return $fail($written['error']);
@@ -1292,6 +1292,18 @@ function pg_page_bundle_publish_check($bundle, $user, $choices = array())
 }
 
 /**
+ * Loads the Recycle Bin functions a bundle uses: pg_recycle_page() and
+ * pg_delete_page_record(). They live in the explorer's files, which
+ * view_folder_and_files_f.php loads together with what they call
+ * (pg_explorer_root_folder_id() for a bin folder made on first use);
+ * recycle_bin.php alone leaves pg_recycle_page() undefined.
+ */
+function pg_page_bundle_load_recycle_bin()
+{
+    require_once(PG_FUNCTIONS_DIR . '/view_folder_and_files_f.php');
+}
+
+/**
  * A line in the Site Log naming the bundle.
  *
  * @param string $string English text with {var:1} the page, {var:2} the bundle
@@ -1521,7 +1533,7 @@ function pg_page_bundle_publish($bundle, $user, $choices = array())
         }
 
         // The used replacements: their live pages carry them now.
-        require_once(PG_FUNCTIONS_DIR . '/includes/explorer/recycle_bin.php');
+        pg_page_bundle_load_recycle_bin();
 
         foreach ($run['written'] as $id) {
             if ((int) $items[$id]['live_page_id'] > 0) {
