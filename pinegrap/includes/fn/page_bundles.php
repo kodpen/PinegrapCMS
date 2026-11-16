@@ -1702,7 +1702,7 @@ function pg_page_bundle_publish_dialog($bundle, $check, $action_url)
         } elseif ($page['state'] === 'refused') {
             $text = $page['text'];
         } elseif ($page['state'] === 'changed') {
-            $text = lang('The live page was published by hand after the copy was made. Replacing it drops that change; leaving it out keeps the live page and the draft as they are.');
+            $text = lang('The live page was published again after the copy was made. Replace it, or leave this page out.');
         } else {
             $text = $page['replacement'] ? lang('Replaces the live page; the draft goes to the Recycle Bin.') : lang('Goes on the site as a new page.');
         }
@@ -1713,7 +1713,7 @@ function pg_page_bundle_publish_dialog($bundle, $check, $action_url)
             $replace = 'page_bundle_choice_' . $id . '_replace';
             $leave = 'page_bundle_choice_' . $id . '_leave';
             $choice = '<div class="btn-group btn-group-sm mt-2" role="group" aria-label="' . h(lang(array('string' => 'What to do with {var:1}', 'vars' => array($page['name'])))) . '">'
-                . '<input type="radio" class="btn-check" name="choice[' . $id . ']" id="' . $replace . '" value="replace" required>'
+                . '<input type="radio" class="btn-check" name="choice[' . $id . ']" id="' . $replace . '" value="replace">'
                 . '<label class="btn btn-outline theme-secondary" for="' . $replace . '"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . h(lang('Replace anyway')) . '</label>'
                 . '<input type="radio" class="btn-check" name="choice[' . $id . ']" id="' . $leave . '" value="leave">'
                 . '<label class="btn btn-outline theme-secondary" for="' . $leave . '"><i class="bi bi-dash-circle me-1" aria-hidden="true"></i>' . h(lang('Leave out')) . '</label>'
@@ -1725,7 +1725,7 @@ function pg_page_bundle_publish_dialog($bundle, $check, $action_url)
             . '<div class="pg-list-row-main">'
             . '<div class="pg-list-row-head"><span class="pg-list-row-title text-break">' . h($page['name']) . '</span>'
             . '<span class="pg-pill ' . $state[0] . '">' . h($state[1]) . '</span></div>'
-            . '<div class="pg-list-row-text">' . h($text) . '</div>'
+            . '<div class="pg-text-2">' . h($text) . '</div>'
             . $choice
             . '</div></div>';
     }
@@ -1773,7 +1773,7 @@ function pg_page_bundle_take_back_dialog($bundle, $check, $action_url)
             . '<div class="pg-list-row-main">'
             . '<div class="pg-list-row-head"><span class="pg-list-row-title text-break">' . h($replacement ? $item['live_name'] : $item['draft_name']) . '</span>'
             . '<span class="pg-pill pg-tone-teal">' . h(lang('Comes back')) . '</span></div>'
-            . '<div class="pg-list-row-text">' . h($replacement
+            . '<div class="pg-text-2">' . h($replacement
                 ? lang('Returns to the version it had before the bundle, published again.')
                 : lang('Goes back to Drafts.')) . '</div>'
             . '</div></div>';
@@ -1786,7 +1786,7 @@ function pg_page_bundle_take_back_dialog($bundle, $check, $action_url)
             . '<div class="pg-list-row-main">'
             . '<div class="pg-list-row-head"><span class="pg-list-row-title text-break">' . h($page['name']) . '</span>'
             . '<span class="pg-pill pg-tone-amber">' . h(lang('Stays as it is')) . '</span></div>'
-            . '<div class="pg-list-row-text">' . h(pg_page_bundle_take_back_reason_text($page['reason'])) . '</div>'
+            . '<div class="pg-text-2">' . h(pg_page_bundle_take_back_reason_text($page['reason'])) . '</div>'
             . '</div></div>';
     }
 
