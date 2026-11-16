@@ -796,6 +796,20 @@ if (function_exists('pg_vitals_sweep_due') && pg_vitals_sweep_due()) {
     }
 }
 
+// The clicks and scroll rollup (includes/fn/page_clicks.php): once a day
+// the days older than the retention period go.
+if (function_exists('pg_page_clicks_sweep_due') && pg_page_clicks_sweep_due()) {
+
+    $page_clicks_removed = pg_page_clicks_sweep();
+
+    if ($page_clicks_removed > 0) {
+        log_activity(lang(array(
+            'string' => 'general job removed {var:1} row(s) from the click statistics',
+            'vars'   => array(pg_format_number($page_clicks_removed, 0)),
+        )), 'UNKNOWN');
+    }
+}
+
 // The AI fetch rollup (includes/fn/ai_visibility.php): once a day the days
 // older than the retention period go.
 if (function_exists('pg_ai_fetch_sweep_due') && pg_ai_fetch_sweep_due()) {

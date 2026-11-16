@@ -21,6 +21,7 @@ description: The existing files that steps of more than one website-side plan to
 - `includes/fn/output.php`: CM2 (`pg_js_bundles()`), CH2 (`output_menu()`).
 - `page_view.php` and `assets/js/pg_vitals.src.js`: CM1 and CM2 only (the clicks travel with the speed beacon); a step of another plan that sends a beacon is listed here first.
 - PU8 of `plans/auto-dialog-popups.md` (#9877) adds a branch to `page_view.php`, a sweep to `job.php` and a table to the migration file: CM1 opens once it has landed. CM2's script asks the function PU8 adds whether a statistics beacon may be sent (`workflow/decisions-made-product-60.md`).
+- `includes/fn/consent.php` and `includes/fn/auto_dialog_counts.php`: CM1 (#9902) added the one check of the anonymous counts and moved the pop-up counts onto it (architect, agent channel message 6043); CM2 moves `frontend.src.js`'s `software.statistics_allowed()` onto the same rule.
 
 ## How is the list kept?
 - A step that finds it must touch a file of this list which its plan did not name writes it here in its own PR and says so in the PR body.

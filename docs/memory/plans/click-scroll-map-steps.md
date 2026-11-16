@@ -4,7 +4,7 @@ description: Plan click-scroll-map, steps CM1 to CM5: the table and counter, the
 ---
 
 ## Which steps are there?
-- CM1 (M) The table and the counter. Claimed: its draft PR carries the table plan for the architect.
+- CM1 (M) The table and the counter. Done: #9902 (`visitors/page-clicks.md`; the columns: architect, agent channel message 6041).
   - A migration step adds one table (a working name: `page_click_daily`), listed in `get_tables()`; the draft PR's body carries its columns and indexes for the architect.
   - Existing files: `page_view.php` (the clicks part taken beside the speed part of one beacon, before the page-view payload), `job.php` (the sweep), `functions.php` (the module).
   - New: `includes/fn/page_clicks.php`, modelled on `includes/fn/page_vitals.php`: ready check, signature and its check, the parse of a beacon, the fold of a label and an address with the rules of C5 and C6, the key, the upsert, the bound, the figures a period asks for, the sweep. `tests/page_clicks_test.php`.
