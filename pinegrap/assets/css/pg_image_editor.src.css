@@ -2766,23 +2766,28 @@
   position: absolute;
   top: 3px;
   left: calc(var(--pgie-trname) - 27px);
+  /* Above a selected bar's tip, which a bar near 0 puts over the names. */
+  z-index: 2;
   width: 22px;
   height: 22px;
   padding: 3px;
   border: 0;
   border-radius: 4px;
-  background: none;
+  /* The row's own colour: a tip under it does not show through. */
+  background: var(--pgie-surface);
   color: var(--pgie-muted);
   cursor: pointer;
 }
 
-.pgie-trmotion:hover {
-  background: var(--pgie-pw);
-  color: var(--pgie-tx);
+.pgie-trrow.on .pgie-trmotion {
+  /* The selected row's colour may be see-through: laid over the surface. */
+  background: linear-gradient(var(--pgie-pw), var(--pgie-pw)), var(--pgie-surface);
 }
 
+.pgie-trmotion:hover,
 .pgie-trrow.on .pgie-trmotion:hover {
-  background: var(--pgie-surface);
+  background: var(--pgie-line);
+  color: var(--pgie-tx);
 }
 
 .pgie-trmotion:focus-visible {
