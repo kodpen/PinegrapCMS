@@ -163,6 +163,8 @@ function test_cart_blocks_canvas_sample()
 	$source = cart_blocks_test_source();
 	pg_assert_contains("_getSystemWidgetRegionType(node) === 'shopping_cart') {\n                    var _cartSample = _sdCartSectionSample(_sec, doc, _sysWidgetRenderCfg);", $source,
 		'an empty section box in a shopping cart draws the sample');
+	pg_assert_contains("var d = _sdCartSectionSample('applied_offers', doc, null);", $source, 'the applied offers content node draws it too');
+	pg_assert_contains('_sdCartPendingRecipientHtml(\'pending_offer_7_3\'', $source, 'the sample gift asks where it goes, as a waiting gift does');
 	$php = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/widgets_cart.php');
 	pg_assert_contains('$applied_offers_html  = pg_cart_applied_offers_html($_pg_offer_labels);', $php, 'the cart builds its box with the builder');
 	pg_assert_contains('return pg_cart_pending_offers_html($rows,', $php, 'the gifts box too');

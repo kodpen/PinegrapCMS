@@ -6004,14 +6004,11 @@ const StyleDesigner = (function () {
             label: _sdT('Applied Offers'), icon: 'bi-tag-fill',
             defaultProps: { cssClass: '' },
             render: function (doc, p) {
-                var d = doc.createElement('div');
-                // sd-editor-ph: editor chrome, left out of the canvas audit.
-                d.className = 'alert alert-success py-2 mb-2 sd-editor-ph';
-                d.style.borderStyle = 'dashed';
-                d.style.opacity = '0.75';
-                d.innerHTML = '<span class="bi bi-tag-fill me-1"></span>'
-                    + '<strong>' + esc(_sdT('Applied Offers')) + '</strong>'
-                    + '<span class="ms-2 text-muted small">' + esc(_sdT('The active offer/discount descriptions are listed here.')) + '</span>';
+                // The box the cart prints, with sample offers
+                // (_sdCartSectionSample()); sd-editor-ph: editor chrome, left
+                // out of the canvas audit.
+                var d = _sdCartSectionSample('applied_offers', doc, null);
+                d.classList.add('sd-editor-ph');
                 return d;
             },
             toHTML: function (p, pad) {
@@ -42824,7 +42821,10 @@ const StyleDesigner = (function () {
             return _sdCartAppliedOffersHtml([_sdT('10% off all shirts'), _sdT('Free shipping over 500')]);
         }
         if (section === 'pending_offers') {
-            return _sdCartPendingOffersHtml(_sdCartPendingRowHtml(7, 3, _sdT('A free tote bag with every order over 750'), ''), '#', '', '');
+            // A gift waits for the visitor when the site must ask where it
+            // goes (several recipients, a gift that ships): drawn so.
+            return _sdCartPendingOffersHtml(_sdCartPendingRowHtml(7, 3, _sdT('A free tote bag with every order over 750'),
+                _sdCartPendingRecipientHtml('pending_offer_7_3', '', [['', ''], [_sdT('myself'), _sdT('myself')]], true)), '#', '', '');
         }
         if (section === 'quick_add') {
             if (!(parseInt(c.quick_add_product_group_id, 10) > 0)) return '';
