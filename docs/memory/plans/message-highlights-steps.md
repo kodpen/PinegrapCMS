@@ -17,7 +17,7 @@ description: Plan message-highlights, steps HL1 to HL5: the table and the pure p
   - A new `assets/js/workspace_highlights.js` in the Workspace bundle list (`pg_js_bundles()`): the twin of plain and find, the toolbar, drawing into the body after `messageNode()` drew it, the card. Texts with `php tools/tr_add.php`.
   - Tests: the twin on HL1's fixtures. Pictures, light and dark, 1280 and 390: the toolbar on a selection in another's and in his own message; an `all` and a `me` highlight; two overlapping; the card with and without a note; the long selection.
   - Its sheet goes to the owner. Features: H10 to H16.
-- HL4 (M) My highlights. After HL3.
+- HL4 (M) My highlights. After HL3. Done: #9935.
   - The button in My Notes' bar (`startNotes()`), the list, the chips, the jump, bulk removal.
   - Pictures, light and dark, 1280 and 390: the list with both scopes and a note, rows ticked with "Remove n", the confirmation, the empty state. Its sheet goes to the owner. Features: H17 to H22.
 - HL5 (S) Close-out: a new `workspace/workspace-message-highlights.md` (`module:` naming the new file), one line in `workspace-text-highlight.md` telling the two apart, every H number checked against the code with its PR, this plan's files deleted.

@@ -25827,6 +25827,29 @@
             bar.appendChild(importNotes);
         }
 
+        // My highlights: the person's own highlights of messages, drawn
+        // where a note opens (workspace_highlights.js).
+        if (CFG.highlights && window.PGWsHighlights) {
+            var myHighlights = button('btn btn-sm btn-text theme-secondary', t('hl_mine'), 'bi-highlighter');
+            myHighlights.addEventListener('click', function () { save().then(openHighlights); });
+            bar.appendChild(myHighlights);
+        }
+
+        function openHighlights() {
+            clearTimeout(saveTimer);
+            current = null;
+            field = null;
+            dirty = false;
+            remember(0);
+            drawList();
+            root.classList.add('ws-nb-open');
+            window.PGWsHighlights.myList(pane, featureHelpers(), {
+                tone: senderTone((BOOT && BOOT.me) || {}),
+                base: CFG.urls.workspace,
+                back: lockBack()
+            });
+        }
+
         // The notes lock: Lock and its menu (workspace_note_lock.js).
         if (lockCtx()) {
             bar.appendChild(window.PGWsNoteLock.button(lockCtx()));
