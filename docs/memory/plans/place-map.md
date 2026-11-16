@@ -24,7 +24,7 @@ priority: 6
 - "Once on the server at the save" is done by the job right after a save, so that none of a record's five save paths changes.
 
 ## What does the owner decide?
-- The default tiles: OpenStreetMap's own, free and meant for light use, with a provider's key as the site's option (the proposal), or a key needed from the start. The table (asked with the set's other tables).
+- The default tiles, asked once the census (MP1) has said what OpenStreetMap's own tiles allow: its tiles with a provider's key as the site's option (the proposal), or a key needed from the start. The table (asked with the set's other tables).
 
 ## What does the architect decide?
 - After the census (MP1): which providers' results may be kept, the notice's class for the map, the header change. The table's columns, in MP2's draft PR.
