@@ -9,7 +9,7 @@ description: Plan design-canvas-quick-reach, steps QR1 to QR4: quick split, sele
   - Tests, red first: `tests/image_editor_clip_test.php` for `clipSplitPick()` (selected and under the playhead, selected elsewhere, none selected, two rows, too near an edge), `tests/image_editor_access_test.php` for the key.
   - Pictures in the agent channel for the architect: the play bar at 1440 and 1024 with and without a clip to split, the chip on the row, light and dark.
 
-- QR2 (M) selecting from any tool, R7 to R12. It enters neither the clip part nor the video source, so it may start before QR1 and beside it, while QR1 waits for issue #9950's fix.
+- QR2 (M) selecting from any tool, R7 to R12. Done: #9965. It enters neither the clip part nor the video source, so it may start before QR1 and beside it, while QR1 waits for issue #9950's fix.
   - Files: `pg_image_editor.js` (the press's dispatch), `pg_image_editor_layers.js`, `pg_image_editor_motion.js` and `pg_image_editor_keyframes.js` (R10), `pg_image_editor_text.js` (R11), the parts R12's census names, the model (a pure `pressSelects()` beside the layers maths).
   - The census table comes first in the PR body. A tool whose press cannot be changed without breaking its own work is left and named.
   - No new look: nothing is drawn that was not there.
