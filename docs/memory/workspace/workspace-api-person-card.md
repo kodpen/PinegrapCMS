@@ -16,4 +16,4 @@ description: GET /workspace/channels/{id}/members/{user_id}, the person card of 
 ## Where is it?
 - Route and presenter: `includes/workspace/api_person_card.php`, merged into `ws_api_routes()`; objects in `ws_openapi_objects()`.
 - Tests: `tests/workspace_api_person_card_test.php`.
-- Added in PR #9771 (channel-api-gaps G3).
+- Added in PR #9771 (the channel API comparison, `api/api-panel-coverage-channels.md`).
