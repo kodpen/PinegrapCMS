@@ -135,3 +135,29 @@ function test_workspace_my_calendar_ways_in()
 	pg_assert_same('my_calendar', ws_side_screen('/pg/workspace_my_calendar.php'));
 	pg_assert_contains("'assets/js/workspace_my_calendar.js'", file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/output.php'), 'bundled');
 }
+
+// My calendar's plan drawer and its roadmap build their fields from the
+// kit's drawer form parts (formParts in workspace.js, h.form): no field() or
+// input() of their own, no input, select or textarea made by hand but the
+// repeat question's radios (a dialog, not the drawer) and a step's done mark.
+function test_workspace_my_calendar_drawer_builds_from_the_form_parts()
+{
+	$read = function ($file) {
+		return (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/' . $file);
+	};
+	$drawer = $read('workspace_my_calendar.js');
+	$roadmap = $read('workspace_my_calendar_roadmap.js');
+	$kit = $read('workspace.js');
+
+	pg_assert_same(0, preg_match('/function (field|input)\s*\(/', $drawer), 'no field() or input() of its own');
+	pg_assert_contains('var part = h.form;', $drawer, 'the drawer takes the parts from the kit');
+	pg_assert_contains('var part = h.form;', $roadmap, 'the roadmap too');
+	pg_assert_same(1, preg_match_all("/el\\('(input|select|textarea)'/", $drawer), 'only the repeat question\'s radio is made by hand');
+	pg_assert_same(1, preg_match_all("/el\\('(input|select|textarea)'/", $roadmap), 'only a step\'s done mark is made by hand');
+
+	foreach (array('field', 'group', 'help', 'error', 'input', 'textarea', 'select', 'pair', 'switchRow', 'seg', 'save', 'remove') as $name) {
+		pg_assert_same(1, preg_match('/\n        ' . $name . ': function \(/', $kit), 'the kit has ' . $name);
+	}
+
+	pg_assert_same(2, substr_count($kit, 'form: formParts,'), 'featureHelpers() and PGWsKit hand the parts over');
+}

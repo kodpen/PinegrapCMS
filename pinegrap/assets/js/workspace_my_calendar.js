@@ -505,35 +505,8 @@
             }).catch(h.fail);
         }
 
-        function field(label, control, help) {
-            var row = el('div', 'ws-plan-field');
-            var caption = el('label', 'pg-field-label', label);
-
-            control.id = control.id || h.nextId('ws-plan-');
-            caption.htmlFor = control.id;
-            row.appendChild(caption);
-            row.appendChild(control);
-
-            if (help) {
-                row.appendChild(el('div', 'pg-text-meta', help));
-            }
-
-            return row;
-        }
-
-        function input(type, value) {
-            var node = el('input', 'pg-input');
-
-            if (type === 'date' || type === 'time') {
-                h.dateField(node, type);
-            } else {
-                node.type = type;
-            }
-
-            node.value = value || '';
-
-            return node;
-        }
+        // Every field of the drawer comes from the kit's form parts.
+        var part = h.form;
 
         function planDrawer(plan, defaults) {
             var node = h.offcanvas('ws-plan-drawer', '');
@@ -563,17 +536,14 @@
                 body.appendChild(mailLink);
             }
 
-            var name = input('text', plan ? plan.title : (defaults.title || ''));
+            var name = part.input('text', plan ? plan.title : (defaults.title || ''));
             name.maxLength = 255;
             name.required = true;
-            body.appendChild(field(s('plan_title'), name));
+            body.appendChild(part.field(s('plan_title'), name));
 
-            var days = el('div', 'ws-plan-pair');
-            var first = input('date', plan ? plan.start : (defaults.start || h.cfg.today));
-            var last = input('date', plan ? plan.end : (defaults.end || defaults.start || h.cfg.today));
-            days.appendChild(field(s('plan_first_day'), first));
-            days.appendChild(field(s('plan_last_day'), last));
-            body.appendChild(days);
+            var first = part.input('date', plan ? plan.start : (defaults.start || h.cfg.today));
+            var last = part.input('date', plan ? plan.end : (defaults.end || defaults.start || h.cfg.today));
+            body.appendChild(part.pair(part.field(s('plan_first_day'), first), part.field(s('plan_last_day'), last)));
 
             first.addEventListener('change', function () {
                 if (!last.value || last.value < first.value) {
@@ -581,19 +551,13 @@
                 }
             });
 
-            var wholeRow = el('label', 'ws-plan-switch');
-            var whole = el('input', 'pg-switch');
-            whole.type = 'checkbox';
-            whole.checked = plan ? !!plan.all_day : !!defaults.all_day;
-            wholeRow.appendChild(whole);
-            wholeRow.appendChild(document.createTextNode(h.t('all_day')));
-            body.appendChild(wholeRow);
+            var wholeSwitch = part.switchRow(h.t('all_day'), plan ? !!plan.all_day : !!defaults.all_day);
+            var whole = wholeSwitch.input;
+            body.appendChild(wholeSwitch.row);
 
-            var times = el('div', 'ws-plan-pair');
-            var from = input('time', plan && plan.start_time ? plan.start_time : (defaults.start_time || '09:00'));
-            var until = input('time', plan && plan.end_time ? plan.end_time : (defaults.end_time || '10:00'));
-            times.appendChild(field(s('plan_from'), from));
-            times.appendChild(field(s('plan_until'), until));
+            var from = part.input('time', plan && plan.start_time ? plan.start_time : (defaults.start_time || '09:00'));
+            var until = part.input('time', plan && plan.end_time ? plan.end_time : (defaults.end_time || '10:00'));
+            var times = part.pair(part.field(s('plan_from'), from), part.field(s('plan_until'), until));
             body.appendChild(times);
 
             function timeView() {
@@ -604,53 +568,35 @@
             timeView();
 
             // The panel's select (its own caret), as the panel's forms draw one.
-            var remind = el('select', 'form-control');
-            [['', s('plan_no_remind')]].concat(Object.keys(S.remind_options || {}).map(function (key) {
+            var remind = part.select([['', s('plan_no_remind')]].concat(Object.keys(S.remind_options || {}).map(function (key) {
                 return [key, S.remind_options[key]];
-            })).forEach(function (option) {
-                var item = el('option', '', option[1]);
-                item.value = option[0];
-                remind.appendChild(item);
-            });
-            remind.value = plan ? plan.remind : '';
+            })), plan ? plan.remind : '');
 
             if (remind.value !== (plan ? plan.remind : '')) {
                 remind.value = '';
             }
 
             if (mine) {
-                body.appendChild(field(s('plan_remind'), remind));
+                body.appendChild(part.field(s('plan_remind'), remind));
             }
 
             // Repeat: every day, week, month or year; until a day or N times.
             // A roadmap does not repeat, so its section hides while one is set.
-            var repeat = el('select', 'form-control');
-            [['', s('repeat_none')]].concat(Object.keys(S.repeat_options || {}).map(function (key) {
+            var repeat = part.select([['', s('repeat_none')]].concat(Object.keys(S.repeat_options || {}).map(function (key) {
                 return [key, S.repeat_options[key]];
-            })).forEach(function (option) {
-                var item = el('option', '', option[1]);
-                item.value = option[0];
-                repeat.appendChild(item);
-            });
-            repeat.value = plan ? (plan.repeat || '') : '';
+            })), plan ? (plan.repeat || '') : '');
 
-            var every = input('number', String(plan && plan.repeat_every ? plan.repeat_every : 1));
+            var every = part.input('number', String(plan && plan.repeat_every ? plan.repeat_every : 1));
             every.classList.remove('pg-input');
             every.classList.add('form-control');
             every.min = '1';
             every.max = '99';
             every.inputMode = 'numeric';
 
-            var ends = el('select', 'form-control');
-            [['never', s('repeat_end_never')], ['until', s('repeat_end_until')], ['count', s('repeat_end_count')]].forEach(function (option) {
-                var item = el('option', '', option[1]);
-                item.value = option[0];
-                ends.appendChild(item);
-            });
-            ends.value = plan ? (plan.repeat_end || 'never') : 'never';
+            var ends = part.select([['never', s('repeat_end_never')], ['until', s('repeat_end_until')], ['count', s('repeat_end_count')]], plan ? (plan.repeat_end || 'never') : 'never');
 
-            var endDay = input('date', plan && plan.repeat_until ? plan.repeat_until : '');
-            var endCount = input('number', plan && plan.repeat_count ? plan.repeat_count : '10');
+            var endDay = part.input('date', plan && plan.repeat_until ? plan.repeat_until : '');
+            var endCount = part.input('number', plan && plan.repeat_count ? plan.repeat_count : '10');
             endCount.min = '1';
             endCount.max = '999';
             endCount.inputMode = 'numeric';
@@ -658,7 +604,7 @@
             // Two rows of two, as the days and the hours: Repeat with Repeat
             // every (the unit beside the number), then Repeat ends with the
             // number of times or the last day.
-            var everyRow = field(s('repeat_every'), every);
+            var everyRow = part.field(s('repeat_every'), every);
             var everyGroup = el('div', 'input-group');
             // The unit beside "Repeat every": days, weeks, months or years.
             var unitNote = el('span', 'input-group-text');
@@ -666,15 +612,10 @@
             everyGroup.appendChild(unitNote);
             everyRow.appendChild(everyGroup);
 
-            var repeatRow = el('div', 'ws-plan-pair');
             var repeatMore = el('div', 'ws-plan-repeat');
-            var endDayRow = field(s('repeat_until'), endDay);
-            var endCountRow = field(s('repeat_count'), endCount);
-            var endsRow = el('div', 'ws-plan-pair');
-            endsRow.appendChild(field(s('repeat_ends'), ends));
-            endsRow.appendChild(endDayRow);
-            endsRow.appendChild(endCountRow);
-            repeatMore.appendChild(endsRow);
+            var endDayRow = part.field(s('repeat_until'), endDay);
+            var endCountRow = part.field(s('repeat_count'), endCount);
+            repeatMore.appendChild(part.pair(part.field(s('repeat_ends'), ends), endDayRow, endCountRow));
 
             var roadmap = null;
 
@@ -695,36 +636,23 @@
             ends.addEventListener('change', repeatView);
 
             if (mine) {
-                repeatRow.appendChild(field(s('repeat'), repeat));
-                repeatRow.appendChild(everyRow);
-                body.appendChild(repeatRow);
+                body.appendChild(part.pair(part.field(s('repeat'), repeat), everyRow));
                 body.appendChild(repeatMore);
             }
 
             // Who can see: Only me, chosen team members, the whole team.
-            var who = el('div', 'pg-seg ws-plan-who');
             var whoValue = plan && plan.visibility ? plan.visibility : 'me';
-            var whoItems = {};
-
-            who.setAttribute('role', 'group');
-            who.setAttribute('aria-label', s('plan_who'));
-
-            [['me', s('plan_only_me')], ['people', s('plan_chosen')], ['team', s('plan_team')]].forEach(function (option) {
-                var item = el('button', 'pg-seg-item', option[1]);
-                item.type = 'button';
-                item.addEventListener('click', function () {
-                    whoValue = option[0];
-                    whoView();
-                });
-                whoItems[option[0]] = item;
-                who.appendChild(item);
-            });
+            var whoSeg = part.seg(s('plan_who'), [['me', s('plan_only_me')], ['people', s('plan_chosen')], ['team', s('plan_team')]], function (value) {
+                whoValue = value;
+                whoView();
+            }, 'ws-plan-who');
+            var whoItems = whoSeg.items;
 
             // The team but the owner: a plan is always its owner's to see.
             var picker = h.peoplePicker(plan ? (plan.people || []) : [], h.team().map(function (member) { return member.id; }).filter(function (id) { return id !== h.cfg.me; }));
             var pickerRow = el('div', 'ws-plan-field');
-            var pickerHint = el('div', 'pg-field-help', s('plan_people_hint'));
-            var pickerError = el('div', 'pg-field-help pg-field-error d-none', s('plan_people_error'));
+            var pickerHint = part.help(s('plan_people_hint'));
+            var pickerError = part.error(s('plan_people_error'));
 
             pickerHint.id = h.nextId('ws-plan-people-');
             pickerError.id = h.nextId('ws-plan-people-');
@@ -759,28 +687,22 @@
             }
 
             if (mine) {
-                var whoRow = el('div', 'ws-plan-field');
-                whoRow.appendChild(el('span', 'pg-field-label', s('plan_who')));
-                whoRow.appendChild(who);
-                body.appendChild(whoRow);
+                body.appendChild(part.group(s('plan_who'), whoSeg.node));
                 body.appendChild(pickerRow);
                 whoView();
             }
 
-            var note = el('textarea', 'pg-input');
-            note.rows = 4;
+            var note = part.textarea(plan ? plan.note : (defaults.note || ''), 4);
             note.maxLength = 2000;
-            note.value = plan ? plan.note : (defaults.note || '');
-            body.appendChild(field(s('plan_note'), note));
+            body.appendChild(part.field(s('plan_note'), note));
 
             // The customer the plan is made for: the visit's field, read for
             // this reader (hidden when they may not open the contact) and
             // saved only once it was changed here.
             var customer = null;
-            var customerRow = el('div', 'ws-plan-field');
+            var customerRow = part.group(s('plan_customer'));
 
             if (h.customerPicker && (plan ? plan.id : true)) {
-                customerRow.appendChild(el('span', 'pg-field-label', s('plan_customer')));
                 body.appendChild(customerRow);
 
                 var contactAsked = plan ? { plan_id: plan.id } : { contact_id: defaults.contact_id || 0 };
@@ -871,8 +793,7 @@
             }
 
             if (plan) {
-                var remove = el('button', 'pg-button pg-button-danger pg-button-sm me-auto', s('delete'));
-                remove.type = 'button';
+                var remove = part.remove(s('delete'));
                 remove.addEventListener('click', function () {
                     (series ? askTimes(s('repeat_delete_q'), s('delete'), true) : h.ask(s('plan_delete_q'), s('delete'), true)).then(function (yes) {
                         if (!yes) {
@@ -889,8 +810,7 @@
                 footer.appendChild(remove);
             }
 
-            var save = el('button', 'pg-button pg-button-fill pg-button-sm', s('save'));
-            save.type = 'button';
+            var save = part.save(s('save'));
 
             // Saves the plan, then its steps; resolves with the roadmap.
             // mode: one or following for a time of a repeating plan.
