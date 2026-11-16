@@ -1171,6 +1171,174 @@ function ws_tasks_agent_keeps($rule, $channel_id)
 }
 
 /**
+ * Whether ws_tasks.app_id is there: files land before the upgrade, and until
+ * then every task reads as a person's.
+ *
+ * @return bool
+ */
+function ws_task_app_ready()
+{
+    static $ready = null;
+
+    if ($ready === null) {
+        $ready = pg_schema_has('ws_tasks', 'app_id');
+    }
+
+    return $ready;
+}
+
+/**
+ * The application the request writes as: an application key or an OAuth
+ * connection; 0 for the panel, a scheduled run and a person's own device.
+ *
+ * @return int
+ */
+function ws_task_request_app()
+{
+    if (!function_exists('api_current_app') || !is_array(api_current_app()) || !function_exists('ws_api_writer_app_id')) {
+        return 0;
+    }
+
+    return max(0, (int) ws_api_writer_app_id());
+}
+
+/**
+ * The application a new task is marked with. Pure. A route that knows it
+ * names it in app_id (a flow run an application started, an assistant's
+ * proposal, a repeating task's copy), 0 for a person; otherwise the request's.
+ *
+ * @param array $data        the fields ws_task_create() takes
+ * @param int   $request_app ws_task_request_app()
+ * @return int
+ */
+function ws_task_app_of($data, $request_app)
+{
+    $app_id = array_key_exists('app_id', (array) $data) ? (int) $data['app_id'] : (int) $request_app;
+
+    return max(0, $app_id);
+}
+
+/**
+ * The "Made by agents" filter as given: '' (all), people (without them) or
+ * apps (them alone). Pure.
+ *
+ * @param mixed $value
+ * @return string
+ */
+function ws_task_made_by_mode($value)
+{
+    $value = is_string($value) ? $value : '';
+
+    return in_array($value, array('people', 'apps'), true) ? $value : '';
+}
+
+/**
+ * The filter as an SQL condition. Pure. "Created by me" lists an
+ * application's task only when they alone are asked for: the person did not
+ * write it. Before the upgrade every task is a person's.
+ *
+ * @param string $mode   ws_task_made_by_mode()
+ * @param string $scope  the list's scope
+ * @param bool   $ready  ws_task_app_ready()
+ * @param string $column
+ * @return string '' when nothing is filtered
+ */
+function ws_task_made_by_sql($mode, $scope, $ready, $column = 't.app_id')
+{
+    $mode = ws_task_made_by_mode($mode);
+
+    if (!$ready) {
+        return ($mode === 'apps') ? '0 = 1' : '';
+    }
+
+    if (($mode === '') && ($scope === 'created')) {
+        $mode = 'people';
+    }
+
+    if ($mode === 'people') {
+        return $column . ' = 0';
+    }
+
+    return ($mode === 'apps') ? $column . ' > 0' : '';
+}
+
+/**
+ * The names of a set of applications, in one query; a deleted one is
+ * missing.
+ *
+ * @param int[] $app_ids
+ * @return string[] id => name
+ */
+function ws_task_app_names($app_ids)
+{
+    static $cache = array();
+
+    $ids = array();
+
+    foreach ((array) $app_ids as $app_id) {
+        if (((int) $app_id > 0) && !array_key_exists((int) $app_id, $cache)) {
+            $ids[(int) $app_id] = (int) $app_id;
+        }
+    }
+
+    if (!empty($ids)) {
+        foreach ($ids as $app_id) {
+            $cache[$app_id] = null;
+        }
+
+        foreach ((array) db_items("SELECT id, name FROM api_apps WHERE id IN (" . implode(',', $ids) . ")") as $row) {
+            $cache[(int) $row['id']] = (string) $row['name'];
+        }
+    }
+
+    $out = array();
+
+    foreach ((array) $app_ids as $app_id) {
+        if (isset($cache[(int) $app_id])) {
+            $out[(int) $app_id] = $cache[(int) $app_id];
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * The application that created a task, as the API and the screens carry it.
+ * Pure.
+ *
+ * @param int      $app_id ws_tasks.app_id
+ * @param string[] $names  ws_task_app_names()
+ * @return array|null id, name (null for a deleted application); null for a person
+ */
+function ws_task_app_present($app_id, $names)
+{
+    if ((int) $app_id <= 0) {
+        return null;
+    }
+
+    return array('id' => (int) $app_id, 'name' => isset($names[(int) $app_id]) ? (string) $names[(int) $app_id] : null);
+}
+
+/**
+ * "Made by <application>" beside the creator. Pure but for lang().
+ *
+ * @param array|null $app ws_task_app_present()
+ * @return string '' for a person's task
+ */
+function ws_task_app_label($app)
+{
+    if (!is_array($app)) {
+        return '';
+    }
+
+    if ((string) ($app['name'] ?? '') === '') {
+        return lang('Made by an application');
+    }
+
+    return lang(array('string' => 'Made by {var:1}', 'vars' => (string) $app['name']));
+}
+
+/**
  * Tasks for a list, filtered, with only what the reader may see.
  *
  * @param array $viewer
