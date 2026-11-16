@@ -5,7 +5,7 @@ module: minimum_order
 ---
 
 ## Where is a group's minimum kept?
-- (WS4, #PRNUM) One `config_text` row, `contact_group_minimum_order`: a JSON object of contact group id => whole minor units of the base currency (`pg_minimum_order_read()`, `pg_minimum_order_encode()`). No column, no "Wholesale" switch (architect, agent channel message 6590).
+- (WS4, #9987) One `config_text` row, `contact_group_minimum_order`: a JSON object of contact group id => whole minor units of the base currency (`pg_minimum_order_read()`, `pg_minimum_order_encode()`). No column, no "Wholesale" switch (architect, agent channel message 6590).
 - A deleted group's entry is ignored when read (`pg_minimum_order_map()` keeps only ids still in `contact_groups`); a group without an entry orders as before (J10).
 - Saved with `pg_minimum_order_save()`: written only while the text still holds what was read (`pg_config_text_claim()`), three tries, so two groups saved together keep both amounts; 0 removes the group, an empty map the row.
 
