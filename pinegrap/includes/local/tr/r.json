@@ -1283,6 +1283,7 @@
     "Repeats its row for each parcel sent for the order, with its tracking number.": "Sipariş için gönderilen her koli için satırını, takip numarasıyla yineler.",
     "Repeats its row for each part of a field text, split at the commas.": "Bir alanın metni virgüllerden bölünür; satırını her parça için yineler.",
     "Repeats its row for each passkey of the signed-in member, with a way to remove it.": "Oturum açmış üyenin her geçiş anahtarı için satırını, anahtarı kaldırma yoluyla birlikte yineler.",
+    "Repeats its row for each payment period of the order's recurring products.": "Siparişteki yinelenen ürünlerin her ödeme dönemi için satırını yineler.",
     "Repeats its row for each product in the cart, with its quantity and price.": "Sepetteki her ürün için satırını, miktarı ve fiyatıyla yineler.",
     "Repeats its row for each product inside the bundle, with how many come in it.": "Paketin içindeki her ürün için satırını, pakette kaç tane olduğuyla yineler.",
     "Repeats its row for each product often bought together with this one.": "Bu ürünle sık birlikte alınan her ürün için satırını yineler.",

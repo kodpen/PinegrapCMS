@@ -330,6 +330,10 @@ function pg_designer_screen_render($ctx)
             // Whether the product page's Checkout Options table has a row
             // to show; the site leaves the tab out otherwise.
             'payment_methods'      => function_exists('pg_civ_payment_method_rows') && pg_civ_payment_method_rows(_pg_civ_payment_settings(false)) !== array(),
+            // The most installments the checkout offers (the iyzico
+            // gateway's setting, _eo_render_installment_box()), 0 when off.
+            'installments'         => (defined('ECOMMERCE_PAYMENT_GATEWAY') && ECOMMERCE_PAYMENT_GATEWAY === 'Iyzipay'
+                && defined('ECOMMERCE_IYZIPAY_INSTALLMENT') && (int)ECOMMERCE_IYZIPAY_INSTALLMENT >= 2) ? (int)ECOMMERCE_IYZIPAY_INSTALLMENT : 0,
         ),
         // The site's words the member widgets print, so the canvas draws
         // them as the page does: the site's name, the consent and member

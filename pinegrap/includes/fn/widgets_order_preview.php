@@ -470,6 +470,16 @@ function _pg_op_recipients_html($d)
     return $html;
 }
 
+// The applied offers, one line each in the words the offer shows.
+function _pg_op_offers_html($offers)
+{
+    $html = '';
+    foreach ((array)$offers as $offer) {
+        if (is_array($offer)) $html .= '<li>' . h((string)$offer['description']) . '</li>';
+    }
+    return $html === '' ? '' : '<ul class="mb-0">' . $html . '</ul>';
+}
+
 // The applied gift cards: code, amount taken from each, the balance left
 // and the link that takes the card off the order.
 function _pg_op_gift_cards_html($cards)
@@ -732,10 +742,6 @@ function _render_system_widget_order_preview($tree_json, $widget_id, $cfg = arra
     );
     _pg_member_drop_empty_links($tree, $links);
 
-    $offers = '';
-    foreach ((array)$d['applied_offers'] as $offer) {
-        if (is_array($offer)) $offers .= '<li>' . h((string)$offer['description']) . '</li>';
-    }
     $installments = '';
     if ($op_flags['pays_by_card'] && function_exists('_eo_render_installment_box')) {
         $installments = _eo_render_installment_box($form);
@@ -744,7 +750,7 @@ function _render_system_widget_order_preview($tree_json, $widget_id, $cfg = arra
         'order_recipients'   => _pg_op_recipients_html($d),
         'applied_gift_cards' => _pg_op_gift_cards_html($d['applied_gift_cards']),
         'recurring_payments' => _pg_op_payment_periods_html($d['payment_periods']),
-        'applied_offers'     => $offers === '' ? '' : '<ul class="mb-0">' . $offers . '</ul>',
+        'applied_offers'     => _pg_op_offers_html($d['applied_offers']),
         'billing_form'       => pg_op_review_fields_html($d['fields']),
         'installment_table'  => (string)$d['installment_table'],
         'card_installments'  => $installments,

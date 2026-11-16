@@ -1006,6 +1006,7 @@
     "Installment picker (Iyzipay BIN lookup)": "Taksit Seçici (Iyzipay BIN sorgusu)",
     "Installment table by card family": "Kart ailesine göre taksit tablosu",
     "Installments": "Taksit",
+    "Installments are off in the payment settings: the site prints nothing here.": "Ödeme ayarlarında taksit kapalı: site burada hiçbir şey yazdırmaz.",
     "Instalment": "Taksit",
     "Instalment Commission": "Taksit Komisyonu",
     "Instalment Details": "Taksit Bilgisi",
