@@ -17,4 +17,4 @@ description: CA12 (#9790) channel reads (api_channel_reads.php): GET /workspace/
 - A guest's last seen only for a manager of the channel (`seen` null otherwise), as in Channel info. The rest of the panel's detail (summary, switches, watch, customer, mail, sales quote) is left out: summary and switches are CA13's routes, the customer has `/customer`.
 
 ## Which PR?
-- #9790, CA12 of plan channel-api-gaps (G14, G23, G33, G19's list, G24).
+- #9790, CA12 of the channel API comparison (`api-panel-coverage-channels.md`).

@@ -5,8 +5,9 @@
  * Tests for the catalog detail widget's closed blocks on the designer canvas:
  * the breadcrumb content node drawn as the crumbs part its widget prints and
  * opened into it, the product carousel drawn as the site builds it with
- * sample photos, and the Checkout Options rows drawn as the store's payment
- * settings give them. The drawing functions are cut out of
+ * sample photos, the Checkout Options rows drawn as the store's payment
+ * settings give them, the price block and the Variant Attribute node drawn
+ * as the site prints them for a product with variants. The drawing functions are cut out of
  * assets/js/style_designer.src.js and run under Node (skipped on a machine
  * without Node); their output is compared with the site's own markup.
  *
@@ -54,10 +55,14 @@ function catalog_closed_blocks_test_run($expr)
 	$script = "function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;'); }\n"
 		. "function _sdT(s) { return s; }\n"
 		. "function _sdSamplePictureUri() { return 'data:image/svg+xml;utf8,x'; }\n"
+		. "function _sdMoney(n) { return '\$' + Number(n).toFixed(2); }\n"
 		. 'var SD_LIST_SAMPLE_ROWS = {' . substr($source, $rows, $rows_end + 1 - $rows) . "};\n"
 		. "var doc = { createElement: function (tag) { return { tagName: tag, className: '', attrs: {}, innerHTML: '', setAttribute: function (n, v) { this.attrs[n] = v; } }; } };\n"
 		. catalog_closed_blocks_test_function($source, '_sdBreadcrumbSample') . "\n"
 		. catalog_closed_blocks_test_function($source, '_sdCarouselSampleHtml') . "\n"
+		. catalog_closed_blocks_test_function($source, '_sdPriceBlockHtml') . "\n"
+		. catalog_closed_blocks_test_function($source, '_sdVariantAttrCfg') . "\n"
+		. catalog_closed_blocks_test_function($source, '_sdVariantAttrHtml') . "\n"
 		. 'console.log(JSON.stringify(' . $expr . '));';
 	$file = tempnam(sys_get_temp_dir(), 'pgcatblocks');
 	file_put_contents($file, $script);
@@ -198,4 +203,82 @@ function test_catalog_closed_blocks_payment_rows()
 	$draw = catalog_closed_blocks_test_function($js, '_sdPaymentMethodsDraw');
 	pg_assert_contains("copy.classList.add('sd-ghost', 'sd-list-sample');", $draw);
 	pg_assert_contains("copy.setAttribute('inert', '');", $draw);
+}
+
+// The canvas draws a Variant Attribute node exactly as the site expands its
+// marker, for each style, with the default classes and with the designer's.
+function test_catalog_closed_blocks_variant_attr_matches_the_site()
+{
+	$vattrs = array(
+		1 => array('label' => 'Colour', 'options' => array(11 => 'Red', 12 => 'Blue', 13 => 'Green')),
+		2 => array('label' => 'Size', 'options' => array(21 => 'S', 22 => 'M', 23 => 'L')),
+	);
+	$picked = array(1 => 12, 2 => 21);
+	$js_attrs = '[{ id: 1, label: "Colour", options: [[11, "Red"], [12, "Blue"], [13, "Green"]] }, '
+		. '{ id: 2, label: "Size", options: [[21, "S"], [22, "M"], [23, "L"]] }]';
+	$props = array(
+		array('renderStyle' => 'select'),
+		array('renderStyle' => 'radio', 'itemClass' => 'form-check-inline'),
+		array('renderStyle' => 'button_group', 'controlClass' => 'mb-2', 'labelClass' => 'small'),
+		array('renderStyle' => 'button_list', 'itemClass' => 'text-start', 'cssClass' => ''),
+		array('renderStyle' => 'checkbox'),
+	);
+	$drawn = catalog_closed_blocks_test_run('[' . implode(', ', array_map(function ($p) use ($js_attrs) {
+		return '_sdVariantAttrHtml(_sdVariantAttrCfg(' . json_encode($p) . '), ' . $js_attrs . ', { 1: 12, 2: 21 })';
+	}, $props)) . ']');
+
+	if ($drawn === null) {
+		return;
+	}
+
+	foreach ($props as $i => $p) {
+		// The marker carries what toHTML() puts in it (_sdVariantAttrCfg()).
+		$cfg = array(
+			'renderStyle'  => $p['renderStyle'],
+			'labelClass'   => !empty($p['labelClass']) ? $p['labelClass'] : 'form-label fw-semibold',
+			'controlClass' => !empty($p['controlClass']) ? $p['controlClass'] : '',
+			'itemClass'    => !empty($p['itemClass']) ? $p['itemClass'] : '',
+			'cssClass'     => !empty($p['cssClass']) ? $p['cssClass'] : 'mb-3',
+		);
+		$site = _civ_expand_variant_attr_markers('<!--pg-variant-attr:' . base64_encode(json_encode($cfg)) . '-->', $vattrs, $picked);
+		pg_assert_same($site, $drawn[$i], 'the canvas variant attribute is the site\'s: ' . json_encode($p));
+	}
+}
+
+// The marker a Variant Attribute node saves is the one it always saved.
+function test_catalog_closed_blocks_variant_attr_marker_kept()
+{
+	$js = catalog_closed_blocks_test_source();
+	pg_assert_contains("var cfg = _sdVariantAttrCfg(p);\n                var b64 = btoa(unescape(encodeURIComponent(JSON.stringify(cfg))));", $js);
+	$drawn = catalog_closed_blocks_test_run('JSON.stringify(_sdVariantAttrCfg({ renderStyle: "radio", labelClass: "" }))');
+
+	if ($drawn === null) {
+		return;
+	}
+
+	pg_assert_same('{"renderStyle":"radio","labelClass":"form-label fw-semibold","controlClass":"","itemClass":"","cssClass":"mb-3"}', $drawn);
+}
+
+// The price block is drawn as the site prints it, with and without an
+// offer: the same elements and classes, the look inline.
+function test_catalog_closed_blocks_price_block()
+{
+	$drawn = catalog_closed_blocks_test_run('[_sdPriceBlockHtml(500, 450), _sdPriceBlockHtml(450, 450)]');
+
+	if ($drawn === null) {
+		return;
+	}
+
+	$shape = function ($html) {
+		$html = preg_replace('/ style="[^"]*"/', '', $html);
+		return preg_replace('/>[^<]+</', '>X<', $html);
+	};
+	pg_assert_same($shape(_pg_format_price_with_discount(50000, 45000, '$')), $shape($drawn[0]));
+	pg_assert_same($shape(_pg_format_price_with_discount(45000, 45000, '$')), $shape($drawn[1]));
+	pg_assert_contains('text-decoration:line-through', $drawn[0]);
+	pg_assert_contains('$500.00', $drawn[0]);
+	pg_assert_contains('$450.00', $drawn[0]);
+
+	$js = catalog_closed_blocks_test_source();
+	pg_assert_contains("'__price_block_html': function () { return _sdPriceBlockHtml(500, 450); },", $js);
 }

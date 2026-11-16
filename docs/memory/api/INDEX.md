@@ -21,7 +21,7 @@
 - api-database-unavailable.md: External API and MCP 503 database_unavailable (a lost database connection, with Retry-After) versus 503 service_unavailable (a feature waiting for its database update)
 - api-datetime-end-bound.md: External API datetime parameters: only the documented forms are read (no relative words or rolled-over days); a bare day as an end bound (to, *_to) counts to 23:59:59 site time (PR #4091)
 - api-design-ads.md: Ads and ad regions over the external API (/design/ads, /design/ad-regions): the write path the four screens share, the routes, refusals, the region that keeps its ads
-- api-design-dialogs-regions.md: Auto dialogs and common regions over the external API (/design/auto-dialogs, /design/common-regions): the write path the four screens share, routes, refusals, the converted region that keeps its row [decision: decisions-made-product-20.md]
+- api-design-dialogs-regions.md: Auto dialogs and common regions over the external API (/design/auto-dialogs, /design/common-regions): the write path the four screens share, routes, refusals, the converted region that keeps its row [decision: decisions-made-product-20.md, decisions-made-schema-23.md]
 - api-device-notifications.md: Which notifications an API caller (device session, OAuth connection, key) sees: new_order and order_return only with orders:read, in lists, unread counts and read targets
 - api-device-pairing.md: Pairing a team device with a QR code (device_pairing.php, POST /auth/pair, table api_device_pairings): code storage, who may make one, the exchange, limits, revocation
 - api-device-refresh-rotation.md: Refresh-token exchange (api_device_rotate_pair, devices and OAuth): next pair derived from the presented token so concurrent refreshes agree; conditional UPDATE; 60 s grace from the first exchange [decision: decisions-made-schema-11.md]
@@ -57,6 +57,7 @@
 - api-order-money-fields.md: The external API's order totals, the gift card and instalment amounts, and payment_installment (PR #3842)
 - api-orders-create.md: POST /orders records a counter (local) sale through the counter screen's completion: lines, customer, payment, the checks before the write, dry run, Idempotency-Key, what it answers
 - api-orders-list.md: GET /orders: status comma list, sort placed_desc, modified_since on last_modified_timestamp, cursor marks, and the writers that move the stamp (pg_order_touch_sql(), PR #2258)
+- api-panel-coverage-channels.md: The API beside the panel for channels and the agent channel (compared 2026-11-15, #9764, #9761; CA2-CA16 by 2026-11-16): each covered part and its topic file [decision: here]
 - api-panel-coverage.md: How far the external API covers what the panel manages (gap list #5239, X1-X13 landed; audit #7967), how a new write route reuses the screen's write path, and what deliberately has no endpoint
 - api-plugin-scopes.md: The 'moves_money' route mark and api_plugin_scopes(), the scopes an assistant plugin is meant to hold: marked routes, offered writes, and the test that keeps them apart [decision: here]
 - api-product-bundles.md: Product bundles in the external API: the bundle block on Product, the bundle fields POST /products/{id} writes, what it refuses, the price batch and inventory answers for a bundle
@@ -81,28 +82,14 @@
 - api-user-role-rows.md: Which rows an external API owner with the user role (3) reaches: contact groups, customers, campaigns, calendars, forms and submissions, 404 outside, the tests that guard it
 - api-users-read.md: External API GET /users and /users/{id} (users:read, roles 0-1): the users screen row rule, the User object, columns never read, two-step state
 - api-users-write.md: External API POST /users, POST /users/{id}, DELETE and POST /users/{id}/delete (users:write, administrator owners only): the bounds in the handler, the fields, what is never written, events
-- api-visitor-reports.md: The visitor report routes under visitors:read (traffic, top-content, visitors, search, pages, ai-visibility, vitals): what each reads, the window, linked false, how pages meet Google addresses
+- api-visitor-reports.md: The visitor report routes under visitors:read (traffic, top-content, visitors, search, pages, ai-visibility, vitals, page-clicks): what each reads, the window, linked false
 - api-webhook-events.md: Announcing webhook events: pg_announce() from any screen, contact helpers, the event catalogue, no events from bulk imports, Workspace channel events, queue, signature and retries
 - api-webhook-log-address.md: Site Log lines about an event subscription name its address as scheme and host only (pg_ops_alert_mask_url()): API change and secret renewal, panel stop/resume and removal, given-up delivery
 - api-webhook-queue.md: Outgoing webhook queue (includes/api/outbound/webhooks.php): which subscriptions get an event, held rows for a failing subscription, the retry ladder, retry and the atomic claim of a row
 - api-webhook-stock-events.md: pg_product_stock_changed(): rules, callers, quiet writers, the out_of_stock flag; panel writers announcing product.updated
 - application-access-keys.md: Application Access (api_settings.php): rows made and secrets issued through includes/api/keys.php, 24 h grace, keyless rows refused, rows of a higher-ranked owner locked, one OAuth app, per-app logs [decision: here]
-- channel-api-census-agents-calls.md: CA1b census, an agent's own calls (requests, brief, claim, answer, fail, report, wake) and its questions, approvals and proposals beside their routes; its own routes are off MCP
-- channel-api-census-agents-channel.md: CA1b census, a channel's agents (add, remove, tier, wake rule, loop guard, /wake), model assistants, the agent card and the person card, each beside its route or none
-- channel-api-census-agents-differences.md: CA1b census: the agents' side that has no route on purpose (with the memory file that says why) and what a route does differently from the panel
-- channel-api-census-agents-gaps.md: CA1b gap list (2026-11-15): seven gaps, each with the route it would be and the function that already does the work; for the architect to cut CA2 and on
-- channel-api-census-agents-wayfinding.md: CA1b census, what an application agent meets when it finds its way with the API alone: the brief's MCP line that names tools which do not exist, refusals that name no next step, a route named by id
-- channel-api-census-agents.md: Start file of the CA1b census (2026-11-15): the agents' side of a channel in the panel beside the /workspace/ routes and MCP tools; which part file holds what, the count of gaps
-- channel-api-census-channel-content.md: CA1a census, part 3: Decisions and the channel's memory, a channel's canvases, files edited in place, workflow tables and the GitHub link, beside the /workspace/ routes, or none
-- channel-api-census-channel-differences.md: CA1a list 3: where a /workspace/ route of a channel's own side does something other than the panel action it mirrors - who may call it, fields it lacks, the function it calls
-- channel-api-census-channel-gaps-content.md: CA1a gap list, part 2: a channel's canvases, files edited in place and workflow tables - each panel action with no route, the route it would be and the function that already does the write
-- channel-api-census-channel-gaps.md: CA1a gap list, part 1: a channel's messages, threads, approvals and the channel itself - each panel action with no route, the route it would be and the function that already does the write
-- channel-api-census-channel-itself.md: CA1a census, part 2: the channel itself (make, rename, icon, colour, switches, versions, archive, members, guests, export, tabs) beside the /workspace/ routes, or none
-- channel-api-census-channel-messages.md: CA1a census, part 1: a channel's messages, polls, threads, scheduled and forwarded messages - each panel action (actions.php case) beside its /workspace/ route and MCP tool, or none
-- channel-api-census-channel-no-route.md: CA1a list 2: what of a channel's own side has no route on purpose or by its nature, with the memory file that says why, and the guest links whose reason no memory file records [decision: here]
-- channel-api-census-channel.md: CA1a census (2026-11-15) of a channel's own side: panel actions beside the /workspace/ routes and MCP tools; what was counted, totals, the parts and the 33-line gap list
-- channel-api-not-built.md: What of channels the API does not do on purpose after the 2026-11-15 censuses: an administrator opening a private channel, a channel saved as a template, a guest's links, the Workspace Settings card [decision: here]
-- channel-api-overview.md: The channel API census files (plan channel-api-gaps, owner 2026-11-15): what the two censuses compare, the rules that bind a new route, and which file holds each part [decision: here]
+- channel-api-differences.md: Where a /workspace/ route for a channel or its agents still differs from the panel action it mirrors: who may call it, what it lacks, the function it calls
+- channel-api-not-built.md: What of channels and their agents has no API route, on purpose or by its nature (comparison 2026-11-15): private channel opened by an admin, templates, guest links, settings cards [decision: here]
 - claude-plugin-census.md: Claude plugin bundle as Anthropic's pages state it (read 2026-11-14): folder and manifest, directory checks and policy, which Claude app loads what, and how a bundle can (not) ask for a site's address [decision: here]
 - claude-plugin-tool-check.md: The site's MCP tools checked against Claude's directory rules (2026-11-14): name length, annotations, and the routes that move money or issue stored value, by route id and scope [decision: here]
 - external-api-authorization.md: External API authorization: app scopes x owner scopes, write implies read, where a new scope goes, what failed sign-ins do, the removed apps.php model; role-3 rows in api-user-role-rows
@@ -116,6 +103,7 @@
 - oauth-authorize-state.md: OAuth authorize (includes/oauth/authorize.php): state is handed back exactly as sent, never cut; a state over 4096 bytes is refused with invalid_request and the same state
 - removed-rest-api-apps.md: History note: apps.php, apps_settings.php and the custom_apps table were removed in 2026.4.4 and replaced by the external API (integration.php, includes/api/). [decision: decisions-made-data.md, decisions-made.md]
 - translations-api-dry-run.md: The seven translation API writes take X-Dry-Run (PR #1911): where each stops, the batch counts, translate_api_write_check(), pg_tr_result_judge(), pg_tr_reviewed_kept()
+- workspace-api-link-preview.md: link_preview on a Workspace message read over the external API and MCP (LP3): the card's plain fields, the states and the switch that leave it null, which routes carry it
 - workspace-api-message-people.md: Workspace API routes for a message's readers (seen by and read receipts), bringing its mentioned people into the channel, and forwarding messages into a note (note_id on the forward route)
 - workspace-api-scheduled-message-changes.md: Workspace API scheduled messages: change one (POST …/update), schedule a reply (parent_id), send one now (POST …/send), and the checks shared with the panel
 - workspace-api-status-checkins.md: Workspace API for a channel's status update and check-ins - POST …/status, POST …/checkins, POST /workspace/checkins/{id}/answer - who may call each and the checks shared with the panel
@@ -126,5 +114,5 @@
 - workspace-channel-agents-api-reads.md: The agents a channel can still take (addable on GET /workspace/channels/{id}/agents) and the agent card route over the API and MCP: fields, readers, refusals (PR #9766)
 - workspace-channel-reads-api.md: CA12 (#9790) channel reads (api_channel_reads.php): GET /workspace/channels/{id}, its files, board and eras, the Markdown export (REST only), channel_id on the tables list
 - workspace-mcp-small-file.md: Posting a file into a channel over MCP (workspace_files_create, PR #1830): content_base64 and name only, at most 1 MB measured before decoding, larger files over REST, why
-- workspace-message-file-api.md: The API routes for files in a message: post a file of the file manager, put an edited file in place of the old one (own words, no tool), list a file's earlier versions
-- workspace-thread-approval-api.md: The API routes that conclude or rename a discussion and take back or close an approval request: the panel function each runs, the check it shares for the dry run, who may and the refusals
+- workspace-message-file-api.md: The API routes for files in a message (#9769): post a file of the file manager, put an edited file in place of the old one (own words, no tool), list a file's earlier versions
+- workspace-thread-approval-api.md: The API routes (#9794) that conclude or rename a discussion and take back or close an approval request: the panel function each runs, the check it shares for the dry run, who may and the refusals

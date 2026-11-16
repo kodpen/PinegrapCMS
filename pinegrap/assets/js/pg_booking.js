@@ -243,7 +243,7 @@
                     self.hold(time);
                 }));
             });
-            self.say((note ? note + ' ' : '') + (answer && answer.ok ? (times.length ? fill(self.w.times, { day: self.dayLabel(iso) }) + ' ' + fill(self.w.zoneNote, { zone: self.s.zone }) : self.w.noTimes) : (answer.message || self.w.failed)));
+            self.say((note ? note + ' ' : '') + (answer && answer.ok ? (times.length ? fill(self.w.times, { day: self.dayLabel(iso) }) + '. ' + fill(self.w.zoneNote, { zone: self.s.zone }) : self.w.noTimes) : (answer.message || self.w.failed)));
         }, function () {
             self.say(self.w.failed);
         });

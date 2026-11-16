@@ -159,6 +159,15 @@ if (($audiences['added'] + $audiences['removed']) > 0) {
 
 }
 
+// Customer value summary (includes/fn/customer_values.php): rebuilt whole from
+// the orders once a day, at most PG_CUSTOMER_VALUE_TICK_SECONDS of this tick,
+// going on from its place next tick; one write when the walk is done.
+if (ECOMMERCE && function_exists('pg_customer_value_job_run')) {
+
+    pg_customer_value_job_run(pg_cron_time_left(PG_CUSTOMER_VALUE_TICK_SECONDS));
+
+}
+
 // Shipping label documents whose time is up (includes/fn/shipment_labels.php):
 // 30 days after delivery or cancellation, 90 days after creation at the
 // latest. Once a day; the rows stay with their orders.
@@ -754,6 +763,37 @@ if (function_exists('pg_not_found_log_sweep_due') && pg_not_found_log_sweep_due(
     }
 }
 
+// The pop-up counts (includes/fn/auto_dialog_counts.php): once a day the
+// days older than the retention period go.
+if (function_exists('pg_auto_dialog_count_sweep_due') && pg_auto_dialog_count_sweep_due()) {
+
+    $auto_dialog_count_removed = pg_auto_dialog_count_sweep();
+
+    if ($auto_dialog_count_removed > 0) {
+        log_activity(lang(array(
+            'string' => 'general job removed {var:1} row(s) from the pop-up counts',
+            'vars'   => array(pg_format_number($auto_dialog_count_removed, 0)),
+        )), 'UNKNOWN');
+    }
+}
+
+// Share cards (includes/fn/share_card.php): once a day the cards and the
+// titles kept for them that nobody asked for or printed in 30 days go. A
+// tick with nothing due reads one file's time.
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/share_card.php');
+
+if (pg_share_card_sweep_due(pg_share_card_directory(), time())) {
+
+    $share_card_removed = pg_share_card_sweep_daily();
+
+    if ($share_card_removed > 0) {
+        log_activity(lang(array(
+            'string' => 'general job removed {var:1} share card file(s) not asked for in 30 days',
+            'vars'   => array(pg_format_number($share_card_removed, 0)),
+        )), 'UNKNOWN');
+    }
+}
+
 // The site search rollup (includes/fn/site_search_stats.php): once a day the
 // days older than the retention period go.
 if (function_exists('pg_site_search_sweep_due') && pg_site_search_sweep_due()) {
@@ -778,6 +818,35 @@ if (function_exists('pg_vitals_sweep_due') && pg_vitals_sweep_due()) {
         log_activity(lang(array(
             'string' => 'general job removed {var:1} row(s) from the page speed statistics',
             'vars'   => array(pg_format_number($page_vitals_removed, 0)),
+        )), 'UNKNOWN');
+    }
+}
+
+// The clicks and scroll rollup (includes/fn/page_clicks.php): once a day
+// the days older than the retention period go.
+if (function_exists('pg_page_clicks_sweep_due') && pg_page_clicks_sweep_due()) {
+
+    $page_clicks_removed = pg_page_clicks_sweep();
+
+    if ($page_clicks_removed > 0) {
+        log_activity(lang(array(
+            'string' => 'general job removed {var:1} row(s) from the click statistics',
+            'vars'   => array(pg_format_number($page_clicks_removed, 0)),
+        )), 'UNKNOWN');
+    }
+}
+
+// Content review (includes/fn/content_review.php): once a day the rows of
+// pages and records that are gone go, and an item whose person may no
+// longer edit it becomes nobody's.
+if (function_exists('pg_content_review_sweep_due') && pg_content_review_sweep_due()) {
+
+    $content_review_swept = pg_content_review_sweep();
+
+    if (($content_review_swept['removed'] + $content_review_swept['released']) > 0) {
+        log_activity(lang(array(
+            'string' => 'general job removed {var:1} content review row(s) of items that are gone and cleared {var:2} person(s)',
+            'vars'   => array(pg_format_number($content_review_swept['removed'], 0), pg_format_number($content_review_swept['released'], 0)),
         )), 'UNKNOWN');
     }
 }
@@ -933,6 +1002,15 @@ if (pg_cron_job_is_enabled('push_job')) {
     pg_push_queue_run(10);
 
     pg_cron_ran('push_job');
+
+}
+
+// Visitor notifications (includes/fn/site_push.php): with their own switch,
+// not the device notifications job's, since a site may offer one and not the
+// other. push_job.php runs the same pass; its lock lets one run at a time.
+if (pg_site_push_ready() && pg_site_push_switch_on()) {
+
+    pg_site_push_queue_run(10);
 
 }
 
@@ -1117,6 +1195,12 @@ if (
     // they are through; then one small read of the marker.
     if (ws_enabled()) {
         ws_ref_sources_backfill_run();
+    }
+
+    // The first web address of new messages (includes/workspace/link_preview.php),
+    // a few a tick under the hourly cap; one small read when none waits.
+    if (ws_enabled() && function_exists('ws_link_preview_due') && ws_link_preview_due()) {
+        ws_link_preview_run();
     }
 
 }

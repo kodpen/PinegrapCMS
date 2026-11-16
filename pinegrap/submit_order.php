@@ -1516,6 +1516,21 @@ function submit_order($type) {
 
     }
 
+    // A signed-in customer's contact groups may set a minimum order value
+    // (includes/fn/minimum_order.php): the goods in base-currency minor units.
+    // A payment's return is not refused here: the cart was checked when it
+    // was sent to the payment and the payment may already be taken.
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/minimum_order.php');
+    $minimum_order = pg_minimum_order_check(pg_minimum_order_customer(), (int) round((float) get_order_subtotal()), 1.0);
+
+    if (!$minimum_order['ok'] && !pg_payment_is_return_mode($_GET['mode'] ?? '')) {
+        $liveform->mark_error('minimum_order', $minimum_order['message']);
+        log_activity(pg_log_lang(array(
+            'string' => 'Order (id: {var:1}) was not accepted because it is below the minimum order value of the customer\'s contact group ({var:2}).',
+            'vars' => array(($_SESSION['ecommerce']['order_id'] ?? ''), prepare_amount($minimum_order['minimum'] / 100)),
+        )));
+    }
+
     // If hooks are enabled and there is pre-save hook code, then run it.
     if ((defined('PHP_REGIONS') and PHP_REGIONS) && ($pre_save_hook_code != '')) {
         eval(prepare_for_eval($pre_save_hook_code));

@@ -490,7 +490,7 @@ function ws_handle_action($action, $request)
     if (function_exists('ws_message_in_past') && ws_eras_ready()) {
         $touched = null;
 
-        if (in_array($action, array('ws_edit', 'ws_canvas_undo', 'ws_page_undo', 'ws_canvas_restore', 'ws_canvas_binding_undo', 'ws_mark', 'ws_react', 'ws_check', 'ws_check_task', 'ws_ack', 'ws_ack_request'), true)
+        if (in_array($action, array('ws_edit', 'ws_canvas_undo', 'ws_page_undo', 'ws_canvas_restore', 'ws_canvas_binding_undo', 'ws_mark', 'ws_react', 'ws_check', 'ws_check_task', 'ws_ack', 'ws_ack_request', 'ws_link_preview_remove'), true)
             || (($action === 'ws_delete') && ((string) ($request['scope'] ?? '') !== 'me'))) {
             $touched = ws_message((int) ($request['message_id'] ?? 0));
         } elseif (in_array($action, array('ws_poll_edit', 'ws_poll_vote', 'ws_poll_close', 'ws_poll_withdraw', 'ws_poll_again'), true)) {
@@ -2196,36 +2196,42 @@ function ws_handle_action($action, $request)
 
             $body = (string) ($request['body'] ?? '');
 
-            // "/claude ..." asks Claude, like writing @Claude.
-            if (function_exists('ws_claude_command_body')) {
-                $body = ws_claude_command_body($body);
-            }
+            // as_text: the body is posted as written, never run as a / command
+            // nor rewritten for /claude or /ai (a record shared from its drawer).
+            $as_text = !empty($request['as_text']);
 
-            // "/ai ..." asks Pinegrap AI, like writing @ai.
-            if (function_exists('ws_ai_command_body')) {
-                $body = ws_ai_command_body($body);
-            }
-
-            $command = ws_command_run($viewer, $channel, $body, array(
-                'confirm'   => !empty($request['confirm']),
-                'force'     => !empty($request['force']),
-                'assignees' => isset($request['assignees']) ? (array) $request['assignees'] : null,
-                'from'      => (isset($request['from']) && is_scalar($request['from'])) ? $request['from'] : null,
-                'decision'  => !empty($request['decision']),
-                'on_sale'   => !empty($request['on_sale']),
-                'parent_id' => (int) ($request['parent_id'] ?? 0),
-            ));
-
-            if ($command !== null) {
-                if ($command['type'] === 'error') {
-                    return ws_action_error($command['error']);
+            if (!$as_text) {
+                // "/claude ..." asks Claude, like writing @Claude.
+                if (function_exists('ws_claude_command_body')) {
+                    $body = ws_claude_command_body($body);
                 }
 
-                return ws_action_ok(array('command' => $command));
-            }
+                // "/ai ..." asks Pinegrap AI, like writing @ai.
+                if (function_exists('ws_ai_command_body')) {
+                    $body = ws_ai_command_body($body);
+                }
 
-            // "//word ..." is the text "/word ..." posted as a message.
-            $body = ws_command_unescape($body);
+                $command = ws_command_run($viewer, $channel, $body, array(
+                    'confirm'   => !empty($request['confirm']),
+                    'force'     => !empty($request['force']),
+                    'assignees' => isset($request['assignees']) ? (array) $request['assignees'] : null,
+                    'from'      => (isset($request['from']) && is_scalar($request['from'])) ? $request['from'] : null,
+                    'decision'  => !empty($request['decision']),
+                    'on_sale'   => !empty($request['on_sale']),
+                    'parent_id' => (int) ($request['parent_id'] ?? 0),
+                ));
+
+                if ($command !== null) {
+                    if ($command['type'] === 'error') {
+                        return ws_action_error($command['error']);
+                    }
+
+                    return ws_action_ok(array('command' => $command));
+                }
+
+                // "//word ..." is the text "/word ..." posted as a message.
+                $body = ws_command_unescape($body);
+            }
 
             $result = ws_message_send($viewer, $channel, $body, array(
                 'parent_id' => (int) ($request['parent_id'] ?? 0),
@@ -2431,6 +2437,25 @@ function ws_handle_action($action, $request)
 
             return ws_action_ok(array('message' => $payload[0]));
 
+        // "Remove preview": the writer takes a message's link card away for
+        // everyone (link_preview.php); the message is sent back.
+        case 'ws_link_preview_remove':
+            $message = ws_message((int) ($request['message_id'] ?? 0));
+
+            if (!$message || !ws_can_read_channel($viewer, ws_channel($message['channel_id']))) {
+                return ws_action_error(lang('That message could not be found.'));
+            }
+
+            $result = ws_link_preview_remove($viewer, $message);
+
+            if (!$result['ok']) {
+                return ws_action_error($result['error']);
+            }
+
+            $payload = ws_message_payloads($viewer, array(ws_message($message['id'])));
+
+            return ws_action_ok(array('message' => $payload[0]));
+
         case 'ws_delete':
             $message = ws_message((int) ($request['message_id'] ?? 0));
 
@@ -2492,6 +2517,52 @@ function ws_handle_action($action, $request)
             $payload = ws_message_payloads($viewer, array(ws_message($message['id'])));
 
             return ws_action_ok(array('message' => $payload[0]));
+
+        // A reader's highlight on a message (highlights.php): made, its
+        // scope changed, its note written, removed. Nobody is told; the
+        // message comes back drawn with it.
+        case 'ws_highlight_set':
+            $message = ws_message((int) ($request['message_id'] ?? 0));
+
+            if (!$message || !ws_can_read_channel($viewer, ws_channel($message['channel_id']))) {
+                return ws_action_error(lang('That message could not be found.'));
+            }
+
+            $result = ws_highlight_set($viewer, $message, (string) ($request['quote'] ?? ''), (int) ($request['occurrence'] ?? 0),
+                (string) ($request['scope'] ?? ''), isset($request['note']) ? (string) $request['note'] : null);
+
+            if (!$result['ok']) {
+                return ws_action_error($result['error'], $result['field']);
+            }
+
+            $payload = ws_message_payloads($viewer, array(ws_message($message['id'])));
+
+            return ws_action_ok(array('id' => $result['id'], 'message' => $payload[0]));
+
+        case 'ws_highlight_note':
+        case 'ws_highlight_remove':
+            $result = ($action === 'ws_highlight_note')
+                ? ws_highlight_note($viewer, (int) ($request['id'] ?? 0), (string) ($request['note'] ?? ''))
+                : ws_highlight_remove($viewer, (int) ($request['id'] ?? 0));
+
+            if (!$result['ok']) {
+                return ws_action_error($result['error']);
+            }
+
+            $payload = ws_message_payloads($viewer, array(ws_message($result['message_id'])));
+
+            return ws_action_ok(array('message' => $payload[0] ?? null));
+
+        // My highlights: the person's own, a page at a time, and removing
+        // many at once (the ids ticked, or every one of a filter).
+        case 'ws_highlights_mine':
+            return ws_action_ok(ws_highlights_mine($viewer, (string) ($request['filter'] ?? ''), (int) ($request['after'] ?? 0)));
+
+        case 'ws_highlights_remove':
+            $ids = is_array($request['ids'] ?? null) ? $request['ids'] : explode(',', (string) ($request['ids'] ?? ''));
+            $result = ws_highlights_remove_many($viewer, $ids, isset($request['every']) ? (string) $request['every'] : null);
+
+            return $result['ok'] ? ws_action_ok(array('removed' => $result['removed'], 'kept' => $result['kept'])) : ws_action_error($result['error']);
 
         case 'ws_check':
             $message = ws_message((int) ($request['message_id'] ?? 0));
@@ -3999,6 +4070,13 @@ function ws_handle_action($action, $request)
 
             return $result['ok'] ? ws_action_ok() : ws_action_error($result['error']);
 
+        // The person's own quiet hours (notify.php): their own session only,
+        // never for another person; no API route or MCP tool.
+        case 'ws_quiet_hours_save':
+            $result = ws_quiet_hours_save($viewer, $request);
+
+            return $result['ok'] ? ws_action_ok(array('quiet_hours' => $result['value'])) : ws_action_error($result['error'], $result['field']);
+
         // Whether Claude may be asked in a channel.
         case 'ws_channel_claude':
             $channel = ws_action_channel($viewer, $request, 'manage');
@@ -4894,6 +4972,7 @@ function ws_handle_action($action, $request)
                 'search'        => (string) ($request['search'] ?? ''),
                 'priority'      => (string) ($request['priority'] ?? ''),
                 'soon'          => min(90, max(0, (int) ($request['soon'] ?? 0))),
+                'agent_channels' => ws_agent_channel_mode($request['agent_channels'] ?? ''),
             );
 
             // "Everything" is the board holder's view.
@@ -4901,13 +4980,21 @@ function ws_handle_action($action, $request)
                 $filters['scope'] = 'mine';
             }
 
-            return ws_action_ok(array('tasks' => ws_tasks_list($viewer, $filters)));
+            // The agent channels the reader may read: the toggle shows when
+            // there is one, and a task row names its agent channel.
+            $agent_names = ws_tasks_agent_readable($viewer);
+
+            return ws_action_ok(array(
+                'tasks'          => ws_tasks_list($viewer, $filters),
+                'agent_channels' => ws_tasks_agent_count($agent_names),
+                'agent_names'    => (object) $agent_names,
+            ));
 
         case 'ws_board':
-            return ws_action_ok(ws_board($viewer, (string) ($request['from'] ?? ''), (int) ($request['days'] ?? 7), (int) ($request['department_id'] ?? 0), !empty($request['only_me']), (int) ($request['person_id'] ?? 0)));
+            return ws_action_ok(ws_board($viewer, (string) ($request['from'] ?? ''), (int) ($request['days'] ?? 7), (int) ($request['department_id'] ?? 0), !empty($request['only_me']), (int) ($request['person_id'] ?? 0), ws_agent_channel_mode($request['agent_channels'] ?? '')));
 
         case 'ws_calendar':
-            return ws_action_ok(ws_calendar($viewer, (string) ($request['month'] ?? ''), (int) ($request['person_id'] ?? 0), (int) ($request['department_id'] ?? 0)));
+            return ws_action_ok(ws_calendar($viewer, (string) ($request['month'] ?? ''), (int) ($request['person_id'] ?? 0), (int) ($request['department_id'] ?? 0), ws_agent_channel_mode($request['agent_channels'] ?? '')));
 
         case 'ws_my_calendar':
             // Always the reader's own: no person is taken from the request.

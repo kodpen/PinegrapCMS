@@ -155,6 +155,44 @@ if (!defined('PG_INIT_LOADED')) {
                                 </div>
                             </div>
                         </div>
+                        <div class="card mb-7">
+                            <h2 class="card-header bg-reset border-0 pg-title-section">
+                                <?=lang('Opening')?>
+                            </h2>
+                            <div class="card-body pt-0">
+                                <?php $open_fields = pg_auto_dialog_form_open_fields(); ?>
+                                <div class="row">
+                                    <?php foreach ($open_fields as $open_field => $open_rule): ?>
+                                        <div class="col-12 sm:col-6 2xl:col-3 my-3">
+                                            <label for="<?=$open_field?>" class="form-label"><?=h($open_rule[0])?></label>
+                                            <?php if ($open_rule[1] === null): ?>
+                                                <div class="input-group">
+                                                    <?=$liveform->output_field(array(
+                                                        'type' => 'text',
+                                                        'id' => $open_field,
+                                                        'name' => $open_field,
+                                                        'class' => 'form-control text-end',
+                                                        'maxlength' => '3',
+                                                        'inputmode' => 'numeric'))?>
+                                                    <label for="<?=$open_field?>" class="input-group-text">%</label>
+                                                </div>
+                                                <div class="form-text text-end"><?=lang('of the page, when it opens on scroll; blank for 50')?></div>
+                                            <?php else: ?>
+                                                <?=$liveform->output_field(array(
+                                                    'type' => 'select',
+                                                    'id' => $open_field,
+                                                    'name' => $open_field,
+                                                    'class' => 'form-control',
+                                                    'options' => $open_rule[1]))?>
+                                                <?php if ($open_field === 'open_on'): ?>
+                                                    <div class="form-text text-end"><?=lang('on a touch screen, leaving opens after the delay')?></div>
+                                                <?php endif ?>
+                                            <?php endif ?>
+                                        </div>
+                                    <?php endforeach ?>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     <div class="col-12 lg:col-4 2xl:col-3 order-2">
                         <!-- 3.3rem: the fixed control panel header covers the top of the window. -->
@@ -197,6 +235,12 @@ if (!defined('PG_INIT_LOADED')) {
                                             </div>
                                         <?php endforeach ?>
                                         <?php if ($screen == 'edit'): ?>
+                                            <?php foreach (array('shown' => lang('Shown (30 days)'), 'closed' => lang('Closed (30 days)'), 'taken' => lang('Taken (30 days)')) as $count_field => $count_label): ?>
+                                                <div class="d-flex justify-content-between gap-3 py-2 border-bottom" data-pg-auto-dialog-count="<?=$count_field?>">
+                                                    <dt class="fw-normal"><?=h($count_label)?></dt>
+                                                    <dd class="mb-0 fw-bold text-end"><?=h(pg_format_number($auto_dialog_counts[$count_field], 0))?></dd>
+                                                </div>
+                                            <?php endforeach ?>
                                             <div class="d-flex justify-content-between gap-3 py-2">
                                                 <dt class="fw-normal"><?=lang('Last Modified')?></dt>
                                                 <dd class="mb-0 fw-bold text-end text-break"><?php if ((int) $auto_dialog['last_modified_timestamp'] > 0): ?><?=get_relative_time(array('timestamp' => (int) $auto_dialog['last_modified_timestamp']))?><?php if ((string) $auto_dialog['user_username'] !== ''): ?> <?=h($auto_dialog['user_username'])?><?php endif ?><?php else: ?>-<?php endif ?></dd>

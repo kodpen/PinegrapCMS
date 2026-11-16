@@ -1,6 +1,6 @@
 ---
 name: agent-channel-flag
-description: Agent channel switch (ws_channels.agent_channel, #8440): /agent-channel on|off, its decisions kept apart on the decisions screen, the dashboard and GET /workspace/decisions
+description: Agent channel switch (ws_channels.agent_channel, #8440): /agent-channel on|off; its decisions and tasks kept apart from the general screens, the dashboard and the API lists
 ---
 
 ## What is an agent channel?
@@ -16,4 +16,12 @@ description: Agent channel switch (ws_channels.agent_channel, #8440): /agent-cha
 - One pure helper, `ws_agent_channel_filter($channels, $mode, $named)` (`tests/workspace_agent_channel_test.php`): mode '' leaves agent channels out, `include` takes them too, `only` takes them alone; the channel the request names is kept whatever it is.
 - `ws_timeline()` applies it after the reader's channels, so the decisions screen (`workspace_timeline.php`), its per-channel counts, the staff count of private channels (`ws_timeline_hidden()`) and the dashboard's latest decisions (`home.php`) leave agent channels out. The screen's "Agent channels" toggle (`agents=1` in the address) sends `agent_channels=only`; it shows once the person may read an agent channel (`agent_channels` count on the first page).
 - `GET /workspace/decisions` leaves them out unless `agent_channels=include|only` or `channel_id` names one.
-- Unchanged: the channel's own Decisions tab, its board and brief, the agent's memory digest, and who may read a decision.
+
+## Where are its tasks kept apart?
+- `ws_tasks_agent_rule()` in `includes/workspace/tasks.php` turns `ws_agent_channel_filter()` into the task lists' rule (agent channels and the discussions under them); `ws_tasks_agent_sql()` and `ws_tasks_agent_keeps()` apply it (`tests/workspace_task_agent_channels_test.php`).
+- My Tasks (`ws_tasks_list()` with `agent_channels`), the Planning Board (`ws_board()`, `ws_plan_grid()`) and the Work Calendar (`ws_calendar()`) leave them out; each has the same "Agent channels" toggle (`agents=1` in the address), shown once the reader may read an agent channel. `GET /workspace/tasks` takes `agent_channels` as the decisions route does.
+- "Mine" keeps a task assigned to the reader whatever its channel; its row names the agent channel. Readers that pass no `agent_channels` (a channel's own Tasks tab, the palette, the assistants' tools) are unchanged.
+- Counts follow their lists (#9960): the dashboard's Team card and the Pipeline card's tasks box leave agent channels' tasks out (`ws_tasks_agent_out_sql()`); Today, the My tasks and Week cards and the tasks done figure count the reader's own tasks, kept whatever the channel.
+
+## What is unchanged?
+- The channel's own Decisions tab, its board and brief, the agent's memory digest, and who may read a decision.

@@ -210,6 +210,16 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ws_agent_duty();           // 11.0.217
 	upgrade_2026_11_0_ws_agent_feedback();       // 11.0.218
 	upgrade_2026_11_0_ws_quiet_hours();          // 11.0.219
+	upgrade_2026_11_0_ws_link_previews();        // 11.0.220
+	upgrade_2026_11_0_auto_dialog_open();        // 11.0.221
+	upgrade_2026_11_0_ws_highlights();           // 11.0.222
+	upgrade_2026_11_0_auto_dialog_daily();       // 11.0.223
+	upgrade_2026_11_0_page_click_daily();        // 11.0.224
+	upgrade_2026_11_0_prototype_comments();      // 11.0.225
+	upgrade_2026_11_0_content_review();          // 11.0.226
+	upgrade_2026_11_0_site_push();               // 11.0.227
+	upgrade_2026_11_0_page_bundle();             // 11.0.228
+	upgrade_2026_11_0_site_push_watch();         // 11.0.229
 
 }
 
@@ -2642,6 +2652,53 @@ function upgrade_2026_11_0_prototype_links() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Designs: the draft pages of a design can be shared as a clickable prototype by a link, for the team or for anyone who has it, with an expiry, an optional password and a way to revoke it, from the Visual Page Editor.');
+
+}
+
+// Comments on a prototype opened by its share link (2026.11.0, 11.0.225;
+// includes/fn/prototype_comments.php, prototype_comment.php).
+//
+// prototype_comments keeps one row per comment: the link it was written on,
+// the design (style_id, deleted with it), the draft page, the node (the page
+// tree's _id) and the place inside the node as two percentages in
+// hundredths (0-10000). parent_id is 0 for the first comment of a thread and
+// the first comment's id for an answer. author_name is the name the guest
+// typed, or the staff member's; user_id is 0 for a guest. body is plain
+// text. created_at, resolved_at (0: open) and resolved_by are unix times and
+// a user id, as on prototype_links. The guest's address is not kept.
+// idx_link gives a link's comments and its open count, idx_page a page's
+// comments in id order and the newest id the editor's heartbeat compares,
+// idx_style the delete with the design, idx_parent a thread's answers.
+//
+// prototype_links.allow_comments is the link's "Allow comments", off on every
+// link there is.
+function upgrade_2026_11_0_prototype_comments() {
+
+	install_create_table('prototype_comments', "CREATE TABLE prototype_comments (
+		id           INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		link_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		style_id     INT UNSIGNED NOT NULL DEFAULT 0,
+		page_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		node_id      VARCHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT '',
+		pos_x        SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+		pos_y        SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+		parent_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		author_name  VARCHAR(60) NOT NULL DEFAULT '',
+		user_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		body         TEXT NOT NULL,
+		created_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		resolved_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		resolved_by  INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_link (link_id, resolved_at),
+		KEY idx_page (page_id, id),
+		KEY idx_style (style_id),
+		KEY idx_parent (parent_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_add_column('prototype_links', 'allow_comments', "TINYINT(1) UNSIGNED NOT NULL DEFAULT 0");
+
+	install_note('Designs: a prototype share link can allow comments, so the customer who opens it can pin comments on its pages for the designer.');
 
 }
 
@@ -6976,5 +7033,327 @@ function upgrade_2026_11_0_ws_quiet_hours() {
 	install_add_column('ws_profiles', 'quiet_hours', 'TEXT NULL');
 
 	install_note('Workspace: a person can keep quiet hours; outside their hours a Workspace notification reaches their phone when the quiet range ends.');
+
+}
+// The link preview of a Workspace message (11.0.220,
+// includes/workspace/link_preview.php): one row per message whose first web
+// address is to be read or was read. state: waiting (written at send or edit,
+// read by the general job), shown (the card's fields kept), none (read,
+// nothing to show; never read again), removed (the writer took the card
+// away). An edit that changes the address writes the row again as waiting;
+// a deleted message loses it, a discussion purged with its messages loses its
+// rows by channel_id. Times are unix seconds, read_at 0 while waiting. No
+// backfill: messages sent before this step get no card.
+function upgrade_2026_11_0_ws_link_previews() {
+
+	install_create_table('ws_link_previews', "CREATE TABLE ws_link_previews (
+		message_id  INT UNSIGNED NOT NULL,
+		channel_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		url         VARCHAR(2048) NOT NULL DEFAULT '',
+		title       VARCHAR(300) NOT NULL DEFAULT '',
+		description VARCHAR(500) NOT NULL DEFAULT '',
+		site_name   VARCHAR(100) NOT NULL DEFAULT '',
+		state       ENUM('waiting','shown','none','removed') NOT NULL DEFAULT 'waiting',
+		created_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		read_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (message_id),
+		KEY idx_state (state, created_at),
+		KEY idx_read (read_at),
+		KEY idx_channel (channel_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Workspace: the first web address of a new message is read once for a preview card; it can be switched off in the Workspace settings.');
+
+}
+
+// When, to whom and where an auto dialog opens (11.0.221, includes/fn/
+// auto_dialogs.php): open_on (delay, scroll, leave), open_scroll (percent of
+// the page, read with scroll), audience (all, cart), place (centre, top,
+// bottom, corner). Each default reads as an auto dialog always opened:
+// after its delay, for everyone, centred. No index and no backfill; the
+// readers take an unknown value as the default too.
+function upgrade_2026_11_0_auto_dialog_open() {
+
+	if (!install_table_exists('auto_dialogs')) {
+
+		install_skipped('auto_dialogs does not exist, skipped');
+
+		return;
+
+	}
+
+	install_add_column('auto_dialogs', 'open_on', "VARCHAR(10) NOT NULL DEFAULT 'delay' AFTER page");
+	install_add_column('auto_dialogs', 'open_scroll', "TINYINT UNSIGNED NOT NULL DEFAULT 50 AFTER open_on");
+	install_add_column('auto_dialogs', 'audience', "VARCHAR(10) NOT NULL DEFAULT 'all' AFTER open_scroll");
+	install_add_column('auto_dialogs', 'place', "VARCHAR(10) NOT NULL DEFAULT 'centre' AFTER audience");
+
+	install_note('Auto dialogs: a dialog can open on scroll or when the visitor is leaving, only for visitors with a cart, and as a bar or a corner card.');
+
+}
+
+// A reader's highlights on a message (11.0.222, includes/workspace/
+// highlights.php): one row per marked place, kept by its text (quote) and
+// which occurrence of it in the message's plain text it is. scope is 'me'
+// (only its maker sees it) or 'all'. No unique key: the quote is too long
+// for one, so the same place twice is caught in code. No backfill.
+function upgrade_2026_11_0_ws_highlights() {
+
+	install_create_table('ws_highlights', "CREATE TABLE ws_highlights (
+		id         INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		message_id INT UNSIGNED NOT NULL DEFAULT 0,
+		channel_id INT UNSIGNED NOT NULL DEFAULT 0,
+		user_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		scope      VARCHAR(10) NOT NULL DEFAULT 'me',
+		quote      VARCHAR(1000) NOT NULL DEFAULT '',
+		occurrence SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+		note       VARCHAR(255) NOT NULL DEFAULT '',
+		created_at INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_message (message_id),
+		KEY idx_user (user_id, id),
+		KEY idx_channel (channel_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Workspace: a reader can highlight a part of a message for everyone or only for themselves.');
+
+}
+
+// Pop-up counts (11.0.223, includes/fn/auto_dialog_counts.php): one row per
+// auto dialog and site day with how often it was shown, closed and taken
+// up, raised by one INSERT ... ON DUPLICATE KEY UPDATE per event. idx_day
+// serves the screens' 30-day sum and the 400-day sweep. No visitor data and
+// no backfill: nothing was counted before this step.
+function upgrade_2026_11_0_auto_dialog_daily() {
+
+	install_create_table('auto_dialog_daily', "CREATE TABLE auto_dialog_daily (
+		auto_dialog_id INT UNSIGNED NOT NULL,
+		day            DATE NOT NULL,
+		shown          INT UNSIGNED NOT NULL DEFAULT 0,
+		closed         INT UNSIGNED NOT NULL DEFAULT 0,
+		taken          INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (auto_dialog_id, day),
+		KEY idx_day (day)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Auto dialogs: each pop-up counts how often it was shown, closed and taken up; the list and edit screens show the last 30 days.');
+
+}
+
+// Clicks and scroll depth (11.0.224, includes/fn/page_clicks.php): per page,
+// site day and device a views row, a row per deepest tenth reached, a row
+// per element clicked (its part of the page, link or button, the folded
+// address and label) and, past 200 elements a page and day, one "other"
+// row; each raised by one INSERT ... ON DUPLICATE KEY UPDATE on the sha1 of
+// its parts. The parts compare byte by byte (ascii_bin, utf8mb4_bin), the
+// same identity as the key, so two labels differing in case or accent never
+// sum into one. idx_kind_day_page serves the period's page list, which reads
+// the views and depth rows only, and the sweep kind by kind; idx_page_day
+// one page's figures. No visitor data and no backfill.
+function upgrade_2026_11_0_page_click_daily() {
+
+	install_create_table('page_click_daily', "CREATE TABLE page_click_daily (
+		id       CHAR(40) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+		day      DATE NOT NULL,
+		page_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		device   ENUM('desktop','mobile','tablet') NOT NULL DEFAULT 'desktop',
+		kind     ENUM('view','depth','element','other') NOT NULL DEFAULT 'view',
+		depth    TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		area     VARCHAR(8) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT '',
+		role     VARCHAR(6) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT '',
+		url      VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL DEFAULT '',
+		label    VARCHAR(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL DEFAULT '',
+		hits     INT UNSIGNED NOT NULL DEFAULT 0,
+		elements SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_kind_day_page (kind, day, page_id),
+		KEY idx_page_day (page_id, day)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Clicks and scrolling: the counter of which links and buttons a page\'s visitors click and how far they scroll is ready; it counts once switched on in Features.');
+
+}
+
+// Content review (11.0.226, includes/fn/content_review.php): one row per
+// page or collection record that keeps a person, a review date or an
+// interval, keyed by kind and id, so no column lands on page or forms. A
+// date not set is NULL, never a zero date. announced_on is the review date
+// last announced as content.review_due, so the job announces an item once
+// per date. idx_review_on serves the due filters and the announce, idx_user
+// a person's own items and the sweep. No backfill: nothing kept a person or
+// a date before this step. Columns confirmed by the architect.
+function upgrade_2026_11_0_content_review() {
+
+	install_create_table('content_review', "CREATE TABLE content_review (
+		item_kind       VARCHAR(10) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT '',
+		item_id         INT UNSIGNED NOT NULL DEFAULT 0,
+		user_id         INT UNSIGNED NOT NULL DEFAULT 0,
+		review_on       DATE NULL DEFAULT NULL,
+		interval_months TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		reviewed_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		reviewed_by     INT UNSIGNED NOT NULL DEFAULT 0,
+		announced_on    DATE NULL DEFAULT NULL,
+		PRIMARY KEY (item_kind, item_id),
+		KEY idx_review_on (review_on),
+		KEY idx_user (user_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Content review: pages and collection records can keep a responsible person and a date by which they are read again.');
+
+}
+
+// Visitor notifications (11.0.227, includes/fn/site_push.php): a site
+// visitor's browser subscribed to the site's news without an account, the
+// messages sent from the panel and one queue row per message and browser.
+// Tables of their own, so the panel's push_subscriptions and push_queue
+// never hold a visitor's row. site_push_subscription keeps the browser's
+// endpoint (unique by its hash), its keys, the push service it belongs to
+// (so the sender can hold one service), the page's language and the hash of
+// the secret handed back once, by which the worker fetches its message;
+// user_id is set only when the visitor was signed in, so the privacy export
+// and erasure find the row (the account's contact is reached through it).
+// site_push_message keeps the text, the kind (0 news to every subscriber,
+// 1 a test, 2 a stock notice, 3 an order's moment: only 0 is listed as sent
+// in the panel) and the counts the panel shows; url is a path inside the
+// site, without the host, opened by the worker on its own origin. site_push_queue is keyed by message and
+// subscription; idx_due serves the sender's pass, idx_subscription the
+// worker's fetch. No backfill: nothing kept a visitor's subscription before
+// this step. Columns confirmed by the architect.
+function upgrade_2026_11_0_site_push() {
+
+	install_create_table('site_push_subscription', "CREATE TABLE site_push_subscription (
+		id            INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		endpoint      VARCHAR(500) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT '',
+		endpoint_hash CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT '',
+		p256dh        VARCHAR(100) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT '',
+		auth          VARCHAR(32) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT '',
+		service       VARCHAR(10) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT '',
+		secret_hash   CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT '',
+		language      VARCHAR(10) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT '',
+		user_id       INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at    INT UNSIGNED NOT NULL DEFAULT 0,
+		last_seen_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		fail_count    SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uq_endpoint (endpoint_hash),
+		UNIQUE KEY uq_secret (secret_hash),
+		KEY idx_user (user_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('site_push_message', "CREATE TABLE site_push_message (
+		id            INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		title         VARCHAR(60) NOT NULL DEFAULT '',
+		body          VARCHAR(200) NOT NULL DEFAULT '',
+		url           VARCHAR(500) NOT NULL DEFAULT '',
+		kind          TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		created_by    INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at    INT UNSIGNED NOT NULL DEFAULT 0,
+		queued_count  INT UNSIGNED NOT NULL DEFAULT 0,
+		sent_count    INT UNSIGNED NOT NULL DEFAULT 0,
+		failed_count  INT UNSIGNED NOT NULL DEFAULT 0,
+		removed_count INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_kind_created (kind, created_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('site_push_queue', "CREATE TABLE site_push_queue (
+		message_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		subscription_id INT UNSIGNED NOT NULL DEFAULT 0,
+		status          TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		attempts        TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		next_at         INT UNSIGNED NOT NULL DEFAULT 0,
+		sent_at         INT UNSIGNED NOT NULL DEFAULT 0,
+		fetched_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (message_id, subscription_id),
+		KEY idx_due (status, next_at),
+		KEY idx_subscription (subscription_id, status)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Visitor notifications: the tables for browsers subscribed to the site\'s news and the messages sent to them are ready; nothing is offered to visitors until the switch is turned on in Features.');
+
+}
+
+// Release bundles (11.0.228, includes/fn/page_bundles.php): several drafts of
+// a visual design prepared together, published at one moment and taken back
+// together. page_bundle is the named list: its status (open, scheduled,
+// published, partial, reverted), an optional publish time for the general
+// job and who set it (the job publishes in that person's name), who made,
+// published and took it back, and the last failure named on it.
+// page_bundle_item is one draft in it: a new page (live_page_id 0) or a
+// replacement standing for a live page, with that page's state when the copy
+// was made (live_state, the SHA-1 of its tree, title and description) so a
+// hand publish since is seen as "changed since". revision_before and
+// written_state are filled when the bundle is published, for the take-back.
+// A draft is in one open bundle and a live page has one replacement in one
+// open bundle; that is checked in code, since a closed bundle keeps its rows.
+// idx_status_publish serves the job's pass, idx_draft and idx_live the holds.
+// No backfill: nothing was bundled before this step. Columns confirmed by the
+// architect.
+function upgrade_2026_11_0_page_bundle() {
+
+	install_create_table('page_bundle', "CREATE TABLE page_bundle (
+		id             INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		name           VARCHAR(100) NOT NULL DEFAULT '',
+		status         VARCHAR(16) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT 'open',
+		publish_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		scheduled_by   INT UNSIGNED NOT NULL DEFAULT 0,
+		created_by     INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		published_by   INT UNSIGNED NOT NULL DEFAULT 0,
+		published_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		reverted_by    INT UNSIGNED NOT NULL DEFAULT 0,
+		reverted_at    INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		failed_page_id INT UNSIGNED NOT NULL DEFAULT 0,
+		failed_reason  VARCHAR(500) NOT NULL DEFAULT '',
+		PRIMARY KEY (id),
+		KEY idx_status_publish (status, publish_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('page_bundle_item', "CREATE TABLE page_bundle_item (
+		id              INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		bundle_id       INT UNSIGNED NOT NULL DEFAULT 0,
+		draft_page_id   INT UNSIGNED NOT NULL DEFAULT 0,
+		live_page_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		live_state      CHAR(40) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT '',
+		status          VARCHAR(16) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT 'waiting',
+		revision_before INT UNSIGNED NOT NULL DEFAULT 0,
+		written_state   CHAR(40) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT '',
+		added_by        INT UNSIGNED NOT NULL DEFAULT 0,
+		added_at        INT UNSIGNED NOT NULL DEFAULT 0,
+		written_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uq_bundle_draft (bundle_id, draft_page_id),
+		KEY idx_draft (draft_page_id),
+		KEY idx_live (live_page_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Release bundles: the tables for drafts prepared, published and taken back together are ready; nothing changes on the site until a bundle is made.');
+
+}
+
+// Visitor notifications for one device (11.0.229, includes/fn/site_push.php):
+// a browser that asked to be told about one record waits for it here, a
+// back-in-stock request (kind 2, record_id stock_notify.id) or an order's
+// address (kind 3, record_id ship_tos.id; an order's rows are found by its
+// addresses, so there is no order_id). kind is the message kind the wait
+// ends in. moments holds the bits of the moments already sent, so each is
+// sent once; the last moment deletes the row, so the table is no history.
+// Rows go with the subscription, the record and, after 180 days, the
+// sender's tidy-up. idx_subscription serves the delete by subscription.
+// No backfill: nothing waited for a record before this step. Columns
+// confirmed by the architect.
+function upgrade_2026_11_0_site_push_watch() {
+
+	install_create_table('site_push_watch', "CREATE TABLE site_push_watch (
+		kind            TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		record_id       INT UNSIGNED NOT NULL DEFAULT 0,
+		subscription_id INT UNSIGNED NOT NULL DEFAULT 0,
+		moments         TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		created_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (kind, record_id, subscription_id),
+		KEY idx_subscription (subscription_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Visitor notifications: a browser can now wait for one product to come back or one order to ship; nothing changes until the switch is turned on in Features.');
 
 }

@@ -11,7 +11,7 @@ description: The /task (/görev) command in the composer: Enter on its preview c
 - Enter (or Send) creates with `pending.confirm()` only when the card is still on screen (`card.isConnected`), no hard clash holds it (leave, holiday: `check.hard`) and the text as `send()` posts it (`tokens(raw)`) equals `pending.body`. A changed text gets a fresh preview.
 - A hard clash is never forced from Enter: only "Create it anyway" sends `force: 1` (shown to whoever `may_override`). The line "Enter: create · Esc: cancel" (`preview_keys`) is drawn only without a hard clash and not on a touch screen, where Enter starts a new line.
 - The Create button also sends the previewed text, not what the box holds now. Esc (`cancelCompose()`), Cancel, a sent message and opening a channel set `pending` to null.
-- The argument popup after "/görev " never takes Enter unless a row was picked with the arrows, and `send()` closes it, so Enter still reaches the preview (workspace-command-registry.md).
+- The argument popup after "/görev " never takes Enter unless a row was picked with the arrows, and `send()` closes it, so Enter still reaches the preview (workspace-command-picker.md).
 - /price and /stock cards are unchanged: Enter sends the text again and draws the card anew; only Save writes (workspace-record-commands.md).
 
 ## How does the / picker find a command?

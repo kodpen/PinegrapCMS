@@ -1,20 +1,28 @@
 ---
 name: owner-question-picture
-description: A question to the owner about a picture or an earlier message says which one (owner 2026-11-15): the picture in the question's box or its message number named in the question
+description: A question to the owner about a picture carries the picture inside its own box (owner 2026-11-15 and 2026-11-16): how it is asked today, and what plan agent-question-picture changes
 ---
 
-## What did the owner say? (owner, 2026-11-15, in the architect's window)
-- Asking for the message reference feature (`plans/message-reference.md`), on the architect's questions in the agent channel: "şu anda senin sorduğun sorularda bu referans olmadığı için ben hangi görselden bahsediyorsun anlıyamıyorum".
-- A question that says "this look" without saying which picture cannot be answered by him: between a picture and its question other messages arrive, and a channel holds many pictures.
+## What did the owner say?
+- Owner (2026-11-15, in the architect's window), on questions that said "this look" with the picture somewhere above: "şu anda senin sorduğun sorularda bu referans olmadığı için ben hangi görselden bahsediyorsun anlıyamıyorum". Between a picture and its question other messages arrive, and a channel holds many pictures.
+- Owner (2026-11-16, in the architect's window), on questions that named the picture's message with a tag: "çizimlerimizde ajan sorusu tek görsel de sorunun solunda, her seçenek için görsel de seçenek içinde olacaktı. ancak sen resmi atıp mesaj etiketi ile soruya dahil ediyorsun".
+- So the picture belongs in the question's box, as in the drawing he approved (`workspace/agent-questions/drawing.html`); a tag in the question's text is not enough.
 
-## How does a question name its picture until the feature lands?
-- The picture is posted as a file right above the question (`php tools/ws_post.php --file=PATH "text"`), and the question's own text names that message's number.
-- Or the picture sits in the question's box: an option's `file_id` on `POST /workspace/channels/{id}/polls`, a picture posted in the same channel (`workspace/poll-option-parts.md`). `tools/ws_poll.php ask` writes it as an option ending in `:: #N`, N the picture's message number in the poll's channel.
-- One picture a question: several screens are stacked into one picture with their names written on it.
-- A question already asked is not asked again for this; he is not reminded (`workflow/owner-contact-channel.md`).
+## How is a question about one picture asked today?
+- The sheet is posted in the channel (`php tools/ws_post.php --file=PATH "text"`, it prints the message number N): the box takes only a picture posted there (`workspace/poll-option-parts.md`).
+- The question carries it on both options and has no "Other" row: `php tools/ws_poll.php ask --recommend "question" "Evet, böyle çıksın :: #N" "Hayır, böyle çıkmasın :: Ne değişsin, bu sorunun altına yazın. :: #N"`.
+- Why no "Other": one answer, a picture on every option and no "Other" row is the only case in which the box draws a large picture beside the options (`workspace/poll-box.md`). What he wants changed he writes under the question.
+- One picture a question: several screens are stacked into one sheet with their names written on it. First asked so in poll 81 (agent channel message 6427).
 
-## And once the feature has landed?
-- The question carries the reference itself (`<#message:N>`): he opens the picture from the question. MR4 of the plan writes that as the agents' working rule and corrects this file.
+## How is a question that compares looks asked?
+- Each option carries its own picture (`label :: description :: #N`, one posted picture per option): the large picture follows the option pointed at. With an "Other" row each option shows its picture as a thumbnail in its row.
+
+## When does a question name a message with a tag?
+- Only when it is about an earlier message that is not a picture (`<#message:N>`, `workspace/message-reference.md`).
+
+## What does plan agent-question-picture change?
+- The question is asked with its picture in one call (`ws_poll.php ask --file=PATH`), with no message of its own for the picture, and "Şunu değiştir" comes back as the words field under the options. QP3 of `plans/agent-question-picture.md` corrects this file.
 
 ## Is this an owner decision?
-- His words are the reason; how a question names its picture is the sessions' working rule, the architect's to change.
+- His words are the reason; how a question carries its picture is the sessions' working rule, the architect's to change.
+- A question already asked is not asked again for this; he is not reminded (`workflow/owner-contact-channel.md`).

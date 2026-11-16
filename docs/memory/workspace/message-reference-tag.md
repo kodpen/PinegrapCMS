@@ -1,11 +1,11 @@
 ---
 name: message-reference-tag
-description: The message tag <#message:N> (MR1, message_refs.php): a reference to another message resolved per reader (shown, hidden, gone), its plain words, the popup action, not a reply
+description: The message tag <#message:N> (#9816, message_refs.php): a reference to another message resolved per reader (shown, hidden, gone), its plain words, the popup action, not a reply
 ---
 
 ## What is it?
 - A tag kind `message` beside the record tags: `<#message:N>` in any text (message, discussion, poll, task, note). `ws_tag_type_keys()` lists it, so every token pattern finds it; it takes `#` only.
-- Not a site record: not in `ws_record_kinds()`, no change, drawer or customer, and no `ws_ref_types()` entry (no # picker). Copy as reference and the paste come in MR3.
+- Not a site record: not in `ws_record_kinds()`, no change, drawer or customer, and no `ws_ref_types()` entry (no # picker); made by Copy as reference or a paste (`message-reference.md`).
 - It is no answer and no mention: no discussion opens, nobody is told, no agent wakes. Mentions and application tells read user, dept and app tokens only.
 - Stored in `ws_refs` with `ref_type` 'message' (VARCHAR(20)), no schema change.
 
@@ -23,13 +23,10 @@ description: The message tag <#message:N> (MR1, message_refs.php): a reference t
 
 ## Where does the popup's data come from?
 - Panel action `ws_message_ref` (message_id) → `ws_message_ref_popup()`: the tag's right first, then the message's own `ws_message_payloads()` row; null message for a reader without the right or a deleted one.
-- A lone message tag gets no tag card (`ws_tag_card_html()` skips form and message): it stays a chip that opens the popup (MR2).
+- A lone message tag gets no tag card (`ws_tag_card_html()` skips form and message): it stays a chip that opens its card (`message-reference-card.md`).
 
 ## Tests?
 - `tests/workspace_message_ref_test.php`.
 
-## How does the chip open the message? (MR2, #9846)
-- `chipMenus()` hooks every `.ws-chip-message` once (`messageRefHook()`), so a message, a discussion, a poll's or an agent question's text, a forward, a note and the timeline all open it.
-- The agent card's frame: `cardHook()` / `cardShow()` with key `message:N`, class `ws-msgref-card` (24rem). Hover, keyboard focus or Enter, a tap; Escape, a click outside, leaving it (not after a tap) or the reader's scroll closes it.
-- It shows the sender, number, channel and time, the words cut at 12rem with a fade, a picture (opens the viewer), a file, a poll's options with counts, and "Go to the message" (`messageRefGo()`: the open channel scrolls to it, elsewhere its address opens).
-- A reader without the right, or a deleted message, sees only the server's sentence. The chip has its own info tone; one the reader may not see stays muted.
+## Tests?
+- `tests/workspace_message_ref_test.php`.

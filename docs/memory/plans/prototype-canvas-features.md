@@ -6,13 +6,13 @@ description: Plan prototype-canvas, features F1 to F14: what a frame of the Prot
 ## What does a frame show?
 - (F1) The page's own picture at desktop width, scaled to the frame, script-free, taking no click and no focus. While it loads, or when it cannot be drawn, today's band sketch.
 - (F2) A head above the picture: the page's name; "Start" on the start page (the design's first tab); the selected frame's name in the accent colour.
-- (F3) A long page is cut at a fixed height with a fade. A foot under it says how many links lie below the cut ("+3 links below"); their arrows leave from the foot.
-- (F4) Shared components are frames of their own in a column at the left under "Shared parts", each saying on how many pages it sits. A page's picture shows them, as the page does, but marks no link inside them.
+- (F3) A long page is cut at a fixed height with a fade; a page that ends at the cut gets none. A foot on the fade, at the picture's lower edge, says how many links lie below the cut ("+3 links below"); their arrows leave from the foot. So every page frame has one height.
+- (F4) Shared components are frames of their own in a column at the left under "Shared parts", each saying on how many pages it sits; a column that would be taller than the page grid goes on in a further column beside it. A page's picture shows them, as the page does, but marks no link inside them.
 - (F5) A link is marked where it sits on the picture: a rounded rectangle over its element, blue when it leads somewhere, red when broken. The selected frame shows all its marks; another frame only the marks that start or end a drawn arrow.
 
 ## How are the frames arranged?
 - (F6) A grid, not one row: eight frames a row, then the next row.
-- (F7) Sections: one per tab group in the strip's order, headed by the group's name; pages in no group under "Pages" when the design has groups, with no heading when it has none. Inside a section the pages follow the flow from the start page (breadth-first over the links, the strip's order between equals); pages nothing reaches come last.
+- (F7) Sections: one per tab group in the strip's order, headed by the group's name; pages in no group under "Pages" when the design has groups (first when the first tab is one of them, else last; architect, 2026-11-16, message 5878), with no heading when it has none. Inside a section the pages follow the flow from the start page (breadth-first over the links, the strip's order between equals); pages nothing reaches come last.
 - (F8) Targets outside the design (other site pages, other sites, contact addresses, anchors, hidden, broken) stay chips, in a column at the right under "Outside this design", grouped as today.
 - (F9) A frame or chip moved by hand keeps its place as today. "Tidy up" in the bar puts everything back to this arrangement, after a confirmation saying it does so for every editor of the design.
 

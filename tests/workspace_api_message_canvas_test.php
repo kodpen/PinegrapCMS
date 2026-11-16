@@ -102,7 +102,7 @@ function test_workspace_api_message_canvas_is_read_once_for_a_page()
 	$source = file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/api_resources.php');
 
 	pg_assert_contains('$canvases = function_exists(\'ws_canvas_message_states\') ? ws_canvas_message_states(ws_api_message_canvas_file_ids($rows)) : array();', $source);
-	pg_assert_contains('$checks, $forwards, $group_cards, $canvases);', $source);
+	pg_assert_contains('$checks, $forwards, $group_cards, $canvases, $link_previews);', $source);
 	pg_assert_contains('ws_canvas_message_states(ws_api_message_canvas_file_ids(array($row)))', $source);
 
 	$canvas = file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/canvas.php');

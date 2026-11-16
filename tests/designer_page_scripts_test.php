@@ -127,7 +127,8 @@ function test_page_scripts_preview_table_mirrors_the_server()
 	pg_assert_true(count($rows) >= 2, '_SD_PAGE_SCRIPTS rows are read');
 
 	$server = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/designer.php')
-		. (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/designer_fx.php');
+		. (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/designer_fx.php')
+		. (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/listen.php');
 	foreach ($rows as $file) {
 		pg_assert_true(is_file(PG_FUNCTIONS_DIR . '/' . $file), $file . ' exists');
 		pg_assert_true(strpos($server, "'/" . $file) !== false || strpos($server, "'" . $file . "'") !== false, $file . ' is added by the server');
@@ -137,6 +138,12 @@ function test_page_scripts_preview_table_mirrors_the_server()
 	$body = substr($php, 1, strrpos($php, '/') - 1);
 	pg_assert_same('assets/js/pg_bs_tips.js', isset($rows[str_replace("\\'", "'", $body)]) ? $rows[str_replace("\\'", "'", $body)] : null);
 	pg_assert_same('assets/js/pg_theme_switcher.js', isset($rows['data-pg-theme-switcher']) ? $rows['data-pg-theme-switcher'] : null);
+
+	// The "Listen" block's script, found with the server's expression.
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/listen.php');
+	$listen = pg_listen_pattern();
+	$listen = substr($listen, 1, strrpos($listen, '/') - 1);
+	pg_assert_same('assets/js/pg_listen.js', isset($rows[$listen]) ? $rows[$listen] : null, 'the Preview loads pg_listen.js with the server\'s expression');
 }
 
 // The framework's script is the fallback for a page without the design's

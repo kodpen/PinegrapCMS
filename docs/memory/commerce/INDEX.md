@@ -61,9 +61,10 @@
 - cart-quotes-api.md: Cart quotes in the external API (PR #3298): the five routes, orders scopes, dry run, the shared *_check() functions with the screens, the link answered once, the cart_quote.* webhook events
 - cart-quotes-screens.md: Cart quote list and new-quote form details: the products cell, New link confirmation, a deleted contact, quantity checks and redraw
 - cart-quotes.md: Cart quotes (Sepet teklifi): cart_quotes / cart_quote_items, the hashed link, cart_quote.php (GET confirm, POST fills the cart), plan rules, ordered on completion, contact holder, export and erasure
-- cart-recovery-figures.md: Recovered carts figures (PR #9796): what left, reached, came back, recovered and revenue count; the Visitors section, the dashboard card, GET /reports/cart-recovery [decision: here]
-- cart-recovery-touches.md: Recovered carts record (cart_recovery_touch, 11.0.216, PR #9778): what a touch row holds, the places that write it, the 6-hour left and 7-day recovered rule, the no-touch row, readiness [decision: here]
-- cart-recovery-whatsapp-page.md: Recovered carts: a WhatsApp single-use offer key as a touch and its use as clicked/restored, a pop-up taken up on a page (channel page, source popup), the left-cart test of 6 hours to 30 days
+- cart-recovery-figures.md: Recovered carts figures (PR #9796): what left, reached, came back, recovered and revenue count; the Visitors section, the dashboard card, GET /reports/cart-recovery [decision: decisions-made-product-57.md]
+- cart-recovery-touches.md: Recovered carts record (cart_recovery_touch, PR #9778): the touch row, its writers, the 6-hour left and 7-day recovered rule, the no-touch row, readiness, what was left out [decision: decisions-made-product-56.md, decisions-made-schema-21.md]
+- cart-recovery-weak.md: What weakens cart recovery (CR3): the five rules over a period's left carts, their shares and minimums, where the facts come from, the block in the Recovered carts section
+- cart-recovery-whatsapp-page.md: Recovered carts: a WhatsApp single-use offer key as a touch and its use as clicked/restored, a pop-up taken up on a page (channel page, source popup), the left-cart test of 6 hours to 30 days [decision: here]
 - cart-save-for-later.md: Opt-in Save for Later: cart_action.php endpoint, pg_order_item_active_sql() in every cart and checkout reader, what still counts a saved line, lines dropped when the order is placed (#732).
 - cart-stock-below-minimum.md: Checkout stock check against a product's minimum quantity: a line the stock can only cover below the minimum is removed, not cut (bundle path); the plain check_inventory() path still cuts it
 - cart-tax-estimate.md: Cart widget tax (pg_cart_estimate_tax): stored line taxes while they fit, else the default-rate preview; the order discount's share off as the checkout takes it (#3455, #9045)
@@ -90,6 +91,7 @@
 - country-names-in-addresses.md: The order view's address blocks and the address book name the stored country code in the site language; the country tokens keep the code
 - currency-form-rules.md: What the currency create/edit screens refuse and how the currency list sorts
 - currency-names-display.md: Stored currency names shown through pg_currency_label() in the panel language; the currency list's rate with the panel's separators (#4430)
+- customer-value-summary.md: Customer value summary (config_text customer_values): what counts, the customer key, the rebuild in the general job, the summary shape, the 200k-order measurement (#9995)
 - delivery-date-error-answer.md: get_delivery_date() (shipping.php) always answers with a delivery_date key, '' on every error, because its seven callers read it without a check
 - edit-product-undrawn-columns-kept.md: Edit Product's save leaves out the shipping, customs, zone, gift card and unlabelled custom-field columns the screen does not draw.
 - eu-vat-check.md: EU VAT ids checked against VIES: the clean function and patterns per member state, the REST request, answer mapping, a day's cache, the reverse-charge decision; where it is wired [decision: decisions-made-product-19.md, decisions-made-product-26.md]
@@ -140,6 +142,7 @@
 - merchant-center-issues.md: Google Merchant Center product issues: when they are read, how the summary merges contexts, the System Status row
 - merchant-center-push.md: Per-product push to Google Merchant Center on the outbound marketplace layer (#4389, #4423): managed provider, mapping from the feed, queue, supplemental source [decision: here]
 - merchant-center.md: Google Merchant Center via the Merchant API (PR #3213): feed.php as a fetched data source, cached product issues on System Status, state in config.product_feeds
+- minimum-order.md: A contact group's minimum order value (WS4): the one setting, the highest of a customer's groups, guests, the amount compared, the refusal at submit and the cart's warning
 - n11-api-facts.md: n11 REST API facts for the connector: headers, connection test, async price/stock task flow, REJECT vs IN_QUEUE, order endpoints and page cap, GMT+3 dates, discount fields, stockCode.
 - n11-old-address-order.md: The 2026.11.0 data step 11.0.138 that swaps old n11-imported ship_tos rows (province in city, town in state) into the checkout's order (#3836) [decision: decisions-made-product-12.md]
 - n11-warehouse.md: Products n11 ships from its own warehouse (n11depom): read into the catalogue with sender=ALL and marked, their stock never pushed, their orders not pulled [decision: decisions-made-marketplace.md]
@@ -147,6 +150,7 @@
 - offer-donation-lines.md: Donation lines and offers: never the cheapest item, never discounted by a product offer, not counted toward "cart quantity", their typed amount kept when offers are taken off the cart (#987, PR #1259)
 - offer-gift-lines.md: An offer's gift line ('add product' result): the price it is charged at (never below zero), which recipient it goes to with one or several recipients, the unshipped group 0
 - offer-gift-refusal.md: How a removed offer gift stays out of the cart, and when the refusal is forgotten in recipient-scope offers (#7664)
+- offer-group-condition.md: Offer condition "The customer is in the contact group" (WS1, #9986): one offer_conditions row, the signed-in customer's contact, a guest never; a quantity break for a group with the products rule
 - offer-order-discount-ladder.md: Tiered order discount (ladder) and how the order discount is chosen: rungs, nothing below the first rung, every valid order discount weighed against the final subtotal
 - offer-percent-rounding.md: A coupon (offer code) percentage as a figure (order, product, gift, shipping): the exact product rounded half away from zero, pg_percent_of() / pg_percent_off(), any PHP version (PR #1367)
 - offer-rule-gift-lines-not-counted.md: An offer's required products, group condition and up-sell count only lines the shopper added (added_by_offer = 0), so a gift cannot keep its own offer alive

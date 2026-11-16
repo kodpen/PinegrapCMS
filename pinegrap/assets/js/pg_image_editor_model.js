@@ -906,6 +906,24 @@
         }).map(function (l) { return l.id; });
     }
 
+    // Tools whose own press is Select's: the key changes nothing there.
+    var PRESS_OWN = ['select', 'sticker'];
+
+    // Whether a press with tool is Select's press (startDrag()) instead of
+    // the tool's own: the left button with Ctrl held (Cmd on a Mac, where
+    // Ctrl and a click is the context menu's). state { mac, cropping,
+    // typing, placing (a path or a polygon), editing (a path's points),
+    // recording }: the tool's own work under way keeps the press.
+    function pressSelects(tool, state, e) {
+        var s = state || {}, ev = e || {};
+
+        if (!(s.mac ? ev.metaKey : ev.ctrlKey) || (ev.button > 0) || (PRESS_OWN.indexOf(tool) >= 0)) {
+            return false;
+        }
+
+        return !(s.cropping || s.typing || s.placing || s.editing || s.recording);
+    }
+
     // The upright box around a layer's drawn extent in the rotated space.
     function drawnBounds(l) {
         if (!warpOn(l) && !puppetOn(l)) {
@@ -4662,7 +4680,8 @@
                 { keys: ['Home'], label: 'keyStart' },
                 { keys: ['End'], label: 'keyEnd' },
                 { keys: ['I'], label: 'keyMarkIn' },
-                { keys: ['O'], label: 'keyMarkOut' }
+                { keys: ['O'], label: 'keyMarkOut' },
+                { keys: ['S'], label: 'keySplit' }
             ] });
         }
 
@@ -4680,6 +4699,14 @@
         ].concat(layers ? [{ keys: [], label: 'touchTwist' }] : []) });
 
         return groups;
+    }
+
+    // The letters the Animate tool keeps for its timeline (play, shuttle,
+    // trim, split) over the tool letters they would pick elsewhere.
+    var TIMELINE_LETTERS = 'jklios';
+
+    function timelineLetter(k) {
+        return (typeof k === 'string') && (k.length === 1) && (TIMELINE_LETTERS.indexOf(k.toLowerCase()) >= 0);
     }
 
     // The playhead after key k in the Animate tool, at now on a timeline of
@@ -4726,7 +4753,7 @@
     }
 
     var ACCESS = { KEY_TOOLS: KEY_TOOLS, toolForKey: toolForKey, toolKey: toolKey, trapFocus: trapFocus, twistAngle: twistAngle, keyMap: keyMap,
-        TOUCH_REACH: TOUCH_REACH, touchReach: touchReach, KEY_MODES: KEY_MODES, TIMELINE_FPS: TIMELINE_FPS, timelineKey: timelineKey, motionLong: motionLong };
+        TOUCH_REACH: TOUCH_REACH, touchReach: touchReach, KEY_MODES: KEY_MODES, TIMELINE_FPS: TIMELINE_FPS, timelineKey: timelineKey, timelineLetter: timelineLetter, motionLong: motionLong };
 
     // -- The selection's commands (pg_image_editor_actions.js) --
 
@@ -4925,6 +4952,16 @@
     var VIDEO_CACHE_BYTES = 192 * 1024 * 1024;
     var VIDEO_CACHE_MIN = 8;
     var VIDEO_CACHE_MAX = 90;
+    // Samples a source keeps fed past the one asked for, so a decoder that
+    // reorders (B-frames) gives it out without a flush; at most what the
+    // cache holds beside it (videoFeedAhead()).
+    var VIDEO_AHEAD = 12;
+    // Decoding on is chosen over a reset while the decoder stands at most
+    // this many samples before the asked frame's key frame.
+    var VIDEO_NEAR = 30;
+    // With nothing out of the decoder for this long a wait ends in a flush
+    // even while samples are queued or more could be fed.
+    var VIDEO_STALL_MS = 2000;
 
     function videoFail(code) {
         return new Error(code);
@@ -5729,9 +5766,67 @@
         };
     }
 
+    // How many samples a source keeps fed past the asked one with a cache
+    // of max frames: the frames decoded ahead stay cached until shown.
+    function videoFeedAhead(max) {
+        return Math.max(2, Math.min(VIDEO_AHEAD, max - 2));
+    }
+
+    // What a source does for seek point p (videoSeek()) over n samples. st
+    // is the decoder's place: next (the sample fed next, -1 when it needs
+    // a key frame), pending (sample index -> true: fed, not out yet),
+    // ahead (videoFeedAhead()); cached tells whether p.frame is in the
+    // cache. -> { reset, from, to, wait, flush }: reset the decoder first,
+    // feed samples from..to (none when from > to), wait for p.frame, and
+    // flush at once because nothing more can be fed. The decoder is kept
+    // fed st.ahead samples past the asked one on every request, a cached one
+    // too while the decoder stands past it; a frame fed and not out is
+    // waited for, never reset.
+    function videoFeedPlan(st, p, n, cached) {
+        var end = Math.min(n - 1, p.frame + st.ahead), r = { reset: false, from: 0, to: -1, wait: !cached, flush: false };
+
+        if (cached) {
+            if ((st.next >= 0) && (st.next > p.frame)) {
+                r.from = st.next;
+                r.to = end;
+            }
+
+            return r;
+        }
+
+        if ((st.next >= 0) && (st.pending[p.frame] || ((st.next <= p.frame) && (st.next >= p.from - VIDEO_NEAR)))) {
+            r.from = st.next;
+        } else {
+            r.reset = true;
+            r.from = p.from;
+        }
+
+        r.to = end;
+        r.flush = ((r.from <= r.to) ? r.to + 1 : st.next) > n - 1;
+
+        return r;
+    }
+
+    // What a source does when its wait for a frame ran out: 'wait' again
+    // while the decoder has samples queued, 'feed' st.ahead more samples
+    // while there are more, else 'flush'; 'flush' too once nothing came out
+    // for VIDEO_STALL_MS (idle, ms).
+    function videoOnWait(st, n, queue, idle) {
+        if (idle >= VIDEO_STALL_MS) {
+            return 'flush';
+        }
+
+        if (queue > 0) {
+            return 'wait';
+        }
+
+        return ((st.next >= 0) && (st.next < n)) ? 'feed' : 'flush';
+    }
+
     var VIDEO = {
         videoKind: videoKind, videoDemux: videoDemux, videoTrack: videoTrack, videoConfig: videoConfig, videoCodecName: videoCodecName,
-        videoSeek: videoSeek, videoCacheSize: videoCacheSize, videoCache: videoCache
+        videoSeek: videoSeek, videoCacheSize: videoCacheSize, videoCache: videoCache,
+        videoFeedAhead: videoFeedAhead, videoFeedPlan: videoFeedPlan, videoOnWait: videoOnWait
     };
 
     // -- Google Fonts choice of the Text tool (pg_image_editor_fonts.js) --
@@ -9768,6 +9863,35 @@
         return { left: left, right: right };
     }
 
+    // The clip a Split without a target takes at document time t (the play
+    // bar's button, the S key): the one selected clip when the playhead can
+    // split it (clipSplit()'s rule), else the clip the playhead can split,
+    // the lowest in the stack with clips on several rows; null for none. A
+    // hidden or locked clip is never taken.
+    function clipSplitPick(layers, selected, t) {
+        var list = layers || [], picked, i;
+
+        function can(l) {
+            return !!l && (l.type === 'video') && !l.hidden && !l.locked && !!clipSplit(l, t, '');
+        }
+
+        picked = (selected || []).map(function (id) {
+            return list.find(function (l) { return l.id === id; });
+        }).filter(function (l) { return l && (l.type === 'video'); });
+
+        if ((picked.length === 1) && can(picked[0])) {
+            return picked[0].id;
+        }
+
+        for (i = 0; i < list.length; i++) {
+            if (can(list[i])) {
+                return list[i].id;
+            }
+        }
+
+        return null;
+    }
+
     // The shortest document that keeps a layer's motion whole: its
     // entrance, the loop's delay and a tenth for it to run, then its exit
     // with its delay, in a row (the exit runs back from the end,
@@ -10070,7 +10194,7 @@
     var CLIP = {
         CLIP_SPEEDS: CLIP_SPEEDS, CLIP_TYPES: CLIP_TYPES, CLIP_MIN: CLIP_MIN, clipLayer: clipLayer, clipSpan: clipSpan, clipAt: clipAt,
         clipFit: clipFit, clipCanvas: clipCanvas, clipNew: clipNew, clipReplace: clipReplace, clipEnd: clipEnd, clipSound: clipSound, clipDetach: clipDetach, clipType: clipType,
-        clipRowKey: clipRowKey, clipRow: clipRow, clipRipple: clipRipple, clipTrim: clipTrim, clipMove: clipMove, clipSplit: clipSplit, clipLength: clipLength,
+        clipRowKey: clipRowKey, clipRow: clipRow, clipRipple: clipRipple, clipTrim: clipTrim, clipMove: clipMove, clipSplit: clipSplit, clipSplitPick: clipSplitPick, clipLength: clipLength,
         clipApply: clipApply, clipPart: clipPart, clipJoins: clipJoins, clipMotionNeed: clipMotionNeed, CLIP_STRIP_MAX: CLIP_STRIP_MAX, clipStripTimes: clipStripTimes,
         clipFramesAt: clipFramesAt, CLIP_FX: CLIP_FX, clipFx: clipFx, clipFxOn: clipFxOn, clipFxColor: clipFxColor, clipFxBlur: clipFxBlur,
         clipFxVignette: clipFxVignette, clipTransition: clipTransition, clipTouching: clipTouching, clipTransitionMs: clipTransitionMs,
@@ -10268,7 +10392,7 @@
         outputSize: outputSize, ADJUST: ADJUST, FILTERS: FILTERS, FILTER_NAMES: FILTER_NAMES, colorValues: colorValues,
         colorMatrix: colorMatrix, applyColor: applyColor, vignetteStops: vignetteStops, sharpenKernel: sharpenKernel,
         newId: newId, corners: corners, bounds: bounds, local: local, hitLayer: hitLayer, layersInBox: layersInBox, insideBox: insideBox, resizeBox: resizeBox, angleTo: angleTo,
-        align: align, distribute: distribute, snapBox: snapBox, reorder: reorder,
+        align: align, distribute: distribute, snapBox: snapBox, reorder: reorder, pressSelects: pressSelects,
         ownsKey: ownsKey, focusMatch: focusMatch, panelTitle: panelTitle
     };
 

@@ -817,7 +817,14 @@
     }
 
     // The sizes of what layout() places, in canvas units.
-    var FRAME = { w: 248, head: 44, thumb: 84, row: 30, pad: 10, gap: 160, chipW: 200, chipH: 36, chipGap: 12 };
+    // `pic`: a page's picture, drawn 1280 wide and cut 1600 high, scaled to
+    // `inner` units inside a box with the thumbnail's padding and border.
+    var FRAME = { w: 248, head: 44, thumb: 84, row: 30, pad: 10, chipW: 200, chipH: 36, chipGap: 12, pic: { page: 1280, cut: 1600, inner: 228, edge: 13 } };
+
+    // How layout() arranges the frames: eight a row, the gap between frames
+    // and between rows, a section heading's height, and the gap between a
+    // side column (shared parts, chips) and the grid.
+    var GRID = { cols: 8, gap: 96, head: 40, side: 160 };
 
     // The marks that end on a chip, in the order the chips are stacked.
     var CHIP_MARKS = ['page', 'anchor', 'contact', 'external', 'hidden', 'broken'];
@@ -863,21 +870,30 @@
     }
 
     // Where everything of a marked design goes on the canvas and which
-    // arrows join it: frames (id 'p:<tab key>' or 's:<shared id>') side by
-    // side, each as tall as its rows; one chip (id 'c:<n>') per mark and
-    // href that ends outside the design's tabs, stacked right of the
-    // frames; an arrow (id '<frame id>|<port>') from each row to the tab
-    // frame it opens or to its chip. `saved` (id => { x, y }) puts a frame
-    // or chip back where the operator left it.
-    function layout(marked, saved) {
+    // arrows join it: frames (id 'p:<tab key>' or 's:<shared id>'), each as
+    // tall as its rows; one chip (id 'c:<n>') per mark and href that ends
+    // outside the design's tabs; an arrow (id '<frame id>|<port>') from
+    // each row to the tab frame it opens or to its chip. The places come
+    // from the graph canvas core's arrange() (window.PGGraphCanvas, read
+    // when called): the tab frames in a grid of bands, one per section of
+    // opts.sections ([{ id, label, keys }], the tab groups in the strip's
+    // order), the tabs in none under opts.rest (first when the first tab is
+    // one of them, else last), one unlabelled band without sections; inside a band the flow from the first tab (the
+    // start, breadth-first over the tab-to-tab arrows, the strip's order
+    // between equals, the unreached last). The shared frames stand in a
+    // column before the grid under opts.shared, the chips in one after it
+    // under opts.outside, one group per mark. `saved` (id => { x, y }) puts
+    // a frame or chip back where the operator left it. Answers { frames,
+    // chips, edges, headings, start }.
+    function layout(marked, saved, opts) {
         saved = isObject(saved) ? saved : {};
+        opts = isObject(opts) ? opts : {};
 
         var frames = [];
         var chips = [];
         var chipByKey = {};
         var edges = [];
         var tabs = {};
-        var x = 0;
 
         function place(item) {
             var at = saved[item.id];
@@ -898,7 +914,11 @@
             group[1].forEach(function (frame) {
                 var rows = rowsOf(frame);
                 var bands = Array.isArray(frame.sketch) ? frame.sketch : [];
-                var thumb = bands.length ? FRAME.thumb : 0;
+                // A page with a tree is drawn as its picture, the sketch
+                // standing in while it loads; a shared component keeps its
+                // sketch (a column of pictures would outgrow the grid).
+                var pic = (group[0] === 'page') && Array.isArray(frame.sketch);
+                var thumb = pic ? picSize().box : (bands.length ? FRAME.thumb : 0);
                 var item = {
                     id: (group[0] === 'page') ? 'p:' + frame.key : 's:' + frame.id,
                     kind: group[0],
@@ -910,15 +930,15 @@
                     loaded: (group[0] === 'shared') ? frame.loaded : true,
                     rows: rows,
                     sketch: bands,
+                    pic: pic,
                     thumb: thumb,
-                    x: x,
+                    x: 0,
                     y: 0,
                     w: FRAME.w,
                     h: FRAME.head + thumb + Math.max(1, rows.length) * FRAME.row + FRAME.pad
                 };
 
-                x += FRAME.w + FRAME.gap;
-                frames.push(place(item));
+                frames.push(item);
             });
         });
 
@@ -949,13 +969,92 @@
         chips.sort(function (a, b) {
             return (CHIP_MARKS.indexOf(a.mark) - CHIP_MARKS.indexOf(b.mark)) || (parseInt(a.id.substr(2), 10) - parseInt(b.id.substr(2), 10));
         });
-        chips.forEach(function (chip, i) {
-            chip.x = x;
-            chip.y = i * (FRAME.chipH + FRAME.chipGap);
-            place(chip);
+
+        var G = window.PGGraphCanvas;
+        var byId = {};
+        var pageIds = [];
+        var sharedIds = [];
+
+        frames.forEach(function (frame) {
+            byId[frame.id] = frame;
+            (frame.kind === 'page' ? pageIds : sharedIds).push(frame.id);
+        });
+        chips.forEach(function (chip) { byId[chip.id] = chip; });
+
+        var start = pageIds.length ? pageIds[0] : '';
+        var flow = G.order(pageIds, edges.filter(function (e) { return e.to.charAt(0) === 'p'; }), start);
+        var rank = {};
+
+        flow.ids.forEach(function (id, i) { rank[id] = i; });
+
+        var bands = [];
+        var used = {};
+
+        (Array.isArray(opts.sections) ? opts.sections : []).forEach(function (section) {
+            var items = [];
+
+            (Array.isArray(section && section.keys) ? section.keys : []).forEach(function (key) {
+                var id = 'p:' + key;
+
+                if (has(byId, id) && byId[id].kind === 'page' && !used[id]) {
+                    used[id] = true;
+                    items.push(id);
+                }
+            });
+            bands.push({ id: str(section && section.id), label: str(section && section.label), items: items });
         });
 
-        return { frames: frames, chips: chips, edges: edges };
+        var rest = pageIds.filter(function (id) { return !used[id]; });
+        var restBand = { id: 'pages', label: bands.length ? str(opts.rest) : '', items: rest };
+
+        // The start's band leads: the tabs in no group come first when the
+        // first tab is one of them, else last.
+        if (start !== '' && !used[start]) {
+            bands.unshift(restBand);
+        } else {
+            bands.push(restBand);
+        }
+        bands.forEach(function (band) {
+            band.items.sort(function (a, b) { return rank[a] - rank[b]; });
+        });
+
+        var laid = G.arrange(bands, {
+            cols: GRID.cols,
+            w: FRAME.w,
+            h: FRAME.head + FRAME.row + FRAME.pad,
+            gapX: GRID.gap,
+            gapY: GRID.gap,
+            head: GRID.head,
+            sideGap: GRID.side,
+            size: function (id) { return has(byId, id) ? { w: byId[id].w, h: byId[id].h } : null; },
+            // A long column of shared frames goes on beside itself rather
+            // than far below the grid (F4).
+            before: { id: 'shared', label: str(opts.shared), w: FRAME.w, maxH: 'grid', items: sharedIds },
+            after: {
+                id: 'outside',
+                label: str(opts.outside),
+                w: FRAME.chipW,
+                h: FRAME.chipH,
+                gap: FRAME.chipGap,
+                groups: CHIP_MARKS.map(function (mark) {
+                    return { id: 'mark:' + mark, items: chips.filter(function (c) { return c.mark === mark; }).map(function (c) { return c.id; }) };
+                })
+            }
+        });
+
+        frames.concat(chips).forEach(function (item) {
+            var at = laid.places[item.id];
+
+            if (at) {
+                item.x = at.x;
+                item.y = at.y;
+            }
+
+            place(item);
+        });
+        frames.forEach(function (frame) { frame.start = (frame.id === start); });
+
+        return { frames: frames, chips: chips, edges: edges, headings: laid.headings, start: start };
     }
 
     // The y of a row's port from the top of its frame.
@@ -963,6 +1062,157 @@
         var index = parseInt(String(port).replace(/^h/, ''), 10) || 0;
 
         return FRAME.head + ((frame && frame.thumb) || 0) + index * FRAME.row + FRAME.row / 2;
+    }
+
+    // ── The page picture ──
+
+    // The picture's size in canvas units: w x h inside its box, the scale
+    // from page pixels, and the box's height (h with the padding and
+    // border, what layout() gives a frame as `thumb`).
+    function picSize() {
+        var p = FRAME.pic;
+        var scale = p.inner / p.page;
+
+        return { w: p.inner, h: Math.round(p.cut * scale), scale: scale, box: Math.round(p.cut * scale) + p.edge, page: p.page, cut: p.cut };
+    }
+
+    // The marker a picture's element carries for a link: the node's id, its
+    // n-th link of text or custom HTML as '<id>.<n>' (htmlLinks()' index),
+    // inside a shared component 's<shared id>:' before it. '' without an id.
+    function picMark(nodeId, index, sharedId) {
+        var id = (typeof nodeId === 'number' && isFinite(nodeId)) ? String(nodeId) : str(nodeId);
+
+        if (id === '') {
+            return '';
+        }
+
+        var shared = parseInt(sharedId, 10) || 0;
+        var n = (index === null || index === undefined || index === '') ? -1 : parseInt(index, 10);
+
+        return (shared > 0 ? 's' + shared + ':' : '') + id + (n >= 0 ? '.' + n : '');
+    }
+
+    // Which markers a node's own markup gets: `own` when its link is its
+    // own (href, the Attributes panel's href, a button), `text` the
+    // indexes of the links written in its text or custom HTML. Bootstrap
+    // toggles are no links (nodeLinks()).
+    function picMarks(node) {
+        var out = { own: false, text: [] };
+
+        nodeLinks(node).forEach(function (spot) {
+            if (spot.source === 'text') {
+                out.text.push(parseInt(spot.index, 10) || 0);
+            } else {
+                out.own = true;
+            }
+        });
+
+        return out;
+    }
+
+    // The foot of a frame's picture: of its rows that a picture marks (a
+    // link of the tree, not a menu or region), how many cannot be seen.
+    // `marks` are the picture's marked elements, { pic, top, w, h } in page
+    // pixels; a link is seen when one of its elements has a size and starts
+    // above the cut. A link with no element at all (hidden, not written)
+    // counts too. A page's frame reads no shared component's marker.
+    // Answers { links, below }.
+    function picFoot(rows, marks, sharedId) {
+        var seen = {};
+        var cut = FRAME.pic.cut;
+        var links = 0;
+        var below = 0;
+
+        (Array.isArray(marks) ? marks : []).forEach(function (m) {
+            if (isObject(m) && Number(m.w) > 0 && Number(m.h) > 0 && Number(m.top) < cut) {
+                seen[str(m.pic)] = true;
+            }
+        });
+
+        var counted = {};
+
+        (Array.isArray(rows) ? rows : []).forEach(function (row) {
+            if (!isObject(row) || ['href', 'attrs', 'btn', 'text'].indexOf(row.source) < 0) {
+                return;
+            }
+
+            var key = picMark(row.nodeId, row.source === 'text' ? row.index : null, sharedId);
+
+            if (key === '' || counted[key]) {
+                return;
+            }
+
+            counted[key] = true;
+            links++;
+
+            if (!seen[key]) {
+                below++;
+            }
+        });
+
+        return { links: links, below: below };
+    }
+
+    // The attributes of a picture's frame: only `allow-same-origin`, so the
+    // view reads its document and no script of it runs; it takes no focus
+    // and no pointer and says nothing to a screen reader (the rows list the
+    // links).
+    var PIC_FRAME = { sandbox: 'allow-same-origin', tabindex: '-1', 'aria-hidden': 'true', scrolling: 'no', width: '1280', height: '1600', style: 'pointer-events:none' };
+
+    // What a picture's document gets first in its <head>: a second lock in
+    // case the sandbox ever allows scripts (no script, plugin, frame, media
+    // or form post), and the stilling rule (same-origin frames share the
+    // editor's main thread, so nothing in them moves). An embedded frame or
+    // player keeps its place but shows no "blocked" box.
+    function picHead() {
+        return '<meta http-equiv="Content-Security-Policy" content="script-src \'none\'; object-src \'none\'; frame-src \'none\'; media-src \'none\'; form-action \'none\'">'
+            + '<style>*,*::before,*::after{animation:none!important;transition:none!important}'
+            + 'html,body{overflow:hidden!important}'
+            + 'iframe,embed,object,video,audio{visibility:hidden!important}</style>';
+    }
+
+    // A preview document as a picture's: its <script> elements left out
+    // (none would run; each would log a blocked script and be parsed for
+    // nothing), picHead() right after its <head>, before anything it
+    // loads. '' for a document without one.
+    function picDoc(html) {
+        html = String(html || '').replace(/<script\b[\s\S]*?<\/script\s*>/gi, '');
+
+        var m = /<head(\s[^>]*)?>/i.exec(html);
+
+        if (!m) {
+            return '';
+        }
+
+        var at = m.index + m[0].length;
+
+        return html.substring(0, at) + picHead() + html.substring(at);
+    }
+
+    // Whether a picture runs past its cut and gets the fade: only when the
+    // page is taller than the cut. A page that ends at it (a short page
+    // with min-vh-100 fills the 1600-high frame exactly) gets none.
+    function picLong(height) {
+        return Number(height) > FRAME.pic.cut;
+    }
+
+    // The ids of `boxes` ({ id, x, y, w, h }) nearest the centre of `view`
+    // ({ x, y, w, h }) first, by the distance between centres; equal ones
+    // in the order given. A picture beyond the cap is dropped from the end.
+    function picOrder(boxes, view) {
+        var cx = Number(view && view.x) + Number(view && view.w) / 2;
+        var cy = Number(view && view.y) + Number(view && view.h) / 2;
+
+        return (Array.isArray(boxes) ? boxes : []).map(function (b, i) {
+            var dx = Number(b.x) + Number(b.w) / 2 - cx;
+            var dy = Number(b.y) + Number(b.h) / 2 - cy;
+
+            return { id: b.id, d: dx * dx + dy * dy, i: i };
+        }).sort(function (a, b) {
+            return (a.d - b.d) || (a.i - b.i);
+        }).map(function (e) {
+            return e.id;
+        });
     }
 
     // ── Drawing an arrow ──
@@ -1211,11 +1461,79 @@
         return out;
     }
 
+    // Where Fit starts when a design does not fit at the smallest zoom: the
+    // start frame's top left corner, raised to its band's heading when that
+    // stands right above it; null without a start frame.
+    function fitStart(laid) {
+        var frame = (laid && Array.isArray(laid.frames)) ? laid.frames.filter(function (f) { return f.start; })[0] : null;
+
+        if (!frame) {
+            return null;
+        }
+
+        var heading = (laid.headings || []).filter(function (h) { return h.kind === 'group' && h.x === frame.x && h.y + GRID.head === frame.y; })[0];
+
+        return { x: frame.x, y: heading ? heading.y : frame.y };
+    }
+
+    // What the selected frame (its id, null for none) shows of a layout:
+    // out, the ids of its arrows; in, the ids of the arrows into it from
+    // page frames; shared, the links of shared frames into it, which draw
+    // no arrow but mark their row and name themselves under their frame
+    // ({ frame, port, edge, label, to }); lit, per other frame the ports of
+    // its rows that start an arrow into it.
+    function focusOf(laid, id) {
+        var out = { out: [], in: [], shared: [], lit: {} };
+        var byId = {};
+
+        ((laid && laid.frames) || []).concat((laid && laid.chips) || []).forEach(function (item) { byId[item.id] = item; });
+
+        if (id === null || id === undefined || !has(byId, String(id))) {
+            return out;
+        }
+
+        id = String(id);
+
+        ((laid && laid.edges) || []).forEach(function (edge) {
+            if (edge.from === id) {
+                out.out.push(edge.id);
+                return;
+            }
+
+            if (edge.to !== id) {
+                return;
+            }
+
+            var from = byId[edge.from];
+
+            if (from && from.kind === 'shared') {
+                var row = (from.rows || []).filter(function (r) { return r.port === edge.port; })[0] || {};
+
+                out.shared.push({ frame: edge.from, port: edge.port, edge: edge.id, label: row.from ? row.from + ' › ' + row.label : str(row.label), to: str(byId[id].name) });
+                return;
+            }
+
+            out.in.push(edge.id);
+            (out.lit[edge.from] = out.lit[edge.from] || []).push(edge.port);
+        });
+
+        return out;
+    }
+
     window.PGProtoHotspots = {
         FRAME: FRAME,
         layout: layout,
         sketch: sketch,
         sketchBoxes: sketchBoxes,
+        picSize: picSize,
+        picMark: picMark,
+        picMarks: picMarks,
+        picFoot: picFoot,
+        picOrder: picOrder,
+        picLong: picLong,
+        PIC_FRAME: PIC_FRAME,
+        picHead: picHead,
+        picDoc: picDoc,
         placeKey: placeKey,
         places: places,
         rowY: rowY,
@@ -1234,6 +1552,8 @@
         applyPatch: applyPatch,
         boundTo: boundTo,
         markBound: markBound,
-        drawTargets: drawTargets
+        drawTargets: drawTargets,
+        focusOf: focusOf,
+        fitStart: fitStart
     };
 })();

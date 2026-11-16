@@ -247,12 +247,14 @@ function ws_api_channel_settings_present($states)
     $allowed = function ($state) {
         return is_array($state) ? !empty($state['allowed']) : null;
     };
-    $shared = !empty($states['shared']);
+    // A channel shared with guests never reaches an assistant, and a
+    // discussion follows its channel: neither offers a switch of its own.
+    $fixed = !empty($states['shared']) || !empty($states['thread']);
 
     return array(
         'watch'              => isset($states['watch']) ? (bool) $states['watch'] : null,
-        'claude_allowed'     => $shared ? null : $allowed($states['claude'] ?? null),
-        'ai_allowed'         => $shared ? null : $allowed($states['ai'] ?? null),
+        'claude_allowed'     => $fixed ? null : $allowed($states['claude'] ?? null),
+        'ai_allowed'         => $fixed ? null : $allowed($states['ai'] ?? null),
         'voice_allowed'      => $allowed($states['voice'] ?? null),
         'summary'            => (string) ($states['summary'] ?? ''),
         'summary_updated_at' => ((int) ($states['summary_updated_at'] ?? 0) > 0) ? api_time($states['summary_updated_at']) : null,
@@ -276,6 +278,7 @@ function ws_api_channel_settings_states($viewer, $channel)
         'watch'              => function_exists('ws_watch_channel_state') ? ws_watch_channel_state($channel) : null,
         'shared'             => (function_exists('ws_guest_channel_state') && (ws_guest_channel_state($viewer, $channel) !== null))
             || (function_exists('ws_channel_share_open') && ws_channel_share_open($channel)),
+        'thread'             => ((string) ($channel['kind'] ?? '') === 'thread'),
         'summary'            => (string) ($channel['summary'] ?? ''),
         'summary_updated_at' => (int) ($channel['summary_updated_at'] ?? 0),
     );
@@ -699,6 +702,12 @@ function ws_api_channel_switches_set($params)
         api_fail(403, 'forbidden', lang('Only the owner of the channel can change it.'));
     }
 
+    // The channel menu hides the switches on an archived channel; the dry
+    // run is refused the same way.
+    if ((int) $channel['archived_at'] > 0) {
+        api_fail(403, 'forbidden', lang('This channel is archived. It can be read but not written in.'));
+    }
+
     $now = ws_api_channel_settings_present(ws_api_channel_settings_states($viewer, $channel));
     $fields = array('claude' => 'claude_allowed', 'ai' => 'ai_allowed', 'voice' => 'voice_allowed');
     $changes = array();
@@ -1101,7 +1110,7 @@ function ws_api_message_canvas($row, $canvases)
     );
 }
 
-function ws_api_message_present($viewer, $row, $refs, $reactions = null, $acks = null, $threads = null, $hidden = null, $polls = null, $proposals = null, $note_cards = null, $checks = null, $forwards = null, $group_cards = null, $canvases = null)
+function ws_api_message_present($viewer, $row, $refs, $reactions = null, $acks = null, $threads = null, $hidden = null, $polls = null, $proposals = null, $note_cards = null, $checks = null, $forwards = null, $group_cards = null, $canvases = null, $link_previews = null)
 {
     // Who ticked its checklist (interact.php).
     if ($checks === null) {
@@ -1253,6 +1262,8 @@ function ws_api_message_present($viewer, $row, $refs, $reactions = null, $acks =
         'forwards'       => ws_api_message_forwards($row, $forwards),
         // The OAuth client a person's message was written through.
         'via'            => ws_api_message_via($row, ws_message_via_names(array($row))),
+        // The card of its first web address (link_preview.php).
+        'link_preview'   => ws_api_message_link_preview($row, $link_previews),
         'created_at'  => api_time($row['created_at']),
     );
 }
@@ -1295,8 +1306,37 @@ function ws_api_message_schema()
             'created_at'          => 'string?',
         )),
         'via'         => 'WorkspaceMessageVia?',
+        'link_preview'   => 'WorkspaceMessageLinkPreview?',
         'created_at'  => 'string',
     );
+}
+
+/**
+ * The card of a message's first web address, the fields the screen draws
+ * (ws_link_preview_card_fields()): null for a deleted message, one with no
+ * card, and every message while previews are switched off.
+ *
+ * @param array      $row           ws_messages row
+ * @param array|null $link_previews ws_link_preview_card_rows_map() of the page
+ * @return array|null url, title, description, site_name
+ */
+function ws_api_message_link_preview($row, $link_previews)
+{
+    if (((int) $row['deleted_at'] > 0) || !function_exists('ws_link_preview_card_rows_map')) {
+        return null;
+    }
+
+    if ($link_previews === null) {
+        $link_previews = ws_link_preview_card_rows_map(array((int) $row['id']));
+    }
+
+    return $link_previews[(int) $row['id']] ?? null;
+}
+
+// What ws_api_message_link_preview() returns: plain texts, never HTML.
+function ws_api_message_link_preview_schema()
+{
+    return array('url' => 'string', 'title' => 'string', 'description' => 'string', 'site_name' => 'string');
 }
 
 // A message of sender_kind mail: the mail it carries (GET
@@ -1782,12 +1822,13 @@ function ws_api_messages_present($viewer, $rows)
     $forwards = ws_api_message_forwards_map($viewer, $ids);
     $group_cards = function_exists('ws_note_group_cards_map') ? ws_note_group_cards_map($viewer, $ids) : array();
     $canvases = function_exists('ws_canvas_message_states') ? ws_canvas_message_states(ws_api_message_canvas_file_ids($rows)) : array();
+    $link_previews = function_exists('ws_link_preview_card_rows_map') ? ws_link_preview_card_rows_map($ids) : array();
     $out = array();
 
     // A message the person deleted for themselves stays in the page, marked
     // hidden, so that since_id and before_id still page past it.
     foreach ($rows as $row) {
-        $out[] = ws_api_message_present($viewer, $row, $refs, $reactions, $acks, $threads, $hidden, $polls, $proposals, $note_cards, $checks, $forwards, $group_cards, $canvases);
+        $out[] = ws_api_message_present($viewer, $row, $refs, $reactions, $acks, $threads, $hidden, $polls, $proposals, $note_cards, $checks, $forwards, $group_cards, $canvases, $link_previews);
     }
 
     return $out;
@@ -4182,6 +4223,48 @@ function ws_api_poll_create_rehearsal($channel_id, $checked, $data, $flag)
 }
 
 /**
+ * The question's own picture a poll call sends (poll_picture.php), the way
+ * workspace.files.create takes a file: a form part named file, or
+ * content_base64 with name. null when the call sends none.
+ *
+ * @param array $params
+ * @return array|null name, bytes, field (the parameter a refusal names)
+ */
+function ws_api_poll_picture_input($params)
+{
+    $part = (api_send_hook() === null) && isset($_FILES['file']) && is_array($_FILES['file']);
+
+    if (!$part && ((string) ($params['content_base64'] ?? '') === '')) {
+        return null;
+    }
+
+    $upload = ws_api_upload_input($params);
+    $bytes = isset($upload['bytes']) ? $upload['bytes'] : ws_upload_decode($upload['base64']);
+
+    if (!is_string($bytes)) {
+        api_fail_validation(lang('The picture could not be read.'), $upload['field']);
+    }
+
+    return array('name' => (string) $upload['name'], 'bytes' => $bytes, 'field' => $upload['field']);
+}
+
+/**
+ * A refused picture's parameter: the one the call sent it in.
+ *
+ * @param string     $field   the refusal's field
+ * @param array|null $picture ws_api_poll_picture_input()
+ * @return string
+ */
+function ws_api_poll_picture_field($field, $picture)
+{
+    if ($field !== 'picture') {
+        return (string) $field;
+    }
+
+    return ($picture !== null) ? $picture['field'] : 'remove_picture';
+}
+
+/**
  * Asks a poll in a channel, the way Poll by the composer and the /poll
  * command do: the question is the person's message, and the options, the
  * settings and the votes are the poll's. The answer is that message.
@@ -4247,18 +4330,34 @@ function ws_api_polls_create($params)
         api_fail_validation($stored['error'], 'options');
     }
 
+    // The question's own picture, held to its checks before anything is
+    // kept, so that a dry run meets the same refusals and stores nothing.
+    $picture = ws_api_poll_picture_input($params);
+    $pictured = null;
+
+    if ($picture !== null) {
+        $data['picture'] = array('name' => $picture['name'], 'bytes' => $picture['bytes']);
+        $pictured = ws_poll_picture_check($viewer, $channel, ws_poll_picture_normal($data['picture']));
+
+        if (!$pictured['ok']) {
+            api_fail_validation($pictured['error'], $picture['field']);
+        }
+    }
+
     // The flag ws_poll_create() stores, so that the rehearsal reports the
     // settings an agent question is kept to rather than the ones sent.
     $flag = ws_agent_question_ready() ? ws_agent_question_flag($app_id) : 0;
     $rehearsal = ws_api_poll_create_rehearsal((int) $channel['id'], $checked, $data, $flag);
     $rehearsal['closes_at'] = api_time($rehearsal['closes_at']);
+    $rehearsal['file'] = ($pictured !== null) ? array('name' => $pictured['name'], 'kind' => $pictured['kind'], 'size' => $pictured['size']) : null;
 
     api_dry_run_stop('created', 'workspace_poll', $rehearsal);
 
     $result = ws_poll_create($viewer, $channel, $data, $app_id);
 
     if (!$result['ok']) {
-        api_fail_validation($result['error'], ($result['field'] !== '') ? $result['field'] : null);
+        $field = ws_api_poll_picture_field($result['field'], $picture);
+        api_fail_validation($result['error'], ($field !== '') ? $field : null);
     }
 
     ws_api_poll_message_ok($viewer, ws_poll($result['poll_id']), 201);
@@ -4277,9 +4376,46 @@ function ws_api_polls_update($params)
     $as_app = ws_api_poll_asker_app($poll);
 
     $fields = array('question', 'options', 'multiple', 'anonymous', 'closes_at');
+    $editing = (bool) array_intersect($fields, array_keys($params));
 
-    if (!array_intersect($fields, array_keys($params))) {
-        api_fail_validation(lang('Send at least one of question, options, multiple, anonymous or closes_at.'));
+    // The question's own picture: a new one replaces it, remove_picture
+    // takes it away (poll_picture.php).
+    $picture = ws_api_poll_picture_input($params);
+    $remove = !empty($params['remove_picture']);
+
+    if (($picture !== null) && $remove) {
+        api_fail_validation(lang('Send a new picture or remove_picture, not both.'), 'remove_picture');
+    }
+
+    if (!$editing && ($picture === null) && !$remove) {
+        api_fail_validation(lang('Send at least one of question, options, multiple, anonymous, closes_at, a picture or remove_picture.'));
+    }
+
+    $new_picture = ($picture !== null) ? ws_poll_picture_normal(array('name' => $picture['name'], 'bytes' => $picture['bytes'])) : null;
+    $changes_picture = ($picture !== null) || $remove;
+
+    if ($changes_picture) {
+        $pictured = ws_poll_picture_change_check($viewer, $poll, $new_picture, $as_app);
+
+        if (!$pictured['ok']) {
+            ws_api_poll_refused($pictured['error'], ws_api_poll_picture_field($pictured['field'], $picture));
+        }
+    }
+
+    if (!$editing) {
+        api_dry_run_stop('updated', 'workspace_poll', array(
+            'id'         => (int) $poll['id'],
+            'message_id' => (int) $poll['message_id'],
+            'file'       => ($new_picture !== null) ? array('name' => $pictured['picture']['name'], 'kind' => 'image', 'size' => $pictured['picture']['size']) : null,
+        ));
+
+        $changed = ws_poll_picture_change($viewer, $poll, $new_picture, $as_app);
+
+        if (!$changed['ok']) {
+            ws_api_poll_refused($changed['error'], ws_api_poll_picture_field($changed['field'], $picture));
+        }
+
+        ws_api_poll_message_ok($viewer, ws_poll($poll['id']));
     }
 
     $options = array();
@@ -4373,7 +4509,18 @@ function ws_api_polls_update($params)
         'multiple'   => $checked['multiple'],
         'anonymous'  => $checked['anonymous'],
         'closes_at'  => api_time($checked['closes_at']),
+        'file'       => ($changes_picture && ($new_picture !== null)) ? array('name' => $pictured['picture']['name'], 'kind' => 'image', 'size' => $pictured['picture']['size']) : null,
     ));
+
+    // The picture first: it is refused once somebody has answered, and an
+    // edit never adds an answer.
+    if ($changes_picture) {
+        $changed = ws_poll_picture_change($viewer, $poll, $new_picture, $as_app);
+
+        if (!$changed['ok']) {
+            ws_api_poll_refused($changed['error'], ws_api_poll_picture_field($changed['field'], $picture));
+        }
+    }
 
     $result = ws_poll_edit($viewer, $poll, $data, $as_app);
 
@@ -4458,6 +4605,20 @@ function ws_api_polls_again($params)
         }
     }
 
+    // The old question's picture is carried over unless a new one is sent
+    // or remove_picture leaves it out (poll_picture.php).
+    $picture = ws_api_poll_picture_input($params);
+
+    if (($picture !== null) && !empty($params['remove_picture'])) {
+        api_fail_validation(lang('Send a new picture or remove_picture, not both.'), 'remove_picture');
+    }
+
+    if ($picture !== null) {
+        $sent['picture'] = array('name' => $picture['name'], 'bytes' => $picture['bytes']);
+    } elseif (!empty($params['remove_picture'])) {
+        $sent['picture'] = null;
+    }
+
     $checked = ws_poll_again_check($viewer, $poll, $sent, $as_app);
 
     if (!$checked['ok']) {
@@ -4465,19 +4626,27 @@ function ws_api_polls_again($params)
             api_fail(503, 'service_unavailable', $checked['error']);
         }
 
-        ws_api_poll_refused($checked['error'], $checked['field']);
+        ws_api_poll_refused($checked['error'], ws_api_poll_picture_field($checked['field'], $picture));
     }
+
+    $carried = $checked['data']['picture'];
 
     api_dry_run_stop('created', 'workspace_poll', array(
         'channel_id' => (int) $poll['channel_id'],
         'again_of'   => (int) $poll['id'],
         'withdraws'  => !ws_poll_withdrawn($poll) && ((int) $poll['closed_at'] === 0),
+        'file'       => ($carried === null) ? null : array(
+            'name' => isset($carried['file_id']) ? $carried['file_name'] : mb_substr((string) $carried['name'], 0, 200),
+            'kind' => 'image',
+            'size' => isset($carried['bytes']) ? strlen($carried['bytes']) : null,
+        ),
     ));
 
     $result = ws_poll_ask_again($viewer, $poll, $sent, $as_app);
 
     if (!$result['ok']) {
-        api_fail_validation($result['error'], ($result['field'] !== '') ? $result['field'] : null);
+        $field = ws_api_poll_picture_field($result['field'], $picture);
+        api_fail_validation($result['error'], ($field !== '') ? $field : null);
     }
 
     ws_api_poll_message_ok($viewer, ws_poll($result['poll_id']), 201);
@@ -5334,6 +5503,8 @@ function ws_api_tasks_list($params)
         'department_id' => (int) ($params['department_id'] ?? 0),
         'channel_id'    => (int) ($params['channel_id'] ?? 0),
         'limit'         => (int) ($params['limit'] ?? 100),
+        // Agent channels' tasks are left out unless asked for or named.
+        'agent_channels' => ws_agent_channel_mode($params['agent_channels'] ?? ''),
     );
 
     if (!empty($params['ref_type']) && !empty($params['ref_id'])) {

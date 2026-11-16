@@ -4,14 +4,15 @@ description: Auto dialogs on the site: the browser's <dialog> in place of jQuery
 ---
 
 ## What does the page print?
-- `get_page_content.php` (under `if (AUTO_DIALOGS)`): the enabled rows through `pg_auto_dialogs_for_page()` (web addresses only) and `pg_auto_dialogs_on_page($rows, $page_name)` (`includes/fn/auto_dialogs.php`): page blank or part of the page name, case-blind; id, url, width, height, delay, frequency as numbers. The same for every visitor; printed with an empty list too while any row is enabled, so the visit start is kept from the first page.
+- `get_page_content.php` (under `if (AUTO_DIALOGS)`): the enabled rows through `pg_auto_dialogs_for_page()` (web addresses only) and `pg_auto_dialogs_on_page($rows, $page_name)` (`includes/fn/auto_dialogs.php`): page blank or part of the page name, case-blind; id, url, width, height, delay, frequency as numbers, and the open settings (#9851, `auto-dialog-open-settings.md`).
+- The same for every visitor but a cart row; printed with an empty list too while any row is enabled, so the visit start is kept from the first page.
 - Nothing goes into the session: `visit_start_timestamp` is gone (PR #9805), so a site with an auto dialog is cached again (`page-cache-gate.md`).
 - Preview `?preview_auto_dialog=<id>` (role < 3): one row, no delay, no cookie, as before.
 
 ## What does the script pick?
 - `frontend.src.js` `software.init_auto_dialogs()` (and the hand-patched `frontend.min.js`): stops in an iframe and on body class `disable_auto_dialogs`; keeps the visit start (`sessionStorage` `pg_visit_start`, per tab).
 - Owner (2026-11-15, poll 51): with the cookie notice on (`#pg-cc`), no dialog opens before the visitor has answered it: `start_auto_dialogs()` runs on the first `pg:consent` (sent on load with a stored answer and after each answer). With the notice off, or for a preview, it runs at once. Since PR #9852.
-- `start_auto_dialogs()`: skips `disable_auto_dialog_<id>`; asks `popup_memory()`; waits `delay` minus the time since the visit's start, at least 1 s; marks a dialog `s` when it opens and `c` when it closes.
+- `start_auto_dialogs()`: skips `disable_auto_dialog_<id>`; asks `popup_memory()`; waits `delay` minus the time since the visit's start, at least 1 s, or for scroll or leaving (#9851, `auto-dialog-open-settings.md`); `show_auto_dialog()` marks a dialog `s` when it opens and `c` when it closes.
 - `popup_memory(remember)`: with marketing allowed or the notice off, the one cookie `pg_popup` (`PG_POPUP_COOKIE`, a year, `id:time:state` joined by `|`); a recurring dialog opens again after `frequency` hours; the old per-row cookie `software[auto_dialog_<id>]` (no longer written) still gives a last time. Otherwise `sessionStorage` `pg_popup`: each dialog once a visit.
 - Both cookies are the notice's marketing row and its revoke names (`cookie-consent-catalogue.md`).
 

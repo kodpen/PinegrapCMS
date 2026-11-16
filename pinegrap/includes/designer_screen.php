@@ -330,6 +330,10 @@ function pg_designer_screen_render($ctx)
             // Whether the product page's Checkout Options table has a row
             // to show; the site leaves the tab out otherwise.
             'payment_methods'      => function_exists('pg_civ_payment_method_rows') && pg_civ_payment_method_rows(_pg_civ_payment_settings(false)) !== array(),
+            // The most installments the checkout offers (the iyzico
+            // gateway's setting, _eo_render_installment_box()), 0 when off.
+            'installments'         => (defined('ECOMMERCE_PAYMENT_GATEWAY') && ECOMMERCE_PAYMENT_GATEWAY === 'Iyzipay'
+                && defined('ECOMMERCE_IYZIPAY_INSTALLMENT') && (int)ECOMMERCE_IYZIPAY_INSTALLMENT >= 2) ? (int)ECOMMERCE_IYZIPAY_INSTALLMENT : 0,
         ),
         // The site's words the member widgets print, so the canvas draws
         // them as the page does: the site's name, the consent and member
@@ -340,11 +344,19 @@ function pg_designer_screen_render($ctx)
             'member_id_label' => defined('MEMBER_ID_LABEL') ? (string)MEMBER_ID_LABEL : '',
             'password_rules'  => function_exists('get_strong_password_requirements')
                 ? '<div class="pg-password-rules small text-muted">' . get_strong_password_requirements() . '</div>' : '',
+            // The sign-in buttons the member widgets print, drawn on the
+            // canvas in their sections (pg_signin_canvas_sample()).
+            'signin_buttons'  => function_exists('pg_signin_canvas_sample') ? pg_signin_canvas_sample() : '',
             // The product page's Checkout Options rows (method, description,
             // fee) the store's payment settings give, as the site fills them
             // (_pg_civ_fill_payment_methods()).
             'payment_method_rows' => function_exists('pg_civ_payment_method_rows')
                 ? pg_civ_payment_method_rows(_pg_civ_payment_settings(false)) : array(),
+            // The booking widget's words, closing words and sample times,
+            // drawn on the canvas in the parts its script fills
+            // (pg_booking_canvas_sample()).
+            'booking' => (function_exists('pg_booking_canvas_sample') && function_exists('pg_booking_texts'))
+                ? pg_booking_canvas_sample(pg_booking_widget_policy(), pg_booking_texts()) : null,
         ),
         // The editor's UI text, resolved through lang() for the site's
         // language. Empty when the language is English: the JS keys ARE the
@@ -3328,6 +3340,10 @@ function pg_designer_screen_post($ctx)
     $written = array();   // ids of the pages this save wrote
     $notes   = array();   // what a renamed page's short links became
     $cf_jobs = array();   // page_id => form settings, reconciled once every page has its id
+    // Only this save may be held for a designer's approval
+    // (includes/fn/content_proposals.php); the API and the assistant are not.
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/content_proposals.php');
+    pg_content_proposals_editor_save(true);
     foreach ($pages as $p) {
         $key = isset($p['key']) ? (string)$p['key'] : '';
         // Left as stored: the tab keeps its id and the state it is in.
@@ -3342,6 +3358,13 @@ function pg_designer_screen_post($ctx)
             continue;
         }
         $r = pg_designer_save_page($style_id, $p, $user, false);
+        // Kept as the editor's waiting change: nothing was written, so the
+        // page's form, short links and search entry stay as they are.
+        if ($r['ok'] && !empty($r['held'])) {
+            $id_map[] = array('key' => $key, 'page_id' => (int)$r['page_id'], 'draft' => 0, 'held' => (string)$r['held']);
+            if ((string)$r['held_message'] !== '') $warnings[] = $r['held_message'];
+            continue;
+        }
         if ($r['ok']) {
             // `draft`: the state the page ended up in, which is not always
             // the one asked for (the home page stays on the site).

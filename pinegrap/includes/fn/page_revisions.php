@@ -635,7 +635,7 @@ function pg_page_revisions_list($page_id, $limit = 50, $before_no = 0)
 
     $rows = db_items(
         "SELECT
-            r.revision_no, r.source, r.created_at, r.user_id, r.tree_code_hash,
+            r.revision_no, r.source, r.created_at, r.user_id, r.tree_hash, r.tree_code_hash,
             r.settings_json, LENGTH(r.page_tree_json) AS size,
             user.user_username
          FROM page_revisions AS r
@@ -647,15 +647,34 @@ function pg_page_revisions_list($page_id, $limit = 50, $before_no = 0)
 
     $out = array();
 
+    // A content editor's change a designer applied (includes/fn/content_proposals.php):
+    // the revision is the designer's, and History names the editor beside them.
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/content_proposals.php');
+    $editors = pg_content_proposals_ready() ? (array) db_items(
+        "SELECT p.after_hash, user.user_username
+         FROM design_proposals AS p
+         LEFT JOIN user ON user.user_id = p.requested_by
+         WHERE p.page_id = '$page_id' AND p.agent = 'editor' AND p.applied_to = 'page' AND p.after_hash <> ''") : array();
+    $editor_of = array();
+
+    foreach ($editors as $editor) {
+        $editor_of[(string) $editor['after_hash']] = (string) $editor['user_username'];
+    }
+
     foreach ((array) $rows as $row) {
         $settings = json_decode((string) $row['settings_json'], true);
+        $by = (string) ($row['user_username'] ?? '');
+
+        if (isset($editor_of[(string) $row['tree_hash']])) {
+            $by = pg_content_proposals_revision_by($by, $editor_of[(string) $row['tree_hash']]);
+        }
 
         $out[] = array(
             'revision_no'    => (int) $row['revision_no'],
             'source'         => (string) $row['source'],
             'created_at'     => (int) $row['created_at'],
             'user_id'        => (int) $row['user_id'],
-            'user_username'  => (string) ($row['user_username'] ?? ''),
+            'user_username'  => $by,
             'tree_code_hash' => (string) $row['tree_code_hash'],
             'settings'       => is_array($settings) ? $settings : array(),
             'size'           => (int) $row['size'],

@@ -1694,6 +1694,11 @@ function ws_threads_purge($limit = WS_THREAD_PURGE_BATCH)
             db("DELETE FROM ws_canvas_consents WHERE message_id IN (" . $messages . ")");
         }
 
+        // Readers' highlights (highlights.php).
+        if (function_exists('ws_highlights_ready') && ws_highlights_ready()) {
+            db("DELETE FROM ws_highlights WHERE channel_id = '" . $thread_id . "'");
+        }
+
         if (function_exists('ws_acks_ready') && ws_acks_ready()) {
             db("DELETE FROM ws_acks WHERE message_id IN (" . $messages . ")");
             db("DELETE FROM ws_ack_requests WHERE message_id IN (" . $messages . ")");
@@ -1702,11 +1707,17 @@ function ws_threads_purge($limit = WS_THREAD_PURGE_BATCH)
         ws_inbox_delete("channel_id = '" . $thread_id . "'");
 
         foreach (array('ws_polls', 'ws_refs', 'ws_blocks', 'ws_note_shares', 'ws_channel_eras', 'ws_ai_drafts', 'ws_ai_changes', 'ws_ai_requests', 'design_proposals') as $table) {
-            db("DELETE FROM " . $table . " WHERE channel_id = '" . $thread_id . "'");
+            // A content editor's waiting change outlives the conversation its
+            // approval request was asked in (includes/fn/content_proposals.php).
+            db("DELETE FROM " . $table . " WHERE channel_id = '" . $thread_id . "'" . (($table === 'design_proposals') ? " AND agent <> 'editor'" : ''));
         }
 
         if (function_exists('ws_memory_ready') && ws_memory_ready()) {
             db("DELETE FROM ws_channel_memory WHERE channel_id = '" . $thread_id . "'");
+        }
+
+        if (function_exists('ws_link_preview_channel_purged')) {
+            ws_link_preview_channel_purged($thread_id);
         }
 
         db("DELETE FROM ws_messages WHERE channel_id = '" . $thread_id . "'");

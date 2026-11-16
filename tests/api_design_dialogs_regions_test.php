@@ -129,20 +129,42 @@ function test_api_design_auto_dialog_values_lay_the_sent_fields_over_the_row()
 	$row = array('id' => 4, 'name' => 'Welcome', 'enabled' => 1, 'url' => '/welcome', 'width' => 400, 'height' => 0, 'delay' => 5, 'frequency' => 24, 'page' => 'home');
 
 	pg_assert_same(
-		array('name' => 'Welcome', 'enabled' => '1', 'url' => '/welcome', 'width' => '400', 'height' => '0', 'delay' => '5', 'frequency' => '24', 'page' => 'home'),
+		array('name' => 'Welcome', 'enabled' => '1', 'url' => '/welcome', 'width' => '400', 'height' => '0', 'delay' => '5', 'frequency' => '24', 'page' => 'home', 'open_on' => 'delay', 'open_scroll' => 50, 'audience' => 'all', 'place' => 'centre'),
 		api_design_auto_dialog_values($row, array()),
 		'nothing sent keeps the stored dialog');
 
 	pg_assert_same(
-		array('name' => 'Hello', 'enabled' => '0', 'url' => '/welcome', 'width' => '0', 'height' => '0', 'delay' => '5', 'frequency' => '24', 'page' => 'shop'),
-		api_design_auto_dialog_values($row, array('name' => ' Hello ', 'enabled' => false, 'width' => null, 'page' => '/shop')),
+		array('name' => 'Hello', 'enabled' => '0', 'url' => '/welcome', 'width' => '0', 'height' => '0', 'delay' => '5', 'frequency' => '24', 'page' => 'shop', 'open_on' => 'scroll', 'open_scroll' => 50, 'audience' => 'all', 'place' => 'corner'),
+		api_design_auto_dialog_values($row, array('name' => ' Hello ', 'enabled' => false, 'width' => null, 'page' => '/shop', 'open_on' => 'scroll', 'place' => 'corner')),
 		'the sent fields change; null is the blank 0; the page loses its leading slash');
 
 	$created = api_design_auto_dialog_values(null, array('name' => 'New', 'url' => '/x'));
 
 	pg_assert_same('0', $created['enabled'], 'a create starts disabled, as on the screen');
-	pg_assert_same(8, count(array_values($created)), 'the eight values pg_auto_dialog_save() writes');
-	pg_assert_same(array('name', 'enabled', 'url', 'width', 'height', 'delay', 'frequency', 'page'), array_keys($created), 'in the screen\'s INSERT/UPDATE order');
+	pg_assert_same(array('name', 'enabled', 'url', 'width', 'height', 'delay', 'frequency', 'page', 'open_on', 'open_scroll', 'audience', 'place'), array_keys($created), 'the eight values in the screen\'s INSERT/UPDATE order, then the open settings');
+	pg_assert_same(array('open_on' => 'delay', 'open_scroll' => 50, 'audience' => 'all', 'place' => 'centre'), array_slice($created, 8), 'a create opens as an auto dialog always has');
+
+	$stored = $row + array('open_on' => 'leave', 'open_scroll' => '30', 'audience' => 'cart', 'place' => 'top');
+	pg_assert_same(array('open_on' => 'leave', 'open_scroll' => 30, 'audience' => 'cart', 'place' => 'top'), array_slice(api_design_auto_dialog_values($stored, array()), 8), 'an update without them keeps the stored settings');
+}
+
+function test_api_design_auto_dialog_open_settings_refusals()
+{
+	pg_assert_same(array(), pg_auto_dialog_form_open_problems(array('open_on' => 'scroll', 'open_scroll' => '1', 'audience' => 'cart', 'place' => 'bottom')), 'the offered values pass');
+	pg_assert_same(array(), pg_auto_dialog_form_open_problems(array('open_on' => '', 'open_scroll' => '', 'audience' => '', 'place' => '')), 'blank is the default');
+	pg_assert_same(array('open_on', 'audience', 'place'), array_keys(pg_auto_dialog_form_open_problems(array('open_on' => 'hover', 'audience' => 'members', 'place' => 'middle'))), 'a value the screen does not offer is refused');
+	pg_assert_same(array('open_on'), array_keys(pg_auto_dialog_form_open_problems(array('open_on' => array('delay')))), 'a list is refused');
+
+	foreach (array('0', '101', '50.5', '-5', 'half') as $share) {
+		pg_assert_same(array('open_scroll'), array_keys(pg_auto_dialog_form_open_problems(array('open_scroll' => $share))), 'scroll share ' . $share . ' is refused');
+	}
+
+	$prepare = api_design_dialogs_regions_test_body('includes/api/resources/design_dialogs_regions.php', 'api_design_auto_dialog_prepare');
+	pg_assert_contains('pg_auto_dialog_form_open_problems($open)', $prepare, 'the API asks the screen\'s check');
+	pg_assert_true(strpos($prepare, 'pg_auto_dialog_form_open_problems') < strpos($prepare, 'pg_auto_dialog_name_in_use'), 'before the name query');
+
+	$commit = api_design_dialogs_regions_test_body('includes/api/resources/design_dialogs_regions.php', 'api_design_auto_dialog_commit');
+	pg_assert_contains('pg_auto_dialog_save($prepared[\'id\'], array_diff_key($values, $open), (int)$app[\'owner\'][\'id\'], $open)', $commit, 'the eight values and the open settings go to the shared writer');
 }
 
 function test_api_design_auto_dialog_present_builds_the_declared_fields()

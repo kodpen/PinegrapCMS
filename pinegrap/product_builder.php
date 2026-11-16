@@ -6277,7 +6277,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                 the row, which is as tall as the whole form.
             -->
             <div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">
-                <nav class="buttons navigation text-center mb-7" aria-label="' . lang('data edit buttons') . '">
+                <nav class="buttons navigation pg-bar-rows text-center mb-7" aria-label="' . lang('data edit buttons') . '">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
                             ' . ($pg_recycled ? $pg_bin_link : '

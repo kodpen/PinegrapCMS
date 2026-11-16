@@ -219,6 +219,7 @@ function pg_idt_remove_starter($page_ids, $style_ids, $style_id, $start_page_id)
         // one of their ids.
         require_once(PG_FUNCTIONS_DIR . '/includes/fn/prototype_links.php');
         pg_proto_links_revoke_design($style_ids, 0);
+        pg_proto_comments_delete_design($style_ids);
     }
 
     return $removed;

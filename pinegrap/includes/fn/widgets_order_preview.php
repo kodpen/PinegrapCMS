@@ -402,72 +402,155 @@ function pg_op_review_fields_html($fields)
     return $rows === '' ? '' : '<dl class="row mb-0">' . $rows . '</dl>';
 }
 
-// The recipients and their items, as the classic page lists them: the
-// ship-to heading with its address, arrival date and shipping method, the
-// custom shipping form's answers, then each item with its quantity, price
-// and amount, an out-of-stock note, its event, gift card and product form
-// details, and a recurring item's schedule.
-function _pg_op_recipients_html($d)
+/**
+ * The recipients of get_order_preview()'s data and their items, as the
+ * order preview shows them: one row per recipient with items, each holding
+ * its lines, each line its gift cards. Values are text unless named
+ * *_html (markup the classic page prints: prices, a product's description,
+ * an out-of-stock note, a custom form's answers). What the recipients
+ * section (pg_op_recipients_html()) and the recipient lists
+ * (pg_op_list_rows()) both draw.
+ *
+ * @param array $d get_order_preview()'s layout data
+ * @return array
+ */
+function pg_op_recipient_rows($d)
 {
-    $html = '';
+    $rows = array();
     $describe = (($d['product_description_type'] ?? '') === 'short_description') ? 'short_description' : 'full_description';
+    $date = function ($value) {
+        return get_absolute_time(array('timestamp' => strtotime((string)$value), 'type' => 'date', 'size' => 'long', 'format' => 'plain_text'));
+    };
     foreach ((array)($d['recipients'] ?? array()) as $r) {
-        if (empty($r['items'])) continue;
-        $html .= '<div class="pg-op-recipient mb-4">';
-        if (!empty($r['ship_to_heading'])) {
-            $html .= '<div class="d-flex flex-wrap justify-content-between gap-2 mb-2">'
-                . '<div><div class="fw-semibold">' . h(lang('Ship to')) . ' ' . h((string)$r['ship_to_name']) . '</div>'
-                . '<div class="small text-muted">' . h(trim((string)$r['name'])) . ($r['name'] !== '' ? '<br>' : '') . h((string)$r['address']) . '</div>';
+        if (!is_array($r) || empty($r['items'])) continue;
+        $heading = !empty($r['ship_to_heading']);
+        $row = array(
+            'key' => (string)(int)($r['id'] ?? 0), 'heading' => $heading,
+            'ship_to_name' => '', 'person' => '', 'name_br' => false, 'address' => '', 'arrival' => '',
+            'method' => '', 'cost_html' => null, 'update_url' => '', 'form_html' => '', 'lines' => array(),
+        );
+        if ($heading) {
+            $row['ship_to_name'] = (string)$r['ship_to_name'];
+            $row['person'] = trim((string)$r['name']);
+            $row['name_br'] = ((string)$r['name'] !== '');
+            $row['address'] = (string)$r['address'];
             if (!empty($d['arrival_dates']) && !empty($r['arrival_date_name'])) {
-                $arrival = !empty($r['arrival_date_custom'])
+                $row['arrival'] = !empty($r['arrival_date_custom'])
                     ? get_absolute_time(array('timestamp' => strtotime((string)$r['arrival_date']), 'type' => 'date', 'size' => 'long', 'format' => 'plain_text'))
                     : (string)$r['arrival_date_name'];
-                $html .= '<div class="small">' . h(lang('Requested Arrival Date')) . ': ' . h($arrival) . '</div>';
             }
-            if ((string)$r['shipping_method_name'] !== '') {
-                $html .= '<div class="small">' . h(lang('Shipping Method')) . ': ' . h((string)$r['shipping_method_name'])
-                    . (isset($r['shipping_cost_info']) ? ' (' . $r['shipping_cost_info'] . ')' : '') . '</div>';
-            }
-            $html .= '</div>' . ((string)($r['update_url'] ?? '') !== ''
-                ? '<a class="small" href="' . h((string)$r['update_url']) . '">' . h(lang('Change')) . '</a>' : '') . '</div>';
-            if (!empty($r['form']) && !empty($r['form_data'])) {
-                $html .= '<div class="small mb-2">' . pg_op_review_fields_html($r['fields']) . '</div>';
-            }
+            $row['method'] = (string)$r['shipping_method_name'];
+            if (isset($r['shipping_cost_info'])) $row['cost_html'] = (string)$r['shipping_cost_info'];
+            $row['update_url'] = (string)($r['update_url'] ?? '');
+            if (!empty($r['form']) && !empty($r['form_data'])) $row['form_html'] = pg_op_review_fields_html($r['fields']);
         }
-        $html .= '<ul class="list-group">';
         foreach ($r['items'] as $item) {
             // The full description is the product's own HTML, the short one text.
-            $name = (string)$item[$describe] === '' ? h((string)$item['name'])
+            $title = (string)$item[$describe] === '' ? h((string)$item['name'])
                 : ($describe === 'short_description' ? h((string)$item[$describe]) : (string)$item[$describe]);
-            $html .= '<li class="list-group-item"><div class="d-flex flex-wrap justify-content-between gap-2">'
-                . '<div><div>' . $name . '</div><div class="small text-muted">' . h((string)$item['name'])
-                . ' &times; ' . (int)$item['quantity'] . (isset($item['price_info']) ? ' @ ' . $item['price_info'] : '') . '</div></div>'
-                . '<div class="fw-semibold text-nowrap">' . $item['amount_info'] . '</div></div>';
-            if (!empty($item['show_out_of_stock_message'])) {
-                $html .= '<div class="small text-danger">' . $item['out_of_stock_message'] . '</div>';
-            }
+            $line = array(
+                'key' => (string)(int)($item['id'] ?? 0), 'title_html' => $title, 'name' => (string)$item['name'],
+                'qty' => (string)(int)$item['quantity'], 'price_html' => isset($item['price_info']) ? (string)$item['price_info'] : null,
+                'amount_html' => (string)$item['amount_info'],
+                'stock_html' => !empty($item['show_out_of_stock_message']) ? (string)$item['out_of_stock_message'] : '',
+                'event' => '', 'event_dates' => null, 'recurring' => '', 'cards' => array(), 'forms_html' => '',
+            );
             if (!empty($item['calendar_event']['name'])) {
-                $html .= '<div class="small">' . h((string)$item['calendar_event']['name'])
-                    . (isset($item['calendar_event']['date_and_time_range']) ? ' — ' . $item['calendar_event']['date_and_time_range'] : '') . '</div>';
+                $line['event'] = (string)$item['calendar_event']['name'];
+                if (isset($item['calendar_event']['date_and_time_range'])) $line['event_dates'] = (string)$item['calendar_event']['date_and_time_range'];
             }
             if (!empty($item['recurring'])) {
-                $html .= '<div class="small text-muted">' . h(lang('Payment Period')) . ': ' . h(lang((string)$item['recurring_payment_period']))
-                    . ((int)$item['recurring_number_of_payments'] > 0 ? ', ' . h(lang('Number of Payments')) . ': ' . (int)$item['recurring_number_of_payments'] : '')
-                    . (!empty($d['start_date']) && (string)$item['recurring_start_date'] !== '' ? ', ' . h(lang('Start Date')) . ': ' . h(get_absolute_time(array('timestamp' => strtotime((string)$item['recurring_start_date']), 'type' => 'date', 'size' => 'long', 'format' => 'plain_text'))) : '') . '</div>';
+                $line['recurring'] = lang('Payment Period') . ': ' . lang((string)$item['recurring_payment_period'])
+                    . ((int)$item['recurring_number_of_payments'] > 0 ? ', ' . lang('Number of Payments') . ': ' . (int)$item['recurring_number_of_payments'] : '')
+                    . (!empty($d['start_date']) && (string)$item['recurring_start_date'] !== '' ? ', ' . lang('Start Date') . ': ' . $date($item['recurring_start_date']) : '');
             }
             foreach ((array)($item['gift_cards'] ?? array()) as $n => $card) {
                 if (!is_array($card) || (string)$card['recipient_email_address'] === '') continue;
-                $html .= '<div class="small">' . h(lang('Gift Card')) . ' ' . ($n + 1) . ': ' . h((string)$card['recipient_email_address'])
-                    . ((string)$card['from_name'] !== '' ? ', ' . h(lang('From')) . ' ' . h((string)$card['from_name']) : '') . '</div>';
+                $line['cards'][] = array('number' => (string)($n + 1), 'email' => (string)$card['recipient_email_address'], 'from' => (string)$card['from_name']);
             }
             foreach ((array)($item['forms'] ?? array()) as $form) {
-                if (!empty($form['data'])) $html .= '<div class="small mt-1">' . pg_op_review_fields_html($form['fields']) . '</div>';
+                if (!empty($form['data'])) $line['forms_html'] .= '<div class="small mt-1">' . pg_op_review_fields_html($form['fields']) . '</div>';
             }
-            $html .= '</li>';
+            $row['lines'][] = $line;
+        }
+        $rows[] = $row;
+    }
+    return $rows;
+}
+
+// The recipients section of get_order_preview()'s data $d.
+function _pg_op_recipients_html($d)
+{
+    return pg_op_recipients_html(pg_op_recipient_rows($d));
+}
+
+/**
+ * The recipients section as the classic page lists them, from
+ * pg_op_recipient_rows(): the ship-to heading with its address, arrival
+ * date and shipping method, the custom shipping form's answers, then each
+ * item with its quantity, price and amount, an out-of-stock note, its
+ * event, a recurring item's schedule, its gift cards and product forms.
+ * Pure; the designer canvas draws its twin (_sdOpRecipientsHtml()).
+ *
+ * @param array $rows
+ * @return string
+ */
+function pg_op_recipients_html($rows)
+{
+    $html = '';
+    foreach ((array)$rows as $r) {
+        $html .= '<div class="pg-op-recipient mb-4">';
+        if ($r['heading']) {
+            $html .= '<div class="d-flex flex-wrap justify-content-between gap-2 mb-2">'
+                . '<div><div class="fw-semibold">' . h(lang('Ship to')) . ' ' . h($r['ship_to_name']) . '</div>'
+                . '<div class="small text-muted">' . h($r['person']) . ($r['name_br'] ? '<br>' : '') . h($r['address']) . '</div>';
+            if ($r['arrival'] !== '') {
+                $html .= '<div class="small">' . h(lang('Requested Arrival Date')) . ': ' . h($r['arrival']) . '</div>';
+            }
+            if ($r['method'] !== '') {
+                $html .= '<div class="small">' . h(lang('Shipping Method')) . ': ' . h($r['method'])
+                    . ($r['cost_html'] !== null ? ' (' . $r['cost_html'] . ')' : '') . '</div>';
+            }
+            $html .= '</div>' . ($r['update_url'] !== ''
+                ? '<a class="small" href="' . h($r['update_url']) . '">' . h(lang('Change')) . '</a>' : '') . '</div>';
+            if ($r['form_html'] !== '') {
+                $html .= '<div class="small mb-2">' . $r['form_html'] . '</div>';
+            }
+        }
+        $html .= '<ul class="list-group">';
+        foreach ($r['lines'] as $line) {
+            $html .= '<li class="list-group-item"><div class="d-flex flex-wrap justify-content-between gap-2">'
+                . '<div><div>' . $line['title_html'] . '</div><div class="small text-muted">' . h($line['name'])
+                . ' &times; ' . $line['qty'] . ($line['price_html'] !== null ? ' @ ' . $line['price_html'] : '') . '</div></div>'
+                . '<div class="fw-semibold text-nowrap">' . $line['amount_html'] . '</div></div>';
+            if ($line['stock_html'] !== '') {
+                $html .= '<div class="small text-danger">' . $line['stock_html'] . '</div>';
+            }
+            if ($line['event'] !== '') {
+                $html .= '<div class="small">' . h($line['event']) . ($line['event_dates'] !== null ? ' — ' . $line['event_dates'] : '') . '</div>';
+            }
+            if ($line['recurring'] !== '') {
+                $html .= '<div class="small text-muted">' . h($line['recurring']) . '</div>';
+            }
+            foreach ($line['cards'] as $card) {
+                $html .= '<div class="small">' . h(lang('Gift Card')) . ' ' . $card['number'] . ': ' . h($card['email'])
+                    . ($card['from'] !== '' ? ', ' . h(lang('From')) . ' ' . h($card['from']) : '') . '</div>';
+            }
+            $html .= $line['forms_html'] . '</li>';
         }
         $html .= '</ul></div>';
     }
     return $html;
+}
+
+// The applied offers, one line each in the words the offer shows.
+function _pg_op_offers_html($offers)
+{
+    $html = '';
+    foreach ((array)$offers as $offer) {
+        if (is_array($offer)) $html .= '<li>' . h((string)$offer['description']) . '</li>';
+    }
+    return $html === '' ? '' : '<ul class="mb-0">' . $html . '</ul>';
 }
 
 // The applied gift cards: code, amount taken from each, the balance left
@@ -498,6 +581,222 @@ function _pg_op_payment_periods_html($periods)
     return '<div class="table-responsive"><table class="table table-sm mb-0"><thead><tr><th>' . h(lang('Payment Period')) . '</th>'
         . '<th class="text-end">' . h(lang('Subtotal')) . '</th><th class="text-end">' . h(lang('Tax')) . '</th>'
         . '<th class="text-end">' . h(lang('Total')) . '</th></tr></thead><tbody>' . $rows . '</tbody></table></div>';
+}
+
+// A price get_order_preview() wrote as HTML (prepare_price_for_output()'s
+// nowrap span) as the text a list row carries: the pass escapes row values
+// once, so the markup and the entity are taken off here.
+function _pg_op_price_text($html)
+{
+    return html_entity_decode(strip_tags((string)$html), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+}
+
+/**
+ * The rows of the order preview's lists (widgets_lists_checkout.php), as
+ * pg_sw_list_publish('checkout') files them, from get_order_preview()'s
+ * data: the offers applied, the gift cards applied (only those the order
+ * takes an amount from, as the section lists them) and the recurring
+ * payments by period. Raw values; amounts as text.
+ *
+ * @param array $d get_order_preview()'s layout data
+ * @return array source => array(0 => rows)
+ */
+function pg_op_list_rows($d)
+{
+    $out = array('checkout.offers' => array(0 => array()), 'checkout.gift_cards' => array(0 => array()),
+                 'checkout.periods' => array(0 => array()), 'checkout.ship_tos' => array(0 => array()),
+                 'checkout.lines' => array(), 'checkout.line_gift_cards' => array());
+    // The recipients under the whole order, each one's lines under its id,
+    // each line's gift cards under the line's id.
+    foreach (pg_op_recipient_rows($d) as $r) {
+        $out['checkout.ship_tos'][0][] = array(
+            '__ship_to_key' => $r['key'], '__ship_to_heading' => $r['heading'] ? '1' : '', '__ship_to_name' => $r['ship_to_name'],
+            '__ship_to_person' => $r['person'], '__ship_to_address' => $r['address'], '__ship_to_arrival' => $r['arrival'],
+            '__ship_to_method' => $r['method'], '__ship_to_cost_html' => (string)$r['cost_html'], '__ship_to_has_cost' => $r['cost_html'] !== null ? '1' : '',
+            '__ship_to_update_url' => $r['update_url'], '__ship_to_form_html' => $r['form_html'], '__ship_to_has_form' => $r['form_html'] !== '' ? '1' : '',
+        );
+        foreach ($r['lines'] as $line) {
+            $out['checkout.lines'][$r['key']][] = array(
+                '__line_key' => $line['key'], '__line_title_html' => $line['title_html'], '__line_name' => $line['name'],
+                '__line_qty' => $line['qty'], '__line_price_html' => (string)$line['price_html'], '__line_has_price' => $line['price_html'] !== null ? '1' : '',
+                '__line_amount_html' => $line['amount_html'], '__line_stock_html' => $line['stock_html'], '__line_has_stock_note' => $line['stock_html'] !== '' ? '1' : '',
+                '__line_event' => $line['event'], '__line_event_dates' => (string)$line['event_dates'],
+                '__line_recurring' => $line['recurring'], '__line_forms_html' => $line['forms_html'], '__line_has_forms' => $line['forms_html'] !== '' ? '1' : '',
+            );
+            foreach ($line['cards'] as $card) {
+                $out['checkout.line_gift_cards'][$line['key']][] = array(
+                    '__line_card_number' => $card['number'], '__line_card_email' => $card['email'], '__line_card_from' => $card['from'],
+                );
+            }
+        }
+    }
+    foreach ((array)($d['applied_offers'] ?? array()) as $offer) {
+        if (!is_array($offer)) continue;
+        $out['checkout.offers'][0][] = array('__offer_code' => (string)($offer['code'] ?? ''), '__offer_text' => (string)($offer['description'] ?? ''));
+    }
+    foreach ((array)($d['applied_gift_cards'] ?? array()) as $card) {
+        if (!is_array($card) || !isset($card['amount_info'])) continue;
+        $out['checkout.gift_cards'][0][] = array(
+            '__gift_card_code'       => (string)$card['protected_code'],
+            '__gift_card_amount'     => _pg_op_price_text($card['amount_info']),
+            '__gift_card_balance'    => _pg_op_price_text($card['remaining_balance_info']),
+            '__gift_card_remove_url' => (string)$card['remove_url'],
+        );
+    }
+    foreach ((array)($d['payment_periods'] ?? array()) as $p) {
+        if (!is_array($p) || empty($p['exists'])) continue;
+        $out['checkout.periods'][0][] = array(
+            '__period_name'     => (string)lang((string)$p['name']),
+            '__period_subtotal' => _pg_op_price_text($p['subtotal_info']),
+            '__period_tax'      => _pg_op_price_text($p['tax_info'] ?? ''),
+            '__period_total'    => _pg_op_price_text($p['total_info']),
+        );
+    }
+    return $out;
+}
+
+/**
+ * The elements that take an order preview section's place when the designer
+ * opens it ("Convert to design elements"), the twin of
+ * _sdOrderPreviewPart(): the applied offers, the applied gift cards and the
+ * recurring payments by period, each a list of pg_op_list_rows()'s rows in
+ * the markup the section prints. Empty for any other section.
+ *
+ * @param string $section
+ * @return array tree nodes
+ */
+function pg_op_part($section)
+{
+    $list = function ($source, $kids) {
+        return array('type' => 'loop_area', 'props' => array('source' => $source), 'children' => $kids);
+    };
+    $bound = function ($tag, $class, $name, $token) {
+        return pg_sw_part_el($tag, $class, $name, array('_bindings' => array('text' => $token)));
+    };
+    if ($section === 'applied_offers') {
+        return array(pg_sw_part_el('ul', 'mb-0', lang('Offers applied to the order'), array(), array(
+            $list('checkout.offers', array($bound('li', '', lang('Offer text'), '__offer_text'))),
+        )));
+    }
+    if ($section === 'applied_gift_cards') {
+        return array(pg_sw_part_el('ul', 'list-group mb-3', lang('Gift cards applied to the order'), array(), array(
+            $list('checkout.gift_cards', array(
+                pg_sw_part_el('li', 'list-group-item d-flex flex-wrap justify-content-between gap-2', lang('Gift Card'), array(), array(
+                    pg_sw_part_el('span', '', lang('Gift Card'), array(), array(
+                        pg_sw_part_sentence('span', '', lang('Gift card code (masked)'), lang('Gift Card') . ' {var:1}', '__gift_card_code'),
+                        pg_sw_part_sentence('span', 'small text-muted', lang('Remaining Balance'), '(' . lang('Remaining Balance') . ': {var:1})', '__gift_card_balance'),
+                    )),
+                    pg_sw_part_el('span', '', lang('Amount taken from the card'), array(), array(
+                        pg_sw_part_sentence('span', '', lang('Amount taken from the card'), '-{var:1}', '__gift_card_amount'),
+                        pg_sw_part_el('a', 'small ms-2', lang('Remove'), array('text' => lang('Remove'), 'href' => '#',
+                            '_bindings' => array('href' => '__gift_card_remove_url'))),
+                    )),
+                )),
+            )),
+        )));
+    }
+    if ($section === 'order_recipients') return pg_op_recipients_part();
+    if ($section === 'recurring_payments') {
+        $th = function ($class, $text) { return pg_sw_part_el('th', $class, $text, array('text' => $text)); };
+        return array(pg_sw_part_el('div', 'table-responsive', lang('Recurring payments by period'), array(), array(
+            pg_sw_part_el('table', 'table table-sm mb-0', lang('Table'), array(), array(
+                pg_sw_part_el('thead', '', lang('Head'), array(), array(
+                    pg_sw_part_el('tr', '', lang('Row'), array(), array(
+                        $th('', lang('Payment Period')), $th('text-end', lang('Subtotal')), $th('text-end', lang('Tax')), $th('text-end', lang('Total')),
+                    )),
+                )),
+                pg_sw_part_el('tbody', '', lang('Body'), array(), array(
+                    $list('checkout.periods', array(
+                        pg_sw_part_el('tr', '', lang('Payment Period'), array(), array(
+                            $bound('td', '', lang('Payment Period'), '__period_name'),
+                            $bound('td', 'text-end', lang('Subtotal'), '__period_subtotal'),
+                            $bound('td', 'text-end', lang('Tax'), '__period_tax'),
+                            $bound('td', 'text-end fw-semibold', lang('Total'), '__period_total'),
+                        )),
+                    )),
+                )),
+            )),
+        )));
+    }
+    return array();
+}
+
+// The recipients section opened (pg_op_part('order_recipients')): a list
+// of the recipients, each with its heading, a list of its items and each
+// item's gift cards, in the section's markup and words. A part that is the
+// classic page's own markup (a price, a product's description, a custom
+// form's answers) is a raw value in its element. Twin of
+// _sdOrderPreviewRecipientsPart().
+function pg_op_recipients_part()
+{
+    $list = function ($source, $kids) {
+        return array('type' => 'loop_area', 'props' => array('source' => $source), 'children' => $kids);
+    };
+    $el = 'pg_sw_part_el';
+    $when = 'pg_sw_part_when';
+    $bound = function ($tag, $class, $name, $token, $props = array()) {
+        return pg_sw_part_el($tag, $class, $name, array_merge_recursive(array('_bindings' => array('text' => $token)), $props));
+    };
+    // A sentence of several values: {var:N} is the N-th token.
+    $sentence = function ($tag, $class, $name, $text, $tokens, $props = array()) {
+        $kids = array();
+        foreach ($tokens as $token) $kids[] = pg_sw_part_el('span', '', 'Value', array('_bindings' => array('text' => $token)));
+        return pg_sw_part_el($tag, $class, $name, array_merge(array('text' => $text, '_sentence' => true), $props), $kids);
+    };
+    $heading = $el('div', 'd-flex flex-wrap justify-content-between gap-2 mb-2', lang('Heading'), $when('__ship_to_heading', 'not_empty'), array(
+        $el('div', '', lang('Address'), array(), array(
+            $sentence('div', 'fw-semibold', lang('Ship to'), lang('Ship to') . ' {var:1}', array('__ship_to_name')),
+            $el('div', 'small text-muted', lang('Address'), array(), array(
+                $bound('span', '', lang('Recipient name'), '__ship_to_person', $when('__ship_to_person', 'not_empty')),
+                $el('br', '', lang('Line break'), $when('__ship_to_person', 'not_empty')),
+                $bound('span', '', lang('Address'), '__ship_to_address'),
+            )),
+            $sentence('div', 'small', lang('Requested Arrival Date'), lang('Requested Arrival Date') . ': {var:1}', array('__ship_to_arrival'),
+                $when('__ship_to_arrival', 'not_empty')),
+            $el('div', 'small', lang('Shipping Method'), $when('__ship_to_method', 'not_empty'), array(
+                $sentence('span', '', lang('Shipping Method'), lang('Shipping Method') . ': {var:1}', array('__ship_to_method')),
+                $sentence('span', '', lang('Shipping cost (HTML)'), '({var:1})', array('__ship_to_cost_html'), $when('__ship_to_has_cost', 'not_empty')),
+            )),
+        )),
+        $el('a', 'small', lang('Change'), array_merge(array('text' => lang('Change'), 'href' => '#',
+            '_bindings' => array('href' => '__ship_to_update_url', 'show_if' => '__ship_to_update_url'),
+            '_bindParams' => array('show_if' => array('op' => 'not_empty'))))),
+    ));
+    $line = $el('li', 'list-group-item', lang('Item'), array(), array(
+        $el('div', 'd-flex flex-wrap justify-content-between gap-2', lang('Item'), array(), array(
+            $el('div', '', lang('Product'), array(), array(
+                $bound('div', '', lang('Product description (HTML)'), '__line_title_html'),
+                $el('div', 'small text-muted', lang('Quantity'), array(), array(
+                    $sentence('span', '', lang('Quantity'), '{var:1} × {var:2} @ {var:3}', array('__line_name', '__line_qty', '__line_price_html'),
+                        $when('__line_has_price', 'not_empty')),
+                    $sentence('span', '', lang('Quantity'), '{var:1} × {var:2}', array('__line_name', '__line_qty'), $when('__line_has_price', 'empty')),
+                )),
+            )),
+            $bound('div', 'fw-semibold text-nowrap', lang('Amount (HTML)'), '__line_amount_html'),
+        )),
+        $bound('div', 'small text-danger', lang('Out of stock message (HTML)'), '__line_stock_html', $when('__line_has_stock_note', 'not_empty')),
+        $el('div', 'small', lang('Event'), $when('__line_event', 'not_empty'), array(
+            $sentence('span', '', lang('Event'), '{var:1} — {var:2}', array('__line_event', '__line_event_dates'), $when('__line_event_dates', 'not_empty')),
+            $bound('span', '', lang('Event'), '__line_event', $when('__line_event_dates', 'empty')),
+        )),
+        $bound('div', 'small text-muted', lang('Payment schedule'), '__line_recurring', $when('__line_recurring', 'not_empty')),
+        $list('checkout.line_gift_cards', array(
+            $el('div', 'small', lang('Gift Card'), array(), array(
+                $sentence('span', '', lang('Gift Card'), lang('Gift Card') . ' {var:1}: {var:2}, ' . lang('From') . ' {var:3}',
+                    array('__line_card_number', '__line_card_email', '__line_card_from'), $when('__line_card_from', 'not_empty')),
+                $sentence('span', '', lang('Gift Card'), lang('Gift Card') . ' {var:1}: {var:2}', array('__line_card_number', '__line_card_email'),
+                    $when('__line_card_from', 'empty')),
+            )),
+        )),
+        $bound('div', '', lang('Product form answers (HTML)'), '__line_forms_html', $when('__line_has_forms', 'not_empty')),
+    ));
+    return array($list('checkout.ship_tos', array(
+        $el('div', 'pg-op-recipient mb-4', lang('Recipient'), array(), array(
+            $heading,
+            $bound('div', 'small mb-2', lang('Custom shipping form answers (HTML)'), '__ship_to_form_html', $when('__ship_to_has_form', 'not_empty')),
+            $el('ul', 'list-group', lang('Items of the recipient'), array(), array($list('checkout.lines', array($line)))),
+        )),
+    )));
 }
 
 // The page's order_preview_pages row, made when missing and brought in line
@@ -546,6 +845,8 @@ function _pg_op_page_settings($page_id, $cfg)
 // ^^__cart_url^^.
 // Sections: order_recipients, applied_gift_cards, recurring_payments,
 // applied_offers, billing_form, installment_table, card_installments.
+// Lists (pg_op_list_rows()): checkout.offers, checkout.gift_cards,
+// checkout.periods; key ^^__ship_to_key^^ (0).
 // Controls by name: payment_method (radios with the method's value),
 // card_number, expiration, card_verification_number, installment,
 // threedsecure, gift_card_code with the submit_apply_gift_card button, terms,
@@ -618,10 +919,6 @@ function _render_system_widget_order_preview($tree_json, $widget_id, $cfg = arra
     );
     _pg_member_drop_empty_links($tree, $links);
 
-    $offers = '';
-    foreach ((array)$d['applied_offers'] as $offer) {
-        if (is_array($offer)) $offers .= '<li>' . h((string)$offer['description']) . '</li>';
-    }
     $installments = '';
     if ($op_flags['pays_by_card'] && function_exists('_eo_render_installment_box')) {
         $installments = _eo_render_installment_box($form);
@@ -630,7 +927,7 @@ function _render_system_widget_order_preview($tree_json, $widget_id, $cfg = arra
         'order_recipients'   => _pg_op_recipients_html($d),
         'applied_gift_cards' => _pg_op_gift_cards_html($d['applied_gift_cards']),
         'recurring_payments' => _pg_op_payment_periods_html($d['payment_periods']),
-        'applied_offers'     => $offers === '' ? '' : '<ul class="mb-0">' . $offers . '</ul>',
+        'applied_offers'     => _pg_op_offers_html($d['applied_offers']),
         'billing_form'       => pg_op_review_fields_html($d['fields']),
         'installment_table'  => (string)$d['installment_table'],
         'card_installments'  => $installments,
@@ -644,6 +941,9 @@ function _render_system_widget_order_preview($tree_json, $widget_id, $cfg = arra
     $kept_form = $_SESSION['software']['liveforms']['order_preview'] ?? null;
     $split = _split_widget_tree($tree);
     $rendered = str_replace('<!--pg-loop-slot-->', '', trim(_render_tree_node($split['static_tree'], 0, 0)));
+    // The offers, gift cards and payment periods as lists of the designer's
+    // own elements, filed only when the tree just drawn holds one.
+    if (pg_sw_list_wanted('checkout')) pg_sw_list_publish('checkout', pg_op_list_rows($d));
     if ($kept_form !== null) $_SESSION['software']['liveforms']['order_preview'] = $kept_form;
 
     $billing_name = trim(implode(' ', array_filter(array((string)$d['billing_salutation'],
@@ -680,6 +980,8 @@ function _render_system_widget_order_preview($tree_json, $widget_id, $cfg = arra
         '__offline_payment_label'   => h((string)$d['offline_payment_label']),
         '__paypal_image_url'        => h((string)$d['paypal_express_checkout_image_url']),
         '__iyzico_image_url'        => h((string)$d['pay_with_iyzico_image_url']),
+        // The key of the checkout lists: their rows are the whole order's.
+        '__ship_to_key'             => '0',
     );
     foreach ($links as $k => $v) $tokens[$k] = h($v);
     $rendered = _pg_member_apply_tokens($rendered, $tokens);

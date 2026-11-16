@@ -242,8 +242,11 @@
 - form-view-newest-comment-cut.md: ^^newest_comment^^ in classic form item / list views and content variables is cut to 100 characters before escaping, never after
 - generate-layout-screen.md: Generate Layout (generate_layout.php, includes/templates/generate_layout.php) in the edit screen pattern: the read-only code, the Summary, Copy the code and Edit Layout in the save bar
 - gift-card-shared-form.md: add_gift_card.php and edit_gift_card.php draw the Gift Card Options card and check its amount and date through includes/forms/gift_card_form.php; what each screen keeps
+- graph-canvas-core-focus.md: Graph canvas core focus: adapter focus, canvas.focus() and focused(), out, in, hidden and dim classes, allEdges() faint arrows, groups() headings, press to focus, the announcement
+- graph-canvas-core-logic.md: Graph canvas core pure logic: G.order() ranks from a start, G.arrange() a wrapped grid of groups with side columns (maxH wraps a tall one), G.linksOf(), G.check() dangling, unreached, stuck
 - graph-canvas-core-module.md: The graph canvas core (pg_graph_canvas.js, window.PGGraphCanvas, includes/fn/graph_canvas.php): what it owns, its adapter, its texts, its pgc- CSS and tokens, its first user the Flows canvas [decision: here]
-- graph-canvas-core-sizes-ports.md: Graph canvas core slice 4 for the Prototype view: size per box, lower zoom, named ports, spread arrow ends, other targets, stable arrow ids, partial redraw, thumbnails
+- graph-canvas-core-routing.md: Graph canvas core routing (PV5): G.route() right-angle ways through the gaps, G.path() rounded turns, G.lanes() side by side, adapter route 'elbow', when an arrow keeps the curve, speed
+- graph-canvas-core-sizes-ports.md: Graph canvas core slice 4 for the Prototype view: size per box, lower zoom, Fit to a start corner, named ports, spread arrow ends, other targets, stable arrow ids, partial redraw, thumbnails
 - greeting-counts.md: Counts in the dashboard greeting, the Workspace channel greeting and the Ecommerce card: a key for one, nominative vs accusative link phrases, counts inside one key
 - grid-column-min-width.md: CSS pitfall - a .row column taken off Bootstrap's width (width auto, max-width none) needs min-width 0, or a value that does not wrap widens the whole page past the window
 - guided-tour.md: The guided tour engine (assets/js/pg_tour.js, pg_tour.css): who uses it, how steps are counted, Back at the start, how a step is read out, where focus goes at the end, the bubble's size
@@ -264,6 +267,7 @@
 - image-editor-clip-bar.md: A video clip's bar on the tracks (V3b): the filmstrip of several frames from a second decoder, the clip's sound as a waveform under the frames [decision: here]
 - image-editor-clip-effects.md: A video clip's effects (l.fx) and its transition into the next clip on its row (l.transition), V5 #8667: numbers, stage and save, held frame, layer order, split, panel
 - image-editor-clip-export.md: A video layer in an animation's export (V7b): each frame waits for the clip's own frame of that moment from a decoder of its own, nothing off its span; a still save keeps the source in
+- image-editor-clip-keys.md: Quick clip edits in the Animate tool: the play bar's Split button, the S key, the scissors chip on a clip row, I and O trimming to the playhead, which clip Split takes
 - image-editor-clip-over.md: Layers over a video (V6, #8733): a layer's own end on the timeline (anim.out.at), picture in picture with corners and border (M.clipFrame()), drawn the same on the stage and in a save
 - image-editor-clip-timeline.md: Editing clips on the tracks (V3): one row per source cut, trim, split, move, snapping, ripple, the length following the clips but never cutting another layer's motion (V3b) [decision: decisions-made-product-42.md]
 - image-editor-clip.md: The video layer (V2): type video, source in and out, start, speed, the frame at the playhead, its sound, Import of videos, the clip panel, video_files and video_upload
@@ -298,7 +302,7 @@
 - image-editor-scenes-play.md: Play, the scrub and the clock over every scene of a canvas (AN7b): the whole timeline's hooks, the stage showing the playing scene and its transition, a card dragged to reorder
 - image-editor-scenes.md: A canvas's scenes (AN7a): doc.scenes and the open scene, the strip, the scene panel, transitions, frames across scenes, the save's cap, a canvas animation tied to its canvas
 - image-editor-scissors.md: The Design Canvas's Scissors tool: a click cuts a path or shape at a point, a drag cuts every path the line crosses; the model's cut functions
-- image-editor-select.md: How the Design Canvas's Select tool picks layers: a click, Shift, a press inside an unfilled shape, the selection box, Select all, touch
+- image-editor-select.md: How the Design Canvas picks layers: Select's click, Shift, box, Select all, touch; Ctrl or Cmd selecting from any tool, the Text tool and Animate's click keeping the playhead
 - image-editor-sound.md: Music and sounds on an animation (V4): doc.sounds on the whole timeline, sounds from Files, the rows under the tracks, the Sound panel, Web Audio in step with the play bar, the sound_files action [decision: decisions-made-product-31.md]
 - image-editor-sticker.md: The Design Canvas's Sticker and Frame tools: the sticker layer, its label, a picture from Files, the four frames on the saved picture's edge, an artboard's background fill, how a save draws them
 - image-editor-subject-brushes.md: The Design Canvas's Keep and Remove brushes on a selected subject (E28b, #6889): strokes as hard labels of a new cut, and the guided-filter soft edge of the layers made from it
@@ -581,6 +585,7 @@
 - rich-text-source-dialog.md: The rich text editor's Source dialog with the code editor: isolated in a shadow root (the dialog resets every element), sized like its textarea, Enter, Tab and used keys kept from the dialog
 - save-bar-chat-launcher.md: Look A's floating save bar (edit screens, settings pages) ends its buttons before the chat launcher in the window's bottom right corner (#9330)
 - save-bar-helper.md: pg_save_bar() (SH6a): the framed bar's markup, options, .pg-savebar frame, screens that took it; the buttons' order ghost, quiet, filled and the hidden Return button (SH6b)
+- save-bar-phone.md: The save bar below 576 px (SH6c): three actions share one row with their icons hidden, others two per row, .pg-bar-rows keeps kept screens on two per row
 - screen-focus-rings.md: Focus rings drawn by a screen's own styles use the 2px --pg-primary-ink outline, inset inside clipping boxes; which screens were moved and which still wait
 - script-built-field-names.md: Dialogs and fields drawn by script after load name themselves: unique title ids, label for, aria-label from the screen's label map, Escape kept (#3029)
 - scroll-regions-keyboard.md: Text-only boxes that scroll on their own are named keyboard regions: Audit Trail JSON values, Workspace MCP answer, API documentation tables and Try it answer, Write with AI draft
@@ -686,7 +691,9 @@
 - user-shared-form.md: The user create and edit screens share includes/forms/user_form.php (rights cards, folder rights, access save)
 - variable-chips.md: Variable chips (WA8b): a message's {{n}} drawn as chips naming what they stand for, the shared pgVarChips editor and pg_var_chip_html(), drag, click, move and remove, what the textarea keeps [decision: here]
 - verified-shipping-address-shared-form.md: The verified shipping address create and edit screens share includes/forms/verified_shipping_address_form.php: what it holds, what stays in the screens
+- visitor-push-panel.md: Visitor notifications in the panel: the Notifications card on Channels, the screen Send a notification, Pick a page or record, the test to this device, the sent list
 - visitors-ai-section.md: AI Visibility section of the Visitors overview (ai.php, #6475): bots and firewall, fetches by day, pages per bot, assistant visits, unfetched pages, old-screen redirect
+- visitors-clicks-section.md: The Clicks and scrolling section of the Visitors overview (includes/visitors/clicks.php, CM3): the switch-off empty state, the pages list, a page's own view, the device filter, labels as text [decision: here]
 - visitors-screen-look.md: How the Visitors overview is drawn: reference pictures, frames and blocks, one change column, folding lists, quiet dashes, anchors, calm charts, the menu's section links, the traps [decision: here]
 - visitors-screen.md: The Visitors overview screen (visitors.php): the period and its query string, the period bar, the section loader and contract, the shell helpers, its CSS/JS bundles, the Visitors menu and panel search [decision: decisions-made-product-24.md]
 - visitors-section-rules.md: Rules for a Visitors overview section (includes/visitors/<name>.php): what it owns, where its figures come from, texts and formats, access, files never touched

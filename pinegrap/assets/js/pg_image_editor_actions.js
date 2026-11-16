@@ -36,7 +36,7 @@
             this.render();
         }],
         removePin: ['puppet', 'puppetRemove', function () { this.removeChosenPin(); }, true],
-        split: ['scissors', 'actSplit', function () { this.clipSplitAt(this.selected()[0]); }],
+        split: ['scissors', 'actSplit', function () { this.clipSplitHere(this.selected()[0].id); }],
         duplicate: ['duplicate', 'duplicate', function () { this.addLayers(this.selected(), 10); }],
         remove: ['trash', 'delete', function () { this.removeLayers(); }, true],
         lockPicture: ['lock', 'lock', function () { this.lockPicture(true); }],
@@ -72,7 +72,7 @@
             pin: !!this.chosenPin && (this.chosenPin() !== null),
             sheet: !!this.panel && !this.sheetOpen,
             // One clip in the Animate tool: Split at the playhead.
-            split: (this.tool === 'motion') && (picked.length === 1) && (picked[0].type === 'video') && !!this.clipSplitAt,
+            split: (this.tool === 'motion') && (picked.length === 1) && (picked[0].type === 'video') && !!this.clipSplitHere,
             can: {
                 erase: !!this.areaErase, keep: !!this.areaKeep, copy: !!this.areaCopy, cutToLayer: !!this.areaCut, adjust: !!this.areaAdjust,
                 redact: !!this.newRedaction, pictureLayer: !!this.pictureLayerOn && this.pictureLayerOn()

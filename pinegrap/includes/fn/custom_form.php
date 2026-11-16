@@ -2231,39 +2231,42 @@ function pg_cf_apply_field_bindings(&$tree, $map, $lf = null, $cf_folder_id = 0,
         // Office-use-only fields never appear on the public form. Dropping
         // just the input would leave its label and an empty Bootstrap block
         // behind, so the label pointing at it goes too, and a wrapper left
-        // with nothing in it goes after them.
-        if (!$staff) {
-            $drop_ids = array();
+        // with nothing in it goes after them. A rows field
+        // (includes/fn/collection_rows.php) has no control on a site form
+        // yet, for staff either: it goes the same way.
+        $drop_ids = array();
+        foreach ($tree['children'] as $child) {
+            if (!is_array($child)) continue;
+            $ct = (isset($child['type']) && $child['type'] === 'semantic' && isset($child['props']['tag']))
+                ? strtolower((string)$child['props']['tag']) : '';
+            if (!in_array($ct, array('input', 'select', 'textarea'), true)) continue;
+            $ca = _pg_cf_node_attrs($child);
+            $ck = mb_strtolower(pg_cf_clean_field_name(isset($ca['name']) ? $ca['name'] : ''), 'UTF-8');
+            if ($ck === '' || !isset($map[$ck])) continue;
+            $rows_kind = pg_coll_field_kind(isset($map[$ck]['collection_kind']) ? $map[$ck]['collection_kind'] : '',
+                isset($map[$ck]['type']) ? (string)$map[$ck]['type'] : '') === 'rows';
+            if (!$rows_kind && ($staff
+                || (empty($map[$ck]['office_use_only']) && empty($map[$ck]['_pg_cf_sms_dropped'])))) continue;
+            $drop_ids[] = array('node' => $child, 'id' => isset($ca['id']) ? (string)$ca['id'] : '');
+        }
+        if (!empty($drop_ids)) {
+            $labels_for = array();
+            foreach ($drop_ids as $d) if ($d['id'] !== '') $labels_for[$d['id']] = true;
+            $kept = array();
             foreach ($tree['children'] as $child) {
-                if (!is_array($child)) continue;
-                $ct = (isset($child['type']) && $child['type'] === 'semantic' && isset($child['props']['tag']))
-                    ? strtolower((string)$child['props']['tag']) : '';
-                if (!in_array($ct, array('input', 'select', 'textarea'), true)) continue;
-                $ca = _pg_cf_node_attrs($child);
-                $ck = mb_strtolower(pg_cf_clean_field_name(isset($ca['name']) ? $ca['name'] : ''), 'UTF-8');
-                if ($ck === '' || !isset($map[$ck])
-                    || (empty($map[$ck]['office_use_only']) && empty($map[$ck]['_pg_cf_sms_dropped']))) continue;
-                $drop_ids[] = array('node' => $child, 'id' => isset($ca['id']) ? (string)$ca['id'] : '');
+                if (!is_array($child)) { $kept[] = $child; continue; }
+                $skip = false;
+                foreach ($drop_ids as $d) { if ($child === $d['node']) { $skip = true; break; } }
+                if (!$skip && isset($child['props']['tag'])
+                    && strtolower((string)$child['props']['tag']) === 'label') {
+                    $la = _pg_cf_node_attrs($child);
+                    if (isset($la['for']) && isset($labels_for[(string)$la['for']])) $skip = true;
+                }
+                if (!$skip) $kept[] = $child;
             }
-            if (!empty($drop_ids)) {
-                $labels_for = array();
-                foreach ($drop_ids as $d) if ($d['id'] !== '') $labels_for[$d['id']] = true;
-                $kept = array();
-                foreach ($tree['children'] as $child) {
-                    if (!is_array($child)) { $kept[] = $child; continue; }
-                    $skip = false;
-                    foreach ($drop_ids as $d) { if ($child === $d['node']) { $skip = true; break; } }
-                    if (!$skip && isset($child['props']['tag'])
-                        && strtolower((string)$child['props']['tag']) === 'label') {
-                        $la = _pg_cf_node_attrs($child);
-                        if (isset($la['for']) && isset($labels_for[(string)$la['for']])) $skip = true;
-                    }
-                    if (!$skip) $kept[] = $child;
-                }
-                $tree['children'] = $kept;
-                if (empty($tree['children']) && isset($tree['type']) && $tree['type'] === 'semantic') {
-                    $tree['props']['_pg_cf_empty'] = true;   // parent prunes it below
-                }
+            $tree['children'] = $kept;
+            if (empty($tree['children']) && isset($tree['type']) && $tree['type'] === 'semantic') {
+                $tree['props']['_pg_cf_empty'] = true;   // parent prunes it below
             }
         }
 

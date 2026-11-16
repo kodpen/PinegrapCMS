@@ -59,6 +59,7 @@ function pg_list_table_definitions()
         'mail_queue' => array('file' => 'includes/fn/mail_queue_list.php', 'source' => 'pg_mail_queue_list_source'),
         'mail_queue_sms' => array('file' => 'includes/fn/mail_queue_list.php', 'source' => 'pg_sms_queue_list_source'),
         'messages_sends' => array('file' => 'includes/fn/messages_sends.php', 'source' => 'pg_messages_sends_list_source'),
+        'view_content_review' => array('file' => 'includes/fn/content_review_list.php', 'source' => 'pg_content_review_list_source'),
     );
 }
 

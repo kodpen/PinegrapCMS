@@ -52,6 +52,9 @@ function workspace_mail_room_hidden_test_readers()
 		// Every channel's folder is one, the room's as well.
 		'includes/fn/image.php::pg_image_warmup_fetch'                     => array('key:folder_id'),
 		'includes/fn/privacy_export.php::pg_privacy_export_collect'        => array('key:contact_id'),
+		'includes/fn/content_proposals.php::pg_content_proposals_channel_offered' => array('kinds'),
+		// The channel a waiting content change is also asked in.
+		'includes/settings/features.php::(file)'                           => array('kinds'),
 		'includes/workspace/access.php::ws_channel'                        => array('id'),
 		'includes/workspace/agent_activity.php::ws_agent_activity_open'    => array('id'),
 		'includes/workspace/agent_instructions.php::ws_agent_instructions_channels' => array('id'),
@@ -94,6 +97,8 @@ function workspace_mail_room_hidden_test_readers()
 		'includes/workspace/scheduled.php::ws_scheduled_lead'              => array('key:contact_id'),
 		'includes/workspace/scheduled_draft.php::ws_scheduled_draft_lists' => array('kinds'),
 		'includes/workspace/steps.php::ws_step_trigger_values_for'         => array('id'),
+		// The agent channels a task can sit in.
+		'includes/workspace/tasks.php::ws_tasks_agent_channels'            => array('kinds'),
 		// A discussion and the channel it is in: nothing is posted in a
 		// room, so none starts there.
 		'includes/workspace/threads.php::ws_threads_for'                   => array('kinds', 'kinds'),

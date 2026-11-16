@@ -142,6 +142,7 @@ function get_help_url($properties = array())
         'toolbar'             => 'pages#editing-page-content',
         'view_comments'       => 'pages#edit-comment',
         'edit_comment'        => 'pages#edit-comment',
+        'view_content_review' => 'pages#content-review',
         'add_page'            => 'pages#edit-page-properties',
         'edit_page'           => 'pages#edit-page-properties',
         'view_fields'         => 'pages#edit-custom-form',

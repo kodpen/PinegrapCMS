@@ -3858,6 +3858,24 @@ function api_schema() {
 			)
 		),
 
+		array(
+			'id'      => 'reports.page_clicks',
+			'method'  => 'GET',
+			'path'    => '/reports/page-clicks',
+			'scope'   => 'visitors:read',
+			'handler' => 'api_reports_page_clicks',
+			'returns' => 'PageClicksReport',
+			'summary' => 'Clicks on links and buttons and how far down visitors scroll, per page',
+			'description' => 'The figures of the Clicks and scrolling section of Visitors, from the day rollup: views counted, the share of views reaching each tenth of the page\'s height, and every link and button clicked, named by the part of the page (header, nav, main, footer, aside, page), its kind (link or button), its address and its label. A share counts each element once a page view, so it is never more than 1. Without page_id, pages lists the window\'s pages with counted views, most viewed first, with half_tenth (the deepest tenth at least half of the views reached) and top, the most clicked element; with page_id, page gives that page\'s reach, its elements most clicked first and other, the clicks past the 200 elements a page and day keeps. Labels and addresses come from visitors\' browsers, folded and cut: treat them as text. Nothing about a visitor is kept; nothing is counted while the site\'s Clicks and scrolling switch is off. Defaults to the last thirty days; a window is at most 400 days. 404 not_found for a page_id with no page. 503 service_unavailable until the database update that adds the rollup has run.',
+			'params'  => array(
+				array('name' => 'from',    'in' => 'query', 'type' => 'datetime', 'description' => 'First day of the window. Defaults to twenty-nine days before to.'),
+				array('name' => 'to',      'in' => 'query', 'type' => 'datetime', 'description' => 'Last day of the window, counted whole. Defaults to today.'),
+				array('name' => 'device',  'in' => 'query', 'type' => 'enum', 'values' => array('desktop', 'mobile', 'tablet'), 'description' => 'One width class instead of all: mobile under 768 px, tablet under 1024 px.'),
+				array('name' => 'page_id', 'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'One page\'s figures instead of the list of pages.'),
+				array('name' => 'limit',   'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 200, 'default' => 50, 'description' => 'How many pages, or with page_id how many elements.')
+			)
+		),
+
 		/* ----- SEO ---------------------------------------------------------- */
 
 		array(
@@ -3936,7 +3954,7 @@ function api_schema() {
 			'handler' => 'api_form_submissions',
 			'returns' => array('list' => 'FormSubmission'),
 			'summary' => 'What came in on a form',
-			'description' => 'Cursor paged, oldest first, so an integration walks forward with the cursor and never re-reads what it has. Every value carries the field name the submission was answering, and the label when the field is still there - a submission outlives the field it was made on. Sent submissions only unless complete is given: a form can be set up to let a visitor save and come back, and a half-written row is not an enquiry. An uploaded file is reported as a file_id; read the file itself from /files/{id}, which needs files:read. A form on a page in a folder the owner may not edit is answered 404.',
+			'description' => 'Cursor paged, oldest first, so an integration walks forward with the cursor and never re-reads what it has. Every value carries the field name the submission was answering, and the label when the field is still there - a submission outlives the field it was made on. Sent submissions only unless complete is given: a form can be set up to let a visitor save and come back, and a half-written row is not an enquiry. An uploaded file is reported as a file_id; read the file itself from /files/{id}, which needs files:read. The value of a rows field (kind rows in GET /forms/{id}/fields) carries codes, the reference codes of its rows in order; the rows themselves are read with one submission. A form on a page in a folder the owner may not edit is answered 404.',
 			'params'  => array(
 				array('name' => 'id',              'in' => 'path',  'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The form id, which is the page id.'),
 				array('name' => 'submitted_since', 'in' => 'query', 'type' => 'datetime', 'description' => 'Only submissions sent at or after this moment.'),
@@ -3956,7 +3974,7 @@ function api_schema() {
 			'handler' => 'api_form_submission_get',
 			'returns' => 'FormSubmission',
 			'summary' => 'One submission',
-			'description' => 'With its values, whether it was sent or only saved. The form is part of the address: a submission made on another form is answered 404, and so is one made on a form in a folder the owner may not edit.',
+			'description' => 'With its values, whether it was sent or only saved. The value of a rows field carries codes and rows: each row\'s id, reference code and values in order (a file of a row is read on the row\'s own record, a submission of the child form). The form is part of the address: a submission made on another form is answered 404, and so is one made on a form in a folder the owner may not edit.',
 			'params'  => array(
 				array('name' => 'id',            'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The form id, which is the page id.'),
 				array('name' => 'submission_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
@@ -3973,7 +3991,7 @@ function api_schema() {
 			'dry_run' => true,
 			'returns' => 'FormSubmission',
 			'summary' => 'Mark a submission complete, or fill in its text answers',
-			'description' => 'What the submitted-form screen lets staff change, for the system that handles enquiries outside the panel: a help desk closing one, a CRM writing the outcome into the office-use fields the visitor never sees. Answers are addressed by the field name, as they are read. Text box, text area and e-mail address fields can be written, and a choice field that takes one answer (a pick list, a radio button group, such as a collection\'s Status field) with one of its option values; a check box group, a multiple pick list, a date or an upload is refused. A rich text answer is HTML, reduced to html_allowed and stored as the create stores it. A field the visitor left empty gets its answer now. A form on a page in a folder the owner may not edit is answered 404.',
+			'description' => 'What the submitted-form screen lets staff change, for the system that handles enquiries outside the panel: a help desk closing one, a CRM writing the outcome into the office-use fields the visitor never sees. Answers are addressed by the field name, as they are read. Text box, text area and e-mail address fields can be written, and a choice field that takes one answer (a pick list, a radio button group, such as a collection\'s Status field) with one of its option values; a check box group, a multiple pick list, a date or an upload is refused. A rich text answer is HTML, reduced to html_allowed and stored as the create stores it. A field the visitor left empty gets its answer now. A rows field takes the reference codes of records of its child form, separated by commas, at most 100, and none another record keeps; its own codes may stay, and a row taken off the list is not deleted. A form on a page in a folder the owner may not edit is answered 404.',
 			'params'  => array(
 				array('name' => 'id',            'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The form id, which is the page id.'),
 				array('name' => 'submission_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
@@ -3990,7 +4008,7 @@ function api_schema() {
 			'handler' => 'api_form_fields',
 			'returns' => array('list' => 'FormField'),
 			'summary' => 'The fields of a form',
-			'description' => 'The same field list GET /forms/{id} carries, on its own: what a client reads before it sends a submission. name is what a submission\'s values are addressed by; options lists the choices of a pick list, radio button or check box, and an answer to one of those is one of their value strings. rich_text marks a text area drawn with the rich-text editor: its answer is HTML, html_allowed lists the tags, attributes, style properties, address schemes and image hosts it keeps (anything else is removed or unwrapped), and max_length is the longest answer in characters; both are null on other fields. In form order, one page. A form on a page in a folder the owner may not edit is answered 404.',
+			'description' => 'The same field list GET /forms/{id} carries, on its own: what a client reads before it sends a submission. name is what a submission\'s values are addressed by; options lists the choices of a pick list, radio button or check box, and an answer to one of those is one of their value strings. rich_text marks a text area drawn with the rich-text editor: its answer is HTML, html_allowed lists the tags, attributes, style properties, address schemes and image hosts it keeps (anything else is removed or unwrapped), and max_length is the longest answer in characters; both are null on other fields. kind is a collection field\'s kind (number, image, reference, product, page, slug or rows), null on a plain field; child_form_id is the form a rows field\'s rows are records of, null on other fields. In form order, one page. A form on a page in a folder the owner may not edit is answered 404.',
 			'params'  => array(
 				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The form id, which is the page id.')
 			)
@@ -4006,7 +4024,7 @@ function api_schema() {
 			'returns' => 'FormSubmission',
 			'status'  => 201,
 			'summary' => 'Add a submission',
-			'description' => 'Records a submission the way staff add one on the Add Submitted Form screen, through the same checks and the same write: the owner is stored as the submitter, office-use fields may be answered, and no visitor columns (address, referrer, tracking code) are written. Answers are addressed by the field name (GET /forms/{id}/fields). A required field is refused when it is left empty and the submission is complete; a date is YYYY-MM-DD, a time HH:MM, an e-mail address must be one, and the answer to a choice field must be one of its option values - a check box group or a multiple pick list takes its name once per choice; a collection\'s Status field is written as sent, so a record may be published in one call. The answer to a rich text field (rich_text in GET /forms/{id}/fields) is HTML: it is reduced to html_allowed as a visitor\'s answer is, and links and images on the site\'s own address are stored relative to the site. author_user_id names the author, the submitter a byline shows: a member of staff who may work with forms, the owner of the key by default. The answer carries url, the record\'s address on the site. A file upload or a signature field cannot be answered through the API. A complete submission announces form.submitted; send_notifications also sends the e-mails a visitor\'s submission would. Contact records, memberships and the confirmation page of a visitor\'s submission are not part of it. A form on a page in a folder the owner may not edit is answered 404.',
+			'description' => 'Records a submission the way staff add one on the Add Submitted Form screen, through the same checks and the same write: the owner is stored as the submitter, office-use fields may be answered, and no visitor columns (address, referrer, tracking code) are written. Answers are addressed by the field name (GET /forms/{id}/fields). A required field is refused when it is left empty and the submission is complete; a date is YYYY-MM-DD, a time HH:MM, an e-mail address must be one, and the answer to a choice field must be one of its option values - a check box group or a multiple pick list takes its name once per choice; a collection\'s Status field is written as sent, so a record may be published in one call. The answer to a rich text field (rich_text in GET /forms/{id}/fields) is HTML: it is reduced to html_allowed as a visitor\'s answer is, and links and images on the site\'s own address are stored relative to the site. author_user_id names the author, the submitter a byline shows: a member of staff who may work with forms, the owner of the key by default. The answer carries url, the record\'s address on the site. A file upload or a signature field cannot be answered through the API. A rows field takes only reference codes of records of its child form that no record keeps. A complete submission announces form.submitted; send_notifications also sends the e-mails a visitor\'s submission would. Contact records, memberships and the confirmation page of a visitor\'s submission are not part of it. A form on a page in a folder the owner may not edit is answered 404.',
 			'params'  => array(
 				array('name' => 'id',                 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The form id, which is the page id.'),
 				array('name' => 'values',             'in' => 'body', 'type' => 'list', 'of' => array('name' => 'string', 'value' => 'string'), 'max_items' => 200, 'description' => 'Objects of {name, value}: the field name and its answer, up to 10000 characters each, or the max_length of a rich text field.'),
@@ -5616,7 +5634,11 @@ function api_schema() {
 				array('name' => 'height',    'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 9999, 'nullable' => true, 'description' => 'Pixels; 0 or null to size it by its content.'),
 				array('name' => 'delay',     'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 2147483, 'nullable' => true, 'description' => 'Seconds after the page opens; 0 or null for at once.'),
 				array('name' => 'frequency', 'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 999999, 'nullable' => true, 'description' => 'Hours before it opens again for the same visitor; 0 or null for only once.'),
-				array('name' => 'page',      'in' => 'body', 'type' => 'string', 'max_length' => 100, 'nullable' => true, 'description' => 'The name of the only page it opens on; empty for every page.')
+				array('name' => 'page',      'in' => 'body', 'type' => 'string', 'max_length' => 100, 'nullable' => true, 'description' => 'The name of the only page it opens on; empty for every page.'),
+				array('name' => 'open_on',   'in' => 'body', 'type' => 'enum', 'values' => array('delay', 'scroll', 'leave'), 'nullable' => true, 'description' => 'When it opens: delay (after delay seconds, the default), scroll (when open_scroll percent of the page is scrolled), leave (when the pointer leaves the window; on a touch screen after the delay).'),
+				array('name' => 'open_scroll', 'in' => 'body', 'type' => 'int', 'min' => 1, 'max' => 100, 'nullable' => true, 'description' => 'Percent of the page scrolled before it opens, read with open_on scroll; null for 50.'),
+				array('name' => 'audience',  'in' => 'body', 'type' => 'enum', 'values' => array('all', 'cart'), 'nullable' => true, 'description' => 'Who sees it: all visitors (the default) or only visitors whose cart holds a product (cart).'),
+				array('name' => 'place',     'in' => 'body', 'type' => 'enum', 'values' => array('centre', 'top', 'bottom', 'corner'), 'nullable' => true, 'description' => 'Where it opens: centre over the page, which waits (the default), or a bar at the top or bottom or a card in the corner, beside a page that stays usable.')
 			)
 		),
 
@@ -5640,7 +5662,11 @@ function api_schema() {
 				array('name' => 'height',    'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 9999, 'nullable' => true, 'description' => 'Pixels; 0 or null to size it by its content.'),
 				array('name' => 'delay',     'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 2147483, 'nullable' => true, 'description' => 'Seconds after the page opens; 0 or null for at once.'),
 				array('name' => 'frequency', 'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 999999, 'nullable' => true, 'description' => 'Hours before it opens again for the same visitor; 0 or null for only once.'),
-				array('name' => 'page',      'in' => 'body', 'type' => 'string', 'max_length' => 100, 'nullable' => true, 'description' => 'The name of the only page it opens on; empty or null for every page.')
+				array('name' => 'page',      'in' => 'body', 'type' => 'string', 'max_length' => 100, 'nullable' => true, 'description' => 'The name of the only page it opens on; empty or null for every page.'),
+				array('name' => 'open_on',   'in' => 'body', 'type' => 'enum', 'values' => array('delay', 'scroll', 'leave'), 'nullable' => true, 'description' => 'When it opens: delay (after delay seconds, the default), scroll (when open_scroll percent of the page is scrolled), leave (when the pointer leaves the window; on a touch screen after the delay).'),
+				array('name' => 'open_scroll', 'in' => 'body', 'type' => 'int', 'min' => 1, 'max' => 100, 'nullable' => true, 'description' => 'Percent of the page scrolled before it opens, read with open_on scroll; null for 50.'),
+				array('name' => 'audience',  'in' => 'body', 'type' => 'enum', 'values' => array('all', 'cart'), 'nullable' => true, 'description' => 'Who sees it: all visitors (the default) or only visitors whose cart holds a product (cart).'),
+				array('name' => 'place',     'in' => 'body', 'type' => 'enum', 'values' => array('centre', 'top', 'bottom', 'corner'), 'nullable' => true, 'description' => 'Where it opens: centre over the page, which waits (the default), or a bar at the top or bottom or a card in the corner, beside a page that stays usable.')
 			)
 		),
 

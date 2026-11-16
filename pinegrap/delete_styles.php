@@ -85,6 +85,7 @@ foreach ($style_ids as $style_id) {
         // Its prototype share links end with it: a later design may get its id.
         require_once(PG_FUNCTIONS_DIR . '/includes/fn/prototype_links.php');
         pg_proto_links_revoke_design($style_id, (int) $user['id']);
+        pg_proto_comments_delete_design($style_id);
 
         $number_of_deleted_styles++;
     }

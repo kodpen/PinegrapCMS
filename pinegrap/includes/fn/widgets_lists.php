@@ -112,13 +112,17 @@ function pg_sw_kind_lists($kind)
     $families = array('form_list_view' => array('form_record', 'paging'), 'form_item_view' => 'form_record',
                       'catalog_item_view' => array('product', 'crumbs'), 'catalog_listing' => array('product', 'crumbs', 'filter_chips', 'paging'), 'calendar_view' => 'calendar',
                       'order_view' => 'order', 'my_account' => 'account', 'cart_link' => 'cart', 'shopping_cart' => 'cart',
-                      'express_order' => array('cart', 'checkout'),
+                      'express_order' => array('cart', 'checkout'), 'order_preview' => 'checkout',
                       'menu_region' => 'menu', 'folder_view' => 'folder_view', 'account_security' => 'security', 'search_results' => 'paging',
                       'comments' => 'paging');
     $except   = array('catalog_listing' => array('product.related' => true), 'cart_link' => array('cart.item_gift_cards' => true, 'cart.item_schedule' => true,
                           'cart.item_forms' => true, 'cart.item_form_fields' => true, 'cart.item_form_field_options' => true),
                       'express_order' => array('cart.item_gift_cards' => true, 'cart.item_schedule' => true,
-                          'cart.item_forms' => true, 'cart.item_form_fields' => true, 'cart.item_form_field_options' => true));
+                          'cart.item_forms' => true, 'cart.item_form_fields' => true, 'cart.item_form_field_options' => true,
+                          'checkout.periods' => true, 'checkout.ship_tos' => true, 'checkout.lines' => true, 'checkout.line_gift_cards' => true),
+                      // The order preview lists its recipients with its own
+                      // lists (checkout.ship_tos); it suggests no offer.
+                      'order_preview' => array('checkout.suggestions' => true, 'checkout.recipients' => true));
     $kind = pg_sw_finish_kind($kind);
     if (!isset($families[$kind])) return array();
     $out = array();

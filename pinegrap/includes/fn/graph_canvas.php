@@ -29,5 +29,7 @@ function pg_graph_canvas_js_strings()
         'pgc_box'      => lang('Box'),
         // The title of a box's outgoing port while the graph can be changed.
         'pgc_port_out' => lang('Drag to the box that comes after it'),
+        // What a press on a box says: its name, its arrows out and in.
+        'pgc_focus'    => lang(array('string' => '{var:1}: {var:2} arrows out, {var:3} in', 'vars' => array('{1}', '{2}', '{3}'))),
     );
 }

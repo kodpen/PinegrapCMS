@@ -688,8 +688,10 @@ function ws_channel_make_private($viewer, $channel)
 
     ws_channel_folder_access($channel, array(), true);
 
-    // The rest of the team no longer sees what their inbox said about it.
+    // The rest of the team no longer sees what their inbox said about it,
+    // nor keeps its own highlights there.
     ws_inbox_reach_lost($channel);
+    ws_highlights_reach_lost($channel);
 
     $members = (int) db_value("SELECT COUNT(*) FROM ws_channel_members WHERE channel_id = '" . (int) $channel['id'] . "'");
 
@@ -814,6 +816,7 @@ function ws_channel_leave($viewer, $channel, $user_id = 0)
     // said about it.
     ws_channel_folder_access($channel, array($user_id), false);
     ws_inbox_reach_lost($channel, array($user_id));
+    ws_highlights_reach_lost($channel, array($user_id));
 
     if ((int) $channel['owner_user_id'] === $user_id) {
         $next = (int) db_value("SELECT user_id FROM ws_channel_members WHERE channel_id = '" . (int) $channel['id'] . "' ORDER BY joined_at LIMIT 1");

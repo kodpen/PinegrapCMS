@@ -107,6 +107,56 @@ function test_ws_channel_fields_switches_are_the_persons()
 	pg_assert_true(!isset(array_flip(array_column($routes['workspace.channels.update']['params'], 'name'))['claude']), 'the switches are not fields of the update, a tool');
 }
 
+// An archived channel is read, never switched: the route refuses it before
+// the dry run, and the three setters the panel's channel menu calls too.
+function test_ws_channel_fields_switches_refuse_archived()
+{
+	$routes = ws_channel_fields_test_routes();
+	$source = ws_channel_fields_test_source($routes['workspace.channels.switches']['handler']);
+	$gate = strpos($source, "archived_at']");
+	pg_assert_true($gate !== false, 'the route checks the archive');
+	pg_assert_true($gate < strpos($source, 'api_dry_run_stop('), 'refused before a dry run too');
+
+	$viewer = array('id' => 1, 'member' => true, 'role' => 0);
+	$channel = array('id' => 1, 'kind' => 'public', 'archived_at' => 1700000000, 'claude_access' => 2, 'ai_access' => 2, 'voice_access' => 2);
+	$archived = lang('This channel is archived. It can be read but not written in.');
+
+	foreach (array('ws_claude_channel_set', 'ws_ai_channel_set', 'ws_voice_channel_set') as $setter) {
+		pg_assert_true(function_exists($setter), $setter . ' is loaded');
+		$result = $setter($viewer, $channel, true);
+		pg_assert_false($result['ok'], $setter . ' refuses an archived channel');
+		pg_assert_same($archived, $result['error'], $setter . ' says why');
+	}
+}
+
+// A discussion follows its channel for Claude and Pinegrap AI: it offers no
+// switch of its own, so the object carries null (the route answers 422 on the
+// field) and the two setters refuse it, never writing a line that is not true.
+function test_ws_channel_fields_discussion_offers_no_assistant_switch()
+{
+	$thread = ws_api_channel_settings_present(array(
+		'claude' => array('ready' => true, 'allowed' => true, 'available' => true),
+		'ai'     => array('ready' => true, 'allowed' => true, 'available' => true),
+		'voice'  => null, 'watch' => null, 'shared' => false, 'thread' => true,
+		'summary' => '', 'summary_updated_at' => 0,
+	));
+	pg_assert_same(null, $thread['claude_allowed'], 'a discussion offers no Claude switch');
+	pg_assert_same(null, $thread['ai_allowed'], 'a discussion offers no Pinegrap AI switch');
+
+	$source = ws_channel_fields_test_source('ws_api_channel_settings_states');
+	pg_assert_contains("'thread'", $source, 'the states say whether the channel is a discussion');
+
+	$viewer = array('id' => 1, 'member' => true, 'role' => 0);
+	$channel = array('id' => 2, 'kind' => 'thread', 'archived_at' => 0, 'claude_access' => 0, 'ai_access' => 0);
+	$follows = lang('A discussion follows its channel: switch it in the channel.');
+
+	foreach (array('ws_claude_channel_set', 'ws_ai_channel_set') as $setter) {
+		$result = $setter($viewer, $channel, false);
+		pg_assert_false($result['ok'], $setter . ' refuses a discussion');
+		pg_assert_same($follows, $result['error'], $setter . ' says why');
+	}
+}
+
 // The channel object: the switches, the watch and the summary as the panel
 // shows them to the reader, null in a list.
 function test_ws_channel_fields_settings_present()

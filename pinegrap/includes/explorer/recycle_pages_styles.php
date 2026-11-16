@@ -290,6 +290,7 @@ function pg_recycle_style($style_id, $user, $page_ids = array())
     // design by id alone, and a later design may be given the same id.
     require_once(PG_FUNCTIONS_DIR . '/includes/fn/prototype_links.php');
     pg_proto_links_revoke_design($style_id, (int) $user['id']);
+    pg_proto_comments_delete_design($style_id);
 
     log_activity(lang(array('string' => 'The page style, {var:1}, was moved to the Recycle Bin.', 'vars' => $style['style_name'])), isset($_SESSION['sessionusername']) ? $_SESSION['sessionusername'] : '');
 
