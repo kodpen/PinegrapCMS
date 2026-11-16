@@ -2299,7 +2299,7 @@
     "The average of the values": "Değerlerin ortalaması",
     "The awards of every team, from the Under-8s to the first team": "8 yaş altından A takımına her takımın ödülleri",
     "The backend adds the right action / method values and the hidden fields.": "Sunucu uygun action / method değerlerini ve gizli alanları kendisi ekler.",
-    "The backend fills one copy for each attribute (Color, Size, …)": "Sunucu her özellik için bir kopya doldurur (Renk, Beden, …)",
+    "The backend fills one copy for each attribute (Color, Size, …)": "Sunucu her özellik için bir kopya doldurur (Renk, Boyut, …)",
     "The backend fills this container with the ready-made HTML of the chosen system section. The element's own style and class settings are kept.": "Sunucu bu kapsayıcıyı seçili sistem bölümünün hazır HTML'i ile doldurur. Öğenin kendi stil ve sınıf ayarları korunur.",
     "The backend wires up the submit or anchor behaviour and ignores conflicting values such as href.": "Sunucu gönderme veya bağlantı davranışını kendisi kurar; çakışan href gibi değerleri yok sayar.",
     "The background is a colour such as #ffffff, or transparent.": "Arka plan #ffffff gibi bir renk ya da transparent olmalıdır.",

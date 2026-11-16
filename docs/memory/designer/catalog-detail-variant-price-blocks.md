@@ -21,4 +21,4 @@ description: Catalog detail closed blocks a variant switch redraws (CB6a2): the 
 
 ## How was it checked?
 - `tests/catalog_detail_closed_blocks_test.php`: the variant attribute twin byte for byte against `_civ_expand_variant_attr_markers()` for every style and class field, the marker's settings, the price block's elements and classes against `_pg_format_price_with_discount()` with and without an offer.
-- Sandbox: the Online Store template's product page with a variant group, canvas before and after, the site page with a variant picked.
+- Sandbox: the Online Store template's product page with a variant group, canvas before and after, the site page with a variant picked. The help line under the sample says "(Color, Size, …)", in Turkish "(Renk, Boyut, …)" like the sample's label.
