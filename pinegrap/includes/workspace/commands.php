@@ -382,7 +382,7 @@ function ws_commands($viewer = null, $shadowed = false)
             'usage'       => $usage,
             'example'     => $entry['example'],
             'args'        => $entry['args'],
-            'live'        => !empty($entry['live']),
+            'live'        => ($entry['live'] !== ''),
             'app_id'      => 0,
             'app'         => '',
             'shadowed'    => false,
@@ -1285,201 +1285,273 @@ function ws_command_run($viewer, $channel, $body, $options = array())
         return ws_command_unknown_answer($viewer, $unknown);
     }
 
-    $rest = $split['rest'];
+    $entry = ws_command_registry()[$split['command']] ?? null;
+    $runner = ($entry !== null) ? $entry['runner'] : 'ws_command_run_help';
 
-    switch ($split['command']) {
+    return call_user_func($runner, $viewer, $channel, $split['rest'], $options, $body, $split['command']);
+}
 
-        case 'task':
-            return ws_command_task($viewer, $channel, $rest, $options);
+/*
+ * The runners: each one is a command's registry runner, called by
+ * ws_command_run() as ($viewer, $channel, $rest, $options, $body, $key),
+ * $rest the line after the command's name, $body the text as typed.
+ */
 
-        case 'assign':
-            list($task_id, $rest_text) = ws_command_task_ref($rest);
-            $task = ws_task($task_id);
+/**
+ * /assign: adds people to a task.
+ *
+ * @return array
+ */
+function ws_command_run_assign($viewer, $channel, $rest)
+{
+    list($task_id, $rest_text) = ws_command_task_ref($rest);
+    $task = ws_task($task_id);
 
-            if (!$task || !ws_can_see_task($viewer, $task)) {
-                return array('type' => 'error', 'error' => lang('That task could not be found.'));
-            }
-
-            $people = array();
-
-            foreach (ws_tokens($rest_text) as $token) {
-                if ($token['type'] === 'user') {
-                    $people[] = $token['id'];
-                }
-            }
-
-            if (empty($people)) {
-                return array('type' => 'error', 'error' => lang('Name the people with @.'));
-            }
-
-            $result = ws_task_update($viewer, $task, array('assignees' => array_values(array_unique(array_merge(ws_task_assignee_ids($task_id), $people)))));
-
-            if (!$result['ok']) {
-                return array('type' => 'error', 'error' => $result['error']);
-            }
-
-            ws_message_system($channel['id'], lang(array(
-                'string' => '{var:1} gave {var:2} to {var:3}',
-                'vars'   => array('<@user:' . (int) $viewer['id'] . '>', '<#task:' . $task_id . '>', implode(', ', array_map(function ($id) {
-                    return '<@user:' . (int) $id . '>';
-                }, $people))),
-            )), $task_id);
-
-            return array('type' => 'done');
-
-        case 'done':
-            list($task_id) = ws_command_task_ref($rest);
-            $task = ws_task($task_id);
-
-            if (!$task || !ws_can_see_task($viewer, $task)) {
-                return array('type' => 'error', 'error' => lang('That task could not be found.'));
-            }
-
-            $result = ws_task_set_status($viewer, $task, 'done');
-
-            if (!$result['ok']) {
-                return array('type' => 'error', 'error' => $result['error']);
-            }
-
-            // The completion line goes to the task's own channel; a task from
-            // another channel, or from none, is still said here.
-            if ((int) $task['channel_id'] !== (int) $channel['id']) {
-                ws_message_system($channel['id'], lang(array(
-                    'string' => '{var:1} completed {var:2}',
-                    'vars'   => array('<@user:' . (int) $viewer['id'] . '>', '<#task:' . $task_id . '>'),
-                )), $task_id);
-            }
-
-            return array('type' => 'done');
-
-        case 'postpone':
-            list($task_id, $rest_text) = ws_command_task_ref($rest);
-            $task = ws_task($task_id);
-
-            if (!$task || !ws_can_see_task($viewer, $task)) {
-                return array('type' => 'error', 'error' => lang('That task could not be found.'));
-            }
-
-            $new_due = '';
-
-            foreach (preg_split('/\s+/u', $rest_text) as $word) {
-                $new_due = ws_parse_date_word($word, (ws_task_date_value($task['due_date']) !== '') ? $task['due_date'] : date('Y-m-d'));
-
-                if (($new_due !== '') && (strpos($word, '+') !== 0)) {
-                    // An absolute day is read from today, not from the old due date.
-                    $new_due = ws_parse_date_word($word, date('Y-m-d'));
-                }
-
-                if ($new_due !== '') {
-                    break;
-                }
-            }
-
-            if ($new_due === '') {
-                return array('type' => 'error', 'error' => lang('Say when: a day, a date or +2d.'));
-            }
-
-            // The start moves with the due date, so the task keeps its length;
-            // a start without a due date stays where it is.
-            $data = ws_task_move_dates($task, $new_due);
-
-            if (array_key_exists('start_date', $data) && ($data['start_date'] === null)) {
-                unset($data['start_date']);
-            }
-
-            $result = ws_task_update($viewer, $task, $data);
-
-            if (!$result['ok']) {
-                return array('type' => 'error', 'error' => $result['error']);
-            }
-
-            ws_message_system($channel['id'], lang(array(
-                'string' => '{var:1} moved {var:2} to {var:3}',
-                'vars'   => array('<@user:' . (int) $viewer['id'] . '>', '<#task:' . $task_id . '>', ws_day_label($new_due)),
-            )), $task_id);
-
-            return array('type' => 'done');
-
-        case 'status':
-            return ws_command_status($viewer, $channel, $rest);
-
-        case 'schedule':
-            return ws_command_schedule($viewer, $channel, $rest, $options);
-
-        case 'timer':
-            return ws_command_timer($viewer, $rest);
-
-        case 'away':
-            return ws_command_away($viewer, $rest);
-
-        case 'meeting':
-            return ws_command_meeting($viewer, $channel, $rest);
-
-        case 'decision':
-        case 'note':
-            if ($rest === '') {
-                return array('type' => 'error', 'error' => lang('Write the text after the command.'));
-            }
-
-            $result = ws_message_send($viewer, $channel, $rest, array('kind' => $split['command']));
-
-            // A tag in a note or a decision asks as in a message.
-            if ($result['ok']) {
-                ws_message_ask_noted($viewer, $channel, $result['message_id'], $rest);
-            }
-
-            return $result['ok']
-                ? array('type' => 'done', 'message_id' => $result['message_id'])
-                : array('type' => 'error', 'error' => $result['error']);
-
-        case 'plan':
-            return ws_command_plan($viewer, $rest);
-
-        case 'price':
-        case 'stock':
-            return ws_command_record_change($viewer, $channel, $split['command'], $rest, $options);
-
-        // The text as typed goes along: several lines become the message
-        // a bulk card hangs under.
-        case 'create':
-            return ws_command_create($viewer, $channel, $rest, $options + array('typed' => (string) $body));
-
-        case 'product':
-            return ws_command_product($viewer, $channel, $rest, $options + array('typed' => (string) $body));
-
-        case 'poll':
-            $parts = array_values(array_filter(array_map('trim', explode('|', $rest)), 'strlen'));
-
-            // A question with fewer than two options goes to the form, with
-            // what was written already in it.
-            if (count($parts) < 3) {
-                return array('type' => 'poll_form', 'question' => $parts[0] ?? '', 'options' => array_slice($parts, 1));
-            }
-
-            $result = ws_poll_create($viewer, $channel, array('question' => array_shift($parts), 'options' => $parts));
-
-            return $result['ok']
-                ? array('type' => 'done', 'message_id' => $result['message_id'])
-                : array('type' => 'error', 'error' => $result['error']);
-
-        case 'agent_channel':
-            return ws_command_agent_channel($viewer, $channel, $rest);
-
-        case 'wake':
-            return function_exists('ws_command_wake') ? ws_command_wake($viewer, $channel, $rest) : array('type' => 'error', 'error' => lang('Agents are not set up on this site yet.'));
-
-        case 'help':
-        default:
-            $html = '<div class="ws-ephemeral-title">' . h(lang('Slash commands')) . '</div><dl class="ws-help">';
-
-            foreach (ws_command_help($viewer) as $item) {
-                $html .= '<dt><code>' . h($item['command']) . '</code></dt><dd>' . h($item['description'])
-                    . '<br><code class="ws-help-usage">' . h($item['usage']) . '</code>'
-                    . '<br><span class="fg-secondary">' . h($item['example']) . '</span></dd>';
-            }
-
-            return array('type' => 'ephemeral', 'html' => $html . '</dl>');
+    if (!$task || !ws_can_see_task($viewer, $task)) {
+        return array('type' => 'error', 'error' => lang('That task could not be found.'));
     }
+
+    $people = array();
+
+    foreach (ws_tokens($rest_text) as $token) {
+        if ($token['type'] === 'user') {
+            $people[] = $token['id'];
+        }
+    }
+
+    if (empty($people)) {
+        return array('type' => 'error', 'error' => lang('Name the people with @.'));
+    }
+
+    $result = ws_task_update($viewer, $task, array('assignees' => array_values(array_unique(array_merge(ws_task_assignee_ids($task_id), $people)))));
+
+    if (!$result['ok']) {
+        return array('type' => 'error', 'error' => $result['error']);
+    }
+
+    ws_message_system($channel['id'], lang(array(
+        'string' => '{var:1} gave {var:2} to {var:3}',
+        'vars'   => array('<@user:' . (int) $viewer['id'] . '>', '<#task:' . $task_id . '>', implode(', ', array_map(function ($id) {
+            return '<@user:' . (int) $id . '>';
+        }, $people))),
+    )), $task_id);
+
+    return array('type' => 'done');
+}
+
+/**
+ * /done: marks a task as done.
+ *
+ * @return array
+ */
+function ws_command_run_done($viewer, $channel, $rest)
+{
+    list($task_id) = ws_command_task_ref($rest);
+    $task = ws_task($task_id);
+
+    if (!$task || !ws_can_see_task($viewer, $task)) {
+        return array('type' => 'error', 'error' => lang('That task could not be found.'));
+    }
+
+    $result = ws_task_set_status($viewer, $task, 'done');
+
+    if (!$result['ok']) {
+        return array('type' => 'error', 'error' => $result['error']);
+    }
+
+    // The completion line goes to the task's own channel; a task from
+    // another channel, or from none, is still said here.
+    if ((int) $task['channel_id'] !== (int) $channel['id']) {
+        ws_message_system($channel['id'], lang(array(
+            'string' => '{var:1} completed {var:2}',
+            'vars'   => array('<@user:' . (int) $viewer['id'] . '>', '<#task:' . $task_id . '>'),
+        )), $task_id);
+    }
+
+    return array('type' => 'done');
+}
+
+/**
+ * /postpone: moves a task's due date.
+ *
+ * @return array
+ */
+function ws_command_run_postpone($viewer, $channel, $rest)
+{
+    list($task_id, $rest_text) = ws_command_task_ref($rest);
+    $task = ws_task($task_id);
+
+    if (!$task || !ws_can_see_task($viewer, $task)) {
+        return array('type' => 'error', 'error' => lang('That task could not be found.'));
+    }
+
+    $new_due = '';
+
+    foreach (preg_split('/\s+/u', $rest_text) as $word) {
+        $new_due = ws_parse_date_word($word, (ws_task_date_value($task['due_date']) !== '') ? $task['due_date'] : date('Y-m-d'));
+
+        if (($new_due !== '') && (strpos($word, '+') !== 0)) {
+            // An absolute day is read from today, not from the old due date.
+            $new_due = ws_parse_date_word($word, date('Y-m-d'));
+        }
+
+        if ($new_due !== '') {
+            break;
+        }
+    }
+
+    if ($new_due === '') {
+        return array('type' => 'error', 'error' => lang('Say when: a day, a date or +2d.'));
+    }
+
+    // The start moves with the due date, so the task keeps its length;
+    // a start without a due date stays where it is.
+    $data = ws_task_move_dates($task, $new_due);
+
+    if (array_key_exists('start_date', $data) && ($data['start_date'] === null)) {
+        unset($data['start_date']);
+    }
+
+    $result = ws_task_update($viewer, $task, $data);
+
+    if (!$result['ok']) {
+        return array('type' => 'error', 'error' => $result['error']);
+    }
+
+    ws_message_system($channel['id'], lang(array(
+        'string' => '{var:1} moved {var:2} to {var:3}',
+        'vars'   => array('<@user:' . (int) $viewer['id'] . '>', '<#task:' . $task_id . '>', ws_day_label($new_due)),
+    )), $task_id);
+
+    return array('type' => 'done');
+}
+
+/**
+ * /timer.
+ *
+ * @return array
+ */
+function ws_command_run_timer($viewer, $channel, $rest)
+{
+    return ws_command_timer($viewer, $rest);
+}
+
+/**
+ * /away.
+ *
+ * @return array
+ */
+function ws_command_run_away($viewer, $channel, $rest)
+{
+    return ws_command_away($viewer, $rest);
+}
+
+/**
+ * /decision and /note: the text posted as that kind of message.
+ *
+ * @return array
+ */
+function ws_command_run_noted($viewer, $channel, $rest, $options, $body, $command)
+{
+    if ($rest === '') {
+        return array('type' => 'error', 'error' => lang('Write the text after the command.'));
+    }
+
+    $result = ws_message_send($viewer, $channel, $rest, array('kind' => $command));
+
+    // A tag in a note or a decision asks as in a message.
+    if ($result['ok']) {
+        ws_message_ask_noted($viewer, $channel, $result['message_id'], $rest);
+    }
+
+    return $result['ok']
+        ? array('type' => 'done', 'message_id' => $result['message_id'])
+        : array('type' => 'error', 'error' => $result['error']);
+}
+
+/**
+ * /plan.
+ *
+ * @return array
+ */
+function ws_command_run_plan($viewer, $channel, $rest)
+{
+    return ws_command_plan($viewer, $rest);
+}
+
+/**
+ * /price and /stock.
+ *
+ * @return array
+ */
+function ws_command_run_record($viewer, $channel, $rest, $options, $body, $command)
+{
+    return ws_command_record_change($viewer, $channel, $command, $rest, $options);
+}
+
+/**
+ * /create and /product. The text as typed goes along: several lines become
+ * the message a bulk card hangs under.
+ *
+ * @return array
+ */
+function ws_command_run_create($viewer, $channel, $rest, $options, $body, $command)
+{
+    if ($command === 'product') {
+        return ws_command_product($viewer, $channel, $rest, $options + array('typed' => (string) $body));
+    }
+
+    return ws_command_create($viewer, $channel, $rest, $options + array('typed' => (string) $body));
+}
+
+/**
+ * /poll: posted with two options or more, the form below that.
+ *
+ * @return array
+ */
+function ws_command_run_poll($viewer, $channel, $rest)
+{
+    $parts = array_values(array_filter(array_map('trim', explode('|', $rest)), 'strlen'));
+
+    // A question with fewer than two options goes to the form, with
+    // what was written already in it.
+    if (count($parts) < 3) {
+        return array('type' => 'poll_form', 'question' => $parts[0] ?? '', 'options' => array_slice($parts, 1));
+    }
+
+    $result = ws_poll_create($viewer, $channel, array('question' => array_shift($parts), 'options' => $parts));
+
+    return $result['ok']
+        ? array('type' => 'done', 'message_id' => $result['message_id'])
+        : array('type' => 'error', 'error' => $result['error']);
+}
+
+/**
+ * /wake, once agents are there.
+ *
+ * @return array
+ */
+function ws_command_run_wake($viewer, $channel, $rest)
+{
+    return function_exists('ws_command_wake') ? ws_command_wake($viewer, $channel, $rest) : array('type' => 'error', 'error' => lang('Agents are not set up on this site yet.'));
+}
+
+/**
+ * /help: the commands this person may use, to them alone.
+ *
+ * @return array
+ */
+function ws_command_run_help($viewer)
+{
+    $html = '<div class="ws-ephemeral-title">' . h(lang('Slash commands')) . '</div><dl class="ws-help">';
+
+    foreach (ws_command_help($viewer) as $item) {
+        $html .= '<dt><code>' . h($item['command']) . '</code></dt><dd>' . h($item['description'])
+            . '<br><code class="ws-help-usage">' . h($item['usage']) . '</code>'
+            . '<br><span class="fg-secondary">' . h($item['example']) . '</span></dd>';
+    }
+
+    return array('type' => 'ephemeral', 'html' => $html . '</dl>');
 }
 
 /**
@@ -1597,32 +1669,32 @@ function ws_command_suggest($viewer, $channel, $body)
 {
     $out = array('line' => '', 'warnings' => array());
     $split = ws_command_split($body);
+    $entry = $split ? (ws_command_registry()[$split['command']] ?? null) : null;
 
-    if ($split && ($split['command'] === 'status')) {
-        return ws_command_status_suggest($viewer, $split['rest']);
-    }
-
-    if ($split && ($split['command'] === 'schedule')) {
-        return ws_command_schedule_suggest($viewer, $channel, $split['rest']);
-    }
-
-    if ($split && ($split['command'] === 'timer')) {
-        return ws_command_timer_suggest($viewer, $split['rest']);
-    }
-
-    if ($split && ($split['command'] === 'away')) {
-        return ws_command_event_suggest($viewer, ws_command_away_data($split['rest']));
-    }
-
-    if ($split && ($split['command'] === 'meeting')) {
-        return ws_command_event_suggest($viewer, ws_command_meeting_data($split['rest']));
-    }
-
-    if (!$split || ($split['command'] !== 'task') || ($split['rest'] === '')) {
+    if (($entry === null) || ($entry['live'] === '')) {
         return $out;
     }
 
-    $parsed = ws_command_typed_assignees(ws_command_parse_task($split['rest']), ws_team_members());
+    return call_user_func($entry['live'], $viewer, $channel, $split['rest']);
+}
+
+/**
+ * /task's live line: "Will create: …" and its warnings.
+ *
+ * @param array  $viewer
+ * @param array  $channel
+ * @param string $rest the line after the command's name
+ * @return array line, warnings
+ */
+function ws_command_task_suggest($viewer, $channel, $rest)
+{
+    $out = array('line' => '', 'warnings' => array());
+
+    if ($rest === '') {
+        return $out;
+    }
+
+    $parsed = ws_command_typed_assignees(ws_command_parse_task($rest), ws_team_members());
 
     foreach ($parsed['typed_unknown'] as $name) {
         $out['warnings'][] = lang(array('string' => 'Nobody in the team has the username {var:1}, so nobody is assigned by it: pick the person from the @ list.', 'vars' => '@' . $name));
@@ -1676,6 +1748,46 @@ function ws_command_suggest($viewer, $channel, $body)
     }
 
     return $out;
+}
+
+/**
+ * /status's live line.
+ *
+ * @return array line, warnings
+ */
+function ws_command_live_status($viewer, $channel, $rest)
+{
+    return ws_command_status_suggest($viewer, $rest);
+}
+
+/**
+ * /timer's live line.
+ *
+ * @return array line, warnings
+ */
+function ws_command_live_timer($viewer, $channel, $rest)
+{
+    return ws_command_timer_suggest($viewer, $rest);
+}
+
+/**
+ * /away's live line.
+ *
+ * @return array line, warnings
+ */
+function ws_command_live_away($viewer, $channel, $rest)
+{
+    return ws_command_event_suggest($viewer, ws_command_away_data($rest));
+}
+
+/**
+ * /meeting's live line.
+ *
+ * @return array line, warnings
+ */
+function ws_command_live_meeting($viewer, $channel, $rest)
+{
+    return ws_command_event_suggest($viewer, ws_command_meeting_data($rest));
 }
 
 /**
