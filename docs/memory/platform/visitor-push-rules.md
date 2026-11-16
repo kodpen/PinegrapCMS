@@ -8,7 +8,7 @@ module: site_push
 - `upgrade_2026_11_0_site_push()` (11.0.227, in `get_tables()`) adds three tables.
 - `site_push_subscription`: endpoint, `endpoint_hash` unique, `p256dh`, `auth`, `service`, `secret_hash` unique, `language`, `user_id` (0 when signed out), `created_at`, `last_seen_at`, `fail_count`.
 - `site_push_message`: title (60), body (200), url (a path inside the site, no host: the worker opens it on its own origin), `kind`, `created_by`, `created_at`, and the queued, sent, failed and removed counts (a removed subscription is deleted, so the counts cannot be rebuilt later); KEY `idx_kind_created`.
-- `kind`: 0 news to every subscriber, 1 a test, 2 a stock notice (VP5), 3 an order's moment (VP6). Only 0 is listed as sent in the panel; 2 and 3 go to one device. Architect (2026-11-16, agent channel message 6528).
+- `kind`: 0 news to every subscriber, 1 a test, 2 a stock notice (VP5), 3 an order's moment (VP6). The panel's list shows 0 and 1 (a test with its pill); 2 and 3 go to one device and are not listed. Architect (2026-11-16, agent channel message 6528).
 - `site_push_queue`: PK message and subscription (a batch written twice sends once), `status` (0 waiting, 1 pushed, 2 read, 3 failed), `attempts`, `next_at`, `sent_at`, `fetched_at`; KEY `idx_due`, `idx_subscription`.
 - Never a row in the panel's `push_subscriptions` or `push_queue`: that queue deletes the rows of an account it cannot wake (`core/push-disabled-account.md`).
 - No `contact_id` column: every `contact_id` column must be a holder in `includes/fn/contacts.php`; the account's contact is reached through `user_id`.

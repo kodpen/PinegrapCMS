@@ -28,4 +28,5 @@ priority: 6
 ## Whose look?
 - QR1 (the Split button, the chip on the row) and QR4 (a row's Motion button) are the architect's (owner's channel message 2645): one more button of a kind the bar and the row have.
 - QR3 (the bar over the object, the Motion popover) is the owner's: a new design on a screen he uses. Pictures in the agent channel at 1440 and 1024, light and dark: one text, one video in Animate with the popover open, several layers, a layer at the stage's top edge (the bar below it), a locked layer. The architect brings one sheet to him; the step is not marked ready before his look.
+- Owner (2026-11-16, agent channel poll 103, message 7038): "Evet, böyle çıksın" on the sheet of message 7037; QR3 leaves draft with that look.
 - The architect's readings, not his words: which commands the bar holds, Ctrl or Cmd as the press that selects, S as the key, the popover's rows.

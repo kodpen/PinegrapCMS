@@ -2945,6 +2945,7 @@
     "Write a story": "Yazı yazın",
     "Write a story from the field; it appears in the News as soon as you send it.": "Sahadan bir hikâye yazın; gönderdiğiniz anda Haberler'de görünür.",
     "Write a story; it appears in the Journal as soon as you send it.": "Bir yazı yazın; gönderdiğiniz anda Günce'de görünür.",
+    "Write a title of at most 60 characters.": "En çok 60 karakterlik bir başlık yazın.",
     "Write a topic people can answer": "Yanıtlanabilecek bir konu yazın",
     "Write a valid e-mail address for every customer asked.": "Sorulan her müşteri için geçerli bir e-posta adresi yazın.",
     "Write a variable as {{1}}, {{2}} and so on, or add it with Add variable.": "Değişkeni {{1}}, {{2}} biçiminde yazın ya da Değişken ekle ile ekleyin.",
