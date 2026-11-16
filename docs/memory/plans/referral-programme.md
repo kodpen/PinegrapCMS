@@ -28,7 +28,7 @@ priority: 6
 - Architect (agent channel message 6553), after the owner asked that what exists be grown instead of a table (poll 84): no table. A referral is a `commissions` row; `gift_cards.kind` gets the value `referral`. No waiting stage: the credit is given at completion (#6306).
 - RF1 first counts the readers of `commissions`: one function tells the two programmes apart, and the Commissions screen does not let a referral's row be labelled by hand. The month's room is never read and then written: one statement, or a named lock.
 - Architect (message 6554): the code carries the person and a signature and is checked without a table; an approved affiliate's code comes first.
-- Still the architect's: whether a part refund takes the whole reward (the plan, as #6306 reads) or a share.
+- Architect (message 7257, RF1 #10033): a part refund takes the whole reward once when the order falls under the smallest order, else nothing: `workflow/decisions-made-product-68.md`.
 
 ## What is left out?
 - A reward as points or an offer code; rewards that grow with the number of friends; a reward for a friend's later orders; a public ranking. Each is a later yes.
