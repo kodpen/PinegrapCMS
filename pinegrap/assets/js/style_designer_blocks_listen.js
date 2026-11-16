@@ -61,7 +61,7 @@ StyleDesigner.registerBlockFamily(function (kit) {
         group: { title: _sdT('Listen'), icon: 'bi-volume-up' },
         items: [
             { label: _sdT('Listen'), type: 'component', icon: 'bi-volume-up', extra: { componentType: 'listen-buttons' },
-              desc: _sdT('A Listen button that reads the article around it aloud with the visitor\'s browser, with pause and stop. Browsers without a voice for the page\'s language do not show it.') }
+              desc: _sdT('A Listen button that reads the article around it aloud in the visitor\'s browser, with pause and stop.') }
         ],
         build: function (ctype) {
             if (ctype === 'listen-buttons') return buildButtons();

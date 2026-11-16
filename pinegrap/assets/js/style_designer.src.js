@@ -78915,7 +78915,9 @@ const StyleDesigner = (function () {
                 !has(c, 'navbar-collapse') && !has(c, 'd-block')) return true;
             if ((has(c, 'carousel-item') || has(c, 'tab-pane')) && !has(c, 'active')) return true;
             if (bp(c, 'd', 'none|block|flex|inline|inline-block|inline-flex|grid|table|table-cell|table-row|contents') === 'none') return true;
-            return attr(n, 'hidden') !== null;
+            // The Listen block's root waits hidden for its script; it is
+            // drawn as the canvas draws it (IFRAME_CSS).
+            return attr(n, 'hidden') !== null && attr(n, 'data-pg-listen') === null;
         }
         // A block that is itself a dropdown shows its menu open.
         function kids(n) {

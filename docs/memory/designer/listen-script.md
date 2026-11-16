@@ -22,6 +22,6 @@ module: listen
 
 ## What is the block?
 - `assets/js/style_designer_blocks_listen.js` (prefix `listen-`, group Listen, type `listen-buttons`): the root above with `role="group"` and an aria-label, three `btn-outline-*` buttons with a Bootstrap icon (`aria-hidden`) and the label span; rule `pg-listen` (44 px buttons).
-- Bootstrap's `[hidden] { display:none !important }` would hide it on the canvas too: one `IFRAME_CSS` line (`.sd-wrap > [data-pg-listen][hidden]`) draws the root there, idle and silent; the Preview loads the script and behaves as the page.
+- Bootstrap's `[hidden] { display:none !important }` would hide it on the canvas too: one `IFRAME_CSS` line (`.sd-wrap > [data-pg-listen][hidden]`) draws the root there, idle and silent, and the palette's hover sketch (`_sdBlockSketch()`'s `hidden()`) draws it too; the Preview loads the script and behaves as the page.
 
 Tests: `tests/listen_script_test.php`, `tests/designer_blocks_listen_test.php` (under Node, `tests/fixtures/listen/dom.js`).
