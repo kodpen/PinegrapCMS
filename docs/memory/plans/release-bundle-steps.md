@@ -13,7 +13,7 @@ description: Plan release-bundle, steps RB1 to RB8 (RB0, the owner's answer, is 
   - Tests, red first: the allowed moves, one open bundle per draft and per live page, the hold's four refusals, "changed since".
   - Features: B1 to B6; B5 without the Publish sheet's held row (RB2b).
 
-- RB2 (M) after RB1: the Bundles screen.
+- RB2 Done (#9998): the Bundles screen; the owner's look, agent channel poll 107.
   - New: the root screen `page_bundles.php`, built as `page_experiments.php` is.
   - Pictures: the list, a bundle with a new page, a replacement and a "changed since" one, the two Add dialogs, a phone. To the owner; not marked ready before his look.
   - Features: the screen's side of B1 to B6.
