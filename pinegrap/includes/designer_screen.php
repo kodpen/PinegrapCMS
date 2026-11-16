@@ -290,6 +290,10 @@ function pg_designer_screen_render($ctx)
         // its kind and the settings carried from the page's type settings,
         // for the offer to put that widget beside the region.
         'layoutWidgets' => pg_layout_widget_offers($layout_pages),
+        // Every page of the design whose classic type has a system widget,
+        // custom layout or not, in the same shape: "Convert to design
+        // elements" on its own system region puts that widget in its place.
+        'classicWidgets' => ((int)$user['role'] <= 1) ? pg_classic_widget_offers($tab_page_ids) : array(),
         'layoutReadOnly' => pg_hosted(),
         // ?layout=1 (the toolbar's Ctrl+G button, pg_layout_tab_param()):
         // the page whose layout tab opens once the editor is up, or 0.
