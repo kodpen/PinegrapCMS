@@ -1187,8 +1187,9 @@ function pg_content_proposals_bell_due($last, $now)
 
 /**
  * The words of a line, made when it is read: the whole sentence (the push
- * banner), the bell's short title (no colon, `ui/bell-titles.md`), the text
- * under it, and the row's description.
+ * banner), the bell's short title (no colon, `ui/bell-titles.md`) and the
+ * text under it (the page, then the reason or what to do). The description
+ * stays empty so the bell says each thing once.
  *
  * @param string $action pg_content_proposals_bell_actions()
  * @param string $page   the page's name (the row's title)
@@ -1205,7 +1206,7 @@ function pg_content_proposals_bell_words($action, $page, $reason = '')
             'title'       => lang(array('string' => 'A content change waits for approval on "{var:1}".', 'vars' => array($page))),
             'short'       => lang('Content change waiting'),
             'brief'       => $page,
-            'description' => lang('Compare it with the page, then apply or dismiss it.'),
+            'description' => '',
         );
     }
 
@@ -1214,7 +1215,7 @@ function pg_content_proposals_bell_words($action, $page, $reason = '')
             'title'       => lang(array('string' => 'Your change to "{var:1}" was applied and is on the site.', 'vars' => array($page))),
             'short'       => lang('Change applied'),
             'brief'       => $page,
-            'description' => lang('Open the page to see it.'),
+            'description' => '',
         );
     }
 
@@ -1227,7 +1228,7 @@ function pg_content_proposals_bell_words($action, $page, $reason = '')
                 : lang(array('string' => 'Your change to "{var:1}" was dismissed.', 'vars' => array($page))),
             'short'       => lang('Change dismissed'),
             'brief'       => ($why !== '') ? $page . ' · ' . $why : $page,
-            'description' => $why,
+            'description' => '',
         );
     }
 
@@ -1235,7 +1236,7 @@ function pg_content_proposals_bell_words($action, $page, $reason = '')
         'title'       => lang(array('string' => 'Your change to "{var:1}" can no longer be applied: the page was changed after it. Open the page and save it again.', 'vars' => array($page))),
         'short'       => lang('Change can no longer be applied'),
         'brief'       => $page . ' · ' . lang('Open the page and save it again.'),
-        'description' => lang('Open the page and save it again.'),
+        'description' => '',
     );
 }
 
