@@ -4,7 +4,7 @@ description: Plan design-canvas-follow, steps FW1 to FW3: the tracker and its te
 ---
 
 ## Which steps are there?
-- FW1 (M) The tracker: F6 to F9 and F15. No screen.
+- FW1 (M) The tracker: F6 to F9 and F15. No screen. Done: #9973.
   - New: `assets/js/pg_image_editor_track.js` (the tracker as a worker and as a page object, its maths reachable from Node as Select subject's is), its bundle in `pg_js_bundles()` and its address in `pg_image_editor_config()`, `tests/image_editor_follow_test.php`.
   - The landing builds the `.min.js`; the PR commits none.
   - May run beside `plans/design-canvas-quick-reach.md`'s steps: no file of theirs is edited but the bundle list.

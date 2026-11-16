@@ -187,6 +187,8 @@ function pg_image_editor_config()
         'encoder' => pg_js_bundle_urls('assets/js/pg_image_editor_encode.min.js'),
         // Select subject's cut, started as a worker.
         'subject' => pg_js_bundle_urls('assets/js/pg_image_editor_subject.min.js'),
+        // Follow's tracker, started as a worker.
+        'track'   => pg_js_bundle_urls('assets/js/pg_image_editor_track.min.js'),
         // The largest file Save to Files and an upload take (0: no limit
         // known); a file larger than one part is sent in parts.
         'animationLimit' => pg_image_editor_upload_limits()['max'],
@@ -1505,7 +1507,7 @@ function pg_image_editor_strings_text()
 {
     return array(
         'layer_text'          => lang('Text'),
-        'hintText'            => lang('Click to add a text there. Double-click a text to change it; the handles size and turn it.'),
+        'hintText'            => lang('Click an empty spot to add a text there, a layer to select it. Double-click a text to change it; the handles size and turn it.'),
         'textPlaceholder'     => lang('Type here'),
         'textNoteAdd'         => lang('Click anywhere on the image to add text.'),
         'textNoteEdit'        => lang('Text stays a layer; double-click it to change it later.'),
@@ -4988,6 +4990,7 @@ function pg_image_editor_strings_access()
         'keyEnd'        => lang('Go to the end'),
         'keyMarkIn'     => lang('Trim the selected clip\'s start to the playhead'),
         'keyMarkOut'    => lang('Trim the selected clip\'s end to the playhead'),
+        'keySplit'      => lang('Split a clip at the playhead'),
     );
 }
 

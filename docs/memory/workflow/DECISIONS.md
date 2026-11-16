@@ -337,6 +337,12 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-63.md: Does the prototype view's arrangement with its arrows go out as built? (owner, 2026-11-16, agent channel poll 89)
 - decisions-made-product-63.md: Do the waiting content changes go out as built? (owner, 2026-11-16, agent channel poll 90)
 - decisions-made-product-63.md: What did the owner ask of the Design Canvas? (owner, 2026-11-16, to the architect)
+- decisions-made-product-64.md: Where are the rules and the earlier parts?
+- decisions-made-product-64.md: Which features of the second study are planned, and what did he answer on them? (owner, 2026-11-16, agent channel polls 82 and 85 to 88)
+- decisions-made-product-64.md: How are the texts in pictures translated in the first version? (owner, 2026-11-16, agent channel poll 98, message 6808)
+- decisions-made-product-64.md: Which records does a post digest's run take? (architect, 2026-11-16, agent channel message 6791)
+- decisions-made-product-64.md: What does the place map use to find an address, and where is it listed in the notice? (architect, 2026-11-16, agent channel message 6794)
+- decisions-made-product-64.md: Does a back-in-stock notice on the device replace the mail or SMS? (architect, 2026-11-16, agent channel message 6786)
 - decisions-made-product-7.md: Do international labels carry customs data? (#3408)
 - decisions-made-product-7.md: Can a merchant request a carrier pickup from the panel? (#3415)
 - decisions-made-product-7.md: Does ShipWorks record tracking numbers through the shipment write path? (#3443)
@@ -401,6 +407,14 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-schema-23.md: Which columns does PU4 add to `auto_dialogs`? (architect, 2026-11-16, confirmed in PU4's draft, #9851)
 - decisions-made-schema-23.md: Which table does the click map get? (architect, 2026-11-16, agent channel message 6041)
 - decisions-made-schema-23.md: Does a task get a column for the application that created it? (owner, 2026-11-16, agent channel poll 80)
+- decisions-made-schema-24.md: Where are the rules and the earlier parts?
+- decisions-made-schema-24.md: Which tables do visitor notifications get? (architect, 2026-11-16, agent channel message 6528)
+- decisions-made-schema-24.md: What did the architect change in the draft's columns, and which rules came with them?
+- decisions-made-schema-25.md: Where are the rules and the earlier parts?
+- decisions-made-schema-25.md: May the second feature study's tables and columns be added? (owner, 2026-11-16, agent channel polls 84 and 91)
+- decisions-made-schema-25.md: Which table do an order's and a stock notice's visitor notifications share? (owner, 2026-11-16, agent channel poll 94, message 6781)
+- decisions-made-schema-25.md: Which table keeps a language's picture? (owner, 2026-11-16, agent channel poll 98, message 6808; columns the architect's)
+- decisions-made-schema-25.md: May ws_app_commands get a column for a command's arguments? (owner, 2026-11-16, agent channel poll 97, message 6795)
 - decisions-made-schema-3.md: Where are the rules and the earlier steps?
 - decisions-made-schema-3.md: Which schema was approved on 2026-10-29?
 - decisions-made-schema-4.md: Where are the rules and the earlier steps?
@@ -561,6 +575,11 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-workspace-36.md: What is the architect's reading here, not his words?
 - decisions-made-workspace-36.md: Where does a question's picture stand? (owner, 2026-11-16, to the architect)
 - decisions-made-workspace-36.md: Are agents' tasks kept apart from the team's? (owner, 2026-11-16, agent channel poll 80)
+- decisions-made-workspace-37.md: Where are the rules and the earlier parts?
+- decisions-made-workspace-37.md: Are channel commands grown, and how far? (owner, 2026-11-16, the R&D agent's polls 93, 95 and 96)
+- decisions-made-workspace-37.md: What did the architect fix for channel commands? (architect, 2026-11-16, agent channel message 6770)
+- decisions-made-workspace-37.md: Does a mention typed by hand become a tag? (owner, 2026-11-16, in the architect's window)
+- decisions-made-workspace-37.md: Does a question's own picture stand in its box as built? (owner, 2026-11-16, agent channel poll 92, message 6751)
 - decisions-made-workspace-4.md: May a thread end in a webhook box's URL? (#3410)
 - decisions-made-workspace-4.md: How does a customer with no order in N days produce a follow-up? (#3416, part 2)
 - decisions-made-workspace-4.md: Is `contacts.lead_source` picked from `referral_sources`? (#3416, part 3)

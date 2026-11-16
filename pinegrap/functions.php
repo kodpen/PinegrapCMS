@@ -242,6 +242,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/content_review.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/site_push.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/experiments.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/experiments_sheet.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/page_bundles.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/experiments_results.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/visitor_insights.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/visitor_periods.php');

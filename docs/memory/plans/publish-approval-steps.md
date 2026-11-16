@@ -23,7 +23,7 @@ description: Plan publish-approval, steps PA1 to PA6 (PA0, the owner's answer, i
 - PA4b Done (#9939): the bell lines (addressed rows of the panel's own `notifications`, `includes/notifications.php`; Architect 2026-11-16, agent channel message 6485) and the count above the page list (`view_pages.php`). Features: A9 (the editor told), A12; the tab's count went to PA3.
   - Architect (2026-11-16, agent channel message 6401): owner's pictures with one waiting change per page and editor, two editors.
 
-- PA5 (S) after PA4: the Workspace request. Existing files: `includes/workspace/approvals.php` (one call in `ws_approval_settle()` to a function of the module, `workspace/workspace-approval-decide-checks.md`). Tests: a designer's yes applying, another member's yes only noted, a no dismissing, a withdrawn change taking its request back, a named channel that is archived or gone asking nowhere. Features: A13, A14, A15.
+- PA5 Done (#9968): the Workspace request (`designer/content-proposals-workspace.md`): asked in the card's channel as the editor, one guarded call in `ws_approval_settle()`, a designer's yes applies, a no dismisses, anyone else's answer noted, a withdrawn or replaced change takes its request back. Features: A13, A14, A15.
 
 - PA6 (S) close-out: every A number checked against the code with its PR; `designer/content-proposals.md`; this plan's files and the census files (`publish-approval-census*.md`) deleted and its line in `plans/website-features.md` removed.
 

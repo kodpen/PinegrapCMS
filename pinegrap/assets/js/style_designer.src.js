@@ -435,13 +435,16 @@ const StyleDesigner = (function () {
 
     // ========================= TREE SAFETY HELPERS =========================
     // Silently assign a new _id to every node that is missing one.
-    // Called at init time — no user-visible side effects.
-    function _backfillIds(node) {
+    // Called at init time — no user-visible side effects. The counter first
+    // goes past the ids the tree already holds, so a filled-in id is never
+    // one of them (`inner`: a recursive call, already counted).
+    function _backfillIds(node, inner) {
         if (!node || typeof node !== 'object') return;
+        if (!inner) _sdRaiseIdCounter(node);
         _sdNodeObjects(node);
         if (!node._id) node._id = gid();
         if (node.children && node.children.length) {
-            for (var i = 0; i < node.children.length; i++) _backfillIds(node.children[i]);
+            for (var i = 0; i < node.children.length; i++) _backfillIds(node.children[i], true);
         }
     }
 
@@ -945,6 +948,8 @@ const StyleDesigner = (function () {
                             // snapshot of the old one (kept after a save) no
                             // longer says what is stored.
                             delete _sharedSnapshots[sid];
+                            // Its ids count for the nodes added from now on.
+                            if (parsed) _sdRaiseIdCounter(parsed);
                             _sharedCache[sid] = { name: item.name || '', tree: parsed, system_region_config: item.system_region_config || null,
                                                   // Opened to content editors, and whether this
                                                   // operator is one of them (_sdSharedOpenToContent()).
@@ -4043,7 +4048,7 @@ const StyleDesigner = (function () {
     function _replaceTreeWithPrefetch(newTree, opts) {
         opts = opts || {};
         tree = _sdTreeObjects(newTree);
-        nodeIdCounter = reindex(tree);
+        nodeIdCounter = _sdIdFloor();
         if (opts.selectedNodeId) {
             selectedNode = findNodeById(opts.selectedNodeId, tree) || null;
         } else {
@@ -5026,8 +5031,8 @@ const StyleDesigner = (function () {
         // Backwards compat — older snapshots (pre-shared-aware) were bare strings.
         if (typeof prev === 'string') prev = { tree: prev, shared: {}, assets: null };
         tree = JSON.parse(prev.tree);
-        nodeIdCounter = reindex(tree);
         _restoreShared(prev.shared);
+        nodeIdCounter = _sdIdFloor();
         _restoreAssetFields(prev.assets);
         selectedNode = null;
         selectedNodes = [];
@@ -5046,8 +5051,8 @@ const StyleDesigner = (function () {
         var nxt = redoStack.pop();
         if (typeof nxt === 'string') nxt = { tree: nxt, shared: {}, assets: null };
         tree = JSON.parse(nxt.tree);
-        nodeIdCounter = reindex(tree);
         _restoreShared(nxt.shared);
+        nodeIdCounter = _sdIdFloor();
         _restoreAssetFields(nxt.assets);
         selectedNode = null;
         selectedNodes = [];
@@ -5065,10 +5070,35 @@ const StyleDesigner = (function () {
     function reindex(n) {
         var max = 0;
         (function w(x) {
-            if (x._id) { var v = parseInt(x._id.replace('sd_', ''), 10); if (v > max) max = v; }
-            if (x.children) x.children.forEach(w);
+            if (!x || typeof x !== 'object') return;
+            var m = /^sd_(\d+)$/.exec(String(x._id || ''));
+            if (m) { var v = parseInt(m[1], 10); if (v > max) max = v; }
+            if (Array.isArray(x.children)) x.children.forEach(w);
         })(n);
         return max;
+    }
+
+    // Every saved tree (a page, a shared component, a system widget)
+    // numbers its nodes from sd_1, so the same id in two trees is normal
+    // and the canvas resolves an element with _sdFindNodeForEl(id, el).
+    // A node added to any tree must still get a number none of the loaded
+    // trees holds, or it repeats an id inside its own tree: the counter is
+    // kept above the page tree and every tree in the shared cache.
+    function _sdIdFloor() {
+        var max = tree ? reindex(tree) : 0;
+        Object.keys(_sharedCache).forEach(function (k) {
+            var c = _sharedCache[k];
+            if (c && c.tree) {
+                var m = reindex(c.tree);
+                if (m > max) max = m;
+            }
+        });
+        return max;
+    }
+    // Raises the counter past the ids of tree `t`, or of every loaded tree.
+    function _sdRaiseIdCounter(t) {
+        var m = t ? reindex(t) : _sdIdFloor();
+        if (m > nodeIdCounter) nodeIdCounter = m;
     }
 
     // ========================= LABELS =========================
@@ -73120,7 +73150,7 @@ const StyleDesigner = (function () {
         next.tree     = tree;
         undoStack     = next.undoStack || [];
         redoStack     = next.redoStack || [];
-        nodeIdCounter = next.nodeIdCounter || reindex(tree);
+        nodeIdCounter = Math.max(next.nodeIdCounter || 0, _sdIdFloor());
         selectedNode  = null;
         selectedNodes = [];
         _sdCondCanvasState = '';
@@ -76484,7 +76514,7 @@ const StyleDesigner = (function () {
         _activeKey = (design && design.activeKey && _pgPageByKey(design.activeKey)) ? design.activeKey : _pages[0].key;
         _pgTabGroupRevealActive();
         var a = _pgActivePage();
-        tree = a.tree; undoStack = []; redoStack = []; nodeIdCounter = a.nodeIdCounter || reindex(tree);
+        tree = a.tree; undoStack = []; redoStack = []; nodeIdCounter = Math.max(a.nodeIdCounter || 0, _sdIdFloor());
         _pages.forEach(function (p) { p.baseline = (p.page_id === 0 || p.converted) ? null : _pgBaselineOf(p); });
 
         _pgLoadPageIntoFields(a);
@@ -81180,36 +81210,54 @@ const StyleDesigner = (function () {
         return out;
     }
 
+    // The canvas wrappers that draw `node`: those with its id that resolve
+    // to it (_sdFindNodeForEl()), never a node of another tree that shares
+    // the id. A shared component placed twice draws it twice.
+    function _sdIssueWrapsOf(node) {
+        var out = [];
+        if (!canvasDoc || !node || !node._id) return out;
+        canvasDoc.querySelectorAll('.sd-wrap[data-sd-id="' + String(node._id).replace(/["\\]/g, '') + '"]').forEach(function (w) {
+            if (_sdFindNodeForEl(node._id, w) === node) out.push(w);
+        });
+        return out;
+    }
+
     // ── Canvas badges ─────────────────────────────────────────────────
     // A small "!" on the wrapper of every node with an issue, so the
     // operator sees WHERE the warning is without opening the list. Kept in
     // sync by validation (debounced) and re-applied after each render.
     function applyIssueBadges() {
         if (!canvasDoc || !canvasDoc.body) return;
-        var byId = {};
+        // One group per node, not per id: a page node and a node of a
+        // widget may carry the same id (_sdIdFloor()).
+        var groups = [];
         _validationIssues.concat(_sdServerAuditIssues).forEach(function (i) {
             if (!i.node || !i.node._id) return;
-            (byId[i.node._id] = byId[i.node._id] || []).push(i.label);
+            var g = null;
+            for (var k = 0; k < groups.length; k++) if (groups[k].node === i.node) { g = groups[k]; break; }
+            if (!g) { g = { node: i.node, labels: [] }; groups.push(g); }
+            g.labels.push(i.label);
         });
         canvasDoc.querySelectorAll('.sd-issue-badge').forEach(function (b) { b.remove(); });
         canvasDoc.querySelectorAll('.sd-wrap.sd-has-issue').forEach(function (w) { w.classList.remove('sd-has-issue'); });
         var badged = [];
-        Object.keys(byId).forEach(function (id) {
-            var wrap = canvasDoc.querySelector('.sd-wrap[data-sd-id="' + id + '"]');
-            if (!wrap) return;
-            wrap.classList.add('sd-has-issue');
-            var b = canvasDoc.createElement('span');
-            b.className = 'sd-issue-badge';
-            b.setAttribute('title', byId[id].join('\n'));
-            b.textContent = '!';
-            b.addEventListener('click', function (e) {
-                e.stopPropagation(); e.preventDefault();
-                var n = _sdFindNodeForEl(id, wrap);
-                if (n) { selectedNode = n; selectedNodes = []; render(); }
-                openValidationPanel(true);
+        groups.forEach(function (g) {
+            var id = g.node._id;
+            _sdIssueWrapsOf(g.node).forEach(function (wrap) {
+                wrap.classList.add('sd-has-issue');
+                var b = canvasDoc.createElement('span');
+                b.className = 'sd-issue-badge';
+                b.setAttribute('title', g.labels.join('\n'));
+                b.textContent = '!';
+                b.addEventListener('click', function (e) {
+                    e.stopPropagation(); e.preventDefault();
+                    var n = _sdFindNodeForEl(id, wrap);
+                    if (n) { selectedNode = n; selectedNodes = []; render(); }
+                    openValidationPanel(true);
+                });
+                wrap.appendChild(b);
+                badged.push(wrap);
             });
-            wrap.appendChild(b);
-            badged.push(wrap);
         });
         // New elements, put on after the fidelity pass placed the old ones
         // (the validation runs debounced): the badges of see-through and
@@ -82568,7 +82616,7 @@ const StyleDesigner = (function () {
                     tree = cfg.treeData;
                     _sdTreeObjects(tree);
                     _normalizeToggleableShowState(tree);
-                    nodeIdCounter = reindex(tree);
+                    nodeIdCounter = _sdIdFloor();
                     hadExistingTree = true;
                 }
                 else tree = createDefaultTree();

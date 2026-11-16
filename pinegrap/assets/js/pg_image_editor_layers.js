@@ -163,12 +163,14 @@
 
     // The outlines of the selected layers on the stage; one unlocked layer
     // gets eight handles and the turning handle; guides while a move snaps.
+    // A tool that does not select shows them while Ctrl or Cmd is held
+    // (selectShown()) or a press it made Select's runs.
     Editor.prototype.renderSelection = function () {
         var self = this, box = this.selEl, v = this.view, vr = this.viewRect(), k = v.k, picked = this.selected();
 
         box.textContent = '';
 
-        if (!this.ready || this.cropping() || (Editor.selectTools.indexOf(this.tool) < 0)) {
+        if (!this.ready || this.cropping() || ((Editor.selectTools.indexOf(this.tool) < 0) && !this.selectShown() && !(this.press && this.drag))) {
             return;
         }
 
@@ -802,12 +804,8 @@
 
             list.appendChild(el('li', { class: 'pgie-lrow' + (on ? ' on' : '') + (l.hidden ? ' off' : '') }, [
                 el('button', { type: 'button', class: 'pgie-lname', 'aria-pressed': on ? 'true' : 'false', onclick: function (e) {
-                    // From a tool that does not select, Select takes over so
-                    // the chosen layer gets its handles.
-                    if (Editor.selectTools.indexOf(self.tool) < 0) {
-                        self.tool = 'select';
-                    }
-
+                    // The tool stays: one that does not select shows the
+                    // handles while Ctrl or Cmd is held.
                     self.select(e.shiftKey ? ((on ? self.sel.filter(function (id) { return id !== l.id; }) : self.sel.concat([l.id]))) : [l.id]);
                 } }, [X.icon(LAYER_ICONS[l.type] || 'draw'), el('span', { text: self.layerName(l) })]),
                 flag('hidden', l.hidden ? t('show') : t('hide'), l.hidden ? 'eyeoff' : 'eye'),

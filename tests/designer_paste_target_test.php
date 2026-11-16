@@ -305,7 +305,7 @@ function designer_paste_target_test_run($cases, $history = false)
 		'_sdNodeObjects', '_sdTreeObjects');
 
 	if ($history) {
-		$names = array_merge($names, array('saveState', 'undo', 'redo', 'reindex', '_snapshotShared', '_restoreShared', '_pgBaselineTreeKey', '_sdSharedTreeJSON', 'onDuplicate'));
+		$names = array_merge($names, array('saveState', 'undo', 'redo', 'reindex', '_sdIdFloor', '_snapshotShared', '_restoreShared', '_pgBaselineTreeKey', '_sdSharedTreeJSON', 'onDuplicate'));
 	}
 
 	foreach ($names as $name) {

@@ -153,7 +153,7 @@ function test_image_editor_access_key_map()
 
 // The timeline group of the help sheet, shown with the Animate tool: K
 // plays, J and L shuttle, the arrows step, Home and End jump, I and O trim
-// the selected clip's ends.
+// the selected clip's ends, S splits a clip at the playhead.
 function test_image_editor_access_timeline_group()
 {
 	$r = image_editor_access_node(
@@ -174,9 +174,28 @@ function test_image_editor_access_timeline_group()
 		array('Home', 'keyStart'),
 		array('End', 'keyEnd'),
 		array('I', 'keyMarkIn'),
-		array('O', 'keyMarkOut')
-	), $r['tl'], 'the timeline group: play, shuttle, frame, second, ends and mark in and out');
+		array('O', 'keyMarkOut'),
+		array('S', 'keySplit')
+	), $r['tl'], 'the timeline group: play, shuttle, frame, second, ends, mark in and out, split');
 	pg_assert_same(array(), $r['none'], 'no timeline group without the Animate tool');
+}
+
+// The letters the Animate tool keeps over the tool letters: J, K, L, I, O
+// and S (Line, Image, Ellipse, Sticker elsewhere), either case; no other.
+function test_image_editor_access_timeline_letters()
+{
+	$r = image_editor_access_node(
+		'console.log(JSON.stringify({ kept: ["j", "K", "l", "i", "O", "s", "S"].map(M.timelineLetter), others: ["v", "t", "m", "?", "ss", "", null].map(M.timelineLetter), sticker: M.toolForKey("s", ["select", "sticker", "motion"]) }));'
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
+	pg_assert_same(array(true, true, true, true, true, true, true), $r['kept'], 'the timeline letters');
+	pg_assert_same(array(false, false, false, false, false, false, false), $r['others'], 'other keys pick their tool');
+	pg_assert_same('sticker', $r['sticker'], 'S picks Sticker outside the Animate tool');
 }
 
 // The arrows step the playhead by a frame (Shift: a second) on the frame or
