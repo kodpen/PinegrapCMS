@@ -744,6 +744,16 @@
     //    gets its picture put into holder once it first comes into sight;
     //  - ownClicks: a selector of what keeps its own clicks and keys (a link
     //    on a box): the canvas takes no pointer and no key from it;
+    //  - focus (optional, true): only the arrows of the box in focus are
+    //    drawn, <edge>-out and <edge>-in, the boxes and targets at neither
+    //    end of one dimmed; none with no box in focus; allEdges(true) draws
+    //    the others too, <edge>-faint, under them. A press on a box puts it
+    //    in focus, a click on the empty canvas takes the focus away. Without
+    //    the field every arrow is drawn as before;
+    //  - label(item) (optional): a box's name in what the focus announces
+    //    (else its aria-label, else its id);
+    //  - groups() (optional): the headings groups() draws behind the boxes,
+    //    [{ id, label, x, y, w, kind }] as G.arrange() gives them;
     //  - classes (optional, each name else its CLASSES default, styled by
     //    the pgc- block of backend.src.css): { panning, space } put on the
     //    viewport while it pans and while Space is held; box, port, edge (a
@@ -776,7 +786,12 @@
         selected: 'pgc-selected',
         target: 'pgc-target',
         hidden: 'pgc-hidden',
-        thumb: 'pgc-thumb'
+        thumb: 'pgc-thumb',
+        edgeOut: 'pgc-edge-out',
+        edgeIn: 'pgc-edge-in',
+        faint: 'pgc-edge-faint',
+        dim: 'pgc-dim',
+        group: 'pgc-group'
     };
 
     function merge(base, over) {
@@ -801,6 +816,11 @@
         // The arrows drawn by id, to draw the ones of a box moved again.
         var drawn = {};
         var watcher = null;
+        // The focus (adapter.focus): the box in focus, null for none, and
+        // whether the other arrows are drawn faintly.
+        var focusing = !!adapter.focus;
+        var focusId = null;
+        var faint = false;
 
         function text() {
             return adapter.text.apply(null, arguments);
@@ -927,6 +947,10 @@
 
             place(node, item);
 
+            if (focusing && (focusId !== null) && !ends()[String(item.id)]) {
+                node.classList.add(classes.dim);
+            }
+
             return node;
         }
 
@@ -992,11 +1016,245 @@
             hit.setAttribute('d', path.d);
             group.appendChild(line);
             group.appendChild(hit);
-            ui.svg.appendChild(group);
             one.group = group;
+            one.state = '';
             drawn[String(id)] = one;
 
+            if (focusing) {
+                show(one, stateOf(one));
+
+                // A faint arrow goes under those of the box in focus.
+                var over = (one.state === 'faint') ? ui.svg.querySelector('.' + classes.edgeOut + ', .' + classes.edgeIn) : null;
+
+                if (over) {
+                    ui.svg.insertBefore(group, over);
+                } else {
+                    ui.svg.appendChild(group);
+                }
+
+                if ((one.state === 'out') || (one.state === 'in')) {
+                    undim(one);
+                }
+            } else {
+                ui.svg.appendChild(group);
+            }
+
             return { group: group, path: path };
+        }
+
+        // ── Focus ──
+
+        // What an arrow is with the focus as it is: 'out' or 'in' of the box
+        // in focus, 'faint' while every arrow is drawn, else 'hidden'.
+        function stateOf(one) {
+            if (focusId === null) {
+                return 'hidden';
+            }
+
+            if (String(one.from.id) === focusId) {
+                return 'out';
+            }
+
+            if (String(one.to.id) === focusId) {
+                return 'in';
+            }
+
+            return faint ? 'faint' : 'hidden';
+        }
+
+        // An arrow's classes for its state; nothing is touched when the
+        // state is the one it has.
+        function show(one, state) {
+            if (one.state === state) {
+                return false;
+            }
+
+            var list = one.group.classList;
+
+            list.remove(classes.edgeOut);
+            list.remove(classes.edgeIn);
+            list.remove(classes.faint);
+            list.remove(classes.hidden);
+            list.add({ out: classes.edgeOut, 'in': classes.edgeIn, faint: classes.faint, hidden: classes.hidden }[state]);
+            one.state = state;
+
+            return true;
+        }
+
+        // The arrows still on the canvas.
+        function live() {
+            return Object.keys(drawn).map(function (key) { return drawn[key]; }).filter(function (one) {
+                return one.group.parentNode === ui.svg;
+            });
+        }
+
+        // The ids at an end of an arrow of the box in focus, the box itself
+        // among them.
+        function ends() {
+            var out = {};
+
+            if (focusId === null) {
+                return out;
+            }
+
+            out[focusId] = true;
+            live().forEach(function (one) {
+                if ((one.state === 'out') || (one.state === 'in')) {
+                    out[String(one.from.id)] = true;
+                    out[String(one.to.id)] = true;
+                }
+            });
+
+            return out;
+        }
+
+        // The id of a box or of a target (adapter.targets) element.
+        function idOf(element) {
+            var raw = element.getAttribute('data-node');
+
+            if (raw !== null) {
+                return raw;
+            }
+
+            var item = adapter.target ? adapter.target(element) : null;
+
+            return item ? String(item.id) : null;
+        }
+
+        function elementsOf() {
+            return ui.boxes.querySelectorAll('[data-node]' + (adapter.targets ? ', ' + adapter.targets : ''));
+        }
+
+        // Every box and target at neither end of an arrow of the box in
+        // focus dimmed; none while nothing is in focus.
+        function dim() {
+            var near = ends();
+
+            Array.prototype.forEach.call(elementsOf(), function (element) {
+                var id = idOf(element);
+
+                if ((focusId !== null) && (id !== null) && !near[id]) {
+                    element.classList.add(classes.dim);
+                } else {
+                    element.classList.remove(classes.dim);
+                }
+            });
+        }
+
+        // The two ends of an arrow of the box in focus drawn in full.
+        function undim(one) {
+            Array.prototype.forEach.call(elementsOf(), function (element) {
+                var id = idOf(element);
+
+                if ((id === String(one.from.id)) || (id === String(one.to.id))) {
+                    element.classList.remove(classes.dim);
+                }
+            });
+        }
+
+        // The arrows of the box in focus put last, over the faint ones.
+        function lift() {
+            live().forEach(function (one) {
+                if ((one.state === 'out') || (one.state === 'in')) {
+                    ui.svg.appendChild(one.group);
+                }
+            });
+        }
+
+        // The arrows whose state changed drawn again, the boxes dimmed.
+        function refocus() {
+            var changed = false;
+
+            live().forEach(function (one) {
+                changed = show(one, stateOf(one)) || changed;
+            });
+
+            if (changed) {
+                lift();
+            }
+
+            dim();
+        }
+
+        // A box (its id) in focus, null for none; again with the same id it
+        // dims the boxes drawn since. A box put in focus is announced with
+        // its name and its arrows' counts.
+        function focus(id) {
+            if (!focusing) {
+                return;
+            }
+
+            var next = (id === null || id === undefined) ? null : String(id);
+            var moved = next !== focusId;
+
+            focusId = next;
+            refocus();
+
+            if (moved && (next !== null)) {
+                announceFocus();
+            }
+        }
+
+        function announceFocus() {
+            var item = adapter.item(focusId);
+            var node = ui.boxes.querySelector('[data-node="' + focusId.replace(/"/g, '') + '"]');
+            var name = (item && adapter.label) ? adapter.label(item) : ((node && node.getAttribute('aria-label')) || focusId);
+            var outs = 0;
+            var ins = 0;
+
+            live().forEach(function (one) {
+                if (one.state === 'out') {
+                    outs++;
+                } else if (one.state === 'in') {
+                    ins++;
+                }
+            });
+
+            announce(text('pgc_focus', name, outs, ins));
+        }
+
+        // The arrows of the boxes out of focus drawn faintly (on) or not.
+        function allEdges(on) {
+            faint = !!on;
+
+            if (focusing) {
+                refocus();
+            }
+        }
+
+        // The headings of adapter.groups() drawn behind the boxes: a label
+        // and a rule each, at its place and width; drawn again on each call.
+        function groups() {
+            var old = ui.layer.querySelector('.' + classes.group + 's');
+            var holder = document.createElement('div');
+
+            if (old) {
+                old.parentNode.removeChild(old);
+            }
+
+            holder.className = classes.group + 's';
+            holder.setAttribute('aria-hidden', 'true');
+            ui.layer.insertBefore(holder, ui.layer.firstChild);
+
+            (adapter.groups ? adapter.groups() : []).forEach(function (one) {
+                var head = document.createElement('div');
+                var label = document.createElement('span');
+                var rule = document.createElement('span');
+
+                head.className = classes.group + (one.kind ? ' ' + classes.group + '-' + one.kind : '');
+                head.setAttribute('data-group', String(one.id));
+                head.style.left = one.x + 'px';
+                head.style.top = one.y + 'px';
+                head.style.width = one.w + 'px';
+                label.className = classes.group + '-label';
+                label.textContent = one.label || '';
+                rule.className = classes.group + '-rule';
+                head.appendChild(label);
+                head.appendChild(rule);
+                holder.appendChild(head);
+            });
+
+            return holder;
         }
 
         // The arrows from or into the boxes of these ids drawn again where
@@ -1108,6 +1366,7 @@
                 drag = next;
                 adapter.select({ type: 'node', id: next.item.id });
                 node.focus({ preventScroll: true });
+                focus(next.item.id);
             } else if (arrow) {
                 next.kind = 'none';
                 adapter.select({ type: 'edge', id: edgeId(arrow.getAttribute('data-edge')) });
@@ -1166,6 +1425,11 @@
             if ((done.kind === 'move') && done.moved) {
                 adapter.moved(done.item);
                 return true;
+            }
+
+            // A click on the empty canvas (not a pan) takes the focus away.
+            if ((done.kind === 'pan') && done.empty && !done.moved && (event.type === 'pointerup')) {
+                focus(null);
             }
 
             return false;
@@ -1405,6 +1669,10 @@
             size: size,
             mark: mark,
             announce: announce,
+            focus: focus,
+            focused: function () { return focusId; },
+            allEdges: allEdges,
+            groups: groups,
             bind: bind,
             destroy: destroy,
             cancel: cancel,
