@@ -29,4 +29,5 @@ priority: 6
 
 ## Whose look?
 - Workspace is a kept screen: AF2, AF4b and AF5b post close-up pairs in the agent channel and the architect brings them to the owner; none is marked ready before his look. AF1's form field is the architect's look.
+- Owner (2026-11-16, agent channel poll 104, message 7050): "Evet, böyle çıksın" on the sheet of message 7049 (AF5b).
 - AF2's look is given: Owner (2026-11-15, agent channel poll 53): "Evet, böyle çıksın" (`workflow/decisions-made-workspace-34.md`).

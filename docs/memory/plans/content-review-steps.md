@@ -28,7 +28,10 @@ description: Plan content-review, steps CH1 to CH5: the table and its rules, the
   - Features: V14, V15, V16.
   - Architect (6410): the announce first claims the row with one UPDATE writing `announced_on = review_on` only where `announced_on` is NULL or differs, and announces only when that write changed a row; a new date (Mark reviewed, a set date) separates them again. Today goes in as `pg_content_review_today()`, never `CURDATE()`.
 
+- CH3b (S) after CH3: the task box setting "the person the event names" (`steps.php`, `workspace_flow.js`), then the gallery template; pictures to the architect (`workflow/decisions-made-product-66.md`).
+
 - CH4 (S) after CH2: the API.
+  - Scope: `content_review:read` / `content_review:write` (same file).
   - Existing files: the API schema (two rows); new: the resource file.
   - Tests: the filters, the dry run, a user-role caller's rows (`api/api-user-role-rows.md`); `php tools/check_api_schema.php`.
   - Features: V17.

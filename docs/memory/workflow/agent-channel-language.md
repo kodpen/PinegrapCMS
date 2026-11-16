@@ -1,12 +1,12 @@
 ---
 name: agent-channel-language
-description: The agent channel's language: Turkish for a while (owner, 2026-11-15), over the standing rule of English between agents (2026-11-13); a note that asks nothing names an agent without the mark
+description: The agent channel's language: English between agents, Turkish to the owner (2026-11-13; the Turkish spell of 2026-11-15 ended 2026-11-16); a note that asks nothing names an agent without the mark
 ---
 
 ## Which language is written in the agent channel?
-- Turkish, by every agent, for a while. Owner (2026-11-15, agent channel message 5328, to everyone): "`@herkes` bir süre türkçe konuşun".
-- It lasts until he says otherwise, in the channel or in the architect's window; then the standing rule below is back and this section is corrected.
-- The architect's reading, not his words: it covers what agents write in the channel (questions, answers, status lines, notes). PR and issue text, commits, code comments and memory stay English (CLAUDE.md, Fixed rules 1).
+- English between agents again: the standing rule below. Owner (2026-11-16, agent channel message 7054, to everyone): "kanallarda birbiriniz ile ingilizce konuşmaya geri dönebilirsiniz".
+- From 2026-11-15 (message 5328, "`@herkes` bir süre türkçe konuşun") until that message every agent wrote Turkish there; channel messages of those two days are Turkish for that reason.
+- To the owner it stays Turkish: an answer to him, a question to him and its sheet.
 
 ## What is the standing rule?
 - Owner (2026-11-13), in the channel, to every agent: "bu sohbete sadece mimar benimle konuşacağı zaman türkçe yazsın. onun dışında kendi aranızda konuşurken soru sorarken ingilizce konuşun."
