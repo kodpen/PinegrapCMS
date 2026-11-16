@@ -24850,15 +24850,39 @@ const StyleDesigner = (function () {
         }
     }
 
+    // The line under the Options search box that says nothing matched; made
+    // on first use, after the box, so a panel redraw does not remove it.
+    function _sdPropsSearchEmpty(typed) {
+        var line = document.getElementById('sd-props-search-empty');
+        if (!typed) {
+            if (line) line.style.display = 'none';
+            return;
+        }
+        if (!line) {
+            var inp = document.getElementById('sd-props-search');
+            var wrap = inp && inp.parentElement;
+            if (!wrap || !wrap.parentElement) return;
+            line = document.createElement('div');
+            line.id = 'sd-props-search-empty';
+            line.className = 'sd-props-search-empty';
+            line.setAttribute('role', 'status');
+            wrap.parentElement.insertBefore(line, wrap.nextSibling);
+        }
+        line.textContent = _sdT('No option matches “{var}”.', typed);
+        line.style.display = '';
+    }
+
     // Both the typed text and the labels are folded by _sdCondFold() so a
     // Turkish capital İ, I and the dotless ı match a typed i, and capitals
     // match lower case; toLowerCase() alone turns İ into i + U+0307.
     function filterPropertiesPanel(q) {
         var panel = document.getElementById('sd-properties');
         if (!panel) return;
-        q = _sdCondFold(q || '').trim();
+        var typed = String(q || '').trim();
+        q = _sdCondFold(typed).trim();
 
         if (!q) {
+            _sdPropsSearchEmpty('');
             // Restore bodies that were temporarily expanded during search
             panel.querySelectorAll('.sd-sect-body[data-search-expanded]').forEach(function(body) {
                 body.style.display = 'none';
@@ -24870,6 +24894,20 @@ const StyleDesigner = (function () {
             return;
         }
 
+        var isSect = function(el) {
+            return el.classList.contains('sd-props-section') || el.classList.contains('sd-app-sect');
+        };
+        // Show a section and open its collapsed body for the search
+        var showSect = function(sect) {
+            sect.style.display = '';
+            var body = sect.querySelector('.sd-sect-body');
+            if (body && body.style.display === 'none' && !body.hasAttribute('data-search-expanded')) {
+                body.setAttribute('data-search-expanded', '1');
+                body.style.display = '';
+            }
+        };
+        var shown = [];
+
         // Filter both Options sections (.sd-props-section) and Appearance sections (.sd-app-sect)
         panel.querySelectorAll('.sd-props-section, .sd-app-sect').forEach(function(sect) {
             var isApp = sect.classList.contains('sd-app-sect');
@@ -24877,7 +24915,7 @@ const StyleDesigner = (function () {
             var titleText = titleEl ? _sdCondFold(titleEl.textContent) : '';
             var titleMatch = titleText.indexOf(q) !== -1;
             var anyVisible = false;
-            var body = sect.querySelector('.sd-sect-body');
+            var ownRows = 0;
 
             sect.querySelectorAll('.sd-prop-row, .sd-sp-row').forEach(function(rowEl) {
                 // Skip rows that are nested inside a child section (avoid double-counting)
@@ -24890,6 +24928,7 @@ const StyleDesigner = (function () {
                     parentSect = parentSect.parentElement;
                 }
                 if (!parentSect) return;
+                ownRows++;
 
                 var label = rowEl.querySelector('.sd-prop-label, .sd-sp-label');
                 var labelText = label ? _sdCondFold(label.textContent) : '';
@@ -24899,14 +24938,37 @@ const StyleDesigner = (function () {
                 if (match) anyVisible = true;
             });
 
-            sect.style.display = anyVisible ? '' : 'none';
+            // A section built without option rows (the translation box, the
+            // quick layout buttons) is found by its title or by the text of
+            // its own buttons and labels.
+            if (!ownRows) {
+                anyVisible = titleMatch;
+                if (!anyVisible) {
+                    sect.querySelectorAll('button, label').forEach(function(el) {
+                        if (anyVisible) return;
+                        for (var p = el.parentElement; p && p !== sect; p = p.parentElement) {
+                            if (isSect(p)) return;
+                        }
+                        if (_sdCondFold(el.textContent).indexOf(q) !== -1) anyVisible = true;
+                    });
+                }
+            }
 
-            // Temporarily expand collapsed body so matching rows are visible
-            if (anyVisible && body && body.style.display === 'none' && !body.hasAttribute('data-search-expanded')) {
-                body.setAttribute('data-search-expanded', '1');
-                body.style.display = '';
+            sect.style.display = anyVisible ? '' : 'none';
+            if (anyVisible) {
+                showSect(sect);
+                shown.push(sect);
             }
         });
+
+        // A shown section keeps the sections around it shown
+        shown.forEach(function(sect) {
+            for (var p = sect.parentElement; p && p !== panel; p = p.parentElement) {
+                if (isSect(p)) showSect(p);
+            }
+        });
+
+        _sdPropsSearchEmpty(shown.length ? '' : typed);
     }
 
     function initLeftPanel() {
