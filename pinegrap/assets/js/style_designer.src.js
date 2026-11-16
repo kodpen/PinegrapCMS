@@ -14364,7 +14364,7 @@ const StyleDesigner = (function () {
                 var _hasChildren = node.children && node.children.length > 0;
                 var _hint = doc.createElement('div');
                 _hint.className = 'sd-section-binding-hint';
-                if (_hasChildren && _SD_SECTION_KEEPS_CHILDREN[_sec]) {
+                if (_hasChildren && (_SD_SECTION_KEEPS_CHILDREN[_sec] || _SD_BOOKING_KEEPS_CHILDREN[_sec])) {
                     // The page draws these children: no fault to warn of.
                     _hint = null;
                 } else if (_hasChildren) {
@@ -14412,6 +14412,12 @@ const StyleDesigner = (function () {
                 if (!_hasChildren && _getSystemWidgetRegionType(node) === 'catalog_listing') {
                     var _catSample = _sdCatalogSectionSample(_sec, doc, _sysWidgetRenderCfg);
                     if (_catSample) _hint = _catSample;
+                }
+                // A booking widget's part its script fills, drawn as a
+                // visitor sees it (_sdBookingSectionSample()).
+                if (!_hasChildren && _SD_BOOKING_FILLED[_sec]) {
+                    var _bkSample = _sdBookingSectionSample(_sec, doc);
+                    if (_bkSample) _hint = _bkSample;
                 }
                 if (_hint) innerEl.appendChild(_hint);
             }
@@ -42850,6 +42856,145 @@ const StyleDesigner = (function () {
         box.innerHTML = html + '<div class="small text-body-secondary fst-italic mt-1">'
             + esc(section === 'group_tree' ? _sdT('The site draws the catalog\'s groups, the visitor\'s group in bold.')
                 : _sdT('The site draws the filters the widget\'s settings turn on, with the attributes of the products shown.')) + '</div>';
+        return box;
+    }
+
+    // ── Booking widget parts ───────────────────────────────────────────────
+    // The widget's server keeps every part's children and only marks the
+    // parts (pg_booking_widget_mark()), so a step and the details form are
+    // design elements like any other. The parts pg_booking.js fills on the
+    // page (the people, the calendar, the times, the held time, the closing
+    // words, the status line) depend on the visitor's choices and the free
+    // slots of the moment: the canvas draws a sample of them, never saved.
+    var _SD_BOOKING_KEEPS_CHILDREN = {
+        booking_step_service: 1, booking_step_staff: 1, booking_step_when: 1,
+        booking_step_details: 1, booking_step_done: 1, booking_form: 1
+    };
+    var _SD_BOOKING_FILLED = {
+        booking_staff: 1, booking_calendar: 1, booking_times: 1,
+        booking_summary: 1, booking_done: 1, booking_status: 1
+    };
+    // The button pg_booking.js draws for a person and a time.
+    var SD_BOOKING_BUTTON_CLASS = 'btn btn-outline-primary';
+
+    // The words, hold minutes, zone, closing words and sample times the
+    // server gave (pg_booking_canvas_sample()), English ones without it.
+    function _sdBookingWords() {
+        var b = (typeof sdDesign !== 'undefined' && sdDesign && sdDesign.siteWords && sdDesign.siteWords.booking) ? sdDesign.siteWords.booking : {};
+        var w = b.words || {};
+        return {
+            anyone: w.anyone || _sdT('Anyone available'),
+            held: w.held || _sdT('We are keeping {time} for you for {minutes} minutes.'),
+            times: w.times || _sdT('Free times on {day}'),
+            zoneNote: w.zoneNote || _sdT('Times are in {zone}.'),
+            hold: parseInt(b.hold, 10) || 10,
+            zone: b.zone || 'UTC',
+            done: b.done || _sdT('Your appointment is booked. We have sent the details to your e-mail address.'),
+            slots: (Array.isArray(b.times) && b.times.length) ? b.times : ['09:00', '09:30', '10:30', '11:00', '14:00', '15:30']
+        };
+    }
+
+    // The script's {key} filling (pg_booking.js fill()).
+    function _sdBookingFill(text, values) {
+        return String(text || '').replace(/\{(\w+)\}/g, function (all, key) {
+            return Object.prototype.hasOwnProperty.call(values, key) ? values[key] : all;
+        });
+    }
+
+    // The editor's language, the sample day and its long name as the script
+    // writes it (dayLabel()).
+    function _sdBookingLang() {
+        return String((document.documentElement && document.documentElement.lang) || 'en').slice(0, 2).toLowerCase();
+    }
+    function _sdBookingSampleDay() {
+        var now = new Date();
+        return new Date(Date.UTC(now.getFullYear(), now.getMonth(), 12, 12));
+    }
+    function _sdBookingDayLabel(day) {
+        try {
+            return new Intl.DateTimeFormat(_sdBookingLang(), { dateStyle: 'full', timeZone: 'UTC' }).format(day);
+        } catch (e) {
+            return day.toISOString().slice(0, 10);
+        }
+    }
+
+    // The month calendar of the free days: weekdays from the sample day on
+    // can be picked, the sample day picked. A stand-in for the site's date
+    // control, which draws it with its own look.
+    /* @pg-site-output */
+    function _sdBookingCalendarHtml() {
+        var lang = _sdBookingLang(), day = _sdBookingSampleDay();
+        var y = day.getUTCFullYear(), m = day.getUTCMonth(), first = lang === 'tr' ? 1 : 0;
+        var title = '', names = [];
+        try {
+            title = new Intl.DateTimeFormat(lang, { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(day);
+            for (var n = 0; n < 7; n++) {
+                names.push(new Intl.DateTimeFormat(lang, { weekday: 'short', timeZone: 'UTC' }).format(new Date(Date.UTC(2026, 1, 1 + ((n + first) % 7), 12))));
+            }
+        } catch (e) {
+            title = y + '-' + ('0' + (m + 1)).slice(-2);
+            names = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].slice(first).concat(first ? ['Su'] : []);
+        }
+        var last = new Date(Date.UTC(y, m + 1, 0, 12)).getUTCDate();
+        var lead = (new Date(Date.UTC(y, m, 1, 12)).getUTCDay() - first + 7) % 7;
+        var html = '<div class="border rounded-3 p-2" style="max-width:20rem">'
+            + '<div class="d-flex justify-content-between align-items-center mb-2">'
+            + '<span class="btn btn-sm btn-link" aria-hidden="true"><i class="bi bi-chevron-left"></i></span>'
+            + '<span class="fw-semibold">' + esc(title) + '</span>'
+            + '<span class="btn btn-sm btn-link" aria-hidden="true"><i class="bi bi-chevron-right"></i></span></div>'
+            + '<table class="table table-sm table-borderless text-center small mb-0"><thead><tr>';
+        names.forEach(function (name) { html += '<th class="text-body-secondary fw-normal">' + esc(name) + '</th>'; });
+        html += '</tr></thead><tbody><tr>';
+        for (var i = 0; i < lead; i++) html += '<td></td>';
+        for (var d = 1; d <= last; d++) {
+            var wd = new Date(Date.UTC(y, m, d, 12)).getUTCDay();
+            var free = d >= 12 && wd !== 0 && wd !== 6;
+            var cls = d === 12 ? 'd-inline-block rounded-2 px-2 bg-primary text-white fw-semibold'
+                : (free ? 'd-inline-block rounded-2 px-2 fw-semibold text-primary' : 'd-inline-block px-2 text-body-tertiary');
+            html += '<td><span class="' + cls + '">' + d + '</span></td>';
+            if ((lead + d) % 7 === 0 && d < last) html += '</tr><tr>';
+        }
+        return html + '</tr></tbody></table></div>';
+    }
+
+    // What the script writes into a part, for the canvas.
+    /* @pg-site-output */
+    function _sdBookingSectionHtml(section) {
+        var w = _sdBookingWords(), day = _sdBookingDayLabel(_sdBookingSampleDay());
+        var buttons = function (labels) {
+            return '<div class="d-flex flex-wrap gap-2">' + labels.map(function (label) {
+                return '<button type="button" class="' + SD_BOOKING_BUTTON_CLASS + '">' + esc(label) + '</button>';
+            }).join('') + '</div>';
+        };
+        if (section === 'booking_staff') return buttons([w.anyone, _sdT('Jordan Lee'), _sdT('Sam Carter')]);
+        if (section === 'booking_times') return buttons(w.slots);
+        if (section === 'booking_calendar') return _sdBookingCalendarHtml();
+        if (section === 'booking_summary') return esc(_sdBookingFill(w.held, { time: day + ' ' + w.slots[2], minutes: w.hold }));
+        if (section === 'booking_done') return esc(w.done);
+        if (section === 'booking_status') {
+            return esc(_sdBookingFill(w.times, { day: day }) + ' ' + _sdBookingFill(w.zoneNote, { zone: w.zone }));
+        }
+        return '';
+    }
+
+    // The sample of a booking part as a canvas box: inert, never saved, the
+    // words under it saying the page fills it.
+    function _sdBookingSectionSample(section, doc) {
+        var html = _sdBookingSectionHtml(section);
+        if (!html) return null;
+        var notes = {
+            booking_staff:    _sdT('The page fills in the people who take the chosen service.'),
+            booking_calendar: _sdT('The page draws the month calendar; only the days with a free time can be picked.'),
+            booking_times:    _sdT('The page fills in the free times of the chosen day.'),
+            booking_summary:  _sdT('The page writes the held time here.'),
+            booking_done:     _sdT('The page writes these words when the booking is made (Settings › Bookings).'),
+            booking_status:   _sdT('The page writes here what happens, read out to screen readers.')
+        };
+        var box = doc.createElement('div');
+        box.className = 'sd-section-binding-hint sd-section-sample';
+        box.setAttribute('inert', '');
+        box.style.cssText = 'pointer-events:none;flex:1 1 100%';
+        box.innerHTML = html + '<div class="small text-body-secondary fst-italic mt-1">' + esc(notes[section]) + '</div>';
         return box;
     }
 

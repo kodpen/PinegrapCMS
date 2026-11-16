@@ -668,19 +668,65 @@ function pg_booking_widget_settings($services, $staff)
         'staff' => pg_booking_widget_staff_map($services, $staff),
         'zone'  => (string) $policy['zone'],
         'hold'  => (int) $policy['hold_minutes'],
-        'words' => array(
-            'anyone'   => lang('Anyone available'),
-            'noTimes'  => lang('No time is free on this day. Please pick another day.'),
-            'noDays'   => lang('No day is free in this month.'),
-            'loading'  => lang('Loading…'),
-            'taken'    => pg_booking_widget_taken_text(),
-            'held'     => lang('We are keeping {time} for you for {minutes} minutes.'),
-            'failed'   => lang('Something went wrong. Please try again.'),
-            'times'    => lang('Free times on {day}'),
-            'zoneNote' => lang('Times are in {zone}.'),
-            'sending'  => lang('Booking your appointment…'),
-            'check'    => lang('Please check the marked fields.'),
-        ),
+        'words' => pg_booking_widget_words(),
+    );
+}
+
+/**
+ * The words the widget's script writes into its parts and status line.
+ *
+ * @return array key => text, {time}, {minutes}, {day} and {zone} filled by
+ *               the script
+ */
+function pg_booking_widget_words()
+{
+    return array(
+        'anyone'   => lang('Anyone available'),
+        'noTimes'  => lang('No time is free on this day. Please pick another day.'),
+        'noDays'   => lang('No day is free in this month.'),
+        'loading'  => lang('Loading…'),
+        'taken'    => pg_booking_widget_taken_text(),
+        'held'     => lang('We are keeping {time} for you for {minutes} minutes.'),
+        'failed'   => lang('Something went wrong. Please try again.'),
+        'times'    => lang('Free times on {day}'),
+        'zoneNote' => lang('Times are in {zone}.'),
+        'sending'  => lang('Booking your appointment…'),
+        'check'    => lang('Please check the marked fields.'),
+    );
+}
+
+/**
+ * What the designer's canvas draws in the parts the script fills on the
+ * page (the people, the free times, the held time, the closing words, the
+ * status line): the script's words, the policy's hold minutes and zone, the
+ * closing words the policy gives a booking, and sample times on the site's
+ * clock. Canvas only; the page itself never prints them.
+ *
+ * @param array $policy as pg_booking_widget_policy()
+ * @param array $texts  as pg_booking_texts()
+ * @return array words, hold, zone, done, times
+ */
+function pg_booking_canvas_sample($policy, $texts)
+{
+    $zone = isset($policy['zone']) ? (string) $policy['zone'] : 'UTC';
+    $times = array();
+
+    foreach (array('09:00', '09:30', '10:30', '11:00', '14:00', '15:30') as $clock) {
+        try {
+            $moment = new DateTime('2026-01-15 ' . $clock, new DateTimeZone($zone));
+        } catch (Exception $exception) {
+            $moment = new DateTime('2026-01-15 ' . $clock, new DateTimeZone('UTC'));
+            $zone = 'UTC';
+        }
+        $times[] = pg_booking_time_label($moment->getTimestamp(), $zone);
+    }
+
+    return array(
+        'words' => pg_booking_widget_words(),
+        'hold'  => isset($policy['hold_minutes']) ? (int) $policy['hold_minutes'] : 0,
+        'zone'  => $zone,
+        'done'  => pg_booking_widget_done_text(!empty($policy['auto_confirm']) ? 'confirmed' : 'requested', is_array($texts) ? $texts : array()),
+        'times' => $times,
     );
 }
 
