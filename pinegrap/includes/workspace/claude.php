@@ -1748,6 +1748,12 @@ function ws_claude_draft_dismiss($viewer, $draft_id)
  */
 function ws_claude_channel_set($viewer, $channel, $allowed)
 {
+    // An archived channel is read, never switched: the channel menu hides
+    // the switch there, and this line would land in the archive.
+    if ((int) ($channel['archived_at'] ?? 0) > 0) {
+        return array('ok' => false, 'error' => lang('This channel is archived. It can be read but not written in.'));
+    }
+
     if (!ws_claude_schema_ready()) {
         return array('ok' => false, 'error' => lang('Invalid request.'));
     }
