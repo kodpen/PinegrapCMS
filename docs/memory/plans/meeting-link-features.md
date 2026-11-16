@@ -1,6 +1,6 @@
 ---
 name: meeting-link-features
-description: Plan meeting-link, features M1 to M14: a staff member's link and its choices, the address, the page, where free times come from, private plans as busy, the booking, the meeting address, safety
+description: Plan meeting-link, features M1 to M14: a staff member's link and its choices, the address, the page, where free times come from, private plans left out, the booking, the meeting address, safety
 ---
 
 ## What is a meeting link?
@@ -11,7 +11,7 @@ description: Plan meeting-link, features M1 to M14: a staff member's link and it
 ## What does the visitor see?
 - (M4) A page "Book a time with <name>": the link's services with their length (and price, when one has it), then month, day and time picked without script, as `booking_manage.php` draws them, then name, e-mail, phone, a note, the privacy line and Confirm.
 - (M5) Free times come only from the booking engine that exists: the member's hours and exceptions, the service's length and buffers, the site's lead time, bookings and the member's Workspace events as busy (`pg_booking_busy_between()`). No second calculator.
-- (M6) Private plans as busy, only after the owner's yes: when the member switches it on, the times of their private plans count as busy through one function of `personal_plans.php` that gives ranges only. Nothing of a plan is shown, sent or kept.
+- (M6) A private plan never takes a booking time (owner, agent channel poll 85): the free times are the engine's own. A member who wants a time kept makes a team event, which the engine already counts as busy.
 - (M7) A service with a deposit is not offered through a link in the first version; the settings screen says so beside it.
 
 ## What does a booking do?

@@ -21,8 +21,9 @@ priority: 6
 - The numbered features: `referral-programme-features.md` (E1 to E15). Steps: `referral-programme-steps.md`. Claim as `[plan:referral-programme] <step> — <topic>`.
 - In short: a code worked out from the contact, carried by the affiliate link's own rails, and at completion a reward as store credit instead of a commission, with its own checks and take-back.
 
-## What does the owner decide?
-- Who can refer (the proposal: a customer with an order that counts) and that the reward is store credit. The table and the new kind of credit (asked with the set's other tables).
+## What did the owner decide? (2026-11-16)
+- Who can refer and what the reward is. Owner (agent channel poll 86, message 6515): "Siparişi olan müşteri getirsin; ödül mağaza kredisi".
+- The table and the new kind of credit: with the set's other tables (`plans/more-features.md`).
 
 ## What does the architect decide?
 - The table's columns and how the credit's kind is added, in RF1's draft PR. Whether a part refund takes the whole reward (the plan, as #6306 reads) or a share.

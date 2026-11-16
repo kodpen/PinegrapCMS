@@ -16,6 +16,8 @@ priority: 6
 - Whether they may be added is the owner's, asked in one question with the count per plan (the first of the two files above). No step that adds a table starts before his answer.
 - One table each: the digest, the meeting link (and a place for a booking's meeting address), the map, the referral programme (and a new kind of store credit).
 - Two each: customer value, event tickets (and a mark on a product). Three each: wholesale, courses. Fourteen in all.
+- Owner (2026-11-16, agent channel poll 84, message 6513), asked whether these may be added: "mimara soralım bunu yazılımdaki bir özelliği geliştirererek yapabiliyormuyuz değerlendirsin."
+- So no table is taken as allowed. The architect weighs, table by table, whether a feature that exists can carry the need; the question returns to the owner with its view.
 
 ## Which plans are there?
 - `post-digest.md`: new posts of a list sent by themselves as an e-mail to a contact group.
