@@ -25,7 +25,7 @@
 (function (X) {
     'use strict';
 
-    var Editor = X.Editor, M = X.M, t = X.t, el = X.el, button = X.button;
+    var Editor = X.Editor, M = X.M, t = X.t, el = X.el, button = X.button, pct = X.pct;
 
     X.icons.follow = 'M11 2h2v5h-2zM11 17h2v5h-2zM2 11h5v2H2zM17 11h5v2h-5zM12 8a4 4 0 1 1 0 8 4 4 0 0 1 0-8zm0 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4z';
 
@@ -616,7 +616,7 @@
             this.hint.textContent = t((f.phase === 'running') ? 'followHintRun' : 'followHint');
         }
 
-        if (!on || (f.phase !== 'running')) {
+        if (!on) {
             if (this.followPill) {
                 this.followPill.remove();
                 this.followPill = null;
@@ -625,12 +625,14 @@
             return;
         }
 
+        // One pill over the stage: the hint while the box is set up, then
+        // the share done while it runs; Cancel in both.
         if (!this.followPill) {
             var self = this;
 
             this.followPill = el('div', { class: 'pgie-followpill', role: 'status', 'aria-live': 'polite' }, [
                 el('span', { class: 'pgie-followspin', 'aria-hidden': 'true' }),
-                el('span', { class: 'pgie-followtext', text: t('followBusy') }),
+                el('span', { class: 'pgie-followtext' }),
                 el('strong', { class: 'pgie-followshare' }),
                 el('button', { type: 'button', class: 'pgie-btn pgie-followcancel', text: t('followCancelRun'), onclick: function () { self.followStop(); } })
             ]);
@@ -644,14 +646,16 @@
     };
 
     Editor.prototype.followPillUpdate = function () {
-        var f = this.follow, p = this.followPill, share;
+        var f = this.follow, p = this.followPill, running = !!(f && (f.phase === 'running')), share;
 
-        if (!p || !f || !f.times) {
+        if (!p || !f) {
             return;
         }
 
-        share = f.times.length ? Math.min(100, Math.round(100 * f.next / f.times.length)) : 0;
-        p.querySelector('.pgie-followshare').textContent = share + '%';
+        p.classList.toggle('pgie-followsetup', !running);
+        p.querySelector('.pgie-followtext').textContent = t(running ? 'followBusy' : 'followHint');
+        share = (running && f.times && f.times.length) ? Math.min(100, Math.round(100 * f.next / f.times.length)) : 0;
+        p.querySelector('.pgie-followshare').textContent = running ? pct(share) : '';
     };
 
     Editor.prototype.followEscape = function () {

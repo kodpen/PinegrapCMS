@@ -3965,8 +3965,21 @@ button.pgie-sndfile:hover {
   background: var(--pgie-surface);
   color: var(--pgie-tx);
   box-shadow: var(--pgie-shadow);
+  width: max-content;
+  max-width: calc(100% - 24px);
   transform: translateX(-50%);
   white-space: nowrap;
+}
+
+.pgie-followtext {
+  min-width: 0;
+  white-space: normal;
+}
+
+/* Setting up: the hint alone, no spinner and no share. */
+.pgie-followsetup .pgie-followspin,
+.pgie-followsetup .pgie-followshare {
+  display: none;
 }
 
 .pgie-followspin {
