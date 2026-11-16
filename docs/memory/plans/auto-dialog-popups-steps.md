@@ -17,7 +17,7 @@ description: Steps PU1 to PU10 of plans/auto-dialog-popups.md: census, the dialo
 - PU6 (M) after PU5: `content` and `component_id`. The edit screen asks "What does it show?": an address or a designed pop-up, with links into the designer. A site with no visual design keeps the address kind.
 - PU7 (M) after PU6: the four ready blocks. Pictures to the owner.
 - PU8 (M) after PU4: the day rollup table, the beacon, the figures on the list and edit screens. Follows `visitors/README.md`. Done: #9877 (`visitors/auto-dialog-counts.md`; table confirmed in agent channel message 5840).
-- PU9 (S) after PU8: a take-up by a visitor with a cart calls the recovered-carts touch writer `pg_cart_recovery_touch()` (`commerce/cart-recovery-whatsapp-page.md`) (channel `page`, source `popup`).
+- PU9 (S) after PU8: a take-up by a visitor with a cart calls the recovered-carts touch writer `pg_cart_recovery_touch()` (`commerce/cart-recovery-whatsapp-page.md`) (channel `page`, source `popup`). Done: #9926 (`commerce/cart-recovery-whatsapp-page.md`).
 - PU10 (S) close-out: the topic files in `platform/` and `designer/`, this plan and its steps file deleted.
 
 ## Which steps run in turn?
