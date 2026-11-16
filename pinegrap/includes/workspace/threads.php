@@ -1694,6 +1694,11 @@ function ws_threads_purge($limit = WS_THREAD_PURGE_BATCH)
             db("DELETE FROM ws_canvas_consents WHERE message_id IN (" . $messages . ")");
         }
 
+        // Readers' highlights (highlights.php).
+        if (function_exists('ws_highlights_ready') && ws_highlights_ready()) {
+            db("DELETE FROM ws_highlights WHERE channel_id = '" . $thread_id . "'");
+        }
+
         if (function_exists('ws_acks_ready') && ws_acks_ready()) {
             db("DELETE FROM ws_acks WHERE message_id IN (" . $messages . ")");
             db("DELETE FROM ws_ack_requests WHERE message_id IN (" . $messages . ")");

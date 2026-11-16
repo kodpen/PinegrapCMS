@@ -306,6 +306,7 @@ function ws_mail_room_sync($room, $wanted)
     if ($plan['remove']) {
         ws_channel_folder_access($room, $plan['remove'], false);
         ws_inbox_reach_lost($room, $plan['remove']);
+        ws_highlights_reach_lost($room, $plan['remove']);
     }
 
     return $plan;
