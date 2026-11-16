@@ -18,6 +18,7 @@ module: widgets_account
 ## How does a page get the trees?
 - As the order preview's: "Convert to design elements" on the section's panel (`pg_acct_part($section)`, twin `_sdAccountPart()`); the my account starter places both open; a saved page keeps its sections.
 - The order history row is a link while the site has a view order page (`__order_url` neq `#`), else a plain item, as the section prints it. The badge's colour is a condition on `__booking_tone`: a class takes no value.
+- Opened, the order row's number, date and badge are separate inline boxes: one space falls between them beside the date's `ms-2` margin, where the section's spans touched. The architect accepted it (channel 7029); it could not be made equal.
 
 ## What does the canvas draw?
 - An unopened section: `_sdAccountOrderHistoryHtml()` and `_sdAccountBookingsHtml()` with the sample order and a cancelled one, two upcoming bookings and a past one.
