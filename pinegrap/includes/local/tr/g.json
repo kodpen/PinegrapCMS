@@ -332,6 +332,7 @@
     "Give svg, template, layout or chart, one of them.": "svg, template, layout ya da chart verin, yalnız birini.",
     "Give the Cover story a line to set apart and it appears here.": "Kapak yazısına öne çıkarılacak bir cümle verin, burada görünür.",
     "Give the agent a name of up to 100 characters.": "Ajana en çok 100 karakterlik bir ad verin.",
+    "Give the bundle a name of up to 100 characters.": "Pakete en fazla 100 karakterlik bir ad verin.",
     "Give the button a text.": "Düğmeye bir metin yazın.",
     "Give the carrier this return code:": "Kargo şubesine bu iade kodunu verin:",
     "Give the cells as an object of column ids.": "Hücreleri sütun kimlikleriyle bir nesne olarak verin.",
