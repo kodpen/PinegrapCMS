@@ -28,6 +28,8 @@ priority: 6
 - The first run sends nothing older than the moment the start was switched on. The turn is taken before any mail.
 - Architect (message 6590): a post written as a draft and set live later is the usual way, so it may not be skipped in silence. DG1's draft says whether the moment of going live is kept: if so the window reads it; if not it comes back, and until then the box, the set-up and "Try" say what is left out (D3, D11).
 
+- Architect (message 6791) confirmed DG1's draft (#9978); the window's rules are in `workspace/workspace-flows-records-window.md`.
+
 ## What does the owner decide?
 - The look of the digest mail and of the two boxes.
 

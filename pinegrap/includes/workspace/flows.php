@@ -1272,6 +1272,14 @@ function ws_flow_graph_check($graph)
             }
         }
 
+        // Only the records new since the last run need runs that start at a
+        // time, whose start moments make the window (flow_records.php).
+        if (($node['kind'] === 'list_records') && function_exists('ws_flow_records_time_problems')) {
+            foreach (ws_flow_records_time_problems($node['config'], $name, ws_flow_records_starts_at_time($graph)) as $text) {
+                $problems[] = ws_flow_problem('bad_config', $id, null, $text);
+            }
+        }
+
         if (in_array($node['kind'], array('schedule', 'event', 'join', 'row', 'no_order', 'mention'), true)) {
             foreach (ws_flow_anchor_problems($node['kind'], $node['config'], $name) as $text) {
                 $problems[] = ws_flow_problem('bad_config', $id, null, $text);

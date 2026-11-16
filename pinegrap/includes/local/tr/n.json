@@ -809,6 +809,7 @@
     "New recipient name (add_name) — catalog_item_view": "Yeni alıcı adı (add_name) — catalog_item_view",
     "New record": "Yeni kayıt",
     "New records in bulk": "Toplu yeni kayıtlar",
+    "New records of the page “{var:1}” since the last run: {var:2}.": "“{var:1}” sayfasının son koşudan beri yeni kayıtları: {var:2}.",
     "New recovery codes": "Yeni kurtarma kodları",
     "New recovery codes (one per line)": "Yeni kurtarma kodları (her satırda bir)",
     "New recovery codes are shown": "Yeni kurtarma kodları gösteriliyor",
