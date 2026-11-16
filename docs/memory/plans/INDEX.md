@@ -56,7 +56,6 @@
 - message-highlights-steps.md: Plan message-highlights, steps HL1 to HL5: the table and the pure part, the server's actions and cleanup, the message side in the browser, My highlights, close-out
 - message-highlights.md: Plan (owner 2026-11-16, agent channel message 5547): a reader highlights a selected part of a message for everyone or for himself, in his own colour; My highlights in My Notes; HL1 to HL5
 - message-link-in-place.md: Plan (owner 2026-11-16): a link to a message never loads the Workspace again; the open channel scrolls to it, another channel opens in place; features G1 to G10, one step ML1
-- message-reference.md: Plan (owner 2026-11-15, in the architect's window): a message pasted into a message box as a reference, shown by its number, opening the referenced message in a popup; for people and agents
 - mobile-api-shelved.md: Team-device API work for the closed-source Pinegrap Mobile app (restarted 2026-10-24 outside this repo): what exists (M1–M6), what M7 (native push) and M8 add, decisions, how its needs arrive
 - panel-design-language-dialogs.md: Look A's dialogs and drawers (#8860): the scrim, the three dialog widths, head, body and foot, the confirm dialog, the settings dialog's rail and pane, a drawer's sections and member rows
 - panel-design-language-look.md: Look A's numbers (second pass) for the panel's design language: type, surfaces and depth, fields, buttons, the segmented control, the status pill, the icon tile and tones, rows, what a title says
