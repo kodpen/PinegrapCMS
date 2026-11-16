@@ -172,6 +172,18 @@ function ws_agent_request_api_routes()
             ),
         ),
         array(
+            'id'          => 'workspace.agent_feedback.get',
+            'method'      => 'GET',
+            'path'        => '/workspace/agent-feedback',
+            'scope'       => 'workspace:read',
+            'handler'     => 'ws_api_agent_feedback_get',
+            'mcp'         => false,
+            'returns'     => ws_api_agent_feedback_schema(),
+            'summary'     => 'How people marked the calling agent\'s answers',
+            'description' => 'The person who asked or a manager of the channel may mark an answer of the agent right or wrong, with a short reason; one mark per answer, the last one stands. marks lists the newest ' . WS_AGENT_FEEDBACK_LIST_MAX . ' on answers that are still there and in channels the key reads (message_id is the answer); counts are the marks of the last 7 and 30 days by the time they were made.' . $only,
+            'params'      => array(),
+        ),
+        array(
             'id'          => 'workspace.agent_report.set',
             'method'      => 'POST',
             'path'        => '/workspace/agent-report',
@@ -849,4 +861,58 @@ function ws_api_agent_request_progress($params)
     }
 
     api_fail(409, 'already_claimed', lang('Another run is working on this request.'));
+}
+
+// What the feedback route returns.
+function ws_api_agent_feedback_schema()
+{
+    return array(
+        'handle' => 'string',
+        'counts' => array(
+            'days_7'  => array('right' => 'integer', 'wrong' => 'integer'),
+            'days_30' => array('right' => 'integer', 'wrong' => 'integer'),
+        ),
+        'marks'  => array(array('message_id' => 'integer', 'request_id' => 'integer', 'channel_id' => 'integer', 'verdict' => 'string', 'reason' => 'string', 'marked_at' => 'string')),
+    );
+}
+
+/**
+ * The calling agent's marks and their counts. The list leaves out a channel
+ * the key no longer reads; the counts are numbers about its own answers.
+ */
+function ws_api_agent_feedback_get($params)
+{
+    $agent = ws_api_agent_caller();
+    $viewer = ws_api_viewer();
+    $value = ws_agent_request_value($agent);
+    $now = time();
+    $channels = array();
+
+    $marks = array();
+
+    foreach (ws_agent_feedback_rows($value) as $row) {
+        $id = (int) $row['channel_id'];
+
+        if (!isset($channels[$id])) {
+            $channel = ws_channel($id);
+            $channels[$id] = $channel ? ws_can_read_channel($viewer, $channel) : false;
+        }
+
+        if ($channels[$id]) {
+            $marks[] = array(
+                'message_id' => (int) $row['message_id'],
+                'request_id' => (int) $row['request_id'],
+                'channel_id' => $id,
+                'verdict'    => (string) $row['verdict'],
+                'reason'     => (string) $row['reason'],
+                'marked_at'  => api_time($row['marked_at']),
+            );
+        }
+    }
+
+    api_ok(array(
+        'handle' => (string) $agent['handle'],
+        'counts' => ws_agent_feedback_tally(ws_agent_feedback_rows($value, $now - 30 * 86400, 100000), $now),
+        'marks'  => $marks,
+    ));
 }

@@ -16,7 +16,10 @@ description: Workspace API scheduled messages: change one (POST …/update), sch
 - `ws_api_scheduled_message_mine_or_404()` finds the row for update, send and delete. It must be the person's own, still active or failed, and in a channel Claude's key may be asked in; otherwise 404.
 
 ## Which checks do they share with the panel?
-- `ws_scheduled_message_save_check()` (scheduled_messages.php) holds every rule of `ws_scheduled_message_save()`: own row, a channel the person may post in, the words (no command except /ai and /claude), the moment (later than now, at most a year ahead) and the 50-message limit for a new one. The panel's save, the API's create and the API's update all call it. Create no longer keeps a second copy of these rules.
+- `ws_scheduled_message_save_check()` (scheduled_messages.php) holds every rule of `ws_scheduled_message_save()`: own row, not being posted now (`running_at`), a channel the person may post in, the words (no command except /ai and /claude), the moment (later than now, at most a year ahead) and the 50-message limit for a new one. The panel's save, the API's create and the API's update all call it. Create no longer keeps a second copy of these rules.
 - `ws_scheduled_message_send_check()` checks that the message is waiting or failed and not being posted now (`running_at`), that its channel still exists, and runs `ws_message_send_check()` (rights, rate limit). The API runs it before the dry run; a refusal is 422 and leaves the row as it was.
 - `ws_scheduled_message_send_now()` runs `ws_scheduled_execute($id, true)` and gives the failure text. The panel's `ws_scheduled_message_send` action and the API both use it. Its row in `workspace_flows_parity_table()` points there.
 - Tests: tests/workspace_api_scheduled_message_changes_test.php.
+
+## What does a change to a message being posted get?
+- The refusal "It is being posted right now.", the same text Delete and Send now give: from the check (so the dry run and `/update` answer 422, the panel shows it), and from the save when its `UPDATE … AND running_at = 0` changes no row because the run claimed the row after the check. Before #9837 such a change was answered as saved and dropped, also for a row with a stale `running_at` (#9833).
