@@ -575,6 +575,7 @@ function test_proto_hotspots_view_list_and_problems()
 	pg_assert_contains("window.matchMedia('(min-width: 1100px)').matches", $source, 'closed by default under 1,100 px');
 	pg_assert_contains('var url = page ? _pgPrototypeUrl(page) : \'\';', $source, 'Play opens the viewer at the selected page');
 	pg_assert_contains('ui.play.hidden = !_sdProtoPlayUrl();', $source, 'and is not shown without an address');
+	pg_assert_contains(".sd-proto-bar { flex-wrap: wrap; row-gap: 2px; }", $css, 'on a phone the bar wraps, so every tool stays in reach');
 	foreach (array('.sd-proto-list-open .sd-proto-list', '.sd-proto-broken', '.sd-proto-problems', '.sd-proto-badge', '.sd-proto-row.sd-proto-row-picked', '.sd-proto-edge-picked') as $selector) {
 		pg_assert_contains($selector, $css, 'styled: ' . $selector);
 	}
