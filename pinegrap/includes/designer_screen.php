@@ -340,6 +340,9 @@ function pg_designer_screen_render($ctx)
             'member_id_label' => defined('MEMBER_ID_LABEL') ? (string)MEMBER_ID_LABEL : '',
             'password_rules'  => function_exists('get_strong_password_requirements')
                 ? '<div class="pg-password-rules small text-muted">' . get_strong_password_requirements() . '</div>' : '',
+            // The sign-in buttons the member widgets print, drawn on the
+            // canvas in their sections (pg_signin_canvas_sample()).
+            'signin_buttons'  => function_exists('pg_signin_canvas_sample') ? pg_signin_canvas_sample() : '',
             // The product page's Checkout Options rows (method, description,
             // fee) the store's payment settings give, as the site fills them
             // (_pg_civ_fill_payment_methods()).

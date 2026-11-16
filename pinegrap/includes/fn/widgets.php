@@ -4661,6 +4661,28 @@ function _pg_member_drop_all_controls(&$tree)
     _pg_member_drop_controls($tree, function ($tag, $attrs, $node) { return true; });
 }
 
+// The strong password rules a designer built (a password_rules box with
+// children of its own) print as designed while the site prints rules
+// ($rules_html not ''): the box loses its section binding, so the section
+// pass keeps its children instead of filling the server's block. With no
+// rules the binding stays and the section pass drops the box, as it drops
+// an empty one. A box without children is the server's block, as before.
+function pg_member_keep_designed_rules(&$tree, $rules_html)
+{
+    if ((string)$rules_html === '' || !is_array($tree) || empty($tree['children']) || !is_array($tree['children'])) return;
+    foreach ($tree['children'] as &$c) {
+        if (!is_array($c)) continue;
+        if (isset($c['props']['_bindings']['section']) && $c['props']['_bindings']['section'] === 'password_rules'
+            && !empty($c['children'])) {
+            unset($c['props']['_bindings']['section']);
+            if (empty($c['props']['_bindings'])) unset($c['props']['_bindings']);
+            continue;
+        }
+        pg_member_keep_designed_rules($c, $rules_html);
+    }
+    unset($c);
+}
+
 // Drop links whose href is bound to a token that resolved to '': a feature
 // that is off must not leave an <a href=""> behind. Covers semantic <a>,
 // content links and button components. $tokens is token => resolved value.
@@ -7179,6 +7201,7 @@ function _render_system_widget_registration($tree_json, $widget_id, $cfg = array
     $google_html = function_exists('pg_signin_buttons') ? pg_signin_buttons($send_to, 'create') : '';
     $opt_label   = defined('OPT_IN_LABEL') ? (string)OPT_IN_LABEL : '';
 
+    pg_member_keep_designed_rules($tree, $rules_html);
     pg_cf_apply_section_bindings($tree, array(
         'captcha'        => $captcha,
         'password_rules' => $rules_html,
@@ -8696,6 +8719,7 @@ function _render_system_widget_membership($tree_json, $widget_id, $cfg = array()
     $google_html = (!$google_signup && function_exists('pg_signin_buttons')) ? pg_signin_buttons($send_to, 'membership') : '';
     $opt_label   = defined('OPT_IN_LABEL') ? (string)OPT_IN_LABEL : '';
 
+    pg_member_keep_designed_rules($tree, $rules_html);
     pg_cf_apply_section_bindings($tree, array(
         'password_rules' => $rules_html,
         'google_signup'  => $google_html,
