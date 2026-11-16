@@ -58860,10 +58860,12 @@ const StyleDesigner = (function () {
                               (dyn === 'url parameter' && !dynBad
                                   ? '<input type="text" class="form-control form-control-sm sd-sw-filter-param" data-sw-id="' + sid + '" value="' + esc(urlParam) + '" maxlength="32" placeholder="author" style="width:110px" aria-label="' + esc(_sdT('Parameter name')) + '">'
                                   : '') +
-                              (dyn === 'shown record rows' && !dynBad
-                                  ? '<input type="text" class="form-control form-control-sm sd-sw-filter-rows" data-sw-id="' + sid + '" value="' + esc(rowsField) + '" maxlength="255" placeholder="steps" style="width:110px" aria-label="' + esc(_sdT('Rows field')) + '">'
-                                  : '') +
                           '</div>'
+                        : '') +
+                    // The rows field's name stands on its own line, so the
+                    // select keeps the whole row and its label stays legible.
+                    (dyn === 'shown record rows' && !dynBad
+                        ? '<input type="text" class="form-control form-control-sm sd-sw-filter-rows" data-sw-id="' + sid + '" value="' + esc(rowsField) + '" maxlength="255" placeholder="steps" aria-label="' + esc(_sdT('Rows field')) + '">'
                         : '') +
                     (dyn === 'url parameter' && !dynBad
                         ? '<div style="font-size:.66rem;color:#888;line-height:1.4">' + esc(_sdT('The list shows the records whose field matches ?{var}=… in the page address. Without it, this filter is left out and every record is listed.', _swUrlParamName(urlParam) || 'author')) + '</div>' +
