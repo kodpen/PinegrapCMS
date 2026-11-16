@@ -7978,6 +7978,8 @@ function pg_js_bundles()
         'assets/js/pg_image_editor_encode.min.js'  => array('assets/js/pg_image_editor_encode.js'),
         // Select subject's cut, started as a worker by pg_image_editor_area.js.
         'assets/js/pg_image_editor_subject.min.js' => array('assets/js/pg_image_editor_subject.js'),
+        // Follow's tracker, started as a worker by the Animate tool.
+        'assets/js/pg_image_editor_track.min.js'   => array('assets/js/pg_image_editor_track.js'),
         'assets/js/pg_fx.min.js'                   => array('assets/js/pg_fx.src.js'),
         // The real-user speed beacon of public pages (includes/fn/page_vitals.php).
         'assets/js/pg_vitals.min.js'               => array('assets/js/pg_vitals.src.js'),
