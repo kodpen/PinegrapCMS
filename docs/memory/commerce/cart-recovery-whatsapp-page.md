@@ -20,7 +20,10 @@ module: cart_recovery
 - Only the inbox's template reply (`mail_phone.php`) passes `contact_id`. The flow box and the order moments pass neither, so their keys write no touch until a cart-left flow start (a later plan, `core/campaign-profile-flow-gaps.md`) names the order.
 
 ## How does a pop-up become a touch?
-- Not built yet: the pop-up plan's take-up step (PU9, `plans/auto-dialog-popups-steps.md`) is to call `pg_cart_recovery_touch($order_id, 'page', 'popup', <pop-up id>)` when a visitor with a cart takes one up. The writer accepts it as it is; pure `pg_cart_recovery_touch_args()` checks the names (`test_cart_recovery_touch_args` in `tests/cart_recovery_test.php`).
+- A take-up ("taken") of any pop-up, not only a cart-audience one, by a visitor whose session order holds a line not saved for later (PU4's cart test, `pg_auto_dialog_session_has_cart()`) writes `pg_cart_recovery_touch($order_id, 'page', 'popup', <pop-up id>)` (PR #9926).
+- Place: `page_view.php`'s pop-up event branch calls `pg_cart_recovery_popup_taken()` right after the count, behind the count's gates (rate limit, crawler, staff, consent, signature): an event that is not counted writes no touch.
+- The decision is pure `pg_cart_recovery_popup_touches($event, $order_id, $line_count)` (`test_cart_recovery_popup_touches`). The same order and pop-up are written once (the writer's rule).
+- Architect (2026-11-16, agent channel message 6312): the 6-hour left-cart test does not apply at touch time; it is the rule of a sent message. Whether the cart counts as recovered is decided by the completion rule.
 
 ## How was it verified?
-- `tests/cart_recovery_test.php` (touch arguments, left test). No database in the cloud session: the enqueue touch, the left-cart query and the key's use were not run against MySQL.
+- `tests/cart_recovery_test.php` (touch arguments, left test, the pop-up decision). No database in the cloud session: the enqueue touch, the left-cart query, the key's use and a live pop-up take-up were not run against MySQL.
