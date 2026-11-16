@@ -325,6 +325,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-6.md: Does the printed order show the recipient's shipping card? (#3346)
 - decisions-made-product-60.md: Where are the rules and the earlier parts?
 - decisions-made-product-60.md: What does the click and scroll map count, and how does it start? (owner, 2026-11-16, polls 67, 75)
+- decisions-made-product-61.md: Where are the rules and the earlier parts?
+- decisions-made-product-61.md: Does the highlight on a message go out as built? (owner, 2026-11-16, agent channel poll 76)
 - decisions-made-product-7.md: Do international labels carry customs data? (#3408)
 - decisions-made-product-7.md: Can a merchant request a carrier pickup from the panel? (#3415)
 - decisions-made-product-7.md: Does ShipWorks record tracking numbers through the shipment write path? (#3443)
