@@ -6502,6 +6502,11 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
 }
 .sd-proto-name { flex: 1; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sd-proto-meta { font-size: .7rem; color: var(--sd-text-muted); white-space: nowrap; }
+/* The start page's frame (the design's first tab). */
+.sd-proto-start {
+    padding: 0 5px; border-radius: 3px; font-size: .65rem; font-weight: 600; white-space: nowrap;
+    background: color-mix(in srgb, var(--sd-accent) 22%, transparent); color: var(--sd-accent);
+}
 .sd-proto-row {
     position: relative; display: flex; align-items: center; gap: 6px;
     height: 30px; padding: 0 14px 0 10px; font-size: .75rem; cursor: pointer;
