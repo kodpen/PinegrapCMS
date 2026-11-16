@@ -77,9 +77,6 @@
 - panel-old-screens-shared-steps.md: Old panel screens to look A: the shared steps cut after the groups, SH1 to SH10 (field, status list, ERP lists, figure cards, icon buttons, save bar, list title) and KS1, KS2 on kept screens
 - panel-old-screens.md: Plan (owner 2026-11-15): the panel screens still drawn the old way move to look A; censuses done, LM2 the shared buttons, then one census group per step (C1 to C5, E1 to E5, S1 to S6)
 - php-error-log-clean.md: Plan (owner 2026-11-14): the PHP error log of the owner's dev machine read for Pinegrap's own deprecations and warnings on PHP 8.5, and their causes fixed; steps EL1 to EL6
-- plan-drawers-one-look-features.md: Plan plan-drawers-one-look, features D1 to D14: the shared form parts, no Bootstrap form class, one order and one wording for shared fields, the footer, the phone, what must not change
-- plan-drawers-one-look-steps.md: Plan plan-drawers-one-look, steps PD1 to PD3: the shared form parts with "New plan" on them, "Add to the plan" on them with the owner's look, close-out
-- plan-drawers-one-look.md: Plan (owner 2026-11-16): the Planning Board's "Add to the plan" drawer and My calendar's "New plan" drawer look the same, built from one set of form parts; the stores stay apart; PD1 to PD3
 - prototype-canvas-features-2.md: Plan prototype-canvas, features F15 to F25: the list of the selected page's links, the broken links found, drawing and changing an arrow, the bar
 - prototype-canvas-features-3.md: Plan prototype-canvas, features F26 to F34 from the owner's answer of 2026-11-16: empty links and unreached pages marked, a target suggested for empty links and written only when he applies
 - prototype-canvas-features.md: Plan prototype-canvas, features F1 to F14: what a frame of the Prototype view shows, how pages are arranged, which arrows are drawn and how an arrow runs
