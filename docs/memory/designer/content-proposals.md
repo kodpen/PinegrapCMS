@@ -5,7 +5,7 @@ module: content_proposals
 ---
 
 ## What does the switch do?
-- Site Settings, Features, card "Content Approval": "Content changes wait for approval", off on every site. Kept in the `config_text` row `content_approval` as JSON `{on, channel_id}` (`pg_content_proposals_settings()`); the channel select is drawn only while the Workspace is on, and a save without it keeps the stored channel.
+- (PA2, #9892) Site Settings, Features, card "Content Approval": "Content changes wait for approval", off on every site. Kept in the `config_text` row `content_approval` as JSON `{on, channel_id}` (`pg_content_proposals_settings()`); the channel select is drawn only while the Workspace is on, and a save without it keeps the stored channel.
 - With it off, `pg_designer_save_page()` reads the setting and nothing more; a save does what it did before (owner 2026-10-06 stays the default; owner poll 64 allows the switch).
 
 ## Which save is held?
