@@ -48,6 +48,7 @@
 - catalog-stock-notify-form.md: The back-in-stock form of the catalog item view: stock_notify_email and stock_notify bindings, the can_notify flag and its variant switch, the hidden form after the widget, the starter block
 - checkout-currency-picker.md: Currency picker of the Order Preview, Shipping Method and Order Form widgets (#3164): controls in the tree, a separate update_currency.php form after the widget, has_currency_choice
 - checkout-open-blocks.md: Order preview blocks opened (CB6d1): applied offers, gift cards and recurring payments as checkout lists (converter, starter), the installment choice and table drawn true; what stays closed [decision: here]
+- checkout-open-recipients.md: Order preview recipients opened (CB6d2): three checkout lists, one row builder for the section and the lists, raw values and their flags, what stays the form's
 - classic-regions-in-designer.md: Where each classic region type goes in the visual designer (common, designer, dynamic, page, data-driven regions), the owner's decisions behind it, and what is still open [decision: decisions-made-product-3.md]
 - classic-style-design-files.md: A classic style converted to a visual design: its own linked CSS/JS files become managed file entries, editable in the designer (P7, #2484, #2532)
 - classic-style-folder-pages.md: Save of a converted classic style also converts the pages that take it from their folder (#2411 (c)): the box, which pages, what is written
