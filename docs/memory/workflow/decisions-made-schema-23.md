@@ -1,6 +1,6 @@
 ---
 name: decisions-made-schema-23
-description: Decisions list, schema part 23 (2026-11-16 on): the ws_highlights table for a reader's highlights; the columns of PU4 on auto_dialogs as confirmed; the click map's page_click_daily table
+description: Decisions list, schema part 23 (2026-11-16 on): ws_highlights; PU4's auto_dialogs columns as confirmed; the click map's page_click_daily; one ws_tasks column for the creating application
 ---
 
 ## Where are the rules and the earlier parts?
@@ -24,3 +24,7 @@ description: Decisions list, schema part 23 (2026-11-16 on): the ws_highlights t
 - Keys: `idx_kind_day_page (kind, day, page_id)` for the period's page list and the sweep, `idx_page_day (page_id, day)` for one page; no third. Binary collations, so that grouping an element by its four parts is the key's identity.
 - Refused: a column per tenth on the view row; a hook or an extra sweep for a deleted page (its rows run out with the 400 days). The bound of 200 counts a page and day's element rows over the three devices.
 - How it is written and read: `visitors/page-clicks.md`.
+
+## Does a task get a column for the application that created it? (owner, 2026-11-16, agent channel poll 80)
+- Yes, one column on `ws_tasks`: his vote "Evet, ikisi de; planını yaz" on an option that said "görev tablosuna tek sütun eklenir (görevi açan uygulama)" (`decisions-made-workspace-36.md`).
+- Its name and type are the architect's to confirm from AW3's draft PR before the migration step is written (`plans/agent-work-apart.md`). No backfill: earlier tasks do not know their application.
