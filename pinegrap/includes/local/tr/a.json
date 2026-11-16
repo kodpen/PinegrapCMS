@@ -6999,6 +6999,7 @@
     "As of {var:1}, your account in our records shows a credit balance of {var:2} in your favour.": "{var:1} tarihi itibarıyla cari hesabınız kayıtlarımızda lehinize {var:2} alacak bakiyesi vermektedir.",
     "As of {var:1}, your account in our records shows a debit balance of {var:2} in our favour.": "{var:1} tarihi itibarıyla cari hesabınız kayıtlarımızda lehimize {var:2} borç bakiyesi vermektedir.",
     "As of {var:1}, your account in our records shows a zero balance.": "{var:1} tarihi itibarıyla cari hesabınız kayıtlarımızda bakiye vermemektedir.",
+    "As on the site": "Sitedeki gibi",
     "As owners read it, for example Senior Veterinary Surgeon.": "Hayvan sahiplerinin okuyacağı biçimde, örneğin Kıdemli Veteriner Hekim, Cerrahi.",
     "As soon as a place is free": "Yer açılır açılmaz",
     "As soon as possible": "En kısa sürede",

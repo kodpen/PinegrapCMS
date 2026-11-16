@@ -24,7 +24,7 @@ module: content_proposals
 - Only this module. The assistant's readers take `PG_DESIGN_AI_ROWS` (`agent <> 'editor'`): `pg_design_ai_proposal()`, `pg_design_ai_request_present()`, `pg_design_ai_attach()`, `pg_design_ai_proposals_map()`, `api_design_proposals_list()`; the API's `pending_proposals` count and the conversation cleanup in `includes/workspace/threads.php` say it in SQL.
 
 ## What is not built yet?
-- Applying, dismissing with a reason, taking back, the designers' list and count, the bell lines (PA4); the editor's tab state and the change laid on the canvas (PA3); the Workspace request (PA5). Until then a held change waits in the table and is seen nowhere.
+- The designer's side is in `content-proposals-designer-side.md` (PA4a). The bell lines and the tab's count (PA4b), the editor's tab state (PA3) and the Workspace request (PA5) are not built yet.
 
 ## Which test guards it?
 - `tests/content_proposals_test.php`: the switch off, each save left alone, the operations, one waiting change, the save's wiring, each assistant reader skipping editor rows.

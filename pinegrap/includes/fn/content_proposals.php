@@ -581,3 +581,509 @@ function pg_content_proposals_hold($user, $page_id, $style_id, $merged, $page)
 
     return array('ok' => true, 'action' => $action, 'id' => $id, 'message' => $message, 'error' => '');
 }
+
+/* ---------------------------------------------------------------------------
+   The designer's side: the list, apply, dismiss, take back
+   --------------------------------------------------------------------------- */
+
+// How long a dismissed, applied or taken-back change stays in the list.
+define('PG_CONTENT_PROPOSALS_KEEP_DAYS', 30);
+
+// The longest reason a dismissal takes.
+define('PG_CONTENT_PROPOSALS_REASON_MAX', 300);
+
+/**
+ * May this person apply, dismiss or take back a waiting change? A designer
+ * or an administrator.
+ *
+ * @param array|null $user
+ * @return bool
+ */
+function pg_content_proposals_may_decide($user)
+{
+    return pg_content_proposals_may_set($user);
+}
+
+/**
+ * Paths of the nodes of a tree by id: id => list of child indexes.
+ *
+ * @param array $tree
+ * @return array
+ */
+function pg_content_proposals_paths($tree)
+{
+    $out = array();
+    $walk = function ($node, $path) use (&$walk, &$out) {
+        if (!is_array($node)) {
+            return;
+        }
+
+        if (isset($node['_id']) && ((string) $node['_id'] !== '') && !isset($out[(string) $node['_id']])) {
+            $out[(string) $node['_id']] = $path;
+        }
+
+        foreach ((isset($node['children']) && is_array($node['children'])) ? $node['children'] : array() as $i => $child) {
+            $walk($child, array_merge($path, array($i)));
+        }
+    };
+    $walk($tree, array());
+
+    return $out;
+}
+
+/**
+ * The node at a path, by reference.
+ */
+function &_pg_cp_at(&$tree, $path)
+{
+    $node = &$tree;
+
+    foreach ($path as $i) {
+        $node = &$node['children'][$i];
+    }
+
+    return $node;
+}
+
+/**
+ * Puts a waiting change's operations on the page as it is now. Each
+ * operation must still find its node holding the value it was made against;
+ * otherwise the change is stale: "gone" when a node is missing, "changed"
+ * when a designer changed it since. All or nothing.
+ *
+ * @param array $tree   the stored tree now
+ * @param array $fields the page's settings now (pg_content_proposals_stored_fields())
+ * @param array $ops
+ * @return array ok, tree, fields, error ('' | gone | changed | bad)
+ */
+function pg_content_proposals_apply_ops($tree, $fields, $ops)
+{
+    $fail = function ($error) use ($tree, $fields) {
+        return array('ok' => false, 'tree' => $tree, 'fields' => $fields, 'error' => $error);
+    };
+
+    if (!is_array($tree) || !is_array($ops) || empty($ops)) {
+        return $fail('bad');
+    }
+
+    $fields = is_array($fields) ? $fields : array();
+    $paths = pg_content_proposals_paths($tree);
+
+    foreach ($ops as $op) {
+        $name = (is_array($op) && isset($op['op'])) ? (string) $op['op'] : '';
+
+        if ($name === 'tree') {
+            if (pg_content_proposals_hash($tree) !== (string) (isset($op['base_hash']) ? $op['base_hash'] : '')) {
+                return $fail('changed');
+            }
+
+            if (!isset($op['tree']) || !is_array($op['tree'])) {
+                return $fail('bad');
+            }
+
+            $tree = $op['tree'];
+            $paths = pg_content_proposals_paths($tree);
+            continue;
+        }
+
+        if ($name === 'fields') {
+            foreach ((array) (isset($op['fields']) ? $op['fields'] : array()) as $key => $value) {
+                if (!in_array((string) $key, pg_content_proposals_field_keys(), true)) {
+                    return $fail('bad');
+                }
+
+                $was = (isset($op['was']) && is_array($op['was']) && array_key_exists($key, $op['was'])) ? $op['was'][$key] : null;
+                $now = array_key_exists($key, $fields) ? $fields[$key] : null;
+
+                if (pg_content_proposals_field_value($now) !== pg_content_proposals_field_value($was)) {
+                    return $fail('changed');
+                }
+
+                $fields[$key] = $value;
+            }
+            continue;
+        }
+
+        if (!in_array($name, array('text', 'src', 'note', 'area'), true)) {
+            return $fail('bad');
+        }
+
+        $id = isset($op['node']) ? (string) $op['node'] : '';
+
+        if (($id === '') || !isset($paths[$id])) {
+            return $fail('gone');
+        }
+
+        $node = &_pg_cp_at($tree, $paths[$id]);
+        $was = isset($op['was']) ? (string) $op['was'] : '';
+
+        if ($name === 'text') {
+            if (!isset($node['props']) || !is_array($node['props']) || !array_key_exists('text', $node['props']) || ((string) $node['props']['text'] !== $was)) {
+                unset($node);
+                return $fail('changed');
+            }
+
+            $node['props']['text'] = (string) $op['text'];
+        } elseif ($name === 'src') {
+            if (pg_content_proposals_image_src($node) !== $was) {
+                unset($node);
+                return $fail('changed');
+            }
+
+            pg_content_proposals_set_image_src($node, (string) $op['src']);
+        } elseif ($name === 'note') {
+            if ((string) (isset($node['props']['_notes']) ? $node['props']['_notes'] : '') !== $was) {
+                unset($node);
+                return $fail('changed');
+            }
+
+            if ((string) $op['note'] === '') {
+                unset($node['props']['_notes'], $node['props']['_notes_by'], $node['props']['_notes_at']);
+            } else {
+                $node['props']['_notes'] = (string) $op['note'];
+            }
+        } else {
+            if ((pg_content_proposals_hash($node) !== $was) || !isset($op['tree']) || !is_array($op['tree'])) {
+                unset($node);
+                return $fail('changed');
+            }
+
+            $node = $op['tree'];
+        }
+
+        unset($node);
+        $paths = pg_content_proposals_paths($tree);
+    }
+
+    return array('ok' => true, 'tree' => $tree, 'fields' => $fields, 'error' => '');
+}
+
+/**
+ * Sets a picture address where pg_content_proposals_image_src() reads it.
+ *
+ * @param array  $node
+ * @param string $src
+ */
+function pg_content_proposals_set_image_src(&$node, $src)
+{
+    if ((isset($node['type']) ? (string) $node['type'] : '') === 'content') {
+        $node['props']['src'] = $src;
+        return;
+    }
+
+    $attrs = (isset($node['props']['_attrs']) && is_array($node['props']['_attrs'])) ? $node['props']['_attrs'] : array();
+
+    foreach ($attrs as $i => $attr) {
+        if (is_array($attr) && isset($attr['name']) && ($attr['name'] === 'src')) {
+            $attrs[$i]['value'] = $src;
+            $node['props']['_attrs'] = $attrs;
+            return;
+        }
+    }
+
+    $attrs[] = array('name' => 'src', 'value' => $src);
+    $node['props']['_attrs'] = $attrs;
+}
+
+/**
+ * A dismissal's reason, or null when it is too long.
+ *
+ * @param mixed $reason
+ * @return string|null
+ */
+function pg_content_proposals_reason($reason)
+{
+    $reason = trim(preg_replace('/\s+/u', ' ', (string) $reason));
+
+    return (mb_strlen($reason) > PG_CONTENT_PROPOSALS_REASON_MAX) ? null : $reason;
+}
+
+/**
+ * May an applied change be taken back? By the person who applied it, while
+ * the page is still as the apply left it.
+ *
+ * @param array  $row     design_proposals row
+ * @param int    $user_id
+ * @param string $now_hash fingerprint of the stored tree now (pg_content_proposals_stored_hash())
+ * @return string '' when it may, else why not: closed | other | saved
+ */
+function pg_content_proposals_revert_check($row, $user_id, $now_hash)
+{
+    if (((string) $row['status'] !== 'applied') || ((string) $row['applied_to'] !== 'page') || ((string) $row['before_tree'] === '')) {
+        return 'closed';
+    }
+
+    if ((int) $row['decided_by'] !== (int) $user_id) {
+        return 'other';
+    }
+
+    return ((string) $now_hash === (string) $row['after_hash']) ? '' : 'saved';
+}
+
+/**
+ * Is a row still shown in the list? A waiting or stale one always; one
+ * applied, taken back or dismissed for PG_CONTENT_PROPOSALS_KEEP_DAYS days.
+ *
+ * @param array $row
+ * @param int   $now
+ * @return bool
+ */
+function pg_content_proposals_listed($row, $now)
+{
+    if (in_array((string) $row['status'], array('pending', 'stale'), true)) {
+        return true;
+    }
+
+    return ((int) $row['decided_at'] > 0) && ((int) $row['decided_at'] >= ((int) $now - PG_CONTENT_PROPOSALS_KEEP_DAYS * 86400));
+}
+
+/**
+ * The author History shows for a revision a designer applied for an editor.
+ *
+ * @param string $designer
+ * @param string $editor
+ * @return string
+ */
+function pg_content_proposals_revision_by($designer, $editor)
+{
+    return ((string) $editor === '') ? (string) $designer
+        : lang(array('string' => '{var:1} (change by {var:2})', 'vars' => array((string) $designer, (string) $editor)));
+}
+
+/**
+ * The fingerprint of the page's stored tree as written (also the revision's
+ * tree_hash).
+ *
+ * @param int $page_id
+ * @return string
+ */
+function pg_content_proposals_stored_hash($page_id)
+{
+    return sha1(pg_page_tree_json((int) $page_id));
+}
+
+/**
+ * An editor's change by id.
+ *
+ * @param int $id
+ * @return array|null
+ */
+function pg_content_proposals_get($id)
+{
+    if (!pg_content_proposals_ready()) {
+        return null;
+    }
+
+    $row = db_item((string) pg_db_bind("SELECT * FROM design_proposals WHERE id = ? AND agent = ? LIMIT 1",
+        array((int) $id, PG_CONTENT_PROPOSALS_AGENT), 'escape'));
+
+    return is_array($row) ? $row : null;
+}
+
+/**
+ * The changes the list shows, newest first, with their page and people.
+ *
+ * @return array
+ */
+function pg_content_proposals_list()
+{
+    if (!pg_content_proposals_ready()) {
+        return array();
+    }
+
+    $since = time() - PG_CONTENT_PROPOSALS_KEEP_DAYS * 86400;
+    $rows = db_items((string) pg_db_bind(
+        "SELECT p.*, page.page_name, page.page_style, editor.user_username AS editor_name, decider.user_username AS decider_name
+         FROM design_proposals AS p
+         LEFT JOIN page ON page.page_id = p.page_id
+         LEFT JOIN user AS editor ON editor.user_id = p.requested_by
+         LEFT JOIN user AS decider ON decider.user_id = p.decided_by
+         WHERE p.agent = ? AND (p.status IN ('pending', 'stale') OR p.decided_at >= ?)
+         ORDER BY p.id DESC LIMIT 200",
+        array(PG_CONTENT_PROPOSALS_AGENT, $since), 'escape'));
+
+    return is_array($rows) ? $rows : array();
+}
+
+/**
+ * The page's settings and tree as the design save wants them.
+ */
+function _pg_cp_page($row)
+{
+    $page = db_item((string) pg_db_bind("SELECT page_id, page_style FROM page WHERE page_id = ? LIMIT 1", array((int) $row['page_id']), 'escape'));
+
+    if (!is_array($page) || ((int) $page['page_style'] <= 0)) {
+        return null;
+    }
+
+    $tree = json_decode(pg_page_tree_json((int) $page['page_id']), true);
+    $fields = pg_content_proposals_stored_fields((int) $page['page_style'], (int) $page['page_id']);
+
+    return (is_array($tree) && $fields) ? array('style_id' => (int) $page['page_style'], 'tree' => $tree, 'fields' => $fields) : null;
+}
+
+/**
+ * Writes a tree and settings to the page through the design save, as the
+ * designer; refused while somebody has the page open in the editor.
+ */
+function _pg_cp_write($user, $row, $style_id, $fields, $tree)
+{
+    require_once(PG_FUNCTIONS_DIR . '/includes/designer_collab.php');
+
+    if (!pg_collab_may_edit_page('', (int) $row['page_id'])) {
+        return lang('Somebody has this page open in the Page Design Studio. Try again when they are done.');
+    }
+
+    $fields['tree_json'] = pg_designer_tree_encode($tree);
+    $fields['revision_source'] = 'publish';
+    $saved = pg_designer_save_page($style_id, $fields, $user);
+
+    return $saved['ok'] ? '' : implode(' ', (array) $saved['errors']);
+}
+
+/**
+ * Applies an editor's waiting change to the page: the operations on the
+ * page as it is now, the result through the content gate again, one save
+ * as the designer (one revision). A change that no longer fits is marked
+ * stale.
+ *
+ * @param array $user
+ * @param int   $id
+ * @return array ok, error
+ */
+function pg_content_proposals_apply($user, $id)
+{
+    require_once(PG_FUNCTIONS_DIR . '/includes/designer_access.php');
+
+    if (!pg_content_proposals_may_decide($user)) {
+        return array('ok' => false, 'error' => lang('Only a Designer or an Administrator can apply a waiting change.'));
+    }
+
+    $row = pg_content_proposals_get($id);
+
+    if (!$row || ((string) $row['status'] !== 'pending')) {
+        return array('ok' => false, 'error' => lang('This change is no longer waiting.'));
+    }
+
+    $page = _pg_cp_page($row);
+
+    if (!$page) {
+        return array('ok' => false, 'error' => lang('The page could not be read.'));
+    }
+
+    $ops = json_decode((string) $row['ops'], true);
+    $applied = pg_content_proposals_apply_ops($page['tree'], $page['fields'], is_array($ops) ? $ops : array());
+
+    if (!$applied['ok']) {
+        db_q("UPDATE design_proposals SET status = 'stale', error = ? WHERE id = ? AND status = 'pending'",
+            array(($applied['error'] === 'gone') ? 'node gone' : 'page changed', (int) $row['id']));
+
+        return array('ok' => false, 'error' => lang('The page changed since this change was made, so it cannot be applied.'));
+    }
+
+    // The gate stays the authority: what the stored operations make is taken
+    // only as far as a content-level save may change the page.
+    $tree = pg_designer_merge_restricted_tree($page['tree'], $applied['tree']);
+    $before = pg_page_tree_json((int) $row['page_id']);
+    $error = _pg_cp_write($user, $row, $page['style_id'], $applied['fields'], $tree);
+
+    if ($error !== '') {
+        return array('ok' => false, 'error' => $error);
+    }
+
+    db_q("UPDATE design_proposals SET status = 'applied', applied_to = 'page', before_tree = ?, after_hash = ?, decided_by = ?, decided_at = ?, error = '' WHERE id = ?",
+        array($before, pg_content_proposals_stored_hash((int) $row['page_id']), (int) $user['id'], time(), (int) $row['id']));
+
+    return array('ok' => true, 'error' => '');
+}
+
+/**
+ * Dismisses a waiting or stale change, with a reason of at most 300
+ * characters kept in the row's steps.
+ *
+ * @param array  $user
+ * @param int    $id
+ * @param string $reason
+ * @return array ok, error
+ */
+function pg_content_proposals_dismiss($user, $id, $reason)
+{
+    if (!pg_content_proposals_may_decide($user)) {
+        return array('ok' => false, 'error' => lang('Only a Designer or an Administrator can dismiss a waiting change.'));
+    }
+
+    $reason = pg_content_proposals_reason($reason);
+
+    if ($reason === null) {
+        return array('ok' => false, 'error' => lang(array('string' => 'The reason can be at most {var:1} characters.', 'vars' => array(PG_CONTENT_PROPOSALS_REASON_MAX))));
+    }
+
+    $row = pg_content_proposals_get($id);
+
+    if (!$row || !in_array((string) $row['status'], array('pending', 'stale'), true)) {
+        return array('ok' => false, 'error' => lang('This change is no longer waiting.'));
+    }
+
+    $steps = json_decode((string) $row['steps'], true);
+    $steps = is_array($steps) ? $steps : array();
+    $steps['reason'] = $reason;
+
+    $done = db_q("UPDATE design_proposals SET status = 'dismissed', steps = ?, decided_by = ?, decided_at = ? WHERE id = ? AND status IN ('pending', 'stale')",
+        array((string) json_encode($steps, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), (int) $user['id'], time(), (int) $row['id']));
+
+    return ($done === false) ? array('ok' => false, 'error' => lang('The change could not be dismissed. Try again.')) : array('ok' => true, 'error' => '');
+}
+
+/**
+ * Takes an applied change back: the page gets the tree and settings it had
+ * before, while nobody has saved it since. By the designer who applied it.
+ *
+ * @param array $user
+ * @param int   $id
+ * @return array ok, error
+ */
+function pg_content_proposals_revert($user, $id)
+{
+    if (!pg_content_proposals_may_decide($user)) {
+        return array('ok' => false, 'error' => lang('Only a Designer or an Administrator can take a change back.'));
+    }
+
+    $row = pg_content_proposals_get($id);
+    $check = $row ? pg_content_proposals_revert_check($row, (int) $user['id'], pg_content_proposals_stored_hash((int) $row['page_id'])) : 'closed';
+
+    if ($check === 'other') {
+        return array('ok' => false, 'error' => lang('Only the person who applied the change can take it back.'));
+    }
+
+    if ($check === 'saved') {
+        return array('ok' => false, 'error' => lang('The page was saved again after this change, so it cannot be taken back here. Use History in the Page Design Studio instead.'));
+    }
+
+    $page = ($check === '') ? _pg_cp_page($row) : null;
+    $before = $page ? json_decode((string) $row['before_tree'], true) : null;
+
+    if (!is_array($before)) {
+        return array('ok' => false, 'error' => lang('Only an applied change can be taken back.'));
+    }
+
+    // The settings it changed go back to what they were.
+    $fields = $page['fields'];
+
+    foreach ((array) json_decode((string) $row['ops'], true) as $op) {
+        if (is_array($op) && (($op['op'] ?? '') === 'fields') && isset($op['was']) && is_array($op['was'])) {
+            foreach ($op['was'] as $key => $value) {
+                $fields[$key] = $value;
+            }
+        }
+    }
+
+    $error = _pg_cp_write($user, $row, $page['style_id'], $fields, $before);
+
+    if ($error !== '') {
+        return array('ok' => false, 'error' => $error);
+    }
+
+    db_q("UPDATE design_proposals SET status = 'reverted', decided_at = ? WHERE id = ?", array(time(), (int) $row['id']));
+
+    return array('ok' => true, 'error' => '');
+}
