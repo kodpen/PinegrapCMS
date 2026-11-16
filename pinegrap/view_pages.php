@@ -353,7 +353,8 @@ $content_waiting = pg_content_proposals_may_decide($user) ? pg_content_proposals
 
 if ($content_waiting > 0) {
     $output_content_waiting = '<div class="alert theme-info d-flex flex-wrap align-items-center gap-2" role="status">'
-        . h(lang(array('string' => '{var:1} content changes wait for approval.', 'vars' => array($content_waiting))))
+        . h(($content_waiting === 1) ? lang('One content change waits for approval.')
+            : lang(array('string' => '{var:1} content changes wait for approval.', 'vars' => array($content_waiting))))
         . ' <a href="content_changes.php">' . h(lang('Waiting Content Changes')) . '</a></div>';
 }
 

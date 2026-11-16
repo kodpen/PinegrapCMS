@@ -1038,7 +1038,7 @@ function pg_content_proposals_dismiss($user, $id, $reason)
         return array('ok' => false, 'error' => lang('The change could not be dismissed. Try again.'));
     }
 
-    pg_content_proposals_bell_editor($row, 'dismissed', $reason);
+    pg_content_proposals_bell_editor($row, 'dismissed');
 
     return array('ok' => true, 'error' => '');
 }
@@ -1157,17 +1157,20 @@ function pg_content_proposals_local_picture($src)
 define('PG_CONTENT_PROPOSALS_BELL_GAP', 3600);
 
 /**
- * The notification actions of waiting content changes: content_change to a
- * designer (a change started waiting on a page, reference_id the page),
- * content_answer to the editor (applied, dismissed or stale, reference_id the
- * change). Both are addressed rows of the panel's own notifications, so they
- * show with the Workspace on or off.
+ * The notification actions of waiting content changes, each an addressed row
+ * of the panel's own notifications that shows with the Workspace on or off.
+ * content_change goes to a designer (a change started waiting on a page,
+ * reference_id the page); content_applied, content_dismissed and
+ * content_stale go to the editor (reference_id the change). The row keeps
+ * what happened in its action and the page's name in its title; the words
+ * are made when it is read, in the reader's language
+ * (pg_content_proposals_bell_words()).
  *
  * @return string[]
  */
 function pg_content_proposals_bell_actions()
 {
-    return array('content_change', 'content_answer');
+    return array('content_change', 'content_applied', 'content_dismissed', 'content_stale');
 }
 
 /**
@@ -1183,26 +1186,57 @@ function pg_content_proposals_bell_due($last, $now)
 }
 
 /**
- * The editor's line: what became of their change.
+ * The words of a line, made when it is read: the whole sentence (the push
+ * banner), the bell's short title (no colon, `ui/bell-titles.md`), the text
+ * under it, and the row's description.
  *
- * @param string $kind   applied | dismissed | stale
- * @param string $page   the page's name
- * @param string $reason a dismissal's reason
- * @return string
+ * @param string $action pg_content_proposals_bell_actions()
+ * @param string $page   the page's name (the row's title)
+ * @param string $reason a dismissal's reason, read from the change
+ * @return array title, short, brief, description
  */
-function pg_content_proposals_bell_editor_title($kind, $page, $reason)
+function pg_content_proposals_bell_words($action, $page, $reason = '')
 {
-    if ($kind === 'applied') {
-        return lang(array('string' => 'Your change to "{var:1}" was applied and is on the site.', 'vars' => array((string) $page)));
+    $page = (string) $page;
+    $reason = (string) $reason;
+
+    if ($action === 'content_change') {
+        return array(
+            'title'       => lang(array('string' => 'A content change waits for approval on "{var:1}".', 'vars' => array($page))),
+            'short'       => lang('Content change waiting'),
+            'brief'       => $page,
+            'description' => lang('Compare it with the page, then apply or dismiss it.'),
+        );
     }
 
-    if ($kind === 'dismissed') {
-        return ((string) $reason !== '')
-            ? lang(array('string' => 'Your change to "{var:1}" was dismissed. Reason: {var:2}', 'vars' => array((string) $page, (string) $reason)))
-            : lang(array('string' => 'Your change to "{var:1}" was dismissed.', 'vars' => array((string) $page)));
+    if ($action === 'content_applied') {
+        return array(
+            'title'       => lang(array('string' => 'Your change to "{var:1}" was applied and is on the site.', 'vars' => array($page))),
+            'short'       => lang('Change applied'),
+            'brief'       => $page,
+            'description' => lang('Open the page to see it.'),
+        );
     }
 
-    return lang(array('string' => 'Your change to "{var:1}" can no longer be applied: the page was changed after it. Open the page and save it again.', 'vars' => array((string) $page)));
+    if ($action === 'content_dismissed') {
+        $why = ($reason !== '') ? lang(array('string' => 'Reason: {var:1}', 'vars' => array($reason))) : '';
+
+        return array(
+            'title'       => ($reason !== '')
+                ? lang(array('string' => 'Your change to "{var:1}" was dismissed. Reason: {var:2}', 'vars' => array($page, $reason)))
+                : lang(array('string' => 'Your change to "{var:1}" was dismissed.', 'vars' => array($page))),
+            'short'       => lang('Change dismissed'),
+            'brief'       => ($why !== '') ? $page . ' · ' . $why : $page,
+            'description' => $why,
+        );
+    }
+
+    return array(
+        'title'       => lang(array('string' => 'Your change to "{var:1}" can no longer be applied: the page was changed after it. Open the page and save it again.', 'vars' => array($page))),
+        'short'       => lang('Change can no longer be applied'),
+        'brief'       => $page . ' · ' . lang('Open the page and save it again.'),
+        'description' => lang('Open the page and save it again.'),
+    );
 }
 
 /**
@@ -1227,7 +1261,8 @@ function pg_content_proposals_bell_designers($page_id, $page_name)
         return;
     }
 
-    $title = mb_substr(lang(array('string' => 'A content change waits for approval on "{var:1}".', 'vars' => array((string) $page_name))), 0, 250);
+    // The page's name: the words are made when the line is read.
+    $title = mb_substr((string) $page_name, 0, 250);
 
     foreach ((array) db_values("SELECT user_id FROM user WHERE user_role <= 1") as $designer) {
         db_q("INSERT INTO notifications (action, type, title, target_user_id, reference_id, user, readed, timestamp)
@@ -1237,25 +1272,52 @@ function pg_content_proposals_bell_designers($page_id, $page_name)
 }
 
 /**
- * Tells the editor what became of their change.
+ * Tells the editor what became of their change: one action per outcome, the
+ * page's name as the title; a dismissal's reason is read from the change.
  *
- * @param array  $row    design_proposals row
- * @param string $kind   applied | dismissed | stale
- * @param string $reason
+ * @param array  $row  design_proposals row
+ * @param string $kind applied | dismissed | stale
  */
-function pg_content_proposals_bell_editor($row, $kind, $reason = '')
+function pg_content_proposals_bell_editor($row, $kind)
 {
     include_once(PG_FUNCTIONS_DIR . '/includes/notifications.php');
 
-    if (!pg_notification_targets_available() || ((int) $row['requested_by'] <= 0)) {
+    if (!pg_notification_targets_available() || ((int) $row['requested_by'] <= 0) || !in_array($kind, array('applied', 'dismissed', 'stale'), true)) {
         return;
     }
 
     $page = (string) db_value((string) pg_db_bind("SELECT page_name FROM page WHERE page_id = ? LIMIT 1", array((int) $row['page_id']), 'escape'));
 
     db_q("INSERT INTO notifications (action, type, title, target_user_id, reference_id, user, readed, timestamp)
-        VALUES ('content_answer', 'info', ?, ?, ?, '', '0', UNIX_TIMESTAMP())",
-        array(mb_substr(pg_content_proposals_bell_editor_title($kind, $page, $reason), 0, 250), (int) $row['requested_by'], (int) $row['id']));
+        VALUES (?, 'info', ?, ?, ?, '', '0', UNIX_TIMESTAMP())",
+        array('content_' . $kind, mb_substr($page, 0, 250), (int) $row['requested_by'], (int) $row['id']));
+}
+
+/**
+ * A line's words and address as the bell draws them: the reason and the page
+ * read through reference_id.
+ *
+ * @param array $notification
+ * @return array title, short, brief, description, url
+ */
+function pg_content_proposals_bell_display($notification)
+{
+    $action = (string) ($notification['action'] ?? '');
+    $reason = '';
+    $url = 'content_changes.php';
+
+    if (($action !== 'content_change') && ((int) ($notification['reference_id'] ?? 0) > 0)) {
+        $row = db_item((string) pg_db_bind("SELECT d.steps, p.page_id, p.page_style FROM design_proposals AS d LEFT JOIN page AS p ON p.page_id = d.page_id WHERE d.id = ? LIMIT 1",
+            array((int) ($notification['reference_id'] ?? 0)), 'escape'));
+        $steps = is_array($row) ? json_decode((string) $row['steps'], true) : null;
+        $reason = is_array($steps) ? (string) ($steps['reason'] ?? '') : '';
+        $url = (is_array($row) && ((int) $row['page_style'] > 0))
+            ? 'edit_system_style.php?id=' . (int) $row['page_style'] . '&page=' . (int) $row['page_id'] : 'view_pages.php';
+    } elseif ($action !== 'content_change') {
+        $url = 'view_pages.php';
+    }
+
+    return pg_content_proposals_bell_words($action, (string) ($notification['title'] ?? ''), $reason) + array('url' => $url);
 }
 
 /**

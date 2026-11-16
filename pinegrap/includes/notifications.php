@@ -205,7 +205,7 @@ function pg_notification_visible($notification, $rights)
 	// A content change waiting for a designer, and what became of an editor's
 	// change (includes/fn/content_proposals.php): addressed to one person,
 	// with the Workspace on or off.
-	if (($action == 'content_change') || ($action == 'content_answer')) {
+	if (in_array($action, array('content_change', 'content_applied', 'content_dismissed', 'content_stale'), true)) {
 		return ($target > 0);
 	}
 
@@ -663,22 +663,17 @@ function pg_notification_display($notification, $reader_role = null)
 		$display['badge']       = 'assets/images/notification-general-badge.png';
 		$display['action']      = $action;
 
-	} elseif (($action == 'content_change') || ($action == 'content_answer')) {
+	} elseif (in_array($action, array('content_change', 'content_applied', 'content_dismissed', 'content_stale'), true)) {
 
-		// The title says what happened. A designer's line opens the list of
-		// waiting changes; the editor's opens the page in the Studio.
-		$display['description'] = h(($action == 'content_change')
-			? lang('Compare it with the page, then apply or dismiss it.')
-			: lang('Open the page to see it.'));
-		$display['url']         = 'content_changes.php';
-
-		if ($action == 'content_answer') {
-			$content_page = db_item("SELECT p.page_id, p.page_style FROM design_proposals AS d INNER JOIN page AS p ON p.page_id = d.page_id
-				WHERE d.id = '" . (int) ($notification['reference_id'] ?? 0) . "' LIMIT 1");
-			$display['url'] = is_array($content_page)
-				? 'edit_system_style.php?id=' . (int) $content_page['page_style'] . '&page=' . (int) $content_page['page_id'] : 'view_pages.php';
-		}
-
+		// The row keeps the page's name; the words are made here, in the
+		// reader's language (includes/fn/content_proposals.php).
+		require_once(PG_FUNCTIONS_DIR . '/includes/fn/content_proposals.php');
+		$content_words = pg_content_proposals_bell_display($notification);
+		$display['title']       = h($content_words['title']);
+		$display['short']       = h($content_words['short']);
+		$display['brief']       = h($content_words['brief']);
+		$display['description'] = h($content_words['description']);
+		$display['url']         = $content_words['url'];
 		$display['icon']        = 'assets/images/notification-general.png';
 		$display['badge']       = 'assets/images/notification-general-badge.png';
 		$display['action']      = $action;
@@ -1117,7 +1112,7 @@ function pg_notification_module($action)
 		return 'erp';
 	}
 
-	if (in_array($action, array('form_submited', 'new_comment', 'content_change', 'content_answer'), true)) {
+	if (in_array($action, array('form_submited', 'new_comment', 'content_change', 'content_applied', 'content_dismissed', 'content_stale'), true)) {
 		return 'content';
 	}
 
