@@ -457,6 +457,7 @@
 - workspace-growth-terms.md: Shared names and single owners of the Workspace growth work (2026-10-23): workflow tables, Workspace canvas, quote kinds, registries, engine words, agent keys, one proposal route, personal by default
 - workspace-guest-cleared-room.md: A guest's requests on one message (file address, tick, reaction, vote) reach only the room's current conversation, after its clear floor, as the guest page lists it
 - workspace-guest-request-input.md: How the public guest page reads the strings of its JSON body and its cookie
+- workspace-highlights-not-saved-replies.md: Why message highlights (ws_highlights) and saved replies (ws_saved_replies) stay two features with two tables: what each keeps, where they differ, the owner's question of 2026-11-16 [decision: here]
 - workspace-holiday-feed-overrides.md: Holiday calendar addresses (ws_ical_events()): a moved occurrence gets its own uid so it never replaces its yearly day; cancelled days are left out
 - workspace-holiday-settings.md: The Working calendar card in Site Settings (Team and working hours) and on Workspace Settings: one request reader and one save, button and field names, drawers, old anchors
 - workspace-keyboard-rows.md: Workspace div rows act as buttons through pressKeys() (Enter and Space), the inbox Join shortcut takes keys, planning board hours print through hoursText()

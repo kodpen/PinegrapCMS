@@ -356,6 +356,11 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-66.md: Who gets the task of the gallery flow "A page is due for review"? (architect, 2026-11-16, agent channel message 7026)
 - decisions-made-product-66.md: Where do a record's coordinates come from while Google Places or Mapbox is on? (architect, 2026-11-16, agent channel message 6927)
 - decisions-made-product-66.md: When does the Bundles screen get its main menu row? (architect, 2026-11-16, agent channel message 6918)
+- decisions-made-product-67.md: Does "Find from the address" come out as on the sheet? (owner, 2026-11-16, agent channel poll 105, message 7114)
+- decisions-made-product-67.md: Do the publish and take-back dialogs come out as on the sheet? (owner, 2026-11-16, agent channel poll 106, message 7125)
+- decisions-made-product-67.md: Which words do RB3's dialogs use? (architect, 2026-11-16, message 7027)
+- decisions-made-product-67.md: Does an agent's mention tag open the agent card? (owner, 2026-11-16, typed to the architect)
+- decisions-made-product-67.md: What did he say of the highlight toolbar? (owner, 2026-11-16, typed to the architect)
 - decisions-made-product-7.md: Do international labels carry customs data? (#3408)
 - decisions-made-product-7.md: Can a merchant request a carrier pickup from the panel? (#3415)
 - decisions-made-product-7.md: Does ShipWorks record tracking numbers through the shipment write path? (#3443)
@@ -1044,6 +1049,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/workspace-flows-side-panel.md: The flow window's right panel for a chosen box, arrow or thread (FW3, #9196): head, Settings / Connections / Try tabs, foot line, Duplicate, Close, Esc, F6, phone sheet
 - workspace/workspace-flows-store.md: Workspace flows store (graph check, API; runs: workspace-flows-runner.md): the four tables (11.0.80), graph JSON, problem codes, access, routes, why publishing is the person's own
 - workspace/workspace-flows-visual-spec.md: The Flows canvas look in numbers (owner, 2026-10-27): lines, type colours and tones, thread sag, icons, run flags, mini window, template motion; all on screen (#4386)
+- workspace/workspace-highlights-not-saved-replies.md: Why message highlights (ws_highlights) and saved replies (ws_saved_replies) stay two features with two tables: what each keeps, where they differ, the owner's question of 2026-11-16
 - workspace/workspace-mcp-servers-card.md: Workspace "MCP servers" card (mcp.php, mcp_catalogue.php): ready-made connectors, adding by address, read-only tools on at first read, the form kept after an error, Pinegrap AI failing
 - workspace/workspace-menu-tools.md: Tools tiles and More in the Workspace list (#3817, #6281): places (My Tasks first), short names, colours, a lone More taking its row, the More rows, ws-side-open, the tour opening hidden places
 - workspace/workspace-message-box-width.md: Channel message boxes: 90rem wide at most, .5rem apart (grouped lines joined), a faint sender tint over 1700px (data-ws-tone; light 1.6 %, dark 2.2 %)

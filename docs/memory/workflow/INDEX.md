@@ -104,6 +104,7 @@
 - decisions-made-product-64.md: Decisions list, product part 64 (2026-11-16 on): the second study's eight features and his answers, picture text translation's first version, the architect's rules for DG1, MP1 and VP5
 - decisions-made-product-65.md: Decisions list, product part 65 (2026-11-16 on): the place map default tiles (poll 99), his look at the Content review screen (poll 100), the amount a minimum order compares
 - decisions-made-product-66.md: Decisions list, product part 66 (2026-11-16 on): his looks of polls 101 to 104 (VP4, the Content review row "Make a task", QR3, AF5b), the architect's rules for CH3, CH4, MP2 and RB2
+- decisions-made-product-67.md: Decisions list, product part 67 (2026-11-16 on): the owner's looks of polls 105 (MP2) and 106 (RB3), his asks on the mention tag and the highlight toolbar, RB3's dialog words
 - decisions-made-product-7.md: Decisions list, product part 7 (2026-10-30 on): customs data on international labels, carrier pickup requests from the panel, ShipWorks through the shipment write path
 - decisions-made-product-8.md: Decisions list, product part 8 (2026-10-30 midday on): Trendyol-carried packages refused by Create Label, starter dump corrections for #3330, marketing SMS in 2026.11.0, forum template wording
 - decisions-made-product-9.md: Decisions list, product part 9 (2026-10-30 afternoon on): form rules for visitors only, marketplace orders invoiced behind a switch, sales quote guest links and templates, Workspace density switch
