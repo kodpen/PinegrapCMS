@@ -1,9 +1,12 @@
 ---
 name: decisions-made-product-67
-description: Decisions list, product part 67 (2026-11-16 on): the owner's looks of polls 105 (MP2) and 106 (RB3), his asks on the mention tag and the highlight toolbar, RB3's dialog words
+description: Decisions list, product part 67 (2026-11-16 on): the owner's looks of polls 103 (Design Canvas bar), 105 (MP2), 106 (RB3); the mention tag, the highlight toolbar, RB3's words
 ---
 
 # Decisions made: product, part 67
+
+## Do the Design Canvas's bar over the object and the Motion popover come out as on the sheet? (owner, 2026-11-16, agent channel poll 103, message 7038)
+- "Evet, böyle çıksın", on sheet 7037: on the desktop the selection's commands over the selected object (Edit text or Split clip, Motion in Animate, Duplicate, Delete, Lock, More), and Motion's popover with In, Loop and Out. Built in #9972, #9965, #10003 and #10041 (`ui/image-editor-actions.md`, `ui/image-editor-motion.md`, `ui/image-editor-tracks.md`).
 
 ## Does "Find from the address" come out as on the sheet? (owner, 2026-11-16, agent channel poll 105, message 7114)
 - "Evet, böyle çıksın", on sheet 7113 of MP2 #10000 (`plans/place-map.md`).
