@@ -32,6 +32,11 @@
 - channel-commands-census-proposal.md: The R&D agent's proposal from the channel commands census (2026-11-16) for the architect's plan: five packages (engine, buttons, records, applications and agents, the team's own), order, left out
 - channel-commands-census-records.md: Census (2026-11-16) of the site records a channel command could write: the change kinds, what the drawer and /create cover, the writers with no command, what the Workspace cannot write
 - channel-commands-census.md: Census for extending the / commands of Workspace channels (owner 2026-11-16, agent channel message 6671), start file: his words, the parts, what binds a new command, what is still to decide
+- channel-commands-features-2.md: Plan channel-commands, features K15 to K28: /bildirim, /davet, /ayrıl, /konu, /ara, /bellek, /oluştur for a contact, row, ERP account and event, /kargo, application arguments, an agent's command
+- channel-commands-features.md: Plan channel-commands, features K1 to K14: the registry, the gate that knows the channel, grouped /help and / list, commands as a reply, /hatırlat, /özet, /onay, /güncelleme, /checkin, /akış
+- channel-commands-steps-2.md: Plan channel-commands, steps CC7 to CC12 and the close-out: /oluştur for a contact and a row, an ERP account and an event, /kargo, application arguments (a column), an agent's command
+- channel-commands-steps.md: Plan channel-commands, steps CC1 to CC6: the registry with no change of behaviour, the gate and grouped /help, /hatırlat and /özet, /onay /güncelleme /checkin, flows in the / list, the channel's own
+- channel-commands.md: Plan (owner 2026-11-16): channel commands grown in steps CC1 to CC12: a registry entry per command, commands for what has a button, records, flows in the / list, application arguments, agents
 - claude-plugin-bundle.md: Plan (owner 2026-11-14): a Pinegrap plugin bundle for Claude's directory: a site's MCP server connected by its address, skills for common site work, the listing; the repository is the owner's to open
 - click-scroll-map-features-2.md: Plan click-scroll-map, features C16 to C23: the switch and its empty state, the "Clicks and scrolling" section of Visitors, a page's own view, the report route, the designer's "Clicks" layer
 - click-scroll-map-features.md: Plan click-scroll-map, features C1 to C15: what is counted, what is never kept, consent, the beacon, which pages carry it, how it is kept and bounded
@@ -106,7 +111,9 @@
 - picture-text-translation-census-places.md: Picture text translation PT0 census: every path writing a picture address into a page (nodes, HTML, products, srcset, backgrounds, og:image), what the page pass sees
 - picture-text-translation-census-store.md: Picture text translation PT0 census, store: picture texts in translation_uses, the Translations screen group, a job, pg_tr_translatable() on short words and prices
 - picture-text-translation-census.md: Picture text translation PT0 census start: where a Design Canvas document with text layers lives, which layer fields hold words, the parts, the questions for the owner
-- picture-text-translation.md: Plan (owner 2026-11-16): the texts in pictures translated: a Design Canvas picture's text layers enter the site translation, a page in another language shows its picture; census PT0 first
+- picture-text-translation-steps-2.md: Plan picture-text-translation, steps PT5 to PT7 and their order: the drawing queue, the file doors of a language's picture, the close-out
+- picture-text-translation-steps.md: Plan picture-text-translation, steps PT1 to PT4b: the table and the texts in the store, the page pass, the Pictures group, drawing a canvas picture and a photo in the Design Canvas
+- picture-text-translation.md: Plan (owner 2026-11-16): the texts in pictures translated: a Design Canvas picture's text layers enter the site translation, a page in another language shows its picture; steps PT1 to PT7
 - place-map-census-2.md: Census MP1 of place-map, part 2: what OpenStreetMap's own tiles allow (tile usage policy, read 2026-11-16) and the security-header change the map needs (waf_csp_policy())
 - place-map-census-3.md: Census MP1 of place-map, part 3: how the cookie notice lists a service (pg_consent_page_services(), pg_consent_catalogue()), which class the map could go under, and the questions for the architect
 - place-map-census.md: Census MP1 of place-map, part 1: the three address providers' terms on keeping a looked-up coordinate and on showing it on another map (Google, Mapbox, Photon), read 2026-11-16
