@@ -13066,6 +13066,17 @@ b.ws-agent-card-anchor:focus-visible {
   margin-top: .85rem;
   font-size: .85rem;
 }
+/* The person's own quiet hours under a channel's notifications. */
+.ws-info-qh .form-label {
+  margin-bottom: .25rem;
+  font-size: .85em;
+}
+.ws-info-qh-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  margin-top: .85rem;
+}
 .ws-info-time-line {
   margin: 0;
   font-size: .88rem;

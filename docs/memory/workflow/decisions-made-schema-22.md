@@ -8,7 +8,7 @@ description: Decisions list, schema part 22 (2026-11-15 on): ws_profiles.quiet_h
 
 ## Which schema do quiet hours and the link preview card get? (owner, 2026-11-15, agent channel poll 54)
 - Each option's text named its schema and he chose both: quiet hours "Veritabanına tek sütun eklenir", the link preview card "Veritabanına küçük bir tablo eklenir". Translate on a message changes no schema.
-- Quiet hours: `ws_profiles.quiet_hours` TEXT NULL, a JSON as `mail_away` (`start`, `end`, `off_days`), added by QH1 (`plans/quiet-hours.md`). No backfill: an empty value is no quiet range.
+- Quiet hours: `ws_profiles.quiet_hours` TEXT NULL, a JSON as `mail_away` (`start`, `end`, `off_days`), added by QH1 (`workspace/quiet-hours.md`). No backfill: an empty value is no quiet range.
 - Link preview: one small table, one row per message whose first web address was read (the message, the address, title, description, site name, a state, when), added by LP1 (`plans/link-preview.md`). LP1 states its exact columns and indexes in its draft PR's body and the architect confirms them there; they are recorded here when the step lands.
 - The architect's, not the owner's words: the column's JSON shape and the table keyed by message.
 

@@ -86,3 +86,72 @@ function test_quiet_hours_a_value_that_is_no_setting()
 	pg_assert_same(array('start' => '22:00', 'end' => '07:00', 'off_days' => 1), pg_quiet_hours_decode('{"start":"22:00","end":"07:00","off_days":"1"}'));
 	pg_assert_same(8 * 3600, pg_quiet_hours_left('{"start":"22:00","end":"07:00"}', 'Not/AZone', 31, quiet_hours_test_at('2026-11-11 23:00', 'UTC')), 'an unknown zone counts as UTC');
 }
+
+function test_quiet_hours_input_reads_the_two_times_and_the_switch()
+{
+	$input = pg_quiet_hours_input('22:00', '07:30', '1');
+
+	pg_assert_true($input['ok']);
+	pg_assert_same(array('start' => '22:00', 'end' => '07:30', 'off_days' => 1), $input['value']);
+	pg_assert_same(0, pg_quiet_hours_input(' 12:00 ', '13:00', 0)['value']['off_days']);
+	pg_assert_same('12:00', pg_quiet_hours_input(' 12:00 ', '13:00', 0)['value']['start'], 'spaces around a time are dropped');
+}
+
+function test_quiet_hours_input_clears_with_no_range()
+{
+	pg_assert_same(array('ok' => true, 'value' => null, 'error' => '', 'field' => ''), pg_quiet_hours_input('', '', 1), 'both empty clears');
+	pg_assert_true(pg_quiet_hours_input('09:00', '09:00', 1)['ok'], 'equal times are accepted');
+	pg_assert_same(null, pg_quiet_hours_input('09:00', '09:00', 1)['value'], 'equal times are no quiet range');
+}
+
+function test_quiet_hours_input_refuses_a_bad_time()
+{
+	foreach (array(array('24:00', '07:00', 'start'), array('7:00', '08:00', 'start'), array('22:00', '', 'end'), array('', '07:00', 'start'), array('22:00', '07:60', 'end'), array(array('22:00'), '07:00', 'start')) as $case) {
+		$input = pg_quiet_hours_input($case[0], $case[1], 0);
+
+		pg_assert_false($input['ok'], json_encode($case));
+		pg_assert_same($case[2], $input['field'], json_encode($case));
+		pg_assert_same(null, $input['value']);
+	}
+}
+
+function test_quiet_hours_save_check_is_the_persons_own()
+{
+	$me = array('id' => 7, 'member' => true);
+	$request = array('start' => '22:00', 'end' => '07:00', 'off_days' => 1);
+
+	$check = pg_quiet_hours_save_check($me, $request);
+	pg_assert_true($check['ok']);
+	pg_assert_same(7, $check['user_id']);
+
+	pg_assert_true(pg_quiet_hours_save_check($me, $request + array('user_id' => 7))['ok'], 'naming oneself is fine');
+
+	$other = pg_quiet_hours_save_check($me, $request + array('user_id' => 8));
+	pg_assert_false($other['ok'], "someone else's profile is refused");
+	pg_assert_same(0, $other['user_id']);
+
+	pg_assert_false(pg_quiet_hours_save_check(array('id' => 7, 'member' => false), $request)['ok'], 'a guest or site member is refused');
+	pg_assert_false(pg_quiet_hours_save_check(array('id' => 0, 'member' => true), $request)['ok'], 'no signed-in person');
+
+	$bad = pg_quiet_hours_save_check($me, array('start' => '25:00', 'end' => '07:00'));
+	pg_assert_false($bad['ok'], 'a bad time is refused');
+	pg_assert_same('start', $bad['field']);
+	pg_assert_same(0, $bad['user_id']);
+}
+
+function test_quiet_hours_save_is_a_panel_action_only()
+{
+	$actions = pg_panel_actions();
+
+	pg_assert_true(isset($actions['ws_quiet_hours_save']), 'the panel action is there');
+
+	$api = '';
+
+	foreach (glob(PG_FUNCTIONS_DIR . '/includes/{api,mcp,workspace}/*.php', GLOB_BRACE) as $file) {
+		if (basename($file) !== 'actions.php' && basename($file) !== 'notify.php') {
+			$api .= file_get_contents($file);
+		}
+	}
+
+	pg_assert_same(false, strpos($api, 'ws_quiet_hours_save'), 'no API route or MCP tool writes quiet hours');
+}

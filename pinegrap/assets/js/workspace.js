@@ -4745,6 +4745,89 @@
         return row;
     }
 
+    // The person's own quiet hours under a channel's Notifications, for all
+    // their channels (ws_quiet_hours_save): From, To, the days off switch,
+    // Save and Clear. Equal times are no quiet range, as the server reads it.
+    function quietHoursPart() {
+        var setting = CFG.quiet_hours.value || {};
+        var part = el('div', 'ws-info-qh');
+        var grid = el('div', 'row g-3');
+        var fromCell = el('div', 'col-6');
+        var toCell = el('div', 'col-6');
+        var from = pgDateField(el('input', 'form-control form-control-sm'), 'time');
+        var to = pgDateField(el('input', 'form-control form-control-sm'), 'time');
+        var off = el('div', 'form-field mb-0 ws-info-check');
+        var offBox = el('input', 'check');
+        var offLabel = el('label', '', t('qh_off_days'));
+        var actions = el('div', 'ws-info-qh-actions');
+        var save = button('btn btn-sm btn-solid theme-primary', t('qh_save'), 'bi-check2');
+        var clear = button('btn btn-sm btn-text theme-secondary', t('qh_clear'), 'bi-x-circle');
+        var hint = el('div', 'form-text mt-0 mb-3', t('qh_hint'));
+
+        from.id = nextId('ws-qh-from-');
+        to.id = nextId('ws-qh-to-');
+        hint.id = nextId('ws-qh-hint-');
+        from.value = setting.start || '';
+        to.value = setting.end || '';
+        from.setAttribute('aria-describedby', hint.id);
+        offBox.type = 'checkbox';
+        offBox.id = nextId('ws-qh-off-');
+        offBox.checked = !!setting.off_days;
+        offLabel.htmlFor = offBox.id;
+        clear.hidden = !CFG.quiet_hours.value;
+
+        part.appendChild(el('h3', 'ws-panel-kicker', t('qh_title')));
+        part.appendChild(hint);
+        fromCell.appendChild(formRow(t('qh_from'), from));
+        toCell.appendChild(formRow(t('qh_to'), to));
+        fromCell.firstChild.classList.replace('mb-5', 'mb-0');
+        toCell.firstChild.classList.replace('mb-5', 'mb-0');
+        grid.appendChild(fromCell);
+        grid.appendChild(toCell);
+        part.appendChild(grid);
+        off.appendChild(offBox);
+        off.appendChild(offLabel);
+        part.appendChild(off);
+        actions.appendChild(save);
+        actions.appendChild(clear);
+        part.appendChild(actions);
+
+        function send(values, done) {
+            save.disabled = true;
+            clear.disabled = true;
+            api('ws_quiet_hours_save', values).then(function (data) {
+                CFG.quiet_hours.value = data.quiet_hours || null;
+                from.value = CFG.quiet_hours.value ? CFG.quiet_hours.value.start : '';
+                to.value = CFG.quiet_hours.value ? CFG.quiet_hours.value.end : '';
+                offBox.checked = !!(CFG.quiet_hours.value && CFG.quiet_hours.value.off_days);
+                dateShown(from);
+                dateShown(to);
+                clear.hidden = !CFG.quiet_hours.value;
+                toast(t(CFG.quiet_hours.value ? done : 'qh_cleared'), 'success');
+            }).catch(function (error) {
+                fail(error);
+
+                var field = (error.field === 'end') ? to : ((error.field === 'start') ? from : null);
+
+                if (field) {
+                    field.focus();
+                }
+            }).then(function () {
+                save.disabled = false;
+                clear.disabled = false;
+            });
+        }
+
+        save.addEventListener('click', function () {
+            send({ start: from.value, end: to.value, off_days: offBox.checked ? 1 : 0 }, 'qh_saved');
+        });
+        clear.addEventListener('click', function () {
+            send({ start: '', end: '', off_days: 0 }, 'qh_cleared');
+        });
+
+        return part;
+    }
+
     function select(options, value) {
         var node = el('select', 'form-control form-control-sm');
 
@@ -11517,6 +11600,12 @@
                 speak.appendChild(speakBox);
                 speak.appendChild(speakLabel);
                 body.appendChild(speak);
+            }
+
+            // The person's own quiet hours, for all their channels: after this
+            // channel's own choices, so its Save reads as theirs alone.
+            if (channel.joined && CFG.quiet_hours && CFG.quiet_hours.ready) {
+                body.appendChild(quietHoursPart());
             }
 
             // The time spent on its tasks (task_time.php), as the Summary

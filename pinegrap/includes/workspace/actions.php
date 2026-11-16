@@ -4045,6 +4045,13 @@ function ws_handle_action($action, $request)
 
             return $result['ok'] ? ws_action_ok() : ws_action_error($result['error']);
 
+        // The person's own quiet hours (notify.php): their own session only,
+        // never for another person; no API route or MCP tool.
+        case 'ws_quiet_hours_save':
+            $result = ws_quiet_hours_save($viewer, $request);
+
+            return $result['ok'] ? ws_action_ok(array('quiet_hours' => $result['value'])) : ws_action_error($result['error'], $result['field']);
+
         // Whether Claude may be asked in a channel.
         case 'ws_channel_claude':
             $channel = ws_action_channel($viewer, $request, 'manage');
