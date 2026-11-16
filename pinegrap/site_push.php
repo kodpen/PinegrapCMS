@@ -10,6 +10,9 @@
  * subscription is removed. action=message: the site's worker, woken by an
  * empty push, posts its secret and gets its waiting message (title, body,
  * url), or none.
+ * action=order with the secret and an order_id makes that browser wait for
+ * the order's shipped and delivered moments: only the order this session has
+ * just completed or one of the signed-in account's own.
  *
  * Anonymous by design, so there is no form token (a cached page has none):
  * posts from other sites are refused by pg_consent_answer_same_origin(), and
@@ -66,6 +69,17 @@ if ($refusal) {
     }
 } elseif ($action === 'stop') {
     $reply = array('removed' => pg_site_push_subscription_remove($_POST['secret'] ?? '') ? 1 : 0);
+} elseif ($action === 'order') {
+    // The order page's "Notify me on this device": the browser of the secret
+    // waits for the order's shipped and delivered moments.
+    $watched = pg_site_push_order_watch($_POST['secret'] ?? '', (int) ($_POST['order_id'] ?? 0));
+
+    if (is_int($watched)) {
+        $reply = array('watching' => 1);
+    } else {
+        $status = ($watched === 'off') ? 404 : 400;
+        $reply = array('error' => $watched);
+    }
 } elseif ($action === 'message') {
     $message = pg_site_push_waiting_message($_POST['secret'] ?? '');
     $reply = array('message' => $message);
