@@ -2136,6 +2136,7 @@
     "{var:1}: waiting for the ALTER TABLE on {var:2} that is still running": "{var:1}: {var:2} üzerinde hâlâ süren ALTER TABLE bekleniyor",
     "{var:1}: written by Pinegrap AI for each of {var:2} records ({var:3}) - {var:4}": "{var:1}: {var:2} kaydın her biri için Pinegrap AI yazar ({var:3}) - {var:4}",
     "{var:1}: {var:2}": "{var:1}: {var:2}",
+    "{var:1}: {var:2} arrows out, {var:3} in": "{var:1}: {var:2} çıkan, {var:3} gelen ok",
     "{var:1}: {var:2} by {var:3}% on {var:4} records ({var:5})": "{var:1}: {var:4} kayıtta %{var:3} {var:2} ({var:5})",
     "{var:1}: {var:2} counted.": "{var:1}: {var:2} sayıldı.",
     "{var:1}: {var:2} is in use (lock wait timeout); try again when the site is quiet": "{var:1}: {var:2} kullanımda (kilit bekleme süresi doldu); site sakinken yeniden deneyin",
