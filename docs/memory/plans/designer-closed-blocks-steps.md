@@ -8,9 +8,9 @@ description: Steps CB2 to CB10 of designer-closed-blocks, written from the owner
 
 ## Which steps?
 - CB2 (M) Comments widget slots: pagination as a tree, one family with Search results' `pagination` (order 7 goes with it); CAPTCHA, star rating input and publish options settings only, with a true sample; the watcher list keeps its children. The star rating input is redrawn as five stars (owner, channel message 4700, `workflow/decisions-made-product-55.md`). Done (#9716): `designer/comments-widget-open-slots.md`.
-- CB2b (S) The Page links starter on the canvas (`_sdPagingListStarter()`): after "Convert to design elements" Previous and Next stand outside the widget's frame at 1440 and are not seen at 390, in Comments and Search results alike. The canvas drawing only; the site's output stays. Done (#9765): `designer/paging-list-canvas-line.md`.
+- CB2b (S) The Page links starter on the canvas (`_sdPagingListStarter()`): after "Convert to design elements" Previous and Next stand outside the widget's frame at 1440 and are not seen at 390, in Comments and Search results alike. The canvas drawing only; the site's output stays. Done (#9765).
 - CB3 (S) Comment e-mail pages: a page that keeps its System region gets a note on the canvas saying what it prints. The design templates keep the region (owner 2026-11-01, `workflow/decisions-made-product-16.md` (a)): it prints the comment when no Comments card on the page draws it. The fixed markup stays for a page with no card: nothing changes on a running site. Done (#9685).
-- CB4 (M) Custom form slots: CAPTCHA settings only; on a form with steps the step break, the step progress and the step buttons drawn true, the buttons a tree.
+- CB4 (M) Custom form slots: CAPTCHA settings only; on a form with steps the step break, the step progress and the step buttons drawn true, the buttons a tree. Done (#9806): `designer/custom-form-open-slots.md`.
 - CB5 (S) Messages node: settings only (alert look, dismiss button) and a sample error on the canvas. Done (#9723).
 - CB6a (M) Shop, catalog detail: variant attribute, breadcrumb, product carousel, price block; payment methods settings only. Done (#9849, #9871).
 - CB6b (M) Shop, catalog: category tree, filter offcanvas and its buttons.

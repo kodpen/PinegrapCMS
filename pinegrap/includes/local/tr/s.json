@@ -4988,6 +4988,8 @@
     "Step Title": "Adım Başlığı",
     "Step away from the street lights and give your eyes twenty minutes; the sky fills up while you wait.": "Sokak lambalarından uzaklaşın ve gözlerinize yirmi dakika verin; siz beklerken gökyüzü dolar.",
     "Step break (the controls after it are the next step)": "Adım ayracı (ardından gelen alanlar sonraki adımdır)",
+    "Step buttons": "Adım düğmeleri",
+    "Step buttons (Back and Next under every step)": "Adım düğmeleri (her adımın altında Geri ve İleri)",
     "Step by step": "Adım adım",
     "Step {var:1}": "Adım {var:1}",
     "Step {var:1} of {var:2}": "Adım {var:1} / {var:2}",

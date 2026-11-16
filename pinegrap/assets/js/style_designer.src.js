@@ -11725,7 +11725,7 @@ const StyleDesigner = (function () {
     // recipient picker is only a marker (_apply_catalog_item_view_bindings()),
     // the watcher list adds its rows before them (widgets_comments.php).
     // Every other section's children give way to what the server draws.
-    var _SD_SECTION_KEEPS_CHILDREN = { recipient_picker: 1, comment_watchers: 1 };
+    var _SD_SECTION_KEEPS_CHILDREN = { recipient_picker: 1, comment_watchers: 1, form_step_nav: 1 };
 
     var _SD_CHIP_KINDS = [['data-sd-cond', 'sd-chip-cond'], ['data-sd-off-reason', 'sd-chip-off'], ['data-sd-cf-shown', 'sd-chip-shown']];
     function _sdChipRow(doc, wrapper) {
@@ -14200,9 +14200,16 @@ const StyleDesigner = (function () {
                         : doc.createTextNode(piece));
                 });
             } else if (node.children && node.children.length > 0) {
-                node.children.forEach(function (child) {
+                // A stepped form's progress and buttons (_sdFormStepSamples()).
+                var _stepPlan = _sdFormStepPlan(node);
+                var _stepAdd = function (i) {
+                    if (_stepPlan) _sdFormStepSamples(_stepPlan, i, node.children.length, doc).forEach(function (el) { innerEl.appendChild(el); });
+                };
+                node.children.forEach(function (child, ci) {
+                    _stepAdd(ci);
                     innerEl.appendChild(buildNodeEl(child));
                 });
+                _stepAdd(node.children.length);
                 // A list's sample rows after its card (_sdListGhostEls()).
                 if (node.type === 'loop_area') _sdListGhostEls(node).forEach(function (g) { innerEl.appendChild(g); });
             }
@@ -14353,6 +14360,13 @@ const StyleDesigner = (function () {
                 if (!_hasChildren && _getSystemWidgetRegionType(node) === 'comments') {
                     var _sample = _sdCommentsSectionSample(_sec, doc);
                     if (_sample) _hint = _sample;
+                }
+                // A form's CAPTCHA as a sample; a step break with a title is
+                // drawn as the title the site gives its step.
+                if (!_hasChildren && _getSystemWidgetRegionType(node) === 'custom_form') {
+                    var _fSample = _sdFormSectionSample(_sec, doc);
+                    if (_fSample) _hint = _fSample;
+                    else if (_sec === 'form_step' && String(node.props.text || '').trim() !== '') _hint = null;
                 }
                 if (_hint) innerEl.appendChild(_hint);
             }
@@ -41941,6 +41955,9 @@ const StyleDesigner = (function () {
             out.push(['captcha',           _sdT('CAPTCHA (depends on the site setting; hidden for a signed-in visitor)')]);
             // A break: what follows it is the next step of the form.
             out.push(['form_step',         _sdT('Step break (the controls after it are the next step)')]);
+            // Back and Next a designer builds, drawn under every step
+            // (pg_cf_step_nav_node()); without it the site draws its own.
+            out.push(['form_step_nav',     _sdT('Step buttons (Back and Next under every step)')]);
         } else if (type === 'login_form') {
             // Each block is the server's ready-made element and is
             // absent - container included - when its feature is off.
@@ -42016,7 +42033,8 @@ const StyleDesigner = (function () {
 
     // The panel's button under the Section binding list, '' for a section
     // that does not open.
-    function _sdSectionOpenRow(kind, section) {
+    function _sdSectionOpenRow(kind, section, node) {
+        if (kind === 'custom_form' && section === 'form_step') return _sdFormStepNavRow(node);
         if (!_sdSectionOpensAsList(kind, section)) return '';
         return '<button type="button" class="btn btn-sm btn-outline theme-primary w-100 mt-2 text-wrap" data-sd-section-open>' +
                 '<span class="bi bi-magic me-1"></span>' + esc(_sdT('Convert to design elements')) + '</button>' +
@@ -42042,6 +42060,144 @@ const StyleDesigner = (function () {
         parent.children.splice(idx, 1, nav);
         if (hit.sid) _sharedDirty[hit.sid] = true;
         return nav;
+    }
+
+    // ── A designed form's steps (custom_form) ───────────────────────────────
+    // On the canvas a stepped form is drawn as the site draws it
+    // (pg_cf_apply_steps()): the progress line above the first step, each
+    // break as its step's title, Back / Next at the end of every step. The
+    // buttons are the site's own until the designer puts the Step buttons
+    // (section form_step_nav) in the form: one design for every step, Back
+    // shown on has_prev_step and Next on has_next_step. The CAPTCHA is drawn
+    // as a sample (settings only).
+
+    // The step buttons node of the widget `node` stands in, or null.
+    function _sdFormStepNavOf(node) {
+        var sid = _sdValueSidOf(node);
+        var root = (sid && _sharedCache[sid]) ? _sharedCache[sid].tree : null;
+        var found = null;
+        (function walk(n) {
+            if (!n || found) return;
+            if (n.props && n.props._bindings && n.props._bindings.section === 'form_step_nav') { found = n; return; }
+            (n.children || []).forEach(walk);
+        })(root);
+        return found;
+    }
+
+    // The panel's button under a step break's Section binding: puts the step
+    // buttons in the form; '' once the form has them.
+    function _sdFormStepNavRow(node) {
+        if (!node || _sdFormStepNavOf(node)) return '';
+        return '<button type="button" class="btn btn-sm btn-outline theme-primary w-100 mt-2 text-wrap" data-sd-step-nav-open>' +
+                '<span class="bi bi-magic me-1"></span>' + esc(_sdT('Design the step buttons')) + '</button>' +
+            '<div style="font-size:.66rem;color:#888;margin-top:3px">' +
+                esc(_sdT('Puts Back and Next you design at the end of the form. The site draws them under every step instead of its own: Back from the second step, Next up to the last.')) +
+            '</div>';
+    }
+
+    // A new step buttons box, as the site's own (_pg_cf_steps_nav_html()).
+    /* @pg-site-output */
+    function _sdFormStepNavStarter(bs) {
+        var btn = function (cls, text, flag) {
+            return createNode('semantic', { tag: 'button', cssClass: bs ? cls : '', text: text, customName: text,
+                _attrs: [{ name: 'type', value: 'button' }], _bindings: { eo_visible_if: flag } });
+        };
+        return createNode('semantic', { tag: 'div', cssClass: bs ? 'pg-cf-step-nav d-flex gap-2 mt-3' : '',
+            customName: _sdT('Step buttons'), _bindings: { section: 'form_step_nav' } }, [
+            btn('btn btn-outline-secondary', _sdT('Back'), 'has_prev_step'),
+            btn('btn btn-primary ms-auto', _sdT('Next'), 'has_next_step')
+        ]);
+    }
+
+    // Puts the step buttons after the last element of the container the
+    // break `node` stands in. Returns the new box, or null.
+    function _sdFormAddStepNav(node, bs) {
+        var b = (node && node.props && node.props._bindings) || {};
+        if (b.section !== 'form_step' || _sdFormStepNavOf(node)) return null;
+        var hit = _sdAnyParent(node);
+        var parent = hit ? hit.parent : null;
+        if (!parent || !Array.isArray(parent.children)) return null;
+        var nav = _sdFormStepNavStarter(bs);
+        parent.children.push(nav);
+        if (hit.sid) _sharedDirty[hit.sid] = true;
+        return nav;
+    }
+
+    function _sdIsFormStepBreak(n) {
+        return !!(n && n.props && n.props._bindings && n.props._bindings.section === 'form_step');
+    }
+
+    // The steps of container `node` in a custom_form widget, as
+    // pg_cf_step_groups() makes them: [{at: index of its break, title}],
+    // a step with nothing in it left out. null when it holds no break.
+    function _sdFormStepPlan(node) {
+        var kids = (node && node.children) || [];
+        if (!kids.some(_sdIsFormStepBreak) || _getSystemWidgetRegionType(node) !== 'custom_form') return null;
+        var steps = [];
+        var cur = null;
+        kids.forEach(function (c, i) {
+            if (_sdIsFormStepBreak(c)) {
+                if (cur && cur.size) steps.push(cur);
+                cur = { at: i, title: String(c.props.text || '').trim(), size: 0 };
+            } else if (cur) {
+                cur.size++;
+            }
+        });
+        if (cur && cur.size) steps.push(cur);
+        return { steps: steps, design: !!_sdFormStepNavOf(node) };
+    }
+
+    // What the site draws before child `i` of a stepped container (i equal
+    // to the number of children: after the last): the progress line before
+    // the first step, the built-in Back / Next before every later step and
+    // at the end. Inert samples, never saved.
+    /* @pg-site-output */
+    function _sdFormStepSamples(plan, i, count, doc) {
+        var total = plan.steps.length;
+        if (total < 2) return [];
+        var stepText = function (k) { return _sdT('Step {var:1} of {var:2}', [String(k + 1), String(total)]); };
+        var box = function (html) {
+            var el = doc.createElement('div');
+            el.className = 'sd-section-sample';
+            el.setAttribute('inert', '');
+            el.style.cssText = 'pointer-events:none';
+            el.innerHTML = html;
+            return el;
+        };
+        var nav = function (k) {
+            return box('<div class="pg-cf-step-nav d-flex gap-2 mt-3 mb-3">' +
+                (k > 0 ? '<button type="button" class="btn btn-outline-secondary" tabindex="-1">' + esc(_sdT('Back')) + '</button>' : '') +
+                (k < total - 1 ? '<button type="button" class="btn btn-primary ms-auto" tabindex="-1">' + esc(_sdT('Next')) + '</button>' : '') +
+                '</div>');
+        };
+        var out = [];
+        if (i === count) {
+            if (!plan.design) out.push(nav(total - 1));
+            return out;
+        }
+        plan.steps.forEach(function (st, k) {
+            if (st.at !== i) return;
+            if (k === 0) {
+                var items = plan.steps.map(function (s2, j) {
+                    return '<li class="list-inline-item' + (j === 0 ? ' fw-semibold' : ' text-body-secondary') + '">' +
+                        esc(s2.title || stepText(j)) + '</li>';
+                }).join('');
+                out.push(box('<nav class="pg-cf-progress mb-3">' +
+                    '<p class="small text-body-secondary mb-1">' + esc(stepText(0)) + '</p>' +
+                    '<div class="progress mb-2"><div class="progress-bar" style="width:' + (Math.round(10000 / total) / 100) + '%"></div></div>' +
+                    '<ol class="list-inline small mb-0">' + items + '</ol></nav>'));
+            } else if (!plan.design) {
+                out.push(nav(k - 1));
+            }
+        });
+        return out;
+    }
+
+    // A form section the server fills, drawn as a sample: the CAPTCHA
+    // question as get_captcha_fields() prints it. null for any other.
+    /* @pg-site-output */
+    function _sdFormSectionSample(section, doc) {
+        return section === 'captcha' ? _sdCommentsSectionSample('comment_captcha', doc) : null;
     }
 
     // What the site prints in a comment form section the server builds
@@ -43535,6 +43691,11 @@ const StyleDesigner = (function () {
     // — order view $_ov_vis_ctx, express order $_eo_vis_ctx (both in PHP),
     // the cart's recurring summary, the calendar event's own flags.
     var SW_VISIBILITY_FLAGS = {
+        // The step buttons' own flags, resolved per step (pg_cf_step_nav_node()).
+        custom_form: [
+            ['has_prev_step', _sdT('A previous step exists')],
+            ['has_next_step', _sdT('A next step exists')]
+        ],
         order_view: [
             ['has_shipping',            _sdT('The order is shipped')],
             ['has_shipping_method',     _sdT('A shipping method is recorded')],
@@ -46587,7 +46748,7 @@ const StyleDesigner = (function () {
                         return '<option value="' + o[0] + '"' + (o[0] === _curSection ? ' selected' : '') + '>' + o[1] + '</option>';
                     }).join('') + '</select>' +
                     '<div style="font-size:.66rem;color:#888;margin-top:3px">' + _sdT('The backend fills this container with the ready-made HTML of the chosen system section. The element\'s own style and class settings are kept.') + '</div>' +
-                    _sdSectionOpenRow(_semSwRegion, _curSection)
+                    _sdSectionOpenRow(_semSwRegion, _curSection, n)
                 );
             }
         }
@@ -52648,6 +52809,21 @@ const StyleDesigner = (function () {
                 selectedNode = list;
                 selectedNodes = [];
                 if (typeof expandAncestorsAnywhere === 'function') expandAncestorsAnywhere(list);
+                render();
+                renderProperties();
+            });
+        });
+
+        // The step buttons put in a stepped form (_sdFormAddStepNav()).
+        document.querySelectorAll('#sd-properties [data-sd-step-nav-open]').forEach(function (el) {
+            el.addEventListener('click', function () {
+                if (!selectedNode) return;
+                saveState();
+                var nav = _sdFormAddStepNav(selectedNode, _sdUsesBootstrap());
+                if (!nav) return;
+                selectedNode = nav;
+                selectedNodes = [];
+                if (typeof expandAncestorsAnywhere === 'function') expandAncestorsAnywhere(nav);
                 render();
                 renderProperties();
             });
