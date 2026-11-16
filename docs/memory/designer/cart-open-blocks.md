@@ -23,4 +23,4 @@ module: widgets_cart
 
 ## How was it checked?
 - `tests/cart_closed_blocks_test.php`: each twin byte for byte against its builder (one and two offers, a gift with a decided recipient, a picker, a picker with a new name; quick add options in and out of stock with quantity, amount and recipient rows), the sample's settings and the wiring.
-- Sandbox: the Online Store template's cart page before and after on the canvas at 1440, 375 (the editor's phone width) and dark, and the site's cart with the offer applied and the gift chosen, under agent channel message <the CB6c post>.
+- Sandbox: the Online Store template's cart page before and after on the canvas at 1440, 375 (the editor's phone width) and dark, and the site's cart with the offer applied and the gift chosen, under agent channel message 6108.
