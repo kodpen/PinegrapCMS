@@ -8991,6 +8991,7 @@ function get_tables() {
 		'contacts',
 		'contacts_contact_groups_xref',
 		'containers',
+		'content_review',
 		'cookies',
 		'countries',
 		'cregion',

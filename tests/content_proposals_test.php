@@ -279,3 +279,133 @@ function test_content_proposals_failed_write_fails_the_save()
 	pg_assert_contains("'errors' => array(\$held['error'])", $designer, 'and answers with its error');
 	pg_assert_contains('if (!pg_content_proposals_written($action, $written)) {', $module, 'every write is checked');
 }
+
+// A8: the operations go on the page as it is now, and apply writes one
+// revision through the design save, the gate run again over the result.
+function test_content_proposals_apply_puts_each_op()
+{
+	$stored = _content_proposals_test_tree();
+	$merged = $stored;
+	$merged['children'][0]['props']['text'] = 'Hello';
+	$merged['children'][1]['props']['src'] = '/c.jpg';
+	$merged['children'][2]['props']['_attrs'][0]['value'] = '/d.jpg';
+	$merged['children'][3]['children'][0]['props']['text'] = 'Changed';
+	$fields = array('page_title' => 'Old');
+	$ops = pg_content_proposals_ops($stored, $merged, $fields, array('page_title' => 'New'));
+
+	$applied = pg_content_proposals_apply_ops($stored, $fields, $ops);
+
+	pg_assert_true($applied['ok']);
+	pg_assert_same($merged, $applied['tree'], 'the page as the editor saved it');
+	pg_assert_same('New', $applied['fields']['page_title']);
+
+	$module = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/content_proposals.php');
+	pg_assert_contains('$tree = pg_designer_merge_restricted_tree($page[\'tree\'], $applied[\'tree\']);', $module, 'the gate stays the authority');
+	pg_assert_contains("if (!pg_collab_may_edit_page('', (int) \$row['page_id'])) {", $module, 'the page lock');
+	pg_assert_true(substr_count($module, '$saved = pg_designer_save_page(') === 1, 'one save: one revision');
+}
+
+// A8: History names the designer who applied it and the editor.
+function test_content_proposals_history_names_both()
+{
+	pg_assert_same('ayse', pg_content_proposals_revision_by('ayse', ''));
+	pg_assert_contains('mehmet', pg_content_proposals_revision_by('ayse', 'mehmet'));
+	pg_assert_contains('ayse', pg_content_proposals_revision_by('ayse', 'mehmet'));
+
+	$revisions = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/page_revisions.php');
+	pg_assert_contains("\$by = pg_content_proposals_revision_by(\$by, \$editor_of[(string) \$row['tree_hash']]);", $revisions);
+}
+
+// A9: a change whose node is gone, or whose node a designer changed since,
+// is stale and cannot be applied.
+function test_content_proposals_stale_refused()
+{
+	$stored = _content_proposals_test_tree();
+	$merged = $stored;
+	$merged['children'][0]['props']['text'] = 'Hello';
+	$ops = pg_content_proposals_ops($stored, $merged, array(), array());
+
+	$gone = $stored;
+	array_shift($gone['children']);
+	pg_assert_same('gone', pg_content_proposals_apply_ops($gone, array(), $ops)['error'], 'node gone');
+
+	$changed = $stored;
+	$changed['children'][0]['props']['text'] = 'A designer\'s words';
+	pg_assert_same('changed', pg_content_proposals_apply_ops($changed, array(), $ops)['error'], 'value changed');
+
+	$fields_ops = pg_content_proposals_ops($stored, $stored, array('page_title' => 'Old'), array('page_title' => 'New'));
+	pg_assert_same('changed', pg_content_proposals_apply_ops($stored, array('page_title' => 'Other'), $fields_ops)['error'], 'setting changed');
+
+	$no_ids = array('type' => 'root', 'props' => array(), 'children' => array(array('type' => 'content', 'props' => array('text' => 'a'), 'children' => array())));
+	$tree_ops = array(array('op' => 'tree', 'tree' => $no_ids, 'base_hash' => 'not this page'));
+	pg_assert_same('changed', pg_content_proposals_apply_ops($no_ids, array(), $tree_ops)['error'], 'whole tree, page changed');
+
+	$module = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/content_proposals.php');
+	pg_assert_contains("UPDATE design_proposals SET status = 'stale'", $module, 'marked stale');
+}
+
+// A10: dismiss takes a reason of at most 300 characters; a closed change
+// stays in the list for 30 days.
+function test_content_proposals_dismiss_reason()
+{
+	pg_assert_same('Wrong price', pg_content_proposals_reason("  Wrong \n price "));
+	pg_assert_same('', pg_content_proposals_reason(''));
+	pg_assert_same(str_repeat('ş', 300), pg_content_proposals_reason(str_repeat('ş', 300)), '300 characters, not bytes');
+	pg_assert_same(null, pg_content_proposals_reason(str_repeat('a', 301)), 'over 300 refused');
+
+	$now = 1800000000;
+	pg_assert_true(pg_content_proposals_listed(array('status' => 'pending', 'decided_at' => 0), $now));
+	pg_assert_true(pg_content_proposals_listed(array('status' => 'dismissed', 'decided_at' => $now - 29 * 86400), $now), '29 days');
+	pg_assert_false(pg_content_proposals_listed(array('status' => 'dismissed', 'decided_at' => $now - 31 * 86400), $now), '31 days');
+}
+
+// A11: take back by the person who applied it, refused after a later save.
+function test_content_proposals_take_back()
+{
+	$row = array('status' => 'applied', 'applied_to' => 'page', 'before_tree' => '{}', 'decided_by' => 5, 'after_hash' => 'abc');
+
+	pg_assert_same('', pg_content_proposals_revert_check($row, 5, 'abc'), 'as the apply left it');
+	pg_assert_same('saved', pg_content_proposals_revert_check($row, 5, 'later'), 'saved since');
+	pg_assert_same('other', pg_content_proposals_revert_check($row, 6, 'abc'), 'another designer');
+	pg_assert_same('closed', pg_content_proposals_revert_check(array('status' => 'pending') + $row, 5, 'abc'), 'not applied');
+}
+
+// A7: the list is the module's own screen, for roles 0 and 1 only.
+function test_content_proposals_list_screen()
+{
+	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/content_changes.php');
+
+	pg_assert_contains("validate_area_access(\$user, 'designer');", $screen);
+	pg_assert_contains('validate_token_field();', $screen);
+	pg_assert_false(pg_content_proposals_may_decide(array('role' => 2)), 'a Manager decides nothing');
+	pg_assert_true(pg_content_proposals_may_decide(array('role' => 1)));
+}
+
+// The list's order: waiting first, then stale, then the closed ones of the
+// last 30 days; each newest first.
+function test_content_proposals_list_order()
+{
+	$now = 1800000000;
+	$rows = array(
+		array('id' => 1, 'status' => 'dismissed', 'decided_at' => $now - 86400, 'created_at' => $now - 9000),
+		array('id' => 2, 'status' => 'pending', 'decided_at' => 0, 'created_at' => $now - 5000),
+		array('id' => 3, 'status' => 'stale', 'decided_at' => 0, 'created_at' => $now - 7000),
+		array('id' => 4, 'status' => 'pending', 'decided_at' => 0, 'created_at' => $now - 100),
+		array('id' => 5, 'status' => 'applied', 'decided_at' => $now - 40 * 86400, 'created_at' => $now - 41 * 86400),
+		array('id' => 6, 'status' => 'reverted', 'decided_at' => $now - 60, 'created_at' => $now - 8000),
+	);
+
+	pg_assert_same(array(4, 2, 3, 6, 1), array_map(function ($row) { return $row['id']; }, pg_content_proposals_order($rows, $now)));
+}
+
+// A picture's small image is drawn only for the site's own files.
+function test_content_proposals_local_picture()
+{
+	pg_assert_true(pg_content_proposals_local_picture('/files/team.jpg'));
+	pg_assert_true(pg_content_proposals_local_picture('files/team.jpg'));
+	pg_assert_false(pg_content_proposals_local_picture('https://cdn.example.com/a.jpg'), 'another site');
+	pg_assert_false(pg_content_proposals_local_picture('//cdn.example.com/a.jpg'), 'protocol-relative');
+	pg_assert_false(pg_content_proposals_local_picture('javascript:alert(1)'), 'a scheme');
+	pg_assert_false(pg_content_proposals_local_picture('data:image/png;base64,AAA'), 'data');
+	pg_assert_false(pg_content_proposals_local_picture(''), 'empty');
+}

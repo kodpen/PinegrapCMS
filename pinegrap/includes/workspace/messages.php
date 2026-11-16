@@ -246,6 +246,8 @@ function ws_message_payloads($viewer, $rows, $options = array())
         'mail'       => function_exists('ws_mail_items_map') ? ws_mail_items_map($rows) : array(),
         // The OAuth clients people's messages were written through.
         'via'        => ws_message_via_names($rows),
+        // The cards of the messages' first web addresses (link_preview.php).
+        'link_previews' => function_exists('ws_link_preview_cards_map') ? ws_link_preview_cards_map($ids) : array(),
     );
 
     // The people the reader mentioned in their own messages who are not in
@@ -468,6 +470,12 @@ function ws_message_payload($viewer, $row, $refs, $people, $tasks, $assignees, $
         $payload['one_line'] = $line['one_line'];
         $payload['mentions_me'] = $line['mentions_me'];
     }
+
+    // The card of its first web address, and whether this reader, its
+    // writer, may take it away (link_preview.php); '' and false for none.
+    $payload['link_preview'] = (!$deleted && !$agent) ? (string) ($extra['link_previews'][$id] ?? '') : '';
+    $payload['can_remove_preview'] = !$past && function_exists('ws_link_preview_can_remove')
+        && ws_link_preview_can_remove($viewer, $row, $payload['link_preview'] !== '');
 
     if (!$deleted && ((int) $row['file_id'] > 0)) {
         $extension = strtolower((string) pathinfo((string) $row['file_name'], PATHINFO_EXTENSION));

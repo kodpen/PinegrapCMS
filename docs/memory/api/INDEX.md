@@ -82,7 +82,7 @@
 - api-user-role-rows.md: Which rows an external API owner with the user role (3) reaches: contact groups, customers, campaigns, calendars, forms and submissions, 404 outside, the tests that guard it
 - api-users-read.md: External API GET /users and /users/{id} (users:read, roles 0-1): the users screen row rule, the User object, columns never read, two-step state
 - api-users-write.md: External API POST /users, POST /users/{id}, DELETE and POST /users/{id}/delete (users:write, administrator owners only): the bounds in the handler, the fields, what is never written, events
-- api-visitor-reports.md: The visitor report routes under visitors:read (traffic, top-content, visitors, search, pages, ai-visibility, vitals): what each reads, the window, linked false, how pages meet Google addresses
+- api-visitor-reports.md: The visitor report routes under visitors:read (traffic, top-content, visitors, search, pages, ai-visibility, vitals, page-clicks): what each reads, the window, linked false
 - api-webhook-events.md: Announcing webhook events: pg_announce() from any screen, contact helpers, the event catalogue, no events from bulk imports, Workspace channel events, queue, signature and retries
 - api-webhook-log-address.md: Site Log lines about an event subscription name its address as scheme and host only (pg_ops_alert_mask_url()): API change and secret renewal, panel stop/resume and removal, given-up delivery
 - api-webhook-queue.md: Outgoing webhook queue (includes/api/outbound/webhooks.php): which subscriptions get an event, held rows for a failing subscription, the retry ladder, retry and the atomic claim of a row

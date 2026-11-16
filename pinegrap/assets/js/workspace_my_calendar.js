@@ -587,8 +587,6 @@
             })), plan ? (plan.repeat || '') : '');
 
             var every = part.input('number', String(plan && plan.repeat_every ? plan.repeat_every : 1));
-            every.classList.remove('pg-input');
-            every.classList.add('form-control');
             every.min = '1';
             every.max = '99';
             every.inputMode = 'numeric';
@@ -605,12 +603,13 @@
             // every (the unit beside the number), then Repeat ends with the
             // number of times or the last day.
             var everyRow = part.field(s('repeat_every'), every);
-            var everyGroup = el('div', 'input-group');
-            // The unit beside "Repeat every": days, weeks, months or years.
-            var unitNote = el('span', 'input-group-text');
-            everyGroup.appendChild(every);
-            everyGroup.appendChild(unitNote);
-            everyRow.appendChild(everyGroup);
+            var everyLine = el('div', 'ws-plan-every');
+            // The unit beside "Repeat every" on one line: days, weeks,
+            // months or years.
+            var unitNote = el('span', 'pg-text-meta');
+            everyRow.insertBefore(everyLine, every);
+            everyLine.appendChild(every);
+            everyLine.appendChild(unitNote);
 
             var repeatMore = el('div', 'ws-plan-repeat');
             var endDayRow = part.field(s('repeat_until'), endDay);

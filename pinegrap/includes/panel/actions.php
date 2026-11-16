@@ -322,6 +322,7 @@ function pg_panel_actions()
         'ws_memory_list', 'ws_memory_save', 'ws_memory_delete',
         'ws_channel_agents_list', 'ws_channel_agents_set', 'ws_channel_agents_remove', 'ws_person_card',
         'ws_canvas_undo', 'ws_page_source', 'ws_page_undo', 'ws_page_call', 'ws_page_consent', 'ws_page_tables', 'ws_page_bind', 'ws_page_unbind', 'ws_canvas_binding_undo',
+        'ws_link_preview_remove',
         'ws_search', 'ws_palette', 'ws_channel_board', 'ws_ref_search',
         'ws_record_refs', 'ws_record_fields', 'ws_record_fields_save',
         'ws_record_create',

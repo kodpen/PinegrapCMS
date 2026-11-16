@@ -14,7 +14,7 @@ priority: 6
   - The general job, never the request, reads a new message's first http or https address once. Refused: an address inside the network (the resolved address is the one called, every redirect checked again, few redirects), anything but HTML, a body or a wait over the limits. An hourly cap per site. Texts are cut, kept plain and escaped where drawn.
   - A link to the site's own page takes its card from the site's data with no call. An edited message whose first address changed is read again; a deleted one loses its row.
   - A switch in Workspace Settings, on by default: off, nothing is read and no card is drawn. A demonstration site reads nothing. Pure functions with tests: the first address of a text (not in code, not a record tag), the address check, the cut of the page's fields.
-- LP2 (M) after LP1: the card. Site name, title and a description cut at two lines under the message, the whole card a link in a new tab; it arrives live once read. The writer's "Remove preview" in the message's menu. No picture.
+- LP2 (M) after LP1: the card. Site name, title and a description cut at two lines under the message, the whole card a link in a new tab; it arrives live once read. The writer's "Remove preview" in the message's menu. No picture. Done: #9900.
 - LP3 (S) after LP2: the card's fields on a message read over the API; close-out: `workspace/workspace-link-preview.md`, this plan deleted.
 
 ## What is left out?

@@ -10,6 +10,7 @@ description: Plan content-review, steps CH1 to CH5: the table and its rules, the
   - New: `includes/fn/content_review.php`: ready check, an item's row read and written, the state of a date, the next date after a review, which items count, who may be the person, the sweep. `tests/content_review_test.php`.
   - Tests, red first: the four states at the day's edges in the site's time, the next date with and without an interval, a record of a form that is no collection refused, a person without the right refused.
   - Features: V1 to V6.
+  - Done: #9934 (`platform/content-review-rules.md`; columns confirmed in agent channel message 6410).
 
 - CH2 (M) after CH1: the screen.
   - Existing files: `includes/fn/list_table.php` (one row in `pg_list_table_definitions()`), `includes/fn/output.php` (the entry in `output_menu()` beside the Pages tools), `get_help_url.php` (its row).
@@ -17,12 +18,14 @@ description: Plan content-review, steps CH1 to CH5: the table and its rules, the
   - Reads: `page.seo_score` with `seo_checked_at`, the accessibility findings of `seo_issue` (`platform/accessibility-report.md`), the views through `pg_seo_traffic_join()`, the newest `page_revisions` row.
   - Pictures: the list with every state, each filter, the three dialogs, a user's own view, a phone. To the owner; not marked ready before his look.
   - Features: V7 to V13.
+  - Architect (2026-11-16, agent channel message 6410): "All" and "Not set" page through the items' own tables (`forms` can be large and is never sorted whole); the person and date join from `content_review` by its primary key.
 
 - CH3 (M) after CH2: the task and the flow event.
   - Existing files: `includes/api/outbound/webhooks.php` (the name in `api_webhook_events()`), `job.php` (the announce for the dates that passed), the flow gallery's templates.
   - New: the announce and "Make a task" in the module, through `pg_announce()` and `ws_followup_task_open()`; the event reaches flows as `contact_group.joined` does (`workspace/contact-group-joined-event.md`).
   - Tests: one announce per item and day, none for an item gone or not set, the task's fields, the open task handed back, no button with the Workspace off.
   - Features: V14, V15, V16.
+  - Architect (6410): the announce first claims the row with one UPDATE writing `announced_on = review_on` only where `announced_on` is NULL or differs, and announces only when that write changed a row; a new date (Mark reviewed, a set date) separates them again. Today goes in as `pg_content_review_today()`, never `CURDATE()`.
 
 - CH4 (S) after CH2: the API.
   - Existing files: the API schema (two rows); new: the resource file.

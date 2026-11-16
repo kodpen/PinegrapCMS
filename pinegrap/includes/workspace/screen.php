@@ -150,7 +150,7 @@ function ws_js_strings()
         'emoji_none'             => lang('No emoji matches that.'),
         'reaction_take_back'     => lang('Take back my reaction'),
         'end_date'               => lang('Last day'),
-        'end_time'               => lang('Ends'),
+        'end_time'               => lang('End time'),
         'error_generic'          => lang('Something went wrong. Please try again.'),
         'estimate'               => lang('Estimate'),
         'estimate_help'          => ws_js_template('Left empty, {var:1} is counted.', 1),
@@ -161,7 +161,11 @@ function ws_js_strings()
         'event_customer_hidden'  => lang('A customer you cannot open. It stays as it is.'),
         'event_customer_none'    => lang('No contact found.'),
         'event_title_help'       => lang('Left empty, the kind is used as the title.'),
+        'event_where_company'    => lang('Added to the team plan; it shows on everyone\'s row.'),
+        'event_where_dept'       => lang('Added to the team plan; it shows on the row of everyone in the department you choose.'),
+        'event_where_people'     => lang('Added to the team plan; it shows on the rows of the people you choose.'),
         'file_too_large'         => ws_js_template('The file is larger than {var:1} MB.', 1),
+        'first_day'              => lang('First day'),
         'go_to_message'          => lang('Go to the message'),
         'holiday'                => lang('Holiday'),
         'inbox'                  => lang('Inbox'),
@@ -402,7 +406,7 @@ function ws_js_strings()
         'sound_off_done'         => lang('No sound plays any more when something comes for you.'),
         'start_date'             => lang('Starts'),
         'start_poll'             => lang('Start a poll'),
-        'start_time'             => lang('Starts at'),
+        'start_time'             => lang('Start time'),
         'summary_empty'          => lang('No summary yet. Write down what a newcomer to this channel should know first.'),
         'summary_help'           => lang('The plan, the people to call, the rules. @ and # tags work here too.'),
         'summary_saved'          => lang('The summary was saved.'),
@@ -928,6 +932,8 @@ function ws_screen_config($viewer, $mode, $extra = array())
     $strings = array_merge($strings, ws_approvals_js_strings(), ws_approval_guests_js_strings(), ws_acks_js_strings(), ws_mail_js_strings(), ws_mail_status_js_strings(), ws_mail_send_js_strings(), ws_mail_compose_js_strings(), ws_mail_signature_js_strings(), ws_mail_away_js_strings(), ws_mail_forward_js_strings(), ws_mail_phone_js_strings());
     // Send later's words (mail_later.php).
     $strings = array_merge($strings, ws_mail_later_js_strings());
+    // The link card's "Remove preview" (link_preview.php).
+    $strings = array_merge($strings, ws_link_preview_js_strings());
     // Remind me later's words (mail_remind.php).
     $strings = array_merge($strings, ws_mail_remind_js_strings());
     // Add to my calendar on a mail (personal_plan_mail.php).

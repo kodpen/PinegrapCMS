@@ -16,6 +16,10 @@
 - agent-channel-steps-7.md: Step A22 of plans/agent-channel.md (owner 2026-11-12, #8880): a channel's agents among its members in the head's faces and in Channel info, last seen for people and agents
 - agent-channel-trial.md: Live trial of the agent channel on dev (2026-11-10): what is still to try and what the trial found wrong, fixed or not
 - agent-channel.md: Plan (owner 2026-11-06, wake doors 2026-11-07): the Workspace channel from which the owner runs coordinators and agents: registry with @handles, wake rules and doors, scheduled wakes, queue, memory
+- agent-question-picture-features.md: Features Q1 to Q12 of plan agent-question-picture: the question's own picture, where the box draws it, options' thumbnails beside it, answered and phone states, asking and the API
+- agent-question-picture.md: Plan (owner 2026-11-16, to the architect): a question carries a picture of its own, drawn large beside the options in its box and sent with the question in one call; steps QP1 to QP3
+- agent-work-apart-features.md: Features W1 to W12 of plan agent-work-apart: an agent channel's tasks left out of the general task lists and counts, the toggle, the mark of a task an application created, its filter, the inventory
+- agent-work-apart.md: Plan (owner 2026-11-16, agent channel poll 80): an agent channel's tasks kept apart from the general task lists as its decisions are, a task an application created marked so; steps AW1 to AW4
 - agent-work-features.md: Plan (owner 2026-11-15, agent channel poll 49): an agent's duty text, its progress note, a task handed to a registry agent, Right or Wrong on an agent's answer; steps AF1 to AF5b
 - agents-card-settings.md: Plan (owner 2026-11-15): the Site Settings dialog keeps its place after a save; the agents' settings say what each door is for and are redrawn in the panel's look; AS1 to AS5
 - auto-dialog-popups-census.md: Census PU1 of auto-dialog-popups: who touches auto_dialogs, open_dialog() and jQuery UI, ui-dialog styles, the cookie notice layer and pg:consent, a shared component drawn outside a page
@@ -101,9 +105,6 @@
 - release-bundle-steps.md: Plan release-bundle, steps RB1 to RB8 (RB0, the owner's answer, is done): the tables and rules, the Bundles screen, publish and take back, the time, the preview, its share link, the API, close-out
 - release-bundle.md: Plan (owner 2026-11-16, agent channel message 5667 and poll 63): several pages prepared as drafts, previewed, published and taken back together; steps RB1 to RB8
 - reverse-oauth-leftovers.md: Remaining outside-account connections (Meta, Business Profile, social posting, AI accounts), the connect.pinegrap.com broker and open decisions
-- share-card-features.md: Plan share-card, features S1 to S14: the switch, where a card applies, what it shows, its address and signature, how it is drawn and kept, when the default picture stays, the SEO checks
-- share-card-steps.md: Plan share-card, steps OG1 to OG3: the card and its address, the switch and the page, close-out
-- share-card.md: Plan (owner 2026-11-16, agent channel message 5667): a share image (og:image) drawn from the title, logo and site name for a page or record with none of its own; steps OG1 to OG3
 - storefront-api-acp-ucp.md: Storefront API design note: OpenAI ACP checkout_sessions mapped onto the storefront routes, the UCP manifest after checkout exists, MCP tools under the customer's consent, WAF agent verification
 - storefront-api-agentic-commerce.md: Plan (approved 2026-10-19; design note first, code after 2026.11.0 ships, #3798): public storefront API (cart, checkout, customer auth), base for OpenAI ACP and Google UCP bindings
 - storefront-api-callers.md: Storefront API design note: who calls it (application key + optional cart or customer token), the storefront:* scopes, rate buckets, Idempotency-Key and dry-run rules shared by every route

@@ -797,10 +797,77 @@ if (!defined('PG_SETTINGS_ENTRY')) {
                                         </div>';
         }
 
+        // The share card (includes/fn/share_card.php): a picture of the
+        // page's title drawn where the default picture would stand. Off on
+        // every site until switched on; kept in settings texts.
+        $share_card_part = '';
+        $share_card_drawn = false;
+
+        if (pg_schema_has('config_text')) {
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/share_card.php');
+
+            $share_card_on = pg_share_card_switch(pg_config_text('share_card'));
+            $share_card_colors = pg_share_card_colors();
+            $share_card_can = pg_image_draw_can();
+            $share_card_server = pg_share_card_server_cause($share_card_can);
+            $share_card_drawn = pg_share_card_active($share_card_on, $share_card_can);
+            $share_card_sample = '';
+
+            // The home page's card in the saved colours. Kept under a
+            // language of its own, so it never replaces the title the home
+            // page prints.
+            if ($share_card_drawn) {
+                $share_card_home = db_item("SELECT page_id, page_title FROM page WHERE page_home = 'yes' LIMIT 1");
+                $share_card_home_title = trim((string) ($share_card_home['page_title'] ?? ''));
+                $share_card_sample_href = is_array($share_card_home)
+                    ? pg_share_card_address('page', (int) $share_card_home['page_id'], ($share_card_home_title !== '') ? $share_card_home_title : TITLE, 'sample', (int) $share_card_home['page_id'])
+                    : '';
+
+                // Drawn here when it is not there yet, so the picture is not
+                // asked for while it is being drawn (503).
+                if ($share_card_sample_href !== '') {
+                    parse_str((string) parse_url($share_card_sample_href, PHP_URL_QUERY), $share_card_query);
+
+                    if (pg_share_card_answer(pg_share_card_request($share_card_query))['status'] !== 200) {
+                        $share_card_sample_href = '';
+                    }
+                }
+
+                $share_card_sample = ($share_card_sample_href !== '')
+                    ? '<div class="form-text mb-2">' . lang('Your home page\'s card. It changes with the colours once you save.') . '</div>'
+                        . '<img src="' . h($share_card_sample_href) . '" width="1200" height="630" alt="' . h(lang('Sample share card of the home page')) . '" class="border rounded" style="width: 100%; max-width: 480px; height: auto;" loading="lazy">'
+                    : '<div class="form-text">' . lang('No sample could be drawn: the home page is not open to every visitor, or drawing it failed.') . '</div>';
+            }
+
+            // Only this server's own cause; with none, the note on letters.
+            $share_card_reason = pg_share_card_reason_text(($share_card_server !== '') ? $share_card_server : 'letters');
+
+            $share_card_part = '
+                                        <div class="col-12">
+                                            <div class="form-field">
+                                                <div class="switch"><input value="1"' . ($share_card_on ? ' checked="checked"' : '') . ' class="" type="checkbox" id="share_card" name="share_card"/></div>
+                                                <label class="" for="share_card">' . lang('Share card') . '</label>
+                                                <div class="form-text">' . lang('A page without a share picture of its own shares a picture of its title, the Organization Logo and the site name instead of the Default Share Image.') . '
+                                                    <span class="d-block mt-2' . (($share_card_server !== '') ? ' fg-warning' : '') . '">' . (($share_card_server !== '') ? '<span class="bi bi-exclamation-triangle-fill me-1"></span>' : '') . h($share_card_reason) . '</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="pg-f-xs">
+                                            <label for="share_card_background" class="form-label">' . lang('Card Background') . '</label>
+                                            <input type="color" name="share_card_background" id="share_card_background" class="form-control form-control-color w-100" value="' . h($share_card_colors['background']) . '" />
+                                        </div>
+                                        <div class="pg-f-xs">
+                                            <label for="share_card_color" class="form-label">' . lang('Card Text Color') . '</label>
+                                            <input type="color" name="share_card_color" id="share_card_color" class="form-control form-control-color w-100" value="' . h($share_card_colors['color']) . '" />
+                                        </div>' . (($share_card_sample !== '') ? '
+                                        <div class="col-12">' . $share_card_sample . '</div>' : '');
+        }
+
         // Forms whose record pages have neither a media field nor a share
-        // image field share this picture on every record page.
+        // image field share this picture on every record page; with the
+        // share card drawn they share their card instead.
         $og_default_forms_notice = '';
-        $og_default_forms = pg_record_forms_sharing_default_image();
+        $og_default_forms = $share_card_drawn ? array() : pg_record_forms_sharing_default_image();
 
         if ($og_default_forms) {
             $og_default_forms_notice = '
@@ -812,7 +879,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
                                             <label for="og_default_image" class="form-label">' . lang('Default Share Image') . '</label>
                                             ' . pg_picker_field('public_image', 'og_default_image', $og_default_image, array('title' => $picture_title, 'describedby' => 'og_default_image_help')) . '
                                             <div class="form-text" id="og_default_image_help">' . lang('Used as the social share picture for pages that do not have one of their own.') . '</div>' . $og_default_forms_notice . '
-                                        </div>';
+                                        </div>' . $share_card_part;
 
         // Drawn on General › Organization and written by its save, under the
         // same column check as the share image above.

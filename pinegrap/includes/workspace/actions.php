@@ -490,7 +490,7 @@ function ws_handle_action($action, $request)
     if (function_exists('ws_message_in_past') && ws_eras_ready()) {
         $touched = null;
 
-        if (in_array($action, array('ws_edit', 'ws_canvas_undo', 'ws_page_undo', 'ws_canvas_restore', 'ws_canvas_binding_undo', 'ws_mark', 'ws_react', 'ws_check', 'ws_check_task', 'ws_ack', 'ws_ack_request'), true)
+        if (in_array($action, array('ws_edit', 'ws_canvas_undo', 'ws_page_undo', 'ws_canvas_restore', 'ws_canvas_binding_undo', 'ws_mark', 'ws_react', 'ws_check', 'ws_check_task', 'ws_ack', 'ws_ack_request', 'ws_link_preview_remove'), true)
             || (($action === 'ws_delete') && ((string) ($request['scope'] ?? '') !== 'me'))) {
             $touched = ws_message((int) ($request['message_id'] ?? 0));
         } elseif (in_array($action, array('ws_poll_edit', 'ws_poll_vote', 'ws_poll_close', 'ws_poll_withdraw', 'ws_poll_again'), true)) {
@@ -2422,6 +2422,25 @@ function ws_handle_action($action, $request)
             }
 
             $result = ws_canvas_part_restore($viewer, $message, (string) ($request['part'] ?? ''), (int) ($request['version'] ?? 0));
+
+            if (!$result['ok']) {
+                return ws_action_error($result['error']);
+            }
+
+            $payload = ws_message_payloads($viewer, array(ws_message($message['id'])));
+
+            return ws_action_ok(array('message' => $payload[0]));
+
+        // "Remove preview": the writer takes a message's link card away for
+        // everyone (link_preview.php); the message is sent back.
+        case 'ws_link_preview_remove':
+            $message = ws_message((int) ($request['message_id'] ?? 0));
+
+            if (!$message || !ws_can_read_channel($viewer, ws_channel($message['channel_id']))) {
+                return ws_action_error(lang('That message could not be found.'));
+            }
+
+            $result = ws_link_preview_remove($viewer, $message);
 
             if (!$result['ok']) {
                 return ws_action_error($result['error']);

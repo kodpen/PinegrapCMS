@@ -5979,6 +5979,31 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         $og_image = pg_og_image_from_file_name($pg_og_sw_product_image_name);
     }
 
+    // Where the default picture would stand, the page's share card
+    // (includes/fn/share_card.php) while Social Sharing's switch is on: a
+    // picture of the title as og:title prints it, in the served language.
+    // A custom og:image tag of the design or the page wins, and a host that
+    // cannot draw the card keeps the default.
+    if (($og_image === null) && ($email != TRUE) && pg_schema_has('config_text') && (pg_config_text('share_card') === '1')) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/share_card.php');
+
+        $og_image = pg_share_card_og_image(array(
+            'on'           => pg_share_card_switch(pg_config_text('share_card')),
+            'email'        => false,
+            'custom_image' => pg_share_card_meta_has_image(pg_meta_tags_normalize($style_meta_tags), pg_meta_tags_normalize($page_meta_tags)),
+            'page_id'      => (int) $page_id,
+            'page_type'    => (string) $page_type,
+            'own'          => ($canonical_url === URL_SCHEME . HOSTNAME_SETTING . (($page_home == 'yes') ? PATH : PATH . encode_url_path($page_name))),
+            'status'       => function_exists('http_response_code') ? (int) (http_response_code() ?: 200) : 200,
+            'record'       => (int) ($pg_blog_form_id ?? 0),
+            'product'      => ((($og_item['type'] ?? '') == 'product') ? (int) ($og_item['id'] ?? 0) : 0)
+                + ((is_array($pg_sw_item) && ($pg_sw_item['type'] === 'product')) ? (int) ($pg_sw_item['id'] ?? 0) : 0),
+            'item'         => is_array($pg_sw_item) || ($page_type == 'catalog') || ($page_type == 'catalog detail')
+                || (isset($pg_sw_url_filter_title['title']) && ($pg_sw_url_filter_title['title'] !== ''))
+                || (function_exists('pg_sw_item_missing') && pg_sw_item_missing()),
+        ), $page_title, defined('FRONTEND_LANGUAGE') ? (string) FRONTEND_LANGUAGE : '', (int) $page_id);
+    }
+
     if ($og_image === null) {
         $og_image = pg_og_default_image();
     }
@@ -6034,6 +6059,10 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
             if (((int) ($og_image['width'] ?? 0) > 0) && ((int) ($og_image['height'] ?? 0) > 0)) {
                 $open_graph .= '        <meta property="og:image:width" content="' . (int) $og_image['width'] . '">' . "\n" .
                     '        <meta property="og:image:height" content="' . (int) $og_image['height'] . '">' . "\n";
+            }
+
+            if (!empty($og_image['type'])) {
+                $open_graph .= '        <meta property="og:image:type" content="' . h($og_image['type']) . '">' . "\n";
             }
 
             $og_image_alt = trim((string) ($og_image['alt'] ?? ''));
