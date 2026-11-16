@@ -2493,6 +2493,52 @@ function ws_handle_action($action, $request)
 
             return ws_action_ok(array('message' => $payload[0]));
 
+        // A reader's highlight on a message (highlights.php): made, its
+        // scope changed, its note written, removed. Nobody is told; the
+        // message comes back drawn with it.
+        case 'ws_highlight_set':
+            $message = ws_message((int) ($request['message_id'] ?? 0));
+
+            if (!$message || !ws_can_read_channel($viewer, ws_channel($message['channel_id']))) {
+                return ws_action_error(lang('That message could not be found.'));
+            }
+
+            $result = ws_highlight_set($viewer, $message, (string) ($request['quote'] ?? ''), (int) ($request['occurrence'] ?? 0),
+                (string) ($request['scope'] ?? ''), isset($request['note']) ? (string) $request['note'] : null);
+
+            if (!$result['ok']) {
+                return ws_action_error($result['error'], $result['field']);
+            }
+
+            $payload = ws_message_payloads($viewer, array(ws_message($message['id'])));
+
+            return ws_action_ok(array('id' => $result['id'], 'message' => $payload[0]));
+
+        case 'ws_highlight_note':
+        case 'ws_highlight_remove':
+            $result = ($action === 'ws_highlight_note')
+                ? ws_highlight_note($viewer, (int) ($request['id'] ?? 0), (string) ($request['note'] ?? ''))
+                : ws_highlight_remove($viewer, (int) ($request['id'] ?? 0));
+
+            if (!$result['ok']) {
+                return ws_action_error($result['error']);
+            }
+
+            $payload = ws_message_payloads($viewer, array(ws_message($result['message_id'])));
+
+            return ws_action_ok(array('message' => $payload[0] ?? null));
+
+        // My highlights: the person's own, a page at a time, and removing
+        // many at once (the ids ticked, or every one of a filter).
+        case 'ws_highlights_mine':
+            return ws_action_ok(ws_highlights_mine($viewer, (string) ($request['filter'] ?? ''), (int) ($request['after'] ?? 0)));
+
+        case 'ws_highlights_remove':
+            $ids = is_array($request['ids'] ?? null) ? $request['ids'] : explode(',', (string) ($request['ids'] ?? ''));
+            $result = ws_highlights_remove_many($viewer, $ids, isset($request['every']) ? (string) $request['every'] : null);
+
+            return $result['ok'] ? ws_action_ok(array('removed' => $result['removed'], 'kept' => $result['kept'])) : ws_action_error($result['error']);
+
         case 'ws_check':
             $message = ws_message((int) ($request['message_id'] ?? 0));
 
