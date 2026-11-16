@@ -1,12 +1,13 @@
 ---
 name: api-visitor-reports
-description: The visitor report routes under visitors:read (traffic, top-content, visitors, search, pages, ai-visibility, vitals): what each reads, the window, linked false, how pages meet Google addresses
+description: The visitor report routes under visitors:read (traffic, top-content, visitors, search, pages, ai-visibility, vitals, page-clicks): what each reads, the window, linked false
 ---
 
 ## Which routes are there?
 - All `GET`, scope `visitors:read`, handlers in `includes/api/resources/visitors.php`, window from `api_visitors_window($params, 400)` (from/to as datetimes, the last thirty days by default, at most 400 days).
 - `reports/traffic` (hourly rollup), `reports/top-content` (content rollup), `reports/visitors` (`pg_visitor_breakdown()`, `by=channel` included), `reports/ai-visibility`, `reports/vitals`.
 - `reports/search` (`SearchReport`): totals, every day, top `queries` and `pages` (`limit`, default 25) from `seo_search_daily` through `pg_gsc_totals()`, `pg_gsc_daily()`, `pg_gsc_top()`. `latest_day` is the last day Google has figures for; the asked window is answered as asked, later days are zeros.
+- `reports/page-clicks` (`PageClicksReport`, `includes/api/resources/page_clicks.php`, CM3 #9913): the figures of the Clicks and scrolling section through `includes/fn/page_clicks.php`. Without `page_id`, `pages` (views, `half_tenth`, `top` element) up to `limit` (default 50, at most 200); with it, `page` (`reach` per tenth 0-10, `elements`, `other`) and 404 for no such page; `device` filters. Labels and addresses are visitors' text. 503 before the update.
 - `reports/pages` (`PagesReport`): `pg_visitor_pages()` (`includes/fn/visitor_pages.php`, the Visitors overview's pages section), sorted by `clicks`, `visits` or `score`, `limit` default 50, `total` before the limit, `summary_days`/`summary_to` of the visit figures.
 
 ## What does linked false mean?

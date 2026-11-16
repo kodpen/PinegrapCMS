@@ -15,6 +15,7 @@ description: The existing files that steps of more than one website-side plan to
 - `get_page_content.php`: LS1 and VP3 (a script for a mark in the markup), OG2 (the share image).
 - `includes/settings/features.php` and `features.save.php` (a Features card): CM2, VP3, PA2.
 - The API schema (`includes/api/schema.php`): RW4, CM3, CH4, RB7; PN2 for the link routes' "Allow comments".
+- A report route's object names (`api_openapi_objects()` in `includes/api/openapi.php`) and a new resource file's `require_once` (`includes/api/bootstrap.php`): CM3 (#9913); CH4 and RB7 when theirs are new objects or files.
 - `includes/panel/designer.php` (the designer's panel actions): PN3, CM4, PA3.
 - `prototype.php` and `includes/fn/prototype.php`: PN2, RB5. The Prototype view's own plan touches them too (`plans/prototype-canvas.md`); a coordinator checks that plan's open step first.
 - `includes/fn/custom_form.php`: RW1, RW5.
