@@ -87,13 +87,45 @@ function ws_open_items_short($text)
 }
 
 /**
+ * Whose answer an item waits for, for the caller. Pure.
+ *
+ * The person (null) keeps the marks the list was built with. An application
+ * reading for itself (its agent's request value, 'claude', or '' for one with
+ * no agent) answers no poll, question or check-in in the person's name: only
+ * an approval request that asked its own agent and still waits for that
+ * agent's answer is its own.
+ *
+ * @param array[]     $items  with agent_pending on approvals
+ * @param string|null $caller
+ * @return array[] kind, message_id, text, mine
+ */
+function ws_open_items_for_caller($items, $caller)
+{
+    $out = array();
+
+    foreach ((array) $items as $item) {
+        if ($caller !== null) {
+            $item['mine'] = ((string) $caller !== '') && (($item['kind'] ?? '') === 'approval') && !empty($item['agent_pending']);
+        }
+
+        unset($item['agent_pending']);
+        $out[] = $item;
+    }
+
+    return $out;
+}
+
+/**
  * The channel's open items this reader may see, in the line's order.
  *
- * @param array $viewer
- * @param array $channel
+ * @param array       $viewer
+ * @param array       $channel
+ * @param string|null $caller null: the person's own marks; otherwise the
+ *                            application reading for itself, as
+ *                            ws_open_items_for_caller() takes it
  * @return array[] kind (poll, question, checkin, approval), message_id, text, mine
  */
-function ws_channel_open_items($viewer, $channel)
+function ws_channel_open_items($viewer, $channel, $caller = null)
 {
     $me = (int) ($viewer['id'] ?? 0);
 
@@ -142,9 +174,12 @@ function ws_channel_open_items($viewer, $channel)
 
     // Approval requests still waiting.
     if (ws_approvals_ready()) {
-        $rows = (array) db_items("SELECT a.id, a.message_id, a.title, p.decision FROM ws_approvals a
+        // The calling application's own agent, when it was asked too.
+        $agent_join = ((string) $caller !== '') && function_exists('ws_approval_agents_ready') && ws_approval_agents_ready();
+        $rows = (array) db_items("SELECT a.id, a.message_id, a.title, p.decision" . ($agent_join ? ', aa.decision AS agent_decision' : '') . " FROM ws_approvals a
             INNER JOIN ws_messages m ON m.id = a.message_id AND m.deleted_at = 0
-            LEFT JOIN ws_approval_people p ON p.approval_id = a.id AND p.user_id = '" . $me . "'
+            LEFT JOIN ws_approval_people p ON p.approval_id = a.id AND p.user_id = '" . $me . "'"
+            . ($agent_join ? " LEFT JOIN ws_approval_agents aa ON aa.approval_id = a.id AND aa.agent = '" . e((string) $caller) . "'" : '') . "
             WHERE a.channel_id = '" . $channel_id . "' AND a.closed_at = 0
                 AND (a.closes_at = 0 OR a.closes_at > '" . $now . "')
                 AND a.message_id > '" . (int) $floor . "'
@@ -156,6 +191,7 @@ function ws_channel_open_items($viewer, $channel)
                 'message_id' => (int) $row['message_id'],
                 'text'       => ws_open_items_short($row['title']),
                 'mine'       => $can_post && ((string) ($row['decision'] ?? '') === 'pending'),
+                'agent_pending' => ((string) ($row['agent_decision'] ?? '') === 'pending'),
             );
         }
     }
@@ -192,7 +228,7 @@ function ws_channel_open_items($viewer, $channel)
         });
     }
 
-    return ws_open_items_order($items);
+    return ws_open_items_order(ws_open_items_for_caller($items, $caller));
 }
 
 /**

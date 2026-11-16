@@ -283,10 +283,13 @@ function ws_openapi_objects()
         'WorkspaceMessageFile'      => 'ws_api_message_file_schema',
         'WorkspaceMessageVoice'     => 'ws_api_message_voice_schema',
         'WorkspaceMessageCanvas'    => 'ws_api_message_canvas_schema',
+        'WorkspaceCanvasTableChoice' => 'ws_api_canvas_table_choice_schema',
         'WorkspaceMessageThread'    => 'ws_api_message_thread_schema',
         'WorkspaceMessageNoteCard'  => 'ws_api_message_note_card_schema',
         'WorkspaceMessageNoteGroupCard' => 'ws_api_message_note_group_card_schema',
         'WorkspaceMessageCheck'     => 'ws_api_message_check_schema',
+        'WorkspaceCheckin'          => 'ws_api_checkin_schema',
+        'WorkspaceCheckinAnswer'    => 'ws_api_checkin_answer_schema',
         'WorkspaceMessageReaders'   => 'ws_api_message_readers_schema',
         'WorkspaceMessageReaderAgent'  => 'ws_api_message_reader_agent_schema',
         'WorkspaceMessageReadReceipts' => 'ws_api_message_read_receipts_schema',
@@ -321,6 +324,7 @@ function ws_openapi_objects()
         'WorkspaceTableColumn'      => 'ws_api_wtable_column_schema',
         'WorkspaceTableRow'         => 'ws_api_wtable_row_schema',
         'WorkspaceTableBinRow'      => 'ws_api_wtable_bin_row_schema',
+        'WorkspaceBlock'            => 'ws_api_block_schema',
         'WorkspaceDeletedTable'     => 'ws_api_wtable_deleted_schema',
         'WorkspaceTableShare'       => 'ws_api_wtable_share_schema',
         'WorkspaceTableImport'      => 'ws_api_wtable_import_schema',
@@ -482,6 +486,55 @@ function ws_api_routes()
                 array('name' => 'claude', 'in' => 'body', 'type' => 'bool', 'description' => 'Whether Claude may be asked in the channel.'),
                 array('name' => 'ai', 'in' => 'body', 'type' => 'bool', 'description' => 'Whether Pinegrap AI may be asked in the channel.'),
                 array('name' => 'voice', 'in' => 'body', 'type' => 'bool', 'description' => 'Whether the channel\'s voice messages are transcribed.'),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.channels.customer_followup',
+            'method'      => 'POST',
+            'path'        => '/workspace/channels/{id}/customer/followup',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_channel_customer_followup',
+            'dry_run' => true,
+            'returns'     => 'WorkspaceTask',
+            'status'      => 201,
+            'summary'     => 'Remind me about this customer',
+            'description' => 'The customer card\'s Remind me button: a follow-up task for the owner of the application, on the channel, tagged with the record the channel is about, due on the day sent (at the time sent, or the day\'s reminder time) and reminded then. For anybody who may write in the channel (403 otherwise); a channel about no customer is refused with 422. Left empty, the title names the channel, never the customer. The answer is the task.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'due_date', 'in' => 'body', 'type' => 'string', 'max_length' => 10, 'required' => true, 'description' => 'YYYY-MM-DD, the day to be reminded.'),
+                array('name' => 'due_time', 'in' => 'body', 'type' => 'string', 'max_length' => 5, 'description' => 'HH:MM; left out, the day\'s reminder time.'),
+                array('name' => 'title', 'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'The task\'s title; empty names the channel.'),
+            ),
+        ),
+
+        // Titled blocks (blocks.php): the tables, checklists, code and
+        // calculations with a title in the channels and notes the owner reads.
+        array(
+            'id'          => 'workspace.blocks.list',
+            'method'      => 'GET',
+            'path'        => '/workspace/blocks',
+            'scope'       => 'workspace:read',
+            'handler'     => 'ws_api_blocks_list',
+            'returns'     => array('list' => 'WorkspaceBlock'),
+            'summary'     => 'Find titled blocks',
+            'description' => 'The titled blocks (a table, checklist, code or calculation written with a title) whose title holds q, newest first, from the messages and notes the owner of the application reads, as the writing box\'s From elsewhere list finds them: at most 20. where names the channel or note, author and time how the panel shows them. Read one with GET /workspace/blocks/{id}.',
+            'params'      => array(
+                array('name' => 'q', 'in' => 'query', 'type' => 'string', 'max_length' => 100, 'description' => 'Words of the title; empty lists the newest.'),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.blocks.get',
+            'method'      => 'GET',
+            'path'        => '/workspace/blocks/{id}',
+            'scope'       => 'workspace:read',
+            'handler'     => 'ws_api_blocks_get',
+            'returns'     => array('id' => 'integer', 'kind' => 'string', 'markup' => 'string', 'from' => 'string'),
+            'summary'     => 'Read a titled block',
+            'description' => 'One titled block as the writing box pulls it in as a copy: kind (table, checklist or code; a calculation reads as code), its markup as written now, and from, the line that says where it came from. 404 for a block in a place the owner does not read, or whose text no longer holds it.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
             ),
         ),
 
@@ -661,10 +714,10 @@ function ws_api_routes()
             'returns'     => 'WorkspaceMessage',
             'status'      => 201,
             'summary'     => 'Write in a channel',
-            'description' => 'Writes a message into a channel the owner may post in. Written with an application key or through an OAuth connection, readers see it as written by the application. Written by a person signed in on their own device (POST /auth/login), it is theirs, as if written in the panel: it carries their name, counts against their limit of twenty messages a minute (422 beyond it), joins them to a public channel they were not in and marks the channel read for them; a message (kind message) of theirs that names @Claude, @ai or an MCP server\'s alias asks that assistant, with the same rules as the panel (a channel where it may not be asked gets a line saying why). Claude is started at once; Pinegrap AI and an MCP server\'s own agent are carried on right after the answer where the server can send the answer first, otherwise by the app\'s next GET /workspace/sync with the channel open, the screens that have it open and the hourly job. Follow the request with GET /workspace/assistant-requests. Tags are written as tokens - <@user:12> mentions a person (they are told), <@app:7> an application (its subscriptions to workspace.app.mentioned hear it), <#order:1045> points at an order. kind decision or note keeps the message on the channel\'s Decisions tab. id may also be a discussion\'s the owner is in: a decision, a note or a task card written there is copied into its channel as well. ack true asks the channel\'s members to say they read it; the writer of a message or staff may ask, so for a message written as the application only an owner who is staff may, and anybody else is refused with 403 before anything is written. A dry run makes every check, the person\'s limit included, and its detail.joins says whether the message would join the person to the channel. parent_id makes the message an answer to a message, as Reply does in the panel: the message must be one of this channel or discussion, not deleted and not in an earlier version of the conversation, or the call is refused with 422 on parent_id; a dry run checks it the same way and its detail gives parent_id. Send an Idempotency-Key so a retried call does not post twice.',
+            'description' => 'Writes a message into a channel the owner may post in. Written with an application key or through an OAuth connection, readers see it as written by the application. Written by a person signed in on their own device (POST /auth/login), it is theirs, as if written in the panel: it carries their name, counts against their limit of twenty messages a minute (422 beyond it), joins them to a public channel they were not in and marks the channel read for them; a message (kind message) of theirs that names @Claude, @ai or an MCP server\'s alias asks that assistant, with the same rules as the panel (a channel where it may not be asked gets a line saying why). Claude is started at once; Pinegrap AI and an MCP server\'s own agent are carried on right after the answer where the server can send the answer first, otherwise by the app\'s next GET /workspace/sync with the channel open, the screens that have it open and the hourly job. Follow the request with GET /workspace/assistant-requests. Tags are written as tokens - <@user:12> mentions a person (they are told), <@app:7> an application (its subscriptions to workspace.app.mentioned hear it), <#order:1045> points at an order, <#message:5120> at another message as a reference (not an answer: nobody is told, no discussion opens). kind decision or note keeps the message on the channel\'s Decisions tab. id may also be a discussion\'s the owner is in: a decision, a note or a task card written there is copied into its channel as well. ack true asks the channel\'s members to say they read it; the writer of a message or staff may ask, so for a message written as the application only an owner who is staff may, and anybody else is refused with 403 before anything is written. A dry run makes every check, the person\'s limit included, and its detail.joins says whether the message would join the person to the channel. parent_id makes the message an answer to a message, as Reply does in the panel: the message must be one of this channel or discussion, not deleted and not in an earlier version of the conversation, or the call is refused with 422 on parent_id; a dry run checks it the same way and its detail gives parent_id. Send an Idempotency-Key so a retried call does not post twice.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
-                array('name' => 'text', 'in' => 'body', 'type' => 'string', 'max_length' => 4000, 'required' => true),
+                array('name' => 'text', 'in' => 'body', 'type' => 'string', 'max_length' => 4000, 'required' => true, 'description' => 'Tags are written as tokens. <#message:N> points at message N of any channel: a reader of that channel reads it in text as the message\'s number, who wrote it, where and its first words; anybody else as its number and "You cannot see this message."; a deleted one as deleted.'),
                 array('name' => 'kind', 'in' => 'body', 'type' => 'enum', 'values' => array('message', 'note', 'decision')),
                 array('name' => 'ack', 'in' => 'body', 'type' => 'bool', 'description' => 'Ask for read receipts on the message once it is written.'),
                 array('name' => 'parent_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The message this one answers (GET /workspace/channels/{id}/messages), in the same channel or discussion. Left out, the message is one of its own.'),
@@ -1264,6 +1317,58 @@ function ws_api_routes()
         ),
 
         array(
+            'id'          => 'workspace.channels.status',
+            'method'      => 'POST',
+            'path'        => '/workspace/channels/{id}/status',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_channel_status_post',
+            'dry_run'     => true,
+            'returns'     => 'WorkspaceMessage',
+            'status'      => 201,
+            'summary'     => 'Post a status update in a channel',
+            'description' => 'Says how the channel\'s work stands, as Status update in the channel menu does: a message headed Status: On track, At risk or Off track, with text below it, and the state the channel\'s header shows until the next update. A channel only - a discussion is refused with 422 - that the owner may post in (403 otherwise). Who it is written as follows POST /workspace/channels/{id}/messages: the application with an application key or an OAuth connection, the person from a team devices session (POST /auth/login), with their limit of twenty messages a minute. A dry run makes every check. The answer is the message.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'health', 'in' => 'body', 'type' => 'enum', 'values' => array('on_track', 'at_risk', 'off_track'), 'required' => true, 'description' => 'How the work stands.'),
+                array('name' => 'text', 'in' => 'body', 'type' => 'string', 'max_length' => 3800, 'description' => 'What has happened, what comes next. Tags are written as tokens, as when writing.'),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.checkins.start',
+            'method'      => 'POST',
+            'path'        => '/workspace/channels/{id}/checkins',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_channel_checkins_start',
+            'dry_run'     => true,
+            'returns'     => 'WorkspaceCheckin',
+            'status'      => 201,
+            'summary'     => 'Ask the channel a check-in question',
+            'description' => 'Asks the channel\'s people a question, as Check-in in the channel menu does: a message headed Check-in with a card under it where each member answers, and the names of those still to answer. Left out, the question is the panel\'s own (what was finished, what comes next, what is in the way). A channel only - a discussion is refused with 422 - that the owner may post in (403 otherwise); who it is asked as follows POST /workspace/channels/{id}/messages. Answers are given with POST /workspace/checkins/{id}/answer. A dry run makes every check and its detail gives the question. The answer is the check-in.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'question', 'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'One line; the panel\'s question when left out.'),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.checkins.answer',
+            'method'      => 'POST',
+            'path'        => '/workspace/checkins/{id}/answer',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_checkins_answer',
+            'dry_run'     => true,
+            'mcp'         => false,
+            'returns'     => 'WorkspaceCheckin',
+            'summary'     => 'Answer a check-in',
+            'description' => 'Keeps the person\'s answer to a check-in, as the card under its message does: it replaces their earlier answer, and an empty text takes it back. id is the check-in\'s (id of POST /workspace/channels/{id}/checkins). Only a device session may - a team devices session (a Bearer token from POST /auth/login) or an OAuth connection: an application key is refused with 403 forbidden, since an answer is the person\'s own. A check-in of a channel the person cannot read, or deleted, is answered with 404; one they may only read with 403; one of an earlier version of the conversation with 422. A dry run makes every check and its detail.changes says whether the answer would change. The answer is the check-in with its answers.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'text', 'in' => 'body', 'type' => 'string', 'max_length' => 2000, 'description' => 'The answer; empty takes it back.'),
+            ),
+        ),
+
+        array(
             'id'          => 'workspace.messages.react',
             'method'      => 'POST',
             'path'        => '/workspace/messages/{id}/reactions',
@@ -1352,7 +1457,7 @@ function ws_api_routes()
             'mcp'         => false,
             'returns'     => 'WorkspaceMessage',
             'summary'     => 'Vote in a poll',
-            'description' => 'Casts the person\'s vote in a poll, the way the poll in a channel does: id is poll.id of the message that asks it, and option_ids are ids from its poll.options. The options sent replace the ones the person chose before, and an empty list takes the vote back. A poll that is not multiple takes one option (422 otherwise). A closed poll, a poll whose closes_at has passed and a poll of an earlier version of the conversation are refused with 422; somebody who may only read the channel with 403. The answer is the message with its poll counted again. Only a device session may - a team devices session (a Bearer token from POST /auth/login) or an OAuth connection: an application key is refused with 403 forbidden, since a vote is the person\'s own answer.',
+            'description' => 'Casts the person\'s vote in a poll, the way the poll in a channel does: id is poll.id of the message that asks it, and option_ids are ids from its poll.options. The options sent replace the ones the person chose before, and an empty list takes the vote back. A poll that is not multiple takes one option (422 otherwise). A closed poll, a poll whose closes_at has passed and a poll of an earlier version of the conversation are refused with 422; somebody who may only read the channel with 403. The answer is the message with its poll counted again. Only a device session may - a team devices session (a Bearer token from POST /auth/login) or an OAuth connection: an application key is refused with 403 forbidden, since a vote is the person\'s own answer. An agent question is answered from the team devices session only: an OAuth connection is refused with 403 there, whichever application asked it.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'option_ids', 'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 50, 'required' => true, 'description' => 'Ids from poll.options of the message. An empty list takes the vote back.'),
@@ -1508,7 +1613,7 @@ function ws_api_routes()
             'dry_run'     => true,
             'returns'     => 'WorkspaceApproval',
             'summary'     => 'Approve or reject a request',
-            'description' => 'The answer of the person signed in, who has to be one of the people asked and may answer once, from a device session - a team devices session (a Bearer token from POST /auth/login) or an OAuth connection. An application agent asked answers the same way with its own application key, and Claude\'s routine with Claude\'s, once, and never a request its own application wrote; it is refused with 422 when it was not asked, has answered, or is no longer active and allowed in the channel. Any other application key is refused with 403 forbidden - an integration does not approve in its owner\'s name. A request that is closed, or whose deadline passed, is refused with 422. When the request\'s answer is text or number (GET /workspace/channels/{id}/approvals), an approval has to carry that answer in note - for number a figure or a sum such as 27, 27,5 or 25 + 2 - and is refused with 422 at decision without it; a rejection\'s note stays free. A dry run\'s detail.outcome says what the request would be after the answer: open, approved or rejected.',
+            'description' => 'The answer of the person signed in, who has to be one of the people asked and may answer once, from a device session - a team devices session (a Bearer token from POST /auth/login) or an OAuth connection. A request an application made is answered from the team devices session only: an OAuth connection is refused with 403 there, whichever application made it. An application agent asked answers the same way with its own application key, and Claude\'s routine with Claude\'s, once, and never a request its own application wrote; it is refused with 422 when it was not asked, has answered, or is no longer active and allowed in the channel. Any other application key is refused with 403 forbidden - an integration does not approve in its owner\'s name. A request that is closed, or whose deadline passed, is refused with 422. When the request\'s answer is text or number (GET /workspace/channels/{id}/approvals), an approval has to carry that answer in note - for number a figure or a sum such as 27, 27,5 or 25 + 2 - and is refused with 422 at decision without it; a rejection\'s note stays free. A dry run\'s detail.outcome says what the request would be after the answer: open, approved or rejected.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'decision', 'in' => 'body', 'type' => 'enum', 'values' => array('approve', 'reject'), 'required' => true),

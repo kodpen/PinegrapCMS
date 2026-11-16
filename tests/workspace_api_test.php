@@ -444,6 +444,42 @@ function test_ws_api_proposals_are_decided_by_the_person()
 	}
 }
 
+// An agent question and an approval request an application made are answered
+// from the person's own team devices session only: an OAuth connection passes
+// ws_api_person_only() as the person who approved it, and is no more the
+// person than the application that asked. Checked before the rehearsal stops.
+function test_ws_api_application_questions_are_answered_by_the_person()
+{
+	$cases = array(
+		'ws_api_polls_vote'       => array('ws_api_poll_or_404(', 'ws_agent_question_is('),
+		'ws_api_approvals_decide' => array('ws_api_approval_or_404(', 'ws_message_app_id('),
+	);
+
+	foreach ($cases as $handler => $marks) {
+		$source = preg_replace('~^\s*//.*$~m', '', ws_api_test_handler_source($handler));
+		$found = strpos($source, 'ws_api_own_words_only(');
+
+		pg_assert_true($found !== false, $handler . ' needs the team devices session');
+		pg_assert_true(($found !== false) && ($found > strpos($source, $marks[0])) && ($found < strpos($source, 'api_dry_run_stop(', strpos($source, 'ws_api_person_only('))), $handler . ': after the row is found, before the rehearsal stops');
+		pg_assert_true(($found !== false) && ($found > strpos($source, $marks[1])), $handler . ': only what an application asked');
+		pg_assert_contains('ws_api_person_only(', $source, $handler . ' still refuses an application key');
+	}
+
+	pg_assert_true(ws_agent_question_is(array('agent_question' => 1)), 'an agent question');
+	pg_assert_false(ws_agent_question_is(array('agent_question' => 0)), 'a person\'s poll keeps its gate');
+
+	$routes = array();
+
+	foreach (ws_api_routes() as $route) {
+		$routes[$route['id']] = $route;
+	}
+
+	foreach (array('workspace.polls.vote', 'workspace.approvals.decide') as $id) {
+		pg_assert_contains('team devices session only', $routes[$id]['description'], $id . ' says who answers what an application asked');
+		pg_assert_false($routes[$id]['mcp'], $id . ' is no MCP tool');
+	}
+}
+
 // An OAuth connection is a device row too, so a refusal of the team devices
 // gate says which session it wants and that a connection is refused as well,
 // not "signed in on a device".

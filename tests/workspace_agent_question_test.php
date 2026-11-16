@@ -232,3 +232,24 @@ function test_upgrade_ws_poll_agent_question()
 	pg_assert_same(1, substr_count($source, 'install_add_column('), 'no other column');
 	pg_assert_contains('upgrade_2026_11_0_ws_poll_agent_question();  // 11.0.214', $file);
 }
+
+// An answer to Claude's or Pinegrap AI's own question is not a new request
+// of the person who answers, so their per-person limit does not apply.
+function test_ws_assistant_per_person_limit_applies()
+{
+	pg_assert_true(ws_assistant_per_person_limit_applies(false), 'a request of the person');
+	pg_assert_false(ws_assistant_per_person_limit_applies(true), 'an answer to the assistant\'s question');
+}
+
+// The wake passes the answer flag to both assistants and says so in the
+// channel when the assistant still cannot be told.
+function test_ws_agent_question_wake_answers_assistants()
+{
+	$source = ws_agent_question_test_source('ws_agent_question_wake');
+
+	pg_assert_contains('ws_ai_after_send($viewer, $channel, (int) $poll[\'message_id\'], $body, true, true)', $source);
+	pg_assert_contains('ws_claude_after_send($viewer, $channel, (int) $poll[\'message_id\'], $body, true, true)', $source);
+	pg_assert_contains('ws_message_system(', $source);
+	pg_assert_contains('ws_assistant_per_person_limit_applies($answer)', ws_agent_question_test_source('ws_claude_after_send'));
+	pg_assert_contains('ws_assistant_per_person_limit_applies($answer)', ws_agent_question_test_source('ws_ai_after_send'));
+}

@@ -94,6 +94,9 @@ function test_workspace_canvas_one_routes_are_declared()
 		'workspace.canvases.tables.unbind_post'  => array('POST', '/workspace/canvases/{id}/tables/{table_id}/delete', 'workspace:write'),
 		'workspace.canvases.page.put'            => array('POST', '/workspace/canvases/{id}/page', 'workspace:write'),
 		'workspace.canvases.drawing.put'         => array('POST', '/workspace/canvases/{id}/drawing', 'workspace:write'),
+		'workspace.canvases.versions.restore'    => array('POST', '/workspace/canvases/{id}/versions/{n}/restore', 'workspace:write'),
+		'workspace.canvases.undo'                => array('POST', '/workspace/canvases/{id}/undo', 'workspace:write'),
+		'workspace.canvases.table_choices'       => array('GET', '/workspace/canvases/{id}/table-choices', 'workspace:read'),
 	);
 
 	pg_assert_same(array_keys($expected), array_keys($rows), 'the rows the step declares');
@@ -113,7 +116,7 @@ function test_workspace_canvas_one_routes_are_declared()
 	}
 
 	foreach ($rows as $id => $route) {
-		if ($id !== 'workspace.canvases.get') {
+		if ($route['method'] !== 'GET') {
 			pg_assert_true(!empty($route['dry_run']), $id . ' rehearses its write');
 		}
 	}
@@ -135,7 +138,9 @@ function test_workspace_canvas_one_tool_names()
 		'workspace_canvases_tables_unbind',
 		'workspace_canvases_page_put',
 		'workspace_canvases_drawing_put',
-	), $names, 'the tools of the canvas, the POST twin of the delete left out');
+		'workspace_canvases_versions_restore',
+		'workspace_canvases_table_choices',
+	), $names, 'the tools of the canvas, the POST twin of the delete and the person\'s undo left out');
 }
 
 function test_workspace_canvas_one_params_come_from_the_parts()

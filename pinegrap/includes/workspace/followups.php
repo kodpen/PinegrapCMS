@@ -175,9 +175,11 @@ function ws_followup_task_find($ref, $channel_id, $user_ids)
  * @param bool  $once   hand back an open follow-up of the first record in the
  *                      same place (ws_followup_task_find()) rather than open a
  *                      second one: for jobs that run again
+ * @param bool  $dry    make every check of ws_task_create() and open nothing
+ *                      (the API's dry run): task_id is then 0
  * @return array ok, error, field, task_id, existing (an open one handed back)
  */
-function ws_followup_task_open($viewer, $input, $once = false)
+function ws_followup_task_open($viewer, $input, $once = false, $dry = false)
 {
     $fail = function ($error, $field) {
         return array('ok' => false, 'error' => $error, 'field' => $field, 'task_id' => 0, 'existing' => false);
@@ -211,6 +213,13 @@ function ws_followup_task_open($viewer, $input, $once = false)
         }
     }
 
+    if ($dry) {
+        $checked = ws_task_create_check($viewer, $data);
+
+        return $checked['ok'] ? array('ok' => true, 'error' => '', 'field' => '', 'task_id' => 0, 'existing' => false)
+            : $fail($checked['error'], $checked['field']);
+    }
+
     $made = ws_task_create($viewer, $data);
 
     if (!$made['ok']) {
@@ -231,9 +240,11 @@ function ws_followup_task_open($viewer, $input, $once = false)
  * @param array $viewer
  * @param array $channel a ws_channels row the person may post in
  * @param array $request title, due_date, due_time
+ * @param bool  $dry     make every check and open nothing (the API's dry run):
+ *                       task is then null
  * @return array ok, error, field, task (id, number, due_label) once opened
  */
-function ws_customer_followup_open($viewer, $channel, $request)
+function ws_customer_followup_open($viewer, $channel, $request, $dry = false)
 {
     list($type, $id) = ws_channel_customer_of($channel);
 
@@ -250,10 +261,14 @@ function ws_customer_followup_open($viewer, $channel, $request)
         'assignees'  => array((int) $viewer['id']),
         'due_date'   => (string) ($request['due_date'] ?? ''),
         'due_time'   => (string) ($request['due_time'] ?? ''),
-    ));
+    ), false, $dry);
 
     if (!$made['ok']) {
         return array('ok' => false, 'error' => $made['error'], 'field' => $made['field'], 'task' => null);
+    }
+
+    if ($dry) {
+        return array('ok' => true, 'error' => '', 'field' => '', 'task' => null);
     }
 
     $task = ws_task($made['task_id']);

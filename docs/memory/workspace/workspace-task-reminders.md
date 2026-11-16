@@ -21,3 +21,8 @@ description: Task reminders, overdue and meeting notices (reminders.php): who is
 
 ## Is there a snooze?
 - No. A changed date, time or lead time re-arms the reminder (`ws_task_reminder_sync()`); a repeating task's copy takes the newest copy's time, and its reminder when the series says so (`remind_each`).
+
+## Does a reminder at the due time, or one reached late, still go?
+- Yes. A claimed reminder goes while the task is open and the run is at most `WS_TASK_REMIND_LATE` (one hour) past the due moment (`ws_task_reminder_still_worth_sending()`); later it is skipped, as the overdue notice has spoken.
+- "At the due time" (`remind_minutes` 0) and every customer-card **Remind me** (its follow-up task reminds at the due time) rely on this.
+- Symptom fixed (#9832, PR #9835): the run skipped every task whose due moment had come, so a reminder at the due time never went and one reached a minute late was dropped. Test: `tests/workspace_task_reminder_send_test.php`.

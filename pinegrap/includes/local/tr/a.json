@@ -334,6 +334,7 @@
     "A cargo company: its title and its 10-digit VKN. A courier or a person: first name, surname and the 11-digit TCKN. Saved on this invoice only.": "Kargo firmasıysa unvanını ve 10 haneli VKN'sini, kurye ya da şahıssa adını, soyadını ve 11 haneli TCKN'sini yazın. Yalnız bu faturaya kaydedilir.",
     "A carpenter by training who can fix almost anything in a home.": "Marangozluk eğitimi almış, bir evdeki hemen her şeyi onarabilen bir usta.",
     "A carrier pickup was booked for {var:1} label(s): {var:2}": "{var:1} etiket için kurye çağrıldı: {var:2}",
+    "A cart is left 6 hours after it was started. It counts as recovered when it is completed within 7 days of the last message it got.": "Bir sepet, başlatıldıktan 6 saat sonra terk edilmiş sayılır. Aldığı son mesajdan sonraki 7 gün içinde tamamlanırsa kurtarılmış sayılır.",
     "A cart quote holds at most {var:1} products.": "Bir sepet teklifi en fazla {var:1} ürün içerebilir.",
     "A cart quote is made": "Bir sepet teklifi hazırlanır",
     "A cart quote is ordered": "Bir sepet teklifi siparişe dönüşür",

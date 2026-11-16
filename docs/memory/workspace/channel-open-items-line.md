@@ -1,6 +1,6 @@
 ---
 name: channel-open-items-line
-description: The open items line under a channel's pin (OI1, #9783): open polls, agent questions, the running check-in, waiting approvals; ws_channel_open_items(), drawOpenItems(), phone row
+description: The open items line under a channel's pin (OI1 #9783) and on GET /workspace/channels/{id} (OI2 #9827): open polls, agent questions, the running check-in, waiting approvals; whose answer each waits for
 ---
 
 ## What does the line show?
@@ -17,8 +17,12 @@ description: The open items line under a channel's pin (OI1, #9783): open polls,
 ## When is an item the reader's own?
 - Poll: the reader may write in the channel and has not voted. Agent question: `ws_agent_question_waits_for()` (they are one of the people it asks). Approval: their `ws_approval_people` row is pending. Check-in: they are a member and have not answered.
 
+## What does the API give?
+- `GET /workspace/channels/{id}` (and its MCP tool) carries `open_items` (kind, message_id, text, mine) from the same `ws_channel_open_items()`, read as the key's owner after `ws_api_channel_or_404()` (OI2 #9827, `api/workspace-channel-reads-api.md`).
+- `mine` follows the caller (`ws_api_open_items_caller()`, `ws_open_items_for_caller()`): the person's team devices session or OAuth connection keeps the person's marks; an application key answers nothing in the person's name, so only an approval that asked its own agent (`agent:<id>`, `claude` for Claude's key in `ws_approval_agents`) and still waits for it is marked; a key with no agent has none.
+
 ## When is a check-in running?
 - A check-in has no close. It counts while it is the channel's newest, under 7 days old (`WS_OPEN_ITEMS_CHECKIN_DAYS`; the scheduled one asks weekly), and some member has not answered (`ws_open_items_checkin_running()`).
 
 ## Why?
-- Owner (2026-11-15, channel 25 message 5143): polls, agent questions, check-ins and approval requests scrolled out of sight were missed; the top of the channel names them with a button that goes to them. Cut as plan channel-open-items OI1 (5157). OI2 brings the same list to the API's channel route.
+- Owner (2026-11-15, channel 25 message 5143): polls, agent questions, check-ins and approval requests scrolled out of sight were missed; the top of the channel names them with a button that goes to them. His look: poll 52 (`workflow/decisions-made-workspace-34.md`). Plan channel-open-items (OI1, OI2), closed with #9827.

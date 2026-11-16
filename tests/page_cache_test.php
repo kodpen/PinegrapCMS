@@ -81,7 +81,7 @@ function test_page_cache_session_allowlist()
 	pg_assert_false(pg_page_cache_session_anonymous(array('ecommerce' => array())), 'an empty ecommerce key');
 	pg_assert_false(pg_page_cache_session_anonymous(array('software' => array('token' => 'x', 'guest' => true))), 'guest');
 	pg_assert_false(pg_page_cache_session_anonymous(array('software' => array('urls' => array('/a')))), 'stored url ids');
-	pg_assert_false(pg_page_cache_session_anonymous(array('software' => array('visit_start_timestamp' => 1))), 'auto dialogs');
+	pg_assert_true(pg_page_cache_session_anonymous(array('software' => array('token' => 'x', 'visit_start_timestamp' => 1))), 'the auto dialogs\' old visit start, which no page reads');
 	pg_assert_false(pg_page_cache_session_anonymous(array('software' => array('token' => array('x')))), 'an array where a value belongs');
 	pg_assert_false(pg_page_cache_session_anonymous(array('software' => 'x')), 'software not an array');
 	pg_assert_false(pg_page_cache_session_anonymous(array('software' => array('new_key_added_later' => 1))), 'an unknown key');
