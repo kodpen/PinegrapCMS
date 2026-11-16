@@ -16056,12 +16056,12 @@ a.ws-person-link:hover .avatar {
   text-decoration: none;
 }
 .ws-link-card-site {
-  font-size: .72rem;
+  font-size: .75rem;
   color: var(--pg-fg-2);
 }
 .ws-link-card-title {
-  font-size: .88rem;
-  font-weight: 600;
+  font-size: .875rem;
+  font-weight: 650;
   line-height: 1.35;
 }
 .ws-link-card-text {
@@ -16069,7 +16069,7 @@ a.ws-person-link:hover .avatar {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  font-size: .8rem;
+  font-size: .8125rem;
   line-height: 1.4;
   color: var(--pg-fg-2);
 }
