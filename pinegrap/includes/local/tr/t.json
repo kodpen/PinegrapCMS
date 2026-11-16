@@ -1991,6 +1991,7 @@
     "The address has been removed from the 404 log.": "Adres 404 kaydından çıkarıldı.",
     "The address is not a valid URL.": "Adres geçerli bir URL değil.",
     "The address is not a web address.": "Adres bir web adresi değil.",
+    "The address is sent to Photon (OpenStreetMap data) at {var:1} to find its coordinates.": "Koordinatları bulmak için adres {var:1} adresindeki Photon’a (OpenStreetMap verisi) gönderilir.",
     "The address is what the member typed: copy it into your browser rather than following it.": "Adres, üyenin yazdığıdır: bağlantıyı izlemek yerine tarayıcınıza kopyalayın.",
     "The address matches the name itself, so this link would send its visitors around in a loop.": "Adres adın kendisiyle eşleşiyor; bu link ziyaretçilerini bir döngüye sokardı.",
     "The address must be a web address or a path on this site.": "Adres bir web adresi ya da bu sitede bir yol olmalı.",

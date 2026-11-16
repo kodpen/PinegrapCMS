@@ -7,7 +7,7 @@
  * (includes/geo/autocomplete/photon.php): the public instance or the host
  * the site runs itself. Photon's results may be kept and drawn on any map
  * with the OpenStreetMap credit; Google's and Mapbox's may not, so no
- * other provider has a call here.
+ * other provider has a call here, whatever gives the address suggestions.
  *
  * Built from Photon's public documentation: https://github.com/komoot/photon
  *
@@ -30,9 +30,21 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  */
 function pg_geocode_photon($text, $app)
 {
+    return pg_addr_http('GET', pg_geocode_photon_url($text, $app), array());
+}
+
+/**
+ * The address one lookup asks. Pure.
+ *
+ * @param string $text
+ * @param array  $app pg_addr_app('photon'): host
+ * @return string
+ */
+function pg_geocode_photon_url($text, $app)
+{
     $host = pg_addr_photon_host(isset($app['host']) ? $app['host'] : '');
 
-    return pg_addr_http('GET', $host . '/api/?' . http_build_query(array('q' => (string) $text, 'limit' => 1)), array());
+    return $host . '/api/?' . http_build_query(array('q' => (string) $text, 'limit' => 1));
 }
 
 /**

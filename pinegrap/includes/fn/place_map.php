@@ -13,10 +13,11 @@
  * make up the address (address, street, city, postcode, country and the
  * like), joined in the form's order.
  *
- * Only Photon (OpenStreetMap) answers: its results may be kept and drawn on
- * any map. Google's and Mapbox's terms forbid both, so with one of those
- * switched on for address suggestions the button is not drawn and a line
- * says why; with no provider on, the public Photon instance is used.
+ * Coordinates always come from Photon (OpenStreetMap data), whatever
+ * provider gives the address suggestions: Photon's results may be kept and
+ * drawn on any map, Google's and Mapbox's may not, and nothing is asked of
+ * those two here. The site's own Photon server is used while its Photon
+ * account is on, the public instance otherwise.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -135,30 +136,33 @@ function pg_place_map_fields($page_id)
 }
 
 /**
- * Whether coordinates may be looked up, and from where: the Photon account
- * of the address suggestions (its host), or the public instance while no
- * provider is on.
+ * Where coordinates are asked: the Photon account of the address
+ * suggestions while it is on (its host), else the public instance, also
+ * while Google Places or Mapbox gives the suggestions. Pure.
  *
- * @param string $provider pg_addr_provider()
- * @return array ok, app (pg_addr_app() shape), reason (text when not ok)
+ * @param array $photon pg_addr_app('photon'): host, enabled
+ * @return array app (pg_addr_app() shape for pg_geocode_photon()), host
+ *               (the address the lookup goes to)
  */
-function pg_place_map_source($provider)
+function pg_place_map_source($photon)
 {
     $app = array('key' => '', 'key_stored' => false, 'host' => '', 'enabled' => false);
 
-    if (($provider === '') || ($provider === 'photon')) {
-        return array('ok' => true, 'app' => ($provider === 'photon') ? pg_addr_app('photon') : $app, 'reason' => '');
+    if (is_array($photon) && !empty($photon['enabled'])) {
+        $app = $photon;
     }
 
-    $definition = pg_addr_provider_definition($provider);
+    return array('app' => $app, 'host' => pg_addr_photon_host(isset($app['host']) ? (string) $app['host'] : ''));
+}
 
-    return array(
-        'ok'     => false,
-        'app'    => $app,
-        'reason' => lang(array(
-            'string' => 'Coordinates are found only with Photon (OpenStreetMap): the terms of {var:1} do not allow its results to be kept or shown on another map. Choose Photon for address suggestions in Ecommerce settings, or type the coordinates.',
-            'vars'   => array(($definition !== null) ? $definition['label'] : $provider))),
-    );
+/**
+ * The site's Photon account, as pg_place_map_source() takes it.
+ *
+ * @return array
+ */
+function pg_place_map_photon_app()
+{
+    return pg_addr_app('photon');
 }
 
 /**
@@ -239,30 +243,33 @@ function pg_place_map_answer($http)
 }
 
 /**
+ * Loads the Photon calls: the autocomplete driver holds the host rule
+ * (pg_addr_photon_host()), the geocode file the coordinates call.
+ */
+function pg_place_map_load_driver()
+{
+    pg_addr_driver('photon');
+    require_once(PG_FUNCTIONS_DIR . '/includes/geo/geocode/photon.php');
+}
+
+/**
  * Looks up one address. Called only from place_coordinates.php, when a
  * button was pressed.
  *
  * @param string $text
- * @return array pg_place_map_answer(), state also off or empty
+ * @return array pg_place_map_answer(), state also empty
  */
 function pg_place_map_lookup($text)
 {
-    $source = pg_place_map_source(pg_addr_provider());
     $text = trim((string) $text);
-
-    if (!$source['ok']) {
-        return array('state' => 'off', 'lat' => '', 'lng' => '', 'error' => $source['reason']);
-    }
 
     if ($text === '') {
         return array('state' => 'empty', 'lat' => '', 'lng' => '', 'error' => '');
     }
 
-    // The autocomplete driver holds the host rule (pg_addr_photon_host()).
-    pg_addr_driver('photon');
-    require_once(PG_FUNCTIONS_DIR . '/includes/geo/geocode/photon.php');
+    pg_place_map_load_driver();
 
-    return pg_place_map_answer(pg_geocode_photon($text, $source['app']));
+    return pg_place_map_answer(pg_geocode_photon($text, pg_place_map_source(pg_place_map_photon_app())['app']));
 }
 
 /**
@@ -282,8 +289,6 @@ function pg_place_map_message($result)
             return lang('Enter the address first.');
         case 'wait':
             return lang('The address service asks to wait. Try again in a minute.');
-        case 'off':
-            return $result['error'];
     }
 
     return lang(array('string' => 'The address service did not answer: {var:1}', 'vars' => array($result['error'])));
@@ -395,7 +400,7 @@ function pg_place_map_write_value($form_id, $field_id, $value)
  * @param array $skip    record ids found nothing for earlier in this session
  * @param int   $user_id
  * @return array found (count), not_found (list of reference, address,
- *               id), left (count), state (done, wait, error, off), error
+ *               id), left (count), state (done, wait, error), error
  */
 function pg_place_map_bulk($page_id, $roles, $skip, $user_id)
 {
@@ -453,11 +458,26 @@ function pg_place_map_bulk_message($summary)
    --------------------------------------------------------------------------- */
 
 /**
- * "Find from the address" below a record's fields, on the add and edit
- * screens. It posts the address as it stands in the form, fills the two
- * fields and leaves the save to the user. While coordinates are there and
- * the address is edited, a line says the coordinates are still those of the
- * address before. '' for a form without place fields.
+ * The help line under the form's button: where the address is sent. Pure
+ * apart from lang().
+ *
+ * @param string $host pg_place_map_source()['host']
+ * @return string text
+ */
+function pg_place_map_help($host)
+{
+    return lang(array('string' => 'The address is sent to Photon (OpenStreetMap data) at {var:1} to find its coordinates.', 'vars' => array(preg_replace('#^https://#', '', (string) $host))));
+}
+
+/**
+ * "Find from the address" on the record's add and edit screens, drawn right
+ * under the later of the two coordinate fields (its script moves it there:
+ * the fields are drawn by one loop shared with other field kinds). It posts
+ * the address as it stands in the form, fills the two fields and leaves the
+ * save to the user. One answer line shows at a time: when the address is
+ * edited while coordinates are there, the warning that they are still those
+ * of the address before takes its place. '' for a form without place
+ * fields.
  *
  * @param int $page_id
  * @return string HTML
@@ -470,12 +490,7 @@ function pg_place_map_form_tools($page_id)
         return '';
     }
 
-    $source = pg_place_map_source(pg_addr_provider());
-
-    if (!$source['ok']) {
-        return '
-                                        <div class="col-12 mb-12 form-text">' . h($source['reason']) . '</div>';
-    }
+    pg_place_map_load_driver();
 
     $config = array(
         'page' => (int) $page_id,
@@ -490,8 +505,8 @@ function pg_place_map_form_tools($page_id)
     return '
                                         <div class="col-12 mb-12" data-pg-place-form="' . h(json_encode($config, JSON_UNESCAPED_UNICODE)) . '">
                                             <button type="button" class="btn btn-sm btn-outline theme-primary" data-pg-place-find><i class="bi bi-geo-alt me-1" aria-hidden="true"></i>' . lang('Find from the address') . '</button>
-                                            <span class="form-text ms-5" role="status" aria-live="polite" data-pg-place-status></span>
-                                            <div class="form-text fg-warning" data-pg-place-changed hidden></div>
+                                            <div class="form-text mt-3" role="status" aria-live="polite" data-pg-place-status hidden></div>
+                                            <div class="form-text mt-3">' . h(pg_place_map_help(pg_place_map_source(pg_place_map_photon_app())['host'])) . '</div>
                                         </div>
                                         <script>' . pg_place_map_form_script() . '</script>';
 }
@@ -504,31 +519,35 @@ function pg_place_map_form_tools($page_id)
 function pg_place_map_form_script()
 {
     return '(function(){var box=document.currentScript.previousElementSibling,c=JSON.parse(box.getAttribute("data-pg-place-form")),f=box.closest("form");if(!f)return;'
-        . 'var el=function(i){return document.getElementById(i);},st=box.querySelector("[data-pg-place-status]"),ch=box.querySelector("[data-pg-place-changed]");'
+        . 'var el=function(i){return document.getElementById(i);},st=box.querySelector("[data-pg-place-status]"),la=el(c.lat),lo=el(c.lng);'
+        // Under the later coordinate field: after its column in the fields' row.
+        . 'var n=(la&&lo&&(la.compareDocumentPosition(lo)&4))?lo:(la||lo);while(n&&n.parentElement&&n.parentElement!==box.parentElement){n=n.parentElement;}if(n&&n.parentElement===box.parentElement&&n!==box){n.after(box);}'
+        . 'var show=function(t,w){st.hidden=!t;st.textContent=t||"";st.classList.toggle("fg-warning",!!w);};'
         . 'var addr=function(){return c.address.map(function(i){var e=el(i);return e?e.value.trim():"";}).join("|");},base=addr();'
-        . 'var has=function(){var a=el(c.lat),b=el(c.lng);return a&&b&&(a.value.trim()!==""||b.value.trim()!=="");};'
-        . 'var check=function(){var on=has()&&addr()!==base;ch.hidden=!on;ch.textContent=on?c.changed:"";};'
+        . 'var has=function(){return la&&lo&&(la.value.trim()!==""||lo.value.trim()!=="");};'
+        . 'var check=function(){if(has()&&addr()!==base){show(c.changed,true);}else if(st.classList.contains("fg-warning")){show("",false);}};'
         . 'c.address.forEach(function(i){var e=el(i);if(e)e.addEventListener("input",check);});'
-        . 'var put=function(i,v){var e=el(i);if(!e)return;e.value=v;e.dispatchEvent(new Event("input",{bubbles:true}));e.dispatchEvent(new Event("change",{bubbles:true}));};'
+        . 'var put=function(e,v){if(!e)return;e.value=v;e.dispatchEvent(new Event("input",{bubbles:true}));e.dispatchEvent(new Event("change",{bubbles:true}));};'
         . 'box.querySelector("[data-pg-place-find]").addEventListener("click",function(){var b=this,d=new FormData();d.append("action","lookup");d.append("page_id",c.page);'
         . 'd.append("token",f.elements.token?f.elements.token.value:"");c.address.forEach(function(i){var e=el(i);d.append("values["+i+"]",e?e.value:"");});'
-        . 'b.disabled=true;st.textContent=c.busy;fetch("place_coordinates.php",{method:"POST",body:d,credentials:"same-origin"}).then(function(r){return r.json();}).then(function(a){'
-        . 'st.textContent=a.message||"";if(a.state==="found"){put(c.lat,a.lat);put(c.lng,a.lng);base=addr();check();}}).catch(function(){st.textContent=c.failed;}).then(function(){b.disabled=false;});});'
+        . 'b.disabled=true;show(c.busy,false);fetch("place_coordinates.php",{method:"POST",body:d,credentials:"same-origin"}).then(function(r){return r.json();}).then(function(a){'
+        . 'if(a.state==="found"){put(la,a.lat);put(lo,a.lng);base=addr();}show(a.message||"",false);}).catch(function(){show(c.failed,false);}).then(function(){b.disabled=false;});});'
         . '})();';
 }
 
 /**
  * "Find missing coordinates" on the record list, while one form with place
- * fields is chosen. Each press looks up the next PG_PLACE_MAP_BULK records
- * and tells how many are left and which addresses were not found. ''
- * otherwise.
+ * fields is chosen. Each press looks up the next PG_PLACE_MAP_BULK records;
+ * the endpoint leaves its report as the screen's notice and the page is
+ * drawn again, so the report stands above the list, never in the toolbar.
+ * '' otherwise.
  *
  * @param int|string $page_id the chosen form, '' for none or several
  * @return string HTML
  */
 function pg_place_map_list_tools($page_id)
 {
-    if (((int) $page_id <= 0) || (pg_place_map_fields($page_id) === null) || !pg_place_map_source(pg_addr_provider())['ok']) {
+    if (((int) $page_id <= 0) || (pg_place_map_fields($page_id) === null)) {
         return '';
     }
 
@@ -536,11 +555,9 @@ function pg_place_map_list_tools($page_id)
         'page' => (int) $page_id,
         'busy' => lang('Looking up addresses…'),
         'failed' => lang('The address service did not answer.'),
-        'missing' => lang('Not found:'),
     );
 
-    return '<button type="button" class="btn btn-sm btn-outline theme-primary m-1" data-pg-place-bulk="' . h(json_encode($config, JSON_UNESCAPED_UNICODE)) . '" title="' . h(lang(array('string' => 'Looks up the next {var:1} records that have an address but no coordinates.', 'vars' => array((string) PG_PLACE_MAP_BULK)))) . '"><i class="bi bi-geo-alt me-1" aria-hidden="true"></i>' . lang('Find missing coordinates') . '</button>'
-        . '<span class="form-text ms-3" role="status" aria-live="polite" data-pg-place-bulk-status></span>'
+    return '<button type="button" class="btn btn-sm btn-outline theme-primary m-1" data-pg-place-bulk="' . h(json_encode($config, JSON_UNESCAPED_UNICODE)) . '" title="' . h(lang(array('string' => 'Looks up the next {var:1} records that have an address but no coordinates.', 'vars' => array((string) PG_PLACE_MAP_BULK)))) . '"><i class="bi bi-geo-alt me-1" aria-hidden="true"></i><span>' . lang('Find missing coordinates') . '</span></button>'
         . '<script>' . pg_place_map_list_script() . '</script>';
 }
 
@@ -551,9 +568,30 @@ function pg_place_map_list_tools($page_id)
  */
 function pg_place_map_list_script()
 {
-    return '(function(){var st=document.currentScript.previousElementSibling,b=st.previousElementSibling,c=JSON.parse(b.getAttribute("data-pg-place-bulk"));'
+    return '(function(){var b=document.currentScript.previousElementSibling,c=JSON.parse(b.getAttribute("data-pg-place-bulk")),l=b.querySelector("span"),label=l.textContent;'
         . 'b.addEventListener("click",function(){var t=document.querySelector("input[name=token]"),d=new FormData();d.append("action","bulk");d.append("page_id",c.page);d.append("token",t?t.value:"");'
-        . 'b.disabled=true;st.textContent=c.busy;fetch("place_coordinates.php",{method:"POST",body:d,credentials:"same-origin"}).then(function(r){return r.json();}).then(function(a){'
-        . 'var m=a.message||"";if(a.not_found&&a.not_found.length){m+=" "+c.missing+" "+a.not_found.map(function(n){return n.reference+" ("+n.address+")";}).join("; ");}st.textContent=m;'
-        . '}).catch(function(){st.textContent=c.failed;}).then(function(){b.disabled=false;});});})();';
+        . 'b.disabled=true;l.textContent=c.busy;fetch("place_coordinates.php",{method:"POST",body:d,credentials:"same-origin"}).then(function(r){return r.json();}).then(function(){window.location.reload();})'
+        . '.catch(function(){b.disabled=false;l.textContent=label;window.alert(c.failed);});});})();';
+}
+
+/**
+ * The bulk call's report as the record list's notice: the counts, then the
+ * addresses not found, one per line. HTML.
+ *
+ * @param array $summary pg_place_map_bulk()
+ * @return string
+ */
+function pg_place_map_bulk_notice($summary)
+{
+    $notice = h(pg_place_map_bulk_message($summary));
+
+    if ($summary['not_found']) {
+        $notice .= '<br>' . h(lang('Not found:'));
+
+        foreach ($summary['not_found'] as $missing) {
+            $notice .= '<br>' . h($missing['reference'] . ': ' . $missing['address']);
+        }
+    }
+
+    return $notice;
 }

@@ -20,6 +20,7 @@ if (!defined('PG_TEST_RUNNER')) {
 	exit;
 }
 
+require_once(PG_FUNCTIONS_DIR . '/includes/geo/autocomplete/photon.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/geo/geocode/photon.php');
 
 function place_map_test_fields()
@@ -117,15 +118,27 @@ function test_place_map_user_without_forms_right_refused()
 	pg_assert_false(pg_place_map_may(null, true));
 }
 
-// Photon only: Google's and Mapbox's results may be neither kept nor drawn on another map.
-function test_place_map_photon_only()
+// Photon always: the site's Photon server while its account is on, else the
+// public instance, also while Google Places or Mapbox gives the suggestions.
+function test_place_map_photon_always()
 {
-	pg_assert_true(pg_place_map_source('')['ok'], 'no provider on: the public Photon instance');
+	pg_assert_same(PG_ADDR_PHOTON_HOST, pg_place_map_source(array('host' => '', 'enabled' => false))['host'], 'no Photon account: the public instance');
+	pg_assert_same(PG_ADDR_PHOTON_HOST, pg_place_map_source(array('host' => 'https://geo.example.com', 'enabled' => false))['host'], 'an account switched off is not used');
+	pg_assert_same('https://geo.example.com', pg_place_map_source(array('host' => 'https://geo.example.com', 'enabled' => true))['host']);
+	pg_assert_contains('photon.komoot.io', pg_place_map_help(PG_ADDR_PHOTON_HOST));
+}
 
-	foreach (array('google_places', 'mapbox') as $provider) {
-		$source = pg_place_map_source($provider);
-		pg_assert_false($source['ok'], $provider);
-		pg_assert_true($source['reason'] !== '', $provider . ' says why');
+// With Google Places on, the lookup still goes to Photon's address only.
+function test_place_map_google_on_asks_photon_only()
+{
+	$photon = array('key' => '', 'key_stored' => false, 'host' => '', 'enabled' => false);
+	$url = pg_geocode_photon_url('Moda Caddesi 12, Kadıköy', pg_place_map_source($photon)['app']);
+
+	pg_assert_same(0, strpos($url, PG_ADDR_PHOTON_HOST . '/api/?'), $url);
+
+	foreach (array('includes/fn/place_map.php', 'includes/geo/geocode/photon.php', 'place_coordinates.php') as $file) {
+		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
+		pg_assert_false((bool) preg_match('/googleapis|api\.mapbox|pg_addr_(google_places|mapbox)_|pg_addr_provider\(/', $source), $file . ' asks no other provider and does not follow the suggestions provider');
 	}
 }
 
@@ -159,4 +172,16 @@ function test_place_map_no_call_without_a_press()
 	foreach (array(pg_place_map_form_script(), pg_place_map_list_script()) as $script) {
 		pg_assert_true(strpos($script, 'fetch(') > strpos($script, 'addEventListener("click"'), 'asked only on a click');
 	}
+}
+
+// The bulk report is the list's notice: the counts, then each address not found on its own line, escaped.
+function test_place_map_bulk_notice_lines()
+{
+	$notice = pg_place_map_bulk_notice(array('found' => 1, 'left' => 0, 'state' => 'done', 'error' => '', 'not_found' => array(
+		array('id' => 3, 'reference' => 'BR0003', 'address' => 'Nowhere 1'),
+		array('id' => 4, 'reference' => 'BR0004', 'address' => '<b>x</b>'),
+	)));
+
+	pg_assert_same(3, substr_count($notice, '<br>'));
+	pg_assert_contains('<br>BR0003: Nowhere 1<br>BR0004: &lt;b&gt;x&lt;/b&gt;', $notice);
 }

@@ -13,8 +13,9 @@
  *        -> {"ok": true, "found": n, "not_found": [{reference, address}],
  *            "left": n, "state": …, "message": …}
  *        Looks up the next PG_PLACE_MAP_BULK records of the form that have
- *        an address and lack a coordinate, and writes what is found. A
- *        record found nothing for is not asked again in this session.
+ *        an address and lack a coordinate, and writes what is found. The
+ *        report is also left as the record list's notice. A record found
+ *        nothing for is not asked again in this session.
  *
  * Refused: method 405, session 403 (the token), access 403 (the record
  * screens' rule: Manager and above, or the forms right on the form's
@@ -86,6 +87,12 @@ if (($_POST['action'] ?? '') === 'bulk') {
     }
 
     $_SESSION['software']['place_map_skip'][$page_id] = array_slice(array_values(array_unique($skip)), -1000);
+
+    // The report stands above the record list as its notice; the button
+    // draws the page again.
+    include_once('liveform.class.php');
+    $liveform_list = new liveform('view_submitted_forms');
+    $liveform_list->add_notice(pg_place_map_bulk_notice($summary));
 
     if ($summary['found'] > 0) {
         log_activity(lang(array('string' => 'coordinates were found for {var:1} submitted forms', 'vars' => array((string) $summary['found']))), $_SESSION['sessionusername']);
