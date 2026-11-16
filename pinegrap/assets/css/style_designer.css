@@ -524,15 +524,24 @@
 }
 .sd-canvas { flex:1; display:flex; flex-direction:column; overflow:hidden; }
 
-/* Breakpoint bar */
+/* Breakpoint bar. Its own width (the canvas column, not the window)
+   decides how it gives way: the button labels drop first (each button keeps
+   its title as its name), and what still does not fit wraps to a second row
+   instead of running under the Options column. */
 .sd-bp-bar {
     display:flex; align-items:center; justify-content:space-between;
+    flex-wrap:wrap; row-gap:.2rem;
     padding:.2rem .6rem; gap:.4rem;
     background: #1c1e22; border-bottom:1px solid var(--sd-panel-border);
     flex-shrink:0;
+    container: sd-bp-bar / inline-size;
 }
-.sd-bp-bar-left  { display:flex; align-items:center; gap:.4rem; }
-.sd-bp-bar-right { display:flex; align-items:center; gap:.15rem; }
+.sd-bp-bar-left  { display:flex; align-items:center; gap:.4rem; flex-wrap:wrap; }
+.sd-bp-bar-right { display:flex; align-items:center; gap:.15rem; flex-wrap:wrap; min-width:0; }
+@container sd-bp-bar (max-width: 70rem) {
+    .sd-bp-bar .sd-vb-txt { display:none; }
+    .sd-bp-bar .sd-vb-btn { padding-left:.4rem; padding-right:.4rem; }
+}
 .sd-bp-bar .sd-bp-label { font-size:.68rem; font-weight:600; color:var(--sd-text-muted); font-variant-numeric:tabular-nums; margin-left:6px; }
 .sd-bp-bar .sd-bp-btn {
     background:none; border:none; border-radius:.2rem;
@@ -6021,15 +6030,12 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
     .sd-tabs-scroll { min-width: 0; }
 
     /* ── Canvas view bar (breakpoints, zoom, tools) ── */
+    /* Labels and wrapping follow the bar's own width (its block above);
+       a narrow screen only tightens the spacing. */
     .sd-bp-bar {
-        flex-wrap: wrap;
         justify-content: flex-start;
-        row-gap: .2rem;
         padding: .25rem .4rem;
     }
-    .sd-bp-bar-left, .sd-bp-bar-right { flex-wrap: wrap; }
-    .sd-bp-bar .sd-vb-txt { display: none; }
-    .sd-bp-bar .sd-vb-btn { padding-left: .4rem; padding-right: .4rem; }
     .sd-bp-bar .sd-bp-label { margin-left: 2px; }
 
     /* ── Settings modal ── */
