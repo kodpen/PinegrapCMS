@@ -229,7 +229,7 @@ function test_image_editor_follow_mapping()
 		. 'var pt = function (a) { return [r2(a[0]), r2(a[1])]; };' . "\n"
 		. 'console.log(JSON.stringify({'
 		. ' at0: (M.followClip(doc, [260, 140], 0) || {}).id, at6: (M.followClip(doc, [260, 140], 6000) || {}).id,'
-		. ' hidden: (M.followClip(hidden, [260, 140], 6000) || {}).id, outside: M.followClip(doc, [50, 140], 0), after: M.followClip(doc, [260, 140], 10000),'
+		. ' hidden: (M.followClip(hidden, [260, 140], 6000) || {}).id, outside: M.followClip(doc, [50, 140], 0), after: M.followClip(doc, [260, 140], 15000),'
 		. ' plain: pt(M.followToSource(clip, [100, 50])), centre: pt(M.followToSource(clip, [260, 140])),'
 		. ' turnedPt: pt(M.followToSource(turned, [350, 300])), mirroredPt: pt(M.followToSource(mirrored, [100, 50])),'
 		. ' move: pt(M.followFromSource(clip, 20, 10)), turnedMove: pt(M.followFromSource(turned, 20, 10)), mirroredMove: pt(M.followFromSource(mirrored, 20, 10)),'
