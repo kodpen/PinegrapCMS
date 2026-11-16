@@ -781,7 +781,7 @@ function pg_customer_value_period_pick($asked, $kept)
 /**
  * Which group a cell of the groups table is: new, returning, loyal, at_risk
  * or lost, by its age row (pg_customer_value_cell_age()) and orders column
- * (pg_customer_value_cell_band()). Pure.
+ * (pg_customer_value_cell_band()). Every cell has exactly one group. Pure.
  *
  * @param int $age
  * @param int $band
@@ -789,15 +789,35 @@ function pg_customer_value_period_pick($asked, $kept)
  */
 function pg_customer_value_cell_group($age, $band)
 {
-    if (($age >= 4) || (($age === 3) && ($band === 0))) {
+    if ($age >= 4) {
         return 'lost';
     }
 
-    if ($age >= 2) {
-        return (($age === 2) && ($band === 2)) ? 'loyal' : 'at_risk';
+    if ($age === 3) {
+        return 'at_risk';
+    }
+
+    if ($age === 2) {
+        return array('at_risk', 'returning', 'loyal')[$band];
     }
 
     return array('new', 'returning', 'loyal')[$band];
+}
+
+/**
+ * Each group's bounds as the screen states them beside its name. Pure.
+ *
+ * @return array key => text
+ */
+function pg_customer_value_group_bounds()
+{
+    return array(
+        'new' => lang('one order, the last within 90 days'),
+        'returning' => lang('two to three orders, the last within 180 days'),
+        'loyal' => lang('four orders or more, the last within 180 days'),
+        'at_risk' => lang('the last order 181 to 365 days ago, or one order 91 to 180 days ago'),
+        'lost' => lang('the last order over 365 days ago'),
+    );
 }
 
 /**

@@ -168,6 +168,12 @@ if ($summary !== null) {
         $rows .= '<tr><th scope="row" class="fw-normal">' . h($label) . '</th>' . $cells . '</tr>';
     }
 
+    $legend = array();
+
+    foreach (pg_customer_value_group_bounds() as $key => $bounds) {
+        $legend[] = '<strong>' . h($group_names[$key]) . '</strong>: ' . h($bounds);
+    }
+
     $output_sections .= '
         <section class="pg-card pg-report-frame" aria-labelledby="pg_customer_groups_title">
             <div class="pg-report-frame-head"><h3 class="pg-report-frame-title" id="pg_customer_groups_title">' . h(lang('Customer groups')) . '</h3><span class="pg-report-frame-note">' . h(lang('Every customer of all time, by the age of their last order and their number of orders. The bounds are fixed: 30, 90, 180 and 365 days; 1, 2 to 3, and 4 or more orders.')) . '</span></div>
@@ -176,6 +182,7 @@ if ($summary !== null) {
                     <thead><tr><th>' . h(lang('Last order')) . '</th><th class="text-end">' . h(lang('1 order')) . '</th><th class="text-end">' . h(lang('2 to 3 orders')) . '</th><th class="text-end">' . h(lang('4 or more orders')) . '</th></tr></thead>
                     <tbody>' . $rows . '</tbody>
                 </table>
+                <p class="small fg-secondary m-3">' . implode(' · ', $legend) . '</p>
             </div>
         </section>';
 

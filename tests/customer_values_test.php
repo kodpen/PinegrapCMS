@@ -336,7 +336,8 @@ function test_customer_values_report_cell_bounds()
 		}
 	}
 
-	pg_assert_same(array('new', 'returning', 'loyal', 'new', 'returning', 'loyal', 'at_risk', 'at_risk', 'loyal', 'lost', 'at_risk', 'at_risk', 'lost', 'lost', 'lost'), $groups);
+	pg_assert_same(array('new', 'returning', 'loyal', 'new', 'returning', 'loyal', 'at_risk', 'returning', 'loyal', 'at_risk', 'at_risk', 'at_risk', 'lost', 'lost', 'lost'), $groups, 'all fifteen cells');
+	pg_assert_same(array_keys(pg_customer_value_group_names()), array_keys(pg_customer_value_group_bounds()), 'every group states its bounds');
 	pg_assert_same(array(), array_diff($groups, array_keys(pg_customer_value_group_names())), 'every cell has a named group');
 }
 
