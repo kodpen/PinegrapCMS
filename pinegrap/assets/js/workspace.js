@@ -3609,6 +3609,17 @@
         }
 
         agentCardRow(facts, t('ac_today'), t('ac_today_counts', data.today.answered, data.today.failed));
+
+        // How people marked its answers in 30 days; left out while none was.
+        if (data.feedback && data.feedback.length) {
+            var marks = el('span', 'ws-agent-card-value is-lines');
+
+            data.feedback.forEach(function (line) {
+                marks.appendChild(el('span', '', line));
+            });
+
+            agentCardRow(facts, t('ac_feedback'), marks);
+        }
         node.appendChild(facts);
 
         if (data.windows && data.windows.length) {
@@ -12745,6 +12756,12 @@
                 main.appendChild(self.reactionRow(message));
             }
 
+            // Right or Wrong on an agent's reply: only the person who asked
+            // and the channel's managers get it (agent_feedback.php).
+            if (message.feedback && !message.deleted) {
+                main.appendChild(self.feedbackNode(message));
+            }
+
             // A read receipt asked for (workspace_acks.js).
             if (message.ack && window.PGWsAcks) {
                 main.appendChild(window.PGWsAcks.node(message, self, featureHelpers()));
@@ -13554,6 +13571,100 @@
                 });
             });
             box.appendChild(invite);
+
+            return box;
+        },
+
+        // Right and Wrong under an agent's reply. The chosen mark shows
+        // pressed and a press on it takes it back; Wrong opens a short
+        // reason box first. The server checks who may mark.
+        feedbackNode: function (message) {
+            var self = this;
+            var mark = message.feedback || {};
+            var box = el('div', 'ws-agent-feedback');
+            var row = el('div', 'ws-agent-feedback-row');
+            var buttons = [];
+
+            var send = function (verdict, reason) {
+                buttons.forEach(function (node) { node.disabled = true; });
+
+                api('ws_agent_feedback', { message_id: message.id, verdict: verdict, reason: reason || '' }).then(function (data) {
+                    message.feedback = data.feedback;
+                    self.replaceMessage(message);
+                }).catch(function (error) {
+                    buttons.forEach(function (node) { node.disabled = false; });
+                    fail(error);
+                });
+            };
+
+            var markButton = function (verdict, label, iconName, help) {
+                var on = (mark.verdict === verdict);
+                var node = button('btn btn-sm btn-text rounded-pill py-0 px-2 ws-agent-feedback-mark' + (on ? ' is-on is-' + verdict : ''), label, iconName + (on ? '-fill' : ''), on ? t('af_undo_help') : help);
+
+                node.setAttribute('aria-pressed', on ? 'true' : 'false');
+                buttons.push(node);
+
+                return node;
+            };
+
+            row.appendChild(el('span', 'ws-agent-feedback-ask', mark.verdict ? t('af_marked') : t('af_ask')));
+
+            var right = markButton('right', t('af_right'), 'bi-hand-thumbs-up', t('af_right_help'));
+            var wrong = markButton('wrong', t('af_wrong'), 'bi-hand-thumbs-down', t('af_wrong_help'));
+
+            right.addEventListener('click', function (event) {
+                event.stopPropagation();
+                send((mark.verdict === 'right') ? '' : 'right');
+            });
+
+            wrong.addEventListener('click', function (event) {
+                event.stopPropagation();
+
+                if (mark.verdict === 'wrong') {
+                    send('');
+                    return;
+                }
+
+                if (box.querySelector('.ws-agent-feedback-form')) {
+                    return;
+                }
+
+                var form = el('form', 'ws-agent-feedback-form');
+                var reason = el('textarea', 'form-control form-control-sm');
+                var save = button('btn btn-sm btn-solid theme-primary rounded-pill py-0 px-3', t('af_save'));
+                var cancel = button('btn btn-sm btn-text rounded-pill py-0 px-2', t('af_cancel'));
+                var actions = el('div', 'ws-agent-feedback-actions');
+
+                reason.rows = 2;
+                reason.maxLength = 300;
+                reason.placeholder = t('af_reason');
+                reason.setAttribute('aria-label', t('af_reason'));
+                save.type = 'submit';
+                buttons.push(save);
+
+                form.addEventListener('click', function (inner) { inner.stopPropagation(); });
+                form.addEventListener('submit', function (submit) {
+                    submit.preventDefault();
+                    send('wrong', reason.value);
+                });
+                cancel.addEventListener('click', function () { form.remove(); });
+
+                actions.appendChild(save);
+                actions.appendChild(cancel);
+                form.appendChild(reason);
+                form.appendChild(actions);
+                box.appendChild(form);
+                reason.focus();
+            });
+
+            row.appendChild(right);
+            row.appendChild(wrong);
+            box.appendChild(row);
+
+            // The reason given with a Wrong, as the asker wrote it.
+            if ((mark.verdict === 'wrong') && mark.reason) {
+                box.appendChild(el('div', 'ws-agent-feedback-reason', mark.reason));
+            }
 
             return box;
         },

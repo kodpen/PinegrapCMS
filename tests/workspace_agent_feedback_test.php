@@ -142,3 +142,69 @@ function test_workspace_agent_feedback_schema_step()
 	pg_assert_contains("install_create_table('ws_agent_feedback'", $migration, 'created with the idempotent helper');
 	pg_assert_contains("'ws_agent_feedback',", (string) file_get_contents(PG_FUNCTIONS_DIR . '/install/index.php'), 'listed in get_tables()');
 }
+
+// Under a reply: only the person who asked and the channel's managers get
+// the marks; anybody else, and any other request, nothing.
+function test_workspace_agent_feedback_offer()
+{
+	$r = ws_agent_feedback_test_records();
+	$mark = array('verdict' => 'wrong', 'reason' => 'missed it');
+
+	pg_assert_same(array('verdict' => '', 'reason' => ''), ws_agent_feedback_offer(10, false, $r['request'], null), 'the asker, unmarked');
+	pg_assert_same(array('verdict' => 'wrong', 'reason' => 'missed it'), ws_agent_feedback_offer(11, true, $r['request'], $mark), 'a manager sees the mark');
+	pg_assert_same(null, ws_agent_feedback_offer(11, false, $r['request'], $mark), 'another member sees nothing');
+	pg_assert_same(null, ws_agent_feedback_offer(10, false, array('agent' => 'claude') + $r['request'], null), 'not a registry agent');
+	pg_assert_same(null, ws_agent_feedback_offer(10, false, array('status' => 'failed') + $r['request'], null), 'not answered');
+}
+
+// The panel action: the one writer and its refusals, '' takes the mark back.
+function test_workspace_agent_feedback_action()
+{
+	$actions = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/actions.php');
+	$start = strpos($actions, "case 'ws_agent_feedback':");
+
+	pg_assert_true($start !== false, 'the action is handled');
+
+	$case = substr($actions, $start, 700);
+	pg_assert_contains('ws_agent_feedback_mark($viewer,', $case, 'through the one writer and its check');
+	pg_assert_contains("(\$verdict === '') ? null : \$verdict", $case, 'an empty verdict takes the mark back');
+	pg_assert_contains('ws_action_error($marked[\'error\'])', $case, 'the writer\'s refusal is the answer');
+	pg_assert_contains("'ws_agent_feedback'", (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/panel/actions.php'), 'a listed panel action (CSRF and session checked there)');
+
+	// The refusals the action answers with, from the writer's check.
+	$r = ws_agent_feedback_test_records();
+	pg_assert_same(403, ws_agent_feedback_check(array('id' => 11, 'member' => true), $r['request'], $r['message'], true, false, 'right', '')['status'], 'neither the asker nor a manager');
+	pg_assert_same(404, ws_agent_feedback_check(array('id' => 10, 'member' => true), array('agent' => 'ai') + $r['request'], $r['message'], true, false, 'right', '')['status'], 'not an agent\'s reply');
+	pg_assert_same(422, ws_agent_feedback_check(array('id' => 10, 'member' => true), $r['request'], $r['message'], true, false, 'wrong', str_repeat('a', 301))['status'], 'over 300 characters');
+
+	pg_assert_contains("'feedback'", (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/messages.php'), 'the message carries the mark');
+	pg_assert_contains('feedbackNode: function (message)', (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js'), 'drawn under the reply');
+}
+
+function test_workspace_agent_feedback_counts_text()
+{
+	$rows = array(
+		array('agent' => 'agent:3', 'verdict' => 'right', 'd7' => '2', 'd30' => '5'),
+		array('agent' => 'agent:3', 'verdict' => 'wrong', 'd7' => '0', 'd30' => '1'),
+		array('agent' => 'model:4', 'verdict' => 'wrong', 'd7' => '1', 'd30' => '1'),
+		array('agent' => 'agent:9', 'verdict' => 'maybe', 'd7' => '1', 'd30' => '1'),
+	);
+	$tally = ws_agent_feedback_tally_rows($rows);
+
+	pg_assert_same(array('days_7' => array('right' => 2, 'wrong' => 0), 'days_30' => array('right' => 5, 'wrong' => 1)), $tally['agent:3']);
+	pg_assert_same(array('days_7' => array('right' => 0, 'wrong' => 1), 'days_30' => array('right' => 0, 'wrong' => 1)), $tally['model:4']);
+	pg_assert_false(isset($tally['agent:9']), 'no other verdict');
+
+	$text = ws_agent_feedback_counts_text($tally['agent:3']);
+	pg_assert_same(lang(array('string' => '7 days: {var:1} right · {var:2} wrong; 30 days: {var:3} right · {var:4} wrong', 'vars' => array(2, 0, 5, 1))), $text);
+	pg_assert_same('', ws_agent_feedback_counts_text(null), 'nothing marked: left out');
+	pg_assert_same(array(
+		lang(array('string' => '{var:1} days: {var:2} right · {var:3} wrong', 'vars' => array(7, 2, 0))),
+		lang(array('string' => '{var:1} days: {var:2} right · {var:3} wrong', 'vars' => array(30, 5, 1))),
+	), ws_agent_feedback_counts_lines($tally['agent:3']), 'the agent card\'s two lines');
+	pg_assert_same(array(), ws_agent_feedback_counts_lines(null));
+	pg_assert_same('', ws_agent_feedback_counts_text(array('days_7' => array('right' => 0, 'wrong' => 0), 'days_30' => array('right' => 0, 'wrong' => 0))));
+
+	pg_assert_contains('ws_agent_feedback_counts_text(', (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/agent_activity.php'), 'the Agents card row');
+	pg_assert_contains("'feedback'     =>", (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/agent_card.php'), 'the agent card');
+}
