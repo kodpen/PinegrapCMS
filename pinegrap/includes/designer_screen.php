@@ -348,6 +348,11 @@ function pg_designer_screen_render($ctx)
             // (_pg_civ_fill_payment_methods()).
             'payment_method_rows' => function_exists('pg_civ_payment_method_rows')
                 ? pg_civ_payment_method_rows(_pg_civ_payment_settings(false)) : array(),
+            // The booking widget's words, closing words and sample times,
+            // drawn on the canvas in the parts its script fills
+            // (pg_booking_canvas_sample()).
+            'booking' => (function_exists('pg_booking_canvas_sample') && function_exists('pg_booking_texts'))
+                ? pg_booking_canvas_sample(pg_booking_widget_policy(), pg_booking_texts()) : null,
         ),
         // The editor's UI text, resolved through lang() for the site's
         // language. Empty when the language is English: the JS keys ARE the

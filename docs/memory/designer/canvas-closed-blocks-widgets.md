@@ -17,7 +17,7 @@ description: CB0 list, the closed slots inside system widgets: section bindings 
 - Catalog: `group_tree`, `filters_offcanvas`, `attribute_filters` (legacy, 4): drawn true since CB6b ([[catalog-listing-open-blocks]]). Catalog detail: `recipient_picker` (keeps children), `payment_methods` (drawn true since CB6a1, #9849).
 - Shopping cart: `applied_offers`, `quick_add`, `pending_offers` (campaign gifts): drawn true since CB6c ([[cart-open-blocks]]). Express order: the `eo_*` blocks (billing, payment, terms…): legacy, the starter uses `eo_field` controls.
 - Checkout steps: shipping address `custom_shipping_form`, `verified_addresses`; shipping method `recipient_items`; billing `custom_billing_form`; order preview `order_recipients`, `applied_offers`, `applied_gift_cards`, `recurring_payments`, `billing_form`, `card_installments`, `installment_table`. Order form: `recurring_schedule`.
-- Booking: twelve `booking_*` steps and parts (16).
+- Booking: twelve `booking_*` steps and parts (16): the steps and the details form drawn as their elements, the six parts the script fills drawn true since CB8 ([[booking-widget-open-parts]]).
 - Calendar view: `calendar_picker`, `month_grid`; calendar event: `reserve_form` (no template).
 
 ## Which HTML values are blocks?
