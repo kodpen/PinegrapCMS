@@ -20,4 +20,8 @@ module: listen
 - Only with `speechSynthesis`, a page language, something to read, and a voice for the page's language (`hasVoice()`: same tag, else same language in another region); asked again on `voiceschanged`. Otherwise the root stays hidden.
 - One block speaks at a time; Stop, the end, `pagehide` and a hidden page put the button back and move the focus to it. No request, storage or cookie.
 
-Tests: `tests/listen_script_test.php` (under Node, `tests/fixtures/listen/dom.js`).
+## What is the block?
+- `assets/js/style_designer_blocks_listen.js` (prefix `listen-`, group Listen, type `listen-buttons`): the root above with `role="group"` and an aria-label, three `btn-outline-*` buttons with a Bootstrap icon (`aria-hidden`) and the label span; rule `pg-listen` (44 px buttons).
+- Bootstrap's `[hidden] { display:none !important }` would hide it on the canvas too: one `IFRAME_CSS` line (`.sd-wrap > [data-pg-listen][hidden]`) draws the root there, idle and silent; the Preview loads the script and behaves as the page.
+
+Tests: `tests/listen_script_test.php`, `tests/designer_blocks_listen_test.php` (under Node, `tests/fixtures/listen/dom.js`).

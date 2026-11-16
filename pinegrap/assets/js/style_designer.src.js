@@ -6147,6 +6147,10 @@ const StyleDesigner = (function () {
         // row, a nav or a grid; with two classes' weight alone a hidden
         // button in a d-flex row would stay visible.
         '.sd-wrap.sd-state-off:not(#sd-state-shown) { display:none !important; }',
+        // The Listen block's root is hidden until the page's script finds a
+        // voice (pg_listen.js); the canvas draws it as it will look. Its
+        // pause and stop stay hidden: the canvas shows it idle.
+        '.sd-wrap > [data-pg-listen][hidden] { display:flex !important; }',
         '.sd-session-chips { display:inline-flex; gap:2px; margin-left:8px; vertical-align:middle; pointer-events:auto; }',
         '.sd-session-chips.sd-chips-wrap { flex-wrap:wrap; row-gap:2px; }',
         '.sd-session-chip { font:600 .6rem/1.3 system-ui,-apple-system,sans-serif; letter-spacing:0; text-transform:none; padding:1px 7px; border:1px solid rgba(99,102,241,.45); border-radius:3px; background:#fff; color:#6366f1; cursor:pointer; }',
