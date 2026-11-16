@@ -307,6 +307,7 @@
 - workspace-discussion-follow-screen.md: Stop / Follow again for the assistant a discussion follows (PR #2997, answer 4a of #2419): header line, channel line, system line, API follow fields and endpoint
 - workspace-discussion-follow.md: The assistant a discussion follows (ws_threads.follow_agent, step 11.0.113, decision #2419, PR #2924): who is followed, which message asks it, the no-pile-up rule, scheduled sends [decision: decisions-made-schema-2.md]
 - workspace-discussion-names.md: How a Workspace discussion (ws_channels kind thread) is named outside its panel: bell lines name its channel via ws_inbox_place(), its writing box says "Reply in the discussion" (#5187)
+- workspace-drawer-form-parts.md: The Workspace kit's drawer form parts in look A (formParts, h.form, PGWsKit.form; #9887): what each part builds, who is built from them, what stays on formRow()
 - workspace-editor-autoformat.md: Autoformat while typing in a Workspace writing box: ==x== to a highlight, "- " "* " "1. " "> " at a line's start to a list or quote; one undo, IME and paste guards, the per-viewer off switch
 - workspace-editor-find-replace.md: Find and replace in the Workspace writing boxes (Ctrl+F, openFind()): where the shortcut works, how matches are found and painted, how a replacement keeps marks and undo, its labels and tests
 - workspace-editor-link-keys.md: The link tip's Text field (linkText()), the Ctrl+/ shortcut sheet (openKeys(), shortcutRows(), keyLabel()) of the Workspace writing boxes since #2101, and the selection bar acting on click
