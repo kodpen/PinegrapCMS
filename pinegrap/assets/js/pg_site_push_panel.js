@@ -56,6 +56,45 @@
         }).catch(function () {});
     }
 
+    // A send to every subscriber cannot be called back: it asks first, with
+    // what goes and to how many, whether a button or Enter in a field sent
+    // the form. A test goes without asking.
+    var confirmed = false;
+
+    form.addEventListener('submit', function (event) {
+        var submitter = event.submitter || null;
+
+        if (confirmed || (submitter && submitter.value === 'test') || (typeof window.pgConfirm !== 'function')) {
+            return;
+        }
+
+        event.preventDefault();
+
+        var what = [title.value.trim(), body.value.trim(), url.value.trim() || '/'].filter(function (part) {
+            return part !== '';
+        }).join(' · ');
+
+        window.pgConfirm({
+            title: form.getAttribute('data-confirm-title'),
+            message: what + ' — ' + form.getAttribute('data-confirm-text'),
+            confirmText: form.getAttribute('data-confirm-button'),
+            variant: 'primary'
+        }).then(function (ok) {
+            if (!ok) {
+                return;
+            }
+
+            var send = document.createElement('input');
+
+            send.type = 'hidden';
+            send.name = 'send';
+            send.value = 'news';
+            form.appendChild(send);
+            confirmed = true;
+            form.submit();
+        });
+    });
+
     if (!pick || !results) {
         return;
     }

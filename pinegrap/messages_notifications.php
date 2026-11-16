@@ -7,7 +7,9 @@
  * news to every browser subscribed with Notify me, or a test to this
  * browser when it is subscribed itself; "Pick a page or record" fills the
  * form from the site search index (?pick=, JSON). Below, the sent news and
- * tests with their counts. Role <= 2, as the Channels tab.
+ * tests with their counts, a card that grows with its rows. A send to every
+ * subscriber asks first (pgConfirm()); a test does not. Role <= 2, as the
+ * Channels tab.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -21,7 +23,6 @@ if (pg_post_body_discarded()) {
     output_error(lang('The request was too large for this server and arrived empty.'), 413);
 }
 
-require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/messages_area.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/messages_sends.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/site_push_panel.php');
@@ -100,18 +101,7 @@ $body .= pg_site_push_form_html(array(
     'values'      => $values,
 ));
 
-$columns = pg_site_push_list_columns();
-$sort_columns = pg_list_table_printed_sort_columns($columns);
-$sort_default = array('sort' => 'sent_at', 'order' => 'desc');
-$list_state = pg_list_state('site_push_messages', $sort_columns, $sort_default);
-$list = pg_site_push_list($list_state['sorts']);
-
-$body .= '<h2 class="pg-title-section mb-3">' . h(lang('Sent notifications')) . '</h2>'
-    . pg_screen_toolbar(array(
-        'search' => array(pg_list_table_search_box('site_push_messages')),
-    ))
-    . pg_list_table_html($list['source'], $list['page'], lang('Sent notifications'))
-    . pg_js_bundle_tags('assets/js/pg_list_table.min.js')
+$body .= pg_site_push_list_html(pg_site_push_messages())
     . '<script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/pg_site_push_panel.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/pg_site_push_panel.js') . '" defer></script>';
 
 echo pg_messages_tab_page('channels', $user, lang('Send the site\'s news to the browsers that asked for it.'), $body);

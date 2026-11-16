@@ -342,3 +342,43 @@ function test_site_push_panel_send_errors()
 	pg_assert_same(lang('The notification was not sent.'), pg_site_push_send_error('unknown'), 'anything else');
 	pg_assert_same(array(PG_SITE_PUSH_KIND_NEWS, PG_SITE_PUSH_KIND_TEST), pg_site_push_listed_kinds(), 'stock and order messages are not listed');
 }
+
+function test_site_push_panel_list_html()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/site_push_panel.php');
+
+	$when = function ($time) {
+		return 'at ' . $time;
+	};
+	$html = pg_site_push_list_html(array(
+		array('id' => 1, 'title' => 'Spring <sale>', 'body' => 'Up to 40%', 'url' => '/spring', 'kind' => 0, 'created_at' => 100, 'queued_count' => 1284, 'sent_count' => 1280, 'failed_count' => 1, 'removed_count' => 3),
+		array('id' => 2, 'title' => 'Try', 'body' => '', 'url' => '/', 'kind' => 1, 'created_at' => 50, 'queued_count' => 1, 'sent_count' => 1, 'failed_count' => 0, 'removed_count' => 0),
+	), $when);
+
+	pg_assert_contains('Spring &lt;sale&gt;', $html, 'escaped');
+	pg_assert_contains('pg-embedded-table', $html, 'a table that grows with its rows');
+	pg_assert_false(strpos($html, 'pg-list-table') !== false, 'not the driver: no inner scroll, no selection');
+	pg_assert_false(strpos($html, 'checkbox') !== false, 'nothing to select');
+	pg_assert_contains(lang('Subscription ended'), $html, 'the ended column says what ended');
+	pg_assert_contains(h(lang('Browsers that no longer take notifications; removed from the list.')), $html, 'with its hint');
+	pg_assert_false(strpos($html, '>' . lang('Removed') . '<') !== false, 'no bare "Removed"');
+	pg_assert_contains('d-sm-none', $html, 'phone cards');
+	pg_assert_same(2, substr_count($html, '<li class="pg-card-inner">'), 'one card a message');
+	pg_assert_contains(lang('Subscribers') . ' <strong>1,284</strong>', $html, 'the card shows the subscribers');
+	pg_assert_contains(lang('Delivered') . ' <strong>1,280</strong>', $html, 'delivered');
+	pg_assert_contains(lang('Failed') . ' <strong>1</strong>', $html, 'and failed');
+	pg_assert_contains(lang('No notification sent yet'), pg_site_push_list_html(array(), $when), 'empty');
+}
+
+function test_site_push_panel_send_asks_first()
+{
+	$script = file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_site_push_panel.js');
+
+	pg_assert_contains('window.pgConfirm(', $script, 'the panel\'s own confirmation');
+	pg_assert_contains("submitter.value === 'test'", $script, 'a test goes without asking');
+	pg_assert_contains("form.addEventListener('submit'", $script, 'Enter in a field asks too');
+
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/site_push_panel.php');
+	$form = pg_site_push_form_html(array('token' => '', 'subscribers' => 1284, 'enabled' => true));
+	pg_assert_contains('data-confirm-text="' . h(lang(array('string' => 'It goes to {var:1} subscriber(s) at once and cannot be called back.', 'vars' => array('1,284')))) . '"', $form, 'how many it goes to');
+}

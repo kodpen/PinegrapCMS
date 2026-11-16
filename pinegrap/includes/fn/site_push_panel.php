@@ -232,68 +232,92 @@ function pg_site_push_send_error($code)
 }
 
 /**
- * The list's columns.
+ * The sent news and tests, newest first, at most 100.
  *
- * @return array
+ * @return array[]  site_push_message rows
  */
-function pg_site_push_list_columns()
+function pg_site_push_messages()
 {
-    return array(
-        'message' => array('heading' => lang('Message')),
-        'kind'    => array('heading' => lang('Type'), 'kind' => 'badge'),
-        'sent_at' => array('heading' => lang('Sent'), 'kind' => 'date'),
-        'queued'  => array('heading' => lang('Subscribers')),
-        'sent'    => array('heading' => lang('Delivered')),
-        'failed'  => array('heading' => lang('Failed')),
-        'removed' => array('heading' => lang('Removed')),
-    );
+    if (!pg_site_push_ready()) {
+        return array();
+    }
+
+    return db_items("SELECT id, title, body, url, kind, created_at, queued_count, sent_count, failed_count, removed_count
+        FROM site_push_message
+        WHERE kind IN (" . implode(', ', pg_site_push_listed_kinds()) . ")
+        ORDER BY created_at DESC, id DESC
+        LIMIT 100");
 }
 
 /**
- * The sent news and tests, newest first, as the list table driver's printed
- * source.
+ * The sent list: a card that grows with its rows (no inner scroll, no
+ * selection: nothing is done to a selection here). From 576 px a table whose
+ * headings sort it (table[data-pg-sort]); below, one card a message with its
+ * subscribers, delivered and failed on one line. "Subscription ended"
+ * counts the browsers whose push service said they no longer take
+ * notifications; they were removed from the subscribers.
  *
- * @param array $levels  the list state's sorts
- * @return array  pg_list_table_printed()
+ * @param array[] $messages  pg_site_push_messages()
+ * @param callable|null $when  Unix time => words; null for get_relative_time()
+ * @return string
  */
-function pg_site_push_list($levels)
+function pg_site_push_list_html(array $messages, $when = null)
 {
-    $messages = pg_site_push_ready()
-        ? db_items("SELECT id, title, body, url, kind, created_at, queued_count, sent_count, failed_count, removed_count
-            FROM site_push_message
-            WHERE kind IN (" . implode(', ', pg_site_push_listed_kinds()) . ")
-            ORDER BY created_at DESC, id DESC
-            LIMIT 500")
-        : array();
-    $rows = array();
-    $number = function ($value) {
-        return pg_list_cell(h(pg_format_number((int) $value, 0)), 'align-middle text-end', array('data-pg-sort-value' => (int) $value));
+    $when = is_callable($when) ? $when : function ($time) {
+        return get_relative_time(array('timestamp' => (int) $time, 'format' => 'plain_text'));
     };
+    $number = function ($value) {
+        return h(pg_format_number((int) $value, 0));
+    };
+    $ended_hint = lang('Browsers that no longer take notifications; removed from the list.');
+    $heading = '<section class="pg-card pg-messages-card mb-5"><div class="pg-messages-card-head"><h2 class="pg-title-section pg-messages-card-heading">' . h(lang('Sent notifications')) . '</h2></div>';
+
+    if (!$messages) {
+        return $heading . '<p class="pg-text-meta mb-0">' . h(lang('No notification sent yet')) . '</p></section>';
+    }
+
+    $rows = '';
+    $cards = '';
 
     foreach ($messages as $message) {
         $test = ((int) $message['kind'] === PG_SITE_PUSH_KIND_TEST);
+        $pill = pg_messages_sends_pill($test ? lang('Test') : lang('News'), $test ? '' : 'theme-info');
+        $line = h(implode(' · ', array_filter(array((string) $message['body'], (string) $message['url']), 'strlen')));
+        $title = h((string) $message['title']);
+        $sent = h($when($message['created_at']));
 
-        $rows[] = array(
-            'id' => (int) $message['id'],
-            'cells' => array(
-                'message' => pg_list_cell('<div class="pg-list-row-title">' . h((string) $message['title']) . '</div>'
-                    . '<div class="pg-text-meta text-break">' . h(implode(' · ', array_filter(array((string) $message['body'], (string) $message['url']), 'strlen'))) . '</div>'),
-                'kind' => pg_list_cell(pg_messages_sends_pill($test ? lang('Test') : lang('News'), $test ? '' : 'theme-info'), 'align-middle', array('data-pg-sort-value' => (int) $message['kind'])),
-                'sent_at' => pg_list_table_when_cell($message['created_at'], ''),
-                'queued' => $number($message['queued_count']),
-                'sent' => $number($message['sent_count']),
-                'failed' => $number($message['failed_count']),
-                'removed' => $number($message['removed_count']),
-            ),
-        );
+        $rows .= '<tr>'
+            . '<td class="pg-embedded-table-text" data-sort="' . h(mb_strtolower((string) $message['title'], 'UTF-8')) . '"><div class="pg-list-row-title">' . $title . '</div><div class="pg-text-meta text-break">' . $line . '</div></td>'
+            . '<td data-sort="' . (int) $message['kind'] . '">' . $pill . '</td>'
+            . '<td class="text-nowrap" data-sort="' . (int) $message['created_at'] . '">' . $sent . '</td>'
+            . '<td class="text-end" data-sort="' . (int) $message['queued_count'] . '">' . $number($message['queued_count']) . '</td>'
+            . '<td class="text-end" data-sort="' . (int) $message['sent_count'] . '">' . $number($message['sent_count']) . '</td>'
+            . '<td class="text-end" data-sort="' . (int) $message['failed_count'] . '">' . $number($message['failed_count']) . '</td>'
+            . '<td class="text-end" data-sort="' . (int) $message['removed_count'] . '">' . $number($message['removed_count']) . '</td>'
+            . '</tr>';
+
+        $cards .= '<li class="pg-card-inner"><div class="d-flex justify-content-between gap-2"><span class="pg-list-row-title">' . $title . '</span>' . $pill . '</div>'
+            . '<div class="pg-text-meta text-break">' . $line . '</div>'
+            . '<div class="pg-text-meta">' . $sent . '</div>'
+            . '<div class="d-flex flex-wrap gap-3 mt-1">'
+            . '<span>' . h(lang('Subscribers')) . ' <strong>' . $number($message['queued_count']) . '</strong></span>'
+            . '<span>' . h(lang('Delivered')) . ' <strong>' . $number($message['sent_count']) . '</strong></span>'
+            . '<span>' . h(lang('Failed')) . ' <strong>' . $number($message['failed_count']) . '</strong></span>'
+            . '<span title="' . h($ended_hint) . '">' . h(lang('Subscription ended')) . ' <strong>' . $number($message['removed_count']) . '</strong></span>'
+            . '</div></li>';
     }
 
-    return pg_list_table_printed(array(
-        'list' => 'site_push_messages',
-        'columns' => pg_site_push_list_columns(),
-        'levels' => $levels,
-        'rows' => $rows,
-    ));
+    $th = function ($label, $class = '', $hint = '') {
+        return '<th scope="col"' . ($class !== '' ? ' class="' . $class . '"' : '') . ($hint !== '' ? ' title="' . h($hint) . '"' : '') . '>' . h($label)
+            . ($hint !== '' ? ' <span class="bi bi-info-circle" aria-hidden="true"></span><span class="visually-hidden">' . h($hint) . '</span>' : '') . '</th>';
+    };
+
+    return $heading
+        . '<div class="table-responsive d-none d-sm-block"><table class="table table-hover mb-0 pg-embedded-table" data-pg-sort>'
+        . '<thead><tr>' . $th(lang('Message')) . $th(lang('Type')) . $th(lang('Sent')) . $th(lang('Subscribers'), 'text-end') . $th(lang('Delivered'), 'text-end') . $th(lang('Failed'), 'text-end') . $th(lang('Subscription ended'), 'text-end', $ended_hint) . '</tr></thead>'
+        . '<tbody>' . $rows . '</tbody></table></div>'
+        . '<ul class="list-unstyled d-flex flex-column gap-2 mb-0 d-sm-none">' . $cards . '</ul>'
+        . '</section>';
 }
 
 /**
@@ -316,7 +340,11 @@ function pg_site_push_form_html(array $options)
     return '<section class="pg-card pg-messages-card mb-5"><div class="pg-messages-card-head"><div class="pg-messages-card-heading">'
         . '<h2 class="pg-title-section">' . h(lang('Send a notification')) . '</h2>'
         . '<p class="pg-text-meta mb-0">' . h(lang('It reaches every browser that pressed Notify me on the site, even when the site is closed.')) . '</p></div></div>'
-        . '<form method="post" class="pg-site-push-form" data-pg-site-push data-scope="' . h(defined('OUTPUT_PATH') ? OUTPUT_PATH : '/') . '" data-pick="' . h(PG_SITE_PUSH_SCREEN) . '?pick=">'
+        . '<form method="post" class="pg-site-push-form" data-pg-site-push'
+        . ' data-confirm-title="' . h(lang('Send this notification?')) . '"'
+        . ' data-confirm-text="' . h(lang(array('string' => 'It goes to {var:1} subscriber(s) at once and cannot be called back.', 'vars' => array(pg_format_number($count, 0))))) . '"'
+        . ' data-confirm-button="' . h(lang('Send')) . '"'
+        . ' data-scope="' . h(defined('OUTPUT_PATH') ? OUTPUT_PATH : '/') . '" data-pick="' . h(PG_SITE_PUSH_SCREEN) . '?pick=">'
         . (string) $options['token']
         . '<input type="hidden" name="endpoint" value="">'
         . '<div class="mb-4"><label class="form-label" for="site-push-pick">' . h(lang('Pick a page or record')) . '</label>'
