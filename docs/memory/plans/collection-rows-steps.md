@@ -7,7 +7,7 @@ description: Plan collection-rows, steps RW1 to RW7: the kind and writer, the pa
 - RW1 (M) The kind and the writer. No schema.
   - Existing files: `includes/fn/collections.php` (`rows` in `pg_coll_kinds()`, the child form kept by `pg_coll_field_reference()`, the field's check in `pg_coll_check_field()`), `assets/js/style_designer.src.js` (the twin `_CF_KINDS`, the Kind panel, the canvas sample), `includes/fn/custom_form.php` (`pg_cf_apply_field_bindings()`: a rows control draws nothing).
   - New: `includes/fn/collection_rows.php` (the spec, a record's rows in order, the writer), `tests/collections_rows_test.php`; `tests/collections_kinds_test.php` covers the twin.
-  - Tests, red first: the spec's refusals, the writer's order of writes, a foreign code refused, the limit, a refused row writing nothing.
+  - Tests, red first: the spec's refusals, the writer's order of writes, a foreign code refused, the limit, a refused row writing nothing, a failure midway leaving no row behind.
   - Features: R1 to R7, R15.
 
 - RW2 (M) after RW1: the editor on the panel's record screens.
@@ -23,8 +23,9 @@ description: Plan collection-rows, steps RW1 to RW7: the kind and writer, the pa
 
 - RW4 (S) after RW1: the API.
   - Existing files: `includes/api/resources/forms.php` (`api_form_submission_present()`, the field facts, the write check), the form rows of the API schema.
-  - Tests: `rows` on a single read, codes on a list read, a foreign code 422; `php tools/check_api_schema.php`.
-  - Features: R13, R14.
+  - Also `import_submitted_forms.php` (the rows cell skipped and named).
+  - Tests: `rows` on a single read, codes on a list read, a foreign code and a code of another record's list 422, the import's skipped cell; `php tools/check_api_schema.php`.
+  - Features: R13, R14, R19.
 
 - RW5 (M) after RW2: the site form.
   - Existing files: `includes/fn/custom_form.php` (the branch of RW1 now draws the editor in Bootstrap 5.3.8 markup), `custom_form.php` (the writer called after its record is saved).
@@ -36,7 +37,7 @@ description: Plan collection-rows, steps RW1 to RW7: the kind and writer, the pa
   - Tests: the list's rows and their order, an empty field, a code that names nothing left out.
   - Features: R17, R18.
 
-- RW7 (S) close-out: every R number checked against the code with its PR; `designer/collection-rows.md` (named in the collection files' overview); this plan's three files deleted and its line in `plans/website-features.md` removed.
+- RW7 (S) close-out: every R number checked against the code with its PR; `designer/collection-rows.md` (named in the collection files' overview); this plan's four files deleted and its line in `plans/website-features.md` removed.
 
 ## Which steps run side by side?
 - RW3, RW4 and RW6 may run beside RW5. RW2 and RW5 share the renderer: one after the other.

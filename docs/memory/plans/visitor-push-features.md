@@ -17,13 +17,13 @@ description: Plan visitor-push, features N1 to N18: the switch, the site's worke
 - (N9) Never a row in the panel's `push_subscriptions` or `push_queue`.
 
 ## What is a message, and how does it arrive?
-- (N10) A title (at most 60), a text (at most 200) and a link that is an address of the site; to everyone or to a topic.
+- (N10) A title (at most 60), a text (at most 200) and a link that is an address of the site. It goes to every subscriber: the first version has no topics.
 - (N11) A queue row per subscription, written in batches; the general job and `push_job.php` send an empty push with the panel's VAPID key. A service's "slow down" holds that service; a message not delivered within a day is dropped.
-- (N12) The woken worker asks `site_push.php` with its secret for its waiting message and shows it; a click opens the link in the site's open tab or a new one. The push itself carries no text.
+- (N12) The woken worker asks `site_push.php` with its secret for its waiting message and shows it; a click opens the link in the site's open tab or a new one. The push itself carries no text. When the message cannot be read, the worker still shows a fixed short notification with the site's name: a browser punishes a silent push.
 
 ## What does the panel show?
 - (N13) Communication, Channels: a card "Notifications" with the number of subscribers and the last message.
-- (N14) A screen "Send a notification": the form of N10, "Pick a page or record" to fill it, "Send a test to this device", and the sent messages with sent, failed and removed counts.
+- (N14) A screen "Send a notification" for roles 0 to 2, as the Channels tab is (`ui/messages-area-rules.md`): the form of N10, "Pick a page or record" to fill it, "Send a test to this device", and the sent messages with sent, failed and removed counts.
 
 ## What comes after the first version?
 - (N15) Stock: on a product that is out, a subscribed browser's back-in-stock request can name this device; `pg_stock_notify_send()` then sends the push for it, once.

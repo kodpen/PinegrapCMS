@@ -29,8 +29,8 @@ priority: 6
 ## What does the owner still decide?
 - The card's look, from OG2's samples.
 
-## What does the architect decide?
-- Whether the card's document is built in code (the plan) or read from a Design Canvas template.
+## What did the architect decide?
+- Architect (2026-11-16, agent channel message 5763): the card's document is built in code.
 
 ## What is left out?
 - A card designed as a Design Canvas template of one's own; the item's own picture as the card's background; fonts for letters the bundled ones lack. Each is a later yes.

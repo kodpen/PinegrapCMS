@@ -14,7 +14,7 @@ priority: 6
 - `<plan>.md`: what is asked, what is there today, the decisions that bind it, what the owner and the architect still decide, what is left out, whose look.
 - `<plan>-features.md`: the numbered features, each one sentence a test or a picture can show. Nothing is built that is not a number, and no number is skipped.
 - `<plan>-steps.md`: the steps, each with the existing files it touches, its new files, its tests and pictures, and the numbers it builds.
-- The rules every step keeps: `plans/website-features-rules.md`.
+- The rules every step keeps: `plans/website-features-rules.md`. The existing files several plans touch: `plans/website-features-shared-files.md`.
 
 ## Which plans are there, in the proposed order?
 - `collection-rows.md`: rows inside a record (a recipe's steps), edited on the record's own form.
@@ -26,11 +26,11 @@ priority: 6
 - `visitor-push.md`: notifications a visitor without an account subscribes to.
 - `release-bundle.md`: several pages prepared, previewed, published and taken back together.
 - `publish-approval.md`: a content editor's change waits for a designer's yes.
-- The order within the same priority is the architect's; the proposed one puts the content model first and the two largest last.
+- Architect (2026-11-16, agent channel message 5763): every plan stays 6 and it gives the steps out in its own order: RW1, CM1, LS1 and OG1 first, then CH1, PN1 and VP1, then RB1 and PA1. Two steps that touch the same existing file are never open together: `plans/website-features-shared-files.md`.
 
 ## What is left out of the set?
 - Several sites from one panel (message 5661). Owner (2026-11-16, message 5667): too big for now, may be thought about later.
 - Site search insights: already built (`visitors/site-search-rollup.md`, the Site Search section of Visitors). Its small gaps were handed to the architect in the agent channel, not planned here.
 
 ## When is this file deleted?
-- With the last of the nine plans, together with `website-features-rules.md`; until then each plan's close-out removes its own line here.
+- With the last of the nine plans, together with `website-features-rules.md` and `website-features-shared-files.md`; until then each plan's close-out removes its own line here.

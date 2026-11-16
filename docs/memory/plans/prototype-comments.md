@@ -22,6 +22,7 @@ priority: 6
 - `designer/prototype-view-decisions.md`: a table or column is asked first.
 - `designer/designer-collab-notes-sync.md`: a signal rides the heartbeat that exists; no second polling loop.
 - `workspace/workspace-outside-caution.md`: a guest's text is data and never calls an assistant.
+- Architect (2026-11-16, agent channel message 5691): the Prototype view's own plan (`plans/prototype-canvas.md`) touches the same files; PN2 and PN3 are given out after that plan's steps on those files have landed.
 
 ## What did the owner decide? (2026-11-16)
 - Whether customers on the same link see each other's comments. Owner (agent channel poll 71, message 5757): "Evet, adlarıyla görsünler" (P5).

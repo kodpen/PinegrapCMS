@@ -7,7 +7,7 @@ description: Plan visitor-push, steps VP1 to VP8: the tables and the door, the s
 - VP1 (M) The tables and the visitor's door.
   - A migration step adds the subscriptions, messages and queue tables, listed in `get_tables()`; the draft PR's body carries their columns and indexes for the architect.
   - Existing files: `includes/fn/privacy.php` (`pg_consent_log_purposes()`, the export and erasure lists), `functions.php` (the module).
-  - New: `includes/fn/site_push.php` (ready check, the switch, the check of a subscription, save and remove, topics, the waiting message of a secret), the root file `site_push.php` on the pattern of `consent_answer.php`, `tests/site_push_test.php`.
+  - New: `includes/fn/site_push.php` (ready check, the switch, the check of a subscription, save and remove, the waiting message of a secret), the root file `site_push.php` on the pattern of `consent_answer.php`, `tests/site_push_test.php`.
   - Tests, red first: an endpoint on an unknown host or without https refused, key lengths, the door's origin and rate checks, a secret reading only its own message, nothing written with the switch off.
   - Features: N1 (the door), N4 to N9, N18.
 

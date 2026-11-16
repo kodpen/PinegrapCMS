@@ -11,6 +11,7 @@ description: The rules every step of the nine website-side plans keeps (plans/we
 ## How does a table or column come?
 - Only through a step of the open version with the idempotent helpers, listed in `get_tables()`, rerun twice on a dev database (`release/how-to-add-migration.md`).
 - Owner (2026-11-16, agent channel poll 65, message 5751), asked whether the tables these plans need may be added (one each for the click map, content review and prototype comments with a flag on the share link, three for visitor notifications, two for release bundles): "Evet, eklenebilir; sütunları Mimar onaylasın".
+- Architect (2026-11-16, agent channel message 5763): the scope is the tables the plans count; one beyond that count is asked again.
 - So the step's draft PR body carries the columns, types and indexes first, and the architect confirms them there before the rest is written (`workflow/decisions-made-schema-21.md`). Each feature works as "not there yet" until its step has run (a ready check).
 - A setting is a settings text, never a `config` column (`data/config-table-no-varchar.md`).
 

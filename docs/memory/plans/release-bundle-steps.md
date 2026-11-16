@@ -20,7 +20,7 @@ description: Plan release-bundle, steps RB1 to RB8 (RB0, the owner's answer, is 
 
 - RB3 (M) after RB1: publish and take back.
   - New, in the module: the checks (`pg_collab_may_edit_page()`, the dry run of `pg_designer_save_page()`), the writes (`pg_page_draft_move()`, the page save with the source `bundle`), the take back (`pg_page_revision_get()` and a save with the source `restore`).
-  - Tests: a locked page stopping everything before any write, a failure leaving "partly published", a page saved since not taken back, a swept revision named; a live page publishing at once with a replacement waiting, a shared component saved from a replacement's tab live at once.
+  - Tests: a locked page stopping everything before any write, a failure taking back what was written and leaving the bundle open, "partly published" only when that take-back fails, a page saved since not taken back, a swept revision named; a live page publishing at once with a replacement waiting, a shared component saved from a replacement's tab live at once.
   - Pictures: the publish dialog with a "changed since" page, the take-back dialog with a page it cannot take back. To the owner.
   - Features: B7 to B12, B17, B18.
 

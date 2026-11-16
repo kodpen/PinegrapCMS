@@ -15,15 +15,15 @@ priority: 6
 - Deleting a record (`pg_submitted_form_delete()`) leaves the records that point at it pointing at nothing. A record's History (`record_revisions`) holds its own values only.
 
 ## What is built?
-- The numbered features: `collection-rows-features.md` (R1 to R18). Steps: `collection-rows-steps.md`. Claim as `[plan:collection-rows] <step> — <topic>`; the rules: `website-features-rules.md`.
+- The numbered features: `collection-rows-features.md` (R1 to R12) and `collection-rows-features-2.md` (R13 to R19). Steps: `collection-rows-steps.md`. Claim as `[plan:collection-rows] <step> — <topic>`; the rules: `website-features-rules.md`.
 - In short: no new storage. A row is a record of a child collection; the parent's rows field keeps the rows' codes in order, so the order and the membership sit in one value that the parent's History already records, and the child needs no link field or order field.
 - This differs from message 5663, which put a link and an order field on the child: a number field of the child that the editor numbers by itself could be a field the site uses for something else.
 
 ## What happens to a record's rows when it is deleted? (owner, 2026-11-16, agent channel poll 66)
 - Owner (2026-11-16, agent channel poll 66, message 5752): "Satırlar da birlikte silinsin". The other choice was that the rows stay as records nobody lists. The confirmations name how many rows go (R11).
 
-## What does the architect decide?
-- The codes on the parent (the plan) against a link and an order field on the child (message 5663). The limit of 100 rows.
+## What did the architect decide?
+- Architect (2026-11-16, agent channel message 5763): the codes stand on the parent, since the order and the membership are one value the History keeps and no schema is needed; the limit of 100 holds. Its additions are in R5, R10, R14 and R19.
 
 ## What is left out?
 - Rows inside rows; a row's file upload on the parent's form (it opens the row's own screen, R10); a row moved to another record; the rows' text in the parent's site search entry. Each is a later yes.

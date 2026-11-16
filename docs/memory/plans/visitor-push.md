@@ -27,11 +27,12 @@ priority: 6
 - App mode (N17): an iPhone delivers web push only to a site installed with `standalone`, which #5065 had left at `browser`. Owner (agent channel poll 73, message 5759): "Evet, ayrı bir anahtarla ve kapalı başlayarak".
 - Whether "news" needs more than the browser's own question. Owner (agent channel poll 74, message 5760): "Evet, tarayıcının sorusu yeterli"; the yes and the stop go to the consent log (N8).
 
-## What does the architect decide?
-- The tables' columns, in VP1's draft PR; how a stock request names a subscription (VP5).
+## What did the architect decide?
+- Architect (2026-11-16, agent channel message 5763): who may send is named (N14); no topics in the first version (N10); a fixed short notification when the message cannot be read (N12).
+- Still the architect's: the tables' columns, in VP1's draft PR; how a stock request names a subscription (VP5).
 
 ## What is left out?
-- A flow box "Send a notification"; a push by itself when a record is published; clicks counted; subscribers picked by contact group. Each is a later yes.
+- Topics a visitor chooses; a flow box "Send a notification"; a push by itself when a record is published; clicks counted; subscribers picked by contact group. Each is a later yes.
 
 ## Whose look?
 - The "Notify me" block (VP3) and the panel's card and screen (VP4): the owner's. The Features switch: the architect's.

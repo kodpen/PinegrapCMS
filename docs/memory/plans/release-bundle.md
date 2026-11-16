@@ -26,8 +26,9 @@ priority: 6
 - Owner (agent channel poll 63, message 5748), asked with the decision of 2026-10-06 named beside the question: "Evet, geçebilsin". The other choices were a bundle of new pages only, and no bundle.
 - The decision of 2026-10-06 stays whole (B17: no working copy, a live page's Publish goes live at once); a bundle uses the draft an experiment's variant already is for a second purpose.
 
-## What does the architect decide?
-- The two tables' columns, in RB1's draft PR. Whether the used replacement goes to the Recycle Bin (B8) or stays a draft.
+## What did the architect decide?
+- Architect (2026-11-16, agent channel message 5763): a failure while writing takes back what was written and leaves the bundle open (B9); no copy for a page whose experiment is open (B3); the used replacement goes to the Recycle Bin (B8); the share link stays the last step.
+- Still the architect's: the two tables' columns, in RB1's draft PR.
 
 ## What is left out?
 - Shared components, menus and collection records in a bundle (B18). Each is a later yes.

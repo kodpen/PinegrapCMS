@@ -24,8 +24,9 @@ priority: 6
 - Owner (agent channel poll 64, message 5749), asked with today's behaviour named beside the question: "Evet, anahtarla seçilebilsin". The other choice was no approval at all.
 - The decision of 2026-10-06 stays the rule and the default: the switch starts off on every site and is one site's own choice (A1, A16).
 
-## What does the architect decide?
-- After the census (PA1): whether the gate's merge can be written as the proposal's operations, and what `design_proposals` needs for a person's proposal. The one hook in `ws_approval_settle()` against a pass of the general job.
+## What did the architect decide?
+- Architect (2026-11-16, agent channel message 5763): the way through the assistant's proposal table is accepted; the census (PA1) goes to the architect, and a column on `design_proposals` is inside the owner's yes on tables if the census needs one.
+- Still the architect's, after the census: whether the gate's merge can be written as the proposal's operations; the one hook in `ws_approval_settle()` against a pass of the general job.
 
 ## What is left out?
 - A content editor's change inside a shared component (it stays live at once; the census says what holding it would take); a second designer's yes on a designer's publish; approval of a release bundle; collection records (the templates' own status rule holds them). Each is a later yes.
