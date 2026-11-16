@@ -11,9 +11,9 @@ description: Plan publish-approval PA1 census: where a design proposal is listed
 - Also: the dry run of a channel answer (`includes/workspace/ai.php`), the cleanup of a cleared conversation (`includes/workspace/threads.php`), the editor's `?ai_proposal=` link (`edit_url`).
 
 ## What must change in them for an editor's change?
-- A list by page and `agent = 'editor'` beside the requests (the panel), shown to designers whether or not an assistant is set up; Compare from `before`/after trees.
-- The card: `can_apply` / `can_dismiss` for designers, not the asker, when `agent = 'editor'`.
-- The API: GET returns the rows with `agent = "editor"` and the module's ops; POST stays the applications' (A2). The page list's count includes them unless filtered.
+- Each reader above takes the one shared condition `agent <> 'editor'` and nothing more; the API and its schema stay as they are (`publish-approval-census.md`).
+- No design card is drawn on the approval request's message.
+- The waiting changes have the module's own list, opened from the count on the page's tab, shown to roles 0 and 1 whether or not an assistant or the Workspace is set up.
 
 ## What does a content-level editor see after a save today?
 - The save (`includes/designer_screen.php`, `pg_designer_save_page()` per tab) answers `status`, `message`, `pages` (ids and draft state), `forms`, `warnings`, `notes`. Nothing says which sent changes the gate did not copy; the merged tree is not sent back.

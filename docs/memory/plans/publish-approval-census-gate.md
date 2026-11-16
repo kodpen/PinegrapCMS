@@ -11,8 +11,8 @@ description: Plan publish-approval PA1 census: how the content gate's merge (pg_
 
 ## How can the result be written as operations?
 - Diff the stored tree against the merged one by `_id`: one op per changed node, `{op:"text", node, text, was}`, `{op:"src", node, src, was}`, `{op:"note", node, note, was}`; per marked area that differs `{op:"area", node, tree, was_hash}`; one `{op:"fields", …}` for changed page fields, each with its stored value.
-- Applying: every node must still be there (else stale, A9) and still hold `was` (else stale: a designer changed it meanwhile). Then the value is set exactly as the gate sets it, through the same helpers (`_pg_dm_neutralise_markers()`, the strip of `_editable`, `_pg_dm_restore_locked()`).
-- A stored tree without `_id`s cannot be addressed per node; such a page keeps today's behaviour or is refused, the architect's choice (recommend: today's save, it is a pre-id page).
+- Applying: every node must still be there (else stale, A9) and still hold `was` (else stale: a designer changed it meanwhile). The operations are then put on the stored tree and the result passes `pg_designer_merge_restricted_tree()` at content level before the write (the architect's condition, `publish-approval-census.md`).
+- A stored tree without `_id`s cannot be addressed per node: it is kept as one `{op:"tree", tree, base_hash}`, stale when the page changed since.
 
 ## What is lost with the assistant's operations instead?
 - `update` text: content HTML passes `pg_design_ai_clean_inline()` (parts dropped), a semantic node's text loses its tags, a bound node, an island or a semantic node with children is refused although the gate copies its text.

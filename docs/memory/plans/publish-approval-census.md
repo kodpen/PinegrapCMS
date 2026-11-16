@@ -1,6 +1,6 @@
 ---
 name: publish-approval-census
-description: Plan publish-approval PA1 census, start file: the two questions left to the architect with facts and recommendations, and the parts
+description: Plan publish-approval PA1 census, start file: the architect's decisions on the census (operations, the approval hook, no column, the list, the bell) and where the parts are
 ---
 
 ## Where are the parts of the census?
@@ -9,12 +9,22 @@ description: Plan publish-approval PA1 census, start file: the two questions lef
 - Every place that lists or draws a proposal, the editor's save today, a shared component: `publish-approval-census-places.md`.
 - A1 to A16, one line each: `publish-approval-census-features.md`.
 
-## Can the gate's merge be written as the proposal's operations?
-- Facts: `pg_designer_merge_restricted_tree()` returns a whole tree. What it takes from the editor is per node: `props.text`, the image address (`_pg_dm_take_image_src()`), `props._notes`, and inside an `_editable` area the whole subtree. The save also writes page fields outside the tree (title, description, keywords, meta tags, JSON-LD, canonical, comments, sitemap).
-- The assistant's operations (`_pg_dai_op()` in `includes/designer_ai.php`) cannot carry these unchanged: `update` text runs `pg_design_ai_clean_inline()` or `strip_tags()`, refuses bound nodes, islands and a semantic node with children; `replace` takes HTML, so an area's props, bindings and settings are rebuilt or dropped; no operation sets a note or a page field.
-- Recommendation: yes, as operations kept in `design_proposals.ops`, but an operation set of the new module's own (`text`, `src`, `note`, `area` with the subtree as JSON, `fields`), each with the value it replaces, applied by the module with the gate's own rules. Never through `pg_design_ai_apply_ops()`. Nothing is lost then; the cost is that every reader of `ops` branches on `agent`.
+## How is the gate's merge kept as the proposal's operations?
+- Architect (2026-11-16, agent channel message 5857): the module's own operations (`text`, `src`, `note`, `area`, `fields`) in `design_proposals.ops`, `agent = 'editor'`, each with its `was`. Never through `pg_design_ai_apply_ops()`.
+- Architect (2026-11-16, agent channel message 5857): apply writes no second copy of the gate. After the `was` check it puts the operations on the stored tree as it is then, passes the result through `pg_designer_merge_restricted_tree()` at content level, then writes as the designer. The stored operations are not trusted; the gate stays the one authority.
+- Architect (2026-11-16, agent channel message 5857): a tree without `_id`s does not fall back to today's save (that would break the switch's promise): one operation `{op:"tree", tree, base_hash}`, stale when the page changed since.
 
-## One hook in ws_approval_settle() or a pass of the general job?
-- Facts: `ws_approval_settle()` (`includes/workspace/approvals.php`) runs once, in the request of the answer that closed the rule, with `$actor_id` (0 for expiry). It already calls one optional function the same way (`ws_approval_task_note()`). A write there meets the page lock (`pg_collab_may_edit_page()` in `pg_design_ai_write_page()`) and can be refused while the approval stays "approved".
-- A job pass would see the settled row later, run as `closed_by`, and could try a locked page again; it adds a state to watch and a delay the editor sees.
-- Recommendation: the one hook, `function_exists()`-guarded, looking the change up by `design_proposals.message_id` = the approval's `message_id`. A refused write leaves the change waiting in the designers' list and says so in the bell; no retry loop. Expiry and "withdrawn" change nothing on the proposal.
+## Who reads an editor's row?
+- Architect (2026-11-16, agent channel message 5857): the assistant's readers never see it. The panel, `pg_design_ai_proposals_map()`, the API's proposal routes and the `pending_proposals` count, the dry run and the conversation cleanup take one shared condition, `agent <> 'editor'`; only the module reads editor rows. The readers do not branch on `agent`; the API and its schema do not change in this plan. Test: none of these readers returns an editor row.
+- Architect (2026-11-16, agent channel message 5857): no design card is drawn on the approval request's message; the approval card's yes and no are enough.
+
+## How does the Workspace answer apply it?
+- Architect (2026-11-16, agent channel message 5857): one hook in `ws_approval_settle()`, `function_exists()`-guarded, finding the change by `message_id`. The module's function makes every check of Apply itself (the closing person is role 0 or 1 at that moment, stale, the page lock) and does not trust the approvers list. A refused lock leaves the change waiting, a bell line says so, no retry. A14: rule "any"; only a designer's yes applies, anyone else's is noted.
+
+## Which column is added?
+- Architect (2026-11-16, agent channel message 5857): none. The dismiss reason (A10, 300 characters) is its own key in the row's `steps` JSON: read only with the row, never searched. Withdrawn is `dismissed` with `decided_by = requested_by`; the ENUM stays. A new label in `PG_PAGE_REVISION_SOURCES` is not schema (`page_revisions.source` is VARCHAR(16)). The 30-day sweep takes only `agent = 'editor'` rows.
+
+## Where are the waiting changes listed, and who is told?
+- Architect (2026-11-16, agent channel message 5857): A7's list is the module's own, independent of the assistant and the Workspace: opened from the count on the page's tab, always shown to roles 0 and 1. The Assistant panel and `designer_ai.js` are not touched. Its look goes to the owner in PA4.
+- Architect (2026-11-16, agent channel message 5857): A12 with the Workspace off: a third set in `pg_notification_off_kinds()` while the switch is on, counted by `pg_notification_off_lines_on()` too.
+- A change inside a shared component stays out of the plan; it needs a yes of its own.
