@@ -4,7 +4,7 @@ description: Plan design-canvas-quick-reach, steps QR1 to QR4: quick split, sele
 ---
 
 ## Which steps are there?
-- QR1 (M) Quick split: R1 to R6. After the fix of issue #9950 has landed.
+- QR1 (M) Quick split: R1 to R6. Done in #9972 (the notes: `ui/image-editor-clip-keys.md`).
   - Files: `assets/js/pg_image_editor_clip.js` (the bar's button, the chip, the one method), the model's `CLIP` section (`clipSplitPick()`), `pg_image_editor_access.js` (the key, the `?` sheet), `pg_image_editor_strings_clip()`, the clip's rules in `pg_image_editor.src.css`.
   - Tests, red first: `tests/image_editor_clip_test.php` for `clipSplitPick()` (selected and under the playhead, selected elsewhere, none selected, two rows, too near an edge), `tests/image_editor_access_test.php` for the key.
   - Pictures in the agent channel for the architect: the play bar at 1440 and 1024 with and without a clip to split, the chip on the row, light and dark.
