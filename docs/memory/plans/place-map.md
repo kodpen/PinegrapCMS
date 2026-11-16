@@ -28,8 +28,8 @@ priority: 6
 - Architect (message 6590): the bound of 500 and the cut stand. With a cut list "Near me" is not drawn, since the position never leaves the browser and the nearest place could be among those cut; the block tells the designer both.
 - Architect (message 6794), on the census: "Find from the address" and a typed address use Photon only (X5, X12); the map is a `marketing` service of the notice, no third class (X9); the headers do not change (X14).
 
-## What does the owner decide?
-- The default tiles: OpenStreetMap's with a provider's address and key as the site's option (the proposal), or no map until a key is entered. Asked as agent channel poll 99 (message 6821); MP3 and MP4 wait for his answer, MP2 does not.
+## What did the owner decide?
+- Owner (2026-11-16, agent channel poll 99, message 6821): "OpenStreetMap ile başlasın, site isterse kendi sağlayıcısını yazar". The default tiles are OpenStreetMap's; a provider's address and key are the site's option (X13). Not chosen: no map until a key is entered. MP3 and MP4 no longer wait for him.
 
 ## What is left out?
 - Coordinates found by themselves when an address changes; opening hours as data ("open now"); stock locations as places; more places than X8 carries, grouped on the map; routes. Each is a later yes.

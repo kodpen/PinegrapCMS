@@ -17,6 +17,7 @@ description: Plan wholesale, features J1 to J11: an offer for a contact group, q
 ## What is a minimum order?
 - (J8) A minimum order value can be set for a contact group: whole minor units in the site's base currency, kept as one setting that maps group to amount; a deleted group's entry is ignored when read. A customer in several such groups meets the highest; a guest matches none.
 - (J9) One function gives both the refusal when the order is sent, with how much is missing, and the cart's warning before. An order in another currency is turned into the base currency, rounded with `round()`, and then compared.
+- (J9, continued) The amount compared is the cart's goods subtotal (`get_order_subtotal()`), before discounts, tax and shipping, as the offers' order ladder measures an order (architect, 2026-11-16, agent channel message 6895).
 
 ## What frames it?
 - (J10) Nothing appears by itself: an offer without the group condition, an account that uses nobody's prices and a group without a minimum work exactly as today. Without the ERP there is no fixed wholesale price; J1 to J3, J8 and J9 work on any shop.
