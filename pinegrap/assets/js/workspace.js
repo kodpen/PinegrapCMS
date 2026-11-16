@@ -14102,37 +14102,76 @@
                 box.appendChild(self.claudeStateLine(state));
             });
 
+            // The column's width decides whether "since" keeps its word:
+            // measured again whenever the box is resized, and once the
+            // panel's font has loaded (it changes the label's width).
+            var fit = function () {
+                Array.prototype.forEach.call(box.children, function (line) {
+                    self.claudeStateFit(line);
+                });
+            };
+
+            if (typeof window.ResizeObserver === 'function') {
+                new window.ResizeObserver(fit).observe(box);
+            }
+
+            if (document.fonts && document.fonts.ready) {
+                document.fonts.ready.then(fit);
+            }
+
             return box;
         },
 
+        // When the first line cannot hold everything, the word of "since
+        // HH:MM" goes before the label is cut: the time stays, the whole
+        // phrase in its title. A label is then cut only when it is too long
+        // by itself.
+        claudeStateFit: function (line) {
+            var label = line.querySelector('.ws-claude-label');
+
+            if (!label || !line.querySelector('.ws-claude-since-word')) {
+                return;
+            }
+
+            line.classList.remove('ws-claude-tight');
+
+            if (label.scrollWidth > label.clientWidth) {
+                line.classList.add('ws-claude-tight');
+            }
+        },
+
+        // Icon, then the label, since and Stop on one row, and the progress
+        // note last: on that row when the whole of it fits, on a line of
+        // its own under the label when it does not (backend.src.css).
         claudeStateLine: function (state) {
             var self = this;
             var line = el('div', 'ws-claude-state ws-claude-' + state.status);
-
+            var body = el('div', 'ws-claude-body');
+            var head = el('div', 'ws-claude-head');
             var label = el('span', 'ws-claude-label', state.label);
 
             // A label too long for the column is cut with an ellipsis; the
             // title keeps the whole of it.
             label.title = state.label || '';
             line.appendChild(icon(state.icon));
-            line.appendChild(label);
+            line.appendChild(body);
+            body.appendChild(head);
+            head.appendChild(label);
 
-            // While an agent holds the request: its last progress note and
-            // since when it holds it (agent_shown.php). The answer's line
-            // takes their place. The note's dot shows only where the note
-            // stands on the label's line (a wide column).
-            if (state.note) {
-                var note = el('span', 'ws-claude-note');
-                var dot = el('span', 'ws-claude-note-dot', '· ');
-
-                dot.setAttribute('aria-hidden', 'true');
-                note.appendChild(dot);
-                note.appendChild(document.createTextNode(state.note));
-                line.appendChild(note);
-            }
-
+            // While an agent holds the request: since when it holds it and
+            // its last progress note (agent_shown.php). The answer's line
+            // takes their place.
             if (state.since) {
-                line.appendChild(el('span', 'ws-claude-since', '· ' + state.since));
+                var since = el('span', 'ws-claude-since');
+                var at = /\d{1,2}:\d{2}\s*$/.exec(state.since);
+                var time = at ? at[0].trim() : state.since;
+                var word = at ? state.since.slice(0, at.index) : '';
+
+                since.title = state.since;
+                since.setAttribute('aria-label', state.since);
+                since.appendChild(el('span', 'ws-claude-since-word', '· ' + word));
+                since.appendChild(el('span', '', time));
+                head.appendChild(since);
             }
 
             // A request to an MCP agent can be stopped while it waits or
@@ -14155,7 +14194,11 @@
                     });
                 });
 
-                line.appendChild(stop);
+                head.appendChild(stop);
+            }
+
+            if (state.note) {
+                body.appendChild(el('span', 'ws-claude-note', state.note));
             }
 
             return line;
