@@ -446,6 +446,20 @@ function pg_share_card_signature($kind, $id, $title, $state, $key)
 }
 
 /**
+ * Where get_share_card.php answers: the software folder under the site's
+ * path, beside get_file.php. Pure.
+ *
+ * @param string $site     scheme and host
+ * @param string $path     PATH, ending in /
+ * @param string $software SOFTWARE_DIRECTORY
+ * @return string ending in /
+ */
+function pg_share_card_root($site, $path, $software)
+{
+    return $site . $path . trim((string) $software, '/') . '/';
+}
+
+/**
  * A card's address. Pure.
  *
  * @param string $root the site's address with its path, ending in /
@@ -706,7 +720,7 @@ function pg_share_card_address($kind, $id, $title, $language, $page_id)
         }
     }
 
-    return pg_share_card_href(URL_SCHEME . HOSTNAME_SETTING . PATH, $kind, $id, $signature);
+    return pg_share_card_href(pg_share_card_root(URL_SCHEME . HOSTNAME_SETTING, PATH, defined('SOFTWARE_DIRECTORY') ? SOFTWARE_DIRECTORY : 'pinegrap'), $kind, $id, $signature);
 }
 
 /**

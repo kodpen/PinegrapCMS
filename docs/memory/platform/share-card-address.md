@@ -12,7 +12,7 @@ module: share_card
 - `pg_share_card_wrap()` (pure): words onto a line while the measured width fits, a word wider than a line cut by letters onto its own lines, more than three lines cut with the last ending in `…`. The measure is the bundled Roboto's advances (`pg_share_card_measure()`), the same sums the renderer places letters by.
 
 ## What is the address and what does it sign?
-- `get_share_card.php?k=<page|record|product>&i=<id>&s=<32 hex>`, a root file so `router.php` does not change. No text travels in it.
+- `<PATH><SOFTWARE_DIRECTORY>/get_share_card.php?k=<page|record|product>&i=<id>&s=<32 hex>` (`pg_share_card_root()`), beside `get_file.php`, so `router.php` does not change. No text travels in it. OG1 built it at the site root, where it answered 404; fixed in OG2 before any page printed it.
 - The signature is an HMAC with `ENCRYPTION_KEY` over the kind, the id, the title, the logo's stamp (name, mtime, size), both colours and the site's name: any change of what the card shows is a new address (`pg_share_card_signature()`).
 - `pg_share_card_address()` gives a page the address and keeps the title it printed in `cache/share/<kind>-<id>.json`, one entry per language (`pg_share_card_order_put()`, rewritten at most daily for the same title, read again and written under `<order>.lock` so two languages printed at once both stay).
 

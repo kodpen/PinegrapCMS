@@ -2155,6 +2155,7 @@
     "No rush": "Acele yok",
     "No sales": "Satış yok",
     "No sales yet.": "Henüz satış yok.",
+    "No sample could be drawn: the home page is not open to every visitor, or drawing it failed.": "Örnek çizilemedi: ana sayfa her ziyaretçiye açık değil ya da çizim başarısız oldu.",
     "No scheduled actions yet. Write one from the + menu of a channel's writing box, or from a note.": "Henüz programlanmış işlem yok. Bir kanalın yazı kutusundaki + menüsünden ya da bir nottan yazın.",
     "No scheduled task has run yet": "Henüz hiçbir zamanlanmış görev çalışmadı",
     "No scheduled task has run yet. Set up cron jobs if you want them.": "Henüz hiçbir zamanlanmış görev çalışmadı. İstiyorsanız cron işlerini kurun.",

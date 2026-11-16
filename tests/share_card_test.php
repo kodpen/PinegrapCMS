@@ -360,3 +360,11 @@ function test_share_card_covers_default_warning()
 	pg_assert_true(pg_share_card_reason_text('letters') !== '');
 	pg_assert_false(pg_share_card_reason_text('server') === pg_share_card_reason_text('letters'), 'the part says which of the two applies');
 }
+
+function test_share_card_root_is_the_software_folder()
+{
+	pg_assert_same('https://example.com/pinegrap/', pg_share_card_root('https://example.com', '/', 'pinegrap'), 'beside get_file.php, not at the site root');
+	pg_assert_same('https://example.com/shop/cms/', pg_share_card_root('https://example.com', '/shop/', 'cms'));
+	pg_assert_same('https://example.com/pinegrap/get_share_card.php?k=page&i=4&s=' . str_repeat('a', 32),
+		pg_share_card_href(pg_share_card_root('https://example.com', '/', 'pinegrap'), 'page', 4, str_repeat('a', 32)));
+}

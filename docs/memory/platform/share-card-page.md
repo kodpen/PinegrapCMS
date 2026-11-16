@@ -11,7 +11,7 @@ description: The share card's switch and colours in Site Settings, SEO, Social S
 
 ## What does the settings part show?
 - The switch's reason line (`pg_share_card_reason_text()`): `server` as a warning on a host that cannot draw, else the note that titles with letters the font lacks keep the default.
-- While cards are drawn, the home page's card in the saved colours, kept under the language `sample` so it never replaces the title the home page prints; and the Default Share Image warning about record forms is not shown (a card stands for their picture).
+- While cards are drawn, the home page's card in the saved colours, kept under the language `sample` so it never replaces the title the home page prints, and drawn before the part is printed (a picture asked for while it is drawn answers 503); and the Default Share Image warning about record forms is not shown (a card stands for their picture).
 
 ## How is it tested?
 - `tests/share_card_test.php`: the switch, the targets, a custom og:image tag and an item's own picture winning, the served language's title, the colour values, the reason texts and the warning.

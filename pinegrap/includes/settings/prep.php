@@ -822,9 +822,20 @@ if (!defined('PG_SETTINGS_ENTRY')) {
                 $share_card_sample_href = is_array($share_card_home)
                     ? pg_share_card_address('page', (int) $share_card_home['page_id'], ($share_card_home_title !== '') ? $share_card_home_title : TITLE, 'sample', (int) $share_card_home['page_id'])
                     : '';
+
+                // Drawn here when it is not there yet, so the picture is not
+                // asked for while it is being drawn (503).
+                if ($share_card_sample_href !== '') {
+                    parse_str((string) parse_url($share_card_sample_href, PHP_URL_QUERY), $share_card_query);
+
+                    if (pg_share_card_answer(pg_share_card_request($share_card_query))['status'] !== 200) {
+                        $share_card_sample_href = '';
+                    }
+                }
+
                 $share_card_sample = ($share_card_sample_href !== '')
-                    ? '<img src="' . h($share_card_sample_href) . '" width="1200" height="630" alt="' . h(lang('Sample share card of the home page')) . '" class="img-fluid border rounded" style="max-width: 480px;" loading="lazy">'
-                    : '<div class="form-text">' . lang('The home page is not open to every visitor, so no sample is drawn.') . '</div>';
+                    ? '<img src="' . h($share_card_sample_href) . '" width="1200" height="630" alt="' . h(lang('Sample share card of the home page')) . '" class="border rounded" style="width: 100%; max-width: 480px; height: auto;" loading="lazy">'
+                    : '<div class="form-text">' . lang('No sample could be drawn: the home page is not open to every visitor, or drawing it failed.') . '</div>';
             }
 
             $share_card_reason = ($share_card_server !== '') ? pg_share_card_reason_text($share_card_server) : pg_share_card_reason_text('letters');
