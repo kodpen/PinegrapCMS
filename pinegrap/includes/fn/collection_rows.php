@@ -679,3 +679,105 @@ function pg_coll_rows_shown_value($child_page_id, $parent_code, $field_name)
            AND form_fields.reference_page_id = '$child_page_id'
          LIMIT 1");
 }
+
+/**
+ * The SQL that reads the stored value of every rows list that keeps rows of
+ * child collection $child_page_id and holds one of $codes, but for the list
+ * of record $form_id's field $field_id (0 for a record not written yet):
+ * the lists a code written from outside the editor must not stand in
+ * (pure). A code is matched as a reference text box matches one
+ * (pg_coll_reference_holds_sql()). '' when there is no code.
+ *
+ * @param array $codes         pg_coll_rows_codes()
+ * @param int   $child_page_id
+ * @param int   $form_id
+ * @param int   $field_id
+ * @return string
+ */
+function pg_coll_rows_held_sql($codes, $child_page_id, $form_id, $field_id)
+{
+    $held = array();
+    foreach ((array)$codes as $code) $held[] = pg_coll_reference_holds_sql('form_data.data', (string)$code);
+    if (!$held) return '';
+
+    return "SELECT form_data.data FROM form_data
+        INNER JOIN form_fields ON form_fields.id = form_data.form_field_id
+        WHERE form_fields.collection_kind = 'rows'
+            AND form_fields.reference_page_id = '" . (int)$child_page_id . "'
+            AND NOT (form_data.form_id = '" . (int)$form_id . "' AND form_data.form_field_id = '" . (int)$field_id . "')
+            AND (" . implode(' OR ', $held) . ")";
+}
+
+/**
+ * Which of $codes another list already holds, in the order of $codes
+ * (pure). $held are the stored values pg_coll_rows_held_sql() reads.
+ *
+ * @param array $codes
+ * @param array $held
+ * @return array
+ */
+function pg_coll_rows_taken($codes, $held)
+{
+    $listed = array();
+    foreach ((array)$held as $value) {
+        foreach (pg_coll_rows_codes($value) as $code) $listed[$code] = true;
+    }
+    $taken = array();
+    foreach ((array)$codes as $code) {
+        if (isset($listed[(string)$code])) $taken[] = (string)$code;
+    }
+    return $taken;
+}
+
+/**
+ * Why a value written to a rows field from outside the rows editor (the
+ * API, a Workspace change) cannot be kept, '' when it can: only reference
+ * codes of the child collection's records, at most pg_coll_rows_max(), each
+ * standing in no other record's list, so no record takes over another's
+ * rows. The record's own list may keep its codes. Plain text.
+ *
+ * @param mixed  $value
+ * @param int    $child_page_id the field's child collection
+ * @param int    $form_id       the record written, 0 for a new one
+ * @param int    $field_id      the rows field
+ * @param string $name          the field's name, for the message
+ * @return string
+ */
+function pg_coll_rows_outside_refusal($value, $child_page_id, $form_id, $field_id, $name)
+{
+    if (is_scalar($value) && trim((string)$value) === '') return '';
+
+    if (!pg_coll_rows_value_ok($value, $child_page_id)) {
+        return lang(array(
+            'string' => 'The field {var:1} keeps rows: only reference codes of records of its rows collection, at most {var:2}, separated by commas.',
+            'vars'   => array((string)$name, pg_coll_rows_max()),
+        ));
+    }
+
+    $codes = pg_coll_rows_codes($value);
+    $taken = pg_coll_rows_taken($codes, db_values(pg_coll_rows_held_sql($codes, $child_page_id, $form_id, $field_id)));
+    if ($taken) {
+        return lang(array(
+            'string' => 'The field {var:1} names rows another record keeps: {var:2}.',
+            'vars'   => array((string)$name, implode(', ', $taken)),
+        ));
+    }
+
+    return '';
+}
+
+/**
+ * Whether a field of a form is a rows field (pure). A writer from outside the
+ * rows editor checks its value (pg_coll_rows_outside_refusal()); Import
+ * Submitted Forms leaves its column out, since an imported code would make
+ * the record take over another record's rows, and names the column.
+ *
+ * @param int   $field_id
+ * @param array $kinds    pg_coll_field_kinds() of the field's form
+ * @return bool
+ */
+function pg_coll_is_rows_field($field_id, $kinds)
+{
+    $field_id = (int)$field_id;
+    return isset($kinds[$field_id]['kind']) && $kinds[$field_id]['kind'] === 'rows';
+}

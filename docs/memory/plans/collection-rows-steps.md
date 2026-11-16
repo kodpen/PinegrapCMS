@@ -21,7 +21,7 @@ description: Plan collection-rows, steps RW1 to RW7: the kind and writer, the pa
   - Tests: a record's rows gone with it, the count in the confirmation's text, a loaded version keeping only rows that exist.
   - Features: R11, R12.
 
-- RW4 (S) after RW1: the API.
+- RW4 (S) after RW1: the API. Done: #9899.
   - Existing files: `includes/api/resources/forms.php` (`api_form_submission_present()`, the field facts, the write check), the form rows of the API schema.
   - Also `import_submitted_forms.php` (the rows cell skipped and named).
   - Tests: `rows` on a single read, codes on a list read, a foreign code and a code of another record's list 422, the import's skipped cell; `php tools/check_api_schema.php`.
