@@ -21,7 +21,7 @@
 - seo-impact-window-days.md: The SEO screens' recent-views column starts its window with pg_seo_impact_since(): calendar days, not 86400-second blocks, so a clock change does not move the first day.
 - seo-link-graph-self-links.md: SEO link graph: a page's link to itself is neither an incoming link nor a click-path step, so a page only its own menu item links to is an orphan
 - seo-structure-non-html-output.md: Pages may output JSON/XML/CSV, so SEO/structure rules must not assume an HTML document; what the structure check does with such output and the robots splice risk.
-- site-search-rollup.md: site_search_daily (11.0.147), the per-day search rollup: who counts, once per visit, the signed result click through page_view.php, the 400-day sweep. [decision: decisions-made-product-19.md]
+- site-search-rollup.md: site_search_daily (11.0.147), the per-day search rollup: who counts (no staff), once per visit, the signed result click through page_view.php, the 400-day sweep. [decision: decisions-made-product-19.md]
 - site-search-terms-on-visit.md: Who writes visitors.site_search_terms, and why the search widget writes it only on the first results page
 - sitemap-cache.md: sitemap.xml kept in data/cache/sitemap.txt under config.page_cache_generation with a one-hour lifetime (#2054): what redraws it, what waits for the lifetime, the lock, the wait with no copy, the purge
 - sitemap-listed-pages.md: Which pages sitemap.xml lists bare: the page types (pg_sitemap_page_types()), designed pages whose system widget stands in for an unlisted type, the home page exception, detail pages vs their records

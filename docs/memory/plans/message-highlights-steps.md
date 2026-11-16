@@ -8,7 +8,7 @@ description: Plan message-highlights, steps HL1 to HL5: the table and the pure p
   - A migration step of the open version with the idempotent helpers: `ws_highlights` as `workflow/decisions-made-schema-23.md` names it; the PR body repeats the columns. Rerun twice on a dev database.
   - `includes/workspace/highlights.php`: `ws_highlights_ready()` (the feature is off until the step ran), `ws_highlight_plain()`, `ws_highlight_find($plain, $quote, $occurrence)`, `ws_highlight_remap_one($row, $old_plain, $new_plain)`.
   - Tests: folding of white space, a quote found by its occurrence, a quote across a line break, a list and a mention, the remap's three outcomes. Features: H2, the pure part of H9.
-- HL2 (M) The server's actions. After HL1.
+- HL2 (M) The server's actions. After HL1. Done: #9879.
   - `ws_highlight_set()`, `ws_highlight_note()`, `ws_highlight_remove()`, `ws_highlights_remove_many()`, `ws_highlights_map($message_ids, $viewer)` (a message's `highlights`: id, quote, occurrence, scope, note, the maker's id, name and colour, `mine`, `can_remove`), `ws_highlights_mine($viewer, $scope, $after)` with the counts.
   - The actions beside `ws_reaction_set`, with the same CSRF and membership checks. The cleanup calls of H9 in `ws_message_delete()`, `ws_threads_purge()`, the edit path, the leave path and where a person's reactions are deleted.
   - Tests, red first: who may make each scope, who may remove, the three limits, the same place twice (H5), a `me` row never in another viewer's map, no inbox row and no stamp for `me`, the stamp for `all`.

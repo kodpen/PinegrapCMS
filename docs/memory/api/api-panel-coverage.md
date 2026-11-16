@@ -19,6 +19,9 @@ description: How far the external API covers what the panel manages (gap list #5
   - G7 `DELETE /pages/{id}`, `/files/{id}`: `pg_recycle_folder_id(true)` makes the bin before the stop; its log reads `$_SESSION['sessionusername']`, absent on the API path.
 - Not routes, for a technical reason: an import (`import.php`) is a run over many requests (cursor file, run lock, 8 s slices, an uploaded source, 30-day undo); the records it writes are reachable one by one. A design template is installed in the designer: `pg_design_template_prepare()` writes rows, the pages stay unsaved tabs until Publish there, and no server-side publish exists.
 
+## And channels and the agent channel?
+- Compared on 2026-11-15, every gap a route or kept without one on purpose by 2026-11-16: [[api-panel-coverage-channels]].
+
 ## How is a write route for a panel screen added?
 - First move the screen's inline SQL into one `includes/fn/` function, and have the screen and the handler both call it, so the screen's checks and refusals hold for the API too. Each step tests its handlers; `php tools/check_api_schema.php` covers the schema row.
 - Store writes take `store:write` (commerce ceiling, `api-store-zone-writes.md`); store reads stay under `orders:read`.

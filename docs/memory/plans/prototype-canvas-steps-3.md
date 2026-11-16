@@ -4,7 +4,7 @@ description: Plan prototype-canvas, steps PV7 to PV10 and PV12: the page picture
 ---
 
 ## Which steps are there?
-- PV7 (S, no product code) The picture's technical check. At once.
+- PV7 (S, no product code) The picture's technical check. At once. Done in #9864: `designer/prototype-picture-check.md`.
   - Asked: can a frame show the page as F1 says for forty pages, and can a link's rectangle be read from it?
   - First way: a frame without `allow-scripts` whose document is what the Preview builds for that tab's tree (`designer/designer-live-preview.md`, `generateHTML()` with a tree), 1280 wide, scaled; made when in view (the core's `thumb()`), at most six loading at once. It shows unsaved work.
   - Second way: `PGLivePicture` on a saved page's address (`designer/design-live-pictures.md`): the saved state only, and its frame cannot be read.

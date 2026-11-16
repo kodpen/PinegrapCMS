@@ -16,4 +16,4 @@ description: Channel kind, join, clear and version rename in the API (api_channe
 ## How are the panel's writers reused?
 - `ws_channel_make_public()` / `_private()`, `ws_channel_join()`, `ws_channel_clear()`, `ws_channel_era_rename()`; the logging ones inside `ws_api_as_owner()`.
 - "Nothing to clear" is `ws_channel_clear_span()` (eras.php), shared by the panel's clear and the route, so the dry run refuses it too.
-- Tests: `tests/workspace_api_channel_access_test.php`. Added in PR #9800 (channel-api-gaps CA14: G15, G19, G20).
+- Tests: `tests/workspace_api_channel_access_test.php`. Added in PR #9800 (CA14 of the channel API comparison, `api/api-panel-coverage-channels.md`).
