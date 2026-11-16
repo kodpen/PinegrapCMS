@@ -201,3 +201,47 @@ function test_page_bundle_add_refuses_experiments()
 	pg_assert_contains('pg_experiment_variant_hold(', $draft, 'an open experiment\'s variant is refused');
 	pg_assert_contains('publish_at = 0', $draft, 'a publish time of its own is cleared');
 }
+
+// Two people adding the same draft or the same live page at once: both pass
+// the check, both write; the smaller id stays.
+function test_page_bundle_race_keeps_the_smaller_id()
+{
+	pg_assert_true(pg_page_bundle_race_keeps(7, array(7)), 'alone');
+	pg_assert_true(pg_page_bundle_race_keeps(7, array()), 'not read back');
+	pg_assert_true(pg_page_bundle_race_keeps(7, array('7', '9')), 'the first of two');
+	pg_assert_true(!pg_page_bundle_race_keeps(9, array(7, 9)), 'the second of two is taken back');
+	pg_assert_true(!pg_page_bundle_race_keeps(0, array()), 'nothing written');
+}
+
+function test_page_bundle_insert_item_reads_its_id_first_and_rechecks()
+{
+	$source = pg_test_function_source('pg_page_bundle_insert_item');
+
+	$insert = strpos($source, 'INSERT INTO page_bundle_item');
+	$id = strpos($source, 'mysqli_insert_id(');
+	$update = strpos($source, 'UPDATE page_bundle SET');
+	$race = strpos($source, 'pg_page_bundle_race_keeps(');
+
+	pg_assert_true($insert !== false && $id !== false && $update !== false && $race !== false, 'all four are there');
+	pg_assert_true($insert < $id && $id < $race && $id < $update, 'the id is read before any other query');
+	pg_assert_contains('DELETE FROM page_bundle_item', $source, 'a lost race takes its row back');
+
+	pg_assert_contains('pg_delete_page_record(', pg_test_function_source('pg_page_bundle_add_copy'), 'and the copy it made');
+}
+
+function test_page_bundle_time_keeps_who_set_it()
+{
+	$source = pg_test_function_source('pg_page_bundle_set_time');
+
+	pg_assert_contains('scheduled_by', $source, 'the person setting the time is kept');
+	pg_assert_contains("(\$publish_at > 0) ? (int) \$user['id'] : 0", $source, 'and cleared with the time');
+}
+
+function test_page_bundle_failure_kept_as_written()
+{
+	$move = pg_test_function_source('pg_page_bundle_move');
+	pg_assert_contains("mb_substr((string) \$value, 0, 500, 'UTF-8')", $move, 'cut at 500, as written');
+
+	$clear = pg_test_function_source('pg_page_bundle_clear_failure');
+	pg_assert_contains("failed_page_id = 0, failed_reason = ''", $clear, 'a new attempt starts without it');
+}

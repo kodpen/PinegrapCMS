@@ -7275,7 +7275,8 @@ function upgrade_2026_11_0_site_push() {
 // a visual design prepared together, published at one moment and taken back
 // together. page_bundle is the named list: its status (open, scheduled,
 // published, partial, reverted), an optional publish time for the general
-// job, who made and who published it, and the last failure named on it.
+// job and who set it (the job publishes in that person's name), who made,
+// published and took it back, and the last failure named on it.
 // page_bundle_item is one draft in it: a new page (live_page_id 0) or a
 // replacement standing for a live page, with that page's state when the copy
 // was made (live_state, the SHA-1 of its tree, title and description) so a
@@ -7284,7 +7285,8 @@ function upgrade_2026_11_0_site_push() {
 // A draft is in one open bundle and a live page has one replacement in one
 // open bundle; that is checked in code, since a closed bundle keeps its rows.
 // idx_status_publish serves the job's pass, idx_draft and idx_live the holds.
-// No backfill: nothing was bundled before this step.
+// No backfill: nothing was bundled before this step. Columns confirmed by the
+// architect.
 function upgrade_2026_11_0_page_bundle() {
 
 	install_create_table('page_bundle', "CREATE TABLE page_bundle (
@@ -7292,10 +7294,13 @@ function upgrade_2026_11_0_page_bundle() {
 		name           VARCHAR(100) NOT NULL DEFAULT '',
 		status         VARCHAR(16) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT 'open',
 		publish_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		scheduled_by   INT UNSIGNED NOT NULL DEFAULT 0,
 		created_by     INT UNSIGNED NOT NULL DEFAULT 0,
 		created_at     INT UNSIGNED NOT NULL DEFAULT 0,
 		published_by   INT UNSIGNED NOT NULL DEFAULT 0,
 		published_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		reverted_by    INT UNSIGNED NOT NULL DEFAULT 0,
+		reverted_at    INT UNSIGNED NOT NULL DEFAULT 0,
 		updated_at     INT UNSIGNED NOT NULL DEFAULT 0,
 		failed_page_id INT UNSIGNED NOT NULL DEFAULT 0,
 		failed_reason  VARCHAR(500) NOT NULL DEFAULT '',

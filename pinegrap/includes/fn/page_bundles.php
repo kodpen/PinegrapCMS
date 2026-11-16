@@ -158,6 +158,35 @@ function pg_page_bundle_add_conflict($draft_page_id, $live_page_id, $open_items)
 }
 
 /**
+ * Whether a page written into a bundle keeps its place when two people add
+ * the same draft, or a replacement of the same live page, at the same
+ * moment: both pass the check before either writes, so after the write the
+ * waiting rows are read again and the smallest id stays. Pure.
+ *
+ * @param int   $item_id the row just written
+ * @param array $ids     the ids of the waiting rows of open bundles for the
+ *                       same draft or the same live page, this one included
+ * @return bool
+ */
+function pg_page_bundle_race_keeps($item_id, $ids)
+{
+    $item_id = (int) $item_id;
+    $ids = array_map('intval', (array) $ids);
+
+    if ($item_id <= 0) {
+        return false;
+    }
+
+    foreach ($ids as $id) {
+        if (($id > 0) && ($id < $item_id)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+/**
  * A page's state as a bundle compares it: the SHA-1 of its tree, title and
  * description, the three things a replacement writes. Pure.
  *
@@ -439,8 +468,11 @@ function pg_page_bundle_rename($bundle, $name)
  * @param array  $bundle pg_page_bundle_get()
  * @param string $to
  * @param array  $set    more columns => values written with the move
- *                       (publish_at, published_by, published_at,
- *                       failed_page_id, failed_reason)
+ *                       (publish_at, scheduled_by, published_by,
+ *                       published_at, reverted_by, reverted_at,
+ *                       failed_page_id, failed_reason); failed_reason is the
+ *                       save's answer as it was, cut at 500 characters and
+ *                       never translated later
  * @return array ok, error
  */
 function pg_page_bundle_move($bundle, $to, $set = array())
@@ -449,7 +481,8 @@ function pg_page_bundle_move($bundle, $to, $set = array())
         return array('ok' => false, 'error' => lang('The bundle cannot make that change now.'));
     }
 
-    $columns = array('publish_at', 'published_by', 'published_at', 'failed_page_id', 'failed_reason');
+    $columns = array('publish_at', 'scheduled_by', 'published_by', 'published_at', 'reverted_by', 'reverted_at',
+        'failed_page_id', 'failed_reason');
     $sql = 'status = ?, updated_at = ?';
     $values = array((string) $to, time());
 
@@ -473,15 +506,30 @@ function pg_page_bundle_move($bundle, $to, $set = array())
 }
 
 /**
+ * Clears the failure named on a bundle (failed_page_id, failed_reason): a
+ * new publish attempt starts without the last one's answer.
+ *
+ * @param array $bundle pg_page_bundle_get()
+ */
+function pg_page_bundle_clear_failure($bundle)
+{
+    db_q("UPDATE page_bundle SET failed_page_id = 0, failed_reason = '' WHERE id = ?", array((int) $bundle['id']));
+}
+
+/**
  * Sets or clears a bundle's publish time: a time moves an open bundle to
  * scheduled, 0 moves a scheduled one back to open.
  *
+ * The person who sets the time is kept (scheduled_by): the general job
+ * publishes in that person's name. Clearing the time clears it.
+ *
  * @param array $bundle     pg_page_bundle_get()
  * @param int   $publish_at unix time, 0 for none
+ * @param array $user       the person setting or clearing the time
  * @param int   $now
  * @return array ok, error
  */
-function pg_page_bundle_set_time($bundle, $publish_at, $now = null)
+function pg_page_bundle_set_time($bundle, $publish_at, $user, $now = null)
 {
     $publish_at = max(0, (int) $publish_at);
     $now = ($now === null) ? time() : (int) $now;
@@ -491,15 +539,16 @@ function pg_page_bundle_set_time($bundle, $publish_at, $now = null)
     }
 
     $to = ($publish_at > 0) ? 'scheduled' : 'open';
+    $scheduled_by = ($publish_at > 0) ? (int) $user['id'] : 0;
 
     if ($bundle['status'] === $to) {
-        db_q("UPDATE page_bundle SET publish_at = ?, updated_at = ? WHERE id = ? AND status = ?",
-            array($publish_at, time(), (int) $bundle['id'], $to));
+        db_q("UPDATE page_bundle SET publish_at = ?, scheduled_by = ?, updated_at = ? WHERE id = ? AND status = ?",
+            array($publish_at, $scheduled_by, time(), (int) $bundle['id'], $to));
 
         return array('ok' => true, 'error' => '');
     }
 
-    return pg_page_bundle_move($bundle, $to, array('publish_at' => $publish_at));
+    return pg_page_bundle_move($bundle, $to, array('publish_at' => $publish_at, 'scheduled_by' => $scheduled_by));
 }
 
 /**
@@ -550,29 +599,55 @@ function pg_page_bundle_add_refusal($draft_page_id, $live_page_id)
 }
 
 /**
- * Writes a page into a bundle.
+ * Writes a page into a bundle, then reads the waiting rows of open bundles
+ * for the same draft and the same live page again: when somebody added the
+ * same one at the same moment, the smaller id stays and this row is taken
+ * back (pg_page_bundle_race_keeps()).
  *
  * @param array  $bundle
  * @param int    $draft_page_id
  * @param int    $live_page_id
  * @param string $live_state
  * @param array  $user
- * @return int the item id, 0 when it was not written
+ * @return array id (0 when not written), error
  */
 function pg_page_bundle_insert_item($bundle, $draft_page_id, $live_page_id, $live_state, $user)
 {
+    $draft_page_id = (int) $draft_page_id;
+    $live_page_id = (int) $live_page_id;
+
     $ok = db_q(
         "INSERT INTO page_bundle_item (bundle_id, draft_page_id, live_page_id, live_state, status, added_by, added_at)
         VALUES (?, ?, ?, ?, 'waiting', ?, ?)",
-        array((int) $bundle['id'], (int) $draft_page_id, (int) $live_page_id, (string) $live_state, (int) $user['id'], time()));
+        array((int) $bundle['id'], $draft_page_id, $live_page_id, (string) $live_state, (int) $user['id'], time()));
 
-    if (!$ok) {
-        return 0;
+    // Read at once: any later query resets it.
+    $id = $ok ? (int) mysqli_insert_id(db::$con) : 0;
+
+    if ($id <= 0) {
+        return array('id' => 0, 'error' => '');
+    }
+
+    $match = "page_bundle_item.draft_page_id = '$draft_page_id'" . (($live_page_id > 0) ? " OR page_bundle_item.live_page_id = '$live_page_id'" : '');
+
+    $ids = db_values(
+        "SELECT page_bundle_item.id
+        FROM page_bundle_item
+        JOIN page_bundle ON page_bundle.id = page_bundle_item.bundle_id
+        WHERE page_bundle.status IN ('open', 'scheduled', 'partial') AND page_bundle_item.status = 'waiting'
+            AND ($match)");
+
+    if (!pg_page_bundle_race_keeps($id, $ids)) {
+        db("DELETE FROM page_bundle_item WHERE id = '$id'");
+
+        $taken = pg_page_bundle_add_refusal($draft_page_id, $live_page_id);
+
+        return array('id' => 0, 'error' => ($taken !== '') ? $taken : lang('The bundle was changed meanwhile; look again.'));
     }
 
     db_q("UPDATE page_bundle SET updated_at = ? WHERE id = ?", array(time(), (int) $bundle['id']));
 
-    return (int) mysqli_insert_id(db::$con);
+    return array('id' => $id, 'error' => '');
 }
 
 /**
@@ -640,13 +715,22 @@ function pg_page_bundle_add_copy($bundle, $live_page_id, $user)
     db("INSERT IGNORE INTO page_drafts (page_id, folder_id, drafted_at, drafted_by)
         VALUES ('$draft_page_id', '" . (int) $live['page_folder'] . "', UNIX_TIMESTAMP(), '" . (int) $user['id'] . "')");
 
-    $item_id = pg_page_bundle_insert_item($bundle, $draft_page_id, $live_id, $state, $user);
+    $written = pg_page_bundle_insert_item($bundle, $draft_page_id, $live_id, $state, $user);
 
-    if ($item_id <= 0) {
+    if ($written['error'] !== '') {
+        // Somebody added a replacement of this page at the same moment: the
+        // copy made for this one is taken back with its row.
+        require_once(PG_FUNCTIONS_DIR . '/includes/explorer/recycle_bin.php');
+        pg_delete_page_record($draft_page_id, $user);
+
+        return $fail($written['error']);
+    }
+
+    if ($written['id'] <= 0) {
         return $fail(lang('The copy was made in Drafts, but it could not be added to the bundle.'));
     }
 
-    return array('ok' => true, 'error' => '', 'item_id' => $item_id, 'draft_page_id' => $draft_page_id);
+    return array('ok' => true, 'error' => '', 'item_id' => $written['id'], 'draft_page_id' => $draft_page_id);
 }
 
 /**
@@ -689,6 +773,13 @@ function pg_page_bundle_add_draft($bundle, $draft_page_id, $user)
         return $fail($taken);
     }
 
+    $written = pg_page_bundle_insert_item($bundle, $draft_page_id, 0, '', $user);
+
+    if (($written['error'] !== '') || ($written['id'] <= 0)) {
+        return $fail(($written['error'] !== '') ? $written['error'] : lang('The draft could not be added to the bundle.'));
+    }
+
+    // Cleared once the draft is in: the bundle publishes it, not its time.
     $cleared = false;
 
     if (function_exists('pg_page_schedule_ready') && pg_page_schedule_ready()) {
@@ -696,13 +787,7 @@ function pg_page_bundle_add_draft($bundle, $draft_page_id, $user)
         $cleared = mysqli_affected_rows(db::$con) > 0;
     }
 
-    $item_id = pg_page_bundle_insert_item($bundle, $draft_page_id, 0, '', $user);
-
-    if ($item_id <= 0) {
-        return $fail(lang('The draft could not be added to the bundle.'));
-    }
-
-    return array('ok' => true, 'error' => '', 'item_id' => $item_id, 'time_cleared' => $cleared);
+    return array('ok' => true, 'error' => '', 'item_id' => $written['id'], 'time_cleared' => $cleared);
 }
 
 /**
