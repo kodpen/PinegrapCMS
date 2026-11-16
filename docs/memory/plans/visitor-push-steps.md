@@ -10,12 +10,14 @@ description: Plan visitor-push, steps VP1 to VP8: the tables and the door, the s
   - New: `includes/fn/site_push.php` (ready check, the switch, the check of a subscription, save and remove, the waiting message of a secret), the root file `site_push.php` on the pattern of `consent_answer.php`, `tests/site_push_test.php`.
   - Tests, red first: an endpoint on an unknown host or without https refused, key lengths, the door's origin and rate checks, a secret reading only its own message, nothing written with the switch off.
   - Features: N1 (the door), N4 to N9, N18.
+  - Done: #9947 (`platform/visitor-push-rules.md`; columns: architect, agent channel message 6528).
 
 - VP2 (M) after VP1: the sender.
   - Existing files: `job.php` and `push_job.php` (the queue's pass).
   - New: the message and queue writers and the send through `pg_push_vapid_token()` and the panel's sender, in the module.
   - Tests: batches, a gone subscription removed, a held service, a message dropped after a day, counts.
   - Features: N10, N11, N12 (the server's side).
+  - Architect (2026-11-16, message 6528): writes `kind` 0 or 1 only, `url` as a path without host; deletes finished rows (2, 3) and a dropped message's rows after 7 days; one `pg_cron_claim()` over both runners (`platform/job-script-claims.md`), row set to 1 once pushed; the door gives a row read in the last few minutes again.
 
 - VP3 (M) after VP1: the block and the switch.
   - Existing files: `get_page_content.php` (the script for a page whose markup carries `data-pg-push`), `assets/js/style_designer.src.js` (one row in `_SD_PAGE_SCRIPTS`), `includes/settings/features.php` and `features.save.php` (the card).
@@ -28,9 +30,9 @@ description: Plan visitor-push, steps VP1 to VP8: the tables and the door, the s
   - New: the screen "Send a notification" and its list. Pictures to the owner.
   - Features: N13, N14.
 
-- VP5 (S) after VP2: stock. Existing files: `includes/fn/stock_notify.php` (the push branch of `pg_stock_notify_send()`, `commerce/back-in-stock-sms.md`), the product page's request. Features: N15.
+- VP5 (S) after VP2: stock. Existing files: `includes/fn/stock_notify.php` (the push branch of `pg_stock_notify_send()`, `commerce/back-in-stock-sms.md`), the product page's request. Its message is `kind` 2 (6528). Features: N15.
 
-- VP6 (S) after VP2: an order. Existing files: `includes/fn/events.php` (one listener in `pg_event_record()`), the order's own pages. Features: N16.
+- VP6 (S) after VP2: an order. Existing files: `includes/fn/events.php` (one listener in `pg_event_record()`), the order's own pages. Its message is `kind` 3 (6528). Features: N16.
 
 - VP7 (S) after VP3: app mode. Existing files: `get_site_icon.php` (the manifest's `display`), the worker file (the offline page). Features: N17.
 

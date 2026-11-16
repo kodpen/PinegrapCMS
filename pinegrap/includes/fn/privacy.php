@@ -97,6 +97,7 @@ function pg_privacy_is_person_token($token)
  * cookie:   the cookie notice's optional categories (pg_consent_category_letters()).
  * email, sms, call: commercial messages, the three İYS channels.
  * contract: the documents accepted at checkout, the order_documents types.
+ * push:     the site's news by browser notification (includes/fn/site_push.php).
  *
  * @return array  channel => list of purposes
  */
@@ -108,6 +109,7 @@ function pg_consent_log_purposes()
         'sms'      => array('marketing'),
         'call'     => array('marketing'),
         'contract' => array('preinfo', 'contract', 'kvkk'),
+        'push'     => array('news'),
     );
 }
 
@@ -174,6 +176,7 @@ function pg_consent_log_sources()
         'form',         // a custom form: a double opt-in group or a field bound to the e-mail opt-in
         'complaint',    // a spam complaint reported back for a message (includes/fn/mail_bounces.php)
         'message',      // a stop word in a customer's SMS (includes/fn/sms_inbox.php)
+        'notify',       // the site's "Notify me" block (site_push.php)
     );
 }
 
@@ -181,8 +184,8 @@ function pg_consent_log_sources()
  * The row one consent event becomes, or the reason it is refused.
  *
  * The person is the token (given, or made from 'email'), the user and the
- * contact; at least one is needed, except for a cookie answer, which an
- * anonymous visitor gives. ip and user_agent are taken as given and cut to
+ * contact; at least one is needed, except for a cookie answer or a
+ * notification yes or stop, which an anonymous visitor gives. ip and user_agent are taken as given and cut to
  * their columns; an address that is not an IP is dropped.
  *
  * @param array    $event  channel, purpose, status, source, and any of email,
@@ -225,7 +228,7 @@ function pg_consent_log_row(array $event, $now = null)
     $user_id = isset($event['user_id']) ? max(0, (int) $event['user_id']) : 0;
     $contact_id = isset($event['contact_id']) ? max(0, (int) $event['contact_id']) : 0;
 
-    if (($channel !== 'cookie') && ($token === '') && ($user_id === 0) && ($contact_id === 0)) {
+    if (!in_array($channel, array('cookie', 'push'), true) && ($token === '') && ($user_id === 0) && ($contact_id === 0)) {
         return 'person';
     }
 
@@ -988,6 +991,7 @@ function pg_privacy_erase_tables()
         'chat_conversations'           => array('find' => array('id' => 'conversation_ids'), 'action' => 'delete', 'fields' => array()),
         'address_book'                 => array('find' => array('user' => 'user_ids'), 'action' => 'delete', 'fields' => array()),
         'push_subscriptions'           => array('find' => $user, 'action' => 'delete', 'fields' => array()),
+        'site_push_subscription'       => array('find' => $user, 'action' => 'delete', 'fields' => array()),
         'user_passkeys'                => array('find' => $user, 'action' => 'delete', 'fields' => array()),
         'user_identities'              => array('find' => $user, 'action' => 'delete', 'fields' => array()),
         'user_mfa_recovery'            => array('find' => $user, 'action' => 'delete', 'fields' => array()),
@@ -1104,6 +1108,7 @@ function pg_privacy_erase_labels()
         'chat_conversations'           => lang('Site chat'),
         'address_book'                 => lang('Address book'),
         'push_subscriptions'           => lang('Device notifications'),
+        'site_push_subscription'       => lang('Site notifications'),
         'user_passkeys'                => lang('Passkeys'),
         'user_identities'              => lang('Connected sign-in accounts'),
         'user_mfa_recovery'            => lang('Recovery codes'),

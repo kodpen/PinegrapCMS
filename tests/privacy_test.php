@@ -58,7 +58,7 @@ function test_consent_log_purposes_follow_their_writers()
 {
 	$purposes = pg_consent_log_purposes();
 
-	pg_assert_same(array('cookie', 'email', 'sms', 'call', 'contract'), array_keys($purposes), 'channels');
+	pg_assert_same(array('cookie', 'email', 'sms', 'call', 'contract', 'push'), array_keys($purposes), 'channels');
 	pg_assert_same(array_keys(pg_consent_category_letters()), $purposes['cookie'], 'cookie notice categories');
 
 	foreach (array_keys(pg_legal_document_types()) as $type) {
