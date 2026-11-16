@@ -210,13 +210,172 @@ function pg_share_card_unable($can, $title, $name)
  */
 function pg_share_card_colors()
 {
-    $background = strtolower(trim(pg_config_text('share_card_background')));
-    $color = strtolower(trim(pg_config_text('share_card_color')));
-
     return array(
-        'background' => pg_image_draw_color($background) ? $background : '#1f2937',
-        'color'      => pg_image_draw_color($color) ? $color : '#ffffff',
+        'background' => pg_share_card_color_value(pg_config_text('share_card_background'), '#1f2937'),
+        'color'      => pg_share_card_color_value(pg_config_text('share_card_color'), '#ffffff'),
     );
+}
+
+/**
+ * A colour as the card keeps it: #rrggbb in lower case, the default for
+ * anything else. Pure.
+ *
+ * @param mixed  $value
+ * @param string $default
+ * @return string
+ */
+function pg_share_card_color_value($value, $default)
+{
+    $value = is_string($value) ? strtolower(trim($value)) : '';
+
+    return preg_match('/^#[0-9a-f]{6}$/', $value) ? $value : $default;
+}
+
+/**
+ * Whether the settings text share_card turns the card on. Off unless it
+ * reads 1, so a site that never saved the setting keeps its output. Pure.
+ *
+ * @param string $value pg_config_text('share_card')
+ * @return bool
+ */
+function pg_share_card_switch($value)
+{
+    return $value === '1';
+}
+
+/**
+ * Whether pages print cards: the switch is on and this host draws text in
+ * the bundled font. A page whose title has letters the font lacks still
+ * keeps the default picture. Pure but for the font files.
+ *
+ * @param bool  $on
+ * @param array $can pg_image_draw_can()
+ * @return bool
+ */
+function pg_share_card_active($on, $can)
+{
+    return $on && (pg_share_card_unable($can, 'A', 'A') === '');
+}
+
+/**
+ * What the Social Sharing part says when a card cannot be drawn: why this
+ * server draws none ('server'), or that titles with letters the font lacks
+ * keep the default ('letters'). '' for ''.
+ *
+ * @param string $reason pg_share_card_unable()
+ * @return string
+ */
+function pg_share_card_reason_text($reason)
+{
+    if ($reason === 'server') {
+        return lang('This server cannot draw text into pictures (ImageMagick is missing, failed its check or is paused), so every page keeps the Default Share Image.');
+    }
+
+    if ($reason === 'letters') {
+        return lang('A title with letters the card\'s font does not have (such as Arabic, Chinese or emoji) keeps the Default Share Image.');
+    }
+
+    return '';
+}
+
+/**
+ * Which item a page's card is for, when it gets one: never in an e-mail,
+ * with the switch off, beside a custom og:image tag, or on an answer that
+ * is not 200; a record or product the page shows; else the page itself,
+ * only at its own address (a product group, a filtered list, a page number
+ * or a query keep the default picture, as their titles change with the
+ * address). Pure.
+ *
+ * @param array $facts on, email, custom_image, page_id, page_type, own (the
+ *                     address is the page's own), status, record, product
+ *                     (ids, 0 for none), item (the page shows an item of its
+ *                     own)
+ * @return array|null kind, id
+ */
+function pg_share_card_target($facts)
+{
+    if (empty($facts['on']) || !empty($facts['email']) || !empty($facts['custom_image'])
+        || ((int) ($facts['status'] ?? 200) !== 200) || (($facts['page_type'] ?? '') === 'error')) {
+        return null;
+    }
+
+    if ((int) ($facts['record'] ?? 0) > 0) {
+        return array('kind' => 'record', 'id' => (int) $facts['record']);
+    }
+
+    if ((int) ($facts['product'] ?? 0) > 0) {
+        return array('kind' => 'product', 'id' => (int) $facts['product']);
+    }
+
+    if (!empty($facts['item']) || empty($facts['own']) || ((int) ($facts['page_id'] ?? 0) <= 0)) {
+        return null;
+    }
+
+    return array('kind' => 'page', 'id' => (int) $facts['page_id']);
+}
+
+/**
+ * Whether a custom meta tag list (the design's, the page's) sets og:image;
+ * that tag then wins over a card. Pure.
+ *
+ * @param array ...$lists pg_meta_tags_normalize()
+ * @return bool
+ */
+function pg_share_card_meta_has_image(...$lists)
+{
+    foreach ($lists as $list) {
+        foreach ((array) $list as $row) {
+            if (is_array($row) && (strtolower((string) ($row['name'] ?? '')) === 'og:image')) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+/**
+ * The share picture a card's address stands as. Pure.
+ *
+ * @param string $href pg_share_card_address()
+ * @return array|null url, width, height, type, alt
+ */
+function pg_share_card_og_image_value($href)
+{
+    $limits = pg_share_card_limits();
+
+    return ((string) $href === '') ? null : array('url' => (string) $href, 'width' => $limits['width'], 'height' => $limits['height'], 'type' => 'image/png', 'alt' => '');
+}
+
+/**
+ * The picture a page shares: its own when it has one, else the card (null
+ * for none, and the default picture is chosen after). Pure.
+ *
+ * @param array|null $own
+ * @param array|null $card
+ * @return array|null
+ */
+function pg_share_card_pick($own, $card)
+{
+    return ($own !== null) ? $own : $card;
+}
+
+/**
+ * A page's card as its share picture, for get_page_content.php: null when
+ * the page gets none (pg_share_card_target()) or the card cannot be made
+ * (pg_share_card_address()).
+ *
+ * @param array  $facts    pg_share_card_target()
+ * @param string $title    as og:title prints it, in the served language
+ * @param string $language the served language, '' for the site's own
+ * @param int    $page_id  the page printing it
+ * @return array|null pg_share_card_og_image_value()
+ */
+function pg_share_card_og_image($facts, $title, $language, $page_id)
+{
+    $target = pg_share_card_target($facts);
+
+    return $target ? pg_share_card_og_image_value(pg_share_card_address($target['kind'], $target['id'], $title, $language, $page_id)) : null;
 }
 
 /**

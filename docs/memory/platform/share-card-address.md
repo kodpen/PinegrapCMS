@@ -5,8 +5,8 @@ module: share_card
 ---
 
 ## What is it?
-- A 1200 x 630 PNG drawn by the server for a page or item with no share picture of its own: the background colour, the Organization Logo when one is set and readable, the title in at most three lines, the site's name (`TITLE`). Plan: `plans/share-card.md`.
-- `includes/fn/share_card.php`, loaded only by `get_share_card.php` and `job.php` (later by the page that prints the address), not by `functions.php`. It draws through `pg_image_draw_document()` (`includes/fn/image_draw.php`).
+- A 1200 x 630 PNG drawn by the server for a page or item with no share picture of its own: the background colour, the Organization Logo when one is set and readable, the title in at most three lines, the site's name (`TITLE`). Plan: `plans/share-card.md`. Where a page prints it and the settings part: `share-card-page.md`.
+- `includes/fn/share_card.php`, loaded by `get_share_card.php`, `job.php`, the SEO settings and `get_page_content.php` while the switch is on; not by `functions.php`. It draws through `pg_image_draw_document()` (`includes/fn/image_draw.php`).
 
 ## How is the title laid out?
 - `pg_share_card_wrap()` (pure): words onto a line while the measured width fits, a word wider than a line cut by letters onto its own lines, more than three lines cut with the last ending in `…`. The measure is the bundled Roboto's advances (`pg_share_card_measure()`), the same sums the renderer places letters by.

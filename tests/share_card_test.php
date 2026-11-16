@@ -270,3 +270,93 @@ function test_share_card_page_open()
 	pg_assert_false(pg_share_card_page_open(null, 'public', false), 'no such page');
 	pg_assert_false(pg_share_card_page_open(array('page_folder' => '') + $row, 'public', false));
 }
+
+/**
+ * The facts of a plain page drawn at its own address with the switch on.
+ *
+ * @return array
+ */
+function share_card_test_facts()
+{
+	return array('on' => true, 'email' => false, 'custom_image' => false, 'page_id' => 4, 'page_type' => 'standard',
+		'own' => true, 'status' => 200, 'record' => 0, 'product' => 0, 'item' => false);
+}
+
+function test_share_card_target_switch_off()
+{
+	pg_assert_same(array('kind' => 'page', 'id' => 4), pg_share_card_target(share_card_test_facts()));
+	pg_assert_same(null, pg_share_card_target(array('on' => false) + share_card_test_facts()), 'no card with the switch off');
+	pg_assert_same(null, pg_share_card_target(array('on' => false, 'record' => 9) + share_card_test_facts()));
+	pg_assert_false(pg_share_card_switch(''), 'off unless set');
+	pg_assert_false(pg_share_card_switch('0'));
+	pg_assert_true(pg_share_card_switch('1'));
+}
+
+function test_share_card_target_items()
+{
+	pg_assert_same(array('kind' => 'record', 'id' => 9), pg_share_card_target(array('record' => 9, 'own' => false, 'item' => true) + share_card_test_facts()), 'a record page');
+	pg_assert_same(array('kind' => 'product', 'id' => 3), pg_share_card_target(array('product' => 3, 'own' => false, 'item' => true) + share_card_test_facts()), 'a product page');
+	pg_assert_same(null, pg_share_card_target(array('item' => true, 'own' => false) + share_card_test_facts()), 'a product group or a filtered list keeps the default');
+	pg_assert_same(null, pg_share_card_target(array('own' => false) + share_card_test_facts()), 'an address with a page number or query');
+	pg_assert_same(null, pg_share_card_target(array('status' => 404) + share_card_test_facts()));
+	pg_assert_same(null, pg_share_card_target(array('page_type' => 'error') + share_card_test_facts()));
+	pg_assert_same(null, pg_share_card_target(array('email' => true) + share_card_test_facts()), 'never in an e-mail');
+	pg_assert_same(null, pg_share_card_target(array('record' => 9, 'status' => 404) + share_card_test_facts()), 'a record that is not there');
+}
+
+function test_share_card_custom_meta_tag_wins()
+{
+	pg_assert_same(null, pg_share_card_target(array('custom_image' => true) + share_card_test_facts()), 'a custom og:image tag wins');
+	pg_assert_true(pg_share_card_meta_has_image(array(array('name' => 'og:image', 'content' => 'x.png'))));
+	pg_assert_true(pg_share_card_meta_has_image(array(), array(array('name' => 'OG:Image', 'content' => 'x.png'))), 'the page list or the design list');
+	pg_assert_false(pg_share_card_meta_has_image(array(array('name' => 'og:image:alt', 'content' => 'x'))), 'only the picture itself');
+	pg_assert_false(pg_share_card_meta_has_image(array(), array()));
+}
+
+function test_share_card_item_picture_wins()
+{
+	$own = array('url' => 'https://example.com/cup.jpg', 'width' => 800, 'height' => 800, 'alt' => '');
+	$card = pg_share_card_og_image_value('https://example.com/get_share_card.php?k=page&i=4&s=' . str_repeat('a', 32));
+
+	pg_assert_same($own, pg_share_card_pick($own, $card), "an item's own picture wins");
+	pg_assert_same($card, pg_share_card_pick(null, $card), 'the card where the default would stand');
+	pg_assert_same(null, pg_share_card_pick(null, null), 'no card: the default is chosen after');
+	pg_assert_same(array('url' => $card['url'], 'width' => 1200, 'height' => 630, 'type' => 'image/png', 'alt' => ''), $card, 'width, height and type for the page (S11)');
+	pg_assert_same(null, pg_share_card_og_image_value(''));
+}
+
+function test_share_card_served_language_title()
+{
+	$state = share_card_test_state();
+	$en = pg_share_card_signature('page', 4, 'Spring sale', $state, 'key');
+	$tr = pg_share_card_signature('page', 4, 'Bahar indirimi', $state, 'key');
+	pg_assert_false($en === $tr, 'each served title signs its own address');
+
+	$order = pg_share_card_order_put(pg_share_card_order_put(array(), 'en', 'Spring sale', $en, 4, 100), 'tr', 'Bahar indirimi', $tr, 4, 100);
+	$request = array('kind' => 'page', 'id' => 4, 'signature' => $tr);
+	pg_assert_same(array('title' => 'Bahar indirimi', 'page' => 4, 'language' => 'tr'), pg_share_card_find($request, $order, true, $state, 'key'), 'the Turkish page draws the Turkish title');
+	pg_assert_same('en', pg_share_card_find(array('signature' => $en) + $request, $order, true, $state, 'key')['language']);
+}
+
+function test_share_card_settings_values()
+{
+	pg_assert_same('#1f2937', pg_share_card_color_value('', '#1f2937'));
+	pg_assert_same('#112233', pg_share_card_color_value(' #112233 ', '#1f2937'));
+	pg_assert_same('#aabbcc', pg_share_card_color_value('#AABBCC', '#1f2937'), 'kept in lower case');
+	pg_assert_same('#1f2937', pg_share_card_color_value('red', '#1f2937'), 'only #rrggbb');
+	pg_assert_same('#1f2937', pg_share_card_color_value('#abc', '#1f2937'), 'the colour field sends six digits');
+	pg_assert_same('#1f2937', pg_share_card_color_value(array('#112233'), '#1f2937'));
+}
+
+function test_share_card_covers_default_warning()
+{
+	$all = array('shapes' => true, 'text' => true, 'icons' => true, 'svg' => true, 'pictures' => array('png'), 'paused' => 0, 'engine' => 'test');
+
+	pg_assert_true(pg_share_card_active(true, $all), 'a drawn card is a share picture: the record warning goes');
+	pg_assert_false(pg_share_card_active(false, $all), 'switch off: the warning stays');
+	pg_assert_false(pg_share_card_active(true, array('text' => false) + $all), 'a host that cannot draw: the warning stays');
+	pg_assert_same('', pg_share_card_reason_text(''));
+	pg_assert_true(pg_share_card_reason_text('server') !== '');
+	pg_assert_true(pg_share_card_reason_text('letters') !== '');
+	pg_assert_false(pg_share_card_reason_text('server') === pg_share_card_reason_text('letters'), 'the part says which of the two applies');
+}
