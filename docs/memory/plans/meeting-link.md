@@ -29,7 +29,7 @@ priority: 6
 ## What did the architect decide? (2026-11-16)
 - Architect (agent channel message 6553), after the owner asked that what exists be grown instead of a table (poll 84): no table. One column on `ws_profiles` for the member's meeting address; the link's code from the `booking_staff` row and the site's secret. That a link cannot be renewed by itself is accepted.
 - Architect (message 6554): a service with a deposit is not offered through a link in the first version (M7).
-- Architect (SL1 #10031): the column is `ws_profiles.meeting_url`, VARCHAR(500) NULL; its rules: `workflow/decisions-made-schema-26.md`.
+- Architect (message 7221, SL1 #10031): the column is `ws_profiles.meeting_url VARCHAR(500) NULL` (11.0.232), no index, no backfill; every write goes through `ws_meeting_url_clean()` and an emptied field is NULL; a reader takes NULL and an empty string alike as no address. Its rules: `workflow/decisions-made-schema-26.md`.
 
 ## What is left out?
 - Deposits through a link; a link switched off or renewed by itself, or one that offers only some of the member's services; a meeting room made per booking; the member's own Google or Outlook calendar as busy; one link for several members. Each is a later yes.

@@ -220,6 +220,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_site_push();               // 11.0.227
 	upgrade_2026_11_0_page_bundle();             // 11.0.228
 	upgrade_2026_11_0_site_push_watch();         // 11.0.229
+	upgrade_2026_11_0_ws_meeting_url();          // 11.0.232
 
 }
 
@@ -7355,5 +7356,27 @@ function upgrade_2026_11_0_site_push_watch() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Visitor notifications: a browser can now wait for one product to come back or one order to ship; nothing changes until the switch is turned on in Features.');
+
+}
+
+// A booking staff member's meeting address (11.0.232,
+// includes/fn/booking_links.php): the one address a member pastes for the
+// bookings made through their meeting link, cleaned by
+// ws_meeting_url_clean(). NULL is no address; an emptied field is stored as
+// NULL. The length is ws_events.meeting_url's. No backfill: until a member
+// sets one, nothing changes.
+function upgrade_2026_11_0_ws_meeting_url() {
+
+	if (!install_table_exists('ws_profiles')) {
+
+		install_skipped('ws_profiles does not exist, skipped');
+
+		return;
+
+	}
+
+	install_add_column('ws_profiles', 'meeting_url', 'VARCHAR(500) NULL');
+
+	install_note('Bookings: a staff member can keep a meeting address for the bookings made through their meeting link.');
 
 }
