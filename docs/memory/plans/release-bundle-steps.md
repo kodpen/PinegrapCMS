@@ -6,7 +6,7 @@ description: Plan release-bundle, steps RB1 to RB8 (RB0, the owner's answer, is 
 ## Which steps are there?
 - RB0 Done (2026-11-16, agent channel poll 63, message 5748): the owner's answer that a draft may stand for a live page outside an experiment, "Evet, geçebilsin" (`plans/release-bundle.md`).
 
-- RB1 (M) after RB0: the tables and the rules.
+- RB1 Done (#9961): the tables and the rules.
   - A migration step adds the bundle and its pages (working names: `page_bundles`, `page_bundle_items`), listed in `get_tables()`; the draft PR's body carries their columns and indexes for the architect.
   - Existing files: `includes/fn/experiments_sheet.php` (one more answer in `pg_experiment_variant_hold_message()`, which the save, the bin and the API's delete already ask), `functions.php` (the module).
   - New: `includes/fn/page_bundles.php` (ready check, a bundle read and written, a copy added as `pg_experiment_sheet_create()` copies a variant, a draft added, a page removed, the statuses and their moves, the "changed since" check), `tests/page_bundles_test.php`.
