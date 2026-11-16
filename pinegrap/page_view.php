@@ -5,7 +5,7 @@
  * The visitor beacon of the page cache: a page the router answered from a
  * stored copy posts here once it is shown, so the view is counted as if the
  * page had been drawn. A click on a site search result and the page speed
- * beacon post here too.
+ * beacon and a pop-up's events post here too.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -45,6 +45,21 @@ if (pg_post_body_discarded()) {
 if (isset($_POST['sc'])) {
     if (pg_site_search_click_verify($_POST['sc'], $_POST['ss'] ?? '', defined('ENCRYPTION_KEY') ? (string) ENCRYPTION_KEY : '')) {
         pg_site_search_click($_POST['sc'], $_POST['u'] ?? '');
+    }
+    exit();
+}
+
+// A pop-up's event (software.count_auto_dialog()): shown, closed or taken,
+// with the day signature its page printed; counted in the pop-up's day row
+// for a visitor who allows statistics, never for staff or crawlers, at most
+// PG_AUTO_DIALOG_COUNT_RATE_LIMIT a minute from one address.
+if (isset($_POST['ad'])) {
+    if (!pg_auto_dialog_count_rate_exceeded() && pg_auto_dialog_count_allowed()) {
+        $auto_dialog_event = pg_auto_dialog_count_parse($_POST, defined('ENCRYPTION_KEY') ? (string) ENCRYPTION_KEY : '');
+
+        if ($auto_dialog_event !== null) {
+            pg_auto_dialog_count($auto_dialog_event[0], $auto_dialog_event[1]);
+        }
     }
     exit();
 }

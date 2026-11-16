@@ -213,6 +213,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ws_link_previews();        // 11.0.220
 	upgrade_2026_11_0_auto_dialog_open();        // 11.0.221
 	upgrade_2026_11_0_ws_highlights();           // 11.0.222
+	upgrade_2026_11_0_auto_dialog_daily();       // 11.0.223
 
 }
 
@@ -7061,5 +7062,26 @@ function upgrade_2026_11_0_ws_highlights() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Workspace: a reader can highlight a part of a message for everyone or only for themselves.');
+
+}
+
+// Pop-up counts (11.0.223, includes/fn/auto_dialog_counts.php): one row per
+// auto dialog and site day with how often it was shown, closed and taken
+// up, raised by one INSERT ... ON DUPLICATE KEY UPDATE per event. idx_day
+// serves the screens' 30-day sum and the 400-day sweep. No visitor data and
+// no backfill: nothing was counted before this step.
+function upgrade_2026_11_0_auto_dialog_daily() {
+
+	install_create_table('auto_dialog_daily', "CREATE TABLE auto_dialog_daily (
+		auto_dialog_id INT UNSIGNED NOT NULL,
+		day            DATE NOT NULL,
+		shown          INT UNSIGNED NOT NULL DEFAULT 0,
+		closed         INT UNSIGNED NOT NULL DEFAULT 0,
+		taken          INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (auto_dialog_id, day),
+		KEY idx_day (day)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Auto dialogs: each pop-up counts how often it was shown, closed and taken up; the list and edit screens show the last 30 days.');
 
 }

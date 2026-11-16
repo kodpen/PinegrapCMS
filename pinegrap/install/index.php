@@ -9084,6 +9084,7 @@ function get_tables() {
 		'next_order_number',
 		'not_found_log',
 		'site_search_daily',
+		'auto_dialog_daily',
 		'ai_fetch_daily',
 		'ap_blocks',
 		'ap_followers',
