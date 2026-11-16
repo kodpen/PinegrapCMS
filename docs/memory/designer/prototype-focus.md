@@ -9,6 +9,7 @@ description: The Prototype view draws only the selected frame's arrows: the core
 - "All arrows" beside Fit (icon and name, `aria-pressed`) draws the others faint under them (`canvas.allEdges()`); kept per browser in `localStorage` `pg_proto_all_edges`.
 - Architect (2026-11-16, agent channel message 6120): with "All arrows" on, the dimming still follows the selected frame's arrows only; a faint arrow brings no frame or chip back to full.
 - The section headings of the arrangement are drawn by the core's `groups()` from `layout().headings`.
+- The arrows run in right angles with rounded turns through the gaps between frames, to the nearest edge of their target, side by side where they share a gap; a moved frame routes its arrows again (`route: 'elbow'`, F14, PV5; ui/graph-canvas-core-routing.md).
 
 ## What does a shared part's link into the selected page do?
 - It draws no arrow (`sd-proto-from-shared` hides the in arrow in CSS). Its row on the shared frame turns amber and a line under that frame names it ("Cart icon → cart", `div.sd-proto-note`). Selecting the shared frame draws its own arrows. The focus announcement still counts it as one in.
