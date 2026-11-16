@@ -31,7 +31,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  */
 function pg_image_editor_parts()
 {
-    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'area', 'versions', 'artboard', 'export', 'vector', 'svg', 'motion', 'tracks', 'sound', 'keyframes', 'render', 'scenes', 'present', 'access', 'record', 'fonts', 'glyph', 'warp', 'puppet', 'outline', 'builder', 'video', 'clip', 'mix', 'upload', 'phone', 'actions', 'menu');
+    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'area', 'versions', 'artboard', 'export', 'vector', 'svg', 'motion', 'tracks', 'sound', 'keyframes', 'render', 'scenes', 'present', 'access', 'record', 'follow', 'fonts', 'glyph', 'warp', 'puppet', 'outline', 'builder', 'video', 'clip', 'mix', 'upload', 'phone', 'actions', 'menu');
 }
 
 /**
@@ -5690,6 +5690,34 @@ function pg_image_editor_strings_record()
         'recPick'      => lang('Select one layer to record its move.'),
         'recHint'      => lang('Recording: drag the layer, letting go stops it · Esc cancels the recording'),
         'recHintPhone' => lang('Drag the layer; letting go stops the recording.'),
+    );
+}
+
+// -- Follow (pg_image_editor_follow.js) --
+
+/**
+ * Follow's labels: its button in the Path tab, the hint while a box is
+ * drawn, the progress pill, and what is said when it cannot start or the
+ * followed area is lost.
+ *
+ * @return array key => translated text
+ */
+function pg_image_editor_strings_follow()
+{
+    return array(
+        'followFollow'    => lang('Follow'),
+        'followCancel'    => lang('Cancel Follow'),
+        'followPick'      => lang('Select one layer that is not a video to make it follow an area of a video.'),
+        'followNote'      => lang('Follow moves the layer with an area of a video from the playhead on. A clip trimmed, moved, split or sped up later is not followed again by itself: press Follow again.'),
+        'followHint'      => lang('Drag a box over what to follow · Esc cancels'),
+        'followHintRun'   => lang('Following the area through the video · Esc cancels'),
+        'followNoVideo'   => lang('Move the playhead onto a video first.'),
+        'followShort'     => lang('Less than 0.2 s of the video is left from the playhead. Move the playhead back.'),
+        'followBusy'      => lang('Following…'),
+        'followCancelRun' => lang('Cancel'),
+        'followLost'      => lang('Lost it at {var:1}. The move up to there is kept; move the playhead there and follow again.'),
+        'followFlat'      => lang('There is nothing in the box to follow. Draw it over a part with some detail.'),
+        'followError'     => lang('The video could not be followed.'),
     );
 }
 

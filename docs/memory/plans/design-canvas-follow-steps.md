@@ -9,7 +9,7 @@ description: Plan design-canvas-follow, steps FW1 to FW3: the tracker and its te
   - The landing builds the `.min.js`; the PR commits none.
   - May run beside `plans/design-canvas-quick-reach.md`'s steps: no file of theirs is edited but the bundle list.
 
-- FW2 (M) after FW1 and after the fix of issue #9950: the command, F1 to F5 and F10 to F14, F16.
+- FW2 (M) after FW1 and after the fix of issue #9950: the command, F1 to F5 and F10 to F14, F16. Done: #9997.
   - New: `assets/js/pg_image_editor_follow.js` (part `follow`, bundled after `record`; it hangs its button on the Path tab as the record part does), `pg_image_editor_strings_follow()`, its rules under its line in `pg_image_editor.src.css`, a `FOLLOW` section in the model for F10.
   - Existing files, small edits named in the PR: `pg_image_editor_parts()` and the bundle list, `pg_image_editor_clip.js` only if a source of its own needs a door that is not there.
   - Turkish with `php tools/tr_add.php` ("Follow" is "Takip et").
