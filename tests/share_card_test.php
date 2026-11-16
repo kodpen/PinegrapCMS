@@ -356,9 +356,29 @@ function test_share_card_covers_default_warning()
 	pg_assert_false(pg_share_card_active(false, $all), 'switch off: the warning stays');
 	pg_assert_false(pg_share_card_active(true, array('text' => false) + $all), 'a host that cannot draw: the warning stays');
 	pg_assert_same('', pg_share_card_reason_text(''));
-	pg_assert_true(pg_share_card_reason_text('server') !== '');
 	pg_assert_true(pg_share_card_reason_text('letters') !== '');
-	pg_assert_false(pg_share_card_reason_text('server') === pg_share_card_reason_text('letters'), 'the part says which of the two applies');
+}
+
+function test_share_card_server_cause()
+{
+	$all = array('shapes' => true, 'text' => true, 'icons' => true, 'svg' => true, 'pictures' => array('png'), 'paused' => 0, 'engine' => 'ImageMagick 6');
+	$none = array('shapes' => false, 'text' => false, 'icons' => false, 'svg' => false, 'pictures' => array(), 'paused' => 0, 'engine' => '');
+
+	pg_assert_same('', pg_share_card_server_cause($all), 'it draws');
+	pg_assert_same('engine', pg_share_card_server_cause($none), 'no Imagick');
+	pg_assert_same('paused', pg_share_card_server_cause(array('paused' => time() + 600) + $none), 'a pause after a lost drawing');
+	pg_assert_same('text', pg_share_card_server_cause(array('text' => false) + $all), 'Imagick whose text check failed');
+	pg_assert_same('text', pg_share_card_server_cause(array('shapes' => false, 'text' => false) + $all), 'or whose shapes failed');
+
+	// Each cause gives its own sentence, and only that one.
+	pg_assert_contains('no ImageMagick', pg_share_card_reason_text('engine'));
+	pg_assert_contains('failed its check', pg_share_card_reason_text('text'));
+	pg_assert_contains('paused', pg_share_card_reason_text('paused'));
+	pg_assert_contains('tried again by itself', pg_share_card_reason_text('paused'), 'a pause says it is temporary');
+	pg_assert_false(strpos(pg_share_card_reason_text('engine'), 'paused') !== false);
+	pg_assert_false(strpos(pg_share_card_reason_text('text'), 'paused') !== false);
+	pg_assert_false(strpos(pg_share_card_reason_text('paused'), 'no ImageMagick') !== false);
+	pg_assert_same('', pg_share_card_reason_text('server'), 'the old catch-all is gone');
 }
 
 function test_share_card_root_is_the_software_folder()

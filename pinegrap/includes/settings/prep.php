@@ -809,7 +809,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             $share_card_on = pg_share_card_switch(pg_config_text('share_card'));
             $share_card_colors = pg_share_card_colors();
             $share_card_can = pg_image_draw_can();
-            $share_card_server = pg_share_card_unable($share_card_can, 'A', 'A');
+            $share_card_server = pg_share_card_server_cause($share_card_can);
             $share_card_drawn = pg_share_card_active($share_card_on, $share_card_can);
             $share_card_sample = '';
 
@@ -834,19 +834,22 @@ if (!defined('PG_SETTINGS_ENTRY')) {
                 }
 
                 $share_card_sample = ($share_card_sample_href !== '')
-                    ? '<img src="' . h($share_card_sample_href) . '" width="1200" height="630" alt="' . h(lang('Sample share card of the home page')) . '" class="border rounded" style="width: 100%; max-width: 480px; height: auto;" loading="lazy">'
+                    ? '<div class="form-text mb-2">' . lang('Your home page\'s card. It changes with the colours once you save.') . '</div>'
+                        . '<img src="' . h($share_card_sample_href) . '" width="1200" height="630" alt="' . h(lang('Sample share card of the home page')) . '" class="border rounded" style="width: 100%; max-width: 480px; height: auto;" loading="lazy">'
                     : '<div class="form-text">' . lang('No sample could be drawn: the home page is not open to every visitor, or drawing it failed.') . '</div>';
             }
 
-            $share_card_reason = ($share_card_server !== '') ? pg_share_card_reason_text($share_card_server) : pg_share_card_reason_text('letters');
+            // Only this server's own cause; with none, the note on letters.
+            $share_card_reason = pg_share_card_reason_text(($share_card_server !== '') ? $share_card_server : 'letters');
 
             $share_card_part = '
                                         <div class="col-12">
                                             <div class="form-field">
                                                 <div class="switch"><input value="1"' . ($share_card_on ? ' checked="checked"' : '') . ' class="" type="checkbox" id="share_card" name="share_card"/></div>
                                                 <label class="" for="share_card">' . lang('Share card') . '</label>
-                                                <div class="form-text">' . lang('A page without a share picture of its own shares a picture of its title, the Organization Logo and the site name instead of the Default Share Image.') . '</div>
-                                                <div class="form-text' . (($share_card_server !== '') ? ' fg-warning' : '') . '">' . (($share_card_server !== '') ? '<span class="bi bi-exclamation-triangle-fill me-1"></span>' : '') . h($share_card_reason) . '</div>
+                                                <div class="form-text">' . lang('A page without a share picture of its own shares a picture of its title, the Organization Logo and the site name instead of the Default Share Image.') . '
+                                                    <span class="d-block mt-2' . (($share_card_server !== '') ? ' fg-warning' : '') . '">' . (($share_card_server !== '') ? '<span class="bi bi-exclamation-triangle-fill me-1"></span>' : '') . h($share_card_reason) . '</span>
+                                                </div>
                                             </div>
                                         </div>
                                         <div class="pg-f-xs">

@@ -10,7 +10,8 @@ description: The share card's switch and colours in Site Settings, SEO, Social S
 - The title is `$page_title` as og:title prints it, keyed by `FRONTEND_LANGUAGE`. With a card the page also prints `og:image:width` 1200, `:height` 630 and `og:image:type` `image/png`.
 
 ## What does the settings part show?
-- The switch's reason line (`pg_share_card_reason_text()`): `server` as a warning on a host that cannot draw, else the note that titles with letters the font lacks keep the default.
+- The switch's reason line (`pg_share_card_reason_text()`): only this server's own cause from `pg_share_card_server_cause()` as a warning (`engine`: no ImageMagick; `text`: its check for drawing text failed; `paused`: paused after a drawing that did not finish, retried by itself), else the note that titles with letters the font lacks keep the default. Both sentences sit in one text block, so at 390 the switch comes below them.
+- The sample has a caption above it: the home page's card, which changes with the colours on save.
 - While cards are drawn, the home page's card in the saved colours, kept under the language `sample` so it never replaces the title the home page prints, and drawn before the part is printed (a picture asked for while it is drawn answers 503); and the Default Share Image warning about record forms is not shown (a card stands for their picture).
 
 ## How is it tested?

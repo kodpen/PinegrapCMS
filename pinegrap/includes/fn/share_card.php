@@ -258,21 +258,46 @@ function pg_share_card_active($on, $can)
 }
 
 /**
- * What the Social Sharing part says when a card cannot be drawn: why this
- * server draws none ('server'), or that titles with letters the font lacks
- * keep the default ('letters'). '' for ''.
+ * Why this server draws no card, from pg_image_draw_can(): 'engine' without
+ * Imagick, 'paused' while drawing is paused after a drawing that did not
+ * finish (it is tried again by itself), 'text' when Imagick failed its
+ * check for drawing text or shapes; '' when it draws. Pure.
  *
- * @param string $reason pg_share_card_unable()
+ * @param array $can
+ * @return string
+ */
+function pg_share_card_server_cause($can)
+{
+    if ((int) ($can['paused'] ?? 0) > 0) {
+        return 'paused';
+    }
+
+    if ((string) ($can['engine'] ?? '') === '') {
+        return 'engine';
+    }
+
+    return (empty($can['shapes']) || empty($can['text'])) ? 'text' : '';
+}
+
+/**
+ * What the Social Sharing part says when a card cannot be drawn: this
+ * server's own cause (pg_share_card_server_cause()), or that titles with
+ * letters the font lacks keep the default ('letters'). '' for anything else.
+ *
+ * @param string $reason engine | paused | text | letters
  * @return string
  */
 function pg_share_card_reason_text($reason)
 {
-    if ($reason === 'server') {
-        return lang('This server cannot draw text into pictures (ImageMagick is missing, failed its check or is paused), so every page keeps the Default Share Image.');
-    }
-
-    if ($reason === 'letters') {
-        return lang('A title with letters the card\'s font does not have (such as Arabic, Chinese or emoji) keeps the Default Share Image.');
+    switch ($reason) {
+        case 'engine':
+            return lang('This server has no ImageMagick to draw text into pictures, so every page keeps the Default Share Image.');
+        case 'text':
+            return lang('This server\'s ImageMagick failed its check for drawing text, so every page keeps the Default Share Image.');
+        case 'paused':
+            return lang('Drawing is paused on this server for a while after a drawing that did not finish. It is tried again by itself; until then pages keep the Default Share Image.');
+        case 'letters':
+            return lang('A title with letters the card\'s font does not have (such as Arabic, Chinese or emoji) keeps the Default Share Image.');
     }
 
     return '';
