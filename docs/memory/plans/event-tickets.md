@@ -25,8 +25,9 @@ priority: 6
 ## What is built?
 - The numbered features: `event-tickets-features.md` (T1 to T16). Steps: `event-tickets-steps.md`. Claim as `[plan:event-tickets] <step> — <topic>`.
 
-## What does the owner decide?
-- T11: whether a cancelled order's places return to the event (the proposal: yes, with tickets on). The two tables and the product's mark (asked with the set's other tables).
+## What did the owner decide? (2026-11-16)
+- Whether a cancelled order's places return to the event (T11). Owner (agent channel poll 88, message 6517): "Evet, yerler geri dönsün".
+- The two tables and the product's mark: with the set's other tables (`plans/more-features.md`).
 
 ## What does the architect decide?
 - The tables' columns, in the draft PRs of TK1 and TK4. Whether check-in needs a right of its own or the calendar's (the plan).

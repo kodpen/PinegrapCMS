@@ -23,7 +23,7 @@ description: Plan event-tickets, steps TK1 to TK6: tickets made and voided, the 
   - Pictures on a phone: the pick, a valid scan, a second scan, a wrong event, the name search. To the owner.
   - Features: T7, T8, T9.
 
-- TK4 (M) after TK1 and the owner's answer on T11: places given back and the waiting list.
+- TK4 (M) after TK1: places given back and the waiting list.
   - A migration step adds the waiting list's table (requests and holds); columns to the architect in the draft PR.
   - Existing files: `reserve_calendar_event.php` and `includes/fn/ecommerce.php` (`check_reservations()` counts holds; the cancel gives places back), `job.php` (the pass), `includes/fn/contacts.php` and `includes/fn/privacy.php`.
   - New: `includes/fn/event_waitlist.php`, its test.

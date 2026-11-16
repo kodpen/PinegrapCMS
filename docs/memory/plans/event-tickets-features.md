@@ -20,7 +20,7 @@ description: Plan event-tickets, features T1 to T16: which order lines give tick
 
 ## What do cancel and refund do?
 - (T10) A cancelled order voids its tickets and a restored one makes them valid again, one call each where a cancelled order's folder access is handled.
-- (T11) After the owner's yes: with tickets on, a cancelled order's places return to the event's remaining spots. Today they never return.
+- (T11) With tickets on, a cancelled order's places return to the event's remaining spots (owner, agent channel poll 88). With tickets off they do not return, as today.
 
 ## What is the waiting list?
 - (T12) When an event's date has no place left, the reserve page offers "Tell me when a place frees": an address, kept as back-in-stock requests are (one per address and date, export, erasure, a rate limit).
