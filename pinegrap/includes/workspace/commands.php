@@ -187,16 +187,28 @@ function ws_command_assistant_ready($command)
  * person every command the parser answers to is listed, and the assistants
  * are left out: that list is read without asking the database anything.
  *
+ * A command that runs only in the channel itself is not offered in one of
+ * its discussions (ws_command_runs_here()).
+ *
  * @param array|null $viewer
  * @param string     $command the command's own name (ws_command_table()
  *                            value, or claude | ai)
+ * @param array|null $channel where it would run; null for anywhere
  * @return bool
  */
-function ws_command_offered($viewer, $command)
+function ws_command_offered($viewer, $command, $channel = null)
 {
     $entry = ws_command_registry()[$command] ?? null;
 
-    if (($entry === null) || ($entry['gate'] === '')) {
+    if ($entry === null) {
+        return true;
+    }
+
+    if (!ws_command_runs_here($entry['where'], $channel)) {
+        return false;
+    }
+
+    if ($entry['gate'] === '') {
         return true;
     }
 
@@ -349,17 +361,21 @@ function ws_command_turkish($language = null)
  *
  * The built-in entries come from ws_command_registry().
  *
+ *   group        ws_command_groups() value; agents for an application's
+ *   where        where it runs (ws_command_runs_here()): any | channel
+ *
  * @param array|null $viewer   leaves out the commands this person may not use
  * @param bool       $shadowed lists the shadowed application commands too
+ * @param array|null $channel  leaves out the commands that do not run there
  * @return array[]
  */
-function ws_commands($viewer = null, $shadowed = false)
+function ws_commands($viewer = null, $shadowed = false, $channel = null)
 {
     $turkish = ws_command_turkish();
     $out = array();
 
     foreach (ws_command_registry() as $entry) {
-        if (!ws_command_offered($viewer, $entry['key'])) {
+        if (!ws_command_offered($viewer, $entry['key'], $channel)) {
             continue;
         }
 
@@ -386,13 +402,17 @@ function ws_commands($viewer = null, $shadowed = false)
             'app_id'      => 0,
             'app'         => '',
             'shadowed'    => false,
+            'group'       => $entry['group'],
+            'where'       => $entry['where'],
         );
     }
 
     // The commands applications registered, after the built-in ones; only for
     // a person, so the registry without one touches no table.
     if (is_array($viewer) && function_exists('ws_app_commands_live')) {
-        $out = array_merge($out, ws_command_app_entries(ws_app_commands_live(), $shadowed));
+        foreach (ws_command_app_entries(ws_app_commands_live(), $shadowed) as $app_entry) {
+            $out[] = $app_entry + array('group' => 'agents', 'where' => 'any');
+        }
     }
 
     return $out;
@@ -402,17 +422,20 @@ function ws_commands($viewer = null, $shadowed = false)
  * The help text the /help command, the composer's / picker and the command
  * palette show: the registry (ws_commands()) in the shape they read.
  *
- * @param array|null $viewer leaves out the commands this person may not use
+ * @param array|null $viewer  leaves out the commands this person may not use
+ * @param array|null $channel leaves out the commands that do not run there
  * @return array[] command (the label), names (every name it answers to, each
  *                 with its slash, for the composer's / picker), example,
  *                 description; and from the registry key, name, usage, args,
- *                 live for the composer's argument popup and live line
+ *                 live for the composer's argument popup and live line;
+ *                 group, group_label and where for the list's headers
  */
-function ws_command_help($viewer = null)
+function ws_command_help($viewer = null, $channel = null)
 {
     $help = array();
+    $labels = ws_command_group_labels();
 
-    foreach (ws_commands($viewer) as $entry) {
+    foreach (ws_commands($viewer, false, $channel) as $entry) {
         $help[] = array(
             'command'     => $entry['label'],
             'names'       => $entry['names'],
@@ -423,6 +446,9 @@ function ws_command_help($viewer = null)
             'usage'       => $entry['usage'],
             'args'        => $entry['args'],
             'live'        => $entry['live'],
+            'group'       => $entry['group'],
+            'group_label' => $labels[$entry['group']] ?? '',
+            'where'       => $entry['where'],
         );
     }
 
@@ -1288,6 +1314,10 @@ function ws_command_run($viewer, $channel, $body, $options = array())
     $entry = ws_command_registry()[$split['command']] ?? null;
     $runner = ($entry !== null) ? $entry['runner'] : 'ws_command_run_help';
 
+    if (($entry !== null) && !ws_command_runs_here($entry['where'], $channel)) {
+        return array('type' => 'error', 'error' => lang('This command runs in the channel itself, not in one of its discussions.'));
+    }
+
     return call_user_func($runner, $viewer, $channel, $split['rest'], $options, $body, $split['command']);
 }
 
@@ -1447,12 +1477,63 @@ function ws_command_run_away($viewer, $channel, $rest)
 }
 
 /**
- * /decision and /note: the text posted as that kind of message.
+ * Does a command act on the message it answers? Only when it is typed as a
+ * reply and nothing follows its name: with a text it does as it always did.
+ *
+ * @param string $rest    the line after the command's name
+ * @param array  $options ws_command_run() options (parent_id)
+ * @return bool
+ */
+function ws_command_acts_on_reply($rest, $options)
+{
+    return (trim((string) $rest) === '') && ((int) ($options['parent_id'] ?? 0) > 0);
+}
+
+/**
+ * The message a command answers: in this channel, not deleted, and read by
+ * the writer.
+ *
+ * @param array $viewer
+ * @param array $channel
+ * @param array $options ws_command_run() options (parent_id)
+ * @return array|null ws_messages row
+ */
+function ws_command_answered_message($viewer, $channel, $options)
+{
+    $message = ws_message((int) ($options['parent_id'] ?? 0));
+
+    if (!$message || ((int) $message['channel_id'] !== (int) $channel['id']) || ((int) $message['deleted_at'] > 0)
+        || !ws_can_read_channel($viewer, $channel)) {
+        return null;
+    }
+
+    return $message;
+}
+
+/**
+ * /decision and /note: the text posted as that kind of message; typed as a
+ * reply without a text, the answered message marked.
  *
  * @return array
  */
 function ws_command_run_noted($viewer, $channel, $rest, $options, $body, $command)
 {
+    // Typed as a reply without a text: the answered message is marked, as
+    // its menu's "Mark as a decision" or "Mark as a channel note" does.
+    if (ws_command_acts_on_reply($rest, $options)) {
+        $message = ws_command_answered_message($viewer, $channel, $options);
+
+        if ($message === null) {
+            return array('type' => 'error', 'error' => lang('That message could not be found.'));
+        }
+
+        $marked = ws_message_mark($viewer, $message, $command);
+
+        return $marked['ok']
+            ? array('type' => 'done', 'message_id' => (int) $message['id'])
+            : array('type' => 'error', 'error' => $marked['error']);
+    }
+
     if ($rest === '') {
         return array('type' => 'error', 'error' => lang('Write the text after the command.'));
     }
@@ -1541,17 +1622,80 @@ function ws_command_run_wake($viewer, $channel, $rest)
  *
  * @return array
  */
-function ws_command_run_help($viewer)
+function ws_command_run_help($viewer, $channel = null, $rest = '')
 {
-    $html = '<div class="ws-ephemeral-title">' . h(lang('Slash commands')) . '</div><dl class="ws-help">';
+    $word = ltrim((string) preg_split('/\s+/u', trim((string) $rest))[0], '/');
 
-    foreach (ws_command_help($viewer) as $item) {
-        $html .= '<dt><code>' . h($item['command']) . '</code></dt><dd>' . h($item['description'])
-            . '<br><code class="ws-help-usage">' . h($item['usage']) . '</code>'
-            . '<br><span class="fg-secondary">' . h($item['example']) . '</span></dd>';
+    if ($word !== '') {
+        return ws_command_help_one($viewer, $channel, $word);
     }
 
-    return array('type' => 'ephemeral', 'html' => $html . '</dl>');
+    $html = '<div class="ws-ephemeral-title">' . h(lang('Slash commands')) . '</div>';
+    $groups = array();
+
+    foreach (ws_command_help($viewer, $channel) as $item) {
+        $groups[$item['group']][] = $item;
+    }
+
+    foreach (ws_command_group_labels() as $group => $label) {
+        if (empty($groups[$group])) {
+            continue;
+        }
+
+        $html .= '<div class="ws-help-group fw-semibold fg-secondary mt-2">' . h($label) . '</div><dl class="ws-help">';
+
+        foreach ($groups[$group] as $item) {
+            $html .= '<dt><code>' . h($item['command']) . '</code></dt><dd>' . h($item['description'])
+                . '<br><code class="ws-help-usage">' . h($item['usage']) . '</code>'
+                . '<br><span class="fg-secondary">' . h($item['example']) . '</span></dd>';
+        }
+
+        $html .= '</dl>';
+    }
+
+    return array('type' => 'ephemeral', 'html' => $html);
+}
+
+/**
+ * /help <command>: that command alone, with every name it answers to, its
+ * usage and an example; a name that is no command here is answered with
+ * the closest ones.
+ *
+ * @param array|null $viewer
+ * @param array|null $channel
+ * @param string     $word the name asked about, without its slash
+ * @return array an ephemeral answer
+ */
+function ws_command_help_one($viewer, $channel, $word)
+{
+    $folded = ws_command_fold($word);
+
+    foreach (ws_command_help($viewer, $channel) as $item) {
+        foreach ($item['names'] as $name) {
+            if (ws_command_fold(ltrim($name, '/')) !== $folded) {
+                continue;
+            }
+
+            $html = '<div class="ws-ephemeral-title">' . h($item['command']) . '</div>'
+                . '<div>' . h($item['description']) . '</div>'
+                . '<code class="ws-help-usage">' . h($item['usage']) . '</code>'
+                . '<div>' . h(lang(array('string' => 'Names: {var:1}', 'vars' => implode(' ', $item['names'])))) . '</div>'
+                . '<div class="fg-secondary">' . h(lang(array('string' => 'Example: {var:1}', 'vars' => $item['example']))) . '</div>';
+
+            return array('type' => 'ephemeral', 'html' => $html);
+        }
+    }
+
+    $closest = ws_command_closest($word, $viewer);
+    $html = '<div class="ws-ephemeral-title">' . h(lang(array('string' => 'There is no {var:1} command.', 'vars' => '/' . $word))) . '</div>';
+
+    if (!empty($closest)) {
+        $html .= '<div>' . h(lang('Did you mean:')) . ' ' . implode(' ', array_map(function ($name) {
+            return '<code>' . h($name) . '</code>';
+        }, $closest)) . '</div>';
+    }
+
+    return array('type' => 'ephemeral', 'html' => $html, 'closest' => $closest);
 }
 
 /**
@@ -1562,6 +1706,24 @@ function ws_command_run_help($viewer)
 function ws_command_task($viewer, $channel, $text, $options)
 {
     $parsed = ws_command_typed_assignees(ws_command_parse_task($text), ws_team_members());
+    $description = null;
+
+    // Typed as a reply without a text: the task is made of the answered
+    // message, as its menu's "Make a task of it" does.
+    if (ws_command_acts_on_reply($text, $options)) {
+        $message = ws_command_answered_message($viewer, $channel, $options);
+
+        if ($message === null) {
+            return array('type' => 'error', 'error' => lang('That message could not be found.'));
+        }
+
+        $parsed['title'] = mb_substr(ws_plain_line($viewer, (string) $message['body']), 0, 200, 'UTF-8');
+
+        // The menu fills the description only from the writer's own message.
+        if (((string) $message['sender_kind'] === 'user') && ((int) $message['sender_id'] === (int) $viewer['id'])) {
+            $description = (string) $message['body'];
+        }
+    }
 
     if ($parsed['title'] === '') {
         return array('type' => 'error', 'error' => lang('Write what the task is after the command.'));
@@ -1629,6 +1791,10 @@ function ws_command_task($viewer, $channel, $text, $options)
         'assignees'        => $parsed['assignees'],
         'refs'             => $parsed['refs'],
     );
+
+    if ($description !== null) {
+        $data['description'] = $description;
+    }
 
     // Checked and written by ws_task_reminder_validate() when the site has
     // the column.
