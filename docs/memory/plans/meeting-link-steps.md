@@ -4,7 +4,7 @@ description: Plan meeting-link, steps SL1 to SL4: the link's code and rules with
 ---
 
 ## Which steps are there?
-- SL1 (M, after the owner's yes on the set's schema) The link and its rules, server and data only.
+- SL1 (M) The link and its rules, server and data only.
   - A migration step adds one column to `ws_profiles` (the member's meeting address); the draft PR's body carries its type for the architect.
   - Existing files: the Workspace profile's read and save (the new column). The engine's functions are called, not changed.
   - New: `includes/fn/booking_links.php` (the code made and checked, the member a code names, the services a link offers, the meeting address of a booking), `tests/booking_links_test.php`.
@@ -27,4 +27,4 @@ description: Plan meeting-link, steps SL1 to SL4: the link's code and rules with
 - SL4 (S) close-out: every M number checked against the code with its PR; `commerce/booking-meeting-link.md`; this plan's three files deleted and its line in `plans/more-features.md` removed.
 
 ## Which steps run side by side?
-- Until the owner's yes on the set's schema each waits for the one before it, so none is free. After it: SL2 and SL3 run beside each other once SL1 has landed.
+- SL2 and SL3 run beside each other once SL1 has landed.

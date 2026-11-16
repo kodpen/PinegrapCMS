@@ -4,7 +4,7 @@ description: Plan course-progress, steps CO1 to CO6: the tables and the rule of 
 ---
 
 ## Which steps are there?
-- CO1 (M, after the owner's yes on the set's schema) The tables and the rules, server and data only.
+- CO1 (M) The tables and the rules, server and data only.
   - A migration step adds the courses, lessons and progress tables, listed in `get_tables()`; the draft PR's body carries their columns and indexes for the architect.
   - Existing files: `functions.php` (the module), `includes/fn/privacy.php` (the export and erasure lists).
   - New: `includes/fn/courses.php` (ready check, a course and its lessons, the enrolment day, the pure rule of an open lesson, the done and complete writers, the certificate's code), `tests/courses_test.php`.
@@ -40,4 +40,4 @@ description: Plan course-progress, steps CO1 to CO6: the tables and the rule of 
 - CO6 (S) close-out: every Z number checked against the code with its PR; `designer/course-progress.md`; this plan's three files deleted and its line in `plans/more-features.md` removed.
 
 ## Which steps run side by side?
-- Until the owner's yes on the set's schema each waits for the one before it, so none is free. After it: CO2, CO3 and CO4 run beside each other once CO1 has landed: they touch different existing files. CO5 follows CO4.
+- CO2, CO3 and CO4 run beside each other once CO1 has landed: they touch different existing files. CO5 follows CO4.
