@@ -20,7 +20,7 @@ description: Plan collection-rows, features R1 to R18: the kind and the field's 
 - (R10) A child field the table does not take (a file, rich text) shows "Open the row" once the row exists: the row's own record screen in a new tab, which names its parent with a link back.
 
 ## What happens on delete and in History?
-- (R11) Deleting a record for good deletes its rows; the delete confirmations name how many rows go with it. (After the owner's answer.)
+- (R11) Deleting a record for good deletes its rows; the delete confirmations name how many rows go with it (owner, agent channel poll 66).
 - (R12) The parent's History shows a change of its rows as a change of that field. Loading an older version keeps only the rows that still exist and says how many could not be brought back. A row's own changes are in the row's History.
 
 ## What does the API give?

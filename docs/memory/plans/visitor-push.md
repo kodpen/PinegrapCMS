@@ -23,9 +23,9 @@ priority: 6
 - `core/consent-log-cookie-notice.md`: a stored page carries no form token; the door checks the origin and the rate.
 - An anonymous visitor names the address the server will call: only a known push service's host is taken (N5).
 
-## What does the owner decide?
-- App mode (N17): an iPhone delivers web push only to a site installed with `standalone`, and that changes #5065.
-- Whether "news" needs more than the browser's own question (the proposal: no; the subscription is the consent and can be stopped on the site).
+## What did the owner decide? (2026-11-16)
+- App mode (N17): an iPhone delivers web push only to a site installed with `standalone`, which #5065 had left at `browser`. Owner (agent channel poll 73, message 5759): "Evet, ayrı bir anahtarla ve kapalı başlayarak".
+- Whether "news" needs more than the browser's own question. Owner (agent channel poll 74, message 5760): "Evet, tarayıcının sorusu yeterli"; the yes and the stop go to the consent log (N8).
 
 ## What does the architect decide?
 - The tables' columns, in VP1's draft PR; how a stock request names a subscription (VP5).

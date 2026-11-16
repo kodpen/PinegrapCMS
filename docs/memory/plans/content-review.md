@@ -23,9 +23,9 @@ priority: 6
 - `workflow/decisions-made-product-18.md`: the engines keep their one screen; this one links it and repeats no finding.
 - `workflow/decisions-made-product-41.md`: nothing is scheduled outside the flow canvas; the job only announces the event (V15).
 
-## What does the owner decide?
-- Who can be the person: any panel user who may edit the item (the proposal, V5), or Workspace members only.
-- Whether managers get a bell line when dates pass (the proposal: not in the first version; the flow covers it).
+## What did the owner decide? (2026-11-16)
+- Who can be the person. Owner (agent channel poll 68, message 5754): "O öğeyi düzenleyebilen her panel kullanıcısı" (V5); the other choice was Workspace members only.
+- A bell line to managers when dates pass. Owner (agent channel poll 69, message 5755): "Hayır, ilk sürümde gitmesin"; the event and a flow cover it (V15, V16).
 
 ## What does the architect decide?
 - The table's columns, in CH1's draft PR. The scope the API routes ask for.

@@ -28,5 +28,5 @@ description: Plan visitor-push, features N1 to N18: the switch, the site's worke
 ## What comes after the first version?
 - (N15) Stock: on a product that is out, a subscribed browser's back-in-stock request can name this device; `pg_stock_notify_send()` then sends the push for it, once.
 - (N16) An order: the order's own pages offer "Notify me on this device"; shipped and delivered reach that device. Transactional, as the SMS is.
-- (N17) App mode, after the owner's answer and under a switch of its own: the site's manifest says `standalone`, and the worker answers a failed page load outside the software directory with an offline page.
+- (N17) App mode (owner, agent channel poll 73), under a switch of its own that starts off: the site's manifest says `standalone`, and the worker answers a failed page load outside the software directory with an offline page.
 - (N18) A subscription tied to an account or contact is in the privacy export and goes with an erasure.

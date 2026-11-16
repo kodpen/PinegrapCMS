@@ -23,8 +23,11 @@ priority: 6
 - `platform/image-derivatives.md`: locks and encode slots for every drawn picture.
 - `ui/settings-public-image-pickers.md`: only pictures every visitor may open.
 
-## What does the owner decide?
-- The card's look, from OG2's samples. Whether a new install starts with it on (the proposal: off everywhere, since it changes what a shared link shows).
+## How does the switch start? (owner, 2026-11-16, agent channel poll 70)
+- Owner (agent channel poll 70, message 5756): "Her yerde kapalı başlasın": off on a new install too, since it changes what a shared link shows (S1).
+
+## What does the owner still decide?
+- The card's look, from OG2's samples.
 
 ## What does the architect decide?
 - Whether the card's document is built in code (the plan) or read from a Design Canvas template.

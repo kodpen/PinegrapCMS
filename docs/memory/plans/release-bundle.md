@@ -1,6 +1,6 @@
 ---
 name: release-bundle
-description: Plan (owner 2026-11-16, agent channel message 5667), not to be started before the owner's answer RB0: several pages prepared as drafts, previewed, published and taken back together; steps RB0 to RB8
+description: Plan (owner 2026-11-16, agent channel message 5667 and poll 63): several pages prepared as drafts, previewed, published and taken back together; steps RB1 to RB8
 priority: 6
 ---
 
@@ -22,8 +22,9 @@ priority: 6
 - The numbered features: `release-bundle-features.md` (B1 to B18). Steps: `release-bundle-steps.md`. Claim as `[plan:release-bundle] <step> — <topic>`; the rules: `website-features-rules.md`.
 - In short: nothing is staged inside a page. A bundle is a named list of drafts, some standing for a live page as a variant does; publishing writes each through the page save that exists and remembers how to take it back.
 
-## What must the owner answer first (RB0)?
-- Whether a draft may stand for a live page outside an experiment. The plan's reading: the decision of 2026-10-06 stays whole (B17: no working copy, Publish goes live at once), and this is the experiment's draft used for a second purpose. No step starts before his answer.
+## May a draft stand for a live page outside an experiment? (owner, 2026-11-16, agent channel poll 63)
+- Owner (agent channel poll 63, message 5748), asked with the decision of 2026-10-06 named beside the question: "Evet, geçebilsin". The other choices were a bundle of new pages only, and no bundle.
+- The decision of 2026-10-06 stays whole (B17: no working copy, a live page's Publish goes live at once); a bundle uses the draft an experiment's variant already is for a second purpose.
 
 ## What does the architect decide?
 - The two tables' columns, in RB1's draft PR. Whether the used replacement goes to the Recycle Bin (B8) or stays a draft.

@@ -16,7 +16,7 @@ description: Plan collection-rows, steps RW1 to RW7: the kind and writer, the pa
   - Pictures: an empty field, three rows, a refused row, a field the table does not take, a phone. To the owner; not marked ready before his look.
   - Features: R8, R9, R10.
 
-- RW3 (S) after RW2 and the owner's answer on delete: delete and History.
+- RW3 (S) after RW2: delete and History.
   - Existing files: `includes/fn/submitted_form_writes.php` (`pg_submitted_form_delete()`), the delete confirmations of the record list and screen, the History section's load (`designer/collection-history.md`).
   - Tests: a record's rows gone with it, the count in the confirmation's text, a loaded version keeping only rows that exist.
   - Features: R11, R12.

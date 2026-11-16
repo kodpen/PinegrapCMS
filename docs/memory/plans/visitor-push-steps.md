@@ -32,7 +32,7 @@ description: Plan visitor-push, steps VP1 to VP8: the tables and the door, the s
 
 - VP6 (S) after VP2: an order. Existing files: `includes/fn/events.php` (one listener in `pg_event_record()`), the order's own pages. Features: N16.
 
-- VP7 (S) after VP3 and the owner's answer: app mode. Existing files: `get_site_icon.php` (the manifest's `display`), the worker file (the offline page). Features: N17.
+- VP7 (S) after VP3: app mode. Existing files: `get_site_icon.php` (the manifest's `display`), the worker file (the offline page). Features: N17.
 
 - VP8 (S) close-out: every N number checked against the code with its PR; `platform/visitor-push.md`; this plan's three files deleted and its line in `plans/website-features.md` removed.
 

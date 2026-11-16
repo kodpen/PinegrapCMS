@@ -1,10 +1,10 @@
 ---
 name: publish-approval-steps
-description: Plan publish-approval, steps PA0 to PA6: the owner's answer, the census, the switch and the held save, the editor's side, the designer's side, the Workspace request, close-out
+description: Plan publish-approval, steps PA1 to PA6 (PA0, the owner's answer, is done): the census, the switch and the held save, the editor's side, the designer's side, the Workspace request, close-out
 ---
 
 ## Which steps are there?
-- PA0 (the owner's answer, asked by the architect) Whether a site may choose that a content editor's change waits for a designer (`plans/publish-approval.md`). Until it is recorded the plan's description keeps "not to be started".
+- PA0 Done (2026-11-16, agent channel poll 64, message 5749): the owner's answer that a site may choose that a content editor's change waits for a designer, "Evet, anahtarla seçilebilsin" (`plans/publish-approval.md`).
 
 - PA1 (S, no code) after PA0: census. One memory file, `plans/publish-approval-census.md`:
   - how the result of `pg_designer_merge_restricted_tree()` is written as operations a proposal takes (a text, a picture's address, per node), and what is lost if it cannot be;

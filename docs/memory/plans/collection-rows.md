@@ -19,8 +19,8 @@ priority: 6
 - In short: no new storage. A row is a record of a child collection; the parent's rows field keeps the rows' codes in order, so the order and the membership sit in one value that the parent's History already records, and the child needs no link field or order field.
 - This differs from message 5663, which put a link and an order field on the child: a number field of the child that the editor numbers by itself could be a field the site uses for something else.
 
-## What does the owner decide?
-- A record deleted with rows: the proposal is that its rows go with it and the confirmation says how many (R11). Asked before RW3.
+## What happens to a record's rows when it is deleted? (owner, 2026-11-16, agent channel poll 66)
+- Owner (2026-11-16, agent channel poll 66, message 5752): "Satırlar da birlikte silinsin". The other choice was that the rows stay as records nobody lists. The confirmations name how many rows go (R11).
 
 ## What does the architect decide?
 - The codes on the parent (the plan) against a link and an order field on the child (message 5663). The limit of 100 rows.

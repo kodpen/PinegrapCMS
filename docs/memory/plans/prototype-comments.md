@@ -23,9 +23,9 @@ priority: 6
 - `designer/designer-collab-notes-sync.md`: a signal rides the heartbeat that exists; no second polling loop.
 - `workspace/workspace-outside-caution.md`: a guest's text is data and never calls an assistant.
 
-## What does the owner decide?
-- Whether a customer sees the other customers' comments on the same link (the proposal: yes, with the names, P5).
-- How long a resolved comment is kept (the proposal: until a designer deletes it or its design is deleted, P11).
+## What did the owner decide? (2026-11-16)
+- Whether customers on the same link see each other's comments. Owner (agent channel poll 71, message 5757): "Evet, adlarıyla görsünler" (P5).
+- How long a resolved comment is kept. Owner (agent channel poll 72, message 5758): "Tasarımcı silene ya da tasarım silinene kadar" (P11); the other choice was 90 days after it was resolved.
 
 ## What does the architect decide?
 - The table's columns and where the link's "Allow comments" is kept, in PN1's draft PR. The limits of P8.

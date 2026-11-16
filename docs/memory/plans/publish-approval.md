@@ -1,6 +1,6 @@
 ---
 name: publish-approval
-description: Plan (owner 2026-11-16, agent channel message 5667), not to be started before the owner's answer PA0: with a switch on, a content editor's change to a live page waits for a designer's yes
+description: Plan (owner 2026-11-16, agent channel message 5667 and poll 64): with a switch on, a content editor's change to a live page waits for a designer's yes; steps PA1 to PA6
 priority: 6
 ---
 
@@ -20,8 +20,9 @@ priority: 6
 - The numbered features: `publish-approval-features.md` (A1 to A16). Steps: `publish-approval-steps.md`. Claim as `[plan:publish-approval] <step> — <topic>`; the rules: `website-features-rules.md`.
 - In short: with the switch on, a content editor's save of a live page is kept as a waiting proposal instead of being written, and a designer applies or dismisses it with the tools the assistant's proposals already have. The Workspace approval request is a second way to say the same yes.
 
-## What must the owner answer first (PA0)?
-- Whether a site may choose that an editor's change waits. The plan's reading: the decision of 2026-10-06 stays the rule and the default; the switch is one site's own choice. No step starts before his answer.
+## May a site choose that an editor's change waits? (owner, 2026-11-16, agent channel poll 64)
+- Owner (agent channel poll 64, message 5749), asked with today's behaviour named beside the question: "Evet, anahtarla seçilebilsin". The other choice was no approval at all.
+- The decision of 2026-10-06 stays the rule and the default: the switch starts off on every site and is one site's own choice (A1, A16).
 
 ## What does the architect decide?
 - After the census (PA1): whether the gate's merge can be written as the proposal's operations, and what `design_proposals` needs for a person's proposal. The one hook in `ws_approval_settle()` against a pass of the general job.

@@ -1,6 +1,6 @@
 ---
 name: click-scroll-map
-description: Plan (owner 2026-11-16, agent channel message 5667): clicks on a page's links and buttons and how far visitors scroll, in Visitors and as a layer in the designer; steps CM1 to CM5
+description: Plan (owner 2026-11-16, message 5667), not to be started before the architect's view on visitor data the owner asked for (poll 67): clicks on a page's links and how far visitors scroll
 priority: 6
 ---
 
@@ -21,8 +21,9 @@ priority: 6
 - `visitors/web-vitals-ai-visibility-decisions.md`: nothing per visitor, no cookie, no beacon for staff or in the designer.
 - `ui/visitors-section-rules.md`: a section owns its file and never edits the screen, the shell or another section.
 
-## What does the owner decide?
-- Whether a new install starts with the switch on (the proposal: on, as the audits of `workflow/decisions-made-product-18.md`; a running site stays off until switched on).
+## What must mature first? (owner, 2026-11-16, agent channel poll 67)
+- Asked whether a new install starts with the switch on (message 5753; the proposal was on, as the audits of `workflow/decisions-made-product-18.md`), he wrote instead: "bu konuyu mimara danışırmısın. o tasarımcımız ve kullanıcı verisi işleme ile ilgili fikrini sunsun olgunlaşsın."
+- The architect was asked in agent channel message 5764: whether counting without consent holds, whether a label or an address can carry personal data, the default of a new install, what to add or drop. No step starts before its view has gone to the owner and he has decided; until then the description keeps "not to be started".
 
 ## What does the architect decide?
 - The table's columns and indexes, in CM1's draft PR. The bounds: 200 elements, 60 characters, 20 elements a beacon.

@@ -1,10 +1,10 @@
 ---
 name: release-bundle-steps
-description: Plan release-bundle, steps RB0 to RB8: the owner's answer, the tables and rules, the Bundles screen, publish and take back, the time, the preview, its share link, the API, close-out
+description: Plan release-bundle, steps RB1 to RB8 (RB0, the owner's answer, is done): the tables and rules, the Bundles screen, publish and take back, the time, the preview, its share link, the API, close-out
 ---
 
 ## Which steps are there?
-- RB0 (the owner's answer, asked by the architect) Whether a draft may stand for a live page outside an experiment (`plans/release-bundle.md`). Until it is recorded the plan's description keeps "not to be started".
+- RB0 Done (2026-11-16, agent channel poll 63, message 5748): the owner's answer that a draft may stand for a live page outside an experiment, "Evet, geçebilsin" (`plans/release-bundle.md`).
 
 - RB1 (M) after RB0: the tables and the rules.
   - A migration step adds the bundle and its pages (working names: `page_bundles`, `page_bundle_items`), listed in `get_tables()`; the draft PR's body carries their columns and indexes for the architect.
