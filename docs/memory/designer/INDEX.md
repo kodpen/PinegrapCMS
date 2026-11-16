@@ -569,7 +569,7 @@
 - record-view-counts.md: Views on record pages (form counters, people only, counted after sending) and form lists ordered by views, comments, recent views or newest activity; why not visitor_content_hourly
 - record-view-filters.md: form_item_view filters (opt-in record visibility, e.g. Status = Published): where they apply, fail-closed cases, the e-mail bypass, viewer_filter lists without feed or sitemap (#1194)
 - region-node-to-widget.md: "Make designable" on a classic menu, menu sequence, ad or tag cloud region node: the widget kind and setting per type, where the widget goes, what stays the same.
-- release-bundle-tables.md: Release bundles' two tables, statuses and moves, the hold on a bundled draft, the copy of a live page and "changed since" (includes/fn/page_bundles.php)
+- release-bundle-tables.md: Release bundles' two tables, statuses and moves, the hold on a bundled draft, the copy of a live page and "changed since" (includes/fn/page_bundles.php) [decision: decisions-made-schema-26.md]
 - responsive-images.md: Designer and widget images with srcset/sizes, AVIF/WebP <picture> on the Image element: which images, sizes rule, widget pass, variant swap, version stamp, e-mail strip (loading order: image-loading)
 - rich-text-profiles.md: pg_sanitize_rich_text() profiles: visitor (default, site output) drops class, layout styles and outside images and marks links ugc; staff keeps the shared allow-list; which callers pass staff. [decision: decisions-made-product-39.md]
 - search-index-item-parts.md: Parts inside a search index item (page render, events, classic records, a host's records): budget after each part, pause and resume, the part marker, what a tick that died keeps

@@ -343,6 +343,10 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-64.md: Which records does a post digest's run take? (architect, 2026-11-16, agent channel message 6791)
 - decisions-made-product-64.md: What does the place map use to find an address, and where is it listed in the notice? (architect, 2026-11-16, agent channel message 6794)
 - decisions-made-product-64.md: Does a back-in-stock notice on the device replace the mail or SMS? (architect, 2026-11-16, agent channel message 6786)
+- decisions-made-product-65.md: Where are the rules and the earlier parts?
+- decisions-made-product-65.md: Which server draws the place map's tiles? (owner, 2026-11-16, agent channel poll 99, message 6821)
+- decisions-made-product-65.md: Does the Content review screen come out as shown? (owner, 2026-11-16, agent channel poll 100, message 6855)
+- decisions-made-product-65.md: Which amount does a contact group's minimum order compare? (architect, 2026-11-16, agent channel message 6895)
 - decisions-made-product-7.md: Do international labels carry customs data? (#3408)
 - decisions-made-product-7.md: Can a merchant request a carrier pickup from the panel? (#3415)
 - decisions-made-product-7.md: Does ShipWorks record tracking numbers through the shipment write path? (#3443)
@@ -415,6 +419,9 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-schema-25.md: Which table do an order's and a stock notice's visitor notifications share? (owner, 2026-11-16, agent channel poll 94, message 6781)
 - decisions-made-schema-25.md: Which table keeps a language's picture? (owner, 2026-11-16, agent channel poll 98, message 6808; columns the architect's)
 - decisions-made-schema-25.md: May ws_app_commands get a column for a command's arguments? (owner, 2026-11-16, agent channel poll 97, message 6795)
+- decisions-made-schema-26.md: Where are the rules and the earlier parts?
+- decisions-made-schema-26.md: Which tables keep a release bundle? (owner, 2026-11-16, agent channel poll 65; columns the architect's, agent channel message 6621)
+- decisions-made-schema-26.md: Which column marks a task an application created? (owner, 2026-11-16, agent channel poll 80; shape the architect's, agent channel message 6897)
 - decisions-made-schema-3.md: Where are the rules and the earlier steps?
 - decisions-made-schema-3.md: Which schema was approved on 2026-10-29?
 - decisions-made-schema-4.md: Where are the rules and the earlier steps?

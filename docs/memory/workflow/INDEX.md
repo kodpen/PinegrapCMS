@@ -101,6 +101,7 @@
 - decisions-made-product-62.md: Decisions list, product part 62 (2026-11-16 on): the owner's looks at built screens from poll 79 on (the "Clicks and scrolling" section of Visitors, the share card, My highlights)
 - decisions-made-product-63.md: Decisions list, product part 63 (2026-11-16 on): the owner's looks of polls 89 (prototype view, No with what he wants) and 90 (waiting content changes, Yes), and his Design Canvas requests
 - decisions-made-product-64.md: Decisions list, product part 64 (2026-11-16 on): the second study's eight features and his answers, picture text translation's first version, the architect's rules for DG1, MP1 and VP5
+- decisions-made-product-65.md: Decisions list, product part 65 (2026-11-16 on): the place map default tiles (poll 99), his look at the Content review screen (poll 100), the amount a minimum order compares
 - decisions-made-product-7.md: Decisions list, product part 7 (2026-10-30 on): customs data on international labels, carrier pickup requests from the panel, ShipWorks through the shipment write path
 - decisions-made-product-8.md: Decisions list, product part 8 (2026-10-30 midday on): Trendyol-carried packages refused by Create Label, starter dump corrections for #3330, marketing SMS in 2026.11.0, forum template wording
 - decisions-made-product-9.md: Decisions list, product part 9 (2026-10-30 afternoon on): form rules for visitors only, marketplace orders invoiced behind a switch, sales quote guest links and templates, Workspace density switch
@@ -122,6 +123,7 @@
 - decisions-made-schema-23.md: Decisions list, schema part 23 (2026-11-16 on): ws_highlights; PU4's auto_dialogs columns as confirmed; the click map's page_click_daily; one ws_tasks column for the creating application
 - decisions-made-schema-24.md: Decisions list, schema part 24 (2026-11-16 on): the three site_push tables of visitor notifications, their columns and keys as the architect confirmed them for VP1
 - decisions-made-schema-25.md: Decisions list, schema part 25 (2026-11-16 on): the second study's tables and columns, the site_push_watch table, the file_translation table, a column for application command arguments
+- decisions-made-schema-26.md: Decisions list, schema part 26 (2026-11-16 on): the release bundle tables page_bundle and page_bundle_item as landed; ws_tasks.app_id for the creating application
 - decisions-made-schema-3.md: Decisions list, schema part 3, approved from 2026-10-29 on: checkout page and legal acceptance on the order, record_revisions, cart_quotes, ws_saved_replies, shipment_labels; rules in part 1
 - decisions-made-schema-4.md: Decisions list, schema part 4 (2026-10-29 afternoon on): ws_flow_templates, ws_refs.source_type to VARCHAR, shipment_labels.order_return_id, config.speculation_prefetch; rules in part 1
 - decisions-made-schema-5.md: Decisions list, schema part 5 (2026-10-29 evening on): subscriptions tables and ENUMs, products customs columns, shipment_labels pickup, ws_events.contact_id; rules in part 1
