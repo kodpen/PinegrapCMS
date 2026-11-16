@@ -22,9 +22,7 @@ description: The Prototype view's hotspot collector (assets/js/pg_proto_hotspots
 - Entities: `htmlLinks()` decodes numeric references and amp, lt, gt, quot, apos, nbsp; PHP decodes every HTML5 name. Other names stay as written.
 
 ## How does layout() place things?
-- `layout(marked, saved, opts)`: frames `p:<tab key>` and `s:<shared id>`, each 248 wide (`FRAME`) and 44 + 30 per row + 10 high; a menu or region gives one row per link (label "menu › item"), one broken row when the read knows no such name. One chip (`c:<n>`) per mark and href outside the tabs; arrows `<frame id>|<port>` to the tab frame or chip; `rowY()` is a row port's height.
-- Places come from the graph canvas core (`ui/graph-canvas-core-logic.md`): `G.arrange()` with `GRID` (8 a row, gaps 96, headings 40, side columns 160 from the grid). Sections (`opts.sections`: `[{ id, label, keys }]` in the strip's order, the rest under `opts.rest`; one unlabelled section without them), shared frames in a column before the grid under `opts.shared`, chips after it under `opts.outside`, one sub-group per mark (page, anchor, contact, external, hidden, broken). Inside a section `G.order()` over the tab-to-tab arrows from the first tab (`start`, its frame `start: true`); the unreached last.
-- Answers `{ frames, chips, edges, headings, start }`; `saved` (id → x, y) overrides a place. The headings are drawn from PV4 on (the core's `groups()`).
+- Frames, rows, chips and arrows, and where they stand (a grid of sections from the graph canvas core): designer/prototype-arrangement.md.
 
 ## What does an arrow drawn by hand write?
 - `hrefPatch(node, row, href)` answers `{ key, value }`, a copy of the prop (`drawable()`, `hrefTo()`); `setHtmlHref()` rewrites the nth link's href in double quotes, the rest byte for byte. Rows carry `index`. Use: designer/prototype-view.md.
