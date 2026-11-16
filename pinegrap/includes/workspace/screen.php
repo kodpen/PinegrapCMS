@@ -915,6 +915,8 @@ function ws_screen_config($viewer, $mode, $extra = array())
     $strings = array_merge($strings, ws_approvals_js_strings(), ws_approval_guests_js_strings(), ws_acks_js_strings(), ws_mail_js_strings(), ws_mail_status_js_strings(), ws_mail_send_js_strings(), ws_mail_compose_js_strings(), ws_mail_signature_js_strings(), ws_mail_away_js_strings(), ws_mail_forward_js_strings(), ws_mail_phone_js_strings());
     // Send later's words (mail_later.php).
     $strings = array_merge($strings, ws_mail_later_js_strings());
+    // The link card's "Remove preview" (link_preview.php).
+    $strings = array_merge($strings, ws_link_preview_js_strings());
     // Remind me later's words (mail_remind.php).
     $strings = array_merge($strings, ws_mail_remind_js_strings());
     // Add to my calendar on a mail (personal_plan_mail.php).

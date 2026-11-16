@@ -1186,6 +1186,7 @@
     "Only the person who asked, or an administrator, can stop it.": "Bunu yalnız soran kişi ya da bir yönetici durdurabilir.",
     "Only the person who asked, or staff, can close the approval request.": "Onay isteğini yalnız isteyen kişi ya da yöneticiler kapatabilir.",
     "Only the person who asked, or whoever runs the channel, can close the poll.": "Oylamayı yalnız soran kişi ya da kanalı yöneten kapatabilir.",
+    "Only the person who wrote the message can remove its preview.": "Önizlemeyi yalnızca mesajı yazan kişi kaldırabilir.",
     "Only the person {var:1} proposed this change to can apply it.": "Bu değişikliği yalnız {var:1} önerisinin yapıldığı kişi uygulayabilir.",
     "Only the person {var:1} proposed this change to can set it aside.": "Bu değişikliği yalnız {var:1} önerisinin yapıldığı kişi bir kenara bırakabilir.",
     "Only the person's own team devices session (POST /auth/login) can answer a customer by e-mail; an application key or an OAuth connection cannot do it for them.": "Müşteriye e-postayla yalnızca kişinin kendi ekip cihazı oturumu (POST /auth/login) yanıt verebilir; bir uygulama anahtarı ya da OAuth bağlantısı bunu onun adına yapamaz.",
