@@ -5770,25 +5770,17 @@ const StyleDesigner = (function () {
                 activeBorder: '#0d6efd',
                 cssClass: ''
             },
+            // The canvas draws the gallery the site builds, with sample
+            // photos (_sdCarouselSampleHtml()) and the settings that are on
+            // said under it.
+            /* @pg-site-output */
             render: function (doc, p) {
                 var d = doc.createElement('div');
-                // sd-editor-ph: editor chrome, left out of the canvas audit
-                // (the site prints the marker, then the product gallery).
-                d.className = 'border border-secondary border-dashed rounded p-3 text-center sd-editor-ph';
-                d.style.minHeight = '180px';
-                d.style.opacity = '0.75';
-                var pos = p.thumbsPosition || 'bottom';
-                var posLabels = { bottom: _sdT('bottom'), top: _sdT('top'), left: _sdT('left'), right: _sdT('right'), none: _sdT('hidden') };
-                var bits = [];
-                if (p.lightbox)  bits.push(_sdT('Lightbox (full screen)'));
-                if (p.hoverZoom) bits.push(_sdT('Hover zoom (magnifier)'));
-                if (p.autoplay)  bits.push(_sdT('Autoplay'));
-                d.innerHTML = '<span class="bi bi-images" style="font-size:2rem;display:block;margin-bottom:6px"></span>' +
-                    '<strong>' + esc(_sdT('Carousel')) + '</strong>' +
-                    '<div class="text-muted small mt-1">' + esc(_sdT('The slides come from the product images at render time')) +
-                    '<br>' + esc(_sdT('thumbnails')) + ': <strong>' + esc(posLabels[pos] || pos) + '</strong>' +
-                    (bits.length ? '<br>' + esc(_sdT('features')) + ': ' + esc(bits.join(', ')) : '') +
-                    '</div>';
+                // sd-editor-ph: a sample, left out of the canvas audit.
+                d.className = 'sd-editor-ph';
+                d.innerHTML = _sdCarouselSampleHtml(p)
+                    + '<div class="small text-body-secondary fst-italic mt-1">' + esc(_sdCarouselSampleNote(p)) + '</div>';
+                d.setAttribute('inert', '');
                 return d;
             },
             toHTML: function (p, pad) {
@@ -5868,19 +5860,19 @@ const StyleDesigner = (function () {
             }
         },
         breadcrumb: {
-            // Live breadcrumb — backend (catalog_item_view OR catalog_listing)
-            // walks the active group's parent_id chain and renders
-            // "Ana Katalog → Group → Subgroup → Product". Designer drops
-            // this content type where they want the breadcrumb to appear
-            // (typically very top of the page, above carousel + title).
-            //
-            // Canvas shows a styled placeholder so the designer sees the
-            // element instead of a raw `^^__breadcrumb_html^^` token text.
-            // At PHP render time the marker `<!--pg-breadcrumb-placeholder-->`
-            // is replaced by the breadcrumb HTML the widget computed.
+            // Live breadcrumb — the catalog widgets (catalog_item_view,
+            // catalog_listing) replace the node with their crumbs part
+            // (pg_sw_part_catalog_breadcrumb()): the catalog, its groups,
+            // then where the visitor is. Inside one the canvas draws that
+            // part with sample crumbs, and "Convert to design elements"
+            // (_sdBreadcrumbToPart()) puts its elements in the tree;
+            // anywhere else the site prints nothing for it.
             label: _sdT('Breadcrumb'), icon: 'bi-signpost-split',
             defaultProps: { cssClass: '' },
+            /* @pg-site-output */
             render: function (doc, p) {
+                var kind = _sdCatalogKindDrawn();
+                if (kind) return _sdBreadcrumbSample(doc, kind);
                 var d = doc.createElement('nav');
                 // sd-editor-ph: editor chrome, left out of the canvas audit.
                 d.className = 'pg-canvas-placeholder sd-editor-ph ' + (p.cssClass || '');
@@ -5888,7 +5880,7 @@ const StyleDesigner = (function () {
                                 + 'background:rgba(99,102,241,.06);color:#6366f1;font-size:.8rem;line-height:1.4';
                 d.innerHTML = '<i class="bi bi-signpost-split me-1"></i>'
                             + '<strong>' + esc(_sdT('Breadcrumb')) + '</strong>'
-                            + '<span class="ms-2 text-muted small">' + esc(_sdT('Catalog → Group → Subgroup → Product (filled by the backend)')) + '</span>';
+                            + '<span class="ms-2 text-muted small">' + esc(_sdT('Prints nothing here: only a catalog or product page widget draws the breadcrumb.')) + '</span>';
                 return d;
             },
             toHTML: function (p, pad) {
@@ -11532,6 +11524,9 @@ const StyleDesigner = (function () {
                 el.appendChild(buildNodeEl(child));
             });
         }
+        // A product page's Checkout Options rows as the store gives them.
+        if (node.props._bindings && node.props._bindings.section === 'payment_methods'
+            && _sdCatalogKindDrawn() === 'catalog_item_view') _sdPaymentMethodsDraw(node, el);
 
         // Click → select
         el.addEventListener('click', function(e) {
@@ -42087,6 +42082,179 @@ const StyleDesigner = (function () {
         return box;
     }
 
+    // ── Catalog detail closed blocks: breadcrumb, carousel, payment methods ──
+    // The canvas draws what the site prints for them. The breadcrumb content
+    // node opens into the crumbs part (_sdBreadcrumbToPart()); the carousel's
+    // slides and the Checkout Options rows depend on the product and the
+    // store's settings, so they keep their settings and get a true sample
+    // that is never saved.
+
+    // The catalog widget kind being drawn ('catalog_listing' or
+    // 'catalog_item_view'), else ''.
+    function _sdCatalogKindDrawn() {
+        var kind = _sysWidgetRenderCfg ? _swKindOf(_sysWidgetRenderCfg) : '';
+        return (kind === 'catalog_listing' || kind === 'catalog_item_view') ? kind : '';
+    }
+
+    // What a breadcrumb content node prints in a `kind` widget
+    // (pg_sw_part_catalog_breadcrumb()): a nav around the path's crumbs, a
+    // link for each step and words for where the visitor is, drawn with the
+    // crumbs list's sample rows.
+    /* @pg-site-output */
+    function _sdBreadcrumbSample(doc, kind) {
+        var nav = doc.createElement('nav');
+        nav.className = (kind === 'catalog_listing') ? 'pg-sw-breadcrumb mb-3' : 'pg-civ-breadcrumb mb-3';
+        nav.setAttribute('aria-label', 'breadcrumb');
+        nav.innerHTML = '<ol class="breadcrumb mb-0">' + SD_LIST_SAMPLE_ROWS['catalog.crumbs'].map(function (c) {
+            var label = esc(c.__crumb_label);
+            if (c.__crumb_kind === 'link') return '<li class="breadcrumb-item"><a href="#" tabindex="-1">' + label + '</a></li>';
+            return '<li class="breadcrumb-item"><span' + (c.__crumb_kind === 'active' ? ' class="active"' : '') + '>' + label + '</span></li>';
+        }).join('') + '</ol>';
+        return nav;
+    }
+
+    // The breadcrumb content node `node`, in place, as the crumbs part its
+    // catalog widget prints (_sdDefaultParts(), as an old tree opens): a nav,
+    // its list and the crumbs list, each an element of its own. Returns
+    // whether it changed.
+    function _sdBreadcrumbToPart(node) {
+        if (!node || node.type !== 'content' || !node.props || node.props.contentType !== 'breadcrumb') return false;
+        var kind = _getSystemWidgetRegionType(node);
+        if (kind !== 'catalog_listing' && kind !== 'catalog_item_view') return false;
+        var hit = _sdAnyParent(node);
+        if (!_sdDefaultParts(node, kind, null)) return false;
+        if (hit && hit.sid) _sharedDirty[hit.sid] = true;
+        return true;
+    }
+
+    // The carousel a catalog detail widget prints from the product's
+    // pictures (_render_tree_node(), case 'carousel'), with three sample
+    // photos in their place: the thumbnail strip where `p` puts it, the
+    // arrows and dots it turns on, the active thumbnail's border, the
+    // lightbox's links. Inert:
+    // no slide runs and no lightbox opens on the canvas. The layout rules
+    // of pg_carousel_layout.css, which the canvas does not load, are
+    // inline here.
+    /* @pg-site-output */
+    function _sdCarouselSampleHtml(p) {
+        var pos = ['bottom', 'top', 'left', 'right', 'none'].indexOf(p.thumbsPosition) !== -1 ? p.thumbsPosition : 'bottom';
+        var size = Math.max(20, Math.min(200, parseInt(p.thumbSize, 10) || 60));
+        var border = /^#[0-9a-fA-F]{3,8}$/.test(p.activeBorder || '') ? p.activeBorder : '#0d6efd';
+        var count = 3, photo = esc(_sdSamplePictureUri(0, 0)), i, html = '';
+        var side = (pos === 'left' || pos === 'right');
+        var lightbox = p.lightbox !== false;
+        var thumbs = '';
+        if (pos !== 'none') {
+            thumbs = '<div class="pg-carousel-thumbs d-flex gap-2 ' + (side ? 'flex-column' : 'flex-row flex-wrap') + '"'
+                + (side ? ' style="flex:0 0 auto;padding:4px"' : '') + '>';
+            for (i = 0; i < count; i++) {
+                var thumb = '<img src="' + photo + '" alt="" class="pg-carousel-thumb' + (i === 0 ? ' active' : '') + '"'
+                    + ' style="width:' + size + 'px;height:' + size + 'px;object-fit:cover;border:2px solid '
+                    + (i === 0 ? esc(border) : 'transparent') + ';border-radius:4px;box-sizing:border-box">';
+                thumbs += lightbox ? '<a href="#" tabindex="-1" class="pg-carousel-thumb-link" style="display:inline-block;line-height:0">' + thumb + '</a>' : thumb;
+            }
+            thumbs += '</div>';
+        }
+        var main = '<div class="carousel slide pg-carousel pg-carousel-thumbs-' + pos + (p.cssClass ? ' ' + esc(p.cssClass) : '') + '"'
+            + (side ? ' style="flex:1 1 auto;min-width:0"' : '') + '>';
+        if (p.showIndicators) {
+            main += '<div class="carousel-indicators">';
+            for (i = 0; i < count; i++) main += '<button type="button" tabindex="-1"' + (i === 0 ? ' class="active"' : '') + '></button>';
+            main += '</div>';
+        }
+        main += '<div class="carousel-inner">';
+        for (i = 0; i < count; i++) {
+            var slide = '<img src="' + photo + '" class="d-block w-100" alt="">';
+            main += '<div class="carousel-item' + (i === 0 ? ' active' : '') + '">'
+                + (lightbox ? '<a href="#" tabindex="-1" class="pg-carousel-slide-link d-block w-100">' + slide + '</a>' : slide) + '</div>';
+        }
+        main += '</div>';
+        if (p.showControls !== false) {
+            main += '<button class="carousel-control-prev" type="button" tabindex="-1"><span class="carousel-control-prev-icon" aria-hidden="true"></span>'
+                + '<span class="visually-hidden">' + esc(_sdT('Previous')) + '</span></button>'
+                + '<button class="carousel-control-next" type="button" tabindex="-1"><span class="carousel-control-next-icon" aria-hidden="true"></span>'
+                + '<span class="visually-hidden">' + esc(_sdT('Next')) + '</span></button>';
+        }
+        main += '</div>';
+        var flow = side ? 'display:flex;flex-direction:' + (pos === 'right' ? 'row-reverse' : 'row') + ';gap:12px;align-items:flex-start'
+            : 'display:flex;flex-direction:column;gap:12px';
+        html = '<div class="pg-carousel-wrapper' + (side ? ' pg-carousel-wrapper-horizontal' : (pos === 'none' ? '' : ' pg-carousel-wrapper-vertical')) + '" style="' + flow + '">';
+        // The site puts a top or left strip before the slides, a bottom or
+        // right one after them (row-reverse puts the right one beside).
+        html += (pos === 'top' || pos === 'left') ? thumbs + main : main + thumbs;
+        return html + '</div>';
+    }
+
+    // The settings that are on, said under the carousel's sample.
+    function _sdCarouselSampleNote(p) {
+        var bits = [];
+        if (p.lightbox !== false) bits.push(_sdT('Lightbox (full screen)'));
+        if (p.hoverZoom) bits.push(_sdT('Hover zoom (magnifier)'));
+        if (p.autoplay) bits.push(_sdT('Autoplay'));
+        var note = _sdT('The slides come from the product images at render time');
+        return bits.length ? note + ' · ' + bits.join(', ') : note;
+    }
+
+    // The Checkout Options rows the store's settings give
+    // (pg_civ_payment_method_rows()): each [method, description, fee].
+    function _sdPaymentMethodRows() {
+        var w = (typeof sdDesign !== 'undefined' && sdDesign && sdDesign.siteWords) ? sdDesign.siteWords : null;
+        return (w && Array.isArray(w.payment_method_rows)) ? w.payment_method_rows : [];
+    }
+
+    // Writes `values` into the cells of the drawn row `tr`, each cell's first
+    // value element taking its text, as _pg_civ_payment_row() sets each
+    // cell's first content node.
+    function _sdPaymentRowTexts(tr, values) {
+        var cells = Array.prototype.filter.call(tr.children, function (c) { return /^(td|th)$/i.test(c.tagName); });
+        cells.forEach(function (td, i) {
+            var holder = td.querySelector('[data-sd-type="content"]');
+            var el = holder ? Array.prototype.filter.call(holder.children, function (c) { return !c.classList.contains('sd-tb'); })[0] : null;
+            if (el) el.textContent = (values[i] === undefined) ? '' : String(values[i]);
+        });
+    }
+
+    // The payment_methods body `node` of a catalog detail widget, drawn in
+    // `body` as the site fills it (_pg_civ_fill_payment_methods()): its
+    // first row once per method the store has on, with that method's
+    // words; the hatched copies are a sample, never saved. Rows after the
+    // first are not printed, so they fade with the reason. With no method
+    // on, the body is faded already (_sdCatalogBindingDisabled()).
+    function _sdPaymentMethodsDraw(node, body) {
+        var rows = _sdPaymentMethodRows();
+        var kids = node.children || [];
+        var first = -1;
+        kids.forEach(function (c, i) { if (first === -1 && c && c.props && c.props.tag === 'tr') first = i; });
+        if (!rows.length || first === -1) return;
+        var els = Array.prototype.filter.call(body.children, function (c) { return c.hasAttribute('data-sd-id'); });
+        var firstEl = els[first];
+        if (!firstEl) return;
+        _sdPaymentRowTexts(firstEl, rows[0]);
+        firstEl.title = _sdT('Filled by the site: one row for each payment method switched on in the store settings');
+        els.forEach(function (el, i) {
+            if (i === first) return;
+            el.classList.add('sd-binding-off');
+            el.setAttribute('data-sd-binding-off', '1');
+            el.setAttribute('data-sd-off-reason', _sdT('Not printed: the site repeats the first row for each payment method'));
+        });
+        var after = firstEl;
+        rows.slice(1).forEach(function (values) {
+            var copy = buildNodeEl(kids[first]);
+            if (!copy || copy.nodeType !== 1) return;
+            copy.querySelectorAll('.sd-tb').forEach(function (tb) { tb.remove(); });
+            [copy].concat(Array.prototype.slice.call(copy.querySelectorAll('*'))).forEach(function (x) {
+                ['data-sd-id', 'id', 'draggable', 'contenteditable', 'title'].forEach(function (a) { x.removeAttribute(a); });
+                x.classList.remove('sd-selected');
+            });
+            _sdPaymentRowTexts(copy, values);
+            copy.classList.add('sd-ghost', 'sd-list-sample');
+            copy.setAttribute('aria-hidden', 'true');
+            copy.setAttribute('inert', '');
+            body.insertBefore(copy, after.nextSibling);
+            after = copy;
+        });
+    }
+
     // Resolve the regionType of the system widget that contains `node`.
     // Returns one of: 'form_list_view' (default), 'form_item_view',
     // 'catalog_listing', or '' if not in a SW.
@@ -48940,6 +49108,19 @@ const StyleDesigner = (function () {
             }
         }
 
+        // A breadcrumb inside a catalog widget opens into the crumbs part
+        // its widget prints (_sdBreadcrumbToPart()).
+        if (ct === 'breadcrumb') {
+            var _bcKind = _getSystemWidgetRegionType(n);
+            if (_bcKind === 'catalog_listing' || _bcKind === 'catalog_item_view') {
+                h += '<button type="button" class="btn btn-sm btn-outline theme-primary w-100 mt-2 text-wrap" data-sd-crumbs-open>' +
+                        '<span class="bi bi-magic me-1"></span>' + esc(_sdT('Convert to design elements')) + '</button>' +
+                    '<div style="font-size:.66rem;color:#888;margin-top:3px">' +
+                        esc(_sdT('Puts the breadcrumb\'s elements here: a link for each step of the path, then where the visitor is. The site prints the same.')) +
+                    '</div>';
+            }
+        }
+
         // Image: Object Fit (class) + Object Position (inline style) shown manually at top
         if (ct === 'image') {
             var objPosOpts = [
@@ -52359,6 +52540,20 @@ const StyleDesigner = (function () {
                 selectedNode = list;
                 selectedNodes = [];
                 if (typeof expandAncestorsAnywhere === 'function') expandAncestorsAnywhere(list);
+                render();
+                renderProperties();
+            });
+        });
+
+        // A breadcrumb turned into the crumbs part (_sdBreadcrumbToPart()).
+        document.querySelectorAll('#sd-properties [data-sd-crumbs-open]').forEach(function (el) {
+            el.addEventListener('click', function () {
+                if (!selectedNode) return;
+                saveState();
+                var node = selectedNode;
+                if (!_sdBreadcrumbToPart(node)) return;
+                selectedNodes = [];
+                if (typeof expandAncestorsAnywhere === 'function') expandAncestorsAnywhere(node);
                 render();
                 renderProperties();
             });

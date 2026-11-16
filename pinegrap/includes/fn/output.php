@@ -7931,6 +7931,7 @@ function pg_js_bundles()
             'assets/js/workspace_channel_agents.js',
             'assets/js/workspace_my_calendar_roadmap.js',
             'assets/js/workspace_my_calendar.js',
+            'assets/js/workspace_translate.js',
             'assets/js/workspace_replies.js',
             'assets/js/workspace.js',
         ),

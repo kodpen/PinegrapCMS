@@ -13,7 +13,7 @@ description: Census PU1 of auto-dialog-popups: who touches auto_dialogs, open_di
 ## What does the site script do?
 - `frontend.src.js` `software.init_auto_dialogs()`: stops in an iframe and on body class `disable_auto_dialogs`, skips `disable_auto_dialog_<id>` (set only by a page's own body tag); waits delay minus `visit_length` (1 s at least); `software.open_dialog()` with classes `auto_dialog auto_dialog_<id>`; writes the cookie until 2030, outside `pg_consent_catalogue()`.
 - Preview `?preview_auto_dialog=<id>` (role < 3): no delay, no cookie; reserved in `pg_sw_url_param_reserved()` and `style_designer.src.js`.
-- Since PU2 the browser picks and draws the `<dialog>`; no session key (`platform/auto-dialog-browser-dialog.md`).
+- Since PU2 the browser picks and draws the `<dialog>`; no session key. Since PU3 one cookie `pg_popup`, in the catalogue, and the consent wait (`platform/auto-dialog-browser-dialog.md`).
 - `software.open_dialog()` has one caller, `init_auto_dialogs()`; `open_dialog()` in `assets/js/backend.src.js` is the panel's own.
 
 ## Which jQuery UI dialogs stay?

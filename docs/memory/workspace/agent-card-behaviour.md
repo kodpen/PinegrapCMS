@@ -14,3 +14,6 @@ description: The agent card in a channel when its facts cannot be read or the li
 - Only the reader's own scroll of the list holding the anchor: a wheel or touch within 800 ms, a scroll key outside a field, or a held pointer (a dragged scrollbar). `agentCardScrollCloses()` and `agentCardScrollKey()` are pure (`tests/workspace_agent_card_js_test.php`).
 - A scroll the screen makes for a new message moves the card along with its anchor, never from under the pointer reading it (leaving the card would close it).
 - Mention puts `@handle ` into the composer (typed text wakes it too). Look: owner's layout of channel decision 3796; pictures `Approval: channel`.
+
+## Why does leaving not close a card opened by a tap? (#9846)
+- A tap brings mouse events with it; when the layout then moved the anchor (a message's tool bar opening under it) the card got a mouseleave and closed 250 ms later. `cardHook()` remembers whether the anchor's last pointer was a finger and then leaves the card open: it closes on a tap outside, Escape or the reader's scroll. Seen on the message chip's card in a 390 px browser (`message-reference-tag.md`).

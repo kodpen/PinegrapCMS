@@ -18,8 +18,8 @@ module: auto_dialogs
 - The API: `api/api-design-dialogs-regions.md`.
 
 ## How does the site open it?
-- `frontend.src.js` (and the hand-patched `frontend.min.js`) `init_auto_dialogs()`: delay as before; scroll waits for `software.when_scrolled(share)` (scroll position over the page's scrollable room; a page too short to scroll opens after 1 s); leave waits for `software.when_leaving()` (the pointer leaving through the window's top edge). On a touch screen (`software_device_type` mobile or `(hover: none)`) leave falls back to the delay. A preview opens at once.
-- `software.show_auto_dialog()` opens it and writes the cookie. Place centre is `showModal()`; top, bottom and corner pass `place` and `modal: false` to `open_dialog()` (`show()`), classes `pg-dialog-top`, `-bottom` (full width) and `-corner` (bottom right, 16px).
+- `frontend.src.js` (and the hand-patched `frontend.min.js`) `start_auto_dialogs()`, after the consent wait: delay as before; scroll waits for `software.when_scrolled(share)` (scroll position over the page's scrollable room; a page too short to scroll opens after 1 s); leave waits for `software.when_leaving()` (the pointer leaving through the window's top edge). On a touch screen (`software_device_type` mobile or `(hover: none)`) leave falls back to the delay. A preview opens at once.
+- `software.show_auto_dialog()` opens it and marks it in `popup_memory()` (shown, closed; PU3's one cookie). Place centre is `showModal()`; top, bottom and corner pass `place` and `modal: false` to `open_dialog()` (`show()`), classes `pg-dialog-top`, `-bottom` (full width) and `-corner` (bottom right, 16px).
 
 ## Who sees a cart row?
 - `get_page_content.php` asks `pg_auto_dialog_session_has_cart()` (the session's order holds a line not saved for later) only while a printed row has audience cart (`pg_auto_dialogs_need_cart()`); `pg_auto_dialogs_on_page($rows, $page, $has_cart)` leaves a cart row out otherwise. A page that prints one calls `pg_page_cache_personal('popup_cart')`: no kept copy.

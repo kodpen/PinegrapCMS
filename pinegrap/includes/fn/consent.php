@@ -52,6 +52,10 @@ define('PG_CONSENT_ANSWER_WRITE_WINDOW', 3600);
  */
 define('PG_CONSENT_ANSWER_MAX_LENGTH', 32);
 
+// The one cookie auto dialogs (pop-ups) keep their memory in: each dialog's
+// id, the time it was last shown and its state, written by frontend.src.js.
+define('PG_POPUP_COOKIE', 'pg_popup');
+
 /**
  * Whether the site asks for consent. False before the schema step has run.
  */
@@ -502,6 +506,14 @@ function pg_consent_catalogue($content)
         $catalogue['marketing'][] = array('software[affiliate_code]', true, lang('Remembers the partner who referred you, so the partner can be credited.'));
     }
 
+    // Auto dialogs (pop-ups) remember which one a visitor saw and closed in
+    // one cookie, written by frontend.src.js only with marketing allowed or
+    // the notice off; the old per-row cookies are still read for the time a
+    // dialog was last shown.
+    if (defined('AUTO_DIALOGS') && AUTO_DIALOGS) {
+        $catalogue['marketing'][] = pg_consent_popup_row();
+    }
+
     // The CAPTCHA provider of the Security settings guards the site's forms
     // and a form cannot be sent without it, so it is not held for consent.
     $captcha_provider = (defined('CAPTCHA') && CAPTCHA && function_exists('pg_captcha_provider')) ? pg_captcha_provider() : '';
@@ -520,6 +532,18 @@ function pg_consent_catalogue($content)
 }
 
 /**
+ * The notice's row for the pop-ups' cookie (PG_POPUP_COOKIE, a year) and
+ * the per-row cookies auto dialogs wrote before it (software[auto_dialog_<id>],
+ * still read for the time a dialog was last shown).
+ *
+ * @return array array(label, is cookie name, purpose)
+ */
+function pg_consent_popup_row()
+{
+    return array(PG_POPUP_COOKIE . ', software[auto_dialog_*]', true, lang('Remembers which pop-ups you have seen or closed, so they do not open again too soon.'));
+}
+
+/**
  * The cookies the notice's script deletes when a category is turned off
  * again. A trailing * matches by prefix (Google Analytics names one cookie
  * per property).
@@ -530,7 +554,9 @@ function pg_consent_revoke_names()
 {
     return array(
         'analytics' => array('software[number_of_visits]', 'software[tracking_code]', 'lsid', '_ga', '_ga_*', '_gid', '_gat*'),
-        'marketing' => array('software[affiliate_code]'),
+        // The pop-ups' cookie and the per-row ones before it; 'software[auto_dialog_*'
+        // matches software[auto_dialog_<id>] by prefix.
+        'marketing' => array('software[affiliate_code]', PG_POPUP_COOKIE, 'software[auto_dialog_*'),
     );
 }
 
@@ -702,6 +728,7 @@ function pg_consent_ui_keys()
 {
     return array(
         'Keeps your visit together: the cart, signing in and the steps of a form.',
+        'Remembers which pop-ups you have seen or closed, so they do not open again too soon.',
         'Keeps you signed in.',
         'Keeps showing you the same version of a page while the site compares two versions of it.',
         'Remembers that you have visited the site before, so a page can show returning visitors something of their own.',

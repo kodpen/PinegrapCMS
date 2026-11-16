@@ -449,6 +449,19 @@ function ws_js_strings()
         'copy_link'              => lang('Copy the link'),
         'copy_number'            => lang('Copy the task number'),
         'copy_text'              => lang('Copy the text'),
+        // Translate on a message (assets/js/workspace_translate.js).
+        'tr_translate'           => lang('Translate'),
+        'tr_mark'                => ws_js_template('Translated from {var:1}', 1),
+        'tr_show_original'       => lang('Show original'),
+        'tr_show_translation'    => lang('Show translation'),
+        'tr_working'             => lang('Translating…'),
+        'tr_preparing'           => lang('The browser is preparing this language; it does so once.'),
+        'tr_preparing_percent'   => ws_js_template('The browser is preparing this language: {var:1}%', 1),
+        'tr_same'                => ws_js_template('This message is already in {var:1}.', 1),
+        'tr_unknown'             => lang('The browser could not tell the language of this message.'),
+        'tr_unavailable'         => ws_js_template('The browser cannot translate from {var:1}.', 1),
+        'tr_failed'              => lang('The message could not be translated.'),
+        'tr_nothing'             => lang('This message has no text to translate.'),
         'erp_quote_copy'         => lang('Copy as a new sales quote'),
         'sales_quote_new'        => lang('New sales quote'),
         'copy_all'               => lang('Copy all'),
@@ -883,7 +896,7 @@ function ws_screen_config($viewer, $mode, $extra = array())
 
     // The search box of every screen (palette.php) and a channel's board
     // (channel_board.php).
-    $strings = array_merge($strings, ws_palette_js_strings(), ws_channel_board_js_strings(), ws_memory_js_strings(), ws_channel_agents_js_strings(), ws_agent_card_js_strings(), ws_person_card_js_strings());
+    $strings = array_merge($strings, ws_palette_js_strings(), ws_channel_board_js_strings(), ws_memory_js_strings(), ws_channel_agents_js_strings(), ws_agent_card_js_strings(), ws_person_card_js_strings(), ws_message_ref_js_strings());
     // The time spent on tasks and the tasks they wait for
     // (assets/js/workspace_task_time.js, workspace_task_links.js).
     $strings = array_merge($strings, ws_task_time_js_strings(), ws_task_links_js_strings());
