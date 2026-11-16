@@ -16,7 +16,7 @@ description: Plan prototype-canvas, steps PV7 to PV10 and PV12: the page picture
   - No script ever runs in a picture; it takes no pointer and no focus (`aria-hidden`); made when in view, dropped beyond the cap of PV7.
   - "Read the links again" makes the pictures of changed tabs again. Reduced motion: no fade.
   - Tests for the pure part (sizes, the cut, the foot's count). Features: F1, F2, F3.
-- PV9 (M) Marks on the picture. After PV8 and PV5.
+- PV9 (M) Marks on the picture. After PV8, PV5 and PV6.
   - Rectangles (F5) read from the picture by PV7's marker, scaled to the frame. A link under the cut, in a closed menu or hidden counts in the foot (F3). Link rows leave the frame; the list carries them.
   - `portAt()` answers the mark's point and side, so arrows start there (F14); F13's amber mark sits on the shared frame's picture.
   - A shared frame gets its picture here; PV8 left it the sketch (architect, 2026-11-16, agent channel message 6079). The part alone, at its own height: at least today's sketch strip, at most the page's cut. Arrows of links under a page's cut leave from the foot on the fade.
