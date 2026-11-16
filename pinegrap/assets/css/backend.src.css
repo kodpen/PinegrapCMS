@@ -15442,6 +15442,12 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
   align-items: center;
   gap: .25rem;
 }
+/* The chosen picture's thumbnail keeps an edge: a light picture would
+   vanish on the form's background (the question's and an option's). */
+.ws-poll-form-picture > .ws-poll-thumb {
+  border: 1px solid var(--pg-border-color);
+  border-radius: var(--ws-radius-xs);
+}
 .ws-poll-form-more > .btn {
   justify-self: start;
 }
