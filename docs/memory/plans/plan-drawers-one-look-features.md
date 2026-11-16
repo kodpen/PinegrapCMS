@@ -8,7 +8,7 @@ description: Plan plan-drawers-one-look, features D1 to D14: the shared form par
   - a field: label `pg-field-label` bound to its control, help `pg-text-meta`, error `pg-field-error`;
   - a text input and a textarea (`pg-input`), a select in look A's recipe as the Design examples screen shows it, a date and a time field (the kit's `dateField`);
   - a pair (`ws-plan-pair`), a switch row (`ws-plan-switch`, `pg-switch`), a segmented choice (`pg-seg`), the footer's buttons.
-- (D2) Neither drawer holds a Bootstrap form class after PD2: `form-control`, `form-control-sm`, `form-label`, `form-text`, `input-group`, `row` / `col-*`, `.switch`, `btn btn-*`. That counts the "New plan" drawer's three selects (Reminder, Repeat, Repeat ends), `form-control` today.
+- (D2) Neither drawer holds a Bootstrap form class after PD2: `form-control`, `form-control-sm`, `form-label`, `form-text`, `input-group`, `row` / `col-*`, `.switch`, `btn btn-*`. That counts the "New plan" drawer's four selects (Reminder, Repeat, Repeat ends, the roadmap's templates) and the unit of "Repeat every" (`input-group`).
 - (D3) People and the customer are chosen with the pickers both use today (`peoplePicker`, the customer picker); they are not rebuilt.
 
 ## What is the same in both?
