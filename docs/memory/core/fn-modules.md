@@ -35,6 +35,7 @@ description: Generated from the module field of the memory files: each includes/
 - `booking_agenda`: [[booking-agenda]], [[workspace-booking-record]], [[workspace-bookings]]
 - `booking_deposit_pay`: [[booking-deposit-payment]]
 - `booking_deposits`: [[booking-deposits]]
+- `booking_links`: [[booking-link-code]]
 - `booking_manage`: [[booking-manage]]
 - `booking_messages`: [[booking-messages]]
 - `booking_retention`: [[booking-retention]]
