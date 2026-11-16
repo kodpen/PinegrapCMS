@@ -4,8 +4,8 @@
  *
  * The visitor beacon of the page cache: a page the router answered from a
  * stored copy posts here once it is shown, so the view is counted as if the
- * page had been drawn. A click on a site search result and the page speed
- * beacon and a pop-up's events post here too.
+ * page had been drawn. A click on a site search result, the page speed and
+ * click beacon and a pop-up's events post here too.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -62,6 +62,18 @@ if (isset($_POST['ad'])) {
         }
     }
     exit();
+}
+
+// Clicks and scroll depth (includes/fn/page_clicks.php): a page this site
+// signed today or yesterday, counted in the day's rollup unless the visitor
+// is signed in or refused statistics. It travels with the speed figures of
+// the same beacon, which are then counted below.
+if (isset($_POST['c'])) {
+    pg_page_clicks_beacon($_POST);
+
+    if (!isset($_POST['vp'])) {
+        exit();
+    }
 }
 
 // The page speed beacon (pg_vitals.min.js): the figures of a page this site

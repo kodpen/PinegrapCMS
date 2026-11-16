@@ -9115,6 +9115,7 @@ function get_tables() {
 		'order_returns',
 		'orders',
 		'page',
+		'page_click_daily',
 		'page_vitals_hourly',
 		'photo_gallery_pages',
 		'pregion',

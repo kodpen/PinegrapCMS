@@ -137,7 +137,7 @@ function test_auto_dialog_count_page_view_branch_is_small_and_guarded()
 	$allowed = substr($module, strpos($module, 'function pg_auto_dialog_count_allowed('), 900);
 	pg_assert_contains('pg_request_is_automated()', $allowed, 'no crawler or script');
 	pg_assert_contains('pg_site_search_user_countable(', $allowed, 'staff by the site search rule, no second copy');
-	pg_assert_contains("pg_consent_allows('analytics')", $allowed, 'statistics allowed, or the notice off');
+	pg_assert_contains('pg_consent_statistics_not_refused()', $allowed, 'the one check of the anonymous counts: statistics not refused');
 	pg_assert_contains("waf_rate_exceeded(\$ip, 'popup', PG_AUTO_DIALOG_COUNT_RATE_LIMIT, 60)", $module, 'the vitals beacon\'s rate limit, its own bucket');
 
 	$count = substr($module, strpos($module, 'function pg_auto_dialog_count('), 700);

@@ -214,6 +214,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_auto_dialog_open();        // 11.0.221
 	upgrade_2026_11_0_ws_highlights();           // 11.0.222
 	upgrade_2026_11_0_auto_dialog_daily();       // 11.0.223
+	upgrade_2026_11_0_page_click_daily();        // 11.0.224
 
 }
 
@@ -7083,5 +7084,39 @@ function upgrade_2026_11_0_auto_dialog_daily() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Auto dialogs: each pop-up counts how often it was shown, closed and taken up; the list and edit screens show the last 30 days.');
+
+}
+
+// Clicks and scroll depth (11.0.224, includes/fn/page_clicks.php): per page,
+// site day and device a views row, a row per deepest tenth reached, a row
+// per element clicked (its part of the page, link or button, the folded
+// address and label) and, past 200 elements a page and day, one "other"
+// row; each raised by one INSERT ... ON DUPLICATE KEY UPDATE on the sha1 of
+// its parts. The parts compare byte by byte (ascii_bin, utf8mb4_bin), the
+// same identity as the key, so two labels differing in case or accent never
+// sum into one. idx_kind_day_page serves the period's page list, which reads
+// the views and depth rows only, and the sweep kind by kind; idx_page_day
+// one page's figures. No visitor data and no backfill.
+function upgrade_2026_11_0_page_click_daily() {
+
+	install_create_table('page_click_daily', "CREATE TABLE page_click_daily (
+		id       CHAR(40) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+		day      DATE NOT NULL,
+		page_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		device   ENUM('desktop','mobile','tablet') NOT NULL DEFAULT 'desktop',
+		kind     ENUM('view','depth','element','other') NOT NULL DEFAULT 'view',
+		depth    TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		area     VARCHAR(8) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT '',
+		role     VARCHAR(6) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT '',
+		url      VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL DEFAULT '',
+		label    VARCHAR(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL DEFAULT '',
+		hits     INT UNSIGNED NOT NULL DEFAULT 0,
+		elements SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_kind_day_page (kind, day, page_id),
+		KEY idx_page_day (page_id, day)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Clicks and scrolling: the counter of which links and buttons a page\'s visitors click and how far they scroll is ready; it counts once switched on in Features.');
 
 }
