@@ -74,7 +74,12 @@ function test_visitors_clicks_section_prints_labels_as_text()
 	pg_assert_true(strpos($page, '<script>') === false, 'no script tag in a page\'s elements');
 	pg_assert_true(strpos($page, '<img') === false, 'no tag from an address');
 	pg_assert_contains('&lt;img src=x onerror=alert(1)&gt;', $page, 'the address as text');
-	pg_assert_contains(h(lang('Other elements')), $page, '"other" as one line');
+	pg_assert_true(strpos($page, 'Other elements') === false, '"other" is no row of the table');
+
+	$other = pg_visitors_clicks_other(array('views' => 20, 'other' => 3));
+	pg_assert_same(1, substr_count($other, '<p class="pg-visitors-note">'), '"other" as one line under the table');
+	pg_assert_contains(h(pg_visitors_clicks_share(0.15)), $other, 'with its share of the views');
+	pg_assert_same('', pg_visitors_clicks_other(array('views' => 20, 'other' => 0)), 'no line without other clicks');
 
 	// The name a reader is told falls back from label to address to kind.
 	pg_assert_same('<script>alert("x")</script> Buy', pg_visitors_clicks_name($element), 'returned raw, escaped where printed');

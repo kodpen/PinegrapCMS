@@ -223,8 +223,8 @@ function pg_visitors_clicks_page_rows(array $pages, array $period, $device)
 
 /**
  * The rows of a page's elements table: the label first with the part, the
- * kind and the address as a quiet line under it, then clicks and share;
- * "other" as one line at the end. Pure: every text is escaped here.
+ * kind and the address as a quiet line under it, then clicks and share.
+ * Pure: every text is escaped here.
  *
  * @param array $figures pg_page_clicks_page()
  * @return array
@@ -248,15 +248,28 @@ function pg_visitors_clicks_element_rows(array $figures)
         );
     }
 
-    if ((int) $figures['other'] > 0) {
-        $rows[] = array(
-            array('html' => h(lang('Other elements')) . '<span class="pg-visitors-cell-note">' . h(lang('Clicks past the elements a page keeps in a day')) . '</span>'),
-            array('html' => h(pg_format_number((int) $figures['other'], 0)), 'sort' => (int) $figures['other']),
-            pg_visitors_clicks_share(function_exists('pg_page_clicks_share') ? pg_page_clicks_share((int) $figures['other'], (int) $figures['views']) : null),
-        );
+    return $rows;
+}
+
+/**
+ * The clicks counted past the elements a page keeps in a day, as one line
+ * under the elements table, where "Show all" never hides it. Pure.
+ *
+ * @param array $figures pg_page_clicks_page()
+ * @return string HTML; '' when there are none
+ */
+function pg_visitors_clicks_other(array $figures)
+{
+    if ((int) $figures['other'] <= 0) {
+        return '';
     }
 
-    return $rows;
+    $share = function_exists('pg_page_clicks_share') ? pg_page_clicks_share((int) $figures['other'], (int) $figures['views']) : null;
+
+    return '<p class="pg-visitors-note">' . h(lang(array(
+        'string' => 'Other elements: {var:1} clicks ({var:2}), past the elements a page keeps in a day.',
+        'vars'   => array(pg_format_number((int) $figures['other'], 0), pg_visitors_clicks_share($share)),
+    ))) . '</p>';
 }
 
 /**
@@ -298,7 +311,13 @@ function pg_visitors_clicks_list(array $period, $device)
     $pages = pg_page_clicks_pages($period['from'], $period['to'], $device, PG_VISITORS_CLICKS_PAGES);
 
     if (!$pages) {
-        return pg_visitors_empty(lang('No page views were counted in this period yet.'));
+        // Nothing counted in any kept day: the switch has only just been
+        // turned on, or no visitor has come since.
+        $ever = pg_page_clicks_pages(date('Y-m-d', strtotime('-' . PG_PAGE_CLICKS_DAYS . ' days')), date('Y-m-d'), '', 1);
+
+        return $ever
+            ? pg_visitors_empty(lang('No page views were counted in this period.'))
+            : pg_visitors_empty(lang('Counting is on. The first figures appear here after the next visits to the site\'s pages.'));
     }
 
     foreach ($pages as $index => $page) {
@@ -361,7 +380,7 @@ function pg_visitors_clicks_page(array $period, $page_id, $device)
 
     return $back . $title . $tiles . '
         <div class="pg-visitors-grid is-split">
-            ' . pg_visitors_block(lang('Elements clicked'), $elements) . '
+            ' . pg_visitors_block(lang('Elements clicked'), $elements . pg_visitors_clicks_other($figures)) . '
             ' . pg_visitors_block(lang('Scroll depth'), '<p class="pg-visitors-note mt-0 mb-2">' . h(lang('The share of views that came down at least this far on the page.')) . '</p>'
                 . pg_visitors_bars(pg_visitors_clicks_reach_rows($figures['reach']), array('label' => lang('Scroll depth')))) . '
         </div>';
