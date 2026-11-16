@@ -20,7 +20,7 @@ description: Add and edit screens in look A (DL5c, #8934): the edit width on eve
 - As wide as its content on the card's 12-column grid; the architect's answers of 2026-11-15 and the rules: `look-field-widths.md`.
 
 ## What is the save bar?
-- The shared `nav.buttons.navigation` straight in the `order-3` column is the floating bar; a bar left in the form column or in `order-4` stays the old centred pill. Under a full-width table the bar's column is a second `order-3` after the table's (product group) (selector beside `.pg-floatbar`): from 576 px 56 px high, buttons at the right, 34 px high with 10 px corners (the shared bar's pill `!important` is overridden). A phone keeps the shared two-per-row bar.
+- The shared `nav.buttons.navigation` straight in the `order-3` column is the floating bar; a bar left in the form column or in `order-4` stays the old centred pill. Under a full-width table the bar's column is a second `order-3` after the table's (product group) (selector beside `.pg-floatbar`): from 576 px 56 px high, buttons at the right, 34 px high with 10 px corners (the shared bar's pill `!important` is overridden). A phone: `save-bar-phone.md`.
 - Its buttons are drawn by their role in the same block, at every width, the markup keeping its Bootstrap classes (#9680): the bar's one solid success or primary button is the save action in `.pg-button-fill`'s values, a `theme-danger` button (solid or outline) a ghost in the danger rose (`--pg-tone-rose-text`, hover `--pg-hover`), every other button `.pg-button-quiet`. No add or edit bar has two solid success or primary buttons; a screen that adds one makes two fills.
 
 ## What is not done yet?
