@@ -808,11 +808,11 @@ function pg_customer_value_cell_group($age, $band)
 function pg_customer_value_group_names()
 {
     return array(
-        'new' => lang('New'),
-        'returning' => lang('Returning'),
-        'loyal' => lang('Loyal'),
-        'at_risk' => lang('At risk'),
-        'lost' => lang('Lost'),
+        'new' => lang('New customers'),
+        'returning' => lang('Returning customers'),
+        'loyal' => lang('Loyal customers'),
+        'at_risk' => lang('At-risk customers'),
+        'lost' => lang('Lost customers'),
     );
 }
 
