@@ -546,6 +546,7 @@ function pg_lbs_trial_take_back($trial_id, $map, $file_ids)
         db("DELETE FROM preview_styles WHERE style_id = '$trial_id'");
         require_once(PG_FUNCTIONS_DIR . '/includes/fn/prototype_links.php');
         pg_proto_links_revoke_design($trial_id, 0);
+        pg_proto_comments_delete_design($trial_id);
     }
 
     // Only the rows this trial made: its category names it.
