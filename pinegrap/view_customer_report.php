@@ -37,7 +37,8 @@ $may_see_names = (bool) validate_contacts_access($user, true);
 $output_periods = '';
 
 foreach (pg_customer_value_periods() as $key => $label) {
-    $current = ($key === $period);
+    // Numeric keys ('12') are integers in a PHP array.
+    $current = ((string) $key === $period);
     $output_periods .= '<a class="pg-seg-item' . ($current ? ' is-active" aria-current="true"' : '"') . ' href="view_customer_report.php?period=' . h($key) . '">' . h($label) . '</a>';
 }
 
@@ -172,7 +173,7 @@ if ($summary !== null) {
     $legend = array();
 
     foreach (pg_customer_value_group_bounds() as $key => $bounds) {
-        $legend[] = '<strong>' . h($group_names[$key]) . '</strong>: ' . h($bounds);
+        $legend[] = '<span><strong>' . h($group_names[$key]) . '</strong>: ' . h($bounds) . '</span>';
     }
 
     $output_sections .= '
@@ -183,7 +184,7 @@ if ($summary !== null) {
                     <thead><tr><th>' . h(lang('Last order')) . '</th><th class="text-end">' . h($band_labels[0]) . '</th><th class="text-end">' . h($band_labels[1]) . '</th><th class="text-end">' . h($band_labels[2]) . '</th></tr></thead>
                     <tbody>' . $rows . '</tbody>
                 </table>
-                <p class="small fg-secondary m-3">' . implode(' · ', $legend) . '</p>
+                <p class="small fg-secondary m-3 pg-customer-group-terms">' . implode('<span class="pg-customer-group-sep"> · </span>', $legend) . '</p>
             </div>
         </section>';
 
@@ -267,7 +268,7 @@ print
     ) . '
 <main id="content" class="container-fluid">
     ' . pg_screen_toolbar(array(
-        'search' => (($summary !== null) ? '<div class="pg-seg" role="group" aria-label="' . h(lang('Period')) . '">' . $output_periods . '</div>' : '')
+        'search' => (($summary !== null) ? '<div class="pg-seg pg-customer-periods" role="group" aria-label="' . h(lang('Period')) . '">' . $output_periods . '</div>' : '')
             . (($output_as_of !== '') ? '<span class="pg-report-range"><i class="bi bi-clock-history" aria-hidden="true"></i>' . $output_as_of . '</span>' : ''),
     ), array('class' => 'pg-report-tools')) . '
     <div class="row">
