@@ -16411,6 +16411,65 @@
             question.value = defaults.question || '';
             body.appendChild(formRow(t('poll_question'), question));
 
+            // The question's own picture, sent with it: kept as it is, a new
+            // one read from the device, or removed. An answered question keeps
+            // the picture it was asked with.
+            var keptPicture = editing ? self.pollQuestionPicture(editing) : null;
+            var questionPicture = { change: '', name: '', data: '' };
+            var pictureLocked = changing && (poll.voters > 0 || poll.closed || poll.withdrawn);
+            var pictureRow = el('div', 'ws-poll-form-picture');
+            var pictureShown = el('span', 'ws-poll-thumb');
+            var pictureFile = el('input', 'd-none');
+            var pictureUpload = button('btn btn-sm btn-text theme-secondary', t('poll_question_picture_upload'), 'bi-upload');
+            var pictureDrop = button('btn btn-sm btn-text theme-secondary', '', 'bi-x-lg', t('poll_option_picture_remove'));
+
+            function showQuestionPicture(url, name) {
+                clear(pictureShown);
+                pictureShown.classList.toggle('d-none', !url);
+                pictureDrop.classList.toggle('d-none', !url || pictureLocked);
+
+                if (url) {
+                    var image = el('img');
+
+                    image.src = url;
+                    image.alt = name || '';
+                    pictureShown.appendChild(image);
+                }
+            }
+
+            pictureFile.type = 'file';
+            pictureFile.accept = 'image/*';
+            pictureFile.setAttribute('aria-label', t('poll_question_picture_upload'));
+            pictureUpload.addEventListener('click', function () { pictureFile.click(); });
+            pictureFile.addEventListener('change', function () {
+                var chosen = pictureFile.files && pictureFile.files[0];
+                var reader = new FileReader();
+
+                if (!chosen) {
+                    return;
+                }
+
+                reader.onload = function () {
+                    var url = String(reader.result || '');
+
+                    questionPicture = { change: 'new', name: chosen.name, data: url.slice(url.indexOf(',') + 1) };
+                    showQuestionPicture(url, chosen.name);
+                };
+                reader.readAsDataURL(chosen);
+                pictureFile.value = '';
+            });
+            pictureDrop.addEventListener('click', function () {
+                questionPicture = { change: keptPicture ? 'remove' : '', name: '', data: '' };
+                showQuestionPicture('', '');
+            });
+            pictureRow.appendChild(pictureShown);
+            pictureRow.appendChild(pictureUpload);
+            pictureRow.appendChild(pictureDrop);
+            pictureRow.appendChild(pictureFile);
+            pictureUpload.disabled = pictureLocked;
+            showQuestionPicture(keptPicture ? keptPicture.url : '', keptPicture ? keptPicture.name : '');
+            body.appendChild(formRow(t('poll_question_picture'), pictureRow, pictureLocked ? t('poll_question_picture_locked') : t('poll_question_picture_help')));
+
             var optionsWrap = el('div');
             var optionsBox = el('div', 'ws-poll-form-options');
             var addOption = button('btn btn-sm btn-text theme-secondary', t('poll_add_option'), 'bi-plus-lg');
@@ -16795,6 +16854,13 @@
 
                 settings.question = text;
                 settings.options = collect();
+
+                if (questionPicture.change === 'new') {
+                    settings.picture_name = questionPicture.name;
+                    settings.picture_base64 = questionPicture.data;
+                } else if (questionPicture.change === 'remove') {
+                    settings.remove_picture = 1;
+                }
 
                 if (!again) {
                     settings.closes_date = date.value;
