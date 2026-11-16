@@ -16023,8 +16023,11 @@ html[data-bs-theme="dark"] .ws-hl {
 }
 .ws-hl-bar {
   align-items: center;
+  padding: .125rem;
   background: var(--pg-bg-body);
+  border: 1px solid var(--pg-border-color);
   border-radius: var(--bs-btn-border-radius);
+  box-shadow: var(--pg-shadow-float);
 }
 .ws-hl-bar-note {
   padding: 0 .5rem;
