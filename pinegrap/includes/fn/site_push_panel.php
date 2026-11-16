@@ -313,10 +313,10 @@ function pg_site_push_list_html(array $messages, $when = null)
     };
 
     return $heading
-        . '<div class="table-responsive d-none d-sm-block"><table class="table table-hover mb-0 pg-embedded-table" data-pg-sort>'
+        . '<div class="table-responsive d-none sm:d-block"><table class="table table-hover mb-0 pg-embedded-table" data-pg-sort>'
         . '<thead><tr>' . $th(lang('Message')) . $th(lang('Type')) . $th(lang('Sent')) . $th(lang('Subscribers'), 'text-end') . $th(lang('Delivered'), 'text-end') . $th(lang('Failed'), 'text-end') . $th(lang('Subscription ended'), 'text-end', $ended_hint) . '</tr></thead>'
         . '<tbody>' . $rows . '</tbody></table></div>'
-        . '<ul class="list-unstyled d-flex flex-column gap-2 mb-0 d-sm-none">' . $cards . '</ul>'
+        . '<ul class="list-unstyled d-flex flex-column gap-2 mb-0 sm:d-none">' . $cards . '</ul>'
         . '</section>';
 }
 

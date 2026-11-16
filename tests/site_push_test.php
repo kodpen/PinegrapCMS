@@ -362,7 +362,7 @@ function test_site_push_panel_list_html()
 	pg_assert_contains(lang('Subscription ended'), $html, 'the ended column says what ended');
 	pg_assert_contains(h(lang('Browsers that no longer take notifications; removed from the list.')), $html, 'with its hint');
 	pg_assert_false(strpos($html, '>' . lang('Removed') . '<') !== false, 'no bare "Removed"');
-	pg_assert_contains('d-sm-none', $html, 'phone cards');
+	pg_assert_contains('sm:d-none', $html, 'phone cards');
 	pg_assert_same(2, substr_count($html, '<li class="pg-card-inner">'), 'one card a message');
 	pg_assert_contains(lang('Subscribers') . ' <strong>1,284</strong>', $html, 'the card shows the subscribers');
 	pg_assert_contains(lang('Delivered') . ' <strong>1,280</strong>', $html, 'delivered');
