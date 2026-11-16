@@ -155,6 +155,44 @@ if (!defined('PG_INIT_LOADED')) {
                                 </div>
                             </div>
                         </div>
+                        <div class="card mb-7">
+                            <h2 class="card-header bg-reset border-0 pg-title-section">
+                                <?=lang('Opening')?>
+                            </h2>
+                            <div class="card-body pt-0">
+                                <?php $open_fields = pg_auto_dialog_form_open_fields(); ?>
+                                <div class="row">
+                                    <?php foreach ($open_fields as $open_field => $open_rule): ?>
+                                        <div class="col-12 sm:col-6 2xl:col-3 my-3">
+                                            <label for="<?=$open_field?>" class="form-label"><?=h($open_rule[0])?></label>
+                                            <?php if ($open_rule[1] === null): ?>
+                                                <div class="input-group">
+                                                    <?=$liveform->output_field(array(
+                                                        'type' => 'text',
+                                                        'id' => $open_field,
+                                                        'name' => $open_field,
+                                                        'class' => 'form-control text-end',
+                                                        'maxlength' => '3',
+                                                        'inputmode' => 'numeric'))?>
+                                                    <label for="<?=$open_field?>" class="input-group-text">%</label>
+                                                </div>
+                                                <div class="form-text text-end"><?=lang('of the page, when it opens on scroll; blank for 50')?></div>
+                                            <?php else: ?>
+                                                <?=$liveform->output_field(array(
+                                                    'type' => 'select',
+                                                    'id' => $open_field,
+                                                    'name' => $open_field,
+                                                    'class' => 'form-control',
+                                                    'options' => $open_rule[1]))?>
+                                                <?php if ($open_field === 'open_on'): ?>
+                                                    <div class="form-text text-end"><?=lang('on a touch screen, leaving opens after the delay')?></div>
+                                                <?php endif ?>
+                                            <?php endif ?>
+                                        </div>
+                                    <?php endforeach ?>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     <div class="col-12 lg:col-4 2xl:col-3 order-2">
                         <!-- 3.3rem: the fixed control panel header covers the top of the window. -->

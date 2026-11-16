@@ -4,12 +4,14 @@ description: Auto dialogs on the site: the browser's <dialog> in place of jQuery
 ---
 
 ## What does the page print?
-- `get_page_content.php` (under `if (AUTO_DIALOGS)`): the enabled rows through `pg_auto_dialogs_for_page()` (web addresses only) and `pg_auto_dialogs_on_page($rows, $page_name)` (`includes/fn/auto_dialogs.php`): page blank or part of the page name, case-blind; id, url, width, height, delay, frequency as numbers. The same for every visitor; printed with an empty list too while any row is enabled, so the visit start is kept from the first page.
+- `get_page_content.php` (under `if (AUTO_DIALOGS)`): the enabled rows through `pg_auto_dialogs_for_page()` (web addresses only) and `pg_auto_dialogs_on_page($rows, $page_name)` (`includes/fn/auto_dialogs.php`): page blank or part of the page name, case-blind; id, url, width, height, delay, frequency as numbers, and the open settings (#9851, `auto-dialog-open-settings.md`).
+- The same for every visitor but a cart row; printed with an empty list too while any row is enabled, so the visit start is kept from the first page.
 - Nothing goes into the session: `visit_start_timestamp` is gone (PR #9805), so a site with an auto dialog is cached again (`page-cache-gate.md`).
 - Preview `?preview_auto_dialog=<id>` (role < 3): one row, no delay, no cookie, as before.
 
 ## What does the script pick?
 - `frontend.src.js` `software.init_auto_dialogs()` (and the hand-patched `frontend.min.js`): stops in an iframe and on body class `disable_auto_dialogs`, skips `disable_auto_dialog_<id>`; skips a row whose cookie `software[auto_dialog_<id>]` holds a time, unless `frequency` hours have passed since; waits `delay` minus the time since the visit's first page (`sessionStorage` `pg_visit_start`, per tab; refused storage starts the visit on each page), at least 1 s.
+- Since #9851 a row opens on its delay, on scroll or on leaving, centred or as a bar or corner card (`auto-dialog-open-settings.md`).
 - The cookie is written as before (until 2030, outside the consent catalogue); one cookie and the consent wait are PU3 of `plans/auto-dialog-popups.md`.
 
 ## How is the dialog drawn?

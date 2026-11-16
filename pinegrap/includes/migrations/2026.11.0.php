@@ -209,6 +209,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_cart_recovery_touch();     // 11.0.216
 	upgrade_2026_11_0_ws_agent_duty();           // 11.0.217
 	upgrade_2026_11_0_ws_agent_feedback();       // 11.0.218
+	upgrade_2026_11_0_auto_dialog_open();        // 11.0.221
 
 }
 
@@ -6955,5 +6956,30 @@ function upgrade_2026_11_0_ws_agent_feedback() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Workspace: a reply of an agent can be marked right or wrong; the agent reads its marks and their counts.');
+
+}
+
+// When, to whom and where an auto dialog opens (11.0.221, includes/fn/
+// auto_dialogs.php): open_on (delay, scroll, leave), open_scroll (percent of
+// the page, read with scroll), audience (all, cart), place (centre, top,
+// bottom, corner). Each default reads as an auto dialog always opened:
+// after its delay, for everyone, centred. No index and no backfill; the
+// readers take an unknown value as the default too.
+function upgrade_2026_11_0_auto_dialog_open() {
+
+	if (!install_table_exists('auto_dialogs')) {
+
+		install_skipped('auto_dialogs does not exist, skipped');
+
+		return;
+
+	}
+
+	install_add_column('auto_dialogs', 'open_on', "VARCHAR(10) NOT NULL DEFAULT 'delay' AFTER page");
+	install_add_column('auto_dialogs', 'open_scroll', "TINYINT UNSIGNED NOT NULL DEFAULT 50 AFTER open_on");
+	install_add_column('auto_dialogs', 'audience', "VARCHAR(10) NOT NULL DEFAULT 'all' AFTER open_scroll");
+	install_add_column('auto_dialogs', 'place', "VARCHAR(10) NOT NULL DEFAULT 'centre' AFTER audience");
+
+	install_note('Auto dialogs: a dialog can open on scroll or when the visitor is leaving, only for visitors with a cart, and as a bar or a corner card.');
 
 }

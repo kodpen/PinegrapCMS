@@ -211,6 +211,8 @@
     "Bans: {var:1}": "Yasaklar: {var:1}",
     "Bar": "Çubuk",
     "Bar Row": "Çubuk Satırı",
+    "Bar at the bottom": "Altta şerit",
+    "Bar at the top": "Üstte şerit",
     "Bar counter": "Bar tezgâhı",
     "Bar drop": "Gidon düşüşü",
     "Bar reach and drop": "Gidon mesafesi ve düşüşü",

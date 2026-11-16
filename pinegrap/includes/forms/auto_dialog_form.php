@@ -61,6 +61,12 @@ function pg_auto_dialog_form_validate($liveform, $id)
         }
     }
 
+    // The open settings come from select boxes and one number box: a value
+    // that is not offered (a changed page) is refused rather than stored.
+    foreach (pg_auto_dialog_form_open_problems($liveform) as $field => $problem) {
+        $liveform->mark_error($field, $problem);
+    }
+
     if (!$liveform->check_field_error('name')) {
         $taken = pg_auto_dialog_name_in_use((string) $liveform->get_field_value('name'), ($id === null) ? null : (int) $id);
 
@@ -189,4 +195,93 @@ function pg_auto_dialog_form_values($liveform)
         $numbers['frequency'],
         pg_auto_dialog_form_page($liveform->get_field_value('page')),
     );
+}
+
+/**
+ * The open settings' fields: their labels and, for the three select boxes,
+ * the options a form draws (label => value), the default first.
+ *
+ * @return array  field => array(label, options or null for the number box)
+ */
+function pg_auto_dialog_form_open_fields()
+{
+    return array(
+        'open_on' => array(lang('Opens'), array(
+            lang('After the delay') => 'delay',
+            lang('When the page is scrolled') => 'scroll',
+            lang('When the visitor is leaving') => 'leave',
+        )),
+        'open_scroll' => array(lang('Scrolled'), null),
+        'audience' => array(lang('Shown To'), array(
+            lang('All visitors') => 'all',
+            lang('Visitors with a cart') => 'cart',
+        )),
+        'place' => array(lang('Place'), array(
+            lang('Centre') => 'centre',
+            lang('Bar at the top') => 'top',
+            lang('Bar at the bottom') => 'bottom',
+            lang('Corner') => 'corner',
+        )),
+    );
+}
+
+/**
+ * What is wrong with the open settings sent, field => message: a select
+ * value that is not offered, a scroll share that is not a whole number from
+ * 1 to 100. A blank field is the default. Pure but for lang().
+ *
+ * @param array|liveform $source  the values sent, or the liveform holding them
+ * @return array
+ */
+function pg_auto_dialog_form_open_problems($source)
+{
+    $problems = array();
+    $choices = pg_auto_dialog_open_choices();
+
+    foreach (pg_auto_dialog_form_open_fields() as $field => $rule) {
+        $raw = is_array($source) ? ($source[$field] ?? '') : $source->get_field_value($field);
+        $value = is_scalar($raw) ? trim((string) $raw) : null;
+
+        if ($value === '') {
+            continue;
+        }
+
+        if ($field === 'open_scroll') {
+            $number = ($value === null) ? null : pg_auto_dialog_form_whole_number($value, 100);
+
+            if (($number === null) || ((int) $number < 1)) {
+                $problems[$field] = lang(array('string'=>'{var:1} must be a whole number from {var:2} to {var:3}.','vars'=>array($rule[0], 1, 100)));
+            }
+
+            continue;
+        }
+
+        if (($value === null) || !in_array($value, $choices[$field], true)) {
+            $problems[$field] = lang(array('string'=>'{var:1} must be one of: {var:2}','vars'=>array($rule[0], implode(', ', $choices[$field]))));
+        }
+    }
+
+    return $problems;
+}
+
+/**
+ * The open settings a save writes (pg_auto_dialog_save()'s $open): the
+ * fields sent, a blank one read as its default.
+ *
+ * @param liveform $liveform
+ * @return array  open_on, open_scroll, audience, place
+ */
+function pg_auto_dialog_form_open_values($liveform)
+{
+    $sent = array();
+
+    foreach (array_keys(pg_auto_dialog_form_open_fields()) as $field) {
+        $sent[$field] = $liveform->get_field_value($field);
+    }
+
+    if (is_scalar($sent['open_scroll'])) {
+        $sent['open_scroll'] = (string) pg_auto_dialog_form_whole_number($sent['open_scroll'], 100);
+    }
+
+    return pg_auto_dialog_open_settings($sent);
 }
