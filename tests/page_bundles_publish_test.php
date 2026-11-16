@@ -329,7 +329,9 @@ function test_page_bundle_publish_checks_before_writes()
 	pg_assert_true(($plan !== false) && ($run !== false) && ($plan < $run), 'the checks come first');
 	pg_assert_contains("if (!\$check['plan']['ok'])", $code, 'and stop the publish');
 
-	$check = pg_test_function_source('pg_page_bundle_publish_check');
+	pg_assert_contains('pg_page_bundle_check_item(', pg_test_function_source('pg_page_bundle_publish_check'), 'every page is checked');
+
+	$check = pg_test_function_source('pg_page_bundle_check_item');
 	pg_assert_contains('pg_collab_may_edit_page(', $check, 'the lock');
 	pg_assert_contains(', true)', $check, 'the save\'s dry run');
 	pg_assert_contains('pg_page_bundle_item_changed(', $check, '"changed since"');
