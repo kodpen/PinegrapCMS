@@ -340,6 +340,11 @@ function pg_designer_screen_render($ctx)
             'member_id_label' => defined('MEMBER_ID_LABEL') ? (string)MEMBER_ID_LABEL : '',
             'password_rules'  => function_exists('get_strong_password_requirements')
                 ? '<div class="pg-password-rules small text-muted">' . get_strong_password_requirements() . '</div>' : '',
+            // The product page's Checkout Options rows (method, description,
+            // fee) the store's payment settings give, as the site fills them
+            // (_pg_civ_fill_payment_methods()).
+            'payment_method_rows' => function_exists('pg_civ_payment_method_rows')
+                ? pg_civ_payment_method_rows(_pg_civ_payment_settings(false)) : array(),
         ),
         // The editor's UI text, resolved through lang() for the site's
         // language. Empty when the language is English: the JS keys ARE the

@@ -14,7 +14,7 @@ description: CB0 list, the closed slots inside system widgets: section bindings 
 - Search results: `pagination` (57).
 - Login: `google_signin`, `forgot_password_link`, `register_link` (56). Registration and membership: `captcha`, `password_rules`, `google_signup`, `login_link` (57). Change password: `password_rules`.
 - My Account: `order_history` (40), `subscriptions`, `bookings`, `store_credit`.
-- Catalog: `group_tree`, `filters_offcanvas`, `attribute_filters` (legacy, 4). Catalog detail: `recipient_picker` (keeps children), `payment_methods`.
+- Catalog: `group_tree`, `filters_offcanvas`, `attribute_filters` (legacy, 4). Catalog detail: `recipient_picker` (keeps children), `payment_methods` (drawn true since CB6a1, #9849).
 - Shopping cart: `applied_offers`, `quick_add`, `pending_offers`. Express order: the `eo_*` blocks (billing, payment, terms…): legacy, the starter uses `eo_field` controls.
 - Checkout steps: shipping address `custom_shipping_form`, `verified_addresses`; shipping method `recipient_items`; billing `custom_billing_form`; order preview `order_recipients`, `applied_offers`, `applied_gift_cards`, `recurring_payments`, `billing_form`, `card_installments`, `installment_table`. Order form: `recurring_schedule`.
 - Booking: twelve `booking_*` steps and parts (16).
