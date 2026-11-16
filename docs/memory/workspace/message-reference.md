@@ -11,7 +11,7 @@ description: Message references (<#message:N>): what the owner asked for, the pi
 - The tag, its rights per reader and its plain words: `message-reference-tag.md` (#9816).
 - The chip and the card it opens: `message-reference-card.md` (#9846). The owner's look: "Evet, böyle çıksın" (channel 5654).
 
-## How does a person make one? (#9862)
+## How does a person make one? (#9870)
 - "Copy as reference" in a message's More and context menu, right after "Copy the link" (`mr_copy`), copies the tag `<#message:N>`. Not on a deleted or a system message.
 - Pasted into a channel's or a discussion's writing box (the editor's `messageRefs` option), `pastedMessageRef()` (workspace_editor.js) turns the whole pasted text into the chip when it is that tag, or this site's `workspace.php` address with `message=N` (what Copy the link gives). The chip reads "Message #N" without a sigil.
 - Words selected when a link is pasted still get the link. A tag among other words, another site's or another page's address stay text. Other boxes (notes, tasks) keep the pasted words.
