@@ -5205,6 +5205,14 @@
         return bar;
     }
 
+    // Whether / commands are off in a writing box: a box that never reads
+    // them (noCommands), and the channel's composer while it changes a
+    // sent or a scheduled message, whose text is saved as typed and never
+    // run. No command list, no argument strip there.
+    function commandsOff(box) {
+        return !!(box.noCommands || box.editing || box.editingScheduled);
+    }
+
     // Where a list of people or records opens at the caret (placePicker()):
     // under the caret's line, or over it when only that side has room or
     // that side has more, its height cut to the room there (6rem at least,
@@ -17866,6 +17874,8 @@
             self.editing = null;
             self.reply = null;
             self.editingScheduled = item;
+            self.closePicker();
+            self.drawCommandStrip(null);
 
             if (self.rich) {
                 self.rich.focus();
@@ -18610,6 +18620,11 @@
             self.editing = message;
             self.reply = null;
             self.editHoldStart(message);
+
+            // A command list or argument strip open in the box goes: no
+            // command runs from an edit (commandsOff()).
+            self.closePicker();
+            self.drawCommandStrip(null);
 
             // The rich box reads the stored text itself: tags back into chips,
             // tables and lists back into cards.
@@ -19444,7 +19459,7 @@
             var match;
 
             // A list's first item starting with "/" is words, no command.
-            if (!self.noCommands && !(self.rich && self.rich.inListItem()) && (match = /^\/([^\s]*)$/.exec(before))) {
+            if (!commandsOff(self) && !(self.rich && self.rich.inListItem()) && (match = /^\/([^\s]*)$/.exec(before))) {
                 self.argDismissed = null;
                 self.drawCommandStrip(null);
                 self.openPicker('command', match[1], before.length - match[0].length);
@@ -19563,7 +19578,7 @@
         commandArgument: function (before) {
             var self = this;
 
-            if (self.noCommands || self.editing || self.editingScheduled || !BOOT || !BOOT.commands) {
+            if (commandsOff(self) || !BOOT || !BOOT.commands) {
                 return null;
             }
 
