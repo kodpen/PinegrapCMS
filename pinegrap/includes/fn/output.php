@@ -4931,6 +4931,7 @@ function output_menu($properties = false)
         case 'messages_templates.php':
         case 'messages_sends.php':
         case 'messages_channels.php':
+        case 'messages_notifications.php':
         case 'messages_mail.php':
             $active_menu = 9;
             break;

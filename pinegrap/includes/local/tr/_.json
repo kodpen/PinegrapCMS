@@ -1860,6 +1860,7 @@
     "{var:1} submitted form(s) were deleted": "{var:1} gönderilen form silindi",
     "{var:1} submitted form(s) were exported": "{var:1} form dışa aktarıldı",
     "{var:1} submitted form(s) were imported": "{var:1} gönderilen form içe aktarıldı",
+    "{var:1} subscriber(s)": "{var:1} abone",
     "{var:1} suppressed": "{var:1} bastırıldı",
     "{var:1} table(s) are still on MyISAM": "{var:1} tablo hâlâ MyISAM'da",
     "{var:1} table(s) are still on MyISAM ({var:2}). Convert them from the Database Engine screen when the site is quiet.": "{var:1} tablo hâlâ MyISAM'da ({var:2}). Site sakinken Veritabanı Motoru ekranından dönüştürün.",
