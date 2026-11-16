@@ -148,6 +148,7 @@
 - offer-donation-lines.md: Donation lines and offers: never the cheapest item, never discounted by a product offer, not counted toward "cart quantity", their typed amount kept when offers are taken off the cart (#987, PR #1259)
 - offer-gift-lines.md: An offer's gift line ('add product' result): the price it is charged at (never below zero), which recipient it goes to with one or several recipients, the unshipped group 0
 - offer-gift-refusal.md: How a removed offer gift stays out of the cart, and when the refusal is forgotten in recipient-scope offers (#7664)
+- offer-group-condition.md: Offer condition "The customer is in the contact group" (WS1, #9986): one offer_conditions row, the signed-in customer's contact, a guest never; a quantity break for a group with the products rule
 - offer-order-discount-ladder.md: Tiered order discount (ladder) and how the order discount is chosen: rungs, nothing below the first rung, every valid order discount weighed against the final subtotal
 - offer-percent-rounding.md: A coupon (offer code) percentage as a figure (order, product, gift, shipping): the exact product rounded half away from zero, pg_percent_of() / pg_percent_off(), any PHP version (PR #1367)
 - offer-rule-gift-lines-not-counted.md: An offer's required products, group condition and up-sell count only lines the shopper added (added_by_offer = 0), so a gift cannot keep its own offer alive
