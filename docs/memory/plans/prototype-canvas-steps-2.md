@@ -10,7 +10,7 @@ description: Plan prototype-canvas, the view steps PV2, PV4, PV4b and PV6: the g
   - "Start" on the first tab's frame (F2). Frames keep today's sketch and link rows.
   - Tests: forty pages in three groups give eight a row in three bands; the flow's order inside a band; unreached pages last; a saved place wins; `places()` and its PHP twin unchanged.
   - Features: F2 (Start), F4 (the column), F6, F7, F8, F9; K6, K9.
-- PV4 (M) The selected frame's arrows. After PV2 and PV3.
+- PV4 (M) The selected frame's arrows. After PV2 and PV3. Done (#9904).
   - The view passes `focus` and `groups()`. Opening focuses the open tab's frame. "All arrows" beside Fit, kept in `localStorage` beside the places.
   - The amber row on the shared frame and the line under it, no arrow (F13).
   - Arrow colours by class in light and dark, a marker for each: outgoing accent, incoming amber dashed, broken red.

@@ -9,7 +9,7 @@ description: The designer's Prototype view (_sdProtoOpen()): toolbar toggle, fra
 
 ## How is it drawn?
 - `_sdProtoLoad()`: `PGProtoHotspots.design()` over `_pages` (the open tab's live tree through `_pgTreeOf()`) and `_sharedCache`, `prefetchShared()` for components not fetched yet, `_pgApiPost('prototype_map', request)` (designer/prototype-map-read.md), `mark()`, then `layout()` (designer/prototype-hotspots.md). A later load or a close drops an earlier answer (`_sdProto.seq`).
-- Frames (`p:<tab key>`, `s:<shared id>`): the head (name, Start, the selected one's name in the accent colour), the picture (designer/prototype-page-picture.md, PV8 #9896), one row per link with a named port; chips per mark and href right of them; arrows spread with `G.spread()`, tab arrows in the accent colour, broken ones dashed red. A shared frame says on how many tabs it sits; the open tab's frame is outlined.
+- Frames (`p:<tab key>`, `s:<shared id>`) in a grid (designer/prototype-arrangement.md): the head (name, Start, the selected one's name in the accent colour), the picture (designer/prototype-page-picture.md, PV8 #9896), one row per link with a named port; chips per mark and href right of them; arrows spread with `G.spread()`. Only the selected frame's arrows are drawn, the open tab's frame selected on opening: designer/prototype-focus.md. A shared frame says on how many tabs it sits.
 
 ## What can be done in it?
 - Frames and chips move; where a moved one is kept (on the design or in the browser): designer/prototype-places.md.
@@ -23,4 +23,4 @@ description: The designer's Prototype view (_sdProtoOpen()): toolbar toggle, fra
 - Keyboard (#6201): L, the menu key or Shift+F10 on a row opens `_sdProtoMenuOpen()`, the targets of `drawTargets()`; a choice calls `_sdProtoConnect()`. Escape refocuses the row; a press outside, a redraw or a close shuts it.
 
 ## What was checked how?
-- `tests/proto_hotspots_test.php` covers the collector, the layout, the print order and the arrow's href and patch. The view's wiring was run once in headless Chromium on a stub harness (frames, chips, arrows, a row switching the tab and selecting its node); none is checked in.
+- `tests/proto_hotspots_test.php` covers the collector, the layout, the print order and the arrow's href and patch. The view's wiring was run once in headless Chromium on a stub harness; none is checked in.
