@@ -216,6 +216,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_auto_dialog_daily();       // 11.0.223
 	upgrade_2026_11_0_page_click_daily();        // 11.0.224
 	upgrade_2026_11_0_prototype_comments();      // 11.0.225
+	upgrade_2026_11_0_content_review();          // 11.0.226
 
 }
 
@@ -7166,5 +7167,33 @@ function upgrade_2026_11_0_page_click_daily() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Clicks and scrolling: the counter of which links and buttons a page\'s visitors click and how far they scroll is ready; it counts once switched on in Features.');
+
+}
+
+// Content review (11.0.226, includes/fn/content_review.php): one row per
+// page or collection record that keeps a person, a review date or an
+// interval, keyed by kind and id, so no column lands on page or forms. A
+// date not set is NULL, never a zero date. announced_on is the review date
+// last announced as content.review_due, so the job announces an item once
+// per date. idx_review_on serves the due filters and the announce, idx_user
+// a person's own items and the sweep. No backfill: nothing kept a person or
+// a date before this step. Columns confirmed by the architect.
+function upgrade_2026_11_0_content_review() {
+
+	install_create_table('content_review', "CREATE TABLE content_review (
+		item_kind       VARCHAR(10) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT '',
+		item_id         INT UNSIGNED NOT NULL DEFAULT 0,
+		user_id         INT UNSIGNED NOT NULL DEFAULT 0,
+		review_on       DATE NULL DEFAULT NULL,
+		interval_months TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		reviewed_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		reviewed_by     INT UNSIGNED NOT NULL DEFAULT 0,
+		announced_on    DATE NULL DEFAULT NULL,
+		PRIMARY KEY (item_kind, item_id),
+		KEY idx_review_on (review_on),
+		KEY idx_user (user_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Content review: pages and collection records can keep a responsible person and a date by which they are read again.');
 
 }

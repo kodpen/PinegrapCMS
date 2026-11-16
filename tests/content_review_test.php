@@ -70,6 +70,7 @@ function test_content_review_item_counts()
 {
 	pg_assert_true(pg_content_review_item_counts('page', array('exists' => true)), 'a page');
 	pg_assert_false(pg_content_review_item_counts('page', array('exists' => false)), 'a page that is gone');
+	pg_assert_false(pg_content_review_item_counts('page', array('exists' => true, 'in_bin' => true)), 'a page in the Recycle Bin is not counted');
 	pg_assert_true(pg_content_review_item_counts('record', array('exists' => true, 'collection' => 1)), 'a record of a collection');
 	pg_assert_false(pg_content_review_item_counts('record', array('exists' => true, 'collection' => 0)), 'a record of a form that is no collection is refused');
 	pg_assert_false(pg_content_review_item_counts('record', array('exists' => true)), 'a record whose form is unknown is refused');
@@ -91,4 +92,52 @@ function test_content_review_person_may_edit()
 	pg_assert_false(pg_content_review_person_may_edit('page', array('role' => 4), 9, $folders), 'no panel role is refused');
 	pg_assert_false(pg_content_review_person_may_edit('page', array(), 9, $folders), 'no user is refused');
 	pg_assert_false(pg_content_review_person_may_edit('product', array('role' => 0), 9, $folders), 'another kind is refused');
+}
+
+function content_review_test_source($relative)
+{
+	return (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $relative);
+}
+
+function test_content_review_write_problem()
+{
+	pg_assert_same('', pg_content_review_write_problem(true, 5, true, '2026-12-01'), 'a counted item, an allowed person, a date');
+	pg_assert_same('', pg_content_review_write_problem(true, 0, false, null), 'nobody and no date');
+	pg_assert_same('item', pg_content_review_write_problem(false, 0, true, null), 'a record of a form that is no collection is refused');
+	pg_assert_same('person', pg_content_review_write_problem(true, 5, false, null), 'a person without the right is refused');
+	pg_assert_same('date', pg_content_review_write_problem(true, 0, true, '2026-02-30'), 'an impossible date is refused');
+}
+
+function test_content_review_sweep_removes_gone_items()
+{
+	$sql = pg_content_review_sweep_sql(250);
+	$all = implode("\n", $sql);
+
+	pg_assert_contains("item_kind = 'page'", $sql[0], 'pages first');
+	pg_assert_contains('NOT EXISTS (SELECT 1 FROM page WHERE page.page_id = content_review.item_id)', $sql[0], 'a page that is gone loses its row');
+	pg_assert_contains('NOT EXISTS (SELECT 1 FROM forms WHERE forms.id = content_review.item_id)', $sql[1], 'a record that is gone loses its row');
+	pg_assert_contains("item_kind NOT IN ('page', 'record')", $sql[2], 'an unknown kind goes');
+	pg_assert_false(strpos($all, 'page_folder') !== false, 'a page in the Recycle Bin keeps its row');
+	pg_assert_false(strpos($all, 'collection') !== false, 'a record of a form no longer a collection keeps its row');
+	pg_assert_contains('SET reviewed_by = 0', $sql[3], 'a reviewer whose account is gone is cleared');
+	pg_assert_contains('NOT EXISTS (SELECT 1 FROM user WHERE user.user_id = content_review.reviewed_by)', $sql[3], 'only when the account is gone');
+	pg_assert_false(strpos($sql[3], 'reviewed_at') !== false, 'when it was reviewed stays');
+	pg_assert_same(4, substr_count($all, 'LIMIT 250'), 'every statement is bounded');
+	pg_assert_false(stripos($all, 'CURDATE') !== false || stripos($all, 'NOW()') !== false, 'no database clock');
+}
+
+function test_content_review_hooks()
+{
+	$migration = content_review_test_source('includes/migrations/2026.11.0.php');
+	pg_assert_contains('upgrade_2026_11_0_content_review();          // 11.0.226', $migration, 'the step is called');
+	pg_assert_contains("install_create_table('content_review'", $migration, 'created with the idempotent helper');
+	pg_assert_contains('review_on       DATE NULL DEFAULT NULL', $migration, 'no zero date');
+	pg_assert_contains('PRIMARY KEY (item_kind, item_id)', $migration, 'one row per item');
+	$step = substr($migration, (int) strpos($migration, 'function upgrade_2026_11_0_content_review()'));
+	pg_assert_false(strpos($step, 'updated_at') !== false, 'no column without a reader');
+	pg_assert_contains('announced_on    DATE NULL DEFAULT NULL', $step, 'the announce mark');
+
+	pg_assert_contains("'content_review',", content_review_test_source('install/index.php'), 'listed in get_tables()');
+	pg_assert_contains('pg_content_review_sweep_due()', content_review_test_source('job.php'), 'the general job sweeps');
+	pg_assert_contains("/includes/fn/content_review.php');", content_review_test_source('functions.php'), 'the module is loaded');
 }
