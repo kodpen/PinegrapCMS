@@ -361,6 +361,13 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-67.md: Which words do RB3's dialogs use? (architect, 2026-11-16, message 7027)
 - decisions-made-product-67.md: Does an agent's mention tag open the agent card? (owner, 2026-11-16, typed to the architect)
 - decisions-made-product-67.md: What did he say of the highlight toolbar? (owner, 2026-11-16, typed to the architect)
+- decisions-made-product-68.md: Where are the rules and the earlier parts?
+- decisions-made-product-68.md: Is the Bundles screen accepted? (owner, 2026-11-16, agent channel poll 107, message 7134)
+- decisions-made-product-68.md: Is the digest mail accepted? (owner, 2026-11-16, agent channel poll 109, message 7241)
+- decisions-made-product-68.md: What does the highlight bar read? (owner, 2026-11-16, poll 108 and typed to the architect)
+- decisions-made-product-68.md: Does a poll's box say how many pictures it has? (owner, 2026-11-16, typed to the architect)
+- decisions-made-product-68.md: What did he say of squeezed parts? (owner, 2026-11-16, typed to the architect)
+- decisions-made-product-68.md: Does a part refund take a referral's reward? (architect, 2026-11-16, agent channel message 7257)
 - decisions-made-product-7.md: Do international labels carry customs data? (#3408)
 - decisions-made-product-7.md: Can a merchant request a carrier pickup from the panel? (#3415)
 - decisions-made-product-7.md: Does ShipWorks record tracking numbers through the shipment write path? (#3443)
@@ -436,6 +443,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-schema-26.md: Where are the rules and the earlier parts?
 - decisions-made-schema-26.md: Which tables keep a release bundle? (owner, 2026-11-16, agent channel poll 65; columns the architect's, agent channel message 6621)
 - decisions-made-schema-26.md: Which column marks a task an application created? (owner, 2026-11-16, agent channel poll 80; shape the architect's, agent channel message 6897)
+- decisions-made-schema-26.md: Which column keeps a member's meeting address? (architect, 2026-11-16, on SL1's draft PR #10031)
+- decisions-made-schema-26.md: How does a gift card become a referral reward? (architect, 2026-11-16, agent channel message 7257, on RF1's draft PR #10033)
 - decisions-made-schema-3.md: Where are the rules and the earlier steps?
 - decisions-made-schema-3.md: Which schema was approved on 2026-10-29?
 - decisions-made-schema-4.md: Where are the rules and the earlier steps?
@@ -916,6 +925,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workflow/coordinator-no-plans.md: Design template plans are paused (2026-11-09) but for the lines the owner opened on 2026-11-11; low priority before that; bug hunts by bug-hunt.md; open bug issues are work like plan steps
 - workflow/design-template-owner-line.md: Owner (2026-11-11): during the template pause his own line polishes the shipped templates, bolder and with motion, appstudio and dealership first; two workers of one more coordinator take the rest
 - workflow/git-branches-and-shared-files.md: Branch policy (development vs main), who does git, commit author, the PR footer (pointer), shared files without conflicts, generated files a PR leaves out, API vs ERP files
+- workflow/issue-hand-out-first-reply.md: When a note in the agent channel offers an issue to the coordinators, the first reply under it holds the work; how a double claim was settled twice on 2026-11-16
+- workflow/look-narrowest-column.md: Before any look, a step that draws in a message row or a side panel posts pictures in its narrowest column with its longest content (owner's words 2026-11-16); what a set must hold
 - workflow/memory-long-lines.md: The memory index tool refuses a memory line over 500 characters that a branch adds or rewrites; old lines pass; the base from pre_push, CI (PR base or push before) or merge-base; no base
 - workflow/merge-review.md: Rule (2026-10-25): the merging session reviews each PR once, fixes only blocking findings, digs deeper for access, payments, SQL, schema; an architect decision counts as the owner's
 - workflow/merger-wake.md: How the merging session keeps waking: a send_later chain, 3 minutes with more than 3 ready PRs and 15 minutes otherwise (2026-11-09), an hourly routine that re-arms it; GitHub events are not relied on
