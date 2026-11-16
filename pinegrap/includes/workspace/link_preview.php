@@ -809,46 +809,68 @@ function ws_link_preview_settings_save($viewer, $post)
 }
 
 /**
- * The card under a message, from its ws_link_previews row: the site name,
- * the title and the description (cut at two lines by the stylesheet), the
- * whole card a link opened in a new tab. '' for a row not read into a card
- * (waiting, none, removed) or with no title. Every text is escaped here.
+ * The fields of a message's card, from its ws_link_previews row: the plain
+ * texts as stored, trimmed. null for a row not read into a card (waiting,
+ * none, refused, removed), with no title or with an address that is not a
+ * web address. The screen's card and the API both read these. Pure.
  *
  * @param array|null $row url, title, description, site_name, state
- * @return string HTML
+ * @return array|null url, title, description, site_name
  */
-function ws_link_preview_card_html($row)
+function ws_link_preview_card_fields($row)
 {
     if (!is_array($row) || (($row['state'] ?? '') !== 'shown')) {
-        return '';
+        return null;
     }
 
     $url = (string) ($row['url'] ?? '');
     $title = trim((string) ($row['title'] ?? ''));
 
     if (($title === '') || !preg_match('#^https?://#i', $url)) {
+        return null;
+    }
+
+    return array(
+        'url'         => $url,
+        'title'       => $title,
+        'description' => trim((string) ($row['description'] ?? '')),
+        'site_name'   => trim((string) ($row['site_name'] ?? '')),
+    );
+}
+
+/**
+ * The card under a message: the site name, the title and the description
+ * (cut at two lines by the stylesheet), the whole card a link opened in a
+ * new tab. '' when ws_link_preview_card_fields() gives none. Every text is
+ * escaped here.
+ *
+ * @param array|null $row url, title, description, site_name, state
+ * @return string HTML
+ */
+function ws_link_preview_card_html($row)
+{
+    $card = ws_link_preview_card_fields($row);
+
+    if ($card === null) {
         return '';
     }
 
-    $site = trim((string) ($row['site_name'] ?? ''));
-    $description = trim((string) ($row['description'] ?? ''));
-
-    return '<a class="ws-link-card" href="' . h($url) . '" target="_blank" rel="noopener noreferrer">'
-        . (($site !== '') ? '<span class="ws-link-card-site">' . h($site) . '</span>' : '')
-        . '<span class="ws-link-card-title">' . h($title) . '</span>'
-        . (($description !== '') ? '<span class="ws-link-card-text">' . h($description) . '</span>' : '')
+    return '<a class="ws-link-card" href="' . h($card['url']) . '" target="_blank" rel="noopener noreferrer">'
+        . (($card['site_name'] !== '') ? '<span class="ws-link-card-site">' . h($card['site_name']) . '</span>' : '')
+        . '<span class="ws-link-card-title">' . h($card['title']) . '</span>'
+        . (($card['description'] !== '') ? '<span class="ws-link-card-text">' . h($card['description']) . '</span>' : '')
         . '</a>';
 }
 
 /**
- * The cards of these messages, one query for the page: message id => HTML.
- * Empty when previews are switched off (or on a demonstration site): no
- * card is drawn anywhere then, whatever rows there are.
+ * The card fields of these messages, one query for the page: message id =>
+ * ws_link_preview_card_fields(). Empty when previews are switched off (or on
+ * a demonstration site): no card anywhere then, whatever rows there are.
  *
  * @param int[] $ids
  * @return array
  */
-function ws_link_preview_cards_map($ids)
+function ws_link_preview_card_rows_map($ids)
 {
     $ids = array_values(array_filter(array_map('intval', (array) $ids)));
 
@@ -860,11 +882,29 @@ function ws_link_preview_cards_map($ids)
 
     foreach ((array) db_items("SELECT message_id, url, title, description, site_name, state FROM ws_link_previews
         WHERE state = 'shown' AND message_id IN (" . implode(',', $ids) . ")") as $row) {
-        $html = ws_link_preview_card_html($row);
+        $card = ws_link_preview_card_fields($row);
 
-        if ($html !== '') {
-            $cards[(int) $row['message_id']] = $html;
+        if ($card !== null) {
+            $cards[(int) $row['message_id']] = $card;
         }
+    }
+
+    return $cards;
+}
+
+/**
+ * The cards of these messages as the screen draws them: message id => HTML
+ * (ws_link_preview_card_rows_map()).
+ *
+ * @param int[] $ids
+ * @return array
+ */
+function ws_link_preview_cards_map($ids)
+{
+    $cards = array();
+
+    foreach (ws_link_preview_card_rows_map($ids) as $id => $card) {
+        $cards[$id] = ws_link_preview_card_html($card + array('state' => 'shown'));
     }
 
     return $cards;
