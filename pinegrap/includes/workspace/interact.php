@@ -680,7 +680,8 @@ function ws_poll_input($data)
  *
  * @param array $viewer
  * @param array $channel
- * @param array $data question, options (texts or objects, ws_poll_option_part()), multiple, anonymous, closes_at (timestamp, 0 = open until closed)
+ * @param array $data question, options (texts or objects, ws_poll_option_part()), multiple, anonymous, closes_at (timestamp, 0 = open until closed),
+ *                    picture (the question's own, poll_picture.php: name and bytes, or a kept file_id and file_name)
  * @param int   $app_id
  * @return array ok, error, field, message_id, poll_id
  */
@@ -708,13 +709,21 @@ function ws_poll_create($viewer, $channel, $data, $app_id = 0)
         return $fail($stored['error'], $stored['field']);
     }
 
+    // The question's own picture, carried by its message (poll_picture.php).
+    $picture = ws_poll_picture_normal($data['picture'] ?? null);
+    $pictured = ws_poll_picture_check($viewer, $channel, $picture);
+
+    if (!$pictured['ok']) {
+        return $fail($pictured['error'], 'picture');
+    }
+
     // An application asking makes it an agent question (agent_question.php):
     // set here, never from the request, with no anonymous vote or closing time.
     $flag = ws_agent_question_ready() ? ws_agent_question_flag($app_id) : 0;
     $data = ws_agent_question_settings(array('multiple' => $data['multiple'] ?? 0, 'anonymous' => $data['anonymous'] ?? 0, 'closes_at' => $closes_at), $flag === 1);
     $closes_at = (int) $data['closes_at'];
 
-    $sent = ws_message_send($viewer, $channel, $checked['question'], array('app_id' => $app_id));
+    $sent = ws_poll_picture_send($viewer, $channel, $checked['question'], $picture, array('app_id' => $app_id));
 
     if (!$sent['ok']) {
         return $fail($sent['error'], 'question');
