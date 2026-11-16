@@ -17,6 +17,9 @@ description: Flow e-mail box to a contact group (post-digest DG2): one campaign 
 - `ws_flow_mail_digest_html()`: a whole HTML document, 600 px card: the box's text as paragraphs, then each record with its picture, linked title and summary; every text escaped, a picture or link only an http(s) address (`ws_flow_mail_digest_items()`). `pg_email_campaign_prepare_html_body()` adds the base, `?t=` codes and the campaign footer.
 - The records come from the run's values of the records box (`records`, the JSON list). A records box that read none: the box is done, `sent` 0, no campaign (D9).
 
+## Whose look?
+- Owner (2026-11-16, agent channel poll 109, message 7241): the mail as drawn here, a 600 px card with the box's text and each record's picture, linked title and summary, approved: "Evet, böyle çıksın". A picture carries the title's link and alt; a tall one is drawn whole at the card's width.
+
 ## What does Try do?
 - Mails the e-mail to the person trying alone, as a campaign's test (`pg_campaign_test_send()`, `campaign_test` rate limit of `pg_campaign_test_hourly_limit()` an hour) and says how many of the group a run would reach. No campaign is made; the records are the chosen run's, else what the records box would read now; nothing is written, so no window moves.
 
