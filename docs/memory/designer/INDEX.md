@@ -35,6 +35,7 @@
 - canvas-sample-product.md: The sample product the designer canvas draws in the catalog listing, product page, wishlist, order form and search results (CS4a, #9253); the tag cloud's samples; catalog block previews
 - catalog-binding-disabled-no-output.md: Disabled catalog feature emits no output: _pg_catalog_binding_disabled(), designer mirror _sdCatalogBindingDisabled(), which settings disable which bindings.
 - catalog-detail-open-blocks.md: Catalog detail closed blocks opened (CB6a1, #9849): the Breadcrumb node drawn as its crumbs part and converted into it, the product carousel and the Checkout Options rows drawn true on the canvas
+- catalog-detail-variant-price-blocks.md: Catalog detail closed blocks a variant switch redraws (CB6a2): the price block and the Variant Attribute node drawn on the canvas as the site prints them, settings only, why neither is a tree
 - catalog-item-checkout-options-tab.md: The product page starter's Checkout Options tab (catalog_item_view) is bound to the store's switched-on payment methods, with real fees, or not drawn (#4556); saved trees untouched
 - catalog-listing-subtree-sort.md: Catalog listing widget's catalog-order sort while a search or filter spans the group subtree: the product's lowest sort order, not an arbitrary group row.
 - catalog-listing-system-widget.md: catalog_listing system widget defaults (PHP and designer JS), group card behaviour (browse/select), group scope rules, the subtree helper (no recursive SQL) and group price range rules.
