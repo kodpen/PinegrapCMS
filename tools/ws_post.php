@@ -18,6 +18,8 @@
  *         --file). A file goes alone with its text: one file a call, and a
  *         set of screenshots is one message each, answered under the first
  *         with --parent. A refusal (size, kind) prints the API's message.
+ *         A text about a picture, a file or an earlier message names it
+ *         with <#message:N> (a reference, not a reply: nobody is told).
  * Exit:   0 written (or skipped with --skip-missing while settings are
  *         missing); 1 the site refused; 2 usage or missing settings; 3 no
  *         answer twice, so the message may or may not be written: stderr

@@ -9,7 +9,7 @@ priority: 6
 - Today: a channel's "all / mentions / none" choice (`ws_channel_set_notify()`); the push queue takes a delay and drops a row whose inbox line was read (`pg_push_enqueue()`, `ws_push_still_relevant()`); a person's working day is minutes and weekdays with no start hour; "I am away" covers e-mail only (`workspace/mail-away.md`). Nothing looks at the clock.
 
 ## Which steps are there?
-- QH1 (M) The record and the rule.
+- QH1 (M) The record and the rule. Done: #9844 (`workspace/workspace-push-delay.md`).
   - A migration step adds `ws_profiles.quiet_hours` TEXT NULL with the idempotent helper, a JSON as `mail_away`: `start` and `end` (HH:MM), `off_days` (0 or 1). A site whose update has not run works as today.
   - One pure function with tests: for a setting, the person's time zone (the one the person card's local time reads, `workspace/person-card-facts.md`), their working weekdays and a moment, is it quiet and how many seconds are left. A range over midnight, a day the clock changes, equal start and end (off), a day off with `off_days`.
   - Where a Workspace push is queued for a person, a quiet moment gives the delay to the range's end, for a browser and a team device alike. The inbox line, the badge and the mail notices do not change; a line read meanwhile is dropped by the queue as today.

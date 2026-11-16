@@ -547,6 +547,48 @@ function ws_agent_question_waits_for($poll, $asked, $viewer_id)
 }
 
 /**
+ * The rows a reader keeps from the open questions, read page by page, newest
+ * first: each page is read below the last id of the one before, until
+ * $limit rows are kept or a page comes back short. A person's question past
+ * the site's newest page is still found. Pure: $fetch($before_id, $page)
+ * gives a page of rows (id descending; $before_id 0 for the first),
+ * $keep($row) says whether the reader keeps it.
+ *
+ * @param callable $fetch
+ * @param callable $keep
+ * @param int      $limit
+ * @param int      $page
+ * @return array[] the kept rows, at most $limit
+ */
+function ws_agent_questions_collect($fetch, $keep, $limit, $page = 100)
+{
+    $limit = max(1, (int) $limit);
+    $page = max(1, (int) $page);
+    $kept = array();
+    $before_id = 0;
+
+    do {
+        $rows = (array) $fetch($before_id, $page);
+
+        foreach ($rows as $row) {
+            $before_id = (int) $row['id'];
+
+            if (!$keep($row)) {
+                continue;
+            }
+
+            $kept[] = $row;
+
+            if (count($kept) >= $limit) {
+                return $kept;
+            }
+        }
+    } while (count($rows) >= $page);
+
+    return $kept;
+}
+
+/**
  * The agent questions waiting for this person's answer, newest first, from
  * the channels they read: for Today's "Waiting for you" card and the
  * dashboard's Assistant card. Each: poll id, message id, the question cut
@@ -565,15 +607,20 @@ function ws_agent_questions_for($viewer, $limit = 5)
         return array();
     }
 
-    $rows = (array) db_items("SELECT p.*, m.body, m.sender_kind, m.sender_id, m.created_at AS asked_at FROM ws_polls p
-        INNER JOIN ws_messages m ON m.id = p.message_id
-        WHERE p.agent_question = 1 AND p.closed_at = 0" . (ws_poll_again_ready() ? ' AND p.withdrawn_at = 0' : '') . " AND m.deleted_at = 0
-        ORDER BY p.id DESC
-        LIMIT 100");
+    // The open questions of the whole site are read a page at a time below
+    // the last id, until enough wait for this reader: a page of the site's
+    // newest alone could hold none of theirs.
+    $withdrawn = ws_poll_again_ready() ? ' AND p.withdrawn_at = 0' : '';
+    $fetch = function ($before_id, $page) use ($withdrawn) {
+        return (array) db_items("SELECT p.*, m.body, m.sender_kind, m.sender_id, m.created_at AS asked_at FROM ws_polls p
+            INNER JOIN ws_messages m ON m.id = p.message_id
+            WHERE p.agent_question = 1 AND p.closed_at = 0" . $withdrawn . " AND m.deleted_at = 0"
+            . (((int) $before_id > 0) ? " AND p.id < '" . (int) $before_id . "'" : '') . "
+            ORDER BY p.id DESC
+            LIMIT " . (int) $page);
+    };
     $channels = array();
-    $kept = array();
-
-    foreach ($rows as $row) {
+    $keep = function ($row) use ($viewer, $me, &$channels) {
         $channel_id = (int) $row['channel_id'];
 
         if (!array_key_exists($channel_id, $channels)) {
@@ -581,16 +628,9 @@ function ws_agent_questions_for($viewer, $limit = 5)
             $channels[$channel_id] = ($channel && ws_can_read_channel($viewer, $channel)) ? $channel : null;
         }
 
-        if (($channels[$channel_id] === null) || !ws_agent_question_waits_for($row, ws_question_asked_ids($channels[$channel_id], ws_tokens($row['body'])), $me)) {
-            continue;
-        }
-
-        $kept[] = $row;
-
-        if (count($kept) >= (int) $limit) {
-            break;
-        }
-    }
+        return ($channels[$channel_id] !== null) && ws_agent_question_waits_for($row, ws_question_asked_ids($channels[$channel_id], ws_tokens($row['body'])), $me);
+    };
+    $kept = ws_agent_questions_collect($fetch, $keep, $limit, 100);
 
     if (empty($kept)) {
         return array();

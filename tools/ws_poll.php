@@ -23,6 +23,8 @@
  *         option's own box. The tool reads message N with the same key
  *         (GET /workspace/channels/{id}/messages) and sends its file id;
  *         a message that is not a picture there stops it (exit 1).
+ *         A question about a picture, a file or an earlier message names
+ *         it with <#message:N> in its text, which the person opens.
  *         --recommend marks the first option Recommended; --other adds the
  *         "Other" row the person answers in their own words (LABEL, else
  *         "Other"); --multiple takes several answers. Voters are named.
@@ -103,7 +105,9 @@ function ws_poll_usage()
 		. "       php tools/ws_poll.php close POLL_ID\n"
 		. "An option: \"label\", \"label :: description\", \"label :: #N\" or \"label :: description :: #N\",\n"
 		. "where N is the message number of a picture posted in the poll's channel; it shows in the\n"
-		. "option's own box (again with a picture needs PG_WS_CHANNEL or --channel).\n";
+		. "option's own box (again with a picture needs PG_WS_CHANNEL or --channel).\n"
+		. "A question about a picture, a file or an earlier message names it with <#message:N> in its\n"
+		. "text; the person opens that message from the tag.\n";
 }
 
 /**

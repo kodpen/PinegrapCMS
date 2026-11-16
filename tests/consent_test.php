@@ -506,3 +506,26 @@ function test_consent_ga_tag_and_analytics_link_are_printed_escaped()
 	$menu = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/output.php');
 	pg_assert_contains('h(STATS_URL)', $menu);
 }
+
+// The pop-ups' one cookie and the per-row cookies auto dialogs wrote before
+// it are a marketing row of the notice while Auto Dialogs are on, and the
+// notice deletes both when marketing is refused.
+function test_consent_lists_and_revokes_the_pop_up_cookies()
+{
+	$row = pg_consent_popup_row();
+
+	pg_assert_same('pg_popup, software[auto_dialog_*]', $row[0], 'the one cookie and the old per-row ones');
+	pg_assert_true($row[1], 'listed as cookie names');
+	pg_assert_true(in_array($row[2], pg_consent_ui_keys(), true), 'its purpose is in the cookie window\'s wording');
+
+	$revoke = pg_consent_revoke_names();
+
+	pg_assert_true(in_array('pg_popup', $revoke['marketing'], true), 'the one cookie goes with marketing');
+	pg_assert_true(in_array('software[auto_dialog_*', $revoke['marketing'], true), 'the per-row cookies go with it, by prefix');
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/consent.php');
+	$from = strpos($source, 'function pg_consent_catalogue(');
+	$section = substr($source, $from, strpos($source, "\n}\n", $from) - $from);
+
+	pg_assert_contains("if (defined('AUTO_DIALOGS') && AUTO_DIALOGS) {\n" . '        $catalogue[\'marketing\'][] = pg_consent_popup_row();', $section, 'a marketing row while Auto Dialogs are on');
+}
