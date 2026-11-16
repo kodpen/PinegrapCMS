@@ -23,8 +23,8 @@ module: content_proposals
 ## Who reads an editor's row?
 - Only this module. The assistant's readers take `PG_DESIGN_AI_ROWS` (`agent <> 'editor'`): `pg_design_ai_proposal()`, `pg_design_ai_request_present()`, `pg_design_ai_attach()`, `pg_design_ai_proposals_map()`, `api_design_proposals_list()`; the API's `pending_proposals` count and the conversation cleanup in `includes/workspace/threads.php` say it in SQL.
 
-## What is not built yet?
-- The designer's side is in `content-proposals-designer-side.md` (PA4a). The bell lines and the tab's count (PA4b), the editor's tab state (PA3) and the Workspace request (PA5) are not built yet.
+## Where are the other parts?
+- The designer's side is in `content-proposals-designer-side.md` (PA4a), the bell lines and the count in `content-proposals-bell.md` (PA4b), the Workspace request in `content-proposals-workspace.md` (PA5). The editor's tab state and the count on the page's tab (PA3) are not built yet.
 
 ## Which test guards it?
 - `tests/content_proposals_test.php`: the switch off, each save left alone, the operations, one waiting change, the save's wiring, each assistant reader skipping editor rows.
