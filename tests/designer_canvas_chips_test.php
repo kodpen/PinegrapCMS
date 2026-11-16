@@ -166,3 +166,36 @@ function test_designer_canvas_chip_and_band_rules()
 	pg_assert_contains('if (_hasChildren && (_SD_SECTION_KEEPS_CHILDREN[_sec] || _SD_BOOKING_KEEPS_CHILDREN[_sec])) {', $source, 'no warning on a section that keeps its children');
 	pg_assert_contains("_hint.title = _sdT('The child elements here are replaced with BACKEND HTML at render time');", $source, 'the warning says in its title what is wrong');
 }
+
+// A chip row put beside its element goes over the element's corner only
+// where the element is clearly taller than the row; over a short element
+// (a one-line link or label) it would cover the words, so it becomes a
+// small mark at the corner with the chips' full text in its title.
+function test_designer_canvas_chip_row_spot()
+{
+	$source = designer_canvas_chips_test_source();
+	$defs = designer_canvas_chips_test_function($source, '_sdChipRowSpot');
+	$cases = array(
+		array(18, 15, 'mark'),   // a one-line link: the chip would cover it
+		array(29, 15, 'mark'),   // just under two rows
+		array(30, 15, 'over'),   // two rows: the words below the chip stay readable
+		array(220, 15, 'over'),  // a card
+		array(0, 15, 'mark'),    // no box yet
+		array(40, 0, 'over'),    // a row with no height of its own
+	);
+	$answer = designer_canvas_chips_test_node($defs, 'console.log(JSON.stringify(' . json_encode($cases)
+		. '.map(function (c) { return _sdChipRowSpot(c[0], c[1]); })));');
+
+	if ($answer !== null) {
+		pg_assert_same(array_map(function ($c) { return $c[2]; }, $cases), $answer, 'the spot follows the element\'s height');
+	}
+
+	$place = designer_canvas_chips_test_function($source, '_sdPlaceChromeOf');
+	pg_assert_contains('_sdChipRowSpot(', $place, 'the placement asks for the spot');
+	pg_assert_contains('_sdChipRowMark(p, x.mark);', $place, 'a short element gets the mark');
+	pg_assert_contains('_sdChipRowMark(p, false);', $place, 'a row back in the flow is a row again');
+	$mark = designer_canvas_chips_test_function($source, '_sdChipRowMark');
+	pg_assert_contains("classList.toggle('sd-chip-row-mark', !!on)", $mark);
+	pg_assert_contains(".join('\\n')", $mark, 'the dot keeps every chip\'s full text in its title');
+	pg_assert_contains("'.sd-chip-row.sd-chip-row-mark > .sd-chip:first-child {", $source, 'the mark is the first chip drawn as a dot');
+}
