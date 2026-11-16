@@ -5785,6 +5785,14 @@
                 info.appendChild(el('span', 'badge theme-secondary', task.status_label));
                 info.appendChild(el('span', '', t('created_by', task.creator, task.created_label)));
 
+                // "Made by <application>" beside the creator (ws_tasks.app_id).
+                if (task.made_by_label) {
+                    var madeBy = el('span', 'ws-task-made-by');
+                    madeBy.appendChild(icon('bi-robot', 'me-1'));
+                    madeBy.appendChild(document.createTextNode(task.made_by_label));
+                    info.appendChild(madeBy);
+                }
+
                 if (task.channel) {
                     var channelLink = el('a', 'pg-link-body-emphasis', '#' + task.channel.name);
                     channelLink.href = task.channel.url;
@@ -22762,6 +22770,15 @@
                 sub.appendChild(agentChannel);
             }
 
+            // A task an application created says so beside the rest.
+            if (task.made_by_label) {
+                var madeBy = el('span', 'ws-task-made-by ms-1');
+                madeBy.appendChild(document.createTextNode('· '));
+                madeBy.appendChild(icon('bi-robot', 'me-1'));
+                madeBy.appendChild(document.createTextNode(task.made_by_label));
+                sub.appendChild(madeBy);
+            }
+
             if (window.PGWsTaskTime) {
                 window.PGWsTaskTime.rowTags(sub, task, partHelpers());
             }
@@ -22906,7 +22923,7 @@
     function startTasks(root) {
         clear(root);
 
-        var state = { scope: 'mine', status: 'open', search: '', department_id: 0, priority: '', soon: 0, agent_channels: (params().agents === '1') ? 'only' : '' };
+        var state = { scope: 'mine', status: 'open', search: '', department_id: 0, priority: '', soon: 0, agent_channels: (params().agents === '1') ? 'only' : '', made_by: '' };
         var bar = el('nav', 'pg-toolbar navigation mb-5');
         var list = el('div', 'card');
         var listBody = el('div', 'card-body p-0');
@@ -23031,6 +23048,17 @@
         });
         bar.appendChild(agents);
 
+        // Made by agents: all, without them, or them alone; hidden until
+        // tasks carry the mark (made_by_ready).
+        var madeBy = select([['', t('task_made_by_all')], ['people', t('task_made_by_people')], ['apps', t('task_made_by_apps')]], '');
+        madeBy.classList.add('w-auto', 'd-none');
+        madeBy.setAttribute('aria-label', t('task_made_by'));
+        madeBy.addEventListener('change', function () {
+            state.made_by = madeBy.value;
+            load();
+        });
+        bar.appendChild(madeBy);
+
         var searchGroup = el('label', 'form-control form-control-sm form-adorn rounded-pill pg-toolbar-search');
         var searchIcon = el('span', 'form-adorn-text');
         searchIcon.setAttribute('aria-hidden', 'true');
@@ -23068,6 +23096,7 @@
                         task.agent_channel_name = names[task.channel_id] || '';
                     });
                     agents.shown(data.agent_channels || 0);
+                    madeBy.classList.toggle('d-none', !data.made_by_ready);
                     taskRows(listBody, data.tasks, load);
                     countLine.textContent = data.tasks.length ? t('task_count', data.tasks.length) : t('nothing_found');
                 }
@@ -23330,6 +23359,15 @@
 
                         var item = button('ws-board-item' + (task.due ? ' ws-item-due' : '') + (task.priority === 'urgent' ? ' ws-item-urgent' : ''), task.title);
                         item.title = task.title + ' · ' + t('minutes_short', task.minutes) + (task.estimated ? '' : ' · ' + t('not_estimated'));
+
+                        // "Made by <application>" under the title.
+                        if (task.made_by) {
+                            var madeBy = el('span', 'ws-task-made-by ws-board-made-by');
+                            madeBy.appendChild(icon('bi-robot', 'me-1'));
+                            madeBy.appendChild(document.createTextNode(task.made_by));
+                            item.appendChild(madeBy);
+                            item.title += ' · ' + task.made_by;
+                        }
 
                         if (task.progress) {
                             item.classList.add('ws-item-progress');

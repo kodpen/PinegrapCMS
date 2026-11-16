@@ -1868,7 +1868,7 @@ function ws_api_routes()
             'handler'     => 'ws_api_tasks_list',
             'returns'     => array('list' => 'WorkspaceTask'),
             'summary'     => 'List tasks',
-            'description' => 'Tasks the owner of the application may see. scope mine is the owner\'s own tasks, created those they gave out, department the tasks of a department, channel those of a channel, all every task (only for an owner who holds the team board). Pass ref_type and ref_id to find the tasks about one record, updated_since to fetch only what changed, delegate to find the tasks handed to an assistant (any, or ai or claude) or to none. Agent channels\' tasks (agent_channel on GET /workspace/channels) are left out unless agent_channels says include or only, or channel_id names the channel; scope mine keeps a task assigned to the owner whatever its channel.',
+            'description' => 'Tasks the owner of the application may see. scope mine is the owner\'s own tasks, created those they gave out, department the tasks of a department, channel those of a channel, all every task (only for an owner who holds the team board). Pass ref_type and ref_id to find the tasks about one record, updated_since to fetch only what changed, delegate to find the tasks handed to an assistant (any, or ai or claude) or to none. Agent channels\' tasks (agent_channel on GET /workspace/channels) are left out unless agent_channels says include or only, or channel_id names the channel; scope mine keeps a task assigned to the owner whatever its channel. made_by people lists the tasks people created, apps those an application created (created_by_app is set); scope created lists the tasks an application created with the owner\'s key only with made_by apps. Before the site\'s database is updated every task reads as a person\'s.',
             'params'      => array(
                 array('name' => 'scope', 'in' => 'query', 'type' => 'enum', 'values' => array('mine', 'created', 'department', 'channel', 'all'), 'default' => 'mine'),
                 array('name' => 'status', 'in' => 'query', 'type' => 'enum', 'values' => array('open', 'closed', 'all', 'todo', 'doing', 'waiting', 'done', 'cancelled'), 'default' => 'open'),
@@ -1879,6 +1879,7 @@ function ws_api_routes()
                 array('name' => 'updated_since', 'in' => 'query', 'type' => 'datetime'),
                 array('name' => 'delegate', 'in' => 'query', 'type' => 'string', 'max_length' => 32, 'description' => 'Handed to an assistant: any, none, ai, claude, or mcp:<server id> for an MCP server\'s alias.'),
                 array('name' => 'agent_channels', 'in' => 'query', 'type' => 'enum', 'values' => array('include', 'only'), 'description' => 'include adds the tasks of agent channels; only lists theirs alone.'),
+                array('name' => 'made_by', 'in' => 'query', 'type' => 'enum', 'values' => array('people', 'apps'), 'description' => 'people lists the tasks people created; apps those an application created.'),
                 array('name' => 'limit', 'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 100),
             ),
         ),
@@ -1891,7 +1892,7 @@ function ws_api_routes()
             'handler'     => 'ws_api_tasks_get',
             'returns'     => 'WorkspaceTask',
             'summary'     => 'One task',
-            'description' => 'delegate is the assistant the task was handed to (ai or claude; the people on it stay responsible), assistant_working the one on a run on it now, and waiting_changes how many changes the assistants proposed on it wait to be applied or set aside.',
+            'description' => 'created_by_app is the application that created the task (id and name; name is null once it is deleted), null when a person did. delegate is the assistant the task was handed to (ai or claude; the people on it stay responsible), assistant_working the one on a run on it now, and waiting_changes how many changes the assistants proposed on it wait to be applied or set aside.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
             ),

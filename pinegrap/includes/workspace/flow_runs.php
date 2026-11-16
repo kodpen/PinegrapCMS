@@ -2340,7 +2340,15 @@ function ws_flow_run_start($viewer, $flow, $data = array())
 
     $flow_id = (int) $flow['id'];
     $start_key = ($check['start_key'] !== '') ? $check['start_key'] : 'manual:' . bin2hex(random_bytes(16));
-    $context = json_encode(ws_flow_run_context_new($flow, $check['trigger'], $check['channel_id'], $check['subject']), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    $context = ws_flow_run_context_new($flow, $check['trigger'], $check['channel_id'], $check['subject']);
+
+    // A run an application started: the tasks its boxes open are marked as
+    // that application's (ws_tasks.app_id), whenever the box runs.
+    if (($app_id = ws_task_request_app()) > 0) {
+        $context['app_id'] = $app_id;
+    }
+
+    $context = json_encode($context, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     $subject_type = $check['subject'] ? (string) $check['subject']['type'] : '';
     $subject_id = $check['subject'] ? (int) $check['subject']['id'] : 0;
     $now = time();
@@ -3131,6 +3139,7 @@ function ws_flow_step_task($run, $flow, $step, $node, $owner)
             'department_id' => $people['department_id'],
             'channel_id'    => $channel ? (int) $channel['id'] : 0,
             'assignees'     => $people['user_ids'],
+            'app_id'        => (int) ($context['app_id'] ?? 0),
         ));
 
         if (!$made['ok']) {
@@ -4373,8 +4382,15 @@ function ws_flow_chain_start($run, $step, $node, $owner)
 
     $source_context = ws_flow_run_context($run);
     $values = ws_step_run_values($run, $graph, $owner, $source_context, $step);
-    $context = json_encode(ws_flow_chain_context($flow, $trigger, $source_context, (string) ($source_context['flow_name'] ?? ''),
-        ws_flow_chain_source_result($graph, $node['id'], $values), ws_flow_chain_root($run, 'ws_flow_run')), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    $context = ws_flow_chain_context($flow, $trigger, $source_context, (string) ($source_context['flow_name'] ?? ''),
+        ws_flow_chain_source_result($graph, $node['id'], $values), ws_flow_chain_root($run, 'ws_flow_run'));
+
+    // A run an application started passes its mark on to the runs it starts.
+    if ((int) ($source_context['app_id'] ?? 0) > 0) {
+        $context['app_id'] = (int) $source_context['app_id'];
+    }
+
+    $context = json_encode($context, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     $now = time();
 
     // Started by the owner of the flow whose box starts it, acting as the

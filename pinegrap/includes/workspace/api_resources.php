@@ -5397,6 +5397,9 @@ function ws_api_task_present($viewer, $task, $warnings = array(), $known = null)
         'department_id'     => ((int) $task['department_id'] > 0) ? (int) $task['department_id'] : null,
         'channel_id'        => ((int) $task['channel_id'] > 0) ? (int) $task['channel_id'] : null,
         'creator_id'        => (int) $task['creator_id'],
+        // The application that created it, null for a person (and for every
+        // task before the upgrade); name is null for a deleted application.
+        'created_by_app'    => ws_task_app_present((int) ($task['app_id'] ?? 0), ws_task_app_names(array((int) ($task['app_id'] ?? 0)))),
         'assignees'         => $assignees,
         'refs'              => $refs,
         'completed_at'      => ((int) $task['completed_at'] > 0) ? api_time($task['completed_at']) : null,
@@ -5440,6 +5443,7 @@ function ws_api_task_schema()
         'department_id'     => 'integer?',
         'channel_id'        => 'integer?',
         'creator_id'        => 'integer',
+        'created_by_app'    => 'object?',
         'assignees'         => array('integer'),
         'refs'              => array(array('type' => 'string', 'id' => 'integer')),
         'completed_at'      => 'string?',
@@ -5505,6 +5509,8 @@ function ws_api_tasks_list($params)
         'limit'         => (int) ($params['limit'] ?? 100),
         // Agent channels' tasks are left out unless asked for or named.
         'agent_channels' => ws_agent_channel_mode($params['agent_channels'] ?? ''),
+        // Made by people, or by applications (created_by_app).
+        'made_by'        => ws_task_made_by_mode($params['made_by'] ?? ''),
     );
 
     if (!empty($params['ref_type']) && !empty($params['ref_id'])) {
