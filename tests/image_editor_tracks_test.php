@@ -5,7 +5,8 @@
  * Tests for the image editor's tracks (pg_image_editor_tracks.js and the
  * TRACKS section of the model, run under Node): a layer's bars, the snap
  * targets, a whole bar moved, an end moved, the snapping to a tenth of a
- * second and to other ends, the clamps, and the part's labels.
+ * second and to other ends, the clamps, which rows offer the Motion button,
+ * and the part's labels.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -182,6 +183,42 @@ function test_image_editor_tracks_edit_out_and_loop()
 	pg_assert_same(array('delay' => 400), $r['loop'], 'the loop starts later after the entrance');
 	pg_assert_same(array('delay' => 0), $r['loopBack'], 'never before the entrance ends');
 	pg_assert_same(array('delay' => 3100), $r['loopPast'], 'a tenth of a second before the exit at most');
+}
+
+// A row's Motion button: a layer that may move, unlocked and shown, never
+// a redaction, never on a phone.
+function test_image_editor_tracks_motion_button()
+{
+	$r = image_editor_tracks_node(
+		'function k(type, more) { return Object.assign({ id: "x", type: type }, more || {}); }' . "\n"
+		. 'console.log(JSON.stringify({' . "\n"
+		. ' rect: M.trackMotionOn(k("rect"), false),' . "\n"
+		. ' text: M.trackMotionOn(k("text"), false),' . "\n"
+		. ' video: M.trackMotionOn(k("video"), false),' . "\n"
+		. ' redact: M.trackMotionOn(k("redact"), false),' . "\n"
+		. ' locked: M.trackMotionOn(k("rect", { locked: true }), false),' . "\n"
+		. ' hidden: M.trackMotionOn(k("rect", { hidden: true }), false),' . "\n"
+		. ' phone: M.trackMotionOn(k("rect"), true),' . "\n"
+		. ' none: M.trackMotionOn(null, false)' . "\n"
+		. '}));'
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
+	pg_assert_true($r['rect'] && $r['text'] && $r['video'], 'a shape, a text and a video have it');
+	pg_assert_false($r['redact'], 'a redaction never moves');
+	pg_assert_false($r['locked'], 'a locked layer: the bar shows Unlock and More only');
+	pg_assert_false($r['hidden'], 'a hidden layer has no row');
+	pg_assert_false($r['phone'], 'not on the phone');
+	pg_assert_false($r['none'], 'no layer');
+
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_image_editor_tracks.js');
+
+	pg_assert_true(strpos($js, 'M.trackMotionOn(') !== false, 'the tracks part asks the rule');
+	pg_assert_true(strpos($js, 'openMotionPop(') !== false, 'the button opens the bar\'s Motion popover');
 }
 
 // The part's labels are in the tracks part, and it is a part of the editor.

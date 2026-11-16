@@ -2752,6 +2752,50 @@
   height: 14px;
 }
 
+/* A row's Motion button at the right end of its name cell, over the name
+   button (a button cannot hold another), which leaves it room. */
+.pgie-trrow.pgie-trmo {
+  position: relative;
+}
+
+.pgie-trrow.pgie-trmo > .pgie-trname {
+  padding-right: 32px;
+}
+
+.pgie-trmotion {
+  position: absolute;
+  top: 3px;
+  left: calc(var(--pgie-trname) - 27px);
+  width: 22px;
+  height: 22px;
+  padding: 3px;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--pgie-muted);
+  cursor: pointer;
+}
+
+.pgie-trmotion:hover {
+  background: var(--pgie-pw);
+  color: var(--pgie-tx);
+}
+
+.pgie-trrow.on .pgie-trmotion:hover {
+  background: var(--pgie-surface);
+}
+
+.pgie-trmotion:focus-visible {
+  outline: 2px solid var(--pgie-sel);
+  outline-offset: -2px;
+}
+
+.pgie-trmotion .pgie-ic {
+  display: block;
+  width: 16px;
+  height: 16px;
+}
+
 /* The lanes keep 10 px at each end so a bar's grip at 0 or at the end
    stays inside the stage. */
 .pgie-trlane {

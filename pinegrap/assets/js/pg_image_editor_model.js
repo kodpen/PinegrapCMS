@@ -4210,7 +4210,15 @@
         return { delay: Math.round(end - nt), ms: Math.round(nt - nf), at: Math.round(nt) };
     }
 
-    var TRACKS = { TRACK_STEP: TRACK_STEP, trackBars: trackBars, trackTargets: trackTargets, trackSnap: trackSnap, trackEdit: trackEdit };
+    // Whether a track row offers the Motion button that opens the bar's
+    // Motion popover: a shown, unlocked layer that may move (a redaction
+    // never moves; a locked one's bar offers only Unlock and More), and
+    // never on a phone, whose rows and selection bar stay as they are.
+    function trackMotionOn(l, phone) {
+        return !!l && !phone && (l.type !== 'redact') && !l.locked && !l.hidden;
+    }
+
+    var TRACKS = { TRACK_STEP: TRACK_STEP, trackBars: trackBars, trackTargets: trackTargets, trackSnap: trackSnap, trackEdit: trackEdit, trackMotionOn: trackMotionOn };
 
     // -- frames and animation files (pg_image_editor_render.js) --
 
