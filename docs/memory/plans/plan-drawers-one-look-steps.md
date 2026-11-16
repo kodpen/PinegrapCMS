@@ -4,7 +4,7 @@ description: Plan plan-drawers-one-look, steps PD1 to PD3: the shared form parts
 ---
 
 ## Which steps are there?
-- PD1 (S) The shared parts, and "New plan" on them. After #9858 landed (the same drawer and stylesheet).
+- PD1 (S) The shared parts, and "New plan" on them. After #9858 landed (the same drawer and stylesheet). Given 2026-11-16 (agent channel message 5848), `@adnan`.
   - The parts of D1 in the Workspace kit; where in the kit is the step's own call. `planDrawer()` and its roadmap part build every field from them; its own `field()` and `input()` are gone.
   - Nothing changes on the screen: the three selects stay as they are until PD2.
   - Tests: a source test that `workspace_my_calendar.js` defines no `field()` or `input()` of its own and takes them from the kit; the drawer's tests of today stay green, `test_workspace_personal_plan_drawer_fits_a_phone` among them.
