@@ -5227,8 +5227,11 @@ a.link-top-row {
 
 /* Date and time fields on Bootstrap 6 (pg_fields.js): the posted input is
    hidden the same way; one typed box after it takes its place (its look is in
-   pg_datetime.css). In a drawer the calendar is drawn open under the field. */
-.pg-field-native {
+   pg_datetime.css). In a drawer the calendar is drawn open under the field.
+   Doubled so it beats .pg-input's width, height and padding further down the
+   same layer: at full width the hidden field, placed from a second column,
+   ran past its drawer and scrolled the drawer body sideways. */
+.pg-field-native.pg-field-native {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -19448,6 +19451,19 @@ button.ws-cal-more {
   gap: 10px;
   margin-bottom: 16px;
 }
+/* Who can see: the three segments share the drawer's width and a long label
+   breaks onto two lines; one nowrap line ran past the drawer at 320 px. */
+.ws-plan-who {
+  display: flex;
+}
+.ws-plan-who .pg-seg-item {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: auto;
+  min-height: 26px;
+  white-space: normal;
+  text-align: center;
+}
 /* Somebody else's plan, read only: the fields dimmed as a disabled switch,
    nothing that invites typing. */
 .ws-plan-readonly .pg-input:disabled,
@@ -19551,6 +19567,8 @@ button.ws-cal-more {
 }
 .ws-roadmap-tools {
   display: flex;
+  grid-row: 1;
+  grid-column: 4;
   align-items: center;
   justify-content: flex-end;
   gap: 2px;
@@ -19600,6 +19618,14 @@ button.ws-cal-more {
   margin-left: 4px;
   color: var(--pg-fg-2);
   font-size: 11px;
+}
+/* A step's date calendar (drawn open after the box in a drawer) takes a row
+   of its own under the step: in a column of the row it widened it past the
+   drawer. The tools are pinned to the step's first row, so they stay beside
+   the date and do not drop under the calendar. */
+.ws-roadmap-step > .pg-date-inline {
+  grid-column: 1 / -1;
+  margin-top: 0;
 }
 @media (max-width: 575.98px) {
   .ws-roadmap-step {

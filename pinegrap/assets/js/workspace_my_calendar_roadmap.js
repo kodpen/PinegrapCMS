@@ -338,6 +338,8 @@
             h.dateField(day, 'date');
             day.value = step.day || '';
             day.disabled = !editable;
+            // Named on the box people see, as the title box beside it is.
+            day.placeholder = s('step_day');
             day.setAttribute('aria-label', s('step_day'));
             day.addEventListener('change', function () {
                 var before = step.day;

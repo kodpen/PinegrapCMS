@@ -15,6 +15,7 @@ description: The date calendar in a panel drawer: drawn after the field in a hid
 ## How is it drawn?
 - `pg_datetime.css` (`@layer custom`, which comes after Bootstrap's `components` layer that strips a non-input calendar's border and shadow): the popup's surface (`--pg-bg-body`, `--pg-border-color-translucent` border, `--pg-radius-lg`, `--pg-shadow`), `width: fit-content`, `max-width: 100%`, `overflow-x: auto`, `.5rem` padding and 1.5rem day cells, so a month fits a half-width drawer column; a narrower one scrolls it sideways, never over the next column.
 - `.pg-date-inline[hidden]` takes no room.
+- In a grid row the wrapper is a grid item: the row places it (the plan drawer's roadmap step spans it over the row, `workspace/workspace-plan-drawer-phone.md`). The hidden posted input keeps 1 px by `.pg-field-native.pg-field-native`, which beats `.pg-input` (#9858).
 
 ## What did the fix change?
 - Before #3271 the calendar was drawn open for good as soon as the drawer tab showed, with no surface, wider than its `col-6`, over the next field's help text (API application drawer, Security tab).
