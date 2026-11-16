@@ -15983,6 +15983,85 @@ a.ws-person-link:hover .avatar {
   overflow-wrap: anywhere;
 }
 /* Changed after it was sent. */
+/* A reader's highlight on a message (workspace_highlights.js): a <mark>
+   around pieces of the drawn text in its maker's colour (data-ws-tone, the
+   tones of the message box tint), strong enough to read on the box's own
+   faint tint in both themes; one only its maker sees has a dotted
+   underline. Overlaps nest, so the inner one shows through both. */
+.ws-hl {
+  --ws-hl-tone: var(--pg-primary);
+  padding: 0;
+  color: inherit;
+  background: color-mix(in srgb, var(--ws-hl-tone) 24%, transparent);
+  border-radius: .15em;
+  cursor: pointer;
+}
+html[data-bs-theme="dark"] .ws-hl {
+  background: color-mix(in srgb, var(--ws-hl-tone) 34%, transparent);
+}
+.ws-hl.ws-hl-me {
+  text-decoration: underline dotted;
+  text-decoration-thickness: 1px;
+  text-underline-offset: .2em;
+}
+.ws-hl:focus-visible {
+  outline: 2px solid var(--ws-hl-tone);
+  outline-offset: 1px;
+}
+.ws-hl[data-ws-tone="info"], .ws-hl-swatch[data-ws-tone="info"] { --ws-hl-tone: var(--pg-info); }
+.ws-hl[data-ws-tone="warning"], .ws-hl-swatch[data-ws-tone="warning"] { --ws-hl-tone: var(--pg-warning); }
+.ws-hl[data-ws-tone="accent"], .ws-hl-swatch[data-ws-tone="accent"] { --ws-hl-tone: var(--pg-tone-violet); }
+.ws-hl[data-ws-tone="danger"], .ws-hl-swatch[data-ws-tone="danger"] { --ws-hl-tone: var(--pg-danger); }
+.ws-hl[data-ws-tone="secondary"], .ws-hl-swatch[data-ws-tone="secondary"] { --ws-hl-tone: var(--pg-secondary); }
+.ws-hl[data-ws-tone="success"], .ws-hl-swatch[data-ws-tone="success"] { --ws-hl-tone: var(--pg-success); }
+.ws-hl[data-ws-tone="inverse"], .ws-hl-swatch[data-ws-tone="inverse"] { --ws-hl-tone: var(--pg-fg-emphasis); }
+/* The toolbar on a selection and the card of a highlight float over the
+   conversation, outside its scrolling pane. */
+.ws-hl-bar, .ws-hl-card {
+  position: absolute;
+  z-index: 1080;
+}
+.ws-hl-bar {
+  align-items: center;
+  background: var(--pg-bg-body);
+  border-radius: var(--bs-btn-border-radius);
+}
+.ws-hl-bar-note {
+  padding: 0 .5rem;
+  color: var(--bs-secondary-color);
+}
+.ws-hl-card {
+  width: min(20rem, calc(100vw - 1rem));
+  padding: .5rem .75rem;
+}
+.ws-hl-card-row + .ws-hl-card-row {
+  margin-top: .5rem;
+  padding-top: .5rem;
+  border-top: 1px solid var(--pg-border-color);
+}
+.ws-hl-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .25rem .5rem;
+}
+.ws-hl-swatch {
+  --ws-hl-tone: var(--pg-primary);
+  width: .75rem;
+  height: .75rem;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--ws-hl-tone) 60%, transparent);
+}
+.ws-hl-note {
+  margin-top: .25rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.ws-hl-card-tools {
+  display: flex;
+  gap: .75rem;
+  margin-top: .25rem;
+}
 .ws-msg-edited {
   display: inline-block;
   margin-left: .35rem;

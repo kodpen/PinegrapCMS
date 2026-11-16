@@ -12243,6 +12243,14 @@
 
             main.appendChild(body);
 
+            // Readers' highlights drawn into the text, the toolbar on a
+            // selection and the card on one (workspace_highlights.js).
+            if (window.PGWsHighlights && !message.deleted && !message.note_card && !message.note_group_card && !message.scheduled) {
+                window.PGWsHighlights.attach(message, body, featureHelpers(), function (fresh) {
+                    self.replaceMessage(fresh);
+                }, senderTone);
+            }
+
             // A translation this reader made shows again on a redraw.
             if (window.PGWsTranslate && !message.deleted) {
                 window.PGWsTranslate.apply(message, body, featureHelpers());
