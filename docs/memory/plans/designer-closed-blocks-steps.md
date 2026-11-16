@@ -13,7 +13,7 @@ description: Steps CB2 to CB10 of designer-closed-blocks, written from the owner
 - CB4 (M) Custom form slots: CAPTCHA settings only; on a form with steps the step break, the step progress and the step buttons drawn true, the buttons a tree.
 - CB5 (S) Messages node: settings only (alert look, dismiss button) and a sample error on the canvas. Done (#9723).
 - CB6a (M) Shop, catalog detail: variant attribute, breadcrumb, product carousel, price block; payment methods settings only. Done (#9849, #9871).
-- CB6b (M) Shop, catalog: category tree, filter offcanvas and its buttons.
+- CB6b (M) Shop, catalog: category tree, filter offcanvas and its buttons. Done (#9890).
 - CB6c (M) Shop, cart: applied offers, quick add, campaign gifts.
 - CB6d (M) Shop, checkout steps: the order preview parts as trees; installments settings only. The custom shipping and billing forms stay as their form draws them.
 - CB6e (M) Shop, after the order: order view's return actions; My Account's order history, subscriptions, bookings, store credit.
