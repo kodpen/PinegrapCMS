@@ -98,6 +98,9 @@ function pg_panel_backend_search($request, $action)
     if ($gate['manage']) {
         $actions[] = array('label' => lang('Accessibility report'), 'icon' => 'bi-universal-access', 'url' => $base_url . '/view_accessibility.php', 'keys' => array('erisilebilirlik', 'erişilebilirlik', 'accessibility', 'a11y', 'wcag', 'engelli'));
     }
+    if ($gate['folders'] && function_exists('pg_content_review_ready') && pg_content_review_ready()) {
+        $actions[] = array('label' => lang('Content review'), 'icon' => 'bi-calendar-check', 'url' => $base_url . '/view_content_review.php', 'keys' => array('icerik', 'içerik', 'gozden gecir', 'gözden geçir', 'content review', 'review', 'eskimis', 'overdue', 'gecikmis'));
+    }
     if ($gate['folders']) {
         $actions[] = array('label' => lang('Comments'), 'icon' => 'bi-chat-dots', 'url' => $base_url . '/view_comments.php', 'keys' => array('yorum', 'comment', 'com', 'yor'));
     }
