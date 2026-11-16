@@ -118,6 +118,11 @@ function test_minimum_order_wiring()
 	pg_assert_contains('pg_minimum_order_check(pg_minimum_order_customer(), (int) round((float) get_order_subtotal()), 1.0, \'cart\')', $cart, 'the cart asks the same function');
 	pg_assert_true(strpos($cart, 'pg_minimum_order_check(') < strpos($cart, "_pg_inject_messages_node(\$tree_decoded, 'shopping_cart');"), 'before the messages are drawn');
 
+	$classic = (string) file_get_contents(PG_FUNCTIONS_DIR . '/get_shopping_cart.php');
+	pg_assert_contains('pg_minimum_order_check(pg_minimum_order_customer(), (int) round((float) get_order_subtotal()), 1.0, \'cart\')', $classic, 'the classic cart asks the same function');
+	pg_assert_contains("\$form->add_warning(\$minimum_order['message']);", $classic);
+	pg_assert_contains("\$form->output_errors() .\n            \$form->get_warnings() .", $classic, 'the system layout shows the warning');
+
 	pg_assert_contains('pg_minimum_order_card($liveform)', $edit, 'the field on the edit screen');
 	pg_assert_contains('pg_minimum_order_save($id, $minimum_order_posted)', $edit, 'kept in the one setting');
 }

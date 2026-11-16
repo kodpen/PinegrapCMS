@@ -20,7 +20,7 @@ module: minimum_order
 - `pg_minimum_order_check($contact_id, $amount, $rate, $context)` takes the amount in the order's currency with its rate and turns it into the base currency with `round($amount / $rate)` (`pg_minimum_order_base_amount()`), never `(int)`. Prices are kept in the base currency, so both callers pass rate 1. Equal to the minimum passes.
 
 ## What does the customer see?
-- Cart (`includes/fn/widgets_cart.php`): a warning in the cart's messages, before they are drawn, while the cart has lines: "Orders from your account start at X. Add Y more to place your order."
+- Cart: a warning in the cart's messages while the cart has lines, in the designer cart widget (`includes/fn/widgets_cart.php`, before its messages are drawn) and the classic cart (`get_shopping_cart.php`, whose system layout now prints warnings between errors and notices): "Orders from your account start at X. Add Y more to place your order."
 - Submit (`submit_order.php`): one refusal before the pre-save hook, for the express order and the order preview alike: "Sorry, the order was not accepted: orders from your account start at X, and Y is still missing." It is logged. A payment's return is not refused (the payment may already be taken). Amounts show in the visitor's currency (`pg_visitor_money()`).
 
 ## Which test guards it?
