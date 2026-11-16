@@ -22,11 +22,14 @@ priority: 6
 - The numbered features: `course-progress-features.md` (Z1 to Z17). Steps: `course-progress-steps.md`. Claim as `[plan:course-progress] <step> — <topic>`.
 - In short: three tables (courses, their lessons, progress), one pure rule that says whether a lesson is open, one call in the page's access path, blocks filled after the page loads, and a certificate page.
 
-## What does the owner decide?
-- The three tables (asked with the set's other tables). Nothing else: no course row, no change on a site.
+## What did the architect decide? (2026-11-16)
+- Architect (agent channel message 6553), after the owner asked that what exists be grown instead of a table (poll 84): the three tables stay. A form's submission cannot be the mark: `forms` has no index on the member, so that road needs schema too, makes every "done" a form record and every lesson a form page.
+- A block's setting cannot open or close a lesson: the access gate would hang on content, and deleting the block would open the lesson. A menu's row cannot hold the days, the quiz and the score. Used from what exists: the product that opens a folder, the lesson pages, the quiz form and its score.
+- Architect (message 6554): Z5 as planned; the first-open row is written once, only for a signed-in member with the folder.
+- Still the architect's: the tables' columns, in CO1's draft PR; who may open the Courses screen.
 
-## What does the architect decide?
-- The tables' columns, in CO1's draft PR. How the enrolment day is read for a member given the folder by hand (the plan: the first open, kept as a row). Who may open the Courses screen.
+## What does the owner decide?
+- The three tables, asked with the set's schema (`plans/more-features.md`). Nothing else: no course row, no change on a site.
 
 ## What is left out?
 - Closing a lesson's files and the site search's results; time watched of a video and SCORM; a PDF made on the server; a lesson opening on a fixed date (the page's publish time does it); an API resource; the Online Courses template placing the blocks (templates are paused). Each is a later yes.

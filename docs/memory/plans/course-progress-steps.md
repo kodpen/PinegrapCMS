@@ -4,11 +4,11 @@ description: Plan course-progress, steps CO1 to CO6: the tables and the rule of 
 ---
 
 ## Which steps are there?
-- CO1 (M) The tables and the rules, server and data only. After the owner's yes on tables.
+- CO1 (M) The tables and the rules, server and data only. After the owner's yes on the set's schema.
   - A migration step adds the courses, lessons and progress tables, listed in `get_tables()`; the draft PR's body carries their columns and indexes for the architect.
   - Existing files: `functions.php` (the module), `includes/fn/privacy.php` (the export and erasure lists).
   - New: `includes/fn/courses.php` (ready check, a course and its lessons, the enrolment day, the pure rule of an open lesson, the done and complete writers, the certificate's code), `tests/courses_test.php`.
-  - Tests, red first: the rule by days, by order, a done lesson staying open, an editor passing; the enrolment day from the first counting order and from the first open; a cancelled order not counting; a completion written once; a changed code refused.
+  - Tests, red first: the rule by days, by order, a done lesson staying open, an editor passing; the enrolment day from the first counting order and from the first open; a cancelled order not counting; the first-open row written once and never for a visitor; a completion written once; a changed code refused.
   - Features: Z1, Z2, Z3, Z5, Z6, Z10 (the server's side), Z16.
 
 - CO2 (M) after CO1: the Courses screen.

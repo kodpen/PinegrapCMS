@@ -12,13 +12,15 @@ priority: 6
 ## Which conditions did the architect bind?
 - `plans/website-second-set-conditions.md` holds the conditions for all eight plans and `plans/website-second-set-conditions-per-plan.md` what each plan adds (architect, 2026-11-16, agent channel message 6460). Each plan names the two files under "What binds it?" and does not repeat them.
 
-## Which tables do the plans count?
-- Whether they may be added is the owner's, asked in one question with the count per plan (the first of the two files above). No step that adds a table starts before his answer.
-- One table each: the digest, the meeting link (and a place for a booking's meeting address), the map, the referral programme (and a new kind of store credit).
-- Two each: customer value, event tickets (and a mark on a product). Three each: wholesale, courses. Fourteen in all.
-- Owner (2026-11-16, agent channel poll 84, message 6513), asked whether these may be added: "mimara soralım bunu yazılımdaki bir özelliği geliştirererek yapabiliyormuyuz değerlendirsin."
-- So no table is taken as allowed. The architect weighs, table by table, whether a feature that exists can carry the need; the question returns to the owner with its view.
-- The weighing, table by table: `plans/more-features-tables.md` and `plans/more-features-tables-2.md`. Each plan's files are rewritten to the decision before a step starts.
+## Which tables and columns may be added?
+- Owner (2026-11-16, agent channel poll 84, message 6513), asked whether the fourteen tables of the first draft may be added: "mimara soralım bunu yazılımdaki bir özelliği geliştirererek yapabiliyormuyuz değerlendirsin."
+- Architect (2026-11-16, agent channel message 6553), table by table: ten are not needed and four stay, one for tickets and three for courses. With no table: the digest, the meeting link, the map, customer value (on a measured rebuild), referral, wholesale prices and the waiting list. Each plan carries its reasons.
+- What the set still asks: those four tables; five columns (one each on `ws_profiles`, `erp_accounts` and the product, two on `stock_notify`); the value `referral` of `gift_cards.kind`; an index on `stock_notify`. Every column goes through its step's draft PR to the architect.
+- Two behaviours changed against the first draft: no place is held for the first in a waiting list, and a fixed wholesale price needs the ERP. A company's buyers left the wholesale plan (owner, poll 87).
+- The owner is asked again, in one question, with the architect's view. No step that changes the schema starts before his answer.
+
+## In which order are the plans given?
+- Architect (2026-11-16, agent channel message 6554): all eight are priority 6. First those that need no schema (the digest, the map, customer value), then the meeting link, wholesale, referral, tickets, courses. When a step starts is the coordinators': the free steps of plans already begun come first.
 
 ## Which plans are there?
 - `post-digest.md`: new posts of a list sent by themselves as an e-mail to a contact group.
@@ -26,11 +28,9 @@ priority: 6
 - `place-map.md`: the places of a collection on a map, with "near me".
 - `customer-value.md`: repeat purchase, lifetime value, cohorts and customer groups.
 - `referral-programme.md`: a customer brings a friend and earns store credit.
-- `wholesale.md`: group offers, price lists, a minimum order, a company's several buyers.
+- `wholesale.md`: group offers, one account using another's prices, a minimum order.
 - `event-tickets.md`: a ticket with a QR code per place, check-in at the door, a waiting list.
 - `course-progress.md`: a learner's progress, timed lessons, a certificate.
-- The order within the same priority is the architect's.
 
 ## When is this file deleted?
 - With the last of the eight plans, together with `more-features-shared-files.md`; each plan's close-out removes its own line here.
-- The two tables files go as soon as every plan has been rewritten to the decision on its tables.

@@ -1,36 +1,29 @@
 ---
 name: wholesale-steps
-description: Plan wholesale, steps WS1 to WS8: the offers' group condition, price lists and the resolver, the Price lists screen, the minimum order, quantity prices, a company's buyers, the API, close-out
+description: Plan wholesale, steps WS1 to WS7: the offers' group condition, an account using another's prices, its picker on the prices screen, the minimum order, quantity prices, the API, close-out
 ---
 
 ## Which steps are there?
-- WS1 (M) The offers' group condition, server only.
-  - Existing files: `edit_offer_f.php` (the condition in `_pg_offer_condition_types()` and its form row), `includes/fn/ecommerce.php` (its test where offers are judged: `apply_offers_to_cart()`, `get_best_offer_id()`). `includes/fn/ecommerce.php` is held by other open PRs: the step names the clash.
+- WS1 (M) The offers' group condition, server only. No schema.
+  - Existing files: `edit_offer_f.php` (the condition in `_pg_offer_condition_types()` and its form row), `includes/fn/ecommerce.php` (its test where offers are judged: `apply_offers_to_cart()`, `get_best_offer_id()`). The cart module is held by other open PRs: the step names the clash.
   - Tests, red first: a member, a non-member and a guest; a break for a group; an offer without the condition judged as before.
-  - Features: J1, J2.
+  - Features: J1, J2, J9.
 
-- WS2 (M) Price lists and the resolver, server and data only. After the owner's yes on tables.
-  - A migration step adds the list and its rows (two tables), listed in `get_tables()`; the draft PR's body carries the columns for the architect.
-  - Existing files: `includes/fn/ecommerce.php` (the resolver asked where `pg_erp_member_prices()` is, above the ERP's gate), `includes/settings/features.php` and `features.save.php` (the switch).
-  - New: `includes/fn/wholesale.php` (lists read and written, the resolver, the personal mark of a page), `tests/wholesale_test.php`.
-  - Tests: the lowest of account and list; the recorded rule against a campaign, never stacked; retail in the feed, the structured data and the kept page copy; the switch off pricing as today, with and without the ERP.
-  - Features: J4 (data), J5, J6, J7, J14.
+- WS2 (M) Shared prices, server and data only. After the owner's yes on the set's schema.
+  - A migration step adds one column to `erp_accounts`; the draft PR's body carries it for the architect.
+  - Existing files: where the ERP reads an account's prices (`erp_account_price_terms()` in `includes/erp/price_lists.php`) and its save's check. `includes/fn/ecommerce.php` only if `pg_erp_member_prices()` itself must follow the pointer, and then last in that file's order (`plans/more-features-shared-files.md`).
+  - Tests: an account buying at another's prices and discount; a second hop refused at the save; a pointed-at account's delete refused; the recorded rule against a campaign; retail in the feed, the structured data and the kept page copy; an account that uses nobody's prices priced as today.
+  - Features: J4 (data), J5, J6, J7, J9.
 
-- WS3 (M) after WS2: the Price lists screen. New: the root screen and its CSV. Existing files: `includes/fn/output.php` (one menu link). Pictures to the owner; not marked ready before his look. Features: J4.
+- WS3 (S) after WS2: the picker. Existing files: the account's prices screen (`includes/erp/price_lists.php` and the screen that draws it). Pictures to the owner; not marked ready before his look. Features: J4.
 
-- WS4 (S) after WS2: the minimum order. Existing files: `submit_order.php` (one refusal before the pre-save hook; the express order and order preview include it), the cart widget's message. Held by the closed-blocks steps: the step names the clash. Features: J8.
+- WS4 (S) The minimum order. Existing files: `submit_order.php` (one refusal before the pre-save hook; the express order and order preview include it), the cart widget's message, the contact group's edit screen (the field, kept as a settings text). Held by the closed-blocks steps: the step names the clash. Features: J8.
 
 - WS5 (S) after WS1: quantity prices on a product page. Existing files: `includes/fn/widgets_catalog.php` (the part), the designer's token list in `assets/js/style_designer.src.js` (held by other open PRs). Pictures to the owner. Features: J3.
 
-- WS6 (M) after WS2 and the owner's answer on approval: a company's buyers.
-  - A migration step adds the buyers' table; columns to the architect in the draft PR.
-  - Existing files: `includes/fn/ecommerce.php` (`pg_erp_member_account()` also finds the account by a buyer's row), `submit_order.php` (the account on every buyer's order), `includes/fn/widgets_account.php` (the company's part), the ERP account screen (a Buyers card), `includes/fn/contacts.php` and `includes/fn/privacy.php`.
-  - New: `includes/erp/account_buyers.php`, its test. Pictures to the owner.
-  - Features: J9 to J13, J16.
+- WS6 (S) after WS3: the API. The API schema's row for the account's pointer and its resource file; `php tools/check_api_schema.php`. Features: J10.
 
-- WS7 (S) after WS3: the API. The API schema's rows and their resource file; `php tools/check_api_schema.php`. Features: J15.
-
-- WS8 (S) close-out: every J number checked against the code with its PR; `commerce/wholesale.md` and `erp/erp-account-buyers.md`; this plan's three files deleted and its line in `plans/more-features.md` removed.
+- WS7 (S) close-out: every J number checked against the code with its PR; `commerce/wholesale.md`; this plan's three files deleted and its line in `plans/more-features.md` removed.
 
 ## Which steps run side by side?
-- WS1 and WS2 touch `includes/fn/ecommerce.php`: one after the other. WS3, WS4 and WS5 may run side by side; WS6 after them.
+- WS1, WS2 and WS4 touch different files and may run side by side, each after the open PRs on its files. WS3 and WS6 follow WS2; WS5 follows WS1.

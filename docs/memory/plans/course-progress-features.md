@@ -10,7 +10,7 @@ description: Plan course-progress, features Z1 to Z17: a course and its ordered 
 - (Z4) A switch "Courses" in Site Settings, Features, off. On, a screen "Courses" lists the courses with their learners and completions; its editor picks the folder, adds the folder's pages as lessons and orders them.
 
 ## When is a lesson open?
-- (Z5) The enrolment day is the day of the member's first counting order that opens the course's folder; for a member given the folder by hand, the day they first opened a lesson, kept as a row. A cancelled order does not count.
+- (Z5) The enrolment day is the day of the member's first counting order that opens the course's folder; for a member given the folder by hand, the day they first opened a lesson, kept as a row written once and only for a signed-in member who has the folder. A cancelled order does not count.
 - (Z6) A lesson is open when its days have passed since the enrolment day, counted at read with `pg_calendar_days_later()`, and, with "Lessons in order", the one before it is done. A lesson already done stays open. Whoever may edit the page always passes.
 - (Z7) One call in `get_page.php` after the access switch, only for a page of a private folder that is a lesson: a closed lesson sends the member to the classroom page with a notice that names the day it opens or the lesson to finish first. A lesson in a public folder is a free preview and is never closed.
 

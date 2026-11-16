@@ -4,17 +4,17 @@ description: Plan post-digest, steps DG1 to DG5: the records box on the server, 
 ---
 
 ## Which steps are there?
-- DG1 (M) The records box, server and data only.
-  - A migration step adds one table of marks (flow, record, when), listed in `get_tables()`; the draft PR's body carries its columns for the architect. After the owner's yes on tables.
-  - Existing files: `includes/fn/widgets.php` (the feed's pick split out of `pg_sw_form_feed_parts()` into a function that gives rows, which the feed then calls), `includes/workspace/flows.php` (`ws_flow_kinds()`, the normalize case), `includes/workspace/steps.php` and `flow_runs.php` (the run case, the Try answer), `includes/workspace/flow_agent_box.php` (the tiers), `job.php` (the sweep).
+- DG1 (M) The records box, server only. No schema.
+  - The draft PR's body says where a run's start moment is read (the start's runs keep one, `ws_scheduled_runs.started_at`) and how a drawn flow's step is handed it (`ws_step_action_row()` gives 0 today); the architect confirms it there before the rest is written.
+  - Existing files: `includes/fn/widgets.php` (the feed's pick split out of `pg_sw_form_feed_parts()` into a function that gives rows, which the feed then calls), `includes/workspace/flows.php` (`ws_flow_kinds()`, the normalize case), `includes/workspace/steps.php` and `flow_runs.php` (the run case, the window, the Try answer), `includes/workspace/flow_agent_box.php` (the tiers).
   - New: `includes/workspace/flow_records.php`, `tests/workspace_flow_records_test.php`.
-  - Tests, red first: the feed's output unchanged after the split; a private page refused; a record given once; two runs claiming one record; the first run's ten; the sweep.
+  - Tests, red first: the feed's output unchanged after the split; a private page refused; a record at the earlier start in and at this start out; a record published while a run works given by the next run; the first run from the switch-on; a start that fires twice.
   - Features: D1 to D6, D13.
 
 - DG2 (M) after DG1: the contact group as a campaign.
   - Existing files: the e-mail box's run (`includes/workspace/flow_mail_campaign.php`), the normalize case of `flows.php`.
   - New: the records block of the body, in the module.
-  - Tests: a group send making one campaign row with its recipients; opt-in and a bounced address left out; no mail at count 0; Try mailing only the person and taking no mark.
+  - Tests: a group send making one campaign row with its recipients; opt-in and a bounced address left out; no mail at count 0; Try mailing only the person and moving no window.
   - Pictures: the mail on a phone and a desktop, with and without pictures. To the owner.
   - Features: D7, D8, D9, D11, D12.
 
