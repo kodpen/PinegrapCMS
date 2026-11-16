@@ -56,6 +56,13 @@ function test_cart_recovery_weak_messages()
 
 	pg_assert_same(array('Weaker', 'Weak'), array_column($findings, 'label'), 'the most sent first; a well clicked or rarely sent one is left out');
 	pg_assert_same(3, $findings[1]['percent'], '1 of 40 came back');
+	pg_assert_same('message', $findings[0]['rule'], 'the message rule');
+
+	// Just under the minimum sends, and exactly at the 5 % click share: quiet.
+	pg_assert_same(array(), pg_cart_recovery_weak_messages(array(
+		array('label' => 'Under', 'channel' => 'email', 'sent' => 19, 'reached' => 19, 'returned' => 0),
+		array('label' => 'At', 'channel' => 'email', 'sent' => 40, 'reached' => 40, 'returned' => 2),
+	)), 'under its thresholds the rule stays quiet');
 }
 
 function test_cart_recovery_weak_stalled()
