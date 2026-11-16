@@ -187,6 +187,8 @@ function pg_image_editor_config()
         'encoder' => pg_js_bundle_urls('assets/js/pg_image_editor_encode.min.js'),
         // Select subject's cut, started as a worker.
         'subject' => pg_js_bundle_urls('assets/js/pg_image_editor_subject.min.js'),
+        // Follow's tracker, started as a worker.
+        'track'   => pg_js_bundle_urls('assets/js/pg_image_editor_track.min.js'),
         // The largest file Save to Files and an upload take (0: no limit
         // known); a file larger than one part is sent in parts.
         'animationLimit' => pg_image_editor_upload_limits()['max'],
