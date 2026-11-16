@@ -24748,14 +24748,18 @@ const StyleDesigner = (function () {
         var inp = document.getElementById('sd-props-search');
         if (inp) {
             inp.addEventListener('input', function() {
-                filterPropertiesPanel(this.value.toLowerCase().trim());
+                filterPropertiesPanel(this.value.trim());
             });
         }
     }
 
+    // Both the typed text and the labels are folded by _sdCondFold() so a
+    // Turkish capital İ, I and the dotless ı match a typed i, and capitals
+    // match lower case; toLowerCase() alone turns İ into i + U+0307.
     function filterPropertiesPanel(q) {
         var panel = document.getElementById('sd-properties');
         if (!panel) return;
+        q = _sdCondFold(q || '').trim();
 
         if (!q) {
             // Restore bodies that were temporarily expanded during search
@@ -24773,7 +24777,7 @@ const StyleDesigner = (function () {
         panel.querySelectorAll('.sd-props-section, .sd-app-sect').forEach(function(sect) {
             var isApp = sect.classList.contains('sd-app-sect');
             var titleEl = sect.querySelector(isApp ? '.sd-app-sect-hdr' : '.sd-props-section-title');
-            var titleText = titleEl ? titleEl.textContent.toLowerCase() : '';
+            var titleText = titleEl ? _sdCondFold(titleEl.textContent) : '';
             var titleMatch = titleText.indexOf(q) !== -1;
             var anyVisible = false;
             var body = sect.querySelector('.sd-sect-body');
@@ -24791,7 +24795,7 @@ const StyleDesigner = (function () {
                 if (!parentSect) return;
 
                 var label = rowEl.querySelector('.sd-prop-label, .sd-sp-label');
-                var labelText = label ? label.textContent.toLowerCase() : '';
+                var labelText = label ? _sdCondFold(label.textContent) : '';
                 // Row matches if its own label matches OR the section title matches (show full section)
                 var match = labelText.indexOf(q) !== -1 || titleMatch;
                 rowEl.style.display = match ? '' : 'none';
