@@ -68863,7 +68863,7 @@ const StyleDesigner = (function () {
             ui: ui,
             text: function (key, a, b, c) {
                 if (key === 'pgc_box') return _sdT('Frame');
-                if (key === 'pgc_focus') return _sdT('{var:1}: {var:2} arrows out, {var:3} in', a, b, c);
+                if (key === 'pgc_focus') return _sdT('{var:1}: {var:2} arrows out, {var:3} in', [a, b, c]);
                 return '';
             },
             // Only the selected frame's arrows are drawn (focus); a press on
