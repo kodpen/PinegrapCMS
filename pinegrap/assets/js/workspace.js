@@ -11580,10 +11580,6 @@
                 });
 
                 body.appendChild(choices);
-
-                if (CFG.quiet_hours && CFG.quiet_hours.ready) {
-                    body.appendChild(quietHoursPart());
-                }
             }
 
             // Assistants' answers read aloud: this browser's own choice, as in
@@ -11604,6 +11600,12 @@
                 speak.appendChild(speakBox);
                 speak.appendChild(speakLabel);
                 body.appendChild(speak);
+            }
+
+            // The person's own quiet hours, for all their channels: after this
+            // channel's own choices, so its Save reads as theirs alone.
+            if (channel.joined && CFG.quiet_hours && CFG.quiet_hours.ready) {
+                body.appendChild(quietHoursPart());
             }
 
             // The time spent on its tasks (task_time.php), as the Summary

@@ -8,7 +8,7 @@ module: quiet_hours
 - Inside the person's quiet hours no Workspace push wakes their phone or browser: the push waits for the range's end (`workspace-push-delay.md` says where). Nothing breaks through it. The inbox line, the bell, the badge and mail notices are unchanged; a line read meanwhile is dropped by the queue.
 
 ## Where is it set?
-- The "Quiet hours" part under Notifications in a channel's info panel (`quietHoursPart()` in `workspace.js`), for all the person's channels: Start time, End time (time fields, `pgDateField()`), "Also quiet on the days I do not work", Save, Clear (shown once a range is set), and the line saying what it does. Drawn for a channel the person has joined, once the column is there (`CFG.quiet_hours.ready`, a team member).
+- The "Quiet hours" part in a channel's info panel, after its Notifications choices and the read-aloud check, above Channel settings (`quietHoursPart()` in `workspace.js`), for all the person's channels: Start time, End time (time fields, `pgDateField()`), "Also quiet on the days I do not work", Save, Clear (shown once a range is set), and the line saying what it does. Drawn for a channel the person has joined, once the column is there (`CFG.quiet_hours.ready`, a team member).
 - "From"/"To" are already "Kimden"/"Kime" in Turkish, so the labels are the existing keys "Start time" and "End time".
 
 ## Who sets it?
