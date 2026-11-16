@@ -14,7 +14,7 @@ priority: 6
 - AW1 (M) The task lists, W1 to W4 (done, #9941): `ws_tasks_list()` and the readers of My Tasks, the Planning Board and the Work Calendar leave an agent channel's tasks out unless asked, through the one helper `ws_agent_channel_filter()`; the "Agent channels" toggle on each; `GET /workspace/tasks` with `agent_channels`. The architect's look.
 - AW2 (S) after AW1: the counts, W5 and W6: Today, the dashboard's task figures and the channel list's sums count without agent channels' tasks; what is addressed to the reader in person still shows.
 - AW3 (M) after AW1 (both edit `includes/workspace/tasks.php`): the mark, W7 to W10. One column on `ws_tasks` for the application that created the task, written by every route an application creates a task through; "Made by <application>" on the task row, the board card and the drawer; the "Made by agents" filter; the API field. The owner's look.
-- AW4 (S) after AW3: the inventory, W11 and W12; close-out into `workspace/agent-channel-flag.md` and a new workspace file on the task's application mark; this plan deleted.
+- AW4 (S) after AW3: the inventory, W11 and W12, with the Work Calendar's Conversations layer, its message figure and Most active channels; close-out into `workspace/agent-channel-flag.md` and a new workspace file on the task's application mark; this plan deleted.
 
 ## Which schema change is there?
 - One column on `ws_tasks`, the owner's yes in poll 80 (`workflow/decisions-made-schema-23.md`). AW3 states its name, type and index in the draft PR's body and asks the architect before the migration step is written. No backfill. Nothing else is added.
