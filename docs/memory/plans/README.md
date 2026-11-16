@@ -20,6 +20,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - `design-canvas-*`: 7 files.
 - `panel-old-*`: 13 files.
 - `picture-text-*`: 6 files.
+- `place-map-*`: 6 files; start at `place-map.md`.
 - `prototype-canvas-*`: 9 files; start at `prototype-canvas.md`.
 - `publish-approval-*`: 8 files; start at `publish-approval.md`.
 - `storefront-api-*`: 9 files.
