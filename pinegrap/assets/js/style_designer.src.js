@@ -76138,7 +76138,7 @@ const StyleDesigner = (function () {
     function _pgPrototypeShareDialog(startPageId) {
         if (!window.pgUI || !_pgPrototypeShareReady()) return;
         var styleId = _design.styleId;
-        var state = { pages: [], durations: [], canShow: true };
+        var state = { pages: [], durations: [], canShow: true, comments: false };
         var when = function (unix) {
             if (!(unix > 0)) return '';
             try { return new Date(unix * 1000).toLocaleString(_sdLocale(), { dateStyle: 'medium', timeStyle: 'short' }); }
@@ -76174,6 +76174,11 @@ const StyleDesigner = (function () {
                         '<div class="mb-3"><label class="form-label mb-1" for="ps-password">' + esc(_sdT('Password (optional)')) + '</label>' +
                             '<input type="password" class="form-control form-control-sm" id="ps-password" data-ps-password autocomplete="new-password" maxlength="128">' +
                             '<div class="form-text">' + esc(_sdT('6 to 128 characters. Give it to the people you share the link with; it is not shown again.')) + '</div></div>' +
+                        // Offered once the site keeps prototype comments.
+                        '<div class="mb-3 d-none" data-ps-comments-field>' +
+                            '<label class="form-field"><input class="check" type="checkbox" data-ps-comments>' +
+                                '<span>' + esc(_sdT('Allow comments')) + '</span></label>' +
+                            '<div class="form-text">' + esc(_sdT('Whoever opens the link can pin comments with their name on the pages and answer them.')) + '</div></div>' +
                         '<div class="fg-danger mb-3 d-none" data-ps-error role="alert"></div>' +
                         '<button type="submit" class="btn btn-sm btn-solid theme-primary" data-ps-create><span class="bi bi-link-45deg me-1" aria-hidden="true"></span>' + esc(_sdT('Create link')) + '</button>' +
                     '</form>' +
@@ -76243,6 +76248,7 @@ const StyleDesigner = (function () {
                              esc(l.audience === 'anyone' ? _sdT('Anyone who has it') : _sdT('Team')) + '</span>' +
                          (l.password ? '<span class="badge theme-secondary me-1"><span class="bi bi-lock me-1" aria-hidden="true"></span>' + esc(_sdT('Password')) + '</span>' : '') +
                          (l.locked ? '<span class="badge theme-danger me-1">' + esc(_sdT('Password locked')) + '</span>' : '') +
+                         (l.comments ? '<span class="badge theme-secondary me-1"><span class="bi bi-chat-left-text me-1" aria-hidden="true"></span>' + esc(_sdT('Comments')) + '</span>' : '') +
                          (l.state === 'expired' ? '<span class="badge theme-inverse me-1">' + esc(_sdT('Expired')) + '</span>' : '');
             var facts = [
                 _sdT('Starts at: {var}', l.start_page ? l.start_page + (l.start_first ? ' (' + _sdT('the first draft') + ')' : '') : '-'),
@@ -76281,6 +76287,8 @@ const StyleDesigner = (function () {
                 state.pages = res.pages || [];
                 state.durations = res.durations || [];
                 state.canShow = res.can_show !== false;
+                state.comments = res.comments_ready === true;
+                el.querySelector('[data-ps-comments-field]').classList.toggle('d-none', !state.comments);
                 if (!startEl.options.length) fillPages();
                 fillDurations();
                 render(res.links || []);
@@ -76385,7 +76393,8 @@ const StyleDesigner = (function () {
                 audience: audience(),
                 start_page_id: parseInt(startEl.value, 10) || 0,
                 duration: parseInt(durationEl.value, 10) || 0,
-                password: passwordEl.value
+                password: passwordEl.value,
+                allow_comments: (state.comments && el.querySelector('[data-ps-comments]').checked) ? 1 : 0
             }).then(function (res) {
                 createBtn.disabled = false;
                 if (!res || res.status !== 'success') {

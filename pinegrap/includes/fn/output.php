@@ -7957,6 +7957,9 @@ function pg_js_bundles()
         'assets/js/pg_list_table.min.js'           => array('assets/js/pg_list_table.js', 'assets/js/pg_list_table_edit.js'),
         // The Prototype view's hotspot collector (window.PGProtoHotspots).
         'assets/js/pg_proto_hotspots.min.js'       => array('assets/js/pg_proto_hotspots.js'),
+        // The comment mode of a share link's prototype viewer
+        // (window.PGProtoComments, prototype.php).
+        'assets/js/pg_proto_comments.min.js'       => array('assets/js/pg_proto_comments.js'),
         // Live pictures of designs and templates (window.PGLivePicture,
         // includes/fn/design_previews.php).
         'assets/js/pg_live_picture.min.js'         => array('assets/js/pg_live_picture.js'),

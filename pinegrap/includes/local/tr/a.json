@@ -5541,6 +5541,8 @@
     "Allow again": "Yeniden izin ver",
     "Allow an address": "İzin verilecek adres ekle",
     "Allow any registered user to edit submitted form(s)": "Kayıtlı herhangi bir kullanıcının gönderilen formları düzenlemesine izin ver",
+    "Allow comments": "Yorumlara izin ver",
+    "Allow comments must be on or off.": "Yorumlara izin ver açık ya da kapalı olmalıdır.",
     "Allow comments on this photo again": "Yorumları yeniden aç",
     "Allow customer to add product to order": "Müşterinin siparişe ürün eklemesine izin ver",
     "Allow customer to set schedule": "Müşterinin ödeme tarifesini ayarlamasına izin ver",

@@ -193,6 +193,10 @@ if ($pg_proto_frame) {
         pg_proto_frame_refuse(lang('This page goes live behind a sign-in, so a link for anyone who has it does not show it.'), 403);
     }
 
+    // A link with "Allow comments" has its frame drawn with node marks and
+    // the comment script; the staff viewer and every other link as before.
+    $pg_proto_comments = isset($parsed['l']) && pg_proto_frame_comment_mode($pg_proto_link, pg_proto_comments_ready());
+
     require_once(PG_FUNCTIONS_DIR . '/get_page_content.php');
 
     // The address the widgets read, as a visitor's request would carry it.
@@ -232,13 +236,43 @@ if ($pg_proto_frame) {
     pg_seo_rendering(true);
     ob_start();
 
+    // For comments every element carries the node it was drawn from
+    // (data-pg-node), so a comment is pinned to a node and found again after
+    // the page changes. The stored body has no marks: the saved tree is drawn
+    // again with them and handed to the render as the editor's SEO check
+    // hands its draft (pg_seo_draft_override(), read only while
+    // pg_seo_rendering() is on); widgets drawn in the render are marked too.
+    if ($pg_proto_comments) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/seo_draft.php');
+        pg_designer_audit_render(true);
+    }
+
     try {
+        if ($pg_proto_comments) {
+            $pg_proto_tree_row = db_item("SELECT page.page_name, page.page_tree_json, style.additional_body_classes FROM page LEFT JOIN style ON style.style_id = page.page_style WHERE page.page_id = '" . (int) $pg_proto_page['id'] . "' LIMIT 1");
+            $pg_proto_tree = (is_array($pg_proto_tree_row) && ((string) $pg_proto_tree_row['page_tree_json'] !== '')) ? json_decode((string) $pg_proto_tree_row['page_tree_json'], true) : null;
+
+            if (is_array($pg_proto_tree)) {
+                _sanitize_dynamic_placeholders($pg_proto_tree);
+                pg_seo_draft_override(array(
+                    'page_id' => (int) $pg_proto_page['id'],
+                    'page_tree_code' => generate_style_code_from_tree($pg_proto_tree, (string) $pg_proto_tree_row['page_name'], (string) $pg_proto_tree_row['additional_body_classes']),
+                ));
+            }
+        }
+
         $html = (string) get_page_content($pg_proto_page['id'], '', '', 'preview', false, array(), false, 'desktop');
     } catch (Throwable $t) {
         $error = $t->getMessage();
         $thrown = $t;
     } finally {
         pg_seo_rendering(false);
+
+        if ($pg_proto_comments) {
+            pg_designer_audit_render(false);
+            pg_seo_draft_override(array());
+        }
+
         // Whatever a renderer printed on the way is not part of the page.
         ob_end_clean();
     }
@@ -313,6 +347,8 @@ if ($pg_proto_frame) {
         'broken' => lang('This link leads nowhere: the page it names does not exist.'),
         'draft' => lang('This link leads to a draft of another design.'),
         'forms' => lang('Forms do not send anything in a prototype.'),
+        'comments' => $pg_proto_comments,
+        'pin' => lang('Comment {n}'),
     );
 
     $html = pg_proto_rewrite_links($html, function ($href) use ($ctx) {
@@ -621,4 +657,8 @@ echo pg_proto_shell_html(array(
     'software' => PATH . SOFTWARE_DIRECTORY,
     'lang' => lang(array('info' => '')),
     'error' => $pg_proto_error,
+    // A link with "Allow comments": the comment mode, with this page's
+    // comments of this link.
+    'comments' => pg_proto_viewer_comments($pg_proto_link, $pg_proto_start['id'], PATH . SOFTWARE_DIRECTORY . '/prototype_comment.php',
+        isset($_SESSION['software']['token']) ? (string) $_SESSION['software']['token'] : '', lang(array('info' => ''))),
 ));
