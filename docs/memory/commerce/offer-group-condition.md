@@ -1,11 +1,11 @@
 ---
 name: offer-group-condition
-description: Offer condition "The customer is in the contact group" (WS1, #PRNUM): one offer_conditions row, the signed-in customer's contact, a guest never; a quantity break for a group with the products rule
+description: Offer condition "The customer is in the contact group" (WS1, #9986): one offer_conditions row, the signed-in customer's contact, a guest never; a quantity break for a group with the products rule
 module: ecommerce
 ---
 
 ## What does the condition do?
-- An offer with "The customer is in the contact group" applies only to a signed-in customer whose contact (`user.user_contact`) is in that one contact group (`contacts_contact_groups_xref`). Any result can carry it: order or product discount, the ladder, a gift, shipping (#PRNUM).
+- An offer with "The customer is in the contact group" applies only to a signed-in customer whose contact (`user.user_contact`) is in that one contact group (`contacts_contact_groups_xref`). Any result can carry it: order or product discount, the ladder, a gift, shipping (#9986).
 - A guest, a user with no contact, a contact outside the group, a deleted group: the offer does not apply. The guest view (`pg_offer_guest_view()`: feeds, the price history's offer rows, prices kept for everybody) has no customer, so a group offer never reaches a public price.
 - An offer without it is judged as before (J10).
 
