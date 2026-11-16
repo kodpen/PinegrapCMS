@@ -81,6 +81,57 @@ function pg_page_clicks_ready()
 }
 
 /**
+ * The settings text of the "Clicks and scrolling" switch: '1' on, missing
+ * off, so every site and a new install start off.
+ */
+define('PG_PAGE_CLICKS_SWITCH', 'page_clicks');
+
+/**
+ * The switch's stored value for on or off: '1', or '' (the row removed).
+ * Pure.
+ *
+ * @param bool $on
+ * @return string
+ */
+function pg_page_clicks_switch_value($on)
+{
+    return $on ? '1' : '';
+}
+
+/**
+ * Whether the "Clicks and scrolling" switch is on. The one reader: the
+ * Visitors section, the Features card, the beacon script and the
+ * designer's layer all ask here.
+ *
+ * @return bool
+ */
+function pg_page_clicks_switch_on()
+{
+    if (!function_exists('pg_config_text')) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/config_text.php');
+    }
+
+    return pg_config_text(PG_PAGE_CLICKS_SWITCH) === '1';
+}
+
+/**
+ * Turns the switch on or off. The one saver: the Visitors section's "Turn
+ * on" button and the Features card call it. Whoever calls it has checked
+ * the right to change Features and the form's token.
+ *
+ * @param bool $on
+ * @return bool written
+ */
+function pg_page_clicks_switch_save($on)
+{
+    if (!function_exists('pg_config_text_save')) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/config_text.php');
+    }
+
+    return (bool) pg_config_text_save(PG_PAGE_CLICKS_SWITCH, pg_page_clicks_switch_value((bool) $on));
+}
+
+/**
  * The parts of the page an element can sit in, by its nearest landmark.
  *
  * @return array

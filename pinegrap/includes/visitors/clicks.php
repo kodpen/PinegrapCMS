@@ -12,8 +12,9 @@
  * The figures come from includes/fn/page_clicks.php (page_click_daily).
  * Labels and addresses were sent by visitors' browsers: they are printed as
  * text only. While the switch is off the section says in two lines what
- * would be kept and what never is, with the way to turn it on for whoever
- * may change Site Settings.
+ * would be kept and what never is, with a button that turns it on for
+ * whoever may change Features (visitors_clicks_switch.php). The switch is
+ * read and saved only through includes/fn/page_clicks.php.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -29,19 +30,17 @@ if (!defined('PG_VISITORS_SCREEN')) {
 const PG_VISITORS_CLICKS_PAGES = 20;
 
 /**
- * Whether the "Clicks and scrolling" switch is on: the settings text
- * page_clicks = '1'. A stand-in until the switch's own reader lands with
- * its Features card; then the section calls that one.
+ * Whether this person may turn the switch on: the right the Features save
+ * asks, validate_area_access($user, 'manager') (role up to 2). The Visitors
+ * screen's own right (validate_visitors_access()) also lets in a User (role
+ * 3) given Visitors: such a person sees the two lines and no button. Pure.
  *
+ * @param array $user
  * @return bool
  */
-function pg_visitors_clicks_on()
+function pg_visitors_clicks_may_switch(array $user)
 {
-    if (!function_exists('pg_config_text')) {
-        require_once(PG_FUNCTIONS_DIR . '/includes/fn/config_text.php');
-    }
-
-    return pg_config_text('page_clicks') === '1';
+    return isset($user['role']) && is_numeric($user['role']) && ((int) $user['role'] <= 2);
 }
 
 /**
@@ -167,17 +166,21 @@ function pg_visitors_clicks_name(array $element)
 
 /**
  * The section while the switch is off: what would be kept, what never is,
- * and the way to turn it on for whoever may open Site Settings.
+ * and for whoever may change Features the button that turns it on
+ * (visitors_clicks_switch.php, back to this period).
  *
- * @param array $user validate_user()
+ * @param array $user   validate_user()
+ * @param array $period pg_visitor_period(), kept for the way back
  * @return string HTML
  */
-function pg_visitors_clicks_off(array $user)
+function pg_visitors_clicks_off(array $user, array $period = array())
 {
-    $manager = isset($user['role']) && ((int) $user['role'] <= 2);
-    $action = $manager
-        ? '<a class="btn btn-sm btn-outline theme-primary" href="' . h(pg_settings_link('features', 'pgset-features')) . '">'
-            . '<i class="bi bi-toggle-on me-1" aria-hidden="true"></i>' . h(lang('Turn on in Site Settings')) . '</a>'
+    $action = pg_visitors_clicks_may_switch($user)
+        ? '<form method="post" action="visitors_clicks_switch.php" class="pg-visitors-clicks-on">'
+            . get_token_field()
+            . ($period ? '<input type="hidden" name="back" value="' . h(pg_visitor_period_query($period)) . '">' : '')
+            . '<button type="submit" class="btn btn-sm btn-solid theme-primary"><i class="bi bi-toggle-on me-1" aria-hidden="true"></i>' . h(lang('Turn on')) . '</button>'
+            . '</form>'
         : '<p class="pg-visitors-note">' . h(lang('A manager can turn it on in Site Settings, Features.')) . '</p>';
 
     return '
@@ -381,7 +384,7 @@ function pg_visitors_clicks_page(array $period, $page_id, $device)
     return $back . $title . $tiles . '
         <div class="pg-visitors-grid is-split">
             ' . pg_visitors_block(lang('Elements clicked'), $elements . pg_visitors_clicks_other($figures)) . '
-            ' . pg_visitors_block(lang('Scroll depth'), '<p class="pg-visitors-note mt-0 mb-2">' . h(lang('The share of views that came down at least this far on the page.')) . '</p>'
+            ' . pg_visitors_block(lang('Scroll depth'), '<p class="pg-visitors-note mt-0 mb-3">' . h(lang('The share of views that came down at least this far on the page.')) . '</p>'
                 . pg_visitors_bars(pg_visitors_clicks_reach_rows($figures['reach']), array('label' => lang('Scroll depth')))) . '
         </div>';
 }
@@ -398,8 +401,8 @@ function pg_visitors_section_clicks(array $period, array $user)
     $sections = pg_visitors_sections();
     $title = $sections['clicks'];
 
-    if (!pg_visitors_clicks_on()) {
-        return pg_visitors_section('clicks', $title, pg_visitors_clicks_off($user));
+    if (!pg_page_clicks_switch_on()) {
+        return pg_visitors_section('clicks', $title, pg_visitors_clicks_off($user, $period));
     }
 
     if (!function_exists('pg_page_clicks_ready') || !pg_page_clicks_ready()) {

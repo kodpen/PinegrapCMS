@@ -138,21 +138,69 @@ function test_visitors_clicks_route_asks_no_new_scope()
 
 function test_visitors_clicks_off_says_what_is_kept_and_how_to_turn_on()
 {
-	$manager = pg_visitors_clicks_off(array('role' => 2));
-	$user = pg_visitors_clicks_off(array('role' => 3));
+	$period = visitors_clicks_test_period();
+	$manager = pg_visitors_clicks_off(array('role' => 2), $period);
+	$user = pg_visitors_clicks_off(array('role' => 3), $period);
 
 	pg_assert_same(2, substr_count($manager, 'pg-visitors-clicks-off-text'), 'two lines');
 	pg_assert_contains(h(lang('No cookie, no identifier and nothing about a visitor is kept; signed-in members and visitors who refused statistics are never counted.')), $manager);
-	pg_assert_contains(h(pg_settings_link('features', 'pgset-features')), $manager, 'a manager gets the button to the switch');
-	pg_assert_true(strpos($user, 'btn') === false, 'no button for whoever cannot change Site Settings');
+	pg_assert_contains('<form method="post" action="visitors_clicks_switch.php"', $manager, 'a manager gets the button, a form post');
+	pg_assert_contains('name="token"', $manager, 'with the form token');
+	pg_assert_contains('name="back" value="p=30d"', $manager, 'and the way back to the period');
+	pg_assert_contains(h(lang('Turn on')), $manager, 'the button says what it does');
+
+	// A User (role 3) given Visitors sees the two lines and no button.
+	pg_assert_same(2, substr_count($user, 'pg-visitors-clicks-off-text'), 'the two lines for a User too');
+	pg_assert_true(strpos($user, '<form') === false && strpos($user, 'btn') === false, 'no button for a User');
 	pg_assert_contains(h(lang('A manager can turn it on in Site Settings, Features.')), $user);
 
-	pg_assert_false(pg_visitors_clicks_on(), 'off while nothing is stored');
-
 	// Without a database the switch reads off: the section is never hidden.
-	$section = pg_visitors_section_clicks(visitors_clicks_test_period(), array('role' => 2));
+	$section = pg_visitors_section_clicks($period, array('role' => 2));
 	pg_assert_contains('id="clicks"', $section, 'the section is drawn while off');
 	pg_assert_contains('pg-visitors-clicks-off', $section, 'with its empty state');
+}
+
+// Who may turn the switch on: the Features save's right, role up to 2;
+// never a User (role 3), whatever Visitors right they hold.
+function test_visitors_clicks_switch_right_is_the_features_right()
+{
+	pg_assert_true(pg_visitors_clicks_may_switch(array('role' => 0)));
+	pg_assert_true(pg_visitors_clicks_may_switch(array('role' => '1')));
+	pg_assert_true(pg_visitors_clicks_may_switch(array('role' => 2)));
+	pg_assert_false(pg_visitors_clicks_may_switch(array('role' => 3, 'manage_visitors' => 1)), 'a User with the Visitors right');
+	pg_assert_false(pg_visitors_clicks_may_switch(array()), 'no role');
+	pg_assert_false(pg_visitors_clicks_may_switch(array('role' => 'x')));
+
+	// The post: the Features right first, then the token, then the module's
+	// saver; it never writes the setting itself.
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/visitors_clicks_switch.php');
+	$right = strpos($source, "validate_area_access(\$user, 'manager');");
+	$post = strpos($source, "!== 'POST'");
+	$token = strpos($source, 'validate_token_field();');
+	$save = strpos($source, 'pg_page_clicks_switch_save(true)');
+
+	pg_assert_true($right !== false && $post !== false && $token !== false && $save !== false, 'every check is there');
+	pg_assert_true(($right < $post) && ($post < $token) && ($token < $save), 'the right, the method and the token come before the write');
+	pg_assert_true(strpos($source, 'validate_visitors_access') === false, 'not the Visitors screen\'s right');
+	pg_assert_true(strpos($source, 'pg_config_text_save') === false, 'the setting is written only by the module');
+}
+
+// The switch's one reader and saver in the page clicks module: the setting
+// '1' on, removed off; missing reads off.
+function test_visitors_clicks_switch_reader_and_saver()
+{
+	pg_assert_same('page_clicks', PG_PAGE_CLICKS_SWITCH);
+	pg_assert_same('1', pg_page_clicks_switch_value(true));
+	pg_assert_same('', pg_page_clicks_switch_value(false), 'off removes the row');
+	pg_assert_false(pg_page_clicks_switch_on(), 'off while nothing is stored');
+
+	$module = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/page_clicks.php');
+	pg_assert_contains('pg_config_text_save(PG_PAGE_CLICKS_SWITCH, pg_page_clicks_switch_value((bool) $on))', $module, 'the saver writes the one setting');
+	pg_assert_same(1, substr_count($module, 'pg_config_text_save('), 'one write of the switch');
+
+	$section = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/visitors/clicks.php');
+	pg_assert_contains('pg_page_clicks_switch_on()', $section, 'the section asks the module');
+	pg_assert_true(strpos($section, "pg_config_text('page_clicks')") === false, 'and reads no copy of its own');
 }
 
 function test_visitors_clicks_request_and_figures()
