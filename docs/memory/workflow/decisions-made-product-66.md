@@ -1,6 +1,6 @@
 ---
 name: decisions-made-product-66
-description: Decisions list, product part 66 (2026-11-16 on): his looks of polls 101 to 103 (VP4, the Content review row "Make a task", QR3), the architect's rules for CH3, CH4, MP2 and RB2
+description: Decisions list, product part 66 (2026-11-16 on): his looks of polls 101 to 104 (VP4, the Content review row "Make a task", QR3, AF5b), the architect's rules for CH3, CH4, MP2 and RB2
 ---
 
 ## Where are the rules and the earlier parts?
@@ -14,6 +14,9 @@ description: Decisions list, product part 66 (2026-11-16 on): his looks of polls
 
 ## Do the bar over the selected object and the Motion popover go out as built? (owner, 2026-11-16, agent channel poll 103, message 7038)
 - Yes: "Evet, böyle çıksın", on the sheet of message 7037 (QR3, #10003): the bar over a text, over a video in Animate with the Motion popover open, several layers, a layer at the stage's top edge (the bar below it), a locked layer, dark.
+
+## Do "Right or Wrong" under an agent's reply and its counts go out as built? (owner, 2026-11-16, agent channel poll 104, message 7050)
+- Yes: "Evet, böyle çıksın", on the sheet of message 7049 (AF5b, #9850): the line "Was this answer right?" with Correct and Wrong, the reason box on Wrong and the saved mark, the counts on the agent card and on the Agents card row, 1440 and 390.
 
 ## Which scope do the content review API routes ask? (architect, 2026-11-16, agent channel message 7025)
 - A pair of their own, `content_review:read` and `content_review:write`, in `api_scope_groups()`, open to roles 0 to 3 in `api_owner_scopes()`.
