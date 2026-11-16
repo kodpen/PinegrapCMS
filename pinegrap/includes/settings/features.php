@@ -509,7 +509,7 @@ if (pg_content_proposals_ready()) {
                                             <div class="form-field">
                                                 <div class="switch"><input value="1"' . ($content_approval['on'] ? ' checked="checked"' : '') . ' type="checkbox" id="content_approval_on" name="content_approval_on"/></div>
                                                 <label for="content_approval_on">' . lang('Content changes wait for approval') . '</label>
-                                                <div class="form-text">' . lang('A Manager or User who saves a change to a page already on the site does not publish it: it waits until a Designer or Administrator applies it. Drafts, new pages and the changes of Designers and Administrators are not held.') . '</div>
+                                                <div class="form-text">' . lang('A Manager or User who saves a change in the Page Design Studio to a page already on the site does not publish it: it waits until a Designer or Administrator applies it. Drafts, new pages, classic pages and the changes of Designers and Administrators are not held.') . '</div>
                                             </div>
                                         </div>' . $content_approval_channel . '
                                     </div>

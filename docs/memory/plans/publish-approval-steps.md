@@ -8,7 +8,7 @@ description: Plan publish-approval, steps PA1 to PA6 (PA0, the owner's answer, i
 
 - PA1 Done (#9882): the census, `plans/publish-approval-census.md` and its parts `publish-approval-census-gate.md`, `-table.md`, `-places.md`, `-features.md`; the architect's decisions on it: agent channel message 5857.
 
-- PA2 (M) after PA1: the switch and the held save.
+- PA2 Done (#9892): the switch and the held save (`designer/content-proposals.md`).
   - Existing files: `includes/fn/designer.php` (in `pg_designer_save_page()`, the content-level save of a live page hands the gate's result to the module and writes no page), `includes/settings/features.php` and `features.save.php` (the card).
   - Also: the assistant's readers taking the one condition `agent <> 'editor'` (`includes/designer_ai.php`: the panel's requests, `pg_design_ai_proposals_map()`, the dry run; `includes/api/resources/design.php`: the proposal routes and `pending_proposals`; `includes/workspace/ai.php`; `includes/workspace/threads.php`), with a test that none returns an editor row.
   - New: `includes/fn/content_proposals.php`, `tests/content_proposals_test.php`.
