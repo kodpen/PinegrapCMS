@@ -4,22 +4,12 @@ description: Plan content-review, steps CH1 to CH5: the table and its rules, the
 ---
 
 ## Which steps are there?
-- CH1 (S) The table and its rules.
-  - A migration step adds one table (a working name: `content_review`), listed in `get_tables()`; the draft PR's body carries its columns and indexes for the architect.
-  - Existing files: `job.php` (the sweep), `functions.php` (the module).
-  - New: `includes/fn/content_review.php`: ready check, an item's row read and written, the state of a date, the next date after a review, which items count, who may be the person, the sweep. `tests/content_review_test.php`.
-  - Tests, red first: the four states at the day's edges in the site's time, the next date with and without an interval, a record of a form that is no collection refused, a person without the right refused.
-  - Features: V1 to V6.
+- CH1 (S) The table and its rules (`includes/fn/content_review.php`, the sweep in `job.php`), features V1 to V6.
   - Done: #9934 (`platform/content-review-rules.md`; columns confirmed in agent channel message 6410).
 
-- CH2 (M) after CH1: the screen.
-  - Existing files: `includes/fn/list_table.php` (one row in `pg_list_table_definitions()`), `includes/fn/output.php` (the entry in `output_menu()` beside the Pages tools), `get_help_url.php` (its row).
-  - New: the root screen `view_content_review.php` and the list's module, modelled on `view_log.php` with `includes/fn/site_log_list.php`; its action file for V12.
-  - Reads: `page.seo_score` with `seo_checked_at`, the accessibility findings of `seo_issue` (`platform/accessibility-report.md`), the views through `pg_seo_traffic_join()`, the newest `page_revisions` row.
-  - Pictures: the list with every state, each filter, the three dialogs, a user's own view, a phone. To the owner; not marked ready before his look.
-  - Features: V7 to V13.
+- CH2 (M) after CH1: the screen `view_content_review.php` with its list module and action file, features V7 to V13.
   - Architect (2026-11-16, agent channel message 6410): "All" and "Not set" page through the items' own tables (`forms` can be large and is never sorted whole); the person and date join from `content_review` by its primary key.
-  - Done: #9967 (`platform/content-review-screen.md`, `content-review-actions.md`). Owner (2026-11-16, agent channel poll 100, message 6855): the look approved as page 6854 showed it; a visible change goes back to his look.
+  - Done: #9967 (`platform/content-review-screen.md`, `content-review-actions.md`). Owner (2026-11-16, agent channel poll 100, message 6855): the look approved as page 6854 showed it; a visible change goes back to the owner's look.
 
 - CH3 (M) after CH2: the task and the flow event.
   - Existing files: `includes/api/outbound/webhooks.php` (the name in `api_webhook_events()`), `job.php` (the announce for the dates that passed), the flow gallery's templates.
