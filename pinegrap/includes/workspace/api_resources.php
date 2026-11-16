@@ -4223,6 +4223,48 @@ function ws_api_poll_create_rehearsal($channel_id, $checked, $data, $flag)
 }
 
 /**
+ * The question's own picture a poll call sends (poll_picture.php), the way
+ * workspace.files.create takes a file: a form part named file, or
+ * content_base64 with name. null when the call sends none.
+ *
+ * @param array $params
+ * @return array|null name, bytes, field (the parameter a refusal names)
+ */
+function ws_api_poll_picture_input($params)
+{
+    $part = (api_send_hook() === null) && isset($_FILES['file']) && is_array($_FILES['file']);
+
+    if (!$part && ((string) ($params['content_base64'] ?? '') === '')) {
+        return null;
+    }
+
+    $upload = ws_api_upload_input($params);
+    $bytes = isset($upload['bytes']) ? $upload['bytes'] : ws_upload_decode($upload['base64']);
+
+    if (!is_string($bytes)) {
+        api_fail_validation(lang('The picture could not be read.'), $upload['field']);
+    }
+
+    return array('name' => (string) $upload['name'], 'bytes' => $bytes, 'field' => $upload['field']);
+}
+
+/**
+ * A refused picture's parameter: the one the call sent it in.
+ *
+ * @param string     $field   the refusal's field
+ * @param array|null $picture ws_api_poll_picture_input()
+ * @return string
+ */
+function ws_api_poll_picture_field($field, $picture)
+{
+    if ($field !== 'picture') {
+        return (string) $field;
+    }
+
+    return ($picture !== null) ? $picture['field'] : 'remove_picture';
+}
+
+/**
  * Asks a poll in a channel, the way Poll by the composer and the /poll
  * command do: the question is the person's message, and the options, the
  * settings and the votes are the poll's. The answer is that message.
@@ -4288,18 +4330,34 @@ function ws_api_polls_create($params)
         api_fail_validation($stored['error'], 'options');
     }
 
+    // The question's own picture, held to its checks before anything is
+    // kept, so that a dry run meets the same refusals and stores nothing.
+    $picture = ws_api_poll_picture_input($params);
+    $pictured = null;
+
+    if ($picture !== null) {
+        $data['picture'] = array('name' => $picture['name'], 'bytes' => $picture['bytes']);
+        $pictured = ws_poll_picture_check($viewer, $channel, ws_poll_picture_normal($data['picture']));
+
+        if (!$pictured['ok']) {
+            api_fail_validation($pictured['error'], $picture['field']);
+        }
+    }
+
     // The flag ws_poll_create() stores, so that the rehearsal reports the
     // settings an agent question is kept to rather than the ones sent.
     $flag = ws_agent_question_ready() ? ws_agent_question_flag($app_id) : 0;
     $rehearsal = ws_api_poll_create_rehearsal((int) $channel['id'], $checked, $data, $flag);
     $rehearsal['closes_at'] = api_time($rehearsal['closes_at']);
+    $rehearsal['file'] = ($pictured !== null) ? array('name' => $pictured['name'], 'kind' => $pictured['kind'], 'size' => $pictured['size']) : null;
 
     api_dry_run_stop('created', 'workspace_poll', $rehearsal);
 
     $result = ws_poll_create($viewer, $channel, $data, $app_id);
 
     if (!$result['ok']) {
-        api_fail_validation($result['error'], ($result['field'] !== '') ? $result['field'] : null);
+        $field = ws_api_poll_picture_field($result['field'], $picture);
+        api_fail_validation($result['error'], ($field !== '') ? $field : null);
     }
 
     ws_api_poll_message_ok($viewer, ws_poll($result['poll_id']), 201);
@@ -4318,9 +4376,46 @@ function ws_api_polls_update($params)
     $as_app = ws_api_poll_asker_app($poll);
 
     $fields = array('question', 'options', 'multiple', 'anonymous', 'closes_at');
+    $editing = (bool) array_intersect($fields, array_keys($params));
 
-    if (!array_intersect($fields, array_keys($params))) {
-        api_fail_validation(lang('Send at least one of question, options, multiple, anonymous or closes_at.'));
+    // The question's own picture: a new one replaces it, remove_picture
+    // takes it away (poll_picture.php).
+    $picture = ws_api_poll_picture_input($params);
+    $remove = !empty($params['remove_picture']);
+
+    if (($picture !== null) && $remove) {
+        api_fail_validation(lang('Send a new picture or remove_picture, not both.'), 'remove_picture');
+    }
+
+    if (!$editing && ($picture === null) && !$remove) {
+        api_fail_validation(lang('Send at least one of question, options, multiple, anonymous, closes_at, a picture or remove_picture.'));
+    }
+
+    $new_picture = ($picture !== null) ? ws_poll_picture_normal(array('name' => $picture['name'], 'bytes' => $picture['bytes'])) : null;
+    $changes_picture = ($picture !== null) || $remove;
+
+    if ($changes_picture) {
+        $pictured = ws_poll_picture_change_check($viewer, $poll, $new_picture, $as_app);
+
+        if (!$pictured['ok']) {
+            ws_api_poll_refused($pictured['error'], ws_api_poll_picture_field($pictured['field'], $picture));
+        }
+    }
+
+    if (!$editing) {
+        api_dry_run_stop('updated', 'workspace_poll', array(
+            'id'         => (int) $poll['id'],
+            'message_id' => (int) $poll['message_id'],
+            'file'       => ($new_picture !== null) ? array('name' => $pictured['picture']['name'], 'kind' => 'image', 'size' => $pictured['picture']['size']) : null,
+        ));
+
+        $changed = ws_poll_picture_change($viewer, $poll, $new_picture, $as_app);
+
+        if (!$changed['ok']) {
+            ws_api_poll_refused($changed['error'], ws_api_poll_picture_field($changed['field'], $picture));
+        }
+
+        ws_api_poll_message_ok($viewer, ws_poll($poll['id']));
     }
 
     $options = array();
@@ -4414,7 +4509,18 @@ function ws_api_polls_update($params)
         'multiple'   => $checked['multiple'],
         'anonymous'  => $checked['anonymous'],
         'closes_at'  => api_time($checked['closes_at']),
+        'file'       => ($changes_picture && ($new_picture !== null)) ? array('name' => $pictured['picture']['name'], 'kind' => 'image', 'size' => $pictured['picture']['size']) : null,
     ));
+
+    // The picture first: it is refused once somebody has answered, and an
+    // edit never adds an answer.
+    if ($changes_picture) {
+        $changed = ws_poll_picture_change($viewer, $poll, $new_picture, $as_app);
+
+        if (!$changed['ok']) {
+            ws_api_poll_refused($changed['error'], ws_api_poll_picture_field($changed['field'], $picture));
+        }
+    }
 
     $result = ws_poll_edit($viewer, $poll, $data, $as_app);
 
@@ -4499,6 +4605,20 @@ function ws_api_polls_again($params)
         }
     }
 
+    // The old question's picture is carried over unless a new one is sent
+    // or remove_picture leaves it out (poll_picture.php).
+    $picture = ws_api_poll_picture_input($params);
+
+    if (($picture !== null) && !empty($params['remove_picture'])) {
+        api_fail_validation(lang('Send a new picture or remove_picture, not both.'), 'remove_picture');
+    }
+
+    if ($picture !== null) {
+        $sent['picture'] = array('name' => $picture['name'], 'bytes' => $picture['bytes']);
+    } elseif (!empty($params['remove_picture'])) {
+        $sent['picture'] = null;
+    }
+
     $checked = ws_poll_again_check($viewer, $poll, $sent, $as_app);
 
     if (!$checked['ok']) {
@@ -4506,19 +4626,27 @@ function ws_api_polls_again($params)
             api_fail(503, 'service_unavailable', $checked['error']);
         }
 
-        ws_api_poll_refused($checked['error'], $checked['field']);
+        ws_api_poll_refused($checked['error'], ws_api_poll_picture_field($checked['field'], $picture));
     }
+
+    $carried = $checked['data']['picture'];
 
     api_dry_run_stop('created', 'workspace_poll', array(
         'channel_id' => (int) $poll['channel_id'],
         'again_of'   => (int) $poll['id'],
         'withdraws'  => !ws_poll_withdrawn($poll) && ((int) $poll['closed_at'] === 0),
+        'file'       => ($carried === null) ? null : array(
+            'name' => isset($carried['file_id']) ? $carried['file_name'] : mb_substr((string) $carried['name'], 0, 200),
+            'kind' => 'image',
+            'size' => isset($carried['bytes']) ? strlen($carried['bytes']) : null,
+        ),
     ));
 
     $result = ws_poll_ask_again($viewer, $poll, $sent, $as_app);
 
     if (!$result['ok']) {
-        api_fail_validation($result['error'], ($result['field'] !== '') ? $result['field'] : null);
+        $field = ws_api_poll_picture_field($result['field'], $picture);
+        api_fail_validation($result['error'], ($field !== '') ? $field : null);
     }
 
     ws_api_poll_message_ok($viewer, ws_poll($result['poll_id']), 201);
