@@ -51,6 +51,19 @@
         return button;
     }
 
+    // A header cell that keeps its column but shows its name to screen
+    // readers only.
+    function hiddenHead(text) {
+        var th = el('th');
+        th.scope = 'col';
+        th.appendChild(el('span', 'visually-hidden', text));
+        return th;
+    }
+
+    // The least width of a cell's input, so a table of several columns
+    // scrolls sideways instead of squeezing what was typed.
+    var MIN_WIDTH = { text: '11rem', textarea: '14rem', select: '8rem', multiselect: '9rem', date: '10rem', time: '8rem' };
+
     function setup(box) {
         if (box.getAttribute('data-pg-rows-ready')) return;
         box.setAttribute('data-pg-rows-ready', '1');
@@ -165,6 +178,7 @@
                 wrap.appendChild(input);
             }
 
+            if (MIN_WIDTH[column.input]) input.style.minWidth = MIN_WIDTH[column.input];
             input.setAttribute('aria-label', column.label);
             if (column.required) input.setAttribute('aria-required', 'true');
             if (row.errors[key]) {
@@ -190,13 +204,13 @@
                 var table = el('table', 'table table-sm align-middle mb-3');
                 var head = el('thead');
                 var headRow = el('tr');
-                headRow.appendChild(el('th', 'visually-hidden', words.row || ''));
+                headRow.appendChild(hiddenHead(words.row || ''));
                 columns.forEach(function (column) {
                     var th = el('th', '', column.label + (column.required ? '*' : ''));
                     th.scope = 'col';
                     headRow.appendChild(th);
                 });
-                headRow.appendChild(el('th', 'visually-hidden', words.actions || ''));
+                headRow.appendChild(hiddenHead(words.actions || ''));
                 head.appendChild(headRow);
                 table.appendChild(head);
 
