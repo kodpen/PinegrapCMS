@@ -168,9 +168,12 @@
             if (!on) return;
             bar.appendChild(el('span', 'pg-proto-cbar-hint', S.hint));
             if (!gone.length) return;
+            // The title, then one row of the lost threads that scrolls
+            // sideways: never more than one row, however many there are.
             var wrap = el('div', 'pg-proto-gone');
-            var title = el('span', 'pg-proto-gone-title fw-semibold', S.gone);
-            wrap.appendChild(title);
+            wrap.appendChild(el('span', 'pg-proto-gone-title fw-semibold', S.gone + ' (' + gone.length + ')'));
+            var row = el('div', 'pg-proto-gone-row');
+            wrap.appendChild(row);
             gone.forEach(function (id) {
                 var t = known[id];
                 var first = t.items[0];
@@ -180,7 +183,7 @@
                 b.appendChild(el('span', 'badge ' + (t.resolved ? 'theme-secondary' : 'theme-primary') + ' me-1', String(t.n)));
                 var text = String(first.text || '');
                 b.appendChild(el('span', 'pg-proto-gone-text', (text.length > 40) ? text.slice(0, 40) + '…' : text));
-                wrap.appendChild(b);
+                row.appendChild(b);
             });
             bar.appendChild(wrap);
         }
@@ -203,6 +206,12 @@
         // the window; on a phone it is a sheet at the bottom (CSS).
         function position(vx, vy) {
             var r = frame.getBoundingClientRect();
+            // Never taller than the frame's part of the window: the entries
+            // scroll inside and the form stays in reach. The phone's sheet
+            // keeps its own height (CSS).
+            if (window.matchMedia && !window.matchMedia('(max-width: 575.98px)').matches) {
+                box.style.maxHeight = Math.max(200, window.innerHeight - Math.max(0, r.top) - 16) + 'px';
+            }
             var w = box.offsetWidth, h = box.offsetHeight;
             var left = r.left + vx + 40, top = r.top + vy - 40;
             if (left + w > window.innerWidth - 8) left = r.left + vx - w - 12;
@@ -212,20 +221,41 @@
             box.style.top = top + 'px';
         }
 
+        // A field with its label and the line its refusal is written in.
         function field(id, label, control) {
             var wrap = el('div', 'mb-2');
             var l = el('label', 'form-label small mb-1', label);
             l.setAttribute('for', id);
             control.id = id;
+            var note = el('div', 'fg-danger small mt-1 d-none');
+            note.id = id + '-note';
             wrap.appendChild(l);
             wrap.appendChild(control);
-            return wrap;
+            wrap.appendChild(note);
+            return { wrap: wrap, note: note };
+        }
+
+        function refuse(control, note, message) {
+            note.textContent = message;
+            note.classList.remove('d-none');
+            control.classList.add('is-invalid');
+            control.setAttribute('aria-invalid', 'true');
+            control.setAttribute('aria-describedby', note.id);
+        }
+
+        function clear(control, note) {
+            note.classList.add('d-none');
+            control.classList.remove('is-invalid');
+            control.removeAttribute('aria-invalid');
+            control.removeAttribute('aria-describedby');
         }
 
         function item(c) {
             var li = el('li', 'pg-proto-item');
             var head = el('div', 'pg-proto-item-head');
-            head.appendChild(el('span', 'fw-semibold', c.name));
+            var who = el('span', 'pg-proto-item-name fw-semibold', c.name);
+            who.title = String(c.name || '');
+            head.appendChild(who);
             if (c.staff) head.appendChild(el('span', 'badge theme-info', S.team));
             head.appendChild(el('span', 'pg-proto-item-time fg-secondary', when(c.created_at)));
             li.appendChild(head);
@@ -255,25 +285,37 @@
             go.appendChild(el('span', 'bi bi-send me-1'));
             go.firstChild.setAttribute('aria-hidden', 'true');
             go.appendChild(el('span', 'pg-btn-label', parent ? S.answerSend : S.send));
-            f.appendChild(field('pg-pc-name', S.name, name));
-            f.appendChild(field('pg-pc-text', parent ? S.answer : S.comment, text));
+            var nameField = field('pg-pc-name', S.name, name);
+            var textField = field('pg-pc-text', parent ? S.answer : S.comment, text);
+            f.appendChild(nameField.wrap);
+            f.appendChild(textField.wrap);
             f.appendChild(error);
             var foot = el('div', 'd-flex justify-content-end');
             foot.appendChild(go);
             f.appendChild(foot);
 
+            // A refusal makes the box taller: it is placed again so it stays
+            // inside the window.
+            function again() {
+                if (box && open) position(open.vx, open.vy);
+            }
+
             function fail(message) {
                 error.textContent = message;
                 error.classList.remove('d-none');
+                again();
             }
 
             f.addEventListener('submit', function (e) {
                 e.preventDefault();
                 if (sending) return;
                 var n = name.value.trim(), t = text.value.trim();
-                if (!n) { fail(S.nameNeeded); name.focus(); return; }
-                if (!t) { fail(S.textNeeded); text.focus(); return; }
+                clear(name, nameField.note);
+                clear(text, textField.note);
                 error.classList.add('d-none');
+                if (!n) refuse(name, nameField.note, S.nameNeeded);
+                if (!t) refuse(text, textField.note, S.textNeeded);
+                if (!n || !t) { again(); (n ? text : name).focus(); return; }
                 var body = new FormData();
                 body.append('l', String(cfg.link));
                 body.append('page_id', String(cfg.page));
@@ -347,13 +389,21 @@
             open = { place: null, thread: id, vx: vx, vy: vy };
             var body = frameBox(S.thread.replace('{n}', String(t.n)));
             if (gone.indexOf(id) !== -1) body.appendChild(el('div', 'pg-proto-box-note fg-secondary small', S.goneNote));
+            // The entries scroll; the note or the answer form under them
+            // stays in reach however long the thread is.
             var ul = el('ul', 'pg-proto-items');
             t.items.forEach(function (c) { ul.appendChild(item(c)); });
             body.appendChild(ul);
             if (t.resolved) {
-                body.appendChild(el('div', 'pg-proto-box-note fg-secondary small', S.resolved));
+                var done = el('div', 'pg-proto-box-foot pg-proto-resolved small');
+                done.appendChild(el('span', 'bi bi-check-circle-fill me-1'));
+                done.firstChild.setAttribute('aria-hidden', 'true');
+                done.appendChild(document.createTextNode(S.resolved));
+                body.appendChild(done);
             } else {
-                body.appendChild(form(id, null).form);
+                var foot = form(id, null).form;
+                foot.classList.add('pg-proto-box-foot');
+                body.appendChild(foot);
             }
             if (gone.indexOf(id) !== -1) {
                 var b = bar.getBoundingClientRect(), r = frame.getBoundingClientRect();

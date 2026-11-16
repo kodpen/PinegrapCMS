@@ -1433,19 +1433,27 @@ function pg_proto_shell_comment_css()
     return '.pg-proto-cbar { display: flex; align-items: center; flex-wrap: wrap; gap: .375rem 1rem; padding: .375rem 1rem; background: var(--pg-bg-body); border-bottom: 1px solid var(--pg-border-color); font-size: .875rem; }
 .pg-proto-cbar.d-none { display: none; }
 .pg-proto-cbar-hint { color: var(--pg-fg-2); }
-.pg-proto-gone { display: flex; align-items: center; flex-wrap: wrap; gap: .375rem; }
+.pg-proto-gone { display: flex; align-items: center; gap: .375rem .5rem; flex: 1 1 20rem; min-width: 0; }
+.pg-proto-gone-title { flex: 0 0 auto; white-space: nowrap; }
+.pg-proto-gone-row { display: flex; gap: .375rem; flex: 1 1 auto; min-width: 0; overflow-x: auto; scrollbar-width: thin; padding-bottom: 2px; }
+.pg-proto-gone-item { flex: 0 0 auto; }
 .pg-proto-gone-text { display: inline-block; max-width: 14rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }
 .pg-proto-box { position: fixed; z-index: 1050; width: 20rem; max-width: calc(100vw - 16px); max-height: calc(100vh - 16px); display: flex; flex-direction: column; background: var(--pg-bg-body); border: 1px solid var(--pg-border-color); border-radius: .5rem; box-shadow: 0 .5rem 1.5rem color-mix(in srgb, var(--pg-fg-body) 20%, transparent); font-size: .875rem; }
 .pg-proto-box-head { display: flex; align-items: center; justify-content: space-between; gap: .5rem; padding: .5rem .75rem; border-bottom: 1px solid var(--pg-border-color); }
-.pg-proto-box-body { padding: .75rem; overflow-y: auto; }
+.pg-proto-box-body { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; padding: .75rem; overflow-y: auto; }
 .pg-proto-box-note { margin-bottom: .5rem; }
-.pg-proto-items { list-style: none; margin: 0 0 .75rem; padding: 0; }
+.pg-proto-items { flex: 1 1 auto; min-height: 4rem; overflow-y: auto; list-style: none; margin: 0 0 .75rem; padding: 0; }
+.pg-proto-box-foot { flex: 0 0 auto; }
+.pg-proto-resolved { padding: .5rem .75rem; border-radius: .375rem; background: var(--pg-bg-1); color: var(--pg-fg-2); }
 .pg-proto-item + .pg-proto-item { margin-top: .5rem; padding-top: .5rem; border-top: 1px solid var(--pg-border-color); }
-.pg-proto-item-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: .25rem .5rem; }
-.pg-proto-item-time { font-size: .75rem; }
+.pg-proto-item-head { display: flex; align-items: baseline; gap: .25rem .5rem; min-width: 0; }
+.pg-proto-item-name { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pg-proto-item-head .badge, .pg-proto-item-time { flex: 0 0 auto; }
+.pg-proto-item-time { font-size: .75rem; white-space: nowrap; }
 .pg-proto-item-text { white-space: pre-wrap; overflow-wrap: anywhere; }
 @media (max-width: 575.98px) {
   .pg-proto-cbar { padding: .375rem .75rem; }
+  .pg-proto-gone { flex-basis: 100%; }
   .pg-proto-box { left: 0 !important; right: 0; top: auto !important; bottom: 0; width: auto; max-width: none; max-height: 70vh; border-radius: .75rem .75rem 0 0; }
 }';
 }
@@ -1495,7 +1503,7 @@ function pg_proto_viewer_comments($link, $page_id, $door, $token, $lang)
             'goneNote' => lang('The part of the page this comment was left on is not on the page any more.'),
             'newComment' => lang('New comment'),
             'thread' => lang('Comment {n}'),
-            'name' => lang('Name'),
+            'name' => lang('Your name'),
             'comment' => lang('Comment'),
             'answer' => lang('Answer'),
             'send' => lang('Send'),
