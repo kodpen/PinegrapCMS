@@ -4,7 +4,7 @@ description: Plan place-map, steps MP1 to MP6: the census of providers and conse
 ---
 
 ## Which steps are there?
-- MP1 (S, no code) Census, done (PR #PRNUM): `plans/place-map-census.md`, `-census-2.md`, `-census-3.md`. One memory file, `plans/place-map-census.md`: each address provider's terms on keeping a looked-up result and on showing it on another map; the tile hosts' terms and what OpenStreetMap's own tiles allow; which class of the cookie notice the map is listed under and how a service is listed (`pg_consent_page_services()`); the exact header change. The architect confirms the shape on it.
+- MP1 (S, no code) Census, done (PR #9980): `plans/place-map-census.md`, `-census-2.md`, `-census-3.md`. One memory file, `plans/place-map-census.md`: each address provider's terms on keeping a looked-up result and on showing it on another map; the tile hosts' terms and what OpenStreetMap's own tiles allow; which class of the cookie notice the map is listed under and how a service is listed (`pg_consent_page_services()`); the exact header change. The architect confirms the shape on it.
 
 - MP2 (M) after MP1: coordinates on a record. No schema.
   - Existing files: the record's form and the collection's record list in the panel (`edit_submitted_form.php`, `view_submitted_forms.php`: the action and the bulk action). Other plans' steps hold them: the step names the clash.
