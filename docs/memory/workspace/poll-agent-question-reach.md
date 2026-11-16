@@ -16,6 +16,7 @@ description: Where an agent question reaches the person it asks: the ring, Today
 - `ws_channel_export_poll_line()`: `Agent question: <question> — <answer> (<who>)` once answered, `Agent question: <question> (waiting for <names>)` while open, `Agent question (taken back): <question>`; a person's poll `Poll (taken back): …`, and "Other" with its words in brackets unless the poll is anonymous.
 
 ## What does tools/ws_poll.php do?
+- `ask --file=PATH` (and `again`) sends the question's own picture with it: `poll-question-picture.md` (#9948).
 - `ask`: an option written `label :: description` carries its line; `--recommend` marks the first option, `--other[=LABEL]` adds the "Other" row, `--multiple` takes several answers (`ws_poll_ask_body()`, plain texts stay texts; "Other" counts among the ten).
 - A picture in an option's own box: `label :: #N` or `label :: description :: #N`, N the message number of a picture posted in the poll's channel.
 - The picture's file id: the tool reads message N with the same key (`GET /workspace/channels/{id}/messages?since_id=N-1&limit=1`), takes `file.id` of an `image` message as the option's `file_id` (`ws_poll_picture_file_id()`), and stops with exit 1 when the message is not there or is no picture. `again` with a picture needs the channel (`PG_WS_CHANNEL` or `--channel`). Why: the owner could not tell which picture a question meant when it sat outside the box.
