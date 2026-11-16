@@ -471,6 +471,19 @@ function ws_js_strings()
         'hl_remove'              => lang('Remove'),
         'hl_save'                => lang('Save'),
         'hl_cancel'              => lang('Cancel'),
+        'hl_mine'                => lang('My highlights'),
+        'hl_mine_all'            => lang('All'),
+        'hl_mine_everyone'       => lang('Everyone'),
+        'hl_mine_only_me'        => lang('Only me'),
+        'hl_mine_more'           => lang('Show more'),
+        'hl_mine_select_all'     => lang('Select all'),
+        'hl_mine_pick'           => lang('Select this highlight'),
+        'hl_mine_remove'         => ws_js_template('Remove ({var:1})', 1),
+        'hl_mine_confirm'        => ws_js_template('Remove {var:1} highlights? The ones everyone sees disappear for everyone.', 1),
+        'hl_mine_removed'        => ws_js_template('{var:1} highlights removed.', 1),
+        'hl_mine_kept'           => ws_js_template('{var:1} could not be removed: you can no longer react in that conversation.', 1),
+        'hl_mine_empty'          => lang('No highlights yet. Select text in a message and press Highlight.'),
+        'hl_mine_none_here'      => lang('No highlights in this list.'),
         // Translate on a message (assets/js/workspace_translate.js).
         'tr_translate'           => lang('Translate'),
         'tr_mark'                => ws_js_template('Translated from {var:1}', 1),
@@ -1006,6 +1019,8 @@ function ws_screen_config($viewer, $mode, $extra = array())
         // the Flows screen prints them (ws_screen_scripts()).
         'flow_scripts' => array_merge(pg_js_bundle_urls('assets/js/pg_graph_canvas.min.js'), pg_js_bundle_urls('assets/js/workspace_flow.min.js')),
         'notes'        => function_exists('ws_notes_ready') && ws_notes_ready(),
+        // My highlights in My Notes (highlights.php, workspace_highlights.js).
+        'highlights'   => function_exists('ws_highlights_ready') && ws_highlights_ready(),
         // Note groups as folders in My Notes (note_groups.php,
         // workspace_note_groups.js).
         'notes_groups' => function_exists('ws_note_groups_ready') && ws_note_groups_ready(),

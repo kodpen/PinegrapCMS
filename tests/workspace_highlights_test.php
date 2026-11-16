@@ -22,6 +22,7 @@ if (!defined('PG_TEST_RUNNER')) {
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/refs.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/render.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/highlights.php');
+require_once(__DIR__ . '/helpers/source_reader.php');
 
 // The drawn bodies both twins read: the drawn HTML and its plain text.
 function workspace_highlights_test_fixtures()
@@ -453,4 +454,113 @@ function test_workspace_highlights_browser_wiring()
 	pg_assert_contains('event.preventDefault()', $script);
 	pg_assert_contains('if (message.can_react) {', $script);
 	pg_assert_contains("'bi-highlighter'", $script);
+}
+
+// Runs My highlights' pure part under Node: the address a row leads to, the
+// highlight an address asks to flash, what Remove n sends and counts.
+function workspace_highlights_test_mine($script)
+{
+	$out = array();
+	$code = 1;
+	@exec('node --version 2>&1', $out, $code);
+
+	if ($code !== 0) {
+		return null;
+	}
+
+	$file = tempnam(sys_get_temp_dir(), 'pgwshlm');
+	file_put_contents($file, "'use strict';\nvar window = {};\n" . file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_highlights.js')
+		. "\nvar H = window.PGWsHighlights;\nconsole.log(JSON.stringify(" . $script . "));\n");
+	$out = array();
+	exec('node ' . escapeshellarg($file) . ' 2>&1', $out, $code);
+	unlink($file);
+
+	$printed = implode("\n", $out);
+	pg_assert_same(0, $code, $printed);
+
+	return json_decode($printed, true);
+}
+
+// (H19) A row opens its conversation at the message, as a note's source
+// link does, and names the highlight to flash.
+function test_workspace_highlights_mine_row_leads_to_the_message()
+{
+	$answer = workspace_highlights_test_mine("[H.mineHref('/pinegrap/workspace.php', { id: 77, channel_id: 5, message_id: 901 }),"
+		. " H.flashParam('?channel=5&message=901&hl=77'), H.flashParam('?hl=77&channel=5'), H.flashParam('?hl=7x'), H.flashParam(''), H.flashParam('?ahl=3')]");
+
+	if ($answer === null) {
+		return;
+	}
+
+	pg_assert_same('/pinegrap/workspace.php?channel=5&message=901&hl=77', $answer[0]);
+	pg_assert_same(77, $answer[1]);
+	pg_assert_same(77, $answer[2]);
+	pg_assert_same(0, $answer[3], 'not digits');
+	pg_assert_same(0, $answer[4]);
+	pg_assert_same(0, $answer[5], 'another name ending in hl');
+}
+
+// (H20, H21) Remove n: the ids ticked, or with Select all the whole filter
+// (rows not loaded yet too), counted from the filter's chip.
+function test_workspace_highlights_mine_bulk_removal_request()
+{
+	$counts = "{ every: 140, all: 90, me: 50 }";
+	$answer = workspace_highlights_test_mine("["
+		. "H.mineRemoveRequest({ every: false, filter: 'me', ids: [3, '9', 0, 'x'] }),"
+		. "H.mineRemoveRequest({ every: true, filter: 'all', ids: [3] }),"
+		. "H.mineRemoveRequest({ every: true, filter: '', ids: [] }),"
+		. "H.mineRemoveCount({ every: false, filter: 'all', ids: [3, 9] }, " . $counts . "),"
+		. "H.mineRemoveCount({ every: true, filter: 'all', ids: [] }, " . $counts . "),"
+		. "H.mineRemoveCount({ every: true, filter: 'me', ids: [] }, " . $counts . "),"
+		. "H.mineRemoveCount({ every: true, filter: '', ids: [] }, " . $counts . ")]");
+
+	if ($answer === null) {
+		return;
+	}
+
+	pg_assert_same(array('ids' => '3,9'), $answer[0]);
+	pg_assert_same(array('every' => 'all'), $answer[1], 'Select all sends the filter, not the loaded ids');
+	pg_assert_same(array('every' => ''), $answer[2], 'every one of his');
+	pg_assert_same(2, $answer[3]);
+	pg_assert_same(90, $answer[4], 'Everyone\'s count, beyond the 50 loaded');
+	pg_assert_same(50, $answer[5]);
+	pg_assert_same(140, $answer[6]);
+}
+
+// (H17, H22) The button sits in My Notes' bar beside Import, gated by the
+// step, and opens the list in the note's pane; every text the list uses is
+// in the Workspace's config, the empty state included.
+function test_workspace_highlights_mine_button_and_texts()
+{
+	$workspace = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js');
+	$script = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_highlights.js');
+	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/screen.php');
+	$import = strpos($workspace, "bar.appendChild(importNotes);");
+	$button = strpos($workspace, "button('btn btn-sm btn-text theme-secondary', t('hl_mine'), 'bi-highlighter')");
+
+	pg_assert_true(($import !== false) && ($button !== false) && ($button > $import) && ($button - $import < 600), 'beside Import');
+	pg_assert_contains("if (CFG.highlights && window.PGWsHighlights)", $workspace);
+	pg_assert_contains('window.PGWsHighlights.myList(pane, featureHelpers()', $workspace);
+	pg_assert_contains("'highlights'   => function_exists('ws_highlights_ready') && ws_highlights_ready(),", $screen);
+
+	preg_match_all("/h\\.t\\('(hl_mine[a-z_]*)'/", $script, $used);
+	pg_assert_true(count(array_unique($used[1])) >= 10, 'the list\'s texts');
+
+	foreach (array_unique($used[1]) as $key) {
+		pg_assert_contains("'" . $key . "'", $screen, $key);
+	}
+
+	pg_assert_contains("lang('No highlights yet. Select text in a message and press Highlight.')", $screen);
+}
+
+// (H18) The rows come from ws_highlights_mine(): the person's own only, 50
+// at a time, newest first, on messages he can still read.
+function test_workspace_highlights_mine_reads_his_own_page()
+{
+	$source = pg_test_function_source('ws_highlights_mine');
+
+	pg_assert_same(50, WS_HIGHLIGHTS_PAGE);
+	pg_assert_contains("h.user_id = '\" . \$user_id . \"'", $source);
+	pg_assert_contains('ORDER BY h.id DESC', $source);
+	pg_assert_contains('ws_can_read_channel($viewer, $channel)', $source);
 }

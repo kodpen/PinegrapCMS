@@ -16102,6 +16102,51 @@ html[data-bs-theme="dark"] .ws-hl {
   gap: .75rem;
   margin-top: .25rem;
 }
+/* A highlight opened from My highlights lights up for a moment. */
+.ws-hl.ws-hl-flash {
+  outline: 2px solid var(--ws-hl-tone);
+  outline-offset: 1px;
+  animation: ws-hl-flash 1.2s ease-in-out 2;
+}
+@keyframes ws-hl-flash {
+  50% { background: color-mix(in srgb, var(--ws-hl-tone) 55%, transparent); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ws-hl.ws-hl-flash { animation: none; }
+}
+/* My highlights in My Notes: a tick, then the highlighted text whole in
+   the person's colour with where it is under it; the row leads to the
+   message. */
+.ws-hl-mine-row {
+  display: flex;
+  align-items: flex-start;
+  gap: .75rem;
+  padding: .75rem 0;
+  border-top: 1px solid var(--pg-border-color);
+}
+.ws-hl-mine-row:first-child {
+  border-top: 0;
+}
+.ws-hl-mine-link {
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+}
+.ws-hl-mine-link:hover .ws-hl-mine-quote,
+.ws-hl-mine-link:focus-visible .ws-hl-mine-quote {
+  text-decoration: underline;
+}
+.ws-hl-mine-quote {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.ws-hl-mine-quote .ws-hl {
+  cursor: inherit;
+}
+.ws-hl-mine-count {
+  font-variant-numeric: tabular-nums;
+  opacity: .8;
+}
 .ws-msg-edited {
   display: inline-block;
   margin-left: .35rem;

@@ -7,6 +7,10 @@
  * card that opens on one (who made it, for whom, the note; the note and
  * Remove for who may).
  *
+ * My highlights (myList()): the person's own highlights in My Notes' pane,
+ * with the chips, the jump to the message (?hl= flashes the highlight
+ * when its body is drawn) and the bulk removal.
+ *
  * A highlight is kept by its text and which occurrence of it in the
  * message's plain text it is (includes/workspace/highlights.php). This file
  * is the browser's twin of that plain text and of finding a quote in it:
@@ -16,7 +20,8 @@
  * text already drawn, and one whose quote is not in the drawn text is not
  * drawn.
  *
- * assets/js/workspace.js calls attach() after messageNode() drew a body.
+ * assets/js/workspace.js calls attach() after messageNode() drew a body,
+ * and myList() from My Notes' "My highlights" button.
  * Every text comes from the #ws-config block.
  *
  * Served minified inside assets/js/workspace.min.js (pg_js_bundles(),
@@ -237,7 +242,7 @@
 
     // ── Drawing ────────────────────────────────────────────────────────
 
-    var state = { h: null, bar: null, card: null, timer: 0, pointer: false, bound: false, tone: null };
+    var state = { h: null, bar: null, card: null, timer: 0, pointer: false, bound: false, tone: null, flash: 0 };
 
     function tone(highlight) {
         return state.tone ? state.tone({ tone: highlight.tone }) : 'primary';
@@ -286,7 +291,34 @@
                 node.parentNode.insertBefore(mark, node);
                 mark.appendChild(node);
             });
+
+            if (state.flash && highlight.id === state.flash) {
+                state.flash = 0;
+                flashMarks(body, highlight.id);
+            }
         });
+    }
+
+    /**
+     * The highlight a row of My highlights opened lit up for a moment: its
+     * pieces flash and the first one is scrolled into view, once.
+     */
+    function flashMarks(body, id) {
+        var marks = body.querySelectorAll('mark.ws-hl[data-ws-hl="' + id + '"]');
+
+        Array.prototype.forEach.call(marks, function (mark) {
+            mark.classList.add('ws-hl-flash');
+        });
+
+        if (marks.length && marks[0].scrollIntoView) {
+            window.setTimeout(function () { marks[0].scrollIntoView({ block: 'center' }); }, 0);
+        }
+
+        window.setTimeout(function () {
+            Array.prototype.forEach.call(marks, function (mark) {
+                mark.classList.remove('ws-hl-flash');
+            });
+        }, 2600);
     }
 
     // ── The card ───────────────────────────────────────────────────────
@@ -656,7 +688,335 @@
         });
     }
 
-    var api = { fold: fold, plainFromHtml: plainFromHtml, find: find, occurrenceAt: occurrenceAt, textMap: textMap, piecesOf: piecesOf, attach: attach };
+    // ── My highlights (My Notes) ───────────────────────────────────────
+
+    /**
+     * The highlight id an address asks to flash (?hl=, set by a row of My
+     * highlights), 0 for none.
+     */
+    function flashParam(search) {
+        var match = /[?&]hl=([0-9]{1,10})(?:&|$)/.exec(String(search || ''));
+
+        return match ? parseInt(match[1], 10) : 0;
+    }
+
+    /**
+     * Where a row of My highlights leads: its conversation at the message,
+     * as a note's source link does, with the highlight to flash.
+     */
+    function mineHref(base, row) {
+        return String(base || '') + '?channel=' + (parseInt(row.channel_id, 10) || 0)
+            + '&message=' + (parseInt(row.message_id, 10) || 0) + '&hl=' + (parseInt(row.id, 10) || 0);
+    }
+
+    /**
+     * The key of ws_highlights_mine()'s counts a filter reads ('' every one,
+     * 'all' for everyone, 'me' only his).
+     */
+    function countKey(filter) {
+        return (filter === 'all' || filter === 'me') ? filter : 'every';
+    }
+
+    /**
+     * What the ws_highlights_remove request carries for a choice: with
+     * Select all the whole filter (rows not loaded too), else the ids ticked.
+     *
+     * @param {{every: boolean, filter: string, ids: number[]}} choice
+     */
+    function mineRemoveRequest(choice) {
+        if (choice.every) {
+            return { every: choice.filter || '' };
+        }
+
+        return { ids: (choice.ids || []).map(function (id) { return parseInt(id, 10) || 0; }).filter(function (id) { return id > 0; }).join(',') };
+    }
+
+    /**
+     * How many a choice removes, for "Remove n": the filter's count with
+     * Select all, else the rows ticked.
+     */
+    function mineRemoveCount(choice, counts) {
+        if (choice.every) {
+            return parseInt((counts || {})[countKey(choice.filter)], 10) || 0;
+        }
+
+        return (choice.ids || []).length;
+    }
+
+    /**
+     * My highlights drawn into My Notes' pane: the person's own highlights
+     * of both scopes, newest first, a page at a time; the chips All,
+     * Everyone and Only me with their counts; a tick on each row, Select all
+     * (the whole filter) and Remove n with one confirmation.
+     *
+     * @param {Element} pane
+     * @param {Object}  h    featureHelpers()
+     * @param {Object}  opts tone (the person's colour), base (the
+     *                       Workspace's address), back (an element leading
+     *                       back to the notes on a phone)
+     */
+    function myList(pane, h, opts) {
+        var o = opts || {};
+        var filter = '';
+        var rows = [];
+        var counts = { every: 0, all: 0, me: 0 };
+        var more = false;
+        var picked = {};
+        var every = false;
+        var busy = false;
+
+        h.clear(pane);
+
+        var card = h.el('div', 'card ws-nb-card ws-hl-mine');
+        var head = h.el('div', 'card-header ws-nb-head');
+        var body = h.el('div', 'card-body');
+        var chips = h.el('div', 'd-flex flex-wrap gap-2 mb-4 ws-hl-mine-chips');
+        var tools = h.el('div', 'd-flex flex-wrap align-items-center gap-4 mb-3 ws-hl-mine-tools');
+        var list = h.el('ul', 'list-unstyled mb-0 ws-hl-mine-list');
+        var foot = h.el('div', 'mt-4 text-center');
+        var title = h.el('h2', 'h5 mb-0 ws-grow');
+
+        if (o.back) {
+            head.appendChild(o.back);
+        }
+
+        title.appendChild(h.icon('bi-highlighter', 'me-2'));
+        title.appendChild(document.createTextNode(h.t('hl_mine')));
+        head.appendChild(title);
+        card.appendChild(head);
+        card.appendChild(body);
+        chips.setAttribute('role', 'group');
+        chips.setAttribute('aria-label', h.t('hl_mine'));
+        body.appendChild(chips);
+        body.appendChild(tools);
+        body.appendChild(list);
+        body.appendChild(foot);
+        pane.appendChild(card);
+
+        // ── the tools: Select all, Remove n ──
+
+        var allLabel = h.el('label', 'd-inline-flex align-items-center gap-2 mb-0 small');
+        var allBox = h.el('input', 'check');
+        var remove = h.button('btn btn-sm btn-outline theme-danger rounded-pill', '', 'bi-trash');
+
+        allBox.type = 'checkbox';
+        allLabel.appendChild(allBox);
+        allLabel.appendChild(document.createTextNode(h.t('hl_mine_select_all')));
+        tools.appendChild(allLabel);
+        tools.appendChild(remove);
+
+        function choice() {
+            return { every: every, filter: filter, ids: Object.keys(picked).map(function (id) { return parseInt(id, 10); }) };
+        }
+
+        function drawTools() {
+            var n = mineRemoveCount(choice(), counts);
+            var label = remove.lastChild;
+
+            if (label && label.nodeType === 3) {
+                label.nodeValue = h.t('hl_mine_remove', n);
+            } else {
+                remove.appendChild(document.createTextNode(h.t('hl_mine_remove', n)));
+            }
+
+            remove.disabled = busy || n === 0;
+            allBox.checked = every;
+            allBox.indeterminate = !every && Object.keys(picked).length > 0;
+            tools.classList.toggle('d-none', counts[countKey(filter)] === 0);
+        }
+
+        allBox.addEventListener('change', function () {
+            every = allBox.checked;
+            picked = {};
+
+            Array.prototype.forEach.call(list.querySelectorAll('input.check'), function (box) {
+                box.checked = every;
+            });
+
+            drawTools();
+        });
+
+        remove.addEventListener('click', function () {
+            var chosen = choice();
+            var n = mineRemoveCount(chosen, counts);
+
+            if (!n || busy) {
+                return;
+            }
+
+            h.ask(h.t('hl_mine_confirm', n), h.t('hl_mine_remove', n), true).then(function (yes) {
+                if (!yes) {
+                    return;
+                }
+
+                busy = true;
+                drawTools();
+
+                h.api('ws_highlights_remove', mineRemoveRequest(chosen)).then(function (data) {
+                    h.toast(h.t('hl_mine_removed', data.removed || 0), 'success');
+
+                    if (data.kept) {
+                        h.toast(h.t('hl_mine_kept', data.kept));
+                    }
+                }).catch(h.fail).then(function () {
+                    busy = false;
+                    load(true);
+                });
+            });
+        });
+
+        // ── the chips ──
+
+        function drawChips() {
+            h.clear(chips);
+
+            [['', 'hl_mine_all'], ['all', 'hl_mine_everyone'], ['me', 'hl_mine_only_me']].forEach(function (option) {
+                var on = option[0] === filter;
+                var chip = h.button('btn btn-sm rounded-pill ' + (on ? 'btn-solid theme-secondary' : 'btn-outline theme-secondary'), h.t(option[1]));
+
+                chip.setAttribute('aria-pressed', on ? 'true' : 'false');
+                chip.appendChild(h.el('span', 'ms-2 ws-hl-mine-count', String(counts[countKey(option[0])] || 0)));
+                chip.addEventListener('click', function () {
+                    if (filter !== option[0]) {
+                        filter = option[0];
+                        load(true);
+                    }
+                });
+                chips.appendChild(chip);
+            });
+        }
+
+        // ── the rows ──
+
+        function placeLabel(row) {
+            if (row.channel_kind === 'public' || row.channel_kind === 'private') {
+                return '#' + row.channel_name;
+            }
+
+            return row.channel_name;
+        }
+
+        function rowNode(row) {
+            var item = h.el('li', 'ws-hl-mine-row');
+            var box = h.el('input', 'check mt-1');
+            var link = h.el('a', 'ws-hl-mine-link ws-grow');
+            var quote = h.el('div', 'ws-hl-mine-quote');
+            var mark = h.el('mark', 'ws-hl' + (row.scope === 'me' ? ' ws-hl-me' : ''), row.quote);
+            var meta = h.el('div', 'small fg-secondary d-flex flex-wrap gap-x-3 gap-y-1 mt-1');
+            var when = row.message_at ? new Date(row.message_at * 1000).toLocaleDateString((h.cfg && h.cfg.locale) || undefined) : '';
+
+            box.type = 'checkbox';
+            box.checked = every || !!picked[row.id];
+            box.setAttribute('aria-label', h.t('hl_mine_pick'));
+            box.addEventListener('change', function () {
+                if (every) {
+                    // Unticking one row of Select all leaves the loaded rows
+                    // ticked one by one, the others out.
+                    every = false;
+                    picked = {};
+                    rows.forEach(function (one) { picked[one.id] = true; });
+                }
+
+                if (box.checked) {
+                    picked[row.id] = true;
+                } else {
+                    delete picked[row.id];
+                }
+
+                drawTools();
+            });
+
+            mark.setAttribute('data-ws-tone', o.tone || 'primary');
+            quote.appendChild(mark);
+            link.href = mineHref(o.base, row);
+            link.appendChild(quote);
+            meta.appendChild(h.el('span', 'text-truncate', placeLabel(row)));
+
+            if (row.writer) {
+                meta.appendChild(h.el('span', '', row.writer));
+            }
+
+            if (when) {
+                meta.appendChild(h.el('span', '', when));
+            }
+
+            meta.appendChild(h.el('span', 'badge theme-secondary', row.scope === 'me' ? h.t('hl_mine_only_me') : h.t('hl_mine_everyone')));
+            link.appendChild(meta);
+
+            if (row.note) {
+                link.appendChild(h.el('div', 'small ws-hl-note mt-1', row.note));
+            }
+
+            item.appendChild(box);
+            item.appendChild(link);
+
+            return item;
+        }
+
+        function drawRows(fresh) {
+            if (fresh) {
+                h.clear(list);
+            }
+
+            h.clear(foot);
+
+            if (!rows.length) {
+                list.appendChild(h.el('li', 'fg-secondary ws-hl-mine-empty', counts.every ? h.t('hl_mine_none_here') : h.t('hl_mine_empty')));
+            }
+
+            if (more) {
+                var next = h.button('btn btn-sm btn-outline theme-secondary rounded-pill px-5', h.t('hl_mine_more'));
+
+                next.addEventListener('click', function () {
+                    next.disabled = true;
+                    load(false);
+                });
+                foot.appendChild(next);
+            }
+        }
+
+        function load(fresh) {
+            var after = (!fresh && rows.length) ? rows[rows.length - 1].id : 0;
+
+            if (fresh) {
+                rows = [];
+                picked = {};
+                every = false;
+            }
+
+            return h.api('ws_highlights_mine', { filter: filter, after: after }).then(function (data) {
+                var page = (data && data.rows) || [];
+
+                counts = (data && data.counts) || counts;
+                more = !!(data && data.more);
+                rows = rows.concat(page);
+                drawChips();
+
+                if (fresh) {
+                    h.clear(list);
+                }
+
+                page.forEach(function (row) {
+                    list.appendChild(rowNode(row));
+                });
+
+                drawRows(false);
+                drawTools();
+            }).catch(h.fail);
+        }
+
+        drawTools();
+        load(true);
+    }
+
+    if (typeof window !== 'undefined' && window.location) {
+        state.flash = flashParam(window.location.search);
+    }
+
+    var api = {
+        fold: fold, plainFromHtml: plainFromHtml, find: find, occurrenceAt: occurrenceAt, textMap: textMap, piecesOf: piecesOf, attach: attach,
+        flashParam: flashParam, mineHref: mineHref, mineRemoveRequest: mineRemoveRequest, mineRemoveCount: mineRemoveCount, myList: myList
+    };
 
     if (typeof window !== 'undefined') {
         window.PGWsHighlights = api;
