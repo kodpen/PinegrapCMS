@@ -307,12 +307,24 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-57.md: Is the designer's Prototype view rebuilt, and on which engine? (owner, 2026-11-15, in the architect's window)
 - decisions-made-product-58.md: Where are the rules and the earlier parts?
 - decisions-made-product-58.md: Can a reader highlight a part of a message? (owner, 2026-11-16, agent channel message 5547)
+- decisions-made-product-58.md: Who writes the plans for the website features the R&D agent proposed? (owner, 2026-11-16, agent channel messages 5651, 5667, 5694, 5697, 5739)
+- decisions-made-product-58.md: Which screens did the owner look at on 2026-11-16? (agent channel polls 59, 60, 61)
+- decisions-made-product-59.md: Where are the rules and the earlier parts?
+- decisions-made-product-59.md: May a draft replace a published page, and may a change wait for approval? (owner, 2026-11-16, polls 63, 64)
+- decisions-made-product-59.md: May the website feature plans add their tables? (owner, 2026-11-16, poll 65)
+- decisions-made-product-59.md: What happens to the rows of a record deleted for good? (owner, 2026-11-16, poll 66)
+- decisions-made-product-59.md: Who can be responsible for content, and who is told when a review date passes? (owner, 2026-11-16, polls 68, 69)
+- decisions-made-product-59.md: How does the share card start? (owner, 2026-11-16, poll 70)
+- decisions-made-product-59.md: What do customers see of each other's prototype comments, and how long are they kept? (owner, 2026-11-16, polls 71, 72)
+- decisions-made-product-59.md: Is an app mode built, and what is the consent for news notifications? (owner, 2026-11-16, polls 73, 74)
 - decisions-made-product-6.md: What happens to a recurring line that starts after the order date? (#3310)
 - decisions-made-product-6.md: How is a subscription price change noticed and applied? (#3311)
 - decisions-made-product-6.md: Does the panel get an operator Subscriptions screen? (#3343)
 - decisions-made-product-6.md: Does the visitor AI assistant start in 2026.11.0? (#3313)
 - decisions-made-product-6.md: Does the add-on system start in 2026.11.0? (#3344)
 - decisions-made-product-6.md: Does the printed order show the recipient's shipping card? (#3346)
+- decisions-made-product-60.md: Where are the rules and the earlier parts?
+- decisions-made-product-60.md: What does the click and scroll map count, and how does it start? (owner, 2026-11-16, polls 67, 75)
 - decisions-made-product-7.md: Do international labels carry customs data? (#3408)
 - decisions-made-product-7.md: Can a merchant request a carrier pickup from the panel? (#3415)
 - decisions-made-product-7.md: Does ShipWorks record tracking numbers through the shipment write path? (#3443)
@@ -529,6 +541,9 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-workspace-35.md: Which of the R&D agent's three proposals go into plans? (owner, 2026-11-15, agent channel poll 54)
 - decisions-made-workspace-35.md: What is the architect's reading here, not his words?
 - decisions-made-workspace-35.md: Do message boxes keep a maximum width on a wide screen? (owner, 2026-11-15, agent channel poll 47)
+- decisions-made-workspace-36.md: Where are the rules and the earlier parts?
+- decisions-made-workspace-36.md: Do the "Add to the plan" and the "New plan" drawers look the same? (owner, 2026-11-16, to the architect)
+- decisions-made-workspace-36.md: What is the architect's reading here, not his words?
 - decisions-made-workspace-4.md: May a thread end in a webhook box's URL? (#3410)
 - decisions-made-workspace-4.md: How does a customer with no order in N days produce a follow-up? (#3416, part 2)
 - decisions-made-workspace-4.md: Is `contacts.lead_source` picked from `referral_sources`? (#3416, part 3)
