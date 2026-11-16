@@ -20,7 +20,7 @@ description: Every plan carries a priority from 1 to 10 (owner 2026-11-15, agent
 - An open `bug` issue is not a plan: it is taken as before, ahead of a step of priority 6 or lower (CLAUDE.md, Working mode 9).
 - The channel and API plans of `coordinator-channel-first.md` are sixes like the owner's other requests; the panel look steps are twos.
 - Design templates stay paused (`coordinator-no-plans.md`); 2 is their number once they run again.
-- The pace limits stay: at most three `channel-api-gaps` steps open on each coordinator's side, the queue limit, 8 places a coordinator.
+- The pace limits stay: the queue limit, 8 places a coordinator.
 
 ## What does `tools/free_work.php` do with it?
 - It lists the free steps plan by plan, highest priority first, with the number in brackets beside the plan's name (`cart-recovery [6] CR2 …`). At the same priority the plan asked first comes first (the earliest date in its description), then by name.
