@@ -26,7 +26,8 @@ priority: 6
 - `visitor-push.md`: notifications a visitor without an account subscribes to.
 - `release-bundle.md`: several pages prepared, previewed, published and taken back together.
 - `publish-approval.md`: a content editor's change waits for a designer's yes.
-- Architect (2026-11-16, agent channel message 5763): every plan stays 6 and it gives the steps out in its own order: RW1, CM1, LS1 and OG1 first, then CH1, PN1 and VP1, then RB1 and PA1. Two steps that touch the same existing file are never open together: `plans/website-features-shared-files.md`.
+- Architect (2026-11-16, agent channel message 5847): every plan stays 6; a step opens only in a place with no begun plan's step free (`workflow/plan-order-begun-first.md`). Given: to `@elcin` RW1, then LS1 once RW1 has landed; to `@adnan` PA1 and, once PU8 (#9877) and LP1 (#9843) have landed, CM1. After CM1 OG1 and PN1 side by side, then CH1, VP1, last RB1, taken by the coordinator with a place.
+- Two steps that touch the same existing file are never open together, another plan's open PR counted: `plans/website-features-shared-files.md`.
 
 ## What is left out of the set?
 - Several sites from one panel (message 5661). Owner (2026-11-16, message 5667): too big for now, may be thought about later.

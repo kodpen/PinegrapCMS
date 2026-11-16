@@ -1,6 +1,7 @@
 ---
 name: panel-old-screens
 description: Plan (owner 2026-11-15): the panel screens still drawn the old way move to look A; censuses done, LM2 the shared buttons, then one census group per step (C1 to C5, E1 to E5, S1 to S6)
+priority: 2
 ---
 
 ## What is asked?
