@@ -435,13 +435,16 @@ const StyleDesigner = (function () {
 
     // ========================= TREE SAFETY HELPERS =========================
     // Silently assign a new _id to every node that is missing one.
-    // Called at init time — no user-visible side effects.
-    function _backfillIds(node) {
+    // Called at init time — no user-visible side effects. The counter first
+    // goes past the ids the tree already holds, so a filled-in id is never
+    // one of them (`inner`: a recursive call, already counted).
+    function _backfillIds(node, inner) {
         if (!node || typeof node !== 'object') return;
+        if (!inner) _sdRaiseIdCounter(node);
         _sdNodeObjects(node);
         if (!node._id) node._id = gid();
         if (node.children && node.children.length) {
-            for (var i = 0; i < node.children.length; i++) _backfillIds(node.children[i]);
+            for (var i = 0; i < node.children.length; i++) _backfillIds(node.children[i], true);
         }
     }
 
@@ -945,6 +948,8 @@ const StyleDesigner = (function () {
                             // snapshot of the old one (kept after a save) no
                             // longer says what is stored.
                             delete _sharedSnapshots[sid];
+                            // Its ids count for the nodes added from now on.
+                            if (parsed) _sdRaiseIdCounter(parsed);
                             _sharedCache[sid] = { name: item.name || '', tree: parsed, system_region_config: item.system_region_config || null,
                                                   // Opened to content editors, and whether this
                                                   // operator is one of them (_sdSharedOpenToContent()).
@@ -4043,7 +4048,7 @@ const StyleDesigner = (function () {
     function _replaceTreeWithPrefetch(newTree, opts) {
         opts = opts || {};
         tree = _sdTreeObjects(newTree);
-        nodeIdCounter = reindex(tree);
+        nodeIdCounter = _sdIdFloor();
         if (opts.selectedNodeId) {
             selectedNode = findNodeById(opts.selectedNodeId, tree) || null;
         } else {
@@ -5026,8 +5031,8 @@ const StyleDesigner = (function () {
         // Backwards compat — older snapshots (pre-shared-aware) were bare strings.
         if (typeof prev === 'string') prev = { tree: prev, shared: {}, assets: null };
         tree = JSON.parse(prev.tree);
-        nodeIdCounter = reindex(tree);
         _restoreShared(prev.shared);
+        nodeIdCounter = _sdIdFloor();
         _restoreAssetFields(prev.assets);
         selectedNode = null;
         selectedNodes = [];
@@ -5046,8 +5051,8 @@ const StyleDesigner = (function () {
         var nxt = redoStack.pop();
         if (typeof nxt === 'string') nxt = { tree: nxt, shared: {}, assets: null };
         tree = JSON.parse(nxt.tree);
-        nodeIdCounter = reindex(tree);
         _restoreShared(nxt.shared);
+        nodeIdCounter = _sdIdFloor();
         _restoreAssetFields(nxt.assets);
         selectedNode = null;
         selectedNodes = [];
@@ -5065,10 +5070,35 @@ const StyleDesigner = (function () {
     function reindex(n) {
         var max = 0;
         (function w(x) {
-            if (x._id) { var v = parseInt(x._id.replace('sd_', ''), 10); if (v > max) max = v; }
-            if (x.children) x.children.forEach(w);
+            if (!x || typeof x !== 'object') return;
+            var m = /^sd_(\d+)$/.exec(String(x._id || ''));
+            if (m) { var v = parseInt(m[1], 10); if (v > max) max = v; }
+            if (Array.isArray(x.children)) x.children.forEach(w);
         })(n);
         return max;
+    }
+
+    // Every saved tree (a page, a shared component, a system widget)
+    // numbers its nodes from sd_1, so the same id in two trees is normal
+    // and the canvas resolves an element with _sdFindNodeForEl(id, el).
+    // A node added to any tree must still get a number none of the loaded
+    // trees holds, or it repeats an id inside its own tree: the counter is
+    // kept above the page tree and every tree in the shared cache.
+    function _sdIdFloor() {
+        var max = tree ? reindex(tree) : 0;
+        Object.keys(_sharedCache).forEach(function (k) {
+            var c = _sharedCache[k];
+            if (c && c.tree) {
+                var m = reindex(c.tree);
+                if (m > max) max = m;
+            }
+        });
+        return max;
+    }
+    // Raises the counter past the ids of tree `t`, or of every loaded tree.
+    function _sdRaiseIdCounter(t) {
+        var m = t ? reindex(t) : _sdIdFloor();
+        if (m > nodeIdCounter) nodeIdCounter = m;
     }
 
     // ========================= LABELS =========================
@@ -14452,6 +14482,12 @@ const StyleDesigner = (function () {
                 if (!_hasChildren && _SD_BOOKING_FILLED[_sec]) {
                     var _bkSample = _sdBookingSectionSample(_sec, doc);
                     if (_bkSample) _hint = _bkSample;
+                }
+                // A calendar view's picker and an event view's Reserve
+                // button, likewise (_sdCalendarSectionSample()).
+                if (!_hasChildren) {
+                    var _calSample = _sdCalendarSectionSample(_getSystemWidgetRegionType(node), _sec, doc, _sysWidgetRenderCfg);
+                    if (_calSample) _hint = _calSample;
                 }
                 // A shopping cart's applied offers, campaign gifts and quick
                 // add box, likewise (_sdCartSectionSample()).
@@ -42160,7 +42196,8 @@ const StyleDesigner = (function () {
     // A page saved with the section keeps printing it until its user turns
     // it into the list.
     function _sdSectionOpensAsList(kind, section) {
-        return (kind === 'comments' && section === 'comment_pagination') || (kind === 'search_results' && section === 'pagination');
+        return (kind === 'comments' && section === 'comment_pagination') || (kind === 'search_results' && section === 'pagination')
+            || (kind === 'calendar_view' && section === 'month_grid');
     }
 
     // The panel's button under the Section binding list, '' for a section
@@ -42173,7 +42210,9 @@ const StyleDesigner = (function () {
         return '<button type="button" class="btn btn-sm btn-outline theme-primary w-100 mt-2 text-wrap" data-sd-section-open>' +
                 '<span class="bi bi-magic me-1"></span>' + esc(_sdT('Convert to design elements')) + '</button>' +
             '<div style="font-size:.66rem;color:#888;margin-top:3px">' +
-                esc(_sdT('Puts page links you design here: previous, one link per page, next. The site then draws them instead of its own pagination.')) +
+                esc(section === 'month_grid'
+                    ? _sdT('Puts a month grid you design here: the day names, the weeks, the days and their events. The site fills it instead of drawing its own grid.')
+                    : _sdT('Puts page links you design here: previous, one link per page, next. The site then draws them instead of its own pagination.')) +
             '</div>';
     }
 
@@ -42188,7 +42227,7 @@ const StyleDesigner = (function () {
         var parent = hit ? hit.parent : null;
         var idx = (parent && Array.isArray(parent.children)) ? parent.children.indexOf(node) : -1;
         if (idx === -1) return null;
-        var nav = _sdPagingListStarter(bs);
+        var nav = (b.section === 'month_grid') ? _sdCalendarGridFromSection(bs) : _sdPagingListStarter(bs);
         if (node.props.cssClass) nav.props.cssClass = node.props.cssClass;
         if (b.eo_visible_if) nav.props._bindings = { eo_visible_if: b.eo_visible_if };
         parent.children.splice(idx, 1, nav);
@@ -43057,6 +43096,97 @@ const StyleDesigner = (function () {
         box.setAttribute('inert', '');
         box.style.cssText = 'pointer-events:none;flex:1 1 100%' + (section === 'booking_calendar' ? ';max-width:20rem' : '');
         box.innerHTML = html + '<div class="small text-body-secondary fst-italic mt-1">' + esc(notes[section]) + '</div>';
+        return box;
+    }
+
+    // ── Calendar widgets (calendar_view, calendar_event_view) ──────────────
+    // The month grid opens as the grid lists (_sdSectionToList(), the
+    // calendar.* sources of widgets_lists_calendar.php): the section goes
+    // and the lists draw the grid. The picker and the Reserve button depend
+    // on the request (the visitor's choice, the address, the event's places
+    // and the form's token): settings only, drawn by twins of the pure
+    // builders in includes/fn/widgets_calendar.php.
+
+    // The month grid a converted month_grid section becomes: the palette's
+    // Month grid, its table carrying the class the classic grid's has.
+    /* @pg-site-output */
+    function _sdCalendarGridFromSection(bs) {
+        var grid = _sdCalendarListStarter('calendar.weeks', bs);
+        var table = grid.children && grid.children[0];
+        if (bs && table && table.props) table.props.cssClass = String(table.props.cssClass || '') + ' pg-sw-calendar-grid';
+        return grid;
+    }
+
+    // pg_sw_calendar_picker_html()
+    /* @pg-site-output */
+    function _sdCalendarPickerHtml(action, hidden, calendars, calendarId, view) {
+        var opts = '';
+        if (calendars.length > 1) {
+            opts += '<select name="calendar_id" class="form-select form-select-sm w-auto" aria-label="' + esc(_sdT('Calendar')) + '">'
+                + '<option value="">' + esc(_sdT('All Calendars')) + '</option>';
+            calendars.forEach(function (c) {
+                opts += '<option value="' + (parseInt(c.id, 10) || 0) + '"' + ((parseInt(c.id, 10) || 0) === (parseInt(calendarId, 10) || 0) ? ' selected' : '') + '>' + esc(c.name) + '</option>';
+            });
+            opts += '</select>';
+        }
+        opts += '<select name="view" class="form-select form-select-sm w-auto" aria-label="' + esc(_sdT('View')) + '">'
+            + '<option value="monthly"' + (view === 'monthly' ? ' selected' : '') + '>' + esc(_sdT('Monthly')) + '</option>'
+            + '<option value="weekly"' + (view === 'weekly' ? ' selected' : '') + '>' + esc(_sdT('Weekly')) + '</option>'
+            + '</select>';
+        return '<form method="get" action="' + esc(action) + '" class="d-flex flex-wrap align-items-center gap-2">'
+            + hidden
+            + opts
+            + '<button type="submit" class="btn btn-sm btn-outline-secondary">' + esc(_sdT('Update')) + '</button>'
+            + '</form>';
+    }
+
+    // pg_sw_calendar_reserve_form_html()
+    /* @pg-site-output */
+    function _sdCalendarReserveHtml(action, token, sendTo, pageId, eventId, recurrence, label) {
+        return '<form action="' + esc(action) + '" method="post" class="d-inline">'
+            + token
+            + '<input type="hidden" name="send_to" value="' + esc(sendTo) + '">'
+            + '<input type="hidden" name="page_id" value="' + (parseInt(pageId, 10) || 0) + '">'
+            + '<input type="hidden" name="calendar_event_id" value="' + (parseInt(eventId, 10) || 0) + '">'
+            + '<input type="hidden" name="recurrence_number" value="' + (parseInt(recurrence, 10) || 0) + '">'
+            + '<input type="hidden" name="require_cookies" value="true">'
+            + '<button type="submit" class="btn btn-primary">' + esc(label) + '</button>'
+            + '</form>';
+    }
+
+    // What a calendar widget prints in a section the server fills, with
+    // the widget's settings `cfg`: the picker (two sample calendars unless
+    // the widget shows one; nothing in the upcoming view) or the Reserve
+    // button of an event open for reservations. '' for any other section.
+    /* @pg-site-output */
+    function _sdCalendarSectionHtml(kind, section, cfg) {
+        var c = cfg || {};
+        if (kind === 'calendar_view' && section === 'calendar_picker') {
+            if (c.default_view === 'upcoming') return '';
+            var ids = Array.isArray(c.calendar_ids) ? c.calendar_ids : [];
+            var calendars = ids.length === 1 ? [{ id: ids[0], name: _sdT('Events') }]
+                : [{ id: 1, name: _sdT('Events') }, { id: 2, name: _sdT('Workshops') }];
+            return _sdCalendarPickerHtml('#', '', calendars, 0, c.default_view === 'weekly' ? 'weekly' : 'monthly');
+        }
+        if (kind === 'calendar_event_view' && section === 'reserve_form') {
+            return _sdCalendarReserveHtml('#', '', '#', 0, 0, 0, _sdT('Reserve'));
+        }
+        return '';
+    }
+
+    // The sample of a calendar section as a canvas box: inert, never saved,
+    // the words under it saying the site fills it per visitor.
+    function _sdCalendarSectionSample(kind, section, doc, cfg) {
+        var html = _sdCalendarSectionHtml(kind, section, cfg);
+        if (!html) return null;
+        var box = doc.createElement('div');
+        box.className = 'sd-section-binding-hint sd-section-sample';
+        box.setAttribute('inert', '');
+        box.style.cssText = 'pointer-events:none';
+        box.innerHTML = html + '<div class="small text-body-secondary fst-italic mt-1">'
+            + esc(section === 'reserve_form'
+                ? _sdT('The site shows the button while the event takes reservations, with the event\'s own words.')
+                : _sdT('The site lists the widget\'s calendars and keeps the visitor\'s choice.')) + '</div>';
         return box;
     }
 
@@ -73020,7 +73150,7 @@ const StyleDesigner = (function () {
         next.tree     = tree;
         undoStack     = next.undoStack || [];
         redoStack     = next.redoStack || [];
-        nodeIdCounter = next.nodeIdCounter || reindex(tree);
+        nodeIdCounter = Math.max(next.nodeIdCounter || 0, _sdIdFloor());
         selectedNode  = null;
         selectedNodes = [];
         _sdCondCanvasState = '';
@@ -76384,7 +76514,7 @@ const StyleDesigner = (function () {
         _activeKey = (design && design.activeKey && _pgPageByKey(design.activeKey)) ? design.activeKey : _pages[0].key;
         _pgTabGroupRevealActive();
         var a = _pgActivePage();
-        tree = a.tree; undoStack = []; redoStack = []; nodeIdCounter = a.nodeIdCounter || reindex(tree);
+        tree = a.tree; undoStack = []; redoStack = []; nodeIdCounter = Math.max(a.nodeIdCounter || 0, _sdIdFloor());
         _pages.forEach(function (p) { p.baseline = (p.page_id === 0 || p.converted) ? null : _pgBaselineOf(p); });
 
         _pgLoadPageIntoFields(a);
@@ -81080,36 +81210,54 @@ const StyleDesigner = (function () {
         return out;
     }
 
+    // The canvas wrappers that draw `node`: those with its id that resolve
+    // to it (_sdFindNodeForEl()), never a node of another tree that shares
+    // the id. A shared component placed twice draws it twice.
+    function _sdIssueWrapsOf(node) {
+        var out = [];
+        if (!canvasDoc || !node || !node._id) return out;
+        canvasDoc.querySelectorAll('.sd-wrap[data-sd-id="' + String(node._id).replace(/["\\]/g, '') + '"]').forEach(function (w) {
+            if (_sdFindNodeForEl(node._id, w) === node) out.push(w);
+        });
+        return out;
+    }
+
     // ── Canvas badges ─────────────────────────────────────────────────
     // A small "!" on the wrapper of every node with an issue, so the
     // operator sees WHERE the warning is without opening the list. Kept in
     // sync by validation (debounced) and re-applied after each render.
     function applyIssueBadges() {
         if (!canvasDoc || !canvasDoc.body) return;
-        var byId = {};
+        // One group per node, not per id: a page node and a node of a
+        // widget may carry the same id (_sdIdFloor()).
+        var groups = [];
         _validationIssues.concat(_sdServerAuditIssues).forEach(function (i) {
             if (!i.node || !i.node._id) return;
-            (byId[i.node._id] = byId[i.node._id] || []).push(i.label);
+            var g = null;
+            for (var k = 0; k < groups.length; k++) if (groups[k].node === i.node) { g = groups[k]; break; }
+            if (!g) { g = { node: i.node, labels: [] }; groups.push(g); }
+            g.labels.push(i.label);
         });
         canvasDoc.querySelectorAll('.sd-issue-badge').forEach(function (b) { b.remove(); });
         canvasDoc.querySelectorAll('.sd-wrap.sd-has-issue').forEach(function (w) { w.classList.remove('sd-has-issue'); });
         var badged = [];
-        Object.keys(byId).forEach(function (id) {
-            var wrap = canvasDoc.querySelector('.sd-wrap[data-sd-id="' + id + '"]');
-            if (!wrap) return;
-            wrap.classList.add('sd-has-issue');
-            var b = canvasDoc.createElement('span');
-            b.className = 'sd-issue-badge';
-            b.setAttribute('title', byId[id].join('\n'));
-            b.textContent = '!';
-            b.addEventListener('click', function (e) {
-                e.stopPropagation(); e.preventDefault();
-                var n = _sdFindNodeForEl(id, wrap);
-                if (n) { selectedNode = n; selectedNodes = []; render(); }
-                openValidationPanel(true);
+        groups.forEach(function (g) {
+            var id = g.node._id;
+            _sdIssueWrapsOf(g.node).forEach(function (wrap) {
+                wrap.classList.add('sd-has-issue');
+                var b = canvasDoc.createElement('span');
+                b.className = 'sd-issue-badge';
+                b.setAttribute('title', g.labels.join('\n'));
+                b.textContent = '!';
+                b.addEventListener('click', function (e) {
+                    e.stopPropagation(); e.preventDefault();
+                    var n = _sdFindNodeForEl(id, wrap);
+                    if (n) { selectedNode = n; selectedNodes = []; render(); }
+                    openValidationPanel(true);
+                });
+                wrap.appendChild(b);
+                badged.push(wrap);
             });
-            wrap.appendChild(b);
-            badged.push(wrap);
         });
         // New elements, put on after the fidelity pass placed the old ones
         // (the validation runs debounced): the badges of see-through and
@@ -82468,7 +82616,7 @@ const StyleDesigner = (function () {
                     tree = cfg.treeData;
                     _sdTreeObjects(tree);
                     _normalizeToggleableShowState(tree);
-                    nodeIdCounter = reindex(tree);
+                    nodeIdCounter = _sdIdFloor();
                     hadExistingTree = true;
                 }
                 else tree = createDefaultTree();

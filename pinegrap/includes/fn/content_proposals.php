@@ -571,6 +571,16 @@ function pg_content_proposals_hold($user, $page_id, $style_id, $merged, $page)
             'error' => lang(array('string' => 'Your change to "{var:1}" could not be kept for approval, so nothing was saved. Try again.', 'vars' => array($name))));
     }
 
+    // A withdrawn or replaced change takes its approval request back; a
+    // change that waits (again) is asked in the card's channel.
+    if ($waiting && pg_content_proposals_request_closes($action, (int) $waiting['message_id'])) {
+        pg_content_proposals_request_close($waiting, (int) $user['id']);
+    }
+
+    if (($action === 'insert') || ($action === 'replace')) {
+        pg_content_proposals_ask($user, $id, $page_id, $name);
+    }
+
     $message = '';
 
     if (($action === 'insert') || ($action === 'replace')) {
@@ -979,6 +989,7 @@ function pg_content_proposals_apply($user, $id)
         db_q("UPDATE design_proposals SET status = 'stale', error = ? WHERE id = ? AND status = 'pending'",
             array(($applied['error'] === 'gone') ? 'node gone' : 'page changed', (int) $row['id']));
         pg_content_proposals_bell_editor($row, 'stale');
+        pg_content_proposals_request_close($row, (int) $user['id']);
 
         return array('ok' => false, 'error' => lang('The page changed since this change was made, so it cannot be applied.'));
     }
@@ -996,6 +1007,7 @@ function pg_content_proposals_apply($user, $id)
     db_q("UPDATE design_proposals SET status = 'applied', applied_to = 'page', before_tree = ?, after_hash = ?, decided_by = ?, decided_at = ?, error = '' WHERE id = ?",
         array($before, pg_content_proposals_stored_hash((int) $row['page_id']), (int) $user['id'], time(), (int) $row['id']));
     pg_content_proposals_bell_editor($row, 'applied');
+    pg_content_proposals_request_close($row, (int) $user['id']);
 
     return array('ok' => true, 'error' => '');
 }
@@ -1039,6 +1051,7 @@ function pg_content_proposals_dismiss($user, $id, $reason)
     }
 
     pg_content_proposals_bell_editor($row, 'dismissed');
+    pg_content_proposals_request_close($row, (int) $user['id']);
 
     return array('ok' => true, 'error' => '');
 }
@@ -1335,4 +1348,288 @@ function pg_content_proposals_waiting_count($page_id = 0)
 
     return (int) db_value((string) pg_db_bind("SELECT COUNT(*) FROM design_proposals WHERE agent = ? AND status = 'pending'"
         . (((int) $page_id > 0) ? ' AND page_id = ' . (int) $page_id : ''), array(PG_CONTENT_PROPOSALS_AGENT), 'escape'));
+}
+
+/* ---------------------------------------------------------------------------
+   The Workspace request: the change asked in the card's channel
+   --------------------------------------------------------------------------- */
+
+// The most people a waiting change asks (WS_APPROVAL_MAX_PEOPLE).
+define('PG_CONTENT_PROPOSALS_ASK_MAX', 10);
+
+/**
+ * Is a waiting change asked in the Workspace? The Workspace on, a channel
+ * named on the card that is still an open public or private channel, an
+ * editor who may post there and at least one designer to ask. Otherwise
+ * the bell lines alone tell the designers. Pure.
+ *
+ * @param array $ctx workspace (bool), channel_id (the card's), channel (the
+ *                   ws_channels row or null), may_post (bool), approvers (int[])
+ * @return bool
+ */
+function pg_content_proposals_ask_where($ctx)
+{
+    $channel = isset($ctx['channel']) && is_array($ctx['channel']) ? $ctx['channel'] : null;
+
+    return !empty($ctx['workspace']) && ((int) ($ctx['channel_id'] ?? 0) > 0) && $channel
+        && ((int) $channel['id'] === (int) $ctx['channel_id'])
+        && in_array((string) $channel['kind'], array('public', 'private'), true)
+        && ((int) $channel['archived_at'] === 0)
+        && !empty($ctx['may_post']) && !empty($ctx['approvers']);
+}
+
+/**
+ * The people a change asks: the channel's members of roles 0 and 1, in the
+ * order given, never the editor, at most PG_CONTENT_PROPOSALS_ASK_MAX. Pure.
+ *
+ * @param array $members rows of user_id, role
+ * @param int   $editor_id
+ * @return int[]
+ */
+function pg_content_proposals_approvers_pick($members, $editor_id)
+{
+    $out = array();
+
+    foreach ((array) $members as $row) {
+        $user_id = (int) ($row['user_id'] ?? 0);
+
+        if (($user_id > 0) && ($user_id !== (int) $editor_id) && ((int) ($row['role'] ?? 3) <= 1) && !in_array($user_id, $out, true)) {
+            $out[] = $user_id;
+        }
+
+        if (count($out) >= PG_CONTENT_PROPOSALS_ASK_MAX) {
+            break;
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * What a settled request does to its change. Only a designer or an
+ * administrator at that moment applies (a yes) or dismisses (a no); anybody
+ * else's answer is noted on the change, which keeps waiting. A request taken
+ * back, expired, or about a change no longer waiting does nothing. Pure.
+ *
+ * @param string   $outcome     approved | rejected | expired | withdrawn
+ * @param int|null $closer_role the role of whoever settled it now (null: unknown)
+ * @param string   $status      the change's status
+ * @return string apply | dismiss | note | none
+ */
+function pg_content_proposals_settle_plan($outcome, $closer_role, $status)
+{
+    if (((string) $status !== 'pending') || !in_array($outcome, array('approved', 'rejected'), true)) {
+        return 'none';
+    }
+
+    if (($closer_role === null) || ((int) $closer_role > 1)) {
+        return 'note';
+    }
+
+    return ($outcome === 'approved') ? 'apply' : 'dismiss';
+}
+
+/**
+ * The change's steps with one more answer noted that applied nothing. Pure.
+ *
+ * @param array|null $steps
+ * @param int        $user_id
+ * @param string     $decision approved | rejected
+ * @param int        $now
+ * @return array
+ */
+function pg_content_proposals_noted($steps, $user_id, $decision, $now)
+{
+    $steps = is_array($steps) ? $steps : array();
+    $noted = (isset($steps['noted']) && is_array($steps['noted'])) ? $steps['noted'] : array();
+    $noted[] = array('user_id' => (int) $user_id, 'decision' => (string) $decision, 'at' => (int) $now);
+    $steps['noted'] = $noted;
+
+    return $steps;
+}
+
+/**
+ * The note a person gave with their answer. Pure.
+ *
+ * @param array $answers ws_approval_people() rows
+ * @param int   $user_id
+ * @return string
+ */
+function pg_content_proposals_answer_note($answers, $user_id)
+{
+    foreach ((array) $answers as $row) {
+        if ((int) ($row['user_id'] ?? 0) === (int) $user_id) {
+            return (string) ($row['note'] ?? '');
+        }
+    }
+
+    return '';
+}
+
+/**
+ * Does this save take the change's approval request back? A change
+ * withdrawn or replaced that was asked. Pure.
+ *
+ * @param string $action insert | replace | withdraw | none
+ * @param int    $message_id the request's message on the change (0: none)
+ * @return bool
+ */
+function pg_content_proposals_request_closes($action, $message_id)
+{
+    return in_array($action, array('replace', 'withdraw'), true) && ((int) $message_id > 0);
+}
+
+/**
+ * Is the Workspace on, with its approval requests installed? Loads it.
+ *
+ * @return bool
+ */
+function pg_content_proposals_workspace()
+{
+    if (!defined('WORKSPACE_ENABLED') || !WORKSPACE_ENABLED) {
+        return false;
+    }
+
+    if (!function_exists('ws_approval_create')) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
+    }
+
+    return function_exists('ws_enabled') && ws_enabled() && function_exists('ws_approvals_ready') && ws_approvals_ready();
+}
+
+/**
+ * Asks a waiting change in the card's channel as an approval request opened
+ * as the editor, the page tagged, rule "any", its designers asked; keeps the
+ * request's channel and message on the change (0 when it is asked nowhere).
+ *
+ * @param array  $user the editor
+ * @param int    $id   the change
+ * @param int    $page_id
+ * @param string $name the page's name
+ * @return bool asked
+ */
+function pg_content_proposals_ask($user, $id, $page_id, $name)
+{
+    $channel_id = 0;
+    $message_id = 0;
+    $settings = pg_content_proposals_settings();
+    $workspace = ((int) $id > 0) && ($settings['channel_id'] > 0) && pg_content_proposals_workspace();
+
+    if ($workspace) {
+        $channel = ws_channel($settings['channel_id']);
+        $viewer = ws_viewer($user);
+        $members = $channel ? db_items("SELECT m.user_id, u.user_role AS role FROM ws_channel_members AS m
+            INNER JOIN user AS u ON u.user_id = m.user_id
+            WHERE m.channel_id = '" . (int) $channel['id'] . "' AND u.user_role <= 1 ORDER BY u.user_role, m.user_id") : array();
+        $approvers = $channel ? pg_content_proposals_approvers_pick(
+            array_map(function ($user_id) { return array('user_id' => $user_id, 'role' => 0); },
+                ws_approval_eligible($channel, array_column((array) $members, 'user_id'))), (int) $user['id']) : array();
+
+        $ask = pg_content_proposals_ask_where(array(
+            'workspace'  => true,
+            'channel_id' => $settings['channel_id'],
+            'channel'    => $channel,
+            'may_post'   => $channel && ws_can_post_channel($viewer, $channel),
+            'approvers'  => $approvers,
+        ));
+
+        if ($ask) {
+            $created = ws_approval_create($viewer, $channel, array(
+                'title'     => lang(array('string' => 'Content change: {var:1}', 'vars' => array((string) $name))),
+                'text'      => lang(array('string' => 'A content change to {var:1} waits for approval. A designer\'s yes puts it on the site; a no dismisses it with its note.',
+                    'vars' => array('<#page:' . (int) $page_id . '>'))),
+                'approvers' => $approvers,
+                'rule'      => 'any',
+            ), 0, false);
+
+            if ($created['ok']) {
+                $channel_id = (int) $channel['id'];
+                $message_id = (int) $created['message_id'];
+            }
+        }
+    }
+
+    if ((int) $id > 0) {
+        db_q("UPDATE design_proposals SET channel_id = ?, message_id = ? WHERE id = ? AND agent = ?",
+            array($channel_id, $message_id, (int) $id, PG_CONTENT_PROPOSALS_AGENT));
+    }
+
+    return $message_id > 0;
+}
+
+/**
+ * Takes the change's approval request back, when it has one still open: a
+ * line of the system's says so in the channel, and its answer can no longer
+ * settle anything. Settled as the Workspace's own close settles it; the
+ * person may have lost the channel since, and the change is the authority.
+ *
+ * @param array $row      design_proposals row
+ * @param int   $actor_id who withdrew, replaced or decided the change
+ */
+function pg_content_proposals_request_close($row, $actor_id)
+{
+    if (((int) ($row['message_id'] ?? 0) <= 0) || !pg_content_proposals_workspace()) {
+        return;
+    }
+
+    $approval = ws_approval_of_message((int) $row['message_id']);
+
+    if ($approval && ((int) $approval['closed_at'] === 0) && ((int) $approval['channel_id'] === (int) $row['channel_id'])) {
+        ws_approval_settle($approval, 'withdrawn', (int) $actor_id);
+    }
+}
+
+/**
+ * What a settled approval request does to the change it asked (called once
+ * from ws_approval_settle()). A designer's yes applies the change in this
+ * request, with every check of Apply; a designer's no dismisses it with the
+ * answer's note; anybody else's answer is noted and applies nothing. The
+ * approvers list is not trusted: the role is read now.
+ *
+ * @param array  $approval ws_approvals row
+ * @param string $outcome
+ * @param int    $actor_id whoever's answer settled it
+ */
+function pg_content_proposals_settled($approval, $outcome, $actor_id)
+{
+    if (!in_array($outcome, array('approved', 'rejected'), true) || ((int) ($approval['message_id'] ?? 0) <= 0) || !pg_content_proposals_ready()) {
+        return;
+    }
+
+    $row = db_item((string) pg_db_bind("SELECT * FROM design_proposals WHERE agent = ? AND message_id = ? AND channel_id = ? LIMIT 1",
+        array(PG_CONTENT_PROPOSALS_AGENT, (int) $approval['message_id'], (int) $approval['channel_id']), 'escape'));
+
+    if (!is_array($row)) {
+        return;
+    }
+
+    $closer = ((int) $actor_id > 0) ? pg_load_user_row((int) $actor_id) : null;
+    $closer = is_array($closer) ? $closer : null;
+    $plan = pg_content_proposals_settle_plan($outcome, $closer ? (int) $closer['role'] : null, (string) $row['status']);
+    $name = (string) db_value((string) pg_db_bind("SELECT page_name FROM page WHERE page_id = ? LIMIT 1", array((int) $row['page_id']), 'escape'));
+    $said = '';
+
+    if ($plan === 'apply') {
+        $result = pg_content_proposals_apply($closer, (int) $row['id']);
+
+        if (!$result['ok']) {
+            $said = lang(array('string' => 'The change to "{var:1}" was not applied: {var:2}', 'vars' => array($name, $result['error'])));
+        }
+    } elseif ($plan === 'dismiss') {
+        $note = pg_content_proposals_answer_note(ws_approval_people((int) $approval['id']), (int) $actor_id);
+        $result = pg_content_proposals_dismiss($closer, (int) $row['id'], mb_substr($note, 0, PG_CONTENT_PROPOSALS_REASON_MAX));
+
+        if (!$result['ok']) {
+            $said = lang(array('string' => 'The change to "{var:1}" was not dismissed: {var:2}', 'vars' => array($name, $result['error'])));
+        }
+    } elseif ($plan === 'note') {
+        $steps = pg_content_proposals_noted(json_decode((string) $row['steps'], true), (int) $actor_id, $outcome, time());
+        db_q("UPDATE design_proposals SET steps = ? WHERE id = ? AND status = 'pending'",
+            array((string) json_encode($steps, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), (int) $row['id']));
+        $said = lang(array('string' => 'Only a designer can put the change to "{var:1}" on the site: it still waits in Waiting Content Changes.', 'vars' => array($name)));
+    }
+
+    if (($said !== '') && function_exists('ws_message_system')) {
+        ws_message_system((int) $approval['channel_id'], $said);
+    }
 }

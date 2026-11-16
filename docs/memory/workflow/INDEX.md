@@ -100,6 +100,7 @@
 - decisions-made-product-61.md: Decisions list, product part 61 (2026-11-16 on): the owner's looks at built screens from poll 76 on (highlight on a message, link card under a message, the Planning Board's two drawers)
 - decisions-made-product-62.md: Decisions list, product part 62 (2026-11-16 on): the owner's looks at built screens from poll 79 on (the "Clicks and scrolling" section of Visitors, the share card, My highlights)
 - decisions-made-product-63.md: Decisions list, product part 63 (2026-11-16 on): the owner's looks of polls 89 (prototype view, No with what he wants) and 90 (waiting content changes, Yes), and his Design Canvas requests
+- decisions-made-product-64.md: Decisions list, product part 64 (2026-11-16 on): the second study's eight features and his answers, picture text translation's first version, the architect's rules for DG1, MP1 and VP5
 - decisions-made-product-7.md: Decisions list, product part 7 (2026-10-30 on): customs data on international labels, carrier pickup requests from the panel, ShipWorks through the shipment write path
 - decisions-made-product-8.md: Decisions list, product part 8 (2026-10-30 midday on): Trendyol-carried packages refused by Create Label, starter dump corrections for #3330, marketing SMS in 2026.11.0, forum template wording
 - decisions-made-product-9.md: Decisions list, product part 9 (2026-10-30 afternoon on): form rules for visitors only, marketplace orders invoiced behind a switch, sales quote guest links and templates, Workspace density switch
@@ -119,6 +120,8 @@
 - decisions-made-schema-21.md: Decisions list, schema part 21 (2026-11-15 on): ws_mail_reminders, ws_profiles.mail_away, ws_approval_agents; the schema of polls 49 to 51 (agent duty, marks, cart touches, pop-ups)
 - decisions-made-schema-22.md: Decisions list, schema part 22 (2026-11-15 on): ws_profiles.quiet_hours and the link preview table (poll 54); the columns of ws_agent_feedback and auto_dialog_daily as confirmed
 - decisions-made-schema-23.md: Decisions list, schema part 23 (2026-11-16 on): ws_highlights; PU4's auto_dialogs columns as confirmed; the click map's page_click_daily; one ws_tasks column for the creating application
+- decisions-made-schema-24.md: Decisions list, schema part 24 (2026-11-16 on): the three site_push tables of visitor notifications, their columns and keys as the architect confirmed them for VP1
+- decisions-made-schema-25.md: Decisions list, schema part 25 (2026-11-16 on): the second study's tables and columns, the site_push_watch table, the file_translation table, a column for application command arguments
 - decisions-made-schema-3.md: Decisions list, schema part 3, approved from 2026-10-29 on: checkout page and legal acceptance on the order, record_revisions, cart_quotes, ws_saved_replies, shipment_labels; rules in part 1
 - decisions-made-schema-4.md: Decisions list, schema part 4 (2026-10-29 afternoon on): ws_flow_templates, ws_refs.source_type to VARCHAR, shipment_labels.order_return_id, config.speculation_prefetch; rules in part 1
 - decisions-made-schema-5.md: Decisions list, schema part 5 (2026-10-29 evening on): subscriptions tables and ENUMs, products customs columns, shipment_labels pickup, ws_events.contact_id; rules in part 1
@@ -160,6 +163,7 @@
 - decisions-made-workspace-34.md: Decisions made, workspace part 34 (2026-11-15 on): an agent question never looks like a poll; the open items line and the agent's progress note come out as drawn
 - decisions-made-workspace-35.md: Decisions made, workspace part 35 (2026-11-15 on): quiet hours, Translate on a message and the link preview card go into plans (poll 54); message boxes keep a maximum width on a wide screen
 - decisions-made-workspace-36.md: Decisions made, workspace part 36 (2026-11-16 on): the two plan drawers look the same; a question's picture stands in its box; an agent channel's tasks apart, a task's application marked
+- decisions-made-workspace-37.md: Decisions made, workspace part 37 (2026-11-16 on): channel commands grown in five packages, flows in the / list, an agent's command, a mention typed by hand becoming a tag, a question's picture look
 - decisions-made-workspace-4.md: Decisions list, workspace part 4 (2026-10-30 on): webhook URL digits exception, CRM seams 10 (N-days start, lead_source), flow run notices per chain
 - decisions-made-workspace-5.md: Decisions list, workspace part 5 (from 2026-10-30 evening): Workspace list and channel redrawn; who builds the design; one inbox; panel colours; a deleted Flows box takes its values; Today page
 - decisions-made-workspace-6.md: Decisions list, workspace part 6 (2026-11-01 on): calendar move writes a due date back; the pinned My Notes row opens the Workspace list; the list's top and the tour's place; flow draft card read-only

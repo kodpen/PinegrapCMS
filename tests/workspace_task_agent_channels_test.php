@@ -114,3 +114,44 @@ function test_workspace_task_agents_api_parameter()
 	pg_assert_true(is_array($found), 'agent_channels is a parameter');
 	pg_assert_same(array('include', 'only'), $found['values'], 'its values');
 }
+
+// W5: the Team card's count of its people's open and late tasks leaves an
+// agent channel's task out, by the one rule.
+function test_workspace_task_agents_team_count_leaves_them_out()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/cards/team.php');
+
+	$agent_sql = ws_tasks_agent_out_sql('t.channel_id', workspace_task_agent_channels_fixture());
+	$sql = pg_dashboard_v2_team_counts_sql(array(3, 4), '2026-11-16', $agent_sql);
+
+	pg_assert_same('t.channel_id NOT IN (5,7,11)', $agent_sql, 'the rule over the agent channels and their discussions');
+	pg_assert_true(substr($sql, -strlen(' AND ' . $agent_sql)) === ' AND ' . $agent_sql, 'the team count applies it');
+}
+
+// W3 in the counts: a task assigned to the reader counts whatever its
+// channel; one they opened in an agent channel and do not do is left out.
+function test_workspace_task_agents_own_task_stays_in_its_count()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/cards/pipeline.php');
+
+	$agent_sql = ws_tasks_agent_out_sql('ws_tasks.channel_id', workspace_task_agent_channels_fixture());
+	$sql = pg_dashboard_v2_pipeline_tasks_sql(8, $agent_sql);
+
+	pg_assert_same("((ws_tasks.creator_id = '8' AND ws_tasks.channel_id NOT IN (5,7,11)) OR EXISTS (SELECT 1 FROM ws_task_assignees a WHERE a.task_id = ws_tasks.id AND a.user_id = '8'))", $sql, 'opened: not in an agent channel; given: whatever its channel');
+	pg_assert_same(null, ws_tasks_agent_rule(workspace_task_agent_channels_fixture(), '', 0, true), 'the reader\'s own list leaves nothing out');
+}
+
+// Before the upgrade there is no agent channel: the counts are the same as
+// before the change.
+function test_workspace_task_agents_counts_unchanged_before_the_upgrade()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/cards/team.php');
+	require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/cards/pipeline.php');
+
+	pg_assert_same('', ws_tasks_agent_out_sql('t.channel_id', array()), 'nothing to leave out');
+	pg_assert_same("SELECT COUNT(DISTINCT t.id) AS open_tasks,
+            COUNT(DISTINCT CASE WHEN t.due_date IS NOT NULL AND t.due_date > '0000-00-00' AND t.due_date < '2026-11-16' THEN t.id END) AS late
+        FROM ws_tasks t INNER JOIN ws_task_assignees a ON a.task_id = t.id
+        WHERE a.user_id IN (3,4) AND t.status IN ('todo', 'doing', 'waiting')", pg_dashboard_v2_team_counts_sql(array(3, 4), '2026-11-16', ''), 'the team count as it was');
+	pg_assert_same("((ws_tasks.creator_id = '8') OR EXISTS (SELECT 1 FROM ws_task_assignees a WHERE a.task_id = ws_tasks.id AND a.user_id = '8'))", pg_dashboard_v2_pipeline_tasks_sql(8, ''), 'the tasks box as it was');
+}

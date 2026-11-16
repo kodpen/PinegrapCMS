@@ -4180,6 +4180,84 @@ button.pgie-sndfile:hover {
   height: 14px;
 }
 
+/* Split on the play bar: scissors in a round button beside Record, a
+   pill with its label from 1024 px of stage width (pgie-mwide). */
+.pgie .pgie-msplit {
+  height: 38px;
+  min-width: 38px;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 9px;
+  border: 1px solid var(--pgie-line);
+  border-radius: 19px;
+  background: var(--pgie-surface);
+  color: var(--pgie-tx);
+  cursor: pointer;
+}
+
+.pgie .pgie-msplit .pgie-ic {
+  width: 18px;
+  height: 18px;
+}
+
+.pgie .pgie-msplit > span {
+  display: none;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.pgie-mwide .pgie-msplit > span {
+  display: inline;
+}
+
+.pgie .pgie-msplit:hover {
+  background: var(--pgie-hover);
+}
+
+.pgie .pgie-msplit:focus-visible {
+  outline: 2px solid var(--pgie-sel);
+  outline-offset: 2px;
+}
+
+/* The scissors chip where the playhead crosses a clip it can split. */
+.pgie-clipchip {
+  position: absolute;
+  top: 50%;
+  width: 24px;
+  height: 24px;
+  margin: -12px 0 0 -12px;
+  padding: 4px;
+  border: 1px solid var(--pgie-danger);
+  border-radius: 50%;
+  background: var(--pgie-surface);
+  color: var(--pgie-danger);
+  z-index: 3;
+  cursor: pointer;
+}
+
+.pgie-clipchip[hidden] {
+  display: none;
+}
+
+.pgie-clipchip:hover {
+  background: var(--pgie-danger);
+  color: var(--pgie-surface);
+}
+
+.pgie-clipchip:focus-visible {
+  outline: 2px solid var(--pgie-sel);
+  outline-offset: 2px;
+}
+
+.pgie-clipchip .pgie-ic {
+  display: block;
+  width: 14px;
+  height: 14px;
+}
+
 /* The Effects tab: Reset on the right, the six sliders two a row. */
 .pgie-clipfxhead {
   display: flex;

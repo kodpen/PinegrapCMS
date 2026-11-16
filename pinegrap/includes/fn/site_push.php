@@ -62,6 +62,37 @@ define('PG_SITE_PUSH_WAITING', 0);
 define('PG_SITE_PUSH_PUSHED', 1);
 define('PG_SITE_PUSH_READ', 2);
 define('PG_SITE_PUSH_FAILED', 3);
+/**
+ * A worker woken twice for one message reads it again within this many
+ * seconds of its first read, rather than showing the fixed notification.
+ */
+define('PG_SITE_PUSH_REREAD', 300);
+/**
+ * Message kinds: news to every subscriber and a test to one device are
+ * written here; 2 (stock) and 3 (an order's moment) by their own steps.
+ */
+define('PG_SITE_PUSH_KIND_NEWS', 0);
+define('PG_SITE_PUSH_KIND_TEST', 1);
+/**
+ * Queue rows written by one INSERT.
+ */
+define('PG_SITE_PUSH_BATCH', 500);
+/**
+ * Queue rows one pass of the sender looks at.
+ */
+define('PG_SITE_PUSH_PASS_ROWS', 100);
+/**
+ * Tries before a row is given up, and how long a finished row and a dropped
+ * message's rows are kept: the queue is no history, the counts stay on the
+ * message.
+ */
+define('PG_SITE_PUSH_ATTEMPTS', 5);
+define('PG_SITE_PUSH_KEEP', 7 * 86400);
+/**
+ * The lock name of the sender's pass in cron_runs, taken by whichever of
+ * job.php and push_job.php comes first.
+ */
+define('PG_SITE_PUSH_LOCK', 'site_push_send');
 
 /**
  * Whether the 11.0.227 step has run: the last column of its last table.
@@ -515,10 +546,11 @@ function pg_site_push_consent_record($status, $user_id)
 }
 
 /**
- * The query of the message waiting for one subscription: pushed, not yet
- * read, pushed within PG_SITE_PUSH_MESSAGE_TTL, the newest first. Only that
- * subscription's queue rows are looked at: a secret never reads another
- * browser's message. Pure.
+ * The query of the message waiting for one subscription: pushed within
+ * PG_SITE_PUSH_MESSAGE_TTL and not yet read, or read within
+ * PG_SITE_PUSH_REREAD (a worker woken twice for one message shows it
+ * again), the newest first. Only that subscription's queue rows are looked
+ * at: a secret never reads another browser's message. Pure.
  *
  * @param int $subscription_id
  * @param int $now
@@ -527,13 +559,20 @@ function pg_site_push_consent_record($status, $user_id)
 function pg_site_push_waiting_query($subscription_id, $now)
 {
     return array(
-        "SELECT q.message_id, m.title, m.body, m.url
+        "SELECT q.message_id, q.status, m.title, m.body, m.url
         FROM site_push_queue AS q
         INNER JOIN site_push_message AS m ON m.id = q.message_id
-        WHERE q.subscription_id = ? AND q.status = ? AND q.sent_at >= ?
+        WHERE q.subscription_id = ?
+            AND ((q.status = ? AND q.sent_at >= ?) OR (q.status = ? AND q.fetched_at >= ?))
         ORDER BY q.sent_at DESC, q.message_id DESC
         LIMIT 1",
-        array((string) (int) $subscription_id, (string) PG_SITE_PUSH_PUSHED, (string) ((int) $now - PG_SITE_PUSH_MESSAGE_TTL)),
+        array(
+            (string) (int) $subscription_id,
+            (string) PG_SITE_PUSH_PUSHED,
+            (string) ((int) $now - PG_SITE_PUSH_MESSAGE_TTL),
+            (string) PG_SITE_PUSH_READ,
+            (string) ((int) $now - PG_SITE_PUSH_REREAD),
+        ),
     );
 }
 
@@ -566,11 +605,14 @@ function pg_site_push_waiting_message($secret)
         return null;
     }
 
-    db_q("UPDATE site_push_queue SET status = ?, fetched_at = ? WHERE message_id = ? AND subscription_id = ?", array(
+    // A second read keeps the first read's time, so the window does not
+    // move on with every wake.
+    db_q("UPDATE site_push_queue SET status = ?, fetched_at = ? WHERE message_id = ? AND subscription_id = ? AND status = ?", array(
         (string) PG_SITE_PUSH_READ,
         (string) $now,
         (string) (int) $row['message_id'],
         (string) (int) $subscription['id'],
+        (string) PG_SITE_PUSH_PUSHED,
     ));
 
     db_q("UPDATE site_push_subscription SET last_seen_at = ? WHERE id = ?", array((string) $now, (string) (int) $subscription['id']));
@@ -580,4 +622,467 @@ function pg_site_push_waiting_message($secret)
         'body'  => (string) $row['body'],
         'url'   => (string) $row['url'],
     );
+}
+
+/**
+ * A message's link as it is stored: a path inside the site, without the host,
+ * so the worker opens it on its own origin and a site that changes its name
+ * keeps its old messages working. Takes a path ("/news/x") or an address on
+ * one of the site's hosts; empty is the home page. '' when it is refused: an
+ * address elsewhere, "//host", a backslash, a control character or a path
+ * longer than the column. Pure.
+ *
+ * @param mixed    $url
+ * @param string[] $hosts  the site's own host names
+ * @return string
+ */
+function pg_site_push_url_path($url, array $hosts)
+{
+    if (!is_string($url)) {
+        return '';
+    }
+
+    $url = trim($url);
+
+    if ($url === '') {
+        return '/';
+    }
+
+    if (preg_match('/[\x00-\x20\x7F\\\\]/', $url)) {
+        return '';
+    }
+
+    if ($url[0] !== '/') {
+        $parts = parse_url($url);
+
+        if (!is_array($parts) || !isset($parts['scheme'], $parts['host']) || !in_array(strtolower($parts['scheme']), array('http', 'https'), true)) {
+            return '';
+        }
+
+        if (isset($parts['user']) || isset($parts['pass']) || !in_array(strtolower($parts['host']), array_map('strtolower', $hosts), true)) {
+            return '';
+        }
+
+        $url = (isset($parts['path']) && ($parts['path'] !== '') ? $parts['path'] : '/')
+            . (isset($parts['query']) ? '?' . $parts['query'] : '')
+            . (isset($parts['fragment']) ? '#' . $parts['fragment'] : '');
+    }
+
+    if ((substr($url, 0, 2) === '//') || ($url[0] !== '/') || (strlen($url) > 500)) {
+        return '';
+    }
+
+    return $url;
+}
+
+/**
+ * A message as the panel posts it, checked: a title (1 to 60 characters), a
+ * text (at most 200) and a link (pg_site_push_url_path()). Plain text: a
+ * notification shows no markup, and control characters are dropped. Pure.
+ *
+ * @param array    $input  title, body, url
+ * @param string[] $hosts  the site's own host names
+ * @return array|string  title, body, url; or an error code: title, body, url
+ */
+function pg_site_push_message_check(array $input, array $hosts)
+{
+    $clean = function ($value) {
+        $value = is_string($value) ? preg_replace('/[\x00-\x1F\x7F]+/u', ' ', $value) : '';
+
+        return is_string($value) ? trim(preg_replace('/ {2,}/', ' ', $value)) : '';
+    };
+
+    $title = $clean(isset($input['title']) ? $input['title'] : '');
+    $body = $clean(isset($input['body']) ? $input['body'] : '');
+
+    if (($title === '') || (mb_strlen($title, 'UTF-8') > 60)) {
+        return 'title';
+    }
+
+    if (mb_strlen($body, 'UTF-8') > 200) {
+        return 'body';
+    }
+
+    $url = pg_site_push_url_path(isset($input['url']) ? $input['url'] : '', $hosts);
+
+    if ($url === '') {
+        return 'url';
+    }
+
+    return array('title' => $title, 'body' => $body, 'url' => $url);
+}
+
+/**
+ * The site's own host names, for pg_site_push_url_path(): the host setting
+ * and the host of this request.
+ *
+ * @return string[]
+ */
+function pg_site_push_hosts()
+{
+    $hosts = array();
+
+    foreach (array('HOSTNAME_SETTING', 'HOSTNAME') as $constant) {
+        if (defined($constant) && (constant($constant) !== '')) {
+            $hosts[] = preg_replace('/:\d+$/', '', strtolower((string) constant($constant)));
+        }
+    }
+
+    return array_values(array_unique($hosts));
+}
+
+/**
+ * Ids cut into the batches one INSERT writes. Pure.
+ *
+ * @param int[] $ids
+ * @param int   $size
+ * @return array[]
+ */
+function pg_site_push_batches(array $ids, $size = PG_SITE_PUSH_BATCH)
+{
+    return array_chunk(array_values(array_map('intval', $ids)), max(1, (int) $size));
+}
+
+/**
+ * The statement that queues one message for a batch of subscriptions. IGNORE:
+ * a batch written twice queues each browser once (the primary key). Pure.
+ *
+ * @param int   $message_id
+ * @param int[] $subscription_ids
+ * @return array  array(sql, params)
+ */
+function pg_site_push_queue_insert($message_id, array $subscription_ids)
+{
+    $rows = array();
+    $params = array();
+
+    foreach ($subscription_ids as $id) {
+        $rows[] = '(?, ?, ' . PG_SITE_PUSH_WAITING . ', 0, 0)';
+        $params[] = (string) (int) $message_id;
+        $params[] = (string) (int) $id;
+    }
+
+    return array(
+        "INSERT IGNORE INTO site_push_queue (message_id, subscription_id, status, attempts, next_at) VALUES " . implode(', ', $rows),
+        $params,
+    );
+}
+
+/**
+ * Writes a message and queues it: news to every subscriber, in batches of
+ * PG_SITE_PUSH_BATCH, or a test to the one subscription named. The sender's
+ * pass sends it. Writes nothing while the switch is off.
+ *
+ * @param array $input            title, body, url (pg_site_push_message_check())
+ * @param int   $kind             PG_SITE_PUSH_KIND_NEWS or PG_SITE_PUSH_KIND_TEST
+ * @param int   $created_by       the user who sent it
+ * @param int   $subscription_id  a test's one subscription
+ * @return int|string  the message id, or an error code: off, kind,
+ *                     subscription, save, or one of the check's
+ */
+function pg_site_push_message_send(array $input, $kind, $created_by, $subscription_id = 0)
+{
+    if (!pg_site_push_enabled()) {
+        return 'off';
+    }
+
+    $kind = (int) $kind;
+
+    if (!in_array($kind, array(PG_SITE_PUSH_KIND_NEWS, PG_SITE_PUSH_KIND_TEST), true)) {
+        return 'kind';
+    }
+
+    $checked = pg_site_push_message_check($input, pg_site_push_hosts());
+
+    if (!is_array($checked)) {
+        return $checked;
+    }
+
+    $subscription_id = (int) $subscription_id;
+
+    if (($kind === PG_SITE_PUSH_KIND_TEST) && (($subscription_id < 1) || !db_value("SELECT id FROM site_push_subscription WHERE id = '" . $subscription_id . "'"))) {
+        return 'subscription';
+    }
+
+    if (!db_q("INSERT INTO site_push_message (title, body, url, kind, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?)", array(
+        $checked['title'],
+        $checked['body'],
+        $checked['url'],
+        (string) $kind,
+        (string) (int) $created_by,
+        (string) time(),
+    ))) {
+        return 'save';
+    }
+
+    $message_id = (int) mysqli_insert_id(db::$con);
+    $queued = 0;
+
+    if ($kind === PG_SITE_PUSH_KIND_TEST) {
+        $batches = array(array($subscription_id));
+    } else {
+        $batches = array();
+        $after = 0;
+
+        // Read by id in pages, so a large list never sits in memory at once.
+        do {
+            $ids = array_map('intval', db_values("SELECT id FROM site_push_subscription WHERE id > '" . $after . "' ORDER BY id LIMIT " . PG_SITE_PUSH_BATCH));
+
+            if ($ids) {
+                $batches = array_merge($batches, pg_site_push_batches($ids));
+                $after = end($ids);
+            }
+        } while (count($ids) === PG_SITE_PUSH_BATCH);
+    }
+
+    foreach ($batches as $batch) {
+        list($sql, $params) = pg_site_push_queue_insert($message_id, $batch);
+
+        if (db_q($sql, $params)) {
+            $queued += (int) mysqli_affected_rows(db::$con);
+        }
+    }
+
+    db_q("UPDATE site_push_message SET queued_count = ? WHERE id = ?", array((string) $queued, (string) $message_id));
+
+    return $message_id;
+}
+
+/**
+ * Seconds before a row is tried again after its n-th failure. Pure.
+ *
+ * @param int $attempts  failures so far, this one included
+ * @return int
+ */
+function pg_site_push_backoff($attempts)
+{
+    $steps = array(1 => 60, 2 => 300, 3 => 1800, 4 => 7200);
+    $attempts = (int) $attempts;
+
+    return isset($steps[$attempts]) ? $steps[$attempts] : 21600;
+}
+
+/**
+ * What a send's outcome (pg_push_outcome()) does to its queue row, its
+ * subscription and its message's counts. Pure.
+ *
+ * sent:   the row is pushed (1); sent_count.
+ * remove: the push service says the browser is gone; the subscription and
+ *         its rows go; removed_count.
+ * hold:   the service asked to wait; every waiting row of that service waits
+ *         for Retry-After, no try is counted.
+ * retry:  a failure; the row waits pg_site_push_backoff().
+ * fail:   the last try failed; the row is given up (3); failed_count.
+ *
+ * @param string $outcome   ok, gone, busy or failed
+ * @param int    $attempts  tries before this one
+ * @return array  action, count (the message column or ''), wait (seconds)
+ */
+function pg_site_push_send_plan($outcome, $attempts)
+{
+    $tries = (int) $attempts + 1;
+
+    if ($outcome === 'ok') {
+        return array('action' => 'sent', 'count' => 'sent_count', 'wait' => 0);
+    }
+
+    if ($outcome === 'gone') {
+        return array('action' => 'remove', 'count' => 'removed_count', 'wait' => 0);
+    }
+
+    if ($outcome === 'busy') {
+        return array('action' => 'hold', 'count' => '', 'wait' => 0);
+    }
+
+    if ($tries >= PG_SITE_PUSH_ATTEMPTS) {
+        return array('action' => 'fail', 'count' => 'failed_count', 'wait' => 0);
+    }
+
+    return array('action' => 'retry', 'count' => '', 'wait' => pg_site_push_backoff($tries));
+}
+
+/**
+ * Whether a message is past the day it may be delivered in. Pure.
+ *
+ * @param int $created_at
+ * @param int $now
+ * @return bool
+ */
+function pg_site_push_expired($created_at, $now)
+{
+    return ((int) $created_at) < ((int) $now - PG_SITE_PUSH_MESSAGE_TTL);
+}
+
+/**
+ * Sends one empty push to an endpoint with the panel's VAPID key, through the
+ * outbound client that resolves the name once and calls the address it
+ * resolved. The worker fetches its text with its secret.
+ *
+ * @param string $endpoint
+ * @return array  ok, status, error, retry_after (seconds a 429 asked for)
+ */
+function pg_site_push_deliver($endpoint)
+{
+    include_once(PG_FUNCTIONS_DIR . '/includes/api/outbound/http.php');
+
+    $token = pg_push_vapid_token($endpoint);
+
+    if ($token === '') {
+        return array('ok' => false, 'status' => 0, 'error' => 'The VAPID token could not be signed.', 'retry_after' => 0);
+    }
+
+    $result = api_http_request('POST', $endpoint, array(
+        'body'             => '',
+        'headers'          => array(
+            'Authorization: vapid t=' . $token . ', k=' . pg_push_vapid_public_key(),
+            'TTL: ' . PG_SITE_PUSH_MESSAGE_TTL,
+            'Urgency: normal',
+            'Content-Length: 0',
+        ),
+        'timeout'          => 10,
+        'agent'            => 'webhook',
+        'response_headers' => true,
+    ));
+
+    $result['retry_after'] = ((int) $result['status'] === 429)
+        ? pg_push_retry_after(isset($result['headers']['retry-after']) ? $result['headers']['retry-after'] : '', time())
+        : 0;
+
+    return $result;
+}
+
+/**
+ * Raises one count of a message by one.
+ *
+ * @param int    $message_id
+ * @param string $column  sent_count, failed_count or removed_count
+ * @return void
+ */
+function pg_site_push_count($message_id, $column)
+{
+    if (!in_array($column, array('sent_count', 'failed_count', 'removed_count'), true)) {
+        return;
+    }
+
+    db_q("UPDATE site_push_message SET " . $column . " = " . $column . " + 1 WHERE id = ?", array((string) (int) $message_id));
+}
+
+/**
+ * The tidy-up at the start of a pass: waiting rows of a message past its day
+ * are given up (failed_count), and rows no longer waiting whose message is
+ * older than PG_SITE_PUSH_KEEP are deleted.
+ *
+ * @param int $now
+ * @return void
+ */
+function pg_site_push_queue_tidy($now)
+{
+    $expired = (string) ((int) $now - PG_SITE_PUSH_MESSAGE_TTL);
+
+    foreach (db_items("SELECT q.message_id, COUNT(*) AS rows_given_up
+        FROM site_push_queue AS q
+        INNER JOIN site_push_message AS m ON m.id = q.message_id
+        WHERE q.status = '" . PG_SITE_PUSH_WAITING . "' AND m.created_at < '" . e($expired) . "'
+        GROUP BY q.message_id") as $row) {
+        db_q("UPDATE site_push_queue SET status = ? WHERE message_id = ? AND status = ?", array((string) PG_SITE_PUSH_FAILED, (string) (int) $row['message_id'], (string) PG_SITE_PUSH_WAITING));
+        db_q("UPDATE site_push_message SET failed_count = failed_count + ? WHERE id = ?", array((string) (int) $row['rows_given_up'], (string) (int) $row['message_id']));
+    }
+
+    db_q("DELETE q FROM site_push_queue AS q
+        INNER JOIN site_push_message AS m ON m.id = q.message_id
+        WHERE q.status <> ? AND m.created_at < ?", array((string) PG_SITE_PUSH_WAITING, (string) ((int) $now - PG_SITE_PUSH_KEEP)));
+}
+
+/**
+ * The sender's pass, run by the general job and by push_job.php. One run at
+ * a time (pg_cron_claim() on PG_SITE_PUSH_LOCK). Tidies the queue, then sends
+ * the due rows, oldest message first, until the budget is spent. A row is
+ * marked pushed as soon as its push is accepted. A service that answers 429
+ * is held: its waiting rows wait for Retry-After and this pass skips it.
+ * Sends nothing while the switch is off; the tidy-up still runs.
+ *
+ * @param int $budget_seconds
+ * @return int  rows pushed
+ */
+function pg_site_push_queue_run($budget_seconds = 10)
+{
+    if (!pg_site_push_ready() || !pg_cron_claim(PG_SITE_PUSH_LOCK, 120)) {
+        return 0;
+    }
+
+    // A fatal error or an exit still gives the lock back.
+    register_shutdown_function('pg_cron_release', PG_SITE_PUSH_LOCK);
+
+    $started = microtime(true);
+    $now = time();
+    $pushed = 0;
+
+    pg_site_push_queue_tidy($now);
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/push.php');
+
+    if (!pg_site_push_switch_on() || !pg_push_available() || (pg_push_vapid_public_key() === '')) {
+        pg_cron_release(PG_SITE_PUSH_LOCK);
+
+        return 0;
+    }
+
+    $rows = db_items("SELECT q.message_id, q.subscription_id, q.attempts, s.endpoint, s.service
+        FROM site_push_queue AS q
+        INNER JOIN site_push_subscription AS s ON s.id = q.subscription_id
+        WHERE q.status = '" . PG_SITE_PUSH_WAITING . "' AND q.next_at <= '" . $now . "'
+        ORDER BY q.message_id, q.subscription_id
+        LIMIT " . PG_SITE_PUSH_PASS_ROWS);
+
+    $held = array();
+
+    foreach ($rows as $row) {
+        if ((microtime(true) - $started) > $budget_seconds) {
+            break;
+        }
+
+        if (isset($held[$row['service']])) {
+            continue;
+        }
+
+        $message_id = (int) $row['message_id'];
+        $subscription_id = (int) $row['subscription_id'];
+        $result = pg_site_push_deliver((string) $row['endpoint']);
+        $plan = pg_site_push_send_plan(pg_push_outcome($result['status']), (int) $row['attempts']);
+        $time = time();
+        $key = array((string) $message_id, (string) $subscription_id);
+
+        if ($plan['action'] === 'sent') {
+            db_q("UPDATE site_push_queue SET status = ?, attempts = attempts + 1, sent_at = ? WHERE message_id = ? AND subscription_id = ?", array_merge(array((string) PG_SITE_PUSH_PUSHED, (string) $time), $key));
+            db_q("UPDATE site_push_subscription SET fail_count = 0 WHERE id = ?", array((string) $subscription_id));
+            $pushed++;
+        } elseif ($plan['action'] === 'remove') {
+            db_q("DELETE FROM site_push_queue WHERE subscription_id = ?", array((string) $subscription_id));
+            db_q("DELETE FROM site_push_subscription WHERE id = ?", array((string) $subscription_id));
+        } elseif ($plan['action'] === 'hold') {
+            $held[$row['service']] = true;
+
+            db_q("UPDATE site_push_queue AS q
+                INNER JOIN site_push_subscription AS s ON s.id = q.subscription_id
+                SET q.next_at = ?
+                WHERE q.status = ? AND s.service = ? AND q.next_at < ?", array(
+                (string) ($time + max(1, (int) $result['retry_after'])),
+                (string) PG_SITE_PUSH_WAITING,
+                (string) $row['service'],
+                (string) ($time + max(1, (int) $result['retry_after'])),
+            ));
+        } else {
+            db_q("UPDATE site_push_queue SET status = ?, attempts = attempts + 1, next_at = ? WHERE message_id = ? AND subscription_id = ?", array_merge(array(
+                (string) (($plan['action'] === 'fail') ? PG_SITE_PUSH_FAILED : PG_SITE_PUSH_WAITING),
+                (string) ($time + $plan['wait']),
+            ), $key));
+            db_q("UPDATE site_push_subscription SET fail_count = fail_count + 1 WHERE id = ?", array((string) $subscription_id));
+        }
+
+        pg_site_push_count($message_id, $plan['count']);
+    }
+
+    pg_cron_release(PG_SITE_PUSH_LOCK);
+
+    return $pushed;
 }

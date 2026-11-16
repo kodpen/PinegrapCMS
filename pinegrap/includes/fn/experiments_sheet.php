@@ -314,8 +314,8 @@ function pg_experiment_variant_hold($page_id)
 }
 
 /**
- * The refusal for publishing or binning a held variant draft, '' when the
- * page is not held.
+ * The refusal for publishing or binning a held variant draft, or a draft an
+ * open release bundle holds; '' when the page is not held.
  *
  * @param int    $page_id
  * @param string $page_name
@@ -326,7 +326,11 @@ function pg_experiment_variant_hold_message($page_id, $page_name)
     $hold = pg_experiment_variant_hold($page_id);
 
     if (!$hold) {
-        return '';
+        // A draft in an open release bundle (includes/fn/page_bundles.php) is
+        // held the same way, so every path that asks here refuses it too.
+        $bundle = function_exists('pg_page_bundle_hold') ? pg_page_bundle_hold($page_id) : null;
+
+        return $bundle ? pg_page_bundle_hold_text($page_name, $bundle['bundle_name']) : '';
     }
 
     return lang(array(
@@ -484,7 +488,7 @@ function pg_experiment_sheet_get($id)
 /**
  * A draft page that may become an experiment's variant: a draft of the
  * same design as the live page, not the live page, not held by another
- * open experiment.
+ * open experiment or by an open release bundle.
  *
  * @param array $live pg_experiment_sheet_live_page()
  * @return array draft pages (page_id, page_name)
@@ -506,7 +510,8 @@ function pg_experiment_sheet_variant_choices($live)
         ORDER BY page_name");
 
     foreach ((array) $rows as $row) {
-        if (!pg_experiment_variant_hold($row['page_id'])) {
+        if (!pg_experiment_variant_hold($row['page_id'])
+            && !(function_exists('pg_page_bundle_hold') && pg_page_bundle_hold($row['page_id']))) {
             $choices[] = $row;
         }
     }
