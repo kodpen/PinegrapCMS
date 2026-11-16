@@ -42200,6 +42200,8 @@ const StyleDesigner = (function () {
             var on = (typeof sdDesign !== 'undefined' && sdDesign && sdDesign.siteFlags && Array.isArray(sdDesign.siteFlags.signin_providers))
                 ? sdDesign.siteFlags.signin_providers : [];
             note = on.length ? _sdT('Turned on now: {var}', on.join(', ')) : _sdT('No provider is turned on now.');
+        } else if (section === 'captcha' && kind === 'registration') {
+            return _sdCommentsSectionSample('comment_captcha', doc);
         } else if (section === 'password_rules' && _sdMemberHasRules(kind)) {
             html = _SD_HTML_PREVIEW_TOKENS.__password_rules();
         } else if (link) {
