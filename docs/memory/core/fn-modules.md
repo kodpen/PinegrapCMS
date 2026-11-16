@@ -211,6 +211,7 @@ description: Generated from the module field of the memory files: each includes/
 - `product_list`: [[product-list-paging]], [[product-modify-dialog]]
 - `product_questions`: [[comments-widget-two-forms]], [[product-questions]], [[product-questions-output]]
 - `prototype`: [[designer-prototype-viewer]]
+- `prototype_comments`: [[designer-prototype-comments-door]]
 - `prototype_links`: [[designer-prototype-share-links]]
 - `prototype_map`: [[prototype-map-read]]
 - `push_broker`: [[api-native-push]]
