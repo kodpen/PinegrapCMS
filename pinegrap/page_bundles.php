@@ -198,10 +198,16 @@ if (!$bundle) {
         $when = ((int) $row['publish_at'] > 0) ? h($time_text($row['publish_at']))
             : (((int) $row['published_at'] > 0) ? h($time_text($row['published_at'])) : '&ndash;');
 
+        // On a phone the status, the page count and the time go under the
+        // name and the wide columns hide, so nothing scrolls sideways.
+        $phone = '<div class="md:d-none mt-1 d-flex flex-wrap align-items-center gap-3 small fg-secondary">' . $status_badge($row['status'])
+            . '<span>' . h(lang(array('string' => 'Pages: {var:1}', 'vars' => pg_format_number((int) $row['item_count'], 0)))) . '</span>'
+            . (($when !== '&ndash;') ? '<span>' . $when . '</span>' : '') . '</div>';
+
         $rows .= '<tr>
-            <td class="align-middle"><a class="text-break" href="' . h($list_url . '?id=' . (int) $row['id']) . '">' . h($row['name']) . '</a></td>
-            <td class="align-middle">' . $status_badge($row['status']) . '</td>
-            <td class="align-middle text-end">' . pg_format_number((int) $row['item_count'], 0) . '</td>
+            <td class="align-middle"><a class="text-break" href="' . h($list_url . '?id=' . (int) $row['id']) . '">' . h($row['name']) . '</a>' . $phone . '</td>
+            <td class="align-middle d-none md:d-table-cell">' . $status_badge($row['status']) . '</td>
+            <td class="align-middle d-none md:d-table-cell">' . pg_format_number((int) $row['item_count'], 0) . '</td>
             <td class="align-middle text-nowrap d-none md:d-table-cell">' . $when . '</td>
             <td class="align-middle text-nowrap fg-secondary d-none md:d-table-cell">' . get_relative_time(array('timestamp' => (int) $row['updated_at'])) . '</td>
         </tr>';
@@ -210,7 +216,7 @@ if (!$bundle) {
     $output_list = $rows
         ? '<div class="table-responsive">
                 <table class="table table-sm mb-0 pg-card-table">
-                    <thead><tr><th>' . h(lang('Name')) . '</th><th>' . h(lang('Status')) . '</th><th class="text-end">' . h(lang('Pages')) . '</th><th class="d-none md:d-table-cell">' . h(lang('Publish time')) . '</th><th class="d-none md:d-table-cell">' . h(lang('Changed')) . '</th></tr></thead>
+                    <thead><tr><th>' . h(lang('Name')) . '</th><th class="d-none md:d-table-cell">' . h(lang('Status')) . '</th><th class="d-none md:d-table-cell">' . h(lang('Pages')) . '</th><th class="d-none md:d-table-cell">' . h(lang('Publish time')) . '</th><th class="d-none md:d-table-cell">' . h(lang('Changed')) . '</th></tr></thead>
                     <tbody>' . $rows . '</tbody>
                 </table>
             </div>'
@@ -336,7 +342,7 @@ if ($may_change) {
             </div>
             <div class="form-field">
                 <label for="page_bundle_publish_at" class="form-label">' . h(lang('Publish time')) . '</label>
-                <input type="text" id="page_bundle_publish_at" name="publish_at" maxlength="19" class="form-control" data-pg-datetime value="' . h($time_text($bundle['publish_at'])) . '" aria-describedby="page_bundle_publish_at_help">
+                <input type="text" id="page_bundle_publish_at" name="publish_at" maxlength="19" class="form-control" data-pg-datetime data-pg-calendar-inline value="' . h($time_text($bundle['publish_at'])) . '" aria-describedby="page_bundle_publish_at_help">
                 <div id="page_bundle_publish_at_help" class="form-text">' . h(lang('Leave it empty to publish the bundle by hand. At the time every page goes on the site at once; a bundle that cannot go out whole stays open.')) . '</div>
             </div>',
         '<button type="submit" class="btn btn-solid theme-primary"><i class="bi bi-check-lg me-1" aria-hidden="true"></i>' . h(lang('Save')) . '</button>');
