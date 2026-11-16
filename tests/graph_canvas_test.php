@@ -164,6 +164,16 @@ out.fitEmpty = copy(state.view);
 state.nodes = [{ x: 0, y: 0 }, { x: 1000, y: 400 }];
 view.fit();
 out.fit = [Math.round(state.view.x * 100) / 100, Math.round(state.view.y * 100) / 100, Math.round(state.view.k * 1000) / 1000];
+var cornered = G.viewport({ ui: ui, view: function (next) { if (next) { state.view = next; } return state.view; }, items: function () { return state.nodes; }, start: function () { return state.start; } });
+state.start = { x: 100, y: 200 };
+cornered.fit();
+out.fitStartFits = [Math.round(state.view.x * 100) / 100, Math.round(state.view.y * 100) / 100, Math.round(state.view.k * 1000) / 1000];
+state.nodes = [{ x: 0, y: 0 }, { x: 3000, y: 2800 }, { x: 100, y: 200 }];
+cornered.fit();
+out.fitStart = copy(state.view);
+view.fit();
+out.fitNoStart = [Math.round(state.view.x * 100) / 100, Math.round(state.view.y * 100) / 100, state.view.k];
+state.nodes = [{ x: 0, y: 0 }, { x: 1000, y: 400 }];
 state.view = { x: 0, y: 0, k: 1 };
 view.reveal({ x: 100, y: 100 });
 out.revealInSight = copy(state.view);
@@ -197,6 +207,9 @@ JS
 	pg_assert_same(array(0.25, '16px 16px', '25%'), $result['zoomMin'], 'at least 25%, every fourth grid dot');
 	pg_assert_same(array('x' => 40, 'y' => 40, 'k' => 1), $result['fitEmpty'], 'an empty canvas fits at 40, 40, 100%');
 	pg_assert_same(array(48, 160.13, 0.583), $result['fit'], 'fit brings every box into sight');
+	pg_assert_same(array(48, 160.13, 0.583), $result['fitStartFits'], 'a start corner changes nothing while the whole fits');
+	pg_assert_same(array('x' => 23, 'y' => -2, 'k' => 0.25), $result['fitStart'], 'too large for the smallest zoom: the start corner 48 px in');
+	pg_assert_same(array(-1, -60, 0.25), $result['fitNoStart'], 'without a start corner the middle of the bounds');
 	pg_assert_same(array('x' => 0, 'y' => 0, 'k' => 1), $result['revealInSight'], 'a box in sight is left where it is');
 	pg_assert_same(array('x' => -1704, 'y' => 160, 'k' => 1), $result['revealOut'], 'a box out of sight comes to the middle');
 	pg_assert_same(array('x' => -150, 'y' => -100, 'k' => 2), $result['pinch'], 'a pinch zooms about its middle');
@@ -1026,6 +1039,59 @@ JS
 	pg_assert_same(array('x' => 0, 'y' => 0, 'w' => 2320, 'h' => 2280), $result['big'][3], 'eight a row, three bands');
 	pg_assert_same(array($p(0, 408), $p(0, 1184), $p(2072, 1960)), array_slice($result['big'], 4, 3), 'a group longer than a row wraps; the next band starts below it');
 	pg_assert_true($result['again'], 'the same answer for the same input');
+}
+
+// arrange() with a side column's greatest height: fifty boxes beside a grid
+// of five rows go on in further columns beside each other, each at least
+// four boxes, the column's heading over all of them and the grid right of
+// the last; a short column stays one; a number caps a column without a
+// grid; a sub-heading moves on with its first box.
+function test_graph_canvas_arrange_wraps_a_tall_side_column()
+{
+	$result = graph_canvas_test_node(<<<'JS'
+var out = {};
+function range(prefix, n) { var list = []; for (var i = 1; i <= n; i++) { list.push(prefix + i); } return list; }
+function columns(laid, ids) { var xs = {}; ids.forEach(function (id) { xs[laid.places[id].x] = (xs[laid.places[id].x] || 0) + 1; }); return Object.keys(xs).map(Number).sort(function (a, b) { return a - b; }).map(function (x) { return [x, xs[x]]; }); }
+var pages = [{ id: 'g', items: range('p', 40) }];
+var wide = G.arrange(pages, { w: 100, h: 100, gapX: 20, gapY: 20, before: { id: 'shared', label: 'Shared', h: 50, gap: 10, maxH: 'grid', items: range('s', 50) } });
+out.wide = [columns(wide, range('s', 50)), wide.places.s1, wide.places.s9, wide.places.s10, wide.places.p1, wide.headings[0], wide.bounds.h];
+var boxes = Object.keys(wide.places).map(function (id) { return wide.places[id]; });
+out.overlap = boxes.some(function (a, i) { return boxes.some(function (b, j) { return i < j && a.x === b.x && a.y === b.y; }); });
+var short = G.arrange(pages, { w: 100, h: 100, gapX: 20, gapY: 20, before: { id: 'shared', h: 50, gap: 10, maxH: 'grid', items: range('s', 9) } });
+out.short = [columns(short, range('s', 9)), short.places.p1];
+var few = G.arrange([{ id: 'g', items: ['p1'] }], { w: 100, h: 100, gapX: 20, before: { id: 'shared', h: 50, gap: 10, maxH: 'grid', items: range('s', 10) } });
+out.few = columns(few, range('s', 10));
+var plain = G.arrange(pages, { w: 100, h: 100, gapX: 20, gapY: 20, before: { id: 'shared', h: 50, gap: 10, items: range('s', 50) } });
+out.plain = columns(plain, range('s', 50));
+var capped = G.arrange([], { w: 100, gapX: 20, after: { id: 'out', h: 50, gap: 10, maxH: 230, groups: [{ id: 'a', label: 'A', items: range('a', 4) }, { id: 'b', label: 'B', items: range('b', 4) }] } });
+out.capped = [capped.places.a1, capped.places.b1, capped.headings];
+console.log(JSON.stringify(out));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	$p = function ($x, $y) {
+		return array('x' => $x, 'y' => $y);
+	};
+	// Five rows of 100 with gaps of 20: the grid is 580 high; a column of
+	// boxes 50 high with gaps of 10 holds nine under its heading.
+	pg_assert_same(array(array(0, 9), array(120, 9), array(240, 9), array(360, 9), array(480, 9), array(600, 5)), $result['wide'][0], 'fifty boxes beside five rows wrap into six columns');
+	pg_assert_same(array($p(0, 40), $p(0, 520), $p(120, 40)), array_slice($result['wide'], 1, 3), 'each column starts under the heading');
+	pg_assert_same($p(740, 0), $result['wide'][4], 'the grid right of the last column');
+	pg_assert_same(array('id' => 'shared', 'label' => 'Shared', 'x' => 0, 'y' => 0, 'w' => 700, 'kind' => 'side'), $result['wide'][5], 'the heading over every column');
+	pg_assert_same(580, $result['wide'][6], 'no column below the grid');
+	pg_assert_false($result['overlap'], 'no two boxes on one place');
+	pg_assert_same(array(array(array(0, 9)), $p(140, 0)), $result['short'], 'a short column stays one');
+	pg_assert_same(array(array(0, 5), array(120, 5)), $result['few'], 'at least four boxes a column');
+	pg_assert_same(array(array(0, 50)), $result['plain'], 'without a greatest height one column');
+	pg_assert_same(array($p(0, 40), $p(120, 40)), array_slice($result['capped'], 0, 2), 'a number caps a column without a grid');
+	pg_assert_same(array(
+		array('id' => 'a', 'label' => 'A', 'x' => 0, 'y' => 0, 'w' => 100, 'kind' => 'sub'),
+		array('id' => 'b', 'label' => 'B', 'x' => 120, 'y' => 0, 'w' => 100, 'kind' => 'sub'),
+	), $result['capped'][2], 'a sub-heading moves on with its first box');
 }
 
 // check(): arrows whose end is no box, boxes no other box reaches (never

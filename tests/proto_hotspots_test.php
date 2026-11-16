@@ -411,6 +411,81 @@ function test_proto_hotspots_layout_arranges_sections_in_flow_order()
 	pg_assert_same(array(array('pages', 0), array('g', 220)), $lead['headings'], '"Pages" first, then the group');
 }
 
+// Many shared parts (F4): fifty shared frames beside forty pages wrap
+// into columns no taller than the grid, at least four frames each, under
+// one heading; at 1440 that design then fits whole; one too large for the
+// smallest zoom fits to the start frame's corner (its band's heading
+// included), a small one to the middle;
+// the view hands the corner to the core.
+function test_proto_hotspots_many_shared_parts()
+{
+	$result = proto_hotspots_test_node(<<<'JS'
+var pages = [], shared = [];
+for (var i = 1; i <= 40; i++) { pages.push({ key: 't' + i, name: 'page' + i, sketch: [], hotspots: [] }); }
+for (var j = 1; j <= 50; j++) { shared.push({ id: j, name: 'Part ' + j, pages: 2, loaded: true, hotspots: [] }); }
+var l = H.layout({ pages: pages, shared: shared }, {}, { shared: 'Shared parts', sections: [{ id: 'g', label: 'Shop', keys: ['t1', 't2'] }], rest: 'Pages' });
+var parts = l.frames.filter(function (f) { return f.kind === 'shared'; });
+var tabs = l.frames.filter(function (f) { return f.kind === 'page'; });
+var xs = {};
+parts.forEach(function (f) { xs[f.x] = (xs[f.x] || 0) + 1; });
+var gridBottom = Math.max.apply(null, tabs.map(function (f) { return f.y + f.h; }));
+var partsBottom = Math.max.apply(null, parts.map(function (f) { return f.y + f.h; }));
+function fitOn(layout, width) {
+    var state = { view: { x: 0, y: 0, k: 1 } };
+    function Box() { this.style = {}; }
+    var ui = { viewport: new Box(), layer: new Box(), zoomLabel: new Box() };
+    ui.viewport.getBoundingClientRect = function () { return { left: 0, top: 0, width: width, height: 700 }; };
+    var view = window.PGGraphCanvas.viewport({
+        ui: ui,
+        view: function (next) { if (next) { state.view = next; } return state.view; },
+        items: function () { return layout.frames.concat(layout.chips); },
+        size: function (item) { return { w: item.w, h: item.h }; },
+        zoomMin: 0.1,
+        start: function () { return H.fitStart(layout); }
+    });
+    view.fit();
+    return [Math.round(state.view.x * 10) / 10, Math.round(state.view.y * 10) / 10, state.view.k];
+}
+var small = H.layout({ pages: pages.slice(0, 2), shared: [] }, {}, {});
+out = {
+    columns: Object.keys(xs).map(Number).sort(function (a, b) { return a - b; }).map(function (x) { return xs[x]; }),
+    below: partsBottom > gridBottom,
+    heading: l.headings.filter(function (h) { return h.id === 'shared'; })[0].w,
+    start: l.frames.filter(function (f) { return f.start; }).map(function (f) { return [f.id, f.x, f.y]; })[0],
+    corner: H.fitStart(l),
+    none: H.fitStart({ frames: [], headings: [] }),
+    wide: fitOn(l, 1440),
+    phone: fitOn(l, 390),
+    small: fitOn(small, 1440)
+};
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_true(count($result['columns']) > 1, 'fifty shared frames go on in further columns');
+	pg_assert_true(min($result['columns']) >= 4, 'at least four frames a column');
+	pg_assert_false($result['below'], 'no shared frame below the page grid');
+	pg_assert_same(count($result['columns']) * 248 + (count($result['columns']) - 1) * 96, $result['heading'], 'one heading over every column');
+	$start = $result['start'];
+	pg_assert_same(array('x' => $start[1], 'y' => $start[2] - 40), $result['corner'], 'the corner is the start frame\'s, with its band\'s heading');
+	pg_assert_same(null, $result['none'], 'no start frame, no corner');
+	pg_assert_true($result['wide'][2] > 0.1, 'at 1440 the wrapped design fits whole');
+	pg_assert_same(array((int) round(48 - $start[1] * 0.1), (int) round(48 - ($start[2] - 40) * 0.1), 0.1), $result['phone'], 'at 390 too large: the corner 48 px in at 10%');
+	pg_assert_same(1.25, $result['small'][2], 'a small design fits as before');
+	pg_assert_true($result['small'][0] > 48, 'and stands in the middle');
+}
+
+// The view hands the start corner to the core's fit.
+function test_proto_hotspots_view_fits_to_the_start_corner()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	pg_assert_contains('start: function () { return _sdProto.layout ? window.PGProtoHotspots.fitStart(_sdProto.layout) : null; },', $source, 'the view passes the start frame\'s corner');
+	pg_assert_contains("before: { id: 'shared', label: str(opts.shared), w: FRAME.w, maxH: 'grid', items: sharedIds },", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_proto_hotspots.js'), 'the shared column wraps at the grid\'s height');
+}
+
 // Which rows an arrow may be drawn from and where it may end: a link of
 // the tree (not a classic menu or region), to a tab frame by its page name
 // under the site path, or to a chip of a site page, another site or a

@@ -1,6 +1,6 @@
 ---
 name: prototype-arrangement
-description: How the Prototype view's layout() builds and places frames, rows, chips and arrows: a grid of tab-group sections in flow order, shared parts left, chips right, Start, Tidy up
+description: The Prototype view's layout(): frames, rows, chips, arrows; a grid of tab-group sections in flow order, shared parts left (wrapped at the grid's height), chips right, Start, Fit's corner, Tidy up
 ---
 
 ## What does layout() build?
@@ -14,6 +14,9 @@ description: How the Prototype view's layout() builds and places frames, rows, c
 - Architect (2026-11-16, agent channel message 5878): the start's band leads. When the first tab is in no group, the "Pages" band comes first and the groups follow in the strip's order; when it is in a group, "Pages" is last. So the start is always the first box of its band and the flow runs down.
 - Inside a band: `G.order()` over the tab-to-tab arrows from the first tab (`start`, its frame `start: true`, the head says "Start"); between equals the strip's order; pages nothing reaches last.
 - Shared frames in a column before the grid under `opts.shared`; chips after it under `opts.outside`, one sub-group per mark (page, anchor, contact, external, hidden, broken).
+- Many shared parts (F4, PV4b): the shared column passes `maxH: 'grid'`, so past the page grid's height it goes on in further columns beside it, at least four frames each, never below the grid. Architect (2026-11-16, agent channel message 6079): with about 50 the single column left Fit at its smallest zoom on the middle of that column, the page grid out of view.
+- Architect (2026-11-16, agent channel message 6252): the chips' column (outside this design) takes no `maxH`. A chip is about a quarter of a shared frame, and Fit on a design too large shows the grid's start, so a long chip column keeps the grid in view. If a real design shows trouble, it gets the same `maxH: 'grid'`, no new core code.
+- Fit on a design too large for 10%: the view passes the core's `start()` from `PGProtoHotspots.fitStart(layout)`, the start frame's top left (raised to its band's heading right above it), so Fit shows the grid's start, not the middle (`test_proto_hotspots_many_shared_parts`).
 ## What does Tidy up clear?
 - "Tidy up" in the bar (icon and name from 768 px, icon alone on a phone; title and label on both) asks first, then draws the arrangement again. An operator who may arrange tabs (`_pgTabLayoutEditable()`) and is not in view mode (`_collab.mayEdit`) clears `_pgTabProto` through `_pgTabsLayoutSave()` and this browser's places; the confirmation says it is for every editor of the design.
 - Anyone else, and view mode (the design open in another tab), clears only this browser's places: the confirmation and a toast say the shared places stay.
