@@ -30,5 +30,5 @@ description: Steps CB2 to CB10 of designer-closed-blocks, written from the owner
 
 ## In which order, and how many at once?
 - In the order above. Two steps may be open at once, one per coordinator, on widgets that share no server file; both edit `style_designer.src.js`, so each keeps its lines there together.
-- CB2 and CB3 first, then CB4 and CB5, then the shop steps one after another beside CB7 to CB10.
+- CB2 to CB5 are done; the shop steps go one after another beside CB7 to CB10.
 - Claim as `[plan:designer-closed-blocks] <step> — <topic>`.
