@@ -466,15 +466,69 @@ rateText: "2/10"}`. İşbaşı'nın okuduğu: `total 1279.99`, `withholdingAmoun
 
 ## Test ortamı turu (2026-11-17)
 
-Sürüyor: `GetOutgoingInvoiceDataList` süzgeçleri, hand-over yanıtı, panelden
-internet satışı e-Arşiv, satış iadesi ve e-Arşiv iptali.
+Test firması artık mükellef olmayanı ayırıyor: `gibUser` mükellef olmayan
+VKN için `200` ve boş (`null`) `pkList`/`gbList` döndürüyor, fatura e-Arşiv
+(`invoiceTypeForEinvoice: 2`, seri `SBX`; internet satışı `3`, seri `INX`)
+oluyor ve imzalanıyor. Firma başka entegratörlerle ortak; seriler `SBE`
+e-Fatura, `SBX` e-Arşiv, `INX` internet satışı e-Arşiv.
+
+- **`GetOutgoingInvoiceDataList`:** `invoiceId` / `salesInvoiceId` süzgeçleri
+  yok sayılıyor (aynı liste dönüyor); satırların `salesInvoiceId`'si hep `0`;
+  liste yalnız e-Faturaları gösteriyor (e-Arşiv yok). Sürücünün eşlemesi
+  bu yüzden GİB numarasıyla oluyor; e-Arşiv'in durumu faturanın kendi
+  kaydından (`GET invoices/{id}`) okunuyor.
+- **Hand-over yanıtı:** başarılı `eInvoiceWithJson` yine `HTTP 400` +
+  `isError: true`; metin "Sonuç bekliyor", "İşlem Bekliyor.", "HENÜZ
+  İŞLENMEDİ" olabiliyor. Sürücü durumu belgeden okuyor, doğru davranıyor.
+- **İnternet satışı ödeme tarihi:** `eGovernmentInvoice.eArchivePaymentDate`
+  yalnız tarih, `Y-m-d` (`2026-11-17`). Saatli (`…T12:00:00`), saat dilimli,
+  milisaniyeli ISO ve `dd.MM.yyyy` reddediliyor. İşbaşı `…T00:00:00+00:00`
+  olarak saklıyor.
+- **Taşıyıcı (`shipmentAgentItem`):** firma taşıyıcıda (`firmType: 1`)
+  `title` zorunlu, yoksa "Kurumsal firma için ünvan gereklidir."; kişide
+  (`firmType: 0`) `name` + `surName` yetiyor. İşbaşı taşıyıcı kartını
+  **kimlik numarasıyla** eşliyor: o numarada kart varsa faturada kartın
+  ünvanı görünüyor, gönderilen değil.
+- **Tevkifat ürün kartından okunuyor:** satırın `productDetail.withholding`'i
+  yalnız `itemCode` **yeni** bir ürün kartı açtığında okunuyor; kart kodu
+  ilk gördüğü satırın tevkifatını saklıyor ve güncellenmiyor. Aynı kodla
+  tevkifatsız gelen satır kartın tevkifatını alıyor, tevkifatlı gelen
+  tevkifatsız kartta tevkifatsız kalıyor. KDV oranı ve istisna kodu satırdan
+  okunuyor. Sürücü artık tevkifatlı satırın koduna tevkifatı ekliyor
+  (`PG-12-T624-20`, kodsuz satırda `PG-T624-20`). `itemCode`'u boş satır her
+  seferinde rastgele kodlu yeni bir kart açıyor.
+- **e-Arşiv iptali:** API'de uç yok (`invoices/cancel`, `cancelinvoice` →
+  404). Panel `POST /Invoice/Sales/UpdateStatus?id=…&status=false&desc=…&force=true`
+  ile imzalı e-Arşiv'i iptal ediyor; sonra kayıt `isCancelled: true`, e-durum
+  sıfırlanıyor. Sürücünün yoklaması bunu `cancelled` okuyor.
+- **Satış iadesi:** uç `PUT /api/v1.0/invoices/saveorupdatereturnsalesinvoice`;
+  gövde faturanın tamamı, `type: RETURN_SALES_INVOICE`, asıl faturaya bağ
+  `salesInvoiceNumber` + `salesInvoiceDate` ve satırda `sourceId` (asıl
+  satır). Ürünsüz satırda "Fatura satırında ürün girilmesi zorunludur.";
+  tam gövdede test arka ucu `599` "Could not find controller with id
+  'LOXFInvoice.jfm'" veriyor, panelin kendi iade kaydı da aynı hatayla
+  düşüyor. Test ortamında iade kaydedilemiyor; sürücü `return` yeteneğini
+  hâlâ bildirmiyor.
+- **Satış listesi `type` süzgeci:** "Tanımlanamayan bir hata oluştu."
+  Swagger (`/api-docs/v2/swagger.json`) "AccessDeniedForClient".
+- **Dev'den gönderim (sürücü düzeltmesiyle):** el ile tevkifat faturası
+  (624, 2/10) mükellef olmayan alıcıya e-Arşiv gitti, imzalandı; İşbaşı'nın
+  toplamı (116,00, tevkifat 4,00) Pinegrap'inkiyle aynı, ürün kodu
+  `PG-T624-20`. Sipariş faturası internet satışı e-Arşiv olarak gitti
+  (tarih, ödeme türü, site adresi doğru). %0 satırlı e-Fatura GİB'e geçti
+  ama test ortamının GİB tarafı "Hatalı (Sistemdeki kesinti s…)" dedi;
+  aynı metin başka entegratörlerin faturalarında da var (kesinti, içerik
+  değil).
+- **Gözlem:** el ile fatura formu satıra istisna kodu yazmıyor; %0 satır
+  ürünün ya da mağazanın varsayılan kodunu alıyor. Dev'de varsayılan boş,
+  bu yüzden e-Fatura istisna kodsuz gitti. Hiçbir yol `ISTISNA` tipinde
+  belge yazmıyor; %0 satır `SATIS` olarak gidiyor.
 
 ## Doğrulanmadı / Logo desteğine sorulacak
 
-- **e-Arşiv (mükellef olmayan alıcı) hiç denenmedi:** test ortamındaki GİB
-  simülasyonu her VKN'yi mükellef gösterdiği için her fatura e-Fatura
-  (`invoiceTypeForEinvoice: 1`) oldu. e-Arşiv ve internet satışı yolu
-  gerçek bir mükellef olmayan alıcı ya da canlı ortam ister.
+- ~~e-Arşiv (mükellef olmayan alıcı) hiç denenmedi~~ **denendi
+  (2026-11-17):** test firması artık mükellef olmayanı ayırıyor; e-Arşiv ve
+  internet satışı e-Arşiv gönderildi ve imzalandı (yukarıda).
 - ~~VKN'siz nihai tüketici~~ **karara bağlandı (Erdal, 2026-09-21):**
   kimlik numarası olmayan alıcı için e-Arşiv'in `11111111111`'i gönderilir
   (`erp_edoc_final_consumer_tckn()`). Yalnız boşluğun anlamı buysa: **sıcak
@@ -487,27 +541,30 @@ internet satışı e-Arşiv, satış iadesi ve e-Arşiv iptali.
   var — `einvoices/eInvoiceWithJson`. Bkz. yukarıdaki bölüm.
 - ~~Belge GİB'e geçtikten sonra `eStatus`/PDF ne oluyor?~~ **Görüldü:**
   "BASARIYLA TAMAMLANDI" ve PDF adresi gerçek PDF döndürüyor.
-- **Neden başarılı gönderim `HTTP 400` + `isError: true` dönüyor?** Sorulacak;
-  sürücü şimdilik belgenin durumunu okuyarak karar veriyor.
+- **Neden başarılı gönderim `HTTP 400` + `isError: true` dönüyor?** Hâlâ
+  böyle (2026-11-17, "Sonuç bekliyor" / "İşlem Bekliyor."); sürücü belgenin
+  durumunu okuyarak karar veriyor. Logo'ya sorulabilir, engel değil.
 - ~~`eArchivePaymentType` kodları~~ **panelden okundu (2026-09-23):** 0–4,
-  yukarıda. İnternet satışı yolu açık; **gerçek gönderimle denenmedi**.
+  yukarıda. İnternet satışı yolu **gönderildi (2026-11-17)**.
 - ~~`eGovernmentType` / `eInvoiceProfile` sayıları~~ **panelden okundu:**
-  yukarıda. İSTİSNA/TEVKİFAT gönderiliyor (**denenmedi**); ÖZEL MATRAH ve
-  İHRACAT açık ret.
-- **Logo'ya:** (0) internet satışı e-Arşiv'de **ödeme tarihi** hangi alanda,
-  hangi biçimde gönderilmeli (beş biçim reddedildi; panel aynı alanı
-  `dd.MM.yyyy` gönderiyor); `dispatchIncluded`
-  entegrasyonla `false` gönderilebilir mi; (1) e-Arşiv faturasını **API ile
-  iptal** eden uç (panelin `UpdateStatus`'u); (2) **satış iadesini API ile kaydetme/gönderme** —
-  `RETURN_SALES_INVOICE` için hangi uç ve asıl fatura nasıl bağlanıyor;
+  yukarıda. İSTİSNA (`eGovernmentType 2`) ve TEVKİFAT (`4`) taslağı test API'sinde
+  kabul edildi (2026-11-17); ÖZEL MATRAH ve İHRACAT açık ret.
+- **Logo'ya:** (0) ~~ödeme tarihi~~ **bulundu (2026-11-17):**
+  `eArchivePaymentDate`, yalnız `Y-m-d`; hâlâ açık: `dispatchIncluded`
+  entegrasyonla `false` gönderilebilir mi; (1) e-Arşiv'i **API ile iptal**
+  eden uç var mı (panelin `UpdateStatus`'u çalışıyor, API'de yok);
+  (2) satış iadesi ucu bulundu (`saveorupdatereturnsalesinvoice`, bağ
+  `salesInvoiceNumber`/`salesInvoiceDate`/`sourceId`), ama test arka ucu
+  `LOXFInvoice.jfm` hatası veriyor: test ortamında ne zaman çalışır;
   (3) ÖZEL MATRAH için satır matrahı entegrasyon modelinde nasıl gönderilir;
-  (4) İhracat faturası entegrasyonla kesilebilir mi.
+  (4) İhracat faturası entegrasyonla kesilebilir mi; (5) ürün kartının
+  tevkifatı entegrasyonla güncellenebilir mi (şimdi ilk satırınki kalıyor).
 - ~~Faturayı kaydetmek GİB'e gönderir mi?~~ **Hayır** — taslak kalır
   (Logo, 2026-09-21).
 - `price` KDV dahil mi hariç mi (`vatIncluded` ile birlikte) — Pinegrap
   `unit_price` KDV hariç birim fiyat gönderir, `vatIncluded=false`.
-- `GetOutgoingInvoiceDataList` filtre sütun adları (`salesInvoiceId` ile
-  filtrelenebilir mi) — sürücü tarih aralığıyla çekip **GİB numarası ya da
-  `salesInvoiceId`** ile eşler.
+- ~~`GetOutgoingInvoiceDataList` `salesInvoiceId` ile süzülebilir mi~~
+  **Hayır (2026-11-17):** süzgeç yok sayılıyor, `salesInvoiceId` hep `0`;
+  sürücü tarih aralığıyla çekip GİB numarasıyla eşliyor.
 - ~~Kota sayacı görünüyor mu?~~ **Hayır** — kontrol ekranı yok, gerekirse
   Logo'dan e-postayla sorulur (Logo, 2026-09-21).
