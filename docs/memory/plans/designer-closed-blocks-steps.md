@@ -18,7 +18,7 @@ description: Steps CB2 to CB10 of designer-closed-blocks, written from the owner
 - CB6d (M) Shop, checkout steps: the order preview parts as trees; installments settings only. The custom shipping and billing forms stay as their form draws them.
 - CB6e (M) Shop, after the order: order view's return actions; My Account's order history, subscriptions, bookings, store credit.
 - CB7 (M) Login and sign-up: password rules and the sign-in and sign-up links as trees; social sign-in buttons settings only. Done (#9895).
-- CB8 (M) Booking widget: the twelve `booking_*` steps and parts; two PRs when over the size (CLAUDE.md, Working mode 5).
+- CB8 (M) Booking widget: the twelve `booking_*` steps and parts. Done (#9918): `designer/booking-widget-open-parts.md`.
 - CB9 (M) Calendar: picker, month grid as a tree, reserve form.
 - CB10 (M) Classic sites: the converter button for a classic page type's System region and the legacy regions (`designer/canvas-closed-blocks-regions.md`); page types with no widget are listed for the architect, not built.
 - Close-out (S): `designer/canvas-closed-blocks*.md` rewritten as what is open now; both plan files deleted.
