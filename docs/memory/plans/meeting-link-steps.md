@@ -11,7 +11,7 @@ description: Plan meeting-link, steps SL1 to SL4: the link's code and rules with
   - Tests, red first: a code that cannot be guessed and the same 404 for a wrong code and a member out of booking; a service the member lost leaving the link; a deposit service refused; a private plan leaving the free times as they are and a team event taking its time.
   - Features: M1, M3, M6, M7, M9 (data), M13, M14.
 
-- SL2 (M) after SL1: the page.
+- SL2 (M) after SL1: the page. Done in #10073.
   - Existing files: `includes/fn/booking_messages.php` (the meeting address as a mail field and in the calendar file).
   - New: the root file `book_with.php` and its handling of the pick and the confirm, built on the engine's functions; no script is needed to book.
   - Tests: free times equal to the engine's for that member; a taken slot; the POST's token, origin and rate limit; no cache and no index.

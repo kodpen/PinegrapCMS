@@ -49,7 +49,7 @@ if ($bw_member !== null) {
 }
 
 if (($bw_member === null) || !$bw_services) {
-    $bw_title = lang('Book a time');
+    $bw_title = lang('Online booking');
     set_response_code(404);
     print output_header_secure(array('title' => $bw_title))
         . pg_secure_card('bi-calendar-x', $bw_title, '<p>' . h(lang('This link cannot be used. Please ask the person who gave it to you for a new one.')) . '</p>')
@@ -62,7 +62,7 @@ $bw_policy = pg_booking_widget_policy();
 $bw_zone = new DateTimeZone($bw_policy['zone']);
 $bw_page = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/book_with.php';
 $bw_link = $bw_page . '?c=' . h($bw_code);
-$bw_title = lang('Book a time with {var:1}', $bw_member['name']);
+$bw_title = lang(array('string' => 'Book a time with {var:1}', 'vars' => $bw_member['name']));
 $bw_context = pg_booking_message_context(array('id' => 0, 'end_at' => 0, 'status' => 'cancelled'));
 
 $bw_service_id = isset($bw_input['s']) && is_scalar($bw_input['s']) ? (int) $bw_input['s'] : 0;
@@ -177,10 +177,10 @@ if (is_array($bw_made_row) && ((int) $bw_made_row['staff_id'] === (int) $bw_memb
     $bw_made_context = pg_booking_message_context($bw_made_row);
     $bw_times = pg_booking_message_times((int) $bw_made_row['start_at'], (int) $bw_made_row['end_at'], $bw_made_context['zone'], $bw_made_context['date_code'], $bw_made_context['time_code']);
     $bw_facts = array(
-        lang('Service') => (string) $bw_made_row['service_name'],
-        lang('With')    => (string) $bw_member['name'],
-        lang('Date')    => $bw_times['date'],
-        lang('Time')    => $bw_times['time'],
+        lang('Service')      => (string) $bw_made_row['service_name'],
+        lang('Staff member') => (string) $bw_member['name'],
+        lang('Date')         => $bw_times['date'],
+        lang('Time')         => $bw_times['time'],
     );
 
     $bw_content .= '<div class="alert theme-success" role="status">' . h(pg_booking_widget_done_text((string) $bw_made[2], pg_booking_texts())) . '</div><dl class="mb-12">';
@@ -215,7 +215,7 @@ if ($bw_service === null) {
 
     foreach ($bw_services as $bw_row) {
         $bw_price = (int) $bw_row['price'];
-        $bw_meta = lang('{var:1} min', (int) $bw_row['length_minutes'])
+        $bw_meta = lang(array('string' => '{var:1} min', 'vars' => (int) $bw_row['length_minutes']))
             . ((($bw_price > 0) && function_exists('prepare_price_for_output')) ? ' · ' . html_entity_decode(prepare_price_for_output($bw_price, false, 0, 'plain_text'), ENT_QUOTES | ENT_HTML5, 'UTF-8') : '');
         $bw_content .= '<a class="list-group-item list-group-item-action" href="' . $bw_link . '&amp;s=' . (int) $bw_row['id'] . '">'
             . '<span class="d-block fw-semibold">' . h($bw_row['name']) . '</span>'
@@ -229,7 +229,7 @@ if ($bw_service === null) {
 }
 
 $bw_service_link = $bw_link . '&amp;s=' . (int) $bw_service['id'];
-$bw_content .= '<p class="mb-7"><span class="fw-semibold">' . h($bw_service['name']) . '</span> · ' . h(lang('{var:1} min', (int) $bw_service['length_minutes']))
+$bw_content .= '<p class="mb-7"><span class="fw-semibold">' . h($bw_service['name']) . '</span> · ' . h(lang(array('string' => '{var:1} min', 'vars' => (int) $bw_service['length_minutes'])))
     . ((count($bw_services) > 1) ? ' · <a href="' . $bw_link . '">' . h(lang('Change')) . '</a>' : '') . '</p>';
 
 // The details form, for the time this session holds.
@@ -260,7 +260,7 @@ if ($bw_show_form) {
 
     $bw_content .= '<p class="mb-7"><i class="bi bi-clock me-3" aria-hidden="true"></i>' . h($bw_times['date'] . ', ' . $bw_times['time'])
         . ' · <a href="' . $bw_service_link . '&amp;m=' . substr($bw_times['start'], 0, 7) . '&amp;d=' . substr($bw_times['start'], 0, 10) . '">' . h(lang('Pick another time')) . '</a></p>'
-        . '<p class="small fg-secondary mb-7">' . h(lang('We keep this time for you for {var:1} minutes.', (int) $bw_policy['hold_minutes'])) . '</p>'
+        . '<p class="small fg-secondary mb-7">' . h(lang(array('string' => 'We keep this time for you for {var:1} minutes.', 'vars' => (int) $bw_policy['hold_minutes']))) . '</p>'
         . '<form method="post" action="' . $bw_page . '" novalidate>' . get_token_field()
         . '<input type="hidden" name="c" value="' . h($bw_code) . '">'
         . '<input type="hidden" name="s" value="' . (int) $bw_service['id'] . '">'
