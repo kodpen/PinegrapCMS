@@ -2043,6 +2043,40 @@ var software = {
                 }
             }
 
+            // When it opens: after the delay (the default), when the page is
+            // scrolled open_scroll percent, or when the pointer leaves the
+            // window towards the browser's bar. A touch screen has no pointer
+            // to leave with, so there it opens after the delay. A preview
+            // opens at once.
+            var open_on = preview ? 'delay' : auto_dialog.open_on;
+
+            if ((open_on === 'leave') && software.is_touch_screen()) {
+                open_on = 'delay';
+            }
+
+            var shown = false;
+
+            function show() {
+                if (shown) {
+                    return;
+                }
+
+                shown = true;
+                software.show_auto_dialog(auto_dialog, preview, memory);
+            }
+
+            if (open_on === 'scroll') {
+                software.when_scrolled(parseInt(auto_dialog.open_scroll, 10) || 50, show);
+
+                return true;
+            }
+
+            if (open_on === 'leave') {
+                software.when_leaving(show);
+
+                return true;
+            }
+
             // A preview opens at once; otherwise the delay counts from the
             // visit's start, and an immediate dialog still waits a second,
             // as the dialog has always done.
@@ -2052,40 +2086,107 @@ var software = {
                 delay = 1;
             }
 
-            setTimeout(function() {
-                var dialog = {url: auto_dialog.url};
-
-                var width = parseInt(auto_dialog.width);
-
-                if (width) {
-                    dialog.width = width;
-                }
-
-                var height = parseInt(auto_dialog.height);
-
-                if (height) {
-                    dialog.height = height;
-                }
-
-                // Add classes for both a general auto dialog and for this specific
-                // auto dialog id so that this auto dialog can be targeted for styling.
-                dialog.class_name = 'auto_dialog auto_dialog_' + auto_dialog.id;
-
-                var opened = software.open_dialog(dialog);
-
-                // Remembered once it is on the screen: not for a preview,
-                // a refused address or a dialog still waiting.
-                if (preview || !opened || !opened.addEventListener) {
-                    return;
-                }
-
-                memory.mark(auto_dialog.id, 's');
-
-                opened.addEventListener('close', function() {
-                    memory.mark(auto_dialog.id, 'c');
-                });
-            }, delay * 1000);
+            setTimeout(show, delay * 1000);
         });
+    },
+
+    // Opens one auto dialog: centred over the page, which waits, or as a
+    // bar at the top or bottom or a card in the corner beside a page that
+    // stays usable; then remembers that this visitor saw it.
+    show_auto_dialog: function(auto_dialog, preview, memory) {
+        var dialog = {url: auto_dialog.url};
+
+        var width = parseInt(auto_dialog.width);
+
+        if (width) {
+            dialog.width = width;
+        }
+
+        var height = parseInt(auto_dialog.height);
+
+        if (height) {
+            dialog.height = height;
+        }
+
+        // Add classes for both a general auto dialog and for this specific
+        // auto dialog id so that this auto dialog can be targeted for styling.
+        dialog.class_name = 'auto_dialog auto_dialog_' + auto_dialog.id;
+
+        var place = auto_dialog.place;
+
+        if (['top', 'bottom', 'corner'].indexOf(place) !== -1) {
+            dialog.place = place;
+            dialog.modal = false;
+        }
+
+        var opened = software.open_dialog(dialog);
+
+        // Remembered once it is on the screen: not for a preview,
+        // a refused address or a dialog still waiting.
+        if (preview || !opened || !opened.addEventListener) {
+            return;
+        }
+
+        memory.mark(auto_dialog.id, 's');
+
+        opened.addEventListener('close', function() {
+            memory.mark(auto_dialog.id, 'c');
+        });
+    },
+
+    // Whether the screen is touched rather than pointed at: no pointer
+    // there can leave the window.
+    is_touch_screen: function() {
+        if (software_device_type == 'mobile') {
+            return true;
+        }
+
+        try {
+            return window.matchMedia('(hover: none)').matches;
+        } catch (e) {
+            return false;
+        }
+    },
+
+    // Calls back once the page is scrolled share percent of the way down
+    // (1 to 100). A page too short to scroll counts as read through, so
+    // there it calls back after a second.
+    when_scrolled: function(share, callback) {
+        function reached() {
+            var doc = document.documentElement;
+            var room = Math.max(doc.scrollHeight, document.body ? document.body.scrollHeight : 0) - window.innerHeight;
+            var top = window.pageYOffset || doc.scrollTop || 0;
+
+            return (room <= 0) || ((top / room * 100) >= share);
+        }
+
+        function check() {
+            if (reached()) {
+                window.removeEventListener('scroll', check);
+                callback();
+            }
+        }
+
+        if (reached()) {
+            setTimeout(callback, 1000);
+
+            return;
+        }
+
+        window.addEventListener('scroll', check, {passive: true});
+    },
+
+    // Calls back once the pointer leaves the window through its top edge,
+    // towards the tabs and the address bar.
+    when_leaving: function(callback) {
+        function left(event) {
+            if (!event.relatedTarget && (event.clientY <= 0)) {
+                document.removeEventListener('mouseout', left);
+                callback();
+            }
+        }
+
+        document.addEventListener('mouseout', left);
     },
 
     // The auto dialogs' memory: per dialog id, when it was last shown and
@@ -5614,6 +5715,8 @@ var software = {
     // which it blocks (showModal()), or with modal false over a page that
     // stays usable (show()). Auto dialogs call it, and so may a site's own
     // script. The frame is drawn like the jQuery UI dialog it replaces.
+    // With modal false, place top or bottom draws it as a bar across the
+    // window's edge and corner as a card in the bottom right corner.
     open_dialog: function(properties) {
         var class_name = properties.class_name;
         var modal = properties.modal;
@@ -5621,6 +5724,7 @@ var software = {
         var url = properties.url;
         var width = properties.width;
         var height = properties.height;
+        var place = properties.place;
 
         // The iframe would run a javascript: or data: address in this page's
         // origin; the server leaves such auto dialogs out too.
@@ -5667,6 +5771,11 @@ var software = {
             width = window.innerWidth * .75;
         }
 
+        // A bar at the top or bottom spans the window.
+        if ((place === 'top') || (place === 'bottom')) {
+            width = window.innerWidth;
+        }
+
         var dialog = document.createElement('dialog');
         var bar = document.createElement('div');
         var heading = document.createElement('span');
@@ -5674,7 +5783,7 @@ var software = {
         var frame = document.createElement('iframe');
         var label = lang('Close');
 
-        dialog.className = 'pg-dialog' + (modal ? '' : ' pg-dialog-plain') + (class_name ? ' ' + class_name : '');
+        dialog.className = 'pg-dialog' + (modal ? '' : ' pg-dialog-plain') + ((!modal && ['top', 'bottom', 'corner'].indexOf(place) !== -1) ? ' pg-dialog-' + place : '') + (class_name ? ' ' + class_name : '');
         dialog.style.width = width + 'px';
         dialog.style.height = height + 'px';
 
@@ -5764,6 +5873,9 @@ var software = {
             'dialog.pg-dialog{box-sizing:border-box;display:flex;flex-direction:column;margin:auto;padding:.2em .2em 1em;max-width:calc(100% - 16px);max-height:calc(100% - 16px);overflow:hidden;border:1px solid #c5c5c5;border-radius:0;background:#fff;color:#333;box-shadow:0 0 20px #000;font:13px/24px Arial,Helvetica,sans-serif;text-align:left}' +
             'dialog.pg-dialog:not([open]){display:none}' +
             'dialog.pg-dialog-plain{position:fixed;inset:0;z-index:2147482000}' +
+            'dialog.pg-dialog-top{inset:0 0 auto 0;margin:0 auto;max-width:100%}' +
+            'dialog.pg-dialog-bottom{inset:auto 0 0 0;margin:0 auto;max-width:100%}' +
+            'dialog.pg-dialog-corner{inset:auto 16px 16px auto;margin:0}' +
             'dialog.pg-dialog::backdrop{background:rgba(170,170,170,.3)}' +
             'dialog.pg-dialog[open],dialog.pg-dialog[open]::backdrop{animation:pg-dialog-in .4s}' +
             '@keyframes pg-dialog-in{from{opacity:0}}' +

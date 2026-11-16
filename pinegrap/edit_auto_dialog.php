@@ -44,6 +44,7 @@ $auto_dialog = db_item(
         auto_dialogs.delay,
         auto_dialogs.frequency,
         auto_dialogs.page,
+        auto_dialogs.*,
         auto_dialogs.last_modified_timestamp,
         user.user_username
     FROM auto_dialogs
@@ -84,6 +85,13 @@ if (!$_POST) {
         }
 
         $liveform->assign_field_value('page', $auto_dialog['page']);
+
+        // When, to whom and where it opens: a row stored before these
+        // columns, or with a value this version does not know, shows the
+        // defaults it opens with.
+        foreach (pg_auto_dialog_open_settings($auto_dialog) as $open_field => $open_value) {
+            $liveform->assign_field_value($open_field, (string) $open_value);
+        }
     }
 
     $screen = 'edit';
@@ -133,7 +141,7 @@ if (!$_POST) {
             go($_SERVER['PHP_SELF'] . '?id=' . $id);
         }
 
-        pg_auto_dialog_save($id, pg_auto_dialog_form_values($liveform), USER_ID) or output_error('Query failed.');
+        pg_auto_dialog_save($id, pg_auto_dialog_form_values($liveform), USER_ID, pg_auto_dialog_form_open_values($liveform)) or output_error('Query failed.');
 
         log_activity(lang(array('string'=>'{var:1} ({var:2}) was modified','vars'=>array(lang('auto dialog'),$liveform->get_field_value('name')))), $_SESSION['sessionusername']);
         $liveform->remove_form();
