@@ -34,7 +34,10 @@ function test_workspace_date_inputs_carry_their_hook()
 	$src = workspace_datetime_source('assets/js/workspace.js');
 
 	pg_assert_same(0, preg_match_all("/\\.type = '(date|time|datetime-local)'/", $src), 'no date, time or datetime-local input is made without pgDateField()');
-	pg_assert_same(14, preg_match_all("/pgDateField\\(\\w+(\\.\\w+)?, '(date|time)'\\);/", $src), 'the fourteen date and time inputs of the task, reminder, poll, hours, message, event, timeline and channel export forms go through pgDateField()');
+	pg_assert_same(10, preg_match_all("/pgDateField\\(\\w+(\\.\\w+)?, '(date|time)'\\);/", $src), 'the ten date and time inputs of the task, reminder, poll, hours, message, timeline and channel export forms go through pgDateField()');
+	// The drawer form parts (the plan item form, My calendar's plan drawer)
+	// make their date and time inputs through the parts' input().
+	pg_assert_contains("if (type === 'date' || type === 'time') {\n                pgDateField(node, type);", $src, 'the drawer parts\' date and time inputs go through pgDateField()');
 	pg_assert_same(1, preg_match("/var DATE_HOOKS = \\{ date: 'data-pg-date', time: 'data-pg-time', 'datetime-local': 'data-pg-datetime' \\};/", $src), 'each native type has its hook');
 	pg_assert_true(strpos($src, "pgDateField(input, (meta.kind === 'date') ? 'date' : 'datetime-local');") !== false, 'a record field of a date or a date and time kind (saValueInput) keeps its native store');
 	pg_assert_true(strpos($src, "input.value = value ? String(value).replace(' ', 'T').slice(0, 16) : '';") !== false, 'a date and time value still goes in as Y-m-d\TH:i');
