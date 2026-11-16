@@ -1,11 +1,12 @@
 ---
 name: decisions-made-product-59
-description: Decisions list, product part 59 (2026-11-16): the owner's answers to the twelve questions of the website feature plans (agent channel polls 63 to 74)
+description: Decisions list, product part 59 (2026-11-16): the owner's answers to the questions of the website feature plans (agent channel polls 63 to 74; the click and scroll map is in part 60)
 ---
 
 ## Where are the rules and the earlier parts?
 - `decisions-made.md`; the generated `DECISIONS.md` lists every part's entries.
-- These twelve were asked by the R&D agent, one poll a question, each answered by the owner's own vote on 2026-11-16. The plans of the set (#9868) hold each answer beside the feature it binds.
+- Asked by the R&D agent, one poll a question, each answered by the owner's own vote on 2026-11-16. The plans of the set (#9868) hold each answer beside the feature it binds.
+- Polls 67 and 75, the click and scroll map: `decisions-made-product-60.md`.
 
 ## May a draft replace a published page, and may a change wait for approval? (owner, 2026-11-16, polls 63, 64)
 - Poll 63: a draft may replace a published page outside an experiment too ("Evet, geçebilsin"), so several pages are published together. His decision of 6 October stays: a published page has no working copy and its own Publish goes live at once.
@@ -16,10 +17,6 @@ description: Decisions list, product part 59 (2026-11-16): the owner's answers t
 
 ## What happens to the rows of a record deleted for good? (owner, 2026-11-16, poll 66)
 - They are deleted with it; the confirmation says how many rows go.
-
-## How does the click and scroll map start on a new install? (owner, 2026-11-16, poll 67)
-- Not decided. He wrote instead of choosing: "bu konuyu mimara danışırmısın. o tasarımcımız ve kullanıcı verisi işleme ile ilgili fikrini sunsun olgunlaşsın."
-- The architect's view on the visitors' data is agent channel message 5774; the R&D agent brings it to him. No step of that plan starts before his answer.
 
 ## Who can be responsible for content, and who is told when a review date passes? (owner, 2026-11-16, polls 68, 69)
 - Poll 68: any panel user who may edit that page or record; it works on a site without Workspace too.
