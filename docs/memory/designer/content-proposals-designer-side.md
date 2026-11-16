@@ -5,7 +5,7 @@ module: content_proposals
 ---
 
 ## Where does a designer see the waiting changes?
-- (PA4a, #PR) `content_changes.php`, "Waiting Content Changes", for roles 0 and 1 (`validate_area_access($user, 'designer')`), whether or not the assistant or the Workspace is set up. It lists every waiting or stale change and, for 30 days (`PG_CONTENT_PROPOSALS_KEEP_DAYS`, by `decided_at`), the applied, taken-back and dismissed ones (`pg_content_proposals_list()`, `pg_content_proposals_listed()`).
+- (PA4a, #9930) `content_changes.php`, "Waiting Content Changes", for roles 0 and 1 (`validate_area_access($user, 'designer')`), whether or not the assistant or the Workspace is set up. It lists every waiting or stale change and, for 30 days (`PG_CONTENT_PROPOSALS_KEEP_DAYS`, by `decided_at`), the applied, taken-back and dismissed ones (`pg_content_proposals_list()`, `pg_content_proposals_listed()`).
 - Each row: the page (a link into the Studio), the editor, a status pill, Compare (one row per operation: on the site / proposed; an area or a whole tree is named, not drawn), and its actions as POST forms with the CSRF token.
 - The count on the page's tab and the bell lines are PA4b; until then nothing points at the screen.
 
