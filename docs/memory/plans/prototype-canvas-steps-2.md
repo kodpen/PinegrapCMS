@@ -14,6 +14,10 @@ description: Plan prototype-canvas, the view steps PV2, PV4 and PV6: the grid ar
   - The view passes `focus` and `groups()`. Opening focuses the open tab's frame. "All arrows" beside Fit, kept in `localStorage` beside the places.
   - The amber row on the shared frame and the line under it, no arrow (F13).
   - Arrow colours by class in light and dark, a marker for each: outgoing accent, incoming amber dashed, broken red.
+  - Many shared parts (architect, 2026-11-16, agent channel message 6079; a design with about 50 left Fit at its smallest zoom showing the middle of their column, the page grid out of view):
+    - `G.arrange()`'s side columns take an optional greatest height: a column taller than it goes on in further columns beside it, at least four boxes each. The view passes the grid's height (F4).
+    - `fit()` takes an option the view passes: when the whole does not fit at the smallest zoom, the view shows the start box's corner, not the middle of the bounds. Flows passes neither.
+    - Tests: fifty boxes beside five rows wrap, a short column stays one; the view's x and y when it does not fit. Pictures: Fit on a design with about 50 shared parts, before and after.
   - Until PV9 the frame's link rows are the marks: the selected frame's rows are full; on another frame only the rows that start or end a drawn arrow are highlighted.
   - Tests: which arrows a focus draws for a page, for a shared frame and for none; F13 gives no arrow and one note.
   - Features: F10, F11, F12, F13; K7.
