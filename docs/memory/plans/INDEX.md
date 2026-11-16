@@ -39,6 +39,10 @@
 - kodpen-vendor-api-client.md: Plan (owner 2026-10-25 to 27): the Kodpen API client is on (P8); left are P2 and P5c before the 2026.11.0 release branch and P9, the api2 client removal in the next open version; steps in -steps
 - link-preview.md: Plan (owner 2026-11-15, agent channel poll 54): a card under a message's web address with the page's title, description and site name, read once by the server; steps LP1 to LP3
 - marketplace-trendyol-hepsiburada.md: Plan (approved 2026-10-19): Trendyol (V2) and Hepsiburada on the n11 layer
+- message-highlights-features-2.md: Plan message-highlights, features H10 to H22: the mini toolbar on a selection, how a highlight is drawn in its maker's colour, its card, My highlights in My Notes and bulk removal
+- message-highlights-features.md: Plan message-highlights, features H1 to H9: what can be highlighted, the anchor, the two scopes, who may make and remove one, the note, no notification, limits, cleanup
+- message-highlights-steps.md: Plan message-highlights, steps HL1 to HL5: the table and the pure part, the server's actions and cleanup, the message side in the browser, My highlights, close-out
+- message-highlights.md: Plan (owner 2026-11-16, agent channel message 5547): a reader highlights a selected part of a message for everyone or for himself, in his own colour; My highlights in My Notes; HL1 to HL5
 - message-reference.md: Plan (owner 2026-11-15, in the architect's window): a message pasted into a message box as a reference, shown by its number, opening the referenced message in a popup; for people and agents
 - message-translate.md: Plan (owner 2026-11-15, agent channel poll 54): Translate in a message's menu with the browser's own translator, the text never leaving the device; step MT1
 - mobile-api-shelved.md: Team-device API work for the closed-source Pinegrap Mobile app (restarted 2026-10-24 outside this repo): what exists (M1–M6), what M7 (native push) and M8 add, decisions, how its needs arrive
@@ -61,6 +65,15 @@
 - panel-old-screens-shared-steps.md: Old panel screens to look A: the shared steps cut after the groups, SH1 to SH10 (field, status list, ERP lists, figure cards, icon buttons, save bar, list title) and KS1, KS2 on kept screens
 - panel-old-screens.md: Plan (owner 2026-11-15): the panel screens still drawn the old way move to look A; censuses done, LM2 the shared buttons, then one census group per step (C1 to C5, E1 to E5, S1 to S6)
 - php-error-log-clean.md: Plan (owner 2026-11-14): the PHP error log of the owner's dev machine read for Pinegrap's own deprecations and warnings on PHP 8.5, and their causes fixed; steps EL1 to EL6
+- prototype-canvas-features-2.md: Plan prototype-canvas, features F15 to F25: the list of the selected page's links, the broken links found, drawing and changing an arrow, the bar
+- prototype-canvas-features-3.md: Plan prototype-canvas, features F26 to F34 from the owner's answer of 2026-11-16: empty links and unreached pages marked, a target suggested for empty links and written only when he applies
+- prototype-canvas-features.md: Plan prototype-canvas, features F1 to F14: what a frame of the Prototype view shows, how pages are arranged, which arrows are drawn and how an arrow runs
+- prototype-canvas-rules.md: Plan prototype-canvas: what today's Prototype view does that no step may lose (K1 to K9), the rules every step keeps, and what a step's PR body carries so that no feature is skipped
+- prototype-canvas-steps-2.md: Plan prototype-canvas, the view steps PV2, PV4 and PV6: the grid arrangement and Tidy up, the selected frame's arrows, the list of its links and the problems
+- prototype-canvas-steps-3.md: Plan prototype-canvas, steps PV7 to PV10 and PV12: the page picture's technical check, the picture in the frame, marks on it, drawing from a mark, close-out
+- prototype-canvas-steps-4.md: Plan prototype-canvas, steps PV11a and PV11b from the owner's answer of 2026-11-16: empty links and unreached pages as problems, then the Suggest targets dialog
+- prototype-canvas-steps.md: Plan prototype-canvas, the engine steps PV1, PV3 and PV5: graph logic, focus and routing added to the graph canvas core as optional parts that Flows does not pass
+- prototype-canvas.md: Plan (owner 2026-11-15): the designer's Prototype view redrawn like Figma but clear: page pictures, the selected page's arrows, a link list, on a stronger graph canvas core; PV1 to PV12
 - quiet-hours.md: Plan (owner 2026-11-15, agent channel poll 54): quiet hours: outside a person's hours a Workspace push waits for the end of the quiet range; steps QH1 and QH2
 - reverse-oauth-leftovers.md: Remaining outside-account connections (Meta, Business Profile, social posting, AI accounts), the connect.pinegrap.com broker and open decisions
 - storefront-api-acp-ucp.md: Storefront API design note: OpenAI ACP checkout_sessions mapped onto the storefront routes, the UCP manifest after checkout exists, MCP tools under the customer's consent, WAF agent verification

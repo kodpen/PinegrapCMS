@@ -304,6 +304,9 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-57.md: Where are the rules and the earlier parts?
 - decisions-made-product-57.md: Does the Recovered carts section come out as drawn, and where does it sit? (owner, 2026-11-15, agent channel poll 55)
 - decisions-made-product-57.md: Does All Offers show its record count beside the title? (owner, 2026-11-15, agent channel poll 46)
+- decisions-made-product-57.md: Is the designer's Prototype view rebuilt, and on which engine? (owner, 2026-11-15, in the architect's window)
+- decisions-made-product-58.md: Where are the rules and the earlier parts?
+- decisions-made-product-58.md: Can a reader highlight a part of a message? (owner, 2026-11-16, agent channel message 5547)
 - decisions-made-product-6.md: What happens to a recurring line that starts after the order date? (#3310)
 - decisions-made-product-6.md: How is a subscription price change noticed and applied? (#3311)
 - decisions-made-product-6.md: Does the panel get an operator Subscriptions screen? (#3343)
@@ -368,6 +371,9 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-schema-22.md: Where are the rules and the earlier parts?
 - decisions-made-schema-22.md: Which schema do quiet hours and the link preview card get? (owner, 2026-11-15, agent channel poll 54)
 - decisions-made-schema-22.md: Which columns does the table of marks have? (owner's yes in agent channel poll 49; columns confirmed by the architect, 2026-11-15)
+- decisions-made-schema-23.md: Where are the rules and the earlier parts?
+- decisions-made-schema-23.md: Which table do a reader's highlights get? (owner, 2026-11-16, agent channel message 5547)
+- decisions-made-schema-23.md: Which columns does PU4 add to `auto_dialogs`? (architect, 2026-11-16, confirmed in PU4's draft, #9851)
 - decisions-made-schema-3.md: Where are the rules and the earlier steps?
 - decisions-made-schema-3.md: Which schema was approved on 2026-10-29?
 - decisions-made-schema-4.md: Where are the rules and the earlier steps?

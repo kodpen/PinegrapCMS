@@ -92,7 +92,8 @@
 - decisions-made-product-54.md: Decisions made, product part 54: the designer's closed blocks are opened in the proposed order, most met first; the visitor AI assistant does not start now
 - decisions-made-product-55.md: Decisions made, product part 55 (2026-11-15): a Send later e-mail of a writer who lost the right turns back into its draft; the star rating input as five stars; message boxes' width on a wide screen
 - decisions-made-product-56.md: Decisions made, product part 56 (2026-11-15): a left cart recovered within 7 days of its last touch; pop-ups built by growing Auto Dialogs, the jQuery dialog gone; Design Canvas on a video in Files
-- decisions-made-product-57.md: Decisions made, product part 57 (2026-11-15 on): the Recovered carts section's look and its place on the Visitors overview (poll 55); the record count beside the title on All Offers (poll 46)
+- decisions-made-product-57.md: Decisions made, product part 57 (2026-11-15 on): the Recovered carts section (poll 55); the record count on All Offers (poll 46); the Prototype view rebuilt on the graph canvas core
+- decisions-made-product-58.md: Decisions list, product part 58 (2026-11-16 on): a reader's highlight on a part of a message, for everyone or for himself, with My highlights in My Notes
 - decisions-made-product-6.md: Decisions list, product part 6 (2026-10-29 night on): subscriptions (later-starting lines, price notice, operator screen), AI assistant and add-ons wait, printed order's shipping card
 - decisions-made-product-7.md: Decisions list, product part 7 (2026-10-30 on): customs data on international labels, carrier pickup requests from the panel, ShipWorks through the shipment write path
 - decisions-made-product-8.md: Decisions list, product part 8 (2026-10-30 midday on): Trendyol-carried packages refused by Create Label, starter dump corrections for #3330, marketing SMS in 2026.11.0, forum template wording
@@ -112,6 +113,7 @@
 - decisions-made-schema-20.md: Decisions list, schema part 20 (2026-11-14 on): ws_mail_items.send_at; the repeat columns and ws_personal_plan_skips; the two roadmap template tables; the widened poll's columns
 - decisions-made-schema-21.md: Decisions list, schema part 21 (2026-11-15 on): ws_mail_reminders, ws_profiles.mail_away, ws_approval_agents; the schema of polls 49 to 51 (agent duty, marks, cart touches, pop-ups)
 - decisions-made-schema-22.md: Decisions list, schema part 22 (2026-11-15 on): ws_profiles.quiet_hours and the link preview table (poll 54); the columns of ws_agent_feedback as confirmed
+- decisions-made-schema-23.md: Decisions list, schema part 23 (2026-11-16 on): the ws_highlights table for a reader's highlights; the columns of PU4 on auto_dialogs as confirmed
 - decisions-made-schema-3.md: Decisions list, schema part 3, approved from 2026-10-29 on: checkout page and legal acceptance on the order, record_revisions, cart_quotes, ws_saved_replies, shipment_labels; rules in part 1
 - decisions-made-schema-4.md: Decisions list, schema part 4 (2026-10-29 afternoon on): ws_flow_templates, ws_refs.source_type to VARCHAR, shipment_labels.order_return_id, config.speculation_prefetch; rules in part 1
 - decisions-made-schema-5.md: Decisions list, schema part 5 (2026-10-29 evening on): subscriptions tables and ENUMs, products customs columns, shipment_labels pickup, ws_events.contact_id; rules in part 1
