@@ -4,7 +4,8 @@
  *
  * Workspace - the command registry: one entry per built-in / command, read
  * by the parser (ws_command_table()), the picker and /help (ws_commands()),
- * the gate (ws_command_offered()) and the API (ws_api_command_kind()). Each
+ * the gate (ws_command_offered()), the runner (ws_command_run()), the live
+ * line (ws_command_suggest()) and the API (ws_api_command_kind()). Each
  * group's entries are written in a function of their own; functions are
  * named as strings, so the list is read without running anything.
  *
@@ -22,7 +23,9 @@
  *   where        where it runs: any
  *   gate         function ($viewer, $key) => bool, '' for anybody; called
  *                with a null viewer as well
- *   live         true when ws_command_suggest() draws a line under it
+ *   runner       function ($viewer, $channel, $rest, $options, $body, $key)
+ *   live         function ($viewer, $channel, $rest) => line, warnings; ''
+ *                for none
  *   api          what the API's run route makes of it: preview, run, or a
  *                function ($rest, $options, $key) that answers one of them
  *   order        its place in the picker and /help
@@ -74,7 +77,7 @@ function ws_command_registry()
     $registry = array();
 
     foreach ($entries as $entry) {
-        $registry[$entry['key']] = $entry + array('where' => 'any', 'gate' => '', 'live' => false, 'api' => 'run');
+        $registry[$entry['key']] = $entry + array('where' => 'any', 'gate' => '', 'live' => '', 'api' => 'run');
     }
 
     uasort($registry, function ($a, $b) {
@@ -132,7 +135,7 @@ function ws_command_registry_tasks()
                 $arg('records', 'record', lang('#record'), true, 'records', array('multiple' => true, 'anywhere' => true)),
             ),
             'names' => array('gorev', 'görev', 'task', 'g', 't'), 'group' => 'tasks', 'order' => 10,
-            'live' => true, 'api' => 'preview',
+            'runner' => 'ws_command_task', 'live' => 'ws_command_task_suggest', 'api' => 'preview',
         ),
         array(
             'key' => 'assign', 'tr' => 'ata', 'en' => 'assign', 'label' => '/assign · /ata',
@@ -140,6 +143,7 @@ function ws_command_registry_tasks()
             'example'     => lang('/assign T-42 @mehmet'),
             'args'        => array($task, $arg('people', 'people', lang('@people'), false, 'people', array('multiple' => true))),
             'names' => array('ata', 'assign'), 'group' => 'tasks', 'order' => 20,
+            'runner' => 'ws_command_run_assign',
         ),
         array(
             'key' => 'done', 'tr' => 'bitti', 'en' => 'done', 'label' => '/done · /bitti',
@@ -147,6 +151,7 @@ function ws_command_registry_tasks()
             'example'     => lang('/done T-42'),
             'args'        => array($task),
             'names' => array('bitti', 'tamam', 'done'), 'group' => 'tasks', 'order' => 30,
+            'runner' => 'ws_command_run_done',
         ),
         array(
             'key' => 'postpone', 'tr' => 'ertele', 'en' => 'postpone', 'label' => '/postpone · /ertele',
@@ -154,6 +159,7 @@ function ws_command_registry_tasks()
             'example'     => lang('/postpone T-42 +2d'),
             'args'        => array($task, $arg('due', 'date', lang('day'), false, 'dates')),
             'names' => array('ertele', 'postpone'), 'group' => 'tasks', 'order' => 40,
+            'runner' => 'ws_command_run_postpone',
         ),
         array(
             'key' => 'status', 'tr' => 'durum', 'en' => 'status', 'label' => '/status · /durum',
@@ -161,7 +167,7 @@ function ws_command_registry_tasks()
             'example'     => lang('/status T-42 waiting'),
             'args'        => array($task, $arg('status', 'status', lang('status'), false, 'statuses')),
             'names' => array('durum', 'status'), 'group' => 'tasks', 'order' => 50,
-            'live' => true,
+            'runner' => 'ws_command_status', 'live' => 'ws_command_live_status',
         ),
         array(
             'key' => 'timer', 'tr' => 'süre', 'en' => 'timer', 'label' => '/timer · /süre',
@@ -169,7 +175,7 @@ function ws_command_registry_tasks()
             'example'     => lang('/timer T-42'),
             'args'        => array($arg('task', 'task', lang('task'), true, 'tasks')),
             'names' => array('süre', 'sure', 'timer'), 'group' => 'tasks', 'order' => 60,
-            'gate' => 'ws_command_gate_timer', 'live' => true,
+            'gate' => 'ws_command_gate_timer', 'runner' => 'ws_command_run_timer', 'live' => 'ws_command_live_timer',
         ),
     );
 }
@@ -194,7 +200,7 @@ function ws_command_registry_plan()
                 $arg('title', 'text', lang('note'), true),
             ),
             'names' => array('izin', 'away'), 'group' => 'plan', 'order' => 80,
-            'live' => true,
+            'runner' => 'ws_command_run_away', 'live' => 'ws_command_live_away',
         ),
         array(
             'key' => 'meeting', 'tr' => 'toplantı', 'en' => 'meeting', 'label' => '/meeting · /toplantı',
@@ -208,7 +214,7 @@ function ws_command_registry_plan()
                 $arg('people', 'people', lang('@people'), true, 'people', array('multiple' => true, 'anywhere' => true)),
             ),
             'names' => array('toplantı', 'toplanti', 'meeting'), 'group' => 'plan', 'order' => 90,
-            'live' => true,
+            'runner' => 'ws_command_meeting', 'live' => 'ws_command_live_meeting',
         ),
         array(
             'key' => 'plan', 'tr' => 'plan', 'en' => 'plan', 'label' => '/plan',
@@ -216,6 +222,7 @@ function ws_command_registry_plan()
             'example'     => lang('/plan @ayse'),
             'args'        => array($arg('person', 'person', lang('@person'), true, 'people')),
             'names' => array('plan'), 'group' => 'plan', 'order' => 120,
+            'runner' => 'ws_command_run_plan',
         ),
     );
 }
@@ -241,7 +248,7 @@ function ws_command_registry_channel()
                 $arg('message', 'text', lang('message'), false),
             ),
             'names' => array('zamanla', 'schedule'), 'group' => 'channel', 'order' => 70,
-            'gate' => 'ws_command_gate_schedule', 'live' => true,
+            'gate' => 'ws_command_gate_schedule', 'runner' => 'ws_command_schedule', 'live' => 'ws_command_schedule_suggest',
         ),
         array(
             'key' => 'decision', 'tr' => 'karar', 'en' => 'decision', 'label' => '/decision · /karar',
@@ -249,6 +256,7 @@ function ws_command_registry_channel()
             'example'     => lang('/decision The packaging will be kraft'),
             'args'        => array($arg('text', 'text', lang('text'), false)),
             'names' => array('karar', 'decision'), 'group' => 'channel', 'order' => 100,
+            'runner' => 'ws_command_run_noted',
         ),
         array(
             'key' => 'note', 'tr' => 'not', 'en' => 'note', 'label' => '/note · /not',
@@ -256,6 +264,7 @@ function ws_command_registry_channel()
             'example'     => lang('/note Accounts contact: Selin, ext. 204'),
             'args'        => array($arg('text', 'text', lang('text'), false)),
             'names' => array('not', 'note'), 'group' => 'channel', 'order' => 110,
+            'runner' => 'ws_command_run_noted',
         ),
         array(
             'key' => 'poll', 'tr' => 'oylama', 'en' => 'poll', 'label' => '/poll · /oylama',
@@ -263,7 +272,7 @@ function ws_command_registry_channel()
             'example'     => lang('/poll Which day for the launch? | Tuesday | Wednesday'),
             'args'        => array($arg('question', 'text', lang('question'), false), $arg('options', 'options', lang('| options'), true, '', array('multiple' => true))),
             'names' => array('oylama', 'anket', 'sor', 'poll'), 'group' => 'channel', 'order' => 130,
-            'api' => 'ws_api_command_kind_poll',
+            'runner' => 'ws_command_run_poll', 'api' => 'ws_api_command_kind_poll',
         ),
         array(
             'key' => 'help', 'tr' => 'yardım', 'en' => 'help', 'label' => '/help · /yardım',
@@ -271,6 +280,7 @@ function ws_command_registry_channel()
             'example'     => lang('/help'),
             'args'        => array(),
             'names' => array('yardim', 'yardım', 'help'), 'group' => 'channel', 'order' => 1000,
+            'runner' => 'ws_command_run_help',
         ),
     );
 }
@@ -293,7 +303,7 @@ function ws_command_registry_records()
             'example'     => lang('/price #mug 149,90'),
             'args'        => array($product, $arg('amount', 'amount', lang('new price'), false)),
             'names' => array('fiyat', 'price'), 'group' => 'records', 'order' => 140,
-            'gate' => 'ws_command_gate_product', 'api' => 'preview',
+            'gate' => 'ws_command_gate_product', 'runner' => 'ws_command_run_record', 'api' => 'preview',
         ),
         array(
             'key' => 'stock', 'tr' => 'stok', 'en' => 'stock', 'label' => '/stock · /stok',
@@ -301,7 +311,7 @@ function ws_command_registry_records()
             'example'     => lang('/stock #mug 12'),
             'args'        => array($product, $arg('quantity', 'quantity', lang('quantity'), false)),
             'names' => array('stok', 'stock'), 'group' => 'records', 'order' => 150,
-            'gate' => 'ws_command_gate_product', 'api' => 'preview',
+            'gate' => 'ws_command_gate_product', 'runner' => 'ws_command_run_record', 'api' => 'preview',
         ),
         array(
             'key' => 'create', 'tr' => 'oluştur', 'en' => 'create', 'label' => '/create · /oluştur',
@@ -315,7 +325,7 @@ function ws_command_registry_records()
                 $arg('group', 'record', lang('#group'), true, 'records', array('anywhere' => true)),
             ),
             'names' => array('oluştur', 'olustur', 'create'), 'group' => 'records', 'order' => 160,
-            'gate' => 'ws_command_gate_product', 'api' => 'ws_api_command_kind_create',
+            'gate' => 'ws_command_gate_product', 'runner' => 'ws_command_run_create', 'api' => 'ws_api_command_kind_create',
         ),
         array(
             'key' => 'product', 'tr' => 'ürün', 'en' => 'product', 'label' => '/product · /ürün',
@@ -327,7 +337,7 @@ function ws_command_registry_records()
                 $arg('group', 'record', lang('#group'), true, 'records', array('anywhere' => true)),
             ),
             'names' => array('urun', 'ürün', 'product'), 'group' => 'records', 'order' => 170,
-            'gate' => 'ws_command_gate_product', 'api' => 'ws_api_command_kind_create',
+            'gate' => 'ws_command_gate_product', 'runner' => 'ws_command_run_create', 'api' => 'ws_api_command_kind_create',
         ),
     );
 }
@@ -353,7 +363,7 @@ function ws_command_registry_agents()
                 $arg('note', 'text', lang('note'), true),
             ),
             'names' => array('uyandır', 'uyandir', 'wake'), 'group' => 'agents', 'order' => 180,
-            'gate' => 'ws_command_gate_wake',
+            'gate' => 'ws_command_gate_wake', 'runner' => 'ws_command_run_wake',
         ),
         array(
             'key' => 'agent_channel', 'tr' => 'ajan-kanalı', 'en' => 'agent-channel', 'label' => '/agent-channel · /ajan-kanalı',
@@ -363,7 +373,7 @@ function ws_command_registry_agents()
                 $arg('state', 'text', lang('on | off'), true),
             ),
             'names' => array('ajan-kanalı', 'ajan-kanali', 'agent-channel'), 'group' => 'agents', 'order' => 190,
-            'gate' => 'ws_command_gate_agent_channel',
+            'gate' => 'ws_command_gate_agent_channel', 'runner' => 'ws_command_agent_channel',
         ),
         array(
             'key' => 'claude', 'tr' => 'claude', 'en' => 'claude', 'label' => '/claude',
@@ -371,7 +381,7 @@ function ws_command_registry_agents()
             'example'     => lang('/claude summarise this week'),
             'args'        => array($question),
             'names' => array(), 'group' => 'agents', 'order' => 200,
-            'gate' => 'ws_command_gate_assistant',
+            'gate' => 'ws_command_gate_assistant', 'runner' => 'ws_command_run_help',
         ),
         array(
             'key' => 'ai', 'tr' => 'ai', 'en' => 'ai', 'label' => '/ai',
@@ -379,7 +389,7 @@ function ws_command_registry_agents()
             'example'     => lang('/ai summarise this week'),
             'args'        => array($question),
             'names' => array(), 'group' => 'agents', 'order' => 210,
-            'gate' => 'ws_command_gate_assistant',
+            'gate' => 'ws_command_gate_assistant', 'runner' => 'ws_command_run_help',
         ),
     );
 }
