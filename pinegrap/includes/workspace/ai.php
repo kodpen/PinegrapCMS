@@ -4691,6 +4691,12 @@ function ws_ai_channel_set($viewer, $channel, $allowed)
         return array('ok' => false, 'error' => lang('This channel is archived. It can be read but not written in.'));
     }
 
+    // A discussion follows its channel (ws_ai_channel_allowed()): its own
+    // column is never read, so a line here would not be true.
+    if ((string) ($channel['kind'] ?? '') === 'thread') {
+        return array('ok' => false, 'error' => lang('A discussion follows its channel: switch it in the channel.'));
+    }
+
     if (!ws_ai_schema_ready()) {
         return array('ok' => false, 'error' => lang('Invalid request.'));
     }

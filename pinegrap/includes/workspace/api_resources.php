@@ -247,12 +247,14 @@ function ws_api_channel_settings_present($states)
     $allowed = function ($state) {
         return is_array($state) ? !empty($state['allowed']) : null;
     };
-    $shared = !empty($states['shared']);
+    // A channel shared with guests never reaches an assistant, and a
+    // discussion follows its channel: neither offers a switch of its own.
+    $fixed = !empty($states['shared']) || !empty($states['thread']);
 
     return array(
         'watch'              => isset($states['watch']) ? (bool) $states['watch'] : null,
-        'claude_allowed'     => $shared ? null : $allowed($states['claude'] ?? null),
-        'ai_allowed'         => $shared ? null : $allowed($states['ai'] ?? null),
+        'claude_allowed'     => $fixed ? null : $allowed($states['claude'] ?? null),
+        'ai_allowed'         => $fixed ? null : $allowed($states['ai'] ?? null),
         'voice_allowed'      => $allowed($states['voice'] ?? null),
         'summary'            => (string) ($states['summary'] ?? ''),
         'summary_updated_at' => ((int) ($states['summary_updated_at'] ?? 0) > 0) ? api_time($states['summary_updated_at']) : null,
@@ -276,6 +278,7 @@ function ws_api_channel_settings_states($viewer, $channel)
         'watch'              => function_exists('ws_watch_channel_state') ? ws_watch_channel_state($channel) : null,
         'shared'             => (function_exists('ws_guest_channel_state') && (ws_guest_channel_state($viewer, $channel) !== null))
             || (function_exists('ws_channel_share_open') && ws_channel_share_open($channel)),
+        'thread'             => ((string) ($channel['kind'] ?? '') === 'thread'),
         'summary'            => (string) ($channel['summary'] ?? ''),
         'summary_updated_at' => (int) ($channel['summary_updated_at'] ?? 0),
     );
