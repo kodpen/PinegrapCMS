@@ -4,7 +4,7 @@ description: Plan message-highlights, steps HL1 to HL5: the table and the pure p
 ---
 
 ## Which steps are there?
-- HL1 (S) The table and the pure part.
+- HL1 (S) The table and the pure part. Done: #9867 (step 11.0.222).
   - A migration step of the open version with the idempotent helpers: `ws_highlights` as `workflow/decisions-made-schema-23.md` names it; the PR body repeats the columns. Rerun twice on a dev database.
   - `includes/workspace/highlights.php`: `ws_highlights_ready()` (the feature is off until the step ran), `ws_highlight_plain()`, `ws_highlight_find($plain, $quote, $occurrence)`, `ws_highlight_remap_one($row, $old_plain, $new_plain)`.
   - Tests: folding of white space, a quote found by its occurrence, a quote across a line break, a list and a mention, the remap's three outcomes. Features: H2, the pure part of H9.

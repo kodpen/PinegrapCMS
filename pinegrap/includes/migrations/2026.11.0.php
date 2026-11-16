@@ -210,6 +210,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ws_agent_duty();           // 11.0.217
 	upgrade_2026_11_0_ws_agent_feedback();       // 11.0.218
 	upgrade_2026_11_0_ws_quiet_hours();          // 11.0.219
+	upgrade_2026_11_0_ws_highlights();           // 11.0.222
 
 }
 
@@ -6976,5 +6977,32 @@ function upgrade_2026_11_0_ws_quiet_hours() {
 	install_add_column('ws_profiles', 'quiet_hours', 'TEXT NULL');
 
 	install_note('Workspace: a person can keep quiet hours; outside their hours a Workspace notification reaches their phone when the quiet range ends.');
+
+}
+
+// A reader's highlights on a message (11.0.222, includes/workspace/
+// highlights.php): one row per marked place, kept by its text (quote) and
+// which occurrence of it in the message's plain text it is. scope is 'me'
+// (only its maker sees it) or 'all'. No unique key: the quote is too long
+// for one, so the same place twice is caught in code. No backfill.
+function upgrade_2026_11_0_ws_highlights() {
+
+	install_create_table('ws_highlights', "CREATE TABLE ws_highlights (
+		id         INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		message_id INT UNSIGNED NOT NULL DEFAULT 0,
+		channel_id INT UNSIGNED NOT NULL DEFAULT 0,
+		user_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		scope      VARCHAR(10) NOT NULL DEFAULT 'me',
+		quote      VARCHAR(1000) NOT NULL DEFAULT '',
+		occurrence SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+		note       VARCHAR(255) NOT NULL DEFAULT '',
+		created_at INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_message (message_id),
+		KEY idx_user (user_id, id),
+		KEY idx_channel (channel_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Workspace: a reader can highlight a part of a message for everyone or only for themselves.');
 
 }
