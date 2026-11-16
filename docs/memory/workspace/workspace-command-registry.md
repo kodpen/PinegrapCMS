@@ -1,23 +1,31 @@
 ---
 name: workspace-command-registry
-description: One registry (ws_commands()) for the / picker, /help, palette, the Tab argument popup after "/name " and the API list; an unknown /word refused with the closest names; "//" posts it
+description: The built-in / command registry ws_command_registry() (command_registry.php, CC1): an entry's fields, which functions read it, what a new command adds, shadowed application commands
 ---
 
-## What does ws_commands($viewer) hold?
-- includes/workspace/commands.php, one entry per command in picker order: `key` (a `ws_command_table()` value, or claude, ai), `names` (every `ws_command_table()` key, with its slash; `/claude`, `/ai`), `name` (Turkish on a Turkish screen: `ws_command_turkish()`), `label` ("/task · /görev"), `description`, `usage` ("/görev <başlık> [@kişiler] …", built from the args), `example`, `args`, `live` (workspace-command-live-line.md). Per command: workspace-command-status, -schedule, -plan-items.
-- An arg: `name`, `kind` (`ws_command_argument_kinds()`: person people department task record date time estimate priority status amount quantity text options record_kind), `label`, `optional`, `suggest` (people, people_departments, tasks, records, products, dates, estimates, priorities, statuses, kinds, ''), `multiple`, `anywhere` (/task's people, day, estimate, priority, records: read anywhere).
-- Gate: `ws_command_offered()`. /price, /stock, /create, /product (workspace-create-commands.md; lines → bulk #2982): the product rights. /claude, /ai: only with a person, once set up (`ws_command_assistant_ready()`, the test of `ws_claude_command_body()` / `ws_ai_command_body()`); no database without a person.
-- `ws_command_help()`: command, names, example, description, key, name, usage, args, live for `/help` (with usage), `BOOT.commands`, `ws_palette_commands()` (unfiltered: `name`). `BOOT.command_values` = `ws_command_suggestions()`: days, estimates, priorities, statuses, kinds in the screen's language, read by the parser; five days are `top`.
+## Where is the registry?
+- `includes/workspace/command_registry.php`, `ws_command_registry()`: a PHP array, one entry per built-in command keyed by its key, sorted by `order`, cached per language a request. No table, no hook (architect, 2026-11-16, agent channel message 6770).
+- Each group writes its entries in a function of its own: `ws_command_registry_tasks()`, `_plan()`, `_channel()`, `_records()`, `_agents()` (`ws_command_groups()`), so two steps adding commands never write the same lines.
 
-## How does the argument popup work? (assets/js/workspace.js)
-- `pickerCheck()` → `commandArgument(before)`: entry from the typed name, word being typed, expected arg. Each word or chip fills the next arg; a `multiple` one keeps the rest. A leading text (/task's title) takes words; once it has one, `extras` = the `anywhere` args the line lacks (`commandExtras()`: tags in the whole markup, day words, `~`, `!`). Poll options start at `|`. Not while editing.
-- Picker mode `arg` (`openArgument()`): people/person → `BOOT.people` (+ departments for /task), without those named; task → `ws_ref_search` type task, written "G-42 "; products → type product, a chip; dates/estimates/priorities/statuses/kinds → `BOOT.command_values` by folded prefix. /task extras: `@`, the top days, `~`, `!`, `#`; a sign opens its list. A fixed list with nothing for the typed word closes (title words).
-- Keys: no row picked at first (`pickerIndex -1`, row 0 marked `.ws-picker-next`, footer "Tab: write · ↑↓: choose · Esc: close"). Tab writes the marked row plus a space, `pick()` re-runs `pickerCheck()` for the next arg. Enter writes only an arrow-picked row, else sends (Enter on the /task preview as #1440). Space moves on. Esc dismisses that arg (`argDismissed`, /task's extras at once); `send()` dismisses too; Tab (`commandTab()`) brings it back. `@` and `#` keep their pickers.
-- `drawCommandStrip()` (`.ws-cmd-strip`): typed name, args `<required>` `[optional]`, current ones highlighted, "e.g. …".
+## What does an entry hold?
+- `key`; `tr`, `en` (the name shown first); `label` ("/task · /görev"); `description`, `example` (through `lang()`); `args` (`ws_command_registry_arg()`); `names` (every name the parser answers to, no slash, in table order; empty for /claude and /ai, which become a tag before commands are read); `group`; `where` (`any` until CC2 reads it); `order` (10, 20, …; /help 1000).
+- Functions are named as strings: `gate` ($viewer, $key) → bool, also called with a null viewer, '' for anybody; `runner` ($viewer, $channel, $rest, $options, $body, $key); `live` ($viewer, $channel, $rest) → line, warnings, '' for none; `api`: `preview`, `run`, or a function ($rest, $options, $key) answering one (`ws_api_command_kind_create()`, `_poll()`).
 
-## What happens to an unknown /word?
-- `ws_command_unknown()`: first token `^/\p{L}{1,20}` then space or end, no command, not claude/ai. `/var/www x`, `http://x`, `/ 5`, `/2026`, `//x` are text. `ws_command_run()` answers `ws_command_unknown_answer()`: ephemeral, `keep` (the box keeps the text), up to three `ws_command_closest()` names (prefix or Levenshtein ≤ 1/2, folded; Turkish wins ties; never /g, /t).
-- "//word …" posts "/word …" (`ws_command_unescape()` in `ws_send`); "// TODO", "///x", "//claude" stay as typed. Scheduled messages and the API do not unescape.
+## Who reads it?
+- `ws_command_names()` / `ws_command_create_names()` (/create, /product) → `ws_command_table()`, the parser's name map, in the old order. `ws_commands()` builds the picker, /help, palette and API list from it.
+- `ws_command_offered()` calls the gate (`ws_command_gate_product()`, `_schedule()`, `_timer()`, `_wake()`, `_agent_channel()`, `_assistant()`). `ws_command_run()` calls the runner (`ws_command_run_assign()`, `_done()`, `_postpone()`, `_noted()`, `_poll()`, `_help()`… or the command's own function); a key without an entry runs /help. `ws_command_suggest()` calls `live` (`ws_command_task_suggest()`, `ws_command_live_status()`…). `ws_api_command_kind()` (api_commands.php) reads `api`.
 
-## Tests and checks?
-- tests/workspace_commands_test.php (registry, unknown, closest, "//", suggestions parsed, API route). API answer: workspace-command-api.md.
+## What does a new built-in command add?
+- One entry in its group's function and its runner; a gate, live line or API function when needed; names in Turkish and English; texts with `php tools/tr_add.php`. Then the order list in `tests/workspace_command_registry_test.php`.
+- A new argument kind or value list also touches `ws_command_argument_kinds()`, `ws_command_suggestions()` and `openArgument()` in `assets/js/workspace.js`; a new kind of answer `send()` there and `ws_api_command_preview_types()`.
+
+## Where does a command run?
+- In a channel's box and a discussion (`ws_send`), also as a reply (the run gets `parent_id`: read by /schedule, /create with a file, an application's command); over the API (workspace-command-api.md).
+- Never while a message is edited, in a scheduled message ("A command cannot be scheduled"), in a mailbox room, in a note (its "/" lists the note's inserts), or by a guest (`ws_guest_clean_text()` takes the slash off). Every command runs in a customer channel.
+- The gate knows the person, not the channel: /agent-channel is still listed in a discussion and refused only when run (CC2 of plan channel-commands).
+
+## What is a shadowed application command?
+- An application's command whose name, folded, is a built-in name or /claude, /ai (`ws_command_shadowed()`): a built-in added later took it. The row stays, the built-in runs (the parser reads built-ins first), `ws_command_app_entries()` leaves it out of the picker, /help and closest names, and `GET /workspace/commands` lists it with `shadowed: true` (`ws_commands($viewer, true)`). Registration refuses such a name (409 `name_taken`).
+
+## Tests?
+- tests/workspace_command_registry_test.php: every runner, gate, live and API function exists; keys, order, names, live lines and API classes as before; shadowing. Picker: workspace-command-picker.md.

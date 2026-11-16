@@ -6,7 +6,7 @@ priority: 6
 
 ## What is asked?
 - Owner (2026-11-16, agent channel message 6671, to the R&D agent): "kanallardaki komutları genişletme ilgili araştırma ve plan hazırla. en son mimara sor planı o hazırlasın."
-- The R&D agent's census: `plans/channel-commands-census.md` and its six files. The architect's view on it: agent channel message 6770.
+- The R&D agent's census (deleted with CC1; what lasts is in `workspace/workspace-command-registry.md`, `workspace-command-picker.md` and `workspace-command-other-chats.md`). The architect's view on it: agent channel message 6770.
 
 ## What did the owner answer? (the R&D agent's polls, 2026-11-16, each the recommended option)
 - Poll 93 (message 6777), all five packages of the census into the plan: "Evet, hepsi; sırayla".
