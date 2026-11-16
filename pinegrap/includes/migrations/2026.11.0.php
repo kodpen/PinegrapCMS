@@ -208,6 +208,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_push_provider();           // 11.0.215
 	upgrade_2026_11_0_cart_recovery_touch();     // 11.0.216
 	upgrade_2026_11_0_ws_agent_duty();           // 11.0.217
+	upgrade_2026_11_0_ws_agent_feedback();       // 11.0.218
 	upgrade_2026_11_0_ws_link_previews();        // 11.0.220
 
 }
@@ -6932,6 +6933,31 @@ function upgrade_2026_11_0_ws_agent_duty() {
 
 }
 
+// Right or Wrong on an agent's reply (11.0.218, includes/workspace/
+// agent_feedback.php): one row per marked reply, keyed by the reply's
+// message. The person who asked or a manager of the channel marks it; a new
+// mark replaces the row, taking it back deletes it. agent is the request's
+// ws_ai_requests.agent value (agent:<id>, model:<id>), as ws_approval_agents
+// keeps it, so an agent's marks and its 7- and 30-day counts are read by
+// (agent, marked_at). No backfill: no reply was marked before this step.
+function upgrade_2026_11_0_ws_agent_feedback() {
+
+	install_create_table('ws_agent_feedback', "CREATE TABLE ws_agent_feedback (
+		message_id INT UNSIGNED NOT NULL,
+		request_id INT UNSIGNED NOT NULL DEFAULT 0,
+		channel_id INT UNSIGNED NOT NULL DEFAULT 0,
+		agent      VARCHAR(32) NOT NULL DEFAULT '',
+		verdict    ENUM('right','wrong') NOT NULL,
+		reason     VARCHAR(300) NOT NULL DEFAULT '',
+		marked_by  INT UNSIGNED NOT NULL DEFAULT 0,
+		marked_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (message_id),
+		KEY idx_agent (agent, marked_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Workspace: a reply of an agent can be marked right or wrong; the agent reads its marks and their counts.');
+
+}
 // The link preview of a Workspace message (11.0.220,
 // includes/workspace/link_preview.php): one row per message whose first web
 // address is to be read or was read. state: waiting (written at send or edit,

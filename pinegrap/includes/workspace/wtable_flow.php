@@ -207,26 +207,28 @@ function ws_wtable_flow_refusal($access, $builds_flows)
  * @param array      $viewer
  * @param array|null $table  ws_wtable()
  * @param mixed      $chosen role => column id, as posted
- * @return array ok, error (a message), flow_id, compiled (ws_flow_from_wtable() without its graph)
+ * @param bool       $dry    make every check and save nothing (the API's
+ *                           dry run): flow_id is then 0
+ * @return array ok, error (a message), status, flow_id, compiled (ws_flow_from_wtable() without its graph)
  */
-function ws_wtable_flow_create($viewer, $table, $chosen)
+function ws_wtable_flow_create($viewer, $table, $chosen, $dry = false)
 {
-    $fail = function ($error) {
-        return array('ok' => false, 'error' => $error, 'flow_id' => 0, 'compiled' => array());
+    $fail = function ($error, $status = 422) {
+        return array('ok' => false, 'error' => $error, 'status' => (int) $status, 'flow_id' => 0, 'compiled' => array());
     };
 
     $refusal = ws_wtable_flow_refusal($table ? ws_wtable_access($viewer, $table) : '', ws_can_schedule($viewer));
 
     if ($refusal === 'not_found') {
-        return $fail(lang('That table could not be found.'));
+        return $fail(lang('That table could not be found.'), 404);
     }
 
     if ($refusal !== '') {
-        return $fail(lang('Only staff in the team can build flows.'));
+        return $fail(lang('Only staff in the team can build flows.'), 403);
     }
 
     if (!ws_flows_ready()) {
-        return $fail(lang('The database has to be updated first.'));
+        return $fail(lang('The database has to be updated first.'), 503);
     }
 
     $columns = ws_wtable_columns((int) $table['id']);
@@ -263,15 +265,27 @@ function ws_wtable_flow_create($viewer, $table, $chosen)
         return $fail(lang('No row names a step: there is nothing to make a flow of.'));
     }
 
-    $saved = ws_flow_save($viewer, array('name' => (string) $table['name'], 'graph' => $compiled['graph']));
+    // The save's own checks first, so that a dry run meets its refusals.
+    $data = array('name' => (string) $table['name'], 'graph' => $compiled['graph']);
+    $checked = ws_flow_save_check($viewer, $data);
 
-    if (!$saved['ok']) {
-        return $fail((string) $saved['error']);
+    if (!$checked['ok']) {
+        return $fail((string) $checked['error'], (int) ($checked['status'] ?? 422));
     }
 
     unset($compiled['graph']);
 
-    return array('ok' => true, 'error' => '', 'flow_id' => (int) $saved['flow_id'], 'compiled' => $compiled);
+    if ($dry) {
+        return array('ok' => true, 'error' => '', 'status' => 200, 'flow_id' => 0, 'compiled' => $compiled);
+    }
+
+    $saved = ws_flow_save($viewer, $data);
+
+    if (!$saved['ok']) {
+        return $fail((string) $saved['error'], (int) ($saved['status'] ?? 422));
+    }
+
+    return array('ok' => true, 'error' => '', 'status' => 201, 'flow_id' => (int) $saved['flow_id'], 'compiled' => $compiled);
 }
 
 /**

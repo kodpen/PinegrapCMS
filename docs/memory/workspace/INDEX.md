@@ -33,6 +33,7 @@
 - agent-duty.md: An agent's duty text (AF1 #9785, AF3 #9821): the "Duty" box on the agent's form, ws_agents.duty TEXT NULL, "Your duty" and the channel's other agents in its instructions, the agent card [decision: here]
 - agent-edit-hold.md: An agent waits while its message is edited: the edit box's beat, held_until, "Being edited, @agent is waiting", 409 editing / edited, a save in each status (#8869) [decision: decisions-made-schema-16.md, decisions-made-workspace-14.md]
 - agent-emoji.md: The one fitting emoji an agent leaves on the message that asked it (#8932): the brief, the answer route's emoji, a model assistant's answer tool, what is refused [decision: decisions-made-workspace-19.md]
+- agent-feedback.md: Right or Wrong on an agent's reply (AF5a #9814): the ws_agent_feedback table, who marks, one mark per reply, GET /workspace/agent-feedback with the 7- and 30-day counts [decision: here]
 - agent-flows.md: The flows part of the agent risk tiers (flow_agent_box.php, A7b): the Ask an agent box (kind agent) and runs an application agent starts within its channel tier
 - agent-instructions.md: How an application agent learns its work from the site: GET /workspace/agent-instructions with its own key, the text's parts, the three doors, the version and the brief's line, the Start text box [decision: decisions-made-workspace-32.md]
 - agent-key-trial-2.md: The agent's own side tried live on dev (2026-11-11) with an application agent's key: POST agent-wake and its dry run, a wake's request, brief and text answer, the agent's edit of its own message
@@ -175,7 +176,7 @@
 - poll-agent-question-box.md: The agent question's box (agentQuestionNode() in workspace.js, AQ4b #9722): who it asks, the click or one Send, "Other" as a words field, the answered state, taken back; the Decisions tab line
 - poll-agent-question-dry-run.md: A dry run of POST /workspace/channels/{id}/polls reports the settings an agent question keeps (anonymous false, closes_at null) and agent_question (#9812)
 - poll-agent-question-reach.md: Where an agent question reaches the person it asks: the ring, Today, the Assistant card, the channel export, and tools/ws_poll.php ask (option pictures by message number), again, withdraw
-- poll-agent-question.md: The agent question on the server (agent_question.php, step 11.0.214): the flag, who answers, settling by the first answer, the wake and brief, the memory index, map and API fields [decision: decisions-made-workspace-34.md]
+- poll-agent-question.md: The agent question on the server (agent_question.php, step 11.0.214): the flag, who answers, first answer settles, wake and brief, memory index, map and API fields [decision: decisions-made-workspace-34.md]
 - poll-box.md: The poll box (pollNode(), AQ3 #9647): three shapes and their rule, option parts, "Other" words, taken back, asked again, the asker's actions; the New poll form's parts and channel pictures
 - poll-option-parts.md: A poll option's description, picture, links, Recommended mark and the "Other" row with the voter's own words (poll_parts.php, step 11.0.213); create, change and vote rules, API fields, older polls
 - poll-take-back.md: Take back and Ask again on a poll (poll_again.php): the asker (a person or the asking application), withdrawn_at, again_of, panel actions, API withdraw and again routes
@@ -213,6 +214,7 @@
 - workspace-agent-settings.md: The Workspace agents card in Site Settings (Assistants and agents) and on Workspace Settings: drawers, field and button names, the form by kind with Advanced, the shared check and write [decision: here]
 - workspace-ai-call-timeout.md: How long one Pinegrap AI model call may take (500 s, PG_AI_CALL_TIMEOUT 20-600), why it is no longer 55 s, what still cuts a call off, the levers to measure before changing limits [decision: here]
 - workspace-ai-rewrite.md: "Rewrite with AI" in the Workspace composer (ai_write target ws_message): what the model reads, the button, Use as one undo step, tags kept, no AI mark
+- workspace-api-bin-flow-blocks-followup.md: Workspace API routes of CA16 (#9831): a binned table row deleted for good (person only, no MCP tool), a draft flow from a table, titled blocks searched and read, a customer channel's follow-up
 - workspace-api-callers.md: Which Workspace API writes the person must make themselves: ws_api_person_only() vs ws_api_own_words_only(), whose name a write carries, refusals, which are no MCP tools [decision: here]
 - workspace-api-channel-access.md: Channel kind, join, clear and version rename in the API (api_channel_access.php): person only, no MCP tool, the panel checks, who comes in and leaves
 - workspace-api-channel-customer.md: A channel's customer over the Workspace API and MCP (PR #1766): customer_type and customer_id on channels.create and channels.update, one half alone refused, null clears, the user role's contact rule

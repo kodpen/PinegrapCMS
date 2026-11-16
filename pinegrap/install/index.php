@@ -9281,6 +9281,7 @@ function get_tables() {
 		'ws_approval_people',
 		'ws_approval_guests',
 		'ws_approval_agents',
+		'ws_agent_feedback',
 		'ws_status_updates',
 		'ws_checkins',
 		'ws_checkin_answers',
