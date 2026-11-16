@@ -16,7 +16,6 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 ## Clusters
 
 - `addon-hook-*`: 10 files.
-- `channel-commands-*`: 12 files; start at `channel-commands.md`.
 - `design-canvas-*`: 7 files.
 - `panel-old-*`: 13 files.
 - `picture-text-*`: 8 files.
