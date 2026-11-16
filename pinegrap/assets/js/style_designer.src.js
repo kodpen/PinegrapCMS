@@ -68625,6 +68625,12 @@ const StyleDesigner = (function () {
         tools.appendChild(ui.zoomLabel);
         tools.appendChild(_sdProtoButton('bi-zoom-in', _sdT('Zoom In'), function () { if (_sdProto.canvas) _sdProto.canvas.view.zoomBy(1.2); }));
         tools.appendChild(_sdProtoButton('bi-arrows-fullscreen', _sdT('Fit to screen'), function () { if (_sdProto.canvas) _sdProto.canvas.view.fit(); }));
+        // Tidy up changes every editor's arrangement, so it carries its name
+        // beside the icon (hidden on a phone, where the title and the label
+        // still name it).
+        var tidy = _sdProtoButton('bi-grid-3x3-gap', _sdT('Tidy up'), function () { _sdProtoTidy(); });
+        tidy.appendChild(_sdProtoEl('span', 'sd-proto-btn-label', _sdT('Tidy up')));
+        tools.appendChild(tidy);
         tools.appendChild(_sdProtoButton('bi-arrow-clockwise', _sdT('Read the links again'), function () { _sdProtoLoad(); }));
         tools.appendChild(_sdProtoButton('bi-x-lg', _sdT('Close the prototype view'), function () { _sdProtoClose(); }));
         bar.appendChild(tools);
@@ -68831,6 +68837,7 @@ const StyleDesigner = (function () {
         head.appendChild(_sdProtoEl('span', 'bi ' + (item.kind === 'shared' ? 'bi-puzzle' : 'bi-file-earmark') + ' sd-proto-kind'));
         head.lastChild.setAttribute('aria-hidden', 'true');
         head.appendChild(_sdProtoEl('span', 'sd-proto-name', _sdProtoFrameName(item)));
+        if (item.start) head.appendChild(_sdProtoEl('span', 'sd-proto-start', _sdT('Start')));
         var meta = '';
         if (item.kind === 'shared') {
             meta = !item.loaded ? _sdT('Not loaded') : (item.pages === 1 ? _sdT('On 1 page') : _sdT('On {var:1} pages', item.pages));
@@ -68913,15 +68920,56 @@ const StyleDesigner = (function () {
         return chip.href;
     }
 
+    // The bands of the arrangement: one per tab group in the strip's order,
+    // the tabs in none under "Pages"; the side columns' headings.
+    function _sdProtoSections() {
+        var sections = [];
+        var byGroup = {};
+        _pages.forEach(function (p) {
+            var gid = (p.tabGroup && _pgTabGroups[p.tabGroup]) ? p.tabGroup : '';
+            if (!gid) return;
+            if (!byGroup[gid]) {
+                byGroup[gid] = { id: gid, label: _pgTabGroupLabel(gid), keys: [] };
+                sections.push(byGroup[gid]);
+            }
+            byGroup[gid].keys.push(p.key);
+        });
+        return { sections: sections, rest: _sdT('Pages'), shared: _sdT('Shared parts'), outside: _sdT('Outside this design') };
+    }
+
+    // Tidy up: every frame and chip back in the arrangement, after a
+    // confirmation. An operator who may arrange the tabs clears the places
+    // shared on the design and this browser's; anyone else, and anyone in
+    // view mode (the design is being edited in another tab), only this
+    // browser's, and is told the shared ones stay.
+    function _sdProtoTidy() {
+        var shared = _pgTabLayoutEditable() && !!(_design && _design.styleId) && _collab.mayEdit !== false;
+        var msg = shared
+            ? _sdT('Put every page and address back in its place? Places moved by hand are cleared for every editor of this design.')
+            : _sdT('Put every page and address back in its place in this browser? Places shared on the design stay as they are.');
+        if (!window.confirm(msg)) return;
+        if (shared && Object.keys(_pgTabProto).length) {
+            _pgTabProto = {};
+            _pgTabsLayoutSave();
+        }
+        _sdProtoLocalWrite({});
+        if (!shared) sdToast(esc(_sdT('Only the places in this browser were cleared.')), 'info', 4000);
+        if (_sdProto.marked) {
+            _sdProto.layout = null;
+            _sdProtoDraw(_sdProto.marked);
+        }
+    }
+
     function _sdProtoDraw(marked) {
         var H = window.PGProtoHotspots;
         var G = window.PGGraphCanvas;
         var canvas = _sdProto.canvas;
         var ui = _sdProto.ui;
         var first = !_sdProto.layout;
-        var l = H.layout(marked, _sdProtoSaved());
+        var l = H.layout(marked, _sdProtoSaved(), _sdProtoSections());
 
         _sdProtoMenuClose(false);
+        _sdProto.marked = marked;
         _sdProto.layout = l;
         _sdProto.items = l.frames.concat(l.chips);
         _sdProto.byId = {};

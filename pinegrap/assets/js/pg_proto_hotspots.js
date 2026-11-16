@@ -817,7 +817,12 @@
     }
 
     // The sizes of what layout() places, in canvas units.
-    var FRAME = { w: 248, head: 44, thumb: 84, row: 30, pad: 10, gap: 160, chipW: 200, chipH: 36, chipGap: 12 };
+    var FRAME = { w: 248, head: 44, thumb: 84, row: 30, pad: 10, chipW: 200, chipH: 36, chipGap: 12 };
+
+    // How layout() arranges the frames: eight a row, the gap between frames
+    // and between rows, a section heading's height, and the gap between a
+    // side column (shared parts, chips) and the grid.
+    var GRID = { cols: 8, gap: 96, head: 40, side: 160 };
 
     // The marks that end on a chip, in the order the chips are stacked.
     var CHIP_MARKS = ['page', 'anchor', 'contact', 'external', 'hidden', 'broken'];
@@ -863,21 +868,30 @@
     }
 
     // Where everything of a marked design goes on the canvas and which
-    // arrows join it: frames (id 'p:<tab key>' or 's:<shared id>') side by
-    // side, each as tall as its rows; one chip (id 'c:<n>') per mark and
-    // href that ends outside the design's tabs, stacked right of the
-    // frames; an arrow (id '<frame id>|<port>') from each row to the tab
-    // frame it opens or to its chip. `saved` (id => { x, y }) puts a frame
-    // or chip back where the operator left it.
-    function layout(marked, saved) {
+    // arrows join it: frames (id 'p:<tab key>' or 's:<shared id>'), each as
+    // tall as its rows; one chip (id 'c:<n>') per mark and href that ends
+    // outside the design's tabs; an arrow (id '<frame id>|<port>') from
+    // each row to the tab frame it opens or to its chip. The places come
+    // from the graph canvas core's arrange() (window.PGGraphCanvas, read
+    // when called): the tab frames in a grid of bands, one per section of
+    // opts.sections ([{ id, label, keys }], the tab groups in the strip's
+    // order), the tabs in none under opts.rest (first when the first tab is
+    // one of them, else last), one unlabelled band without sections; inside a band the flow from the first tab (the
+    // start, breadth-first over the tab-to-tab arrows, the strip's order
+    // between equals, the unreached last). The shared frames stand in a
+    // column before the grid under opts.shared, the chips in one after it
+    // under opts.outside, one group per mark. `saved` (id => { x, y }) puts
+    // a frame or chip back where the operator left it. Answers { frames,
+    // chips, edges, headings, start }.
+    function layout(marked, saved, opts) {
         saved = isObject(saved) ? saved : {};
+        opts = isObject(opts) ? opts : {};
 
         var frames = [];
         var chips = [];
         var chipByKey = {};
         var edges = [];
         var tabs = {};
-        var x = 0;
 
         function place(item) {
             var at = saved[item.id];
@@ -911,14 +925,13 @@
                     rows: rows,
                     sketch: bands,
                     thumb: thumb,
-                    x: x,
+                    x: 0,
                     y: 0,
                     w: FRAME.w,
                     h: FRAME.head + thumb + Math.max(1, rows.length) * FRAME.row + FRAME.pad
                 };
 
-                x += FRAME.w + FRAME.gap;
-                frames.push(place(item));
+                frames.push(item);
             });
         });
 
@@ -949,13 +962,90 @@
         chips.sort(function (a, b) {
             return (CHIP_MARKS.indexOf(a.mark) - CHIP_MARKS.indexOf(b.mark)) || (parseInt(a.id.substr(2), 10) - parseInt(b.id.substr(2), 10));
         });
-        chips.forEach(function (chip, i) {
-            chip.x = x;
-            chip.y = i * (FRAME.chipH + FRAME.chipGap);
-            place(chip);
+
+        var G = window.PGGraphCanvas;
+        var byId = {};
+        var pageIds = [];
+        var sharedIds = [];
+
+        frames.forEach(function (frame) {
+            byId[frame.id] = frame;
+            (frame.kind === 'page' ? pageIds : sharedIds).push(frame.id);
+        });
+        chips.forEach(function (chip) { byId[chip.id] = chip; });
+
+        var start = pageIds.length ? pageIds[0] : '';
+        var flow = G.order(pageIds, edges.filter(function (e) { return e.to.charAt(0) === 'p'; }), start);
+        var rank = {};
+
+        flow.ids.forEach(function (id, i) { rank[id] = i; });
+
+        var bands = [];
+        var used = {};
+
+        (Array.isArray(opts.sections) ? opts.sections : []).forEach(function (section) {
+            var items = [];
+
+            (Array.isArray(section && section.keys) ? section.keys : []).forEach(function (key) {
+                var id = 'p:' + key;
+
+                if (has(byId, id) && byId[id].kind === 'page' && !used[id]) {
+                    used[id] = true;
+                    items.push(id);
+                }
+            });
+            bands.push({ id: str(section && section.id), label: str(section && section.label), items: items });
         });
 
-        return { frames: frames, chips: chips, edges: edges };
+        var rest = pageIds.filter(function (id) { return !used[id]; });
+        var restBand = { id: 'pages', label: bands.length ? str(opts.rest) : '', items: rest };
+
+        // The start's band leads: the tabs in no group come first when the
+        // first tab is one of them, else last.
+        if (start !== '' && !used[start]) {
+            bands.unshift(restBand);
+        } else {
+            bands.push(restBand);
+        }
+        bands.forEach(function (band) {
+            band.items.sort(function (a, b) { return rank[a] - rank[b]; });
+        });
+
+        var laid = G.arrange(bands, {
+            cols: GRID.cols,
+            w: FRAME.w,
+            h: FRAME.head + FRAME.row + FRAME.pad,
+            gapX: GRID.gap,
+            gapY: GRID.gap,
+            head: GRID.head,
+            sideGap: GRID.side,
+            size: function (id) { return has(byId, id) ? { w: byId[id].w, h: byId[id].h } : null; },
+            before: { id: 'shared', label: str(opts.shared), w: FRAME.w, items: sharedIds },
+            after: {
+                id: 'outside',
+                label: str(opts.outside),
+                w: FRAME.chipW,
+                h: FRAME.chipH,
+                gap: FRAME.chipGap,
+                groups: CHIP_MARKS.map(function (mark) {
+                    return { id: 'mark:' + mark, items: chips.filter(function (c) { return c.mark === mark; }).map(function (c) { return c.id; }) };
+                })
+            }
+        });
+
+        frames.concat(chips).forEach(function (item) {
+            var at = laid.places[item.id];
+
+            if (at) {
+                item.x = at.x;
+                item.y = at.y;
+            }
+
+            place(item);
+        });
+        frames.forEach(function (frame) { frame.start = (frame.id === start); });
+
+        return { frames: frames, chips: chips, edges: edges, headings: laid.headings, start: start };
     }
 
     // The y of a row's port from the top of its frame.

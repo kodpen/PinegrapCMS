@@ -3086,6 +3086,8 @@
     "Put back the canvas as it was before this edit? The edit stays among the versions.": "Tuval bu düzenlemeden önceki haline geri getirilsin mi? Düzenleme sürümler arasında kalır.",
     "Put back the page as it was before this edit? The edit stays among the versions.": "Sayfa bu düzenlemeden önceki hâline döndürülsün mü? Düzenleme sürümler arasında kalır.",
     "Put back this version": "Bu sürüme dön",
+    "Put every page and address back in its place in this browser? Places shared on the design stay as they are.": "Her sayfa ve adres bu tarayıcıda yerine konsun mu? Tasarımda paylaşılan yerler olduğu gibi kalır.",
+    "Put every page and address back in its place? Places moved by hand are cleared for every editor of this design.": "Her sayfa ve adres yerine konsun mu? Elle taşınan yerler bu tasarımın tüm düzenleyicileri için temizlenir.",
     "Put in the column {var:1}": "{var:1} sütununa bırakıldı",
     "Put into the message": "Mesaja ekle",
     "Put it on my account": "Cari hesabıma yaz",

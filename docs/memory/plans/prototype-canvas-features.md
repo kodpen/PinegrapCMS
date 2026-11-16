@@ -12,7 +12,7 @@ description: Plan prototype-canvas, features F1 to F14: what a frame of the Prot
 
 ## How are the frames arranged?
 - (F6) A grid, not one row: eight frames a row, then the next row.
-- (F7) Sections: one per tab group in the strip's order, headed by the group's name; pages in no group under "Pages" when the design has groups, with no heading when it has none. Inside a section the pages follow the flow from the start page (breadth-first over the links, the strip's order between equals); pages nothing reaches come last.
+- (F7) Sections: one per tab group in the strip's order, headed by the group's name; pages in no group under "Pages" when the design has groups (first when the first tab is one of them, else last; architect, 2026-11-16, message 5878), with no heading when it has none. Inside a section the pages follow the flow from the start page (breadth-first over the links, the strip's order between equals); pages nothing reaches come last.
 - (F8) Targets outside the design (other site pages, other sites, contact addresses, anchors, hidden, broken) stay chips, in a column at the right under "Outside this design", grouped as today.
 - (F9) A frame or chip moved by hand keeps its place as today. "Tidy up" in the bar puts everything back to this arrangement, after a confirmation saying it does so for every editor of the design.
 
