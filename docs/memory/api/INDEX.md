@@ -103,6 +103,7 @@
 - oauth-authorize-state.md: OAuth authorize (includes/oauth/authorize.php): state is handed back exactly as sent, never cut; a state over 4096 bytes is refused with invalid_request and the same state
 - removed-rest-api-apps.md: History note: apps.php, apps_settings.php and the custom_apps table were removed in 2026.4.4 and replaced by the external API (integration.php, includes/api/). [decision: decisions-made-data.md, decisions-made.md]
 - translations-api-dry-run.md: The seven translation API writes take X-Dry-Run (PR #1911): where each stops, the batch counts, translate_api_write_check(), pg_tr_result_judge(), pg_tr_reviewed_kept()
+- workspace-api-link-preview.md: link_preview on a Workspace message read over the external API and MCP (LP3): the card's plain fields, the states and the switch that leave it null, which routes carry it
 - workspace-api-message-people.md: Workspace API routes for a message's readers (seen by and read receipts), bringing its mentioned people into the channel, and forwarding messages into a note (note_id on the forward route)
 - workspace-api-scheduled-message-changes.md: Workspace API scheduled messages: change one (POST …/update), schedule a reply (parent_id), send one now (POST …/send), and the checks shared with the panel
 - workspace-api-status-checkins.md: Workspace API for a channel's status update and check-ins - POST …/status, POST …/checkins, POST /workspace/checkins/{id}/answer - who may call each and the checks shared with the panel
