@@ -16065,13 +16065,14 @@ html[data-bs-theme="dark"] .ws-hl {
   z-index: 1080;
 }
 .ws-hl-bar {
-  /* One rounded surface, the radius of the panel's menus; the buttons inside
-     are flat and follow its corner (inner radius = outer minus padding). */
+  /* One rounded surface, the radius of the panel's menus, holding one
+     sentence: the highlighter, "Highlight for", the joined pair. Inner
+     corners follow the bar's (inner radius = outer minus padding). */
   --ws-hl-bar-pad: .25rem;
+  --ws-hl-bar-inner: max(0px, calc(var(--pg-radius-surface) - var(--ws-hl-bar-pad)));
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: .125rem;
+  flex-direction: column;
+  align-items: flex-start;
   max-width: calc(100vw - 1rem);
   padding: var(--ws-hl-bar-pad);
   background: var(--pg-bg-body);
@@ -16079,14 +16080,39 @@ html[data-bs-theme="dark"] .ws-hl {
   border-radius: var(--pg-radius-surface);
   box-shadow: var(--pg-shadow-float);
 }
-.ws-hl-bar > .btn {
-  flex-shrink: 0;
+.ws-hl-bar-line {
+  display: flex;
+  align-items: center;
+  gap: .375rem;
   white-space: nowrap;
-  border: 0;
-  border-radius: max(0px, calc(var(--pg-radius-surface) - var(--ws-hl-bar-pad)));
 }
-/* Where the buttons leave no room, the "too long" note takes a line of its
-   own inside the bar; nothing is shortened. */
+.ws-hl-bar-icon {
+  padding-inline-start: .375rem;
+  color: var(--pg-fg-3);
+}
+.ws-hl-bar-text:last-child {
+  padding-inline-end: .375rem;
+}
+/* The pair is one control: two flat segments inside one outline. */
+.ws-hl-bar-pair {
+  display: inline-flex;
+  flex-shrink: 0;
+  overflow: hidden;
+  border: 1px solid var(--pg-border-color);
+  border-radius: var(--ws-hl-bar-inner);
+}
+.ws-hl-bar-pair > .btn {
+  border: 0;
+  border-radius: 0;
+}
+.ws-hl-bar-pair > .btn + .btn {
+  border-inline-start: 1px solid var(--pg-border-color);
+}
+.ws-hl-bar-one {
+  border: 0;
+  border-radius: var(--ws-hl-bar-inner);
+}
+/* The "too long" note takes a line of its own under the sentence. */
 .ws-hl-bar-note {
   padding: .25rem .5rem;
   color: var(--bs-secondary-fg);

@@ -552,8 +552,8 @@
         bar.setAttribute('role', 'toolbar');
         bar.setAttribute('aria-label', h.t('hl_toolbar'));
 
-        var add = function (scope, label, iconName, hint) {
-            var button = press('btn btn-sm btn-subtle theme-secondary', label, iconName, function () {
+        var add = function (parent, className, scope, label, name, hint) {
+            var button = press(className, label, '', function () {
                 var selection = window.getSelection();
 
                 closeBar();
@@ -565,17 +565,44 @@
                 send('ws_highlight_set', { message_id: message.id, quote: spot.quote, occurrence: spot.occurrence, scope: scope }, spot.body).catch(function () {});
             });
 
+            // The visible word is part of a sentence: the button's name is the
+            // whole sentence ("Highlight for everyone").
+            button.setAttribute('aria-label', name);
             button.title = hint;
             button.disabled = tooLong;
-            bar.appendChild(button);
+            parent.appendChild(button);
         };
 
-        // "Highlight for everyone" only where the reader may react (H4).
+        // One sentence, the highlighter once at its start: "Highlight for
+        // [everyone] [me]", the pair standing where the language's sentence
+        // puts it. Only "for me" where the reader may not react (H4).
+        var line = h.el('div', 'ws-hl-bar-line');
+
+        line.appendChild(h.icon('bi-highlighter', 'ws-hl-bar-icon'));
+
         if (message.can_react) {
-            add('all', h.t('hl_bar_everyone'), 'bi-people', h.t('hl_bar_everyone_hint'));
+            var holder = '\u0001';
+            var parts = h.t('hl_bar_sentence', holder).split(holder);
+            var pair = h.el('div', 'ws-hl-bar-pair');
+            var words = function (text) {
+                text = text.replace(/^\s+|\s+$/g, '');
+
+                if (text) {
+                    line.appendChild(h.el('span', 'ws-hl-bar-text', text));
+                }
+            };
+
+            pair.setAttribute('role', 'group');
+            add(pair, 'btn btn-sm btn-subtle theme-secondary', 'all', h.t('hl_bar_word_everyone'), h.t('hl_bar_everyone'), h.t('hl_bar_everyone_hint'));
+            add(pair, 'btn btn-sm btn-subtle theme-secondary', 'me', h.t('hl_bar_word_me'), h.t('hl_bar_me'), h.t('hl_bar_me_hint'));
+            words(parts[0]);
+            line.appendChild(pair);
+            words(parts.slice(1).join(''));
+        } else {
+            add(line, 'btn btn-sm btn-subtle theme-secondary ws-hl-bar-one', 'me', h.t('hl_bar_me'), h.t('hl_bar_me'), h.t('hl_bar_me_hint'));
         }
 
-        add('me', h.t('hl_bar_me'), 'bi-highlighter', h.t('hl_bar_me_hint'));
+        bar.appendChild(line);
 
         if (tooLong) {
             bar.appendChild(h.el('span', 'ws-hl-bar-note small', h.t('hl_shorter')));

@@ -28,8 +28,8 @@ description: A reader's highlights on part of a message (ws_highlights, 11.0.222
 - A channel is archived, never deleted: its highlights stay, read-only.
 
 ## How are they drawn?
-- On a settled selection a mini toolbar (`role="toolbar"`) shows "Highlight for everyone" (`bi-people`, absent where H4 refuses) and "Highlight for me" (`bi-highlighter`), each with a title saying who sees it ("Nobody is notified." on the first); it takes no focus and closes on Escape, a click elsewhere or a scroll. It stays inside the visible message list: off screen or over the composer, it moves to the list's edge.
-- Since #10018 the bar is one rounded surface (`--pg-radius-surface`, the menus' radius); its buttons are flat, borderless, with its radius minus its padding. The "too long" note wraps to its own line when the row is full (390). (`--bs-btn-border-radius`, set only in `.btn`, drew it square).
+- On a settled selection a toolbar (`role="toolbar"`) reads one sentence, "Highlight for [everyone] [me]" (`hl_bar_sentence`, Turkish "[Herkes] [Kendim] için vurgula"): `bi-highlighter` once, the two words a joined pair of buttons, each named by the whole sentence, with a title on who sees it. Where H4 refuses, one button "Highlight for me". No focus taken; closes on Escape, a click elsewhere or a scroll; stays inside the visible message list (off screen or over the composer, at its edge).
+- Owner (2026-11-16): one sentence with the pair, not two long buttons (#10018). One rounded surface (`--pg-radius-surface`), flat inner parts; the "too long" note on its own line under it.
 - `<mark class="ws-hl">` around each piece, in its maker's colour (`senderTone()`); a `me` one is dotted; overlaps nest, the newer inside. Its card names the maker, the scope and the note, with Add/Edit note and Remove for who may.
 
 Related: docs/memory/workspace/workspace-message-highlights-mine.md, docs/memory/workspace/workspace-text-highlight.md
