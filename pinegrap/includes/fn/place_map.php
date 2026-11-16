@@ -258,6 +258,8 @@ function pg_place_map_lookup($text)
         return array('state' => 'empty', 'lat' => '', 'lng' => '', 'error' => '');
     }
 
+    // The autocomplete driver holds the host rule (pg_addr_photon_host()).
+    pg_addr_driver('photon');
     require_once(PG_FUNCTIONS_DIR . '/includes/geo/geocode/photon.php');
 
     return pg_place_map_answer(pg_geocode_photon($text, $source['app']));
@@ -472,7 +474,7 @@ function pg_place_map_form_tools($page_id)
 
     if (!$source['ok']) {
         return '
-                                        <div class="col-12 mb-5 form-text">' . h($source['reason']) . '</div>';
+                                        <div class="col-12 mb-12 form-text">' . h($source['reason']) . '</div>';
     }
 
     $config = array(
@@ -486,10 +488,10 @@ function pg_place_map_form_tools($page_id)
     );
 
     return '
-                                        <div class="col-12 mb-5" data-pg-place-form="' . h(json_encode($config, JSON_UNESCAPED_UNICODE)) . '">
+                                        <div class="col-12 mb-12" data-pg-place-form="' . h(json_encode($config, JSON_UNESCAPED_UNICODE)) . '">
                                             <button type="button" class="btn btn-sm btn-outline theme-primary" data-pg-place-find><i class="bi bi-geo-alt me-1" aria-hidden="true"></i>' . lang('Find from the address') . '</button>
-                                            <span class="form-text ms-3" role="status" aria-live="polite" data-pg-place-status></span>
-                                            <div class="form-text text-warning" data-pg-place-changed hidden></div>
+                                            <span class="form-text ms-5" role="status" aria-live="polite" data-pg-place-status></span>
+                                            <div class="form-text fg-warning" data-pg-place-changed hidden></div>
                                         </div>
                                         <script>' . pg_place_map_form_script() . '</script>';
 }
@@ -538,7 +540,7 @@ function pg_place_map_list_tools($page_id)
     );
 
     return '<button type="button" class="btn btn-sm btn-outline theme-primary m-1" data-pg-place-bulk="' . h(json_encode($config, JSON_UNESCAPED_UNICODE)) . '" title="' . h(lang(array('string' => 'Looks up the next {var:1} records that have an address but no coordinates.', 'vars' => array((string) PG_PLACE_MAP_BULK)))) . '"><i class="bi bi-geo-alt me-1" aria-hidden="true"></i>' . lang('Find missing coordinates') . '</button>'
-        . '<span class="form-text ms-2" role="status" aria-live="polite" data-pg-place-bulk-status></span>'
+        . '<span class="form-text ms-3" role="status" aria-live="polite" data-pg-place-bulk-status></span>'
         . '<script>' . pg_place_map_list_script() . '</script>';
 }
 
