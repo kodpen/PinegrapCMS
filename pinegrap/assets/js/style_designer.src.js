@@ -2125,8 +2125,31 @@ const StyleDesigner = (function () {
         reference: ['text box', 'pick list', 'radio button', 'check box'],
         product:   ['pick list'],
         page:      ['pick list'],
-        slug:      ['text box']
+        slug:      ['text box'],
+        rows:      ['text box']
     };
+    // A rows field (_CF_KINDS.rows) has no control on the site yet
+    // (pg_cf_apply_field_bindings() leaves it out); the canvas shows three
+    // sample rows in place of its text box.
+    /* @pg-site-output */
+    function _cfRowsSample(doc, node, wrapper, innerEl) {
+        var p = node && node.props;
+        if (!p || node.type !== 'semantic' || String(p.tag || '').toLowerCase() !== 'input') return;
+        if (!p._cf || typeof p._cf !== 'object' || p._cf.kind !== 'rows' || innerEl === wrapper) return;
+        innerEl.style.display = 'none';
+        var list = doc.createElement('ol');
+        list.className = 'list-group list-group-numbered';
+        list.setAttribute('data-sd-rows-sample', '');
+        // The numbers come from the list; the words say it is a sample.
+        [1, 2, 3].forEach(function () {
+            var li = doc.createElement('li');
+            li.className = 'list-group-item text-body-secondary';
+            li.textContent = _sdT('Sample row');
+            list.appendChild(li);
+        });
+        wrapper.appendChild(list);
+    }
+
     // The [kind, label] pairs a field of `type` may take.
     function _cfKindsFor(type) {
         var labels = {
@@ -2135,7 +2158,8 @@ const StyleDesigner = (function () {
             reference: _sdT('Reference to another form'),
             product:   _sdT('Product'),
             page:      _sdT('Page'),
-            slug:      _sdT('Address name (slug)')
+            slug:      _sdT('Address name (slug)'),
+            rows:      _sdT('Record rows')
         };
         return Object.keys(_CF_KINDS).filter(function (k) { return _CF_KINDS[k].indexOf(type) !== -1; })
             .map(function (k) { return [k, labels[k]]; });
@@ -2643,7 +2667,7 @@ const StyleDesigner = (function () {
         // field that already has a kind.
         var kinds = _cfKindsFor(leadType);
         if (kinds.length && (parseInt(settings.collection || 0, 10) || rec.kind)) {
-            if (rec.kind === 'reference' && !_customFormsCache && typeof _fetchCustomForms === 'function') {
+            if ((rec.kind === 'reference' || rec.kind === 'rows') && !_customFormsCache && typeof _fetchCustomForms === 'function') {
                 _fetchCustomForms(function () { _sdSchedulePropsRefresh(); });
             }
             var kindNow = (kinds.some(function (k) { return k[0] === rec.kind; })) ? rec.kind : '';
@@ -2655,6 +2679,15 @@ const StyleDesigner = (function () {
                           _swFormOptions(parseInt(rec.ref || 0, 10) || 0) +
                       '</select>' +
                       _cfHint(esc(_sdT('The field holds the reference code or the address name of a record of that form; several are separated by commas.')))
+                    : '') +
+                // A rows field keeps its rows as records of another
+                // collection, never of this form (pg_coll_rows_spec()).
+                (kindNow === 'rows'
+                    ? '<select class="form-control form-control-sm mt-1 sd-cf-ref" aria-label="' + esc(_sdT('Collection the rows are kept in')) + '">' +
+                          '<option value="0">' + esc(_sdT('— Choose a collection —')) + '</option>' +
+                          _swFormOptions(parseInt(rec.ref || 0, 10) || 0, (_pgActivePage() || {}).page_id, true) +
+                      '</select>' +
+                      _cfHint(esc(_sdT('Each row is a record of that collection, added, removed and ordered on this record\'s form. Only forms used as a collection are listed.')))
                     : '') +
                 '');
         }
@@ -2962,7 +2995,7 @@ const StyleDesigner = (function () {
         on('sd-cf-kind', 'change', function (el) {
             var r = _cfRec(lead);
             if (el.value) r.kind = el.value; else delete r.kind;
-            if (el.value !== 'reference') delete r.ref;
+            if (el.value !== 'reference' && el.value !== 'rows') delete r.ref;
             // An empty `_cf` turns into an array on the server's round trip.
             if (!Object.keys(r).length) delete lead.props._cf;
             commit(true);
@@ -14139,6 +14172,8 @@ const StyleDesigner = (function () {
                 }
             }
             if (innerEl !== wrapper) wrapper.appendChild(innerEl);
+            // A rows field draws three sample rows in place of its text box.
+            _cfRowsSample(doc, node, wrapper, innerEl);
 
             // Image wrapper expansion: when p.width is a percentage the wrapper's inline-block
             // default would prevent the percentage from taking effect (circular constraint).
@@ -60642,12 +60677,14 @@ const StyleDesigner = (function () {
     // appears more than once gets " — <page name> (<folder>)" so the forms
     // of different designs can be told apart; a label still equal gets the
     // form id (the twin of pg_submitted_form_list_labels()).
-    function _swFormOptions(cur, skip) {
+    // `collections` lists only forms used as a collection (and the current one).
+    function _swFormOptions(cur, skip, collections) {
         cur  = parseInt(cur || 0, 10) || 0;
         skip = parseInt(skip || 0, 10) || 0;
         var shown = (_customFormsCache || []).filter(function (f) {
             var fid = parseInt(f.page_id, 10);
             if (skip && fid === skip) return false;
+            if (collections && fid !== cur && !(parseInt(f.collection || 0, 10) > 0)) return false;
             return !_swPageBinned(f) || fid === cur;
         });
         var labels = _swFormLabels(shown);

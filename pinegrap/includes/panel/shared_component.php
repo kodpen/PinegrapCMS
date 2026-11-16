@@ -419,6 +419,10 @@ function pg_panel_shared_component($request, $action)
         // folder_name lets the picker tell same-named forms of different
         // designs apart (a template's pages live in their own folder).
         case 'list_custom_forms':
+            // Whether each form is used as a collection: a rows field picks
+            // only those (pg_coll_rows_spec()). The column comes with step
+            // 11.0.43; before it every form reads as none.
+            $sc_form_collection = pg_coll_ready() ? 'custom_form_pages.collection' : '0';
             $sc_form_rows = db_items(
                 "SELECT
                         page.page_id,
@@ -426,6 +430,7 @@ function pg_panel_shared_component($request, $action)
                         page.page_title,
                         page.page_folder,
                         custom_form_pages.form_name,
+                        $sc_form_collection AS collection,
                         folder.folder_name
                      FROM page
                      LEFT JOIN custom_form_pages ON custom_form_pages.page_id = page.page_id
