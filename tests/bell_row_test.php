@@ -65,6 +65,8 @@ function test_bell_row_module_of_every_known_action()
 		'erp_auto_invoice' => 'erp',
 		'form_submited'    => 'content',
 		'new_comment'      => 'content',
+		'content_change'   => 'content',
+		'content_answer'   => 'content',
 		'workspace'        => 'team',
 		'software_update'  => 'system',
 		'mail_failed'      => 'system',

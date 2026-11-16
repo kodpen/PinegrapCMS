@@ -345,6 +345,18 @@ if (($user['role'] < '3') || ($user['delete_pages'] == TRUE)) {
 // The first rows are printed with the page; the driver loads the rest.
 $list_page = pg_list_table_page($list_source, array(), null);
 
+// Content changes waiting for a designer (includes/fn/content_proposals.php):
+// their count above the list, for designers and administrators.
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/content_proposals.php');
+$output_content_waiting = '';
+$content_waiting = pg_content_proposals_may_decide($user) ? pg_content_proposals_waiting_count() : 0;
+
+if ($content_waiting > 0) {
+    $output_content_waiting = '<div class="alert theme-info d-flex flex-wrap align-items-center gap-2" role="status"><span class="pg-count">' . (int) $content_waiting . '</span>'
+        . h(lang(array('string' => '{var:1} content changes wait for approval.', 'vars' => array($content_waiting))))
+        . ' <a href="content_changes.php">' . h(lang('Waiting Content Changes')) . '</a></div>';
+}
+
 if ($list_page === false) {
     output_error('Query failed.');
 }
@@ -366,6 +378,7 @@ pg_page_shell(
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
             ' . $output_button_bar . '
+            ' . $output_content_waiting . '
             <div class="row">
                 ' . $output_seo_summary . '
             </div>

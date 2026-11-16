@@ -12,7 +12,7 @@ module: content_proposals
 - Actions are POST forms with the CSRF token; the screen reads `$_POST` itself (`post_value()` exists only in the settings screens).
 - With the switch off the screen says new saves go live and the waiting ones stay.
 - Take back is "Take back the change" ("Değişikliği geri al"), its own key: "Take back" is the Workspace's word for withdrawing a request. The designer who applied a change reads "Applied by …"; the others are told only they can take it back. The reason field and its limit say "Sebep".
-- The count on the page's tab and the bell lines are PA4b; until then nothing points at the screen.
+- Who is told and the count above the page list: `content-proposals-bell.md`.
 
 ## How is a change applied?
 - `pg_content_proposals_apply()`: a designer only; the row must be `pending`. `pg_content_proposals_apply_ops()` puts the operations on the stored tree and settings as they are now; each must find its node holding its `was` (an area by fingerprint, a tree by `base_hash`, a setting by value). A missing node is `gone`, a changed value `changed`: the row becomes `stale` and is not applied.

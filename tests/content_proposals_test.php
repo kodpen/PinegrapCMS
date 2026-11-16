@@ -409,3 +409,52 @@ function test_content_proposals_local_picture()
 	pg_assert_false(pg_content_proposals_local_picture('data:image/png;base64,AAA'), 'data');
 	pg_assert_false(pg_content_proposals_local_picture(''), 'empty');
 }
+
+// A12: the designers are told when a change starts waiting, at most once an
+// hour per page.
+function test_content_proposals_bell_once_an_hour()
+{
+	$now = 1800000000;
+
+	pg_assert_true(pg_content_proposals_bell_due(0, $now), 'never told');
+	pg_assert_false(pg_content_proposals_bell_due($now - 600, $now), '10 minutes ago');
+	pg_assert_false(pg_content_proposals_bell_due($now - 3599, $now), 'not yet an hour');
+	pg_assert_true(pg_content_proposals_bell_due($now - 3600, $now), 'an hour');
+}
+
+// A12: the bell lines are addressed rows of the panel's own notifications,
+// shown with the Workspace on or off; the designers' line opens the list, the
+// editor's the page.
+function test_content_proposals_bell_lines()
+{
+	pg_assert_same(array('content_change', 'content_answer'), pg_content_proposals_bell_actions());
+	pg_assert_true(pg_notification_visible(array('action' => 'content_change', 'target_user_id' => 5), array('id' => 5, 'role' => 1)), 'its designer');
+	pg_assert_false(pg_notification_visible(array('action' => 'content_change', 'target_user_id' => 5), array('id' => 6, 'role' => 1)), 'another person');
+	pg_assert_false(pg_notification_visible(array('action' => 'content_answer', 'target_user_id' => 0), array('id' => 6, 'role' => 0)), 'never unaddressed');
+	pg_assert_same('content', pg_notification_module('content_change'));
+	pg_assert_same('content', pg_notification_module('content_answer'));
+
+	$module = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/content_proposals.php');
+	pg_assert_contains("pg_content_proposals_bell_editor(\$row, 'applied');", $module, 'the editor told on apply');
+	pg_assert_contains("pg_content_proposals_bell_editor(\$row, 'stale');", $module, 'the editor told when stale');
+	pg_assert_contains("pg_content_proposals_bell_editor(\$row, 'dismissed', \$reason);", $module, 'the editor told on dismiss, with the reason');
+	pg_assert_contains('pg_content_proposals_bell_designers($page_id, $name);', $module, 'the designers told when a change starts waiting');
+}
+
+// The words of the editor's line: what happened, and the reason.
+function test_content_proposals_bell_editor_title()
+{
+	pg_assert_contains('about-us', pg_content_proposals_bell_editor_title('applied', 'about-us', ''));
+	pg_assert_contains('Too long', pg_content_proposals_bell_editor_title('dismissed', 'about-us', 'Too long'));
+	pg_assert_contains('about-us', pg_content_proposals_bell_editor_title('stale', 'about-us', ''));
+}
+
+// A7: the count of waiting changes above the page list, for designers.
+function test_content_proposals_count_on_page_list()
+{
+	$pages = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_pages.php');
+
+	pg_assert_contains('pg_content_proposals_waiting_count()', $pages);
+	pg_assert_contains('content_changes.php', $pages);
+	pg_assert_contains('pg_content_proposals_may_decide($user)', $pages, 'designers only');
+}
