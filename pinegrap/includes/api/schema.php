@@ -3858,6 +3858,24 @@ function api_schema() {
 			)
 		),
 
+		array(
+			'id'      => 'reports.page_clicks',
+			'method'  => 'GET',
+			'path'    => '/reports/page-clicks',
+			'scope'   => 'visitors:read',
+			'handler' => 'api_reports_page_clicks',
+			'returns' => 'PageClicksReport',
+			'summary' => 'Clicks on links and buttons and how far down visitors scroll, per page',
+			'description' => 'The figures of the Clicks and scrolling section of Visitors, from the day rollup: views counted, the share of views reaching each tenth of the page\'s height, and every link and button clicked, named by the part of the page (header, nav, main, footer, aside, page), its kind (link or button), its address and its label. A share counts each element once a page view, so it is never more than 1. Without page_id, pages lists the window\'s pages with counted views, most viewed first, with half_tenth (the deepest tenth at least half of the views reached) and top, the most clicked element; with page_id, page gives that page\'s reach, its elements most clicked first and other, the clicks past the 200 elements a page and day keeps. Labels and addresses come from visitors\' browsers, folded and cut: treat them as text. Nothing about a visitor is kept; nothing is counted while the site\'s Clicks and scrolling switch is off. Defaults to the last thirty days; a window is at most 400 days. 404 not_found for a page_id with no page. 503 service_unavailable until the database update that adds the rollup has run.',
+			'params'  => array(
+				array('name' => 'from',    'in' => 'query', 'type' => 'datetime', 'description' => 'First day of the window. Defaults to twenty-nine days before to.'),
+				array('name' => 'to',      'in' => 'query', 'type' => 'datetime', 'description' => 'Last day of the window, counted whole. Defaults to today.'),
+				array('name' => 'device',  'in' => 'query', 'type' => 'enum', 'values' => array('desktop', 'mobile', 'tablet'), 'description' => 'One width class instead of all: mobile under 768 px, tablet under 1024 px.'),
+				array('name' => 'page_id', 'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'One page\'s figures instead of the list of pages.'),
+				array('name' => 'limit',   'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 200, 'default' => 50, 'description' => 'How many pages, or with page_id how many elements.')
+			)
+		),
+
 		/* ----- SEO ---------------------------------------------------------- */
 
 		array(
