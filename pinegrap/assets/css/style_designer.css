@@ -6477,6 +6477,8 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
     --pgc-marker: url(#sd-proto-arrow);
     --pgc-marker-on: url(#sd-proto-arrow-on);
     --pgc-node-accent: #3a4049;
+    --pgc-in: #f0b429;
+    --pgc-group: var(--sd-text-muted);
 }
 .sd-proto[hidden] { display: none; }
 .sd-proto-bar {
@@ -6529,6 +6531,32 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
 .sd-proto-sk-shared { fill: rgba(111,91,214,.45); }
 .sd-proto-sk-region { fill: none; stroke: #5b6472; stroke-dasharray: 3 2; }
 .sd-proto-sk-link { fill: var(--sd-accent); }
+/* A frame's page picture (_sdProtoPicBox()): the page 1280 wide in a
+   sandboxed frame scaled into the box's 228 x 285 (PGProtoHotspots.picSize()),
+   over its sketch until it has loaded; a fade and the foot over the cut. */
+.sd-proto-pic { position: relative; }
+.sd-proto-pic-page {
+    position: absolute; top: 6px; left: 10px; border: 0;
+    transform-origin: 0 0; background: #fff; opacity: 0; transition: opacity .2s ease;
+}
+.sd-proto-pic-on .sd-proto-pic-page { opacity: 1; }
+.sd-proto-pic-on svg { visibility: hidden; }
+.sd-proto-pic-fade {
+    position: absolute; left: 10px; right: 10px; bottom: 7px; height: 36px; display: none;
+    background: linear-gradient(to bottom, transparent, #2a2f36); pointer-events: none;
+}
+.sd-proto-pic-on.sd-proto-pic-long .sd-proto-pic-fade { display: block; }
+.sd-proto-pic-foot {
+    position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%);
+    padding: 1px 8px; border-radius: 10px; white-space: nowrap;
+    background: #2a2f36; color: var(--sd-text); font-size: .7rem; font-weight: 600;
+}
+.sd-proto-pic-foot[hidden] { display: none; }
+/* The selected frame's name in the accent colour (F2). */
+.sd-proto .pgc-selected .sd-proto-name { color: var(--sd-accent); }
+@media (prefers-reduced-motion: reduce) {
+    .sd-proto-pic-page { transition: none; }
+}
 .sd-proto-draft {
     padding: 0 5px; border-radius: 3px; font-size: .65rem;
     background: rgba(255,193,7,.18); color: #ffc107;
@@ -6544,6 +6572,25 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
 .sd-proto .sd-proto-chip.sd-proto-mark-broken { border-color: #ff6b6b; }
 .sd-proto .pgc-edge.sd-proto-edge-broken .pgc-edge-line { stroke: #ff6b6b; stroke-dasharray: 6 4; }
 .sd-proto .pgc-edge.sd-proto-edge-tab .pgc-edge-line { stroke: var(--sd-accent); }
+/* The selected frame's arrows (focus): out solid in the accent, in dashed
+   amber, a broken one red, each with its own arrowhead; a shared part's
+   link into the selected page draws none (its row and note say it). */
+.sd-proto .pgc-edge.pgc-edge-in .pgc-edge-line { stroke: var(--pgc-in); stroke-dasharray: 6 4; marker-end: url(#sd-proto-arrow-in); }
+.sd-proto .pgc-edge.sd-proto-edge-broken .pgc-edge-line { marker-end: url(#sd-proto-arrow-broken); }
+.sd-proto .pgc-edge.pgc-edge-in.sd-proto-from-shared { display: none; }
+.sd-proto-arrowhead-in { fill: var(--pgc-in); }
+.sd-proto-arrowhead-broken { fill: #ff6b6b; }
+.sd-proto .pgc-node.sd-proto-focused { outline: 2px solid var(--sd-accent); outline-offset: 3px; }
+.sd-proto-focused .sd-proto-name { color: var(--sd-accent); }
+.sd-proto-row.sd-proto-row-quiet { opacity: .4; }
+.sd-proto-row.sd-proto-row-lit { background: color-mix(in srgb, var(--sd-accent) 18%, transparent); }
+.sd-proto-row.sd-proto-row-shared { background: color-mix(in srgb, var(--pgc-in) 20%, transparent); }
+.sd-proto-row.sd-proto-row-shared .sd-proto-icon { color: var(--pgc-in); }
+.sd-proto-note { position: absolute; font-size: .75rem; line-height: 1.35; color: var(--pgc-in); pointer-events: none; }
+.sd-proto-note-line { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Section headings (groups()), read at the zoom a large design fits at. */
+.sd-proto .pgc-group { height: 40px; }
+.sd-proto .pgc-group-label { font-size: 1.4rem; }
 /* The target menu of a link row (_sdProtoMenuOpen()). */
 .sd-proto-menu {
     position: absolute; z-index: 2; width: 260px; max-height: 50%; overflow-y: auto;

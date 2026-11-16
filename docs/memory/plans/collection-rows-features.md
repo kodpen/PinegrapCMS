@@ -4,7 +4,7 @@ description: Plan collection-rows, features R1 to R12: the kind and the field's 
 ---
 
 ## What is the kind, and what does the field keep?
-- (R1) A field of a form used as a collection can have the kind `rows`, on a text box: it names one child collection, never its own form and never a form that is not a collection. Offered as "Rows" in the Form Field panel's Kind with the collection picker.
+- (R1) A field of a form used as a collection can have the kind `rows`, on a text box: it names one child collection, never its own form and never a form that is not a collection. Offered as "Record rows" in the Form Field panel's Kind with the collection picker.
 - (R2) The field's value is the reference codes of its rows in order, joined as a reference in a text box joins several codes. A row is a record of the child collection that the rows editor made; it stands in one record's list only. The child needs no field for it.
 - (R3) `pg_coll_rows_spec()` (pure) answers, for a rows field, the child form and the child's fields the editor takes, or why nothing can be drawn (no collection, gone, no field it takes).
 

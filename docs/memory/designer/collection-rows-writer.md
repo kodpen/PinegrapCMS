@@ -25,4 +25,6 @@ module: collection_rows
 - The site form draws nothing for a rows field, for staff too: `pg_cf_apply_field_bindings()` drops the control, its label and a wrapper left empty (as an office-use-only field for a visitor). The canvas shows three numbered "Sample row" lines in muted text (`_cfRowsSample()`); the kind is labelled "Record rows" (the "Rows" key is a text area's line count elsewhere).
 - A value posted outside the editor (site form, panel text box) is checked by `pg_coll_check_field()`: only codes of the child form's records, at most 100 (`pg_coll_rows_value_ok()`).
 
+- The API, a Workspace change and Import Submitted Forms: `collection-rows-outside.md`.
+
 Tests: `tests/collections_rows_test.php`, `tests/collections_kinds_test.php` (the twin).

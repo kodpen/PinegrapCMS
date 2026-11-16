@@ -6004,14 +6004,11 @@ const StyleDesigner = (function () {
             label: _sdT('Applied Offers'), icon: 'bi-tag-fill',
             defaultProps: { cssClass: '' },
             render: function (doc, p) {
-                var d = doc.createElement('div');
-                // sd-editor-ph: editor chrome, left out of the canvas audit.
-                d.className = 'alert alert-success py-2 mb-2 sd-editor-ph';
-                d.style.borderStyle = 'dashed';
-                d.style.opacity = '0.75';
-                d.innerHTML = '<span class="bi bi-tag-fill me-1"></span>'
-                    + '<strong>' + esc(_sdT('Applied Offers')) + '</strong>'
-                    + '<span class="ms-2 text-muted small">' + esc(_sdT('The active offer/discount descriptions are listed here.')) + '</span>';
+                // The box the cart prints, with sample offers
+                // (_sdCartSectionSample()); sd-editor-ph: editor chrome, left
+                // out of the canvas audit.
+                var d = _sdCartSectionSample('applied_offers', doc, null);
+                d.classList.add('sd-editor-ph');
                 return d;
             },
             toHTML: function (p, pad) {
@@ -11758,7 +11755,7 @@ const StyleDesigner = (function () {
     // recipient picker is only a marker (_apply_catalog_item_view_bindings()),
     // the watcher list adds its rows before them (widgets_comments.php).
     // Every other section's children give way to what the server draws.
-    var _SD_SECTION_KEEPS_CHILDREN = { recipient_picker: 1, comment_watchers: 1, form_step_nav: 1 };
+    var _SD_SECTION_KEEPS_CHILDREN = { recipient_picker: 1, comment_watchers: 1, form_step_nav: 1, password_rules: 1 };
 
     var _SD_CHIP_KINDS = [['data-sd-cond', 'sd-chip-cond'], ['data-sd-off-reason', 'sd-chip-off'], ['data-sd-cf-shown', 'sd-chip-shown']];
     function _sdChipRow(doc, wrapper) {
@@ -14364,7 +14361,7 @@ const StyleDesigner = (function () {
                 var _hasChildren = node.children && node.children.length > 0;
                 var _hint = doc.createElement('div');
                 _hint.className = 'sd-section-binding-hint';
-                if (_hasChildren && _SD_SECTION_KEEPS_CHILDREN[_sec]) {
+                if (_hasChildren && (_SD_SECTION_KEEPS_CHILDREN[_sec] || _SD_BOOKING_KEEPS_CHILDREN[_sec])) {
                     // The page draws these children: no fault to warn of.
                     _hint = null;
                 } else if (_hasChildren) {
@@ -14398,10 +14395,32 @@ const StyleDesigner = (function () {
                 }
                 // A form's CAPTCHA as a sample; a step break with a title is
                 // drawn as the title the site gives its step.
+                if (!_hasChildren) {
+                    var _mSample = _sdMemberSectionSample(_getSystemWidgetRegionType(node), _sec, doc);
+                    if (_mSample) _hint = _mSample;
+                }
                 if (!_hasChildren && _getSystemWidgetRegionType(node) === 'custom_form') {
                     var _fSample = _sdFormSectionSample(_sec, doc);
                     if (_fSample) _hint = _fSample;
                     else if (_sec === 'form_step' && String(node.props.text || '').trim() !== '') _hint = null;
+                }
+                // A catalog listing's category tree and filters, likewise
+                // (_sdCatalogSectionSample()).
+                if (!_hasChildren && _getSystemWidgetRegionType(node) === 'catalog_listing') {
+                    var _catSample = _sdCatalogSectionSample(_sec, doc, _sysWidgetRenderCfg);
+                    if (_catSample) _hint = _catSample;
+                }
+                // A booking widget's part its script fills, drawn as a
+                // visitor sees it (_sdBookingSectionSample()).
+                if (!_hasChildren && _SD_BOOKING_FILLED[_sec]) {
+                    var _bkSample = _sdBookingSectionSample(_sec, doc);
+                    if (_bkSample) _hint = _bkSample;
+                }
+                // A shopping cart's applied offers, campaign gifts and quick
+                // add box, likewise (_sdCartSectionSample()).
+                if (!_hasChildren && _getSystemWidgetRegionType(node) === 'shopping_cart') {
+                    var _cartSample = _sdCartSectionSample(_sec, doc, _sysWidgetRenderCfg);
+                    if (_cartSample) _hint = _cartSample;
                 }
                 if (_hint) innerEl.appendChild(_hint);
             }
@@ -15547,10 +15566,8 @@ const StyleDesigner = (function () {
         // The catalog's blocks, in the markup widgets_catalog.php gives them;
         // controls disabled.
         '__group_tree_html': function () {
-            return '<nav class="pg-sw-cl-group-tree"><ul class="list-unstyled mb-0">' +
-                   '<li class="pg-sw-cl-tree-item active"><a href="#" class="text-decoration-none fw-bold">' + esc(_sdT('Shirts')) + '</a></li>' +
-                   '<li class="pg-sw-cl-tree-item"><a href="#" class="text-decoration-none">' + esc(_sdT('Trousers')) + '</a></li>' +
-                   '<li class="pg-sw-cl-tree-item"><a href="#" class="text-decoration-none">' + esc(_sdT('Accessories')) + '</a></li></ul></nav>';
+            return '<nav class="pg-sw-cl-group-tree" aria-label="' + esc(_sdT('Categories')) + '">'
+                + _sdCatalogGroupTreeHtml(SD_CATALOG_GROUPS_SAMPLE, SD_CATALOG_ACTIVE_GROUP, 0) + '</nav>';
         },
         '__filters_button': function () {
             return '<button type="button" class="btn btn-outline-secondary" disabled><i class="bi bi-funnel me-1"></i>' +
@@ -15560,17 +15577,12 @@ const StyleDesigner = (function () {
             return '<a href="#" class="btn btn-sm btn-outline-danger"><i class="bi bi-x-circle me-1"></i>' + esc(_sdT('Clear Filters')) + '</a>';
         },
         '__attribute_filters_html': function () {
-            var box = function (label, on) {
-                return '<div class="form-check"><input class="form-check-input" type="checkbox" disabled' + (on ? ' checked' : '') + '>' +
-                       '<label class="form-check-label">' + esc(label) + '</label></div>';
-            };
-            return '<div class="pg-sw-cl-attr-filters"><div class="fw-semibold small mb-1">' + esc(_sdT('Colour')) + '</div>' +
-                   box(_sdT('Natural'), true) + box(_sdT('Navy'), false) + '</div>';
+            return _sdCatalogSectionHtml('attribute_filters', { show_attribute_filters: true });
         },
         // The filters panel opens from the Filters button; drawn open here.
         '__filters_offcanvas': function () {
-            return '<div class="border rounded p-3"><div class="fw-semibold mb-2">' + esc(_sdT('Filters')) + '</div>' +
-                   _SD_HTML_PREVIEW_TOKENS.__attribute_filters_html() + '</div>';
+            return '<div class="pg-sw-filters-offcanvas border rounded">'
+                + _sdCatalogSectionHtml('filters_offcanvas', { price_filter_enabled: true, stock_filter_enabled: true, show_attribute_filters: true }) + '</div>';
         },
         '__variant_picker': function () {
             return '<div class="pg-civ-variant-picker mb-3"><label class="form-label">' + esc(_sdT('Size')) + '</label>' +
@@ -35133,6 +35145,24 @@ const StyleDesigner = (function () {
                     )
                 );
 
+                // ── Rows of this record: a list of a rows field's records ──
+                // One button per rows field of the form; it places a list of
+                // the child form after this record view, set up with
+                // "Rows of the shown record" (_swAddRowsList()).
+                var _fivRowsFields = (_fivFields || []).filter(function (ff) {
+                    return ff.collection_kind === 'rows' && (parseInt(ff.reference_page_id, 10) || 0) > 0 && String(ff.name || '').trim() !== '';
+                });
+                if (_fivRowsFields.length) {
+                    systemSection += sect('bi-list-ol', _sdT('Rows of this record'),
+                        _fivRowsFields.map(function (ff) {
+                            var name = String(ff.name).trim();
+                            return '<button type="button" class="btn btn-sm btn-outline theme-primary w-100 mb-1 sd-sw-fiv-rows-list" data-child="' + esc(String(parseInt(ff.reference_page_id, 10) || 0)) + '" data-field="' + esc(name) + '">' +
+                                '<span class="bi bi-plus-lg me-1"></span>' + esc(_sdT('Add the list of {var}', ff.label || name)) + '</button>';
+                        }).join('') +
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px;line-height:1.4">' + esc(_sdT('Adds a list after this record view that shows the rows of the record the page shows, in their order. Lay out its rows as in any list.')) + '</div>'
+                    );
+                }
+
                 // ── Filters (form_item_view): which records the page shows ──
                 // Same rows and handlers as the list's filters; a record
                 // outside them is not found, in its feed and sitemap too.
@@ -37441,6 +37471,10 @@ const StyleDesigner = (function () {
                 if (dyn === 'url parameter') attr = q('.sd-sw-filter-param')
                     ? String(q('.sd-sw-filter-param').value || '')
                     : String(el.getAttribute('data-attr') || '');
+                // The rows field's name for the rows of the shown record.
+                if (dyn === 'shown record rows') attr = q('.sd-sw-filter-rows')
+                    ? String(q('.sd-sw-filter-rows').value || '').trim().slice(0, 255)
+                    : String(el.getAttribute('data-attr') || '');
                 out.push({
                     field: q('.sd-sw-filter-field') ? q('.sd-sw-filter-field').value : '',
                     operator: q('.sd-sw-filter-op') ? q('.sd-sw-filter-op').value : 'is equal to',
@@ -37497,6 +37531,8 @@ const StyleDesigner = (function () {
                 this.value = String(this.value || '').trim().toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 32);
                 save(_swReadFilters(key), true);
             });
+            var rowsEl = el.querySelector('.sd-sw-filter-rows');
+            if (rowsEl) rowsEl.addEventListener('change', function () { save(_swReadFilters(key), true); });
             var delEl = el.querySelector('.sd-sw-filter-del');
             if (delEl) delEl.addEventListener('click', function () {
                 var list = _swReadFilters(key);
@@ -37873,6 +37909,13 @@ const StyleDesigner = (function () {
                 }, { afterSave: function () { renderProperties(); } });
             });
         }
+        document.querySelectorAll('.sd-sw-fiv-rows-list').forEach(function (rowsBtn) {
+            rowsBtn.addEventListener('click', function () {
+                var child = parseInt(this.getAttribute('data-child'), 10) || 0;
+                var name = String(this.getAttribute('data-field') || '');
+                if (child > 0 && name !== '') _swAddRowsList(child, name);
+            });
+        });
         var fivAiEl = document.getElementById('sd-sw-fiv-ai-prompt');
         if (fivAiEl) {
             fivAiEl.addEventListener('change', function () {
@@ -42070,6 +42113,7 @@ const StyleDesigner = (function () {
     // that does not open.
     function _sdSectionOpenRow(kind, section, node) {
         if (kind === 'custom_form' && section === 'form_step') return _sdFormStepNavRow(node);
+        if (_sdMemberOpens(kind, section, node)) return _sdMemberOpenRow();
         if (!_sdSectionOpensAsList(kind, section)) return '';
         return '<button type="button" class="btn btn-sm btn-outline theme-primary w-100 mt-2 text-wrap" data-sd-section-open>' +
                 '<span class="bi bi-magic me-1"></span>' + esc(_sdT('Convert to design elements')) + '</button>' +
@@ -42095,6 +42139,120 @@ const StyleDesigner = (function () {
         parent.children.splice(idx, 1, nav);
         if (hit.sid) _sharedDirty[hit.sid] = true;
         return nav;
+    }
+
+    // ── Sign-in and sign-up widgets (login_form, registration, membership,
+    // change_password, set_password) ─────────────────────────────────────
+    // The strong password rules and the sign-in, sign-up and forgot password
+    // links open as trees: "Convert to design elements" builds the rules
+    // inside their box (pg_member_keep_designed_rules() keeps them while the
+    // site prints rules) and turns a link section into a link on its token
+    // (__forgot_password_url, __register_url, __login_url), which the site
+    // drops when the address is empty (_pg_member_drop_empty_links()). The
+    // sign-in buttons stay settings only, drawn as the site prints them.
+
+    // The link each link section prints: [token, words, class].
+    function _sdMemberLinkOf(kind, section) {
+        if (kind === 'login_form' && section === 'forgot_password_link') return ['__forgot_password_url', _sdT('Forgot password?'), 'pg-member-link pg-forgot-password-link'];
+        if (kind === 'login_form' && section === 'register_link') return ['__register_url', _sdT('Sign Up'), 'pg-member-link pg-register-link'];
+        if (kind === 'registration' && section === 'login_link') return ['__login_url', _sdT('Already have an account? Sign in'), 'pg-member-link pg-login-link'];
+        if (kind === 'membership' && section === 'login_link') return ['__login_url', _sdT('Already a member? Sign in'), 'pg-member-link pg-login-link'];
+        return null;
+    }
+
+    function _sdMemberHasRules(kind) {
+        return ['registration', 'membership', 'change_password', 'set_password'].indexOf(kind) !== -1;
+    }
+
+    // Whether the panel offers "Convert to design elements" for `node`.
+    function _sdMemberOpens(kind, section, node) {
+        if (_sdMemberLinkOf(kind, section)) return true;
+        return section === 'password_rules' && _sdMemberHasRules(kind) && !(node && node.children && node.children.length);
+    }
+
+    function _sdMemberOpenRow() {
+        return '<button type="button" class="btn btn-sm btn-outline theme-primary w-100 mt-2 text-wrap" data-sd-member-open>' +
+                '<span class="bi bi-magic me-1"></span>' + esc(_sdT('Convert to design elements')) + '</button>' +
+            '<div style="font-size:.66rem;color:#888;margin-top:3px">' +
+                esc(_sdT('Puts what the site prints here as elements you design. The site keeps hiding them when their setting is off.')) +
+            '</div>';
+    }
+
+    // The rules get_strong_password_requirements() prints, as elements.
+    /* @pg-site-output */
+    function _sdPasswordRulesStarter(bs) {
+        var sem = function (tag, cls, text, name, kids) {
+            var p = { tag: tag, cssClass: bs ? cls : '', customName: name };
+            if (text) p.text = text;
+            return createNode('semantic', p, kids || []);
+        };
+        var rule = function (text) { return sem('li', '', text, _sdT('Rule')); };
+        return [
+            sem('div', '', _sdT('Your password must contain at least') + ':', _sdT('Rules heading')),
+            sem('ul', '', '', _sdT('Rules'), [
+                rule(_sdT('{var:1} characters', ['10'])),
+                rule(_sdT('{var:1} capital letter', ['1'])),
+                rule(_sdT('{var:1} numbers', ['2'])),
+                rule(_sdT('{var:1} non-alphanumeric character (e.g. !, $)', ['1']))
+            ])
+        ];
+    }
+
+    // Opens the section `node` in a member widget: the rules built inside
+    // its box (the classes the server's block carries join the box's), or
+    // the link put inside its box on its token. Returns the node to select,
+    // or null.
+    /* @pg-site-output */
+    function _sdMemberSectionToTree(node, bs) {
+        var b = (node && node.props && node.props._bindings) || {};
+        var kind = _getSystemWidgetRegionType(node);
+        if (!_sdMemberOpens(kind, b.section, node)) return null;
+        var link = _sdMemberLinkOf(kind, b.section);
+        if (link) {
+            delete b.section;
+            if (!Object.keys(b).length) delete node.props._bindings;
+            node.children = [createNode('content', { contentType: 'link', text: link[1], href: '#', cssClass: bs ? link[2] : '',
+                customName: link[1], _bindings: { href: link[0] } })];
+        } else {
+            node.children = _sdPasswordRulesStarter(bs);
+            if (bs) {
+                var cls = String(node.props.cssClass || '').split(/\s+/).filter(Boolean);
+                ['pg-password-rules', 'small', 'text-muted'].forEach(function (c) { if (cls.indexOf(c) === -1) cls.push(c); });
+                node.props.cssClass = cls.join(' ');
+            }
+        }
+        var hit = _sdAnyParent(node);
+        if (hit && hit.sid) _sharedDirty[hit.sid] = true;
+        return node;
+    }
+
+    // What a member widget's section prints, drawn as a sample: the sign-in
+    // buttons of the providers turned on (pg_signin_canvas_sample()), the
+    // rules, a link. Inert, never saved; null for any other section.
+    /* @pg-site-output */
+    function _sdMemberSectionSample(kind, section, doc) {
+        var html = '';
+        var note = '';
+        var link = _sdMemberLinkOf(kind, section);
+        if (section === 'google_signin' || section === 'google_signup') {
+            html = _sdSiteWord('signin_buttons');
+            var on = (typeof sdDesign !== 'undefined' && sdDesign && sdDesign.siteFlags && Array.isArray(sdDesign.siteFlags.signin_providers))
+                ? sdDesign.siteFlags.signin_providers : [];
+            note = on.length ? _sdT('Turned on now: {var}', on.join(', ')) : _sdT('No provider is turned on now.');
+        } else if (section === 'captcha' && kind === 'registration') {
+            return _sdCommentsSectionSample('comment_captcha', doc);
+        } else if (section === 'password_rules' && _sdMemberHasRules(kind)) {
+            html = _SD_HTML_PREVIEW_TOKENS.__password_rules();
+        } else if (link) {
+            html = '<a href="#" class="' + link[2] + '" tabindex="-1">' + esc(link[1]) + '</a>';
+        }
+        if (!html) return null;
+        var box = doc.createElement('div');
+        box.className = 'sd-section-binding-hint sd-section-sample';
+        box.setAttribute('inert', '');
+        box.style.cssText = 'pointer-events:none';
+        box.innerHTML = html + (note ? '<div class="small text-body-secondary fst-italic mt-1">' + esc(note) + '</div>' : '');
+        return box;
     }
 
     // ── A designed form's steps (custom_form) ───────────────────────────────
@@ -42552,6 +42710,446 @@ const StyleDesigner = (function () {
             out += '</div>';
         });
         return out;
+    }
+
+    // ── Catalog listing: the category tree and the filters ──────────────
+    // The site builds them per request (the visitor's group, the products'
+    // attributes, the filters picked), so their sections keep their settings
+    // and the canvas draws what the site prints, from twins of the PHP
+    // builders in widgets_catalog.php and these sample rows.
+
+    // A catalog of shirts with two sub groups, the visitor in Shirts.
+    var SD_CATALOG_GROUPS_SAMPLE = [
+        { id: 12, name: _sdT('Shirts'), children: [{ id: 121, name: _sdT('Linen') }, { id: 122, name: _sdT('Oxford') }] },
+        { id: 13, name: _sdT('Trousers') },
+        { id: 14, name: _sdT('Accessories') }
+    ];
+    var SD_CATALOG_ACTIVE_GROUP = 12;
+    // The attributes the sample products carry, Natural picked.
+    var SD_CATALOG_FILTER_ATTRS = {
+        1: { attr_label: _sdT('Colour'), options: [{ option_id: 11, option_label: _sdT('Natural') }, { option_id: 12, option_label: _sdT('Navy') }] },
+        2: { attr_label: _sdT('Size'), options: [{ option_id: 21, option_label: 'S' }, { option_id: 22, option_label: 'M' }, { option_id: 23, option_label: 'L' }] }
+    };
+    var SD_CATALOG_FILTER_PICKED = { 1: 11 };
+
+    // One level of the group tree (pg_catalog_group_tree_level()): `groups`
+    // [{ id, name, url, children }], `active` the visitor's group.
+    /* @pg-site-output */
+    function _sdCatalogGroupTreeHtml(groups, active, depth) {
+        var out = '<ul class="' + (depth === 0 ? 'pg-sw-cl-tree pg-sw-cl-tree-root list-unstyled mb-0' : 'pg-sw-cl-tree-sub list-unstyled ms-3') + '">';
+        (groups || []).forEach(function (g) {
+            var on = (parseInt(g.id, 10) || 0) === (parseInt(active, 10) || 0);
+            out += '<li class="pg-sw-cl-tree-item' + (on ? ' active' : '') + '">'
+                + '<a href="' + esc(g.url || '#') + '" class="text-decoration-none' + (on ? ' fw-bold' : '') + '">' + esc(String(g.name)) + '</a>'
+                + ((g.children && g.children.length) ? _sdCatalogGroupTreeHtml(g.children, active, depth + 1) : '')
+                + '</li>';
+        });
+        return out + '</ul>';
+    }
+
+    // The price filter form (pg_catalog_price_filter_html()).
+    /* @pg-site-output */
+    function _sdCatalogPriceFilterHtml(hidden, min, max, step) {
+        var st = parseInt(step, 10) || 0;
+        return '<form method="get" class="pg-sw-price-filter mb-3 d-flex align-items-center gap-2 flex-wrap">' + hidden
+            + '<span class="form-label mb-0 small text-muted">' + esc(_sdT('Price')) + ':</span>'
+            + '<input type="number" class="form-control form-control-sm" name="pmin" value="' + esc(min) + '" placeholder="' + esc(_sdT('Min')) + '" aria-label="' + esc(_sdT('Minimum price')) + '" min="0" step="' + st + '" style="max-width:100px">'
+            + '<span class="text-muted" aria-hidden="true">–</span>'
+            + '<input type="number" class="form-control form-control-sm" name="pmax" value="' + esc(max) + '" placeholder="' + esc(_sdT('Max')) + '" aria-label="' + esc(_sdT('Maximum price')) + '" min="0" step="' + st + '" style="max-width:100px">'
+            + '<button type="submit" class="btn btn-sm btn-outline-secondary">' + esc(_sdT('Apply')) + '</button>'
+            + '</form>';
+    }
+
+    // The in-stock filter (pg_catalog_stock_filter_html()).
+    /* @pg-site-output */
+    function _sdCatalogStockFilterHtml(widgetId, active, linkQuery) {
+        var id = 'pg-sw-stock-' + (parseInt(widgetId, 10) || 0);
+        return '<div class="pg-sw-stock-filter form-check mb-3">'
+            + '<input class="form-check-input" type="checkbox" id="' + id + '"' + (active ? ' checked' : '')
+            + ' onclick="window.location.search=\'?' + esc(linkQuery) + '\'">'
+            + '<label class="form-check-label" for="' + id + '">' + esc(_sdT('In stock only')) + '</label>'
+            + '</div>';
+    }
+
+    // The attribute filters (pg_catalog_attribute_filters_html()); `query`
+    // gives the query string of an attribute's parameter and value.
+    /* @pg-site-output */
+    function _sdCatalogAttrFiltersHtml(attrs, picked, style, query, widgetId) {
+        var out = '<div class="pg-sw-attr-filters mb-3">';
+        Object.keys(attrs || {}).forEach(function (aid) {
+            var def = attrs[aid], pk = 'pg_attr_' + aid;
+            var act = (picked && picked[aid] != null) ? (parseInt(picked[aid], 10) || 0) : 0;
+            out += '<div class="pg-sw-attr-group mb-2"><div class="small fw-semibold mb-1">' + esc(String(def.attr_label)) + '</div>';
+            if (style === 'buttons') {
+                out += '<div class="d-flex flex-wrap gap-1">'
+                    + '<a href="?' + esc(query(pk, '')) + '" class="btn btn-sm ' + (act === 0 ? 'btn-secondary' : 'btn-outline-secondary') + '">' + esc(_sdT('All')) + '</a>';
+                (def.options || []).forEach(function (o) {
+                    var oid = parseInt(o.option_id, 10) || 0;
+                    out += '<a href="?' + esc(query(pk, oid)) + '" class="btn btn-sm ' + (act === oid ? 'btn-secondary' : 'btn-outline-secondary') + '">' + esc(String(o.option_label)) + '</a>';
+                });
+                out += '</div>';
+            } else {
+                (def.options || []).forEach(function (o) {
+                    var oid = parseInt(o.option_id, 10) || 0, on = (act === oid);
+                    var cb = 'pg-af-' + (parseInt(widgetId, 10) || 0) + '-' + aid + '-' + oid;
+                    out += '<div class="form-check"><input class="form-check-input" type="checkbox"' + (on ? ' checked' : '')
+                        + ' id="' + cb + '" onclick="window.location.search=\'?' + esc(query(pk, on ? '' : String(oid))) + '\'">'
+                        + '<label class="form-check-label" for="' + cb + '">' + esc(String(o.option_label)) + '</label></div>';
+                });
+            }
+            out += '</div>';
+        });
+        return out + '</div>';
+    }
+
+    // The filters offcanvas's header and body
+    // (pg_catalog_filters_offcanvas_inner_html()).
+    /* @pg-site-output */
+    function _sdCatalogFiltersInnerHtml(offId, chips, price, stock, attrs) {
+        return '<div class="offcanvas-header border-bottom">'
+            + '<h5 class="offcanvas-title mb-0" id="' + esc(offId) + 'Title"><i class="bi bi-funnel me-2"></i>' + esc(_sdT('Filters')) + '</h5>'
+            + '<button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="' + esc(_sdT('Close')) + '"></button>'
+            + '</div>'
+            + '<div class="offcanvas-body">'
+            + (chips !== '' ? '<div class="border-bottom pb-2 mb-3">' + chips + '</div>' : '')
+            + price + stock + attrs
+            + '</div>';
+    }
+
+    // The sample query string of a filter link (the canvas opens nothing).
+    function _sdCatalogSampleQuery(param, value) {
+        return (value === '' || value == null) ? '' : param + '=' + value;
+    }
+
+    // What a catalog listing prints in a section the server fills, with the
+    // widget's settings `cfg`: the category tree, the filters offcanvas
+    // (drawn open) or the legacy attribute filters; '' when the setting
+    // leaves it empty on the site.
+    /* @pg-site-output */
+    function _sdCatalogSectionHtml(section, cfg) {
+        var c = cfg || {};
+        var attrs = function () {
+            return c.show_attribute_filters ? _sdCatalogAttrFiltersHtml(SD_CATALOG_FILTER_ATTRS, SD_CATALOG_FILTER_PICKED,
+                c.attribute_filter_style === 'buttons' ? 'buttons' : 'checkboxes', _sdCatalogSampleQuery, 0) : '';
+        };
+        if (section === 'group_tree') {
+            return (c.group_navigation === 'none') ? '' : _sdCatalogGroupTreeHtml(SD_CATALOG_GROUPS_SAMPLE, SD_CATALOG_ACTIVE_GROUP, 0);
+        }
+        if (section === 'attribute_filters') return attrs();
+        if (section === 'filters_offcanvas') {
+            if (!c.price_filter_enabled && !c.stock_filter_enabled && !c.show_attribute_filters) return '';
+            return _sdCatalogFiltersInnerHtml('pgFilters0', '',
+                c.price_filter_enabled ? _sdCatalogPriceFilterHtml('', '', '', Math.max(1, parseInt(c.price_filter_step, 10) || 1)) : '',
+                c.stock_filter_enabled ? _sdCatalogStockFilterHtml(0, !!c.stock_filter_default, c.stock_filter_default ? '' : 'stock=1') : '',
+                attrs());
+        }
+        return '';
+    }
+
+    // The sample of a catalog section as a canvas box: inert, never saved,
+    // the words under it saying it is filled per visitor. null when the
+    // site prints nothing for it.
+    function _sdCatalogSectionSample(section, doc, cfg) {
+        var html = _sdCatalogSectionHtml(section, cfg);
+        if (!html) return null;
+        var box = doc.createElement('div');
+        box.className = 'sd-section-binding-hint sd-section-sample';
+        box.setAttribute('inert', '');
+        box.style.cssText = 'pointer-events:none';
+        box.innerHTML = html + '<div class="small text-body-secondary fst-italic mt-1">'
+            + esc(section === 'group_tree' ? _sdT('The site draws the catalog\'s groups, the visitor\'s group in bold.')
+                : _sdT('The site draws the filters the widget\'s settings turn on, with the attributes of the products shown.')) + '</div>';
+        return box;
+    }
+
+    // ── Booking widget parts ───────────────────────────────────────────────
+    // The widget's server keeps every part's children and only marks the
+    // parts (pg_booking_widget_mark()), so a step and the details form are
+    // design elements like any other. The parts pg_booking.js fills on the
+    // page (the people, the calendar, the times, the held time, the closing
+    // words, the status line) depend on the visitor's choices and the free
+    // slots of the moment: the canvas draws a sample of them, never saved.
+    var _SD_BOOKING_KEEPS_CHILDREN = {
+        booking_step_service: 1, booking_step_staff: 1, booking_step_when: 1,
+        booking_step_details: 1, booking_step_done: 1, booking_form: 1
+    };
+    var _SD_BOOKING_FILLED = {
+        booking_staff: 1, booking_calendar: 1, booking_times: 1,
+        booking_summary: 1, booking_done: 1, booking_status: 1
+    };
+    // The button pg_booking.js draws for a person and a time.
+    var SD_BOOKING_BUTTON_CLASS = 'btn btn-outline-primary';
+
+    // The words, hold minutes, zone, closing words and sample times the
+    // server gave (pg_booking_canvas_sample()), English ones without it.
+    function _sdBookingWords() {
+        var b = (typeof sdDesign !== 'undefined' && sdDesign && sdDesign.siteWords && sdDesign.siteWords.booking) ? sdDesign.siteWords.booking : {};
+        var w = b.words || {};
+        return {
+            anyone: w.anyone || _sdT('Anyone available'),
+            held: w.held || _sdT('We are keeping {time} for you for {minutes} minutes.'),
+            times: w.times || _sdT('Free times on {day}'),
+            zoneNote: w.zoneNote || _sdT('Times are in {zone}.'),
+            hold: parseInt(b.hold, 10) || 10,
+            zone: b.zone || 'UTC',
+            done: b.done || _sdT('Your appointment is booked. We have sent the details to your e-mail address.'),
+            slots: (Array.isArray(b.times) && b.times.length) ? b.times : ['09:00', '09:30', '10:30', '11:00', '14:00', '15:30']
+        };
+    }
+
+    // The script's {key} filling (pg_booking.js fill()).
+    function _sdBookingFill(text, values) {
+        return String(text || '').replace(/\{(\w+)\}/g, function (all, key) {
+            return Object.prototype.hasOwnProperty.call(values, key) ? values[key] : all;
+        });
+    }
+
+    // The editor's language, the sample day and its long name as the script
+    // writes it (dayLabel()).
+    function _sdBookingLang() {
+        return String((document.documentElement && document.documentElement.lang) || 'en').slice(0, 2).toLowerCase();
+    }
+    function _sdBookingSampleDay() {
+        var now = new Date();
+        return new Date(Date.UTC(now.getFullYear(), now.getMonth(), 12, 12));
+    }
+    function _sdBookingDayLabel(day) {
+        try {
+            return new Intl.DateTimeFormat(_sdBookingLang(), { dateStyle: 'full', timeZone: 'UTC' }).format(day);
+        } catch (e) {
+            return day.toISOString().slice(0, 10);
+        }
+    }
+
+    // The month calendar of the free days, laid out as the site's date
+    // control draws it (pgDateTime.month()): six weeks with the neighbouring
+    // months' days dimmed, the weekend in red, square day cells; Monday to
+    // Saturday from the sample day on can be picked, the sample day picked.
+    // Its colours follow the page here; the site draws it with the date
+    // control's own look.
+    /* @pg-site-output */
+    function _sdBookingCalendarHtml() {
+        var lang = _sdBookingLang(), day = _sdBookingSampleDay();
+        var y = day.getUTCFullYear(), m = day.getUTCMonth(), first = lang === 'tr' ? 1 : 0;
+        var title = '', names = [];
+        try {
+            title = new Intl.DateTimeFormat(lang, { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(day);
+            for (var n = 0; n < 7; n++) {
+                names.push(new Intl.DateTimeFormat(lang, { weekday: 'short', timeZone: 'UTC' }).format(new Date(Date.UTC(2026, 1, 1 + ((n + first) % 7), 12))));
+            }
+        } catch (e) {
+            title = y + '-' + ('0' + (m + 1)).slice(-2);
+            names = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].slice(first).concat(first ? ['Su'] : []);
+        }
+        var lead = (new Date(Date.UTC(y, m, 1, 12)).getUTCDay() - first + 7) % 7;
+        var cell = 'd-inline-flex align-items-center justify-content-center rounded-2';
+        var html = '<div class="d-inline-block bg-body-tertiary rounded-4 p-3">'
+            + '<div class="text-center fw-bold mb-2">' + esc(title) + '</div>'
+            + '<table class="table table-borderless text-center small mb-0" style="--bs-table-bg:transparent;width:auto"><thead><tr>';
+        names.forEach(function (name, i) {
+            var wd = (i + first) % 7;
+            html += '<th class="fw-semibold p-1' + (wd === 0 || wd === 6 ? ' text-danger' : '') + '">' + esc(name) + '</th>';
+        });
+        html += '</tr></thead><tbody>';
+        for (var c = 0; c < 42; c++) {
+            var at = new Date(Date.UTC(y, m, 1 + c - lead, 12));
+            var d = at.getUTCDate(), wd = at.getUTCDay(), inMonth = at.getUTCMonth() === m;
+            var free = inMonth && d >= 12 && wd !== 0;
+            var cls = (inMonth && d === 12) ? cell + ' bg-info text-white fw-semibold'
+                : (free ? cell + (wd === 6 ? ' text-danger' : ' text-body') : cell + ' text-body-tertiary opacity-50');
+            if (c % 7 === 0) html += '<tr>';
+            html += '<td class="p-0"><span class="' + cls + '" style="width:2rem;height:2rem">' + d + '</span></td>';
+            if (c % 7 === 6) html += '</tr>';
+        }
+        return html + '</tbody></table></div>';
+    }
+
+    // What the script writes into a part, for the canvas.
+    /* @pg-site-output */
+    function _sdBookingSectionHtml(section) {
+        var w = _sdBookingWords(), day = _sdBookingDayLabel(_sdBookingSampleDay());
+        var buttons = function (labels) {
+            return '<div class="d-flex flex-wrap gap-2">' + labels.map(function (label) {
+                return '<button type="button" class="' + SD_BOOKING_BUTTON_CLASS + '">' + esc(label) + '</button>';
+            }).join('') + '</div>';
+        };
+        if (section === 'booking_staff') return buttons([w.anyone, _sdT('Jordan Lee'), _sdT('Michael Brooks')]);
+        if (section === 'booking_times') return buttons(w.slots);
+        if (section === 'booking_calendar') return _sdBookingCalendarHtml();
+        if (section === 'booking_summary') return esc(_sdBookingFill(w.held, { time: day + ' ' + w.slots[2], minutes: w.hold }));
+        if (section === 'booking_done') return esc(w.done);
+        if (section === 'booking_status') {
+            return esc(_sdBookingFill(w.times, { day: day }) + '. ' + _sdBookingFill(w.zoneNote, { zone: w.zone }));
+        }
+        return '';
+    }
+
+    // The sample of a booking part as a canvas box: inert, never saved, the
+    // words under it saying the page fills it.
+    function _sdBookingSectionSample(section, doc) {
+        var html = _sdBookingSectionHtml(section);
+        if (!html) return null;
+        var notes = {
+            booking_staff:    _sdT('The page fills in the people who take the chosen service.'),
+            booking_calendar: _sdT('The page draws the month calendar with the date control\'s own look; only the days with a free time can be picked.'),
+            booking_times:    _sdT('The page fills in the free times of the chosen day.'),
+            booking_summary:  _sdT('The page writes the held time here.'),
+            booking_done:     _sdT('The page writes these words when the booking is made (Settings › Bookings).'),
+            booking_status:   _sdT('The page writes here what happens, read out to screen readers.')
+        };
+        var box = doc.createElement('div');
+        box.className = 'sd-section-binding-hint sd-section-sample';
+        box.setAttribute('inert', '');
+        box.style.cssText = 'pointer-events:none;flex:1 1 100%' + (section === 'booking_calendar' ? ';max-width:20rem' : '');
+        box.innerHTML = html + '<div class="small text-body-secondary fst-italic mt-1">' + esc(notes[section]) + '</div>';
+        return box;
+    }
+
+    // ── Shopping cart blocks (applied offers, quick add, campaign gifts) ──
+    // Twins of the pure builders in includes/fn/widgets_cart.php; the
+    // canvas draws them with sample offers, gifts and products, as the site
+    // fills them per cart (no CSRF field and no script on the canvas).
+
+    // pg_cart_applied_offers_html()
+    /* @pg-site-output */
+    function _sdCartAppliedOffersHtml(labels) {
+        var items = (labels || []).map(function (l) { return '<li>' + esc(l) + '</li>'; }).join('');
+        if (!items) return '';
+        return '<div class="pg-cart-applied-offers alert alert-success py-2 px-3 mb-2">'
+            + '<div class="fw-semibold small mb-1"><i class="bi bi-tag-fill me-1"></i>'
+            + esc(labels.length > 1 ? _sdT('Applied Offers') : _sdT('Applied Offer')) + '</div>'
+            + '<ul class="mb-0 ps-3 small">' + items + '</ul></div>';
+    }
+
+    // pg_cart_pending_offer_recipient_html(); options is [[value, text], …].
+    /* @pg-site-output */
+    function _sdCartPendingRecipientHtml(base, decided, options, allowNew) {
+        if (decided) {
+            return '<span class="small text-body-secondary">' + esc(_sdT('Ship to')) + ' <span class="fw-semibold">' + esc(decided) + '</span></span>';
+        }
+        return '<label class="form-label small mb-1" for="' + esc(base) + '_ship_to">' + esc(_sdT('Ship to')) + '</label>'
+            + '<select class="form-select form-select-sm" id="' + esc(base) + '_ship_to" name="' + esc(base) + '_ship_to">'
+            + (options || []).map(function (o) { return '<option value="' + esc(o[0]) + '">' + esc(o[1]) + '</option>'; }).join('')
+            + '</select>'
+            + (allowNew ? '<input type="text" class="form-control form-control-sm mt-1" name="' + esc(base) + '_add_name" maxlength="50" placeholder="' + esc(_sdT('or add name')) + '">' : '');
+    }
+
+    // pg_cart_pending_offer_row_html()
+    /* @pg-site-output */
+    function _sdCartPendingRowHtml(offerId, actionId, label, recipientHtml) {
+        return '<div class="pg-cart-pending-offer d-flex flex-wrap align-items-end gap-2 py-2 border-bottom">'
+            + '<div class="flex-grow-1 min-width-0"><span class="fw-semibold">' + esc(label) + '</span></div>'
+            + (recipientHtml ? '<div class="pg-cart-pending-offer-recipient">' + recipientHtml + '</div>' : '')
+            + '<div><button type="submit" class="btn btn-primary btn-sm" name="add_pending_offer_' + (parseInt(offerId, 10) || 0) + '_' + (parseInt(actionId, 10) || 0) + '" value="1">'
+            + esc(_sdT('Add')) + '</button></div>'
+            + '</div>';
+    }
+
+    // pg_cart_pending_offers_html()
+    /* @pg-site-output */
+    function _sdCartPendingOffersHtml(rows, postUrl, sendTo, token) {
+        return '<form class="pg-cart-pending-offers card card-body mb-3" method="post" action="' + esc(postUrl) + '">'
+            + (token || '')
+            + '<input type="hidden" name="pending_offers" value="true">'
+            + '<input type="hidden" name="send_to" value="' + esc(sendTo) + '">'
+            + '<div class="fw-semibold mb-2"><i class="bi bi-gift me-1"></i>' + esc(_sdT('Special Offers')) + '</div>'
+            + rows
+            + '</form>';
+    }
+
+    // pg_cart_quick_add_option_html()
+    /* @pg-site-output */
+    function _sdCartQuickAddOptionHtml(id, text, selectionType, recipient, defaultQty, inStock) {
+        return '<option value="' + (parseInt(id, 10) || 0) + '"'
+            + ' data-qty="' + (selectionType === 'quantity' ? '1' : '0') + '"'
+            + ' data-amount="' + (selectionType === 'donation' ? '1' : '0') + '"'
+            + ' data-recipient="' + (recipient ? 1 : 0) + '"'
+            + ' data-default-qty="' + (parseInt(defaultQty, 10) || 0) + '"'
+            + (inStock ? '' : ' disabled')
+            + '>' + esc(text) + '</option>';
+    }
+
+    // pg_cart_quick_add_html(); recipients null: no recipient row.
+    /* @pg-site-output */
+    function _sdCartQuickAddHtml(label, options, needsQty, needsAmt, recipients, symbol, postUrl, sendTo, token) {
+        var shipTo = '';
+        if (recipients) {
+            var opts = '<option value=""></option><option value="' + esc(_sdT('myself')) + '">' + esc(_sdT('myself')) + '</option>'
+                + recipients.map(function (r) { return '<option value="' + esc(r) + '">' + esc(r) + '</option>'; }).join('');
+            shipTo = '<div class="col-12 col-sm-4 pg-qa-row pg-qa-ship-to" style="display:none">'
+                + '<label class="form-label small mb-1" for="pg-qa-ship-to">' + esc(_sdT('Ship to')) + '</label>'
+                + '<select class="form-select form-select-sm" id="pg-qa-ship-to" name="quick_add_ship_to">' + opts + '</select>'
+                + '<input type="text" class="form-control form-control-sm mt-1" name="quick_add_add_name" maxlength="50" placeholder="' + esc(_sdT('or add name')) + '">'
+                + '</div>';
+        }
+        var qty = needsQty ? '<div class="col-6 col-sm-3 pg-qa-row pg-qa-qty" style="display:none">'
+            + '<label class="form-label small mb-1" for="pg-qa-qty">' + esc(_sdT('Quantity')) + '</label>'
+            + '<input type="text" inputmode="numeric" class="form-control form-control-sm" id="pg-qa-qty" name="quick_add_quantity" value="1" size="4">'
+            + '</div>' : '';
+        var amt = needsAmt ? '<div class="col-6 col-sm-3 pg-qa-row pg-qa-amount" style="display:none">'
+            + '<label class="form-label small mb-1" for="pg-qa-amount">' + esc(_sdT('Amount')) + '</label>'
+            + '<div class="input-group input-group-sm">'
+            + '<span class="input-group-text">' + (symbol || '') + '</span>'
+            + '<input type="text" inputmode="decimal" class="form-control" id="pg-qa-amount" name="quick_add_amount" size="6">'
+            + '</div></div>' : '';
+        return '<form class="pg-cart-quick-add card card-body mb-3" method="post" action="' + esc(postUrl) + '">'
+            + (token || '')
+            + '<input type="hidden" name="quick_add" value="1">'
+            + '<input type="hidden" name="send_to" value="' + esc(sendTo) + '">'
+            + (label !== '' ? '<div class="fw-semibold mb-2"><i class="bi bi-lightning-charge me-1"></i>' + esc(label) + '</div>' : '')
+            + '<div class="row g-2 align-items-end">'
+            + '<div class="col-12 col-sm">'
+            + '<label class="form-label small mb-1 visually-hidden" for="pg-qa-product">' + esc(_sdT('Product')) + '</label>'
+            + '<select class="form-select form-select-sm" id="pg-qa-product" name="quick_add_product_id">'
+            + '<option value=""></option>' + options
+            + '</select>'
+            + '</div>'
+            + qty + amt + shipTo
+            + '<div class="col-auto"><button type="submit" class="btn btn-primary btn-sm">' + esc(_sdT('Add')) + '</button></div>'
+            + '</div>'
+            + '</form>';
+    }
+
+    // What a shopping cart prints in a section the server fills, with the
+    // widget's settings `cfg` and sample offers, gifts and products; '' when
+    // the site prints nothing for it (no quick add group chosen).
+    /* @pg-site-output */
+    function _sdCartSectionHtml(section, cfg) {
+        var c = cfg || {};
+        if (section === 'applied_offers') {
+            return _sdCartAppliedOffersHtml([_sdT('10% off all shirts'), _sdT('Free shipping over 500')]);
+        }
+        if (section === 'pending_offers') {
+            // A gift waits for the visitor when the site must ask where it
+            // goes (several recipients, a gift that ships): drawn so.
+            return _sdCartPendingOffersHtml(_sdCartPendingRowHtml(7, 3, _sdT('A free tote bag with every order over 750'),
+                _sdCartPendingRecipientHtml('pending_offer_7_3', '', [['', ''], [_sdT('myself'), _sdT('myself')]], true)), '#', '', '');
+        }
+        if (section === 'quick_add') {
+            if (!(parseInt(c.quick_add_product_group_id, 10) > 0)) return '';
+            var label = (typeof c.quick_add_label === 'string') ? c.quick_add_label : _sdT('Quick Add');
+            var options = _sdCartQuickAddOptionHtml(31, _sdT('Gift wrap') + ' - ' + _sdT('Recycled paper') + ' (' + _sdMoney(4.9) + ')', 'quantity', 0, 1, true)
+                + _sdCartQuickAddOptionHtml(32, _sdT('Greeting card') + ' - ' + _sdT('Written by hand') + ' (' + _sdMoney(2.5) + ')', 'quantity', 0, 1, true);
+            return _sdCartQuickAddHtml(label, options, true, false, null, '', '#', '', '');
+        }
+        return '';
+    }
+
+    // The sample of a cart section as a canvas box: inert, never saved, the
+    // words under it saying the site fills it per cart. null when the site
+    // prints nothing for it.
+    function _sdCartSectionSample(section, doc, cfg) {
+        var html = _sdCartSectionHtml(section, cfg);
+        if (!html) return null;
+        var note = section === 'applied_offers' ? _sdT('The site lists the offers applied to the visitor\'s cart; nothing when none applies.')
+            : section === 'pending_offers' ? _sdT('The site lists the gifts the visitor\'s cart has earned, each with its Add button; nothing when none.')
+            : _sdT('The site lists the products of the chosen group the visitor can buy now.');
+        var box = doc.createElement('div');
+        box.className = 'sd-section-binding-hint sd-section-sample';
+        box.setAttribute('inert', '');
+        box.style.cssText = 'pointer-events:none';
+        box.innerHTML = html + '<div class="small text-body-secondary fst-italic mt-1">' + esc(note) + '</div>';
+        return box;
     }
 
     // Resolve the regionType of the system widget that contains `node`.
@@ -52849,6 +53447,20 @@ const StyleDesigner = (function () {
             });
         });
 
+        // A member widget's section opened (_sdMemberSectionToTree()).
+        document.querySelectorAll('#sd-properties [data-sd-member-open]').forEach(function (el) {
+            el.addEventListener('click', function () {
+                if (!selectedNode) return;
+                saveState();
+                var node = _sdMemberSectionToTree(selectedNode, _sdUsesBootstrap());
+                if (!node) return;
+                selectedNodes = [];
+                if (typeof expandAncestorsAnywhere === 'function') expandAncestorsAnywhere(node);
+                render();
+                renderProperties();
+            });
+        });
+
         // The step buttons put in a stepped form (_sdFormAddStepNav()).
         document.querySelectorAll('#sd-properties [data-sd-step-nav-open]').forEach(function (el) {
             el.addEventListener('click', function () {
@@ -57991,6 +58603,37 @@ const StyleDesigner = (function () {
         });
     }
 
+    // The config of a list of a record's rows: the child form's records that
+    // the shown record's rows field `fieldName` holds, in its order (the
+    // dynamic value 'shown record rows' on the reference code).
+    function _swRowsListConfig(childPageId, fieldName) {
+        var cfg = _swTypeDefaults({}, 'form_list_view');
+        cfg.custom_form_page_id = childPageId;
+        cfg.filters = [{ field: 'reference_code', operator: 'is equal to', value: '', dynamic_value: 'shown record rows', dynamic_value_attribute: fieldName }];
+        return cfg;
+    }
+    // "Rows of this record" on a record view's panel: a new list widget set
+    // up by _swRowsListConfig(), with the list's starter layout, placed right
+    // after the selected record view.
+    /* @pg-site-output */
+    function _swAddRowsList(childPageId, fieldName) {
+        if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
+        var ref = selectedNode;
+        if (!ref || ref.type !== 'shared_ref') return;
+        var at = _sdAnyParent(ref);
+        if (!at || !at.parent) return;
+        var cfg = _swRowsListConfig(childPageId, fieldName);
+        var starterTree = _buildStarterTree('form_list_view');
+        var widgetName = _swAutoName('form_list_view', null, { target: at.parent });
+        _swCreateRow(widgetName, cfg, starterTree, function (newId, newName) {
+            saveState();
+            _swInsertRef(newId, newName, at.parent, { sibling: ref, after: true });
+            render();
+            if (typeof _refreshSystemTab === 'function') _refreshSystemTab();
+            sdToast(_sdT('"{var}" added.', esc(newName)), 'success');
+        });
+    }
+
     // ── Comments: the fixed block and the Comments widget ─────────────────
     // A page's comments, watchers and settings are keyed by the page, so the
     // fixed comments block (a comments_block region) and a placement of the
@@ -58568,7 +59211,10 @@ const StyleDesigner = (function () {
     // address, or take the code of the record the page shows (twin of
     // pg_sw_form_list_filter_sql()'s 'shown record'). A record view's may
     // not (the server closes such a page), so its panel offers neither.
-    function _swFilterDynamicOptions(type, withUrl) {
+    // On a list's reference code, "Rows of the shown record" lists the
+    // records the shown record's rows field holds, in its order (twin of
+    // 'shown record rows'; the attribute names the rows field).
+    function _swFilterDynamicOptions(type, withUrl, field) {
         var o = [];
         if (type === 'date') o.push(['current date', _sdT('Current Date')]);
         if (type === 'date and time') o.push(['current date and time', _sdT('Current Date & Time')]);
@@ -58578,6 +59224,7 @@ const StyleDesigner = (function () {
         if (type === 'email address') o.push(['viewers email address', _sdT('Viewer\'s E-mail Address')]);
         if (withUrl) o.push(['url parameter', _sdT('URL parameter')]);
         if (withUrl) o.push(['shown record', _sdT('Shown record')]);
+        if (withUrl && field === 'reference_code') o.push(['shown record rows', _sdT('Rows of the shown record')]);
         return o;
     }
     // Query parameter names the software reads itself, so a filter may not
@@ -58711,14 +59358,17 @@ const StyleDesigner = (function () {
             var field = String(f.field || '');
             var type  = _swFilterFieldType(field, fields);
             var dyn   = String(f.dynamic_value || '');
-            var dynOpts = _swFilterDynamicOptions(type, withUrl);
+            var dynOpts = _swFilterDynamicOptions(type, withUrl, field);
             // A value from the address on a panel that does not offer it (a
             // record view, hand-written config): kept and marked, since the
             // server closes the page on it.
-            var dynBad = !withUrl && (dyn === 'url parameter' || dyn === 'shown record') && field !== '';
-            if (dynBad) dynOpts = dynOpts.concat([[dyn, (dyn === 'shown record' ? _sdT('Shown record') : _sdT('URL parameter')) + ' ' + _sdT('(incompatible — choose again)')]]);
+            var dynBad = !withUrl && (dyn === 'url parameter' || dyn === 'shown record' || dyn === 'shown record rows') && field !== '';
+            if (dynBad) dynOpts = dynOpts.concat([[dyn, (dyn === 'shown record' ? _sdT('Shown record') : dyn === 'shown record rows' ? _sdT('Rows of the shown record') : _sdT('URL parameter')) + ' ' + _sdT('(incompatible — choose again)')]]);
             if (!dynOpts.some(function (d) { return d[0] === dyn; })) dyn = '';
-            var urlParam = (dyn === 'url parameter') ? String(f.dynamic_value_attribute == null ? '' : f.dynamic_value_attribute) : '';
+            // The parameter name, or the rows field's name.
+            var dynAttr = (dyn === 'url parameter' || dyn === 'shown record rows') ? String(f.dynamic_value_attribute == null ? '' : f.dynamic_value_attribute) : '';
+            var urlParam = (dyn === 'url parameter') ? dynAttr : '';
+            var rowsField = (dyn === 'shown record rows') ? dynAttr : '';
 
             var fieldOpts = '<option value=""' + (field === '' ? ' selected' : '') + '></option>' +
                 '<optgroup label="' + esc(_sdT('System Fields')) + '">' +
@@ -58769,7 +59419,7 @@ const StyleDesigner = (function () {
             var valueHook = { date: ' data-pg-date', 'datetime-local': ' data-pg-datetime', time: ' data-pg-time' }[inputType] || '';
 
             html +=
-                '<div class="sd-sw-filter" data-idx="' + i + '"' + keyAttr + (dynBad ? ' data-attr="' + esc(urlParam) + '"' : '') + ' style="display:flex;flex-direction:column;gap:4px;padding:6px;margin-bottom:6px;border:1px solid rgba(128,128,128,.25);border-radius:4px">' +
+                '<div class="sd-sw-filter" data-idx="' + i + '"' + keyAttr + (dynBad ? ' data-attr="' + esc(dynAttr) + '"' : '') + ' style="display:flex;flex-direction:column;gap:4px;padding:6px;margin-bottom:6px;border:1px solid rgba(128,128,128,.25);border-radius:4px">' +
                     '<div style="display:flex;gap:4px">' +
                         '<select class="form-control form-control-sm sd-sw-filter-field" data-sw-id="' + sid + '" aria-label="' + esc(_sdT('Field')) + '">' + fieldOpts + '</select>' +
                         '<button type="button" class="btn btn-sm btn-outline theme-danger sd-sw-filter-del" data-sw-id="' + sid + '" title="' + esc(_sdT('Delete')) + '"><span class="bi bi-trash"></span></button>' +
@@ -58793,6 +59443,11 @@ const StyleDesigner = (function () {
                                   : '') +
                           '</div>'
                         : '') +
+                    // The rows field's name stands on its own line, so the
+                    // select keeps the whole row and its label stays legible.
+                    (dyn === 'shown record rows' && !dynBad
+                        ? '<input type="text" class="form-control form-control-sm sd-sw-filter-rows" data-sw-id="' + sid + '" value="' + esc(rowsField) + '" maxlength="255" placeholder="steps" aria-label="' + esc(_sdT('Rows field')) + '">'
+                        : '') +
                     (dyn === 'url parameter' && !dynBad
                         ? '<div style="font-size:.66rem;color:#888;line-height:1.4">' + esc(_sdT('The list shows the records whose field matches ?{var}=… in the page address. Without it, this filter is left out and every record is listed.', _swUrlParamName(urlParam) || 'author')) + '</div>' +
                           (urlParam.trim() === ''
@@ -58803,6 +59458,12 @@ const StyleDesigner = (function () {
                         : '') +
                     (dyn === 'shown record' && !dynBad
                         ? '<div style="font-size:.66rem;color:#888;line-height:1.4">' + esc(_sdT('The list shows the records whose field holds the code of the record this page shows. Without a shown record, this filter is left out.')) + '</div>'
+                        : '') +
+                    (dyn === 'shown record rows' && !dynBad
+                        ? '<div style="font-size:.66rem;color:#888;line-height:1.4">' + esc(_sdT('The list shows the rows that this Rows field of the record this page shows holds, in their order. Without a shown record, the list is empty.')) + '</div>' +
+                          (rowsField.trim() === ''
+                              ? '<div style="font-size:.66rem;color:#b45309;line-height:1.4"><span class="bi bi-exclamation-triangle me-1"></span>' + esc(_sdT('Type the name of the Rows field of the record the page shows. Without one, the list is empty.')) + '</div>'
+                              : '')
                         : '') +
                 '</div>';
         });
@@ -67167,9 +67828,11 @@ const StyleDesigner = (function () {
                     // stops at the one already open.
                     _sdSharedOpen[_prId] = true;
                     var _prScope = sink ? sink.scope : 0;
+                    var _prPic = _sdPicShared;
                     if (sink) sink.scope = _prId;
+                    _sdPicShared = _prId;
                     try { h += _sdEmitNode(_prCached.tree, indent, base + h.length, sink); }
-                    finally { delete _sdSharedOpen[_prId]; if (sink) sink.scope = _prScope; }
+                    finally { delete _sdSharedOpen[_prId]; if (sink) sink.scope = _prScope; _sdPicShared = _prPic; }
                 }
                 break; }
             // The code view's picture of a system widget: the page prints
@@ -67190,6 +67853,54 @@ const StyleDesigner = (function () {
                 break;
         }
         if (rec) rec.to = base + h.length;
+        if (_sdPicMarkers && !sink && h) h = _sdPicMarkHtml(n, h);
+        return h;
+    }
+
+    // The Prototype view's picture of a page marks each link's element with
+    // data-pg-pic (PGProtoHotspots.picMark()), so the view can find it in
+    // the picture. Set only around the picture's own generateHTML() call
+    // (_sdProtoPicRaw()), in try/finally: left on, Save and Publish would
+    // write the marker into the page. _sdPicShared is the shared component
+    // being written (0 for the page's own nodes).
+    var _sdPicMarkers = false;
+    var _sdPicShared = 0;
+
+    // `h`, a node's markup, with the markers of its links: its own link on
+    // its first tag, the links of its text or custom HTML on their <a> tags
+    // when the markup holds exactly the text's links (a node whose children
+    // add links of their own gets none there; the view counts those as not
+    // seen).
+    /* @pg-site-output */
+    function _sdPicMarkHtml(n, h) {
+        var H = window.PGProtoHotspots;
+        if (!H || !n || n._id === undefined || n._id === null) return h;
+        var marks = H.picMarks(n);
+        if (!marks.own && !marks.text.length) return h;
+        var attr = function (index) {
+            var v = H.picMark(n._id, index, _sdPicShared);
+            return v ? ' data-pg-pic="' + esc(v) + '"' : '';
+        };
+        if (marks.text.length) {
+            var spans = [];
+            var p = n.props || {};
+            var src = (n.type === 'content' && p.contentType === 'custom_html') ? p.html : p.text;
+            H.htmlLinks(h, spans);
+            if (spans.length === H.htmlLinks(String(src || '')).length) {
+                var lower = h.toLowerCase();
+                // From the last, so the earlier positions stay valid.
+                marks.text.slice().sort(function (a, b) { return b - a; }).forEach(function (i) {
+                    if (!spans[i]) return;
+                    var at = lower.lastIndexOf('<a', spans[i].start);
+                    if (at < 0) return;
+                    h = h.slice(0, at + 2) + attr(i) + h.slice(at + 2);
+                });
+            }
+        }
+        if (marks.own) {
+            var m = /<([a-zA-Z][\w:-]*)/.exec(h);
+            if (m) h = h.slice(0, m.index + m[0].length) + attr(null) + h.slice(m.index + m[0].length);
+        }
         return h;
     }
 
@@ -68305,7 +69016,8 @@ const StyleDesigner = (function () {
         { test: /data-pg-theme-switcher/, file: 'assets/js/pg_theme_switcher.js' },
         { test: /data-bs-toggle\s*=\s*["']?(?:tooltip|popover|tab|pill|list)\b/i, file: 'assets/js/pg_bs_tips.js' },
         { test: /\sdata-pg-scroller(?=[\s=>\/])/i, file: 'assets/js/pg_scroller.js' },
-        { test: /\sdata-pg-fx(?=[\s=>\/])/i, file: 'assets/js/pg_fx.min.js' }
+        { test: /\sdata-pg-fx(?=[\s=>\/])/i, file: 'assets/js/pg_fx.min.js' },
+        { test: /\sdata-pg-listen(?=[\s=>\/])/i, file: 'assets/js/pg_listen.js' }
     ];
 
     // The absolute addresses of the platform scripts `markup` asks for (the
@@ -68450,7 +69162,7 @@ const StyleDesigner = (function () {
 
     // The request body of designer/preview_widgets for the system widgets
     // in a marked-up page, or null when the page has none.
-    function _sdPreviewWidgetPayload(raw) {
+    function _sdPreviewWidgetPayload(raw, pageId) {
         var ids = [];
         raw.replace(/<!--pg-sw-preview:(\d+)-->/g, function (m, id) {
             if (ids.indexOf(id) === -1) ids.push(id);
@@ -68459,7 +69171,7 @@ const StyleDesigner = (function () {
         if (!ids.length) return null;
         var page = (typeof _pgActivePage === 'function') ? _pgActivePage() : null;
         var payload = {
-            page_id: (page && page.page_id) ? parseInt(page.page_id, 10) : 0,
+            page_id: (pageId !== undefined) ? (parseInt(pageId, 10) || 0) : ((page && page.page_id) ? parseInt(page.page_id, 10) : 0),
             widgets: ids.map(function (id) {
                 var c = _sharedCache[id] || {};
                 return { id: parseInt(id, 10), tree_json: c.tree ? JSON.stringify(c.tree) : '', system_region_config: c.system_region_config || '' };
@@ -68556,7 +69268,14 @@ const StyleDesigner = (function () {
     // target from a list, _sdProtoMenuOpen()): on the row's tab, opened first, so its lock,
     // undo history and content rights answer; the normal Save writes it.
     // Classic menus and regions stay read-only.
-    var _sdProto = { open: false, ui: null, canvas: null, items: [], byId: {}, layout: null, view: { x: 40, y: 40, k: 1 }, seq: 0, selected: null, env: {}, warned: {}, menu: null };
+    var _sdProto = { open: false, ui: null, canvas: null, items: [], byId: {}, layout: null, view: { x: 40, y: 40, k: 1 }, seq: 0, selected: null, env: {}, warned: {}, menu: null,
+        pics: { gen: 0, io: null, boxes: {}, near: {}, live: {}, wait: [], loading: 0, cache: {} } };
+
+    // Pictures (_sdProtoPicMake()): at most this many loading at once, the
+    // widget requests among them, and at most this many alive; past it the
+    // one farthest from view goes back to its sketch. Made within this many
+    // pixels of the view.
+    var SD_PROTO_PIC = { loading: 6, alive: 48, margin: 200 };
 
     var SD_PROTO_MARKS = {
         tab: { icon: 'bi-file-earmark-arrow-right', text: function () { return _sdT('Opens a page of this design'); } },
@@ -68662,6 +69381,12 @@ const StyleDesigner = (function () {
         tools.appendChild(ui.zoomLabel);
         tools.appendChild(_sdProtoButton('bi-zoom-in', _sdT('Zoom In'), function () { if (_sdProto.canvas) _sdProto.canvas.view.zoomBy(1.2); }));
         tools.appendChild(_sdProtoButton('bi-arrows-fullscreen', _sdT('Fit to screen'), function () { if (_sdProto.canvas) _sdProto.canvas.view.fit(); }));
+        // All arrows: the other frames' arrows drawn faintly too; the choice
+        // is kept in this browser.
+        ui.allEdges = _sdProtoButton('bi-diagram-3', _sdT('All arrows'), function () { _sdProtoAllEdges(!_sdProtoAllEdgesOn()); });
+        ui.allEdges.appendChild(_sdProtoEl('span', 'sd-proto-btn-label', _sdT('All arrows')));
+        ui.allEdges.setAttribute('aria-pressed', 'false');
+        tools.appendChild(ui.allEdges);
         // Tidy up changes every editor's arrangement, so it carries its name
         // beside the icon (hidden on a phone, where the title and the label
         // still name it).
@@ -68688,6 +69413,8 @@ const StyleDesigner = (function () {
         ui.svg.innerHTML = '<defs>' +
             '<marker id="sd-proto-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="pgc-arrowhead" d="M0 0L10 5L0 10z"/></marker>' +
             '<marker id="sd-proto-arrow-on" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="pgc-arrowhead-on" d="M0 0L10 5L0 10z"/></marker>' +
+            '<marker id="sd-proto-arrow-in" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="sd-proto-arrowhead-in" d="M0 0L10 5L0 10z"/></marker>' +
+            '<marker id="sd-proto-arrow-broken" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="sd-proto-arrowhead-broken" d="M0 0L10 5L0 10z"/></marker>' +
             '</defs>';
         ui.temp = G.svgEl('path', 'pgc-edge-temp pgc-hidden');
         ui.svg.appendChild(ui.temp);
@@ -68704,7 +69431,17 @@ const StyleDesigner = (function () {
         _sdProto.ui = ui;
         _sdProto.canvas = G.create({
             ui: ui,
-            text: function (key) { return key === 'pgc_box' ? _sdT('Frame') : ''; },
+            text: function (key, a, b, c) {
+                if (key === 'pgc_box') return _sdT('Frame');
+                if (key === 'pgc_focus') return _sdT('{var:1}: {var:2} arrows out, {var:3} in', [a, b, c]);
+                return '';
+            },
+            // Only the selected frame's arrows are drawn (focus); a press on
+            // a frame selects it, on the empty canvas none.
+            focus: true,
+            focusChanged: function (id) { _sdProtoFocusMarks(id); },
+            label: function (item) { return item.kind === 'chip' ? _sdProtoChipText(item) : _sdProtoFrameName(item); },
+            groups: function () { return _sdProto.layout ? _sdProto.layout.headings : []; },
             boxRole: function () { return _sdT('Frame'); },
             item: function (id) { return _sdProto.byId[id] || null; },
             // Frames and chips move; an arrow from a link row's port
@@ -68712,6 +69449,9 @@ const StyleDesigner = (function () {
             editable: function () { return true; },
             size: function (item) { return { w: item.w, h: item.h }; },
             zoomMin: 0.1,
+            // A design too large for the smallest zoom fits to the start
+            // frame's corner, not to the middle of everything.
+            start: function () { return _sdProto.layout ? window.PGProtoHotspots.fitStart(_sdProto.layout) : null; },
             portAt: function (item, name) { return item.rows ? { y: window.PGProtoHotspots.rowY(item, name) } : null; },
             select: function (selected) { _sdProtoSelect(selected); },
             moved: function (item) { _sdProtoKeep(item); },
@@ -68794,6 +69534,7 @@ const StyleDesigner = (function () {
         if (!_sdProto.ui && !_sdProtoBuild()) return;
         _sdProto.open = true;
         _sdProto.warned = {};
+        _sdProto.focusOpen = true;
         _sdProto.ui.root.hidden = false;
         _sdProtoButtonState();
         _sdProtoLoad();
@@ -68806,6 +69547,7 @@ const StyleDesigner = (function () {
         _sdProto.open = false;
         _sdProto.seq++;
         if (_sdProto.canvas) _sdProto.canvas.cancel();
+        _sdProtoPicReset(true);
         if (_sdProto.ui) _sdProto.ui.root.hidden = true;
         _sdProtoButtonState();
         var btn = document.getElementById('sd-vb-proto');
@@ -68884,7 +69626,8 @@ const StyleDesigner = (function () {
         if (meta) head.appendChild(_sdProtoEl('span', 'sd-proto-meta', meta));
         node.appendChild(head);
         node.setAttribute('aria-label', _sdProtoFrameName(item));
-        if (item.thumb) node.appendChild(_sdProtoThumb(item));
+        if (item.pic) node.appendChild(_sdProtoPicBox(item));
+        else if (item.thumb) node.appendChild(_sdProtoThumb(item));
 
         if (!item.rows.length) {
             node.appendChild(_sdProtoEl('div', 'sd-proto-empty', _sdT('No links')));
@@ -68997,6 +69740,65 @@ const StyleDesigner = (function () {
         }
     }
 
+    function _sdProtoAllEdgesOn() {
+        try { return window.localStorage.getItem('pg_proto_all_edges') === '1'; } catch (e) { return false; }
+    }
+
+    function _sdProtoAllEdges(on) {
+        try {
+            if (on) window.localStorage.setItem('pg_proto_all_edges', '1');
+            else window.localStorage.removeItem('pg_proto_all_edges');
+        } catch (e) {}
+        if (_sdProto.ui) {
+            _sdProto.ui.allEdges.classList.toggle('active', on);
+            _sdProto.ui.allEdges.setAttribute('aria-pressed', on ? 'true' : 'false');
+        }
+        if (_sdProto.canvas) _sdProto.canvas.allEdges(on);
+    }
+
+    // The selected frame's marks until a frame shows its page: its own rows
+    // in full, on other frames only the rows that start one of its arrows
+    // lit and the rest quiet; a shared part's link into it marked amber,
+    // with a line under that frame naming it ("Cart icon → cart").
+    function _sdProtoFocusMarks(id) {
+        var ui = _sdProto.ui;
+        if (!ui || !_sdProto.layout) return;
+        Array.prototype.slice.call(ui.boxes.querySelectorAll('.sd-proto-note')).forEach(function (n) { n.parentNode.removeChild(n); });
+        Array.prototype.slice.call(ui.boxes.querySelectorAll('.sd-proto-focused')).forEach(function (n) { n.classList.remove('sd-proto-focused'); });
+        Array.prototype.slice.call(ui.boxes.querySelectorAll('.sd-proto-row')).forEach(function (r) {
+            r.classList.remove('sd-proto-row-quiet', 'sd-proto-row-lit', 'sd-proto-row-shared');
+        });
+        if (id === null || id === undefined) return;
+        var f = window.PGProtoHotspots.focusOf(_sdProto.layout, id);
+        var mark = {};
+        Object.keys(f.lit).forEach(function (frame) { f.lit[frame].forEach(function (port) { mark[frame + '|' + port] = 'sd-proto-row-lit'; }); });
+        f.shared.forEach(function (link) { mark[link.frame + '|' + link.port] = 'sd-proto-row-shared'; });
+        _sdProto.layout.frames.forEach(function (item) {
+            var node = ui.boxes.querySelector('[data-node="' + String(item.id).replace(/"/g, '') + '"]');
+            if (!node) return;
+            if (item.id === String(id)) {
+                node.classList.add('sd-proto-focused');
+                return;
+            }
+            item.rows.forEach(function (row, i) {
+                var el = node.querySelector('.sd-proto-row[data-row="' + i + '"]');
+                if (el) el.classList.add(mark[item.id + '|' + row.port] || 'sd-proto-row-quiet');
+            });
+        });
+        var notes = {};
+        f.shared.forEach(function (link) { (notes[link.frame] = notes[link.frame] || []).push(link.label + ' → ' + link.to); });
+        Object.keys(notes).forEach(function (frameId) {
+            var item = _sdProto.byId[frameId];
+            if (!item) return;
+            var note = _sdProtoEl('div', 'sd-proto-note');
+            note.style.left = item.x + 'px';
+            note.style.top = (item.y + item.h + 8) + 'px';
+            note.style.width = item.w + 'px';
+            notes[frameId].forEach(function (line) { note.appendChild(_sdProtoEl('div', 'sd-proto-note-line', line)); });
+            ui.boxes.appendChild(note);
+        });
+    }
+
     function _sdProtoDraw(marked) {
         var H = window.PGProtoHotspots;
         var G = window.PGGraphCanvas;
@@ -69013,6 +69815,7 @@ const StyleDesigner = (function () {
         _sdProto.items.forEach(function (item) { _sdProto.byId[item.id] = item; });
 
         Array.prototype.slice.call(ui.svg.querySelectorAll('g.pgc-edge')).forEach(function (g) { g.parentNode.removeChild(g); });
+        _sdProtoPicReset(false);
         ui.boxes.innerHTML = '';
 
         l.frames.forEach(function (item) {
@@ -69042,15 +69845,226 @@ const StyleDesigner = (function () {
         l.edges.forEach(function (e, i) {
             var drawn = canvas.edge(e.id, _sdProto.byId[e.from], _sdProto.byId[e.to], { port: e.port, slot: slots[i].slot, slots: slots[i].slots });
             drawn.group.classList.add('sd-proto-edge-' + e.mark);
+            // A shared part's link into the selected page draws no arrow
+            // (its row and the note under its frame say it).
+            if (_sdProto.byId[e.from].kind === 'shared') drawn.group.classList.add('sd-proto-from-shared');
         });
+        canvas.groups();
 
         var count = l.edges.length;
         var broken = l.chips.filter(function (c) { return c.mark === 'broken'; }).length;
         _sdProtoStatus(_sdT('{var:1} links', count) + (broken ? ' · ' + _sdT('{var:1} broken', broken) : ''));
         canvas.announce(_sdT('{var:1} links', count));
+        // Opening selects the open tab's frame; a redraw keeps the selected
+        // frame while it is there.
+        var focusOn = (first || _sdProto.focusOpen) ? 'p:' + _activeKey : canvas.focused();
+        _sdProto.focusOpen = false;
+        if (focusOn !== null && !_sdProto.byId[focusOn]) focusOn = null;
+        if (focusOn !== canvas.focused()) canvas.focus(focusOn);
+        else {
+            canvas.focus(focusOn);
+            _sdProtoFocusMarks(focusOn);
+        }
+        _sdProtoAllEdges(_sdProtoAllEdgesOn());
         if (first) canvas.view.fit();
         else canvas.view.apply();
         _sdProtoSelect(_sdProto.selected);
+        _sdProtoPicWatch();
+    }
+
+    // ── The page picture (F1, F3) ──
+    // A frame shows its page as the Preview draws it: the Preview's own
+    // document for the tab's tree (system widgets from preview_widgets, the
+    // canvas's dark view), in a frame that runs no script and takes no
+    // pointer or focus (PGProtoHotspots.PIC_FRAME, picHead()), 1280 wide,
+    // cut at 1600 and scaled into the frame. Made when it comes within
+    // SD_PROTO_PIC.margin of the view; the sketch stands in while it loads
+    // and when it cannot be drawn. A drawing of the map makes the pictures
+    // again, a tab whose document is unchanged from its cache without a
+    // request.
+
+    // The picture's box: the sketch underneath (the loading state), the
+    // fade and the foot over the picture's bottom.
+    function _sdProtoPicBox(item) {
+        var box = _sdProtoThumb(item);
+        box.classList.add('sd-proto-pic');
+        box.style.height = item.thumb + 'px';
+        box.setAttribute('data-pic', item.id);
+        box.appendChild(_sdProtoEl('div', 'sd-proto-pic-fade'));
+        var foot = _sdProtoEl('div', 'sd-proto-pic-foot');
+        foot.hidden = true;
+        box.appendChild(foot);
+        _sdProto.pics.boxes[item.id] = box;
+        return box;
+    }
+
+    // The page markup of a page frame's picture with the widget markers and
+    // the link markers in, or null without the tab's tree.
+    function _sdProtoPicRaw(item) {
+        var p = _pgPageByKey(item.key);
+        var t = p ? _pgTreeOf(p) : null;
+        if (!t) return null;
+        var nameEl = document.querySelector('[name="name"]');
+        var bcEl = document.querySelector('[name="additional_body_classes"]');
+        _sdPreviewWidgetMarkers = true;
+        _sdPicMarkers = true;
+        _sdPicShared = 0;
+        try {
+            return generateHTML(nameEl ? nameEl.value.trim() : '', bcEl ? bcEl.value.trim() : '', t);
+        } finally {
+            _sdPreviewWidgetMarkers = false;
+            _sdPicMarkers = false;
+            _sdPicShared = 0;
+        }
+    }
+
+    // Drops the pictures before the frames are drawn again (and, with
+    // `all`, when the view closes): the observer, the queue, the live
+    // frames. A picture's widget request still out finishes on its own
+    // and is thrown away.
+    function _sdProtoPicReset(all) {
+        var P = _sdProto.pics;
+        P.gen++;
+        if (P.io) P.io.disconnect();
+        P.io = null;
+        P.wait = [];
+        P.near = {};
+        Object.keys(P.live).forEach(function (id) {
+            var pic = P.live[id];
+            if (pic.frame && pic.job.stage === 'frame') pic.job.finish();
+            if (all && pic.frame && pic.frame.parentNode) pic.frame.parentNode.removeChild(pic.frame);
+        });
+        P.live = {};
+        P.boxes = {};
+    }
+
+    // Watches the drawn picture boxes: one coming within the margin of
+    // the view joins the queue.
+    function _sdProtoPicWatch() {
+        var P = _sdProto.pics;
+        var ui = _sdProto.ui;
+        if (!ui || typeof IntersectionObserver !== 'function') return;
+        var gen = P.gen;
+        P.io = new IntersectionObserver(function (entries) {
+            if (gen !== P.gen) return;
+            entries.forEach(function (e) {
+                var id = e.target.getAttribute('data-pic');
+                P.near[id] = e.isIntersecting;
+                if (e.isIntersecting && !P.live[id] && P.wait.indexOf(id) < 0) P.wait.push(id);
+            });
+            _sdProtoPicPump();
+        }, { root: ui.viewport, rootMargin: SD_PROTO_PIC.margin + 'px' });
+        Object.keys(P.boxes).forEach(function (id) { P.io.observe(P.boxes[id]); });
+    }
+
+    // Starts the waiting pictures still near the view, up to the cap of
+    // those loading at once.
+    function _sdProtoPicPump() {
+        var P = _sdProto.pics;
+        while (P.loading < SD_PROTO_PIC.loading && P.wait.length) {
+            var id = P.wait.shift();
+            var box = P.boxes[id];
+            var item = _sdProto.byId[id];
+            if (box && item && P.near[id] && !P.live[id]) _sdProtoPicMake(item, box);
+        }
+    }
+
+    // One picture: its document (from the cache when the markup and the
+    // widgets asked for are unchanged), the frame, then on load the
+    // markers read for the foot. On any failure the sketch stays.
+    function _sdProtoPicMake(item, box) {
+        var P = _sdProto.pics;
+        var H = window.PGProtoHotspots;
+        var gen = P.gen;
+        var raw = _sdProtoPicRaw(item);
+        if (raw === null) return;
+        var payload = _sdPreviewWidgetPayload(raw, item.pageId || 0);
+        var key = raw + '\n' + (payload ? JSON.stringify(payload) : '') + '\n' + (canvasDarkTheme ? 'dark' : 'light');
+        var job = { stage: 'doc', done: false };
+        var pic = { box: box, frame: null, job: job, marks: [] };
+        var timer = 0;
+        job.finish = function () {
+            if (job.done) return;
+            job.done = true;
+            clearTimeout(timer);
+            P.loading--;
+            _sdProtoPicPump();
+        };
+        P.loading++;
+        P.live[item.id] = pic;
+
+        var show = function (doc) {
+            if (gen !== P.gen || !doc) { job.finish(); return; }
+            P.cache[item.id] = { key: key, doc: doc };
+            var f = document.createElement('iframe');
+            Object.keys(H.PIC_FRAME).forEach(function (name) { f.setAttribute(name, H.PIC_FRAME[name]); });
+            f.className = 'sd-proto-pic-page';
+            f.style.transform = 'scale(' + H.picSize().scale + ')';
+            f.addEventListener('load', function () {
+                if (gen !== P.gen) { job.finish(); return; }
+                _sdProtoPicLoaded(item, pic);
+                job.finish();
+                _sdProtoPicCap();
+            });
+            job.stage = 'frame';
+            // A picture that never loads frees its place in the queue.
+            timer = setTimeout(job.finish, 15000);
+            pic.frame = f;
+            f.srcdoc = doc;
+            box.insertBefore(f, box.firstChild);
+        };
+
+        var hit = P.cache[item.id];
+        if (hit && hit.key === key) { show(hit.doc); return; }
+        if (!payload) { show(H.picDoc(_sdPreviewDocHtml({}, raw))); return; }
+        _pgApiPost('preview_widgets', payload).then(function (res) {
+            var ok = !!(res && res.status === 'success' && res.html);
+            show(gen === P.gen ? H.picDoc(_sdPreviewDocHtml(ok ? res.html : {}, raw)) : '');
+        }, function () {
+            show(gen === P.gen ? H.picDoc(_sdPreviewDocHtml({}, raw)) : '');
+        });
+    }
+
+    // A loaded picture: its markers read in page pixels (kept for the
+    // marks on the picture), the fade when the page runs past the cut,
+    // the foot's count of links it cannot show.
+    function _sdProtoPicLoaded(item, pic) {
+        var H = window.PGProtoHotspots;
+        var doc = null;
+        try { doc = pic.frame.contentDocument; } catch (e) { doc = null; }
+        if (!doc || !doc.documentElement) return;
+        pic.marks = Array.prototype.map.call(doc.querySelectorAll('[data-pg-pic]'), function (el) {
+            var r = el.getBoundingClientRect();
+            return { pic: el.getAttribute('data-pg-pic'), left: r.left, top: r.top, w: r.width, h: r.height };
+        });
+        pic.box.classList.add('sd-proto-pic-on');
+        pic.box.classList.toggle('sd-proto-pic-long', H.picLong(doc.documentElement.scrollHeight));
+        var foot = H.picFoot(item.rows, pic.marks, item.sharedId);
+        var footEl = pic.box.querySelector('.sd-proto-pic-foot');
+        if (!footEl) return;
+        footEl.hidden = !foot.below;
+        footEl.textContent = foot.below === 1 ? _sdT('+1 link below') : _sdT('+{var:1} links below', foot.below);
+    }
+
+    // Past the cap of pictures alive, the ones farthest from the view's
+    // centre go back to their sketch.
+    function _sdProtoPicCap() {
+        var P = _sdProto.pics;
+        var ids = Object.keys(P.live).filter(function (id) { return P.live[id].frame && P.live[id].job.done; });
+        if (ids.length <= SD_PROTO_PIC.alive || !_sdProto.ui) return;
+        var vr = _sdProto.ui.viewport.getBoundingClientRect();
+        var order = window.PGProtoHotspots.picOrder(ids.map(function (id) {
+            var r = P.live[id].box.getBoundingClientRect();
+            return { id: id, x: r.left, y: r.top, w: r.width, h: r.height };
+        }), { x: vr.left, y: vr.top, w: vr.width, h: vr.height });
+        order.slice(SD_PROTO_PIC.alive).forEach(function (id) {
+            var pic = P.live[id];
+            if (pic.frame && pic.frame.parentNode) pic.frame.parentNode.removeChild(pic.frame);
+            pic.box.classList.remove('sd-proto-pic-on', 'sd-proto-pic-long');
+            var footEl = pic.box.querySelector('.sd-proto-pic-foot');
+            if (footEl) footEl.hidden = true;
+            delete P.live[id];
+        });
     }
 
     // The tab a frame's links are edited on: a page's own, a shared

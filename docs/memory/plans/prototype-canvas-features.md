@@ -6,8 +6,8 @@ description: Plan prototype-canvas, features F1 to F14: what a frame of the Prot
 ## What does a frame show?
 - (F1) The page's own picture at desktop width, scaled to the frame, script-free, taking no click and no focus. While it loads, or when it cannot be drawn, today's band sketch.
 - (F2) A head above the picture: the page's name; "Start" on the start page (the design's first tab); the selected frame's name in the accent colour.
-- (F3) A long page is cut at a fixed height with a fade. A foot under it says how many links lie below the cut ("+3 links below"); their arrows leave from the foot.
-- (F4) Shared components are frames of their own in a column at the left under "Shared parts", each saying on how many pages it sits. A page's picture shows them, as the page does, but marks no link inside them.
+- (F3) A long page is cut at a fixed height with a fade; a page that ends at the cut gets none. A foot on the fade, at the picture's lower edge, says how many links lie below the cut ("+3 links below"); their arrows leave from the foot. So every page frame has one height.
+- (F4) Shared components are frames of their own in a column at the left under "Shared parts", each saying on how many pages it sits; a column that would be taller than the page grid goes on in a further column beside it. A page's picture shows them, as the page does, but marks no link inside them.
 - (F5) A link is marked where it sits on the picture: a rounded rectangle over its element, blue when it leads somewhere, red when broken. The selected frame shows all its marks; another frame only the marks that start or end a drawn arrow.
 
 ## How are the frames arranged?

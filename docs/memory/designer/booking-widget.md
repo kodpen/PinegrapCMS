@@ -26,4 +26,4 @@ module: widgets_booking
 - `pg_booking_widget_policy()`: Settings › Bookings' `pg_booking_policy()` (lead, horizon, hold, step; `booking_settings.php`) plus the site's zone for the slot engine. The "just taken" words are the site's `pg_booking_texts()['taken']` when set (`pg_booking_widget_taken_text()`).
 
 ## How does the visitor book?
-- Details form, consent link, confirm, expired and taken paths: [[booking-widget-confirm]] (#6596). The templates' booking pages: [[booking-templates]]. Tests: `tests/booking_widget_test.php`.
+- Details form, consent link, confirm, expired and taken paths: [[booking-widget-confirm]] (#6596). The templates' booking pages: [[booking-templates]]. The parts on the canvas: [[booking-widget-open-parts]]. Tests: `tests/booking_widget_test.php`.

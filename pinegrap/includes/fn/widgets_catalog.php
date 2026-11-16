@@ -117,6 +117,29 @@ function _pg_render_catalog_group_tree($parent_id, $listing_path_base, $listing_
          ORDER BY sort_order ASC, name ASC"
     );
     if (!$rows) return '';
+    return pg_catalog_group_tree_level($rows, $listing_path_base, $active_group_id, $detail_url_prefix, $depth,
+        function ($group_id, $next_depth) use ($listing_path_base, $listing_root_url, $active_group_id, $detail_url_prefix) {
+            return _pg_render_catalog_group_tree($group_id, $listing_path_base, $listing_root_url, $active_group_id, $detail_url_prefix, $next_depth);
+        });
+}
+
+/**
+ * One level of the catalog's group tree: a <ul> of $rows, each group a <li>
+ * with its link and, inside it, the markup $children returns for it (the
+ * next level, or ''). Browse groups open on the listing page
+ * ($listing_path_base), select groups on the detail page; the active group
+ * is marked. Pure: the designer canvas draws its twin (_sdCatalogGroupTreeHtml()).
+ *
+ * @param array    $rows              id, name, address_name, display_type
+ * @param string   $listing_path_base the listing page's address, ending in '/'
+ * @param int      $active_group_id   the group the visitor is in
+ * @param string   $detail_url_prefix the detail page's address, or ''
+ * @param int      $depth             0 for the top level
+ * @param callable $children          function ($group_id, $depth): string
+ * @return string
+ */
+function pg_catalog_group_tree_level($rows, $listing_path_base, $active_group_id, $detail_url_prefix, $depth, $children)
+{
     $lvl_cls = ($depth === 0) ? 'pg-sw-cl-tree pg-sw-cl-tree-root list-unstyled mb-0' : 'pg-sw-cl-tree-sub list-unstyled ms-3';
     $out = '<ul class="' . $lvl_cls . '">';
     foreach ($rows as $r) {
@@ -133,16 +156,145 @@ function _pg_render_catalog_group_tree($parent_id, $listing_path_base, $listing_
         $out .= '<li class="pg-sw-cl-tree-item' . ($is_active ? ' active' : '') . '">';
         $out .= '<a href="' . h($url) . '" class="text-decoration-none' . ($is_active ? ' fw-bold' : '') . '">'
               . h($r['name']) . '</a>';
-        $children_html = _pg_render_catalog_group_tree(
-            (int)$r['id'], $listing_path_base, $listing_root_url, $active_group_id, $detail_url_prefix, $depth + 1
-        );
-        if ($children_html !== '') {
-            $out .= $children_html;
-        }
+        $out .= (string)$children((int)$r['id'], $depth + 1);
         $out .= '</li>';
     }
     $out .= '</ul>';
     return $out;
+}
+
+/**
+ * The catalog listing's price filter form: hidden inputs keep the other
+ * parameters, two amounts and Apply. Pure; the designer canvas draws its
+ * twin (_sdCatalogFiltersHtml()).
+ *
+ * @param string $hidden  the hidden inputs (_pg_sw_hidden_query_inputs())
+ * @param string $cur_min the minimum asked, or ''
+ * @param string $cur_max the maximum asked, or ''
+ * @param int    $step    the amounts' step
+ * @return string
+ */
+function pg_catalog_price_filter_html($hidden, $cur_min, $cur_max, $step)
+{
+    return
+            '<form method="get" class="pg-sw-price-filter mb-3 d-flex align-items-center gap-2 flex-wrap">' .
+                $hidden .
+                '<span class="form-label mb-0 small text-muted">' . h(lang('Price')) . ':</span>' .
+                '<input type="number" class="form-control form-control-sm" name="pmin" value="' . h($cur_min) . '" placeholder="' . h(lang('Min')) . '" aria-label="' . h(lang('Minimum price')) . '" min="0" step="' . (int)$step . '" style="max-width:100px">' .
+                '<span class="text-muted" aria-hidden="true">–</span>' .
+                '<input type="number" class="form-control form-control-sm" name="pmax" value="' . h($cur_max) . '" placeholder="' . h(lang('Max')) . '" aria-label="' . h(lang('Maximum price')) . '" min="0" step="' . (int)$step . '" style="max-width:100px">' .
+                '<button type="submit" class="btn btn-sm btn-outline-secondary">' . h(lang('Apply')) . '</button>' .
+            '</form>';
+}
+
+/**
+ * The catalog listing's in-stock filter: a check box whose click opens the
+ * address $link_query gives. Pure.
+ *
+ * @param int    $widget_id  for the box's id
+ * @param bool   $active     whether only stocked products are shown now
+ * @param string $link_query the query string the click opens (unescaped)
+ * @return string
+ */
+function pg_catalog_stock_filter_html($widget_id, $active, $link_query)
+{
+    $stock_filter_active = (bool)$active;
+    $stock_link_query    = (string)$link_query;
+    return
+            '<div class="pg-sw-stock-filter form-check mb-3">' .
+                '<input class="form-check-input" type="checkbox" id="pg-sw-stock-' . (int)$widget_id . '"' .
+                       ($stock_filter_active ? ' checked' : '') .
+                       ' onclick="window.location.search=\'?' . h($stock_link_query) . '\'">' .
+                '<label class="form-check-label" for="pg-sw-stock-' . (int)$widget_id . '">' .
+                    h(lang('In stock only')) .
+                '</label>' .
+            '</div>';
+}
+
+/**
+ * The catalog listing's attribute filters: per attribute its label and its
+ * options, as buttons ("All" first) or check boxes; a click opens the
+ * address $query gives for the attribute's parameter and value. Pure.
+ *
+ * @param array    $available_attrs attr id => attr_label, options (option_id, option_label)
+ * @param array    $active_attr_filters attr id => the option picked now
+ * @param string   $attr_filter_style 'buttons' or 'checkboxes'
+ * @param callable $query function ($param, $value): the query string (unescaped)
+ * @param int      $widget_id for the boxes' ids
+ * @return string
+ */
+function pg_catalog_attribute_filters_html($available_attrs, $active_attr_filters, $attr_filter_style, $query, $widget_id)
+{
+    $_afout = '<div class="pg-sw-attr-filters mb-3">';
+    foreach ($available_attrs as $_afaid => $_afdef) {
+        $_afpk  = 'pg_attr_' . $_afaid;
+        $_afact = isset($active_attr_filters[$_afaid]) ? (int)$active_attr_filters[$_afaid] : 0;
+        $_afout .= '<div class="pg-sw-attr-group mb-2">';
+        $_afout .= '<div class="small fw-semibold mb-1">' . h($_afdef['attr_label']) . '</div>';
+        if ($attr_filter_style === 'buttons') {
+            // Button group: "All" clears the param, each option sets it.
+            $_afout .= '<div class="d-flex flex-wrap gap-1">';
+            $_all_cls  = ($_afact === 0) ? 'btn-secondary' : 'btn-outline-secondary';
+            $_all_href = '?' . h($query($_afpk, ''));
+            $_afout   .= '<a href="' . $_all_href . '" class="btn btn-sm ' . $_all_cls . '">' . h(lang('All')) . '</a>';
+            foreach ($_afdef['options'] as $_opt) {
+                $_oid      = (int)$_opt['option_id'];
+                $_opt_cls  = ($_afact === $_oid) ? 'btn-secondary' : 'btn-outline-secondary';
+                $_opt_href = '?' . h($query($_afpk, $_oid));
+                $_afout   .= '<a href="' . $_opt_href . '" class="btn btn-sm ' . $_opt_cls . '">'
+                           . h($_opt['option_label']) . '</a>';
+            }
+            $_afout .= '</div>';
+        } else {
+            // Checkbox list: click toggles the option (on → off, off → on).
+            foreach ($_afdef['options'] as $_opt) {
+                $_oid       = (int)$_opt['option_id'];
+                $_checked   = ($_afact === $_oid);
+                $_tog_val   = $_checked ? '' : (string)$_oid;
+                $_cb_id     = 'pg-af-' . (int)$widget_id . '-' . $_afaid . '-' . $_oid;
+                $_qs        = h($query($_afpk, $_tog_val));
+                $_afout    .=
+                    '<div class="form-check">' .
+                        '<input class="form-check-input" type="checkbox"' .
+                               ($_checked ? ' checked' : '') .
+                               ' id="' . $_cb_id . '"' .
+                               ' onclick="window.location.search=\'?' . $_qs . '\'">' .
+                        '<label class="form-check-label" for="' . $_cb_id . '">' .
+                            h($_opt['option_label']) .
+                        '</label>' .
+                    '</div>';
+            }
+        }
+        $_afout .= '</div>';
+    }
+    $_afout .= '</div>';
+    return $_afout;
+}
+
+/**
+ * The filters offcanvas's header and body ($off_id names its title): the
+ * active filter chips, then the price, stock and attribute filters. The
+ * section binding keeps the designer's element around it. Pure.
+ *
+ * @return string
+ */
+function pg_catalog_filters_offcanvas_inner_html($off_id, $filter_chips_html, $price_filter_html, $stock_filter_html, $attribute_filters_html)
+{
+    $_pg_off_id = (string)$off_id;
+    return
+            '<div class="offcanvas-header border-bottom">'
+          .   '<h5 class="offcanvas-title mb-0" id="' . h($_pg_off_id) . 'Title">'
+          .     '<i class="bi bi-funnel me-2"></i>' . h(lang('Filters'))
+          .   '</h5>'
+          .   '<button type="button" class="btn-close" data-bs-dismiss="offcanvas"'
+          .          ' aria-label="' . h(lang('Close')) . '"></button>'
+          . '</div>'
+          . '<div class="offcanvas-body">'
+          .   ($filter_chips_html !== '' ? '<div class="border-bottom pb-2 mb-3">' . $filter_chips_html . '</div>' : '')
+          .   $price_filter_html
+          .   $stock_filter_html
+          .   $attribute_filters_html
+          . '</div>';
 }
 
 // ============================================================================
@@ -2322,15 +2474,7 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
         $hidden_for_price = _pg_sw_hidden_query_inputs(array('pmin', 'pmax', (string)$page_param));
         $cur_min = ($pmin_param !== null) ? (string)$pmin_param : '';
         $cur_max = ($pmax_param !== null) ? (string)$pmax_param : '';
-        $price_filter_html =
-            '<form method="get" class="pg-sw-price-filter mb-3 d-flex align-items-center gap-2 flex-wrap">' .
-                $hidden_for_price .
-                '<span class="form-label mb-0 small text-muted">' . h(lang('Price')) . ':</span>' .
-                '<input type="number" class="form-control form-control-sm" name="pmin" value="' . h($cur_min) . '" placeholder="' . h(lang('Min')) . '" aria-label="' . h(lang('Minimum price')) . '" min="0" step="' . (int)$price_filter_step . '" style="max-width:100px">' .
-                '<span class="text-muted" aria-hidden="true">–</span>' .
-                '<input type="number" class="form-control form-control-sm" name="pmax" value="' . h($cur_max) . '" placeholder="' . h(lang('Max')) . '" aria-label="' . h(lang('Maximum price')) . '" min="0" step="' . (int)$price_filter_step . '" style="max-width:100px">' .
-                '<button type="submit" class="btn btn-sm btn-outline-secondary">' . h(lang('Apply')) . '</button>' .
-            '</form>';
+        $price_filter_html = pg_catalog_price_filter_html($hidden_for_price, $cur_min, $cur_max, $price_filter_step);
     }
 
     // Stock filter checkbox --------------------------------------------------
@@ -2340,15 +2484,7 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
         // produces a clean URL without "0" sentinel values when toggling off.
         $stock_target = $stock_filter_active ? '' : '1';
         $stock_link_query = _pg_sw_build_query('stock', $stock_target, $page_param, '');
-        $stock_filter_html =
-            '<div class="pg-sw-stock-filter form-check mb-3">' .
-                '<input class="form-check-input" type="checkbox" id="pg-sw-stock-' . (int)$widget_id . '"' .
-                       ($stock_filter_active ? ' checked' : '') .
-                       ' onclick="window.location.search=\'?' . h($stock_link_query) . '\'">' .
-                '<label class="form-check-label" for="pg-sw-stock-' . (int)$widget_id . '">' .
-                    h(lang('In stock only')) .
-                '</label>' .
-            '</div>';
+        $stock_filter_html = pg_catalog_stock_filter_html($widget_id, $stock_filter_active, $stock_link_query);
     }
 
     // Attribute filter HTML -------------------------------------------------
@@ -2433,50 +2569,10 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
         }
 
         if ($available_attrs) {
-            $_afout = '<div class="pg-sw-attr-filters mb-3">';
-            foreach ($available_attrs as $_afaid => $_afdef) {
-                $_afpk  = 'pg_attr_' . $_afaid;
-                $_afact = isset($active_attr_filters[$_afaid]) ? (int)$active_attr_filters[$_afaid] : 0;
-                $_afout .= '<div class="pg-sw-attr-group mb-2">';
-                $_afout .= '<div class="small fw-semibold mb-1">' . h($_afdef['attr_label']) . '</div>';
-                if ($attr_filter_style === 'buttons') {
-                    // Button group: "All" clears the param, each option sets it.
-                    $_afout .= '<div class="d-flex flex-wrap gap-1">';
-                    $_all_cls  = ($_afact === 0) ? 'btn-secondary' : 'btn-outline-secondary';
-                    $_all_href = '?' . h(_pg_sw_build_query($_afpk, '', $page_param, ''));
-                    $_afout   .= '<a href="' . $_all_href . '" class="btn btn-sm ' . $_all_cls . '">' . h(lang('All')) . '</a>';
-                    foreach ($_afdef['options'] as $_opt) {
-                        $_oid      = (int)$_opt['option_id'];
-                        $_opt_cls  = ($_afact === $_oid) ? 'btn-secondary' : 'btn-outline-secondary';
-                        $_opt_href = '?' . h(_pg_sw_build_query($_afpk, $_oid, $page_param, ''));
-                        $_afout   .= '<a href="' . $_opt_href . '" class="btn btn-sm ' . $_opt_cls . '">'
-                                   . h($_opt['option_label']) . '</a>';
-                    }
-                    $_afout .= '</div>';
-                } else {
-                    // Checkbox list: click toggles the option (on → off, off → on).
-                    foreach ($_afdef['options'] as $_opt) {
-                        $_oid       = (int)$_opt['option_id'];
-                        $_checked   = ($_afact === $_oid);
-                        $_tog_val   = $_checked ? '' : (string)$_oid;
-                        $_cb_id     = 'pg-af-' . (int)$widget_id . '-' . $_afaid . '-' . $_oid;
-                        $_qs        = h(_pg_sw_build_query($_afpk, $_tog_val, $page_param, ''));
-                        $_afout    .=
-                            '<div class="form-check">' .
-                                '<input class="form-check-input" type="checkbox"' .
-                                       ($_checked ? ' checked' : '') .
-                                       ' id="' . $_cb_id . '"' .
-                                       ' onclick="window.location.search=\'?' . $_qs . '\'">' .
-                                '<label class="form-check-label" for="' . $_cb_id . '">' .
-                                    h($_opt['option_label']) .
-                                '</label>' .
-                            '</div>';
-                    }
-                }
-                $_afout .= '</div>';
-            }
-            $_afout .= '</div>';
-            $attribute_filters_html = $_afout;
+            $attribute_filters_html = pg_catalog_attribute_filters_html($available_attrs, $active_attr_filters, $attr_filter_style,
+                function ($param, $value) use ($page_param) {
+                    return _pg_sw_build_query($param, $value, $page_param, '');
+                }, $widget_id);
         }
     }
 
@@ -2992,20 +3088,7 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     $filters_offcanvas_inner_html = '';
     $filters_offcanvas_html       = '';
     if ($_pg_any_filter_ui) {
-        $filters_offcanvas_inner_html =
-            '<div class="offcanvas-header border-bottom">'
-          .   '<h5 class="offcanvas-title mb-0" id="' . h($_pg_off_id) . 'Title">'
-          .     '<i class="bi bi-funnel me-2"></i>' . h(lang('Filters'))
-          .   '</h5>'
-          .   '<button type="button" class="btn-close" data-bs-dismiss="offcanvas"'
-          .          ' aria-label="' . h(lang('Close')) . '"></button>'
-          . '</div>'
-          . '<div class="offcanvas-body">'
-          .   ($filter_chips_html !== '' ? '<div class="border-bottom pb-2 mb-3">' . $filter_chips_html . '</div>' : '')
-          .   $price_filter_html
-          .   $stock_filter_html
-          .   $attribute_filters_html
-          . '</div>';
+        $filters_offcanvas_inner_html = pg_catalog_filters_offcanvas_inner_html($_pg_off_id, $filter_chips_html, $price_filter_html, $stock_filter_html, $attribute_filters_html);
         $filters_offcanvas_html =
             '<div class="offcanvas offcanvas-start pg-sw-filters-offcanvas" tabindex="-1"'
           . ' id="' . h($_pg_off_id) . '" aria-labelledby="' . h($_pg_off_id) . 'Title">'

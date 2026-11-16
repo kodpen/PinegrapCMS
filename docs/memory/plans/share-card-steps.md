@@ -4,7 +4,7 @@ description: Plan share-card, steps OG1 to OG3: the card and its address, the sw
 ---
 
 ## Which steps are there?
-- OG1 (M) The card and its address. No schema.
+- OG1 (M) The card and its address. No schema. Done in #9916.
   - Existing files: `job.php` (the sweep).
   - New: `includes/fn/share_card.php` (the card's document for a title, logo, name and colours, the wrap, the signature and its check, the file's place, the draw under a lock, the sweep), the root file `get_share_card.php` reached by its address so `router.php` does not change, `tests/share_card_test.php`. No page prints the address yet.
   - Tests, red first: the wrap (a short title, three full lines, a word longer than a line), the signature changing with the title, a stale signature and a private item answering 404, a host that cannot draw.

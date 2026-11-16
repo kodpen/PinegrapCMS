@@ -14,7 +14,7 @@ description: Plan click-scroll-map, features C1 to C15: what is counted, what is
 - (C6) A label in the form of an e-mail address, or with seven or more digits in a row, is kept empty; its element is counted by the address.
 - (C7) Label and address are text from outside: the panel, the API and the designer print them as text only, and a test holds that.
 - (C8) No cookie, nothing written on the device, no identifier, no address of the visitor, no row per person.
-- (C9) Counting does not wait for the cookie notice. A visitor whose answer refuses statistics (`a0` in `pg_consent`), or who closed the notice without answering where it can be closed, sends nothing; one who has not answered yet is counted. The shares hold, since the views come from the same beacon.
+- (C9) Counting does not wait for the cookie notice. A visitor whose answer refuses statistics (`a0` in `pg_consent`), or who closed the notice without answering where it can be closed, sends nothing; one who has not answered yet is counted. The shares hold, since the views come from the same beacon. Architect (2026-11-16, agent channel message 6043): the one check of the anonymous counts, `platform/consent-anonymous-counts.md`.
 
 ## How does it reach the server?
 - (C10) One request per page view, on `visibilitychange` hidden or `pagehide`: the page, its signature, the device class (as the speed beacon's), at most 20 elements and the tenth. With the speed measurement on, both travel in the one beacon. A page back from the back-forward cache sends nothing twice.

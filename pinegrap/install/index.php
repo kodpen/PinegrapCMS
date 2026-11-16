@@ -9084,6 +9084,7 @@ function get_tables() {
 		'next_order_number',
 		'not_found_log',
 		'site_search_daily',
+		'auto_dialog_daily',
 		'ai_fetch_daily',
 		'ap_blocks',
 		'ap_followers',
@@ -9114,6 +9115,7 @@ function get_tables() {
 		'order_returns',
 		'orders',
 		'page',
+		'page_click_daily',
 		'page_vitals_hourly',
 		'photo_gallery_pages',
 		'pregion',
@@ -9346,6 +9348,7 @@ function get_tables() {
 		'record_revisions',
 		'shipment_labels',
 		'prototype_links',
+		'prototype_comments',
 	);
 
 }

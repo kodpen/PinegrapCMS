@@ -16,7 +16,7 @@ description: The sample product the designer canvas draws in the catalog listing
 - `__out_of_stock_message`: the page writes it only for a product off the shelf; the canvas draws the notice on the in-stock sample so the designer can place and style it, as the cart's stock warning preview does.
 
 ## Which slots draw the page's markup?
-- `_SD_HTML_PREVIEW_TOKENS`: `__group_tree_html` (a category list), `__filters_button`, `__clear_filters_button`, `__attribute_filters_html`, `__filters_offcanvas` (drawn open), `__variant_picker` (a Size select), all disabled.
+- `_SD_HTML_PREVIEW_TOKENS`: `__group_tree_html`, `__attribute_filters_html` and `__filters_offcanvas` (drawn open) from the site builders' twins ([[catalog-listing-open-blocks]]), `__price_block_html` ([[catalog-detail-variant-price-blocks]]), `__filters_button`, `__clear_filters_button`, `__variant_picker` (a Size select), all disabled.
 - The tag cloud's values are in `_SD_SHORT_LABEL_TOKENS` (search page name, tag name, keyword, count, size, weight, total).
 
 ## What is left?

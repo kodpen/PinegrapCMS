@@ -68,7 +68,7 @@ function test_graph_canvas_css_on_pgc_tokens()
 
 	pg_assert_true((bool) preg_match('/var CLASSES = \{(.*?)\};/s', $core, $block), 'the core names its classes');
 	preg_match_all("/(\w+): '([\w-]+)'/", $block[1], $names, PREG_SET_ORDER);
-	pg_assert_same(9, count($names), 'nine class names');
+	pg_assert_same(14, count($names), 'fourteen class names');
 
 	foreach ($names as $name) {
 		pg_assert_same(0, strpos($name[2], 'pgc-'), $name[1] . ' is a pgc- class');
@@ -164,6 +164,16 @@ out.fitEmpty = copy(state.view);
 state.nodes = [{ x: 0, y: 0 }, { x: 1000, y: 400 }];
 view.fit();
 out.fit = [Math.round(state.view.x * 100) / 100, Math.round(state.view.y * 100) / 100, Math.round(state.view.k * 1000) / 1000];
+var cornered = G.viewport({ ui: ui, view: function (next) { if (next) { state.view = next; } return state.view; }, items: function () { return state.nodes; }, start: function () { return state.start; } });
+state.start = { x: 100, y: 200 };
+cornered.fit();
+out.fitStartFits = [Math.round(state.view.x * 100) / 100, Math.round(state.view.y * 100) / 100, Math.round(state.view.k * 1000) / 1000];
+state.nodes = [{ x: 0, y: 0 }, { x: 3000, y: 2800 }, { x: 100, y: 200 }];
+cornered.fit();
+out.fitStart = copy(state.view);
+view.fit();
+out.fitNoStart = [Math.round(state.view.x * 100) / 100, Math.round(state.view.y * 100) / 100, state.view.k];
+state.nodes = [{ x: 0, y: 0 }, { x: 1000, y: 400 }];
 state.view = { x: 0, y: 0, k: 1 };
 view.reveal({ x: 100, y: 100 });
 out.revealInSight = copy(state.view);
@@ -197,6 +207,9 @@ JS
 	pg_assert_same(array(0.25, '16px 16px', '25%'), $result['zoomMin'], 'at least 25%, every fourth grid dot');
 	pg_assert_same(array('x' => 40, 'y' => 40, 'k' => 1), $result['fitEmpty'], 'an empty canvas fits at 40, 40, 100%');
 	pg_assert_same(array(48, 160.13, 0.583), $result['fit'], 'fit brings every box into sight');
+	pg_assert_same(array(48, 160.13, 0.583), $result['fitStartFits'], 'a start corner changes nothing while the whole fits');
+	pg_assert_same(array('x' => 23, 'y' => -2, 'k' => 0.25), $result['fitStart'], 'too large for the smallest zoom: the start corner 48 px in');
+	pg_assert_same(array(-1, -60, 0.25), $result['fitNoStart'], 'without a start corner the middle of the bounds');
 	pg_assert_same(array('x' => 0, 'y' => 0, 'k' => 1), $result['revealInSight'], 'a box in sight is left where it is');
 	pg_assert_same(array('x' => -1704, 'y' => 160, 'k' => 1), $result['revealOut'], 'a box out of sight comes to the middle');
 	pg_assert_same(array('x' => -150, 'y' => -100, 'k' => 2), $result['pinch'], 'a pinch zooms about its middle');
@@ -347,7 +360,7 @@ function test_graph_canvas_texts_are_handed_over_and_translated()
 
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/graph_canvas.php');
 
-	preg_match_all("/lang\\(\\s*'((?:[^'\\\\]|\\\\.)*)'/", $source, $texts);
+	preg_match_all("/lang\\(\\s*(?:array\\(\\s*'string'\\s*=>\\s*)?'((?:[^'\\\\]|\\\\.)*)'/", $source, $texts);
 
 	pg_assert_same(count($strings), count($texts[1]), 'each text through lang()');
 
@@ -632,6 +645,145 @@ JS
 	pg_assert_same(array(0, array('b pgc-thumb'), true), $result['lazy'], 'a picture asked for once in sight, once; destroy() stops watching');
 }
 
+// The focus (adapter.focus): with no box in focus no arrow is drawn; a box
+// in focus draws its arrows out and in, dims the boxes and targets at
+// neither end and is announced with its counts; allEdges() draws the others
+// faint, under them; a focus change touches only the arrows that change; a
+// click on the empty canvas takes the focus away; groups() draws headings
+// behind the boxes; without the field every arrow is drawn as before.
+function test_graph_canvas_focus()
+{
+	$result = graph_canvas_test_node(graph_canvas_test_dom() . <<<'JS'
+var out = {};
+function setup(focusField) {
+    var layer = new El('div');
+    ui.layer = layer;
+    ui.boxes = layer.appendChild(new El('div'));
+    ui.svg = layer.appendChild(new El('svg'));
+    ui.temp = ui.svg.appendChild(new El('path'));
+    ui.temp.className = 'pgc-hidden';
+    ui.live = new El('div');
+    var listeners = {};
+    ui.viewport.addEventListener = function (type, handler) { listeners[type] = handler; };
+    ui.viewport.removeEventListener = function () {};
+    document.removeEventListener = function () {};
+    ui.viewport.classList = { add: function () {}, remove: function () {} };
+    ui.viewport.setPointerCapture = function () {};
+    ui.viewport.focus = function () {};
+    var items = { a: { id: 'a', x: 0, y: 0 }, b: { id: 'b', x: 300, y: 0 }, c: { id: 'c', x: 600, y: 0 }, d: { id: 'd', x: 900, y: 0 } };
+    var chip = { id: 'mail', x: 300, y: 200 };
+    var adapter = {
+        ui: ui,
+        view: function (next) { if (next) { state.view = next; } return state.view; },
+        items: function () { return Object.keys(items).map(function (k) { return items[k]; }); },
+        text: function (key, a, b, c) { return key + '|' + a + '|' + b + '|' + c; },
+        item: function (id) { return items[id] || null; },
+        label: function (item) { return 'Box ' + item.id.toUpperCase(); },
+        editable: function () { return false; },
+        select: function () {},
+        targets: '[data-target]',
+        target: function (element) { return element.getAttribute('data-target') === 'mail' ? chip : null; },
+        groups: function () { return [{ id: 'g1', label: 'Shop', x: 0, y: -40, w: 900, kind: 'group' }, { id: 'side', label: 'Outside', x: 1200, y: -40, w: 160, kind: 'side' }]; },
+        press: function () { return true; },
+        focusChanged: function (id) { heard.push(id); },
+        move: function () {}, release: function () {}, cancel: function () {}, key: function () { return false; }
+    };
+    if (focusField) { adapter.focus = true; }
+    var canvas = G.create(adapter);
+    canvas.bind();
+    var els = {};
+    Object.keys(items).forEach(function (k) { els[k] = ui.boxes.appendChild(canvas.box(items[k], { into: true })); });
+    els.mail = ui.boxes.appendChild(new El('div'));
+    els.mail.setAttribute('data-target', 'mail');
+    var edges = {};
+    [['ab', 'a', 'b'], ['ca', 'c', 'a'], ['bc', 'b', 'c'], ['cd', 'c', 'd'], ['am', 'a', 'mail']].forEach(function (e) {
+        edges[e[0]] = canvas.edge(e[0], items[e[1]], e[2] === 'mail' ? chip : items[e[2]]).group;
+    });
+    return { canvas: canvas, els: els, edges: edges, listeners: listeners };
+}
+function classesOf(map) { var o = {}; Object.keys(map).forEach(function (k) { o[k] = map[k].className; }); return o; }
+function order() { return ui.svg.children.filter(function (g) { return g.attrs['data-edge']; }).map(function (g) { return g.attrs['data-edge']; }); }
+
+var heard = [];
+var plain = setup(false);
+plain.canvas.focus('a');
+out.plain = [classesOf(plain.edges), plain.canvas.focused(), classesOf(plain.els)];
+
+var f = setup(true);
+out.none = [classesOf(f.edges), f.canvas.focused()];
+f.canvas.focus('a');
+out.a = [classesOf(f.edges), classesOf(f.els), f.canvas.focused(), f.canvas.focused() === 'a', ui.live.textContent];
+var touched = [];
+Object.keys(f.edges).forEach(function (k) { var g = f.edges[k]; var add = g.classList.add; g.classList.add = function (n) { touched.push(k); add(n); }; });
+f.canvas.allEdges(true);
+out.faint = [classesOf(f.edges), order(), touched.slice().sort()];
+touched = [];
+f.canvas.focus('c');
+out.c = [classesOf(f.edges), order().slice(-3), classesOf(f.els), touched.slice().sort(), ui.live.textContent];
+touched = [];
+ui.live.textContent = 'kept';
+f.canvas.focus('c');
+out.same = [touched.slice(), ui.live.textContent];
+var late = f.canvas.edge('db', { id: 'd', x: 900, y: 0 }, { id: 'b', x: 300, y: 0 });
+out.late = [late.group.className, order().indexOf('db') < Math.min(order().indexOf('ca'), order().indexOf('bc'), order().indexOf('cd'))];
+var newBox = f.canvas.box({ id: 'e', x: 0, y: 300 }, {});
+out.newBox = newBox.className;
+f.canvas.allEdges(false);
+f.listeners.pointerdown({ type: 'pointerdown', pointerId: 7, clientX: 10, clientY: 10, button: 0, target: f.els.b, preventDefault: function () {} });
+f.listeners.pointerup({ type: 'pointerup', pointerId: 7, clientX: 10, clientY: 10, button: 0, target: f.els.b, preventDefault: function () {} });
+out.pressed = [f.canvas.focused(), ui.live.textContent];
+f.listeners.pointerdown({ type: 'pointerdown', pointerId: 8, clientX: 10, clientY: 10, button: 0, target: ui.viewport, preventDefault: function () {} });
+f.listeners.pointermove({ type: 'pointermove', pointerId: 8, clientX: 60, clientY: 10, button: 0, target: ui.viewport, preventDefault: function () {} });
+f.listeners.pointerup({ type: 'pointerup', pointerId: 8, clientX: 60, clientY: 10, button: 0, target: ui.viewport, preventDefault: function () {} });
+out.panned = f.canvas.focused();
+f.listeners.pointerdown({ type: 'pointerdown', pointerId: 9, clientX: 10, clientY: 10, button: 0, target: ui.viewport, preventDefault: function () {} });
+f.listeners.pointerup({ type: 'pointerup', pointerId: 9, clientX: 10, clientY: 10, button: 0, target: ui.viewport, preventDefault: function () {} });
+out.cleared = [f.canvas.focused(), classesOf(f.edges), f.els.d.className];
+out.heard = heard;
+f.canvas.groups();
+var holder = f.canvas.groups();
+out.groups = [ui.layer.children[0] === holder, ui.layer.children.filter(function (c) { return c.className === 'pgc-groups'; }).length, ui.layer.children[0].children.map(function (h) { return [h.className, h.attrs['data-group'], h.style.left, h.style.top, h.style.width, h.children[0].className, h.children[0].textContent, h.children[1].className]; }), ui.layer.children[0].attrs['aria-hidden']];
+console.log(JSON.stringify(out));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	$all = array('ab' => 'pgc-edge', 'ca' => 'pgc-edge', 'bc' => 'pgc-edge', 'cd' => 'pgc-edge', 'am' => 'pgc-edge');
+	pg_assert_same(array($all, null, array('a' => 'pgc-node', 'b' => 'pgc-node', 'c' => 'pgc-node', 'd' => 'pgc-node', 'mail' => '')), $result['plain'], 'without the field every arrow is drawn as before and focus() does nothing');
+	pg_assert_same(array(array('ab' => 'pgc-edge pgc-hidden', 'ca' => 'pgc-edge pgc-hidden', 'bc' => 'pgc-edge pgc-hidden', 'cd' => 'pgc-edge pgc-hidden', 'am' => 'pgc-edge pgc-hidden'), null), $result['none'], 'with the field and no focus no arrow is drawn');
+	pg_assert_same(array(
+		array('ab' => 'pgc-edge pgc-edge-out', 'ca' => 'pgc-edge pgc-edge-in', 'bc' => 'pgc-edge pgc-hidden', 'cd' => 'pgc-edge pgc-hidden', 'am' => 'pgc-edge pgc-edge-out'),
+		array('a' => 'pgc-node', 'b' => 'pgc-node', 'c' => 'pgc-node', 'd' => 'pgc-node pgc-dim', 'mail' => ''),
+		'a', true, 'pgc_focus|Box A|2|1',
+	), $result['a'], 'a box in focus: its arrows out and in, the boxes and targets at neither end dimmed, announced with its counts');
+	pg_assert_same(array(
+		array('ab' => 'pgc-edge pgc-edge-out', 'ca' => 'pgc-edge pgc-edge-in', 'bc' => 'pgc-edge pgc-edge-faint', 'cd' => 'pgc-edge pgc-edge-faint', 'am' => 'pgc-edge pgc-edge-out'),
+		array('bc', 'cd', 'ab', 'ca', 'am'),
+		array('bc', 'cd'),
+	), $result['faint'], 'allEdges(true): the others faint, under those of the box in focus; only they are touched');
+	pg_assert_same(array(
+		array('ab' => 'pgc-edge pgc-edge-faint', 'ca' => 'pgc-edge pgc-edge-out', 'bc' => 'pgc-edge pgc-edge-in', 'cd' => 'pgc-edge pgc-edge-out', 'am' => 'pgc-edge pgc-edge-faint'),
+		array('ca', 'bc', 'cd'),
+		array('a' => 'pgc-node', 'b' => 'pgc-node', 'c' => 'pgc-node', 'd' => 'pgc-node', 'mail' => 'pgc-dim'),
+		array('ab', 'am', 'bc', 'ca', 'cd'),
+		'pgc_focus|Box C|2|1',
+	), $result['c'], 'another focus: every arrow whose part changed drawn again, the target at neither end dimmed');
+	pg_assert_same(array(array(), 'kept'), $result['same'], 'the same focus again touches no arrow and announces nothing');
+	pg_assert_same(array('pgc-edge pgc-edge-faint', true), $result['late'], 'an arrow drawn later takes its state, a faint one under the rest');
+	pg_assert_same('pgc-node pgc-dim', $result['newBox'], 'a box drawn later at neither end is dimmed');
+	pg_assert_same(array('a', 'c', 'b', null), $result['heard'], 'focusChanged() hears each change of focus once, by a call or a press, and none without the field');
+	pg_assert_same(array('b', 'pgc_focus|Box B|1|2'), $result['pressed'], 'a press on a box puts it in focus, counted with the arrow drawn later');
+	pg_assert_same('b', $result['panned'], 'a pan keeps the focus');
+	pg_assert_same(array(null, array('ab' => 'pgc-edge pgc-hidden', 'ca' => 'pgc-edge pgc-hidden', 'bc' => 'pgc-edge pgc-hidden', 'cd' => 'pgc-edge pgc-hidden', 'am' => 'pgc-edge pgc-hidden'), 'pgc-node'), $result['cleared'], 'a click on the empty canvas takes the focus away: no arrow, nothing dimmed');
+	pg_assert_same(array(true, 1, array(
+		array('pgc-group pgc-group-group', 'g1', '0px', '-40px', '900px', 'pgc-group-label', 'Shop', 'pgc-group-rule'),
+		array('pgc-group pgc-group-side', 'side', '1200px', '-40px', '160px', 'pgc-group-label', 'Outside', 'pgc-group-rule'),
+	), 'true'), $result['groups'], 'groups(): headings with a label and a rule behind the boxes, drawn again in place');
+}
+
 // The autosave (autosave()): a change is sent once the changes pause; a
 // change made while a save is on its way goes in a second one; a failure is
 // kept and nothing is sent again by itself; a conflict holds every later
@@ -749,7 +901,10 @@ El.prototype.names = function () { return this.className.split(' ').filter(Boole
 El.prototype.setAttribute = function (name, value) { if (name === 'class') { this.className = String(value); } else { this.attrs[name] = String(value); } };
 El.prototype.getAttribute = function (name) { return (name === 'class') ? this.className : ((name in this.attrs) ? this.attrs[name] : null); };
 El.prototype.removeAttribute = function (name) { delete this.attrs[name]; };
-El.prototype.appendChild = function (child) { child.parent = this; child.parentNode = this; this.children.push(child); return child; };
+El.prototype.removeChild = function (child) { this.children = this.children.filter(function (item) { return item !== child; }); child.parent = null; child.parentNode = null; return child; };
+El.prototype.appendChild = function (child) { if (child.parentNode) { child.parentNode.removeChild(child); } child.parent = this; child.parentNode = this; this.children.push(child); return child; };
+El.prototype.insertBefore = function (child, before) { if (child.parentNode) { child.parentNode.removeChild(child); } var at = before ? this.children.indexOf(before) : -1; child.parent = this; child.parentNode = this; if (at < 0) { this.children.push(child); } else { this.children.splice(at, 0, child); } return child; };
+Object.defineProperty(El.prototype, 'firstChild', { get: function () { return this.children[0] || null; } });
 El.prototype.focus = function () { focused = this; };
 El.prototype.matches = function (selector) {
     var self = this;
@@ -884,6 +1039,59 @@ JS
 	pg_assert_same(array('x' => 0, 'y' => 0, 'w' => 2320, 'h' => 2280), $result['big'][3], 'eight a row, three bands');
 	pg_assert_same(array($p(0, 408), $p(0, 1184), $p(2072, 1960)), array_slice($result['big'], 4, 3), 'a group longer than a row wraps; the next band starts below it');
 	pg_assert_true($result['again'], 'the same answer for the same input');
+}
+
+// arrange() with a side column's greatest height: fifty boxes beside a grid
+// of five rows go on in further columns beside each other, each at least
+// four boxes, the column's heading over all of them and the grid right of
+// the last; a short column stays one; a number caps a column without a
+// grid; a sub-heading moves on with its first box.
+function test_graph_canvas_arrange_wraps_a_tall_side_column()
+{
+	$result = graph_canvas_test_node(<<<'JS'
+var out = {};
+function range(prefix, n) { var list = []; for (var i = 1; i <= n; i++) { list.push(prefix + i); } return list; }
+function columns(laid, ids) { var xs = {}; ids.forEach(function (id) { xs[laid.places[id].x] = (xs[laid.places[id].x] || 0) + 1; }); return Object.keys(xs).map(Number).sort(function (a, b) { return a - b; }).map(function (x) { return [x, xs[x]]; }); }
+var pages = [{ id: 'g', items: range('p', 40) }];
+var wide = G.arrange(pages, { w: 100, h: 100, gapX: 20, gapY: 20, before: { id: 'shared', label: 'Shared', h: 50, gap: 10, maxH: 'grid', items: range('s', 50) } });
+out.wide = [columns(wide, range('s', 50)), wide.places.s1, wide.places.s9, wide.places.s10, wide.places.p1, wide.headings[0], wide.bounds.h];
+var boxes = Object.keys(wide.places).map(function (id) { return wide.places[id]; });
+out.overlap = boxes.some(function (a, i) { return boxes.some(function (b, j) { return i < j && a.x === b.x && a.y === b.y; }); });
+var short = G.arrange(pages, { w: 100, h: 100, gapX: 20, gapY: 20, before: { id: 'shared', h: 50, gap: 10, maxH: 'grid', items: range('s', 9) } });
+out.short = [columns(short, range('s', 9)), short.places.p1];
+var few = G.arrange([{ id: 'g', items: ['p1'] }], { w: 100, h: 100, gapX: 20, before: { id: 'shared', h: 50, gap: 10, maxH: 'grid', items: range('s', 10) } });
+out.few = columns(few, range('s', 10));
+var plain = G.arrange(pages, { w: 100, h: 100, gapX: 20, gapY: 20, before: { id: 'shared', h: 50, gap: 10, items: range('s', 50) } });
+out.plain = columns(plain, range('s', 50));
+var capped = G.arrange([], { w: 100, gapX: 20, after: { id: 'out', h: 50, gap: 10, maxH: 230, groups: [{ id: 'a', label: 'A', items: range('a', 4) }, { id: 'b', label: 'B', items: range('b', 4) }] } });
+out.capped = [capped.places.a1, capped.places.b1, capped.headings];
+console.log(JSON.stringify(out));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	$p = function ($x, $y) {
+		return array('x' => $x, 'y' => $y);
+	};
+	// Five rows of 100 with gaps of 20: the grid is 580 high; a column of
+	// boxes 50 high with gaps of 10 holds nine under its heading.
+	pg_assert_same(array(array(0, 9), array(120, 9), array(240, 9), array(360, 9), array(480, 9), array(600, 5)), $result['wide'][0], 'fifty boxes beside five rows wrap into six columns');
+	pg_assert_same(array($p(0, 40), $p(0, 520), $p(120, 40)), array_slice($result['wide'], 1, 3), 'each column starts under the heading');
+	pg_assert_same($p(740, 0), $result['wide'][4], 'the grid right of the last column');
+	pg_assert_same(array('id' => 'shared', 'label' => 'Shared', 'x' => 0, 'y' => 0, 'w' => 700, 'kind' => 'side'), $result['wide'][5], 'the heading over every column');
+	pg_assert_same(580, $result['wide'][6], 'no column below the grid');
+	pg_assert_false($result['overlap'], 'no two boxes on one place');
+	pg_assert_same(array(array(array(0, 9)), $p(140, 0)), $result['short'], 'a short column stays one');
+	pg_assert_same(array(array(0, 5), array(120, 5)), $result['few'], 'at least four boxes a column');
+	pg_assert_same(array(array(0, 50)), $result['plain'], 'without a greatest height one column');
+	pg_assert_same(array($p(0, 40), $p(120, 40)), array_slice($result['capped'], 0, 2), 'a number caps a column without a grid');
+	pg_assert_same(array(
+		array('id' => 'a', 'label' => 'A', 'x' => 0, 'y' => 0, 'w' => 100, 'kind' => 'sub'),
+		array('id' => 'b', 'label' => 'B', 'x' => 120, 'y' => 0, 'w' => 100, 'kind' => 'sub'),
+	), $result['capped'][2], 'a sub-heading moves on with its first box');
 }
 
 // check(): arrows whose end is no box, boxes no other box reaches (never

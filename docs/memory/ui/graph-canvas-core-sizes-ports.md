@@ -1,6 +1,6 @@
 ---
 name: graph-canvas-core-sizes-ports
-description: Graph canvas core slice 4 for the Prototype view: size per box, lower zoom, named ports, spread arrow ends, other targets, stable arrow ids, partial redraw, thumbnails
+description: Graph canvas core slice 4 for the Prototype view: size per box, lower zoom, Fit to a start corner, named ports, spread arrow ends, other targets, stable arrow ids, partial redraw, thumbnails
 ---
 
 ## Why was it added?
@@ -9,6 +9,7 @@ description: Graph canvas core slice 4 for the Prototype view: size per box, low
 ## Which adapter fields are new?
 - `size(item)` → `{ w, h }` (else 208 x 80): `box()` sets the width and height, `fit()`, `reveal()` and the arrows read it. `viewport(host)` takes `size` too.
 - `zoomMin`, `zoomMax` (else 0.25 and 2); never below `G.ZOOM_FLOOR` 0.05. `fit()` stays at most 1.25.
+- `start()` → `{ x, y }` or null (PV4b): when everything does not fit at `zoomMin`, `fit()` (the bar's Fit, the 0 key, the first draw) puts that point 48 px in from the top left at `zoomMin` instead of the middle of the bounds; while it fits nothing changes. `viewport(host)` takes `start` too; Flows passes none (`test_graph_canvas_viewport`).
 - `targets` (a selector) and `target(element)`: what an arrow may end on beside `[data-node]` (an end chip), and its item. The chip must sit inside `ui.boxes` to lose the target mark.
 - `portAt(item, name)` → `{ y }` from the box's top; without it the core reads the row holding the `[data-port]` dot (`offsetTop` up to the box, plus half the row's height); a row not laid out leaves from the middle.
 - `thumb(item, holder)`: a box drawn with `{ thumb: true }` gets `div.pgc-thumb` before its content, filled once it is in sight (an IntersectionObserver on `ui.viewport`, at once without one); `destroy()` disconnects it.

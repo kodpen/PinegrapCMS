@@ -27,3 +27,6 @@ description: The prototype canvas page picture check's measurements (PV7): both 
 - The design uses the system font stack and Bootstrap Icons from jsDelivr: both ways drew them. A font the site serves without CORS was not tried; way 2 would lose it (`design-live-pictures.md`).
 - An unsaved heading on the open tab: way 1 shows it, way 2 the saved text. Pictures (1440, light and dark) are under agent channel message 5717.
 - The Clinic template has few images; images under the cut load too (no `loading="lazy"` without scripts), so PV8 measures memory and the last picture once on an image-heavy store template and writes them here.
+
+## What did PV8 measure on an image-heavy design (#9896)?
+- The Store template (37 pages, 159 images in the pictures) on the same container, all 37 pictures alive: +136 MB RSS of all Chromium processes, 3.7 MB a picture; the Clinic design 3.8 MB. Under 8 MB, so the cap stays at 48. The last picture came about 4 s after the view opened (one run, polled every 0.5 s).

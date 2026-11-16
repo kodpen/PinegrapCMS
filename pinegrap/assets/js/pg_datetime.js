@@ -18,6 +18,7 @@
  *   pgDateTime.timeMode()                 12 or 24, from the data-pg-calendar of its tag
  *   pgDateTime.site()                     true on a site page (pg_site_datetime_inject())
  *   pgDateTime.ready() / whenReady(fn)    the calendar library is loaded
+ *   pgDateTime.themeOptions(theme)        the library's theme options for an ancestor theme
  *   pgDateTime.attach(box, options)       a calendar for the typed box `box`: a date, a
  *                                         date and time (the time row under the dates)
  *                                         or a time (the time row alone)
@@ -185,11 +186,58 @@
 
     // ------------------------------------------------------------ calendar
 
-    // The theme the calendar takes: the nearest data-bs-theme, else the
-    // system's, as Bootstrap 6 sets it for its own Datepicker.
+    // The theme the calendar takes comes only from its own ancestors: the
+    // nearest data-bs-theme ('' with none).
     function themeOf(box) {
         var holder = box.closest ? box.closest('[data-bs-theme]') : null;
         return holder ? holder.getAttribute('data-bs-theme') : '';
+    }
+
+    // The library's theme options for an ancestor theme. With none the
+    // calendar is light, as the page is: in its 'system' mode the library
+    // reads document.querySelector(themeAttrDetect), the first element of
+    // the page carrying the attribute (a dark footer), and follows the
+    // system setting on a page that does not. An empty themeAttrDetect
+    // keeps 'auto' on the system setting alone.
+    function themeOptions(theme) {
+        return {
+            selectedTheme: theme === 'dark' ? 'dark' : (theme === 'auto' ? 'system' : 'light'),
+            themeAttrDetect: ''
+        };
+    }
+
+    // Gives a drawn calendar another ancestor theme in place: the library's
+    // own stylesheet draws it from data-vc-theme on its box.
+    function retheme(calendar, theme) {
+        var main = calendar.context ? calendar.context.mainElement : null, picked = themeOptions(theme).selectedTheme;
+        var shown = picked;
+        if (picked === 'system') {
+            // The system setting as it is now; a later update of the
+            // calendar keeps following it (selectedTheme 'system').
+            shown = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        } else if (calendar.context && calendar.context.cleanupSystemTheme) {
+            calendar.context.cleanupSystemTheme();
+        }
+        calendar.selectedTheme = picked;
+        calendar.themeAttrDetect = '';
+        if (main && main.dataset) {
+            main.dataset.vcTheme = shown;
+        }
+    }
+
+    // Calls fn whenever a data-bs-theme changes anywhere in the document
+    // (the theme switcher writes it on <html>); returns the function that
+    // stops it.
+    function onThemeChange(fn) {
+        var Observer = window.MutationObserver;
+        if (!Observer || !document.documentElement) {
+            return function () {};
+        }
+        var observer = new Observer(fn);
+        observer.observe(document.documentElement, { attributes: true, subtree: true, attributeFilter: ['data-bs-theme'] });
+        return function () {
+            observer.disconnect();
+        };
     }
 
     function syncTheme(box, cal) {
@@ -635,8 +683,6 @@
             selectedDates: o.iso ? [o.iso] : [],
             // A second click on the chosen day keeps it, as jQuery UI did.
             enableDateToggle: false,
-            selectedTheme: (!theme || theme === 'auto') ? 'system' : theme,
-            themeAttrDetect: '[data-bs-theme]',
             onInit: function (self) {
                 var main = self.context.mainElement;
                 dressed(main);
@@ -658,6 +704,13 @@
             },
             onShow: function (self) {
                 shown = true;
+                // A theme changed since the last show (the theme switcher)
+                // is drawn now, without a redraw of the open popup.
+                var now = themeOf(box);
+                if (now !== theme) {
+                    theme = now;
+                    retheme(self, now);
+                }
                 dressed(self.context.mainElement);
                 placeInHost(box, self.context.mainElement, o.host);
                 window.addEventListener('resize', place);
@@ -700,6 +753,7 @@
                 }
             };
         }
+        assign(calendarOptions, themeOptions(theme));
         assign(calendarOptions, monthOf(o.iso));
         // Bound before the library's own listeners on the box, so its keys
         // run first (popupKeys()).
@@ -746,7 +800,7 @@
     // Returns { calendar, days(list), destroy() }; days() swaps the days that
     // can be picked and keeps the month shown.
     function month(el, options) {
-        var o = options || {}, target = document.createElement('div'), theme = themeOf(el), calendar = null;
+        var o = options || {}, target = document.createElement('div'), theme = themeOf(el), calendar = null, stop = null;
         el.appendChild(target);
         var shownMonth = function (self) {
             return self.context.selectedYear + '-' + pad(self.context.selectedMonth + 1);
@@ -763,8 +817,9 @@
             enableDateToggle: false,
             disableAllDates: true,
             enableDates: o.days || [],
-            selectedTheme: (!theme || theme === 'auto') ? 'system' : theme,
-            themeAttrDetect: '[data-bs-theme]',
+            onInit: function (self) {
+                syncTheme(el, self.context.mainElement);
+            },
             onClickDate: function (self) {
                 var dates = self.context.selectedDates || [];
                 if (dates.length && o.onPick) {
@@ -784,9 +839,24 @@
         if (o.dateMax) {
             calendarOptions.dateMax = o.dateMax;
         }
+        assign(calendarOptions, themeOptions(theme));
         assign(calendarOptions, monthOf(o.month ? o.month + '-01' : ''));
         calendar = new window.VanillaCalendarPro.Calendar(target, calendarOptions);
         calendar.init();
+        // A theme changed while the month is shown (the theme switcher)
+        // redraws it in the new theme, on the month shown.
+        stop = onThemeChange(function () {
+            var now = themeOf(el);
+            if (now === theme) {
+                return;
+            }
+            theme = now;
+            calendar.set(assign({
+                selectedYear: calendar.context.selectedYear,
+                selectedMonth: calendar.context.selectedMonth
+            }, themeOptions(now)));
+            syncTheme(el, calendar.context.mainElement);
+        });
         return {
             calendar: calendar,
             days: function (list) {
@@ -798,6 +868,7 @@
                 });
             },
             destroy: function () {
+                stop();
                 calendar.destroy();
                 if (target.parentNode) {
                     target.parentNode.removeChild(target);
@@ -808,6 +879,7 @@
 
     window.pgDateTime = {
         month: month,
+        themeOptions: themeOptions,
         order: dateOrder,
         parseDate: parseDate,
         formatDate: formatDate,

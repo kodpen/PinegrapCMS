@@ -21,7 +21,6 @@
 - auto-dialog-popups-census.md: Census PU1 of auto-dialog-popups: who touches auto_dialogs, open_dialog() and jQuery UI, ui-dialog styles, the cookie notice layer and pg:consent, a shared component drawn outside a page
 - auto-dialog-popups-steps.md: Steps PU1 to PU10 of plans/auto-dialog-popups.md: census, the dialog script, consent, the columns, the screens, designed content, the four blocks, counts, the recovered carts touch, close-out
 - auto-dialog-popups.md: Plan (owner 2026-11-15, poll 51 and agent channel message 5139): pop-ups built by growing Auto Dialogs: the browser's own dialog in place of jQuery UI, new triggers, designed content, counts
-- cart-recovery.md: Plan (owner 2026-11-15, agent channel message 5096 and poll 50): recovered carts: the record of touches, the figures by channel and message, what weakens recovery; steps CR1 to CR4
 - claude-plugin-bundle.md: Plan (owner 2026-11-14): a Pinegrap plugin bundle for Claude's directory: a site's MCP server connected by its address, skills for common site work, the listing; the repository is the owner's to open
 - click-scroll-map-features-2.md: Plan click-scroll-map, features C16 to C23: the switch and its empty state, the "Clicks and scrolling" section of Visitors, a page's own view, the report route, the designer's "Clicks" layer
 - click-scroll-map-features.md: Plan click-scroll-map, features C1 to C15: what is counted, what is never kept, consent, the beacon, which pages carry it, how it is kept and bounded
@@ -55,7 +54,6 @@
 - message-highlights-features.md: Plan message-highlights, features H1 to H9: what can be highlighted, the anchor, the two scopes, who may make and remove one, the note, no notification, limits, cleanup
 - message-highlights-steps.md: Plan message-highlights, steps HL1 to HL5: the table and the pure part, the server's actions and cleanup, the message side in the browser, My highlights, close-out
 - message-highlights.md: Plan (owner 2026-11-16, agent channel message 5547): a reader highlights a selected part of a message for everyone or for himself, in his own colour; My highlights in My Notes; HL1 to HL5
-- message-link-in-place.md: Plan (owner 2026-11-16): a link to a message never loads the Workspace again; the open channel scrolls to it, another channel opens in place; features G1 to G10, one step ML1
 - mobile-api-shelved.md: Team-device API work for the closed-source Pinegrap Mobile app (restarted 2026-10-24 outside this repo): what exists (M1–M6), what M7 (native push) and M8 add, decisions, how its needs arrive
 - panel-design-language-dialogs.md: Look A's dialogs and drawers (#8860): the scrim, the three dialog widths, head, body and foot, the confirm dialog, the settings dialog's rail and pane, a drawer's sections and member rows
 - panel-design-language-look.md: Look A's numbers (second pass) for the panel's design language: type, surfaces and depth, fields, buttons, the segmented control, the status pill, the icon tile and tones, rows, what a title says
@@ -83,7 +81,7 @@
 - prototype-canvas-features-3.md: Plan prototype-canvas, features F26 to F34 from the owner's answer of 2026-11-16: empty links and unreached pages marked, a target suggested for empty links and written only when he applies
 - prototype-canvas-features.md: Plan prototype-canvas, features F1 to F14: what a frame of the Prototype view shows, how pages are arranged, which arrows are drawn and how an arrow runs
 - prototype-canvas-rules.md: Plan prototype-canvas: what today's Prototype view does that no step may lose (K1 to K9), the rules every step keeps, and what a step's PR body carries so that no feature is skipped
-- prototype-canvas-steps-2.md: Plan prototype-canvas, the view steps PV2, PV4 and PV6: the grid arrangement and Tidy up, the selected frame's arrows, the list of its links and the problems
+- prototype-canvas-steps-2.md: Plan prototype-canvas, the view steps PV2, PV4, PV4b and PV6: the grid arrangement and Tidy up, the selected frame's arrows, many shared parts, the list and the problems
 - prototype-canvas-steps-3.md: Plan prototype-canvas, steps PV7 to PV10 and PV12: the page picture's technical check, the picture in the frame, marks on it, drawing from a mark, close-out
 - prototype-canvas-steps-4.md: Plan prototype-canvas, steps PV11a and PV11b from the owner's answer of 2026-11-16: empty links and unreached pages as problems, then the Suggest targets dialog
 - prototype-canvas-steps.md: Plan prototype-canvas, the engine steps PV1, PV3 and PV5: graph logic, focus and routing added to the graph canvas core as optional parts that Flows does not pass

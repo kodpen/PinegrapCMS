@@ -317,5 +317,14 @@ function pg_auto_dialog_open_ready()
  */
 function pg_auto_dialog_delete($auto_dialog_id)
 {
-    return (bool) db_q("DELETE FROM auto_dialogs WHERE id = ?", array((int) $auto_dialog_id));
+    if (!db_q("DELETE FROM auto_dialogs WHERE id = ?", array((int) $auto_dialog_id))) {
+        return false;
+    }
+
+    // Its counts go with it (includes/fn/auto_dialog_counts.php).
+    if (function_exists('pg_auto_dialog_count_delete')) {
+        pg_auto_dialog_count_delete($auto_dialog_id);
+    }
+
+    return true;
 }

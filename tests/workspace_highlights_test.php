@@ -293,3 +293,164 @@ function test_workspace_highlights_cleanup_calls()
 		}
 	}
 }
+
+/* ---------------------------------------------------------------------------
+   The browser's twin (assets/js/workspace_highlights.js) under Node
+   --------------------------------------------------------------------------- */
+
+// Runs the script under Node with a bare window and a small parser that
+// builds a DOM-like tree from HTML; prints, for each case, plainFromHtml(),
+// textMap()'s plain text and find() for each quote. Null without Node.
+function workspace_highlights_test_twin($cases)
+{
+	$out = array();
+	$code = 1;
+	@exec('node --version 2>&1', $out, $code);
+
+	if ($code !== 0) {
+		return null;
+	}
+
+	$parser = <<<'JS'
+var SKIPPED = ['ws-msg-edited', 'ws-hl-bar', 'ws-hl-card'];
+function tree(html) {
+  var root = { nodeType: 1, nodeName: 'DIV', childNodes: [] };
+  var stack = [root];
+  var re = /<(\/?)([a-z0-9]+)([^>]*)>|([^<]+)/gi, m;
+  var decode = function (s) { return s.replace(/&nbsp;/g, ' ').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#0?39;/g, "'").replace(/&amp;/g, '&'); };
+  while ((m = re.exec(html)) !== null) {
+    var top = stack[stack.length - 1];
+    if (m[4] !== undefined) { top.childNodes.push({ nodeType: 3, nodeValue: decode(m[4]) }); continue; }
+    if (m[1] === '/') { stack.pop(); continue; }
+    var cls = (/class="([^"]*)"/.exec(m[3]) || [])[1] || '';
+    var node = { nodeType: 1, nodeName: m[2].toUpperCase(), childNodes: [], className: cls,
+      matches: function () { var own = this.className.split(' '); return SKIPPED.some(function (c) { return own.indexOf(c) >= 0; }); } };
+    top.childNodes.push(node);
+    if (!/^(br|hr|input|img)$/i.test(m[2]) && !/\/$/.test(m[3])) { stack.push(node); }
+  }
+  return root;
+}
+JS;
+
+	$script = "'use strict';\nvar window = {};\n"
+		. file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_highlights.js') . "\n" . $parser
+		. "\nvar H = window.PGWsHighlights;\nvar cases = " . json_encode($cases) . ";\n"
+		. "console.log(JSON.stringify(cases.map(function (c) {\n"
+		. "  var plain = H.plainFromHtml(c.html);\n"
+		. "  return { plain: plain, walked: H.textMap(tree(c.html)).plain,\n"
+		. "    found: (c.quotes || []).map(function (q) { return H.find(plain, q[0], q[1]); }),\n"
+		. "    at: (c.at || []).map(function (q) { return H.occurrenceAt(plain, q[0], q[1]); }) };\n"
+		. "})));\n";
+
+	$file = tempnam(sys_get_temp_dir(), 'pgwshl');
+	file_put_contents($file, $script);
+	$out = array();
+	exec('node ' . escapeshellarg($file) . ' 2>&1', $out, $code);
+	unlink($file);
+
+	$printed = implode("\n", $out);
+	pg_assert_same(0, $code, $printed);
+	$answer = json_decode($printed, true);
+	pg_assert_true(is_array($answer), 'Node printed JSON: ' . $printed);
+
+	return is_array($answer) ? $answer : array();
+}
+
+// The browser reads the same plain text and finds the same places as the
+// server, on HL1's fixtures, a list, a mention, a block of code and a
+// checklist ticked by someone.
+function test_workspace_highlights_browser_twin()
+{
+	$refs = array(
+		'user:12' => array('type' => 'user', 'id' => 12, 'label' => '@Ayşe Yılmaz', 'url' => '', 'known' => true, 'icon' => '', 'meta' => '', 'status' => ''),
+	);
+	$htmls = array();
+
+	foreach (workspace_highlights_test_fixtures() as $fixture) {
+		$htmls[] = $fixture['html'];
+	}
+
+	$htmls[] = ws_render_body("Hello <@user:12>, see:\n- milk & eggs\n- bread\n\nthen **go** \"now\" it's\n> quoted", $refs);
+	$htmls[] = ws_render_body("Look:\n```php\n\$a = 1 < 2;\n```\nafter the code", array());
+	$htmls[] = ws_render_body("first line\nsecond line", array());
+
+	$cases = array();
+
+	foreach ($htmls as $html) {
+		$plain = ws_highlight_plain($html);
+		$words = explode(' ', $plain);
+		$quotes = array(array($words[0], 0), array(implode(' ', array_slice($words, 1, 2)), 0), array('e', 1), array('e', 2), array('zzz', 0));
+		$cases[] = array('html' => $html, 'plain' => $plain, 'quotes' => $quotes);
+	}
+
+	// The marker the screen adds after the text is never part of it.
+	$cases[] = array('html' => '<div class="ws-text">done here<span class="ws-msg-edited"><i></i> edited</span></div>', 'plain' => 'done here', 'quotes' => array(), 'walk_only' => true);
+
+	$answer = workspace_highlights_test_twin($cases);
+
+	if ($answer === null) {
+		pg_assert_true(true, 'Node is not installed here; CI runs this test with it.');
+
+		return;
+	}
+
+	foreach ($cases as $i => $case) {
+		if (empty($case['walk_only'])) {
+			pg_assert_same($case['plain'], $answer[$i]['plain'], 'plainFromHtml() #' . $i);
+		}
+
+		pg_assert_same($case['plain'], $answer[$i]['walked'], 'textMap() #' . $i);
+
+		foreach ($case['quotes'] as $q => $quote) {
+			pg_assert_same(ws_highlight_find($case['plain'], $quote[0], $quote[1]), $answer[$i]['found'][$q], 'find() #' . $i . ' "' . $quote[0] . '" ' . $quote[1]);
+		}
+	}
+}
+
+// The occurrence a selection is: how many times its text begins earlier,
+// overlapping places too, as ws_highlight_find() counts them.
+function test_workspace_highlights_browser_occurrence()
+{
+	$answer = workspace_highlights_test_twin(array(
+		array('html' => 'the cat saw the dog and the bird', 'at' => array(array('the', 0), array('the', 12), array('the', 24), array('aa', 1))),
+		array('html' => 'aaa', 'at' => array(array('aa', 0), array('aa', 1))),
+	));
+
+	if ($answer === null) {
+		pg_assert_true(true, 'Node is not installed here; CI runs this test with it.');
+
+		return;
+	}
+
+	pg_assert_same(array(0, 1, 2, 0), $answer[0]['at']);
+	pg_assert_same(array(0, 1), $answer[1]['at']);
+	pg_assert_same(1, ws_highlight_find('aaa', 'aa', 1), 'the server finds the second at 1, as the browser counts it');
+}
+
+// The script is in the Workspace bundle, before workspace.js, which calls
+// it after drawing a body; its texts come from the #ws-config block.
+function test_workspace_highlights_browser_wiring()
+{
+	$bundle = pg_js_bundles()['assets/js/workspace.min.js'];
+	pg_assert_true(in_array('assets/js/workspace_highlights.js', $bundle, true), 'in the bundle');
+	pg_assert_true(array_search('assets/js/workspace_highlights.js', $bundle, true) < array_search('assets/js/workspace.js', $bundle, true), 'before workspace.js');
+
+	$workspace = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js');
+	pg_assert_contains('window.PGWsHighlights.attach(message, body, featureHelpers()', $workspace);
+
+	$script = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_highlights.js');
+	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/screen.php');
+
+	preg_match_all("/h\\.t\\('(hl_[a-z_]+)'/", $script, $keys);
+
+	foreach (array_unique($keys[1]) as $key) {
+		pg_assert_contains("'" . $key . "'", $screen, 'the text ' . $key);
+	}
+
+	// H10, H11: a toolbar that keeps the selection; "For everyone" only
+	// where the reader may react.
+	pg_assert_contains("setAttribute('role', 'toolbar')", $script);
+	pg_assert_contains('event.preventDefault()', $script);
+	pg_assert_contains('if (message.can_react) {', $script);
+	pg_assert_contains("'bi-highlighter'", $script);
+}

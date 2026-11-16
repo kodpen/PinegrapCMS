@@ -4,7 +4,7 @@ description: Plan listen-block, steps LS1 to LS3: the script and its two doors, 
 ---
 
 ## Which steps are there?
-- LS1 (M) The script and its two doors. No schema.
+- LS1 (M) The script and its two doors. No schema. Done: #9914.
   - Existing files: `get_page_content.php` (one block beside the scroller's, for a page whose markup carries `data-pg-listen`), `assets/js/style_designer.src.js` (one row in `_SD_PAGE_SCRIPTS`).
   - New: `assets/js/pg_listen.js`, `includes/fn/listen.php` (the inject function and the labels), `tests/listen_script_test.php` (the pure function under Node); `tests/designer_page_scripts_test.php` covers the twin row.
   - Tests, red first: the pieces of the fixtures, the cut of `-x-mtfrom-`, a part's own language, nothing read outside `article` or `main`.
