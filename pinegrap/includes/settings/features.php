@@ -494,7 +494,7 @@ if (function_exists('pg_page_clicks_ready') && pg_page_clicks_ready()) {
                                         </div>
                                         <div class="col-12">
                                             <label class="form-label" for="page_clicks_privacy">' . h(lang('For your privacy text')) . '</label>
-                                            <textarea class="form-control" id="page_clicks_privacy" rows="3" readonly="readonly">' . h(lang('We count which links and buttons are clicked on our pages and how far down they are scrolled, as totals per page, day and device. No cookie is set and nothing that identifies you is kept: no address, no identifier and no record per visitor. Nothing is counted if you refuse statistics in our cookie notice.')) . '</textarea>
+                                            <textarea class="form-control" id="page_clicks_privacy" rows="5" readonly="readonly">' . h(lang('We count which links and buttons are clicked on our pages and how far down they are scrolled, as totals per page, day and device. No cookie is set and nothing that identifies you is kept: no address, no identifier and no record per visitor. Nothing is counted if you refuse statistics in our cookie notice.')) . '</textarea>
                                         </div>
                                     </div>
                                 </div>
