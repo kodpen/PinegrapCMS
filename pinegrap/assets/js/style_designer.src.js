@@ -70315,7 +70315,8 @@ const StyleDesigner = (function () {
         { test: /data-bs-toggle\s*=\s*["']?(?:tooltip|popover|tab|pill|list)\b/i, file: 'assets/js/pg_bs_tips.js' },
         { test: /\sdata-pg-scroller(?=[\s=>\/])/i, file: 'assets/js/pg_scroller.js' },
         { test: /\sdata-pg-fx(?=[\s=>\/])/i, file: 'assets/js/pg_fx.min.js' },
-        { test: /\sdata-pg-listen(?=[\s=>\/])/i, file: 'assets/js/pg_listen.js' }
+        { test: /\sdata-pg-listen(?=[\s=>\/])/i, file: 'assets/js/pg_listen.js' },
+        { test: /\sdata-pg-map(?=[\s=>\/])/i, file: 'assets/js/pg_map.js' }
     ];
 
     // The absolute addresses of the platform scripts `markup` asks for (the
