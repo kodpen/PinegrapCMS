@@ -147,6 +147,7 @@ function test_booking_link_meeting_address_of_a_booking()
 {
 	pg_assert_same('https://meet.example.com/a', pg_booking_link_booking_meeting_url(array('source' => 'link'), 'https://meet.example.com/a'));
 	pg_assert_same('', pg_booking_link_booking_meeting_url(array('source' => 'site'), 'https://meet.example.com/a'), 'only a booking made through the link');
-	pg_assert_same('', pg_booking_link_booking_meeting_url(array('source' => 'link'), null), 'the member has none');
+	pg_assert_same('', pg_booking_link_booking_meeting_url(array('source' => 'link'), null), 'the member has none (NULL)');
+	pg_assert_same('', pg_booking_link_booking_meeting_url(array('source' => 'link'), ''), 'an empty string is no address either');
 	pg_assert_same('', pg_booking_link_booking_meeting_url(array('source' => 'link'), 'javascript:alert(1)'), 'read when shown, cleaned again');
 }
