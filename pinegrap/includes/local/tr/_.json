@@ -799,6 +799,7 @@
     "{var:1} changed this note meanwhile.": "{var:1} bu arada notu değiştirdi.",
     "{var:1} changed this note. It was brought up to date.": "{var:1} notu değiştirdi; güncel hâli yüklendi.",
     "{var:1} changed · {var:2} left as they were · {var:3} could not be changed": "{var:1} değişti · {var:2} olduğu gibi kaldı · {var:3} değiştirilemedi",
+    "{var:1} changes": "{var:1} değişiklik",
     "{var:1} characters": "{var:1} karakter",
     "{var:1} characters left": "{var:1} karakter kaldı",
     "{var:1} characters over the limit of {var:2}": "{var:2} karakter sınırı {var:1} karakter aşıldı",

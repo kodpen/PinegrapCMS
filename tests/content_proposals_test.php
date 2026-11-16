@@ -380,3 +380,32 @@ function test_content_proposals_list_screen()
 	pg_assert_false(pg_content_proposals_may_decide(array('role' => 2)), 'a Manager decides nothing');
 	pg_assert_true(pg_content_proposals_may_decide(array('role' => 1)));
 }
+
+// The list's order: waiting first, then stale, then the closed ones of the
+// last 30 days; each newest first.
+function test_content_proposals_list_order()
+{
+	$now = 1800000000;
+	$rows = array(
+		array('id' => 1, 'status' => 'dismissed', 'decided_at' => $now - 86400, 'created_at' => $now - 9000),
+		array('id' => 2, 'status' => 'pending', 'decided_at' => 0, 'created_at' => $now - 5000),
+		array('id' => 3, 'status' => 'stale', 'decided_at' => 0, 'created_at' => $now - 7000),
+		array('id' => 4, 'status' => 'pending', 'decided_at' => 0, 'created_at' => $now - 100),
+		array('id' => 5, 'status' => 'applied', 'decided_at' => $now - 40 * 86400, 'created_at' => $now - 41 * 86400),
+		array('id' => 6, 'status' => 'reverted', 'decided_at' => $now - 60, 'created_at' => $now - 8000),
+	);
+
+	pg_assert_same(array(4, 2, 3, 6, 1), array_map(function ($row) { return $row['id']; }, pg_content_proposals_order($rows, $now)));
+}
+
+// A picture's small image is drawn only for the site's own files.
+function test_content_proposals_local_picture()
+{
+	pg_assert_true(pg_content_proposals_local_picture('/files/team.jpg'));
+	pg_assert_true(pg_content_proposals_local_picture('files/team.jpg'));
+	pg_assert_false(pg_content_proposals_local_picture('https://cdn.example.com/a.jpg'), 'another site');
+	pg_assert_false(pg_content_proposals_local_picture('//cdn.example.com/a.jpg'), 'protocol-relative');
+	pg_assert_false(pg_content_proposals_local_picture('javascript:alert(1)'), 'a scheme');
+	pg_assert_false(pg_content_proposals_local_picture('data:image/png;base64,AAA'), 'data');
+	pg_assert_false(pg_content_proposals_local_picture(''), 'empty');
+}

@@ -6,7 +6,11 @@ module: content_proposals
 
 ## Where does a designer see the waiting changes?
 - (PA4a, #9930) `content_changes.php`, "Waiting Content Changes", for roles 0 and 1 (`validate_area_access($user, 'designer')`), whether or not the assistant or the Workspace is set up. It lists every waiting or stale change and, for 30 days (`PG_CONTENT_PROPOSALS_KEEP_DAYS`, by `decided_at`), the applied, taken-back and dismissed ones (`pg_content_proposals_list()`, `pg_content_proposals_listed()`).
-- Each row: the page (a link into the Studio), the editor, a status pill, Compare (one row per operation: on the site / proposed; an area or a whole tree is named, not drawn), and its actions as POST forms with the CSRF token.
+- Order (`pg_content_proposals_order()`): waiting, then stale, then the closed ones; each newest first.
+- Each row: the page (a link into the Studio) and the editor on one line, the status pill, time and number of changes on the next, who applied or dismissed it (and the reason), Compare, then Apply and Dismiss side by side; Dismiss opens its own reason field.
+- Compare: kind, on the site, proposed; side by side from md, stacked on a phone; a picture of the site's own files with its small image (`pg_content_proposals_local_picture()`).
+- Actions are POST forms with the CSRF token; the screen reads `$_POST` itself (`post_value()` exists only in the settings screens).
+- With the switch off the screen says new saves go live and the waiting ones stay.
 - The count on the page's tab and the bell lines are PA4b; until then nothing points at the screen.
 
 ## How is a change applied?

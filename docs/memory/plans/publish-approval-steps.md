@@ -18,6 +18,7 @@ description: Plan publish-approval, steps PA1 to PA6 (PA0, the owner's answer, i
 - PA3 (M) after PA2: the editor's side. Existing files: `assets/js/style_designer.src.js` (the tab's state, the waiting change laid on the canvas, "Withdraw"), the page load of the designer's panel actions. Pictures to the owner. Features: A5, A6.
 
 - PA4a (M) after PA2: the designer's side, first part: the module's own list (`content_changes.php`), Compare, apply, stale, dismiss with its reason, take back, History naming both. Features: A7 (the list), A8 to A11.
+- Architect (2026-11-16, agent channel message 6369): PA4a takes `ready` after its fixes and the architect's second look, without the owner's look (nothing links to its screen and the switch is off on every site). The owner gets one question with PA4b's tab count and bell lines on the same page; PA4b is not `ready` before his look, and a change he asks for goes into PA4b.
 - PA4b (S) after PA4a: the bell lines (`includes/notifications.php`, a third set in `pg_notification_off_kinds()` and `pg_notification_off_lines_on()`) and the count on the page's tab. Features: A7 (the count), A9 (the editor told), A12.
 
 - PA5 (S) after PA4: the Workspace request. Existing files: `includes/workspace/approvals.php` (one call in `ws_approval_settle()` to a function of the module, `workspace/workspace-approval-decide-checks.md`). Tests: a designer's yes applying, another member's yes only noted, a no dismissing, a withdrawn change taking its request back. Features: A13, A14, A15.

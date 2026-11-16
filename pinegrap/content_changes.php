@@ -23,14 +23,15 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/content_proposals.php');
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     validate_token_field();
 
-    $id = (int) post_value('proposal_id');
-    $action = (string) post_value('action');
+    $id = isset($_POST['proposal_id']) ? (int) $_POST['proposal_id'] : 0;
+    $action = (isset($_POST['action']) && is_string($_POST['action'])) ? $_POST['action'] : '';
+    $reason = (isset($_POST['reason']) && is_string($_POST['reason'])) ? $_POST['reason'] : '';
 
     if ($action === 'apply') {
         $result = pg_content_proposals_apply($user, $id);
         $done = lang('The change was applied to the page.');
     } elseif ($action === 'dismiss') {
-        $result = pg_content_proposals_dismiss($user, $id, (string) post_value('reason'));
+        $result = pg_content_proposals_dismiss($user, $id, $reason);
         $done = lang('The change was dismissed.');
     } elseif ($action === 'revert') {
         $result = pg_content_proposals_revert($user, $id);
@@ -55,16 +56,6 @@ $tones = array(
     'dismissed' => array('pg-tone-gray', lang('Dismissed')),
 );
 
-// One line of the comparison: what the page holds and what the editor saved.
-$compare_line = function ($label, $was, $now) {
-    $show = function ($value) {
-        $value = is_scalar($value) || ($value === null) ? trim(strip_tags((string) $value)) : (string) json_encode($value, JSON_UNESCAPED_UNICODE);
-        return ($value === '') ? '<span class="pg-text-meta">' . h(lang('(empty)')) . '</span>' : h(mb_strimwidth($value, 0, 400, '…'));
-    };
-
-    return '<tr><th scope="row" class="pg-text-2">' . h($label) . '</th><td>' . $show($was) . '</td><td>' . $show($now) . '</td></tr>';
-};
-
 // The page settings by the names the page settings panel gives them.
 $field_labels = array(
     'page_title'            => lang('Title'),
@@ -72,14 +63,54 @@ $field_labels = array(
     'page_search_keywords'  => lang('Keywords'),
 );
 
-$rows_html = '';
-$now = time();
+// A value as the comparison shows it; a picture of the site's own files
+// with its small image beside the address.
+$show = function ($value, $picture = false) {
+    $text = (is_scalar($value) || ($value === null)) ? trim(strip_tags((string) $value)) : (string) json_encode($value, JSON_UNESCAPED_UNICODE);
 
-foreach (pg_content_proposals_list() as $row) {
-    if (!pg_content_proposals_listed($row, $now)) {
-        continue;
+    if ($text === '') {
+        return '<span class="pg-text-meta">' . h(lang('(empty)')) . '</span>';
     }
 
+    $thumb = ($picture && pg_content_proposals_local_picture($text))
+        ? '<img src="' . h($text) . '" alt="" height="64" loading="lazy" class="d-block mb-1 rounded">' : '';
+
+    return $thumb . '<span class="text-break">' . h(mb_strimwidth($text, 0, 600, '…')) . '</span>';
+};
+
+// One change of the comparison: its kind, what the site shows, what is
+// proposed. Side by side from md up, one under the other on a phone.
+$compare_line = function ($label, $was, $now, $picture = false) use ($show) {
+    return '<div class="row g-2 py-2 border-top">'
+        . '<div class="col-12 md:col-2 pg-text-2"><strong>' . h($label) . '</strong></div>'
+        . '<div class="col-12 md:col-5"><div class="pg-text-meta">' . h(lang('On the site')) . '</div>' . $show($was, $picture) . '</div>'
+        . '<div class="col-12 md:col-5"><div class="pg-text-meta">' . h(lang('Proposed')) . '</div>' . $show($now, $picture) . '</div>'
+        . '</div>';
+};
+
+$form = function ($row, $action, $label, $class) {
+    return '<form method="post">' . get_token_field()
+        . '<input type="hidden" name="proposal_id" value="' . (int) $row['id'] . '"/>'
+        . '<input type="hidden" name="action" value="' . h($action) . '"/>'
+        . '<button type="submit" class="pg-button ' . $class . ' pg-button-sm">' . h($label) . '</button></form>';
+};
+
+// Dismiss opens its own reason field, so the field reads as Dismiss's.
+$dismiss = function ($row) {
+    $field = 'reason_' . (int) $row['id'];
+
+    return '<details class="flex-grow-1"><summary class="pg-button pg-button-quiet pg-button-sm d-inline-flex">' . h(lang('Dismiss')) . '</summary>'
+        . '<form method="post" class="mt-2">' . get_token_field()
+        . '<input type="hidden" name="proposal_id" value="' . (int) $row['id'] . '"/><input type="hidden" name="action" value="dismiss"/>'
+        . '<label class="pg-field-label" for="' . $field . '">' . h(lang('Reason')) . '</label>'
+        . '<input type="text" name="reason" id="' . $field . '" class="pg-input" maxlength="' . PG_CONTENT_PROPOSALS_REASON_MAX . '" aria-describedby="' . $field . '_help"/>'
+        . '<div class="pg-text-meta" id="' . $field . '_help">' . h(lang(array('string' => 'Optional, at most {var:1} characters.', 'vars' => array(PG_CONTENT_PROPOSALS_REASON_MAX)))) . '</div>'
+        . '<button type="submit" class="pg-button pg-button-danger pg-button-sm mt-2">' . h(lang('Dismiss the change')) . '</button></form></details>';
+};
+
+$rows_html = '';
+
+foreach (pg_content_proposals_order(pg_content_proposals_list(), time()) as $row) {
     $status = (string) $row['status'];
     $tone = isset($tones[$status]) ? $tones[$status] : array('pg-tone-gray', $status);
     $ops = json_decode((string) $row['ops'], true);
@@ -92,7 +123,7 @@ foreach (pg_content_proposals_list() as $row) {
         if ($name === 'text') {
             $lines .= $compare_line(lang('Text'), $op['was'], $op['text']);
         } elseif ($name === 'src') {
-            $lines .= $compare_line(lang('Picture'), $op['was'], $op['src']);
+            $lines .= $compare_line(lang('Picture'), $op['was'], $op['src'], true);
         } elseif ($name === 'note') {
             $lines .= $compare_line(lang('Note'), $op['was'], $op['note']);
         } elseif ($name === 'area') {
@@ -106,34 +137,33 @@ foreach (pg_content_proposals_list() as $row) {
         }
     }
 
-    $form = function ($action, $label, $class, $extra = '') use ($row) {
-        return '<form method="post" class="d-flex flex-wrap align-items-center gap-2">' . get_token_field()
-            . '<input type="hidden" name="proposal_id" value="' . (int) $row['id'] . '"/>'
-            . '<input type="hidden" name="action" value="' . h($action) . '"/>' . $extra
-            . '<button type="submit" class="pg-button ' . $class . ' pg-button-sm">' . h($label) . '</button></form>';
-    };
-
     $actions = '';
 
     if ($status === 'pending') {
-        $actions .= $form('apply', lang('Apply'), 'pg-button-fill');
+        $actions .= $form($row, 'apply', lang('Apply'), 'pg-button-fill');
     }
 
     if (in_array($status, array('pending', 'stale'), true)) {
-        $actions .= $form('dismiss', lang('Dismiss'), 'pg-button-quiet',
-            '<input type="text" name="reason" class="pg-input" maxlength="' . PG_CONTENT_PROPOSALS_REASON_MAX . '" placeholder="' . h(lang('Reason (optional)')) . '" aria-label="' . h(lang('Reason')) . '"/>');
+        $actions .= $dismiss($row);
     }
 
     if (($status === 'applied') && ((int) $row['decided_by'] === (int) $user['id'])) {
-        $actions .= $form('revert', lang('Take back'), 'pg-button-ghost');
+        $actions .= $form($row, 'revert', lang('Take back'), 'pg-button-ghost');
     }
 
     $note = '';
+    $decider = (string) $row['decider_name'];
 
-    if (($status === 'dismissed') && !empty($steps['reason'])) {
-        $note = '<div class="pg-list-row-text">' . h(lang(array('string' => 'Reason: {var:1}', 'vars' => array((string) $steps['reason'])))) . '</div>';
-    } elseif ($status === 'stale') {
-        $note = '<div class="pg-list-row-text">' . h(lang('The page was changed after this change was saved; it can only be dismissed.')) . '</div>';
+    if ($status === 'stale') {
+        $note = lang('The page was changed after this change was saved; it can only be dismissed.');
+    } elseif ($status === 'applied') {
+        $note = lang(array('string' => 'Applied by {var:1}. Only they can take it back.', 'vars' => array($decider)));
+    } elseif ($status === 'reverted') {
+        $note = lang(array('string' => 'Applied and taken back by {var:1}.', 'vars' => array($decider)));
+    } elseif ($status === 'dismissed') {
+        $note = !empty($steps['reason'])
+            ? lang(array('string' => 'Dismissed by {var:1}: {var:2}', 'vars' => array($decider, (string) $steps['reason'])))
+            : lang(array('string' => 'Dismissed by {var:1}.', 'vars' => array($decider)));
     }
 
     $page_link = ((int) $row['page_style'] > 0)
@@ -141,14 +171,13 @@ foreach (pg_content_proposals_list() as $row) {
         : h((string) $row['page_name']);
 
     $rows_html .= '<div class="pg-list-row is-read"><span class="pg-initials" aria-hidden="true">' . h(mb_strtoupper(mb_substr((string) $row['editor_name'], 0, 2))) . '</span><div class="pg-list-row-main">'
-        . '<div class="pg-list-row-head"><span class="pg-list-row-title">' . $page_link . ' <span class="pg-list-row-title-verb">'
-        . h(lang(array('string' => 'by {var:1}', 'vars' => array((string) $row['editor_name'])))) . '</span></span>'
-        . '<span class="pg-pill ' . $tone[0] . '">' . h($tone[1]) . '</span>'
-        . '<span class="pg-list-row-time">' . get_relative_time(array('timestamp' => (int) $row['created_at'])) . '</span></div>'
-        . $note
-        . '<details><summary class="pg-text-2">' . h(lang('Compare')) . '</summary>'
-        . '<div class="overflow-auto"><table class="table"><thead><tr><th scope="col"></th><th scope="col">' . h(lang('On the site')) . '</th><th scope="col">' . h(lang('Proposed')) . '</th></tr></thead><tbody>' . $lines . '</tbody></table></div></details>'
-        . (($actions !== '') ? '<div class="pg-list-row-actions d-flex flex-wrap gap-2">' . $actions . '</div>' : '')
+        . '<div class="pg-list-row-title text-break">' . $page_link . ' <span class="pg-list-row-title-verb">' . h(lang(array('string' => 'by {var:1}', 'vars' => array((string) $row['editor_name'])))) . '</span></div>'
+        . '<div class="d-flex flex-wrap align-items-center gap-2"><span class="pg-pill ' . $tone[0] . '">' . h($tone[1]) . '</span>'
+        . '<span class="pg-text-meta">' . get_relative_time(array('timestamp' => (int) $row['created_at'])) . '</span>'
+        . '<span class="pg-text-meta">' . h(lang(array('string' => '{var:1} changes', 'vars' => array(is_array($ops) ? count($ops) : 0)))) . '</span></div>'
+        . (($note !== '') ? '<div class="pg-list-row-text">' . h($note) . '</div>' : '')
+        . '<details><summary class="pg-text-2">' . h(lang('Compare')) . '</summary><div class="mt-2">' . $lines . '</div></details>'
+        . (($actions !== '') ? '<div class="pg-list-row-actions d-flex flex-wrap align-items-start gap-2">' . $actions . '</div>' : '')
         . '</div></div>';
 }
 
@@ -156,16 +185,23 @@ if ($rows_html === '') {
     $rows_html = '<p class="pg-text-2">' . h(lang('No content change is waiting.')) . '</p>';
 }
 
+// Changes already waiting stay here when the switch is turned off; new
+// saves go live again.
+$off = pg_content_proposals_on() ? '' : '<div class="alert theme-info" role="status">'
+    . h(lang('Content changes wait for approval is off, so new saves go live at once. Changes that were already waiting stay here.'))
+    . ' <a href="settings_features.php#pgset-content-approval">' . h(lang('Site Settings')) . '</a></div>';
+
 echo
 pg_page_shell(array(
         'title'               => lang('Waiting Content Changes'),
         'icon'                => 'page',
         'help'                => 'visual-page-editor#editor',
         'heading'             => lang('Waiting Content Changes'),
-        'heading_description' => lang('Changes Managers and Users saved on pages already on the site. Visitors see them once they are applied.'),
+        'heading_description' => lang('Changes that wait for a designer.'),
     )) . '
 <main id="content" class="container">
-    ' . ($said ? '<div class="alert ' . ($said['ok'] ? 'theme-success' : 'theme-danger') . '" role="status">' . h($said['text']) . '</div>' : '') . '
+    <h2 class="pg-title-screen md:d-none">' . h(lang('Waiting Content Changes')) . '</h2>
+    ' . ($said ? '<div class="alert ' . ($said['ok'] ? 'theme-success' : 'theme-danger') . '" role="status">' . h($said['text']) . '</div>' : '') . $off . '
     <div class="pg-card">' . $rows_html . '</div>
 </main>
 ' .

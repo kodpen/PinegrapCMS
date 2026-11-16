@@ -1087,3 +1087,55 @@ function pg_content_proposals_revert($user, $id)
 
     return array('ok' => true, 'error' => '');
 }
+
+/**
+ * The list's order: waiting changes first, then stale ones, then those
+ * closed in the last PG_CONTENT_PROPOSALS_KEEP_DAYS days; each newest first.
+ * Rows the list no longer shows are left out.
+ *
+ * @param array $rows
+ * @param int   $now
+ * @return array
+ */
+function pg_content_proposals_order($rows, $now)
+{
+    $rank = array('pending' => 0, 'stale' => 1);
+    $kept = array();
+
+    foreach ((array) $rows as $row) {
+        if (is_array($row) && pg_content_proposals_listed($row, $now)) {
+            $kept[] = $row;
+        }
+    }
+
+    usort($kept, function ($a, $b) use ($rank) {
+        $ra = isset($rank[(string) $a['status']]) ? $rank[(string) $a['status']] : 2;
+        $rb = isset($rank[(string) $b['status']]) ? $rank[(string) $b['status']] : 2;
+
+        if ($ra !== $rb) {
+            return $ra - $rb;
+        }
+
+        // The closed ones by when they were decided, the open ones by when saved.
+        $ta = ($ra === 2) ? (int) $a['decided_at'] : (int) $a['created_at'];
+        $tb = ($rb === 2) ? (int) $b['decided_at'] : (int) $b['created_at'];
+
+        return ($tb <=> $ta) ?: ((int) $b['id'] <=> (int) $a['id']);
+    });
+
+    return $kept;
+}
+
+/**
+ * Is a picture address one of the site's own files, whose small image the
+ * comparison may draw? A path, never another site or a scheme.
+ *
+ * @param string $src
+ * @return bool
+ */
+function pg_content_proposals_local_picture($src)
+{
+    $src = trim((string) $src);
+
+    return ($src !== '') && (strpos($src, '//') !== 0) && !preg_match('~^[a-z][a-z0-9+.-]*:~i', $src);
+}

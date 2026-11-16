@@ -1795,6 +1795,7 @@
     "Optional extension(s) not installed:": "Kurulu olmayan isteğe bağlı uzantı(lar):",
     "Optional note…": "İsteğe bağlı not…",
     "Optional when you approve. When you reject it, say why.": "Onaylarken isteğe bağlı. Reddediyorsanız nedenini yazın.",
+    "Optional, at most {var:1} characters.": "İsteğe bağlı, en çok {var:1} karakter.",
     "Optional, in the site's time zone: the wait ends at the first such time at or after its end.": "İsteğe bağlı, sitenin saat diliminde: bekleme, sonunda ya da sonrasında gelen ilk bu saatte biter.",
     "Optional, like “Before the launch”. Without one it is called by its number.": "İsteğe bağlı, ör. “Lansman öncesi”. Ad verilmezse numarasıyla anılır.",
     "Optional. @ and # tags work here; the first record tagged is shown on the card.": "İsteğe bağlı. @ ve # etiketleri çalışır; etiketlenen ilk kayıt kartta gösterilir.",
