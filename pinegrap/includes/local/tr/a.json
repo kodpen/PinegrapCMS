@@ -2622,6 +2622,7 @@
     "A recipient of the visitor's order is being shown": "Ziyaretçinin siparişindeki bir alıcı gösteriliyor",
     "A record has a value": "Bir kaydın değeri",
     "A record is listed only when it matches every filter. Leave the value empty and pick a dynamic value (today, a number of days ago, the signed-in visitor) to have it worked out on every visit.": "Kayıt ancak bütün filtrelere uyuyorsa listelenir. Değeri boş bırakıp dinamik bir değer (bugün, birkaç gün önce, oturum açmış ziyaretçi) seçersen her ziyarette yeniden hesaplanır.",
+    "A record keeps at most {var:1} rows.": "Bir kayıt en fazla {var:1} satır tutar.",
     "A record link is written as {\"kind\": \"contact\", \"id\": 12}.": "Kayıt bağlantısı {\"kind\": \"contact\", \"id\": 12} biçiminde yazılır.",
     "A record of every dose": "Her dozun kaydı",
     "A record of meeting targets": "Hedefleri tutturduğunu gösteren bir geçmiş",
