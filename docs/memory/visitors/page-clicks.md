@@ -32,8 +32,8 @@ module: page_clicks
 ## What switches it on?
 - One setting with one reader and one saver: `visitors/page-clicks-switch.md`.
 
-## What is not there yet?
-- The script and the Features switch (CM2), the designer layer (CM4). Until CM2 nothing sends a beacon. The Visitors section and `GET /reports/page-clicks` read the figures (#9913, `ui/visitors-clicks-section.md`).
+## What else is there?
+- The script and its Features card (CM2 #9946): `page-clicks-script.md`. The Visitors section and `GET /reports/page-clicks` (#9913): `ui/visitors-clicks-section.md`. The designer layer (CM4) is not there yet.
 
 ## Tested?
 - `tests/page_clicks_test.php`. The step was run twice on MariaDB; record, bound, figures and sweep against it. No browser run (no script yet).

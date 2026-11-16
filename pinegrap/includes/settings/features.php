@@ -471,6 +471,37 @@ if (pg_schema_has('config_text')) {
                         </div>';
 }
 
+// Clicks and scrolling (includes/fn/page_clicks.php): off on every site, a
+// new install too, until it is switched on here or with the Visitors
+// section's button. Read and saved only through the module's one reader and
+// saver. The privacy sentence is for the site to copy into its own text.
+if (function_exists('pg_page_clicks_ready') && pg_page_clicks_ready()) {
+    $pg_settings_cards[] = '
+                        <div id="pgset-page-clicks" class="pg-set-card">
+                            <div class="card">
+                                <div class="card-header bg-reset border-0 pg-title-section">
+                                    ' . h(lang('Clicks and scrolling')) . '
+                                </div>
+                                <div class="card-body">
+                                    <input type="hidden" name="page_clicks_card" value="1"/>
+                                    <div class="row gy-12">
+                                        <div class="col-12">
+                                            <div class="form-field">
+                                                <div class="switch"><input value="1"' . (pg_page_clicks_switch_on() ? ' checked="checked"' : '') . ' type="checkbox" id="page_clicks_on" name="page_clicks_on"/></div>
+                                                <label for="page_clicks_on">' . h(lang('Count clicks and scrolling on public pages')) . '</label>
+                                                <div class="form-text">' . h(lang('Which links and buttons visitors click on each page and how far down they scroll, per page, day and device, shown in Visitors. Signed-in members and visitors who refused statistics in the cookie notice are not counted.')) . '</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-12">
+                                            <label class="form-label" for="page_clicks_privacy">' . h(lang('For your privacy text')) . '</label>
+                                            <textarea class="form-control" id="page_clicks_privacy" rows="3" readonly="readonly">' . h(lang('We count which links and buttons are clicked on our pages and how far down they are scrolled, as totals per page, day and device. No cookie is set and nothing that identifies you is kept: no address, no identifier and no record per visitor. Nothing is counted if you refuse statistics in our cookie notice.')) . '</textarea>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>';
+}
+
 // Content changes that wait for approval (includes/fn/content_proposals.php):
 // off on every site until it is switched on here, by a designer or an
 // administrator only (a Manager's own saves are the ones held). The channel

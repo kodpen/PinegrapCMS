@@ -3374,6 +3374,21 @@ if (function_exists('pg_vitals_beacon_inject')) {
 	));
 }
 
+// The clicks and scroll depth script (includes/fn/page_clicks.php): with the
+// switch on, only on a public page a visitor who is not signed in sees.
+// Beside the speed beacon, whose request carries its figures too.
+if (function_exists('pg_clicks_beacon_inject')) {
+	$content = pg_clicks_beacon_inject($content, $page_id, array(
+		'rendered_html_page' => $rendered_html_page,
+		'toolbar' => $toolbar,
+		'panel_preview' => $pg_panel_preview,
+		'background' => pg_seo_rendering(),
+		'staff' => isset($user) && is_array($user) && ((int) $user['role'] < 3),
+		'signed_in' => (bool) USER_LOGGED_IN,
+		'public' => ($access_control_type == 'public'),
+	));
+}
+
 // A page experiment whose goal is a click on a marked element carries the
 // script that posts the click; before the page cache, so the copy has it too.
 if (function_exists('pg_experiment_click_script_for_served') && $rendered_html_page && !$toolbar) {

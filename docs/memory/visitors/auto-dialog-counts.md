@@ -15,7 +15,7 @@ module: auto_dialog_counts
 - `taken` (a press on the marked action or a form sent inside) has no sender yet: an address pop-up knows shown and closed only; designed content (PU6) calls `software.count_auto_dialog(row, 'taken')`.
 
 ## Who is not counted?
-- The rule is the one check of the anonymous counts: sent unless the visitor refused statistics (`platform/consent-anonymous-counts.md`). The server asks `pg_consent_statistics_not_refused()` since #9902. The browser's `software.statistics_allowed()` still asks for `a1` until CM2 of the click map moves it to the same rule; stricter meanwhile, no harm.
+- The rule is the one check of the anonymous counts: sent unless the visitor refused statistics (`platform/consent-anonymous-counts.md`): the server asks `pg_consent_statistics_not_refused()` (#9902), the browser `software.statistics_not_refused()` (#9946).
 - `page_view.php` (a small branch before the other payloads): `pg_auto_dialog_count_rate_exceeded()` (30 a minute an address, waf bucket `popup`), `pg_auto_dialog_count_allowed()` (no crawler, `pg_site_search_user_countable()` for staff, `pg_consent_statistics_not_refused()`), `pg_auto_dialog_count_parse()` (id digits, one of three events, today's or yesterday's signature; else the post is dropped), `pg_auto_dialog_count()` (silent without the table or for an id with no pop-up).
 
 ## How long are rows kept?
