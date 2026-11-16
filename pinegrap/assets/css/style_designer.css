@@ -1592,6 +1592,8 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
 }
 .sd-ov-search-box input::placeholder,
 .sd-props-search-wrap input::placeholder { color: var(--sd-text-muted); opacity: .6; }
+/* Options panel: the line shown when a search finds no option */
+.sd-props-search-empty { padding: .6rem .75rem; font-size: .75rem; color: var(--sd-text-muted); }
 
 /* Tree wrapper — scrollable */
 .sd-overview-tree-wrap {
