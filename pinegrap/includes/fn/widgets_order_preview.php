@@ -757,9 +757,6 @@ function _render_system_widget_order_preview($tree_json, $widget_id, $cfg = arra
     ));
     pg_cf_link_labels($tree);
     _pg_inject_messages_node($tree, 'order_preview');
-    // The offers, gift cards and payment periods as lists of the designer's
-    // own elements, filed only when the tree drew one.
-    if (pg_sw_list_wanted('checkout')) pg_sw_list_publish('checkout', pg_op_list_rows($d));
 
     // The Messages node uses the form up as it prints it; the values the
     // classic computation set on it (the totals posted back, a single
@@ -767,6 +764,9 @@ function _render_system_widget_order_preview($tree_json, $widget_id, $cfg = arra
     $kept_form = $_SESSION['software']['liveforms']['order_preview'] ?? null;
     $split = _split_widget_tree($tree);
     $rendered = str_replace('<!--pg-loop-slot-->', '', trim(_render_tree_node($split['static_tree'], 0, 0)));
+    // The offers, gift cards and payment periods as lists of the designer's
+    // own elements, filed only when the tree just drawn holds one.
+    if (pg_sw_list_wanted('checkout')) pg_sw_list_publish('checkout', pg_op_list_rows($d));
     if ($kept_form !== null) $_SESSION['software']['liveforms']['order_preview'] = $kept_form;
 
     $billing_name = trim(implode(' ', array_filter(array((string)$d['billing_salutation'],

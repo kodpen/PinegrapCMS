@@ -241,7 +241,11 @@ function test_checkout_blocks_installment_plans_markup()
 function test_checkout_blocks_wiring()
 {
 	$op = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/widgets_order_preview.php');
-	pg_assert_contains("if (pg_sw_list_wanted('checkout')) pg_sw_list_publish('checkout', pg_op_list_rows(\$d));", $op);
+	$publish = strpos($op, "if (pg_sw_list_wanted('checkout')) pg_sw_list_publish('checkout', pg_op_list_rows(\$d));");
+	pg_assert_true($publish !== false, 'the renderer publishes the lists');
+	// The lists a tree holds are known once it is drawn: published before,
+	// they would list nothing.
+	pg_assert_true($publish > strpos($op, "trim(_render_tree_node(\$split['static_tree'], 0, 0))"), 'the rows are published after the tree is drawn');
 	pg_assert_contains("'__ship_to_key'             => '0',", $op);
 	pg_assert_contains("'applied_gift_cards' => _pg_op_gift_cards_html(\$d['applied_gift_cards']),", $op);
 	pg_assert_contains("'applied_offers'     => _pg_op_offers_html(\$d['applied_offers']),", $op);
