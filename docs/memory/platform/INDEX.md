@@ -39,7 +39,9 @@
 - cloudflare-tools-failed-reads.md: Cloudflare Tools says why a Cloudflare read or action failed: unread zone switches disabled, firewall and analytics reasons, Cloudflare's text on every failed action
 - comment-attachment-upload-refusal.md: The comment form's attachment (add_comment.php) refuses a file PHP did not take in whole before the comment is written, and writes a files row only after a successful copy.
 - consent-anonymous-counts.md: The one cookie notice check of the anonymous counts (clicks and scroll depth, a pop-up's events): counted unless statistics were refused; why it is not pg_consent_allows() [decision: here]
+- content-review-actions.md: The Content review screen's actions (content_review_action.php, #9967): row menu and selection bar, the three dialogs, one POST resolved with the list's rights, what a user (role 3) may do
 - content-review-rules.md: Content review (content_review, 11.0.226, #9934): the table, which items count, date states in the site's time, the next date, the person, the daily sweep [decision: here]
+- content-review-screen.md: The Content review screen (view_content_review.php, #9967): the list read as branches, filters, sorts, columns, the row menu, what a user (role 3) sees; actions in content-review-actions.md [decision: here]
 - cookie-consent-catalogue.md: Which cookies the cookie notice lists (pg_consent_catalogue()), the conditional rows, and what a new cookie needs
 - cookie-consent-new-cookies.md: Adding a front-end cookie or third-party tag under the cookie notice: necessary or not, pg_consent_setcookie() plus a session copy, pg_consent_catalogue(), revoke names, pg_consent_hold_scripts().
 - cookie-consent-notice.md: Cookie notice: Settings, Reject all and Accept all drawn alike, nothing pre-ticked; Consent Mode v2 default at the top of <head>, update before held scripts start; focus [decision: decisions-made-product.md]

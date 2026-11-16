@@ -397,6 +397,7 @@
 - workspace-flows-quick-setup-summary.md: The quick setup dialog's Summary stage (QS4 #9315): steps in order with moves, a held step indented, name, Start working when saved, Open on the canvas, what it sends and hands the opener
 - workspace-flows-quick-setup.md: Flows quick setup server (flow_quick.php): catalogue of areas, starts, step groups, recipes; the choices the dialog sends; how they become a draft graph; the panel action [decision: decisions-made-product-47.md, decisions-made-workspace-20.md]
 - workspace-flows-record-get-box.md: The Read a record box of flows (record_get): kinds and fields, the owner's reach as the change box checks it, found 0 for a missing or unreachable record, readers, canvas
+- workspace-flows-records-window.md: The flow box Read the records of a list (list_records, #9978): the feed's pick, a page open to everyone, the window of only new records (ws_scheduled_runs.started_at), a record's date, left out, Try [decision: here]
 - workspace-flows-references.md: The reference check of a flow (D4, PR #2305): bad_reference for {{node.*}} of a missing, later or field-less box; a warning for a box that may not run, unless a fallback is written
 - workspace-flows-retry-skip.md: A failed box of a flow run tried again on its own (3d, PR #2275, retry/retry_after) or by hand or skipped (F5a, PR #2098, ws_flow_step_mend()): which boxes, owner only, double click, routes, canvas
 - workspace-flows-row-add-to-cell.md: Adding to a cell in the change-row flow box (PR #7408): "+3" in a number or money cell adds to the row read at write time, on its revision
@@ -569,6 +570,7 @@
 - workspace-today-digest-decisions.md: Today's "What happened in the channels" and "Latest decisions" cards in the new dashboard's parts: rows, badge, the Activity line, why a decision row is no button
 - workspace-today-join-about.md: Today's "Channels you could join" and "What is the Workspace?" cards in the dashboard design: markup, where their styles live, what the Join button does
 - workspace-today-page.md: The Workspace's first page, Today (?view=home, was Overview): the greeting and its count line, the cards in the drawn order, what can be done from them, where each card's data comes from [decision: decisions-made-workspace-5.md]
+- workspace-typed-mention.md: A mention typed by hand (@handle, @username) becomes the tag a pick from the @ list writes, when the message is written or changed: the rule, where it runs, what it leaves as typed
 - workspace-ui-notes.md: Where the Workspace screens are drawn and styled, its tokens, colour picker vs plan board legend class names, what a closed section of the channel list shows, cosmetic leftovers
 - workspace-ui-scale.md: The Workspace CSS scale (radii, spaces, row and header padding, avatar sizes, shadows as --ws-* tokens), keyboard-only focus rings, dark nav tones, where the block ends
 - workspace-unsent-draft.md: The Workspace composer's unsent text kept on the browser (localStorage) per site, viewer, channel and discussion: key, when saved, restored, cleared, limits, what is never kept

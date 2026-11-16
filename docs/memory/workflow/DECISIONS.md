@@ -779,6 +779,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - platform/ca-store-choice.md: pg_ca_bundle_effective() chooses the CA store: the CURL_CA_BUNDLE override, the shipped data/cacert.pem when PHP has no store or the probe failed, else the server's store; the probe record.
 - platform/consent-anonymous-counts.md: The one cookie notice check of the anonymous counts (clicks and scroll depth, a pop-up's events): counted unless statistics were refused; why it is not pg_consent_allows()
 - platform/content-review-rules.md: Content review (content_review, 11.0.226, #9934): the table, which items count, date states in the site's time, the next date, the person, the daily sweep
+- platform/content-review-screen.md: The Content review screen (view_content_review.php, #9967): the list read as branches, filters, sorts, columns, the row menu, what a user (role 3) sees; actions in content-review-actions.md
 - platform/image-editor-jpeg-start-quality.md: A JPEG turned, flipped or cropped (Design Canvas, rotate buttons, Optimize) starts at the lower of 92 and its own quality, so a save is not heavier (#9118)
 - platform/import-decisions.md: Why the content importers (WordPress, WooCommerce, Shopify) are built as they are: tables, nothing overwritten, readers on fixtures, reused writers, authors, what stays out
 - platform/iys-client.md: İYS client (PR #1895): account in connect_apps iys, dry run, daily push of e-mail consent answers and pull of refusals, contacts.iys_email_status, campaign filter
@@ -1023,6 +1024,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/workspace-flows-quick-setup-map.md: Flows quick setup drawing against today's boxes and events: drawn starts, steps and recipes by kind; general boxes proposed for what has none (SMS, contact group, offer code)
 - workspace/workspace-flows-quick-setup-rules.md: Flows quick setup's lasting rules (owner 2026-11-12, #8950; built QS0-QS7, #9082-#9333): only creates, only existing boxes, the drawing, the architect's decisions, where it opens
 - workspace/workspace-flows-quick-setup.md: Flows quick setup server (flow_quick.php): catalogue of areas, starts, step groups, recipes; the choices the dialog sends; how they become a draft graph; the panel action
+- workspace/workspace-flows-records-window.md: The flow box Read the records of a list (list_records, #9978): the feed's pick, a page open to everyone, the window of only new records (ws_scheduled_runs.started_at), a record's date, left out, Try
 - workspace/workspace-flows-scheduled-merge.md: Scheduled actions moved into Flows (owner, 2026-10-24): what was decided, the two anchors, what stays a scheduled action, and the PRs of each slice
 - workspace/workspace-flows-shares.md: Flows shared with the team (F7, ws_flow_shares, 11.0.83): view/run/edit, who manages and publishes, access, runs, Claude's reach, lists, bell row, actions, API, Share dialog
 - workspace/workspace-flows-side-panel.md: The flow window's right panel for a chosen box, arrow or thread (FW3, #9196): head, Settings / Connections / Try tabs, foot line, Duplicate, Close, Esc, F6, phone sheet
