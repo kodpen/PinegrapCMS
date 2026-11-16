@@ -580,6 +580,77 @@ function test_proto_hotspots_view_arrangement_and_tidy_up()
 	pg_assert_contains("if (!shared) sdToast(esc(_sdT('Only the places in this browser were cleared.'))", $tidy, 'anyone else is told only the browser\'s were');
 }
 
+// focusOf(): what the selected frame shows. A page: its arrows out, the
+// arrows into it from other pages, and a shared part's link into it as no
+// arrow but a note and a row mark; the rows on other frames that start a
+// drawn arrow. A shared frame: its own arrows out. None: nothing.
+function test_proto_hotspots_focus_of_a_frame()
+{
+	$link = function ($node, $label, $tab) {
+		return array('nodeId' => $node, 'source' => 'href', 'href' => '/' . $tab, 'label' => $label, 'mark' => 'tab', 'tab' => $tab, 'draft' => false);
+	};
+	$marked = array(
+		'pages' => array(
+			array('key' => 'home', 'name' => 'home', 'hotspots' => array($link('a', 'Shop', 'shop'), $link('b', 'Cart', 'cart'), array('nodeId' => 'x', 'source' => 'href', 'href' => 'https://x.org/', 'label' => 'X', 'mark' => 'external', 'tab' => '', 'draft' => false))),
+			array('key' => 'shop', 'name' => 'shop', 'hotspots' => array($link('c', 'Buy', 'cart'), $link('d', 'Self', 'shop'))),
+			array('key' => 'cart', 'name' => 'cart', 'hotspots' => array()),
+		),
+		'shared' => array(
+			array('id' => 5, 'name' => 'Header', 'pages' => 3, 'loaded' => true, 'hotspots' => array($link('h', 'Cart icon', 'cart'), $link('i', 'Home', 'home'))),
+		),
+	);
+	$out = proto_hotspots_test_node('var l = H.layout(' . proto_hotspots_test_js($marked) . ', {});'
+		. ' out = { cart: H.focusOf(l, "p:cart"), shop: H.focusOf(l, "p:shop"), header: H.focusOf(l, "s:5"), none: H.focusOf(l, null), gone: H.focusOf(l, "p:nope") };');
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array(
+		'out' => array(),
+		'in' => array('p:home|h1', 'p:shop|h0'),
+		'shared' => array(array('frame' => 's:5', 'port' => 'h0', 'edge' => 's:5|h0', 'label' => 'Cart icon', 'to' => 'cart')),
+		'lit' => array('p:home' => array('h1'), 'p:shop' => array('h0')),
+	), $out['cart'], 'a page: arrows in from pages, a shared part\'s link as a note and no arrow');
+	pg_assert_same(array(
+		'out' => array('p:shop|h0', 'p:shop|h1'),
+		'in' => array('p:home|h0'),
+		'shared' => array(),
+		'lit' => array('p:home' => array('h0')),
+	), $out['shop'], 'its arrows out (a link to itself too) and in');
+	pg_assert_same(array('out' => array('s:5|h0', 's:5|h1'), 'in' => array(), 'shared' => array(), 'lit' => array()), $out['header'], 'a shared frame draws its own arrows');
+	$empty = array('out' => array(), 'in' => array(), 'shared' => array(), 'lit' => array());
+	pg_assert_same($empty, $out['none'], 'nothing selected, nothing drawn');
+	pg_assert_same($empty, $out['gone'], 'a frame no longer there, nothing drawn');
+}
+
+// The view draws only the selected frame's arrows: it passes the core's
+// focus, hears each change to mark the rows, draws the section headings,
+// selects the open tab's frame on opening, keeps "All arrows" per browser,
+// hides a shared part's arrow into the selected page and themes the three
+// kinds of arrow with their own heads.
+function test_proto_hotspots_view_focus_and_all_arrows()
+{
+	$source = str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js'));
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/style_designer.css');
+
+	pg_assert_contains('focus: true,', $source, 'the view passes the focus');
+	pg_assert_contains('focusChanged: function (id) { _sdProtoFocusMarks(id); },', $source, 'a change of focus marks the rows again');
+	pg_assert_contains('groups: function () { return _sdProto.layout ? _sdProto.layout.headings : []; },', $source, 'the section headings come from the layout');
+	pg_assert_contains("canvas.groups();", $source, 'and are drawn with each draw');
+	pg_assert_contains("var focusOn = (first || _sdProto.focusOpen) ? 'p:' + _activeKey : canvas.focused();", $source, 'opening selects the open tab\'s frame');
+	pg_assert_contains("window.localStorage.getItem('pg_proto_all_edges') === '1'", $source, '"All arrows" is kept in this browser');
+	pg_assert_contains("_sdProtoButton('bi-diagram-3', _sdT('All arrows')", $source, '"All arrows" sits in the bar');
+	pg_assert_contains("if (_sdProto.byId[e.from].kind === 'shared') drawn.group.classList.add('sd-proto-from-shared');", $source, 'a shared part\'s arrows are told apart');
+	pg_assert_contains('var f = window.PGProtoHotspots.focusOf(_sdProto.layout, id);', $source, 'the marks come from focusOf()');
+	pg_assert_contains('.sd-proto .pgc-edge.pgc-edge-in.sd-proto-from-shared { display: none; }', $css, 'a shared part\'s arrow into the selected page is not drawn');
+	pg_assert_contains('.sd-proto .pgc-edge.pgc-edge-in .pgc-edge-line { stroke: var(--pgc-in); stroke-dasharray: 6 4; marker-end: url(#sd-proto-arrow-in); }', $css, 'an arrow in is dashed amber with its head');
+	pg_assert_contains('.sd-proto .pgc-edge.sd-proto-edge-broken .pgc-edge-line { marker-end: url(#sd-proto-arrow-broken); }', $css, 'a broken one has its red head');
+	foreach (array('sd-proto-arrow', 'sd-proto-arrow-on', 'sd-proto-arrow-in', 'sd-proto-arrow-broken') as $marker) {
+		pg_assert_contains('<marker id="' . $marker . '"', $source, 'the ' . $marker . ' head is drawn');
+	}
+}
+
 // The collector is a bundle of its own.
 function test_proto_hotspots_is_bundled()
 {

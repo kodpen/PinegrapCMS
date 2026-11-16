@@ -68811,6 +68811,12 @@ const StyleDesigner = (function () {
         tools.appendChild(ui.zoomLabel);
         tools.appendChild(_sdProtoButton('bi-zoom-in', _sdT('Zoom In'), function () { if (_sdProto.canvas) _sdProto.canvas.view.zoomBy(1.2); }));
         tools.appendChild(_sdProtoButton('bi-arrows-fullscreen', _sdT('Fit to screen'), function () { if (_sdProto.canvas) _sdProto.canvas.view.fit(); }));
+        // All arrows: the other frames' arrows drawn faintly too; the choice
+        // is kept in this browser.
+        ui.allEdges = _sdProtoButton('bi-diagram-3', _sdT('All arrows'), function () { _sdProtoAllEdges(!_sdProtoAllEdgesOn()); });
+        ui.allEdges.appendChild(_sdProtoEl('span', 'sd-proto-btn-label', _sdT('All arrows')));
+        ui.allEdges.setAttribute('aria-pressed', 'false');
+        tools.appendChild(ui.allEdges);
         // Tidy up changes every editor's arrangement, so it carries its name
         // beside the icon (hidden on a phone, where the title and the label
         // still name it).
@@ -68837,6 +68843,8 @@ const StyleDesigner = (function () {
         ui.svg.innerHTML = '<defs>' +
             '<marker id="sd-proto-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="pgc-arrowhead" d="M0 0L10 5L0 10z"/></marker>' +
             '<marker id="sd-proto-arrow-on" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="pgc-arrowhead-on" d="M0 0L10 5L0 10z"/></marker>' +
+            '<marker id="sd-proto-arrow-in" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="sd-proto-arrowhead-in" d="M0 0L10 5L0 10z"/></marker>' +
+            '<marker id="sd-proto-arrow-broken" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="sd-proto-arrowhead-broken" d="M0 0L10 5L0 10z"/></marker>' +
             '</defs>';
         ui.temp = G.svgEl('path', 'pgc-edge-temp pgc-hidden');
         ui.svg.appendChild(ui.temp);
@@ -68853,7 +68861,17 @@ const StyleDesigner = (function () {
         _sdProto.ui = ui;
         _sdProto.canvas = G.create({
             ui: ui,
-            text: function (key) { return key === 'pgc_box' ? _sdT('Frame') : ''; },
+            text: function (key, a, b, c) {
+                if (key === 'pgc_box') return _sdT('Frame');
+                if (key === 'pgc_focus') return _sdT('{var:1}: {var:2} arrows out, {var:3} in', a, b, c);
+                return '';
+            },
+            // Only the selected frame's arrows are drawn (focus); a press on
+            // a frame selects it, on the empty canvas none.
+            focus: true,
+            focusChanged: function (id) { _sdProtoFocusMarks(id); },
+            label: function (item) { return item.kind === 'chip' ? _sdProtoChipText(item) : _sdProtoFrameName(item); },
+            groups: function () { return _sdProto.layout ? _sdProto.layout.headings : []; },
             boxRole: function () { return _sdT('Frame'); },
             item: function (id) { return _sdProto.byId[id] || null; },
             // Frames and chips move; an arrow from a link row's port
@@ -68943,6 +68961,7 @@ const StyleDesigner = (function () {
         if (!_sdProto.ui && !_sdProtoBuild()) return;
         _sdProto.open = true;
         _sdProto.warned = {};
+        _sdProto.focusOpen = true;
         _sdProto.ui.root.hidden = false;
         _sdProtoButtonState();
         _sdProtoLoad();
@@ -69146,6 +69165,65 @@ const StyleDesigner = (function () {
         }
     }
 
+    function _sdProtoAllEdgesOn() {
+        try { return window.localStorage.getItem('pg_proto_all_edges') === '1'; } catch (e) { return false; }
+    }
+
+    function _sdProtoAllEdges(on) {
+        try {
+            if (on) window.localStorage.setItem('pg_proto_all_edges', '1');
+            else window.localStorage.removeItem('pg_proto_all_edges');
+        } catch (e) {}
+        if (_sdProto.ui) {
+            _sdProto.ui.allEdges.classList.toggle('active', on);
+            _sdProto.ui.allEdges.setAttribute('aria-pressed', on ? 'true' : 'false');
+        }
+        if (_sdProto.canvas) _sdProto.canvas.allEdges(on);
+    }
+
+    // The selected frame's marks until a frame shows its page: its own rows
+    // in full, on other frames only the rows that start one of its arrows
+    // lit and the rest quiet; a shared part's link into it marked amber,
+    // with a line under that frame naming it ("Cart icon → cart").
+    function _sdProtoFocusMarks(id) {
+        var ui = _sdProto.ui;
+        if (!ui || !_sdProto.layout) return;
+        Array.prototype.slice.call(ui.boxes.querySelectorAll('.sd-proto-note')).forEach(function (n) { n.parentNode.removeChild(n); });
+        Array.prototype.slice.call(ui.boxes.querySelectorAll('.sd-proto-focused')).forEach(function (n) { n.classList.remove('sd-proto-focused'); });
+        Array.prototype.slice.call(ui.boxes.querySelectorAll('.sd-proto-row')).forEach(function (r) {
+            r.classList.remove('sd-proto-row-quiet', 'sd-proto-row-lit', 'sd-proto-row-shared');
+        });
+        if (id === null || id === undefined) return;
+        var f = window.PGProtoHotspots.focusOf(_sdProto.layout, id);
+        var mark = {};
+        Object.keys(f.lit).forEach(function (frame) { f.lit[frame].forEach(function (port) { mark[frame + '|' + port] = 'sd-proto-row-lit'; }); });
+        f.shared.forEach(function (link) { mark[link.frame + '|' + link.port] = 'sd-proto-row-shared'; });
+        _sdProto.layout.frames.forEach(function (item) {
+            var node = ui.boxes.querySelector('[data-node="' + String(item.id).replace(/"/g, '') + '"]');
+            if (!node) return;
+            if (item.id === String(id)) {
+                node.classList.add('sd-proto-focused');
+                return;
+            }
+            item.rows.forEach(function (row, i) {
+                var el = node.querySelector('.sd-proto-row[data-row="' + i + '"]');
+                if (el) el.classList.add(mark[item.id + '|' + row.port] || 'sd-proto-row-quiet');
+            });
+        });
+        var notes = {};
+        f.shared.forEach(function (link) { (notes[link.frame] = notes[link.frame] || []).push(link.label + ' → ' + link.to); });
+        Object.keys(notes).forEach(function (frameId) {
+            var item = _sdProto.byId[frameId];
+            if (!item) return;
+            var note = _sdProtoEl('div', 'sd-proto-note');
+            note.style.left = item.x + 'px';
+            note.style.top = (item.y + item.h + 8) + 'px';
+            note.style.width = item.w + 'px';
+            notes[frameId].forEach(function (line) { note.appendChild(_sdProtoEl('div', 'sd-proto-note-line', line)); });
+            ui.boxes.appendChild(note);
+        });
+    }
+
     function _sdProtoDraw(marked) {
         var H = window.PGProtoHotspots;
         var G = window.PGGraphCanvas;
@@ -69191,12 +69269,27 @@ const StyleDesigner = (function () {
         l.edges.forEach(function (e, i) {
             var drawn = canvas.edge(e.id, _sdProto.byId[e.from], _sdProto.byId[e.to], { port: e.port, slot: slots[i].slot, slots: slots[i].slots });
             drawn.group.classList.add('sd-proto-edge-' + e.mark);
+            // A shared part's link into the selected page draws no arrow
+            // (its row and the note under its frame say it).
+            if (_sdProto.byId[e.from].kind === 'shared') drawn.group.classList.add('sd-proto-from-shared');
         });
+        canvas.groups();
 
         var count = l.edges.length;
         var broken = l.chips.filter(function (c) { return c.mark === 'broken'; }).length;
         _sdProtoStatus(_sdT('{var:1} links', count) + (broken ? ' · ' + _sdT('{var:1} broken', broken) : ''));
         canvas.announce(_sdT('{var:1} links', count));
+        // Opening selects the open tab's frame; a redraw keeps the selected
+        // frame while it is there.
+        var focusOn = (first || _sdProto.focusOpen) ? 'p:' + _activeKey : canvas.focused();
+        _sdProto.focusOpen = false;
+        if (focusOn !== null && !_sdProto.byId[focusOn]) focusOn = null;
+        if (focusOn !== canvas.focused()) canvas.focus(focusOn);
+        else {
+            canvas.focus(focusOn);
+            _sdProtoFocusMarks(focusOn);
+        }
+        _sdProtoAllEdges(_sdProtoAllEdgesOn());
         if (first) canvas.view.fit();
         else canvas.view.apply();
         _sdProtoSelect(_sdProto.selected);
