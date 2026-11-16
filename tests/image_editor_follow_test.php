@@ -322,3 +322,47 @@ function test_image_editor_follow_keys()
 	pg_assert_same(5000, $r['end'], 'the document keeps its length');
 	pg_assert_same(0, $r['none'], 'no points, no samples');
 }
+
+// F1: the part is bundled after record, with its strings.
+function test_image_editor_follow_part()
+{
+	$bundles = pg_js_bundles();
+	$list = $bundles['assets/js/pg_image_editor.min.js'];
+	$parts = pg_image_editor_parts();
+
+	pg_assert_true(in_array('follow', $parts, true), 'a part with its strings');
+	pg_assert_same(array_search('record', $parts, true) + 1, array_search('follow', $parts, true), 'after record');
+	pg_assert_same(array_search('assets/js/pg_image_editor_record.js', $list, true) + 1, array_search('assets/js/pg_image_editor_follow.js', $list, true), 'bundled after record');
+
+	$strings = pg_image_editor_strings_follow();
+
+	foreach (array('followFollow', 'followCancel', 'followPick', 'followNote', 'followHint', 'followHintRun', 'followNoVideo', 'followShort', 'followBusy', 'followCancelRun', 'followLost', 'followFlat', 'followError') as $key) {
+		pg_assert_true(isset($strings[$key]), 'string ' . $key);
+	}
+
+	pg_assert_contains('{var:1}', $strings['followLost'], 'the lost message names the time');
+}
+
+// F5, F16: the fixture (a textured square moving on a curve, VP9, 10 s at
+// 30 frames a second): its track's 300 frames, and Follow reads each once.
+function test_image_editor_follow_fixture()
+{
+	$r = image_editor_follow_node(
+		'var d = M.videoDemux(new Uint8Array(require("fs").readFileSync(' . json_encode(dirname(__FILE__) . '/fixtures/video/follow_square.webm') . '))), tr = M.videoTrack(d, "video");' . "\n"
+		. 'var ts = tr.samples.map(function (s) { return s.ts; }).sort(function (a, b) { return a - b; });' . "\n"
+		. 'var clip = { id: "v", type: "video", width: tr.width, height: tr.height, length: 10000, from: 0, to: 10000, start: 0, speed: 1 };' . "\n"
+		. 'var times = M.followTimes(clip, 0, 10000, (ts[1] - ts[0]) / 1000);' . "\n"
+		. 'console.log(JSON.stringify({ codec: tr.codec.slice(0, 4), w: tr.width, h: tr.height, n: ts.length, step: Math.round(ts[1] - ts[0]), frames: times.length,'
+		. ' once: times.every(function (q, i) { return !i || (M.videoSeek(tr, q.src * 1000).frame !== M.videoSeek(tr, times[i - 1].src * 1000).frame); }) }));'
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
+	pg_assert_same(array('vp09', 640, 360, 300), array($r['codec'], $r['w'], $r['h'], $r['n']), 'the fixture: VP9, 640 x 360, 300 frames');
+	pg_assert_same(33000, $r['step'], 'a frame every 33 ms (WebM keeps whole ms)');
+	pg_assert_same(300, $r['frames'], 'Follow reads 300 frames');
+	pg_assert_true($r['once'], 'each source frame once');
+}

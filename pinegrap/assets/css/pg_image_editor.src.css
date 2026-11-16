@@ -3902,6 +3902,106 @@ button.pgie-sndfile:hover {
   }
 }
 
+/* -- Follow (pg_image_editor_follow.js) -- */
+
+/* Follow beside Record in the Path tab; while armed the stage draws a box
+   with a crosshair; while running a pill over the stage's top holds the
+   share done and Cancel. */
+.pgie .pgie-recact {
+  display: flex;
+  gap: 8px;
+}
+
+.pgie .pgie-recact .pgie-btn {
+  flex: 1 1 0;
+  min-width: 0;
+  justify-content: center;
+}
+
+.pgie .pgie-followbtn svg {
+  fill: currentColor;
+}
+
+.pgie .pgie-followbtn.on {
+  border-color: var(--pgie-primary);
+  background: var(--pgie-primary);
+  color: var(--pgie-on-primary);
+}
+
+.pgie-followarmed .pgie-stage {
+  cursor: crosshair;
+}
+
+.pgie-followbox {
+  position: absolute;
+  z-index: 5;
+  border: 2px dashed var(--pgie-sel);
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--pgie-sel) 10%, transparent);
+  pointer-events: none;
+}
+
+.pgie-followbox.on {
+  border-style: solid;
+  background: none;
+}
+
+/* While it runs every sample is a key: the line alone, no box, until done. */
+.pgie-following .pgie-followbox,
+.pgie-following .pgie-keydot {
+  display: none;
+}
+
+.pgie-followpill {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 6px 6px 12px;
+  border-radius: 999px;
+  background: var(--pgie-surface);
+  color: var(--pgie-tx);
+  box-shadow: var(--pgie-shadow);
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+.pgie-followspin {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--pgie-line);
+  border-top-color: var(--pgie-sel);
+  border-radius: 50%;
+  animation: pgie-followspin 0.8s linear infinite;
+}
+
+.pgie-followshare {
+  min-width: 3.2em;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.pgie .pgie-followcancel {
+  min-height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+}
+
+@keyframes pgie-followspin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pgie-followspin {
+    animation: none;
+  }
+}
+
 /* -- Icons and emoji (pg_image_editor_glyph.js) -- */
 
 /* Change on a placed sticker, icon or emoji: the note over the Sticker panel. */
