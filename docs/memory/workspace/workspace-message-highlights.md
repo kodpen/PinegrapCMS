@@ -5,8 +5,8 @@ description: A reader's highlights on part of a message (ws_highlights, 11.0.222
 
 ## What is a highlight, and what is it not?
 - A reader marks part of one message's drawn text "For everyone" (`all`) or "For me" (`me`), with an optional note. It is a row of `ws_highlights` beside the message; the message's `body` is never changed and nobody is told (no inbox row, unread count, push, mail or mention).
-- Not the writer's own `==text==`, which is part of the message's text (`workspace-text-highlight.md`).
-- Server: `includes/workspace/highlights.php`; browser: `assets/js/workspace_highlights.js` (in the Workspace bundle). Built by HL1 #9867, HL2 #9879, HL3 #9889, HL4 #9935.
+- Not the writer's own `==text==` (`workspace-text-highlight.md`).
+- Server: `includes/workspace/highlights.php`; browser: `assets/js/workspace_highlights.js`. Built by HL1 #9867, HL2 #9879, HL3 #9889, HL4 #9935.
 
 ## How is the place kept?
 - By the quoted text (`quote`, 1 to 1,000 characters) and which of its occurrences in the message's plain text it is (`occurrence`, 0 the first). Plain text: the drawn body's text with every run of white space folded to one space; `ws_highlight_plain()` and `ws_highlight_find()` on the server, `plainFromHtml()`, `textMap()` and `find()` in the browser, both on the same fixtures (`tests/workspace_highlights_test.php` runs the twin under Node).
@@ -28,8 +28,8 @@ description: A reader's highlights on part of a message (ws_highlights, 11.0.222
 - A channel is archived, never deleted: its highlights stay, read-only.
 
 ## How are they drawn?
-- On a settled selection a mini toolbar (`role="toolbar"`) shows "Highlight for everyone" (`bi-people`, absent where H4 refuses) and "Highlight for me" (`bi-highlighter`), each with a title saying who sees it ("Nobody is notified." on the first); it takes no focus and closes on Escape, a click elsewhere or a scroll.
-- Since #10018 the bar is one rounded surface (`--pg-radius-surface`, the menus' radius); its buttons are flat, borderless, with its radius minus its padding. Not `--bs-btn-border-radius`: set only inside `.btn`, it drew the bar square.
+- On a settled selection a mini toolbar (`role="toolbar"`) shows "Highlight for everyone" (`bi-people`, absent where H4 refuses) and "Highlight for me" (`bi-highlighter`), each with a title saying who sees it ("Nobody is notified." on the first); it takes no focus and closes on Escape, a click elsewhere or a scroll. It stays inside the visible message list: off screen or over the composer, it moves to the list's edge.
+- Since #10018 the bar is one rounded surface (`--pg-radius-surface`, the menus' radius); its buttons are flat, borderless, with its radius minus its padding. The "too long" note wraps to its own line when the row is full (390). (`--bs-btn-border-radius`, set only in `.btn`, drew it square).
 - `<mark class="ws-hl">` around each piece, in its maker's colour (`senderTone()`); a `me` one is dotted; overlaps nest, the newer inside. Its card names the maker, the scope and the note, with Add/Edit note and Remove for who may.
 
 Related: docs/memory/workspace/workspace-message-highlights-mine.md, docs/memory/workspace/workspace-text-highlight.md

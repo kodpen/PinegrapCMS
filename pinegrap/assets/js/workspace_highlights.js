@@ -331,9 +331,17 @@
         state.card = null;
     }
 
-    function place(box, rect, below) {
+    // Optional bounds (a visible rectangle, such as the message list's) keep
+    // the box inside them: a place past their edge moves to that edge.
+    function place(box, rect, below, bounds) {
         var top = below ? rect.bottom + window.scrollY + 8 : rect.top + window.scrollY - box.offsetHeight - 8;
         var left = Math.max(8, Math.min(rect.left + window.scrollX, window.scrollX + document.documentElement.clientWidth - box.offsetWidth - 8));
+
+        if (bounds) {
+            var lowest = bounds.bottom + window.scrollY - box.offsetHeight - 8;
+
+            top = Math.max(bounds.top + window.scrollY + 8, Math.min(top, lowest));
+        }
 
         box.style.top = Math.max(window.scrollY + 8, top) + 'px';
         box.style.left = left + 'px';
@@ -583,8 +591,13 @@
 
         var rect = spot.range.getBoundingClientRect();
         var touch = !!(h.touchScreen && h.touchScreen());
+        // The bar stays inside the visible message list, never over the
+        // composer or above the list, however far the selection runs.
+        var list = closest(spot.body, '.ws-pane-messages, .ws-messages');
+        var bounds = list ? list.getBoundingClientRect() : null;
+        var ceiling = bounds ? Math.max(0, bounds.top) : 0;
 
-        place(bar, rect, touch || rect.top < bar.offsetHeight + 16);
+        place(bar, rect, touch || rect.top - ceiling < bar.offsetHeight + 16, bounds);
     }
 
     function later() {
