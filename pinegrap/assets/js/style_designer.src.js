@@ -6952,7 +6952,9 @@ const StyleDesigner = (function () {
         // still works — see buildTableLoopAreaEl. The flexbox lives on the
         // inner div instead.
         '.sd-loop-band-row .sd-loop-band-cell { padding:4px 8px !important; color:#fff; background:#6366f1; border:none !important; }',
-        '.sd-loop-band-row .sd-loop-band-inner { display:flex; align-items:center; gap:6px; font-size:.7rem; font-weight:700; letter-spacing:.03em; text-transform:uppercase; white-space:nowrap; overflow:hidden; }',
+        // width:0 with min-width:100%: the one-line label fills the row but
+        // adds no width of its own, so it never widens the table it sits in.
+        '.sd-loop-band-row .sd-loop-band-inner { display:flex; align-items:center; gap:6px; font-size:.7rem; font-weight:700; letter-spacing:.03em; text-transform:uppercase; white-space:nowrap; overflow:hidden; width:0; min-width:100%; }',
         '.sd-loop-band-row .sd-loop-band-cell .bi { font-size:.85rem; line-height:1; flex:0 0 auto; }',
         '.sd-loop-band-row .sd-loop-band-cell .sd-loop-band-text { font-size:.65rem; overflow:hidden; text-overflow:ellipsis; }',
         '.sd-recipient-loop-band-row .sd-loop-band-cell { background:#0d9488; }',
@@ -6961,6 +6963,11 @@ const StyleDesigner = (function () {
         '.sd-loop-area.sd-list-area { min-height:44px; outline-color:rgba(8,145,178,.7); background:rgba(8,145,178,.04); }',
         '.sd-list-area > .sd-loop-band, .sd-list-band-row .sd-loop-band-cell { background:#0891b2; }',
         '.sd-list-area.sd-list-off > :not(.sd-loop-band) { opacity:.45; }',
+        // A list in a <ul>/<ol> draws its frame inside the list's padding:
+        // its rows' bullets would hang outside the frame, so they are drawn
+        // inside it (canvas only; the site's <li> keep their bullets).
+        'ul > .sd-wrap > .sd-loop-area > .sd-wrap > li, ul > .sd-wrap > .sd-loop-area > .sd-ghost > li, ' +
+            'ol > .sd-wrap > .sd-loop-area > .sd-wrap > li, ol > .sd-wrap > .sd-loop-area > .sd-ghost > li { list-style-position:inside; }',
         '.sd-list-area.sd-list-off > .sd-loop-band, .sd-list-band-row.sd-list-off .sd-loop-band-cell { background:#b45309; }',
         // ─── Feature switched off in the options panel ───────────────────────
         // Catalog search / filter elements whose feature is toggled off. They
@@ -11561,6 +11568,10 @@ const StyleDesigner = (function () {
                 el.appendChild(buildNodeEl(child));
             });
         }
+        // A cell's own words (a header's label, a bound value) after its
+        // children, as the site prints them; a cell with no text of its own
+        // (its words in a child span) draws only the children.
+        if (tag === 'td' || tag === 'th') _sdTableCellText(doc, node, el);
         // A product page's Checkout Options rows as the store gives them.
         if (node.props._bindings && node.props._bindings.section === 'payment_methods'
             && _sdCatalogKindDrawn() === 'catalog_item_view') _sdPaymentMethodsDraw(node, el);
@@ -11581,6 +11592,23 @@ const StyleDesigner = (function () {
 
         setupDropEvents(el, node);
         return el;
+    }
+
+    // The text of table cell `node` drawn into `el` (buildTableNodeEl()): its
+    // literal words, or the sample of the value it is bound to.
+    function _sdTableCellText(doc, node, el) {
+        var b = node.props._bindings || {};
+        if (_sdIsSentence(node)) return;
+        if (b.text) {
+            var v = _displayValueForBinding('text', b.text, node);
+            if (_sdIsHtmlPreviewToken(b.text)) el.insertAdjacentHTML('beforeend', String(v || ''));
+            else el.appendChild(doc.createTextNode(String(v || '')));
+            return;
+        }
+        var t = node.props.text;
+        if (typeof t !== 'string' || t === '') return;
+        if (t.indexOf('^^') !== -1) el.insertAdjacentHTML('beforeend', _sdResolveAttrTokens(t, true, node));
+        else el.appendChild(doc.createTextNode(t));
     }
 
     // ========================= TABLE-CONTEXT LOOP_AREA =========================
@@ -13275,6 +13303,15 @@ const StyleDesigner = (function () {
     // differ from the card's. A source not named here gets two rows of the
     // card's values.
     var SD_LIST_SAMPLE_ROWS = {
+        // The checkout's gift cards after the first (_SD_LIST_ROW_PREVIEWS):
+        // 25 + 40 + 10 make the sample order's gift card discount.
+        'checkout.gift_cards': [
+            { __gift_card_code: '************5678', __gift_card_amount: '₺40,00', __gift_card_balance: '₺0,00', __gift_card_remove_url: '#' },
+            { __gift_card_code: '************9012', __gift_card_amount: '₺10,00', __gift_card_balance: '₺90,00', __gift_card_remove_url: '#' }
+        ],
+        'checkout.periods': [
+            { __period_name: _sdT('Yearly'), __period_subtotal: '₺499,00', __period_tax: '₺99,80', __period_total: '₺598,80' }
+        ],
         'order.steps': [
             { __step_kind: 'paid', __step_label: _sdT('Payment Received'), __step_date: '20.10.2026 10:05' },
             { __step_kind: 'shipped', __step_label: _sdT('Shipped'), __step_date: '21.10.2026 09:30' },
@@ -14421,6 +14458,12 @@ const StyleDesigner = (function () {
                 if (!_hasChildren && _getSystemWidgetRegionType(node) === 'shopping_cart') {
                     var _cartSample = _sdCartSectionSample(_sec, doc, _sysWidgetRenderCfg);
                     if (_cartSample) _hint = _cartSample;
+                }
+                // An order preview's offers, gift cards, payment periods and
+                // installments, likewise (_sdOrderPreviewSectionSample()).
+                if (!_hasChildren && _getSystemWidgetRegionType(node) === 'order_preview') {
+                    var _opSample = _sdOrderPreviewSectionSample(_sec, doc);
+                    if (_opSample) _hint = _opSample;
                 }
                 if (_hint) innerEl.appendChild(_hint);
             }
@@ -15958,9 +16001,13 @@ const StyleDesigner = (function () {
     };
     // The amounts (a function: SD_LIST_SAMPLE_ROWS reads them before this
     // part of the file has run).
+    // gift: the gift cards applied at checkout (the three rows of the
+    // checkout.gift_cards sample, 25 + 40 + 10); due: what the checkout
+    // charges after them. The order view's order was paid without one.
     function _sdOrderAmounts() {
         return { price1: 450, total1: 900, price2: 150, total2: 150,
-                 subtotal: 1050, discount: 105, shipping: 49.9, tax: 189, total: 1183.9 };
+                 subtotal: 1050, discount: 105, shipping: 49.9, tax: 189, total: 1183.9,
+                 gift: 75, due: 1108.9 };
     }
     var _sdOrderSampleMap = null;
 
@@ -16023,11 +16070,11 @@ const StyleDesigner = (function () {
             __order_subtotal: _sdMoney(m.subtotal), __order_discount: _sdMoney(m.discount), __order_tax: _sdMoney(m.tax),
             __order_shipping: _sdMoney(m.shipping), __order_surcharge: _sdMoney(0), __order_total: _sdMoney(m.total),
             __cart_subtotal: _sdMoney(m.subtotal), __cart_discount: _sdMoney(m.discount), __cart_tax: _sdMoney(m.tax),
-            __cart_shipping: _sdMoney(m.shipping), __cart_gift_card_discount: _sdMoney(0), __cart_surcharge: _sdMoney(0),
-            __cart_total: _sdMoney(m.total), __cart_total_with_surcharge: _sdMoney(m.total), __cart_total_charged: _sdMoney(m.total),
-            __cart_today_total: _sdMoney(m.total), __cart_recurring_total: _sdMoney(0),
-            __cart_subtotal_cents: String(Math.round(m.subtotal * 100)), __cart_total_cents: String(Math.round(m.total * 100)),
-            __cart_total_with_surcharge_cents: String(Math.round(m.total * 100)),
+            __cart_shipping: _sdMoney(m.shipping), __cart_gift_card_discount: _sdMoney(m.gift), __cart_surcharge: _sdMoney(0),
+            __cart_total: _sdMoney(m.due), __cart_total_with_surcharge: _sdMoney(m.due), __cart_total_charged: _sdMoney(m.due),
+            __cart_today_total: _sdMoney(m.due), __cart_recurring_total: _sdMoney(0),
+            __cart_subtotal_cents: String(Math.round(m.subtotal * 100)), __cart_total_cents: String(Math.round(m.due * 100)),
+            __cart_total_with_surcharge_cents: String(Math.round(m.due * 100)),
             __cart_count: '3', __cart_count_label: _sdT('3 items'), __surcharge_percentage: '0%',
             __applied_offers_count: '1', __special_offer_code_message: _sdT('10% off your first order'),
             __empty_message: _sdT('Your cart is empty.'), __has_shippable_item: '1', __has_recurring_items: '',
@@ -16454,6 +16501,11 @@ const StyleDesigner = (function () {
             if (fieldName && _sdIsHtmlPreviewToken(fieldName)) {
                 return _SD_HTML_PREVIEW_TOKENS[fieldName]();
             }
+            // Inside a checkout list's row the row's own sample wins over a
+            // value of the sample order of the same name (a gift card's
+            // amount is the applied card's, not an item's gift card): the
+            // site fills each row from its own data.
+            if (fieldName && _sdCheckoutRowSample(fieldName, node) !== null) return _sdCheckoutRowSample(fieldName, node);
             // A value of the sample order or product, in those families' widgets.
             var _rec = fieldName ? _sdSampleRecord(node) : null;
             if (_rec && Object.prototype.hasOwnProperty.call(_rec, fieldName)) return _rec[fieldName];
@@ -24771,6 +24823,7 @@ const StyleDesigner = (function () {
                 { label: _sdT('Offers to suggest'), type: 'loop_area', icon: 'bi-megaphone', extra: { listSource: 'checkout.suggestions' } },
                 { label: _sdT('Gift cards applied to the order'), type: 'loop_area', icon: 'bi-gift', extra: { listSource: 'checkout.gift_cards' } },
                 { label: _sdT('Recipients in the cart'), type: 'loop_area', icon: 'bi-people', extra: { listSource: 'checkout.recipients' } },
+                { label: _sdT('Recurring payments by period'), type: 'loop_area', icon: 'bi-arrow-repeat', extra: { listSource: 'checkout.periods' } },
                 { label: _sdT('Sub-items of a menu item'), type: 'loop_area', icon: 'bi-diagram-3', extra: { listSource: 'menu.children' } },
                 { label: _sdT('Entries of a folder'), type: 'loop_area', icon: 'bi-folder2', extra: { listSource: 'folder_view.children' } },
                 { label: _sdT('Passkeys of the member'), type: 'loop_area', icon: 'bi-fingerprint', extra: { listSource: 'security.passkeys' } },
@@ -33847,6 +33900,7 @@ const StyleDesigner = (function () {
             'checkout.suggestions': _sdT('One row for every offer the cart could still earn, with its message; a condition on "Offer page URL" shows its button only when the offer points to a page.'),
             'checkout.gift_cards': _sdT('One row for every gift card applied to the order: the masked code, the amount taken, the balance left and a link that removes it.'),
             'checkout.recipients': _sdT('One row for every recipient of the order. Put a list of the products in the cart inside the row: it lists that recipient\'s. The address fields and shipping choices stay where the widget draws them.'),
+            'checkout.periods':   _sdT('One row for every payment period of the order\'s recurring products: its subtotal, tax and total.'),
             'security.passkeys':  _sdT('One row for every passkey of the signed-in member, oldest first. Put a form holding a Rename or Remove button in the row: the button carries its passkey.'),
             'menu.children':      _sdT('One row for every item under the menu item of the row it stands in, as the visitor may see them; outside the loop the top-level items. Put another list inside its row for the level below. The items are edited under Menus.'),
             'folder_view.children': _sdT('One row for every entry of the folder of the row it stands in, as the visitor may see them: its folders, then its pages, then its files; outside the loop the entries of the page\'s folder. Put another list inside a folder\'s row for the level below.'),
@@ -42114,6 +42168,7 @@ const StyleDesigner = (function () {
     function _sdSectionOpenRow(kind, section, node) {
         if (kind === 'custom_form' && section === 'form_step') return _sdFormStepNavRow(node);
         if (_sdMemberOpens(kind, section, node)) return _sdMemberOpenRow();
+        if (_sdOrderPreviewOpens(kind, section)) return _sdOrderPreviewOpenRow();
         if (!_sdSectionOpensAsList(kind, section)) return '';
         return '<button type="button" class="btn btn-sm btn-outline theme-primary w-100 mt-2 text-wrap" data-sd-section-open>' +
                 '<span class="bi bi-magic me-1"></span>' + esc(_sdT('Convert to design elements')) + '</button>' +
@@ -43149,6 +43204,267 @@ const StyleDesigner = (function () {
         box.setAttribute('inert', '');
         box.style.cssText = 'pointer-events:none';
         box.innerHTML = html + '<div class="small text-body-secondary fst-italic mt-1">' + esc(note) + '</div>';
+        return box;
+    }
+
+    // ── Order preview blocks (offers, gift cards, periods, installments) ──
+    // The applied offers, gift cards and recurring payments open into lists
+    // of the designer's own elements (_sdOrderPreviewPart(), twin of
+    // pg_op_part()); the installment choice and table stay the site's,
+    // drawn true. An unopened section draws the twin of its PHP builder
+    // with sample rows.
+
+    // The elements that take an opened section's place (pg_op_part()).
+    /* @pg-site-output */
+    function _sdOrderPreviewPart(section) {
+        var list = function (source, kids) { return createNode('loop_area', { source: source }, kids); };
+        var bound = function (tag, cls, name, token) { return _sdPartEl(tag, cls, name, { _bindings: { text: token } }); };
+        if (section === 'applied_offers') {
+            return [_sdPartEl('ul', 'mb-0', _sdT('Offers applied to the order'), {}, [
+                list('checkout.offers', [bound('li', '', _sdT('Offer text'), '__offer_text')])
+            ])];
+        }
+        if (section === 'applied_gift_cards') {
+            return [_sdPartEl('ul', 'list-group mb-3', _sdT('Gift cards applied to the order'), {}, [
+                list('checkout.gift_cards', [
+                    _sdPartEl('li', 'list-group-item d-flex flex-wrap justify-content-between gap-2', _sdT('Gift Card'), {}, [
+                        _sdPartEl('span', '', _sdT('Gift Card'), {}, [
+                            _sdPartSentence('span', '', _sdT('Gift card code (masked)'), _sdT('Gift Card') + ' {var:1}', '__gift_card_code'),
+                            _sdPartSentence('span', 'small text-muted', _sdT('Remaining Balance'), '(' + _sdT('Remaining Balance') + ': {var:1})', '__gift_card_balance')
+                        ]),
+                        _sdPartEl('span', '', _sdT('Amount taken from the card'), {}, [
+                            _sdPartSentence('span', '', _sdT('Amount taken from the card'), '-{var:1}', '__gift_card_amount'),
+                            _sdPartEl('a', 'small ms-2', _sdT('Remove'), { text: _sdT('Remove'), href: '#',
+                                _bindings: { href: '__gift_card_remove_url' } })
+                        ])
+                    ])
+                ])
+            ])];
+        }
+        if (section === 'recurring_payments') {
+            var th = function (cls, text) { return _sdPartEl('th', cls, text, { text: text }); };
+            return [_sdPartEl('div', 'table-responsive', _sdT('Recurring payments by period'), {}, [
+                _sdPartEl('table', 'table table-sm mb-0', _sdT('Table'), {}, [
+                    _sdPartEl('thead', '', _sdT('Head'), {}, [
+                        _sdPartEl('tr', '', _sdT('Row'), {}, [
+                            th('', _sdT('Payment Period')), th('text-end', _sdT('Subtotal')), th('text-end', _sdT('Tax')), th('text-end', _sdT('Total'))
+                        ])
+                    ]),
+                    _sdPartEl('tbody', '', _sdT('Body'), {}, [
+                        list('checkout.periods', [
+                            _sdPartEl('tr', '', _sdT('Payment Period'), {}, [
+                                bound('td', '', _sdT('Payment Period'), '__period_name'),
+                                bound('td', 'text-end', _sdT('Subtotal'), '__period_subtotal'),
+                                bound('td', 'text-end', _sdT('Tax'), '__period_tax'),
+                                bound('td', 'text-end fw-semibold', _sdT('Total'), '__period_total')
+                            ])
+                        ])
+                    ])
+                ])
+            ])];
+        }
+        return [];
+    }
+
+    // Whether an order preview section opens into elements.
+    function _sdOrderPreviewOpens(kind, section) {
+        return kind === 'order_preview' && _sdOrderPreviewPart(section).length > 0;
+    }
+
+    function _sdOrderPreviewOpenRow() {
+        return '<button type="button" class="btn btn-sm btn-outline theme-primary w-100 mt-2 text-wrap" data-sd-op-open>' +
+                '<span class="bi bi-magic me-1"></span>' + esc(_sdT('Convert to design elements')) + '</button>' +
+            '<div style="font-size:.66rem;color:#888;margin-top:3px">' +
+                esc(_sdT('Puts what the site prints here as elements you design, a list repeating its row for each one in the visitor\'s order. The site prints the same until you change them.')) +
+            '</div>';
+    }
+
+    // The order preview section `node`, in place, as its part: the element
+    // keeps its tag, classes and show condition; the part becomes its
+    // children. Returns the node, or null when it does not open.
+    function _sdOrderPreviewSectionToTree(node) {
+        var b = (node && node.props && node.props._bindings) || {};
+        if (!_sdOrderPreviewOpens(_getSystemWidgetRegionType(node), b.section)) return null;
+        var part = _sdOrderPreviewPart(b.section);
+        delete b.section;
+        if (!Object.keys(b).length) delete node.props._bindings;
+        node.children = part;
+        var hit = _sdAnyParent(node);
+        if (hit && hit.sid) _sharedDirty[hit.sid] = true;
+        return node;
+    }
+
+    // Twins of the order preview's section builders
+    // (includes/fn/widgets_order_preview.php); amounts come as the price
+    // HTML the site prints.
+
+    // The applied offers section (_render_system_widget_order_preview()).
+    /* @pg-site-output */
+    function _sdOpOffersHtml(texts) {
+        var items = (texts || []).map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('');
+        return items === '' ? '' : '<ul class="mb-0">' + items + '</ul>';
+    }
+
+    // _pg_op_gift_cards_html(); cards [{ code, amount, balance, url }].
+    /* @pg-site-output */
+    function _sdOpGiftCardsHtml(cards) {
+        var html = (cards || []).map(function (c) {
+            return '<li class="list-group-item d-flex flex-wrap justify-content-between gap-2">'
+                + '<span>' + esc(_sdT('Gift Card')) + ' ' + esc(c.code)
+                + ' <span class="small text-muted">(' + esc(_sdT('Remaining Balance')) + ': ' + c.balance + ')</span></span>'
+                + '<span>-' + c.amount + ' <a class="small ms-2" href="' + esc(c.url) + '">' + esc(_sdT('Remove')) + '</a></span></li>';
+        }).join('');
+        return html === '' ? '' : '<ul class="list-group mb-3">' + html + '</ul>';
+    }
+
+    // _pg_op_payment_periods_html(); periods [{ name, subtotal, tax, total }],
+    // the name already translated.
+    /* @pg-site-output */
+    function _sdOpPeriodsHtml(periods) {
+        var rows = (periods || []).map(function (p) {
+            return '<tr><td>' + esc(p.name) + '</td><td class="text-end">' + p.subtotal + '</td>'
+                + '<td class="text-end">' + (p.tax || '') + '</td><td class="text-end fw-semibold">' + p.total + '</td></tr>';
+        }).join('');
+        if (rows === '') return '';
+        return '<div class="table-responsive"><table class="table table-sm mb-0"><thead><tr><th>' + esc(_sdT('Payment Period')) + '</th>'
+            + '<th class="text-end">' + esc(_sdT('Subtotal')) + '</th><th class="text-end">' + esc(_sdT('Tax')) + '</th>'
+            + '<th class="text-end">' + esc(_sdT('Total')) + '</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+    }
+
+    // pg_eo_installment_box_html()
+    /* @pg-site-output */
+    function _sdInstallmentBoxHtml(max, saved) {
+        saved = parseInt(saved, 10) || 0;
+        if (saved < 1) saved = 1;
+        return '<div class="pg-eo-installments mt-2" data-pg-eo-installments="1" data-pg-eo-max="' + (parseInt(max, 10) || 0) + '">'
+            + '<input type="hidden" name="installment" value="' + saved + '" class="pg-eo-installment-input">'
+            + '<div class="small text-muted pg-eo-installment-status">'
+            + esc(_sdT('Enter your card number to view installment options.'))
+            + '</div>'
+            + '<div class="pg-eo-installment-meta small text-muted mb-2" style="display:none"></div>'
+            + '<div class="pg-eo-installment-list"></div>'
+            + '</div>';
+    }
+
+    // The plans the box's script lists once a card number is typed
+    // (_eo_render_installment_box()'s render()): plans [{ n, label, total,
+    // increase }], the money already formatted; plan `cur` chosen.
+    /* @pg-site-output */
+    function _sdInstallmentPlansHtml(plans, cur) {
+        return '<div class="row g-2">' + plans.map(function (o) {
+            return '<div class="col-12 col-md-6"><label class="d-flex justify-content-between align-items-center border rounded p-2 small mb-0" style="cursor:pointer">'
+                + '<span><input type="radio" class="form-check-input me-2 pg-eo-installment-radio" name="_pg_eo_installment_radio" value="' + o.n + '"' + (o.n === cur ? ' checked' : '') + '>' + o.label + '</span>'
+                + '<span class="text-muted">' + o.total + (o.increase ? ' <span class="text-warning">+' + o.increase + '</span>' : '') + '</span></label></div>';
+        }).join('') + '</div>';
+    }
+
+    // pg_payment_iyzico_installment_steps()
+    function _sdInstallmentSteps(limit) {
+        return [2, 3, 6, 9, 12].filter(function (n) { return n <= (parseInt(limit, 10) || 0); });
+    }
+
+    // pg_payment_iyzico_installment_table_html(); rows [{ family, cells:
+    // { n: [per month, total] } }], the money already formatted.
+    /* @pg-site-output */
+    function _sdInstallmentTableHtml(steps, rows) {
+        var head = '<tr><th>' + esc(_sdT('Card Type')) + '</th>' + steps.map(function (n) {
+            return '<th>' + esc(_sdT('{var:1} installments').replace('{var:1}', n)) + '</th>';
+        }).join('') + '</tr>';
+        var body = rows.map(function (r) {
+            return '<tr><td  scope="row">' + esc(r.family) + '</td>' + steps.map(function (n) {
+                var c = r.cells[n];
+                return !c ? '<td></td>' : '<td><span class="installment_per_month">' + c[0] + ' / ' + esc(_sdT('month'))
+                    + '</span><br/><span class="installment_month_total">' + esc(_sdT('Total')) + ': ' + c[1] + '</span></td>';
+            }).join('') + '</tr>';
+        }).join('');
+        return '<style>td[scope=row] {font-weight: 700;}span.installment_per_month {font-size: initial;}</style><div class="table-responsive"><table id="software_installment_table"  class="table responsive-table  table-striped" style="width:100%;" >'
+            + '<thead class="thead-dark">' + head + '</thead><tbody>' + body + '</tbody></table></div>';
+    }
+
+    // The most installments the site offers (the iyzico gateway's setting),
+    // 0 while installments are off.
+    function _sdInstallmentLimit() {
+        var f = (typeof sdDesign !== 'undefined' && sdDesign && sdDesign.siteFlags) ? sdDesign.siteFlags : {};
+        var n = parseInt(f.installments, 10) || 0;
+        return n >= 2 ? n : 0;
+    }
+
+    // What an order preview prints in a section the server fills, for a
+    // sample order with an offer, a gift card, a recurring product and the
+    // installments the site's settings offer; '' when the site prints
+    // nothing for it (installments off).
+    /* @pg-site-output */
+    function _sdOrderPreviewSectionHtml(section) {
+        var m = _sdOrderAmounts();
+        var money = function (n) { return '<span style="white-space: nowrap">' + esc(_sdMoney(n)) + '</span>'; };
+        if (section === 'applied_offers') return _sdOpOffersHtml([_sdT('10% off your first order')]);
+        if (section === 'applied_gift_cards') {
+            return _sdOpGiftCardsHtml([{ code: '************1234', amount: money(25), balance: money(50), url: '#' },
+                { code: '************5678', amount: money(40), balance: money(0), url: '#' },
+                { code: '************9012', amount: money(10), balance: money(90), url: '#' }]);
+        }
+        if (section === 'recurring_payments') {
+            return _sdOpPeriodsHtml([{ name: _sdT('Monthly'), subtotal: money(49.9), tax: money(9.98), total: money(59.88) }]);
+        }
+        var limit = _sdInstallmentLimit();
+        if (!limit) return '';
+        var steps = _sdInstallmentSteps(limit);
+        // A plan of n payments costs 2% more per step, as a bank's might.
+        var planTotal = function (i) { return Math.round(m.due * (1 + 0.02 * (i + 1)) * 100) / 100; };
+        var perMonth = function (total, n) { return Math.round(total / n * 100) / 100; };
+        if (section === 'card_installments') {
+            var plans = [{ n: 1, label: esc(_sdT('Single payment')), total: esc(_sdMoney(m.due)), increase: '' }];
+            steps.slice(0, 3).forEach(function (n, i) {
+                var total = planTotal(i);
+                plans.push({ n: n, label: n + 'x ' + esc(_sdMoney(perMonth(total, n))), total: esc(_sdMoney(total)),
+                    increase: esc(_sdMoney(Math.round((total - m.due) * 100) / 100)) });
+            });
+            return _sdInstallmentBoxHtml(limit, 1).replace('<div class="small text-muted pg-eo-installment-status">' + esc(_sdT('Enter your card number to view installment options.')) + '</div>',
+                '<div class="small text-muted pg-eo-installment-status"></div>')
+                .replace('<div class="pg-eo-installment-meta small text-muted mb-2" style="display:none"></div>',
+                    '<div class="pg-eo-installment-meta small text-muted mb-2">Visa / Bonus / Garanti BBVA</div>')
+                .replace('<div class="pg-eo-installment-list"></div>', '<div class="pg-eo-installment-list">' + _sdInstallmentPlansHtml(plans, 1) + '</div>');
+        }
+        if (section === 'installment_table') {
+            var rows = ['Bonus', 'World', 'Axess'].map(function (family, f) {
+                var cells = {};
+                // The third family offers no plan past six payments.
+                steps.forEach(function (n, i) {
+                    if (f === 2 && n > 6) return;
+                    var total = planTotal(i);
+                    cells[n] = [esc(_sdMoney(perMonth(total, n))), esc(_sdMoney(total))];
+                });
+                return { family: family, cells: cells };
+            });
+            return _sdInstallmentTableHtml(steps, rows);
+        }
+        return '';
+    }
+
+    // The sample of an order preview section as a canvas box: inert, never
+    // saved, the words under it saying the site fills it per order. null
+    // when the site prints nothing for it.
+    function _sdOrderPreviewSectionSample(section, doc) {
+        var notes = {
+            applied_offers: _sdT('The site lists the offers applied to the visitor\'s order; nothing when none applies.'),
+            applied_gift_cards: _sdT('The site lists the gift cards applied to the visitor\'s order, each with its Remove link.'),
+            recurring_payments: _sdT('The site lists a row for each payment period of the order\'s recurring products.'),
+            card_installments: _sdT('The site lists the plans of the card as the visitor types its number; the plan chosen is charged.'),
+            installment_table: _sdT('The site lists the plans of each card family for the order\'s total, as the payment provider gives them.')
+        };
+        if (!notes[section]) return null;
+        var html = _sdOrderPreviewSectionHtml(section);
+        var box = doc.createElement('div');
+        box.className = 'sd-section-binding-hint sd-section-sample';
+        box.setAttribute('inert', '');
+        box.style.cssText = 'pointer-events:none';
+        if (!html) {
+            // Installments off: the site prints nothing here.
+            box.innerHTML = '<div class="small text-body-secondary fst-italic">'
+                + esc(_sdT('Installments are off in the payment settings: the site prints nothing here.')) + '</div>';
+            return box;
+        }
+        box.innerHTML = html + '<div class="small text-body-secondary fst-italic mt-1">' + esc(notes[section]) + '</div>';
         return box;
     }
 
@@ -53447,6 +53763,20 @@ const StyleDesigner = (function () {
             });
         });
 
+        // An order preview section opened (_sdOrderPreviewSectionToTree()).
+        document.querySelectorAll('#sd-properties [data-sd-op-open]').forEach(function (el) {
+            el.addEventListener('click', function () {
+                if (!selectedNode) return;
+                saveState();
+                var node = _sdOrderPreviewSectionToTree(selectedNode);
+                if (!node) return;
+                selectedNodes = [];
+                if (typeof expandAncestorsAnywhere === 'function') expandAncestorsAnywhere(node);
+                render();
+                renderProperties();
+            });
+        });
+
         // A member widget's section opened (_sdMemberSectionToTree()).
         document.querySelectorAll('#sd-properties [data-sd-member-open]').forEach(function (el) {
             el.addEventListener('click', function () {
@@ -59964,7 +60294,7 @@ const StyleDesigner = (function () {
         'checkout.offers': {
             label: _sdT('Offers applied to the order'),
             arg: '', argRequired: false,
-            kinds: ['express_order'],
+            kinds: ['express_order', 'order_preview'],
             rows: [
                 ['__offer_code', _sdT('Offer code')],
                 ['__offer_text', _sdT('Offer text')]
@@ -59983,7 +60313,7 @@ const StyleDesigner = (function () {
         'checkout.gift_cards': {
             label: _sdT('Gift cards applied to the order'),
             arg: '', argRequired: false,
-            kinds: ['express_order'],
+            kinds: ['express_order', 'order_preview'],
             rows: [
                 ['__gift_card_code',       _sdT('Gift card code (masked)')],
                 ['__gift_card_amount',     _sdT('Amount taken from the card')],
@@ -60010,6 +60340,18 @@ const StyleDesigner = (function () {
                 ['__recipient_address_country',      _sdT('Country')],
                 ['__recipient_address_phone_number', _sdT('Phone')],
                 ['__ship_to_item_count',             _sdT('Number of items')]
+            ]
+        },
+        // The order preview's recurring payments by period (its only).
+        'checkout.periods': {
+            label: _sdT('Recurring payments by period'),
+            arg: '', argRequired: false,
+            kinds: ['order_preview'],
+            rows: [
+                ['__period_name',     _sdT('Payment Period')],
+                ['__period_subtotal', _sdT('Subtotal')],
+                ['__period_tax',      _sdT('Tax')],
+                ['__period_total',    _sdT('Total')]
             ]
         },
         // The menu source (pg_sw_list_menu_sources()): the items under the
@@ -60083,6 +60425,10 @@ const StyleDesigner = (function () {
         __gift_card_amount:    '₺25,00',
         __gift_card_balance:   '₺50,00',
         __gift_card_remove_url: '#',
+        __period_name:         _sdT('Monthly'),
+        __period_subtotal:     '₺49,90',
+        __period_tax:          '₺9,98',
+        __period_total:        '₺59,88',
         __recipient_index:     '1',
         __value_text:  _sdT('Example'),
         __value_param: 'example',
@@ -60239,6 +60585,20 @@ const StyleDesigner = (function () {
             cur = p;
         }
         return out;
+    }
+
+    // The sample of row value `token` when the nearest list giving it is a
+    // checkout list (the order preview's, the express order's); null
+    // otherwise.
+    function _sdCheckoutRowSample(token, node) {
+        if (!Object.prototype.hasOwnProperty.call(_SD_LIST_ROW_PREVIEWS, token)) return null;
+        var lists = _sdListsAbove(node);
+        for (var i = 0; i < lists.length; i++) {
+            var src = SW_LIST_SOURCES[lists[i].props.source];
+            if (!src || !src.rows.some(function (r) { return r[0] === token; })) continue;
+            return String(lists[i].props.source).indexOf('checkout.') === 0 ? _SD_LIST_ROW_PREVIEWS[token] : null;
+        }
+        return null;
     }
 
     // The row tokens of the lists `node` is drawn in, as { token, label },
@@ -60485,6 +60845,7 @@ const StyleDesigner = (function () {
                 ])
             ])]);
         }
+        if (source === 'checkout.periods') return _sdOrderPreviewPart('recurring_payments')[0];
         if (source === 'checkout.gift_cards') {
             return sem('ul', 'list-group mb-3', _sdT('Gift cards applied to the order'), {}, [list([
                 sem('li', 'list-group-item d-flex flex-wrap justify-content-between gap-2 small', _sdT('Gift Card'), {}, [
@@ -65294,6 +65655,13 @@ const StyleDesigner = (function () {
                     if (flag) props._bindings.eo_visible_if = flag;
                     return createNode('semantic', props);
                 };
+                // A section that opens, already open: its part's elements
+                // (_sdOrderPreviewPart()) in the section's element.
+                var opPart = function (name, key, flag, css) {
+                    var props = { tag: 'div', cssClass: css || 'mb-3', customName: name };
+                    if (flag) props._bindings = { eo_visible_if: flag };
+                    return createNode('semantic', props, _sdOrderPreviewPart(key));
+                };
                 var opMethod = function (value, label, flag, labelToken) {
                     var id = 'op_pm_' + value.toLowerCase().replace(/[^a-z]+/g, '_');
                     var lp = { tag: 'label', cssClass: 'form-check-label', text: label, customName: _sdT('Label'), _attrs: [{ name: 'for', value: id }] };
@@ -65333,7 +65701,7 @@ const StyleDesigner = (function () {
                         createNode('semantic', { tag: 'div', cssClass: 'small mb-3', customName: _sdT('Applied Offers'),
                             _bindings: { eo_visible_if: 'has_applied_offers' } }, [
                             opP(_sdT('Applied offers'), 'fw-semibold mb-1'),
-                            opSection(_sdT('Offers'), 'applied_offers', '', '')
+                            opPart(_sdT('Offers'), 'applied_offers', '', '')
                         ]),
                         createNode('semantic', { tag: 'div', cssClass: 'border-top pt-2 mb-4', customName: _sdT('Totals') }, [
                             opRow(_sdT('Subtotal'), '__cart_subtotal', 'shows_subtotal'),
@@ -65348,11 +65716,11 @@ const StyleDesigner = (function () {
                             opRow(_sdT('Amount charged'), '__cart_total_charged', 'has_currency_disclaimer', 'py-1 small'),
                             opP(_sdT('Exchange rate note'), 'small text-muted mb-0', '__currency_disclaimer', 'has_currency_disclaimer')
                         ]),
-                        opSection(_sdT('Applied Gift Cards'), 'applied_gift_cards', 'has_gift_card_discount'),
+                        opPart(_sdT('Applied Gift Cards'), 'applied_gift_cards', 'has_gift_card_discount'),
                         createNode('semantic', { tag: 'div', cssClass: 'mb-4', customName: _sdT('Recurring Payments'),
                             _bindings: { eo_visible_if: 'has_recurring' } }, [
                             createNode('content', { contentType: 'heading', tag: 'h5', text: _sdT('Recurring payments'), cssClass: 'mb-2' }),
-                            opSection(_sdT('Payment Periods'), 'recurring_payments', '', '')
+                            opPart(_sdT('Payment Periods'), 'recurring_payments', '', '')
                         ]),
                         createNode('semantic', { tag: 'div', cssClass: 'border rounded p-3 mb-4', customName: _sdT('Billing Information') }, [
                             createNode('semantic', { tag: 'div', cssClass: 'd-flex justify-content-between align-items-start gap-2 mb-2', customName: _sdT('Heading') }, [
@@ -78024,6 +78392,8 @@ const StyleDesigner = (function () {
                                     d: _sdT('Repeats its row for each gift card applied to the order, with the amount used.') },
             'l:checkout.recipients': { v: 'l-recipients', k: 'recipients cart checkout ship to list repeat loop',
                                     d: _sdT('Repeats its row for each recipient in the cart, with the items going to them.') },
+            'l:checkout.periods': { v: 'l-periods', k: 'recurring payments periods subscription checkout order preview list repeat loop',
+                                    d: _sdT('Repeats its row for each payment period of the order\'s recurring products.') },
             'l:menu.children': { v: 'l-menu-children', k: 'menu sub items children submenu list repeat loop',
                                     d: _sdT('Repeats its row for each sub-item of a menu item.') },
             'l:folder_view.children': { v: 'l-folder', k: 'folder entries pages files list repeat loop',
@@ -78915,6 +79285,10 @@ const StyleDesigner = (function () {
                     return R(22, y, 34, 21, '#d63384', 3) + R(36, y, 3, 21, '#f7d6e6') + R(22, y + 9, 34, 3, '#f7d6e6') +
                         L(64, y + 4, 60, D) + L(64, y + 13, 40) + Hd(146, y + 7, 30, '#198754');
                 });
+            },
+            'l-periods': function () {
+                return R(0, 0, 200, 110, W) + L(24, 14, 46, D) + L(112, 14, 22, D) + L(150, 14, 28, D) +
+                    Rows(28, 30, 24, function (y) { return L(24, y + 6, 54, P) + L(112, y + 6, 22) + L(150, y + 6, 28, D); });
             },
             'l-recipients': function () {
                 return R(0, 0, 200, 110, W) + Rows(8, 34, 30, function (y) {

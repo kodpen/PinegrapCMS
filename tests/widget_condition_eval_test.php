@@ -444,7 +444,7 @@ function test_widget_condition_eval_sample_order_adds_up()
 	$script = "var m = _sdOrderAmounts(), c = function (x) { return Math.round(x * 100); };\n"
 		. "console.log(JSON.stringify([c(m.price1 * 2) === c(m.total1), c(m.price2) === c(m.total2),\n"
 		. "  c(m.total1 + m.total2) === c(m.subtotal), c((m.subtotal - m.discount) * 0.2) === c(m.tax),\n"
-		. "  c(m.subtotal - m.discount + m.shipping + m.tax) === c(m.total)]));\n";
+		. "  c(m.subtotal - m.discount + m.shipping + m.tax) === c(m.total), c(m.total - m.gift) === c(m.due)]));\n";
 	$file = @tempnam(sys_get_temp_dir(), 'pgcond');
 	if ($file === false) return;
 	file_put_contents($file, $src . $script);
@@ -454,5 +454,5 @@ function test_widget_condition_eval_sample_order_adds_up()
 	@unlink($file);
 	$printed = implode("\n", $out);
 	pg_assert_same(0, $code, $printed);
-	pg_assert_same(array(true, true, true, true, true), json_decode($printed, true), $printed);
+	pg_assert_same(array(true, true, true, true, true, true), json_decode($printed, true), $printed);
 }
