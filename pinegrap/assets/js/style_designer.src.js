@@ -11604,7 +11604,7 @@ const StyleDesigner = (function () {
         if (_sdIsSentence(node)) return;
         if (b.text) {
             var v = _displayValueForBinding('text', b.text, node);
-            if (_sdIsHtmlPreviewToken(b.text)) el.insertAdjacentHTML('beforeend', String(v || ''));
+            if (_sdIsHtmlPreviewToken(b.text) || _SD_OP_MARKUP_ROWS[b.text]) el.insertAdjacentHTML('beforeend', String(v || ''));
             else el.appendChild(doc.createTextNode(String(v || '')));
             return;
         }
@@ -14306,7 +14306,7 @@ const StyleDesigner = (function () {
                 var _semIsHtml = false;
                 if (node.props._bindings && node.props._bindings.text) {
                     _semText = _displayValueForBinding('text', node.props._bindings.text, node);
-                    _semIsHtml = _sdIsHtmlPreviewToken(node.props._bindings.text);
+                    _semIsHtml = _sdIsHtmlPreviewToken(node.props._bindings.text) || !!_SD_OP_MARKUP_ROWS[node.props._bindings.text];
                 } else if (_semText && _semText.indexOf && _semText.indexOf('^^') !== -1) {
                     // Literal ^^token^^ embedded in `text` (e.g. order view's
                     // pre-built HTML slots: ^^__cancel_form^^, ^^__order_status_badge^^).
@@ -15671,6 +15671,15 @@ const StyleDesigner = (function () {
     // True when the token's preview is markup rather than plain text — the
     // semantic-node branch of buildNodeEl has to insert it as HTML, otherwise
     // the designer sees escaped tags.
+    // The order preview's list values the site prints as markup (a struck
+    // price, a product's description, a form's answers): their samples are
+    // the editor's own markup (_SD_LIST_ROW_PREVIEWS, SD_LIST_SAMPLE_ROWS),
+    // drawn as such rather than as their tags.
+    var _SD_OP_MARKUP_ROWS = {
+        __ship_to_cost_html: 1, __ship_to_form_html: 1, __line_title_html: 1, __line_price_html: 1,
+        __line_amount_html: 1, __line_stock_html: 1, __line_forms_html: 1
+    };
+
     function _sdIsHtmlPreviewToken(tok) {
         return !!(tok && Object.prototype.hasOwnProperty.call(_SD_HTML_PREVIEW_TOKENS, tok));
     }

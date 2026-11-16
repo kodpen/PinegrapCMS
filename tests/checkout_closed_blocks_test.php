@@ -266,6 +266,11 @@ function test_checkout_blocks_wiring()
 	// A list inside a table or a <ul> draws as the site does: a cell's own
 	// words, a band that does not widen the table, bullets inside the frame.
 	pg_assert_contains("if (tag === 'td' || tag === 'th') _sdTableCellText(doc, node, el);", $js);
+	// The order preview's markup values draw as markup on the canvas, as on the site.
+	pg_assert_contains("_semIsHtml = _sdIsHtmlPreviewToken(node.props._bindings.text) || !!_SD_OP_MARKUP_ROWS[node.props._bindings.text];", $js);
+	foreach (array('__ship_to_cost_html', '__ship_to_form_html', '__line_title_html', '__line_price_html', '__line_amount_html', '__line_stock_html', '__line_forms_html') as $key) {
+		pg_assert_contains($key . ': 1', $js, $key . ' drawn as markup');
+	}
 	pg_assert_contains('white-space:nowrap; overflow:hidden; width:0; min-width:100%; }', $js);
 	pg_assert_contains("ol > .sd-wrap > .sd-loop-area > .sd-wrap > li, ol > .sd-wrap > .sd-loop-area > .sd-ghost > li { list-style-position:inside; }", $js);
 	// The architect's note (channel 6539): the bullets clear the frame's
