@@ -9,7 +9,7 @@ description: Plan channel-commands, steps CC1 to CC6: the registry with no chang
   - Existing: `includes/workspace/commands.php`: the literal list of `ws_commands()`, the switch of `ws_command_run()`, the branches of `ws_command_suggest()`, `ws_command_offered()` and `ws_api_command_kind()` become lookups. A `case` body moves into a runner function unchanged; no `lang()` text is touched.
   - Tests, red first: every key has a runner that exists; the ordered keys equal today's; an application's command named as a built-in is shadowed. `tests/workspace_commands_test.php` and `tests/workspace_command_run_test.php` stay green.
   - Memory: `workspace/workspace-command-registry.md` rewritten for the entry; the census files deleted, what lasts moved there.
-  - Cut: CC1a done (#10007, list, names, gate, API class); CC1b done (#PR, runners, live lines).
+  - Cut: CC1a done (#10007, list, names, gate, API class); CC1b done (#10016, runners, live lines).
   - Features: K1 to K3.
 
 - CC2 (M) after CC1: the gate, /help, the list in groups, commands as a reply.
