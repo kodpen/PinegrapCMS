@@ -875,8 +875,8 @@
     // from the graph canvas core's arrange() (window.PGGraphCanvas, read
     // when called): the tab frames in a grid of bands, one per section of
     // opts.sections ([{ id, label, keys }], the tab groups in the strip's
-    // order), the tabs in none last under opts.rest, one unlabelled band
-    // without sections; inside a band the flow from the first tab (the
+    // order), the tabs in none under opts.rest (first when the first tab is
+    // one of them, else last), one unlabelled band without sections; inside a band the flow from the first tab (the
     // start, breadth-first over the tab-to-tab arrows, the strip's order
     // between equals, the unreached last). The shared frames stand in a
     // column before the grid under opts.shared, the chips in one after it
@@ -998,8 +998,15 @@
         });
 
         var rest = pageIds.filter(function (id) { return !used[id]; });
+        var restBand = { id: 'pages', label: bands.length ? str(opts.rest) : '', items: rest };
 
-        bands.push({ id: 'pages', label: bands.length ? str(opts.rest) : '', items: rest });
+        // The start's band leads: the tabs in no group come first when the
+        // first tab is one of them, else last.
+        if (start !== '' && !used[start]) {
+            bands.unshift(restBand);
+        } else {
+            bands.push(restBand);
+        }
         bands.forEach(function (band) {
             band.items.sort(function (a, b) { return rank[a] - rank[b]; });
         });

@@ -6486,6 +6486,10 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
 .sd-proto-title { font-weight: 600; font-size: .85rem; }
 .sd-proto-status { flex: 1; min-width: 0; font-size: .75rem; color: var(--sd-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sd-proto-tools { display: flex; align-items: center; gap: 2px; }
+.sd-proto-btn-label { font-size: .75rem; }
+@media (max-width: 767.98px) {
+    .sd-proto-btn-label { display: none; }
+}
 .sd-proto-stage { flex: 1; border: 0; border-radius: 0; background: #1b1e22; }
 .sd-proto-stage .pgc-viewport { background-image: radial-gradient(circle, rgba(255,255,255,.14) 1px, transparent 1.25px); }
 .sd-proto .pgc-node {

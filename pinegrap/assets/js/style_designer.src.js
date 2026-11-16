@@ -68449,7 +68449,12 @@ const StyleDesigner = (function () {
         tools.appendChild(ui.zoomLabel);
         tools.appendChild(_sdProtoButton('bi-zoom-in', _sdT('Zoom In'), function () { if (_sdProto.canvas) _sdProto.canvas.view.zoomBy(1.2); }));
         tools.appendChild(_sdProtoButton('bi-arrows-fullscreen', _sdT('Fit to screen'), function () { if (_sdProto.canvas) _sdProto.canvas.view.fit(); }));
-        tools.appendChild(_sdProtoButton('bi-grid-3x3-gap', _sdT('Tidy up'), function () { _sdProtoTidy(); }));
+        // Tidy up changes every editor's arrangement, so it carries its name
+        // beside the icon (hidden on a phone, where the title and the label
+        // still name it).
+        var tidy = _sdProtoButton('bi-grid-3x3-gap', _sdT('Tidy up'), function () { _sdProtoTidy(); });
+        tidy.appendChild(_sdProtoEl('span', 'sd-proto-btn-label', _sdT('Tidy up')));
+        tools.appendChild(tidy);
         tools.appendChild(_sdProtoButton('bi-arrow-clockwise', _sdT('Read the links again'), function () { _sdProtoLoad(); }));
         tools.appendChild(_sdProtoButton('bi-x-lg', _sdT('Close the prototype view'), function () { _sdProtoClose(); }));
         bar.appendChild(tools);
@@ -68758,10 +68763,11 @@ const StyleDesigner = (function () {
 
     // Tidy up: every frame and chip back in the arrangement, after a
     // confirmation. An operator who may arrange the tabs clears the places
-    // shared on the design and this browser's; anyone else only this
+    // shared on the design and this browser's; anyone else, and anyone in
+    // view mode (the design is being edited in another tab), only this
     // browser's, and is told the shared ones stay.
     function _sdProtoTidy() {
-        var shared = _pgTabLayoutEditable() && !!(_design && _design.styleId);
+        var shared = _pgTabLayoutEditable() && !!(_design && _design.styleId) && _collab.mayEdit !== false;
         var msg = shared
             ? _sdT('Put every page and address back in its place? Places moved by hand are cleared for every editor of this design.')
             : _sdT('Put every page and address back in its place in this browser? Places shared on the design stay as they are.');

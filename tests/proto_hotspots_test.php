@@ -401,6 +401,14 @@ function test_proto_hotspots_layout_arranges_sections_in_flow_order()
 	pg_assert_same(array('p:t1'), $result['start'], 'only the first tab is the start');
 	pg_assert_true($result['again'], 'the same answer for the same design');
 	pg_assert_same(0, $result['plain'], 'without sections one band and no heading');
+
+	// A first tab in no group: the pages in none lead, the start in the
+	// grid's first cell; the groups follow in the strip's order.
+	$lead = proto_hotspots_test_node('var d = { pages: ["home", "a1", "a2", "about"].map(function (k) { return { key: k, name: k, hotspots: [] }; }), shared: [] };'
+		. ' var l = H.layout(d, {}, { sections: [{ id: "g", label: "Group", keys: ["a1", "a2"] }], rest: "Pages" });'
+		. ' out = { at: l.frames.map(function (f) { return [f.id, f.x, f.y]; }), headings: l.headings.map(function (h) { return [h.id, h.y]; }) };');
+	pg_assert_same(array(array('p:home', 0, 40), array('p:a1', 0, 260), array('p:a2', 344, 260), array('p:about', 344, 40)), $lead['at'], 'the start\'s band first, the start in its first cell');
+	pg_assert_same(array(array('pages', 0), array('g', 220)), $lead['headings'], '"Pages" first, then the group');
 }
 
 // Which rows an arrow may be drawn from and where it may end: a link of
@@ -562,8 +570,10 @@ function test_proto_hotspots_view_arrangement_and_tidy_up()
 	pg_assert_contains("byGroup[gid] = { id: gid, label: _pgTabGroupLabel(gid), keys: [] };", $source, 'a section per tab group, named as the strip names it');
 	pg_assert_contains("return { sections: sections, rest: _sdT('Pages'), shared: _sdT('Shared parts'), outside: _sdT('Outside this design') };", $source, 'the headings are translated');
 	pg_assert_contains("if (item.start) head.appendChild(_sdProtoEl('span', 'sd-proto-start', _sdT('Start')));", $source, 'the start frame says so');
-	pg_assert_contains("_sdProtoButton('bi-grid-3x3-gap', _sdT('Tidy up'), function () { _sdProtoTidy(); })", $source, 'Tidy up sits in the bar');
-	pg_assert_contains('var shared = _pgTabLayoutEditable() && !!(_design && _design.styleId);', $tidy, 'the shared places only for an operator who may arrange the tabs');
+	pg_assert_contains("var tidy = _sdProtoButton('bi-grid-3x3-gap', _sdT('Tidy up'), function () { _sdProtoTidy(); });\n        tidy.appendChild(_sdProtoEl('span', 'sd-proto-btn-label', _sdT('Tidy up')));", $source, 'Tidy up sits in the bar with its name');
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/style_designer.css');
+	pg_assert_true((bool) preg_match('/@media \(max-width: 767\.98px\) \{\s*\.sd-proto-btn-label \{ display: none; \}/', $css), 'the name is hidden on a phone only');
+	pg_assert_contains('var shared = _pgTabLayoutEditable() && !!(_design && _design.styleId) && _collab.mayEdit !== false;', $tidy, 'the shared places only for an operator who may arrange the tabs, never in view mode');
 	pg_assert_contains('if (!window.confirm(msg)) return;', $tidy, 'nothing before the confirmation');
 	pg_assert_contains("_pgTabProto = {};\n            _pgTabsLayoutSave();", $tidy, 'the shared places cleared through the tab layout save');
 	pg_assert_contains('_sdProtoLocalWrite({});', $tidy, 'and this browser\'s');
