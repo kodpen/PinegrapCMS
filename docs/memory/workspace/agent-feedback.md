@@ -1,6 +1,6 @@
 ---
 name: agent-feedback
-description: Right or Wrong on an agent's reply (AF5a #9814, AF5b #PRNUM): the ws_agent_feedback table, who marks, the buttons under a reply, the counts on the cards, GET /workspace/agent-feedback
+description: Right or Wrong on an agent's reply (AF5a #9814, AF5b #9850): the ws_agent_feedback table, who marks, the buttons under a reply, the counts on the cards, GET /workspace/agent-feedback
 ---
 
 ## What is it for?
