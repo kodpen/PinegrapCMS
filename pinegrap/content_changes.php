@@ -65,6 +65,13 @@ $compare_line = function ($label, $was, $now) {
     return '<tr><th scope="row" class="pg-text-2">' . h($label) . '</th><td>' . $show($was) . '</td><td>' . $show($now) . '</td></tr>';
 };
 
+// The page settings by the names the page settings panel gives them.
+$field_labels = array(
+    'page_title'            => lang('Title'),
+    'page_meta_description' => lang('Description'),
+    'page_search_keywords'  => lang('Keywords'),
+);
+
 $rows_html = '';
 $now = time();
 
@@ -94,13 +101,13 @@ foreach (pg_content_proposals_list() as $row) {
             $lines .= $compare_line(lang('Page'), lang('As on the site'), lang('Rewritten by the editor'));
         } elseif ($name === 'fields') {
             foreach ((array) $op['fields'] as $key => $value) {
-                $lines .= $compare_line($key, $op['was'][$key] ?? '', $value);
+                $lines .= $compare_line($field_labels[$key] ?? $key, $op['was'][$key] ?? '', $value);
             }
         }
     }
 
     $form = function ($action, $label, $class, $extra = '') use ($row) {
-        return '<form method="post" class="pg-look-line">' . get_token_field()
+        return '<form method="post" class="d-flex flex-wrap align-items-center gap-2">' . get_token_field()
             . '<input type="hidden" name="proposal_id" value="' . (int) $row['id'] . '"/>'
             . '<input type="hidden" name="action" value="' . h($action) . '"/>' . $extra
             . '<button type="submit" class="pg-button ' . $class . ' pg-button-sm">' . h($label) . '</button></form>';
@@ -137,11 +144,11 @@ foreach (pg_content_proposals_list() as $row) {
         . '<div class="pg-list-row-head"><span class="pg-list-row-title">' . $page_link . ' <span class="pg-list-row-title-verb">'
         . h(lang(array('string' => 'by {var:1}', 'vars' => array((string) $row['editor_name'])))) . '</span></span>'
         . '<span class="pg-pill ' . $tone[0] . '">' . h($tone[1]) . '</span>'
-        . '<span class="pg-list-row-time">' . h(get_relative_time(array('timestamp' => (int) $row['created_at']))) . '</span></div>'
+        . '<span class="pg-list-row-time">' . get_relative_time(array('timestamp' => (int) $row['created_at'])) . '</span></div>'
         . $note
         . '<details><summary class="pg-text-2">' . h(lang('Compare')) . '</summary>'
-        . '<table class="table"><thead><tr><th scope="col"></th><th scope="col">' . h(lang('On the site')) . '</th><th scope="col">' . h(lang('Proposed')) . '</th></tr></thead><tbody>' . $lines . '</tbody></table></details>'
-        . (($actions !== '') ? '<div class="pg-list-row-actions">' . $actions . '</div>' : '')
+        . '<div class="overflow-auto"><table class="table"><thead><tr><th scope="col"></th><th scope="col">' . h(lang('On the site')) . '</th><th scope="col">' . h(lang('Proposed')) . '</th></tr></thead><tbody>' . $lines . '</tbody></table></div></details>'
+        . (($actions !== '') ? '<div class="pg-list-row-actions d-flex flex-wrap gap-2">' . $actions . '</div>' : '')
         . '</div></div>';
 }
 
