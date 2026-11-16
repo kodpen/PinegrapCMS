@@ -18,7 +18,7 @@ description: An app agent's progress note on a request it holds: the progress ro
 ## Where does it show?
 - `ws_agent_request_state()` adds `note` and `since` (`ws_agent_request_progress_line()`, only while `running` with a claim time): "since HH:MM" is the claim's time in the site's time zone, shown also without a note. `claudeStateLine()` (`workspace.js`) draws them after "@handle is working on it" as `· note` (italic, wraps) and `· since HH:MM`. Claude's, Pinegrap AI's and MCP lines carry neither.
 - The line's shape follows the width of the column it stands in (a container query on `.ws-claude-states`, `backend.src.css`), never the window's (#10029: in the discussion panel the label went one word a line and the note a few letters wide).
-- Under 40rem (a discussion panel, a narrow channel column, a phone) the first line holds icon, label, since and Stop, the label cut with an ellipsis and titled; the note stands on its own line under the label, wraps between words and is never cut. From 40rem: one line, label · note · since, as before. Every state draws by this rule.
+- Under 40rem (a discussion panel, a narrow channel column, a phone) the first line holds icon, label, since and Stop; a sent or running label stays on one line, cut with an ellipsis and titled, a sentence label (waiting, failed, cancelled) wraps between words; the note stands on its own line under the label, wraps between words and is never cut. From 40rem: one line, label · note · since, as before. Every state draws by this rule.
 - The request's read (`WorkspaceClaudeRequest`) carries `progress: {text, at}` while running, empty otherwise.
 - The agent's instructions (`ws_agent_instructions_request_lines()`) name the route, so `instructions_version` changed.
 

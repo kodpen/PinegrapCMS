@@ -20488,7 +20488,7 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
   container-type: inline-size;
 }
 /* A narrow column: the icon, the label, "since HH:MM" and Stop on the first
-   line, the label cut with an ellipsis when it does not fit; a progress
+   line; a progress
    note on a line of its own under them, starting where the label starts.
    The last track is flexible, so the note's length never widens the
    tracks of the first line. */
@@ -20502,10 +20502,18 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
   font-size: .76rem;
   color: var(--pg-fg-2);
 }
+/* A label sharing its line with since and Stop (sent, running) stays on
+   one line and is cut with an ellipsis, the whole label in its title. A
+   label that is a sentence (waiting, failed, cancelled: it says when it is
+   tried again) wraps between words; only a word longer than the line is
+   cut. */
 .ws-claude-state .ws-claude-label {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+.ws-claude-state.ws-claude-sent .ws-claude-label,
+.ws-claude-state.ws-claude-running .ws-claude-label {
   white-space: nowrap;
 }
 .ws-claude-state.ws-claude-running > .bi,
@@ -20544,7 +20552,6 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
     flex-shrink: 0;
   }
   .ws-claude-state .ws-claude-label {
-    flex-shrink: 1;
     max-width: 50%;
   }
   .ws-claude-state .ws-claude-note-dot {
