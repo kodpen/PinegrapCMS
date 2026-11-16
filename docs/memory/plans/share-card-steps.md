@@ -10,7 +10,7 @@ description: Plan share-card, steps OG1 to OG3: the card and its address, the sw
   - Tests, red first: the wrap (a short title, three full lines, a word longer than a line), the signature changing with the title, a stale signature and a private item answering 404, a host that cannot draw.
   - Features: S4, S5, S7 to S10, S12.
 
-- OG2 (S) after OG1: the switch and the page.
+- OG2 (S) after OG1: the switch and the page. Done in #9929.
   - Existing files: `includes/settings/prep.php` and `includes/settings/seo.php` (the Social Sharing part), `includes/settings/seo.save.php` (its save), `get_page_content.php` (one call just before `$og_image = pg_og_default_image()`, and the width, height and type), the SEO check and the warning of S14.
   - Tests: no card with the switch off, an item's own picture and a custom meta tag winning, the served language's title in the signature.
   - Pictures: the settings part off, on and on a host that cannot draw; the sample cards. To the owner; not marked ready before his look.
