@@ -82,7 +82,7 @@
 - prototype-canvas-features-3.md: Plan prototype-canvas, features F26 to F34 from the owner's answer of 2026-11-16: empty links and unreached pages marked, a target suggested for empty links and written only when he applies
 - prototype-canvas-features.md: Plan prototype-canvas, features F1 to F14: what a frame of the Prototype view shows, how pages are arranged, which arrows are drawn and how an arrow runs
 - prototype-canvas-rules.md: Plan prototype-canvas: what today's Prototype view does that no step may lose (K1 to K9), the rules every step keeps, and what a step's PR body carries so that no feature is skipped
-- prototype-canvas-steps-2.md: Plan prototype-canvas, the view steps PV2, PV4 and PV6: the grid arrangement and Tidy up, the selected frame's arrows, the list of its links and the problems
+- prototype-canvas-steps-2.md: Plan prototype-canvas, the view steps PV2, PV4, PV4b and PV6: the grid arrangement and Tidy up, the selected frame's arrows, many shared parts, the list and the problems
 - prototype-canvas-steps-3.md: Plan prototype-canvas, steps PV7 to PV10 and PV12: the page picture's technical check, the picture in the frame, marks on it, drawing from a mark, close-out
 - prototype-canvas-steps-4.md: Plan prototype-canvas, steps PV11a and PV11b from the owner's answer of 2026-11-16: empty links and unreached pages as problems, then the Suggest targets dialog
 - prototype-canvas-steps.md: Plan prototype-canvas, the engine steps PV1, PV3 and PV5: graph logic, focus and routing added to the graph canvas core as optional parts that Flows does not pass
