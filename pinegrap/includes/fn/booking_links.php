@@ -171,7 +171,8 @@ function pg_booking_link_url($member)
 {
     $code = pg_booking_link_code($member, pg_booking_key());
 
-    return ($code === '') ? '' : URL_SCHEME . HOSTNAME_SETTING . PATH . 'book_with.php?c=' . $code;
+    // book_with.php sits beside the other root files, in the software folder.
+    return ($code === '') ? '' : URL_SCHEME . HOSTNAME_SETTING . PATH . SOFTWARE_DIRECTORY . '/book_with.php?c=' . $code;
 }
 
 /**
