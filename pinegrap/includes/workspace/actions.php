@@ -4142,6 +4142,19 @@ function ws_handle_action($action, $request)
 
             return ($error === '') ? ws_action_ok() : ws_action_error($error);
 
+        // Right or Wrong on an agent's reply, or the mark taken back
+        // (verdict ''): the asker and the channel's managers only
+        // (agent_feedback.php).
+        case 'ws_agent_feedback':
+            $verdict = (string) ($request['verdict'] ?? '');
+            $marked = ws_agent_feedback_mark($viewer, (int) ($request['message_id'] ?? 0), ($verdict === '') ? null : $verdict, (string) ($request['reason'] ?? ''));
+
+            if (!$marked['ok']) {
+                return ws_action_error($marked['error']);
+            }
+
+            return ws_action_ok(array('feedback' => array('verdict' => $verdict, 'reason' => ($verdict === '') ? '' : (string) ($marked['reason'] ?? ''))));
+
         // Whether Pinegrap AI may be asked in a channel.
         case 'ws_channel_ai':
             $channel = ws_action_channel($viewer, $request, 'manage');

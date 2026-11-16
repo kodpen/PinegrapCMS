@@ -1,6 +1,6 @@
 ---
 name: agent-feedback
-description: Right or Wrong on an agent's reply (AF5a #9814): the ws_agent_feedback table, who marks, one mark per reply, GET /workspace/agent-feedback with the 7- and 30-day counts
+description: Right or Wrong on an agent's reply (AF5a #9814, AF5b #PRNUM): the ws_agent_feedback table, who marks, the buttons under a reply, the counts on the cards, GET /workspace/agent-feedback
 ---
 
 ## What is it for?
@@ -14,7 +14,12 @@ description: Right or Wrong on an agent's reply (AF5a #9814): the ws_agent_feedb
 - `ws_agent_feedback_mark($viewer, $message_id, $verdict, $reason)` in `includes/workspace/agent_feedback.php`, the one writer; `$verdict` null takes the mark back (deletes the row). The check is `ws_agent_feedback_check()` (pure).
 - Only an answered request of an application or model agent whose `reply_message_id` is the message, the reply not deleted, else 404; the person must read the channel (404 otherwise). The person who asked (`requested_by`) or a manager of the channel (`ws_can_manage_channel()`), else 403.
 - A new mark by either replaces verdict, reason, `marked_by` and `marked_at`: the last mark stands. The reason folds spaces and is at most 300 characters (422).
-- No panel action or person's route yet: the buttons under a reply come with AF5b and call this writer.
+- The panel action `ws_agent_feedback` (`actions.php`, listed in `panel/actions.php`): `message_id`, `verdict` right / wrong / '' (takes it back), `reason`; it calls this writer and answers its refusal. No person's API route.
+
+## What does the panel show? (AF5b)
+- Under an agent's reply, after its reactions: "Was this answer right?" with Correct and Wrong (thumbs up / down), only for the asker and the channel's managers: the message payload's `feedback` (`ws_agent_feedback_map()`, `ws_agent_feedback_offer()`) is null for anybody else. `feedbackNode()` in `workspace.js`.
+- The chosen mark shows pressed in the answered (green) or failed (red) colour and the line reads "Marked"; a press on it takes it back. Wrong opens a reason box (optional, 300 characters) with Save and Cancel; the reason shows in italics under the line.
+- The counts: "Right or Wrong: 7 days: n right · n wrong; 30 days: …" (`ws_agent_feedback_counts_text()`, one grouped query `ws_agent_feedback_counts_by_agent()`), in the Agents card row's facts line (`agent-activity.md`) and as a row of the agent card (`agent-card-look.md`, `feedback`); left out while nothing was marked in 30 days.
 
 ## What does the agent read?
 - `GET /workspace/agent-feedback` (`workspace.agent_feedback.get`, `workspace:read`, `'mcp' => false`, in `api_agent_requests.php`): only an active app agent's own key (`ws_api_agent_caller()`, 403 otherwise).

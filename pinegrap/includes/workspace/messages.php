@@ -204,6 +204,9 @@ function ws_message_payloads($viewer, $rows, $options = array())
         // propose.
         'claude'     => function_exists('ws_claude_requests_map') ? ws_claude_requests_map($ids) : array(),
         'drafts'     => function_exists('ws_claude_drafts_map') ? ws_claude_drafts_map($viewer, $ids) : array(),
+        // Right or Wrong on an agent's reply, for the asker and the
+        // channel's managers only (agent_feedback.php).
+        'feedback'   => function_exists('ws_agent_feedback_map') ? ws_agent_feedback_map($viewer, $ids) : array(),
         'changes'    => function_exists('ws_changes_map') ? ws_changes_map($viewer, $ids) : array(),
         // Page changes the answers propose (includes/designer_ai.php).
         'design'     => (function_exists('ws_design_ai') && ws_design_ai()) ? pg_design_ai_proposals_map($viewer, $ids) : array(),
@@ -439,6 +442,8 @@ function ws_message_payload($viewer, $row, $refs, $people, $tasks, $assignees, $
             return ws_claude_request_state($viewer, $row);
         }, $extra['claude'][$id]) : null,
         'drafts'      => $deleted ? array() : ($extra['drafts'][$id] ?? array()),
+        // The mark on an agent's reply, null for a reader who may not mark it.
+        'feedback'    => $deleted ? null : ($extra['feedback'][$id] ?? null),
         'changes'     => $deleted ? array() : ($extra['changes'][$id] ?? array()),
         'design'      => $deleted ? array() : ($extra['design'][$id] ?? array()),
         // Mentioned, but not in the channel (see ws_message_mention_invite()).

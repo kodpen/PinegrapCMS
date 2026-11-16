@@ -20093,6 +20093,44 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
 .ws-claude-state.ws-claude-cancelled {
   color: var(--pg-danger-fg-emphasis);
 }
+/* Right and Wrong under an agent's reply: the state line's colour at the
+   scale's 12 px; the chosen mark takes the answered or failed colour. */
+.ws-agent-feedback {
+  max-width: 34rem;
+  margin-top: .3rem;
+  font-size: .75rem;
+  color: var(--pg-fg-2);
+}
+.ws-agent-feedback-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .25rem;
+}
+.ws-agent-feedback-row .ws-agent-feedback-mark {
+  font-size: inherit;
+  color: inherit;
+}
+.ws-agent-feedback-row .ws-agent-feedback-mark.is-right {
+  color: var(--pg-success);
+}
+.ws-agent-feedback-row .ws-agent-feedback-mark.is-wrong {
+  color: var(--pg-danger-fg-emphasis);
+}
+.ws-agent-feedback-reason {
+  margin-top: .2rem;
+  overflow-wrap: anywhere;
+  font-style: italic;
+}
+.ws-agent-feedback-form {
+  display: grid;
+  gap: .3rem;
+  margin-top: .3rem;
+}
+.ws-agent-feedback-actions {
+  display: flex;
+  gap: .3rem;
+}
 /* One column no wider than the list: a card is never wider than its text
    column, so a flow drawing wider than the card scrolls in its own pane
    instead of widening the card and the whole channel with it. */
