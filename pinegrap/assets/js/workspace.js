@@ -4845,6 +4845,165 @@
         return node;
     }
 
+    // ── Drawer form parts (look A) ─────────────────────────────────────
+
+    // The parts a drawer form is built from in look A: a field (label bound
+    // to its control, help and error lines), text, date and time inputs, a
+    // textarea, a select, a pair of fields side by side, a switch row, a
+    // segmented choice and the footer's buttons. My calendar's plan drawer
+    // and its roadmap are built from them; formRow() stays for the forms in
+    // Bootstrap's small look.
+    var formParts = {
+        // A field: its caption bound to the control (an id is given when it
+        // has none), then an optional muted help line.
+        field: function (label, control, help) {
+            var row = el('div', 'ws-plan-field');
+            var caption = el('label', 'pg-field-label', label);
+
+            control.id = control.id || nextId('ws-plan-');
+            caption.htmlFor = control.id;
+            row.appendChild(caption);
+            row.appendChild(control);
+
+            if (help) {
+                row.appendChild(el('div', 'pg-text-meta', help));
+            }
+
+            return row;
+        },
+
+        // A field whose control is a group (a segmented choice, a picker):
+        // the caption is a plain text, the group carries its own name.
+        group: function (label, control) {
+            var row = el('div', 'ws-plan-field');
+
+            row.appendChild(el('span', 'pg-field-label', label));
+
+            if (control) {
+                row.appendChild(control);
+            }
+
+            return row;
+        },
+
+        // A help line under a picker, and its error line, hidden until shown.
+        help: function (text) {
+            return el('div', 'pg-field-help', text);
+        },
+
+        error: function (text) {
+            return el('div', 'pg-field-help pg-field-error d-none', text);
+        },
+
+        // An input: date and time on the panel's calendar (data-pg-*
+        // hooks), anything else a typed box. small: the compact height.
+        input: function (type, value, small) {
+            var node = el('input', 'pg-input' + (small ? ' pg-input-sm' : ''));
+
+            if (type === 'date' || type === 'time') {
+                pgDateField(node, type);
+            } else {
+                node.type = type;
+            }
+
+            node.value = (value === undefined || value === null) ? '' : value;
+
+            return node;
+        },
+
+        textarea: function (value, rows) {
+            var node = el('textarea', 'pg-input');
+
+            node.rows = rows || 4;
+            node.value = value || '';
+
+            return node;
+        },
+
+        // A select of [value, text] pairs. Drawn as the plan drawer's selects
+        // are today; look A's select recipe replaces it with "Add to the plan".
+        select: function (options, value, small) {
+            var node = el('select', 'form-control' + (small ? ' form-control-sm' : ''));
+
+            options.forEach(function (option) {
+                var item = el('option', '', option[1]);
+                item.value = option[0];
+                node.appendChild(item);
+            });
+
+            if (value !== undefined) {
+                node.value = value;
+            }
+
+            return node;
+        },
+
+        // Two fields side by side, on every width.
+        pair: function () {
+            var row = el('div', 'ws-plan-pair');
+
+            Array.prototype.forEach.call(arguments, function (child) {
+                if (child) {
+                    row.appendChild(child);
+                }
+            });
+
+            return row;
+        },
+
+        // A switch with its words, the whole row its label.
+        switchRow: function (label, checked) {
+            var row = el('label', 'ws-plan-switch');
+            var input = el('input', 'pg-switch');
+
+            input.type = 'checkbox';
+            input.checked = !!checked;
+            row.appendChild(input);
+            row.appendChild(document.createTextNode(label));
+
+            return { row: row, input: input };
+        },
+
+        // A segmented choice of [value, text] pairs, named as a group;
+        // onPick(value) on a click. The pressed state is set by the caller.
+        seg: function (label, options, onPick, extra) {
+            var node = el('div', 'pg-seg' + (extra ? ' ' + extra : ''));
+            var items = {};
+
+            node.setAttribute('role', 'group');
+            node.setAttribute('aria-label', label);
+
+            options.forEach(function (option) {
+                var item = el('button', 'pg-seg-item', option[1]);
+
+                item.type = 'button';
+                item.addEventListener('click', function () { onPick(option[0]); });
+                items[option[0]] = item;
+                node.appendChild(item);
+            });
+
+            return { node: node, items: items };
+        },
+
+        // The footer's buttons: Save (fill) at the right, Delete (danger) at
+        // the left.
+        save: function (text) {
+            var node = el('button', 'pg-button pg-button-fill pg-button-sm', text);
+
+            node.type = 'button';
+
+            return node;
+        },
+
+        remove: function (text) {
+            var node = el('button', 'pg-button pg-button-danger pg-button-sm me-auto', text);
+
+            node.type = 'button';
+
+            return node;
+        }
+    };
+
     var uid = 0;
 
     function nextId(prefix) {
@@ -7865,6 +8024,8 @@
             formRow: formRow, select: select, nextId: nextId, ask: ask, fail: fail, toast: toast,
             richField: richField, peoplePicker: peoplePicker, touchScreen: touchScreen,
             cfg: CFG, dateField: pgDateField,
+            // The drawer form parts in look A (formParts).
+            form: formParts,
             openTask: function (taskId) { taskDrawer.open(taskId, null, taskDrawer.onSaved); },
             // The task drawer and the plan item form, each calling done()
             // after a save, for a screen that draws them again (My calendar).
@@ -29263,6 +29424,7 @@
             select: select,
             dateField: pgDateField,
             dateShown: dateShown,
+            form: formParts,
             avatar: avatar,
             avatarStack: avatarStack,
             agentFace: agentFace,
