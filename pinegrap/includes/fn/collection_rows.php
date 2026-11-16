@@ -17,6 +17,9 @@
  * the removed rows deleted; a failure midway deletes the rows the save
  * created. The writes themselves are passed in (pg_coll_rows_db_ops()), so
  * the order and the undo are tested without a database.
+ * pg_coll_rows_list_sql() and pg_coll_rows_shown_value() serve a form list's
+ * dynamic value 'shown record rows': on a record page, the rows of the
+ * record shown, in the field's order.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -622,4 +625,57 @@ function pg_coll_rows_db_ops($spec, $form_id, $field, $user_id)
             return ($id > 0) && pg_submitted_form_delete($id) !== false;
         },
     );
+}
+
+/**
+ * The condition and order of a list of the rows a rows field holds (pure):
+ * the records of the list's form whose reference code is one of $codes
+ * (pg_coll_rows_codes()), in that order. No code lists no record; a code
+ * that names no record matches nothing and leaves the others' order as it
+ * is.
+ *
+ * @param mixed $codes
+ * @return array array('where' => " AND (…)", 'order' => ORDER BY part or '')
+ */
+function pg_coll_rows_list_sql($codes)
+{
+    if (!is_array($codes) || !$codes) return array('where' => ' AND (TRUE = FALSE)', 'order' => '');
+    $quoted = array();
+    foreach ($codes as $code) $quoted[] = "'" . e((string)$code) . "'";
+    $list = implode(', ', $quoted);
+    return array(
+        'where' => " AND (forms.reference_code IN ($list))",
+        'order' => "FIELD(forms.reference_code, $list) ASC",
+    );
+}
+
+/**
+ * The stored value of the rows field named $field_name of the complete
+ * record whose reference code is $parent_code, when that field keeps its
+ * rows in the form on $child_page_id; '' when there is no such record or
+ * field.
+ *
+ * @param int    $child_page_id the list's form
+ * @param string $parent_code   the shown record's code
+ * @param string $field_name    the rows field's name
+ * @return string
+ */
+function pg_coll_rows_shown_value($child_page_id, $parent_code, $field_name)
+{
+    $child_page_id = (int)$child_page_id;
+    $parent_code = (string)$parent_code;
+    $field_name = trim((string)$field_name);
+    if ($child_page_id <= 0 || $parent_code === '' || $field_name === '' || !pg_coll_ready()) return '';
+
+    return (string)db_value(
+        "SELECT form_data.data FROM forms
+         INNER JOIN form_fields ON form_fields.page_id = forms.page_id
+         INNER JOIN form_data ON form_data.form_id = forms.id AND form_data.form_field_id = form_fields.id
+         WHERE forms.reference_code = '" . e($parent_code) . "'
+           AND forms.complete = 1
+           AND form_fields.name = '" . e($field_name) . "'
+           AND form_fields.type = 'text box'
+           AND form_fields.collection_kind = 'rows'
+           AND form_fields.reference_page_id = '$child_page_id'
+         LIMIT 1");
 }
