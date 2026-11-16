@@ -14540,10 +14540,10 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
 @media (min-width: 1700px) {
   :where(.ws-pane-messages:not(.ws-thread-pane) > .ws-msg[data-ws-tone]) {
     --ws-msg-tone: var(--pg-primary);
-    background: color-mix(in srgb, var(--ws-msg-tone) 5%, transparent);
+    background: color-mix(in srgb, var(--ws-msg-tone) var(--ws-msg-tint, 5%), transparent);
   }
   .ws-pane-messages:not(.ws-thread-pane) > .ws-msg[data-ws-tone]:hover:not(.ws-msg-highlight, .ws-msg-selected) {
-    background: color-mix(in srgb, var(--ws-msg-tone) 8%, transparent);
+    background: color-mix(in srgb, var(--ws-msg-tone) var(--ws-msg-tint-hover, 8%), transparent);
   }
   :where(html[data-bs-theme="dark"] .ws-pane-messages:not(.ws-thread-pane) > .ws-msg[data-ws-tone]) {
     background: color-mix(in srgb, var(--ws-msg-tone) 2.2%, transparent);
@@ -14554,6 +14554,12 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
   .ws-msg[data-ws-tone="info"] { --ws-msg-tone: var(--pg-info); }
   .ws-msg[data-ws-tone="warning"] { --ws-msg-tone: var(--pg-warning); }
   .ws-msg[data-ws-tone="accent"] { --ws-msg-tone: var(--pg-tone-violet); }
+  /* Yellow and violet read stronger on white than the other tones, so in
+     the light theme they take a softer share (the dark rules ignore it). */
+  .ws-msg[data-ws-tone="warning"], .ws-msg[data-ws-tone="accent"] {
+    --ws-msg-tint: 3%;
+    --ws-msg-tint-hover: 5%;
+  }
   .ws-msg[data-ws-tone="danger"] { --ws-msg-tone: var(--pg-danger); }
   .ws-msg[data-ws-tone="secondary"] { --ws-msg-tone: var(--pg-secondary); }
   .ws-msg[data-ws-tone="success"] { --ws-msg-tone: var(--pg-success); }
