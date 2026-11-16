@@ -14,7 +14,7 @@ description: Plan design-canvas-quick-reach, steps QR1 to QR4: quick split, sele
   - The census table comes first in the PR body. A tool whose press cannot be changed without breaking its own work is left and named.
   - No new look: nothing is drawn that was not there.
 
-- QR3 (L) after QR1 and QR2: the bar over the object and the Motion popover, R13 to R22.
+- QR3 (L) after QR1 and QR2: the bar over the object and the Motion popover, R13 to R22. Done: #10003.
   - Files: `pg_image_editor_actions.js`, the model beside `actionList()`, `pg_image_editor_motion.js` (the popover's tiles come from the panel's own builder), `pg_image_editor_menu.js` (More), `pg_image_editor_strings_actions()`, the actions' rules in the stylesheet.
   - Over about 1,000 product lines the popover (R19 to R22) moves to a step QR3b after it; the bar then lands with Motion left out and the PR says so.
   - The owner's look: the pictures `plans/design-canvas-quick-reach.md` lists; not marked ready before it.
