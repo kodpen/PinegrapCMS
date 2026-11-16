@@ -7209,7 +7209,10 @@ function upgrade_2026_11_0_content_review() {
 // the secret handed back once, by which the worker fetches its message;
 // user_id is set only when the visitor was signed in, so the privacy export
 // and erasure find the row (the account's contact is reached through it).
-// site_push_message keeps the text and the counts the panel shows. site_push_queue is keyed by message and
+// site_push_message keeps the text, the kind (0 news to every subscriber,
+// 1 a test, 2 a stock notice, 3 an order's moment: only 0 is listed as sent
+// in the panel) and the counts the panel shows; url is a path inside the
+// site, without the host, opened by the worker on its own origin. site_push_queue is keyed by message and
 // subscription; idx_due serves the sender's pass, idx_subscription the
 // worker's fetch. No backfill: nothing kept a visitor's subscription before
 // this step. Columns confirmed by the architect.
@@ -7239,7 +7242,7 @@ function upgrade_2026_11_0_site_push() {
 		title         VARCHAR(60) NOT NULL DEFAULT '',
 		body          VARCHAR(200) NOT NULL DEFAULT '',
 		url           VARCHAR(500) NOT NULL DEFAULT '',
-		is_test       TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		kind          TINYINT UNSIGNED NOT NULL DEFAULT 0,
 		created_by    INT UNSIGNED NOT NULL DEFAULT 0,
 		created_at    INT UNSIGNED NOT NULL DEFAULT 0,
 		queued_count  INT UNSIGNED NOT NULL DEFAULT 0,
@@ -7247,7 +7250,7 @@ function upgrade_2026_11_0_site_push() {
 		failed_count  INT UNSIGNED NOT NULL DEFAULT 0,
 		removed_count INT UNSIGNED NOT NULL DEFAULT 0,
 		PRIMARY KEY (id),
-		KEY idx_created (created_at)
+		KEY idx_kind_created (kind, created_at)
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_create_table('site_push_queue', "CREATE TABLE site_push_queue (

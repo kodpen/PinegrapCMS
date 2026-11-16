@@ -147,7 +147,8 @@ function pg_site_push_services()
 /**
  * The push service of an endpoint, or '' when it is not taken: https on the
  * default port, a known service's host, no user part, at most 500
- * characters (the column). Pure.
+ * characters (the column). A longer one is refused, never cut: a cut
+ * endpoint is a dead subscription. Pure.
  *
  * @param mixed $endpoint
  * @return string
@@ -192,7 +193,7 @@ function pg_site_push_endpoint_service($endpoint)
 /**
  * Whether a subscription's keys have the right length: p256dh an uncompressed
  * P-256 point (65 bytes, starting 0x04), auth 16 bytes, both base64url as the
- * browser gives them. Pure.
+ * browser gives them. A key of another length is refused, never cut. Pure.
  *
  * @param mixed $p256dh
  * @param mixed $auth
@@ -538,7 +539,8 @@ function pg_site_push_waiting_query($subscription_id, $now)
 
 /**
  * The message waiting for the browser of a secret, marked read, or null when
- * there is none (the worker then shows its fixed short notification).
+ * there is none (the worker then shows its fixed short notification). The
+ * url is a path inside the site; the worker opens it on its own origin.
  *
  * @param string $secret
  * @return array|null  title, body, url
