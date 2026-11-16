@@ -198,6 +198,11 @@ function test_workspace_agent_feedback_counts_text()
 	$text = ws_agent_feedback_counts_text($tally['agent:3']);
 	pg_assert_same(lang(array('string' => '7 days: {var:1} right · {var:2} wrong; 30 days: {var:3} right · {var:4} wrong', 'vars' => array(2, 0, 5, 1))), $text);
 	pg_assert_same('', ws_agent_feedback_counts_text(null), 'nothing marked: left out');
+	pg_assert_same(array(
+		lang(array('string' => '{var:1} days: {var:2} right · {var:3} wrong', 'vars' => array(7, 2, 0))),
+		lang(array('string' => '{var:1} days: {var:2} right · {var:3} wrong', 'vars' => array(30, 5, 1))),
+	), ws_agent_feedback_counts_lines($tally['agent:3']), 'the agent card\'s two lines');
+	pg_assert_same(array(), ws_agent_feedback_counts_lines(null));
 	pg_assert_same('', ws_agent_feedback_counts_text(array('days_7' => array('right' => 0, 'wrong' => 0), 'days_30' => array('right' => 0, 'wrong' => 0))));
 
 	pg_assert_contains('ws_agent_feedback_counts_text(', (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/agent_activity.php'), 'the Agents card row');

@@ -19,7 +19,7 @@ description: Right or Wrong on an agent's reply (AF5a #9814, AF5b #9850): the ws
 ## What does the panel show? (AF5b)
 - Under an agent's reply, after its reactions: "Was this answer right?" with Correct and Wrong (thumbs up / down), only for the asker and the channel's managers: the message payload's `feedback` (`ws_agent_feedback_map()`, `ws_agent_feedback_offer()`) is null for anybody else. `feedbackNode()` in `workspace.js`.
 - The chosen mark shows pressed in the answered (green) or failed (red) colour and the line reads "Marked"; a press on it takes it back. Wrong opens a reason box (optional, 300 characters) with Save and Cancel; the reason shows in italics under the line.
-- The counts: "Right or Wrong: 7 days: n right · n wrong; 30 days: …" (`ws_agent_feedback_counts_text()`, one grouped query `ws_agent_feedback_counts_by_agent()`), in the Agents card row's facts line (`agent-activity.md`) and as a row of the agent card (`agent-card-look.md`, `feedback`); left out while nothing was marked in 30 days.
+- The counts: "Right or Wrong: 7 days: n right · n wrong; 30 days: …" (`ws_agent_feedback_counts_text()`, one grouped query `ws_agent_feedback_counts_by_agent()`), in the Agents card row's facts line (`agent-activity.md`); on the agent card (`agent-card-look.md`) a "Right or Wrong" row with two stacked lines, 7 days and 30 days (`feedback`, `ws_agent_feedback_counts_lines()`); left out while nothing was marked in 30 days.
 
 ## What does the agent read?
 - `GET /workspace/agent-feedback` (`workspace.agent_feedback.get`, `workspace:read`, `'mcp' => false`, in `api_agent_requests.php`): only an active app agent's own key (`ws_api_agent_caller()`, 403 otherwise).

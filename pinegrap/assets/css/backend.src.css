@@ -12900,6 +12900,13 @@ b.ws-agent-card-anchor:focus-visible {
 .ws-agent-card-window .ws-agent-card-key {
   white-space: nowrap;
 }
+/* Right or Wrong: one line for 7 days, one for 30, stacked at the end. */
+.ws-agent-card-value.is-lines {
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0;
+  white-space: nowrap;
+}
 .ws-agent-card-high {
   color: var(--pg-tone-amber);
 }

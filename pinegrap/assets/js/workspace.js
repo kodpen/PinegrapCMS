@@ -3606,8 +3606,14 @@
         agentCardRow(facts, t('ac_today'), t('ac_today_counts', data.today.answered, data.today.failed));
 
         // How people marked its answers in 30 days; left out while none was.
-        if (data.feedback) {
-            agentCardRow(facts, t('ac_feedback'), data.feedback);
+        if (data.feedback && data.feedback.length) {
+            var marks = el('span', 'ws-agent-card-value is-lines');
+
+            data.feedback.forEach(function (line) {
+                marks.appendChild(el('span', '', line));
+            });
+
+            agentCardRow(facts, t('ac_feedback'), marks);
         }
         node.appendChild(facts);
 

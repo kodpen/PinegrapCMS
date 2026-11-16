@@ -371,6 +371,29 @@ function ws_agent_feedback_counts_text($counts)
 }
 
 /**
+ * The counts as the agent card's two short lines, 7 days and 30 days:
+ * empty when nothing was marked in 30 days. Pure.
+ *
+ * @param array|null $counts ws_agent_feedback_tally() shape
+ * @return string[]
+ */
+function ws_agent_feedback_counts_lines($counts)
+{
+    if (ws_agent_feedback_counts_text($counts) === '') {
+        return array();
+    }
+
+    $lines = array();
+
+    foreach (array(7, 30) as $days) {
+        $period = (array) ($counts['days_' . $days] ?? array());
+        $lines[] = lang(array('string' => '{var:1} days: {var:2} right · {var:3} wrong', 'vars' => array($days, (int) ($period['right'] ?? 0), (int) ($period['wrong'] ?? 0))));
+    }
+
+    return $lines;
+}
+
+/**
  * The texts of the marks under a reply in workspace.js.
  *
  * @return array key => text
