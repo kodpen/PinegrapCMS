@@ -61,7 +61,7 @@ function ws_app_command_check($input)
         return array('error' => 'name_invalid', 'field' => 'name');
     }
 
-    if (in_array(ws_command_fold($name), array_map('ws_command_fold', array_keys(ws_command_table())), true) || ws_command_assistant_word($typed)) {
+    if (ws_command_shadowed($typed)) {
         return array('error' => 'name_taken', 'field' => 'name');
     }
 
@@ -223,6 +223,7 @@ function ws_app_command_entry($row)
         'live'        => false,
         'app_id'      => (int) $row['app_id'],
         'app'         => (string) $row['app_name'],
+        'shadowed'    => false,
     );
 }
 
