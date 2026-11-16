@@ -37,6 +37,12 @@
 - content-review-features.md: Plan content-review, features V1 to V17: which items, what an item keeps, the states, the Content review screen, its actions, who sees what, the task, the flow event, the API
 - content-review-steps.md: Plan content-review, steps CH1 to CH5: the table and its rules, the Content review screen, the task and the flow event, the API, close-out
 - content-review.md: Plan (owner 2026-11-16, agent channel message 5667): a person and a "review by" date for a page or collection record, and the Content review screen of what is due; steps CH1 to CH5
+- course-progress-features.md: Plan course-progress, features Z1 to Z17: a course and its ordered lessons, when a lesson is open, marking done and quiz lessons, the learner's blocks, the certificate, the staff's learners list
+- course-progress-steps.md: Plan course-progress, steps CO1 to CO6: the tables and the rule of an open lesson, the Courses screen, the gate in the page's access path, the blocks and their script, the certificate, close-out
+- course-progress.md: Plan (owner 2026-11-16, agent channel poll 82): courses on the folder and pages that exist: ordered and timed lessons, progress, quiz lessons, a certificate, "My courses"; steps CO1 to CO6
+- customer-value-features.md: Plan customer-value, features U1 to U15: what counts as an order, who is a customer, the one summary the general job rebuilds, the Customers report's figures, rights, the API
+- customer-value-steps.md: Plan customer-value, steps CV1 to CV4: the measured rebuild and the one summary, the Customers report screen, the group from a cell with the CSV and the API, close-out
+- customer-value.md: Plan (owner 2026-11-16, agent channel poll 82): a Customers report of repeat purchase, value per customer, cohorts and customer groups, read from a summary the general job rebuilds; steps CV1 to CV4
 - design-canvas-follow-features.md: Plan design-canvas-follow, features F1 to F16: where Follow is offered, the box, the frames read, the tracker's method and its limits, the keys written, progress, cancel, lost, the tests
 - design-canvas-follow-steps.md: Plan design-canvas-follow, steps FW1 to FW3: the tracker and its tests, the Follow command in the Animate tool, then the bar's button, the phone and the close-out
 - design-canvas-follow.md: Plan (owner 2026-11-16): Follow in the Design Canvas's Animate tool: a text, vector or other layer moves with an area chosen on a video, by a tracker of our own that writes plain keyframes; FW1 to FW3
@@ -52,6 +58,9 @@
 - designer-closed-blocks.md: Plan (owner 2026-11-13, #9076): components the designer canvas draws as one closed block are listed, then opened into element trees; CB0, CB1 done, CB2 and on in designer-closed-blocks-steps.md
 - erp-edocument-leftovers.md: Open ERP work (e-document phase 3): Paraşüt send path, queue worker, İşbaşı live key, code lists, e-waybill, accountant sign-off; owner works on it locally
 - erp-parasut-open-work.md: Paraşüt work left after the rounds of 2026-10-23 to 26 (#1405-#1682): one live round when a new demo key comes, three decisions (#2440-#2442), the queue worker, incoming e-invoices; where to start
+- event-tickets-features.md: Plan event-tickets, features T1 to T15: which order lines give tickets, the ticket and its code, the holder's page and mail, check-in and its answers, cancel, places given back, the waiting list
+- event-tickets-steps.md: Plan event-tickets, steps TK1 to TK6: tickets made and voided, the holder's page, the check-in screen, places given back and the waiting list, the API and the product's mark, close-out
+- event-tickets.md: Plan (owner 2026-11-16, agent channel poll 82): a ticket with a QR code per place of an order, check-in at the door from a phone, and a waiting list when an event is full; steps TK1 to TK6
 - github-channel-connection.md: Plan (owner 2026-11-08): connect GitHub with OAuth from Settings › Connections, the site sets its own webhook on chosen repositories and writes CI, pull request and label lines into a channel
 - kodpen-vendor-api-client-design-update.md: Update contract of plans/kodpen-vendor-api-client.md still to build: which keys verify (P5c) and P2's release workflow; the built check, pin, download and beta builds are in platform/
 - kodpen-vendor-api-client-steps.md: Open steps of plans/kodpen-vendor-api-client.md: P2 and P5c before the 2026.11.0 release branch, P9 (api2 client removal) in the next open version; claim as [plan:kodpen-vendor-api-client] P<n>
@@ -60,7 +69,12 @@
 - listen-block-steps.md: Plan listen-block, steps LS1 to LS3: the script and its two doors, the block, close-out
 - listen-block.md: Plan (owner 2026-11-16, agent channel message 5667): a "Listen" block of the visual designer that reads the page's article aloud with the browser's own voice; steps LS1 to LS3
 - marketplace-trendyol-hepsiburada.md: Plan (approved 2026-10-19): Trendyol (V2) and Hepsiburada on the n11 layer
+- meeting-link-features.md: Plan meeting-link, features M1 to M14: a staff member's link and its code, the address, the page, where free times come from, private plans left out, the booking, the meeting address, safety
+- meeting-link-steps.md: Plan meeting-link, steps SL1 to SL4: the link's code and rules with the profile's one column, the page a visitor books on, the Workspace screen "My meeting link", close-out
+- meeting-link.md: Plan (owner 2026-11-16, agent channel poll 82): a booking staff member's own "book a time with me" page at an address only they hand out, on the booking engine, no table; steps SL1 to SL4
 - mobile-api-shelved.md: Team-device API work for the closed-source Pinegrap Mobile app (restarted 2026-10-24 outside this repo): what exists (M1–M6), what M7 (native push) and M8 add, decisions, how its needs arrive
+- more-features-shared-files.md: The existing files that steps of more than one of the eight plans of plans/more-features.md touch, each with its steps and their order; two steps on the same file are never open together
+- more-features.md: Start file of the eight plans the owner chose from the second feature study (owner 2026-11-16, agent channel message 6424 and poll 82): his words, the architect's conditions, the plans
 - panel-design-language-dialogs.md: Look A's dialogs and drawers (#8860): the scrim, the three dialog widths, head, body and foot, the confirm dialog, the settings dialog's rail and pane, a drawer's sections and member rows
 - panel-design-language-look.md: Look A's numbers (second pass) for the panel's design language: type, surfaces and depth, fields, buttons, the segmented control, the status pill, the icon tile and tones, rows, what a title says
 - panel-design-language-report.md: Look A's report screen (#8955): ready reports and the period on top, four figures, the chart against the previous period, the grouped table and its total, the bars card, the settings drawer
@@ -81,6 +95,12 @@
 - panel-old-screens.md: Plan (owner 2026-11-15): the panel screens still drawn the old way move to look A; censuses done, LM2 the shared buttons, then one census group per step (C1 to C5, E1 to E5, S1 to S6)
 - php-error-log-clean.md: Plan (owner 2026-11-14): the PHP error log of the owner's dev machine read for Pinegrap's own deprecations and warnings on PHP 8.5, and their causes fixed; steps EL1 to EL6
 - picture-text-translation.md: Plan (owner 2026-11-16): the texts in pictures translated: a Design Canvas picture's text layers enter the site translation, a page in another language shows its picture; census PT0 first
+- place-map-features.md: Plan place-map, features X1 to X16: the map block and its list, coordinates as two fields of the record, the places endpoint, consent before tiles, near me and a typed address, the library, headers
+- place-map-steps.md: Plan place-map, steps MP1 to MP6: the census of providers and consent, "Find from the address" on a record, the endpoint and the block, the map and the switch, near me and a typed address, close-out
+- place-map.md: Plan (owner 2026-11-16, agent channel poll 82): the places of a collection on a map with a list, "near me" and search by distance, tiles only after the visitor allowed them; steps MP1 to MP6
+- post-digest-features.md: Plan post-digest, features D1 to D13: the flow box that reads a list's records, the window of a run, the e-mail box's contact group as a campaign, the body, the ready flow, safety and rights
+- post-digest-steps.md: Plan post-digest, steps DG1 to DG5: the records box on the server, the contact group as a campaign, the canvas, the ready flow, close-out
+- post-digest.md: Plan (owner 2026-11-16, agent channel poll 82): new posts of a list sent by themselves as an e-mail to a contact group, from a general flow box and the campaign path, no table; steps DG1 to DG5
 - prototype-canvas-features-2.md: Plan prototype-canvas, features F15 to F25: the list of the selected page's links, the broken links found, drawing and changing an arrow, the bar
 - prototype-canvas-features-3.md: Plan prototype-canvas, features F26 to F34 from the owner's answer of 2026-11-16: empty links and unreached pages marked, a target suggested for empty links and written only when he applies
 - prototype-canvas-features.md: Plan prototype-canvas, features F1 to F14: what a frame of the Prototype view shows, how pages are arranged, which arrows are drawn and how an arrow runs
@@ -101,6 +121,9 @@
 - publish-approval-features.md: Plan publish-approval, features A1 to A16: the switch, which saves wait, what is kept, the editor's side, the designer's side, apply, dismiss and take back, the bell lines, the Workspace request
 - publish-approval-steps.md: Plan publish-approval, steps PA1 to PA6 (PA0, the owner's answer, is done): the census, the switch and the held save, the editor's side, the designer's side, the Workspace request, close-out
 - publish-approval.md: Plan (owner 2026-11-16, agent channel message 5667 and poll 64): with a switch on, a content editor's change to a live page waits for a designer's yes; steps PA1 to PA6
+- referral-programme-features.md: Plan referral-programme, features E1 to E15: settings, who can refer, the signed code on the affiliate link's rails, the checks at completion, the reward as a commission row and credit, its take-back
+- referral-programme-steps.md: Plan referral-programme, steps RF1 to RF5: the census of commission readers and the rules on the order path, the settings card and the mail, My Account's part, the report and the event, close-out
+- referral-programme.md: Plan (owner 2026-11-16, agent channel poll 82): a customer brings a friend by a personal link, the friend gets an offer and the customer store credit, on the affiliate link's rails; steps RF1 to RF5
 - release-bundle-features.md: Plan release-bundle, features B1 to B18: a bundle and its pages, the hold, the checks before a publish, the write, take back, the time, the preview and its share link, the API, what stays as it is
 - release-bundle-steps.md: Plan release-bundle, steps RB1 to RB8 (RB0, the owner's answer, is done): the tables and rules, the Bundles screen, publish and take back, the time, the preview, its share link, the API, close-out
 - release-bundle.md: Plan (owner 2026-11-16, agent channel message 5667 and poll 63): several pages prepared as drafts, previewed, published and taken back together; steps RB1 to RB8
@@ -123,3 +146,6 @@
 - website-features.md: Start file of the nine website-side plans (owner 2026-11-16, agent channel messages 5651 and 5667): his words, how each plan is laid out, the plans and the order their steps are given in
 - website-second-set-conditions-per-plan.md: What the architect asked of each of the eight website plans of poll 82 before they were written: newsletter, appointment link, map, customer value, referral, wholesale, event tickets, courses
 - website-second-set-conditions.md: The architect's conditions for the eight website plans of poll 82, set before they were written: tables, no second engine, scheduled work, mail, money, personal data, cache, first steps
+- wholesale-features.md: Plan wholesale, features J1 to J11: an offer for a contact group, quantity prices on a product page, an account that uses another's prices, retail in public, a minimum order for a group
+- wholesale-steps.md: Plan wholesale, steps WS1 to WS7: the offers' group condition, an account using another's prices, its picker on the prices screen, the minimum order, quantity prices, the API, close-out
+- wholesale.md: Plan (owner 2026-11-16, agent channel poll 82): selling to businesses with what exists: offers for a contact group, one account using another's prices, a minimum order; no table; steps WS1 to WS7
