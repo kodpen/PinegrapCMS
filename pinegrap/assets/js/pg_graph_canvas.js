@@ -4,13 +4,16 @@
  * The graph canvas core (window.PGGraphCanvas): what a box-and-arrow canvas
  * needs whatever its boxes mean. Boxes sit on a layer moved and scaled with
  * one CSS transform, at canvas units snapped to a 16 px grid; arrows are
- * cubic curves from a box's right edge to the next box's left one.
+ * cubic curves from a box's right edge to the next box's left one, or with
+ * adapter.route 'elbow' right-angle ways through the gaps.
  *
  * Its first user is the Workspace flow canvas (assets/js/workspace_flow.js),
  * which keeps what a flow's boxes are, their forms, saving and runs, and
  * hands the core what it needs through small adapters:
  *
- *  - the geometry helpers (snap, clamp, svgEl, curve, freeId, typing, bytes);
+ *  - the geometry helpers (snap, clamp, svgEl, curve, freeId, typing, bytes)
+ *    and right-angle routes (route() finds a way through the gaps between
+ *    boxes, path() rounds its turns, lanes() spreads ways sharing a gap);
  *  - the pure graph logic: order() ranks boxes breadth-first from a start,
  *    arrange() places groups of boxes in a wrapped grid with side columns,
  *    linksOf() gives a box's arrows, check() finds what may be wrong;
@@ -64,6 +67,10 @@
     // an arrow-key move) folds into that step.
     var HISTORY_MAX = 50;
     var HISTORY_FOLD = 1000;
+    // Right-angle arrows: past this many drawn, the faint ones keep the
+    // curve; the radius of a rounded turn.
+    var ROUTE_MOST = 150;
+    var ROUTE_RADIUS = 8;
 
     // ── Small helpers ──────────────────────────────────────────────────
 
@@ -120,6 +127,682 @@
 
             group.forEach(function (index, slot) {
                 out[index] = { slot: slot, slots: group.length };
+            });
+        });
+
+        return out;
+    }
+
+    // ── Right-angle routes ─────────────────────────────────────────────
+
+    // The sides a route leaves or enters by, as unit steps.
+    var SIDES = { right: [1, 0], bottom: [0, 1], left: [-1, 0], top: [0, -1] };
+    var SIDE_NAMES = ['right', 'bottom', 'left', 'top'];
+
+    // The boxes ({ x, y, w, h }) grown by margin and kept in buckets of
+    // 256 units, so that a short segment is checked against the few boxes
+    // near it.
+    function obstacles(boxes, margin) {
+        var cell = 256;
+        var buckets = new Map();
+        var list = [];
+
+        function bucket(cx, cy) {
+            return cx * 65536 + cy;
+        }
+
+        (boxes || []).forEach(function (box) {
+            if (!box || !(box.w > 0) || !(box.h > 0)) {
+                return;
+            }
+
+            var r = { x1: box.x - margin, y1: box.y - margin, x2: box.x + box.w + margin, y2: box.y + box.h + margin };
+
+            list.push(r);
+
+            for (var cx = Math.floor(r.x1 / cell); cx <= Math.floor(r.x2 / cell); cx++) {
+                for (var cy = Math.floor(r.y1 / cell); cy <= Math.floor(r.y2 / cell); cy++) {
+                    var key = bucket(cx, cy);
+                    var held = buckets.get(key);
+
+                    if (held) {
+                        held.push(r);
+                    } else {
+                        buckets.set(key, [r]);
+                    }
+                }
+            }
+        });
+
+        // Whether the segment (or point) from (x1, y1) to (x2, y2), one
+        // axis apart, touches the inside of a grown box; its edge is free.
+        function blocked(x1, y1, x2, y2) {
+            var lx = Math.min(x1, x2);
+            var hx = Math.max(x1, x2);
+            var ly = Math.min(y1, y2);
+            var hy = Math.max(y1, y2);
+
+            for (var cx = Math.floor(lx / cell); cx <= Math.floor(hx / cell); cx++) {
+                for (var cy = Math.floor(ly / cell); cy <= Math.floor(hy / cell); cy++) {
+                    var near = buckets.get(bucket(cx, cy));
+
+                    if (!near) {
+                        continue;
+                    }
+
+                    for (var i = 0; i < near.length; i++) {
+                        var r = near[i];
+                        var acrossX = (lx < hx) ? (hx > r.x1 && lx < r.x2) : (lx > r.x1 && lx < r.x2);
+                        var acrossY = (ly < hy) ? (hy > r.y1 && ly < r.y2) : (ly > r.y1 && ly < r.y2);
+
+                        if (acrossX && acrossY) {
+                            return true;
+                        }
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        var xs = [];
+        var ys = [];
+
+        list.forEach(function (r) {
+            xs.push(r.x1, r.x2);
+            ys.push(r.y1, r.y2);
+        });
+
+        var bx = lines(xs);
+        var by = lines(ys);
+        var count = bx.length * by.length;
+
+        // Whether a crossing of the box lines is free, and the leg from it
+        // to the next line right and down, worked out once each (0 not yet,
+        // 1 free, 2 blocked).
+        return { list: list, blocked: blocked, xs: bx, ys: by, node: new Int8Array(count), right: new Int8Array(count), down: new Int8Array(count) };
+    }
+
+    // The obstacles of a list of boxes, kept for the same list and margin
+    // (a canvas routes every arrow of one drawing over one list).
+    var obstacleCache = (typeof WeakMap === 'function') ? new WeakMap() : null;
+
+    function obstaclesOf(boxes, margin) {
+        var held = (obstacleCache && boxes) ? obstacleCache.get(boxes) : null;
+
+        if (held && held.margin === margin && held.count === boxes.length) {
+            return held.room;
+        }
+
+        var room = obstacles(boxes, margin);
+
+        if (obstacleCache && boxes) {
+            obstacleCache.set(boxes, { margin: margin, count: boxes.length, room: room });
+        }
+
+        return room;
+    }
+
+    // The sorted values with the extra ones added, no repeats.
+    function withLines(sorted, extra) {
+        var out = sorted.slice();
+
+        extra.forEach(function (value) {
+            var lo = 0;
+            var hi = out.length;
+
+            while (lo < hi) {
+                var mid = (lo + hi) >> 1;
+
+                if (out[mid] < value) {
+                    lo = mid + 1;
+                } else {
+                    hi = mid;
+                }
+            }
+
+            if (out[lo] !== value) {
+                out.splice(lo, 0, value);
+            }
+        });
+
+        return out;
+    }
+
+    // The sorted values with no repeats.
+    function lines(values) {
+        var sorted = values.slice().sort(function (a, b) { return a - b; });
+
+        return sorted.filter(function (value, i) { return !i || value !== sorted[i - 1]; });
+    }
+
+    function search(sorted, value) {
+        var lo = 0;
+        var hi = sorted.length - 1;
+
+        while (lo <= hi) {
+            var mid = (lo + hi) >> 1;
+
+            if (sorted[mid] === value) {
+                return mid;
+            }
+
+            if (sorted[mid] < value) {
+                lo = mid + 1;
+            } else {
+                hi = mid - 1;
+            }
+        }
+
+        return -1;
+    }
+
+    // Drops the points between two others on one line.
+    function straighten(points) {
+        var out = [];
+
+        points.forEach(function (p) {
+            var last = out[out.length - 1];
+
+            if (last && last.x === p.x && last.y === p.y) {
+                return;
+            }
+
+            if (out.length >= 2) {
+                var a = out[out.length - 2];
+
+                if ((a.x === last.x && last.x === p.x) || (a.y === last.y && last.y === p.y)) {
+                    out[out.length - 1] = p;
+                    return;
+                }
+            }
+
+            out.push(p);
+        });
+
+        return out;
+    }
+
+    // The search's arrays for the routes over one list of boxes, kept with
+    // its obstacles and reused: a value counts only when its stamp is the
+    // route's own.
+    function workFor(room, size) {
+        if (!room.work || room.work.size < size) {
+            var length = Math.max(size, room.work ? room.work.size * 2 : 0);
+
+            room.work = { size: length, stamp: 0, cost: new Float64Array(length), back: new Int32Array(length), seen: new Int32Array(length), shut: new Int32Array(length) };
+        }
+
+        return room.work;
+    }
+
+    // A right-angle way from a port to a box, through the gaps between the
+    // boxes: from { x, y, side } (side 'right' unless given: the way first
+    // runs margin units out of it), to the box { x, y, w, h } it ends on,
+    // at the middle of the edge it reaches first (a left or right edge at
+    // opts.y when given), boxes every box to keep clear of, its two ends
+    // among them. opts (all optional): margin (16, the room kept round a
+    // box), bend (24, what a turn costs in units), budget (20000 steps
+    // tried). Answers the points [{ x, y }, ...], from the port to the
+    // edge, each turn once; null when no way is found within the budget.
+    function route(from, to, boxes, opts) {
+        opts = opts || {};
+
+        var margin = (opts.margin === undefined) ? 16 : opts.margin;
+        var bend = (opts.bend === undefined) ? 24 : opts.bend;
+        var budget = opts.budget || 20000;
+        var room = obstaclesOf(boxes, margin);
+        var side = SIDES[from.side] ? from.side : 'right';
+        var start = { x: from.x + SIDES[side][0] * margin, y: from.y + SIDES[side][1] * margin };
+        var yAt = (typeof opts.y === 'number') ? opts.y : to.y + to.h / 2;
+        var goals = [
+            { side: 'left', edge: { x: to.x, y: yAt } },
+            { side: 'right', edge: { x: to.x + to.w, y: yAt } },
+            { side: 'top', edge: { x: to.x + to.w / 2, y: to.y } },
+            { side: 'bottom', edge: { x: to.x + to.w / 2, y: to.y + to.h } }
+        ].map(function (goal) {
+            var step = SIDES[goal.side];
+
+            goal.at = { x: goal.edge.x + step[0] * margin, y: goal.edge.y + step[1] * margin };
+            // The way into the edge runs against the side it is on.
+            goal.dir = (SIDE_NAMES.indexOf(goal.side) + 2) % 4;
+
+            return goal;
+        }).filter(function (goal) {
+            return !room.blocked(goal.at.x, goal.at.y, goal.at.x, goal.at.y);
+        });
+
+        if (!goals.length || room.blocked(start.x, start.y, start.x, start.y)) {
+            return null;
+        }
+
+        var xs = withLines(room.xs, [start.x].concat(goals.map(function (goal) { return goal.at.x; })));
+        var ys = withLines(room.ys, [start.y].concat(goals.map(function (goal) { return goal.at.y; })));
+        var ny = ys.length;
+        var goalAt = {};
+
+        goals.forEach(function (goal) {
+            goalAt[search(xs, goal.at.x) * ny + search(ys, goal.at.y)] = goal;
+        });
+
+        var nx = xs.length;
+        var nodes = nx * ny;
+        // Each line's place among the box lines, -1 for a line of this
+        // route's own (its port, its goals).
+        var bny = room.ys.length;
+        var xmap = xs.map(function (v) { return search(room.xs, v); });
+        var ymap = ys.map(function (v) { return search(room.ys, v); });
+        // Per node off the box lines: 0 not yet known, 1 free, 2 inside a box.
+        var free = new Int8Array(nodes);
+
+        function open(node) {
+            var xi = (node / ny) | 0;
+            var yi = node % ny;
+            var held = (xmap[xi] >= 0 && ymap[yi] >= 0) ? room.node : free;
+            var at = (held === free) ? node : xmap[xi] * bny + ymap[yi];
+
+            if (!held[at]) {
+                held[at] = room.blocked(xs[xi], ys[yi], xs[xi], ys[yi]) ? 2 : 1;
+            }
+
+            return held[at] === 1;
+        }
+
+        // Whether the leg between two neighbouring nodes is clear.
+        function clear(xi, yi, nxi, nyi) {
+            var ax = xmap[Math.min(xi, nxi)];
+            var ay = ymap[Math.min(yi, nyi)];
+
+            if (ax >= 0 && ay >= 0) {
+                var across = yi === nyi;
+                var bx2 = across ? xmap[Math.max(xi, nxi)] : ax;
+                var by2 = across ? ay : ymap[Math.max(yi, nyi)];
+
+                if ((across && bx2 === ax + 1) || (!across && by2 === ay + 1)) {
+                    var held = across ? room.right : room.down;
+                    var at = ax * bny + ay;
+
+                    if (!held[at]) {
+                        held[at] = room.blocked(xs[xi], ys[yi], xs[nxi], ys[nyi]) ? 2 : 1;
+                    }
+
+                    return held[at] === 1;
+                }
+            }
+
+            return !room.blocked(xs[xi], ys[yi], xs[nxi], ys[nyi]);
+        }
+
+        var gx = goals.map(function (goal) { return goal.at.x; });
+        var gy = goals.map(function (goal) { return goal.at.y; });
+        var gd = goals.map(function (goal) { return goal.dir; });
+
+        // The least a way from (x, y), arriving in dir, still costs to
+        // enter a goal: the distance and the turns it cannot do without
+        // (none on the goal's own line heading for it; two heading the
+        // other way or along it off its line; else one).
+        function guess(x, y, dir) {
+            var best = Infinity;
+
+            for (var i = 0; i < gx.length; i++) {
+                var dx = gx[i] - x;
+                var dy = gy[i] - y;
+                var turns = 1;
+
+                if (dir === gd[i]) {
+                    var onLine = (dir === 0) ? (dy === 0 && dx >= 0) : (dir === 2) ? (dy === 0 && dx <= 0) : (dir === 1) ? (dx === 0 && dy >= 0) : (dx === 0 && dy <= 0);
+
+                    turns = onLine ? 0 : 2;
+                } else if ((dir + 2) % 4 === gd[i]) {
+                    turns = 2;
+                }
+
+                var est = Math.abs(dx) + Math.abs(dy) + turns * bend;
+
+                if (est < best) {
+                    best = est;
+                }
+            }
+
+            return best;
+        }
+
+        // A state is a node (a crossing of two lines) and the direction the
+        // way arrived in; a state past the last one marks a way that has
+        // entered the edge of goal (state - states).
+        var states = nodes * 4;
+        var work = workFor(room, states + goals.length);
+        var stamp = ++work.stamp;
+        var costs = work.cost;
+        var backs = work.back;
+        var seen = work.seen;
+        var shut = work.shut;
+
+        function cost(state) {
+            return (seen[state] === stamp) ? costs[state] : Infinity;
+        }
+
+        function setCost(state, value, from) {
+            seen[state] = stamp;
+            costs[state] = value;
+            backs[state] = from;
+        }
+
+        function back(state) {
+            return (seen[state] === stamp) ? backs[state] : -1;
+        }
+        // A binary heap of states by cost guess; between equal guesses the
+        // one that came further first (fewer ways tried), then the first
+        // pushed.
+        var heapF = [];
+        var heapG = [];
+        var heapO = [];
+        var heapS = [];
+        var order = 0;
+
+        function before(i, j) {
+            return heapF[i] < heapF[j] || (heapF[i] === heapF[j] && (heapG[i] > heapG[j] || (heapG[i] === heapG[j] && heapO[i] < heapO[j])));
+        }
+
+        function swap(i, j) {
+            var f = heapF[i];
+            var gv = heapG[i];
+            var o = heapO[i];
+            var st = heapS[i];
+
+            heapF[i] = heapF[j];
+            heapG[i] = heapG[j];
+            heapO[i] = heapO[j];
+            heapS[i] = heapS[j];
+            heapF[j] = f;
+            heapG[j] = gv;
+            heapO[j] = o;
+            heapS[j] = st;
+        }
+
+        function push(f, state, g) {
+            var i = heapF.length;
+
+            heapF.push(f);
+            heapG.push(g);
+            heapO.push(order++);
+            heapS.push(state);
+
+            while (i > 0) {
+                var up = (i - 1) >> 1;
+
+                if (!before(i, up)) {
+                    break;
+                }
+
+                swap(i, up);
+                i = up;
+            }
+        }
+
+        function pop() {
+            var top = heapS[0];
+            var last = heapF.length - 1;
+
+            swap(0, last);
+            heapF.pop();
+            heapG.pop();
+            heapO.pop();
+            heapS.pop();
+
+            var i = 0;
+
+            for (;;) {
+                var l = 2 * i + 1;
+                var r = l + 1;
+                var m = i;
+
+                if (l < heapF.length && before(l, m)) {
+                    m = l;
+                }
+
+                if (r < heapF.length && before(r, m)) {
+                    m = r;
+                }
+
+                if (m === i) {
+                    break;
+                }
+
+                swap(i, m);
+                i = m;
+            }
+
+            return top;
+        }
+
+        var goalAt = new Int8Array(nodes).fill(-1);
+
+        goals.forEach(function (goal, n) {
+            goalAt[search(xs, goal.at.x) * ny + search(ys, goal.at.y)] = n;
+        });
+
+        var startState = (search(xs, start.x) * ny + search(ys, start.y)) * 4 + SIDE_NAMES.indexOf(side);
+
+        setCost(startState, margin, -1);
+        push(margin + guess(start.x, start.y, SIDE_NAMES.indexOf(side)), startState, margin);
+
+        var tried = 0;
+        var done = -1;
+
+        while (heapF.length && tried < budget) {
+            var state = pop();
+
+            if (shut[state] === stamp) {
+                continue;
+            }
+
+            shut[state] = stamp;
+
+            if (state >= states) {
+                done = state;
+                break;
+            }
+
+            tried++;
+
+            var g = cost(state);
+            var node = state >> 2;
+            var dir = state & 3;
+            var xi = (node / ny) | 0;
+            var yi = node % ny;
+            var x = xs[xi];
+            var y = ys[yi];
+            var reach = goalAt[node];
+
+            if (reach >= 0) {
+                var goal = goals[reach];
+                var turns = (goal.dir === dir) ? 0 : ((goal.dir + 2) % 4 === dir ? 2 : 1);
+                var fin = states + reach;
+                var fg = g + margin + turns * bend;
+
+                if (fg < cost(fin)) {
+                    setCost(fin, fg, state);
+                    push(fg, fin, fg);
+                }
+            }
+
+            for (var d = 0; d < 4; d++) {
+                if ((d + 2) % 4 === dir) {
+                    continue;
+                }
+
+                var nxi = xi + ((d === 0) ? 1 : (d === 2) ? -1 : 0);
+                var nyi = yi + ((d === 1) ? 1 : (d === 3) ? -1 : 0);
+
+                if (nxi < 0 || nyi < 0 || nxi >= nx || nyi >= ny) {
+                    continue;
+                }
+
+                var next = nxi * ny + nyi;
+                var nstate = next * 4 + d;
+
+                if (shut[nstate] === stamp) {
+                    continue;
+                }
+
+                var tx = xs[nxi];
+                var ty = ys[nyi];
+                // Up costs a hair more than down, so that a tie goes under.
+                var ng = g + Math.abs(tx - x) + Math.abs(ty - y) * ((d === 3) ? 1.001 : 1) + ((d === dir) ? 0 : bend);
+
+                if (ng >= cost(nstate) || !open(next) || !clear(xi, yi, nxi, nyi)) {
+                    continue;
+                }
+
+                setCost(nstate, ng, state);
+                push(ng + guess(tx, ty, d), nstate, ng);
+            }
+        }
+
+        if (done < 0) {
+            return null;
+        }
+
+        var points = [goals[done - states].edge];
+
+        for (var s = back(done); s >= 0; s = back(s)) {
+            var at = s >> 2;
+
+            points.push({ x: xs[(at / ny) | 0], y: ys[at % ny] });
+        }
+
+        points.push({ x: from.x, y: from.y });
+
+        return straighten(points.reverse());
+    }
+
+    // The SVG path of a right-angle way, each turn rounded (at most radius,
+    // at most half of the shorter of its two legs), and its middle: the
+    // point half-way along it ({ d, mx, my }, as curve() gives).
+    function path(points, radius) {
+        var r = (radius === undefined) ? 8 : radius;
+        var d = 'M' + points[0].x + ' ' + points[0].y;
+        var total = 0;
+
+        for (var i = 1; i < points.length; i++) {
+            total += Math.abs(points[i].x - points[i - 1].x) + Math.abs(points[i].y - points[i - 1].y);
+        }
+
+        for (var j = 1; j < points.length - 1; j++) {
+            var a = points[j - 1];
+            var p = points[j];
+            var b = points[j + 1];
+            var inLen = Math.abs(p.x - a.x) + Math.abs(p.y - a.y);
+            var outLen = Math.abs(b.x - p.x) + Math.abs(b.y - p.y);
+            var k = Math.min(r, inLen / 2, outLen / 2);
+            var ix = Math.sign(p.x - a.x);
+            var iy = Math.sign(p.y - a.y);
+            var ox = Math.sign(b.x - p.x);
+            var oy = Math.sign(b.y - p.y);
+
+            d += ' L' + (p.x - ix * k) + ' ' + (p.y - iy * k) + ' Q' + p.x + ' ' + p.y + ' ' + (p.x + ox * k) + ' ' + (p.y + oy * k);
+        }
+
+        var end = points[points.length - 1];
+        var half = total / 2;
+        var mx = points[0].x;
+        var my = points[0].y;
+
+        d += ' L' + end.x + ' ' + end.y;
+
+        for (var n = 1; n < points.length; n++) {
+            var len = Math.abs(points[n].x - points[n - 1].x) + Math.abs(points[n].y - points[n - 1].y);
+
+            if (half <= len) {
+                mx = points[n - 1].x + Math.sign(points[n].x - points[n - 1].x) * half;
+                my = points[n - 1].y + Math.sign(points[n].y - points[n - 1].y) * half;
+                break;
+            }
+
+            half -= len;
+        }
+
+        return { d: d, mx: mx, my: my };
+    }
+
+    // Ways (point lists from route(), null kept as null) whose inner legs
+    // run on one line and overlap moved apart, gap units between
+    // neighbours (6), spread round that line in the order given; a way's
+    // first and last legs, at its ports, stay where they are. room (none
+    // when not given) is the most a leg may move off its line: more ways
+    // than fit gap apart in it are drawn closer. Answers new point lists.
+    function lanes(routes, gap, room) {
+        var spacing = (gap === undefined) ? 6 : gap;
+        var out = (routes || []).map(function (points) {
+            return points ? points.map(function (p) { return { x: p.x, y: p.y }; }) : null;
+        });
+        var legs = {};
+
+        out.forEach(function (points, r) {
+            if (!points) {
+                return;
+            }
+
+            for (var i = 1; i < points.length - 2; i++) {
+                var a = points[i];
+                var b = points[i + 1];
+                var upright = a.x === b.x;
+                var key = (upright ? 'v' : 'h') + (upright ? a.x : a.y);
+
+                (legs[key] = legs[key] || []).push({ r: r, i: i, upright: upright, lo: upright ? Math.min(a.y, b.y) : Math.min(a.x, b.x), hi: upright ? Math.max(a.y, b.y) : Math.max(a.x, b.x) });
+            }
+        });
+
+        Object.keys(legs).forEach(function (key) {
+            var list = legs[key];
+            var seen = [];
+
+            // Legs that overlap, directly or through another, share a gap.
+            list.forEach(function (leg, n) {
+                if (seen[n]) {
+                    return;
+                }
+
+                var group = [n];
+
+                seen[n] = true;
+
+                for (var g = 0; g < group.length; g++) {
+                    var one = list[group[g]];
+
+                    list.forEach(function (other, m) {
+                        if (!seen[m] && other.lo < one.hi && one.lo < other.hi) {
+                            seen[m] = true;
+                            group.push(m);
+                        }
+                    });
+                }
+
+                if (group.length < 2) {
+                    return;
+                }
+
+                var step = spacing;
+
+                if (typeof room === 'number' && room >= 0) {
+                    step = Math.min(step, 2 * room / (group.length - 1));
+                }
+
+                group.sort(function (a, b) { return (list[a].r - list[b].r) || (list[a].i - list[b].i); });
+                group.forEach(function (m, place) {
+                    var leg = list[m];
+                    var shift = (place - (group.length - 1) / 2) * step;
+                    var points = out[leg.r];
+
+                    if (leg.upright) {
+                        points[leg.i].x += shift;
+                        points[leg.i + 1].x += shift;
+                    } else {
+                        points[leg.i].y += shift;
+                        points[leg.i + 1].y += shift;
+                    }
+                });
             });
         });
 
@@ -837,8 +1520,18 @@
     //    arrow may end on beside a box (an end chip), and the item of such
     //    an element (else item() of its data-node);
     //  - portAt(item, name) (optional): where a named port of a box sits,
-    //    { y } from the box's top edge (else read from the row holding the
-    //    [data-port] dot inside the box);
+    //    { y } from the box's top edge, or { x, y, side } from its top left
+    //    with the side the arrow leaves by (right, left, top or bottom; else
+    //    read from the row holding the [data-port] dot inside the box);
+    //  - route (optional, 'elbow'): the arrows drawn run in right angles
+    //    with rounded turns through the gaps between the boxes of items()
+    //    (G.route(), G.path()), arrows sharing a gap side by side
+    //    (G.lanes()), to the nearest edge of their target; an arrow with no
+    //    way, a hidden one and, past 150 drawn, a faint one keep the curve.
+    //    A box moved routes its own arrows again; routeMargin (optional,
+    //    16) is the room an arrow keeps round a box: arrows sharing a gap
+    //    spread 6 apart round a line that far from the box, so a canvas
+    //    with wide gaps and many arrows gives more;
     //  - thumb(item, holder) (optional): a box drawn with options.thumb
     //    gets its picture put into holder once it first comes into sight;
     //  - ownClicks: a selector of what keeps its own clicks and keys (a link
@@ -922,6 +1615,11 @@
         var focusing = !!adapter.focus;
         var focusId = null;
         var faint = false;
+        // Right-angle arrows (adapter.route 'elbow'): the boxes they keep
+        // clear of, and whether a settle() is on its way.
+        var elbow = adapter.route === 'elbow';
+        var routeBoxes = null;
+        var settling = false;
 
         function text() {
             return adapter.text.apply(null, arguments);
@@ -986,11 +1684,19 @@
                 }
             }
 
+            var x = box.w;
+            var side = 'right';
+
             if (at && (typeof at.y === 'number')) {
                 y = at.y;
             }
 
-            return { x: item.x + box.w, y: item.y + y };
+            if (at && (typeof at.x === 'number')) {
+                x = at.x;
+                side = SIDES[at.side] ? at.side : side;
+            }
+
+            return { x: item.x + x, y: item.y + y, side: side };
         }
 
         // Where an arrow ends on a target: the middle of its left edge, or
@@ -1009,6 +1715,8 @@
         // drawn at its size.
         function box(item, options) {
             var node = document.createElement('div');
+
+            routeBoxes = null;
 
             node.className = classes.box + (options.className ? ' ' + options.className : '');
             node.tabIndex = 0;
@@ -1093,11 +1801,98 @@
             watcher.observe(holder);
         }
 
-        function route(one) {
+        // An arrow's curve, as every arrow is drawn without adapter.route.
+        function pathOf(one) {
             var start = from(one.from, one.options.port);
             var end = into(one.to, one.options.slot || 0, one.options.slots || 1);
 
             return curve(start.x, start.y, end.x, end.y);
+        }
+
+        function draw(one, line) {
+            one.group.children[0].setAttribute('d', line.d);
+            one.group.children[1].setAttribute('d', line.d);
+        }
+
+        // ── Right-angle arrows (adapter.route 'elbow') ──
+
+        // The boxes an arrow keeps clear of, as they are now; made again
+        // after a box is drawn or moved.
+        function boxList() {
+            if (!routeBoxes) {
+                routeBoxes = adapter.items().map(function (item) {
+                    var box = size(item);
+
+                    return { id: item.id, x: item.x, y: item.y, w: box.w, h: box.h };
+                });
+            }
+
+            return routeBoxes;
+        }
+
+        // Every arrow drawn routed through the gaps (one still routed keeps
+        // its way), arrows sharing a gap spread side by side; a hidden arrow,
+        // a faint one while more than ROUTE_MOST are drawn, and one with no
+        // way keep the curve.
+        function settle() {
+            settling = false;
+
+            if (!elbow) {
+                return;
+            }
+
+            var arrows = live();
+            var shown = arrows.filter(function (one) { return one.state !== 'hidden'; }).length;
+            var routed = [];
+
+            arrows.forEach(function (one) {
+                var wanted = (one.state !== 'hidden') && !((one.state === 'faint') && (shown > ROUTE_MOST));
+
+                if (!wanted) {
+                    if (one.points !== null) {
+                        one.points = null;
+                        draw(one, pathOf(one));
+                    }
+                    return;
+                }
+
+                if (one.points === null) {
+                    var start = from(one.from, one.options.port);
+                    var end = into(one.to, one.options.slot || 0, one.options.slots || 1);
+                    var box = size(one.to);
+
+                    one.points = route(start, { x: one.to.x, y: one.to.y, w: box.w, h: box.h }, boxList(), { y: end.y, margin: adapter.routeMargin }) || false;
+
+                    if (!one.points) {
+                        draw(one, pathOf(one));
+                    }
+                }
+
+                if (one.points) {
+                    routed.push(one);
+                }
+            });
+
+            var margin = (adapter.routeMargin === undefined) ? 16 : adapter.routeMargin;
+
+            // The faint arrows spread among themselves, under the others,
+            // so they never crowd the arrows of the box in focus; lanes stay
+            // 4 clear of a box: at most margin - 4 off their line.
+            [true, false].forEach(function (faintOnes) {
+                var set = routed.filter(function (one) { return (one.state === 'faint') === faintOnes; });
+
+                lanes(set.map(function (one) { return one.points; }), 6, Math.max(0, margin - 4)).forEach(function (points, i) {
+                    draw(set[i], path(points, ROUTE_RADIUS));
+                });
+            });
+        }
+
+        // settle() once the arrows being drawn now are all there.
+        function settleSoon() {
+            if (elbow && !settling) {
+                settling = true;
+                Promise.resolve().then(settle);
+            }
         }
 
         // An arrow from a box's right edge (or its named port) to a target's
@@ -1106,16 +1901,16 @@
         // options: { port, slot, slots } (spread()). Its path and middle are
         // returned.
         function edge(id, source, target, options) {
-            var one = { from: source, to: target, options: options || {} };
-            var path = route(one);
+            var one = { from: source, to: target, options: options || {}, points: null };
+            var line = pathOf(one);
             var group = svgEl('g', classes.edge);
-            var line = svgEl('path', classes.edge + '-line');
+            var stroke = svgEl('path', classes.edge + '-line');
             var hit = svgEl('path', classes.edge + '-hit');
 
             group.setAttribute('data-edge', String(id));
-            line.setAttribute('d', path.d);
-            hit.setAttribute('d', path.d);
-            group.appendChild(line);
+            stroke.setAttribute('d', line.d);
+            hit.setAttribute('d', line.d);
+            group.appendChild(stroke);
             group.appendChild(hit);
             one.group = group;
             one.state = '';
@@ -1140,7 +1935,9 @@
                 ui.svg.appendChild(group);
             }
 
-            return { group: group, path: path };
+            settleSoon();
+
+            return { group: group, path: line };
         }
 
         // ── Focus ──
@@ -1272,6 +2069,7 @@
 
             if (changed) {
                 lift();
+                settle();
             }
 
             dim();
@@ -1379,12 +2177,13 @@
                 }
 
                 if (wanted[String(one.from.id)] || wanted[String(one.to.id)]) {
-                    var path = route(one);
-
-                    one.group.children[0].setAttribute('d', path.d);
-                    one.group.children[1].setAttribute('d', path.d);
+                    one.points = null;
+                    draw(one, pathOf(one));
                 }
             });
+
+            routeBoxes = null;
+            settle();
         }
 
         // The boxes moved: the adapter draws the arrows again, else only
@@ -1805,6 +2604,9 @@
         clamp: clamp,
         svgEl: svgEl,
         curve: curve,
+        route: route,
+        path: path,
+        lanes: lanes,
         freeId: freeId,
         typing: typing,
         bytes: bytes,

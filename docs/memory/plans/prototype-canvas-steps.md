@@ -18,7 +18,7 @@ description: Plan prototype-canvas, the engine steps PV1, PV3 and PV5: graph log
   - A press on a box focuses it, on the empty canvas clears it; a focus change redraws only the arrows that change; `announce()` says the box's name and its counts.
   - Tests: the class sets for a fixture; the new CSS on tokens (`test_graph_canvas_css_on_pgc_tokens`).
   - Memory: a new `ui/graph-canvas-core-focus.md`.
-- PV5 (M) Routing in the core. After PV4b.
+- PV5 (M) Routing in the core. After PV4b. Done (#9936).
   - `G.route(from, to, boxes, opts)`, pure: the points of a right-angle path from a port's point to the nearest edge of the target, through the gaps, across no box but its two ends; null when it finds no way within its budget, and the caller draws the curve.
   - `G.path(points, radius)`: the path with rounded corners. `G.lanes(routes)`: parts that share a gap moved apart, 6 units between neighbours.
   - Adapter `route: 'elbow'` turns it on. `portAt()` may answer `{ x, y, side }` (today `{ y }`): the arrow starts at that point.

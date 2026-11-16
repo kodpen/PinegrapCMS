@@ -69452,6 +69452,10 @@ const StyleDesigner = (function () {
             // A design too large for the smallest zoom fits to the start
             // frame's corner, not to the middle of everything.
             start: function () { return _sdProto.layout ? window.PGProtoHotspots.fitStart(_sdProto.layout) : null; },
+            // Arrows in right angles through the gaps between frames (F14),
+            // 40 clear of a frame: about a dozen side by side in a 96 gap.
+            route: 'elbow',
+            routeMargin: 40,
             portAt: function (item, name) { return item.rows ? { y: window.PGProtoHotspots.rowY(item, name) } : null; },
             select: function (selected) { _sdProtoSelect(selected); },
             moved: function (item) { _sdProtoKeep(item); },

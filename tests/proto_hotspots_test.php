@@ -478,6 +478,18 @@ JS
 	pg_assert_true($result['small'][0] > 48, 'and stands in the middle');
 }
 
+// The view turns on the core's right-angle arrows (F14).
+function test_proto_hotspots_view_routes_arrows()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	$start = strpos($source, '_sdProto.canvas = G.create({');
+	$adapter = substr($source, (int) $start, 4000);
+	pg_assert_true($start !== false, 'the view makes its canvas');
+	pg_assert_contains("route: 'elbow',", $adapter, 'the view asks for right-angle arrows');
+	pg_assert_contains('routeMargin: 40,', $adapter, 'arrows keep 40 clear of a frame, room for lanes in a 96 gap');
+	pg_assert_contains('size: function (item) { return { w: item.w, h: item.h }; },', $adapter, 'the core knows each frame\'s size to keep clear of it');
+}
+
 // The view hands the start corner to the core's fit.
 function test_proto_hotspots_view_fits_to_the_start_corner()
 {
