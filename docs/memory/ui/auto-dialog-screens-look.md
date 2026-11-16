@@ -1,6 +1,6 @@
 ---
 name: auto-dialog-screens-look
-description: The Auto Dialogs list, Create and Edit screens in look A (PU5, #9880): segmented Enabled filter, figure row, Opens and Size columns, field spans, figures in the status column
+description: The Auto Dialogs list, Create and Edit screens in look A (PU5, #9905): segmented Enabled filter, figure row, Opens and Size columns, field spans, figures in the status column
 ---
 
 ## What does the list show?
