@@ -1119,6 +1119,12 @@ if (
         ws_ref_sources_backfill_run();
     }
 
+    // The first web address of new messages (includes/workspace/link_preview.php),
+    // a few a tick under the hourly cap; one small read when none waits.
+    if (ws_enabled() && function_exists('ws_link_preview_due') && ws_link_preview_due()) {
+        ws_link_preview_run();
+    }
+
 }
 
 // E-mail campaign profiles turned into flows (includes/fn/campaign_profile_switch.php):

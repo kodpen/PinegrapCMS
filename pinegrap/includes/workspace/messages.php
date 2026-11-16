@@ -981,6 +981,11 @@ function ws_message_send($viewer, $channel, $body, $options = array())
     $tokens = ws_tokens($body);
     ws_refs_store('message', $message_id, $channel['id'], $tokens);
 
+    // Its first web address waits for the general job (link_preview.php).
+    if (function_exists('ws_link_preview_message_sent')) {
+        ws_link_preview_message_sent($message_id, $channel['id'], $body);
+    }
+
     // Its titled blocks, to be found and pulled elsewhere (blocks.php).
     if (function_exists('ws_blocks_index') && (strpos($body, ':::') !== false)) {
         ws_blocks_index('message', $message_id, $body, ($app_id > 0) ? 0 : (int) $viewer['id'], (int) $channel['id']);
@@ -2305,6 +2310,11 @@ function ws_message_edit($viewer, $message, $body, $as_app = 0)
     $tokens = ws_tokens($body);
     ws_refs_store('message', $message['id'], $message['channel_id'], $tokens);
 
+    // Another first web address is read again; none takes the preview away.
+    if (function_exists('ws_link_preview_message_edited')) {
+        ws_link_preview_message_edited($message['id'], $message['channel_id'], $body);
+    }
+
     // Only the people the edit newly mentions are told.
     $new = array();
 
@@ -2393,6 +2403,10 @@ function ws_message_delete($viewer, $message, $as_app = 0)
 
     db("UPDATE ws_messages SET body = '', file_id = 0, file_name = '', deleted_at = '" . time() . "' WHERE id = '" . (int) $message['id'] . "'");
     db("DELETE FROM ws_refs WHERE source_type = 'message' AND source_id = '" . (int) $message['id'] . "'");
+
+    if (function_exists('ws_link_preview_message_deleted')) {
+        ws_link_preview_message_deleted($message['id']);
+    }
 
     if (function_exists('ws_blocks_index')) {
         ws_blocks_index('message', (int) $message['id'], '');

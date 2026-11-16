@@ -1709,6 +1709,10 @@ function ws_threads_purge($limit = WS_THREAD_PURGE_BATCH)
             db("DELETE FROM ws_channel_memory WHERE channel_id = '" . $thread_id . "'");
         }
 
+        if (function_exists('ws_link_preview_channel_purged')) {
+            ws_link_preview_channel_purged($thread_id);
+        }
+
         db("DELETE FROM ws_messages WHERE channel_id = '" . $thread_id . "'");
         db("DELETE FROM ws_channel_members WHERE channel_id = '" . $thread_id . "'");
         db("DELETE FROM ws_threads WHERE channel_id = '" . $thread_id . "'");

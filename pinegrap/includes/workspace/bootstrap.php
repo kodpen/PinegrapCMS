@@ -54,6 +54,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/eras.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/pins.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/forward.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/message_refs.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/link_preview.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/blocks.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/customer.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/customer_history.php');

@@ -4,9 +4,9 @@
  *
  * Site Settings - Channels, mail and voice: the channel templates (archive
  * and bring back here, edited on the template screen), the voice message
- * transcripts and spoken answers, and the GitHub repositories linked to
- * channels (Link a repository in a drawer). The mailboxes have a category
- * of their own (includes/settings/mailboxes.php).
+ * transcripts and spoken answers, the GitHub repositories linked to
+ * channels (Link a repository in a drawer) and the link previews switch.
+ * The mailboxes have a category of their own (includes/settings/mailboxes.php).
  *
  * Fills $pg_settings_cards, one grid column per card, in reading order. Which
  * cards belong here is said once, in includes/settings/registry.php; this file
@@ -49,3 +49,9 @@ if ($ws_card !== '') {
     $pg_settings_modals[] = ws_settings_github_link_drawer($ws_viewer, $ws_form, !empty($pg_settings_in_dialog));
 }
 
+// ── Link previews ──
+$ws_card = ws_link_preview_settings_card($ws_viewer);
+
+if ($ws_card !== '') {
+    $pg_settings_cards[] = $ws_card;
+}
