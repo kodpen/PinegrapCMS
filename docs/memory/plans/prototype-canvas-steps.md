@@ -4,7 +4,7 @@ description: Plan prototype-canvas, the engine steps PV1, PV3 and PV5: graph log
 ---
 
 ## Which steps are there?
-- PV1 (M) Graph logic in the core, pure.
+- PV1 (M) Graph logic in the core, pure. Done (#9865).
   - `G.order(ids, edges, start)`: breadth-first ranks from `start`, the given order between equals, unreached ids last with no rank.
   - `G.arrange(groups, opts)`: places in a wrapped grid: `cols`, the box size, the gaps; each group a band with a heading's place; one side column before the grid and one after it. Answers `{ places, headings, bounds }` in whole units.
   - `G.linksOf(edges, id)`: `{ out, in }` in the order given.
