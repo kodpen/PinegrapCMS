@@ -29,16 +29,6 @@ if (!defined('PG_VISITORS_SCREEN')) {
 const PG_VISITORS_CLICKS_PAGES = 20;
 
 /**
- * Whether the "Clicks and scrolling" switch of Site Settings, Features is on.
- *
- * @return bool
- */
-function pg_visitors_clicks_on()
-{
-    return function_exists('pg_config_text') && (pg_config_text('page_clicks') === '1');
-}
-
-/**
  * The device choices of the filter, value => label.
  *
  * @return array
@@ -372,7 +362,7 @@ function pg_visitors_section_clicks(array $period, array $user)
     $sections = pg_visitors_sections();
     $title = $sections['clicks'];
 
-    if (!pg_visitors_clicks_on()) {
+    if (!pg_page_clicks_switch_on()) {
         return pg_visitors_section('clicks', $title, pg_visitors_clicks_off($user));
     }
 

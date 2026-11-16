@@ -12,7 +12,7 @@ description: The Clicks and scrolling section of the Visitors overview (includes
 ## What while the switch is off or nothing is there?
 - Off (C17): two lines, what would be counted and what is never kept, then for a manager (role up to 2, who opens Site Settings) "Turn on in Site Settings" to `pg_settings_link('features', 'pgset-features')`; anyone else reads that a manager can turn it on. The section is never hidden.
 - On before the update has made `page_click_daily`: the line "The database has not been upgraded yet." On with no rows in the period: "No page views were counted in this period yet."
-- The switch is read in `pg_visitors_clicks_on()` as the settings text `page_clicks` = `1`; CM2 owns the switch, and its name follows CM2 if it differs.
+- The switch is read through `pg_page_clicks_switch_on()` (`visitors/page-clicks.md`).
 
 ## How are visitors' words printed?
 - Labels and addresses come from browsers: only as text cells of `pg_visitors_table()` (escaped there), never as markup; the page name through `h()` (C7, `tests/visitors_clicks_test.php`).

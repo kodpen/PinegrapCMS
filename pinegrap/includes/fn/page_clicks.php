@@ -81,6 +81,29 @@ function pg_page_clicks_ready()
 }
 
 /**
+ * The settings text of the "Clicks and scrolling" switch (Site Settings,
+ * Features): '1' on; missing or anything else off, so every site and a new
+ * install start off.
+ */
+define('PG_PAGE_CLICKS_SWITCH', 'page_clicks');
+
+/**
+ * Whether the "Clicks and scrolling" switch is on. The one reader of the
+ * switch: the Visitors section, the beacon script and the designer's layer
+ * all ask here.
+ *
+ * @return bool
+ */
+function pg_page_clicks_switch_on()
+{
+    if (!function_exists('pg_config_text')) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/config_text.php');
+    }
+
+    return pg_config_text(PG_PAGE_CLICKS_SWITCH) === '1';
+}
+
+/**
  * The parts of the page an element can sit in, by its nearest landmark.
  *
  * @return array

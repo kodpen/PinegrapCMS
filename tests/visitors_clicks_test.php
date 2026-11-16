@@ -142,6 +142,10 @@ function test_visitors_clicks_off_says_what_is_kept_and_how_to_turn_on()
 	pg_assert_true(strpos($user, 'btn') === false, 'no button for whoever cannot change Site Settings');
 	pg_assert_contains(h(lang('A manager can turn it on in Site Settings, Features.')), $user);
 
+	// The switch is one settings text with one reader; missing reads off.
+	pg_assert_same('page_clicks', PG_PAGE_CLICKS_SWITCH);
+	pg_assert_false(pg_page_clicks_switch_on(), 'off while nothing is stored');
+
 	// Without a database the switch reads off: the section is never hidden.
 	$section = pg_visitors_section_clicks(visitors_clicks_test_period(), array('role' => 2));
 	pg_assert_contains('id="clicks"', $section, 'the section is drawn while off');
