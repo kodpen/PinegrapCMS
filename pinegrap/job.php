@@ -851,6 +851,12 @@ if (function_exists('pg_content_review_sweep_due') && pg_content_review_sweep_du
     }
 }
 
+// Content review: content.review_due once per item whose review date has
+// passed, claimed row by row so two runs never announce an item twice.
+if (function_exists('pg_content_review_announce_due')) {
+    pg_content_review_announce_due();
+}
+
 // The AI fetch rollup (includes/fn/ai_visibility.php): once a day the days
 // older than the retention period go.
 if (function_exists('pg_ai_fetch_sweep_due') && pg_ai_fetch_sweep_due()) {

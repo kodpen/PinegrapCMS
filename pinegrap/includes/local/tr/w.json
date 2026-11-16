@@ -1757,6 +1757,7 @@
     "When a page is changed in the designer or through the API": "Bir sayfa tasarımcıda veya API üzerinden değiştirildiğinde",
     "When a page is made": "Bir sayfa oluşturulduğunda",
     "When a page is saved, its new and changed texts are sent to this language's engine (Pinegrap AI, Claude or Google) on their own. The browser engine and translation by hand need the Translations screen.": "Bir sayfa kaydedilince yeni ve değişen metinleri kendiliğinden bu dilin motoruna (Pinegrap AI, Claude ya da Google) gönderilir. Tarayıcı motoru ve elle çeviri için Çeviriler ekranı gerekir.",
+    "When a page or collection record passes its review date": "Bir sayfa ya da koleksiyon kaydı gözden geçirme tarihini geçtiğinde",
     "When a post breaks the guidelines we hide it and tell the member why. When it does not, we tell you, and the post stays.": "Bir gönderi kuralları çiğniyorsa onu gizler ve üyeye nedenini söyleriz. Çiğnemiyorsa size söyleriz ve gönderi kalır.",
     "When a product gets a review of two stars or fewer, a task to answer it and a line in the channel.": "Bir ürüne iki yıldız veya daha az puanlı bir yorum yazıldığında, yanıtlamak için bir görev ve kanala bir satır.",
     "When a product review is written": "Bir ürün değerlendirmesi yazıldığında",

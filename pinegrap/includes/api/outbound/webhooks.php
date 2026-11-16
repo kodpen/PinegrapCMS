@@ -186,6 +186,11 @@ function api_webhook_events() {
 		'experiment.started'   => 'A page experiment was started for the first time',
 		'experiment.ended'     => 'A page experiment was ended, with or without a winner',
 		'page.updated'         => 'A page was changed through the API',
+		// Content review (includes/fn/content_review.php): the general job,
+		// once per item on its first run after the review date passed. id,
+		// kind (page or record), name, user_id and person (0 and '' for
+		// nobody's) and review_on follow.
+		'content.review_due'   => 'A page or collection record passed its content review date (once per date)',
 		'product_group.created' => 'A product group was created through the API or the Workspace',
 		'product_group.updated' => 'A product group was changed',
 		'product_group.deleted' => 'A product group was deleted or moved to the Recycle Bin through the API',
