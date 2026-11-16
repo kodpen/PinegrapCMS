@@ -23,7 +23,7 @@ priority: 6
 ## Which steps are there?
 - The engine, as optional parts of `pg_graph_canvas.js` that Flows does not pass: `prototype-canvas-steps.md`.
 - The view on it: `prototype-canvas-steps-2.md`. The page picture and the marks on it: `-steps-3.md`. His answer's steps: `-steps-4.md`.
-- Order: PV1 and PV7 at once; PV2 and PV3 after PV1, side by side; PV4 after both; PV5 after PV4; PV6 after PV5; PV8 after PV7 and PV2; PV9 after PV8 and PV5; PV10 after PV9; PV11a after PV10; PV11b after PV11a; PV12 last.
+- Order: PV1 and PV7 at once; PV2 and PV3 after PV1, side by side; PV4 after both; PV4b after PV4; PV5 after PV4b; PV6 after PV5; PV8 after PV7 and PV2; PV9 after PV8 and PV5; PV10 after PV9; PV11a after PV10; PV11b after PV11a; PV12 last.
 - Claim as `[plan:prototype-canvas] <step> — <topic>`.
 
 ## Whose look?
