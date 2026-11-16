@@ -853,6 +853,7 @@
     "Incoming e-invoices to take in": "Alınmayı bekleyen gelen e-faturalar",
     "Incoming e-mail": "Gelen e-posta",
     "Incoming mail rules": "Gelen e-posta kuralları",
+    "Incoming · {var:1}": "Gelen · {var:1}",
     "Incomplete": "Tamamlanmamış",
     "Incomplete Orders": "Tamamlanmamış Siparişler",
     "Incomplete order": "Tamamlanmamış sipariş",

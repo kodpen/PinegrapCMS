@@ -550,6 +550,36 @@ function test_proto_hotspots_list_and_problems()
 	pg_assert_same(array('p:p1' => 1, 's:5' => 3), $result['broken']['count'], 'each frame\'s count');
 }
 
+// The view's links panel and problems (F15-F20, F24): an aside beside the
+// stage drawn from listOf(), never from the canvas; a frame row and a list
+// row pick one link; "Change target" and "Open in the editor" go through
+// today's menu and row opening; "N broken" and its list and each frame's
+// badge from brokenOf(); the panel's open state per browser, closed under
+// 1,100 px; Play through _pgPrototypeUrl().
+function test_proto_hotspots_view_list_and_problems()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/style_designer.css');
+	pg_assert_contains("ui.list = _sdProtoEl('aside', 'sd-proto-list');", $source, 'the panel is an aside');
+	pg_assert_contains('ui.body.appendChild(ui.stage);', $source, 'beside the stage');
+	pg_assert_contains('window.PGProtoHotspots.listOf(_sdProto.layout, canvas.focused())', $source, 'its rows from the marked layout');
+	pg_assert_contains("if (done.kind === 'row' && !done.moved && event.type === 'pointerup') _sdProtoPickRow(done.row);", $source, 'a link row on the canvas picks the link');
+	pg_assert_contains("if (row && (event.key === 'Enter' || event.key === ' ')) { _sdProtoPickRow(row); return true; }", $source, 'Enter on it does too');
+	pg_assert_contains('return rowEl ? _sdProtoMenuOpen(rowEl, anchor) : false;', $source, '"Change target" opens today\'s target menu at the list row');
+	pg_assert_contains('if (rowEl) _sdProtoOpenRow(rowEl);', $source, '"Open in the editor" opens the element as a row click did');
+	pg_assert_contains('if (other) canvas.view.reveal(other);', $source, 'a picked link\'s other end comes into view');
+	pg_assert_contains('_sdProto.broken = H.brokenOf(l);', $source, 'the broken links from the marked layout');
+	pg_assert_contains("var badge = _sdProtoEl('span', 'sd-proto-badge', String(brokenHere));", $source, 'a frame\'s badge');
+	pg_assert_contains("ui.broken.textContent = broken ? _sdT('{var:1} broken', broken) : '';", $source, '"N broken" in the bar');
+	pg_assert_contains("window.localStorage.getItem('pg_proto_list')", $source, 'the panel\'s state per browser');
+	pg_assert_contains("window.matchMedia('(min-width: 1100px)').matches", $source, 'closed by default under 1,100 px');
+	pg_assert_contains('var url = page ? _pgPrototypeUrl(page) : \'\';', $source, 'Play opens the viewer at the selected page');
+	pg_assert_contains('ui.play.hidden = !_sdProtoPlayUrl();', $source, 'and is not shown without an address');
+	foreach (array('.sd-proto-list-open .sd-proto-list', '.sd-proto-broken', '.sd-proto-problems', '.sd-proto-badge', '.sd-proto-row.sd-proto-row-picked', '.sd-proto-edge-picked') as $selector) {
+		pg_assert_contains($selector, $css, 'styled: ' . $selector);
+	}
+}
+
 // The view turns on the core's right-angle arrows (F14).
 function test_proto_hotspots_view_routes_arrows()
 {
@@ -794,7 +824,7 @@ function test_proto_hotspots_view_focus_and_all_arrows()
 	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/style_designer.css');
 
 	pg_assert_contains('focus: true,', $source, 'the view passes the focus');
-	pg_assert_contains('focusChanged: function (id) { _sdProtoFocusMarks(id); },', $source, 'a change of focus marks the rows again');
+	pg_assert_contains('focusChanged: function (id) { _sdProtoFocused(id); },', $source, 'a change of focus marks the rows again and draws the links panel');
 	pg_assert_contains('groups: function () { return _sdProto.layout ? _sdProto.layout.headings : []; },', $source, 'the section headings come from the layout');
 	pg_assert_contains("canvas.groups();", $source, 'and are drawn with each draw');
 	pg_assert_contains("var focusOn = (first || _sdProto.focusOpen) ? 'p:' + _activeKey : canvas.focused();", $source, 'opening selects the open tab\'s frame');
