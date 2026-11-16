@@ -166,9 +166,46 @@
             chip.appendChild(icon(iconName));
         }
 
-        chip.appendChild(document.createTextNode((String(shown || '').charAt(0) === sigil) ? shown : sigil + (shown || token)));
+        // A message pointed at reads as the channel draws it ("Message #5"),
+        // without a sigil in front.
+        chip.appendChild(document.createTextNode(((type === 'message') && shown) || ((String(shown || '').charAt(0) === sigil) ? shown : sigil + (shown || token))));
 
         return chip;
+    }
+
+    // The message pasted words point at: its tag <#message:N>, or the
+    // address Copy link gives (this site's workspace page with message=).
+    // The id, 0 for anything else. Pure
+    // (tests/workspace_message_ref_js_test.php).
+    function pastedMessageRef(text, workspaceUrl, origin) {
+        var words = String(text || '').trim();
+        var token = /^<#message:([0-9]{1,10})>$/.exec(words);
+
+        if (token) {
+            return parseInt(token[1], 10);
+        }
+
+        if (!workspaceUrl || !/^https?:\/\/\S+$/i.test(words)) {
+            return 0;
+        }
+
+        var url;
+        var home;
+
+        try {
+            url = new URL(words);
+            home = new URL(workspaceUrl, origin);
+        } catch (error) {
+            return 0;
+        }
+
+        if ((url.origin !== home.origin) || (url.pathname !== home.pathname)) {
+            return 0;
+        }
+
+        var id = url.searchParams.get('message') || '';
+
+        return /^[0-9]{1,10}$/.test(id) ? parseInt(id, 10) : 0;
     }
 
     // One line of text as nodes: tags, code, links, emphasis.
@@ -4268,7 +4305,8 @@
      * drawPreviews), onInput(), onEnter(event), onKeydown(event) → true when
      * handled, onBlockOpen(kind, markup, done), onHistory(canUndo, canRedo),
      * headings (a note's box: "# " to "### " lines are headings, "---" a
-     * rule, as the server draws a note)
+     * rule, as the server draws a note), messageRefs (a message box: a
+     * pasted message tag or link of a message becomes its chip)
      *
      * A box with onEnter sends on Enter; its row of tools (toolbar()) then
      * has the "Aa" switch to the expanded box (expand()), where Enter is a
@@ -5372,6 +5410,16 @@
             var url = pastedUrl(text);
 
             if (url && this.linkSelection(url)) {
+                return true;
+            }
+
+            // A message box (options.messageRefs): a message's tag or link
+            // becomes the chip that opens it; selected words linked above
+            // stay a link.
+            var ref = this.options.messageRefs ? pastedMessageRef(text, (CFG.urls || {}).workspace, window.location.origin) : 0;
+
+            if (ref > 0) {
+                this.replaceTyped(0, { token: '<#message:' + ref + '>', shown: t('mr_label', ref), icon: 'bi-chat-quote' });
                 return true;
             }
 

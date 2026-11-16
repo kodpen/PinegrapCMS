@@ -4,7 +4,7 @@ description: A question to the owner about a picture or an earlier message says 
 ---
 
 ## What did the owner say? (owner, 2026-11-15, in the architect's window)
-- Asking for the message reference feature (`plans/message-reference.md`), on the architect's questions in the agent channel: "şu anda senin sorduğun sorularda bu referans olmadığı için ben hangi görselden bahsediyorsun anlıyamıyorum".
+- Asking for the message reference feature (`workspace/message-reference.md`), on the architect's questions in the agent channel: "şu anda senin sorduğun sorularda bu referans olmadığı için ben hangi görselden bahsediyorsun anlıyamıyorum".
 - A question that says "this look" without saying which picture cannot be answered by him: between a picture and its question other messages arrive, and a channel holds many pictures.
 
 ## How does a question name its picture until the feature lands?

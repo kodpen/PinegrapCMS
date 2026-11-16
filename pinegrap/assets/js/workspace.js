@@ -12603,6 +12603,15 @@
                 copyText(absoluteUrl(CFG.urls.workspace + '?channel=' + self.channel.id + '&message=' + message.id));
             } });
 
+            // The message's tag: pasted into a writing box it becomes the
+            // chip that opens this message (workspace_editor.js), with no
+            // answer and nobody told.
+            if (!message.deleted && (message.kind !== 'system')) {
+                items.push({ icon: 'bi-chat-quote', label: t('mr_copy'), action: function () {
+                    copyText('<#message:' + message.id + '>');
+                } });
+            }
+
             if (!message.deleted && message.kind !== 'system') {
                 items.push({ icon: 'bi-eye', label: t('seen_by'), action: function () { self.seenBy(message); } });
             }
@@ -16915,6 +16924,8 @@
             // panel is not inside the channel screen's centre.
             self.rich = window.PGWsEditor ? window.PGWsEditor.create({
                 placeholder: placeholder,
+                // A pasted message tag or link of a message becomes its chip.
+                messageRefs: true,
                 onKeydown: keys,
                 onEnter: function () { self.send(); },
                 pasteFiles: function (files) { self.uploadFiles(files); },
