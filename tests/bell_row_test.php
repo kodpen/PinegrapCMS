@@ -69,6 +69,7 @@ function test_bell_row_module_of_every_known_action()
 		'content_applied'   => 'content',
 		'content_dismissed' => 'content',
 		'content_stale'     => 'content',
+		'bundle_held'       => 'content',
 		'workspace'        => 'team',
 		'software_update'  => 'system',
 		'mail_failed'      => 'system',
