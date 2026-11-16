@@ -2527,6 +2527,7 @@
     "review(s)": "değerlendirme",
     "review, my guides, status, moderators": "inceleme, rehberlerim, durum, moderatörler",
     "review, rating, feedback": "yorum, puan, geri bildirim",
+    "review_on must be a date written as YYYY-MM-DD.": "review_on, YYYY-AA-GG biçiminde yazılmış bir tarih olmalıdır.",
     "reviewed": "gözden geçirildi",
     "reviews": "degerlendirmeler",
     "reviews, critics, magazine, press": "eleştiri, eleştirmen, dergi, basın",

@@ -3423,6 +3423,7 @@
     "A usage window needs its reset time.": "Kullanım penceresinin sıfırlanma zamanı gerekir.",
     "A usage window's percent is a whole number from 0 to 100.": "Kullanım penceresinin yüzdesi 0 ile 100 arasında bir tam sayıdır.",
     "A user account is made": "Bir kullanıcı hesabı oluşturulur",
+    "A user can only mark their own items reviewed.": "Bir kullanıcı yalnızca kendi öğelerini incelendi olarak işaretleyebilir.",
     "A user could not be deleted because it was the only administrator.": "Tek yönetici olduğu için bir kullanıcı silinemedi.",
     "A user needs an e-mail address.": "Kullanıcının bir e-posta adresi olmalı.",
     "A user with this e-mail address exists already.": "Bu e-posta adresine sahip bir kullanıcı zaten var.",

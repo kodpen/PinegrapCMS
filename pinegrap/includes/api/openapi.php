@@ -726,6 +726,7 @@ function api_openapi_objects()
         'FormSubmissionRestore' => 'api_form_revision_restore_schema',
         'SeoIssue'       => 'api_seo_issue_schema',
         'SeoNotFound'    => 'api_seo_not_found_schema',
+        'ContentReviewItem' => 'api_content_review_schema',
         'SystemStatus'   => 'api_system_status_schema',
         'SalesReport'    => 'api_sales_report_schema',
         'CartRecoveryReport' => 'api_cart_recovery_report_schema',

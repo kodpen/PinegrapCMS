@@ -1867,6 +1867,7 @@
     "Send at least one of name, description, email_subscription or subscription_type.": "name, description, email_subscription ya da subscription_type alanlarından en az birini gönderin.",
     "Send at least one of question, options, multiple, anonymous or closes_at.": "question, options, multiple, anonymous ya da closes_at alanlarından en az birini gönderin.",
     "Send at least one of question, options, multiple, anonymous, closes_at, a picture or remove_picture.": "question, options, multiple, anonymous, closes_at, bir görsel ya da remove_picture alanlarından en az birini gönderin.",
+    "Send at least one of user_id, review_on, interval_months or reviewed.": "user_id, review_on, interval_months veya reviewed alanlarından en az birini gönderin.",
     "Send at once": "Hemen gönder",
     "Send at this Date & Time": "Bu Tarih ve Saatte Gönder",
     "Send back": "Geri gönder",
