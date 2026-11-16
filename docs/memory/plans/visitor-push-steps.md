@@ -10,6 +10,7 @@ description: Plan visitor-push, steps VP1 to VP8: the tables and the door, the s
   - New: `includes/fn/site_push.php` (ready check, the switch, the check of a subscription, save and remove, the waiting message of a secret), the root file `site_push.php` on the pattern of `consent_answer.php`, `tests/site_push_test.php`.
   - Tests, red first: an endpoint on an unknown host or without https refused, key lengths, the door's origin and rate checks, a secret reading only its own message, nothing written with the switch off.
   - Features: N1 (the door), N4 to N9, N18.
+  - Done: #9947 (`platform/visitor-push-rules.md`); no `contact_id` column (a `contact_id` column must be a holder in `includes/fn/contacts.php`; the contact is reached through `user_id`). Waits on the architect's yes to the columns (agent channel message 6520).
 
 - VP2 (M) after VP1: the sender.
   - Existing files: `job.php` and `push_job.php` (the queue's pass).
