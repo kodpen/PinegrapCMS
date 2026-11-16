@@ -478,6 +478,78 @@ JS
 	pg_assert_true($result['small'][0] > 48, 'and stands in the middle');
 }
 
+// The list beside the canvas (F15) and the problems (F19, F20), from the
+// marked design: the selected page's links out with their targets, a
+// broken one with why; the links into it, a shared part's said so; the
+// shared parts on the page, nested ones too; nothing selected and a chip
+// give none; every broken link of the design and each frame's count.
+function test_proto_hotspots_list_and_problems()
+{
+	$tab = function ($node, $label, $key) {
+		return array('nodeId' => $node, 'source' => 'href', 'href' => '/' . $key, 'label' => $label, 'mark' => 'tab', 'tab' => $key, 'draft' => false);
+	};
+	$marked = array(
+		'pages' => array(
+			array('key' => 'p1', 'name' => 'home', 'shared' => array(5), 'hotspots' => array(
+				$tab('a', 'About', 'p2'),
+				array('nodeId' => 'b', 'source' => 'btn', 'href' => 'https://x.org/', 'label' => '', 'mark' => 'external', 'tab' => '', 'draft' => false),
+				array('nodeId' => 'm', 'source' => 'menu', 'name' => 'Top', 'links' => array(
+					array('href' => '/home', 'label' => 'Home', 'mark' => 'tab', 'tab' => 'p1'),
+				)),
+				array('nodeId' => 'g', 'source' => 'menu', 'name' => 'Gone', 'links' => null),
+			)),
+			array('key' => 'p2', 'name' => 'about', 'shared' => array(5), 'hotspots' => array()),
+			array('key' => 'p3', 'name' => '', 'shared' => array(), 'hotspots' => array($tab('c', 'Back', 'p2'))),
+		),
+		'shared' => array(
+			array('id' => 5, 'name' => 'Header', 'pages' => 2, 'loaded' => true, 'shared' => array(6), 'hotspots' => array(
+				$tab('h', 'Contact', 'p2'),
+				array('nodeId' => 'i', 'source' => 'href', 'href' => '/old', 'label' => 'Old', 'mark' => 'broken', 'tab' => '', 'draft' => false),
+				array('nodeId' => 'j', 'source' => 'href', 'href' => '/kept', 'label' => 'Kept', 'mark' => 'broken', 'tab' => '', 'draft' => false, 'bound' => '77'),
+				array('nodeId' => 'k', 'source' => 'btn', 'href' => '', 'label' => 'Empty', 'mark' => 'broken', 'tab' => '', 'draft' => false),
+			)),
+			array('id' => 6, 'name' => 'Logo', 'pages' => 2, 'loaded' => true, 'shared' => array(), 'hotspots' => array()),
+		),
+	);
+	$result = proto_hotspots_test_node('var l = H.layout(' . proto_hotspots_test_js($marked) . ', {});'
+		. ' out = { home: H.listOf(l, "p:p1"), about: H.listOf(l, "p:p2"), header: H.listOf(l, "s:5"), none: H.listOf(l, null), chip: H.listOf(l, "c:0"), gone: H.listOf(l, "p:zz"), broken: H.brokenOf(l) };');
+
+	if ($result === null) {
+		return;
+	}
+
+	$out = function ($list) {
+		return array_map(function ($row) {
+			return array($row['port'], $row['label'], $row['mark'], $row['to'], $row['target'], $row['why'], $row['drawable']);
+		}, $list['outgoing']);
+	};
+	pg_assert_same(array('id' => 'p:p1', 'kind' => 'page', 'name' => 'home'), array_intersect_key($result['home'], array('id' => 1, 'kind' => 1, 'name' => 1)), 'the selected frame');
+	pg_assert_same(array(
+		array('h0', 'About', 'tab', 'p:p2', 'about', '', true),
+		array('h1', 'https://x.org/', 'external', 'c:0', 'https://x.org/', '', true),
+		array('h2', 'Top › Home', 'tab', 'p:p1', 'home', '', false),
+		array('h3', 'Gone', 'broken', '', '', 'menu', false),
+	), $out($result['home']), 'outgoing: label, mark, target; a menu link read-only; a menu not read is broken by its menu');
+	pg_assert_same(array(), $result['home']['incoming'], 'nothing leads into it but itself');
+	pg_assert_same(array(array('id' => 's:5', 'name' => 'Header'), array('id' => 's:6', 'name' => 'Logo')), $result['home']['parts'], 'its shared parts, nested ones too');
+	pg_assert_same(array(
+		array('frame' => 'p:p1', 'port' => 'h0', 'label' => 'About', 'source' => 'home', 'shared' => false),
+		array('frame' => 'p:p3', 'port' => 'h0', 'label' => 'Back', 'source' => '', 'shared' => false),
+		array('frame' => 's:5', 'port' => 'h0', 'label' => 'Contact', 'source' => 'Header', 'shared' => true),
+	), $result['about']['incoming'], 'incoming: source and label, a shared part said so');
+	pg_assert_same(array(), $result['about']['outgoing'], 'a page with no links: none out');
+	pg_assert_same(array('page', 'kept', 'address'), array_map(function ($row) { return $row['why']; }, array_slice($result['header']['outgoing'], 1)), 'why each is broken: no page at it, its page gone, no address');
+	pg_assert_same(array(), $result['header']['parts'], 'a shared frame lists no parts');
+	pg_assert_same(array(null, null, null), array($result['none'], $result['chip'], $result['gone']), 'nothing selected, a chip or no such frame: no list');
+	pg_assert_same(array(
+		array('frame' => 'p:p1', 'port' => 'h3', 'label' => 'Gone', 'href' => '', 'why' => 'menu'),
+		array('frame' => 's:5', 'port' => 'h1', 'label' => 'Old', 'href' => '/old', 'why' => 'page'),
+		array('frame' => 's:5', 'port' => 'h2', 'label' => 'Kept', 'href' => '/kept', 'why' => 'kept'),
+		array('frame' => 's:5', 'port' => 'h3', 'label' => 'Empty', 'href' => '', 'why' => 'address'),
+	), $result['broken']['list'], 'every broken link of the design, in the frames\' order');
+	pg_assert_same(array('p:p1' => 1, 's:5' => 3), $result['broken']['count'], 'each frame\'s count');
+}
+
 // The view turns on the core's right-angle arrows (F14).
 function test_proto_hotspots_view_routes_arrows()
 {
