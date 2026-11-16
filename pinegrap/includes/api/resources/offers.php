@@ -370,6 +370,16 @@ function api_offer_conditions_out($conditions, $lookups) {
 
 				break;
 
+			case 'contact group':
+
+				// Only a signed-in customer whose contact is in the group.
+				$out[] = array(
+					'type'             => 'contact_group',
+					'contact_group_id' => (int)$condition['group_id']
+				);
+
+				break;
+
 		}
 
 	}
