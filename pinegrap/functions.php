@@ -210,6 +210,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/comments.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/product_questions.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/wishlist.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/stock_notify.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/courses.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/bundles.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/shipment_lookup.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/maintenance_mode.php');
