@@ -42,6 +42,7 @@ function pg_privacy_export_sections()
         'identities'         => lang('Connected sign-in accounts'),
         'passkeys'           => lang('Passkeys'),
         'push_subscriptions' => lang('Device notifications'),
+        'site_push'          => lang('Site notifications'),
         'contact'            => lang('Contact'),
         'contact_groups'     => lang('Contact groups'),
         'address_book'       => lang('Address book'),
@@ -808,6 +809,11 @@ function pg_privacy_export_collect(array $found)
 
     if (pg_schema_has('push_subscriptions', 'user_id')) {
         $sections['push_subscriptions'] = _pg_privacy_export_select("SELECT * FROM push_subscriptions WHERE " . _pg_privacy_export_in('user_id', $user_ids) . " ORDER BY id", $user_ids, array('endpoint', 'p256dh', 'auth'), array('endpoint_hash'));
+    }
+
+    // The site's news by browser notification, signed in (includes/fn/site_push.php).
+    if (pg_schema_has('site_push_subscription', 'user_id')) {
+        $sections['site_push'] = _pg_privacy_export_select("SELECT id, user_id, service, language, created_at, last_seen_at FROM site_push_subscription WHERE " . _pg_privacy_export_in('user_id', $user_ids) . " ORDER BY id", $user_ids);
     }
 
     // Contact groups, with the opt-in of each.
