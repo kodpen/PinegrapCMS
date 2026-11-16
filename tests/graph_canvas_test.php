@@ -1124,7 +1124,8 @@ JS
 // one straight line; far apart in a row under the row; to another row; out
 // of a side column, also a wrapped one (arrange() maxH) from its farthest
 // column; round a box in the way; null with no way; path() rounds the
-// turns; lanes() spreads legs sharing a gap; 300 routes of a redraw in
+// turns; lanes() spreads legs sharing a gap, closer when the room is
+// short; 300 routes of a redraw in
 // under 100 ms.
 function test_graph_canvas_route()
 {
@@ -1202,6 +1203,10 @@ var laneIn = [
 ];
 out.lanes = G.lanes(laneIn);
 out.lanesKept = laneIn[0][1].x;
+// Eleven ways down one gap with 12 units of room: closer than 6, none past 12.
+var many = [];
+for (var n = 0; n < 11; n++) { many.push([{ x: 0, y: n }, { x: 16, y: n }, { x: 16, y: 200 + n }, { x: 40, y: 200 + n }]); }
+out.room = G.lanes(many, 6, 12).map(function (points) { return points[1].x; });
 
 // Time: 300 routes over the arrangement of forty pages and fifty parts,
 // as a redraw routes them in a session (a first drawing of 300 others
@@ -1256,6 +1261,7 @@ JS
 	pg_assert_same(16, $result['lanes'][2][1]['x'], 'a way alone in its gap stays');
 	pg_assert_same(null, $result['lanes'][3], 'no way stays none');
 	pg_assert_same(16, $result['lanesKept'], 'the ways given are not changed');
+	pg_assert_same(array(4.0, 6.4, 8.8, 11.2, 13.6, 16.0, 18.4, 20.8, 23.2, 25.6, 28.0), array_map(function ($x) { return round((float) $x, 1); }, $result['room']), 'more ways than fit 6 apart in the room are drawn closer, none past it');
 	pg_assert_same(300, $result['time'][1], 'every one of 300 routes found');
 	pg_assert_true($result['time'][0] < 100, '300 routes in under 100 ms: ' . $result['time'][0] . ' ms');
 }

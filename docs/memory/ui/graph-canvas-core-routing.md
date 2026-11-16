@@ -11,10 +11,10 @@ module: graph_canvas
 
 ## What do G.path() and G.lanes() give?
 - `G.path(points, radius)` → `{ d, mx, my }` as `curve()` gives: turns rounded with a quadratic corner of at most `radius` (8) and half the shorter leg; the middle is half-way along.
-- `G.lanes(routes, gap)`: inner legs of different ways on one line that overlap (directly or through another) move apart, `gap` (6) units between neighbours, centred on the line, in the order given; the first and last legs (at the ports) stay. A null way stays null; the ways given are not changed.
+- `G.lanes(routes, gap, room)`: inner legs of different ways on one line that overlap (directly or through another) move apart, `gap` (6) units between neighbours, centred on the line, in the order given; with `room` no leg moves further than that off its line (more legs are drawn closer). The first and last legs (at the ports) stay. A null way stays null; the ways given are not changed.
 
 ## What does adapter route 'elbow' do?
-- `create()` routes each drawn arrow over the boxes of `items()` (with `size()`) to the nearest edge of its target; `settle()` runs once the edges of a drawing are in (a microtask), on each focus or "All arrows" change, and from `reroute()` (a moved box routes its own arrows; others keep their way). Ways sharing a gap go through `lanes()`.
+- `create()` routes each drawn arrow over the boxes of `items()` (with `size()`) to the nearest edge of its target; `settle()` runs once the edges of a drawing are in (a microtask), on each focus or "All arrows" change, and from `reroute()` (a moved box routes its own arrows; others keep their way). Ways sharing a gap go through `lanes()` with room `routeMargin - 4`; the faint ones are spread among themselves, so with "All arrows" on the box in focus keeps its 6-unit lanes (its first try spread 139 arrows together and lanes ran over frames).
 - An arrow keeps today's curve while hidden, while it is faint with more than `ROUTE_MOST` (150) drawn, and when `route()` finds no way. Every arrow is a curve at first and becomes a way when the drawing settles.
 - `adapter.routeMargin` (16) is the room an arrow keeps round a box. Lanes spread 6 apart round a line that far out, so many arrows in one gap need more: the Prototype view passes 40 (about a dozen side by side in its 96 gaps; with 16, nine Header arrows ran over the heads of the frames beside their gap).
 - `portAt(item, name)` may answer `{ x, y, side }` from the box's top left: the arrow leaves there, by that side. `{ y }` alone is the right edge as before.

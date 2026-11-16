@@ -729,10 +729,11 @@
     // Ways (point lists from route(), null kept as null) whose inner legs
     // run on one line and overlap moved apart, gap units between
     // neighbours (6), spread round that line in the order given; a way's
-    // first and last legs, at its ports, stay where they are. Answers new
-    // point lists.
-    function lanes(routes, gap) {
-        var step = (gap === undefined) ? 6 : gap;
+    // first and last legs, at its ports, stay where they are. room (none
+    // when not given) is the most a leg may move off its line: more ways
+    // than fit gap apart in it are drawn closer. Answers new point lists.
+    function lanes(routes, gap, room) {
+        var spacing = (gap === undefined) ? 6 : gap;
         var out = (routes || []).map(function (points) {
             return points ? points.map(function (p) { return { x: p.x, y: p.y }; }) : null;
         });
@@ -780,6 +781,12 @@
 
                 if (group.length < 2) {
                     return;
+                }
+
+                var step = spacing;
+
+                if (typeof room === 'number' && room >= 0) {
+                    step = Math.min(step, 2 * room / (group.length - 1));
                 }
 
                 group.sort(function (a, b) { return (list[a].r - list[b].r) || (list[a].i - list[b].i); });
@@ -1866,8 +1873,17 @@
                 }
             });
 
-            lanes(routed.map(function (one) { return one.points; })).forEach(function (points, i) {
-                draw(routed[i], path(points, ROUTE_RADIUS));
+            var margin = (adapter.routeMargin === undefined) ? 16 : adapter.routeMargin;
+
+            // The faint arrows spread among themselves, under the others,
+            // so they never crowd the arrows of the box in focus; lanes stay
+            // 4 clear of a box: at most margin - 4 off their line.
+            [true, false].forEach(function (faintOnes) {
+                var set = routed.filter(function (one) { return (one.state === 'faint') === faintOnes; });
+
+                lanes(set.map(function (one) { return one.points; }), 6, Math.max(0, margin - 4)).forEach(function (points, i) {
+                    draw(set[i], path(points, ROUTE_RADIUS));
+                });
             });
         }
 
