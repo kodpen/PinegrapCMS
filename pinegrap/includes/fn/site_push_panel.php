@@ -269,7 +269,7 @@ function pg_site_push_list_html(array $messages, $when = null)
     $number = function ($value) {
         return h(pg_format_number((int) $value, 0));
     };
-    $ended_hint = lang('Browsers that no longer take notifications; removed from the list.');
+    $ended_hint = lang('Subscribers whose browser no longer takes notifications; taken off the list.');
     $heading = '<section class="pg-card pg-messages-card mb-5"><div class="pg-messages-card-head"><h2 class="pg-title-section pg-messages-card-heading">' . h(lang('Sent notifications')) . '</h2></div>';
 
     if (!$messages) {
@@ -296,14 +296,14 @@ function pg_site_push_list_html(array $messages, $when = null)
             . '<td class="text-end" data-sort="' . (int) $message['removed_count'] . '">' . $number($message['removed_count']) . '</td>'
             . '</tr>';
 
-        $cards .= '<li class="pg-card-inner"><div class="d-flex justify-content-between gap-2"><span class="pg-list-row-title">' . $title . '</span>' . $pill . '</div>'
+        $cards .= '<li class="pg-card-inner p-5"><div class="d-flex justify-content-between gap-2"><span class="pg-list-row-title">' . $title . '</span>' . $pill . '</div>'
             . '<div class="pg-text-meta text-break">' . $line . '</div>'
             . '<div class="pg-text-meta">' . $sent . '</div>'
-            . '<div class="d-flex flex-wrap gap-3 mt-1">'
+            . '<div class="pg-text-meta d-flex flex-wrap column-gap-5 mt-2">'
             . '<span>' . h(lang('Subscribers')) . ' <strong>' . $number($message['queued_count']) . '</strong></span>'
             . '<span>' . h(lang('Delivered')) . ' <strong>' . $number($message['sent_count']) . '</strong></span>'
             . '<span>' . h(lang('Failed')) . ' <strong>' . $number($message['failed_count']) . '</strong></span>'
-            . '<span title="' . h($ended_hint) . '">' . h(lang('Subscription ended')) . ' <strong>' . $number($message['removed_count']) . '</strong></span>'
+            . '<span title="' . h($ended_hint) . '">' . h(lang('Ended subscriptions')) . ' <strong>' . $number($message['removed_count']) . '</strong></span>'
             . '</div></li>';
     }
 
@@ -313,8 +313,8 @@ function pg_site_push_list_html(array $messages, $when = null)
     };
 
     return $heading
-        . '<div class="table-responsive d-none sm:d-block"><table class="table table-hover mb-0 pg-embedded-table" data-pg-sort>'
-        . '<thead><tr>' . $th(lang('Message')) . $th(lang('Type')) . $th(lang('Sent')) . $th(lang('Subscribers'), 'text-end') . $th(lang('Delivered'), 'text-end') . $th(lang('Failed'), 'text-end') . $th(lang('Subscription ended'), 'text-end', $ended_hint) . '</tr></thead>'
+        . '<div class="table-responsive d-none sm:d-block"><table class="table table-hover mt-0 mb-0 pg-embedded-table" data-pg-sort>'
+        . '<thead><tr>' . $th(lang('Message')) . $th(lang('Type')) . $th(lang('Sent')) . $th(lang('Subscribers'), 'text-end') . $th(lang('Delivered'), 'text-end') . $th(lang('Failed'), 'text-end') . $th(lang('Ended subscriptions'), 'text-end', $ended_hint) . '</tr></thead>'
         . '<tbody>' . $rows . '</tbody></table></div>'
         . '<ul class="list-unstyled d-flex flex-column gap-2 mb-0 sm:d-none">' . $cards . '</ul>'
         . '</section>';

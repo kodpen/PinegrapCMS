@@ -359,11 +359,11 @@ function test_site_push_panel_list_html()
 	pg_assert_contains('pg-embedded-table', $html, 'a table that grows with its rows');
 	pg_assert_false(strpos($html, 'pg-list-table') !== false, 'not the driver: no inner scroll, no selection');
 	pg_assert_false(strpos($html, 'checkbox') !== false, 'nothing to select');
-	pg_assert_contains(lang('Subscription ended'), $html, 'the ended column says what ended');
-	pg_assert_contains(h(lang('Browsers that no longer take notifications; removed from the list.')), $html, 'with its hint');
+	pg_assert_contains(lang('Ended subscriptions'), $html, 'the ended column says what ended');
+	pg_assert_contains(h(lang('Subscribers whose browser no longer takes notifications; taken off the list.')), $html, 'with its hint');
 	pg_assert_false(strpos($html, '>' . lang('Removed') . '<') !== false, 'no bare "Removed"');
 	pg_assert_contains('sm:d-none', $html, 'phone cards');
-	pg_assert_same(2, substr_count($html, '<li class="pg-card-inner">'), 'one card a message');
+	pg_assert_same(2, substr_count($html, '<li class="pg-card-inner p-5">'), 'one card a message');
 	pg_assert_contains(lang('Subscribers') . ' <strong>1,284</strong>', $html, 'the card shows the subscribers');
 	pg_assert_contains(lang('Delivered') . ' <strong>1,280</strong>', $html, 'delivered');
 	pg_assert_contains(lang('Failed') . ' <strong>1</strong>', $html, 'and failed');
