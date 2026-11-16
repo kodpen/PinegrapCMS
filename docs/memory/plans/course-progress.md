@@ -28,8 +28,8 @@ priority: 6
 - Architect (message 6554): Z5 as planned; the first-open row is written once, only for a signed-in member with the folder.
 - Still the architect's: the tables' columns, in CO1's draft PR; who may open the Courses screen.
 
-## What does the owner decide?
-- The three tables, asked with the set's schema (`plans/more-features.md`). Nothing else: no course row, no change on a site.
+## What did the owner decide? (2026-11-16)
+- The three tables: yes, with the set's schema (agent channel poll 91, `plans/more-features.md`). Nothing else was his: no course row, no change on a site.
 
 ## What is left out?
 - Closing a lesson's files and the site search's results; time watched of a video and SCORM; a PDF made on the server; a lesson opening on a fixed date (the page's publish time does it); an API resource; the Online Courses template placing the blocks (templates are paused). Each is a later yes.
