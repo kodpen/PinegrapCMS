@@ -202,6 +202,25 @@ echo
                 return;
             }
 
+            // One row fills the fields with its values; a selection keeps
+            // what was chosen last.
+            if (id) {
+                dialog.querySelectorAll(\'[data-pg-cr-field]\').forEach(function (field) {
+                    var name = field.getAttribute(\'data-pg-cr-field\').replace(/_/g, \'-\');
+                    var value = button.getAttribute(\'data-pg-cr-value-\' + name);
+
+                    if ((value === null) || ((name === \'user-id\') && (value === \'0\'))) {
+                        return;
+                    }
+
+                    if (field.hasAttribute(\'data-pg-date\') && window.pgDatePicker && pgDatePicker.set) {
+                        pgDatePicker.set(field, value);
+                    } else {
+                        field.value = value;
+                    }
+                });
+            }
+
             dialog.setAttribute(\'data-pg-cr-for\', action);
             dialog.setAttribute(\'data-pg-cr-payload\', payload);
             dialog.querySelector(\'[data-pg-cr-count]\').textContent = (count > 1) ? countText.replace(\'{var:1}\', count) : \'\';
@@ -218,7 +237,14 @@ echo
             var dialog = button.closest(\'dialog\');
 
             dialog.querySelectorAll(\'[data-pg-cr-field]\').forEach(function (field) {
-                form.elements[field.getAttribute(\'data-pg-cr-field\')].value = field.value;
+                var value = field.value;
+
+                // A date field sends the picker\'s ISO date when it has one.
+                if (field.hasAttribute(\'data-pg-date\') && window.pgDatePicker && (value.trim() !== \'\')) {
+                    value = pgDatePicker.get(field) || value;
+                }
+
+                form.elements[field.getAttribute(\'data-pg-cr-field\')].value = value;
             });
 
             send(dialog.getAttribute(\'data-pg-cr-for\'), dialog.getAttribute(\'data-pg-cr-payload\'));

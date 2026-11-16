@@ -274,15 +274,16 @@ function pg_content_review_list_columns($filter)
     $bounded = !pg_content_review_list_reads_items($filter);
 
     return array(
-        'name' => array('heading' => lang('Name'), 'width' => '16rem', 'kind' => 'link', 'sort' => $bounded ? 'item_name' : ''),
-        'kind' => array('heading' => lang('Kind'), 'width' => '8rem', 'kind' => 'badge'),
-        'person' => array('heading' => lang('Person'), 'width' => '8rem'),
-        'review' => array('heading' => lang('Review by'), 'width' => '13rem', 'kind' => 'date', 'sort' => 'review_sort'),
-        'last' => array('heading' => lang('Last published'), 'width' => '9rem', 'kind' => 'date'),
-        'seo' => array('heading' => lang('SEO'), 'width' => '6.5rem', 'kind' => 'badge'),
-        'a11y' => array('heading' => lang('Accessibility'), 'width' => '8rem'),
-        'views' => array('heading' => lang('Views (30 days)'), 'width' => '6rem', 'kind' => 'number', 'sort' => $bounded ? 'views' : ''),
-        'actions' => array('heading' => lang('Action'), 'width' => '4rem', 'kind' => 'actions'),
+        'name' => array('heading' => lang('Name'), 'width' => '14rem', 'kind' => 'link', 'sort' => $bounded ? 'item_name' : ''),
+        'kind' => array('heading' => lang('Kind'), 'width' => '7rem', 'kind' => 'badge'),
+        'person' => array('heading' => lang('Person'), 'width' => '7rem'),
+        'review' => array('heading' => lang('Review by'), 'width' => '12rem', 'kind' => 'date', 'sort' => 'review_sort'),
+        'reviewed' => array('heading' => lang('Last reviewed'), 'width' => '12rem', 'hidden' => true),
+        'last' => array('heading' => lang('Last published'), 'width' => '8rem', 'kind' => 'date'),
+        'views' => array('heading' => lang('Views (30 days)'), 'width' => '5rem', 'kind' => 'number', 'sort' => $bounded ? 'views' : ''),
+        'seo' => array('heading' => lang('SEO'), 'width' => '6rem', 'kind' => 'badge'),
+        'a11y' => array('heading' => lang('Accessibility'), 'width' => '7rem'),
+        'actions' => array('heading' => lang('Action'), 'width' => '3.5rem', 'kind' => 'actions'),
     );
 }
 
@@ -476,8 +477,8 @@ function pg_content_review_list_row(array $record, array $facts, array $context)
     $review = '<span class="pg-pill pg-tone-' . pg_content_review_list_state_tone($state) . '">' . h(pg_content_review_list_state_label($state)) . '</span>';
 
     if ($review_on !== null) {
-        // get_absolute_time() answers markup (a <time> element).
-        $review = '<span class="pg-tabular me-2">' . get_absolute_time(array('timestamp' => strtotime($review_on . ' 12:00:00'), 'type' => 'date')) . '</span>' . $review;
+        // The site's short date order, as the date field takes it.
+        $review = '<span class="pg-tabular me-2">' . h(prepare_form_data_for_output($review_on, 'date', false)) . '</span>' . $review;
     }
 
     $months = (int) $record['interval_months'];
@@ -494,9 +495,9 @@ function pg_content_review_list_row(array $record, array $facts, array $context)
             : lang(array('string' => 'Reviewed {var:1}', 'vars' => array(get_relative_time(array('timestamp' => (int) $record['reviewed_at'])))));
     }
 
-    if ($meta) {
-        $review .= '<div class="pg-text-meta fg-secondary">' . implode(' · ', $meta) . '</div>';
-    }
+    // The interval and the last review have a column of their own, hidden
+    // until it is shown: under the date they made every row two lines wide.
+    $reviewed = $meta ? '<span class="pg-text-meta">' . implode(' · ', $meta) . '</span>' : $dash;
 
     // Last published, or changed.
     $last = pg_content_review_list_last(($kind === 'page') ? ($facts['revisions'][$item_id] ?? 0) : 0, $record['changed_at']);
@@ -527,18 +528,23 @@ function pg_content_review_list_row(array $record, array $facts, array $context)
         $a11y = $managers ? '<a class="pg-link-secondary" href="view_accessibility.php">' . $a11y_text . '</a>' : $a11y_text;
     }
 
-    $views = (($kind === 'page') && ($record['views'] !== null)) ? '<span class="pg-tabular">' . h(number_format((int) $record['views'])) . '</span>' : $dash;
+    $views = (($kind === 'page') && ($record['views'] !== null)) ? '<span class="pg-tabular">' . h(pg_format_number((int) $record['views'], 0)) . '</span>' : $dash;
 
     return array('id' => (string) $id, 'class' => '', 'cells' => array(
         'name' => pg_list_cell('<a class="pg-link-body-emphasis text-decoration-none" data-pg-open href="' . h($edit_url) . '">' . h($name) . '</a>', 'align-middle'),
         'kind' => pg_list_cell($kind_html, 'align-middle'),
         'person' => pg_list_cell($person, 'align-middle'),
         'review' => pg_list_cell($review, 'align-middle'),
+        'reviewed' => pg_list_cell($reviewed, 'align-middle'),
         'last' => pg_list_cell($last_html, 'align-middle'),
         'seo' => pg_list_cell($seo, 'align-middle'),
         'a11y' => pg_list_cell($a11y, 'align-middle'),
         'views' => pg_list_cell($views, 'align-middle text-end'),
-        'actions' => pg_list_cell(pg_content_review_list_menu($id, $kind, $managers), 'align-middle text-nowrap'),
+        'actions' => pg_list_cell(pg_content_review_list_menu($id, $kind, $managers, array(
+            'user_id' => $person_id,
+            'review_on' => (string) $review_on,
+            'interval_months' => $months,
+        )), 'align-middle text-nowrap'),
     ));
 }
 
@@ -549,12 +555,21 @@ function pg_content_review_list_row(array $record, array $facts, array $context)
  * @param int    $id   the list's id of the item
  * @param string $kind
  * @param bool   $managers role under 3
+ * @param array  $values   the row's user_id, review_on (as typed) and
+ *                         interval_months, for its dialogs (the date ISO)
  * @return string
  */
-function pg_content_review_list_menu($id, $kind, $managers)
+function pg_content_review_list_menu($id, $kind, $managers, array $values = array())
 {
-    $item = function ($action, $icon, $label) use ($id) {
-        return '<li><button type="button" class="menu-item" data-pg-cr-action="' . h($action) . '" data-pg-cr-id="' . (int) $id . '">'
+    // The row's values fill its dialog's fields (data-pg-cr-value-<field>).
+    $filled = '';
+
+    foreach ($values as $field => $value) {
+        $filled .= ' data-pg-cr-value-' . str_replace('_', '-', $field) . '="' . h((string) $value) . '"';
+    }
+
+    $item = function ($action, $icon, $label) use ($id, $filled) {
+        return '<li><button type="button" class="menu-item" data-pg-cr-action="' . h($action) . '" data-pg-cr-id="' . (int) $id . '"' . $filled . '>'
             . '<i class="bi bi-' . $icon . ' me-3" aria-hidden="true"></i>' . h($label) . '</button></li>';
     };
 
