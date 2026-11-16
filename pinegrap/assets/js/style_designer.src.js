@@ -35133,6 +35133,24 @@ const StyleDesigner = (function () {
                     )
                 );
 
+                // ── Rows of this record: a list of a rows field's records ──
+                // One button per rows field of the form; it places a list of
+                // the child form after this record view, set up with
+                // "Rows of the shown record" (_swAddRowsList()).
+                var _fivRowsFields = (_fivFields || []).filter(function (ff) {
+                    return ff.collection_kind === 'rows' && (parseInt(ff.reference_page_id, 10) || 0) > 0 && String(ff.name || '').trim() !== '';
+                });
+                if (_fivRowsFields.length) {
+                    systemSection += sect('bi-list-ol', _sdT('Rows of this record'),
+                        _fivRowsFields.map(function (ff) {
+                            var name = String(ff.name).trim();
+                            return '<button type="button" class="btn btn-sm btn-outline theme-primary w-100 mb-1 sd-sw-fiv-rows-list" data-child="' + esc(String(parseInt(ff.reference_page_id, 10) || 0)) + '" data-field="' + esc(name) + '">' +
+                                '<span class="bi bi-plus-lg me-1"></span>' + esc(_sdT('Add the list of {var}', ff.label || name)) + '</button>';
+                        }).join('') +
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px;line-height:1.4">' + esc(_sdT('Adds a list after this record view that shows the rows of the record the page shows, in their order. Lay out its rows as in any list.')) + '</div>'
+                    );
+                }
+
                 // ── Filters (form_item_view): which records the page shows ──
                 // Same rows and handlers as the list's filters; a record
                 // outside them is not found, in its feed and sitemap too.
@@ -37441,6 +37459,10 @@ const StyleDesigner = (function () {
                 if (dyn === 'url parameter') attr = q('.sd-sw-filter-param')
                     ? String(q('.sd-sw-filter-param').value || '')
                     : String(el.getAttribute('data-attr') || '');
+                // The rows field's name for the rows of the shown record.
+                if (dyn === 'shown record rows') attr = q('.sd-sw-filter-rows')
+                    ? String(q('.sd-sw-filter-rows').value || '').trim().slice(0, 255)
+                    : String(el.getAttribute('data-attr') || '');
                 out.push({
                     field: q('.sd-sw-filter-field') ? q('.sd-sw-filter-field').value : '',
                     operator: q('.sd-sw-filter-op') ? q('.sd-sw-filter-op').value : 'is equal to',
@@ -37497,6 +37519,8 @@ const StyleDesigner = (function () {
                 this.value = String(this.value || '').trim().toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 32);
                 save(_swReadFilters(key), true);
             });
+            var rowsEl = el.querySelector('.sd-sw-filter-rows');
+            if (rowsEl) rowsEl.addEventListener('change', function () { save(_swReadFilters(key), true); });
             var delEl = el.querySelector('.sd-sw-filter-del');
             if (delEl) delEl.addEventListener('click', function () {
                 var list = _swReadFilters(key);
@@ -37873,6 +37897,13 @@ const StyleDesigner = (function () {
                 }, { afterSave: function () { renderProperties(); } });
             });
         }
+        document.querySelectorAll('.sd-sw-fiv-rows-list').forEach(function (rowsBtn) {
+            rowsBtn.addEventListener('click', function () {
+                var child = parseInt(this.getAttribute('data-child'), 10) || 0;
+                var name = String(this.getAttribute('data-field') || '');
+                if (child > 0 && name !== '') _swAddRowsList(child, name);
+            });
+        });
         var fivAiEl = document.getElementById('sd-sw-fiv-ai-prompt');
         if (fivAiEl) {
             fivAiEl.addEventListener('change', function () {
@@ -57991,6 +58022,37 @@ const StyleDesigner = (function () {
         });
     }
 
+    // The config of a list of a record's rows: the child form's records that
+    // the shown record's rows field `fieldName` holds, in its order (the
+    // dynamic value 'shown record rows' on the reference code).
+    function _swRowsListConfig(childPageId, fieldName) {
+        var cfg = _swTypeDefaults({}, 'form_list_view');
+        cfg.custom_form_page_id = childPageId;
+        cfg.filters = [{ field: 'reference_code', operator: 'is equal to', value: '', dynamic_value: 'shown record rows', dynamic_value_attribute: fieldName }];
+        return cfg;
+    }
+    // "Rows of this record" on a record view's panel: a new list widget set
+    // up by _swRowsListConfig(), with the list's starter layout, placed right
+    // after the selected record view.
+    /* @pg-site-output */
+    function _swAddRowsList(childPageId, fieldName) {
+        if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
+        var ref = selectedNode;
+        if (!ref || ref.type !== 'shared_ref') return;
+        var at = _sdAnyParent(ref);
+        if (!at || !at.parent) return;
+        var cfg = _swRowsListConfig(childPageId, fieldName);
+        var starterTree = _buildStarterTree('form_list_view');
+        var widgetName = _swAutoName('form_list_view', null, { target: at.parent });
+        _swCreateRow(widgetName, cfg, starterTree, function (newId, newName) {
+            saveState();
+            _swInsertRef(newId, newName, at.parent, { sibling: ref, after: true });
+            render();
+            if (typeof _refreshSystemTab === 'function') _refreshSystemTab();
+            sdToast(_sdT('"{var}" added.', esc(newName)), 'success');
+        });
+    }
+
     // ── Comments: the fixed block and the Comments widget ─────────────────
     // A page's comments, watchers and settings are keyed by the page, so the
     // fixed comments block (a comments_block region) and a placement of the
@@ -58568,7 +58630,10 @@ const StyleDesigner = (function () {
     // address, or take the code of the record the page shows (twin of
     // pg_sw_form_list_filter_sql()'s 'shown record'). A record view's may
     // not (the server closes such a page), so its panel offers neither.
-    function _swFilterDynamicOptions(type, withUrl) {
+    // On a list's reference code, "Rows of the shown record" lists the
+    // records the shown record's rows field holds, in its order (twin of
+    // 'shown record rows'; the attribute names the rows field).
+    function _swFilterDynamicOptions(type, withUrl, field) {
         var o = [];
         if (type === 'date') o.push(['current date', _sdT('Current Date')]);
         if (type === 'date and time') o.push(['current date and time', _sdT('Current Date & Time')]);
@@ -58578,6 +58643,7 @@ const StyleDesigner = (function () {
         if (type === 'email address') o.push(['viewers email address', _sdT('Viewer\'s E-mail Address')]);
         if (withUrl) o.push(['url parameter', _sdT('URL parameter')]);
         if (withUrl) o.push(['shown record', _sdT('Shown record')]);
+        if (withUrl && field === 'reference_code') o.push(['shown record rows', _sdT('Rows of the shown record')]);
         return o;
     }
     // Query parameter names the software reads itself, so a filter may not
@@ -58711,14 +58777,17 @@ const StyleDesigner = (function () {
             var field = String(f.field || '');
             var type  = _swFilterFieldType(field, fields);
             var dyn   = String(f.dynamic_value || '');
-            var dynOpts = _swFilterDynamicOptions(type, withUrl);
+            var dynOpts = _swFilterDynamicOptions(type, withUrl, field);
             // A value from the address on a panel that does not offer it (a
             // record view, hand-written config): kept and marked, since the
             // server closes the page on it.
-            var dynBad = !withUrl && (dyn === 'url parameter' || dyn === 'shown record') && field !== '';
-            if (dynBad) dynOpts = dynOpts.concat([[dyn, (dyn === 'shown record' ? _sdT('Shown record') : _sdT('URL parameter')) + ' ' + _sdT('(incompatible — choose again)')]]);
+            var dynBad = !withUrl && (dyn === 'url parameter' || dyn === 'shown record' || dyn === 'shown record rows') && field !== '';
+            if (dynBad) dynOpts = dynOpts.concat([[dyn, (dyn === 'shown record' ? _sdT('Shown record') : dyn === 'shown record rows' ? _sdT('Rows of the shown record') : _sdT('URL parameter')) + ' ' + _sdT('(incompatible — choose again)')]]);
             if (!dynOpts.some(function (d) { return d[0] === dyn; })) dyn = '';
-            var urlParam = (dyn === 'url parameter') ? String(f.dynamic_value_attribute == null ? '' : f.dynamic_value_attribute) : '';
+            // The parameter name, or the rows field's name.
+            var dynAttr = (dyn === 'url parameter' || dyn === 'shown record rows') ? String(f.dynamic_value_attribute == null ? '' : f.dynamic_value_attribute) : '';
+            var urlParam = (dyn === 'url parameter') ? dynAttr : '';
+            var rowsField = (dyn === 'shown record rows') ? dynAttr : '';
 
             var fieldOpts = '<option value=""' + (field === '' ? ' selected' : '') + '></option>' +
                 '<optgroup label="' + esc(_sdT('System Fields')) + '">' +
@@ -58769,7 +58838,7 @@ const StyleDesigner = (function () {
             var valueHook = { date: ' data-pg-date', 'datetime-local': ' data-pg-datetime', time: ' data-pg-time' }[inputType] || '';
 
             html +=
-                '<div class="sd-sw-filter" data-idx="' + i + '"' + keyAttr + (dynBad ? ' data-attr="' + esc(urlParam) + '"' : '') + ' style="display:flex;flex-direction:column;gap:4px;padding:6px;margin-bottom:6px;border:1px solid rgba(128,128,128,.25);border-radius:4px">' +
+                '<div class="sd-sw-filter" data-idx="' + i + '"' + keyAttr + (dynBad ? ' data-attr="' + esc(dynAttr) + '"' : '') + ' style="display:flex;flex-direction:column;gap:4px;padding:6px;margin-bottom:6px;border:1px solid rgba(128,128,128,.25);border-radius:4px">' +
                     '<div style="display:flex;gap:4px">' +
                         '<select class="form-control form-control-sm sd-sw-filter-field" data-sw-id="' + sid + '" aria-label="' + esc(_sdT('Field')) + '">' + fieldOpts + '</select>' +
                         '<button type="button" class="btn btn-sm btn-outline theme-danger sd-sw-filter-del" data-sw-id="' + sid + '" title="' + esc(_sdT('Delete')) + '"><span class="bi bi-trash"></span></button>' +
@@ -58791,6 +58860,9 @@ const StyleDesigner = (function () {
                               (dyn === 'url parameter' && !dynBad
                                   ? '<input type="text" class="form-control form-control-sm sd-sw-filter-param" data-sw-id="' + sid + '" value="' + esc(urlParam) + '" maxlength="32" placeholder="author" style="width:110px" aria-label="' + esc(_sdT('Parameter name')) + '">'
                                   : '') +
+                              (dyn === 'shown record rows' && !dynBad
+                                  ? '<input type="text" class="form-control form-control-sm sd-sw-filter-rows" data-sw-id="' + sid + '" value="' + esc(rowsField) + '" maxlength="255" placeholder="steps" style="width:110px" aria-label="' + esc(_sdT('Rows field')) + '">'
+                                  : '') +
                           '</div>'
                         : '') +
                     (dyn === 'url parameter' && !dynBad
@@ -58803,6 +58875,12 @@ const StyleDesigner = (function () {
                         : '') +
                     (dyn === 'shown record' && !dynBad
                         ? '<div style="font-size:.66rem;color:#888;line-height:1.4">' + esc(_sdT('The list shows the records whose field holds the code of the record this page shows. Without a shown record, this filter is left out.')) + '</div>'
+                        : '') +
+                    (dyn === 'shown record rows' && !dynBad
+                        ? '<div style="font-size:.66rem;color:#888;line-height:1.4">' + esc(_sdT('The list shows the rows that this Rows field of the record this page shows holds, in their order. Without a shown record, the list is empty.')) + '</div>' +
+                          (rowsField.trim() === ''
+                              ? '<div style="font-size:.66rem;color:#b45309;line-height:1.4"><span class="bi bi-exclamation-triangle me-1"></span>' + esc(_sdT('Type the name of the Rows field of the record the page shows. Without one, the list is empty.')) + '</div>'
+                              : '')
                         : '') +
                 '</div>';
         });

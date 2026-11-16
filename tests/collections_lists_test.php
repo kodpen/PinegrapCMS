@@ -138,7 +138,7 @@ function test_collections_shown_record_editor()
 {
 	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	$widgets = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/widgets.php');
-	pg_assert_true((bool) preg_match('/function _swFilterDynamicOptions\(type, withUrl\) \{(.*?)\n    \}/s', $js, $m), 'the dynamic values are found in style_designer.js');
+	pg_assert_true((bool) preg_match('/function _swFilterDynamicOptions\(type, withUrl, field\) \{(.*?)\n    \}/s', $js, $m), 'the dynamic values are found in style_designer.js');
 	pg_assert_true((bool) preg_match('/\$dynamic_values = array\((.*?)\);/s', $widgets, $s), 'the server list is found');
 	preg_match_all("/o\.push\(\['([^']+)'/", $m[1], $offered);
 	preg_match_all("/'([^']+)'/", $s[1], $known);

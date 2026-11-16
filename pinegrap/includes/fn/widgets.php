@@ -1551,10 +1551,17 @@ function pg_sw_filter_form_fields($custom_form_page_id)
 // It is not an address filter of the page: no `params`, no label. Without
 // a shown record it is left out and without an address counted in
 // `address`, as 'url parameter' is.
+//
+// The dynamic value 'shown record rows' (lists only, on reference_code with
+// "is equal to"; its attribute names a rows field) lists the records of
+// this form that the shown record's rows field holds, and returns their
+// order in `order` (an ORDER BY part put before the list's own). Without a
+// shown record, a rows field or a row it lists none; without an address it
+// is counted in `address`. Anywhere else it is counted in `invalid`.
 function pg_sw_form_list_filter_sql($custom_form_page_id, $filters, $request = null)
 {
     $out = array('where' => '', 'tokens' => array(), 'missing' => 0, 'invalid' => 0,
-                 'params' => array(), 'inexact' => false, 'address' => 0, 'exact' => '', 'labels' => array());
+                 'params' => array(), 'inexact' => false, 'address' => 0, 'exact' => '', 'labels' => array(), 'order' => '');
     if (!is_array($filters) || !$filters) return $out;
 
     $operators = array(
@@ -1563,7 +1570,7 @@ function pg_sw_form_list_filter_sql($custom_form_page_id, $filters, $request = n
     );
     $dynamic_values = array(
         'current date', 'current date and time', 'current time', 'days ago',
-        'viewer', 'viewers email address', 'url parameter', 'shown record',
+        'viewer', 'viewers email address', 'url parameter', 'shown record', 'shown record rows',
     );
     $size_operators = array('is less than', 'is less than or equal to', 'is greater than', 'is greater than or equal to');
     $standard = pg_sw_standard_fields();
@@ -1619,6 +1626,32 @@ function pg_sw_form_list_filter_sql($custom_form_page_id, $filters, $request = n
                 $value = pg_coll_shown_record_code($request);
                 if ($value === '') continue;
                 $shown = true;
+            }
+        }
+        // The rows of the record the detail page shows (lists only): a
+        // condition and an order of its own, never a comparison. A fixed
+        // value wins.
+        if ($dynamic === 'shown record rows') {
+            $dynamic = '';
+            if ($value === '') {
+                if (mb_strtolower($field, 'UTF-8') !== 'reference_code' || $operator !== 'is equal to') {
+                    $out['invalid']++;
+                    continue;
+                }
+                if ($request === null) {
+                    $out['address']++;
+                    continue;
+                }
+                $attribute  = isset($filter['dynamic_value_attribute']) ? $filter['dynamic_value_attribute'] : '';
+                $rows_field = is_scalar($attribute) ? trim((string)$attribute) : '';
+                $shown_code = pg_coll_shown_record_code($request);
+                $rows_codes = ($shown_code === '' || $rows_field === '')
+                    ? array()
+                    : pg_coll_rows_codes(pg_coll_rows_shown_value($custom_form_page_id, $shown_code, $rows_field));
+                $rows_sql = pg_coll_rows_list_sql($rows_codes);
+                $out['where'] .= $rows_sql['where'];
+                if ($out['order'] === '') $out['order'] = $rows_sql['order'];
+                continue;
             }
         }
         $dynamic_attribute = isset($filter['dynamic_value_attribute']) ? (int)$filter['dynamic_value_attribute'] : 0;
@@ -2216,6 +2249,9 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
         $filter_sql['tokens'] = array();
     }
     $filter_where = $filter_sql['where'];
+    // A record's rows (dynamic value 'shown record rows') stand in their
+    // field's order, before the list's own.
+    if (!empty($filter_sql['order'])) $order_by_sql = $filter_sql['order'] . ', ' . $order_by_sql;
     // The submitter's older records leave the list before anything else
     // counts them; the address check below reads the same rows.
     $filter_where .= pg_sw_form_list_one_per_submitter_sql($cfg);
