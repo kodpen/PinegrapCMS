@@ -22,7 +22,7 @@ module: collection_rows
 - The writes are passed in; `pg_coll_rows_db_ops()` gives the real ones: a row is created complete with a value row for every child field; a written row goes through its History as an edit (`pg_record_revision_before()` / `_after()`) only when a value changed; delete is `pg_submitted_form_delete()`.
 
 ## What does the site and canvas show?
-- The site form draws nothing for a rows field, for staff too: `pg_cf_apply_field_bindings()` drops the control, its label and a wrapper left empty (as an office-use-only field for a visitor). The canvas shows three sample rows (`_cfRowsSample()`).
+- The site form draws nothing for a rows field, for staff too: `pg_cf_apply_field_bindings()` drops the control, its label and a wrapper left empty (as an office-use-only field for a visitor). The canvas shows three numbered "Sample row" lines in muted text (`_cfRowsSample()`); the kind is labelled "Record rows" (the "Rows" key is a text area's line count elsewhere).
 - A value posted outside the editor (site form, panel text box) is checked by `pg_coll_check_field()`: only codes of the child form's records, at most 100 (`pg_coll_rows_value_ok()`).
 
 Tests: `tests/collections_rows_test.php`, `tests/collections_kinds_test.php` (the twin).

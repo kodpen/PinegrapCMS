@@ -2140,10 +2140,11 @@ const StyleDesigner = (function () {
         var list = doc.createElement('ol');
         list.className = 'list-group list-group-numbered';
         list.setAttribute('data-sd-rows-sample', '');
-        [_sdT('Preheat the oven to 180 °C'), _sdT('Mix the flour, sugar and eggs'), _sdT('Bake for 25 minutes')].forEach(function (text) {
+        // The numbers come from the list; the words say it is a sample.
+        [1, 2, 3].forEach(function () {
             var li = doc.createElement('li');
-            li.className = 'list-group-item';
-            li.textContent = text;
+            li.className = 'list-group-item text-body-secondary';
+            li.textContent = _sdT('Sample row');
             list.appendChild(li);
         });
         wrapper.appendChild(list);
@@ -2158,7 +2159,7 @@ const StyleDesigner = (function () {
             product:   _sdT('Product'),
             page:      _sdT('Page'),
             slug:      _sdT('Address name (slug)'),
-            rows:      _sdT('Rows')
+            rows:      _sdT('Record rows')
         };
         return Object.keys(_CF_KINDS).filter(function (k) { return _CF_KINDS[k].indexOf(type) !== -1; })
             .map(function (k) { return [k, labels[k]]; });
