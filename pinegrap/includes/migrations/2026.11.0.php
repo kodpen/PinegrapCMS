@@ -217,6 +217,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_page_click_daily();        // 11.0.224
 	upgrade_2026_11_0_prototype_comments();      // 11.0.225
 	upgrade_2026_11_0_content_review();          // 11.0.226
+	upgrade_2026_11_0_site_push();               // 11.0.227
 
 }
 
@@ -7195,5 +7196,73 @@ function upgrade_2026_11_0_content_review() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Content review: pages and collection records can keep a responsible person and a date by which they are read again.');
+
+}
+
+// Visitor notifications (11.0.227, includes/fn/site_push.php): a site
+// visitor's browser subscribed to the site's news without an account, the
+// messages sent from the panel and one queue row per message and browser.
+// Tables of their own, so the panel's push_subscriptions and push_queue
+// never hold a visitor's row. site_push_subscription keeps the browser's
+// endpoint (unique by its hash), its keys, the push service it belongs to
+// (so the sender can hold one service), the page's language and the hash of
+// the secret handed back once, by which the worker fetches its message;
+// user_id is set only when the visitor was signed in, so the privacy export
+// and erasure find the row (the account's contact is reached through it).
+// site_push_message keeps the text and the counts the panel shows. site_push_queue is keyed by message and
+// subscription; idx_due serves the sender's pass, idx_subscription the
+// worker's fetch. No backfill: nothing kept a visitor's subscription before
+// this step. Columns confirmed by the architect.
+function upgrade_2026_11_0_site_push() {
+
+	install_create_table('site_push_subscription', "CREATE TABLE site_push_subscription (
+		id            INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		endpoint      VARCHAR(500) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT '',
+		endpoint_hash CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT '',
+		p256dh        VARCHAR(100) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT '',
+		auth          VARCHAR(32) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT '',
+		service       VARCHAR(10) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT '',
+		secret_hash   CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT '',
+		language      VARCHAR(10) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT '',
+		user_id       INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at    INT UNSIGNED NOT NULL DEFAULT 0,
+		last_seen_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		fail_count    SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uq_endpoint (endpoint_hash),
+		UNIQUE KEY uq_secret (secret_hash),
+		KEY idx_user (user_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('site_push_message', "CREATE TABLE site_push_message (
+		id            INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		title         VARCHAR(60) NOT NULL DEFAULT '',
+		body          VARCHAR(200) NOT NULL DEFAULT '',
+		url           VARCHAR(500) NOT NULL DEFAULT '',
+		is_test       TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		created_by    INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at    INT UNSIGNED NOT NULL DEFAULT 0,
+		queued_count  INT UNSIGNED NOT NULL DEFAULT 0,
+		sent_count    INT UNSIGNED NOT NULL DEFAULT 0,
+		failed_count  INT UNSIGNED NOT NULL DEFAULT 0,
+		removed_count INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_created (created_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('site_push_queue', "CREATE TABLE site_push_queue (
+		message_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		subscription_id INT UNSIGNED NOT NULL DEFAULT 0,
+		status          TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		attempts        TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		next_at         INT UNSIGNED NOT NULL DEFAULT 0,
+		sent_at         INT UNSIGNED NOT NULL DEFAULT 0,
+		fetched_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (message_id, subscription_id),
+		KEY idx_due (status, next_at),
+		KEY idx_subscription (subscription_id, status)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Visitor notifications: the tables for browsers subscribed to the site\'s news and the messages sent to them are ready; nothing is offered to visitors until the switch is turned on in Features.');
 
 }
