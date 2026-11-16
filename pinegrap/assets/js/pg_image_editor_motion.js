@@ -395,12 +395,18 @@
         }
     };
 
+    // Whether the play bar plays: a change's preview (previewEnd set) is
+    // not playing, so the bar and its popover stay for the next pick.
+    Editor.prototype.playsAll = function () {
+        return !!this.playing && (this.previewEnd === null);
+    };
+
     // Closed when its layer is no longer the one selected, outside Animate,
     // or while the bar is hidden (a drag, playing, recording).
     Editor.prototype.renderMotionPop = function () {
         var p = this.motionPop;
 
-        if (p && ((this.tool !== 'motion') || (this.sel.length !== 1) || (this.sel[0] !== p.id) || this.drag || this.playing || this.recording || !p.opener.isConnected)) {
+        if (p && ((this.tool !== 'motion') || (this.sel.length !== 1) || (this.sel[0] !== p.id) || this.drag || this.playsAll() || this.recording || !p.opener.isConnected)) {
             this.closeMotionPop();
         }
     };

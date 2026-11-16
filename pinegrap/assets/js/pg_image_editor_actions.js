@@ -145,7 +145,7 @@
         var on = list.length > 0, object = this.actObject();
 
         this.actWrap.classList.toggle('pgie-actobj', object);
-        this.actWrap.classList.toggle('on', on && !this.drag && !(object && (this.playing || this.recording)));
+        this.actWrap.classList.toggle('on', on && !this.drag && !(object && ((this.playsAll && this.playsAll()) || this.recording)));
 
         if (on && object) {
             this.placeObjectBar();
