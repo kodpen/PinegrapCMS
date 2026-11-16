@@ -194,6 +194,7 @@ function test_designer_canvas_chip_row_spot()
 	pg_assert_contains('_sdChipRowSpot(', $place, 'the placement asks for the spot');
 	pg_assert_contains('_sdChipRowMark(p, x.mark);', $place, 'a short element gets the mark');
 	pg_assert_contains('_sdChipRowMark(p, false);', $place, 'a row back in the flow is a row again');
+	pg_assert_contains('if (moved && !again) _sdPlaceChromeOf(ws, true);', $place, 'the boxes are measured again once a row leaves the flow');
 	$mark = designer_canvas_chips_test_function($source, '_sdChipRowMark');
 	pg_assert_contains("classList.toggle('sd-chip-row-mark', !!on)", $mark);
 	pg_assert_contains(".join('\\n')", $mark, 'the dot keeps every chip\'s full text in its title');

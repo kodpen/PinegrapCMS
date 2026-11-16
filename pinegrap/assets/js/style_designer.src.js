@@ -10142,7 +10142,7 @@ const StyleDesigner = (function () {
 
     // The same for several wrappers: every position is measured first and
     // written after, so the canvas is laid out once, not once per wrapper.
-    function _sdPlaceChromeOf(ws) {
+    function _sdPlaceChromeOf(ws, again) {
         if (!canvasDoc) return;
         var win = canvasDoc.defaultView;
         if (!win) return;
@@ -10211,9 +10211,14 @@ const StyleDesigner = (function () {
                 writes.push({ p: p, top: Math.round(top), left: Math.round(left), width: width, mark: mark });
             });
         });
+        // A row taken out of the flow lets its parent lay the row out again
+        // (a flex row's link moves back beside its heading); the boxes are
+        // measured once more so the chips land on where the elements are.
+        var moved = false;
         writes.forEach(function (x) {
             var p = x.p;
             var row = p.classList.contains('sd-chip-row');
+            if (row && x.top !== undefined && !p._sdPlaced) moved = true;
             if (x.top === undefined) {
                 p.style.removeProperty('top');
                 p.style.removeProperty('left');
@@ -10240,6 +10245,7 @@ const StyleDesigner = (function () {
             p.style.setProperty('right', 'auto', 'important');
             p._sdPlaced = true;
         });
+        if (moved && !again) _sdPlaceChromeOf(ws, true);
     }
 
     // Where a chip row put beside its element goes: 'over' the element's
