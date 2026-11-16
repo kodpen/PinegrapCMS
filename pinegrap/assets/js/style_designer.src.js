@@ -6921,6 +6921,10 @@ const StyleDesigner = (function () {
         '.sd-wrap.sd-part:not(.sd-selected) { outline:1px dashed rgba(99,102,241,.6); outline-offset:2px; }',
         '.sd-wrap.sd-part-off { opacity:.45; }',
         '.sd-ghost::after { content:""; position:absolute; inset:0; pointer-events:none; background:repeating-linear-gradient(135deg, rgba(99,102,241,.07) 0 6px, transparent 6px 14px); }',
+        // A sample row of a table draws the hatch on its cells: a box after
+        // the <tr> is one more column to the table (a month grid's eighth).
+        'tr.sd-ghost::after { content:none; }',
+        'tr.sd-ghost > td, tr.sd-ghost > th { background-image:repeating-linear-gradient(135deg, rgba(99,102,241,.07) 0 6px, transparent 6px 14px); }',
         '.sd-loop-area:has(> .sd-wrap[data-sd-type="col"]) > .sd-ghost { padding-left:.5rem; padding-right:.5rem; }',
         // A loop area inside a row renders its records as that row's columns:
         // the card being designed and the records after it take the row's
@@ -6969,6 +6973,23 @@ const StyleDesigner = (function () {
         'ul > .sd-wrap > .sd-loop-area > .sd-wrap > li, ul > .sd-wrap > .sd-loop-area > .sd-ghost > li, ' +
             'ol > .sd-wrap > .sd-loop-area > .sd-wrap > li, ol > .sd-wrap > .sd-loop-area > .sd-ghost > li { list-style-position:inside; }',
         '.sd-list-area.sd-list-off > .sd-loop-band, .sd-list-band-row.sd-list-off .sd-loop-band-cell { background:#b45309; }',
+        // A list drawn as a row's cells (buildRowListAreaEl()): its band at the
+        // top of its first cell, its cells outlined. The table lays its
+        // columns out evenly at the canvas width (fixed layout; the builder
+        // gives the bands' cells the row's real column count instead of 99),
+        // so seven days fit at a phone's width too and long words break.
+        '.sd-list-cell-band { display:flex; align-items:center; gap:4px; margin:0 0 2px; padding:1px 4px; border-radius:2px; color:#fff; background:#0891b2; font:700 .6rem/1.5 system-ui,-apple-system,sans-serif; text-transform:uppercase; letter-spacing:.03em; text-align:left; white-space:nowrap; overflow:hidden; width:0; min-width:100%; cursor:pointer; user-select:none; }',
+        '.sd-list-cell-band .bi { flex:0 0 auto; font-size:.75rem; line-height:1; }',
+        '.sd-list-cell-band .sd-loop-band-text { min-width:0; overflow:hidden; text-overflow:ellipsis; }',
+        '.sd-list-cell-band.sd-list-off { background:#b45309; }',
+        '.sd-list-cell-band.sd-selected { outline:2px solid #0891b2; outline-offset:1px; }',
+        '.sd-list-td { box-shadow:inset 0 0 0 1px rgba(8,145,178,.45); overflow-wrap:anywhere; }',
+        // A day cell is a seventh of the canvas: a condition chip there would
+        // be cut to a letter or two, so it is left out; the element's
+        // condition shows in the right panel.
+        '.sd-list-td .sd-chip-row { display:none !important; }',
+        'td.sd-list-td.sd-list-off > :not(.sd-list-cell-band), th.sd-list-td.sd-list-off > :not(.sd-list-cell-band) { opacity:.45; }',
+        'table:has(> thead > tr > .sd-list-td, > tbody > tr > .sd-list-td) { table-layout:fixed; width:100%; }',
         // ─── Feature switched off in the options panel ───────────────────────
         // Catalog search / filter elements whose feature is toggled off. They
         // stay selectable and editable — the designer can still restyle them,
@@ -11733,6 +11754,121 @@ const StyleDesigner = (function () {
         return frag;
     }
 
+    // A list whose parent is a <tr> (a month grid's weekday heads, a week's
+    // days): its rows are the row's cells. A <div> wrapper there is no
+    // table cell, so the heads and days stopped forming columns and the
+    // table ran past the canvas. The list is drawn as cells only: its band
+    // sits at the top of the first cell (and selects the list), every cell
+    // of the list is outlined, the sample rows follow as cells. The site
+    // never sees this: it prints the rows' cells without the list node.
+    /* @pg-site-output */
+    function buildRowListAreaEl(node) {
+        var doc = canvasDoc;
+        var frag = doc.createDocumentFragment();
+        var listBand = _sdListBand(node);
+        var band = doc.createElement('div');
+        band.className = 'sd-wrap sd-list-cell-band' + (listBand.off ? ' sd-list-off' : '');
+        band.setAttribute('data-sd-id', node._id);
+        band.setAttribute('data-sd-type', node.type);
+        band.setAttribute('data-sd-band', '1');
+        band.setAttribute('contenteditable', 'false');
+        band.title = listBand.text;
+        band.innerHTML = '<i class="bi bi-list-ul"></i><span class="sd-loop-band-text">' + esc(listBand.text) + '</span>';
+        if ((selectedNode && selectedNode._id === node._id) || selectedNodes.some(function (n) { return n._id === node._id; })) {
+            band.classList.add('sd-selected');
+        }
+        band.addEventListener('click', function (e) {
+            if (e._sdHandled) return;
+            e._sdHandled = true;
+            e.stopPropagation();
+            if (selectedNode !== node) {
+                selectedNode = node;
+                selectedNodes = [];
+                _sdSelectRender();
+            } else {
+                updateCtxBar();
+            }
+        });
+        var cells = [];
+        var isCell = function (el) { return !!(el && el.nodeType === 1 && /^T[DH]$/.test(el.tagName)); };
+        (node.children || []).forEach(function (child) {
+            var el = buildNodeEl(child);
+            if (el) cells.push(el);
+        });
+        if (!cells.length) {
+            var hint = doc.createElement('td');
+            hint.className = 'sd-loop-empty-cell';
+            hint.textContent = _sdT('Drag the repeated template here (tr, td…)');
+            setupDzEvents(hint, node);
+            cells.push(hint);
+        } else {
+            // A week drawn as a sample row still draws its seven days: the
+            // sample guard is lifted for this list and put back after.
+            var outer = _sdListSample;
+            _sdListSample = null;
+            try {
+                cells = cells.concat(_sdListGhostEls(node));
+            } finally {
+                _sdListSample = outer;
+            }
+        }
+        var first = true;
+        cells.forEach(function (el) {
+            if (isCell(el)) {
+                el.classList.add('sd-list-td');
+                if (listBand.off) el.classList.add('sd-list-off');
+                if (first) {
+                    first = false;
+                    var tb = el.querySelector(':scope > .sd-tb');
+                    el.insertBefore(band, tb ? tb.nextSibling : el.firstChild);
+                }
+            }
+            frag.appendChild(el);
+        });
+        if (first) frag.insertBefore(band, frag.firstChild);
+        // Once the fragment is in its table: a band row's cell spans the
+        // table's columns, not 99, or fixed layout would make 99 of them.
+        Promise.resolve().then(function () {
+            var table = band.isConnected ? band.closest('table') : null;
+            if (table) _sdListTableSpans(table);
+        });
+        return frag;
+    }
+
+    // The columns of a table whose rows have cells spanning `rows[i][j]`
+    // columns each: the widest row, a full-width cell (colspan 99) not
+    // counted. 0 when no row has a cell of its own.
+    function _sdTableColumnCount(rows) {
+        var cols = 0;
+        (rows || []).forEach(function (spans) {
+            var n = 0;
+            (spans || []).forEach(function (span) {
+                var v = parseInt(span, 10);
+                if (v > 0 && v !== 99) n += v;
+            });
+            if (n > cols) cols = n;
+        });
+        return cols;
+    }
+
+    // Gives the full-width cells of a table holding a row's list (the loop
+    // and list bands, an empty loop's hint) the table's column count.
+    function _sdListTableSpans(table) {
+        var rows = table.querySelectorAll(':scope > thead > tr, :scope > tbody > tr, :scope > tfoot > tr, :scope > tr');
+        var cols = _sdTableColumnCount(Array.prototype.map.call(rows, function (tr) {
+            return Array.prototype.map.call(tr.cells, function (c) { return c.hasAttribute('data-sd-span') ? 99 : (c.colSpan || 1); });
+        }));
+        if (cols < 1) return;
+        Array.prototype.forEach.call(rows, function (tr) {
+            Array.prototype.forEach.call(tr.cells, function (c) {
+                if (c.getAttribute('colspan') === '99' || c.hasAttribute('data-sd-span')) {
+                    c.setAttribute('data-sd-span', '1');
+                    c.setAttribute('colspan', String(cols));
+                }
+            });
+        });
+    }
+
     // ========================= SHARED_REF CANVAS ELEMENT =========================
 
     // Build a canvas element for a shared_ref node.
@@ -13342,9 +13478,23 @@ const StyleDesigner = (function () {
             { __return_item_id: '2', __return_item_name: _sdT('Ceramic Mug'), __return_item_ordered: '1', __return_item_left: '1',
               __return_item_qty_label: _sdT('How many to return: {var:1}', _sdT('Ceramic Mug')) }
         ],
+        // The rest of a week after the card's Monday: a month grid draws its
+        // seven columns (buildRowListAreaEl()).
         'calendar.weekdays': [
             { __weekday_name: _sdT('Tuesday'), __weekday_short: _sdT('Tue') },
-            { __weekday_name: _sdT('Wednesday'), __weekday_short: _sdT('Wed') }
+            { __weekday_name: _sdT('Wednesday'), __weekday_short: _sdT('Wed') },
+            { __weekday_name: _sdT('Thursday'), __weekday_short: _sdT('Thu') },
+            { __weekday_name: _sdT('Friday'), __weekday_short: _sdT('Fri') },
+            { __weekday_name: _sdT('Saturday'), __weekday_short: _sdT('Sat') },
+            { __weekday_name: _sdT('Sunday'), __weekday_short: _sdT('Sun') }
+        ],
+        'calendar.days': [
+            { __day_number: '6', __day_weekday: _sdT('Tuesday'), __day_is_today: '', __day_is_outside: '' },
+            { __day_number: '7', __day_weekday: _sdT('Wednesday'), __day_is_today: '', __day_is_outside: '' },
+            { __day_number: '8', __day_weekday: _sdT('Thursday'), __day_is_today: '', __day_is_outside: '' },
+            { __day_number: '9', __day_weekday: _sdT('Friday'), __day_is_today: '', __day_is_outside: '' },
+            { __day_number: '10', __day_weekday: _sdT('Saturday'), __day_is_today: '', __day_is_outside: '' },
+            { __day_number: '11', __day_weekday: _sdT('Sunday'), __day_is_today: '', __day_is_outside: '' }
         ],
         'product.attributes': [
             { __attr_name: _sdT('Size'), __attr_value: 'M' }
@@ -13740,6 +13890,10 @@ const StyleDesigner = (function () {
             if (_loopParent && _loopParent.type === 'semantic' && _loopParent.props &&
                 ['tbody', 'thead', 'tfoot'].indexOf((_loopParent.props.tag || '').toLowerCase()) !== -1) {
                 return buildTableLoopAreaEl(node);
+            }
+            if (_loopParent && _loopParent.type === 'semantic' && _loopParent.props &&
+                String(_loopParent.props.tag || '').toLowerCase() === 'tr' && _sdListIsSourced(node)) {
+                return buildRowListAreaEl(node);
             }
         }
 
