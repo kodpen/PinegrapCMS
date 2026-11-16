@@ -14453,6 +14453,12 @@ const StyleDesigner = (function () {
                     var _bkSample = _sdBookingSectionSample(_sec, doc);
                     if (_bkSample) _hint = _bkSample;
                 }
+                // A calendar view's picker and an event view's Reserve
+                // button, likewise (_sdCalendarSectionSample()).
+                if (!_hasChildren) {
+                    var _calSample = _sdCalendarSectionSample(_getSystemWidgetRegionType(node), _sec, doc, _sysWidgetRenderCfg);
+                    if (_calSample) _hint = _calSample;
+                }
                 // A shopping cart's applied offers, campaign gifts and quick
                 // add box, likewise (_sdCartSectionSample()).
                 if (!_hasChildren && _getSystemWidgetRegionType(node) === 'shopping_cart') {
@@ -42160,7 +42166,8 @@ const StyleDesigner = (function () {
     // A page saved with the section keeps printing it until its user turns
     // it into the list.
     function _sdSectionOpensAsList(kind, section) {
-        return (kind === 'comments' && section === 'comment_pagination') || (kind === 'search_results' && section === 'pagination');
+        return (kind === 'comments' && section === 'comment_pagination') || (kind === 'search_results' && section === 'pagination')
+            || (kind === 'calendar_view' && section === 'month_grid');
     }
 
     // The panel's button under the Section binding list, '' for a section
@@ -42173,7 +42180,9 @@ const StyleDesigner = (function () {
         return '<button type="button" class="btn btn-sm btn-outline theme-primary w-100 mt-2 text-wrap" data-sd-section-open>' +
                 '<span class="bi bi-magic me-1"></span>' + esc(_sdT('Convert to design elements')) + '</button>' +
             '<div style="font-size:.66rem;color:#888;margin-top:3px">' +
-                esc(_sdT('Puts page links you design here: previous, one link per page, next. The site then draws them instead of its own pagination.')) +
+                esc(section === 'month_grid'
+                    ? _sdT('Puts a month grid you design here: the day names, the weeks, the days and their events. The site fills it instead of drawing its own grid.')
+                    : _sdT('Puts page links you design here: previous, one link per page, next. The site then draws them instead of its own pagination.')) +
             '</div>';
     }
 
@@ -42188,7 +42197,7 @@ const StyleDesigner = (function () {
         var parent = hit ? hit.parent : null;
         var idx = (parent && Array.isArray(parent.children)) ? parent.children.indexOf(node) : -1;
         if (idx === -1) return null;
-        var nav = _sdPagingListStarter(bs);
+        var nav = (b.section === 'month_grid') ? _sdCalendarGridFromSection(bs) : _sdPagingListStarter(bs);
         if (node.props.cssClass) nav.props.cssClass = node.props.cssClass;
         if (b.eo_visible_if) nav.props._bindings = { eo_visible_if: b.eo_visible_if };
         parent.children.splice(idx, 1, nav);
@@ -43057,6 +43066,97 @@ const StyleDesigner = (function () {
         box.setAttribute('inert', '');
         box.style.cssText = 'pointer-events:none;flex:1 1 100%' + (section === 'booking_calendar' ? ';max-width:20rem' : '');
         box.innerHTML = html + '<div class="small text-body-secondary fst-italic mt-1">' + esc(notes[section]) + '</div>';
+        return box;
+    }
+
+    // ── Calendar widgets (calendar_view, calendar_event_view) ──────────────
+    // The month grid opens as the grid lists (_sdSectionToList(), the
+    // calendar.* sources of widgets_lists_calendar.php): the section goes
+    // and the lists draw the grid. The picker and the Reserve button depend
+    // on the request (the visitor's choice, the address, the event's places
+    // and the form's token): settings only, drawn by twins of the pure
+    // builders in includes/fn/widgets_calendar.php.
+
+    // The month grid a converted month_grid section becomes: the palette's
+    // Month grid, its table carrying the class the classic grid's has.
+    /* @pg-site-output */
+    function _sdCalendarGridFromSection(bs) {
+        var grid = _sdCalendarListStarter('calendar.weeks', bs);
+        var table = grid.children && grid.children[0];
+        if (bs && table && table.props) table.props.cssClass = String(table.props.cssClass || '') + ' pg-sw-calendar-grid';
+        return grid;
+    }
+
+    // pg_sw_calendar_picker_html()
+    /* @pg-site-output */
+    function _sdCalendarPickerHtml(action, hidden, calendars, calendarId, view) {
+        var opts = '';
+        if (calendars.length > 1) {
+            opts += '<select name="calendar_id" class="form-select form-select-sm w-auto" aria-label="' + esc(_sdT('Calendar')) + '">'
+                + '<option value="">' + esc(_sdT('All Calendars')) + '</option>';
+            calendars.forEach(function (c) {
+                opts += '<option value="' + (parseInt(c.id, 10) || 0) + '"' + ((parseInt(c.id, 10) || 0) === (parseInt(calendarId, 10) || 0) ? ' selected' : '') + '>' + esc(c.name) + '</option>';
+            });
+            opts += '</select>';
+        }
+        opts += '<select name="view" class="form-select form-select-sm w-auto" aria-label="' + esc(_sdT('View')) + '">'
+            + '<option value="monthly"' + (view === 'monthly' ? ' selected' : '') + '>' + esc(_sdT('Monthly')) + '</option>'
+            + '<option value="weekly"' + (view === 'weekly' ? ' selected' : '') + '>' + esc(_sdT('Weekly')) + '</option>'
+            + '</select>';
+        return '<form method="get" action="' + esc(action) + '" class="d-flex flex-wrap align-items-center gap-2">'
+            + hidden
+            + opts
+            + '<button type="submit" class="btn btn-sm btn-outline-secondary">' + esc(_sdT('Update')) + '</button>'
+            + '</form>';
+    }
+
+    // pg_sw_calendar_reserve_form_html()
+    /* @pg-site-output */
+    function _sdCalendarReserveHtml(action, token, sendTo, pageId, eventId, recurrence, label) {
+        return '<form action="' + esc(action) + '" method="post" class="d-inline">'
+            + token
+            + '<input type="hidden" name="send_to" value="' + esc(sendTo) + '">'
+            + '<input type="hidden" name="page_id" value="' + (parseInt(pageId, 10) || 0) + '">'
+            + '<input type="hidden" name="calendar_event_id" value="' + (parseInt(eventId, 10) || 0) + '">'
+            + '<input type="hidden" name="recurrence_number" value="' + (parseInt(recurrence, 10) || 0) + '">'
+            + '<input type="hidden" name="require_cookies" value="true">'
+            + '<button type="submit" class="btn btn-primary">' + esc(label) + '</button>'
+            + '</form>';
+    }
+
+    // What a calendar widget prints in a section the server fills, with
+    // the widget's settings `cfg`: the picker (two sample calendars unless
+    // the widget shows one; nothing in the upcoming view) or the Reserve
+    // button of an event open for reservations. '' for any other section.
+    /* @pg-site-output */
+    function _sdCalendarSectionHtml(kind, section, cfg) {
+        var c = cfg || {};
+        if (kind === 'calendar_view' && section === 'calendar_picker') {
+            if (c.default_view === 'upcoming') return '';
+            var ids = Array.isArray(c.calendar_ids) ? c.calendar_ids : [];
+            var calendars = ids.length === 1 ? [{ id: ids[0], name: _sdT('Events') }]
+                : [{ id: 1, name: _sdT('Events') }, { id: 2, name: _sdT('Workshops') }];
+            return _sdCalendarPickerHtml('#', '', calendars, 0, c.default_view === 'weekly' ? 'weekly' : 'monthly');
+        }
+        if (kind === 'calendar_event_view' && section === 'reserve_form') {
+            return _sdCalendarReserveHtml('#', '', '#', 0, 0, 0, _sdT('Reserve'));
+        }
+        return '';
+    }
+
+    // The sample of a calendar section as a canvas box: inert, never saved,
+    // the words under it saying the site fills it per visitor.
+    function _sdCalendarSectionSample(kind, section, doc, cfg) {
+        var html = _sdCalendarSectionHtml(kind, section, cfg);
+        if (!html) return null;
+        var box = doc.createElement('div');
+        box.className = 'sd-section-binding-hint sd-section-sample';
+        box.setAttribute('inert', '');
+        box.style.cssText = 'pointer-events:none';
+        box.innerHTML = html + '<div class="small text-body-secondary fst-italic mt-1">'
+            + esc(section === 'reserve_form'
+                ? _sdT('The site shows the button while the event takes reservations, with the event\'s own words.')
+                : _sdT('The site lists the widget\'s calendars and keeps the visitor\'s choice.')) + '</div>';
         return box;
     }
 
