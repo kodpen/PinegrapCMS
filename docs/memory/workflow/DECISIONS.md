@@ -327,6 +327,11 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-60.md: What does the click and scroll map count, and how does it start? (owner, 2026-11-16, polls 67, 75)
 - decisions-made-product-61.md: Where are the rules and the earlier parts?
 - decisions-made-product-61.md: Does the highlight on a message go out as built? (owner, 2026-11-16, agent channel poll 76)
+- decisions-made-product-61.md: Does the link card under a message go out as built? (owner, 2026-11-16, agent channel poll 77)
+- decisions-made-product-61.md: Do the Planning Board's two drawers go out with one look? (owner, 2026-11-16, agent channel poll 78)
+- decisions-made-product-62.md: Where are the rules and the earlier parts?
+- decisions-made-product-62.md: Does the "Clicks and scrolling" section of Visitors go out as built? (owner, 2026-11-16, agent channel poll 79)
+- decisions-made-product-62.md: Does the share card go out as built? (owner, 2026-11-16, agent channel poll 81)
 - decisions-made-product-7.md: Do international labels carry customs data? (#3408)
 - decisions-made-product-7.md: Can a merchant request a carrier pickup from the panel? (#3415)
 - decisions-made-product-7.md: Does ShipWorks record tracking numbers through the shipment write path? (#3443)
@@ -390,6 +395,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-schema-23.md: Which table do a reader's highlights get? (owner, 2026-11-16, agent channel message 5547)
 - decisions-made-schema-23.md: Which columns does PU4 add to `auto_dialogs`? (architect, 2026-11-16, confirmed in PU4's draft, #9851)
 - decisions-made-schema-23.md: Which table does the click map get? (architect, 2026-11-16, agent channel message 6041)
+- decisions-made-schema-23.md: Does a task get a column for the application that created it? (owner, 2026-11-16, agent channel poll 80)
 - decisions-made-schema-3.md: Where are the rules and the earlier steps?
 - decisions-made-schema-3.md: Which schema was approved on 2026-10-29?
 - decisions-made-schema-4.md: Where are the rules and the earlier steps?
@@ -548,6 +554,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-workspace-36.md: Where are the rules and the earlier parts?
 - decisions-made-workspace-36.md: Do the "Add to the plan" and the "New plan" drawers look the same? (owner, 2026-11-16, to the architect)
 - decisions-made-workspace-36.md: What is the architect's reading here, not his words?
+- decisions-made-workspace-36.md: Where does a question's picture stand? (owner, 2026-11-16, to the architect)
+- decisions-made-workspace-36.md: Are agents' tasks kept apart from the team's? (owner, 2026-11-16, agent channel poll 80)
 - decisions-made-workspace-4.md: May a thread end in a webhook box's URL? (#3410)
 - decisions-made-workspace-4.md: How does a customer with no order in N days produce a follow-up? (#3416, part 2)
 - decisions-made-workspace-4.md: Is `contacts.lead_source` picked from `referral_sources`? (#3416, part 3)
@@ -840,6 +848,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workflow/agent-channel-post-repeat.md: tools/ws_post.php never writes a channel line twice: every post has an Idempotency-Key, a call without an answer is repeated once with it, exit 3 names the key the caller repeats with
 - workflow/agent-channel-reads.md: How much of a Workspace channel an agent session reads per turn: the message that woke it, its request and brief, no history; at most 5 messages for a check; more only when a person asks
 - workflow/agent-channel-wake.md: How a session waits on the agent channel: on its request queue (tools/ws_wait.php --requests), what makes a request (a mention, @herkes, a reply), on changes, the handles typed
+- workflow/architect-asking.md: How a session asks a decision question or the owner's approval of screenshots: search first, one message in the agent channel naming the architect, the PR back to draft, the session ends
 - workflow/architect.md: Decision questions: asked in the agent channel, no architect issue (2026-11-13); the architect decides technical ones, asks the owner schema and product-behaviour ones, records the answer
 - workflow/bug-hunt.md: A bug hunt is given out again (owner 2026-11-15), only in an area the architect named: one per coordinator at a time, no product code, at most eight bug issues as its result
 - workflow/coordinator-channel-first.md: Channels, the agent channel and their API side go before panel look work (owner 2026-11-15, agent channel message 5039 and poll 48): which plans those are, when a look step is taken
@@ -851,7 +860,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workflow/merge-review.md: Rule (2026-10-25): the merging session reviews each PR once, fixes only blocking findings, digs deeper for access, payments, SQL, schema; an architect decision counts as the owner's
 - workflow/merger-wake.md: How the merging session keeps waking: a send_later chain, 3 minutes with more than 3 ready PRs and 15 minutes otherwise (2026-11-09), an hourly routine that re-arms it; GitHub events are not relied on
 - workflow/owner-contact-channel.md: Where sessions reach the owner (2026-11-13): no coordinator writes to him in its chat window or waits there; problems to PR MERGE in the agent channel; visuals posted there, his answer there
-- workflow/owner-question-picture.md: A question to the owner about a picture or an earlier message says which one (owner 2026-11-15): the picture in the question's box or its message number named in the question
+- workflow/owner-question-picture.md: A question to the owner about a picture carries the picture inside its own box (owner 2026-11-15 and 2026-11-16): how it is asked today, and what plan agent-question-picture changes
 - workflow/owner-rules.md: Standing rules from the owner (Erdal) on docs, how changes are recorded, pages, plans, where area rules live (memory; vendor Bootstrap skills aside), language, the mobile app, who edits which notes
 - workflow/plan-order-begun-first.md: Order of work after the owner's message of 2026-11-16 (agent channel message 5821): begun plans are finished first, new plans start in freed places, look modernisation waits at priority 2
 - workflow/plan-priority.md: Every plan carries a priority from 1 to 10 (owner 2026-11-15, agent channel message 5159): the scale, where the number is written, how a free place picks its next step
