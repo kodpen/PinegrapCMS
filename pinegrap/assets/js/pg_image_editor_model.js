@@ -4925,6 +4925,16 @@
     var VIDEO_CACHE_BYTES = 192 * 1024 * 1024;
     var VIDEO_CACHE_MIN = 8;
     var VIDEO_CACHE_MAX = 90;
+    // Samples a source keeps fed past the one asked for, so a decoder that
+    // reorders (B-frames) gives it out without a flush; at most what the
+    // cache holds beside it (videoFeedAhead()).
+    var VIDEO_AHEAD = 12;
+    // Decoding on is chosen over a reset while the decoder stands at most
+    // this many samples before the asked frame's key frame.
+    var VIDEO_NEAR = 30;
+    // With nothing out of the decoder for this long a wait ends in a flush
+    // even while samples are queued or more could be fed.
+    var VIDEO_STALL_MS = 2000;
 
     function videoFail(code) {
         return new Error(code);
@@ -5729,9 +5739,67 @@
         };
     }
 
+    // How many samples a source keeps fed past the asked one with a cache
+    // of max frames: the frames decoded ahead stay cached until shown.
+    function videoFeedAhead(max) {
+        return Math.max(2, Math.min(VIDEO_AHEAD, max - 2));
+    }
+
+    // What a source does for seek point p (videoSeek()) over n samples. st
+    // is the decoder's place: next (the sample fed next, -1 when it needs
+    // a key frame), pending (sample index -> true: fed, not out yet),
+    // ahead (videoFeedAhead()); cached tells whether p.frame is in the
+    // cache. -> { reset, from, to, wait, flush }: reset the decoder first,
+    // feed samples from..to (none when from > to), wait for p.frame, and
+    // flush at once because nothing more can be fed. The decoder is kept
+    // fed st.ahead samples past the asked one on every request, a cached one
+    // too while the decoder stands past it; a frame fed and not out is
+    // waited for, never reset.
+    function videoFeedPlan(st, p, n, cached) {
+        var end = Math.min(n - 1, p.frame + st.ahead), r = { reset: false, from: 0, to: -1, wait: !cached, flush: false };
+
+        if (cached) {
+            if ((st.next >= 0) && (st.next > p.frame)) {
+                r.from = st.next;
+                r.to = end;
+            }
+
+            return r;
+        }
+
+        if ((st.next >= 0) && (st.pending[p.frame] || ((st.next <= p.frame) && (st.next >= p.from - VIDEO_NEAR)))) {
+            r.from = st.next;
+        } else {
+            r.reset = true;
+            r.from = p.from;
+        }
+
+        r.to = end;
+        r.flush = ((r.from <= r.to) ? r.to + 1 : st.next) > n - 1;
+
+        return r;
+    }
+
+    // What a source does when its wait for a frame ran out: 'wait' again
+    // while the decoder has samples queued, 'feed' st.ahead more samples
+    // while there are more, else 'flush'; 'flush' too once nothing came out
+    // for VIDEO_STALL_MS (idle, ms).
+    function videoOnWait(st, n, queue, idle) {
+        if (idle >= VIDEO_STALL_MS) {
+            return 'flush';
+        }
+
+        if (queue > 0) {
+            return 'wait';
+        }
+
+        return ((st.next >= 0) && (st.next < n)) ? 'feed' : 'flush';
+    }
+
     var VIDEO = {
         videoKind: videoKind, videoDemux: videoDemux, videoTrack: videoTrack, videoConfig: videoConfig, videoCodecName: videoCodecName,
-        videoSeek: videoSeek, videoCacheSize: videoCacheSize, videoCache: videoCache
+        videoSeek: videoSeek, videoCacheSize: videoCacheSize, videoCache: videoCache,
+        videoFeedAhead: videoFeedAhead, videoFeedPlan: videoFeedPlan, videoOnWait: videoOnWait
     };
 
     // -- Google Fonts choice of the Text tool (pg_image_editor_fonts.js) --
