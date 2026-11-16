@@ -336,3 +336,19 @@ function test_page_bundle_publish_checks_before_writes()
 	pg_assert_contains(', true)', $check, 'the save\'s dry run');
 	pg_assert_contains('pg_page_bundle_item_changed(', $check, '"changed since"');
 }
+
+// B7: the dialog's Publish waits for a choice on every "changed since" row;
+// neither choice comes chosen, and focus opens on Cancel.
+function test_page_bundle_publish_dialog_waits_for_choices()
+{
+	$dialog = pg_test_function_source('pg_page_bundle_publish_dialog');
+
+	pg_assert_contains("((\$stop || \$plan['ask']) ? ' disabled' : '')", $dialog, 'Publish starts disabled while a row is asked');
+	pg_assert_true(strpos($dialog, ' checked') === false, 'no choice comes preselected');
+	pg_assert_contains('data-bs-dismiss="dialog" autofocus>', $dialog, 'focus opens on Cancel');
+
+	$script = pg_test_function_source('pg_page_bundle_publish_dialog_script');
+	pg_assert_contains('!group.querySelector("input:checked")', $script, 'every row needs its choice');
+	pg_assert_contains('button.disabled = open', $script, 'then Publish is enabled');
+	pg_assert_contains('data-bs-dismiss="dialog" autofocus>', pg_test_function_source('pg_page_bundle_take_back_dialog'), 'the take-back dialog too');
+}

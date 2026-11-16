@@ -1712,7 +1712,7 @@ function pg_page_bundle_publish_dialog($bundle, $check, $action_url)
         if ($page['state'] === 'changed') {
             $replace = 'page_bundle_choice_' . $id . '_replace';
             $leave = 'page_bundle_choice_' . $id . '_leave';
-            $choice = '<div class="btn-group btn-group-sm mt-2" role="group" aria-label="' . h(lang(array('string' => 'What to do with {var:1}', 'vars' => array($page['name'])))) . '">'
+            $choice = '<div class="btn-group btn-group-sm mt-2" role="group" data-pg-bundle-choice aria-label="' . h(lang(array('string' => 'What to do with {var:1}', 'vars' => array($page['name'])))) . '">'
                 . '<input type="radio" class="btn-check" name="choice[' . $id . ']" id="' . $replace . '" value="replace">'
                 . '<label class="btn btn-outline theme-secondary" for="' . $replace . '"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . h(lang('Replace anyway')) . '</label>'
                 . '<input type="radio" class="btn-check" name="choice[' . $id . ']" id="' . $leave . '" value="leave">'
@@ -1743,9 +1743,40 @@ function pg_page_bundle_publish_dialog($bundle, $check, $action_url)
         . '<input type="hidden" name="action" value="publish"><input type="hidden" name="bundle_id" value="' . (int) $bundle['id'] . '">'
         . $note . $rows . '</div>'
         . '<div class="dialog-footer">'
-        . '<button type="button" class="pg-button pg-button-quiet" data-bs-dismiss="dialog">' . h(lang('Cancel')) . '</button>'
-        . '<button type="submit" class="pg-button pg-button-fill"' . ($stop ? ' disabled' : '') . '><i class="bi bi-send me-1" aria-hidden="true"></i>' . h(lang('Publish')) . '</button>'
-        . '</div></form></dialog>';
+        . '<button type="button" class="pg-button pg-button-quiet" data-bs-dismiss="dialog" autofocus>' . h(lang('Cancel')) . '</button>'
+        . '<button type="submit" class="pg-button pg-button-fill" data-pg-bundle-publish' . (($stop || $plan['ask']) ? ' disabled' : '') . '><i class="bi bi-send me-1" aria-hidden="true"></i>' . h(lang('Publish')) . '</button>'
+        . '</div></form></dialog>'
+        . ($stop ? '' : pg_page_bundle_publish_dialog_script());
+}
+
+/**
+ * The publish dialog's script, printed once a page: Publish stays disabled
+ * until each "changed since" row has its choice. Listened for on the
+ * document, so a dialog drawn into the page later is served too.
+ *
+ * @return string
+ */
+function pg_page_bundle_publish_dialog_script()
+{
+    static $printed = false;
+
+    if ($printed) {
+        return '';
+    }
+
+    $printed = true;
+
+    return '<script>
+document.addEventListener("change", function (event) {
+    var dialog = event.target.closest ? event.target.closest("#page_bundle_publish_dialog") : null;
+    if (!dialog || !event.target.matches("[data-pg-bundle-choice] input")) return;
+    var open = Array.prototype.some.call(dialog.querySelectorAll("[data-pg-bundle-choice]"), function (group) {
+        return !group.querySelector("input:checked");
+    });
+    var button = dialog.querySelector("[data-pg-bundle-publish]");
+    if (button) button.disabled = open;
+});
+</script>';
 }
 
 /**
@@ -1806,7 +1837,7 @@ function pg_page_bundle_take_back_dialog($bundle, $check, $action_url)
         . '<input type="hidden" name="action" value="take_back"><input type="hidden" name="bundle_id" value="' . (int) $bundle['id'] . '">' . $kept
         . '<p class="pg-text-2 mb-4">' . h($note) . '</p>' . $rows . '</div>'
         . '<div class="dialog-footer">'
-        . '<button type="button" class="pg-button pg-button-quiet" data-bs-dismiss="dialog">' . h(lang('Cancel')) . '</button>'
-        . '<button type="submit" class="pg-button pg-button-fill"' . ($none ? ' disabled' : '') . '><i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i>' . h(lang('Take back')) . '</button>'
+        . '<button type="button" class="pg-button pg-button-quiet" data-bs-dismiss="dialog" autofocus>' . h(lang('Cancel')) . '</button>'
+        . '<button type="submit" class="pg-button pg-button-fill"' . ($none ? ' disabled' : '') . '><i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i>' . h(lang('Take it back')) . '</button>'
         . '</div></form></dialog>';
 }

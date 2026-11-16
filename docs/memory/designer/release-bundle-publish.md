@@ -1,6 +1,6 @@
 ---
 name: release-bundle-publish
-description: Publishing and taking back a release bundle: checks before any write, the writes, a failure taken back, partly published, what cannot come back, the dialogs
+description: Publishing and taking back a release bundle: checks before any write, the writes, a failure taken back, partly published, what cannot come back
 module: page_bundles
 ---
 
@@ -28,7 +28,7 @@ module: page_bundles
 - History: `pg_page_bundle_revision_names($page_id, $revisions)` gives revision_no => bundle name (the first `bundle` revision after an item's `revision_before`). The History panel's label for `bundle` and the name beside it are not drawn yet.
 
 ## Where are the dialogs?
-- `pg_page_bundle_publish_dialog($bundle, $check, $url)` and `pg_page_bundle_take_back_dialog($bundle, $check, $url)` return the `<dialog>`; they post `action=publish` / `take_back` with `bundle_id`. The Bundles screen opens them and calls `pg_page_bundle_publish()` / `pg_page_bundle_take_back()`.
+- `release-bundle-dialogs.md`.
 
 ## What stays as it is?
 - A live page's own Publish goes live at once with a replacement waiting: the hold reads `draft_page_id` only. A shared component saved from a replacement's tab is live at once; a bundle writes no shared component, menu or collection record. Tests: `tests/page_bundles_publish_test.php`.
