@@ -188,7 +188,7 @@ StyleDesigner.definePart('comments', function (K) {
             var what = t.getAttribute('data-pc');
             var id = parseInt(t.getAttribute('data-id'), 10) || 0;
             if (what === 'close') { toggle(false); return; }
-            if (what === 'tab') { S.filter = t.getAttribute('data-tab') === 'resolved' ? 'resolved' : 'open'; drawPanel(); return; }
+            if (what === 'tab') { S.filter = t.getAttribute('data-tab') === 'resolved' ? 'resolved' : 'open'; drawPanel(); place(); return; }
             if (what === 'go') { goTo(id); return; }
             if (what === 'answer') { S.answering = (S.answering === id) ? 0 : id; S.deleting = 0; drawPanel(); focusAnswer(id); return; }
             if (what === 'resolve' || what === 'reopen') { busy(t, act('proto_comment_resolve', id, { resolved: what === 'resolve' ? 1 : 0 })); return; }
@@ -415,7 +415,9 @@ StyleDesigner.definePart('comments', function (K) {
             if (!r.width && !r.height) return;
             var x = (r.left + r.width * t.x / 100) * scale;
             var y = (r.top + r.height * t.y / 100) * scale;
-            if (x < -8 || y < -8 || x > fr.width + 8 || y > fr.height + 8) return;
+            // A pin is drawn above its point: one whose point is out of the
+            // frame's view is left out rather than cut at the edge.
+            if (x < 0 || y < 0 || x > fr.width || y > fr.height) return;
             var title = t.name + ': ' + t.text;
             html += '<button type="button" class="sd-pc-pin' + (resolved ? ' is-resolved' : '') + (S.focus === t.id ? ' is-focus' : '') + '" data-pin="' + t.id + '"' +
                 ' style="left:' + Math.round(x) + 'px;top:' + Math.round(y) + 'px"' +

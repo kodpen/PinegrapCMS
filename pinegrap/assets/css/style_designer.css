@@ -6683,5 +6683,9 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
 .sd-pc-actions, .sd-pc-confirm { display: flex; align-items: center; gap: .25rem; margin-top: .4rem; flex-wrap: wrap; }
 .sd-pc-confirm > span { flex: 1 1 100%; color: #ffa198; }
 .sd-pc-answer-form { margin-top: .45rem; }
+.sd-pc-answer-form textarea {
+    background: var(--sd-input-bg); color: var(--sd-text); border-color: rgba(255,255,255,.14); font-size: .8rem;
+}
+.sd-pc-answer-form textarea::placeholder { color: var(--sd-text-muted); }
 .sd-pc-answer-foot { display: flex; align-items: center; gap: .5rem; margin-top: .35rem; }
 .sd-pc-answer-foot .form-text { flex: 1; margin: 0; font-size: .7rem; }

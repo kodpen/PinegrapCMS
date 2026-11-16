@@ -18,7 +18,7 @@ description: Plan prototype-comments, steps PN1 to PN5: the table and the guest'
   - Pictures: the mode off and on, a pin open with a thread, "Not on the page any more", a phone. To the owner; not marked ready before his look.
   - Features: P1 to P6.
 
-- PN3 (M) after PN1: the designer's pins and list.
+- PN3 (M) after PN1: the designer's pins and list. Done: #10042. P11's "Delete this link's comments" button was left for PN5 (it sits in the Share prototype dialog's links list).
   - Existing files: `includes/panel/designer.php` (the presence answer carries the stamp; the part's actions for roles 0 and 1), `assets/js/style_designer.src.js` (the part's registration only).
   - New: the part's own file (`designer/designer-parts-on-demand.md`); the bell line (`ui/bell-titles.md`).
   - Pictures: pins on the canvas, the list with open and resolved, a pin whose node is gone. To the owner.
