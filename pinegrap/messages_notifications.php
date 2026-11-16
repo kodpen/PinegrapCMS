@@ -108,7 +108,7 @@ $list = pg_site_push_list($list_state['sorts']);
 
 $body .= '<h2 class="pg-title-section mb-3">' . h(lang('Sent notifications')) . '</h2>'
     . pg_screen_toolbar(array(
-        'search' => array(pg_list_table_search_box('site_push_messages'), pg_list_sort_menu(PG_SITE_PUSH_SCREEN, $sort_columns, $list_state['sorts'], $sort_default)),
+        'search' => array(pg_list_table_search_box('site_push_messages')),
     ))
     . pg_list_table_html($list['source'], $list['page'], lang('Sent notifications'))
     . pg_js_bundle_tags('assets/js/pg_list_table.min.js')
