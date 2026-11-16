@@ -1016,6 +1016,7 @@
     "Enter the Test or Live Secret Key": "Test veya Canlı Gizli Anahtarı girin",
     "Enter the access token.": "Erişim jetonunu girin.",
     "Enter the account's address, such as https://mastodon.example/users/name.": "Hesabın adresini girin, örneğin https://mastodon.example/users/name.",
+    "Enter the address first.": "Önce adresi girin.",
     "Enter the amount as a number.": "Tutarı sayı olarak girin.",
     "Enter the amount of at least one part.": "En az bir parçanın tutarını girin.",
     "Enter the amount of store credit, such as 25 or 25.50.": "Mağaza kredisi tutarını girin, örneğin 25 veya 25,50.",

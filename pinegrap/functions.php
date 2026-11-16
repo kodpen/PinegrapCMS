@@ -227,6 +227,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/whatsapp_forms.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/sms_codes.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/mailchimp_key.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/address_autocomplete.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/place_map.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/places.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/captcha.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/returns.php');
