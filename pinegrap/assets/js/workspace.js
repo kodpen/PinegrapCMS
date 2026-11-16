@@ -4850,9 +4850,9 @@
     // The parts a drawer form is built from in look A: a field (label bound
     // to its control, help and error lines), text, date and time inputs, a
     // textarea, a select, a pair of fields side by side, a switch row, a
-    // segmented choice and the footer's buttons. My calendar's plan drawer
-    // and its roadmap are built from them; formRow() stays for the forms in
-    // Bootstrap's small look.
+    // segmented choice and the footer's buttons. My calendar's plan drawer,
+    // its roadmap and the plan item form ("Add to the plan") are built from
+    // them; formRow() stays for the forms in Bootstrap's small look.
     var formParts = {
         // A field: its caption bound to the control (an id is given when it
         // has none), then an optional muted help line.
@@ -4920,10 +4920,10 @@
             return node;
         },
 
-        // A select of [value, text] pairs. Drawn as the plan drawer's selects
-        // are today; look A's select recipe replaces it with "Add to the plan".
+        // A select of [value, text] pairs in look A's recipe: .pg-input on
+        // the select itself (its own caret). small: the compact height.
         select: function (options, value, small) {
-            var node = el('select', 'form-control' + (small ? ' form-control-sm' : ''));
+            var node = el('select', 'pg-input' + (small ? ' pg-input-sm' : ''));
 
             options.forEach(function (option) {
                 var item = el('option', '', option[1]);
@@ -23877,27 +23877,51 @@
         }
     }
 
-    // The plan item form: a meeting, a visit, leave, a holiday.
+    // The plan item form: a meeting, a visit, leave, a holiday. Built from
+    // the drawer form parts in look A, in the order and words of My
+    // calendar's "New plan": Kind, Title, the days, All day, the hours, Who,
+    // Note, Customer, the meeting link.
     function eventForm(event, defaults, onDone) {
         var node = offcanvas('ws-event-form', '');
         var body = clear(node.querySelector('.drawer-body'));
         var footer = clear(node.querySelector('.drawer-footer'));
         var rights = BOOT.me.rights;
+        var part = formParts;
 
         defaults = defaults || {};
         footer.classList.remove('d-none');
         node.querySelector('.drawer-title').textContent = event ? t('edit_plan_item') : t('add_plan_item');
 
-        var kind = select(Object.keys(CFG.event_kinds).map(function (key) { return [key, CFG.event_kinds[key]]; }), event ? event.kind : (defaults.kind || 'meeting'));
-        kind.id = nextId('ws-ev-kind-');
-        body.appendChild(formRow(t('kind'), kind));
+        // Where the item goes, under the header as New plan says it; the
+        // words follow Who.
+        var whereLine = el('p', 'ws-plan-private pg-text-meta');
+        var whereText = document.createTextNode('');
+        whereLine.appendChild(icon('bi-people', 'me-1'));
+        whereLine.appendChild(whereText);
+        body.appendChild(whereLine);
 
-        var title = el('input', 'form-control form-control-sm');
-        title.id = nextId('ws-ev-title-');
+        var kind = part.select(Object.keys(CFG.event_kinds).map(function (key) { return [key, CFG.event_kinds[key]]; }), event ? event.kind : (defaults.kind || 'meeting'));
+        body.appendChild(part.field(t('kind'), kind));
+
+        var title = part.input('text', event ? event.title : '');
         title.maxLength = 255;
-        title.value = event ? event.title : '';
-        body.appendChild(formRow(t('title'), title, t('event_title_help')));
+        body.appendChild(part.field(t('title'), title, t('event_title_help')));
 
+        var start = part.input('date', event ? event.start : (defaults.start || CFG.today));
+        var end = part.input('date', event ? event.end : (defaults.start || CFG.today));
+        body.appendChild(part.pair(part.field(t('first_day'), start), part.field(t('end_date'), end)));
+
+        var allDaySwitch = part.switchRow(t('all_day'), event ? (String(event.all_day) === '1') : false);
+        var allDay = allDaySwitch.input;
+        body.appendChild(allDaySwitch.row);
+
+        var startTime = part.input('time', event ? event.start_time : '09:00');
+        var endTime = part.input('time', event ? event.end_time : '10:00');
+        var times = part.pair(part.field(t('start_time'), startTime), part.field(t('end_time'), endTime));
+        body.appendChild(times);
+
+        // Who: chosen people, a department (a lead or a settings holder),
+        // the whole company (a settings holder), as before.
         var scopes = [['people', t('scope_people')]];
 
         if (rights.leads.length || rights.settings) {
@@ -23908,89 +23932,56 @@
             scopes.push(['company', t('scope_company')]);
         }
 
-        var scope = select(scopes, event ? event.scope : 'people');
-        scope.id = nextId('ws-ev-scope-');
-        body.appendChild(formRow(t('who'), scope));
+        var scopeValue = event ? event.scope : 'people';
 
-        var peopleRow = el('div');
+        // A scope this person is not offered falls to the first choice, as
+        // the select it replaces did.
+        if (!scopes.some(function (option) { return option[0] === scopeValue; })) {
+            scopeValue = scopes[0][0];
+        }
+
+        var scopeSeg = part.seg(t('who'), scopes, function (value) {
+            scopeValue = value;
+            scopeView();
+        }, 'ws-plan-who');
+        body.appendChild(part.group(t('who'), scopeSeg.node));
+
         var people = peoplePicker(event ? event.people : (defaults.people || [BOOT.me.id]));
-        peopleRow.appendChild(formRow(t('scope_people'), people));
+        var peopleRow = el('div', 'ws-plan-field');
+        people.setAttribute('aria-label', t('scope_people'));
+        peopleRow.appendChild(people);
         body.appendChild(peopleRow);
 
         // A department item needs its department: no empty choice, and a
         // lead who is no settings holder is offered the departments they lead.
-        var deptRow = el('div');
         var deptChoices = departmentOptions().slice(1).filter(function (option) {
             return rights.settings || rights.leads.indexOf(option[0]) !== -1
                 || (event && String(event.department_id) === String(option[0]));
         });
-        var dept = select(deptChoices, event && event.department_id ? event.department_id : (rights.leads.length ? rights.leads[0] : (deptChoices.length ? deptChoices[0][0] : 0)));
-        dept.id = nextId('ws-ev-dept-');
-        deptRow.appendChild(formRow(t('department'), dept));
+        var dept = part.select(deptChoices, event && event.department_id ? event.department_id : (rights.leads.length ? rights.leads[0] : (deptChoices.length ? deptChoices[0][0] : 0)));
+        var deptRow = part.field(t('department'), dept);
         body.appendChild(deptRow);
 
         function scopeView() {
-            peopleRow.classList.toggle('d-none', scope.value !== 'people');
-            deptRow.classList.toggle('d-none', scope.value !== 'department');
+            Object.keys(scopeSeg.items).forEach(function (key) {
+                scopeSeg.items[key].setAttribute('aria-pressed', key === scopeValue ? 'true' : 'false');
+            });
+            peopleRow.classList.toggle('d-none', scopeValue !== 'people');
+            deptRow.classList.toggle('d-none', scopeValue !== 'department');
+            whereText.textContent = t({ people: 'event_where_people', department: 'event_where_dept', company: 'event_where_company' }[scopeValue] || 'event_where_people');
         }
 
-        scope.addEventListener('change', scopeView);
         scopeView();
-
-        var grid = el('div', 'row g-3');
-
-        function col(content, size) {
-            var cell = el('div', size || 'col-6');
-            cell.appendChild(content);
-            grid.appendChild(cell);
-            return cell;
-        }
-
-        var start = el('input', 'form-control form-control-sm');
-        pgDateField(start, 'date');
-        start.id = nextId('ws-ev-start-');
-        start.value = event ? event.start : (defaults.start || CFG.today);
-        col(formRow(t('start_date'), start));
-
-        var end = el('input', 'form-control form-control-sm');
-        pgDateField(end, 'date');
-        end.id = nextId('ws-ev-end-');
-        end.value = event ? event.end : (defaults.start || CFG.today);
-        col(formRow(t('end_date'), end));
-
-        var allDayWrap = el('div', 'form-field mb-3');
-        var allDay = el('input', '');
-        allDay.type = 'checkbox';
-        allDay.id = nextId('ws-ev-allday-');
-        allDay.checked = event ? (String(event.all_day) === '1') : false;
-        var allDayLabel = el('label', '', t('all_day'));
-        allDayLabel.htmlFor = allDay.id;
-        allDayWrap.appendChild(el('div', 'switch')).appendChild(allDay);
-        allDayWrap.appendChild(allDayLabel);
-        col(allDayWrap, 'col-12');
-
-        var startTime = el('input', 'form-control form-control-sm');
-        pgDateField(startTime, 'time');
-        startTime.id = nextId('ws-ev-st-');
-        startTime.value = event ? event.start_time : '09:00';
-        var startTimeCell = col(formRow(t('start_time'), startTime));
-
-        var endTime = el('input', 'form-control form-control-sm');
-        pgDateField(endTime, 'time');
-        endTime.id = nextId('ws-ev-et-');
-        endTime.value = event ? event.end_time : '10:00';
-        var endTimeCell = col(formRow(t('end_time'), endTime));
 
         function timeView() {
             var whole = allDay.checked || kind.value === 'leave' || kind.value === 'holiday';
-            startTimeCell.classList.toggle('d-none', whole);
-            endTimeCell.classList.toggle('d-none', whole);
+            times.classList.toggle('d-none', whole);
         }
 
         allDay.addEventListener('change', timeView);
         kind.addEventListener('change', function () {
             if (kind.value === 'holiday' && rights.settings) {
-                scope.value = 'company';
+                scopeValue = 'company';
                 scopeView();
             }
 
@@ -23998,7 +23989,9 @@
         });
         timeView();
 
-        body.appendChild(grid);
+        var note = part.textarea(event ? event.note : '', 2);
+        note.maxLength = 500;
+        body.appendChild(part.field(t('note'), note));
 
         // The customer of a visit (ws_events.contact_id): sent only once it
         // was changed here, so a customer the person cannot open stays.
@@ -24007,8 +24000,8 @@
         if (CFG.event_contacts) {
             customer = eventCustomerPicker(event ? event.contact : null, event && !event.can_edit);
 
-            var customerRow = el('div');
-            customerRow.appendChild(formRow(t('event_customer'), customer.node, t('event_customer_help')));
+            var customerRow = part.group(t('event_customer'), customer.node);
+            customerRow.appendChild(el('div', 'pg-text-meta', t('event_customer_help')));
             body.appendChild(customerRow);
 
             var customerView = function () {
@@ -24019,40 +24012,33 @@
             customerView();
         }
 
-        var note = el('textarea', 'form-control form-control-sm');
-        note.id = nextId('ws-ev-note-');
-        note.rows = 2;
-        note.maxLength = 500;
-        note.value = event ? event.note : '';
-        body.appendChild(formRow(t('note'), note));
-
         // The video call (includes/workspace/meetings.php): a Jitsi room made
-        // up here, or a link pasted in; Join opens it in a new tab.
+        // up here, or a link pasted in; Join opens it in a new tab. The box
+        // and its two buttons share one row that wraps on a phone.
         var meeting = null;
 
         if (CFG.meetings) {
-            var meetingRow = el('div');
-            var meetingGroup = el('div', 'input-group input-group-sm');
-            meeting = el('input', 'form-control');
-            meeting.type = 'url';
-            meeting.id = nextId('ws-ev-meeting-');
+            meeting = part.input('url', event ? (event.meeting_url || '') : '');
             meeting.maxLength = 500;
             meeting.placeholder = 'https://';
-            meeting.value = event ? (event.meeting_url || '') : '';
-            meetingGroup.appendChild(meeting);
 
-            var jitsi = button('btn btn-outline theme-secondary', '', 'bi-magic', t('meeting_jitsi'));
+            var meetingRow = part.field(t('meeting_link'), meeting, t('meeting_link_help'));
+            var meetingLine = el('div', 'ws-plan-meeting');
+            meetingRow.insertBefore(meetingLine, meeting);
+            meetingLine.appendChild(meeting);
+
+            var jitsi = button('pg-button pg-button-quiet pg-button-sm', t('meeting_jitsi'), 'bi-magic');
             jitsi.addEventListener('click', function () {
                 meeting.value = jitsiRoom(title.value);
                 joinView();
             });
-            meetingGroup.appendChild(jitsi);
+            meetingLine.appendChild(jitsi);
 
-            var join = el('a', 'btn btn-solid theme-primary', t('meeting_join'));
+            var join = el('a', 'pg-button pg-button-sm', t('meeting_join'));
             join.target = '_blank';
             join.rel = 'noopener noreferrer';
             join.insertBefore(icon('bi-camera-video', 'me-1'), join.firstChild);
-            meetingGroup.appendChild(join);
+            meetingLine.appendChild(join);
 
             var joinView = function () {
                 var url = meeting.value.trim();
@@ -24069,7 +24055,6 @@
                 jitsi.classList.add('d-none');
             }
 
-            meetingRow.appendChild(formRow(t('meeting_link'), meetingGroup, t('meeting_link_help')));
             body.appendChild(meetingRow);
 
             var meetingView = function () {
@@ -24081,7 +24066,7 @@
 
             // The meeting note: found again, or written from the template.
             if (event && CFG.notes) {
-                var noteButton = button('btn btn-sm btn-outline theme-secondary rounded-pill', t('meeting_note'), 'bi-journal-text');
+                var noteButton = button('pg-button pg-button-quiet pg-button-sm', t('meeting_note'), 'bi-journal-text');
                 noteButton.title = t('meeting_note_help');
                 noteButton.addEventListener('click', function () {
                     noteButton.disabled = true;
@@ -24092,12 +24077,15 @@
                         fail(error);
                     });
                 });
-                body.appendChild(noteButton);
+                // In a row of its own at its own width, as a field.
+                body.appendChild(el('div', 'ws-plan-field')).appendChild(noteButton);
             }
         }
 
+        // The footer: Delete at the left, Save at the right; the header's
+        // cross or Esc closes the drawer, as New plan.
         if (event && event.can_edit) {
-            var remove = button('btn btn-sm btn-outline theme-warning me-auto', t('delete'), 'bi-trash');
+            var remove = part.remove(t('delete'));
             remove.addEventListener('click', function () {
                 ask(t('delete_item_confirm'), t('delete'), true).then(function (yes) {
                     if (!yes) {
@@ -24121,12 +24109,8 @@
             footer.appendChild(remove);
         }
 
-        var cancel = button('btn btn-sm btn-text theme-secondary', t('cancel'));
-        cancel.setAttribute('data-bs-dismiss', 'drawer');
-        footer.appendChild(cancel);
-
         if (!event || event.can_edit) {
-            var save = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('save'), 'bi-check2');
+            var save = part.save(t('save'));
             save.addEventListener('click', function () {
                 // One click makes one item: a second click while the request
                 // runs would post another insert.
@@ -24135,7 +24119,7 @@
                     id: event ? event.id : 0,
                     kind: kind.value,
                     title: title.value,
-                    scope: scope.value,
+                    scope: scopeValue,
                     people: people.value(),
                     department_id: parseInt(dept.value, 10) || 0,
                     start: start.value,

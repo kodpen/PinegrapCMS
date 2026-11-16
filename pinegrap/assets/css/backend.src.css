@@ -19501,6 +19501,32 @@ button.ws-cal-more {
   white-space: normal;
   text-align: center;
 }
+/* Repeat every: the number and its unit on one line, at 390 too. */
+.ws-plan-every {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ws-plan-every .pg-input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+/* A plan item's meeting link: the address, Jitsi and Join on one row that
+   wraps on a phone. */
+.ws-plan-meeting {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.ws-plan-meeting .pg-input {
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+/* A button in a field's place (Meeting note) keeps its own width. */
+.ws-plan-field > .pg-button {
+  align-self: flex-start;
+}
 /* Somebody else's plan, read only: the fields dimmed as a disabled switch,
    nothing that invites typing. */
 .ws-plan-readonly .pg-input:disabled,
