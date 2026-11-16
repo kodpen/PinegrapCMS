@@ -519,6 +519,8 @@ function pg_site_push_subscription_remove($secret)
         return false;
     }
 
+    pg_site_push_watch_forget($id);
+
     pg_site_push_consent_record('refused', (int) $row['user_id']);
 
     return true;
@@ -996,6 +998,8 @@ function pg_site_push_queue_tidy($now)
     db_q("DELETE q FROM site_push_queue AS q
         INNER JOIN site_push_message AS m ON m.id = q.message_id
         WHERE q.status <> ? AND m.created_at < ?", array((string) PG_SITE_PUSH_WAITING, (string) ((int) $now - PG_SITE_PUSH_KEEP)));
+
+    pg_site_push_watch_tidy($now);
 }
 
 /**
@@ -1064,6 +1068,7 @@ function pg_site_push_queue_run($budget_seconds = 10)
         } elseif ($plan['action'] === 'remove') {
             db_q("DELETE FROM site_push_queue WHERE subscription_id = ?", array((string) $subscription_id));
             db_q("DELETE FROM site_push_subscription WHERE id = ?", array((string) $subscription_id));
+            pg_site_push_watch_forget($subscription_id);
         } elseif ($plan['action'] === 'hold') {
             $held[$row['service']] = true;
 
@@ -1090,4 +1095,226 @@ function pg_site_push_queue_run($budget_seconds = 10)
     pg_cron_release(PG_SITE_PUSH_LOCK);
 
     return $pushed;
+}
+
+/**
+ * How long a device's wait for a record (site_push_watch) is kept when no
+ * moment ends it: an order never delivered, a product never back.
+ */
+define('PG_SITE_PUSH_WATCH_KEEP', 180 * 86400);
+
+/**
+ * Whether the 11.0.229 step has run: the table a device's wait for a record
+ * (a stock request, an order's address) is kept in.
+ *
+ * @return bool
+ */
+function pg_site_push_watch_ready()
+{
+    return pg_site_push_ready() && pg_schema_has('site_push_watch', 'created_at');
+}
+
+/**
+ * The statement that makes one subscription wait for records of a kind.
+ * IGNORE: pressing twice keeps the first row and the moments it has had.
+ * Pure.
+ *
+ * @param int   $kind             the message kind (2 stock, 3 order)
+ * @param int[] $record_ids
+ * @param int   $subscription_id
+ * @param int   $now
+ * @return array  array(sql, params)
+ */
+function pg_site_push_watch_insert($kind, array $record_ids, $subscription_id, $now)
+{
+    $rows = array();
+    $params = array();
+
+    foreach ($record_ids as $record_id) {
+        $rows[] = '(?, ?, ?, 0, ?)';
+        $params[] = (string) (int) $kind;
+        $params[] = (string) (int) $record_id;
+        $params[] = (string) (int) $subscription_id;
+        $params[] = (string) (int) $now;
+    }
+
+    return array(
+        "INSERT IGNORE INTO site_push_watch (kind, record_id, subscription_id, moments, created_at) VALUES " . implode(', ', $rows),
+        $params,
+    );
+}
+
+/**
+ * Makes a subscription wait for records of a kind.
+ *
+ * @param int   $kind
+ * @param int[] $record_ids
+ * @param int   $subscription_id
+ * @return int  rows written
+ */
+function pg_site_push_watch_add($kind, array $record_ids, $subscription_id)
+{
+    $record_ids = array_values(array_filter(array_map('intval', $record_ids)));
+
+    if (!$record_ids || ((int) $subscription_id < 1) || !pg_site_push_watch_ready()) {
+        return 0;
+    }
+
+    list($sql, $params) = pg_site_push_watch_insert($kind, $record_ids, $subscription_id, time());
+
+    return db_q($sql, $params) ? (int) mysqli_affected_rows(db::$con) : 0;
+}
+
+/**
+ * The statement that takes one moment of a wait, so it is sent once. A
+ * moment before the last sets its bit only where it is not set yet; the last
+ * moment deletes the row, so a finished wait leaves nothing behind. Whoever
+ * changes the row (one affected row) sends. Pure.
+ *
+ * @param int  $kind
+ * @param int  $record_id
+ * @param int  $subscription_id
+ * @param int  $bit   the moment's bit in moments (1, 2, 4 …); unused when last
+ * @param bool $last  the wait's last moment
+ * @return array  array(sql, params)
+ */
+function pg_site_push_watch_take_sql($kind, $record_id, $subscription_id, $bit, $last)
+{
+    $key = array((string) (int) $kind, (string) (int) $record_id, (string) (int) $subscription_id);
+
+    if ($last) {
+        return array("DELETE FROM site_push_watch WHERE kind = ? AND record_id = ? AND subscription_id = ?", $key);
+    }
+
+    $bit = (string) (int) $bit;
+
+    return array(
+        "UPDATE site_push_watch SET moments = moments | ? WHERE kind = ? AND record_id = ? AND subscription_id = ? AND (moments & ?) = 0",
+        array_merge(array($bit), $key, array($bit)),
+    );
+}
+
+/**
+ * Takes one moment of a wait: true when this call is the one to send it.
+ *
+ * @param int  $kind
+ * @param int  $record_id
+ * @param int  $subscription_id
+ * @param int  $bit
+ * @param bool $last
+ * @return bool
+ */
+function pg_site_push_watch_take($kind, $record_id, $subscription_id, $bit, $last)
+{
+    list($sql, $params) = pg_site_push_watch_take_sql($kind, $record_id, $subscription_id, $bit, $last);
+
+    return db_q($sql, $params) && ((int) mysqli_affected_rows(db::$con) === 1);
+}
+
+/**
+ * The subscriptions waiting for a record, with their language. Joined to the
+ * subscription: a wait whose browser is gone reaches nobody.
+ *
+ * @param int $kind
+ * @param int $record_id
+ * @return array  rows of subscription_id, language
+ */
+function pg_site_push_watchers($kind, $record_id)
+{
+    if (!pg_site_push_watch_ready()) {
+        return array();
+    }
+
+    return db_items("SELECT w.subscription_id, s.language
+        FROM site_push_watch AS w
+        INNER JOIN site_push_subscription AS s ON s.id = w.subscription_id
+        WHERE w.kind = '" . (int) $kind . "' AND w.record_id = '" . (int) $record_id . "'
+        ORDER BY w.subscription_id");
+}
+
+/**
+ * Drops every wait of a subscription: called wherever a subscription is
+ * deleted (Stop, a gone endpoint).
+ *
+ * @param int $subscription_id
+ * @return void
+ */
+function pg_site_push_watch_forget($subscription_id)
+{
+    if (pg_site_push_watch_ready()) {
+        db_q("DELETE FROM site_push_watch WHERE subscription_id = ?", array((string) (int) $subscription_id));
+    }
+}
+
+/**
+ * Drops the waits for records that were deleted (an order's addresses, a
+ * stock request).
+ *
+ * @param int   $kind
+ * @param int[] $record_ids
+ * @return void
+ */
+function pg_site_push_watch_drop($kind, array $record_ids)
+{
+    $record_ids = array_values(array_filter(array_map('intval', $record_ids)));
+
+    if (!$record_ids || !pg_site_push_watch_ready()) {
+        return;
+    }
+
+    db_q("DELETE FROM site_push_watch WHERE kind = ? AND record_id IN (" . implode(', ', array_fill(0, count($record_ids), '?')) . ")",
+        array_merge(array((string) (int) $kind), array_map('strval', $record_ids)));
+}
+
+/**
+ * The sender's tidy-up of waits: older than PG_SITE_PUSH_WATCH_KEEP, or
+ * whose subscription is gone (an erasure deletes the subscription by its
+ * account and does not know this table).
+ *
+ * @param int $now
+ * @return void
+ */
+function pg_site_push_watch_tidy($now)
+{
+    if (!pg_site_push_watch_ready()) {
+        return;
+    }
+
+    db_q("DELETE FROM site_push_watch WHERE created_at < ?", array((string) ((int) $now - PG_SITE_PUSH_WATCH_KEEP)));
+    db("DELETE w FROM site_push_watch AS w
+        LEFT JOIN site_push_subscription AS s ON s.id = w.subscription_id
+        WHERE s.id IS NULL");
+}
+
+/**
+ * Writes a message for one device and queues it: a stock notice or an
+ * order's moment, whose text the caller made (title at most 60, text at
+ * most 200, url a path inside the site). Not listed as sent in the panel.
+ *
+ * @param array $text             title, body, url
+ * @param int   $kind             2 or 3
+ * @param int   $subscription_id
+ * @return int  the message id, 0 when nothing was written
+ */
+function pg_site_push_message_to_one(array $text, $kind, $subscription_id)
+{
+    if (!pg_site_push_enabled() || ((int) $kind < 2) || ((int) $subscription_id < 1)) {
+        return 0;
+    }
+
+    if (!db_q("INSERT INTO site_push_message (title, body, url, kind, created_by, created_at, queued_count) VALUES (?, ?, ?, ?, 0, ?, 1)", array(
+        (string) $text['title'],
+        (string) $text['body'],
+        (string) $text['url'],
+        (string) (int) $kind,
+        (string) time(),
+    ))) {
+        return 0;
+    }
+
+    $message_id = (int) mysqli_insert_id(db::$con);
+    list($sql, $params) = pg_site_push_queue_insert($message_id, array((int) $subscription_id));
+    db_q($sql, $params);
+
+    return $message_id;
 }

@@ -30,10 +30,14 @@ description: Plan visitor-push, steps VP1 to VP8: the tables and the door, the s
   - Existing files: `includes/fn/messages_area.php` (the card in `pg_messages_channel_cards()`, `ui/messages-area-rules.md`).
   - New: the screen "Send a notification" and its list. Pictures to the owner.
   - Features: N13, N14.
+  - Done: #9977 (`ui/visitor-push-panel.md`; pictures: agent channel message 6765).
 
 - VP5 (S) after VP2: stock. Existing files: `includes/fn/stock_notify.php` (the push branch of `pg_stock_notify_send()`, `commerce/back-in-stock-sms.md`), the product page's request. Its message is `kind` 2 (6528). Features: N15.
 
 - VP6 (S) after VP2: an order. Existing files: `includes/fn/events.php` (one listener in `pg_event_record()`), the order's own pages. Its message is `kind` 3 (6528). Features: N16.
+  - Done: #9976, the server's side and the shared table `site_push_watch` (owner poll 94, architect 6785): `platform/visitor-push-watch.md`, `visitor-push-order.md`.
+
+- VP6b (S) after VP3: the button "Notify me on this device" on the order pages (`action=order`). Features: N16.
 
 - VP7 (S) after VP3: app mode. Existing files: `get_site_icon.php` (the manifest's `display`), the worker file (the offline page). Features: N17.
 

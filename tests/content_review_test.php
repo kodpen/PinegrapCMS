@@ -134,6 +134,7 @@ function test_content_review_hooks()
 	pg_assert_contains('review_on       DATE NULL DEFAULT NULL', $migration, 'no zero date');
 	pg_assert_contains('PRIMARY KEY (item_kind, item_id)', $migration, 'one row per item');
 	$step = substr($migration, (int) strpos($migration, 'function upgrade_2026_11_0_content_review()'));
+	$step = substr($step, 0, (int) strpos($step, "\n}\n"));
 	pg_assert_false(strpos($step, 'updated_at') !== false, 'no column without a reader');
 	pg_assert_contains('announced_on    DATE NULL DEFAULT NULL', $step, 'the announce mark');
 

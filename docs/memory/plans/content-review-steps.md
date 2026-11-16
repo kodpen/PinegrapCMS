@@ -19,6 +19,7 @@ description: Plan content-review, steps CH1 to CH5: the table and its rules, the
   - Pictures: the list with every state, each filter, the three dialogs, a user's own view, a phone. To the owner; not marked ready before his look.
   - Features: V7 to V13.
   - Architect (2026-11-16, agent channel message 6410): "All" and "Not set" page through the items' own tables (`forms` can be large and is never sorted whole); the person and date join from `content_review` by its primary key.
+  - Done: #9967 (`platform/content-review-screen.md`, `content-review-actions.md`). Owner (2026-11-16, agent channel poll 100, message 6855): the look approved as page 6854 showed it; a visible change goes back to his look.
 
 - CH3 (M) after CH2: the task and the flow event.
   - Existing files: `includes/api/outbound/webhooks.php` (the name in `api_webhook_events()`), `job.php` (the announce for the dates that passed), the flow gallery's templates.

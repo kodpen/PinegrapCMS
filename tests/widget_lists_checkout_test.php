@@ -21,13 +21,15 @@ if (!defined('PG_TEST_RUNNER')) {
 function test_widget_lists_checkout_sources()
 {
 	$sources = pg_sw_list_checkout_sources();
-	pg_assert_same(array('checkout.offers', 'checkout.suggestions', 'checkout.gift_cards', 'checkout.recipients', 'checkout.periods'), array_keys($sources));
+	pg_assert_same(array('checkout.offers', 'checkout.suggestions', 'checkout.gift_cards', 'checkout.recipients', 'checkout.periods',
+		'checkout.ship_tos', 'checkout.lines', 'checkout.line_gift_cards'), array_keys($sources));
 	foreach ($sources as $name => $d) {
 		pg_assert_same('checkout', $d['family'], $name);
-		pg_assert_same('__ship_to_key', $d['key'], $name);
+		pg_assert_same($name === 'checkout.line_gift_cards' ? '__line_key' : '__ship_to_key', $d['key'], $name);
 	}
 	pg_assert_same(array(), pg_sw_kind_lists('order_view') ? array_intersect(array_keys(pg_sw_kind_lists('order_view')), array_keys($sources)) : array(), 'only the express order and the order preview');
-	pg_assert_same(array('checkout.offers', 'checkout.gift_cards', 'checkout.periods'), array_keys(pg_sw_kind_lists('order_preview')), 'the order preview: its offers, gift cards and payment periods');
+	pg_assert_same(array('checkout.offers', 'checkout.gift_cards', 'checkout.periods', 'checkout.ship_tos', 'checkout.lines', 'checkout.line_gift_cards'),
+		array_keys(pg_sw_kind_lists('order_preview')), 'the order preview: its offers, gift cards, payment periods and recipients');
 }
 
 // Every row carries exactly its source's tokens.

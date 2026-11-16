@@ -53,6 +53,8 @@
     var SVGNS = 'http://www.w3.org/2000/svg';
     var PAD = 32;
     var ZOOM_STEP = 1.25;
+    // Cmd, not Ctrl, makes a press Select's on a Mac (M.pressSelects()).
+    var MAC = (typeof navigator !== 'undefined') && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || '');
 
     var ICONS = {
         select: 'M6 3.5l12 7.1-5.2 1.5-2.5 5.1z',
@@ -322,6 +324,8 @@
         this.fitMode = true;
         this.full = !!opts.fullscreen;
         this.space = false;
+        this.selectKey = false;
+        this.press = null;
         this.pointers = {};
         this.pan = null;
         this.returnFocus = document.activeElement;
@@ -353,6 +357,10 @@
     //   selectTools               [tool]: tools that show the selection's
     //                             handles and take its keys (Select's own
     //                             press is this.startDrag(e))
+    //   selectPresses[tool]       { down, move, up, double }: Select's press
+    //                             in the tool, given with Ctrl or Cmd held
+    //                             (M.pressSelects()); Editor.pointers.select
+    //                             where the tool names none
     //   layerTypes[type]          node(l): an SVG element in the rotated
     //                             space; paint(g, l): onto a canvas; and as
     //                             needed: ratio (a corner keeps the shape),
@@ -384,6 +392,7 @@
     Editor.hints = {};
     Editor.pointers = {};
     Editor.selectTools = [];
+    Editor.selectPresses = {};
     Editor.layerTypes = {};
     Editor.keys = [];
     Editor.escapes = [];
@@ -505,7 +514,10 @@
             self.onEscape();
         });
         this.dialog.addEventListener('close', function () { self.onDialogClosed(); });
-        this.dialog.addEventListener('keydown', function (e) { self.onKey(e); });
+        this.dialog.addEventListener('keydown', function (e) {
+            self.holdSelectKey(e);
+            self.onKey(e);
+        });
         this.dialog.addEventListener('paste', function (e) { self.onPaste(e); });
         // A press outside the save menu closes it.
         this.dialog.addEventListener('pointerdown', function (e) {
@@ -514,6 +526,8 @@
             }
         }, true);
         this.dialog.addEventListener('keyup', function (e) {
+            self.holdSelectKey(e);
+
             if (e.key === ' ' || e.code === 'Space') {
                 self.space = false;
                 self.stage.classList.remove('pgie-panning');
@@ -521,7 +535,10 @@
         });
         this.stage.addEventListener('wheel', function (e) { self.onWheel(e); }, { passive: false });
         this.stage.addEventListener('pointerdown', function (e) { self.onDown(e); });
-        this.stage.addEventListener('pointermove', function (e) { self.onMove(e); });
+        this.stage.addEventListener('pointermove', function (e) {
+            self.holdSelectKey(e);
+            self.onMove(e);
+        });
         this.stage.addEventListener('pointerup', function (e) { self.onUp(e); });
         this.stage.addEventListener('pointercancel', function (e) { self.onUp(e); });
         // Touch has its own double tap (onTap); a dblclick the browser makes
@@ -857,9 +874,11 @@
 
         if ((e.button === 1) || this.space || (ids.length === 2)) {
             // A second finger ends a tool's drag where it is.
-            if (this.drag && Editor.pointers[this.tool]) {
-                Editor.pointers[this.tool].up.call(this, e);
+            if (this.drag && this.pressOn()) {
+                this.pressOn().up.call(this, e);
             }
+
+            this.press = null;
 
             e.preventDefault();
             this.startPan();
@@ -869,8 +888,49 @@
             } catch (err) {
                 // The pointer is already gone.
             }
-        } else if ((e.button === 0) && (ids.length === 1) && this.ready && Editor.pointers[this.tool]) {
-            Editor.pointers[this.tool].down.call(this, e);
+        } else if ((e.button === 0) && (ids.length === 1) && this.ready) {
+            // Ctrl or Cmd held: Select's press, the tool and its panel kept.
+            this.press = M.pressSelects(this.tool, this.pressState(), e) ? (Editor.selectPresses[this.tool] || Editor.pointers.select) : null;
+
+            if (this.pressOn()) {
+                this.pressOn().down.call(this, e);
+            }
+        }
+    };
+
+    // The pointers of the press under way: Select's when it began with Ctrl
+    // or Cmd held, else the tool's own (or none).
+    Editor.prototype.pressOn = function () {
+        return this.press || Editor.pointers[this.tool] || null;
+    };
+
+    // What M.pressSelects() asks of the tool's own work under way.
+    Editor.prototype.pressState = function () {
+        return {
+            mac: MAC, cropping: this.cropping(), typing: !!this.textEdit, placing: !!(this.vdraft || this.areaPoly),
+            editing: !!this.nodeEdit, recording: !!this.recording
+        };
+    };
+
+    // Whether Ctrl or Cmd is held where it makes a press Select's: the
+    // selection's box and handles then show in every tool.
+    Editor.prototype.selectShown = function () {
+        return !!this.selectKey && M.pressSelects(this.tool, this.pressState(), { ctrlKey: true, metaKey: true, button: 0 });
+    };
+
+    // Ctrl or Cmd pressed or let go (a key or a pointer event tells): the
+    // selection is drawn again in a tool that does not show it.
+    Editor.prototype.holdSelectKey = function (e) {
+        var on = !!(MAC ? e.metaKey : e.ctrlKey);
+
+        if (on === this.selectKey) {
+            return;
+        }
+
+        this.selectKey = on;
+
+        if (this.ready && this.renderSelection && (Editor.selectTools.indexOf(this.tool) < 0)) {
+            this.renderSelection();
         }
     };
 
@@ -912,8 +972,8 @@
             return;
         }
 
-        if (this.drag && Editor.pointers[this.tool]) {
-            Editor.pointers[this.tool].move.call(this, e);
+        if (this.drag && this.pressOn()) {
+            this.pressOn().move.call(this, e);
             return;
         }
 
@@ -948,9 +1008,11 @@
             return;
         }
 
-        if (this.drag && Editor.pointers[this.tool]) {
-            Editor.pointers[this.tool].up.call(this, e);
+        if (this.drag && this.pressOn()) {
+            this.pressOn().up.call(this, e);
         }
+
+        this.press = null;
 
         if (!this.pan) {
             this.onTap(e);
@@ -973,7 +1035,7 @@
     // the actual size at that point from the fitted view, else the fitted
     // view again. Not on the mini bar's buttons.
     Editor.prototype.onDouble = function (e) {
-        var tool = Editor.pointers[this.tool];
+        var tool = (this.ready && M.pressSelects(this.tool, this.pressState(), e)) ? (Editor.selectPresses[this.tool] || Editor.pointers.select) : Editor.pointers[this.tool];
 
         if (!this.ready || (e.target && e.target.closest && e.target.closest('.pgie-mini'))) {
             return;

@@ -21,7 +21,10 @@
 //   checkout.recipients   the recipients of the order; a list of the cart's
 //                         products (cart.items) inside a row lists theirs;
 //   checkout.periods      the recurring payments by period (the order
-//                         preview's only): subtotal, tax and total of each.
+//                         preview's only): subtotal, tax and total of each;
+//   checkout.ship_tos, checkout.lines, checkout.line_gift_cards
+//                         the order preview's recipients, their items and
+//                         each item's gift cards (its only).
 //
 // The lists read ^^__ship_to_key^^, as the cart and order lists do: 0 (the
 // static value) is the whole order, a recipient row's id that recipient.
@@ -112,6 +115,65 @@ function pg_sw_list_checkout_sources()
                 array('__period_subtotal', lang('Subtotal')),
                 array('__period_tax', lang('Tax')),
                 array('__period_total', lang('Total')),
+            ),
+        ),
+        // The order preview's recipients and their items (its only): the
+        // recipient's id is the key the lines read, a line's id the key its
+        // gift cards read (pg_op_list_rows()).
+        'checkout.ship_tos' => array(
+            'family'       => 'checkout',
+            'key'          => '__ship_to_key',
+            'label'        => lang('Recipients to ship to'),
+            'arg'          => '',
+            'arg_required' => false,
+            'tokens'       => array(
+                array('__ship_to_key', lang('Recipient in the order')),
+                array('__ship_to_heading', lang('Shipped to an address (1 or empty)')),
+                array('__ship_to_name', lang('Ship to')),
+                array('__ship_to_person', lang('Recipient name')),
+                array('__ship_to_address', lang('Address')),
+                array('__ship_to_arrival', lang('Requested Arrival Date')),
+                array('__ship_to_method', lang('Shipping Method')),
+                array('__ship_to_cost_html', lang('Shipping cost (HTML)')),
+                array('__ship_to_has_cost', lang('Has a shipping cost (1 or empty)')),
+                array('__ship_to_update_url', lang('Change address URL')),
+                array('__ship_to_form_html', lang('Custom shipping form answers (HTML)')),
+                array('__ship_to_has_form', lang('Has custom shipping form answers (1 or empty)')),
+            ),
+        ),
+        'checkout.lines' => array(
+            'family'       => 'checkout',
+            'key'          => '__ship_to_key',
+            'label'        => lang('Items of the recipient'),
+            'arg'          => '',
+            'arg_required' => false,
+            'tokens'       => array(
+                array('__line_key', lang('Item in the order')),
+                array('__line_title_html', lang('Product description (HTML)')),
+                array('__line_name', lang('Product')),
+                array('__line_qty', lang('Quantity')),
+                array('__line_price_html', lang('Price (HTML)')),
+                array('__line_has_price', lang('Has a price (1 or empty)')),
+                array('__line_amount_html', lang('Amount (HTML)')),
+                array('__line_stock_html', lang('Out of stock message (HTML)')),
+                array('__line_has_stock_note', lang('Out of stock (1 or empty)')),
+                array('__line_event', lang('Event')),
+                array('__line_event_dates', lang('Event dates')),
+                array('__line_recurring', lang('Payment schedule')),
+                array('__line_forms_html', lang('Product form answers (HTML)')),
+                array('__line_has_forms', lang('Has product form answers (1 or empty)')),
+            ),
+        ),
+        'checkout.line_gift_cards' => array(
+            'family'       => 'checkout',
+            'key'          => '__line_key',
+            'label'        => lang('Gift cards of the item'),
+            'arg'          => '',
+            'arg_required' => false,
+            'tokens'       => array(
+                array('__line_card_number', lang('Gift card number')),
+                array('__line_card_email', lang('Recipient Email')),
+                array('__line_card_from', lang('From')),
             ),
         ),
     );

@@ -939,6 +939,16 @@ function pg_sw_raw_token_keys()
         '__field_options_html',
         // Order view: a return request's reasons (the return form part).
         '__return_reason_options_html',
+        // Order preview: a recipient's shipping cost and custom form
+        // answers, an item's description, prices, stock note and product
+        // form answers, as the classic page prints them.
+        '__ship_to_cost_html',
+        '__ship_to_form_html',
+        '__line_title_html',
+        '__line_price_html',
+        '__line_amount_html',
+        '__line_stock_html',
+        '__line_forms_html',
         // Ad Region widget: the ad's own markup.
         '__ad_content_html',
         '__ad_caption_html',
@@ -5658,18 +5668,19 @@ function pg_sw_feed_category_xml($form_page_id, $field_id, $values)
     return $xml;
 }
 
-// The channel and the items of a form widget page's feed: the newest fifty
-// complete records of the form, the widget's own filters applied, each
-// with the fields whose RSS element is title, description, media or category.
-// An item links to the widget's detail page (?r=) when it has one, and to the
-// page itself for a record page; the channel describes the host page.
-// Same return shape as _pg_build_catalog_listing_rss_parts().
-function pg_sw_form_feed_parts($page_id, $page_name, $page_title, $page_meta_description, $feed)
+// The records a form feed lists, as rows, picked as the feed picks them:
+// the record page's own filters, or the list's together with its detail
+// page's, complete records only, the newest first by the moment each was
+// made, 50 at most. The feed and the flows' list box (flow_records.php) read
+// through it; $extra widens the pick for the box alone: `select` columns,
+// a `join`, a `where` condition and a `limit`, each SQL its caller built,
+// or a function given the filters and the form that answers them.
+// Returns records, cfg, form_page_id, detail_page_name, detail_pretty,
+// filter_clause and filters (the filters applied).
+function pg_sw_form_feed_pick($page_id, $page_name, $feed, $extra = array())
 {
     $cfg          = $feed['widget']['cfg'];
     $form_page_id = (int)$feed['custom_form_page_id'];
-    $base_path    = defined('OUTPUT_PATH') ? OUTPUT_PATH : '/';
-    $site         = URL_SCHEME . HOSTNAME_SETTING;
 
     // Where an item links: the record page is its own detail page; a list
     // links to its detail page when that page is bound to the same form.
@@ -5689,7 +5700,8 @@ function pg_sw_form_feed_parts($page_id, $page_name, $page_title, $page_meta_des
     // own (the records it would show), or the list's together with its
     // detail page's, so that no item links to a record that page keeps out.
     if ($feed['type'] === 'form_item_view') {
-        $filter_clause = pg_sw_record_filter_clause($form_page_id, pg_sw_record_view_filters($cfg), (int)$page_id, true);
+        $filters       = pg_sw_record_view_filters($cfg);
+        $filter_clause = pg_sw_record_filter_clause($form_page_id, $filters, (int)$page_id, true);
     } else {
         $filter_detail_id = isset($cfg['detail_page_id']) ? (int)$cfg['detail_page_id'] : 0;
         $detail_view      = ($filter_detail_id > 0)
@@ -5697,22 +5709,59 @@ function pg_sw_form_feed_parts($page_id, $page_name, $page_title, $page_meta_des
                 return pg_sw_form_widget_form_page_id($c) === $form_page_id;
             })
             : null;
+        $filters       = pg_sw_merge_record_filters($cfg, $detail_view ? $detail_view['cfg'] : array());
         // The list's URL filters read the feed's own address
         // (/tag?tag=climate&rss=true lists that tag's records).
         $filter_clause = pg_sw_list_record_filter_clause($form_page_id, $cfg, $detail_view ? $detail_view['cfg'] : array(), $filter_detail_id, pg_sw_filter_request());
     }
-    $filter_where  = $filter_clause['where'];
-    $filter_join   = $filter_clause['join'];
-    $records = db_items(
-        "SELECT forms.id, forms.reference_code, forms.address_name, forms.submitted_timestamp
-         FROM forms
-         $filter_join
-         WHERE forms.page_id = '" . $form_page_id . "'
-           AND forms.complete = 1
-           $filter_where
-         ORDER BY forms.submitted_timestamp DESC
-         LIMIT 50"
+
+    if (is_callable($extra)) $extra = (array)$extra($filters, $form_page_id);
+
+    return array(
+        'records'          => (array)db_items(pg_sw_form_feed_pick_sql($form_page_id, $filter_clause, $extra)),
+        'cfg'              => $cfg,
+        'form_page_id'     => $form_page_id,
+        'detail_page_name' => $detail_page_name,
+        'detail_pretty'    => $detail_pretty,
+        'filter_clause'    => $filter_clause,
+        'filters'          => $filters,
     );
+}
+
+// The query of pg_sw_form_feed_pick(): the feed's own without $extra.
+// Pure.
+function pg_sw_form_feed_pick_sql($form_page_id, $filter_clause, $extra)
+{
+    $limit = isset($extra['limit']) ? max(1, (int)$extra['limit']) : 50;
+    return "SELECT forms.id, forms.reference_code, forms.address_name, forms.submitted_timestamp" . (isset($extra['select']) ? (string)$extra['select'] : '') . "
+         FROM forms
+         " . $filter_clause['join'] . (isset($extra['join']) ? (string)$extra['join'] : '') . "
+         WHERE forms.page_id = '" . (int)$form_page_id . "'
+           AND forms.complete = 1
+           " . $filter_clause['where'] . (isset($extra['where']) ? (string)$extra['where'] : '') . "
+         ORDER BY forms.submitted_timestamp DESC
+         LIMIT " . $limit;
+}
+
+// The channel and the items of a form widget page's feed: the newest fifty
+// complete records of the form, the widget's own filters applied, each
+// with the fields whose RSS element is title, description, media or category.
+// An item links to the widget's detail page (?r=) when it has one, and to the
+// page itself for a record page; the channel describes the host page.
+// Same return shape as _pg_build_catalog_listing_rss_parts().
+function pg_sw_form_feed_parts($page_id, $page_name, $page_title, $page_meta_description, $feed)
+{
+    $pick             = pg_sw_form_feed_pick($page_id, $page_name, $feed);
+    $cfg              = $pick['cfg'];
+    $form_page_id     = $pick['form_page_id'];
+    $base_path        = defined('OUTPUT_PATH') ? OUTPUT_PATH : '/';
+    $site             = URL_SCHEME . HOSTNAME_SETTING;
+    $detail_page_name = $pick['detail_page_name'];
+    $detail_pretty    = $pick['detail_pretty'];
+    $filter_clause    = $pick['filter_clause'];
+    $filter_where     = $filter_clause['where'];
+    $filter_join      = $filter_clause['join'];
+    $records          = $pick['records'];
 
     // The category and media fields, read once; title and description per
     // record through pg_sw_submitted_form_rss_text().

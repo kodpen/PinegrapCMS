@@ -857,6 +857,21 @@
             } }, [icon(tr ? 'm_' + tr.kind : 'm_none')]));
         });
 
+        // The scissors chip at the playhead (clipChipSet()).
+        var chip = { row: row, end: end, node: el('button', { type: 'button', class: 'pgie-clipchip', title: t('clipSplit') + ' (S)', 'aria-label': t('clipSplit'), onpointerdown: function (e) {
+            e.stopPropagation();
+        }, onclick: function (e) {
+            e.stopPropagation();
+
+            if (chip.node.pgieId) {
+                self.clipSplitHere(chip.node.pgieId);
+            }
+        } }, [icon('scissors')]) };
+
+        lane.appendChild(chip.node);
+        this.clipChipSet(chip);
+        this.clipChips.push(chip);
+
         lane.addEventListener('pointerdown', function (e) {
             if ((e.target === lane) || e.target.classList.contains('pgie-trline')) {
                 self.trackSelect(top.id, e.shiftKey);
@@ -1274,6 +1289,86 @@
         this.select([id]);
     };
 
+    // Split, the one way every control takes: the panel's button, the play
+    // bar's, the S key, the chip on a clip row and the phone's selection
+    // bar. id names the clip (the panel, the chip, the selection bar);
+    // without one M.clipSplitPick() chooses it at the playhead. Nothing to
+    // split says why in the toast (an alert, so a screen reader hears it).
+    Editor.prototype.clipSplitHere = function (id) {
+        var now = (this.time === null) ? null : this.motionNow(), l;
+
+        id = id || M.clipSplitPick(this.doc.layers, this.sel, now);
+        l = id ? this.doc.layers.find(function (o) { return o.id === id; }) : null;
+
+        if (!l) {
+            this.showMessage(t('clipSplitNote'), true);
+            return;
+        }
+
+        this.clipSplitAt(l);
+    };
+
+    // Split on the play bar after Record, before the clock, while the
+    // document holds a clip; its label shows on a wide stage (pgie-mwide).
+    var motionBar = Editor.prototype.motionBar;
+
+    Editor.prototype.motionBar = function () {
+        var self = this, bar = motionBar.call(this), clock = bar.querySelector('.pgie-mclock'), split;
+
+        if (!clock || !this.clipLayers().length) {
+            return bar;
+        }
+
+        split = button('pgie-msplit', t('clipSplit'), 'scissors', function () { self.clipSplitHere(); }, true);
+        split.title = t('clipSplit') + ' (S)';
+        split.setAttribute('aria-keyshortcuts', 'S');
+        clock.parentNode.insertBefore(split, clock);
+
+        return bar;
+    };
+
+    // The scissors chip on a clip row where the playhead crosses a clip it
+    // can split: hidden while playing, while a bar is dragged, at rest and
+    // on a phone's rows.
+    Editor.prototype.clipChipSet = function (c) {
+        var now = (this.time === null) ? null : this.motionNow(), phone = window.matchMedia && window.matchMedia(PHONE).matches;
+        var id = (this.playing || this.clipDragging || this.trackDragging || phone) ? null : M.clipSplitPick(c.row, this.sel, now);
+
+        c.node.hidden = !id;
+        c.node.pgieId = id;
+
+        if (id) {
+            c.node.style.left = pct(now, c.end);
+        }
+    };
+
+    Editor.prototype.clipChipsUpdate = function () {
+        var self = this;
+
+        this.clipChips = this.clipChips.filter(function (c) {
+            if (c.node.isConnected) {
+                c.seen = true;
+            }
+
+            return c.node.isConnected || !c.seen;
+        });
+        this.clipChips.forEach(function (c) { self.clipChipSet(c); });
+    };
+
+    // The tracks' playhead moves the chips with it.
+    Editor.motionDocks.forEach(function (d) {
+        var own = d.update;
+
+        if (own !== Editor.prototype.updateTracks) {
+            return;
+        }
+
+        d.update = function () {
+            own.call(this);
+            this.clipChipsUpdate();
+        };
+    });
+
     // Delete in the clip's panel: the length follows the clips left, in
     // the same undo step.
     Editor.prototype.clipRemove = function (l) {
@@ -1424,7 +1519,7 @@
             body.appendChild(el('p', { class: 'pgie-note', text: t('clipNoSound') }));
         }
 
-        var split = tile('scissors', t('clipSplit'), function () { self.clipSplitAt(l); });
+        var split = tile('scissors', t('clipSplit'), function () { self.clipSplitHere(l.id); });
         var detach = tile('music', t('clipDetach'), function () { self.clipDetach(l); });
         var tiles = [split, detach];
 
@@ -1654,6 +1749,7 @@
         this.clipFrameSets = {};
         this.clipTab = 'clip';
         this.clipDragging = false;
+        this.clipChips = [];
         this.clipKeyNow = '';
         this.clipFiles = { search: '', serial: 0, list: null, pick: null };
     });

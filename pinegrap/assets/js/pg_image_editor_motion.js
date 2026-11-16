@@ -60,6 +60,9 @@
     // Layers whose stroke can be drawn on.
     var UNDRAWABLE = ['text', 'image', 'sticker', 'redact', 'video'];
     var PHONE = '(max-width: 599.98px)';
+    // How far, in screen px, a press on a layer at the playhead may wander
+    // and still be a click that keeps the playhead.
+    var HOLD_PX = 3;
 
     // Rows under the play bar (the tracks part): { key, node, update, note },
     // each called on the editor. key() joins the bar's key, node() is put
@@ -518,6 +521,8 @@
 
             this.stageBar.style.right = cover + 'px';
             this.stageBar.classList.toggle('pgie-mshort', (this.stage.clientWidth - cover) < 480);
+            // From 1024 px the bar's buttons show their labels.
+            this.stageBar.classList.toggle('pgie-mwide', (this.stage.clientWidth - cover) >= 1024);
         }
 
         // The bar takes the stage's bottom: a fitted picture moves up.
@@ -838,8 +843,9 @@
     // K plays and pauses, J and L play backward and forward; Left and Right
     // step the playhead a frame (Shift: a second), Home and End go to the
     // ends (M.timelineKey()), which pauses as a scrub does; I and O trim the
-    // selected clip's start and end to the playhead. In this tool J, K, L, I
-    // and O are the timeline's, not the Line, Image or Ellipse tool letters
+    // selected clip's start and end to the playhead; S splits a clip there
+    // (the clip part's clipSplitHere()). In this tool J, K, L, I, O and S are
+    // the timeline's, not the Line, Image, Ellipse or Sticker tool letters
     // (the access part lets them through). Up and Down still nudge the
     // selection; Space keeps moving the view. A recording keeps its own clock.
     Editor.prototype.motionKey = function (e, mod, k) {
@@ -873,6 +879,14 @@
             return true;
         }
 
+        if (low === 's') {
+            if (!e.repeat && !e.shiftKey && this.clipSplitHere) {
+                this.clipSplitHere();
+            }
+
+            return true;
+        }
+
         at = M.timelineKey(this.time, k, e.shiftKey, this.motionTotal());
 
         if (at === null) {
@@ -893,13 +907,75 @@
         return false;
     };
 
-    // A press on the stage edits at rest.
+    // A press on the stage: on a layer where it shows at the playhead it
+    // selects the layer (Shift adds or removes it) and the playhead stays,
+    // so the panel shows its motion at that moment; only a drag that moves
+    // it edits at rest (moveDrag()). A handle or another spot edits at rest.
     Editor.prototype.motionDown = function (e) {
+        var h = e.target && e.target.getAttribute && e.target.getAttribute('data-h'), p, hit;
+
+        if ((this.time !== null) && !h && this.keyHit) {
+            p = this.toDoc(e.clientX, e.clientY);
+            hit = this.keyHit(p);
+
+            if (hit) {
+                if (this.playing) {
+                    this.pause();
+                }
+
+                e.preventDefault();
+
+                if (e.shiftKey) {
+                    this.select((this.sel.indexOf(hit.id) >= 0) ? this.sel.filter(function (id) { return id !== hit.id; }) : this.sel.concat([hit.id]));
+                    return;
+                }
+
+                if (this.sel.indexOf(hit.id) < 0) {
+                    this.select([hit.id]);
+                }
+
+                this.drag = {
+                    kind: 'move', at: p, click: this.pressClick(e), hold: [e.clientX, e.clientY],
+                    start: this.selected().filter(function (l) { return !l.locked && !(Editor.layerTypes[l.type] || {}).fixed; }).map(M.clone)
+                };
+
+                try {
+                    this.stage.setPointerCapture(e.pointerId);
+                } catch (err) {
+                    // The pointer is already gone.
+                }
+
+                return;
+            }
+        }
+
         if (this.time !== null) {
             this.stopMotion();
         }
 
         return this.startDrag(e);
+    };
+
+    // A move held at the playhead (motionDown()) drops it to rest once the
+    // pointer leaves the press: the layer then moves at rest, as before.
+    var moveDrag = Editor.prototype.moveDrag;
+
+    Editor.prototype.moveDrag = function (e) {
+        var d = this.drag;
+
+        if (d && d.hold) {
+            if (Math.hypot(e.clientX - d.hold[0], e.clientY - d.hold[1]) <= HOLD_PX) {
+                return;
+            }
+
+            d.hold = null;
+
+            if (this.time !== null) {
+                this.stopMotion(true);
+            }
+        }
+
+        return moveDrag.call(this, e);
     };
 
     Editor.inits.push(function () {
@@ -920,6 +996,8 @@
     Editor.headers.motion = Editor.prototype.motionHeader;
     Editor.hints.motion = 'hintMotion';
     Editor.pointers.motion = { down: Editor.prototype.motionDown, move: Editor.prototype.moveDrag, up: Editor.prototype.endDrag, double: Editor.prototype.editLayer };
+    // Ctrl or Cmd: Animate's own select press, past keyframes and Record.
+    Editor.selectPresses.motion = Editor.pointers.motion;
     Editor.selectTools.push('motion');
     Editor.keys.unshift(Editor.prototype.motionKey);
     Editor.escapes.unshift(Editor.prototype.motionEscape);

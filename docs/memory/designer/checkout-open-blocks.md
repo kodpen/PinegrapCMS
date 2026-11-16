@@ -8,7 +8,7 @@ module: widgets_order_preview
 - Step CB6d of `plans/designer-closed-blocks-steps.md`, cut by size; census [[canvas-closed-blocks-widgets]]. Shop steps before it: [[catalog-detail-open-blocks]], [[catalog-listing-open-blocks]], [[cart-open-blocks]].
 - Tree: the order preview's `applied_offers`, `applied_gift_cards`, `recurring_payments` sections: lists of the `checkout` family ([[widget-lists-checkout]]).
 - Settings only: `card_installments`, `installment_table` (the shopper's card and the gateway's plans).
-- Closed: `order_recipients` is CB6d2 (nested items, product forms, gift cards, the custom shipping form's answers); `billing_form` and the custom shipping and billing forms stay as their form draws them.
+- `order_recipients` opened in CB6d2: [[checkout-open-recipients]]. `billing_form` and the custom shipping and billing forms stay as their form draws them.
 
 ## Which lists does an order preview offer?
 - `pg_sw_kind_lists('order_preview')`: `checkout.offers`, `checkout.gift_cards` and the new `checkout.periods` (`__period_name`, `__period_subtotal`, `__period_tax`, `__period_total`; its only). Not `checkout.suggestions` nor `checkout.recipients`; the express order does not offer `checkout.periods`.

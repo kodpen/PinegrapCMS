@@ -39,7 +39,9 @@
 - cloudflare-tools-failed-reads.md: Cloudflare Tools says why a Cloudflare read or action failed: unread zone switches disabled, firewall and analytics reasons, Cloudflare's text on every failed action
 - comment-attachment-upload-refusal.md: The comment form's attachment (add_comment.php) refuses a file PHP did not take in whole before the comment is written, and writes a files row only after a successful copy.
 - consent-anonymous-counts.md: The one cookie notice check of the anonymous counts (clicks and scroll depth, a pop-up's events): counted unless statistics were refused; why it is not pg_consent_allows() [decision: here]
+- content-review-actions.md: The Content review screen's actions (content_review_action.php, #9967): row menu and selection bar, the three dialogs, one POST resolved with the list's rights, what a user (role 3) may do
 - content-review-rules.md: Content review (content_review, 11.0.226, #9934): the table, which items count, date states in the site's time, the next date, the person, the daily sweep [decision: here]
+- content-review-screen.md: The Content review screen (view_content_review.php, #9967): the list read as branches, filters, sorts, columns, the row menu, what a user (role 3) sees; actions in content-review-actions.md [decision: here]
 - cookie-consent-catalogue.md: Which cookies the cookie notice lists (pg_consent_catalogue()), the conditional rows, and what a new cookie needs
 - cookie-consent-new-cookies.md: Adding a front-end cookie or third-party tag under the cookie notice: necessary or not, pg_consent_setcookie() plus a session copy, pg_consent_catalogue(), revoke names, pg_consent_hold_scripts().
 - cookie-consent-notice.md: Cookie notice: Settings, Reject all and Accept all drawn alike, nothing pre-ticked; Consent Mode v2 default at the top of <head>, update before held scripts start; focus [decision: decisions-made-product.md]
@@ -113,7 +115,7 @@
 - iys-settings-card.md: The İYS card of Settings › Communication (includes/iys/settings.php): fields, save decision, brand check, cursor keys kept, iys_job switched on, what was not verified
 - iys-sms-channel.md: İYS MESAJ channel (PR #3806): contacts.iys_sms_status (11.0.136), the SMS consent rows pushed for a mobile number, İYS's SMS changes pulled and matched to the contacts' numbers [decision: decisions-made-customers.md, decisions-made-product-8.md]
 - job-pass-time-claim.md: Window passes of the general job (booking reminders, store credit expiring notices) claim their config_text pass time with pg_config_text_claim(), so overlapping runs never both send
-- job-script-claims.md: Mailing job scripts (membership, ERP overdue, ERP accountant) take the cron_runs lock when started by crontab or by hand; which job scripts were left without one
+- job-script-claims.md: Mailing job scripts (membership, ERP overdue, ERP accountant) take the cron_runs lock when started by crontab or by hand; which job scripts were left without one [decision: decisions-made-schema-24.md]
 - kiosk-mode.md: kiosk.php: what its query string sets in the session, how logout restarts it (token and kiosk mode required, visitor cookies cleared), and why the text parameters must be strings
 - language-address-prefix.md: A target language's address prefix (/en/, /pt-br/): lower case everywhere, fallback to the lower-cased code, collision check in the languages save, router matching
 - language-redirect-matching.md: How the automatic language redirect reads a browser language tag: regions, Chinese script before region, aliases
@@ -222,8 +224,10 @@
 - vendor-api-client.md: Kodpen API client base (includes/fn/vendor_api.php, PR #3255): the PG_VENDOR_API_V1 switch line (on), base and PG_VENDOR_API_URL, headers, timeouts, problem reader, canonical site name, vector sums [decision: decisions-made-product-45.md]
 - vendor-api-update-download.md: Download, backup and replace of a signed update (PR #3632, PG_VENDOR_API_V1 on): pg_vendor_update_steps(), fetch order, package file, refusals, security log, manifest shape [decision: decisions-made-product-45.md]
 - vendor-api-update.md: The Kodpen API's release check (GET /releases/latest, PR #3282, PG_VENDOR_API_V1 on): how an answer is read, what it offers, the pin the later steps read, flag and notification, screen texts [decision: decisions-made-product-5.md]
-- visitor-push-rules.md: Visitor notifications (11.0.227, #9947): the site_push tables, the switch, endpoints and keys taken, the door site_push.php, the secret, consent log, export and erasure [decision: here]
+- visitor-push-order.md: Visitor notifications for an order (kind 3, VP6): the door's order action, who may follow an order, shipped and delivered sent once per address beside the SMS, the text, language and link
+- visitor-push-rules.md: Visitor notifications (11.0.227, #9947): the site_push tables, the switch, endpoints and keys taken, the door site_push.php, the secret, consent log, export and erasure [decision: decisions-made-schema-24.md]
 - visitor-push-sender.md: Visitor notifications' sender (#9957): the message writer, queue batches, the pass in job.php and push_job.php under one lock, held services, retries, a day's limit, the week's tidy-up, the counts
+- visitor-push-watch.md: Visitor notifications to one device (11.0.229, VP6): the site_push_watch table a browser waits for one record in, its moments sent once, who deletes its rows, the helpers VP5 and VP6 share [decision: here]
 - whatsapp-cloud-api-facts.md: Meta's WhatsApp Cloud API on 2026-11-12: Graph version, ids and permanent token, sending a template, the 24-hour window, template limits, categories, prices, media
 - whatsapp-cloud-api-webhooks.md: Meta's WhatsApp webhooks and error codes on 2026-11-12: verify call, X-Hub-Signature-256, retries, fields, delivery and template states, BSUIDs, which codes may be retried
 - whatsapp-connection.md: WhatsApp account (WA1, #9067): the Communication › WhatsApp card and its five steps, connect_apps storage, the save check with Meta, the test message, whatsapp_webhook.php verify and signature

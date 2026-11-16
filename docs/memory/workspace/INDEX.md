@@ -181,6 +181,7 @@
 - poll-agent-question.md: The agent question on the server (agent_question.php, step 11.0.214): the flag, who answers, first answer settles, wake and brief, memory index, map and API fields [decision: decisions-made-workspace-34.md]
 - poll-box.md: The poll box (pollNode(), AQ3 #9647): three shapes and their rule, option parts, "Other" words, taken back, asked again, the asker's actions; the New poll form's parts and channel pictures
 - poll-option-parts.md: A poll option's description, picture, links, Recommended mark and the "Other" row with the voter's own words (poll_parts.php, step 11.0.213); create, change and vote rules, API fields, older polls
+- poll-question-picture-box.md: How the poll box draws a question's own picture (QP2): the "question" shape, pollLayout(), large at the left, option thumbnails, "Other" field, answered, taken back, no file card, the viewer
 - poll-question-picture.md: A poll question's own picture (poll_picture.php, #9948): carried by the question's message, the image check, ask again carries it, change while unanswered, the API routes, ws_poll.php --file [decision: here]
 - poll-take-back.md: Take back and Ask again on a poll (poll_again.php): the asker (a person or the asking application), withdrawn_at, again_of, panel actions, API withdraw and again routes
 - quiet-hours.md: A person's quiet hours (plan quiet-hours, #9844 and QH2): set in a channel's Notifications, ws_profiles.quiet_hours, the rule pg_quiet_hours_left() reads, the person's own session only [decision: decisions-made-schema-22.md, decisions-made-workspace-35.md]
@@ -291,8 +292,10 @@
 - workspace-colon-emoji.md: ":" and two letters in a Workspace writing box with the emoji button suggest matching emoji (colonEmojiAt(), colonEmojiList()): where it opens, order, keys, undo, which boxes
 - workspace-command-api.md: / commands over the API: GET /workspace/commands lists the registry (#1991); POST /workspace/commands/run runs one as the composer does (#3823); dry run previews; no MCP tool [decision: decisions-made-product-11.md]
 - workspace-command-live-line.md: The live line under a /task and a /status (ws_command_suggest: "Will create: …", warnings), a typed @username assigning, and what the parser reads: next week, datives, 14:00, "1.5 saat" as an estimate [decision: decisions-made-workspace.md]
+- workspace-command-other-chats.md: What other team chats do with / commands (read 2026-11-16 for plan channel-commands): their built-ins, application commands, no-code commands, record lookups, and what goes wrong there
+- workspace-command-picker.md: What ws_commands($viewer) gives the / picker, /help, palette and API; the Tab argument popup after "/name "; an unknown /word refused with the closest names; "//" posts it
 - workspace-command-plan-items.md: /timer (/süre), /away (/izin) and /meeting (/toplantı) in a Workspace channel (PR #1938): what each reads, the functions they write through, who is told, their live lines
-- workspace-command-registry.md: One registry (ws_commands()) for the / picker, /help, palette, the Tab argument popup after "/name " and the API list; an unknown /word refused with the closest names; "//" posts it
+- workspace-command-registry.md: The built-in / command registry ws_command_registry() (command_registry.php, CC1a): an entry's fields, which functions read it, what a new command adds, shadowed application commands [decision: here]
 - workspace-command-schedule.md: /schedule (/zamanla) in a Workspace channel: when it reads (+30dk, a day, 14:00), the 09:00 and tomorrow defaults, ws_scheduled_message_save(), its writer-only answer and live line
 - workspace-command-status.md: /status (/durum) in a Workspace channel (PR #1896): the status words it reads, ws_task_set_status(), the lines it posts, its live line and the statuses popup
 - workspace-composer-expanded.md: The composer's "Aa" expanded box (Editor.expand()): Enter a new line, Ctrl/Cmd+Enter sends, every tool shown, the per-viewer choice in localStorage, how the switch gets on the row without workspace.js
@@ -396,6 +399,7 @@
 - workspace-flows-quick-setup-summary.md: The quick setup dialog's Summary stage (QS4 #9315): steps in order with moves, a held step indented, name, Start working when saved, Open on the canvas, what it sends and hands the opener
 - workspace-flows-quick-setup.md: Flows quick setup server (flow_quick.php): catalogue of areas, starts, step groups, recipes; the choices the dialog sends; how they become a draft graph; the panel action [decision: decisions-made-product-47.md, decisions-made-workspace-20.md]
 - workspace-flows-record-get-box.md: The Read a record box of flows (record_get): kinds and fields, the owner's reach as the change box checks it, found 0 for a missing or unreachable record, readers, canvas
+- workspace-flows-records-window.md: The flow box Read the records of a list (list_records, #9978): the feed's pick, a page open to everyone, the window of only new records (ws_scheduled_runs.started_at), a record's date, left out, Try [decision: here]
 - workspace-flows-references.md: The reference check of a flow (D4, PR #2305): bad_reference for {{node.*}} of a missing, later or field-less box; a warning for a box that may not run, unless a fallback is written
 - workspace-flows-retry-skip.md: A failed box of a flow run tried again on its own (3d, PR #2275, retry/retry_after) or by hand or skipped (F5a, PR #2098, ws_flow_step_mend()): which boxes, owner only, double click, routes, canvas
 - workspace-flows-row-add-to-cell.md: Adding to a cell in the change-row flow box (PR #7408): "+3" in a number or money cell adds to the row read at write time, on its revision
@@ -533,6 +537,7 @@
 - workspace-record-commands.md: The /price (/fiyat) and /stock (/stok) channel commands: how the amount and quantity are read, the preview card, the confirmation through ws_quick_edit_save(), who is offered them
 - workspace-record-kind-registry.md: ws_record_kinds() (refs.php): one entry per Workspace record kind (prefixes, right, read scope, change kind, audit table, drawer, customer), the lists it is held to, the drift test
 - workspace-record-kinds.md: Every list a Workspace record kind (order, product, invoice...) must be in, the kinds each leaves out and why, the scope the assistants read a kind with, and the test that guards it
+- workspace-record-share.md: The record drawer's "Share in a channel" posts its line as a message (ws_send as_text), never a / command, and reports a share only on a message id (#9983)
 - workspace-ref-sources.md: Notes and workflow table rows as ws_refs tag sources (#3135, decision #3138, 11.0.116): VARCHAR source_type, probe, writers with channel 0, per-source access in readers, backfill
 - workspace-roadmap-templates.md: Team roadmap templates (PC12, #9562): Save as team template, the two tables, who changes or deletes one, Team templates under New roadmap, Move the following steps too [decision: here]
 - workspace-root-folder.md: The Workspace folder at the top of the file manager (ws_root_folder_id()): when an existing top-level "Workspace" folder is taken over and when a new one is made beside it
@@ -567,6 +572,7 @@
 - workspace-today-digest-decisions.md: Today's "What happened in the channels" and "Latest decisions" cards in the new dashboard's parts: rows, badge, the Activity line, why a decision row is no button
 - workspace-today-join-about.md: Today's "Channels you could join" and "What is the Workspace?" cards in the dashboard design: markup, where their styles live, what the Join button does
 - workspace-today-page.md: The Workspace's first page, Today (?view=home, was Overview): the greeting and its count line, the cards in the drawn order, what can be done from them, where each card's data comes from [decision: decisions-made-workspace-5.md]
+- workspace-typed-mention.md: A mention typed by hand (@handle, @username) becomes the tag a pick from the @ list writes, when the message is written or changed: the rule, where it runs, what it leaves as typed
 - workspace-ui-notes.md: Where the Workspace screens are drawn and styled, its tokens, colour picker vs plan board legend class names, what a closed section of the channel list shows, cosmetic leftovers
 - workspace-ui-scale.md: The Workspace CSS scale (radii, spaces, row and header padding, avatar sizes, shadows as --ws-* tokens), keyboard-only focus rings, dark nav tones, where the block ends
 - workspace-unsent-draft.md: The Workspace composer's unsent text kept on the browser (localStorage) per site, viewer, channel and discussion: key, when saved, restored, cleared, limits, what is never kept

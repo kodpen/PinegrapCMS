@@ -1193,6 +1193,16 @@ function ws_approval_settle($approval, $outcome, $actor_id = 0)
         ));
     }
 
+    // A waiting content change asked in this request: a designer's yes
+    // applies it, a no dismisses it (includes/fn/content_proposals.php).
+    if (!function_exists('pg_content_proposals_settled') && is_file(PG_FUNCTIONS_DIR . '/includes/fn/content_proposals.php')) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/content_proposals.php');
+    }
+
+    if (function_exists('pg_content_proposals_settled')) {
+        pg_content_proposals_settled($approval, $outcome, (int) $actor_id);
+    }
+
     return (int) $result_id;
 }
 

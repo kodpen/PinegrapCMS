@@ -2196,36 +2196,42 @@ function ws_handle_action($action, $request)
 
             $body = (string) ($request['body'] ?? '');
 
-            // "/claude ..." asks Claude, like writing @Claude.
-            if (function_exists('ws_claude_command_body')) {
-                $body = ws_claude_command_body($body);
-            }
+            // as_text: the body is posted as written, never run as a / command
+            // nor rewritten for /claude or /ai (a record shared from its drawer).
+            $as_text = !empty($request['as_text']);
 
-            // "/ai ..." asks Pinegrap AI, like writing @ai.
-            if (function_exists('ws_ai_command_body')) {
-                $body = ws_ai_command_body($body);
-            }
-
-            $command = ws_command_run($viewer, $channel, $body, array(
-                'confirm'   => !empty($request['confirm']),
-                'force'     => !empty($request['force']),
-                'assignees' => isset($request['assignees']) ? (array) $request['assignees'] : null,
-                'from'      => (isset($request['from']) && is_scalar($request['from'])) ? $request['from'] : null,
-                'decision'  => !empty($request['decision']),
-                'on_sale'   => !empty($request['on_sale']),
-                'parent_id' => (int) ($request['parent_id'] ?? 0),
-            ));
-
-            if ($command !== null) {
-                if ($command['type'] === 'error') {
-                    return ws_action_error($command['error']);
+            if (!$as_text) {
+                // "/claude ..." asks Claude, like writing @Claude.
+                if (function_exists('ws_claude_command_body')) {
+                    $body = ws_claude_command_body($body);
                 }
 
-                return ws_action_ok(array('command' => $command));
-            }
+                // "/ai ..." asks Pinegrap AI, like writing @ai.
+                if (function_exists('ws_ai_command_body')) {
+                    $body = ws_ai_command_body($body);
+                }
 
-            // "//word ..." is the text "/word ..." posted as a message.
-            $body = ws_command_unescape($body);
+                $command = ws_command_run($viewer, $channel, $body, array(
+                    'confirm'   => !empty($request['confirm']),
+                    'force'     => !empty($request['force']),
+                    'assignees' => isset($request['assignees']) ? (array) $request['assignees'] : null,
+                    'from'      => (isset($request['from']) && is_scalar($request['from'])) ? $request['from'] : null,
+                    'decision'  => !empty($request['decision']),
+                    'on_sale'   => !empty($request['on_sale']),
+                    'parent_id' => (int) ($request['parent_id'] ?? 0),
+                ));
+
+                if ($command !== null) {
+                    if ($command['type'] === 'error') {
+                        return ws_action_error($command['error']);
+                    }
+
+                    return ws_action_ok(array('command' => $command));
+                }
+
+                // "//word ..." is the text "/word ..." posted as a message.
+                $body = ws_command_unescape($body);
+            }
 
             $result = ws_message_send($viewer, $channel, $body, array(
                 'parent_id' => (int) ($request['parent_id'] ?? 0),

@@ -4,7 +4,7 @@ description: Plan place-map, steps MP1 to MP6: the census of providers and conse
 ---
 
 ## Which steps are there?
-- MP1 (S, no code) Census. One memory file, `plans/place-map-census.md`: each address provider's terms on keeping a looked-up result and on showing it on another map; the tile hosts' terms and what OpenStreetMap's own tiles allow; which class of the cookie notice the map is listed under and how a service is listed (`pg_consent_page_services()`); the exact header change. The architect confirms the shape on it.
+- MP1 (S, no code) Census, done (PR #9980): `plans/place-map-census.md`, `-census-2.md`, `-census-3.md`. One memory file, `plans/place-map-census.md`: each address provider's terms on keeping a looked-up result and on showing it on another map; the tile hosts' terms and what OpenStreetMap's own tiles allow; which class of the cookie notice the map is listed under and how a service is listed (`pg_consent_page_services()`); the exact header change. The architect confirms the shape on it.
 
 - MP2 (M) after MP1: coordinates on a record. No schema.
   - Existing files: the record's form and the collection's record list in the panel (`edit_submitted_form.php`, `view_submitted_forms.php`: the action and the bulk action). Other plans' steps hold them: the step names the clash.
@@ -21,9 +21,9 @@ description: Plan place-map, steps MP1 to MP6: the census of providers and conse
   - Features: X1, X2, X3, X8, X10, X15, X16.
 
 - MP4 (M) after MP3: the map and the switch.
-  - Existing files: `includes/settings/features.php` and `features.save.php` (the card with the tile setting), `includes/fn/consent.php` (the map as a service of the notice), the security headers' builder (the tile host, only on a map page with the switch on).
+  - Existing files: `includes/settings/features.php` and `features.save.php` (the card with the tile setting), `includes/fn/consent.php` (the map as a service of the notice), the Firewall settings screen (a line to copy when the site's own policy lacks the tile host; the security headers the software sends do not change, X14).
   - New: `assets/lib/leaflet/` with its licence and `tests/leaflet_library_test.php`.
-  - Tests: no tile request before the class is allowed; the headers unchanged with the switch off.
+  - Tests: no tile request before the class is allowed; the headers the same with the switch on and off.
   - Pictures: "Show the map", the map with markers and an open card, a phone. To the owner; not marked ready before his look.
   - Features: X9, X13, X14.
 

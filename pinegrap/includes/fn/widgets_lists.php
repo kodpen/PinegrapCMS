@@ -119,9 +119,9 @@ function pg_sw_kind_lists($kind)
                           'cart.item_forms' => true, 'cart.item_form_fields' => true, 'cart.item_form_field_options' => true),
                       'express_order' => array('cart.item_gift_cards' => true, 'cart.item_schedule' => true,
                           'cart.item_forms' => true, 'cart.item_form_fields' => true, 'cart.item_form_field_options' => true,
-                          'checkout.periods' => true),
-                      // The order preview's recipients stay its section for
-                      // now; it suggests no offer.
+                          'checkout.periods' => true, 'checkout.ship_tos' => true, 'checkout.lines' => true, 'checkout.line_gift_cards' => true),
+                      // The order preview lists its recipients with its own
+                      // lists (checkout.ship_tos); it suggests no offer.
                       'order_preview' => array('checkout.suggestions' => true, 'checkout.recipients' => true));
     $kind = pg_sw_finish_kind($kind);
     if (!isset($families[$kind])) return array();
