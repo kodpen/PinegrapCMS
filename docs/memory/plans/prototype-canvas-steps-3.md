@@ -11,7 +11,7 @@ description: Plan prototype-canvas, steps PV7 to PV10 and PV12: the page picture
   - Measured on a design of forty pages: the time to the first and to the last picture in view, memory, pan and zoom at Fit, what system widgets and fonts look like, what an unsaved tab shows.
   - Answered in a new `designer/prototype-picture-check.md`: the way to take; the sandbox it needs and why that is safe (no script runs, nothing is sent, what the frame can reach); how a link's element is found (a marker written only for the picture, never saved or published); the numbers; how many pictures may live at once.
   - The architect confirms the way in the agent channel before PV8 starts.
-- PV8 (M) The picture in the frame. After PV7 and PV2.
+- PV8 (M) The picture in the frame. After PV7 and PV2. Done in #9896.
   - By the confirmed way (F1, F3) a frame is its head and the picture (`FRAME` gains the picture's width, its cut height and the head); the sketch is the loading state and the fallback. Link rows stay until PV9.
   - No script ever runs in a picture; it takes no pointer and no focus (`aria-hidden`); made when in view, dropped beyond the cap of PV7.
   - "Read the links again" makes the pictures of changed tabs again. Reduced motion: no fade.
