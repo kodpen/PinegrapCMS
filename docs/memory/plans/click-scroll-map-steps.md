@@ -16,8 +16,9 @@ description: Plan click-scroll-map, steps CM1 to CM5: the table and counter, the
   - New: `assets/js/pg_clicks.src.js`; the landing builds its bundle.
   - Tests: the script's naming of an element and its fold under Node on the fixtures the server test uses; who gets the script (the switch, a private folder, staff, a signed-in member); nothing sent after a refusal of statistics, a beacon from a visitor who has not answered.
   - Features: C1 to C11, C16.
+  - The switch through `pg_page_clicks_switch_on()` and `pg_page_clicks_switch_save()` (CM3 #9913, `page_clicks.php`); the card writes no reader or saver of its own (architect, message 6222).
 
-- CM3 (M) after CM1: the Visitors section and the report route.
+- CM3 (M) after CM1: the Visitors section and the report route. It lands before CM2 and adds the switch's reader and saver (message 6222). Done in #9913.
   - Existing files: `includes/fn/visitor_periods.php` (one line in `pg_visitors_sections()`), `assets/css/pg_visitors.src.css` (its labelled block), the report rows of the API schema.
   - New: `includes/visitors/clicks.php`, `tests/visitors_clicks_test.php`.
   - Tests: a label holding markup printed as text in the section and the route.
@@ -29,6 +30,7 @@ description: Plan click-scroll-map, steps CM1 to CM5: the table and counter, the
   - New: the part's own file (`designer/designer-parts-on-demand.md`), its test with the twin of the fold.
   - Pictures: the layer's empty state, badges and tenth lines on a page with data, the list of elements the canvas does not hold, a device choice. To the owner.
   - Features: C17 (the designer), C21, C22, C23.
+  - The switch through CM3's reader and saver in `page_clicks.php` only (message 6222).
 
 - CM5 (S) close-out: every C number checked against the code with its PR; `visitors/page-clicks.md` and `ui/visitors-clicks-section.md`; this plan's five files deleted and its line in `plans/website-features.md` removed.
 

@@ -191,6 +191,7 @@ function pg_visitors_section_icons()
         'google'      => 'bi-google',
         'pages'       => 'bi-link-45deg',
         'speed'       => 'bi-speedometer2',
+        'clicks'      => 'bi-hand-index',
         'ai'          => 'bi-stars',
         'places'      => 'bi-geo-alt',
     );
