@@ -418,10 +418,54 @@ function pg_share_card_find($request, $order, $public, $state, $key)
 }
 
 /**
+ * The query of a page's folder and whether that folder is archived, as
+ * get_page.php reads them. Pure.
+ *
+ * @param int $page_id
+ * @return string
+ */
+function pg_share_card_page_sql($page_id)
+{
+    return "SELECT page.page_folder, folder.folder_archived FROM page LEFT JOIN folder ON page.page_folder = folder.folder_id WHERE page.page_id = '" . (int) $page_id . "'";
+}
+
+/**
+ * The query that finds a record (a row of forms) or an enabled product;
+ * '' for a page, which is checked by its folder alone. Pure.
+ *
+ * @param string $kind
+ * @param int    $id
+ * @return string
+ */
+function pg_share_card_item_sql($kind, $id)
+{
+    if ($kind === 'record') {
+        return "SELECT id FROM forms WHERE id = '" . (int) $id . "' AND page_id <> '0'";
+    }
+
+    return ($kind === 'product') ? "SELECT id FROM products WHERE id = '" . (int) $id . "' AND enabled = '1'" : '';
+}
+
+/**
+ * Whether every visitor opens a page: it exists, its folder is public, not
+ * archived (get_page.php answers 410 there) and not in the Recycle Bin. A
+ * draft sits in the private Drafts folder. Pure.
+ *
+ * @param array|null $row    pg_share_card_page_sql()
+ * @param string     $access get_access_control_type() of its folder
+ * @param bool       $binned pg_folder_binned() of its folder
+ * @return bool
+ */
+function pg_share_card_page_open($row, $access, $binned)
+{
+    return is_array($row) && ((string) ($row['page_folder'] ?? '') !== '') && ((string) ($row['folder_archived'] ?? '') !== '1')
+        && ($access === 'public') && !$binned;
+}
+
+/**
  * Whether every visitor may open the item and the page that printed its
- * card: a page in a public folder outside the Recycle Bin (a draft sits in
- * the private Drafts folder), a record whose form page printed it, an
- * enabled product.
+ * card: a page pg_share_card_page_open() lets through, a record whose
+ * printing page is open, an enabled product whose printing page is open.
  *
  * @param string $kind
  * @param int    $id
@@ -431,25 +475,19 @@ function pg_share_card_find($request, $order, $public, $state, $key)
 function pg_share_card_public($kind, $id, $page_id)
 {
     $page_public = function ($page_id) {
-        $folder = db_value("SELECT page_folder FROM page WHERE page_id = '" . (int) $page_id . "'");
+        $row = db_item(pg_share_card_page_sql($page_id));
+        $folder = is_array($row) ? (string) ($row['page_folder'] ?? '') : '';
 
-        return ($folder !== null) && ($folder !== false) && ($folder !== '')
-            && (get_access_control_type($folder) === 'public') && !pg_folder_binned($folder);
+        return ($folder !== '') && pg_share_card_page_open($row, get_access_control_type($folder), pg_folder_binned($folder));
     };
 
     if ($kind === 'page') {
         return $page_public($id);
     }
 
-    if (!$page_public($page_id)) {
-        return false;
-    }
+    $sql = pg_share_card_item_sql($kind, $id);
 
-    if ($kind === 'record') {
-        return (bool) db_value("SELECT id FROM submitted_forms WHERE id = '" . (int) $id . "' AND page_id <> '0'");
-    }
-
-    return ($kind === 'product') && (bool) db_value("SELECT id FROM products WHERE id = '" . (int) $id . "' AND enabled = '1'");
+    return ($sql !== '') && $page_public($page_id) && (bool) db_value($sql);
 }
 
 /**
@@ -480,14 +518,31 @@ function pg_share_card_address($kind, $id, $title, $language, $page_id)
     $path = pg_share_card_order_path($directory, $kind, $id);
     $order = json_decode((string) @file_get_contents($path), true);
     $order = is_array($order) ? $order : array();
-    $updated = pg_share_card_order_put($order, $language, $title, $signature, $page_id, time());
 
-    if ($updated !== $order) {
+    if (pg_share_card_order_put($order, $language, $title, $signature, $page_id, time()) !== $order) {
         if (!is_dir($directory)) {
             @mkdir($directory, 0755, true);
         }
 
-        if (!pg_share_card_write($path, (string) json_encode($updated))) {
+        // Read again under the item's lock, so two languages printed at the
+        // same moment both keep their entry.
+        $lock = @fopen($path . '.lock', 'c');
+
+        if (!$lock || !@flock($lock, LOCK_EX)) {
+            if ($lock) {
+                @fclose($lock);
+            }
+
+            return '';
+        }
+
+        $order = json_decode((string) @file_get_contents($path), true);
+        $order = is_array($order) ? $order : array();
+        $written = pg_share_card_write($path, (string) json_encode(pg_share_card_order_put($order, $language, $title, $signature, $page_id, time())));
+        @flock($lock, LOCK_UN);
+        @fclose($lock);
+
+        if (!$written) {
             return '';
         }
     }
@@ -732,7 +787,7 @@ function pg_share_card_sweep($directory, $now)
         $name = basename((string) $path);
         $age = (int) $now - (int) @filemtime($path);
 
-        if (preg_match('/^(?:' . $kinds . ')-[0-9]+(?:-[0-9a-f]{32}\.png|\.json)$/', $name)) {
+        if (preg_match('/^(?:' . $kinds . ')-[0-9]+(?:-[0-9a-f]{32}\.png|\.json|\.json\.lock)$/', $name)) {
             $old = $age > $limits['keep'] * 86400;
         } elseif (preg_match('/^(?:' . $kinds . ')-[0-9]+(?:-[0-9a-f]{32}\.(?:fail|png\.lock)|.*\.tmp)$/', $name)) {
             $old = $age > $limits['retry'];

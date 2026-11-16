@@ -14,10 +14,13 @@ module: share_card
 ## What is the address and what does it sign?
 - `get_share_card.php?k=<page|record|product>&i=<id>&s=<32 hex>`, a root file so `router.php` does not change. No text travels in it.
 - The signature is an HMAC with `ENCRYPTION_KEY` over the kind, the id, the title, the logo's stamp (name, mtime, size), both colours and the site's name: any change of what the card shows is a new address (`pg_share_card_signature()`).
-- `pg_share_card_address()` gives a page the address and keeps the title it printed in `cache/share/<kind>-<id>.json`, one entry per language (`pg_share_card_order_put()`, rewritten at most daily for the same title).
+- `pg_share_card_address()` gives a page the address and keeps the title it printed in `cache/share/<kind>-<id>.json`, one entry per language (`pg_share_card_order_put()`, rewritten at most daily for the same title, read again and written under `<order>.lock` so two languages printed at once both stay).
 
 ## When is the answer 404?
-- A bad shape, no order file, no entry with that signature, a signature that no longer matches the site's state (title, logo, colours or name changed: a stale address), or an item not every visitor may open (`pg_share_card_public()`: the page's folder public and not in the Recycle Bin; a record or product also needs the public page that printed it and, for a product, `enabled = 1`).
+- A bad shape, no order file, no entry with that signature, a signature that no longer matches the site's state (title, logo, colours or name changed: a stale address).
+- An item not every visitor may open (`pg_share_card_public()`: the page's folder public, not archived (`folder.folder_archived`, where `get_page.php` answers 410) and not in the Recycle Bin; a record (a row of `forms`; there is no `submitted_forms` table) or product also needs the open page that printed it and, for a product, `enabled = 1`).
+- Fixed before landing in #9916: the record check named a missing table, which made `db_value()` stop with "Query failed.", and archived pages kept their card.
+- Not checked yet (later step): a record view's own filters (Status = Published) and `product_groups.enabled`.
 - A host that cannot draw (`pg_share_card_unable()`: `server` without text drawing, `letters` for letters that need shaping or the bundled font lacks) and a drawing that failed within the hour (`<name>.fail`).
 
 ## How is it drawn and kept?

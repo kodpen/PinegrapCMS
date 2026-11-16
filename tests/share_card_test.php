@@ -240,3 +240,33 @@ function test_share_card_wrap_with_the_bundled_font()
 
 	pg_assert_true($measure('WWW') > $measure('iii'), 'letters are measured by their own widths');
 }
+
+function test_share_card_public_queries()
+{
+	$page = pg_share_card_page_sql(12);
+	pg_assert_contains('page.page_folder', $page);
+	pg_assert_contains('folder.folder_archived', $page, 'an archived folder is read with the page');
+	pg_assert_contains('LEFT JOIN folder ON page.page_folder = folder.folder_id', $page);
+	pg_assert_contains("WHERE page.page_id = '12'", $page);
+
+	pg_assert_same("SELECT id FROM forms WHERE id = '7' AND page_id <> '0'", pg_share_card_item_sql('record', 7), 'records live in forms');
+	pg_assert_same("SELECT id FROM products WHERE id = '7' AND enabled = '1'", pg_share_card_item_sql('product', '7x'));
+	pg_assert_same('', pg_share_card_item_sql('page', 7), 'a page needs no item row');
+
+	// The live check builds its queries from these two and nothing else.
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/share_card.php');
+	pg_assert_false(strpos($source, 'submitted_forms') !== false, 'no table of that name');
+}
+
+function test_share_card_page_open()
+{
+	$row = array('page_folder' => '5', 'folder_archived' => '0');
+
+	pg_assert_true(pg_share_card_page_open($row, 'public', false));
+	pg_assert_false(pg_share_card_page_open(array('folder_archived' => '1') + $row, 'public', false), 'an archived page answers 410, so no card');
+	pg_assert_false(pg_share_card_page_open($row, 'private', false), 'a private folder');
+	pg_assert_false(pg_share_card_page_open($row, 'registration', false), 'a folder only members open');
+	pg_assert_false(pg_share_card_page_open($row, 'public', true), 'the Recycle Bin');
+	pg_assert_false(pg_share_card_page_open(null, 'public', false), 'no such page');
+	pg_assert_false(pg_share_card_page_open(array('page_folder' => '') + $row, 'public', false));
+}
