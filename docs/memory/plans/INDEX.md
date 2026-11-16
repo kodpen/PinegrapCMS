@@ -91,6 +91,11 @@
 - prototype-comments-features.md: Plan prototype-comments, features P1 to P16: the link's "Allow comments", the viewer's comment mode, the guest's door, what a comment keeps, the designer's pins and list, the task
 - prototype-comments-steps.md: Plan prototype-comments, steps PN1 to PN5: the table and the guest's door, the viewer's comment mode, the designer's pins and list, the task, close-out
 - prototype-comments.md: Plan (owner 2026-11-16, agent channel message 5667): a customer pins comments on a prototype opened by its share link; the designer answers and resolves them; steps PN1 to PN5
+- publish-approval-census-features.md: Plan publish-approval PA1 census: features A1 to A16, one line each, the function or file each builds on, or why it cannot be built as written
+- publish-approval-census-gate.md: Plan publish-approval PA1 census: how the content gate's merge (pg_designer_merge_restricted_tree) can be kept as a proposal's operations per node, and what is lost with the assistant's operations
+- publish-approval-census-places.md: Plan publish-approval PA1 census: where a design proposal is listed or drawn, an editor's save today, holding a shared component change
+- publish-approval-census-table.md: Plan publish-approval PA1 census: design_proposals columns a person's proposal uses or misses, and what apply, take-back, dismiss and stale need
+- publish-approval-census.md: Plan publish-approval PA1 census, start file: the architect's decisions on the census (operations, the approval hook, no column, the list, the bell) and where the parts are
 - publish-approval-features.md: Plan publish-approval, features A1 to A16: the switch, which saves wait, what is kept, the editor's side, the designer's side, apply, dismiss and take back, the bell lines, the Workspace request
 - publish-approval-steps.md: Plan publish-approval, steps PA1 to PA6 (PA0, the owner's answer, is done): the census, the switch and the held save, the editor's side, the designer's side, the Workspace request, close-out
 - publish-approval.md: Plan (owner 2026-11-16, agent channel message 5667 and poll 64): with a switch on, a content editor's change to a live page waits for a designer's yes; steps PA1 to PA6
