@@ -5219,6 +5219,37 @@ function pg_offer_conditions($offer_id)
     return $rows[$offer_id];
 }
 
+// The contact groups the signed-in customer's contact is in, read once per
+// customer per request. A user without a contact is in none.
+function pg_offer_customer_contact_groups($user_id)
+{
+    static $cache = array();
+    $user_id = (int) $user_id;
+    if ($user_id <= 0) {
+        return array();
+    }
+    if (!isset($cache[$user_id])) {
+        $contact_id = (int) db_value("SELECT user_contact FROM user WHERE user_id = '" . e($user_id) . "'");
+        $cache[$user_id] = ($contact_id > 0) ? array_map('intval', (array) db_values("SELECT contact_group_id FROM contacts_contact_groups_xref
+
+            WHERE contact_id = '" . e($contact_id) . "'")) : array();
+    }
+    return $cache[$user_id];
+}
+
+// "The customer is in the contact group": $customer_groups is the list of
+// pg_offer_customer_contact_groups(), null for a visitor who is not signed
+// in, who never matches. A condition naming no group (0) matches nobody, and
+// so does a deleted group: no contact is in it any more.
+function pg_offer_contact_group_met($group_id, $customer_groups)
+{
+    $group_id = (int) $group_id;
+    if (($group_id <= 0) || !is_array($customer_groups)) {
+        return false;
+    }
+    return in_array($group_id, array_map('intval', $customer_groups), true);
+}
+
 function pg_offer_customer_conditions_met($offer_id)
 {
     static $answers = array();
@@ -5280,6 +5311,13 @@ function pg_offer_customer_conditions_met($offer_id)
                         $met = false;
                     }
                 }
+                break;
+
+            // int_value is the contact group. The guest view (feeds, the
+            // price history, anything kept for everybody) has no customer,
+            // so a group offer never reaches a public price.
+            case 'contact group':
+                $met = pg_offer_contact_group_met($condition['int_value'], $user_id ? pg_offer_customer_contact_groups($user_id) : null);
                 break;
         }
         if (!$met) {
