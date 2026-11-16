@@ -1505,7 +1505,7 @@ function pg_image_editor_strings_text()
 {
     return array(
         'layer_text'          => lang('Text'),
-        'hintText'            => lang('Click to add a text there. Double-click a text to change it; the handles size and turn it.'),
+        'hintText'            => lang('Click an empty spot to add a text there, a layer to select it. Double-click a text to change it; the handles size and turn it.'),
         'textPlaceholder'     => lang('Type here'),
         'textNoteAdd'         => lang('Click anywhere on the image to add text.'),
         'textNoteEdit'        => lang('Text stays a layer; double-click it to change it later.'),
