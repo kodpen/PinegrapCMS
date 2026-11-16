@@ -35,7 +35,7 @@ const PG_CONTENT_REVIEW_LIST_NO_DATE = '9999-12-31';
 /**
  * The filters a role is offered, in order: value => label. A user (role 3)
  * sees only the items they are the person of, so "All" is theirs and
- * "Nobody's" and "Not set" are not offered.
+ * "No person" and "Not set" are not offered.
  *
  * @param int $role
  * @return array
@@ -54,7 +54,7 @@ function pg_content_review_list_filters($role)
         'all'     => lang('All'),
         'overdue' => lang('Overdue'),
         'soon'    => lang('Due soon'),
-        'nobody'  => lang('Nobody\'s'),
+        'nobody'  => lang('No person'),
         'notset'  => lang('Not set'),
         'mine'    => lang('Mine'),
     );
@@ -276,11 +276,11 @@ function pg_content_review_list_columns($filter)
     return array(
         'name' => array('heading' => lang('Name'), 'width' => '14rem', 'kind' => 'link', 'sort' => $bounded ? 'item_name' : ''),
         'kind' => array('heading' => lang('Kind'), 'width' => '7rem', 'kind' => 'badge'),
-        'person' => array('heading' => lang('Person'), 'width' => '7rem'),
+        'person' => array('heading' => lang('Assigned person'), 'width' => '7rem'),
         'review' => array('heading' => lang('Review by'), 'width' => '12rem', 'kind' => 'date', 'sort' => 'review_sort'),
         'reviewed' => array('heading' => lang('Last reviewed'), 'width' => '12rem', 'hidden' => true),
         'last' => array('heading' => lang('Last published'), 'width' => '8rem', 'kind' => 'date'),
-        'views' => array('heading' => lang('Views (30 days)'), 'width' => '5rem', 'kind' => 'number', 'sort' => $bounded ? 'views' : ''),
+        'views' => array('heading' => lang('Views in 30 days'), 'width' => '5rem', 'kind' => 'number', 'sort' => $bounded ? 'views' : ''),
         'seo' => array('heading' => lang('SEO'), 'width' => '6rem', 'kind' => 'badge'),
         'a11y' => array('heading' => lang('Accessibility'), 'width' => '7rem'),
         'actions' => array('heading' => lang('Action'), 'width' => '3.5rem', 'kind' => 'actions'),
@@ -306,7 +306,7 @@ function pg_content_review_list_last($revision_at, $changed_at)
 
 /**
  * The accessibility cell's state, pure: a record has none, a page before
- * the first finished pass is "Not checked yet", after it the count of
+ * the first finished pass is "Not checked", after it the count of
  * checks with findings.
  *
  * @param string $kind
@@ -462,7 +462,7 @@ function pg_content_review_list_row(array $record, array $facts, array $context)
             . ((($context['draft'] > 0) && ((int) $record['folder_id'] === $context['draft'])) ? ' <span class="pg-pill">' . h(lang('Draft')) . '</span>' : '');
     } else {
         $edit_url = 'edit_submitted_form.php?id=' . $item_id;
-        $kind_html = '<span class="pg-pill pg-tone-violet">' . h((string) $record['kind_name']) . '</span>';
+        $kind_html = '<span class="pg-pill pg-tone-violet" title="' . h((string) $record['kind_name']) . '"><span>' . h((string) $record['kind_name']) . '</span></span>';
     }
 
     // The person.
@@ -520,7 +520,7 @@ function pg_content_review_list_row(array $record, array $facts, array $context)
     if ($a11y_state === 'none') {
         $a11y = $dash;
     } elseif ($a11y_state === 'unchecked') {
-        $a11y = '<span class="fg-secondary">' . h(lang('Not checked yet')) . '</span>';
+        $a11y = '<span class="fg-secondary">' . h(lang('Not checked')) . '</span>';
     } elseif ($a11y_state === 'ok') {
         $a11y = '<span class="fg-secondary">' . h(lang('No problem found')) . '</span>';
     } else {
@@ -531,7 +531,7 @@ function pg_content_review_list_row(array $record, array $facts, array $context)
     $views = (($kind === 'page') && ($record['views'] !== null)) ? '<span class="pg-tabular">' . h(pg_format_number((int) $record['views'], 0)) . '</span>' : $dash;
 
     return array('id' => (string) $id, 'class' => '', 'cells' => array(
-        'name' => pg_list_cell('<a class="pg-link-body-emphasis text-decoration-none" data-pg-open href="' . h($edit_url) . '">' . h($name) . '</a>', 'align-middle'),
+        'name' => pg_list_cell('<a class="pg-link-body-emphasis text-decoration-none" data-pg-open href="' . h($edit_url) . '" title="' . h($name) . '">' . h($name) . '</a>', 'align-middle'),
         'kind' => pg_list_cell($kind_html, 'align-middle'),
         'person' => pg_list_cell($person, 'align-middle'),
         'review' => pg_list_cell($review, 'align-middle'),

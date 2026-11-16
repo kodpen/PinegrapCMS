@@ -25966,6 +25966,23 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
      menu goes above them and the heading. */
   .pg-list-table-grid > tbody > tr > [data-pg-col="actions"]:has(> .menu-wrapper > .menu.show) {
     z-index: 4;
+  }  /* Content review: a long page or record name stops at 14rem (the whole
+     name is the link's title), so every column fits a 1440 px window under
+     every filter. */
+  .pg-list-table[data-pg-list-table="view_content_review"] .pg-list-table-grid > * > tr > [data-pg-col="name"] {
+    max-width: 14rem;
+  }
+  /* A long collection name in the Kind pill stops at 8rem too. */
+  .pg-list-table[data-pg-list-table="view_content_review"] .pg-list-table-grid > * > tr > [data-pg-col="kind"] {
+    max-width: 8rem;
+  }
+  .pg-list-table[data-pg-list-table="view_content_review"] [data-pg-col="kind"] .pg-pill {
+    max-width: 100%;
+  }
+  .pg-list-table[data-pg-list-table="view_content_review"] [data-pg-col="kind"] .pg-pill > span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 }
 /* The row's own buttons: small, at the row's right end. */

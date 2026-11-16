@@ -98,7 +98,7 @@ if ($review_managers) {
     };
 
     $review_dialogs = $review_dialog('cr_person_dialog', 'person', lang('Set person'),
-            '<label class="pg-field-label" for="cr_person">' . lang('Person') . '</label>
+            '<label class="pg-field-label" for="cr_person">' . lang('Assigned person') . '</label>
         <select class="pg-input" id="cr_person" data-pg-cr-field="user_id">' . $review_people . '</select>
         <p class="pg-field-help pg-text-meta fg-secondary">' . lang('Only a panel user who may edit the item can be its person; the others are left as they were.') . '</p>',
             lang('Set person'), 'pg-button-fill')

@@ -113,7 +113,7 @@ function test_content_review_list_cells()
 	pg_assert_same('none', pg_content_review_list_last(0, 0)['label'], 'nothing kept');
 
 	pg_assert_same('none', pg_content_review_list_a11y_state('record', 3, true), 'a record has no accessibility findings: a dash');
-	pg_assert_same('unchecked', pg_content_review_list_a11y_state('page', 0, false), 'before a pass has finished: Not checked yet');
+	pg_assert_same('unchecked', pg_content_review_list_a11y_state('page', 0, false), 'before a pass has finished: Not checked');
 	pg_assert_same('ok', pg_content_review_list_a11y_state('page', 0, true), 'after it: no problem found');
 	pg_assert_same('found', pg_content_review_list_a11y_state('page', 2, false), 'findings show even before a full pass');
 
