@@ -20,6 +20,7 @@ description: The open items line under a channel's pin (OI1 #9783) and on GET /w
 ## What does the API give?
 - `GET /workspace/channels/{id}` (and its MCP tool) carries `open_items` (kind, message_id, text, mine) from the same `ws_channel_open_items()`, read as the key's owner after `ws_api_channel_or_404()` (OI2 #9827, `api/workspace-channel-reads-api.md`).
 - `mine` follows the caller (`ws_api_open_items_caller()`, `ws_open_items_for_caller()`): the person's team devices session or OAuth connection keeps the person's marks; an application key answers nothing in the person's name, so only an approval that asked its own agent (`agent:<id>`, `claude` for Claude's key in `ws_approval_agents`) and still waits for it is marked; a key with no agent has none.
+- The rule is pure, `ws_api_open_items_caller_of($device, $claude, $agent)`: any device row (team devices session or OAuth connection, `oauth_client_id` > 0) answers null, the person's marks. Until #9857 it tested `ws_api_writer_app_id() === 0`, true only for a team devices session, so a connection got `mine: false` on every item.
 
 ## When is a check-in running?
 - A check-in has no close. It counts while it is the channel's newest, under 7 days old (`WS_OPEN_ITEMS_CHECKIN_DAYS`; the scheduled one asks weekly), and some member has not answered (`ws_open_items_checkin_running()`).

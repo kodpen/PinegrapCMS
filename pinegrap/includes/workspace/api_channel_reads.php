@@ -190,26 +190,46 @@ function ws_api_channel_open_items_present($items)
 }
 
 /**
- * Whose answer the open items are marked for (ws_channel_open_items()):
- * null for the person's own session or OAuth connection, which answer as
- * the person; for an application key its own agent's request value,
- * 'claude' for Claude's key, '' for a key with no agent.
+ * Whose answer the open items are marked for (ws_channel_open_items()). Pure.
+ *
+ * Any device - the person's team devices session or an OAuth connection -
+ * acts for the person and keeps the person's marks (null). Only an
+ * application key reads for itself: its own agent's request value, 'claude'
+ * for Claude's key, '' for a key with no agent.
+ *
+ * @param array|null $device api_devices row, null for an application key
+ * @param bool       $claude ws_api_is_claude()
+ * @param array|null $agent  ws_api_agent_caller_row()
+ * @return string|null
+ */
+function ws_api_open_items_caller_of($device, $claude, $agent)
+{
+    if (is_array($device)) {
+        return null;
+    }
+
+    if ($claude) {
+        return 'claude';
+    }
+
+    return is_array($agent) ? ws_agent_request_value($agent) : '';
+}
+
+/**
+ * ws_api_open_items_caller_of() for this call.
  *
  * @return string|null
  */
 function ws_api_open_items_caller()
 {
-    if (ws_api_writer_app_id() === 0) {
-        return null;
+    $device = function_exists('api_current_device') ? api_current_device() : null;
+
+    if (is_array($device)) {
+        return ws_api_open_items_caller_of($device, false, null);
     }
 
-    if (function_exists('ws_api_is_claude') && ws_api_is_claude()) {
-        return 'claude';
-    }
-
-    $agent = function_exists('ws_api_agent_caller_row') ? ws_api_agent_caller_row() : null;
-
-    return is_array($agent) ? ws_agent_request_value($agent) : '';
+    return ws_api_open_items_caller_of(null, function_exists('ws_api_is_claude') && ws_api_is_claude(),
+        function_exists('ws_api_agent_caller_row') ? ws_api_agent_caller_row() : null);
 }
 
 // What ws_api_channel_detail_present() returns.
