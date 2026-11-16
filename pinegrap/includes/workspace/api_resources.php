@@ -5375,6 +5375,8 @@ function ws_api_tasks_list($params)
         'department_id' => (int) ($params['department_id'] ?? 0),
         'channel_id'    => (int) ($params['channel_id'] ?? 0),
         'limit'         => (int) ($params['limit'] ?? 100),
+        // Agent channels' tasks are left out unless asked for or named.
+        'agent_channels' => ws_agent_channel_mode($params['agent_channels'] ?? ''),
     );
 
     if (!empty($params['ref_type']) && !empty($params['ref_id'])) {

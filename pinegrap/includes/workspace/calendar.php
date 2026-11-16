@@ -67,9 +67,12 @@ function ws_calendar_month_label($month)
  * @param string $month         Y-m
  * @param int    $person_id     only this person's work (0: everyone in view)
  * @param int    $department_id only this department's (0: all)
+ * @param string|null $agent_channels '' leaves agent channels' tasks out,
+ *                    include takes them too, only takes them alone; null
+ *                    shows every task
  * @return array
  */
-function ws_calendar($viewer, $month, $person_id = 0, $department_id = 0)
+function ws_calendar($viewer, $month, $person_id = 0, $department_id = 0, $agent_channels = null)
 {
     $month = ws_calendar_month($month);
     $first = $month . '-01';
@@ -137,6 +140,11 @@ function ws_calendar($viewer, $month, $person_id = 0, $department_id = 0)
         ORDER BY FIELD(priority, 'urgent', 'high', 'normal', 'low'), id
         LIMIT 3000");
 
+    // An agent channel's tasks stay apart (tasks.php, ws_tasks_agent_rule()).
+    $agent_rule = ($agent_channels === null) ? null : ws_tasks_agent_rule(ws_tasks_agent_channels(), $agent_channels);
+    $rows = array_values(array_filter($rows, function ($row) use ($agent_rule) {
+        return ws_tasks_agent_keeps($agent_rule, (int) $row['channel_id']);
+    }));
     $ids = array();
 
     foreach ($rows as $row) {
@@ -224,6 +232,10 @@ function ws_calendar($viewer, $month, $person_id = 0, $department_id = 0)
     foreach ((function_exists('ws_recurrence_projections') ? ws_recurrence_projections($from, $to) : array()) as $item) {
         $row = $item['task'];
         $people = $item['people'];
+
+        if (!ws_tasks_agent_keeps($agent_rule, (int) ($row['channel_id'] ?? 0))) {
+            continue;
+        }
 
         if (!ws_can_see_task($viewer, $row, $people)) {
             continue;
@@ -501,6 +513,7 @@ function ws_calendar($viewer, $month, $person_id = 0, $department_id = 0)
         'top_channels' => $top_channels,
         'person_id'    => $person_id,
         'scope'        => ($scope === true) ? 'all' : 'limited',
+        'agent_channels' => ($agent_channels === null) ? 0 : ws_tasks_agent_count(ws_tasks_agent_readable($viewer)),
     );
 }
 

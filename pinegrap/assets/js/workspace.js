@@ -22625,6 +22625,16 @@
             sub.appendChild(el('span', task.overdue ? 'fg-danger' : '', task.due_label));
             sub.appendChild(document.createTextNode(' · ' + task.status_label + (task.estimate_label ? ' · ' + task.estimate_label : '')));
 
+            // A task of an agent channel names its channel, so one assigned
+            // to the reader is told apart in "Mine".
+            if (task.agent_channel_name) {
+                var agentChannel = el('span', 'ws-row-agent-channel ms-1');
+                agentChannel.appendChild(document.createTextNode('· '));
+                agentChannel.appendChild(icon('bi-robot', 'me-1'));
+                agentChannel.appendChild(document.createTextNode('#' + task.agent_channel_name));
+                sub.appendChild(agentChannel);
+            }
+
             if (window.PGWsTaskTime) {
                 window.PGWsTaskTime.rowTags(sub, task, partHelpers());
             }
@@ -22699,6 +22709,45 @@
     // Tasks screen
     // ═══════════════════════════════════════════════════════════════════
 
+    // The "Agent channels" toggle of My Tasks, the Planning Board and the
+    // Work Calendar, as the Decisions screen has it: agent channels' tasks
+    // are left out; on, theirs show alone. It shows once the reader may read
+    // an agent channel (shown(count)), and agents=1 keeps it in the address.
+    function taskAgentsToggle(on, onChange) {
+        var node = button('btn btn-sm btn-text theme-secondary' + (on ? ' active' : '') + (on ? '' : ' d-none'), t('task_agents'), 'bi-robot');
+
+        node.title = t('task_agents_help');
+        node.setAttribute('aria-pressed', on ? 'true' : 'false');
+        node.addEventListener('click', function () {
+            on = !on;
+            node.classList.toggle('active', on);
+            node.setAttribute('aria-pressed', on ? 'true' : 'false');
+            taskAgentsAddress(on);
+            onChange(on);
+        });
+        node.shown = function (count) {
+            node.classList.toggle('d-none', !(on || count > 0));
+        };
+
+        return node;
+    }
+
+    function taskAgentsAddress(on) {
+        if (!window.history || !window.history.replaceState || !window.URL) {
+            return;
+        }
+
+        var url = new URL(window.location.href);
+
+        if (on) {
+            url.searchParams.set('agents', '1');
+        } else {
+            url.searchParams['delete']('agents');
+        }
+
+        window.history.replaceState(null, '', url.pathname + url.search + url.hash);
+    }
+
     // How pressing a task is, as the screens filter by it: every one, urgent
     // and high together, or one priority.
     function priorityFilter(value, onChange) {
@@ -22730,7 +22779,7 @@
     function startTasks(root) {
         clear(root);
 
-        var state = { scope: 'mine', status: 'open', search: '', department_id: 0, priority: '', soon: 0 };
+        var state = { scope: 'mine', status: 'open', search: '', department_id: 0, priority: '', soon: 0, agent_channels: (params().agents === '1') ? 'only' : '' };
         var bar = el('nav', 'pg-toolbar navigation mb-5');
         var list = el('div', 'card');
         var listBody = el('div', 'card-body p-0');
@@ -22771,7 +22820,7 @@
 
             // The time view (PGWsTaskTime.myTime()) reads none of the task
             // filters, so they leave the toolbar while it is shown.
-            [status, dept, priority, soon, searchGroup].forEach(function (control) {
+            [status, dept, priority, soon, agents, searchGroup].forEach(function (control) {
                 if (control) {
                     control.hidden = (name === 'time');
                 }
@@ -22849,6 +22898,12 @@
         var grow = el('div', 'pg-toolbar-grow');
         bar.appendChild(grow);
 
+        var agents = taskAgentsToggle(state.agent_channels === 'only', function (on) {
+            state.agent_channels = on ? 'only' : '';
+            load();
+        });
+        bar.appendChild(agents);
+
         var searchGroup = el('label', 'form-control form-control-sm form-adorn rounded-pill pg-toolbar-search');
         var searchIcon = el('span', 'form-adorn-text');
         searchIcon.setAttribute('aria-hidden', 'true');
@@ -22880,6 +22935,12 @@
 
             api('ws_tasks', state).then(function (data) {
                 if (mine === serial) {
+                    var names = data.agent_names || {};
+
+                    data.tasks.forEach(function (task) {
+                        task.agent_channel_name = names[task.channel_id] || '';
+                    });
+                    agents.shown(data.agent_channels || 0);
                     taskRows(listBody, data.tasks, load);
                     countLine.textContent = data.tasks.length ? t('task_count', data.tasks.length) : t('nothing_found');
                 }
@@ -22915,7 +22976,7 @@
     function startBoard(root) {
         clear(root);
 
-        var state = { from: CFG.board_from, days: 7, department_id: 0, only_me: false, person_id: parseInt(params().person || 0, 10) || 0, priority: '' };
+        var state = { from: CFG.board_from, days: 7, department_id: 0, only_me: false, person_id: parseInt(params().person || 0, 10) || 0, priority: '', agent_channels: (params().agents === '1') ? 'only' : '' };
         var lastData = null;
         var bar = el('nav', 'pg-toolbar navigation mb-5');
         var wrap = el('div', 'ws-board-wrap');
@@ -23015,6 +23076,12 @@
 
         bar.appendChild(el('div', 'pg-toolbar-grow'));
 
+        var agents = taskAgentsToggle(state.agent_channels === 'only', function (on) {
+            state.agent_channels = on ? 'only' : '';
+            load();
+        });
+        bar.appendChild(agents);
+
         var conflicts = button('btn btn-sm btn-outline theme-secondary', t('conflicts'), 'bi-exclamation-triangle');
         conflicts.addEventListener('click', showConflicts);
         bar.appendChild(conflicts);
@@ -23030,6 +23097,7 @@
 
         function load() {
             api('ws_board', state).then(function (data) {
+                agents.shown(data.agent_channels || 0);
                 lastData = data;
                 draw(data);
             }).catch(fail);
@@ -23379,7 +23447,8 @@
             department_id: 0,
             show: { tasks: true, talk: true, events: true },
             priority: '',
-            status: 'all'
+            status: 'all',
+            agents: query.agents === '1'
         };
         var data = null;
 
@@ -23466,6 +23535,12 @@
 
         bar.appendChild(el('div', 'pg-toolbar-grow'));
 
+        var agents = taskAgentsToggle(state.agents, function (on) {
+            state.agents = on;
+            load();
+        });
+        bar.appendChild(agents);
+
         var shows = el('div', 'btn-group btn-group-sm');
         shows.setAttribute('role', 'group');
 
@@ -23486,14 +23561,15 @@
         // ── loading and drawing ──
 
         function load() {
-            api('ws_calendar', { month: state.month, person_id: state.person_id, department_id: state.department_id }).then(function (result) {
+            api('ws_calendar', { month: state.month, person_id: state.person_id, department_id: state.department_id, agent_channels: state.agents ? 'only' : '' }).then(function (result) {
                 data = result;
                 state.month = result.month;
                 state.person_id = result.person_id || 0;
                 personSelect.value = String(state.person_id);
+                agents.shown(result.agent_channels || 0);
 
                 if (window.history && window.history.replaceState) {
-                    window.history.replaceState(null, '', CFG.urls.calendar + '?month=' + result.month + (state.person_id ? '&person=' + state.person_id : ''));
+                    window.history.replaceState(null, '', CFG.urls.calendar + '?month=' + result.month + (state.person_id ? '&person=' + state.person_id : '') + (state.agents ? '&agents=1' : ''));
                 }
 
                 draw();

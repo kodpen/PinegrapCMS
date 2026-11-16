@@ -4953,6 +4953,7 @@ function ws_handle_action($action, $request)
                 'search'        => (string) ($request['search'] ?? ''),
                 'priority'      => (string) ($request['priority'] ?? ''),
                 'soon'          => min(90, max(0, (int) ($request['soon'] ?? 0))),
+                'agent_channels' => ws_agent_channel_mode($request['agent_channels'] ?? ''),
             );
 
             // "Everything" is the board holder's view.
@@ -4960,13 +4961,21 @@ function ws_handle_action($action, $request)
                 $filters['scope'] = 'mine';
             }
 
-            return ws_action_ok(array('tasks' => ws_tasks_list($viewer, $filters)));
+            // The agent channels the reader may read: the toggle shows when
+            // there is one, and a task row names its agent channel.
+            $agent_names = ws_tasks_agent_readable($viewer);
+
+            return ws_action_ok(array(
+                'tasks'          => ws_tasks_list($viewer, $filters),
+                'agent_channels' => ws_tasks_agent_count($agent_names),
+                'agent_names'    => (object) $agent_names,
+            ));
 
         case 'ws_board':
-            return ws_action_ok(ws_board($viewer, (string) ($request['from'] ?? ''), (int) ($request['days'] ?? 7), (int) ($request['department_id'] ?? 0), !empty($request['only_me']), (int) ($request['person_id'] ?? 0)));
+            return ws_action_ok(ws_board($viewer, (string) ($request['from'] ?? ''), (int) ($request['days'] ?? 7), (int) ($request['department_id'] ?? 0), !empty($request['only_me']), (int) ($request['person_id'] ?? 0), ws_agent_channel_mode($request['agent_channels'] ?? '')));
 
         case 'ws_calendar':
-            return ws_action_ok(ws_calendar($viewer, (string) ($request['month'] ?? ''), (int) ($request['person_id'] ?? 0), (int) ($request['department_id'] ?? 0)));
+            return ws_action_ok(ws_calendar($viewer, (string) ($request['month'] ?? ''), (int) ($request['person_id'] ?? 0), (int) ($request['department_id'] ?? 0), ws_agent_channel_mode($request['agent_channels'] ?? '')));
 
         case 'ws_my_calendar':
             // Always the reader's own: no person is taken from the request.
