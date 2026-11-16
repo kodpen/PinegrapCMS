@@ -979,6 +979,7 @@ function translate_api_status($params)
             // source shows again and the text waits for a translation.
             db("DELETE FROM translations WHERE string_id = '$string_id' AND language = '" . e($language) . "'");
             pg_tr_invalidate_pages($language);
+            pg_picture_tr_translations_removed($language);
         } else {
             pg_tr_set_status($string_id, $language, $status, $user_id);
         }

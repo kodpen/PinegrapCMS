@@ -817,6 +817,9 @@ function pg_tr_save_translation($string_id, $language, $text, $engine, $status =
         return false;
     }
 
+    // A picture drawn with the earlier text is out of date once it changes.
+    pg_picture_tr_translation_written($string_id, $language, $text);
+
     db("INSERT INTO translations (string_id, language, text, engine, status, suspicious, updated_by, created_at, updated_at)
         VALUES ('$string_id', '" . e($language) . "', '" . e($text) . "', '" . e($engine) . "', '$status', '" . ((int) $suspicious) . "', '" . ((int) $user_id) . "', '$now', '$now')
         ON DUPLICATE KEY UPDATE
@@ -972,6 +975,7 @@ function pg_tr_clear($language, $scope = 'all', $with_reviewed = false)
 
     if ($count > 0) {
         pg_tr_invalidate_pages($language);
+        pg_picture_tr_translations_removed($language);
     }
 
     return $count;
@@ -1141,12 +1145,14 @@ function pg_tr_pending_string_ids($language, $owners = array())
  * SQL for a set of owners. No owner is the whole site: every text but the
  * cookie window (owner 'ui'), which is translated on its own, as the
  * "Cookie window" group, and only for a language with no language file
- * (pg_tr_ui_text()).
+ * (pg_tr_ui_text()), and but a picture's (owner 'file'): every Design Canvas
+ * picture with words has uses, and only those a page in another language
+ * showed are counted and sent, by their own group.
  */
 function pg_tr_owner_where($owners)
 {
     if (!$owners) {
-        return "u.owner_type <> 'ui'";
+        return "u.owner_type NOT IN ('ui', 'file')";
     }
 
     $parts = array();
