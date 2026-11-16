@@ -411,6 +411,8 @@ function ws_js_strings()
         'tab_messages'           => lang('Messages'),
         'tab_summary'            => lang('Summary'),
         'tab_tasks'              => lang('Tasks'),
+        'task_agents'            => lang('Agent channels'),
+        'task_agents_help'       => lang('Only the tasks of agent channels; they are left out otherwise.'),
         'task_status_filter'     => lang('Task status'),
         'tab_decisions_count'    => ws_js_template('{var:1} decisions and notes', 1),
         'tab_tasks_count'        => ws_js_template('{var:1} open tasks', 1),
