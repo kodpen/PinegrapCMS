@@ -154,6 +154,7 @@ if ($summary !== null) {
     // orders, all time.
     $ages = array(lang('Within 30 days'), lang('31 to 90 days'), lang('91 to 180 days'), lang('181 to 365 days'), lang('More than 365 days'));
     $group_names = pg_customer_value_group_names();
+    $band_labels = array(lang('1 order'), lang('2 to 3 orders'), lang('4 or more orders'));
     $rows = '';
 
     foreach ($ages as $age => $label) {
@@ -161,7 +162,7 @@ if ($summary !== null) {
 
         for ($band = 0; $band <= 2; $band++) {
             $cell = isset($summary['cells'][$age][$band]) ? $summary['cells'][$age][$band] : array(0, 0);
-            $cells .= '<td class="text-end"><span class="d-block">' . h(lang(array('string' => '{var:1} customer{suffix:1}', 'vars' => pg_format_number((int) $cell[0], 0), 'suffix' => ((int) $cell[0] == 1) ? '' : 's'))) . '</span>'
+            $cells .= '<td class="text-end" data-label="' . h($band_labels[$band]) . '"><span class="d-block">' . h(lang(array('string' => '{var:1} customer{suffix:1}', 'vars' => pg_format_number((int) $cell[0], 0), 'suffix' => ((int) $cell[0] == 1) ? '' : 's'))) . '</span>'
                 . '<small class="fg-secondary">' . h(pg_report_view_money((int) $cell[1], $symbol)) . ' · ' . h($group_names[pg_customer_value_cell_group($age, $band)]) . '</small></td>';
         }
 
@@ -179,7 +180,7 @@ if ($summary !== null) {
             <div class="pg-report-frame-head"><h3 class="pg-report-frame-title" id="pg_customer_groups_title">' . h(lang('Customer groups')) . '</h3><span class="pg-report-frame-note">' . h(lang('Every customer of all time, by the age of their last order and their number of orders. The bounds are fixed: 30, 90, 180 and 365 days; 1, 2 to 3, and 4 or more orders.')) . '</span></div>
             <div class="pg-report-frame-body">
                 <table class="pg-report-table pg-customer-groups">
-                    <thead><tr><th>' . h(lang('Last order')) . '</th><th class="text-end">' . h(lang('1 order')) . '</th><th class="text-end">' . h(lang('2 to 3 orders')) . '</th><th class="text-end">' . h(lang('4 or more orders')) . '</th></tr></thead>
+                    <thead><tr><th>' . h(lang('Last order')) . '</th><th class="text-end">' . h($band_labels[0]) . '</th><th class="text-end">' . h($band_labels[1]) . '</th><th class="text-end">' . h($band_labels[2]) . '</th></tr></thead>
                     <tbody>' . $rows . '</tbody>
                 </table>
                 <p class="small fg-secondary m-3">' . implode(' · ', $legend) . '</p>

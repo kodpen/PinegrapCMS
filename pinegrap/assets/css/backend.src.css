@@ -29696,6 +29696,18 @@ body.erp_aging .pg-report-table th[scope="row"] {
   padding: 0 6px;
   min-width: 3.25rem;
 }
+/* The Customers report's groups table on a phone: each last-order row a
+   block, its three cells one under the other, each under its column's
+   name (data-label); no sideways scroll. */
+@media (max-width: 575.98px) {
+  .pg-report-table.pg-customer-groups thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .pg-report-table.pg-customer-groups tr { display: block; padding: 8px 16px; border-bottom: 1px solid var(--pg-border-color-translucent); }
+  .pg-report-table.pg-customer-groups tbody > tr:last-child { border-bottom: 0; }
+  .pg-report-table.pg-customer-groups th,
+  .pg-report-table.pg-customer-groups td { display: block; height: auto; padding: 4px 0; border: 0; text-align: start !important; white-space: normal; position: static; background: none; max-width: none; }
+  .pg-report-table.pg-customer-groups th { font-weight: var(--pg-weight-strong); }
+  .pg-report-table.pg-customer-groups td::before { content: attr(data-label); display: block; font-size: var(--pg-text-meta); color: var(--pg-fg-3); }
+}
 /* The frame's foot: Show all under a table that lists its first rows. */
 .pg-report-frame-foot:not([hidden]) {
   display: flex;
