@@ -18,6 +18,7 @@ module: widgets_calendar
 
 ## What does the canvas draw?
 - Twins `_sdCalendarPickerHtml()` and `_sdCalendarReserveHtml()`, composed by `_sdCalendarSectionHtml(kind, section, cfg)`, drawn by `_sdCalendarSectionSample()` in an empty section box, inert, with a line saying the site fills it.
+- The month table (CB9b, #9981): a list whose parent is a `<tr>` is drawn as that row's cells (`buildRowListAreaEl()`, band in the first cell), seven sample weekdays and days, fixed layout at the canvas width with band cells spanning the real columns (`_sdTableColumnCount()`), no condition chips in day cells, a sample `<tr>`'s hatch on its cells (a `::after` on it made an eighth column). Canvas only.
 - The picker: two sample calendars (Events, Workshops) unless the widget's `calendar_ids` names one, then no calendar choice; the view chosen is the widget's `default_view`; nothing in the upcoming view, as on the site. The button: "Reserve" (the site uses the event's own label when it has one).
 
 ## Does a running site change?
