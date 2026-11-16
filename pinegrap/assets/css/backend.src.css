@@ -16065,12 +16065,24 @@ html[data-bs-theme="dark"] .ws-hl {
   z-index: 1080;
 }
 .ws-hl-bar {
+  /* One rounded surface, the radius of the panel's menus; the buttons inside
+     are flat and follow its corner (inner radius = outer minus padding). */
+  --ws-hl-bar-pad: .25rem;
+  display: flex;
+  flex-wrap: nowrap;
   align-items: center;
-  padding: .125rem;
+  gap: .125rem;
+  max-width: calc(100vw - 1rem);
+  padding: var(--ws-hl-bar-pad);
+  white-space: nowrap;
   background: var(--pg-bg-body);
   border: 1px solid var(--pg-border-color);
-  border-radius: var(--bs-btn-border-radius);
+  border-radius: var(--pg-radius-surface);
   box-shadow: var(--pg-shadow-float);
+}
+.ws-hl-bar > .btn {
+  border: 0;
+  border-radius: max(0px, calc(var(--pg-radius-surface) - var(--ws-hl-bar-pad)));
 }
 .ws-hl-bar-note {
   padding: 0 .5rem;

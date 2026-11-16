@@ -540,12 +540,12 @@
 
         var message = spot.body.wsHlMessage;
         var tooLong = chars(spot.quote) > QUOTE_MAX;
-        var bar = h.el('div', 'ws-hl-bar btn-group');
+        var bar = h.el('div', 'ws-hl-bar');
         bar.setAttribute('role', 'toolbar');
         bar.setAttribute('aria-label', h.t('hl_toolbar'));
 
-        var add = function (scope, label) {
-            var button = press('btn btn-sm btn-subtle theme-secondary', label, 'bi-highlighter', function () {
+        var add = function (scope, label, iconName, hint) {
+            var button = press('btn btn-sm btn-subtle theme-secondary', label, iconName, function () {
                 var selection = window.getSelection();
 
                 closeBar();
@@ -557,16 +557,17 @@
                 send('ws_highlight_set', { message_id: message.id, quote: spot.quote, occurrence: spot.occurrence, scope: scope }, spot.body).catch(function () {});
             });
 
+            button.title = hint;
             button.disabled = tooLong;
             bar.appendChild(button);
         };
 
-        // "For everyone" only where the reader may react (H4).
+        // "Highlight for everyone" only where the reader may react (H4).
         if (message.can_react) {
-            add('all', h.t('hl_for_everyone'));
+            add('all', h.t('hl_bar_everyone'), 'bi-people', h.t('hl_bar_everyone_hint'));
         }
 
-        add('me', h.t('hl_for_me'));
+        add('me', h.t('hl_bar_me'), 'bi-highlighter', h.t('hl_bar_me_hint'));
 
         if (tooLong) {
             bar.appendChild(h.el('span', 'ws-hl-bar-note small', h.t('hl_shorter')));

@@ -468,7 +468,10 @@ function ws_js_strings()
         // A reader's highlights (assets/js/workspace_highlights.js).
         'hl_toolbar'             => lang('Highlight'),
         'hl_for_everyone'        => lang('For everyone'),
-        'hl_for_me'              => lang('For me'),
+        'hl_bar_everyone'        => lang('Highlight for everyone'),
+        'hl_bar_everyone_hint'   => lang('Everyone who can read this message sees the highlight. Nobody is notified.'),
+        'hl_bar_me'              => lang('Highlight for me'),
+        'hl_bar_me_hint'         => lang('Only you see this highlight.'),
         'hl_only_you'            => lang('Only you'),
         'hl_shorter'             => lang('Select a shorter part'),
         'hl_card'                => lang('Highlights'),
