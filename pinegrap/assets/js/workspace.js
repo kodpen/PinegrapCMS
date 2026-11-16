@@ -3873,22 +3873,145 @@
     // may not read its channel, or a message deleted, gets the server's
     // sentence alone.
 
-    // Where "Go to the message" leads: the channel open on the screen
-    // scrolls to it, anywhere else its address opens; nothing for a
-    // message the reader may not see. Pure
+    // Where a link to a message of this Workspace leads, for every such
+    // link on the Workspace screen: the channel open on the screen scrolls
+    // to it ({kind: 'jump', id}); another channel opens in place at it
+    // ({kind: 'open', channel, message, thread, era}). Off the channels
+    // screen, with a modifier key or another button, or for any other
+    // address, the address is followed as the browser does ({kind: 'url'}).
+    // href and home are resolved against page (the page's address); place:
+    // {screen, channel (the open one, 0 for none), modified}. Pure
     // (tests/workspace_message_ref_js_test.php).
-    function messageRefGo(openChannelId, ref) {
-        var message = ref && ref.message;
-
-        if (!message || !ref.url) {
+    function messageLinkGo(href, home, page, place) {
+        if (!href) {
             return { kind: 'none' };
         }
 
-        if (openChannelId && (openChannelId === message.channel_id)) {
-            return { kind: 'jump', id: message.id };
+        var follow = { kind: 'url', url: href };
+        var url;
+        var base;
+
+        try {
+            url = new URL(href, page);
+            base = new URL(home, page);
+        } catch (error) {
+            return follow;
         }
 
-        return { kind: 'url', url: ref.url };
+        if ((url.origin !== base.origin) || (url.pathname !== base.pathname)) {
+            return follow;
+        }
+
+        var number = function (name) {
+            var value = url.searchParams.get(name) || '';
+
+            return /^[0-9]{1,10}$/.test(value) ? parseInt(value, 10) : 0;
+        };
+        var channel = number('channel');
+        var message = number('message');
+
+        if (!channel || !message || !place || !place.screen || place.modified) {
+            return follow;
+        }
+
+        var era = number('era');
+
+        if ((place.channel === channel) && !era) {
+            return { kind: 'jump', id: message };
+        }
+
+        return { kind: 'open', channel: channel, message: message, thread: number('thread'), era: era };
+    }
+
+    // Where "Go to the message" leads: as any link to the message
+    // (messageLinkGo()); nothing for a message the reader may not see. Pure
+    // (tests/workspace_message_ref_js_test.php).
+    function messageRefGo(ref, home, page, place) {
+        if (!ref || !ref.message || !ref.url) {
+            return { kind: 'none' };
+        }
+
+        return messageLinkGo(ref.url, home, page, place);
+    }
+
+    // What a click on a message chip does: with a mouse it goes to the
+    // message ('go'; the card opens on hover); a tap, a pen or a click with
+    // no pointer named opens the card ('card'); a modifier key leaves the
+    // link to the browser ('browser', a new tab or window). A chip with no
+    // address (a message the reader may not see) only opens its card. Pure
+    // (tests/workspace_message_ref_js_test.php).
+    function messageChipAction(pointer, modified, hasHref) {
+        if (!hasHref) {
+            return 'card';
+        }
+
+        if (modified) {
+            return 'browser';
+        }
+
+        return (pointer === 'mouse') ? 'go' : 'card';
+    }
+
+    // A click that is not a plain one: a modifier key or another button.
+    function linkModified(event) {
+        return !!(event && (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || ((event.button || 0) !== 0)));
+    }
+
+    // The Workspace screen as messageLinkGo() reads it.
+    function messageLinkPlace(event) {
+        return {
+            screen: !!app.root,
+            channel: (app.view === 'channel' && app.channel) ? app.channel.id : 0,
+            modified: linkModified(event)
+        };
+    }
+
+    // Goes to a message in place as messageLinkGo() said: the open channel
+    // scrolls to it and flashes it; another opens there, as a switch from
+    // the sidebar does (its address in the bar, no new history entry), with
+    // the discussion the address names. false when the address is to be
+    // followed instead.
+    function messageLinkFollow(go) {
+        if (go.kind === 'jump') {
+            app.jumpTo(go.id, true);
+            return true;
+        }
+
+        if (go.kind === 'open') {
+            app.flashAfterOpen = [go.message];
+
+            if (go.thread) {
+                app.pendingThread = { id: go.thread, message: 0 };
+            }
+
+            app.open(go.channel, go.message, go.era);
+            return true;
+        }
+
+        return false;
+    }
+
+    // Every other link to a message on the Workspace screen (in a message's
+    // text, the inbox, a list's "Go to the message", a toast) goes in place;
+    // a drawer it sits in closes, as the page it replaced would have.
+    function messageLinksInPlace() {
+        document.addEventListener('click', function (event) {
+            var link = (!event.defaultPrevented && event.target && event.target.closest) ? event.target.closest('a[href]') : null;
+
+            if (!link || link.hasAttribute('download')) {
+                return;
+            }
+
+            if (messageLinkFollow(messageLinkGo(link.href, CFG.urls.workspace, window.location.href, messageLinkPlace(event)))) {
+                event.preventDefault();
+
+                var drawer = link.closest('.drawer');
+
+                if (drawer) {
+                    hideOffcanvas(drawer);
+                }
+            }
+        });
     }
 
     // The head of the card: the sender's face, name, and the message's
@@ -4004,7 +4127,7 @@
             node.appendChild(messageRefPoll(message.poll));
         }
 
-        var go = messageRefGo((app && app.channel) ? app.channel.id : 0, ref);
+        var go = messageRefGo(ref, CFG.urls.workspace, window.location.href, messageLinkPlace(null));
 
         if (go.kind !== 'none') {
             var button = el('button', 'pg-button pg-button-quiet pg-button-sm ws-msgref-go');
@@ -4015,9 +4138,7 @@
             button.addEventListener('click', function () {
                 agentCardClose();
 
-                if (go.kind === 'jump') {
-                    app.jumpTo(go.id, true);
-                } else {
+                if (!messageLinkFollow(go)) {
                     window.location.href = go.url;
                 }
             });
@@ -4039,7 +4160,8 @@
     }
 
     // Makes a message chip open its card, once however often its text is
-    // drawn again. The chip's link is "Go to the message" in the card.
+    // drawn again. A mouse click goes to the message (messageChipAction()),
+    // before the card's own click; the card opens on hover and on focus.
     function messageRefHook(chip) {
         var id = parseInt((chip.getAttribute('data-ws-ref') || '').split(':')[1], 10);
 
@@ -4047,7 +4169,34 @@
             return;
         }
 
+        var pointer = '';
+
         chip.setAttribute('data-ws-msgref', '1');
+        chip.addEventListener('pointerdown', function (event) {
+            pointer = event.pointerType || '';
+        });
+        chip.addEventListener('click', function (event) {
+            var action = messageChipAction(event.pointerType || pointer, linkModified(event), !!chip.getAttribute('href'));
+
+            if (action === 'card') {
+                return;
+            }
+
+            // Neither the card nor the screen's link listener takes it.
+            event.stopImmediatePropagation();
+
+            if (action === 'browser') {
+                return;
+            }
+
+            event.preventDefault();
+            clearTimeout(agentCardOpen.timer);
+            agentCardClose();
+
+            if (!messageLinkFollow(messageLinkGo(chip.href, CFG.urls.workspace, window.location.href, messageLinkPlace(event)))) {
+                window.location.href = chip.href;
+            }
+        });
         cardHook(chip, function () { messageRefShow(chip, id); }, true);
     }
 
@@ -8080,6 +8229,7 @@
             self.root = root;
             root.classList.add('ws-app');
             root.innerHTML = '';
+            messageLinksInPlace();
 
             // The list of channels is the Workspace panel of the main menu
             // (assets/js/workspace_side.js); where the menu has none, a box
@@ -12492,6 +12642,14 @@
             }
 
             main.appendChild(body);
+
+            // Readers' highlights drawn into the text, the toolbar on a
+            // selection and the card on one (workspace_highlights.js).
+            if (window.PGWsHighlights && !message.deleted && !message.note_card && !message.note_group_card && !message.scheduled) {
+                window.PGWsHighlights.attach(message, body, featureHelpers(), function (fresh) {
+                    self.replaceMessage(fresh);
+                }, senderTone);
+            }
 
             // A translation this reader made shows again on a redraw.
             if (window.PGWsTranslate && !message.deleted) {

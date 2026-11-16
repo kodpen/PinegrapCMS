@@ -675,6 +675,15 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         $content = pg_scroller_inject($content);
     }
 
+    // ── Listen ──────────────────────────────────────────────────────────────────
+    // A "Listen" block carries data-pg-listen and no script; the page brings
+    // the script and its labels (pg_listen_inject()), checked once everything
+    // is drawn in. The module loads only for such a page. Not in an e-mail.
+    if (!$email && stripos($content, 'data-pg-listen') !== false) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/listen.php');
+        $content = pg_listen_inject($content);
+    }
+
     // ── Interactions ────────────────────────────────────────────────────────────
     // A node with an interaction carries data-pg-fx attributes, no script;
     // the page brings the head style and the script (pg_fx_inject()),

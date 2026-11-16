@@ -13,7 +13,7 @@ description: Plan message-highlights, steps HL1 to HL5: the table and the pure p
   - The actions beside `ws_reaction_set`, with the same CSRF and membership checks. The cleanup calls of H9 in `ws_message_delete()`, `ws_threads_purge()`, the edit path, the leave path and where a person's reactions are deleted.
   - Tests, red first: who may make each scope, who may remove, the three limits, the same place twice (H5), a `me` row never in another viewer's map, no inbox row and no stamp for `me`, the stamp for `all`.
   - Features: H1 (the server's check), H3 to H9.
-- HL3 (M) The message side. After HL2.
+- HL3 (M) The message side. After HL2. Done: #9889 (pictures: agent channel 5940-5945).
   - A new `assets/js/workspace_highlights.js` in the Workspace bundle list (`pg_js_bundles()`): the twin of plain and find, the toolbar, drawing into the body after `messageNode()` drew it, the card. Texts with `php tools/tr_add.php`.
   - Tests: the twin on HL1's fixtures. Pictures, light and dark, 1280 and 390: the toolbar on a selection in another's and in his own message; an `all` and a `me` highlight; two overlapping; the card with and without a note; the long selection.
   - Its sheet goes to the owner. Features: H10 to H16.

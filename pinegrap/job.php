@@ -768,6 +768,23 @@ if (function_exists('pg_auto_dialog_count_sweep_due') && pg_auto_dialog_count_sw
     }
 }
 
+// Share cards (includes/fn/share_card.php): once a day the cards and the
+// titles kept for them that nobody asked for or printed in 30 days go. A
+// tick with nothing due reads one file's time.
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/share_card.php');
+
+if (pg_share_card_sweep_due(pg_share_card_directory(), time())) {
+
+    $share_card_removed = pg_share_card_sweep_daily();
+
+    if ($share_card_removed > 0) {
+        log_activity(lang(array(
+            'string' => 'general job removed {var:1} share card file(s) not asked for in 30 days',
+            'vars'   => array(pg_format_number($share_card_removed, 0)),
+        )), 'UNKNOWN');
+    }
+}
+
 // The site search rollup (includes/fn/site_search_stats.php): once a day the
 // days older than the retention period go.
 if (function_exists('pg_site_search_sweep_due') && pg_site_search_sweep_due()) {

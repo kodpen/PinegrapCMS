@@ -215,6 +215,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ws_highlights();           // 11.0.222
 	upgrade_2026_11_0_auto_dialog_daily();       // 11.0.223
 	upgrade_2026_11_0_page_click_daily();        // 11.0.224
+	upgrade_2026_11_0_prototype_comments();      // 11.0.225
 
 }
 
@@ -2647,6 +2648,53 @@ function upgrade_2026_11_0_prototype_links() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Designs: the draft pages of a design can be shared as a clickable prototype by a link, for the team or for anyone who has it, with an expiry, an optional password and a way to revoke it, from the Visual Page Editor.');
+
+}
+
+// Comments on a prototype opened by its share link (2026.11.0, 11.0.225;
+// includes/fn/prototype_comments.php, prototype_comment.php).
+//
+// prototype_comments keeps one row per comment: the link it was written on,
+// the design (style_id, deleted with it), the draft page, the node (the page
+// tree's _id) and the place inside the node as two percentages in
+// hundredths (0-10000). parent_id is 0 for the first comment of a thread and
+// the first comment's id for an answer. author_name is the name the guest
+// typed, or the staff member's; user_id is 0 for a guest. body is plain
+// text. created_at, resolved_at (0: open) and resolved_by are unix times and
+// a user id, as on prototype_links. The guest's address is not kept.
+// idx_link gives a link's comments and its open count, idx_page a page's
+// comments in id order and the newest id the editor's heartbeat compares,
+// idx_style the delete with the design, idx_parent a thread's answers.
+//
+// prototype_links.allow_comments is the link's "Allow comments", off on every
+// link there is.
+function upgrade_2026_11_0_prototype_comments() {
+
+	install_create_table('prototype_comments', "CREATE TABLE prototype_comments (
+		id           INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		link_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		style_id     INT UNSIGNED NOT NULL DEFAULT 0,
+		page_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		node_id      VARCHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT '',
+		pos_x        SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+		pos_y        SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+		parent_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		author_name  VARCHAR(60) NOT NULL DEFAULT '',
+		user_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		body         TEXT NOT NULL,
+		created_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		resolved_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		resolved_by  INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_link (link_id, resolved_at),
+		KEY idx_page (page_id, id),
+		KEY idx_style (style_id),
+		KEY idx_parent (parent_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_add_column('prototype_links', 'allow_comments', "TINYINT(1) UNSIGNED NOT NULL DEFAULT 0");
+
+	install_note('Designs: a prototype share link can allow comments, so the customer who opens it can pin comments on its pages for the designer.');
 
 }
 

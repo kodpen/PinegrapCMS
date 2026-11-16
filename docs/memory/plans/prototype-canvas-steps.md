@@ -26,3 +26,5 @@ description: Plan prototype-canvas, the engine steps PV1, PV3 and PV5: graph log
   - Tests: neighbours in a row (one straight line), far apart in a row (under the row), another row, a side column, a box in the way, no way (null), 300 routes under 100 ms.
   - Memory: a new `ui/graph-canvas-core-routing.md`.
   - The view turns it on in the same PR (F14). Its pictures and PV4's go to the owner as one sheet.
+  - The sheet holds, none left out (architect, 2026-11-16, agent channel message 6120): a shared frame selected (the Header: its own arrows, one of them broken and red); nothing selected; a page other pages lead to selected (the incoming arrows); "All arrows" on with a frame selected; one of these at 390. PV4's pictures showed no broken arrow and no selected shared frame.
+  - Architect (2026-11-16, agent channel message 6252): the "side column" test is also run on a wrapped column (PV4b, `maxH`), and one picture is taken with a part of the shared column farthest from the grid selected: its arrows pass through the gaps, not over the boxes of the columns between.

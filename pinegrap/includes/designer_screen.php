@@ -352,6 +352,11 @@ function pg_designer_screen_render($ctx)
             // (_pg_civ_fill_payment_methods()).
             'payment_method_rows' => function_exists('pg_civ_payment_method_rows')
                 ? pg_civ_payment_method_rows(_pg_civ_payment_settings(false)) : array(),
+            // The booking widget's words, closing words and sample times,
+            // drawn on the canvas in the parts its script fills
+            // (pg_booking_canvas_sample()).
+            'booking' => (function_exists('pg_booking_canvas_sample') && function_exists('pg_booking_texts'))
+                ? pg_booking_canvas_sample(pg_booking_widget_policy(), pg_booking_texts()) : null,
         ),
         // The editor's UI text, resolved through lang() for the site's
         // language. Empty when the language is English: the JS keys ARE the
@@ -3335,6 +3340,10 @@ function pg_designer_screen_post($ctx)
     $written = array();   // ids of the pages this save wrote
     $notes   = array();   // what a renamed page's short links became
     $cf_jobs = array();   // page_id => form settings, reconciled once every page has its id
+    // Only this save may be held for a designer's approval
+    // (includes/fn/content_proposals.php); the API and the assistant are not.
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/content_proposals.php');
+    pg_content_proposals_editor_save(true);
     foreach ($pages as $p) {
         $key = isset($p['key']) ? (string)$p['key'] : '';
         // Left as stored: the tab keeps its id and the state it is in.
@@ -3349,6 +3358,13 @@ function pg_designer_screen_post($ctx)
             continue;
         }
         $r = pg_designer_save_page($style_id, $p, $user, false);
+        // Kept as the editor's waiting change: nothing was written, so the
+        // page's form, short links and search entry stay as they are.
+        if ($r['ok'] && !empty($r['held'])) {
+            $id_map[] = array('key' => $key, 'page_id' => (int)$r['page_id'], 'draft' => 0, 'held' => (string)$r['held']);
+            if ((string)$r['held_message'] !== '') $warnings[] = $r['held_message'];
+            continue;
+        }
         if ($r['ok']) {
             // `draft`: the state the page ended up in, which is not always
             // the one asked for (the home page stays on the site).

@@ -97,6 +97,7 @@
 - decisions-made-product-59.md: Decisions list, product part 59 (2026-11-16): the owner's answers to the questions of the website feature plans (agent channel polls 63 to 74; the click and scroll map is in part 60)
 - decisions-made-product-6.md: Decisions list, product part 6 (2026-10-29 night on): subscriptions (later-starting lines, price notice, operator screen), AI assistant and add-ons wait, printed order's shipping card
 - decisions-made-product-60.md: Decisions list, product part 60 (2026-11-16): the click and scroll map's handling of visitors' data and its start on a new install (agent channel polls 67 and 75)
+- decisions-made-product-61.md: Decisions list, product part 61 (2026-11-16 on): the owner's looks at built screens from agent channel poll 76 on (the highlight on a message)
 - decisions-made-product-7.md: Decisions list, product part 7 (2026-10-30 on): customs data on international labels, carrier pickup requests from the panel, ShipWorks through the shipment write path
 - decisions-made-product-8.md: Decisions list, product part 8 (2026-10-30 midday on): Trendyol-carried packages refused by Create Label, starter dump corrections for #3330, marketing SMS in 2026.11.0, forum template wording
 - decisions-made-product-9.md: Decisions list, product part 9 (2026-10-30 afternoon on): form rules for visitors only, marketplace orders invoiced behind a switch, sales quote guest links and templates, Workspace density switch
@@ -115,7 +116,7 @@
 - decisions-made-schema-20.md: Decisions list, schema part 20 (2026-11-14 on): ws_mail_items.send_at; the repeat columns and ws_personal_plan_skips; the two roadmap template tables; the widened poll's columns
 - decisions-made-schema-21.md: Decisions list, schema part 21 (2026-11-15 on): ws_mail_reminders, ws_profiles.mail_away, ws_approval_agents; the schema of polls 49 to 51 (agent duty, marks, cart touches, pop-ups)
 - decisions-made-schema-22.md: Decisions list, schema part 22 (2026-11-15 on): ws_profiles.quiet_hours and the link preview table (poll 54); the columns of ws_agent_feedback and auto_dialog_daily as confirmed
-- decisions-made-schema-23.md: Decisions list, schema part 23 (2026-11-16 on): the ws_highlights table for a reader's highlights; the columns of PU4 on auto_dialogs as confirmed
+- decisions-made-schema-23.md: Decisions list, schema part 23 (2026-11-16 on): the ws_highlights table for a reader's highlights; the columns of PU4 on auto_dialogs as confirmed; the click map's page_click_daily table
 - decisions-made-schema-3.md: Decisions list, schema part 3, approved from 2026-10-29 on: checkout page and legal acceptance on the order, record_revisions, cart_quotes, ws_saved_replies, shipment_labels; rules in part 1
 - decisions-made-schema-4.md: Decisions list, schema part 4 (2026-10-29 afternoon on): ws_flow_templates, ws_refs.source_type to VARCHAR, shipment_labels.order_return_id, config.speculation_prefetch; rules in part 1
 - decisions-made-schema-5.md: Decisions list, schema part 5 (2026-10-29 evening on): subscriptions tables and ENUMs, products customs columns, shipment_labels pickup, ws_events.contact_id; rules in part 1
@@ -182,7 +183,7 @@
 - merge-train.md: Working rule (2026-10-25) for the merging session: one merger, one train at a time, 30-minute windows, rules-only PRs alone, the ready label, one merge commit per PR, one CI run
 - merger-wake.md: How the merging session keeps waking: a send_later chain, 3 minutes with more than 3 ready PRs and 15 minutes otherwise (2026-11-09), an hourly routine that re-arms it; GitHub events are not relied on [decision: here]
 - owner-contact-channel.md: Where sessions reach the owner (2026-11-13): no coordinator writes to him in its chat window or waits there; problems to PR MERGE in the agent channel; visuals posted there, his answer there [decision: decisions-made-panel-8.md]
-- owner-question-picture.md: A question to the owner about a picture or an earlier message says which one (owner 2026-11-15): the picture in the question's box or its message number named in the question [decision: decisions-made-product-58.md]
+- owner-question-picture.md: A question to the owner about a picture or an earlier message says which one (owner 2026-11-15): the picture in the question's box or its message number named in the question [decision: decisions-made-product-58.md, decisions-made-product-61.md]
 - owner-rules.md: Standing rules from the owner (Erdal) on docs, how changes are recorded, pages, plans, where area rules live (memory; vendor Bootstrap skills aside), language, the mobile app, who edits which notes [decision: here]
 - plan-order-begun-first.md: Order of work after the owner's message of 2026-11-16 (agent channel message 5821): begun plans are finished first, new plans start in freed places, look modernisation waits at priority 2 [decision: here]
 - plan-priority.md: Every plan carries a priority from 1 to 10 (owner 2026-11-15, agent channel message 5159): the scale, where the number is written, how a free place picks its next step [decision: here]

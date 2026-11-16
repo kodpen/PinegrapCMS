@@ -9348,6 +9348,7 @@ function get_tables() {
 		'record_revisions',
 		'shipment_labels',
 		'prototype_links',
+		'prototype_comments',
 	);
 
 }

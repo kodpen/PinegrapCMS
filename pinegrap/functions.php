@@ -148,6 +148,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/xlsx_write.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/translate.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/lang_files.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/consent.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/prototype_comments.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/config_text.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/legal_documents.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/geo.php');

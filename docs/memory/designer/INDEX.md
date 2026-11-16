@@ -12,6 +12,7 @@
 - billing-information-widget.md: The Billing Information widget (third classic checkout step): handler and page row, prefill from order and contact, parts the page turns off, helpers shared with step 1.
 - booking-templates.md: The online booking page of the Salon, Clinic and Law templates (BK10): book_online with the booking widget's starter layout beside the request form, the links between them, new installs only
 - booking-widget-confirm.md: Booking widget details step and confirm (#6596): form fields by name, signed-in prefill, auto_confirm status, expired hold rebooked when free, taken path, privacy page link
+- booking-widget-open-parts.md: Booking widget's twelve parts on the canvas (CB8): steps and details form drawn as their elements, the six parts the script fills drawn as samples from the server's words (settings only)
 - booking-widget.md: The booking system widget (#6224): parts by binding, data-pg-booking settings, booking_slots.php (month, day, hold), "anyone" picks the freest, one hold per session
 - bootstrap-direct-child-canvas.md: Bootstrap direct-child selectors break on the canvas because of .sd-wrap: two-part fix (display:contents + re-applied rule), the td display:flex ban, the selected-child lift.
 - bound-href-scheme.md: A form field bound to a link's, form's, picture's or player's address never prints a javascript:, vbscript: or data: address
@@ -99,6 +100,7 @@
 - comments-widget-watch-staff.md: The comments widget's watch form, watcher list and staff open-or-close form: wiring, who gets them, address masking, count text, where their messages print, canvas fades by place
 - comments-widget.md: The comments system widget (regionType comments): whose thread it shows, options, the recent mode, e-mails, tokens, flags, escaping, default layout, checks
 - common-region-to-shared-component.md: A common region made a shared component (R2): one _editable block opened to content editors, grants carried over, the <cregion> tag drawing the component, the old write paths refused [decision: decisions-made-product-20.md, decisions-made-product-3.md, decisions-made.md]
+- content-proposals.md: Content changes that wait for approval: the switch, which content-level saves are held, the operations kept in design_proposals, the assistant's readers skipping editor rows [decision: here]
 - custom-form-email-and-confirmation-fallbacks.md: Custom form submit fallbacks (empty plain text body -> field list without hidden fields for the submitter; missing or binned next page -> message) and what the legacy page screen refuses (#1209).
 - custom-form-field-rules.md: Visitor rules of a designed form field (form_fields.rules, step 11.0.135, PR #3737): "Not before today" and "Required when", where they are written and checked, the staff exemption, Cafe and Clinic. [decision: decisions-made-product-9.md]
 - custom-form-logic.md: The designed forms' Shown-when rules, steps with progress and payment step as one feature: what binds all three, which questions were decided (#5035), where each part is described [decision: decisions-made-product-19.md, decisions-made-schema-9.md]
@@ -387,6 +389,8 @@
 - designer-picked-page-pending.md: Designer "Var Olan Sayfayı Seç": a picked page belongs to the other design until saved; three tab states, pickedPending, remove vs detach.
 - designer-preview-page-scripts.md: Platform scripts a designer page gets from its markup (theme switcher, tooltips/popovers, scroller buttons) on the page and in the Preview; one Bootstrap bundle; Preview link guard and dark view.
 - designer-preview-play.md: Links in the designer's Preview (#1867): a page link plays the open tab of that name, unsaved too; others open the site in a new tab; the Hotspots toggle
+- designer-prototype-comments-door.md: Prototype comments (prototype_comments): what a row keeps, the guest's door prototype_comment.php and its gates, the limits, plain text, delete with the design [decision: here]
+- designer-prototype-comments-rules.md: Prototype comments: what a later change must keep (a deleted link takes its comments, a deleted page's comments stay, personal data erase), and the architect's schema answer [decision: here]
 - designer-prototype-share-link-frame.md: A prototype share link's frame: signed by link id (never the token), bound to the viewer's session; clicks go back through the viewer, new tabs by ?l=<id>; a failing page shows no reason
 - designer-prototype-share-links.md: Share links of a design's prototype (prototype_links, 11.0.35): makers, audiences, what anyone sees, the password lock, the token kept out of logs and the frame, uses, revoked with the design
 - designer-prototype-viewer.md: prototype.php plays a design's saved drafts (roles 0-2, or a share link): a session-less frame signed for one browser, link kinds, inert forms, no tracking, link_resolve.php
@@ -488,6 +492,7 @@
 - link-button-inline-children.md: Spans and icons inside a link or button: two ways to hold them, why an inline edit keeps a link's markup, which drops a button accepts, where the label prints beside children.
 - link-target-in-attrs.md: A link's window and rel: props first, _attrs when the prop is empty (link and button link, server and canvas alike), the selection-time fold, starter trees and templates, page bodies drawn before
 - list-search-sort-price-forms.md: List widget search, sort and price forms (server box, catalog's bound form) and page links: accessible names, translated words, no router page name in hidden inputs or links (#4457, #4538).
+- listen-script.md: The "Listen" block's script pg_listen.js and its two doors: what it reads, in which language, when the button shows, the markup it expects
 - loop-band-canvas.md: The loop band and the element chips on the canvas: band height and tooltips, the chip row (Only when, Off, Shown when) in the flow, see-through wrappers, the Turkish band terms (#2523) [decision: decisions-made-product-48.md]
 - member-email-asked-once.md: Registration and membership activation ask for the email once: email_verify optional, a typed copy must match; starter layouts, templates, classic screens and the starter site changed
 - member-widgets-handlers-and-forms.md: Membership widgets (login/forgot/registration/membership): legacy handlers, pg_member_register/activate, control naming, form wrap, validation script.
@@ -540,7 +545,7 @@
 - product-name-sku-and-canvas-placeholders.md: Which product token is the SKU and which the store name, their Bind Data labels and canvas samples; the placeholder of a value with no sample; a bound section's canvas name (#4200)
 - product-questions-output.md: Product questions outside the widget: the asker's mail when answered, API kind and answer_of, the Question/Answer JSON-LD on the Product, the templates' questions widget
 - product-questions.md: Product questions on the comments system: kind question/answer and answer_of, the widget Shows choice and its own claim, the answer box, the unanswered filter [decision: decisions-made-product-19.md]
-- prototype-arrangement.md: How the Prototype view's layout() builds and places frames, rows, chips and arrows: a grid of tab-group sections in flow order, shared parts left, chips right, Start, Tidy up [decision: here]
+- prototype-arrangement.md: The Prototype view's layout(): frames, rows, chips, arrows; a grid of tab-group sections in flow order, shared parts left (wrapped at the grid's height), chips right, Start, Fit's corner, Tidy up [decision: here]
 - prototype-focus.md: The Prototype view draws only the selected frame's arrows: the core's focus, opening on the open tab, All arrows, row marks, a shared part's link as an amber note, arrow colours and heads [decision: here]
 - prototype-hotspots.md: The Prototype view's hotspot collector (assets/js/pg_proto_hotspots.js, window.PGProtoHotspots): which nodes are hotspots, shared frames, the map read's request, the marks, the layout
 - prototype-links-in-code.md: Where a design's links sit in the code, page-name hrefs and renames, the resolver, editor state, rights and Publish: what the Prototype view reads

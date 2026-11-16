@@ -471,6 +471,54 @@ if (pg_schema_has('config_text')) {
                         </div>';
 }
 
+// Content changes that wait for approval (includes/fn/content_proposals.php):
+// off on every site until it is switched on here, by a designer or an
+// administrator only (a Manager's own saves are the ones held). The channel
+// the change is also asked in is offered while the Workspace is on.
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/content_proposals.php');
+if (pg_content_proposals_ready() && pg_content_proposals_may_set($user)) {
+    $content_approval = pg_content_proposals_settings();
+    $content_approval_channel = '';
+
+    if (defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED && pg_schema_has('ws_channels')) {
+        $content_approval_options = '<option value="0">' . h(lang('None')) . '</option>';
+
+        foreach ((array) db_items("SELECT id, name FROM ws_channels WHERE kind IN ('public', 'private') AND archived_at = 0 ORDER BY name") as $content_approval_row) {
+            $content_approval_options .= '<option value="' . (int) $content_approval_row['id'] . '"'
+                . (((int) $content_approval_row['id'] === $content_approval['channel_id']) ? ' selected="selected"' : '') . '>'
+                . h($content_approval_row['name']) . '</option>';
+        }
+
+        $content_approval_channel = '
+                                        <div class="col-12">
+                                            <label class="form-label" for="content_approval_channel">' . lang('Also Ask in Channel') . '</label>
+                                            <select class="form-control" id="content_approval_channel" name="content_approval_channel">' . $content_approval_options . '</select>
+                                            <div class="form-text">' . lang('A waiting change is also asked there as an approval request, to the channel\'s designers.') . '</div>
+                                        </div>';
+    }
+
+    $pg_settings_cards[] = '
+                        <div id="pgset-content-approval" class="pg-set-card">
+                            <div class="card">
+                                <div class="card-header bg-reset border-0 pg-title-section">
+                                    ' . lang('Content Approval') . '
+                                </div>
+                                <div class="card-body">
+                                    <input type="hidden" name="content_approval_card" value="1"/>
+                                    <div class="row gy-12">
+                                        <div class="col-12">
+                                            <div class="form-field">
+                                                <div class="switch"><input value="1"' . ($content_approval['on'] ? ' checked="checked"' : '') . ' type="checkbox" id="content_approval_on" name="content_approval_on"/></div>
+                                                <label for="content_approval_on">' . lang('Content changes wait for approval') . '</label>
+                                                <div class="form-text">' . lang('A Manager or User who saves a change in the Page Design Studio to a page already on the site does not publish it: it waits until a Designer or Administrator applies it. Drafts, new pages, classic pages and the changes of Designers and Administrators are not held.') . '</div>
+                                            </div>
+                                        </div>' . $content_approval_channel . '
+                                    </div>
+                                </div>
+                            </div>
+                        </div>';
+}
+
 // How long the published revisions of visual-designer pages and the
 // revisions of collection items are kept (includes/fn/page_revisions.php,
 // includes/fn/record_revisions.php): the last N of each page or item

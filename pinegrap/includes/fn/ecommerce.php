@@ -7277,7 +7277,18 @@ function check_if_active_shipping_discount_offer_exists()
         return false;
     }
 }
-function add_pending_offers($liveform)
+/**
+ * Adds the campaign gift (pending offer) whose add_pending_offer_<offer>_<action>
+ * button was posted.
+ *
+ * @param liveform $liveform Collects the refusals shown on the next page
+ * @param bool     $redirect Send the visitor to the page named by the posted
+ *                           page_id and exit, as the classic Shopping Cart and
+ *                           Express Order pages expect. The designer cart's
+ *                           handler (cart_action.php) posts no page_id and
+ *                           redirects to its own send_to, so it passes false.
+ */
+function add_pending_offers($liveform, $redirect = true)
 {
     // if pending offers form was submitted
     if (!empty($_POST['pending_offers'])) {
@@ -7641,8 +7652,11 @@ function add_pending_offers($liveform)
                         }
                     }
                 }
-                header('Location: ' . URL_SCHEME . HOSTNAME . PATH . get_page_name($_POST['page_id']));
-                exit();
+                if ($redirect) {
+                    header('Location: ' . URL_SCHEME . HOSTNAME . PATH . get_page_name($_POST['page_id']));
+                    exit();
+                }
+                return;
             }
         }
     }

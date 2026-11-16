@@ -1027,7 +1027,9 @@
             head: GRID.head,
             sideGap: GRID.side,
             size: function (id) { return has(byId, id) ? { w: byId[id].w, h: byId[id].h } : null; },
-            before: { id: 'shared', label: str(opts.shared), w: FRAME.w, items: sharedIds },
+            // A long column of shared frames goes on beside itself rather
+            // than far below the grid (F4).
+            before: { id: 'shared', label: str(opts.shared), w: FRAME.w, maxH: 'grid', items: sharedIds },
             after: {
                 id: 'outside',
                 label: str(opts.outside),
@@ -1459,6 +1461,21 @@
         return out;
     }
 
+    // Where Fit starts when a design does not fit at the smallest zoom: the
+    // start frame's top left corner, raised to its band's heading when that
+    // stands right above it; null without a start frame.
+    function fitStart(laid) {
+        var frame = (laid && Array.isArray(laid.frames)) ? laid.frames.filter(function (f) { return f.start; })[0] : null;
+
+        if (!frame) {
+            return null;
+        }
+
+        var heading = (laid.headings || []).filter(function (h) { return h.kind === 'group' && h.x === frame.x && h.y + GRID.head === frame.y; })[0];
+
+        return { x: frame.x, y: heading ? heading.y : frame.y };
+    }
+
     // What the selected frame (its id, null for none) shows of a layout:
     // out, the ids of its arrows; in, the ids of the arrows into it from
     // page frames; shared, the links of shared frames into it, which draw
@@ -1536,6 +1553,7 @@
         boundTo: boundTo,
         markBound: markBound,
         drawTargets: drawTargets,
-        focusOf: focusOf
+        focusOf: focusOf,
+        fitStart: fitStart
     };
 })();
