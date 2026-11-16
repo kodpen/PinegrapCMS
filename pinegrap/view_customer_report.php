@@ -162,7 +162,7 @@ if ($summary !== null) {
         for ($band = 0; $band <= 2; $band++) {
             $cell = isset($summary['cells'][$age][$band]) ? $summary['cells'][$age][$band] : array(0, 0);
             $cells .= '<td class="text-end"><span class="d-block">' . h(lang(array('string' => '{var:1} customer{suffix:1}', 'vars' => pg_format_number((int) $cell[0], 0), 'suffix' => ((int) $cell[0] == 1) ? '' : 's'))) . '</span>'
-                . '<small class="text-body-secondary">' . h(pg_report_view_money((int) $cell[1], $symbol)) . ' · ' . h($group_names[pg_customer_value_cell_group($age, $band)]) . '</small></td>';
+                . '<small class="fg-secondary">' . h(pg_report_view_money((int) $cell[1], $symbol)) . ' · ' . h($group_names[pg_customer_value_cell_group($age, $band)]) . '</small></td>';
         }
 
         $rows .= '<tr><th scope="row" class="fw-normal">' . h($label) . '</th>' . $cells . '</tr>';
@@ -196,7 +196,7 @@ if ($summary !== null) {
         $rows = '';
 
         foreach (pg_customer_value_top_rows($summary['top'][$key], $names, $may_see_names) as $row) {
-            $name = ($row['name'] !== '') ? h($row['name']) : '<span class="text-body-secondary">' . h(lang('Name not shown')) . '</span>';
+            $name = ($row['name'] !== '') ? h($row['name']) : '<span class="fg-secondary">' . h(lang('Name not shown')) . '</span>';
 
             if ($may_see_names && $can_open_orders && ($row['order_id'] > 0)) {
                 $name = '<a href="' . h('view_order.php?id=' . $row['order_id']) . '">' . $name . '</a>';
@@ -211,7 +211,7 @@ if ($summary !== null) {
         }
 
         if ($rows === '') {
-            $rows = '<tr><td colspan="' . ($may_see_names ? 4 : 3) . '" class="text-body-secondary">' . h(lang('No customer yet.')) . '</td></tr>';
+            $rows = '<tr><td colspan="' . ($may_see_names ? 4 : 3) . '" class="fg-secondary">' . h(lang('No customer yet.')) . '</td></tr>';
         }
 
         $output_sections .= '
@@ -239,10 +239,10 @@ if ($summary !== null) {
     }
 
     if (!empty($left_out)) {
-        $output_sections .= '<p class="text-body-secondary small">' . h(lang('Not counted in these figures:')) . ' ' . h(implode('; ', $left_out)) . '.</p>';
+        $output_sections .= '<p class="fg-secondary small">' . h(lang('Not counted in these figures:')) . ' ' . h(implode('; ', $left_out)) . '.</p>';
     }
 
-    $output_sections .= '<p class="text-body-secondary small">' . h(lang('Completed and exported orders count, less what was refunded; cancelled orders and orders refunded in full do not. A customer is a billing e-mail address. The figures are worked out again every day.')) . '</p>';
+    $output_sections .= '<p class="fg-secondary small">' . h(lang('Completed and exported orders count, less what was refunded; cancelled orders and orders refunded in full do not. A customer is a billing e-mail address. The figures are worked out again every day.')) . '</p>';
 }
 
 print
@@ -253,6 +253,7 @@ print
             'icon' => 'store',
             'heading' => lang('Customers Report'),
             'heading_description' => lang('See how many customers order again, what a customer is worth and which customers you are losing.'),
+            'help' => 'commerce-cont#customers-report',
             'cancel' => false
         )
     ) . '
