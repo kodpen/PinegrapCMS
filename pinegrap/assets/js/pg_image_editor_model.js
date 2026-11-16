@@ -906,6 +906,24 @@
         }).map(function (l) { return l.id; });
     }
 
+    // Tools whose own press is Select's: the key changes nothing there.
+    var PRESS_OWN = ['select', 'sticker'];
+
+    // Whether a press with tool is Select's press (startDrag()) instead of
+    // the tool's own: the left button with Ctrl held (Cmd on a Mac, where
+    // Ctrl and a click is the context menu's). state { mac, cropping,
+    // typing, placing (a path or a polygon), editing (a path's points),
+    // recording }: the tool's own work under way keeps the press.
+    function pressSelects(tool, state, e) {
+        var s = state || {}, ev = e || {};
+
+        if (!(s.mac ? ev.metaKey : ev.ctrlKey) || (ev.button > 0) || (PRESS_OWN.indexOf(tool) >= 0)) {
+            return false;
+        }
+
+        return !(s.cropping || s.typing || s.placing || s.editing || s.recording);
+    }
+
     // The upright box around a layer's drawn extent in the rotated space.
     function drawnBounds(l) {
         if (!warpOn(l) && !puppetOn(l)) {
@@ -10268,7 +10286,7 @@
         outputSize: outputSize, ADJUST: ADJUST, FILTERS: FILTERS, FILTER_NAMES: FILTER_NAMES, colorValues: colorValues,
         colorMatrix: colorMatrix, applyColor: applyColor, vignetteStops: vignetteStops, sharpenKernel: sharpenKernel,
         newId: newId, corners: corners, bounds: bounds, local: local, hitLayer: hitLayer, layersInBox: layersInBox, insideBox: insideBox, resizeBox: resizeBox, angleTo: angleTo,
-        align: align, distribute: distribute, snapBox: snapBox, reorder: reorder,
+        align: align, distribute: distribute, snapBox: snapBox, reorder: reorder, pressSelects: pressSelects,
         ownsKey: ownsKey, focusMatch: focusMatch, panelTitle: panelTitle
     };
 
