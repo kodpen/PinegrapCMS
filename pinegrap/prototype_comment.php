@@ -137,5 +137,8 @@ if (!$pg_pc_row) {
     exit;
 }
 
+// The link's maker hears of it in the bell, at most once an hour a link.
+pg_proto_comment_bell($pg_pc_link, $pg_pc_row);
+
 http_response_code(201);
 echo json_encode(array('comment' => pg_proto_comment_public($pg_pc_row)));
