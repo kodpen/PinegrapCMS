@@ -19,7 +19,7 @@ description: The existing files that steps of more than one website-side plan to
 - `prototype.php` and `includes/fn/prototype.php`: PN2, RB5. The Prototype view's own plan touches them too (`plans/prototype-canvas.md`); a coordinator checks that plan's open step first.
 - `includes/fn/custom_form.php`: RW1, RW5.
 - `includes/fn/output.php`: CM2 (`pg_js_bundles()`), CH2 (`output_menu()`).
-- `page_view.php`: CM1 only today, and the speed beacon's own branch beside it; a step of another plan that adds a branch there is listed here first.
+- `page_view.php` and `assets/js/pg_vitals.src.js`: CM1 and CM2 only (the clicks travel with the speed beacon); a step of another plan that sends a beacon is listed here first.
 
 ## How is the list kept?
 - A step that finds it must touch a file of this list which its plan did not name writes it here in its own PR and says so in the PR body.

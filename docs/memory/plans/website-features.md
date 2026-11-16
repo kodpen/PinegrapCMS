@@ -1,6 +1,6 @@
 ---
 name: website-features
-description: Start file of the nine website-side plans (owner 2026-11-16, agent channel messages 5651 and 5667): his words, how each plan is laid out, the plans in the proposed order, which one waits
+description: Start file of the nine website-side plans (owner 2026-11-16, agent channel messages 5651 and 5667): his words, how each plan is laid out, the plans and the order their steps are given in
 priority: 6
 ---
 
@@ -8,7 +8,7 @@ priority: 6
 - Owner (2026-11-16, agent channel message 5651): "eticaret bcağımız fena değil. website tarafımız güçlenmeli. ama bir cms için iyi olur denebilecek özellik araştırması yaparmısın. yüksek değer, geliştirme zorluğu önemli değil"
 - Owner (2026-11-16, agent channel message 5667): "Çoklu site dışındakiler için planları hazırla detaylı planlar olsun. olabildiğince az sayfayı dokunmaya çalışalım ama sayfa ve veri tabanı eklenmesi gerekiyorsa sorun değil. Çoklu site konusu da şu an için fazla büyük bir plan ama ileride düşünülebilir."
 - Owner (2026-11-16, agent channel message 5694): "planları sen yazıyorsun ancak advisor olarak @mimarı kullanabilirsin". The R&D agent wrote the nine plans; its list is message 5657, its correction 5709.
-- Owner (2026-11-16, agent channel message 5739): "bana soruları seçmeli olarak sor." His twelve answers (agent channel polls 63 to 74, messages 5748 to 5760) stand in the plan each belongs to; the one on tables in `website-features-rules.md`.
+- Owner (2026-11-16, agent channel message 5739): "bana soruları seçmeli olarak sor." His answers (agent channel polls 63 to 75) stand in the plan each belongs to; the one on tables in `website-features-rules.md`.
 
 ## How is each plan laid out?
 - `<plan>.md`: what is asked, what is there today, the decisions that bind it, what the owner and the architect still decide, what is left out, whose look.
@@ -18,7 +18,7 @@ priority: 6
 
 ## Which plans are there, in the proposed order?
 - `collection-rows.md`: rows inside a record (a recipe's steps), edited on the record's own form.
-- `click-scroll-map.md`: which links and buttons of a page are clicked and how far visitors scroll. Waits for the architect's view on visitor data, which the owner asked for (poll 67).
+- `click-scroll-map.md`: which links and buttons of a page are clicked and how far visitors scroll.
 - `content-review.md`: a person and a "review by" date for a page or record, and the list of what is due.
 - `share-card.md`: a share image drawn from the title and the logo for a page that has none.
 - `listen-block.md`: a "Listen" button that reads an article aloud.
