@@ -205,6 +205,7 @@
     "Days and Tracks": "Günler ve Oturum Dizileri",
     "Days are counted in calendar days from the day the template is applied; 0 is that day.": "Günler, şablonun uygulandığı günden itibaren takvim günü olarak sayılır; 0 o gündür.",
     "Days before it expires": "Süre dolmadan kaç gün önce",
+    "Days between orders": "Siparişler arası gün",
     "Days counted": "Sayılan gün",
     "Days from the invoice date to its due date. 0 uses the store default, currently {var:1} days.": "Fatura tarihinden vade tarihine kadar geçen gün. 0 mağaza varsayılanını kullanır, şu an {var:1} gün.",
     "Days from this calendar ({var:1})": "Bu takvimden gelen günler ({var:1})",
