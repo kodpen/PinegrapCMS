@@ -5,7 +5,8 @@ description: A poll question's own picture (poll_picture.php, #9948): carried by
 
 ## What does a question carry?
 - One picture of its own, sent with the question in one call (#9948). The question is a message and its message carries the picture as its file (`ws_messages.file_id`, `file_name`): whoever reads the message reads it, and the channel's Files tab lists it as that message's file. No schema change.
-- Owner (2026-11-16, `workflow/decisions-made-workspace-36.md`): the picture stands in the question's own box. The box is QP2 of `plans/agent-question-picture.md`; until then the panel draws it as the file card under the poll box.
+- Owner (2026-11-16, `workflow/decisions-made-workspace-36.md`): the picture stands in the question's own box.
+- The box draws it: `poll-question-picture-box.md`.
 
 ## Which file passes?
 - Pure `ws_poll_picture_refusal($name, $size, $max)`: an image (`ws_file_kind()` image: JPG, PNG, GIF, WebP, AVIF, BMP), not empty, at most `ws_upload_max_bytes()`; else a sentence. Then `ws_upload_check()` (the channel upload's checks). `ws_poll_picture_check()` does both, keeping nothing.

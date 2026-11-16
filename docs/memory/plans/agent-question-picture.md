@@ -12,7 +12,7 @@ priority: 6
 
 ## Which steps are there?
 - QP1 (M) Server, API and tool: Q1, Q2, Q8, Q9 and Q11, and Q10's routes. The question's message carries the picture; `POST /workspace/channels/{id}/polls` takes it with the question; ask again and change; `tools/ws_poll.php ask --file=PATH`; the API schema and tests. The box does not change yet: the worker says in the PR body how today's panel draws a poll message that carries a file. Done: #9948 (`workspace/poll-question-picture.md`).
-- QP2 (M) after QP1: the box, Q3 to Q7 and Q12, for a person's poll and an agent question. The owner's look.
+- QP2 (M) after QP1: the box, Q3 to Q7 and Q12, for a person's poll and an agent question. The owner's look. Done: #9964 (`workspace/poll-question-picture-box.md`; owner, channel poll 92).
 - QP3 (S) after QP2: the New poll form's "Question picture" field (Q10's panel side); `workflow/owner-question-picture.md` and `workflow/architect-asking.md` say `--file`; close-out into `workspace/poll-box.md`, `workspace/poll-agent-question-box.md`, `workspace/poll-agent-question-reach.md` and `workspace/poll-option-parts.md`; this plan deleted.
 
 ## Is there a schema change?
