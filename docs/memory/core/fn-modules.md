@@ -118,7 +118,7 @@ description: Generated from the module field of the memory files: each includes/
 - `github_links`: [[api-github-channel-links]]
 - `google_analytics`: [[google-analytics-card]]
 - `google_reviews`: [[google-reviews-widget]]
-- `graph_canvas`: [[graph-canvas-core-logic]], [[graph-canvas-core-module]]
+- `graph_canvas`: [[graph-canvas-core-focus]], [[graph-canvas-core-logic]], [[graph-canvas-core-module]]
 - `guarded_frame`: [[canvas-bridge]], [[canvas-consents]], [[canvas-measures]], [[guarded-frame]]
 - `health_gauge`: [[dashboard-system-status-gauge]]
 - `image`: [[helper-fixes-2026-11]], [[image-accent-colour]], [[image-derivative-upkeep]], [[image-editor-jpeg-start-quality]], [[image-gd-palette-png]], [[image-panel-thumbnails]], [[image-same-address-switches]], [[image-upload-cap]], [[no-image-placeholder]]

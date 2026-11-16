@@ -242,6 +242,7 @@
 - form-view-newest-comment-cut.md: ^^newest_comment^^ in classic form item / list views and content variables is cut to 100 characters before escaping, never after
 - generate-layout-screen.md: Generate Layout (generate_layout.php, includes/templates/generate_layout.php) in the edit screen pattern: the read-only code, the Summary, Copy the code and Edit Layout in the save bar
 - gift-card-shared-form.md: add_gift_card.php and edit_gift_card.php draw the Gift Card Options card and check its amount and date through includes/forms/gift_card_form.php; what each screen keeps
+- graph-canvas-core-focus.md: Graph canvas core focus: adapter focus, canvas.focus() and focused(), out, in, hidden and dim classes, allEdges() faint arrows, groups() headings, press to focus, the announcement
 - graph-canvas-core-logic.md: Graph canvas core pure logic: G.order() ranks from a start, G.arrange() a wrapped grid of groups with side columns, G.linksOf(), G.check() dangling, unreached, stuck
 - graph-canvas-core-module.md: The graph canvas core (pg_graph_canvas.js, window.PGGraphCanvas, includes/fn/graph_canvas.php): what it owns, its adapter, its texts, its pgc- CSS and tokens, its first user the Flows canvas [decision: here]
 - graph-canvas-core-sizes-ports.md: Graph canvas core slice 4 for the Prototype view: size per box, lower zoom, named ports, spread arrow ends, other targets, stable arrow ids, partial redraw, thumbnails
