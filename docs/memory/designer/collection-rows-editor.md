@@ -7,7 +7,9 @@ description: The rows editor of a collection's Record rows field on Add and Edit
 - `pg_submitted_form_fields_markup()` hands a text box of kind `rows` to `pg_coll_rows_field_markup()` (`includes/fn/collection_rows.php`). The writer and spec: `collection-rows-writer.md`.
 - A box `[data-pg-rows]` holding `pg_coll_rows_editor_config()` as JSON (columns, rows, refusals, limit) and `pg_coll_rows_editor_words()`; `assets/js/pg_collection_rows.js` (served as written, with the vendored SortableJS tag) draws a plain table: one column per field the table takes, the grip (drag, or arrow keys on it), Move up, Move down, Remove, "Add row" (off at the limit).
 - A field that cannot draw (`pg_coll_rows_spec()` refused) shows its reason and posts nothing, so its rows stay.
-- Inputs: text box and text area as text, pick list as a select (several when multiple), check box group as boxes, date and time as the browser's own `type=date` / `type=time`.
+- Inputs: text box and text area as text, pick list as a select (several when multiple), check box group as boxes.
+- Date and time are the panel's one date control, as the record's own field (`ui/panel-date-field-opt-in.md`): a text box with `data-pg-date` / `data-pg-time` from the column's `hook`, `pgFields.init()` on every draw; the screen prints the picker options and `pg_fields_script()` (`pg_coll_rows_picker_kinds()`).
+- Stored dates and times show through `prepare_form_data_for_output()`, so a row holds the same value whichever screen wrote it.
 
 ## How does the list travel?
 - Only the hidden `rows_<field id>` is named: the script writes the whole list as JSON on every change, so PHP's `max_input_vars` never cuts a long list (R9). `pg_coll_rows_posted()` reads it; an empty or broken value means "not sent" and the rows are left as they are.

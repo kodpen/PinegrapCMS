@@ -407,3 +407,29 @@ function test_collections_rows_parent_row()
 	pg_assert_contains('edit_submitted_form.php?id=77', $html, 'the row names its parent with a link back');
 	pg_assert_contains('P1 &lt;x&gt;', $html);
 }
+
+// A date or time cell is the panel's one date control, as the record's own
+// field is: a text box with its hook, never the browser's picker.
+function test_collections_rows_date_and_time_cells_use_the_panel_picker()
+{
+	$fields = array(
+		_collections_rows_field_row(81, 'day', 'date'),
+		_collections_rows_field_row(82, 'at', 'time'),
+		_collections_rows_field_row(83, 'name', 'text box'),
+	);
+	$spec = pg_coll_rows_spec(_collections_rows_field(), _collections_rows_child($fields));
+	$config = pg_coll_rows_editor_config($spec, array(), array());
+	pg_assert_same('data-pg-date', $config['columns'][0]['hook']);
+	pg_assert_same('data-pg-time', $config['columns'][1]['hook']);
+	pg_assert_same('', $config['columns'][2]['hook']);
+	pg_assert_same(array('date', 'time'), pg_coll_rows_picker_kinds($spec), 'the screen prints the picker script for them');
+	pg_assert_same(array(), pg_coll_rows_picker_kinds(pg_coll_rows_spec(_collections_rows_field(), _collections_rows_child(array($fields[2])))));
+
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_collection_rows.js');
+	preg_match_all('/\.type\s*=\s*([^;]+);/', $js, $m);
+	foreach ($m[1] as $value) {
+		pg_assert_true(in_array(trim($value), array("'text'", "'checkbox'", "'button'"), true), 'the script gives no input a type from a variable: ' . $value);
+	}
+	pg_assert_contains('column.hook', $js, 'the cell takes its column\'s hook');
+	pg_assert_contains('pgFields.init(', $js, 'and is drawn by the panel\'s field script');
+}

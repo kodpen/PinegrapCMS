@@ -168,13 +168,24 @@
                 wrap.appendChild(input);
             } else {
                 input = el(column.input === 'textarea' ? 'textarea' : 'input', 'form-control form-control-sm');
-                if (column.input === 'textarea') input.rows = 2;
-                else input.type = (column.input === 'date' || column.input === 'time') ? column.input : 'text';
+                if (column.input === 'textarea') {
+                    input.rows = 2;
+                } else {
+                    // A date or time is a text box with the panel's hook,
+                    // drawn by pgFields as the record's own field is.
+                    input.type = 'text';
+                    if (column.hook) {
+                        input.setAttribute(column.hook, '');
+                        input.maxLength = (column.input === 'date') ? 10 : 11;
+                    }
+                }
                 input.value = Array.isArray(value) ? String(value[0] || '') : String(value || '');
-                input.addEventListener('input', function () {
+                var keep = function () {
                     row.values[key] = input.value;
                     save();
-                });
+                };
+                input.addEventListener('input', keep);
+                input.addEventListener('change', keep);
                 wrap.appendChild(input);
             }
 
@@ -289,6 +300,9 @@
             if (Array.isArray(config.others) && config.others.length) {
                 holder.appendChild(el('p', 'small fg-secondary mb-3', (words.others || '') + ' ' + config.others.join(', ')));
             }
+
+            // The date and time cells just drawn get the panel's control.
+            if (window.pgFields && typeof window.pgFields.init === 'function') window.pgFields.init(holder);
 
             var add = el('button', 'btn btn-sm btn-outline theme-primary');
             add.type = 'button';

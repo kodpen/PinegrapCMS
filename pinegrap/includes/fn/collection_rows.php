@@ -715,6 +715,9 @@ function pg_coll_rows_editor_config($spec, $rows, $errors)
             'id'       => (int)$f['id'],
             'label'    => (string)$f['label'],
             'input'    => $input,
+            // The panel's one date control, as the record's own field
+            // (pg_submitted_form_fields_markup()): a text box with its hook.
+            'hook'     => ($input === 'date') ? 'data-pg-date' : (($input === 'time') ? 'data-pg-time' : ''),
             'required' => !empty($f['required']),
             'options'  => $options,
         );
@@ -752,6 +755,25 @@ function pg_coll_rows_editor_config($spec, $rows, $errors)
     }
 
     return array('columns' => $columns, 'others' => $others, 'rows' => $out_rows, 'errors' => $marks, 'max' => pg_coll_rows_max());
+}
+
+/**
+ * The picker kinds a rows field's table needs ('date', 'time'), so the
+ * screen prints their options and the field script once (pure).
+ *
+ * @param array $spec pg_coll_rows_spec()
+ * @return array
+ */
+function pg_coll_rows_picker_kinds($spec)
+{
+    $kinds = array();
+    if (!is_array($spec) || empty($spec['ok'])) return $kinds;
+    foreach ($spec['fields'] as $f) {
+        $input = pg_coll_rows_input($f);
+        if (($input === 'date' || $input === 'time') && !in_array($input, $kinds, true)) $kinds[] = $input;
+    }
+    sort($kinds);
+    return $kinds;
 }
 
 /**
@@ -897,7 +919,16 @@ function pg_coll_rows_field_markup($liveform, $field, $page_id, $form_id)
         $check = pg_coll_rows_check($spec, implode(',', $stored), $posted, true);
         $errors = $check['errors'];
     } else {
+        // A stored date or time shows as the record's own field shows it.
         $rows = pg_coll_rows_of((int)$form_id, (int)$field['id'], $spec['page_id']);
+        foreach ($rows as $i => $row) {
+            foreach ($spec['fields'] as $f) {
+                $fid = (int)$f['id'];
+                if (in_array((string)$f['type'], array('date', 'time'), true) && isset($row['values'][$fid]) && is_string($row['values'][$fid])) {
+                    $rows[$i]['values'][$fid] = (string)prepare_form_data_for_output($row['values'][$fid], (string)$f['type'], false);
+                }
+            }
+        }
         $posted_json = '';
     }
 
