@@ -42918,9 +42918,12 @@ const StyleDesigner = (function () {
         }
     }
 
-    // The month calendar of the free days: weekdays from the sample day on
-    // can be picked, the sample day picked. A stand-in for the site's date
-    // control, which draws it with its own look.
+    // The month calendar of the free days, laid out as the site's date
+    // control draws it (pgDateTime.month()): six weeks with the neighbouring
+    // months' days dimmed, the weekend in red, square day cells; Monday to
+    // Saturday from the sample day on can be picked, the sample day picked.
+    // Its colours follow the page here; the site draws it with the date
+    // control's own look.
     /* @pg-site-output */
     function _sdBookingCalendarHtml() {
         var lang = _sdBookingLang(), day = _sdBookingSampleDay();
@@ -42935,26 +42938,27 @@ const StyleDesigner = (function () {
             title = y + '-' + ('0' + (m + 1)).slice(-2);
             names = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].slice(first).concat(first ? ['Su'] : []);
         }
-        var last = new Date(Date.UTC(y, m + 1, 0, 12)).getUTCDate();
         var lead = (new Date(Date.UTC(y, m, 1, 12)).getUTCDay() - first + 7) % 7;
-        var html = '<div class="border rounded-3 p-2" style="max-width:20rem">'
-            + '<div class="d-flex justify-content-between align-items-center mb-2">'
-            + '<span class="btn btn-sm btn-link" aria-hidden="true"><i class="bi bi-chevron-left"></i></span>'
-            + '<span class="fw-semibold">' + esc(title) + '</span>'
-            + '<span class="btn btn-sm btn-link" aria-hidden="true"><i class="bi bi-chevron-right"></i></span></div>'
-            + '<table class="table table-sm table-borderless text-center small mb-0"><thead><tr>';
-        names.forEach(function (name) { html += '<th class="text-body-secondary fw-normal">' + esc(name) + '</th>'; });
-        html += '</tr></thead><tbody><tr>';
-        for (var i = 0; i < lead; i++) html += '<td></td>';
-        for (var d = 1; d <= last; d++) {
-            var wd = new Date(Date.UTC(y, m, d, 12)).getUTCDay();
-            var free = d >= 12 && wd !== 0 && wd !== 6;
-            var cls = d === 12 ? 'd-inline-block rounded-2 px-2 bg-primary text-white fw-semibold'
-                : (free ? 'd-inline-block rounded-2 px-2 fw-semibold text-primary' : 'd-inline-block px-2 text-body-tertiary');
-            html += '<td><span class="' + cls + '">' + d + '</span></td>';
-            if ((lead + d) % 7 === 0 && d < last) html += '</tr><tr>';
+        var cell = 'd-inline-flex align-items-center justify-content-center rounded-2';
+        var html = '<div class="d-inline-block bg-body-tertiary rounded-4 p-3">'
+            + '<div class="text-center fw-bold mb-2">' + esc(title) + '</div>'
+            + '<table class="table table-borderless text-center small mb-0" style="--bs-table-bg:transparent;width:auto"><thead><tr>';
+        names.forEach(function (name, i) {
+            var wd = (i + first) % 7;
+            html += '<th class="fw-semibold p-1' + (wd === 0 || wd === 6 ? ' text-danger' : '') + '">' + esc(name) + '</th>';
+        });
+        html += '</tr></thead><tbody>';
+        for (var c = 0; c < 42; c++) {
+            var at = new Date(Date.UTC(y, m, 1 + c - lead, 12));
+            var d = at.getUTCDate(), wd = at.getUTCDay(), inMonth = at.getUTCMonth() === m;
+            var free = inMonth && d >= 12 && wd !== 0;
+            var cls = (inMonth && d === 12) ? cell + ' bg-info text-white fw-semibold'
+                : (free ? cell + (wd === 6 ? ' text-danger' : ' text-body') : cell + ' text-body-tertiary opacity-50');
+            if (c % 7 === 0) html += '<tr>';
+            html += '<td class="p-0"><span class="' + cls + '" style="width:2rem;height:2rem">' + d + '</span></td>';
+            if (c % 7 === 6) html += '</tr>';
         }
-        return html + '</tr></tbody></table></div>';
+        return html + '</tbody></table></div>';
     }
 
     // What the script writes into a part, for the canvas.
@@ -42966,13 +42970,13 @@ const StyleDesigner = (function () {
                 return '<button type="button" class="' + SD_BOOKING_BUTTON_CLASS + '">' + esc(label) + '</button>';
             }).join('') + '</div>';
         };
-        if (section === 'booking_staff') return buttons([w.anyone, _sdT('Jordan Lee'), _sdT('Sam Carter')]);
+        if (section === 'booking_staff') return buttons([w.anyone, _sdT('Jordan Lee'), _sdT('Michael Brooks')]);
         if (section === 'booking_times') return buttons(w.slots);
         if (section === 'booking_calendar') return _sdBookingCalendarHtml();
         if (section === 'booking_summary') return esc(_sdBookingFill(w.held, { time: day + ' ' + w.slots[2], minutes: w.hold }));
         if (section === 'booking_done') return esc(w.done);
         if (section === 'booking_status') {
-            return esc(_sdBookingFill(w.times, { day: day }) + ' ' + _sdBookingFill(w.zoneNote, { zone: w.zone }));
+            return esc(_sdBookingFill(w.times, { day: day }) + '. ' + _sdBookingFill(w.zoneNote, { zone: w.zone }));
         }
         return '';
     }
@@ -42984,7 +42988,7 @@ const StyleDesigner = (function () {
         if (!html) return null;
         var notes = {
             booking_staff:    _sdT('The page fills in the people who take the chosen service.'),
-            booking_calendar: _sdT('The page draws the month calendar; only the days with a free time can be picked.'),
+            booking_calendar: _sdT('The page draws the month calendar with the date control\'s own look; only the days with a free time can be picked.'),
             booking_times:    _sdT('The page fills in the free times of the chosen day.'),
             booking_summary:  _sdT('The page writes the held time here.'),
             booking_done:     _sdT('The page writes these words when the booking is made (Settings › Bookings).'),
@@ -42993,7 +42997,7 @@ const StyleDesigner = (function () {
         var box = doc.createElement('div');
         box.className = 'sd-section-binding-hint sd-section-sample';
         box.setAttribute('inert', '');
-        box.style.cssText = 'pointer-events:none;flex:1 1 100%';
+        box.style.cssText = 'pointer-events:none;flex:1 1 100%' + (section === 'booking_calendar' ? ';max-width:20rem' : '');
         box.innerHTML = html + '<div class="small text-body-secondary fst-italic mt-1">' + esc(notes[section]) + '</div>';
         return box;
     }

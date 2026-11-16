@@ -5473,7 +5473,7 @@
     "The page does not exist.": "Sayfa mevcut değil.",
     "The page does not state its language": "Sayfa dilini belirtmiyor",
     "The page draws the generated layout, shown here read only.": "Sayfa, burada salt okunur gösterilen oluşturulmuş düzeni çizer.",
-    "The page draws the month calendar; only the days with a free time can be picked.": "Sayfa ay takvimini çizer; yalnızca boş saati olan günler seçilebilir.",
+    "The page draws the month calendar with the date control's own look; only the days with a free time can be picked.": "Sayfa ay takvimini tarih denetiminin kendi görünümüyle çizer; yalnızca boş saati olan günler seçilebilir.",
     "The page emits no meta description tag": "Sayfa meta açıklama etiketi üretmiyor",
     "The page fills in the free times of the chosen day.": "Sayfa, seçilen günün boş saatlerini buraya doldurur.",
     "The page fills in the people who take the chosen service.": "Sayfa, seçilen hizmeti veren kişileri buraya doldurur.",

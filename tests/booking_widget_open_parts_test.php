@@ -99,6 +99,8 @@ function test_booking_canvas_wiring()
 
 	pg_assert_true(preg_match("/b\\.className = '([^']+)'/", $script, $m) === 1, 'the script names its button class');
 	pg_assert_contains("var SD_BOOKING_BUTTON_CLASS = '" . $m[1] . "';", $js, 'the canvas draws the script\'s buttons');
+	pg_assert_contains("fill(self.w.times, { day: self.dayLabel(iso) }) + '. ' + fill(self.w.zoneNote", $script, 'the status line ends its first sentence');
+	pg_assert_contains("_sdBookingFill(w.times, { day: day }) + '. ' + _sdBookingFill(w.zoneNote", $js, 'the canvas joins the status line as the script does');
 	pg_assert_contains('_SD_BOOKING_KEEPS_CHILDREN[_sec]', $js, 'a kept part gets no warning');
 	pg_assert_contains('_sdBookingSectionSample(_sec, doc)', $js);
 	pg_assert_contains("'booking' => (function_exists('pg_booking_canvas_sample')", $screen);
