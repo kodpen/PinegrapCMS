@@ -6952,7 +6952,9 @@ const StyleDesigner = (function () {
         // still works — see buildTableLoopAreaEl. The flexbox lives on the
         // inner div instead.
         '.sd-loop-band-row .sd-loop-band-cell { padding:4px 8px !important; color:#fff; background:#6366f1; border:none !important; }',
-        '.sd-loop-band-row .sd-loop-band-inner { display:flex; align-items:center; gap:6px; font-size:.7rem; font-weight:700; letter-spacing:.03em; text-transform:uppercase; white-space:nowrap; overflow:hidden; }',
+        // width:0 with min-width:100%: the one-line label fills the row but
+        // adds no width of its own, so it never widens the table it sits in.
+        '.sd-loop-band-row .sd-loop-band-inner { display:flex; align-items:center; gap:6px; font-size:.7rem; font-weight:700; letter-spacing:.03em; text-transform:uppercase; white-space:nowrap; overflow:hidden; width:0; min-width:100%; }',
         '.sd-loop-band-row .sd-loop-band-cell .bi { font-size:.85rem; line-height:1; flex:0 0 auto; }',
         '.sd-loop-band-row .sd-loop-band-cell .sd-loop-band-text { font-size:.65rem; overflow:hidden; text-overflow:ellipsis; }',
         '.sd-recipient-loop-band-row .sd-loop-band-cell { background:#0d9488; }',
@@ -6961,6 +6963,11 @@ const StyleDesigner = (function () {
         '.sd-loop-area.sd-list-area { min-height:44px; outline-color:rgba(8,145,178,.7); background:rgba(8,145,178,.04); }',
         '.sd-list-area > .sd-loop-band, .sd-list-band-row .sd-loop-band-cell { background:#0891b2; }',
         '.sd-list-area.sd-list-off > :not(.sd-loop-band) { opacity:.45; }',
+        // A list in a <ul>/<ol> draws its frame inside the list's padding:
+        // its rows' bullets would hang outside the frame, so they are drawn
+        // inside it (canvas only; the site's <li> keep their bullets).
+        'ul > .sd-wrap > .sd-loop-area > .sd-wrap > li, ul > .sd-wrap > .sd-loop-area > .sd-ghost > li, ' +
+            'ol > .sd-wrap > .sd-loop-area > .sd-wrap > li, ol > .sd-wrap > .sd-loop-area > .sd-ghost > li { list-style-position:inside; }',
         '.sd-list-area.sd-list-off > .sd-loop-band, .sd-list-band-row.sd-list-off .sd-loop-band-cell { background:#b45309; }',
         // ─── Feature switched off in the options panel ───────────────────────
         // Catalog search / filter elements whose feature is toggled off. They
@@ -11561,6 +11568,10 @@ const StyleDesigner = (function () {
                 el.appendChild(buildNodeEl(child));
             });
         }
+        // A cell's own words (a header's label, a bound value) after its
+        // children, as the site prints them; a cell with no text of its own
+        // (its words in a child span) draws only the children.
+        if (tag === 'td' || tag === 'th') _sdTableCellText(doc, node, el);
         // A product page's Checkout Options rows as the store gives them.
         if (node.props._bindings && node.props._bindings.section === 'payment_methods'
             && _sdCatalogKindDrawn() === 'catalog_item_view') _sdPaymentMethodsDraw(node, el);
@@ -11581,6 +11592,23 @@ const StyleDesigner = (function () {
 
         setupDropEvents(el, node);
         return el;
+    }
+
+    // The text of table cell `node` drawn into `el` (buildTableNodeEl()): its
+    // literal words, or the sample of the value it is bound to.
+    function _sdTableCellText(doc, node, el) {
+        var b = node.props._bindings || {};
+        if (_sdIsSentence(node)) return;
+        if (b.text) {
+            var v = _displayValueForBinding('text', b.text, node);
+            if (_sdIsHtmlPreviewToken(b.text)) el.insertAdjacentHTML('beforeend', String(v || ''));
+            else el.appendChild(doc.createTextNode(String(v || '')));
+            return;
+        }
+        var t = node.props.text;
+        if (typeof t !== 'string' || t === '') return;
+        if (t.indexOf('^^') !== -1) el.insertAdjacentHTML('beforeend', _sdResolveAttrTokens(t, true, node));
+        else el.appendChild(doc.createTextNode(t));
     }
 
     // ========================= TABLE-CONTEXT LOOP_AREA =========================
@@ -13275,6 +13303,12 @@ const StyleDesigner = (function () {
     // differ from the card's. A source not named here gets two rows of the
     // card's values.
     var SD_LIST_SAMPLE_ROWS = {
+        // The checkout's gift cards after the first (_SD_LIST_ROW_PREVIEWS):
+        // 25 + 40 + 10 make the sample order's gift card discount.
+        'checkout.gift_cards': [
+            { __gift_card_code: '************5678', __gift_card_amount: '₺40,00', __gift_card_balance: '₺0,00', __gift_card_remove_url: '#' },
+            { __gift_card_code: '************9012', __gift_card_amount: '₺10,00', __gift_card_balance: '₺90,00', __gift_card_remove_url: '#' }
+        ],
         'checkout.periods': [
             { __period_name: _sdT('Yearly'), __period_subtotal: '₺499,00', __period_tax: '₺99,80', __period_total: '₺598,80' }
         ],
@@ -15961,9 +15995,13 @@ const StyleDesigner = (function () {
     };
     // The amounts (a function: SD_LIST_SAMPLE_ROWS reads them before this
     // part of the file has run).
+    // gift: the gift cards applied at checkout (the three rows of the
+    // checkout.gift_cards sample, 25 + 40 + 10); due: what the checkout
+    // charges after them. The order view's order was paid without one.
     function _sdOrderAmounts() {
         return { price1: 450, total1: 900, price2: 150, total2: 150,
-                 subtotal: 1050, discount: 105, shipping: 49.9, tax: 189, total: 1183.9 };
+                 subtotal: 1050, discount: 105, shipping: 49.9, tax: 189, total: 1183.9,
+                 gift: 75, due: 1108.9 };
     }
     var _sdOrderSampleMap = null;
 
@@ -16026,11 +16064,11 @@ const StyleDesigner = (function () {
             __order_subtotal: _sdMoney(m.subtotal), __order_discount: _sdMoney(m.discount), __order_tax: _sdMoney(m.tax),
             __order_shipping: _sdMoney(m.shipping), __order_surcharge: _sdMoney(0), __order_total: _sdMoney(m.total),
             __cart_subtotal: _sdMoney(m.subtotal), __cart_discount: _sdMoney(m.discount), __cart_tax: _sdMoney(m.tax),
-            __cart_shipping: _sdMoney(m.shipping), __cart_gift_card_discount: _sdMoney(0), __cart_surcharge: _sdMoney(0),
-            __cart_total: _sdMoney(m.total), __cart_total_with_surcharge: _sdMoney(m.total), __cart_total_charged: _sdMoney(m.total),
-            __cart_today_total: _sdMoney(m.total), __cart_recurring_total: _sdMoney(0),
-            __cart_subtotal_cents: String(Math.round(m.subtotal * 100)), __cart_total_cents: String(Math.round(m.total * 100)),
-            __cart_total_with_surcharge_cents: String(Math.round(m.total * 100)),
+            __cart_shipping: _sdMoney(m.shipping), __cart_gift_card_discount: _sdMoney(m.gift), __cart_surcharge: _sdMoney(0),
+            __cart_total: _sdMoney(m.due), __cart_total_with_surcharge: _sdMoney(m.due), __cart_total_charged: _sdMoney(m.due),
+            __cart_today_total: _sdMoney(m.due), __cart_recurring_total: _sdMoney(0),
+            __cart_subtotal_cents: String(Math.round(m.subtotal * 100)), __cart_total_cents: String(Math.round(m.due * 100)),
+            __cart_total_with_surcharge_cents: String(Math.round(m.due * 100)),
             __cart_count: '3', __cart_count_label: _sdT('3 items'), __surcharge_percentage: '0%',
             __applied_offers_count: '1', __special_offer_code_message: _sdT('10% off your first order'),
             __empty_message: _sdT('Your cart is empty.'), __has_shippable_item: '1', __has_recurring_items: '',
@@ -16457,6 +16495,11 @@ const StyleDesigner = (function () {
             if (fieldName && _sdIsHtmlPreviewToken(fieldName)) {
                 return _SD_HTML_PREVIEW_TOKENS[fieldName]();
             }
+            // Inside a checkout list's row the row's own sample wins over a
+            // value of the sample order of the same name (a gift card's
+            // amount is the applied card's, not an item's gift card): the
+            // site fills each row from its own data.
+            if (fieldName && _sdCheckoutRowSample(fieldName, node) !== null) return _sdCheckoutRowSample(fieldName, node);
             // A value of the sample order or product, in those families' widgets.
             var _rec = fieldName ? _sdSampleRecord(node) : null;
             if (_rec && Object.prototype.hasOwnProperty.call(_rec, fieldName)) return _rec[fieldName];
@@ -43206,7 +43249,11 @@ const StyleDesigner = (function () {
         var m = _sdOrderAmounts();
         var money = function (n) { return '<span style="white-space: nowrap">' + esc(_sdMoney(n)) + '</span>'; };
         if (section === 'applied_offers') return _sdOpOffersHtml([_sdT('10% off your first order')]);
-        if (section === 'applied_gift_cards') return _sdOpGiftCardsHtml([{ code: '************1234', amount: money(25), balance: money(50), url: '#' }]);
+        if (section === 'applied_gift_cards') {
+            return _sdOpGiftCardsHtml([{ code: '************1234', amount: money(25), balance: money(50), url: '#' },
+                { code: '************5678', amount: money(40), balance: money(0), url: '#' },
+                { code: '************9012', amount: money(10), balance: money(90), url: '#' }]);
+        }
         if (section === 'recurring_payments') {
             return _sdOpPeriodsHtml([{ name: _sdT('Monthly'), subtotal: money(49.9), tax: money(9.98), total: money(59.88) }]);
         }
@@ -43214,14 +43261,14 @@ const StyleDesigner = (function () {
         if (!limit) return '';
         var steps = _sdInstallmentSteps(limit);
         // A plan of n payments costs 2% more per step, as a bank's might.
-        var planTotal = function (i) { return Math.round(m.total * (1 + 0.02 * (i + 1)) * 100) / 100; };
+        var planTotal = function (i) { return Math.round(m.due * (1 + 0.02 * (i + 1)) * 100) / 100; };
         var perMonth = function (total, n) { return Math.round(total / n * 100) / 100; };
         if (section === 'card_installments') {
-            var plans = [{ n: 1, label: esc(_sdT('Single payment')), total: esc(_sdMoney(m.total)), increase: '' }];
+            var plans = [{ n: 1, label: esc(_sdT('Single payment')), total: esc(_sdMoney(m.due)), increase: '' }];
             steps.slice(0, 3).forEach(function (n, i) {
                 var total = planTotal(i);
                 plans.push({ n: n, label: n + 'x ' + esc(_sdMoney(perMonth(total, n))), total: esc(_sdMoney(total)),
-                    increase: esc(_sdMoney(Math.round((total - m.total) * 100) / 100)) });
+                    increase: esc(_sdMoney(Math.round((total - m.due) * 100) / 100)) });
             });
             return _sdInstallmentBoxHtml(limit, 1).replace('<div class="small text-muted pg-eo-installment-status">' + esc(_sdT('Enter your card number to view installment options.')) + '</div>',
                 '<div class="small text-muted pg-eo-installment-status"></div>')
@@ -60389,6 +60436,20 @@ const StyleDesigner = (function () {
             cur = p;
         }
         return out;
+    }
+
+    // The sample of row value `token` when the nearest list giving it is a
+    // checkout list (the order preview's, the express order's); null
+    // otherwise.
+    function _sdCheckoutRowSample(token, node) {
+        if (!Object.prototype.hasOwnProperty.call(_SD_LIST_ROW_PREVIEWS, token)) return null;
+        var lists = _sdListsAbove(node);
+        for (var i = 0; i < lists.length; i++) {
+            var src = SW_LIST_SOURCES[lists[i].props.source];
+            if (!src || !src.rows.some(function (r) { return r[0] === token; })) continue;
+            return String(lists[i].props.source).indexOf('checkout.') === 0 ? _SD_LIST_ROW_PREVIEWS[token] : null;
+        }
+        return null;
     }
 
     // The row tokens of the lists `node` is drawn in, as { token, label },

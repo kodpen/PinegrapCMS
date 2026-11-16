@@ -23,6 +23,11 @@ module: widgets_order_preview
 - An unopened section draws the twin of its builder (`_sdOrderPreviewSectionSample()`): `_sdOpOffersHtml()`, `_sdOpGiftCardsHtml()`, `_sdOpPeriodsHtml()` with a sample offer, gift card and monthly period.
 - Installments follow `sdDesign.siteFlags.installments` (the iyzico limit, 0 when off): the box (`_sdInstallmentBoxHtml()`, twin of `pg_eo_installment_box_html()`) as it reads after a card is typed (`_sdInstallmentPlansHtml()`, the script's markup) and the table (`_sdInstallmentTableHtml()`, twin of `pg_payment_iyzico_installment_table_html()`), plans from the sample total; off: a line saying the site prints nothing.
 
+## Which canvas rules did the look add? (architect 2026-11-16, channel 6290)
+- Inside a `checkout.*` list row the row's own sample wins over the sample order's value of the same name (`_sdCheckoutRowSample()`); an order view item's gift card keeps the order's.
+- The checkout gift card list draws three cards (25 + 40 + 10, `SD_LIST_SAMPLE_ROWS`) that make the sample order's checkout gift card discount (`_sdOrderAmounts()` `gift`, amount due `due`).
+- A table cell draws its own words and bound value (`_sdTableCellText()` in `buildTableNodeEl()`); a list band in a table adds no width; a list's rows in a `<ul>`/`<ol>` draw their bullets inside its frame.
+
 ## Does the site change?
 - No: sections unchanged, the checkout posts, applies a gift card, chooses installments and charges as before.
 

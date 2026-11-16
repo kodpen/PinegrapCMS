@@ -258,9 +258,71 @@ function test_checkout_blocks_wiring()
 		"opSection(_sdT('Installments'), 'card_installments', '', '')") as $line) {
 		pg_assert_contains($line, $js, 'the starter: ' . $line);
 	}
+	// A list inside a table or a <ul> draws as the site does: a cell's own
+	// words, a band that does not widen the table, bullets inside the frame.
+	pg_assert_contains("if (tag === 'td' || tag === 'th') _sdTableCellText(doc, node, el);", $js);
+	pg_assert_contains('white-space:nowrap; overflow:hidden; width:0; min-width:100%; }', $js);
+	pg_assert_contains("ol > .sd-wrap > .sd-loop-area > .sd-wrap > li, ol > .sd-wrap > .sd-loop-area > .sd-ghost > li { list-style-position:inside; }", $js);
 	$starters = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/widgets_starters.php');
 	pg_assert_contains("pg_op_part('applied_gift_cards')", $starters, 'the server\'s layouts open the gift cards too');
 	pg_assert_same(false, strpos($starters, "_pg_st_keep('section:applied_gift_cards')"), 'no layout looks for the old section');
 	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/designer_screen.php');
 	pg_assert_contains("'installments'         => (defined('ECOMMERCE_PAYMENT_GATEWAY') && ECOMMERCE_PAYMENT_GATEWAY === 'Iyzipay'", $screen);
 }
+
+// The value of `var NAME = {…};` in the designer's source, as JavaScript.
+function checkout_blocks_test_var($source, $name)
+{
+	$from = strpos($source, '    var ' . $name . ' = {');
+	pg_assert_true($from !== false, 'the designer has ' . $name);
+	$to = strpos($source, "\n    };", $from);
+
+	return substr($source, $from, $to + 7 - $from) . "\n";
+}
+
+// Inside a checkout list's row the row's own sample wins over the sample
+// order's value of the same name; in an order view list the sample order's
+// stays. The gift card rows add up to the sample order's gift card discount.
+function test_checkout_blocks_row_sample_wins_in_checkout_lists()
+{
+	$out = array();
+	$code = 1;
+	@exec('node --version 2>&1', $out, $code);
+	if ($code !== 0) {
+		return;
+	}
+	$source = checkout_blocks_test_source();
+	// SW_LIST_SOURCES reads a few token lists of other widgets: empty here.
+	$script = "function _sdT(s) { return s; }\nvar SW_SHIP_TO_ENTITY_TOKENS = [], SW_ORDER_LINE_ENTITY_TOKENS = [], SW_PRODUCT_ENTITY_TOKENS = [];\n"
+		. "function _sdListsAbove(n) { return n.lists.map(function (s) { return { props: { source: s } }; }); }\n"
+		. checkout_blocks_test_var($source, 'SW_LIST_SOURCES') . checkout_blocks_test_var($source, '_SD_LIST_ROW_PREVIEWS')
+		. checkout_blocks_test_var($source, 'SD_LIST_SAMPLE_ROWS')
+		. checkout_blocks_test_function($source, '_sdCheckoutRowSample') . "\n"
+		. checkout_blocks_test_function($source, '_sdOrderAmounts') . "\n"
+		. "var num = function (t) { return parseFloat(String(t).replace(/[^0-9,]/g, '').replace(',', '.')); };\n"
+		. "var rows = [_SD_LIST_ROW_PREVIEWS].concat(SD_LIST_SAMPLE_ROWS['checkout.gift_cards']);\n"
+		. "console.log(JSON.stringify({\n"
+		. "  op: _sdCheckoutRowSample('__gift_card_amount', { lists: ['checkout.gift_cards'] }),\n"
+		. "  nested: _sdCheckoutRowSample('__gift_card_amount', { lists: ['checkout.gift_cards', 'checkout.recipients'] }),\n"
+		. "  item: _sdCheckoutRowSample('__gift_card_amount', { lists: ['order.item_gift_cards'] }),\n"
+		. "  none: _sdCheckoutRowSample('__gift_card_amount', { lists: [] }),\n"
+		. "  period: _sdCheckoutRowSample('__period_total', { lists: ['checkout.periods'] }),\n"
+		. "  codes: rows.map(function (r) { return r.__gift_card_code; }),\n"
+		. "  sum: Math.round(rows.reduce(function (a, r) { return a + num(r.__gift_card_amount); }, 0) * 100), gift: Math.round(_sdOrderAmounts().gift * 100)\n"
+		. "}));";
+	$file = tempnam(sys_get_temp_dir(), 'pgop');
+	file_put_contents($file, $script);
+	$out = array();
+	exec('node ' . escapeshellarg($file) . ' 2>&1', $out, $code);
+	unlink($file);
+	pg_assert_same(0, $code, implode("\n", $out));
+	$r = json_decode(implode("\n", $out), true);
+	pg_assert_same('₺25,00', $r['op'], 'an order preview gift card row draws its own amount');
+	pg_assert_same('₺25,00', $r['nested'], 'the nearest list giving the value decides');
+	pg_assert_same(null, $r['item'], 'an order view item gift card keeps the sample order\'s amount');
+	pg_assert_same(null, $r['none'], 'outside a list the sample order\'s value stays');
+	pg_assert_same('₺59,88', $r['period'], 'a period row draws its own total');
+	pg_assert_same(3, count(array_unique($r['codes'])), 'the three sample cards are told apart');
+	pg_assert_same($r['gift'], $r['sum'], 'the sample cards add up to the gift card discount of the totals');
+}
+
