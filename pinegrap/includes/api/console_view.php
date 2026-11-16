@@ -55,6 +55,7 @@ function api_console_group_labels() {
 		'files'          => lang('Files'),
 		'forms'          => lang('Forms'),
 		'seo'            => lang('SEO'),
+		'content_review' => lang('Content review'),
 		'system'         => lang('System'),
 		'reports'        => lang('Reports'),
 		'offers'         => lang('Offers'),

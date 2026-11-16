@@ -3513,6 +3513,8 @@
     "Content for item {var:1}.": "Öğe {var:1} içeriği.",
     "Content mode — text, and the areas marked for you.": "İçerik modu — metinler ve size işaretlenmiş alanlar.",
     "Content review": "İçerik gözden geçirme",
+    "Content review item": "İçerik incelemesi öğesi",
+    "Content review waits for a database update. Run the update, then try again.": "İçerik incelemesi bir veritabanı güncellemesini bekliyor. Güncellemeyi çalıştırıp yeniden deneyin.",
     "Content that appears on more than one page.": "Birden çok sayfada görünen içerik.",
     "Content that stands on its own: a blog post, a news item, a comment.": "Tek başına anlamlı içerik: blog yazısı, haber, yorum.",
     "Content that viewed": "Görüntülenen içerik",
