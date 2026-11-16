@@ -757,6 +757,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - platform/proxy-https-trust.md: HTTPS behind a proxy: pg_forwarded_https() parses the headers, pg_https_peer_trusted() says whose word counts (Trusted Proxies, Cloudflare, the constant); who asks which.
 - platform/search-and-audits-screen.md: Search and audits screen (search_audits.php): engine cards, state, progress and failure sources, the job switch, Run now, where it is linked
 - platform/secure-mode-proxy-offer.md: Turning Secure Mode on through a proxy not yet trusted: the Add this proxy to Trusted Proxies box, what the save lists and checks, the log line, what test_secure_mode.php reports.
+- platform/share-card.md: The share card (og:image drawn from the title, logo and site name for a page with no share picture): what it is, each feature with the PR that built it, the decisions, what was left out
 - platform/short-link-redirects.md: Redirects are short link options (2026.11.0, 11.0.12): answer 0/301/302, * patterns tried only at 404, loop checks on every entry point; names in short-link-names.md.
 - platform/sms-and-iys-rules.md: The lasting rules of SMS and İYS (approved 2026-10-19, built PR #600 to #3846): why İYS, providers, message kinds, consent and İYS rules, marketing SMS, where each part is described, what is left
 - platform/whatsapp-template-designer.md: WhatsApp template designer, first half (WA8, #9350): whatsapp_template.php, drafts in whatsapp_templates, the draft check, samples column, phone preview and its JS twin, Send myself a test

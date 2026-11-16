@@ -105,9 +105,6 @@
 - release-bundle-steps.md: Plan release-bundle, steps RB1 to RB8 (RB0, the owner's answer, is done): the tables and rules, the Bundles screen, publish and take back, the time, the preview, its share link, the API, close-out
 - release-bundle.md: Plan (owner 2026-11-16, agent channel message 5667 and poll 63): several pages prepared as drafts, previewed, published and taken back together; steps RB1 to RB8
 - reverse-oauth-leftovers.md: Remaining outside-account connections (Meta, Business Profile, social posting, AI accounts), the connect.pinegrap.com broker and open decisions
-- share-card-features.md: Plan share-card, features S1 to S14: the switch, where a card applies, what it shows, its address and signature, how it is drawn and kept, when the default picture stays, the SEO checks
-- share-card-steps.md: Plan share-card, steps OG1 to OG3: the card and its address, the switch and the page, close-out
-- share-card.md: Plan (owner 2026-11-16, agent channel message 5667): a share image (og:image) drawn from the title, logo and site name for a page or record with none of its own; steps OG1 to OG3
 - storefront-api-acp-ucp.md: Storefront API design note: OpenAI ACP checkout_sessions mapped onto the storefront routes, the UCP manifest after checkout exists, MCP tools under the customer's consent, WAF agent verification
 - storefront-api-agentic-commerce.md: Plan (approved 2026-10-19; design note first, code after 2026.11.0 ships, #3798): public storefront API (cart, checkout, customer auth), base for OpenAI ACP and Google UCP bindings
 - storefront-api-callers.md: Storefront API design note: who calls it (application key + optional cart or customer token), the storefront:* scopes, rate buckets, Idempotency-Key and dry-run rules shared by every route
