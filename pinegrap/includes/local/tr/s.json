@@ -2991,6 +2991,7 @@
     "Showing {var:1} to {var:2} of {var:3} visitor{suffix:3}": "{var:3} ziyaretçiden {var:1} - {var:2} arası gösteriliyor",
     "Showing: {var:1}": "Gösterilen: {var:1}",
     "Shown": "Görünür",
+    "Shown (30 days)": "Gösterilen (30 gün)",
     "Shown To": "Gösterilen",
     "Shown as a Bootstrap 5 Toast in the top right corner for 4.5 seconds.": "Bootstrap 5 Toast olarak sağ üst köşede 4.5 saniye görünür.",
     "Shown as a badge on the work's card and page.": "Eserin kartında ve sayfasında bir etiket olarak gösterilir.",

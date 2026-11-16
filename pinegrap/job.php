@@ -754,6 +754,20 @@ if (function_exists('pg_not_found_log_sweep_due') && pg_not_found_log_sweep_due(
     }
 }
 
+// The pop-up counts (includes/fn/auto_dialog_counts.php): once a day the
+// days older than the retention period go.
+if (function_exists('pg_auto_dialog_count_sweep_due') && pg_auto_dialog_count_sweep_due()) {
+
+    $auto_dialog_count_removed = pg_auto_dialog_count_sweep();
+
+    if ($auto_dialog_count_removed > 0) {
+        log_activity(lang(array(
+            'string' => 'general job removed {var:1} row(s) from the pop-up counts',
+            'vars'   => array(pg_format_number($auto_dialog_count_removed, 0)),
+        )), 'UNKNOWN');
+    }
+}
+
 // The site search rollup (includes/fn/site_search_stats.php): once a day the
 // days older than the retention period go.
 if (function_exists('pg_site_search_sweep_due') && pg_site_search_sweep_due()) {

@@ -6517,8 +6517,13 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                         pg_page_cache_personal('popup_cart');
                     }
 
+                    // Each row carries today's signature for its counts
+                    // beacon (page_view.php); none without the table or a key.
+                    $auto_dialogs_page = pg_auto_dialog_count_signed($auto_dialogs_page, pg_auto_dialog_counts_ready() && defined('ENCRYPTION_KEY') ? (string) ENCRYPTION_KEY : '', date('Y-m-d'));
+
                     $output_js .= 'software.init_auto_dialogs({
-                        auto_dialogs: ' . encode_json($auto_dialogs_page) . '});';
+                        auto_dialogs: ' . encode_json($auto_dialogs_page) . ',
+                        count_url: ' . encode_json(PATH . SOFTWARE_DIRECTORY . '/page_view.php') . '});';
                 }
             }
         }

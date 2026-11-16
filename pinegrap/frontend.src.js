@@ -1936,6 +1936,10 @@ var software = {
         var auto_dialogs = properties.auto_dialogs;
         var preview = properties.preview;
 
+        // Where a pop-up's events are counted (page_view.php); a preview
+        // prints none.
+        software.auto_dialog_count_url = properties.count_url || '';
+
         // If this page is in an iframe, then it is likely that we don't
         // want to open auto dialogs for it, so return false.
         // For example, we don't want auto dialogs to appear in other auto dialogs.
@@ -2128,10 +2132,64 @@ var software = {
         }
 
         memory.mark(auto_dialog.id, 's');
+        software.count_auto_dialog(auto_dialog, 'shown');
 
         opened.addEventListener('close', function() {
             memory.mark(auto_dialog.id, 'c');
+            software.count_auto_dialog(auto_dialog, 'closed');
         });
+    },
+
+    // Whether this visitor allows statistics: always with the cookie notice
+    // off; with it on, only once statistics were allowed in its answer (the
+    // pg_consent cookie, "1.a1.m0"). Counts and measurements a page sends
+    // about its visitor ask this first.
+    statistics_allowed: function() {
+        if (!document.getElementById('pg-cc')) {
+            return true;
+        }
+
+        return /(^|\.)a1(\.|$)/.test(software.read_cookie('pg_consent'));
+    },
+
+    // Counts one event of a pop-up (shown, closed, taken) with the day
+    // signature its page printed: once per pop-up, event and page load, only
+    // for a visitor who allows statistics; none for a preview, which carries
+    // no signature. A press on a pop-up's marked action or a form sent inside
+    // it counts taken; an address pop-up knows shown and closed only.
+    count_auto_dialog: function(auto_dialog, event) {
+        var url = software.auto_dialog_count_url;
+
+        if (!url || !auto_dialog || !auto_dialog.sign || !software.statistics_allowed()) {
+            return false;
+        }
+
+        var counted = software.auto_dialog_counted || (software.auto_dialog_counted = {});
+        var key = auto_dialog.id + ':' + event;
+
+        if (counted[key]) {
+            return false;
+        }
+
+        counted[key] = true;
+
+        var data = new FormData();
+
+        data.append('ad', String(auto_dialog.id));
+        data.append('ae', event);
+        data.append('as', auto_dialog.sign);
+
+        try {
+            if (navigator.sendBeacon && navigator.sendBeacon(url, data)) {
+                return true;
+            }
+        } catch (e) {}
+
+        try {
+            fetch(url, {method: 'POST', body: data, keepalive: true, credentials: 'same-origin'}).catch(function() {});
+        } catch (e) {}
+
+        return true;
     },
 
     // Whether the screen is touched rather than pointed at: no pointer
