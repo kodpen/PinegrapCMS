@@ -514,6 +514,7 @@
 - workspace-personal-plans.md: A person's private plans on My calendar (PC3): step 11.0.201, the gate ws_personal_plan_can_see() and its guard test, the drawer, Today, the plan_reminder line
 - workspace-picker-press-open.md: Why a press inside the @ and # list of a Workspace writing box (scrollbar, gap, padding) keeps it open: the root mousedown guard, blurPicker() and pickerStaysOpen() (#9580)
 - workspace-plan-day-state.md: How a plan grid day reads (ws_plan_day_state(): away, holiday, off, over, full, ok), why load 999 is an internal marker, and where a day off with work is named instead of "%999" (PR #4326, #4233)
+- workspace-plan-drawer-phone.md: My calendar's plan drawer on a phone (#9858): why it scrolled sideways (hidden date inputs at full width), the step's calendar in a row of its own, "Day of the step", Who can see wrapping
 - workspace-polls-api.md: A poll over the Workspace API: closed_at, can_vote false past closes_at and in an earlier version (ws_poll_vote_state()), and the field a vote, change or close refusal names
 - workspace-push-delay.md: When a Workspace push wakes a person's devices: at once, a minute later while they look at the screen, or at the end of their quiet hours (QH1, #9844); ws_profiles.quiet_hours, pg_quiet_hours_left() [decision: here]
 - workspace-quick-create.md: A product or group made by a person in the Workspace (ws_quick_create_*): drawer new mode, palette line, /create, off sale unless ticked, applied ws_ai_changes row, decision
