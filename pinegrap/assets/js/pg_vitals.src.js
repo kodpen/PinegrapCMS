@@ -20,6 +20,9 @@
  *   • CLS: the largest session window of layout shifts without recent
  *     input (shifts at most 1 s apart, a window at most 5 s), × 1000.
  *
+ * With the clicks script on the page (pg_clicks.src.js) the same request
+ * carries its fields (cp, cs, c), taken from window.pgClicks.take().
+ *
  * A page restored from the back-forward cache sends nothing more: the
  * figures of its first showing are the ones that were sent.
  *
@@ -44,6 +47,10 @@
     if (!endpoint || !page || !signature) {
         return;
     }
+
+    // This request also carries the clicks script's figures when that is on
+    // the page (pg_clicks.src.js): one beacon a page view for both.
+    window.pgVitalsSends = true;
 
     var supported = PerformanceObserver.supportedEntryTypes || [];
     var lcp = -1;
@@ -160,8 +167,10 @@
         }
 
         var values = [figure(lcp), figure(inp), clsSeen ? figure(cls * 1000) : ''];
+        var measured = (values[0] !== '') || (values[1] !== '') || (values[2] !== '');
+        var clicks = (window.pgClicks && (typeof window.pgClicks.take === 'function')) ? window.pgClicks.take() : null;
 
-        if ((values[0] === '') && (values[1] === '') && (values[2] === '')) {
+        if (!measured && !clicks) {
             return;
         }
 
@@ -169,9 +178,19 @@
 
         try {
             var data = new FormData();
-            data.append('vp', page);
-            data.append('vs', signature);
-            data.append('v', values.join(',') + ',' + device());
+
+            if (measured) {
+                data.append('vp', page);
+                data.append('vs', signature);
+                data.append('v', values.join(',') + ',' + device());
+            }
+
+            for (var key in clicks) {
+                if (Object.prototype.hasOwnProperty.call(clicks, key)) {
+                    data.append(key, clicks[key]);
+                }
+            }
+
             navigator.sendBeacon(endpoint, data);
         } catch (e) {
             // A lost figure is no error for the visitor.

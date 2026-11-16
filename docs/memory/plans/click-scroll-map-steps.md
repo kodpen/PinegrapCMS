@@ -11,7 +11,7 @@ description: Plan click-scroll-map, steps CM1 to CM5: the table and counter, the
   - Tests, red first: a beacon's refusals, the fold, a code-like path part and a `tel:` address, a label with an e-mail address or a long number kept empty, an element counted once, the bound's "other" row, the tenth's row, yesterday's signature taken and an older one refused.
   - Features: C12 to C15, the server's side of C1 to C3, C5 and C6.
 
-- CM2 (M) after CM1: the script and the switch.
+- CM2 (M) after CM1: the script and the switch. Done in #9946.
   - Existing files: `get_page.php` (`pg_clicks_beacon_inject()` beside `pg_vitals_beacon_inject()`, before the page cache), `assets/js/pg_vitals.src.js` (the one beacon both share), `includes/fn/output.php` (the entry in `pg_js_bundles()`), `includes/settings/features.php` and `features.save.php` (the card with its privacy sentence).
   - New: `assets/js/pg_clicks.src.js`; the landing builds its bundle.
   - Tests: the script's naming of an element and its fold under Node on the fixtures the server test uses; who gets the script (the switch, a private folder, staff, a signed-in member); nothing sent after a refusal of statistics, a beacon from a visitor who has not answered.

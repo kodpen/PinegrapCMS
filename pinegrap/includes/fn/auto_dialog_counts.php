@@ -161,7 +161,7 @@ function pg_auto_dialog_count_rate_exceeded()
  * not staff (the site search rule, pg_site_search_user_countable()), and
  * not a visitor who refused statistics in the cookie notice (the one check
  * of the anonymous counts, pg_consent_statistics_not_refused()). The dialog
- * script asks the browser (software.statistics_allowed()) before it sends;
+ * script asks the browser's twin (software.statistics_not_refused()) first;
  * this is the server's own check of the same answer.
  *
  * @return bool
