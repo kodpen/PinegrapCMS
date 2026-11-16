@@ -355,6 +355,7 @@ function ws_js_strings()
         'poll_other_label'       => lang('Add an "Other" option'),
         'poll_other_placeholder' => lang('Write your own answer'),
         'poll_picture_open'      => ws_js_template('Open the picture of {var:1}', 1),
+        'poll_question_picture_open' => lang('Open the question\'s picture'),
         'poll_recommended'       => lang('Recommended'),
         'poll_take_back'         => lang('Take back the poll'),
         'poll_take_back_confirm' => lang('Take this poll back? It stays in the channel greyed out, takes no more votes and writes no result.'),

@@ -4,7 +4,7 @@ description: Plan wholesale, steps WS1 to WS7: the offers' group condition, an a
 ---
 
 ## Which steps are there?
-- WS1 (M) The offers' group condition, server only. No schema.
+- WS1 (M) The offers' group condition, server only. No schema. Done: #9986.
   - Existing files: `edit_offer_f.php` (the condition in `_pg_offer_condition_types()` and its form row), `includes/fn/ecommerce.php` (its test where offers are judged: `apply_offers_to_cart()`, `get_best_offer_id()`). The cart module is held by other open PRs: the step names the clash.
   - Tests, red first: a member, a non-member and a guest; a break for a group; an offer without the condition judged as before.
   - Features: J1, J2, J10.

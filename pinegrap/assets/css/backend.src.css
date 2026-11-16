@@ -15384,8 +15384,14 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
   gap: .4rem;
   padding-left: 1.6rem;
 }
-.ws-poll.ws-poll-shape-split {
+.ws-poll:is(.ws-poll-shape-split, .ws-poll-shape-question) {
   max-width: 46rem;
+}
+/* A question's own picture: it stays at the left whatever the rows do;
+   Send and its error stand under the options beside it. */
+.ws-poll-column {
+  display: grid;
+  min-width: 0;
 }
 .ws-poll-split {
   display: grid;

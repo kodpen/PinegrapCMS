@@ -1,13 +1,13 @@
 ---
 name: account-order-open-blocks
-description: My Account blocks opened (CB6e1): order history on account.orders, bookings on two booking lists and their flags, the sections built from the same rows; subscriptions and store credit left to CB6e2
+description: My Account blocks opened (CB6e1): order history on account.orders, bookings on two booking lists and their flags, the sections built from the same rows; subscriptions, store credit in CB6e2
 module: widgets_account
 ---
 
 ## What did CB6e1 open?
-- Step CB6e of `plans/designer-closed-blocks-steps.md`, cut by size. The census: [[canvas-closed-blocks-widgets]]; the shop steps before it: [[checkout-open-blocks]] and CB6d2.
+- Step CB6e of `plans/designer-closed-blocks-steps.md`, cut by size. The census: [[canvas-closed-blocks-widgets]]; the shop steps before it: [[checkout-open-blocks]], [[checkout-open-recipients]].
 - Tree: My Account's `order_history` on the existing `account.orders` list ([[widget-lists-order]]) and `bookings` on `account.upcoming_bookings` and `account.past_bookings` (new, key `account_id`).
-- CB6e2: `subscriptions` and `store_credit` (action forms with the form token): to be drawn true, settings only.
+- CB6e2: `subscriptions` and `store_credit` (both carry action forms with the form token).
 - Order view: the return actions already open as the return moves part (W16, [[widget-default-parts-order-forms]]); `__return_reason_options_html` is a select's option list, kept by the census rule.
 
 ## Where do the rows come from?

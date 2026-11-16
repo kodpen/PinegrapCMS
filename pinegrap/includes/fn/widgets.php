@@ -939,6 +939,16 @@ function pg_sw_raw_token_keys()
         '__field_options_html',
         // Order view: a return request's reasons (the return form part).
         '__return_reason_options_html',
+        // Order preview: a recipient's shipping cost and custom form
+        // answers, an item's description, prices, stock note and product
+        // form answers, as the classic page prints them.
+        '__ship_to_cost_html',
+        '__ship_to_form_html',
+        '__line_title_html',
+        '__line_price_html',
+        '__line_amount_html',
+        '__line_stock_html',
+        '__line_forms_html',
         // Ad Region widget: the ad's own markup.
         '__ad_content_html',
         '__ad_caption_html',

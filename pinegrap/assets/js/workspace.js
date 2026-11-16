@@ -5205,6 +5205,14 @@
         return bar;
     }
 
+    // Whether / commands are off in a writing box: a box that never reads
+    // them (noCommands), and the channel's composer while it changes a
+    // sent or a scheduled message, whose text is saved as typed and never
+    // run. No command list, no argument strip there.
+    function commandsOff(box) {
+        return !!(box.noCommands || box.editing || box.editingScheduled);
+    }
+
     // Where a list of people or records opens at the caret (placePicker()):
     // under the caret's line, or over it when only that side has room or
     // that side has more, its height cut to the room there (6rem at least,
@@ -12691,7 +12699,8 @@
                 main.appendChild(self.listTasksNode(message));
             }
 
-            if (message.file) {
+            // A poll question's own picture is drawn in its box, not here.
+            if (message.file && !self.pollQuestionPicture(message)) {
                 var fileBox = el('div', 'ws-msg-file');
                 fileBox.appendChild(self.filePreview(message));
 
@@ -15561,14 +15570,21 @@
             return box;
         },
 
-        // The box's shape, by what the options carry: one large picture
-        // beside the options, following the option pointed at, when every
-        // option of a single-choice poll has a picture and none is "Other";
-        // a picture on the rows that have one; text alone when none has.
-        pollShape: function (poll) {
+        // The box's shape. A question with a picture of its own (the
+        // question message's image) draws it large beside the options, the
+        // options keeping theirs as thumbnails. Otherwise by what the
+        // options carry: one large picture beside the options, following the
+        // option pointed at, when every option of a single-choice poll has a
+        // picture and none is "Other"; a picture on the rows that have one;
+        // text alone when none has.
+        pollShape: function (poll, picture) {
             var options = poll.options || [];
             var pictured = options.filter(function (option) { return !!(option.picture && option.picture.image); });
             var others = options.filter(function (option) { return !!option.other; });
+
+            if (picture) {
+                return 'question';
+            }
 
             if (!pictured.length) {
                 return 'text';
@@ -15578,10 +15594,15 @@
         },
 
         // The pictures of a poll's options, opened in the image viewer at
-        // the one asked for.
-        pollPictures: function (poll, optionId) {
+        // the one asked for; the question's own picture ({ src, alt }), when
+        // it has one, comes first and is opened when no option is asked for.
+        pollPictures: function (poll, optionId, question) {
             var images = [];
             var start = 0;
+
+            if (question) {
+                images.push({ src: question.src, alt: question.alt, caption: question.alt });
+            }
 
             poll.options.forEach(function (option) {
                 if (option.picture && option.picture.image) {
@@ -15596,6 +15617,72 @@
             if (images.length) {
                 viewImages(images, start);
             }
+        },
+
+        // The question's own picture: the poll message's image file, or null
+        // (a deleted message's, or a file of another kind, is not one).
+        pollQuestionPicture: function (message) {
+            var file = message.file;
+
+            return (message.poll && !message.deleted && file && file.image) ? file : null;
+        },
+
+        // How a poll's box is laid out: its shape; which picture stands large
+        // ('question', 'option' or none); whether rows show their own
+        // thumbnails; for an agent question whether it is answered, whether a
+        // click is the answer, whether "Other" is the words field and whether
+        // one Send goes under the options.
+        pollLayout: function (poll, picture) {
+            var shape = this.pollShape(poll, picture);
+            var agent = !!poll.agent_question;
+            var withdrawn = !!poll.withdrawn;
+            var answered = agent && !withdrawn && (!!poll.closed || !!poll.answered_by);
+            var canAnswer = agent && !!poll.can_answer && !answered && !withdrawn;
+            var hasOther = (poll.options || []).some(function (option) { return !!option.other; });
+            var direct = canAnswer && !poll.multiple && !hasOther;
+            var otherField = canAnswer && hasOther;
+
+            return {
+                shape: shape,
+                figure: (shape === 'question') ? 'question' : ((shape === 'split') ? 'option' : ''),
+                thumbs: (shape === 'question') || (shape === 'rows'),
+                answered: answered,
+                withdrawn: withdrawn,
+                can_answer: canAnswer,
+                direct: direct,
+                other_field: otherField,
+                other_row: hasOther && !otherField,
+                send: canAnswer && !direct
+            };
+        },
+
+        // The question's picture for the viewer: its address, and its alt
+        // from the question's words.
+        pollQuestionView: function (message, picture) {
+            var words = el('div');
+
+            setHtml(words, message.body || '');
+
+            return { src: picture.url, alt: (words.textContent || '').replace(/\s+/g, ' ').trim() || t('poll_question') };
+        },
+
+        // The question's large picture: a button that opens the viewer on it,
+        // the options' pictures following.
+        pollQuestionFigure: function (poll, question) {
+            var self = this;
+            var figure = button('ws-poll-figure ws-poll-figure-question');
+            var image = el('img');
+
+            image.src = question.src;
+            image.alt = question.alt;
+            figure.appendChild(image);
+            figure.title = t('poll_question_picture_open');
+            figure.setAttribute('aria-label', figure.title);
+            figure.addEventListener('click', function () {
+                self.pollPictures(poll, 0, question);
+            });
+
+            return figure;
         },
 
         // An option's description, links and, on the "Other" row, the words
@@ -15711,7 +15798,10 @@
                 return self.agentQuestionNode(message);
             }
 
-            var shape = self.pollShape(poll);
+            var picture = self.pollQuestionPicture(message);
+            var question = picture ? self.pollQuestionView(message, picture) : null;
+            var layout = self.pollLayout(poll, picture);
+            var shape = layout.shape;
             var card = el('div', 'ws-poll ws-poll-shape-' + shape + (poll.closed ? ' ws-poll-closed' : '') + (poll.withdrawn ? ' ws-poll-withdrawn' : ''));
             var head = el('div', 'ws-poll-head');
             // Shares are of the people who voted, so a multiple-choice poll
@@ -15756,7 +15846,14 @@
                 figure.setAttribute('aria-label', figure.title);
             }
 
-            if (shape === 'split') {
+            if (layout.figure === 'question') {
+                var questionSplit = el('div', 'ws-poll-split');
+
+                // The question's picture stays put; it does not follow the rows.
+                questionSplit.appendChild(self.pollQuestionFigure(poll, question));
+                questionSplit.appendChild(list);
+                card.appendChild(questionSplit);
+            } else if (shape === 'split') {
                 var split = el('div', 'ws-poll-split');
 
                 figure = button('ws-poll-figure');
@@ -15818,7 +15915,7 @@
                 input.addEventListener('change', send);
                 row.appendChild(input);
 
-                if ((shape === 'rows') && option.picture && option.picture.image) {
+                if (layout.thumbs && option.picture && option.picture.image) {
                     var thumb = el('span', 'ws-poll-thumb');
                     var image = el('img');
 
@@ -15830,7 +15927,7 @@
                     // The picture opens; it does not tick the row.
                     thumb.addEventListener('click', function (event) {
                         event.preventDefault();
-                        self.pollPictures(poll, option.id);
+                        self.pollPictures(poll, option.id, question);
                     });
                     row.appendChild(thumb);
                 }
@@ -15965,8 +16062,11 @@
         agentQuestionNode: function (message) {
             var self = this;
             var poll = message.poll;
-            var shape = self.pollShape(poll);
-            var answered = !poll.withdrawn && (poll.closed || !!poll.answered_by);
+            var picture = self.pollQuestionPicture(message);
+            var question = picture ? self.pollQuestionView(message, picture) : null;
+            var layout = self.pollLayout(poll, picture);
+            var shape = layout.shape;
+            var answered = layout.answered;
             var card = el('div', 'ws-poll ws-poll-agent ws-poll-shape-' + shape + (answered ? ' ws-poll-answered' : '') + (poll.withdrawn ? ' ws-poll-withdrawn' : ''));
             var head = el('div', 'ws-poll-head');
             var names = (poll.asked || []).map(function (person) { return person.name; }).join(', ');
@@ -16030,7 +16130,7 @@
                         image.src = option.picture.url;
                         image.alt = '';
                         thumb.appendChild(image);
-                        thumb.addEventListener('click', function () { self.pollPictures(poll, option.id); });
+                        thumb.addEventListener('click', function () { self.pollPictures(poll, option.id, question); });
                         row.appendChild(thumb);
                     }
 
@@ -16047,17 +16147,29 @@
                     chosen.appendChild(row);
                 });
 
-                card.appendChild(chosen);
+                // The question's picture stays at the left of the answer.
+                if (question) {
+                    var answeredSplit = el('div', 'ws-poll-split');
+
+                    answeredSplit.appendChild(self.pollQuestionFigure(poll, question));
+                    answeredSplit.appendChild(chosen);
+                    card.appendChild(answeredSplit);
+                } else {
+                    card.appendChild(chosen);
+                }
+
                 foot.appendChild(el('span', 'ws-grow', t('aq_answered_by', poll.answered_by ? poll.answered_by.name : '', poll.closed_on || '')));
 
                 return finish();
             }
 
-            var canAnswer = !!poll.can_answer;
-            var otherOption = poll.options.filter(function (option) { return option.other; })[0] || null;
+            var canAnswer = layout.can_answer;
+            var otherOption = layout.other_field ? (poll.options.filter(function (option) { return option.other; })[0] || null) : null;
             // With one answer and no "Other", the click is the answer.
-            var direct = canAnswer && !poll.multiple && !otherOption;
+            var direct = layout.direct;
             var list = el('div', 'ws-poll-options');
+            // Where Send goes: under the options, beside the question's picture.
+            var column = card;
             var group = nextId('ws-poll-' + poll.id + '-');
             var figure = null;
             var otherInput = null;
@@ -16077,7 +16189,15 @@
                 figure.setAttribute('aria-label', figure.title);
             }
 
-            if (shape === 'split') {
+            if (layout.figure === 'question') {
+                var questionSplit = el('div', 'ws-poll-split');
+
+                column = el('div', 'ws-poll-column');
+                column.appendChild(list);
+                questionSplit.appendChild(self.pollQuestionFigure(poll, question));
+                questionSplit.appendChild(column);
+                card.appendChild(questionSplit);
+            } else if (shape === 'split') {
                 var split = el('div', 'ws-poll-split');
 
                 figure = button('ws-poll-figure');
@@ -16113,7 +16233,7 @@
 
             poll.options.forEach(function (option) {
                 // "Other" is the words field under the options, for whoever answers.
-                if (option.other && canAnswer) {
+                if (option.other && layout.other_field) {
                     return;
                 }
 
@@ -16135,7 +16255,7 @@
                 });
                 row.appendChild(input);
 
-                if ((shape === 'rows') && option.picture && option.picture.image) {
+                if (layout.thumbs && option.picture && option.picture.image) {
                     var thumb = el('span', 'ws-poll-thumb');
                     var image = el('img');
 
@@ -16146,7 +16266,7 @@
                     thumb.title = t('poll_picture_open', option.label);
                     thumb.addEventListener('click', function (event) {
                         event.preventDefault();
-                        self.pollPictures(poll, option.id);
+                        self.pollPictures(poll, option.id, question);
                     });
                     row.appendChild(thumb);
                 }
@@ -16162,7 +16282,7 @@
             });
 
             // Several answers or "Other": tick, write, and one Send.
-            if (canAnswer && !direct) {
+            if (layout.send) {
                 var sendRow = el('div', 'ws-poll-send');
                 var send = button('btn btn-sm btn-solid theme-primary ws-poll-send-button', t('send'));
 
@@ -16205,8 +16325,8 @@
                     answer(ids, words);
                 });
                 sendRow.appendChild(send);
-                card.appendChild(sendRow);
-                card.appendChild(error);
+                column.appendChild(sendRow);
+                column.appendChild(error);
             }
 
             var note = poll.withdrawn ? t('aq_taken_back_note') : (names ? t('aq_only', names) : '');
@@ -17754,6 +17874,8 @@
             self.editing = null;
             self.reply = null;
             self.editingScheduled = item;
+            self.closePicker();
+            self.drawCommandStrip(null);
 
             if (self.rich) {
                 self.rich.focus();
@@ -18498,6 +18620,11 @@
             self.editing = message;
             self.reply = null;
             self.editHoldStart(message);
+
+            // A command list or argument strip open in the box goes: no
+            // command runs from an edit (commandsOff()).
+            self.closePicker();
+            self.drawCommandStrip(null);
 
             // The rich box reads the stored text itself: tags back into chips,
             // tables and lists back into cards.
@@ -19332,7 +19459,7 @@
             var match;
 
             // A list's first item starting with "/" is words, no command.
-            if (!self.noCommands && !(self.rich && self.rich.inListItem()) && (match = /^\/([^\s]*)$/.exec(before))) {
+            if (!commandsOff(self) && !(self.rich && self.rich.inListItem()) && (match = /^\/([^\s]*)$/.exec(before))) {
                 self.argDismissed = null;
                 self.drawCommandStrip(null);
                 self.openPicker('command', match[1], before.length - match[0].length);
@@ -19451,7 +19578,7 @@
         commandArgument: function (before) {
             var self = this;
 
-            if (self.noCommands || self.editing || self.editingScheduled || !BOOT || !BOOT.commands) {
+            if (commandsOff(self) || !BOOT || !BOOT.commands) {
                 return null;
             }
 
@@ -24658,7 +24785,14 @@
                 share.appendChild(note);
                 var send = button('btn btn-sm btn-outline theme-secondary mt-3', t('share'), 'bi-send');
                 send.addEventListener('click', function () {
-                    api('ws_send', { channel_id: parseInt(target.value, 10), body: (note.value.trim() ? note.value.trim() + ' ' : '') + token }).then(function () {
+                    api('ws_send', { channel_id: parseInt(target.value, 10), body: (note.value.trim() ? note.value.trim() + ' ' : '') + token, as_text: 1 }).then(function (result) {
+                        // The line is a message, never a command: say it was
+                        // shared only when the answer carries the message.
+                        if (!result || !result.message_id) {
+                            fail();
+                            return;
+                        }
+
                         toast(t('shared'), 'success');
                         reopen();
                     }).catch(fail);

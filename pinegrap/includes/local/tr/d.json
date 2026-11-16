@@ -1250,6 +1250,7 @@
     "Dont share API keys with people you dont know, if youre sharing for a short time, delete the application you shared when youre done!": "API anahtarlarını tanımadığınız kişilerle paylaşmayın, kısa süreli paylaşım yapıyorsanız işiniz bittiğinde paylaştığınız uygulamayı silin!",
     "Door": "Kapı",
     "Door and Window Repair": "Kapı ve Pencere Onarımı",
+    "Door code": "Kapı kodu",
     "Door failures in a row: {var:1}": "Art arda kapı hatası: {var:1}",
     "Door onto the garden": "Bahçeye açılan kapı",
     "Doors": "Kapı açılışı",

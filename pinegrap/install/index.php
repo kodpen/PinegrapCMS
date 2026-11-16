@@ -9158,6 +9158,7 @@ function get_tables() {
 		'site_push_message',
 		'site_push_queue',
 		'site_push_subscription',
+		'site_push_watch',
 		'sms_campaigns',
 		'sms_outbox',
 		'states',

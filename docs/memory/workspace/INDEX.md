@@ -181,6 +181,7 @@
 - poll-agent-question.md: The agent question on the server (agent_question.php, step 11.0.214): the flag, who answers, first answer settles, wake and brief, memory index, map and API fields [decision: decisions-made-workspace-34.md]
 - poll-box.md: The poll box (pollNode(), AQ3 #9647): three shapes and their rule, option parts, "Other" words, taken back, asked again, the asker's actions; the New poll form's parts and channel pictures
 - poll-option-parts.md: A poll option's description, picture, links, Recommended mark and the "Other" row with the voter's own words (poll_parts.php, step 11.0.213); create, change and vote rules, API fields, older polls
+- poll-question-picture-box.md: How the poll box draws a question's own picture (QP2): the "question" shape, pollLayout(), large at the left, option thumbnails, "Other" field, answered, taken back, no file card, the viewer
 - poll-question-picture.md: A poll question's own picture (poll_picture.php, #9948): carried by the question's message, the image check, ask again carries it, change while unanswered, the API routes, ws_poll.php --file [decision: here]
 - poll-take-back.md: Take back and Ask again on a poll (poll_again.php): the asker (a person or the asking application), withdrawn_at, again_of, panel actions, API withdraw and again routes
 - quiet-hours.md: A person's quiet hours (plan quiet-hours, #9844 and QH2): set in a channel's Notifications, ws_profiles.quiet_hours, the rule pg_quiet_hours_left() reads, the person's own session only [decision: decisions-made-schema-22.md, decisions-made-workspace-35.md]
@@ -533,6 +534,7 @@
 - workspace-record-commands.md: The /price (/fiyat) and /stock (/stok) channel commands: how the amount and quantity are read, the preview card, the confirmation through ws_quick_edit_save(), who is offered them
 - workspace-record-kind-registry.md: ws_record_kinds() (refs.php): one entry per Workspace record kind (prefixes, right, read scope, change kind, audit table, drawer, customer), the lists it is held to, the drift test
 - workspace-record-kinds.md: Every list a Workspace record kind (order, product, invoice...) must be in, the kinds each leaves out and why, the scope the assistants read a kind with, and the test that guards it
+- workspace-record-share.md: The record drawer's "Share in a channel" posts its line as a message (ws_send as_text), never a / command, and reports a share only on a message id (#9983)
 - workspace-ref-sources.md: Notes and workflow table rows as ws_refs tag sources (#3135, decision #3138, 11.0.116): VARCHAR source_type, probe, writers with channel 0, per-source access in readers, backfill
 - workspace-roadmap-templates.md: Team roadmap templates (PC12, #9562): Save as team template, the two tables, who changes or deletes one, Team templates under New roadmap, Move the following steps too [decision: here]
 - workspace-root-folder.md: The Workspace folder at the top of the file manager (ws_root_folder_id()): when an existing top-level "Workspace" folder is taken over and when a new one is made beside it
