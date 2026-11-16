@@ -818,8 +818,11 @@
 
     // The sizes of what layout() places, in canvas units.
     // `pic`: a page's picture, drawn 1280 wide and cut 1600 high, scaled to
-    // `inner` units inside a box with the thumbnail's padding and border.
-    var FRAME = { w: 248, head: 44, thumb: 84, row: 30, pad: 10, chipW: 200, chipH: 36, chipGap: 12, pic: { page: 1280, cut: 1600, inner: 228, edge: 13 } };
+    // `inner` units inside a box with the thumbnail's padding and border;
+    // the picture starts `x`, `y` into its box, and the foot's middle sits
+    // `foot` above the box's lower edge. `row`: the line a frame with no
+    // picture keeps under its head.
+    var FRAME = { w: 248, head: 44, thumb: 84, row: 30, pad: 10, chipW: 200, chipH: 36, chipGap: 12, pic: { page: 1280, cut: 1600, inner: 228, edge: 13, x: 10, y: 6, foot: 18 } };
 
     // How layout() arranges the frames: eight a row, the gap between frames
     // and between rows, a section heading's height, and the gap between a
@@ -870,8 +873,9 @@
     }
 
     // Where everything of a marked design goes on the canvas and which
-    // arrows join it: frames (id 'p:<tab key>' or 's:<shared id>'), each as
-    // tall as its rows; one chip (id 'c:<n>') per mark and href that ends
+    // arrows join it: frames (id 'p:<tab key>' or 's:<shared id>'), each its
+    // head and its picture (a shared part's as tall as opts.partH gives its
+    // page pixels, picPartBox()), its rows taking no room; one chip (id 'c:<n>') per mark and href that ends
     // outside the design's tabs; an arrow (id '<frame id>|<port>') from
     // each row to the tab frame it opens or to its chip. The places come
     // from the graph canvas core's arrange() (window.PGGraphCanvas, read
@@ -913,12 +917,12 @@
         [['page', marked.pages || []], ['shared', marked.shared || []]].forEach(function (group) {
             group[1].forEach(function (frame) {
                 var rows = rowsOf(frame);
-                var bands = Array.isArray(frame.sketch) ? frame.sketch : [];
-                // A page with a tree is drawn as its picture, the sketch
-                // standing in while it loads; a shared component keeps its
-                // sketch (a column of pictures would outgrow the grid).
-                var pic = (group[0] === 'page') && Array.isArray(frame.sketch);
-                var thumb = pic ? picSize().box : (bands.length ? FRAME.thumb : 0);
+                // A page or a shared part with a tree is drawn as its
+                // picture, the sketch standing in while it loads. A part is
+                // as tall as it is, between the sketch strip and the cut.
+                var pic = Array.isArray(frame.sketch);
+                var partH = isObject(opts.partH) ? opts.partH[frame.id] : null;
+                var thumb = !pic ? 0 : (group[0] === 'page' ? picSize().box : picPartBox(partH));
                 var item = {
                     id: (group[0] === 'page') ? 'p:' + frame.key : 's:' + frame.id,
                     kind: group[0],
@@ -938,7 +942,7 @@
                     x: 0,
                     y: 0,
                     w: FRAME.w,
-                    h: FRAME.head + thumb + Math.max(1, rows.length) * FRAME.row + FRAME.pad
+                    h: FRAME.head + (thumb || FRAME.row) + FRAME.pad
                 };
 
                 frames.push(item);
@@ -1086,13 +1090,6 @@
         return { frames: frames, chips: chips, edges: edges, headings: laid.headings, start: start };
     }
 
-    // The y of a row's port from the top of its frame.
-    function rowY(frame, port) {
-        var index = parseInt(String(port).replace(/^h/, ''), 10) || 0;
-
-        return FRAME.head + ((frame && frame.thumb) || 0) + index * FRAME.row + FRAME.row / 2;
-    }
-
     // ── The page picture ──
 
     // The picture's size in canvas units: w x h inside its box, the scale
@@ -1139,47 +1136,153 @@
         return out;
     }
 
-    // The foot of a frame's picture: of its rows that a picture marks (a
-    // link of the tree, not a menu or region), how many cannot be seen.
-    // `marks` are the picture's marked elements, { pic, top, w, h } in page
-    // pixels; a link is seen when one of its elements has a size and starts
-    // above the cut. A link with no element at all (hidden, not written)
-    // counts too. A page's frame reads no shared component's marker.
-    // Answers { links, below }.
-    function picFoot(rows, marks, sharedId) {
-        var seen = {};
-        var cut = FRAME.pic.cut;
-        var links = 0;
-        var below = 0;
+    // The box of a shared part's picture, in canvas units, from the part's
+    // height in page pixels: as tall as the part, at least the sketch strip
+    // and at most the cut (a page's box). The strip until it is measured.
+    function picPartBox(height) {
+        var size = picSize();
+        var h = Math.round((Number(height) || 0) * size.scale);
+
+        return Math.min(size.h, Math.max(FRAME.thumb - FRAME.pic.edge, h)) + FRAME.pic.edge;
+    }
+
+    function round2(value) {
+        return Math.round(value * 100) / 100;
+    }
+
+    // The marker key a row's element carries, '' for a row a picture does
+    // not mark (a menu or region is drawn without one).
+    function rowPic(row, sharedId) {
+        if (!isObject(row) || ['href', 'attrs', 'btn', 'text'].indexOf(row.source) < 0) {
+            return '';
+        }
+
+        return picMark(row.nodeId, row.source === 'text' ? row.index : null, sharedId);
+    }
+
+    // Where each link sits on a frame's picture: port => { x, y, w, h } in
+    // units of the picture inside its box (page pixels times the scale),
+    // cut at the cut. `marks` are the picture's marked elements, { pic,
+    // left, top, w, h } in page pixels; the first element seen is taken. A
+    // link is not seen when its elements have no size, start at or under
+    // the cut or lie outside the page's width, or when it has none (a menu
+    // or region, a link not written). A page frame reads no shared
+    // component's marker; a shared frame (sharedId) only its own.
+    function picRects(rows, marks, sharedId) {
+        var p = FRAME.pic;
+        var scale = p.inner / p.page;
+        var first = {};
+        var out = {};
 
         (Array.isArray(marks) ? marks : []).forEach(function (m) {
-            if (isObject(m) && Number(m.w) > 0 && Number(m.h) > 0 && Number(m.top) < cut) {
-                seen[str(m.pic)] = true;
+            if (!isObject(m)) {
+                return;
+            }
+
+            var left = Number(m.left) || 0;
+            var top = Number(m.top) || 0;
+            var w = Number(m.w) || 0;
+            var h = Number(m.h) || 0;
+            var key = str(m.pic);
+
+            if (w <= 0 || h <= 0 || top >= p.cut || left + w <= 0 || left >= p.page || has(first, key)) {
+                return;
+            }
+
+            first[key] = { x: round2(left * scale), y: round2(top * scale), w: round2(w * scale), h: round2((Math.min(top + h, p.cut) - top) * scale) };
+        });
+
+        (Array.isArray(rows) ? rows : []).forEach(function (row) {
+            var key = rowPic(row, sharedId);
+
+            if (key !== '' && has(first, key)) {
+                out[row.port] = first[key];
             }
         });
 
+        return out;
+    }
+
+    // The foot of a frame's picture: how many of its links it cannot show
+    // (picRects() finds no place for them: under the cut, hidden, in a
+    // closed menu, in a menu or region, not written). Two rows of one
+    // element count once. Answers { links, below }.
+    function picFoot(rows, marks, sharedId) {
+        var list = (Array.isArray(rows) ? rows : []).filter(isObject).map(function (row, i) {
+            return { port: 'f' + i, nodeId: row.nodeId, source: row.source, index: row.index };
+        });
+        var seen = picRects(list, marks, sharedId);
         var counted = {};
+        var links = 0;
+        var below = 0;
 
-        (Array.isArray(rows) ? rows : []).forEach(function (row) {
-            if (!isObject(row) || ['href', 'attrs', 'btn', 'text'].indexOf(row.source) < 0) {
+        list.forEach(function (row) {
+            var key = rowPic(row, sharedId);
+
+            if (key !== '' && counted[key]) {
                 return;
             }
 
-            var key = picMark(row.nodeId, row.source === 'text' ? row.index : null, sharedId);
-
-            if (key === '' || counted[key]) {
-                return;
+            if (key !== '') {
+                counted[key] = true;
             }
 
-            counted[key] = true;
             links++;
 
-            if (!seen[key]) {
+            if (!has(seen, row.port)) {
                 below++;
             }
         });
 
         return { links: links, below: below };
+    }
+
+    // Where an arrow leaves a frame ({ x, y } from its top left, and the
+    // side): by the side facing its target ({ x, y, w, h }): right or left
+    // when the target lies wholly beside the frame, else bottom or top; to
+    // its own frame or none, right. `rect` is the link's place on the
+    // picture (picRects()): the arrow leaves at the mark's middle, level
+    // with it on a left or right edge, under or over it on the bottom or
+    // top. null: the picture cannot show the link, the arrow leaves from
+    // the foot. undefined: no picture yet, from the middle of the box.
+    function markPort(frame, rect, target) {
+        var w = Number(frame && frame.w) || 0;
+        var h = Number(frame && frame.h) || 0;
+        var fx = Number(frame && frame.x) || 0;
+        var fy = Number(frame && frame.y) || 0;
+        var thumb = Number(frame && frame.thumb) || 0;
+        var side = 'right';
+
+        if (isObject(target)) {
+            var tx = Number(target.x) || 0;
+            var ty = Number(target.y) || 0;
+
+            if (tx >= fx + w) {
+                side = 'right';
+            } else if (tx + (Number(target.w) || 0) <= fx) {
+                side = 'left';
+            } else if (ty >= fy + h) {
+                side = 'bottom';
+            } else if (ty + (Number(target.h) || 0) <= fy) {
+                side = 'top';
+            }
+        }
+
+        var x = w / 2;
+        var y = thumb ? FRAME.head + thumb / 2 : h / 2;
+
+        if (isObject(rect)) {
+            x = FRAME.pic.x + (Number(rect.x) || 0) + (Number(rect.w) || 0) / 2;
+            y = FRAME.head + FRAME.pic.y + (Number(rect.y) || 0) + (Number(rect.h) || 0) / 2;
+        } else if (rect === null && thumb) {
+            y = FRAME.head + thumb - FRAME.pic.foot;
+        }
+
+        if (side === 'right' || side === 'left') {
+            return { x: side === 'right' ? w : 0, y: round2(y), side: side };
+        }
+
+        return { x: round2(x), y: side === 'bottom' ? h : 0, side: side };
     }
 
     // The attributes of a picture's frame: only `allow-same-origin`, so the
@@ -1651,6 +1754,31 @@
         return out;
     }
 
+    // The marks a picture shows while frame `id` is selected (F5, F13):
+    // '<frame>|<port>' => 'own' for each link of the selected frame, 'lit'
+    // for a link of another frame whose arrow leads into it, 'shared' (the
+    // amber mark) for a shared part's link into it. Nothing selected: none.
+    function markState(laid, id) {
+        var out = {};
+        var f = focusOf(laid, id);
+
+        if (id === null || id === undefined) {
+            return out;
+        }
+
+        ((laid && laid.frames) || []).forEach(function (frame) {
+            if (frame.id === String(id)) {
+                (frame.rows || []).forEach(function (row) { out[frame.id + '|' + row.port] = 'own'; });
+            }
+        });
+        Object.keys(f.lit).forEach(function (frame) {
+            f.lit[frame].forEach(function (port) { out[frame + '|' + port] = 'lit'; });
+        });
+        f.shared.forEach(function (link) { out[link.frame + '|' + link.port] = 'shared'; });
+
+        return out;
+    }
+
     window.PGProtoHotspots = {
         FRAME: FRAME,
         layout: layout,
@@ -1660,6 +1788,10 @@
         picMark: picMark,
         picMarks: picMarks,
         picFoot: picFoot,
+        picRects: picRects,
+        picPartBox: picPartBox,
+        markPort: markPort,
+        markState: markState,
         picOrder: picOrder,
         picLong: picLong,
         PIC_FRAME: PIC_FRAME,
@@ -1667,7 +1799,6 @@
         picDoc: picDoc,
         placeKey: placeKey,
         places: places,
-        rowY: rowY,
         LIMITS: LIMITS,
         htmlLinks: htmlLinks,
         nodeLinks: nodeLinks,

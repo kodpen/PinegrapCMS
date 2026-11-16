@@ -326,24 +326,23 @@ function test_proto_hotspots_layout()
 	);
 	$result = proto_hotspots_test_node('var l = H.layout(' . proto_hotspots_test_js($marked) . ', { "s:5": { x: 10, y: 900 }, "c:0": { x: "bad" } });'
 		. 'out = { frames: l.frames.map(function (f) { return [f.id, f.x, f.y, f.h, f.rows.map(function (r) { return r.port + " " + r.label + " " + r.mark; })]; }),'
-		. ' chips: l.chips.map(function (c) { return [c.id, c.mark, c.href, c.x, c.y]; }), edges: l.edges.map(function (e) { return e.id + ">" + e.to; }), y: H.rowY(l.frames[0], "h2") };');
+		. ' chips: l.chips.map(function (c) { return [c.id, c.mark, c.href, c.x, c.y]; }), edges: l.edges.map(function (e) { return e.id + ">" + e.to; }) };');
 
 	if ($result === null) {
 		return;
 	}
 
 	pg_assert_same(array(
-		array('p:p1', 408, 0, 44 + 5 * 30 + 10, array('h0 About tab', 'h1 https://x.org/ external', 'h2 Home tab', 'h3 Private hidden', 'h4 Gone broken')),
+		array('p:p1', 408, 0, 44 + 30 + 10, array('h0 About tab', 'h1 https://x.org/ external', 'h2 Home tab', 'h3 Private hidden', 'h4 Gone broken')),
 		array('p:p2', 752, 0, 44 + 30 + 10, array()),
-		array('s:5', 10, 900, 44 + 3 * 30 + 10, array('h0 X external', 'h1 Old broken', 'h2 Top anchor')),
-	), $result['frames'], 'the frames, their rows and places');
+		array('s:5', 10, 900, 44 + 30 + 10, array('h0 X external', 'h1 Old broken', 'h2 Top anchor')),
+	), $result['frames'], 'the frames, their rows and places; the rows take no room (the list carries them)');
 	pg_assert_same(array(
 		array('c:2', 'anchor', '#top', 1160, 0),
 		array('c:0', 'external', 'https://x.org/', 1160, 48),
 		array('c:1', 'broken', '/old', 1160, 96),
 	), $result['chips'], 'one chip per mark and href, grouped by mark; a bad saved place ignored');
 	pg_assert_same(array('p:p1|h0>p:p2', 'p:p1|h1>c:0', 'p:p1|h2>p:p1', 's:5|h0>c:0', 's:5|h1>c:1', 's:5|h2>c:2'), $result['edges'], 'an arrow per row that leads somewhere');
-	pg_assert_same(44 + 2 * 30 + 15, $result['y'], 'a row port in the middle of its row');
 
 	// With the view's labels: a heading over each side column.
 	$labelled = proto_hotspots_test_node('var l = H.layout(' . proto_hotspots_test_js($marked) . ', {}, { shared: "Shared parts", outside: "Outside this design" });'
@@ -374,6 +373,8 @@ function test_proto_hotspots_layout_arranges_sections_in_flow_order()
 		return array('nodeId' => 'n' . $to, 'source' => 'href', 'href' => '/page' . $to, 'label' => 'Go', 'mark' => 'tab', 'tab' => 't' . $to, 'draft' => false);
 	};
 	$pages[0]['hotspots'] = array($link(5), $link(30), $link(1));
+	// The start has a tree: its frame, the picture's height, is the tallest.
+	$pages[0]['sketch'] = array();
 	$pages[4]['hotspots'] = array($link(2));
 	$sections = array(
 		array('id' => 'g1', 'label' => 'Shop', 'keys' => array_map(function ($i) { return 't' . $i; }, range(1, 20))),
@@ -393,11 +394,11 @@ function test_proto_hotspots_layout_arranges_sections_in_flow_order()
 	$at = $result['at'];
 	pg_assert_same(array(0, 40), $at['t1'], 'the start first');
 	pg_assert_same(array(array(344, 40), array(688, 40), array(1032, 40)), array($at['t5'], $at['t2'], $at['t3']), 'then the flow, then the unreached in the strip\'s order');
-	pg_assert_same(array(array(0, 280), array(0, 460)), array($at['t9'], $at['t17']), 'eight a row, a row as high as its tallest frame');
-	pg_assert_same(array(array(0, 680), array(344, 680), array(344, 860)), array($at['t30'], $at['t21'], $at['t29']), 'a page reached from the start leads its own band');
-	pg_assert_same(array(0, 1080), $at['t33'], 'the pages in no group last');
+	pg_assert_same(array(array(0, 488), array(0, 668)), array($at['t9'], $at['t17']), 'eight a row, a row as high as its tallest frame');
+	pg_assert_same(array(array(0, 888), array(344, 888), array(344, 1068)), array($at['t30'], $at['t21'], $at['t29']), 'a page reached from the start leads its own band');
+	pg_assert_same(array(0, 1288), $at['t33'], 'the pages in no group last');
 	pg_assert_same(array(5, 6), $at['t40'], 'a saved place wins');
-	pg_assert_same(array(array('g1', 'Shop', 0, 0, 2656), array('g2', 'Blog', 0, 640, 2656), array('pages', 'Pages', 0, 1040, 2656)), $result['headings'], 'a heading for each band');
+	pg_assert_same(array(array('g1', 'Shop', 0, 0, 2656), array('g2', 'Blog', 0, 848, 2656), array('pages', 'Pages', 0, 1248, 2656)), $result['headings'], 'a heading for each band');
 	pg_assert_same(array('p:t1'), $result['start'], 'only the first tab is the start');
 	pg_assert_true($result['again'], 'the same answer for the same design');
 	pg_assert_same(0, $result['plain'], 'without sections one band and no heading');
@@ -958,26 +959,132 @@ function test_proto_hotspots_sketch_boxes_fill_the_box()
 	pg_assert_true($out['tight'][0]['h'] >= 3 && $out['tight'][1]['h'] >= 3, 'each at least 3 high');
 }
 
-// A page frame is its head and its picture (1280 wide, cut at 1600, scaled
-// to 228 units); a shared frame keeps its sketch strip, one not fetched the
-// head alone. The rows' ports sit below the picture.
+// A frame is its head and its picture (1280 wide, cut at 1600, scaled to
+// 228 units); a shared part's picture is as tall as the part, at least the
+// sketch strip and at most the cut. A frame with no tree is its head and
+// one line. No row takes room: the list carries the links.
 function test_proto_hotspots_layout_makes_room_for_the_picture()
 {
 	$out = proto_hotspots_test_node('var d = { pages: [{ key: "p1", name: "a", sketch: [{ role: "block", weight: 1, links: 0 }], hotspots: [{ nodeId: "n", source: "href", href: "/x", label: "X", mark: "page" }] }, { key: "p2", name: "b", sketch: [], hotspots: [] }, { key: "p3", name: "c", sketch: null, hotspots: [] }],'
-		. ' shared: [{ id: 4, name: "s", loaded: true, pages: 1, sketch: [{ role: "block", weight: 1, links: 0 }], hotspots: [] }, { id: 5, name: "t", loaded: false, pages: 1, sketch: null, hotspots: [] }] };'
-		. ' var l = H.layout(d, {}); var f = l.frames;'
-		. ' out = { size: H.picSize(), pic: f.map(function (x) { return x.pic; }), thumb: f.map(function (x) { return x.thumb; }), h: [f[0].h, f[1].h, f[2].h], port: H.rowY(f[0], "h0"), plain: H.rowY(f[2], "h0") };');
+		. ' shared: [{ id: 4, name: "s", loaded: true, pages: 1, sketch: [{ role: "block", weight: 1, links: 0 }], hotspots: [] }, { id: 5, name: "t", loaded: false, pages: 1, sketch: null, hotspots: [] }, { id: 6, name: "u", loaded: true, pages: 1, sketch: [], hotspots: [] }] };'
+		. ' var f = H.layout(d, {}).frames; var g = H.layout(d, {}, { partH: { 4: 800, 6: 99999 } }).frames;'
+		. ' out = { size: H.picSize(), pic: f.map(function (x) { return x.pic; }), thumb: f.map(function (x) { return x.thumb; }), h: f.map(function (x) { return x.h; }), part: [g[3].thumb, g[3].h, g[5].thumb],'
+		. ' box: [H.picPartBox(0), H.picPartBox(200), H.picPartBox(800), H.picPartBox(5000), H.picPartBox(null)] };');
 
 	if ($out === null) {
 		return;
 	}
 
 	pg_assert_same(array('w' => 228, 'h' => 285, 'scale' => 0.178125, 'box' => 298, 'page' => 1280, 'cut' => 1600), $out['size'], 'the picture: 1280 x 1600 at 228 wide, its box 13 more');
-	pg_assert_same(array(true, true, false, false, false), $out['pic'], 'pages with a tree get a picture');
-	pg_assert_same(array(298, 298, 0, 84, 0), $out['thumb'], 'a picture frame makes room for the box, an empty page too; a shared frame keeps the strip');
-	pg_assert_same(array(44 + 298 + 30 + 10, 44 + 298 + 30 + 10, 44 + 30 + 10), $out['h'], 'its height grows by it');
-	pg_assert_same(44 + 298 + 15, $out['port'], 'its row ports sit below the picture');
-	pg_assert_same(44 + 15, $out['plain'], 'a frame without a tree is unchanged');
+	pg_assert_same(array(true, true, false, true, false, true), $out['pic'], 'a page or a shared part with a tree gets a picture');
+	pg_assert_same(array(298, 298, 0, 84, 0, 84), $out['thumb'], 'a page\'s box is the cut\'s; a shared part\'s the sketch strip until measured');
+	pg_assert_same(array(44 + 298 + 10, 44 + 298 + 10, 44 + 30 + 10, 44 + 84 + 10, 44 + 30 + 10, 44 + 84 + 10), $out['h'], 'the head, the box and the padding: no rows');
+	pg_assert_same(array(156, 44 + 156 + 10, 298), $out['part'], 'a measured part at its own height, at most the cut');
+	pg_assert_same(array(84, 84, 156, 298, 84), $out['box'], 'a part\'s box: at least the strip, at most the cut');
+}
+
+// A link's rectangle read from the picture, in units of the picture inside
+// its box: scaled from page pixels, cut at the cut; the first element seen
+// is taken. Not seen: under the cut, of no size, outside the page's width,
+// not written (a menu or region has no marker). A page frame reads no
+// shared component's marker; a shared frame only its own.
+function test_proto_hotspots_mark_rects_in_frame_units()
+{
+	$rows = array(
+		array('port' => 'h0', 'nodeId' => 'a', 'source' => 'href'),
+		array('port' => 'h1', 'nodeId' => 't', 'source' => 'text', 'index' => 1),
+		array('port' => 'h2', 'nodeId' => 'm', 'source' => 'menu'),
+		array('port' => 'h3', 'nodeId' => 'b', 'source' => 'btn'),
+		array('port' => 'h4', 'nodeId' => 'c', 'source' => 'href'),
+		array('port' => 'h5', 'nodeId' => 'd', 'source' => 'attrs'),
+	);
+	$marks = array(
+		array('pic' => 'a', 'left' => 640, 'top' => 160, 'w' => 320, 'h' => 80),
+		array('pic' => 'a', 'left' => 0, 'top' => 0, 'w' => 10, 'h' => 10),
+		array('pic' => 't.1', 'left' => 5, 'top' => 5, 'w' => 0, 'h' => 0),
+		array('pic' => 't.1', 'left' => 0, 'top' => 1500, 'w' => 100, 'h' => 200),
+		array('pic' => 'b', 'left' => 0, 'top' => 1600, 'w' => 80, 'h' => 20),
+		array('pic' => 'c', 'left' => -200, 'top' => 10, 'w' => 100, 'h' => 20),
+		array('pic' => 's3:d', 'left' => 0, 'top' => 10, 'w' => 100, 'h' => 20),
+	);
+	$out = proto_hotspots_test_node('out = { page: H.picRects(' . proto_hotspots_test_js($rows) . ', ' . proto_hotspots_test_js($marks) . ', 0),'
+		. ' shared: H.picRects([{ port: "h0", nodeId: "d", source: "attrs" }, { port: "h1", nodeId: "a", source: "href" }], ' . proto_hotspots_test_js($marks) . ', 3), none: H.picRects(null, null, 0) };');
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array(
+		'h0' => array('x' => 114, 'y' => 28.5, 'w' => 57, 'h' => 14.25),
+		'h1' => array('x' => 0, 'y' => 267.19, 'w' => 17.81, 'h' => 17.81),
+	), $out['page'], 'a and the second element of t.1 (cut at 1600) are seen; the rest are not');
+	pg_assert_same(array('h0' => array('x' => 0, 'y' => 1.78, 'w' => 17.81, 'h' => 3.56)), $out['shared'], 'a shared frame reads its own markers only');
+	pg_assert_same(array(), $out['none'], 'nothing read');
+}
+
+// Where an arrow leaves a frame: by the side facing its target, at the
+// mark's height (left, right) or across from it (top, bottom); a link the
+// picture cannot show leaves from the foot; before the picture has loaded,
+// from the middle of the box.
+function test_proto_hotspots_mark_port_side()
+{
+	$frame = array('x' => 0, 'y' => 0, 'w' => 248, 'h' => 352, 'thumb' => 298);
+	$rect = array('x' => 114, 'y' => 28.5, 'w' => 57, 'h' => 14.25);
+	$f = proto_hotspots_test_js($frame);
+	$r = proto_hotspots_test_js($rect);
+	$out = proto_hotspots_test_node('var t = { right: { x: 400, y: 0, w: 248, h: 352 }, left: { x: -400, y: 300, w: 248, h: 352 }, below: { x: 100, y: 500, w: 248, h: 352 }, above: { x: -100, y: -500, w: 200, h: 36 } };'
+		. ' out = { right: H.markPort(' . $f . ', ' . $r . ', t.right), left: H.markPort(' . $f . ', ' . $r . ', t.left), below: H.markPort(' . $f . ', ' . $r . ', t.below), above: H.markPort(' . $f . ', ' . $r . ', t.above),'
+		. ' self: H.markPort(' . $f . ', ' . $r . ', ' . $f . '), none: H.markPort(' . $f . ', ' . $r . ', null),'
+		. ' foot: H.markPort(' . $f . ', null, t.right), footDown: H.markPort(' . $f . ', null, t.below),'
+		. ' early: H.markPort(' . $f . ', undefined, t.left), bare: H.markPort({ x: 0, y: 0, w: 248, h: 84, thumb: 0 }, undefined, t.right) };');
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array('x' => 248, 'y' => 85.63, 'side' => 'right'), $out['right'], 'right of the frame: from its right edge at the mark\'s middle');
+	pg_assert_same(array('x' => 0, 'y' => 85.63, 'side' => 'left'), $out['left'], 'left of it: its left edge');
+	pg_assert_same(array('x' => 152.5, 'y' => 352, 'side' => 'bottom'), $out['below'], 'in its column below: the bottom edge under the mark');
+	pg_assert_same(array('x' => 152.5, 'y' => 0, 'side' => 'top'), $out['above'], 'in its column above: the top edge over the mark');
+	pg_assert_same(array('x' => 248, 'y' => 85.63, 'side' => 'right'), $out['self'], 'to its own frame: right');
+	pg_assert_same(array('x' => 248, 'y' => 85.63, 'side' => 'right'), $out['none'], 'no target: right');
+	pg_assert_same(array('x' => 248, 'y' => 324, 'side' => 'right'), $out['foot'], 'not seen: from the foot on the fade');
+	pg_assert_same(array('x' => 124, 'y' => 352, 'side' => 'bottom'), $out['footDown'], 'the foot\'s middle, down');
+	pg_assert_same(array('x' => 0, 'y' => 193, 'side' => 'left'), $out['early'], 'no picture yet: the middle of the box');
+	pg_assert_same(array('x' => 248, 'y' => 42, 'side' => 'right'), $out['bare'], 'a frame with no box: its middle');
+}
+
+// Which marks a picture shows (F5, F13): the selected frame all of its own;
+// another frame those starting an arrow into it; a shared part's link into
+// the selected page in amber. Nothing selected shows none.
+function test_proto_hotspots_mark_state()
+{
+	$laid = array(
+		'frames' => array(
+			array('id' => 'p:a', 'kind' => 'page', 'name' => 'A', 'rows' => array(array('port' => 'h0'), array('port' => 'h1'))),
+			array('id' => 'p:b', 'kind' => 'page', 'name' => 'B', 'rows' => array(array('port' => 'h0'), array('port' => 'h1'))),
+			array('id' => 's:5', 'kind' => 'shared', 'name' => 'Header', 'rows' => array(array('port' => 'h0', 'label' => 'Cart'))),
+		),
+		'chips' => array(array('id' => 'c:0', 'kind' => 'chip')),
+		'edges' => array(
+			array('id' => 'p:a|h0', 'from' => 'p:a', 'port' => 'h0', 'to' => 'p:b'),
+			array('id' => 'p:a|h1', 'from' => 'p:a', 'port' => 'h1', 'to' => 'c:0'),
+			array('id' => 'p:b|h0', 'from' => 'p:b', 'port' => 'h0', 'to' => 'p:a'),
+			array('id' => 'p:b|h1', 'from' => 'p:b', 'port' => 'h1', 'to' => 'c:0'),
+			array('id' => 's:5|h0', 'from' => 's:5', 'port' => 'h0', 'to' => 'p:a'),
+		),
+	);
+	$l = proto_hotspots_test_js($laid);
+	$out = proto_hotspots_test_node('out = { a: H.markState(' . $l . ', "p:a"), s: H.markState(' . $l . ', "s:5"), none: H.markState(' . $l . ', null), gone: H.markState(' . $l . ', "p:x") };');
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array('p:a|h0' => 'own', 'p:a|h1' => 'own', 'p:b|h0' => 'lit', 's:5|h0' => 'shared'), $out['a'], 'its own, the one into it, the shared part\'s in amber');
+	pg_assert_same(array('s:5|h0' => 'own'), $out['s'], 'a shared frame selected: its own');
+	pg_assert_same(array(), $out['none'], 'nothing selected');
+	pg_assert_same(array(), $out['gone'], 'an unknown frame');
 }
 
 // The marker of a link's element: the node id, '.n' for the n-th link of a
@@ -1005,8 +1112,8 @@ function test_proto_hotspots_picture_marker()
 }
 
 // The foot: the links a picture cannot show (under the cut, of no size, not
-// written at all) are counted; one element seen is enough; menus and
-// regions are not marked; a page frame skips shared markers.
+// written at all, in a menu or region, which has no marker) are counted;
+// one element seen is enough; a page frame skips shared markers.
 function test_proto_hotspots_picture_foot_counts_links_below_the_cut()
 {
 	$rows = array(
@@ -1036,7 +1143,7 @@ function test_proto_hotspots_picture_foot_counts_links_below_the_cut()
 		return;
 	}
 
-	pg_assert_same(array('links' => 6, 'below' => 3), $out['page'], 'b at the cut, h of no size and the unwritten link count; t.1 is seen once');
+	pg_assert_same(array('links' => 7, 'below' => 4), $out['page'], 'b at the cut, h of no size, the unwritten link and the menu\'s count; t.1 is seen once');
 	pg_assert_same(array('links' => 2, 'below' => 1), $out['shared'], 'a shared frame reads its own markers only');
 	pg_assert_same(array('links' => 0, 'below' => 0), $out['none'], 'nothing to count');
 }
