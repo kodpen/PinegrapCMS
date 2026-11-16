@@ -221,6 +221,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_page_bundle();             // 11.0.228
 	upgrade_2026_11_0_site_push_watch();         // 11.0.229
 	upgrade_2026_11_0_ws_meeting_url();          // 11.0.232
+	upgrade_2026_11_0_file_translation();        // 11.0.231
 
 }
 
@@ -7378,5 +7379,35 @@ function upgrade_2026_11_0_ws_meeting_url() {
 	install_add_column('ws_profiles', 'meeting_url', 'VARCHAR(500) NULL');
 
 	install_note('Bookings: a staff member can keep a meeting address for the bookings made through their meeting link.');
+
+}
+
+// A language's picture of a Design Canvas picture (11.0.231, includes/fn/
+// picture_translation.php): one row per source file and language. state 0
+// waiting, 1 drawn, 2 out of date; only a drawn row is shown to a visitor.
+// picture_file_id is the language's picture, a files row of its own (0 until
+// drawn); fit 1 marks a text that did not fit at the smallest size; doc_hash
+// names the source document it was drawn from. idx_picture finds the row of
+// a language's picture, idx_state the rows to draw per language. No backfill:
+// no picture had a language's version before this step. Columns confirmed by
+// the architect.
+function upgrade_2026_11_0_file_translation() {
+
+	install_create_table('file_translation', "CREATE TABLE file_translation (
+		file_id         INT UNSIGNED NOT NULL DEFAULT 0,
+		language        VARCHAR(10) CHARACTER SET ascii NOT NULL DEFAULT '',
+		picture_file_id INT UNSIGNED NOT NULL DEFAULT 0,
+		state           TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		fit             TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		doc_hash        CHAR(40) CHARACTER SET ascii NOT NULL DEFAULT '',
+		created_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		drawn_at        INT UNSIGNED NOT NULL DEFAULT 0,
+		drawn_by        INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (file_id, language),
+		KEY idx_picture (picture_file_id),
+		KEY idx_state (state, language)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Picture texts: the table for a picture\'s versions in the site\'s other languages is ready; nothing changes on the site until one is drawn.');
 
 }
