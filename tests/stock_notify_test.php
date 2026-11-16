@@ -348,3 +348,25 @@ function test_stock_notify_endpoint_promises_what_is_sent()
 	pg_assert_contains("(pg_stock_notify_phone(\$phone) !== '') && pg_stock_notify_sms_sends()", $endpoint, 'the same rule as the sender');
 	pg_assert_false(strpos($endpoint, '&& pg_stock_notify_sms_on())') !== false, 'not the SMS event alone');
 }
+
+// The push for a device that asked: the name as the title (60 at most, one
+// line), a fixed sentence, and the product's path without the host.
+function test_stock_notify_push_input()
+{
+	$input = pg_stock_notify_push_input("Shirt\r\nblue", 'https://shop.test/urun/shirt');
+	pg_assert_same('Shirt blue', $input['title'], 'one line');
+	pg_assert_same('https://shop.test/urun/shirt', $input['url'], 'the address, made a path by the message check');
+	pg_assert_true($input['body'] !== '', 'a sentence');
+
+	$long = pg_stock_notify_push_input(str_repeat('é', 80), '');
+	pg_assert_same(60, mb_strlen($long['title'], 'UTF-8'), 'cut to the title limit, never refused');
+	pg_assert_same('/', $long['url'], 'the site when the product has no address');
+}
+
+// A stock notice goes to the one device named; the sender takes kind 2.
+function test_stock_notify_push_kind()
+{
+	pg_assert_same(2, PG_SITE_PUSH_KIND_STOCK, 'kind 2');
+	$send = pg_test_function_source('pg_site_push_message_send');
+	pg_assert_contains('PG_SITE_PUSH_KIND_STOCK', $send, 'the writer takes it');
+}

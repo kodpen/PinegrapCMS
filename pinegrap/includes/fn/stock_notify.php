@@ -523,6 +523,30 @@ function pg_stock_notify_mail($name, $url)
 }
 
 /**
+ * The device notification of a browser that asked: the name as its title,
+ * cut to the title's limit rather than refused, and the product's address,
+ * which pg_site_push_message_check() keeps as a path. Pure.
+ *
+ * @param string $name the product's name as visitors read it
+ * @param string $url  its address, '' for none (the site's home then)
+ * @return array title, body, url
+ */
+function pg_stock_notify_push_input($name, $url)
+{
+    $name = trim(preg_replace('/\s+/u', ' ', (string) $name));
+
+    if (mb_strlen($name, 'UTF-8') > 60) {
+        $name = rtrim(mb_substr($name, 0, 60, 'UTF-8'));
+    }
+
+    return array(
+        'title' => $name,
+        'body'  => lang('Back in stock. You asked to be told once.'),
+        'url'   => ((string) $url !== '') ? (string) $url : '/',
+    );
+}
+
+/**
  * The fields of the text message's template.
  *
  * @param string $name the product's name as visitors read it
