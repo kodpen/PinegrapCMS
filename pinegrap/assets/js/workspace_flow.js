@@ -589,6 +589,10 @@
             return t('tpl_assign_lead');
         }
 
+        if (rule === 'event_person') {
+            return t('fl_assign_event_person');
+        }
+
         if (match && (match[1] === 'department')) {
             var department = (BOOT.departments || []).filter(function (item) { return item.id === +match[2]; })[0];
 
@@ -7423,7 +7427,8 @@
 
     function taskFields(box, node) {
         var config = node.config;
-        var options = [['people', t('fl_assign_people')], ['creator', t('fl_assign_creator')], ['department_lead', t('tpl_assign_lead')], ['none', t('tpl_assign_none')]];
+        var options = [['people', t('fl_assign_people')], ['creator', t('fl_assign_creator')], ['event_person', t('fl_assign_event_person')],
+            ['department_lead', t('tpl_assign_lead')], ['none', t('tpl_assign_none')]];
 
         (BOOT.departments || []).forEach(function (department) {
             options.push(['department:' + department.id, t('tpl_assign_dept', department.name)]);
@@ -7452,8 +7457,26 @@
             people.classList.add('d-none');
         }
 
+        // "The person the event names" asks who gets the task when the event
+        // names nobody on the team; the publish check requires one.
+        var fallback = el('div', 'wsf-people mt-3');
+        var showFallback = function () {
+            if (!fallback.firstChild) {
+                fallback.appendChild(el('div', 'form-label small fw-semibold mb-1', t('fl_assign_fallback')));
+                peopleList(node, fallback, 'fallback', 20, t('fl_assign_fallback'));
+                fallback.appendChild(el('div', 'form-text', t('fl_assign_fallback_help')));
+            }
+        };
+
+        if (current === 'event_person') {
+            showFallback();
+        } else {
+            fallback.classList.add('d-none');
+        }
+
         who.addEventListener('change', function () {
             people.classList.toggle('d-none', who.value !== 'people');
+            fallback.classList.toggle('d-none', who.value !== 'event_person');
 
             if (who.value === 'people') {
                 config.assign = '';
@@ -7464,12 +7487,21 @@
                 Array.prototype.forEach.call(people.querySelectorAll('input[type="checkbox"]'), function (check) { check.checked = false; });
             }
 
+            if (who.value === 'event_person') {
+                config.fallback = config.fallback || [];
+                showFallback();
+            } else {
+                config.fallback = [];
+                Array.prototype.forEach.call(fallback.querySelectorAll('input[type="checkbox"]'), function (check) { check.checked = false; });
+            }
+
             refreshNode(node);
         });
 
         var whoField = field(t('fl_assign'), who, t('fl_assign_help'));
 
         whoField.appendChild(people);
+        whoField.appendChild(fallback);
         box.appendChild(whoField);
 
         var due = el('input', 'form-control form-control-sm wsf-number');
@@ -10762,7 +10794,7 @@
     // The team as ticks, with a filter once it is long, drawn into wrap: the
     // ids go into the box's settings under key (assignees by default), at
     // most max of them.
-    function peopleList(node, wrap, key, max) {
+    function peopleList(node, wrap, key, max, label) {
         var config = node.config;
         var list = el('div', 'wsf-people-list');
 
@@ -10773,7 +10805,7 @@
         var team = BOOT.people || [];
 
         list.setAttribute('role', 'group');
-        list.setAttribute('aria-label', t('fl_assign_people'));
+        list.setAttribute('aria-label', label || t('fl_assign_people'));
 
         if (team.length > 8) {
             var filter = el('input', 'form-control form-control-sm mb-1');
@@ -10808,7 +10840,9 @@
 
                 config[key] = ids.slice(0, max);
 
-                if (node.kind === 'task') {
+                // Ticking the box's own people drops its rule; its fallback
+                // people belong to the rule and keep it.
+                if ((node.kind === 'task') && (key === 'assignees')) {
                     config.assign = '';
                 }
                 refreshNode(node);
