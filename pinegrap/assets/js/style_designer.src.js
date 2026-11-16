@@ -5923,7 +5923,20 @@ const StyleDesigner = (function () {
                 itemClass:    '',
                 cssClass:     'mb-3'
             },
+            // In a catalog widget the canvas draws what the site prints for
+            // it with sample attributes (_sdVariantAttrHtml()); elsewhere the
+            // box naming its style.
+            /* @pg-site-output */
             render: function (doc, p) {
+                if (_sdCatalogKindDrawn()) {
+                    var s = doc.createElement('div');
+                    // sd-editor-ph: a sample, left out of the canvas audit.
+                    s.className = 'sd-editor-ph';
+                    s.setAttribute('inert', '');
+                    s.innerHTML = _sdVariantAttrHtml(_sdVariantAttrCfg(p), SD_VARIANT_ATTR_SAMPLE, SD_VARIANT_ATTR_PICKED)
+                        + '<div class="small text-body-secondary fst-italic">' + esc(_sdT('The backend fills one copy for each attribute (Color, Size, …)')) + '</div>';
+                    return s;
+                }
                 var d = doc.createElement('div');
                 // sd-editor-ph: editor chrome, left out of the canvas audit.
                 d.className = 'border border-primary border-dashed rounded p-2 sd-editor-ph ' + (p.cssClass || '');
@@ -5943,13 +5956,7 @@ const StyleDesigner = (function () {
                 return d;
             },
             toHTML: function (p, pad) {
-                var cfg = {
-                    renderStyle:  p.renderStyle  || 'select',
-                    labelClass:   p.labelClass   || 'form-label fw-semibold',
-                    controlClass: p.controlClass || '',
-                    itemClass:    p.itemClass    || '',
-                    cssClass:     p.cssClass     || 'mb-3'
-                };
+                var cfg = _sdVariantAttrCfg(p);
                 var b64 = btoa(unescape(encodeURIComponent(JSON.stringify(cfg))));
                 return pad + '<!--pg-variant-attr:' + b64 + '-->\n';
             }
@@ -15268,6 +15275,8 @@ const StyleDesigner = (function () {
     // Preview only: never saved to the tree, never sent to the server.
     /* @pg-site-output */
     var _SD_HTML_PREVIEW_TOKENS = {
+        // The sample product's price block: an offer lowers it (_sdPriceBlockHtml()).
+        '__price_block_html': function () { return _sdPriceBlockHtml(500, 450); },
         // The comment's text and the store's reply, as the page draws them
         // (convert_text_to_html()).
         '__comment_message_html': function () {
@@ -42253,6 +42262,105 @@ const StyleDesigner = (function () {
             body.insertBefore(copy, after.nextSibling);
             after = copy;
         });
+    }
+
+    // The price block a catalog widget prints for ^^__price_block_html^^
+    // (_pg_format_price_with_discount()): the sticker price struck through
+    // and the price paid while an offer lowers it, else the price alone.
+    // The look of pg_carousel_layout.css, which the canvas does not load, is
+    // inline. A variant switch writes the whole block (pg_civ_variants.js),
+    // so it stays one value: drawn true, never a tree.
+    /* @pg-site-output */
+    function _sdPriceBlockHtml(original, paid) {
+        var off = paid < original;
+        var inner = off
+            ? '<span class="pg-price-original" style="color:#dc3545;text-decoration:line-through;font-weight:400;opacity:.85">' + esc(_sdMoney(original)) + '</span>'
+                + '<span class="pg-price-current" style="color:#198754;font-weight:600">' + esc(_sdMoney(paid)) + '</span>'
+            : '<span class="pg-price" style="font-weight:600">' + esc(_sdMoney(paid)) + '</span>';
+        return '<span class="pg-price-block' + (off ? ' has-discount' : '') + '" style="display:inline-flex;gap:.5rem;align-items:baseline;flex-wrap:wrap">' + inner + '</span>';
+    }
+
+    // A Variant Attribute node's settings as its marker carries them
+    // (CONTENT.variant_attr.toHTML()): an empty class field takes its
+    // default, as the server reads it.
+    function _sdVariantAttrCfg(p) {
+        return {
+            renderStyle:  p.renderStyle  || 'select',
+            labelClass:   p.labelClass   || 'form-label fw-semibold',
+            controlClass: p.controlClass || '',
+            itemClass:    p.itemClass    || '',
+            cssClass:     p.cssClass     || 'mb-3'
+        };
+    }
+
+    // The attributes the canvas draws a Variant Attribute node with: a
+    // product in a variant group of colours and sizes, its first variant
+    // picked.
+    var SD_VARIANT_ATTR_SAMPLE = [
+        { id: 1, label: _sdT('Colour'), options: [[11, _sdT('Red')], [12, _sdT('Blue')], [13, _sdT('Green')]] },
+        { id: 2, label: _sdT('Size'), options: [[21, 'S'], [22, 'M'], [23, 'L']] }
+    ];
+    var SD_VARIANT_ATTR_PICKED = { 1: 11, 2: 21 };
+
+    // What the site prints for a Variant Attribute node
+    // (_civ_expand_variant_attr_markers()): one copy per attribute of
+    // `vattrs` ([{ id, label, options: [[id, label], …] }]) in the style and
+    // classes of `cfg`, `picked` (attribute id => option id) chosen. The
+    // variant script finds the controls by these classes and data
+    // attributes, so the site keeps building them: the node opens by its
+    // settings and this drawing, not as a tree.
+    /* @pg-site-output */
+    function _sdVariantAttrHtml(cfg, vattrs, picked) {
+        var style = cfg.renderStyle || 'select';
+        if (style === 'checkbox') style = 'radio';
+        if (['select', 'radio', 'button_group', 'button_list'].indexOf(style) === -1) style = 'select';
+        var lblCls = (cfg.labelClass != null) ? String(cfg.labelClass) : 'form-label fw-semibold';
+        var ctlCls = (cfg.controlClass != null) ? String(cfg.controlClass) : '';
+        var itmCls = (cfg.itemClass != null) ? String(cfg.itemClass) : '';
+        var rootCls = (cfg.cssClass != null) ? String(cfg.cssClass) : 'mb-3';
+        var out = '';
+        (vattrs || []).forEach(function (a) {
+            var aid = parseInt(a.id, 10) || 0;
+            var sel = (picked && picked[a.id] != null) ? (parseInt(picked[a.id], 10) || 0) : 0;
+            var name = 'pg_civ_attr_' + aid;
+            var options = a.options || [];
+            var mirror = function (cls) {
+                var s = '<select class="' + cls + '" data-pg-civ-attr="' + aid + '">'
+                    + '<option value="">' + esc(_sdT('Select...')) + '</option>';
+                options.forEach(function (o) {
+                    var oid = parseInt(o[0], 10) || 0;
+                    s += '<option value="' + oid + '"' + (oid === sel ? ' selected' : '') + '>' + esc(String(o[1])) + '</option>';
+                });
+                return s + '</select>';
+            };
+            out += '<div class="pg-civ-variant-attr-wrap ' + esc(rootCls) + '" data-pg-civ-attr-wrap="' + aid + '">'
+                + '<label class="' + esc(lblCls) + '">' + esc(String(a.label)) + '</label>';
+            if (style === 'radio') {
+                out += '<div class="' + esc(ctlCls) + '" data-pg-civ-attr-control="' + aid + '">' + mirror('pg-civ-variant-attr d-none');
+                options.forEach(function (o) {
+                    var oid = parseInt(o[0], 10) || 0, rid = name + '_' + oid;
+                    out += '<div class="form-check ' + esc(itmCls) + '">'
+                        + '<input class="form-check-input pg-civ-variant-attr-radio" type="radio" name="' + esc(name) + '" id="' + esc(rid) + '"'
+                        + ' value="' + oid + '" data-pg-civ-attr-mirror="' + aid + '"' + (oid === sel ? ' checked' : '') + '>'
+                        + '<label class="form-check-label" for="' + esc(rid) + '">' + esc(String(o[1])) + '</label></div>';
+                });
+                out += '</div>';
+            } else if (style === 'button_group' || style === 'button_list') {
+                out += mirror('pg-civ-variant-attr d-none')
+                    + '<div class="' + (style === 'button_list' ? 'btn-group-vertical w-100' : 'btn-group') + ' ' + esc(ctlCls) + '" role="group" data-pg-civ-attr-control="' + aid + '">';
+                options.forEach(function (o) {
+                    var oid = parseInt(o[0], 10) || 0, rid = name + '_' + oid;
+                    out += '<input type="radio" class="btn-check pg-civ-variant-attr-radio" name="' + esc(name) + '" id="' + esc(rid) + '"'
+                        + ' value="' + oid + '" data-pg-civ-attr-mirror="' + aid + '" autocomplete="off"' + (oid === sel ? ' checked' : '') + '>'
+                        + '<label class="btn btn-outline-primary' + (oid === sel ? ' active' : '') + ' ' + esc(itmCls) + '" for="' + esc(rid) + '">' + esc(String(o[1])) + '</label>';
+                });
+                out += '</div>';
+            } else {
+                out += mirror('form-select pg-civ-variant-attr ' + esc(ctlCls));
+            }
+            out += '</div>';
+        });
+        return out;
     }
 
     // Resolve the regionType of the system widget that contains `node`.

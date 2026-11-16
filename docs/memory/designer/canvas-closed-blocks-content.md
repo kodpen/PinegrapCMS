@@ -20,7 +20,7 @@ description: CB0 list, content nodes the server draws (Messages, Breadcrumb, Var
 - Site: one copy per attribute of a select-type product (Colour, Size) as a select, radios, button group or button list. Canvas: a box naming the style.
 - Change today: the style and three CSS class fields (label, control, item).
 - Use: the catalog detail starter, 32 shop templates (`__variant_picker` is the older HTML value).
-- Opening: a tree whose options are a nested loop; the four styles as starter trees.
+- Opened by settings (CB6a2): drawn on the canvas as the site expands it; not a tree, the variant script finds its controls (`catalog-detail-variant-price-blocks.md`).
 
 ## Applied Offers?
 - Site: the cart's alert listing the offers that apply. Canvas: a box. Change today: CSS class.
