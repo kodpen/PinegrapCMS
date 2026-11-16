@@ -11,6 +11,7 @@ description: The prototype canvas page picture check's measurements (PV7): both 
 ## How fast did the pictures come?
 - Fit, all 41 in view: way 1 (Preview document) first 115-326 ms, last 1.74-2.02 s; way 2 (saved address) first 507-594 ms, last 3.06-3.18 s.
 - 100 %, 18 in view: way 1 first 221-284 ms, last 0.98-1.11 s; way 2 first 551-631 ms, last 1.53-1.56 s.
+- Markers: all 1,017 on the 41 pictures (shared parts once per page) read in 46-65 ms, at most 17 ms a picture.
 - Way 1's parts: the document 18 ms a tab (31 at most, 0.7 s for 41); `preview_widgets` 23 ms a tab (55 at most, 0.97 s for 40 tabs, one request each); a document 18 KB (54 KB at most).
 
 ## How much memory?
@@ -25,3 +26,4 @@ description: The prototype canvas page picture check's measurements (PV7): both 
 - Way 1 draws widgets signed out, as the Preview does; way 2 as the signed-in operator, with the site's edit toolbar, and the e-mail cloak's no-script text.
 - The design uses the system font stack and Bootstrap Icons from jsDelivr: both ways drew them. A font the site serves without CORS was not tried; way 2 would lose it (`design-live-pictures.md`).
 - An unsaved heading on the open tab: way 1 shows it, way 2 the saved text. Pictures (1440, light and dark) are under agent channel message 5717.
+- The Clinic template has few images; images under the cut load too (no `loading="lazy"` without scripts), so PV8 measures memory and the last picture once on an image-heavy store template and writes them here.
