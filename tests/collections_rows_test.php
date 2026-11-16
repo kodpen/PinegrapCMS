@@ -19,6 +19,12 @@ if (!defined('PG_TEST_RUNNER')) {
 	exit;
 }
 
+foreach (array('OUTPUT_PATH' => '/', 'OUTPUT_SOFTWARE_DIRECTORY' => 'pinegrap') as $collections_rows_test_name => $collections_rows_test_value) {
+	if (!defined($collections_rows_test_name)) {
+		define($collections_rows_test_name, $collections_rows_test_value);
+	}
+}
+
 function _collections_rows_field_row($id, $name, $type, $extra = array())
 {
 	return array_merge(array(
@@ -325,4 +331,79 @@ function test_collections_rows_control_draws_nothing_on_a_site_form()
 		pg_assert_same(1, count($copy['children']), 'the control, its label and the wrapper left empty go' . ($staff ? ' (staff too)' : ''));
 		pg_assert_same('902', $copy['children'][0]['props']['_attrs'][1]['value'], 'the other field stays');
 	}
+}
+
+function test_collections_rows_posted_list()
+{
+	$list = pg_coll_rows_posted('[{"code":"a1","values":{"71":"Mix"}},{"code":"","values":{"71":"Bake","75":"easy"}}]');
+	pg_assert_same(2, count($list));
+	pg_assert_same('a1', $list[0]['code']);
+	pg_assert_same('Mix', $list[0]['values'][71], 'field ids come back as numbers');
+	pg_assert_same(array(), pg_coll_rows_posted('[]'), 'every row removed');
+	foreach (array('', 'not json', '{"a":1}', '"text"', null, array('x')) as $bad) {
+		pg_assert_same(null, pg_coll_rows_posted($bad), 'nothing to write: ' . var_export($bad, true));
+	}
+}
+
+function test_collections_rows_editor_config()
+{
+	$fields = array(
+		_collections_rows_field_row(71, 'step', 'text box', array('required' => 1)),
+		_collections_rows_field_row(75, 'level', 'pick list', array('options' => array('easy', 'hard'), 'option_labels' => array('easy' => 'Easy', 'hard' => 'Hard'))),
+		_collections_rows_field_row(76, 'tags', 'check box', array('options' => array('a'), 'option_labels' => array('a' => 'A'))),
+		_collections_rows_field_row(77, 'speaker', 'pick list', array('collection_kind' => 'reference', 'choices' => array('p1' => 'Ada'))),
+		_collections_rows_field_row(73, 'photo', 'file upload'),
+	);
+	$spec = pg_coll_rows_spec(_collections_rows_field(), _collections_rows_child($fields));
+	$rows = array(
+		array('id' => 501, 'reference_code' => 'a1', 'values' => array(71 => 'Mix', 76 => 'a')),
+		array('id' => 0, 'reference_code' => '', 'values' => array(71 => 'New')),
+	);
+	$config = pg_coll_rows_editor_config($spec, $rows, array(array('row' => 1, 'field' => 71, 'message' => 'Step is required.')));
+
+	pg_assert_same(array(71, 75, 76, 77), array_map(function ($c) { return $c['id']; }, $config['columns']));
+	pg_assert_same('text', $config['columns'][0]['input']);
+	pg_assert_same(true, $config['columns'][0]['required']);
+	pg_assert_same(array(array('value' => 'easy', 'label' => 'Easy'), array('value' => 'hard', 'label' => 'Hard')), $config['columns'][1]['options']);
+	pg_assert_same('checks', $config['columns'][2]['input']);
+	pg_assert_same(array(array('value' => 'p1', 'label' => 'Ada')), $config['columns'][3]['options'], 'a reference lists its records');
+	pg_assert_same(array('Photo'), $config['others'], 'a field the table does not take is named');
+
+	pg_assert_same('a1', $config['rows'][0]['code']);
+	pg_assert_same(array('a'), $config['rows'][0]['values'][76], 'a check box group as a list');
+	pg_assert_contains('edit_submitted_form.php?id=501', $config['rows'][0]['open'], 'an existing row opens on its own screen');
+	pg_assert_same('', $config['rows'][1]['open'], 'a new row has no screen yet');
+	pg_assert_same(100, $config['max']);
+	pg_assert_same(array(array('row' => 1, 'field' => 71, 'message' => 'Step is required.')), $config['errors']);
+
+	$plain = pg_coll_rows_spec(_collections_rows_field(), _collections_rows_child(array(_collections_rows_field_row(71, 'step', 'text box'))));
+	$config = pg_coll_rows_editor_config($plain, $rows, array());
+	pg_assert_same('', $config['rows'][0]['open'], 'no Open the row when the table takes every field');
+}
+
+// The list travels as one field: no input per cell (max_input_vars).
+function test_collections_rows_editor_markup_posts_one_field()
+{
+	$config = pg_coll_rows_editor_config(_collections_rows_spec(), array(), array());
+	$html = pg_coll_rows_editor_markup(array('id' => 901, 'label' => 'Steps <b>'), $config, '[]');
+
+	pg_assert_same(1, preg_match_all('/\sname="/', $html), 'one named field');
+	pg_assert_contains('name="rows_901"', $html);
+	pg_assert_contains('data-pg-rows', $html);
+	pg_assert_contains('Steps &lt;b&gt;', $html, 'the label is escaped');
+	pg_assert_contains('assets/js/pg_collection_rows.js', $html);
+	pg_assert_contains('assets/lib/sortablejs/Sortable.min.js', $html);
+	pg_assert_true(strpos($html, '<script>') === false || strpos($html, '"columns"') === false || strpos($html, '</script') !== false, 'config is not left open');
+
+	$refused = pg_coll_rows_editor_markup(array('id' => 902, 'label' => 'Steps'), pg_coll_rows_spec(_collections_rows_field(0), null), '');
+	pg_assert_contains(pg_coll_rows_spec_message('no_form'), $refused, 'a field that cannot draw says why');
+	pg_assert_same(0, preg_match_all('/\sname="/', $refused), 'and posts nothing');
+}
+
+function test_collections_rows_parent_row()
+{
+	pg_assert_same('', pg_coll_rows_parent_row(null));
+	$html = pg_coll_rows_parent_row(array('id' => 77, 'reference_code' => 'P1 <x>', 'label' => 'Recipe'));
+	pg_assert_contains('edit_submitted_form.php?id=77', $html, 'the row names its parent with a link back');
+	pg_assert_contains('P1 &lt;x&gt;', $html);
 }

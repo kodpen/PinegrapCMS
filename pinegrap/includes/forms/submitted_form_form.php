@@ -294,6 +294,14 @@ function pg_submitted_form_fields_markup($liveform, $user, $page_id, $office_use
         switch ($field['type']) {
             case 'text box':
             case 'email address':
+                // A collection's rows field draws its rows editor: a table
+                // of the child records whose list travels in one field
+                // (includes/fn/collection_rows.php).
+                if ($coll_kind['kind'] === 'rows') {
+                    $output_fields .= pg_coll_rows_field_markup($liveform, $field, $page_id, $form_id);
+                    break;
+                }
+
                 $output_fields .=
                     '<div class="col-12 md:col-6 lg:col-4 my-3 ' . $row_class . '">
                         ' . pg_ai_write_label_row('<label class="form-label" for="' . h($field['id']) . '">' . h($field['label']) . '</label>', pg_ai_write_form_button($user, $page_id, $field['id'])) . '

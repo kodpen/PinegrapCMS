@@ -1688,6 +1688,7 @@
     "Please configure the fields below that should be set when a Submitted Form is {var:1}.": "Lütfen bir Form {var:1} ayarlanmasını istediğiniz şekilde aşağıdaki alanları yapılandırın.",
     "Please contact us if you have any questions.": "Sorularınız için bizimle iletişime geçebilirsiniz.",
     "Please correct the highlighted rows.": "Lütfen işaretli satırları düzeltin.",
+    "Please correct the marked rows of {var:1}": "Lütfen {var:1} alanındaki işaretli satırları düzeltin",
     "Please delete all folders, pages, and files in this folder before deleting this folder.": "Lütfen bu klasörü silmeden önce bu klasördeki tüm klasörleri, sayfaları ve dosyaları silin.",
     "Please delete all product groups in this product group before deleting this product group.": "Bu ürün grubunu silmeden önce lütfen bu ürün grubundaki tüm ürün gruplarını silin.",
     "Please delete folders one at a time.": "Lütfen klasörleri tek tek silin.",
