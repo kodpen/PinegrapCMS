@@ -10,6 +10,7 @@ description: Plan content-review, steps CH1 to CH5: the table and its rules, the
   - New: `includes/fn/content_review.php`: ready check, an item's row read and written, the state of a date, the next date after a review, which items count, who may be the person, the sweep. `tests/content_review_test.php`.
   - Tests, red first: the four states at the day's edges in the site's time, the next date with and without an interval, a record of a form that is no collection refused, a person without the right refused.
   - Features: V1 to V6.
+  - Done: #9934 (`platform/content-review-rules.md`; columns confirmed in agent channel message 6410).
 
 - CH2 (M) after CH1: the screen.
   - Existing files: `includes/fn/list_table.php` (one row in `pg_list_table_definitions()`), `includes/fn/output.php` (the entry in `output_menu()` beside the Pages tools), `get_help_url.php` (its row).
