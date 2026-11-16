@@ -197,3 +197,24 @@ function test_site_search_report_screen()
 	pg_assert_contains("'site_search' => pg_site_search_stats_ready(),", $menu, 'the ready check of the menu anchor');
 	pg_assert_contains("case 'visitor_search.php':", $menu);
 }
+
+function test_site_search_staff_is_not_counted()
+{
+	pg_assert_false(pg_site_search_user_countable(true, 0), 'an administrator is not counted');
+	pg_assert_false(pg_site_search_user_countable(true, 1), 'a designer is not counted');
+	pg_assert_false(pg_site_search_user_countable(true, '2'), 'a manager is not counted');
+	pg_assert_true(pg_site_search_user_countable(true, 3), 'a member counts');
+	pg_assert_true(pg_site_search_user_countable(false, null), 'a signed-out visitor counts');
+	pg_assert_true(pg_site_search_user_countable(false, 0), 'no role without a sign-in');
+	pg_assert_false(pg_site_search_user_countable(true, null), 'a signed-in user of unknown role is not counted');
+}
+
+function test_site_search_countable_asks_the_user_rule()
+{
+	$source = site_search_stats_test_source('includes/fn/site_search_stats.php');
+	$start = strpos($source, 'function pg_site_search_countable()');
+	pg_assert_true($start !== false);
+	$body = substr($source, $start, 1200);
+	pg_assert_true(strpos($body, 'pg_site_search_user_countable($signed_in, ') !== false, 'pg_site_search_countable() asks the user rule');
+	pg_assert_true(strpos($body, "USER_ROLE") !== false, 'from the role of the signed-in user');
+}

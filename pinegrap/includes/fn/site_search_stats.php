@@ -11,7 +11,8 @@
  * is the visitor's text folded to one form (pg_site_search_term()), so "Kahve"
  * and "kahve " share a row. A visit counts a term once a day (the session
  * keeps the keys it counted), and a result click once a day per term and
- * address. Crawlers and scripts are not counted (pg_request_is_automated()).
+ * address. Crawlers and scripts (pg_request_is_automated()) and signed-in
+ * staff (role < 3) are not counted.
  * The rollup holds no visitor data, so it counts whether visitor tracking is
  * on or not; the visit's own term list (pg_search_record_visit_term()) still
  * follows the switch.
@@ -153,8 +154,29 @@ function pg_site_search_seen($key)
 }
 
 /**
+ * Whether the user of a request may count a search or a click: a signed-out
+ * visitor and a member (role 3) do; staff (role < 3) do not, so the team's
+ * own searches while trying out pages or the search tuning stay out of the
+ * figures, as they stay out of the page speed beacon. A signed-in user whose
+ * role is unknown is not counted. Pure.
+ *
+ * @param bool  $signed_in USER_LOGGED_IN
+ * @param mixed $role      USER_ROLE
+ * @return bool
+ */
+function pg_site_search_user_countable($signed_in, $role)
+{
+    if (!$signed_in) {
+        return true;
+    }
+
+    return is_numeric($role) && ((int) $role >= 3);
+}
+
+/**
  * Whether this request may count: the table is there, it is no crawler or
- * script, and it is no render of a page for the SEO pass or the search index.
+ * script, no render of a page for the SEO pass or the search index, and the
+ * user is no staff (pg_site_search_user_countable()).
  *
  * @return bool
  */
@@ -163,6 +185,12 @@ function pg_site_search_countable()
     if ((defined('UPDATE_SEARCH_INDEX') && UPDATE_SEARCH_INDEX === true)
         || (function_exists('pg_seo_rendering') && pg_seo_rendering())
         || (function_exists('pg_request_is_automated') && pg_request_is_automated())) {
+        return false;
+    }
+
+    $signed_in = defined('USER_LOGGED_IN') && (USER_LOGGED_IN === true);
+
+    if (!pg_site_search_user_countable($signed_in, defined('USER_ROLE') ? USER_ROLE : null)) {
         return false;
     }
 
