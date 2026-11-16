@@ -4,7 +4,7 @@ description: Plan referral-programme, steps RF1 to RF5: the census of commission
 ---
 
 ## Which steps are there?
-- RF1 (M) The rules, server and data only. After the owner's yes on the set's schema.
+- RF1 (M, after the owner's yes on the set's schema) The rules, server and data only.
   - First a census in the draft PR's body: every reader of `commissions` (screens, lists, reports, the API, the affiliate's account part, the personal data export and erasure) and what each does with a referral's row. The architect confirms it there before the rest is written.
   - A migration step adds the value `referral` to `gift_cards.kind`.
   - Existing files, one call each beside what affiliates and points already have there: `includes/fn/order_completion.php` (at the commission's call), `includes/fn/ecommerce.php` (`process_order_cancellation()`, `pg_order_restore_cancelled()`), `includes/fn/returns.php` and the order screen's line refund, `includes/fn/store_credit.php` (the kind), `includes/fn/commission_list.php` (a referral's row not set by hand).
@@ -30,4 +30,4 @@ description: Plan referral-programme, steps RF1 to RF5: the census of commission
 - RF5 (S) close-out: every E number checked against the code with its PR; `commerce/referral-programme.md`; this plan's three files deleted and its line in `plans/more-features.md` removed.
 
 ## Which steps run side by side?
-- RF2, RF3 and RF4 run beside each other once RF1 has landed. RF1 is never open beside TK1 of `plans/event-tickets.md`: both enter the cart module and the completion file (`plans/more-features-shared-files.md`).
+- Until the owner's yes on the set's schema each waits for the one before it, so none is free. After it: RF2, RF3 and RF4 run beside each other once RF1 has landed. RF1 is never open beside TK1 of `plans/event-tickets.md`: both enter the cart module and the completion file (`plans/more-features-shared-files.md`).

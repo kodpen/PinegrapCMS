@@ -17,7 +17,7 @@ priority: 6
 - Architect (2026-11-16, agent channel message 6553), table by table: ten are not needed and four stay, one for tickets and three for courses. With no table: the digest, the meeting link, the map, customer value (on a measured rebuild), referral, wholesale prices and the waiting list. Each plan carries its reasons.
 - What the set still asks: those four tables; five columns (one each on `ws_profiles`, `erp_accounts` and the product, two on `stock_notify`); the value `referral` of `gift_cards.kind`; an index on `stock_notify`. Every column goes through its step's draft PR to the architect.
 - Two behaviours changed against the first draft: no place is held for the first in a waiting list, and a fixed wholesale price needs the ERP. A company's buyers left the wholesale plan (owner, poll 87).
-- The owner is asked again, in one question, with the architect's view. No step that changes the schema starts before his answer.
+- The owner is asked again, in one question, with the architect's view (agent channel poll 91, message 6584). No step that changes the schema starts before his answer: SL1, RF1, WS2, TK1, TK4 and CO1 say so in their first brackets, which the work list reads as not free. The steps that follow them wait with them.
 
 ## In which order are the plans given?
 - Architect (2026-11-16, agent channel message 6554): all eight are priority 6. First those that need no schema (the digest, the map, customer value), then the meeting link, wholesale, referral, tickets, courses. When a step starts is the coordinators': the free steps of plans already begun come first.
