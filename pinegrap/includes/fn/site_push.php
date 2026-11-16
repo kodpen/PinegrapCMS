@@ -68,13 +68,11 @@ define('PG_SITE_PUSH_FAILED', 3);
  */
 define('PG_SITE_PUSH_REREAD', 300);
 /**
- * Message kinds: news to every subscriber; a test and a back-in-stock
- * notice (pg_stock_notify_send()) to one device; 3 (an order's moment) by
- * its own step.
+ * Message kinds: news to every subscriber and a test to one device are
+ * written here; 2 (stock) and 3 (an order's moment) by their own steps.
  */
 define('PG_SITE_PUSH_KIND_NEWS', 0);
 define('PG_SITE_PUSH_KIND_TEST', 1);
-define('PG_SITE_PUSH_KIND_STOCK', 2);
 /**
  * Queue rows written by one INSERT.
  */
@@ -778,10 +776,9 @@ function pg_site_push_queue_insert($message_id, array $subscription_ids)
  * pass sends it. Writes nothing while the switch is off.
  *
  * @param array $input            title, body, url (pg_site_push_message_check())
- * @param int   $kind             PG_SITE_PUSH_KIND_NEWS, _TEST or _STOCK
- * @param int   $created_by       the user who sent it, 0 for the site
- * @param int   $subscription_id  the one subscription of a test or a stock
- *                                notice
+ * @param int   $kind             PG_SITE_PUSH_KIND_NEWS or PG_SITE_PUSH_KIND_TEST
+ * @param int   $created_by       the user who sent it
+ * @param int   $subscription_id  a test's one subscription
  * @return int|string  the message id, or an error code: off, kind,
  *                     subscription, save, or one of the check's
  */
@@ -793,7 +790,7 @@ function pg_site_push_message_send(array $input, $kind, $created_by, $subscripti
 
     $kind = (int) $kind;
 
-    if (!in_array($kind, array(PG_SITE_PUSH_KIND_NEWS, PG_SITE_PUSH_KIND_TEST, PG_SITE_PUSH_KIND_STOCK), true)) {
+    if (!in_array($kind, array(PG_SITE_PUSH_KIND_NEWS, PG_SITE_PUSH_KIND_TEST), true)) {
         return 'kind';
     }
 
@@ -805,9 +802,7 @@ function pg_site_push_message_send(array $input, $kind, $created_by, $subscripti
 
     $subscription_id = (int) $subscription_id;
 
-    $one = ($kind !== PG_SITE_PUSH_KIND_NEWS);
-
-    if ($one && (($subscription_id < 1) || !db_value("SELECT id FROM site_push_subscription WHERE id = '" . $subscription_id . "'"))) {
+    if (($kind === PG_SITE_PUSH_KIND_TEST) && (($subscription_id < 1) || !db_value("SELECT id FROM site_push_subscription WHERE id = '" . $subscription_id . "'"))) {
         return 'subscription';
     }
 
@@ -825,7 +820,7 @@ function pg_site_push_message_send(array $input, $kind, $created_by, $subscripti
     $message_id = (int) mysqli_insert_id(db::$con);
     $queued = 0;
 
-    if ($one) {
+    if ($kind === PG_SITE_PUSH_KIND_TEST) {
         $batches = array(array($subscription_id));
     } else {
         $batches = array();

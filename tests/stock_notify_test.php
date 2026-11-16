@@ -350,23 +350,58 @@ function test_stock_notify_endpoint_promises_what_is_sent()
 }
 
 // The push for a device that asked: the name as the title (60 at most, one
-// line), a fixed sentence, and the product's path without the host.
+// line), a fixed sentence, and the product's path; the home page without one.
 function test_stock_notify_push_input()
 {
-	$input = pg_stock_notify_push_input("Shirt\r\nblue", 'https://shop.test/urun/shirt');
+	$input = pg_stock_notify_push_input("Shirt\r\nblue", '/urun/shirt', '');
 	pg_assert_same('Shirt blue', $input['title'], 'one line');
-	pg_assert_same('https://shop.test/urun/shirt', $input['url'], 'the address, made a path by the message check');
+	pg_assert_same('/urun/shirt', $input['url'], 'the path');
 	pg_assert_true($input['body'] !== '', 'a sentence');
+	pg_assert_true(mb_strlen($input['body'], 'UTF-8') <= 200, 'within the text column');
 
-	$long = pg_stock_notify_push_input(str_repeat('é', 80), '');
+	$long = pg_stock_notify_push_input(str_repeat('é', 80), '', 'tr');
 	pg_assert_same(60, mb_strlen($long['title'], 'UTF-8'), 'cut to the title limit, never refused');
 	pg_assert_same('/', $long['url'], 'the site when the product has no address');
 }
 
-// A stock notice goes to the one device named; the sender takes kind 2.
-function test_stock_notify_push_kind()
+// A deleted account's or product's requests take their device waits with
+// them, before the rows are gone; anything else touches nothing.
+function test_stock_notify_forget_watch_sql()
+{
+	pg_assert_same(
+		"DELETE w FROM site_push_watch AS w INNER JOIN stock_notify AS n ON (w.kind = '2') AND (n.id = w.record_id) WHERE n.product_id = '9'",
+		pg_stock_notify_forget_watch_sql('product_id', '9'),
+		'a product'
+	);
+	pg_assert_contains("n.user_id = '7'", pg_stock_notify_forget_watch_sql('user_id', 7), 'an account');
+	pg_assert_same('', pg_stock_notify_forget_watch_sql('user_id', 0), 'never id 0');
+	pg_assert_same('', pg_stock_notify_forget_watch_sql('email_address', 7), 'only the two columns');
+}
+
+// The device waits for the row it asked with; the sender tells it beside the
+// mail or text, once, through the shared wait table.
+function test_stock_notify_push_wiring()
 {
 	pg_assert_same(2, PG_SITE_PUSH_KIND_STOCK, 'kind 2');
-	$send = pg_test_function_source('pg_site_push_message_send');
-	pg_assert_contains('PG_SITE_PUSH_KIND_STOCK', $send, 'the writer takes it');
+
+	$request = pg_test_function_source('pg_stock_notify_request');
+	pg_assert_contains('pg_stock_notify_push_watch(', $request, 'a request names the device');
+
+	$watch = pg_test_function_source('pg_stock_notify_push_watch');
+	pg_assert_contains('pg_site_push_subscription_by_secret(', $watch, 'by its secret');
+	pg_assert_contains('pg_site_push_watch_add(PG_SITE_PUSH_KIND_STOCK', $watch, 'in the shared table');
+
+	$push = pg_test_function_source('pg_stock_notify_push_send');
+	pg_assert_contains('pg_site_push_watchers(PG_SITE_PUSH_KIND_STOCK', $push, 'only devices still subscribed');
+	pg_assert_contains('pg_site_push_watch_take(PG_SITE_PUSH_KIND_STOCK, $row_id, (int) $watcher[\'subscription_id\'], 0, true)', $push, 'the one moment, taken once');
+	pg_assert_contains('pg_site_push_message_to_one(', $push, 'one message for that device');
+
+	$send = pg_test_function_source('pg_stock_notify_send');
+	pg_assert_true(strpos($send, 'pg_stock_notify_push_send(') < strpos($send, 'pg_sms_message_queue('), 'beside the text and the mail, after the claim');
+
+	pg_assert_contains('pg_stock_notify_forget_watch_sql(', pg_test_function_source('pg_stock_notify_forget_user'), 'an account');
+	pg_assert_contains('pg_stock_notify_forget_watch_sql(', pg_test_function_source('pg_stock_notify_forget_product'), 'a product');
+
+	$endpoint = (string) file_get_contents(PG_FUNCTIONS_DIR . '/stock_notify.php');
+	pg_assert_contains("'push_secret'", $endpoint, 'the endpoint reads the secret');
 }
