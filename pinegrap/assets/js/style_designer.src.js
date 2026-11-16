@@ -5018,10 +5018,61 @@ const StyleDesigner = (function () {
         return 'run:' + ((selectedNode && selectedNode._id) ? selectedNode._id : 'none') + ':' + what;
     }
 
+    // The selection, as ids, and the Options panel's scroll position before an
+    // undo or redo step replaces the tree with a parsed snapshot.
+    function _sdStepSelectionKeep() {
+        var panel = document.getElementById('sd-properties');
+        return {
+            id:     selectedNode ? selectedNode._id : null,
+            ids:    selectedNodes.map(function (n) { return n ? n._id : null; }),
+            scroll: panel ? panel.scrollTop : 0
+        };
+    }
+
+    // Finds the kept selection again in the restored trees. The snapshot keeps
+    // every node's _id, so the same ids name the same elements; an id the
+    // step removed drops out. Returns { node, nodes } for selectedNode and
+    // selectedNodes. `find(id)` returns the node or null.
+    function _sdStepSelection(keep, find) {
+        var get = function (id) { return (id === null || id === undefined || id === '') ? null : (find(id) || null); };
+        var nodes = [];
+        (keep.ids || []).forEach(function (id) {
+            var n = get(id);
+            if (n && nodes.indexOf(n) === -1) nodes.push(n);
+        });
+        var node = get(keep.id);
+        // The primary of a multi-selection went away: the last one left takes
+        // its place, as Ctrl+Click does when it takes the primary out.
+        if (!node && nodes.length) node = nodes[nodes.length - 1];
+        if (nodes.length < 2) nodes = [];
+        return { node: node, nodes: nodes };
+    }
+
+    // Selects the kept nodes in the restored tree, redraws, and puts the
+    // Options panel back where it was scrolled when the same node is shown.
+    function _sdStepReselect(keep) {
+        var sel = _sdStepSelection(keep, function (id) {
+            var r = _findNodeAnywhereById(id);
+            return r ? r.node : null;
+        });
+        selectedNode  = sel.node;
+        selectedNodes = sel.nodes;
+        render();
+        if (!selectedNode || selectedNode._id !== keep.id || !keep.scroll) return;
+        var panel = document.getElementById('sd-properties');
+        if (!panel) return;
+        panel.scrollTop = keep.scroll;
+        // Sections filled after the paint can make the panel taller.
+        requestAnimationFrame(function () {
+            if (selectedNode && selectedNode._id === keep.id) panel.scrollTop = keep.scroll;
+        });
+    }
+
     function undo() {
         // A tried layout is not in the history: undo takes it off.
         if (_sdLgCancel()) return;
         if (!undoStack.length) return;
+        var keep = _sdStepSelectionKeep();
         redoStack.push({
             tree:   JSON.stringify(tree),
             shared: _snapshotShared(),
@@ -5034,15 +5085,14 @@ const StyleDesigner = (function () {
         _restoreShared(prev.shared);
         nodeIdCounter = _sdIdFloor();
         _restoreAssetFields(prev.assets);
-        selectedNode = null;
-        selectedNodes = [];
-        render();
+        _sdStepReselect(keep);
         updateUndoRedoState();
     }
 
     function redo() {
         if (_sdLgCancel()) return;
         if (!redoStack.length) return;
+        var keep = _sdStepSelectionKeep();
         undoStack.push({
             tree:   JSON.stringify(tree),
             shared: _snapshotShared(),
@@ -5054,9 +5104,7 @@ const StyleDesigner = (function () {
         _restoreShared(nxt.shared);
         nodeIdCounter = _sdIdFloor();
         _restoreAssetFields(nxt.assets);
-        selectedNode = null;
-        selectedNodes = [];
-        render();
+        _sdStepReselect(keep);
         updateUndoRedoState();
     }
 
