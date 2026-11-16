@@ -4771,6 +4771,10 @@
         var can = s.can || {}, out = [];
         var add = function (name, off) { out.push({ name: name, off: !!off }); };
 
+        if (s.place === 'object') {
+            return objectActions(s);
+        }
+
         if (!s.layers && !s.picture && !s.area) {
             return out;
         }
@@ -4823,7 +4827,73 @@
         return (pointer === 'touch') || (pointer === 'pen') || (!!shift !== !!ratio);
     }
 
-    var ACTIONS = { actionList: actionList, keepRatio: keepRatio };
+    // The bar over the selected object where the panel is not a sheet (s as
+    // actionList() reads it, and s.kind: the one layer's type; s.animate:
+    // the Animate tool). The type's own command (a text: Edit text; a video
+    // in Animate: Split), Motion in Animate (never for a redaction, which
+    // does not move), Duplicate, Delete, Lock, More (the context menu's
+    // list). Every layer locked: Unlock and More. The picture and an area
+    // keep their commands in the panel: no bar.
+    function objectActions(s) {
+        var out = [];
+        var add = function (name) { out.push({ name: name, off: false }); };
+
+        if (!s.layers) {
+            return out;
+        }
+
+        if (!s.free) {
+            add('unlock');
+            add('more');
+            return out;
+        }
+
+        if (s.layers === 1) {
+            if (s.kind === 'text') {
+                add('editText');
+            }
+
+            if (s.animate && (s.kind === 'video')) {
+                add('split');
+            }
+
+            if (s.animate && (s.kind !== 'redact')) {
+                add('motion');
+            }
+        }
+
+        ['duplicate', 'remove', 'lock', 'more'].forEach(add);
+
+        return out;
+    }
+
+    // How far the bar keeps from the selection's box in screen px: the gap,
+    // a box handle's half size, and the turning handle's reach above the
+    // box (26 px out, 5 px its half size).
+    var ACT_GAP = 8, ACT_HANDLE = 5, ACT_TURN = 31;
+
+    // Where the bar over the object goes, in px of the stage: box { x, y,
+    // w, h } the selection's bounds, bar { w, h } its size, stage { w, h,
+    // bottom } with bottom what the play bar and the tracks cover. Centred
+    // above the box, clear of the turning handle; below it where there is
+    // no room above; always inside the stage and above its covered bottom.
+    // { x, y, below }.
+    function actBarPlace(box, bar, stage) {
+        var pad = ACT_GAP, floor = (stage.h - (stage.bottom || 0)) - bar.h - pad;
+        var x = box.x + box.w / 2 - bar.w / 2, y = box.y - ACT_TURN - ACT_GAP - bar.h, below = false;
+
+        if (y < pad) {
+            y = box.y + box.h + ACT_HANDLE + ACT_GAP;
+            below = true;
+        }
+
+        x = Math.max(pad, Math.min(x, stage.w - bar.w - pad));
+        y = Math.max(pad, Math.min(y, floor));
+
+        return { x: Math.round(x), y: Math.round(y), below: below };
+    }
+
+    var ACTIONS = { actionList: actionList, keepRatio: keepRatio, actBarPlace: actBarPlace };
 
     // -- The context menu (pg_image_editor_menu.js) --
 
