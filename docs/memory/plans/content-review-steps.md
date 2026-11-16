@@ -28,10 +28,7 @@ description: Plan content-review, steps CH1 to CH5: the table and its rules, the
   - Features: V14, V15, V16.
   - Architect (6410): the announce first claims the row with one UPDATE writing `announced_on = review_on` only where `announced_on` is NULL or differs, and announces only when that write changed a row; a new date (Mark reviewed, a set date) separates them again. Today goes in as `pg_content_review_today()`, never `CURDATE()`.
 
-- CH4 (S) after CH2: the API.
-  - Existing files: the API schema (two rows); new: the resource file.
-  - Tests: the filters, the dry run, a user-role caller's rows (`api/api-user-role-rows.md`); `php tools/check_api_schema.php`.
-  - Features: V17.
+- CH4 Done (#10006): the API, `GET /content-review` and `POST /content-review/{kind}/{id}` (`api/api-content-review.md`); scope `content_review:read` / `:write` for roles 0-3 (architect, agent channel message 7025). Features: V17.
 
 - CH5 (S) close-out: every V number checked against the code with its PR; `platform/content-review.md`; this plan's three files deleted and its line in `plans/website-features.md` removed.
 

@@ -16,8 +16,8 @@ description: GET /content-review and POST /content-review/{kind}/{id} (CH4): the
 - After every check (item, role 3 rule, date, person), directly above the first write; it answers what would be written.
 
 ## Who may call it?
-- Scopes `content_review:read` / `content_review:write`, offered to every panel role (`api_owner_scopes()`), since the screen opens to a user (role 3) too.
-- A user-role (3) owner: filters mine (default), overdue and soon only (another is 422), each narrowed to the items it is the person of by `pg_content_review_list_condition()`; it may only send `reviewed`, for its own item: another field is 403, another item 404.
+- Scopes `content_review:read` / `content_review:write`, their own group in `api_scope_groups()`, offered to roles 0-3 (`api_owner_scopes()`), since the screen opens to a user (role 3) too. Architect (2026-11-16, agent channel message 7025): this pair, not `pages:*`, which ends at role 2; opening it to role 3 would open every page endpoint. Roles 0-2 see the screen's rows.
+- A user-role (3) owner: filters mine (default), overdue and soon only (another is 422), each narrowed to the items it is the person of by `pg_content_review_list_condition()`; it may only send `reviewed`, for its own item: another field is 403, another person's item 404 (not 403). Setting the date or the person, clearing and bulk actions stay with roles 0-2.
 
 ## Tested?
 - `tests/api_content_review_test.php` (filters per role, keyset per branch, the cursor's ids, a user-role caller's rows, partial writes, the dry run's place). Sandbox (MariaDB): paging all with the cursor, dry run, a bad date 422, a write and reviewed, a role-3 key's 422, 403, 404 and its own mark.
