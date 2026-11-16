@@ -1545,6 +1545,7 @@
     "Due now": "Sırası geldi",
     "Due now: it runs on the next tick of the general job.": "Sırası geldi: genel görevin bir sonraki çalışmasında çalışır.",
     "Due on {{trigger.due_date}}, {{trigger.days_overdue}} days overdue.": "Vade tarihi {{trigger.due_date}}, {{trigger.days_overdue}} gün gecikmede.",
+    "Due soon": "Yaklaşan",
     "Due this week": "Bu hafta vadesi gelen",
     "Due time": "Bitiş saati",
     "Due today": "Vadesi bugün",

@@ -925,6 +925,7 @@
     "Only a member of a private channel can add an agent to it.": "Özel bir kanala ajanı yalnız kanalın bir üyesi ekleyebilir.",
     "Only a member of a private channel can add people to it.": "Özel bir kanala yalnızca o kanalın üyeleri kişi ekleyebilir.",
     "Only a message, a note, a decision or a task card can be pinned.": "Yalnız bir mesaj, not, karar ya da görev kartı sabitlenebilir.",
+    "Only a panel user who may edit the item can be its person; the others are left as they were.": "Bir öğenin kişisi yalnızca onu düzenleyebilen bir panel kullanıcısı olabilir; ötekiler olduğu gibi kalır.",
     "Only a paused campaign can be scheduled.": "Yalnızca duraklatılmış bir kampanya zamanlanabilir.",
     "Only a paused flow can be resumed.": "Yalnızca duraklatılmış bir akış sürdürülebilir.",
     "Only a paused subscription can be resumed.": "Yalnızca duraklatılmış bir abonelik devam ettirilebilir.",

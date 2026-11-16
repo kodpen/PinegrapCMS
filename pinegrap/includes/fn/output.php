@@ -4076,6 +4076,11 @@ function output_menu($properties = false)
         if ((int) $user['role'] === 2) {
             $menu_items[2]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/translations.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-translate bi-me-2\'>' . lang('Translations') . '</a>';
         }
+        // PAGES > Content review (view_content_review.php): every panel user,
+        // a user (role 3) sees only the items they are the person of.
+        if (function_exists('pg_content_review_ready') && pg_content_review_ready()) {
+            $menu_items[2]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_content_review.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-calendar-check bi-me-2\'>' . lang('Content review') . '</a>';
+        }
         // PAGES > Search and audits (search_audits.php: the search index and
         // the SEO, structure and accessibility passes, managers and up)
         if ($user['role'] < 3) {
@@ -4857,6 +4862,7 @@ function output_menu($properties = false)
         case 'edit_short_link.php':
         case 'view_not_found_log.php':
         case 'view_accessibility.php':
+        case 'view_content_review.php':
         case 'view_auto_dialogs.php':
         case 'add_auto_dialog.php':
         case 'edit_auto_dialog.php':
