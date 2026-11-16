@@ -6733,6 +6733,8 @@
     "The site could not be reached at its public address. A Fediverse server cannot find it either.": "Siteye herkese açık adresinden ulaşılamadı. Bir Fediverse sunucusu da onu bulamaz.",
     "The site did not answer, so this was not done. Check the connection and try again.": "Site yanıt vermedi, bu yüzden işlem yapılmadı. Bağlantıyı denetleyip yeniden deneyin.",
     "The site does not answer: {{result}}": "Site yanıt vermiyor: {{result}}",
+    "The site draws the catalog's groups, the visitor's group in bold.": "Site kataloğun gruplarını çizer; ziyaretçinin bulunduğu grup kalın gösterilir.",
+    "The site draws the filters the widget's settings turn on, with the attributes of the products shown.": "Site, widget ayarlarında açık olan filtreleri gösterilen ürünlerin özellikleriyle çizer.",
     "The site goes live on your address; you get an hour of training and a month of free changes.": "Site kendi adresinizde yayına girer; bir saatlik eğitim ve bir ay ücretsiz değişiklik alırsınız.",
     "The site goes live only once the design is approved in writing and the tests are done.": "Site ancak tasarım yazılı olarak onaylanıp testler bittikten sonra yayına girer.",
     "The site has a privacy notice page": "Sitede bir gizlilik bildirimi sayfası var",

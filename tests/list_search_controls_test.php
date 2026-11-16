@@ -73,10 +73,13 @@ function test_list_widgets_use_the_named_controls()
 	pg_assert_contains("_pg_sw_hidden_query_inputs(array('pmin', 'pmax', (string)\$page_param))", $catalog);
 	pg_assert_contains('for="\' . $sort_id . \'"', $catalog);
 	pg_assert_contains('<select name="sort" id="\' . $sort_id . \'"', $catalog);
-	pg_assert_contains("aria-label=\"' . h(lang('Minimum price')) . '\"", $catalog);
-	pg_assert_contains("aria-label=\"' . h(lang('Maximum price')) . '\"", $catalog);
-	pg_assert_contains("h(lang('Price')) . ':", $catalog);
-	pg_assert_false(strpos($catalog, 'Fiyat') !== false || strpos($catalog, 'Uygula') !== false, 'no fixed Turkish text');
+	// The price form is built by its own builder.
+	pg_assert_contains('pg_catalog_price_filter_html($hidden_for_price, $cur_min, $cur_max, $price_filter_step)', $catalog);
+	$price = _list_search_controls_fn('widgets_catalog.php', 'pg_catalog_price_filter_html');
+	pg_assert_contains("aria-label=\"' . h(lang('Minimum price')) . '\"", $price);
+	pg_assert_contains("aria-label=\"' . h(lang('Maximum price')) . '\"", $price);
+	pg_assert_contains("h(lang('Price')) . ':", $price);
+	pg_assert_false(strpos($catalog . $price, 'Fiyat') !== false || strpos($catalog . $price, 'Uygula') !== false, 'no fixed Turkish text');
 
 	$src = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/widgets.php');
 	pg_assert_true(substr_count($src, '_pg_sw_search_box_html($query_param, $search_query, $search_label, $search_width_cls, $page_param)') === 1, 'form list prints the shared box');

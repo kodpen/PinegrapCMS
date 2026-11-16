@@ -14354,6 +14354,12 @@ const StyleDesigner = (function () {
                     var _sample = _sdCommentsSectionSample(_sec, doc);
                     if (_sample) _hint = _sample;
                 }
+                // A catalog listing's category tree and filters, likewise
+                // (_sdCatalogSectionSample()).
+                if (!_hasChildren && _getSystemWidgetRegionType(node) === 'catalog_listing') {
+                    var _catSample = _sdCatalogSectionSample(_sec, doc, _sysWidgetRenderCfg);
+                    if (_catSample) _hint = _catSample;
+                }
                 if (_hint) innerEl.appendChild(_hint);
             }
         }
@@ -15498,10 +15504,8 @@ const StyleDesigner = (function () {
         // The catalog's blocks, in the markup widgets_catalog.php gives them;
         // controls disabled.
         '__group_tree_html': function () {
-            return '<nav class="pg-sw-cl-group-tree"><ul class="list-unstyled mb-0">' +
-                   '<li class="pg-sw-cl-tree-item active"><a href="#" class="text-decoration-none fw-bold">' + esc(_sdT('Shirts')) + '</a></li>' +
-                   '<li class="pg-sw-cl-tree-item"><a href="#" class="text-decoration-none">' + esc(_sdT('Trousers')) + '</a></li>' +
-                   '<li class="pg-sw-cl-tree-item"><a href="#" class="text-decoration-none">' + esc(_sdT('Accessories')) + '</a></li></ul></nav>';
+            return '<nav class="pg-sw-cl-group-tree" aria-label="' + esc(_sdT('Categories')) + '">'
+                + _sdCatalogGroupTreeHtml(SD_CATALOG_GROUPS_SAMPLE, SD_CATALOG_ACTIVE_GROUP, 0) + '</nav>';
         },
         '__filters_button': function () {
             return '<button type="button" class="btn btn-outline-secondary" disabled><i class="bi bi-funnel me-1"></i>' +
@@ -15511,17 +15515,12 @@ const StyleDesigner = (function () {
             return '<a href="#" class="btn btn-sm btn-outline-danger"><i class="bi bi-x-circle me-1"></i>' + esc(_sdT('Clear Filters')) + '</a>';
         },
         '__attribute_filters_html': function () {
-            var box = function (label, on) {
-                return '<div class="form-check"><input class="form-check-input" type="checkbox" disabled' + (on ? ' checked' : '') + '>' +
-                       '<label class="form-check-label">' + esc(label) + '</label></div>';
-            };
-            return '<div class="pg-sw-cl-attr-filters"><div class="fw-semibold small mb-1">' + esc(_sdT('Colour')) + '</div>' +
-                   box(_sdT('Natural'), true) + box(_sdT('Navy'), false) + '</div>';
+            return _sdCatalogSectionHtml('attribute_filters', { show_attribute_filters: true });
         },
         // The filters panel opens from the Filters button; drawn open here.
         '__filters_offcanvas': function () {
-            return '<div class="border rounded p-3"><div class="fw-semibold mb-2">' + esc(_sdT('Filters')) + '</div>' +
-                   _SD_HTML_PREVIEW_TOKENS.__attribute_filters_html() + '</div>';
+            return '<div class="pg-sw-filters-offcanvas border rounded">'
+                + _sdCatalogSectionHtml('filters_offcanvas', { price_filter_enabled: true, stock_filter_enabled: true, show_attribute_filters: true }) + '</div>';
         },
         '__variant_picker': function () {
             return '<div class="pg-civ-variant-picker mb-3"><label class="form-label">' + esc(_sdT('Size')) + '</label>' +
@@ -42361,6 +42360,156 @@ const StyleDesigner = (function () {
             out += '</div>';
         });
         return out;
+    }
+
+    // ── Catalog listing: the category tree and the filters ──────────────
+    // The site builds them per request (the visitor's group, the products'
+    // attributes, the filters picked), so their sections keep their settings
+    // and the canvas draws what the site prints, from twins of the PHP
+    // builders in widgets_catalog.php and these sample rows.
+
+    // A catalog of shirts with two sub groups, the visitor in Shirts.
+    var SD_CATALOG_GROUPS_SAMPLE = [
+        { id: 12, name: _sdT('Shirts'), children: [{ id: 121, name: _sdT('Linen') }, { id: 122, name: _sdT('Oxford') }] },
+        { id: 13, name: _sdT('Trousers') },
+        { id: 14, name: _sdT('Accessories') }
+    ];
+    var SD_CATALOG_ACTIVE_GROUP = 12;
+    // The attributes the sample products carry, Natural picked.
+    var SD_CATALOG_FILTER_ATTRS = {
+        1: { attr_label: _sdT('Colour'), options: [{ option_id: 11, option_label: _sdT('Natural') }, { option_id: 12, option_label: _sdT('Navy') }] },
+        2: { attr_label: _sdT('Size'), options: [{ option_id: 21, option_label: 'S' }, { option_id: 22, option_label: 'M' }, { option_id: 23, option_label: 'L' }] }
+    };
+    var SD_CATALOG_FILTER_PICKED = { 1: 11 };
+
+    // One level of the group tree (pg_catalog_group_tree_level()): `groups`
+    // [{ id, name, url, children }], `active` the visitor's group.
+    /* @pg-site-output */
+    function _sdCatalogGroupTreeHtml(groups, active, depth) {
+        var out = '<ul class="' + (depth === 0 ? 'pg-sw-cl-tree pg-sw-cl-tree-root list-unstyled mb-0' : 'pg-sw-cl-tree-sub list-unstyled ms-3') + '">';
+        (groups || []).forEach(function (g) {
+            var on = (parseInt(g.id, 10) || 0) === (parseInt(active, 10) || 0);
+            out += '<li class="pg-sw-cl-tree-item' + (on ? ' active' : '') + '">'
+                + '<a href="' + esc(g.url || '#') + '" class="text-decoration-none' + (on ? ' fw-bold' : '') + '">' + esc(String(g.name)) + '</a>'
+                + ((g.children && g.children.length) ? _sdCatalogGroupTreeHtml(g.children, active, depth + 1) : '')
+                + '</li>';
+        });
+        return out + '</ul>';
+    }
+
+    // The price filter form (pg_catalog_price_filter_html()).
+    /* @pg-site-output */
+    function _sdCatalogPriceFilterHtml(hidden, min, max, step) {
+        var st = parseInt(step, 10) || 0;
+        return '<form method="get" class="pg-sw-price-filter mb-3 d-flex align-items-center gap-2 flex-wrap">' + hidden
+            + '<span class="form-label mb-0 small text-muted">' + esc(_sdT('Price')) + ':</span>'
+            + '<input type="number" class="form-control form-control-sm" name="pmin" value="' + esc(min) + '" placeholder="' + esc(_sdT('Min')) + '" aria-label="' + esc(_sdT('Minimum price')) + '" min="0" step="' + st + '" style="max-width:100px">'
+            + '<span class="text-muted" aria-hidden="true">–</span>'
+            + '<input type="number" class="form-control form-control-sm" name="pmax" value="' + esc(max) + '" placeholder="' + esc(_sdT('Max')) + '" aria-label="' + esc(_sdT('Maximum price')) + '" min="0" step="' + st + '" style="max-width:100px">'
+            + '<button type="submit" class="btn btn-sm btn-outline-secondary">' + esc(_sdT('Apply')) + '</button>'
+            + '</form>';
+    }
+
+    // The in-stock filter (pg_catalog_stock_filter_html()).
+    /* @pg-site-output */
+    function _sdCatalogStockFilterHtml(widgetId, active, linkQuery) {
+        var id = 'pg-sw-stock-' + (parseInt(widgetId, 10) || 0);
+        return '<div class="pg-sw-stock-filter form-check mb-3">'
+            + '<input class="form-check-input" type="checkbox" id="' + id + '"' + (active ? ' checked' : '')
+            + ' onclick="window.location.search=\'?' + esc(linkQuery) + '\'">'
+            + '<label class="form-check-label" for="' + id + '">' + esc(_sdT('In stock only')) + '</label>'
+            + '</div>';
+    }
+
+    // The attribute filters (pg_catalog_attribute_filters_html()); `query`
+    // gives the query string of an attribute's parameter and value.
+    /* @pg-site-output */
+    function _sdCatalogAttrFiltersHtml(attrs, picked, style, query, widgetId) {
+        var out = '<div class="pg-sw-attr-filters mb-3">';
+        Object.keys(attrs || {}).forEach(function (aid) {
+            var def = attrs[aid], pk = 'pg_attr_' + aid;
+            var act = (picked && picked[aid] != null) ? (parseInt(picked[aid], 10) || 0) : 0;
+            out += '<div class="pg-sw-attr-group mb-2"><div class="small fw-semibold mb-1">' + esc(String(def.attr_label)) + '</div>';
+            if (style === 'buttons') {
+                out += '<div class="d-flex flex-wrap gap-1">'
+                    + '<a href="?' + esc(query(pk, '')) + '" class="btn btn-sm ' + (act === 0 ? 'btn-secondary' : 'btn-outline-secondary') + '">' + esc(_sdT('All')) + '</a>';
+                (def.options || []).forEach(function (o) {
+                    var oid = parseInt(o.option_id, 10) || 0;
+                    out += '<a href="?' + esc(query(pk, oid)) + '" class="btn btn-sm ' + (act === oid ? 'btn-secondary' : 'btn-outline-secondary') + '">' + esc(String(o.option_label)) + '</a>';
+                });
+                out += '</div>';
+            } else {
+                (def.options || []).forEach(function (o) {
+                    var oid = parseInt(o.option_id, 10) || 0, on = (act === oid);
+                    var cb = 'pg-af-' + (parseInt(widgetId, 10) || 0) + '-' + aid + '-' + oid;
+                    out += '<div class="form-check"><input class="form-check-input" type="checkbox"' + (on ? ' checked' : '')
+                        + ' id="' + cb + '" onclick="window.location.search=\'?' + esc(query(pk, on ? '' : String(oid))) + '\'">'
+                        + '<label class="form-check-label" for="' + cb + '">' + esc(String(o.option_label)) + '</label></div>';
+                });
+            }
+            out += '</div>';
+        });
+        return out + '</div>';
+    }
+
+    // The filters offcanvas's header and body
+    // (pg_catalog_filters_offcanvas_inner_html()).
+    /* @pg-site-output */
+    function _sdCatalogFiltersInnerHtml(offId, chips, price, stock, attrs) {
+        return '<div class="offcanvas-header border-bottom">'
+            + '<h5 class="offcanvas-title mb-0" id="' + esc(offId) + 'Title"><i class="bi bi-funnel me-2"></i>' + esc(_sdT('Filters')) + '</h5>'
+            + '<button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="' + esc(_sdT('Close')) + '"></button>'
+            + '</div>'
+            + '<div class="offcanvas-body">'
+            + (chips !== '' ? '<div class="border-bottom pb-2 mb-3">' + chips + '</div>' : '')
+            + price + stock + attrs
+            + '</div>';
+    }
+
+    // The sample query string of a filter link (the canvas opens nothing).
+    function _sdCatalogSampleQuery(param, value) {
+        return (value === '' || value == null) ? '' : param + '=' + value;
+    }
+
+    // What a catalog listing prints in a section the server fills, with the
+    // widget's settings `cfg`: the category tree, the filters offcanvas
+    // (drawn open) or the legacy attribute filters; '' when the setting
+    // leaves it empty on the site.
+    /* @pg-site-output */
+    function _sdCatalogSectionHtml(section, cfg) {
+        var c = cfg || {};
+        var attrs = function () {
+            return c.show_attribute_filters ? _sdCatalogAttrFiltersHtml(SD_CATALOG_FILTER_ATTRS, SD_CATALOG_FILTER_PICKED,
+                c.attribute_filter_style === 'buttons' ? 'buttons' : 'checkboxes', _sdCatalogSampleQuery, 0) : '';
+        };
+        if (section === 'group_tree') {
+            return (c.group_navigation === 'none') ? '' : _sdCatalogGroupTreeHtml(SD_CATALOG_GROUPS_SAMPLE, SD_CATALOG_ACTIVE_GROUP, 0);
+        }
+        if (section === 'attribute_filters') return attrs();
+        if (section === 'filters_offcanvas') {
+            if (!c.price_filter_enabled && !c.stock_filter_enabled && !c.show_attribute_filters) return '';
+            return _sdCatalogFiltersInnerHtml('pgFilters0', '',
+                c.price_filter_enabled ? _sdCatalogPriceFilterHtml('', '', '', Math.max(1, parseInt(c.price_filter_step, 10) || 1)) : '',
+                c.stock_filter_enabled ? _sdCatalogStockFilterHtml(0, !!c.stock_filter_default, c.stock_filter_default ? '' : 'stock=1') : '',
+                attrs());
+        }
+        return '';
+    }
+
+    // The sample of a catalog section as a canvas box: inert, never saved,
+    // the words under it saying it is filled per visitor. null when the
+    // site prints nothing for it.
+    function _sdCatalogSectionSample(section, doc, cfg) {
+        var html = _sdCatalogSectionHtml(section, cfg);
+        if (!html) return null;
+        var box = doc.createElement('div');
+        box.className = 'sd-section-binding-hint sd-section-sample';
+        box.setAttribute('inert', '');
+        box.style.cssText = 'pointer-events:none';
+        box.innerHTML = html + '<div class="small text-body-secondary fst-italic mt-1">'
+            + esc(section === 'group_tree' ? _sdT('The site draws the catalog\'s groups, the visitor\'s group in bold.')
+                : _sdT('The site draws the filters the widget\'s settings turn on, with the attributes of the products shown.')) + '</div>';
+        return box;
     }
 
     // Resolve the regionType of the system widget that contains `node`.
