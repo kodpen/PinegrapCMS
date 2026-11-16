@@ -223,6 +223,7 @@
 - vendor-api-update-download.md: Download, backup and replace of a signed update (PR #3632, PG_VENDOR_API_V1 on): pg_vendor_update_steps(), fetch order, package file, refusals, security log, manifest shape [decision: decisions-made-product-45.md]
 - vendor-api-update.md: The Kodpen API's release check (GET /releases/latest, PR #3282, PG_VENDOR_API_V1 on): how an answer is read, what it offers, the pin the later steps read, flag and notification, screen texts [decision: decisions-made-product-5.md]
 - visitor-push-rules.md: Visitor notifications (11.0.227, #9947): the site_push tables, the switch, endpoints and keys taken, the door site_push.php, the secret, consent log, export and erasure [decision: here]
+- visitor-push-sender.md: Visitor notifications' sender (#9957): the message writer, queue batches, the pass in job.php and push_job.php under one lock, held services, retries, a day's limit, the week's tidy-up, the counts
 - whatsapp-cloud-api-facts.md: Meta's WhatsApp Cloud API on 2026-11-12: Graph version, ids and permanent token, sending a template, the 24-hour window, template limits, categories, prices, media
 - whatsapp-cloud-api-webhooks.md: Meta's WhatsApp webhooks and error codes on 2026-11-12: verify call, X-Hub-Signature-256, retries, fields, delivery and template states, BSUIDs, which codes may be retried
 - whatsapp-connection.md: WhatsApp account (WA1, #9067): the Communication › WhatsApp card and its five steps, connect_apps storage, the save check with Meta, the test message, whatsapp_webhook.php verify and signature
