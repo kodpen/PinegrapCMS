@@ -11,6 +11,7 @@ module: content_proposals
 - Compare: kind, on the site, proposed; side by side from md, stacked on a phone; a picture of the site's own files with its small image (`pg_content_proposals_local_picture()`).
 - Actions are POST forms with the CSRF token; the screen reads `$_POST` itself (`post_value()` exists only in the settings screens).
 - With the switch off the screen says new saves go live and the waiting ones stay.
+- Take back is "Take back the change" ("Değişikliği geri al"), its own key: "Take back" is the Workspace's word for withdrawing a request. The designer who applied a change reads "Applied by …"; the others are told only they can take it back. The reason field and its limit say "Sebep".
 - The count on the page's tab and the bell lines are PA4b; until then nothing points at the screen.
 
 ## How is a change applied?

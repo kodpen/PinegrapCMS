@@ -148,7 +148,7 @@ foreach (pg_content_proposals_order(pg_content_proposals_list(), time()) as $row
     }
 
     if (($status === 'applied') && ((int) $row['decided_by'] === (int) $user['id'])) {
-        $actions .= $form($row, 'revert', lang('Take back'), 'pg-button-ghost');
+        $actions .= $form($row, 'revert', lang('Take back the change'), 'pg-button-quiet');
     }
 
     $note = '';
@@ -156,6 +156,9 @@ foreach (pg_content_proposals_order(pg_content_proposals_list(), time()) as $row
 
     if ($status === 'stale') {
         $note = lang('The page was changed after this change was saved; it can only be dismissed.');
+    } elseif (($status === 'applied') && ((int) $row['decided_by'] === (int) $user['id'])) {
+        // The one who applied it has the button; nobody else may take it back.
+        $note = lang(array('string' => 'Applied by {var:1}.', 'vars' => array($decider)));
     } elseif ($status === 'applied') {
         $note = lang(array('string' => 'Applied by {var:1}. Only they can take it back.', 'vars' => array($decider)));
     } elseif ($status === 'reverted') {
@@ -182,13 +185,13 @@ foreach (pg_content_proposals_order(pg_content_proposals_list(), time()) as $row
 }
 
 if ($rows_html === '') {
-    $rows_html = '<p class="pg-text-2">' . h(lang('No content change is waiting.')) . '</p>';
+    $rows_html = '<p class="pg-text-2 p-4 mb-0">' . h(lang('No content change is waiting.')) . '</p>';
 }
 
 // Changes already waiting stay here when the switch is turned off; new
 // saves go live again.
 $off = pg_content_proposals_on() ? '' : '<div class="alert theme-info" role="status">'
-    . h(lang('Content changes wait for approval is off, so new saves go live at once. Changes that were already waiting stay here.'))
+    . h(lang('"Content changes wait for approval" is off, so new saves go live at once. Changes that were already waiting stay here.'))
     . ' <a href="settings_features.php#pgset-content-approval">' . h(lang('Site Settings')) . '</a></div>';
 
 echo
