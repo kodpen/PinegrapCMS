@@ -179,3 +179,28 @@ function test_workspace_event_form_fits_a_phone()
 	pg_assert_same(2, substr_count($form, 'part.pair('), 'the days and the hours in pairs');
 	pg_assert_same(false, strpos($form, "el('div', 'row"), 'no Bootstrap grid');
 }
+
+// D6: the line under the header says where the item goes (into the team
+// plan, on whose rows), never who may see it: a row is seen by whoever may
+// see that row on the Planning Board. One sentence for each value of Who.
+function test_workspace_event_form_line_says_where_the_item_goes()
+{
+	$form = workspace_plan_drawers_look_test_event_form();
+	$screen = workspace_plan_drawers_look_test_source('includes/workspace/screen.php');
+
+	pg_assert_contains("t({ people: 'event_where_people', department: 'event_where_dept', company: 'event_where_company' }[scopeValue] || 'event_where_people')", $form, 'the line follows the three values of Who');
+	pg_assert_true(strpos($form, 'whereText.textContent') > strpos($form, 'function scopeView()'), 'redrawn when Who changes');
+
+	$sentences = array(
+		'event_where_people' => 'Added to the team plan; it shows on the rows of the people you choose.',
+		'event_where_dept' => 'Added to the team plan; it shows on the row of everyone in the department you choose.',
+		'event_where_company' => 'Added to the team plan; it shows on everyone\\\'s row.',
+	);
+
+	foreach ($sentences as $key => $text) {
+		pg_assert_contains("'" . $key . "'", $screen, $key . ' is a string of the screen');
+		pg_assert_contains("lang('" . $text . "')", $screen, $key . ' says where the item goes');
+	}
+
+	pg_assert_same(0, preg_match("/'event_where_[a-z]+'\\s+=> lang\\('[^']*\\b(see|sees|only)\\b/i", $screen), 'no sentence promises who sees it');
+}
