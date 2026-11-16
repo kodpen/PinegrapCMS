@@ -401,6 +401,9 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-schema-23.md: Which columns does PU4 add to `auto_dialogs`? (architect, 2026-11-16, confirmed in PU4's draft, #9851)
 - decisions-made-schema-23.md: Which table does the click map get? (architect, 2026-11-16, agent channel message 6041)
 - decisions-made-schema-23.md: Does a task get a column for the application that created it? (owner, 2026-11-16, agent channel poll 80)
+- decisions-made-schema-24.md: Where are the rules and the earlier parts?
+- decisions-made-schema-24.md: Which tables do visitor notifications get? (architect, 2026-11-16, agent channel message 6528)
+- decisions-made-schema-24.md: What did the architect change in the draft's columns, and which rules came with them?
 - decisions-made-schema-3.md: Where are the rules and the earlier steps?
 - decisions-made-schema-3.md: Which schema was approved on 2026-10-29?
 - decisions-made-schema-4.md: Where are the rules and the earlier steps?
