@@ -3497,6 +3497,7 @@
     "Content and design": "İçerik ve tasarım",
     "Content beside the main content, such as a sidebar.": "Ana içeriğin yanındaki içerik; kenar çubuğu gibi.",
     "Content change waiting": "İçerik değişikliği bekliyor",
+    "Content change: {var:1}": "İçerik değişikliği: {var:1}",
     "Content changes wait for approval": "İçerik değişiklikleri onay bekler",
     "Content editors": "İçerik düzenleyiciler",
     "Content editors can now edit this shared component.": "İçerik düzenleyiciler artık bu ortak bileşeni düzenleyebilir.",

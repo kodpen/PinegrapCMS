@@ -909,6 +909,7 @@
     "Only a designer can load an earlier revision.": "Önceki bir sürümü yalnız tasarımcı yükleyebilir.",
     "Only a designer can move pages between designs.": "Sayfaları tasarımlar arasında yalnızca bir tasarımcı taşıyabilir.",
     "Only a designer can open a classic style in the Page Design Studio.": "Klasik bir stili Sayfa Tasarım Stüdyosu'nda yalnızca tasarımcı açabilir.",
+    "Only a designer can put the change to \"{var:1}\" on the site: it still waits in Waiting Content Changes.": "Değişikliği \"{var:1}\" sayfasında yalnızca bir tasarımcı yayına alabilir: değişiklik Bekleyen İçerik Değişiklikleri listesinde beklemeye devam ediyor.",
     "Only a designer changes it.": "Yalnız tasarımcı değiştirebilir.",
     "Only a designer or an administrator can import pages.": "Sayfaları yalnızca bir tasarımcı ya da yönetici içe aktarabilir.",
     "Only a draft can be deleted. An issued invoice is cancelled instead.": "Yalnız taslak silinebilir. Kesilmiş fatura iptal edilir.",
