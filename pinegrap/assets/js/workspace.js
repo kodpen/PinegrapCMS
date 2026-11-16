@@ -4574,7 +4574,7 @@
         offLabel.htmlFor = offBox.id;
         clear.hidden = !CFG.quiet_hours.value;
 
-        part.appendChild(el('div', 'pg-title-section mb-1', t('qh_title')));
+        part.appendChild(el('h3', 'ws-panel-kicker', t('qh_title')));
         part.appendChild(hint);
         fromCell.appendChild(formRow(t('qh_from'), from));
         toCell.appendChild(formRow(t('qh_to'), to));

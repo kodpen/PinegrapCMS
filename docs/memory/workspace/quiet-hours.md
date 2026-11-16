@@ -26,7 +26,7 @@ module: quiet_hours
 - `tests/quiet_hours_test.php`: the rule, the input, the writer's refusals, the action being panel-only. The save against a database was tried on a sandbox only.
 
 ## Which PRs?
-- #9844 (the column, the rule, the delay) and #QH2PR (the setting).
+- #9844 (the column, the rule, the delay) and #9862 (the setting).
 
 ## Why?
 - Owner (2026-11-15, agent channel poll 54): outside your working hours no notification comes to the phone, it comes when the quiet range ends; a personal setting; one column (`workflow/decisions-made-workspace-35.md`, `workflow/decisions-made-schema-22.md`). That nothing breaks through and there is no default are the architect's readings.
