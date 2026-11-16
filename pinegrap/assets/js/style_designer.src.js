@@ -11758,7 +11758,7 @@ const StyleDesigner = (function () {
     // recipient picker is only a marker (_apply_catalog_item_view_bindings()),
     // the watcher list adds its rows before them (widgets_comments.php).
     // Every other section's children give way to what the server draws.
-    var _SD_SECTION_KEEPS_CHILDREN = { recipient_picker: 1, comment_watchers: 1, form_step_nav: 1 };
+    var _SD_SECTION_KEEPS_CHILDREN = { recipient_picker: 1, comment_watchers: 1, form_step_nav: 1, password_rules: 1 };
 
     var _SD_CHIP_KINDS = [['data-sd-cond', 'sd-chip-cond'], ['data-sd-off-reason', 'sd-chip-off'], ['data-sd-cf-shown', 'sd-chip-shown']];
     function _sdChipRow(doc, wrapper) {
@@ -14398,6 +14398,10 @@ const StyleDesigner = (function () {
                 }
                 // A form's CAPTCHA as a sample; a step break with a title is
                 // drawn as the title the site gives its step.
+                if (!_hasChildren) {
+                    var _mSample = _sdMemberSectionSample(_getSystemWidgetRegionType(node), _sec, doc);
+                    if (_mSample) _hint = _mSample;
+                }
                 if (!_hasChildren && _getSystemWidgetRegionType(node) === 'custom_form') {
                     var _fSample = _sdFormSectionSample(_sec, doc);
                     if (_fSample) _hint = _fSample;
@@ -42070,6 +42074,7 @@ const StyleDesigner = (function () {
     // that does not open.
     function _sdSectionOpenRow(kind, section, node) {
         if (kind === 'custom_form' && section === 'form_step') return _sdFormStepNavRow(node);
+        if (_sdMemberOpens(kind, section, node)) return _sdMemberOpenRow();
         if (!_sdSectionOpensAsList(kind, section)) return '';
         return '<button type="button" class="btn btn-sm btn-outline theme-primary w-100 mt-2 text-wrap" data-sd-section-open>' +
                 '<span class="bi bi-magic me-1"></span>' + esc(_sdT('Convert to design elements')) + '</button>' +
@@ -42095,6 +42100,118 @@ const StyleDesigner = (function () {
         parent.children.splice(idx, 1, nav);
         if (hit.sid) _sharedDirty[hit.sid] = true;
         return nav;
+    }
+
+    // ── Sign-in and sign-up widgets (login_form, registration, membership,
+    // change_password, set_password) ─────────────────────────────────────
+    // The strong password rules and the sign-in, sign-up and forgot password
+    // links open as trees: "Convert to design elements" builds the rules
+    // inside their box (pg_member_keep_designed_rules() keeps them while the
+    // site prints rules) and turns a link section into a link on its token
+    // (__forgot_password_url, __register_url, __login_url), which the site
+    // drops when the address is empty (_pg_member_drop_empty_links()). The
+    // sign-in buttons stay settings only, drawn as the site prints them.
+
+    // The link each link section prints: [token, words, class].
+    function _sdMemberLinkOf(kind, section) {
+        if (kind === 'login_form' && section === 'forgot_password_link') return ['__forgot_password_url', _sdT('Forgot password?'), 'pg-member-link pg-forgot-password-link'];
+        if (kind === 'login_form' && section === 'register_link') return ['__register_url', _sdT('Sign Up'), 'pg-member-link pg-register-link'];
+        if (kind === 'registration' && section === 'login_link') return ['__login_url', _sdT('Already have an account? Sign in'), 'pg-member-link pg-login-link'];
+        if (kind === 'membership' && section === 'login_link') return ['__login_url', _sdT('Already a member? Sign in'), 'pg-member-link pg-login-link'];
+        return null;
+    }
+
+    function _sdMemberHasRules(kind) {
+        return ['registration', 'membership', 'change_password', 'set_password'].indexOf(kind) !== -1;
+    }
+
+    // Whether the panel offers "Convert to design elements" for `node`.
+    function _sdMemberOpens(kind, section, node) {
+        if (_sdMemberLinkOf(kind, section)) return true;
+        return section === 'password_rules' && _sdMemberHasRules(kind) && !(node && node.children && node.children.length);
+    }
+
+    function _sdMemberOpenRow() {
+        return '<button type="button" class="btn btn-sm btn-outline theme-primary w-100 mt-2 text-wrap" data-sd-member-open>' +
+                '<span class="bi bi-magic me-1"></span>' + esc(_sdT('Convert to design elements')) + '</button>' +
+            '<div style="font-size:.66rem;color:#888;margin-top:3px">' +
+                esc(_sdT('Puts what the site prints here as elements you design. The site keeps hiding them when their setting is off.')) +
+            '</div>';
+    }
+
+    // The rules get_strong_password_requirements() prints, as elements.
+    /* @pg-site-output */
+    function _sdPasswordRulesStarter(bs) {
+        var sem = function (tag, cls, text, name, kids) {
+            var p = { tag: tag, cssClass: bs ? cls : '', customName: name };
+            if (text) p.text = text;
+            return createNode('semantic', p, kids || []);
+        };
+        var rule = function (text) { return sem('li', '', text, _sdT('Rule')); };
+        return [
+            sem('div', '', _sdT('Your password must contain at least') + ':', _sdT('Rules heading')),
+            sem('ul', '', '', _sdT('Rules'), [
+                rule(_sdT('{var:1} characters', ['10'])),
+                rule(_sdT('{var:1} capital letter', ['1'])),
+                rule(_sdT('{var:1} numbers', ['2'])),
+                rule(_sdT('{var:1} non-alphanumeric character (e.g. !, $)', ['1']))
+            ])
+        ];
+    }
+
+    // Opens the section `node` in a member widget: the rules built inside
+    // its box (the classes the server's block carries join the box's), or
+    // the link put inside its box on its token. Returns the node to select,
+    // or null.
+    /* @pg-site-output */
+    function _sdMemberSectionToTree(node, bs) {
+        var b = (node && node.props && node.props._bindings) || {};
+        var kind = _getSystemWidgetRegionType(node);
+        if (!_sdMemberOpens(kind, b.section, node)) return null;
+        var link = _sdMemberLinkOf(kind, b.section);
+        if (link) {
+            delete b.section;
+            if (!Object.keys(b).length) delete node.props._bindings;
+            node.children = [createNode('content', { contentType: 'link', text: link[1], href: '#', cssClass: bs ? link[2] : '',
+                customName: link[1], _bindings: { href: link[0] } })];
+        } else {
+            node.children = _sdPasswordRulesStarter(bs);
+            if (bs) {
+                var cls = String(node.props.cssClass || '').split(/\s+/).filter(Boolean);
+                ['pg-password-rules', 'small', 'text-muted'].forEach(function (c) { if (cls.indexOf(c) === -1) cls.push(c); });
+                node.props.cssClass = cls.join(' ');
+            }
+        }
+        var hit = _sdAnyParent(node);
+        if (hit && hit.sid) _sharedDirty[hit.sid] = true;
+        return node;
+    }
+
+    // What a member widget's section prints, drawn as a sample: the sign-in
+    // buttons of the providers turned on (pg_signin_canvas_sample()), the
+    // rules, a link. Inert, never saved; null for any other section.
+    /* @pg-site-output */
+    function _sdMemberSectionSample(kind, section, doc) {
+        var html = '';
+        var note = '';
+        var link = _sdMemberLinkOf(kind, section);
+        if (section === 'google_signin' || section === 'google_signup') {
+            html = _sdSiteWord('signin_buttons');
+            var on = (typeof sdDesign !== 'undefined' && sdDesign && sdDesign.siteFlags && Array.isArray(sdDesign.siteFlags.signin_providers))
+                ? sdDesign.siteFlags.signin_providers : [];
+            note = on.length ? _sdT('Turned on now: {var}', on.join(', ')) : _sdT('No provider is turned on now.');
+        } else if (section === 'password_rules' && _sdMemberHasRules(kind)) {
+            html = _SD_HTML_PREVIEW_TOKENS.__password_rules();
+        } else if (link) {
+            html = '<a href="#" class="' + link[2] + '" tabindex="-1">' + esc(link[1]) + '</a>';
+        }
+        if (!html) return null;
+        var box = doc.createElement('div');
+        box.className = 'sd-section-binding-hint sd-section-sample';
+        box.setAttribute('inert', '');
+        box.style.cssText = 'pointer-events:none';
+        box.innerHTML = html + (note ? '<div class="small text-body-secondary fst-italic mt-1">' + esc(note) + '</div>' : '');
+        return box;
     }
 
     // ── A designed form's steps (custom_form) ───────────────────────────────
@@ -52844,6 +52961,20 @@ const StyleDesigner = (function () {
                 selectedNode = list;
                 selectedNodes = [];
                 if (typeof expandAncestorsAnywhere === 'function') expandAncestorsAnywhere(list);
+                render();
+                renderProperties();
+            });
+        });
+
+        // A member widget's section opened (_sdMemberSectionToTree()).
+        document.querySelectorAll('#sd-properties [data-sd-member-open]').forEach(function (el) {
+            el.addEventListener('click', function () {
+                if (!selectedNode) return;
+                saveState();
+                var node = _sdMemberSectionToTree(selectedNode, _sdUsesBootstrap());
+                if (!node) return;
+                selectedNodes = [];
+                if (typeof expandAncestorsAnywhere === 'function') expandAncestorsAnywhere(node);
                 render();
                 renderProperties();
             });

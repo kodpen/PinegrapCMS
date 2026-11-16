@@ -626,6 +626,7 @@ function _render_system_widget_change_password($tree_json, $widget_id, $cfg = ar
         'has_password'     => !$password_not_set,
         'password_not_set' => $password_not_set,
     ));
+    pg_member_keep_designed_rules($tree, $rules_html);
     pg_cf_apply_section_bindings($tree, array('password_rules' => $rules_html));
     _pg_member_drop_empty_links($tree, array('__my_account_url' => $account_url));
     pg_cf_link_labels($tree);
@@ -753,6 +754,7 @@ function _render_system_widget_set_password($tree_json, $widget_id, $cfg = array
         'token_invalid' => $state === 'invalid',
         'is_confirmed'  => $state === 'confirm',
     ));
+    pg_member_keep_designed_rules($tree, $rules_html);
     pg_cf_apply_section_bindings($tree, array('password_rules' => $rules_html));
     _pg_member_drop_empty_links($tree, array('__forgot_password_url' => $forgot_url));
     pg_cf_link_labels($tree);

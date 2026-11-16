@@ -2246,6 +2246,7 @@
     "Rules": "Kurallar",
     "Rules Link": "Kurallar Bağlantısı",
     "Rules are kept by a support e-mail box only.": "Kuralları yalnızca destek e-posta kutusu tutar.",
+    "Rules heading": "Kurallar başlığı",
     "Rules name another folder, not {var:1}": "Kurallar başka bir klasörü gösteriyor, {var:1} değil",
     "Rules never remove these members. Remove them now, or let the rules decide them: those the rules do not select leave at the next refresh.": "Kurallar bu üyeleri hiçbir zaman çıkarmaz. Onları şimdi çıkarın ya da kuralların karar vermesine izin verin: kuralların seçmedikleri bir sonraki yenilemede gruptan çıkar.",
     "Rules of the road": "Trafik kuralları",
