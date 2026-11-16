@@ -18,6 +18,7 @@ priority: 6
 - Two each: customer value, event tickets (and a mark on a product). Three each: wholesale, courses. Fourteen in all.
 - Owner (2026-11-16, agent channel poll 84, message 6513), asked whether these may be added: "mimara soralım bunu yazılımdaki bir özelliği geliştirererek yapabiliyormuyuz değerlendirsin."
 - So no table is taken as allowed. The architect weighs, table by table, whether a feature that exists can carry the need; the question returns to the owner with its view.
+- The weighing, table by table: `plans/more-features-tables.md` and `plans/more-features-tables-2.md`. Each plan's files are rewritten to the decision before a step starts.
 
 ## Which plans are there?
 - `post-digest.md`: new posts of a list sent by themselves as an e-mail to a contact group.
@@ -32,3 +33,4 @@ priority: 6
 
 ## When is this file deleted?
 - With the last of the eight plans, together with `more-features-shared-files.md`; each plan's close-out removes its own line here.
+- The two tables files go as soon as every plan has been rewritten to the decision on its tables.

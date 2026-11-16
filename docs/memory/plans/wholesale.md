@@ -22,8 +22,10 @@ priority: 6
 - The numbered features: `wholesale-features.md` (J1 to J16). Steps: `wholesale-steps.md`. Claim as `[plan:wholesale] <step> — <topic>`.
 - In short: group discounts and breaks are offers with one new condition; a fixed price per group is a price list behind one resolver; the buyers of a company are extra rows beside the account's own contact. Only the buyers need the ERP.
 
-## What does the owner decide?
-- Whether a buyer's order needs an administrator's yes before it is sent (the proposal: not in the first version). The three tables (asked with the set's other tables).
+## What did the owner decide? (2026-11-16)
+- Whether a buyer's order needs an administrator's yes in the first version. Owner (agent channel poll 87, message 6516): "bunu mimara sor ve yapılmışken sağlam temelli yapılsın veya plandan çıksın".
+- So the company's buyers (J9 to J13, J16, WS6) wait for the architect: on a firm base, or out of this plan (`plans/more-features-tables-2.md`).
+- The tables: with the set's other tables (`plans/more-features.md`).
 
 ## What does the architect decide?
 - The tables' columns, in the draft PRs of WS2 and WS6. Where the resolver sits and its name.
