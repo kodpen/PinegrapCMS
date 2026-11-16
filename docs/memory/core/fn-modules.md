@@ -25,7 +25,7 @@ description: Generated from the module field of the memory files: each includes/
 - `audit_rules`: [[audit-rule-registry]]
 - `audit_view`: [[audit-trail-screen]], [[audit-trail-settings-name]]
 - `auth`: [[cross-site-json-requests]], [[device-limit-and-session-sign-out]], [[erp-link-rights]], [[filtered-folder-picker-path]], [[link-rights]], [[list-row-names]], [[login-as-sign-out]], [[password-min-length]], [[settings-folder-pickers]], [[sign-in-one-message]], [[user-disabled]]
-- `auto_dialogs`: [[api-design-dialogs-regions]]
+- `auto_dialogs`: [[api-design-dialogs-regions]], [[auto-dialog-open-settings]]
 - `automation_flows`: [[automation-flows-api]], [[automation-flows-gate]]
 - `aws_sign`: [[aws-sigv4-signing]]
 - `background_render`: [[background-render]]
