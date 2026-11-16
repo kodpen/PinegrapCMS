@@ -114,3 +114,18 @@ function test_workspace_task_agents_api_parameter()
 	pg_assert_true(is_array($found), 'agent_channels is a parameter');
 	pg_assert_same(array('include', 'only'), $found['values'], 'its values');
 }
+
+// W5: the dashboard's figures over other people's tasks leave agent
+// channels' tasks out by the same rule: the Team card's open and late counts
+// and what each one works on, and the Pipeline card's tasks opened by the
+// reader (theirs to do still count).
+function test_workspace_task_agents_dashboard_figures_use_the_rule()
+{
+	$team = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/cards/team.php');
+	$pipeline = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/cards/pipeline.php');
+
+	pg_assert_same(1, substr_count($team, 'ws_tasks_agent_out_sql()'), 'the Team card reads the rule once');
+	pg_assert_same(3, substr_count($team, '$agent_and'), 'the Team card sets it and applies it to both its task queries');
+	pg_assert_true(strpos($team, "ws_board(\$rights, date('Y-m-d', \$now), 1, 0, false, 0, '')") !== false, 'the Team card\'s day load is the Planning Board\'s');
+	pg_assert_true(strpos($pipeline, "ws_tasks_agent_out_sql('ws_tasks.channel_id')") !== false, 'the Pipeline card leaves out what the reader opened in an agent channel');
+}

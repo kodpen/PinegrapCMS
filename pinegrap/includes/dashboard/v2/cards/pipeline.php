@@ -350,8 +350,13 @@ function pg_dashboard_v2_pipeline_step($key, $user, $win)
 
         case 'meetings':
             // Tasks the person opened or was given: a task in a channel they
-            // are not in is never counted.
-            $mine = "AND (ws_tasks.creator_id = '" . $user_id . "' OR EXISTS (SELECT 1 FROM ws_task_assignees a WHERE a.task_id = ws_tasks.id AND a.user_id = '" . $user_id . "'))";
+            // are not in is never counted. One they opened in an agent
+            // channel counts only when it is also theirs to do, as "Given by
+            // me" and "Mine" list them (tasks.php, ws_tasks_agent_rule()).
+            $given = "EXISTS (SELECT 1 FROM ws_task_assignees a WHERE a.task_id = ws_tasks.id AND a.user_id = '" . $user_id . "')";
+            $agent_sql = function_exists('ws_tasks_agent_out_sql') ? ws_tasks_agent_out_sql('ws_tasks.channel_id') : '';
+            $opened = "ws_tasks.creator_id = '" . $user_id . "'" . (($agent_sql !== '') ? ' AND ' . $agent_sql : '');
+            $mine = "AND ((" . $opened . ") OR " . $given . ")";
             $signals = pg_dashboard_v2_ws_signals($user);
             return pg_dashboard_v2_pipeline_box($key, lang('Meetings'),
                 pg_dashboard_v2_pipeline_spans('ws_tasks', 'ws_tasks.created_at', "AND ws_tasks.status != 'cancelled' " . $mine, $edges),

@@ -65,7 +65,11 @@ function pg_dashboard_v2_card_team($user, $period, $compare)
 
     $me = (int) $rights['id'];
     $now = time();
-    $board = ws_board($rights, date('Y-m-d', $now), 1);
+    // The day's load and the figures leave agent channels' tasks out, as
+    // the Planning Board does (tasks.php, ws_tasks_agent_rule()).
+    $board = ws_board($rights, date('Y-m-d', $now), 1, 0, false, 0, '');
+    $agent_sql = ws_tasks_agent_out_sql();
+    $agent_and = ($agent_sql !== '') ? ' AND ' . $agent_sql : '';
 
     $people = array();
     $away = array();
@@ -108,7 +112,7 @@ function pg_dashboard_v2_card_team($user, $period, $compare)
     $counts = db_item("SELECT COUNT(DISTINCT t.id) AS open_tasks,
             COUNT(DISTINCT CASE WHEN t.due_date IS NOT NULL AND t.due_date > '0000-00-00' AND t.due_date < '" . e(date('Y-m-d', $now)) . "' THEN t.id END) AS late
         FROM ws_tasks t INNER JOIN ws_task_assignees a ON a.task_id = t.id
-        WHERE a.user_id IN (" . $ids . ") AND t.status IN ('todo', 'doing', 'waiting')");
+        WHERE a.user_id IN (" . $ids . ") AND t.status IN ('todo', 'doing', 'waiting')" . $agent_and);
 
     // What each one works on: a running timer, else their newest task in
     // progress. A task the reader may not see is said, not named.
@@ -126,7 +130,7 @@ function pg_dashboard_v2_card_team($user, $period, $compare)
 
     foreach ((array) db_items("SELECT a.user_id, t.id AS task_id FROM ws_tasks t
         INNER JOIN ws_task_assignees a ON a.task_id = t.id
-        WHERE a.user_id IN (" . $ids . ") AND t.status = 'doing'
+        WHERE a.user_id IN (" . $ids . ") AND t.status = 'doing'" . $agent_and . "
         ORDER BY t.updated_at DESC LIMIT 60") as $item) {
         if (!isset($work[(int) $item['user_id']])) {
             $work[(int) $item['user_id']] = array('task_id' => (int) $item['task_id'], 'since' => 0);
