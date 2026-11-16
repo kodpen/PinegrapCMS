@@ -13472,6 +13472,10 @@ const StyleDesigner = (function () {
     // differ from the card's. A source not named here gets two rows of the
     // card's values.
     var SD_LIST_SAMPLE_ROWS = {
+        // An earlier order of the member, cancelled.
+        'account.orders': [
+            { __order_id: '1038', __order_no: '12301', __order_total: '₺150,00', __order_status: 'cancelled', __order_is_cancelled: '1', __order_url: '/order?id=1038' }
+        ],
         // A second upcoming booking still to be confirmed; a past one.
         'account.upcoming_bookings': [
             { __booking_id: '2', __booking_service: _sdT('Colour'), __booking_status: 'requested', __booking_status_label: _sdT('Requested'),
@@ -13479,8 +13483,8 @@ const StyleDesigner = (function () {
               __booking_manage_label: _sdT('View booking'), __booking_ics_url: '#' }
         ],
         'account.past_bookings': [
-            { __booking_id: '3', __booking_service: _sdT('Haircut'), __booking_status: 'done', __booking_status_label: _sdT('Done'),
-              __booking_tone: 'secondary', __booking_details: '22.09.2026 10:00 – 10:45 · ' + _sdT('Sam Carter'), __booking_manage_url: '',
+            { __booking_id: '3', __booking_service: _sdT('Colour'), __booking_status: 'cancelled', __booking_status_label: _sdT('Cancelled'),
+              __booking_tone: 'secondary', __booking_details: '01.09.2026 14:00 – 15:30', __booking_manage_url: '',
               __booking_manage_label: '', __booking_ics_url: '' }
         ],
         // The second line of the sample order (_sdOrderSampleLineTwo()): the
@@ -44120,7 +44124,7 @@ const StyleDesigner = (function () {
             };
             return _sdAccountBookingsHtml({
                 upcoming: [view(_SD_LIST_ROW_PREVIEWS)].concat(SD_LIST_SAMPLE_ROWS['account.upcoming_bookings'].map(view)),
-                past: SD_LIST_SAMPLE_ROWS['account.past_bookings'].map(view)
+                past: [view(_SD_LIST_CARD_SAMPLES['account.past_bookings'])].concat(SD_LIST_SAMPLE_ROWS['account.past_bookings'].map(view))
             });
         }
         return '';
@@ -61261,7 +61265,9 @@ const StyleDesigner = (function () {
         __step_note:       '',
         __step_is_estimate: '',
         __order_is_cancelled: '',
-        __order_url:       '#',
+        // Not '#': the order history part shows its link while the site has
+        // a view order page (pg_acct_part()).
+        __order_url:       '/order?id=1042',
         __booking_id:           '1',
         __booking_service:      _sdT('Haircut'),
         __booking_status:       'confirmed',
@@ -61388,16 +61394,31 @@ const StyleDesigner = (function () {
     // The sample of row value `token` when the nearest list giving it is a
     // checkout list (the order preview's, the express order's); null
     // otherwise.
+    // A list's own card sample (_SD_LIST_CARD_SAMPLES) wins the same way,
+    // in any family: a past booking's card is not the upcoming one's.
     function _sdCheckoutRowSample(token, node) {
-        if (!Object.prototype.hasOwnProperty.call(_SD_LIST_ROW_PREVIEWS, token)) return null;
         var lists = _sdListsAbove(node);
         for (var i = 0; i < lists.length; i++) {
-            var src = SW_LIST_SOURCES[lists[i].props.source];
+            var name = String(lists[i].props.source);
+            var src = SW_LIST_SOURCES[name];
             if (!src || !src.rows.some(function (r) { return r[0] === token; })) continue;
-            return String(lists[i].props.source).indexOf('checkout.') === 0 ? _SD_LIST_ROW_PREVIEWS[token] : null;
+            var card = _SD_LIST_CARD_SAMPLES[name];
+            if (card && Object.prototype.hasOwnProperty.call(card, token)) return card[token];
+            if (!Object.prototype.hasOwnProperty.call(_SD_LIST_ROW_PREVIEWS, token)) return null;
+            return name.indexOf('checkout.') === 0 ? _SD_LIST_ROW_PREVIEWS[token] : null;
         }
         return null;
     }
+
+    // The card of a list whose values differ from the shared row samples
+    // (_SD_LIST_ROW_PREVIEWS), by list source.
+    var _SD_LIST_CARD_SAMPLES = {
+        'account.past_bookings': {
+            __booking_id: '4', __booking_service: _sdT('Haircut'), __booking_status: 'done', __booking_status_label: _sdT('Done'),
+            __booking_tone: 'secondary', __booking_details: '22.09.2026 10:00 – 10:45 · ' + _sdT('Sam Carter'), __booking_manage_url: '',
+            __booking_manage_label: '', __booking_ics_url: ''
+        }
+    };
 
     // The row tokens of the lists `node` is drawn in, as { token, label },
     // with cond: true on a yes/no value (offered as a condition only), the
