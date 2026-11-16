@@ -14,6 +14,8 @@ module: customer_values
 - By month table; Cohorts (last 12 first-order months, the share ordering again 1-12 months later, blank for a month not begun: `pg_customer_value_cohort_rows()`); Customer groups (fixed bounds, every customer of all time); top 20 of all time and of the last 12 months; what is not counted (marketplace orders in another unit, orders with no e-mail and no contact).
 - The cell bounds are `pg_customer_value_cell_age()` (30 included in the first row) and `pg_customer_value_cell_band()`. The group of a cell is `pg_customer_value_cell_group()`, the architect's mapping (`plans/customer-value.md`, agent channel message 7143); `pg_customer_value_group_bounds()` gives the bounds the screen states under the table.
 
+- On a phone (under 576 px) the groups table stacks: each last-order row a block, its three cells one under the other under their column's name (`data-label`, rule `.pg-customer-groups` in `backend.src.css`), no sideways scroll (architect, agent channel message 7172).
+
 ## Who sees names?
 - A reader for whom `validate_contacts_access($user, true)` holds: names are read when shown from the top customers' last orders (`pg_customer_value_order_names()`, by `order_number`, which has no index: about 70 ms at 200,000 orders). The order opens only with the commerce right too.
 - Others get the figures with no name column and the note "Names are shown to users who may manage contacts." (`pg_customer_value_top_rows()`).
