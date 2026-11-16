@@ -503,7 +503,7 @@ function pg_place_map_form_tools($page_id)
     );
 
     return '
-                                        <div class="col-12 mb-12" data-pg-place-form="' . h(json_encode($config, JSON_UNESCAPED_UNICODE)) . '">
+                                        <div class="col-12 my-3" data-pg-place-form="' . h(json_encode($config, JSON_UNESCAPED_UNICODE)) . '">
                                             <button type="button" class="btn btn-sm btn-outline theme-primary" data-pg-place-find><i class="bi bi-geo-alt me-1" aria-hidden="true"></i>' . lang('Find from the address') . '</button>
                                             <div class="form-text mt-3" role="status" aria-live="polite" data-pg-place-status hidden></div>
                                             <div class="form-text mt-3">' . h(pg_place_map_help(pg_place_map_source(pg_place_map_photon_app())['host'])) . '</div>
