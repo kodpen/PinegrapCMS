@@ -14109,14 +14109,26 @@
             var self = this;
             var line = el('div', 'ws-claude-state ws-claude-' + state.status);
 
+            var label = el('span', 'ws-claude-label', state.label);
+
+            // A label too long for the column is cut with an ellipsis; the
+            // title keeps the whole of it.
+            label.title = state.label || '';
             line.appendChild(icon(state.icon));
-            line.appendChild(el('span', '', state.label));
+            line.appendChild(label);
 
             // While an agent holds the request: its last progress note and
             // since when it holds it (agent_shown.php). The answer's line
-            // takes their place.
+            // takes their place. The note's dot shows only where the note
+            // stands on the label's line (a wide column).
             if (state.note) {
-                line.appendChild(el('span', 'ws-claude-note', '· ' + state.note));
+                var note = el('span', 'ws-claude-note');
+                var dot = el('span', 'ws-claude-note-dot', '· ');
+
+                dot.setAttribute('aria-hidden', 'true');
+                note.appendChild(dot);
+                note.appendChild(document.createTextNode(state.note));
+                line.appendChild(note);
             }
 
             if (state.since) {
@@ -14126,7 +14138,7 @@
             // A request to an MCP agent can be stopped while it waits or
             // runs, by the one who asked or an administrator (mcp_agent.php).
             if (state.cancel) {
-                var stop = el('a', 'ms-1', t('mcp_agent_stop'));
+                var stop = el('a', 'ws-claude-stop ms-1', t('mcp_agent_stop'));
 
                 stop.href = '#';
                 stop.addEventListener('click', function (event) {

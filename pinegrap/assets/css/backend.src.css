@@ -20481,14 +20481,32 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
   }
 }
 /* Asking Claude: where a request stands, the tasks an answer proposes, and
-   the settings card. */
+   the settings card. The agent lines under a message take their shape from
+   the width of the column they stand in (the channel, a discussion panel,
+   a phone), not from the window's. */
+.ws-claude-states {
+  container-type: inline-size;
+}
+/* A narrow column: the icon, the label, "since HH:MM" and Stop on the first
+   line, the label cut with an ellipsis when it does not fit; a progress
+   note on a line of its own under them, starting where the label starts.
+   The last track is flexible, so the note's length never widens the
+   tracks of the first line. */
 .ws-claude-state {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, max-content) auto auto minmax(0, 1fr);
   align-items: center;
-  gap: .35rem;
+  column-gap: .35rem;
+  row-gap: .1rem;
   margin-top: .3rem;
   font-size: .76rem;
   color: var(--pg-fg-2);
+}
+.ws-claude-state .ws-claude-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .ws-claude-state.ws-claude-running > .bi,
 .ws-claude-state.ws-claude-sent > .bi {
@@ -20497,16 +20515,41 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
 .ws-claude-state.ws-claude-answered > .bi {
   color: var(--pg-success);
 }
-/* An agent's progress note and since when it holds the request: a long
-   note wraps inside the column instead of widening it. */
+/* An agent's progress note (up to 200 characters, never cut) wraps between
+   words; only a word longer than the line is split. */
 .ws-claude-state .ws-claude-note {
+  grid-row: 2;
+  grid-column: 2 / -1;
   min-width: 0;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
   font-style: italic;
 }
-.ws-claude-state .ws-claude-since {
-  flex-shrink: 0;
+.ws-claude-state .ws-claude-note-dot {
+  display: none;
+}
+.ws-claude-state .ws-claude-since,
+.ws-claude-state .ws-claude-stop {
   white-space: nowrap;
+}
+/* A wide column: label, note and since on one line, as before; a long note
+   wraps in its own part of the line. */
+@container (min-width: 40rem) {
+  .ws-claude-state {
+    display: flex;
+  }
+  .ws-claude-state > .bi,
+  .ws-claude-state .ws-claude-label,
+  .ws-claude-state .ws-claude-since,
+  .ws-claude-state .ws-claude-stop {
+    flex-shrink: 0;
+  }
+  .ws-claude-state .ws-claude-label {
+    flex-shrink: 1;
+    max-width: 50%;
+  }
+  .ws-claude-state .ws-claude-note-dot {
+    display: inline;
+  }
 }
 .ws-claude-state.ws-claude-failed,
 .ws-claude-state.ws-claude-cancelled {
