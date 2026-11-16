@@ -409,3 +409,68 @@ function test_content_proposals_local_picture()
 	pg_assert_false(pg_content_proposals_local_picture('data:image/png;base64,AAA'), 'data');
 	pg_assert_false(pg_content_proposals_local_picture(''), 'empty');
 }
+
+// A12: the designers are told when a change starts waiting, at most once an
+// hour per page.
+function test_content_proposals_bell_once_an_hour()
+{
+	$now = 1800000000;
+
+	pg_assert_true(pg_content_proposals_bell_due(0, $now), 'never told');
+	pg_assert_false(pg_content_proposals_bell_due($now - 600, $now), '10 minutes ago');
+	pg_assert_false(pg_content_proposals_bell_due($now - 3599, $now), 'not yet an hour');
+	pg_assert_true(pg_content_proposals_bell_due($now - 3600, $now), 'an hour');
+}
+
+// A12: the bell lines are addressed rows of the panel's own notifications,
+// one action per outcome, shown with the Workspace on or off.
+function test_content_proposals_bell_lines()
+{
+	pg_assert_same(array('content_change', 'content_applied', 'content_dismissed', 'content_stale'), pg_content_proposals_bell_actions());
+
+	foreach (pg_content_proposals_bell_actions() as $action) {
+		pg_assert_true(pg_notification_visible(array('action' => $action, 'target_user_id' => 5), array('id' => 5, 'role' => 1)), $action . ': its addressee');
+		pg_assert_false(pg_notification_visible(array('action' => $action, 'target_user_id' => 5), array('id' => 6, 'role' => 0)), $action . ': another person');
+		pg_assert_false(pg_notification_visible(array('action' => $action, 'target_user_id' => 0), array('id' => 6, 'role' => 0)), $action . ': never unaddressed');
+		pg_assert_same('content', pg_notification_module($action), $action);
+	}
+
+	$module = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/content_proposals.php');
+	pg_assert_contains("pg_content_proposals_bell_editor(\$row, 'applied');", $module, 'the editor told on apply');
+	pg_assert_contains("pg_content_proposals_bell_editor(\$row, 'stale');", $module, 'the editor told when stale');
+	pg_assert_contains("pg_content_proposals_bell_editor(\$row, 'dismissed');", $module, 'the editor told on dismiss');
+	pg_assert_contains('pg_content_proposals_bell_designers($page_id, $name);', $module, 'the designers told when a change starts waiting');
+}
+
+// The row keeps data, not a sentence: the page's name as the title, the
+// reason read from the change; the words are made when the line is read.
+function test_content_proposals_bell_words()
+{
+	foreach (pg_content_proposals_bell_actions() as $action) {
+		$words = pg_content_proposals_bell_words($action, 'about-us', 'Too long');
+		pg_assert_true($words['short'] !== '' && strpos($words['short'], ':') === false, $action . ': a short title without a colon');
+		pg_assert_contains('about-us', $words['brief'], $action . ': the page under it');
+		pg_assert_contains('about-us', $words['title'], $action . ': the push sentence');
+	}
+
+	pg_assert_contains('Too long', pg_content_proposals_bell_words('content_dismissed', 'about-us', 'Too long')['brief'], 'the reason, whole');
+	pg_assert_contains(str_repeat('a', 300), pg_content_proposals_bell_words('content_dismissed', 'p', str_repeat('a', 300))['title'], 'never cut to 250');
+	pg_assert_same('Change applied', pg_content_proposals_bell_words('content_applied', 'p')['short']);
+	pg_assert_same('Change dismissed', pg_content_proposals_bell_words('content_dismissed', 'p')['short']);
+	pg_assert_same('Change can no longer be applied', pg_content_proposals_bell_words('content_stale', 'p')['short']);
+	pg_assert_same('Content change waiting', pg_content_proposals_bell_words('content_change', 'p')['short']);
+
+	$module = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/content_proposals.php');
+	pg_assert_contains("array('content_' . \$kind, mb_substr(\$page, 0, 250)", $module, 'the title is the page name');
+}
+
+// A7: the count of waiting changes above the page list, for designers.
+function test_content_proposals_count_on_page_list()
+{
+	$pages = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_pages.php');
+
+	pg_assert_contains('pg_content_proposals_waiting_count()', $pages);
+	pg_assert_contains('content_changes.php', $pages);
+	pg_assert_contains('pg_content_proposals_may_decide($user)', $pages, 'designers only');
+	pg_assert_contains("'One content change waits for approval.'", $pages, 'a sentence of its own for one');
+}
