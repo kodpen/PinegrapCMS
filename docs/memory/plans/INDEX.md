@@ -29,7 +29,7 @@
 - design-template-bikeshop.md: Plan: the Bike Shop design template (pinegrap-bikeshop): bikes and parts catalog, repair and service requests, bike fitting, group rides calendar, news; small steps
 - design-template-own-looks-order.md: Order of the polishing round after Launch: every shipped template's family and pages steps, in which order, and where each template stands
 - design-template-own-looks.md: Plan (owner 2026-11-07): block families in their own source files (B0), Launch as an Apple-like product page (L1-L3), then a polishing round for every template
-- designer-closed-blocks-steps.md: Steps CB2 to CB10 of designer-closed-blocks, written from the owner's answer of 2026-11-15 (the proposed order): one block family per step, what each opens, which run side by side
+- designer-closed-blocks-steps.md: Steps CB2 to CB10 of designer-closed-blocks, written from the owner's answer of 2026-11-15 (the proposed order): one block family per step, what each opens, what runs side by side
 - designer-closed-blocks.md: Plan (owner 2026-11-13, #9076): components the designer canvas draws as one closed block are listed, then opened into element trees; CB0, CB1 done, CB2 and on in designer-closed-blocks-steps.md
 - erp-edocument-leftovers.md: Open ERP work (e-document phase 3): Paraşüt send path, queue worker, İşbaşı live key, code lists, e-waybill, accountant sign-off; owner works on it locally
 - erp-parasut-open-work.md: Paraşüt work left after the rounds of 2026-10-23 to 26 (#1405-#1682): one live round when a new demo key comes, three decisions (#2440-#2442), the queue worker, incoming e-invoices; where to start
@@ -44,7 +44,6 @@
 - message-highlights-steps.md: Plan message-highlights, steps HL1 to HL5: the table and the pure part, the server's actions and cleanup, the message side in the browser, My highlights, close-out
 - message-highlights.md: Plan (owner 2026-11-16, agent channel message 5547): a reader highlights a selected part of a message for everyone or for himself, in his own colour; My highlights in My Notes; HL1 to HL5
 - message-reference.md: Plan (owner 2026-11-15, in the architect's window): a message pasted into a message box as a reference, shown by its number, opening the referenced message in a popup; for people and agents
-- message-translate.md: Plan (owner 2026-11-15, agent channel poll 54): Translate in a message's menu with the browser's own translator, the text never leaving the device; step MT1
 - mobile-api-shelved.md: Team-device API work for the closed-source Pinegrap Mobile app (restarted 2026-10-24 outside this repo): what exists (M1–M6), what M7 (native push) and M8 add, decisions, how its needs arrive
 - panel-design-language-dialogs.md: Look A's dialogs and drawers (#8860): the scrim, the three dialog widths, head, body and foot, the confirm dialog, the settings dialog's rail and pane, a drawer's sections and member rows
 - panel-design-language-look.md: Look A's numbers (second pass) for the panel's design language: type, surfaces and depth, fields, buttons, the segmented control, the status pill, the icon tile and tones, rows, what a title says
