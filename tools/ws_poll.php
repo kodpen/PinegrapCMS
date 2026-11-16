@@ -14,16 +14,25 @@
  *                               [--multiple] "question" "option 1" [...]
  *         php tools/ws_poll.php withdraw POLL_ID
  *         php tools/ws_poll.php close POLL_ID
+ *         php tools/ws_poll.php --help
  *         ask: the question first, then two to ten options, the recommended
  *         one first (POST /workspace/channels/{id}/polls). An option written
- *         "label :: description" carries a line under its label.
+ *         "label :: description" carries a line under its label; one ending
+ *         in ":: #N" ("label :: #N", "label :: description :: #N") shows the
+ *         picture posted as message N in the poll's channel inside the
+ *         option's own box. The tool reads message N with the same key
+ *         (GET /workspace/channels/{id}/messages) and sends its file id;
+ *         a message that is not a picture there stops it (exit 1).
+ *         A question about a picture, a file or an earlier message names
+ *         it with <#message:N> in its text, which the person opens.
  *         --recommend marks the first option Recommended; --other adds the
  *         "Other" row the person answers in their own words (LABEL, else
  *         "Other"); --multiple takes several answers. Voters are named.
  *         Prints "<message id> <poll id>".
  *         again: the same body for a poll asked again
  *         (POST /workspace/polls/{id}/again); an open one is taken back by
- *         it. Prints "<message id> <poll id>" of the new poll.
+ *         it. A picture needs the poll's channel (PG_WS_CHANNEL or
+ *         --channel). Prints "<message id> <poll id>" of the new poll.
  *         withdraw: takes back a poll this application asked
  *         (POST /workspace/polls/{id}/withdraw). Prints the poll's message id.
  *         close: closes a poll this application asked
@@ -34,7 +43,8 @@
  *         be reached; 2 usage or missing settings.
  *
  * Settings come from the environment (tools/ws_client.php): PG_WS_SITE,
- * PG_WS_KEY, PG_WS_SECRET, PG_WS_CHANNEL (ask only). Nothing secret is
+ * PG_WS_KEY, PG_WS_SECRET, PG_WS_CHANNEL (ask, and again with a picture).
+ * Nothing secret is
  * printed.
  *
  * @author      Erdal Güral (Kodpen)
@@ -82,6 +92,25 @@ function ws_poll_command($rest)
 }
 
 /**
+ * The usage lines, printed with --help and after a command error. Pure.
+ *
+ * @return string
+ */
+function ws_poll_usage()
+{
+	return "Usage: php tools/ws_poll.php ask [--channel=ID] [--idempotency-key=K] [--recommend]\n"
+		. "                                [--other[=LABEL]] [--multiple] \"question\" \"option\" \"option\" [...]\n"
+		. "       php tools/ws_poll.php again POLL_ID [same flags] \"question\" \"option\" \"option\" [...]\n"
+		. "       php tools/ws_poll.php withdraw POLL_ID\n"
+		. "       php tools/ws_poll.php close POLL_ID\n"
+		. "An option: \"label\", \"label :: description\", \"label :: #N\" or \"label :: description :: #N\",\n"
+		. "where N is the message number of a picture posted in the poll's channel; it shows in the\n"
+		. "option's own box (again with a picture needs PG_WS_CHANNEL or --channel).\n"
+		. "A question about a picture, a file or an earlier message names it with <#message:N> in its\n"
+		. "text; the person opens that message from the tag.\n";
+}
+
+/**
  * A poll id from the command line; 0 when it is not a whole number of at
  * least 1.
  *
@@ -97,18 +126,20 @@ function ws_poll_id($arg)
 
 /**
  * The connection settings of a subcommand: all but ask work on a poll id,
- * so a missing channel does not stop them.
+ * so a missing channel does not stop them, unless an option's picture has
+ * to be read from the channel.
  *
  * @param string $command ask, again, withdraw or close
  * @param array<string,string|bool> $options
  * @param array<string,string> $env
+ * @param bool $pictures an option carries a picture by its message number
  * @return array{site: string, key: string, secret: string, channel: int, missing: string[]}
  */
-function ws_poll_settings($command, $options, $env)
+function ws_poll_settings($command, $options, $env, $pictures = false)
 {
 	$settings = ws_client_settings($options, $env);
 
-	if ($command !== 'ask') {
+	if ($command !== 'ask' && !$pictures) {
 		$settings['missing'] = array_values(array_diff($settings['missing'], array('PG_WS_CHANNEL')));
 	}
 
@@ -128,27 +159,92 @@ function ws_poll_length($text)
 
 /**
  * One option as the command line writes it: "label :: description" gives
- * the line under the label. Pure.
+ * the line under the label, and a last part "#N" the picture posted as
+ * message N ("label :: #N", "label :: description :: #N"). Pure.
  *
  * @param string $option
- * @return array{label: string, description: string}
+ * @return array{label: string, description: string, picture: int}
  */
 function ws_poll_option_split($option)
 {
 	$parts = explode('::', (string) $option, 2);
+	$rest = isset($parts[1]) ? trim($parts[1]) : '';
+	$picture = 0;
 
-	return array('label' => trim($parts[0]), 'description' => isset($parts[1]) ? trim($parts[1]) : '');
+	if (preg_match('/^#(\d+)$/', $rest, $match)) {
+		$picture = (int) $match[1];
+		$rest = '';
+	} elseif (preg_match('/^(.*?)\s*::\s*#(\d+)$/s', $rest, $match)) {
+		$picture = (int) $match[2];
+		$rest = trim($match[1]);
+	}
+
+	return array('label' => trim($parts[0]), 'description' => $rest, 'picture' => $picture);
+}
+
+/**
+ * The message numbers of the pictures the options name, each once, in
+ * order. Pure.
+ *
+ * @param string[] $options
+ * @return int[]
+ */
+function ws_poll_picture_messages($options)
+{
+	$ids = array();
+
+	foreach ((array) $options as $option) {
+		$picture = ws_poll_option_split($option)['picture'];
+
+		if ($picture > 0 && !in_array($picture, $ids, true)) {
+			$ids[] = $picture;
+		}
+	}
+
+	return $ids;
+}
+
+/**
+ * The file id of the picture message $message_id carries, from the answer
+ * of GET /workspace/channels/{id}/messages?since_id=<id - 1>&limit=1, or an
+ * error line. Pure.
+ *
+ * @param array<string,mixed>|null $json the decoded answer
+ * @param int $message_id
+ * @return array{file_id: int, error: string}
+ */
+function ws_poll_picture_file_id($json, $message_id)
+{
+	$rows = is_array($json) && isset($json['data']) && is_array($json['data']) ? $json['data'] : array();
+
+	foreach ($rows as $row) {
+		if (!is_array($row) || (int) ($row['id'] ?? 0) !== (int) $message_id) {
+			continue;
+		}
+
+		$file = isset($row['file']) && is_array($row['file']) ? $row['file'] : array();
+
+		if ((int) ($file['id'] ?? 0) < 1 || (string) ($file['kind'] ?? '') !== 'image') {
+			return array('file_id' => 0, 'error' => 'message ' . (int) $message_id . ' carries no picture');
+		}
+
+		return array('file_id' => (int) $file['id'], 'error' => '');
+	}
+
+	return array('file_id' => 0, 'error' => 'message ' . (int) $message_id . ' is not in the channel');
 }
 
 /**
  * The request body of an ask (and of an ask-again), or an error line.
  * Options are trimmed, blank and repeated labels left out, the order kept.
  * An option stays a plain text unless it carries a description or the
- * Recommended mark; the "Other" row is an object of its own at the end.
+ * Recommended mark or a picture; the "Other" row is an object of its own
+ * at the end.
  *
  * @param string $question
  * @param string[] $options
- * @param array<string,string|bool> $flags recommend, other (true or a label), multiple
+ * @param array<string,mixed> $flags recommend, other (true or a label),
+ *        multiple, pictures (message number => file id)
  * @return array{body: array|null, error: string}
  */
 function ws_poll_ask_body($question, $options, $flags = array())
@@ -198,7 +294,17 @@ function ws_poll_ask_body($question, $options, $flags = array())
 	foreach ($list as $index => $option) {
 		$recommended = ($index === 0) && !empty($flags['recommend']);
 
-		if ($option['description'] === '' && !$recommended) {
+		$file_id = 0;
+
+		if ($option['picture'] > 0) {
+			$file_id = isset($flags['pictures'][$option['picture']]) ? (int) $flags['pictures'][$option['picture']] : 0;
+
+			if ($file_id < 1) {
+				return array('body' => null, 'error' => 'the picture of message ' . $option['picture'] . ' is not known');
+			}
+		}
+
+		if ($option['description'] === '' && !$recommended && $file_id === 0) {
 			$sent[] = $option['label'];
 			continue;
 		}
@@ -207,6 +313,10 @@ function ws_poll_ask_body($question, $options, $flags = array())
 
 		if ($option['description'] !== '') {
 			$item['description'] = $option['description'];
+		}
+
+		if ($file_id > 0) {
+			$item['file_id'] = $file_id;
 		}
 
 		if ($recommended) {
@@ -248,22 +358,44 @@ function ws_poll_flags($options)
 function ws_poll_main($argv)
 {
 	list($options, $rest) = ws_client_options($argv);
+
+	if (!empty($options['help'])) {
+		fwrite(STDOUT, ws_poll_usage());
+		return WS_CLIENT_EXIT_OK;
+	}
+
 	$parsed = ws_poll_command($rest);
 
 	if ($parsed['error'] !== '') {
-		fwrite(STDERR, 'ws_poll: ' . $parsed['error'] . "\n");
+		fwrite(STDERR, 'ws_poll: ' . $parsed['error'] . "\n" . ws_poll_usage());
 		return WS_CLIENT_EXIT_USAGE;
 	}
 
 	$command = $parsed['command'];
 	$poll = 0;
+	$question = '';
+	$choices = array();
 
 	if ($command === 'ask') {
-		$built = ws_poll_ask_body($parsed['args'] ? $parsed['args'][0] : '', array_slice($parsed['args'], 1), ws_poll_flags($options));
+		$question = $parsed['args'] ? $parsed['args'][0] : '';
+		$choices = array_slice($parsed['args'], 1);
+	} elseif ($command === 'again') {
+		$question = isset($parsed['args'][1]) ? $parsed['args'][1] : '';
+		$choices = array_slice($parsed['args'], 2);
+	}
+
+	// Each picture stands for itself while the body is checked; the real
+	// file ids are read from the channel once the settings are known.
+	$pictures = ws_poll_picture_messages($choices);
+	$flags = ws_poll_flags($options);
+	$flags['pictures'] = $pictures ? array_combine($pictures, $pictures) : array();
+
+	if ($command === 'ask') {
+		$built = ws_poll_ask_body($question, $choices, $flags);
 	} else {
 		$poll = ws_poll_id($parsed['args'][0]);
 		$built = ($command === 'again')
-			? ws_poll_ask_body(isset($parsed['args'][1]) ? $parsed['args'][1] : '', array_slice($parsed['args'], 2), ws_poll_flags($options))
+			? ws_poll_ask_body($question, $choices, $flags)
 			: array('body' => array(), 'error' => '');
 
 		if ($poll < 1) {
@@ -276,11 +408,36 @@ function ws_poll_main($argv)
 		return WS_CLIENT_EXIT_USAGE;
 	}
 
-	$settings = ws_poll_settings($command, $options, getenv());
+	$settings = ws_poll_settings($command, $options, getenv(), (bool) $pictures);
 
 	if ($settings['missing']) {
 		fwrite(STDERR, 'ws_poll: not set: ' . implode(', ', $settings['missing']) . "\n");
 		return WS_CLIENT_EXIT_USAGE;
+	}
+
+	if ($pictures) {
+		$flags['pictures'] = array();
+
+		foreach ($pictures as $picture) {
+			$url = $settings['site'] . '/workspace/channels/' . $settings['channel'] . '/messages?since_id=' . ($picture - 1) . '&limit=1';
+			$answer = ws_client_request('GET', $url, $settings, null);
+
+			if ($answer['status'] < 200 || $answer['status'] >= 300) {
+				fwrite(STDERR, 'ws_poll: picture of message ' . $picture . ': ' . ws_client_failure($answer) . "\n");
+				return WS_CLIENT_EXIT_HTTP;
+			}
+
+			$found = ws_poll_picture_file_id(json_decode($answer['body'], true), $picture);
+
+			if ($found['error'] !== '') {
+				fwrite(STDERR, 'ws_poll: ' . $found['error'] . "\n");
+				return WS_CLIENT_EXIT_HTTP;
+			}
+
+			$flags['pictures'][$picture] = $found['file_id'];
+		}
+
+		$built = ws_poll_ask_body($question, $choices, $flags);
 	}
 
 	if ($command === 'ask') {

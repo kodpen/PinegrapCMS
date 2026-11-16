@@ -668,15 +668,9 @@ function ws_handle_action($action, $request)
                 return $result['ok'] ? ws_action_ok() : ws_action_error($result['error']);
             }
 
-            $ran = ws_scheduled_execute($scheduled['id'], true);
+            $result = ws_scheduled_message_send_now($viewer, $scheduled);
 
-            if ($ran !== 'ran') {
-                $again = ws_scheduled_message_mine($viewer, $scheduled['id']);
-
-                return ws_action_error(($again && ($again['status'] === 'failed')) ? ws_scheduled_message_present($viewer, $again)['error'] : lang('It is being posted right now.'));
-            }
-
-            return ws_action_ok();
+            return $result['ok'] ? ws_action_ok() : ws_action_error($result['error']);
 
         // Works out a table as it is typed (the table window), the lines of a
         // writing box that end with "=", or draws a text the way a message
@@ -1854,6 +1848,11 @@ function ws_handle_action($action, $request)
             }
 
             return ws_action_ok(array('versions' => ws_file_history($message['id'], (int) $viewer['id'])));
+
+        // The message a tag points at, for its popup: only for a reader of
+        // its channel (message_refs.php).
+        case 'ws_message_ref':
+            return ws_action_ok(ws_message_ref_popup($viewer, (int) ($request['message_id'] ?? 0)));
 
         // The overview: what is coming, what was written to the person, the
         // latest decisions and the channels they could join.

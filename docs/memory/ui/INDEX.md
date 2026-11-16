@@ -242,6 +242,7 @@
 - form-view-newest-comment-cut.md: ^^newest_comment^^ in classic form item / list views and content variables is cut to 100 characters before escaping, never after
 - generate-layout-screen.md: Generate Layout (generate_layout.php, includes/templates/generate_layout.php) in the edit screen pattern: the read-only code, the Summary, Copy the code and Edit Layout in the save bar
 - gift-card-shared-form.md: add_gift_card.php and edit_gift_card.php draw the Gift Card Options card and check its amount and date through includes/forms/gift_card_form.php; what each screen keeps
+- graph-canvas-core-logic.md: Graph canvas core pure logic: G.order() ranks from a start, G.arrange() a wrapped grid of groups with side columns, G.linksOf(), G.check() dangling, unreached, stuck
 - graph-canvas-core-module.md: The graph canvas core (pg_graph_canvas.js, window.PGGraphCanvas, includes/fn/graph_canvas.php): what it owns, its adapter, its texts, its pgc- CSS and tokens, its first user the Flows canvas [decision: here]
 - graph-canvas-core-sizes-ports.md: Graph canvas core slice 4 for the Prototype view: size per box, lower zoom, named ports, spread arrow ends, other targets, stable arrow ids, partial redraw, thumbnails
 - greeting-counts.md: Counts in the dashboard greeting, the Workspace channel greeting and the Ecommerce card: a key for one, nominative vs accusative link phrases, counts inside one key
@@ -315,7 +316,8 @@
 - image-editor-versions.md: The Design Canvas's versions (file_versions, 2026.11.0): base and save rows, what opening loads, what a save, restore and delete write, retention, the drawer, deleting a file, Disk Usage [decision: decisions-made-product-15.md, decisions-made-schema-7.md]
 - image-editor-video-decode.md: How the Design Canvas reads a video: own MP4 and WebM demuxers in the model, WebCodecs decoding, the frame cache, seeking, the messages when a browser cannot decode
 - image-editor-video-export.md: The Design Canvas's MP4 and WebM output (AN6): WebCodecs with own MP4 and WebM muxers, the MediaRecorder fallback, the limits, the estimate from the bit rate
-- image-editor-video-reopen.md: A video project saved and opened again (V9, #8701): clips and sounds by fileId, pictures kept as files, Design Canvas on a video in Files, an unsaved canvas's video replaced
+- image-editor-video-files.md: Design Canvas on a video in Files (FV1, #9775): offered by type on any MP4 or WebM, a saved project opens as itself, a plain video as a new canvas holding it, saved beside it [decision: decisions-made-product-56.md]
+- image-editor-video-reopen.md: A video project saved and opened again (V9, #8701): clips and sounds by fileId, pictures kept as files, the door from Files (FV1), an unsaved canvas's video replaced
 - image-editor-warp.md: The Design Canvas's Warp tool: presets and an envelope mesh kept as l.warp, drawn by mapping the flattened outline; Expand bakes it into the path
 - image-editor-workspace.md: Workspace canvas (E16 #4762, E16b): New canvas in a channel or note, saved with its document in file_versions and its pictures as files beside it, opened again with its layers
 - import-campaign-profiles-screen.md: import_email_campaign_profiles.php on the wide edit layout (step B11): the Import CSV and File Format cards, the Summary with the name-match warning, the save bar

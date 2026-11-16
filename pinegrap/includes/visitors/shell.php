@@ -184,6 +184,7 @@ function pg_visitors_section_icons()
         'alerts'      => 'bi-exclamation-triangle',
         'traffic'     => 'bi-graph-up',
         'conversions' => 'bi-bullseye',
+        'cart_recovery' => 'bi-cart-check',
         'sources'     => 'bi-signpost-split',
         'content'     => 'bi-file-earmark-text',
         'site_search' => 'bi-search',

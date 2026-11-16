@@ -207,6 +207,11 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ws_poll_agent_question();  // 11.0.214
 	upgrade_2026_11_0_push_provider();           // 11.0.215
 	upgrade_2026_11_0_cart_recovery_touch();     // 11.0.216
+	upgrade_2026_11_0_ws_agent_duty();           // 11.0.217
+	upgrade_2026_11_0_ws_agent_feedback();       // 11.0.218
+	upgrade_2026_11_0_ws_quiet_hours();          // 11.0.219
+	upgrade_2026_11_0_auto_dialog_open();        // 11.0.221
+	upgrade_2026_11_0_ws_highlights();           // 11.0.222
 
 }
 
@@ -6907,5 +6912,123 @@ function upgrade_2026_11_0_cart_recovery_touch() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Store: e-mails sent to left carts and the carts they brought back are recorded.');
+
+}
+
+// An agent's duty (11.0.217, includes/workspace/agents.php): what the agent
+// is there for, in the words of the person who set it up. Its instructions
+// carry it as "Your duty" and the agent card shows it. NULL by default and no
+// backfill: an agent with no duty works as before.
+function upgrade_2026_11_0_ws_agent_duty() {
+
+	if (!install_table_exists('ws_agents')) {
+
+		install_skipped('ws_agents does not exist, skipped');
+
+		return;
+
+	}
+
+	install_add_column('ws_agents', 'duty', 'TEXT NULL');
+
+	install_note('Workspace: an agent can be given a duty on its form; its instructions and its card carry it.');
+
+}
+
+// Right or Wrong on an agent's reply (11.0.218, includes/workspace/
+// agent_feedback.php): one row per marked reply, keyed by the reply's
+// message. The person who asked or a manager of the channel marks it; a new
+// mark replaces the row, taking it back deletes it. agent is the request's
+// ws_ai_requests.agent value (agent:<id>, model:<id>), as ws_approval_agents
+// keeps it, so an agent's marks and its 7- and 30-day counts are read by
+// (agent, marked_at). No backfill: no reply was marked before this step.
+function upgrade_2026_11_0_ws_agent_feedback() {
+
+	install_create_table('ws_agent_feedback', "CREATE TABLE ws_agent_feedback (
+		message_id INT UNSIGNED NOT NULL,
+		request_id INT UNSIGNED NOT NULL DEFAULT 0,
+		channel_id INT UNSIGNED NOT NULL DEFAULT 0,
+		agent      VARCHAR(32) NOT NULL DEFAULT '',
+		verdict    ENUM('right','wrong') NOT NULL,
+		reason     VARCHAR(300) NOT NULL DEFAULT '',
+		marked_by  INT UNSIGNED NOT NULL DEFAULT 0,
+		marked_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (message_id),
+		KEY idx_agent (agent, marked_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Workspace: a reply of an agent can be marked right or wrong; the agent reads its marks and their counts.');
+
+}
+
+// A person's quiet hours (11.0.219, includes/fn/quiet_hours.php): the range
+// in which no Workspace push wakes their devices, as JSON (start, end as
+// HH:MM, off_days) beside their working day. No backfill: an empty value is
+// no quiet range, and a push goes at once as before.
+function upgrade_2026_11_0_ws_quiet_hours() {
+
+	if (!install_table_exists('ws_profiles')) {
+
+		install_skipped('ws_profiles does not exist, skipped');
+
+		return;
+
+	}
+
+	install_add_column('ws_profiles', 'quiet_hours', 'TEXT NULL');
+
+	install_note('Workspace: a person can keep quiet hours; outside their hours a Workspace notification reaches their phone when the quiet range ends.');
+
+}
+
+// When, to whom and where an auto dialog opens (11.0.221, includes/fn/
+// auto_dialogs.php): open_on (delay, scroll, leave), open_scroll (percent of
+// the page, read with scroll), audience (all, cart), place (centre, top,
+// bottom, corner). Each default reads as an auto dialog always opened:
+// after its delay, for everyone, centred. No index and no backfill; the
+// readers take an unknown value as the default too.
+function upgrade_2026_11_0_auto_dialog_open() {
+
+	if (!install_table_exists('auto_dialogs')) {
+
+		install_skipped('auto_dialogs does not exist, skipped');
+
+		return;
+
+	}
+
+	install_add_column('auto_dialogs', 'open_on', "VARCHAR(10) NOT NULL DEFAULT 'delay' AFTER page");
+	install_add_column('auto_dialogs', 'open_scroll', "TINYINT UNSIGNED NOT NULL DEFAULT 50 AFTER open_on");
+	install_add_column('auto_dialogs', 'audience', "VARCHAR(10) NOT NULL DEFAULT 'all' AFTER open_scroll");
+	install_add_column('auto_dialogs', 'place', "VARCHAR(10) NOT NULL DEFAULT 'centre' AFTER audience");
+
+	install_note('Auto dialogs: a dialog can open on scroll or when the visitor is leaving, only for visitors with a cart, and as a bar or a corner card.');
+
+}
+
+// A reader's highlights on a message (11.0.222, includes/workspace/
+// highlights.php): one row per marked place, kept by its text (quote) and
+// which occurrence of it in the message's plain text it is. scope is 'me'
+// (only its maker sees it) or 'all'. No unique key: the quote is too long
+// for one, so the same place twice is caught in code. No backfill.
+function upgrade_2026_11_0_ws_highlights() {
+
+	install_create_table('ws_highlights', "CREATE TABLE ws_highlights (
+		id         INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		message_id INT UNSIGNED NOT NULL DEFAULT 0,
+		channel_id INT UNSIGNED NOT NULL DEFAULT 0,
+		user_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		scope      VARCHAR(10) NOT NULL DEFAULT 'me',
+		quote      VARCHAR(1000) NOT NULL DEFAULT '',
+		occurrence SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+		note       VARCHAR(255) NOT NULL DEFAULT '',
+		created_at INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_message (message_id),
+		KEY idx_user (user_id, id),
+		KEY idx_channel (channel_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Workspace: a reader can highlight a part of a message for everyone or only for themselves.');
 
 }

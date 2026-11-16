@@ -1,6 +1,7 @@
 ---
 name: panel-design-language-look
 description: Look A's numbers (second pass) for the panel's design language: type, surfaces and depth, fields, buttons, the segmented control, the status pill, the icon tile and tones, rows, what a title says
+priority: 2
 ---
 
 ## Where do these numbers come from?

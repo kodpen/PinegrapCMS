@@ -11,6 +11,9 @@
  * hands the core what it needs through small adapters:
  *
  *  - the geometry helpers (snap, clamp, svgEl, curve, freeId, typing, bytes);
+ *  - the pure graph logic: order() ranks boxes breadth-first from a start,
+ *    arrange() places groups of boxes in a wrapped grid with side columns,
+ *    linksOf() gives a box's arrows, check() finds what may be wrong;
  *  - the undo history of a graph kept as text (historyOf, historyRecord,
  *    historyStep);
  *  - viewport(host): pan, zoom about a point, fit, pinch and the wheel on a
@@ -121,6 +124,263 @@
         });
 
         return out;
+    }
+
+    // The pure graph logic below reads a graph as ids (the boxes, in an
+    // order that means something to the caller) and edges ({ from, to },
+    // other fields kept as given). Nothing in it touches the DOM.
+
+    // The box ids as a lookup of their first place in ids.
+    function indexOf(ids) {
+        var at = {};
+
+        ids.forEach(function (id, index) {
+            if (!Object.prototype.hasOwnProperty.call(at, id)) {
+                at[id] = index;
+            }
+        });
+
+        return at;
+    }
+
+    // Breadth-first ranks from start: { ids, rank }, rank[id] the number of
+    // arrows on the shortest way from start (0 for it), null for a box
+    // nothing reaches from it; ids sorted by rank, the given order between
+    // equal ranks, the unreached last in the given order. An arrow whose
+    // end is no box is skipped.
+    function order(ids, edges, start) {
+        var at = indexOf(ids);
+        var next = {};
+        var rank = {};
+
+        ids.forEach(function (id) {
+            rank[id] = null;
+            next[id] = [];
+        });
+
+        (edges || []).forEach(function (edge) {
+            if (Object.prototype.hasOwnProperty.call(at, edge.from) && Object.prototype.hasOwnProperty.call(at, edge.to) && edge.from !== edge.to) {
+                next[edge.from].push(edge.to);
+            }
+        });
+
+        if (Object.prototype.hasOwnProperty.call(at, start)) {
+            var queue = [start];
+
+            rank[start] = 0;
+
+            for (var i = 0; i < queue.length; i++) {
+                var from = queue[i];
+
+                next[from].forEach(function (to) {
+                    if (rank[to] === null) {
+                        rank[to] = rank[from] + 1;
+                        queue.push(to);
+                    }
+                });
+            }
+        }
+
+        var sorted = ids.filter(function (id, index) { return at[id] === index; }).sort(function (a, b) {
+            var ra = (rank[a] === null) ? Infinity : rank[a];
+            var rb = (rank[b] === null) ? Infinity : rank[b];
+
+            return (ra === rb) ? (at[a] - at[b]) : (ra - rb);
+        });
+
+        return { ids: sorted, rank: rank };
+    }
+
+    // The arrows leaving and reaching one box, in the given order.
+    function linksOf(edges, id) {
+        var out = [];
+        var into = [];
+
+        (edges || []).forEach(function (edge) {
+            if (edge.from === id) {
+                out.push(edge);
+            }
+
+            if (edge.to === id) {
+                into.push(edge);
+            }
+        });
+
+        return { out: out, in: into };
+    }
+
+    // What may be wrong with a graph, reported only: dangling, the arrows
+    // whose start or end is no box; unreached, the boxes no arrow from
+    // another box reaches (never start); stuck, the boxes with no arrow out
+    // but to themselves (an arrow to something that is no box is a way out).
+    function check(ids, edges, start) {
+        var at = indexOf(ids);
+        var reached = {};
+        var leaves = {};
+        var dangling = [];
+
+        (edges || []).forEach(function (edge) {
+            var from = Object.prototype.hasOwnProperty.call(at, edge.from);
+            var to = Object.prototype.hasOwnProperty.call(at, edge.to);
+
+            if (!from || !to) {
+                dangling.push(edge);
+            }
+
+            if (edge.from !== edge.to) {
+                if (from) {
+                    leaves[edge.from] = true;
+                }
+
+                if (from && to) {
+                    reached[edge.to] = true;
+                }
+            }
+        });
+
+        var boxes = ids.filter(function (id, index) { return at[id] === index; });
+
+        return {
+            dangling: dangling,
+            unreached: boxes.filter(function (id) { return (id !== start) && !reached[id]; }),
+            stuck: boxes.filter(function (id) { return !leaves[id]; })
+        };
+    }
+
+    // Places boxes in groups as bands of a wrapped grid, with a side column
+    // before the grid and one after it. groups: [{ id, label, items }], a
+    // group with no items left out, one with no label given no heading.
+    // opts (all optional): cols (8), w and h (the box, 208 x 80), gapX and
+    // gapY (48), head (a heading's height, 40), bandGap (gapY, between
+    // bands), sideGap (2 x gapX, between a side column and the grid), x and
+    // y (the top left, 0), size(id) → { w, h } or null (a row is as high as
+    // its tallest box), before and after ({ id, label, w, h, gap, items or
+    // groups }: items stacked one under another, each group of them with
+    // its own heading). Answers { places: { id: { x, y } }, headings:
+    // [{ id, label, x, y, w, kind: 'side' | 'group' | 'sub' }], bounds:
+    // { x, y, w, h } }, in whole units.
+    function arrange(groups, opts) {
+        opts = opts || {};
+
+        var cols = Math.max(1, opts.cols || 8);
+        var w = opts.w || BOX_W;
+        var h = opts.h || BOX_H;
+        var gapX = (opts.gapX === undefined) ? 48 : opts.gapX;
+        var gapY = (opts.gapY === undefined) ? 48 : opts.gapY;
+        var head = (opts.head === undefined) ? 40 : opts.head;
+        var bandGap = (opts.bandGap === undefined) ? gapY : opts.bandGap;
+        var sideGap = (opts.sideGap === undefined) ? 2 * gapX : opts.sideGap;
+        var x0 = opts.x || 0;
+        var y0 = opts.y || 0;
+        var places = {};
+        var headings = [];
+        var boxes = [];
+        var bands = (groups || []).filter(function (group) { return group && group.items && group.items.length; });
+
+        function sized(id) {
+            return opts.size ? opts.size(id) : null;
+        }
+
+        function place(id, x, y, bw, bh) {
+            places[id] = { x: Math.round(x), y: Math.round(y) };
+            boxes.push({ x: x, y: y, w: bw, h: bh });
+        }
+
+        function title(id, label, x, y, width, kind) {
+            headings.push({ id: id, label: label, x: Math.round(x), y: Math.round(y), w: Math.round(width), kind: kind });
+            boxes.push({ x: x, y: y, w: width, h: head });
+        }
+
+        function filled(column) {
+            return !!column && !!((column.items && column.items.length) || (column.groups || []).some(function (group) { return group && group.items && group.items.length; }));
+        }
+
+        function side(column, x) {
+            var cw = column.w || w;
+            var ch = column.h || h;
+            var gap = (column.gap === undefined) ? gapY : column.gap;
+            var y = y0;
+
+            if (column.label) {
+                title(column.id, column.label, x, y, cw, 'side');
+                y += head;
+            }
+
+            (column.groups || [{ items: column.items }]).forEach(function (group) {
+                if (!group || !group.items || !group.items.length) {
+                    return;
+                }
+
+                if (group.label) {
+                    title(group.id, group.label, x, y, cw, 'sub');
+                    y += head;
+                }
+
+                group.items.forEach(function (id) {
+                    var size = sized(id);
+                    var bh = (size && size.h) || ch;
+
+                    place(id, x, y, (size && size.w) || cw, bh);
+                    y += bh + gap;
+                });
+            });
+        }
+
+        var before = filled(opts.before) ? opts.before : null;
+        var after = filled(opts.after) ? opts.after : null;
+        var gridX = before ? x0 + (before.w || w) + sideGap : x0;
+        var gridCols = Math.min(cols, bands.reduce(function (most, group) { return Math.max(most, group.items.length); }, 0));
+        var gridW = gridCols ? gridCols * w + (gridCols - 1) * gapX : 0;
+        var y = y0;
+
+        if (before) {
+            side(before, x0);
+        }
+
+        bands.forEach(function (group, band) {
+            if (band) {
+                y += bandGap;
+            }
+
+            if (group.label) {
+                title(group.id, group.label, gridX, y, gridW, 'group');
+                y += head;
+            }
+
+            for (var row = 0; row * cols < group.items.length; row++) {
+                var rowH = 0;
+
+                if (row) {
+                    y += gapY;
+                }
+
+                group.items.slice(row * cols, (row + 1) * cols).forEach(function (id, col) {
+                    var size = sized(id);
+                    var bh = (size && size.h) || h;
+
+                    place(id, gridX + col * (w + gapX), y, (size && size.w) || w, bh);
+                    rowH = Math.max(rowH, bh);
+                });
+                y += rowH;
+            }
+        });
+
+        if (after) {
+            side(after, gridW ? gridX + gridW + sideGap : gridX);
+        }
+
+        var bounds = { x: 0, y: 0, w: 0, h: 0 };
+
+        if (boxes.length) {
+            var left = Math.round(Math.min.apply(null, boxes.map(function (box) { return box.x; })));
+            var top = Math.round(Math.min.apply(null, boxes.map(function (box) { return box.y; })));
+            var right = Math.round(Math.max.apply(null, boxes.map(function (box) { return box.x + box.w; })));
+            var bottom = Math.round(Math.max.apply(null, boxes.map(function (box) { return box.y + box.h; })));
+
+            bounds = { x: left, y: top, w: right - left, h: bottom - top };
+        }
+
+        return { places: places, headings: headings, bounds: bounds };
     }
 
     function freeId(prefix, list) {
@@ -1165,6 +1425,10 @@
         ZOOM_FLOOR: ZOOM_FLOOR,
         snap: snap,
         spread: spread,
+        order: order,
+        arrange: arrange,
+        linksOf: linksOf,
+        check: check,
         clamp: clamp,
         svgEl: svgEl,
         curve: curve,

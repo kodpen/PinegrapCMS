@@ -499,11 +499,12 @@ function ws_canvas_edit_mark($state, $sender_kind, $may_edit)
  * the version before is itself an agent's picture no browser drew yet.
  *
  * @param array $viewer
- * @param array $message ws_messages row
- * @param int   $version the version_no of the agent's edit
+ * @param array $message    ws_messages row
+ * @param int   $version    the version_no of the agent's edit
+ * @param bool  $check_only make every check and write nothing (the API's dry run)
  * @return array ok, status (HTTP), error
  */
-function ws_canvas_undo($viewer, $message, $version)
+function ws_canvas_undo($viewer, $message, $version, $check_only = false)
 {
     $refuse = function ($error, $status) {
         return array('ok' => false, 'status' => $status, 'error' => $error);
@@ -536,6 +537,10 @@ function ws_canvas_undo($viewer, $message, $version)
 
     if (ws_canvas_doc_pending(json_decode((string) $before['doc_json'], true), $before['source'])) {
         return $refuse(lang('The version before this edit has no picture yet. Try again in a moment.'), 409);
+    }
+
+    if ($check_only) {
+        return array('ok' => true, 'status' => 200, 'error' => '');
     }
 
     $data = @file_get_contents(pg_file_versions_path($before));

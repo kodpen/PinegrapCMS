@@ -29,17 +29,60 @@ define('WS_AGENT_INSTRUCTIONS_POLL', 15);
 define('WS_AGENT_INSTRUCTIONS_POLL_MIN', 5);
 
 /**
- * The channels the agent is allowed in, with the rule that wakes it there.
+ * The channels the agent is allowed in, with the rule that wakes it there
+ * and the other agents allowed there (ws_agent_instructions_peers()).
  *
  * @param int $agent_id
- * @return array[] id, name, wake_rule, wake_prefix
+ * @return array[] id, name, wake_rule, wake_prefix, agents
  */
 function ws_agent_instructions_channels($agent_id)
 {
-    return (array) db_items("SELECT c.id, c.name, ca.wake_rule, ca.wake_prefix FROM ws_channel_agents ca
+    $channels = (array) db_items("SELECT c.id, c.name, ca.wake_rule, ca.wake_prefix FROM ws_channel_agents ca
         INNER JOIN ws_channels c ON c.id = ca.channel_id
         WHERE ca.agent_id = '" . (int) $agent_id . "' AND ca.allowed = 1 AND c.archived_at = 0
         ORDER BY c.name LIMIT 50");
+    $peers = ws_agent_instructions_peers($agent_id, array_column($channels, 'id'));
+
+    foreach ($channels as $i => $channel) {
+        $channels[$i]['agents'] = $peers[(int) $channel['id']] ?? array();
+    }
+
+    return $channels;
+}
+
+/**
+ * The other active agents allowed in each of the channels, by channel id,
+ * in the order they were added: handle, name, role key and duty. The row
+ * is read with *, so a site before the duty's step reads no duty.
+ *
+ * @param int   $agent_id    the agent the instructions are for
+ * @param int[] $channel_ids
+ * @return array[] channel id => list of handle, name, role, duty
+ */
+function ws_agent_instructions_peers($agent_id, $channel_ids)
+{
+    $ids = array_values(array_filter(array_map('intval', (array) $channel_ids)));
+    $out = array();
+
+    if (!$ids) {
+        return $out;
+    }
+
+    $rows = (array) db_items("SELECT ca.channel_id, a.* FROM ws_channel_agents ca
+        INNER JOIN ws_agents a ON a.id = ca.agent_id
+        WHERE ca.channel_id IN (" . implode(',', $ids) . ") AND ca.agent_id <> '" . (int) $agent_id . "' AND ca.allowed = 1 AND a.status = 'active'
+        ORDER BY ca.channel_id, ca.added_at, ca.agent_id");
+
+    foreach ($rows as $row) {
+        $out[(int) $row['channel_id']][] = array(
+            'handle' => (string) $row['handle'],
+            'name'   => (string) $row['name'],
+            'role'   => (string) ($row['role'] ?? ''),
+            'duty'   => (string) ($row['duty'] ?? ''),
+        );
+    }
+
+    return $out;
 }
 
 /**
@@ -130,7 +173,8 @@ function ws_agent_instructions_wake($channel, $handle)
 }
 
 /**
- * The part of the text that says who the agent is and where it works. Pure.
+ * The part of the text that says who the agent is, its duty when it has
+ * one, and where it works. Pure.
  *
  * @param array   $agent
  * @param array[] $channels
@@ -147,10 +191,21 @@ function ws_agent_instructions_who_lines($agent, $channels, $base)
         'You are ' . (($name !== '') ? $name . ' (@' . $handle . ')' : '@' . $handle) . ', an application agent in the Workspace of a Pinegrap site.'
             . (($role !== '') ? ' Your role: ' . $roles[$role] . '.' : ''),
         '',
+    );
+    $duty = ws_agent_duty_clean($agent['duty'] ?? '');
+
+    // What the agent is there for, in the words of the person who set it up.
+    if ($duty !== '') {
+        $lines[] = 'Your duty, as the person who set you up wrote it:';
+        $lines[] = $duty;
+        $lines[] = '';
+    }
+
+    $lines = array_merge($lines, array(
         'Site API: ' . $base,
         'Every path below is relative to it. Authenticate every call with HTTP Basic, your application\'s key and secret, from the environment variables PINEGRAP_KEY and PINEGRAP_SECRET: curl -sS -u "$PINEGRAP_KEY:$PINEGRAP_SECRET". Send bodies as JSON with the header Content-Type: application/json.',
         '',
-    );
+    ));
 
     if (!$channels) {
         $lines[] = 'You are in no channel yet. A person adds you to a channel in its settings (Agents in this channel); until then no message wakes you.';
@@ -162,11 +217,56 @@ function ws_agent_instructions_who_lines($agent, $channels, $base)
 
     foreach ($channels as $channel) {
         $lines[] = '- #' . ws_agent_instructions_line((string) $channel['name']) . ' (id ' . (int) $channel['id'] . '): ' . ws_agent_instructions_wake($channel, $handle) . '.';
+
+        foreach ((array) ($channel['agents'] ?? array()) as $peer) {
+            $lines[] = '  ' . ws_agent_instructions_peer_line($peer);
+        }
     }
 
     $lines[] = 'Each message that wakes you makes one request for you; a scheduled wake makes one with no message.';
 
+    // The other agents of its channels: what each is there for, so the
+    // agent leaves that work to it and calls it by name.
+    if (array_filter(array_column($channels, 'agents'))) {
+        $lines[] = 'An agent named under a channel ("Also here") works there too: leave to it what its duty covers, and call it by its @handle when you need it.';
+    }
+
     return $lines;
+}
+
+/**
+ * The first line of a duty, at most WS_AGENT_DUTY_LINE_MAX characters (cut
+ * with an ellipsis): what another agent is told about it. Pure.
+ *
+ * @param string|null $duty
+ * @return string
+ */
+function ws_agent_duty_first_line($duty)
+{
+    $first = trim((string) strtok(ws_agent_duty_clean($duty) . "\n", "\n"));
+
+    return (mb_strlen($first) > WS_AGENT_DUTY_LINE_MAX) ? rtrim(mb_substr($first, 0, WS_AGENT_DUTY_LINE_MAX - 1)) . '…' : $first;
+}
+
+/**
+ * Another agent of a channel as one line of the instructions: its handle,
+ * name and role, and the first line of its duty. Pure.
+ *
+ * @param array $peer handle, name, role, duty
+ * @return string
+ */
+function ws_agent_instructions_peer_line($peer)
+{
+    $roles = ws_agent_role_list();
+    $role = ws_agent_role_key($peer['role'] ?? '');
+    $name = ws_agent_instructions_line((string) ($peer['name'] ?? ''));
+    $about = array_filter(array($name, ($role !== '') ? 'role: ' . $roles[$role] : ''));
+    $duty = ws_agent_instructions_line(ws_agent_duty_first_line($peer['duty'] ?? ''));
+
+    $line = 'Also here: @' . (string) ($peer['handle'] ?? '') . ($about ? ' (' . implode(', ', $about) . ')' : '') . (($duty !== '') ? ': ' . $duty : '');
+
+    // A duty that ends a sentence keeps its own stop.
+    return preg_match('/[.!?…]$/u', $line) ? $line : $line . '.';
 }
 
 /**
@@ -216,11 +316,12 @@ function ws_agent_instructions_request_lines()
         '2. GET /workspace/agent-requests/{id}/brief. Its "text" tells you who asked, where, the request itself, the channel\'s memory and the routes that close the request. Follow it; read more only when the request needs it.',
         '   While you work on a request that takes minutes, you may say where you are in one short line (at most ' . WS_AGENT_PROGRESS_MAX . ' characters, one in ' . WS_AGENT_PROGRESS_GAP . ' seconds): POST /workspace/agent-requests/{id}/progress with {"text": "reading the plans"}. It shows under the message that asked; it writes no message and wakes nobody. A 429 answer means wait the Retry-After seconds.',
         '3. Close the request with exactly one of:',
-        '   - POST /workspace/agent-requests/{id}/answer with {"text": "..."}: your answer, written under the message that asked, with the asker mentioned. Write in the language the brief names, short and concrete.',
+        '   - POST /workspace/agent-requests/{id}/answer with {"text": "..."}: your answer, written under the message that asked, with the asker mentioned. Write in the language the brief names, short and concrete. ' . ws_message_ref_agent_rule(),
         '   - POST /workspace/agent-requests/{id}/answer with {"no_answer": true}: the message needs nothing from you (an acknowledgement, a thank-you, an answer to an answer). You may add "emoji" with one fitting emoji, left on the message that asked, with either form.',
         '   - POST /workspace/agent-requests/{id}/fail with {"reason": "..."}: you cannot do it; the reason is told to the person who asked.',
         'A 409 edited answer means the message was changed after your claim: claim the request again and read the new words. A 403 answer means the channel no longer lets you answer there: give the request up with fail.',
         'A wake request has no message: your schedule woke you, and its brief carries the note of the wake. Do what the note says, write where you need with POST /workspace/channels/{id}/messages, then close the request with no_answer. Your schedule is GET /workspace/agent-wake; change it with POST /workspace/agent-wake.',
+        'The person who asked and the channel\'s managers may mark an answer of yours right or wrong, with a short reason. GET /workspace/agent-feedback gives your marks and the counts of the last 7 and 30 days; read it now and then, and learn from a wrong one.',
     );
 }
 

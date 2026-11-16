@@ -5,13 +5,14 @@ module: auto_dialogs, common_regions
 ---
 
 ## Where is an auto dialog or a common region written?
-- `includes/fn/auto_dialogs.php`: `pg_auto_dialog_save()` (the eight values of `pg_auto_dialog_form_values()`, in its order), `pg_auto_dialog_delete()`, `pg_auto_dialog_name_in_use()` (null on a failed query; `pg_auto_dialog_form_validate()` asks it too).
+- `includes/fn/auto_dialogs.php`: `pg_auto_dialog_save()` (the eight values of `pg_auto_dialog_form_values()`, in its order, then the open settings), `pg_auto_dialog_delete()`, `pg_auto_dialog_name_in_use()` (null on a failed query; `pg_auto_dialog_form_validate()` asks it too).
 - `includes/fn/common_regions.php`: `pg_cregion_save()` (content null keeps the stored one, as for a converted region; type null keeps the stored one) and `pg_cregion_delete()` (takes `users_common_regions_xref` with it).
 - `add_auto_dialog.php`, `edit_auto_dialog.php`, `add_common_region.php`, `edit_common_region.php` and the API handlers call them; the screens keep no SQL write and save or delete the `$id` checked at the top, not a posted `id`.
 
 ## Which routes are there?
 - `/design/auto-dialogs` and `/design/common-regions`: list (oldest first, cursor paged by id; auto dialogs filter by `enabled`), GET one (`design:read`), create (201), update (POST, PATCH also accepted), DELETE and its `POST …/delete` twin (`design:write`, owner ceiling designer, narrower than the manager-gated auto dialog screens). Ids `design.auto_dialogs.*`, `design.common_regions.*`; handlers in `includes/api/resources/design_dialogs_regions.php`, which reuses the paging, `{path}` and log helpers of `design_ads.php`. No events.
 - Auto dialog: name and URL required (422), within their columns; the URL by `pg_auto_dialog_url_problem()` (422 on `url`) on a create and whenever `url` is sent, so an update without it can still disable a row stored before the rule (#9013); numbers 0 to `pg_auto_dialog_form_number_limits()`, null or 0 is the screen's blank; page loses a leading slash; a create starts disabled as on the screen; name unique (409 `name_taken`).
+- Since #9851 `open_on`, `open_scroll`, `audience`, `place` (enum or 1 to 100, nullable for the default; 422 on another value, also by the form's check); left out on an update they keep the stored ones; the answer always carries them (`platform/auto-dialog-open-settings.md`).
 - Common region: only `cregion_designer_type = 'no'` rows; a designer region is 404 (it is a designer's code and shares the table). Name by `pg_region_form_name_refusal()` (422) and `pg_cregion_name_taken()` across both kinds (409 `name_taken`). `content` in through `prepare_rich_text_editor_content_for_input()`, out with `{path}` expanded. `shared_component_id` names the component drawing it, null for none.
 
 ## What does a converted region refuse?

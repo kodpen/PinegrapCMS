@@ -558,6 +558,12 @@
             meta.appendChild(notes);
         }
 
+        // The assistant or agent holding the task, as a task row shows it
+        // (workspace_task_delegate.js; not on a table's board).
+        if (item.delegate_name && window.PGWsTaskDelegate && k.avatar) {
+            window.PGWsTaskDelegate.rowTag(meta, item, k);
+        }
+
         if (item.assignees.length) {
             var faces = k.avatarStack('ws-cb-faces', item.assignees, 4);
 

@@ -99,3 +99,21 @@ function test_workspace_personal_plan_steps_are_read_through_the_gate()
 	pg_assert_same(2, substr_count($module, 'ws_personal_plan_can_edit($user_id, $plan)'), 'saving and tying are the owner\'s');
 	pg_assert_contains('ws_can_see_task($viewer, $task)', $module, 'a step is tied only to a task its owner may see');
 }
+
+// The plan drawer on a phone: the hidden posted date and time inputs keep
+// their 1 px (.pg-input after them in the same layer gave them full width
+// and scrolled the drawer body sideways), a step's open calendar takes its
+// own row, and the step's date box says what it is.
+function test_workspace_personal_plan_drawer_fits_a_phone()
+{
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css');
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_my_calendar_roadmap.js');
+
+	pg_assert_same(1, preg_match('/\.pg-field-native\.pg-field-native \{[^}]*width: 1px;/', $css), 'the hidden field beats .pg-input');
+	pg_assert_true(strpos($css, '.pg-field-native.pg-field-native {') < strpos($css, "\n.pg-input {"), 'checked against the .pg-input rule it must beat');
+	pg_assert_same(1, preg_match('/\.ws-roadmap-step > \.pg-date-inline \{[^}]*grid-column: 1 \/ -1;/', $css), 'the calendar takes a row of its own');
+	pg_assert_same(1, preg_match('/\.ws-roadmap-tools \{[^}]*grid-row: 1;/', $css), 'the step tools stay on its first row');
+	pg_assert_same(1, preg_match('/\.ws-plan-who \.pg-seg-item \{[^}]*white-space: normal;/', $css), 'Who can see breaks a long label');
+	pg_assert_contains("day.placeholder = s('step_day');", $js, 'the step date box says what it is');
+	pg_assert_contains("'step_day'         => lang('Day of the step')", (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/personal_plan_steps.php'));
+}

@@ -9477,6 +9477,21 @@
         return { x: box.x + (box.w - w * k) / 2, y: box.y + (box.h - h * k) / 2, w: w * k, h: h * k };
     }
 
+    // The canvas a plain video opens on (Design Canvas on an MP4 or WebM in
+    // Files): the video's own size, scaled down as a whole when a side is
+    // over the canvas's largest, each side then kept inside its limits.
+    function clipCanvas(width, height) {
+        var w = Number(width) || 0, h = Number(height) || 0;
+
+        if ((w <= 0) || (h <= 0)) {
+            return null;
+        }
+
+        var k = Math.min(1, SIZE_MAX / Math.max(w, h));
+
+        return { w: boardSide(w * k), h: boardSide(h * k) };
+    }
+
     // A video from Files (or uploaded) as a new layer filling the box, from
     // start on the timeline; meta is what the source read: length, width,
     // height, sound. Its id is the caller's (M.newId()).
@@ -10054,7 +10069,7 @@
 
     var CLIP = {
         CLIP_SPEEDS: CLIP_SPEEDS, CLIP_TYPES: CLIP_TYPES, CLIP_MIN: CLIP_MIN, clipLayer: clipLayer, clipSpan: clipSpan, clipAt: clipAt,
-        clipFit: clipFit, clipNew: clipNew, clipReplace: clipReplace, clipEnd: clipEnd, clipSound: clipSound, clipDetach: clipDetach, clipType: clipType,
+        clipFit: clipFit, clipCanvas: clipCanvas, clipNew: clipNew, clipReplace: clipReplace, clipEnd: clipEnd, clipSound: clipSound, clipDetach: clipDetach, clipType: clipType,
         clipRowKey: clipRowKey, clipRow: clipRow, clipRipple: clipRipple, clipTrim: clipTrim, clipMove: clipMove, clipSplit: clipSplit, clipLength: clipLength,
         clipApply: clipApply, clipPart: clipPart, clipJoins: clipJoins, clipMotionNeed: clipMotionNeed, CLIP_STRIP_MAX: CLIP_STRIP_MAX, clipStripTimes: clipStripTimes,
         clipFramesAt: clipFramesAt, CLIP_FX: CLIP_FX, clipFx: clipFx, clipFxOn: clipFxOn, clipFxColor: clipFxColor, clipFxBlur: clipFxBlur,

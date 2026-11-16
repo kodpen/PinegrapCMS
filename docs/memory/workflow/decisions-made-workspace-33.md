@@ -24,4 +24,4 @@ description: Decisions made, workspace part 33 (2026-11-15): what a guest sees o
 
 ## What stands above a channel's conversation for its open items? (owner, 2026-11-15, agent channel message 5143)
 - His words: "oylama ve ajan sorusu, checkin ve onay isteği gibi özellikler bir kanalda kullanılmışsa kanalın üst tarafında kısaca ne olduğu ile kaydırma düğmesi yer alsın."
-- So a line in the strip above the conversation names the channel's open polls, agent questions, check-ins and approval requests, each with a button that scrolls to it: `plans/channel-open-items.md`. Its pictures go to him before it lands.
+- So a line in the strip above the conversation names the channel's open polls, agent questions, check-ins and approval requests, each with a button that scrolls to it: `workspace/channel-open-items-line.md`. Its pictures go to him before it lands.

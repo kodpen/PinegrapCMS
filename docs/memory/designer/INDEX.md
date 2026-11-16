@@ -34,6 +34,8 @@
 - canvas-sample-overview.md: Start file for the canvas-sample-* files: how the designer canvas draws a bound value with a realistic sample instead of its label, which file holds which family, the CI guard, what is still open [decision: decisions-made-product-48.md]
 - canvas-sample-product.md: The sample product the designer canvas draws in the catalog listing, product page, wishlist, order form and search results (CS4a, #9253); the tag cloud's samples; catalog block previews
 - catalog-binding-disabled-no-output.md: Disabled catalog feature emits no output: _pg_catalog_binding_disabled(), designer mirror _sdCatalogBindingDisabled(), which settings disable which bindings.
+- catalog-detail-open-blocks.md: Catalog detail closed blocks opened (CB6a1, #9849): the Breadcrumb node drawn as its crumbs part and converted into it, the product carousel and the Checkout Options rows drawn true on the canvas
+- catalog-detail-variant-price-blocks.md: Catalog detail closed blocks a variant switch redraws (CB6a2): the price block and the Variant Attribute node drawn on the canvas as the site prints them, settings only, why neither is a tree
 - catalog-item-checkout-options-tab.md: The product page starter's Checkout Options tab (catalog_item_view) is bound to the store's switched-on payment methods, with real fees, or not drawn (#4556); saved trees untouched
 - catalog-listing-subtree-sort.md: Catalog listing widget's catalog-order sort while a search or filter spans the group subtree: the product's lowest sort order, not an arbitrary group row.
 - catalog-listing-system-widget.md: catalog_listing system widget defaults (PHP and designer JS), group card behaviour (browse/select), group scope rules, the subtree helper (no recursive SQL) and group price range rules.
@@ -534,6 +536,8 @@
 - prototype-hotspots.md: The Prototype view's hotspot collector (assets/js/pg_proto_hotspots.js, window.PGProtoHotspots): which nodes are hotspots, shared frames, the map read's request, the marks, the layout
 - prototype-links-in-code.md: Where a design's links sit in the code, page-name hrefs and renames, the resolver, editor state, rights and Publish: what the Prototype view reads
 - prototype-map-read.md: The Prototype view's server read (api.php designer prototype_map, includes/fn/prototype_map.php): what it is asked, what it answers, how hidden pages stay hidden
+- prototype-picture-check-numbers.md: The prototype canvas page picture check's measurements (PV7): both ways on a 41-page design, how and where each number was taken
+- prototype-picture-check.md: The prototype canvas page picture (PV7, architect 2026-11-16): the Preview document in a script-free readable frame, its sandbox and CSP, the link marker, the cap on live pictures [decision: here]
 - prototype-places.md: Where the Prototype view keeps a moved frame or chip: frames shared on the design in the tab layout's proto (#6232), the rest per browser; the twin normalisers
 - prototype-thumbnails.md: The Prototype view's frame thumbnails: PGProtoHotspots.sketch() bands from a tree, sketchBoxes(), the 84-high strip above a frame's rows, how it is drawn
 - prototype-view-decisions.md: What was decided for the designer's Prototype view (owner 2026-10-24, #2446, 2026-11-01): where it lives, hrefs by name or page id, who draws, read-only sources, breakpoint, how an arrow saves [decision: decisions-made-product-23.md]

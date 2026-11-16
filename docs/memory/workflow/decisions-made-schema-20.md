@@ -23,8 +23,8 @@ description: Decisions list, schema part 20 (2026-11-14 on): ws_mail_items.send_
 - Running sites: no backfill; a plan made before repeats nothing.
 
 ## Which columns does the widened poll get? (owner, 2026-11-14, agent channel poll 3459)
-- Asked by the census AQ1 (#9557) for the drawing he approved (`plans/poll-agent-questions.md`). The owner voted "Evet, sütunlar eklensin" over "Hayır, eklenmesin"; no new table.
+- Asked by the census (#9557) for the drawing he approved (`workspace/agent-questions/drawing.html`). The owner voted "Evet, sütunlar eklensin" over "Hayır, eklenmesin"; no new table.
 - `ws_poll_options`: `description` VARCHAR(500), `file_id` INT UNSIGNED (a channel file), `links` TEXT NULL (JSON), `recommended` TINYINT, `other` TINYINT (the "Other" row).
 - `ws_poll_votes`: `other_text` VARCHAR(255). `ws_polls`: `withdrawn_at`, `withdrawn_by`, `again_of` with a key (the poll this one asks again), beside `agent_question` (`decisions-made-schema-19.md`).
-- All NOT NULL with defaults but `links`; added by the steps of AQ2 and AQ4 with the idempotent helpers, no backfill.
+- All NOT NULL with defaults but `links`; added by steps 11.0.213 (#9635) and 11.0.214 (#9646) with the idempotent helpers, no backfill.
 - No column for who is asked: the people the question mentions, else the channel's owners.

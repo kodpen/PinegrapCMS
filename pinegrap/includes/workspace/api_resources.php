@@ -222,6 +222,62 @@ function ws_api_channel_present($brief)
         'agent_channel' => !empty($brief['agent_channel']),
         'unread'        => (int) $brief['unread'],
         'last_message_at' => ((int) $brief['last_message_at'] > 0) ? api_time($brief['last_message_at']) : null,
+    ) + (isset($brief['api_settings']) ? $brief['api_settings'] : ws_api_channel_settings_present(null));
+}
+
+/**
+ * The settings fields of the channel object, as the settings drawer and the
+ * channel menu show them to the reader: the records watch, the Claude,
+ * Pinegrap AI and voice-transcript switches (null where the channel offers
+ * none) and the summary. Null for every field when $states is null: a list
+ * carries none. Pure.
+ *
+ * @param array|null $states claude, ai, voice (the *_channel_state() values),
+ *                           watch (ws_watch_channel_state()), shared (a guest's
+ *                           room or a channel shared with guests), summary,
+ *                           summary_updated_at
+ * @return array
+ */
+function ws_api_channel_settings_present($states)
+{
+    if (!is_array($states)) {
+        return array_fill_keys(array('watch', 'claude_allowed', 'ai_allowed', 'voice_allowed', 'summary', 'summary_updated_at'), null);
+    }
+
+    $allowed = function ($state) {
+        return is_array($state) ? !empty($state['allowed']) : null;
+    };
+    $shared = !empty($states['shared']);
+
+    return array(
+        'watch'              => isset($states['watch']) ? (bool) $states['watch'] : null,
+        'claude_allowed'     => $shared ? null : $allowed($states['claude'] ?? null),
+        'ai_allowed'         => $shared ? null : $allowed($states['ai'] ?? null),
+        'voice_allowed'      => $allowed($states['voice'] ?? null),
+        'summary'            => (string) ($states['summary'] ?? ''),
+        'summary_updated_at' => ((int) ($states['summary_updated_at'] ?? 0) > 0) ? api_time($states['summary_updated_at']) : null,
+    );
+}
+
+/**
+ * What ws_api_channel_settings_present() reads, for one channel and its
+ * reader: the same calls ws_channel_detail() makes for the panel.
+ *
+ * @param array $viewer
+ * @param array $channel ws_channels row
+ * @return array
+ */
+function ws_api_channel_settings_states($viewer, $channel)
+{
+    return array(
+        'claude'             => function_exists('ws_claude_channel_state') ? ws_claude_channel_state($channel) : null,
+        'ai'                 => function_exists('ws_ai_channel_state') ? ws_ai_channel_state($channel) : null,
+        'voice'              => function_exists('ws_voice_channel_state') ? ws_voice_channel_state($channel) : null,
+        'watch'              => function_exists('ws_watch_channel_state') ? ws_watch_channel_state($channel) : null,
+        'shared'             => (function_exists('ws_guest_channel_state') && (ws_guest_channel_state($viewer, $channel) !== null))
+            || (function_exists('ws_channel_share_open') && ws_channel_share_open($channel)),
+        'summary'            => (string) ($channel['summary'] ?? ''),
+        'summary_updated_at' => (int) ($channel['summary_updated_at'] ?? 0),
     );
 }
 
@@ -249,6 +305,12 @@ function ws_api_channel_schema()
         'agent_channel'   => 'boolean',
         'unread'          => 'integer',
         'last_message_at' => 'string?',
+        'watch'              => 'boolean?',
+        'claude_allowed'     => 'boolean?',
+        'ai_allowed'         => 'boolean?',
+        'voice_allowed'      => 'boolean?',
+        'summary'            => 'string?',
+        'summary_updated_at' => 'string?',
     );
 }
 
@@ -287,9 +349,12 @@ function ws_api_channels_list($params)
  */
 function ws_api_channel_brief($viewer, $channel)
 {
+    // One channel's answer carries its settings and summary; a list does not.
+    $settings = array('api_settings' => ws_api_channel_settings_present(ws_api_channel_settings_states($viewer, $channel)));
+
     foreach (ws_channels_for($viewer, ((int) $channel['archived_at'] > 0)) as $brief) {
         if ((int) $brief['id'] === (int) $channel['id']) {
-            return $brief;
+            return $brief + $settings;
         }
     }
 
@@ -301,7 +366,7 @@ function ws_api_channel_brief($viewer, $channel)
         'my_role'   => $membership['role'] ?? '',
         'my_pinned' => $membership['pinned'] ?? 0,
         'my_sort'   => $membership['sort'] ?? 0,
-    )));
+    ))) + $settings;
 }
 
 /**
@@ -550,6 +615,16 @@ function ws_api_channels_update($params)
         api_fail_validation(lang('That department could not be found.'), 'department_id');
     }
 
+    // The records watch, as the settings drawer offers it: a public or
+    // private channel only (ws_watch_channel_state()).
+    if (array_key_exists('watch', $params)) {
+        if (!function_exists('ws_watch_channel_state') || (ws_watch_channel_state($channel) === null)) {
+            api_fail_validation(lang('This channel cannot watch records: only a public or private channel can.'), 'watch');
+        }
+
+        $data['watch'] = !empty($params['watch']);
+    }
+
     $changes = array_keys($data);
 
     if (($archive !== null) && ($archive !== $archived)) {
@@ -577,6 +652,206 @@ function ws_api_channels_update($params)
     }
 
     api_ok(ws_api_channel_present(ws_api_channel_brief($viewer, ws_channel($channel['id']))));
+}
+
+/**
+ * POST /workspace/channels/{id}/summary: the Summary tab's save, for anybody
+ * who may write in the channel.
+ *
+ * @param array $params
+ */
+function ws_api_channel_summary_set($params)
+{
+    $viewer = ws_api_viewer();
+    $channel = ws_api_channel_or_404($viewer, $params['id']);
+
+    if (!ws_can_post_channel($viewer, $channel)) {
+        api_fail(403, 'forbidden', lang('You cannot post in that channel.'));
+    }
+
+    api_dry_run_stop('updated', 'workspace_channel', array('id' => (int) $channel['id'], 'fields' => array('summary')));
+
+    $result = ws_channel_set_summary($viewer, $channel, (string) ($params['summary'] ?? ''));
+
+    if (!$result['ok']) {
+        api_fail(403, 'forbidden', $result['error']);
+    }
+
+    api_ok(ws_api_channel_present(ws_api_channel_brief($viewer, ws_channel($channel['id']))));
+}
+
+/**
+ * POST /workspace/channels/{id}/switches: the channel menu's Claude,
+ * Pinegrap AI and voice-transcript switches. The person's own choice of what
+ * leaves the site, so never an application key (ws_api_person_only()), and
+ * no MCP tool.
+ *
+ * @param array $params
+ */
+function ws_api_channel_switches_set($params)
+{
+    ws_api_person_only(lang('Only the person, signed in on a device, can switch Claude, Pinegrap AI or voice transcripts in a channel; an application cannot do it for them.'));
+
+    $viewer = ws_api_viewer();
+    $channel = ws_api_channel_or_404($viewer, $params['id']);
+
+    if (!ws_can_manage_channel($viewer, $channel)) {
+        api_fail(403, 'forbidden', lang('Only the owner of the channel can change it.'));
+    }
+
+    // The channel menu hides the switches on an archived channel; the dry
+    // run is refused the same way.
+    if ((int) $channel['archived_at'] > 0) {
+        api_fail(403, 'forbidden', lang('This channel is archived. It can be read but not written in.'));
+    }
+
+    $now = ws_api_channel_settings_present(ws_api_channel_settings_states($viewer, $channel));
+    $fields = array('claude' => 'claude_allowed', 'ai' => 'ai_allowed', 'voice' => 'voice_allowed');
+    $changes = array();
+
+    if (!array_intersect_key($params, $fields)) {
+        api_fail_validation(lang('Send claude, ai or voice.'), 'claude');
+    }
+
+    foreach ($fields as $field => $key) {
+        if (!array_key_exists($field, $params)) {
+            continue;
+        }
+
+        if ($now[$key] === null) {
+            api_fail_validation(lang('This channel does not offer that switch.'), $field);
+        }
+
+        if ((bool) $params[$field] !== $now[$key]) {
+            $changes[$field] = (bool) $params[$field];
+        }
+    }
+
+    api_dry_run_stop('updated', 'workspace_channel', array('id' => (int) $channel['id'], 'fields' => array_keys($changes)));
+
+    // Each writer leaves the line the menu leaves; one that does not change
+    // is not called, so it leaves none.
+
+    foreach ($changes as $field => $allowed) {
+        if ($field === 'claude') {
+            $result = ws_claude_channel_set($viewer, ws_channel($channel['id']), $allowed);
+        } elseif ($field === 'ai') {
+            $result = ws_ai_channel_set($viewer, ws_channel($channel['id']), $allowed);
+        } else {
+            $result = ws_voice_channel_set($viewer, ws_channel($channel['id']), $allowed);
+        }
+
+        if (!$result['ok']) {
+            api_fail(403, 'forbidden', $result['error']);
+        }
+    }
+
+    api_ok(ws_api_channel_present(ws_api_channel_brief($viewer, ws_channel($channel['id']))));
+}
+
+/**
+ * POST /workspace/channels/{id}/customer/followup: the customer card's
+ * Remind me button, for anybody who may write in the channel.
+ *
+ * @param array $params
+ */
+function ws_api_channel_customer_followup($params)
+{
+    $viewer = ws_api_viewer();
+    $channel = ws_api_channel_or_404($viewer, $params['id']);
+
+    if (!ws_can_post_channel($viewer, $channel)) {
+        api_fail(403, 'forbidden', lang('You cannot post in that channel.'));
+    }
+
+    // Every check of the follow-up and of the task, before the dry run.
+    $checked = ws_customer_followup_open($viewer, $channel, $params, true);
+
+    if (!$checked['ok']) {
+        api_fail_validation($checked['error'], ((string) $checked['field'] !== '') ? (string) $checked['field'] : null);
+    }
+
+    api_dry_run_stop('created', 'workspace_task', array('channel_id' => (int) $channel['id'], 'assignees' => array((int) $viewer['id'])));
+
+    $made = ws_customer_followup_open($viewer, $channel, $params);
+
+    if (!$made['ok']) {
+        api_fail_validation($made['error'], ((string) $made['field'] !== '') ? (string) $made['field'] : null);
+    }
+
+    api_ok(ws_api_task_present($viewer, ws_task($made['task']['id'])), 201);
+}
+
+/**
+ * Whether the application reaches a titled block: the owner reads its place
+ * (ws_block_source()), and Claude only where it may be asked - a message's
+ * channel open to Claude, a note as ws_api_note_reachable() lets it.
+ *
+ * @param array $viewer
+ * @param int   $block_id
+ * @return bool
+ */
+function ws_api_block_reachable($viewer, $block_id)
+{
+    if (!ws_api_is_claude()) {
+        return true;
+    }
+
+    $row = ws_blocks_ready() ? db_item("SELECT source_kind, source_id FROM ws_blocks WHERE id = '" . (int) $block_id . "'") : null;
+
+    if (!is_array($row)) {
+        return false;
+    }
+
+    if ((string) $row['source_kind'] === 'message') {
+        $message = ws_message((int) $row['source_id']);
+        $channel = $message ? ws_channel((int) $message['channel_id']) : null;
+
+        return $channel && ws_claude_channel_allowed($channel);
+    }
+
+    $note = function_exists('ws_note') ? ws_note((int) $row['source_id']) : null;
+
+    return $note && ws_api_note_reachable($viewer, array('access' => ws_note_access($viewer, $note)) + $note);
+}
+
+// What GET /workspace/blocks lists.
+function ws_api_block_schema()
+{
+    return array(
+        'id'     => 'integer',
+        'kind'   => 'string',
+        'title'  => 'string',
+        'where'  => 'string',
+        'author' => 'string',
+        'time'   => 'string',
+    );
+}
+
+function ws_api_blocks_list($params)
+{
+    $viewer = ws_api_viewer();
+    $out = array();
+
+    foreach (ws_blocks_search($viewer, (string) ($params['q'] ?? ''), 20) as $block) {
+        if (ws_api_block_reachable($viewer, $block['id'])) {
+            $out[] = $block;
+        }
+    }
+
+    api_ok_list($out, count($out));
+}
+
+function ws_api_blocks_get($params)
+{
+    $viewer = ws_api_viewer();
+    $pulled = ws_block_pull($viewer, (int) $params['id']);
+
+    if (!$pulled['ok'] || !ws_api_block_reachable($viewer, (int) $params['id'])) {
+        api_fail_not_found(lang('Block'));
+    }
+
+    api_ok(array('id' => (int) $params['id'], 'kind' => $pulled['kind'], 'markup' => $pulled['markup'], 'from' => $pulled['from']));
 }
 
 /* ---------------------------------------------------------------------------
@@ -3735,6 +4010,16 @@ function ws_api_polls_vote($params)
 
     ws_api_person_only();
 
+    // An agent question is answered from the person's own team devices
+    // session only: an OAuth connection passes the gate above as the person
+    // who approved it, so the application that asked would settle its own
+    // question in their name, and another connection is no more the person
+    // than the asker. Checked before the dry run stops, so a rehearsal meets
+    // it too.
+    if (ws_agent_question_is($poll)) {
+        ws_api_own_words_only(lang('Only the person\'s own team devices session (POST /auth/login) can answer a question an application asked; an application key or an OAuth connection cannot, whichever application asked it.'));
+    }
+
     $checked = ws_poll_vote_check($viewer, $poll);
 
     if (!$checked['ok']) {
@@ -3873,6 +4158,36 @@ function ws_api_poll_refused($error, $field = '')
 }
 
 /**
+ * What a dry run of POST /workspace/channels/{id}/polls reports: the values
+ * after ws_agent_question_settings(), as ws_poll_create() will store them, so
+ * an application's question is rehearsed without anonymous and closes_at.
+ * Pure; closes_at stays a timestamp for the caller to format.
+ *
+ * @param int   $channel_id
+ * @param array $checked    ws_poll_input() result (options, closes_at)
+ * @param array $data       the request (multiple, anonymous)
+ * @param int   $flag       1 when the poll will be an agent question
+ * @return array channel_id, options, multiple, anonymous, closes_at, agent_question
+ */
+function ws_api_poll_create_rehearsal($channel_id, $checked, $data, $flag)
+{
+    $kept = ws_agent_question_settings(array(
+        'multiple'  => !empty($data['multiple']),
+        'anonymous' => !empty($data['anonymous']),
+        'closes_at' => (int) ($checked['closes_at'] ?? 0),
+    ), (int) $flag === 1);
+
+    return array(
+        'channel_id'     => (int) $channel_id,
+        'options'        => $checked['options'] ?? array(),
+        'multiple'       => !empty($kept['multiple']),
+        'anonymous'      => !empty($kept['anonymous']),
+        'closes_at'      => (int) $kept['closes_at'],
+        'agent_question' => (int) $flag === 1,
+    );
+}
+
+/**
  * Asks a poll in a channel, the way Poll by the composer and the /poll
  * command do: the question is the person's message, and the options, the
  * settings and the votes are the poll's. The answer is that message.
@@ -3938,13 +4253,13 @@ function ws_api_polls_create($params)
         api_fail_validation($stored['error'], 'options');
     }
 
-    api_dry_run_stop('created', 'workspace_poll', array(
-        'channel_id' => (int) $channel['id'],
-        'options'    => $checked['options'],
-        'multiple'   => $data['multiple'],
-        'anonymous'  => $data['anonymous'],
-        'closes_at'  => api_time($checked['closes_at']),
-    ));
+    // The flag ws_poll_create() stores, so that the rehearsal reports the
+    // settings an agent question is kept to rather than the ones sent.
+    $flag = ws_agent_question_ready() ? ws_agent_question_flag($app_id) : 0;
+    $rehearsal = ws_api_poll_create_rehearsal((int) $channel['id'], $checked, $data, $flag);
+    $rehearsal['closes_at'] = api_time($rehearsal['closes_at']);
+
+    api_dry_run_stop('created', 'workspace_poll', $rehearsal);
 
     $result = ws_poll_create($viewer, $channel, $data, $app_id);
 
@@ -4766,6 +5081,14 @@ function ws_api_approvals_decide($params)
     }
 
     ws_api_person_only();
+
+    // A request an application made (an OAuth connection's goes out as the
+    // application) is answered from the person's own team devices session
+    // only, as an agent question is: a connection would otherwise approve
+    // what it asked for in the person's name.
+    if (ws_message_app_id($approval['message_id']) > 0) {
+        ws_api_own_words_only(lang('Only the person\'s own team devices session (POST /auth/login) can answer an approval request an application made; an application key or an OAuth connection cannot, whichever application made it.'));
+    }
 
     // The checks ws_approval_decide() makes, made first so that a dry run
     // meets the same refusals. An answer after the request's time closes it,

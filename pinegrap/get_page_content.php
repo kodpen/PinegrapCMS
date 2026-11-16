@@ -1251,6 +1251,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                 "Attribute Helper":"' . lang('Attribute Helper') . '",
                 "Copy to Clipboard":"' . lang('Copy to Clipboard') . '",
                 "Cancel":"' . lang('Cancel') . '",
+                "Close":"' . lang('Close') . '",
                 "Notice":"' . lang('Notice') . '",
                 "Error":"' . lang('Error') . '",
                 "An error occurred":"' . lang('An error occurred') . '",
@@ -6455,17 +6456,26 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                 && USER_LOGGED_IN
                 && (USER_ROLE < 3)
             ) {
+                // Every column: the open settings are read when present
+                // (they are added by an upgrade the files land before).
                 $auto_dialogs = db_items(
-                    "SELECT
-                        id,
-                        url,
-                        width,
-                        height
+                    "SELECT *
                     FROM auto_dialogs
                     WHERE id = '" . e($_GET['preview_auto_dialog']) . "'");
 
                 // An address that would run as script is never opened.
                 $auto_dialogs = pg_auto_dialogs_for_page($auto_dialogs);
+
+                // A preview opens at once, in its place, whoever its audience.
+                $auto_dialogs = array_map(function ($row) {
+                    return array(
+                        'id' => (int) $row['id'],
+                        'url' => (string) $row['url'],
+                        'width' => (int) $row['width'],
+                        'height' => (int) $row['height'],
+                        'place' => pg_auto_dialog_open_settings($row)['place'],
+                    );
+                }, $auto_dialogs);
 
                 // If an auto dialog was found for that id,
                 // then continue to init auto dialogs.
@@ -6479,15 +6489,10 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
 
             } else {
                 // Get enabled auto dialogs.
+                // Every column, as above: a site not yet upgraded has no
+                // open settings, and its rows read as the defaults.
                 $auto_dialogs = db_items(
-                    "SELECT
-                        id,
-                        url,
-                        width,
-                        height,
-                        delay,
-                        frequency,
-                        page
+                    "SELECT *
                     FROM auto_dialogs
                     WHERE enabled = '1'
                     ORDER BY id");
@@ -6495,50 +6500,25 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                 // An address that would run as script is never opened.
                 $auto_dialogs = pg_auto_dialogs_for_page($auto_dialogs);
 
-                // If there is at least one enabled auto dialog, then init them.
+                // The rows for this page, the same for every visitor: the
+                // script skips a dialog its cookie says was shown and counts
+                // the delay from the visit's first page (sessionStorage), so
+                // the session holds nothing and the page stays cacheable.
                 if ($auto_dialogs) {
-                    $current_timestamp = time();
+                    // Printed with an empty list too, so the visit's start
+                    // is kept from its first page, as the delay counts it.
+                    // A row for visitors with a cart is printed only for a
+                    // session whose order holds a line; that page is drawn
+                    // for this visitor, so no copy of it is kept.
+                    $auto_dialogs_cart = pg_auto_dialogs_need_cart($auto_dialogs) && pg_auto_dialog_session_has_cart();
+                    $auto_dialogs_page = pg_auto_dialogs_on_page($auto_dialogs, $page_name, $auto_dialogs_cart);
 
-                    // If this is the first page view of this visit,
-                    // then record the visit start timestamp, so that we can determine the visit
-                    // length in order to make sure that the auto dialogs are delayed correctly.
-                    if (empty($_SESSION['software']['visit_start_timestamp'])) {
-                        $_SESSION['software']['visit_start_timestamp'] = $current_timestamp;
-                    }
-
-                    $visit_length = $current_timestamp - $_SESSION['software']['visit_start_timestamp'];
-
-                    $valid_auto_dialogs = array();
-
-                    // Loop through the auto dialogs to determine which are valid for this visitor.
-                    foreach ($auto_dialogs as $auto_dialog) {
-                        // If this dialog has not been shown to this visitor before,
-                        // or if this dialog is a recurring dialog, and enough time
-                        // has passed since the last time it was shown,
-                        // and the auto dialog does not have a page set,
-                        // or the page that is set matches this page, then show it.
-                        if (
-                            (
-                                (empty($_COOKIE['software']['auto_dialog_' . $auto_dialog['id']]))
-                                ||
-                                (
-                                    ($auto_dialog['frequency'])
-                                    && (($current_timestamp - (int) $_COOKIE['software']['auto_dialog_' . $auto_dialog['id']]) >= ($auto_dialog['frequency'] * 3600))
-                                )
-                            )
-                            &&
-                            (
-                                ($auto_dialog['page'] == '')
-                                || (mb_strpos(mb_strtolower($page_name), mb_strtolower($auto_dialog['page'])) !== false) 
-                            )
-                        ) {
-                            $valid_auto_dialogs[] = $auto_dialog;
-                        }
+                    if ($auto_dialogs_cart && in_array('cart', array_column($auto_dialogs_page, 'audience'), true)) {
+                        pg_page_cache_personal('popup_cart');
                     }
 
                     $output_js .= 'software.init_auto_dialogs({
-                        visit_length: ' . $visit_length . ',
-                        auto_dialogs: ' . encode_json($valid_auto_dialogs) . '});';
+                        auto_dialogs: ' . encode_json($auto_dialogs_page) . '});';
                 }
             }
         }

@@ -125,6 +125,28 @@ function test_image_editor_clip_new_and_replace()
 	pg_assert_same(false, $r['r']['sound'], 'the new file\'s sound');
 }
 
+// The canvas a plain video opens on from Files: the video's own size, scaled
+// down as a whole past the canvas's largest side; nothing without a size.
+function test_image_editor_clip_canvas()
+{
+	$r = image_editor_clip_node(
+		'console.log(JSON.stringify({ hd: M.clipCanvas(1920, 1080), odd: M.clipCanvas(853.4, 479.6), tall: M.clipCanvas(1080, 1920),' . "\n"
+		. ' big: M.clipCanvas(16000, 9000), thin: M.clipCanvas(8000, 4), none: [M.clipCanvas(0, 720), M.clipCanvas(1280, null), M.clipCanvas(-5, 5)] }));'
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
+	pg_assert_same(array('w' => 1920, 'h' => 1080), $r['hd'], 'the video\'s own size');
+	pg_assert_same(array('w' => 853, 'h' => 480), $r['odd'], 'rounded to whole pixels');
+	pg_assert_same(array('w' => 1080, 'h' => 1920), $r['tall'], 'an upright video stays upright');
+	pg_assert_same(array('w' => 8000, 'h' => 4500), $r['big'], 'scaled down as a whole, the ratio kept');
+	pg_assert_same(array('w' => 8000, 'h' => 16), $r['thin'], 'a side under the smallest is raised to it');
+	pg_assert_same(array(null, null, null), $r['none'], 'no size, no canvas');
+}
+
 // The latest clip end; the clip's own sound and Detach sound.
 function test_image_editor_clip_sound()
 {

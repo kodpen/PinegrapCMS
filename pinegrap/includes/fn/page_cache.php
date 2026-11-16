@@ -135,9 +135,12 @@ function pg_page_cache_personal($reason = null)
  * The favourites cookie a visitor's first save started (wishlist_cookie)
  * counts too: it is the session's copy of the pg_wishlist cookie, which no
  * stored page is drawn from (the hearts are filled in by script).
+ * visit_start_timestamp is the auto dialogs' old visit start: no page reads
+ * it any more (the script keeps its own in sessionStorage), and a session
+ * started before that change still holds it until it ends.
  * Anything else (a sign-in, an order, a currency, an offer code, a liveform
- * notice, a guest pass, an auto dialog's visit start, a stored URL id) makes
- * it personal, and so does a key added later that is not on this list.
+ * notice, a guest pass, a stored URL id) makes it personal, and so does a
+ * key added later that is not on this list.
  *
  * @param array $session
  * @return bool
@@ -147,7 +150,7 @@ function pg_page_cache_session_anonymous(array $session)
     $allowed = array(
         'token', 'device_type', 'visitor_id', 'http_referer', 'tracking_code', 'affiliate_code',
         'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'cookie_id',
-        'wishlist_cookie',
+        'wishlist_cookie', 'visit_start_timestamp',
     );
 
     foreach ($session as $key => $value) {

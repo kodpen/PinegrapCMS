@@ -301,12 +301,30 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-56.md: When does a left cart count as recovered? (owner, 2026-11-15, agent channel poll 50)
 - decisions-made-product-56.md: How are pop-ups built? (owner, 2026-11-15, agent channel poll 51 and message 5139)
 - decisions-made-product-56.md: Is a video edited from Files? (owner, 2026-11-15, agent channel message 5103)
+- decisions-made-product-57.md: Where are the rules and the earlier parts?
+- decisions-made-product-57.md: Does the Recovered carts section come out as drawn, and where does it sit? (owner, 2026-11-15, agent channel poll 55)
+- decisions-made-product-57.md: Does All Offers show its record count beside the title? (owner, 2026-11-15, agent channel poll 46)
+- decisions-made-product-57.md: Is the designer's Prototype view rebuilt, and on which engine? (owner, 2026-11-15, in the architect's window)
+- decisions-made-product-58.md: Where are the rules and the earlier parts?
+- decisions-made-product-58.md: Can a reader highlight a part of a message? (owner, 2026-11-16, agent channel message 5547)
+- decisions-made-product-58.md: Who writes the plans for the website features the R&D agent proposed? (owner, 2026-11-16, agent channel messages 5651, 5667, 5694, 5697, 5739)
+- decisions-made-product-58.md: Which screens did the owner look at on 2026-11-16? (agent channel polls 59, 60, 61)
+- decisions-made-product-59.md: Where are the rules and the earlier parts?
+- decisions-made-product-59.md: May a draft replace a published page, and may a change wait for approval? (owner, 2026-11-16, polls 63, 64)
+- decisions-made-product-59.md: May the website feature plans add their tables? (owner, 2026-11-16, poll 65)
+- decisions-made-product-59.md: What happens to the rows of a record deleted for good? (owner, 2026-11-16, poll 66)
+- decisions-made-product-59.md: Who can be responsible for content, and who is told when a review date passes? (owner, 2026-11-16, polls 68, 69)
+- decisions-made-product-59.md: How does the share card start? (owner, 2026-11-16, poll 70)
+- decisions-made-product-59.md: What do customers see of each other's prototype comments, and how long are they kept? (owner, 2026-11-16, polls 71, 72)
+- decisions-made-product-59.md: Is an app mode built, and what is the consent for news notifications? (owner, 2026-11-16, polls 73, 74)
 - decisions-made-product-6.md: What happens to a recurring line that starts after the order date? (#3310)
 - decisions-made-product-6.md: How is a subscription price change noticed and applied? (#3311)
 - decisions-made-product-6.md: Does the panel get an operator Subscriptions screen? (#3343)
 - decisions-made-product-6.md: Does the visitor AI assistant start in 2026.11.0? (#3313)
 - decisions-made-product-6.md: Does the add-on system start in 2026.11.0? (#3344)
 - decisions-made-product-6.md: Does the printed order show the recipient's shipping card? (#3346)
+- decisions-made-product-60.md: Where are the rules and the earlier parts?
+- decisions-made-product-60.md: What does the click and scroll map count, and how does it start? (owner, 2026-11-16, polls 67, 75)
 - decisions-made-product-7.md: Do international labels carry customs data? (#3408)
 - decisions-made-product-7.md: Can a merchant request a carrier pickup from the panel? (#3415)
 - decisions-made-product-7.md: Does ShipWorks record tracking numbers through the shipment write path? (#3443)
@@ -362,6 +380,12 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-schema-21.md: Which schema do remind later, remind when no answer and "I am away" get? (owner, 2026-11-15, in the architect's window)
 - decisions-made-schema-21.md: Where are an approval request's agent approvers kept? (owner, 2026-11-15, in the architect's window)
 - decisions-made-schema-21.md: Which schema do the features chosen on 2026-11-15 get? (owner, agent channel polls 49, 50, 51 and message 5139)
+- decisions-made-schema-22.md: Where are the rules and the earlier parts?
+- decisions-made-schema-22.md: Which schema do quiet hours and the link preview card get? (owner, 2026-11-15, agent channel poll 54)
+- decisions-made-schema-22.md: Which columns does the table of marks have? (owner's yes in agent channel poll 49; columns confirmed by the architect, 2026-11-15)
+- decisions-made-schema-23.md: Where are the rules and the earlier parts?
+- decisions-made-schema-23.md: Which table do a reader's highlights get? (owner, 2026-11-16, agent channel message 5547)
+- decisions-made-schema-23.md: Which columns does PU4 add to `auto_dialogs`? (architect, 2026-11-16, confirmed in PU4's draft, #9851)
 - decisions-made-schema-3.md: Where are the rules and the earlier steps?
 - decisions-made-schema-3.md: Which schema was approved on 2026-10-29?
 - decisions-made-schema-4.md: Where are the rules and the earlier steps?
@@ -511,6 +535,15 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-workspace-33.md: What stands above a channel's conversation for its open items? (owner, 2026-11-15, agent channel message 5143)
 - decisions-made-workspace-34.md: Does an agent question look like a poll? (owner, 2026-11-15, in the architect's window)
 - decisions-made-workspace-34.md: What is the architect's reading here, not his words?
+- decisions-made-workspace-34.md: Does the open items line come out as drawn? (owner, 2026-11-15, agent channel poll 52)
+- decisions-made-workspace-34.md: Does the agent's progress note come out as drawn? (owner, 2026-11-15, agent channel poll 53)
+- decisions-made-workspace-35.md: Where are the rules and the earlier parts?
+- decisions-made-workspace-35.md: Which of the R&D agent's three proposals go into plans? (owner, 2026-11-15, agent channel poll 54)
+- decisions-made-workspace-35.md: What is the architect's reading here, not his words?
+- decisions-made-workspace-35.md: Do message boxes keep a maximum width on a wide screen? (owner, 2026-11-15, agent channel poll 47)
+- decisions-made-workspace-36.md: Where are the rules and the earlier parts?
+- decisions-made-workspace-36.md: Do the "Add to the plan" and the "New plan" drawers look the same? (owner, 2026-11-16, to the architect)
+- decisions-made-workspace-36.md: What is the architect's reading here, not his words?
 - decisions-made-workspace-4.md: May a thread end in a webhook box's URL? (#3410)
 - decisions-made-workspace-4.md: How does a customer with no order in N days produce a follow-up? (#3416, part 2)
 - decisions-made-workspace-4.md: Is `contacts.lead_source` picked from `referral_sources`? (#3416, part 3)
@@ -565,18 +598,18 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - api/api-device-sessions.md: The three external API callers (application key, team devices session, OAuth connection): who the owner is, which scopes each holds, public token routes, account scopes, owner rights, revocation
 - api/api-mcp-no-tool-routes.md: Which API routes carry 'mcp' => false and are no MCP tools: the polled sync, file downloads, own-words routes, Claude's queues, the person's decisions on a card, and why
 - api/api-oauth-consent-presets.md: OAuth consent screen presets (Workspace, Store, Accounting, All, PR #1716): what each ticks, why record writes are ticked only by hand, the propose route always ticked
+- api/api-panel-coverage-channels.md: The API beside the panel for channels and the agent channel (compared 2026-11-15, #9764, #9761; CA2-CA16 by 2026-11-16): each covered part and its topic file
 - api/api-plugin-scopes.md: The 'moves_money' route mark and api_plugin_scopes(), the scopes an assistant plugin is meant to hold: marked routes, offered writes, and the test that keeps them apart
 - api/api-team-devices-switch.md: The Team devices switch in Settings › API (includes/api/device_switch.php): which device application a save starts, widens, makes or disables, the ceiling, expiry, why off keeps the rows
 - api/application-access-keys.md: Application Access (api_settings.php): rows made and secrets issued through includes/api/keys.php, 24 h grace, keyless rows refused, rows of a higher-ranked owner locked, one OAuth app, per-app logs
-- api/channel-api-census-channel-no-route.md: CA1a list 2: what of a channel's own side has no route on purpose or by its nature, with the memory file that says why, and the guest links whose reason no memory file records
-- api/channel-api-not-built.md: What of channels the API does not do on purpose after the 2026-11-15 censuses: an administrator opening a private channel, a channel saved as a template, a guest's links, the Workspace Settings card
-- api/channel-api-overview.md: The channel API census files (plan channel-api-gaps, owner 2026-11-15): what the two censuses compare, the rules that bind a new route, and which file holds each part
+- api/channel-api-not-built.md: What of channels and their agents has no API route, on purpose or by its nature (comparison 2026-11-15): private channel opened by an admin, templates, guest links, settings cards
 - api/claude-plugin-census.md: Claude plugin bundle as Anthropic's pages state it (read 2026-11-14): folder and manifest, directory checks and policy, which Claude app loads what, and how a bundle can (not) ask for a site's address
 - api/claude-plugin-tool-check.md: The site's MCP tools checked against Claude's directory rules (2026-11-14): name length, annotations, and the routes that move money or issue stored value, by route id and scope
 - commerce/address-labels-by-country.md: City and state labels that follow the country (İlçe and İl for Turkey): pg_address_labels(), the render stamp in designer widgets, init_country() on classic pages, default words only
 - commerce/back-in-stock-sms.md: Back-in-stock notice by SMS (PR #1864): kind stock (transactional, owner decision), the stock_back event, the optional number field, text instead of mail, the one-message promise
 - commerce/card-data-manual-processing.md: Card data with no payment gateway (manual processing): the security code never stored, the number encrypted only, masked once the order is processed; refusal without openssl; hourly sweep
-- commerce/cart-recovery-touches.md: Recovered carts record (cart_recovery_touch, 11.0.216, PR #9778): what a touch row holds, the three places that write it, the 6-hour left and 7-day recovered rule, the no-touch row, readiness
+- commerce/cart-recovery-figures.md: Recovered carts figures (PR #9796): what left, reached, came back, recovered and revenue count; the Visitors section, the dashboard card, GET /reports/cart-recovery
+- commerce/cart-recovery-touches.md: Recovered carts record (cart_recovery_touch, 11.0.216, PR #9778): what a touch row holds, the places that write it, the 6-hour left and 7-day recovered rule, the no-touch row, readiness
 - commerce/checkout-contact-card-update.md: What a checkout writes on the contact card: the "Update my contact info" box, tax fields only when on the form, a typed tax number filling an empty card
 - commerce/merchant-center-push.md: Per-product push to Google Merchant Center on the outbound marketplace layer (#4389, #4423): managed provider, mapping from the feed, queue, supplemental source
 - commerce/n11-warehouse.md: Products n11 ships from its own warehouse (n11depom): read into the catalogue with sender=ALL and marked, their stock never pushed, their orders not pulled
@@ -662,6 +695,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - designer/page-region-into-page-tree.md: A page's own regions (pregion) moved into its designer tree: one _editable block per page region node, the Nth node takes the Nth row, refused inside shared components, rows kept unread
 - designer/page-revisions.md: Page revisions (page_revisions, 11.0.15): what a row holds, when a save writes one, the lazy first row of a page without one, source labels, retention and the daily sweep, what is not covered
 - designer/page-schedule.md: Scheduled publishing of visual-designer pages (page.publish_at/unpublish_at, 11.0.17): what is stored, what a save does with the two times, the general job's pass, manual moves
+- designer/prototype-picture-check.md: The prototype canvas page picture (PV7, architect 2026-11-16): the Preview document in a script-free readable frame, its sandbox and CSP, the link marker, the cap on live pictures
 - designer/prototype-view-decisions.md: What was decided for the designer's Prototype view (owner 2026-10-24, #2446, 2026-11-01): where it lives, hrefs by name or page id, who draws, read-only sources, breakpoint, how an arrow saves
 - designer/rich-text-profiles.md: pg_sanitize_rich_text() profiles: visitor (default, site output) drops class, layout styles and outside images and marks links ugc; staff keeps the shared allow-list; which callers pass staff.
 - designer/shared-component-content-editing.md: Shared components opened to content editors (the designer's common region): content_editable flag, users_shared_components_xref grants, the rule, content_update under the page merge, schema 11.0.8
@@ -688,6 +722,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - erp/erp-vat-per-rate-group.md: How the ERP takes a document's VAT, withholding and second tax per rate group, as Paraşüt does (owner decision 2026-10-21), where the rule applies, and where the checkout and charge decisions are kept
 - erp/erp-vuk-509-fields.md: VUK 509 e-Arsiv fields on erp_invoices: what the order bridge derives for each, where orders.paid_at comes from, the carrier columns, and what a return copies.
 - platform/activitypub-decisions.md: Why the Fediverse (ActivityPub) feature is shaped as it is: off by default, one actor, no library, what is published, remote replies as comments, WAF rules, the decided tables; where each part lives
+- platform/auto-dialog-browser-dialog.md: Auto dialogs on the site: the browser's <dialog> in place of jQuery UI, software.open_dialog() as its wrapper, the pick in the browser (cookie, sessionStorage), a page cached for all
 - platform/backup-age-rule.md: When a backup's age is a problem - pg_backup_age_state() (none fail, over a month warn, else pass) and its readers: System Status tile, ops alert, greeting, API, agents
 - platform/ca-store-choice.md: pg_ca_bundle_effective() chooses the CA store: the CURL_CA_BUNDLE override, the shipped data/cacert.pem when PHP has no store or the probe failed, else the server's store; the probe record.
 - platform/image-editor-jpeg-start-quality.md: A JPEG turned, flipped or cropped (Design Canvas, rotate buttons, Optimize) starts at the lower of 92 and its own quality, so a save is not heavier (#9118)
@@ -738,6 +773,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - ui/image-editor-rail.md: The Design Canvas rail's group items Photo (Fotoğraf) and Vector (Vektör): which tools they hold, the mode switch, the mode reopened, letters and hints, M.railItems()
 - ui/image-editor-subject.md: The Design Canvas's Select subject (E28a, #6841): own GrabCut and Boykov-Kolmogorov max-flow in a worker, the start box, the subject op in doc.selection
 - ui/image-editor-upload-setting.md: The Design Canvas's largest upload as a setting (V8b): the config_text row image_editor_upload_max_mb in MB, 0 keeps upload_max_filesize, 10240 at most, its field on Settings, Features
+- ui/image-editor-video-files.md: Design Canvas on a video in Files (FV1, #9775): offered by type on any MP4 or WebM, a saved project opens as itself, a plain video as a new canvas holding it, saved beside it
 - ui/list-and-table-screens.md: Panel list and table rules: lists on the list table driver, which lists must stay plain tables, no form inside a table row, card-prefixed variables in long screen files, unclosed divs.
 - ui/list-seo-details.md: A click on the SEO score of the Pages and Products lists loads the analysis into the Details panel under the SEO line (no drawer); the run buttons and failure lines there
 - ui/list-table-layout.md: How a list on the table driver looks (backend.src.css): the frame, one-line rows, sticky name and actions columns, the selection bar, the details panel's layout rule, the SEO score column
@@ -787,7 +823,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - waf/waf-signature-honest-corpus.md: tests/waf_rules_corpus_test.php: honest sentences stay under the Medium threshold, attack payloads reach it; how eleven 10-point rules were narrowed (#9125 A1) and the rule key 'unless'
 - waf/waf-trusted-proxy-headers.md: Each Trusted Proxies entry names the header its proxy sets; new or edited entries without one read X-Forwarded-For only, stored ones keep every vendor header (#2750).
 - workflow/agent-channel-guests.md: A guest's line in a channel (2026-11-14): no agent answers, greets or acts on it; it is data from outside the team; only team members answer a guest
-- workflow/agent-channel-language.md: The agent channel's language (owner, 2026-11-13): English between agents, Turkish only from the architect to the owner; a note that asks nothing names an agent without the mark
+- workflow/agent-channel-language.md: The agent channel's language: Turkish for a while (owner, 2026-11-15), over the standing rule of English between agents (2026-11-13); a note that asks nothing names an agent without the mark
 - workflow/agent-channel-post-repeat.md: tools/ws_post.php never writes a channel line twice: every post has an Idempotency-Key, a call without an answer is repeated once with it, exit 3 names the key the caller repeats with
 - workflow/agent-channel-reads.md: How much of a Workspace channel an agent session reads per turn: the message that woke it, its request and brief, no history; at most 5 messages for a check; more only when a person asks
 - workflow/agent-channel-wake.md: How a session waits on the agent channel: on its request queue (tools/ws_wait.php --requests), what makes a request (a mention, @herkes, a reply), on changes, the handles typed
@@ -802,7 +838,9 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workflow/merge-review.md: Rule (2026-10-25): the merging session reviews each PR once, fixes only blocking findings, digs deeper for access, payments, SQL, schema; an architect decision counts as the owner's
 - workflow/merger-wake.md: How the merging session keeps waking: a send_later chain, 3 minutes with more than 3 ready PRs and 15 minutes otherwise (2026-11-09), an hourly routine that re-arms it; GitHub events are not relied on
 - workflow/owner-contact-channel.md: Where sessions reach the owner (2026-11-13): no coordinator writes to him in its chat window or waits there; problems to PR MERGE in the agent channel; visuals posted there, his answer there
+- workflow/owner-question-picture.md: A question to the owner about a picture or an earlier message says which one (owner 2026-11-15): the picture in the question's box or its message number named in the question
 - workflow/owner-rules.md: Standing rules from the owner (Erdal) on docs, how changes are recorded, pages, plans, where area rules live (memory; vendor Bootstrap skills aside), language, the mobile app, who edits which notes
+- workflow/plan-order-begun-first.md: Order of work after the owner's message of 2026-11-16 (agent channel message 5821): begun plans are finished first, new plans start in freed places, look modernisation waits at priority 2
 - workflow/plan-priority.md: Every plan carries a priority from 1 to 10 (owner 2026-11-15, agent channel message 5159): the scale, where the number is written, how a free place picks its next step
 - workflow/pr-text-generated-footer.md: A cloud session's GitHub path appends a generated-by footer to a PR text on every write; the session cannot remove it, the label is not held for it, no session strips it now
 - workflow/sandbox-and-environment.md: Cloud sandbox (PHP 8.3, no Composer), when and how to run tools/setup_sandbox.sh, the owner's dev machine dev.pinegrap.com and how a linked session updates its checkout
@@ -819,13 +857,15 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/agent-conclude-discussion.md: An agent concludes a discussion when a person in it asks (conclude, #9404) and unasked only offers a Conclude button a person presses (offer_conclude, #9416); who may ask, the lines, the button
 - workspace/agent-door-routine-trial.md: Push door on a routine's fire address, tried on dev (2026-11-13, 2026-11-15): every knock starts a new cloud session, never wakes an open one, and the new run cannot pass the knock on either
 - workspace/agent-door-words.md: The agent form's "Door" field as two described choices, the door's state sentence in its drawer, door_error cleared on a door change and shown only for a push door (#9759)
+- workspace/agent-duty.md: An agent's duty text (AF1 #9785, AF3 #9821): the "Duty" box on the agent's form, ws_agents.duty TEXT NULL, "Your duty" and the channel's other agents in its instructions, the agent card
 - workspace/agent-edit-hold.md: An agent waits while its message is edited: the edit box's beat, held_until, "Being edited, @agent is waiting", 409 editing / edited, a save in each status (#8869)
+- workspace/agent-feedback.md: Right or Wrong on an agent's reply (AF5a #9814): the ws_agent_feedback table, who marks, one mark per reply, GET /workspace/agent-feedback with the 7- and 30-day counts
 - workspace/agent-instructions.md: How an application agent learns its work from the site: GET /workspace/agent-instructions with its own key, the text's parts, the three doors, the version and the brief's line, the Start text box
 - workspace/agent-key-trial-memory.md: Channel memory written live on dev (2026-11-11) with an application agent's key: create, read, list, update and delete by POST, dry runs, refusals, the entry's line in the brief
 - workspace/agent-last-seen.md: An agent's last seen: ws_agents.seen_at set by every call with an app agent's own key, once a minute at most, and the words on the Agents card and in "Agents in this channel" (#8828)
 - workspace/agent-page-libraries.md: The site's libraries a live page names (Chart.js #8830, the chart_guide preset DG5): the list, how a call names one, how live_page.php puts the site's own copy in, never an address
 - workspace/agent-page.md: Live pages an agent makes (#8815): what one is for and is not, the routes, the mark of a page without a column, versions (20 kept), 409, who may
-- workspace/agent-questions.md: How an agent asks the people with a poll or an approval; a one-answer question as a one-choice poll, settled by its first answer; why the outcome is written in the agent's name
+- workspace/agent-questions.md: How an agent asks people: the agent question (a poll an application asks), who answers, how it settles, where it shows, the tool, in whose name an outcome is written
 - workspace/agent-report.md: An application agent's report of its model and plan usage (POST /workspace/agent-report, #9322): the rules that refuse it whole, the window names, the last report only, the card line and its age
 - workspace/agent-role.md: An agent's role from a fixed list (ws_agents.role, step 11.0.195, #9302): the list in code, an unknown key as no role, form, Agents card, member list, API; report columns for AP2
 - workspace/agent-shown.md: How a registry agent shows (A4b2): the line under its waking message ("saw it · no answer needed", #8919), its tag and @ picker entry, kept off tasks, its own edits, two applications' lines kept apart
@@ -844,7 +884,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/channel-item-tags.md: A tag in a channel item asks the tagged assistant or wakes the tagged agent; outside a message body (polls, tasks, shared notes, table cells) only in agent channels, by managers
 - workspace/channel-members-agents.md: A channel's agents and guests among its members (#8936, GV2): agent faces in the head; People, Agents and Guests in Channel info; last seen, a person's and a guest's only for a manager
 - workspace/channel-memory.md: A channel's memory (ws_channel_memory) and the decision mark by a person or an agent (ws_messages.marked_by_kind): rows, routes, the index in the brief, the Memory tab
-- workspace/channel-open-items-line.md: The open items line under a channel's pin (OI1, #9783): open polls, agent questions, the running check-in, waiting approvals; ws_channel_open_items(), drawOpenItems(), phone row
+- workspace/channel-open-items-line.md: The open items line under a channel's pin (OI1 #9783) and on GET /workspace/channels/{id} (OI2 #9827): open polls, agent questions, the running check-in, waiting approvals; whose answer each waits for
 - workspace/channel-settings-drawer.md: The Channel settings drawer (channelForm(), #9616): four tabs, icon and colour popovers by the name, switches at the row end, one versions list; what stays in Channel info
 - workspace/claude-not-channel-agent.md: Claude is no channel agent: never offered in a channel's Agents list, refused with 422 on the add route, its old ws_channel_agents rows unread but removable
 - workspace/mail-area-proposals.md: Incoming e-mail in the messages area as decided after MA10a (#9077, #9203): mail with the Workspace off, the tab's gate, who reads, what the mail card keeps beside its link, the steps
@@ -869,6 +909,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/mail-send-scope.md: Sending Workspace e-mail in a person's name over the API and MCP: the workspace:mail_send scope, who holds it, the gate that refuses a key, the send tools, the log line
 - workspace/mail-support-box.md: A mailbox's "Support box" switch (WM14, #9061): what a plain box leaves out (status, holder, first-answer time, automatic answer), how lists count its conversations, the default
 - workspace/mail-workspace-off.md: Incoming e-mail with the Workspace off (MA10c): the gate ws_mail_on(), who asks it (tab, actions, jobs, frame, API, bell), a new box kept in the mailbox itself, the test
+- workspace/message-reference-agents.md: Message references so far (MR1 #9816, MR4 #9845): what the <#message:N> tag is for, the line every agent is told, where tools and the API name it; the chip, popup and paste still to come
 - workspace/model-assistant-channel-rule.md: Where a model assistant is asked (its own ws_channel_agents row; a channel closed to Pinegrap AI on purpose keeps it out too) and how the shared loop's failure sentences name it (PR #8413)
 - workspace/model-assistants-anthropic.md: Anthropic (Claude) as a provider of model assistants: why it was added, how the Messages API is translated to and from Pinegrap AI's chat completions loop, what its reference said (2026-11-12)
 - workspace/person-card-facts.md: A person's card facts in a channel (person_card.php, PF6a): the ws_person_card action, who may read it, role, title, departments and leads, working day, away days, local time, last seen
@@ -877,8 +918,6 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/personal-calendar-census-tables.md: PC1 proposal (2026-11-14), shaped by the architect and approved by the owner (decisions-made-schema-18): the tables and columns a person's private plans need, each with its reason and step
 - workspace/personal-calendar-census-words.md: PC1 census (2026-11-14): words taken beside "plan" (Plan item, Planning Board, /workspace/plan, "#plan") and the names proposed for a private plan
 - workspace/plan-board-grid.md: Planning Board (workspace_board.php) Turkish name, grid columns and why .ws-board's min-width equals the grid minimum (#3815)
-- workspace/poll-agent-questions-census-columns.md: AQ1 census: the columns the poll's new parts need (description, picture, links, recommended, "Other", take back, ask again), older polls, API, export, guests
-- workspace/poll-agent-questions-census-wake.md: AQ1 census for the agent question: an agent changing its poll, the answer's request row and brief, the memory index, the ring; the answered behaviour questions
 - workspace/workflow-table-channel.md: A workflow table of a channel (ws_wtables.channel_id, 11.0.191): rights from the channel, made in or moved to a channel, lists, bin, screen card, API, webhooks
 - workspace/workflow-table-key-column.md: The key column of a workflow table (wtable_keys.php, PR #8509): text or number, filled in and unique, refusals, the lock, by: key, the API ?key=, the import matching by key
 - workspace/workflow-table-row-numbers.md: The stable # number of workflow table rows (11.0.183, PR #8461): counter in ws_wtables.next_number, the row's number, kept through the bin, shown in #, found by by: number
@@ -927,7 +966,9 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/workspace-flows-visual-spec.md: The Flows canvas look in numbers (owner, 2026-10-27): lines, type colours and tones, thread sag, icons, run flags, mini window, template motion; all on screen (#4386)
 - workspace/workspace-mcp-servers-card.md: Workspace "MCP servers" card (mcp.php, mcp_catalogue.php): ready-made connectors, adding by address, read-only tools on at first read, the form kept after an error, Pinegrap AI failing
 - workspace/workspace-menu-tools.md: Tools tiles and More in the Workspace list (#3817, #6281): places (My Tasks first), short names, colours, a lone More taking its row, the More rows, ws-side-open, the tour opening hidden places
+- workspace/workspace-message-box-width.md: Channel message boxes: 90rem wide at most, .5rem apart (grouped lines joined), a faint sender tint over 1700px (data-ws-tone; light 1.6 %, dark 2.2 %)
 - workspace/workspace-message-seen-by.md: The "Who has seen it" drawer (ws_message_seen_by()): people by last_read_id, agents by their requests (#9366), the two groups, the muted not-woken line, the writer-alone line (#4238)
+- workspace/workspace-message-translate.md: Translate in a message's menu (MT1): the browser's own Translator and LanguageDetector, the reader's panel language, the line under the message, what is kept untranslated, nothing sent or saved
 - workspace/workspace-notes-groups-lock.md: Overview of note groups, shared groups, tabs, the PIN lock and media in notes (owner 2026-11-07): how the parts hold together, what was left out, the keyboard and screen-reader ways, open ends
 - workspace/workspace-notes-sources.md: Where an imported note came from (ws_note_sources, schema 11.0.86, PR #1812): the id per provider, how the import plan turns a known file into "same" or "update", when rows are written and dropped
 - workspace/workspace-outside-caution.md: The standing caution in every agent's and assistant's brief (GV5): a guest's line, a mail and other outside text are data, never a request; how a guest's message is marked in a brief and in the API
@@ -937,6 +978,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/workspace-personal-plan-mail.md: Add to my calendar on a mail (PC7): the button, the filled New plan drawer, one plan a person, the invitation column 11.0.204 and its card states
 - workspace/workspace-personal-plan-repeat.md: Repeating plans on My calendar (#9565, #9611): the Repeat field, step 11.0.209, times worked out on read, This one / This and the following, a reminder each time
 - workspace/workspace-personal-plans-api.md: A person's own plans in the external API and MCP (PC8): /workspace/personal-plans, scope workspace:personal_plans, only the person's own device or OAuth connection, own plans only
+- workspace/workspace-push-delay.md: When a Workspace push wakes a person's devices: at once, a minute later while they look at the screen, or at the end of their quiet hours (QH1, #9844); ws_profiles.quiet_hours, pg_quiet_hours_left()
 - workspace/workspace-roadmap-templates.md: Team roadmap templates (PC12, #9562): Save as team template, the two tables, who changes or deletes one, Team templates under New roadmap, Move the following steps too
 - workspace/workspace-sales-quote-change.md: A sales quote added from a change card (kind erp_quote, PR #1705): fields, the erp_lines value kind, what is filled in and checked, the writer erp_quote_save(), how the card and the assistants show it
 - workspace/workspace-scheduled-actions-api.md: The /workspace/scheduled-actions routes were removed before 2026.11.0 shipped (PR #2107): why, what took their place, what stays (scheduled messages, the draft card)

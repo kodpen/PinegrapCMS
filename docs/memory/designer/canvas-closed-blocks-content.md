@@ -12,15 +12,15 @@ description: CB0 list, content nodes the server draws (Messages, Breadcrumb, Var
 - Use: the server names one in each form widget (`_pg_inject_messages_node()`); 57 templates place it on their pages.
 
 ## Breadcrumb?
-- Site: catalog, group, subgroup, product inside a catalog or catalog detail widget. Canvas: a dashed box. Change today: CSS class.
+- Site: catalog, group, subgroup, product inside a catalog or catalog detail widget; elsewhere nothing.
 - Use: offered in those two widgets; no template places it.
-- Opening: a tree (a loop of crumbs on a list binding), like the menu widget's items.
+- Opened as a tree (CB6a1, #9849): drawn as its crumbs part, "Convert to design elements" makes it that part (`catalog-detail-open-blocks.md`).
 
 ## Variant Attribute?
 - Site: one copy per attribute of a select-type product (Colour, Size) as a select, radios, button group or button list. Canvas: a box naming the style.
 - Change today: the style and three CSS class fields (label, control, item).
 - Use: the catalog detail starter, 32 shop templates (`__variant_picker` is the older HTML value).
-- Opening: a tree whose options are a nested loop; the four styles as starter trees.
+- Opened by settings (CB6a2): drawn on the canvas as the site expands it; not a tree, the variant script finds its controls (`catalog-detail-variant-price-blocks.md`).
 
 ## Applied Offers?
 - Site: the cart's alert listing the offers that apply. Canvas: a box. Change today: CSS class.
@@ -30,7 +30,7 @@ description: CB0 list, content nodes the server draws (Messages, Breadcrumb, Var
 ## Carousel (content)?
 - Site: inside a catalog detail widget, the product's pictures with thumbnails and a lightbox, filled by the server.
 - Change today: thumbs position and size, autoplay, interval, controls, indicators, lightbox.
-- Opening: settings only; the picture list depends on the product. Its bound pictures draw the sample photo (`canvas-loop-as-published.md`, #9233).
+- Opened by settings (CB6a1, #9849): the canvas draws the gallery the site builds with sample photos (`catalog-detail-open-blocks.md`); the picture list depends on the product.
 
 ## Custom HTML, SVG, Custom PHP?
 - The user's own code, edited in a code box; Custom PHP draws "Custom PHP — runs at render time" on the canvas.

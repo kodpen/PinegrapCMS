@@ -373,3 +373,93 @@ function api_vitals_report_schema() {
 	);
 
 }
+
+// Recovered carts (includes/fn/cart_recovery_figures.php): the left carts of
+// a window of whole site days, the touched ones, those that came back and
+// those a touch recovered, in all, by channel and by message.
+function api_reports_cart_recovery($params) {
+
+	if (!function_exists('pg_cart_recovery_ready') || !pg_cart_recovery_ready()) {
+
+		api_fail(503, 'service_unavailable', lang('The database has not been upgraded yet. Run the software update first.'));
+
+	}
+
+	$window = api_visitors_window($params, 400);
+
+	$from = strtotime($window['first'] . ' 00:00:00');
+
+	$to = strtotime($window['last'] . ' 00:00:00 +1 day');
+
+	return api_cart_recovery_present(pg_cart_recovery_period($from, $to), $window['first'], $window['last']);
+
+}
+
+// The answer's shape from pg_cart_recovery_period(). Pure.
+function api_cart_recovery_present($figures, $first, $last) {
+
+	$out = array(
+		'from'      => (string)$first,
+		'to'        => (string)$last,
+		'left'      => (int)$figures['left'],
+		'untouched' => (int)$figures['untouched'],
+		'reached'   => (int)$figures['reached'],
+		'returned'  => (int)$figures['returned'],
+		'recovered' => (int)$figures['recovered'],
+		'revenue'   => api_money($figures['revenue']),
+		'channels'  => array(),
+		'messages'  => array()
+	);
+
+	foreach ($figures['channels'] as $channel => $row) {
+
+		$out['channels'][] = array(
+			'channel'   => (string)$channel,
+			'reached'   => (int)$row['reached'],
+			'returned'  => (int)$row['returned'],
+			'recovered' => (int)$row['recovered'],
+			'revenue'   => api_money($row['revenue'])
+		);
+
+	}
+
+	foreach ($figures['messages'] as $row) {
+
+		$out['messages'][] = array(
+			'source_type' => (string)$row['source_type'],
+			'source_id'   => (int)$row['source_id'],
+			'channel'     => (string)$row['channel'],
+			'label'       => isset($row['label']) ? (string)$row['label'] : '',
+			'sent'        => (int)$row['sent'],
+			'reached'     => (int)$row['reached'],
+			'returned'    => (int)$row['returned'],
+			'recovered'   => (int)$row['recovered'],
+			'revenue'     => api_money($row['revenue'])
+		);
+
+	}
+
+	return $out;
+
+}
+
+function api_cart_recovery_report_schema() {
+
+	$figures = array(
+		'reached'   => 'integer',
+		'returned'  => 'integer',
+		'recovered' => 'integer',
+		'revenue'   => 'integer'
+	);
+
+	return array_merge(array(
+		'from'      => 'string',
+		'to'        => 'string',
+		'left'      => 'integer',
+		'untouched' => 'integer'
+	), $figures, array(
+		'channels'  => array(array_merge(array('channel' => 'string'), $figures)),
+		'messages'  => array(array_merge(array('source_type' => 'string', 'source_id' => 'integer', 'channel' => 'string', 'label' => 'string', 'sent' => 'integer'), $figures))
+	));
+
+}

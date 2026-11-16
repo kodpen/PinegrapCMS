@@ -986,9 +986,12 @@ function ws_ai_setup_hint()
  * @param bool   $followed a discussion Pinegrap AI follows asks it without
  *                         its name (ws_thread_follow_ask()); a refusal is not
  *                         written after every message there
+ * @param bool   $answer   a person's answer to the assistant's own question
+ *                         (ws_agent_question_wake()): not a request of theirs,
+ *                         so their per-person limit does not apply
  * @return bool a request was queued
  */
-function ws_ai_after_send($viewer, $channel, $message_id, $body, $followed = false)
+function ws_ai_after_send($viewer, $channel, $message_id, $body, $followed = false, $answer = false)
 {
     // Written to an MCP server's alias, or a reply to an answer given with
     // one: Pinegrap AI answers with that server's tools (mcp_ask.php).
@@ -1022,8 +1025,10 @@ function ws_ai_after_send($viewer, $channel, $message_id, $body, $followed = fal
         return false;
     }
 
-    $waiting = (int) db_value("SELECT COUNT(*) FROM ws_ai_requests
-        WHERE agent = 'ai' AND requested_by = '" . (int) $viewer['id'] . "' AND status IN ('queued', 'sent', 'running')");
+    $waiting = ws_assistant_per_person_limit_applies($answer)
+        ? (int) db_value("SELECT COUNT(*) FROM ws_ai_requests
+            WHERE agent = 'ai' AND requested_by = '" . (int) $viewer['id'] . "' AND status IN ('queued', 'sent', 'running')")
+        : 0;
 
     if ($waiting >= WS_AI_PER_PERSON) {
         if (!$followed) {
@@ -3573,6 +3578,7 @@ function ws_ai_system_prompt($row, $asker, $readable)
         '- Finish with one call of answer, or of fail when you cannot do the request.',
         '- Write in the language of the request (on this site usually ' . ws_ai_language_name() . '), short and concrete, to the person who asked. Markdown is shown, but use no headings, do not repeat the request and add no titles such as "Answer": say what was asked for in a few sentences or a short list.',
         '- Mention people as <@user:ID> and records as tags such as <#order:ID>, <#product:ID> or <#task:ID>. A tag is shown with its name, so do not write the name again next to it. Use only IDs you have read; never make one up.',
+        '- ' . ws_message_ref_agent_rule() . ' A message\'s id is the first number of its line in the context.',
         '- When the answer holds figures that follow from other figures (totals, sums, differences, shares, percentages), do not work them out yourself: the site does. In a Markdown table a cell that starts with = is a formula: columns are letters, rows are numbers, the header is row 1 (=B2*C2, =SUM(D2:D5)). Or use a ```hesap block: one value a line, "Name = expression"; a later line may use an earlier name (Total = Rent + Dues). Both know + - * / ^, brackets, percentages (18%), SUM, AVERAGE, MIN, MAX, COUNT, ROUND(x; places) and ABS; arguments are separated by ;. Write the figures you were given as they are.',
     ));
 
@@ -4136,7 +4142,7 @@ function ws_ai_tools($row)
         $tool('answer', $task
             ? 'Write your answer on the task. Call it once, at the end, after proposing with propose_change what should change: changes written only in the answer cannot be applied.'
             : 'Write your answer under the request. Call it once, at the end, after proposing with propose_task and propose_change what the request asks for: tasks and changes written only in the answer cannot be applied.', array(
-            'text' => array('type' => 'string', 'description' => 'The answer in the language of the request. Markdown; tags such as <@user:12> or <#order:1045>.'),
+            'text' => array('type' => 'string', 'description' => 'The answer in the language of the request. Markdown; tags such as <@user:12>, <#order:1045> or <#message:5120> (a picture, a file or an earlier message the answer is about).'),
         ), array('text')),
         $tool('fail', 'Give the request up when you cannot do it, saying why in the language of the request.', array(
             'reason' => array('type' => 'string'),
@@ -4153,7 +4159,7 @@ function ws_ai_tools($row)
     // that message, beside the words or in place of them.
     if (function_exists('ws_ai_answer_takes_emoji') && ws_ai_answer_takes_emoji($row)) {
         $tools[0] = $tool('answer', 'Write your answer under the request, or leave only an emoji on the message that asked when it needs no words. Call it once, at the end, after proposing with propose_task and propose_change what the request asks for: tasks and changes written only in the answer cannot be applied.', array(
-            'text'  => array('type' => 'string', 'description' => 'The answer in the language of the request. Markdown; tags such as <@user:12> or <#order:1045>. Empty with an emoji when the message needs no words (a thank-you, an acknowledgement).'),
+            'text'  => array('type' => 'string', 'description' => 'The answer in the language of the request. Markdown; tags such as <@user:12>, <#order:1045> or <#message:5120> (a picture, a file or an earlier message the answer is about). Empty with an emoji when the message needs no words (a thank-you, an acknowledgement).'),
             'emoji' => array('type' => 'string', 'description' => 'Optional: one fitting emoji left on the message that asked, beside the text or in place of it: a celebration for good news, a heart for thanks, a thumbs up for "done".'),
         ), array());
 
@@ -4679,6 +4685,12 @@ function ws_ai_record_present($asker, $type, $id)
  */
 function ws_ai_channel_set($viewer, $channel, $allowed)
 {
+    // An archived channel is read, never switched: the channel menu hides
+    // the switch there, and this line would land in the archive.
+    if ((int) ($channel['archived_at'] ?? 0) > 0) {
+        return array('ok' => false, 'error' => lang('This channel is archived. It can be read but not written in.'));
+    }
+
     if (!ws_ai_schema_ready()) {
         return array('ok' => false, 'error' => lang('Invalid request.'));
     }

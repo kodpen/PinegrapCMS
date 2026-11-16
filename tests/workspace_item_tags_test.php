@@ -96,8 +96,8 @@ function test_ws_item_tags_other_messages_wired()
 	pg_assert_contains("ws_message_ask_noted(\$viewer, \$channel, \$sent['message_id'], \$body, ws_message_by_app(\$app_id), \$asked);\n\n    return array('ok' => true, 'error' => '', 'field' => '', 'message_id' => (int) \$sent['message_id'], 'approval_id' => \$approval_id);", $read('approvals.php'), 'an approval request, after its row');
 
 	$status = $read('status.php');
-	pg_assert_contains("ws_message_ask_noted(\$viewer, \$channel, \$sent['message_id'], \$body);", $status, 'a status update');
-	pg_assert_contains("ws_message_ask_noted(\$viewer, \$channel, \$sent['message_id'], \$question, ws_message_by_app(\$app_id));", $status, 'a check-in question');
+	pg_assert_contains("ws_message_ask_noted(\$viewer, \$channel, \$sent['message_id'], \$body, ws_message_by_app(\$options['app_id'] ?? 0, \$options['via_client_id'] ?? 0));", $status, 'a status update');
+	pg_assert_contains("ws_message_ask_noted(\$viewer, \$channel, \$sent['message_id'], \$question, ws_message_by_app(\$app_id, \$via_client_id));", $status, 'a check-in question');
 
 	$templates = $read('templates.php');
 	pg_assert_contains("(string) \$template['welcome'], ws_message_by_app(\$app_id));", $templates, 'a template\'s welcome');

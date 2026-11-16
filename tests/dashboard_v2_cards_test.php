@@ -25,7 +25,7 @@ function test_dashboard_v2_cards_has_the_thirty_ids()
 	$ids = array('ai', 'goals', 'pipeline', 'queue', 'activity', 'flows', 'pins', 'notes',
 		'content', 'comments', 'files', 'visitors', 'visitmap', 'engagement', 'gsearch', 'ga',
 		'firewall', 'team', 'mytasks', 'waiting', 'week', 'calendars',
-		'shop', 'salesmap', 'ops', 'orders', 'offers', 'fx', 'perf', 'subs');
+		'shop', 'salesmap', 'ops', 'orders', 'offers', 'recovery', 'fx', 'perf', 'subs');
 
 	pg_assert_same($ids, array_keys(pg_dashboard_v2_cards()));
 }

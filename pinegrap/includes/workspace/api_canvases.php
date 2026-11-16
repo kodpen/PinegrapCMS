@@ -129,6 +129,55 @@ function ws_canvases_api_routes()
             'description'  => 'Draws the canvas anew from SVG, kept as a new version made by the agent, as POST /workspace/messages/{id}/canvas does with single operations; the earlier versions stay and a member may undo the edit. version is the number the drawing part has now (GET /workspace/canvases/{id}): when it changed since, the call answers 409 conflict. On a canvas with no drawing, version 0 adds one beside its page; a drawing added at the same moment by another call answers 409 conflict. The picture is drawn by the server where it can, else by the first member\'s browser that shows it (picture pending). Only an agent of the channel writes (403 forbidden).',
             'params'       => ws_api_canvas_one_drawing_params($id),
         ),
+
+        array(
+            'id'          => 'workspace.canvases.versions.restore',
+            'method'      => 'POST',
+            'path'        => '/workspace/canvases/{id}/versions/{n}/restore',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_canvases_version_restore',
+            'dry_run'     => true,
+            'returns'     => ws_api_canvas_one_returns(),
+            'summary'     => 'Put an older version of a canvas\'s part back',
+            'description' => 'Puts version n of the drawing or the page back as the newest one, as "Put back this version" on the canvas card does: a new version (source restore), so every version stays. Whoever may write in the channel may (403 forbidden otherwise); a version the part has not got answers 404, the version shown now 409 conflict, a drawing\'s version whose picture no browser drew yet 409 conflict. The answer is the canvas as GET /workspace/canvases/{id} gives it.',
+            'params'      => array(
+                $id,
+                array('name' => 'n', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The version of the part, as versions in GET /workspace/canvases/{id} numbers it.'),
+                array('name' => 'part', 'in' => 'body', 'type' => 'enum', 'values' => ws_canvas_part_names(), 'required' => true, 'description' => 'The part the version is of; each part keeps its own numbering.'),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.canvases.undo',
+            'method'      => 'POST',
+            'path'        => '/workspace/canvases/{id}/undo',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_canvases_undo',
+            // The person's own answer to an agent's edit (ws_api_person_only()).
+            'mcp'         => false,
+            'dry_run'     => true,
+            'returns'     => ws_api_canvas_one_returns(),
+            'summary'     => 'Undo an agent\'s edit of a canvas',
+            'description' => 'Undo on the canvas card: part drawing or page puts back the version before an agent\'s edit, as a new version (the edit stays among the versions), while version is still the agent\'s edit the caller saw (409 conflict once it changed); part binding undoes an application\'s binding from its line in the channel (line_id, the line\'s message), taking the table off or binding it again as it was. The person alone, signed in on a device: an application key is refused with 403 forbidden. The panel\'s rule decides who else may: a drawing only its writer while they may write in the channel, a page whoever may write there, a binding whoever may bind or take off the table. No MCP tool.',
+            'params'      => array(
+                $id,
+                array('name' => 'part', 'in' => 'body', 'type' => 'enum', 'values' => array('drawing', 'page', 'binding'), 'required' => true),
+                array('name' => 'version', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'With drawing or page: the version the agent\'s edit made.'),
+                array('name' => 'line_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'With binding: the id of the binding\'s line in the channel.'),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.canvases.table_choices',
+            'method'      => 'GET',
+            'path'        => '/workspace/canvases/{id}/table-choices',
+            'scope'       => 'workspace:read',
+            'handler'     => 'ws_api_canvases_table_choices',
+            'returns'     => array('list' => 'WorkspaceCanvasTableChoice'),
+            'summary'     => 'The tables a canvas\'s page may bind',
+            'description' => 'The workflow tables the owner of the application may write, as the page\'s "Bind a table" list offers them, each with the access it is bound with now (bound read or write; empty when it is not bound). Bind one with POST /workspace/canvases/{id}/tables. A canvas with no page, or one the owner may not read, answers 404.',
+            'params'      => array($id),
+        ),
     );
 }
 
@@ -663,4 +712,210 @@ function ws_api_canvas_drawing_add($viewer, $message, $channel, $params)
 
     ws_api_canvas_part_keep($message, 'drawing', (int) $stored['file_id']);
     ws_canvas_draw_now(array('file_id' => (int) $stored['file_id']) + $message);
+}
+
+/* ---------------------------------------------------------------------------
+   A version put back, an agent's edit undone, the tables a page may bind
+   --------------------------------------------------------------------------- */
+
+/**
+ * The status a canvas writer's refusal is answered with, and its code.
+ * Pure.
+ *
+ * @param int $status the writer's status (403, 404, 409, 500, 503)
+ * @return array status, code
+ */
+function ws_api_canvas_refusal_code($status)
+{
+    switch ((int) $status) {
+        case 403:
+            return array('status' => 403, 'code' => 'forbidden');
+
+        case 404:
+            return array('status' => 404, 'code' => 'not_found');
+
+        case 503:
+            return array('status' => 503, 'code' => 'service_unavailable');
+
+        case 500:
+            return array('status' => 500, 'code' => 'server_error');
+    }
+
+    return array('status' => 409, 'code' => 'conflict');
+}
+
+/**
+ * A canvas writer's refusal as the API answers it; never returns.
+ *
+ * @param array $result ok, status, error
+ */
+function ws_api_canvas_refused($result)
+{
+    $answer = ws_api_canvas_refusal_code($result['status'] ?? 409);
+
+    api_fail($answer['status'], $answer['code'], (string) $result['error']);
+}
+
+function ws_api_canvases_version_restore($params)
+{
+    $viewer = ws_api_viewer();
+    $found = ws_api_canvas_one_write_target($viewer, $params['id']);
+    $message = $found['message'];
+    $part = (string) $params['part'];
+    $version = (int) $params['n'];
+
+    // The panel's own writer, asked first for its checks alone.
+    $checked = ws_canvas_part_restore($viewer, $message, $part, $version, true);
+
+    if (!$checked['ok']) {
+        ws_api_canvas_refused($checked);
+    }
+
+    api_dry_run_stop('restored', 'workspace_canvas_version', array('canvas_id' => (int) $message['id'], 'part' => $part, 'version' => $version));
+
+    $result = ws_canvas_part_restore($viewer, $message, $part, $version);
+
+    if (!$result['ok']) {
+        ws_api_canvas_refused($result);
+    }
+
+    api_ok(ws_api_canvas_one_present($viewer, ws_message($message['id'])));
+}
+
+/**
+ * What an undo names, checked against the canvas: the message the panel's
+ * undo of that part is given (the drawing's or the page's own message), or
+ * the binding line, which must be one of this canvas. Pure.
+ *
+ * @param string     $part    drawing | page | binding
+ * @param int        $canvas_id
+ * @param array|null $line    ws_canvas_binding_line_refs() entry of line_id
+ * @param int        $version
+ * @return string '' when it is whole, else the field at fault
+ */
+function ws_api_canvas_undo_problem($part, $canvas_id, $line, $version)
+{
+    if ($part === 'binding') {
+        return (is_array($line) && ((int) $line['canvas'] === (int) $canvas_id)) ? '' : 'line_id';
+    }
+
+    return ((int) $version > 0) ? '' : 'version';
+}
+
+function ws_api_canvases_undo($params)
+{
+    ws_api_person_only(lang('Only the person, signed in on a device, can undo an agent\'s edit; an application cannot do it for them.'));
+
+    $viewer = ws_api_viewer();
+    $found = ws_api_canvas_one_or_404($viewer, $params['id']);
+    $message = $found['message'];
+    $part = (string) $params['part'];
+    $version = (int) ($params['version'] ?? 0);
+    $line_id = (int) ($params['line_id'] ?? 0);
+    $line = null;
+
+    if ($part === 'binding') {
+        if (!ws_canvas_tables_ready()) {
+            api_fail(503, 'service_unavailable', lang('The database has to be updated first.'));
+        }
+
+        // The line is a message of a channel the person reads, of the
+        // current conversation.
+        if ($line_id > 0) {
+            ws_api_message_or_404($viewer, $line_id);
+            $line = ws_canvas_binding_line_refs(array($line_id))[$line_id] ?? null;
+        }
+    }
+
+    $problem = ws_api_canvas_undo_problem($part, (int) $message['id'], $line, $version);
+
+    if ($problem === 'line_id') {
+        api_fail_not_found(lang('Binding line'));
+    }
+
+    if ($problem !== '') {
+        api_fail_validation(lang('Name the version of the agent\'s edit.'), $problem);
+    }
+
+    $run = function ($check_only) use ($viewer, $message, $part, $version, $line_id) {
+        if ($part === 'binding') {
+            return ws_canvas_binding_undo($viewer, $line_id, $check_only);
+        }
+
+        $target = ws_canvas_part_message($message, $part);
+
+        if (!$target) {
+            return array('ok' => false, 'status' => 404, 'error' => lang('This canvas has no such part.'));
+        }
+
+        return ($part === 'page') ? ws_page_undo($viewer, $target, $version, $check_only) : ws_canvas_undo($viewer, $target, $version, $check_only);
+    };
+
+    $checked = $run(true);
+
+    if (!$checked['ok']) {
+        ws_api_canvas_refused($checked);
+    }
+
+    api_dry_run_stop('undone', 'workspace_canvas_edit', array('canvas_id' => (int) $message['id'], 'part' => $part, 'version' => ($part === 'binding') ? null : $version, 'line_id' => ($part === 'binding') ? $line_id : null));
+
+    $result = $run(false);
+
+    if (!$result['ok']) {
+        ws_api_canvas_refused($result);
+    }
+
+    api_ok(ws_api_canvas_one_present($viewer, ws_message($message['id'])));
+}
+
+/**
+ * The table choices as the API gives them: only the tables this caller
+ * reaches (ws_api_wtable_reachable() by id), each with its binding's
+ * access. Pure.
+ *
+ * @param array[] $choices   ws_canvas_tables_choices()
+ * @param int[]   $reachable the ids of the tables the caller reaches
+ * @return array[] table_id, name, bound
+ */
+function ws_api_canvas_table_choices_present($choices, $reachable)
+{
+    $reachable = array_flip(array_map('intval', (array) $reachable));
+    $out = array();
+
+    foreach ((array) $choices as $choice) {
+        if (isset($reachable[(int) $choice['id']])) {
+            $out[] = array('table_id' => (int) $choice['id'], 'name' => (string) $choice['name'], 'bound' => (string) $choice['bound']);
+        }
+    }
+
+    return $out;
+}
+
+// What ws_api_canvas_table_choices_present() gives for each table.
+function ws_api_canvas_table_choice_schema()
+{
+    return array('table_id' => 'integer', 'name' => 'string', 'bound' => 'string');
+}
+
+function ws_api_canvases_table_choices($params)
+{
+    $viewer = ws_api_viewer();
+    $found = ws_api_canvas_one_or_404($viewer, $params['id']);
+    $message = $found['message'];
+
+    if (!ws_canvas_tables_ready() || !ws_canvas_page_reach($viewer, $message)) {
+        api_fail_not_found(lang('Canvas'));
+    }
+
+    $reachable = array();
+
+    foreach (ws_wtables_reached($viewer) as $table) {
+        if (ws_api_wtable_reachable($viewer, $table)) {
+            $reachable[] = (int) $table['id'];
+        }
+    }
+
+    $out = ws_api_canvas_table_choices_present(ws_canvas_tables_choices($viewer, $message), $reachable);
+
+    api_ok_list($out, count($out));
 }

@@ -65,3 +65,37 @@ function test_workspace_open_items_short_text_is_one_line_and_cut()
 	pg_assert_same(120, mb_strlen($long));
 	pg_assert_same('…', mb_substr($long, -1));
 }
+
+function workspace_open_items_test_items()
+{
+	return array(
+		array('kind' => 'poll', 'message_id' => 50, 'text' => 'a', 'mine' => true),
+		array('kind' => 'approval', 'message_id' => 20, 'text' => 'b', 'mine' => true, 'agent_pending' => false),
+		array('kind' => 'approval', 'message_id' => 30, 'text' => 'c', 'mine' => false, 'agent_pending' => true),
+		array('kind' => 'checkin', 'message_id' => 70, 'text' => 'd', 'mine' => true),
+	);
+}
+
+function test_workspace_open_items_person_keeps_their_own_marks()
+{
+	$items = ws_open_items_for_caller(workspace_open_items_test_items(), null);
+
+	pg_assert_same(array(true, true, false, true), array_column($items, 'mine'));
+	pg_assert_false(array_key_exists('agent_pending', $items[1]), 'the helper key never leaves the function');
+}
+
+function test_workspace_open_items_an_agent_key_owns_only_the_approvals_that_asked_it()
+{
+	$items = ws_open_items_for_caller(workspace_open_items_test_items(), 'agent:4');
+
+	pg_assert_same(array(false, false, true, false), array_column($items, 'mine'), 'no poll, question or check-in is answered in the person\'s name');
+	pg_assert_same(array(false, false, false, false), array_column(ws_open_items_for_caller(workspace_open_items_test_items(), ''), 'mine'), 'a key with no agent waits on nothing');
+	pg_assert_same(30, ws_open_items_order(ws_open_items_for_caller(workspace_open_items_test_items(), 'claude'))[0]['message_id'], 'the caller\'s own first');
+}
+
+function test_workspace_open_items_nothing_for_a_guest_or_nobody()
+{
+	pg_assert_same(array(), ws_channel_open_items(array('id' => 0), array('id' => 1)));
+	pg_assert_same(array(), ws_channel_open_items(array('id' => 4, 'guest_id' => 2), array('id' => 1)));
+	pg_assert_same(array(), ws_channel_open_items(array('id' => 4), null));
+}

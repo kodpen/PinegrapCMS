@@ -989,6 +989,52 @@ function ws_agent_brief_asker_lines($asker)
 }
 
 /**
+ * What the brief says of a task handed to the agent (delegation.php): the
+ * task as the person who asked reads it, inside a data block, the runs
+ * before this one, and where the answer goes: on the task as the run's
+ * note, never as a message. Pure.
+ *
+ * @param array   $read        ws_ai_task_present(): number, title, description, status, priority, due_date, assignees, notes
+ * @param bool    $handed_over the task is handed to this agent (not only asked)
+ * @param array[] $earlier     ws_task_delegation_context()'s earlier: agent, asked_by, instruction, answer, error
+ * @param int     $task_id
+ * @param int     $request_id
+ * @return string[]
+ */
+function ws_agent_brief_task_lines($read, $handed_over, $earlier, $task_id, $request_id)
+{
+    $lines = array($handed_over
+        ? 'The task ' . (string) $read['number'] . ' was handed to you: work on it and report what you did, what you found and what you need from a person to go on. The people on the task stay responsible for it.'
+        : 'You were asked on the task ' . (string) $read['number'] . '. The people on the task stay responsible for it.');
+
+    $task = array(
+        'Title: ' . (string) $read['title'],
+        'Status: ' . (string) $read['status'] . (((string) ($read['priority'] ?? '') !== '') ? ' · priority ' . (string) $read['priority'] : '') . (!empty($read['due_date']) ? ' · due ' . (string) $read['due_date'] : ''),
+        'Assignees: ' . (empty($read['assignees']) ? 'nobody' : implode(', ', (array) $read['assignees'])),
+    );
+
+    if (trim((string) ($read['description'] ?? '')) !== '') {
+        $task[] = 'Description: ' . (string) $read['description'];
+    }
+
+    foreach ((array) ($read['notes'] ?? array()) as $note) {
+        $task[] = 'Note: ' . (string) $note;
+    }
+
+    foreach ((array) $earlier as $run) {
+        $task[] = 'Earlier run (' . (string) $run['agent'] . ', asked by ' . (string) $run['asked_by'] . '): ' . (string) $run['instruction']
+            . ((string) $run['answer'] !== '' ? ' · answered: ' . (string) $run['answer'] : '')
+            . ((string) $run['error'] !== '' ? ' · failed: ' . (string) $run['error'] : '');
+    }
+
+    $lines[] = pg_ai_data_block('task', implode("\n", $task));
+    $lines[] = 'Read it whole with GET /workspace/tasks/' . (int) $task_id . '.';
+    $lines[] = 'Your answer is written on the task as this run\'s note (POST /workspace/agent-requests/' . (int) $request_id . '/answer with text), not as a message in the channel; give it up with /fail (reason). A person may stop the run at any time: the request then answers 409 closed.';
+
+    return $lines;
+}
+
+/**
  * What an app agent is told before it starts on a request: who it is, now,
  * who asked, where, the request inside a data block (a wake's note), the
  * channel's memory, the loop-guard text unless the channel switched it off,
@@ -1009,6 +1055,7 @@ function ws_agent_brief($agent, $row, $scopes)
     $name = (($name !== '') ? $name : (string) $agent['handle']) . ' (@' . (string) $agent['handle'] . ')';
     $request = '';
     $by_app = $wake ? null : ws_agent_request_asker_app($row);
+    $task_run = (!$wake && ((int) ($row['task_id'] ?? 0) > 0) && function_exists('ws_task_delegation_context')) ? ws_task_delegation_context($asker, $row) : null;
     $lines = ws_ai_briefing_head(array('name' => $wake ? 'your schedule' : ($by_app ? ws_agent_brief_asker_name($by_app) : ws_person_name($row['requested_by']))), 'agent', $name);
     $lines[] = '';
 
@@ -1023,6 +1070,17 @@ function ws_agent_brief($agent, $row, $scopes)
             ORDER BY c.name LIMIT 20");
         $lines = array_merge($lines, ws_agent_brief_wake_lines($wake, $channels, (int) $row['channel_id']));
         $request = $wake['note'];
+    } elseif ($task_run) {
+        // A task handed to the agent (delegation.php): the task's channel is
+        // the place, the instruction the request.
+        $task = $task_run['task'];
+        $read = ws_ai_task_present($asker, $task);
+        $channel = ((int) $task['channel_id'] > 0) ? ws_channel($task['channel_id']) : null;
+        $lines[] = ws_ai_agent_place('task', $channel ? (string) $channel['name'] : '', (string) $read['number']);
+        $lines[] = '';
+        $lines = array_merge($lines, ws_agent_brief_task_lines($read, $task_run['delegated'], $task_run['earlier'], (int) $task['id'], (int) $row['id']));
+        $request = ws_plain_text($asker, (string) ($row['note_text'] ?? ''));
+        $request = (trim($request) !== '') ? $request : 'No instruction: work from the task itself.';
     } else {
         $parent = ($channel && ws_channel_is_thread($channel)) ? ws_thread_parent_channel($channel) : null;
         $lines[] = $parent ? ws_ai_agent_place('thread', (string) $parent['name']) : ws_ai_agent_place('channel', $channel ? (string) $channel['name'] : '');

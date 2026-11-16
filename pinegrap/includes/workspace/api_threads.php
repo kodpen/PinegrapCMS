@@ -553,61 +553,31 @@ function ws_api_scheduled_messages_create($params)
     // The moment, read on the server's clock to the minute, as the date and
     // the time of the writing box are.
     $at = (int) $params['send_at'];
-    $date = date('Y-m-d', $at);
-    $time = date('H:i', $at);
-
-    // The checks ws_scheduled_message_save() makes, made first so that a dry
-    // run meets the same refusals.
-    $body = (string) $params['text'];
-
-    if (function_exists('ws_claude_command_body')) {
-        $body = ws_claude_command_body($body);
-    }
-
-    if (function_exists('ws_ai_command_body')) {
-        $body = ws_ai_command_body($body);
-    }
-
-    $body = ws_tokens_normalise(trim($body));
-
-    if ($body === '') {
-        api_fail_validation(lang('The message is empty.'), 'text');
-    }
-
-    if (preg_match('#^/[a-z]#i', $body)) {
-        api_fail_validation(lang('A command cannot be scheduled. Write it as a message, or send it now.'), 'text');
-    }
-
-    if (mb_strlen($body) > WS_MESSAGE_MAX) {
-        api_fail_validation(lang(array('string' => 'A message can be at most {var:1} characters long.', 'vars' => WS_MESSAGE_MAX)), 'text');
-    }
-
-    $moment = strtotime($date . ' ' . $time . ':00');
-
-    if ($moment <= time()) {
-        api_fail_validation(lang('That time has already gone by.'), 'send_at');
-    }
-
-    if ($moment > strtotime('+' . WS_SCHEDULED_MESSAGES_AHEAD . ' days')) {
-        api_fail_validation(lang('A message can be scheduled at most a year ahead.'), 'send_at');
-    }
-
-    $waiting = (int) db_value("SELECT COUNT(*) FROM ws_scheduled_actions
-        WHERE kind = 'message' AND created_by = '" . (int) $viewer['id'] . "' AND status IN ('active', 'failed')");
-
-    if ($waiting >= WS_SCHEDULED_MESSAGES_MAX) {
-        api_fail_validation(lang(array('string' => 'You already have {var:1} messages waiting to be posted.', 'vars' => WS_SCHEDULED_MESSAGES_MAX)));
-    }
-
-    api_dry_run_stop('created', 'workspace_scheduled_message', array('channel_id' => (int) $channel['id'], 'send_at' => api_time($moment)));
-
-    $result = ws_scheduled_message_save($viewer, array(
+    $parent_id = ws_api_scheduled_message_parent($channel, $params);
+    $data = array(
         'id'         => 0,
         'channel_id' => (int) $channel['id'],
         'body'       => (string) $params['text'],
-        'date'       => $date,
-        'time'       => $time,
+        'parent_id'  => $parent_id,
+        'date'       => date('Y-m-d', $at),
+        'time'       => date('H:i', $at),
+    );
+
+    // The checks ws_scheduled_message_save() makes, made first so that a dry
+    // run meets the same refusals.
+    $checked = ws_scheduled_message_save_check($viewer, $data);
+
+    if (!$checked['ok']) {
+        api_fail_validation($checked['error'], ws_api_scheduled_message_field((string) $checked['field']));
+    }
+
+    api_dry_run_stop('created', 'workspace_scheduled_message', array(
+        'channel_id' => (int) $channel['id'],
+        'send_at'    => api_time($checked['at']),
+        'parent_id'  => ((int) $checked['parent_id'] > 0) ? (int) $checked['parent_id'] : null,
     ));
+
+    $result = ws_scheduled_message_save($viewer, $data);
 
     if (!$result['ok']) {
         api_fail_validation($result['error'], ws_api_scheduled_message_field((string) $result['field']));
@@ -624,15 +594,44 @@ function ws_api_scheduled_messages_create($params)
     api_ok(ws_api_scheduled_message_present($viewer, $row), 201);
 }
 
-function ws_api_scheduled_messages_delete($params)
+/**
+ * The message a scheduled message answers, from parent_id: null when it is
+ * left out (a changed one keeps its own), 0 for none, else a message of the
+ * channel that may be answered - refused with 422 on parent_id otherwise,
+ * as POST /workspace/channels/{id}/messages refuses it.
+ *
+ * @param array $channel
+ * @param array $params
+ * @return int|null
+ */
+function ws_api_scheduled_message_parent($channel, $params)
 {
-    $viewer = ws_api_viewer();
+    if (!array_key_exists('parent_id', $params) || ($params['parent_id'] === null)) {
+        return null;
+    }
 
-    ws_api_scheduled_messages_ready();
+    $parent_id = (int) $params['parent_id'];
+    $refusal = ws_message_parent_check($channel, $parent_id);
 
-    // The owner's own, still waiting or failed; somebody else's, or one
-    // already posted, is not there for them.
-    $row = ws_scheduled_message_mine($viewer, (int) $params['id']);
+    if ($refusal !== '') {
+        api_fail_validation($refusal, 'parent_id');
+    }
+
+    return $parent_id;
+}
+
+/**
+ * One of the owner's own scheduled messages still waiting or failed, in a
+ * channel the application reaches, or a 404.
+ *
+ * @param array $viewer
+ * @param int   $id
+ * @return array decoded
+ */
+function ws_api_scheduled_message_mine_or_404($viewer, $id)
+{
+    // Somebody else's, or one already posted, is not there for them.
+    $row = ws_scheduled_message_mine($viewer, (int) $id);
 
     if (!$row || !in_array((string) $row['status'], array('active', 'failed'), true)) {
         api_fail_not_found(lang('Scheduled message'));
@@ -648,6 +647,125 @@ function ws_api_scheduled_messages_delete($params)
         }
     }
 
+    return $row;
+}
+
+/**
+ * POST /workspace/scheduled-messages/{id}/update: changes the words, the
+ * moment or the message it answers of one of the person's own scheduled
+ * messages, as the clock's list does; a failed one waits again.
+ */
+function ws_api_scheduled_messages_update($params)
+{
+    $viewer = ws_api_viewer();
+
+    ws_api_scheduled_messages_ready();
+
+    // Posted later in the writer's own name, as when it was scheduled.
+    ws_api_own_words_only(lang('Only the person\'s own team devices session (POST /auth/login) can change a scheduled message: it is posted later in their own name, while an application key or an OAuth connection writes as the application.'));
+
+    $row = ws_api_scheduled_message_mine_or_404($viewer, $params['id']);
+    $action = is_array($row['action']) ? $row['action'] : array();
+    $channel = ws_channel((int) $row['channel_id']);
+
+    if (!$channel || !ws_can_post_channel($viewer, $channel)) {
+        api_fail(403, 'forbidden', lang('You cannot post in that channel.'));
+    }
+
+    // What is left out stays as it is.
+    $rule = ws_scheduled_time_rule($row);
+    $at = isset($params['send_at']) ? (int) $params['send_at'] : 0;
+    $data = array(
+        'id'        => (int) $row['id'],
+        'body'      => array_key_exists('text', $params) ? (string) $params['text'] : (string) ($action['body'] ?? ''),
+        'parent_id' => ws_api_scheduled_message_parent($channel, $params),
+        'date'      => ($at > 0) ? date('Y-m-d', $at) : (string) ($rule['date'] ?? ''),
+        'time'      => ($at > 0) ? date('H:i', $at) : (string) ($rule['time'] ?? ''),
+    );
+
+    // The checks ws_scheduled_message_save() makes, made first so that a dry
+    // run meets the same refusals.
+    $checked = ws_scheduled_message_save_check($viewer, $data);
+
+    if (!$checked['ok']) {
+        api_fail_validation($checked['error'], ws_api_scheduled_message_field((string) $checked['field']));
+    }
+
+    api_dry_run_stop('updated', 'workspace_scheduled_message', array(
+        'id'        => (int) $row['id'],
+        'send_at'   => api_time($checked['at']),
+        'parent_id' => ((int) $checked['parent_id'] > 0) ? (int) $checked['parent_id'] : null,
+    ));
+
+    $result = ws_scheduled_message_save($viewer, $data);
+
+    if (!$result['ok']) {
+        api_fail_validation($result['error'], ws_api_scheduled_message_field((string) $result['field']));
+    }
+
+    $saved = ws_scheduled_message_mine($viewer, $result['id']);
+
+    if (!$saved) {
+        api_fail_not_found(lang('Scheduled message'));
+    }
+
+    ws_api_log(lang(array('string' => 'a scheduled message was changed in #{var:1}', 'vars' => (string) $channel['name'])));
+
+    api_ok(ws_api_scheduled_message_present($viewer, $saved));
+}
+
+/**
+ * POST /workspace/scheduled-messages/{id}/send: posts one of the person's
+ * own scheduled messages now, as Send now does. The answer is the posted
+ * message.
+ */
+function ws_api_scheduled_messages_send($params)
+{
+    $viewer = ws_api_viewer();
+
+    ws_api_scheduled_messages_ready();
+
+    // Posted in the writer's own name.
+    ws_api_own_words_only(lang('Only the person\'s own team devices session (POST /auth/login) can send a scheduled message: it is posted in their own name, while an application key or an OAuth connection writes as the application.'));
+
+    $row = ws_api_scheduled_message_mine_or_404($viewer, $params['id']);
+
+    // The checks the posting meets, made first so that a dry run meets the
+    // same refusals.
+    $checked = ws_scheduled_message_send_check($viewer, $row);
+
+    if (!$checked['ok']) {
+        api_fail_validation($checked['error']);
+    }
+
+    api_dry_run_stop('sent', 'workspace_scheduled_message', array('id' => (int) $row['id'], 'channel_id' => (int) $checked['channel']['id']));
+
+    $last = (int) db_value("SELECT MAX(id) FROM ws_messages WHERE channel_id = '" . (int) $checked['channel']['id'] . "'");
+    $result = ws_scheduled_message_send_now($viewer, $row);
+
+    if (!$result['ok']) {
+        api_fail_validation($result['error']);
+    }
+
+    // The message it became: the person's newest in the channel since the
+    // posting started.
+    $posted = db_item("SELECT * FROM ws_messages WHERE channel_id = '" . (int) $checked['channel']['id'] . "' AND id > '" . $last . "'
+        AND sender_kind = 'user' AND sender_id = '" . (int) $viewer['id'] . "' ORDER BY id LIMIT 1");
+
+    if (!is_array($posted)) {
+        api_fail_not_found(lang('Message'));
+    }
+
+    api_ok(ws_api_message_present($viewer, $posted, ws_refs_resolve($viewer, ws_tokens($posted['body']))));
+}
+
+function ws_api_scheduled_messages_delete($params)
+{
+    $viewer = ws_api_viewer();
+
+    ws_api_scheduled_messages_ready();
+
+    $row = ws_api_scheduled_message_mine_or_404($viewer, $params['id']);
     $before = ws_api_scheduled_message_present($viewer, $row);
 
     api_dry_run_stop('deleted', 'workspace_scheduled_message', array('id' => (int) $row['id']));
@@ -663,6 +781,222 @@ function ws_api_scheduled_messages_delete($params)
     ws_api_log(lang(array('string' => 'a scheduled message was deleted in #{var:1}', 'vars' => $channel ? (string) $channel['name'] : '')));
 
     api_ok($before);
+}
+
+/* ---------------------------------------------------------------------------
+   Status updates and check-ins (status.php)
+   --------------------------------------------------------------------------- */
+
+// What ws_api_checkin_shape() returns.
+function ws_api_checkin_schema()
+{
+    return array(
+        'id'         => 'integer',
+        'message_id' => 'integer',
+        'channel_id' => 'integer',
+        'question'   => 'string',
+        'answers'    => 'WorkspaceCheckinAnswer[]',
+        'waiting'    => 'string[]',
+        'count'      => 'integer',
+        'total'      => 'integer',
+        'mine'       => 'string?',
+        'can_answer' => 'boolean',
+    );
+}
+
+// One answer to a check-in.
+function ws_api_checkin_answer_schema()
+{
+    return array('user_id' => 'integer', 'name' => 'string', 'text' => 'string');
+}
+
+/**
+ * A check-in as the API shows it, from the card the channel shows under
+ * its message (ws_status_cards_map()). Pure.
+ *
+ * @param array $card       kind checkin: id, question, answers, waiting, count, total, mine, can_answer
+ * @param int   $message_id
+ * @param int   $channel_id
+ * @return array
+ */
+function ws_api_checkin_shape($card, $message_id, $channel_id)
+{
+    return array(
+        'id'         => (int) $card['id'],
+        'message_id' => (int) $message_id,
+        'channel_id' => (int) $channel_id,
+        'question'   => (string) $card['question'],
+        'answers'    => array_map(function ($answer) {
+            return array('user_id' => (int) $answer['id'], 'name' => (string) $answer['name'], 'text' => (string) $answer['text']);
+        }, (array) $card['answers']),
+        'waiting'    => array_values(array_map('strval', (array) $card['waiting'])),
+        'count'      => (int) $card['count'],
+        'total'      => (int) $card['total'],
+        'mine'       => ((string) $card['mine'] !== '') ? (string) $card['mine'] : null,
+        'can_answer' => !empty($card['can_answer']),
+    );
+}
+
+/**
+ * The check-in a message carries, as the API shows it, or a 404.
+ *
+ * @param array $viewer
+ * @param int   $message_id
+ * @return array
+ */
+function ws_api_checkin_present($viewer, $message_id)
+{
+    $card = ws_status_cards_map($viewer, array((int) $message_id))[(int) $message_id] ?? null;
+    $message = ws_message((int) $message_id);
+
+    if (!is_array($card) || ($card['kind'] !== 'checkin') || !$message) {
+        api_fail_not_found(lang('Check-in'));
+    }
+
+    return ws_api_checkin_shape($card, (int) $message_id, (int) $message['channel_id']);
+}
+
+/**
+ * Status updates and check-ins are there, or a 503.
+ */
+function ws_api_status_ready()
+{
+    if (!function_exists('ws_status_ready') || !ws_status_ready()) {
+        api_fail(503, 'service_unavailable', lang('The database has to be updated first.'));
+    }
+}
+
+/**
+ * POST /workspace/channels/{id}/status: a status update, as Status update
+ * in the channel menu writes it - the message, then the state.
+ */
+function ws_api_channel_status_post($params)
+{
+    $viewer = ws_api_viewer();
+
+    ws_api_status_ready();
+
+    $channel = ws_api_channel_or_404($viewer, $params['id']);
+
+    if (!ws_can_post_channel($viewer, $channel)) {
+        api_fail(403, 'forbidden', lang('You cannot post in that channel.'));
+    }
+
+    $writer = ws_api_message_writer();
+    $health = (string) $params['health'];
+    $text = (string) ($params['text'] ?? '');
+
+    // The checks ws_status_post() makes, made first so that a dry run meets
+    // the same refusals.
+    $checked = ws_status_post_check($viewer, $channel, $health, $text, $writer);
+
+    if (!$checked['ok']) {
+        api_fail_validation($checked['error'], in_array($checked['field'], array('health', 'text'), true) ? $checked['field'] : null);
+    }
+
+    api_dry_run_stop('created', 'workspace_message', array('channel_id' => (int) $channel['id'], 'health' => $health));
+
+    $result = ws_status_post($viewer, $channel, $health, $text, $writer);
+
+    if (!$result['ok']) {
+        api_fail_validation($result['error'], in_array($result['field'], array('health', 'text'), true) ? $result['field'] : null);
+    }
+
+    $row = ws_message($result['message_id']);
+
+    api_ok(ws_api_message_present($viewer, $row, ws_refs_resolve($viewer, ws_tokens($row['body']))), 201);
+}
+
+/**
+ * POST /workspace/channels/{id}/checkins: asks the channel's people a
+ * question, as Check-in in the channel menu does; the panel's question when
+ * none is written.
+ */
+function ws_api_channel_checkins_start($params)
+{
+    $viewer = ws_api_viewer();
+
+    ws_api_status_ready();
+
+    $channel = ws_api_channel_or_404($viewer, $params['id']);
+
+    if (!ws_can_post_channel($viewer, $channel)) {
+        api_fail(403, 'forbidden', lang('You cannot post in that channel.'));
+    }
+
+    $writer = ws_api_message_writer();
+    $question = ws_checkin_question((string) ($params['question'] ?? ''));
+
+    if ($question === '') {
+        $question = ws_checkin_default_question();
+    }
+
+    // The checks ws_checkin_start() makes, made first so that a dry run
+    // meets the same refusals.
+    $checked = ws_checkin_start_check($viewer, $channel, $question, $writer);
+
+    if (!$checked['ok']) {
+        api_fail_validation($checked['error'], ($checked['field'] === 'question') ? 'question' : null);
+    }
+
+    api_dry_run_stop('created', 'workspace_checkin', array('channel_id' => (int) $channel['id'], 'question' => $checked['question']));
+
+    $result = ws_checkin_start($viewer, $channel, $question, $writer['app_id'], $writer['via_client_id']);
+
+    if (!$result['ok']) {
+        api_fail_validation($result['error'], 'question');
+    }
+
+    api_ok(ws_api_checkin_present($viewer, $result['message_id']), 201);
+}
+
+/**
+ * POST /workspace/checkins/{id}/answer: the person's own answer to a
+ * check-in, as the card under its message keeps it; an empty text takes
+ * it back.
+ */
+function ws_api_checkins_answer($params)
+{
+    $viewer = ws_api_viewer();
+
+    ws_api_status_ready();
+
+    // An answer is the person's own, never an application's for them.
+    ws_api_person_only();
+
+    $text = (string) ($params['text'] ?? '');
+
+    // The checks ws_checkin_answer() makes, made first so that a dry run
+    // meets the same refusals.
+    $checked = ws_checkin_answer_check($viewer, (int) $params['id'], $text);
+
+    if (!$checked['ok']) {
+        if ($checked['reason'] === 'missing') {
+            api_fail_not_found(lang('Check-in'));
+        }
+
+        if ($checked['reason'] === 'forbidden') {
+            api_fail(403, 'forbidden', $checked['error']);
+        }
+
+        api_fail_validation($checked['error'], 'text');
+    }
+
+    // The limits of the application Claude works through.
+    ws_api_channel_or_404($viewer, $checked['channel']['id']);
+
+    api_dry_run_stop(($checked['text'] === '') ? 'deleted' : 'updated', 'workspace_checkin_answer', array(
+        'checkin_id' => (int) $checked['checkin']['id'],
+        'changes'    => ($checked['text'] !== $checked['before']),
+    ));
+
+    $result = ws_checkin_answer($viewer, (int) $params['id'], $text);
+
+    if (!$result['ok']) {
+        api_fail_validation($result['error'], 'text');
+    }
+
+    api_ok(ws_api_checkin_present($viewer, $result['message_id']));
 }
 
 /* ---------------------------------------------------------------------------

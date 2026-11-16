@@ -394,7 +394,7 @@ function ws_personal_plan_steps_js_strings()
         'roadmap_hint'     => lang('Break the plan into dated steps and tick them off as you go.'),
         'step_add'         => lang('Add a step'),
         'step_title'       => lang('Step'),
-        'step_day'         => lang('Day'),
+        'step_day'         => lang('Day of the step'),
         'step_done'        => lang('Done'),
         'step_remove'      => lang('Remove the step'),
         'step_make_task'   => lang('Make a task'),

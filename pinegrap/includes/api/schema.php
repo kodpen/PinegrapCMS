@@ -3728,6 +3728,21 @@ function api_schema() {
 		),
 
 		array(
+			'id'      => 'reports.cart_recovery',
+			'method'  => 'GET',
+			'path'    => '/reports/cart-recovery',
+			'scope'   => 'orders:read',
+			'handler' => 'api_reports_cart_recovery',
+			'returns' => 'CartRecoveryReport',
+			'summary' => 'Left carts, the messages sent to them and the carts they brought back',
+			'description' => 'A cart is left when it was started at least six hours before and not completed. A message sent or an offer shown to a left cart is a touch; a left cart belongs to the window of its first touch. left counts those carts plus untouched: the left carts no message touched (completed in the window, or started in it and still open). reached are the touched carts, returned the ones whose link was opened or whose cart was restored from it, recovered the ones completed at most seven days after their last touch, and revenue their totals at completion in minor units. A cart completed later than that counts as left, reached and returned, never as recovered. channels gives the same figures by channel (email, whatsapp, sms, page), messages by what sent it (an e-mail campaign, a template, a pop-up) with sent, every send. Defaults to the last thirty days; a window is at most 400 days. 503 service_unavailable until the database update that adds the touches has run.',
+			'params'  => array(
+				array('name' => 'from', 'in' => 'query', 'type' => 'datetime', 'description' => 'First day of the window. Defaults to twenty-nine days before to.'),
+				array('name' => 'to',   'in' => 'query', 'type' => 'datetime', 'description' => 'Last day of the window, counted whole. Defaults to today.')
+			)
+		),
+
+		array(
 			'id'      => 'reports.traffic',
 			'method'  => 'GET',
 			'path'    => '/reports/traffic',
@@ -5601,7 +5616,11 @@ function api_schema() {
 				array('name' => 'height',    'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 9999, 'nullable' => true, 'description' => 'Pixels; 0 or null to size it by its content.'),
 				array('name' => 'delay',     'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 2147483, 'nullable' => true, 'description' => 'Seconds after the page opens; 0 or null for at once.'),
 				array('name' => 'frequency', 'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 999999, 'nullable' => true, 'description' => 'Hours before it opens again for the same visitor; 0 or null for only once.'),
-				array('name' => 'page',      'in' => 'body', 'type' => 'string', 'max_length' => 100, 'nullable' => true, 'description' => 'The name of the only page it opens on; empty for every page.')
+				array('name' => 'page',      'in' => 'body', 'type' => 'string', 'max_length' => 100, 'nullable' => true, 'description' => 'The name of the only page it opens on; empty for every page.'),
+				array('name' => 'open_on',   'in' => 'body', 'type' => 'enum', 'values' => array('delay', 'scroll', 'leave'), 'nullable' => true, 'description' => 'When it opens: delay (after delay seconds, the default), scroll (when open_scroll percent of the page is scrolled), leave (when the pointer leaves the window; on a touch screen after the delay).'),
+				array('name' => 'open_scroll', 'in' => 'body', 'type' => 'int', 'min' => 1, 'max' => 100, 'nullable' => true, 'description' => 'Percent of the page scrolled before it opens, read with open_on scroll; null for 50.'),
+				array('name' => 'audience',  'in' => 'body', 'type' => 'enum', 'values' => array('all', 'cart'), 'nullable' => true, 'description' => 'Who sees it: all visitors (the default) or only visitors whose cart holds a product (cart).'),
+				array('name' => 'place',     'in' => 'body', 'type' => 'enum', 'values' => array('centre', 'top', 'bottom', 'corner'), 'nullable' => true, 'description' => 'Where it opens: centre over the page, which waits (the default), or a bar at the top or bottom or a card in the corner, beside a page that stays usable.')
 			)
 		),
 
@@ -5625,7 +5644,11 @@ function api_schema() {
 				array('name' => 'height',    'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 9999, 'nullable' => true, 'description' => 'Pixels; 0 or null to size it by its content.'),
 				array('name' => 'delay',     'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 2147483, 'nullable' => true, 'description' => 'Seconds after the page opens; 0 or null for at once.'),
 				array('name' => 'frequency', 'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 999999, 'nullable' => true, 'description' => 'Hours before it opens again for the same visitor; 0 or null for only once.'),
-				array('name' => 'page',      'in' => 'body', 'type' => 'string', 'max_length' => 100, 'nullable' => true, 'description' => 'The name of the only page it opens on; empty or null for every page.')
+				array('name' => 'page',      'in' => 'body', 'type' => 'string', 'max_length' => 100, 'nullable' => true, 'description' => 'The name of the only page it opens on; empty or null for every page.'),
+				array('name' => 'open_on',   'in' => 'body', 'type' => 'enum', 'values' => array('delay', 'scroll', 'leave'), 'nullable' => true, 'description' => 'When it opens: delay (after delay seconds, the default), scroll (when open_scroll percent of the page is scrolled), leave (when the pointer leaves the window; on a touch screen after the delay).'),
+				array('name' => 'open_scroll', 'in' => 'body', 'type' => 'int', 'min' => 1, 'max' => 100, 'nullable' => true, 'description' => 'Percent of the page scrolled before it opens, read with open_on scroll; null for 50.'),
+				array('name' => 'audience',  'in' => 'body', 'type' => 'enum', 'values' => array('all', 'cart'), 'nullable' => true, 'description' => 'Who sees it: all visitors (the default) or only visitors whose cart holds a product (cart).'),
+				array('name' => 'place',     'in' => 'body', 'type' => 'enum', 'values' => array('centre', 'top', 'bottom', 'corner'), 'nullable' => true, 'description' => 'Where it opens: centre over the page, which waits (the default), or a bar at the top or bottom or a card in the corner, beside a page that stays usable.')
 			)
 		),
 

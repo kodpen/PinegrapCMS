@@ -20,10 +20,12 @@ description: Every plan carries a priority from 1 to 10 (owner 2026-11-15, agent
 - An open `bug` issue is not a plan: it is taken as before, ahead of a step of priority 6 or lower (CLAUDE.md, Working mode 9).
 - The channel and API plans of `coordinator-channel-first.md` are sixes like the owner's other requests; the panel look steps are twos.
 - Design templates stay paused (`coordinator-no-plans.md`); 2 is their number once they run again.
-- The pace limits stay: at most three `channel-api-gaps` steps open on each coordinator's side, the queue limit, 8 places a coordinator.
+- The pace limits stay: the queue limit, 8 places a coordinator.
 
 ## What does `tools/free_work.php` do with it?
-- Nothing yet (2026-11-15): it lists the design templates apart as low priority and the rest in one list. A coordinator reads the `priority:` line in the plan file.
-- Reading the line and listing the free steps highest first is a small tools fix the architect gives out; this section is corrected when it lands.
+- It lists the free steps plan by plan, highest priority first, with the number in brackets beside the plan's name (`cart-recovery [6] CR2 …`). At the same priority the plan asked first comes first (the earliest date in its description), then by name.
+- The number is the plan file's `priority:` line, read only inside the frontmatter. A steps, census or other file of a plan (`<plan>-steps*.md`, `<plan>-census*.md`, `agent-channel-trial.md`) without its own line follows the longest plan file name it starts with.
+- Without a line anywhere it uses the rule above: 2 for `design-template-*`, `panel-old-screens*`, `report-screens*` or a description saying "low priority"; 6 when the description names the owner and a date; else 4, below the owner's requests and above the look steps, until the architect writes the line.
+- The queue line, the held-by list, the shelved plans and the paused design templates' line are printed as before.
 
-Related: docs/memory/workflow/coordinator-channel-first.md, docs/memory/workflow/coordinator-no-plans.md, docs/memory/workflow/coordinator.md
+Related: docs/memory/workflow/plan-order-begun-first.md, docs/memory/workflow/coordinator-channel-first.md, docs/memory/workflow/coordinator-no-plans.md, docs/memory/workflow/coordinator.md
