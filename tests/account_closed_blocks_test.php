@@ -21,10 +21,10 @@ if (!defined('PG_TEST_RUNNER')) {
 	exit;
 }
 
-// prepare_amount() prints the base currency's symbol, an entity on a
-// Turkish site: the rows carry it decoded to text.
+// prepare_amount() prints the base currency's symbol: the value the other
+// tests define, as the constant is set once for the whole run.
 if (!defined('BASE_CURRENCY_SYMBOL')) {
-	define('BASE_CURRENCY_SYMBOL', '&#8378;');
+	define('BASE_CURRENCY_SYMBOL', '$');
 }
 
 function account_blocks_test_source()
