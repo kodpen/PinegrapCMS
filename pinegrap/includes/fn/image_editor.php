@@ -4988,6 +4988,7 @@ function pg_image_editor_strings_access()
         'keyEnd'        => lang('Go to the end'),
         'keyMarkIn'     => lang('Trim the selected clip\'s start to the playhead'),
         'keyMarkOut'    => lang('Trim the selected clip\'s end to the playhead'),
+        'keySplit'      => lang('Split a clip at the playhead'),
     );
 }
 

@@ -4680,7 +4680,8 @@
                 { keys: ['Home'], label: 'keyStart' },
                 { keys: ['End'], label: 'keyEnd' },
                 { keys: ['I'], label: 'keyMarkIn' },
-                { keys: ['O'], label: 'keyMarkOut' }
+                { keys: ['O'], label: 'keyMarkOut' },
+                { keys: ['S'], label: 'keySplit' }
             ] });
         }
 
@@ -4698,6 +4699,14 @@
         ].concat(layers ? [{ keys: [], label: 'touchTwist' }] : []) });
 
         return groups;
+    }
+
+    // The letters the Animate tool keeps for its timeline (play, shuttle,
+    // trim, split) over the tool letters they would pick elsewhere.
+    var TIMELINE_LETTERS = 'jklios';
+
+    function timelineLetter(k) {
+        return (typeof k === 'string') && (k.length === 1) && (TIMELINE_LETTERS.indexOf(k.toLowerCase()) >= 0);
     }
 
     // The playhead after key k in the Animate tool, at now on a timeline of
@@ -4744,7 +4753,7 @@
     }
 
     var ACCESS = { KEY_TOOLS: KEY_TOOLS, toolForKey: toolForKey, toolKey: toolKey, trapFocus: trapFocus, twistAngle: twistAngle, keyMap: keyMap,
-        TOUCH_REACH: TOUCH_REACH, touchReach: touchReach, KEY_MODES: KEY_MODES, TIMELINE_FPS: TIMELINE_FPS, timelineKey: timelineKey, motionLong: motionLong };
+        TOUCH_REACH: TOUCH_REACH, touchReach: touchReach, KEY_MODES: KEY_MODES, TIMELINE_FPS: TIMELINE_FPS, timelineKey: timelineKey, timelineLetter: timelineLetter, motionLong: motionLong };
 
     // -- The selection's commands (pg_image_editor_actions.js) --
 
@@ -9854,6 +9863,35 @@
         return { left: left, right: right };
     }
 
+    // The clip a Split without a target takes at document time t (the play
+    // bar's button, the S key): the one selected clip when the playhead can
+    // split it (clipSplit()'s rule), else the clip the playhead can split,
+    // the lowest in the stack with clips on several rows; null for none. A
+    // hidden or locked clip is never taken.
+    function clipSplitPick(layers, selected, t) {
+        var list = layers || [], picked, i;
+
+        function can(l) {
+            return !!l && (l.type === 'video') && !l.hidden && !l.locked && !!clipSplit(l, t, '');
+        }
+
+        picked = (selected || []).map(function (id) {
+            return list.find(function (l) { return l.id === id; });
+        }).filter(function (l) { return l && (l.type === 'video'); });
+
+        if ((picked.length === 1) && can(picked[0])) {
+            return picked[0].id;
+        }
+
+        for (i = 0; i < list.length; i++) {
+            if (can(list[i])) {
+                return list[i].id;
+            }
+        }
+
+        return null;
+    }
+
     // The shortest document that keeps a layer's motion whole: its
     // entrance, the loop's delay and a tenth for it to run, then its exit
     // with its delay, in a row (the exit runs back from the end,
@@ -10156,7 +10194,7 @@
     var CLIP = {
         CLIP_SPEEDS: CLIP_SPEEDS, CLIP_TYPES: CLIP_TYPES, CLIP_MIN: CLIP_MIN, clipLayer: clipLayer, clipSpan: clipSpan, clipAt: clipAt,
         clipFit: clipFit, clipCanvas: clipCanvas, clipNew: clipNew, clipReplace: clipReplace, clipEnd: clipEnd, clipSound: clipSound, clipDetach: clipDetach, clipType: clipType,
-        clipRowKey: clipRowKey, clipRow: clipRow, clipRipple: clipRipple, clipTrim: clipTrim, clipMove: clipMove, clipSplit: clipSplit, clipLength: clipLength,
+        clipRowKey: clipRowKey, clipRow: clipRow, clipRipple: clipRipple, clipTrim: clipTrim, clipMove: clipMove, clipSplit: clipSplit, clipSplitPick: clipSplitPick, clipLength: clipLength,
         clipApply: clipApply, clipPart: clipPart, clipJoins: clipJoins, clipMotionNeed: clipMotionNeed, CLIP_STRIP_MAX: CLIP_STRIP_MAX, clipStripTimes: clipStripTimes,
         clipFramesAt: clipFramesAt, CLIP_FX: CLIP_FX, clipFx: clipFx, clipFxOn: clipFxOn, clipFxColor: clipFxColor, clipFxBlur: clipFxBlur,
         clipFxVignette: clipFxVignette, clipTransition: clipTransition, clipTouching: clipTouching, clipTransitionMs: clipTransitionMs,
