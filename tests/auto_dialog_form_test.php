@@ -286,17 +286,17 @@ function test_auto_dialog_page_keeps_nothing_in_the_session()
 function test_auto_dialog_script_picks_in_the_browser_and_opens_the_browsers_dialog()
 {
 	$src = (string) file_get_contents(PG_FUNCTIONS_DIR . '/frontend.src.js');
-	$init = substr($src, strpos($src, 'init_auto_dialogs: function('), 6000);
-	$init = substr($init, 0, strpos($init, "\n    },\n"));
+	$from = strpos($src, 'init_auto_dialogs: function(');
+	$init = substr($src, $from, strpos($src, '// Used by express order', $from) - $from);
 	$open = substr($src, strpos($src, 'open_dialog: function('), 9000);
 	$open = substr($open, 0, strpos($open, "\n    },\n"));
 
 	pg_assert_contains("sessionStorage.getItem('pg_visit_start')", $init, 'the delay counts from the visit\'s first page');
-	pg_assert_contains("'software[auto_dialog_' + id + ']'", $init, 'the cookie of a dialog already shown');
-	pg_assert_contains('(now - last) >= (frequency * 3600)', $init, 'a recurring dialog opens again after its hours');
+	pg_assert_contains("'software[auto_dialog_' + id + ']'", $init, 'the old per-row cookie still gives a dialog\'s last time');
+	pg_assert_contains('>= (frequency * 3600)', $init, 'a recurring dialog opens again after its hours');
 	pg_assert_contains("disable_auto_dialog_' + auto_dialog.id", $init, 'the body class of one dialog');
 	pg_assert_contains("'disable_auto_dialogs'", $init, 'the body class of all dialogs');
-	pg_assert_contains("expires=Tue, 01 Jan 2030 06:00:00 GMT; path=/'", $init, 'the per-row cookie stays as it was');
+	auto_dialog_test_lacks('expires=Tue, 01 Jan 2030', $init, 'the per-row cookie is no longer written');
 
 	pg_assert_contains("document.createElement('dialog')", $open, 'the browser\'s own dialog');
 	pg_assert_contains('dialog.showModal();', $open, 'centred and modal by default');
@@ -310,4 +310,25 @@ function test_auto_dialog_script_picks_in_the_browser_and_opens_the_browsers_dia
 	pg_assert_contains('sessionStorage.getItem("pg_visit_start")', $min, 'the served script picks in the browser');
 	pg_assert_contains('createElement("dialog")', $min, 'the served script opens the browser\'s dialog');
 	pg_assert_contains('"pg-dialog-style"', $min, 'the served script has the frame\'s rules');
+}
+
+function test_auto_dialogs_wait_for_the_cookie_notice_and_keep_one_cookie()
+{
+	$src = (string) file_get_contents(PG_FUNCTIONS_DIR . '/frontend.src.js');
+	$from = strpos($src, 'init_auto_dialogs: function(');
+	$init = substr($src, $from, strpos($src, '// Used by express order', $from) - $from);
+
+	pg_assert_contains("document.getElementById('pg-cc')", $init, 'it looks for the cookie notice');
+	pg_assert_contains("document.addEventListener('pg:consent'", $init, 'with the notice on, the dialogs start on its answer');
+	pg_assert_contains('if (preview || !notice) {', $init, 'with the notice off, or for a preview, they start at once');
+	pg_assert_contains('!!(choices && choices.marketing)', $init, 'the cookie is kept only with marketing allowed');
+	pg_assert_contains("var name = 'pg_popup';", $init, 'one cookie for all pop-ups');
+	pg_assert_same(PG_POPUP_COOKIE, 'pg_popup', 'the script and the catalogue name the same cookie');
+	pg_assert_contains('Max-Age=31536000', $init, 'kept for a year');
+	pg_assert_contains("window.sessionStorage.setItem(name, parts.join('|'))", $init, 'without consent, sessionStorage for the visit');
+
+	$min = (string) file_get_contents(PG_FUNCTIONS_DIR . '/frontend.min.js');
+	pg_assert_contains('addEventListener("pg:consent"', $min, 'the served script waits for the notice');
+	pg_assert_contains('"pg_popup"', $min, 'the served script keeps the one cookie');
+	auto_dialog_test_lacks('expires=Tue, 01 Jan 2030', $min, 'the served script no longer writes the per-row cookie');
 }
