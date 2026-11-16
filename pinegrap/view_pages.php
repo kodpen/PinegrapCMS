@@ -352,7 +352,7 @@ $output_content_waiting = '';
 $content_waiting = pg_content_proposals_may_decide($user) ? pg_content_proposals_waiting_count() : 0;
 
 if ($content_waiting > 0) {
-    $output_content_waiting = '<div class="alert theme-info d-flex flex-wrap align-items-center gap-2" role="status"><span class="pg-count">' . (int) $content_waiting . '</span>'
+    $output_content_waiting = '<div class="alert theme-info d-flex flex-wrap align-items-center gap-2" role="status">'
         . h(lang(array('string' => '{var:1} content changes wait for approval.', 'vars' => array($content_waiting))))
         . ' <a href="content_changes.php">' . h(lang('Waiting Content Changes')) . '</a></div>';
 }
