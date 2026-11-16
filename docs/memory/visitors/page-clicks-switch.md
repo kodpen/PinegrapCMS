@@ -13,4 +13,4 @@ module: page_clicks
 
 ## Where can it be turned on?
 - The Visitors section's "Turn on" button posts to `visitors_clicks_switch.php`: `validate_area_access($user, 'manager')` (role up to 2, the Features save's right, never `validate_visitors_access()`, which lets a User with the Visitors right in), POST only, `validate_token_field()`, then the saver and back to `visitors.php#clicks` with the period (`ui/visitors-clicks-section.md`).
-- Site Settings, Features, card "Clicks and scrolling" (`pgset-page-clicks`, CM2 #9946): the switch drawn from the reader, saved through the saver only when the card was on the form (`page_clicks_card`), under the settings dialog's manager gate; a read-only sentence the site can copy into its privacy text (C16).
+- Site Settings, Features, card "Clicks and scrolling" (`pgset-page-clicks`, CM2 #9946): the switch drawn from the reader, saved through the saver only when the card was on the form (`page_clicks_card`), under the settings dialog's manager gate; the sentence the site can copy into its privacy text shown whole as a selectable text block, per device type and "no IP address" (C16; architect, message 6542).
