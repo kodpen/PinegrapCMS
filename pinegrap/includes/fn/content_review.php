@@ -784,6 +784,23 @@ function pg_content_review_announce_due($now = null)
 }
 
 /**
+ * Whether the Workspace is on, its files loaded for "Make a task" (they are
+ * not loaded on every panel screen).
+ *
+ * @return bool
+ */
+function pg_content_review_workspace()
+{
+    if (!defined('WORKSPACE_ENABLED') || !WORKSPACE_ENABLED || !is_file(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php')) {
+        return false;
+    }
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
+
+    return function_exists('ws_followup_task_open') && function_exists('ws_rights');
+}
+
+/**
  * Whether "Make a task" is offered on an item, pure: only with the
  * Workspace on, an item with a person, and that person a member of the
  * Workspace's team.
@@ -849,7 +866,7 @@ function pg_content_review_task_open(array $user, $kind, $item_id)
 
     $kind = pg_content_review_kind($kind);
     $row = pg_content_review_get($kind, $item_id);
-    $workspace = defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED && function_exists('ws_followup_task_open');
+    $workspace = pg_content_review_workspace();
     $person_id = $row ? (int) $row['user_id'] : 0;
     $person = ($workspace && ($person_id > 0)) ? ws_change_viewer_for_id($person_id) : null;
 

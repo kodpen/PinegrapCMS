@@ -132,6 +132,8 @@ function test_content_review_list_actions_by_role()
 	pg_assert_same(false, pg_content_review_list_action_allowed('set_person', 3), 'a user may not set the person');
 	pg_assert_same(false, pg_content_review_list_action_allowed('set_date', 3), 'nor the date');
 	pg_assert_same(false, pg_content_review_list_action_allowed('clear', 3), 'nor clear');
+	pg_assert_true(pg_content_review_list_action_allowed('make_task', 2), 'a manager may make a task');
+	pg_assert_same(false, pg_content_review_list_action_allowed('make_task', 3), 'a user may not');
 	pg_assert_same(false, pg_content_review_list_action_allowed('delete', 0), 'an unknown action is refused');
 }
 

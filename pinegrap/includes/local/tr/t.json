@@ -8888,6 +8888,7 @@
     "This is the last page of the design; the design stays with no pages and the editor returns to its home screen.": "Bu, tasarımın son sayfası; tasarım sayfasız kalır ve editör ana ekranına döner.",
     "This is the server or a proxy, not your own address: every visitor reaches the site through it, so listing it lets everyone see the site. Add it to Trusted Proxies on the Firewall card first; then this line shows your own address.": "Bu sizin adresiniz değil, sunucunun ya da bir vekil sunucunun adresi: her ziyaretçi siteye onun üzerinden geliyor, listeye eklenirse siteyi herkes görür. Önce Güvenlik Duvarı kartında Güvenilen Vekil Sunucular'a ekleyin; sonra bu satır sizin adresinizi gösterir.",
     "This is your own account. Ask another administrator to erase it.": "Bu sizin kendi hesabınız. Silmesi için başka bir yöneticiye başvurun.",
+    "This item already has an open task.": "Bu öğenin açık bir görevi zaten var.",
     "This item cannot be delivered to the specified shipping address. Please remove it from your order to continue.": "Bu ürün belirtilen teslimat adresine gönderilemiyor. Devam etmek için lütfen siparişinizden kaldırın.",
     "This item is no longer listed.": "Bu öğe artık listede değil.",
     "This item's shipping address": "Bu kalemin kargo adresi",
