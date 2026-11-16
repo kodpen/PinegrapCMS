@@ -328,3 +328,60 @@ function pg_auto_dialog_delete($auto_dialog_id)
 
     return true;
 }
+
+/**
+ * When a pop-up opens, in a few words for the list: after its delay (or at
+ * once), at its share of the page scrolled, or when the visitor is leaving.
+ *
+ * @param array $row an auto_dialogs row
+ * @return string plain text
+ */
+function pg_auto_dialog_opens_label($row)
+{
+    $open = pg_auto_dialog_open_settings($row);
+
+    if ($open['open_on'] === 'scroll') {
+        return lang(array('string' => 'At {var:1}% scrolled', 'vars' => (string) $open['open_scroll']));
+    }
+
+    if ($open['open_on'] === 'leave') {
+        return lang('When the visitor is leaving');
+    }
+
+    $delay = (int) ($row['delay'] ?? 0);
+
+    return ($delay > 0)
+        ? lang(array('string' => 'After {var:1} second{suffix:1}', 'vars' => pg_format_number($delay, 0), 'suffix' => array(($delay > 1) ? 's' : '')))
+        : lang('Immediately');
+}
+
+/**
+ * A pop-up's size for the list: "400 × 650 px", Auto for a side left blank.
+ *
+ * @param int $width
+ * @param int $height
+ * @return string HTML
+ */
+function pg_auto_dialog_size_label($width, $height)
+{
+    $side = function ($pixels) {
+        return ((int) $pixels > 0) ? h(pg_format_number((int) $pixels, 0)) : h(lang('Auto'));
+    };
+
+    return $side($width) . ' &times; ' . $side($height) . ((((int) $width > 0) || ((int) $height > 0)) ? ' px' : '');
+}
+
+/**
+ * The list's Enabled cell: the shared check cell, carrying on or off for the
+ * toolbar's Enabled / Disabled filter (data-pg-filter).
+ *
+ * @param bool $on
+ * @return array cell, as pg_list_cell() builds it
+ */
+function pg_auto_dialog_list_enabled_cell($on)
+{
+    $cell = pg_list_table_check_cell($on);
+    $cell['attributes']['data-pg-filter'] = $on ? 'on' : 'off';
+
+    return $cell;
+}

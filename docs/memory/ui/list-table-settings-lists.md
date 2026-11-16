@@ -11,7 +11,7 @@ description: Countries, states, zones, tax zones, currencies, referral sources, 
 ## What stays as it was?
 - The server still orders the rows (countries and states by the label in the panel language, currencies by `pg_currency_list_sort()`); the browser then sorts by the kept levels, comparing the text on screen in Turkish collation.
 - Contact groups and calendars print only the records the user may use. Membership and Members have no sort code in `$sort_columns`, so their headings do not sort.
-- An auto dialog's name keeps `status_enabled`/`status_disabled`; its Preview link is an actions column at the row's end.
+- An auto dialog's name keeps `status_enabled`/`status_disabled`; its Preview link is an actions column at the row's end. Its columns and filter since #9880: `auto-dialog-screens-look.md`.
 - A creator or modifier the database no longer knows shows only the time (the event locations list printed "[Unknown]" before).
 
 Tests: `tests/settings_lists_td11_test.php`.
