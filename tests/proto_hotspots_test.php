@@ -478,6 +478,109 @@ JS
 	pg_assert_true($result['small'][0] > 48, 'and stands in the middle');
 }
 
+// The list beside the canvas (F15) and the problems (F19, F20), from the
+// marked design: the selected page's links out with their targets, a
+// broken one with why; the links into it, a shared part's said so; the
+// shared parts on the page, nested ones too; nothing selected and a chip
+// give none; every broken link of the design and each frame's count.
+function test_proto_hotspots_list_and_problems()
+{
+	$tab = function ($node, $label, $key) {
+		return array('nodeId' => $node, 'source' => 'href', 'href' => '/' . $key, 'label' => $label, 'mark' => 'tab', 'tab' => $key, 'draft' => false);
+	};
+	$marked = array(
+		'pages' => array(
+			array('key' => 'p1', 'name' => 'home', 'shared' => array(5), 'hotspots' => array(
+				$tab('a', 'About', 'p2'),
+				array('nodeId' => 'b', 'source' => 'btn', 'href' => 'https://x.org/', 'label' => '', 'mark' => 'external', 'tab' => '', 'draft' => false),
+				array('nodeId' => 'm', 'source' => 'menu', 'name' => 'Top', 'links' => array(
+					array('href' => '/home', 'label' => 'Home', 'mark' => 'tab', 'tab' => 'p1'),
+				)),
+				array('nodeId' => 'g', 'source' => 'menu', 'name' => 'Gone', 'links' => null),
+			)),
+			array('key' => 'p2', 'name' => 'about', 'shared' => array(5), 'hotspots' => array()),
+			array('key' => 'p3', 'name' => '', 'shared' => array(), 'hotspots' => array($tab('c', 'Back', 'p2'))),
+		),
+		'shared' => array(
+			array('id' => 5, 'name' => 'Header', 'pages' => 2, 'loaded' => true, 'shared' => array(6), 'hotspots' => array(
+				$tab('h', 'Contact', 'p2'),
+				array('nodeId' => 'i', 'source' => 'href', 'href' => '/old', 'label' => 'Old', 'mark' => 'broken', 'tab' => '', 'draft' => false),
+				array('nodeId' => 'j', 'source' => 'href', 'href' => '/kept', 'label' => 'Kept', 'mark' => 'broken', 'tab' => '', 'draft' => false, 'bound' => '77'),
+				array('nodeId' => 'k', 'source' => 'btn', 'href' => '', 'label' => 'Empty', 'mark' => 'broken', 'tab' => '', 'draft' => false),
+			)),
+			array('id' => 6, 'name' => 'Logo', 'pages' => 2, 'loaded' => true, 'shared' => array(), 'hotspots' => array()),
+		),
+	);
+	$result = proto_hotspots_test_node('var l = H.layout(' . proto_hotspots_test_js($marked) . ', {});'
+		. ' out = { home: H.listOf(l, "p:p1"), about: H.listOf(l, "p:p2"), header: H.listOf(l, "s:5"), none: H.listOf(l, null), chip: H.listOf(l, "c:0"), gone: H.listOf(l, "p:zz"), broken: H.brokenOf(l) };');
+
+	if ($result === null) {
+		return;
+	}
+
+	$out = function ($list) {
+		return array_map(function ($row) {
+			return array($row['port'], $row['label'], $row['mark'], $row['to'], $row['target'], $row['why'], $row['drawable']);
+		}, $list['outgoing']);
+	};
+	pg_assert_same(array('id' => 'p:p1', 'kind' => 'page', 'name' => 'home'), array_intersect_key($result['home'], array('id' => 1, 'kind' => 1, 'name' => 1)), 'the selected frame');
+	pg_assert_same(array(
+		array('h0', 'About', 'tab', 'p:p2', 'about', '', true),
+		array('h1', 'https://x.org/', 'external', 'c:0', 'https://x.org/', '', true),
+		array('h2', 'Top › Home', 'tab', 'p:p1', 'home', '', false),
+		array('h3', 'Gone', 'broken', '', '', 'menu', false),
+	), $out($result['home']), 'outgoing: label, mark, target; a menu link read-only; a menu not read is broken by its menu');
+	pg_assert_same(array(), $result['home']['incoming'], 'nothing leads into it but itself');
+	pg_assert_same(array(array('id' => 's:5', 'name' => 'Header'), array('id' => 's:6', 'name' => 'Logo')), $result['home']['parts'], 'its shared parts, nested ones too');
+	pg_assert_same(array(
+		array('frame' => 'p:p1', 'port' => 'h0', 'label' => 'About', 'source' => 'home', 'shared' => false),
+		array('frame' => 'p:p3', 'port' => 'h0', 'label' => 'Back', 'source' => '', 'shared' => false),
+		array('frame' => 's:5', 'port' => 'h0', 'label' => 'Contact', 'source' => 'Header', 'shared' => true),
+	), $result['about']['incoming'], 'incoming: source and label, a shared part said so');
+	pg_assert_same(array(), $result['about']['outgoing'], 'a page with no links: none out');
+	pg_assert_same(array('page', 'kept', 'address'), array_map(function ($row) { return $row['why']; }, array_slice($result['header']['outgoing'], 1)), 'why each is broken: no page at it, its page gone, no address');
+	pg_assert_same(array(), $result['header']['parts'], 'a shared frame lists no parts');
+	pg_assert_same(array(null, null, null), array($result['none'], $result['chip'], $result['gone']), 'nothing selected, a chip or no such frame: no list');
+	pg_assert_same(array(
+		array('frame' => 'p:p1', 'port' => 'h3', 'label' => 'Gone', 'href' => '', 'why' => 'menu'),
+		array('frame' => 's:5', 'port' => 'h1', 'label' => 'Old', 'href' => '/old', 'why' => 'page'),
+		array('frame' => 's:5', 'port' => 'h2', 'label' => 'Kept', 'href' => '/kept', 'why' => 'kept'),
+		array('frame' => 's:5', 'port' => 'h3', 'label' => 'Empty', 'href' => '', 'why' => 'address'),
+	), $result['broken']['list'], 'every broken link of the design, in the frames\' order');
+	pg_assert_same(array('p:p1' => 1, 's:5' => 3), $result['broken']['count'], 'each frame\'s count');
+}
+
+// The view's links panel and problems (F15-F20, F24): an aside beside the
+// stage drawn from listOf(), never from the canvas; a frame row and a list
+// row pick one link; "Change target" and "Open in the editor" go through
+// today's menu and row opening; "N broken" and its list and each frame's
+// badge from brokenOf(); the panel's open state per browser, closed under
+// 1,100 px; Play through _pgPrototypeUrl().
+function test_proto_hotspots_view_list_and_problems()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/style_designer.css');
+	pg_assert_contains("ui.list = _sdProtoEl('aside', 'sd-proto-list');", $source, 'the panel is an aside');
+	pg_assert_contains('ui.body.appendChild(ui.stage);', $source, 'beside the stage');
+	pg_assert_contains('window.PGProtoHotspots.listOf(_sdProto.layout, canvas.focused())', $source, 'its rows from the marked layout');
+	pg_assert_contains("if (done.kind === 'row' && !done.moved && event.type === 'pointerup') _sdProtoPickRow(done.row);", $source, 'a link row on the canvas picks the link');
+	pg_assert_contains("if (row && (event.key === 'Enter' || event.key === ' ')) { _sdProtoPickRow(row); return true; }", $source, 'Enter on it does too');
+	pg_assert_contains('return rowEl ? _sdProtoMenuOpen(rowEl, anchor) : false;', $source, '"Change target" opens today\'s target menu at the list row');
+	pg_assert_contains('if (rowEl) _sdProtoOpenRow(rowEl);', $source, '"Open in the editor" opens the element as a row click did');
+	pg_assert_contains('if (other) canvas.view.reveal(other);', $source, 'a picked link\'s other end comes into view');
+	pg_assert_contains('_sdProto.broken = H.brokenOf(l);', $source, 'the broken links from the marked layout');
+	pg_assert_contains("var badge = _sdProtoEl('span', 'sd-proto-badge', String(brokenHere));", $source, 'a frame\'s badge');
+	pg_assert_contains("ui.broken.textContent = broken ? _sdT('{var:1} broken', broken) : '';", $source, '"N broken" in the bar');
+	pg_assert_contains("window.localStorage.getItem('pg_proto_list')", $source, 'the panel\'s state per browser');
+	pg_assert_contains("window.matchMedia('(min-width: 1100px)').matches", $source, 'closed by default under 1,100 px');
+	pg_assert_contains('var url = page ? _pgPrototypeUrl(page) : \'\';', $source, 'Play opens the viewer at the selected page');
+	pg_assert_contains('ui.play.hidden = !_sdProtoPlayUrl();', $source, 'and is not shown without an address');
+	pg_assert_contains(".sd-proto-bar { flex-wrap: wrap; row-gap: 2px; }", $css, 'on a phone the bar wraps, so every tool stays in reach');
+	foreach (array('.sd-proto-list-open .sd-proto-list', '.sd-proto-broken', '.sd-proto-problems', '.sd-proto-badge', '.sd-proto-row.sd-proto-row-picked', '.sd-proto-edge-picked') as $selector) {
+		pg_assert_contains($selector, $css, 'styled: ' . $selector);
+	}
+}
+
 // The view turns on the core's right-angle arrows (F14).
 function test_proto_hotspots_view_routes_arrows()
 {
@@ -722,7 +825,7 @@ function test_proto_hotspots_view_focus_and_all_arrows()
 	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/style_designer.css');
 
 	pg_assert_contains('focus: true,', $source, 'the view passes the focus');
-	pg_assert_contains('focusChanged: function (id) { _sdProtoFocusMarks(id); },', $source, 'a change of focus marks the rows again');
+	pg_assert_contains('focusChanged: function (id) { _sdProtoFocused(id); },', $source, 'a change of focus marks the rows again and draws the links panel');
 	pg_assert_contains('groups: function () { return _sdProto.layout ? _sdProto.layout.headings : []; },', $source, 'the section headings come from the layout');
 	pg_assert_contains("canvas.groups();", $source, 'and are drawn with each draw');
 	pg_assert_contains("var focusOn = (first || _sdProto.focusOpen) ? 'p:' + _activeKey : canvas.focused();", $source, 'opening selects the open tab\'s frame');

@@ -929,6 +929,9 @@
                     pages: (group[0] === 'shared') ? frame.pages : 0,
                     loaded: (group[0] === 'shared') ? frame.loaded : true,
                     rows: rows,
+                    // The shared parts placed on the page (ids, nested ones
+                    // added below).
+                    parts: (group[0] === 'page' && Array.isArray(frame.shared)) ? frame.shared.slice() : [],
                     sketch: bands,
                     pic: pic,
                     thumb: thumb,
@@ -968,6 +971,32 @@
         // Chips grouped by mark, in CHIP_MARKS order, then as first met.
         chips.sort(function (a, b) {
             return (CHIP_MARKS.indexOf(a.mark) - CHIP_MARKS.indexOf(b.mark)) || (parseInt(a.id.substr(2), 10) - parseInt(b.id.substr(2), 10));
+        });
+
+        // A page's shared parts with those placed inside them, each once,
+        // as frames ('s:<id>').
+        var innerOf = {};
+
+        (marked.shared || []).forEach(function (one) {
+            innerOf[String(one.id)] = Array.isArray(one.shared) ? one.shared : [];
+        });
+        frames.forEach(function (frame) {
+            var seen = {};
+            var queue = frame.parts.slice();
+
+            frame.parts = [];
+
+            while (queue.length) {
+                var sid = String(queue.shift());
+
+                if (seen[sid]) {
+                    continue;
+                }
+
+                seen[sid] = true;
+                frame.parts.push('s:' + sid);
+                queue = queue.concat(innerOf[sid] || []);
+            }
         });
 
         var G = window.PGGraphCanvas;
@@ -1461,6 +1490,108 @@
         return out;
     }
 
+    // Why a broken row is broken: 'menu' (a menu or region the read does
+    // not know), 'kept' (kept by a page id whose page is gone), 'address'
+    // (no address), else 'page' (no page at its address).
+    function brokenWhy(row) {
+        if (row.from && row.label === row.from && str(row.href) === '') {
+            return 'menu';
+        }
+
+        if (str(row.bound) !== '') {
+            return 'kept';
+        }
+
+        return (str(row.href) === '') ? 'address' : 'page';
+    }
+
+    function rowLabel(row) {
+        return (row.from && row.from !== row.label) ? row.from + ' › ' + row.label : row.label;
+    }
+
+    function itemsById(laid) {
+        var byId = {};
+
+        ((laid && laid.frames) || []).concat((laid && laid.chips) || []).forEach(function (item) {
+            byId[item.id] = item;
+        });
+
+        return byId;
+    }
+
+    // The list beside the canvas for a frame of a layout (its id; null for
+    // none, a chip or no such frame): { id, kind, name, outgoing, incoming,
+    // parts }. outgoing, one per row: { port, label, mark, href, draft, to
+    // (the frame or chip its arrow ends on, '' for none), target (that
+    // frame's name or chip's href), targetKind, why (a broken row's
+    // brokenWhy(), else ''), drawable }; incoming, the arrows into it from
+    // other frames: { frame, port, label, source (its name), shared };
+    // parts, a page's shared parts { id, name }.
+    function listOf(laid, id) {
+        var byId = itemsById(laid);
+        var frame = (id === null || id === undefined) ? null : byId[String(id)];
+
+        if (!frame || (frame.kind !== 'page' && frame.kind !== 'shared')) {
+            return null;
+        }
+
+        var links = window.PGGraphCanvas.linksOf(laid.edges || [], frame.id);
+        var edgeOf = {};
+
+        links.out.forEach(function (e) { edgeOf[e.port] = e; });
+
+        return {
+            id: frame.id,
+            kind: frame.kind,
+            name: frame.name,
+            outgoing: frame.rows.map(function (row) {
+                var e = edgeOf[row.port];
+                var to = e ? byId[e.to] : null;
+
+                return {
+                    port: row.port,
+                    label: rowLabel(row),
+                    mark: row.mark,
+                    href: row.href,
+                    draft: !!row.draft,
+                    to: to ? to.id : '',
+                    target: to ? (to.kind === 'chip' ? to.href : str(to.name)) : '',
+                    targetKind: to ? to.kind : '',
+                    why: (row.mark === 'broken') ? brokenWhy(row) : '',
+                    drawable: drawable(row)
+                };
+            }),
+            incoming: links['in'].filter(function (e) { return e.from !== frame.id && byId[e.from]; }).map(function (e) {
+                var source = byId[e.from];
+                var row = (source.rows || []).filter(function (r) { return r.port === e.port; })[0];
+
+                return { frame: source.id, port: e.port, label: row ? rowLabel(row) : '', source: str(source.name), shared: source.kind === 'shared' };
+            }),
+            parts: (frame.parts || []).filter(function (pid) { return byId[pid]; }).map(function (pid) {
+                return { id: pid, name: str(byId[pid].name) };
+            })
+        };
+    }
+
+    // Every broken link of a layout, in its frames' order: { list: [{ frame,
+    // port, label, href, why }], count: { frame id: n } }.
+    function brokenOf(laid) {
+        var out = { list: [], count: {} };
+
+        ((laid && laid.frames) || []).forEach(function (frame) {
+            frame.rows.forEach(function (row) {
+                if (row.mark !== 'broken') {
+                    return;
+                }
+
+                out.list.push({ frame: frame.id, port: row.port, label: rowLabel(row), href: row.href, why: brokenWhy(row) });
+                out.count[frame.id] = (out.count[frame.id] || 0) + 1;
+            });
+        });
+
+        return out;
+    }
+
     // Where Fit starts when a design does not fit at the smallest zoom: the
     // start frame's top left corner, raised to its band's heading when that
     // stands right above it; null without a start frame.
@@ -1554,6 +1685,9 @@
         markBound: markBound,
         drawTargets: drawTargets,
         focusOf: focusOf,
-        fitStart: fitStart
+        fitStart: fitStart,
+        listOf: listOf,
+        brokenOf: brokenOf,
+        brokenWhy: brokenWhy
     };
 })();

@@ -815,3 +815,1029 @@ function pg_page_bundle_remove_item($bundle, $item_id)
 
     return array('ok' => true, 'error' => '');
 }
+
+// ── Publishing and taking back ─────────────────────────────────────────
+//
+// A publish checks every page first (its lock, the page save's dry run, the
+// home page, "changed since") and writes nothing while one is in the way.
+// Then it writes page by page through what exists: a new page leaves the
+// Drafts folder (pg_page_draft_move()), a replacement's tree, title and
+// description are saved onto its live page (pg_designer_save_page(), one
+// revision with the source 'bundle'). A write that fails takes back at once
+// what this publish wrote, so a bundle is never left half live; only when
+// that take-back fails too is the bundle partly published. A take-back
+// returns a replaced page to the revision it had before, as a new publish
+// with the source 'restore', while its state is still the one written, and
+// a new page to Drafts. The planners are pure; the writes are callables, so
+// the order and the take-back are tested without a database.
+
+/**
+ * What a publish does with each waiting page, from the checks' answers.
+ * A locked page or one the save refuses stops everything; a replacement
+ * whose live page changed since needs the person's choice, "replace"
+ * (Replace anyway) or "leave" (Leave out). Pure.
+ *
+ * @param array $items   waiting page_bundle_item rows (id, live_page_id,
+ *                       draft_name, live_name), in the bundle's order
+ * @param array $checks  item id => locked (bool), errors (list), changed (bool)
+ * @param array $choices item id => 'replace' or 'leave'
+ * @return array ok, write (ids), leave (ids), ask (ids), pages (item_id,
+ *               name, replacement, state: ready, locked, refused, changed,
+ *               left_out; text: the save's answer for a refused page)
+ */
+function pg_page_bundle_publish_plan($items, $checks, $choices)
+{
+    $plan = array('ok' => false, 'write' => array(), 'leave' => array(), 'ask' => array(), 'pages' => array());
+    $stop = false;
+
+    foreach ((array) $items as $item) {
+        $id = (int) $item['id'];
+        $check = isset($checks[$id]) ? (array) $checks[$id] : array();
+        $choice = isset($choices[$id]) ? (string) $choices[$id] : '';
+        $replacement = (int) $item['live_page_id'] > 0;
+        $page = array(
+            'item_id' => $id,
+            'name' => (string) ($replacement ? $item['live_name'] : $item['draft_name']),
+            'replacement' => $replacement,
+            'state' => 'ready',
+            'text' => '',
+        );
+
+        if (!empty($check['locked'])) {
+            $page['state'] = 'locked';
+            $stop = true;
+        } elseif (!empty($check['errors'])) {
+            $page['state'] = 'refused';
+            $page['text'] = implode(' ', (array) $check['errors']);
+            $stop = true;
+        } elseif (!empty($check['changed']) && ($choice === 'leave')) {
+            $page['state'] = 'left_out';
+            $plan['leave'][] = $id;
+        } elseif (!empty($check['changed']) && ($choice !== 'replace')) {
+            $page['state'] = 'changed';
+            $plan['ask'][] = $id;
+        } else {
+            $plan['write'][] = $id;
+        }
+
+        $plan['pages'][] = $page;
+    }
+
+    if ($stop || $plan['ask']) {
+        $plan['write'] = array();
+    }
+
+    $plan['ok'] = !$stop && !$plan['ask'] && (count($plan['write']) > 0);
+
+    return $plan;
+}
+
+/**
+ * Writes the pages in order; at the first failure takes back what this run
+ * wrote, newest first. Pure: the writes are given.
+ *
+ * @param array    $ids   item ids, in order
+ * @param callable $write function (id): array ok, error
+ * @param callable $undo  function (id): bool
+ * @return array outcome (published, taken_back: nothing of this run stands,
+ *               partial: the take-back failed too), written (ids), failed
+ *               (the id that failed, 0 for none), reason (its answer),
+ *               stands (ids written that could not be taken back)
+ */
+function pg_page_bundle_publish_run($ids, $write, $undo)
+{
+    $run = array('outcome' => 'published', 'written' => array(), 'failed' => 0, 'reason' => '', 'stands' => array());
+
+    foreach ((array) $ids as $id) {
+        $id = (int) $id;
+        $done = $write($id);
+
+        if (!empty($done['ok'])) {
+            $run['written'][] = $id;
+            continue;
+        }
+
+        $run['failed'] = $id;
+        $run['reason'] = isset($done['error']) ? (string) $done['error'] : '';
+
+        // Every page is tried even after one fails: the more that is taken
+        // back, the less stands.
+        foreach (array_reverse($run['written']) as $back) {
+            if (!$undo($back)) {
+                $run['stands'][] = $back;
+            }
+        }
+
+        $run['stands'] = array_reverse($run['stands']);
+        $run['outcome'] = $run['stands'] ? 'partial' : 'taken_back';
+
+        break;
+    }
+
+    return $run;
+}
+
+/**
+ * The status a bundle moves to after a publish run, '' when it stays where
+ * it was (a run taken back leaves it open, scheduled or partly published
+ * as it was). Pure.
+ *
+ * @param string $outcome pg_page_bundle_publish_run()
+ * @param string $from    the bundle's status
+ * @return string
+ */
+function pg_page_bundle_publish_status($outcome, $from)
+{
+    $to = ($outcome === 'published') ? 'published' : (($outcome === 'partial') ? 'partial' : '');
+
+    return (($to !== '') && pg_page_bundle_may_move($from, $to)) ? $to : '';
+}
+
+/**
+ * What a take-back can bring back. A new page goes back to Drafts while it
+ * is still on the site and not the home page; a replaced page returns to
+ * its revision before while its state is the one written and that revision
+ * is still kept. Pure: the probes are given.
+ *
+ * @param array $items  written page_bundle_item rows (id, live_page_id,
+ *                      revision_before, written_state, draft_name, live_name)
+ * @param array $probes item id => exists (on the site, outside the bin),
+ *                      home (a new page that is the home page now), state
+ *                      (a replaced page's state now), revision (the revision
+ *                      before is still kept)
+ * @return array can (ids), cannot (item_id, name, reason: gone, home,
+ *               changed, swept)
+ */
+function pg_page_bundle_take_back_plan($items, $probes)
+{
+    $plan = array('can' => array(), 'cannot' => array());
+
+    foreach ((array) $items as $item) {
+        $id = (int) $item['id'];
+        $probe = isset($probes[$id]) ? (array) $probes[$id] : array();
+        $replacement = (int) $item['live_page_id'] > 0;
+        $reason = '';
+
+        if (empty($probe['exists'])) {
+            $reason = 'gone';
+        } elseif (!$replacement) {
+            $reason = !empty($probe['home']) ? 'home' : '';
+        } elseif ((string) ($probe['state'] ?? '') !== (string) $item['written_state']) {
+            $reason = 'changed';
+        } elseif (((int) $item['revision_before'] <= 0) || empty($probe['revision'])) {
+            $reason = 'swept';
+        }
+
+        if ($reason === '') {
+            $plan['can'][] = $id;
+        } else {
+            $plan['cannot'][] = array(
+                'item_id' => $id,
+                'name' => (string) ($replacement ? $item['live_name'] : $item['draft_name']),
+                'reason' => $reason,
+            );
+        }
+    }
+
+    return $plan;
+}
+
+/**
+ * Whether a take-back may run: something comes back, and every page that
+ * does not was shown to the person (nothing is kept silently). Pure.
+ *
+ * @param array $plan     pg_page_bundle_take_back_plan()
+ * @param array $accepted the item ids the dialog listed as kept
+ * @return bool
+ */
+function pg_page_bundle_take_back_allowed($plan, $accepted)
+{
+    if (empty($plan['can'])) {
+        return false;
+    }
+
+    $accepted = array_map('intval', (array) $accepted);
+
+    foreach ((array) $plan['cannot'] as $kept) {
+        if (!in_array((int) $kept['item_id'], $accepted, true)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+/**
+ * Why a page cannot be taken back, for the take-back dialog.
+ *
+ * @param string $reason gone, home, changed, swept
+ * @return string
+ */
+function pg_page_bundle_take_back_reason_text($reason)
+{
+    switch ((string) $reason) {
+        case 'gone':
+            return lang('The page is no longer on the site.');
+        case 'home':
+            return lang('The page is the home page now, so it stays on the site.');
+        case 'changed':
+            return lang('The page was published again since; it keeps that version.');
+        case 'swept':
+            return lang('The version before the bundle is no longer kept in the page\'s History.');
+    }
+
+    return '';
+}
+
+/**
+ * Takes back each page; one that fails stays as it is. Pure: the take-back
+ * of a page is given.
+ *
+ * @param array    $ids
+ * @param callable $undo function (id): bool
+ * @return array done (ids), failed (ids)
+ */
+function pg_page_bundle_take_back_run($ids, $undo)
+{
+    $run = array('done' => array(), 'failed' => array());
+
+    foreach ((array) $ids as $id) {
+        $id = (int) $id;
+
+        if ($undo($id)) {
+            $run['done'][] = $id;
+        } else {
+            $run['failed'][] = $id;
+        }
+    }
+
+    return $run;
+}
+
+/**
+ * The bundle named beside each of a page's revisions with the source
+ * 'bundle': the first such revision after the one a bundle's item kept as
+ * its revision before. Pure.
+ *
+ * @param array $revisions revision_no, source (any order)
+ * @param array $items     the page's bundle items: revision_before, bundle_name
+ * @return array revision_no => bundle name
+ */
+function pg_page_bundle_revision_bundle_names($revisions, $items)
+{
+    $numbers = array();
+
+    foreach ((array) $revisions as $revision) {
+        if ((string) $revision['source'] === 'bundle') {
+            $numbers[] = (int) $revision['revision_no'];
+        }
+    }
+
+    sort($numbers);
+    $out = array();
+
+    foreach ((array) $items as $item) {
+        $before = (int) $item['revision_before'];
+
+        if ($before <= 0) {
+            continue;
+        }
+
+        foreach ($numbers as $no) {
+            if ($no > $before) {
+                $out[$no] = (string) $item['bundle_name'];
+                break;
+            }
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * The bundle named beside a page's bundle revisions in its History.
+ *
+ * @param int   $page_id
+ * @param array $revisions pg_page_revisions_list() rows
+ * @return array revision_no => bundle name
+ */
+function pg_page_bundle_revision_names($page_id, $revisions)
+{
+    $page_id = (int) $page_id;
+
+    if (($page_id <= 0) || !pg_page_bundles_ready()) {
+        return array();
+    }
+
+    $items = db_items(
+        "SELECT page_bundle_item.revision_before, page_bundle.name AS bundle_name
+        FROM page_bundle_item
+        JOIN page_bundle ON page_bundle.id = page_bundle_item.bundle_id
+        WHERE page_bundle_item.live_page_id = '$page_id' AND page_bundle_item.revision_before > 0");
+
+    return pg_page_bundle_revision_bundle_names($revisions, (array) $items);
+}
+
+/**
+ * A page's fields as the page save takes them, with a tree, title and
+ * description put in their place; null when the page cannot be read.
+ *
+ * @param int    $page_id
+ * @param string $tree_json
+ * @param string $title
+ * @param string $description
+ * @return array|null style_id, fields
+ */
+function pg_page_bundle_save_fields($page_id, $tree_json, $title, $description)
+{
+    $page_id = (int) $page_id;
+    $style_id = (int) db_value("SELECT page_style FROM page WHERE page_id = '$page_id' LIMIT 1");
+
+    foreach (($style_id > 0) ? pg_designer_load_pages($style_id) : array() as $row) {
+        if ((int) $row['page_id'] === $page_id) {
+            // The page keeps its name, folder, flags and meta tags as stored.
+            $row['tree_json'] = (string) $tree_json;
+            $row['page_title'] = (string) $title;
+            $row['page_meta_description'] = (string) $description;
+
+            return array('style_id' => $style_id, 'fields' => $row);
+        }
+    }
+
+    return null;
+}
+
+/**
+ * A draft's tree, title and description, and whether it is still a draft
+ * and the home page; null when it is gone.
+ *
+ * @param int $page_id
+ * @return array|null
+ */
+function pg_page_bundle_draft_row($page_id)
+{
+    $page_id = (int) $page_id;
+
+    $row = db_item(
+        "SELECT page_id, page_name, page_folder, page_home, page_title, page_meta_description, page_tree_json FROM page
+        WHERE page_id = '$page_id'" . pg_designer_not_binned_sql() . " LIMIT 1");
+
+    return is_array($row) ? $row : null;
+}
+
+/**
+ * The checks of one waiting page before a publish: its lock (and the live
+ * page's), the save's dry run, the home page, "changed since".
+ *
+ * @param array $item page_bundle_item row with draft_name, live_name
+ * @param array $user
+ * @return array locked, errors, changed
+ */
+function pg_page_bundle_check_item($item, $user)
+{
+    require_once(PG_FUNCTIONS_DIR . '/includes/designer_collab.php');
+
+    $out = array('locked' => false, 'errors' => array(), 'changed' => false);
+    $draft_id = (int) $item['draft_page_id'];
+    $live_id = (int) $item['live_page_id'];
+
+    if (!pg_collab_may_edit_page('', $draft_id) || (($live_id > 0) && !pg_collab_may_edit_page('', $live_id))) {
+        $out['locked'] = true;
+
+        return $out;
+    }
+
+    $draft = pg_page_bundle_draft_row($draft_id);
+
+    if (!$draft || !pg_page_is_draft($draft['page_folder'])) {
+        $out['errors'][] = lang(array('string' => 'The draft "{var:1}" is no longer in Drafts.', 'vars' => array((string) $item['draft_name'])));
+
+        return $out;
+    }
+
+    if ($live_id <= 0) {
+        // The site has one home page: a bundle never hands the flag over.
+        if ((string) $draft['page_home'] === 'yes') {
+            $out['errors'][] = lang(array('string' => 'The draft "{var:1}" is marked as the home page; a bundle cannot publish a new home page.', 'vars' => array((string) $draft['page_name'])));
+
+            return $out;
+        }
+
+        // Saved as it is, without page_draft: the save keeps it a draft, so
+        // the bundle's own hold does not refuse the check.
+        $save = pg_page_bundle_save_fields($draft_id, $draft['page_tree_json'], $draft['page_title'], $draft['page_meta_description']);
+    } else {
+        if (pg_page_bundle_live_state($live_id) === '') {
+            $out['errors'][] = lang(array('string' => 'The page "{var:1}" is no longer on the site.', 'vars' => array((string) $item['live_name'])));
+
+            return $out;
+        }
+
+        $out['changed'] = pg_page_bundle_item_changed($item);
+        $save = pg_page_bundle_save_fields($live_id, $draft['page_tree_json'], $draft['page_title'], $draft['page_meta_description']);
+    }
+
+    if (!$save) {
+        $out['errors'][] = lang('The page could not be read.');
+
+        return $out;
+    }
+
+    $save['fields']['revision_source'] = 'bundle';
+    $dry = pg_designer_save_page($save['style_id'], $save['fields'], $user, true);
+
+    if (empty($dry['ok'])) {
+        $out['errors'] = (array) $dry['errors'];
+    }
+
+    return $out;
+}
+
+/**
+ * The checks of a whole bundle before a publish, for the publish dialog
+ * and the publish itself.
+ *
+ * @param array $bundle  pg_page_bundle_get()
+ * @param array $user
+ * @param array $choices item id => 'replace' or 'leave'
+ * @return array error ('' when the bundle may be published), plan
+ *               (pg_page_bundle_publish_plan())
+ */
+function pg_page_bundle_publish_check($bundle, $user, $choices = array())
+{
+    $none = array('ok' => false, 'write' => array(), 'leave' => array(), 'ask' => array(), 'pages' => array());
+
+    if (!pg_page_bundle_user_may($user)) {
+        return array('error' => lang('Only administrators and designers can publish a release bundle.'), 'plan' => $none);
+    }
+
+    if (!pg_page_bundle_holds($bundle['status'])) {
+        return array('error' => lang('The bundle cannot make that change now.'), 'plan' => $none);
+    }
+
+    $items = array();
+    $checks = array();
+
+    foreach (pg_page_bundle_items($bundle['id']) as $item) {
+        if ((string) $item['status'] === 'waiting') {
+            $items[] = $item;
+            $checks[(int) $item['id']] = pg_page_bundle_check_item($item, $user);
+        }
+    }
+
+    $plan = pg_page_bundle_publish_plan($items, $checks, (array) $choices);
+    $error = (!$plan['ok'] && !$items) ? lang('The bundle has no page to publish.') : '';
+
+    return array('error' => $error, 'plan' => $plan);
+}
+
+/**
+ * A line in the Site Log naming the bundle.
+ *
+ * @param string $string English text with {var:1} the page, {var:2} the bundle
+ * @param string $page_name
+ * @param array  $bundle
+ * @param array  $user
+ */
+function pg_page_bundle_log($string, $page_name, $bundle, $user)
+{
+    log_activity(lang(array('string' => $string, 'vars' => array((string) $page_name, (string) $bundle['name']))),
+        isset($user['username']) ? (string) $user['username'] : '');
+}
+
+/**
+ * Writes one page of a bundle: a new page leaves Drafts; a replacement's
+ * tree, title and description are saved onto its live page, one revision
+ * with the source 'bundle'. The item keeps the revision before and the
+ * state written. The item is claimed first (waiting to written), so two
+ * publishes never write it twice; a failed write gives it back.
+ *
+ * @param array $item   page_bundle_item row with draft_name, live_name
+ * @param array $bundle
+ * @param array $user
+ * @return array ok, error
+ */
+function pg_page_bundle_write_item($item, $bundle, $user)
+{
+    require_once(PG_FUNCTIONS_DIR . '/includes/designer_collab.php');
+
+    $id = (int) $item['id'];
+    $draft_id = (int) $item['draft_page_id'];
+    $live_id = (int) $item['live_page_id'];
+
+    db_q("UPDATE page_bundle_item SET status = 'written', written_at = ? WHERE id = ? AND status = 'waiting'", array(time(), $id));
+
+    if (mysqli_affected_rows(db::$con) < 1) {
+        return array('ok' => false, 'error' => lang('The bundle was changed meanwhile; look again.'));
+    }
+
+    $give_back = function ($error) use ($id) {
+        db_q("UPDATE page_bundle_item SET status = 'waiting', written_at = 0 WHERE id = ?", array($id));
+
+        return array('ok' => false, 'error' => $error);
+    };
+
+    $busy = lang('Somebody has this page open in the Page Design Studio. Try again when they are done.');
+    $draft = pg_page_bundle_draft_row($draft_id);
+
+    if (!$draft) {
+        return $give_back(lang(array('string' => 'The draft "{var:1}" is no longer in Drafts.', 'vars' => array((string) $item['draft_name']))));
+    }
+
+    if ($live_id <= 0) {
+        if (!pg_collab_may_edit_page('', $draft_id)) {
+            return $give_back($busy);
+        }
+
+        if (!pg_page_draft_move($draft_id, false, 0, (int) $user['id'])) {
+            return $give_back(lang(array('string' => 'The draft "{var:1}" could not be put on the site.', 'vars' => array((string) $draft['page_name']))));
+        }
+
+        $state = pg_page_bundle_state_hash($draft['page_tree_json'], $draft['page_title'], $draft['page_meta_description']);
+        db_q("UPDATE page_bundle_item SET revision_before = 0, written_state = ? WHERE id = ?", array($state, $id));
+        pg_page_bundle_log('page ({var:1}) was published with the release bundle ({var:2})', $draft['page_name'], $bundle, $user);
+
+        return array('ok' => true, 'error' => '');
+    }
+
+    if (!pg_collab_may_edit_page('', $live_id)) {
+        return $give_back($busy);
+    }
+
+    $save = pg_page_bundle_save_fields($live_id, $draft['page_tree_json'], $draft['page_title'], $draft['page_meta_description']);
+
+    if (!$save) {
+        return $give_back(lang('The page could not be read.'));
+    }
+
+    $latest = pg_page_revisions_ready() ? (int) db_value("SELECT MAX(revision_no) FROM page_revisions WHERE page_id = '$live_id'") : 0;
+
+    $save['fields']['revision_source'] = 'bundle';
+    $saved = pg_designer_save_page($save['style_id'], $save['fields'], $user);
+
+    if (empty($saved['ok'])) {
+        return $give_back(implode(' ', (array) $saved['errors']));
+    }
+
+    // The revision written follows the one before; a page saved for the
+    // first time since revisions exist is seeded first, so that seed is the
+    // one before. A save that changed nothing wrote none.
+    $written_no = isset($saved['revision_no']) ? (int) $saved['revision_no'] : 0;
+    $before = ($written_no > 0) ? ($written_no - 1) : $latest;
+
+    db_q("UPDATE page_bundle_item SET revision_before = ?, written_state = ? WHERE id = ?",
+        array($before, pg_page_bundle_live_state($live_id), $id));
+    pg_page_bundle_log('page ({var:1}) was replaced by the release bundle ({var:2})', $item['live_name'], $bundle, $user);
+
+    return array('ok' => true, 'error' => '');
+}
+
+/**
+ * Takes one written page back: a new page goes back to Drafts; a replaced
+ * page gets the tree, title and description of its revision before, saved
+ * as a new publish with the source 'restore'. After a failed publish the
+ * item waits again; after a take-back it is taken back.
+ *
+ * @param array  $item   page_bundle_item row with draft_name, live_name
+ * @param array  $bundle
+ * @param array  $user
+ * @param string $to     'waiting' (a failed publish) or 'reverted'
+ * @return bool
+ */
+function pg_page_bundle_undo_item($item, $bundle, $user, $to)
+{
+    require_once(PG_FUNCTIONS_DIR . '/includes/designer_collab.php');
+
+    $id = (int) $item['id'];
+    $draft_id = (int) $item['draft_page_id'];
+    $live_id = (int) $item['live_page_id'];
+
+    if ($live_id <= 0) {
+        $page = pg_page_bundle_draft_row($draft_id);
+
+        if (!$page || ((string) $page['page_home'] === 'yes') || !pg_collab_may_edit_page('', $draft_id)) {
+            return false;
+        }
+
+        if (!pg_page_is_draft($page['page_folder']) && !pg_page_draft_move($draft_id, true, (int) $page['page_folder'], (int) $user['id'])) {
+            return false;
+        }
+
+        $name = $page['page_name'];
+    } else {
+        $revision = function_exists('pg_page_revision_get') ? pg_page_revision_get($live_id, (int) $item['revision_before']) : null;
+
+        if (!$revision || !pg_collab_may_edit_page('', $live_id)) {
+            return false;
+        }
+
+        $settings = (array) $revision['settings'];
+        $save = pg_page_bundle_save_fields($live_id, $revision['tree_json'],
+            isset($settings['page_title']) ? $settings['page_title'] : '',
+            isset($settings['page_meta_description']) ? $settings['page_meta_description'] : '');
+
+        if (!$save) {
+            return false;
+        }
+
+        $save['fields']['revision_source'] = 'restore';
+        $saved = pg_designer_save_page($save['style_id'], $save['fields'], $user);
+
+        if (empty($saved['ok'])) {
+            return false;
+        }
+
+        $name = $item['live_name'];
+    }
+
+    if ($to === 'waiting') {
+        db_q("UPDATE page_bundle_item SET status = 'waiting', revision_before = 0, written_state = '', written_at = 0 WHERE id = ?", array($id));
+    } else {
+        db_q("UPDATE page_bundle_item SET status = 'reverted' WHERE id = ?", array($id));
+    }
+
+    pg_page_bundle_log('page ({var:1}) was taken back from the release bundle ({var:2})', $name, $bundle, $user);
+
+    return true;
+}
+
+/**
+ * Publishes a bundle: the checks, then the writes, then the used
+ * replacements to the Recycle Bin. A failure takes back what was written
+ * and names the page on the bundle; only when that take-back fails is the
+ * bundle partly published.
+ *
+ * @param array $bundle  pg_page_bundle_get()
+ * @param array $user
+ * @param array $choices item id => 'replace' or 'leave', for pages changed since
+ * @return array ok, error, outcome ('' when nothing was tried), check, run
+ */
+function pg_page_bundle_publish($bundle, $user, $choices = array())
+{
+    $check = pg_page_bundle_publish_check($bundle, $user, $choices);
+    $out = array('ok' => false, 'error' => $check['error'], 'outcome' => '', 'check' => $check, 'run' => null);
+
+    if (!$check['plan']['ok']) {
+        if ($out['error'] === '') {
+            $out['error'] = lang('Some pages are in the way; nothing was published.');
+        }
+
+        return $out;
+    }
+
+    $items = array();
+
+    foreach (pg_page_bundle_items($bundle['id']) as $item) {
+        $items[(int) $item['id']] = $item;
+    }
+
+    pg_page_bundle_clear_failure($bundle);
+
+    $write = function ($id) use ($items, $bundle, $user) {
+        return pg_page_bundle_write_item($items[$id], $bundle, $user);
+    };
+    $undo = function ($id) use ($items, $bundle, $user) {
+        return pg_page_bundle_undo_item($items[$id], $bundle, $user, 'waiting');
+    };
+
+    $run = pg_page_bundle_publish_run($check['plan']['write'], $write, $undo);
+    $out['run'] = $run;
+    $out['outcome'] = $run['outcome'];
+
+    $failed_page = 0;
+
+    if ($run['failed'] > 0) {
+        $failed = $items[$run['failed']];
+        $failed_page = ((int) $failed['live_page_id'] > 0) ? (int) $failed['live_page_id'] : (int) $failed['draft_page_id'];
+    }
+
+    $to = pg_page_bundle_publish_status($run['outcome'], $bundle['status']);
+
+    if ($to === 'published') {
+        $moved = pg_page_bundle_move($bundle, 'published', array('published_by' => (int) $user['id'], 'published_at' => time()));
+
+        foreach ($check['plan']['leave'] as $id) {
+            db_q("UPDATE page_bundle_item SET status = 'left_out' WHERE id = ? AND status = 'waiting'", array((int) $id));
+        }
+
+        // The used replacements: their live pages carry them now.
+        require_once(PG_FUNCTIONS_DIR . '/includes/explorer/recycle_bin.php');
+
+        foreach ($run['written'] as $id) {
+            if ((int) $items[$id]['live_page_id'] > 0) {
+                pg_recycle_page((int) $items[$id]['draft_page_id'], $user);
+            }
+        }
+
+        log_activity(lang(array('string' => 'release bundle ({var:1}) was published', 'vars' => array((string) $bundle['name']))),
+            isset($user['username']) ? (string) $user['username'] : '');
+
+        $out['ok'] = true;
+        $out['error'] = $moved['ok'] ? '' : $moved['error'];
+
+        return $out;
+    }
+
+    if ($to === 'partial') {
+        pg_page_bundle_move($bundle, 'partial', array('failed_page_id' => $failed_page, 'failed_reason' => $run['reason']));
+        $out['error'] = lang('A page could not be published and what was written could not all be taken back; the bundle is partly published.');
+
+        return $out;
+    }
+
+    db_q("UPDATE page_bundle SET failed_page_id = ?, failed_reason = ?, updated_at = ? WHERE id = ? AND status = ?",
+        array($failed_page, mb_substr((string) $run['reason'], 0, 500, 'UTF-8'), time(), (int) $bundle['id'], (string) $bundle['status']));
+    $out['error'] = lang('A page could not be published, so what was written was taken back. The bundle stays as it was.');
+
+    return $out;
+}
+
+/**
+ * What a take-back of a bundle can bring back, for the take-back dialog
+ * and the take-back itself.
+ *
+ * @param array $bundle pg_page_bundle_get()
+ * @return array error ('' when it may be taken back), plan
+ *               (pg_page_bundle_take_back_plan()), items (id => row)
+ */
+function pg_page_bundle_take_back_check($bundle)
+{
+    $none = array('can' => array(), 'cannot' => array());
+
+    if (!pg_page_bundle_may_move($bundle['status'], 'reverted')) {
+        return array('error' => lang('Only a published bundle can be taken back.'), 'plan' => $none, 'items' => array());
+    }
+
+    $items = array();
+    $probes = array();
+
+    foreach (pg_page_bundle_items($bundle['id']) as $item) {
+        if ((string) $item['status'] !== 'written') {
+            continue;
+        }
+
+        $id = (int) $item['id'];
+        $items[$id] = $item;
+
+        if ((int) $item['live_page_id'] <= 0) {
+            $page = pg_page_bundle_draft_row($item['draft_page_id']);
+            $probes[$id] = array(
+                'exists' => $page && !pg_page_is_draft($page['page_folder']),
+                'home' => $page && ((string) $page['page_home'] === 'yes'),
+            );
+        } else {
+            $state = pg_page_bundle_live_state($item['live_page_id']);
+            $probes[$id] = array(
+                'exists' => $state !== '',
+                'state' => $state,
+                'revision' => function_exists('pg_page_revision_get')
+                    && (pg_page_revision_get($item['live_page_id'], (int) $item['revision_before']) !== null),
+            );
+        }
+    }
+
+    return array('error' => '', 'plan' => pg_page_bundle_take_back_plan(array_values($items), $probes), 'items' => $items);
+}
+
+/**
+ * Takes a bundle back: each page that can come back comes back whole; the
+ * pages that cannot must have been shown to the person ($accepted). When
+ * every page came back the bundle is taken back; a page that failed leaves
+ * it as it was, to be tried again.
+ *
+ * @param array $bundle   pg_page_bundle_get()
+ * @param array $user
+ * @param array $accepted item ids the dialog listed as kept
+ * @return array ok, error, check, run
+ */
+function pg_page_bundle_take_back($bundle, $user, $accepted = array())
+{
+    $out = array('ok' => false, 'error' => '', 'check' => null, 'run' => null);
+
+    if (!pg_page_bundle_user_may($user)) {
+        $out['error'] = lang('Only administrators and designers can take back a release bundle.');
+
+        return $out;
+    }
+
+    $check = pg_page_bundle_take_back_check($bundle);
+    $out['check'] = $check;
+
+    if ($check['error'] !== '') {
+        $out['error'] = $check['error'];
+
+        return $out;
+    }
+
+    if (!pg_page_bundle_take_back_allowed($check['plan'], $accepted)) {
+        $out['error'] = empty($check['plan']['can'])
+            ? lang('No page of this bundle can be taken back.')
+            : lang('Some pages cannot be taken back; look at the list again.');
+
+        return $out;
+    }
+
+    $items = $check['items'];
+    $undo = function ($id) use ($items, $bundle, $user) {
+        return pg_page_bundle_undo_item($items[$id], $bundle, $user, 'reverted');
+    };
+
+    $run = pg_page_bundle_take_back_run($check['plan']['can'], $undo);
+    $out['run'] = $run;
+
+    if ($run['failed']) {
+        $out['error'] = lang('Some pages could not be taken back; the bundle stays published. Try again.');
+
+        return $out;
+    }
+
+    foreach ($check['plan']['cannot'] as $kept) {
+        db_q("UPDATE page_bundle_item SET status = 'kept' WHERE id = ? AND status = 'written'", array((int) $kept['item_id']));
+    }
+
+    $moved = pg_page_bundle_move($bundle, 'reverted', array('reverted_by' => (int) $user['id'], 'reverted_at' => time()));
+
+    log_activity(lang(array('string' => 'release bundle ({var:1}) was taken back', 'vars' => array((string) $bundle['name']))),
+        isset($user['username']) ? (string) $user['username'] : '');
+
+    $out['ok'] = $moved['ok'];
+    $out['error'] = $moved['ok'] ? '' : $moved['error'];
+
+    return $out;
+}
+
+/**
+ * The publish dialog of a bundle: every waiting page with its check, a
+ * choice of "Replace anyway" or "Leave out" for a page changed since, and
+ * Publish, disabled while a page is locked or refused. The form posts
+ * action=publish, bundle_id and choice[item id] to $action_url; the screen
+ * opens it with pgUI.dialog.
+ *
+ * @param array  $bundle     pg_page_bundle_get()
+ * @param array  $check      pg_page_bundle_publish_check() (with no choices)
+ * @param string $action_url
+ * @return string
+ */
+function pg_page_bundle_publish_dialog($bundle, $check, $action_url)
+{
+    $plan = $check['plan'];
+    $stop = false;
+    $rows = '';
+
+    $states = array(
+        'ready' => array('pg-tone-teal', lang('Ready')),
+        'locked' => array('pg-tone-amber', lang('Open in the editor')),
+        'refused' => array('pg-tone-rose', lang('Cannot be saved')),
+        'changed' => array('pg-tone-amber', lang('Changed since')),
+        'left_out' => array('pg-tone-gray', lang('Left out')),
+    );
+
+    foreach ($plan['pages'] as $page) {
+        $id = (int) $page['item_id'];
+        $state = isset($states[$page['state']]) ? $states[$page['state']] : $states['ready'];
+        $stop = $stop || in_array($page['state'], array('locked', 'refused'), true);
+
+        if ($page['state'] === 'locked') {
+            $text = lang('Somebody has this page open in the Page Design Studio. Publish when they are done.');
+        } elseif ($page['state'] === 'refused') {
+            $text = $page['text'];
+        } elseif ($page['state'] === 'changed') {
+            $text = lang('The live page was published again after the copy was made. Replace it, or leave this page out.');
+        } else {
+            $text = $page['replacement'] ? lang('Replaces the live page; the draft goes to the Recycle Bin.') : lang('Goes on the site as a new page.');
+        }
+
+        $choice = '';
+
+        if ($page['state'] === 'changed') {
+            $replace = 'page_bundle_choice_' . $id . '_replace';
+            $leave = 'page_bundle_choice_' . $id . '_leave';
+            $choice = '<div class="btn-group btn-group-sm mt-2" role="group" data-pg-bundle-choice aria-label="' . h(lang(array('string' => 'What to do with {var:1}', 'vars' => array($page['name'])))) . '">'
+                . '<input type="radio" class="btn-check" name="choice[' . $id . ']" id="' . $replace . '" value="replace">'
+                . '<label class="btn btn-outline theme-secondary" for="' . $replace . '"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . h(lang('Replace anyway')) . '</label>'
+                . '<input type="radio" class="btn-check" name="choice[' . $id . ']" id="' . $leave . '" value="leave">'
+                . '<label class="btn btn-outline theme-secondary" for="' . $leave . '"><i class="bi bi-dash-circle me-1" aria-hidden="true"></i>' . h(lang('Leave out')) . '</label>'
+                . '</div>';
+        }
+
+        $rows .= '<div class="pg-list-row is-read">'
+            . '<span class="pg-icon-tile" aria-hidden="true"><i class="bi ' . ($page['replacement'] ? 'bi-arrow-left-right' : 'bi-file-earmark-plus') . '"></i></span>'
+            . '<div class="pg-list-row-main">'
+            . '<div class="pg-list-row-head"><span class="pg-list-row-title text-break">' . h($page['name']) . '</span>'
+            . '<span class="pg-pill ' . $state[0] . '">' . h($state[1]) . '</span></div>'
+            . '<div class="pg-text-2">' . h($text) . '</div>'
+            . $choice
+            . '</div></div>';
+    }
+
+    $note = $stop
+        ? '<p class="pg-text-2 mb-4">' . h(lang('Nothing is published while a page is in the way. Close the page in the editor, or fix it, and open this again.')) . '</p>'
+        : '<p class="pg-text-2 mb-4">' . h(lang('Every page goes live at one moment. If one cannot be written, what was written is taken back and the bundle stays as it is.')) . '</p>';
+
+    return '<dialog class="dialog pg-dialog-centered" id="page_bundle_publish_dialog" aria-labelledby="page_bundle_publish_title">'
+        . '<form method="post" action="' . h($action_url) . '" class="d-contents">'
+        . '<div class="dialog-header"><h5 class="dialog-title" id="page_bundle_publish_title">'
+        . h(lang(array('string' => 'Publish "{var:1}"', 'vars' => array((string) $bundle['name'])))) . '</h5>'
+        . '<button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button></div>'
+        . '<div class="dialog-body">' . get_token_field()
+        . '<input type="hidden" name="action" value="publish"><input type="hidden" name="bundle_id" value="' . (int) $bundle['id'] . '">'
+        . $note . $rows . '</div>'
+        . '<div class="dialog-footer">'
+        . '<button type="button" class="pg-button pg-button-quiet" data-bs-dismiss="dialog" autofocus>' . h(lang('Cancel')) . '</button>'
+        . '<button type="submit" class="pg-button pg-button-fill" data-pg-bundle-publish' . (($stop || $plan['ask']) ? ' disabled' : '') . '><i class="bi bi-send me-1" aria-hidden="true"></i>' . h(lang('Publish')) . '</button>'
+        . '</div></form></dialog>'
+        . ($stop ? '' : pg_page_bundle_publish_dialog_script());
+}
+
+/**
+ * The publish dialog's script, printed once a page: Publish stays disabled
+ * until each "changed since" row has its choice. Listened for on the
+ * document, so a dialog drawn into the page later is served too.
+ *
+ * @return string
+ */
+function pg_page_bundle_publish_dialog_script()
+{
+    static $printed = false;
+
+    if ($printed) {
+        return '';
+    }
+
+    $printed = true;
+
+    return '<script>
+document.addEventListener("change", function (event) {
+    var dialog = event.target.closest ? event.target.closest("#page_bundle_publish_dialog") : null;
+    if (!dialog || !event.target.matches("[data-pg-bundle-choice] input")) return;
+    var open = Array.prototype.some.call(dialog.querySelectorAll("[data-pg-bundle-choice]"), function (group) {
+        return !group.querySelector("input:checked");
+    });
+    var button = dialog.querySelector("[data-pg-bundle-publish]");
+    if (button) button.disabled = open;
+});
+</script>';
+}
+
+/**
+ * The take-back dialog of a bundle: the pages that come back and how, the
+ * pages that cannot with the reason, and Take back. The pages kept are
+ * posted as kept[] so the take-back knows the person saw them. The form
+ * posts action=take_back and bundle_id to $action_url.
+ *
+ * @param array  $bundle     pg_page_bundle_get()
+ * @param array  $check      pg_page_bundle_take_back_check()
+ * @param string $action_url
+ * @return string
+ */
+function pg_page_bundle_take_back_dialog($bundle, $check, $action_url)
+{
+    $rows = '';
+    $kept = '';
+
+    foreach ($check['plan']['can'] as $id) {
+        $item = $check['items'][$id];
+        $replacement = (int) $item['live_page_id'] > 0;
+
+        $rows .= '<div class="pg-list-row is-read">'
+            . '<span class="pg-icon-tile" aria-hidden="true"><i class="bi ' . ($replacement ? 'bi-clock-history' : 'bi-file-earmark-minus') . '"></i></span>'
+            . '<div class="pg-list-row-main">'
+            . '<div class="pg-list-row-head"><span class="pg-list-row-title text-break">' . h($replacement ? $item['live_name'] : $item['draft_name']) . '</span>'
+            . '<span class="pg-pill pg-tone-teal">' . h(lang('Comes back')) . '</span></div>'
+            . '<div class="pg-text-2">' . h($replacement
+                ? lang('Returns to the version it had before the bundle, published again.')
+                : lang('Goes back to Drafts.')) . '</div>'
+            . '</div></div>';
+    }
+
+    foreach ($check['plan']['cannot'] as $page) {
+        $kept .= '<input type="hidden" name="kept[]" value="' . (int) $page['item_id'] . '">';
+        $rows .= '<div class="pg-list-row is-read">'
+            . '<span class="pg-icon-tile" aria-hidden="true"><i class="bi bi-lock"></i></span>'
+            . '<div class="pg-list-row-main">'
+            . '<div class="pg-list-row-head"><span class="pg-list-row-title text-break">' . h($page['name']) . '</span>'
+            . '<span class="pg-pill pg-tone-amber">' . h(lang('Stays as it is')) . '</span></div>'
+            . '<div class="pg-text-2">' . h(pg_page_bundle_take_back_reason_text($page['reason'])) . '</div>'
+            . '</div></div>';
+    }
+
+    $none = empty($check['plan']['can']);
+    $note = $none
+        ? lang('No page of this bundle can be taken back.')
+        : ($check['plan']['cannot']
+            ? lang('The pages that can come back are taken back; the pages below them stay as they are now.')
+            : lang('Every page of the bundle comes back.'));
+
+    return '<dialog class="dialog pg-dialog-centered" id="page_bundle_take_back_dialog" aria-labelledby="page_bundle_take_back_title">'
+        . '<form method="post" action="' . h($action_url) . '" class="d-contents">'
+        . '<div class="dialog-header"><h5 class="dialog-title" id="page_bundle_take_back_title">'
+        . h(lang(array('string' => 'Take back "{var:1}"', 'vars' => array((string) $bundle['name'])))) . '</h5>'
+        . '<button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button></div>'
+        . '<div class="dialog-body">' . get_token_field()
+        . '<input type="hidden" name="action" value="take_back"><input type="hidden" name="bundle_id" value="' . (int) $bundle['id'] . '">' . $kept
+        . '<p class="pg-text-2 mb-4">' . h($note) . '</p>' . $rows . '</div>'
+        . '<div class="dialog-footer">'
+        . '<button type="button" class="pg-button pg-button-quiet" data-bs-dismiss="dialog" autofocus>' . h(lang('Cancel')) . '</button>'
+        . '<button type="submit" class="pg-button pg-button-fill"' . ($none ? ' disabled' : '') . '><i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i>' . h(lang('Take it back')) . '</button>'
+        . '</div></form></dialog>';
+}

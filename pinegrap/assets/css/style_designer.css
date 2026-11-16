@@ -6491,6 +6491,10 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
 .sd-proto-btn-label { font-size: .75rem; }
 @media (max-width: 767.98px) {
     .sd-proto-btn-label { display: none; }
+    /* Two rows on a phone: the title, the count and "N broken" above,
+       every tool below, so Close stays in reach. */
+    .sd-proto-bar { flex-wrap: wrap; row-gap: 2px; }
+    .sd-proto-tools { flex: 1 0 100%; flex-wrap: wrap; justify-content: space-between; }
 }
 .sd-proto-stage { flex: 1; border: 0; border-radius: 0; background: #1b1e22; }
 .sd-proto-stage .pgc-viewport { background-image: radial-gradient(circle, rgba(255,255,255,.14) 1px, transparent 1.25px); }
@@ -6607,3 +6611,64 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
 .sd-proto-menu-item[aria-checked="true"] { color: var(--sd-accent); font-weight: 600; }
 /* Read out by a screen reader only. */
 .sd-proto-sr { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+/* The stage and, right of it, the selected page's links (F15); from
+   1,100 px open beside the stage, below it over the stage's right side;
+   the bar's Links button opens and closes it (F18). */
+.sd-proto-body { position: relative; flex: 1; display: flex; min-height: 0; }
+.sd-proto-body .sd-proto-stage { min-width: 0; }
+.sd-proto-list {
+    display: none; flex: 0 0 300px; width: 300px; min-height: 0; overflow-y: auto;
+    padding: 8px 0 16px; border-left: 1px solid var(--sd-panel-border);
+    background: var(--sd-panel-bg); color: var(--sd-text); font-size: .75rem;
+}
+.sd-proto-list-open .sd-proto-list { display: block; }
+@media (max-width: 1099.98px) {
+    .sd-proto-list { position: absolute; top: 0; right: 0; bottom: 0; z-index: 2; max-width: 85%; box-shadow: -6px 0 18px rgba(0,0,0,.35); }
+}
+.sd-proto-list-head { display: flex; align-items: center; gap: 6px; margin: 0 12px 4px; font-size: .85rem; font-weight: 600; }
+.sd-proto-list-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sd-proto-list-title { margin: 12px 12px 4px; font-size: .7rem; font-weight: 600; letter-spacing: .02em; color: var(--sd-text-muted); }
+.sd-proto-list-empty, .sd-proto-list-none { margin: 4px 12px; color: var(--sd-text-muted); }
+.sd-proto-li { display: flex; align-items: flex-start; gap: 2px; padding: 0 6px 0 0; }
+.sd-proto-li-main {
+    display: flex; align-items: flex-start; gap: 6px; flex: 1; min-width: 0;
+    padding: 5px 6px 5px 12px; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer;
+}
+.sd-proto-li-main:hover, .sd-proto-li-main:focus-visible { background: rgba(255,255,255,.06); outline: none; }
+.sd-proto-li-main:focus-visible { box-shadow: inset 0 0 0 1px var(--sd-accent); }
+.sd-proto-li-text { display: flex; flex-direction: column; min-width: 0; }
+.sd-proto-li-label, .sd-proto-li-to { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sd-proto-li-to { color: var(--sd-text-muted); }
+.sd-proto-li-picked { background: color-mix(in srgb, var(--sd-accent) 16%, transparent); }
+.sd-proto-li-picked .sd-proto-li-label { color: var(--sd-accent); font-weight: 600; }
+.sd-proto-li-broken .sd-proto-li-to, .sd-proto-li-broken .sd-proto-icon { color: #ff6b6b; }
+.sd-proto-li-acts { display: flex; flex: none; gap: 2px; padding-top: 3px; }
+.sd-proto-li-act { width: 24px; height: 24px; padding: 0; border: 0; border-radius: 4px; background: none; color: var(--sd-text-muted); cursor: pointer; }
+.sd-proto-li-act:hover, .sd-proto-li-act:focus-visible { background: rgba(255,255,255,.08); color: var(--sd-text); outline: none; }
+/* "N broken" in the bar (F19) and its list; a frame's count (F20). */
+.sd-proto-broken {
+    flex: none; padding: 1px 8px; border: 1px solid #ff6b6b; border-radius: 10px;
+    background: none; color: #ff6b6b; font-size: .75rem; font-weight: 600; cursor: pointer;
+}
+.sd-proto-broken[hidden] { display: none; }
+.sd-proto-broken:hover, .sd-proto-broken:focus-visible { background: color-mix(in srgb, #ff6b6b 16%, transparent); outline: none; }
+.sd-proto-problems {
+    position: absolute; z-index: 3; width: 340px; max-width: calc(100% - 8px); max-height: 60%; overflow-y: auto;
+    padding: 4px 0; border: 1px solid var(--sd-panel-border); border-radius: 6px;
+    background: #2a2f36; color: var(--sd-text); box-shadow: 0 6px 18px rgba(0,0,0,.45);
+}
+.sd-proto-problem {
+    display: flex; flex-direction: column; width: 100%; padding: 5px 10px; border: 0;
+    background: none; color: inherit; font-size: .75rem; text-align: left; cursor: pointer;
+}
+.sd-proto-problem .sd-proto-li-to { color: #ff6b6b; }
+.sd-proto-problem:hover, .sd-proto-problem:focus-visible { background: rgba(255,255,255,.08); outline: none; }
+.sd-proto-badge {
+    flex: none; min-width: 18px; padding: 0 5px; border-radius: 9px;
+    background: #ff6b6b; color: #1b1e22; font-size: .65rem; font-weight: 700; line-height: 18px; text-align: center;
+}
+.sd-proto .pgc-dim .sd-proto-badge { opacity: 1; }
+/* The picked link (F16): its row on the canvas and its arrow. */
+.sd-proto-row.sd-proto-row-picked { background: color-mix(in srgb, var(--sd-accent) 30%, transparent); box-shadow: inset 3px 0 0 var(--sd-accent); }
+.sd-proto .pgc-edge.sd-proto-edge-picked .pgc-edge-line { stroke-width: 3; }
+.sd-proto-tools .sd-vb-btn[hidden] { display: none; }

@@ -31,6 +31,9 @@
 //                    for, one request form each (the return form part);
 //   order.return_delivery_lines a delivery's products with what may go
 //                    back, keyed by ^^__return_delivery_id^^;
+//   account.upcoming_bookings, account.past_bookings
+//                    the signed-in member's bookings, the bookings
+//                    section's two parts;
 //   account.orders   the signed-in member's orders, what the my account
 //                    widget's order history section draws.
 //
@@ -258,6 +261,45 @@ function pg_sw_list_order_sources()
                 array('__order_status', lang('Status (raw text)')),
                 array('__order_is_cancelled', lang('Cancelled (1 or empty)')),
                 array('__order_url', lang('Order detail URL')),
+            ),
+        ),
+        // The member's bookings (the bookings section's two parts,
+        // pg_booking_customer_view_rows()): upcoming ones with their manage
+        // page, then past ones.
+        'account.upcoming_bookings' => array(
+            'family'       => 'account',
+            'key'          => 'account_id',
+            'label'        => lang('Upcoming bookings of the member'),
+            'arg'          => '',
+            'arg_required' => false,
+            'tokens'       => array(
+                array('__booking_id', lang('Booking ID')),
+                array('__booking_service', lang('Service')),
+                array('__booking_status', lang('Status (raw text)')),
+                array('__booking_status_label', lang('Status')),
+                array('__booking_tone', lang('Status colour (warning, success or secondary)')),
+                array('__booking_details', lang('Date, time, staff and deposit')),
+                array('__booking_manage_url', lang('Manage booking URL')),
+                array('__booking_manage_label', lang('Manage button label')),
+                array('__booking_ics_url', lang('Add to calendar URL')),
+            ),
+        ),
+        'account.past_bookings' => array(
+            'family'       => 'account',
+            'key'          => 'account_id',
+            'label'        => lang('Past bookings of the member'),
+            'arg'          => '',
+            'arg_required' => false,
+            'tokens'       => array(
+                array('__booking_id', lang('Booking ID')),
+                array('__booking_service', lang('Service')),
+                array('__booking_status', lang('Status (raw text)')),
+                array('__booking_status_label', lang('Status')),
+                array('__booking_tone', lang('Status colour (warning, success or secondary)')),
+                array('__booking_details', lang('Date, time, staff and deposit')),
+                array('__booking_manage_url', lang('Manage booking URL')),
+                array('__booking_manage_label', lang('Manage button label')),
+                array('__booking_ics_url', lang('Add to calendar URL')),
             ),
         ),
     );
@@ -490,6 +532,33 @@ function pg_sw_list_account_rows($account_id, $orders, $view_url, $date_format)
         );
     }
     return array('account.orders' => array((int)$account_id => $rows));
+}
+
+// The rows of the booking lists, as pg_sw_list_publish('account') files
+// them: array('account.upcoming_bookings' => array($account_id => rows),
+// 'account.past_bookings' => …). $view: pg_booking_customer_view_rows().
+function pg_sw_list_account_booking_rows($account_id, $view)
+{
+    $out = array();
+    foreach (array('upcoming' => 'account.upcoming_bookings', 'past' => 'account.past_bookings') as $part => $source) {
+        $rows = array();
+        foreach ((array)(isset($view[$part]) ? $view[$part] : array()) as $b) {
+            if (!is_array($b)) continue;
+            $rows[] = array(
+                '__booking_id'           => (string)(int)$b['id'],
+                '__booking_service'      => (string)$b['service'],
+                '__booking_status'       => (string)$b['status'],
+                '__booking_status_label' => (string)$b['status_label'],
+                '__booking_tone'         => (string)$b['tone'],
+                '__booking_details'      => (string)$b['details'],
+                '__booking_manage_url'   => (string)$b['manage_url'],
+                '__booking_manage_label' => (string)$b['manage_label'],
+                '__booking_ics_url'      => (string)$b['ics_url'],
+            );
+        }
+        $out[$source] = array((int)$account_id => $rows);
+    }
+    return $out;
 }
 
 // The rows of an item's product form lists: array('order.item_forms' =>

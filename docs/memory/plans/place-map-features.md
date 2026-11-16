@@ -10,7 +10,7 @@ description: Plan place-map, features X1 to X16: the map block and its list, coo
 
 ## Where do coordinates come from?
 - (X4) They are the record's own two number fields: typed, pasted, imported or written over the API as any field is. A record without them stands in the list without a marker. No table keeps coordinates.
-- (X5) "Find from the address" on the record's form in the panel asks the address provider the site already set, once, on the server, when it is pressed, and fills the two fields before the save. The call is one of its own under `includes/geo/geocode/`, used only with a Photon account: with a Google or Mapbox account the button is not drawn and a line says why. The key stays a secret setting and never reaches a page.
+- (X5) "Find from the address" on the record's form in the panel asks Photon once, on the server, when it is pressed, and fills the two fields before the save. Always Photon (`includes/geo/geocode/`): the site's Photon server while its account is on, else the public instance, also while Google or Mapbox gives the suggestions. The button is always drawn, with a help line naming where the address goes.
 - (X6) The same as a bulk action on the collection's record list: a bounded number per call, and it says how many are left and which addresses were not found. No job works behind the screen.
 - (X7) An edited address keeps its coordinates until the action is used again; the form says so when the address changed.
 

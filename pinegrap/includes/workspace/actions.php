@@ -2619,12 +2619,20 @@ function ws_handle_action($action, $request)
                 $closes_at = (int) strtotime($closes_day . ' ' . $closes_time . ':00');
             }
 
+            // The question's own picture, sent with it (poll_picture.php).
+            $form_picture = ws_poll_picture_from_form($request);
+
+            if ($form_picture['error'] !== '') {
+                return ws_action_error($form_picture['error'], $form_picture['field']);
+            }
+
             $result = ws_poll_create($viewer, $channel, array(
                 'question'  => ws_tokens_normalise((string) ($request['question'] ?? '')),
                 'options'   => (array) ($request['options'] ?? array()),
                 'multiple'  => !empty($request['multiple']),
                 'anonymous' => !empty($request['anonymous']),
                 'closes_at' => $closes_at,
+                'picture'   => $form_picture['picture'],
             ));
 
             return $result['ok']
@@ -2652,6 +2660,23 @@ function ws_handle_action($action, $request)
                 $closes_at = (int) strtotime($closes_day . ' ' . $closes_time . ':00');
             }
 
+            // A new picture or its removal: refused once somebody has
+            // answered, so it is checked before the edit and written after it
+            // (an edit never adds an answer).
+            $form_picture = ws_poll_picture_from_form($request);
+
+            if ($form_picture['error'] !== '') {
+                return ws_action_error($form_picture['error'], $form_picture['field']);
+            }
+
+            if ($form_picture['sent']) {
+                $pictured = ws_poll_picture_change_check($viewer, $poll, $form_picture['picture']);
+
+                if (!$pictured['ok']) {
+                    return ws_action_error($pictured['error'], 'picture');
+                }
+            }
+
             $result = ws_poll_edit($viewer, $poll, array(
                 'question'  => (string) ($request['question'] ?? ''),
                 'options'   => (array) ($request['options'] ?? array()),
@@ -2662,6 +2687,14 @@ function ws_handle_action($action, $request)
 
             if (!$result['ok']) {
                 return ws_action_error($result['error'], $result['field']);
+            }
+
+            if ($form_picture['sent']) {
+                $changed = ws_poll_picture_change($viewer, $poll, $form_picture['picture']);
+
+                if (!$changed['ok']) {
+                    return ws_action_error($changed['error'], 'picture');
+                }
             }
 
             $payload = ws_message_payloads($viewer, array(ws_message($poll['message_id'])));
@@ -2688,6 +2721,18 @@ function ws_handle_action($action, $request)
                     if (array_key_exists($key, $request)) {
                         $sent[$key] = $request[$key];
                     }
+                }
+
+                // The old question's picture is carried unless a new one is
+                // sent or it is removed.
+                $form_picture = ws_poll_picture_from_form($request);
+
+                if ($form_picture['error'] !== '') {
+                    return ws_action_error($form_picture['error'], $form_picture['field']);
+                }
+
+                if ($form_picture['sent']) {
+                    $sent['picture'] = $form_picture['picture'];
                 }
 
                 $result = ws_poll_ask_again($viewer, $poll, $sent);
@@ -4219,6 +4264,19 @@ function ws_handle_action($action, $request)
             $error = function_exists('ws_mcp_agent_cancel') ? ws_mcp_agent_cancel($viewer, (int) ($request['request_id'] ?? 0)) : lang('That request could not be found.');
 
             return ($error === '') ? ws_action_ok() : ws_action_error($error);
+
+        // Right or Wrong on an agent's reply, or the mark taken back
+        // (verdict ''): the asker and the channel's managers only
+        // (agent_feedback.php).
+        case 'ws_agent_feedback':
+            $verdict = (string) ($request['verdict'] ?? '');
+            $marked = ws_agent_feedback_mark($viewer, (int) ($request['message_id'] ?? 0), ($verdict === '') ? null : $verdict, (string) ($request['reason'] ?? ''));
+
+            if (!$marked['ok']) {
+                return ws_action_error($marked['error']);
+            }
+
+            return ws_action_ok(array('feedback' => array('verdict' => $verdict, 'reason' => ($verdict === '') ? '' : (string) ($marked['reason'] ?? ''))));
 
         // Whether Pinegrap AI may be asked in a channel.
         case 'ws_channel_ai':

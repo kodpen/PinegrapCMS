@@ -5555,8 +5555,12 @@ function pg_image_editor_strings_builder()
 function pg_image_editor_strings_actions()
 {
     return array(
-        'actBar'     => lang('Selection actions'),
-        'actOptions' => lang('Options'),
+        'actBar'         => lang('Selection actions'),
+        'actOptions'     => lang('Options'),
+        'actEditText'    => lang('Edit text'),
+        'actMotion'      => lang('Motion'),
+        'actMore'        => lang('More'),
+        'actMoreOptions' => lang('More options'),
     );
 }
 

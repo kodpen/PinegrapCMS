@@ -46,6 +46,7 @@ require_once($pg_api_directory . '/resources/meta.php');
 require_once($pg_api_directory . '/resources/discovery.php');
 require_once($pg_api_directory . '/resources/forms.php');
 require_once($pg_api_directory . '/resources/seo.php');
+require_once($pg_api_directory . '/resources/content_review.php');
 require_once($pg_api_directory . '/resources/system.php');
 require_once($pg_api_directory . '/resources/reports.php');
 require_once($pg_api_directory . '/resources/page_clicks.php');

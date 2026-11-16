@@ -13,7 +13,7 @@ description: Page revisions (page_revisions, 11.0.15): what a row holds, when a 
 - `settings_json` (`pg_page_revision_settings_from_row()`): name, folder, title, description, search flags, sitemap, noindex/nofollow, home, comments, meta tags, JSON-LD, canonical, robots extras; missing columns left out. No times: a schedule change writes a row only when it moves the folder.
 
 ## What do the source labels mean?
-- `publish` (editor save, external API), `restore` (History panel or the API), `import` (HTML/ZIP/site importer, design template), `ai` (the AI editor). Callers pass `revision_source`; `pg_page_revision_source()` turns anything else into `publish`, so a bad label mislabels, never breaks.
+- `publish` (editor save, external API), `restore` (History, the API, a bundle taken back), `import` (HTML/ZIP/site importer, design template), `ai` (the AI editor), `bundle` (`release-bundle-publish.md`). Callers pass `revision_source`; `pg_page_revision_source()` turns anything else into `publish`: a bad label mislabels, never breaks.
 
 ## How long are revisions kept?
 - `PAGE_REVISIONS_KEEP` (30) and `PAGE_REVISIONS_DAYS` (90) from config, clamped by `pg_page_revisions_retention()` (1–500, 1–3650). A row goes only when beyond the last `keep` AND older than `days` (`pg_page_revisions_expired()`, pure). `pg_page_revisions_trim()` runs after every write (`LIMIT keep, 1000`).

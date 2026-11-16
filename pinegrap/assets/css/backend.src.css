@@ -12929,6 +12929,13 @@ b.ws-agent-card-anchor:focus-visible {
 .ws-agent-card-window .ws-agent-card-key {
   white-space: nowrap;
 }
+/* Right or Wrong: one line for 7 days, one for 30, stacked at the end. */
+.ws-agent-card-value.is-lines {
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0;
+  white-space: nowrap;
+}
 .ws-agent-card-high {
   color: var(--pg-tone-amber);
 }
@@ -15441,6 +15448,12 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
   flex-wrap: wrap;
   align-items: center;
   gap: .25rem;
+}
+/* The chosen picture's thumbnail keeps an edge: a light picture would
+   vanish on the form's background (the question's and an option's). */
+.ws-poll-form-picture > .ws-poll-thumb {
+  border: 1px solid var(--pg-border-color);
+  border-radius: var(--ws-radius-xs);
 }
 .ws-poll-form-more > .btn {
   justify-self: start;
@@ -20511,6 +20524,44 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
 .ws-claude-state.ws-claude-failed,
 .ws-claude-state.ws-claude-cancelled {
   color: var(--pg-danger-fg-emphasis);
+}
+/* Right and Wrong under an agent's reply: the state line's colour at the
+   scale's 12 px; the chosen mark takes the answered or failed colour. */
+.ws-agent-feedback {
+  max-width: 34rem;
+  margin-top: .3rem;
+  font-size: .75rem;
+  color: var(--pg-fg-2);
+}
+.ws-agent-feedback-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .25rem;
+}
+.ws-agent-feedback-row .ws-agent-feedback-mark {
+  font-size: inherit;
+  color: inherit;
+}
+.ws-agent-feedback-row .ws-agent-feedback-mark.is-right {
+  color: var(--pg-success);
+}
+.ws-agent-feedback-row .ws-agent-feedback-mark.is-wrong {
+  color: var(--pg-danger-fg-emphasis);
+}
+.ws-agent-feedback-reason {
+  margin-top: .2rem;
+  overflow-wrap: anywhere;
+  font-style: italic;
+}
+.ws-agent-feedback-form {
+  display: grid;
+  gap: .3rem;
+  margin-top: .3rem;
+}
+.ws-agent-feedback-actions {
+  display: flex;
+  gap: .3rem;
 }
 /* One column no wider than the list: a card is never wider than its text
    column, so a flow drawing wider than the card scrolls in its own pane

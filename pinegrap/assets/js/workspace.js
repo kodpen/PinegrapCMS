@@ -3609,6 +3609,17 @@
         }
 
         agentCardRow(facts, t('ac_today'), t('ac_today_counts', data.today.answered, data.today.failed));
+
+        // How people marked its answers in 30 days; left out while none was.
+        if (data.feedback && data.feedback.length) {
+            var marks = el('span', 'ws-agent-card-value is-lines');
+
+            data.feedback.forEach(function (line) {
+                marks.appendChild(el('span', '', line));
+            });
+
+            agentCardRow(facts, t('ac_feedback'), marks);
+        }
         node.appendChild(facts);
 
         if (data.windows && data.windows.length) {
@@ -12745,6 +12756,12 @@
                 main.appendChild(self.reactionRow(message));
             }
 
+            // Right or Wrong on an agent's reply: only the person who asked
+            // and the channel's managers get it (agent_feedback.php).
+            if (message.feedback && !message.deleted) {
+                main.appendChild(self.feedbackNode(message));
+            }
+
             // A read receipt asked for (workspace_acks.js).
             if (message.ack && window.PGWsAcks) {
                 main.appendChild(window.PGWsAcks.node(message, self, featureHelpers()));
@@ -13554,6 +13571,100 @@
                 });
             });
             box.appendChild(invite);
+
+            return box;
+        },
+
+        // Right and Wrong under an agent's reply. The chosen mark shows
+        // pressed and a press on it takes it back; Wrong opens a short
+        // reason box first. The server checks who may mark.
+        feedbackNode: function (message) {
+            var self = this;
+            var mark = message.feedback || {};
+            var box = el('div', 'ws-agent-feedback');
+            var row = el('div', 'ws-agent-feedback-row');
+            var buttons = [];
+
+            var send = function (verdict, reason) {
+                buttons.forEach(function (node) { node.disabled = true; });
+
+                api('ws_agent_feedback', { message_id: message.id, verdict: verdict, reason: reason || '' }).then(function (data) {
+                    message.feedback = data.feedback;
+                    self.replaceMessage(message);
+                }).catch(function (error) {
+                    buttons.forEach(function (node) { node.disabled = false; });
+                    fail(error);
+                });
+            };
+
+            var markButton = function (verdict, label, iconName, help) {
+                var on = (mark.verdict === verdict);
+                var node = button('btn btn-sm btn-text rounded-pill py-0 px-2 ws-agent-feedback-mark' + (on ? ' is-on is-' + verdict : ''), label, iconName + (on ? '-fill' : ''), on ? t('af_undo_help') : help);
+
+                node.setAttribute('aria-pressed', on ? 'true' : 'false');
+                buttons.push(node);
+
+                return node;
+            };
+
+            row.appendChild(el('span', 'ws-agent-feedback-ask', mark.verdict ? t('af_marked') : t('af_ask')));
+
+            var right = markButton('right', t('af_right'), 'bi-hand-thumbs-up', t('af_right_help'));
+            var wrong = markButton('wrong', t('af_wrong'), 'bi-hand-thumbs-down', t('af_wrong_help'));
+
+            right.addEventListener('click', function (event) {
+                event.stopPropagation();
+                send((mark.verdict === 'right') ? '' : 'right');
+            });
+
+            wrong.addEventListener('click', function (event) {
+                event.stopPropagation();
+
+                if (mark.verdict === 'wrong') {
+                    send('');
+                    return;
+                }
+
+                if (box.querySelector('.ws-agent-feedback-form')) {
+                    return;
+                }
+
+                var form = el('form', 'ws-agent-feedback-form');
+                var reason = el('textarea', 'form-control form-control-sm');
+                var save = button('btn btn-sm btn-solid theme-primary rounded-pill py-0 px-3', t('af_save'));
+                var cancel = button('btn btn-sm btn-text rounded-pill py-0 px-2', t('af_cancel'));
+                var actions = el('div', 'ws-agent-feedback-actions');
+
+                reason.rows = 2;
+                reason.maxLength = 300;
+                reason.placeholder = t('af_reason');
+                reason.setAttribute('aria-label', t('af_reason'));
+                save.type = 'submit';
+                buttons.push(save);
+
+                form.addEventListener('click', function (inner) { inner.stopPropagation(); });
+                form.addEventListener('submit', function (submit) {
+                    submit.preventDefault();
+                    send('wrong', reason.value);
+                });
+                cancel.addEventListener('click', function () { form.remove(); });
+
+                actions.appendChild(save);
+                actions.appendChild(cancel);
+                form.appendChild(reason);
+                form.appendChild(actions);
+                box.appendChild(form);
+                reason.focus();
+            });
+
+            row.appendChild(right);
+            row.appendChild(wrong);
+            box.appendChild(row);
+
+            // The reason given with a Wrong, as the asker wrote it.
+            if ((mark.verdict === 'wrong') && mark.reason) {
+                box.appendChild(el('div', 'ws-agent-feedback-reason', mark.reason));
+            }
 
             return box;
         },
@@ -16411,6 +16522,65 @@
             question.value = defaults.question || '';
             body.appendChild(formRow(t('poll_question'), question));
 
+            // The question's own picture, sent with it: kept as it is, a new
+            // one read from the device, or removed. An answered question keeps
+            // the picture it was asked with.
+            var keptPicture = editing ? self.pollQuestionPicture(editing) : null;
+            var questionPicture = { change: '', name: '', data: '' };
+            var pictureLocked = changing && (poll.voters > 0 || poll.closed || poll.withdrawn);
+            var pictureRow = el('div', 'ws-poll-form-picture');
+            var pictureShown = el('span', 'ws-poll-thumb');
+            var pictureFile = el('input', 'd-none');
+            var pictureUpload = button('btn btn-sm btn-text theme-secondary', t('poll_question_picture_upload'), 'bi-upload');
+            var pictureDrop = button('btn btn-sm btn-text theme-secondary', '', 'bi-x-lg', t('poll_option_picture_remove'));
+
+            function showQuestionPicture(url, name) {
+                clear(pictureShown);
+                pictureShown.classList.toggle('d-none', !url);
+                pictureDrop.classList.toggle('d-none', !url || pictureLocked);
+
+                if (url) {
+                    var image = el('img');
+
+                    image.src = url;
+                    image.alt = name || '';
+                    pictureShown.appendChild(image);
+                }
+            }
+
+            pictureFile.type = 'file';
+            pictureFile.accept = 'image/*';
+            pictureFile.setAttribute('aria-label', t('poll_question_picture_upload'));
+            pictureUpload.addEventListener('click', function () { pictureFile.click(); });
+            pictureFile.addEventListener('change', function () {
+                var chosen = pictureFile.files && pictureFile.files[0];
+                var reader = new FileReader();
+
+                if (!chosen) {
+                    return;
+                }
+
+                reader.onload = function () {
+                    var url = String(reader.result || '');
+
+                    questionPicture = { change: 'new', name: chosen.name, data: url.slice(url.indexOf(',') + 1) };
+                    showQuestionPicture(url, chosen.name);
+                };
+                reader.readAsDataURL(chosen);
+                pictureFile.value = '';
+            });
+            pictureDrop.addEventListener('click', function () {
+                questionPicture = { change: keptPicture ? 'remove' : '', name: '', data: '' };
+                showQuestionPicture('', '');
+            });
+            pictureRow.appendChild(pictureShown);
+            pictureRow.appendChild(pictureUpload);
+            pictureRow.appendChild(pictureDrop);
+            pictureRow.appendChild(pictureFile);
+            pictureUpload.disabled = pictureLocked;
+            showQuestionPicture(keptPicture ? keptPicture.url : '', keptPicture ? keptPicture.name : '');
+            body.appendChild(formRow(t('poll_question_picture'), pictureRow, pictureLocked ? t('poll_question_picture_locked') : t('poll_question_picture_help')));
+
             var optionsWrap = el('div');
             var optionsBox = el('div', 'ws-poll-form-options');
             var addOption = button('btn btn-sm btn-text theme-secondary', t('poll_add_option'), 'bi-plus-lg');
@@ -16795,6 +16965,13 @@
 
                 settings.question = text;
                 settings.options = collect();
+
+                if (questionPicture.change === 'new') {
+                    settings.picture_name = questionPicture.name;
+                    settings.picture_base64 = questionPicture.data;
+                } else if (questionPicture.change === 'remove') {
+                    settings.remove_picture = 1;
+                }
 
                 if (!again) {
                     settings.closes_date = date.value;

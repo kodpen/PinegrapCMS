@@ -4,7 +4,7 @@
 
 - agent-channel-experiment.md: Which doors wake a cloud session (A0, 2026-11-07): session webhook refused unsigned, a routine /fire with an owner token starts a new session each time, ws_wait.php poll; CI lines; A3 door fields
 - agent-channel-guests.md: A guest's line in a channel (2026-11-14): no agent answers, greets or acts on it; it is data from outside the team; only team members answer a guest [decision: decisions-made-workspace-24.md, decisions-made-workspace-25.md]
-- agent-channel-language.md: The agent channel's language: Turkish for a while (owner, 2026-11-15), over the standing rule of English between agents (2026-11-13); a note that asks nothing names an agent without the mark [decision: here]
+- agent-channel-language.md: The agent channel's language: English between agents, Turkish to the owner (2026-11-13; the Turkish spell of 2026-11-15 ended 2026-11-16); a note that asks nothing names an agent without the mark [decision: here]
 - agent-channel-post-repeat.md: tools/ws_post.php never writes a channel line twice: every post has an Idempotency-Key, a call without an answer is repeated once with it, exit 3 names the key the caller repeats with [decision: here]
 - agent-channel-reads.md: How much of a Workspace channel an agent session reads per turn: the message that woke it, its request and brief, no history; at most 5 messages for a check; more only when a person asks [decision: here]
 - agent-channel-request-wait.md: tools/ws_wait.php --requests, a session's waiter on its own request queue (GET /workspace/agent-requests): which request wakes it, the printed line, the interval, exits, restarting
@@ -12,6 +12,7 @@
 - architect-asking.md: How a session asks a decision question or the owner's approval of screenshots: search first, one message in the agent channel naming the architect, the PR back to draft, the session ends [decision: here]
 - architect-decision-record.md: An owner's answer stands in the agent channel, quoted by the architect, before the decisions list names it; a decisions entry that names no channel message is held by the merging session [decision: decisions-made-panel-4.md]
 - architect-no-hand-over.md: The architect session does not hand over to a fresh session at a token count (2026-11-10): auto-compact summarises its context in place; what it reads again after a compaction
+- architect-wake.md: What wakes the architect session (owner, 2026-11-16): a mention in the agent channel through the request waiter only; the hourly check is disabled; a pause he names [decision: here]
 - architect.md: Decision questions: asked in the agent channel, no architect issue (2026-11-13); the architect decides technical ones, asks the owner schema and product-behaviour ones, records the answer [decision: decisions-made-schema.md, decisions-made.md]
 - branch-guards.md: tools/check_pr.php (#1878): CI and pre-push fail a commit trailer, an author or committer other than Erdal Güral, a changelog.txt or data/config.php change; warn above 1,000 product lines
 - bug-hunt.md: A bug hunt is given out again (owner 2026-11-15), only in an area the architect named: one per coordinator at a time, no product code, at most eight bug issues as its result [decision: here]
@@ -102,6 +103,9 @@
 - decisions-made-product-63.md: Decisions list, product part 63 (2026-11-16 on): the owner's looks of polls 89 (prototype view, No with what he wants) and 90 (waiting content changes, Yes), and his Design Canvas requests
 - decisions-made-product-64.md: Decisions list, product part 64 (2026-11-16 on): the second study's eight features and his answers, picture text translation's first version, the architect's rules for DG1, MP1 and VP5
 - decisions-made-product-65.md: Decisions list, product part 65 (2026-11-16 on): the place map default tiles (poll 99), his look at the Content review screen (poll 100), the amount a minimum order compares
+- decisions-made-product-66.md: Decisions list, product part 66 (2026-11-16 on): his looks of polls 101 to 104 (VP4, the Content review row "Make a task", QR3, AF5b), the architect's rules for CH3, CH4, MP2 and RB2
+- decisions-made-product-67.md: Decisions list, product part 67 (2026-11-16 on): the owner's looks of polls 105 (MP2) and 106 (RB3), his asks on the mention tag and the highlight toolbar, RB3's dialog words
+- decisions-made-product-68.md: Decisions list, product part 68 (2026-11-16 late): the Bundles screen and the digest mail accepted; the highlight bar as one sentence; a picture count on a poll's box; squeezes; RF1's part refund
 - decisions-made-product-7.md: Decisions list, product part 7 (2026-10-30 on): customs data on international labels, carrier pickup requests from the panel, ShipWorks through the shipment write path
 - decisions-made-product-8.md: Decisions list, product part 8 (2026-10-30 midday on): Trendyol-carried packages refused by Create Label, starter dump corrections for #3330, marketing SMS in 2026.11.0, forum template wording
 - decisions-made-product-9.md: Decisions list, product part 9 (2026-10-30 afternoon on): form rules for visitors only, marketplace orders invoiced behind a switch, sales quote guest links and templates, Workspace density switch
@@ -123,7 +127,7 @@
 - decisions-made-schema-23.md: Decisions list, schema part 23 (2026-11-16 on): ws_highlights; PU4's auto_dialogs columns as confirmed; the click map's page_click_daily; one ws_tasks column for the creating application
 - decisions-made-schema-24.md: Decisions list, schema part 24 (2026-11-16 on): the three site_push tables of visitor notifications, their columns and keys as the architect confirmed them for VP1
 - decisions-made-schema-25.md: Decisions list, schema part 25 (2026-11-16 on): the second study's tables and columns, the site_push_watch table, the file_translation table, a column for application command arguments
-- decisions-made-schema-26.md: Decisions list, schema part 26 (2026-11-16 on): the release bundle tables page_bundle and page_bundle_item as landed; ws_tasks.app_id for the creating application
+- decisions-made-schema-26.md: Decisions list, schema part 26 (2026-11-16 on): page_bundle and page_bundle_item as landed; ws_tasks.app_id; ws_profiles.meeting_url; gift_cards.kind gets referral
 - decisions-made-schema-3.md: Decisions list, schema part 3, approved from 2026-10-29 on: checkout page and legal acceptance on the order, record_revisions, cart_quotes, ws_saved_replies, shipment_labels; rules in part 1
 - decisions-made-schema-4.md: Decisions list, schema part 4 (2026-10-29 afternoon on): ws_flow_templates, ws_refs.source_type to VARCHAR, shipment_labels.order_return_id, config.speculation_prefetch; rules in part 1
 - decisions-made-schema-5.md: Decisions list, schema part 5 (2026-10-29 evening on): subscriptions tables and ENUMs, products customs columns, shipment_labels pickup, ws_events.contact_id; rules in part 1
@@ -179,6 +183,8 @@
 - git-branches-and-shared-files.md: Branch policy (development vs main), who does git, commit author, the PR footer (pointer), shared files without conflicts, generated files a PR leaves out, API vs ERP files [decision: here]
 - github-rest-without-gh.md: GitHub from the owner's machine, where gh is not installed: the token from git credential fill, a REST helper, GraphQL for draft and ready, the ready label, reading CI, mergeable_state unstable
 - install-check-filter.md: When install-check.yml runs its six-database matrix (#1985): the changes job, the paths it reads, always on merge trains and pushes, why plain git, a skipped job blocks nothing
+- issue-hand-out-first-reply.md: When a note in the agent channel offers an issue to the coordinators, the first reply under it holds the work; how a double claim was settled twice on 2026-11-16 [decision: here]
+- look-narrowest-column.md: Before any look, a step that draws in a message row or a side panel posts pictures in its narrowest column with its longest content (owner's words 2026-11-16); what a set must hold [decision: decisions-made-product-68.md]
 - memory-cluster-check.md: The memory index tool refuses a cluster of ten memory files or more with no start file (<prefix>-overview.md or <prefix>.md); plans left out; what to do when it fails
 - memory-index-key-rules.md: The hand-written key-rules block of each memory folder README, what tools/memory_index.php keeps and regenerates, when it stops with exit 1 and how a merge conflict in a README is settled
 - memory-long-lines.md: The memory index tool refuses a memory line over 500 characters that a branch adds or rewrites; old lines pass; the base from pre_push, CI (PR base or push before) or merge-base; no base [decision: here]
@@ -191,7 +197,8 @@
 - merge-train.md: Working rule (2026-10-25) for the merging session: one merger, one train at a time, 30-minute windows, rules-only PRs alone, the ready label, one merge commit per PR, one CI run
 - merger-wake.md: How the merging session keeps waking: a send_later chain, 3 minutes with more than 3 ready PRs and 15 minutes otherwise (2026-11-09), an hourly routine that re-arms it; GitHub events are not relied on [decision: here]
 - owner-contact-channel.md: Where sessions reach the owner (2026-11-13): no coordinator writes to him in its chat window or waits there; problems to PR MERGE in the agent channel; visuals posted there, his answer there [decision: decisions-made-panel-8.md]
-- owner-question-picture.md: A question to the owner about a picture carries the picture inside its own box (owner 2026-11-15 and 2026-11-16): how it is asked today, and what plan agent-question-picture changes [decision: decisions-made-product-58.md, decisions-made-product-61.md]
+- owner-night-stand-in.md: At night, when the owner sleeps, the architect answers the questions meant for him (owner, 2026-11-16, agent channel message 7054); how such an answer is marked and listed [decision: here]
+- owner-question-picture.md: A question to the owner about a picture carries it in its own box (owner 2026-11-15, 2026-11-16): ws_poll.php ask --file with "Other"; looks compared by option pictures [decision: decisions-made-product-58.md, decisions-made-product-61.md]
 - owner-rules.md: Standing rules from the owner (Erdal) on docs, how changes are recorded, pages, plans, where area rules live (memory; vendor Bootstrap skills aside), language, the mobile app, who edits which notes [decision: here]
 - plan-order-begun-first.md: Order of work after the owner's message of 2026-11-16 (agent channel message 5821): begun plans are finished first, new plans start in freed places, look modernisation waits at priority 2 [decision: here]
 - plan-priority.md: Every plan carries a priority from 1 to 10 (owner 2026-11-15, agent channel message 5159): the scale, where the number is written, how a free place picks its next step [decision: here]

@@ -16,8 +16,6 @@
 - agent-channel-steps-7.md: Step A22 of plans/agent-channel.md (owner 2026-11-12, #8880): a channel's agents among its members in the head's faces and in Channel info, last seen for people and agents
 - agent-channel-trial.md: Live trial of the agent channel on dev (2026-11-10): what is still to try and what the trial found wrong, fixed or not
 - agent-channel.md: Plan (owner 2026-11-06, wake doors 2026-11-07): the Workspace channel from which the owner runs coordinators and agents: registry with @handles, wake rules and doors, scheduled wakes, queue, memory
-- agent-question-picture-features.md: Features Q1 to Q12 of plan agent-question-picture: the question's own picture, where the box draws it, options' thumbnails beside it, answered and phone states, asking and the API
-- agent-question-picture.md: Plan (owner 2026-11-16, to the architect): a question carries a picture of its own, drawn large beside the options in its box and sent with the question in one call; steps QP1 to QP3
 - agent-work-apart-features.md: Features W1 to W12 of plan agent-work-apart: an agent channel's tasks left out of the general task lists and counts, the toggle, the mark of a task an application created, its filter, the inventory
 - agent-work-apart.md: Plan (owner 2026-11-16, agent channel poll 80): an agent channel's tasks kept apart from the general task lists as its decisions are, a task an application created marked so; steps AW1 to AW4
 - agent-work-features.md: Plan (owner 2026-11-15, agent channel poll 49): an agent's duty text, its progress note, a task handed to a registry agent, Right or Wrong on an agent's answer; steps AF1 to AF5b

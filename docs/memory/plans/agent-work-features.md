@@ -21,7 +21,7 @@ priority: 6
   - The hand-over makes the agent's request with the task in its brief; answer and fail write the task note; Stop as for Claude.
 - AF4b (S to M) after AF4a: the task drawer offers the channel's agents beside the assistants; the Tasks tab and the Board show which agent holds what. Done (#9826, `workspace/agent-tasks.md`; owner's look: agent channel poll 59).
 - AF5a (M) after AF4a: Right or Wrong, the record. Done (#9814, `workspace/agent-feedback.md`). A small table, one row per marked reply (verdict, a reason of at most 300 characters, who, when); marked by the asker and the channel's managers; `GET /workspace/agent-feedback` for the agent's own key; the counts of the last 7 and 30 days.
-- AF5b (S) after AF5a: the two buttons under an agent's reply, the reason on Wrong, the counts on the Agents card and the agent card.
+- AF5b (S) after AF5a: the two buttons under an agent's reply, the reason on Wrong, the counts on the Agents card and the agent card. Done (#9850, `workspace/agent-feedback.md`); look: Owner (2026-11-16, agent channel poll 104, message 7050): "Evet, böyle çıksın".
 - Last (S): close-out: the topic files in `workspace/`, this plan deleted.
 
 ## What is left out?
@@ -29,4 +29,5 @@ priority: 6
 
 ## Whose look?
 - Workspace is a kept screen: AF2, AF4b and AF5b post close-up pairs in the agent channel and the architect brings them to the owner; none is marked ready before his look. AF1's form field is the architect's look.
+- Owner (2026-11-16, agent channel poll 104, message 7050): "Evet, böyle çıksın" on the sheet of message 7049 (AF5b).
 - AF2's look is given: Owner (2026-11-15, agent channel poll 53): "Evet, böyle çıksın" (`workflow/decisions-made-workspace-34.md`).

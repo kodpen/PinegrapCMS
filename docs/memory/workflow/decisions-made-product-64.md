@@ -25,7 +25,7 @@ description: Decisions list, product part 64 (2026-11-16 on): the second study's
 - A record's date is `submitted_timestamp`; where the list page's own filter holds exactly one "date field <= now" condition, the later of the two. No column on `forms`.
 
 ## What does the place map use to find an address, and where is it listed in the notice? (architect, 2026-11-16, agent channel message 6794)
-- "Find from the address" and a visitor's typed address use Photon only: a Google result may not be kept past 30 days or shown on another map, a Mapbox one only on Mapbox tiles. With such an account the button is not drawn and a line says why.
+- "Find from the address" and a visitor's typed address use Photon only: a Google result may not be kept past 30 days or shown on another map, a Mapbox one only on Mapbox tiles. Which Photon, and the button: `decisions-made-product-66.md`.
 - The map is a `marketing` service of the cookie notice, listed only on a page that carries the map with the Maps switch on; no third class. The security headers do not change. Plan: `plans/place-map.md`.
 
 ## Does a back-in-stock notice on the device replace the mail or SMS? (architect, 2026-11-16, agent channel message 6786)

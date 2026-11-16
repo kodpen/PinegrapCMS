@@ -13,7 +13,7 @@ description: The designer's Prototype view (_sdProtoOpen()): toolbar toggle, fra
 
 ## What can be done in it?
 - Frames and chips move; where a moved one is kept (on the design or in the browser): designer/prototype-places.md.
-- A row (click, Enter or Space) closes the view, opens its tab (`_pgTabsSwitch()`; for a shared frame the open tab if it places the component, else the first tab that does; a locked tab only gets the folder-rights toast), then selects the node (`findNodeById()` in the tab's tree or the component's) with `renderSelectionOnly()`, `renderProperties()` and `scrollCanvasToNode()`.
+- A row (click, Enter, Space) picks its link (designer/prototype-list.md); the panel's "Open in the editor" closes the view, opens its tab (`_pgTabsSwitch()`; a shared frame: the open tab if it places it, else the first that does; a locked tab gets the folder-rights toast), then selects the node (`findNodeById()` in the tab's or component's tree), `renderSelectionOnly()`, `renderProperties()`, `scrollCanvasToNode()`.
 
 ## How is an arrow drawn or re-pointed (#6171)?
 - A link row of a tree (`PGProtoHotspots.drawable()`: sources href, attrs, btn, text; not a classic menu or region) has a port; dragged to a tab's frame it is kept by that page's id (designer/page-link-by-id.md), to a chip of a site page, another site or a contact address that chip's href (`hrefTo()`); anchor, hidden, broken chips and shared frames take none. A locked tab draws nothing.

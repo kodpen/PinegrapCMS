@@ -295,3 +295,39 @@ function ws_poll_picture_change($viewer, $poll, $picture, $as_app = 0)
 
     return array('ok' => true, 'error' => '', 'field' => '');
 }
+
+/**
+ * The question's picture as the New poll form sends it to a panel action:
+ * picture_name with picture_base64 for a new one, remove_picture to take it
+ * away. Pure.
+ *
+ * @param array $request the action's fields
+ * @return array error ('' when it reads), field, sent (a change was sent),
+ *               picture (ws_poll_picture_normal(), null to remove or keep)
+ */
+function ws_poll_picture_from_form($request)
+{
+    $read = function ($error, $sent, $picture) {
+        return array('error' => $error, 'field' => ($error === '') ? '' : 'picture', 'sent' => $sent, 'picture' => $picture);
+    };
+
+    $base64 = trim((string) ($request['picture_base64'] ?? ''));
+    $remove = !empty($request['remove_picture']);
+
+    if ($base64 === '') {
+        return $read('', $remove, null);
+    }
+
+    if ($remove) {
+        return $read(lang('Send a new picture or remove_picture, not both.'), false, null);
+    }
+
+    $bytes = base64_decode($base64, true);
+    $name = trim(basename(str_replace('\\', '/', (string) ($request['picture_name'] ?? ''))));
+
+    if (($bytes === false) || ($bytes === '') || ($name === '')) {
+        return $read(lang('The picture could not be read. Choose it again.'), false, null);
+    }
+
+    return $read('', true, ws_poll_picture_normal(array('name' => $name, 'bytes' => $bytes)));
+}

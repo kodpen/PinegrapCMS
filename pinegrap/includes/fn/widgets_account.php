@@ -1897,7 +1897,9 @@ function _pg_acct_staff_url($staff_page_id)
 // pg_booking_customer_section_html()), store_credit (shop sites: the
 // balance, the cards with the orders that spent them and the reward points
 // conversion form, pg_credit_account_section_html()). Flags: has_orders,
-// no_orders, is_staff, has_bookings, has_store_credit.
+// no_orders, is_staff, has_bookings, has_upcoming_bookings,
+// has_past_bookings, has_store_credit. 'bookings': the booking lists' rows
+// (pg_booking_customer_view_rows()).
 function _pg_my_account_extras($logged_in, $cfg = array())
 {
     $shop  = defined('ECOMMERCE') && ECOMMERCE;
@@ -1914,8 +1916,8 @@ function _pg_my_account_extras($logged_in, $cfg = array())
     // page, for a list of the member's orders (pg_sw_list_account_rows()).
     $out = array('links' => $links, 'sections' => array('order_history' => '', 'subscriptions' => '', 'bookings' => '', 'store_credit' => ''),
                  'flags' => array('has_orders' => false, 'no_orders' => true, 'is_staff' => false, 'has_bookings' => false,
-                                  'has_store_credit' => false),
-                 'orders' => array(), 'order_view_url' => '');
+                                  'has_upcoming_bookings' => false, 'has_past_bookings' => false, 'has_store_credit' => false),
+                 'orders' => array(), 'order_view_url' => '', 'bookings' => array('upcoming' => array(), 'past' => array()));
     if (!$logged_in) return $out;
 
     $links['__profile_url']           = _pg_acct_page_url(0, 'my account profile');
@@ -1937,8 +1939,12 @@ function _pg_my_account_extras($logged_in, $cfg = array())
     $out['links'] = $links;
 
     if (defined('USER_ID') && (int)USER_ID > 0) {
-        $out['sections']['bookings'] = pg_booking_customer_section_html(pg_booking_customer_rows((int)USER_ID), time());
+        // The bookings' rows serve the section and the booking lists alike.
+        $out['bookings'] = pg_booking_customer_view_rows(pg_booking_customer_rows((int)USER_ID), time());
+        $out['sections']['bookings'] = pg_booking_customer_view_html($out['bookings']);
         $out['flags']['has_bookings'] = ($out['sections']['bookings'] !== '');
+        $out['flags']['has_upcoming_bookings'] = !empty($out['bookings']['upcoming']);
+        $out['flags']['has_past_bookings'] = !empty($out['bookings']['past']);
     }
 
     if ($shop && defined('USER_ID') && (int)USER_ID > 0) {
@@ -1948,18 +1954,8 @@ function _pg_my_account_extras($logged_in, $cfg = array())
              ORDER BY order_date DESC LIMIT 50");
         if ($orders) {
             $view = _pg_acct_page_url(0, 'view order');
-            $html = '<div class="list-group pg-sw-order-history">';
-            foreach ($orders as $o) {
-                $inner = '<span><span class="fw-semibold">#' . h((string)$o['order_number']) . '</span>'
-                       . '<span class="text-body-secondary small ms-2">' . h(_pg_sw_short_date((int)$o['order_date'], pg_sw_default_date_format('date'))) . '</span>'
-                       . ($o['status'] === 'cancelled' ? '<span class="badge text-bg-secondary ms-2">' . h(lang('Cancelled')) . '</span>' : '')
-                       . '</span><span>' . prepare_amount($o['total']) . '</span>';
-                $cls = 'list-group-item d-flex justify-content-between align-items-center';
-                $html .= ($view !== '')
-                    ? '<a href="' . h($view . '?id=' . (int)$o['id']) . '" class="' . $cls . ' list-group-item-action">' . $inner . '</a>'
-                    : '<div class="' . $cls . '">' . $inner . '</div>';
-            }
-            $out['sections']['order_history'] = $html . '</div>';
+            $out['sections']['order_history'] = pg_acct_order_history_html(pg_sw_list_account_rows(0, $orders, $view, pg_sw_default_date_format('date'))['account.orders'][0],
+                $view !== '', array_column($orders, 'total'));
             $out['orders']         = $orders;
             $out['order_view_url'] = $view;
             $out['flags']['has_orders'] = true;
@@ -1978,6 +1974,108 @@ function _pg_my_account_extras($logged_in, $cfg = array())
             isset($_SESSION['software']['token']) ? (string)$_SESSION['software']['token'] : '');
     }
     return $out;
+}
+
+/**
+ * The order history section from the account.orders rows
+ * (pg_sw_list_account_rows()), as it always printed: a link per order while
+ * the site has a view order page, else a plain item. $totals: each order's
+ * total in major units, printed by prepare_amount() as before (the rows
+ * carry it decoded to text). Pure; the designer canvas draws its twin
+ * (_sdAccountOrderHistoryHtml()).
+ *
+ * @param array $rows   the account.orders rows of the member
+ * @param bool  $linked whether the site has a view order page
+ * @param array $totals
+ * @return string
+ */
+function pg_acct_order_history_html($rows, $linked, $totals)
+{
+    $html = '<div class="list-group pg-sw-order-history">';
+    $cls = 'list-group-item d-flex justify-content-between align-items-center';
+    foreach (array_values((array)$rows) as $i => $o) {
+        $inner = '<span><span class="fw-semibold">#' . h($o['__order_no']) . '</span>'
+               . '<span class="text-body-secondary small ms-2">' . h($o['__order_date']) . '</span>'
+               . ($o['__order_is_cancelled'] !== '' ? '<span class="badge text-bg-secondary ms-2">' . h(lang('Cancelled')) . '</span>' : '')
+               . '</span><span>' . prepare_amount(isset($totals[$i]) ? $totals[$i] : 0) . '</span>';
+        $html .= $linked
+            ? '<a href="' . h($o['__order_url']) . '" class="' . $cls . ' list-group-item-action">' . $inner . '</a>'
+            : '<div class="' . $cls . '">' . $inner . '</div>';
+    }
+    return $html . '</div>';
+}
+
+/**
+ * The elements that take a my account section's place when the designer
+ * opens it ("Convert to design elements"), the twin of _sdAccountPart():
+ * the order history on the account.orders list, the bookings on the two
+ * booking lists, in the markup and words the sections print. Empty for any
+ * other section (subscriptions, store credit).
+ *
+ * @param string $section
+ * @return array tree nodes
+ */
+function pg_acct_part($section)
+{
+    $list = function ($source, $kids) {
+        return array('type' => 'loop_area', 'props' => array('source' => $source), 'children' => $kids);
+    };
+    $bound = function ($tag, $class, $name, $token, $props = array()) {
+        return pg_sw_part_el($tag, $class, $name, array_merge_recursive(array('_bindings' => array('text' => $token)), $props));
+    };
+    $when = function ($token, $op, $value = '') {
+        $param = array('op' => $op);
+        if ($value !== '') $param['value'] = $value;
+        return array('_bindings' => array('show_if' => $token), '_bindParams' => array('show_if' => $param));
+    };
+    if ($section === 'order_history') {
+        $inner = function () use ($bound, $when) {
+            return array(
+                pg_sw_part_el('span', '', lang('Order'), array(), array(
+                    pg_sw_part_sentence('span', 'fw-semibold', lang('Order number'), '#{var:1}', '__order_no'),
+                    $bound('span', 'text-body-secondary small ms-2', lang('Order date'), '__order_date'),
+                    pg_sw_part_el('span', 'badge text-bg-secondary ms-2', lang('Cancelled'), array_merge(array('text' => lang('Cancelled')),
+                        $when('__order_is_cancelled', 'not_empty'))),
+                )),
+                $bound('span', '', lang('Grand total'), '__order_total'),
+            );
+        };
+        $cls = 'list-group-item d-flex justify-content-between align-items-center';
+        return array(pg_sw_part_el('div', 'list-group pg-sw-order-history', lang('Orders of the member'), array(), array(
+            $list('account.orders', array(
+                // A link while the site has a view order page, else a plain item.
+                pg_sw_part_el('a', $cls . ' list-group-item-action', lang('Order'), array_merge_recursive(array('href' => '#',
+                    '_bindings' => array('href' => '__order_url')), $when('__order_url', 'neq', '#')), $inner()),
+                pg_sw_part_el('div', $cls, lang('Order'), $when('__order_url', 'eq', '#'), $inner()),
+            )),
+        )));
+    }
+    if ($section === 'bookings') {
+        $item = pg_sw_part_el('div', 'list-group-item', lang('Booking'), array(), array(
+            pg_sw_part_el('div', 'd-flex flex-wrap justify-content-between align-items-center gap-2', lang('Heading'), array(), array(
+                $bound('span', 'fw-semibold', lang('Service'), '__booking_service'),
+                $bound('span', 'badge text-bg-warning', lang('Status'), '__booking_status_label', $when('__booking_tone', 'eq', 'warning')),
+                $bound('span', 'badge text-bg-success', lang('Status'), '__booking_status_label', $when('__booking_tone', 'eq', 'success')),
+                $bound('span', 'badge text-bg-secondary', lang('Status'), '__booking_status_label', $when('__booking_tone', 'eq', 'secondary')),
+            )),
+            $bound('div', 'small text-body-secondary', lang('Date, time, staff and deposit'), '__booking_details'),
+            pg_sw_part_el('div', 'd-flex flex-wrap gap-2 mt-2', lang('Buttons'), $when('__booking_manage_url', 'not_empty'), array(
+                pg_sw_part_el('a', 'btn btn-sm btn-outline-primary', lang('Manage booking'), array('text' => lang('Change or cancel'), 'href' => '#',
+                    '_bindings' => array('href' => '__booking_manage_url', 'text' => '__booking_manage_label'),
+                    '_attrs' => array(array('name' => 'rel', 'value' => 'nofollow')))),
+                pg_sw_part_el('a', 'btn btn-sm btn-outline-secondary', lang('Add to calendar'), array('text' => lang('Add to calendar'), 'href' => '#',
+                    '_bindings' => array('href' => '__booking_ics_url'), '_attrs' => array(array('name' => 'rel', 'value' => 'nofollow')))),
+            )),
+        ));
+        $part = array();
+        foreach (array('upcoming' => lang('Upcoming'), 'past' => lang('Past')) as $key => $heading) {
+            $flag = array('_bindings' => array('eo_visible_if' => 'has_' . $key . '_bookings'));
+            $part[] = pg_sw_part_el('h6', 'mt-3 mb-2', $heading, array_merge(array('text' => $heading), $flag));
+            $part[] = pg_sw_part_el('div', 'list-group pg-sw-bookings', $heading, $flag, array($list('account.' . $key . '_bookings', array($item))));
+        }
+        return $part;
+    }
+    return array();
 }
 
 // ============================================================================

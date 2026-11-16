@@ -36,3 +36,4 @@ priority: 6
 
 ## Whose look?
 - The "Notify me" block (VP3) and the panel's card and screen (VP4): the owner's. The Features switch: the architect's.
+- Owner (2026-11-16, agent channel poll 101, message 6884): "Evet, böyle çıksın" on the sheet of message 6883 (VP4).

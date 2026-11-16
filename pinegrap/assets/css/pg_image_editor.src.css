@@ -4455,6 +4455,67 @@ button.pgie-sndfile:hover {
   }
 }
 
+/* Where the panel is not a sheet the bar is drawn over the selected
+   object, placed by the script (--pgie-act-x, --pgie-act-y from
+   M.actBarPlace()); the phone keeps its row along the stage's bottom. */
+.pgie-actwrap.pgie-actobj {
+  top: var(--pgie-act-y, 8px);
+  right: auto;
+  bottom: auto;
+  left: var(--pgie-act-x, 8px);
+}
+
+.pgie-actwrap.pgie-actobj.on {
+  display: flex;
+}
+
+/* Motion from the bar (pg_image_editor_motion.js): In, Loop and Out, each
+   a row of the panel's tiles that scrolls sideways; placed by the script
+   above or below the bar. */
+.pgie-mpop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 40;
+  width: min(440px, calc(100vw - 16px));
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 12px;
+  background: var(--pgie-surface);
+  color: var(--pgie-tx);
+  box-shadow: var(--pgie-shadow), 0 0 0 1px var(--pgie-line);
+}
+
+.pgie-mpoprow {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.pgie-mpopname {
+  color: var(--pgie-muted);
+  font-size: 0.75rem;
+}
+
+.pgie-mpop .pgie-mkinds {
+  display: flex;
+  margin-bottom: 0;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+
+.pgie-mpop .pgie-mkinds > .pgie-tile {
+  flex: 0 0 76px;
+}
+
+.pgie-mpopfoot {
+  display: flex;
+  justify-content: flex-end;
+}
+
 /* A phone held upright moves the mini bar to the stage's bottom: the
    selection bar takes the top. */
 @media (max-width: 599.98px) {

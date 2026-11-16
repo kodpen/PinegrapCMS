@@ -33,7 +33,7 @@
 - agent-duty.md: An agent's duty text (AF1 #9785, AF3 #9821): the "Duty" box on the agent's form, ws_agents.duty TEXT NULL, "Your duty" and the channel's other agents in its instructions, the agent card [decision: here]
 - agent-edit-hold.md: An agent waits while its message is edited: the edit box's beat, held_until, "Being edited, @agent is waiting", 409 editing / edited, a save in each status (#8869) [decision: decisions-made-schema-16.md, decisions-made-workspace-14.md]
 - agent-emoji.md: The one fitting emoji an agent leaves on the message that asked it (#8932): the brief, the answer route's emoji, a model assistant's answer tool, what is refused [decision: decisions-made-workspace-19.md]
-- agent-feedback.md: Right or Wrong on an agent's reply (AF5a #9814): the ws_agent_feedback table, who marks, one mark per reply, GET /workspace/agent-feedback with the 7- and 30-day counts [decision: here]
+- agent-feedback.md: Right or Wrong on an agent's reply (AF5a #9814, AF5b #9850): the ws_agent_feedback table, who marks, the buttons under a reply, the counts on the cards, GET /workspace/agent-feedback [decision: here]
 - agent-flows.md: The flows part of the agent risk tiers (flow_agent_box.php, A7b): the Ask an agent box (kind agent) and runs an application agent starts within its channel tier
 - agent-instructions.md: How an application agent learns its work from the site: GET /workspace/agent-instructions with its own key, the text's parts, the three doors, the version and the brief's line, the Start text box [decision: decisions-made-workspace-32.md]
 - agent-key-trial-2.md: The agent's own side tried live on dev (2026-11-11) with an application agent's key: POST agent-wake and its dry run, a wake's request, brief and text answer, the agent's edit of its own message
@@ -181,7 +181,7 @@
 - poll-agent-question.md: The agent question on the server (agent_question.php, step 11.0.214): the flag, who answers, first answer settles, wake and brief, memory index, map and API fields [decision: decisions-made-workspace-34.md]
 - poll-box.md: The poll box (pollNode(), AQ3 #9647): three shapes and their rule, option parts, "Other" words, taken back, asked again, the asker's actions; the New poll form's parts and channel pictures
 - poll-option-parts.md: A poll option's description, picture, links, Recommended mark and the "Other" row with the voter's own words (poll_parts.php, step 11.0.213); create, change and vote rules, API fields, older polls
-- poll-question-picture-box.md: How the poll box draws a question's own picture (QP2): the "question" shape, pollLayout(), large at the left, option thumbnails, "Other" field, answered, taken back, no file card, the viewer
+- poll-question-picture-box.md: A question's own picture in the poll box (#9964) and the New poll form's "Question picture" field: the question shape, thumbnails, "Other", answered, what is left out [decision: decisions-made-workspace-36.md]
 - poll-question-picture.md: A poll question's own picture (poll_picture.php, #9948): carried by the question's message, the image check, ask again carries it, change while unanswered, the API routes, ws_poll.php --file [decision: here]
 - poll-take-back.md: Take back and Ask again on a poll (poll_again.php): the asker (a person or the asking application), withdrawn_at, again_of, panel actions, API withdraw and again routes
 - quiet-hours.md: A person's quiet hours (plan quiet-hours, #9844 and QH2): set in a channel's Notifications, ws_profiles.quiet_hours, the rule pg_quiet_hours_left() reads, the person's own session only [decision: decisions-made-schema-22.md, decisions-made-workspace-35.md]
@@ -295,7 +295,7 @@
 - workspace-command-other-chats.md: What other team chats do with / commands (read 2026-11-16 for plan channel-commands): their built-ins, application commands, no-code commands, record lookups, and what goes wrong there
 - workspace-command-picker.md: What ws_commands($viewer) gives the / picker, /help, palette and API; the Tab argument popup after "/name "; an unknown /word refused with the closest names; "//" posts it
 - workspace-command-plan-items.md: /timer (/süre), /away (/izin) and /meeting (/toplantı) in a Workspace channel (PR #1938): what each reads, the functions they write through, who is told, their live lines
-- workspace-command-registry.md: The built-in / command registry ws_command_registry() (command_registry.php, CC1a): an entry's fields, which functions read it, what a new command adds, shadowed application commands [decision: here]
+- workspace-command-registry.md: The built-in / command registry ws_command_registry() (command_registry.php, CC1): an entry's fields, which functions read it, what a new command adds, shadowed application commands [decision: here]
 - workspace-command-schedule.md: /schedule (/zamanla) in a Workspace channel: when it reads (+30dk, a day, 14:00), the 09:00 and tomorrow defaults, ws_scheduled_message_save(), its writer-only answer and live line
 - workspace-command-status.md: /status (/durum) in a Workspace channel (PR #1896): the status words it reads, ws_task_set_status(), the lines it posts, its live line and the statuses popup
 - workspace-composer-expanded.md: The composer's "Aa" expanded box (Editor.expand()): Enter a new line, Ctrl/Cmd+Enter sends, every tool shown, the per-viewer choice in localStorage, how the switch gets on the row without workspace.js
@@ -457,6 +457,7 @@
 - workspace-growth-terms.md: Shared names and single owners of the Workspace growth work (2026-10-23): workflow tables, Workspace canvas, quote kinds, registries, engine words, agent keys, one proposal route, personal by default
 - workspace-guest-cleared-room.md: A guest's requests on one message (file address, tick, reaction, vote) reach only the room's current conversation, after its clear floor, as the guest page lists it
 - workspace-guest-request-input.md: How the public guest page reads the strings of its JSON body and its cookie
+- workspace-highlights-not-saved-replies.md: Why message highlights (ws_highlights) and saved replies (ws_saved_replies) stay two features with two tables: what each keeps, where they differ, the owner's question of 2026-11-16 [decision: here]
 - workspace-holiday-feed-overrides.md: Holiday calendar addresses (ws_ical_events()): a moved occurrence gets its own uid so it never replaces its yearly day; cancelled days are left out
 - workspace-holiday-settings.md: The Working calendar card in Site Settings (Team and working hours) and on Workspace Settings: one request reader and one save, button and field names, drawers, old anchors
 - workspace-keyboard-rows.md: Workspace div rows act as buttons through pressKeys() (Enter and Space), the inbox Join shortcut takes keys, planning board hours print through hoursText()

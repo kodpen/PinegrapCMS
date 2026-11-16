@@ -5018,10 +5018,61 @@ const StyleDesigner = (function () {
         return 'run:' + ((selectedNode && selectedNode._id) ? selectedNode._id : 'none') + ':' + what;
     }
 
+    // The selection, as ids, and the Options panel's scroll position before an
+    // undo or redo step replaces the tree with a parsed snapshot.
+    function _sdStepSelectionKeep() {
+        var panel = document.getElementById('sd-properties');
+        return {
+            id:     selectedNode ? selectedNode._id : null,
+            ids:    selectedNodes.map(function (n) { return n ? n._id : null; }),
+            scroll: panel ? panel.scrollTop : 0
+        };
+    }
+
+    // Finds the kept selection again in the restored trees. The snapshot keeps
+    // every node's _id, so the same ids name the same elements; an id the
+    // step removed drops out. Returns { node, nodes } for selectedNode and
+    // selectedNodes. `find(id)` returns the node or null.
+    function _sdStepSelection(keep, find) {
+        var get = function (id) { return (id === null || id === undefined || id === '') ? null : (find(id) || null); };
+        var nodes = [];
+        (keep.ids || []).forEach(function (id) {
+            var n = get(id);
+            if (n && nodes.indexOf(n) === -1) nodes.push(n);
+        });
+        var node = get(keep.id);
+        // The primary of a multi-selection went away: the last one left takes
+        // its place, as Ctrl+Click does when it takes the primary out.
+        if (!node && nodes.length) node = nodes[nodes.length - 1];
+        if (nodes.length < 2) nodes = [];
+        return { node: node, nodes: nodes };
+    }
+
+    // Selects the kept nodes in the restored tree, redraws, and puts the
+    // Options panel back where it was scrolled when the same node is shown.
+    function _sdStepReselect(keep) {
+        var sel = _sdStepSelection(keep, function (id) {
+            var r = _findNodeAnywhereById(id);
+            return r ? r.node : null;
+        });
+        selectedNode  = sel.node;
+        selectedNodes = sel.nodes;
+        render();
+        if (!selectedNode || selectedNode._id !== keep.id || !keep.scroll) return;
+        var panel = document.getElementById('sd-properties');
+        if (!panel) return;
+        panel.scrollTop = keep.scroll;
+        // Sections filled after the paint can make the panel taller.
+        requestAnimationFrame(function () {
+            if (selectedNode && selectedNode._id === keep.id) panel.scrollTop = keep.scroll;
+        });
+    }
+
     function undo() {
         // A tried layout is not in the history: undo takes it off.
         if (_sdLgCancel()) return;
         if (!undoStack.length) return;
+        var keep = _sdStepSelectionKeep();
         redoStack.push({
             tree:   JSON.stringify(tree),
             shared: _snapshotShared(),
@@ -5034,15 +5085,14 @@ const StyleDesigner = (function () {
         _restoreShared(prev.shared);
         nodeIdCounter = _sdIdFloor();
         _restoreAssetFields(prev.assets);
-        selectedNode = null;
-        selectedNodes = [];
-        render();
+        _sdStepReselect(keep);
         updateUndoRedoState();
     }
 
     function redo() {
         if (_sdLgCancel()) return;
         if (!redoStack.length) return;
+        var keep = _sdStepSelectionKeep();
         undoStack.push({
             tree:   JSON.stringify(tree),
             shared: _snapshotShared(),
@@ -5054,9 +5104,7 @@ const StyleDesigner = (function () {
         _restoreShared(nxt.shared);
         nodeIdCounter = _sdIdFloor();
         _restoreAssetFields(nxt.assets);
-        selectedNode = null;
-        selectedNodes = [];
-        render();
+        _sdStepReselect(keep);
         updateUndoRedoState();
     }
 
@@ -7052,6 +7100,11 @@ const StyleDesigner = (function () {
         '.sd-chip-cond { background:#6f42c1; }',
         '.sd-chip-shown { background:#0d6efd; }',
         '.sd-chip-off { background:#64748b; letter-spacing:.02em; text-transform:uppercase; }',
+        // A placed row over a short element (_sdChipRowSpot()): a dot on its
+        // corner, the chips' text in the dot's title.
+        '.sd-chip-row.sd-chip-row-mark { width:auto; gap:0; margin:0; pointer-events:none; }',
+        '.sd-chip-row.sd-chip-row-mark > .sd-chip:first-child { display:block; width:10px; height:10px; padding:0; border-radius:50%; font-size:0; line-height:0; box-shadow:0 0 0 2px #fff; pointer-events:auto; }',
+        '.sd-chip-row.sd-chip-row-mark > .sd-chip + .sd-chip { display:none; }',
         '.sd-wrap-inline > .sd-chip-row { display:inline-flex; vertical-align:middle; width:auto; min-width:0; max-width:16rem; margin:0 4px 0 0; }',
         '.sd-wrap[data-sd-self].sd-cond { position:relative; }',
         '.sd-wrap[data-sd-self].sd-cond::before { content:attr(data-sd-cond); position:absolute; top:2px; left:2px; z-index:5; max-width:calc(100% - 4px); overflow:hidden; text-overflow:ellipsis; padding:1px 6px; border-radius:3px; background:#6f42c1; color:#fff; font-size:.6rem; font-weight:700; line-height:1.5; pointer-events:none; white-space:nowrap; }',
@@ -10137,7 +10190,7 @@ const StyleDesigner = (function () {
 
     // The same for several wrappers: every position is measured first and
     // written after, so the canvas is laid out once, not once per wrapper.
-    function _sdPlaceChromeOf(ws) {
+    function _sdPlaceChromeOf(ws, again) {
         if (!canvasDoc) return;
         var win = canvasDoc.defaultView;
         if (!win) return;
@@ -10179,7 +10232,7 @@ const StyleDesigner = (function () {
                     bx = -win.scrollX;
                     by = -win.scrollY;
                 }
-                var top, left, width;
+                var top, left, width, mark = false;
                 if (p.classList.contains('sd-tb')) {
                     // Above the element; below it when there is no room
                     // above, inside it with no room below either.
@@ -10191,24 +10244,37 @@ const StyleDesigner = (function () {
                     top = er.top - by + 2;
                     left = er.right - bx - 18;
                 } else if (p.classList.contains('sd-chip-row')) {
-                    top = er.top - by;
-                    left = er.left - bx;
+                    // The row's own height, read while it is a row (a mark
+                    // is a dot): over a short element it would cover the
+                    // words, so it becomes a mark on the element's corner.
+                    if (!p.classList.contains('sd-chip-row-mark')) p._sdRowH = p.offsetHeight;
+                    mark = _sdChipRowSpot(er.height, p._sdRowH || 15) === 'mark';
+                    top = er.top - by - (mark ? 5 : 0);
+                    left = er.left - bx - (mark ? 5 : 0);
                     width = er.width;
                 } else {
                     top = er.top - by - 7;
                     left = er.left - bx - 7;
                 }
-                writes.push({ p: p, top: Math.round(top), left: Math.round(left), width: width });
+                writes.push({ p: p, top: Math.round(top), left: Math.round(left), width: width, mark: mark });
             });
         });
+        // A row taken out of the flow lets its parent lay the row out again
+        // (a flex row's link moves back beside its heading); the boxes are
+        // measured once more so the chips land on where the elements are.
+        var moved = false;
         writes.forEach(function (x) {
             var p = x.p;
             var row = p.classList.contains('sd-chip-row');
+            if (row && x.top !== undefined && !p._sdPlaced) moved = true;
             if (x.top === undefined) {
                 p.style.removeProperty('top');
                 p.style.removeProperty('left');
                 p.style.removeProperty('right');
-                if (row) ['position', 'z-index', 'width', 'min-width'].forEach(function (k) { p.style.removeProperty(k); });
+                if (row) {
+                    ['position', 'z-index', 'width', 'min-width'].forEach(function (k) { p.style.removeProperty(k); });
+                    _sdChipRowMark(p, false);
+                }
                 p._sdPlaced = false;
                 return;
             }
@@ -10217,14 +10283,45 @@ const StyleDesigner = (function () {
             if (row) {
                 p.style.setProperty('position', 'absolute', 'important');
                 p.style.setProperty('z-index', '5', 'important');
-                p.style.setProperty('width', Math.max(0, Math.floor(x.width || 0)) + 'px', 'important');
+                if (x.mark) p.style.removeProperty('width');
+                else p.style.setProperty('width', Math.max(0, Math.floor(x.width || 0)) + 'px', 'important');
                 p.style.setProperty('min-width', '0', 'important');
+                _sdChipRowMark(p, x.mark);
             }
             p.style.setProperty('top', x.top + 'px', 'important');
             p.style.setProperty('left', x.left + 'px', 'important');
             p.style.setProperty('right', 'auto', 'important');
             p._sdPlaced = true;
         });
+        if (moved && !again) _sdPlaceChromeOf(ws, true);
+    }
+
+    // Where a chip row put beside its element goes: 'over' the element's
+    // top-left corner when the element is at least two rows tall (its words
+    // stay readable under the row), else 'mark', a dot on the corner.
+    function _sdChipRowSpot(elHeight, rowHeight) {
+        var h = Number(elHeight) || 0;
+        var r = Number(rowHeight) || 0;
+        if (h <= 0) return 'mark';
+        return (h >= 2 * r) ? 'over' : 'mark';
+    }
+
+    // Draws a placed chip row as a mark (its first chip as a dot, the
+    // others hidden, every chip's text in the dot's title) or as the row.
+    function _sdChipRowMark(p, on) {
+        p.classList.toggle('sd-chip-row-mark', !!on);
+        var first = p.firstElementChild;
+        if (!first) return;
+        // The dot is the first chip itself, so a click does what a click
+        // on that chip does (it reaches the element's wrapper); its words
+        // are its title and its accessible name.
+        if (on) {
+            first.title = Array.prototype.map.call(p.children, function (c) { return c.textContent; }).join('\n');
+            first.setAttribute('aria-label', first.title);
+        } else {
+            first.title = first.textContent;
+            first.removeAttribute('aria-label');
+        }
     }
 
     // The chrome that shows without a hover: the selection's toolbar, note
@@ -13472,6 +13569,21 @@ const StyleDesigner = (function () {
     // differ from the card's. A source not named here gets two rows of the
     // card's values.
     var SD_LIST_SAMPLE_ROWS = {
+        // An earlier order of the member, cancelled.
+        'account.orders': [
+            { __order_id: '1038', __order_no: '12301', __order_total: '₺150,00', __order_status: 'cancelled', __order_is_cancelled: '1', __order_url: '/order?id=1038' }
+        ],
+        // A second upcoming booking still to be confirmed; a past one.
+        'account.upcoming_bookings': [
+            { __booking_id: '2', __booking_service: _sdT('Colour'), __booking_status: 'requested', __booking_status_label: _sdT('Requested'),
+              __booking_tone: 'warning', __booking_details: '27.10.2026 14:00 – 15:30', __booking_manage_url: '#',
+              __booking_manage_label: _sdT('View booking'), __booking_ics_url: '#' }
+        ],
+        'account.past_bookings': [
+            { __booking_id: '3', __booking_service: _sdT('Colour'), __booking_status: 'cancelled', __booking_status_label: _sdT('Cancelled'),
+              __booking_tone: 'secondary', __booking_details: '01.09.2026 14:00 – 15:30', __booking_manage_url: '',
+              __booking_manage_label: '', __booking_ics_url: '' }
+        ],
         // The second line of the sample order (_sdOrderSampleLineTwo()): the
         // mug, no product form.
         'checkout.lines': [
@@ -14656,6 +14768,12 @@ const StyleDesigner = (function () {
                 }
                 // A shopping cart's applied offers, campaign gifts and quick
                 // add box, likewise (_sdCartSectionSample()).
+                // A my account page's order history and bookings, likewise
+                // (_sdAccountSectionSample()).
+                if (!_hasChildren && _getSystemWidgetRegionType(node) === 'my_account') {
+                    var _acSample = _sdAccountSectionSample(_sec, doc);
+                    if (_acSample) _hint = _acSample;
+                }
                 if (!_hasChildren && _getSystemWidgetRegionType(node) === 'shopping_cart') {
                     var _cartSample = _sdCartSectionSample(_sec, doc, _sysWidgetRenderCfg);
                     if (_cartSample) _hint = _cartSample;
@@ -24727,14 +24845,18 @@ const StyleDesigner = (function () {
         var inp = document.getElementById('sd-props-search');
         if (inp) {
             inp.addEventListener('input', function() {
-                filterPropertiesPanel(this.value.toLowerCase().trim());
+                filterPropertiesPanel(this.value.trim());
             });
         }
     }
 
+    // Both the typed text and the labels are folded by _sdCondFold() so a
+    // Turkish capital İ, I and the dotless ı match a typed i, and capitals
+    // match lower case; toLowerCase() alone turns İ into i + U+0307.
     function filterPropertiesPanel(q) {
         var panel = document.getElementById('sd-properties');
         if (!panel) return;
+        q = _sdCondFold(q || '').trim();
 
         if (!q) {
             // Restore bodies that were temporarily expanded during search
@@ -24752,7 +24874,7 @@ const StyleDesigner = (function () {
         panel.querySelectorAll('.sd-props-section, .sd-app-sect').forEach(function(sect) {
             var isApp = sect.classList.contains('sd-app-sect');
             var titleEl = sect.querySelector(isApp ? '.sd-app-sect-hdr' : '.sd-props-section-title');
-            var titleText = titleEl ? titleEl.textContent.toLowerCase() : '';
+            var titleText = titleEl ? _sdCondFold(titleEl.textContent) : '';
             var titleMatch = titleText.indexOf(q) !== -1;
             var anyVisible = false;
             var body = sect.querySelector('.sd-sect-body');
@@ -24770,7 +24892,7 @@ const StyleDesigner = (function () {
                 if (!parentSect) return;
 
                 var label = rowEl.querySelector('.sd-prop-label, .sd-sp-label');
-                var labelText = label ? label.textContent.toLowerCase() : '';
+                var labelText = label ? _sdCondFold(label.textContent) : '';
                 // Row matches if its own label matches OR the section title matches (show full section)
                 var match = labelText.indexOf(q) !== -1 || titleMatch;
                 rowEl.style.display = match ? '' : 'none';
@@ -25028,6 +25150,8 @@ const StyleDesigner = (function () {
                 { label: _sdT('Parcels of the order'), type: 'loop_area', icon: 'bi-truck', extra: { listSource: 'order.parcels' } },
                 { label: _sdT('Steps of the order'), type: 'loop_area', icon: 'bi-signpost-split', extra: { listSource: 'order.steps' } },
                 { label: _sdT('Orders of the member'), type: 'loop_area', icon: 'bi-receipt', extra: { listSource: 'account.orders' } },
+                { label: _sdT('Upcoming bookings of the member'), type: 'loop_area', icon: 'bi-calendar-check', extra: { listSource: 'account.upcoming_bookings' } },
+                { label: _sdT('Past bookings of the member'), type: 'loop_area', icon: 'bi-calendar', extra: { listSource: 'account.past_bookings' } },
                 { label: _sdT('Products in the cart'), type: 'loop_area', icon: 'bi-cart', extra: { listSource: 'cart.items' } },
                 { label: _sdT('Offers applied to the order'), type: 'loop_area', icon: 'bi-tag', extra: { listSource: 'checkout.offers' } },
                 { label: _sdT('Offers to suggest'), type: 'loop_area', icon: 'bi-megaphone', extra: { listSource: 'checkout.suggestions' } },
@@ -34103,6 +34227,8 @@ const StyleDesigner = (function () {
             'order.return_deliveries': _sdT('One row for every delivery of the order a return may still be asked for: put the request form in it; the order gives the form its address and its controls their names, and the reason and the button come back when they are deleted.'),
             'order.return_delivery_lines': _sdT('One row for every product of the delivery the row stands in, with how many may still go back: put the quantity box in it.'),
             'account.orders':     _sdT('One row for every order of the signed-in member, newest first, at most 50: the orders the order history shows.'),
+            'account.upcoming_bookings': _sdT('One row for every booking of the signed-in member still to come, soonest first, with its manage page.'),
+            'account.past_bookings': _sdT('One row for every past or cancelled booking of the signed-in member, latest first.'),
             'cart.items':         _sdT('One row for every product in the visitor\'s cart, lines saved for later left out: a mini cart in the cart link, or a summary beside the cart\'s own rows.'),
             'cart.item_gift_cards': _sdT('One row for every gift card of the cart line the row stands in, one per unit: put the recipient controls in it; the cart gives them their names and values, and the recipient\'s e-mail comes back when it is deleted.'),
             'cart.item_forms':    _sdT('One row for every product form of the cart line the row stands in: one per unit when the product asks for a form per quantity. Put a list of the form\'s fields inside the row.'),
@@ -42388,6 +42514,13 @@ const StyleDesigner = (function () {
         if (kind === 'custom_form' && section === 'form_step') return _sdFormStepNavRow(node);
         if (_sdMemberOpens(kind, section, node)) return _sdMemberOpenRow();
         if (_sdOrderPreviewOpens(kind, section)) return _sdOrderPreviewOpenRow();
+        if (_sdAccountOpens(kind, section)) {
+            return '<button type="button" class="btn btn-sm btn-outline theme-primary w-100 mt-2 text-wrap" data-sd-op-open>' +
+                    '<span class="bi bi-magic me-1"></span>' + esc(_sdT('Convert to design elements')) + '</button>' +
+                '<div style="font-size:.66rem;color:#888;margin-top:3px">' +
+                    esc(_sdT('Puts what the site prints here as elements you design, a list repeating its row for each of the member\'s orders or bookings. The site prints the same until you change them.')) +
+                '</div>';
+        }
         if (!_sdSectionOpensAsList(kind, section)) return '';
         return '<button type="button" class="btn btn-sm btn-outline theme-primary w-100 mt-2 text-wrap" data-sd-section-open>' +
                 '<span class="bi bi-magic me-1"></span>' + esc(_sdT('Convert to design elements')) + '</button>' +
@@ -43940,6 +44073,179 @@ const StyleDesigner = (function () {
         return box;
     }
 
+    // ── My account blocks (order history, bookings) ──────────────────────
+    // The order history and the bookings open into lists of the designer's
+    // own elements (_sdAccountPart(), twin of pg_acct_part()); unopened,
+    // each draws the twin of its PHP builder with sample rows.
+
+    // pg_acct_part()
+    /* @pg-site-output */
+    function _sdAccountPart(section) {
+        var list = function (source, kids) { return createNode('loop_area', { source: source }, kids); };
+        var bound = function (tag, cls, name, token, props) {
+            var p = { _bindings: { text: token } };
+            if (props) {
+                Object.keys(props._bindings || {}).forEach(function (k) { p._bindings[k] = props._bindings[k]; });
+                if (props._bindParams) p._bindParams = props._bindParams;
+            }
+            return _sdPartEl(tag, cls, name, p);
+        };
+        if (section === 'order_history') {
+            var inner = function () {
+                return [
+                    _sdPartEl('span', '', _sdT('Order'), {}, [
+                        _sdPartSentence('span', 'fw-semibold', _sdT('Order number'), '#{var:1}', '__order_no'),
+                        bound('span', 'text-body-secondary small ms-2', _sdT('Order date'), '__order_date'),
+                        _sdPartEl('span', 'badge text-bg-secondary ms-2', _sdT('Cancelled'), Object.assign({ text: _sdT('Cancelled') },
+                            _sdPartWhen('__order_is_cancelled', 'not_empty')))
+                    ]),
+                    bound('span', '', _sdT('Grand total'), '__order_total')
+                ];
+            };
+            var cls = 'list-group-item d-flex justify-content-between align-items-center';
+            var linkWhen = _sdPartWhen('__order_url', 'neq', '#');
+            return [_sdPartEl('div', 'list-group pg-sw-order-history', _sdT('Orders of the member'), {}, [
+                list('account.orders', [
+                    // A link while the site has a view order page, else a plain item.
+                    _sdPartEl('a', cls + ' list-group-item-action', _sdT('Order'), { href: '#', _bindings: { href: '__order_url', show_if: '__order_url' },
+                        _bindParams: linkWhen._bindParams }, inner()),
+                    _sdPartEl('div', cls, _sdT('Order'), _sdPartWhen('__order_url', 'eq', '#'), inner())
+                ])
+            ])];
+        }
+        if (section === 'bookings') {
+            var item = function () {
+                return _sdPartEl('div', 'list-group-item', _sdT('Booking'), {}, [
+                    _sdPartEl('div', 'd-flex flex-wrap justify-content-between align-items-center gap-2', _sdT('Heading'), {}, [
+                        bound('span', 'fw-semibold', _sdT('Service'), '__booking_service'),
+                        bound('span', 'badge text-bg-warning', _sdT('Status'), '__booking_status_label', _sdPartWhen('__booking_tone', 'eq', 'warning')),
+                        bound('span', 'badge text-bg-success', _sdT('Status'), '__booking_status_label', _sdPartWhen('__booking_tone', 'eq', 'success')),
+                        bound('span', 'badge text-bg-secondary', _sdT('Status'), '__booking_status_label', _sdPartWhen('__booking_tone', 'eq', 'secondary'))
+                    ]),
+                    bound('div', 'small text-body-secondary', _sdT('Date, time, staff and deposit'), '__booking_details'),
+                    _sdPartEl('div', 'd-flex flex-wrap gap-2 mt-2', _sdT('Buttons'), _sdPartWhen('__booking_manage_url', 'not_empty'), [
+                        _sdPartEl('a', 'btn btn-sm btn-outline-primary', _sdT('Manage booking'), { text: _sdT('Change or cancel'), href: '#',
+                            _bindings: { href: '__booking_manage_url', text: '__booking_manage_label' }, _attrs: [{ name: 'rel', value: 'nofollow' }] }),
+                        _sdPartEl('a', 'btn btn-sm btn-outline-secondary', _sdT('Add to calendar'), { text: _sdT('Add to calendar'), href: '#',
+                            _bindings: { href: '__booking_ics_url' }, _attrs: [{ name: 'rel', value: 'nofollow' }] })
+                    ])
+                ]);
+            };
+            var part = [];
+            [['upcoming', _sdT('Upcoming')], ['past', _sdT('Past')]].forEach(function (h) {
+                part.push(_sdPartEl('h6', 'mt-3 mb-2', h[1], { text: h[1], _bindings: { eo_visible_if: 'has_' + h[0] + '_bookings' } }));
+                part.push(_sdPartEl('div', 'list-group pg-sw-bookings', h[1], { _bindings: { eo_visible_if: 'has_' + h[0] + '_bookings' } },
+                    [list('account.' + h[0] + '_bookings', [item()])]));
+            });
+            return part;
+        }
+        return [];
+    }
+
+    // Whether a my account section opens into elements.
+    function _sdAccountOpens(kind, section) {
+        return kind === 'my_account' && _sdAccountPart(section).length > 0;
+    }
+
+    // The my account section `node`, in place, as its part (as
+    // _sdOrderPreviewSectionToTree()). Returns the node, or null.
+    function _sdAccountSectionToTree(node) {
+        var b = (node && node.props && node.props._bindings) || {};
+        if (!_sdAccountOpens(_getSystemWidgetRegionType(node), b.section)) return null;
+        var part = _sdAccountPart(b.section);
+        delete b.section;
+        if (!Object.keys(b).length) delete node.props._bindings;
+        node.children = part;
+        var hit = _sdAnyParent(node);
+        if (hit && hit.sid) _sharedDirty[hit.sid] = true;
+        return node;
+    }
+
+    // pg_acct_order_history_html(); rows in account.orders' shape, totals
+    // the price HTML the site prints.
+    /* @pg-site-output */
+    function _sdAccountOrderHistoryHtml(rows, linked, totals) {
+        var cls = 'list-group-item d-flex justify-content-between align-items-center';
+        return '<div class="list-group pg-sw-order-history">' + (rows || []).map(function (o, i) {
+            var inner = '<span><span class="fw-semibold">#' + esc(o.__order_no) + '</span>'
+                + '<span class="text-body-secondary small ms-2">' + esc(o.__order_date) + '</span>'
+                + (o.__order_is_cancelled !== '' ? '<span class="badge text-bg-secondary ms-2">' + esc(_sdT('Cancelled')) + '</span>' : '')
+                + '</span><span>' + (totals[i] || '') + '</span>';
+            return linked ? '<a href="' + esc(o.__order_url) + '" class="' + cls + ' list-group-item-action">' + inner + '</a>'
+                : '<div class="' + cls + '">' + inner + '</div>';
+        }).join('') + '</div>';
+    }
+
+    // pg_booking_customer_view_html(); view { upcoming: rows, past: rows }
+    // in pg_booking_customer_view_rows()' shape.
+    /* @pg-site-output */
+    function _sdAccountBookingsHtml(view) {
+        var html = '';
+        [['upcoming', _sdT('Upcoming')], ['past', _sdT('Past')]].forEach(function (h) {
+            var rows = (view && view[h[0]]) || [];
+            if (!rows.length) return;
+            html += '<h6 class="mt-3 mb-2">' + esc(h[1]) + '</h6><div class="list-group pg-sw-bookings">';
+            rows.forEach(function (r) {
+                html += '<div class="list-group-item">'
+                    + '<div class="d-flex flex-wrap justify-content-between align-items-center gap-2">'
+                    + '<span class="fw-semibold">' + esc(r.service) + '</span>'
+                    + '<span class="badge text-bg-' + r.tone + '">' + esc(r.status_label) + '</span>'
+                    + '</div>'
+                    + '<div class="small text-body-secondary">' + esc(r.details) + '</div>';
+                if (r.manage_url !== '') {
+                    html += '<div class="d-flex flex-wrap gap-2 mt-2">'
+                        + '<a href="' + esc(r.manage_url) + '" class="btn btn-sm btn-outline-primary" rel="nofollow">' + esc(r.manage_label) + '</a>'
+                        + '<a href="' + esc(r.ics_url) + '" class="btn btn-sm btn-outline-secondary" rel="nofollow">' + esc(_sdT('Add to calendar')) + '</a>'
+                        + '</div>';
+                }
+                html += '</div>';
+            });
+            html += '</div>';
+        });
+        return html;
+    }
+
+    // What a my account page prints in its order history or bookings for a
+    // sample member: the sample order and a cancelled one, two upcoming
+    // bookings and a past one (the booking lists' sample rows).
+    /* @pg-site-output */
+    function _sdAccountSectionHtml(section) {
+        if (section === 'order_history') {
+            var m = _sdOrderAmounts();
+            var money = function (n) { return esc(_sdMoney(n)); };
+            return _sdAccountOrderHistoryHtml([
+                { __order_no: '12345', __order_date: _sdDateSample(false), __order_is_cancelled: '', __order_url: '#' },
+                { __order_no: '12301', __order_date: _sdDateSample(false), __order_is_cancelled: '1', __order_url: '#' }
+            ], true, [money(m.total), money(m.price2)]);
+        }
+        if (section === 'bookings') {
+            var view = function (r) {
+                return { service: r.__booking_service, status_label: r.__booking_status_label, tone: r.__booking_tone, details: r.__booking_details,
+                    manage_url: r.__booking_manage_url, manage_label: r.__booking_manage_label, ics_url: r.__booking_ics_url };
+            };
+            return _sdAccountBookingsHtml({
+                upcoming: [view(_SD_LIST_ROW_PREVIEWS)].concat(SD_LIST_SAMPLE_ROWS['account.upcoming_bookings'].map(view)),
+                past: [view(_SD_LIST_CARD_SAMPLES['account.past_bookings'])].concat(SD_LIST_SAMPLE_ROWS['account.past_bookings'].map(view))
+            });
+        }
+        return '';
+    }
+
+    // The sample of a my account section as a canvas box (as
+    // _sdOrderPreviewSectionSample()); null for a section it does not draw.
+    function _sdAccountSectionSample(section, doc) {
+        var html = _sdAccountSectionHtml(section);
+        if (!html) return null;
+        var box = doc.createElement('div');
+        box.className = 'sd-section-binding-hint sd-section-sample';
+        box.setAttribute('inert', '');
+        box.style.cssText = 'pointer-events:none';
+        box.innerHTML = html + '<div class="small text-body-secondary fst-italic mt-1">'
+            + esc(section === 'order_history' ? _sdT('The site lists the signed-in member\'s orders, newest first.')
+                : _sdT('The site lists the signed-in member\'s bookings: upcoming ones with their manage page, then past ones.')) + '</div>';
+        return box;
+    }
+
     // Resolve the regionType of the system widget that contains `node`.
     // Returns one of: 'form_list_view' (default), 'form_item_view',
     // 'catalog_listing', or '' if not in a SW.
@@ -45229,6 +45535,8 @@ const StyleDesigner = (function () {
             ['no_orders',  _sdT('The member has no orders')],
             ['is_staff',   _sdT('The visitor may open the staff page')],
             ['has_bookings', _sdT('The member has bookings')],
+            ['has_upcoming_bookings', _sdT('The member has upcoming bookings')],
+            ['has_past_bookings', _sdT('The member has past bookings')],
             ['has_store_credit', _sdT('The member has store credit or points to convert')]
         ],
         form_list_view: [
@@ -54240,7 +54548,7 @@ const StyleDesigner = (function () {
             el.addEventListener('click', function () {
                 if (!selectedNode) return;
                 saveState();
-                var node = _sdOrderPreviewSectionToTree(selectedNode);
+                var node = _sdOrderPreviewSectionToTree(selectedNode) || _sdAccountSectionToTree(selectedNode);
                 if (!node) return;
                 selectedNodes = [];
                 if (typeof expandAncestorsAnywhere === 'function') expandAncestorsAnywhere(node);
@@ -60661,6 +60969,40 @@ const StyleDesigner = (function () {
                 ['__order_url',          _sdT('Order detail URL')]
             ]
         },
+        // The member's bookings (pg_sw_list_account_booking_rows()): the
+        // bookings section's two parts.
+        'account.upcoming_bookings': {
+            label: _sdT('Upcoming bookings of the member'),
+            arg: '', argRequired: false,
+            kinds: ['my_account'],
+            rows: [
+                ['__booking_id',           _sdT('Booking ID')],
+                ['__booking_service',      _sdT('Service')],
+                ['__booking_status',       _sdT('Status (raw text)')],
+                ['__booking_status_label', _sdT('Status')],
+                ['__booking_tone',         _sdT('Status colour (warning, success or secondary)')],
+                ['__booking_details',      _sdT('Date, time, staff and deposit')],
+                ['__booking_manage_url',   _sdT('Manage booking URL')],
+                ['__booking_manage_label', _sdT('Manage button label')],
+                ['__booking_ics_url',      _sdT('Add to calendar URL')]
+            ]
+        },
+        'account.past_bookings': {
+            label: _sdT('Past bookings of the member'),
+            arg: '', argRequired: false,
+            kinds: ['my_account'],
+            rows: [
+                ['__booking_id',           _sdT('Booking ID')],
+                ['__booking_service',      _sdT('Service')],
+                ['__booking_status',       _sdT('Status (raw text)')],
+                ['__booking_status_label', _sdT('Status')],
+                ['__booking_tone',         _sdT('Status colour (warning, success or secondary)')],
+                ['__booking_details',      _sdT('Date, time, staff and deposit')],
+                ['__booking_manage_url',   _sdT('Manage booking URL')],
+                ['__booking_manage_label', _sdT('Manage button label')],
+                ['__booking_ics_url',      _sdT('Add to calendar URL')]
+            ]
+        },
         'cart.items': {
             label: _sdT('Products in the cart'),
             arg: '', argRequired: false,
@@ -61024,7 +61366,18 @@ const StyleDesigner = (function () {
         __step_note:       '',
         __step_is_estimate: '',
         __order_is_cancelled: '',
-        __order_url:       '#',
+        // Not '#': the order history part shows its link while the site has
+        // a view order page (pg_acct_part()).
+        __order_url:       '/order?id=1042',
+        __booking_id:           '1',
+        __booking_service:      _sdT('Haircut'),
+        __booking_status:       'confirmed',
+        __booking_status_label: _sdT('Confirmed'),
+        __booking_tone:         'success',
+        __booking_details:      '20.10.2026 10:00 – 10:45 · ' + _sdT('Sam Carter'),
+        __booking_manage_url:   '#',
+        __booking_manage_label: _sdT('Change or cancel'),
+        __booking_ics_url:      '#',
         __menu_item_name: _sdT('Menu item'),
         __menu_item_id: '2',
         __menu_item_url: '#',
@@ -61142,16 +61495,31 @@ const StyleDesigner = (function () {
     // The sample of row value `token` when the nearest list giving it is a
     // checkout list (the order preview's, the express order's); null
     // otherwise.
+    // A list's own card sample (_SD_LIST_CARD_SAMPLES) wins the same way,
+    // in any family: a past booking's card is not the upcoming one's.
     function _sdCheckoutRowSample(token, node) {
-        if (!Object.prototype.hasOwnProperty.call(_SD_LIST_ROW_PREVIEWS, token)) return null;
         var lists = _sdListsAbove(node);
         for (var i = 0; i < lists.length; i++) {
-            var src = SW_LIST_SOURCES[lists[i].props.source];
+            var name = String(lists[i].props.source);
+            var src = SW_LIST_SOURCES[name];
             if (!src || !src.rows.some(function (r) { return r[0] === token; })) continue;
-            return String(lists[i].props.source).indexOf('checkout.') === 0 ? _SD_LIST_ROW_PREVIEWS[token] : null;
+            var card = _SD_LIST_CARD_SAMPLES[name];
+            if (card && Object.prototype.hasOwnProperty.call(card, token)) return card[token];
+            if (!Object.prototype.hasOwnProperty.call(_SD_LIST_ROW_PREVIEWS, token)) return null;
+            return name.indexOf('checkout.') === 0 ? _SD_LIST_ROW_PREVIEWS[token] : null;
         }
         return null;
     }
+
+    // The card of a list whose values differ from the shared row samples
+    // (_SD_LIST_ROW_PREVIEWS), by list source.
+    var _SD_LIST_CARD_SAMPLES = {
+        'account.past_bookings': {
+            __booking_id: '4', __booking_service: _sdT('Haircut'), __booking_status: 'done', __booking_status_label: _sdT('Done'),
+            __booking_tone: 'secondary', __booking_details: '22.09.2026 10:00 – 10:45 · ' + _sdT('Sam Carter'), __booking_manage_url: '',
+            __booking_manage_label: '', __booking_ics_url: ''
+        }
+    };
 
     // The row tokens of the lists `node` is drawn in, as { token, label },
     // with cond: true on a yes/no value (offered as a condition only), the
@@ -61206,6 +61574,9 @@ const StyleDesigner = (function () {
         if (source === 'catalog.crumbs') return _sdPartCatalogCrumbs(false)[0];
         if (source === 'catalog.active_filters') return _sdPartCatalogActiveFilters()[0];
         if (source.indexOf('calendar.') === 0) return _sdCalendarListStarter(source, bs);
+        // A booking list as the bookings part draws it (_sdAccountPart()).
+        if (source === 'account.upcoming_bookings') return _sdAccountPart('bookings')[1];
+        if (source === 'account.past_bookings') return _sdAccountPart('bookings')[3];
         if (source.indexOf('order.') === 0 || source.indexOf('account.') === 0 || source === 'cart.items') return _sdOrderListStarter(source, bs);
         if (source.indexOf('checkout.') === 0) return _sdCheckoutListStarter(source, bs);
         if (source === 'menu.children') {
@@ -63998,12 +64369,10 @@ const StyleDesigner = (function () {
                         ]),
                         createNode('content', { contentType: 'heading', tag: 'h5', text: _sdT('My Orders'), cssClass: 'mb-3',
                             _bindings: { eo_visible_if: 'has_orders' } }),
-                        createNode('semantic', { tag: 'div', cssClass: 'mb-4', customName: _sdT('Order History'),
-                            _bindings: { section: 'order_history' } }),
+                        createNode('semantic', { tag: 'div', cssClass: 'mb-4', customName: _sdT('Order History') }, _sdAccountPart('order_history')),
                         createNode('content', { contentType: 'heading', tag: 'h5', text: _sdT('My Bookings'), cssClass: 'mb-1',
                             _bindings: { eo_visible_if: 'has_bookings' } }),
-                        createNode('semantic', { tag: 'div', cssClass: 'mb-4', customName: _sdT('My Bookings'),
-                            _bindings: { section: 'bookings' } }),
+                        createNode('semantic', { tag: 'div', cssClass: 'mb-4', customName: _sdT('My Bookings') }, _sdAccountPart('bookings')),
                         createNode('content', { contentType: 'heading', tag: 'h5', text: _sdT('Store credit'), cssClass: 'mb-3',
                             _bindings: { eo_visible_if: 'has_store_credit' } }),
                         createNode('semantic', { tag: 'div', cssClass: 'mb-4', customName: _sdT('Store credit'),
@@ -70198,6 +70567,7 @@ const StyleDesigner = (function () {
     // undo history and content rights answer; the normal Save writes it.
     // Classic menus and regions stay read-only.
     var _sdProto = { open: false, ui: null, canvas: null, items: [], byId: {}, layout: null, view: { x: 40, y: 40, k: 1 }, seq: 0, selected: null, env: {}, warned: {}, menu: null,
+        link: null, broken: { list: [], count: {} }, problems: null,
         pics: { gen: 0, io: null, boxes: {}, near: {}, live: {}, wait: [], loading: 0, cache: {} } };
 
     // Pictures (_sdProtoPicMake()): at most this many loading at once, the
@@ -70304,7 +70674,26 @@ const StyleDesigner = (function () {
         ui.status = _sdProtoEl('span', 'sd-proto-status');
         ui.status.setAttribute('role', 'status');
         bar.appendChild(ui.status);
+        // "N broken" (F19): every broken link of the design, in a list.
+        ui.broken = _sdProtoEl('button', 'sd-proto-broken');
+        ui.broken.type = 'button';
+        ui.broken.hidden = true;
+        ui.broken.setAttribute('aria-haspopup', 'dialog');
+        ui.broken.addEventListener('click', function () {
+            if (_sdProto.problems) _sdProtoProblemsClose(true);
+            else _sdProtoProblemsOpen();
+        });
+        bar.appendChild(ui.broken);
         var tools = _sdProtoEl('div', 'sd-proto-tools');
+        // Play (F24): the prototype viewer at the selected page, else at
+        // the first page it has; hidden when it has none.
+        ui.play = _sdProtoButton('bi-play-fill', _sdT('Play the prototype from the selected page'), function () {
+            var url = _sdProtoPlayUrl();
+            if (url) window.open(url, '_blank', 'noopener');
+        });
+        ui.play.appendChild(_sdProtoEl('span', 'sd-proto-btn-label', _sdT('Play')));
+        ui.play.hidden = true;
+        tools.appendChild(ui.play);
         ui.zoomLabel = _sdProtoEl('span', 'sd-vb-zoom', '100%');
         tools.appendChild(_sdProtoButton('bi-zoom-out', _sdT('Zoom Out'), function () { if (_sdProto.canvas) _sdProto.canvas.view.zoomBy(1 / 1.2); }));
         tools.appendChild(ui.zoomLabel);
@@ -70322,6 +70711,10 @@ const StyleDesigner = (function () {
         var tidy = _sdProtoButton('bi-grid-3x3-gap', _sdT('Tidy up'), function () { _sdProtoTidy(); });
         tidy.appendChild(_sdProtoEl('span', 'sd-proto-btn-label', _sdT('Tidy up')));
         tools.appendChild(tidy);
+        // The links panel (F18): open or closed kept in this browser.
+        ui.listToggle = _sdProtoButton('bi-layout-sidebar-inset-reverse', _sdT('Show or hide the links of the selected page'), function () { _sdProtoListShow(!ui.root.classList.contains('sd-proto-list-open'), true); });
+        ui.listToggle.appendChild(_sdProtoEl('span', 'sd-proto-btn-label', _sdT('Links')));
+        tools.appendChild(ui.listToggle);
         tools.appendChild(_sdProtoButton('bi-arrow-clockwise', _sdT('Read the links again'), function () { _sdProtoLoad(); }));
         tools.appendChild(_sdProtoButton('bi-x-lg', _sdT('Close the prototype view'), function () { _sdProtoClose(); }));
         bar.appendChild(tools);
@@ -70333,7 +70726,7 @@ const StyleDesigner = (function () {
         ui.viewport.tabIndex = -1;
         ui.viewport.setAttribute('role', 'application');
         ui.viewport.setAttribute('aria-roledescription', _sdT('Prototype map'));
-        ui.viewport.setAttribute('aria-label', _sdT('Drag to move the map, Ctrl and the mouse wheel to zoom; a link row selects its element.'));
+        ui.viewport.setAttribute('aria-label', _sdT('Drag to move the map, Ctrl and the mouse wheel to zoom; a link row selects the link, the links panel opens it in the editor.'));
         ui.layer = _sdProtoEl('div', 'pgc-layer');
         ui.svg = G.svgEl('svg', 'pgc-edges');
         ui.svg.setAttribute('aria-hidden', 'true');
@@ -70354,10 +70747,19 @@ const StyleDesigner = (function () {
         ui.stage = _sdProtoEl('div', 'pgc-stage sd-proto-stage');
         ui.stage.appendChild(ui.viewport);
         ui.stage.appendChild(ui.live);
-        ui.root.appendChild(ui.stage);
+        // The stage and, right of it, the selected page's links (F15).
+        ui.body = _sdProtoEl('div', 'sd-proto-body');
+        ui.body.appendChild(ui.stage);
+        ui.list = _sdProtoEl('aside', 'sd-proto-list');
+        ui.list.id = 'sd-proto-list';
+        ui.list.setAttribute('aria-label', _sdT('Links of the selected page'));
+        ui.listToggle.setAttribute('aria-controls', ui.list.id);
+        ui.body.appendChild(ui.list);
+        ui.root.appendChild(ui.body);
         area.appendChild(ui.root);
 
         _sdProto.ui = ui;
+        _sdProtoListShow(_sdProtoListStored(), false);
         _sdProto.canvas = G.create({
             ui: ui,
             text: function (key, a, b, c) {
@@ -70368,7 +70770,7 @@ const StyleDesigner = (function () {
             // Only the selected frame's arrows are drawn (focus); a press on
             // a frame selects it, on the empty canvas none.
             focus: true,
-            focusChanged: function (id) { _sdProtoFocusMarks(id); },
+            focusChanged: function (id) { _sdProtoFocused(id); },
             label: function (item) { return item.kind === 'chip' ? _sdProtoChipText(item) : _sdProtoFrameName(item); },
             groups: function () { return _sdProto.layout ? _sdProto.layout.headings : []; },
             boxRole: function () { return _sdT('Frame'); },
@@ -70407,7 +70809,7 @@ const StyleDesigner = (function () {
             },
             move: function () {},
             release: function (event, done) {
-                if (done.kind === 'row' && !done.moved && event.type === 'pointerup') _sdProtoOpenRow(done.row);
+                if (done.kind === 'row' && !done.moved && event.type === 'pointerup') _sdProtoPickRow(done.row);
             },
             cancel: function () {},
             key: function (event) {
@@ -70422,7 +70824,7 @@ const StyleDesigner = (function () {
                     return true;
                 }
                 var row = event.target.closest ? event.target.closest('.sd-proto-row') : null;
-                if (row && (event.key === 'Enter' || event.key === ' ')) { _sdProtoOpenRow(row); return true; }
+                if (row && (event.key === 'Enter' || event.key === ' ')) { _sdProtoPickRow(row); return true; }
                 // L, the context menu key or Shift+F10: where the link goes,
                 // chosen from a list (the keyboard's way to draw its arrow).
                 var menuKey = (name === 'l' && !event.ctrlKey && !event.metaKey && !event.shiftKey) || event.key === 'ContextMenu' || (event.key === 'F10' && event.shiftKey);
@@ -70434,6 +70836,7 @@ const StyleDesigner = (function () {
         // A press outside the target menu closes it.
         ui.root.addEventListener('pointerdown', function (event) {
             if (_sdProto.menu && !_sdProto.menu.el.contains(event.target)) _sdProtoMenuClose(false);
+            if (_sdProto.problems && !_sdProto.problems.contains(event.target) && !ui.broken.contains(event.target)) _sdProtoProblemsClose(false);
         }, true);
         return ui;
     }
@@ -70477,6 +70880,7 @@ const StyleDesigner = (function () {
     function _sdProtoClose() {
         if (!_sdProto.open) return;
         _sdProtoMenuClose(false);
+        _sdProtoProblemsClose(false);
         _sdProto.open = false;
         _sdProto.seq++;
         if (_sdProto.canvas) _sdProto.canvas.cancel();
@@ -70550,6 +70954,13 @@ const StyleDesigner = (function () {
         head.lastChild.setAttribute('aria-hidden', 'true');
         head.appendChild(_sdProtoEl('span', 'sd-proto-name', _sdProtoFrameName(item)));
         if (item.start) head.appendChild(_sdProtoEl('span', 'sd-proto-start', _sdT('Start')));
+        // A red count of the frame's broken links (F20).
+        var brokenHere = _sdProto.broken.count[item.id] || 0;
+        if (brokenHere) {
+            var badge = _sdProtoEl('span', 'sd-proto-badge', String(brokenHere));
+            badge.title = _sdT('{var:1} broken', brokenHere);
+            head.appendChild(badge);
+        }
         var meta = '';
         if (item.kind === 'shared') {
             meta = !item.loaded ? _sdT('Not loaded') : (item.pages === 1 ? _sdT('On 1 page') : _sdT('On {var:1} pages', item.pages));
@@ -70732,6 +71143,305 @@ const StyleDesigner = (function () {
         });
     }
 
+    // ── The links panel and the problems (F15-F20, F24) ──
+
+    // Why a broken link is broken, in words (PGProtoHotspots.brokenWhy()).
+    function _sdProtoWhy(why) {
+        if (why === 'menu') return _sdT('The menu or region could not be found');
+        if (why === 'kept') return _sdT('The page this link was kept by is gone');
+        if (why === 'address') return _sdT('The link has no address');
+        return _sdT('No page at this address');
+    }
+
+    // A frame's link row on the canvas by its port, null when not drawn.
+    function _sdProtoRowEl(frameId, port) {
+        var item = _sdProto.byId[frameId];
+        var ui = _sdProto.ui;
+        if (!item || !item.rows || !ui) return null;
+        for (var i = 0; i < item.rows.length; i++) {
+            if (item.rows[i].port === port) {
+                return ui.boxes.querySelector('[data-node="' + String(frameId).replace(/"/g, '') + '"] .sd-proto-row[data-row="' + i + '"]');
+            }
+        }
+        return null;
+    }
+
+    // The panel open by default from 1,100 px, closed below; a choice made
+    // with the bar's button is kept in this browser.
+    function _sdProtoListStored() {
+        try {
+            var kept = window.localStorage.getItem('pg_proto_list');
+            if (kept === '1' || kept === '0') return kept === '1';
+        } catch (e) { /* storage blocked: the width decides */ }
+        return !window.matchMedia || window.matchMedia('(min-width: 1100px)').matches;
+    }
+
+    function _sdProtoListShow(open, keep) {
+        var ui = _sdProto.ui;
+        if (!ui) return;
+        ui.root.classList.toggle('sd-proto-list-open', !!open);
+        ui.listToggle.setAttribute('aria-pressed', open ? 'true' : 'false');
+        ui.listToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+        if (keep) {
+            try { window.localStorage.setItem('pg_proto_list', open ? '1' : '0'); } catch (e) { /* kept for this visit only */ }
+        }
+    }
+
+    // A change of the selected frame: the row marks, the panel, Play; a
+    // picked link that is not the frame's own nor one into it is let go.
+    function _sdProtoFocused(id) {
+        var l = _sdProto.link;
+        if (l) {
+            var edge = (_sdProto.layout ? _sdProto.layout.edges : []).filter(function (e) { return e.id === l.frame + '|' + l.port; })[0];
+            if (id === null || (String(id) !== l.frame && !(edge && edge.to === String(id)))) _sdProto.link = null;
+        }
+        _sdProtoFocusMarks(id);
+        _sdProtoPicked();
+        _sdProtoListDraw();
+        _sdProtoPlayState();
+    }
+
+    // One link picked (F16) by its frame and port, from a row of the panel
+    // or a link row on the canvas (fromCanvas: its panel row scrolls into
+    // view). The frame is selected unless the selected one is the link's
+    // target; the link's row and arrow are marked, the other end brought
+    // into view.
+    function _sdProtoPick(frameId, port, fromCanvas) {
+        var canvas = _sdProto.canvas;
+        var ui = _sdProto.ui;
+        frameId = String(frameId);
+        if (!canvas || !_sdProto.byId[frameId] || !_sdProto.layout) return;
+        var edge = _sdProto.layout.edges.filter(function (e) { return e.id === frameId + '|' + port; })[0] || null;
+        var focused = canvas.focused();
+        _sdProto.link = { frame: frameId, port: port };
+        if (focused !== frameId && !(edge && focused === edge.to)) canvas.focus(frameId);
+        _sdProtoPicked();
+        _sdProtoListDraw();
+        var other = edge ? _sdProto.byId[(canvas.focused() === edge.to) ? frameId : edge.to] : null;
+        if (other) canvas.view.reveal(other);
+        if (fromCanvas) {
+            var li = ui.list.querySelector('.sd-proto-li[data-link="' + (frameId + '|' + port).replace(/"/g, '') + '"]');
+            if (li) li.scrollIntoView({ block: 'nearest' });
+        }
+    }
+
+    function _sdProtoPickRow(rowEl) {
+        var box = rowEl.closest('[data-node]');
+        var item = box ? _sdProto.byId[box.getAttribute('data-node')] : null;
+        var row = item && item.rows ? item.rows[parseInt(rowEl.getAttribute('data-row'), 10) || 0] : null;
+        if (row) _sdProtoPick(item.id, row.port, true);
+    }
+
+    // The picked link's row and arrow marked.
+    function _sdProtoPicked() {
+        var ui = _sdProto.ui;
+        if (!ui) return;
+        Array.prototype.slice.call(ui.root.querySelectorAll('.sd-proto-row-picked, .sd-proto-edge-picked')).forEach(function (n) {
+            n.classList.remove('sd-proto-row-picked', 'sd-proto-edge-picked');
+        });
+        var l = _sdProto.link;
+        if (!l) return;
+        var rowEl = _sdProtoRowEl(l.frame, l.port);
+        if (rowEl) rowEl.classList.add('sd-proto-row-picked');
+        var group = ui.svg.querySelector('[data-edge="' + (l.frame + '|' + l.port).replace(/"/g, '') + '"]');
+        if (group) group.classList.add('sd-proto-edge-picked');
+    }
+
+    function _sdProtoListButton(cls, icon, label, onClick) {
+        var b = _sdProtoEl('button', cls);
+        b.type = 'button';
+        b.title = label;
+        b.setAttribute('aria-label', label);
+        b.innerHTML = '<span class="bi ' + icon + '" aria-hidden="true"></span>';
+        b.addEventListener('click', onClick);
+        return b;
+    }
+
+    // The name a list row shows for where a link goes.
+    function _sdProtoTargetName(row) {
+        var target = row.to ? _sdProto.byId[row.to] : null;
+        if (!target) return row.href || '';
+        return target.kind === 'chip' ? _sdProtoChipText(target) : _sdProtoFrameName(target);
+    }
+
+    // The selected frame's links (F15): out, each with "Change target" and
+    // "Open in the editor" (F17); in, a shared part's said so; a page's
+    // shared parts, each selecting its frame. From the marked layout
+    // (PGProtoHotspots.listOf()), never from the canvas.
+    function _sdProtoListDraw() {
+        var ui = _sdProto.ui;
+        if (!ui || !ui.list) return;
+        var canvas = _sdProto.canvas;
+        var data = (_sdProto.layout && canvas) ? window.PGProtoHotspots.listOf(_sdProto.layout, canvas.focused()) : null;
+        var picked = _sdProto.link ? _sdProto.link.frame + '|' + _sdProto.link.port : '';
+        ui.list.textContent = '';
+        if (!data) {
+            ui.list.appendChild(_sdProtoEl('p', 'sd-proto-list-empty', _sdT('Select a page to see its links.')));
+            return;
+        }
+        var item = _sdProto.byId[data.id];
+        var head = _sdProtoEl('h2', 'sd-proto-list-head');
+        head.appendChild(_sdProtoEl('span', 'bi ' + (data.kind === 'shared' ? 'bi-puzzle' : 'bi-file-earmark')));
+        head.lastChild.setAttribute('aria-hidden', 'true');
+        head.appendChild(_sdProtoEl('span', 'sd-proto-list-name', _sdProtoFrameName(item)));
+        ui.list.appendChild(head);
+
+        var section = function (title) {
+            ui.list.appendChild(_sdProtoEl('h3', 'sd-proto-list-title', title));
+            var box = _sdProtoEl('div', 'sd-proto-list-rows');
+            ui.list.appendChild(box);
+            return box;
+        };
+        var line = function (box, linkId, main) {
+            var li = _sdProtoEl('div', 'sd-proto-li');
+            li.setAttribute('data-link', linkId);
+            if (linkId === picked) {
+                li.classList.add('sd-proto-li-picked');
+                main.setAttribute('aria-current', 'true');
+            }
+            li.appendChild(main);
+            box.appendChild(li);
+            return li;
+        };
+
+        var outBox = section(_sdT('Outgoing · {var:1}', data.outgoing.length));
+        if (!data.outgoing.length) outBox.appendChild(_sdProtoEl('p', 'sd-proto-list-none', _sdT('No links')));
+        data.outgoing.forEach(function (row) {
+            var main = _sdProtoEl('button', 'sd-proto-li-main');
+            main.type = 'button';
+            main.appendChild(_sdProtoMarkIcon(row.mark));
+            var text = _sdProtoEl('span', 'sd-proto-li-text');
+            text.appendChild(_sdProtoEl('span', 'sd-proto-li-label', row.label));
+            text.appendChild(_sdProtoEl('span', 'sd-proto-li-to', row.why ? _sdProtoWhy(row.why) : '→ ' + _sdProtoTargetName(row)));
+            main.appendChild(text);
+            main.addEventListener('click', function () { _sdProtoPick(data.id, row.port, false); });
+            var change = function (anchor) {
+                var rowEl = _sdProtoRowEl(data.id, row.port);
+                return rowEl ? _sdProtoMenuOpen(rowEl, anchor) : false;
+            };
+            // L, the menu key or Shift+F10: the target menu, as on the canvas.
+            main.addEventListener('keydown', function (event) {
+                var name = String(event.key || '').toLowerCase();
+                var menuKey = (name === 'l' && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey) || event.key === 'ContextMenu' || (event.key === 'F10' && event.shiftKey);
+                if (menuKey && row.drawable && change(main)) event.preventDefault();
+            });
+            var li = line(outBox, data.id + '|' + row.port, main);
+            if (row.why) li.classList.add('sd-proto-li-broken');
+            var acts = _sdProtoEl('span', 'sd-proto-li-acts');
+            if (row.drawable) {
+                main.setAttribute('aria-keyshortcuts', 'L');
+                var changeBtn = _sdProtoListButton('sd-proto-li-act', 'bi-signpost-split', _sdT('Change target'), function () { change(changeBtn); });
+                acts.appendChild(changeBtn);
+            }
+            acts.appendChild(_sdProtoListButton('sd-proto-li-act', 'bi-box-arrow-in-up-left', _sdT('Open in the editor'), function () {
+                var rowEl = _sdProtoRowEl(data.id, row.port);
+                if (rowEl) _sdProtoOpenRow(rowEl);
+            }));
+            li.appendChild(acts);
+        });
+
+        var inBox = section(_sdT('Incoming · {var:1}', data.incoming.length));
+        if (!data.incoming.length) inBox.appendChild(_sdProtoEl('p', 'sd-proto-list-none', _sdT('No page leads here')));
+        data.incoming.forEach(function (link) {
+            var main = _sdProtoEl('button', 'sd-proto-li-main');
+            main.type = 'button';
+            main.appendChild(_sdProtoEl('span', 'bi ' + (link.shared ? 'bi-puzzle' : 'bi-file-earmark') + ' sd-proto-icon'));
+            main.lastChild.setAttribute('aria-hidden', 'true');
+            var text = _sdProtoEl('span', 'sd-proto-li-text');
+            text.appendChild(_sdProtoEl('span', 'sd-proto-li-label', _sdProtoFrameName(_sdProto.byId[link.frame]) + ' · ' + link.label));
+            if (link.shared) text.appendChild(_sdProtoEl('span', 'sd-proto-li-to', _sdT('shared part')));
+            main.appendChild(text);
+            main.addEventListener('click', function () { _sdProtoPick(link.frame, link.port, false); });
+            line(inBox, link.frame + '|' + link.port, main);
+        });
+
+        if (data.parts.length) {
+            var partsBox = section(_sdT('Shared parts on this page'));
+            data.parts.forEach(function (part) {
+                var main = _sdProtoEl('button', 'sd-proto-li-main');
+                main.type = 'button';
+                main.appendChild(_sdProtoEl('span', 'bi bi-puzzle sd-proto-icon'));
+                main.lastChild.setAttribute('aria-hidden', 'true');
+                main.appendChild(_sdProtoEl('span', 'sd-proto-li-label', _sdProtoFrameName(_sdProto.byId[part.id])));
+                main.addEventListener('click', function () {
+                    canvas.focus(part.id);
+                    canvas.view.reveal(_sdProto.byId[part.id]);
+                });
+                line(partsBox, part.id, main);
+            });
+        }
+    }
+
+    // Every broken link of the design (F19), under the bar's "N broken": a
+    // row picks the link.
+    function _sdProtoProblemsOpen() {
+        var ui = _sdProto.ui;
+        var list = _sdProto.broken.list;
+        _sdProtoProblemsClose(false);
+        if (!ui || !list.length) return;
+        var el = _sdProtoEl('div', 'sd-proto-problems');
+        el.setAttribute('role', 'dialog');
+        el.setAttribute('aria-label', _sdT('Broken links'));
+        el.appendChild(_sdProtoEl('div', 'sd-proto-menu-head', _sdT('Broken links')));
+        list.forEach(function (one) {
+            var b = _sdProtoEl('button', 'sd-proto-problem');
+            b.type = 'button';
+            b.appendChild(_sdProtoEl('span', 'sd-proto-li-label', _sdProtoFrameName(_sdProto.byId[one.frame]) + ' · ' + one.label));
+            b.appendChild(_sdProtoEl('span', 'sd-proto-li-to', _sdProtoWhy(one.why) + (one.href ? ' (' + one.href + ')' : '')));
+            b.addEventListener('click', function () {
+                _sdProtoProblemsClose(false);
+                _sdProtoPick(one.frame, one.port, true);
+            });
+            el.appendChild(b);
+        });
+        el.addEventListener('keydown', function (event) {
+            var items = Array.prototype.slice.call(el.querySelectorAll('.sd-proto-problem'));
+            var at = items.indexOf(document.activeElement);
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                event.stopPropagation();
+                _sdProtoProblemsClose(true);
+            } else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+                event.preventDefault();
+                items[(at + (event.key === 'ArrowDown' ? 1 : items.length - 1)) % items.length].focus();
+            }
+        });
+        ui.root.appendChild(el);
+        _sdProto.problems = el;
+        ui.broken.setAttribute('aria-expanded', 'true');
+        var r = ui.broken.getBoundingClientRect();
+        var o = ui.root.getBoundingClientRect();
+        el.style.top = (r.bottom - o.top + 2) + 'px';
+        el.style.left = Math.max(4, Math.min(r.left - o.left, o.width - el.offsetWidth - 4)) + 'px';
+        el.querySelector('.sd-proto-problem').focus({ preventScroll: true });
+    }
+
+    function _sdProtoProblemsClose(refocus) {
+        var el = _sdProto.problems;
+        if (!el) return;
+        _sdProto.problems = null;
+        if (el.parentNode) el.parentNode.removeChild(el);
+        if (_sdProto.ui) {
+            _sdProto.ui.broken.setAttribute('aria-expanded', 'false');
+            if (refocus) _sdProto.ui.broken.focus({ preventScroll: true });
+        }
+    }
+
+    // Where Play opens the viewer: the selected page, else the first page
+    // the viewer can show; '' for none (_pgPrototypeUrl()).
+    function _sdProtoPlayUrl() {
+        var id = _sdProto.canvas ? _sdProto.canvas.focused() : null;
+        var item = id ? _sdProto.byId[id] : null;
+        var page = (item && item.kind === 'page') ? _pgPageByKey(item.key) : null;
+        var url = page ? _pgPrototypeUrl(page) : '';
+        for (var i = 0; !url && i < _pages.length; i++) url = _pgPrototypeUrl(_pages[i]);
+        return url;
+    }
+
+    function _sdProtoPlayState() {
+        if (_sdProto.ui) _sdProto.ui.play.hidden = !_sdProtoPlayUrl();
+    }
+
     function _sdProtoDraw(marked) {
         var H = window.PGProtoHotspots;
         var G = window.PGGraphCanvas;
@@ -70741,8 +71451,11 @@ const StyleDesigner = (function () {
         var l = H.layout(marked, _sdProtoSaved(), _sdProtoSections());
 
         _sdProtoMenuClose(false);
+        _sdProtoProblemsClose(false);
         _sdProto.marked = marked;
         _sdProto.layout = l;
+        // The broken links before the frames are drawn: their badges (F20).
+        _sdProto.broken = H.brokenOf(l);
         _sdProto.items = l.frames.concat(l.chips);
         _sdProto.byId = {};
         _sdProto.items.forEach(function (item) { _sdProto.byId[item.id] = item; });
@@ -70785,9 +71498,14 @@ const StyleDesigner = (function () {
         canvas.groups();
 
         var count = l.edges.length;
-        var broken = l.chips.filter(function (c) { return c.mark === 'broken'; }).length;
-        _sdProtoStatus(_sdT('{var:1} links', count) + (broken ? ' · ' + _sdT('{var:1} broken', broken) : ''));
-        canvas.announce(_sdT('{var:1} links', count));
+        var broken = _sdProto.broken.list.length;
+        // "N links", and "N broken" in red when there are any (F19).
+        _sdProtoStatus(_sdT('{var:1} links', count));
+        ui.broken.hidden = !broken;
+        ui.broken.textContent = broken ? _sdT('{var:1} broken', broken) : '';
+        canvas.announce(_sdT('{var:1} links', count) + (broken ? ' · ' + _sdT('{var:1} broken', broken) : ''));
+        // A picked link of a frame no longer there, or no longer a link, goes.
+        if (_sdProto.link && !_sdProtoRow(_sdProto.byId[_sdProto.link.frame], _sdProto.link.port)) _sdProto.link = null;
         // Opening selects the open tab's frame; a redraw keeps the selected
         // frame while it is there.
         var focusOn = (first || _sdProto.focusOpen) ? 'p:' + _activeKey : canvas.focused();
@@ -70796,7 +71514,7 @@ const StyleDesigner = (function () {
         if (focusOn !== canvas.focused()) canvas.focus(focusOn);
         else {
             canvas.focus(focusOn);
-            _sdProtoFocusMarks(focusOn);
+            _sdProtoFocused(focusOn);
         }
         _sdProtoAllEdges(_sdProtoAllEdgesOn());
         if (first) canvas.view.fit();
@@ -71108,7 +71826,9 @@ const StyleDesigner = (function () {
     // the current one checked; a choice goes through _sdProtoConnect() like
     // a drawn arrow. Arrows, Home and End move, Escape closes and gives the
     // focus back to the row. Answers whether it opened.
-    function _sdProtoMenuOpen(rowEl) {
+    // The target menu of a frame's link row; anchor (optional) is where it
+    // opens and what takes the focus back (a row of the links panel).
+    function _sdProtoMenuOpen(rowEl, anchor) {
         var H = window.PGProtoHotspots;
         var box = rowEl.closest('[data-node]');
         var item = box ? _sdProto.byId[box.getAttribute('data-node')] : null;
@@ -71168,10 +71888,10 @@ const StyleDesigner = (function () {
             }
         });
         ui.root.appendChild(el);
-        _sdProto.menu = { el: el, rowEl: rowEl };
+        _sdProto.menu = { el: el, rowEl: anchor || rowEl };
 
         // Under the row, or above it when it would leave the view.
-        var r = rowEl.getBoundingClientRect();
+        var r = (anchor || rowEl).getBoundingClientRect();
         var o = ui.root.getBoundingClientRect();
         var top = r.bottom - o.top + 2;
         if (top + el.offsetHeight > o.height) top = Math.max(4, r.top - o.top - el.offsetHeight - 2);
@@ -78943,6 +79663,10 @@ const StyleDesigner = (function () {
                                     d: _sdT('Repeats its row for each step of the order, from placed to delivered.') },
             'l:account.orders': { v: 'l-account-orders', k: 'member orders history account list repeat loop',
                                     d: _sdT('Repeats its row for each order of the signed-in member.') },
+            'l:account.upcoming_bookings': { v: 'l-steps', k: 'member bookings appointments upcoming account list repeat loop',
+                                    d: _sdT('Repeats its row for each booking of the signed-in member still to come.') },
+            'l:account.past_bookings': { v: 'l-steps', k: 'member bookings appointments past account list repeat loop',
+                                    d: _sdT('Repeats its row for each past booking of the signed-in member.') },
             'l:cart.items': { v: 'l-cart-items', k: 'cart items products basket list repeat loop',
                                     d: _sdT('Repeats its row for each product in the cart, with its quantity and price.') },
             'l:checkout.offers': { v: 'l-offers', k: 'applied offers discounts checkout list repeat loop',
