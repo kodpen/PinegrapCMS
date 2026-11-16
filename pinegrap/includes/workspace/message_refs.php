@@ -23,6 +23,19 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 }
 
 /**
+ * The line every agent's instructions carry: a question or an answer about a
+ * picture, a file or an earlier message names it with its tag, so the person
+ * reading sees which one it means (the tag opens it) instead of guessing at
+ * "the picture above".
+ *
+ * @return string
+ */
+function ws_message_ref_agent_rule()
+{
+    return 'When you ask or answer about a picture, a file or an earlier message, point at it with its tag <#message:ID> (the message\'s id), never only with words such as "the picture above": the reader opens the message from the tag. It is a reference, not a reply: nobody is told by it.';
+}
+
+/**
  * The most characters of a referenced message's words its tag carries.
  */
 const WS_MESSAGE_REF_TEXT = 140;
