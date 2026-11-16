@@ -115,7 +115,7 @@
 - decisions-made-schema-20.md: Decisions list, schema part 20 (2026-11-14 on): ws_mail_items.send_at; the repeat columns and ws_personal_plan_skips; the two roadmap template tables; the widened poll's columns
 - decisions-made-schema-21.md: Decisions list, schema part 21 (2026-11-15 on): ws_mail_reminders, ws_profiles.mail_away, ws_approval_agents; the schema of polls 49 to 51 (agent duty, marks, cart touches, pop-ups)
 - decisions-made-schema-22.md: Decisions list, schema part 22 (2026-11-15 on): ws_profiles.quiet_hours and the link preview table (poll 54); the columns of ws_agent_feedback and auto_dialog_daily as confirmed
-- decisions-made-schema-23.md: Decisions list, schema part 23 (2026-11-16 on): the ws_highlights table for a reader's highlights; the columns of PU4 on auto_dialogs as confirmed
+- decisions-made-schema-23.md: Decisions list, schema part 23 (2026-11-16 on): the ws_highlights table for a reader's highlights; the columns of PU4 on auto_dialogs as confirmed; the click map's page_click_daily table
 - decisions-made-schema-3.md: Decisions list, schema part 3, approved from 2026-10-29 on: checkout page and legal acceptance on the order, record_revisions, cart_quotes, ws_saved_replies, shipment_labels; rules in part 1
 - decisions-made-schema-4.md: Decisions list, schema part 4 (2026-10-29 afternoon on): ws_flow_templates, ws_refs.source_type to VARCHAR, shipment_labels.order_return_id, config.speculation_prefetch; rules in part 1
 - decisions-made-schema-5.md: Decisions list, schema part 5 (2026-10-29 evening on): subscriptions tables and ENUMs, products customs columns, shipment_labels pickup, ws_events.contact_id; rules in part 1

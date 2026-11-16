@@ -488,6 +488,7 @@
 - link-button-inline-children.md: Spans and icons inside a link or button: two ways to hold them, why an inline edit keeps a link's markup, which drops a button accepts, where the label prints beside children.
 - link-target-in-attrs.md: A link's window and rel: props first, _attrs when the prop is empty (link and button link, server and canvas alike), the selection-time fold, starter trees and templates, page bodies drawn before
 - list-search-sort-price-forms.md: List widget search, sort and price forms (server box, catalog's bound form) and page links: accessible names, translated words, no router page name in hidden inputs or links (#4457, #4538).
+- listen-script.md: The "Listen" block's script pg_listen.js and its two doors: what it reads, in which language, when the button shows, the markup it expects
 - loop-band-canvas.md: The loop band and the element chips on the canvas: band height and tooltips, the chip row (Only when, Off, Shown when) in the flow, see-through wrappers, the Turkish band terms (#2523) [decision: decisions-made-product-48.md]
 - member-email-asked-once.md: Registration and membership activation ask for the email once: email_verify optional, a typed copy must match; starter layouts, templates, classic screens and the starter site changed
 - member-widgets-handlers-and-forms.md: Membership widgets (login/forgot/registration/membership): legacy handlers, pg_member_register/activate, control naming, form wrap, validation script.

@@ -151,6 +151,7 @@ description: Generated from the module field of the memory files: each includes/
 - `list_period`: [[list-period-navigator-and-clock]], [[list-period-order]], [[list-period-week]]
 - `list_table`: [[details-panel-rule]], [[list-seo-details]], [[list-table-branches]], [[list-table-driver]], [[list-table-driver-lists]], [[list-table-layout]], [[list-table-module-loaded]], [[list-table-overview]], [[list-table-printed]]
 - `list_table_edit`: [[list-table-quick-edit-pages]], [[list-table-quick-edit-values]]
+- `listen`: [[listen-script]]
 - `local_order`: [[erp-counter-sale-completion]]
 - `look_examples`: [[look-design-examples]]
 - `look_list`: [[look-list-title-settings-tile]]

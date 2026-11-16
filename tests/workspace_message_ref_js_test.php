@@ -23,18 +23,35 @@ require_once(__DIR__ . '/workspace_agent_card_js_test.php');
 
 function test_workspace_message_ref_js_go()
 {
+	$link = workspace_agent_card_js_test_function('messageLinkGo');
 	$go = workspace_agent_card_js_test_function('messageRefGo');
 
-	pg_assert_true($go !== '', 'messageRefGo() is in workspace.js');
+	pg_assert_true(($link !== '') && ($go !== ''), 'messageLinkGo() and messageRefGo() are in workspace.js');
 
-	$result = workspace_agent_card_js_test_node($go . '
-var ref = { url: "/pg/workspace.php?channel=7&message=42", message: { id: 42, channel_id: 7 } };
+	$result = workspace_agent_card_js_test_node($link . $go . '
+var home = "/pg/workspace.php", page = "https://shop.example/pg/workspace.php?channel=7";
+var here = { screen: true, channel: 7, modified: false };
+var at = function (href, place) { return messageLinkGo(href, home, page, place || here); };
+var ref = { url: "workspace.php?channel=7&message=42", message: { id: 42, channel_id: 7 } };
 console.log(JSON.stringify({
-	same: messageRefGo(7, ref),
-	other: messageRefGo(3, ref),
-	none: messageRefGo(0, ref),
-	hidden: messageRefGo(7, { url: "", meta: "x" }),
-	empty: messageRefGo(7, null)
+	same: at("https://shop.example/pg/workspace.php?channel=7&message=42"),
+	relative: at("workspace.php?channel=7&message=42"),
+	other: at("/pg/workspace.php?channel=3&message=42"),
+	thread: at("/pg/workspace.php?channel=3&message=42&thread=9"),
+	era: at("/pg/workspace.php?channel=7&message=42&era=2"),
+	home_view: at("/pg/workspace.php?channel=7&message=42", { screen: true, channel: 0, modified: false }),
+	off_screen: at("/pg/workspace.php?channel=7&message=42", { screen: false, channel: 0, modified: false }),
+	modified: at("/pg/workspace.php?channel=3&message=42", { screen: true, channel: 7, modified: true }),
+	foreign: at("https://evil.example/pg/workspace.php?channel=7&message=42"),
+	other_page: at("/pg/workspace_tasks.php?channel=7&message=42"),
+	channel_only: at("/pg/workspace.php?channel=3"),
+	bad: at("/pg/workspace.php?channel=3&message=4x2"),
+	empty: at(""),
+	card_same: messageRefGo(ref, home, page, here),
+	card_other: messageRefGo(ref, home, page, { screen: true, channel: 3, modified: false }),
+	card_off: messageRefGo(ref, home, page, { screen: false, channel: 0, modified: false }),
+	card_hidden: messageRefGo({ url: "", meta: "x" }, home, page, here),
+	card_empty: messageRefGo(null, home, page, here)
 }));');
 
 	if ($result === null) {
@@ -42,10 +59,70 @@ console.log(JSON.stringify({
 	}
 
 	pg_assert_same(array('kind' => 'jump', 'id' => 42), $result['same'], 'the open channel scrolls to it');
-	pg_assert_same(array('kind' => 'url', 'url' => '/pg/workspace.php?channel=7&message=42'), $result['other'], 'another channel opens its address');
-	pg_assert_same('url', $result['none']['kind'], 'no channel open: its address');
-	pg_assert_same(array('kind' => 'none'), $result['hidden'], 'nothing for a message the reader may not see');
+	pg_assert_same(array('kind' => 'jump', 'id' => 42), $result['relative'], 'an address relative to the page');
+	pg_assert_same(array('kind' => 'open', 'channel' => 3, 'message' => 42, 'thread' => 0, 'era' => 0), $result['other'], 'another channel opens in place');
+	pg_assert_same(9, $result['thread']['thread'], 'with the discussion its address names');
+	pg_assert_same('open', $result['era']['kind'], 'an earlier version opens in place');
+	pg_assert_same('open', $result['home_view']['kind'], 'from the overview: the channel opens in place');
+	pg_assert_same('url', $result['off_screen']['kind'], 'no conversation on the screen: its address');
+	pg_assert_same('url', $result['modified']['kind'], 'a modifier key: the browser\'s');
+	pg_assert_same('url', $result['foreign']['kind'], 'another site');
+	pg_assert_same('url', $result['other_page']['kind'], 'another page');
+	pg_assert_same('url', $result['channel_only']['kind'], 'a channel\'s address is no message');
+	pg_assert_same('url', $result['bad']['kind'], 'no number');
 	pg_assert_same(array('kind' => 'none'), $result['empty']);
+	pg_assert_same(array('kind' => 'jump', 'id' => 42), $result['card_same'], 'Go to the message: the open channel scrolls');
+	pg_assert_same(array('kind' => 'open', 'channel' => 7, 'message' => 42, 'thread' => 0, 'era' => 0), $result['card_other'], 'Go to the message: another channel opens in place');
+	pg_assert_same(array('kind' => 'url', 'url' => 'workspace.php?channel=7&message=42'), $result['card_off'], 'off the channels screen: its address');
+	pg_assert_same(array('kind' => 'none'), $result['card_hidden'], 'nothing for a message the reader may not see');
+	pg_assert_same(array('kind' => 'none'), $result['card_empty']);
+}
+
+// A mouse click on a chip goes to the message, a tap opens its card, a
+// modifier key is the browser's; a chip without an address opens its card.
+function test_workspace_message_ref_js_chip_click()
+{
+	$action = workspace_agent_card_js_test_function('messageChipAction');
+
+	pg_assert_true($action !== '', 'messageChipAction() is in workspace.js');
+
+	$result = workspace_agent_card_js_test_node($action . '
+console.log(JSON.stringify({
+	mouse: messageChipAction("mouse", false, true),
+	touch: messageChipAction("touch", false, true),
+	pen: messageChipAction("pen", false, true),
+	unnamed: messageChipAction("", false, true),
+	modified: messageChipAction("mouse", true, true),
+	hidden: messageChipAction("mouse", false, false),
+	hidden_modified: messageChipAction("mouse", true, false)
+}));');
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same('go', $result['mouse'], 'a mouse click goes to the message');
+	pg_assert_same('card', $result['touch'], 'a tap opens the card');
+	pg_assert_same('card', $result['pen'], 'a pen has no hover: the card');
+	pg_assert_same('card', $result['unnamed'], 'a click with no pointer named (the keyboard): the card');
+	pg_assert_same('browser', $result['modified'], 'Ctrl, Cmd or Shift: the browser\'s');
+	pg_assert_same('card', $result['hidden'], 'a message the reader may not see: its card');
+	pg_assert_same('card', $result['hidden_modified']);
+
+	$hook = workspace_agent_card_js_test_function('messageRefHook');
+	$click = strpos($hook, "chip.addEventListener('click'");
+	$card = strpos($hook, 'cardHook(chip');
+
+	pg_assert_true(($click !== false) && ($card !== false) && ($click < $card), 'the chip\'s click runs before the card\'s');
+	pg_assert_contains('event.stopImmediatePropagation();', $hook, 'the card and the screen listener do not take it too');
+	pg_assert_contains('messageLinkFollow(messageLinkGo(chip.href', $hook, 'in place, as every message link');
+
+	// The card's button, every other link on the screen and the screen's start.
+	$js = workspace_agent_card_js_test_source();
+	pg_assert_contains('if (!messageLinkFollow(go)) {', workspace_agent_card_js_test_function('messageRefBody'), 'Go to the message goes in place');
+	pg_assert_contains("closest('a[href]')", workspace_agent_card_js_test_function('messageLinksInPlace'), 'every link on the screen');
+	pg_assert_contains("root.innerHTML = '';\n            messageLinksInPlace();", $js, 'listened to while the channels screen runs');
+	pg_assert_contains('app.open(go.channel, go.message, go.era);', workspace_agent_card_js_test_function('messageLinkFollow'), 'another channel opens in place, as a switch from the sidebar');
 }
 
 function test_workspace_message_ref_js_card()

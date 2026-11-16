@@ -387,6 +387,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-schema-23.md: Where are the rules and the earlier parts?
 - decisions-made-schema-23.md: Which table do a reader's highlights get? (owner, 2026-11-16, agent channel message 5547)
 - decisions-made-schema-23.md: Which columns does PU4 add to `auto_dialogs`? (architect, 2026-11-16, confirmed in PU4's draft, #9851)
+- decisions-made-schema-23.md: Which table does the click map get? (architect, 2026-11-16, agent channel message 6041)
 - decisions-made-schema-3.md: Where are the rules and the earlier steps?
 - decisions-made-schema-3.md: Which schema was approved on 2026-10-29?
 - decisions-made-schema-4.md: Where are the rules and the earlier steps?
@@ -915,6 +916,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/mail-send-scope.md: Sending Workspace e-mail in a person's name over the API and MCP: the workspace:mail_send scope, who holds it, the gate that refuses a key, the send tools, the log line
 - workspace/mail-support-box.md: A mailbox's "Support box" switch (WM14, #9061): what a plain box leaves out (status, holder, first-answer time, automatic answer), how lists count its conversations, the default
 - workspace/mail-workspace-off.md: Incoming e-mail with the Workspace off (MA10c): the gate ws_mail_on(), who asks it (tab, actions, jobs, frame, API, bell), a new box kept in the mailbox itself, the test
+- workspace/message-reference-card.md: The card a <#message:N> chip opens (#9846, workspace.js): where chips are hooked, the agent card's frame and its closing, what it shows, Go to the message, the reader without the right
 - workspace/message-reference.md: Message references (<#message:N>): what the owner asked for, the pieces (tag, chip and card, Copy as reference and the paste), what agents are told, where tools and the API name it
 - workspace/model-assistant-channel-rule.md: Where a model assistant is asked (its own ws_channel_agents row; a channel closed to Pinegrap AI on purpose keeps it out too) and how the shared loop's failure sentences name it (PR #8413)
 - workspace/model-assistants-anthropic.md: Anthropic (Claude) as a provider of model assistants: why it was added, how the Messages API is translated to and from Pinegrap AI's chat completions loop, what its reference said (2026-11-12)
