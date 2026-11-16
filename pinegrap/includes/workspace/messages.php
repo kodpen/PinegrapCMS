@@ -833,7 +833,8 @@ function ws_message_send_check($viewer, $channel, $body, $options = array())
         return array('ok' => false, 'error' => lang('You cannot post in that channel.'));
     }
 
-    $body = ws_tokens_normalise(trim((string) $body));
+    // A mention typed by hand becomes the tag a pick writes (refs.php).
+    $body = ws_mentions_typed_channel(ws_tokens_normalise(trim((string) $body)), $channel);
     $file_id = (int) ($options['file_id'] ?? 0);
 
     // A forward may carry the messages alone, without words of its own.
@@ -1289,7 +1290,9 @@ function ws_message_asked_none()
  */
 function ws_message_ask_added($viewer, $channel, $message_id, $old, $new, $by_app = false)
 {
-    $added = ws_message_tags_added(ws_tokens_normalise((string) $old), ws_tokens_normalise((string) $new));
+    // Both texts with their typed mentions as tags, so a typed @handle the
+    // old text had asks nobody again as <@app:N>.
+    $added = ws_message_tags_added(ws_mentions_typed_channel(ws_tokens_normalise((string) $old), $channel), ws_mentions_typed_channel(ws_tokens_normalise((string) $new), $channel));
     $asked = ws_message_asked_none();
 
     if ($added === '') {
@@ -2263,7 +2266,7 @@ function ws_message_edit_check($viewer, $message, $body, $as_app = 0)
         return array('ok' => false, 'error' => lang('You cannot post in that channel.'));
     }
 
-    $body = ws_tokens_normalise(trim((string) $body));
+    $body = ws_mentions_typed_channel(ws_tokens_normalise(trim((string) $body)), $channel);
 
     if (($body === '') && ((int) $message['file_id'] <= 0)) {
         return array('ok' => false, 'error' => lang('The message is empty.'));
@@ -2298,7 +2301,9 @@ function ws_message_edit($viewer, $message, $body, $as_app = 0)
     $channel = $checked['channel'];
     $before = array();
 
-    foreach (ws_tokens($message['body']) as $token) {
+    // The old text read as it would be written now: a person it named by a
+    // typed username is not told again.
+    foreach (ws_tokens(ws_mentions_typed_channel((string) $message['body'], $channel)) as $token) {
         $before[$token['type'] . ':' . $token['id']] = true;
     }
 
