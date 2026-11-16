@@ -82,7 +82,7 @@ description: Generated from the module field of the memory files: each includes/
 - `currency_rates`: [[exchange-rates-update]], [[visitor-currency-zero-rate]]
 - `custom_form`: [[collection-template-refs]], [[custom-form-field-rules]], [[custom-form-private-access-expiry]], [[custom-form-shown-when]], [[custom-form-upload-placement]], [[form-field-errors]], [[form-field-errors-before-sending]], [[registration-gate-form-submitter]], [[sms-consent-custom-form]]
 - `custom_form_steps`: [[custom-form-open-slots]], [[custom-form-steps]], [[form-field-errors-before-sending]]
-- `customer_values`: [[customer-value-summary]]
+- `customer_values`: [[customer-value-report-screen]], [[customer-value-summary]]
 - `design_file_list_edit`: [[list-table-quick-edit-design-files]]
 - `design_previews`: [[design-live-pictures]], [[design-preview-address]], [[designer-home-pictures]]
 - `design_themes`: [[design-theme-dark-lines]], [[design-theme-look-drawing]], [[design-theme-pale-colours]], [[design-theme-product-looks]]
