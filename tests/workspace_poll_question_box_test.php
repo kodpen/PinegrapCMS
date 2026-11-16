@@ -5,7 +5,8 @@
  * Tests for the poll box's layout in assets/js/workspace.js when the
  * question carries a picture of its own: pollShape() and pollLayout() run
  * in Node; the message's picture drawn in the box and never also as its
- * file card; the viewer opening on the question's picture.
+ * file card; the viewer opening on the question's picture; the poll's
+ * distinct pictures (pollPictureList()) and the count mark on the figure.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -47,7 +48,7 @@ function workspace_poll_question_box_test_node($script)
 
 	$methods = array();
 
-	foreach (array('pollShape', 'pollQuestionPicture', 'pollLayout') as $name) {
+	foreach (array('pollShape', 'pollQuestionPicture', 'pollLayout', 'pollPictureList') as $name) {
 		$method = workspace_poll_question_box_test_method($name);
 		pg_assert_true($method !== '', 'workspace.js has ' . $name . '()');
 		$methods[] = $method;
@@ -98,7 +99,26 @@ var out = {
         S.pollQuestionPicture({ file: { url: 'q.png', image: true } }),
         S.pollQuestionPicture({ poll: { id: 1 }, deleted: true, file: { url: 'q.png', image: true } }),
         S.pollQuestionPicture({ poll: { id: 1 }, file: null })
-    ]
+    ],
+    list_shared: S.pollPictureList({ options: [
+        { id: 1, label: 'A', picture: { url: 's.png', image: true } },
+        { id: 2, label: 'B', picture: { url: 's.png', image: true } }
+    ] }, null),
+    list_three: S.pollPictureList({ options: [
+        { id: 1, label: 'A', picture: { url: 'a.png', image: true } },
+        { id: 2, label: 'B', picture: { url: 'b.png', image: true } }
+    ] }, { src: 'q.png', alt: 'Which one?' }),
+    list_skipped: S.pollPictureList({ options: [
+        { id: 1, label: 'A', picture: { url: 'a.png', image: true } },
+        { id: 2, label: 'B' },
+        { id: 3, label: 'C', picture: { url: 'c.pdf', image: false } },
+        { id: 4, label: 'D', picture: { url: 'd.png', image: true } }
+    ] }, null),
+    list_listed: S.pollPictureList({ options: [
+        { id: 1, label: 'A', picture: { url: 'a.png', image: true } },
+        { id: 2, label: 'B', picture: { url: 'b.png', image: true } },
+        { id: 3, label: 'C', picture: { url: 'a.png', image: true } }
+    ] }, { src: 'q.png', alt: 'Which one?' })
 };
 console.log(JSON.stringify(out));
 JS
@@ -185,10 +205,9 @@ function test_workspace_poll_question_picture_of_message()
 function test_workspace_poll_question_picture_drawn_once()
 {
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js');
-	$pictures = workspace_poll_question_box_test_method('pollPictures');
 
 	pg_assert_true(strpos($source, 'if (message.file && !self.pollQuestionPicture(message)) {') !== false, 'the file card leaves out the question\'s picture');
-	pg_assert_true(strpos($pictures, 'images.push({ src: question.src, alt: question.alt, caption: question.alt });') !== false, 'the question\'s picture comes first in the viewer');
+	pg_assert_true(strpos(workspace_poll_question_box_test_method('pollPictureList'), 'images.push({ src: question.src, alt: question.alt, caption: question.alt });') !== false, 'the question\'s picture comes first in the viewer');
 	pg_assert_true(substr_count($source, 'self.pollQuestionFigure(') >= 3, 'both boxes and the answered box draw the question\'s figure');
 }
 
@@ -199,4 +218,73 @@ function test_workspace_poll_question_picture_text()
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/screen.php');
 
 	pg_assert_true(strpos($source, "'poll_question_picture_open' => lang('Open the question\\'s picture')") !== false, 'the figure\'s name is a translated text');
+}
+
+// The viewer's list holds each picture once: one file on two options is one
+// entry captioned with the first option's label, and both open it.
+function test_workspace_poll_pictures_one_file_once()
+{
+	$all = workspace_poll_question_box_test_layouts();
+
+	if ($all === null) {
+		return;
+	}
+
+	pg_assert_same(array(array('src' => 's.png', 'alt' => 'A', 'caption' => 'A')), $all['list_shared']['images']);
+	pg_assert_same(array('1' => 0, '2' => 0), $all['list_shared']['start']);
+}
+
+// The question's picture first, then the options' in their order.
+function test_workspace_poll_pictures_question_and_options()
+{
+	$all = workspace_poll_question_box_test_layouts();
+
+	if ($all === null) {
+		return;
+	}
+
+	pg_assert_same(array('q.png', 'a.png', 'b.png'), array_column($all['list_three']['images'], 'src'));
+	pg_assert_same('Which one?', $all['list_three']['images'][0]['caption']);
+	pg_assert_same(array('1' => 1, '2' => 2), $all['list_three']['start']);
+}
+
+// An option without a picture, or with a file that is not one, is skipped.
+function test_workspace_poll_pictures_skip_unpictured()
+{
+	$all = workspace_poll_question_box_test_layouts();
+
+	if ($all === null) {
+		return;
+	}
+
+	pg_assert_same(array('a.png', 'd.png'), array_column($all['list_skipped']['images'], 'src'));
+	pg_assert_same(array('1' => 0, '4' => 1), $all['list_skipped']['start']);
+}
+
+// A clicked option whose picture was already listed starts on that entry.
+function test_workspace_poll_pictures_start_of_listed()
+{
+	$all = workspace_poll_question_box_test_layouts();
+
+	if ($all === null) {
+		return;
+	}
+
+	pg_assert_same(3, count($all['list_listed']['images']));
+	pg_assert_same(1, $all['list_listed']['start']['3'], 'the third option opens the first option\'s entry');
+}
+
+// Both large figures carry the count mark, its words translated with the
+// number as a placeholder; pollPictures() opens the distinct list.
+function test_workspace_poll_pictures_count_mark()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js');
+	$figure = workspace_poll_question_box_test_method('pollQuestionFigure');
+	$pictures = workspace_poll_question_box_test_method('pollPictures');
+	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/screen.php');
+
+	pg_assert_true(strpos($figure, 'self.pollFigureCount(figure, poll, question);') !== false, 'the question\'s figure carries the mark');
+	pg_assert_same(2, substr_count($source, 'self.pollFigureCount(figure, poll, null);'), 'the split figure of both boxes carries the mark');
+	pg_assert_true(strpos($pictures, 'this.pollPictureList(poll, question)') !== false, 'the viewer opens the distinct list');
+	pg_assert_true(strpos($screen, "'poll_pictures_count'    => ws_js_template('{var:1} pictures', 1)") !== false, 'the mark\'s words are a translated text');
 }

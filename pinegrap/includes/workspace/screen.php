@@ -356,6 +356,7 @@ function ws_js_strings()
         'poll_other_placeholder' => lang('Write your own answer'),
         'poll_picture_open'      => ws_js_template('Open the picture of {var:1}', 1),
         'poll_question_picture_open' => lang('Open the question\'s picture'),
+        'poll_pictures_count'    => ws_js_template('{var:1} pictures', 1),
         'poll_question_picture'  => lang('Question picture'),
         'poll_question_picture_help' => lang('One picture shown large beside the options. It is sent with the question and needs no message of its own.'),
         'poll_question_picture_upload' => lang('Upload a picture'),

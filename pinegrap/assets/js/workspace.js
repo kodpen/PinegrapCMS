@@ -15593,30 +15593,75 @@
             return (!poll.multiple && !others.length && (pictured.length === options.length)) ? 'split' : 'rows';
         },
 
-        // The pictures of a poll's options, opened in the image viewer at
-        // the one asked for; the question's own picture ({ src, alt }), when
-        // it has one, comes first and is opened when no option is asked for.
-        pollPictures: function (poll, optionId, question) {
+        // A poll's distinct pictures for the viewer: the question's own
+        // ({ src, alt }) first when it has one, then the options' in their
+        // order. One file on several options is one entry, captioned with
+        // the first of those options' labels; start maps each pictured
+        // option's id to its entry.
+        pollPictureList: function (poll, question) {
             var images = [];
-            var start = 0;
+            var start = {};
+            var seen = {};
 
             if (question) {
+                seen[question.src] = images.length;
                 images.push({ src: question.src, alt: question.alt, caption: question.alt });
             }
 
-            poll.options.forEach(function (option) {
-                if (option.picture && option.picture.image) {
-                    if (option.id === optionId) {
-                        start = images.length;
-                    }
-
-                    images.push({ src: option.picture.url, alt: option.label, caption: option.label });
+            (poll.options || []).forEach(function (option) {
+                if (!option.picture || !option.picture.image) {
+                    return;
                 }
+
+                var src = option.picture.url;
+
+                if (!Object.prototype.hasOwnProperty.call(seen, src)) {
+                    seen[src] = images.length;
+                    images.push({ src: src, alt: option.label, caption: option.label });
+                }
+
+                start[option.id] = seen[src];
             });
 
-            if (images.length) {
-                viewImages(images, start);
+            return { images: images, start: start };
+        },
+
+        // Opens the image viewer over the poll's distinct pictures at the
+        // asked option's picture, else at the first (the question's own).
+        pollPictures: function (poll, optionId, question) {
+            var list = this.pollPictureList(poll, question);
+
+            if (list.images.length) {
+                viewImages(list.images, Object.prototype.hasOwnProperty.call(list.start, optionId) ? list.start[optionId] : 0);
             }
+        },
+
+        // The count mark on a large figure when the poll has two or more
+        // distinct pictures; its words go into the figure's name too
+        // (pollFigureName()). One picture: no mark.
+        pollFigureCount: function (figure, poll, question) {
+            var count = this.pollPictureList(poll, question).images.length;
+
+            if (count < 2) {
+                return;
+            }
+
+            var words = t('poll_pictures_count', count);
+            var mark = el('span', 'ws-poll-count');
+
+            mark.setAttribute('aria-hidden', 'true');
+            mark.appendChild(icon('bi-images'));
+            mark.appendChild(el('span', '', words));
+            figure.appendChild(mark);
+            figure.setAttribute('data-count-words', words);
+        },
+
+        // A large figure's title, and its accessible name with the count.
+        pollFigureName: function (figure, name) {
+            var words = figure.getAttribute('data-count-words');
+
+            figure.title = name;
+            figure.setAttribute('aria-label', words ? name + ', ' + words : name);
         },
 
         // The question's own picture: the poll message's image file, or null
@@ -15676,8 +15721,8 @@
             image.src = question.src;
             image.alt = question.alt;
             figure.appendChild(image);
-            figure.title = t('poll_question_picture_open');
-            figure.setAttribute('aria-label', figure.title);
+            self.pollFigureCount(figure, poll, question);
+            self.pollFigureName(figure, t('poll_question_picture_open'));
             figure.addEventListener('click', function () {
                 self.pollPictures(poll, 0, question);
             });
@@ -15842,8 +15887,7 @@
                 image.src = option.picture.url;
                 image.alt = option.label;
                 figure.setAttribute('data-option-id', String(option.id));
-                figure.title = t('poll_picture_open', option.label);
-                figure.setAttribute('aria-label', figure.title);
+                self.pollFigureName(figure, t('poll_picture_open', option.label));
             }
 
             if (layout.figure === 'question') {
@@ -15858,6 +15902,7 @@
 
                 figure = button('ws-poll-figure');
                 figure.appendChild(el('img'));
+                self.pollFigureCount(figure, poll, null);
                 figure.addEventListener('click', function () {
                     self.pollPictures(poll, parseInt(figure.getAttribute('data-option-id') || '0', 10));
                 });
@@ -16185,8 +16230,7 @@
                 image.src = option.picture.url;
                 image.alt = option.label;
                 figure.setAttribute('data-option-id', String(option.id));
-                figure.title = t('poll_picture_open', option.label);
-                figure.setAttribute('aria-label', figure.title);
+                self.pollFigureName(figure, t('poll_picture_open', option.label));
             }
 
             if (layout.figure === 'question') {
@@ -16202,6 +16246,7 @@
 
                 figure = button('ws-poll-figure');
                 figure.appendChild(el('img'));
+                self.pollFigureCount(figure, poll, null);
                 figure.addEventListener('click', function () {
                     self.pollPictures(poll, parseInt(figure.getAttribute('data-option-id') || '0', 10));
                 });
