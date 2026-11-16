@@ -21,8 +21,12 @@ StyleDesigner.registerBlockFamily(function (kit) {
     var _sdT = kit._sdT;
 
     var _SD_BLOCK_CSS = {
-        // Buttons a finger can hit (44 px), the icon and the label on one line.
-        'pg-listen': '.pg-listen .btn { min-height: 2.75rem; display: inline-flex; align-items: center; gap: .5rem; }'
+        // The row is laid out only once the script shows it: a display
+        // utility (d-flex) would beat Bootstrap's [hidden] rule and show the
+        // buttons where the browser has no voice. Buttons a finger can hit
+        // (44 px), the icon and the label on one line.
+        'pg-listen': '.pg-listen:not([hidden]) { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }\n' +
+                     '.pg-listen .btn { min-height: 2.75rem; display: inline-flex; align-items: center; gap: .5rem; }'
     };
 
     var _SD_BLOCK_CSS_NEEDS = {
@@ -44,7 +48,7 @@ StyleDesigner.registerBlockFamily(function (kit) {
     };
 
     var buildButtons = function () {
-        return kit.div('pg-listen d-flex flex-wrap align-items-center gap-2 my-3', _sdT('Listen'), [
+        return kit.div('pg-listen my-3', _sdT('Listen'), [
             button('play', 'btn btn-outline-primary', 'bi-volume-up', _sdT('Listen'), false),
             button('pause', 'btn btn-outline-secondary', 'bi-pause-fill', _sdT('Pause'), true),
             button('stop', 'btn btn-outline-secondary', 'bi-stop-fill', _sdT('Stop'), true)

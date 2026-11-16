@@ -105,6 +105,9 @@ function test_designer_block_listen_tree()
 	$attrs = _test_listen_block_attrs($root);
 	pg_assert_same(array('semantic', 'div'), array($root['type'], $root['props']['tag']));
 	pg_assert_contains('pg-listen', $root['props']['cssClass']);
+	// A display utility (d-flex…) is !important and comes after Bootstrap's
+	// [hidden] rule: the hidden root would show without a voice (L8).
+	pg_assert_false((bool) preg_match('/(^|\s)d-(\w+-)?(flex|inline|block|grid|table|contents)\b/', $root['props']['cssClass']), 'no display utility on the hidden root');
 	pg_assert_same('', $attrs['data-pg-listen'], 'the mark');
 	pg_assert_same('', $attrs['hidden'], 'hidden until the script finds a voice');
 	pg_assert_same(array('group', 'Read this article aloud'), array($attrs['role'], $attrs['aria-label']));
@@ -153,6 +156,7 @@ function test_designer_block_listen_rule()
 	pg_assert_same(array('listen-buttons' => array('pg-listen')), $part['needs']);
 	$rule = isset($part['rules']['pg-listen']) ? $part['rules']['pg-listen'] : '';
 	pg_assert_contains('.pg-listen .btn { min-height: 2.75rem;', $rule);
+	pg_assert_contains('.pg-listen:not([hidden]) { display: flex;', $rule, 'the row is laid out only once shown');
 	pg_assert_false(strpos($rule, '!important') !== false, 'no !important');
 	pg_assert_contains('.pg-listen', pg_designer_block_css(array('listen-buttons')), 'the site stylesheet takes the rule');
 }
@@ -163,7 +167,7 @@ function test_designer_block_listen_canvas()
 {
 	$core = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	$css = _test_listen_block_cut($core, '    var IFRAME_CSS = [', "\n    ];");
-	pg_assert_contains("'.sd-wrap > [data-pg-listen][hidden] { display:flex !important; }'", $css, 'the canvas shows the hidden root');
+	pg_assert_contains("'.sd-wrap > [data-pg-listen][hidden] { display:flex !important; flex-wrap:wrap; align-items:center; gap:.5rem; }'", $css, 'the canvas shows the hidden root');
 	pg_assert_false(strpos($core, "'assets/js/pg_listen.js'") === false, 'the Preview loads the script (L13)');
 	foreach (array('speechSynthesis', 'addEventListener', 'onclick') as $never) {
 		pg_assert_false(strpos(_test_listen_block_file(), $never) !== false, 'the block file holds no ' . $never);
