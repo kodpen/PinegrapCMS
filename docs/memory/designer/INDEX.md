@@ -17,6 +17,7 @@
 - bootstrap-direct-child-canvas.md: Bootstrap direct-child selectors break on the canvas because of .sd-wrap: two-part fix (display:contents + re-applied rule), the td display:flex ban, the selected-child lift.
 - bound-href-scheme.md: A form field bound to a link's, form's, picture's or player's address never prints a javascript:, vbscript: or data: address
 - bound-media-src.md: audio, video and source take src (video also poster) from a record field binding under the bound address rule; an empty value prints none (#7654, PR #8211) [decision: here]
+- calendar-widgets-open-slots.md: Calendar widgets' closed sections opened (CB9): the month grid converts to the grid lists, the picker and the Reserve button drawn true from twins of pure builders (settings only)
 - campaign-email-body-mail-pass.md: The mail pass for designed campaign bodies and the outgoing mode of mail_html.php for pasted HTML (MA5a #9413): what each keeps, takes out and reports
 - campaign-email-body-mail-programs.md: MA4 (2026-11-13): what an HTML e-mail body must be for Gmail, Outlook and Apple Mail: width, tables, inline styles, head style, pictures, the 102 KB clip, the parts it keeps
 - campaign-email-body-today.md: MA4 census (2026-11-13): how a campaign's HTML body and the designed e-mails (account, form, comment, receipt) are made today, what the e-mail render leaves in, and who may design one
@@ -24,7 +25,7 @@
 - canvas-closed-blocks-content.md: CB0 list, content nodes the server draws (Messages, Breadcrumb, Variant Attribute, Applied Offers, Carousel, own code, Language Switcher): output, settings, use, opening
 - canvas-closed-blocks-emails.md: CB0 list, the designed e-mail pages and what in them is closed: the comment e-mail's System region with its fixed markup, the other e-mails' widgets, and what opening takes [decision: here]
 - canvas-closed-blocks-regions.md: CB0 list, region nodes and classic page types the canvas draws closed: the System region of a classic page, the page types with no widget, the legacy regions of a classic style, what opens each
-- canvas-closed-blocks-widgets.md: CB0 list, the closed slots inside system widgets: section bindings and HTML values per widget kind, what each prints, template use, and what opening it takes
+- canvas-closed-blocks-widgets.md: CB0 list: the closed slots inside system widgets, their section bindings and HTML values per widget kind, template use and what opening each takes
 - canvas-closed-blocks.md: CB0 list (2026-11-13): what the designer canvas draws as one closed block, in four families, the counts, and the proposed order of opening them (for CB1, the owner's answer) [decision: decisions-made-product-54.md]
 - canvas-loop-as-published.md: A loop on the designer canvas draws one line of its grid (the card and hatched copies), a listing with no record too; a bound picture is a sample photo with its field in the title (#9104, CF4)
 - canvas-picture-stand-in-box.md: A bound picture's canvas stand-in (a sample photo SVG) takes the node's own box: no minimum size, so a round 40x40 avatar stays a circle (#9184, CF1)

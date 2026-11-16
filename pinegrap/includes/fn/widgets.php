@@ -9418,24 +9418,7 @@ function _render_system_widget_calendar_view($tree_json, $widget_id, $cfg = arra
     // Sections.
     $picker = '';
     if ($default_view !== 'upcoming') {
-        $opts = '';
-        if (count($calendars) > 1) {
-            $opts .= '<select name="calendar_id" class="form-select form-select-sm w-auto" aria-label="' . h(lang('Calendar')) . '">'
-                   . '<option value="">' . h(lang('All Calendars')) . '</option>';
-            foreach ($calendars as $c) {
-                $opts .= '<option value="' . (int)$c['id'] . '"' . ((int)$c['id'] === $calendar_id ? ' selected' : '') . '>' . h($c['name']) . '</option>';
-            }
-            $opts .= '</select>';
-        }
-        $opts .= '<select name="view" class="form-select form-select-sm w-auto" aria-label="' . h(lang('View')) . '">'
-               . '<option value="monthly"' . ($view === 'monthly' ? ' selected' : '') . '>' . h(lang('Monthly')) . '</option>'
-               . '<option value="weekly"' . ($view === 'weekly' ? ' selected' : '') . '>' . h(lang('Weekly')) . '</option>'
-               . '</select>';
-        $picker = '<form method="get" action="' . h($path) . '" class="d-flex flex-wrap align-items-center gap-2">'
-                . _pg_sw_hidden_query_inputs(array('calendar_id', 'view'))
-                . $opts
-                . '<button type="submit" class="btn btn-sm btn-outline-secondary">' . h(lang('Update')) . '</button>'
-                . '</form>';
+        $picker = pg_sw_calendar_picker_html($path, _pg_sw_hidden_query_inputs(array('calendar_id', 'view')), $calendars, $calendar_id, $view);
     }
     // The days the grid draws: a week, or a month padded to whole weeks.
     $grid_start  = $range_start;
@@ -9605,15 +9588,8 @@ function _render_system_widget_calendar_event_view($tree_json, $widget_id, $cfg 
             $in_stock  = ((int)$event['inventory'] === 0 || (int)$event['inventory_quantity'] > 0 || (int)$event['backorder'] === 1);
             if ($has_spots && $in_stock) {
                 $label = ((string)$event['reserve_button_label'] !== '') ? (string)$event['reserve_button_label'] : lang('Reserve');
-                $reserve_form = '<form action="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/reserve_calendar_event.php') . '" method="post" class="d-inline">'
-                    . get_token_field()
-                    . '<input type="hidden" name="send_to" value="' . h(get_request_uri()) . '">'
-                    . '<input type="hidden" name="page_id" value="' . (int)pg_sw_drawn_page_id() . '">'
-                    . '<input type="hidden" name="calendar_event_id" value="' . (int)$event_id . '">'
-                    . '<input type="hidden" name="recurrence_number" value="' . (int)$recurrence . '">'
-                    . '<input type="hidden" name="require_cookies" value="true">'
-                    . '<button type="submit" class="btn btn-primary">' . h($label) . '</button>'
-                    . '</form>';
+                $reserve_form = pg_sw_calendar_reserve_form_html(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/reserve_calendar_event.php',
+                    get_token_field(), get_request_uri(), pg_sw_drawn_page_id(), $event_id, $recurrence, $label);
             } else {
                 $msg = array();
                 if ((int)$event['limit_reservations'] === 1 && (int)$event['number_of_remaining_spots'] === 0) $msg[] = (string)$event['no_remaining_spots_message'];
