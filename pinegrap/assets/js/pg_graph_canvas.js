@@ -750,6 +750,8 @@
     //    the others too, <edge>-faint, under them. A press on a box puts it
     //    in focus, a click on the empty canvas takes the focus away. Without
     //    the field every arrow is drawn as before;
+    //  - focusChanged(id) (optional): told the id in focus (null for none)
+    //    each time it changes, by focus() or by a press;
     //  - label(item) (optional): a box's name in what the focus announces
     //    (else its aria-label, else its id);
     //  - groups() (optional): the headings groups() draws behind the boxes,
@@ -1192,6 +1194,10 @@
 
             if (moved && (next !== null)) {
                 announceFocus();
+            }
+
+            if (moved && adapter.focusChanged) {
+                adapter.focusChanged(next);
             }
         }
 

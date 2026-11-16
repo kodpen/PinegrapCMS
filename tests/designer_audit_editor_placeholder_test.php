@@ -62,15 +62,15 @@ function designer_audit_editor_placeholder_test_render_class($text)
 }
 
 // Placeholders the site prints only as a marker (<!--pg-carousel:…-->,
-// <!--pg-variant-attr:…-->, the breadcrumb and applied offers markers):
-// the product detail page opened with low-contrast badges on them.
+// <!--pg-variant-attr:…-->, the breadcrumb marker): the product detail page
+// opened with low-contrast badges on them. The applied offers node draws
+// the cart's box (tests/cart_closed_blocks_test.php checks its mark).
 function test_designer_audit_editor_placeholder_marker_components_marked()
 {
 	$texts = array(
 		"esc(_sdCarouselSampleNote(p))",
 		"esc(_sdT('Variant Attribute Template'))",
 		"esc(_sdT('Prints nothing here: only a catalog or product page widget draws the breadcrumb.'))",
-		"esc(_sdT('The active offer/discount descriptions are listed here.'))",
 	);
 
 	foreach ($texts as $text) {

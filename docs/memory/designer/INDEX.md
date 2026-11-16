@@ -33,6 +33,7 @@
 - canvas-sample-other.md: What the designer canvas draws in comments, calendar, Google reviews, booking, accessibility statement, ads, menus and the language switcher, and a loop row's place (CS4c, #9299)
 - canvas-sample-overview.md: Start file for the canvas-sample-* files: how the designer canvas draws a bound value with a realistic sample instead of its label, which file holds which family, the CI guard, what is still open [decision: decisions-made-product-48.md]
 - canvas-sample-product.md: The sample product the designer canvas draws in the catalog listing, product page, wishlist, order form and search results (CS4a, #9253); the tag cloud's samples; catalog block previews
+- cart-open-blocks.md: Shopping cart blocks opened (CB6c, #9901): applied offers, campaign gifts and the quick add box drawn on the canvas from twins of pure PHP builders, settings only
 - catalog-binding-disabled-no-output.md: Disabled catalog feature emits no output: _pg_catalog_binding_disabled(), designer mirror _sdCatalogBindingDisabled(), which settings disable which bindings.
 - catalog-detail-open-blocks.md: Catalog detail closed blocks opened (CB6a1, #9849): the Breadcrumb node drawn as its crumbs part and converted into it, the product carousel and the Checkout Options rows drawn true on the canvas
 - catalog-detail-variant-price-blocks.md: Catalog detail closed blocks a variant switch redraws (CB6a2): the price block and the Variant Attribute node drawn on the canvas as the site prints them, settings only, why neither is a tree
@@ -540,6 +541,7 @@
 - product-questions-output.md: Product questions outside the widget: the asker's mail when answered, API kind and answer_of, the Question/Answer JSON-LD on the Product, the templates' questions widget
 - product-questions.md: Product questions on the comments system: kind question/answer and answer_of, the widget Shows choice and its own claim, the answer box, the unanswered filter [decision: decisions-made-product-19.md]
 - prototype-arrangement.md: How the Prototype view's layout() builds and places frames, rows, chips and arrows: a grid of tab-group sections in flow order, shared parts left, chips right, Start, Tidy up [decision: here]
+- prototype-focus.md: The Prototype view draws only the selected frame's arrows: the core's focus, opening on the open tab, All arrows, row marks, a shared part's link as an amber note, arrow colours and heads [decision: here]
 - prototype-hotspots.md: The Prototype view's hotspot collector (assets/js/pg_proto_hotspots.js, window.PGProtoHotspots): which nodes are hotspots, shared frames, the map read's request, the marks, the layout
 - prototype-links-in-code.md: Where a design's links sit in the code, page-name hrefs and renames, the resolver, editor state, rights and Publish: what the Prototype view reads
 - prototype-map-read.md: The Prototype view's server read (api.php designer prototype_map, includes/fn/prototype_map.php): what it is asked, what it answers, how hidden pages stay hidden

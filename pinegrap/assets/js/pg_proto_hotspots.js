@@ -1459,6 +1459,50 @@
         return out;
     }
 
+    // What the selected frame (its id, null for none) shows of a layout:
+    // out, the ids of its arrows; in, the ids of the arrows into it from
+    // page frames; shared, the links of shared frames into it, which draw
+    // no arrow but mark their row and name themselves under their frame
+    // ({ frame, port, edge, label, to }); lit, per other frame the ports of
+    // its rows that start an arrow into it.
+    function focusOf(laid, id) {
+        var out = { out: [], in: [], shared: [], lit: {} };
+        var byId = {};
+
+        ((laid && laid.frames) || []).concat((laid && laid.chips) || []).forEach(function (item) { byId[item.id] = item; });
+
+        if (id === null || id === undefined || !has(byId, String(id))) {
+            return out;
+        }
+
+        id = String(id);
+
+        ((laid && laid.edges) || []).forEach(function (edge) {
+            if (edge.from === id) {
+                out.out.push(edge.id);
+                return;
+            }
+
+            if (edge.to !== id) {
+                return;
+            }
+
+            var from = byId[edge.from];
+
+            if (from && from.kind === 'shared') {
+                var row = (from.rows || []).filter(function (r) { return r.port === edge.port; })[0] || {};
+
+                out.shared.push({ frame: edge.from, port: edge.port, edge: edge.id, label: row.from ? row.from + ' › ' + row.label : str(row.label), to: str(byId[id].name) });
+                return;
+            }
+
+            out.in.push(edge.id);
+            (out.lit[edge.from] = out.lit[edge.from] || []).push(edge.port);
+        });
+
+        return out;
+    }
+
     window.PGProtoHotspots = {
         FRAME: FRAME,
         layout: layout,
@@ -1491,6 +1535,7 @@
         applyPatch: applyPatch,
         boundTo: boundTo,
         markBound: markBound,
-        drawTargets: drawTargets
+        drawTargets: drawTargets,
+        focusOf: focusOf
     };
 })();

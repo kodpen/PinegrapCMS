@@ -672,6 +672,7 @@ function setup(focusField) {
         target: function (element) { return element.getAttribute('data-target') === 'mail' ? chip : null; },
         groups: function () { return [{ id: 'g1', label: 'Shop', x: 0, y: -40, w: 900, kind: 'group' }, { id: 'side', label: 'Outside', x: 1200, y: -40, w: 160, kind: 'side' }]; },
         press: function () { return true; },
+        focusChanged: function (id) { heard.push(id); },
         move: function () {}, release: function () {}, cancel: function () {}, key: function () { return false; }
     };
     if (focusField) { adapter.focus = true; }
@@ -690,6 +691,7 @@ function setup(focusField) {
 function classesOf(map) { var o = {}; Object.keys(map).forEach(function (k) { o[k] = map[k].className; }); return o; }
 function order() { return ui.svg.children.filter(function (g) { return g.attrs['data-edge']; }).map(function (g) { return g.attrs['data-edge']; }); }
 
+var heard = [];
 var plain = setup(false);
 plain.canvas.focus('a');
 out.plain = [classesOf(plain.edges), plain.canvas.focused(), classesOf(plain.els)];
@@ -724,6 +726,7 @@ out.panned = f.canvas.focused();
 f.listeners.pointerdown({ type: 'pointerdown', pointerId: 9, clientX: 10, clientY: 10, button: 0, target: ui.viewport, preventDefault: function () {} });
 f.listeners.pointerup({ type: 'pointerup', pointerId: 9, clientX: 10, clientY: 10, button: 0, target: ui.viewport, preventDefault: function () {} });
 out.cleared = [f.canvas.focused(), classesOf(f.edges), f.els.d.className];
+out.heard = heard;
 f.canvas.groups();
 var holder = f.canvas.groups();
 out.groups = [ui.layer.children[0] === holder, ui.layer.children.filter(function (c) { return c.className === 'pgc-groups'; }).length, ui.layer.children[0].children.map(function (h) { return [h.className, h.attrs['data-group'], h.style.left, h.style.top, h.style.width, h.children[0].className, h.children[0].textContent, h.children[1].className]; }), ui.layer.children[0].attrs['aria-hidden']];
@@ -758,6 +761,7 @@ JS
 	pg_assert_same(array(array(), 'kept'), $result['same'], 'the same focus again touches no arrow and announces nothing');
 	pg_assert_same(array('pgc-edge pgc-edge-faint', true), $result['late'], 'an arrow drawn later takes its state, a faint one under the rest');
 	pg_assert_same('pgc-node pgc-dim', $result['newBox'], 'a box drawn later at neither end is dimmed');
+	pg_assert_same(array('a', 'c', 'b', null), $result['heard'], 'focusChanged() hears each change of focus once, by a call or a press, and none without the field');
 	pg_assert_same(array('b', 'pgc_focus|Box B|1|2'), $result['pressed'], 'a press on a box puts it in focus, counted with the arrow drawn later');
 	pg_assert_same('b', $result['panned'], 'a pan keeps the focus');
 	pg_assert_same(array(null, array('ab' => 'pgc-edge pgc-hidden', 'ca' => 'pgc-edge pgc-hidden', 'bc' => 'pgc-edge pgc-hidden', 'cd' => 'pgc-edge pgc-hidden', 'am' => 'pgc-edge pgc-hidden'), 'pgc-node'), $result['cleared'], 'a click on the empty canvas takes the focus away: no arrow, nothing dimmed');

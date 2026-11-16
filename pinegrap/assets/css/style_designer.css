@@ -6477,6 +6477,8 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
     --pgc-marker: url(#sd-proto-arrow);
     --pgc-marker-on: url(#sd-proto-arrow-on);
     --pgc-node-accent: #3a4049;
+    --pgc-in: #f0b429;
+    --pgc-group: var(--sd-text-muted);
 }
 .sd-proto[hidden] { display: none; }
 .sd-proto-bar {
@@ -6570,6 +6572,25 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
 .sd-proto .sd-proto-chip.sd-proto-mark-broken { border-color: #ff6b6b; }
 .sd-proto .pgc-edge.sd-proto-edge-broken .pgc-edge-line { stroke: #ff6b6b; stroke-dasharray: 6 4; }
 .sd-proto .pgc-edge.sd-proto-edge-tab .pgc-edge-line { stroke: var(--sd-accent); }
+/* The selected frame's arrows (focus): out solid in the accent, in dashed
+   amber, a broken one red, each with its own arrowhead; a shared part's
+   link into the selected page draws none (its row and note say it). */
+.sd-proto .pgc-edge.pgc-edge-in .pgc-edge-line { stroke: var(--pgc-in); stroke-dasharray: 6 4; marker-end: url(#sd-proto-arrow-in); }
+.sd-proto .pgc-edge.sd-proto-edge-broken .pgc-edge-line { marker-end: url(#sd-proto-arrow-broken); }
+.sd-proto .pgc-edge.pgc-edge-in.sd-proto-from-shared { display: none; }
+.sd-proto-arrowhead-in { fill: var(--pgc-in); }
+.sd-proto-arrowhead-broken { fill: #ff6b6b; }
+.sd-proto .pgc-node.sd-proto-focused { outline: 2px solid var(--sd-accent); outline-offset: 3px; }
+.sd-proto-focused .sd-proto-name { color: var(--sd-accent); }
+.sd-proto-row.sd-proto-row-quiet { opacity: .4; }
+.sd-proto-row.sd-proto-row-lit { background: color-mix(in srgb, var(--sd-accent) 18%, transparent); }
+.sd-proto-row.sd-proto-row-shared { background: color-mix(in srgb, var(--pgc-in) 20%, transparent); }
+.sd-proto-row.sd-proto-row-shared .sd-proto-icon { color: var(--pgc-in); }
+.sd-proto-note { position: absolute; font-size: .75rem; line-height: 1.35; color: var(--pgc-in); pointer-events: none; }
+.sd-proto-note-line { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Section headings (groups()), read at the zoom a large design fits at. */
+.sd-proto .pgc-group { height: 40px; }
+.sd-proto .pgc-group-label { font-size: 1.4rem; }
 /* The target menu of a link row (_sdProtoMenuOpen()). */
 .sd-proto-menu {
     position: absolute; z-index: 2; width: 260px; max-height: 50%; overflow-y: auto;

@@ -15,7 +15,7 @@ description: CB0 list, the closed slots inside system widgets: section bindings 
 - Login: `google_signin`, `forgot_password_link`, `register_link` (56). Registration and membership: `captcha`, `password_rules`, `google_signup`, `login_link` (57). Change password: `password_rules`.
 - My Account: `order_history` (40), `subscriptions`, `bookings`, `store_credit`.
 - Catalog: `group_tree`, `filters_offcanvas`, `attribute_filters` (legacy, 4): drawn true since CB6b ([[catalog-listing-open-blocks]]). Catalog detail: `recipient_picker` (keeps children), `payment_methods` (drawn true since CB6a1, #9849).
-- Shopping cart: `applied_offers`, `quick_add`, `pending_offers`. Express order: the `eo_*` blocks (billing, payment, terms…): legacy, the starter uses `eo_field` controls.
+- Shopping cart: `applied_offers`, `quick_add`, `pending_offers` (campaign gifts): drawn true since CB6c ([[cart-open-blocks]]). Express order: the `eo_*` blocks (billing, payment, terms…): legacy, the starter uses `eo_field` controls.
 - Checkout steps: shipping address `custom_shipping_form`, `verified_addresses`; shipping method `recipient_items`; billing `custom_billing_form`; order preview `order_recipients`, `applied_offers`, `applied_gift_cards`, `recurring_payments`, `billing_form`, `card_installments`, `installment_table`. Order form: `recurring_schedule`.
 - Booking: twelve `booking_*` steps and parts (16): the steps and the details form drawn as their elements, the six parts the script fills drawn true since CB8 ([[booking-widget-open-parts]]).
 - Calendar view: `calendar_picker`, `month_grid`; calendar event: `reserve_form` (no template).
@@ -26,6 +26,6 @@ description: CB0 list, the closed slots inside system widgets: section bindings 
 - Ad Region: `__ad_content_html`, `__ad_caption_html`, the ad's own markup. Operator rich text (`__description`, `__comment_message_html`) is content, not a block.
 
 ## What does opening take?
-- Tree: pagination (one shared family for comments and search), order history, subscriptions, bookings list, quick add, campaign gifts, applied offers, order preview parts, return actions, password rules, the sign-in and sign-up links, calendar month grid.
-- Settings only (the output depends on the request or a site setting): CAPTCHA, social sign-in buttons, publish options, installments, payment methods, the category tree and filters (CB6b), the step progress; a true sample on the canvas.
+- Tree: pagination (one shared family for comments and search), order history, subscriptions, bookings list, order preview parts, return actions, password rules, the sign-in and sign-up links, calendar month grid.
+- Settings only (the output depends on the request or a site setting): CAPTCHA, social sign-in buttons, publish options, installments, payment methods, the category tree and filters (CB6b), the cart's applied offers, campaign gifts and quick add (CB6c), the step progress; a true sample on the canvas.
 - Keep: the ad's own markup (made in the ad screen); option lists of a select (one `<option>` per row, drawn as one control).

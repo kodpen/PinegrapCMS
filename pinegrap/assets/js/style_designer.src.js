@@ -6004,14 +6004,11 @@ const StyleDesigner = (function () {
             label: _sdT('Applied Offers'), icon: 'bi-tag-fill',
             defaultProps: { cssClass: '' },
             render: function (doc, p) {
-                var d = doc.createElement('div');
-                // sd-editor-ph: editor chrome, left out of the canvas audit.
-                d.className = 'alert alert-success py-2 mb-2 sd-editor-ph';
-                d.style.borderStyle = 'dashed';
-                d.style.opacity = '0.75';
-                d.innerHTML = '<span class="bi bi-tag-fill me-1"></span>'
-                    + '<strong>' + esc(_sdT('Applied Offers')) + '</strong>'
-                    + '<span class="ms-2 text-muted small">' + esc(_sdT('The active offer/discount descriptions are listed here.')) + '</span>';
+                // The box the cart prints, with sample offers
+                // (_sdCartSectionSample()); sd-editor-ph: editor chrome, left
+                // out of the canvas audit.
+                var d = _sdCartSectionSample('applied_offers', doc, null);
+                d.classList.add('sd-editor-ph');
                 return d;
             },
             toHTML: function (p, pad) {
@@ -14418,6 +14415,12 @@ const StyleDesigner = (function () {
                 if (!_hasChildren && _SD_BOOKING_FILLED[_sec]) {
                     var _bkSample = _sdBookingSectionSample(_sec, doc);
                     if (_bkSample) _hint = _bkSample;
+                }
+                // A shopping cart's applied offers, campaign gifts and quick
+                // add box, likewise (_sdCartSectionSample()).
+                if (!_hasChildren && _getSystemWidgetRegionType(node) === 'shopping_cart') {
+                    var _cartSample = _sdCartSectionSample(_sec, doc, _sysWidgetRenderCfg);
+                    if (_cartSample) _hint = _cartSample;
                 }
                 if (_hint) innerEl.appendChild(_hint);
             }
@@ -43002,6 +43005,153 @@ const StyleDesigner = (function () {
         return box;
     }
 
+    // ── Shopping cart blocks (applied offers, quick add, campaign gifts) ──
+    // Twins of the pure builders in includes/fn/widgets_cart.php; the
+    // canvas draws them with sample offers, gifts and products, as the site
+    // fills them per cart (no CSRF field and no script on the canvas).
+
+    // pg_cart_applied_offers_html()
+    /* @pg-site-output */
+    function _sdCartAppliedOffersHtml(labels) {
+        var items = (labels || []).map(function (l) { return '<li>' + esc(l) + '</li>'; }).join('');
+        if (!items) return '';
+        return '<div class="pg-cart-applied-offers alert alert-success py-2 px-3 mb-2">'
+            + '<div class="fw-semibold small mb-1"><i class="bi bi-tag-fill me-1"></i>'
+            + esc(labels.length > 1 ? _sdT('Applied Offers') : _sdT('Applied Offer')) + '</div>'
+            + '<ul class="mb-0 ps-3 small">' + items + '</ul></div>';
+    }
+
+    // pg_cart_pending_offer_recipient_html(); options is [[value, text], …].
+    /* @pg-site-output */
+    function _sdCartPendingRecipientHtml(base, decided, options, allowNew) {
+        if (decided) {
+            return '<span class="small text-body-secondary">' + esc(_sdT('Ship to')) + ' <span class="fw-semibold">' + esc(decided) + '</span></span>';
+        }
+        return '<label class="form-label small mb-1" for="' + esc(base) + '_ship_to">' + esc(_sdT('Ship to')) + '</label>'
+            + '<select class="form-select form-select-sm" id="' + esc(base) + '_ship_to" name="' + esc(base) + '_ship_to">'
+            + (options || []).map(function (o) { return '<option value="' + esc(o[0]) + '">' + esc(o[1]) + '</option>'; }).join('')
+            + '</select>'
+            + (allowNew ? '<input type="text" class="form-control form-control-sm mt-1" name="' + esc(base) + '_add_name" maxlength="50" placeholder="' + esc(_sdT('or add name')) + '">' : '');
+    }
+
+    // pg_cart_pending_offer_row_html()
+    /* @pg-site-output */
+    function _sdCartPendingRowHtml(offerId, actionId, label, recipientHtml) {
+        return '<div class="pg-cart-pending-offer d-flex flex-wrap align-items-end gap-2 py-2 border-bottom">'
+            + '<div class="flex-grow-1 min-width-0"><span class="fw-semibold">' + esc(label) + '</span></div>'
+            + (recipientHtml ? '<div class="pg-cart-pending-offer-recipient">' + recipientHtml + '</div>' : '')
+            + '<div><button type="submit" class="btn btn-primary btn-sm" name="add_pending_offer_' + (parseInt(offerId, 10) || 0) + '_' + (parseInt(actionId, 10) || 0) + '" value="1">'
+            + esc(_sdT('Add')) + '</button></div>'
+            + '</div>';
+    }
+
+    // pg_cart_pending_offers_html()
+    /* @pg-site-output */
+    function _sdCartPendingOffersHtml(rows, postUrl, sendTo, token) {
+        return '<form class="pg-cart-pending-offers card card-body mb-3" method="post" action="' + esc(postUrl) + '">'
+            + (token || '')
+            + '<input type="hidden" name="pending_offers" value="true">'
+            + '<input type="hidden" name="send_to" value="' + esc(sendTo) + '">'
+            + '<div class="fw-semibold mb-2"><i class="bi bi-gift me-1"></i>' + esc(_sdT('Special Offers')) + '</div>'
+            + rows
+            + '</form>';
+    }
+
+    // pg_cart_quick_add_option_html()
+    /* @pg-site-output */
+    function _sdCartQuickAddOptionHtml(id, text, selectionType, recipient, defaultQty, inStock) {
+        return '<option value="' + (parseInt(id, 10) || 0) + '"'
+            + ' data-qty="' + (selectionType === 'quantity' ? '1' : '0') + '"'
+            + ' data-amount="' + (selectionType === 'donation' ? '1' : '0') + '"'
+            + ' data-recipient="' + (recipient ? 1 : 0) + '"'
+            + ' data-default-qty="' + (parseInt(defaultQty, 10) || 0) + '"'
+            + (inStock ? '' : ' disabled')
+            + '>' + esc(text) + '</option>';
+    }
+
+    // pg_cart_quick_add_html(); recipients null: no recipient row.
+    /* @pg-site-output */
+    function _sdCartQuickAddHtml(label, options, needsQty, needsAmt, recipients, symbol, postUrl, sendTo, token) {
+        var shipTo = '';
+        if (recipients) {
+            var opts = '<option value=""></option><option value="' + esc(_sdT('myself')) + '">' + esc(_sdT('myself')) + '</option>'
+                + recipients.map(function (r) { return '<option value="' + esc(r) + '">' + esc(r) + '</option>'; }).join('');
+            shipTo = '<div class="col-12 col-sm-4 pg-qa-row pg-qa-ship-to" style="display:none">'
+                + '<label class="form-label small mb-1" for="pg-qa-ship-to">' + esc(_sdT('Ship to')) + '</label>'
+                + '<select class="form-select form-select-sm" id="pg-qa-ship-to" name="quick_add_ship_to">' + opts + '</select>'
+                + '<input type="text" class="form-control form-control-sm mt-1" name="quick_add_add_name" maxlength="50" placeholder="' + esc(_sdT('or add name')) + '">'
+                + '</div>';
+        }
+        var qty = needsQty ? '<div class="col-6 col-sm-3 pg-qa-row pg-qa-qty" style="display:none">'
+            + '<label class="form-label small mb-1" for="pg-qa-qty">' + esc(_sdT('Quantity')) + '</label>'
+            + '<input type="text" inputmode="numeric" class="form-control form-control-sm" id="pg-qa-qty" name="quick_add_quantity" value="1" size="4">'
+            + '</div>' : '';
+        var amt = needsAmt ? '<div class="col-6 col-sm-3 pg-qa-row pg-qa-amount" style="display:none">'
+            + '<label class="form-label small mb-1" for="pg-qa-amount">' + esc(_sdT('Amount')) + '</label>'
+            + '<div class="input-group input-group-sm">'
+            + '<span class="input-group-text">' + (symbol || '') + '</span>'
+            + '<input type="text" inputmode="decimal" class="form-control" id="pg-qa-amount" name="quick_add_amount" size="6">'
+            + '</div></div>' : '';
+        return '<form class="pg-cart-quick-add card card-body mb-3" method="post" action="' + esc(postUrl) + '">'
+            + (token || '')
+            + '<input type="hidden" name="quick_add" value="1">'
+            + '<input type="hidden" name="send_to" value="' + esc(sendTo) + '">'
+            + (label !== '' ? '<div class="fw-semibold mb-2"><i class="bi bi-lightning-charge me-1"></i>' + esc(label) + '</div>' : '')
+            + '<div class="row g-2 align-items-end">'
+            + '<div class="col-12 col-sm">'
+            + '<label class="form-label small mb-1 visually-hidden" for="pg-qa-product">' + esc(_sdT('Product')) + '</label>'
+            + '<select class="form-select form-select-sm" id="pg-qa-product" name="quick_add_product_id">'
+            + '<option value=""></option>' + options
+            + '</select>'
+            + '</div>'
+            + qty + amt + shipTo
+            + '<div class="col-auto"><button type="submit" class="btn btn-primary btn-sm">' + esc(_sdT('Add')) + '</button></div>'
+            + '</div>'
+            + '</form>';
+    }
+
+    // What a shopping cart prints in a section the server fills, with the
+    // widget's settings `cfg` and sample offers, gifts and products; '' when
+    // the site prints nothing for it (no quick add group chosen).
+    /* @pg-site-output */
+    function _sdCartSectionHtml(section, cfg) {
+        var c = cfg || {};
+        if (section === 'applied_offers') {
+            return _sdCartAppliedOffersHtml([_sdT('10% off all shirts'), _sdT('Free shipping over 500')]);
+        }
+        if (section === 'pending_offers') {
+            // A gift waits for the visitor when the site must ask where it
+            // goes (several recipients, a gift that ships): drawn so.
+            return _sdCartPendingOffersHtml(_sdCartPendingRowHtml(7, 3, _sdT('A free tote bag with every order over 750'),
+                _sdCartPendingRecipientHtml('pending_offer_7_3', '', [['', ''], [_sdT('myself'), _sdT('myself')]], true)), '#', '', '');
+        }
+        if (section === 'quick_add') {
+            if (!(parseInt(c.quick_add_product_group_id, 10) > 0)) return '';
+            var label = (typeof c.quick_add_label === 'string') ? c.quick_add_label : _sdT('Quick Add');
+            var options = _sdCartQuickAddOptionHtml(31, _sdT('Gift wrap') + ' - ' + _sdT('Recycled paper') + ' (' + _sdMoney(4.9) + ')', 'quantity', 0, 1, true)
+                + _sdCartQuickAddOptionHtml(32, _sdT('Greeting card') + ' - ' + _sdT('Written by hand') + ' (' + _sdMoney(2.5) + ')', 'quantity', 0, 1, true);
+            return _sdCartQuickAddHtml(label, options, true, false, null, '', '#', '', '');
+        }
+        return '';
+    }
+
+    // The sample of a cart section as a canvas box: inert, never saved, the
+    // words under it saying the site fills it per cart. null when the site
+    // prints nothing for it.
+    function _sdCartSectionSample(section, doc, cfg) {
+        var html = _sdCartSectionHtml(section, cfg);
+        if (!html) return null;
+        var note = section === 'applied_offers' ? _sdT('The site lists the offers applied to the visitor\'s cart; nothing when none applies.')
+            : section === 'pending_offers' ? _sdT('The site lists the gifts the visitor\'s cart has earned, each with its Add button; nothing when none.')
+            : _sdT('The site lists the products of the chosen group the visitor can buy now.');
+        var box = doc.createElement('div');
+        box.className = 'sd-section-binding-hint sd-section-sample';
+        box.setAttribute('inert', '');
+        box.style.cssText = 'pointer-events:none';
+        box.innerHTML = html + '<div class="small text-body-secondary fst-italic mt-1">' + esc(note) + '</div>';
+        return box;
+    }
+
     // Resolve the regionType of the system widget that contains `node`.
     // Returns one of: 'form_list_view' (default), 'form_item_view',
     // 'catalog_listing', or '' if not in a SW.
@@ -69230,6 +69380,12 @@ const StyleDesigner = (function () {
         tools.appendChild(ui.zoomLabel);
         tools.appendChild(_sdProtoButton('bi-zoom-in', _sdT('Zoom In'), function () { if (_sdProto.canvas) _sdProto.canvas.view.zoomBy(1.2); }));
         tools.appendChild(_sdProtoButton('bi-arrows-fullscreen', _sdT('Fit to screen'), function () { if (_sdProto.canvas) _sdProto.canvas.view.fit(); }));
+        // All arrows: the other frames' arrows drawn faintly too; the choice
+        // is kept in this browser.
+        ui.allEdges = _sdProtoButton('bi-diagram-3', _sdT('All arrows'), function () { _sdProtoAllEdges(!_sdProtoAllEdgesOn()); });
+        ui.allEdges.appendChild(_sdProtoEl('span', 'sd-proto-btn-label', _sdT('All arrows')));
+        ui.allEdges.setAttribute('aria-pressed', 'false');
+        tools.appendChild(ui.allEdges);
         // Tidy up changes every editor's arrangement, so it carries its name
         // beside the icon (hidden on a phone, where the title and the label
         // still name it).
@@ -69256,6 +69412,8 @@ const StyleDesigner = (function () {
         ui.svg.innerHTML = '<defs>' +
             '<marker id="sd-proto-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="pgc-arrowhead" d="M0 0L10 5L0 10z"/></marker>' +
             '<marker id="sd-proto-arrow-on" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="pgc-arrowhead-on" d="M0 0L10 5L0 10z"/></marker>' +
+            '<marker id="sd-proto-arrow-in" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="sd-proto-arrowhead-in" d="M0 0L10 5L0 10z"/></marker>' +
+            '<marker id="sd-proto-arrow-broken" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="sd-proto-arrowhead-broken" d="M0 0L10 5L0 10z"/></marker>' +
             '</defs>';
         ui.temp = G.svgEl('path', 'pgc-edge-temp pgc-hidden');
         ui.svg.appendChild(ui.temp);
@@ -69272,7 +69430,17 @@ const StyleDesigner = (function () {
         _sdProto.ui = ui;
         _sdProto.canvas = G.create({
             ui: ui,
-            text: function (key) { return key === 'pgc_box' ? _sdT('Frame') : ''; },
+            text: function (key, a, b, c) {
+                if (key === 'pgc_box') return _sdT('Frame');
+                if (key === 'pgc_focus') return _sdT('{var:1}: {var:2} arrows out, {var:3} in', [a, b, c]);
+                return '';
+            },
+            // Only the selected frame's arrows are drawn (focus); a press on
+            // a frame selects it, on the empty canvas none.
+            focus: true,
+            focusChanged: function (id) { _sdProtoFocusMarks(id); },
+            label: function (item) { return item.kind === 'chip' ? _sdProtoChipText(item) : _sdProtoFrameName(item); },
+            groups: function () { return _sdProto.layout ? _sdProto.layout.headings : []; },
             boxRole: function () { return _sdT('Frame'); },
             item: function (id) { return _sdProto.byId[id] || null; },
             // Frames and chips move; an arrow from a link row's port
@@ -69362,6 +69530,7 @@ const StyleDesigner = (function () {
         if (!_sdProto.ui && !_sdProtoBuild()) return;
         _sdProto.open = true;
         _sdProto.warned = {};
+        _sdProto.focusOpen = true;
         _sdProto.ui.root.hidden = false;
         _sdProtoButtonState();
         _sdProtoLoad();
@@ -69567,6 +69736,65 @@ const StyleDesigner = (function () {
         }
     }
 
+    function _sdProtoAllEdgesOn() {
+        try { return window.localStorage.getItem('pg_proto_all_edges') === '1'; } catch (e) { return false; }
+    }
+
+    function _sdProtoAllEdges(on) {
+        try {
+            if (on) window.localStorage.setItem('pg_proto_all_edges', '1');
+            else window.localStorage.removeItem('pg_proto_all_edges');
+        } catch (e) {}
+        if (_sdProto.ui) {
+            _sdProto.ui.allEdges.classList.toggle('active', on);
+            _sdProto.ui.allEdges.setAttribute('aria-pressed', on ? 'true' : 'false');
+        }
+        if (_sdProto.canvas) _sdProto.canvas.allEdges(on);
+    }
+
+    // The selected frame's marks until a frame shows its page: its own rows
+    // in full, on other frames only the rows that start one of its arrows
+    // lit and the rest quiet; a shared part's link into it marked amber,
+    // with a line under that frame naming it ("Cart icon → cart").
+    function _sdProtoFocusMarks(id) {
+        var ui = _sdProto.ui;
+        if (!ui || !_sdProto.layout) return;
+        Array.prototype.slice.call(ui.boxes.querySelectorAll('.sd-proto-note')).forEach(function (n) { n.parentNode.removeChild(n); });
+        Array.prototype.slice.call(ui.boxes.querySelectorAll('.sd-proto-focused')).forEach(function (n) { n.classList.remove('sd-proto-focused'); });
+        Array.prototype.slice.call(ui.boxes.querySelectorAll('.sd-proto-row')).forEach(function (r) {
+            r.classList.remove('sd-proto-row-quiet', 'sd-proto-row-lit', 'sd-proto-row-shared');
+        });
+        if (id === null || id === undefined) return;
+        var f = window.PGProtoHotspots.focusOf(_sdProto.layout, id);
+        var mark = {};
+        Object.keys(f.lit).forEach(function (frame) { f.lit[frame].forEach(function (port) { mark[frame + '|' + port] = 'sd-proto-row-lit'; }); });
+        f.shared.forEach(function (link) { mark[link.frame + '|' + link.port] = 'sd-proto-row-shared'; });
+        _sdProto.layout.frames.forEach(function (item) {
+            var node = ui.boxes.querySelector('[data-node="' + String(item.id).replace(/"/g, '') + '"]');
+            if (!node) return;
+            if (item.id === String(id)) {
+                node.classList.add('sd-proto-focused');
+                return;
+            }
+            item.rows.forEach(function (row, i) {
+                var el = node.querySelector('.sd-proto-row[data-row="' + i + '"]');
+                if (el) el.classList.add(mark[item.id + '|' + row.port] || 'sd-proto-row-quiet');
+            });
+        });
+        var notes = {};
+        f.shared.forEach(function (link) { (notes[link.frame] = notes[link.frame] || []).push(link.label + ' → ' + link.to); });
+        Object.keys(notes).forEach(function (frameId) {
+            var item = _sdProto.byId[frameId];
+            if (!item) return;
+            var note = _sdProtoEl('div', 'sd-proto-note');
+            note.style.left = item.x + 'px';
+            note.style.top = (item.y + item.h + 8) + 'px';
+            note.style.width = item.w + 'px';
+            notes[frameId].forEach(function (line) { note.appendChild(_sdProtoEl('div', 'sd-proto-note-line', line)); });
+            ui.boxes.appendChild(note);
+        });
+    }
+
     function _sdProtoDraw(marked) {
         var H = window.PGProtoHotspots;
         var G = window.PGGraphCanvas;
@@ -69613,12 +69841,27 @@ const StyleDesigner = (function () {
         l.edges.forEach(function (e, i) {
             var drawn = canvas.edge(e.id, _sdProto.byId[e.from], _sdProto.byId[e.to], { port: e.port, slot: slots[i].slot, slots: slots[i].slots });
             drawn.group.classList.add('sd-proto-edge-' + e.mark);
+            // A shared part's link into the selected page draws no arrow
+            // (its row and the note under its frame say it).
+            if (_sdProto.byId[e.from].kind === 'shared') drawn.group.classList.add('sd-proto-from-shared');
         });
+        canvas.groups();
 
         var count = l.edges.length;
         var broken = l.chips.filter(function (c) { return c.mark === 'broken'; }).length;
         _sdProtoStatus(_sdT('{var:1} links', count) + (broken ? ' · ' + _sdT('{var:1} broken', broken) : ''));
         canvas.announce(_sdT('{var:1} links', count));
+        // Opening selects the open tab's frame; a redraw keeps the selected
+        // frame while it is there.
+        var focusOn = (first || _sdProto.focusOpen) ? 'p:' + _activeKey : canvas.focused();
+        _sdProto.focusOpen = false;
+        if (focusOn !== null && !_sdProto.byId[focusOn]) focusOn = null;
+        if (focusOn !== canvas.focused()) canvas.focus(focusOn);
+        else {
+            canvas.focus(focusOn);
+            _sdProtoFocusMarks(focusOn);
+        }
+        _sdProtoAllEdges(_sdProtoAllEdgesOn());
         if (first) canvas.view.fit();
         else canvas.view.apply();
         _sdProtoSelect(_sdProto.selected);
