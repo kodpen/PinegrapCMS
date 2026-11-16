@@ -19,7 +19,8 @@ description: Steps CB2 to CB10 of designer-closed-blocks, written from the owner
 - CB6e (M) Shop, after the order: order view's return actions; My Account's order history, subscriptions, bookings, store credit.
 - CB7 (M) Login and sign-up: password rules and the sign-in and sign-up links as trees; social sign-in buttons settings only. Done (#9895).
 - CB8 (M) Booking widget: the twelve `booking_*` steps and parts. Done (#9918): `designer/booking-widget-open-parts.md`.
-- CB9 (M) Calendar: picker, month grid as a tree, reserve form.
+- CB9 (M) Calendar: picker, month grid as a tree, reserve form. Done (#9932): `designer/calendar-widgets-open-slots.md`.
+- CB9b (S) The month table as lists on the canvas (W13's drawing, also what CB9's "Convert to design elements" shows): at 1440 and 390 the table is cut at the right (the third day's column, the size chip), the weekday row is empty and a condition chip is squeezed to one letter. The seven day columns fit the canvas width, the weekday row draws sample day names, a chip keeps its text or is left out. The canvas drawing only; the site's output stays.
 - CB10 (M) Classic sites: the converter button for a classic page type's System region and the legacy regions (`designer/canvas-closed-blocks-regions.md`); page types with no widget are listed for the architect, not built.
 - Close-out (S): `designer/canvas-closed-blocks*.md` rewritten as what is open now; both plan files deleted.
 
