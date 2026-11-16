@@ -26,7 +26,8 @@ priority: 6
 - Architect (agent channel message 6553), after the owner asked that what exists be grown instead of a table (poll 84): no table, on conditions. CV1 measures a rebuild on a seeded shop of at least 200,000 orders and writes the figures in its PR.
 - A run is bounded in time and goes on where it stopped; the summary carries the moment it was worked out and holds no name or address (an order's number stays, a name is read when it is shown); currencies stay apart.
 - If the measurement is bad, a table is asked then, with the measurement.
-- Still the architect's: the customer's key (the plan: the folded billing e-mail, so a guest who orders twice is one customer) and the bounds of U11.
+- The customer's key is CV1's: the folded billing e-mail, else the contact (`commerce/customer-value-summary.md`).
+- Architect (2026-11-16), U11's names over the summary's cells, the bounds stated on the screen beside each name: New, one order, the last within 90 days; Returning, two to three orders, the last within 180 days; Loyal, four and more, the last within 180 days; At risk, the last order 181 to 365 days ago, and one order 91 to 180 days ago; Lost, the last order over 365 days ago. Every cell has exactly one name.
 
 ## What does the owner decide?
 - The report's look.
