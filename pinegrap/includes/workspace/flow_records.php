@@ -192,7 +192,8 @@ function ws_step_list_records_check($viewer, $config)
  * The field a list holds back its records until a moment with: the field of
  * its one filter "is less than (or equal to)" the current date (and time),
  * as the news templates' publish_date; its name as the filters compare it
- * (lower case). '' with none or more than one such filter. Pure.
+ * (lower case). '' with none or with such filters on more than one field;
+ * the same field found twice is one field. Pure.
  *
  * @param array $filters the filters the list applies (pg_sw_form_feed_pick())
  * @return string
@@ -212,11 +213,13 @@ function ws_flow_records_live_field($filters)
         if (($field !== '') && ($value === '')
             && in_array((string) ($filter['operator'] ?? ''), array('is less than', 'is less than or equal to'), true)
             && in_array((string) ($filter['dynamic_value'] ?? ''), array('current date and time', 'current date'), true)) {
-            $found[] = mb_strtolower($field, 'UTF-8');
+            $found[mb_strtolower($field, 'UTF-8')] = true;
         }
     }
 
-    return (count($found) === 1) ? $found[0] : '';
+    // Counted by distinct field: a list's filters merged with its detail
+    // page's (pg_sw_merge_record_filters()) can hold the same filter twice.
+    return (count($found) === 1) ? (string) key($found) : '';
 }
 
 /**

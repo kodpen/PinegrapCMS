@@ -181,7 +181,9 @@ function test_workspace_flow_records_start_twice()
 
 // The moment a record went live: the list's one "date field is at most now"
 // filter names it, and the record's date is the later of that and when it
-// was made. None or two such filters: the moment it was made only.
+// was made. None or two such filters on different fields: the moment it was
+// made only. The same field twice (a list and its detail page both holding
+// the filter, merged) is one field.
 function test_workspace_flow_records_live_field()
 {
 	$live = array('field' => 'publish_date', 'operator' => 'is less than or equal to', 'value' => '', 'dynamic_value' => 'current date and time');
@@ -194,6 +196,9 @@ function test_workspace_flow_records_live_field()
 	pg_assert_same('publish_date', ws_flow_records_live_field(array(array('field' => 'Publish_Date', 'operator' => 'is less than', 'value' => '', 'dynamic_value' => 'current date') + $live)), 'its name as the filters compare it');
 	pg_assert_same('', ws_flow_records_live_field(array()), 'none');
 	pg_assert_same('', ws_flow_records_live_field(array($live, array('field' => 'go_live') + $live)), 'two');
+	pg_assert_same('publish_date', ws_flow_records_live_field(array($live, $live)), 'the same filter twice');
+	pg_assert_same('publish_date', ws_flow_records_live_field(array($live, array('field' => ' Publish_Date ', 'operator' => 'is less than', 'dynamic_value' => 'current date') + $live)), 'the same field twice, other case and spacing');
+	pg_assert_same('', ws_flow_records_live_field(array($live, $live, array('field' => 'go_live') + $live)), 'two fields, one of them twice');
 	pg_assert_same('', ws_flow_records_live_field(array(array('value' => '2026-01-01') + $live)), 'a fixed value is no moment of going live');
 	pg_assert_same('', ws_flow_records_live_field(array(array('operator' => 'is greater than') + $live)));
 	pg_assert_same('', ws_flow_records_live_field(array('x', null)));
