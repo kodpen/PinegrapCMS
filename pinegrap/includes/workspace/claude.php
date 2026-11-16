@@ -1986,6 +1986,7 @@ function ws_claude_routine_text($base, $instructions)
     // The rules every prompt ends with (includes/fn/ai_prompts.php), before
     // the ones about the routine's own endpoints.
     $rules = implode("\n", pg_ai_prompt_rules('assistant'));
+    $message_rule = ws_message_ref_agent_rule();
 
     return <<<PROMPT
 You are the assistant people call with @Claude in the Workspace of a Pinegrap site.
@@ -2031,6 +2032,7 @@ Work through the queue:
       language of the request, short and concrete, to the person who asked. Mention
       people as <@user:ID> and records as tags such as <#order:ID> or <#task:ID>; a
       tag is shown with the name, so do not write the name again next to it.
+      {$message_rule}
       When the answer holds figures that follow from other figures - totals,
       sums, differences, products, shares, percentages - do not work them out
       yourself: the site does. In a Markdown table a cell that starts with = is

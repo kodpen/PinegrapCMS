@@ -1251,6 +1251,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                 "Attribute Helper":"' . lang('Attribute Helper') . '",
                 "Copy to Clipboard":"' . lang('Copy to Clipboard') . '",
                 "Cancel":"' . lang('Cancel') . '",
+                "Close":"' . lang('Close') . '",
                 "Notice":"' . lang('Notice') . '",
                 "Error":"' . lang('Error') . '",
                 "An error occurred":"' . lang('An error occurred') . '",
@@ -6495,50 +6496,15 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                 // An address that would run as script is never opened.
                 $auto_dialogs = pg_auto_dialogs_for_page($auto_dialogs);
 
-                // If there is at least one enabled auto dialog, then init them.
+                // The rows for this page, the same for every visitor: the
+                // script skips a dialog its cookie says was shown and counts
+                // the delay from the visit's first page (sessionStorage), so
+                // the session holds nothing and the page stays cacheable.
                 if ($auto_dialogs) {
-                    $current_timestamp = time();
-
-                    // If this is the first page view of this visit,
-                    // then record the visit start timestamp, so that we can determine the visit
-                    // length in order to make sure that the auto dialogs are delayed correctly.
-                    if (empty($_SESSION['software']['visit_start_timestamp'])) {
-                        $_SESSION['software']['visit_start_timestamp'] = $current_timestamp;
-                    }
-
-                    $visit_length = $current_timestamp - $_SESSION['software']['visit_start_timestamp'];
-
-                    $valid_auto_dialogs = array();
-
-                    // Loop through the auto dialogs to determine which are valid for this visitor.
-                    foreach ($auto_dialogs as $auto_dialog) {
-                        // If this dialog has not been shown to this visitor before,
-                        // or if this dialog is a recurring dialog, and enough time
-                        // has passed since the last time it was shown,
-                        // and the auto dialog does not have a page set,
-                        // or the page that is set matches this page, then show it.
-                        if (
-                            (
-                                (empty($_COOKIE['software']['auto_dialog_' . $auto_dialog['id']]))
-                                ||
-                                (
-                                    ($auto_dialog['frequency'])
-                                    && (($current_timestamp - (int) $_COOKIE['software']['auto_dialog_' . $auto_dialog['id']]) >= ($auto_dialog['frequency'] * 3600))
-                                )
-                            )
-                            &&
-                            (
-                                ($auto_dialog['page'] == '')
-                                || (mb_strpos(mb_strtolower($page_name), mb_strtolower($auto_dialog['page'])) !== false) 
-                            )
-                        ) {
-                            $valid_auto_dialogs[] = $auto_dialog;
-                        }
-                    }
-
+                    // Printed with an empty list too, so the visit's start
+                    // is kept from its first page, as the delay counts it.
                     $output_js .= 'software.init_auto_dialogs({
-                        visit_length: ' . $visit_length . ',
-                        auto_dialogs: ' . encode_json($valid_auto_dialogs) . '});';
+                        auto_dialogs: ' . encode_json(pg_auto_dialogs_on_page($auto_dialogs, $page_name)) . '});';
                 }
             }
         }

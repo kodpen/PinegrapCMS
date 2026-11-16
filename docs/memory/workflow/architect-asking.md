@@ -17,4 +17,7 @@ description: How a session asks a decision question or the owner's approval of s
 - PR MERGE writes his channel answer as a comment on that PR, quoting him: a first line opening with `Karar` or `Decision`, and Onaylıyorum, Onaylandı or Approved (or "Değişiklik istiyorum" for a change). `tools/merge_train.php` leaves the PR out (`--list` and `--build` name it, "waits on the owner's approval in this PR") until such a comment exists from an account with write access (`author_association` OWNER, MEMBER or COLLABORATOR).
 - A PR opened before 2026-11-13 with `Approval: #<issue>` still waits on that issue: the `Karar` comment goes there and the issue is closed on landing.
 
+## How does a question point at a picture or an earlier message?
+- With its tag `<#message:N>` in the text (`tools/ws_post.php`, a `tools/ws_poll.php ask` question), never "the picture above": the owner could not tell which picture an agent meant (2026-11-15). The tag opens the message for the reader (`workspace/message-reference-agents.md`).
+
 Related: docs/memory/workflow/architect.md, docs/memory/workflow/session-lifecycle.md, docs/memory/workflow/owner-contact-channel.md

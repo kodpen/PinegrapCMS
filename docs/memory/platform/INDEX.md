@@ -16,6 +16,7 @@
 - audit-rule-registry.md: Audit rule registry (includes/fn/audit_rules.php): per concept the SEO and a11y codes, WCAG criterion, severities, editor rule ids, document/browser flags; tools/check_audit_rules.php
 - auto-backup-run-claim.md: auto_backup.php takes the auto_backup lock in cron_runs before it starts and reads the last backup time under it, so overlapping starts write one backup
 - auto-backup-week-name.md: The weekly automatic backup is named by its ISO week's Thursday, so a week across a month or year keeps one name and the retention counts real weeks.
+- auto-dialog-browser-dialog.md: Auto dialogs on the site: the browser's <dialog> in place of jQuery UI, software.open_dialog() as its wrapper, the pick in the browser (cookie, sessionStorage), a page cached for all [decision: here]
 - aws-sigv4-signing.md: includes/fn/aws_sign.php: AWS Signature Version 4 without an SDK (header signing, presigned links), tested against the AWS test suite; used by Amazon SES, written for object storage too
 - background-render.md: pg_background_render(): the one in-process page render of the passes that draw many pages; what it catches, restores and lends; which pages each pass covers and as whom (audit_run.php)
 - backup-age-rule.md: When a backup's age is a problem - pg_backup_age_state() (none fail, over a month warn, else pass) and its readers: System Status tile, ops alert, greeting, API, agents [decision: decisions-made-product-39.md]

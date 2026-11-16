@@ -67,9 +67,9 @@ function designer_audit_editor_placeholder_test_render_class($text)
 function test_designer_audit_editor_placeholder_marker_components_marked()
 {
 	$texts = array(
-		"esc(_sdT('The slides come from the product images at render time'))",
+		"esc(_sdCarouselSampleNote(p))",
 		"esc(_sdT('Variant Attribute Template'))",
-		"esc(_sdT('Catalog → Group → Subgroup → Product (filled by the backend)'))",
+		"esc(_sdT('Prints nothing here: only a catalog or product page widget draws the breadcrumb.'))",
 		"esc(_sdT('The active offer/discount descriptions are listed here.'))",
 	);
 
