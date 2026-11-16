@@ -827,6 +827,21 @@ if (function_exists('pg_page_clicks_sweep_due') && pg_page_clicks_sweep_due()) {
     }
 }
 
+// Content review (includes/fn/content_review.php): once a day the rows of
+// pages and records that are gone go, and an item whose person may no
+// longer edit it becomes nobody's.
+if (function_exists('pg_content_review_sweep_due') && pg_content_review_sweep_due()) {
+
+    $content_review_swept = pg_content_review_sweep();
+
+    if (($content_review_swept['removed'] + $content_review_swept['released']) > 0) {
+        log_activity(lang(array(
+            'string' => 'general job removed {var:1} content review row(s) of items that are gone and cleared {var:2} person(s)',
+            'vars'   => array(pg_format_number($content_review_swept['removed'], 0), pg_format_number($content_review_swept['released'], 0)),
+        )), 'UNKNOWN');
+    }
+}
+
 // The AI fetch rollup (includes/fn/ai_visibility.php): once a day the days
 // older than the retention period go.
 if (function_exists('pg_ai_fetch_sweep_due') && pg_ai_fetch_sweep_due()) {
