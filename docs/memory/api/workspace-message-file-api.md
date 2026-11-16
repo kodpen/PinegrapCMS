@@ -1,6 +1,6 @@
 ---
 name: workspace-message-file-api
-description: The API routes for files in a message: post a file of the file manager, put an edited file in place of the old one (own words, no tool), list a file's earlier versions
+description: The API routes for files in a message (#9769): post a file of the file manager, put an edited file in place of the old one (own words, no tool), list a file's earlier versions
 ---
 
 ## Which routes, and which panel function does each run?

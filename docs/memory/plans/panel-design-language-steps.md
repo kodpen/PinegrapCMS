@@ -1,6 +1,7 @@
 ---
 name: panel-design-language-steps
 description: Steps DL1-DL6 of the panel's design language (look A, #8842, #8860): typeface and recipes, the page widths, the Design examples screen, the bell's drawer, the check, the screen families, close-out
+priority: 2
 ---
 
 ## What is decided, and where is the look?

@@ -247,12 +247,14 @@ function ws_api_channel_settings_present($states)
     $allowed = function ($state) {
         return is_array($state) ? !empty($state['allowed']) : null;
     };
-    $shared = !empty($states['shared']);
+    // A channel shared with guests never reaches an assistant, and a
+    // discussion follows its channel: neither offers a switch of its own.
+    $fixed = !empty($states['shared']) || !empty($states['thread']);
 
     return array(
         'watch'              => isset($states['watch']) ? (bool) $states['watch'] : null,
-        'claude_allowed'     => $shared ? null : $allowed($states['claude'] ?? null),
-        'ai_allowed'         => $shared ? null : $allowed($states['ai'] ?? null),
+        'claude_allowed'     => $fixed ? null : $allowed($states['claude'] ?? null),
+        'ai_allowed'         => $fixed ? null : $allowed($states['ai'] ?? null),
         'voice_allowed'      => $allowed($states['voice'] ?? null),
         'summary'            => (string) ($states['summary'] ?? ''),
         'summary_updated_at' => ((int) ($states['summary_updated_at'] ?? 0) > 0) ? api_time($states['summary_updated_at']) : null,
@@ -276,6 +278,7 @@ function ws_api_channel_settings_states($viewer, $channel)
         'watch'              => function_exists('ws_watch_channel_state') ? ws_watch_channel_state($channel) : null,
         'shared'             => (function_exists('ws_guest_channel_state') && (ws_guest_channel_state($viewer, $channel) !== null))
             || (function_exists('ws_channel_share_open') && ws_channel_share_open($channel)),
+        'thread'             => ((string) ($channel['kind'] ?? '') === 'thread'),
         'summary'            => (string) ($channel['summary'] ?? ''),
         'summary_updated_at' => (int) ($channel['summary_updated_at'] ?? 0),
     );
@@ -697,6 +700,12 @@ function ws_api_channel_switches_set($params)
 
     if (!ws_can_manage_channel($viewer, $channel)) {
         api_fail(403, 'forbidden', lang('Only the owner of the channel can change it.'));
+    }
+
+    // The channel menu hides the switches on an archived channel; the dry
+    // run is refused the same way.
+    if ((int) $channel['archived_at'] > 0) {
+        api_fail(403, 'forbidden', lang('This channel is archived. It can be read but not written in.'));
     }
 
     $now = ws_api_channel_settings_present(ws_api_channel_settings_states($viewer, $channel));

@@ -295,3 +295,16 @@ function ws_message_ref_popup($viewer, $id)
 
     return array('ref' => $ref, 'message' => $payload[0]);
 }
+
+/**
+ * The texts of the message tag's card in workspace.js.
+ *
+ * @return array key => text
+ */
+function ws_message_ref_js_strings()
+{
+    return array(
+        'mr_title' => lang('Referenced message'),
+        'mr_go'    => lang('Go to the message'),
+    );
+}

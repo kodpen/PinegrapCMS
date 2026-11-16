@@ -259,6 +259,40 @@ function ws_assistant_takes_tasks($assistant)
 }
 
 /**
+ * Does the task drawer offer this assistant? The assistants that take
+ * tasks, and a registry agent only where the task's channel allows it. Pure.
+ *
+ * @param array|null $assistant     a ws_assistants() entry
+ * @param string     $agent_problem ws_agent_task_problem() for a registry agent, '' otherwise
+ * @return bool
+ */
+function ws_task_drawer_offers($assistant, $agent_problem)
+{
+    if (!is_array($assistant)) {
+        return false;
+    }
+
+    if (ws_assistant_is_agent((string) ($assistant['key'] ?? ''))) {
+        return (string) $agent_problem === '';
+    }
+
+    return ws_assistant_takes_tasks($assistant);
+}
+
+/**
+ * The picture a task row and a Board card show beside the name of the agent
+ * holding a task: a registry agent's own, '' for any other assistant, which
+ * keeps its icon.
+ *
+ * @param string $key
+ * @return string
+ */
+function ws_task_holder_avatar($key)
+{
+    return ws_assistant_is_agent($key) ? ws_assistant_avatar($key) : '';
+}
+
+/**
  * One assistant, or null when there is none by that key.
  *
  * @param string $key
@@ -1078,7 +1112,11 @@ function ws_task_delegation_detail($viewer, $task)
     $assistants = array();
 
     foreach (ws_assistants() as $key => $assistant) {
-        if (!ws_assistant_takes_tasks($assistant)) {
+        // A registry agent is offered for a task of a channel that allows
+        // it, the check ws_task_delegate() makes (ws_agent_task_problem()).
+        $is_agent = ws_assistant_is_agent($key);
+
+        if (!ws_task_drawer_offers($assistant, $is_agent ? ws_agent_task_problem($key, $task) : '')) {
             continue;
         }
 
@@ -1099,6 +1137,8 @@ function ws_task_delegation_detail($viewer, $task)
             if ($able && ($problem !== '') && ($server['auth_kind'] === 'oauth')) {
                 $connect = array('server_id' => (int) $server['id'], 'alias' => (string) $server['alias']);
             }
+        } elseif ($is_agent) {
+            $ready = true;
         } else {
             $ready = ($key === 'ai') ? ws_ai_ready() : ws_claude_ready();
         }

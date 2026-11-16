@@ -2981,6 +2981,11 @@
     // record, see where else it came up.
     function chipMenus(container) {
         Array.prototype.forEach.call(container.querySelectorAll('.ws-chip[data-ws-ref], .ws-tag-card-head[data-ws-ref]'), function (chip) {
+            // Another message pointed at opens it in a card (messageRefHook()).
+            if (chip.classList.contains('ws-chip-message')) {
+                messageRefHook(chip);
+            }
+
             onContext(chip, function () {
                 var parts = chip.getAttribute('data-ws-ref').split(':');
                 var type = parts[0];
@@ -3818,13 +3823,25 @@
             });
         }
 
+        // A finger never leaves the anchor: the mouse events a tap brings
+        // with it would close the card as soon as the layout moves the
+        // anchor (a message's tool bar opening under it). A tap's card
+        // closes on a tap outside, Escape or a scroll.
+        var touched = false;
+
+        target.addEventListener('pointerdown', function (event) {
+            touched = (event.pointerType === 'touch');
+        });
         target.addEventListener('mouseenter', function () {
             clearTimeout(agentCardOpen.timer);
             agentCardOpen.timer = setTimeout(open, 350);
         });
         target.addEventListener('mouseleave', function () {
             clearTimeout(agentCardOpen.timer);
-            agentCardOpen.timer = setTimeout(agentCardClose, 250);
+
+            if (!touched) {
+                agentCardOpen.timer = setTimeout(agentCardClose, 250);
+            }
         });
         target.addEventListener('click', function (event) {
             event.preventDefault();
@@ -3847,6 +3864,191 @@
         }
 
         return cardHook(target, function () { agentCardShow(target, channel, agent); }, keyboard);
+    }
+
+    // ── A message pointed at (<#message:N>, message_refs.php) ──
+    // Its chip opens the agent card's frame with the message as the channel
+    // draws it: on hover, on keyboard focus or Enter, or on a tap; one at a
+    // time; Escape, a click outside or leaving it closes it. A reader who
+    // may not read its channel, or a message deleted, gets the server's
+    // sentence alone.
+
+    // Where "Go to the message" leads: the channel open on the screen
+    // scrolls to it, anywhere else its address opens; nothing for a
+    // message the reader may not see. Pure
+    // (tests/workspace_message_ref_js_test.php).
+    function messageRefGo(openChannelId, ref) {
+        var message = ref && ref.message;
+
+        if (!message || !ref.url) {
+            return { kind: 'none' };
+        }
+
+        if (openChannelId && (openChannelId === message.channel_id)) {
+            return { kind: 'jump', id: message.id };
+        }
+
+        return { kind: 'url', url: ref.url };
+    }
+
+    // The head of the card: the sender's face, name, and the message's
+    // number, channel and time; the chip's own words until the answer.
+    function messageRefHead(chip, ref, message) {
+        var head = el('div', 'ws-msgref-head');
+        var who = el('div', 'ws-msgref-who');
+        var mark = el('span', 'ws-msgref-mark');
+
+        if (message) {
+            head.appendChild(avatar(message.sender, '2rem'));
+        } else {
+            mark.appendChild(icon((ref && ref.gone) ? 'bi-x-circle' : 'bi-chat-quote'));
+            mark.setAttribute('aria-hidden', 'true');
+            head.appendChild(mark);
+        }
+
+        who.appendChild(el('div', 'ws-msgref-name', (message && message.sender && message.sender.name) || (ref ? ref.label : chip.textContent.trim())));
+
+        if (message && ref && ref.message) {
+            who.appendChild(el('div', 'pg-text-meta ws-msgref-meta', [ref.label, '#' + ref.message.channel, message.time].filter(Boolean).join(' · ')));
+        }
+
+        head.appendChild(who);
+
+        return head;
+    }
+
+    // A poll's options with their counts, as the channel shows them.
+    function messageRefPoll(poll) {
+        var box = el('div', 'ws-msgref-poll');
+        var voters = poll.voters || 0;
+        var top = el('div', 'ws-msgref-poll-head');
+
+        top.appendChild(icon('bi-bar-chart-line'));
+        top.appendChild(el('span', 'fw-semibold', t('poll_title')));
+        top.appendChild(el('span', 'pg-text-meta', t('poll_voters', voters)));
+        box.appendChild(top);
+
+        (poll.options || []).forEach(function (option) {
+            var row = el('div', 'ws-msgref-poll-option');
+            var bar = el('span', 'ws-poll-bar');
+            var share = voters ? Math.round((option.count || 0) * 100 / voters) : 0;
+
+            bar.style.width = share + '%';
+            row.appendChild(bar);
+            row.appendChild(el('span', 'ws-msgref-poll-label', option.label));
+            row.appendChild(el('span', 'pg-tabular ws-msgref-poll-count', t('poll_share', option.count || 0, share)));
+            box.appendChild(row);
+        });
+
+        return box;
+    }
+
+    function messageRefBody(node, chip, data) {
+        var ref = (data && data.ref) || null;
+        var message = (data && data.message) || null;
+
+        clear(node);
+        node.appendChild(messageRefHead(chip, ref, message));
+
+        if (!data) {
+            node.appendChild(el('div', 'pg-text-meta ws-agent-card-loading', t('loading')));
+            return;
+        }
+
+        if (!message) {
+            var none = el('div', 'pg-text-meta ws-msgref-none', (ref && ref.meta) || t('error_generic'));
+
+            none.setAttribute('role', 'status');
+            node.appendChild(none);
+            return;
+        }
+
+        // The words as the channel draws them, cut at a height; the whole
+        // message is a step away.
+        if (message.html) {
+            var text = el('div', 'ws-msg-body ws-msgref-text');
+
+            setHtml(text, message.html);
+            node.appendChild(text);
+            requestAnimationFrame(function () {
+                text.classList.toggle('ws-msgref-cut', text.scrollHeight > text.clientHeight + 1);
+            });
+        }
+
+        var file = message.file;
+
+        if (file && file.image) {
+            var picture = el('button', 'ws-msgref-picture');
+            var image = el('img');
+
+            picture.type = 'button';
+            picture.title = file.name;
+            image.src = file.url;
+            image.alt = file.name;
+            image.loading = 'lazy';
+            picture.appendChild(image);
+            picture.addEventListener('click', function () {
+                agentCardClose();
+                previewFile(file);
+            });
+            node.appendChild(picture);
+        } else if (file) {
+            var line = el('div', 'ws-msgref-file');
+
+            line.appendChild(icon('bi-file-earmark'));
+            line.appendChild(el('span', 'text-truncate', file.name));
+            node.appendChild(line);
+        }
+
+        if (message.poll) {
+            node.appendChild(messageRefPoll(message.poll));
+        }
+
+        var go = messageRefGo((app && app.channel) ? app.channel.id : 0, ref);
+
+        if (go.kind !== 'none') {
+            var button = el('button', 'pg-button pg-button-quiet pg-button-sm ws-msgref-go');
+
+            button.type = 'button';
+            button.appendChild(el('span', 'pg-btn-label', t('mr_go')));
+            button.appendChild(icon('bi-arrow-right'));
+            button.addEventListener('click', function () {
+                agentCardClose();
+
+                if (go.kind === 'jump') {
+                    app.jumpTo(go.id, true);
+                } else {
+                    window.location.href = go.url;
+                }
+            });
+            node.appendChild(button);
+        }
+    }
+
+    function messageRefShow(chip, id) {
+        cardShow(chip, 'message:' + id, t('mr_title'), 'ws-msgref-card', function (node, data) {
+            if (!agentCardGuard(function () { messageRefBody(node, chip, data); }) && data) {
+                agentCardGuard(function () { messageRefBody(node, chip, null); });
+                agentCardRefused(node, t('error_generic'));
+            }
+        }, function () {
+            return api('ws_message_ref', { message_id: id }).then(function (data) {
+                return { card: data };
+            });
+        });
+    }
+
+    // Makes a message chip open its card, once however often its text is
+    // drawn again. The chip's link is "Go to the message" in the card.
+    function messageRefHook(chip) {
+        var id = parseInt((chip.getAttribute('data-ws-ref') || '').split(':')[1], 10);
+
+        if (!id || chip.hasAttribute('data-ws-msgref')) {
+            return;
+        }
+
+        chip.setAttribute('data-ws-msgref', '1');
+        cardHook(chip, function () { messageRefShow(chip, id); }, true);
     }
 
     // ── A person's card (person_card.php, ws_person_card) ──
@@ -10827,7 +11029,7 @@
             }, '', sounding);
             divider();
 
-            if (BOOT.claude && channel.claude && channel.can_manage && !channel.archived) {
+            if (BOOT.claude && channel.claude && channel.can_manage && !channel.archived && channel.kind !== 'thread') {
                 item(t('claude_allow'), 'bi-stars', function () {
                     var allow = !channel.claude.allowed;
                     var asked = (allow && channel.kind === 'private') ? ask(t('claude_allow_private'), t('claude_allow'), false) : Promise.resolve(true);
@@ -10841,7 +11043,7 @@
                 divider();
             }
 
-            if (BOOT.ai && channel.ai && channel.can_manage && !channel.archived) {
+            if (BOOT.ai && channel.ai && channel.can_manage && !channel.archived && channel.kind !== 'thread') {
                 item(t('ai_allow'), 'bi-cpu', function () {
                     var allow = !channel.ai.allowed;
                     var asked = (allow && channel.kind === 'private') ? ask(t('ai_allow_private'), t('ai_allow'), false) : Promise.resolve(true);
@@ -12041,6 +12243,11 @@
 
             main.appendChild(body);
 
+            // A translation this reader made shows again on a redraw.
+            if (window.PGWsTranslate && !message.deleted) {
+                window.PGWsTranslate.apply(message, body, featureHelpers());
+            }
+
             if (message.forwards && message.forwards.length) {
                 main.appendChild(self.forwardsNode(message));
             }
@@ -12290,6 +12497,17 @@
                         textSheet(readableText(message.html), false);
                     } });
                 }
+            }
+
+            // The browser's own translator, into the reader's panel
+            // language (workspace_translate.js); nothing leaves the device.
+            if (message.html && !message.deleted && window.PGWsTranslate && window.PGWsTranslate.supported()) {
+                items.push({ icon: 'bi-translate', label: t('tr_translate'), action: function () {
+                    var box = self.center || self.pane;
+                    var drawn = box ? box.querySelector('[data-ws-message="' + message.id + '"] .ws-msg-main > .ws-msg-body') : null;
+
+                    window.PGWsTranslate.translate(message, drawn, featureHelpers());
+                } });
             }
 
             // A room of its own beside the channel to talk this message over.

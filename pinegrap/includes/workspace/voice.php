@@ -421,6 +421,12 @@ function ws_voice_channel_switchable($channel)
  */
 function ws_voice_channel_set($viewer, $channel, $allowed)
 {
+    // An archived channel is read, never switched: the channel menu hides
+    // the switch there, and this line would land in the archive.
+    if ((int) ($channel['archived_at'] ?? 0) > 0) {
+        return array('ok' => false, 'error' => lang('This channel is archived. It can be read but not written in.'));
+    }
+
     if (!ws_voice_schema_ready() || !ws_voice_channel_switchable($channel)) {
         return array('ok' => false, 'error' => lang('Invalid request.'));
     }

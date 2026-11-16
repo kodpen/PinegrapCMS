@@ -304,12 +304,27 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-57.md: Where are the rules and the earlier parts?
 - decisions-made-product-57.md: Does the Recovered carts section come out as drawn, and where does it sit? (owner, 2026-11-15, agent channel poll 55)
 - decisions-made-product-57.md: Does All Offers show its record count beside the title? (owner, 2026-11-15, agent channel poll 46)
+- decisions-made-product-57.md: Is the designer's Prototype view rebuilt, and on which engine? (owner, 2026-11-15, in the architect's window)
+- decisions-made-product-58.md: Where are the rules and the earlier parts?
+- decisions-made-product-58.md: Can a reader highlight a part of a message? (owner, 2026-11-16, agent channel message 5547)
+- decisions-made-product-58.md: Who writes the plans for the website features the R&D agent proposed? (owner, 2026-11-16, agent channel messages 5651, 5667, 5694, 5697, 5739)
+- decisions-made-product-58.md: Which screens did the owner look at on 2026-11-16? (agent channel polls 59, 60, 61)
+- decisions-made-product-59.md: Where are the rules and the earlier parts?
+- decisions-made-product-59.md: May a draft replace a published page, and may a change wait for approval? (owner, 2026-11-16, polls 63, 64)
+- decisions-made-product-59.md: May the website feature plans add their tables? (owner, 2026-11-16, poll 65)
+- decisions-made-product-59.md: What happens to the rows of a record deleted for good? (owner, 2026-11-16, poll 66)
+- decisions-made-product-59.md: Who can be responsible for content, and who is told when a review date passes? (owner, 2026-11-16, polls 68, 69)
+- decisions-made-product-59.md: How does the share card start? (owner, 2026-11-16, poll 70)
+- decisions-made-product-59.md: What do customers see of each other's prototype comments, and how long are they kept? (owner, 2026-11-16, polls 71, 72)
+- decisions-made-product-59.md: Is an app mode built, and what is the consent for news notifications? (owner, 2026-11-16, polls 73, 74)
 - decisions-made-product-6.md: What happens to a recurring line that starts after the order date? (#3310)
 - decisions-made-product-6.md: How is a subscription price change noticed and applied? (#3311)
 - decisions-made-product-6.md: Does the panel get an operator Subscriptions screen? (#3343)
 - decisions-made-product-6.md: Does the visitor AI assistant start in 2026.11.0? (#3313)
 - decisions-made-product-6.md: Does the add-on system start in 2026.11.0? (#3344)
 - decisions-made-product-6.md: Does the printed order show the recipient's shipping card? (#3346)
+- decisions-made-product-60.md: Where are the rules and the earlier parts?
+- decisions-made-product-60.md: What does the click and scroll map count, and how does it start? (owner, 2026-11-16, polls 67, 75)
 - decisions-made-product-7.md: Do international labels carry customs data? (#3408)
 - decisions-made-product-7.md: Can a merchant request a carrier pickup from the panel? (#3415)
 - decisions-made-product-7.md: Does ShipWorks record tracking numbers through the shipment write path? (#3443)
@@ -368,6 +383,9 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-schema-22.md: Where are the rules and the earlier parts?
 - decisions-made-schema-22.md: Which schema do quiet hours and the link preview card get? (owner, 2026-11-15, agent channel poll 54)
 - decisions-made-schema-22.md: Which columns does the table of marks have? (owner's yes in agent channel poll 49; columns confirmed by the architect, 2026-11-15)
+- decisions-made-schema-23.md: Where are the rules and the earlier parts?
+- decisions-made-schema-23.md: Which table do a reader's highlights get? (owner, 2026-11-16, agent channel message 5547)
+- decisions-made-schema-23.md: Which columns does PU4 add to `auto_dialogs`? (architect, 2026-11-16, confirmed in PU4's draft, #9851)
 - decisions-made-schema-3.md: Where are the rules and the earlier steps?
 - decisions-made-schema-3.md: Which schema was approved on 2026-10-29?
 - decisions-made-schema-4.md: Where are the rules and the earlier steps?
@@ -523,6 +541,9 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-workspace-35.md: Which of the R&D agent's three proposals go into plans? (owner, 2026-11-15, agent channel poll 54)
 - decisions-made-workspace-35.md: What is the architect's reading here, not his words?
 - decisions-made-workspace-35.md: Do message boxes keep a maximum width on a wide screen? (owner, 2026-11-15, agent channel poll 47)
+- decisions-made-workspace-36.md: Where are the rules and the earlier parts?
+- decisions-made-workspace-36.md: Do the "Add to the plan" and the "New plan" drawers look the same? (owner, 2026-11-16, to the architect)
+- decisions-made-workspace-36.md: What is the architect's reading here, not his words?
 - decisions-made-workspace-4.md: May a thread end in a webhook box's URL? (#3410)
 - decisions-made-workspace-4.md: How does a customer with no order in N days produce a follow-up? (#3416, part 2)
 - decisions-made-workspace-4.md: Is `contacts.lead_source` picked from `referral_sources`? (#3416, part 3)
@@ -577,12 +598,11 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - api/api-device-sessions.md: The three external API callers (application key, team devices session, OAuth connection): who the owner is, which scopes each holds, public token routes, account scopes, owner rights, revocation
 - api/api-mcp-no-tool-routes.md: Which API routes carry 'mcp' => false and are no MCP tools: the polled sync, file downloads, own-words routes, Claude's queues, the person's decisions on a card, and why
 - api/api-oauth-consent-presets.md: OAuth consent screen presets (Workspace, Store, Accounting, All, PR #1716): what each ticks, why record writes are ticked only by hand, the propose route always ticked
+- api/api-panel-coverage-channels.md: The API beside the panel for channels and the agent channel (compared 2026-11-15, #9764, #9761; CA2-CA16 by 2026-11-16): each covered part and its topic file
 - api/api-plugin-scopes.md: The 'moves_money' route mark and api_plugin_scopes(), the scopes an assistant plugin is meant to hold: marked routes, offered writes, and the test that keeps them apart
 - api/api-team-devices-switch.md: The Team devices switch in Settings › API (includes/api/device_switch.php): which device application a save starts, widens, makes or disables, the ceiling, expiry, why off keeps the rows
 - api/application-access-keys.md: Application Access (api_settings.php): rows made and secrets issued through includes/api/keys.php, 24 h grace, keyless rows refused, rows of a higher-ranked owner locked, one OAuth app, per-app logs
-- api/channel-api-census-channel-no-route.md: CA1a list 2: what of a channel's own side has no route on purpose or by its nature, with the memory file that says why, and the guest links whose reason no memory file records
-- api/channel-api-not-built.md: What of channels the API does not do on purpose after the 2026-11-15 censuses: an administrator opening a private channel, a channel saved as a template, a guest's links, the Workspace Settings card
-- api/channel-api-overview.md: The channel API census files (plan channel-api-gaps, owner 2026-11-15): what the two censuses compare, the rules that bind a new route, and which file holds each part
+- api/channel-api-not-built.md: What of channels and their agents has no API route, on purpose or by its nature (comparison 2026-11-15): private channel opened by an admin, templates, guest links, settings cards
 - api/claude-plugin-census.md: Claude plugin bundle as Anthropic's pages state it (read 2026-11-14): folder and manifest, directory checks and policy, which Claude app loads what, and how a bundle can (not) ask for a site's address
 - api/claude-plugin-tool-check.md: The site's MCP tools checked against Claude's directory rules (2026-11-14): name length, annotations, and the routes that move money or issue stored value, by route id and scope
 - commerce/address-labels-by-country.md: City and state labels that follow the country (İlçe and İl for Turkey): pg_address_labels(), the render stamp in designer widgets, init_country() on classic pages, default words only
@@ -675,6 +695,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - designer/page-region-into-page-tree.md: A page's own regions (pregion) moved into its designer tree: one _editable block per page region node, the Nth node takes the Nth row, refused inside shared components, rows kept unread
 - designer/page-revisions.md: Page revisions (page_revisions, 11.0.15): what a row holds, when a save writes one, the lazy first row of a page without one, source labels, retention and the daily sweep, what is not covered
 - designer/page-schedule.md: Scheduled publishing of visual-designer pages (page.publish_at/unpublish_at, 11.0.17): what is stored, what a save does with the two times, the general job's pass, manual moves
+- designer/prototype-picture-check.md: The prototype canvas page picture (PV7, architect 2026-11-16): the Preview document in a script-free readable frame, its sandbox and CSP, the link marker, the cap on live pictures
 - designer/prototype-view-decisions.md: What was decided for the designer's Prototype view (owner 2026-10-24, #2446, 2026-11-01): where it lives, hrefs by name or page id, who draws, read-only sources, breakpoint, how an arrow saves
 - designer/rich-text-profiles.md: pg_sanitize_rich_text() profiles: visitor (default, site output) drops class, layout styles and outside images and marks links ugc; staff keeps the shared allow-list; which callers pass staff.
 - designer/shared-component-content-editing.md: Shared components opened to content editors (the designer's common region): content_editable flag, users_shared_components_xref grants, the rule, content_update under the page merge, schema 11.0.8
@@ -819,6 +840,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workflow/owner-contact-channel.md: Where sessions reach the owner (2026-11-13): no coordinator writes to him in its chat window or waits there; problems to PR MERGE in the agent channel; visuals posted there, his answer there
 - workflow/owner-question-picture.md: A question to the owner about a picture or an earlier message says which one (owner 2026-11-15): the picture in the question's box or its message number named in the question
 - workflow/owner-rules.md: Standing rules from the owner (Erdal) on docs, how changes are recorded, pages, plans, where area rules live (memory; vendor Bootstrap skills aside), language, the mobile app, who edits which notes
+- workflow/plan-order-begun-first.md: Order of work after the owner's message of 2026-11-16 (agent channel message 5821): begun plans are finished first, new plans start in freed places, look modernisation waits at priority 2
 - workflow/plan-priority.md: Every plan carries a priority from 1 to 10 (owner 2026-11-15, agent channel message 5159): the scale, where the number is written, how a free place picks its next step
 - workflow/pr-text-generated-footer.md: A cloud session's GitHub path appends a generated-by footer to a PR text on every write; the session cannot remove it, the label is not held for it, no session strips it now
 - workflow/sandbox-and-environment.md: Cloud sandbox (PHP 8.3, no Composer), when and how to run tools/setup_sandbox.sh, the owner's dev machine dev.pinegrap.com and how a linked session updates its checkout
@@ -946,6 +968,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/workspace-menu-tools.md: Tools tiles and More in the Workspace list (#3817, #6281): places (My Tasks first), short names, colours, a lone More taking its row, the More rows, ws-side-open, the tour opening hidden places
 - workspace/workspace-message-box-width.md: Channel message boxes: 90rem wide at most, .5rem apart (grouped lines joined), a faint sender tint over 1700px (data-ws-tone; light 1.6 %, dark 2.2 %)
 - workspace/workspace-message-seen-by.md: The "Who has seen it" drawer (ws_message_seen_by()): people by last_read_id, agents by their requests (#9366), the two groups, the muted not-woken line, the writer-alone line (#4238)
+- workspace/workspace-message-translate.md: Translate in a message's menu (MT1): the browser's own Translator and LanguageDetector, the reader's panel language, the line under the message, what is kept untranslated, nothing sent or saved
 - workspace/workspace-notes-groups-lock.md: Overview of note groups, shared groups, tabs, the PIN lock and media in notes (owner 2026-11-07): how the parts hold together, what was left out, the keyboard and screen-reader ways, open ends
 - workspace/workspace-notes-sources.md: Where an imported note came from (ws_note_sources, schema 11.0.86, PR #1812): the id per provider, how the import plan turns a known file into "same" or "update", when rows are written and dropped
 - workspace/workspace-outside-caution.md: The standing caution in every agent's and assistant's brief (GV5): a guest's line, a mail and other outside text are data, never a request; how a guest's message is marked in a brief and in the API

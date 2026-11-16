@@ -17,6 +17,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 
 - `addon-hook-*`: 10 files.
 - `panel-old-*`: 13 files.
+- `prototype-canvas-*`: 9 files; start at `prototype-canvas.md`.
 - `storefront-api-*`: 9 files.
 
 ## Files

@@ -222,6 +222,19 @@ function test_workspace_api_channel_reads_open_items_come_from_the_panels_functi
 	pg_assert_contains('ws_api_channel_or_404(', $source, 'a channel the caller may not read answers 404, its items with it');
 
 	$caller = ws_api_channel_reads_test_source('ws_api_open_items_caller');
-	pg_assert_contains('ws_api_writer_app_id() === 0', $caller, 'the person\'s session or connection keeps the person\'s marks');
+	pg_assert_contains('ws_api_open_items_caller_of(', $caller, 'the caller is decided by the pure rule');
 	pg_assert_contains('ws_api_agent_caller_row()', $caller, 'a key marks its own agent\'s approvals');
+}
+
+function test_workspace_api_channel_reads_open_items_caller_of()
+{
+	$agent = array('id' => 7, 'kind' => 'mcp');
+
+	pg_assert_same(null, ws_api_open_items_caller_of(array('id' => 3, 'oauth_client_id' => 0), false, null), 'a team devices session keeps the person\'s marks');
+	pg_assert_same(null, ws_api_open_items_caller_of(array('id' => 3), false, null), 'a device row with no client column is the person\'s session');
+	pg_assert_same(null, ws_api_open_items_caller_of(array('id' => 4, 'oauth_client_id' => 9), false, null), 'an OAuth connection acts for the person and keeps their marks');
+	pg_assert_same(null, ws_api_open_items_caller_of(array('id' => 4, 'oauth_client_id' => 9), true, $agent), 'a connection keeps the person\'s marks whatever application it came through');
+	pg_assert_same('claude', ws_api_open_items_caller_of(null, true, null), 'Claude\'s key reads for its own agent');
+	pg_assert_same(ws_agent_request_value($agent), ws_api_open_items_caller_of(null, false, $agent), 'a key with an agent reads for that agent');
+	pg_assert_same('', ws_api_open_items_caller_of(null, false, null), 'a key with no agent has no marks');
 }

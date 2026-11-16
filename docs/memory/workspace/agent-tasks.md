@@ -24,5 +24,7 @@ description: A task handed to an app or model agent its channel allows (ws_task_
 ## How is it stopped?
 - Stop and Take the task back work as for Claude (`ws_task_delegation_stop()` cancels every open run on the task); the agent's next claim or answer meets 409 closed.
 
-## What is not done here?
-- The task drawer, the Tasks tab and the Board offering agents are AF4b; tests: `tests/workspace_agent_task_test.php`.
+## What does the panel show? (AF4b, #9826)
+- The task drawer's hand-over list (`ws_task_delegation_detail()`) offers the agents the task's channel allows, by the hand-over's own check (`ws_task_drawer_offers()` over `ws_agent_task_problem()`); `can_hand` is unchanged (may change the task, task open). A model agent's open run is carried on with `ws_ai_kick` (`kickFor()` in `workspace_task_delegate.js`); Stop as for Claude.
+- A task row (Tasks tab) and a Board card show the holder with `PGWsTaskDelegate.rowTag()`: an agent with its own picture (`delegate_avatar`, `ws_task_holder_avatar()`), the robot icon without one; Claude, Pinegrap AI and MCP aliases keep their icon. Board cards showed no holder before, Claude's included.
+- Tests: `tests/workspace_agent_task_test.php`, `tests/workspace_agent_task_panel_test.php`.

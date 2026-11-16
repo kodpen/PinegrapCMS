@@ -1,6 +1,6 @@
 ---
 name: workspace-thread-approval-api
-description: The API routes that conclude or rename a discussion and take back or close an approval request: the panel function each runs, the check it shares for the dry run, who may and the refusals
+description: The API routes (#9794) that conclude or rename a discussion and take back or close an approval request: the panel function each runs, the check it shares for the dry run, who may and the refusals
 ---
 
 ## Which routes, and which panel function does each run?
