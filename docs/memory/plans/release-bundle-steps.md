@@ -26,7 +26,7 @@ description: Plan release-bundle, steps RB1 to RB8 (RB0, the owner's answer, is 
   - Pictures: the publish dialog with a "changed since" page, the take-back dialog with a page it cannot take back. To the owner.
   - Features: B7 to B12, B17, B18.
 
-- RB4 (S) after RB3: the time. Existing files: `job.php` (one pass). The person's name swapped as `api_design_save_as_owner()` does. Features: B13.
+- RB4 Done (#10058): the time. Existing files: `job.php` (one pass). The person's name swapped as `api_design_save_as_owner()` does. Features: B13.
 
 - RB5 (M) after RB2: the preview. Existing files: `prototype.php` and `includes/fn/prototype.php` (`pg_proto_page_set()` takes a bundle; the link resolver opens a replacement). Features: B14.
 
