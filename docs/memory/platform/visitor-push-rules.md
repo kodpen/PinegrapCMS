@@ -20,7 +20,7 @@ module: site_push
 ## What does the door take?
 - `site_push.php`, POST only, no form token (a cached page has none): `pg_consent_answer_same_origin()`, then the switch, then `pg_site_push_throttled()` (10 writes or 120 reads an hour per address), all in pure `pg_site_push_door_refusal()`.
 - `action=subscribe`: an endpoint is taken only as https on port 443 on a host of `pg_site_push_services()` (FCM, Mozilla, Windows, Apple), with a 65-byte p256dh point starting 0x04 and a 16-byte auth (`pg_site_push_subscription_check()`). A longer endpoint or a key of another length is refused, never cut (architect, message 6528). The answer is the secret, given once; only its sha256 is kept. The same endpoint again gets new keys and a new secret.
-- `action=stop` with the secret removes the row and its queue rows. `action=message` with the secret returns the newest pushed, unread message of that subscription within a day and marks it read; the query is scoped by the secret's subscription (`pg_site_push_waiting_query()`).
+- `action=stop` with the secret removes the row and its queue rows. `action=message` with the secret returns the newest pushed, unread message of that subscription within a day and marks it read, or one read in the last 5 minutes again (a worker woken twice, #9957); the query is scoped by the secret's subscription (`pg_site_push_waiting_query()`).
 
 ## What goes to the consent log, export and erasure?
 - A yes and a stop: channel `push`, purpose `news`, source `notify`. `push` is, like `cookie`, a channel an anonymous visitor may answer without a person (`pg_consent_log_row()`).
