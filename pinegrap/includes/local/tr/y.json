@@ -746,6 +746,7 @@
     "Your catalogue, stock and prices": "Kataloğunuz, stoğunuz ve fiyatlarınız",
     "Your catering requests": "Catering talepleriniz",
     "Your catering requests, their quotes and our messages, newest first.": "Catering talepleriniz, teklifleri ve mesajlarımız; en yenisi üstte.",
+    "Your change to \"{var:1}\" could not be kept for approval, so nothing was saved. Try again.": "\"{var:1}\" sayfasındaki değişikliğiniz onay için saklanamadı, bu yüzden hiçbir şey kaydedilmedi. Yeniden deneyin.",
     "Your change to \"{var:1}\" waits for a designer's approval. Visitors see the page as it was until it is applied.": "\"{var:1}\" sayfasındaki değişikliğiniz bir tasarımcının onayını bekliyor. Uygulanana kadar ziyaretçiler sayfayı eski hâliyle görür.",
     "Your changes to this image will be lost.": "Bu görseldeki değişiklikler kaybolacak.",
     "Your charter": "Kiralamanız",

@@ -3676,6 +3676,10 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
             );
             if (pg_content_proposals_applies($held_ctx)) {
                 $held = pg_content_proposals_hold($user, $page_id, $style_id, $tree, $page);
+                // Nothing kept and nothing written: a failure, never "waits".
+                if (!$held['ok']) {
+                    return array('ok' => false, 'page_id' => $page_id, 'errors' => array($held['error']), 'warnings' => $warnings);
+                }
                 return array('ok' => true, 'page_id' => $page_id, 'errors' => array(), 'warnings' => $warnings,
                     'draft' => false, 'held' => $held['action'], 'held_message' => $held['message'],
                     'proposal_id' => (int)$held['id']);

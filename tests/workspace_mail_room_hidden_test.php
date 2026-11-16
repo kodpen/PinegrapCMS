@@ -52,6 +52,7 @@ function workspace_mail_room_hidden_test_readers()
 		// Every channel's folder is one, the room's as well.
 		'includes/fn/image.php::pg_image_warmup_fetch'                     => array('key:folder_id'),
 		'includes/fn/privacy_export.php::pg_privacy_export_collect'        => array('key:contact_id'),
+		'includes/fn/content_proposals.php::pg_content_proposals_channel_offered' => array('kinds'),
 		// The channel a waiting content change is also asked in.
 		'includes/settings/features.php::(file)'                           => array('kinds'),
 		'includes/workspace/access.php::ws_channel'                        => array('id'),

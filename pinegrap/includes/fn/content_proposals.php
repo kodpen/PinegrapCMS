@@ -47,6 +47,56 @@ define('PG_CONTENT_PROPOSALS_AGENT', 'editor');
 // The config_text row the switch and its channel are kept in (JSON).
 define('PG_CONTENT_PROPOSALS_SETTING', 'content_approval');
 
+// The channels the card offers to ask in: open public and private ones
+// (written out in each query, where tests/workspace_mail_room_hidden_test.php
+// reads the kinds).
+define('PG_CONTENT_PROPOSALS_CHANNELS', "kind IN ('public', 'private') AND archived_at = 0");
+
+/**
+ * May this person turn the hold on or off? Only a designer or an
+ * administrator: the Features category also opens for a Manager, whose own
+ * saves the hold applies to.
+ *
+ * @param array|null $user
+ * @return bool
+ */
+function pg_content_proposals_may_set($user)
+{
+    return is_array($user) && isset($user['role']) && is_numeric($user['role']) && ((int) $user['role'] <= 1);
+}
+
+/**
+ * Is this a channel the card offers (or 0, none)?
+ *
+ * @param int $channel_id
+ * @return bool
+ */
+function pg_content_proposals_channel_offered($channel_id)
+{
+    $channel_id = (int) $channel_id;
+
+    if ($channel_id === 0) {
+        return true;
+    }
+
+    return ($channel_id > 0) && pg_schema_has('ws_channels')
+        && ((int) db_value("SELECT COUNT(*) FROM ws_channels WHERE id = '" . $channel_id . "' AND kind IN ('public', 'private') AND archived_at = 0") > 0);
+}
+
+/**
+ * Did the write a save's plan needs succeed? db_q() answers false on a
+ * failure without stopping the request (a lock timeout, an area larger than
+ * max_allowed_packet).
+ *
+ * @param string $action insert | replace | withdraw | none
+ * @param mixed  $result db_q()'s answer, null when nothing was written
+ * @return bool
+ */
+function pg_content_proposals_written($action, $result)
+{
+    return !in_array($action, array('insert', 'replace', 'withdraw'), true) || ($result !== false);
+}
+
 /**
  * The switch and its channel as stored, read without the database.
  *
@@ -484,7 +534,8 @@ function pg_content_proposals_stored_fields($style_id, $page_id)
  * @param int   $style_id
  * @param array $merged the gate's result
  * @param array $page   the page as the editor sent it
- * @return array action (insert | replace | withdraw | none), id, message ('' for none)
+ * @return array ok (false when the write failed), action (insert | replace |
+ *               withdraw | none), id, message ('' for none), error
  */
 function pg_content_proposals_hold($user, $page_id, $style_id, $merged, $page)
 {
@@ -500,17 +551,24 @@ function pg_content_proposals_hold($user, $page_id, $style_id, $merged, $page)
     $steps_json = (string) json_encode(array('lines' => pg_content_proposals_lines($ops)), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     $base = is_array($stored) ? pg_content_proposals_hash($stored) : '';
 
+    $written = null;
+
     if ($action === 'insert') {
-        db_q("INSERT INTO design_proposals (agent, page_id, style_id, ops, steps, base_hash, status, requested_by, created_at)
+        $written = db_q("INSERT INTO design_proposals (agent, page_id, style_id, ops, steps, base_hash, status, requested_by, created_at)
             VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?)",
             array(PG_CONTENT_PROPOSALS_AGENT, $page_id, (int) $style_id, $ops_json, $steps_json, $base, (int) $user['id'], $now));
-        $id = (int) mysqli_insert_id(db::$con);
+        $id = ($written !== false) ? (int) mysqli_insert_id(db::$con) : 0;
     } elseif ($action === 'replace') {
-        db_q("UPDATE design_proposals SET style_id = ?, ops = ?, steps = ?, base_hash = ?, created_at = ? WHERE id = ? AND status = 'pending'",
+        $written = db_q("UPDATE design_proposals SET style_id = ?, ops = ?, steps = ?, base_hash = ?, created_at = ? WHERE id = ? AND status = 'pending'",
             array((int) $style_id, $ops_json, $steps_json, $base, $now, $id));
     } elseif ($action === 'withdraw') {
-        db_q("UPDATE design_proposals SET status = 'dismissed', decided_by = requested_by, decided_at = ? WHERE id = ? AND status = 'pending'",
+        $written = db_q("UPDATE design_proposals SET status = 'dismissed', decided_by = requested_by, decided_at = ? WHERE id = ? AND status = 'pending'",
             array($now, $id));
+    }
+
+    if (!pg_content_proposals_written($action, $written)) {
+        return array('ok' => false, 'action' => $action, 'id' => $id, 'message' => '',
+            'error' => lang(array('string' => 'Your change to "{var:1}" could not be kept for approval, so nothing was saved. Try again.', 'vars' => array($name))));
     }
 
     $message = '';
@@ -521,5 +579,5 @@ function pg_content_proposals_hold($user, $page_id, $style_id, $merged, $page)
         $message = lang(array('string' => 'Your waiting change to "{var:1}" was withdrawn: the page was saved as it is on the site.', 'vars' => array($name)));
     }
 
-    return array('action' => $action, 'id' => $id, 'message' => $message);
+    return array('ok' => true, 'action' => $action, 'id' => $id, 'message' => $message, 'error' => '');
 }

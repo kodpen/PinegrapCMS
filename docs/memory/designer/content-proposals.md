@@ -5,13 +5,15 @@ module: content_proposals
 ---
 
 ## What does the switch do?
-- (PA2, #9892) Site Settings, Features, card "Content Approval": "Content changes wait for approval", off on every site. Kept in the `config_text` row `content_approval` as JSON `{on, channel_id}` (`pg_content_proposals_settings()`); the channel select is drawn only while the Workspace is on, and a save without it keeps the stored channel.
+- (PA2, #9892) Site Settings, Features, card "Content Approval": "Content changes wait for approval", off on every site. Kept in the `config_text` row `content_approval` as JSON `{on, channel_id}` (`pg_content_proposals_settings()`); the channel select is drawn only while the Workspace is on, and a save without it, or with a channel the select does not offer (`pg_content_proposals_channel_offered()`), keeps the stored channel.
+- Only a designer or an administrator draws and saves the card (`pg_content_proposals_may_set()`, roles 0 and 1); the registry hides its section from a Manager. The Features category opens for role 2 too, and a Manager's own saves are the ones held: before #9892's merge review a Manager could switch the hold off.
 - With it off, `pg_designer_save_page()` reads the setting and nothing more; a save does what it did before (owner 2026-10-06 stays the default; owner poll 64 allows the switch).
 
 ## Which save is held?
 - Only the Page Design Studio's own save (`pg_designer_screen_post()` calls `pg_content_proposals_editor_save(true)`), by a content level (roles 2 and 3), of a page already on the site of a visual design with a stored tree: not a draft, not one being made a draft, not a new page (`pg_content_proposals_applies()`).
 - The API, the assistant and every other caller of `pg_designer_save_page()` are never held, nor are designers' and administrators' saves.
 - The hook sits after `pg_designer_gate_tree()` and before notes are stamped and anything is written; the save returns `held` (insert, replace, withdraw, none), `held_message` and `proposal_id`. The Studio's loop puts the message among the answer's warnings and skips the form, short-link and search steps of a written page.
+- A failed write of the waiting change (`db_q()` false: a lock timeout, an area over `max_allowed_packet`) answers the save as failed with "could not be kept for approval" (`pg_content_proposals_written()`), never as a change that waits; nothing was kept and no page written.
 
 ## How is a held save kept?
 - One `design_proposals` row with `agent = 'editor'`, `requested_by` the editor, `status = 'pending'`, `base_hash` the stored tree's fingerprint; no column was added (architect, `plans/publish-approval-census.md`).

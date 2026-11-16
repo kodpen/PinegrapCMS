@@ -39,12 +39,15 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 
     // Content changes that wait for approval: one config_text row. A form
     // without the channel field (the Workspace off) keeps the stored channel.
-    if (array_key_exists('content_approval_card', $_POST)) {
-        require_once(PG_FUNCTIONS_DIR . '/includes/fn/content_proposals.php');
+    // Only a designer or an administrator sets it (pg_content_proposals_may_set()).
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/content_proposals.php');
+    if (array_key_exists('content_approval_card', $_POST) && pg_content_proposals_may_set($user)) {
 
         if (pg_content_proposals_ready()) {
             $content_approval_was = pg_content_proposals_settings(true);
-            $content_approval_channel = array_key_exists('content_approval_channel', $_POST)
+            // A channel the card does not offer keeps the stored one.
+            $content_approval_channel = (array_key_exists('content_approval_channel', $_POST)
+                    && pg_content_proposals_channel_offered((int) post_value('content_approval_channel')))
                 ? (int) post_value('content_approval_channel')
                 : $content_approval_was['channel_id'];
             pg_config_text_save(PG_CONTENT_PROPOSALS_SETTING,

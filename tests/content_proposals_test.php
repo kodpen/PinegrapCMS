@@ -229,3 +229,53 @@ function test_content_proposals_assistant_readers_skip_editor_rows()
 	pg_assert_same(4, substr_count($ai, 'FROM design_proposals') + substr_count($ai, 'UPDATE design_proposals SET channel_id'), 'the readers of designer_ai.php');
 	pg_assert_same(2, substr_count($api, 'FROM design_proposals'), 'the readers of the API');
 }
+
+// Only a designer or an administrator may turn the hold on or off: the
+// Features category also opens for a Manager, whose saves the hold applies to.
+function test_content_proposals_switch_is_designers_only()
+{
+	pg_assert_true(pg_content_proposals_may_set(array('role' => 0)), 'administrator');
+	pg_assert_true(pg_content_proposals_may_set(array('role' => 1)), 'designer');
+	pg_assert_false(pg_content_proposals_may_set(array('role' => 2)), 'manager');
+	pg_assert_false(pg_content_proposals_may_set(array('role' => 3)), 'user');
+	pg_assert_false(pg_content_proposals_may_set(null), 'nobody');
+
+	$card = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/features.php');
+	$save = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/features.save.php');
+	$registry = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/registry.php');
+
+	pg_assert_contains('if (pg_content_proposals_ready() && pg_content_proposals_may_set($user)) {', $card, 'the card is drawn for a designer only');
+	pg_assert_contains("if (array_key_exists('content_approval_card', \$_POST) && pg_content_proposals_may_set(\$user)) {", $save, 'a Manager\'s post is ignored');
+	pg_assert_contains("unset(\$categories['features']['sections']['pgset-content-approval'], \$categories['features']['keywords']['pgset-content-approval']);", $registry, 'no chip or search result for a Manager');
+}
+
+// The channel kept is one the card offers: 0, or an open public or private
+// channel; anything else keeps the stored one.
+function test_content_proposals_channel_offered()
+{
+	pg_assert_same("kind IN ('public', 'private') AND archived_at = 0", PG_CONTENT_PROPOSALS_CHANNELS);
+
+	$card = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/features.php');
+	$save = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/features.save.php');
+
+	pg_assert_contains("FROM ws_channels WHERE kind IN ('public', 'private') AND archived_at = 0 ORDER BY name", $card, 'the select lists the same channels');
+	pg_assert_contains('pg_content_proposals_channel_offered(', $save, 'the save checks the posted channel');
+}
+
+// A write of the waiting change that fails answers the save as failed, never
+// as a change that waits.
+function test_content_proposals_failed_write_fails_the_save()
+{
+	pg_assert_true(pg_content_proposals_written('insert', true));
+	pg_assert_false(pg_content_proposals_written('insert', false), 'insert');
+	pg_assert_false(pg_content_proposals_written('replace', false), 'replace');
+	pg_assert_false(pg_content_proposals_written('withdraw', false), 'withdraw');
+	pg_assert_true(pg_content_proposals_written('none', null), 'nothing to write');
+
+	$designer = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/designer.php');
+	$module = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/content_proposals.php');
+
+	pg_assert_contains("if (!\$held['ok']) {", $designer, 'the save reads the hold\'s answer');
+	pg_assert_contains("'errors' => array(\$held['error'])", $designer, 'and answers with its error');
+	pg_assert_contains('if (!pg_content_proposals_written($action, $written)) {', $module, 'every write is checked');
+}

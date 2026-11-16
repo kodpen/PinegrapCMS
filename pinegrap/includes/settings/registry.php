@@ -582,6 +582,13 @@ function pg_settings_categories()
         $categories['appearance']['description'] = lang('The panel theme, the dashboard, the rich-text editor and private label branding.');
     }
 
+    // Content Approval is drawn and saved for designers and administrators
+    // only (pg_content_proposals_may_set()): a Manager's own saves are the
+    // ones it holds, so no chip or search result points a Manager at it.
+    if (!defined('USER_ROLE') || ((int) USER_ROLE > 1)) {
+        unset($categories['features']['sections']['pgset-content-approval'], $categories['features']['keywords']['pgset-content-approval']);
+    }
+
     return $categories;
 }
 

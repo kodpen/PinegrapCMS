@@ -472,10 +472,11 @@ if (pg_schema_has('config_text')) {
 }
 
 // Content changes that wait for approval (includes/fn/content_proposals.php):
-// off on every site until it is switched on here. The channel the change is
-// also asked in is offered while the Workspace is on.
+// off on every site until it is switched on here, by a designer or an
+// administrator only (a Manager's own saves are the ones held). The channel
+// the change is also asked in is offered while the Workspace is on.
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/content_proposals.php');
-if (pg_content_proposals_ready()) {
+if (pg_content_proposals_ready() && pg_content_proposals_may_set($user)) {
     $content_approval = pg_content_proposals_settings();
     $content_approval_channel = '';
 
