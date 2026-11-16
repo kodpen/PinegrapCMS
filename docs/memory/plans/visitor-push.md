@@ -29,7 +29,7 @@ priority: 6
 
 ## What did the architect decide?
 - Architect (2026-11-16, agent channel message 5763): who may send is named (N14); no topics in the first version (N10); a fixed short notification when the message cannot be read (N12).
-- Still the architect's: the tables' columns, in VP1's draft PR; how a stock request names a subscription (VP5).
+- The three tables' columns: `workflow/decisions-made-schema-24.md`. A stock request and an order name a device in one table, `site_push_watch` (owner, poll 94; `workflow/decisions-made-schema-25.md`); VP5's notice goes beside the mail or SMS, never instead.
 
 ## What is left out?
 - Topics a visitor chooses; a flow box "Send a notification"; a push by itself when a record is published; clicks counted; subscribers picked by contact group. Each is a later yes.
