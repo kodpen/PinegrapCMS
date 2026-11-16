@@ -37,6 +37,13 @@
 - content-review-features.md: Plan content-review, features V1 to V17: which items, what an item keeps, the states, the Content review screen, its actions, who sees what, the task, the flow event, the API
 - content-review-steps.md: Plan content-review, steps CH1 to CH5: the table and its rules, the Content review screen, the task and the flow event, the API, close-out
 - content-review.md: Plan (owner 2026-11-16, agent channel message 5667): a person and a "review by" date for a page or collection record, and the Content review screen of what is due; steps CH1 to CH5
+- design-canvas-follow-features.md: Plan design-canvas-follow, features F1 to F16: where Follow is offered, the box, the frames read, the tracker's method and its limits, the keys written, progress, cancel, lost, the tests
+- design-canvas-follow-steps.md: Plan design-canvas-follow, steps FW1 to FW3: the tracker and its tests, the Follow command in the Animate tool, then the bar's button, the phone and the close-out
+- design-canvas-follow.md: Plan (owner 2026-11-16): Follow in the Design Canvas's Animate tool: a text, vector or other layer moves with an area chosen on a video, by a tracker of our own that writes plain keyframes; FW1 to FW3
+- design-canvas-quick-reach-features-2.md: Plan design-canvas-quick-reach, features R13 to R24: the bar over the selected object on the desktop, its commands, where it sits and when it hides, the Motion popover, a track row's Motion button
+- design-canvas-quick-reach-features.md: Plan design-canvas-quick-reach, features R1 to R12: Split on the play bar, its key and chip, which clip it takes; selecting from any tool without losing the tool, its panel or the playhead
+- design-canvas-quick-reach-steps.md: Plan design-canvas-quick-reach, steps QR1 to QR4: quick split, selecting from any tool, the bar over the object with the Motion popover, the track row's button and close-out
+- design-canvas-quick-reach.md: Plan (owner 2026-11-16): the Design Canvas's commands closer to hand: Split on the play bar, selecting from any tool, a bar over the selected object on the desktop, motion presets from it; QR1 to QR4
 - design-template-bikeshop-design.md: Design of plans/design-template-bikeshop.md: the shipped features the Bike Shop template reuses, what it does not build, its look and Turkish words
 - design-template-bikeshop.md: Plan: the Bike Shop design template (pinegrap-bikeshop): bikes and parts catalog, repair and service requests, bike fitting, group rides calendar, news; small steps
 - design-template-own-looks-order.md: Order of the polishing round after Launch: every shipped template's family and pages steps, in which order, and where each template stands
@@ -77,6 +84,7 @@
 - panel-old-screens-shared-steps.md: Old panel screens to look A: the shared steps cut after the groups, SH1 to SH10 (field, status list, ERP lists, figure cards, icon buttons, save bar, list title) and KS1, KS2 on kept screens
 - panel-old-screens.md: Plan (owner 2026-11-15): the panel screens still drawn the old way move to look A; censuses done, LM2 the shared buttons, then one census group per step (C1 to C5, E1 to E5, S1 to S6)
 - php-error-log-clean.md: Plan (owner 2026-11-14): the PHP error log of the owner's dev machine read for Pinegrap's own deprecations and warnings on PHP 8.5, and their causes fixed; steps EL1 to EL6
+- picture-text-translation.md: Plan (owner 2026-11-16): the texts in pictures translated: a Design Canvas picture's text layers enter the site translation, a page in another language shows its picture; census PT0 first
 - prototype-canvas-features-2.md: Plan prototype-canvas, features F15 to F25: the list of the selected page's links, the broken links found, drawing and changing an arrow, the bar
 - prototype-canvas-features-3.md: Plan prototype-canvas, features F26 to F34 from the owner's answer of 2026-11-16: empty links and unreached pages marked, a target suggested for empty links and written only when he applies
 - prototype-canvas-features.md: Plan prototype-canvas, features F1 to F14: what a frame of the Prototype view shows, how pages are arranged, which arrows are drawn and how an arrow runs

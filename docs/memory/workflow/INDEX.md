@@ -99,6 +99,7 @@
 - decisions-made-product-60.md: Decisions list, product part 60 (2026-11-16): the click and scroll map's handling of visitors' data and its start on a new install (agent channel polls 67 and 75)
 - decisions-made-product-61.md: Decisions list, product part 61 (2026-11-16 on): the owner's looks at built screens from poll 76 on (highlight on a message, link card under a message, the Planning Board's two drawers)
 - decisions-made-product-62.md: Decisions list, product part 62 (2026-11-16 on): the owner's looks at built screens from poll 79 on (the "Clicks and scrolling" section of Visitors, the share card, My highlights)
+- decisions-made-product-63.md: Decisions list, product part 63 (2026-11-16 on): the owner's looks of polls 89 (prototype view, No with what he wants) and 90 (waiting content changes, Yes), and his Design Canvas requests
 - decisions-made-product-7.md: Decisions list, product part 7 (2026-10-30 on): customs data on international labels, carrier pickup requests from the panel, ShipWorks through the shipment write path
 - decisions-made-product-8.md: Decisions list, product part 8 (2026-10-30 midday on): Trendyol-carried packages refused by Create Label, starter dump corrections for #3330, marketing SMS in 2026.11.0, forum template wording
 - decisions-made-product-9.md: Decisions list, product part 9 (2026-10-30 afternoon on): form rules for visitors only, marketplace orders invoiced behind a switch, sales quote guest links and templates, Workspace density switch

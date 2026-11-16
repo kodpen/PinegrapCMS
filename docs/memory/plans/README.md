@@ -16,6 +16,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 ## Clusters
 
 - `addon-hook-*`: 10 files.
+- `design-canvas-*`: 7 files.
 - `panel-old-*`: 13 files.
 - `prototype-canvas-*`: 9 files; start at `prototype-canvas.md`.
 - `publish-approval-*`: 8 files; start at `publish-approval.md`.
