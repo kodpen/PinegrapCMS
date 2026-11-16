@@ -15,6 +15,7 @@ description: Cart widget row types (donation, offer gift, normal), pending offer
 - `_pg_render_pending_offers()`, section binding `pending_offers`, token `__pending_offers`.
 - It has its OWN `<form>`: inside the cart update form the HTML parser drops the inner form and "Ekle" submits the wrong form.
 - Field names must match legacy exactly (`add_pending_offers()` parses with substr/explode).
+- `cart_action.php` calls `add_pending_offers($lf, false)`: without `false` the function redirects to `PATH . get_page_name($_POST['page_id'])` and exits. The gift form posts no `page_id`, so Add landed on `/` and skipped the offer refresh (#9907). The classic `shopping_cart.php` / `express_order.php` keep the redirect.
 
 ## What does the tax/shipping notice say?
 - `_pg_cart_tax_shipping_notice()` -> `__tax_shipping_notice`. It states only what is truly unknown; returns empty when neither applies.
