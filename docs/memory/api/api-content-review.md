@@ -4,7 +4,7 @@ description: GET /content-review and POST /content-review/{kind}/{id} (CH4): the
 ---
 
 ## What do the routes do?
-- (CH4, #PRNUM) `GET /content-review` (`content_review.list`) lists pages and collection records as `ContentReviewItem`: `kind`, `id`, `name`, `collection` (a record's collection name), `user_id`, `review_on` (Y-m-d, site time), `state` (`pg_content_review_state()`: overdue, due_soon, later, not_set), `interval_months`, `reviewed_at`, `reviewed_by` (`api_content_review_present()`, `includes/api/resources/content_review.php`).
+- (CH4, #10006) `GET /content-review` (`content_review.list`) lists pages and collection records as `ContentReviewItem`: `kind`, `id`, `name`, `collection` (a record's collection name), `user_id`, `review_on` (Y-m-d, site time), `state` (`pg_content_review_state()`: overdue, due_soon, later, not_set), `interval_months`, `reviewed_at`, `reviewed_by` (`api_content_review_present()`, `includes/api/resources/content_review.php`).
 - `filter` is the screen's (`pg_content_review_list_filters()`): all (default), overdue, soon, nobody, notset, mine; `kind` page or record. A site before the table answers an empty list.
 - `POST /content-review/{kind}/{id}` (`content_review.update`, PATCH also accepted) takes `user_id`, `review_on`, `interval_months` (0, 3, 6, 12) and `reviewed`; only the fields sent change (`api_content_review_update_plan()`), then `pg_content_review_save()` and `_mark_reviewed()` write, the person checked by `pg_content_review_user_may_edit()` (422). An item that does not count (gone, in the Recycle Bin, a record whose form is no collection) is 404.
 
