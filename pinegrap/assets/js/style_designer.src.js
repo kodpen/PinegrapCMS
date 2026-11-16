@@ -69299,6 +69299,9 @@ const StyleDesigner = (function () {
             editable: function () { return true; },
             size: function (item) { return { w: item.w, h: item.h }; },
             zoomMin: 0.1,
+            // A design too large for the smallest zoom fits to the start
+            // frame's corner, not to the middle of everything.
+            start: function () { return _sdProto.layout ? window.PGProtoHotspots.fitStart(_sdProto.layout) : null; },
             portAt: function (item, name) { return item.rows ? { y: window.PGProtoHotspots.rowY(item, name) } : null; },
             select: function (selected) { _sdProtoSelect(selected); },
             moved: function (item) { _sdProtoKeep(item); },

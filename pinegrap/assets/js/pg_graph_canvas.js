@@ -254,9 +254,13 @@
     // gapY (48), head (a heading's height, 40), bandGap (gapY, between
     // bands), sideGap (2 x gapX, between a side column and the grid), x and
     // y (the top left, 0), size(id) → { w, h } or null (a row is as high as
-    // its tallest box), before and after ({ id, label, w, h, gap, items or
-    // groups }: items stacked one under another, each group of them with
-    // its own heading). Answers { places: { id: { x, y } }, headings:
+    // its tallest box), before and after ({ id, label, w, h, gap, maxH,
+    // items or groups }: items stacked one under another, each group of
+    // them with its own heading; maxH, a number or 'grid' for the grid's
+    // height, is the column's greatest height: past it the boxes go on in
+    // further columns beside it, gapX apart, at least four boxes each, a
+    // sub-heading moving on with its first box, the column's heading over
+    // all of them). Answers { places: { id: { x, y } }, headings:
     // [{ id, label, x, y, w, kind: 'side' | 'group' | 'sub' }], bounds:
     // { x, y, w, h } }, in whole units.
     function arrange(groups, opts) {
@@ -276,6 +280,8 @@
         var headings = [];
         var boxes = [];
         var bands = (groups || []).filter(function (group) { return group && group.items && group.items.length; });
+        // The fewest boxes a wrapped side column holds.
+        var sideLeast = 4;
 
         function sized(id) {
             return opts.size ? opts.size(id) : null;
@@ -287,55 +293,26 @@
         }
 
         function title(id, label, x, y, width, kind) {
-            headings.push({ id: id, label: label, x: Math.round(x), y: Math.round(y), w: Math.round(width), kind: kind });
-            boxes.push({ x: x, y: y, w: width, h: head });
+            var heading = { id: id, label: label, x: Math.round(x), y: Math.round(y), w: Math.round(width), kind: kind };
+            var box = { x: x, y: y, w: width, h: head };
+
+            headings.push(heading);
+            boxes.push(box);
+
+            return { heading: heading, box: box };
         }
 
         function filled(column) {
             return !!column && !!((column.items && column.items.length) || (column.groups || []).some(function (group) { return group && group.items && group.items.length; }));
         }
 
-        function side(column, x) {
-            var cw = column.w || w;
-            var ch = column.h || h;
-            var gap = (column.gap === undefined) ? gapY : column.gap;
-            var y = y0;
-
-            if (column.label) {
-                title(column.id, column.label, x, y, cw, 'side');
-                y += head;
-            }
-
-            (column.groups || [{ items: column.items }]).forEach(function (group) {
-                if (!group || !group.items || !group.items.length) {
-                    return;
-                }
-
-                if (group.label) {
-                    title(group.id, group.label, x, y, cw, 'sub');
-                    y += head;
-                }
-
-                group.items.forEach(function (id) {
-                    var size = sized(id);
-                    var bh = (size && size.h) || ch;
-
-                    place(id, x, y, (size && size.w) || cw, bh);
-                    y += bh + gap;
-                });
-            });
-        }
-
-        var before = filled(opts.before) ? opts.before : null;
-        var after = filled(opts.after) ? opts.after : null;
-        var gridX = before ? x0 + (before.w || w) + sideGap : x0;
+        // The grid's bands, placed from gridX once it is known; the grid's
+        // height is known first (a side column may wrap at it).
+        var cells = [];
+        var bandHeads = [];
         var gridCols = Math.min(cols, bands.reduce(function (most, group) { return Math.max(most, group.items.length); }, 0));
         var gridW = gridCols ? gridCols * w + (gridCols - 1) * gapX : 0;
         var y = y0;
-
-        if (before) {
-            side(before, x0);
-        }
 
         bands.forEach(function (group, band) {
             if (band) {
@@ -343,7 +320,7 @@
             }
 
             if (group.label) {
-                title(group.id, group.label, gridX, y, gridW, 'group');
+                bandHeads.push({ id: group.id, label: group.label, y: y });
                 y += head;
             }
 
@@ -358,11 +335,123 @@
                     var size = sized(id);
                     var bh = (size && size.h) || h;
 
-                    place(id, gridX + col * (w + gapX), y, (size && size.w) || w, bh);
+                    cells.push({ id: id, dx: col * (w + gapX), y: y, w: (size && size.w) || w, h: bh });
                     rowH = Math.max(rowH, bh);
                 });
                 y += rowH;
             }
+        });
+
+        var gridH = y - y0;
+
+        // A side column from x; answers its width. Past its greatest height
+        // it takes as many columns as that height needs (at most one per
+        // four boxes), each as low as that many allow.
+        function side(column, x) {
+            var cw = column.w || w;
+            var ch = column.h || h;
+            var gap = (column.gap === undefined) ? gapY : column.gap;
+            var most = (column.maxH === 'grid') ? gridH : (Number(column.maxH) || 0);
+            var parts = (column.groups || [{ items: column.items }]).filter(function (group) { return group && group.items && group.items.length; });
+            var total = parts.reduce(function (sum, group) { return sum + group.items.length; }, 0);
+            var top = y0 + (column.label ? head : 0);
+
+            function heightOf(id) {
+                var size = sized(id);
+
+                return (size && size.h) || ch;
+            }
+
+            // Stacks the column with columns no taller than limit (0: one
+            // column), a column broken only after least boxes; places them
+            // when put, and answers how many columns it took.
+            function stack(limit, least, put) {
+                var y = top;
+                var col = 0;
+                var count = 0;
+
+                function wrap(need) {
+                    if (limit > 0 && count >= least && (y + need > y0 + limit)) {
+                        col++;
+                        y = top;
+                        count = 0;
+                    }
+                }
+
+                parts.forEach(function (group) {
+                    if (group.label) {
+                        wrap(head + heightOf(group.items[0]));
+
+                        if (put) {
+                            title(group.id, group.label, x + col * (cw + gapX), y, cw, 'sub');
+                        }
+                        y += head;
+                    }
+
+                    group.items.forEach(function (id) {
+                        var size = sized(id);
+                        var bh = (size && size.h) || ch;
+
+                        wrap(bh);
+
+                        if (put) {
+                            place(id, x + col * (cw + gapX), y, (size && size.w) || cw, bh);
+                        }
+                        y += bh + gap;
+                        count++;
+                    });
+                });
+
+                return col + 1;
+            }
+
+            var limit = 0;
+
+            if (most > 0) {
+                var columns = Math.max(1, Math.min(stack(most, 1, false), Math.floor(total / sideLeast)));
+
+                if (columns > 1) {
+                    // The lowest height that keeps to that many columns.
+                    var low = 1;
+                    var high = most;
+
+                    while (stack(high, sideLeast, false) > columns) {
+                        high *= 2;
+                    }
+                    while (low < high) {
+                        var mid = Math.floor((low + high) / 2);
+
+                        if (stack(mid, sideLeast, false) > columns) {
+                            low = mid + 1;
+                        } else {
+                            high = mid;
+                        }
+                    }
+                    limit = low;
+                }
+            }
+
+            var label = column.label ? title(column.id, column.label, x, y0, cw, 'side') : null;
+            var cols = stack(limit, sideLeast, true);
+            var width = cols * cw + (cols - 1) * gapX;
+
+            if (label) {
+                label.heading.w = Math.round(width);
+                label.box.w = width;
+            }
+
+            return width;
+        }
+
+        var before = filled(opts.before) ? opts.before : null;
+        var after = filled(opts.after) ? opts.after : null;
+        var gridX = before ? x0 + side(before, x0) + sideGap : x0;
+
+        bandHeads.forEach(function (band) {
+            title(band.id, band.label, gridX, band.y, gridW, 'group');
+        });
+        cells.forEach(function (cell) {
+            place(cell.id, gridX + cell.dx, cell.y, cell.w, cell.h);
         });
 
         if (after) {
@@ -455,8 +544,11 @@
     // host.ui.viewport, host.ui.layer and host.ui.zoomLabel; host.view()
     // reads the view { x, y, k }, host.view(view) puts a new one in its
     // place; host.items() lists the boxes ({ x, y }) fit() brings into sight.
-    // Optional: host.size(item) a box's { w, h } (else 208 x 80), and
-    // host.zoomMin and host.zoomMax (else 0.25 and 2; never below 0.05).
+    // Optional: host.size(item) a box's { w, h } (else 208 x 80),
+    // host.zoomMin and host.zoomMax (else 0.25 and 2; never below 0.05),
+    // and host.start() a point ({ x, y }, or null) fit() shows 48 px in from
+    // the top left when everything does not fit at the smallest zoom (else
+    // the middle of everything).
     function viewport(host) {
         var zoomMin = Math.max(ZOOM_FLOOR, host.zoomMin || ZOOM_MIN);
         var zoomMax = host.zoomMax || ZOOM_MAX;
@@ -511,9 +603,15 @@
             var minY = Math.min.apply(null, items.map(function (item) { return item.y; }));
             var maxX = Math.max.apply(null, items.map(function (item) { return item.x + sizeOf(host, item).w; }));
             var maxY = Math.max.apply(null, items.map(function (item) { return item.y + sizeOf(host, item).h; }));
-            var k = clamp(Math.min((rect.width - 96) / Math.max(1, maxX - minX), (rect.height - 96) / Math.max(1, maxY - minY)), zoomMin, Math.min(1.25, zoomMax));
+            var whole = Math.min((rect.width - 96) / Math.max(1, maxX - minX), (rect.height - 96) / Math.max(1, maxY - minY));
+            var k = clamp(whole, zoomMin, Math.min(1.25, zoomMax));
+            var start = (whole < zoomMin && host.start) ? host.start() : null;
 
-            host.view({ x: (rect.width - (maxX - minX) * k) / 2 - minX * k, y: (rect.height - (maxY - minY) * k) / 2 - minY * k, k: k });
+            if (start) {
+                host.view({ x: 48 - start.x * k, y: 48 - start.y * k, k: k });
+            } else {
+                host.view({ x: (rect.width - (maxX - minX) * k) / 2 - minX * k, y: (rect.height - (maxY - minY) * k) / 2 - minY * k, k: k });
+            }
             apply();
         }
 
@@ -712,7 +810,8 @@
     // drawn by the pointer, its pan, zoom, pinch and keys, and the pointer
     // plumbing its user builds on. The adapter gives:
     //  - ui (viewport, layer, zoomLabel), view(next), items(), and the
-    //    optional size(item), zoomMin and zoomMax as viewport() takes them
+    //    optional size(item), zoomMin, zoomMax and start() as viewport()
+    //    takes them
     //    (a box with a size() is drawn at it); ui.boxes (the boxes' parent), ui.svg (the
     //    arrows'), ui.temp (the path of an arrow being drawn) and ui.live
     //    (a polite live region);
@@ -808,7 +907,7 @@
 
     function create(adapter) {
         var ui = adapter.ui;
-        var view = viewport({ ui: ui, view: adapter.view, items: adapter.items, size: adapter.size, zoomMin: adapter.zoomMin, zoomMax: adapter.zoomMax });
+        var view = viewport({ ui: ui, view: adapter.view, items: adapter.items, size: adapter.size, zoomMin: adapter.zoomMin, zoomMax: adapter.zoomMax, start: adapter.start });
         var pointers = {};
         var pinch = null;
         var drag = null;
