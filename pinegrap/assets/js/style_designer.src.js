@@ -69459,9 +69459,9 @@ const StyleDesigner = (function () {
         ui.body.appendChild(ui.list);
         ui.root.appendChild(ui.body);
         area.appendChild(ui.root);
-        _sdProtoListShow(_sdProtoListStored(), false);
 
         _sdProto.ui = ui;
+        _sdProtoListShow(_sdProtoListStored(), false);
         _sdProto.canvas = G.create({
             ui: ui,
             text: function (key, a, b, c) {
