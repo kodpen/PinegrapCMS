@@ -37,6 +37,22 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         }
     }
 
+    // Content changes that wait for approval: one config_text row. A form
+    // without the channel field (the Workspace off) keeps the stored channel.
+    if (array_key_exists('content_approval_card', $_POST)) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/content_proposals.php');
+
+        if (pg_content_proposals_ready()) {
+            $content_approval_was = pg_content_proposals_settings(true);
+            $content_approval_channel = array_key_exists('content_approval_channel', $_POST)
+                ? (int) post_value('content_approval_channel')
+                : $content_approval_was['channel_id'];
+            pg_config_text_save(PG_CONTENT_PROPOSALS_SETTING,
+                pg_content_proposals_settings_encode((bool) post_value('content_approval_on'), $content_approval_channel));
+            pg_content_proposals_settings(true);
+        }
+    }
+
     // ── Performance monitoring ───────────────────────────────────────────
     //
     // Switching it off discards what was collected. Keeping the rows would

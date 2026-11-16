@@ -3656,6 +3656,31 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
                 'errors' => array($gate['error']), 'warnings' => $warnings);
         }
         $tree = $gate['tree'];
+
+        // Content changes that wait for approval (includes/fn/content_proposals.php):
+        // with the switch on, the Studio's save of a live page writes no page;
+        // what the gate took is kept as the editor's waiting change. With the
+        // switch off nothing but the setting is read.
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/content_proposals.php');
+        if (pg_content_proposals_on() && pg_content_proposals_editor_save() && $page_id > 0) {
+            $held_stored = pg_page_tree_json($page_id);
+            $held_ctx = array(
+                'on'          => true,
+                'editor_save' => true,
+                'restricted'  => true,
+                'page_id'     => $page_id,
+                'visual'      => pg_page_is_visual_design(array('page_style' => $style_id, 'has_tree' => ($held_stored !== '') ? 1 : 0)),
+                'has_tree'    => is_array(json_decode($held_stored, true)),
+                'draft_was'   => !empty($draft_plan['was']),
+                'draft_want'  => !empty($draft_plan['want']),
+            );
+            if (pg_content_proposals_applies($held_ctx)) {
+                $held = pg_content_proposals_hold($user, $page_id, $style_id, $tree, $page);
+                return array('ok' => true, 'page_id' => $page_id, 'errors' => array(), 'warnings' => $warnings,
+                    'draft' => false, 'held' => $held['action'], 'held_message' => $held['message'],
+                    'proposal_id' => (int)$held['id']);
+            }
+        }
     }
 
     // After the merge, so a content-level operator's note is stamped too, and
