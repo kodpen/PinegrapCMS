@@ -99,7 +99,6 @@
 - publish-approval-features.md: Plan publish-approval, features A1 to A16: the switch, which saves wait, what is kept, the editor's side, the designer's side, apply, dismiss and take back, the bell lines, the Workspace request
 - publish-approval-steps.md: Plan publish-approval, steps PA1 to PA6 (PA0, the owner's answer, is done): the census, the switch and the held save, the editor's side, the designer's side, the Workspace request, close-out
 - publish-approval.md: Plan (owner 2026-11-16, agent channel message 5667 and poll 64): with a switch on, a content editor's change to a live page waits for a designer's yes; steps PA1 to PA6
-- quiet-hours.md: Plan (owner 2026-11-15, agent channel poll 54): quiet hours: outside a person's hours a Workspace push waits for the end of the quiet range; steps QH1 and QH2
 - release-bundle-features.md: Plan release-bundle, features B1 to B18: a bundle and its pages, the hold, the checks before a publish, the write, take back, the time, the preview and its share link, the API, what stays as it is
 - release-bundle-steps.md: Plan release-bundle, steps RB1 to RB8 (RB0, the owner's answer, is done): the tables and rules, the Bundles screen, publish and take back, the time, the preview, its share link, the API, close-out
 - release-bundle.md: Plan (owner 2026-11-16, agent channel message 5667 and poll 63): several pages prepared as drafts, previewed, published and taken back together; steps RB1 to RB8
