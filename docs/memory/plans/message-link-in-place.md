@@ -30,8 +30,8 @@ priority: 6
   - Existing files: `assets/js/workspace.js` (`messageRefGo()`, the card's button, the chip's click in `messageRefHook()`, one click listener for G4, the places of G5). No server change, no new text.
   - Tests, red first, in `tests/workspace_message_ref_js_test.php`: the function's cases (open channel, other channel, no conversation, a foreign address, a modifier key, a message not to be seen); the chip's click by pointer kind.
   - No new look: nothing goes to the owner. The PR body lists G1 to G10, each with its test or the hand check done on a dev site.
-  - The same PR writes the rule into `workspace/message-reference-tag.md` and deletes this file.
-- The same lines are touched by step MR3 of `plans/message-reference.md`: that one is opened after ML1 has landed.
+  - The same PR writes the rule into the message reference's memory (`workspace/message-reference-tag.md`, or the file that holds the chip's click by then) and deletes this file.
+- Opened after #9870 has landed: that PR (the message reference's last step) edits the same script, test file and memory.
 
 ## What is left out?
 - A way back to the place the reader came from; links to tasks, notes and files (they keep their own ways).
