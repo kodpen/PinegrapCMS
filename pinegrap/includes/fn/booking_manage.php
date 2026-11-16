@@ -406,55 +406,91 @@ function pg_booking_customer_rows($user_id)
 }
 
 /**
- * The bookings section of the my_account widget: upcoming bookings with a
- * link to their manage page (cancel, move, .ics), then past ones. Site
- * output, Bootstrap 5.3.8. '' when the member has none.
+ * The member's bookings as the my_account widget shows them, split into
+ * upcoming and past: each with its service, status (its words and its
+ * badge's tone: warning, success or secondary), when it is, its staff and
+ * deposit in one line, and for an upcoming one with a manage token the
+ * manage page's address, its button words and the .ics address. What the
+ * bookings section (pg_booking_customer_section_html()) and the booking
+ * lists (pg_sw_list_account_booking_rows()) both draw.
  *
  * @param array $rows pg_booking_customer_rows()
  * @param int   $now
- * @return string
+ * @return array array('upcoming' => rows, 'past' => rows)
  */
-function pg_booking_customer_section_html($rows, $now)
+function pg_booking_customer_view_rows($rows, $now)
 {
     $split = pg_booking_customer_split($rows, $now);
-
+    $out = array('upcoming' => array(), 'past' => array());
     if (!$split['upcoming'] && !$split['past']) {
-        return '';
+        return $out;
     }
 
     $context = pg_booking_message_context(array('id' => 0, 'end_at' => 0, 'status' => 'cancelled'));
     $policy = pg_booking_policy();
-    $badges = array('requested' => 'text-bg-warning', 'confirmed' => 'text-bg-success');
+    $tones = array('requested' => 'warning', 'confirmed' => 'success');
+
+    foreach (array('upcoming', 'past') as $part) {
+        foreach ($split[$part] as $row) {
+            $times = pg_booking_message_times((int) $row['start_at'], (int) $row['end_at'], $context['zone'], $context['date_code'], $context['time_code']);
+            $status = (string) $row['status'];
+            $deposit = pg_booking_deposit_label(pg_booking_deposit_view($row));
+            $view = array(
+                'id' => (int) $row['id'], 'service' => (string) $row['service_name'], 'status' => $status,
+                'status_label' => pg_booking_customer_status_label($status),
+                'tone' => isset($tones[$status]) ? $tones[$status] : 'secondary',
+                'details' => $times['date'] . ' ' . $times['time']
+                    . (((string) $row['staff_name'] !== '') ? ' · ' . (string) $row['staff_name'] : '')
+                    . (($deposit !== '') ? ' · ' . $deposit : ''),
+                'manage_url' => '', 'manage_label' => '', 'ics_url' => '',
+            );
+            $url = ($part === 'upcoming') ? pg_booking_manage_url((int) $row['id'], (int) $row['end_at']) : '';
+            if (($url !== '') && ((string) $row['manage_token'] !== '')) {
+                $rights = pg_booking_manage_rights($row, $policy, $now);
+                $view['manage_url'] = $url;
+                $view['manage_label'] = ($rights['cancel'] || $rights['reschedule']) ? lang('Change or cancel') : lang('View booking');
+                $view['ics_url'] = $url . '&ics=1';
+            }
+            $out[$part][] = $view;
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * The bookings section of the my_account widget: upcoming bookings with a
+ * link to their manage page (cancel, move, .ics), then past ones. Site
+ * output, Bootstrap 5.3.8. '' when the member has none. Pure over
+ * pg_booking_customer_view_rows(); the designer canvas draws its twin
+ * (_sdAccountBookingsHtml()).
+ *
+ * @param array $view pg_booking_customer_view_rows()
+ * @return string
+ */
+function pg_booking_customer_view_html($view)
+{
     $html = '';
 
     foreach (array('upcoming' => lang('Upcoming'), 'past' => lang('Past')) as $part => $heading) {
-        if (!$split[$part]) {
+        if (empty($view[$part])) {
             continue;
         }
 
         $html .= '<h6 class="mt-3 mb-2">' . h($heading) . '</h6><div class="list-group pg-sw-bookings">';
 
-        foreach ($split[$part] as $row) {
-            $times = pg_booking_message_times((int) $row['start_at'], (int) $row['end_at'], $context['zone'], $context['date_code'], $context['time_code']);
-            $status = (string) $row['status'];
-            $deposit = pg_booking_deposit_label(pg_booking_deposit_view($row));
+        foreach ($view[$part] as $row) {
             $html .= '<div class="list-group-item">'
                 . '<div class="d-flex flex-wrap justify-content-between align-items-center gap-2">'
-                . '<span class="fw-semibold">' . h((string) $row['service_name']) . '</span>'
-                . '<span class="badge ' . (isset($badges[$status]) ? $badges[$status] : 'text-bg-secondary') . '">' . h(pg_booking_customer_status_label($status)) . '</span>'
+                . '<span class="fw-semibold">' . h($row['service']) . '</span>'
+                . '<span class="badge text-bg-' . $row['tone'] . '">' . h($row['status_label']) . '</span>'
                 . '</div>'
-                . '<div class="small text-body-secondary">' . h($times['date'] . ' ' . $times['time'])
-                . (((string) $row['staff_name'] !== '') ? ' · ' . h((string) $row['staff_name']) : '')
-                . (($deposit !== '') ? ' · ' . h($deposit) : '') . '</div>';
+                . '<div class="small text-body-secondary">' . h($row['details']) . '</div>';
 
-            $url = ($part === 'upcoming') ? pg_booking_manage_url((int) $row['id'], (int) $row['end_at']) : '';
-
-            if (($url !== '') && ((string) $row['manage_token'] !== '')) {
-                $rights = pg_booking_manage_rights($row, $policy, $now);
+            if ($row['manage_url'] !== '') {
                 $html .= '<div class="d-flex flex-wrap gap-2 mt-2">'
-                    . '<a href="' . h($url) . '" class="btn btn-sm btn-outline-primary" rel="nofollow">'
-                    . h(($rights['cancel'] || $rights['reschedule']) ? lang('Change or cancel') : lang('View booking')) . '</a>'
-                    . '<a href="' . h($url . '&ics=1') . '" class="btn btn-sm btn-outline-secondary" rel="nofollow">' . h(lang('Add to calendar')) . '</a>'
+                    . '<a href="' . h($row['manage_url']) . '" class="btn btn-sm btn-outline-primary" rel="nofollow">' . h($row['manage_label']) . '</a>'
+                    . '<a href="' . h($row['ics_url']) . '" class="btn btn-sm btn-outline-secondary" rel="nofollow">' . h(lang('Add to calendar')) . '</a>'
                     . '</div>';
             }
 
@@ -465,4 +501,17 @@ function pg_booking_customer_section_html($rows, $now)
     }
 
     return $html;
+}
+
+/**
+ * The bookings section of the my_account widget for the member's booking
+ * rows at $now.
+ *
+ * @param array $rows pg_booking_customer_rows()
+ * @param int   $now
+ * @return string
+ */
+function pg_booking_customer_section_html($rows, $now)
+{
+    return pg_booking_customer_view_html(pg_booking_customer_view_rows($rows, $now));
 }

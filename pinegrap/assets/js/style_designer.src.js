@@ -13472,6 +13472,21 @@ const StyleDesigner = (function () {
     // differ from the card's. A source not named here gets two rows of the
     // card's values.
     var SD_LIST_SAMPLE_ROWS = {
+        // An earlier order of the member, cancelled.
+        'account.orders': [
+            { __order_id: '1038', __order_no: '12301', __order_total: '₺150,00', __order_status: 'cancelled', __order_is_cancelled: '1', __order_url: '/order?id=1038' }
+        ],
+        // A second upcoming booking still to be confirmed; a past one.
+        'account.upcoming_bookings': [
+            { __booking_id: '2', __booking_service: _sdT('Colour'), __booking_status: 'requested', __booking_status_label: _sdT('Requested'),
+              __booking_tone: 'warning', __booking_details: '27.10.2026 14:00 – 15:30', __booking_manage_url: '#',
+              __booking_manage_label: _sdT('View booking'), __booking_ics_url: '#' }
+        ],
+        'account.past_bookings': [
+            { __booking_id: '3', __booking_service: _sdT('Colour'), __booking_status: 'cancelled', __booking_status_label: _sdT('Cancelled'),
+              __booking_tone: 'secondary', __booking_details: '01.09.2026 14:00 – 15:30', __booking_manage_url: '',
+              __booking_manage_label: '', __booking_ics_url: '' }
+        ],
         // The second line of the sample order (_sdOrderSampleLineTwo()): the
         // mug, no product form.
         'checkout.lines': [
@@ -14656,6 +14671,12 @@ const StyleDesigner = (function () {
                 }
                 // A shopping cart's applied offers, campaign gifts and quick
                 // add box, likewise (_sdCartSectionSample()).
+                // A my account page's order history and bookings, likewise
+                // (_sdAccountSectionSample()).
+                if (!_hasChildren && _getSystemWidgetRegionType(node) === 'my_account') {
+                    var _acSample = _sdAccountSectionSample(_sec, doc);
+                    if (_acSample) _hint = _acSample;
+                }
                 if (!_hasChildren && _getSystemWidgetRegionType(node) === 'shopping_cart') {
                     var _cartSample = _sdCartSectionSample(_sec, doc, _sysWidgetRenderCfg);
                     if (_cartSample) _hint = _cartSample;
@@ -25028,6 +25049,8 @@ const StyleDesigner = (function () {
                 { label: _sdT('Parcels of the order'), type: 'loop_area', icon: 'bi-truck', extra: { listSource: 'order.parcels' } },
                 { label: _sdT('Steps of the order'), type: 'loop_area', icon: 'bi-signpost-split', extra: { listSource: 'order.steps' } },
                 { label: _sdT('Orders of the member'), type: 'loop_area', icon: 'bi-receipt', extra: { listSource: 'account.orders' } },
+                { label: _sdT('Upcoming bookings of the member'), type: 'loop_area', icon: 'bi-calendar-check', extra: { listSource: 'account.upcoming_bookings' } },
+                { label: _sdT('Past bookings of the member'), type: 'loop_area', icon: 'bi-calendar', extra: { listSource: 'account.past_bookings' } },
                 { label: _sdT('Products in the cart'), type: 'loop_area', icon: 'bi-cart', extra: { listSource: 'cart.items' } },
                 { label: _sdT('Offers applied to the order'), type: 'loop_area', icon: 'bi-tag', extra: { listSource: 'checkout.offers' } },
                 { label: _sdT('Offers to suggest'), type: 'loop_area', icon: 'bi-megaphone', extra: { listSource: 'checkout.suggestions' } },
@@ -34103,6 +34126,8 @@ const StyleDesigner = (function () {
             'order.return_deliveries': _sdT('One row for every delivery of the order a return may still be asked for: put the request form in it; the order gives the form its address and its controls their names, and the reason and the button come back when they are deleted.'),
             'order.return_delivery_lines': _sdT('One row for every product of the delivery the row stands in, with how many may still go back: put the quantity box in it.'),
             'account.orders':     _sdT('One row for every order of the signed-in member, newest first, at most 50: the orders the order history shows.'),
+            'account.upcoming_bookings': _sdT('One row for every booking of the signed-in member still to come, soonest first, with its manage page.'),
+            'account.past_bookings': _sdT('One row for every past or cancelled booking of the signed-in member, latest first.'),
             'cart.items':         _sdT('One row for every product in the visitor\'s cart, lines saved for later left out: a mini cart in the cart link, or a summary beside the cart\'s own rows.'),
             'cart.item_gift_cards': _sdT('One row for every gift card of the cart line the row stands in, one per unit: put the recipient controls in it; the cart gives them their names and values, and the recipient\'s e-mail comes back when it is deleted.'),
             'cart.item_forms':    _sdT('One row for every product form of the cart line the row stands in: one per unit when the product asks for a form per quantity. Put a list of the form\'s fields inside the row.'),
@@ -42388,6 +42413,13 @@ const StyleDesigner = (function () {
         if (kind === 'custom_form' && section === 'form_step') return _sdFormStepNavRow(node);
         if (_sdMemberOpens(kind, section, node)) return _sdMemberOpenRow();
         if (_sdOrderPreviewOpens(kind, section)) return _sdOrderPreviewOpenRow();
+        if (_sdAccountOpens(kind, section)) {
+            return '<button type="button" class="btn btn-sm btn-outline theme-primary w-100 mt-2 text-wrap" data-sd-op-open>' +
+                    '<span class="bi bi-magic me-1"></span>' + esc(_sdT('Convert to design elements')) + '</button>' +
+                '<div style="font-size:.66rem;color:#888;margin-top:3px">' +
+                    esc(_sdT('Puts what the site prints here as elements you design, a list repeating its row for each of the member\'s orders or bookings. The site prints the same until you change them.')) +
+                '</div>';
+        }
         if (!_sdSectionOpensAsList(kind, section)) return '';
         return '<button type="button" class="btn btn-sm btn-outline theme-primary w-100 mt-2 text-wrap" data-sd-section-open>' +
                 '<span class="bi bi-magic me-1"></span>' + esc(_sdT('Convert to design elements')) + '</button>' +
@@ -43940,6 +43972,179 @@ const StyleDesigner = (function () {
         return box;
     }
 
+    // ── My account blocks (order history, bookings) ──────────────────────
+    // The order history and the bookings open into lists of the designer's
+    // own elements (_sdAccountPart(), twin of pg_acct_part()); unopened,
+    // each draws the twin of its PHP builder with sample rows.
+
+    // pg_acct_part()
+    /* @pg-site-output */
+    function _sdAccountPart(section) {
+        var list = function (source, kids) { return createNode('loop_area', { source: source }, kids); };
+        var bound = function (tag, cls, name, token, props) {
+            var p = { _bindings: { text: token } };
+            if (props) {
+                Object.keys(props._bindings || {}).forEach(function (k) { p._bindings[k] = props._bindings[k]; });
+                if (props._bindParams) p._bindParams = props._bindParams;
+            }
+            return _sdPartEl(tag, cls, name, p);
+        };
+        if (section === 'order_history') {
+            var inner = function () {
+                return [
+                    _sdPartEl('span', '', _sdT('Order'), {}, [
+                        _sdPartSentence('span', 'fw-semibold', _sdT('Order number'), '#{var:1}', '__order_no'),
+                        bound('span', 'text-body-secondary small ms-2', _sdT('Order date'), '__order_date'),
+                        _sdPartEl('span', 'badge text-bg-secondary ms-2', _sdT('Cancelled'), Object.assign({ text: _sdT('Cancelled') },
+                            _sdPartWhen('__order_is_cancelled', 'not_empty')))
+                    ]),
+                    bound('span', '', _sdT('Grand total'), '__order_total')
+                ];
+            };
+            var cls = 'list-group-item d-flex justify-content-between align-items-center';
+            var linkWhen = _sdPartWhen('__order_url', 'neq', '#');
+            return [_sdPartEl('div', 'list-group pg-sw-order-history', _sdT('Orders of the member'), {}, [
+                list('account.orders', [
+                    // A link while the site has a view order page, else a plain item.
+                    _sdPartEl('a', cls + ' list-group-item-action', _sdT('Order'), { href: '#', _bindings: { href: '__order_url', show_if: '__order_url' },
+                        _bindParams: linkWhen._bindParams }, inner()),
+                    _sdPartEl('div', cls, _sdT('Order'), _sdPartWhen('__order_url', 'eq', '#'), inner())
+                ])
+            ])];
+        }
+        if (section === 'bookings') {
+            var item = function () {
+                return _sdPartEl('div', 'list-group-item', _sdT('Booking'), {}, [
+                    _sdPartEl('div', 'd-flex flex-wrap justify-content-between align-items-center gap-2', _sdT('Heading'), {}, [
+                        bound('span', 'fw-semibold', _sdT('Service'), '__booking_service'),
+                        bound('span', 'badge text-bg-warning', _sdT('Status'), '__booking_status_label', _sdPartWhen('__booking_tone', 'eq', 'warning')),
+                        bound('span', 'badge text-bg-success', _sdT('Status'), '__booking_status_label', _sdPartWhen('__booking_tone', 'eq', 'success')),
+                        bound('span', 'badge text-bg-secondary', _sdT('Status'), '__booking_status_label', _sdPartWhen('__booking_tone', 'eq', 'secondary'))
+                    ]),
+                    bound('div', 'small text-body-secondary', _sdT('Date, time, staff and deposit'), '__booking_details'),
+                    _sdPartEl('div', 'd-flex flex-wrap gap-2 mt-2', _sdT('Buttons'), _sdPartWhen('__booking_manage_url', 'not_empty'), [
+                        _sdPartEl('a', 'btn btn-sm btn-outline-primary', _sdT('Manage booking'), { text: _sdT('Change or cancel'), href: '#',
+                            _bindings: { href: '__booking_manage_url', text: '__booking_manage_label' }, _attrs: [{ name: 'rel', value: 'nofollow' }] }),
+                        _sdPartEl('a', 'btn btn-sm btn-outline-secondary', _sdT('Add to calendar'), { text: _sdT('Add to calendar'), href: '#',
+                            _bindings: { href: '__booking_ics_url' }, _attrs: [{ name: 'rel', value: 'nofollow' }] })
+                    ])
+                ]);
+            };
+            var part = [];
+            [['upcoming', _sdT('Upcoming')], ['past', _sdT('Past')]].forEach(function (h) {
+                part.push(_sdPartEl('h6', 'mt-3 mb-2', h[1], { text: h[1], _bindings: { eo_visible_if: 'has_' + h[0] + '_bookings' } }));
+                part.push(_sdPartEl('div', 'list-group pg-sw-bookings', h[1], { _bindings: { eo_visible_if: 'has_' + h[0] + '_bookings' } },
+                    [list('account.' + h[0] + '_bookings', [item()])]));
+            });
+            return part;
+        }
+        return [];
+    }
+
+    // Whether a my account section opens into elements.
+    function _sdAccountOpens(kind, section) {
+        return kind === 'my_account' && _sdAccountPart(section).length > 0;
+    }
+
+    // The my account section `node`, in place, as its part (as
+    // _sdOrderPreviewSectionToTree()). Returns the node, or null.
+    function _sdAccountSectionToTree(node) {
+        var b = (node && node.props && node.props._bindings) || {};
+        if (!_sdAccountOpens(_getSystemWidgetRegionType(node), b.section)) return null;
+        var part = _sdAccountPart(b.section);
+        delete b.section;
+        if (!Object.keys(b).length) delete node.props._bindings;
+        node.children = part;
+        var hit = _sdAnyParent(node);
+        if (hit && hit.sid) _sharedDirty[hit.sid] = true;
+        return node;
+    }
+
+    // pg_acct_order_history_html(); rows in account.orders' shape, totals
+    // the price HTML the site prints.
+    /* @pg-site-output */
+    function _sdAccountOrderHistoryHtml(rows, linked, totals) {
+        var cls = 'list-group-item d-flex justify-content-between align-items-center';
+        return '<div class="list-group pg-sw-order-history">' + (rows || []).map(function (o, i) {
+            var inner = '<span><span class="fw-semibold">#' + esc(o.__order_no) + '</span>'
+                + '<span class="text-body-secondary small ms-2">' + esc(o.__order_date) + '</span>'
+                + (o.__order_is_cancelled !== '' ? '<span class="badge text-bg-secondary ms-2">' + esc(_sdT('Cancelled')) + '</span>' : '')
+                + '</span><span>' + (totals[i] || '') + '</span>';
+            return linked ? '<a href="' + esc(o.__order_url) + '" class="' + cls + ' list-group-item-action">' + inner + '</a>'
+                : '<div class="' + cls + '">' + inner + '</div>';
+        }).join('') + '</div>';
+    }
+
+    // pg_booking_customer_view_html(); view { upcoming: rows, past: rows }
+    // in pg_booking_customer_view_rows()' shape.
+    /* @pg-site-output */
+    function _sdAccountBookingsHtml(view) {
+        var html = '';
+        [['upcoming', _sdT('Upcoming')], ['past', _sdT('Past')]].forEach(function (h) {
+            var rows = (view && view[h[0]]) || [];
+            if (!rows.length) return;
+            html += '<h6 class="mt-3 mb-2">' + esc(h[1]) + '</h6><div class="list-group pg-sw-bookings">';
+            rows.forEach(function (r) {
+                html += '<div class="list-group-item">'
+                    + '<div class="d-flex flex-wrap justify-content-between align-items-center gap-2">'
+                    + '<span class="fw-semibold">' + esc(r.service) + '</span>'
+                    + '<span class="badge text-bg-' + r.tone + '">' + esc(r.status_label) + '</span>'
+                    + '</div>'
+                    + '<div class="small text-body-secondary">' + esc(r.details) + '</div>';
+                if (r.manage_url !== '') {
+                    html += '<div class="d-flex flex-wrap gap-2 mt-2">'
+                        + '<a href="' + esc(r.manage_url) + '" class="btn btn-sm btn-outline-primary" rel="nofollow">' + esc(r.manage_label) + '</a>'
+                        + '<a href="' + esc(r.ics_url) + '" class="btn btn-sm btn-outline-secondary" rel="nofollow">' + esc(_sdT('Add to calendar')) + '</a>'
+                        + '</div>';
+                }
+                html += '</div>';
+            });
+            html += '</div>';
+        });
+        return html;
+    }
+
+    // What a my account page prints in its order history or bookings for a
+    // sample member: the sample order and a cancelled one, two upcoming
+    // bookings and a past one (the booking lists' sample rows).
+    /* @pg-site-output */
+    function _sdAccountSectionHtml(section) {
+        if (section === 'order_history') {
+            var m = _sdOrderAmounts();
+            var money = function (n) { return esc(_sdMoney(n)); };
+            return _sdAccountOrderHistoryHtml([
+                { __order_no: '12345', __order_date: _sdDateSample(false), __order_is_cancelled: '', __order_url: '#' },
+                { __order_no: '12301', __order_date: _sdDateSample(false), __order_is_cancelled: '1', __order_url: '#' }
+            ], true, [money(m.total), money(m.price2)]);
+        }
+        if (section === 'bookings') {
+            var view = function (r) {
+                return { service: r.__booking_service, status_label: r.__booking_status_label, tone: r.__booking_tone, details: r.__booking_details,
+                    manage_url: r.__booking_manage_url, manage_label: r.__booking_manage_label, ics_url: r.__booking_ics_url };
+            };
+            return _sdAccountBookingsHtml({
+                upcoming: [view(_SD_LIST_ROW_PREVIEWS)].concat(SD_LIST_SAMPLE_ROWS['account.upcoming_bookings'].map(view)),
+                past: [view(_SD_LIST_CARD_SAMPLES['account.past_bookings'])].concat(SD_LIST_SAMPLE_ROWS['account.past_bookings'].map(view))
+            });
+        }
+        return '';
+    }
+
+    // The sample of a my account section as a canvas box (as
+    // _sdOrderPreviewSectionSample()); null for a section it does not draw.
+    function _sdAccountSectionSample(section, doc) {
+        var html = _sdAccountSectionHtml(section);
+        if (!html) return null;
+        var box = doc.createElement('div');
+        box.className = 'sd-section-binding-hint sd-section-sample';
+        box.setAttribute('inert', '');
+        box.style.cssText = 'pointer-events:none';
+        box.innerHTML = html + '<div class="small text-body-secondary fst-italic mt-1">'
+            + esc(section === 'order_history' ? _sdT('The site lists the signed-in member\'s orders, newest first.')
+                : _sdT('The site lists the signed-in member\'s bookings: upcoming ones with their manage page, then past ones.')) + '</div>';
+        return box;
+    }
+
     // Resolve the regionType of the system widget that contains `node`.
     // Returns one of: 'form_list_view' (default), 'form_item_view',
     // 'catalog_listing', or '' if not in a SW.
@@ -45229,6 +45434,8 @@ const StyleDesigner = (function () {
             ['no_orders',  _sdT('The member has no orders')],
             ['is_staff',   _sdT('The visitor may open the staff page')],
             ['has_bookings', _sdT('The member has bookings')],
+            ['has_upcoming_bookings', _sdT('The member has upcoming bookings')],
+            ['has_past_bookings', _sdT('The member has past bookings')],
             ['has_store_credit', _sdT('The member has store credit or points to convert')]
         ],
         form_list_view: [
@@ -54240,7 +54447,7 @@ const StyleDesigner = (function () {
             el.addEventListener('click', function () {
                 if (!selectedNode) return;
                 saveState();
-                var node = _sdOrderPreviewSectionToTree(selectedNode);
+                var node = _sdOrderPreviewSectionToTree(selectedNode) || _sdAccountSectionToTree(selectedNode);
                 if (!node) return;
                 selectedNodes = [];
                 if (typeof expandAncestorsAnywhere === 'function') expandAncestorsAnywhere(node);
@@ -60661,6 +60868,40 @@ const StyleDesigner = (function () {
                 ['__order_url',          _sdT('Order detail URL')]
             ]
         },
+        // The member's bookings (pg_sw_list_account_booking_rows()): the
+        // bookings section's two parts.
+        'account.upcoming_bookings': {
+            label: _sdT('Upcoming bookings of the member'),
+            arg: '', argRequired: false,
+            kinds: ['my_account'],
+            rows: [
+                ['__booking_id',           _sdT('Booking ID')],
+                ['__booking_service',      _sdT('Service')],
+                ['__booking_status',       _sdT('Status (raw text)')],
+                ['__booking_status_label', _sdT('Status')],
+                ['__booking_tone',         _sdT('Status colour (warning, success or secondary)')],
+                ['__booking_details',      _sdT('Date, time, staff and deposit')],
+                ['__booking_manage_url',   _sdT('Manage booking URL')],
+                ['__booking_manage_label', _sdT('Manage button label')],
+                ['__booking_ics_url',      _sdT('Add to calendar URL')]
+            ]
+        },
+        'account.past_bookings': {
+            label: _sdT('Past bookings of the member'),
+            arg: '', argRequired: false,
+            kinds: ['my_account'],
+            rows: [
+                ['__booking_id',           _sdT('Booking ID')],
+                ['__booking_service',      _sdT('Service')],
+                ['__booking_status',       _sdT('Status (raw text)')],
+                ['__booking_status_label', _sdT('Status')],
+                ['__booking_tone',         _sdT('Status colour (warning, success or secondary)')],
+                ['__booking_details',      _sdT('Date, time, staff and deposit')],
+                ['__booking_manage_url',   _sdT('Manage booking URL')],
+                ['__booking_manage_label', _sdT('Manage button label')],
+                ['__booking_ics_url',      _sdT('Add to calendar URL')]
+            ]
+        },
         'cart.items': {
             label: _sdT('Products in the cart'),
             arg: '', argRequired: false,
@@ -61024,7 +61265,18 @@ const StyleDesigner = (function () {
         __step_note:       '',
         __step_is_estimate: '',
         __order_is_cancelled: '',
-        __order_url:       '#',
+        // Not '#': the order history part shows its link while the site has
+        // a view order page (pg_acct_part()).
+        __order_url:       '/order?id=1042',
+        __booking_id:           '1',
+        __booking_service:      _sdT('Haircut'),
+        __booking_status:       'confirmed',
+        __booking_status_label: _sdT('Confirmed'),
+        __booking_tone:         'success',
+        __booking_details:      '20.10.2026 10:00 – 10:45 · ' + _sdT('Sam Carter'),
+        __booking_manage_url:   '#',
+        __booking_manage_label: _sdT('Change or cancel'),
+        __booking_ics_url:      '#',
         __menu_item_name: _sdT('Menu item'),
         __menu_item_id: '2',
         __menu_item_url: '#',
@@ -61142,16 +61394,31 @@ const StyleDesigner = (function () {
     // The sample of row value `token` when the nearest list giving it is a
     // checkout list (the order preview's, the express order's); null
     // otherwise.
+    // A list's own card sample (_SD_LIST_CARD_SAMPLES) wins the same way,
+    // in any family: a past booking's card is not the upcoming one's.
     function _sdCheckoutRowSample(token, node) {
-        if (!Object.prototype.hasOwnProperty.call(_SD_LIST_ROW_PREVIEWS, token)) return null;
         var lists = _sdListsAbove(node);
         for (var i = 0; i < lists.length; i++) {
-            var src = SW_LIST_SOURCES[lists[i].props.source];
+            var name = String(lists[i].props.source);
+            var src = SW_LIST_SOURCES[name];
             if (!src || !src.rows.some(function (r) { return r[0] === token; })) continue;
-            return String(lists[i].props.source).indexOf('checkout.') === 0 ? _SD_LIST_ROW_PREVIEWS[token] : null;
+            var card = _SD_LIST_CARD_SAMPLES[name];
+            if (card && Object.prototype.hasOwnProperty.call(card, token)) return card[token];
+            if (!Object.prototype.hasOwnProperty.call(_SD_LIST_ROW_PREVIEWS, token)) return null;
+            return name.indexOf('checkout.') === 0 ? _SD_LIST_ROW_PREVIEWS[token] : null;
         }
         return null;
     }
+
+    // The card of a list whose values differ from the shared row samples
+    // (_SD_LIST_ROW_PREVIEWS), by list source.
+    var _SD_LIST_CARD_SAMPLES = {
+        'account.past_bookings': {
+            __booking_id: '4', __booking_service: _sdT('Haircut'), __booking_status: 'done', __booking_status_label: _sdT('Done'),
+            __booking_tone: 'secondary', __booking_details: '22.09.2026 10:00 – 10:45 · ' + _sdT('Sam Carter'), __booking_manage_url: '',
+            __booking_manage_label: '', __booking_ics_url: ''
+        }
+    };
 
     // The row tokens of the lists `node` is drawn in, as { token, label },
     // with cond: true on a yes/no value (offered as a condition only), the
@@ -61206,6 +61473,9 @@ const StyleDesigner = (function () {
         if (source === 'catalog.crumbs') return _sdPartCatalogCrumbs(false)[0];
         if (source === 'catalog.active_filters') return _sdPartCatalogActiveFilters()[0];
         if (source.indexOf('calendar.') === 0) return _sdCalendarListStarter(source, bs);
+        // A booking list as the bookings part draws it (_sdAccountPart()).
+        if (source === 'account.upcoming_bookings') return _sdAccountPart('bookings')[1];
+        if (source === 'account.past_bookings') return _sdAccountPart('bookings')[3];
         if (source.indexOf('order.') === 0 || source.indexOf('account.') === 0 || source === 'cart.items') return _sdOrderListStarter(source, bs);
         if (source.indexOf('checkout.') === 0) return _sdCheckoutListStarter(source, bs);
         if (source === 'menu.children') {
@@ -63998,12 +64268,10 @@ const StyleDesigner = (function () {
                         ]),
                         createNode('content', { contentType: 'heading', tag: 'h5', text: _sdT('My Orders'), cssClass: 'mb-3',
                             _bindings: { eo_visible_if: 'has_orders' } }),
-                        createNode('semantic', { tag: 'div', cssClass: 'mb-4', customName: _sdT('Order History'),
-                            _bindings: { section: 'order_history' } }),
+                        createNode('semantic', { tag: 'div', cssClass: 'mb-4', customName: _sdT('Order History') }, _sdAccountPart('order_history')),
                         createNode('content', { contentType: 'heading', tag: 'h5', text: _sdT('My Bookings'), cssClass: 'mb-1',
                             _bindings: { eo_visible_if: 'has_bookings' } }),
-                        createNode('semantic', { tag: 'div', cssClass: 'mb-4', customName: _sdT('My Bookings'),
-                            _bindings: { section: 'bookings' } }),
+                        createNode('semantic', { tag: 'div', cssClass: 'mb-4', customName: _sdT('My Bookings') }, _sdAccountPart('bookings')),
                         createNode('content', { contentType: 'heading', tag: 'h5', text: _sdT('Store credit'), cssClass: 'mb-3',
                             _bindings: { eo_visible_if: 'has_store_credit' } }),
                         createNode('semantic', { tag: 'div', cssClass: 'mb-4', customName: _sdT('Store credit'),
@@ -78943,6 +79211,10 @@ const StyleDesigner = (function () {
                                     d: _sdT('Repeats its row for each step of the order, from placed to delivered.') },
             'l:account.orders': { v: 'l-account-orders', k: 'member orders history account list repeat loop',
                                     d: _sdT('Repeats its row for each order of the signed-in member.') },
+            'l:account.upcoming_bookings': { v: 'l-steps', k: 'member bookings appointments upcoming account list repeat loop',
+                                    d: _sdT('Repeats its row for each booking of the signed-in member still to come.') },
+            'l:account.past_bookings': { v: 'l-steps', k: 'member bookings appointments past account list repeat loop',
+                                    d: _sdT('Repeats its row for each past booking of the signed-in member.') },
             'l:cart.items': { v: 'l-cart-items', k: 'cart items products basket list repeat loop',
                                     d: _sdT('Repeats its row for each product in the cart, with its quantity and price.') },
             'l:checkout.offers': { v: 'l-offers', k: 'applied offers discounts checkout list repeat loop',
