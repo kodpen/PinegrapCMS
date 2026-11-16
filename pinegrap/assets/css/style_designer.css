@@ -6517,12 +6517,6 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
     padding: 0 5px; border-radius: 3px; font-size: .65rem; font-weight: 600; white-space: nowrap;
     background: color-mix(in srgb, var(--sd-accent) 22%, transparent); color: var(--sd-accent);
 }
-.sd-proto-row {
-    position: relative; display: flex; align-items: center; gap: 6px;
-    height: 30px; padding: 0 14px 0 10px; font-size: .75rem; cursor: pointer;
-}
-.sd-proto-row:hover { background: rgba(255,255,255,.06); }
-.sd-proto-row:focus-visible { outline: 1px solid var(--sd-accent); outline-offset: -1px; }
 .sd-proto-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sd-proto-empty { padding: 6px 10px; font-size: .75rem; color: var(--sd-text-muted); }
 /* A frame's thumbnail (_sdProtoThumb()): its page as bands, 84 high
@@ -6551,7 +6545,7 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
 }
 .sd-proto-pic-on.sd-proto-pic-long .sd-proto-pic-fade { display: block; }
 .sd-proto-pic-foot {
-    position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%);
+    position: absolute; z-index: 2; left: 50%; bottom: 10px; transform: translateX(-50%);
     padding: 1px 8px; border-radius: 10px; white-space: nowrap;
     background: #2a2f36; color: var(--sd-text); font-size: .7rem; font-weight: 600;
 }
@@ -6586,10 +6580,22 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
 .sd-proto-arrowhead-broken { fill: #ff6b6b; }
 .sd-proto .pgc-node.sd-proto-focused { outline: 2px solid var(--sd-accent); outline-offset: 3px; }
 .sd-proto-focused .sd-proto-name { color: var(--sd-accent); }
-.sd-proto-row.sd-proto-row-quiet { opacity: .4; }
-.sd-proto-row.sd-proto-row-lit { background: color-mix(in srgb, var(--sd-accent) 18%, transparent); }
-.sd-proto-row.sd-proto-row-shared { background: color-mix(in srgb, var(--pgc-in) 20%, transparent); }
-.sd-proto-row.sd-proto-row-shared .sd-proto-icon { color: var(--pgc-in); }
+/* A link's mark on the picture (_sdProtoHots(), F5): a rounded rectangle
+   over its element, in the picture's units (it sits where the picture
+   does). Blue when it leads somewhere, red when broken; the selected
+   frame shows all of its own, another frame those starting an arrow into
+   it, a shared part's link into the selected page in amber (F13). */
+.sd-proto-hots { position: absolute; top: 6px; left: 10px; right: 10px; bottom: 7px; pointer-events: none; }
+.sd-proto-hot {
+    position: absolute; box-sizing: border-box; visibility: hidden; pointer-events: auto; cursor: pointer;
+    border: 2px solid var(--sd-accent); border-radius: 4px;
+    background: color-mix(in srgb, var(--sd-accent) 16%, transparent);
+}
+.sd-proto-hot.sd-proto-mark-broken { border-color: #ff6b6b; background: rgba(255,107,107,.18); }
+.sd-proto-hot.sd-proto-hot-own, .sd-proto-hot.sd-proto-hot-lit, .sd-proto-hot.sd-proto-hot-shared { visibility: visible; }
+.sd-proto-hot.sd-proto-hot-shared { border-color: var(--pgc-in); background: color-mix(in srgb, var(--pgc-in) 22%, transparent); }
+.sd-proto-hot .pgc-port-out { display: none; }
+.sd-proto-hot.sd-proto-hot-own .pgc-port-out { display: block; }
 .sd-proto-note { position: absolute; font-size: .75rem; line-height: 1.35; color: var(--pgc-in); pointer-events: none; }
 .sd-proto-note-line { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* Section headings (groups()), read at the zoom a large design fits at. */
@@ -6668,7 +6674,7 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
     background: #ff6b6b; color: #1b1e22; font-size: .65rem; font-weight: 700; line-height: 18px; text-align: center;
 }
 .sd-proto .pgc-dim .sd-proto-badge { opacity: 1; }
-/* The picked link (F16): its row on the canvas and its arrow. */
-.sd-proto-row.sd-proto-row-picked { background: color-mix(in srgb, var(--sd-accent) 30%, transparent); box-shadow: inset 3px 0 0 var(--sd-accent); }
+/* The picked link (F16): its mark on the picture and its arrow. */
+.sd-proto-hot.sd-proto-hot-picked { border-width: 3px; box-shadow: 0 0 0 3px color-mix(in srgb, var(--sd-accent) 35%, transparent); }
 .sd-proto .pgc-edge.sd-proto-edge-picked .pgc-edge-line { stroke-width: 3; }
 .sd-proto-tools .sd-vb-btn[hidden] { display: none; }

@@ -564,10 +564,9 @@ function test_proto_hotspots_view_list_and_problems()
 	pg_assert_contains("ui.list = _sdProtoEl('aside', 'sd-proto-list');", $source, 'the panel is an aside');
 	pg_assert_contains('ui.body.appendChild(ui.stage);', $source, 'beside the stage');
 	pg_assert_contains('window.PGProtoHotspots.listOf(_sdProto.layout, canvas.focused())', $source, 'its rows from the marked layout');
-	pg_assert_contains("if (done.kind === 'row' && !done.moved && event.type === 'pointerup') _sdProtoPickRow(done.row);", $source, 'a link row on the canvas picks the link');
-	pg_assert_contains("if (row && (event.key === 'Enter' || event.key === ' ')) { _sdProtoPickRow(row); return true; }", $source, 'Enter on it does too');
-	pg_assert_contains('return rowEl ? _sdProtoMenuOpen(rowEl, anchor) : false;', $source, '"Change target" opens today\'s target menu at the list row');
-	pg_assert_contains('if (rowEl) _sdProtoOpenRow(rowEl);', $source, '"Open in the editor" opens the element as a row click did');
+	pg_assert_contains("if (done.kind === 'row' && !done.moved && event.type === 'pointerup') _sdProtoPickRow(done.row);", $source, 'a link\'s mark on the picture picks the link');
+	pg_assert_contains('var change = function (anchor) { return _sdProtoMenuOpen(data.id, row.port, anchor); };', $source, '"Change target" opens today\'s target menu at the list row, whether or not the picture shows the link');
+	pg_assert_contains('_sdProtoOpenRow(data.id, row.port);', $source, '"Open in the editor" opens the element by its frame and port');
 	pg_assert_contains('if (other) canvas.view.reveal(other);', $source, 'a picked link\'s other end comes into view');
 	pg_assert_contains('_sdProto.broken = H.brokenOf(l);', $source, 'the broken links from the marked layout');
 	pg_assert_contains("var badge = _sdProtoEl('span', 'sd-proto-badge', String(brokenHere));", $source, 'a frame\'s badge');
@@ -577,7 +576,7 @@ function test_proto_hotspots_view_list_and_problems()
 	pg_assert_contains('var url = page ? _pgPrototypeUrl(page) : \'\';', $source, 'Play opens the viewer at the selected page');
 	pg_assert_contains('ui.play.hidden = !_sdProtoPlayUrl();', $source, 'and is not shown without an address');
 	pg_assert_contains(".sd-proto-bar { flex-wrap: wrap; row-gap: 2px; }", $css, 'on a phone the bar wraps, so every tool stays in reach');
-	foreach (array('.sd-proto-list-open .sd-proto-list', '.sd-proto-broken', '.sd-proto-problems', '.sd-proto-badge', '.sd-proto-row.sd-proto-row-picked', '.sd-proto-edge-picked') as $selector) {
+	foreach (array('.sd-proto-list-open .sd-proto-list', '.sd-proto-broken', '.sd-proto-problems', '.sd-proto-badge', '.sd-proto-hot.sd-proto-hot-picked', '.sd-proto-edge-picked') as $selector) {
 		pg_assert_contains($selector, $css, 'styled: ' . $selector);
 	}
 }
@@ -743,7 +742,7 @@ function test_proto_hotspots_view_draws_arrows()
 	pg_assert_contains("if (e.target.closest && e.target.closest('#sd-proto')) return;", $source, 'the document shortcuts leave the view alone');
 	pg_assert_contains('var patch = node ? H.hrefPatch(node, row, href, to) : null;', $source, 'the node gets the collector\'s patch');
 	pg_assert_contains('H.applyPatch(node.props, patch);', $source, 'the patch is written with its page binding');
-	pg_assert_contains('if (row && menuKey) return _sdProtoMenuOpen(row);', $source, 'L on a row opens its target menu');
+	pg_assert_contains('if (menuKey && row.drawable && change(main)) event.preventDefault();', $source, 'L on a links panel row opens its target menu');
 	pg_assert_contains('_sdProtoConnect(item, target, row.port);', $source, 'a menu choice goes the drawn arrow\'s way');
 }
 
@@ -759,7 +758,7 @@ function test_proto_hotspots_view_arrangement_and_tidy_up()
 
 	pg_assert_contains('var l = H.layout(marked, _sdProtoSaved(), _sdProtoSections());', $source, 'the view hands the sections');
 	pg_assert_contains("byGroup[gid] = { id: gid, label: _pgTabGroupLabel(gid), keys: [] };", $source, 'a section per tab group, named as the strip names it');
-	pg_assert_contains("return { sections: sections, rest: _sdT('Pages'), shared: _sdT('Shared parts'), outside: _sdT('Outside this design') };", $source, 'the headings are translated');
+	pg_assert_contains("return { sections: sections, rest: _sdT('Pages'), shared: _sdT('Shared parts'), outside: _sdT('Outside this design'), partH: _sdProto.pics.partH };", $source, 'the headings are translated');
 	pg_assert_contains("if (item.start) head.appendChild(_sdProtoEl('span', 'sd-proto-start', _sdT('Start')));", $source, 'the start frame says so');
 	pg_assert_contains("var tidy = _sdProtoButton('bi-grid-3x3-gap', _sdT('Tidy up'), function () { _sdProtoTidy(); });\n        tidy.appendChild(_sdProtoEl('span', 'sd-proto-btn-label', _sdT('Tidy up')));", $source, 'Tidy up sits in the bar with its name');
 	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/style_designer.css');
@@ -1052,6 +1051,27 @@ function test_proto_hotspots_mark_port_side()
 	pg_assert_same(array('x' => 124, 'y' => 352, 'side' => 'bottom'), $out['footDown'], 'the foot\'s middle, down');
 	pg_assert_same(array('x' => 0, 'y' => 193, 'side' => 'left'), $out['early'], 'no picture yet: the middle of the box');
 	pg_assert_same(array('x' => 248, 'y' => 42, 'side' => 'right'), $out['bare'], 'a frame with no box: its middle');
+}
+
+// The view puts the marks on a loaded picture, starts each arrow at its
+// mark (portAt), draws a shared part's own picture and lays the frames out
+// again once a part is measured; the link rows are gone from the frames.
+function test_proto_hotspots_view_marks_on_the_picture()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/style_designer.css');
+
+	pg_assert_contains('portAt: function (item, name) { return item.rows ? _sdProtoPort(item, name) : null; },', $source, 'an arrow leaves where markPort() says');
+	pg_assert_contains('return window.PGProtoHotspots.markPort(item, rects ? (rects[port] || null) : undefined, to ? _sdProto.byId[to] : null);', $source, 'the mark, the foot or the middle, by the side facing the target');
+	pg_assert_contains('var rects = H.picRects(item.rows, pic.marks, item.sharedId);', $source, 'the marks are read from the picture');
+	pg_assert_contains('canvas.reroute([item.id]);', $source, 'the frame\'s arrows move to its marks once loaded');
+	pg_assert_contains('var mark = window.PGProtoHotspots.markState(_sdProto.layout, id);', $source, 'which marks show follows the selected frame');
+	pg_assert_contains("children: [{ _id: 'pic-part', type: 'shared_ref', props: { sharedId: item.sharedId }, children: [] }] };", $source, 'a shared part is drawn alone');
+	pg_assert_contains('if (H.picPartBox(height) !== item.thumb) _sdProtoPicSettle();', $source, 'a measured part gets its own height');
+	pg_assert_false(strpos($source, "_sdProtoEl('div', 'sd-proto-row ") !== false, 'no link rows on a frame');
+	foreach (array('.sd-proto-hots', '.sd-proto-hot.sd-proto-mark-broken', '.sd-proto-hot.sd-proto-hot-shared') as $selector) {
+		pg_assert_contains($selector, $css, 'styled: ' . $selector);
+	}
 }
 
 // Which marks a picture shows (F5, F13): the selected frame all of its own;

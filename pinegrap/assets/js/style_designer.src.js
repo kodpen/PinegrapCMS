@@ -70467,7 +70467,8 @@ const StyleDesigner = (function () {
     // Classic menus and regions stay read-only.
     var _sdProto = { open: false, ui: null, canvas: null, items: [], byId: {}, layout: null, view: { x: 40, y: 40, k: 1 }, seq: 0, selected: null, env: {}, warned: {}, menu: null,
         link: null, broken: { list: [], count: {} }, problems: null,
-        pics: { gen: 0, io: null, boxes: {}, near: {}, live: {}, wait: [], loading: 0, cache: {} } };
+        edgeTo: {},
+        pics: { gen: 0, io: null, boxes: {}, near: {}, live: {}, wait: [], loading: 0, cache: {}, rects: {}, partH: {}, settle: 0, refill: 0 } };
 
     // Pictures (_sdProtoPicMake()): at most this many loading at once, the
     // widget requests among them, and at most this many alive; past it the
@@ -70686,21 +70687,25 @@ const StyleDesigner = (function () {
             // 40 clear of a frame: about a dozen side by side in a 96 gap.
             route: 'elbow',
             routeMargin: 40,
-            portAt: function (item, name) { return item.rows ? { y: window.PGProtoHotspots.rowY(item, name) } : null; },
+            portAt: function (item, name) { return item.rows ? _sdProtoPort(item, name) : null; },
             select: function (selected) { _sdProtoSelect(selected); },
             moved: function (item) { _sdProtoKeep(item); },
             canConnect: function (from, to, port) { return _sdProtoArrowHref(from, to, port) !== null; },
             connected: function (from, to, port) { _sdProtoConnect(from, to, port); },
+            // The core reads the view on every pan and zoom (and changes it
+            // in place): the pictures near the view are made again soon
+            // after it settles.
             view: function (next) {
                 if (next) _sdProto.view = next;
+                _sdProtoPicSoon();
                 return _sdProto.view;
             },
             items: function () { return _sdProto.items; },
-            // A row: no drag, its element selected on release. Its port is
-            // the core's: an arrow drawn from it.
+            // A link's mark on a picture: no drag, its link picked on
+            // release. Its port is the core's: an arrow drawn from it.
             press: function (event, next) {
                 if (event.target.closest && event.target.closest('.pgc-port-out')) return;
-                var row = event.target.closest ? event.target.closest('.sd-proto-row') : null;
+                var row = event.target.closest ? event.target.closest('.sd-proto-hot') : null;
                 if (row) {
                     next.kind = 'row';
                     next.row = row;
@@ -70722,12 +70727,8 @@ const StyleDesigner = (function () {
                     _sdProtoLoad();
                     return true;
                 }
-                var row = event.target.closest ? event.target.closest('.sd-proto-row') : null;
-                if (row && (event.key === 'Enter' || event.key === ' ')) { _sdProtoPickRow(row); return true; }
-                // L, the context menu key or Shift+F10: where the link goes,
-                // chosen from a list (the keyboard's way to draw its arrow).
-                var menuKey = (name === 'l' && !event.ctrlKey && !event.metaKey && !event.shiftKey) || event.key === 'ContextMenu' || (event.key === 'F10' && event.shiftKey);
-                if (row && menuKey) return _sdProtoMenuOpen(row);
+                // A link's keys (Enter, L, the menu key) are on its row in
+                // the links panel.
                 return false;
             }
         });
@@ -70847,7 +70848,6 @@ const StyleDesigner = (function () {
     }
 
     function _sdProtoFill(item, node) {
-        var canvas = _sdProto.canvas;
         var head = _sdProtoEl('div', 'sd-proto-head');
         head.appendChild(_sdProtoEl('span', 'bi ' + (item.kind === 'shared' ? 'bi-puzzle' : 'bi-file-earmark') + ' sd-proto-kind'));
         head.lastChild.setAttribute('aria-hidden', 'true');
@@ -70869,35 +70869,56 @@ const StyleDesigner = (function () {
         if (meta) head.appendChild(_sdProtoEl('span', 'sd-proto-meta', meta));
         node.appendChild(head);
         node.setAttribute('aria-label', _sdProtoFrameName(item));
+        // The links are marked on the picture once it has loaded; the
+        // links panel lists them (F5, F15).
         if (item.pic) node.appendChild(_sdProtoPicBox(item));
         else if (item.thumb) node.appendChild(_sdProtoThumb(item));
+        else if (!item.rows.length) node.appendChild(_sdProtoEl('div', 'sd-proto-empty', _sdT('No links')));
+    }
 
-        if (!item.rows.length) {
-            node.appendChild(_sdProtoEl('div', 'sd-proto-empty', _sdT('No links')));
-            return;
-        }
+    // Where an arrow leaves its frame (F14): at its link's mark on the
+    // picture, by the side facing its target; from the foot for a link the
+    // picture cannot show (F3); from the middle of the box until the
+    // picture has loaded.
+    function _sdProtoPort(item, port) {
+        var rects = _sdProto.pics.rects[item.id];
+        var to = _sdProto.edgeTo[item.id + '|' + port];
+        return window.PGProtoHotspots.markPort(item, rects ? (rects[port] || null) : undefined, to ? _sdProto.byId[to] : null);
+    }
 
+    // A loaded picture's marks (F5): a rounded rectangle over each link's
+    // element, in the colour of where it leads; a link of a tree carries
+    // the port its arrow is drawn from. Which of them show is
+    // _sdProtoFocusMarks()'s; the arrows of the frame leave from them.
+    function _sdProtoHots(item, pic) {
+        var H = window.PGProtoHotspots;
+        var canvas = _sdProto.canvas;
+        var rects = H.picRects(item.rows, pic.marks, item.sharedId);
+        var old = pic.box.querySelector('.sd-proto-hots');
+        if (old) old.parentNode.removeChild(old);
+        var layer = _sdProtoEl('div', 'sd-proto-hots');
         item.rows.forEach(function (row, i) {
-            var r = _sdProtoEl('div', 'sd-proto-row sd-proto-mark-' + row.mark);
-            r.tabIndex = 0;
-            r.setAttribute('role', 'button');
-            r.setAttribute('data-row', String(i));
-            r.title = row.href || '';
-            if (window.PGProtoHotspots.drawable(row)) {
-                r.title += (r.title ? ' · ' : '') + _sdT('L: choose where this link goes');
-                r.setAttribute('aria-keyshortcuts', 'L');
-            }
-            r.appendChild(_sdProtoMarkIcon(row.mark));
-            r.appendChild(_sdProtoEl('span', 'sd-proto-label', row.from ? row.from + ' › ' + row.label : row.label));
-            if (row.draft) r.appendChild(_sdProtoEl('span', 'sd-proto-draft', _sdT('Draft')));
-            // Only a link of a tree gets a port to draw its arrow from.
-            if (window.PGProtoHotspots.drawable(row)) {
+            var r = rects[row.port];
+            if (!r) return;
+            var hot = _sdProtoEl('span', 'sd-proto-hot sd-proto-mark-' + row.mark);
+            hot.setAttribute('data-row', String(i));
+            hot.style.left = r.x + 'px';
+            hot.style.top = r.y + 'px';
+            hot.style.width = Math.max(6, r.w) + 'px';
+            hot.style.height = Math.max(6, r.h) + 'px';
+            hot.title = (row.from ? row.from + ' › ' + row.label : row.label) + (row.href ? ' · ' + row.href : '');
+            if (H.drawable(row)) {
                 var dot = canvas.port('out', row.port);
                 dot.title = _sdT('Drag to a page or an address to change where this link goes');
-                r.appendChild(dot);
+                hot.appendChild(dot);
             }
-            node.appendChild(r);
+            layer.appendChild(hot);
         });
+        pic.box.appendChild(layer);
+        _sdProto.pics.rects[item.id] = rects;
+        _sdProtoFocusMarks(canvas.focused());
+        _sdProtoPicked();
+        canvas.reroute([item.id]);
     }
 
     // The frame's thumbnail: its page as bands (PGProtoHotspots.sketch()),
@@ -70957,7 +70978,9 @@ const StyleDesigner = (function () {
             }
             byGroup[gid].keys.push(p.key);
         });
-        return { sections: sections, rest: _sdT('Pages'), shared: _sdT('Shared parts'), outside: _sdT('Outside this design') };
+        // partH: the shared parts' measured heights, so each frame is as
+        // tall as its part (_sdProtoPicLoaded()).
+        return { sections: sections, rest: _sdT('Pages'), shared: _sdT('Shared parts'), outside: _sdT('Outside this design'), partH: _sdProto.pics.partH };
     }
 
     // Tidy up: every frame and chip back in the arrangement, after a
@@ -71008,24 +71031,23 @@ const StyleDesigner = (function () {
         if (!ui || !_sdProto.layout) return;
         Array.prototype.slice.call(ui.boxes.querySelectorAll('.sd-proto-note')).forEach(function (n) { n.parentNode.removeChild(n); });
         Array.prototype.slice.call(ui.boxes.querySelectorAll('.sd-proto-focused')).forEach(function (n) { n.classList.remove('sd-proto-focused'); });
-        Array.prototype.slice.call(ui.boxes.querySelectorAll('.sd-proto-row')).forEach(function (r) {
-            r.classList.remove('sd-proto-row-quiet', 'sd-proto-row-lit', 'sd-proto-row-shared');
+        Array.prototype.slice.call(ui.boxes.querySelectorAll('.sd-proto-hot')).forEach(function (r) {
+            r.classList.remove('sd-proto-hot-own', 'sd-proto-hot-lit', 'sd-proto-hot-shared');
         });
         if (id === null || id === undefined) return;
         var f = window.PGProtoHotspots.focusOf(_sdProto.layout, id);
-        var mark = {};
-        Object.keys(f.lit).forEach(function (frame) { f.lit[frame].forEach(function (port) { mark[frame + '|' + port] = 'sd-proto-row-lit'; }); });
-        f.shared.forEach(function (link) { mark[link.frame + '|' + link.port] = 'sd-proto-row-shared'; });
+        // The selected frame shows all its marks, another frame those that
+        // start an arrow into it, a shared part's link into it in amber
+        // (F5, F13); the rest stay hidden.
+        var mark = window.PGProtoHotspots.markState(_sdProto.layout, id);
         _sdProto.layout.frames.forEach(function (item) {
             var node = ui.boxes.querySelector('[data-node="' + String(item.id).replace(/"/g, '') + '"]');
             if (!node) return;
-            if (item.id === String(id)) {
-                node.classList.add('sd-proto-focused');
-                return;
-            }
+            if (item.id === String(id)) node.classList.add('sd-proto-focused');
             item.rows.forEach(function (row, i) {
-                var el = node.querySelector('.sd-proto-row[data-row="' + i + '"]');
-                if (el) el.classList.add(mark[item.id + '|' + row.port] || 'sd-proto-row-quiet');
+                var el = node.querySelector('.sd-proto-hot[data-row="' + i + '"]');
+                var state = mark[item.id + '|' + row.port];
+                if (el && state) el.classList.add('sd-proto-hot-' + state);
             });
         });
         var notes = {};
@@ -71059,7 +71081,7 @@ const StyleDesigner = (function () {
         if (!item || !item.rows || !ui) return null;
         for (var i = 0; i < item.rows.length; i++) {
             if (item.rows[i].port === port) {
-                return ui.boxes.querySelector('[data-node="' + String(frameId).replace(/"/g, '') + '"] .sd-proto-row[data-row="' + i + '"]');
+                return ui.boxes.querySelector('[data-node="' + String(frameId).replace(/"/g, '') + '"] .sd-proto-hot[data-row="' + i + '"]');
             }
         }
         return null;
@@ -71135,13 +71157,13 @@ const StyleDesigner = (function () {
     function _sdProtoPicked() {
         var ui = _sdProto.ui;
         if (!ui) return;
-        Array.prototype.slice.call(ui.root.querySelectorAll('.sd-proto-row-picked, .sd-proto-edge-picked')).forEach(function (n) {
-            n.classList.remove('sd-proto-row-picked', 'sd-proto-edge-picked');
+        Array.prototype.slice.call(ui.root.querySelectorAll('.sd-proto-hot-picked, .sd-proto-edge-picked')).forEach(function (n) {
+            n.classList.remove('sd-proto-hot-picked', 'sd-proto-edge-picked');
         });
         var l = _sdProto.link;
         if (!l) return;
         var rowEl = _sdProtoRowEl(l.frame, l.port);
-        if (rowEl) rowEl.classList.add('sd-proto-row-picked');
+        if (rowEl) rowEl.classList.add('sd-proto-hot-picked');
         var group = ui.svg.querySelector('[data-edge="' + (l.frame + '|' + l.port).replace(/"/g, '') + '"]');
         if (group) group.classList.add('sd-proto-edge-picked');
     }
@@ -71214,10 +71236,7 @@ const StyleDesigner = (function () {
             text.appendChild(_sdProtoEl('span', 'sd-proto-li-to', row.why ? _sdProtoWhy(row.why) : '→ ' + _sdProtoTargetName(row)));
             main.appendChild(text);
             main.addEventListener('click', function () { _sdProtoPick(data.id, row.port, false); });
-            var change = function (anchor) {
-                var rowEl = _sdProtoRowEl(data.id, row.port);
-                return rowEl ? _sdProtoMenuOpen(rowEl, anchor) : false;
-            };
+            var change = function (anchor) { return _sdProtoMenuOpen(data.id, row.port, anchor); };
             // L, the menu key or Shift+F10: the target menu, as on the canvas.
             main.addEventListener('keydown', function (event) {
                 var name = String(event.key || '').toLowerCase();
@@ -71233,8 +71252,7 @@ const StyleDesigner = (function () {
                 acts.appendChild(changeBtn);
             }
             acts.appendChild(_sdProtoListButton('sd-proto-li-act', 'bi-box-arrow-in-up-left', _sdT('Open in the editor'), function () {
-                var rowEl = _sdProtoRowEl(data.id, row.port);
-                if (rowEl) _sdProtoOpenRow(rowEl);
+                _sdProtoOpenRow(data.id, row.port);
             }));
             li.appendChild(acts);
         });
@@ -71358,6 +71376,8 @@ const StyleDesigner = (function () {
         _sdProto.items = l.frames.concat(l.chips);
         _sdProto.byId = {};
         _sdProto.items.forEach(function (item) { _sdProto.byId[item.id] = item; });
+        _sdProto.edgeTo = {};
+        l.edges.forEach(function (e) { _sdProto.edgeTo[e.id] = e.to; });
 
         Array.prototype.slice.call(ui.svg.querySelectorAll('g.pgc-edge')).forEach(function (g) { g.parentNode.removeChild(g); });
         _sdProtoPicReset(false);
@@ -71385,7 +71405,7 @@ const StyleDesigner = (function () {
 
         var slots = G.spread(l.edges.map(function (e) {
             var from = _sdProto.byId[e.from];
-            return { to: e.to, y: from.y + H.rowY(from, e.port) };
+            return { to: e.to, y: from.y + _sdProtoPort(from, e.port).y };
         }));
         l.edges.forEach(function (e, i) {
             var drawn = canvas.edge(e.id, _sdProto.byId[e.from], _sdProto.byId[e.to], { port: e.port, slot: slots[i].slot, slots: slots[i].slots });
@@ -71448,11 +71468,18 @@ const StyleDesigner = (function () {
         return box;
     }
 
-    // The page markup of a page frame's picture with the widget markers and
-    // the link markers in, or null without the tab's tree.
+    // The page markup of a frame's picture with the widget markers and the
+    // link markers in, or null without its tree: a page frame's tab, a
+    // shared frame's part alone (its links marked 's<id>:').
     function _sdProtoPicRaw(item) {
-        var p = _pgPageByKey(item.key);
-        var t = p ? _pgTreeOf(p) : null;
+        var t = null;
+        if (item.kind === 'shared') {
+            var part = _sharedCache[item.sharedId];
+            if (part && (part.tree || part.system_region_config)) t = { _id: 'pic-root', type: 'root', props: {}, children: [{ _id: 'pic-part', type: 'shared_ref', props: { sharedId: item.sharedId }, children: [] }] };
+        } else {
+            var p = _pgPageByKey(item.key);
+            t = p ? _pgTreeOf(p) : null;
+        }
         if (!t) return null;
         var nameEl = document.querySelector('[name="name"]');
         var bcEl = document.querySelector('[name="additional_body_classes"]');
@@ -71486,6 +71513,9 @@ const StyleDesigner = (function () {
         });
         P.live = {};
         P.boxes = {};
+        P.rects = {};
+        clearTimeout(P.settle);
+        clearTimeout(P.refill);
     }
 
     // Watches the drawn picture boxes: one coming within the margin of
@@ -71505,6 +71535,27 @@ const StyleDesigner = (function () {
             _sdProtoPicPump();
         }, { root: ui.viewport, rootMargin: SD_PROTO_PIC.margin + 'px' });
         Object.keys(P.boxes).forEach(function (id) { P.io.observe(P.boxes[id]); });
+    }
+
+    // After the view has moved: the boxes near it nearest its centre, up to
+    // the cap of those alive, that are back at their sketch (dropped by the
+    // cap while farther away) join the queue. The observer does not call
+    // again for a box that stayed near the view.
+    function _sdProtoPicSoon() {
+        var P = _sdProto.pics;
+        clearTimeout(P.refill);
+        P.refill = setTimeout(function () {
+            var ui = _sdProto.ui;
+            if (!ui || !_sdProto.open) return;
+            var ids = Object.keys(P.near).filter(function (id) { return P.near[id] && P.boxes[id]; });
+            var vr = ui.viewport.getBoundingClientRect();
+            var fresh = window.PGProtoHotspots.picOrder(ids.map(function (id) {
+                var r = P.boxes[id].getBoundingClientRect();
+                return { id: id, x: r.left, y: r.top, w: r.width, h: r.height };
+            }), { x: vr.left, y: vr.top, w: vr.width, h: vr.height }).slice(0, SD_PROTO_PIC.alive).filter(function (id) { return !P.live[id]; });
+            P.wait = fresh.concat(P.wait.filter(function (id) { return fresh.indexOf(id) < 0; }));
+            _sdProtoPicPump();
+        }, 300);
     }
 
     // Starts the waiting pictures still near the view, up to the cap of
@@ -71528,7 +71579,9 @@ const StyleDesigner = (function () {
         var gen = P.gen;
         var raw = _sdProtoPicRaw(item);
         if (raw === null) return;
-        var payload = _sdPreviewWidgetPayload(raw, item.pageId || 0);
+        // A shared part's widgets are asked for with the page it is edited on.
+        var onPage = item.kind === 'shared' ? _pgPageByKey(_sdProtoFrameTab(item)) : null;
+        var payload = _sdPreviewWidgetPayload(raw, item.pageId || (onPage && onPage.page_id) || 0);
         var key = raw + '\n' + (payload ? JSON.stringify(payload) : '') + '\n' + (canvasDarkTheme ? 'dark' : 'light');
         var job = { stage: 'doc', done: false };
         var pic = { box: box, frame: null, job: job, marks: [] };
@@ -71575,9 +71628,10 @@ const StyleDesigner = (function () {
         });
     }
 
-    // A loaded picture: its markers read in page pixels (kept for the
-    // marks on the picture), the fade when the page runs past the cut,
-    // the foot's count of links it cannot show.
+    // A loaded picture: its markers read in page pixels and the marks put
+    // on it, the fade when the page runs past the cut, the foot's count of
+    // links it cannot show. A shared part is measured: a frame not as
+    // tall as its part is drawn again at its height.
     function _sdProtoPicLoaded(item, pic) {
         var H = window.PGProtoHotspots;
         var doc = null;
@@ -71587,13 +71641,63 @@ const StyleDesigner = (function () {
             var r = el.getBoundingClientRect();
             return { pic: el.getAttribute('data-pg-pic'), left: r.left, top: r.top, w: r.width, h: r.height };
         });
+        var height = doc.documentElement.scrollHeight;
+        if (item.kind === 'shared') {
+            // The part's own height: the lowest edge of what the body holds
+            // (the document is at least the frame's 1600 high).
+            height = 0;
+            Array.prototype.forEach.call(doc.body ? doc.body.children : [], function (el) {
+                height = Math.max(height, el.getBoundingClientRect().bottom);
+            });
+            _sdProto.pics.partH[item.sharedId] = height;
+            if (H.picPartBox(height) !== item.thumb) _sdProtoPicSettle();
+        }
         pic.box.classList.add('sd-proto-pic-on');
-        pic.box.classList.toggle('sd-proto-pic-long', H.picLong(doc.documentElement.scrollHeight));
+        pic.box.classList.toggle('sd-proto-pic-long', H.picLong(height));
         var foot = H.picFoot(item.rows, pic.marks, item.sharedId);
         var footEl = pic.box.querySelector('.sd-proto-pic-foot');
-        if (!footEl) return;
-        footEl.hidden = !foot.below;
-        footEl.textContent = foot.below === 1 ? _sdT('+1 link below') : _sdT('+{var:1} links below', foot.below);
+        if (footEl) {
+            footEl.hidden = !foot.below;
+            footEl.textContent = foot.below === 1 ? _sdT('+1 link below') : _sdT('+{var:1} links below', foot.below);
+        }
+        _sdProtoHots(item, pic);
+    }
+
+    // The shared frames measured since the last arrangement get their
+    // heights: soon after the last of them, everything is placed again
+    // (a moved frame keeps its place), the boxes resized and moved where
+    // they are, their arrows routed again. The pictures stay.
+    function _sdProtoPicSettle() {
+        var P = _sdProto.pics;
+        var gen = P.gen;
+        clearTimeout(P.settle);
+        P.settle = setTimeout(function () {
+            var canvas = _sdProto.canvas;
+            var ui = _sdProto.ui;
+            if (gen !== P.gen || !_sdProto.layout || !ui) return;
+            var next = window.PGProtoHotspots.layout(_sdProto.marked, _sdProtoSaved(), _sdProtoSections());
+            var at = {};
+            next.frames.concat(next.chips).forEach(function (one) { at[one.id] = one; });
+            _sdProto.items.forEach(function (item) {
+                var n = at[item.id];
+                var node = ui.boxes.querySelector('[data-node="' + String(item.id).replace(/"/g, '') + '"]');
+                if (!n || !node) return;
+                item.x = n.x;
+                item.y = n.y;
+                if (item.thumb !== n.thumb) {
+                    item.thumb = n.thumb;
+                    item.h = n.h;
+                    node.style.height = item.h + 'px';
+                    if (P.boxes[item.id]) P.boxes[item.id].style.height = item.thumb + 'px';
+                }
+                canvas.place(node, item);
+            });
+            _sdProto.layout.headings = next.headings;
+            canvas.groups();
+            canvas.reroute(_sdProto.items.map(function (item) { return item.id; }));
+            _sdProtoFocusMarks(canvas.focused());
+            _sdProtoPicked();
+        }, 150);
     }
 
     // Past the cap of pictures alive, the ones farthest from the view's
@@ -71613,8 +71717,13 @@ const StyleDesigner = (function () {
             pic.box.classList.remove('sd-proto-pic-on', 'sd-proto-pic-long');
             var footEl = pic.box.querySelector('.sd-proto-pic-foot');
             if (footEl) footEl.hidden = true;
+            var hots = pic.box.querySelector('.sd-proto-hots');
+            if (hots) hots.parentNode.removeChild(hots);
             delete P.live[id];
+            delete P.rects[id];
         });
+        // Their arrows leave from the middle again.
+        _sdProto.canvas.reroute(order.slice(SD_PROTO_PIC.alive));
     }
 
     // The tab a frame's links are edited on: a page's own, a shared
@@ -71725,13 +71834,13 @@ const StyleDesigner = (function () {
     // the current one checked; a choice goes through _sdProtoConnect() like
     // a drawn arrow. Arrows, Home and End move, Escape closes and gives the
     // focus back to the row. Answers whether it opened.
-    // The target menu of a frame's link row; anchor (optional) is where it
-    // opens and what takes the focus back (a row of the links panel).
-    function _sdProtoMenuOpen(rowEl, anchor) {
+    // The target menu of a frame's link (its frame id and port); anchor is
+    // where it opens and what takes the focus back (a row of the links
+    // panel).
+    function _sdProtoMenuOpen(frameId, port, anchor) {
         var H = window.PGProtoHotspots;
-        var box = rowEl.closest('[data-node]');
-        var item = box ? _sdProto.byId[box.getAttribute('data-node')] : null;
-        var row = item && item.rows ? item.rows[parseInt(rowEl.getAttribute('data-row'), 10) || 0] : null;
+        var item = _sdProto.byId[frameId] || null;
+        var row = _sdProtoRow(item, port);
         if (!row || !H.drawable(row)) return false;
         _sdProtoMenuClose(false);
 
@@ -71787,10 +71896,10 @@ const StyleDesigner = (function () {
             }
         });
         ui.root.appendChild(el);
-        _sdProto.menu = { el: el, rowEl: anchor || rowEl };
+        _sdProto.menu = { el: el, rowEl: anchor };
 
         // Under the row, or above it when it would leave the view.
-        var r = (anchor || rowEl).getBoundingClientRect();
+        var r = anchor.getBoundingClientRect();
         var o = ui.root.getBoundingClientRect();
         var top = r.bottom - o.top + 2;
         if (top + el.offsetHeight > o.height) top = Math.max(4, r.top - o.top - el.offsetHeight - 2);
@@ -71813,10 +71922,9 @@ const StyleDesigner = (function () {
 
     // A row's element selected on the canvas: its tab opened first (a
     // shared component's on a tab placing it), the prototype view closed.
-    function _sdProtoOpenRow(rowEl) {
-        var box = rowEl.closest('[data-node]');
-        var item = box ? _sdProto.byId[box.getAttribute('data-node')] : null;
-        var row = item && item.rows ? item.rows[parseInt(rowEl.getAttribute('data-row'), 10) || 0] : null;
+    function _sdProtoOpenRow(frameId, port) {
+        var item = _sdProto.byId[frameId] || null;
+        var row = _sdProtoRow(item, port);
         if (!row) return;
 
         var key = _sdProtoFrameTab(item);
