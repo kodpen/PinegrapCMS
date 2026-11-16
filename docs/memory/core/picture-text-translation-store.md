@@ -18,7 +18,7 @@ module: picture_translation
 - `pg_tr_owner_where(array())` is `u.owner_type NOT IN ('ui', 'file')`: every canvas picture with words has uses, but only one a page in another language showed is counted and sent, by its own group. Without it a banner nobody shows went to the engines and weighed on the site counts.
 
 ## What does file_translation hold?
-- One row per source file and language (schema `workflow/decisions-made-schema-25.md`): `state` 0 waiting, 1 drawn, 2 out of date; only 1 is shown (`pg_picture_tr_shown()`). Moves: `pg_picture_tr_state_after()`: a save or a changed translation turns 1 into 2; a draw makes any row 1.
+- Step `upgrade_2026_11_0_file_translation()` (11.0.231, after 11.0.230 of `task.app_id`), listed in `get_tables()`. One row per source file and language (columns `workflow/decisions-made-schema-25.md`): `state` 0 waiting, 1 drawn, 2 out of date; only 1 is shown (`pg_picture_tr_shown()`). Moves: `pg_picture_tr_state_after()`: a save or a changed translation turns 1 into 2; a draw makes any row 1.
 - `pg_picture_tr_translation_written()` runs in `pg_tr_save_translation()` before the write (after the reviewed-kept refusal): drawn rows of the language whose file uses the string go to 2 when the text is new or differs.
 - `pg_picture_tr_translations_removed()` after an emptied box (`translations_action.php`), back to pending over the API and Clear translations (`pg_tr_clear()`): a drawn row whose file uses a text with no translation goes to 2.
 
