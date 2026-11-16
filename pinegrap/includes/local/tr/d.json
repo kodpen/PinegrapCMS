@@ -452,6 +452,8 @@
     "Delete the widget": "Widget'ı sil",
     "Delete this agent? It leaves every channel it is in.": "Bu ajan silinsin mi? Bulunduğu her kanaldan çıkar.",
     "Delete this application": "Bu uygulamayı sil",
+    "Delete this comment and its answers?": "Bu yorum ve yanıtları silinsin mi?",
+    "Delete this comment?": "Bu yorum silinsin mi?",
     "Delete this draft? It has no number and nothing has been posted, so nothing is reversed.": "Bu taslak silinsin mi? Numarası yok ve hiçbir kayıt atılmadı; geri alınacak bir şey yok.",
     "Delete this draft? It is not sent and cannot be brought back.": "Bu taslak silinsin mi? Gönderilmez ve geri getirilemez.",
     "Delete this experiment?": "Bu deney silinsin mi?",
