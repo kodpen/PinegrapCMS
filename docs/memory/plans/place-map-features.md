@@ -15,13 +15,13 @@ description: Plan place-map, features X1 to X16: the map block and its list, coo
 - (X7) An edited address keeps its coordinates until the action is used again; the form says so when the address changed.
 
 ## What does the page ask the server?
-- (X8) `places.php` gives JSON: the records the list page shows to this visitor (its filters, complete records, a folder open to everyone) with name, address, the chosen fields, coordinates and the record's address. Same origin, rate limited. It carries 500 places at most: a list with more is cut to its first 500 in its own order, the block tells the designer so, and narrowing is the list's own filter.
+- (X8) `places.php` gives JSON: the records the list page shows to this visitor (its filters, complete records, a folder open to everyone) with name, address, the chosen fields, coordinates and the record's address. Same origin, rate limited. It carries 500 places at most: a list with more is cut to its first 500 in its own order, and narrowing is the list's own filter. With a cut list no order by distance is offered (X11, X12), and on the canvas the block tells the designer both.
 
 ## When does a map appear?
 - (X9) No tile and no provider script loads before the visitor allowed it: with the cookie notice on, the map is listed in the notice as a service, and until its class is allowed the block draws the list and a "Show the map" button that opens the notice. With the notice off the map draws at once.
 - (X10) The list always works, with or without the map: it is searched by typing (a town, a postcode, a name).
-- (X11) "Near me" asks the browser's own location question; the position never leaves the browser; the places X8 gave are ordered by distance, which is shown.
-- (X12) A typed address can be looked up through the endpoint, one lookup per search and rate limited, and the list ordered by distance from it. Nothing typed is kept.
+- (X11) "Near me" asks the browser's own location question; the position never leaves the browser; the places are ordered by distance, which is shown. It is drawn only when X8 gave the whole list: in a cut list the nearest place could be among those cut.
+- (X12) A typed address can be looked up through the endpoint, one lookup per search and rate limited, and the list ordered by distance from it, under the same rule as X11. Nothing typed is kept.
 
 ## What is it built from?
 - (X13) Leaflet, vendored unchanged under `assets/lib/leaflet/` with its licence and a checksum test; raster tiles only. The tile address and its credit line are a setting, OpenStreetMap's by default, the credit always printed.

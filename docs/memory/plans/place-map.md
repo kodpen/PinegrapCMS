@@ -25,6 +25,7 @@ priority: 6
 ## What did the architect decide? (2026-11-16)
 - Architect (agent channel messages 6553 and 6554), after the owner asked that what exists be grown instead of a table (poll 84): no table and no pass of the general job. Latitude and longitude are two number fields of the collection.
 - "Find from the address" asks the provider once, on the server, when it is pressed; the bulk action is bounded per call and says what is left; nothing is looked up at view. The plan states how many places the block carries and what happens above that (X8).
+- Architect (message 6590): the bound of 500 and the cut stand. With a cut list "Near me" is not drawn, since the position never leaves the browser and the nearest place could be among those cut; the block tells the designer both.
 - Still the architect's, after the census (MP1): which providers' results may be kept, the notice's class for the map, the header change.
 
 ## What does the owner decide?

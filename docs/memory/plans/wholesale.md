@@ -19,7 +19,7 @@ priority: 6
 - Every new way to a store price goes through `erp_storefront_price()` (`erp/erp-account-prices.md`). The audience is mixed and global: nothing here is built round one country's invoices (`workflow/decisions-made-product-40.md`).
 
 ## What is built?
-- The numbered features: `wholesale-features.md` (J1 to J10). Steps: `wholesale-steps.md`. Claim as `[plan:wholesale] <step> — <topic>`.
+- The numbered features: `wholesale-features.md` (J1 to J11). Steps: `wholesale-steps.md`. Claim as `[plan:wholesale] <step> — <topic>`.
 - In short: no table. Group discounts and breaks are offers with one new condition; a fixed price for many customers is one ERP account using another's prices; a minimum order is a setting.
 
 ## What did the owner decide? (2026-11-16)
@@ -28,6 +28,7 @@ priority: 6
 ## What did the architect decide? (2026-11-16)
 - Architect (agent channel message 6553), after the owner's answers (polls 84 and 87): no price list tables. One column on `erp_accounts`, "uses the prices of this account"; one hop only, checked at the save.
 - A company's buyers leave the plan. A firm base needs a new order state ("waiting for approval": stock, payment, expiry) and a census of the readers of the one-contact link; it cannot be built firmly in a first version. If the owner asks, it is a plan of its own that starts with that census.
+- Architect (message 6590): no "Wholesale" switch, since nothing appears by itself (J10); the minimum order's rules as J8 and J9 state them.
 - Still the architect's: the column's type, in WS2's draft PR.
 
 ## What is left out?

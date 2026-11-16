@@ -16,7 +16,7 @@ description: Plan place-map, steps MP1 to MP6: the census of providers and conse
 - MP3 (M) after MP2: the endpoint, the block and its list.
   - Existing files: `get_page_content.php` (the script for a page whose markup carries `data-pg-map`), `assets/js/style_designer.src.js` (one row in `_SD_PAGE_SCRIPTS`; held by other open PRs, the step names the clash).
   - New: the root file `places.php`, `assets/js/pg_map.js` (the list, its search, the cards; no map yet), the block family's file with its test and its canvas picture.
-  - Tests: the endpoint giving only what the list page shows a visitor (a draft, an unfinished record and a private folder left out); the cut at 500; its origin and rate checks; the script's distance and ordering under Node.
+  - Tests: the endpoint giving only what the list page shows a visitor (a draft, an unfinished record and a private folder left out); the cut at 500, with "Near me" not drawn and the designer told both; its origin and rate checks; the script's distance and ordering under Node.
   - Pictures: the block as a list, the search, a card, a phone. To the owner.
   - Features: X1, X2, X3, X8, X10, X15, X16.
 

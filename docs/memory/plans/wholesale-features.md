@@ -1,6 +1,6 @@
 ---
 name: wholesale-features
-description: Plan wholesale, features J1 to J10: an offer for a contact group, quantity prices on a product page, an account that uses another's prices, retail in public, a minimum order for a group
+description: Plan wholesale, features J1 to J11: an offer for a contact group, quantity prices on a product page, an account that uses another's prices, retail in public, a minimum order for a group
 ---
 
 ## What do offers gain?
@@ -15,8 +15,9 @@ description: Plan wholesale, features J1 to J10: an offer for a contact group, q
 - (J7) In public the retail price stands: feeds, structured data, the search index, the API's product fields and the page copy kept for everybody. A page drawn with a customer's own price is marked personal and never kept.
 
 ## What is a minimum order?
-- (J8) A minimum order value can be set for a contact group, kept as a setting. It is checked on the server when the order is sent: below it the order is refused with how much is missing. The cart says the same before.
+- (J8) A minimum order value can be set for a contact group: whole minor units in the site's base currency, kept as one setting that maps group to amount; a deleted group's entry is ignored when read. A customer in several such groups meets the highest; a guest matches none.
+- (J9) One function gives both the refusal when the order is sent, with how much is missing, and the cart's warning before. An order in another currency is turned into the base currency, rounded with `round()`, and then compared.
 
 ## What frames it?
-- (J9) Nothing appears by itself: an offer without the group condition, an account that uses nobody's prices and a group without a minimum work exactly as today. Without the ERP there is no fixed wholesale price; J1 to J3 and J8 work on any shop.
-- (J10) An account's "uses the prices of" is read and written over the API under the ERP's routes. A customer's own price never shows in a public field.
+- (J10) Nothing appears by itself: an offer without the group condition, an account that uses nobody's prices and a group without a minimum work exactly as today. Without the ERP there is no fixed wholesale price; J1 to J3, J8 and J9 work on any shop.
+- (J11) An account's "uses the prices of" is read and written over the API under the ERP's routes. A customer's own price never shows in a public field.

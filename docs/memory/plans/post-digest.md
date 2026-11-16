@@ -26,12 +26,13 @@ priority: 6
 - Architect (agent channel message 6553), after the owner asked that what exists be grown instead of a table (poll 84): no table. A run's window lies between the start moments of two runs, the earlier one in and this one out.
 - `last_run_at` is written when a run ends, so it is not the edge: a post published while a run works would be missed. DG1's draft PR says where the start moment is read; if no column that exists serves, it comes back to the architect.
 - The first run sends nothing older than the moment the start was switched on. The turn is taken before any mail.
+- Architect (message 6590): a post written as a draft and set live later is the usual way, so it may not be skipped in silence. DG1's draft says whether the moment of going live is kept: if so the window reads it; if not it comes back, and until then the box, the set-up and "Try" say what is left out (D3, D11).
 
 ## What does the owner decide?
 - The look of the digest mail and of the two boxes.
 
 ## What is left out?
-- A record set live after its date has passed (it is not sent); a subscriber's own choice of how often; several lists in one mail; the digest as a visitor notification (`plans/visitor-push.md`); an introduction written by AI. Each is a later yes.
+- A record set live after its date has passed, where no moment of going live is kept (it is not sent, and the box says so); a subscriber's own choice of how often; several lists in one mail; the digest as a visitor notification (`plans/visitor-push.md`); an introduction written by AI. Each is a later yes.
 
 ## Whose look?
 - The owner's: the Workspace is a screen he keeps, and the mail is what subscribers get. Pictures from DG2 (the mail) and DG3 (the boxes).

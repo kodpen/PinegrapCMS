@@ -6,9 +6,10 @@ description: Plan post-digest, steps DG1 to DG5: the records box on the server, 
 ## Which steps are there?
 - DG1 (M) The records box, server only. No schema.
   - The draft PR's body says where a run's start moment is read (the start's runs keep one, `ws_scheduled_runs.started_at`) and how a drawn flow's step is handed it (`ws_step_action_row()` gives 0 today); the architect confirms it there before the rest is written.
+  - It also says which column is the date the feed gives a record, and whether the moment a record was set live is kept anywhere. If it is, the window reads that moment; if not, it goes back to the architect: no column is added by itself.
   - Existing files: `includes/fn/widgets.php` (the feed's pick split out of `pg_sw_form_feed_parts()` into a function that gives rows, which the feed then calls), `includes/workspace/flows.php` (`ws_flow_kinds()`, the normalize case), `includes/workspace/steps.php` and `flow_runs.php` (the run case, the window, the Try answer), `includes/workspace/flow_agent_box.php` (the tiers).
   - New: `includes/workspace/flow_records.php`, `tests/workspace_flow_records_test.php`.
-  - Tests, red first: the feed's output unchanged after the split; a private page refused; a record at the earlier start in and at this start out; a record published while a run works given by the next run; the first run from the switch-on; a start that fires twice.
+  - Tests, red first: the feed's output unchanged after the split; a private page refused; a record at the earlier start in and at this start out; a record published while a run works given by the next run; a record dated before the window counted as left out; the first run from the switch-on; a start that fires twice.
   - Features: D1 to D6, D13.
 
 - DG2 (M) after DG1: the contact group as a campaign.

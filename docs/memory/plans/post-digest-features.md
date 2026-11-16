@@ -6,7 +6,7 @@ description: Plan post-digest, features D1 to D13: the flow box that reads a lis
 ## What does the records box do?
 - (D1) A flow box "Read the records of a list": it takes a page that has a form list and gives the count and the records that page's RSS feed would give (title, summary, picture, address), 50 at most. A general box: any flow can use it.
 - (D2) The pick is the list page's own: its filters and its detail page's, complete records only, its order. So only what a visitor can see is read. A page that is not open to everyone is refused when the box is saved and again when it runs.
-- (D3) Its option "Only records new since the last run", for a flow whose start is "At a time": a record is new when its date lies in the run's window. The date is the one the list's feed gives a record.
+- (D3) Its option "Only records new since the last run", for a flow whose start is "At a time": a record is new when its date lies in the run's window. The date is the moment the record was set live, where the product keeps one; else the date the list's feed gives it. In that second case one sentence under the option and in the ready flow's set-up says that a post dated before the last send is not sent.
 - (D4) The window runs from the earlier run's start moment (in) to this run's (out), never to the time a run ended: a post published while a run works falls into the next window. Nothing is kept on the flow and no table is added.
 - (D5) The first run's window opens when the start was switched on: a new digest never mails the archive.
 - (D6) The start's turn is taken before any mail leaves, by the claim and the run's unique key that a start has today: a start that fires twice sends once.
@@ -18,7 +18,7 @@ description: Plan post-digest, features D1 to D13: the flow box that reads a lis
 
 ## What does the ready flow do?
 - (D10) A gallery flow "Digest of new posts": At a time (weekly, a day and hour in the site's time), Read the records (new since the last run), Condition (count is 0: end), E-mail to a contact group. Its set-up asks the list page, the group, the subject and the day.
-- (D11) "Try" on the canvas shows the records it would send and mails only the person trying; it moves no window.
+- (D11) "Try" on the canvas shows the records it would send, and how many were left out for lying before the window, and mails only the person trying; it moves no window.
 
 ## Who, and what stays?
 - (D12) For flows of roles below 3; a personal flow of role 3 has no e-mail box, as today.
