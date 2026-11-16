@@ -159,6 +159,15 @@ if (($audiences['added'] + $audiences['removed']) > 0) {
 
 }
 
+// Customer value summary (includes/fn/customer_values.php): rebuilt whole from
+// the orders once a day, at most PG_CUSTOMER_VALUE_TICK_SECONDS of this tick,
+// going on from its place next tick; one write when the walk is done.
+if (ECOMMERCE && function_exists('pg_customer_value_job_run')) {
+
+    pg_customer_value_job_run(pg_cron_time_left(PG_CUSTOMER_VALUE_TICK_SECONDS));
+
+}
+
 // Shipping label documents whose time is up (includes/fn/shipment_labels.php):
 // 30 days after delivery or cancellation, 90 days after creation at the
 // latest. Once a day; the rows stay with their orders.
