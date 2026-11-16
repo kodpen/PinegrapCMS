@@ -8,7 +8,7 @@ description: Plan prototype-canvas, the engine steps PV1, PV3 and PV5: graph log
   - `G.order(ids, edges, start)`: breadth-first ranks from `start`, the given order between equals, unreached ids last with no rank.
   - `G.arrange(groups, opts)`: places in a wrapped grid: `cols`, the box size, the gaps; each group a band with a heading's place; one side column before the grid and one after it. Answers `{ places, headings, bounds }` in whole units.
   - `G.linksOf(edges, id)`: `{ out, in }` in the order given.
-  - `G.check(ids, edges, start)`: arrows whose end is no box, boxes nothing reaches, boxes with no way out. Reported only: no screen shows the last two before PV11.
+  - `G.check(ids, edges, start)`: arrows whose end is no box, boxes nothing reaches, boxes with no way out. Reported only: PV11a shows the boxes nothing reaches; no screen shows the last.
   - Tests: an empty graph, a loop, islands, forty boxes in three groups, a group longer than a row, the same answer for the same input.
   - Memory: a new `ui/graph-canvas-core-logic.md`.
 - PV3 (M) Focus in the core. After PV1.

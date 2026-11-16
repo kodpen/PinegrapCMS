@@ -1,6 +1,6 @@
 ---
 name: prototype-canvas-steps-3
-description: Plan prototype-canvas, steps PV7 to PV12: the page picture's technical check, the picture in the frame, marks on it, drawing from a mark, the owner's answer, close-out
+description: Plan prototype-canvas, steps PV7 to PV10 and PV12: the page picture's technical check, the picture in the frame, marks on it, drawing from a mark, close-out
 ---
 
 ## Which steps are there?
@@ -23,5 +23,5 @@ description: Plan prototype-canvas, steps PV7 to PV12: the page picture's techni
 - PV10 (M) Drawing from a mark. After PV9.
   - A press on a mark (F21, F22, F23) starts the core's connect with the port's name; a drawn arrow's head can be dragged; the keyboard path.
   - Tests on `hrefPatch()` and pictures of both warnings show K1 to K4. Its sheet goes to the owner.
-- PV11 (owner's answer first) F26 and F27: the architect writes this step from the owner's answer to the question of 2026-11-15.
+- The steps from the owner's answer (PV11a, PV11b) are in `plans/prototype-canvas-steps-4.md`; they come after PV10.
 - PV12 (S) Close-out: `designer/prototype-view.md`, `prototype-hotspots.md`, `prototype-thumbnails.md` and `prototype-places.md` rewritten as what is now; the core's files in `ui/`; every F and K number checked against the code with its PR; this plan, its files and its folder deleted.

@@ -1,6 +1,6 @@
 ---
 name: prototype-canvas-features-2
-description: Plan prototype-canvas, features F15 to F27: the list of the selected page's links, the problems found, drawing and changing an arrow, the bar, what waits for the owner's answer
+description: Plan prototype-canvas, features F15 to F25: the list of the selected page's links, the broken links found, drawing and changing an arrow, the bar
 ---
 
 ## What does the list at the right show?
@@ -22,7 +22,5 @@ description: Plan prototype-canvas, features F15 to F27: the list of the selecte
 - (F24) "Play" opens the prototype viewer at the selected page when `_pgPrototypeUrl()` has an address for it, else at its first page; not shown when it has none.
 - (F25) Zoom, Fit, "Read the links again" and Close as today.
 
-## What waits for the owner's answer?
-- (F26) Links finding their way by themselves: asked of him on 2026-11-15, which of two things he means: arrows that route themselves (F14, built either way) or empty links that take the page whose name matches, the unsure ones asked one by one.
-- (F27) Further problems beside broken links: a page no link reaches, a link that leads nowhere ("#").
-- The step for these (PV11) is written from his answer; nothing of F26's second meaning or F27 is built before it.
+## Where is what the owner answered about links finding their way?
+- In `plans/prototype-canvas-features-3.md` (F26 to F34): he chose all three meanings on 2026-11-16, so arrows route themselves (F14), empty links are offered a target and further problems are found.
