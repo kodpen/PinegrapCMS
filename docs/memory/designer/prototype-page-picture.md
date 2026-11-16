@@ -6,7 +6,9 @@ description: The Prototype view's page picture in a frame (PV8): how it is built
 ## What does a frame show?
 - (PV8 #9896) Its head, then its page as the Preview draws it (F1): the Preview's own document for the tab's tree in a frame 1280 wide, cut at 1600, scaled to 228 x 285 (`PGProtoHotspots.picSize()`; box 298 with padding and border, `thumb` of `layout()`). A shared frame keeps its sketch strip: fifty pictures in the side column made Fit zoom to 10 % on the Clinic design. Way and its reasons: designer/prototype-picture-check.md.
 - The sketch (designer/prototype-thumbnails.md) is drawn under it while it loads and stays when it cannot be drawn. The picture fades in over 0.2 s, not with reduced motion.
-- A page longer than the cut gets a fade over its bottom; the foot on it says "+3 links below" (F3).
+- A page taller than the cut gets a fade over its bottom (`picLong()`); one ending exactly at 1600 gets none. The foot says "+3 links below" (F3).
+- Architect (2026-11-16, agent channel message 6079): the foot sits on the picture's lower edge above the fade, never as a row under it, so every frame keeps one height; PV9's arrows for links under the cut leave from it.
+- `vh` resolves against the 1600-high frame: a short page with `min-vh-100` fills the whole picture. Not a fault; it follows from the approved way.
 
 ## How is it built and kept safe?
 - `_sdProtoPicRaw()` calls `generateHTML(name, classes, tree)` with `_sdPreviewWidgetMarkers` and `_sdPicMarkers` on, both cleared in `finally`; `_sdPreviewWidgetPayload(raw, pageId)` asks `preview_widgets` with that tab's page id; `_sdPreviewDocHtml()` finishes it; `PGProtoHotspots.picDoc()` drops its `<script>` elements and puts `picHead()` (the CSP meta and the stilling rule, embedded frames and players hidden in place) first in its `<head>`.

@@ -69280,7 +69280,7 @@ const StyleDesigner = (function () {
             return { pic: el.getAttribute('data-pg-pic'), left: r.left, top: r.top, w: r.width, h: r.height };
         });
         pic.box.classList.add('sd-proto-pic-on');
-        pic.box.classList.toggle('sd-proto-pic-long', doc.documentElement.scrollHeight > H.picSize().cut);
+        pic.box.classList.toggle('sd-proto-pic-long', H.picLong(doc.documentElement.scrollHeight));
         var foot = H.picFoot(item.rows, pic.marks, item.sharedId);
         var footEl = pic.box.querySelector('.sd-proto-pic-foot');
         if (!footEl) return;

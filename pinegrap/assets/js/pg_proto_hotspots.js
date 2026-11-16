@@ -1187,6 +1187,13 @@
         return html.substring(0, at) + picHead() + html.substring(at);
     }
 
+    // Whether a picture runs past its cut and gets the fade: only when the
+    // page is taller than the cut. A page that ends at it (a short page
+    // with min-vh-100 fills the 1600-high frame exactly) gets none.
+    function picLong(height) {
+        return Number(height) > FRAME.pic.cut;
+    }
+
     // The ids of `boxes` ({ id, x, y, w, h }) nearest the centre of `view`
     // ({ x, y, w, h }) first, by the distance between centres; equal ones
     // in the order given. A picture beyond the cap is dropped from the end.
@@ -1462,6 +1469,7 @@
         picMarks: picMarks,
         picFoot: picFoot,
         picOrder: picOrder,
+        picLong: picLong,
         PIC_FRAME: PIC_FRAME,
         picHead: picHead,
         picDoc: picDoc,

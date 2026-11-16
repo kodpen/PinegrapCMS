@@ -780,6 +780,19 @@ function test_proto_hotspots_picture_foot_counts_links_below_the_cut()
 	pg_assert_same(array('links' => 0, 'below' => 0), $out['none'], 'nothing to count');
 }
 
+// The fade only when the page runs past the cut: a page that ends exactly
+// at 1600 (a short min-vh-100 page in the 1600-high frame) gets none.
+function test_proto_hotspots_picture_fade_only_past_the_cut()
+{
+	$out = proto_hotspots_test_node('out = [H.picLong(900), H.picLong(1600), H.picLong(1601), H.picLong("2400"), H.picLong(null)];');
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array(false, false, true, true, false), $out, 'a short page and one ending at the cut get no fade');
+}
+
 // Pictures nearest the view's centre first; the farthest is dropped first.
 function test_proto_hotspots_picture_order_by_distance()
 {
