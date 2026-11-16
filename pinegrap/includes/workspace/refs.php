@@ -437,6 +437,151 @@ function ws_tokens_normalise($body)
 }
 
 /**
+ * A mention typed by hand, as the tag a pick from the @ list writes: a word
+ * @name (not after a letter, a digit, @, ., < or -, the boundary of
+ * ws_message_tags(), so an e-mail address or a tag's own text never
+ * matches) becomes <@app:N> when name is the handle of an agent the
+ * channel's @ list offers, else <@user:N> when exactly one team member has
+ * that username (folded as ws_command_fold() folds it) and may read the
+ * channel. Everything else stays as typed: everyone, the assistants, an
+ * alias, a username two people share, a prefix, a display name, a
+ * department. Punctuation after the name stays; nothing inside a code
+ * span, a fenced block or a web address changes. Pure.
+ *
+ * @param string  $body
+ * @param array[] $agents ws_agent_picker_entries(): label (@handle), token (<@app:N>)
+ * @param array[] $people id, username, reads (false: may not read the channel)
+ * @return string
+ */
+function ws_mentions_typed($body, $agents, $people)
+{
+    $body = (string) $body;
+
+    if (strpos($body, '@') === false) {
+        return $body;
+    }
+
+    $handles = array();
+
+    foreach ((array) $agents as $agent) {
+        $handle = ltrim((string) ($agent['label'] ?? ''), '@');
+        $token = (string) ($agent['token'] ?? '');
+
+        if (($handle !== '') && preg_match('/^<@app:[0-9]{1,10}>$/', $token)) {
+            $handles[ws_command_fold($handle)] = $token;
+        }
+    }
+
+    $names = array();
+
+    foreach ((array) $people as $person) {
+        $name = ws_command_fold((string) ($person['username'] ?? ''));
+
+        if ($name !== '') {
+            $names[$name][] = $person;
+        }
+    }
+
+    $find = function ($word) use ($handles, $names) {
+        $folded = ws_command_fold($word);
+
+        // Everyone and the assistants are read as words (ws_message_everyone(),
+        // the assistants' own patterns).
+        if (in_array($folded, array('herkes', 'everyone', 'hepsi', 'ai', 'claude'), true)) {
+            return null;
+        }
+
+        if (isset($handles[$folded])) {
+            return $handles[$folded];
+        }
+
+        $found = $names[$folded] ?? array();
+
+        if ((count($found) !== 1) || (isset($found[0]['reads']) && !$found[0]['reads'])) {
+            return null;
+        }
+
+        return '<@user:' . (int) $found[0]['id'] . '>';
+    };
+
+    $lines = explode("\n", $body);
+    $fenced = ws_code_fence_lines($lines);
+
+    foreach ($lines as $index => $line) {
+        if (isset($fenced[$index]) || (strpos($line, '@') === false)) {
+            continue;
+        }
+
+        // Kept as written: a code span, a link's address, a web address.
+        $parts = preg_split('/(`[^`]*`|\]\([^)\s]*\)|(?:https?:\/\/|www\.)\S+)/u', $line, -1, PREG_SPLIT_DELIM_CAPTURE);
+
+        foreach ($parts as $at => $part) {
+            if ($at % 2) {
+                continue;
+            }
+
+            $parts[$at] = preg_replace_callback('/(?<![\w@.<-])@([\p{L}\p{N}_][\p{L}\p{N}_.-]*)/u', function ($match) use ($find) {
+                // A dot or a hyphen after the name is the sentence's, unless
+                // the username holds it.
+                $word = $match[1];
+                $short = rtrim($word, '.-');
+
+                foreach (array_unique(array($word, $short)) as $name) {
+                    $token = ($name !== '') ? $find($name) : null;
+
+                    if ($token !== null) {
+                        return $token . substr($word, strlen($name));
+                    }
+                }
+
+                return $match[0];
+            }, $part);
+        }
+
+        $lines[$index] = implode('', $parts);
+    }
+
+    return implode("\n", $lines);
+}
+
+/**
+ * ws_mentions_typed() with the channel's own @ list: the agents it offers
+ * (none while it is shared with guests, as the picker offers none), and the
+ * team, a person reading it when the channel is public or they are in it.
+ *
+ * @param string     $body
+ * @param array|null $channel
+ * @return string
+ */
+function ws_mentions_typed_channel($body, $channel)
+{
+    static $lists = array();
+
+    if (!is_array($channel) || (strpos((string) $body, '@') === false) || !function_exists('ws_team_members')) {
+        return (string) $body;
+    }
+
+    $id = (int) $channel['id'];
+
+    if (!isset($lists[$id])) {
+        $shared = function_exists('ws_channel_share_open') && ws_channel_share_open($channel);
+        $agents = (!$shared && function_exists('ws_agent_reach_rows') && function_exists('ws_agent_picker_entries'))
+            ? ws_agent_picker_entries(ws_agent_reach_rows($channel)) : array();
+        $members = ($channel['kind'] === 'public') ? null
+            : array_flip(array_map('intval', (array) db_values("SELECT user_id FROM ws_channel_members WHERE channel_id = '" . $id . "'")));
+        $people = array();
+
+        foreach (ws_team_members() as $person) {
+            $people[] = array('id' => (int) $person['id'], 'username' => (string) $person['username'], 'reads' => ($members === null) || isset($members[(int) $person['id']]));
+        }
+
+        $lists[$id] = array($agents, $people);
+    }
+
+    return ws_mentions_typed($body, $lists[$id][0], $lists[$id][1]);
+}
+
+/**
  * Writes the tags of one message or task into ws_refs, replacing what was
  * there for it.
  *
