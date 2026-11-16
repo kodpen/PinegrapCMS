@@ -52,13 +52,17 @@ if (isset($_POST['sc'])) {
 // A pop-up's event (software.count_auto_dialog()): shown, closed or taken,
 // with the day signature its page printed; counted in the pop-up's day row
 // for a visitor who allows statistics, never for staff or crawlers, at most
-// PG_AUTO_DIALOG_COUNT_RATE_LIMIT a minute from one address.
+// PG_AUTO_DIALOG_COUNT_RATE_LIMIT a minute from one address. A take-up behind
+// the same gates is a touch of the visitor's cart (cart_recovery.php).
 if (isset($_POST['ad'])) {
     if (!pg_auto_dialog_count_rate_exceeded() && pg_auto_dialog_count_allowed()) {
         $auto_dialog_event = pg_auto_dialog_count_parse($_POST, defined('ENCRYPTION_KEY') ? (string) ENCRYPTION_KEY : '');
 
         if ($auto_dialog_event !== null) {
             pg_auto_dialog_count($auto_dialog_event[0], $auto_dialog_event[1]);
+
+            // A take-up by a visitor with a cart is a recovered-carts touch.
+            pg_cart_recovery_popup_taken($auto_dialog_event[0], $auto_dialog_event[1]);
         }
     }
     exit();

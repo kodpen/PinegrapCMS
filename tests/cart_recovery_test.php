@@ -7,7 +7,8 @@
  * least 6 hours before the completion; a completed order is recovered when
  * its last touch was sent at most 7 days before the completion, and that
  * touch takes it; a left cart with no touch is counted apart. Also the
- * touch arguments (a pop-up on a page, a WhatsApp key) and the left-cart test.
+ * touch arguments (a pop-up on a page, a WhatsApp key), the left-cart test
+ * and when a pop-up event is a touch.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -108,4 +109,17 @@ function test_cart_recovery_is_left()
 	pg_assert_same(false, pg_cart_recovery_is_left('incomplete', $now - 2592001, $now), 'idle over 30 days: no longer touched');
 	pg_assert_same(false, pg_cart_recovery_is_left('complete', $now - 86400, $now), 'a completed order is no left cart');
 	pg_assert_same(false, pg_cart_recovery_is_left('incomplete', 0, $now), 'no change time: not left');
+}
+
+function test_cart_recovery_popup_touches()
+{
+	pg_assert_same(true, pg_cart_recovery_popup_touches('taken', 12, 1), 'taken with a cart line: a touch');
+	pg_assert_same(true, pg_cart_recovery_popup_touches('taken', '12', 3), 'an order id as the session holds it');
+	pg_assert_same(false, pg_cart_recovery_popup_touches('shown', 12, 1), 'shown is no touch');
+	pg_assert_same(false, pg_cart_recovery_popup_touches('closed', 12, 1), 'closed is no touch');
+	pg_assert_same(false, pg_cart_recovery_popup_touches('Taken', 12, 1), 'the event name is exact');
+	pg_assert_same(false, pg_cart_recovery_popup_touches('taken', 0, 1), 'no order: no touch');
+	pg_assert_same(false, pg_cart_recovery_popup_touches('taken', -4, 1), 'a negative order id: no touch');
+	pg_assert_same(false, pg_cart_recovery_popup_touches('taken', 12, 0), 'an order with no line: no touch');
+	pg_assert_same(false, pg_cart_recovery_popup_touches(null, 12, 1), 'no event: no touch');
 }
