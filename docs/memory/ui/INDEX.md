@@ -691,6 +691,7 @@
 - user-shared-form.md: The user create and edit screens share includes/forms/user_form.php (rights cards, folder rights, access save)
 - variable-chips.md: Variable chips (WA8b): a message's {{n}} drawn as chips naming what they stand for, the shared pgVarChips editor and pg_var_chip_html(), drag, click, move and remove, what the textarea keeps [decision: here]
 - verified-shipping-address-shared-form.md: The verified shipping address create and edit screens share includes/forms/verified_shipping_address_form.php: what it holds, what stays in the screens
+- visitor-push-panel.md: Visitor notifications in the panel: the Notifications card on Channels, the screen Send a notification, Pick a page or record, the test to this device, the sent list
 - visitors-ai-section.md: AI Visibility section of the Visitors overview (ai.php, #6475): bots and firewall, fetches by day, pages per bot, assistant visits, unfetched pages, old-screen redirect
 - visitors-clicks-section.md: The Clicks and scrolling section of the Visitors overview (includes/visitors/clicks.php, CM3): the switch-off empty state, the pages list, a page's own view, the device filter, labels as text [decision: here]
 - visitors-screen-look.md: How the Visitors overview is drawn: reference pictures, frames and blocks, one change column, folding lists, quiet dashes, anchors, calm charts, the menu's section links, the traps [decision: here]
