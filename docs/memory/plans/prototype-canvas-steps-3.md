@@ -21,7 +21,7 @@ description: Plan prototype-canvas, steps PV7 to PV10 and PV12: the page picture
   - `portAt()` answers the mark's point and side, so arrows start there (F14); F13's amber mark sits on the shared frame's picture.
   - A shared frame gets its picture here; PV8 left it the sketch (architect, 2026-11-16, agent channel message 6079). The part alone, at its own height: at least today's sketch strip, at most the page's cut. Arrows of links under a page's cut leave from the foot on the fade.
   - Tests: a rectangle to frame units, the side chosen, the foot's rule. Features: F3, F5, F13, F14.
-- PV10 (M) Drawing from a mark. After PV9.
+- PV10 (M) Drawing from a mark. After PV9. Done in #10101: `designer/prototype-marks.md`.
   - A press on a mark (F21, F22, F23) starts the core's connect with the port's name; a drawn arrow's head can be dragged; the keyboard path.
   - Tests on `hrefPatch()` and pictures of both warnings show K1 to K4. Its sheet goes to the owner.
 - The steps from the owner's answer (PV11a, PV11b) are in `plans/prototype-canvas-steps-4.md`; they come after PV10.
