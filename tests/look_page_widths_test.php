@@ -84,8 +84,8 @@ function test_reports_take_the_report_measure()
 
 function test_settings_tool_and_import_pages_take_the_edit_measure()
 {
-	$two = array('api_settings', 'smtp_settings', 'marketplace_settings', 'erp_settings', 'connections', 'database_engine', 'clean_up', 'page_experiments', 'create_file', 'find_and_replace', 'mass_edit', 'privacy_erase', 'privacy_export', 'barcode_increase_inventory', 'barcode_decrease_inventory', 'import', 'import_contacts', 'import_email_campaign_profiles', 'import_key_codes', 'import_products', 'import_shipments', 'import_short_links', 'import_submitted_forms', 'import_zip', 'erp_export', 'erp_accounts_import', 'erp_account_sync_item', 'erp_bank_statement', 'erp_inbox_document', 'erp_reconciliation', 'erp_stock_count');
-	$one = array('connected_apps', 'device_pairing', 'developer_lock', 'system_tools', 'migration', 'experiments', 'api_docs', 'import_users', 'erp_accountant', 'approve_affiliate');
+	$two = array('api_settings', 'smtp_settings', 'marketplace_settings', 'erp_settings', 'database_engine', 'clean_up', 'page_experiments', 'create_file', 'find_and_replace', 'mass_edit', 'privacy_erase', 'privacy_export', 'barcode_increase_inventory', 'barcode_decrease_inventory', 'import', 'import_contacts', 'import_email_campaign_profiles', 'import_key_codes', 'import_products', 'import_shipments', 'import_short_links', 'import_submitted_forms', 'import_zip', 'erp_export', 'erp_accounts_import', 'erp_account_sync_item', 'erp_bank_statement', 'erp_inbox_document', 'erp_reconciliation', 'erp_stock_count');
+	$one = array('connections', 'connected_apps', 'device_pairing', 'developer_lock', 'system_tools', 'migration', 'experiments', 'api_docs', 'import_users', 'erp_accountant', 'approve_affiliate');
 
 	foreach (array_merge($two, $one) as $screen) {
 		pg_assert_true((bool) preg_match("/'extra classes'\\s*=>\\s*'[^']*\\bpg-measure-edit\\b/", look_page_widths_test_source($screen . '.php')), $screen . ' takes the edit measure');

@@ -2214,6 +2214,8 @@
     "No service can be booked online yet.": "Henüz çevrim içi randevu alınabilen bir hizmet yok.",
     "No service history": "Bakım kaydı yok",
     "No service in this category yet. Ask us for an estimate: we take on more than we list.": "Bu kategoride henüz hizmet yok. Bizden fiyat teklifi isteyin: listelediğimizden fazlasını yapıyoruz.",
+    "No service is in this state.": "Bu durumda hizmet yok.",
+    "No service matches “{var:1}”.": "“{var:1}” ile eşleşen hizmet yok.",
     "No service requests yet.": "Henüz servis talebi yok.",
     "No service requests yet. Choose a job on the workshop page.": "Henüz servis talebi yok. Atölye sayfasından bir iş seçin.",
     "No services": "Hizmet yok",

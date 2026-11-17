@@ -16,7 +16,7 @@ description: Plan connections-hub, steps CN1 to CN7: the registry and its census
   - Drawn: agent channel messages 7691 and, after the architect's look (7704), 7707 to 7718.
   - Owner (2026-11-17, poll 120, message 8069): "Evet; ekranın adı Bağlantılar olsun": built as drawn, the screen named Connections.
 
-- CN3 (M) after CN1 and the yes to CN2: the screen.
+- CN3 (M) after CN1 and the yes to CN2: the screen. Done: #10200.
   - Existing files: `connections.php` (595 lines, an old screen), `includes/settings/registry.php` (the tool's label, its search words).
   - The list, the search, the groups, the states, the attention block; what the screen does today in its new place.
   - Tests: the order (attention, connected, the rest) and the search as pure functions; a row hidden from a user who may not open its place.
