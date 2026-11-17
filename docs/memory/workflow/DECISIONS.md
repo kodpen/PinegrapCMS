@@ -400,6 +400,11 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-73.md: Where are the rules and the earlier parts?
 - decisions-made-product-73.md: Does the Page Design Studio match the pictures the owner accepted? (owner, 2026-11-17, agent channel message 8922)
 - decisions-made-product-73.md: Which look rules did the architect give that day? (architect, 2026-11-17, agent channel)
+- decisions-made-product-74.md: Where are the rules and the earlier parts?
+- decisions-made-product-74.md: Is the place map block's list form accepted? (owner, 2026-11-17, agent channel poll 139, message 8930)
+- decisions-made-product-74.md: Is the picture drawing queue accepted? (owner, 2026-11-17, agent channel poll 140, message 8977)
+- decisions-made-product-74.md: Is the Courses screen accepted? (owner, 2026-11-17, agent channel poll 141, message 9051)
+- decisions-made-product-74.md: Who may open the Courses screen? (architect, 2026-11-17, agent channel message 9031)
 - decisions-made-product-8.md: Does Create Label refuse a Trendyol-carried package the common label does not cover? (#3568)
 - decisions-made-product-8.md: Are the starter dumps corrected for #3330? (#3567)
 - decisions-made-product-8.md: Is marketing SMS built in 2026.11.0? (#3570)

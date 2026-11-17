@@ -115,6 +115,7 @@
 - decisions-made-product-71.md: Decisions list, product part 71 (2026-11-17): designer additions wait for the four areas; three designer drawings and the Languages list accepted; a picture is drawn once every text is translated
 - decisions-made-product-72.md: Decisions list, product part 72 (2026-11-17): the "Suggest targets" window of the Prototype view accepted (poll 137); a gift card does not pay for a gift card product (poll 138)
 - decisions-made-product-73.md: Decisions list, product part 73 (2026-11-17): the Page Design Studio differs from the pictures the owner accepted, noted and compared at the close-out; the architect's look rules of that day
+- decisions-made-product-74.md: Decisions list, product part 74 (2026-11-17): the owner's looks of polls 139 (place map list), 140 (picture drawing queue) and 141 (the Courses screen); managers and above open the Courses screen
 - decisions-made-product-8.md: Decisions list, product part 8 (2026-10-30 midday on): Trendyol-carried packages refused by Create Label, starter dump corrections for #3330, marketing SMS in 2026.11.0, forum template wording
 - decisions-made-product-9.md: Decisions list, product part 9 (2026-10-30 afternoon on): form rules for visitors only, marketplace orders invoiced behind a switch, sales quote guest links and templates, Workspace density switch
 - decisions-made-product.md: Decisions list, product part: express order and order preview totals, cookie window as the only translated UI text, publish-only editing, robots.txt vs noindex, ERP limits, erasure.
