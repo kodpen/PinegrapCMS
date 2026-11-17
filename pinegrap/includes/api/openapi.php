@@ -977,7 +977,14 @@ function api_openapi_components()
             'code'       => 'string',
             'message'    => 'string',
             'field'      => 'string?',
-            'request_id' => 'string'
+            'request_id' => 'string',
+            // Every field the router refused, the first one also above
+            // (api_validate_collect()); absent on any other error.
+            'errors'     => array(array(
+                'field'   => 'string',
+                'code'    => 'string',
+                'message' => 'string'
+            ))
         )
     ));
 
@@ -1086,7 +1093,18 @@ function api_openapi_responses($route) {
 					'code'       => array('type' => 'string'),
 					'message'    => array('type' => 'string'),
 					'field'      => array('type' => 'string'),
-					'request_id' => array('type' => 'string')
+					'request_id' => array('type' => 'string'),
+					'errors'     => array(
+						'type'  => 'array',
+						'items' => array(
+							'type'       => 'object',
+							'properties' => array(
+								'field'   => array('type' => 'string'),
+								'code'    => array('type' => 'string'),
+								'message' => array('type' => 'string')
+							)
+						)
+					)
 				)
 			)
 		)
