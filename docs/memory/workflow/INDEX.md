@@ -108,7 +108,7 @@
 - decisions-made-product-68.md: Decisions list, product part 68 (2026-11-16 late): the Bundles screen and the digest mail accepted; the highlight bar as one sentence; a picture count on a poll's box; squeezes; RF1's part refund
 - decisions-made-product-69.md: Decisions list, product part 69 (2026-11-17 on): campaign Create stores it paused; integration packages at priority 4; the Options panel in a 240 px column; the Design Canvas's Follow
 - decisions-made-product-7.md: Decisions list, product part 7 (2026-10-30 on): customs data on international labels, carrier pickup requests from the panel, ShipWorks through the shipment write path
-- decisions-made-product-70.md: Decisions list, product part 70 (2026-11-17): seven looks accepted in the agent channel; the Translations group is "Görseller", the hub screen is Connections, no platform names before the apps
+- decisions-made-product-70.md: Decisions list, product part 70 (2026-11-17): nine looks accepted in the agent channel; the Translations group is "Görseller", the hub screen is Connections, no platform names before the apps
 - decisions-made-product-8.md: Decisions list, product part 8 (2026-10-30 midday on): Trendyol-carried packages refused by Create Label, starter dump corrections for #3330, marketing SMS in 2026.11.0, forum template wording
 - decisions-made-product-9.md: Decisions list, product part 9 (2026-10-30 afternoon on): form rules for visitors only, marketplace orders invoiced behind a switch, sales quote guest links and templates, Workspace density switch
 - decisions-made-product.md: Decisions list, product part: express order and order preview totals, cookie window as the only translated UI text, publish-only editing, robots.txt vs noindex, ERP limits, erasure.

@@ -385,6 +385,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-70.md: Is the Workspace screen "My meeting link" accepted? (owner, 2026-11-17, agent channel poll 124, message 7893)
 - decisions-made-product-70.md: Is the product page's "Quantity prices" part accepted? (owner, 2026-11-17, agent channel poll 125, message 7975)
 - decisions-made-product-70.md: Are the flow canvas's records box and the e-mail box's contact group accepted? (owner, 2026-11-17, agent channel poll 126, message 8042)
+- decisions-made-product-70.md: Is the designer's Prototype view accepted? (owner, 2026-11-17, agent channel poll 119, message 7680)
+- decisions-made-product-70.md: Is the "Connect to Claude" button of the OAuth connection guide accepted? (owner, 2026-11-17, agent channel poll 122, message 7790)
 - decisions-made-product-8.md: Does Create Label refuse a Trendyol-carried package the common label does not cover? (#3568)
 - decisions-made-product-8.md: Are the starter dumps corrected for #3330? (#3567)
 - decisions-made-product-8.md: Is marketing SMS built in 2026.11.0? (#3570)
