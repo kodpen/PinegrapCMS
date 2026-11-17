@@ -24,4 +24,5 @@ description: How a built-in flow template is added and tested (flow_templates.ph
 - review_request, restock_approval, return_task, booking_cancelled, order_cancelled, booking_reminder, failed_runs, invoice_overdue_follow_up, cart_quote_follow_up, low_review, subscription_failed: `workspace-flows-template-events.md`.
 - goods_received, cash_count (an approval with a number answer): `workspace-flows-approval-answer.md`.
 - form_sort (Pinegrap AI picks sales, support or spam): `workspace-flows-template-form-sort.md`.
+- content_review_due (a task for the person the event names): `workspace-flows-task-event-person.md`.
 - Saved on the site by people: `workspace-flows-template-saved.md`, `workspace-flows-template-table.md`; over the API: `workspace-flows-api-templates.md`.
