@@ -28834,6 +28834,19 @@ select:not([multiple], [size]:not([size="1"])) :is(option, optgroup) {
   align-items: baseline;
   gap: 10px;
 }
+/* A head whose pill goes to a line of its own where the name and the pill
+   do not fit side by side: the name stands whole and breaks inside a word
+   only when it is longer than the column. */
+.pg-list-row-head-wrap {
+  flex-wrap: wrap;
+  align-items: center;
+  row-gap: 4px;
+}
+.pg-list-row-head-wrap > .pg-list-row-title {
+  flex: 1 1 auto;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
 .pg-list-row-title {
   flex: 1;
   min-width: 0;

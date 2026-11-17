@@ -5919,6 +5919,7 @@
     "The picture or PDF kept with each expense. An expense with no file kept is not listed here.": "Her giderle saklanan fotoğraf ya da PDF. Dosyası saklanmamış gider burada listelenmez.",
     "The picture {var:1} was not fetched: {var:2}": "{var:1} resmi alınamadı: {var:2}",
     "The pictures could not be loaded.": "Görseller yüklenemedi.",
+    "The pictures made in the Design Canvas whose texts are translated, drawn in each language one after another in this browser. Keep this page open until the count reaches zero.": "Tasarım Tuvali'nde yapılmış ve metinleri çevrilmiş görseller, bu tarayıcıda her dil için sırayla çizilir. Sayı sıfıra inene dek bu sayfayı açık tutun.",
     "The pictures were not fetched: this site cannot fetch import media yet.": "Resimler alınmadı: bu site içe aktarma medyasını henüz alamıyor.",
     "The pieces are cut one by one, the edges are painted and polished, and every seam is stitched slowly so it holds for a lifetime.": "Parçalar tek tek kesilir, kenarları boyanıp parlatılır ve her dikiş bir ömür dayansın diye yavaşça atılır.",
     "The ping command is named after submarine sonar. Its author had the sound going out and coming back in mind.": "ping komutunun adı denizaltı sonarından geliyor. Yazarı sesin gidip geri dönmesini düşünerek koymuş.",
