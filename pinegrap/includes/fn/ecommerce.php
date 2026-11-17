@@ -12616,13 +12616,11 @@ function pg_erp_member_prices()
     }
 
     // An account-wide discount reaches every product; without one only the
-    // products the account has a row for.
-    $listed = array();
-    foreach ((array) db_items("SELECT product_id FROM erp_account_prices WHERE account_id = '" . (int) $account['id'] . "'") as $row) {
-        $listed[] = (int) $row['product_id'];
-    }
-
-    $account_wide = ((float) db_value("SELECT discount_rate FROM erp_accounts WHERE id = '" . (int) $account['id'] . "' LIMIT 1") > 0);
+    // products the account has a row for. An account that uses another
+    // account's prices is weighed by that account's rows and discount.
+    $scope = erp_account_storefront_scope((int) $account['id']);
+    $listed = $scope['listed'];
+    $account_wide = $scope['account_wide'];
 
     if (!$account_wide && !$listed) {
         return $prices;
@@ -12641,6 +12639,11 @@ function pg_erp_member_prices()
         if ($pick['source'] === 'account') {
             $prices[(int) $product['id']] = array('price' => (int) $pick['price'], 'list' => (int) $product['price'], 'terms' => $terms);
         }
+    }
+
+    // A page drawn with one member's prices is never kept for everybody.
+    if ($prices && function_exists('pg_page_cache_personal')) {
+        pg_page_cache_personal('member_price');
     }
 
     return $prices;
