@@ -22,4 +22,5 @@ description: Census LM1b against look A: visitors and logs (S4: Site Log, Audit 
 ## Which settings pages outside the dialog, and what is old? (380; 5,900 lines, in S6)
 - API `api_settings.php` 2,653 / 92 / 6 / 11 / 8 → 130: 18 Bootstrap buttons, `small text-uppercase` labels, a 116-line `<style>` with 24 font or colour literals.
 - Cloudflare `cloudflare.php` 1,482 / 41 / 1 / 32 / 14 → 133: no measure class (it opens in the settings dialog), `fs-xl fw-bold` figures, a striped table, upper-case titles.
-- SMTP `smtp_settings.php` 726 → 59 (16 fields); Connected accounts `connections.php` 595 → 37; `connected_apps.php` → 12; `device_pairing.php` → 11.
+- SMTP `smtp_settings.php` 726 → 59 (16 fields); `connected_apps.php` → 12; `device_pairing.php` → 11.
+- Connected accounts `connections.php` 595 → 37, still counted in the figures above: not S6's, it is redrawn once by plan `connections-hub` (architect 2026-11-17, agent channel message 7524).
