@@ -689,7 +689,8 @@
     }
 
     // options.scope 'here': searched in the open channel only, as the
-    // channel header's search asks.
+    // channel header's search asks. options.query: the words to search
+    // for at once (/search in the writing box).
     function open(options) {
         if (!window.pgUI || !kit()) {
             return;
@@ -697,6 +698,10 @@
 
         build();
         state.here = readHere();
+
+        if (options && (typeof options.query === 'string')) {
+            ui.input.value = options.query;
+        }
 
         if (!state.here) {
             state.scope = 'all';

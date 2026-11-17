@@ -202,7 +202,7 @@ function test_workspace_command_registry_holds_every_name_once()
 		return $entry['key'];
 	}, ws_commands(null));
 
-	pg_assert_same(array('task', 'assign', 'done', 'postpone', 'status', 'timer', 'schedule', 'away', 'meeting', 'decision', 'note', 'plan', 'remind', 'poll', 'recap', 'approval', 'update', 'checkin', 'price', 'stock', 'create', 'product', 'wake', 'agent_channel', 'notify', 'invite', 'leave', 'help'), $keys, 'the commands, in order, with no assistant set up');
+	pg_assert_same(array('task', 'assign', 'done', 'postpone', 'status', 'timer', 'schedule', 'away', 'meeting', 'decision', 'note', 'plan', 'remind', 'poll', 'recap', 'approval', 'update', 'checkin', 'price', 'stock', 'create', 'product', 'wake', 'agent_channel', 'notify', 'invite', 'leave', 'topic', 'search', 'memory', 'help'), $keys, 'the commands, in order, with no assistant set up');
 }
 
 // Every argument is typed with a known kind, says whether it may be left
@@ -694,7 +694,7 @@ function test_workspace_command_status_reads_task_and_word()
 		}
 	}
 
-	pg_assert_same(array('task', 'status', 'timer', 'schedule', 'away', 'meeting', 'remind', 'approval', 'update', 'checkin', 'notify', 'invite', 'leave'), $live, 'the commands with a live line');
+	pg_assert_same(array('task', 'status', 'timer', 'schedule', 'away', 'meeting', 'remind', 'approval', 'update', 'checkin', 'notify', 'invite', 'leave', 'topic', 'search', 'memory'), $live, 'the commands with a live line');
 }
 
 // /schedule (/zamanla) answers to its names and reads when at the start of

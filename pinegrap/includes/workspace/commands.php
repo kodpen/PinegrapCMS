@@ -3085,6 +3085,243 @@ function ws_command_live_leave($viewer, $channel, $rest)
 }
 
 /**
+ * /topic: what the channel is about, written through ws_channel_update()
+ * as the channel settings write it, with its rights and refusal. Without
+ * a text, the one in force to the writer alone.
+ *
+ * @return array
+ */
+function ws_command_run_topic($viewer, $channel, $rest)
+{
+    $topic = trim((string) $rest);
+
+    if ($topic === '') {
+        return array('type' => 'ephemeral', 'html' => ws_command_topic_html((string) ($channel['topic'] ?? ''), false));
+    }
+
+    $result = ws_channel_update($viewer, $channel, array('topic' => $topic));
+
+    if (!$result['ok']) {
+        return array('type' => 'error', 'error' => $result['error']);
+    }
+
+    // The header and the info panel show the new one (refreshInfo()).
+    return array('type' => 'ephemeral', 'html' => ws_command_topic_html(mb_substr($topic, 0, 255), true), 'refresh' => true);
+}
+
+/**
+ * /topic's answer: the text in force (or just set), or that there is none
+ * and how to set it. Pure but for the language.
+ *
+ * @param string $topic
+ * @param bool   $set   just changed
+ * @return string
+ */
+function ws_command_topic_html($topic, $set)
+{
+    $html = '<div class="ws-ephemeral-title">' . h(lang('What it is about')) . '</div>';
+
+    if ($topic === '') {
+        return $html . '<div>' . h(lang('This channel does not say what it is about yet.')) . '</div>'
+            . '<div class="fg-secondary">' . h(lang(array('string' => 'Set it with {var:1} and the text.', 'vars' => ws_command_turkish() ? '/konu' : '/topic'))) . '</div>';
+    }
+
+    $quoted = '“' . $topic . '”';
+
+    return $html . '<div>' . h($set ? lang(array('string' => 'Now set: {var:1}', 'vars' => $quoted)) : lang(array('string' => 'Now: {var:1}', 'vars' => $quoted))) . '</div>';
+}
+
+/**
+ * /topic's live line: the text Enter will set, refused ahead as the
+ * settings refuse it; without a text, that it only shows the one in force.
+ *
+ * @return array line, warnings
+ */
+function ws_command_live_topic($viewer, $channel, $rest)
+{
+    $topic = trim((string) $rest);
+
+    if ($topic === '') {
+        return array('line' => lang('Will show what it is about, to you alone'), 'warnings' => array());
+    }
+
+    $out = array('line' => lang(array('string' => 'Will set what it is about: {var:1}', 'vars' => '“' . mb_substr($topic, 0, 80) . '”')), 'warnings' => array());
+
+    if (is_array($viewer) && is_array($channel) && !ws_can_manage_channel($viewer, $channel)) {
+        $out['warnings'][] = lang('Only the owner of the channel can change it.');
+    }
+
+    return $out;
+}
+
+/**
+ * /search: the composer opens the search palette on the channel with the
+ * words itself and never sends the line (commandSearchWords(),
+ * assets/js/workspace.js). Reached only over the API, it writes nothing and
+ * answers what the palette would be opened with.
+ *
+ * @return array
+ */
+function ws_command_run_search($viewer, $channel, $rest)
+{
+    return array('type' => 'search', 'query' => trim((string) $rest), 'channel_id' => (int) $channel['id']);
+}
+
+/**
+ * /search's live line: the channel and the words the palette opens with.
+ *
+ * @return array line, warnings
+ */
+function ws_command_live_search($viewer, $channel, $rest)
+{
+    $words = trim((string) $rest);
+    $name = (string) ($channel['name'] ?? '');
+
+    if ($words === '') {
+        return array('line' => lang(array('string' => 'Will open the search on #{var:1}', 'vars' => $name)), 'warnings' => array());
+    }
+
+    return array('line' => lang(array('string' => 'Will search #{var:1} for: {var:2}', 'vars' => array($name, '“' . mb_substr($words, 0, 80) . '”'))), 'warnings' => array());
+}
+
+/**
+ * /memory: whoever may write the channel's memory, as its New entry
+ * offers (ws_memory_check()); only where the memory table is there.
+ * Without a person or a channel, listed like the rest.
+ *
+ * @param array|null $viewer
+ * @param string     $command
+ * @param array|null $channel
+ * @return bool
+ */
+function ws_command_gate_memory($viewer, $command = '', $channel = null)
+{
+    if (!is_array($viewer) || !is_array($channel)) {
+        return true;
+    }
+
+    return function_exists('ws_memory_ready') && ws_memory_ready() && ws_can_post_channel($viewer, $channel);
+}
+
+/**
+ * /memory: an entry written through ws_memory_save(), checked by
+ * ws_memory_check() as the Memory tab's New entry is, with its refusals.
+ * Typed as a reply, the entry's text carries the answered message's link.
+ * Without a text, the New entry form opens, filled with the link if any.
+ *
+ * @return array
+ */
+function ws_command_run_memory($viewer, $channel, $rest, $options)
+{
+    $link = '';
+
+    if ((int) ($options['parent_id'] ?? 0) > 0) {
+        $message = ws_command_answered_message($viewer, $channel, $options);
+
+        if ($message === null) {
+            return array('type' => 'error', 'error' => lang('That message could not be found.'));
+        }
+
+        $link = ws_command_message_link($channel, $message);
+    }
+
+    $entry = ws_command_memory_entry($rest, $link);
+
+    if ($entry === null) {
+        return array('type' => 'memory_form', 'fill' => array('title' => '', 'text' => $link));
+    }
+
+    $check = ws_memory_check($viewer, $channel, $entry);
+
+    if (!$check['ok']) {
+        return array('type' => 'error', 'error' => $check['error']);
+    }
+
+    $id = ws_memory_save($channel['id'], $check['values'], 'user', $viewer['id']);
+
+    return array('type' => 'ephemeral', 'html' => ws_command_memory_html($check['values']['title'], $link !== ''), 'memory_id' => (int) $id);
+}
+
+/**
+ * The entry /memory writes of what was typed: the first line its title
+ * (cut to the title's limit, the whole text then kept as its text), the
+ * lines after it its text, and the answered message's link under them.
+ * Pure.
+ *
+ * @param string $typed the line after the command's name
+ * @param string $link  the answered message's address, '' for none
+ * @return array|null title, text; null when nothing was typed
+ */
+function ws_command_memory_entry($typed, $link)
+{
+    $typed = trim(str_replace("\r\n", "\n", (string) $typed));
+
+    if ($typed === '') {
+        return null;
+    }
+
+    $max = defined('WS_MEMORY_TITLE_MAX') ? WS_MEMORY_TITLE_MAX : 150;
+    $lines = explode("\n", $typed, 2);
+    $title = trim($lines[0]);
+    $text = trim((string) ($lines[1] ?? ''));
+
+    if (mb_strlen($title) > $max) {
+        $title = rtrim(mb_substr($title, 0, $max - 1)) . '…';
+        $text = $typed;
+    }
+
+    if ($link !== '') {
+        $text = trim($text . "\n\n" . $link);
+    }
+
+    return array('title' => $title, 'text' => $text);
+}
+
+/**
+ * /memory's answer to the writer alone. Pure but for the language.
+ *
+ * @param string $title
+ * @param bool   $linked the entry carries an answered message's link
+ * @return string
+ */
+function ws_command_memory_html($title, $linked)
+{
+    $html = '<div class="ws-ephemeral-title">' . h(lang('Saved in the channel\'s memory')) . '</div>'
+        . '<div>' . h('“' . $title . '”') . '</div>';
+
+    if ($linked) {
+        $html .= '<div class="fg-secondary">' . h(lang('With the link of the message you answered.')) . '</div>';
+    }
+
+    return $html;
+}
+
+/**
+ * /memory's live line: the entry's title, and a warning when the first
+ * line is longer than a title holds; without a text, the form it opens.
+ *
+ * @return array line, warnings
+ */
+function ws_command_live_memory($viewer, $channel, $rest)
+{
+    $entry = ws_command_memory_entry($rest, '');
+
+    if ($entry === null) {
+        return array('line' => lang('Will open New entry of the channel\'s memory'), 'warnings' => array());
+    }
+
+    $max = defined('WS_MEMORY_TITLE_MAX') ? WS_MEMORY_TITLE_MAX : 150;
+    $first = trim(explode("\n", trim(str_replace("\r\n", "\n", (string) $rest)))[0]);
+    $out = array('line' => lang(array('string' => 'Will remember: {var:1}', 'vars' => '“' . mb_substr($entry['title'], 0, 80) . '”')), 'warnings' => array());
+
+    if (mb_strlen($first) > $max) {
+        $out['warnings'][] = lang(array('string' => 'The first line is cut to {var:1} characters for the title; the whole text is kept.', 'vars' => $max));
+    }
+
+    return $out;
+}
+
+/**
  * /meeting's live line.
  *
  * @return array line, warnings
