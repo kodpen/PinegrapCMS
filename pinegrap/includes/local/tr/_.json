@@ -2216,6 +2216,7 @@
     "{var} dose": "{var} doz",
     "{var} doses": "{var} doz",
     "{var} elements": "{var} eleman",
+    "{var} elements inside": "İçinde {var} öğe",
     "{var} elements selected — id / attribute editing needs a single selection": "{var} eleman seçili — id / attribute düzenleme tekil seçimde",
     "{var} elements use this style": "Bu stili {var} öğe kullanıyor",
     "{var} for the twelve weeks": "On iki hafta için {var}",
