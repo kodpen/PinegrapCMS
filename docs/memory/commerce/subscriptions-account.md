@@ -5,7 +5,8 @@ module: subscriptions_account
 ---
 
 ## Where does the customer see them?
-- The my_account system widget's section binding `subscriptions` (designer: "Subscriptions (shop sites; hidden when there are none)"), filled in `_pg_my_account_extras()` by `pg_subscription_customer_section_html(pg_subscription_customer_rows(USER_ID), …)`: product (the first order line's name), amount + currency, status, next charge date (cancelled: "Runs until"), card last 4, the last event. Site output, Bootstrap 5.3.8. Not in any starter or design template yet: a designer adds the section; the legacy `get_my_account.php` page shows nothing.
+- The my_account system widget's section binding `subscriptions` (designer: "Subscriptions (shop sites; hidden when there are none)"), filled in `_pg_my_account_extras()` by `pg_subscription_customer_view_rows()` + `_view_html()`: product (the first order line's name), amount + currency, status, next charge date (cancelled: "Runs until"), card last 4, the last event.
+- Site output, Bootstrap 5.3.8. Not in any starter or design template yet: a designer adds the section; the legacy `get_my_account.php` page shows nothing.
 - A past_due row whose latest renewal event is `confirm_needed` shows its https link ("Confirm the payment", `pg_subscription_customer_confirm_url()`).
 
 ## Which actions, from which status?

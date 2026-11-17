@@ -13,7 +13,7 @@ description: CB0 list: the closed slots inside system widgets, their section bin
 - Custom form: `captcha` (57), `form_step`; the step progress and step buttons are Custom HTML the server writes (`custom_form_steps.php`).
 - Search results: `pagination` (57).
 - Login: `google_signin`, `forgot_password_link`, `register_link` (56). Registration and membership: `captcha`, `password_rules`, `google_signup`, `login_link` (57). Change password: `password_rules`.
-- My Account: `subscriptions`, `store_credit` (CB6e2); `order_history` (40), `bookings` open since CB6e1 ([[account-order-open-blocks]]).
+- My Account: `order_history` (40), `bookings` open (CB6e1), `subscriptions`, `store_credit` (CB6e2, [[account-subscription-credit-open-blocks]]); the points form `store_credit_convert` stays.
 - Catalog: `group_tree`, `filters_offcanvas`, `attribute_filters` (legacy, 4): drawn true since CB6b ([[catalog-listing-open-blocks]]). Catalog detail: `recipient_picker` (keeps children), `payment_methods` (drawn true since CB6a1, #9849).
 - Shopping cart: `applied_offers`, `quick_add`, `pending_offers` (campaign gifts): drawn true since CB6c ([[cart-open-blocks]]). Express order: the `eo_*` blocks (billing, payment, terms…): legacy, the starter uses `eo_field` controls.
 - Checkout steps: shipping address `custom_shipping_form`, `verified_addresses`; shipping method `recipient_items`; billing `custom_billing_form`; order preview `billing_form`; its other parts opened in CB6d ([[checkout-open-blocks]], [[checkout-open-recipients]]). Order form: `recurring_schedule`.
@@ -22,10 +22,10 @@ description: CB0 list: the closed slots inside system widgets, their section bin
 
 ## Which HTML values are blocks?
 - Catalog: `__group_tree_html`, `__attribute_filters_html`, `__filters_button`, `__filters_offcanvas`, `__clear_filters_button`, `__variant_picker`, `__price_block_html`.
-- Order view: `__return_actions_html` is the return moves part (W16); `__return_reason_options_html` an option list (kept). Cart: `__field_options_html`, `__schedule_period_options_html`.
+- Order view: `__return_actions_html` is the return moves part (W16); `__return_reason_options_html` an option list (kept). My Account: `__subscription_actions_html`, the forms (kept). Cart: `__field_options_html`, `__schedule_period_options_html`.
 - Ad Region: `__ad_content_html`, `__ad_caption_html`, the ad's own markup. Operator rich text (`__description`, `__comment_message_html`) is content, not a block.
 
 ## What does opening take?
-- Tree: pagination (one shared family for comments and search), subscriptions (CB6e2), password rules, the sign-in and sign-up links, calendar month grid.
+- Tree: pagination (one shared family for comments and search), password rules, the sign-in and sign-up links, calendar month grid.
 - Settings only (the output depends on the request or a site setting): CAPTCHA, social sign-in buttons, publish options, installments (CB6d1), payment methods, the category tree and filters (CB6b), the cart's applied offers, campaign gifts and quick add (CB6c), the step progress; drawn as a true sample.
 - Keep: the ad's own markup (made in the ad screen); option lists of a select (one `<option>` per row, drawn as one control); a custom shipping or billing form's answers in the checkout (`custom_shipping_form`, `custom_billing_form`, the order preview's `billing_form`): drawn as their form draws them.
