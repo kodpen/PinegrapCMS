@@ -1577,15 +1577,25 @@
         return (follows && oldWidth === newWidth) ? 'place' : 'close';
     }
 
-    // Called once the menu or box is in the page at its first place.
-    function ctxSettle(x, y) {
+    // Called once the menu or box is in the page at its first place: the
+    // point it was asked for, kept as an offset from its button, and whether
+    // it stands over that point.
+    function ctxSettle(x, y, above) {
+        var box = null;
+
         ctxAnchor = ctxNextAnchor;
         ctxNextAnchor = null;
         ctxWidth = window.innerWidth;
-        ctxAt = ctxAnchor ? { x: x, y: y, box: ctxAnchor.getBoundingClientRect() } : null;
+
+        if (ctxAnchor) {
+            box = ctxAnchor.getBoundingClientRect();
+        }
+
+        ctxAt = box ? { dx: x - box.left, dy: y - box.top, above: !!above } : null;
     }
 
-    // Moves the open menu by as much as its button moved, kept in the window.
+    // Puts the open menu at the same offset from its button, kept in the
+    // window. Its height is read again: a taller window lets it grow.
     function ctxPlace() {
         ctxPlaceTimer = 0;
 
@@ -1601,11 +1611,12 @@
             return;
         }
 
-        ctxAt.x += now.left - ctxAt.box.left;
-        ctxAt.y += now.top - ctxAt.box.top;
-        ctxAt.box = now;
-        ctxNode.style.left = Math.max(8, Math.min(ctxAt.x, window.innerWidth - ctxNode.offsetWidth - 8)) + 'px';
-        ctxNode.style.top = Math.max(8, Math.min(ctxAt.y, window.innerHeight - ctxNode.offsetHeight - 8)) + 'px';
+        var height = ctxNode.offsetHeight;
+        var x = now.left + ctxAt.dx;
+        var y = now.top + ctxAt.dy - (ctxAt.above ? height : 0);
+
+        ctxNode.style.left = Math.max(8, Math.min(x, window.innerWidth - ctxNode.offsetWidth - 8)) + 'px';
+        ctxNode.style.top = Math.max(8, Math.min(y, window.innerHeight - height - 8)) + 'px';
     }
 
     // After the box has settled: bindFit() lays it out a frame later.
@@ -1798,6 +1809,7 @@
 
         var width = menu.offsetWidth;
         var height = menu.offsetHeight;
+        var asked = y;
 
         if (above) {
             y -= height;
@@ -1808,7 +1820,7 @@
 
         ctxNode = menu;
         ctxOpenedAt = Date.now();
-        ctxSettle(x, y);
+        ctxSettle(x, asked, above);
 
         var first = menu.querySelector('.ws-ctx-item:not([disabled])');
 
@@ -2734,7 +2746,8 @@
     }
 
     // A box that floats like a context menu and closes like one: a click
-    // elsewhere, Escape, a scroll or a resize. "above" places it over the
+    // elsewhere, Escape, a scroll or a resize (one of the writing box moves
+    // with its button instead, ctxFollow()). "above" places it over the
     // point instead of under it (for the composer, at the bottom).
     function floatBox(x, y, content, className, above) {
         closeCtx();
@@ -2751,6 +2764,7 @@
 
         var width = box.offsetWidth;
         var height = box.offsetHeight;
+        var asked = y;
 
         if (above) {
             y -= height;
@@ -2761,7 +2775,7 @@
 
         ctxNode = box;
         ctxOpenedAt = Date.now();
-        ctxSettle(x, y);
+        ctxSettle(x, asked, above);
 
         return box;
     }

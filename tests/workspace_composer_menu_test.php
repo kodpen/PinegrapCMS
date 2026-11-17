@@ -79,7 +79,7 @@ function test_workspace_composer_menu_tools_follow_their_button()
 		pg_assert_contains('ctxFollow(' . $button . ');', $source, 'the ' . $button . ' menu of the box stands by its button');
 	}
 
-	pg_assert_contains('ctxSettle(x, y);', workspace_composer_menu_test_function($source, 'ctxMenu'), 'a menu takes its anchor');
-	pg_assert_contains('ctxSettle(x, y);', workspace_composer_menu_test_function($source, 'floatBox'), 'a floating box takes its anchor');
+	pg_assert_contains('ctxSettle(x, asked, above);', workspace_composer_menu_test_function($source, 'ctxMenu'), 'a menu takes its anchor');
+	pg_assert_contains('ctxSettle(x, asked, above);', workspace_composer_menu_test_function($source, 'floatBox'), 'a floating box takes its anchor');
 	pg_assert_true(strpos($source, "window.addEventListener('resize', closeCtx);") === false, 'a resize no longer closes every menu');
 }
