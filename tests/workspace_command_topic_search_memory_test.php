@@ -93,7 +93,7 @@ function test_workspace_command_topic_refused_as_the_settings_and_shown_alone()
 	pg_assert_contains(h(lang('This channel does not say what it is about yet.')), $none);
 	pg_assert_contains(h(lang('What it is about')), $none);
 	pg_assert_contains(h(lang(array('string' => 'Now: {var:1}', 'vars' => '“Spring launch”'))), ws_command_topic_html('Spring launch', false), 'the one in force');
-	pg_assert_contains(h(lang(array('string' => 'Now set: {var:1}', 'vars' => '“Spring launch”'))), ws_command_topic_html('Spring launch', true), 'just set');
+	pg_assert_contains(h(lang(array('string' => 'It now reads: {var:1}', 'vars' => '“Spring launch”'))), ws_command_topic_html('Spring launch', true), 'just set');
 
 	pg_assert_same(lang('Will show what it is about, to you alone'), ws_command_live_topic(null, workspace_command_tsm_test_channel(), '')['line']);
 	pg_assert_same(lang(array('string' => 'Will set what it is about: {var:1}', 'vars' => '“Spring launch”')), ws_command_live_topic(null, workspace_command_tsm_test_channel(), 'Spring launch')['line']);
@@ -116,7 +116,10 @@ function test_workspace_command_search_posts_nothing_and_asks_nothing()
 	pg_assert_true($open !== false, 'the palette opens on this channel with the words');
 	pg_assert_true($open < strpos($send, "api('ws_send', data)"), 'before anything is sent');
 	pg_assert_true(strpos(substr($send, strpos($send, 'if (searchWords !== null) {'), 300), 'return;') !== false, 'and nothing after it');
-	pg_assert_contains("ui.input.value = options.query;", workspace_command_tsm_test_js('workspace_palette.js'), 'the palette takes the words');
+	$palette = workspace_command_tsm_test_js('workspace_palette.js');
+	pg_assert_contains("ui.input.value = options.query;", $palette, 'the palette takes the words');
+	pg_assert_contains("ui.input.setSelectionRange(ui.input.value.length, ui.input.value.length);", $palette, 'the caret at their end, nothing selected');
+	pg_assert_contains("} else {\n                ui.input.select();", $palette, 'opened empty, as before');
 
 	pg_assert_same(lang(array('string' => 'Will search #{var:1} for: {var:2}', 'vars' => array('general', '“fatura”'))), ws_command_live_search(null, workspace_command_tsm_test_channel(), 'fatura')['line']);
 

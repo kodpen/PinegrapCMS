@@ -5,13 +5,13 @@ description: /topic (/konu), /search (/ara) and /memory (/bellek) in a Workspace
 
 ## What does /topic (/konu) do?
 - `/konu Bahar lansmanı`: the channel's "What it is about" through `ws_channel_update()` with `topic` only, as the channel settings write it: its right (`ws_can_manage_channel()`) and its refusal "Only the owner of the channel can change it.". Cut to 255 characters as the function cuts it.
-- The answer, to the writer alone (`ephemeral`, `ws_command_topic_html()`): "Now set: “…”", with `refresh`: the composer calls `refreshInfo()` so the header and info panel show it.
+- The answer, to the writer alone (`ephemeral`, `ws_command_topic_html()`): "It now reads: “…”", with `refresh`: the composer calls `refreshInfo()` so the header and info panel show it.
 - No text: "Now: “…”", or "This channel does not say what it is about yet." with "Set it with /konu and the text." (the name in the screen's language); nothing is written.
 - Live line: "Will set what it is about: “…”", warned ahead when the writer may not change it; no text: "Will show what it is about, to you alone". `where` channel: a discussion has no settings of its own.
 
 ## What does /search (/ara) do?
 - `/ara fatura mart`: the box opens the search palette on this channel (scope `here`) with the words; nothing is posted and the line is never sent. `send()` of workspace.js asks `commandSearchWords(body, BOOT.commands)` (pure: the line is one of the `search` entry's names, either language, any case; "//ara" and "/aralık" are not) before `ws_send`, then `PGWsPalette.open({ scope: 'here', query })`.
-- `open()` of workspace_palette.js takes `options.query` into its box and searches at once.
+- `open()` of workspace_palette.js takes `options.query` into its box and searches at once; the caret stands at the words' end, unselected (`state.atEnd`), so a key adds to them and a phone shows no copy menu. Opened without words, the box is selected as before. Architect (2026-11-17, agent channel message 8969).
 - The runner `ws_command_run_search()` is reached only over the API (class `preview`): it writes nothing and answers `search` with the query and channel. `search` is one of `ws_api_command_preview_types()`.
 - Live line (the composer's usual ask, not the command's): "Will search #general for: “…”", or "Will open the search on #general". `where` any.
 

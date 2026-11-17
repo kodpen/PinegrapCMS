@@ -3128,7 +3128,7 @@ function ws_command_topic_html($topic, $set)
 
     $quoted = '“' . $topic . '”';
 
-    return $html . '<div>' . h($set ? lang(array('string' => 'Now set: {var:1}', 'vars' => $quoted)) : lang(array('string' => 'Now: {var:1}', 'vars' => $quoted))) . '</div>';
+    return $html . '<div>' . h($set ? lang(array('string' => 'It now reads: {var:1}', 'vars' => $quoted)) : lang(array('string' => 'Now: {var:1}', 'vars' => $quoted))) . '</div>';
 }
 
 /**

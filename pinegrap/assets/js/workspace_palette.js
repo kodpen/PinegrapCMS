@@ -54,7 +54,8 @@
         serial: 0,
         timer: null,
         after: null,
-        here: null
+        here: null,
+        atEnd: false
     };
 
     function kit() {
@@ -248,9 +249,16 @@
 
         ui.input.addEventListener('keydown', onKey);
 
+        // Words handed in (/search) keep the caret at their end, unselected,
+        // so the next key adds to them; opened empty, the box is selected.
         pgUI.dialog.on(ui.node, 'shown', function () {
             ui.input.focus();
-            ui.input.select();
+
+            if (state.atEnd) {
+                ui.input.setSelectionRange(ui.input.value.length, ui.input.value.length);
+            } else {
+                ui.input.select();
+            }
         });
 
         pgUI.dialog.on(ui.node, 'hidden', function () {
@@ -699,7 +707,9 @@
         build();
         state.here = readHere();
 
-        if (options && (typeof options.query === 'string')) {
+        state.atEnd = !!(options && (typeof options.query === 'string'));
+
+        if (state.atEnd) {
             ui.input.value = options.query;
         }
 

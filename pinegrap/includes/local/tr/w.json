@@ -2520,7 +2520,7 @@
     "Will plan: {var:1}": "Planlanacak: {var:1}",
     "Will post a status update: {var:1}": "Durum güncellemesi paylaşılacak: {var:1}",
     "Will post: {var:1}": "Gönderilecek: {var:1}",
-    "Will remember: {var:1}": "Hatırlayacak: {var:1}",
+    "Will remember: {var:1}": "Belleğe yazacak: {var:1}",
     "Will remind you: {var:1}": "Size hatırlatılacak: {var:1}",
     "Will search #{var:1} for: {var:2}": "#{var:1} kanalında arayacak: {var:2}",
     "Will set what it is about: {var:1}": "Ne hakkında olduğunu yazacak: {var:1}",
