@@ -16,7 +16,9 @@ module: ecommerce
 
 ## What price does a break show?
 - `pg_offer_quantity_break_rows()` (pure): the list price less the amount, or `pg_percent_off()` of it, never below 0; the lowest per quantity; ordered by quantity.
-- A break is kept only when cheaper than the visitor's own price (the list price, or a member's agreed price from `pg_erp_member_prices()`, which never stacks with an offer) and than every break for fewer pieces. The list is the same whatever the cart holds.
+- A break is kept only when cheaper than the visitor's own price and than every break for fewer pieces. The list is the same whatever the cart holds.
+- The own price (`pg_offer_quantity_ceiling()`, pure) is the lowest of the list price, a member's agreed price (`pg_erp_member_prices()`, never stacks with an offer) and every running campaign on the product: an offer with no code, no rule, order scope, a product discount aimed at it, customer conditions met, no cart condition (`pg_offer_quantity_campaigns()`, read only when a break exists).
+- Why: the cart keeps the cheapest offer per line, so a break above the campaign price is never charged. Before #10195 the part listed "10 or more: each for 90.00" beside a campaign price of 80.00 (PR #10201).
 
 ## How is it checked?
-- `tests/offer_quantity_breaks_test.php` (prices, kept breaks, the reader on a fake database: group member, outside the group, guest, not running, other targets, cart conditions) and `tests/widget_lists_product_test.php` (escaped once, nothing for no break, not in the listing).
+- `tests/offer_quantity_breaks_test.php` (prices, kept breaks, the campaign ceiling, the reader on a fake database: group member, outside the group, guest, not running, other targets, cart conditions) and `tests/widget_lists_product_test.php` (escaped once, nothing for no break, not in the listing).
