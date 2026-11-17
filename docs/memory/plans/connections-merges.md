@@ -17,6 +17,8 @@ priority: 4
 
 ## Which steps are there?
 - CX1 (M, the owner's answer first) GitHub: today five places (the provider on Connections, the "GitHub repositories" card, the GitHub MCP connector's token, the application on Application Access, the developer route). Plan `github-channel-connection.md` is separate and is not merged here.
+  - Drawn: agent channel messages 9308 to 9320; the owner's question: poll 146 (message 9334), his answer: waiting.
+  - For the build if A is chosen (architect, message 9335): Application Access's mark "Made by the GitHub repositories card" is meta text under the name (`pg-text-meta`), not a pill; at 390 px a pill that long wraps.
 - CX2 (M, the owner's answer first) The AI keys: today six places (the subscription key, Claude in the channels, each assistant on Workspace agents, Voice message transcripts, Translation Engines, AI programs on Application Access).
 - CX3 (M, the owner's answer first) Mail: today four places (SMTP Settings, the Google or Microsoft application on Connections, Mailboxes, Communication with MailChimp).
 - CX4 (M, the owner's answer first) A provider's client typed in one place: Google's client in Accounts and sign-in reused by Connections, Microsoft's the other way round, Apple's in Accounts and sign-in.
