@@ -24,6 +24,6 @@ module: connections_screen
 ## What stays of the old screen?
 - A provider row opens its panel under it (`#connections-<provider>`, the old card id; an address with that hash or a refused save opens it, and every write returns to it): accounts with Check, Connect again and Disconnect, Connect an account, the application form, Google's fallback. Field ids, names and posts are unchanged.
 - The attention block on top lists every account in `reauth`: the site's with Connect again, a person's with who reconnects it.
-- CN4 turns the panel into the drawer, adds the service drawer and the other side's block (`plans/connections-hub-steps.md`).
+- One centred column (`pg-measure-single`) until CN4 turns the panel into the drawer and adds the service drawer and the other side's block as a side column; CN4 then moves `connections` back to the two-column pages of `tests/look_page_widths_test.php`.
 
 Tests: `tests/connections_screen_test.php`, `tests/connections_layout_test.php`.
