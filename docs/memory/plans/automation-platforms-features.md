@@ -5,12 +5,12 @@ description: Plan automation-platforms, features A1 to A13: the contract the app
 
 ## What do the apps rely on?
 - (A1) One list in code of the first triggers, actions and searches. A trigger: its events, the route of its record, the list that gives its newest records. An action or a search: its route. Every app is written from it.
-- (A2) Nothing the list names is renamed or removed once an app is public: a route, an event, a field, a scope. A test fails first: every event named is in the catalogue, every route in the route table under the scope the list says, every list takes the order it names.
+- (A2) Nothing the list names is renamed or removed once an app is public: a route, an event, a field, a scope. A test fails first: every event named is in the catalogue, every route in the route table under the scope the list says, every list takes the order it names, and no route is one that moves money.
 - (A3) A trigger enters when its event carries its record's id and the record has a route. Candidates: orders (placed, status changed, shipped, cancelled, return requested), customers, form submissions, products and low stock, subscriptions; with their module on, Workspace messages, tasks and table rows, ERP invoices and quotes. AU1 fixes the list and says what each candidate left out lacks.
 
 ## What changes in the API?
 - (A4) The lists the triggers read take a newest-first order as `/orders` does (`sort=placed_desc`), the cursor walking the same way. The default order stays.
-- (A5) An application may hold more than ten subscriptions. The number is asked first; proposed 50.
+- (A5) An application may hold 50 subscriptions, not ten (architect 2026-11-17, a technical bound).
 - (A6) Every event has its payload as data beside its catalogue line: the fields of `data` with type and meaning, and one sample. A test compares each sample's keys with the keys the announcing code writes.
 - (A7) `GET /webhooks/events`: every event with its description, its module, its fields and its sample, for an app's own event chooser. `GET /webhooks` keeps its list of names.
 - (A8) `POST /webhooks/{id}/test` takes `event`, one of the subscription's own: that event's sample is queued and sent like a real one, with the header `X-Pinegrap-Test: 1`. Without `event` it is `webhook.test` as today.

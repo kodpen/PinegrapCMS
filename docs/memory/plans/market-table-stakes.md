@@ -6,7 +6,7 @@ priority: 4
 
 ## What is asked?
 - Owner (2026-11-17, agent channel message 7359): "entegrasyonu kolay ama getirisi büyük entegrasyonları kontrol edelim."
-- Owner (2026-11-17, typed to the architect, message 7562): "entegrasyonlar ile ilgili olumlu düşünüyorum ancak 2026.11.0 yayınlanmadan önce bir test demosu açamayabilirim, bağdaştırıcı hazırlıklarımızı yaparız ancak 2026.11.0 yayınlanması sonrasına bırakırız. bugün engel olmayanları 4/10 öncelikle onaylarız."
+- Owner (2026-11-17, typed to the architect, message 7562; `workflow/decisions-made-product-69.md`): "… 2026.11.0 yayınlanmadan önce bir test demosu açamayabilirim … bugün engel olmayanları 4/10 öncelikle onaylarız."
 - The study: what Turkish platforms list and the product lacks (`integrations-census-others.md`), and the services where one integration brings many (`integrations-census-aggregators.md`).
 
 ## What is there today?
@@ -16,6 +16,7 @@ priority: 4
 ## Which steps are there?
 - TS1 (M) A fourth feed format, `google_xml`: Google's product data as RSS 2.0, by Google's public specification, from the same items and rules as `google_tsv`.
   - Existing files: `includes/fn/product_feeds.php` (a writer that streams like the others, `commerce/product-feed-streaming.md`), the Product Feeds card, `feed.php`, `GET /store/feeds` (a fourth row), `tests/product_feeds_test.php`.
+  - The writer escapes through one XML helper; its test feeds it what breaks XML in a product's name and description: `&`, `<`, control bytes, `]]>`.
   - State in `config.product_feeds` as the other formats: no schema change. The card's new switch is the architect's look.
   - It needs no account. A third party states that Cimri reads this format from an address; whether Cimri and Akakçe take it as it is, is TS2's.
 

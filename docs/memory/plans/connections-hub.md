@@ -6,7 +6,7 @@ priority: 4
 
 ## What is asked?
 - Owner (2026-11-17, agent channel message 7359): "claude ai de bağdaştırıcılar gibi seçenekler var bunlar oldukça güzel ama şu anda github vs. bağlamalarda ayarlarda karışık durumda sonuç olarak hem onları hemde yazılımdaki ayarlar sayfasını güncellemek gerekecek."
-- Owner (2026-11-17, typed to the architect, message 7562): "entegrasyonlar ile ilgili olumlu düşünüyorum … bugün engel olmayanları 4/10 öncelikle onaylarız."
+- Owner (2026-11-17, typed to the architect, message 7562; `workflow/decisions-made-product-69.md`): "entegrasyonlar ile ilgili olumlu düşünüyorum … bugün engel olmayanları 4/10 öncelikle onaylarız."
 - The study behind it: `integrations-census.md`, the screens of today in `integrations-census-screens.md`, how other products lay connections out in `integrations-census-settings.md`.
 
 ## What is wrong today?

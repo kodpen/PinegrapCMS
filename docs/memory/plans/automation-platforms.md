@@ -6,8 +6,8 @@ priority: 4
 
 ## What is asked?
 - Owner (2026-11-17, agent channel message 7359): "entegrasyonu kolay ama getirisi büyük entegrasyonları kontrol edelim. bir yerde 2000+ entegrasyon diyordu bunun gibi bir iddia ileride işimize yarıyabilir."
-- Owner (2026-11-17, typed to the architect, message 7562): "entegrasyonlar ile ilgili olumlu düşünüyorum ancak 2026.11.0 yayınlanmadan önce bir test demosu açamayabilirim, bağdaştırıcı hazırlıklarımızı yaparız ancak 2026.11.0 yayınlanması sonrasına bırakırız. bugün engel olmayanları 4/10 öncelikle onaylarız."
-- The study behind it: `integrations-census.md`.
+- Owner (2026-11-17, typed to the architect, message 7562; `workflow/decisions-made-product-69.md`): "entegrasyonlar ile ilgili olumlu düşünüyorum ancak 2026.11.0 yayınlanmadan önce bir test demosu açamayabilirim, bağdaştırıcı hazırlıklarımızı yaparız ancak 2026.11.0 yayınlanması sonrasına bırakırız. bugün engel olmayanları 4/10 öncelikle onaylarız."
+- The study behind it: `integrations-census.md`; what goes now and what waits: `integrations-census-order.md`.
 
 ## What is the idea?
 - One published app on an automation platform reaches that platform's whole catalogue: Zapier states 9,000+ apps, Make 3,500+, n8n and Pabbly Connect 2,000+ (`integrations-census-platforms.md`).
@@ -21,16 +21,16 @@ priority: 4
 - The panel lists, stops and removes subscriptions and cannot make one; "New application" offers 60 scopes and no starting point.
 
 ## What is built, and by which steps?
-- The features: `automation-platforms-features.md`. AU1 to AU10 and their order: `automation-platforms-steps.md`. What no step may lose and what a PR carries: `automation-platforms-rules.md`.
+- The features: `automation-platforms-features.md`. AU1 to AU10 and their order: `automation-platforms-steps.md` and `automation-platforms-steps-2.md`. What no step may lose and what a PR carries: `automation-platforms-rules.md`.
 - Claim as `[plan:automation-platforms] <step> — <topic>`.
 
 ## What waits for the release of 2026.11.0?
-- The apps: the n8n node (AX1), the Zapier app and its public listing (AX2), the Make app (AX3), the Pabbly Connect app (AX4). Each with what it needs of the owner (his repositories, developer accounts, the demo site): `automation-platforms-steps-2.md`.
+- The apps: the n8n node (AX1), the Zapier app and its public listing (AX2), the Make app (AX3), the Pabbly Connect app (AX4). Each with what it needs of the owner (his repositories, developer accounts, the demo site): `automation-platforms-steps-3.md`.
 - Nothing of AU1 to AU10 needs an account, a demo site or another repository.
 
 ## Whose look?
 - Every step with a screen or a page: the architect's (agent channel message 2645).
-- The owner's: AU8's sheet, one short question before AU9: a new form and two new controls on a screen he uses. And AU3's number, through the architect.
+- The owner's: AU8's sheet, one short question before AU9: a new form and two new controls on a screen he uses.
 
 ## What is left out?
 - OAuth sign-in for the apps: possible on paper for Zapier and Make, but it brings no instant trigger (`api/oauth-client-automation-platforms.md`).
