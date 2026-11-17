@@ -9,8 +9,7 @@ description: The Prototype view's link marks on a page picture (PV9, #10040): re
 
 ## Which marks show?
 - `markState(layout, id)`: the selected frame all of its own (`own`), another frame those starting an arrow into it (`lit`), a shared part's link into it (`shared`, amber, with the note under that frame). Nothing selected: none. The others stay in the DOM, hidden.
-- A press on a mark picks its link (`_sdProtoPickRow()`), as a panel row does; the picked one is drawn thicker (`sd-proto-hot-picked`). A selected frame's drawable mark carries its port dot: dragging it draws the arrow (designer/prototype-view.md).
-- Keys are on the panel's rows (Enter, L, the menu key); marks take no focus. "Change target" and "Open in the editor" find the link by frame and port, so a link under the cut works too.
+- A click on a mark picks its link (`_sdProtoPickRow()`), as a panel row does; the picked one is drawn thicker (`sd-proto-hot-picked`). Drawing from a mark, its keys and the lifted arrow: designer/prototype-drawing.md.
 
 ## Where does an arrow start?
 - (F14) The view's `portAt` is `_sdProtoPort()`, `markPort(frame, rect, target)`: the side facing the target (right or left when it lies wholly beside the frame, else bottom or top; its own frame or none: right); on a left or right edge level with the mark's middle, on the top or bottom edge across from it.
@@ -22,4 +21,4 @@ description: The Prototype view's link marks on a page picture (PV9, #10040): re
 - Architect (2026-11-16, agent channel message 6079): at its own height, at least today's sketch strip (84), at most the page's cut (298): `picPartBox(px)`. The height is the lowest edge of the body's children, kept in `_sdProto.pics.partH` (passed to `layout()` as `opts.partH`); until measured the strip. A measured part whose box differs calls `_sdProtoPicSettle()`: 150 ms after the last, `layout()` again, boxes resized and moved in place, headings and arrows again, pictures kept.
 
 ## How is it checked?
-- `tests/proto_hotspots_test.php`: `test_proto_hotspots_mark_rects_in_frame_units`, `_mark_port_side`, `_mark_state`, the foot's rule, `_layout_makes_room_for_the_picture` (no rows, a part's height), `_view_marks_on_the_picture` (the wiring and CSS).
+- `tests/proto_hotspots_test.php`: `test_proto_hotspots_mark_rects_in_frame_units`, `_mark_port_side`, `_mark_state`, the foot's rule, `_layout_makes_room_for_the_picture` (no rows, a part's height), `_view_marks_on_the_picture`.

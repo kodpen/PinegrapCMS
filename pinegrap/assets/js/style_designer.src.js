@@ -13603,6 +13603,23 @@ const StyleDesigner = (function () {
               __booking_tone: 'secondary', __booking_details: '01.09.2026 14:00 – 15:30', __booking_manage_url: '',
               __booking_manage_label: '', __booking_ics_url: '' }
         ],
+        // A paused subscription beside the active one; a used store credit
+        // card beside the open one, and a second order that spent it.
+        'account.subscriptions': [
+            { __subscription_id: '7', __subscription_product: _sdT('Coffee of the month'), __subscription_amount: '89,00 TRY',
+              __subscription_status: 'paused', __subscription_status_label: _sdT('Paused'), __subscription_tone: 'secondary',
+              __subscription_next: _sdT('Next charge:') + ' 01.12.2026', __subscription_price: '', __subscription_card: '',
+              __subscription_event: _sdT('Last event:') + ' ' + _sdT('Paused') + ' (02.11.2026)', __subscription_confirm_url: '',
+              __subscription_has_actions: '1' }
+        ],
+        'account.store_credit': [
+            { __credit_id: '5', __credit_kind_label: _sdT('Refund'), __credit_reason: '', __credit_state: 'used',
+              __credit_state_label: _sdT('Used'), __credit_tone: 'secondary', __credit_balance: '₺0,00', __credit_amount: '₺40,00',
+              __credit_last_day: '', __credit_has_uses: '' }
+        ],
+        'account.store_credit_uses': [
+            { __credit_use_order_no: '12301', __credit_use_order_url: '/order?id=1038', __credit_use_date: '14.10.2026', __credit_use_amount: '₺15,00' }
+        ],
         // The second line of the sample order (_sdOrderSampleLineTwo()): the
         // mug, no product form.
         'checkout.lines': [
@@ -14594,6 +14611,10 @@ const StyleDesigner = (function () {
                     innerEl.appendChild(typeof piece === 'number' ? buildNodeEl(node.children[piece - 1])
                         : doc.createTextNode(piece));
                 });
+                // A mark glued to its value ("/ ₺50,00", "#1042") keeps one
+                // line: the canvas's condition chips narrow a column the site
+                // leaves wide. The site's markup is not touched.
+                if (_sdSentenceIsMark(node.props.text)) innerEl.style.whiteSpace = 'nowrap';
             } else if (node.children && node.children.length > 0) {
                 // A stepped form's progress and buttons (_sdFormStepSamples()).
                 var _stepPlan = _sdFormStepPlan(node);
@@ -15917,6 +15938,10 @@ const StyleDesigner = (function () {
             return '<div class="small text-muted mt-1">' + esc(_sdT('Monogram')) + ': A.M. · ' +
                    esc(_sdT('Thread colour')) + ': ' + esc(_sdT('Navy')) + '</div>';
         },
+        // pg_subscription_customer_actions_html(): the row's buttons.
+        '__subscription_actions_html': function () {
+            return _sdAccountSubscriptionActionsHtml((_sdListSample && _sdListSample.__subscription_status) || 'active');
+        },
         // pg_return_actions_html(): the parcel's tracking number and the
         // customer's two moves.
         '__return_actions_html': function () {
@@ -16604,6 +16629,7 @@ const StyleDesigner = (function () {
             __username: 'alex', username: 'alex', account_id: '3',
             __email: email, __email_address: email, email_address: email, __user_email: email,
             __user_name: full, __user_first_name: bill[0], __user_initials: initials, __display_name: full,
+            __store_credit_balance: '₺35,00',
             full_name: full, first_name: bill[0], last_name: bill[1],
             __user_badge: _sdT('Gold member'), member_id: 'M-1042', member: '1',
             form_item_view: 'contact-form-abc123xyz',
@@ -17146,6 +17172,13 @@ const StyleDesigner = (function () {
     // (pg_sentence_layout()).
     function _sdIsSentence(node) {
         return !!(node && node.type === 'semantic' && node.props && node.props._sentence);
+    }
+
+    // Whether a sentence's words, its values left out, are a mark of at
+    // most three characters (a slash, a number sign, a minus).
+    function _sdSentenceIsMark(text) {
+        var words = String(text == null ? '' : text).replace(/\{var:[1-9][0-9]?\}/g, '').trim();
+        return words !== '' && words.length <= 3;
     }
 
     // The layout of a sentence with values (pg_sentence_layout()): words
@@ -25244,6 +25277,7 @@ const StyleDesigner = (function () {
                 { label: _sdT('Attributes of the product'), type: 'loop_area', icon: 'bi-card-list', extra: { listSource: 'product.attributes' } },
                 { label: _sdT('Products bought together'), type: 'loop_area', icon: 'bi-bag', extra: { listSource: 'product.related' } },
                 { label: _sdT('Contents of the bundle'), type: 'loop_area', icon: 'bi-box-seam', extra: { listSource: 'product.bundle_items' } },
+                { label: _sdT('Quantity prices'), type: 'loop_area', icon: 'bi-tags', extra: { listSource: 'product.quantity_prices' } },
                 { label: _sdT('Crumbs of the catalog path'), type: 'loop_area', icon: 'bi-signpost-split', extra: { listSource: 'catalog.crumbs' } },
                 { label: _sdT('Active attribute filters'), type: 'loop_area', icon: 'bi-funnel', extra: { listSource: 'catalog.active_filters' } },
                 { label: _sdT('Month grid'), type: 'loop_area', icon: 'bi-calendar3', extra: { listSource: 'calendar.weeks' } },
@@ -25257,6 +25291,9 @@ const StyleDesigner = (function () {
                 { label: _sdT('Orders of the member'), type: 'loop_area', icon: 'bi-receipt', extra: { listSource: 'account.orders' } },
                 { label: _sdT('Upcoming bookings of the member'), type: 'loop_area', icon: 'bi-calendar-check', extra: { listSource: 'account.upcoming_bookings' } },
                 { label: _sdT('Past bookings of the member'), type: 'loop_area', icon: 'bi-calendar', extra: { listSource: 'account.past_bookings' } },
+                { label: _sdT('Subscriptions of the member'), type: 'loop_area', icon: 'bi-arrow-repeat', extra: { listSource: 'account.subscriptions' } },
+                { label: _sdT('Store credit of the member'), type: 'loop_area', icon: 'bi-wallet2', extra: { listSource: 'account.store_credit' } },
+                { label: _sdT('Orders that spent the card'), type: 'loop_area', icon: 'bi-receipt', extra: { listSource: 'account.store_credit_uses' } },
                 { label: _sdT('Products in the cart'), type: 'loop_area', icon: 'bi-cart', extra: { listSource: 'cart.items' } },
                 { label: _sdT('Offers applied to the order'), type: 'loop_area', icon: 'bi-tag', extra: { listSource: 'checkout.offers' } },
                 { label: _sdT('Offers to suggest'), type: 'loop_area', icon: 'bi-megaphone', extra: { listSource: 'checkout.suggestions' } },
@@ -30962,6 +30999,31 @@ const StyleDesigner = (function () {
         return { node: node, nodes: nodes.slice() };
     }
 
+    // The nodes a drag of rows in the overview moves, from the picked ones
+    // (the dragged row, or the multi-selection it belongs to) and the row it
+    // lands on. A picked node inside another picked node travels inside it
+    // and is not moved on its own: taking it out and putting both in would
+    // leave the outer one in the page twice. A node holding the target
+    // cannot move next to or into its own descendant. The target, the root
+    // and repeats are left out; the order of the pick is kept.
+    function _sdTreeMoveSet(picked, target) {
+        var holds = function (anc, n) {
+            var kids = (anc && anc.children) || [];
+            for (var i = 0; i < kids.length; i++) {
+                if (kids[i] === n || holds(kids[i], n)) return true;
+            }
+            return false;
+        };
+        var list = [];
+        (picked || []).forEach(function (n) {
+            if (n && n !== target && n.type !== 'root' && list.indexOf(n) === -1) list.push(n);
+        });
+        return list.filter(function (n) {
+            if (target && holds(n, target)) return false;
+            return !list.some(function (m) { return m !== n && holds(m, n); });
+        });
+    }
+
     // Selects the nodes a tree drag moved and redraws. The moved node may be
     // the one already selected, so the overview is told it is new: the
     // branches over its new place open and its row comes into view.
@@ -31544,9 +31606,9 @@ const StyleDesigner = (function () {
             // throughout so we never confuse cross-tree id collisions with
             // structural relationships.
             var isMultiDrag = treeDragNode._multiDrag && selectedNodes.length > 1;
-            var nodesToMove = isMultiDrag
-                ? selectedNodes.filter(function(n) { return n !== node && n.type !== 'root' && !isDescendant(node, n); })
-                : [treeDragNode];
+            var nodesToMove = _sdTreeMoveSet(isMultiDrag
+                ? selectedNodes.filter(function(n) { return !isDescendant(node, n); })
+                : [treeDragNode], node);
             if (!nodesToMove.length) return;
 
             // Every moved node must be one canDrop() lets into where it
@@ -31631,7 +31693,6 @@ const StyleDesigner = (function () {
                 if (isDescendant(treeDragNode, node)) return;
                 // Remove all first (may shift indices)
                 nodesToMove.forEach(function(n) {
-                    if (isDescendant(n, treeDragNode) && n !== treeDragNode) return;
                     var srcInfo = _findParentAnywhere(n);
                     if (srcInfo) {
                         srcInfo.parent.children = srcInfo.parent.children.filter(function(c) { return c !== n; });
@@ -34354,6 +34415,7 @@ const StyleDesigner = (function () {
             'product.attributes': _sdT('One row for every attribute the product has a value for, such as its colour or size. Bind the row\'s elements to "Attribute" and "Attribute value" in Bind Data.'),
             'product.related':    _sdT('One row for every product ordered together with this one, else for the products of its groups, at most 12. With this list on the page the automatic "Frequently bought together" block is not added.'),
             'product.bundle_items': _sdT('One row for every product the bundle holds, in its order; nothing for a product that is not a bundle. Bind the row\'s elements to "Product name", "Quantity in the bundle" or "Product address" in Bind Data.'),
+            'product.quantity_prices': _sdT('One row for every quantity price of the product, such as "10 or more: each for 9.00", read from the running offers that hold for the visitor; nothing when there is none. Bind the row\'s elements to "Quantity and price" in Bind Data.'),
             'catalog.crumbs':     _sdT('One row for every crumb of the path to what the page shows: the catalog, its groups, then the group or product itself. A condition on "Kind of crumb" draws a link, words, or where the visitor is.'),
             'catalog.active_filters': _sdT('One row for every attribute filter the visitor applied, such as "Colour: Red". Bind a link to "Address without the filter": it opens the listing without that filter. With this list on the page the automatic chip row above the products is not added.'),
             'calendar.weekdays':  _sdT('One row for every day of the week, in the widget\'s week order: the heads of a month grid. Bind the row\'s elements to "Day name" or "Short day name" in Bind Data.'),
@@ -34374,6 +34436,9 @@ const StyleDesigner = (function () {
             'account.orders':     _sdT('One row for every order of the signed-in member, newest first, at most 50: the orders the order history shows.'),
             'account.upcoming_bookings': _sdT('One row for every booking of the signed-in member still to come, soonest first, with its manage page.'),
             'account.past_bookings': _sdT('One row for every past or cancelled booking of the signed-in member, latest first.'),
+            'account.subscriptions': _sdT('One row for every subscription of the signed-in member, newest first, with its pause, resume, cancel and card update forms.'),
+            'account.store_credit': _sdT('One row for every store credit card of the signed-in member, newest first, at most 50.'),
+            'account.store_credit_uses': _sdT('One row for every order that spent the store credit card the row stands in, newest first.'),
             'cart.items':         _sdT('One row for every product in the visitor\'s cart, lines saved for later left out: a mini cart in the cart link, or a summary beside the cart\'s own rows.'),
             'cart.item_gift_cards': _sdT('One row for every gift card of the cart line the row stands in, one per unit: put the recipient controls in it; the cart gives them their names and values, and the recipient\'s e-mail comes back when it is deleted.'),
             'cart.item_forms':    _sdT('One row for every product form of the cart line the row stands in: one per unit when the product asks for a form per quantity. Put a list of the form\'s fields inside the row.'),
@@ -40095,7 +40160,7 @@ const StyleDesigner = (function () {
         '__comment_message_html', '__comment_seller_reply_html',
         '__field_value_html', '__field_info_html', '__gift_card_message_html',
         '__return_customer_note_html', '__return_decision_note_html', '__return_actions_html',
-        '__schedule_period_options_html', '__field_options_html', '__return_reason_options_html',
+        '__subscription_actions_html', '__schedule_period_options_html', '__field_options_html', '__return_reason_options_html',
         '__ship_to_cost_html', '__ship_to_form_html', '__line_title_html', '__line_price_html', '__line_amount_html',
         '__line_stock_html', '__line_forms_html',
         '__ad_content_html', '__ad_caption_html'
@@ -41008,6 +41073,7 @@ const StyleDesigner = (function () {
             ['email_address',            _sdT('Email')],
             ['full_name',                _sdT('Full name (first + last)')],
             ['__display_name',           _sdT('Name to greet by (full name, else the user name)')],
+            ['__store_credit_balance',   _sdT('Store credit balance')],
             ['first_name',               _sdT('First Name')],
             ['last_name',                _sdT('Last Name')],
             ['registered_date_and_time', _sdT('Registration Date & Time'), 'date'],
@@ -42604,6 +42670,7 @@ const StyleDesigner = (function () {
             out.push(['subscriptions',        _sdT('Subscriptions (shop sites; hidden when there are none)')]);
             out.push(['bookings',             _sdT('My bookings (hidden when there are none)')]);
             out.push(['store_credit',         _sdT('Store credit and points conversion (shop sites; hidden when there is none)')]);
+            out.push(['store_credit_convert', _sdT('Reward points conversion form (hidden when the member cannot convert)')]);
         } else if (type === 'change_password' || type === 'set_password') {
             out.push(['password_rules',       _sdT('Strong password rules (hidden when the site setting is off)')]);
         } else if (type === 'calendar_event_view') {
@@ -42663,7 +42730,7 @@ const StyleDesigner = (function () {
             return '<button type="button" class="btn btn-sm btn-outline theme-primary w-100 mt-2 text-wrap" data-sd-op-open>' +
                     '<span class="bi bi-magic me-1"></span>' + esc(_sdT('Convert to design elements')) + '</button>' +
                 '<div style="font-size:.66rem;color:#888;margin-top:3px">' +
-                    esc(_sdT('Puts what the site prints here as elements you design, a list repeating its row for each of the member\'s orders or bookings. The site prints the same until you change them.')) +
+                    esc(_sdT('Puts what the site prints here as elements you design, a list repeating its row for each of the member\'s orders, bookings, subscriptions or store credit cards. The site prints the same until you change them.')) +
                 '</div>';
         }
         if (!_sdSectionOpensAsList(kind, section)) return '';
@@ -44284,6 +44351,78 @@ const StyleDesigner = (function () {
             });
             return part;
         }
+        var tones = function (cls, token, toneToken, names) {
+            return names.map(function (t) {
+                return bound('span', 'badge text-bg-' + t + ' ' + cls, _sdT('Status'), token, _sdPartWhen(toneToken, 'eq', t));
+            });
+        };
+        if (section === 'subscriptions') {
+            var sub = _sdPartEl('div', 'list-group-item', _sdT('Subscription'), {}, [
+                _sdPartEl('div', 'd-flex flex-wrap justify-content-between align-items-center gap-2', _sdT('Heading'), {}, [
+                    bound('span', 'fw-semibold', _sdT('Product'), '__subscription_product'),
+                    bound('span', '', _sdT('Amount'), '__subscription_amount')
+                ]),
+                _sdPartEl('div', 'small text-body-secondary', _sdT('Details'), {},
+                    tones('me-2', '__subscription_status_label', '__subscription_tone', ['success', 'warning', 'secondary']).concat([
+                        bound('span', 'me-2', _sdT('Next charge or the last day'), '__subscription_next', _sdPartWhen('__subscription_next', 'not_empty')),
+                        bound('span', 'me-2', _sdT('Price change notice'), '__subscription_price', _sdPartWhen('__subscription_price', 'not_empty')),
+                        bound('span', 'me-2', _sdT('Card'), '__subscription_card', _sdPartWhen('__subscription_card', 'not_empty')),
+                        bound('span', '', _sdT('Last event'), '__subscription_event', _sdPartWhen('__subscription_event', 'not_empty'))
+                    ])),
+                _sdPartEl('div', 'mt-2', _sdT('Confirm the payment'), _sdPartWhen('__subscription_confirm_url', 'not_empty'), [
+                    _sdPartEl('a', 'btn btn-sm btn-warning', _sdT('Confirm the payment'), { text: _sdT('Confirm the payment'), href: '#',
+                        _bindings: { href: '__subscription_confirm_url' }, _attrs: [{ name: 'rel', value: 'noopener noreferrer' }] })
+                ]),
+                // The forms are the section's own: they post with the form token.
+                bound('div', 'd-flex flex-wrap gap-2 mt-2', _sdT('Pause, resume, cancel and card update forms'), '__subscription_actions_html',
+                    _sdPartWhen('__subscription_has_actions', 'not_empty'))
+            ]);
+            return [_sdPartEl('div', 'list-group pg-sw-subscriptions', _sdT('Subscriptions of the member'),
+                { _bindings: { eo_visible_if: 'has_subscriptions' } }, [list('account.subscriptions', [sub])])];
+        }
+        if (section === 'store_credit') {
+            var sentence = function (tag, cls, name, text, token, valueCls, props) {
+                var p = { text: text, _sentence: true };
+                Object.keys(props || {}).forEach(function (k) { p[k] = props[k]; });
+                return _sdPartEl(tag, cls, name, p, [_sdPartEl('span', valueCls || '', _sdT('Value'), { _bindings: { text: token } })]);
+            };
+            var linked = _sdPartWhen('__credit_use_order_url', 'not_empty');
+            var use = _sdPartEl('li', '', _sdT('Order'), {}, [
+                _sdPartEl('a', '', _sdT('Order number'), { text: '#{var:1}', _sentence: true, href: '#',
+                    _bindings: { href: '__credit_use_order_url', show_if: '__credit_use_order_url' }, _bindParams: linked._bindParams }, [
+                    _sdPartEl('span', '', _sdT('Value'), { _bindings: { text: '__credit_use_order_no' } })
+                ]),
+                sentence('span', '', _sdT('Order number'), '#{var:1}', '__credit_use_order_no', '', _sdPartWhen('__credit_use_order_url', 'empty')),
+                // ms-1: the canvas draws no white space between inline elements.
+                bound('span', 'text-body-secondary ms-1', _sdT('Order date'), '__credit_use_date'),
+                sentence('span', 'ms-1', _sdT('Amount spent'), '−{var:1}', '__credit_use_amount')
+            ]);
+            var card = _sdPartEl('div', 'list-group-item', _sdT('Card'), {}, [
+                _sdPartEl('div', 'd-flex justify-content-between align-items-start gap-2', _sdT('Heading'), {}, [
+                    _sdPartEl('span', '', _sdT('Source'), {}, [bound('span', 'fw-semibold', _sdT('Source'), '__credit_kind_label')]
+                        .concat(tones('ms-1', '__credit_state_label', '__credit_tone', ['success', 'secondary', 'warning']))
+                        .concat([bound('span', 'd-block small text-body-secondary text-break', _sdT('Reason'), '__credit_reason',
+                            _sdPartWhen('__credit_reason', 'not_empty'))])),
+                    _sdPartEl('span', 'text-end', _sdT('Balance'), {}, [
+                        bound('span', 'fw-semibold', _sdT('Balance'), '__credit_balance'),
+                        sentence('span', 'd-block small text-body-secondary', _sdT('Amount'), _sdT('of {var:1}'), '__credit_amount')
+                    ])
+                ]),
+                sentence('div', 'small text-body-secondary', _sdT('Last day'), _sdT('Last day: {var:1}'), '__credit_last_day', '',
+                    _sdPartWhen('__credit_last_day', 'not_empty')),
+                _sdPartEl('ul', 'list-unstyled small mb-0 mt-1', _sdT('Orders that spent the card'), _sdPartWhen('__credit_has_uses', 'not_empty'), [
+                    list('account.store_credit_uses', [use])
+                ])
+            ]);
+            return [_sdPartEl('div', 'pg-sw-store-credit', _sdT('Store credit'), { _bindings: { eo_visible_if: 'has_store_credit' } }, [
+                sentence('p', 'mb-3', _sdT('Balance'), _sdT('Balance') + ': {var:1}', '__store_credit_balance', 'fw-semibold'),
+                // The points conversion form is the section's own: it posts with the form token.
+                _sdPartEl('div', '', _sdT('Convert reward points'), { _bindings: { section: 'store_credit_convert' } }),
+                _sdPartEl('div', 'list-group', _sdT('Store credit of the member'), { _bindings: { eo_visible_if: 'has_store_credit_cards' } }, [
+                    list('account.store_credit', [card])
+                ])
+            ])];
+        }
         return [];
     }
 
@@ -44350,9 +44489,109 @@ const StyleDesigner = (function () {
         return html;
     }
 
+    // pg_subscription_customer_actions_html() for a row of `status`, without
+    // the hidden fields: what the canvas shows of the forms.
+    /* @pg-site-output */
+    function _sdAccountSubscriptionActionsHtml(status) {
+        var actions = { active: ['pause', 'cancel', 'update_card'], past_due: ['cancel', 'update_card'], paused: ['resume', 'cancel', 'update_card'] }[status] || [];
+        var labels = { pause: _sdT('Pause'), resume: _sdT('Resume'), update_card: _sdT('Update card') };
+        return actions.map(function (a) {
+            if (a === 'cancel') {
+                return '<details class="pg-sw-subscription-cancel"><summary class="btn btn-sm btn-outline-danger">' + esc(_sdT('Cancel subscription')) + '</summary>'
+                    + '<form method="post" action="#" class="mt-2"><p class="small mb-2">' + esc(status === 'active'
+                        ? _sdT('No further charges will be made. The subscription runs until the end of the period already paid.')
+                        : _sdT('No further charges will be made and the subscription ends.')) + '</p>'
+                    + '<button type="submit" class="btn btn-sm btn-danger">' + esc(_sdT('Yes, cancel')) + '</button></form></details>';
+            }
+            return '<form method="post" action="#"><button type="submit" class="btn btn-sm btn-outline-secondary">' + esc(labels[a]) + '</button></form>';
+        }).join('');
+    }
+
+    // pg_subscription_customer_view_html(); view rows in
+    // pg_subscription_customer_view_rows()' shape.
+    /* @pg-site-output */
+    function _sdAccountSubscriptionsHtml(view) {
+        if (!view || !view.length) return '';
+        return '<div class="list-group pg-sw-subscriptions">' + view.map(function (r) {
+            var html = '<div class="list-group-item">'
+                + '<div class="d-flex flex-wrap justify-content-between align-items-center gap-2">'
+                + '<span class="fw-semibold">' + esc(r.product) + '</span>'
+                + '<span>' + esc(r.amount) + '</span>'
+                + '</div>'
+                + '<div class="small text-body-secondary">'
+                + '<span class="badge text-bg-' + esc(r.tone) + ' me-2">' + esc(r.status_label) + '</span>';
+            ['next', 'price', 'card'].forEach(function (k) {
+                if (r[k] !== '') html += '<span class="me-2">' + esc(r[k]) + '</span>';
+            });
+            if (r.event !== '') html += '<span>' + esc(r.event) + '</span>';
+            html += '</div>';
+            if (r.confirm_url !== '') {
+                html += '<div class="mt-2"><a href="' + esc(r.confirm_url) + '" class="btn btn-sm btn-warning" rel="noopener noreferrer">'
+                    + esc(_sdT('Confirm the payment')) + '</a></div>';
+            }
+            if (r.actions_html !== '') html += '<div class="d-flex flex-wrap gap-2 mt-2">' + r.actions_html + '</div>';
+            return html + '</div>';
+        }).join('') + '</div>';
+    }
+
+    // pg_credit_account_cards_html(); cards in pg_credit_account_view()'s
+    // shape (kind_label, state, state_label, reason, balance_info,
+    // amount_info, last_day_info, uses: order_number, view_url, date_info,
+    // amount_info).
+    /* @pg-site-output */
+    function _sdAccountCreditCardsHtml(cards) {
+        if (!cards || !cards.length) return '';
+        var tones = { open: 'success', used: 'secondary', expired: 'warning' };
+        return '<div class="list-group">' + cards.map(function (c) {
+            var html = '<div class="list-group-item">'
+                + '<div class="d-flex justify-content-between align-items-start gap-2">'
+                + '<span><span class="fw-semibold">' + esc(c.kind_label) + '</span>'
+                + ' <span class="badge text-bg-' + (tones[c.state] || 'secondary') + ' ms-1">' + esc(c.state_label) + '</span>'
+                + (c.reason !== '' ? '<span class="d-block small text-body-secondary text-break">' + esc(c.reason) + '</span>' : '')
+                + '</span>'
+                + '<span class="text-end"><span class="fw-semibold">' + esc(c.balance_info) + '</span>'
+                + '<span class="d-block small text-body-secondary">' + esc(_sdT('of {var:1}').replace('{var:1}', c.amount_info)) + '</span></span>'
+                + '</div>'
+                + (c.last_day_info !== '' ? '<div class="small text-body-secondary">' + esc(_sdT('Last day: {var:1}').replace('{var:1}', c.last_day_info)) + '</div>' : '');
+            if (c.uses && c.uses.length) {
+                html += '<ul class="list-unstyled small mb-0 mt-1">' + c.uses.map(function (u) {
+                    var number = '#' + esc(u.order_number);
+                    return '<li>' + (u.view_url !== '' ? '<a href="' + esc(u.view_url) + '">' + number + '</a>' : number)
+                        + ' <span class="text-body-secondary">' + esc(u.date_info) + '</span> −' + esc(u.amount_info) + '</li>';
+                }).join('') + '</ul>';
+            }
+            return html + '</div>';
+        }).join('') + '</div>';
+    }
+
+    // pg_credit_account_convert_html() for `points` worth `worth`, without
+    // the form token and the page to come back to.
+    /* @pg-site-output */
+    function _sdAccountCreditConvertHtml(points, worth) {
+        return '<form action="#" method="post" class="mb-3">'
+            + '<label for="pg_sw_reward_points_convert" class="form-label">' + esc(_sdT('Reward points: {var:1}').replace('{var:1}', points)) + '</label>'
+            + '<div class="input-group" style="max-width: 24rem">'
+            + '<input type="number" id="pg_sw_reward_points_convert" name="points" class="form-control" min="1" max="' + esc(points) + '" step="1" value="' + esc(points) + '" required>'
+            + '<button type="submit" class="btn btn-outline-primary">' + esc(_sdT('Convert to store credit')) + '</button>'
+            + '</div>'
+            + '<div class="form-text">' + esc(_sdT('All your points are worth {var:1}.').replace('{var:1}', worth)) + '</div>'
+            + '</form>';
+    }
+
+    // pg_credit_account_section_html(): the balance, the conversion form
+    // (convertHtml, '' for none) and the cards.
+    /* @pg-site-output */
+    function _sdAccountStoreCreditHtml(balance, convertHtml, cards) {
+        return '<div class="pg-sw-store-credit">'
+            + '<p class="mb-3">' + esc(_sdT('Balance')) + ': <span class="fw-semibold">' + esc(balance) + '</span></p>'
+            + convertHtml + _sdAccountCreditCardsHtml(cards) + '</div>';
+    }
+
     // What a my account page prints in its order history or bookings for a
     // sample member: the sample order and a cancelled one, two upcoming
-    // bookings and a past one (the booking lists' sample rows).
+    // bookings and a past one (the booking lists' sample rows); an active
+    // and a paused subscription; an open store credit card spent on two
+    // orders and a used one.
     /* @pg-site-output */
     function _sdAccountSectionHtml(section) {
         if (section === 'order_history') {
@@ -44373,6 +44612,25 @@ const StyleDesigner = (function () {
                 past: [view(_SD_LIST_CARD_SAMPLES['account.past_bookings'])].concat(SD_LIST_SAMPLE_ROWS['account.past_bookings'].map(view))
             });
         }
+        if (section === 'subscriptions') {
+            return _sdAccountSubscriptionsHtml([_SD_LIST_ROW_PREVIEWS].concat(SD_LIST_SAMPLE_ROWS['account.subscriptions']).map(function (r) {
+                return { product: r.__subscription_product, amount: r.__subscription_amount, tone: r.__subscription_tone,
+                    status_label: r.__subscription_status_label, next: r.__subscription_next, price: r.__subscription_price,
+                    card: r.__subscription_card, event: r.__subscription_event, confirm_url: r.__subscription_confirm_url,
+                    actions_html: _sdAccountSubscriptionActionsHtml(r.__subscription_status) };
+            }));
+        }
+        if (section === 'store_credit_convert') return _sdAccountCreditConvertHtml('120', '₺12,00');
+        if (section === 'store_credit') {
+            var use = function (u) {
+                return { order_number: u.__credit_use_order_no, view_url: u.__credit_use_order_url, date_info: u.__credit_use_date, amount_info: u.__credit_use_amount };
+            };
+            var uses = [use(_SD_LIST_ROW_PREVIEWS)].concat(SD_LIST_SAMPLE_ROWS['account.store_credit_uses'].map(use));
+            return _sdAccountStoreCreditHtml('₺35,00', _sdAccountCreditConvertHtml('120', '₺12,00'), [_SD_LIST_ROW_PREVIEWS].concat(SD_LIST_SAMPLE_ROWS['account.store_credit']).map(function (c, i) {
+                return { kind_label: c.__credit_kind_label, state: c.__credit_state, state_label: c.__credit_state_label, reason: c.__credit_reason,
+                    balance_info: c.__credit_balance, amount_info: c.__credit_amount, last_day_info: c.__credit_last_day, uses: i === 0 ? uses : [] };
+            }));
+        }
         return '';
     }
 
@@ -44385,9 +44643,14 @@ const StyleDesigner = (function () {
         box.className = 'sd-section-binding-hint sd-section-sample';
         box.setAttribute('inert', '');
         box.style.cssText = 'pointer-events:none';
-        box.innerHTML = html + '<div class="small text-body-secondary fst-italic mt-1">'
-            + esc(section === 'order_history' ? _sdT('The site lists the signed-in member\'s orders, newest first.')
-                : _sdT('The site lists the signed-in member\'s bookings: upcoming ones with their manage page, then past ones.')) + '</div>';
+        var notes = {
+            order_history: _sdT('The site lists the signed-in member\'s orders, newest first.'),
+            bookings: _sdT('The site lists the signed-in member\'s bookings: upcoming ones with their manage page, then past ones.'),
+            subscriptions: _sdT('The site lists the signed-in member\'s subscriptions, newest first, with the actions each one allows.'),
+            store_credit: _sdT('The site shows the signed-in member\'s balance, the reward points conversion form when they have points enough, and their cards.'),
+            store_credit_convert: _sdT('The site shows this form when the member has points enough to convert; it posts with the form token.')
+        };
+        box.innerHTML = html + '<div class="small text-body-secondary fst-italic mt-1">' + esc(notes[section]) + '</div>';
         return box;
     }
 
@@ -45682,7 +45945,9 @@ const StyleDesigner = (function () {
             ['has_bookings', _sdT('The member has bookings')],
             ['has_upcoming_bookings', _sdT('The member has upcoming bookings')],
             ['has_past_bookings', _sdT('The member has past bookings')],
-            ['has_store_credit', _sdT('The member has store credit or points to convert')]
+            ['has_store_credit', _sdT('The member has store credit or points to convert')],
+            ['has_store_credit_cards', _sdT('The member has store credit cards')],
+            ['has_subscriptions', _sdT('The member has subscriptions')]
         ],
         form_list_view: [
             ['has_filter_value', _sdT('A value from the page address, compared with is equal to, finds records')],
@@ -60940,6 +61205,19 @@ const StyleDesigner = (function () {
                 ['__bundle_item_image_url',         _sdT('Image address')]
             ]
         },
+        // The breaks of the running offers for this product and visitor
+        // (pg_offer_quantity_breaks()); the listing does not read offers
+        // for each card.
+        'product.quantity_prices': {
+            label: _sdT('Quantity prices'),
+            arg: '', argRequired: false,
+            kinds: ['catalog_item_view'],
+            rows: [
+                ['__qty_break_quantity', _sdT('Smallest quantity')],
+                ['__qty_break_price',    _sdT('Price of one piece')],
+                ['__qty_break_label',    _sdT('Quantity and price')]
+            ]
+        },
         // The crumbs of the catalog path (pg_sw_list_crumb_sources()): the
         // page's, so a list of them stands anywhere in either widget.
         'catalog.crumbs': {
@@ -61230,6 +61508,57 @@ const StyleDesigner = (function () {
                 ['__booking_manage_url',   _sdT('Manage booking URL')],
                 ['__booking_manage_label', _sdT('Manage button label')],
                 ['__booking_ics_url',      _sdT('Add to calendar URL')]
+            ]
+        },
+        // The member's subscriptions (pg_sw_list_account_subscription_rows()).
+        'account.subscriptions': {
+            label: _sdT('Subscriptions of the member'),
+            arg: '', argRequired: false,
+            kinds: ['my_account'],
+            rows: [
+                ['__subscription_id',           _sdT('Subscription ID')],
+                ['__subscription_product',      _sdT('Product')],
+                ['__subscription_amount',       _sdT('Amount')],
+                ['__subscription_status',       _sdT('Status (raw text)')],
+                ['__subscription_status_label', _sdT('Status')],
+                ['__subscription_tone',         _sdT('Status colour (warning, success or secondary)')],
+                ['__subscription_next',         _sdT('Next charge or the last day')],
+                ['__subscription_price',        _sdT('Price change notice')],
+                ['__subscription_card',         _sdT('Card')],
+                ['__subscription_event',        _sdT('Last event')],
+                ['__subscription_confirm_url',  _sdT('Payment confirmation URL')],
+                ['__subscription_actions_html', _sdT('Pause, resume, cancel and card update forms (HTML)')],
+                ['__subscription_has_actions',  _sdT('Offers an action (yes/no)')]
+            ]
+        },
+        // The member's store credit cards and the orders that spent each
+        // (pg_sw_list_account_credit_rows()).
+        'account.store_credit': {
+            label: _sdT('Store credit of the member'),
+            arg: '', argRequired: false,
+            kinds: ['my_account'],
+            rows: [
+                ['__credit_id',          _sdT('Card ID')],
+                ['__credit_kind_label',  _sdT('Source')],
+                ['__credit_reason',      _sdT('Reason')],
+                ['__credit_state',       _sdT('State (raw text)')],
+                ['__credit_state_label', _sdT('State')],
+                ['__credit_tone',        _sdT('State colour (success, secondary or warning)')],
+                ['__credit_balance',     _sdT('Balance')],
+                ['__credit_amount',      _sdT('Amount')],
+                ['__credit_last_day',    _sdT('Last day')],
+                ['__credit_has_uses',    _sdT('Spent on an order (yes/no)')]
+            ]
+        },
+        'account.store_credit_uses': {
+            label: _sdT('Orders that spent the card'),
+            arg: '', argRequired: false,
+            kinds: ['my_account'],
+            rows: [
+                ['__credit_use_order_no',  _sdT('Order number')],
+                ['__credit_use_order_url', _sdT('Order detail URL')],
+                ['__credit_use_date',      _sdT('Order date')],
+                ['__credit_use_amount',    _sdT('Amount spent')]
             ]
         },
         'cart.items': {
@@ -61573,6 +61902,9 @@ const StyleDesigner = (function () {
         __bundle_item_quantity: '2',
         __bundle_item_url: '#',
         __bundle_item_image_url: '',
+        __qty_break_quantity: '10',
+        __qty_break_price: '9.00',
+        __qty_break_label: _sdT('10 or more: each for 9.00'),
         __crumb_label:   _sdT('Main Catalog'),
         __crumb_url:     '#',
         __crumb_kind:    'link',
@@ -61607,6 +61939,32 @@ const StyleDesigner = (function () {
         __booking_manage_url:   '#',
         __booking_manage_label: _sdT('Change or cancel'),
         __booking_ics_url:      '#',
+        __subscription_id:           '8',
+        __subscription_product:      _sdT('Weekly flower box'),
+        __subscription_amount:       '149,00 TRY',
+        __subscription_status:       'active',
+        __subscription_status_label: _sdT('Active'),
+        __subscription_tone:         'success',
+        __subscription_next:         _sdT('Next charge:') + ' 24.11.2026',
+        __subscription_price:        '',
+        __subscription_card:         _sdT('Card ending {var:1}').replace('{var:1}', '4242'),
+        __subscription_event:        _sdT('Last event:') + ' ' + _sdT('Renewed') + ' (17.11.2026)',
+        __subscription_confirm_url:  '',
+        __subscription_has_actions:  '1',
+        __credit_id:          '6',
+        __credit_kind_label:  _sdT('Manual'),
+        __credit_reason:      _sdT('Sorry for the late delivery'),
+        __credit_state:       'open',
+        __credit_state_label: _sdT('Open'),
+        __credit_tone:        'success',
+        __credit_balance:     '₺35,00',
+        __credit_amount:      '₺50,00',
+        __credit_last_day:    '31.12.2026',
+        __credit_has_uses:    '1',
+        __credit_use_order_no:  '12345',
+        __credit_use_order_url: '/order?id=1042',
+        __credit_use_date:      '20.10.2026',
+        __credit_use_amount:    '₺15,00',
         __menu_item_name: _sdT('Menu item'),
         __menu_item_id: '2',
         __menu_item_url: '#',
@@ -61806,6 +62164,9 @@ const StyleDesigner = (function () {
         // A booking list as the bookings part draws it (_sdAccountPart()).
         if (source === 'account.upcoming_bookings') return _sdAccountPart('bookings')[1];
         if (source === 'account.past_bookings') return _sdAccountPart('bookings')[3];
+        // The subscriptions and the store credit cards likewise.
+        if (source === 'account.subscriptions') return _sdAccountPart('subscriptions')[0];
+        if (source === 'account.store_credit') return _sdAccountPart('store_credit')[0].children[2];
         if (source.indexOf('order.') === 0 || source.indexOf('account.') === 0 || source === 'cart.items') return _sdOrderListStarter(source, bs);
         if (source.indexOf('checkout.') === 0) return _sdCheckoutListStarter(source, bs);
         if (source === 'menu.children') {
@@ -62249,6 +62610,19 @@ const StyleDesigner = (function () {
                         _bindings: { href: '__bundle_item_url', text: '__bundle_item_short_description' } })
                 ])
             ])]);
+        }
+        if (source === 'product.quantity_prices') {
+            // The box goes with its heading when no break holds: it is
+            // marked Hide when empty, the list's holder its value.
+            return createNode('semantic', { tag: 'div', cssClass: (bs ? 'mb-3 ' : '') + 'pg-hide-if-empty', customName: _sdT('Quantity prices') }, [
+                sem('h2', 'h6 mb-2', _sdT('Heading'), { text: _sdT('Quantity prices') }),
+                createNode('semantic', { tag: 'ul', cssClass: (bs ? 'list-group mb-0 ' : '') + 'pg-field-value', customName: _sdT('Quantity prices') }, [
+                    createNode('loop_area', { source: source }, [
+                        sem('li', 'list-group-item small', _sdT('Quantity price'), { text: _sdT('10 or more: each for 9.00'),
+                            _bindings: { text: '__qty_break_label' } })
+                    ])
+                ])
+            ]);
         }
         if (source === 'product.attributes') {
             return sem('dl', 'row mb-0', _sdT('Attributes'), {}, [createNode('loop_area', { source: source }, [
@@ -64604,8 +64978,7 @@ const StyleDesigner = (function () {
                         createNode('semantic', { tag: 'div', cssClass: 'mb-4', customName: _sdT('My Bookings') }, _sdAccountPart('bookings')),
                         createNode('content', { contentType: 'heading', tag: 'h5', text: _sdT('Store credit'), cssClass: 'mb-3',
                             _bindings: { eo_visible_if: 'has_store_credit' } }),
-                        createNode('semantic', { tag: 'div', cssClass: 'mb-4', customName: _sdT('Store credit'),
-                            _bindings: { section: 'store_credit' } }),
+                        createNode('semantic', { tag: 'div', cssClass: 'mb-4', customName: _sdT('Store credit') }, _sdAccountPart('store_credit')),
                         loopArea
                     ])
                 ]);
@@ -70796,7 +71169,7 @@ const StyleDesigner = (function () {
     // undo history and content rights answer; the normal Save writes it.
     // Classic menus and regions stay read-only.
     var _sdProto = { open: false, ui: null, canvas: null, items: [], byId: {}, layout: null, view: { x: 40, y: 40, k: 1 }, seq: 0, selected: null, env: {}, warned: {}, menu: null,
-        link: null, broken: { list: [], count: {} }, problems: null,
+        link: null, lifted: '', drawing: false, broken: { list: [], count: {} }, problems: null,
         edgeTo: {},
         pics: { gen: 0, io: null, boxes: {}, near: {}, live: {}, wait: [], loading: 0, cache: {}, rects: {}, partH: {}, settle: 0, refill: 0 } };
 
@@ -71031,21 +71404,42 @@ const StyleDesigner = (function () {
                 return _sdProto.view;
             },
             items: function () { return _sdProto.items; },
-            // A link's mark on a picture: no drag, its link picked on
-            // release. Its port is the core's: an arrow drawn from it.
+            // A link's mark on a picture: a click picks its link, a drag
+            // draws its arrow (F21). The head of a drawn arrow: a drag
+            // points it elsewhere (F22). Either becomes the core's own
+            // 'connect' once it moves, so what may take the arrow lights up.
             press: function (event, next) {
-                if (event.target.closest && event.target.closest('.pgc-port-out')) return;
                 var row = event.target.closest ? event.target.closest('.sd-proto-hot') : null;
                 if (row) {
                     next.kind = 'row';
                     next.row = row;
+                    next.link = _sdProtoHotLink(row);
+                    return;
+                }
+                var head = _sdProtoHeadAt(event);
+                if (head) {
+                    next.kind = 'head';
+                    next.link = head;
+                    event.preventDefault();
                 }
             },
-            move: function () {},
+            move: function (event, drag) {
+                if ((drag.kind !== 'row' && drag.kind !== 'head') || !drag.link) return;
+                var item = _sdProto.byId[drag.link.frame];
+                var row = _sdProtoRow(item, drag.link.port);
+                if (!row || !window.PGProtoHotspots.drawable(row)) return;
+                _sdProtoMenuClose(false);
+                drag.kind = 'connect';
+                drag.from = item;
+                drag.port = row.port;
+                // The arrow being drawn is the one to see: the others fade.
+                _sdProtoDrawing(true);
+            },
             release: function (event, done) {
                 if (done.kind === 'row' && !done.moved && event.type === 'pointerup') _sdProtoPickRow(done.row);
+                if (done.kind === 'head' && !done.moved && event.type === 'pointerup') _sdProtoPick(done.link.frame, done.link.port, true);
             },
-            cancel: function () {},
+            cancel: function () { _sdProtoDrawing(false); },
             key: function (event) {
                 if (event.key === 'Escape') { _sdProtoClose(); return true; }
                 // The open tab's undo history, as on the canvas; the map is
@@ -71057,12 +71451,33 @@ const StyleDesigner = (function () {
                     _sdProtoLoad();
                     return true;
                 }
-                // A link's keys (Enter, L, the menu key) are on its row in
-                // the links panel.
+                // A mark of the selected frame (F23): Enter or Space picks
+                // its link; L, the menu key or Shift+F10 opens its target
+                // menu, the keyboard's way to draw its arrow.
+                var hot = event.target.closest ? event.target.closest('.sd-proto-hot') : null;
+                var act = hot ? window.PGProtoHotspots.markKey(event) : '';
+                if (act === 'pick') { _sdProtoPickRow(hot); return true; }
+                if (act === 'menu') {
+                    var link = _sdProtoHotLink(hot);
+                    return link ? _sdProtoMenuOpen(link.frame, link.port, hot) : false;
+                }
                 return false;
             }
         });
         _sdProto.canvas.bind();
+        // The pointer on a mark or a links panel row lifts its arrow out of
+        // the others.
+        ui.root.addEventListener('pointerover', function (event) {
+            if (_sdProto.drawing) return;
+            var hot = event.target.closest ? event.target.closest('.sd-proto-hot, .sd-proto-li[data-link]') : null;
+            var link = hot ? (hot.classList.contains('sd-proto-hot') ? _sdProtoHotLink(hot) : null) : null;
+            var id = link ? link.frame + '|' + link.port : (hot ? hot.getAttribute('data-link') : '');
+            _sdProtoLift(id || '');
+        });
+        // A drawn arrow let go of, on a target or not.
+        ['pointerup', 'pointercancel'].forEach(function (type) {
+            window.addEventListener(type, function () { if (_sdProto.drawing) _sdProtoDrawing(false); }, true);
+        });
         // A press outside the target menu closes it.
         ui.root.addEventListener('pointerdown', function (event) {
             if (_sdProto.menu && !_sdProto.menu.el.contains(event.target)) _sdProtoMenuClose(false);
@@ -71216,6 +71631,62 @@ const StyleDesigner = (function () {
         return window.PGProtoHotspots.markPort(item, rects ? (rects[port] || null) : undefined, to ? _sdProto.byId[to] : null);
     }
 
+    // The link a mark stands for: its frame's id and its row's port.
+    function _sdProtoHotLink(hot) {
+        var box = hot && hot.closest ? hot.closest('[data-node]') : null;
+        var item = box ? _sdProto.byId[box.getAttribute('data-node')] : null;
+        var row = item && item.rows ? item.rows[parseInt(hot.getAttribute('data-row'), 10) || 0] : null;
+        return row ? { frame: item.id, port: row.port } : null;
+    }
+
+    // The link of the drawn arrow whose head a press takes: the nearest
+    // head within 14 screen pixels of it, of the arrows shown (heads crowd
+    // on a frame's edge, so another arrow may be on top), else null. A
+    // press on a frame or a chip stays theirs (select, move).
+    function _sdProtoHeadAt(event) {
+        var ui = _sdProto.ui;
+        if (!ui || !_sdProto.layout || (event.target.closest && event.target.closest('[data-node]'))) return null;
+        var H = window.PGProtoHotspots;
+        var at = _sdProto.canvas.view.point(event.clientX, event.clientY);
+        var k = _sdProto.view.k;
+        var best = null;
+        var bestD = Infinity;
+        Array.prototype.forEach.call(ui.svg.querySelectorAll('g.pgc-edge[data-edge]'), function (group) {
+            var line = group.querySelector('path');
+            if (!line || !line.getTotalLength || window.getComputedStyle(group).display === 'none' || window.getComputedStyle(line).visibility === 'hidden') return;
+            var end = line.getPointAtLength(line.getTotalLength());
+            if (!H.nearHead({ x: end.x, y: end.y }, at, k)) return;
+            var d = (end.x - at.x) * (end.x - at.x) + (end.y - at.y) * (end.y - at.y);
+            if (d < bestD) { bestD = d; best = group.getAttribute('data-edge'); }
+        });
+        var edge = best ? _sdProto.layout.edges.filter(function (e) { return e.id === best; })[0] : null;
+        return edge ? { frame: edge.from, port: edge.port } : null;
+    }
+
+    // While an arrow is drawn from a mark or a head: every drawn arrow
+    // fades and the one being drawn goes at full strength to the pointer.
+    function _sdProtoDrawing(on) {
+        var ui = _sdProto.ui;
+        _sdProto.drawing = !!on;
+        _sdProtoLift('');
+        if (ui) ui.svg.classList.toggle('sd-proto-drawing', !!on);
+    }
+
+    // One arrow lifted out of the others ('' for none): drawn last, the
+    // others faded while it is.
+    function _sdProtoLift(id) {
+        var ui = _sdProto.ui;
+        if (!ui || _sdProto.lifted === id) return;
+        _sdProto.lifted = id;
+        var old = ui.svg.querySelector('.sd-proto-edge-lift');
+        if (old) old.classList.remove('sd-proto-edge-lift');
+        var group = id ? ui.svg.querySelector('g.pgc-edge[data-edge="' + id.replace(/"/g, '') + '"]') : null;
+        ui.svg.classList.toggle('sd-proto-lifting', !!group);
+        if (!group) return;
+        group.classList.add('sd-proto-edge-lift');
+        ui.svg.appendChild(group);
+    }
+
     // A loaded picture's marks (F5): a rounded rectangle over each link's
     // element, in the colour of where it leads; a link of a tree carries
     // the port its arrow is drawn from. Which of them show is
@@ -71236,11 +71707,16 @@ const StyleDesigner = (function () {
             hot.style.top = r.y + 'px';
             hot.style.width = Math.max(6, r.w) + 'px';
             hot.style.height = Math.max(6, r.h) + 'px';
-            hot.title = (row.from ? row.from + ' › ' + row.label : row.label) + (row.href ? ' · ' + row.href : '');
+            var name = row.from ? row.from + ' › ' + row.label : row.label;
+            hot.title = name + (row.href ? ' · ' + row.href : '');
+            hot.setAttribute('role', 'button');
+            hot.setAttribute('aria-label', name);
+            hot.tabIndex = -1;
+            // The whole mark is where its arrow is drawn from (F21).
             if (H.drawable(row)) {
-                var dot = canvas.port('out', row.port);
-                dot.title = _sdT('Drag to a page or an address to change where this link goes');
-                hot.appendChild(dot);
+                hot.classList.add('sd-proto-hot-draw');
+                hot.title += ' · ' + _sdT('Drag to a page or an address to change where this link goes');
+                hot.setAttribute('aria-keyshortcuts', 'L');
             }
             layer.appendChild(hot);
         });
@@ -71363,6 +71839,7 @@ const StyleDesigner = (function () {
         Array.prototype.slice.call(ui.boxes.querySelectorAll('.sd-proto-focused')).forEach(function (n) { n.classList.remove('sd-proto-focused'); });
         Array.prototype.slice.call(ui.boxes.querySelectorAll('.sd-proto-hot')).forEach(function (r) {
             r.classList.remove('sd-proto-hot-own', 'sd-proto-hot-lit', 'sd-proto-hot-shared');
+            r.tabIndex = -1;
         });
         if (id === null || id === undefined) return;
         var f = window.PGProtoHotspots.focusOf(_sdProto.layout, id);
@@ -71378,6 +71855,8 @@ const StyleDesigner = (function () {
                 var el = node.querySelector('.sd-proto-hot[data-row="' + i + '"]');
                 var state = mark[item.id + '|' + row.port];
                 if (el && state) el.classList.add('sd-proto-hot-' + state);
+                // Tab reaches the selected frame's marks after its frame (F23).
+                if (el && state === 'own') el.tabIndex = 0;
             });
         });
         var notes = {};
@@ -71710,6 +72189,8 @@ const StyleDesigner = (function () {
         l.edges.forEach(function (e) { _sdProto.edgeTo[e.id] = e.to; });
 
         Array.prototype.slice.call(ui.svg.querySelectorAll('g.pgc-edge')).forEach(function (g) { g.parentNode.removeChild(g); });
+        _sdProto.lifted = '';
+        ui.svg.classList.remove('sd-proto-lifting');
         _sdProtoPicReset(false);
         ui.boxes.innerHTML = '';
 
@@ -72228,13 +72709,17 @@ const StyleDesigner = (function () {
         ui.root.appendChild(el);
         _sdProto.menu = { el: el, rowEl: anchor };
 
-        // Under the row, or above it when it would leave the view.
+        // Under its row or mark, else above, else beside it, always inside
+        // the canvas under the view's bar (never over its zoom controls).
         var r = anchor.getBoundingClientRect();
         var o = ui.root.getBoundingClientRect();
-        var top = r.bottom - o.top + 2;
-        if (top + el.offsetHeight > o.height) top = Math.max(4, r.top - o.top - el.offsetHeight - 2);
-        el.style.left = Math.max(4, Math.min(r.left - o.left, o.width - el.offsetWidth - 4)) + 'px';
-        el.style.top = top + 'px';
+        var c = ui.stage.getBoundingClientRect();
+        var near = anchor.closest && anchor.closest('.sd-proto-list') ? ui.root.getBoundingClientRect() : c;
+        var area = { left: near.left - o.left, top: c.top - o.top, right: near.right - o.left, bottom: c.bottom - o.top };
+        el.style.maxHeight = Math.max(120, area.bottom - area.top - 8) + 'px';
+        var at = window.PGProtoHotspots.menuPlace({ left: r.left - o.left, top: r.top - o.top, right: r.right - o.left, bottom: r.bottom - o.top }, { w: el.offsetWidth, h: el.offsetHeight }, area);
+        el.style.left = at.left + 'px';
+        el.style.top = at.top + 'px';
 
         var first = el.querySelector('.sd-proto-menu-item[aria-checked="true"]') || el.querySelector('.sd-proto-menu-item');
         if (!first) el.tabIndex = -1;
@@ -79988,6 +80473,8 @@ const StyleDesigner = (function () {
                                     d: _sdT('Repeats its row for each product often bought together with this one.') },
             'l:product.bundle_items': { v: 'l-bundle', k: 'bundle contents items product list repeat loop',
                                     d: _sdT('Repeats its row for each product inside the bundle, with how many come in it.') },
+            'l:product.quantity_prices': { v: 'l-qty-prices', k: 'quantity prices price breaks tiered volume wholesale offer list repeat loop',
+                                    d: _sdT('Repeats its row for each quantity price of the product, such as 10 or more at a lower price each.') },
             'l:catalog.crumbs': { v: 'l-crumbs', k: 'breadcrumb crumbs catalog path list repeat loop',
                                     d: _sdT('Repeats its row for each step of the path from the catalog home to this category or product.') },
             'l:catalog.active_filters': { v: 'l-filters', k: 'active filters chips catalog attributes list repeat loop',
@@ -80014,6 +80501,12 @@ const StyleDesigner = (function () {
                                     d: _sdT('Repeats its row for each booking of the signed-in member still to come.') },
             'l:account.past_bookings': { v: 'l-steps', k: 'member bookings appointments past account list repeat loop',
                                     d: _sdT('Repeats its row for each past booking of the signed-in member.') },
+            'l:account.subscriptions': { v: 'l-account-orders', k: 'member subscriptions recurring renewals account list repeat loop',
+                                    d: _sdT('Repeats its row for each subscription of the signed-in member.') },
+            'l:account.store_credit': { v: 'l-account-orders', k: 'member store credit gift card balance account list repeat loop',
+                                    d: _sdT('Repeats its row for each store credit card of the signed-in member.') },
+            'l:account.store_credit_uses': { v: 'l-account-orders', k: 'store credit orders spent account list repeat loop',
+                                    d: _sdT('Repeats its row for each order that spent the store credit card.') },
             'l:cart.items': { v: 'l-cart-items', k: 'cart items products basket list repeat loop',
                                     d: _sdT('Repeats its row for each product in the cart, with its quantity and price.') },
             'l:checkout.offers': { v: 'l-offers', k: 'applied offers discounts checkout list repeat loop',
@@ -80847,6 +81340,9 @@ const StyleDesigner = (function () {
             },
             'l-bundle': function () {
                 return R(0, 0, 200, 110, W) + Rows(14, 32, 28, function (y) { return Pic(22, y, 26, 20) + L(56, y + 4, 70, D) + Tx(170, y + 13, '×2', 10, S, 'end'); });
+            },
+            'l-qty-prices': function () {
+                return R(0, 0, 200, 110, W) + Rows(16, 28, 26, function (y) { return L(24, y + 6, 60, D) + Tx(176, y + 12, '9.00', 10, S, 'end') + R(18, y + 21, 164, 1, B); });
             },
             'l-crumbs': function () {
                 return R(0, 0, 200, 110, W) + R(10, 40, 180, 30, LG, 5) + Cols(22, 52, 46, 48, 15, function (x) {

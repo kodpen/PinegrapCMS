@@ -44,6 +44,8 @@ if (!defined('PG_API_ENTRY') && !defined('PG_API_PANEL')) {
 
 }
 
+require_once(dirname(dirname(__FILE__)) . '/list_order.php');
+
 // The condition that keeps a query to the forms an owner may open, on the
 // column that holds the form's page id; empty from the manager role up, which
 // opens every form. Below that the submitted-form screens open a form only
@@ -988,17 +990,14 @@ function api_form_submissions($params) {
 
 	}
 
-	if (isset($params['cursor']) && $params['cursor'] !== '') {
+	// Oldest first by the submission's id; sort=newest walks it the other way.
+	$descending = api_list_descending($params);
 
-		$cursor = api_cursor_decode($params['cursor']);
+	$cursor = api_list_cursor($params, $descending);
 
-		if ($cursor === null) {
+	if ($cursor !== null) {
 
-			api_fail(400, 'invalid_cursor', lang('The cursor is not readable. Start the listing again without one.'), 'cursor');
-
-		}
-
-		$where[] = "forms.id > '" . $cursor['i'] . "'";
+		$where[] = api_list_keyset_sql('', 'forms.id', $cursor, $descending);
 
 	}
 
@@ -1006,7 +1005,7 @@ function api_form_submissions($params) {
 
 	$rows = api_rows(api_form_submission_select() . "
 		WHERE " . implode(' AND ', $where) . "
-		ORDER BY forms.id ASC
+		ORDER BY " . api_list_order_sql('', 'forms.id', $descending) . "
 		LIMIT " . ($limit + 1));
 
 	$has_more = (count($rows) > $limit);
@@ -1051,7 +1050,7 @@ function api_form_submissions($params) {
 
 		$last = $rows[count($rows) - 1];
 
-		$next_cursor = api_cursor_encode((int)$last['id'], (int)$last['id']);
+		$next_cursor = api_list_cursor_encode((int)$last['id'], (int)$last['id'], $descending);
 
 	}
 

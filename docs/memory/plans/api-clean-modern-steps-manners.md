@@ -10,6 +10,7 @@ description: Steps AM7 to AM13 of plan api-clean-modern: HEAD, Location and the 
 - AM8 (M) A refused body names every wrong field: `error.errors`, a list of `{field, code, message}`, at most 20 rows; `error.field` and `error.message` stay the first.
   - Only the router's own checks (declared parameters, unknown keys) fill it; a handler's refusal stays one.
   - A JSON list with items sent where an object is expected is 400 `invalid_json`, as a bare value already is (today it is read as empty: "name is required"). An empty list `[]` stays an empty body: PHP's `json_encode()` writes an empty array so.
+  - Done (#10156): `api/api-field-errors.md`.
 - AM9 (M) `If-Match` on an update: 412 `precondition_failed` when the record changed since. Without the header nothing changes. Today the header is ignored and the later write wins.
   - Honoured where the same path has a GET route; the document marks which updates do.
   - The tag is the one of the full GET answer for the same caller (no `fields=`), compared without `W/`; `*` matches an existing record.

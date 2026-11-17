@@ -166,3 +166,19 @@ function test_workspace_flow_mail_group_try()
 
 	pg_assert_contains('ws_flow_mail_group_try(', workspace_flow_mail_group_test_source('ws_flow_box_try'));
 }
+
+// The canvas: "A contact group" offered while the person may send to one
+// (or the box writes to one), its group, why, and the records box; a new
+// e-mail box starts with no group and no records box. A role-3 member is
+// offered no group.
+function test_workspace_flow_mail_group_canvas()
+{
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js');
+
+	pg_assert_contains("if (group || (mailGroups().length > 0)) {\n            ways.push(['group', t('fl_email_group')]);", $js);
+	pg_assert_contains("emailGroupFields(box, node);", $js);
+	pg_assert_contains("return item.kind === 'list_records';", $js, 'only records boxes of the flow');
+	pg_assert_contains("group_id: 0, records: ''", $js);
+	pg_assert_contains("if (config.recipient === 'group') {\n                return mailGroupMeta(config);", $js);
+	pg_assert_same(array(), ws_flow_mail_groups(array('id' => 5, 'role' => 3)));
+}

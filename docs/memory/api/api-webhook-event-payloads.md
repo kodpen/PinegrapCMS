@@ -6,16 +6,18 @@ description: Fields and samples of webhook events (api_webhook_event_payloads())
 ## Where are an event's fields and sample?
 - `api_webhook_event_payloads()` in `includes/api/outbound/webhook_payloads.php`: event => `fields` (name => array(type, meaning)) and `sample` (data with every field, in the same order). A type ending in `?` may be null; types: integer, number, string, boolean, object, object[], string[], integer[].
 - The catalogue's text stays in `api_webhook_events()`; the core's own list is `api_webhook_core_events()`, the modules' are merged after it.
-- Every core event has them: the shop's events since #10149 (`api_webhook_event_payloads()`), the rest of the core since AU5 (`api_webhook_event_payloads_site()`: customers, users, contact groups, consents, pages, experiments, content review, zones, shipping methods, currencies, offers, files, forms, calendar reservations, campaigns, mail, WhatsApp). The modules' events come with AU6 (`plans/automation-platforms-steps.md`).
+- Every event has them: the shop's (#10149, `api_webhook_event_payloads()`), the rest of the core (#10170, `api_webhook_event_payloads_site()`), and since AU6 the modules', each in its module's folder: `erp_webhook_event_payloads()` (`includes/erp/webhook_payloads.php`) and `ws_webhook_event_payloads()` (`includes/workspace/webhook_payloads.php`), merged by `api_webhook_module_event_payloads()` whether or not the module is on. A new module event needs its row there.
 
 ## What does the test hold?
-- `tests/webhook_event_payloads_test.php` reads every `pg_announce()`, `api_webhook_enqueue()` and announcing helper (`pg_return_announce`, `pg_cart_quote_announce`, `pg_credit_announce`, `mp_order_announce`) with the tokenizer: a literal array's keys, a variable's last literal array, and payload functions run on a fixture. Per event, the keys of all places together must equal the fields.
+- `tests/webhook_event_payloads_test.php` reads every `pg_announce()`, `api_webhook_enqueue()`, `erp_event()` and announcing helper (`pg_return_announce`, `pg_cart_quote_announce`, `pg_credit_announce`, `mp_order_announce`, `ws_group_announce`, the `erp_event_*` helpers) with the tokenizer.
+- It reads literal arrays at the payload's own level (`+ array(…)` too), a variable's last assignment, and payload functions run on a fixture (one may take the event). Per event, the keys of all places together must equal the fields.
+- ERP: a helper's keys are its `erp_event()` call's, plus its `$payload['…']` keys for the events `webhook_payloads_test_erp_helpers()` names (`erp.quote.signed`).
 - A field only some places write says so in its meaning (`source` of `inventory.changed`, the `location_*` fields, `recycled` of `product.deleted`).
-- The test asks this of every event of `api_webhook_core_events()`. A choice of names written in place (`$new ? 'zone.created' : 'zone.updated'`) is read as those names. An announcement whose name is built elsewhere must be listed in `webhook_payloads_test_dynamic_calls()` with its family, else the test fails.
+- The test asks this of every event of the core, the ERP and the Workspace, so a new event without fields and a sample fails it. A choice of names written in place (`$new ? 'zone.created' : 'zone.updated'`) is read as those names. An announcement whose name is built elsewhere must be listed in `webhook_payloads_test_dynamic_calls()` with its family, else the test fails.
 - So a key added to an announcement fails the test until its field and sample are added.
 
 ## What does GET /webhooks/events answer?
-- `data`: one row per event of `api_webhook_events()`: `name`, `description`, `module` ('' core, `erp`, `workspace`; the flows and mail merged alone count as `workspace`), `fields` (name, type, nullable, description) and `sample`; `[]` and null for an event not written yet. Scope `webhooks:manage`. `GET /webhooks` keeps its list of names.
+- `data`: one row per event of `api_webhook_events()`: `name`, `description`, `module` ('' core, `erp`, `workspace`; the flows and mail merged alone count as `workspace`), `fields` (name, type, nullable, description) and `sample`; `[]` and null would mean an event not written, which the test refuses. Scope `webhooks:manage`. `GET /webhooks` keeps its list of names.
 - The router reads `{id}` of `/webhooks/{id}` as digits only, so the path never reaches `webhooks.get` (tested).
 
 ## How is a sample sent?

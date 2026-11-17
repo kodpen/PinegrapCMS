@@ -34,6 +34,7 @@ priority: 4
 ## Whose look?
 - Every screen step: the architect's, the screen beside CN2's sheet (agent channel message 2645).
 - The owner's: CN2's sheet before CN3; each merge of CN6 as its own question; the wording of the public figure when the registry can count.
+- CN2's sheet: Owner (2026-11-17, agent channel poll 120): "Evet; ekranın adı "Bağlantılar" olsun". The screen is built as drawn and is called Connections wherever it is named; the provider's accounts section in it keeps "Connected accounts" (`workflow/decisions-made-product-70.md`).
 
 ## What is left out?
 - A second home for a field, a copy of Application Access, a table of states or a history of them.

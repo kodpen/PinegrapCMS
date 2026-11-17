@@ -11,9 +11,9 @@ module: page_bundles
 
 ## How is a page written?
 - `pg_page_bundle_write_item()` claims the item first (`waiting` to `written` with the status in the WHERE), so two publishes never write it twice; a failed write gives it back.
-- A new page: `pg_page_draft_move(id, false, …)`; `written_state` is its state hash. A replacement: its draft's tree, title and description saved onto the live page through the page save, source `bundle`. `revision_before` is the written revision minus one (a first save seeds revision 1), or the latest when the save wrote none.
+- A new page: `pg_page_draft_move(id, false, …)`; `written_state` is its state hash. A replacement: its draft's tree, title and description saved onto the live page through the page save, source `bundle`. `revision_before` (`pg_page_bundle_revision_before()`): the written revision minus one, or the latest when the save wrote none, or a seeded 1 for a page with none (#10048).
 - After every page is written: left-out items become `left_out`, the used replacements go to the Recycle Bin (`pg_recycle_page()`), the bundle moves to `published`.
-- The bin's functions come through `pg_page_bundle_load_recycle()` (`view_folder_and_files_f.php`): `recycle_bin.php` alone lacks them, and a publish with a replaced page ended in a fatal error after its writes (#10045).
+- The bin's functions come through `pg_page_bundle_load_recycle()` (`view_folder_and_files_f.php`): `recycle_bin.php` alone lacks them (a fatal error after the writes, #10045).
 
 ## What does a failure do?
 - `pg_page_bundle_publish_run()` (pure, writes as callables) stops at the first failure and takes back what this run wrote, newest first. The write and take-back share one copy of the rows (`pg_page_bundle_publish_ops()`), so a take-back reads what its write stored: before, a replaced page's take-back read `revision_before` 0 and the bundle went `partial` (#10046). The bundle keeps its status (open, scheduled, partial) with `failed_page_id` and `failed_reason`.
