@@ -164,3 +164,11 @@ function test_connections_screen_a_services_accounts_and_its_last_error()
 	pg_assert_false(pg_connections_screen_keeps_errors(array('kind' => 'config', 'names' => array('X'))), 'a config reader keeps none, so the drawer has no last error line');
 	pg_assert_false(pg_connections_screen_keeps_errors(null), 'nor a row without a reader');
 }
+
+function test_connections_screen_an_address_breaks_after_its_at()
+{
+	pg_assert_same('very.long.name@<wbr>example.com', pg_connections_screen_address_html('very.long.name@example.com'), 'the line may break after the @');
+	pg_assert_same('a&amp;b@<wbr>x.com &lt;i&gt;', pg_connections_screen_address_html('a&b@x.com <i>'), 'the text is escaped first');
+	pg_assert_same('Backup account', pg_connections_screen_address_html('Backup account'), 'a name without an @ is only escaped');
+	pg_assert_same('very.long.name@example.com', strip_tags(pg_connections_screen_address_html('very.long.name@example.com')), 'copy and a screen reader get the one address');
+}

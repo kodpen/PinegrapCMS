@@ -470,7 +470,7 @@ function connections_provider_drawer($provider_key, $provider, $app, $accounts, 
 					<i class="bi bi-person-circle fs-lg opacity-75" aria-hidden="true"></i>
 					<div class="flex-grow-1 min-w-0">
 						<div class="d-flex flex-wrap align-items-center column-gap-3 row-gap-1">
-							<span class="fw-semibold text-break">' . h($account['label']) . '</span>
+							<span class="fw-semibold text-break">' . pg_connections_screen_address_html($account['label']) . '</span>
 							' . connections_status_badge($account['status']) . '
 						</div>
 						<div class="pg-text-meta">' . h(implode(' · ', $purpose_labels)) . '</div>
@@ -669,7 +669,7 @@ function connections_service_detail($id, $service, $row, $group_label, $tile, $f
 		$labels = array();
 
 		foreach ($accounts as $account) {
-			$labels[] = '<span class="d-block text-break">' . h($account['label']) . '</span>';
+			$labels[] = '<span class="d-block text-break">' . pg_connections_screen_address_html($account['label']) . '</span>';
 		}
 
 		$error = pg_connections_screen_last_error($accounts);
@@ -755,7 +755,7 @@ foreach ($facts['accounts'] as $account) {
 			<span class="pg-icon-tile pg-icon-tile-lg pg-tone-amber" aria-hidden="true"><i class="bi ' . h($provider['icon']) . '"></i></span>
 			<div class="connections-row-main">
 				<div class="connections-row-name" lang="en">' . h($provider['label']) . '</div>
-				<div class="pg-text-2 text-break">' . h(lang(array('string' => '{var:1} must be connected again', 'vars' => $account['label']))) . '</div>
+				<div class="pg-text-2 text-break">' . pg_connections_screen_address_html(lang(array('string' => '{var:1} must be connected again', 'vars' => $account['label']))) . '</div>
 				<div class="pg-text-meta">' . h(implode(' · ', $meta)) . '</div>
 			</div>
 			<div class="connections-row-side">

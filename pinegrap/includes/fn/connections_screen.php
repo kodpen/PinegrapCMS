@@ -260,6 +260,19 @@ function pg_connections_screen_keeps_errors($state)
 }
 
 /**
+ * An account's address as HTML whose line breaks after its "@" when the
+ * column is too narrow. A <wbr> adds no character, so a copy and a screen
+ * reader still get the one address. Pure.
+ *
+ * @param string $text plain text, an address or a sentence holding one
+ * @return string escaped HTML
+ */
+function pg_connections_screen_address_html($text)
+{
+    return str_replace('@', '@<wbr>', h($text));
+}
+
+/**
  * What connects to the site, as Application Access counts it: applications
  * (keys, the documentation's temporary ones left out), team devices signed
  * in, applications people connected with OAuth, webhook subscriptions. A
