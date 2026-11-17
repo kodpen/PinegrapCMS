@@ -20,7 +20,7 @@ module: content_proposals
 - A request taken back or expired, or a change no longer pending, does nothing.
 
 ## Whose name does the Site Log carry when a yes is applied outside the panel?
-- The answering designer's. An answer over the API (`POST /workspace/approvals/{id}/decide`) or the hourly approvals job has no session name, so `_pg_cp_write()` sets `$_SESSION['sessionusername']` to the acting person for the save and puts it back after (`pg_content_proposals_name_set()` / `_restore()`); a panel name is kept. Before #10220 the "page (P) was modified" line had an empty name.
+- The answering designer's. An answer over the API (`POST /workspace/approvals/{id}/decide`) or the hourly approvals job has no session name, so `_pg_cp_write()` sets `$_SESSION['sessionusername']` to the acting person for the save and puts it back after (`pg_content_proposals_name_set()` / `_restore()`); a panel name is kept. Before #10310 (issue #10220) the "page (P) was modified" line had an empty name.
 
 ## When is the request taken back?
 - A change withdrawn or replaced (`pg_content_proposals_request_closes()`): the old request is settled `withdrawn` as the editor (`pg_content_proposals_request_close()` → `ws_approval_settle()`, not `ws_approval_close()`: the editor may have lost the channel); a replaced change then opens a new one.
