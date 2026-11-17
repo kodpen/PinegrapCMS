@@ -1348,59 +1348,68 @@ function pg_page_bundle_write_item($item, $bundle, $user)
         return array('ok' => false, 'error' => $error);
     };
 
-    $busy = lang('Somebody has this page open in the Page Design Studio. Try again when they are done.');
-    $draft = pg_page_bundle_draft_row($draft_id);
+    // A database error inside the page save (output_error() throws while a
+    // publish runs) is a failed write: the item is given back, so the run
+    // takes back what it wrote and the bundle can be published again.
+    try {
+        $busy = lang('Somebody has this page open in the Page Design Studio. Try again when they are done.');
+        $draft = pg_page_bundle_draft_row($draft_id);
 
-    if (!$draft) {
-        return $give_back(lang(array('string' => 'The draft "{var:1}" is no longer in Drafts.', 'vars' => array((string) $item['draft_name']))));
-    }
+        if (!$draft) {
+            return $give_back(lang(array('string' => 'The draft "{var:1}" is no longer in Drafts.', 'vars' => array((string) $item['draft_name']))));
+        }
 
-    if ($live_id <= 0) {
-        if (!pg_collab_may_edit_page('', $draft_id)) {
+        if ($live_id <= 0) {
+            if (!pg_collab_may_edit_page('', $draft_id)) {
+                return $give_back($busy);
+            }
+
+            if (!pg_page_draft_move($draft_id, false, 0, (int) $user['id'])) {
+                return $give_back(lang(array('string' => 'The draft "{var:1}" could not be put on the site.', 'vars' => array((string) $draft['page_name']))));
+            }
+
+            $state = pg_page_bundle_state_hash($draft['page_tree_json'], $draft['page_title'], $draft['page_meta_description']);
+            db_q("UPDATE page_bundle_item SET revision_before = 0, written_state = ? WHERE id = ?", array($state, $id));
+            pg_page_bundle_log('page ({var:1}) was published with the release bundle ({var:2})', $draft['page_name'], $bundle, $user);
+
+            return array('ok' => true, 'error' => '', 'revision_before' => 0, 'written_state' => $state);
+        }
+
+        if (!pg_collab_may_edit_page('', $live_id)) {
             return $give_back($busy);
         }
 
-        if (!pg_page_draft_move($draft_id, false, 0, (int) $user['id'])) {
-            return $give_back(lang(array('string' => 'The draft "{var:1}" could not be put on the site.', 'vars' => array((string) $draft['page_name']))));
+        $save = pg_page_bundle_save_fields($live_id, $draft['page_tree_json'], $draft['page_title'], $draft['page_meta_description']);
+
+        if (!$save) {
+            return $give_back(lang('The page could not be read.'));
         }
 
-        $state = pg_page_bundle_state_hash($draft['page_tree_json'], $draft['page_title'], $draft['page_meta_description']);
-        db_q("UPDATE page_bundle_item SET revision_before = 0, written_state = ? WHERE id = ?", array($state, $id));
-        pg_page_bundle_log('page ({var:1}) was published with the release bundle ({var:2})', $draft['page_name'], $bundle, $user);
+        $latest = pg_page_revisions_ready() ? (int) db_value("SELECT MAX(revision_no) FROM page_revisions WHERE page_id = '$live_id'") : 0;
 
-        return array('ok' => true, 'error' => '', 'revision_before' => 0, 'written_state' => $state);
+        $save['fields']['revision_source'] = 'bundle';
+        $saved = pg_designer_save_page($save['style_id'], $save['fields'], $user);
+
+        if (empty($saved['ok'])) {
+            return $give_back(implode(' ', (array) $saved['errors']));
+        }
+
+        // The revision written follows the one before; a page saved for the
+        // first time since revisions exist is seeded first, so that seed is the
+        // one before. A save that changed nothing wrote none.
+        $written_no = isset($saved['revision_no']) ? (int) $saved['revision_no'] : 0;
+        $before = ($written_no > 0) ? ($written_no - 1) : $latest;
+
+        $state = pg_page_bundle_live_state($live_id);
+        db_q("UPDATE page_bundle_item SET revision_before = ?, written_state = ? WHERE id = ?", array($before, $state, $id));
+        pg_page_bundle_log('page ({var:1}) was replaced by the release bundle ({var:2})', $item['live_name'], $bundle, $user);
+
+        return array('ok' => true, 'error' => '', 'revision_before' => $before, 'written_state' => $state);
+    } catch (Throwable $t) {
+        $error = trim($t->getMessage());
+
+        return $give_back(($error !== '') ? $error : lang('The page could not be read.'));
     }
-
-    if (!pg_collab_may_edit_page('', $live_id)) {
-        return $give_back($busy);
-    }
-
-    $save = pg_page_bundle_save_fields($live_id, $draft['page_tree_json'], $draft['page_title'], $draft['page_meta_description']);
-
-    if (!$save) {
-        return $give_back(lang('The page could not be read.'));
-    }
-
-    $latest = pg_page_revisions_ready() ? (int) db_value("SELECT MAX(revision_no) FROM page_revisions WHERE page_id = '$live_id'") : 0;
-
-    $save['fields']['revision_source'] = 'bundle';
-    $saved = pg_designer_save_page($save['style_id'], $save['fields'], $user);
-
-    if (empty($saved['ok'])) {
-        return $give_back(implode(' ', (array) $saved['errors']));
-    }
-
-    // The revision written follows the one before; a page saved for the
-    // first time since revisions exist is seeded first, so that seed is the
-    // one before. A save that changed nothing wrote none.
-    $written_no = isset($saved['revision_no']) ? (int) $saved['revision_no'] : 0;
-    $before = ($written_no > 0) ? ($written_no - 1) : $latest;
-
-    $state = pg_page_bundle_live_state($live_id);
-    db_q("UPDATE page_bundle_item SET revision_before = ?, written_state = ? WHERE id = ?", array($before, $state, $id));
-    pg_page_bundle_log('page ({var:1}) was replaced by the release bundle ({var:2})', $item['live_name'], $bundle, $user);
-
-    return array('ok' => true, 'error' => '', 'revision_before' => $before, 'written_state' => $state);
 }
 
 /**
@@ -1428,9 +1437,29 @@ function pg_page_bundle_item_written($item, $done)
 }
 
 /**
+ * Runs $action with output_error() throwing instead of ending the request,
+ * then gives the setting back, also when $action throws.
+ *
+ * @param callable $action
+ * @return mixed what $action returns
+ */
+function pg_page_bundle_with_throwing_errors($action)
+{
+    $saved = pg_error_throws();
+    pg_error_throws(true);
+
+    try {
+        return $action();
+    } finally {
+        pg_error_throws($saved);
+    }
+}
+
+/**
  * The write and take-back of one publish run, by item id, over one shared
  * copy of the item rows: a take-back reads the row its write left, with the
- * revision before that the write stored.
+ * revision before that the write stored. A write or take-back that throws
+ * (a database error) is one that failed.
  *
  * @param array    $items      item id => page_bundle_item row
  * @param callable $write_item row => pg_page_bundle_write_item()
@@ -1440,13 +1469,22 @@ function pg_page_bundle_item_written($item, $done)
 function pg_page_bundle_publish_ops($items, $write_item, $undo_item)
 {
     $write = function ($id) use (&$items, $write_item) {
-        $done = $write_item($items[$id]);
+        try {
+            $done = $write_item($items[$id]);
+        } catch (Throwable $t) {
+            return array('ok' => false, 'error' => trim($t->getMessage()));
+        }
+
         $items[$id] = pg_page_bundle_item_written($items[$id], $done);
 
         return $done;
     };
     $undo = function ($id) use (&$items, $undo_item) {
-        return $undo_item($items[$id]);
+        try {
+            return (bool) $undo_item($items[$id]);
+        } catch (Throwable $t) {
+            return false;
+        }
     };
 
     return array($write, $undo);
@@ -1561,7 +1599,11 @@ function pg_page_bundle_publish($bundle, $user, $choices = array())
             return pg_page_bundle_undo_item($item, $bundle, $user, 'waiting');
         });
 
-    $run = pg_page_bundle_publish_run($check['plan']['write'], $write, $undo);
+    // A failed query inside a page save would otherwise end the request
+    // part-way, with a page written, an item claimed and nothing taken back.
+    $run = pg_page_bundle_with_throwing_errors(function () use ($check, $write, $undo) {
+        return pg_page_bundle_publish_run($check['plan']['write'], $write, $undo);
+    });
     $out['run'] = $run;
     $out['outcome'] = $run['outcome'];
 

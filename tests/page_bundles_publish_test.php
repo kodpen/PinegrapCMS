@@ -403,3 +403,92 @@ function test_page_bundle_publish_ops_take_back_reads_written_row()
 	pg_assert_same('taken_back', $run['outcome'], 'so the replaced page comes back and nothing stands');
 	pg_assert_same(2, $run['failed'], 'the page that failed is named');
 }
+
+// A database error during a write (output_error() throwing while the publish
+// runs) is a failed write: what was written is taken back and the bundle
+// stays as it was, instead of the request ending with the run half done.
+function test_page_bundle_publish_ops_query_failure_is_a_failed_write()
+{
+	$items = array(
+		1 => array('id' => 1, 'live_page_id' => 5, 'revision_before' => 0, 'written_state' => ''),
+		2 => array('id' => 2, 'live_page_id' => 6, 'revision_before' => 0, 'written_state' => ''),
+	);
+	$undone = new ArrayObject();
+	$write_item = function ($item) {
+		if ((int) $item['id'] === 2) {
+			throw new RuntimeException('Query failed.');
+		}
+
+		return array('ok' => true, 'error' => '', 'revision_before' => 3, 'written_state' => 's1');
+	};
+	$undo_item = function ($item) use ($undone) {
+		$undone[] = (int) $item['id'];
+
+		return true;
+	};
+
+	list($write, $undo) = pg_page_bundle_publish_ops($items, $write_item, $undo_item);
+	$run = pg_page_bundle_publish_run(array(1, 2), $write, $undo);
+
+	pg_assert_same('taken_back', $run['outcome'], 'the bundle stays as it was');
+	pg_assert_same(2, $run['failed'], 'the page whose query failed is named');
+	pg_assert_same('Query failed.', $run['reason'], 'with the error');
+	pg_assert_same(array(1), $undone->getArrayCopy(), 'the page written before is taken back');
+}
+
+// A take-back that hits a database error is one that failed: the page stands
+// and the bundle is partly published, so "Publish the rest" can go on.
+function test_page_bundle_publish_ops_query_failure_in_take_back_stands()
+{
+	$items = array(
+		1 => array('id' => 1, 'live_page_id' => 5),
+		2 => array('id' => 2, 'live_page_id' => 6),
+	);
+	$write_item = function ($item) {
+		return array('ok' => (int) $item['id'] === 1, 'error' => 'refused');
+	};
+	$undo_item = function ($item) {
+		throw new RuntimeException('Query failed.');
+	};
+
+	list($write, $undo) = pg_page_bundle_publish_ops($items, $write_item, $undo_item);
+	$run = pg_page_bundle_publish_run(array(1, 2), $write, $undo);
+
+	pg_assert_same('partial', $run['outcome'], 'partly published');
+	pg_assert_same(array(1), $run['stands'], 'the page that could not come back stands');
+}
+
+// While the publish runs, output_error() throws; afterwards it is as before,
+// also when the run itself throws.
+function test_page_bundle_with_throwing_errors_restores()
+{
+	$before = pg_error_throws();
+	pg_error_throws(false);
+
+	$inside = pg_page_bundle_with_throwing_errors(function () {
+		return pg_error_throws();
+	});
+	pg_assert_true($inside, 'errors throw during the run');
+	pg_assert_true(!pg_error_throws(), 'and not after it');
+
+	$caught = '';
+
+	try {
+		pg_page_bundle_with_throwing_errors(function () {
+			throw new RuntimeException('boom');
+		});
+	} catch (RuntimeException $e) {
+		$caught = $e->getMessage();
+	}
+
+	pg_assert_same('boom', $caught, 'a throw goes on to the caller');
+	pg_assert_true(!pg_error_throws(), 'with the setting given back');
+
+	pg_error_throws($before);
+
+	$publish = pg_test_function_source('pg_page_bundle_publish');
+	pg_assert_contains('pg_page_bundle_with_throwing_errors(', $publish, 'the publish runs its writes so');
+
+	$write = pg_test_function_source('pg_page_bundle_write_item');
+	pg_assert_contains('catch (Throwable', $write, 'a write that throws gives its item back');
+}
