@@ -31475,3 +31475,74 @@ button.pg-var-chip:focus-visible {
 }
 
 }
+
+/* Connections (connections.php): where the parts of a service's row and the
+   attention block sit. Every part is a look A recipe (card, inner rows,
+   tile, pill, group label, count, segmented filter); these rules only place
+   them. On a phone the state moves under the text. */
+@layer custom {
+
+.connections-attention {
+  border-color: color-mix(in srgb, var(--pg-tone-amber) 45%, transparent);
+}
+.connections-row {
+  width: 100%;
+  border: 0;
+  background: none;
+  color: inherit;
+  text-align: start;
+  text-decoration: none;
+}
+.connections-row:hover,
+.connections-row:focus-visible {
+  background: var(--pg-hover);
+}
+.connections-row-main {
+  flex: 1;
+  min-width: 0;
+}
+.connections-row-name {
+  display: block;
+  font-weight: var(--pg-weight-strong);
+  overflow-wrap: anywhere;
+}
+.connections-row-side {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+}
+.connections-row-chevron {
+  flex: none;
+  color: var(--pg-fg-3);
+}
+.connections-toggle[aria-expanded="true"] .connections-row-chevron {
+  transform: rotate(180deg);
+}
+.connections-list > * + *,
+.connections-panel {
+  border-top: 1px solid var(--pg-border-color-translucent);
+}
+.connections-panel {
+  padding: 16px 16px 20px 63px;
+}
+
+@media (max-width: 575.98px) {
+  .connections-row {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+  .connections-row-main {
+    flex-basis: calc(100% - 90px);
+  }
+  .connections-row-side {
+    order: 3;
+    flex-basis: 100%;
+    padding-left: 47px;
+  }
+  .connections-panel {
+    padding-left: 16px;
+  }
+}
+
+}

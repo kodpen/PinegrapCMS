@@ -115,6 +115,7 @@
     "Backup taken before the software update: {var:1}": "Yazılım güncellemesinden önce yedek alındı: {var:1}",
     "Backup type": "Yedek türü",
     "Backups": "Yedeklemeler",
+    "Backups and the file picker": "Yedekler ve dosya seçici",
     "Badge": "Rozet",
     "Badge Label": "Rozet Etiketi",
     "Badge label": "Rozet etiketi",
