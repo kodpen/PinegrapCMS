@@ -115,6 +115,16 @@
         return (l && (l.type !== 'video')) ? l : null;
     };
 
+    // Whether Follow is offered over the object: the Animate tool, a layer
+    // it may move and a video showing at the playhead.
+    Editor.prototype.followOffered = function () {
+        var at = (this.time === null) ? 0 : this.motionNow();
+
+        return (this.tool === 'motion') && !!this.followLayer() && this.doc.layers.some(function (l) {
+            return (l.type === 'video') && !l.hidden && (M.clipAt(l, at) !== null);
+        });
+    };
+
     // ---- arming and the box ----
 
     Editor.prototype.followToggle = function () {

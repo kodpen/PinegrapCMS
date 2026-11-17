@@ -5011,6 +5011,12 @@
                 add('split');
             }
 
+            // Follow an area of the video showing at the playhead: never a
+            // video itself, never a redaction (it does not move).
+            if (s.animate && s.follow && (s.kind !== 'video') && (s.kind !== 'redact')) {
+                add('follow');
+            }
+
             if (s.animate && (s.kind !== 'redact')) {
                 add('motion');
             }
