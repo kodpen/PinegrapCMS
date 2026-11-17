@@ -78432,6 +78432,36 @@ const StyleDesigner = (function () {
         }
     }
 
+    // The design's menu on the page strip shows the design's name. It
+    // follows the Settings name field as it is typed and is read again each
+    // time the menu opens, since a template fills that field without an
+    // input event; an empty name shows the button's untitled label.
+    function _sdDesignMenuBind() {
+        var btn = document.getElementById('sd-design-menu-btn');
+        var label = document.getElementById('sd-design-menu-name');
+        if (!btn || !label || btn._pgBound) return;
+        btn._pgBound = true;
+        var sync = function () {
+            var field = document.getElementById('sd-style-name');
+            var name = field ? field.value.trim() : '';
+            label.textContent = name || btn.getAttribute('data-sd-untitled') || '';
+        };
+        btn.addEventListener('click', sync);
+        // A chosen item closes the menu before its own handler runs (capture):
+        // Settings and the Delete question open dialogs, and a menu hidden
+        // once a dialog is open stays open under it.
+        var menu = btn.parentNode ? btn.parentNode.querySelector('.menu') : null;
+        if (menu) {
+            menu.addEventListener('click', function (e) {
+                if (e.target.closest && e.target.closest('.menu-item') && window.pgUI) pgUI.menu.hide(btn);
+            }, true);
+        }
+        document.addEventListener('input', function (e) {
+            if (e.target && e.target.id === 'sd-style-name') sync();
+        });
+        sync();
+    }
+
     function _pgTabsInit(design) {
         _design = design || null;
         _pages  = [];
@@ -78503,6 +78533,7 @@ const StyleDesigner = (function () {
         _pgLoadPageIntoFields(a);
         _pgTabsRender();
         _pgTabsBind();
+        _sdDesignMenuBind();
         _styleBaseline = _pgStyleJSON();
         _sdThemeRender();
         document.dispatchEvent(new CustomEvent('pg-design-theme-change'));

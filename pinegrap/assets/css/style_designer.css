@@ -314,9 +314,63 @@
     white-space: nowrap;
 }
 .sd-tabs-add-btn:hover { color: var(--sd-text); background: color-mix(in srgb, var(--sd-text) 4%, transparent); }
-/* Left cluster: add / settings / duplicate / delete. Never shrinks; the tab
+/* Left cluster: the design's menu and Add Page. Never shrinks; the tab
    strip next to it is what gives way and scrolls. */
 .sd-toolbar-pages { flex: 0 0 auto; gap: .2rem; padding-right: .35rem; border-right: 1px solid var(--sd-panel-border); }
+/* The design's menu: its name opens Settings and, under a divider, Delete.
+   A long name is cut with an ellipsis; the full name is in Settings. */
+.sd-design-menu { flex: 0 0 auto; display: flex; align-items: center; margin-right: .3rem; }
+.sd-design-menu-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    height: 30px;
+    padding: 0 .55rem 0 .7rem;
+    border: 1px solid var(--sd-panel-border);
+    border-radius: 8px;
+    background: var(--sd-input-bg);
+    color: var(--sd-text);
+    font-size: .78rem;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.sd-design-menu-btn:hover,
+.sd-design-menu-btn[aria-expanded="true"] { background: color-mix(in srgb, var(--sd-text) 6%, var(--sd-input-bg)); border-color: var(--sd-border-strong); }
+.sd-design-menu-btn:focus-visible { outline: none; box-shadow: var(--sd-focus-ring); }
+.sd-design-menu-name { max-width: 14rem; overflow: hidden; text-overflow: ellipsis; }
+.sd-design-menu-caret { font-size: .7rem; color: var(--sd-text-muted); }
+/* The menu wears the tab menu's look (.sd-tab-popmenu): same ground,
+   rows, text size and divider. */
+.sd-design-menu .menu {
+    min-width: 220px;
+    padding: .3rem;
+    background: var(--sd-panel-bg);
+    border: 1px solid var(--sd-panel-border);
+    border-radius: 6px;
+    box-shadow: 0 8px 24px color-mix(in srgb, var(--sd-shadow) 45%, transparent);
+}
+.sd-design-menu .menu-item {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding: .45rem .6rem;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--sd-text);
+    font-size: .8rem;
+    line-height: 1.5;
+    text-align: left;
+}
+.sd-design-menu .menu-item:hover,
+.sd-design-menu .menu-item:focus-visible { background: color-mix(in srgb, var(--sd-text) 6%, transparent); color: var(--sd-text); }
+.sd-design-menu .sd-menu-item-danger,
+.sd-design-menu .sd-menu-item-danger:hover,
+.sd-design-menu .sd-menu-item-danger:focus-visible { color: var(--sd-danger); }
+.sd-design-menu .sd-menu-item-danger:hover,
+.sd-design-menu .sd-menu-item-danger:focus-visible { background: color-mix(in srgb, var(--sd-danger) 18%, transparent); }
+.sd-design-menu .menu-divider { height: 1px; margin: .3rem .2rem; border: 0; background: var(--sd-panel-border); opacity: 1; }
 .sd-toolbar-actions { flex: 0 0 auto; margin-left: auto; }
 @media (max-width: 1023.98px) {
     .sd-tabs-add-txt { display: none; }
@@ -3704,8 +3758,6 @@ body.sd-resizing * { cursor: col-resize !important; }
     border-color: var(--sd-accent-strong);
 }
 .sd-icon-btn-primary:hover { background: color-mix(in srgb, var(--sd-accent-strong) 85%, var(--sd-shadow)); }
-.sd-icon-btn-danger { color: #e74c3c !important; }
-.sd-icon-btn-danger:hover { background: rgba(231,76,60,.15); }
 .sd-icon-btn[disabled], .sd-icon-btn.disabled { opacity: .4; pointer-events: none; }
 
 /* The classic style's "Also convert the pages that take it from their
@@ -6056,6 +6108,9 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
     .sd-tabs-add-txt { display: none; }
     .sd-tabs-add-btn { padding-left: .45rem; padding-right: .45rem; }
     .sd-toolbar-pages { padding-right: .25rem; gap: .15rem; }
+    .sd-design-menu { margin-right: .1rem; }
+    .sd-design-menu-btn { padding: 0 .4rem 0 .5rem; gap: .25rem; }
+    .sd-design-menu-name { max-width: 7rem; }
     .sd-toolbar-actions { gap: 2px; }
     /* The strip gives way all the way down; the page list reaches the tabs
        it can no longer show, and Save never leaves the screen. */
