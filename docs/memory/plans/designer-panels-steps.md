@@ -4,7 +4,7 @@ description: Plan designer-panels, steps DP1 to DP5: the chrome's tokens, the ri
 ---
 
 ## Which steps are there?
-- DP1 (M) the chrome's tokens.
+- DP1 (M) the chrome's tokens. Done in #10179.
   - Existing files: `assets/css/style_designer.css`: the `--sd-*` block takes the values of `designer-panels-measures.md` and gets the missing tokens (raised grounds, the two lines, label and secondary text, strong accent, the three state colours, the soft accent); the rules of the Options panel, the Overview, the page strip and the canvas bar read tokens only. `tests/designer_chrome_contrast_test.php`: every pair of the measures. No JavaScript.
   - Pictures: the whole editor before and after, an element selected, the bottom panel open, beside `options-4-whole-screen.jpg`.
   - The PR body counts the colours still written outside a token and where.

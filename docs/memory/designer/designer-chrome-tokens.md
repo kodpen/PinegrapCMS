@@ -26,7 +26,7 @@ description: The Page Design Studio chrome's --sd-* colour tokens in style_desig
 ## Which rules read tokens only?
 - The page strip (`.sd-tab*`, `.sd-tabs-*`), the canvas bar (`.sd-bp-bar`, `.sd-vb-*`), the Overview (`.sd-tree*`, `.sd-overview*`, `.sd-ov-*`, its Notes list `.sd-notes-*`) and the Options panel (`#sd-properties`, `.sd-prop*`, `.sd-sect-*`, `.sd-sp-*`, the colour and background pickers, the box model, `.sd-align-*`, `.sd-tr-*`).
 - A custom property set inside a rule is a token too: the tab group colours (`--sd-tg`) are the user's palette and stay as they are.
-- Other parts of the file still write their own colours (995 literals at #DP1_PR_NUMBER, most in the Theme rows, the file list, settings dialogs and the AI panel), and the Overview's markup in `style_designer.src.js` has inline colours.
+- Other parts of the file still write their own colours (995 literals at #10179, most in the Theme rows, the file list, settings dialogs and the AI panel), and the Overview's markup in `style_designer.src.js` has inline colours.
 
 ## What checks it?
 - `tests/designer_chrome_contrast_test.php`: `test_designer_chrome_measures()` checks every token's value and every pair above; `test_designer_chrome_areas_read_tokens_only()` refuses a hex, `rgb()`/`rgba()` with numbers or a named colour in a rule of the four areas. A new rule of those areas takes a token; a missing colour is a new token in the `:root` block with its ratio checked.
