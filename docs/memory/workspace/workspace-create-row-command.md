@@ -9,6 +9,10 @@ description: /create row (/oluştur satır) in a channel: the table matched by n
 - The card (`drawRowCreate()` in workspace.js) shows a Table select, then each column the row stores, empty: a status its choices, a person the team, a row link the rows of a table the person reads (else left out), money its currency as the field's suffix (the table screen's row form too), a date its picker, a checkbox on its neighbour's control line, text and list a box, the rest a line; two fields a line from md up.
 - Choosing a table sends the line again with `table_id` and draws its fields. No decision tick and no "All fields": the card is the table screen's own row form.
 
+## Which parts do the /create, /price and /stock cards use? (PR #10234)
+- The look's recipes (architect, agent channel message 8554), through `lookButton()`, `lookCheck()` and `lookField()` in workspace.js: Create or Save `pg-button pg-button-fill pg-button-sm` (one fill a card), "All fields" `-quiet`, Cancel `-ghost`; ticks `pg-checkbox` with a `pg-text-2` label; the row card's fields `pg-field-label` over `pg-input`, help `pg-field-help`, money a `pg-input` wrapper with `pg-input-end`.
+- A text column is a one-line `pg-input` (the recipe textarea is 92 px high); a list keeps the textarea. The frame stays `.ws-preview`, shared with the /task card.
+
 ## How is it written?
 - Only Create writes: it sends `confirm`, `table_id` and `cells` (column id => as typed; `ws_send` passes them), each read by `ws_wtable_screen_cell_from_form()` as the table screen reads its form, then `ws_wtable_row_create()`: the table's rights, key, limits, row number, events and flows. A refused cell is named by its column (`ws_command_row_refusal()`).
 

@@ -19555,9 +19555,10 @@
                     column.choices.forEach(function (choice) {
                         input.appendChild(new Option(choice[1], choice[0]));
                     });
-                } else if (column.type === 'text' || column.type === 'list') {
+                } else if (column.type === 'list') {
+                    // One item a line: the recipe's text box.
                     input = el('textarea', 'pg-input');
-                    input.rows = 1;
+                    input.rows = 2;
                 } else if (column.type === 'date') {
                     input = pgDateField(el('input', 'pg-input'), column.time ? 'datetime-local' : 'date');
                 } else {
