@@ -1,6 +1,6 @@
 ---
 name: bug-hunt-areas
-description: The areas given to a bug hunt so far (2026-11-15 on), the issues each ended with and what it read and found clean; the next area is not one of these
+description: The areas given to a bug hunt on 2026-11-15 and 2026-11-16, the issues each ended with and what it read and found clean; the hunts from 2026-11-17 on are in bug-hunt-areas-2.md
 ---
 
 ## Which areas were hunted, and what did each find?
@@ -11,12 +11,6 @@ description: The areas given to a bug hunt so far (2026-11-15 on), the issues ea
 - Given after those on 2026-11-15 (channel message 5402): polls and agent questions over the API. It ended the same day with #9807 to #9812 (channel message 5416).
 - Given after those on 2026-11-15: scheduled messages and reminders (the `/zamanla` command, change and send-now of a scheduled message over the API, "remind me later", task reminders; panel and API). It ended the same day with #9832 and #9833.
 - Given after those on 2026-11-16 (channel message 5646), CA12 to CA16 having landed: a channel's settings and members over the API. It ended the same day with #9855 to #9857 (channel message 5659). Read and found clean: person-only routes refuse an application's key; the list of who loses a channel made private equals who really leaves; panel and API share their checks.
-- Given on 2026-11-17 (channel message 8165), every open bug issue having a PR or a worker: the wholesale prices (the offers' group condition, shared prices, the minimum order, quantity prices on a product page; WS1, WS2, WS4, WS5). It ended the same day with #10195 to #10197 (channel message 8182).
-- Read and found clean there: the group condition on every offer path; the one-hop pointer and its refusals; the lower of an account's and a campaign's price, never stacked; retail in feeds, structured data, price history and the API; the page copy marked personal; the minimum's highest group and its refusal at submit.
-- Given on 2026-11-17 (channel message 8337): publish approval's server side (PA2 #9892, PA4a #9930, PA4b #9939, PA5 #9968): every save door, who may apply, a page changed since, what a visitor sees meanwhile. Known, not reported: PA3 (#10188) and the close-out. It ended the same day with #10215 to #10220 (channel message 8399).
-- Read and found clean there: a held save after the gate writes nothing before it; the API, assistant and import doors untouched as decided; apply, dismiss and take back refuse role 2 in the panel and in the Workspace answer; a stale change, two editors on one element, the switch turned off.
-- Four of its fixes (#10216 to #10219) share `includes/fn/content_proposals.php`: `held-file-hunt-fixes.md`.
-- Given on 2026-11-17 (channel message 8702): visitor push's server side (VP1 #9947, VP2 #9957, VP4 #9977, VP5 #9975, VP6 #9976; VP3, VP6b and VP7 are not built). It ended the same day with #10247 to #10249 (channel message 8720) and, on the architect's word, #10251 (the sender's pace: `platform/visitor-push-sender.md`).
-- Read and found clean there: the endpoint's host check, the secret's scope, the door's order and rate limit, removal on 404/410 and the hold on 429, who may watch an order, a stock push sent once, the panel's role and CSRF, privacy export and erasure.
+- The hunts given from 2026-11-17 on: `bug-hunt-areas-2.md`. The next area is none of either file.
 
-Related: docs/memory/workflow/bug-hunt.md, docs/memory/workflow/held-file-hunt-fixes.md
+Related: docs/memory/workflow/bug-hunt.md, docs/memory/workflow/bug-hunt-areas-2.md
