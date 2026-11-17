@@ -60432,6 +60432,121 @@ const StyleDesigner = (function () {
     }
     // ── end of what counts as changed
 
+    // ── The Options panel controls: pure helpers ──
+    // No DOM and no editor state here: how a row's control is drawn and
+    // what it writes, run under Node by tests/designer_options_controls_test.php.
+
+    // Whether saveState() takes a snapshot, keeping `run` ({ key, at, one,
+    // seq }). A call with the key of the run still going, inside the run's
+    // time or inside _sdUndoAsOne(), joins the snapshot already taken.
+    function _sdStateRunTakes(run, key, now, ms) {
+        if (key !== null && key === run.key && (run.one || (now - run.at) < ms)) {
+            run.at = now;
+            return false;
+        }
+        run.key = key;
+        run.at = now;
+        return true;
+    }
+
+    // Runs `fn` as one undo step: every saveState() it makes joins the
+    // first. Nested calls stay inside the outer step; the edit after it
+    // starts a step of its own.
+    function _sdUndoAsOne(run, fn) {
+        if (run.one) { fn(); return; }
+        run.one = 'one:' + (++run.seq);
+        try { fn(); } finally { run.one = null; run.key = null; }
+    }
+
+    // The value a segment click writes: the clicked one, or '' (the value
+    // removed) when it is already selected and the control has an empty
+    // choice.
+    function _sdSegNext(cur, clicked, canClear) {
+        if (clicked === cur) return canClear ? '' : cur;
+        return clicked;
+    }
+
+    // How a list of values is drawn: up to six as a button group, seven or
+    // more (or none) as a select. Widths are estimated from the segments'
+    // 11.5 px text: a group wider than the control beside its label (186 at
+    // 336 px) stands under it, one wider than the whole row (288) stays a
+    // select. Under 300 px (control 104) a group of four or more written
+    // segments, or a wider one, stands under its label; four icons stay.
+    function _sdSegPlan(labels, icons) {
+        var n = (labels || []).length;
+        if (!n || n > 6) return { kind: 'select', stack: false, stackNarrow: false };
+        var w = icons ? n * 28 : labels.reduce(function (s, l) {
+            return s + String(l).replace(/&[a-z#0-9]+;/gi, '_').length * 6.4 + 12;
+        }, 0);
+        if (w > 288) return { kind: 'select', stack: false, stackNarrow: false };
+        var narrow = icons ? n > 4 : (n >= 4 || w > 104);
+        return { kind: 'group', stack: w > 186, stackNarrow: w > 186 || narrow };
+    }
+
+    // A lone select of a row's markup read into { attrs, opts: [{ v, l, on }] }:
+    // `attrs` the data attribute that writes it (data-stylegroup,
+    // data-prop or data-util), the labels kept as written. Null for anything
+    // else: other markup around it, an id other code may hold, several
+    // choices, a group or a disabled option.
+    function _sdSelParse(html) {
+        var m = /^\s*<select\b([^>]*)>([\s\S]*)<\/select>\s*$/.exec(String(html || ''));
+        if (!m || /<select|<optgroup|\bdisabled\b/i.test(m[2])) return null;
+        var head = m[1];
+        if (/\s(id|multiple)(=|\s|$)/i.test(head)) return null;
+        var data = /\s(data-(?:stylegroup|prop|util)="[^"]*")/.exec(head);
+        if (!data) return null;
+        var opts = [];
+        var re = /<option\b([^>]*)>([\s\S]*?)<\/option>/g;
+        var o;
+        while ((o = re.exec(m[2]))) {
+            var v = /\svalue="([^"]*)"/.exec(' ' + o[1]);
+            opts.push({ v: v ? v[1] : o[2], l: o[2].trim(), on: /\sselected\b/.test(' ' + o[1]) });
+        }
+        return opts.length ? { attrs: ' ' + data[1], opts: opts } : null;
+    }
+
+    // Why a length typed into the Sizing rows is not written, '' when it is
+    // valid. kind 'len': a CSS length, a bare number (pixels, _sdCssLen()),
+    // a keyword or a CSS function with its brackets closed; kind 'z': a
+    // whole number or auto, what getNodeExtraStyle() writes. Empty is valid.
+    function _sdLenCheck(kind, raw) {
+        var s = String(raw == null ? '' : raw).trim();
+        if (s === '') return '';
+        if (kind === 'z') {
+            return (s === 'auto' || /^-?\d+$/.test(s)) ? '' : _sdT('A whole number or auto.');
+        }
+        var num = '[-+]?(?:\\d+\\.?\\d*|\\.\\d+)';
+        var units = 'px|%|r?em|ch|ex|vw|vh|vmin|vmax|[sdl]v[hw]|cq[whib]|cm|mm|in|pt|pc|fr';
+        if (new RegExp('^' + num + '(?:' + units + ')?$', 'i').test(s)) return '';
+        if (/^(auto|none|inherit|initial|unset|revert|fit-content|min-content|max-content)$/i.test(s)) return '';
+        var f = /^(calc|min|max|clamp|var|fit-content)\((.*)\)$/i.exec(s);
+        if (f) {
+            var depth = 0;
+            for (var i = 0; i < f[2].length; i++) {
+                if (f[2][i] === '(') depth++;
+                else if (f[2][i] === ')' && --depth < 0) break;
+            }
+            if (depth === 0 && f[2].trim() !== '') return '';
+        }
+        return _sdT('Use a number with a unit (px, %, rem, vh), auto or calc().');
+    }
+
+    // The screen-size badge of a row whose classes are `prefix` + value at
+    // every size and `prefix` + size + '-' + value from a size up: the first
+    // size holding a value when none holds at every size ('MD'), 'all' when
+    // one holds at every size and a size changes it, '' otherwise.
+    var _SD_SIZES = ['sm', 'md', 'lg', 'xl', 'xxl'];
+    function _sdSizeBadge(cls, prefix, values) {
+        var have = ' ' + String(cls || '') + ' ';
+        var vals = (values || []).map(function (v) { return Array.isArray(v) ? v[0] : v; });
+        var has = function (pfx) { return vals.some(function (v) { return have.indexOf(' ' + pfx + v + ' ') !== -1; }); };
+        var first = '';
+        _SD_SIZES.forEach(function (bp) { if (!first && has(prefix + bp + '-')) first = bp; });
+        if (!first) return '';
+        return has(prefix) ? 'all' : first.toUpperCase();
+    }
+    // ── end of the Options panel controls
+
     // ========================= MODIFIED PROPS HIGHLIGHT =========================
     // Static default props map for structural node types (no formal defaultProps in component defs)
     var STRUCTURAL_DEFAULTS = {
