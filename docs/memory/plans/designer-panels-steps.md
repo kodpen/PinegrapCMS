@@ -35,6 +35,7 @@ description: Plan designer-panels, steps DP1 to DP5: the chrome's tokens, the ri
   - Features: D4, D5, D14. Keeps K4.
   - Several elements selected (`renderMultiProperties()`, `_postProcessMultiPanel()`): as `designer-panels-measures-5.md` says. Tests: the shared options by kind, a mixed value, the dot's ring, a change written to all as one undo step. Picture: beside `options-6-multiple-selection.jpg`. Keeps K6.
   - Over 1,000 product lines: cut as DP5a (the tabs, Content), DP5b (Style, Advanced) and DP5c (several elements selected), said before the claim.
+  - Cut so before the claim. DP5a: the tab strip, the tab remembered per kind, every section in its tab by the table, Content's order and summaries (D4, D5, D14). DP5b: Style's and Advanced's names, order and open rules. DP5c: several elements selected.
 
 ## Which steps wait for each other?
 - Each waits for the one before it. DP3 to DP5 draw their parts under 300 px as `options-5-narrow-column.jpg` shows.
