@@ -3532,6 +3532,7 @@ const StyleDesigner = (function () {
         _sdSelectRender();
         setTimeout(function () {
             var anchor = document.getElementById(anchorId);
+            if (!anchor && _sdSectOpenFor(anchorId)) anchor = document.getElementById(anchorId);
             var sect = anchor ? anchor.closest('.sd-props-section') : null;
             if (!sect) return;
             var hdr = sect.querySelector('.sd-sect-hdr');
@@ -25380,6 +25381,10 @@ const StyleDesigner = (function () {
             return;
         }
 
+        // The bodies of closed cards are held back; the search draws the
+        // panel with all of them first (renderProperties() filters again).
+        if (panel.querySelector('[data-sd-lazy]')) { renderProperties(); return; }
+
         var isSect = function(el) {
             return el.classList.contains('sd-props-section') || el.classList.contains('sd-app-sect');
         };
@@ -25397,7 +25402,7 @@ const StyleDesigner = (function () {
         // Filter both Options sections (.sd-props-section) and Appearance sections (.sd-app-sect)
         panel.querySelectorAll('.sd-props-section, .sd-app-sect').forEach(function(sect) {
             var isApp = sect.classList.contains('sd-app-sect');
-            var titleEl = sect.querySelector(isApp ? '.sd-app-sect-hdr' : '.sd-props-section-title');
+            var titleEl = sect.querySelector('.sd-sect-title') || sect.querySelector(isApp ? '.sd-app-sect-hdr' : '.sd-props-section-title');
             var titleText = titleEl ? _sdCondFold(titleEl.textContent) : '';
             var titleMatch = titleText.indexOf(q) !== -1;
             var anyVisible = false;
@@ -27576,7 +27581,15 @@ const StyleDesigner = (function () {
     // Scroll & highlight the right-panel control for a given class
     function focusClassControl(cls) {
         var ctrl = findControlForClass(cls);
+        // The control may sit in a closed card whose body was not drawn.
+        if (!ctrl && document.querySelector('#sd-properties [data-sd-lazy]')) {
+            _sdSectAllOnce = true;
+            renderProperties();
+            ctrl = findControlForClass(cls);
+        }
         if (!ctrl) return;
+        var _hidden = ctrl.closest('.sd-sect-body');
+        if (_hidden && _hidden.style.display === 'none' && _hidden.previousElementSibling) _hidden.previousElementSibling.click();
         _sdRcolShow('options');
         // Scroll the properties panel to the control
         ctrl.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -33959,11 +33972,182 @@ const StyleDesigner = (function () {
         });
     }
 
+    // ── The identity row and the section heads of the single element's panel
+
+    // The identity row's icon: the one the Overview gives the element.
+    function _sdIdIcon(node) {
+        var p = node.props || {};
+        if (node.type === 'root') return 'bi-filetype-html';
+        if (node.type === 'row' || node.type === 'col') return 'bi-layout-split';
+        if (node.type === 'shared_ref') return 'bi-puzzle-fill';
+        if (node.type === 'semantic') {
+            var semTagIcons = { nav: 'bi-signpost-2', ul: 'bi-list-ul', ol: 'bi-list-ol', li: 'bi-dash-lg',
+                button: 'bi-hand-index', a: 'bi-link-45deg', form: 'bi-input-cursor-text',
+                header: 'bi-layout-text-window-reverse', footer: 'bi-layout-text-window',
+                section: 'bi-layers', article: 'bi-file-text', main: 'bi-body-text',
+                aside: 'bi-layout-sidebar-reverse', h1: 'bi-type-h1', h2: 'bi-type-h2', h3: 'bi-type-h3',
+                span: 'bi-fonts', p: 'bi-paragraph', div: 'bi-bounding-box' };
+            return semTagIcons[p.tag] || 'bi-code-slash';
+        }
+        var def = COMPONENTS[node.type] || CONTENT[p.contentType || node.type];
+        return (def && def.icon) || 'bi-box';
+    }
+
+    // The tag the element draws on the canvas ('H2'), or its tag prop.
+    function _sdIdTag(node) {
+        var tag = '';
+        try {
+            var wrap = canvasDoc ? canvasDoc.querySelector('[data-sd-id="' + node._id + '"]') : null;
+            if (wrap) {
+                var el = wrap.hasAttribute('data-sd-self') ? wrap : null;
+                for (var i = 0; !el && i < wrap.children.length; i++) {
+                    if (!wrap.children[i].classList.contains('sd-tb')) el = wrap.children[i];
+                }
+                tag = el ? el.tagName : '';
+            }
+        } catch (e) {}
+        if (!tag && node.props && node.props.tag) tag = node.props.tag;
+        return String(tag || '').toUpperCase();
+    }
+
+    // The row over the sections: the element's icon, name and tag, the last
+    // three steps of its path (a click selects that parent) and a menu with
+    // Duplicate, Delete and Show in Overview.
+    function _sdIdentityRow(node) {
+        var name = getNodeLabel(node);
+        var tag = _sdIdTag(node);
+        var steps = getAncestors(node, tree).filter(function (a) { return a.type !== 'root'; }).reverse();
+        var path = _sdPathTail(steps, 3).map(function (a) {
+            return '<button type="button" class="sd-id-step" data-sd-path="' + esc(a._id) + '" title="' + esc(getNodeLabel(a)) + '">' + esc(getNodeLabel(a)) + '</button>';
+        }).join('<span class="sd-id-sep" aria-hidden="true">›</span>');
+        var fullPath = steps.map(function (a) { return getNodeLabel(a); }).join(' › ');
+        return '<div class="sd-id-row">' +
+            '<span class="sd-id-icon bi ' + _sdIdIcon(node) + '" aria-hidden="true"></span>' +
+            '<div class="sd-id-main">' +
+                '<div class="sd-id-line"><span class="sd-id-name" title="' + esc(name) + '">' + esc(name) + '</span>' +
+                    (tag ? '<span class="sd-id-tag">' + esc(tag) + '</span>' : '') + '</div>' +
+                (path ? '<div class="sd-id-path" title="' + esc(fullPath) + '">' + path + '</div>' : '') +
+            '</div>' +
+            (node.type !== 'root' ? '<button type="button" class="sd-id-more bi bi-three-dots" id="sd-id-more" title="' + esc(_sdT('More actions')) + '" aria-label="' + esc(_sdT('More actions')) + '" aria-haspopup="menu"></button>' : '') +
+        '</div>';
+    }
+
+    function _sdIdentityBind(panel, node) {
+        panel.querySelectorAll('.sd-id-step').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var r = _findNodeAnywhereById(this.getAttribute('data-sd-path'));
+                if (!r || !r.node) return;
+                selectedNode = r.node;
+                selectedNodes = [];
+                _sdSelectRender();
+            });
+        });
+        var more = panel.querySelector('#sd-id-more');
+        if (!more) return;
+        more.addEventListener('click', function (e) {
+            e.stopPropagation();
+            var r = more.getBoundingClientRect();
+            showCtxMenu(r.left, r.bottom + 4, [
+                _sdGuardItem({ icon: 'bi-copy', label: _sdT('Duplicate'), handler: function () { onDuplicate(node); } }, [node]),
+                _sdGuardItem({ icon: 'bi-trash', label: _sdT('Delete'), danger: true, handler: function () { onDelete(node); } }, [node]),
+                { sep: true },
+                { icon: 'bi-list-nested', label: _sdT('Show in Overview'), handler: function () { scrollTreeToNode(node); } }
+            ]);
+        });
+    }
+
+    // A held-back body put into a detached copy, with the bodies of the
+    // closed cards inside it, so its rows can be read.
+    function _sdSectExpand(sid) {
+        var t = document.createElement('template');
+        t.innerHTML = _sdPanelLazy[sid] || '';
+        var guard = 0, held;
+        while ((held = t.content.querySelector('[data-sd-lazy]')) && guard++ < 50) {
+            var inner = held.getAttribute('data-sd-lazy');
+            held.removeAttribute('data-sd-lazy');
+            held.innerHTML = _sdPanelLazy[inner] || '';
+        }
+        return t.content;
+    }
+
+    // A changed row's value for a summary: a colour's name and dot class,
+    // a select's chosen option, a field's text, a switch's own label.
+    function _sdChgRowOf(lbl) {
+        var row = lbl.closest('.sd-prop-row, .sd-sp-row');
+        var out = { changed: true, text: '', swatch: '' };
+        if (!row) return out;
+        var cp = row.querySelector('.sd-cp');
+        if (cp) {
+            var dot = cp.querySelector('.sd-cp-trigger .sd-color-preview');
+            var lab = cp.querySelector('.sd-cp-label');
+            out.text = lab ? lab.textContent : '';
+            out.swatch = dot ? Array.prototype.filter.call(dot.classList, function (c) { return c !== 'sd-color-preview'; }).join(' ') : '';
+            return out;
+        }
+        var ctrl = row.querySelector('select, input:not([type="hidden"]), textarea');
+        var activeBtn = row.querySelector('button.active');
+        if (ctrl && ctrl.tagName === 'SELECT') {
+            var opt = ctrl.options[ctrl.selectedIndex];
+            out.text = opt ? opt.text : ctrl.value;
+        } else if (ctrl && (ctrl.type === 'checkbox' || ctrl.type === 'radio')) {
+            out.text = ctrl.checked ? lbl.textContent : '';
+        } else if (ctrl) {
+            out.text = ctrl.value;
+        } else if (activeBtn) {
+            out.text = activeBtn.textContent.trim() || activeBtn.title || '';
+        }
+        return out;
+    }
+
+    // The count and the summary of every section card on the panel, from
+    // the dots markModifiedProps() put on its rows: on screen for a drawn
+    // body, on a detached copy for a held-back one.
+    function _sdSectHeadsFill(panel) {
+        panel.querySelectorAll('[data-sd-card]').forEach(function (card) {
+            var hdr = card.querySelector(':scope > .sd-sect-hdr');
+            var body = card.querySelector(':scope > .sd-sect-body');
+            if (!hdr || !body) return;
+            var sid = body.getAttribute('data-sd-lazy');
+            var root = body;
+            if (sid) {
+                root = _sdSectExpand(sid);
+                markModifiedProps(root);
+            }
+            var rows = Array.prototype.map.call(root.querySelectorAll('.sd-prop-label.sd-prop-modified, .sd-sp-label.sd-prop-modified'), _sdChgRowOf);
+            var sum = _sdChgSummary(rows);
+            hdr.querySelectorAll(':scope > .sd-sect-count, :scope > .sd-sect-sum').forEach(function (el) { el.remove(); });
+            hdr.insertAdjacentHTML('beforeend', _sdSectHeadExtras(sum));
+        });
+    }
+
+    // Opens the closed card whose held-back body holds element `id` and
+    // draws the panel again; true when there was one.
+    function _sdSectOpenFor(id) {
+        var needle = 'id="' + id + '"';
+        var hit = Object.keys(_sdPanelLazy).filter(function (sid) { return String(_sdPanelLazy[sid]).indexOf(needle) !== -1; });
+        if (!hit.length) return false;
+        hit.forEach(function (sid) { try { localStorage.setItem('sd_cs_' + sid, '0'); } catch (e) {} });
+        renderProperties();
+        return true;
+    }
+
+    // The kind of element the panel showed last (_sdPanelKind()); '' after
+    // a panel of another sort (none, read-only, several, a text's inner).
+    var _sdPanelLastKind = '';
+    // Set for one draw: build every section's body (the search, a jump to a
+    // control in a closed section).
+    var _sdSectAllOnce = false;
+
     function renderProperties() {
         var panel = document.getElementById('sd-properties');
         if (!panel) return;
         _sdPaletteRefresh();
         _sdPropsA11yInit(panel);
+        var _kind = _sdPanelKind(selectedNode);
+        var _keepScroll = (_kind && _kind === _sdPanelLastKind) ? panel.scrollTop : 0;
+        _sdPanelLastKind = '';
+        _sdPanelLazy = {};
+        _sdSectBuild = null;
         if (!selectedNode) {
             panel.innerHTML = '<div class="sd-props-empty"><div><span class="bi bi-cursor d-block mb-3" style="font-size:1.5rem"></span>' + esc(_sdT('Select an element to edit its properties')) + '</div></div>';
             return;
@@ -34070,6 +34254,14 @@ const StyleDesigner = (function () {
         // The same for a link's window and relationship kept in _attrs.
         migrateNodeLinkProps(selectedNode);
 
+        _sdPanelLastKind = _kind;
+        // While the search has text every body is built: it looks through
+        // all of them.
+        var _srchBox = document.getElementById('sd-props-search');
+        var _allBodies = _sdSectAllOnce || !!(_srchBox && _srchBox.value.trim());
+        _sdSectAllOnce = false;
+        _sdSectBuild = { cards: {}, lazy: _allBodies ? null : {} };
+
         // Options section (node-specific)
         var optHtml = '';
         switch (selectedNode.type) {
@@ -34085,6 +34277,8 @@ const StyleDesigner = (function () {
             case 'loop_area':  optHtml += propsLoopArea(selectedNode);   break;
             case 'recipient_loop_area': optHtml += propsRecipientLoopArea(selectedNode); break;
         }
+        var _own = _sdSectTakeOwn(optHtml);
+        optHtml = _own.rest;
 
         // An element drawing a Bootstrap icon through its class gets the icon
         // picker an icon node has (_sdBiIconSection()).
@@ -34136,9 +34330,15 @@ const StyleDesigner = (function () {
             }
         }
 
-        // The Appearance section runs in the same flow as the options
-        panel.innerHTML = '<div class="sd-tab-content">' + _cfSettingsShortcut(selectedNode) + _sdCommentsSettingsShortcut(selectedNode) +
-            _sdPartSettingsBox(selectedNode) + _sdTrSection(selectedNode) + ctxHtml + optHtml + rowCss(selectedNode) + '</div>';
+        // The Appearance section runs in the same flow as the options. The
+        // element's own section comes first, under the identity row.
+        var _restHtml = _sdTrSection(selectedNode) + ctxHtml + optHtml + rowCss(selectedNode);
+        var _build = _sdSectBuild;
+        _sdSectBuild = null;
+        _sdPanelLazy = _build.lazy || {};
+        panel.innerHTML = _sdIdentityRow(selectedNode) + '<div class="sd-tab-content">' + _cfSettingsShortcut(selectedNode) + _sdCommentsSettingsShortcut(selectedNode) +
+            _sdPartSettingsBox(selectedNode) + _own.own + _restHtml + '</div>';
+        _sdIdentityBind(panel, selectedNode);
         _sdHideBootstrapControls(panel);
         bindPropEvents();
         _sdPartSettingsBind(selectedNode);
@@ -34150,6 +34350,8 @@ const StyleDesigner = (function () {
         _sdFxBind(selectedNode);
         _sdTrLoad(selectedNode);
         markModifiedProps();
+        _sdSectHeadsFill(panel);
+        panel.scrollTop = _keepScroll;
         // Re-apply search filter if user had typed something
         var srch = document.getElementById('sd-props-search');
         if (srch && srch.value.trim()) filterPropertiesPanel(srch.value.toLowerCase().trim());
@@ -52924,18 +53126,50 @@ const StyleDesigner = (function () {
         return o;
     }
 
+    // ── Section cards of the single element's panel
+    // While renderProperties() builds that panel (_sdSectBuild set) every
+    // section is a general one, closed until this browser opened it
+    // (_sdSectOpenRead()); the first card in the markup of the element's own
+    // options becomes its own section, put first and open
+    // (_sdSectTakeOwn()). A closed card's body is kept in _sdSectBuild.lazy,
+    // not drawn; opening the card draws the panel again with it. Outside
+    // that build (the several-element panel, a text's inner element) a
+    // section opens as before.
+    var _sdSectBuild = null;
+    // The bodies held back by the last single-element panel, by section id.
+    var _sdPanelLazy = {};
+
+    function _sdSectMake(sid, cls, hdrCls, head, body) {
+        var b = _sdSectBuild;
+        var stored = null;
+        try { stored = localStorage.getItem('sd_cs_' + sid); } catch(e) {}
+        var open = _sdSectOpenRead(stored, !b);
+        var lazy = !!(b && b.lazy);
+        if (lazy && !open) b.lazy[sid] = body;
+        var o = { sid: sid, cls: cls, hdrCls: hdrCls, head: head, body: body, open: open, lazy: lazy, stored: stored };
+        o.html = _sdSectCard(o);
+        if (b) b.cards[sid] = o;
+        return o.html;
+    }
+
+    // Takes the element's own section out of `html` (the markup of its own
+    // options): the first card in it, drawn open unless this browser closed
+    // it. Returns { own, rest }.
+    function _sdSectTakeOwn(html) {
+        var b = _sdSectBuild;
+        var m = b ? /data-sd-card="([^"]+)"/.exec(html) : null;
+        var o = m ? b.cards[m[1]] : null;
+        if (!o || html.indexOf(o.html) === -1) return { own: '', rest: html };
+        var rest = html.replace(o.html, function () { return ''; });
+        o.open = _sdSectOpenRead(o.stored, true);
+        if (o.open && b.lazy) delete b.lazy[o.sid];
+        return { own: _sdSectCard(o), rest: rest };
+    }
+
     // Property HTML helpers
     function sect(icon, title, body) {
         var sid = 'sdsc' + (icon + title).replace(/[^a-zA-Z0-9]/g, '').toLowerCase().slice(0, 24);
-        var collapsed = false;
-        try { collapsed = localStorage.getItem('sd_cs_' + sid) === '1'; } catch(e) {}
-        return '<div class="sd-props-section">' +
-            '<div class="sd-props-section-title sd-sect-hdr' + (collapsed ? '' : ' sd-sect-open') + '" data-sid="' + sid + '" role="button" tabindex="0" aria-expanded="' + (collapsed ? 'false' : 'true') + '">' +
-                '<span class="bi ' + icon + '"></span> ' + title +
-                '<span class="sd-sect-chev bi bi-chevron-right"></span>' +
-            '</div>' +
-            '<div class="sd-sect-body"' + (collapsed ? ' style="display:none"' : '') + '>' + body + '</div>' +
-        '</div>';
+        return _sdSectMake(sid, 'sd-props-section', 'sd-props-section-title', '<span class="bi ' + icon + '"></span> ' + title, body);
     }
     function row(label, ctrl) { return '<div class="sd-prop-row"><label class="sd-prop-label">' + label + '</label><div class="sd-prop-control">' + ctrl + '</div></div>'; }
     /** Boolean toggle — renders as a Bootstrap Studio-style pill switch */
@@ -53583,14 +53817,7 @@ const StyleDesigner = (function () {
         // ── Appearance collapsible sub-section wrapper ──
         function as(title, content) {
             var sid = 'sdsc-ap-' + title.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
-            var collapsed = false;
-            try { collapsed = localStorage.getItem('sd_cs_' + sid) === '1'; } catch(e) {}
-            return '<div class="sd-app-sect">' +
-                '<div class="sd-app-sect-hdr sd-sect-hdr' + (collapsed ? '' : ' sd-sect-open') + '" data-sid="' + sid + '" role="button" tabindex="0" aria-expanded="' + (collapsed ? 'false' : 'true') + '">' +
-                    title + '<span class="sd-sect-chev bi bi-chevron-right"></span>' +
-                '</div>' +
-                '<div class="sd-sect-body"' + (collapsed ? ' style="display:none"' : '') + '>' + content + '</div>' +
-            '</div>';
+            return _sdSectMake(sid, 'sd-app-sect', 'sd-app-sect-hdr', title, content);
         }
 
         // ── Display & Sizing ──
@@ -54607,10 +54834,19 @@ const StyleDesigner = (function () {
                 if (e.target.tagName === 'SELECT' || e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON') return;
                 var body = hdr.nextElementSibling;
                 if (!body || !body.classList.contains('sd-sect-body')) return;
+                var sid = hdr.dataset.sid;
+                // A closed card's body was never drawn: the panel is drawn
+                // again with it, keeping its scroll and the head's focus.
+                if (body.hasAttribute('data-sd-lazy')) {
+                    if (sid) try { localStorage.setItem('sd_cs_' + sid, '0'); } catch(e3) {}
+                    renderProperties();
+                    var again = document.querySelector('#sd-properties .sd-sect-hdr[data-sid="' + sid + '"]');
+                    if (again) again.focus();
+                    return;
+                }
                 var isOpen = hdr.classList.toggle('sd-sect-open');
                 hdr.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
                 body.style.display = isOpen ? '' : 'none';
-                var sid = hdr.dataset.sid;
                 if (sid) try { localStorage.setItem('sd_cs_' + sid, isOpen ? '0' : '1'); } catch(e2) {}
             });
         });
@@ -60085,8 +60321,15 @@ const StyleDesigner = (function () {
      * dispatches a change event on the control with the default value, so the normal prop-change
      * handler updates the node and re-renders — one code path for both user edits and resets.
      */
-    function markModifiedProps() {
+    // `root`: the rows to mark, the panel when left out. A detached copy of a
+    // closed section's body is marked the same way, so its count comes from
+    // the same rules as the dots on screen (_sdSectHeadsFill()); only the
+    // panel itself gets the reset clicks and the other bindings below.
+    function markModifiedProps(root) {
         if (!selectedNode) return;
+        var live = !root;
+        root = root || document.getElementById('sd-properties');
+        if (!root) return;
 
         // Resolve defaults for direct [data-prop] controls
         var defaults = null;
@@ -60104,15 +60347,9 @@ const StyleDesigner = (function () {
         var SKIP_PROPS = { customName: 1, cssClass: 1, fontFamily: 1, id: 1 };
 
         function markRow(el, defVal) {
-            var curVal;
-            if (el.type === 'checkbox') {
-                curVal = el.checked;
-            } else {
-                curVal = el.value;
-                if (typeof defVal === 'boolean') curVal = (el.value === 'true' || el.value === '1' || el.checked === true);
-                else if (typeof defVal === 'number') curVal = parseFloat(el.value);
-            }
-            var isModified = String(curVal) !== String(defVal);
+            var isModified = el.type === 'checkbox'
+                ? _sdChgDiffers('checkbox', el.checked, defVal)
+                : _sdChgDiffers(el.tagName === 'SELECT' ? 'select' : 'text', el.value, defVal);
 
             var propRow = el.closest('.sd-prop-row, .sd-sp-row');
             if (!propRow) return;
@@ -60144,7 +60381,7 @@ const StyleDesigner = (function () {
 
         // 1. Direct [data-prop] controls (Container, Row, Col, Area, Semantic, Component/Content props
         //    + Display & Sizing inline-style props)
-        document.querySelectorAll('#sd-properties [data-prop]').forEach(function(el) {
+        root.querySelectorAll('[data-prop]').forEach(function(el) {
             var prop = el.dataset.prop;
             if (SKIP_PROPS[prop]) return;
             if (defaults && (prop in defaults)) {
@@ -60155,24 +60392,24 @@ const StyleDesigner = (function () {
         });
 
         // 2. Dropdown Options — [data-dd-prop]
-        document.querySelectorAll('#sd-properties [data-dd-prop]').forEach(function(el) {
+        root.querySelectorAll('[data-dd-prop]').forEach(function(el) {
             var prop = el.dataset.ddProp;
             if (!(prop in DROPDOWN_DEFAULTS)) return;
             markRow(el, DROPDOWN_DEFAULTS[prop]);
         });
 
         // 3. Modal Options — fade defaults true (Bootstrap default), sections visible, centered/scrollable false
-        document.querySelectorAll('#sd-properties [data-modal-fade]').forEach(function(el) {
+        root.querySelectorAll('[data-modal-fade]').forEach(function(el) {
             markRow(el, true);
         });
-        document.querySelectorAll('#sd-properties [data-modal-cls]').forEach(function(el) {
+        root.querySelectorAll('[data-modal-cls]').forEach(function(el) {
             markRow(el, false);  // centered/scrollable default off
         });
-        document.querySelectorAll('#sd-properties [data-modal-section-vis]').forEach(function(el) {
+        root.querySelectorAll('[data-modal-section-vis]').forEach(function(el) {
             markRow(el, true);  // header/footer visible by default
         });
         // Modal size: default is the btn with empty data-modal-size
-        document.querySelectorAll('#sd-properties .sd-prop-row').forEach(function(propRow) {
+        root.querySelectorAll('.sd-prop-row').forEach(function(propRow) {
             var modalSizeBtns = propRow.querySelectorAll('[data-modal-size]');
             if (!modalSizeBtns.length) return;
             var active = propRow.querySelector('[data-modal-size].active');
@@ -60193,41 +60430,41 @@ const StyleDesigner = (function () {
         });
 
         // 4. Offcanvas Options — position default 'offcanvas-start' (now a select), header visible
-        document.querySelectorAll('#sd-properties [data-oc-pos-sel]').forEach(function(el) {
+        root.querySelectorAll('[data-oc-pos-sel]').forEach(function(el) {
             markRow(el, 'offcanvas-start');
         });
-        document.querySelectorAll('#sd-properties [data-oc-header-vis]').forEach(function(el) {
+        root.querySelectorAll('[data-oc-header-vis]').forEach(function(el) {
             markRow(el, true);
         });
         // Modal fullscreen variant and Offcanvas responsive variant — default '' (off)
-        document.querySelectorAll('#sd-properties [data-modal-fullscreen]').forEach(function(el) {
+        root.querySelectorAll('[data-modal-fullscreen]').forEach(function(el) {
             markRow(el, '');
         });
-        document.querySelectorAll('#sd-properties [data-oc-resp]').forEach(function(el) {
+        root.querySelectorAll('[data-oc-resp]').forEach(function(el) {
             markRow(el, '');
         });
 
         // 5. Appearance — [data-stylegroup] mutex selects (Display, Position, Float, Flex, etc.)
         //    Default is always empty (no class applied). Modified when .value !== ''.
-        document.querySelectorAll('#sd-properties select[data-stylegroup]').forEach(function(el) {
+        root.querySelectorAll('select[data-stylegroup]').forEach(function(el) {
             markRow(el, '');
         });
 
         // 6. Appearance — [data-util] selects (spacing-like util selectors that aren't data-stylegroup).
         //    Covers both .sd-prop-row and .sd-sp-row (Display & Sizing section).
-        document.querySelectorAll('#sd-properties select[data-util]').forEach(function(el) {
+        root.querySelectorAll('select[data-util]').forEach(function(el) {
             markRow(el, '');
         });
 
         // 7. Appearance — [data-util-toggle] checkboxes (text-truncate, text-nowrap, etc.)
         //    Default unchecked; modified when checked.
-        document.querySelectorAll('#sd-properties input[type="checkbox"][data-util-toggle]').forEach(function(cb) {
+        root.querySelectorAll('input[type="checkbox"][data-util-toggle]').forEach(function(cb) {
             markRow(cb, false);
         });
 
         // 8. Appearance — [data-util-toggle] buttons (Border / Border-side toggles). Default inactive.
         //    Handle here (not via markRow) because these are buttons without a .value / .checked property.
-        document.querySelectorAll('#sd-properties button[data-util-toggle]').forEach(function(btn) {
+        root.querySelectorAll('button[data-util-toggle]').forEach(function(btn) {
             var propRow = btn.closest('.sd-prop-row');
             if (!propRow) return;
             var lbl = propRow.querySelector('.sd-prop-label');
@@ -60249,12 +60486,12 @@ const StyleDesigner = (function () {
         });
 
         // 9. Background section selects (Bg Size / Pos / Repeat / Attach) — default ''
-        document.querySelectorAll('#sd-properties select[data-bg-prop]').forEach(function(el) {
+        root.querySelectorAll('select[data-bg-prop]').forEach(function(el) {
             markRow(el, '');
         });
 
         // 10. Background color picker row — modified when background-color OR gradient is set
-        var _bcpRow = document.getElementById('sd-bcp-row');
+        var _bcpRow = root.querySelector('#sd-bcp-row');
         if (_bcpRow && selectedNode) {
             var _bcpLbl = _bcpRow.querySelector('.sd-prop-label');
             var _hasBg  = !!(getAttrStyleProp(selectedNode, 'background-color') ||
@@ -60273,16 +60510,18 @@ const StyleDesigner = (function () {
         }
 
         // 11. Image row
-        var _bgImgInp = document.getElementById('sd-bg-img-inp');
+        var _bgImgInp = root.querySelector('#sd-bg-img-inp');
         if (_bgImgInp) markRow(_bgImgInp, '');
 
         // 12. An Image element's Loading row — default '' (the page decides)
-        document.querySelectorAll('#sd-properties select[data-img-loading]').forEach(function(el) {
+        root.querySelectorAll('select[data-img-loading]').forEach(function(el) {
             markRow(el, '');
         });
 
         // Color pickers (Text Col / Bg Col / Border Color) are <select data-stylegroup> — already
         // covered by rule #5 above, so no dedicated swatch-marking branch is needed here anymore.
+
+        if (!live) return;
 
         // Attach click handlers — reset by dispatching a change event on the control (or clicking the default button)
         document.querySelectorAll('#sd-properties .sd-prop-label.sd-prop-modified, #sd-properties .sd-sp-label.sd-prop-modified').forEach(function(lbl) {
