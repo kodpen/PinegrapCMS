@@ -19,7 +19,7 @@ description: Plan (owner 2026-11-14): the PHP error log of the owner's dev machi
 - EL3 (M) Bundled libraries, one PR each: the library's newer release that is clean on 8.5 and still runs on PHP 7.1, or the smallest guarded patch written down in `core/`. A release that changes behaviour is asked first.
   - Done: dompdf, phpmailer #9470, unpatched (`core/dompdf-embedding.md`, `core/phpmailer-embedding.md`); iyzipay-php #9485, patched (`commerce/iyzipay-sdk-php85-patch.md`); stripe #9488, patched (`core/stripe-classic-embedding.md`).
 - EL4 (M) The eight files above: the cause fixed (a missing row, a key that may be absent, a constant defined twice), never an `@`; a test for each pure function touched. EL4a (duplicate_products, get_file, view_order, designer_ai) done #9657.
-- EL5 (M, as many PRs as the census needs) The rest of the census by family, each PR of the usual size.
+- EL5 (M) The rest of the census by family, a PR each; done files are marked in census parts 2 and 3.
 - EL6 (S) Close-out: what was learnt into `core/error-reporting.md`, this plan and its census deleted.
 
 ## What does every step keep?

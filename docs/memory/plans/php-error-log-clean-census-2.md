@@ -5,18 +5,18 @@ description: Error log census part 2 (plan php-error-log-clean): the files with 
 
 ## Which files still hold open shapes? (most frequent first, part 2 of 3)
 - Each line: the file, its lines in the logs (gone shapes included), then only the shapes still open. The gone shapes of these files are in part 4.
-- `get_order_preview.php` 3,874: undefined `$recurring_transaction` 32, `$recurring_products_exist`, `$applied_offers`, `$output_grand_shipping`, `$output_recurring_products` 16 each — still. Undefined `$subtotal`, `$grand_tax`, `$grand_shipping`, `$output_discount`, `$output_card_verification_number_help` — set since.
+- `get_order_preview.php` 3,874: done, EL5 #10293.
 - `view_visitor_report.php` 895: key "visitors" and foreach() of null 231 — EL4.
 - `edit_form_list_view.php` 163: array offset on null 104 — EL4.
-- `get_order_receipt.php` 140: array offset on null 88 (`$properties` of a page that has no order receipt properties, line 26) — still. Undefined `$output_shipping` — check. `$grand_shipping`, `$output_discount` — set since.
-- `get_order_form.php` 136: undefined `$edit_button` 102, `$output_add_button_value` 34 — set since.
+- `get_order_receipt.php` 140: done, EL5 #10293.
+- `get_order_form.php` 136: done, EL5 #10293.
 - `includes/workspace/access.php` 132: key "archived_at" — EL4.
 - `generate_system_theme_css.php` 125: 41 missing keys of a theme's CSS property array ("input", "secondary_buttons", "background_borders_and_spacing", area and font keys) and array offset on null 28 — still.
-- `get_order_receipt_in_plain_text.php` 101: undefined `$card_number` 9, `$output_shipping`, `$grand_shipping` — set since.
+- `get_order_receipt_in_plain_text.php` 101: done, EL5 #10293.
 - `get_page_content.php` 72: array offset on null 65 (`$system_region_properties` with no row) — check.
 - `includes/fn/order_report.php` 62: missing total keys ("count", "subtotal", "tax", "shipping" and six more) — EL4.
-- `view_orders.php` 55: 17 undefined `$…_selected` filter variables — set since.
-- `get_express_order.php` 48: undefined `$output_po_number` — set since.
+- `view_orders.php` 55: done, EL5 #10293.
+- `get_express_order.php` 48: done, EL5 #10293.
 - `edit_orders.php` 48: headers already sent 6 — still.
 - `edit_design_file.php` 44: array offset on null 36 (no row check after the files query) — still.
 - `edit_field.php` 42: undefined `$form_type_identifier_id`, `$form_type`, `$page_type`, `$output_form_designer_content_heading`, `$form_type_filter` 33 — still. Key "rss_field" — check.
