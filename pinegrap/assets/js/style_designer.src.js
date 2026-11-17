@@ -75255,6 +75255,127 @@ const StyleDesigner = (function () {
     });
 
     // ── Tab bar ───────────────────────────────────────────────────────────
+    // ── The strip's plan ──
+    // Pure: what the page strip draws for its width. The strip never scrolls
+    // or wraps; what does not fit makes room step by step, the fullest
+    // drawing first and the first step that fits wins:
+    //   0  everything: the open group's box with its name, all its tabs,
+    //      a chip with name and count for every other group;
+    //   1  the chips lose their count;
+    //   2  the box's far tabs go behind "+N" (the tabs nearest the open
+    //      page stay, down to three);
+    //   3  the chips fold from the right into "+N groups";
+    //   4  the design's name becomes its icon, the box loses its name; the
+    //      box may keep two tabs;
+    //   5  all chips become one ("4 groups"), the box down to one tab;
+    //   6  the open page's tab alone, its name cut, at least o.minTab wide.
+    // A design without groups has its tabs without a box and chips: only
+    // steps 2, 4 and 6 apply, down to the open tab and "+N".
+    // `o`: width (px the strip has), gap (between two items), designSave
+    // (px the design's name gives back as an icon), grouped, active (key),
+    // tabs [{key, w}] (the open group's, or every tab), head {w, wShort}
+    // and boxExtra (the box's name and its own padding), chips [{id, w,
+    // wShort}] (the other groups, in order), more, moreGroups, allGroups
+    // (the widths of "+N", "+N groups" and "N groups").
+    // Returns { step, tabs, hidden, chips, folded, counts, headName,
+    // designIcon, chipMode ('all', 'some', 'one', 'none'), more, cut }.
+    function _pgTabStripPlan(o) {
+        var gap = +o.gap || 0;
+        var tabs = o.tabs || [], chips = o.chips || [];
+        var n = tabs.length, C = chips.length;
+        var grouped = !!o.grouped;
+        var at = -1;
+        tabs.forEach(function (t, i) { if (t.key === o.active) at = i; });
+        if (at === -1) at = 0;
+        // The order in which tabs are kept: the open one, then right and
+        // left of it in turn.
+        var rank = n ? [at] : [];
+        for (var d = 1; rank.length < n; d++) {
+            if (at + d < n) rank.push(at + d);
+            if (at - d >= 0) rank.push(at - d);
+        }
+        var keep = function (k) {
+            var pick = rank.slice(0, k);
+            return tabs.filter(function (t, i) { return pick.indexOf(i) !== -1; });
+        };
+        var row = function (ws) {
+            var s = 0;
+            ws.forEach(function (w) { s += (+w || 0); });
+            return s + (ws.length > 1 ? gap * (ws.length - 1) : 0);
+        };
+        var build = function (step, k, c, mode, icon) {
+            var shown = keep(k);
+            var more = k < n && step !== 6;
+            var counts = step === 0;
+            var headName = grouped && !icon;
+            var items = [];
+            if (grouped) {
+                var inBox = [headName ? o.head.w : o.head.wShort];
+                shown.forEach(function (t) { inBox.push(t.w); });
+                if (more) inBox.push(o.more);
+                items.push(row(inBox) + (+o.boxExtra || 0));
+                var vis = (mode === 'one' || mode === 'none') ? [] : chips.slice(0, c);
+                vis.forEach(function (ch) { items.push(counts ? ch.w : ch.wShort); });
+                if (mode === 'some') items.push(o.moreGroups);
+                if (mode === 'one') items.push(o.allGroups);
+            } else {
+                shown.forEach(function (t) { items.push(t.w); });
+                if (more) items.push(o.more);
+            }
+            var visIds = (mode === 'all' || mode === 'some') ? chips.slice(0, c).map(function (ch) { return ch.id; }) : [];
+            return {
+                need: row(items),
+                room: (+o.width || 0) + (icon ? (+o.designSave || 0) : 0),
+                plan: {
+                    step: step,
+                    tabs: shown.map(function (t) { return t.key; }),
+                    hidden: tabs.filter(function (t) { return shown.indexOf(t) === -1; }).map(function (t) { return t.key; }),
+                    chips: visIds,
+                    folded: chips.filter(function (ch) { return visIds.indexOf(ch.id) === -1; }).map(function (ch) { return ch.id; }),
+                    counts: counts && C > 0,
+                    headName: headName,
+                    designIcon: !!icon,
+                    chipMode: grouped ? (C ? mode : 'none') : 'none',
+                    more: more,
+                    cut: step === 6
+                }
+            };
+        };
+        var tries = [];
+        var k, c;
+        var kMin3 = Math.min(3, n), kMin2 = Math.min(2, n), kMin1 = Math.min(1, n);
+        if (grouped) {
+            tries.push([0, n, C, 'all', false]);
+            if (C) tries.push([1, n, C, 'all', false]);
+            for (k = n - 1; k >= kMin3; k--) tries.push([2, k, C, 'all', false]);
+            if (C > 1) for (c = C - 1; c >= 1; c--) tries.push([3, kMin3, c, 'some', false]);
+            for (k = kMin3; k >= kMin2; k--) {
+                for (c = C; c >= 1; c--) tries.push([4, k, c, c < C ? 'some' : 'all', true]);
+                if (!C) tries.push([4, k, 0, 'all', true]);
+            }
+            if (C) for (k = kMin2; k >= kMin1; k--) tries.push([5, k, 0, 'one', true]);
+        } else {
+            tries.push([0, n, 0, 'all', false]);
+            for (k = n - 1; k >= kMin1; k--) tries.push([2, k, 0, 'all', false]);
+            for (k = n; k >= kMin1; k--) tries.push([4, k, 0, 'all', true]);
+        }
+        for (var i = 0; i < tries.length; i++) {
+            var t = tries[i];
+            var b = build(t[0], t[1], t[2], t[3], t[4]);
+            if (b.need <= b.room) return b.plan;
+        }
+        return build(6, kMin1, 0, 'none', true).plan;
+    }
+
+    // The group the strip opens: always the open page's ('' when the page
+    // has none, "Other" in a design with groups).
+    function _pgTabStripOpenGroup(pages, activeKey) {
+        for (var i = 0; i < pages.length; i++) {
+            if (pages[i].key === activeKey) return pages[i].tabGroup || '';
+        }
+        return '';
+    }
+
     function _pgTabsRender() {
         var list = document.getElementById('sd-tabs-list');
         if (!list) return;
