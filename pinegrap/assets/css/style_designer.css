@@ -513,13 +513,36 @@
 .sd-tree-list, .sd-tree-children { list-style:none; margin:0; padding:0; font-size:.72rem; }
 .sd-tree-children > li { position: relative; }
 .sd-tree-children > li::before {
-    content: ''; position: absolute; left: calc(var(--depth) * 0.8rem - 0.2rem);
-    top: 0; bottom: 0; width: 1px; background: color-mix(in srgb, var(--sd-text) 6%, transparent);
+    content: ''; position: absolute; left: calc(var(--sd-ind, 0px) + 3px);
+    top: 0; bottom: 0; width: 1px; background: color-mix(in srgb, var(--sd-text) 7%, transparent);
 }
+/* A row is 28 px; its indent (--sd-ind, 12 px a level, six at most) is set
+   by _sdTreeRowIndent(), which keeps the label at least 150 px. */
 .sd-tree-list li {
-    padding:.15rem .5rem .15rem calc(.2rem + var(--depth,0) * .8rem);
+    box-sizing: border-box; min-height: 28px;
+    padding: 0 .5rem 0 calc(8px + var(--sd-ind, 0px));
     cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
     transition:background .1s; display: flex; align-items: center;
+}
+/* The body's children are the page's sections: a raised row with the count
+   of what it holds, 4 px apart. */
+.sd-tree-list > li.sd-tree-sect {
+    margin: 4px 4px 0; border: 1px solid var(--sd-panel-border); border-radius: 6px;
+    background: var(--sd-raised-bg); font-size: 12.5px; font-weight: 640; color: var(--sd-text);
+}
+.sd-tree-list > li.sd-tree-sect:hover { background: color-mix(in srgb, var(--sd-text) 4%, var(--sd-raised-bg)); }
+.sd-tree-list > li.sd-tree-sect.sd-multi-selected { background: rgba(var(--sd-accent-rgb), .08); color: var(--sd-accent); }
+.sd-tree-list > li.sd-tree-sect.active { background: rgba(var(--sd-accent-rgb), .12); color: var(--sd-accent); }
+.sd-tree-sect-count {
+    margin-left: auto; padding: 0 6px; min-width: 20px; text-align: center; flex-shrink: 0;
+    border-radius: 9px; font-size: 11px; font-weight: 600; line-height: 18px;
+    color: var(--sd-accent); background: var(--sd-raised-bg-2);
+}
+/* A row deeper than six indents (or than the width allows) says its level. */
+.sd-tree-depth {
+    flex: 0 0 18px; margin-right: 4px; border-radius: 4px; text-align: center;
+    font-size: 10px; font-weight: 600; line-height: 16px;
+    color: var(--sd-text-muted); background: var(--sd-raised-bg-2);
 }
 .sd-tree-list li:hover { background:rgba(var(--sd-accent-rgb),.06); }
 .sd-tree-list li.active { background:rgba(var(--sd-accent-rgb),.12); font-weight:600; color:var(--sd-accent); }
@@ -533,7 +556,7 @@
 .sd-tree-chev:hover { opacity: 1; color: var(--sd-accent); }
 .sd-tree-chev.sd-tree-chev-open { transform: rotate(90deg); opacity: 0.7; }
 .sd-tree-chev-placeholder { display: inline-block; width: 14px; margin-right: 2px; }
-.sd-tree-lbl { flex: 1; overflow: hidden; text-overflow: ellipsis; margin-left: 2px; }
+.sd-tree-lbl { flex: 1 1 auto; min-width: 150px; overflow: hidden; text-overflow: ellipsis; margin-left: 2px; }
 
 /* ── Canvas Area ── */
 .sd-canvas-wrapper {
@@ -4144,8 +4167,29 @@ body.sd-resizing * { cursor: col-resize !important; }
     color: var(--sd-text);
     background: color-mix(in srgb, var(--sd-text) 6%, transparent);
 }
-/* Make sure the search input doesn't run under the collapse-all button */
-#sd-ov-search-input { padding-right: 30px; }
+/* Show the selection sits left of collapse-all; the input runs under neither */
+.sd-ov-collapse-btn.sd-ov-reveal-btn { right: 28px; }
+#sd-ov-search-input { padding-right: 54px; }
+/* The selection's path: above the scrolled tree, so it stays in view */
+.sd-ov-path {
+    display: flex; align-items: center; gap: 4px; flex-shrink: 0; min-width: 0;
+    padding: 4px .6rem; font-size: 11.5px; white-space: nowrap; overflow: hidden;
+    color: var(--sd-text-muted); background: var(--sd-panel-bg);
+    border-bottom: 1px solid var(--sd-panel-border);
+}
+.sd-ov-path[hidden],
+.sd-overview-section.sd-ov-collapsed .sd-ov-path,
+.sd-overview-section.sd-ov-notes-on .sd-ov-path { display: none; }
+.sd-ov-path-pin { font-size: .68rem; color: var(--sd-accent); flex-shrink: 0; }
+.sd-ov-path-sep, .sd-ov-path-gap { flex-shrink: 0; }
+.sd-ov-path-step {
+    min-width: 0; max-width: 40%; overflow: hidden; text-overflow: ellipsis;
+    border: 0; padding: 1px 2px; border-radius: 3px; background: transparent;
+    color: var(--sd-text-muted); font: inherit; cursor: pointer;
+}
+.sd-ov-path-step:hover { color: var(--sd-text); background: color-mix(in srgb, var(--sd-text) 6%, transparent); }
+.sd-ov-path-step:focus-visible { outline: none; box-shadow: var(--sd-focus-ring); }
+.sd-ov-path-step.sd-ov-path-cur { flex-shrink: 0; max-width: 60%; color: var(--sd-text); font-weight: 600; }
 .sd-ov-subtab .bi { font-size: .72rem; }
 .sd-ov-subtab .sd-notes-tab-count {
     display: inline-block;

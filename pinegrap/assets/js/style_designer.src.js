@@ -25075,8 +25075,10 @@ const StyleDesigner = (function () {
                 '<div class="sd-ov-search-box" id="sd-ov-search-wrap">' +
                     '<span class="bi bi-search"></span>' +
                     '<input type="text" id="sd-ov-search-input" placeholder="' + esc(_sdT('Search...')) + '" autocomplete="off">' +
+                    '<button type="button" class="sd-ov-collapse-btn sd-ov-reveal-btn" id="sd-ov-reveal-btn" title="' + esc(_sdT('Show the selection')) + '" aria-label="' + esc(_sdT('Show the selection')) + '"><span class="bi bi-crosshair"></span></button>' +
                     '<button type="button" class="sd-ov-collapse-btn" id="sd-ov-collapse-btn" title="' + esc(_sdT('Collapse every branch')) + '"><span class="bi bi-arrows-collapse"></span></button>' +
                 '</div>' +
+                '<nav class="sd-ov-path" id="sd-ov-path" aria-label="' + esc(_sdT('Path of the selection')) + '" hidden></nav>' +
                 '<div class="sd-overview-tree-wrap" id="sd-overview-tree-wrap"><ul class="sd-tree-list" id="sd-tree-list"></ul></div>' +
                 '<div class="sd-overview-notes-wrap" id="sd-overview-notes-wrap" style="display:none">' +
                     '<div id="sd-notes-list"></div>' +
@@ -25398,9 +25400,32 @@ const StyleDesigner = (function () {
                 }
                 // Search box only meaningful for tree view
                 if (searchBox) searchBox.style.display = sub === 'tree' ? '' : 'none';
+                var ovSecEl = document.getElementById('sd-overview-section');
+                if (ovSecEl) ovSecEl.classList.toggle('sd-ov-notes-on', sub === 'notes');
                 _setCollapseBtnVisibility(sub);
                 if (sub === 'notes') renderNotesPanel();
                 else _sdTreeRevealSelection();
+            });
+        }
+
+        // ── Show the selection; the path's steps select their element ────────
+        var _ovRevealBtn = document.getElementById('sd-ov-reveal-btn');
+        if (_ovRevealBtn) {
+            _ovRevealBtn.addEventListener('click', function() {
+                if (selectedNode && selectedNode !== tree) scrollTreeToNode(selectedNode);
+            });
+        }
+        var _ovPath = document.getElementById('sd-ov-path');
+        if (_ovPath) {
+            _ovPath.addEventListener('click', function(e) {
+                var b = e.target.closest('.sd-ov-path-step');
+                var n = b && _ovPath._sdSteps ? _ovPath._sdSteps[parseInt(b.dataset.step, 10)] : null;
+                if (!n) return;
+                selectedNodes = [];
+                _sdInner = null;
+                selectedNode = n;
+                _sdSelectRender();
+                scrollCanvasToNode(n);
             });
         }
 
@@ -29425,7 +29450,10 @@ const StyleDesigner = (function () {
         // Hidden (the Notes tab, a folded Overview): drawn when shown; the
         // notes list it also refreshes may be the one on screen.
         if (_sdPanelDefer('tree')) { if (_refreshNotesPanel) _refreshNotesPanel(); return; }
+        _sdTreeOpenSectionsOnce();
         _sdTreeOpenToSelection();
+        var _wrapEl = document.getElementById('sd-overview-tree-wrap');
+        _sdTreeRowWidth = _wrapEl ? _wrapEl.clientWidth : 0;
         list.innerHTML = '';
 
         // Refresh notes tab (count badge + list) whenever tree re-renders
@@ -29462,6 +29490,7 @@ const StyleDesigner = (function () {
         // What the rows were drawn from (_sdTreeSelectInPlace()).
         list._sdTreeOf = tree;
         list._sdTreeEpoch = _sdEditEpoch;
+        _sdTreePathRender();
         _sdTreeRevealSelection();
 
         // Attach palette-drop handlers ONCE on the list element.
@@ -30987,6 +31016,119 @@ const StyleDesigner = (function () {
         return true;
     }
 
+    // The parent of a node as the overview draws it: inside a shared
+    // component or widget, the top of its own tree hangs under its
+    // placement on the page.
+    function _sdTreeParentOf(n) {
+        if (!n || n === tree) return null;
+        var p = findParent(n, tree);
+        if (p) return p;
+        var sp = _findParentInShared(n);
+        if (!sp) return null;
+        var cached = _sharedCache[sp.sid];
+        if (!cached || sp.parent !== cached.tree) return sp.parent;
+        var ref = null;
+        (function walk(x) {
+            if (ref || !x) return;
+            if (x.type === 'shared_ref' && x.props && parseInt(x.props.sharedId, 10) === sp.sid) { ref = x; return; }
+            (x.children || []).forEach(walk);
+        })(tree);
+        return ref;
+    }
+
+    // On a page's first drawing only the section of the selection is open
+    // (none without one); a page drawn again keeps what the operator opened.
+    var _sdTreeSectionsSet = {};
+    // The tree's width at its last drawing, for each row's indent.
+    var _sdTreeRowWidth = 0;
+    function _sdTreeOpenSectionsOnce() {
+        if (!tree || !tree.children) return;
+        var key = String(_activeKey || '');
+        if (_sdTreeSectionsSet[key]) return;
+        _sdTreeSectionsSet[key] = true;
+        var states = _sdTreeSectionStates(tree, selectedNode, _sdTreeParentOf);
+        tree.children.forEach(function (k, i) { k._expanded = states[i]; });
+    }
+
+    // The selection's path over the tree, sticky (outside the scrolled
+    // list); a step selects its element.
+    function _sdTreePathRender() {
+        var bar = document.getElementById('sd-ov-path');
+        if (!bar) return;
+        var steps = _sdTreePathSteps(tree, selectedNode, _sdTreeParentOf, 5);
+        bar._sdSteps = steps;
+        if (!steps.length) { bar.innerHTML = ''; bar.hidden = true; return; }
+        bar.hidden = false;
+        bar.innerHTML = '<span class="bi bi-pin-angle sd-ov-path-pin" aria-hidden="true"></span>' + steps.map(function (s, i) {
+            var sep = i ? '<span class="sd-ov-path-sep" aria-hidden="true">›</span>' : '';
+            if (!s) return sep + '<span class="sd-ov-path-gap">…</span>';
+            var last = i === steps.length - 1;
+            return sep + '<button type="button" class="sd-ov-path-step' + (last ? ' sd-ov-path-cur' : '') + '" data-step="' + i + '"' +
+                (last ? ' aria-current="true"' : '') + '>' + esc(_sdPartTreeLabel(s, getNodeLabel(s))) + '</button>';
+        }).join('');
+    }
+
+    // ── The overview's rows on a long page ─────────────────────────────────
+    //
+    // A row's indent: 12 px a level, at most six indents; a deeper row
+    // carries its level in a badge. In a tree `width` px wide (0: not
+    // measured) the label keeps at least 150 px: indents go first. `depth`
+    // is 1 for a section row (a child of the body). Returns the levels under
+    // the section, the indent in px, the badge's level (0: none) and the
+    // label's px (null without a width).
+    function _sdTreeRowIndent(depth, width) {
+        var STEP = 12, MAX = 6, HEAD = 48, BADGE = 22, LABEL = 150;
+        var levels = Math.max(0, (parseInt(depth, 10) || 1) - 1);
+        var shown = Math.min(levels, MAX);
+        var room = (width > 0) ? width - HEAD - LABEL : Infinity;
+        while (shown > 0 && shown * STEP + (shown < levels ? BADGE : 0) > room) shown--;
+        var badge = shown < levels ? levels + 1 : 0;
+        var label = (width > 0) ? width - HEAD - shown * STEP - (badge ? BADGE : 0) : null;
+        return { levels: levels, indent: shown * STEP, badge: badge, label: label };
+    }
+
+    // Which of the body's children (the sections) are open when a page is
+    // opened: only the one that holds `sel`. `parentOf(node)` gives a
+    // node's parent (null at the top).
+    function _sdTreeSectionStates(root, sel, parentOf) {
+        var kids = (root && root.children) || [];
+        var top = null;
+        for (var n = sel, guard = 0; n && n !== root && guard < 10000; guard++) {
+            var p = parentOf(n);
+            if (p === root) { top = n; break; }
+            n = p;
+        }
+        return kids.map(function (k) { return k === top; });
+    }
+
+    // The count on a section row: every element under the node.
+    function _sdTreeNodeCount(node) {
+        var c = 0;
+        var stack = (node && node.children) ? node.children.slice() : [];
+        while (stack.length) {
+            var n = stack.pop();
+            c++;
+            if (n && n.children && n.children.length) Array.prototype.push.apply(stack, n.children);
+        }
+        return c;
+    }
+
+    // The steps of the selection's path, from its section down to it; the
+    // body is no step. Longer than `max`, the section and the last `max - 2`
+    // steps are kept with a gap (null) between them.
+    function _sdTreePathSteps(root, sel, parentOf, max) {
+        var steps = [];
+        for (var n = sel, guard = 0; n && n !== root && guard < 10000; guard++) {
+            steps.unshift(n);
+            n = parentOf(n);
+        }
+        if (n !== root) return [];
+        if (max > 2 && steps.length > max) {
+            steps = [steps[0], null].concat(steps.slice(steps.length - (max - 2)));
+        }
+        return steps;
+    }
+
     // The selection after rows dragged in the overview were moved: the moved
     // nodes, as a move on the canvas keeps the dropped node. One row is a
     // plain selection; a multi-selection moved together stays one, with the
@@ -31211,6 +31353,7 @@ const StyleDesigner = (function () {
             if (r) r.classList.add('sd-multi-selected');
         });
         if (_refreshNotesPanel) _refreshNotesPanel();
+        _sdTreePathRender();
         _sdTreeRevealSelection();
         return true;
     }
@@ -31226,6 +31369,11 @@ const StyleDesigner = (function () {
     function buildTreeItems(ul, node, depth) {
         var li = document.createElement('li');
         li.style.setProperty('--depth', depth);
+        // 12 px a level, six at most, the label never under 150 px.
+        var _ind = _sdTreeRowIndent(depth, _sdTreeRowWidth);
+        li.style.setProperty('--sd-ind', _ind.indent + 'px');
+        var _isSect = depth === 1;
+        if (_isSect) li.classList.add('sd-tree-sect');
         li.dataset.nid = node._id;
         li._sdNode = node;
 
@@ -31312,7 +31460,15 @@ const StyleDesigner = (function () {
         var addBtn = _treeCompType
             ? '<button type="button" class="sd-tree-add-btn bi bi-plus-lg" title="' + (COMPOSITE_ADD_LABELS[_treeCompType] || _sdT('Add')) + '"></button>'
             : '';
-        li.innerHTML = chevHtml + icon + ' <span class="sd-tree-lbl">' + esc(displayLabel) + '</span>' + idBadge + foldBadge + userLabelBadge + lockBadge + sharedBadge + editableBadge + noteBadge + addBtn;
+        var depthBadge = _ind.badge
+            ? '<span class="sd-tree-depth" title="' + esc(_sdT('Level {var}', _ind.badge)) + '">' + _ind.badge + '</span>'
+            : '';
+        var sectCount = '';
+        if (_isSect) {
+            var _cnt = _sdTreeNodeCount(_sharedRefTree || node);
+            if (_cnt) sectCount = '<span class="sd-tree-sect-count" title="' + esc(_sdT('{var} elements inside', _cnt)) + '">' + _cnt + '</span>';
+        }
+        li.innerHTML = depthBadge + chevHtml + icon + ' <span class="sd-tree-lbl">' + esc(displayLabel) + '</span>' + idBadge + foldBadge + userLabelBadge + lockBadge + sharedBadge + editableBadge + noteBadge + addBtn + sectCount;
         if (node.type === 'shared_ref') li.classList.add('sd-tree-shared');
         else if (node.props._locked) li.classList.add('sd-tree-locked');
         else if (hasLockedAncestor(node)) li.classList.add('sd-tree-locked-desc');
