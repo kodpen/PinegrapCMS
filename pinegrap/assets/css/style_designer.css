@@ -1344,7 +1344,7 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
    the row says why (_sdFieldInvalid()). */
 .sd-prop-control .sd-invalid, .sd-sp-row > .sd-invalid, .sd-sp-bp-item > .sd-invalid,
 .sd-unit-field > .sd-invalid, .sd-unit-field > .sd-invalid:focus {
-    border-color: var(--sd-danger); box-shadow: 0 0 0 3px rgba(255,107,107,.13);
+    border-color: var(--sd-danger); box-shadow: 0 0 0 3px color-mix(in srgb, var(--sd-danger) 13%, transparent);
 }
 .sd-field-err {
     font-size: 11.5px; line-height: 1.45; color: var(--sd-danger); overflow-wrap: anywhere;
@@ -3027,7 +3027,7 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
     text-transform: uppercase; white-space: nowrap; transform: none;
 }
 .sd-sp-toggle.sd-size-badge.sd-size-all { background-color: var(--sd-raised-bg-2); color: var(--sd-label); text-transform: none; }
-.sd-sp-toggle.sd-size-badge:hover { background-color: rgba(245,181,74,.24); color: var(--sd-warning); }
+.sd-sp-toggle.sd-size-badge:hover { background-color: color-mix(in srgb, var(--sd-warning) 24%, transparent); color: var(--sd-warning); }
 .sd-sp-toggle.sd-size-badge.sd-size-all:hover { background-color: var(--sd-border-strong); color: var(--sd-text); }
 .sd-sp-toggle.sd-size-badge.sd-sp-open { transform: none; box-shadow: inset 0 0 0 1px currentColor; }
 /* Empty placeholder used by non-responsive rows to keep grid alignment with responsive rows. */
