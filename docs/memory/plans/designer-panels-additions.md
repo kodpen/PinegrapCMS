@@ -11,6 +11,7 @@ description: Plan designer-panels: additions of other plans to the Options colum
 
 ## Which steps wait?
 - PA3 (#10188, publish-approval): a draft. The tab's pill, the three answer marks, the designer's count and their notes are drawn on the new strip after DP19, as `page-strip-narrow-approval.jpg` shows (`designer-panels-measures-8.md`); the owner's look comes then. Asked meanwhile in the same PR: agent channel message 8183.
+  - Until DP19 it holds nothing on the strip: its lines in `_pgTabsRender()` and the all-pages list come out, its own block moves away from that function's head, and DP18 starts when that push is in (`workflow/held-file-parked-draft.md`, agent channel message 8619).
 - CM4b (click-scroll-map): not started before DP22; its "Clicks" switch goes into the new bar's View menu.
 - PN3 (#10042, prototype-comments): a draft. The Comments button and the list beside the canvas get their place from the architect once DP22 and DP2 have landed; the owner's look after that.
 
