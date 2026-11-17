@@ -43,6 +43,12 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         pg_page_clicks_switch_save((bool) post_value('page_clicks_on'));
     }
 
+    // Visitor notifications: through the switch's one saver
+    // (includes/fn/site_push.php), only when its card was on the form.
+    if (array_key_exists('site_push_card', $_POST) && function_exists('pg_site_push_switch_save')) {
+        pg_site_push_switch_save((bool) post_value('site_push_on'));
+    }
+
     // Content changes that wait for approval: one config_text row. A form
     // without the channel field (the Workspace off) keeps the stored channel.
     // Only a designer or an administrator sets it (pg_content_proposals_may_set()).

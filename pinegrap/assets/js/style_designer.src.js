@@ -7224,6 +7224,10 @@ const StyleDesigner = (function () {
         '.sd-wrap.sd-fx-flat.sd-binding-off.sd-selected > ' + _SD_FX_EL + ' { opacity:.75; filter:none; }',
         '.sd-wrap.sd-fx-flat.sd-binding-off::after { display:none; }',
         '.sd-wrap.sd-fx-flat.sd-cond::before { display:none; }',
+        // A "Notify me" block is hidden in its markup until its script finds
+        // a browser that can subscribe; the canvas draws it as it will look
+        // before the visitor presses (its other states stay hidden).
+        '[data-pg-push][hidden] { display:block !important; }',
     ];
 
     // The canvas stylesheet for this design: everything for a Bootstrap design,
@@ -72196,7 +72200,8 @@ const StyleDesigner = (function () {
         { test: /data-bs-toggle\s*=\s*["']?(?:tooltip|popover|tab|pill|list)\b/i, file: 'assets/js/pg_bs_tips.js' },
         { test: /\sdata-pg-scroller(?=[\s=>\/])/i, file: 'assets/js/pg_scroller.js' },
         { test: /\sdata-pg-fx(?=[\s=>\/])/i, file: 'assets/js/pg_fx.min.js' },
-        { test: /\sdata-pg-listen(?=[\s=>\/])/i, file: 'assets/js/pg_listen.js' }
+        { test: /\sdata-pg-listen(?=[\s=>\/])/i, file: 'assets/js/pg_listen.js' },
+        { test: /\sdata-pg-push(?=[\s=>\/])/i, file: 'assets/js/pg_site_push.js' }
     ];
 
     // The absolute addresses of the platform scripts `markup` asks for (the
@@ -83810,7 +83815,9 @@ const StyleDesigner = (function () {
                 !has(c, 'navbar-collapse') && !has(c, 'd-block')) return true;
             if ((has(c, 'carousel-item') || has(c, 'tab-pane')) && !has(c, 'active')) return true;
             if (bp(c, 'd', 'none|block|flex|inline|inline-block|inline-flex|grid|table|table-cell|table-row|contents') === 'none') return true;
-            return attr(n, 'hidden') !== null;
+            // A "Notify me" root is hidden until its script shows it; the
+            // canvas draws it, so the sketch does too.
+            return attr(n, 'hidden') !== null && attr(n, 'data-pg-push') === null;
         }
         // A block that is itself a dropdown shows its menu open.
         function kids(n) {
