@@ -356,7 +356,7 @@ function ws_api_channel_board_card_schema()
         'number'     => 'string?',
         'status'     => 'string?',
         'priority'   => 'string?',
-        'due_date'   => 'string?',
+        'due_date'   => 'date?',
         'overdue'    => 'boolean',
         'assignees'  => 'WorkspacePerson[]',
         'url'        => 'string?',
@@ -428,9 +428,9 @@ function ws_api_channel_eras_schema()
     return array(
         'eras'      => array(array(
             'id' => 'integer', 'number' => 'integer', 'title' => 'string', 'label' => 'string', 'messages' => 'integer',
-            'from' => 'string?', 'to' => 'string?', 'cleared_by' => 'WorkspacePerson?', 'last_message_id' => 'integer?',
+            'from' => 'datetime?', 'to' => 'datetime?', 'cleared_by' => 'WorkspacePerson?', 'last_message_id' => 'integer?',
         )),
-        'current'   => array('since' => 'string?', 'messages' => 'integer'),
+        'current'   => array('since' => 'datetime?', 'messages' => 'integer'),
         'can_clear' => 'boolean',
     );
 }
@@ -469,8 +469,8 @@ function ws_api_channel_export_schema()
     return array(
         'channel_id' => 'integer',
         'file_name'  => 'string',
-        'from'       => 'string?',
-        'to'         => 'string?',
+        'from'       => 'date?',
+        'to'         => 'date?',
         'messages'   => 'integer',
         'markdown'   => 'string',
     );

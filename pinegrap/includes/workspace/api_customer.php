@@ -204,7 +204,7 @@ function ws_api_customer_order_schema()
         'status_label' => 'string',
         'total'        => 'integer',
         'total_text'   => 'string',
-        'placed_at'    => 'string?',
+        'placed_at'    => 'datetime?',
     );
 }
 
@@ -272,7 +272,7 @@ function ws_api_customer_quote_schema()
         'account_id'    => 'integer',
         'account_title' => 'string',
         'issue_date'    => 'string',
-        'valid_until'   => 'string?',
+        'valid_until'   => 'date?',
         'currency'      => 'string',
         'total'         => 'integer',
         'total_text'    => 'string',
@@ -331,8 +331,8 @@ function ws_api_customer_cart_quote_schema()
         'id'          => 'integer',
         'state'       => 'string',
         'lines'       => 'integer',
-        'valid_until' => 'string?',
-        'created_at'  => 'string?',
+        'valid_until' => 'datetime?',
+        'created_at'  => 'datetime?',
         'url'         => 'string',
     );
 }
@@ -356,7 +356,7 @@ function ws_api_customer_form_schema()
         'name'           => 'string',
         'reference_code' => 'string',
         'complete'       => 'boolean',
-        'submitted_at'   => 'string?',
+        'submitted_at'   => 'datetime?',
     );
 }
 
@@ -446,7 +446,7 @@ function ws_api_customer_history_entry_schema()
     return array(
         'kind'         => 'string',
         'id'           => 'integer',
-        'at'           => 'string?',
+        'at'           => 'datetime?',
         'title'        => 'string',
         'detail'       => 'string',
         'status_label' => 'string',
