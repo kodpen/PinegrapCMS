@@ -181,3 +181,87 @@ function test_designer_overview_path_steps()
 	pg_assert_same(array(), $res['body'], 'the body has no path');
 	pg_assert_same(array(), $res['none'], 'no selection, no path');
 }
+
+// A chain of wrappers with one child each is one line; a chain opened, or
+// holding the selection, is drawn open.
+function test_designer_overview_chain_folds()
+{
+	$res = designer_overview_rows_run(array('_sdTreeIsWrapper', '_sdTreeChain', '_sdTreeChainLabel'),
+		'function w(id, kids, extra) { return { _id: id, type: "semantic", props: Object.assign({ tag: "div" }, extra || {}), children: kids || [] }; }' . "\n"
+		. 'var menu = { _id: "menu", type: "semantic", props: { tag: "ul" }, children: [w("li1"), w("li2"), w("li3")] };' . "\n"
+		. 'var w4 = w("w4", [menu]), w3 = w("w3", [w4]), w2 = w("w2", [w3], { tag: "nav" }), w1 = w("w1", [w2]);' . "\n"
+		. 'var ids = function (c) { return { hidden: c.hidden.map(function (n) { return n._id; }), next: c.next ? c.next._id : null }; };' . "\n"
+		. 'var never = function () { return false; };' . "\n"
+		. 'var lone = w("lone", [menu]);' . "\n"
+		. 'var shut = w("s1", [w("s2", [w("s3", [menu])], { _x: 1 })]); shut.children[0]._expanded = false;' . "\n"
+		. 'var text = w("t1", [w("t2", [{ _id: "p", type: "content", props: { contentType: "paragraph", text: "Hi" }, children: [{ _id: "x", type: "semantic", props: { tag: "div" }, children: [] }] }])]);' . "\n"
+		. 'var marked = w("m1", [w("m2", [menu], { _editable: true })]);' . "\n"
+		. 'console.log(JSON.stringify({' . "\n"
+		. '  four: ids(_sdTreeChain(w1, never)),' . "\n"
+		. '  opened: ids(_sdTreeChain(w1, function (n) { return n === w1; })),' . "\n"
+		. '  selected: ids(_sdTreeChain(w1, function (n) { return n === w3; })),' . "\n"
+		. '  lone: ids(_sdTreeChain(lone, never)),' . "\n"
+		. '  shut: ids(_sdTreeChain(shut, never)),' . "\n"
+		. '  content: ids(_sdTreeChain(text, never)),' . "\n"
+		. '  marked: ids(_sdTreeChain(marked, never)),' . "\n"
+		. '  label4: _sdTreeChainLabel(["Account area", "Wrap", "Inner", "Signed in"]),' . "\n"
+		. '  label2: _sdTreeChainLabel(["Account area", "Signed in"])' . "\n"
+		. '}));');
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same(array('hidden' => array('w1', 'w2', 'w3', 'w4'), 'next' => 'menu'), $res['four'], 'four wrappers with one child each fold into one line, the list after them drawn');
+	pg_assert_same(array(), $res['opened']['hidden'], 'an opened chain is drawn open');
+	pg_assert_same(array(), $res['selected']['hidden'], 'a chain holding the selection is drawn open');
+	pg_assert_same(array(), $res['lone']['hidden'], 'one wrapper alone is no chain');
+	pg_assert_same(array(), $res['shut']['hidden'], 'a closed wrapper ends the chain before it is two long');
+	pg_assert_same(array('t1', 't2'), $res['content']['hidden'], 'a content element is never hidden');
+	pg_assert_same(array(), $res['marked']['hidden'], 'an editable area is never hidden');
+	pg_assert_same('Account area › … › Signed in', $res['label4'], 'a long chain names its first and last level');
+	pg_assert_same('Account area › Signed in', $res['label2'], 'a chain of two names both');
+}
+
+// A name that repeats gets a hint: the text, the picture's file name, the
+// link's target; the hint is cut, never the name.
+function test_designer_overview_row_hints()
+{
+	$res = designer_overview_rows_run(array('_sdTreeRowHint'),
+		'function link(t, href) { return { type: "content", props: { contentType: "link", text: t, href: href || "#" }, children: [] }; }' . "\n"
+		. 'var links = []; for (var i = 1; i <= 61; i++) links.push(link("Item " + i));' . "\n"
+		. 'var li = { type: "semantic", props: { tag: "li" }, children: [{ type: "semantic", props: { tag: "div" }, children: [link("My orders")] }] };' . "\n"
+		. 'var img = { type: "content", props: { contentType: "image", src: "https://cdn.example.com/files/photo-12.jpg?v=3" }, children: [] };' . "\n"
+		. 'var bare = link("", "/account/addresses");' . "\n"
+		. 'var html = { type: "content", props: { contentType: "heading", text: "<b>Big</b>  sale" }, children: [] };' . "\n"
+		. 'var empty = { type: "semantic", props: { tag: "div" }, children: [] };' . "\n"
+		. 'var long = link("A very long link text that goes on and on past the limit");' . "\n"
+		. 'console.log(JSON.stringify({' . "\n"
+		. '  links: links.map(function (l) { return _sdTreeRowHint(l, 40); }),' . "\n"
+		. '  li: _sdTreeRowHint(li, 40), img: _sdTreeRowHint(img, 40), bare: _sdTreeRowHint(bare, 40),' . "\n"
+		. '  html: _sdTreeRowHint(html, 40), empty: _sdTreeRowHint(empty, 40), long: _sdTreeRowHint(long, 20)' . "\n"
+		. '}));');
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same(61, count(array_unique($res['links'])), '61 links named alike each get their own hint');
+	pg_assert_same('Item 7', $res['links'][6], 'a link hints its text');
+	pg_assert_same('My orders', $res['li'], 'a wrapper hints the first text inside it');
+	pg_assert_same('photo-12.jpg', $res['img'], 'a picture hints its file name');
+	pg_assert_same('/account/addresses', $res['bare'], 'a link without text hints its target');
+	pg_assert_same('Big sale', $res['html'], 'markup and doubled spaces are left out');
+	pg_assert_same('', $res['empty'], 'nothing to hint, no hint');
+	pg_assert_true(mb_strlen($res['long']) <= 20 && mb_substr($res['long'], -1) === '…', 'a long hint is cut to its limit: ' . $res['long']);
+}
+
+// The hint gives way before the label: the label never shrinks while a hint
+// is there to cut.
+function test_designer_overview_hint_cut_before_name()
+{
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/style_designer.css');
+
+	pg_assert_true((bool) preg_match('/\.sd-tree-hint\s*\{[^}]*text-overflow:\s*ellipsis/', $css), 'the hint is cut with an ellipsis');
+	pg_assert_true((bool) preg_match('/\.sd-tree-list li > \.sd-tree-lbl ~ :not\(\.sd-tree-sect-count\)\s*\{[^}]*flex-shrink:\s*100/', $css), 'what follows the label shrinks first');
+}

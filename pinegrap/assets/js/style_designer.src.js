@@ -10056,11 +10056,12 @@ const StyleDesigner = (function () {
         var row = _sdTreeRowOf(list, node);
         if (!row || !row.parentNode) return false;
         var depth = parseInt(row.style.getPropertyValue('--depth'), 10) || 1;
+        var lvl = (row.dataset && parseInt(row.dataset.lvl, 10)) || depth;
         var next = row.nextElementSibling;
         var kids = (next && next.classList.contains('sd-tree-children')) ? next : null;
         var fresh = document.createElement('ul');
         _sdSharedOpen = {};
-        buildTreeItems(fresh, node, depth);
+        buildTreeItems(fresh, node, depth, lvl);
         var parent = row.parentNode;
         while (fresh.firstChild) parent.insertBefore(fresh.firstChild, row);
         parent.removeChild(row);
@@ -29905,6 +29906,7 @@ const StyleDesigner = (function () {
         _sdTreeOpenToSelection();
         var _wrapEl = document.getElementById('sd-overview-tree-wrap');
         _sdTreeRowWidth = _wrapEl ? _wrapEl.clientWidth : 0;
+        _sdTreeNames = _sdTreeCountNames();
         list.innerHTML = '';
 
         // Refresh notes tab (count badge + list) whenever tree re-renders
@@ -31580,6 +31582,67 @@ const StyleDesigner = (function () {
         return steps;
     }
 
+    // A wrapper the overview may fold into a chain line: a plain layout box
+    // (container, row, column, a block tag) with no words of its own and no
+    // mark the operator needs to see (an editable area, a lock, a note).
+    function _sdTreeIsWrapper(n) {
+        if (!n || !n.props) return false;
+        var p = n.props;
+        if (p._editable || p._locked || (p._notes && String(p._notes).trim()) || p.text) return false;
+        if (n.type === 'container' || n.type === 'row' || n.type === 'col') return true;
+        if (n.type !== 'semantic') return false;
+        return ['div', 'section', 'nav', 'header', 'footer', 'main', 'article', 'aside'].indexOf(String(p.tag || 'section').toLowerCase()) !== -1;
+    }
+
+    // A chain from `node` down: wrappers that are open and hold exactly one
+    // child each. Two or more are drawn as one line; `next` is the first
+    // element after them. `keepOpen(n)` is true for a node that must show
+    // (opened by the operator, selected): then nothing is folded.
+    function _sdTreeChain(node, keepOpen) {
+        var hidden = [];
+        var n = node;
+        while (_sdTreeIsWrapper(n) && n._expanded !== false && n.children && n.children.length === 1) {
+            if (keepOpen(n)) return { hidden: [], next: node };
+            hidden.push(n);
+            n = n.children[0];
+        }
+        if (hidden.length < 2 || !n) return { hidden: [], next: node };
+        return { hidden: hidden, next: n };
+    }
+
+    // The names on a chain line: its first and last level, a gap between
+    // when there are more.
+    function _sdTreeChainLabel(names) {
+        if (names.length < 3) return names.join(' › ');
+        return names[0] + ' › … › ' + names[names.length - 1];
+    }
+
+    // The hint after a name that repeats: the element's text, a picture's
+    // file name or a link's target, else the first of these inside it (60
+    // elements looked at). At most `max` characters, cut with an ellipsis.
+    function _sdTreeRowHint(node, max) {
+        function own(n) {
+            var p = (n && n.props) || {};
+            var t = String(p.text || '').replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+            if (t) return t;
+            if (p.src) {
+                var f = String(p.src).split(/[?#]/)[0].split('/').pop();
+                if (f) return f;
+            }
+            if (p.href && p.href !== '#') return String(p.href);
+            return '';
+        }
+        var queue = [node], seen = 0, hint = '';
+        while (queue.length && seen < 60 && !hint) {
+            var n = queue.shift();
+            seen++;
+            hint = own(n);
+            if (n && n.children) queue = queue.concat(n.children);
+        }
+        if (max > 1 && hint.length > max) hint = hint.slice(0, max - 1).trim() + '…';
+        return hint;
+    }
+
     // The selection after rows dragged in the overview were moved: the moved
     // nodes, as a move on the canvas keeps the dropped node. One row is a
     // plain selection; a multi-selection moved together stays one, with the
@@ -31817,9 +31880,69 @@ const StyleDesigner = (function () {
         return null;
     }
 
-    function buildTreeItems(ul, node, depth) {
+    // Folded chains the operator opened (by their first node), and the row
+    // names the page uses, counted at each drawing of the tree.
+    var _sdTreeChainsOpen = (typeof WeakSet === 'function') ? new WeakSet() : null;
+    var _sdTreeNames = {};
+
+    function _sdTreeRowName(n) {
+        return (n.props && n.props._label) || _sdPartTreeLabel(n, getNodeLabel(n));
+    }
+
+    // How many rows of the page carry each name, shared components' trees
+    // included as the overview draws them.
+    function _sdTreeCountNames() {
+        var counts = {}, seen = {};
+        (function walk(n) {
+            if (!n) return;
+            if (n !== tree) {
+                var name = _sdPartTreeLabel(n, getNodeLabel(n));
+                counts[name] = (counts[name] || 0) + 1;
+            }
+            var kids = n.children;
+            if (n.type === 'shared_ref' && n.props && n.props.sharedId) {
+                var sid = parseInt(n.props.sharedId, 10);
+                if (seen[sid] || !_sharedCache[sid] || !_sharedCache[sid].tree) return;
+                seen[sid] = true;
+                kids = _sharedCache[sid].tree.children;
+            }
+            (kids || []).forEach(walk);
+        })(tree);
+        return counts;
+    }
+
+    // A child row, or the line of the folded chain it starts and the
+    // element after the chain. A chain opened, or holding the selection,
+    // is drawn row by row.
+    function _sdTreeBuildChild(ul, node, depth, lvl) {
+        var chain = _sdTreeChain(node, function (n) {
+            return n === selectedNode || selectedNodes.indexOf(n) !== -1 ||
+                !!(_sdTreeChainsOpen && _sdTreeChainsOpen.has(n));
+        });
+        if (!chain.hidden.length || !_sdTreeChainsOpen) { buildTreeItems(ul, node, depth, lvl); return; }
+        var li = document.createElement('li');
+        li.className = 'sd-tree-chain';
+        li.style.setProperty('--depth', depth);
+        li.style.setProperty('--sd-ind', _sdTreeRowIndent(depth, _sdTreeRowWidth).indent + 'px');
+        var text = _sdT('{var} levels hidden', chain.hidden.length) + ': ' + _sdTreeChainLabel(chain.hidden.map(_sdTreeRowName));
+        li.innerHTML = '<button type="button" class="sd-tree-chain-btn" title="' + esc(_sdT('Show the hidden levels')) + '">' +
+            '<span class="bi bi-three-dots" aria-hidden="true"></span><span class="sd-tree-chain-txt">' + esc(text) + '</span></button>';
+        li.addEventListener('click', function (e) {
+            e.stopPropagation();
+            _sdTreeChainsOpen.add(chain.hidden[0]);
+            renderTree();
+        });
+        ul.appendChild(li);
+        buildTreeItems(ul, chain.next, depth, lvl + chain.hidden.length);
+    }
+
+    // `depth` is where the row is drawn, `lvl` its level in the page (deeper
+    // under a folded chain); 1 for a section.
+    function buildTreeItems(ul, node, depth, lvl) {
+        lvl = lvl || depth;
         var li = document.createElement('li');
         li.style.setProperty('--depth', depth);
+        if (lvl !== depth) li.dataset.lvl = lvl;
         // 12 px a level, six at most, the label never under 150 px.
         var _ind = _sdTreeRowIndent(depth, _sdTreeRowWidth);
         li.style.setProperty('--sd-ind', _ind.indent + 'px');
@@ -31911,15 +32034,19 @@ const StyleDesigner = (function () {
         var addBtn = _treeCompType
             ? '<button type="button" class="sd-tree-add-btn bi bi-plus-lg" title="' + (COMPOSITE_ADD_LABELS[_treeCompType] || _sdT('Add')) + '"></button>'
             : '';
-        var depthBadge = _ind.badge
-            ? '<span class="sd-tree-depth" role="img" title="' + esc(_sdT('Level {var}', _ind.badge)) + '" aria-label="' + esc(_sdT('Level {var}', _ind.badge)) + '">' + _ind.badge + '</span>'
+        var _lvlShown = _ind.badge ? _ind.badge + (lvl - depth) : 0;
+        var depthBadge = _lvlShown
+            ? '<span class="sd-tree-depth" role="img" title="' + esc(_sdT('Level {var}', _lvlShown)) + '" aria-label="' + esc(_sdT('Level {var}', _lvlShown)) + '">' + _lvlShown + '</span>'
             : '';
+        // A name the page uses more than once gets a hint after it.
+        var _hint = (!node.props._label && _sdTreeNames[displayLabel] > 1) ? _sdTreeRowHint(node, 40) : '';
+        var hintHtml = (_hint && _hint !== displayLabel) ? '<span class="sd-tree-hint" title="' + esc(_hint) + '">· ' + esc(_hint) + '</span>' : '';
         var sectCount = '';
         if (_isSect) {
             var _cnt = _sdTreeNodeCount(_sharedRefTree || node);
             if (_cnt) sectCount = '<span class="sd-tree-sect-count" title="' + esc(_sdT('{var} elements inside', _cnt)) + '">' + _cnt + '</span>';
         }
-        li.innerHTML = depthBadge + chevHtml + icon + ' <span class="sd-tree-lbl">' + esc(displayLabel) + '</span>' + idBadge + foldBadge + userLabelBadge + lockBadge + sharedBadge + editableBadge + noteBadge + addBtn + sectCount;
+        li.innerHTML = depthBadge + chevHtml + icon + ' <span class="sd-tree-lbl">' + esc(displayLabel) + '</span>' + hintHtml + idBadge + foldBadge + userLabelBadge + lockBadge + sharedBadge + editableBadge + noteBadge + addBtn + sectCount;
         if (node.type === 'shared_ref') li.classList.add('sd-tree-shared');
         else if (node.props._locked) li.classList.add('sd-tree-locked');
         else if (hasLockedAncestor(node)) li.classList.add('sd-tree-locked-desc');
@@ -32328,7 +32455,7 @@ const StyleDesigner = (function () {
             var _childSource = _sharedRefTree ? _sharedRefTree.children : node.children;
             if (_sharedRefTree) _sdSharedOpen[_sharedRefSid] = true;
             try {
-                (_childSource || []).forEach(function(child) { buildTreeItems(childUl, child, depth + 1); });
+                (_childSource || []).forEach(function(child) { _sdTreeBuildChild(childUl, child, depth + 1, lvl + 1); });
             } finally {
                 if (_sharedRefTree) delete _sdSharedOpen[_sharedRefSid];
             }
