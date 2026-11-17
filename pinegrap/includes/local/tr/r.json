@@ -2460,6 +2460,7 @@
     "release bundle ({var:1}) was published": "yayın paketi ({var:1}) yayınlandı",
     "release bundle ({var:1}) was published at its scheduled time": "yayın paketi ({var:1}) zamanı gelince yayınlandı",
     "release bundle ({var:1}) was taken back": "yayın paketi ({var:1}) geri alındı",
+    "release bundle ({var:1}): a publish that stopped was finished": "yayın paketi ({var:1}): duran bir yayın tamamlandı",
     "release notes, export, sync": "sürüm notları, dışa aktarma, eşitleme",
     "released the automatic firewall ban on {var:1}": "{var:1} adresindeki otomatik güvenlik duvarı yasağını kaldırdı",
     "reminders": "hatırlatıcılar",

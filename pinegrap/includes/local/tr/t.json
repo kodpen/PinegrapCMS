@@ -2672,6 +2672,7 @@
     "The bundle could not be saved.": "Paket kaydedilemedi.",
     "The bundle has no page to publish.": "Pakette yayınlanacak sayfa yok.",
     "The bundle id may hold only letters, digits, dots, hyphens and underscores.": "Paket kimliği yalnızca harf, rakam, nokta, tire ve alt çizgi içerebilir.",
+    "The bundle is being published right now. Try again in a moment.": "Paket şu anda yayınlanıyor. Biraz sonra yeniden deneyin.",
     "The bundle is made. Add the pages it publishes together.": "Paket oluşturuldu. Birlikte yayımlayacağı sayfaları ekleyin.",
     "The bundle was changed meanwhile; look again.": "Paket bu arada değiştirildi; yeniden bakın.",
     "The bundle was deleted; its drafts stay in Drafts.": "Paket silindi; taslakları Taslaklar klasöründe kalır.",
