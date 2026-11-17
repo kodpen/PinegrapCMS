@@ -16,7 +16,7 @@ description: Start file of the integrations census (2026-11-17, the owner's requ
 ## Which decisions bind?
 - One place per setting, one Site Settings dialog (owner 2026-10-30, `workflow/decisions-made-product-14.md`).
 - A Pinegrap plugin bundle goes to Claude's directory; a hub server is not decided (owner 2026-11-14, `workflow/decisions-made-product-51.md`).
-- New payment, carrier and marketplace drivers keep landing in the core until the add-on system opens (`decisions-made-product-6.md`, `-52.md`); carriers with an open integration first (`decisions-made-product-2.md`).
+- New payment, carrier and marketplace drivers keep landing in the core until the add-on system opens (`decisions-made-product-6.md`, `decisions-made-product-52.md`); carriers with an open integration first (`decisions-made-product-2.md`).
 - Open with the owner: Google's and Meta's verification for Kodpen and the broker (`reverse-oauth-leftovers.md`).
 
 ## What did it find?
