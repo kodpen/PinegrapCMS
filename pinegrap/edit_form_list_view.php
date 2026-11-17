@@ -799,12 +799,12 @@ if (!$_POST) {
                                                 <div class="col-12 md:col"><select class="form-control" id="order_by_3_type" name="order_by_3_type"' . $output_order_by_3_type_style . '>' . select_order_by_type($order_by_3_type) . '</select></div>
                                             </div>
                                         </div>
-                                        <div class="col-12 md:col-3 my-3">
+                                        <div class="col-12 pg-field-span-3 my-3">
                                             <label for="maximum_number_of_results" class="form-label">' . lang('Maximum Number of Results') . '</label>
                                             <input value="' . $maximum_number_of_results . '" type="text" name="maximum_number_of_results" id="maximum_number_of_results" class="form-control" size="7" maxlength="10" inputmode="numeric" data-inputmask-alias="integer"  style="text-align: right;" />
                                             <div class="form-text">' . lang('leave blank for no limit') . '</div>
                                         </div>
-                                        <div class="col-12 md:col-3 my-3">
+                                        <div class="col-12 pg-field-span-3 my-3">
                                             <label for="maximum_number_of_results_per_page" class="form-label">' . lang('Maximum Number of Results Per Page') . '</label>
                                             <input value="' . $maximum_number_of_results_per_page . '" type="text" name="maximum_number_of_results_per_page" id="maximum_number_of_results_per_page" class="form-control" size="7" maxlength="10" inputmode="numeric" data-inputmask-alias="integer"  style="text-align: right;" />
                                             <div class="form-text">' . lang('leave blank for no limit') . '</div>
@@ -819,10 +819,10 @@ if (!$_POST) {
                                             <table id="filter_table" class="chart_no_hover table pg-embedded-table">
                                                 <thead>
                                                     <tr>
-                                                        <th class="text-nowrap" style="min-width:200px">' . lang('Field') . '</th>
-                                                        <th class="text-nowrap" style="min-width:200px">' . lang('Operator') . '</th>
-                                                        <th class="text-nowrap" style="min-width:200px">' . lang('Value') . '</th>
-                                                        <th class="text-nowrap" style="min-width:200px">' . lang('Dynamic Value') . '</th>
+                                                        <th class="text-nowrap pg-embedded-table-text">' . lang('Field') . '</th>
+                                                        <th class="text-nowrap pg-embedded-table-text">' . lang('Operator') . '</th>
+                                                        <th class="text-nowrap pg-embedded-table-text">' . lang('Value') . '</th>
+                                                        <th class="text-nowrap pg-embedded-table-text">' . lang('Dynamic Value') . '</th>
                                                         <th class="text-nowrap">&nbsp;</th>
                                                     </tr>
                                                 </thead>
