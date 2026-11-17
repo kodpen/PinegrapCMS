@@ -24,4 +24,4 @@ description: The /tracking (/kargo) channel command: an order's tracking numbers
 - `ws_command_gate_order()`: `ws_change_allowed($viewer, 'order', 0)`, the order kind's `ecommerce` right (role ≤ 2 or `user_manage_ecommerce`), the right the order screen asks for. `ws_quick_edit_check()` asks it again for the order named.
 
 ## Where are the tests?
-- `tests/workspace_command_tracking_test.php` (card, reading, stale check, no mail, right); names and order in `tests/workspace_command_registry_test.php`. Added by the plan channel-commands step CC9 (feature K25).
+- `tests/workspace_command_tracking_test.php` (card, reading, stale check, no mail, right); names and order in `tests/workspace_command_registry_test.php`. Added by PR #10300 (feature K25).
