@@ -29,6 +29,9 @@
 
     X.icons.follow = 'M11 2h2v5h-2zM11 17h2v5h-2zM2 11h5v2H2zM17 11h5v2h-5zM12 8a4 4 0 1 1 0 8 4 4 0 0 1 0-8zm0 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4z';
 
+    // A phone held upright, as Record's: the sheet folds while Follow runs.
+    var PHONE = '(max-width: 599.98px)';
+
     // The playhead as m:ss.d, as the play bar shows it.
     function clockText(ms) {
         var tenths = Math.max(0, Math.round(ms / 100)), m = Math.floor(tenths / 600), s = (tenths % 600) / 10;
@@ -165,6 +168,14 @@
 
         this.follow = { phase: 'armed' };
         this.motionTab = 'keys';
+
+        // A phone's sheet folds so the whole stage is free for the box, as
+        // Record's does; it comes back when Follow ends.
+        if (window.matchMedia && window.matchMedia(PHONE).matches) {
+            this.followSheet = this.sheetOpen;
+            this.sheetOpen = false;
+        }
+
         this.render();
     };
 
@@ -222,6 +233,11 @@
         }
 
         this.root.classList.remove('pgie-following');
+
+        if (this.followSheet !== null) {
+            this.sheetOpen = this.followSheet;
+            this.followSheet = null;
+        }
 
         if (this.drag && (this.drag.kind === 'follow')) {
             this.drag = null;
@@ -681,6 +697,7 @@
         this.follow = null;
         this.followPill = null;
         this.followStats = null;
+        this.followSheet = null;
     });
 
     Editor.views.push(Editor.prototype.followView);
