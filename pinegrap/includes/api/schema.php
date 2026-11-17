@@ -3217,7 +3217,22 @@ function api_schema() {
 			'dry_run' => true,
 			'status'  => 204,
 			'summary' => 'Remove a subscription',
-			'description' => 'POST is accepted as well, because a default IIS install answers DELETE itself before PHP is reached.',
+			'description' => 'A client that cannot send DELETE, or talks to an IIS server, uses POST /webhooks/{id}/delete, the way every other record is deleted. A plain POST to /webhooks/{id} removes the subscription as well, as it has since the first release, and keeps doing so.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'webhooks.delete_post',
+			'method'  => 'POST',
+			'path'    => '/webhooks/{id}/delete',
+			'scope'   => 'webhooks:manage',
+			'handler' => 'api_webhooks_delete',
+			'dry_run' => true,
+			'status'  => 204,
+			'summary' => 'Remove a subscription, addressed as a POST',
+			'description' => 'The same removal as DELETE /webhooks/{id}, for clients and servers that cannot send DELETE.',
 			'params'  => array(
 				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
 			)
