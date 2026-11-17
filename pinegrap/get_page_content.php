@@ -684,6 +684,15 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         $content = pg_listen_inject($content);
     }
 
+    // ── Map of places ───────────────────────────────────────────────────────────
+    // The block carries data-pg-map and no script; the page brings the script,
+    // its texts and the page's id (pg_place_list_inject()), and the script
+    // asks places.php for the places. The module loads only for such a page.
+    if (!$email && stripos($content, 'data-pg-map') !== false) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/place_list.php');
+        $content = pg_place_list_inject($content, (int) $page_id);
+    }
+
     // ── Notify me ───────────────────────────────────────────────────────────────
     // A "Notify me" block carries data-pg-push, no script, and is hidden; while
     // visitor notifications are on the page brings the script and its settings

@@ -389,6 +389,31 @@ function ws_command_registry_channel()
             'api' => 'preview',
         ),
         array(
+            'key' => 'topic', 'tr' => 'konu', 'en' => 'topic', 'label' => '/topic · /konu',
+            'description' => lang('Sets what this channel is about, as the channel settings do. Without a text it shows the one in force.'),
+            'example'     => lang('/topic Launch of the spring catalogue'),
+            'args'        => array($arg('text', 'text', lang('what it is about'), true)),
+            'names' => array('konu', 'topic'), 'group' => 'channel', 'where' => 'channel', 'order' => 975,
+            'runner' => 'ws_command_run_topic', 'live' => 'ws_command_live_topic',
+        ),
+        array(
+            'key' => 'search', 'tr' => 'ara', 'en' => 'search', 'label' => '/search · /ara',
+            'description' => lang('Opens the search on this channel with the words. Nothing is posted.'),
+            'example'     => lang('/search invoice March'),
+            'args'        => array($arg('words', 'text', lang('words'), true)),
+            'names' => array('ara', 'search'), 'group' => 'channel', 'order' => 980,
+            'runner' => 'ws_command_run_search', 'live' => 'ws_command_live_search', 'api' => 'preview',
+        ),
+        array(
+            'key' => 'memory', 'tr' => 'bellek', 'en' => 'memory', 'label' => '/memory · /bellek',
+            'description' => lang('Writes an entry in the channel\'s memory, as New entry does; typed as a reply it carries that message\'s link. Without a text the New entry form opens.'),
+            'example'     => lang('/memory Invoices go to accounts by the 5th'),
+            'args'        => array($arg('text', 'text', lang('text'), true)),
+            'names' => array('bellek', 'memory'), 'group' => 'channel', 'where' => 'channel', 'order' => 985,
+            'gate' => 'ws_command_gate_memory', 'runner' => 'ws_command_run_memory', 'live' => 'ws_command_live_memory',
+            'api' => 'ws_api_command_kind_memory',
+        ),
+        array(
             'key' => 'help', 'tr' => 'yardım', 'en' => 'help', 'label' => '/help · /yardım',
             'description' => lang('Lists the commands and what they do.'),
             'example'     => lang('/help'),
@@ -631,6 +656,18 @@ function ws_api_command_kind_update($rest)
 function ws_api_command_kind_checkin($rest)
 {
     return (ws_checkin_question($rest) === '') ? 'preview' : 'run';
+}
+
+/**
+ * The API class of /memory: without a text it opens the New entry form, so
+ * nothing is written.
+ *
+ * @param string $rest
+ * @return string preview | run
+ */
+function ws_api_command_kind_memory($rest)
+{
+    return (trim((string) $rest) === '') ? 'preview' : 'run';
 }
 
 /**

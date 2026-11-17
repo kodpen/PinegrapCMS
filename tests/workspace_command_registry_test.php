@@ -64,10 +64,10 @@ function test_workspace_command_registry_every_key_has_a_runner()
 // The order, the keys and the names are today's.
 function test_workspace_command_registry_keeps_the_order_and_names()
 {
-	pg_assert_same(array('task', 'assign', 'done', 'postpone', 'status', 'timer', 'schedule', 'away', 'meeting', 'decision', 'note', 'plan', 'remind', 'poll', 'recap', 'approval', 'update', 'checkin', 'price', 'stock', 'create', 'product', 'wake', 'agent_channel', 'claude', 'ai', 'notify', 'invite', 'leave', 'help'),
+	pg_assert_same(array('task', 'assign', 'done', 'postpone', 'status', 'timer', 'schedule', 'away', 'meeting', 'decision', 'note', 'plan', 'remind', 'poll', 'recap', 'approval', 'update', 'checkin', 'price', 'stock', 'create', 'product', 'wake', 'agent_channel', 'claude', 'ai', 'notify', 'invite', 'leave', 'topic', 'search', 'memory', 'help'),
 		array_keys(ws_command_registry()), 'the registry in picker order');
 
-	pg_assert_same(array('task', 'assign', 'done', 'postpone', 'status', 'timer', 'schedule', 'away', 'meeting', 'decision', 'note', 'plan', 'remind', 'poll', 'recap', 'approval', 'update', 'checkin', 'price', 'stock', 'create', 'product', 'wake', 'agent_channel', 'notify', 'invite', 'leave', 'help'),
+	pg_assert_same(array('task', 'assign', 'done', 'postpone', 'status', 'timer', 'schedule', 'away', 'meeting', 'decision', 'note', 'plan', 'remind', 'poll', 'recap', 'approval', 'update', 'checkin', 'price', 'stock', 'create', 'product', 'wake', 'agent_channel', 'notify', 'invite', 'leave', 'topic', 'search', 'memory', 'help'),
 		array_column(ws_commands(null), 'key'), 'without a person the assistants are left out');
 
 	pg_assert_same(array(
@@ -96,6 +96,9 @@ function test_workspace_command_registry_keeps_the_order_and_names()
 		'bildirim' => 'notify', 'notify' => 'notify',
 		'davet' => 'invite', 'invite' => 'invite',
 		'ayrıl' => 'leave', 'ayril' => 'leave', 'leave' => 'leave',
+		'konu' => 'topic', 'topic' => 'topic',
+		'ara' => 'search', 'search' => 'search',
+		'bellek' => 'memory', 'memory' => 'memory',
 		'yardim' => 'help', 'yardım' => 'help', 'help' => 'help',
 		'oluştur' => 'create', 'olustur' => 'create', 'create' => 'create',
 		'urun' => 'product', 'ürün' => 'product', 'product' => 'product',
@@ -109,7 +112,7 @@ function test_workspace_command_registry_keeps_the_order_and_names()
 		}
 	}
 
-	pg_assert_same(array('task', 'status', 'timer', 'schedule', 'away', 'meeting', 'remind', 'approval', 'update', 'checkin', 'notify', 'invite', 'leave'), $live, 'the commands with a live line');
+	pg_assert_same(array('task', 'status', 'timer', 'schedule', 'away', 'meeting', 'remind', 'approval', 'update', 'checkin', 'notify', 'invite', 'leave', 'topic', 'search', 'memory'), $live, 'the commands with a live line');
 
 	$classes = array();
 

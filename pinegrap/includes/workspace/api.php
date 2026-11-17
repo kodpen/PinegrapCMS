@@ -579,7 +579,23 @@ function ws_api_routes()
             'dry_run' => true,
             'returns'      => 'WorkspaceChannelMembers',
             'summary'      => 'Take somebody out of a channel',
-            'description'  => 'With the owner\'s own id the owner of the application leaves the channel; anybody else is removed only by an owner who may manage it. An owner of the channel who leaves hands it to the member who has been in it longest, and a private channel nobody is left in is archived. A private channel gets a line saying who left or was removed. Somebody who was not in the channel is not an error: removed is then empty. members is empty once the owner of the application can no longer read the channel. POST is accepted as well, because a default IIS install answers DELETE itself before PHP is reached.',
+            'description'  => 'With the owner\'s own id the owner of the application leaves the channel; anybody else is removed only by an owner who may manage it. An owner of the channel who leaves hands it to the member who has been in it longest, and a private channel nobody is left in is archived. A private channel gets a line saying who left or was removed. Somebody who was not in the channel is not an error: removed is then empty. members is empty once the owner of the application can no longer read the channel. A client that cannot send DELETE, or talks to an IIS server, uses POST /workspace/channels/{id}/members/{user_id}/delete; a plain POST to this address does the same.',
+            'params'       => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'user_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        array(
+            'id'           => 'workspace.channels.members.remove_post',
+            'method'       => 'POST',
+            'path'         => '/workspace/channels/{id}/members/{user_id}/delete',
+            'scope'        => 'workspace:write',
+            'handler'      => 'ws_api_channel_members_remove',
+            'dry_run'      => true,
+            'returns'      => 'WorkspaceChannelMembers',
+            'summary'      => 'Take somebody out of a channel, addressed as a POST',
+            'description'  => 'The same as DELETE /workspace/channels/{id}/members/{user_id}, for clients and servers that cannot send DELETE.',
             'params'       => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'user_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
@@ -1091,7 +1107,23 @@ function ws_api_routes()
             'dry_run'      => true,
             'returns'      => 'WorkspaceChannelGroupAccessChange',
             'summary'      => 'Take back somebody\'s access on a group of channels',
-            'description'  => 'Takes the access on the group back from one person the way Take the access back does; staff alone may (403 otherwise). They leave the channels only that access had brought them into: a channel they joined by themselves, one they own and one a group still brings them into keeps them. Each channel they leave gets a line saying so. Access given on a group further up is taken back there, not here. Somebody who did not hold access on the group is not an error. memberships names who leaves which channel, in the answer and in a dry run (X-Dry-Run: true). The activity log gets the line the panel writes. POST is accepted as well, because a default IIS install answers DELETE itself before PHP is reached.',
+            'description'  => 'Takes the access on the group back from one person the way Take the access back does; staff alone may (403 otherwise). They leave the channels only that access had brought them into: a channel they joined by themselves, one they own and one a group still brings them into keeps them. Each channel they leave gets a line saying so. Access given on a group further up is taken back there, not here. Somebody who did not hold access on the group is not an error. memberships names who leaves which channel, in the answer and in a dry run (X-Dry-Run: true). The activity log gets the line the panel writes. A client that cannot send DELETE, or talks to an IIS server, uses POST /workspace/channel-groups/{id}/access/{user_id}/delete; a plain POST to this address does the same.',
+            'params'       => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'user_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        array(
+            'id'           => 'workspace.channel_groups.access.revoke_post',
+            'method'       => 'POST',
+            'path'         => '/workspace/channel-groups/{id}/access/{user_id}/delete',
+            'scope'        => 'workspace:write',
+            'handler'      => 'ws_api_channel_groups_access_revoke',
+            'dry_run'      => true,
+            'returns'      => 'WorkspaceChannelGroupAccessChange',
+            'summary'      => 'Take back somebody\'s access on a group of channels, addressed as a POST',
+            'description'  => 'The same as DELETE /workspace/channel-groups/{id}/access/{user_id}, for clients and servers that cannot send DELETE.',
             'params'       => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'user_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
@@ -1274,8 +1306,23 @@ function ws_api_routes()
             'dry_run'      => true,
             'returns'      => 'WorkspaceScheduledMessage',
             'summary'      => 'Delete a scheduled message',
-            'description'  => 'Deletes one of the owner\'s scheduled messages before it is posted, waiting or failed, and answers with it as it was. Somebody else\'s, or one already posted, is answered with 404; one being posted at this very moment is refused with 422. POST is accepted as well, because a default IIS install answers DELETE itself before PHP is reached.',
+            'description'  => 'Deletes one of the owner\'s scheduled messages before it is posted, waiting or failed, and answers with it as it was. Somebody else\'s, or one already posted, is answered with 404; one being posted at this very moment is refused with 422. A client that cannot send DELETE, or talks to an IIS server, uses POST /workspace/scheduled-messages/{id}/delete, the way every other record is deleted. A plain POST to /workspace/scheduled-messages/{id} deletes it as well and keeps doing so.',
             'params'       => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.scheduled_messages.delete_post',
+            'method'      => 'POST',
+            'path'        => '/workspace/scheduled-messages/{id}/delete',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_scheduled_messages_delete',
+            'dry_run'     => true,
+            'returns'     => 'WorkspaceScheduledMessage',
+            'summary'     => 'Delete a scheduled message, addressed as a POST',
+            'description' => 'The same deletion as DELETE /workspace/scheduled-messages/{id}, for clients and servers that cannot send DELETE.',
+            'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
             ),
         ),
@@ -2070,7 +2117,23 @@ function ws_api_routes()
             'dry_run'      => true,
             'returns'      => 'WorkspaceTaskTime',
             'summary'      => 'Delete an entry of time',
-            'description'  => 'The owner\'s own entry, or anybody\'s for an owner who is staff; answers with the entry as it was. An entry on an ERP invoice draft is refused with 422 until the tie is undone. POST is accepted as well, because a default IIS install answers DELETE itself before PHP is reached.',
+            'description'  => 'The owner\'s own entry, or anybody\'s for an owner who is staff; answers with the entry as it was. An entry on an ERP invoice draft is refused with 422 until the tie is undone. A client that cannot send DELETE, or talks to an IIS server, uses POST /workspace/tasks/{id}/time/{entry_id}/delete; a plain POST to this address does the same.',
+            'params'       => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'entry_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        array(
+            'id'           => 'workspace.tasks.time.delete_post',
+            'method'       => 'POST',
+            'path'         => '/workspace/tasks/{id}/time/{entry_id}/delete',
+            'scope'        => 'tasks:write',
+            'handler'      => 'ws_api_task_time_delete',
+            'dry_run'      => true,
+            'returns'      => 'WorkspaceTaskTime',
+            'summary'      => 'Delete an entry of time, addressed as a POST',
+            'description'  => 'The same as DELETE /workspace/tasks/{id}/time/{entry_id}, for clients and servers that cannot send DELETE.',
             'params'       => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'entry_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),

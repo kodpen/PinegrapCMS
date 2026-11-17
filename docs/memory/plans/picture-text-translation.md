@@ -25,7 +25,7 @@ priority: 6
 - The table and its columns: `workflow/decisions-made-schema-25.md`.
 
 ## Whose look is each screen?
-- The owner's: the "Pictures" group on the Translations screen (PT3), the languages list in the Design Canvas (PT4), the drawing queue (PT5). The architect looks first and brings him one sheet a step; a PR stays a draft until his look.
+- The owner's: the "Pictures" group on the Translations screen (PT3), the languages list in the Design Canvas (PT4), the drawing queue (PT5). The architect looks first and brings him one sheet a step; a PR stays a draft until his look. PT5: yes (poll 140, `workflow/decisions-made-product-74.md`).
 
 ## What is left out?
 - A flat picture whose letters are pixels (a photo, a scan, an uploaded PNG); saved animations and videos; pictures in e-mails and in RSS; a Workspace canvas; the words inside an svg layer; right-to-left languages; a picture drawn with nobody there; correcting one language's picture by hand (a later step, the owner's look).
