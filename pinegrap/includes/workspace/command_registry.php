@@ -323,7 +323,7 @@ function ws_command_registry_channel()
         ),
         array(
             'key' => 'recap', 'tr' => 'özet', 'en' => 'recap', 'label' => '/recap · /özet',
-            'description' => lang('Pinegrap AI sums up what you missed here since your last visit, only to you. Offered where the line over the conversation offers it.'),
+            'description' => lang('Sum up what I missed'),
             'example'     => lang('/recap'),
             'args'        => array(),
             'names' => array('özet', 'ozet', 'recap'), 'group' => 'channel', 'order' => 135,
