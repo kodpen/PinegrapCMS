@@ -19471,8 +19471,15 @@
             });
             card.appendChild(saLabelled(t('qc_row_table'), tables, ''));
 
+            // Two fields a line on a wide screen; a long table scrolls
+            // inside the card, so the box stays in view.
+            var grid = el('div', 'row g-2 mt-1 overflow-auto');
+            grid.style.maxHeight = '45vh';
+            card.appendChild(grid);
+
             (preview.columns || []).forEach(function (column) {
                 var input;
+                var cell = el('div', 'col-12 md:col-6');
 
                 if (column.type === 'checkbox') {
                     var wrap = el('div', 'form-field mb-2');
@@ -19485,7 +19492,8 @@
                     wrap.appendChild(label);
                     input.read = function () { return input.checked ? '1' : '0'; };
                     inputs[column.id] = input;
-                    card.appendChild(wrap);
+                    cell.appendChild(wrap);
+                    grid.appendChild(cell);
                     return;
                 }
 
@@ -19497,10 +19505,12 @@
                     });
                 } else if (column.type === 'text' || column.type === 'list') {
                     input = el('textarea', 'form-control form-control-sm');
-                    input.rows = 2;
+                    input.rows = 1;
+                } else if (column.type === 'date') {
+                    input = pgDateField(el('input', 'form-control form-control-sm'), column.time ? 'datetime-local' : 'date');
                 } else {
                     input = el('input', 'form-control form-control-sm');
-                    input.type = (column.type === 'date') ? (column.time ? 'datetime-local' : 'date') : 'text';
+                    input.type = 'text';
 
                     if (column.type === 'number' || column.type === 'money') {
                         input.inputMode = 'decimal';
@@ -19509,7 +19519,8 @@
 
                 input.read = function () { return input.value; };
                 inputs[column.id] = input;
-                card.appendChild(saLabelled(column.name, input, column.hint || ''));
+                cell.appendChild(saLabelled(column.name, input, column.hint || ''));
+                grid.appendChild(cell);
             });
 
             var actions = el('div', 'd-flex flex-wrap gap-3 mt-3');
