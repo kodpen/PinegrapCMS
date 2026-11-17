@@ -19,4 +19,4 @@ description: tools/check_api_answers.php, the read-only check that calls every G
 - It waits for the next window when `X-RateLimit-Remaining` reaches 1 and as `Retry-After` says on a 429 (one retry). It sends GET only; a list is read with `limit=5`.
 
 ## Where is the logic?
-- Pure functions `api_answer_check_*()` in the tool itself, which runs its main only outside the test runner (as `tools/ws_post.php` does). Added in PR #AM5PR.
+- Pure functions `api_answer_check_*()` in the tool itself, which runs its main only outside the test runner (as `tools/ws_post.php` does). Added in PR #10136.
