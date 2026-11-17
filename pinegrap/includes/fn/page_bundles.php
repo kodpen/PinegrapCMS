@@ -1428,6 +1428,31 @@ function pg_page_bundle_item_written($item, $done)
 }
 
 /**
+ * The write and take-back of one publish run, by item id, over one shared
+ * copy of the item rows: a take-back reads the row its write left, with the
+ * revision before that the write stored.
+ *
+ * @param array    $items      item id => page_bundle_item row
+ * @param callable $write_item row => pg_page_bundle_write_item()
+ * @param callable $undo_item  row => bool
+ * @return array the write and the take-back for pg_page_bundle_publish_run()
+ */
+function pg_page_bundle_publish_ops($items, $write_item, $undo_item)
+{
+    $write = function ($id) use (&$items, $write_item) {
+        $done = $write_item($items[$id]);
+        $items[$id] = pg_page_bundle_item_written($items[$id], $done);
+
+        return $done;
+    };
+    $undo = function ($id) use (&$items, $undo_item) {
+        return $undo_item($items[$id]);
+    };
+
+    return array($write, $undo);
+}
+
+/**
  * Takes one written page back: a new page goes back to Drafts; a replaced
  * page gets the tree, title and description of its revision before, saved
  * as a new publish with the source 'restore'. After a failed publish the
@@ -1528,16 +1553,13 @@ function pg_page_bundle_publish($bundle, $user, $choices = array())
 
     pg_page_bundle_clear_failure($bundle);
 
-    // The take-back reads the rows the writes left, not the ones read before.
-    $write = function ($id) use (&$items, $bundle, $user) {
-        $done = pg_page_bundle_write_item($items[$id], $bundle, $user);
-        $items[$id] = pg_page_bundle_item_written($items[$id], $done);
-
-        return $done;
-    };
-    $undo = function ($id) use ($items, $bundle, $user) {
-        return pg_page_bundle_undo_item($items[$id], $bundle, $user, 'waiting');
-    };
+    list($write, $undo) = pg_page_bundle_publish_ops($items,
+        function ($item) use ($bundle, $user) {
+            return pg_page_bundle_write_item($item, $bundle, $user);
+        },
+        function ($item) use ($bundle, $user) {
+            return pg_page_bundle_undo_item($item, $bundle, $user, 'waiting');
+        });
 
     $run = pg_page_bundle_publish_run($check['plan']['write'], $write, $undo);
     $out['run'] = $run;

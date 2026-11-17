@@ -16,7 +16,7 @@ module: page_bundles
 - The bin's functions come through `pg_page_bundle_load_recycle()` (`view_folder_and_files_f.php`): `recycle_bin.php` alone lacks them, and a publish with a replaced page ended in a fatal error after its writes (#10045).
 
 ## What does a failure do?
-- `pg_page_bundle_publish_run()` (pure, writes as callables) stops at the first failure and takes back what this run wrote, newest first. The take-back reads the rows the writes left (`pg_page_bundle_item_written()`): with the rows read before the run a replaced page had `revision_before` 0, was never taken back and the bundle went `partial` (#10046). The bundle keeps its status (open, scheduled, partial) with `failed_page_id` and `failed_reason`.
+- `pg_page_bundle_publish_run()` (pure, writes as callables) stops at the first failure and takes back what this run wrote, newest first. The write and take-back share one copy of the rows (`pg_page_bundle_publish_ops()`), so a take-back reads what its write stored: before, a replaced page's take-back read `revision_before` 0 and the bundle went `partial` (#10046). The bundle keeps its status (open, scheduled, partial) with `failed_page_id` and `failed_reason`.
 - Only when a take-back fails too does it move to `partial`; the items written stay `written` (what stands), the rest wait for "Publish the rest" (the same publish, from `partial`).
 
 ## How is it taken back?
