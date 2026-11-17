@@ -75549,6 +75549,15 @@ const StyleDesigner = (function () {
         list.classList.toggle('sd-strip-cut', plan.cut);
         body.classList.toggle('sd-design-icon', plan.designIcon);
         body.classList.toggle('sd-design-bare', plan.cut);
+        // At step 6 the strip keeps the room of the open tab's state and
+        // menu and of a short name; the name alone is cut.
+        list.style.minWidth = '';
+        var act = plan.cut ? list.querySelector('.sd-tab.active') : null;
+        var nameEl = act ? act.querySelector('.sd-tab-name') : null;
+        if (act && nameEl) {
+            var need = act.scrollWidth - w(nameEl) + Math.min(w(nameEl), 16) + (box ? w(box) - w(act) : 0);
+            list.style.minWidth = Math.ceil(need) + 'px';
+        }
         list.setAttribute('data-step', String(plan.step));
         // As an icon, the design's name is in the button's tip.
         if (designBtn) {

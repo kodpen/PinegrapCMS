@@ -307,7 +307,14 @@
 .sd-strip-cut .sd-tab-box-head:not(:has(.sd-tab-rename)) { display: none; }
 .sd-strip-cut .sd-tab.active { flex: 0 1 auto; min-width: 60px; }
 .sd-strip-cut .sd-tab.active .sd-tab-name { min-width: 0; }
-.sd-strip-cut .sd-tab.active { padding: 0 .4rem; gap: .25rem; }
+/* The open tab's state and its menu never go: only the name is cut
+   (_pgTabsFit() keeps the strip as wide as they need). The box keeps its
+   colour line only, and the draft pill keeps its dashed mark without its
+   word, which stays in its tip. */
+.sd-strip-cut .sd-tab-box { padding: 0; border-color: transparent; border-bottom-color: var(--sd-tg); background: transparent; }
+.sd-strip-cut .sd-tab.active { padding: 0 .3rem; gap: .2rem; }
+.sd-strip-cut .sd-tab.active > :not(.sd-tab-name) { flex: 0 0 auto; }
+.sd-strip-cut .sd-tab.active .sd-tab-draft-badge:not(.sd-tab-sched-badge) { width: 10px; height: 10px; padding: 0; font-size: 0; }
 /* Step 6 also leaves the toolbar's buttons their room: the Pages button
    keeps its icon and loses its count (its name stays in the tip). */
 .sd-design-bare .sd-tabs-all-count { display: none; }
