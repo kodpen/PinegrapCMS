@@ -4,7 +4,7 @@ description: How many event subscriptions one application may hold (50), the one
 ---
 
 ## How many subscriptions may an application hold?
-- 50 (`api_webhook_subscription_limit()` in `includes/api/outbound/webhooks.php`). Architect (2026-11-17): a technical bound, raised from ten for automation platforms, which make one subscription per workflow trigger. PR AU3 of the automation-platforms plan.
+- 50 (`api_webhook_subscription_limit()` in `includes/api/outbound/webhooks.php`). Architect (2026-11-17): a technical bound, raised from ten for automation platforms, which make one subscription per workflow trigger. PR #10128.
 - `api_webhook_subscription_limit_reached($count)` answers true at 50 and above; `api_webhooks_create()` counts the application's rows (all statuses, stopped ones too) and refuses the next with 409 `too_many_webhooks`, "An application may hold {var:1} subscriptions." with the number from the function.
 - The number is written nowhere else: the route description of `POST /webhooks` does not name it. A screen that creates subscriptions (the Events tab's "New subscription") calls the same function. Test: `webhook_subscription_limit_test.php`.
 
