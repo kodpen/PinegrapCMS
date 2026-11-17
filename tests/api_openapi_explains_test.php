@@ -128,3 +128,26 @@ function test_api_openapi_explains_mcp_tools_do_not_carry_them()
 	pg_assert_false(strpos($json, 'Id of the record at') !== false, 'no generated id description');
 	pg_assert_false(strpos($json, '"example"') !== false, 'no example body');
 }
+
+// Nothing this file adds closes an answer's shape: no example or text says an
+// answer (an error above all, which is gaining an errors list) has no other
+// fields, so each stays true when a field is added.
+function test_api_openapi_explains_nothing_says_there_are_no_other_fields()
+{
+	$said = array(json_encode(api_openapi_tag_sentences()));
+
+	foreach (api_openapi_explains_test_routes() as $route) {
+		$said[] = json_encode(api_openapi_example_body($route));
+		foreach ($route['params'] as $param) {
+			$said[] = (string)api_openapi_id_description($route, $param);
+		}
+	}
+
+	$said = implode("\n", $said);
+
+	foreach (array('additionalProperties', 'only these fields', 'no other field', 'nothing else') as $closed) {
+		pg_assert_false(stripos($said, $closed) !== false, 'does not say ' . $closed);
+	}
+
+	pg_assert_false(strpos(json_encode(api_openapi_tags(array_keys(api_openapi_tag_sentences()))), 'additionalProperties') !== false, 'the tags list is open');
+}
