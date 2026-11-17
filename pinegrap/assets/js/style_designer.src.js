@@ -74514,10 +74514,12 @@ const StyleDesigner = (function () {
     }
 
     // The tab's mark: the editor's waiting change, an answer, or the count.
-    function _pgContentChangeBadge(p) {
+    // inList: the same mark in the list of every page, a row that is itself
+    // a button, so the mark is not a second one there.
+    function _pgContentChangeBadge(p, inList) {
         var st = (p && p.page_id > 0) ? _pgCc.pages[p.page_id] : null;
         if (!st) return '';
-        var key = ' data-cc="' + esc(p.key) + '" role="button" tabindex="0"';
+        var key = ' data-cc="' + esc(p.key) + '"' + (inList ? '' : ' role="button" tabindex="0"');
         if (st.waiting > 0) {
             return '<span class="sd-tab-cc sd-tab-cc-wait"' + key + ' title="' + esc(_sdT('Waiting for approval')) + '">' +
                    '<span class="bi bi-hourglass-split" aria-hidden="true"></span>' + esc(_sdT('Waiting for approval')) + '</span>';
@@ -74590,7 +74592,11 @@ const StyleDesigner = (function () {
         }
         pop.innerHTML = html;
         document.body.appendChild(pop);
+        // A tab the strip does not show (a phone, a folded group): the note
+        // goes under the button that lists every page.
         var r = anchor.getBoundingClientRect();
+        var all = document.getElementById('sd-tabs-all');
+        if ((!r.width || !anchor.offsetParent) && all && all.offsetParent) r = all.getBoundingClientRect();
         var left = Math.max(8, Math.min(r.left, window.innerWidth - pop.offsetWidth - 8));
         pop.style.left = left + 'px';
         pop.style.top = (r.bottom + 6) + 'px';
@@ -74772,6 +74778,7 @@ const StyleDesigner = (function () {
                     '<span class="sd-tabs-all-name">' + esc(name) + '</span>' +
                     (_pgPageDirty(p) ? '<span class="sd-tabs-all-dirty" title="' + esc(_sdT('Unsaved Changes')) + '">●</span>' : '') +
                     ((_pgDraftsReady() && p.page_draft) ? '<span class="sd-tab-draft-badge sd-tabs-all-badge">' + esc(_sdT('Draft')) + '</span>' : '') +
+                    _pgContentChangeBadge(p, true) +
                     (locked ? '<span class="bi bi-lock-fill" aria-hidden="true"></span>' : '') +
                     '</button>';
         });

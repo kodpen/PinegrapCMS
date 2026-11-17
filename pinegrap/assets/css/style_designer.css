@@ -6710,3 +6710,10 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
 .sd-cc-pop-title { margin-bottom: 4px; font-weight: 600; }
 .sd-cc-pop p { margin: 0 0 8px; overflow-wrap: anywhere; }
 .sd-cc-pop-acts { display: flex; justify-content: flex-end; gap: 6px; }
+.sd-cc-pop-acts .sd-vb-btn { padding: .35rem .7rem; border: 1px solid var(--sd-text-muted); color: var(--sd-text); }
+.sd-cc-pop-acts .sd-vb-btn:hover, .sd-cc-pop-acts .sd-vb-btn:focus-visible { border-color: var(--sd-text); background: rgba(255,255,255,.1); outline: none; }
+/* On the picked row of the page list the row's own colour carries it. */
+.sd-tabs-all-item.active .sd-tab-cc:not(.sd-tab-cc-count) { border-color: currentColor; color: inherit; }
+.sd-tabs-all-item.active .sd-tab-cc-count { border-color: #fff; }
+/* A tab with a waiting change keeps room for its name beside the pill. */
+.sd-tab:has(.sd-tab-cc-wait) { max-width: 320px; }

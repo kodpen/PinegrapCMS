@@ -8,6 +8,7 @@ module: content_proposals
 - (PA3, #10188) A mark after the page's name, from `pg_content_proposals_studio_rows()` (pure): the person's own waiting change ("Waiting for approval", amber pill); else the newest answer to one of their changes not closed, for 30 days (`PG_CONTENT_PROPOSALS_KEEP_DAYS`): applied, dismissed by a designer, or stale (an icon); else, for roles 0 and 1 only, how many changes wait on the page (a number).
 - A change the editor withdrew, or one taken back (`reverted`), is no answer. Nobody else's change or answer reaches an editor; a Manager gets no count.
 - The mark opens a note under it (`#sd-cc-pop`); clicking it never switches the tab. The count opens `content_changes.php` (PA4a's list) in a new browser tab.
+- The list of every page (the strip's button, the only way on a phone) shows the same mark on the page's row; its note then sits under that button.
 
 ## How does the Studio read it?
 - One `designer` sub-action, `content_change_state` (`pg_content_proposals_studio()`), answered before the designers-only allow-list, so every role that opens the Studio reads it; it returns only the person's own rows and, for roles 0/1, the counts. Read once when the editor opens (after `_collabStart()`) and again after a content level's save.
