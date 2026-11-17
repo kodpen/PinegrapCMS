@@ -10,7 +10,7 @@ description: Plan automation-platforms, steps AU1 to AU7: the contract and its t
   - The PR body: each candidate of A3 with its event, record route and list route, and what a candidate left out lacks.
   - Features: A1, A2, A3.
 
-- AU2 (M) after AU1: newest first on the lists the contract names.
+- AU2 (M) after AU1: newest first on the lists the contract names. Done, PR #10174, but the Workspace task list (its files were held by #9994 and #10077): `api/api-list-newest-first.md`.
   - Existing files: the route rows (`includes/api/schema.php`, the modules' route files) and each list's handler. Only `/orders` has a `sort` today; `/forms/{id}/submissions` says oldest first.
   - Tests, red first: the order and the cursor of each list as a pure function; the default order unchanged.
   - Features: A4.
