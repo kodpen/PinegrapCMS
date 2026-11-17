@@ -16,7 +16,7 @@ description: What binds store credit (owner, 2026-11-02, #5039, #6306): a custom
 - Money in integer minor units rounded with `round()`; the conversion rate is read as `pg_parse_amount()` reads amounts.
 - An order's points are taken back on cancellation and refund; a shortfall after a conversion reduces or expires the newest points card, never below zero; not retroactive (#6306, `workflow/decisions-made-product-25.md`, `store-credit-points-take-back.md`).
 - Mails `credit_issued` and `credit_expiring` are campaign profile actions; the expiring notice goes 14 days ahead (`store-credit-mails.md`).
-- Erasing a customer voids their credit and clears `user_id` (`api/api-customer-credit.md`).
+- Erasing a customer voids their credit and clears `user_id` on the cards brought to 0; a card whose void lost a race with an order keeps its owner (#10261, `api/api-customer-credit.md`).
 - Deleting a user account voids their open credit the same way (owner, 2026-11-14, #9016, `user-delete-store-credit.md`; his words: `workflow/decisions-made-product-52.md`).
 
 ## Where is the rest?
