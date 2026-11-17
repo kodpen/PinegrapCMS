@@ -20,7 +20,7 @@ description: Branch policy (development vs main), who does git, commit author, t
 - Shared files: the open version's migration file, `init.php`. `pinegrap/changelog.txt` is not edited by a PR: its body names the `[NEW]` line or the `[SCHEME]` area and the merging session writes it (`working-mode.md`).
 - The Turkish shards in `includes/local/tr/` are sorted by key and merge cleanly: keys only with `php tools/tr_add.php`, a conflict settled with `php tools/tr_resolve.php` (`core/lang-files.md`).
 - Migration file and `init.php`: append only, in your own section; never rewrite the whole file.
-- A file an open PR holds: a bundled script or stylesheet is held by function and rule block (`held-file-bundled-sources.md`); a registry's own rows or an untouched function beside a draft are asked (`held-file-registry-rows.md`). Anything more waits.
+- A file an open PR holds: a script or stylesheet is held by function and rule block (`held-file-bundled-sources.md`); a registry's own rows or an untouched function beside a draft are asked (`held-file-registry-rows.md`). Anything more waits.
 - Merge `origin/development` once before the PR goes up, keeping both sides' sections on conflict. After the hand-over only the merging session brings the PR up to date (`session-lifecycle.md`).
 
 ## Which generated files does a PR leave out?
