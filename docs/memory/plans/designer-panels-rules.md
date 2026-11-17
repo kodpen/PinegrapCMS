@@ -22,6 +22,7 @@ description: Plan designer-panels: what today's editor does that no step may los
 - A colour comes from a token (`designer-panels-measures.md`); a size is the measure files' number.
 - Texts: `_sdT('English')`, the Turkish with `tools/tr_add.php`. The drawings' Turkish words are samples; `designer/designer-turkish-terms.md` and `editor-turkish-terms.md` bind.
 - A pure function gets its test first.
+- Additions of other plans to the four areas: `designer-panels-additions.md`.
 - No schema change, no new endpoint; a need for either comes back as a question to the architect.
 - A step that finds its feature cannot be built as written stops and asks; it does not leave the feature out.
 
