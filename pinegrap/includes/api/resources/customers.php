@@ -47,6 +47,8 @@ if (!defined('PG_API_ENTRY') && !defined('PG_API_PANEL')) {
 	exit;
 }
 
+require_once(dirname(dirname(__FILE__)) . '/list_order.php');
+
 function api_customer_present($row) {
 
 	return array(
@@ -239,21 +241,12 @@ function api_customers_list($params) {
 	// Contacts carry no change timestamp, so the cursor walks the id alone. That
 	// is a stable order and it resumes correctly; what it cannot do is offer an
 	// updated_since filter, which is why this endpoint does not pretend to.
-	$cursor_clause = '';
+	// sort=newest walks the same id the other way (list_order.php).
+	$descending = api_list_descending($params);
 
-	if (isset($params['cursor']) && $params['cursor'] !== '') {
+	$cursor = api_list_cursor($params, $descending);
 
-		$cursor = api_cursor_decode($params['cursor']);
-
-		if ($cursor === null) {
-
-			api_fail(400, 'invalid_cursor', lang('The cursor is not readable. Start the listing again without one.'), 'cursor');
-
-		}
-
-		$cursor_clause = "contacts.id > '" . $cursor['i'] . "'";
-
-	}
+	$cursor_clause = ($cursor === null) ? '' : api_list_keyset_sql('', 'contacts.id', $cursor, $descending);
 
 	$paged_where = $where;
 
@@ -268,7 +261,7 @@ function api_customers_list($params) {
 	$limit = isset($params['limit']) ? (int)$params['limit'] : 50;
 
 	$rows = api_rows(api_customer_select() . $where_sql . "
-		ORDER BY contacts.id ASC
+		ORDER BY " . api_list_order_sql('', 'contacts.id', $descending) . "
 		LIMIT " . ($limit + 1));
 
 	$has_more = (count($rows) > $limit);
@@ -285,7 +278,7 @@ function api_customers_list($params) {
 
 		$last = $rows[count($rows) - 1];
 
-		$next_cursor = api_cursor_encode(0, $last['id']);
+		$next_cursor = api_list_cursor_encode(0, $last['id'], $descending);
 
 	}
 

@@ -31,6 +31,7 @@ if (!defined('PG_API_ENTRY') && !defined('PG_API_PANEL')) {
 }
 
 require_once(dirname(dirname(__FILE__)) . '/outbound/webhooks.php');
+require_once(dirname(dirname(__FILE__)) . '/list_order.php');
 
 // The shape of a product on the wire. One place, so the list and the single
 // reads cannot drift apart.
@@ -401,22 +402,13 @@ function api_products_list($params) {
 	// rows written in the same second are still walked exactly once. Offset
 	// paging over a catalogue that is being edited skips rows and repeats
 	// others, which is how a sync quietly loses products.
-	$cursor_clause = '';
+	//
+	// sort=newest walks the same pair the other way, the last changed first.
+	$descending = api_list_descending($params);
 
-	if (isset($params['cursor']) && $params['cursor'] !== '') {
+	$cursor = api_list_cursor($params, $descending);
 
-		$cursor = api_cursor_decode($params['cursor']);
-
-		if ($cursor === null) {
-
-			api_fail(400, 'invalid_cursor', lang('The cursor is not readable. Start the listing again without one.'), 'cursor');
-
-		}
-
-		$cursor_clause = "(products.timestamp > '" . $cursor['v'] . "'
-			OR (products.timestamp = '" . $cursor['v'] . "' AND products.id > '" . $cursor['i'] . "'))";
-
-	}
+	$cursor_clause = ($cursor === null) ? '' : api_list_keyset_sql('products.timestamp', 'products.id', $cursor, $descending);
 
 	$paged_where = $where;
 
@@ -433,7 +425,7 @@ function api_products_list($params) {
 	// One row more than asked for. Whether that extra row exists is what says
 	// there is another page, without a second COUNT query.
 	$rows = api_rows(api_product_select() . $where_sql . "
-		ORDER BY products.timestamp ASC, products.id ASC
+		ORDER BY " . api_list_order_sql('products.timestamp', 'products.id', $descending) . "
 		LIMIT " . ($limit + 1));
 
 	$has_more = (count($rows) > $limit);
@@ -450,7 +442,7 @@ function api_products_list($params) {
 
 		$last = $rows[count($rows) - 1];
 
-		$next_cursor = api_cursor_encode($last['timestamp'], $last['id']);
+		$next_cursor = api_list_cursor_encode($last['timestamp'], $last['id'], $descending);
 
 	}
 

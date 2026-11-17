@@ -35,7 +35,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  * nested field), list (the route whose newest records are the trigger's
  * samples), list_ids (the same for the list route's path) and newest (the
  * query parameters that list the newest first; array() when the list does
- * by itself; null when it cannot yet).
+ * by itself; null when it cannot yet, as the Workspace task list).
  *
  * An action: route, a POST route. A search: route, a GET list, and by, the
  * query parameters it searches with.
@@ -62,6 +62,9 @@ function pg_automation_contract()
     };
 
     $order = array('sort' => 'placed_desc');
+    // The other lists walk oldest first by default and take sort=newest
+    // (includes/api/list_order.php); a table's rows take dir=desc.
+    $newest = array('sort' => 'newest');
     $id = array('id' => 'id');
 
     $rows = array(
@@ -72,24 +75,24 @@ function pg_automation_contract()
         $trigger('order_cancelled', '', 'orders:read', array('order.cancelled'), 'orders.get', $id, 'orders.list', array(), $order),
         // A return's id is return_id: id is the order's, as in every order.* event.
         $trigger('order_return_requested', '', 'orders:read', array('order.return.requested'), 'returns.get', array('id' => 'return_id'), 'returns.list', array(), array()),
-        $trigger('customer_created', '', 'customers:read', array('customer.created'), 'customers.get', $id, 'customers.list', array(), null),
+        $trigger('customer_created', '', 'customers:read', array('customer.created'), 'customers.get', $id, 'customers.list', array(), $newest),
         // id is the submission's, form_id the form's.
-        $trigger('form_submitted', '', 'forms:read', array('form.submitted'), 'forms.submission_get', array('id' => 'form_id', 'submission_id' => 'id'), 'forms.submissions', array('id' => 'form_id'), null),
-        $trigger('product_created', '', 'products:read', array('product.created'), 'products.get', $id, 'products.list', array(), null),
-        $trigger('stock_low', '', 'products:read', array('stock.low'), 'products.get', array('id' => 'product_id'), 'products.list', array(), null),
-        $trigger('subscription_renewed', '', 'customers:read', array('subscription.renewed'), 'subscriptions.get', $id, 'subscriptions.list', array(), null),
-        $trigger('subscription_failed', '', 'customers:read', array('subscription.failed'), 'subscriptions.get', $id, 'subscriptions.list', array(), null),
-        $trigger('subscription_cancelled', '', 'customers:read', array('subscription.cancelled'), 'subscriptions.get', $id, 'subscriptions.list', array(), null),
+        $trigger('form_submitted', '', 'forms:read', array('form.submitted'), 'forms.submission_get', array('id' => 'form_id', 'submission_id' => 'id'), 'forms.submissions', array('id' => 'form_id'), $newest),
+        $trigger('product_created', '', 'products:read', array('product.created'), 'products.get', $id, 'products.list', array(), $newest),
+        $trigger('stock_low', '', 'products:read', array('stock.low'), 'products.get', array('id' => 'product_id'), 'products.list', array(), $newest),
+        $trigger('subscription_renewed', '', 'customers:read', array('subscription.renewed'), 'subscriptions.get', $id, 'subscriptions.list', array(), $newest),
+        $trigger('subscription_failed', '', 'customers:read', array('subscription.failed'), 'subscriptions.get', $id, 'subscriptions.list', array(), $newest),
+        $trigger('subscription_cancelled', '', 'customers:read', array('subscription.cancelled'), 'subscriptions.get', $id, 'subscriptions.list', array(), $newest),
 
         $trigger('workspace_task_created', 'workspace', 'tasks:read', array('workspace.task.created'), 'workspace.tasks.get', $id, 'workspace.tasks.list', array(), null),
         $trigger('workspace_task_completed', 'workspace', 'tasks:read', array('workspace.task.completed'), 'workspace.tasks.get', $id, 'workspace.tasks.list', array(), null),
         // Rows of a table shared in a public channel only, as the event is.
-        $trigger('workspace_table_row_created', 'workspace', 'workspace:read', array('workspace.wtable.row.created'), 'workspace.table_rows.get', array('id' => 'table.id', 'row_id' => 'row.id'), 'workspace.table_rows.list', array('id' => 'table.id'), null),
+        $trigger('workspace_table_row_created', 'workspace', 'workspace:read', array('workspace.wtable.row.created'), 'workspace.table_rows.get', array('id' => 'table.id', 'row_id' => 'row.id'), 'workspace.table_rows.list', array('id' => 'table.id'), array('dir' => 'desc')),
 
-        $trigger('erp_invoice_created', 'erp', 'erp:read', array('erp.invoice.created'), 'erp.invoices.get', $id, 'erp.invoices.list', array(), null),
-        $trigger('erp_invoice_paid', 'erp', 'erp:read', array('erp.invoice.paid'), 'erp.invoices.get', $id, 'erp.invoices.list', array(), null),
-        $trigger('erp_quote_created', 'erp', 'erp:read', array('erp.quote.created'), 'erp.quotes.get', $id, 'erp.quotes.list', array(), null),
-        $trigger('erp_quote_accepted', 'erp', 'erp:read', array('erp.quote.accepted'), 'erp.quotes.get', $id, 'erp.quotes.list', array(), null),
+        $trigger('erp_invoice_created', 'erp', 'erp:read', array('erp.invoice.created'), 'erp.invoices.get', $id, 'erp.invoices.list', array(), $newest),
+        $trigger('erp_invoice_paid', 'erp', 'erp:read', array('erp.invoice.paid'), 'erp.invoices.get', $id, 'erp.invoices.list', array(), $newest),
+        $trigger('erp_quote_created', 'erp', 'erp:read', array('erp.quote.created'), 'erp.quotes.get', $id, 'erp.quotes.list', array(), $newest),
+        $trigger('erp_quote_accepted', 'erp', 'erp:read', array('erp.quote.accepted'), 'erp.quotes.get', $id, 'erp.quotes.list', array(), $newest),
     );
 
     $actions = array(

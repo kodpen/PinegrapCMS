@@ -24,6 +24,8 @@ if (!defined('PG_API_ENTRY') && !defined('PG_API_PANEL') && !defined('PG_INIT_LO
     exit;
 }
 
+require_once(dirname(dirname(__FILE__)) . '/api/list_order.php');
+
 /* ---------------------------------------------------------------------------
    Shared
    --------------------------------------------------------------------------- */
@@ -53,27 +55,6 @@ function erp_api_day($unix)
 }
 
 /**
- * The cursor of a listing, or a 400 for one this API did not issue.
- *
- * @param array $params
- * @return array|null  ['v' => int, 'i' => int]
- */
-function erp_api_cursor($params)
-{
-    if (!isset($params['cursor']) || ($params['cursor'] === '')) {
-        return null;
-    }
-
-    $cursor = api_cursor_decode($params['cursor']);
-
-    if ($cursor === null) {
-        api_fail(400, 'invalid_cursor', lang('The cursor is not readable. Start the listing again without one.'), 'cursor');
-    }
-
-    return $cursor;
-}
-
-/**
  * One page of rows, walked on (sort column, id).
  *
  * @param string $select      Everything up to and including FROM ... JOIN ...
@@ -82,22 +63,21 @@ function erp_api_cursor($params)
  * @param string $id_column   The id column, table-qualified
  * @param array  $params      limit, cursor, include_count
  * @param string $count_from  FROM ... for the count, when it differs from $select's
+ * @param bool   $descending  Walk the newest first (a list declaring sort=newest)
  * @return array ['rows' => array, 'next_cursor' => string|null, 'total' => int|null, 'limit' => int]
  */
-function erp_api_page($select, $where, $sort, $id_column, $params, $count_from)
+function erp_api_page($select, $where, $sort, $id_column, $params, $count_from, $descending = false)
 {
     $limit = isset($params['limit']) ? (int) $params['limit'] : 50;
-    $cursor = erp_api_cursor($params);
+    $cursor = api_list_cursor($params, $descending);
 
     $paged = $where;
 
     if ($cursor !== null) {
-        $paged[] = ($sort === '')
-            ? $id_column . " > '" . (int) $cursor['i'] . "'"
-            : "(" . $sort . " > '" . (int) $cursor['v'] . "' OR (" . $sort . " = '" . (int) $cursor['v'] . "' AND " . $id_column . " > '" . (int) $cursor['i'] . "'))";
+        $paged[] = api_list_keyset_sql($sort, $id_column, $cursor, $descending);
     }
 
-    $order = ($sort === '') ? $id_column . " ASC" : $sort . " ASC, " . $id_column . " ASC";
+    $order = api_list_order_sql($sort, $id_column, $descending);
 
     $rows = (array) db_items($select
         . (empty($paged) ? '' : ' WHERE ' . implode(' AND ', $paged))
@@ -113,7 +93,7 @@ function erp_api_page($select, $where, $sort, $id_column, $params, $count_from)
 
     if ($has_more && !empty($rows)) {
         $last = $rows[count($rows) - 1];
-        $next_cursor = api_cursor_encode(($sort === '') ? 0 : (int) $last['_sort'], (int) $last['id']);
+        $next_cursor = api_list_cursor_encode(($sort === '') ? 0 : (int) $last['_sort'], (int) $last['id'], $descending);
     }
 
     $total = null;
@@ -1090,7 +1070,7 @@ function erp_api_invoices_list($params)
         $where[] = "i.updated_at >= '" . (int) $params['updated_since'] . "'";
     }
 
-    $page = erp_api_page(erp_api_invoice_select(), $where, 'i.updated_at', 'i.id', $params, "FROM erp_invoices i");
+    $page = erp_api_page(erp_api_invoice_select(), $where, 'i.updated_at', 'i.id', $params, "FROM erp_invoices i", api_list_descending($params));
 
     $ids = array();
 
@@ -2835,7 +2815,7 @@ function erp_api_quotes_list($params)
     }
 
     $page = erp_api_page(erp_api_quote_select(), $where, 'q.updated_at', 'q.id', $params,
-        "FROM erp_quotes q LEFT JOIN erp_invoices i ON i.id = q.invoice_id");
+        "FROM erp_quotes q LEFT JOIN erp_invoices i ON i.id = q.invoice_id", api_list_descending($params));
 
     $lines = erp_api_quote_lines($page['rows']);
     $signatures = erp_api_quote_signatures(array_column($page['rows'], 'id'));

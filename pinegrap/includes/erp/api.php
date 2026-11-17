@@ -446,6 +446,7 @@ function erp_api_routes()
                 array('name' => 'issued_from', 'in' => 'query', 'type' => 'datetime', 'description' => 'Issue date on or after this day.'),
                 array('name' => 'issued_to', 'in' => 'query', 'type' => 'datetime', 'description' => 'Issue date on or before this day.'),
                 array('name' => 'updated_since', 'in' => 'query', 'type' => 'datetime', 'description' => 'Only invoices changed at or after this moment.'),
+                array('name' => 'sort', 'in' => 'query', 'type' => 'enum', 'values' => array('oldest', 'newest'), 'default' => 'oldest', 'description' => 'oldest (the default) walks the last change oldest first; newest walks it newest first. The next page keeps the sort its cursor was made under; a cursor of the other sort is 400 invalid_cursor.'),
             ), $paging),
         ),
 
@@ -1123,6 +1124,7 @@ function erp_api_routes()
                 array('name' => 'issued_to', 'in' => 'query', 'type' => 'datetime', 'description' => 'Quote date on or before this day.'),
                 array('name' => 'updated_since', 'in' => 'query', 'type' => 'datetime', 'description' => 'Only quotes changed at or after this moment.'),
                 array('name' => 'signed', 'in' => 'query', 'type' => 'bool', 'description' => 'Limit to quotes the customer signed (true) or has not signed (false).'),
+                array('name' => 'sort', 'in' => 'query', 'type' => 'enum', 'values' => array('oldest', 'newest'), 'default' => 'oldest', 'description' => 'oldest (the default) walks the last change oldest first; newest walks it newest first. The next page keeps the sort its cursor was made under; a cursor of the other sort is 400 invalid_cursor.'),
             ), $paging),
         ),
 
