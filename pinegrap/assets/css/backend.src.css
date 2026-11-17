@@ -17658,6 +17658,19 @@ a.ws-chip-message:hover,
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* A group's header in the "/" list (commandPickerGroups()): a muted line
+   as /help's group header, never picked, so no hover and no pointer. */
+.ws-picker-group {
+  padding: .5rem .5rem .2rem;
+  font-size: .75rem;
+  font-weight: 550;
+  color: var(--pg-fg-2);
+  cursor: default;
+  user-select: none;
+}
+.ws-picker-group:first-child {
+  padding-top: .25rem;
+}
 /* A registry agent in the @ menu: its icon with the state mark in the
    corner, its name cut before its role, and the usage mark of a window at
    90% or more. */

@@ -1891,6 +1891,8 @@ function ws_handle_action($action, $request)
                     return ws_change_allowed($viewer, $type, 0);
                 })),
                 'commands'    => ws_command_help($viewer),
+                // The order of the "/" list's groups, as /help has them.
+                'command_groups' => array_keys(ws_command_group_labels()),
                 // The days, estimates and priorities the argument popup
                 // offers after a command.
                 'command_values' => ws_command_suggestions(),
