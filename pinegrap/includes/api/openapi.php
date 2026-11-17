@@ -803,6 +803,7 @@ function api_openapi_objects()
         'File'         => 'api_file_schema',
         'Offer'        => 'api_offer_schema',
         'Webhook'      => 'api_webhook_schema',
+        'WebhookEvent' => 'api_webhook_event_schema',
         'Inventory'    => 'api_inventory_schema',
         'InventoryBatch' => 'api_inventory_batch_schema',
         'StockLocation'  => 'api_stock_location_schema',

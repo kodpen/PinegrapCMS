@@ -30,7 +30,19 @@ require_once(dirname(__FILE__) . '/http.php');
 // be stored, so a subscription always means something.
 function api_webhook_events() {
 
-	$events = array(
+	// A module announces its own events from its own file. The core list wins a
+	// name it already uses, so a module cannot quietly redefine order.created.
+	require_once(dirname(__FILE__) . '/../modules.php');
+
+	return api_webhook_core_events() + api_module_contributions('webhook_events');
+
+}
+
+// The core's own events, without the modules'. What each carries in data is
+// beside it in api_webhook_event_payloads() (webhook_payloads.php).
+function api_webhook_core_events() {
+
+	return array(
 		'order.created'        => 'A new order was placed',
 		'order.status_changed' => 'An order moved to another status',
 		'order.shipped'        => 'A tracking number was recorded for an order',
@@ -245,12 +257,6 @@ function api_webhook_events() {
 		// channel email or sms; read the figures from /campaigns.
 		'campaign.sent'        => 'An e-mail campaign finished sending, or an SMS campaign was queued'
 	);
-
-	// A module announces its own events from its own file. The core list wins a
-	// name it already uses, so a module cannot quietly redefine order.created.
-	require_once(dirname(__FILE__) . '/../modules.php');
-
-	return $events + api_module_contributions('webhook_events');
 
 }
 
