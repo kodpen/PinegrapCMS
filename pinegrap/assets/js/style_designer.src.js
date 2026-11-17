@@ -30999,6 +30999,31 @@ const StyleDesigner = (function () {
         return { node: node, nodes: nodes.slice() };
     }
 
+    // The nodes a drag of rows in the overview moves, from the picked ones
+    // (the dragged row, or the multi-selection it belongs to) and the row it
+    // lands on. A picked node inside another picked node travels inside it
+    // and is not moved on its own: taking it out and putting both in would
+    // leave the outer one in the page twice. A node holding the target
+    // cannot move next to or into its own descendant. The target, the root
+    // and repeats are left out; the order of the pick is kept.
+    function _sdTreeMoveSet(picked, target) {
+        var holds = function (anc, n) {
+            var kids = (anc && anc.children) || [];
+            for (var i = 0; i < kids.length; i++) {
+                if (kids[i] === n || holds(kids[i], n)) return true;
+            }
+            return false;
+        };
+        var list = [];
+        (picked || []).forEach(function (n) {
+            if (n && n !== target && n.type !== 'root' && list.indexOf(n) === -1) list.push(n);
+        });
+        return list.filter(function (n) {
+            if (target && holds(n, target)) return false;
+            return !list.some(function (m) { return m !== n && holds(m, n); });
+        });
+    }
+
     // Selects the nodes a tree drag moved and redraws. The moved node may be
     // the one already selected, so the overview is told it is new: the
     // branches over its new place open and its row comes into view.
@@ -31581,9 +31606,9 @@ const StyleDesigner = (function () {
             // throughout so we never confuse cross-tree id collisions with
             // structural relationships.
             var isMultiDrag = treeDragNode._multiDrag && selectedNodes.length > 1;
-            var nodesToMove = isMultiDrag
-                ? selectedNodes.filter(function(n) { return n !== node && n.type !== 'root' && !isDescendant(node, n); })
-                : [treeDragNode];
+            var nodesToMove = _sdTreeMoveSet(isMultiDrag
+                ? selectedNodes.filter(function(n) { return !isDescendant(node, n); })
+                : [treeDragNode], node);
             if (!nodesToMove.length) return;
 
             // Every moved node must be one canDrop() lets into where it
@@ -31668,7 +31693,6 @@ const StyleDesigner = (function () {
                 if (isDescendant(treeDragNode, node)) return;
                 // Remove all first (may shift indices)
                 nodesToMove.forEach(function(n) {
-                    if (isDescendant(n, treeDragNode) && n !== treeDragNode) return;
                     var srcInfo = _findParentAnywhere(n);
                     if (srcInfo) {
                         srcInfo.parent.children = srcInfo.parent.children.filter(function(c) { return c !== n; });
