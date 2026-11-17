@@ -5,7 +5,7 @@ module: widgets_order_preview
 ---
 
 ## What did CB6d2 open?
-- The order preview's `order_recipients` section, step CB6d2 of `plans/designer-closed-blocks-steps.md`; CB6d1 opened the rest ([[checkout-open-blocks]]). The order preview is then settled: every section is open or drawn true, but the custom billing form's answers (`billing_form`), which stay as their form draws them.
+- The order preview's `order_recipients` section, step CB6d2 (#9966) of the closed-blocks opening ([[canvas-closed-blocks]]); CB6d1 opened the rest ([[checkout-open-blocks]]). The order preview is then settled: every section is open or drawn true, but the custom billing form's answers (`billing_form`), which stay as their form draws them.
 - Three lists, the order preview's only: `checkout.ship_tos` (recipients with items, key `__ship_to_key` 0), `checkout.lines` (a recipient's items under its id; outside a recipients list the items that ship nowhere), `checkout.line_gift_cards` (an item's gift cards with a recipient, key `__line_key`).
 
 ## Where do the rows come from?
