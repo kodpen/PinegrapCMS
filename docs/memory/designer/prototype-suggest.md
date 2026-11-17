@@ -10,9 +10,10 @@ description: The Prototype view's Suggest targets (PV11b): how a link without a 
 - The link's own page and a page with `bin` are never offered.
 
 ## What does the dialog show?
-- "Suggest targets · n" in the view's bar while the design has links without a target; it opens a panel dialog (`.sd-proto-suggest`, `data-bs-modal="false"`, no backdrop) at the canvas's right, so the map stays in sight.
+- "Suggest targets" with its count, the Prototype bar's own quiet button (first of its tools), while the design has links without a target; it opens a panel dialog (`.sd-proto-suggest`, `data-bs-modal="false"`, no backdrop) at the canvas's right, so the map stays in sight.
 - `suggestRows(laid, pages, headings)`: one row per drawable link without a target, grouped by frame; a shared part's link is one row. The head counts "n sure · n to ask · n without a suggestion".
 - A sure row is ticked with its page selected; an unsure row asks "Where should "label" go?" with its candidates and Skip (a candidate selects and ticks); a row without a suggestion sits on "Choose a page", its tick disabled. A label's click picks the link on the canvas (`_sdProtoPick()`).
+- Built from look A's recipes: Apply `pg-button-fill` ("n hedefi uygula", key `Apply {var} targets`), Cancel and Skip `pg-button-ghost`, a candidate `pg-button-quiet pg-button-sm` (the chosen one `aria-pressed` with a check), the tick `pg-checkbox`, the selector `pg-input pg-input-sm`. Architect (2026-11-17, message 8712): no `btn btn-` line; amber stays the bar's warning, so the button is quiet; a long label or page name wraps by words.
 - Keys: Tab through the rows, Space ticks, Enter on a candidate picks it, Escape cancels. The dialog's keys never reach the designer's shortcuts.
 
 ## How are the proposed arrows drawn?

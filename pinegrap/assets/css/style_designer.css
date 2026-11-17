@@ -6914,8 +6914,11 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
    question under them. */
 .dialog.dialog-nonmodal.sd-proto-suggest { inset: 64px 16px auto auto; width: 400px; max-width: calc(100vw - 16px); max-height: calc(100vh - 96px); margin: 0; }
 .sd-proto-suggest-line { display: flex; align-items: center; gap: 8px; }
-.sd-proto-suggest-label { flex: 1 1 auto; justify-content: flex-start; min-width: 0; overflow: hidden; text-align: left; text-overflow: ellipsis; white-space: nowrap; }
-.sd-proto-suggest-line select { flex: 0 0 168px; width: 168px; }
+/* A long label or page name wraps by words inside its button. */
+.sd-proto-suggest-label, .sd-proto-suggest-ask .pg-button { max-width: 100%; height: auto; min-height: 28px; padding-block: 6px; line-height: 1.3; text-align: left; white-space: normal; overflow-wrap: break-word; }
+.sd-proto-suggest-label { flex: 1 1 auto; justify-content: flex-start; min-width: 0; }
+.sd-proto-suggest-count { margin-left: 4px; font-variant-numeric: tabular-nums; }
+.sd-proto-suggest-line select { flex: 0 0 150px; width: 150px; }
 .sd-proto-suggest-ask { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; padding-left: 26px; }
 .sd-proto .pgc-edge.pgc-edge-dashed .pgc-edge-line { stroke: var(--sd-text-muted); marker-end: url(#sd-proto-arrow); }
 .sd-proto-unreached {

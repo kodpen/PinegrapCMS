@@ -71877,17 +71877,20 @@ const StyleDesigner = (function () {
             else _sdProtoProblemsOpen(ui.check);
         });
         bar.appendChild(ui.check);
-        // "Suggest targets · n" (F30) while links have no target.
-        ui.suggest = _sdProtoEl('button', 'sd-proto-check sd-proto-suggest-btn');
-        ui.suggest.type = 'button';
-        ui.suggest.hidden = true;
-        ui.suggest.setAttribute('aria-haspopup', 'dialog');
-        ui.suggest.addEventListener('click', function () {
+        var tools = _sdProtoEl('div', 'sd-proto-tools');
+        // "Suggest targets · n" (F30) while links have no target: the bar's
+        // own quiet button with its count.
+        ui.suggest = _sdProtoButton('bi-magic', _sdT('Suggest targets'), function () {
             if (_sdProto.suggest) _sdProtoSuggestClose(true);
             else _sdProtoSuggestOpen();
         });
-        bar.appendChild(ui.suggest);
-        var tools = _sdProtoEl('div', 'sd-proto-tools');
+        ui.suggest.classList.add('sd-proto-suggest-btn');
+        ui.suggest.appendChild(_sdProtoEl('span', 'sd-proto-btn-label', _sdT('Suggest targets')));
+        ui.suggestCount = _sdProtoEl('span', 'sd-proto-suggest-count');
+        ui.suggest.appendChild(ui.suggestCount);
+        ui.suggest.hidden = true;
+        ui.suggest.setAttribute('aria-haspopup', 'dialog');
+        tools.appendChild(ui.suggest);
         // Play (F24): the prototype viewer at the selected page, else at
         // the first page it has; hidden when it has none.
         ui.play = _sdProtoButton('bi-play-fill', _sdT('Play the prototype from the selected page'), function () {
@@ -72888,7 +72891,9 @@ const StyleDesigner = (function () {
         ui.check.textContent = toCheck ? _sdT('{var:1} to check', toCheck) : '';
         var toSuggest = _sdProto.issues.empty.list.length;
         ui.suggest.hidden = !toSuggest;
-        ui.suggest.textContent = toSuggest ? _sdT('Suggest targets · {var}', toSuggest) : '';
+        ui.suggestCount.textContent = toSuggest ? String(toSuggest) : '';
+        ui.suggest.title = toSuggest ? _sdT('Suggest targets · {var}', toSuggest) : '';
+        ui.suggest.setAttribute('aria-label', ui.suggest.title || _sdT('Suggest targets'));
         _sdProtoStatusFit();
         canvas.announce(_sdT('{var:1} links', count) + (broken ? ' · ' + _sdT('{var:1} broken', broken) : '') + (toCheck ? ' · ' + _sdT('{var:1} to check', toCheck) : ''));
         // A picked link of a frame no longer there, or no longer a link, goes.
@@ -73359,8 +73364,8 @@ const StyleDesigner = (function () {
                 '<button type="button" class="btn-close" data-suggest-cancel aria-label="' + esc(_sdT('Close')) + '"></button></div>' +
             '<div class="dialog-body small p-0" data-suggest-list></div>' +
             '<div class="dialog-footer py-3">' +
-                '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-suggest-cancel>' + esc(_sdT('Cancel')) + '</button>' +
-                '<button type="button" class="btn btn-sm btn-solid theme-primary" data-suggest-apply></button>' +
+                '<button type="button" class="pg-button pg-button-ghost" data-suggest-cancel>' + esc(_sdT('Cancel')) + '</button>' +
+                '<button type="button" class="pg-button pg-button-fill" data-suggest-apply></button>' +
             '</div>';
         document.body.appendChild(el);
         _sdProto.suggest = { el: el, rows: rows, pages: pages, count: found.count, opener: document.activeElement };
@@ -73419,7 +73424,7 @@ const StyleDesigner = (function () {
             }
             var li = _sdProtoEl('li', 'list-group-item sd-proto-suggest-row');
             var top = _sdProtoEl('div', 'sd-proto-suggest-line');
-            var tick = _sdProtoEl('input', 'check');
+            var tick = _sdProtoEl('input', 'pg-checkbox');
             tick.type = 'checkbox';
             tick.checked = r.ticked;
             tick.disabled = !r.target;
@@ -73431,13 +73436,13 @@ const StyleDesigner = (function () {
             });
             top.appendChild(tick);
             // The label selects its link on the canvas behind.
-            var label = _sdProtoEl('button', 'btn btn-sm btn-text theme-secondary sd-proto-suggest-label', r.label);
+            var label = _sdProtoEl('button', 'pg-button pg-button-ghost pg-button-sm sd-proto-suggest-label', r.label);
             label.type = 'button';
             label.title = _sdT('Show this link on the map');
             label.setAttribute('data-focus', 'label' + i);
             label.addEventListener('click', function () { _sdProtoPick(r.frame, r.port, true); });
             top.appendChild(label);
-            var select = _sdProtoEl('select', 'form-control form-control-sm');
+            var select = _sdProtoEl('select', 'pg-input pg-input-sm');
             select.setAttribute('data-focus', 'select' + i);
             select.setAttribute('aria-label', _sdT('Where "{var}" goes', r.label));
             var none = _sdProtoEl('option', '', _sdT('Choose a page'));
@@ -73462,8 +73467,11 @@ const StyleDesigner = (function () {
                 var ask = _sdProtoEl('div', 'sd-proto-suggest-ask');
                 ask.appendChild(_sdProtoEl('span', 'fg-secondary', _sdT('Where should "{var}" go?', r.label)));
                 r.candidates.forEach(function (id) {
-                    var b = _sdProtoEl('button', 'btn btn-sm btn-outline theme-secondary', _sdProtoFrameName(_sdProto.byId[id] || { name: id }));
+                    // The chosen one is pressed and carries a check.
+                    var b = _sdProtoEl('button', 'pg-button pg-button-quiet pg-button-sm');
                     b.type = 'button';
+                    if (r.target === id) b.innerHTML = '<span class="bi bi-check2" aria-hidden="true"></span>';
+                    b.appendChild(document.createTextNode(_sdProtoFrameName(_sdProto.byId[id] || { name: id })));
                     b.setAttribute('data-focus', 'pick' + i + id);
                     b.setAttribute('aria-pressed', r.target === id ? 'true' : 'false');
                     b.addEventListener('click', function () {
@@ -73473,7 +73481,7 @@ const StyleDesigner = (function () {
                     });
                     ask.appendChild(b);
                 });
-                var skip = _sdProtoEl('button', 'btn btn-sm btn-text theme-secondary', _sdT('Skip'));
+                var skip = _sdProtoEl('button', 'pg-button pg-button-ghost pg-button-sm', _sdT('Skip'));
                 skip.type = 'button';
                 skip.setAttribute('data-focus', 'skip' + i);
                 skip.addEventListener('click', function () {
@@ -73490,7 +73498,7 @@ const StyleDesigner = (function () {
         });
         var n = s.rows.filter(function (r) { return r.ticked && r.target; }).length;
         var apply = el.querySelector('[data-suggest-apply]');
-        apply.textContent = _sdT('Apply {var}', n);
+        apply.textContent = _sdT('Apply {var} targets', n);
         apply.disabled = !n || !!s.busy;
         if (focusKey) {
             var back = el.querySelector('[data-focus="' + focusKey + '"]') || el.querySelector('[data-focus^="label"]');
