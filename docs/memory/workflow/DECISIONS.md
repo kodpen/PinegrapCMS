@@ -397,6 +397,9 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-72.md: Where are the rules and the earlier parts?
 - decisions-made-product-72.md: Is the "Suggest targets" window of the Prototype view accepted? (owner, 2026-11-17, agent channel poll 137, message 8763)
 - decisions-made-product-72.md: Does a gift card pay for a gift card product in the cart? (owner, 2026-11-17, agent channel poll 138, message 8802)
+- decisions-made-product-73.md: Where are the rules and the earlier parts?
+- decisions-made-product-73.md: Does the Page Design Studio match the pictures the owner accepted? (owner, 2026-11-17, agent channel message 8922)
+- decisions-made-product-73.md: Which look rules did the architect give that day? (architect, 2026-11-17, agent channel)
 - decisions-made-product-8.md: Does Create Label refuse a Trendyol-carried package the common label does not cover? (#3568)
 - decisions-made-product-8.md: Are the starter dumps corrected for #3330? (#3567)
 - decisions-made-product-8.md: Is marketing SMS built in 2026.11.0? (#3570)
@@ -978,7 +981,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workflow/agent-channel-reads.md: How much of a Workspace channel an agent session reads per turn: the message that woke it, its request and brief, no history; at most 5 messages for a check; more only when a person asks
 - workflow/agent-channel-wake.md: How a session waits on the agent channel: on its request queue (tools/ws_wait.php --requests), what makes a request (a mention, @herkes, a reply), on changes, the handles typed
 - workflow/architect-asking.md: How a session asks a decision question or the owner's approval of screenshots: search first, one message in the agent channel naming the architect, the PR back to draft, the session ends
-- workflow/architect-wake.md: What wakes the architect session (owner, 2026-11-16): a mention in the agent channel through the request waiter only; the hourly check is disabled; a pause he names
+- workflow/architect-wake.md: What wakes the architect session (owner, 2026-11-16): a mention in the agent channel through the request waiter only; the hourly check is disabled; a pause he names; economy mode (2026-11-17)
 - workflow/architect.md: Decision questions: asked in the agent channel, no architect issue (2026-11-13); the architect decides technical ones, asks the owner schema and product-behaviour ones, records the answer
 - workflow/bug-hunt-areas-2.md: The areas given to a bug hunt from 2026-11-17 on (wholesale prices, publish approval, visitor push, gift cards and store credit), the issues each ended with and what it read clean
 - workflow/bug-hunt.md: A bug hunt is given out again (owner 2026-11-15), only in an area the architect named: one per coordinator at a time, no product code, at most eight bug issues as its result
