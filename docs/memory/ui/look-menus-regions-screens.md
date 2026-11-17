@@ -10,6 +10,7 @@ description: Menus, regions, ads, styles, theme and design files, the visitor an
 
 ## What changed on them?
 - Fields (`look-field-widths.md`): every record name the whole row (Menu, Menu Item, the four region names, Ad, Ad Label, Page Style, Theme File, design File Name); Region Type alone at 6 (`pg-field-span-6`); Ad Sort Order, Transition Duration and Interval alone at 3 (`pg-field-span-3`). Link Target and Parent Menu Item stay 6 + 6, as do the two pop-up positions.
+- Group headings inside a card (Login Region's Not Logged In and Logged In, Ad Region's Region Behavior) are `h3.pg-group-label`: a heading in a card never outranks its title (architect, channel 25 message 9282).
 - Help text lost `text-end` (the class fields of Menu and Menu Item, Transition Duration).
 - Card titles: the upper-case `text-uppercase h5|h6 fg-primary fw-bold`, the `div.card-header.pg-title-section` and Performance's `h5` with a glyph are `h2.card-header.bg-reset.border-0.pg-title-section`; a header holding a badge or a button keeps its flex div with an `h2.pg-title-section` in it. The glyphs left the titles (Performance, Possible False Positives) and so did the warning ink of Possible False Positives.
 - Visit Details got `pg-measure-edit`: its columns and cards are the edit screen's.
