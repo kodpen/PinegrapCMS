@@ -624,6 +624,19 @@ function pg_course_switch_save($on)
 }
 
 /**
+ * Whether a lesson's page still counts for its course: it sits right in the
+ * course's folder. A page that left the folder gates nothing (Z17). Pure.
+ *
+ * @param int $page_folder_id   the page's folder, 0 for a page that is gone
+ * @param int $course_folder_id
+ * @return bool
+ */
+function pg_course_lesson_in_folder($page_folder_id, $course_folder_id)
+{
+    return ((int) $course_folder_id > 0) && ((int) $page_folder_id === (int) $course_folder_id);
+}
+
+/**
  * The gate's answer for a page a signed-in member may already see: whether
  * the lesson it is stays closed, why, and where the member is sent. Only a
  * lesson of a private folder is ever closed: a lesson in a public folder
@@ -851,6 +864,13 @@ function pg_course_gate($page_id, $folder_id, $access_type)
     }
 
     $course = $lesson['course'];
+
+    // A lesson whose page left the course's folder gates nothing; the
+    // Courses screen names it.
+    if (!pg_course_lesson_in_folder($folder_id, $course['folder_id'])) {
+        return;
+    }
+
     $user_id = (int) USER_ID;
     $can_edit = (bool) check_edit_access($folder_id);
     $progress = pg_course_member_progress($user_id, $course['id']);
