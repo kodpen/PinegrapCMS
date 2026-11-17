@@ -9,7 +9,7 @@ description: The editor's check list (Audit panel) on an e-mail design or a page
 ## What is left out on an e-mail?
 - `_sdAuditDropsOnEmail(code)`: the editor rules `main_missing`, `main_multiple`, `landmark_missing` (in `validateTree()`) and the accessibility code `a11y_main_missing` ("No main content area to skip to", filtered in `_renderAuditConcepts()`).
 - The SEO section shows "An e-mail is not indexed by search engines: it gets no SEO score." instead of the score and its Title/Description lines. `seo_check` is still asked: its answer carries the accessibility findings.
-- Why: a mail program draws no `<main>` or landmarks, and one dropped into an e-mail design raises "Not an e-mail block", so the count of an untouched New e-mail design never reached zero (#10069).
+- Why: a mail program draws no `<main>` or landmarks, and one dropped into an e-mail design raises "Not an e-mail block", so the count of an untouched New e-mail design never reached zero (#10069, PR #10162).
 
 ## What stays?
 - Every other rule (headings, alt text, links, contrast) and the e-mail's own `mail_block` line (`_sdMailCheckIssues()`). Web pages are checked as before.
