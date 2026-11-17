@@ -873,12 +873,16 @@ function pg_product_feed_xml_text($value)
 }
 
 // The start of an RSS 2.0 feed up to the first item: the channel's title
-// (the seller name), link (the seller website) and description, which RSS
-// requires. Merchant Center reads only the items.
+// (the seller name), link (the seller website, else the site's address) and
+// description, which RSS requires. Merchant Center reads only the items.
 function pg_product_feed_xml_head($options = array())
 {
     $seller = pg_product_feed_seller($options);
     $title = ($seller['name'] !== '') ? $seller['name'] : 'Products';
+
+    if ((trim($seller['url']) === '') && defined('URL_SCHEME') && defined('HOSTNAME_SETTING') && defined('PATH')) {
+        $seller['url'] = URL_SCHEME . HOSTNAME_SETTING . PATH;
+    }
 
     return '<?xml version="1.0" encoding="UTF-8"?>' . "\n"
         . '<rss version="2.0" xmlns:g="' . PG_PRODUCT_FEED_GOOGLE_NS . '">' . "\n"
