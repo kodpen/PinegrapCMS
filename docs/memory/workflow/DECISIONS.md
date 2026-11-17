@@ -636,6 +636,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-workspace-38.md: Where are the rules and the earlier parts?
 - decisions-made-workspace-38.md: Do a message's parts stand in the discussion panel's width as built? (owner, 2026-11-17, agent channel poll 133, message 8532)
 - decisions-made-workspace-38.md: Does the agent state line stand as built? (owner, 2026-11-17, agent channel poll 134, message 8543)
+- decisions-made-workspace-38.md: Does a question's picture say how many pictures there are? (owner, 2026-11-17, agent channel poll 135, message 8575)
 - decisions-made-workspace-38.md: Does a discussion show and take its agents? (owner, 2026-11-17, in the architect's window)
 - decisions-made-workspace-4.md: May a thread end in a webhook box's URL? (#3410)
 - decisions-made-workspace-4.md: How does a customer with no order in N days produce a follow-up? (#3416, part 2)
@@ -919,6 +920,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - ui/look-icon-buttons.md: SH5: icon-only toolbar buttons and menu toggles of the old panel screens as look A's .pg-icon-button with a lang() name; what was left and why
 - ui/look-list-title-settings-tile.md: Look A shared recipes (SH9, #9726): a list screen's count beside its title, a list's filters as a segmented control (pg_list_seg_filters()), the 34 px icon tile of a settings row (pg_settings_tile())
 - ui/look-mapping-grids.md: Column-mapping grids (one small select per column of an uploaded file) keep their own narrow columns in look A; the field widths of add and edit screens are for a record's fields
+- ui/look-mark-over-picture.md: A mark laid over a picture (the poll's picture count, #10037): its own class, colours as the tokens --pg-media-mark-bg / -fg, the same in both themes; a recipe when a second is built
 - ui/look-marketplace-ranks.md: SH10 (#9755): the Marketplaces and Marketplace Products screens' button ranks (one fill per view, one quiet rank per card) and their views and filter rows as link segments
 - ui/look-new-parts.md: A step's new parts in the panel and Workspace are built from look A's recipes (owner 2026-11-17): pg-button, pg-seg for tabs, no btn btn- or nav-tabs in an added line; the count before a look
 - ui/look-page-widths.md: Look A's page widths: edit screens centred at 1700 px (1300 + 24 + 376), lists as wide as their columns (1700 px to the window, details panel added), held while searching; tokens, rail
@@ -977,6 +979,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workflow/git-branches-and-shared-files.md: Branch policy (development vs main), who does git, commit author, the PR footer (pointer), shared files without conflicts, generated files a PR leaves out, API vs ERP files
 - workflow/held-file-bundled-sources.md: A script or stylesheet under assets/ (backend.src.js, backend.src.css, style_designer.src.js, style_designer.css) is held by the functions and rule blocks a PR changes, not as a whole file
 - workflow/held-file-hunt-fixes.md: Several bug fixes of one hunt may be open at once in one PHP file beside a draft holder, each in the functions the architect named for it (includes/fn/content_proposals.php, #10188)
+- workflow/held-file-parked-draft.md: A draft that waits for an area's new shape holds nothing in that area: its lines leave the functions the redraw rewrites, so the redraw can start (#10188 PA3 beside DP18 on _pgTabsRender())
 - workflow/held-file-registry-rows.md: What a PR may change in a file a draft PR holds: its own registry rows, or a function the holder does not touch; the terms; the architect allows each holder (#3824, #10025, #10077)
 - workflow/issue-hand-out-first-reply.md: When a note in the agent channel offers an issue to the coordinators, the first reply under it holds the work; how a double claim was settled twice on 2026-11-16
 - workflow/look-narrowest-column.md: Before any look, a step that draws in a message row or a side panel posts pictures in its narrowest column with its longest content (owner's words 2026-11-16); what a set must hold
