@@ -11,9 +11,9 @@ description: Plan designer-panels, steps DP17 to DP25: the page strip (the desig
 - DP18 (M) after DP17: the open group as a box, folded groups as chips.
   - Functions: `_pgTabsRender()`. New: a pure function from the tab layout and the strip's width to what is drawn (the box, its tabs, "+N", the chips), with its test.
   - Tests: one group open; a design without groups; "Other"; a tab that does not fit behind "+N"; the open page's group opened when a page is opened from a chip.
-  - Features: D46, D47, D48. Keeps K7. Waits for the narrow strip's drawing.
+  - Features: D46, D47, D48. Keeps K7. On a narrow strip the function draws the six steps of `designer-panels-measures-7.md`, each with its test case; picture beside `page-strip-narrow-approval.jpg`.
 
-- DP19 (S) after DP18: tab states. `_pgTabsRender()` draws them already (dirty, `sd-tab-locked`, `sd-tab-draft`, the schedule badge): this step gives them the drawing's marks and the home icon. Features: D49.
+- DP19 (S) after DP18: tab states. `_pgTabsRender()` draws them already (dirty, `sd-tab-locked`, `sd-tab-draft`, the schedule badge): this step gives them the drawing's marks and the home icon. On a narrow strip the open tab keeps its state and its three-dot menu and is at least 60 px wide (`designer-panels-measures-7.md`); PA3's approval mark comes after the name (`designer-panels-measures-8.md`). Features: D49.
 
 - DP20 (M) after DP19: the Pages window.
   - New: a part; it takes the place of `_pgTabsAllToggle()` and `#sd-tabs-all`.
