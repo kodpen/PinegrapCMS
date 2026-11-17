@@ -18,4 +18,4 @@ description: The "Connect to Claude" button on the panel's OAuth connection guid
 
 ## What is not part of it?
 - No listing, no URL pattern, no MCP Registry entry: those are CB4 and CB4b of `plans/claude-plugin-bundle.md`, after 2026.11.0.
-- Tests: `tests/claude_connect_link_test.php`.
+- Tests: `tests/claude_connect_link_test.php`. Added in #10130; owner (2026-11-17, agent channel message 8096): the look as shown.
