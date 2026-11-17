@@ -372,6 +372,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-69.md: Where are the rules and the earlier parts?
 - decisions-made-product-69.md: What does Create do on New campaign › E-mail? (owner, 2026-11-17, agent channel poll 116, message 7554)
 - decisions-made-product-69.md: Are the integration packages of the census wanted, and when? (owner, 2026-11-17, typed to the architect, agent channel message 7562)
+- decisions-made-product-69.md: How does the Page Design Studio's Options panel come out in a 240 px column? (owner, 2026-11-17, agent channel poll 117, message 7593)
 - decisions-made-product-7.md: Do international labels carry customs data? (#3408)
 - decisions-made-product-7.md: Can a merchant request a carrier pickup from the panel? (#3415)
 - decisions-made-product-7.md: Does ShipWorks record tracking numbers through the shipment write path? (#3443)
