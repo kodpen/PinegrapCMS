@@ -36,3 +36,4 @@ description: Plan designer-panels, steps DP17 to DP25: the page strip (the desig
 
 ## How does the plan end?
 - DP25 (S) close-out: every D and K number checked against the code with its PR; the measures and the rules that last move to `designer/` (the chrome's tokens, the Options panel, the Overview, the page strip, the canvas bar, with an overview file); this plan's files and its folder are deleted.
+  - Every landed step is also compared with its accepted picture, screenshot beside drawing; the differences go to the owner as one list and fixes are cut from it (owner 2026-11-17, `workflow/decisions-made-product-73.md`).
