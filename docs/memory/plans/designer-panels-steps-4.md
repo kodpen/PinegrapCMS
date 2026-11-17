@@ -4,7 +4,7 @@ description: Plan designer-panels, steps DP17 to DP25: the page strip (the desig
 ---
 
 ## Which steps has the page strip?
-- DP17 (S) after DP1: the design's menu.
+- DP17 (S) after DP1: the design's menu. Done in #10206.
   - Existing files: `includes/designer_screen.php` (`.sd-toolbar-pages`, the gear of `#styleSettingsModal`, `$ctx['delete_button']`), `style_designer.css`.
   - Pictures: the menu open, the question of Delete, 390. Features: D45.
 

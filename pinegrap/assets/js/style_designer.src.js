@@ -78437,6 +78437,15 @@ const StyleDesigner = (function () {
             label.textContent = name || btn.getAttribute('data-sd-untitled') || '';
         };
         btn.addEventListener('click', sync);
+        // A chosen item closes the menu before its own handler runs (capture):
+        // Settings and the Delete question open dialogs, and a menu hidden
+        // once a dialog is open stays open under it.
+        var menu = btn.parentNode ? btn.parentNode.querySelector('.menu') : null;
+        if (menu) {
+            menu.addEventListener('click', function (e) {
+                if (e.target.closest && e.target.closest('.menu-item') && window.pgUI) pgUI.menu.hide(btn);
+            }, true);
+        }
         document.addEventListener('input', function (e) {
             if (e.target && e.target.id === 'sd-style-name') sync();
         });
