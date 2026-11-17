@@ -275,7 +275,7 @@ function test_picture_translation_language_doc()
 		. ' fitted: Object.keys(put.source),'
 		. ' kept: doc.layers[0].text,'
 		. ' none: M.languageDoc(null, []),'
-		. ' all: M.languagesToDraw([{ code: "de", state: "translated" }, { code: "fr", state: "out_of_date" }, { code: "es", state: "drawn" }, { code: "it", state: "not_translated" }, { code: "ar", state: "translated", rtl: true }, { code: "nl", state: "look" }])'
+		. ' all: M.languagesToDraw([{ code: "de", state: "translated", total: 2, translated: 2 }, { code: "fr", state: "out_of_date", total: 2, translated: 2 }, { code: "es", state: "drawn", total: 2, translated: 2 }, { code: "it", state: "not_translated", total: 2, translated: 1 }, { code: "ar", state: "translated", rtl: true, total: 2, translated: 2 }, { code: "nl", state: "look", total: 2, translated: 2 }, { code: "pt", state: "out_of_date", total: 2, translated: 1 }, { code: "sv", state: "translated", total: 0, translated: 0 }])'
 		. '}));');
 
 	if ($r === null) {
@@ -289,6 +289,7 @@ function test_picture_translation_language_doc()
 	pg_assert_same('Sale', $r['kept'], 'the source document is not changed');
 	pg_assert_same(null, $r['none'], 'no document, nothing to draw');
 	pg_assert_same(array('de', 'fr'), $r['all'], 'Draw all: translated and out of date, never right to left');
+	pg_assert_false(in_array('pt', $r['all'], true), 'Draw all: an out-of-date language with a text not translated is left out');
 }
 
 // The list's state of a language: from its row when drawn or out of date,

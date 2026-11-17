@@ -5,10 +5,11 @@ module: picture_translation
 ---
 
 ## Where is the Languages list?
-- A "Languages" button in the Design Canvas's top bar (`assets/js/pg_image_editor_artboard.js`, after Import), shown only for a canvas file opened from Files whose texts are in the store and when the site has a target language. It opens a box, not a menu: one row per target language with the drawn picture's thumbnail, the state, "{n} of {m} texts translated", Draw; "Draw all" below.
+- A "Languages" button in the Design Canvas's top bar (`assets/js/pg_image_editor_artboard.js`, after Import), shown only for a canvas file opened from Files whose texts are in the store and when the site has a target language. It opens a box: one row per target language with a thumbnail, the state, "{n} of {m} texts translated", Draw; "Draw all" below.
 - States (`pg_picture_tr_list_state()`): Not translated (some text has no translation), Translated, Picture drawn, Out of date (row state 2), Look by hand (drawn with `fit` 1). "Drawn" alone is not the label: its Turkish is already "Berabere" (a tied match).
 - A right-to-left language is listed with "Right to left: the source picture is shown." and no Draw.
-- Draw needs one translated text; a text with none keeps the source's words. Draw all takes Translated and Out of date (`M.languagesToDraw()`).
+- Draw needs one translated text (a partly translated draw is an owner question, poll 131); a text with none keeps the source's words. Draw all takes only Translated and Out of date languages with every text translated (`M.languagesToDraw()`).
+- An Out of date row says "Visitors see the source picture until this one is drawn again." in place of the count. A drawn picture's thumbnail is a link opening it at full size in a new tab, named "Open the picture: {name}".
 
 ## How is a picture drawn?
 - Action `picture_languages` (`pg_picture_tr_languages_answer()`) gives the live canvas document, its hash and per language the texts (`id`, `field`, `text` or null) and a stamp. The browser draws from that saved document, never the unsaved one ("Changes not saved yet are not in these pictures.").

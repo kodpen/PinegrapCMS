@@ -1602,11 +1602,17 @@
                     self.drawLanguages([lang.code]);
                 } });
 
+            // The row says what a visitor sees where it asks for a draw.
+            var note = lang.rtl ? t('langRtl') : ((state === 'look') ? t('langLookNote') : ((state === 'out_of_date') ? t('langOutOfDateNote') : count));
+            var img = lang.url ? el('img', { src: lang.url, alt: '', loading: 'lazy', decoding: 'async', draggable: 'false' }) : null;
+
+            // A drawn picture opens at full size in a new tab.
             list.appendChild(el('div', { class: 'pgie-langrow', 'data-lang': lang.code }, [
-                el('span', { class: 'pgie-langthumb pgie-checker' }, [lang.url ? el('img', { src: lang.url, alt: '', loading: 'lazy', decoding: 'async', draggable: 'false' }) : null]),
+                lang.url ? el('a', { class: 'pgie-langthumb pgie-checker', href: lang.url, target: '_blank', rel: 'noopener', 'aria-label': t('langOpen').replace('{name}', lang.name), title: t('langOpen').replace('{name}', lang.name) }, [img])
+                    : el('span', { class: 'pgie-langthumb pgie-checker' }),
                 el('span', { class: 'pgie-langname' }, [
                     el('strong', { text: lang.name }),
-                    el('span', { class: 'pgie-note', text: lang.rtl ? t('langRtl') : ((state === 'look') ? t('langLookNote') : count) })
+                    el('span', { class: 'pgie-note', text: note })
                 ]),
                 state ? el('span', { class: 'pgie-langstate pgie-lang-' + state, text: t(LANG_STATES[state] || 'langNotTranslated') }) : null,
                 draw

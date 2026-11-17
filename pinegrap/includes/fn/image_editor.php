@@ -2761,6 +2761,8 @@ function pg_image_editor_strings_artboard()
         'langLook'          => lang('Look by hand'),
         'langLookNote'      => lang('A text did not fit even at the smallest size: check this picture.'),
         'langRtl'           => lang('Right to left: the source picture is shown.'),
+        'langOutOfDateNote' => lang('Visitors see the source picture until this one is drawn again.'),
+        'langOpen'          => lang('Open the picture: {name}'),
         'langDraw'          => lang('Draw'),
         'langDrawAll'       => lang('Draw all'),
         'langDrawing'       => lang('Drawing…'),

@@ -2661,11 +2661,13 @@
         return { doc: next, source: source };
     }
 
-    // The languages Draw all draws: translated or out of date, not right
-    // to left (a visitor sees the source picture there).
+    // The languages Draw all draws: translated or out of date with every
+    // text translated, not right to left (a visitor sees the source
+    // picture there).
     function languagesToDraw(list) {
         return (list || []).filter(function (lang) {
-            return !lang.rtl && ((lang.state === 'translated') || (lang.state === 'out_of_date'));
+            return !lang.rtl && ((lang.state === 'translated') || (lang.state === 'out_of_date'))
+                && (Number(lang.total) > 0) && (Number(lang.translated) >= Number(lang.total));
         }).map(function (lang) {
             return lang.code;
         });
