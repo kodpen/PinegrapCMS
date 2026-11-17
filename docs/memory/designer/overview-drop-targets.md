@@ -14,10 +14,13 @@ description: Designer Overview drop targets (#10263): the gap between rows as on
 - A folded chain's line (`li._sdChainFirst`) counts as its first hidden level.
 
 ## What does the label say?
-- `#sd-tree-drop-label` follows the pointer (14 px right, 16 px below), hidden on `dragend`, `drop` and when the pointer leaves the tree: "Into {parent}, place {n}" (the place counts the parent's children without the moved ones; the page body is `<body>`).
+- `#sd-tree-drop-label` follows the pointer, hidden on `dragend`, `drop` and when the pointer leaves the tree: "Into {parent}, place {n}" (the place counts the parent's children without the moved ones; the page body is `<body>`).
 - A refused row is dimmed (`.sd-tree-drop-refused`), the dragover leaves the default so the cursor says "not allowed", and the label says why: itself, already here, locked, outside the editable areas, holds no other elements, a form in a form, a list takes only list items, or "{parent} does not take this element" (`_sdTreeDropCode()` guesses the reason after `canDrop()` refused).
 
+## Where does the label stand?
+- `_sdTreeDropLabelPlace()`: 14 px right of and 16 px below the pointer; left of it when it would cross the right edge, above it when it would cross the foot; never nearer than 8 px to an edge. A long name or reason wraps to a second line, never cut: at most 300 px wide and the window less 16 px (architect, channel 8924).
+
 ## Which functions are pure, and where is the test?
-- `_sdTreeDropPick(p)` (zone, target, line indent, words) and `_sdTreeDropWhy(code, name)` in `style_designer.src.js`, run under Node by `tests/designer_overview_drop_test.php`: the 7 px reach, the middle 14 px, a level only among legal parents, a refused target's reason.
+- `_sdTreeDropPick(p)` (zone, target, line indent, words), `_sdTreeDropWhy(code, name)` and `_sdTreeDropLabelPlace()` in `style_designer.src.js`, run under Node by `tests/designer_overview_drop_test.php`: the 7 px reach, the middle 14 px, a level only among legal parents, a refused target's reason, the label kept in a 1440 and a 390 px window.
 - The targets of one row and zone are asked once per drag (`_sdTreeDropMemo`), not on every pointer move.
 - Long drags (folding, opening after 600 ms, scroll zones, Esc) and moving without dragging are later steps of the plan.
