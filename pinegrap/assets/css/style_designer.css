@@ -648,8 +648,39 @@
 .sd-tree-chev-placeholder { display: inline-block; width: 14px; margin-right: 2px; }
 /* The marks after a label give way before it does; _sdTreeRowIndent()
    leaves the label at least 150 px of the row. */
-.sd-tree-lbl { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; margin-left: 2px; }
-.sd-tree-list li > .sd-tree-lbl ~ :not(.sd-tree-sect-count) { flex-shrink: 100; min-width: 0; overflow: hidden; }
+.sd-tree-lbl { flex: 0 0 auto; max-width: calc(100% - 56px); min-width: 0; overflow: hidden; text-overflow: ellipsis; margin-left: 2px; }
+.sd-tree-list li > .sd-tree-lbl ~ :not(.sd-tree-sect-count) { flex-shrink: 1000; min-width: 0; overflow: hidden; }
+/* What gives way, in order: the id (cut, then left out when under five
+   letters: it wraps out of its one-line holder), the other marks, the hint;
+   never the label. */
+.sd-tree-list li > .sd-tree-lbl ~ .sd-tree-id-wrap {
+    flex: 0 1000000 auto; display: flex; flex-wrap: wrap; align-items: center; align-content: flex-start;
+    height: 26px; min-width: 0; overflow: hidden;
+}
+.sd-tree-id-wrap::before { content: ''; width: 0; height: 26px; }
+.sd-tree-id-wrap > .sd-tree-id {
+    flex: 1 1 5ch; min-width: 5ch; max-width: max-content;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.sd-tree-list li > .sd-tree-lbl ~ .sd-tree-hint { flex-shrink: 1; }
+.sd-tree-user-label-t { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+/* A section's own label stops short of its count. */
+.sd-tree-list > li.sd-tree-sect .sd-tree-user-label { margin-right: 6px; }
+/* The hint after a name the page uses more than once; cut before the name. */
+.sd-tree-hint {
+    margin-left: 5px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    font-weight: 400; color: var(--sd-text-muted);
+}
+/* A chain of wrappers with one child each, folded into one line. */
+.sd-tree-list li.sd-tree-chain { color: var(--sd-text-muted); }
+.sd-tree-chain-btn {
+    display: flex; align-items: center; gap: 6px; min-width: 0; max-width: 100%;
+    margin-left: 16px; padding: 0 4px; border: 0; border-radius: 4px; background: transparent;
+    color: inherit; font: inherit; font-size: 11.5px; cursor: pointer; white-space: nowrap;
+}
+.sd-tree-chain-btn:hover { color: var(--sd-text); background: color-mix(in srgb, var(--sd-text) 6%, transparent); }
+.sd-tree-chain-btn:focus-visible { outline: none; box-shadow: var(--sd-focus-ring); }
+.sd-tree-chain-txt { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 
 /* ── Canvas Area ── */
 .sd-canvas-wrapper {
