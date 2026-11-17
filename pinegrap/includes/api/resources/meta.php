@@ -380,7 +380,7 @@ function api_meta_schema() {
 			'name'        => 'string',
 			'label'       => 'string',
 			'enabled'     => 'boolean?',
-			'last_run_at' => 'string?',
+			'last_run_at' => 'datetime?',
 			'stale'       => 'boolean'
 		)),
 		'uploads' => array(
@@ -394,7 +394,7 @@ function api_meta_schema() {
 			)
 		),
 		'scopes'      => 'string[]',
-		'server_time' => 'string'
+		'server_time' => 'datetime'
 	);
 
 }

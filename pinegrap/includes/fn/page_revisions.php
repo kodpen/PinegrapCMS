@@ -53,7 +53,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  * loaded back into the editor and published again; import: the HTML, ZIP
  * or site importer, or a design template; ai: the AI editor's change.
  */
-define('PG_PAGE_REVISION_SOURCES', 'publish,restore,import,ai');
+define('PG_PAGE_REVISION_SOURCES', 'publish,restore,import,ai,bundle');
 
 /**
  * The retention settings' bounds: a count between 1 and 500 revisions, a

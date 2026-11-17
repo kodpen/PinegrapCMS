@@ -315,7 +315,7 @@ function api_visitor_breakdown_schema() {
 		'by'     => 'string',
 		'totals'     => api_visitors_figures_schema(),
 		'rows'       => array(array_merge(array('value' => 'string?'), api_visitors_figures_schema())),
-		'summary_to'   => 'string?',
+		'summary_to'   => 'date?',
 		'summary_days' => 'integer'
 	);
 
@@ -435,7 +435,7 @@ function api_ai_visibility_report_schema() {
 		'referrals'       => array(
 			'totals'     => api_ai_referral_figures_schema(),
 			'assistants' => array(array_merge(array('assistant' => 'string'), api_ai_referral_figures_schema())),
-			'summary_to' => 'string?'
+			'summary_to' => 'date?'
 		)
 	);
 
@@ -528,9 +528,9 @@ function api_search_report_schema() {
 		'linked'     => 'boolean',
 		'from'       => 'string',
 		'to'         => 'string',
-		'latest_day' => 'string?',
+		'latest_day' => 'date?',
 		'totals'     => api_search_figures_schema(),
-		'days'       => array(array('date' => 'string', 'clicks' => 'integer', 'impressions' => 'integer')),
+		'days'       => array(array('date' => 'date', 'clicks' => 'integer', 'impressions' => 'integer')),
 		'queries'    => array(array_merge(array('query' => 'string'), api_search_figures_schema())),
 		'pages'      => array(array_merge(array('url' => 'string'), api_search_figures_schema()))
 	);
@@ -627,7 +627,7 @@ function api_pages_report_schema() {
 		'sort'         => 'string',
 		'total'        => 'integer',
 		'rows'         => array(api_page_figures_schema()),
-		'summary_to'   => 'string?',
+		'summary_to'   => 'date?',
 		'summary_days' => 'integer'
 	);
 

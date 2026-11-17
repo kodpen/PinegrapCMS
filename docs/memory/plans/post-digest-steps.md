@@ -6,17 +6,9 @@ description: Plan post-digest, steps DG1 to DG5: the records box on the server, 
 ## Which steps are there?
 - DG1 (M) The records box, server only: done in #9978 (kind `list_records`, `includes/workspace/flow_records.php`, `pg_sw_form_feed_pick()`; `workspace/workspace-flows-records-window.md`). Features D1 to D6, D13; the canvas form waits for DG3.
 
-- DG2 (M) after DG1: the contact group as a campaign.
-  - Existing files: the e-mail box's run (`includes/workspace/flow_mail_campaign.php`), the normalize case of `flows.php`.
-  - New: the records block of the body, in the module.
-  - Tests: a group send making one campaign row with its recipients; opt-in and a bounced address left out; no mail at count 0; Try mailing only the person and moving no window.
-  - Pictures: the mail on a phone and a desktop, with and without pictures. To the owner.
-  - Features: D7, D8, D9, D11, D12.
+- DG2 (M) after DG1: the contact group as a campaign: done in #10026 (e-mail recipient `group`, `records` box; `workspace/workspace-flows-email-group.md`). Features D7, D8, D9, D11, D12. Pictures of the mail to the owner through the architect.
 
-- DG3 (M) after DG2: the canvas.
-  - Existing files: `assets/js/workspace_flow.js` (the box in the palette, its form, the e-mail box's recipient), `assets/js/workspace.js` (the box's icon). Both are held by other open PRs: the step names the clash and opens when they have landed.
-  - Pictures: the records box's form, the e-mail box with a group. To the owner; not marked ready before his look.
-  - Features: the canvas side of D1, D3, D7.
+- DG3 (M) after DG2: the canvas: done in #10176 (palette, records box form, e-mail box's contact group; beside #10077 by the architect's leave, agent channel 8001). Pictures to the owner before ready.
 
 - DG4 (S) after DG3: the ready flow. Existing files: `includes/workspace/flow_templates.php`. Tests: `tests/workspace_flow_templates_test.php`. Features: D10.
 

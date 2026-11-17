@@ -472,6 +472,38 @@ function ws_mail_domain_warning_text($found)
 }
 
 /**
+ * The field of the New e-mail form a refusal is about, so the drawer can
+ * mark it: the address field holding a bad or refused address (detail),
+ * To for a missing one or too many, else subject or text; '' when no field
+ * is at fault. Pure.
+ *
+ * @param string $error ws_mail_send_input() / ws_mail_send() error
+ * @param string $detail the address the refusal names, if any
+ * @param array $mail to, cc, bcc as the form sent them
+ * @return string to, cc, bcc, subject, text or ''
+ */
+function ws_mail_send_error_field($error, $detail = '', $mail = array())
+{
+    $error = (string) $error;
+
+    if (in_array($error, array('bad_address', 'blocked'), true)) {
+        $detail = strtolower(trim((string) $detail));
+
+        foreach (array('to', 'cc', 'bcc') as $field) {
+            if (($detail !== '') && in_array($detail, ws_mail_send_addresses($mail[$field] ?? ''), true)) {
+                return $field;
+            }
+        }
+
+        return 'to';
+    }
+
+    $fields = array('no_to' => 'to', 'too_many' => 'to', 'no_subject' => 'subject', 'empty' => 'text', 'too_long' => 'text');
+
+    return $fields[$error] ?? '';
+}
+
+/**
  * Words for a reason a mail is not sent.
  *
  * @param string $error

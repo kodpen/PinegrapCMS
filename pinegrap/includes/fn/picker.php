@@ -1185,12 +1185,13 @@ function pg_picker_where_for($kind, $user, $folder = null)
         return pg_picker_pages_where($kind, pg_picker_closed_folder_ids($kind), pg_picker_granted_folders($user, $kind), $folder, !empty($kind['forms']) ? pg_form_page_sql('page') : '');
     }
 
-    return pg_picker_files_where(
+    // A language's picture of a Design Canvas file is never offered.
+    return '(' . pg_picker_files_where(
         $kind,
         !empty($kind['public']) ? pg_public_image_files_where() : '',
         pg_picker_closed_folder_ids($kind),
         pg_picker_granted_folders($user, $kind),
-        $folder);
+        $folder) . ')' . pg_picture_tr_hidden_sql('id');
 }
 
 /**

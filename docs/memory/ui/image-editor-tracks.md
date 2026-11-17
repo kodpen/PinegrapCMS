@@ -1,13 +1,14 @@
 ---
 name: image-editor-tracks
-description: The Animate tool's tracks under the play bar: a row per layer, the bars from M.trackBars(), dragging a bar or an end (M.trackEdit()), snapping, the dock hook in the motion part, no tracks on a phone
+description: The Animate tool's tracks: a row per layer, bars from M.trackBars(), dragging (M.trackEdit()), snapping, a row's Motion button, the dock hook, no tracks on a phone
 module: image_editor
 ---
 
 ## What do the tracks show?
 - Part `tracks` (`pg_image_editor_tracks.js`, section `TRACKS` of the model, labels `pg_image_editor_strings_tracks()`), under the play bar while the Animate tool is open: a ruler with the seconds, then a row per layer, the top layer first (none for a hidden layer or a redaction), its name a button that selects it (Shift adds). Under a phase's fields the panel says how to drag (`tracksNote`).
 - A row's bars come from `M.trackBars(l, end)` (`M.motionSpans()`): the entrance solid, the loop hatched up to the exit, the exit faded, a thin line under them while the layer only stays.
-- The selected layer's bars get grips at both ends (not the loop) and a tip with the kind and its times ("Typewriter · 1.6 s → 2.4 s"). A red line is the playhead (`--pgie-trat`), faded at rest; a press on the ruler moves it there.
+- A row's name cell ends in a Motion button (the Animate icon, `.pgie-trmotion`, a clip's row too): see below.
+- The selected layer's bars get grips at both ends (not the loop) and a tip with the kind and its times ("Typewriter · 1.6 s → 2.4 s"), always shown: right of the bar, left past the middle, inside it at its start with room on neither side (`M.trackTipPlace()`). A red line is the playhead (`--pgie-trat`), faded at rest; a press on the ruler moves it there.
 
 ## How does a drag change the timing?
 - `M.trackEdit(l, phase, grip, dt, end, { targets, slack, fine })` gives the phase's patch from the layer as it was at the press:
@@ -18,6 +19,11 @@ module: image_editor
 - Snapping: an end within 6 px of an end of another layer's bar, 0 or the end takes it (`M.trackTargets()`); else a tenth of a second. Shift: a hundredth, no snapping.
 - The drag moves only the bar's element; on release one `change()` (one undo step). While it runs `tracksKey()` keeps its last key, so the play bar is not rebuilt under the pointer.
 
+## What does a row's Motion button do?
+- A press selects the row's layer (pausing a play) and opens the Motion popover at the button (`trackMotion()`, `openMotionPop()`, `image-editor-motion.md`): In, Loop and Out with the panel's tiles; a second press closes it. #10041.
+- Which rows have it: `M.trackMotionOn(l, phone)`: a shown, unlocked layer, never a redaction, never on a phone (its rows stay as approved, `workflow/decisions-made-product-49.md`). Locked: none (its bar has only Unlock and More). Tests: `tests/image_editor_tracks_test.php`.
+- The button (24 px) sits over the name button's right end (a button cannot hold another): the row gets `pgie-trmo`, the name its room. A pick redraws the rows; the popover finds the new button by `data-layer` (`trackMotionAt()`).
+
 ## How does it hang on the motion part?
 - `Editor.motionDocks` in the motion part: `{ key, node, update, note }`. `renderMotion()` puts `node()` under the bar in a `.pgie-mdock` (the absolutely placed box along the stage's bottom, so `stageInset` counts the rows), joins `key()` to the bar's key, and `updateBar()` calls `update()` on each playhead move.
 - The dock stops `pointerdown`, `dblclick` and `wheel`: else the stage's tool took a press on a bar as one on the picture (the selection cleared) and a wheel zoomed. A press while playing pauses first.
@@ -25,4 +31,4 @@ module: image_editor
 
 ## Where are there no tracks?
 - Under 600 px wide or under 500 px high (a phone either way up): the panel's delay and duration sliders do it (`image-editor-motion.md`), unless a phone held upright has a video: then the rows sit in the sheet under the play bar (`image-editor-phone-rows.md`).
-- The rows scroll past 150 px. Keys on the timeline are AN11's; keyframe diamonds come from `Editor.trackMarks` (`image-editor-keyframes.md`).
+- The rows scroll past 150 px. Keyframe diamonds come from `Editor.trackMarks` (`image-editor-keyframes.md`).

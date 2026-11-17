@@ -4,7 +4,7 @@ description: The poll box (pollNode(), AQ3 #9647): three shapes and their rule, 
 ---
 
 ## Which shape does a poll box take?
-- `pollShape()` in `assets/js/workspace.js`, by what the options carry: `split` (one large picture beside the options) when the poll is single choice, has no "Other" row and every option has a picture; `rows` (a picture on each row that has one) when any option has a picture otherwise; `text` when none has.
+- A question with a picture of its own takes a fourth shape, `question`, whatever the options carry (`poll-question-picture-box.md`). Otherwise `pollShape()` in `assets/js/workspace.js`, by what the options carry: `split` (one large picture beside the options) when the poll is single choice, has no "Other" row and every option has a picture; `rows` (a picture on each row that has one) when any option has a picture otherwise; `text` when none has.
 - The card carries `ws-poll-shape-<shape>` (not `ws-poll-split`: that is the inner picture-and-list grid). The rule fits the three boxes of the approved drawing (`agent-questions/drawing.html`). The agent question's box shares `pollShape()`, `pollOptionText()` and `pollPictures()` (`poll-agent-question-box.md`).
 - `split`: the large picture follows the row pointed at or focused, starting on the reader's choice, else the recommended option, else the first. It opens the image viewer over the poll's pictures (`pollPictures()`); a row's thumbnail opens it too without ticking the row. Under 576 px the picture stands above the options.
 
@@ -24,4 +24,4 @@ description: The poll box (pollNode(), AQ3 #9647): three shapes and their rule, 
 ## What does the New poll form offer?
 - `pollForm(defaults, onCreated, editing, again)`. Each option has a fold (sliders button) with its description, picture, up to three links and "Mark it as recommended" (one per poll); an "Add an "Other" option" switch adds the words row, locked once it has votes.
 - Options go as objects (`label`, `description`, `file_id`, `links`, `recommended`, `other`), on a change with their `id`, so a cleared part is cleared.
-- A picture is chosen from the pictures posted in the channel (`ws_channel_files`), never uploaded or drawn inline: the message payload's `file.id` names it.
+- An option's picture is chosen from the pictures posted in the channel (`ws_channel_files`), never uploaded or drawn inline: the message payload's `file.id` names it. The question's own picture is uploaded in its "Question picture" field (`poll-question-picture-box.md`).

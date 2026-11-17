@@ -237,8 +237,8 @@ function api_store_shipping_method_schema() {
 		'code'              => 'string',
 		'enabled'           => 'boolean',
 		'protected'         => 'boolean',
-		'available_from'    => 'string?',
-		'available_until'   => 'string?',
+		'available_from'    => 'datetime?',
+		'available_until'   => 'datetime?',
 		'offered_on'        => array(array('day' => 'string', 'until' => 'string?')),
 		'street_address'    => 'boolean',
 		'po_box'            => 'boolean',
@@ -267,7 +267,7 @@ function api_store_shipping_method_schema() {
 		'carrier_tax_number' => 'string',
 		'zone_ids'          => 'integer[]',
 		'excluded_transit_dates' => 'string[]',
-		'updated_at'        => 'string?'
+		'updated_at'        => 'datetime?'
 	);
 
 }
@@ -418,7 +418,7 @@ function api_store_zone_schema() {
 		'item_rate'             => 'integer',
 		'country_codes'         => 'string[]',
 		'states'                => 'StoreState[]',
-		'updated_at'            => 'string?'
+		'updated_at'            => 'datetime?'
 	);
 
 }
@@ -467,7 +467,7 @@ function api_store_tax_zone_schema() {
 		'rate'          => 'number',
 		'country_codes' => 'string[]',
 		'states'        => 'StoreState[]',
-		'updated_at'    => 'string?'
+		'updated_at'    => 'datetime?'
 	);
 
 }
@@ -595,7 +595,7 @@ function api_store_currency_schema() {
 		'symbol'        => 'string',
 		'exchange_rate' => 'number',
 		'base'          => 'boolean',
-		'updated_at'    => 'string?'
+		'updated_at'    => 'datetime?'
 	);
 
 }
@@ -672,7 +672,7 @@ function api_store_feed_schema() {
 		'url'          => 'string?',
 		'content_type' => 'string',
 		'state'        => 'string',
-		'built_at'     => 'string?',
+		'built_at'     => 'datetime?',
 		'products'     => 'integer',
 		'bytes'        => 'integer',
 		'error'        => 'string?',

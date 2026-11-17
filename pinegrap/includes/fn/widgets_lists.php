@@ -115,7 +115,7 @@ function pg_sw_kind_lists($kind)
                       'express_order' => array('cart', 'checkout'), 'order_preview' => 'checkout',
                       'menu_region' => 'menu', 'folder_view' => 'folder_view', 'account_security' => 'security', 'search_results' => 'paging',
                       'comments' => 'paging');
-    $except   = array('catalog_listing' => array('product.related' => true), 'cart_link' => array('cart.item_gift_cards' => true, 'cart.item_schedule' => true,
+    $except   = array('catalog_listing' => array('product.related' => true, 'product.quantity_prices' => true), 'cart_link' => array('cart.item_gift_cards' => true, 'cart.item_schedule' => true,
                           'cart.item_forms' => true, 'cart.item_form_fields' => true, 'cart.item_form_field_options' => true),
                       'express_order' => array('cart.item_gift_cards' => true, 'cart.item_schedule' => true,
                           'cart.item_forms' => true, 'cart.item_form_fields' => true, 'cart.item_form_field_options' => true,

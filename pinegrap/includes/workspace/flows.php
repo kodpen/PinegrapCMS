@@ -1274,6 +1274,13 @@ function ws_flow_graph_check($graph)
 
         // Only the records new since the last run need runs that start at a
         // time, whose start moments make the window (flow_records.php).
+        // An e-mail box draws the records of a records box of the flow.
+        if (($node['kind'] === 'email') && function_exists('ws_flow_mail_records_box_problems')) {
+            foreach (ws_flow_mail_records_box_problems($node['config'], $name, $graph) as $text) {
+                $problems[] = ws_flow_problem('bad_config', $id, null, $text);
+            }
+        }
+
         if (($node['kind'] === 'list_records') && function_exists('ws_flow_records_time_problems')) {
             foreach (ws_flow_records_time_problems($node['config'], $name, ws_flow_records_starts_at_time($graph)) as $text) {
                 $problems[] = ws_flow_problem('bad_config', $id, null, $text);
@@ -3548,6 +3555,14 @@ function ws_flow_js_strings()
         'fl_kind_sms'         => lang('Send an SMS'),
         'fl_kind_whatsapp'    => lang('Send a WhatsApp message'),
         'fl_kind_contact_group' => lang('Add to or take out of a contact group'),
+        'fl_kind_list_records' => lang('Read the records of a list'),
+        'fl_records_page'      => lang('List page'),
+        'fl_records_page_pick' => lang('Choose a list page'),
+        'fl_records_page_help' => lang('A page everybody may open that lists records: the box reads what its RSS feed gives, 50 at most.'),
+        'fl_records_only_new'  => lang('Only records new since the last run'),
+        'fl_records_only_new_help' => function_exists('ws_flow_records_left_out_note') ? ws_flow_records_left_out_note() : '',
+        'fl_records_none'      => lang('No list page chosen'),
+        'fl_records_meta_new'  => ws_js_template('{var:1}, only the new records', 1),
         'fl_record_kind'      => lang('Kind of record'),
         'fl_record_kind_pick' => lang('Choose a kind of record'),
         'fl_record_kind_help' => lang('The kinds of record the flow\'s owner may read; the box reads with their rights.'),
@@ -3750,6 +3765,13 @@ function ws_flow_js_strings()
         'fl_email_recipient'  => lang('Write to'),
         'fl_email_typed'      => lang('The addresses typed here'),
         'fl_email_person'     => lang('The person of the record the run is about'),
+        'fl_email_group'      => lang('A contact group'),
+        'fl_email_group_pick' => lang('Choose a contact group'),
+        'fl_email_group_help' => lang('Sent as an e-mail campaign: a marketing e-mail reaches only those who opted in, and every e-mail carries the unsubscribe link.'),
+        'fl_email_group_meta' => ws_js_template('To the contact group {var:1}', 1),
+        'fl_email_records'    => lang('Records drawn after the text'),
+        'fl_email_records_none' => lang('None'),
+        'fl_email_records_help' => lang('The records a "Read the records of a list" box read, each with its picture, linked title and summary. With none, no e-mail is sent.'),
         'fl_email_purpose'    => lang('Why'),
         'fl_email_purpose_info' => lang('Information (an answer, a reminder)'),
         'fl_email_purpose_marketing' => lang('Marketing'),
@@ -4259,6 +4281,10 @@ function ws_flow_js_config($viewer, $mode)
         // The groups filled by hand a contact group box may change; none,
         // and the palette has no such box.
         $steps['groups'] = function_exists('ws_step_contact_group_choices') ? ws_step_contact_group_choices($viewer) : array();
+        // The list pages a records box may read, and the contact groups an
+        // e-mail box may write to (flow_records.php, flow_mail_campaign.php).
+        $steps['list_pages'] = function_exists('ws_flow_records_pages') ? ws_flow_records_pages() : array();
+        $steps['mail_groups'] = function_exists('ws_flow_mail_groups') ? ws_flow_mail_groups($viewer) : array();
         // The Pinegrap AI box is offered while the site has it set up
         // (ws_step_ai_check()).
         $steps['ai'] = function_exists('ws_ai_ready') && ws_ai_ready();

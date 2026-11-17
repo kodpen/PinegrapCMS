@@ -201,7 +201,7 @@ $school_css = implode("\n", array(
 
 return array(
     'name'        => lang('Private School'),
-    'version'     => '2.0.2',
+    'version'     => '2.0.3',
     'framework'   => 'bootstrap5',
     'order'       => 93,
     'icon'        => 'bi-backpack',

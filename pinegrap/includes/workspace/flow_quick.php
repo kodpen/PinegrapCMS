@@ -82,7 +82,7 @@ function ws_flow_quick_areas()
             'event:subscription.cancelled')),
         'invoices'      => $area(lang('Invoices'), 'bi-receipt', 'site', array('event:erp.invoice.created', 'event:erp.invoice.paid',
             'event:erp.invoice.overdue', 'event:erp.invoice.edoc_changed', 'event:erp.receipt.created', 'event:erp.edoc.received')),
-        'content'       => $area(lang('Content and campaigns'), 'bi-megaphone', 'site', array('event:page.created', 'event:page.updated',
+        'content'       => $area(lang('Content and campaigns'), 'bi-megaphone', 'site', array('event:page.created', 'event:page.updated', 'event:content.review_due',
             'event:campaign.sent', 'event:mail.bounced', 'event:whatsapp.received')),
         'workspace'     => $area(lang('Workspace'), 'bi-chat-square-text', 'site', array('event:workspace.task.completed',
             'event:workspace.task.status_changed', 'event:workspace.task.overdue', 'event:workspace.approval.decided', 'event:workspace.guest.message',

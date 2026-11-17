@@ -7,6 +7,7 @@ description: The agent question's box (agentQuestionNode() in workspace.js, AQ4b
 - `pollNode()` hands a poll with `agent_question` to `agentQuestionNode()` in `assets/js/workspace.js`. It shares `pollShape()` (the three shapes), `pollOptionText()` (with the Recommended pill beside the label), `pollPictures()` and the asker's menu (`pollAskerItems()`, `pollAskerMenu()`) with the person's poll box (`poll-box.md`).
 - Head: "Agent question", "asks <names>" (`asked`), "Multiple choice" when several answers are taken, and on the right "Not answered yet", "Answered" or "Taken back".
 - No counts, bars, voter faces, closing time or Close button.
+- A question with a picture of its own draws it large at the left; "Other" stays the words field with Send beside it, and the answered box keeps the picture left of the green rows (`poll-question-picture-box.md`).
 
 ## How is it answered?
 - Only a reader with `can_answer` gets live rows; the others see them disabled, and the foot says "Only <names> can answer.".

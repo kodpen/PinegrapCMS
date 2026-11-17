@@ -213,7 +213,7 @@ $gym_css = implode("\n", array(
 
 return array(
     'name'        => lang('Gym'),
-    'version'     => '1.1.2',
+    'version'     => '1.1.3',
     'framework'   => 'bootstrap5',
     'order'       => 79,
     'icon'        => 'bi-lightning-charge',
