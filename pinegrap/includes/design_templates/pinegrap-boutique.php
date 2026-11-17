@@ -1852,7 +1852,7 @@ $pages[] = array(
 $mail_style = function ($css) use ($attr) {
     return array('_attrs' => array($attr('style', $css)));
 };
-$mail_page = function ($children) use ($el, $shared, $mail_style) {
+$mail_page = function ($children) use ($el, $shared, $mail_style, $attr) {
     return array('type' => 'root', 'props' => array('cssClass' => ''), 'children' => array(
         $el('div', 'bg-body-tertiary py-4 px-3', lang('E-mail Frame'), array(
             $el('div', 'mx-auto bg-body border', lang('E-mail Card'), array(
@@ -1860,7 +1860,7 @@ $mail_page = function ($children) use ($el, $shared, $mail_style) {
                 $el('div', 'p-4', lang('E-mail Body'), $children, $mail_style('padding:28px')),
                 $shared('email_footer'),
             ), $mail_style('max-width:600px;margin:0 auto;background:#ffffff;border:1px solid #eadfd8')),
-        ), $mail_style('background:#f7f1ec;padding:24px 12px;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif;font-size:15px;line-height:1.6;color:#2b2326')),
+        ), array('_attrs' => array($attr('data-bs-theme', 'light'), $attr('style', 'background:#f7f1ec;padding:24px 12px;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif;font-size:15px;line-height:1.6;color:#2b2326')))),
     ));
 };
 $mail_heading = function ($text) use ($heading, $attr) {
@@ -3193,7 +3193,7 @@ $boutique_css = implode("\n", array(
 
 return array(
     'name'        => lang('Boutique'),
-    'version'     => '1.2.7',
+    'version'     => '1.2.8',
     'framework'   => 'bootstrap5',
     'order'       => 30,
     'icon'        => 'bi-gem',

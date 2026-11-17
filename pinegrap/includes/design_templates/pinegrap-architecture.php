@@ -193,7 +193,7 @@ $architecture_css = implode("\n", array(
 
 return array(
     'name'        => lang('Architecture & Interiors Studio'),
-    'version'     => '2.0.3',
+    'version'     => '2.0.4',
     'framework'   => 'bootstrap5',
     'order'       => 97,
     'icon'        => 'bi-rulers',
