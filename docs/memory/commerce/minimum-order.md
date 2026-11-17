@@ -21,6 +21,7 @@ module: minimum_order
 
 ## What does the customer see?
 - Cart: a warning in the cart's messages while the cart has lines, in the designer cart widget (`includes/fn/widgets_cart.php`, before its messages are drawn) and the classic cart (`get_shopping_cart.php`, whose system layout now prints warnings between errors and notices): "Orders from your account start at X. Add Y more to place your order."
+- Both work it out after the page refreshes the lines (quantity and inventory checks, `update_order_item_prices()`, `apply_offers_to_cart()`), so it reads the prices the page shows. The classic cart once checked before that refresh (#10196): after signing in to a member price or a group offer the page showed a Subtotal below the minimum, no warning, and submit refused the order.
 - Submit (`submit_order.php`): one refusal before the pre-save hook, for the express order and the order preview alike: "Sorry, the order was not accepted: orders from your account start at X, and Y is still missing." It is logged. A payment's return is not refused (the payment may already be taken). Amounts show in the visitor's currency (`pg_visitor_money()`).
 
 ## Which test guards it?
