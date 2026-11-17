@@ -400,3 +400,323 @@ function pg_picture_tr_prune($deadline)
 
     return $dropped;
 }
+
+/* ---------------------------------------------------------------------------
+   The page pass: a language's picture in place of the source's
+   ---------------------------------------------------------------------------
+   On a page drawn in another language, after the links are rewritten
+   (pg_tr_render_finalize()), every address of this site's picture in an
+   img's or a source's src and srcset, the share picture (og:image), a link
+   to the picture and url() in a style attribute is pointed at the
+   language's picture where its row is drawn. A style block, a script (the
+   JSON-LD image, the variant data) and any other attribute keep the source.
+   One query reads the page's pictures; no document is decoded. */
+
+/**
+ * The picture types the pass looks at.
+ *
+ * @return array extensions
+ */
+function pg_picture_tr_extensions()
+{
+    return array('jpg', 'jpeg', 'jpe', 'png', 'webp', 'gif', 'avif');
+}
+
+/**
+ * The hosts this site answers on, lower-cased, as the link rewriter reads
+ * them (pg_tr_rewrite_url()).
+ *
+ * @return array host => true
+ */
+function pg_picture_tr_hosts()
+{
+    $hosts = array();
+
+    foreach (array(defined('HOSTNAME') ? HOSTNAME : '', defined('HOSTNAME_SETTING') ? HOSTNAME_SETTING : '', isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '') as $host) {
+        $host = strtolower(preg_replace('~:\d+$~', '', trim((string) $host)));
+
+        if ($host !== '') {
+            $hosts[$host] = true;
+        }
+    }
+
+    return $hosts;
+}
+
+/**
+ * The file name of this site's picture an address names, or '': a path
+ * right below the site's path, root-relative or on one of the site's hosts,
+ * with a picture's extension; its query (?w=, ?f=) does not count. Pure.
+ *
+ * @param string $value the attribute as written (entities included)
+ * @param string $base  the site's path (PATH)
+ * @param array  $hosts host => true
+ * @return string
+ */
+function pg_picture_tr_url_name($value, $base, $hosts)
+{
+    $url = trim(html_entity_decode((string) $value, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+
+    if (preg_match('~^(https?:)?//~i', $url)) {
+        $parts = parse_url($url);
+
+        if (!is_array($parts) || empty($parts['host']) || !isset($hosts[strtolower($parts['host'])])) {
+            return '';
+        }
+
+        $path = isset($parts['path']) ? $parts['path'] : '';
+    } elseif (($url !== '') && ($url[0] === '/')) {
+        $path = preg_replace('~[?#].*$~s', '', $url);
+    } else {
+        return '';
+    }
+
+    $base = (string) $base;
+
+    if (($base === '') || (strpos($path, $base) !== 0)) {
+        return '';
+    }
+
+    $name = rawurldecode(substr($path, strlen($base)));
+    $dot = strrpos($name, '.');
+
+    if (($name === '') || (strpos($name, '/') !== false) || (strpos($name, "\0") !== false) || ($dot === false)
+        || !in_array(strtolower(substr($name, $dot + 1)), pg_picture_tr_extensions(), true)) {
+        return '';
+    }
+
+    return $name;
+}
+
+/**
+ * One address pointed at the picture $map gives for its name: the host, the
+ * query and the quoting as written stay. Pure.
+ *
+ * @param string $value
+ * @param string $base
+ * @param array  $hosts
+ * @param array  $map   source name => picture name
+ * @return string
+ */
+function pg_picture_tr_url_swap($value, $base, $hosts, $map)
+{
+    $name = pg_picture_tr_url_name($value, $base, $hosts);
+
+    if (($name === '') || !isset($map[$name]) || !preg_match('~^(\s*(?:(?:https?:)?//[^/?#]+)?)(/[^?#]*)(.*)$~s', (string) $value, $m)) {
+        return $value;
+    }
+
+    return $m[1] . $base . rawurlencode($map[$name]) . $m[3];
+}
+
+/**
+ * Walks the places the pass reads, outside script, style, textarea, pre and
+ * code blocks: an img's or a source's src and srcset, a link's href, the
+ * og:image meta's content and url() in a style attribute. Each address goes
+ * through $visit, which answers its new text. Pure.
+ *
+ * @param string   $html
+ * @param callable $visit address as written => address to write
+ * @return string
+ */
+function pg_picture_tr_page_walk($html, $visit)
+{
+    $parts = preg_split('~(<(script|style|textarea|pre|code)\b[^>]*>.*?</\2>)~is', (string) $html, -1, PREG_SPLIT_DELIM_CAPTURE);
+    $out = '';
+    $count = count($parts);
+
+    for ($i = 0; $i < $count; $i++) {
+        if (($i % 3) === 2) {
+            continue;
+        }
+
+        if (($i % 3) === 1) {
+            $out .= $parts[$i];
+            continue;
+        }
+
+        $out .= preg_replace_callback('~<([a-z][a-z0-9-]*)\b([^>]*)>~i', function ($tag) use ($visit) {
+            $name = strtolower($tag[1]);
+
+            return '<' . $tag[1] . preg_replace_callback('~(\s)(src|srcset|href|content|style)=("([^"]*)"|\'([^\']*)\')~i', function ($a) use ($name, $tag, $visit) {
+                $attr = strtolower($a[2]);
+                $quote = $a[3][0];
+                $value = ($quote === '"') ? $a[4] : (isset($a[5]) ? $a[5] : '');
+                $new = $value;
+
+                if ((($attr === 'src') || ($attr === 'srcset')) && (($name === 'img') || ($name === 'source'))) {
+                    $new = ($attr === 'src') ? $visit($value) : preg_replace_callback('~(^|,)(\s*)(\S+)~', function ($c) use ($visit) {
+                        return $c[1] . $c[2] . $visit($c[3]);
+                    }, $value);
+                } elseif (($attr === 'href') && (($name === 'a') || ($name === 'link'))) {
+                    $new = $visit($value);
+                } elseif (($attr === 'content') && ($name === 'meta') && preg_match('~\sproperty=("|\')og:image(:url|:secure_url)?\1~i', $tag[2])) {
+                    $new = $visit($value);
+                } elseif ($attr === 'style') {
+                    $new = preg_replace_callback('~(url\(\s*)(&quot;|&#0*39;|&apos;|"|\'|)(.*?)(\2)(\s*\))~i', function ($u) use ($visit) {
+                        return $u[1] . $u[2] . $visit($u[3]) . $u[4] . $u[5];
+                    }, $value);
+                }
+
+                return ($new === $value) ? $a[0] : $a[1] . $a[2] . '=' . $quote . $new . $quote;
+            }, $tag[2]) . '>';
+        }, $parts[$i]);
+    }
+
+    return $out;
+}
+
+/**
+ * The names of this site's pictures a page shows in the places the pass
+ * reads, in order, once each. Pure.
+ *
+ * @param string $html
+ * @param string $base
+ * @param array  $hosts
+ * @return array
+ */
+function pg_picture_tr_page_names($html, $base, $hosts)
+{
+    $names = array();
+
+    pg_picture_tr_page_walk($html, function ($value) use ($base, $hosts, &$names) {
+        $name = pg_picture_tr_url_name($value, $base, $hosts);
+
+        if ($name !== '') {
+            $names[$name] = true;
+        }
+
+        return $value;
+    });
+
+    return array_keys($names);
+}
+
+/**
+ * A page with each picture of $map pointed at its language's picture. Pure.
+ *
+ * @param string $html
+ * @param string $base
+ * @param array  $hosts
+ * @param array  $map source name => picture name
+ * @return string
+ */
+function pg_picture_tr_page_swap($html, $base, $hosts, $map)
+{
+    if (!$map) {
+        return $html;
+    }
+
+    return pg_picture_tr_page_walk($html, function ($value) use ($base, $hosts, $map) {
+        return pg_picture_tr_url_swap($value, $base, $hosts, $map);
+    });
+}
+
+/**
+ * The one query of a page: each named file with its row in the language,
+ * the row's picture when it sits in the source's folder (so it is served by
+ * the same rights: a private folder's picture stays private) and whether
+ * the file has words in the translation. Pure.
+ *
+ * @param array  $names
+ * @param string $language
+ * @return string SQL
+ */
+function pg_picture_tr_page_sql($names, $language)
+{
+    $list = implode(',', array_map(function ($name) {
+        return "'" . e($name) . "'";
+    }, array_values($names)));
+
+    return "SELECT f.id, f.name, ft.state, p.name AS picture,
+                   (SELECT 1 FROM translation_uses u WHERE u.owner_type = 'file' AND u.owner_id = f.id LIMIT 1) AS has_uses
+            FROM files f
+            LEFT JOIN file_translation ft ON ft.file_id = f.id AND ft.language = '" . e($language) . "'
+            LEFT JOIN files p ON p.id = ft.picture_file_id AND p.folder = f.folder
+            WHERE f.name IN (" . $list . ")";
+}
+
+/**
+ * What a page's rows ask for: the pictures to swap (a drawn row whose
+ * picture was found) and the files with words that have no row in the
+ * language yet (none for a right-to-left language, which is not drawn).
+ * Pure.
+ *
+ * @param array $rows from pg_picture_tr_page_sql()
+ * @param bool  $rtl
+ * @return array map (name => picture), waiting (file ids)
+ */
+function pg_picture_tr_page_plan($rows, $rtl)
+{
+    $plan = array('map' => array(), 'waiting' => array());
+
+    foreach (is_array($rows) ? $rows : array() as $row) {
+        $picture = isset($row['picture']) ? (string) $row['picture'] : '';
+        $state = isset($row['state']) ? $row['state'] : null;
+
+        if (($state !== null) && pg_picture_tr_shown($state) && ($picture !== '')) {
+            $plan['map'][(string) $row['name']] = $picture;
+        } elseif (($state === null) && !empty($row['has_uses']) && !$rtl) {
+            $plan['waiting'][] = (int) $row['id'];
+        }
+    }
+
+    return $plan;
+}
+
+/**
+ * The pass with what it needs handed in: the page's names, the one query,
+ * an insert of the waiting rows on a first visit, the swap.
+ *
+ * @param string   $html
+ * @param string   $language
+ * @param string   $base
+ * @param array    $hosts
+ * @param bool     $rtl
+ * @param callable $query SQL => rows (a SELECT) or bool
+ * @return string
+ */
+function pg_picture_tr_page_apply($html, $language, $base, $hosts, $rtl, $query)
+{
+    $names = pg_picture_tr_page_names($html, $base, $hosts);
+
+    if (!$names) {
+        return $html;
+    }
+
+    $plan = pg_picture_tr_page_plan($query(pg_picture_tr_page_sql($names, $language)), $rtl);
+
+    if ($plan['waiting']) {
+        $now = time();
+        $values = array();
+
+        foreach ($plan['waiting'] as $file_id) {
+            $values[] = "('" . (int) $file_id . "', '" . e($language) . "', 0, '$now')";
+        }
+
+        $query("INSERT IGNORE INTO file_translation (file_id, language, state, created_at) VALUES " . implode(', ', $values));
+    }
+
+    return pg_picture_tr_page_swap($html, $base, $hosts, $plan['map']);
+}
+
+/**
+ * The page pass of a page drawn in a language (pg_tr_render_finalize()).
+ *
+ * @param string $content
+ * @param string $language
+ * @return string
+ */
+function pg_picture_tr_page_pass($content, $language)
+{
+    if (($language === '') || !defined('PATH') || !pg_picture_tr_ready() || !pg_picture_tr_store_ready()) {
+        return $content;
+    }
+
+    $known = pg_tr_known_languages();
+    $rtl = isset($known[$language]) && ($known[$language][5] === 1);
+
+    return pg_picture_tr_page_apply($content, $language, (string) PATH, pg_picture_tr_hosts(), $rtl, function ($sql) {
+        return (strpos($sql, 'SELECT') === 0) ? db_items($sql) : db($sql);
+    });
+}
