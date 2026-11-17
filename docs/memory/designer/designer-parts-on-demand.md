@@ -21,6 +21,7 @@ description: The designer's parts not needed to open a page: own bundles (pg_des
 - `theme` (#8245, D5 part 5): the Themes tab of the assets panel, `designer-theme-part.md`.
 - `fonts` (#8268, D5 part 6): the Google Fonts browser, `designer-fonts-part.md`.
 - `interactions` (#8281, D5 part 7): the Interactions section's rows and fields, `designer-interactions-part.md`.
+- `treesearch` (DP13): the Overview's tree search, `overview-search-map.md`.
 - The assistant code that stays in the core is small and needed at open: `_sdAiBridge()` (the part's view of the editor), the "Write with AI" marks of the page fields (`_pgAiMarks*`) and the alt-text button (`_sdAiAltButton()`).
 
 ## What comes next?

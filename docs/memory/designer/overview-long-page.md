@@ -6,7 +6,7 @@ description: Designer Overview on a long page (#10207): section rows with counts
 ## What does the Overview's head hold?
 - The Tree and Notes tabs as before; the search row keeps its box and two buttons on the right: "Show the selection" (crosshair, `#sd-ov-reveal-btn`, `scrollTreeToNode(selectedNode)`) and the collapse-all toggle.
 - Under it `#sd-ov-path`, the selection's path (`_sdTreePathRender()`): its section down to it, each step a button that selects its element. It sits outside the scrolled `#sd-overview-tree-wrap`, so it stays in view. Hidden with no selection, on the Notes tab (`.sd-ov-notes-on`) and with the section folded.
-- The search is today's row filter (`filterOverviewTree()`); the tree search of the plan's D34 is a later step (DP13).
+- The box is the tree search, and the page map stands at the tree's right edge: `overview-search-map.md`.
 
 ## What are the section rows?
 - The body's children (depth 1) carry `.sd-tree-sect`: 28 px, 12.5 px at weight 640, ground `--sd-raised-bg`, border `--sd-panel-border`, 4 px above, and `.sd-tree-sect-count`, every element under it (`_sdTreeNodeCount()`; a shared component counts its cached tree).

@@ -4784,7 +4784,76 @@ body.sd-resizing * { cursor: col-resize !important; }
 }
 /* Show the selection sits left of collapse-all; the input runs under neither */
 .sd-ov-collapse-btn.sd-ov-reveal-btn { right: 28px; }
-#sd-ov-search-input { padding-right: 54px; }
+#sd-ov-search-input { padding-right: 96px; }
+/* The tree search: the key hint, or the count of results, left of the two
+   buttons; the results take the tree's place while there are words. */
+.sd-ov-search-hint {
+    position: absolute; right: 54px; top: 50%; transform: translateY(-50%);
+    display: inline-flex; pointer-events: none;
+}
+.sd-ov-search-kbd {
+    padding: 2px 5px; border: 1px solid var(--sd-panel-border); border-radius: 5px;
+    background: var(--sd-raised-bg); color: var(--sd-text-muted);
+    font: 600 10px/1.2 inherit; white-space: nowrap;
+}
+.sd-ov-search-count {
+    min-width: 20px; padding: 1px 6px; border-radius: 99px; text-align: center;
+    background: var(--sd-accent-soft); color: var(--sd-accent); font-size: 11px; font-weight: 600;
+}
+.sd-overview-section.sd-ov-searching .sd-ov-body,
+.sd-overview-section.sd-ov-searching .sd-ov-path,
+.sd-overview-section.sd-ov-collapsed .sd-ov-body,
+.sd-overview-section.sd-ov-collapsed .sd-ov-results,
+.sd-overview-section.sd-ov-notes-on .sd-ov-body,
+.sd-overview-section.sd-ov-notes-on .sd-ov-results,
+.sd-ov-results[hidden] { display: none; }
+.sd-ov-results { flex: 1 1 0; min-height: 0; overflow-y: auto; padding: 4px; }
+.sd-ov-res {
+    display: flex; align-items: flex-start; gap: 8px; padding: 6px 8px;
+    border-radius: 8px; cursor: pointer;
+}
+.sd-ov-res:hover { background: color-mix(in srgb, var(--sd-text) 4%, transparent); }
+.sd-ov-res.active { background: var(--sd-accent-soft); }
+.sd-ov-res-ico {
+    flex: 0 0 22px; height: 22px; border-radius: 6px; background: var(--sd-input-bg);
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: .72rem; color: var(--sd-accent);
+}
+.sd-ov-res-body { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.sd-ov-res-name { display: flex; gap: 4px; min-width: 0; font-size: 12.5px; color: var(--sd-text); white-space: nowrap; }
+.sd-ov-res-lbl { flex: 0 0 auto; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.sd-ov-res-extra { flex-shrink: 100; min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--sd-text-muted); }
+.sd-ov-res-path { font-size: 11px; color: var(--sd-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sd-ov-res mark { padding: 0 2px; border-radius: 3px; background: var(--sd-warning-soft); color: var(--sd-warning); }
+.sd-ov-res-none,
+.sd-ov-res-more { padding: 8px; font-size: 12px; color: var(--sd-text-muted); }
+.sd-ov-res-foot {
+    margin-top: 4px; padding: 8px; border-top: 1px solid var(--sd-panel-border);
+    font-size: 11px; color: var(--sd-text-muted);
+}
+/* The page map at the tree's right edge: the sections by their size, the
+   range in view, the selection. */
+.sd-ov-body { flex: 1 1 0; min-height: 0; display: flex; }
+.sd-ov-body > .sd-overview-tree-wrap { min-width: 0; }
+.sd-ov-map { position: relative; flex: 0 0 14px; margin: 6px 4px 6px 0; cursor: pointer; }
+.sd-ov-map[hidden],
+.sd-ov-map-view[hidden],
+.sd-ov-map-sel[hidden] { display: none; }
+.sd-ov-map-sect { position: absolute; left: 3px; right: 3px; }
+.sd-ov-map-sect::before {
+    content: ''; position: absolute; inset: 1px 0; min-height: 2px;
+    border-radius: 3px; background: var(--sd-border-strong);
+}
+.sd-ov-map-sect:hover::before { background: color-mix(in srgb, var(--sd-text) 30%, var(--sd-border-strong)); }
+.sd-ov-map-sect.sd-ov-map-cur::before { background: var(--sd-accent-line); }
+.sd-ov-map-view {
+    position: absolute; left: 0; right: 0; min-height: 4px; pointer-events: none;
+    border: 1px solid var(--sd-accent); border-radius: 4px; background: var(--sd-accent-soft);
+}
+.sd-ov-map-sel {
+    position: absolute; left: 50%; width: 6px; height: 6px; margin: -3px 0 0 -3px; pointer-events: none;
+    border-radius: 50%; background: var(--sd-accent); box-shadow: var(--sd-dot-ring);
+}
 /* The selection's path: above the scrolled tree, so it stays in view */
 .sd-ov-path {
     display: flex; align-items: center; gap: 4px; flex-shrink: 0; min-width: 0;
