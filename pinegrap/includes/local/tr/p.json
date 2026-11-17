@@ -1372,6 +1372,7 @@
     "Pinegrap installation": "Pinegrap kurulumu",
     "Pinegrap is not connected to Paraşüt. On the E-Invoice card of the Ecommerce settings (Enable Parasut Configuration), authorize it with the code Paraşüt shows (Connect), or enter the Paraşüt user name and password.": "Pinegrap Paraşüt'e bağlı değil. E-Ticaret ayarlarının E-Fatura kartında (Paraşüt Yapılandırmasını Etkinleştir) Paraşüt'ün gösterdiği kodla yetkilendirin (Bağla) ya da Paraşüt kullanıcı adı ve parolasını girin.",
     "Pinegrap is not connected to Paraşüt. On the Paraşüt card of the commerce settings, authorize it with the code Paraşüt shows (Connect), or enter the Paraşüt user name and password.": "Pinegrap Paraşüt'e bağlı değil. Ticaret ayarlarındaki Paraşüt kartında Paraşüt'ün gösterdiği kodla yetkilendirin (Bağla) ya da Paraşüt kullanıcı adı ve parolasını girin.",
+    "Pinegrap licence and updates": "Pinegrap lisansı ve güncellemeler",
     "Pinegrap {var:1} is installed and your administrator account is ready.": "Pinegrap {var:1} kuruldu ve yönetici hesabınız hazır.",
     "Pinegrap: Installation Complete for {var:1}": "Pinegrap: {var:1} için Kurulum Tamamlandı",
     "Pines": "Çamlar",

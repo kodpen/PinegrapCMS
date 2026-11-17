@@ -255,7 +255,7 @@ function connections_status_badge($status) {
 	}
 
 	if ($status === 'reauth') {
-		return '<span class="pg-pill pg-tone-amber">' . h(lang('Connect again')) . '</span>';
+		return '<span class="pg-pill pg-tone-amber">' . h(lang('Must be connected again')) . '</span>';
 	}
 
 	return '<span class="pg-pill pg-tone-gray">' . h(lang('Off')) . '</span>';
@@ -360,19 +360,23 @@ foreach ($registry as $id => $service) {
 	$place = connections_place($service['place'], $category_list, $tool_labels);
 	$uses = lang($service['uses']);
 
+	// A name is source text: a product's own name stays, a descriptive one
+	// ("Sign in with Google") is translated.
+	$name = lang($service['name']);
+
 	$rows[$id] = array(
 		'kind'   => 'service',
-		'name'   => $service['name'],
+		'name'   => $name,
 		'group'  => $service['group'],
 		'state'  => pg_connections_screen_state($service, $facts),
 		'line'   => $place['label'],
 		'uses'   => $uses,
 		'url'    => $place['url'],
-		'search' => array($service['name'], $group_labels[$service['group']], $uses, $service['uses'], $place['label']),
+		'search' => array($name, $service['name'], $group_labels[$service['group']], $uses, $service['uses'], $place['label']),
 	);
 
 	if (isset($service['state']['kind']) && ($service['state']['kind'] === 'account')) {
-		$provider_uses[$service['state']['provider']][] = $service['name'];
+		$provider_uses[$service['state']['provider']][] = $name;
 	}
 
 }
@@ -465,14 +469,16 @@ function connections_provider_panel($provider_key, $provider, $app, $accounts, $
 				<div class="d-flex align-items-start gap-3">
 					<i class="bi bi-person-circle fs-lg opacity-75" aria-hidden="true"></i>
 					<div class="flex-grow-1 min-w-0">
-						<div class="fw-semibold text-truncate">' . h($account['label']) . '</div>
+						<div class="d-flex flex-wrap align-items-center column-gap-3 row-gap-1">
+							<span class="fw-semibold text-break">' . h($account['label']) . '</span>
+							' . connections_status_badge($account['status']) . '
+						</div>
 						<div class="pg-text-meta">' . h(implode(' · ', $purpose_labels)) . '</div>
 						<div class="pg-text-meta">' . h(implode(' · ', $meta)) . '</div>
 						' . (($account['last_error'] !== '')
 							? '<div class="small fg-danger mt-1">' . h($account['last_error']) . '</div>'
 							: '') . '
 					</div>
-					' . connections_status_badge($account['status']) . '
 				</div>
 				<div class="d-flex flex-wrap gap-3 mt-3 ms-7 ps-3">
 					' . (($account['status'] === 'reauth')
@@ -625,7 +631,6 @@ function connections_provider_panel($provider_key, $provider, $app, $accounts, $
    site's own with Connect again, a person's own with who reconnects it. */
 
 $attention_rows = '';
-$attention_count = 0;
 
 foreach ($facts['accounts'] as $account) {
 
@@ -633,14 +638,12 @@ foreach ($facts['accounts'] as $account) {
 		continue;
 	}
 
-	$attention_count++;
-
 	$used_by = array();
 
 	foreach ($registry as $service) {
 		if (isset($service['state']['kind']) && ($service['state']['kind'] === 'account') && ($service['state']['provider'] === $account['provider'])
 			&& in_array($service['state']['purpose'], $account['purposes'], true)) {
-			$used_by[] = $service['name'];
+			$used_by[] = lang($service['name']);
 		}
 	}
 
@@ -824,7 +827,7 @@ echo pg_page_shell(array(
 		<div class="col-12">
 			' . ((($attention_rows !== '') && ($query === '') && ($filter !== 'connected') && ($filter !== 'not_connected'))
 				? '<section class="pg-card connections-attention p-5 mb-6" aria-labelledby="connections-attention-title">
-					<h2 class="pg-title-section mb-1" id="connections-attention-title">' . h(lang('Needs attention')) . '<span class="pg-count">' . (int) $attention_count . '</span></h2>
+					<h2 class="pg-title-section mb-1" id="connections-attention-title">' . h(lang('Needs attention')) . '</h2>
 					<p class="pg-card-sub mb-4">' . h(lang('These connections stopped working; the features that use them wait until they are connected again.')) . '</p>
 					<div class="pg-card-inner">' . $attention_rows . '</div>
 				</section>'
@@ -869,6 +872,17 @@ echo pg_page_shell(array(
 
 	openNamed();
 	window.addEventListener("hashchange", openNamed);
+
+	// On a narrow screen the filter scrolls sideways: the chosen one is
+	// brought into view.
+	var chosen = document.querySelector(".connections-find .pg-seg-item.is-active");
+	if (chosen) {
+		var seg = chosen.parentNode;
+		var past = chosen.getBoundingClientRect().right - seg.getBoundingClientRect().right;
+		if (past > 0) {
+			seg.scrollLeft += past + 8;
+		}
+	}
 
 	// Buttons post through forms outside the panels, so that no panel holds
 	// a form inside another and each destructive one asks first.
