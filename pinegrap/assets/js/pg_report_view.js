@@ -173,9 +173,13 @@
             return text.length;
         })));
 
+        // Both entries in one box: when they do not fit beside the title the
+        // whole legend wraps to its own row, never one entry alone.
         if (compare) {
-            head.appendChild(legend(series, false));
-            head.appendChild(legend(chart.compare_label || "", true));
+            var legends = el("span", "pg-report-legends");
+            legends.appendChild(legend(series, false));
+            legends.appendChild(legend(chart.compare_label || "", true));
+            head.appendChild(legends);
         }
 
         var plot = el("div", "pg-report-plot");
