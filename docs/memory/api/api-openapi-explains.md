@@ -16,4 +16,4 @@ description: What the OpenAPI document adds beyond the route table: a sentence f
 - The same function fills the request `tests/helpers/api_route_examples_run.php` sends through `api_validate_input()`, so every example body is one the router takes. Never write an example by hand.
 
 ## Why does the MCP tool list not grow?
-- The tool list (`pg_mcp_tools_list()`) reads the route rows; the generated texts and examples are added only while the document is built. PR #PRNUM: 727 tools, 1,021,067 bytes before and after. A test checks the tool list carries none of them.
+- The tool list (`pg_mcp_tools_list()`) reads the route rows; the generated texts and examples are added only while the document is built. PR #10173: 727 tools, 1,021,067 bytes before and after. A test checks the tool list carries none of them.
