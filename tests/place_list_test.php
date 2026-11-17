@@ -143,7 +143,14 @@ function test_place_list_script_under_node()
 		. 'var o = m.order(places, 41.0, 29.03);'
 		. 'console.log(JSON.stringify({km: Math.round(m.distance(41.0, 29.0, 39.92, 32.85)), order: o.map(function (r) { return r.place.name; }), first: Math.round(o[0].km * 10) / 10,'
 		. ' kadikoy: m.matches(places[2], "KADIKOY moda"), istanbul: m.matches({name:"İstanbul"}, "istanbul"), miss: m.matches(places[0], "izmir")}));';
-	$result = json_decode((string) shell_exec('node -e ' . escapeshellarg($script) . ' 2>&1'), true);
+	// A file rather than node -e: escapeshellarg() on Windows turns the
+	// script's double quotes into spaces.
+	$file = tempnam(sys_get_temp_dir(), 'pgmap');
+	file_put_contents($file, $script);
+	$lines = array();
+	exec('node ' . escapeshellarg($file) . ' 2>&1', $lines, $code);
+	unlink($file);
+	$result = json_decode(implode("\n", $lines), true);
 
 	pg_assert_true(is_array($result), 'the script runs under Node');
 	pg_assert_true(abs($result['km'] - 347) <= 2, 'these points of Istanbul and Ankara are about 347 km apart (' . $result['km'] . ')');
