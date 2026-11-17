@@ -179,3 +179,48 @@ function test_workspace_command_remind_recap_answers_are_ephemeral()
 	pg_assert_true(strpos($html, '&lt;b&gt;') !== false, 'the summary escaped');
 	pg_assert_same('ws_command_run_recap', ws_command_registry()['recap']['runner']);
 }
+
+// The composer's "/" list leaves /recap out where the catch-up line has no
+// "Sum up what I missed", and keeps it where it has one.
+function test_workspace_command_recap_left_out_of_the_list_where_the_button_is_not()
+{
+	$source = str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js'));
+	$functions = '';
+
+	foreach (array('foldText', 'commandPickerRows') as $name) {
+		pg_assert_true((bool) preg_match('/\n    function ' . $name . '\([^)]*\) \{\n.*?\n    \}\n/s', $source, $match), $name . '() is in workspace.js');
+		$functions .= $match[0] ?? '';
+	}
+
+	$out = array();
+	$code = 1;
+	@exec('node --version 2>&1', $out, $code);
+
+	if (!function_exists('exec') || ($code !== 0)) {
+		return;
+	}
+
+	$file = (string) @tempnam(sys_get_temp_dir(), 'pgrecapjs');
+	file_put_contents($file, $functions . '
+var COMMANDS = [
+	{ key: "poll", command: "Poll", name: "/poll", names: ["/poll", "/oylama"], where: "any" },
+	{ key: "recap", command: "Recap", name: "/recap", names: ["/recap", "/özet"], where: "any" }
+];
+function names(rows) { return rows.map(function (row) { return row.label; }); }
+console.log(JSON.stringify({
+	button: names(commandPickerRows(COMMANDS, "", false, true)),
+	none: names(commandPickerRows(COMMANDS, "", false, false)),
+	typed: names(commandPickerRows(COMMANDS, "öz", false, false)),
+	untold: names(commandPickerRows(COMMANDS, "", false))
+}));');
+	$out = array();
+	@exec('node ' . escapeshellarg($file) . ' 2>&1', $out, $code);
+	@unlink($file);
+
+	$result = json_decode(implode("\n", $out), true);
+
+	pg_assert_same(array('/poll', '/recap'), $result['button'] ?? null, 'offered where the button is');
+	pg_assert_same(array('/poll'), $result['none'] ?? null, 'left out where it is not');
+	pg_assert_same(array(), $result['typed'] ?? null, 'not found by its Turkish name there either');
+	pg_assert_same(array('/poll', '/recap'), $result['untold'] ?? null, 'a caller that does not say keeps it');
+}
