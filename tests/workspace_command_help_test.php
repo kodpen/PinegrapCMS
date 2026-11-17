@@ -91,6 +91,15 @@ function test_workspace_command_help_one_command()
 		pg_assert_true(strpos($answer['html'], '/assign') === false, $body . ': that command alone');
 	}
 
+	// Each argument stays whole on a line: a narrow screen wraps between
+	// arguments, never inside their brackets.
+	$task = ws_command_run(null, $channel, '/help task')['html'];
+	$entry = ws_command_help(null)[0];
+
+	pg_assert_contains('<span class="text-nowrap">' . h('[' . lang('!priority') . ']') . '</span>', $task, 'an argument kept whole');
+	pg_assert_same(substr_count(ws_command_usage_html($entry), 'text-nowrap'), count($entry['args']), 'one span an argument');
+	pg_assert_same(html_entity_decode(strip_tags(ws_command_usage_html($entry)), ENT_QUOTES, 'UTF-8'), $entry['usage'], 'the same line as the usage');
+
 	$unknown = ws_command_run(null, $channel, '/help gorevx');
 
 	pg_assert_same('ephemeral', $unknown['type'], 'an unknown name');

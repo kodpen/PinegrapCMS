@@ -1646,7 +1646,7 @@ function ws_command_run_help($viewer, $channel = null, $rest = '')
 
         foreach ($groups[$group] as $item) {
             $html .= '<dt><code>' . h($item['command']) . '</code></dt><dd>' . h($item['description'])
-                . '<br><code class="ws-help-usage">' . h($item['usage']) . '</code>'
+                . '<br><code class="ws-help-usage">' . ws_command_usage_html($item) . '</code>'
                 . '<br><span class="fg-secondary">' . h($item['example']) . '</span></dd>';
         }
 
@@ -1654,6 +1654,30 @@ function ws_command_run_help($viewer, $channel = null, $rest = '')
     }
 
     return array('type' => 'ephemeral', 'html' => $html);
+}
+
+/**
+ * A command's usage line as /help shows it: each argument kept whole on a
+ * line (text-nowrap), so a narrow screen wraps between arguments only. An
+ * application's command, whose usage is its own free text, is shown as
+ * written.
+ *
+ * @param array $item ws_command_help() entry
+ * @return string HTML
+ */
+function ws_command_usage_html($item)
+{
+    if (empty($item['args'])) {
+        return h($item['usage']);
+    }
+
+    $html = h($item['name']);
+
+    foreach ($item['args'] as $arg) {
+        $html .= ' <span class="text-nowrap">' . h($arg['optional'] ? '[' . $arg['label'] . ']' : '<' . $arg['label'] . '>') . '</span>';
+    }
+
+    return $html;
 }
 
 /**
@@ -1678,7 +1702,7 @@ function ws_command_help_one($viewer, $channel, $word)
 
             $html = '<div class="ws-ephemeral-title">' . h($item['command']) . '</div>'
                 . '<div>' . h($item['description']) . '</div>'
-                . '<code class="ws-help-usage">' . h($item['usage']) . '</code>'
+                . '<code class="ws-help-usage">' . ws_command_usage_html($item) . '</code>'
                 . '<div>' . h(lang(array('string' => 'Names: {var:1}', 'vars' => implode(' ', $item['names'])))) . '</div>'
                 . '<div class="fg-secondary">' . h(lang(array('string' => 'Example: {var:1}', 'vars' => $item['example']))) . '</div>';
 
