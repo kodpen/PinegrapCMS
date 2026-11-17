@@ -623,8 +623,10 @@ function api_ok_list($rows, $limit, $next_cursor = null, $total = null, $extra =
 }
 
 // The only way to fail. $code is the stable machine identifier, $message the
-// translated sentence, $field the offending input when there is one.
-function api_fail($status_code, $code, $message, $field = null) {
+// translated sentence, $field the offending input when there is one, $errors
+// every refused field when the router found more than one way the call was
+// wrong (api_fail_field_errors()).
+function api_fail($status_code, $code, $message, $field = null, $errors = null) {
 
 	$error = array(
 		'code'       => $code,
@@ -635,6 +637,12 @@ function api_fail($status_code, $code, $message, $field = null) {
 	if ($field !== null) {
 
 		$error['field'] = $field;
+
+	}
+
+	if (is_array($errors) && !empty($errors)) {
+
+		$error['errors'] = array_values($errors);
 
 	}
 
