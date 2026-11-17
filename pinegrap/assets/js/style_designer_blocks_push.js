@@ -29,6 +29,8 @@ StyleDesigner.registerBlockFamily(function (kit) {
     };
 
     var hidden = { name: 'hidden', value: '' };
+    // The lines a state brings are spoken when they show (pg_site_push.js).
+    var status = { name: 'role', value: 'status' };
 
     var button = function (text, cls, mark) {
         return kit.createNode('semantic', { tag: 'button', cssClass: cls, text: text, customName: text,
@@ -53,13 +55,15 @@ StyleDesigner.registerBlockFamily(function (kit) {
                         button(_sdT('Notify Me'), 'btn btn-primary px-4', 'data-pg-push-on')
                     ], [{ name: 'data-pg-push-ask', value: '' }]),
                     kit.div('mt-4', _sdT('Notifications On'), [
-                        kit.p(_sdT('Notifications are on.'), 'fw-semibold mb-2'),
-                        button(_sdT('Stop'), 'btn btn-outline-secondary btn-sm px-3', 'data-pg-push-stop')
+                        marked(kit.p(_sdT('Notifications are on.'), 'fw-semibold mb-2'), [status]),
+                        // The body's emphasis colour follows the colour mode
+                        // and reads at 13:1 or more on the band in both.
+                        button(_sdT('Stop'), 'btn btn-sm px-3 border border-secondary text-body-emphasis', 'data-pg-push-stop')
                     ], [{ name: 'data-pg-push-done', value: '' }, hidden]),
                     marked(kit.p(_sdT('Notifications are blocked for this site in your browser. Allow them in the settings of the browser, then reload the page.'), 'small text-body-secondary mt-4 mb-0'),
-                        [{ name: 'data-pg-push-blocked', value: '' }, hidden]),
+                        [{ name: 'data-pg-push-blocked', value: '' }, status, hidden]),
                     marked(kit.p(_sdT('Notifications could not be turned on. Please try again.'), 'small text-danger-emphasis mt-3 mb-0'),
-                        [{ name: 'data-pg-push-failed', value: '' }, hidden])
+                        [{ name: 'data-pg-push-failed', value: '' }, status, hidden])
                 ])
             ])
         ], [{ name: 'data-pg-push', value: '' }, hidden]);

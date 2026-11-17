@@ -168,14 +168,34 @@
 
         var part = function (root, name) { return root.querySelector('[data-pg-push-' + name + ']'); };
 
-        var render = function (state) {
+        // A line marked role="status" that was hidden is not in the page's
+        // accessibility tree, so showing it alone may go unspoken: its content
+        // is taken out and put back a moment later, a change inside a live
+        // region that a screen reader announces.
+        var speak = function (el) {
+            var isStatus = function (n) { return n.getAttribute('role') === 'status'; };
+            var region = isStatus(el) ? el : Array.prototype.slice.call(el.querySelectorAll('[role]')).filter(isStatus)[0];
+            if (!region) return;
+            var kids = Array.prototype.slice.call(region.childNodes);
+            kids.forEach(function (k) { region.removeChild(k); });
+            win.setTimeout(function () {
+                kids.forEach(function (k) { region.appendChild(k); });
+            }, 100);
+        };
+
+        // Draws the state on every block; the lines that newly show are
+        // spoken only in the block the visitor used.
+        var render = function (state, used) {
             var show = partsFor(state, failed);
             roots.forEach(function (root) {
                 root.hidden = !show.root;
                 root.setAttribute('data-pg-push-state', state);
                 ['ask', 'done', 'blocked', 'failed'].forEach(function (name) {
                     var el = part(root, name);
-                    if (el) el.hidden = !show[name];
+                    if (!el) return;
+                    var was = el.hidden;
+                    el.hidden = !show[name];
+                    if (root === used && was && show[name]) speak(el);
                 });
             });
         };
@@ -184,7 +204,7 @@
             return sw.getRegistration(conf.scope).catch(function () { return null; });
         };
 
-        var refresh = function () {
+        var refresh = function (used) {
             return Promise.all([secretGet(idb), registration().then(function (reg) {
                 return reg ? reg.pushManager.getSubscription() : null;
             }).catch(function () { return null; })]).then(function (got) {
@@ -194,7 +214,7 @@
                     secret: got[0],
                     subscribed: !!got[1]
                 });
-                render(state);
+                render(state, used);
                 return state;
             });
         };
@@ -235,15 +255,15 @@
             });
         };
 
-        var focus = function (name) {
-            var el = part(roots[0], name);
+        var focus = function (root, name) {
+            var el = part(root, name);
             if (el && typeof el.focus === 'function') el.focus();
         };
 
-        var turnOn = function () {
+        var turnOn = function (root) {
             failed = false;
             return ask().then(function (answer) {
-                if (answer !== 'granted') return refresh();
+                if (answer !== 'granted') return refresh(root);
                 return sw.register(conf.worker, { scope: conf.scope }).then(active).then(subscription).then(function (sub) {
                     return post({
                         action: 'subscribe',
@@ -257,13 +277,13 @@
                         // nobody will send to.
                         return sub.unsubscribe().then(function () { throw new Error('door'); });
                     });
-                }).then(refresh).then(function (state) {
-                    if (state === 'on') focus('stop');
+                }).then(function () { return refresh(root); }).then(function (state) {
+                    if (state === 'on') focus(root, 'stop');
                 });
             });
         };
 
-        var turnOff = function () {
+        var turnOff = function (root) {
             failed = false;
             return secretGet(idb).then(function (secret) {
                 var told = secret ? post({ action: 'stop', secret: secret }).catch(function () {}) : Promise.resolve();
@@ -273,19 +293,25 @@
                         return sub ? sub.unsubscribe() : true;
                     }).then(function () { return reg.unregister(); });
                 });
-            }).then(function () { return secretDrop(idb); }).then(refresh).then(function () { focus('on'); });
+            }).then(function () { return secretDrop(idb); }).then(function () { return refresh(root); }).then(function () {
+                focus(root, 'on');
+            });
         };
 
-        var run = function (work) {
+        var run = function (work, root) {
             if (busy) return;
             busy = true;
-            roots.forEach(function (root) { root.setAttribute('aria-busy', 'true'); });
-            work().catch(function () {
+            // A line from an earlier failed try goes, so a new failure is
+            // spoken again.
+            var old = part(root, 'failed');
+            if (old) old.hidden = true;
+            roots.forEach(function (r) { r.setAttribute('aria-busy', 'true'); });
+            work(root).catch(function () {
                 failed = true;
-                return refresh();
+                return refresh(root);
             }).then(function () {
                 busy = false;
-                roots.forEach(function (root) { root.removeAttribute('aria-busy'); });
+                roots.forEach(function (r) { r.removeAttribute('aria-busy'); });
             });
         };
 
@@ -295,7 +321,7 @@
                 if (!btn) return;
                 btn.addEventListener('click', function (e) {
                     if (e && e.preventDefault) e.preventDefault();
-                    run(pair[1]);
+                    run(pair[1], root);
                 });
             });
         });

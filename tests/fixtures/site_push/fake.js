@@ -14,16 +14,46 @@
  */
 
 function pushBlock() {
-    return el('section', { 'data-pg-push': '', hidden: '' }, [
+    return __movable(el('section', { 'data-pg-push': '', hidden: '' }, [
         el('div', { 'data-pg-push-ask': '' }, [el('button', { type: 'button', 'data-pg-push-on': '' }, ['Notify me'])]),
         el('div', { 'data-pg-push-done': '', hidden: '' }, [
-            el('p', {}, ['Notifications are on.']),
+            el('p', { role: 'status' }, ['Notifications are on.']),
             el('button', { type: 'button', 'data-pg-push-stop': '' }, ['Stop'])
         ]),
-        el('p', { 'data-pg-push-blocked': '', hidden: '' }, ['Blocked']),
-        el('p', { 'data-pg-push-failed': '', hidden: '' }, ['Failed'])
-    ]);
+        el('p', { 'data-pg-push-blocked': '', role: 'status', hidden: '' }, ['Blocked']),
+        el('p', { 'data-pg-push-failed': '', role: 'status', hidden: '' }, ['Failed'])
+    ]));
 }
+
+// removeChild and appendChild for a node and those under it; a node counts
+// how often its content was taken out (a line spoken).
+function __movable(node) {
+    node.taken = 0;
+    node.removeChild = function (k) {
+        var i = this.childNodes.indexOf(k);
+        if (i >= 0) this.childNodes.splice(i, 1);
+        k.parentNode = null;
+        this.taken++;
+        return k;
+    };
+    node.appendChild = function (k) { this.childNodes.push(k); k.parentNode = this; return k; };
+    node.childNodes.forEach(function (k) { if (k.nodeType === 1) __movable(k); });
+    return node;
+}
+
+// The parts whose status line was spoken, with the line's text now.
+function spoken(block) {
+    var out = {};
+    ['ask', 'done', 'blocked', 'failed'].forEach(function (n) {
+        var part = block.querySelector('[data-pg-push-' + n + ']');
+        var region = (part.getAttribute('role') === 'status') ? part : part.querySelector('[role]');
+        if (region && region.taken) out[n] = region.textContent;
+    });
+    return out;
+}
+
+// Waits past the moment a spoken line's content is put back.
+function heard() { return new Promise(function (r) { setTimeout(r, 150); }); }
 
 // Each request answers after the caller has set its handlers, as the real
 // one does; on a microtask, so one timer turn lets every answer land.
@@ -102,6 +132,7 @@ function fakeBrowser(permission, answer, reply) {
             rec.posts.push({ url: url, fields: fields });
             return Promise.resolve({ ok: true, json: function () { return Promise.resolve(reply(fields)); } });
         },
+        setTimeout: function (fn, ms) { return setTimeout(fn, ms); },
         pgSitePushConfig: { door: '/pg/site_push.php', worker: '/pg/site_push_sw.php', scope: '/',
             key: Buffer.from(__bytes(65, 4)).toString('base64url') }
     };

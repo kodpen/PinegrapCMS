@@ -212,13 +212,15 @@ var before = shown(block), registeredBefore = win.rec.registered;
 block.querySelector("[data-pg-push-on]").click();
 await settle();
 var on = shown(block), sub = win.rec.posts[0], stored = win.indexedDB.data.secret, focused = doc.activeElement === block.querySelector("[data-pg-push-stop]");
+await heard();
+var said = spoken(block);
 var secret = await win.pgSitePush.secret();
 block.querySelector("[data-pg-push-stop]").click();
 await settle();
 console.log(JSON.stringify({ before: before, registeredBefore: registeredBefore, on: on, sub: sub, stored: stored, secret: secret, focused: focused,
   registered: win.rec.unregistered, userVisibleOnly: win.rec.subscribedWith.userVisibleOnly, keyLength: win.rec.subscribedWith.applicationServerKey.length,
   stop: win.rec.posts[1], off: shown(block), left: win.indexedDB.data.secret === undefined, unsubscribed: win.rec.unsubscribed,
-  refocused: doc.activeElement === block.querySelector("[data-pg-push-on]") }));');
+  refocused: doc.activeElement === block.querySelector("[data-pg-push-on]"), said: said }));');
 	if (!_site_push_block_ran($r)) {
 		return;
 	}
@@ -235,6 +237,7 @@ console.log(JSON.stringify({ before: before, registeredBefore: registeredBefore,
 	pg_assert_same('s3cret', $r['stored'], 'the worker finds the secret');
 	pg_assert_same('s3cret', $r['secret']);
 	pg_assert_true($r['focused'], 'the focus moves to Stop');
+	pg_assert_same(array('done' => 'Notifications are on.'), $r['said'], 'the line is spoken once and kept whole');
 	pg_assert_true($r['userVisibleOnly']);
 	pg_assert_same(65, $r['keyLength']);
 
@@ -256,17 +259,21 @@ await settle();
 block.querySelector("[data-pg-push-on]").click();
 await settle();
 var refused = shown(block), unsubscribed = win.rec.unsubscribed;
+await heard();
+var refusedSaid = spoken(block);
 
 var block2 = pushBlock(), win2 = fakeBrowser("default", "denied", function () { return {}; });
 P.start(win2, fakeDoc(el("html", {}, [block2])));
 await settle();
 block2.querySelector("[data-pg-push-on]").click();
 await settle();
+await heard();
 
 var block3 = pushBlock(), win3 = fakeBrowser("denied", "denied", function () { return {}; });
 P.start(win3, fakeDoc(el("html", {}, [block3])));
 await settle();
-console.log(JSON.stringify({ refused: refused, unsubscribed: unsubscribed, secret: win.indexedDB.data.secret || "", said: shown(block2), registered: win2.rec.registered, already: shown(block3) }));');
+console.log(JSON.stringify({ refused: refused, unsubscribed: unsubscribed, secret: win.indexedDB.data.secret || "", said: shown(block2), registered: win2.rec.registered, already: shown(block3),
+  refusedSaid: refusedSaid, noSaid: spoken(block2), loadSaid: spoken(block3) }));');
 	if (!_site_push_block_ran($r)) {
 		return;
 	}
@@ -277,6 +284,31 @@ console.log(JSON.stringify({ refused: refused, unsubscribed: unsubscribed, secre
 	pg_assert_true($r['said']['blocked'] && !$r['said']['ask']);
 	pg_assert_same(null, $r['registered'], 'no worker after a no');
 	pg_assert_same('blocked', $r['already']['state']);
+	pg_assert_same(array('failed' => 'Failed'), $r['refusedSaid'], 'a failed try is spoken');
+	pg_assert_same(array('blocked' => 'Blocked'), $r['noSaid'], 'a no is spoken');
+	pg_assert_same(array(), $r['loadSaid'], 'nothing is spoken when the page opens');
+}
+
+function test_site_push_block_two_blocks_answer_where_pressed()
+{
+	$r = _site_push_block_node('
+var a = pushBlock(), b = pushBlock(), doc = fakeDoc(el("html", {}, [el("body", {}, [a, b])]));
+var win = fakeBrowser("default", "granted", function (f) { return f.action === "subscribe" ? { secret: "s" } : { removed: 1 }; });
+P.start(win, doc);
+await settle();
+b.querySelector("[data-pg-push-on]").click();
+await settle();
+await heard();
+var focused = doc.activeElement === b.querySelector("[data-pg-push-stop]");
+console.log(JSON.stringify({ a: shown(a).state, b: shown(b).state, focused: focused, saidA: spoken(a), saidB: spoken(b) }));');
+	if (!_site_push_block_ran($r)) {
+		return;
+	}
+	pg_assert_same('on', $r['a'], 'every block on the page shows the state');
+	pg_assert_same('on', $r['b']);
+	pg_assert_true($r['focused'], 'the focus moves to Stop in the block pressed');
+	pg_assert_same(array(), $r['saidA'], 'the other block stays quiet');
+	pg_assert_same(array('done' => 'Notifications are on.'), $r['saidB']);
 }
 
 // -- the worker (N12) --------------------------------------------------------
