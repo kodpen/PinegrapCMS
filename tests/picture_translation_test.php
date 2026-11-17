@@ -187,10 +187,11 @@ function test_picture_translation_store_hooks()
 	$api = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/translate/api.php');
 	pg_assert_contains('pg_picture_tr_translations_removed(', $api, 'a translation set back to pending over the API');
 
-	// The whole site neither counts nor sends a picture's texts: the
-	// Pictures group decides which pictures count.
-	pg_assert_same("u.owner_type NOT IN ('ui', 'file')", pg_tr_owner_where(array()), 'whole site leaves files out');
-	pg_assert_same("(u.owner_type = 'file')", pg_tr_owner_where(array(array('file', '*'))), 'an owner of type file still selectable');
+	// The whole site counts and sends a picture's texts only within the
+	// Pictures group's bound (tests/picture_translation_group_test.php);
+	// without the table, none.
+	pg_assert_same("u.owner_type NOT IN ('ui', 'file')", pg_tr_owner_where(array()), 'whole site leaves files out before the table');
+	pg_assert_same('(0 = 1)', pg_tr_owner_where(array(array('file', '*'))), 'every file is never selected: only those with a row');
 }
 
 // The module is loaded with the rest and carries the gate.
