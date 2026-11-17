@@ -35,6 +35,8 @@ require_once(dirname(__FILE__) . '/includes/api/app_access.php');
 require_once(dirname(__FILE__) . '/includes/api/scopes.php');
 require_once(dirname(__FILE__) . '/includes/api/schema.php');
 require_once(dirname(__FILE__) . '/includes/api/outbound/webhooks.php');
+require_once(dirname(__FILE__) . '/includes/api/resources/webhooks.php');
+require_once(dirname(__FILE__) . '/includes/fn/automation_contract.php');
 require_once(dirname(__FILE__) . '/includes/api/devices.php');
 require_once(dirname(__FILE__) . '/includes/oauth/server.php');
 
@@ -55,7 +57,7 @@ if ($_POST) {
 	// in escape() or trim(), and app_id[]=x was read as application 1, which
 	// the update and delete then changed. Nothing is written, so every
 	// application stays as it was.
-	$api_settings_lists = pg_request_unexpected_lists($_POST, array('scope' => 1));
+	$api_settings_lists = pg_request_unexpected_lists($_POST, array('scope' => 1, 'hook_events' => 1));
 
 	if ($api_settings_lists) {
 
@@ -195,7 +197,10 @@ if ($_POST) {
 				'name'   => $liveform->get_field_value('name'),
 				'key'    => $made['key'],
 				'secret' => $made['secret'],
-				'kind'   => $made['kind']
+				'kind'   => $made['kind'],
+				// The starting point is not stored: it only adds the note
+				// about an automation platform to this one sheet.
+				'automation' => (($made['kind'] === 'server') && isset($_POST['start']) && ($_POST['start'] === 'automation'))
 			);
 
 			header('Location: ' . $screen_url);
@@ -373,8 +378,8 @@ if ($_POST) {
 				WHERE id = '" . (int)$hook['id'] . "'");
 
 			$liveform->add_notice(($new_status === 'active')
-				? lang(array('string' => 'Deliveries to {var:1} were switched back on.', 'vars' => h($hook['url'])))
-				: lang(array('string' => 'Deliveries to {var:1} were stopped.', 'vars' => h($hook['url']))));
+				? lang(array('string' => 'Deliveries to {var:1} were switched back on.', 'vars' => h(pg_ops_alert_mask_url($hook['url']))))
+				: lang(array('string' => 'Deliveries to {var:1} were stopped.', 'vars' => h(pg_ops_alert_mask_url($hook['url'])))));
 
 			log_activity(lang(array(
 				'string' => 'API event subscription ({var:1}) was set to {var:2}.',
@@ -414,7 +419,7 @@ if ($_POST) {
 
 			$liveform->add_notice(lang(array(
 				'string' => 'Waiting events for {var:1} will be sent again on the next run of the scheduled task.',
-				'vars'   => h($hook['url'])
+				'vars'   => h(pg_ops_alert_mask_url($hook['url']))
 			)));
 
 		}
@@ -436,7 +441,7 @@ if ($_POST) {
 
 			db("DELETE FROM api_webhook_queue WHERE webhook_id = '" . (int)$hook['id'] . "'");
 
-			$liveform->add_notice(lang(array('string' => 'The subscription to {var:1} was removed.', 'vars' => h($hook['url']))));
+			$liveform->add_notice(lang(array('string' => 'The subscription to {var:1} was removed.', 'vars' => h(pg_ops_alert_mask_url($hook['url'])))));
 
 			log_activity(lang(array(
 				'string' => 'API event subscription ({var:1}) was removed.',
@@ -444,6 +449,108 @@ if ($_POST) {
 			)), $_SESSION['sessionusername']);
 
 		}
+
+		header('Location: ' . $screen_url);
+
+		exit();
+
+	} elseif ($action === 'webhook_create' && $app_id > 0) {
+
+		// "New subscription" on the Events tab: an address a platform gives
+		// for incoming webhooks, subscribed with the checks, the limit and the
+		// row of POST /webhooks (api_webhook_create_check(),
+		// api_webhook_store()). What comes back opens the drawer on that tab
+		// again: the form with its error, or the secret once.
+		$owner_app = db_item("SELECT id, name FROM api_apps WHERE id = '" . $app_id . "' AND kind = 'server' LIMIT 1");
+
+		$hook_url = isset($_POST['hook_url']) ? (string)$_POST['hook_url'] : '';
+
+		$hook_events = isset($_POST['hook_events']) ? (array)$_POST['hook_events'] : array();
+
+		$back = array('app_id' => $app_id);
+
+		if (!$owner_app) {
+
+			$back['form'] = array('url' => '', 'events' => array(), 'error' => lang('That application could not be found.'));
+
+		} else {
+
+			$checked = api_webhook_create_check($hook_url, $hook_events, api_webhook_held_count($app_id));
+
+			$made = ($checked['refusal'] === null)
+				? api_webhook_store($app_id, $checked['url'], $checked['events'])
+				: null;
+
+			if ($made === null) {
+
+				$back['form'] = array(
+					'url'    => mb_substr(trim($hook_url), 0, 2000),
+					'events' => array_values(array_filter(array_map('strval', array_filter($hook_events, 'is_scalar')))),
+					'error'  => ($checked['refusal'] !== null) ? $checked['refusal']['message'] : lang('The subscription could not be created.')
+				);
+
+			} else {
+
+				// The plain secret goes to the next request only, through the
+				// session as an application's own secret does.
+				$back['secret'] = array(
+					'id'     => $made['id'],
+					'host'   => pg_ops_alert_mask_url($checked['url']),
+					'secret' => $made['secret']
+				);
+
+				log_activity(lang(array(
+					'string' => 'API event subscription ({var:1}) was created on the panel for the application {var:2}.',
+					'vars'   => array(pg_ops_alert_mask_url($checked['url']), $owner_app['name'])
+				)), $_SESSION['sessionusername']);
+
+				// The Webhooks tile on System Status reads these rows.
+				pg_system_status_forget();
+
+			}
+
+		}
+
+		$_SESSION['software']['api_hooks_back'] = $back;
+
+		header('Location: ' . $screen_url);
+
+		exit();
+
+	} elseif ($action === 'webhook_sample' && $app_id > 0) {
+
+		// "Send a sample": one of the subscription's own events, its sample
+		// queued for this subscription alone with the refusals of POST
+		// /webhooks/{id}/test (api_webhook_test_refusal()). Never announced,
+		// so no flow, channel or other subscriber hears it.
+		$webhook_id = isset($_POST['webhook_id']) ? (int)$_POST['webhook_id'] : 0;
+
+		$hook = db_item("SELECT id, url, events, status FROM api_webhooks
+			WHERE id = '" . $webhook_id . "' AND app_id = '" . $app_id . "' LIMIT 1");
+
+		$event = isset($_POST['sample_event']) ? trim((string)$_POST['sample_event']) : '';
+
+		$back = array('app_id' => $app_id);
+
+		if ($hook && ($event !== '')) {
+
+			$payloads = api_webhook_event_payloads();
+
+			$refusal = api_webhook_test_refusal($hook, $event, $payloads);
+
+			$queued = ($refusal === null) ? api_webhook_test_queue((int)$hook['id'], $event, $payloads[$event]['sample']) : null;
+
+			$back['flash'] = array(
+				'webhook_id' => (int)$hook['id'],
+				'ok'         => ($queued !== null),
+				'text'       => ($queued !== null)
+					? lang(array('string' => 'The sample of {var:1} was queued; the scheduled task sends it to {var:2}.', 'vars' => array($event, pg_ops_alert_mask_url($hook['url']))))
+					: (($refusal !== null) ? $refusal['message'] : lang('The sample could not be queued.'))
+			);
+
+		}
+
+		$_SESSION['software']['api_hooks_back'] = $back;
 
 		header('Location: ' . $screen_url);
 
@@ -607,6 +714,19 @@ if (isset($_SESSION['software']['api_new_credentials'])) {
 	$new_credentials = $_SESSION['software']['api_new_credentials'];
 
 	unset($_SESSION['software']['api_new_credentials']);
+
+}
+
+// What the Events tab's form or "Send a sample" handed over: the drawer opens
+// on that tab again with the form and its error, the new subscription's
+// secret (shown once) or the sample's line. Read once and removed.
+$hooks_back = null;
+
+if (isset($_SESSION['software']['api_hooks_back'])) {
+
+	$hooks_back = $_SESSION['software']['api_hooks_back'];
+
+	unset($_SESSION['software']['api_hooks_back']);
 
 }
 
@@ -920,9 +1040,11 @@ if (is_array($hooks) && !empty($hooks)) {
 			? $queue_state[(int)$hook['id']]
 			: array('waiting' => 0, 'given_up' => 0, 'held' => 0, 'error' => '');
 
+		// Scheme and host only: an address a platform gives carries its
+		// secret in the path, and only the form that stores it shows it whole.
 		$row = array(
 			'id'           => (int)$hook['id'],
-			'url'          => $hook['url'],
+			'url'          => pg_ops_alert_mask_url($hook['url']),
 			'events'       => $events,
 			'status'       => $hook['status'],
 			'last_success' => ((int)$hook['last_success'] > 0) ? api_settings_ago($hook['last_success']) : '',
@@ -1196,7 +1318,11 @@ function api_settings_copy_button($id, $caption_id, $button_class) {
 	// of what it copies ("Copy Key"). The status sits in the same box: the
 	// drawer is a modal dialog and the one-time sheet makes everything else
 	// inert, so a region outside them would never be heard.
-	return '<button type="button" class="btn btn-sm ' . $button_class . ' api-copy" id="' . $id . '_copy" data-copy="#' . $id . '" aria-labelledby="' . $id . '_copy ' . $caption_id . '"><i class="bi bi-clipboard me-1" aria-hidden="true"></i>' . lang('Copy') . '</button>'
+	// A class list of the design language (pg-button …) is the whole list;
+	// the older screens pass a Bootstrap variant added to the small button.
+	$classes = (strpos($button_class, 'pg-') === 0) ? $button_class : 'btn btn-sm ' . $button_class;
+
+	return '<button type="button" class="' . $classes . ' api-copy" id="' . $id . '_copy" data-copy="#' . $id . '" aria-labelledby="' . $id . '_copy ' . $caption_id . '"><i class="bi bi-clipboard me-1" aria-hidden="true"></i>' . lang('Copy') . '</button>'
 		. '<span class="visually-hidden" role="status" aria-live="polite" data-copied="' . h(lang('Copied')) . '" data-refused="' . h(lang('The browser did not let the text be copied. Select it and copy it from here.')) . '"></span>';
 
 }
@@ -1361,7 +1487,76 @@ function api_settings_oauth_guide($id_prefix, $button_class) {
 
 $api_base_url = URL_SCHEME . HOSTNAME_SETTING . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/integration.php';
 
+// The site's address, the first of the three values an integration's secret
+// sheet gives: a client finds the API from it through
+// /.well-known/pinegrap.json.
+$site_address = rtrim(URL_SCHEME . HOSTNAME_SETTING . OUTPUT_PATH, '/');
+
 $permission_rows = api_settings_permission_rows('scope', 'd_scope');
+
+// New application's "Automation platform" starting point: the rows it ticks
+// (the contract's scopes, api_app_start_choices()) and the line naming them.
+// Nothing about the choice is stored; the application is an integration.
+$start_choices = api_app_start_choices(pg_automation_contract_scopes(), api_scope_groups());
+
+$start_names = array();
+
+foreach ($start_choices as $group_key => $choice) {
+
+	$group_text = api_settings_group_text($group_key);
+
+	$start_names[] = $group_text[0] . ' (' . (($choice === 'write')
+		? (($group_key === 'webhooks') ? lang('Manage') : lang('Write'))
+		: lang('Read')) . ')';
+
+}
+
+$start_note = lang(array(
+	'string' => 'The {var:1} permissions the platform uses are ticked: {var:2}. They can be changed; a permission left unticked turns that step off on the platform.',
+	'vars'   => array(pg_format_number(count($start_choices), 0), implode(', ', $start_names))
+));
+
+// The Events tab's "New subscription": every event of the catalogue with its
+// module and its line, for the list the form searches.
+$hook_catalogue = array();
+
+// api_webhook_events() loads the module list the module names are read from.
+$hook_events_all = api_webhook_events();
+
+$hook_event_modules = api_webhook_event_modules();
+
+$hook_module_names = array('erp' => lang('ERP'), 'workspace' => lang('Workspace'));
+
+foreach ($hook_events_all as $event_name => $event_text) {
+
+	$event_module = isset($hook_event_modules[$event_name]) ? $hook_event_modules[$event_name] : '';
+
+	$hook_catalogue[] = array(
+		'name'   => (string)$event_name,
+		'module' => api_app_event_area($event_name, isset($hook_module_names[$event_module]) ? $hook_module_names[$event_module] : ''),
+		'text'   => lang((string)$event_text)
+	);
+
+}
+
+$hook_bounds = api_webhook_create_bounds();
+
+// The new subscription's signing secret, once: drawn into the Events tab and
+// taken out of the page as soon as another tab or application is opened.
+$hook_secret_html = '';
+
+if (is_array($hooks_back) && isset($hooks_back['secret']['secret'])) {
+
+	$hook_secret_html = '
+				<div class="alert theme-success py-3 px-5 small mb-5" id="d_hook_secret" role="status">
+					<b><i class="bi bi-check-circle me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Subscription created: {var:1}', 'vars' => $hooks_back['secret']['host']))) . '</b>
+					<div class="mb-3">' . lang('The signing secret is shown only now; once you leave this tab it is not shown again.') . '</div>
+					<span class="visually-hidden" id="d_hook_secret_label">' . lang('Signing secret') . '</span>
+					<div class="api-secret-box"><code id="d_hook_secret_value">' . h($hooks_back['secret']['secret']) . '</code>
+						' . api_settings_copy_button('d_hook_secret_value', 'd_hook_secret_label', 'pg-button pg-button-quiet pg-button-sm') . '</div>
+				</div>';
+
+}
 
 /* ---------------------------------------------------------------------------
    Event notifications, site wide
@@ -1824,7 +2019,30 @@ echo pg_page_shell(array(
    drawer is a modal context, and a chat bubble floating over the button that
    commits the form is not something to nudge sideways. */
 body.api-drawer-open .pg-chat-launcher { display: none !important; }
-#api_drawer.api-locked .api-hook-acts { display: none; }
+#api_drawer.api-locked .api-hook-acts,
+#api_drawer.api-locked .api-hook-new,
+#api_drawer.api-locked .api-hook-form,
+#api_drawer.api-locked .api-hook-sample { display: none; }
+/* The two starting points of New application side by side from md up. */
+.api-start { display: grid; gap: 8px; }
+@media (min-width: 768px) { .api-start { grid-template-columns: 1fr 1fr; } }
+.api-start .form-field-card { margin-bottom: 0; }
+/* The Events tab\'s "New subscription" and "Send a sample" boxes. */
+.api-hook-form, .api-hook-sample { background: var(--pg-bg-1); border: 1px solid var(--pg-border-color);
+	border-radius: 8px; padding: 10px 12px; }
+.api-hook-sample { margin-top: 8px; }
+.api-hook-address { word-break: break-all; font-family: var(--pg-font-mono); }
+.api-event-list { max-height: 18rem; overflow-y: auto; border: 1px solid var(--pg-border-color);
+	border-radius: 8px; background: var(--pg-bg-body); }
+.api-event { display: flex; gap: 8px; align-items: flex-start; padding: 7px 10px; margin: 0;
+	border-top: 1px solid var(--pg-border-color); cursor: pointer; }
+.api-event:first-child { border-top: 0; }
+.api-event .pg-checkbox { margin-top: 2px; flex: none; }
+.api-event-name { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.api-event-text { display: block; color: var(--pg-fg-2); }
+.api-event mark { padding: 0; background: var(--pg-warning-bg-subtle); color: inherit; }
+.api-event-none { padding: 10px; color: var(--pg-fg-2); }
+.api-chip-remove { border: 0; background: none; padding: 0 0 0 4px; color: inherit; line-height: 1; }
 </style>
 
 <main id="content" class="container-fluid">
@@ -1923,6 +2141,7 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 		' . get_token_field() . '
 		<input type="hidden" name="api_action" value="update" id="d_action">
 		<input type="hidden" name="webhook_id" value="" id="d_webhook_id">
+		<input type="hidden" name="sample_event" value="" id="d_sample_event">
 		<input type="hidden" name="device_id" value="" id="d_device_id">
 		<input type="hidden" name="app_id" id="d_app_id" value="">
 
@@ -2060,13 +2279,60 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 			</div>
 
 			<div class="tab-pane fade" id="d_hooks">
-				<div class="d-flex align-items-center mb-3">
-					<span class="small opacity-75">' . lang('Addresses this application asked to be told at') . '</span>
+				<div class="d-flex align-items-center flex-wrap gap-3 mb-3">
+					<span class="small opacity-75">' . lang('Addresses this application asked to be told at') . ' &middot; <span class="text-nowrap" id="d_hook_count"></span></span>
+					<button type="button" class="pg-button pg-button-quiet pg-button-sm ms-auto api-hook-new" id="d_hook_new" aria-expanded="false" aria-controls="d_hook_form">
+						<i class="bi bi-plus-lg" aria-hidden="true"></i>' . lang('New subscription') . '</button>
+				</div>
+				<div id="d_hook_secret_slot">' . $hook_secret_html . '</div>
+				<div class="api-hook-form mb-5 d-none" id="d_hook_form" role="group" aria-labelledby="d_hook_form_title">
+					<div class="d-flex align-items-center mb-3">
+						<b class="small" id="d_hook_form_title">' . lang('New subscription') . '</b>
+						<button type="button" class="pg-icon-button pg-icon-button-sm ms-auto" id="d_hook_form_close" aria-label="' . h(lang('Close')) . '"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+					</div>
+					<div class="alert theme-danger py-3 px-5 small mb-3 d-none" id="d_hook_form_error" role="alert"></div>
+					<div class="alert theme-warning py-3 px-5 small mb-3 d-none" id="d_hook_unsaved" role="alert">
+						<i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i>' . lang('The subscription is not created yet: create it or close the form.') . '
+					</div>
+					<div class="mb-5">
+						<label class="pg-field-label" for="d_hook_url">' . lang('Address') . '</label>
+						<textarea class="pg-input api-hook-address" name="hook_url" id="d_hook_url" rows="3" maxlength="' . (int)$hook_bounds['url'] . '"
+							spellcheck="false" autocomplete="off" aria-describedby="d_hook_url_help" placeholder="https://"></textarea>
+						<div class="pg-field-help" id="d_hook_url_help">' . lang('The address the platform gives for incoming webhooks. It is checked when it is saved: an https address that resolves and lies outside this network.') . '</div>
+					</div>
+					<div class="mb-3">
+						<label class="pg-field-label" for="d_hook_search">' . lang('Webhook events') . '</label>
+						<span class="pg-input">
+							<input type="search" id="d_hook_search" autocomplete="off" aria-controls="d_hook_events"
+								placeholder="' . h(lang('Search events')) . '">
+							<span class="pg-input-end"><i class="bi bi-search" aria-hidden="true"></i></span>
+						</span>
+					</div>
+					<div class="api-event-list" id="d_hook_events" role="group" aria-label="' . h(lang('Webhook events')) . '"></div>
+					<div class="d-flex flex-wrap gap-3 small fg-2 mt-2">
+						<span id="d_hook_found" aria-live="polite"
+							data-all="' . h(lang(array('string' => '{var:1} events in the catalogue', 'vars' => '{1}'))) . '"
+							data-some="' . h(lang(array('string' => '{var:1} events for "{var:2}" · {var:3} in the catalogue', 'vars' => array('{1}', '{2}', '{3}')))) . '"></span>
+						<span class="ms-auto" id="d_hook_chosen"
+							data-text="' . h(lang(array('string' => '{var:1} chosen · at most {var:2}', 'vars' => array('{1}', (int)$hook_bounds['events'])))) . '"></span>
+					</div>
+					<div class="api-hook-events mb-3" id="d_hook_chips"></div>
+					<div class="alert theme-primary py-3 px-5 small mb-3">
+						<i class="bi bi-key me-1" aria-hidden="true"></i>' . lang('Once it is saved the subscription\'s signing secret is shown once. Paste it into the platform if it checks the signature.') . '
+					</div>
+					<div class="d-flex gap-3 justify-content-end">
+						<button type="button" class="pg-button pg-button-ghost pg-button-sm" id="d_hook_form_cancel">' . lang('Cancel') . '</button>
+						<button type="button" class="pg-button pg-button-fill pg-button-sm" id="d_hook_create">' . lang('Create the subscription') . '</button>
+					</div>
 				</div>
 				<div id="d_hook_rows"></div>
-				<div class="alert theme-primary py-3 px-5 small mt-5 mb-0">
-					<i class="bi bi-info-circle me-1"></i>'
-					. lang('The application registers these itself through the API, so it can move its own address without asking you. Here you can stop one, send what is waiting again, or remove it.') . '
+				<div class="api-guide mt-5 mb-0">
+					<div class="api-guide-title"><i class="bi bi-diagram-3 me-1" aria-hidden="true"></i>' . lang('Automation platforms') . '</div>
+					<ul class="mb-0">
+						<li>' . lang('With the platform\'s own app: the app connects with the site\'s address, the key and the secret, and opens and removes its subscriptions itself.') . '</li>
+						<li>' . lang('Without an app: paste the address the platform gives for incoming webhooks into New subscription and choose the events it should hear.') . '</li>
+						<li>' . lang('Here you can stop a subscription, send what is waiting again, send a sample or remove it.') . '</li>
+					</ul>
 				</div>
 			</div>
 
@@ -2130,6 +2396,24 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 						<input class="radio" type="radio" name="kind" value="oauth" id="n_kind_oauth" aria-describedby="n_kind_oauth_help">
 						<label class="small fw-bold" for="n_kind_oauth">' . lang('Connected apps (OAuth)') . '</label>
 						<div class="form-text mt-0" id="n_kind_oauth_help">' . lang('A person connects an outside application, such as an MCP client, after signing in on the site and agreeing to what it may do. There is no secret; the permissions below are the most any connection may reach.') . '</div>
+					</div>
+				</fieldset>
+				<fieldset class="mb-7" id="n_start">
+					<legend class="form-label small">' . lang('Starting point') . ' <span class="fg-2">&mdash; ' . lang('only for an integration') . '</span></legend>
+					<div class="api-start">
+						<div class="form-field form-field-card">
+							<input class="radio" type="radio" name="start" value="" id="n_start_self" aria-describedby="n_start_self_help" checked>
+							<label class="small fw-bold" for="n_start_self">' . lang('I will choose the permissions') . '</label>
+							<div class="form-text mt-0" id="n_start_self_help">' . lang('No permission comes ticked; choose below what the application may reach.') . '</div>
+						</div>
+						<div class="form-field form-field-card">
+							<input class="radio" type="radio" name="start" value="automation" id="n_start_auto" aria-describedby="n_start_auto_help">
+							<label class="small fw-bold" for="n_start_auto">' . lang('Automation platform') . '</label>
+							<div class="form-text mt-0" id="n_start_auto_help">' . lang('An automation platform connects to the site with this application. The permissions the platform uses are ticked.') . '</div>
+						</div>
+					</div>
+					<div class="alert theme-primary py-3 px-5 small mt-3 mb-0 d-none" id="n_start_note" role="status">
+						<i class="bi bi-magic me-1" aria-hidden="true"></i>' . h($start_note) . '
 					</div>
 				</fieldset>
 				<div role="group" aria-labelledby="n_scope_title">
@@ -2238,8 +2522,23 @@ if ($new_credentials !== null) {
 					<span class="small opacity-75">'
 					. lang('Only a verification hash is stored. If it is lost, issue a new one.') . '</span></p>
 
+				' . (!empty($new_credentials['automation']) ? '
+				<div class="alert theme-primary py-3 px-5 small mb-5">
+					<i class="bi bi-lightning me-1" aria-hidden="true"></i>'
+					. lang('An automation platform asks for these three values when it connects: the site\'s address, the key and the secret. Copy them in order into the platform\'s connect window.') . '
+				</div>' : '') . '
+
 				<div class="form-field mb-5">
-					<label class="form-label small text-uppercase opacity-75" id="nc_key_label">' . lang('Key') . '</label>
+					<label class="form-label small text-uppercase opacity-75" id="nc_site_label">1 &middot; ' . lang('Site address') . '</label>
+					<div class="api-secret-box">
+						<code id="nc_site">' . h($site_address) . '</code>
+						' . api_settings_copy_button('nc_site', 'nc_site_label', 'btn-outline theme-primary') . '
+					</div>
+					<div class="form-text">' . lang('The API is found from this address (/.well-known/pinegrap.json).') . '</div>
+				</div>
+
+				<div class="form-field mb-5">
+					<label class="form-label small text-uppercase opacity-75" id="nc_key_label">2 &middot; ' . lang('Key') . '</label>
 					<div class="api-secret-box">
 						<code id="nc_key">' . h($new_credentials['key']) . '</code>
 						' . api_settings_copy_button('nc_key', 'nc_key_label', 'btn-outline theme-primary') . '
@@ -2247,7 +2546,7 @@ if ($new_credentials !== null) {
 				</div>
 
 				<div class="form-field mb-5">
-					<label class="form-label small text-uppercase opacity-75" id="nc_secret_label">' . lang('Secret') . '</label>
+					<label class="form-label small text-uppercase opacity-75" id="nc_secret_label">3 &middot; ' . lang('Secret') . '</label>
 					<div class="api-secret-box">
 						<code id="nc_secret">' . h($new_credentials['secret']) . '</code>
 						' . api_settings_copy_button('nc_secret', 'nc_secret_label', 'btn-outline theme-primary') . '
@@ -2279,6 +2578,22 @@ echo '
 	var APPS = ' . json_encode($app_data, JSON_UNESCAPED_UNICODE) . ';
 
 	var API_BASE = ' . json_encode($api_base_url, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . ';
+	// The Events tab: the catalogue the form searches, the limits of POST
+	// /webhooks, and what the last post handed back (no secret: that is in
+	// the page once, in the tab itself).
+	var HOOK_EVENTS = ' . json_encode($hook_catalogue, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS) . ';
+	var HOOK_LIMIT = ' . (int)api_webhook_subscription_limit() . ';
+	var HOOK_MAX_EVENTS = ' . (int)$hook_bounds['events'] . ';
+	var HOOKS_BACK = ' . json_encode(is_array($hooks_back) ? array(
+		'app_id' => (int)$hooks_back['app_id'],
+		'form'   => isset($hooks_back['form']) ? $hooks_back['form'] : null,
+		'flash'  => isset($hooks_back['flash']) ? $hooks_back['flash'] : null,
+		'secret' => isset($hooks_back['secret'])
+	) : null, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS) . ';
+	// New application: the rows the "Automation platform" starting point ticks.
+	var START_CHOICES = ' . json_encode((object)$start_choices) . ';
+	var HOOK_TEXT = {};
+	HOOK_EVENTS.forEach(function (e) { HOOK_TEXT[e.name] = e.text; });
 
 	// This runs while the page is parsed; Bootstrap is reached through pgUI
 	// only when a row is opened, so a Bootstrap that loads later (6 is a
@@ -2328,8 +2643,10 @@ echo '
 	// One subscription per block rather than a table: the address is long, the
 	// event list is variable, and the failure text is the point when there is
 	// one - a grid would truncate exactly the part that matters.
-	function renderHooks(hooks) {
+	function renderHooks(hooks, flash) {
 		var box = document.getElementById("d_hook_rows");
+		document.getElementById("d_hook_count").textContent = hooks.length + " / " + HOOK_LIMIT;
+		document.getElementById("d_hook_new").disabled = (hooks.length >= HOOK_LIMIT);
 		if (!hooks.length) {
 			box.innerHTML = "<p class=\'small fg-2 py-5 mb-0\'>" +
 				' . json_encode(lang('This application is not subscribed to any event.'), JSON_UNESCAPED_UNICODE) . ' + "</p>";
@@ -2358,10 +2675,19 @@ echo '
 				}).join("") + "</div>" +
 				(meta.length ? "<div class=\'api-hook-meta\'>" + meta.join(" &middot; ") + "</div>" : "") +
 				(h.error ? "<div class=\'api-hook-error\'><i class=\'bi bi-exclamation-triangle me-1\'></i>" + esc(h.error) + "</div>" : "") +
+				((flash && flash.webhook_id === h.id)
+					? "<div class=\'alert theme-" + (flash.ok ? "success" : "danger") + " py-3 px-5 small mt-3 mb-0\' role=\'status\'>" +
+						"<i class=\'bi bi-" + (flash.ok ? "check2" : "exclamation-triangle") + " me-1\' aria-hidden=\'true\'></i>" + esc(flash.text) + "</div>"
+					: "") +
 				"<div class=\'api-hook-acts\'>" +
 					((h.given_up || h.held || h.status === "failing")
 						? "<button type=\'button\' class=\'btn btn-sm btn-outline theme-primary api-hook-act\' data-act=\'webhook_retry\' data-id=\'" + h.id + "\'>" +
 							' . json_encode(lang('Send again'), JSON_UNESCAPED_UNICODE) . ' + "</button>"
+						: "") +
+					// A stopped subscription is sent nothing, a sample neither.
+					((h.status !== "disabled")
+						? "<button type=\'button\' class=\'pg-button pg-button-quiet pg-button-sm api-sample-open\' data-id=\'" + h.id + "\' aria-expanded=\'false\'>" +
+							"<i class=\'bi bi-send\' aria-hidden=\'true\'></i>" + ' . json_encode(lang('Send a sample'), JSON_UNESCAPED_UNICODE) . ' + "</button>"
 						: "") +
 					"<button type=\'button\' class=\'btn btn-sm btn-outline theme-secondary api-hook-act\' data-act=\'webhook_status\' data-id=\'" + h.id + "\'>" +
 						(h.status === "disabled"
@@ -2404,10 +2730,13 @@ echo '
 
 	var current = null;
 
-	function openApp(id) {
+	function openApp(id, back) {
 		var app = APPS[id];
 		if (!app) { return; }
 		current = app;
+		// The new subscription\'s secret belongs to the request that made it.
+		if (!back || !back.secret) { dropHookSecret(); }
+		resetHookForm();
 
 		document.getElementById("d_app_id").value = app.id;
 		document.getElementById("d_title").textContent = app.name;
@@ -2439,7 +2768,7 @@ echo '
 		document.getElementById("d_log_errors").checked = false;
 		renderLog(app.log, false);
 
-		renderHooks(app.webhooks || []);
+		renderHooks(app.webhooks || [], back ? back.flash : null);
 
 		// A team devices application has no secret to rotate and no curl line
 		// to hand over, and a phone never registers event subscriptions; what it
@@ -2477,8 +2806,18 @@ echo '
 		document.getElementById("d_rotate").classList.toggle("d-none", locked);
 		document.getElementById("d_danger_zone").classList.toggle("d-none", locked);
 		drawerElement.classList.toggle("api-locked", locked);
-		var firstTab = document.querySelector("#api_drawer .nav-link[data-bs-target=\'#d_general\']");
+		var firstTab = document.querySelector("#api_drawer .nav-link[data-bs-target=\'" + (back ? "#d_hooks" : "#d_general") + "\']");
 		if (firstTab) { pgUI.tab.show(firstTab); }
+		if (back && back.form && !locked) {
+			openHookForm();
+			document.getElementById("d_hook_url").value = back.form.url || "";
+			hookChosen = (back.form.events || []).filter(function (name) { return HOOK_TEXT.hasOwnProperty(name); });
+			renderHookChosen();
+			renderHookList();
+			var error = document.getElementById("d_hook_form_error");
+			error.textContent = back.form.error || "";
+			error.classList.toggle("d-none", !back.form.error);
+		}
 
 		document.getElementById("d_delete_ask").classList.remove("d-none");
 		document.getElementById("d_delete_confirm").classList.add("d-none");
@@ -2492,6 +2831,7 @@ echo '
 
 	pgUI.drawer.on(drawerElement, "hidden", function () {
 		document.body.classList.remove("api-drawer-open");
+		dropHookSecret();
 	});
 
 	document.querySelectorAll(".api-row").forEach(function (row) {
@@ -2589,6 +2929,247 @@ echo '
 		if (!button) { return; }
 		if (!window.confirm(button.dataset.confirm)) { e.preventDefault(); }
 	});
+
+	/* The Events tab: "New subscription" and "Send a sample". Both post
+	   through the drawer form, like the other subscription buttons. */
+	var hookChosen = [];
+	var hookSearch = document.getElementById("d_hook_search");
+
+	function dropHookSecret() {
+		var note = document.getElementById("d_hook_secret");
+		if (note) { note.remove(); }
+	}
+
+	// The text with the search marked where the fold keeps its length, so the
+	// mark sits on the letters that matched.
+	function markText(text, needle) {
+		var plain = String(text);
+		if (!needle) { return esc(plain); }
+		var folded = fold(plain);
+		var at = folded.indexOf(needle);
+		if (at < 0 || folded.length !== plain.length) { return esc(plain); }
+		return esc(plain.slice(0, at)) + "<mark>" + esc(plain.slice(at, at + needle.length)) + "</mark>" + esc(plain.slice(at + needle.length));
+	}
+
+	function renderHookList() {
+		var needle = fold(hookSearch.value).trim();
+		var full = (hookChosen.length >= HOOK_MAX_EVENTS);
+		var shown = HOOK_EVENTS.filter(function (e) {
+			return !needle || fold(e.name + " " + e.text + " " + e.module).indexOf(needle) > -1;
+		});
+		var list = document.getElementById("d_hook_events");
+		list.innerHTML = shown.length ? shown.map(function (e) {
+			var chosen = hookChosen.indexOf(e.name) > -1;
+			return "<label class=\'api-event small\'>" +
+				"<input class=\'pg-checkbox\' type=\'checkbox\' value=\'" + esc(e.name) + "\'" + (chosen ? " checked" : "") + ((full && !chosen) ? " disabled" : "") + ">" +
+				"<span><span class=\'api-event-name\'><code>" + markText(e.name, needle) + "</code>" +
+					(e.module ? "<span class=\'pg-pill pg-tone-gray\'>" + esc(e.module) + "</span>" : "") + "</span>" +
+				"<span class=\'api-event-text\'>" + markText(e.text, needle) + "</span></span></label>";
+		}).join("") : "<div class=\'api-event-none small\'>" + ' . json_encode(lang('Nothing found.'), JSON_UNESCAPED_UNICODE) . ' + "</div>";
+		var found = document.getElementById("d_hook_found");
+		found.textContent = needle
+			? found.dataset.some.replace("{1}", shown.length).replace("{2}", hookSearch.value.trim()).replace("{3}", HOOK_EVENTS.length)
+			: found.dataset.all.replace("{1}", HOOK_EVENTS.length);
+	}
+
+	// The chosen events as chips, each with its hidden field: the list shows
+	// only what the search finds, the chips post every one chosen.
+	function renderHookChosen() {
+		var chosen = document.getElementById("d_hook_chosen");
+		chosen.textContent = chosen.dataset.text.replace("{1}", hookChosen.length);
+		document.getElementById("d_hook_chips").innerHTML = hookChosen.map(function (name) {
+			return "<span class=\'api-chip\'>" + esc(name) +
+				"<input type=\'hidden\' name=\'hook_events[]\' value=\'" + esc(name) + "\'>" +
+				"<button type=\'button\' class=\'api-chip-remove\' data-event=\'" + esc(name) + "\' aria-label=\'" +
+					esc(' . json_encode(lang('Remove'), JSON_UNESCAPED_UNICODE) . ' + " " + name) + "\'>&times;</button></span>";
+		}).join("");
+	}
+
+	function openHookForm() {
+		document.getElementById("d_hook_form").classList.remove("d-none");
+		document.getElementById("d_hook_new").setAttribute("aria-expanded", "true");
+		renderHookChosen();
+		renderHookList();
+		document.getElementById("d_hook_url").focus();
+	}
+
+	function resetHookForm() {
+		document.getElementById("d_hook_form").classList.add("d-none");
+		document.getElementById("d_hook_new").setAttribute("aria-expanded", "false");
+		document.getElementById("d_hook_url").value = "";
+		document.getElementById("d_hook_form_error").classList.add("d-none");
+		document.getElementById("d_hook_unsaved").classList.add("d-none");
+		hookSearch.value = "";
+		hookChosen = [];
+		renderHookChosen();
+	}
+
+	document.getElementById("d_hook_new").addEventListener("click", function () {
+		if (current && current.locked) { return; }
+		openHookForm();
+	});
+
+	["d_hook_form_close", "d_hook_form_cancel"].forEach(function (id) {
+		document.getElementById(id).addEventListener("click", function () {
+			resetHookForm();
+			document.getElementById("d_hook_new").focus();
+		});
+	});
+
+	hookSearch.addEventListener("input", renderHookList);
+	// Return in the search box would post the drawer form (Save).
+	hookSearch.addEventListener("keydown", function (e) {
+		if (e.key === "Enter") { e.preventDefault(); }
+	});
+
+	document.getElementById("d_hook_events").addEventListener("change", function (e) {
+		if (!e.target.matches("input[type=checkbox]")) { return; }
+		var name = e.target.value;
+		var at = hookChosen.indexOf(name);
+		if (e.target.checked && at < 0 && hookChosen.length < HOOK_MAX_EVENTS) { hookChosen.push(name); }
+		if (!e.target.checked && at > -1) { hookChosen.splice(at, 1); }
+		renderHookChosen();
+		// Only the disabled state of the other boxes changes at the limit.
+		var full = (hookChosen.length >= HOOK_MAX_EVENTS);
+		this.querySelectorAll("input[type=checkbox]").forEach(function (box) {
+			box.disabled = full && !box.checked;
+		});
+	});
+
+	document.getElementById("d_hook_chips").addEventListener("click", function (e) {
+		var button = e.target.closest(".api-chip-remove");
+		if (!button) { return; }
+		var at = hookChosen.indexOf(button.dataset.event);
+		if (at > -1) { hookChosen.splice(at, 1); }
+		renderHookChosen();
+		renderHookList();
+		hookSearch.focus();
+	});
+
+	document.getElementById("d_hook_create").addEventListener("click", function () {
+		document.getElementById("d_action").value = "webhook_create";
+		document.getElementById("d_action").form.submit();
+	});
+
+	// Nothing typed is dropped in silence: Save posts the application, not
+	// the form, so while the form holds an address or a chosen event Save
+	// does not post; it brings the form into view with a line saying the
+	// subscription is not created yet. Its other buttons (new secret, delete)
+	// post as before.
+	function hookFormHolds() {
+		return !document.getElementById("d_hook_form").classList.contains("d-none")
+			&& (document.getElementById("d_hook_url").value.trim() !== "" || hookChosen.length > 0);
+	}
+
+	document.getElementById("d_action").form.addEventListener("submit", function (e) {
+		var submitter = e.submitter;
+		var saving = !submitter || submitter.id === "d_save" || !submitter.name;
+		if (!saving || !hookFormHolds()) { return; }
+		e.preventDefault();
+		var tab = document.querySelector("#api_drawer .nav-link[data-bs-target=\'#d_hooks\']");
+		if (tab) { pgUI.tab.show(tab); }
+		document.getElementById("d_hook_unsaved").classList.remove("d-none");
+		document.getElementById("d_hook_form").scrollIntoView({ block: "start" });
+		document.getElementById("d_hook_create").focus({ preventScroll: true });
+	});
+
+	// Leaving the Events tab takes the new subscription\'s secret out.
+	document.addEventListener("click", function (e) {
+		var tab = e.target.closest("#api_drawer .nav-link");
+		if (tab && tab.dataset.bsTarget !== "#d_hooks") { dropHookSecret(); }
+	});
+
+	// "Send a sample": one box at a time, under its subscription, with that
+	// subscription\'s own events.
+	function closeSample() {
+		var open = document.querySelector("#d_hook_rows .api-hook-sample");
+		if (!open) { return null; }
+		var button = document.querySelector(".api-sample-open[data-id=\'" + open.dataset.id + "\']");
+		if (button) { button.setAttribute("aria-expanded", "false"); }
+		open.remove();
+		return button;
+	}
+
+	document.addEventListener("click", function (e) {
+		var button = e.target.closest(".api-sample-open");
+		if (!button || !current) { return; }
+		var wasOpen = (button.getAttribute("aria-expanded") === "true");
+		closeSample();
+		if (wasOpen) { return; }
+		var hook = (current.webhooks || []).filter(function (h) { return String(h.id) === button.dataset.id; })[0];
+		if (!hook) { return; }
+		var box = document.createElement("div");
+		box.className = "api-hook-sample";
+		box.dataset.id = hook.id;
+		box.innerHTML =
+			"<label class=\'pg-field-label\' for=\'d_sample_select\'>" + ' . json_encode(lang('Send a sample'), JSON_UNESCAPED_UNICODE) . ' + "</label>" +
+			"<select class=\'pg-input pg-input-sm mb-3\' id=\'d_sample_select\' aria-describedby=\'d_sample_help\'>" +
+			hook.events.map(function (name) {
+				return "<option value=\'" + esc(name) + "\'>" + esc(name + (HOOK_TEXT[name] ? " — " + HOOK_TEXT[name] : "")) + "</option>";
+			}).join("") + "</select>" +
+			"<div class=\'d-flex gap-3 mb-2\'>" +
+				"<button type=\'button\' class=\'pg-button pg-button-quiet pg-button-sm\' id=\'d_sample_send\'><i class=\'bi bi-send\' aria-hidden=\'true\'></i>" +
+					' . json_encode(lang('Send'), JSON_UNESCAPED_UNICODE) . ' + "</button>" +
+				"<button type=\'button\' class=\'pg-button pg-button-ghost pg-button-sm\' id=\'d_sample_cancel\'>" + ' . json_encode(lang('Cancel'), JSON_UNESCAPED_UNICODE) . ' + "</button>" +
+			"</div>" +
+			"<div class=\'pg-field-help\' id=\'d_sample_help\'>" + esc(' . json_encode(lang('The chosen event\'s sample goes only to this address, with the header X-Pinegrap-Test: 1; no other subscription, flow or channel hears it.'), JSON_UNESCAPED_UNICODE) . ') + "</div>";
+		button.closest(".api-hook").appendChild(box);
+		button.setAttribute("aria-expanded", "true");
+		document.getElementById("d_sample_select").focus();
+	});
+
+	document.addEventListener("click", function (e) {
+		if (e.target.closest("#d_sample_cancel")) {
+			var opener = closeSample();
+			if (opener) { opener.focus(); }
+			return;
+		}
+		if (!e.target.closest("#d_sample_send")) { return; }
+		var open = document.querySelector("#d_hook_rows .api-hook-sample");
+		document.getElementById("d_action").value = "webhook_sample";
+		document.getElementById("d_webhook_id").value = open.dataset.id;
+		document.getElementById("d_sample_event").value = document.getElementById("d_sample_select").value;
+		document.getElementById("d_action").form.submit();
+	});
+
+	/* New application: the starting point, only for an integration. The
+	   automation platform ticks the rows its contract uses; choosing the
+	   permissions oneself starts from none, as before. */
+	var startBox = document.getElementById("n_start");
+
+	function syncStart() {
+		var kind = document.querySelector("#api_new input[name=\'kind\']:checked");
+		var server = !kind || kind.value === "server";
+		startBox.classList.toggle("d-none", !server);
+		if (!server) {
+			document.getElementById("n_start_self").checked = true;
+			document.getElementById("n_start_note").classList.add("d-none");
+		}
+	}
+
+	document.querySelectorAll("#api_new input[name=\'kind\']").forEach(function (radio) {
+		radio.addEventListener("change", syncStart);
+	});
+
+	document.querySelectorAll("#api_new input[name=\'start\']").forEach(function (radio) {
+		radio.addEventListener("change", function () {
+			var automation = (this.value === "automation");
+			document.querySelectorAll("#api_new .api-perm").forEach(function (row) {
+				var choice = automation && START_CHOICES[row.dataset.group] ? START_CHOICES[row.dataset.group] : "";
+				var input = row.querySelector("input[value=\'" + choice + "\']");
+				if (input) { input.checked = true; }
+			});
+			paintImplied();
+			document.getElementById("n_start_note").classList.toggle("d-none", !automation);
+		});
+	});
+
+	syncStart();
+
+	// Back from the Events tab\'s form or a sample: the drawer opens there again.
+	if (HOOKS_BACK && APPS[HOOKS_BACK.app_id]) {
+		window.addEventListener("load", function () { openApp(HOOKS_BACK.app_id, HOOKS_BACK); });
+	}
 
 	// Copy buttons
 	document.addEventListener("click", function (e) {
