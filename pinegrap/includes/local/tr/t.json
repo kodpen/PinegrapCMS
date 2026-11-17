@@ -2738,6 +2738,7 @@
     "The campaign profile has been saved.": "Kampanya profili kaydedildi.",
     "The campaign profile it is to follow does not exist.": "İzlenecek kampanya profili yok.",
     "The campaign stopped because the server did not answer. Close this window and send the campaign again to resume it.": "Sunucu yanıt vermediği için kampanya durdu. Bu pencereyi kapatın ve kampanyayı kaldığı yerden sürdürmek için yeniden gönderin.",
+    "The campaign was created and nothing has been sent yet. It goes out once Status is set to Ready to Send and saved.": "Kampanya oluşturuldu ve henüz hiçbir şey gönderilmedi. Durum \"Gönderilmeye Hazır\" yapılıp kaydedildiğinde gönderilir.",
     "The campaign was saved and a test was sent ({var:1}).": "Kampanya kaydedildi ve deneme gönderildi ({var:1}).",
     "The campaigns open now, for clean water, education, food, health and emergency relief: where each stands and how to give to it.": "Temiz su, eğitim, gıda, sağlık ve acil yardım için şu an açık kampanyalar: her birinin nerede durduğu ve ona nasıl bağış yapılacağı.",
     "The campaigns that need help most": "Yardıma en çok ihtiyaç duyan kampanyalar",
