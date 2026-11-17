@@ -424,6 +424,7 @@
 - designer-theme-panel-light-selector.md: Which blocks the designer's Themes panel writes light and dark variables into, why colours and fonts/radii use different light selectors, and how old designs are split.
 - designer-theme-panel-value-check.md: What the Themes panel's text boxes write: one CSS value only (no ; { } < > comment, backslash or open bracket or quote), a colour row also a colour by CSS.supports; a refused box stays marked.
 - designer-theme-part.md: The Themes tab of the designer's assets panel as the part 'theme' (D5 part 5): what moved, what the core keeps, the host the part works through
+- designer-tree-move-keeps-selection.md: A move made by dragging rows in the designer's Overview tree keeps the moved elements selected, as a canvas move does; a multi-selection moved together stays one (#10067).
 - designer-turkish-terms-2.md: More Turkish designer words, continued from designer-turkish-terms: Parola (never Şifre) in the account widgets, their Bind Data labels and the account e-mails; tests/designer_password_word_test.php
 - designer-turkish-terms.md: Turkish terms for designer layer names, palette labels and panel rows; how a shared language key with a misfit Turkish is fixed (in place or a narrower key); tests/designer_turkish_terms_test.php
 - designer-undo-keeps-selection.md: Undo and Redo in the designer keep the selected element (found again by _id in the restored tree) and the Options panel's scroll; dropped only when the step removed it.
