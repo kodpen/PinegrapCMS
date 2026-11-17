@@ -352,3 +352,54 @@ function test_page_bundle_publish_dialog_waits_for_choices()
 	pg_assert_contains('button.disabled = open', $script, 'then Publish is enabled');
 	pg_assert_contains('data-bs-dismiss="dialog" autofocus>', pg_test_function_source('pg_page_bundle_take_back_dialog'), 'the take-back dialog too');
 }
+
+// A failed publish takes back a replaced page with the revision its write
+// stored: the row kept for the take-back gets the write's revision before.
+function test_page_bundle_item_written_keeps_revision_before()
+{
+	$item = array('id' => 2, 'live_page_id' => 5, 'revision_before' => 0, 'written_state' => '', 'live_name' => 'home');
+	$done = array('ok' => true, 'error' => '', 'revision_before' => 7, 'written_state' => 'abc');
+	$after = pg_page_bundle_item_written($item, $done);
+
+	pg_assert_same(7, $after['revision_before'], 'the revision before the write');
+	pg_assert_same('abc', $after['written_state'], 'the state written');
+	pg_assert_same('home', $after['live_name'], 'the rest of the row stays');
+
+	$failed = pg_page_bundle_item_written($item, array('ok' => false, 'error' => 'x'));
+	pg_assert_same(0, $failed['revision_before'], 'a failed write changes nothing');
+
+	pg_assert_contains('pg_page_bundle_publish_ops(', pg_test_function_source('pg_page_bundle_publish'), 'the publish runs the shared write and take-back');
+
+	$write = pg_test_function_source('pg_page_bundle_write_item');
+	pg_assert_contains("'revision_before' => \$before", $write, 'a replacement returns the revision it stored');
+}
+
+// A take-back in the same run gets the row its write left: a replaced page
+// goes back to the revision stored by its write, not the 0 read before.
+function test_page_bundle_publish_ops_take_back_reads_written_row()
+{
+	$items = array(
+		1 => array('id' => 1, 'live_page_id' => 5, 'revision_before' => 0, 'written_state' => ''),
+		2 => array('id' => 2, 'live_page_id' => 6, 'revision_before' => 0, 'written_state' => ''),
+	);
+	$seen = new ArrayObject();
+	$write_item = function ($item) {
+		if ((int) $item['id'] === 2) {
+			return array('ok' => false, 'error' => 'refused 2');
+		}
+
+		return array('ok' => true, 'error' => '', 'revision_before' => 7, 'written_state' => 's1');
+	};
+	$undo_item = function ($item) use ($seen) {
+		$seen[(int) $item['id']] = array((int) $item['revision_before'], (string) $item['written_state']);
+
+		return (int) $item['revision_before'] > 0;
+	};
+
+	list($write, $undo) = pg_page_bundle_publish_ops($items, $write_item, $undo_item);
+	$run = pg_page_bundle_publish_run(array(1, 2), $write, $undo);
+
+	pg_assert_same(array(1 => array(7, 's1')), $seen->getArrayCopy(), 'the take-back reads the revision its write stored');
+	pg_assert_same('taken_back', $run['outcome'], 'so the replaced page comes back and nothing stands');
+	pg_assert_same(2, $run['failed'], 'the page that failed is named');
+}

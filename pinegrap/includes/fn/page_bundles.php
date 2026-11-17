@@ -1326,7 +1326,7 @@ function pg_page_bundle_log($string, $page_name, $bundle, $user)
  * @param array $item   page_bundle_item row with draft_name, live_name
  * @param array $bundle
  * @param array $user
- * @return array ok, error
+ * @return array ok, error; when written also revision_before, written_state
  */
 function pg_page_bundle_write_item($item, $bundle, $user)
 {
@@ -1368,7 +1368,7 @@ function pg_page_bundle_write_item($item, $bundle, $user)
         db_q("UPDATE page_bundle_item SET revision_before = 0, written_state = ? WHERE id = ?", array($state, $id));
         pg_page_bundle_log('page ({var:1}) was published with the release bundle ({var:2})', $draft['page_name'], $bundle, $user);
 
-        return array('ok' => true, 'error' => '');
+        return array('ok' => true, 'error' => '', 'revision_before' => 0, 'written_state' => $state);
     }
 
     if (!pg_collab_may_edit_page('', $live_id)) {
@@ -1396,11 +1396,60 @@ function pg_page_bundle_write_item($item, $bundle, $user)
     $written_no = isset($saved['revision_no']) ? (int) $saved['revision_no'] : 0;
     $before = ($written_no > 0) ? ($written_no - 1) : $latest;
 
-    db_q("UPDATE page_bundle_item SET revision_before = ?, written_state = ? WHERE id = ?",
-        array($before, pg_page_bundle_live_state($live_id), $id));
+    $state = pg_page_bundle_live_state($live_id);
+    db_q("UPDATE page_bundle_item SET revision_before = ?, written_state = ? WHERE id = ?", array($before, $state, $id));
     pg_page_bundle_log('page ({var:1}) was replaced by the release bundle ({var:2})', $item['live_name'], $bundle, $user);
 
-    return array('ok' => true, 'error' => '');
+    return array('ok' => true, 'error' => '', 'revision_before' => $before, 'written_state' => $state);
+}
+
+/**
+ * The item row as its write left it: a successful write's revision before
+ * and state written, which it stored on the item, so a take-back in the same
+ * publish reads the revision to go back to.
+ *
+ * @param array $item page_bundle_item row
+ * @param array $done pg_page_bundle_write_item()
+ * @return array
+ */
+function pg_page_bundle_item_written($item, $done)
+{
+    if (empty($done['ok'])) {
+        return $item;
+    }
+
+    foreach (array('revision_before', 'written_state') as $key) {
+        if (array_key_exists($key, (array) $done)) {
+            $item[$key] = $done[$key];
+        }
+    }
+
+    return $item;
+}
+
+/**
+ * The write and take-back of one publish run, by item id, over one shared
+ * copy of the item rows: a take-back reads the row its write left, with the
+ * revision before that the write stored.
+ *
+ * @param array    $items      item id => page_bundle_item row
+ * @param callable $write_item row => pg_page_bundle_write_item()
+ * @param callable $undo_item  row => bool
+ * @return array the write and the take-back for pg_page_bundle_publish_run()
+ */
+function pg_page_bundle_publish_ops($items, $write_item, $undo_item)
+{
+    $write = function ($id) use (&$items, $write_item) {
+        $done = $write_item($items[$id]);
+        $items[$id] = pg_page_bundle_item_written($items[$id], $done);
+
+        return $done;
+    };
+    $undo = function ($id) use (&$items, $undo_item) {
+        return $undo_item($items[$id]);
+    };
+
+    return array($write, $undo);
 }
 
 /**
@@ -1504,12 +1553,13 @@ function pg_page_bundle_publish($bundle, $user, $choices = array())
 
     pg_page_bundle_clear_failure($bundle);
 
-    $write = function ($id) use ($items, $bundle, $user) {
-        return pg_page_bundle_write_item($items[$id], $bundle, $user);
-    };
-    $undo = function ($id) use ($items, $bundle, $user) {
-        return pg_page_bundle_undo_item($items[$id], $bundle, $user, 'waiting');
-    };
+    list($write, $undo) = pg_page_bundle_publish_ops($items,
+        function ($item) use ($bundle, $user) {
+            return pg_page_bundle_write_item($item, $bundle, $user);
+        },
+        function ($item) use ($bundle, $user) {
+            return pg_page_bundle_undo_item($item, $bundle, $user, 'waiting');
+        });
 
     $run = pg_page_bundle_publish_run($check['plan']['write'], $write, $undo);
     $out['run'] = $run;
