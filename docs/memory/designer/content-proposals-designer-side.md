@@ -24,8 +24,7 @@ module: content_proposals
 
 ## Dismiss and take back?
 - Dismiss: a waiting or stale change, a reason of at most 300 characters (`pg_content_proposals_reason()`, characters not bytes), kept as `steps.reason`; no column.
-- Take back (`pg_content_proposals_revert()`): only by the designer who applied it, only while nobody saved the page since: the tree's fingerprint is still `after_hash` and each setting of the change's `fields` operation still holds the value the apply wrote (`pg_content_proposals_revert_check()`, `pg_content_proposals_revert_fields_kept()`); it writes `before_tree` and the settings' `was` values back in one save, then `reverted`.
-- (#PRNUM) A settings-only save (Mass Edit of the title) kept the fingerprint, and take back wrote the old title over the new one. Now either case refuses with the same "The page was saved again after this change…" message.
+- Take back (`pg_content_proposals_revert()`): only by the designer who applied it, while nobody saved the page since (`pg_content_proposals_revert_check()`): the tree is still `after_hash` and each setting the change wrote holds that value, else "saved again" (PR #10231: a Mass Edit title was lost). One save writes `before_tree` and the settings' `was` back, then `reverted`.
 
 ## Which test guards it?
-- `tests/content_proposals_test.php`: apply puts each operation, History names both, stale refused (gone, changed, setting, tree), the reason's limit and the 30 days, take back, the screen's gate. `content_proposals_revert_test.php`: the settings-only save.
+- `tests/content_proposals_test.php`: apply puts each operation, History names both, stale refused (gone, changed, setting, tree), the reason's limit and the 30 days, take back, the screen's gate.
