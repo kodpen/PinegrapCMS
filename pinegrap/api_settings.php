@@ -1303,14 +1303,14 @@ function api_settings_oauth_guide($id_prefix, $button_class) {
 	$claude_link = pg_oauth_claude_connect_link($mcp_file, defined('ORGANIZATION_NAME') ? (string)ORGANIZATION_NAME : '');
 
 	$claude_row = ($claude_link !== '')
-		? '<a class="btn btn-sm theme-primary" id="' . $id_prefix . '_claude_connect" href="' . h($claude_link) . '" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>' . lang('Connect to Claude') . '</a>
-		<div class="form-text">' . lang('Opens Claude in a new tab with the Add custom connector dialog filled in with this site\'s address. Sign in to Claude, press Add, then Connect.') . '</div>'
+		? '<div><a class="btn btn-sm btn-solid theme-primary" id="' . $id_prefix . '_claude_connect" href="' . h($claude_link) . '" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>' . lang('Connect to Claude') . '</a></div>
+		<div class="form-text mt-2">' . lang('Opens Claude in a new tab with the Add custom connector dialog filled in with this site\'s address. Sign in to Claude, press Add, then Connect.') . '</div>'
 		: '<div class="form-text">' . lang('Claude connects only to an https address. Switch the site to https to connect it to Claude.') . '</div>';
 
 	return '
 	<div class="form-field mb-5">
 		<label class="form-label small">' . lang('Claude') . '</label>
-		<div>' . $claude_row . '</div>
+		' . $claude_row . '
 	</div>
 
 	<div class="form-field mb-5">
