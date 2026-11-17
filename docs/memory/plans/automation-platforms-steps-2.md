@@ -8,6 +8,7 @@ description: Plan automation-platforms, steps AU8 to AU10 and the order of all t
   - One sheet at 1440, 1024 and 390, light and dark, the longest Turkish labels: New application with the starting point, the sheet with the three values, the Events tab with "New subscription" open and its event list searched, "Send a sample".
   - Posted in the agent channel; the architect brings it to the owner as one question.
   - Features: A10, A11, A12, A13 as drawn.
+  - Being drawn; the pictures go to the agent channel for the architect.
 
 - AU9 (M) after AU8's yes, AU3 and AU4: the panel.
   - Existing files: `api_settings.php` (New application, the Events tab, the webhook card, the guides), `includes/api/resources/webhooks.php`: the checks of `api_webhooks_create()` move into one function both callers use.
