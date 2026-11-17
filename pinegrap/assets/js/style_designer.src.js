@@ -78008,7 +78008,7 @@ const StyleDesigner = (function () {
         var held = on ? [] : list.filter(_pgExperimentHeld);
         if (held.length) {
             list = list.filter(function (p) { return !_pgExperimentHeld(p); });
-            if (!list.length) { sdToast(esc(_sdT('This page is a variant in an experiment: it stays a draft until the experiment ends.')), 'info', 4000); return false; }
+            if (!list.length) { sdToast(esc(_pgHeldText(held[0])), 'info', 4000); return false; }
         }
         // The home page stays on the site; the server would refuse it too.
         var home = on ? list.filter(function (p) { return p.page_home; }) : [];
@@ -78125,7 +78125,7 @@ const StyleDesigner = (function () {
                      : (waits ? _sdT('The page stays a draft until its publish time.') : '');
         if (_pgExperimentHeld(p)) {
             box.disabled = true;
-            box.title = _sdT('This page is a variant in an experiment: it stays a draft until the experiment ends.');
+            box.title = _pgHeldText(p);
         }
         _pgSyncScheduleFields(p, home);
     }
@@ -78143,6 +78143,13 @@ const StyleDesigner = (function () {
         return ex.pages[String(p.page_id)] || null;
     }
     function _pgExperimentHeld(p) { var st = _pgExperimentOf(p); return !!(st && st.held); }
+    // Why a held page stays a draft: a release bundle's draft carries its
+    // bundle's text (pg_experiment_editor_page_state()), a variant the
+    // experiment's.
+    function _pgHeldText(p) {
+        var st = _pgExperimentOf(p);
+        return (st && st.hold_text) || _sdT('This page is a variant in an experiment: it stays a draft until the experiment ends.');
+    }
     function _pgExperimentSync(a) {
         var ex = (_design && _design.experiments) || {};
         var st = _pgExperimentOf(a);
@@ -78332,10 +78339,13 @@ const StyleDesigner = (function () {
             var state = !p.page_draft ? 'live'
                       : (_pgExperimentHeld(p) ? 'held' : (_pgScheduleAhead(p.page_publish_at) ? 'scheduled' : 'draft'));
             var t = _pgTreeOf(p);
+            var hold = (state === 'held') ? _pgExperimentOf(p) : null;
             return {
                 key: p.key,
                 name: p.page_name || _sdT('New Page'),
                 state: state,
+                label: (hold && hold.label) || '',
+                note: (hold && hold.hold_text) || '',
                 changed: !(p.page_id > 0) || !_pgPageUnchanged(p, t || createDefaultTree(), null),
                 locked: p.access === 'locked',
                 home: !!p.page_home,

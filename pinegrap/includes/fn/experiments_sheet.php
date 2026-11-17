@@ -819,11 +819,47 @@ function pg_experiment_sheet_publish_winner($experiment, $key, $user)
 }
 
 /**
+ * A tab page's state in the visual editor: an open experiment's entry
+ * (pg_experiment_page_states()) with whether it holds the page as a draft,
+ * else the release bundle that holds the draft (pg_page_bundle_hold()),
+ * held as a variant is, with the Publish sheet's row label and the refusal
+ * text naming the bundle; null when neither. The experiment comes first, as
+ * in pg_experiment_variant_hold_message(). Pure.
+ *
+ * @param array|null $experiment pg_experiment_page_states() entry
+ * @param array|null $bundle     pg_page_bundle_hold() row
+ * @param string     $page_name
+ * @return array|null
+ */
+function pg_experiment_editor_page_state($experiment, $bundle, $page_name)
+{
+    if (is_array($experiment)) {
+        $experiment['held'] = ($experiment['role'] === 'variant') && pg_experiment_variant_held($experiment['status']);
+
+        return $experiment;
+    }
+
+    if (!is_array($bundle)) {
+        return null;
+    }
+
+    $name = (string) $bundle['bundle_name'];
+
+    return array(
+        'role' => 'bundle',
+        'held' => true,
+        'bundle_id' => (int) $bundle['bundle_id'],
+        'bundle_name' => $name,
+        'label' => lang(array('string' => 'Held by the bundle {var:1}', 'vars' => $name)),
+        'hold_text' => pg_page_bundle_hold_text((string) $page_name, $name),
+    );
+}
+
+/**
  * The visual editor's experiments block: whether the sheet can be opened
  * (ready: designers and administrators, after the upgrade), its address, and the
- * state of each open page by id as pg_experiment_page_states() gives it
- * (role, status, the live page's name, whether it holds the page as a
- * draft).
+ * state of each open page by id (pg_experiment_editor_page_state()): an open
+ * experiment's, or the release bundle's that holds the page as a draft.
  *
  * @param array $page_ids the editor's page ids
  * @param array $user
@@ -832,14 +868,38 @@ function pg_experiment_sheet_publish_winner($experiment, $key, $user)
 function pg_experiment_editor_config($page_ids, $user)
 {
     $ready = pg_experiment_sheet_ready() && ((int) $user['role'] <= 1);
+    $ids = array_values(array_unique(array_filter(array_map('intval', (array) $page_ids))));
     $pages = array();
 
-    // The states reach every operator: a held variant's Publish is refused
-    // for anybody who could press it.
-    if (pg_experiment_sheet_ready()) {
-        foreach (pg_experiment_page_states($page_ids) as $id => $state) {
-            $state['held'] = ($state['role'] === 'variant') && pg_experiment_variant_held($state['status']);
-            $pages[(string) $id] = $state;
+    // The states reach every operator: a held variant's or bundled draft's
+    // Publish is refused for anybody who could press it.
+    $states = pg_experiment_sheet_ready() ? pg_experiment_page_states($ids) : array();
+
+    foreach ($states as $id => $state) {
+        $pages[(string) $id] = pg_experiment_editor_page_state($state, null, '');
+    }
+
+    // A draft in an open release bundle (includes/fn/page_bundles.php).
+    $bundles = array();
+
+    if (function_exists('pg_page_bundle_hold') && function_exists('pg_page_bundles_ready') && pg_page_bundles_ready()) {
+        foreach ($ids as $id) {
+            if (!isset($states[$id]) && ($bundle = pg_page_bundle_hold($id))) {
+                $bundles[$id] = $bundle;
+            }
+        }
+    }
+
+    if ($bundles) {
+        $names = array();
+        $list = implode(',', array_keys($bundles));
+
+        foreach ((array) db_items("SELECT page_id, page_name FROM page WHERE page_id IN ($list)") as $row) {
+            $names[(int) $row['page_id']] = (string) $row['page_name'];
+        }
+
+        foreach ($bundles as $id => $bundle) {
+            $pages[(string) $id] = pg_experiment_editor_page_state(null, $bundle, isset($names[$id]) ? $names[$id] : '');
         }
     }
 
