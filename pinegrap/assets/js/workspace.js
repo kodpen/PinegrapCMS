@@ -19506,7 +19506,7 @@
             var self = this;
             var box = clear(self.previewBox);
             var preview = command.preview;
-            var card = el('div', 'ws-preview');
+            var card = el('div', 'ws-preview ws-row-card');
             var drawn = self.pending.body;
             var inputs = {};
             var tableId = preview.table_id || 0;
@@ -19559,6 +19559,12 @@
                     // One item a line: the recipe's text box.
                     input = el('textarea', 'pg-input');
                     input.rows = 2;
+                } else if (column.type === 'text') {
+                    // A text keeps its line breaks (a pasted address or
+                    // note): a text box, one line high at rest, growing
+                    // with its lines (.ws-row-text).
+                    input = el('textarea', 'pg-input ws-row-text');
+                    input.rows = 1;
                 } else if (column.type === 'date') {
                     input = pgDateField(el('input', 'pg-input'), column.time ? 'datetime-local' : 'date');
                 } else {

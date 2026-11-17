@@ -11,7 +11,7 @@ description: /create row (/oluştur satır) in a channel: the table matched by n
 
 ## Which parts do the /create, /price and /stock cards use? (PR #10234)
 - The look's recipes (architect, agent channel message 8554), through `lookButton()`, `lookCheck()` and `lookField()` in workspace.js: Create or Save `pg-button pg-button-fill pg-button-sm` (one fill a card), "All fields" `-quiet`, Cancel `-ghost`; ticks `pg-checkbox` with a `pg-text-2` label; the row card's fields `pg-field-label` over `pg-input`, help `pg-field-help`, money a `pg-input` wrapper with `pg-input-end`.
-- A text column is a one-line `pg-input` (the recipe textarea is 92 px high); a list keeps the textarea. The frame stays `.ws-preview`, shared with the /task card.
+- A text column is `textarea.pg-input.ws-row-text`: it keeps line breaks, is one field (36 px) high at rest and grows up to eight lines (`field-sizing: content`), placed by `.ws-row-card` in backend.src.css, the recipe unchanged (architect, message 8593: a one-line input was refused). A list keeps the recipe's box. The frame stays `.ws-preview`, shared with the /task card.
 
 ## How is it written?
 - Only Create writes: it sends `confirm`, `table_id` and `cells` (column id => as typed; `ws_send` passes them), each read by `ws_wtable_screen_cell_from_form()` as the table screen reads its form, then `ws_wtable_row_create()`: the table's rights, key, limits, row number, events and flows. A refused cell is named by its column (`ws_command_row_refusal()`).

@@ -193,6 +193,17 @@ function test_workspace_command_create_row_strip_and_refusal()
 		pg_assert_false((bool) preg_match('/btn btn-|form-control|input-group|el\(\'input\', \'check\'\)/', $body), $card . ': no old control');
 	}
 
+	// A text column keeps its line breaks: a text box, one line high at
+	// rest, placed by the card's own class; the recipe is not changed.
+	pg_assert_contains("} else if (column.type === 'text') {", $draw, 'a text column has a case of its own');
+	pg_assert_contains("input = el('textarea', 'pg-input ws-row-text');", $draw, 'a text column draws a text box');
+	pg_assert_contains("var card = el('div', 'ws-preview ws-row-card');", $draw, 'the card carries its placing class');
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css');
+	$rule = substr($css, (int) strpos($css, '.ws-row-card textarea.pg-input.ws-row-text {'), 400);
+	pg_assert_contains('max-height: calc(8lh + 20px);', $rule, 'up to eight lines');
+	pg_assert_contains('padding-block: calc((36px - 1lh - 2px) / 2);', $rule, 'one field high at rest');
+	pg_assert_contains('field-sizing: content;', $rule, 'growing with its lines');
+
 	pg_assert_contains("lookButton('pg-button pg-button-quiet pg-button-sm', t('qc_all_fields')", workspace_command_create_row_test_js($js, 'drawCreatePreview'), '"All fields" quiet');
 	pg_assert_contains("var input = el('input', 'pg-checkbox');", $js, 'the ticks are .pg-checkbox');
 	pg_assert_contains("var caption = el('label', 'pg-field-label', label);", $js, 'the labels are .pg-field-label');
