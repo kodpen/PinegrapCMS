@@ -31659,6 +31659,22 @@ const StyleDesigner = (function () {
             text: _sdT('Into {var:1}, place {var:2}', [list[best].name, list[best].place]) };
     }
 
+    // Where the drop label stands for a pointer at (px, py), a label of
+    // lw x lh and a window of vw x vh: 14 px right of and 16 px below the
+    // pointer, left of it when it would cross the right edge, above it when
+    // it would cross the foot, never nearer than 8 px to an edge. maxWidth is
+    // what the label may take before its text wraps: 300 px, at most the
+    // window less 16 px.
+    function _sdTreeDropLabelPlace(px, py, lw, lh, vw, vh) {
+        var edge = 8;
+        var left = px + 14, top = py + 16;
+        if (left + lw > vw - edge) left = px - 14 - lw;
+        if (top + lh > vh - edge) top = py - 16 - lh;
+        left = Math.max(edge, Math.min(left, vw - edge - lw));
+        top = Math.max(edge, Math.min(top, vh - edge - lh));
+        return { left: left, top: top, maxWidth: Math.max(0, Math.min(300, vw - 2 * edge)) };
+    }
+
     // Why canDrop() refuses `data` in `parent`, as a code for _sdTreeDropWhy().
     function _sdTreeDropCode(data, parent) {
         var dn = data.source === 'node' ? data.node : null;
@@ -31778,9 +31794,14 @@ const StyleDesigner = (function () {
             l.innerHTML = '<span class="bi ' + (refused ? 'bi-slash-circle' : 'bi-arrow-return-right') + '" aria-hidden="true"></span>' +
                 '<span class="sd-tree-drop-label-txt">' + esc(text) + '</span>';
         }
-        l.style.left = (x + 14) + 'px';
-        l.style.top = (y + 16) + 'px';
         l.hidden = false;
+        // Kept in the window and never cut: the text wraps within maxWidth.
+        var vw = document.documentElement.clientWidth || window.innerWidth;
+        var vh = document.documentElement.clientHeight || window.innerHeight;
+        l.style.maxWidth = _sdTreeDropLabelPlace(0, 0, 0, 0, vw, vh).maxWidth + 'px';
+        var at = _sdTreeDropLabelPlace(x, y, l.offsetWidth, l.offsetHeight, vw, vh);
+        l.style.left = at.left + 'px';
+        l.style.top = at.top + 'px';
     }
 
     // The hint after a name that repeats: the element's text, a picture's

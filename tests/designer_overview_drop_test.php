@@ -6,8 +6,9 @@
  * tree (assets/js/style_designer.src.js, _sdTreeDropPick()): the gap between
  * two rows reaches 7 px each way, the middle 14 px of a 28 px row means
  * "inside", the pointer's horizontal place picks a level among the legal
- * parents only (12 px a level), and a refused target says why. Runs the
- * function under Node; skipped where there is no Node.
+ * parents only (12 px a level), and a refused target says why; where the
+ * label that follows the pointer is placed (_sdTreeDropLabelPlace()). Runs
+ * the functions under Node; skipped where there is no Node.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -48,7 +49,7 @@ function designer_overview_drop_run($script)
 	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	$src = '';
 
-	foreach (array('_sdT', '_sdTreeDropWhy', '_sdTreeDropPick') as $name) {
+	foreach (array('_sdT', '_sdTreeDropWhy', '_sdTreeDropPick', '_sdTreeDropLabelPlace') as $name) {
 		$fn = designer_overview_drop_fn($js, $name);
 
 		if (!pg_assert_true($fn !== '', 'style_designer.js has ' . $name . '()')) {
@@ -188,4 +189,51 @@ function test_designer_overview_drop_refused_says_why()
 	pg_assert_true(!$res['none']['ok'], 'no target is no drop');
 	pg_assert_same('Table does not take this element', $res['rule'], 'any other refusal names the parent');
 	pg_assert_same('A form cannot go inside another form', $res['form'], 'a form in a form says so');
+}
+
+// The label stays in the window, 8 px from each edge: right of and below the
+// pointer, left of it near the right edge, above it near the foot; at most
+// 300 px wide and never wider than the window less 16 px.
+function test_designer_overview_drop_label_stays_in_window()
+{
+	$res = designer_overview_drop_run(
+		'var out = {};' . "\n"
+		. 'out.free = _sdTreeDropLabelPlace(100, 100, 200, 26, 1440, 900);' . "\n"
+		. 'out.right = _sdTreeDropLabelPlace(1300, 100, 200, 26, 1440, 900);' . "\n"
+		. 'out.foot = _sdTreeDropLabelPlace(100, 880, 200, 26, 1440, 900);' . "\n"
+		. 'out.phone = _sdTreeDropLabelPlace(200, 400, 280, 44, 390, 844);' . "\n"
+		. 'out.left = _sdTreeDropLabelPlace(20, 400, 374, 44, 390, 844);' . "\n"
+		. 'out.top = _sdTreeDropLabelPlace(100, 10, 200, 60, 1440, 70);' . "\n"
+		. 'out.w1440 = _sdTreeDropLabelPlace(0, 0, 0, 0, 1440, 900).maxWidth;' . "\n"
+		. 'out.w390 = _sdTreeDropLabelPlace(0, 0, 0, 0, 390, 844).maxWidth;' . "\n"
+		. 'out.w200 = _sdTreeDropLabelPlace(0, 0, 0, 0, 200, 600).maxWidth;' . "\n"
+		. 'console.log(JSON.stringify(out));');
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same(114, $res['free']['left'], 'with room the label is 14 px right of the pointer');
+	pg_assert_same(116, $res['free']['top'], 'and 16 px below it');
+	pg_assert_same(1086, $res['right']['left'], 'near the right edge it stands left of the pointer');
+	pg_assert_same(838, $res['foot']['top'], 'near the foot it stands above the pointer');
+	pg_assert_true($res['phone']['left'] + 280 <= 390 - 8, 'on a 390 px screen it ends 8 px or more before the right edge');
+	pg_assert_true($res['phone']['left'] >= 8, 'and starts 8 px or more after the left edge');
+	pg_assert_same(8, $res['left']['left'], 'a label as wide as it may be keeps 8 px on the left');
+	pg_assert_same(8, $res['top']['top'], 'never nearer than 8 px to the top');
+	pg_assert_same(300, $res['w1440'], 'at most 300 px wide');
+	pg_assert_same(300, $res['w390'], 'a 390 px window still allows 300 px');
+	pg_assert_same(184, $res['w200'], 'never wider than the window less 16 px');
+}
+
+// A long text wraps inside the label rather than being cut.
+function test_designer_overview_drop_label_wraps()
+{
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/style_designer.css');
+	$start = strpos($css, '#sd-tree-drop-label {');
+	$block = ($start === false) ? '' : substr($css, $start, strpos($css, '}', $start) - $start);
+
+	pg_assert_true($block !== '', 'style_designer.css styles the drop label');
+	pg_assert_true(strpos($block, 'nowrap') === false, 'the label is not kept on one line');
+	pg_assert_true(strpos($css, 'sd-tree-drop-label-txt { overflow: hidden; text-overflow: ellipsis; }') === false, 'its text is not cut with an ellipsis');
 }

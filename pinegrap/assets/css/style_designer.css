@@ -1594,21 +1594,22 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
 }
 /* A row that cannot take the drop is dimmed; the label says why. */
 .sd-tree-list li.sd-tree-drop-refused { opacity: .45; cursor: not-allowed; }
-/* The label that follows the pointer and names the target. */
+/* The label that follows the pointer and names the target; it stays in the
+   window (_sdTreeDropLabelPlace()) and wraps a long text, never cuts it. */
 #sd-tree-drop-label {
     position: fixed; z-index: 10050; pointer-events: none;
-    display: flex; align-items: center; gap: 6px; max-width: 300px;
+    display: flex; align-items: flex-start; gap: 6px; max-width: min(300px, calc(100vw - 16px));
     padding: 3px 10px; border-radius: 6px; font-size: 12px; line-height: 18px;
     background: var(--sd-accent-strong); color: var(--sd-on-accent);
     box-shadow: 0 4px 12px color-mix(in srgb, var(--sd-shadow) 40%, transparent);
-    white-space: nowrap;
+    white-space: normal; overflow-wrap: anywhere;
 }
 #sd-tree-drop-label[hidden] { display: none; }
 #sd-tree-drop-label.sd-tree-drop-label-no {
     background: var(--sd-raised-bg); color: var(--sd-text); border: 1px solid var(--sd-danger);
 }
 #sd-tree-drop-label.sd-tree-drop-label-no .bi { color: var(--sd-danger); }
-.sd-tree-drop-label-txt { overflow: hidden; text-overflow: ellipsis; }
+.sd-tree-drop-label-txt { min-width: 0; }
 .sd-tree-list li[draggable="true"] { cursor: grab; }
 .sd-tree-list li[draggable="true"]:active { cursor: grabbing; }
 /* Drag ghost — lightweight, semi-transparent clone that follows the cursor.
