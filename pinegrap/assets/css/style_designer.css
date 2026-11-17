@@ -3262,7 +3262,8 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
 
 /* ── A row that stands its control under its label ──
    Always (.sd-row-stack: the group does not fit beside the label) or
-   only under 300 px (.sd-row-stack-n: four or more written segments). */
+   only under 300 px (.sd-row-stack-n: four or more written segments, a
+   size row, a label over two lines; _sdSegPlan(), _sdNarrowStack()). */
 .sd-prop-row.sd-row-stack > .sd-prop-label,
 .sd-rcol-narrow .sd-prop-row.sd-row-stack-n > .sd-prop-label { width: auto; min-width: 0; flex: 1 1 100%; padding-top: 0; }
 .sd-prop-row.sd-row-stack > .sd-prop-control,
@@ -3298,16 +3299,6 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
 .sd-rcol-narrow .sd-row-stack > .sd-sp-label,
 .sd-rcol-narrow .sd-row-stack-n > .sd-sp-label { padding-left: 12px; }
 .sd-rcol-narrow .sd-sp-bps { margin-left: 0; }
-/* A size row under 300 px: beside its label the control would have 74
-   px left of the 104 once the chevron or badge takes its place, so the
-   row stacks: the label and the chevron or badge on the first line, the
-   control under them at the row's width. */
-.sd-rcol-narrow .sd-sp-row:has(> .sd-sp-toggle) { grid-template-columns: minmax(0, 1fr) auto; }
-.sd-rcol-narrow .sd-sp-row:has(> .sd-sp-toggle) > .sd-sp-label { grid-column: 1; padding-top: 0; align-self: center; }
-.sd-rcol-narrow .sd-sp-row:has(> .sd-sp-toggle) > .sd-sp-toggle { grid-column: 2; }
-.sd-rcol-narrow .sd-sp-row:has(> .sd-sp-toggle) > :not(.sd-sp-label):not(.sd-sp-toggle):not(.sd-sp-toggle-spacer):not(.sd-field-err):not(.sd-chg-reset) { grid-column: 1 / -1; grid-row: 2; }
-.sd-rcol-narrow .sd-sp-row:has(> .sd-sp-toggle) > .sd-chg-reset { top: -5px; }
-.sd-rcol-narrow .sd-sp-row:has(> .sd-sp-toggle) > .sd-field-err { grid-column: 1 / -1; grid-row: 3; padding-left: 0; }
 
 @media (prefers-reduced-motion: reduce) {
     .sd-seg, .sd-align-btn, .sd-sp-toggle, .sd-unit-field > input,

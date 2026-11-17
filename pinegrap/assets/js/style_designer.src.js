@@ -25298,7 +25298,10 @@ const StyleDesigner = (function () {
         if (typeof ResizeObserver === 'function') {
             new ResizeObserver(function () {
                 var w = outer.getBoundingClientRect().width;
-                if (w > 0) outer.classList.toggle('sd-rcol-narrow', w < 300);
+                if (!(w > 0)) return;
+                var was = outer.classList.contains('sd-rcol-narrow');
+                outer.classList.toggle('sd-rcol-narrow', w < 300);
+                if (!was && w < 300) _sdNarrowStack(document.getElementById('sd-properties'));
             }).observe(outer);
         }
 
@@ -54042,10 +54045,10 @@ const StyleDesigner = (function () {
         var _posRowId = 'sdexp_pos_' + (++respRowCounter);
         var _posSel = mkRespSelect('position-', [['static',_sdT('Static')],['relative',_sdT('Relative')],['absolute',_sdT('Absolute')],['fixed',_sdT('Fixed')],['sticky',_sdT('Sticky')]], _sdT('Default'));
         var _posSubRows = [
-            { label: _sdT('Top'),    ctrl: lenInp('top', p.top, 'e.g. 0'), val: p.top    },
-            { label: _sdT('Right'),  ctrl: lenInp('right', p.right, 'e.g. 0'), val: p.right  },
-            { label: _sdT('Bottom'), ctrl: lenInp('bottom', p.bottom, 'e.g. 0'), val: p.bottom },
-            { label: _sdT('Left'),   ctrl: lenInp('left', p.left, 'e.g. 0'), val: p.left   }
+            { label: _sdT('Top'),    ctrl: lenInp('top', p.top, _sdT('e.g. 0')), val: p.top    },
+            { label: _sdT('Right'),  ctrl: lenInp('right', p.right, _sdT('e.g. 0')), val: p.right  },
+            { label: _sdT('Bottom'), ctrl: lenInp('bottom', p.bottom, _sdT('e.g. 0')), val: p.bottom },
+            { label: _sdT('Left'),   ctrl: lenInp('left', p.left, _sdT('e.g. 0')), val: p.left   }
         ];
         var _posHasSub = _posSubRows.some(function(sr) { return !!sr.val; });
         var _posRow = '<div class="sd-sp-row">' +
@@ -54056,17 +54059,17 @@ const StyleDesigner = (function () {
             '</div>';
 
         var _widthRow = mkExpandRow(_sdT('Width'),
-            lenInp('width', p.width, 'e.g. 100%'),
+            lenInp('width', p.width, _sdT('e.g. 100%')),
             [
-                { label: _sdT('Min'), ctrl: lenInp('minWidth', p.minWidth, 'e.g. 200px'), val: p.minWidth  },
-                { label: _sdT('Max'), ctrl: lenInp('maxWidth', p.maxWidth, 'e.g. 960px'), val: p.maxWidth  }
+                { label: _sdT('Min'), ctrl: lenInp('minWidth', p.minWidth, _sdT('e.g. 200px')), val: p.minWidth  },
+                { label: _sdT('Max'), ctrl: lenInp('maxWidth', p.maxWidth, _sdT('e.g. 960px')), val: p.maxWidth  }
             ]
         );
         var _heightRow = mkExpandRow(_sdT('Height'),
-            lenInp('height', p.height, 'e.g. auto'),
+            lenInp('height', p.height, _sdT('e.g. auto')),
             [
-                { label: _sdT('Min'), ctrl: lenInp('minHeight', p.minHeight, 'e.g. 200px'), val: p.minHeight },
-                { label: _sdT('Max'), ctrl: lenInp('maxHeight', p.maxHeight, 'e.g. 800px'), val: p.maxHeight }
+                { label: _sdT('Min'), ctrl: lenInp('minHeight', p.minHeight, _sdT('e.g. 200px')), val: p.minHeight },
+                { label: _sdT('Max'), ctrl: lenInp('maxHeight', p.maxHeight, _sdT('e.g. 800px')), val: p.maxHeight }
             ]
         );
         var _overflowRow = mkExpandRow(_sdT('Overflow'),
@@ -54089,7 +54092,7 @@ const StyleDesigner = (function () {
             _arPresetSel += '</select>';
             _arHtml += '<div class="sd-sp-row"><span class="sd-sp-toggle-spacer"></span><span class="sd-sp-label">' + esc(_sdT('Preset')) + '</span>' + _arPresetSel + '</div>';
             if (_arValue === 'custom') {
-                _arHtml += mkStyleRow(_sdT('Value'), 'aspectRatioCustom', p.aspectRatioCustom, 'e.g. 56.25%');
+                _arHtml += mkStyleRow(_sdT('Value'), 'aspectRatioCustom', p.aspectRatioCustom, _sdT('e.g. 56.25%'));
             }
         }
 
@@ -55032,6 +55035,7 @@ const StyleDesigner = (function () {
                 var isOpen = hdr.classList.toggle('sd-sect-open');
                 hdr.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
                 body.style.display = isOpen ? '' : 'none';
+                if (isOpen) _sdNarrowStack(body);
                 if (sid) try { localStorage.setItem('sd_cs_' + sid, isOpen ? '0' : '1'); } catch(e2) {}
             });
         });
@@ -60614,6 +60618,22 @@ const StyleDesigner = (function () {
         if (!first) return '';
         return has(prefix) ? 'all' : first.toUpperCase();
     }
+
+    // A size row is changed when any of its sizes holds a value.
+    function _sdSizeHeld(values) {
+        return (values || []).some(function (v) { return v !== '' && v != null; });
+    }
+
+    // Clears a row at every size: each control set to its empty value and
+    // its change fired, so the normal handler writes it. Run inside
+    // _sdUndoAsOne(), everything it writes is one undo step.
+    function _sdSizesClear(ctrls) {
+        (ctrls || []).forEach(function (c) {
+            if (c.value === '') return;
+            c.value = '';
+            c.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+    }
     // ── end of the Options panel controls
 
     // ========================= MODIFIED PROPS HIGHLIGHT =========================
@@ -60836,7 +60856,25 @@ const StyleDesigner = (function () {
         // Color pickers (Text Col / Bg Col / Border Color) are <select data-stylegroup> — already
         // covered by rule #5 above, so no dedicated swatch-marking branch is needed here anymore.
 
+        // 13. A row whose value can start at a screen size is changed when
+        //     any size in its per-size box holds a value, its own control
+        //     unchanged or not; its reset clears every size (_sdRowReset()).
+        root.querySelectorAll('.sd-sp-row').forEach(function (r) {
+            var lbl = r.querySelector(':scope > .sd-sp-label');
+            if (!lbl) return;
+            if (_sdSizeHeld(_sdSizeCtrls(r).map(function (c) { return c.value; }))) {
+                lbl.classList.add('sd-prop-modified');
+                lbl.dataset.resetSizes = '1';
+            } else {
+                delete lbl.dataset.resetSizes;
+            }
+        });
+
         if (!live) return;
+
+        // Under 300 px the rows that would not fit beside their label stand
+        // their control under it (_sdNarrowStack()).
+        _sdNarrowStack(root);
 
         // The button groups show their select's value; a changed row gets
         // the reset button on its dot (_sdChgResetButtons()).
@@ -60904,6 +60942,9 @@ const StyleDesigner = (function () {
             propRow.querySelectorAll('button[data-util-toggle].active').forEach(function(b) { b.click(); });
             return;
         }
+        // A value from a screen size: every size cleared first, then the
+        // row's own control below when it is changed too.
+        if (lbl.dataset.resetSizes) _sdSizesClear(_sdSizeCtrls(propRow));
         // Standard controls (select/checkbox/input): set value + dispatch change
         if (!lbl.dataset.resetVal) return;
         var def = JSON.parse(lbl.dataset.resetVal);
@@ -60954,6 +60995,37 @@ const StyleDesigner = (function () {
             if (lbl.closest('.sd-panel-readonly')) b.disabled = true;
             lbl.parentNode.insertBefore(b, lbl);
         });
+    }
+
+    // The per-size selects of a size row that hold a value: its per-size
+    // box is the row's next sibling, named by the chevron or badge. A box
+    // of plain fields (Min / Max, Top / Left) is not a size box.
+    function _sdSizeCtrls(row) {
+        var t = row.querySelector(':scope > .sd-sp-toggle[data-sp-target]');
+        var box = row.nextElementSibling;
+        if (!t || !box || box.id !== t.getAttribute('data-sp-target')) return [];
+        return Array.prototype.filter.call(box.querySelectorAll('select[data-stylegroup], select[data-util], select[data-prop]'), function (c) {
+            return c.value !== '';
+        });
+    }
+
+    // Under 300 px (.sd-rcol-narrow, CSS) a row stands its control under its
+    // label (.sd-row-stack-n) when the control would not fit 104 px beside
+    // it: a size row, whose chevron or badge takes that place, and a row
+    // whose label needs more than two lines, which would cut it. The first
+    // is set always (only the narrow column reads it); the label is
+    // measured only while the column is narrow and the row shown.
+    function _sdNarrowStack(root) {
+        if (!root) return;
+        root.querySelectorAll('.sd-sp-row').forEach(function (r) {
+            if (r.querySelector(':scope > .sd-sp-toggle')) r.classList.add('sd-row-stack-n');
+        });
+        if (!root.closest || !root.closest('.sd-rcol-narrow')) return;
+        var cut = Array.prototype.filter.call(root.querySelectorAll(
+            '.sd-prop-row:not(.sd-row-stack):not(.sd-row-stack-n) > .sd-prop-label, ' +
+            '.sd-sp-row:not(.sd-row-stack):not(.sd-row-stack-n) > .sd-sp-label'
+        ), function (l) { return l.clientHeight > 0 && l.scrollHeight > l.clientHeight + 1; });
+        cut.forEach(function (l) { l.parentNode.classList.add('sd-row-stack-n'); });
     }
 
     // Marks the segment of each button group under `root` (or `root`

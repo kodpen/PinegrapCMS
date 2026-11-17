@@ -7,7 +7,8 @@
  * length is not written, a click on the selected segment removes the value,
  * a value list becomes a button group or stays a select, a lone select is
  * read into its options, and the screen-size badge stands only on a value
- * that starts at a size. The helpers are cut out of the source and run
+ * that starts at a size, which also marks its row changed and is reset at
+ * every size as one undo step. The helpers are cut out of the source and run
  * under Node; without Node those cases are skipped.
  *
  * @author      Erdal Güral (Kodpen)
@@ -84,6 +85,45 @@ JS
 	}
 
 	pg_assert_same(array(1, 3, 4, null), $answer);
+}
+
+// A value that starts at a size marks its row changed, though the row's
+// own control is empty. Its reset clears every size of the family as one
+// undo step, and one undo brings the value back.
+function test_designer_options_value_from_a_size_is_changed()
+{
+	$answer = designer_options_controls_test_run(<<<'JS'
+var node = { cls: 'p-3 d-md-flex' };
+var run = { key: null, at: 0, one: null, seq: 0 };
+var history = [];
+function saveState() { if (_sdStateRunTakes(run, run.one || null, Date.now(), 700)) history.push(node.cls); }
+function ctrl(bp) {
+	var group = ['none', 'block', 'flex'].map(function (v) { return 'd-' + bp + v; });
+	var on = group.filter(function (c) { return (' ' + node.cls + ' ').indexOf(' ' + c + ' ') !== -1; })[0] || '';
+	return { value: on, dispatchEvent: function () {
+		var words = {}; group.forEach(function (g) { words[g] = 1; });
+		saveState();
+		var arr = node.cls.split(' ').filter(function (c) { return c && !words[c]; });
+		if (this.value) arr.push(this.value);
+		node.cls = arr.join(' ');
+	} };
+}
+var sizes = ['sm-', 'md-', 'lg-', 'xl-', 'xxl-'].map(ctrl);
+var marked = _sdSizeHeld(sizes.map(function (c) { return c.value; }));
+var base = ctrl('').value;
+_sdUndoAsOne(run, function () { _sdSizesClear(sizes); });
+var after = node.cls;
+var steps = history.length;
+node.cls = history.pop();
+out = [marked, base, after, steps, node.cls, _sdSizeHeld(['', '', ''])];
+JS
+	);
+
+	if ($answer === null) {
+		return;
+	}
+
+	pg_assert_same(array(true, '', 'p-3', 1, 'p-3 d-md-flex', false), $answer);
 }
 
 // An invalid length is not written and says why; what the canvas writes
