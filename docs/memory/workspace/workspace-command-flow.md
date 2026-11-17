@@ -1,6 +1,6 @@
 ---
 name: workspace-command-flow
-description: The channel's flows in the composer's "/" list and /flow (/akış) (CC5 of channel-commands): which flows, read when, what a pick does, a typed name, the customer of a channel about one
+description: The channel's flows in the composer's "/" list and /flow (/akış) (CC5 of channel-commands, #10301): which flows, read when, what a pick does, a typed name, the customer of a channel about one
 ---
 
 ## Which flows does the "/" list show?
