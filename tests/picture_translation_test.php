@@ -202,9 +202,11 @@ function test_picture_translation_module_loaded()
 	pg_assert_true(function_exists('pg_picture_tr_saved'), 'loaded');
 }
 
-// Runs $script with the editor's model as M and answers its JSON; null
-// without Node.
-function picture_translation_node($script)
+// Runs $script with a script of assets/js (the editor's model unless named)
+// as $name, M by default, and answers its JSON; null without Node. The script
+// goes through a file, never `node -e`: on Windows the shell's quoting turns
+// the double quotes of an inline script into spaces.
+function picture_translation_node($script, $module = 'pg_image_editor_model.js', $name = 'M')
 {
 	if (!function_exists('exec')) {
 		return null;
@@ -224,7 +226,7 @@ function picture_translation_node($script)
 		return null;
 	}
 
-	file_put_contents($file, 'var M = require(' . json_encode(PG_FUNCTIONS_DIR . '/assets/js/pg_image_editor_model.js') . ');' . "\n" . $script);
+	file_put_contents($file, 'var ' . $name . ' = require(' . json_encode(PG_FUNCTIONS_DIR . '/assets/js/' . $module) . ');' . "\n" . $script);
 
 	$out = array();
 	@exec('node ' . escapeshellarg($file) . ' 2>&1', $out, $code);
@@ -454,15 +456,7 @@ function test_picture_translation_queue_sql()
 // The queue's script: the count left and the state a draw's answer gives.
 function test_picture_translation_queue_script()
 {
-	if (!function_exists('exec')) {
-		pg_assert_true(true, 'exec is not available');
-		return;
-	}
-
-	$out = array();
-	$code = 1;
-	@exec('node -e ' . escapeshellarg('var Q = require(' . json_encode(PG_FUNCTIONS_DIR . '/assets/js/picture_queue.js') . ');'
-		. 'console.log(JSON.stringify({'
+	$r = picture_translation_node('console.log(JSON.stringify({'
 		. ' left: Q.left([{ status: "waiting" }, { status: "drawing" }, { status: "drawn" }, { status: "failed" }, { status: "waiting" }]),'
 		. ' drawn: Q.statusOf({ status: "success", state: "drawn" }),'
 		. ' look: Q.statusOf({ status: "success", state: "look" }),'
@@ -474,14 +468,12 @@ function test_picture_translation_queue_script()
 		. ' tone: [Q.buttonTone(true), Q.buttonTone(false)],'
 		. ' end: [[{ status: "drawn" }], [{ status: "drawn" }, { status: "look" }, { status: "look" }], [{ status: "failed" }, { status: "look" }]].map(function (rows) {'
 		. '  return Q.endText(rows, { done: "D", doneLook: "L{n}", doneFailed: "F{n}" }); })'
-		. '}));') . ' 2>&1', $out, $code);
+		. '}));', 'picture_queue.js', 'Q');
 
-	if (($code !== 0) && (strpos(implode("\n", $out), 'not found') !== false)) {
+	if ($r === null) {
 		pg_assert_true(true, 'Node is not available');
 		return;
 	}
-
-	$r = json_decode(implode("\n", $out), true);
 
 	pg_assert_same(array('left' => 3, 'drawn' => 'drawn', 'look' => 'look', 'refused' => 'failed', 'none' => 'failed', 'skipped' => 'skipped',
 		'reason' => array(true, true, false, false, false, false), 'edit' => array(true, false, false, false),
