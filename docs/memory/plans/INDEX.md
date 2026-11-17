@@ -64,8 +64,6 @@
 - design-template-bikeshop.md: Plan: the Bike Shop design template (pinegrap-bikeshop): bikes and parts catalog, repair and service requests, bike fitting, group rides calendar, news; small steps
 - design-template-own-looks-order.md: Order of the polishing round after Launch: every shipped template's family and pages steps, in which order, and where each template stands
 - design-template-own-looks.md: Plan (owner 2026-11-07): block families in their own source files (B0), Launch as an Apple-like product page (L1-L3), then a polishing round for every template
-- designer-closed-blocks-steps.md: Steps CB2 to CB10 of designer-closed-blocks, written from the owner's answer of 2026-11-15 (the proposed order): one block family per step, what each opens, what runs side by side
-- designer-closed-blocks.md: Plan (owner 2026-11-13, #9076): components the designer canvas draws as one closed block are listed, then opened into element trees; CB0, CB1 done, CB2 and on in designer-closed-blocks-steps.md
 - designer-panels-features-2.md: Plan designer-panels, features D16 to D28: the spacing box and the size chooser, corners, layout by context, the search that also adds, the review view, copy and paste style
 - designer-panels-features-3.md: Plan designer-panels, features D29 to D44: the Overview tree for long pages: sections, folded chains, hints, search, the page map, wide drop targets, long drags, moving without dragging
 - designer-panels-features-4.md: Plan designer-panels, features D45 to D53: the page strip: the design's menu, the open group as a box, folded groups as chips, tab states, the Pages window, suggested groups
