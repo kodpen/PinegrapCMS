@@ -77,6 +77,7 @@ description: Generated from the module field of the memory files: each includes/
 - `container_list_edit`: [[list-table-quick-edit-containers]]
 - `content`: [[submitted-form-content-helpers]], [[system-region-fill-once]]
 - `content_proposals`: [[content-proposals]], [[content-proposals-bell]], [[content-proposals-designer-side]], [[content-proposals-workspace]]
+- `content_proposals_compare`: [[content-proposals-compare-markup]]
 - `content_review`: [[content-review-announce]], [[content-review-rules]]
 - `content_review_list`: [[content-review-actions]], [[content-review-screen]]
 - `core`: [[app-screen-messages]], [[build-url-host-parts]], [[error-screen-language-and-status]], [[gift-card-code-in-site-log]], [[recurring-calendar-days]], [[schema-cache-file]], [[send-to-url-safety]], [[style-tag-css]], [[time-zone-list-labels]], [[web-address-rule]]
