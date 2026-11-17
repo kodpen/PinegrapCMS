@@ -12,7 +12,7 @@
 - architect-asking.md: How a session asks a decision question or the owner's approval of screenshots: search first, one message in the agent channel naming the architect, the PR back to draft, the session ends [decision: here]
 - architect-decision-record.md: An owner's answer stands in the agent channel, quoted by the architect, before the decisions list names it; a decisions entry that names no channel message is held by the merging session [decision: decisions-made-panel-4.md]
 - architect-no-hand-over.md: The architect session does not hand over to a fresh session at a token count (2026-11-10): auto-compact summarises its context in place; what it reads again after a compaction
-- architect-wake.md: What wakes the architect session (owner, 2026-11-16): a mention in the agent channel through the request waiter only; the hourly check is disabled; a pause he names; economy mode (2026-11-17) [decision: here]
+- architect-wake.md: What wakes the architect session (owner, 2026-11-16): a mention in the agent channel through the request waiter only; no hourly check; a pause he names; the week's pause, economy mode (2026-11-17) [decision: here]
 - architect.md: Decision questions: asked in the agent channel, no architect issue (2026-11-13); the architect decides technical ones, asks the owner schema and product-behaviour ones, records the answer [decision: decisions-made-schema.md, decisions-made.md]
 - branch-guards.md: tools/check_pr.php (#1878): CI and pre-push fail a commit trailer, an author or committer other than Erdal Güral, a changelog.txt or data/config.php change; warn above 1,000 product lines
 - bug-hunt-areas-2.md: The areas given to a bug hunt from 2026-11-17 on (wholesale prices, publish approval, visitor push, gift cards and store credit), the issues each ended with and what it read clean [decision: here]
@@ -118,6 +118,7 @@
 - decisions-made-product-74.md: Decisions list, product part 74 (2026-11-17): the owner's looks of polls 139 (place map list), 140 (picture drawing queue) and 141 (the Courses screen); managers and above open the Courses screen
 - decisions-made-product-75.md: Decisions list, product part 75 (2026-11-17): pictures drawn by themselves and by the server (poll 143); looks of the notification block (142) and the meeting link page (144); CH3b's change (145)
 - decisions-made-product-76.md: Decisions list, product part 76 (2026-11-17): connectors managed in one place on Connections (poll 146); Voice message transcripts card moves (147); "E-posta gönderimi" category (148)
+- decisions-made-product-77.md: Decisions list, product part 77 (2026-11-17): the Connections management screen's look accepted (poll 149): the list, a service's page, feature cards without a key, the "Bağlantılar ›" entry
 - decisions-made-product-8.md: Decisions list, product part 8 (2026-10-30 midday on): Trendyol-carried packages refused by Create Label, starter dump corrections for #3330, marketing SMS in 2026.11.0, forum template wording
 - decisions-made-product-9.md: Decisions list, product part 9 (2026-10-30 afternoon on): form rules for visitors only, marketplace orders invoiced behind a switch, sales quote guest links and templates, Workspace density switch
 - decisions-made-product.md: Decisions list, product part: express order and order preview totals, cookie window as the only translated UI text, publish-only editing, robots.txt vs noindex, ERP limits, erasure.
@@ -138,7 +139,7 @@
 - decisions-made-schema-23.md: Decisions list, schema part 23 (2026-11-16 on): ws_highlights; PU4's auto_dialogs columns as confirmed; the click map's page_click_daily; one ws_tasks column for the creating application
 - decisions-made-schema-24.md: Decisions list, schema part 24 (2026-11-16 on): the three site_push tables of visitor notifications, their columns and keys as the architect confirmed them for VP1
 - decisions-made-schema-25.md: Decisions list, schema part 25 (2026-11-16 on): the second study's tables and columns, the site_push_watch table, the file_translation table, a column for application command arguments
-- decisions-made-schema-26.md: Decisions list, schema part 26 (2026-11-16 on): page_bundle and page_bundle_item as landed; ws_tasks.app_id; ws_profiles.meeting_url; gift_cards.kind gets referral
+- decisions-made-schema-26.md: Decisions list, schema part 26 (2026-11-16 on): page_bundle and page_bundle_item as landed; ws_tasks.app_id; ws_profiles.meeting_url; gift_cards.kind gets referral; ws_app_commands.args
 - decisions-made-schema-3.md: Decisions list, schema part 3, approved from 2026-10-29 on: checkout page and legal acceptance on the order, record_revisions, cart_quotes, ws_saved_replies, shipment_labels; rules in part 1
 - decisions-made-schema-4.md: Decisions list, schema part 4 (2026-10-29 afternoon on): ws_flow_templates, ws_refs.source_type to VARCHAR, shipment_labels.order_return_id, config.speculation_prefetch; rules in part 1
 - decisions-made-schema-5.md: Decisions list, schema part 5 (2026-10-29 evening on): subscriptions tables and ENUMs, products customs columns, shipment_labels pickup, ws_events.contact_id; rules in part 1
