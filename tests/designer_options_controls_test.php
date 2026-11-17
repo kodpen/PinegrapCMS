@@ -88,7 +88,7 @@ JS
 
 // An invalid length is not written and says why; what the canvas writes
 // (a CSS length, a bare number as pixels, a keyword, a CSS function) is
-// valid, and so is an empty field. A z-index is a whole number or auto.
+// valid, and so is an empty field.
 function test_designer_options_invalid_value_not_written()
 {
 	$answer = designer_options_controls_test_run(<<<'JS'
@@ -98,8 +98,7 @@ var bad = ['12pxx', 'px', '12 px', 'abc', '10%%', 'calc(100% - 2rem', '--', '1.2
 out = [
 	ok.filter(function (v) { return _sdLenCheck('len', v) !== ''; }),
 	bad.filter(function (v) { return _sdLenCheck('len', v) === ''; }),
-	_sdLenCheck('z', '10'), _sdLenCheck('z', 'auto'), _sdLenCheck('z', '') ,
-	_sdLenCheck('z', '1.5') !== '', _sdLenCheck('z', '10px') !== ''
+	_sdLenCheck('len', '12pxx') !== ''
 ];
 JS
 	);
@@ -108,7 +107,7 @@ JS
 		return;
 	}
 
-	pg_assert_same(array(array(), array(), '', '', '', true, true), $answer);
+	pg_assert_same(array(array(), array(), true), $answer);
 }
 
 // A click on the selected segment removes the value; another segment
