@@ -16,7 +16,8 @@
  * set; the express order quick add appended to a value that did not exist
  * yet; the recurring area of the layouts read a field title that was never
  * given; and a gift card deleted after it was applied was read as a row when
- * the order was submitted.
+ * the order was submitted. A custom express order layout with an empty cart
+ * read the SMS opt-in mark, which only the recipients branch set.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -95,6 +96,21 @@ function test_cart_layout_system_layout_defaults()
 	pg_assert_true(strpos($express_order, '$subtotal = 0;') < strpos($express_order, '$subtotal = $subtotal + $total_price;'), 'subtotal starts before the items');
 	pg_assert_true(strpos($express_order, "\$contact = array_fill_keys(") < strpos($express_order, "\$contact['salutation']"), 'contact columns start empty');
 	pg_assert_same(0, substr_count($express_order, "\$quick_add['system'] .="), 'express order quick add appended to');
+}
+
+// A custom express order layout with no recipients (an empty cart, as when the
+// SEO job renders the page) reads the SMS opt-in box's mark, which only the
+// recipients branch fills: it starts false (box not shown) before that branch.
+function test_express_order_opt_in_sms_starts_before_recipients()
+{
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/get_express_order.php');
+	$default = strpos($source, "        \$opt_in_sms = false;\n");
+	$branch = strpos($source, "\n        if (\$recipients) {\n", (int) strpos($source, "        \$opt_in_label = '';\n"));
+
+	pg_assert_true($default !== false, 'opt_in_sms has a default');
+	pg_assert_true($default < $branch, 'the default comes before the recipients branch');
+	pg_assert_true($branch < strpos($source, '$opt_in_sms = pg_consent_sms_checkout_shown($contact);'), 'the branch still sets it');
+	pg_assert_contains("'opt_in_sms' => \$opt_in_sms,", $source, 'the layout still reads it');
 }
 
 // The recurring area of the layouts reads one title per product form field.
