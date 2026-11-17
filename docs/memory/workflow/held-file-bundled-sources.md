@@ -8,7 +8,7 @@ description: In a bundled script or stylesheet (backend.src.js, backend.src.css,
 - Another PR may change other parts of that file when none of its hunks is in the same function or rule block as an open PR's hunk, or on the lines next to one, and `git merge-tree --write-tree <its branch> <the other PR's head>` merges the file without a conflict.
 - The session checks that itself against every open PR that changes the file (`…/pulls/<n>/files`) and asks nobody; its PR's body names the PRs it stands beside in that file.
 - The same function, the same rule block or the neighbouring lines wait for the other PR to land, as any held file does (`claim-work.md`).
-- Every other file is held whole. A registry's rows beside a draft holder have their own rule and are still asked of the architect (`held-file-registry-rows.md`).
+- Every other file is held whole. What the architect may allow beside a draft holder there (a registry's rows, a function the holder does not touch) is in `held-file-registry-rows.md`.
 
 ## Why?
 - Each of these files holds the parts of many screens (about 15,000, 31,000 and 84,000 lines). Two hunks in different parts merge without a conflict and do not meet in the logic.

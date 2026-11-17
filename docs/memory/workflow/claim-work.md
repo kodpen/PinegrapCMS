@@ -12,7 +12,7 @@ description: How a session claims work before starting it: the open-PR check, th
 ## 1. What is checked first?
 - The open PRs, drafts included (command in `CLAUDE.md`, Claim work).
 - A PR on the same plan file (any step) or the same files (`…/pulls/<n>/files`) holds it: do not start, and tell the owner which PR.
-- A bundled script or stylesheet is held by function and rule block, not whole: `held-file-bundled-sources.md`. A registry's own rows beside a draft: `held-file-registry-rows.md`.
+- A bundled script or stylesheet is held by function and rule block, not whole: `held-file-bundled-sources.md`. A registry's own rows or a function the holder does not touch, beside a draft: `held-file-registry-rows.md`.
 - A draft with no push for 12 hours and no stated wait is continued on its own branch by a coordinator's worker (`session-lifecycle.md`), never re-claimed.
 - One plan's steps run in parallel only where the owner allowed it or the coordinator chose it (they touch different files).
 - The queue limit (`CLAUDE.md`, Working mode 8; `working-mode.md`).
