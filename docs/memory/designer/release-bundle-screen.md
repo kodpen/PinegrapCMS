@@ -23,3 +23,6 @@ module: page_bundles_screen
 
 ## What does the screen leave to other steps?
 - Publish and take back (RB3), the preview (RB5), the Publish sheet's held row (RB2b). The screen draws no Publish button.
+
+## Which name does a bundle's page carry?
+- `pg_page_bundle_items()` names each page through `pg_page_bundle_page_label()`: a page in the Recycle Bin by its own name, not the parked `pgbin_<id>_` one; a page deleted for good as `#<id>`, never `""`. Every message, dialog and log line reads these names (#10048).

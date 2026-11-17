@@ -295,13 +295,42 @@ function pg_page_bundle_items($bundle_id)
         return array();
     }
 
-    return (array) db_items(
+    $items = (array) db_items(
         "SELECT page_bundle_item.*, draft.page_name AS draft_name, live.page_name AS live_name
         FROM page_bundle_item
         LEFT JOIN page AS draft ON draft.page_id = page_bundle_item.draft_page_id
         LEFT JOIN page AS live ON live.page_id = page_bundle_item.live_page_id
         WHERE page_bundle_item.bundle_id = '$bundle_id'
         ORDER BY page_bundle_item.id");
+
+    foreach ($items as $key => $item) {
+        $items[$key]['draft_name'] = pg_page_bundle_page_label($item['draft_name'], $item['draft_page_id']);
+        $items[$key]['live_name'] = pg_page_bundle_page_label($item['live_name'], $item['live_page_id']);
+    }
+
+    return $items;
+}
+
+/**
+ * The name a bundle's page is shown under: a page in the Recycle Bin by its
+ * own name, not the parked "pgbin_<id>_" one; a page deleted for good by its
+ * id. Pure.
+ *
+ * @param string|null $name    page_name from the join, null when no row
+ * @param int         $page_id
+ * @return string
+ */
+function pg_page_bundle_page_label($name, $page_id)
+{
+    $page_id = (int) $page_id;
+    $name = (string) $name;
+    $prefix = (defined('PG_RECYCLE_PARK_PREFIX') ? PG_RECYCLE_PARK_PREFIX : 'pgbin_') . $page_id . '_';
+
+    if (($page_id > 0) && (strpos($name, $prefix) === 0)) {
+        $name = (string) substr($name, strlen($prefix));
+    }
+
+    return (($name === '') && ($page_id > 0)) ? '#' . $page_id : $name;
 }
 
 /**
@@ -1394,11 +1423,12 @@ function pg_page_bundle_write_item($item, $bundle, $user)
             return $give_back(implode(' ', (array) $saved['errors']));
         }
 
-        // The revision written follows the one before; a page saved for the
-        // first time since revisions exist is seeded first, so that seed is the
-        // one before. A save that changed nothing wrote none.
+        // A save that changed nothing left the page as it was, so a page
+        // with no revision at all is seeded now: that seed is the page before.
         $written_no = isset($saved['revision_no']) ? (int) $saved['revision_no'] : 0;
-        $before = ($written_no > 0) ? ($written_no - 1) : $latest;
+        $before = pg_page_bundle_revision_before($written_no, $latest, function () use ($live_id) {
+            return function_exists('pg_page_revision_seed') ? (int) pg_page_revision_seed($live_id) : 0;
+        });
 
         $state = pg_page_bundle_live_state($live_id);
         db_q("UPDATE page_bundle_item SET revision_before = ?, written_state = ? WHERE id = ?", array($before, $state, $id));
@@ -1410,6 +1440,30 @@ function pg_page_bundle_write_item($item, $bundle, $user)
 
         return $give_back(($error !== '') ? $error : lang('The page could not be read.'));
     }
+}
+
+/**
+ * The revision a replaced page goes back to: the one before the revision its
+ * write made (a first save seeds revision 1 and writes 2); when the save
+ * wrote none, the page's latest; when the page has none either, the page as
+ * it is, seeded by $seed. 0 when nothing can be kept. Pure.
+ *
+ * @param int      $written_no the revision the save wrote, 0 for none
+ * @param int      $latest     the page's latest revision before the save
+ * @param callable $seed       seeds the page's revision 1; returns 1, or 0
+ * @return int
+ */
+function pg_page_bundle_revision_before($written_no, $latest, $seed)
+{
+    if ((int) $written_no > 0) {
+        return (int) $written_no - 1;
+    }
+
+    if ((int) $latest > 0) {
+        return (int) $latest;
+    }
+
+    return ((int) $seed() > 0) ? 1 : 0;
 }
 
 /**
