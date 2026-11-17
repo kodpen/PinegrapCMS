@@ -47,7 +47,7 @@ $fin_sample_note = lang('I would like to keep the monthly payment under $600 and
 $fin_mail_style = function ($css) use ($attr) {
     return array('_attrs' => array($attr('style', $css)));
 };
-$fin_mail_page = function ($children) use ($el, $shared, $fin_mail_style) {
+$fin_mail_page = function ($children) use ($el, $shared, $fin_mail_style, $attr) {
     return array('type' => 'root', 'props' => array('cssClass' => ''), 'children' => array(
         $el('div', 'bg-body-tertiary py-4 px-3', lang('E-mail Frame'), array(
             $el('div', 'mx-auto bg-body border rounded-3 overflow-hidden', lang('E-mail Card'), array(
@@ -55,7 +55,7 @@ $fin_mail_page = function ($children) use ($el, $shared, $fin_mail_style) {
                 $el('div', 'p-4', lang('E-mail Body'), $children, $fin_mail_style('padding:24px')),
                 $shared('email_footer'),
             ), $fin_mail_style('max-width:600px;margin:0 auto;background:#ffffff;border:1px solid #dbeafe;border-radius:10px;overflow:hidden')),
-        ), $fin_mail_style('background:#eff6ff;padding:24px 12px;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif;font-size:15px;line-height:1.6;color:#1f2937')),
+        ), array('_attrs' => array($attr('data-bs-theme', 'light'), $attr('style', 'background:#eff6ff;padding:24px 12px;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif;font-size:15px;line-height:1.6;color:#1f2937')))),
     ));
 };
 $fin_mail_heading = function ($text) use ($heading, $attr) {

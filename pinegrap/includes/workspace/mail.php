@@ -1206,12 +1206,15 @@ function ws_mail_items_map($rows)
         }
 
         // Each box's first-response target, for the card's due word, and
-        // whether it is a support box, for the card's state.
+        // whether it is a support box, for the card's state; the row
+        // itself for whether it can send an answer.
         $hours = array();
         $support = array();
         $transports = array();
+        $boxes = array();
 
-        foreach ((array) db_items("SELECT id, settings, transport FROM ws_mail_boxes WHERE id IN (" . implode(',', array_merge(array(0), $box_ids)) . ")") as $box) {
+        foreach ((array) db_items("SELECT id, settings, transport, enabled, address, reply_via FROM ws_mail_boxes WHERE id IN (" . implode(',', array_merge(array(0), $box_ids)) . ")") as $box) {
+            $boxes[(int) $box['id']] = $box;
             $hours[(int) $box['id']] = function_exists('ws_mail_first_reply_hours') ? ws_mail_first_reply_hours($box) : 0;
             $support[(int) $box['id']] = !function_exists('ws_mail_box_is_support') || ws_mail_box_is_support($box);
             $transports[(int) $box['id']] = (string) $box['transport'];
@@ -1247,6 +1250,8 @@ function ws_mail_items_map($rows)
             $items[$id]['first_reply_hours'] = $conversation ? (int) ($hours[(int) $conversation['box_id']] ?? 0) : 0;
             $items[$id]['support'] = $conversation ? ($support[(int) $conversation['box_id']] ?? true) : true;
             $items[$id]['transport'] = $conversation ? ($transports[(int) $conversation['box_id']] ?? 'imap') : 'imap';
+            $items[$id]['reply_off'] = $conversation ? ws_mail_reply_off(
+                $boxes[(int) $conversation['box_id']] ?? null, (string) $conversation['customer_email'], ws_mail_reply_site_domain()) : '';
         }
     }
 

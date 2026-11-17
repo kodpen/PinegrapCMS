@@ -4,7 +4,7 @@ description: The editor's Dark/Light canvas view and the theme switchers on the 
 ---
 
 ## Where does the editor's Dark/Light view live?
-- On the canvas `<html>` as `data-bs-theme` (dark, or no attribute / the engine's `light` for light), the attribute `pg_theme_switcher.js` writes on the published page. `applyCanvasTheme(mode, {source})` in `assets/js/style_designer.src.js` is the one place that sets it, the toolbar button (`#sd-vb-theme`), the Themes panel mode tabs and the panel's values.
+- On the canvas `<html>` as `data-bs-theme` (dark, or no attribute / the engine's `light` for light), the attribute `pg_theme_switcher.js` writes on the published page. `applyCanvasTheme(mode, {source})` in `assets/js/style_designer.src.js` is the one place that sets it, the View menu's Dark canvas switch (`#sd-vb-theme`; it keeps its name, the knob shows the state), the Themes panel mode tabs and the panel's values.
 - A fresh canvas document is written with the attribute on `<html>` (`_sdInitCanvasDoc()`), so the Animations button (`_sdCanvasRealmReset()`) keeps the view.
 - It used to sit on `<body>`, which overrides `<html>` for everything below it: with the toolbar on Dark, a canvas switcher set `<html>` light and the canvas stayed dark.
 - The view is not saved: the editor opens in the design's colour mode (dark for Dark, the editor's system for Follow the system), else light ([[design-colour-mode]]).

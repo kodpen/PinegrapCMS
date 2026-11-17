@@ -85,12 +85,26 @@ function test_place_map_not_found_writes_nothing()
 	pg_assert_same(null, pg_geocode_photon_point(array('features' => array(array('geometry' => array('coordinates' => array('x', 'y')))))));
 }
 
-// The service's 429 is told as "wait", other failures as an error.
+// The service's 429 and 503 are told as "wait", other failures as an error.
 function test_place_map_wait_passed_on()
 {
 	pg_assert_same('wait', pg_place_map_answer(array('ok' => false, 'status' => 429, 'data' => null, 'error' => 'HTTP 429'))['state']);
+	pg_assert_same('wait', pg_place_map_answer(array('ok' => false, 'status' => 503, 'data' => null, 'error' => 'HTTP 503'))['state'], 'the public server throttles with 503');
+	pg_assert_same('error', pg_place_map_answer(array('ok' => false, 'status' => 502, 'data' => null, 'error' => 'HTTP 502'))['state']);
+	pg_assert_same('error', pg_place_map_answer(array('ok' => false, 'status' => 0, 'data' => null, 'error' => 'No answer.'))['state']);
 	pg_assert_same('error', pg_place_map_answer(array('ok' => false, 'status' => 500, 'data' => null, 'error' => 'HTTP 500'))['state']);
 	pg_assert_contains('wait', pg_place_map_message(array('state' => 'wait', 'error' => '')));
+}
+
+// The bulk run pauses between requests to the public server only, never
+// before the first.
+function test_place_map_bulk_pause()
+{
+	pg_assert_same(0, pg_place_map_bulk_pause(PG_ADDR_PHOTON_HOST, 0), 'no pause before the first request');
+	pg_assert_same(PG_PLACE_MAP_PUBLIC_PAUSE, pg_place_map_bulk_pause(PG_ADDR_PHOTON_HOST, 1));
+	pg_assert_same(PG_PLACE_MAP_PUBLIC_PAUSE, pg_place_map_bulk_pause(PG_ADDR_PHOTON_HOST . '/', 5), 'a trailing slash is the same server');
+	pg_assert_same(0, pg_place_map_bulk_pause('https://photon.example.com', 3), 'the site\'s own server is not paused for');
+	pg_assert_true(PG_PLACE_MAP_PUBLIC_PAUSE * (PG_PLACE_MAP_BULK - 1) <= 10000000, 'the pauses of one press stay within ten seconds');
 }
 
 function test_place_map_bulk_bound_and_left()

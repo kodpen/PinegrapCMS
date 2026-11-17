@@ -551,8 +551,11 @@ function pg_site_push_consent_record($status, $user_id)
  * The query of the message waiting for one subscription: pushed within
  * PG_SITE_PUSH_MESSAGE_TTL and not yet read, or read within
  * PG_SITE_PUSH_REREAD (a worker woken twice for one message shows it
- * again), the newest first. Only that subscription's queue rows are looked
- * at: a secret never reads another browser's message. Pure.
+ * again). An unread row comes before a re-read one, then the newest: two
+ * messages pushed close together show one per wake, the newest first, and
+ * the last one read is shown again only when nothing unread is waiting.
+ * Only that subscription's queue rows are looked at: a secret never reads
+ * another browser's message. Pure.
  *
  * @param int $subscription_id
  * @param int $now
@@ -566,7 +569,7 @@ function pg_site_push_waiting_query($subscription_id, $now)
         INNER JOIN site_push_message AS m ON m.id = q.message_id
         WHERE q.subscription_id = ?
             AND ((q.status = ? AND q.sent_at >= ?) OR (q.status = ? AND q.fetched_at >= ?))
-        ORDER BY q.sent_at DESC, q.message_id DESC
+        ORDER BY (q.status = ?) DESC, q.sent_at DESC, q.message_id DESC
         LIMIT 1",
         array(
             (string) (int) $subscription_id,
@@ -574,6 +577,7 @@ function pg_site_push_waiting_query($subscription_id, $now)
             (string) ((int) $now - PG_SITE_PUSH_MESSAGE_TTL),
             (string) PG_SITE_PUSH_READ,
             (string) ((int) $now - PG_SITE_PUSH_REREAD),
+            (string) PG_SITE_PUSH_PUSHED,
         ),
     );
 }

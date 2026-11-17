@@ -24,4 +24,4 @@ description: The architect's conditions for the eight website plans of poll 82, 
 - Capacity, stock and the use of a code are taken by one conditional UPDATE, never read and then written.
 
 ## Where does a plan start?
-- Its first step is server and data only. The cart and checkout files are held by the designer-closed-blocks steps, `workspace.js` and `style_designer.src.js` by other open PRs: a step that enters them names the clash.
+- Its first step is server and data only. `workspace.js` and `style_designer.src.js` are held by other open PRs: a step that enters them names the clash.

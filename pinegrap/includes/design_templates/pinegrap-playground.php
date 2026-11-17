@@ -1581,7 +1581,7 @@ $pages[] = array(
 $mail_style = function ($css) use ($attr) {
     return array('_attrs' => array($attr('style', $css)));
 };
-$mail_page = function ($children) use ($el, $shared, $mail_style) {
+$mail_page = function ($children) use ($el, $shared, $mail_style, $attr) {
     return array('type' => 'root', 'props' => array('cssClass' => ''), 'children' => array(
         $el('div', 'bg-body-tertiary py-4 px-3', lang('E-mail Frame'), array(
             $el('div', 'mx-auto bg-body border border-3 border-dark rounded-5 overflow-hidden', lang('E-mail Card'), array(
@@ -1589,7 +1589,7 @@ $mail_page = function ($children) use ($el, $shared, $mail_style) {
                 $el('div', 'p-4', lang('E-mail Body'), $children, $mail_style('padding:24px')),
                 $shared('email_footer'),
             ), $mail_style('max-width:600px;margin:0 auto;background:#ffffff;border:3px solid #111827;border-radius:24px;overflow:hidden')),
-        ), $mail_style('background:#f3f4f6;padding:24px 12px;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif;font-size:15px;line-height:1.55;color:#1f2937')),
+        ), array('_attrs' => array($attr('data-bs-theme', 'light'), $attr('style', 'background:#f3f4f6;padding:24px 12px;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif;font-size:15px;line-height:1.55;color:#1f2937')))),
     ));
 };
 $mail_heading = function ($text) use ($heading, $attr) {
@@ -2605,7 +2605,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('Playground'),
-    'version'     => '1.1.3',
+    'version'     => '1.1.4',
     'framework'   => 'bootstrap5',
     'order'       => 15,
     'icon'        => 'bi-emoji-smile',

@@ -442,6 +442,6 @@ function ws_api_proposal_schema()
         'message_id'   => 'integer?',
         'requested_by' => 'WorkspacePerson?',
         'changes'      => 'WorkspaceChange[]',
-        'created_at'   => 'string?',
+        'created_at'   => 'datetime?',
     );
 }

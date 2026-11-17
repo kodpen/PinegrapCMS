@@ -1691,9 +1691,10 @@
         return (sign && (n > 0)) ? '+' + n : String(n);
     }
 
-    // The footer's hint while the tracks show a clip.
+    // The footer's hint while the tracks show a clip; an armed Record or
+    // Follow keeps its own.
     Editor.views.push(function () {
-        if ((this.tool === 'motion') && !this.clipDragging && this.hint && this.tracksShown && this.tracksShown() && this.clipLayers().length) {
+        if ((this.tool === 'motion') && !this.clipDragging && !this.recArmed && !this.recording && !this.follow && this.hint && this.tracksShown && this.tracksShown() && this.clipLayers().length) {
             this.hint.textContent = t('hintClips');
         }
     });

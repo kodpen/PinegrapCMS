@@ -118,10 +118,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ? lang('The draft was added to the bundle. Its own publish time was cleared: the bundle publishes it.')
             : lang('The draft was added to the bundle.');
     } elseif ($action === 'remove') {
-        $done = pg_page_bundle_remove_item($bundle, (int) $posted('item_id'));
+        $done = pg_page_bundle_remove_item($bundle, (int) $posted('item_id'), $user);
         $notice = lang('The page was removed from the bundle; it stays in Drafts.');
     } elseif ($action === 'delete') {
-        $done = pg_page_bundle_delete($bundle);
+        $done = pg_page_bundle_delete($bundle, $user);
         $notice = lang('The bundle was deleted; its drafts stay in Drafts.');
         $back = $list_url;
     }

@@ -18,6 +18,7 @@ $user = validate_user();
 validate_area_access($user, 'designer');
 
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/content_proposals.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/content_proposals_compare.php');
 
 // An action, then back to the list with what it did.
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -63,31 +64,6 @@ $field_labels = array(
     'page_search_keywords'  => lang('Keywords'),
 );
 
-// A value as the comparison shows it; a picture of the site's own files
-// with its small image beside the address.
-$show = function ($value, $picture = false) {
-    $text = (is_scalar($value) || ($value === null)) ? trim(strip_tags((string) $value)) : (string) json_encode($value, JSON_UNESCAPED_UNICODE);
-
-    if ($text === '') {
-        return '<span class="pg-text-meta">' . h(lang('(empty)')) . '</span>';
-    }
-
-    $thumb = ($picture && pg_content_proposals_local_picture($text))
-        ? '<img src="' . h($text) . '" alt="" height="64" loading="lazy" class="d-block mb-1 rounded">' : '';
-
-    return $thumb . '<span class="text-break">' . h(mb_strimwidth($text, 0, 600, '…')) . '</span>';
-};
-
-// One change of the comparison: its kind, what the site shows, what is
-// proposed. Side by side from md up, one under the other on a phone.
-$compare_line = function ($label, $was, $now, $picture = false) use ($show) {
-    return '<div class="row g-2 py-2 border-top">'
-        . '<div class="col-12 md:col-2 pg-text-2"><strong>' . h($label) . '</strong></div>'
-        . '<div class="col-12 md:col-5"><div class="pg-text-meta">' . h(lang('On the site')) . '</div>' . $show($was, $picture) . '</div>'
-        . '<div class="col-12 md:col-5"><div class="pg-text-meta">' . h(lang('Proposed')) . '</div>' . $show($now, $picture) . '</div>'
-        . '</div>';
-};
-
 $form = function ($row, $action, $label, $class) {
     return '<form method="post">' . get_token_field()
         . '<input type="hidden" name="proposal_id" value="' . (int) $row['id'] . '"/>'
@@ -121,18 +97,18 @@ foreach (pg_content_proposals_order(pg_content_proposals_list(), time()) as $row
         $name = (string) ($op['op'] ?? '');
 
         if ($name === 'text') {
-            $lines .= $compare_line(lang('Text'), $op['was'], $op['text']);
+            $lines .= pg_content_proposals_compare_line(lang('Text'), $op['was'], $op['text']);
         } elseif ($name === 'src') {
-            $lines .= $compare_line(lang('Picture'), $op['was'], $op['src'], true);
+            $lines .= pg_content_proposals_compare_line(lang('Picture'), $op['was'], $op['src'], true);
         } elseif ($name === 'note') {
-            $lines .= $compare_line(lang('Note'), $op['was'], $op['note']);
+            $lines .= pg_content_proposals_compare_line(lang('Note'), $op['was'], $op['note']);
         } elseif ($name === 'area') {
-            $lines .= $compare_line(lang('Editable area'), lang('As on the site'), lang('Rewritten by the editor'));
+            $lines .= pg_content_proposals_compare_line(lang('Editable area'), lang('As on the site'), lang('Rewritten by the editor'));
         } elseif ($name === 'tree') {
-            $lines .= $compare_line(lang('Page'), lang('As on the site'), lang('Rewritten by the editor'));
+            $lines .= pg_content_proposals_compare_line(lang('Page'), lang('As on the site'), lang('Rewritten by the editor'));
         } elseif ($name === 'fields') {
             foreach ((array) $op['fields'] as $key => $value) {
-                $lines .= $compare_line($field_labels[$key] ?? $key, $op['was'][$key] ?? '', $value);
+                $lines .= pg_content_proposals_compare_line($field_labels[$key] ?? $key, $op['was'][$key] ?? '', $value);
             }
         }
     }

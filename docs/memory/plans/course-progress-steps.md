@@ -4,7 +4,7 @@ description: Plan course-progress, steps CO1 to CO6: the tables and the rule of 
 ---
 
 ## Which steps are there?
-- CO1 (M) The tables and the rules, server and data only.
+- CO1 (M) The tables and the rules, server and data only. Done in #10063.
   - A migration step adds the courses, lessons and progress tables, listed in `get_tables()`; the draft PR's body carries their columns and indexes for the architect.
   - Existing files: `functions.php` (the module), `includes/fn/privacy.php` (the export and erasure lists).
   - New: `includes/fn/courses.php` (ready check, a course and its lessons, the enrolment day, the pure rule of an open lesson, the done and complete writers, the certificate's code), `tests/courses_test.php`.
@@ -17,7 +17,7 @@ description: Plan course-progress, steps CO1 to CO6: the tables and the rule of 
   - Pictures: the list, the editor with its lessons, the learners, a course with a problem (Z17). To the owner; not marked ready before his look.
   - Features: Z4, Z15, Z17.
 
-- CO3 (S) after CO1: the gate.
+- CO3 (S) after CO1: the gate. Done in #10135.
   - Existing files: `get_page.php` (one call after the access switch).
   - Tests: the gate's answer for a lesson closed by its days, closed by the order, a public lesson, an editor, a page that is no lesson, the switch off.
   - Pictures: the notice on the classroom page. To the architect.

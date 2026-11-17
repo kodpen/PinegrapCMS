@@ -76,6 +76,77 @@ function test_workspace_mail_pane_body_outside_pictures()
 	pg_assert_true(strpos($html, 'data-ws-mail-pictures>') < strpos($html, 'data-ws-mail-plain'), 'the line comes before Plain text');
 }
 
+// The site's own hosts, as a URL's hostname names them: lower case, no
+// port, an IPv6 address in brackets, each once.
+function test_workspace_mail_own_hosts()
+{
+	pg_assert_same(array('example.com', 'www.example.com', '[::1]'),
+		ws_mail_own_hosts(array('Example.COM', 'www.example.com:8443', '', 'example.com', '[::1]:8080', 'bad host', null)));
+	pg_assert_same(array(), ws_mail_own_hosts(array()), 'none known');
+}
+
+// Which set-aside pictures Show pictures would load: only an address on
+// another host than the site's own; the frame never loads the others.
+function test_workspace_mail_picture_hosts()
+{
+	$own = array('example.com');
+	$none = array('outside' => false, 'own' => false);
+
+	pg_assert_same($none, ws_mail_picture_hosts('', $own), 'no HTML');
+	pg_assert_same($none, ws_mail_picture_hosts('<img src="data:image/png;base64,AA==">', $own), 'no set-aside address');
+
+	pg_assert_same(array('outside' => true, 'own' => false),
+		ws_mail_picture_hosts('<img data-pg-src="https://cdn.example.net/a.png">', $own), 'another host');
+	pg_assert_same(array('outside' => false, 'own' => true),
+		ws_mail_picture_hosts('<img data-pg-src="https://example.com/files/logo.png">', $own), 'the site\'s own host');
+	pg_assert_same(array('outside' => false, 'own' => true),
+		ws_mail_picture_hosts('<td data-pg-background="http://EXAMPLE.com:8080/bg.png?a=1&amp;b=2"></td>', $own), 'any case, scheme and port');
+	pg_assert_same(array('outside' => false, 'own' => true),
+		ws_mail_picture_hosts('<img data-pg-src="https://user@example.com/x.png">', $own), 'a user name does not hide the host');
+	pg_assert_same(array('outside' => true, 'own' => true),
+		ws_mail_picture_hosts('<img data-pg-src="https://example.com/a.png"><img data-pg-src="https://example.com.evil.test/b.png">', $own), 'both kinds');
+	pg_assert_same(array('outside' => true, 'own' => false),
+		ws_mail_picture_hosts('<img data-pg-src="https://shop.example.com/a.png">', $own), 'another host of the same domain is outside');
+	pg_assert_same($none, ws_mail_picture_hosts('<img data-pg-src="https:///nohost.png">', $own), 'an address without a host is never loaded');
+	pg_assert_same(array('outside' => true, 'own' => false),
+		ws_mail_picture_hosts('<img data-pg-src="https://example.com/a.png">', array()), 'no own host known: every address counts');
+	pg_assert_same($none, ws_mail_picture_hosts('<p>data-pg-src="https://cdn.example.net/a.png"</p>', $own), 'text that only looks like one');
+}
+
+// Pictures only on the site's own address: no Show pictures, a plain line
+// that says they are not shown.
+function test_workspace_mail_pane_body_own_pictures()
+{
+	$html = ws_mail_pane_body_html(workspace_mail_frame_test_item(array('own_pictures' => 1)), 'Ayşe', '/pg/');
+
+	pg_assert_contains('<span class="ws-mail-pictures-own" data-ws-mail-pictures-own>', $html);
+	pg_assert_contains(h(lang('Pictures on this site\'s own address are not shown in an e-mail.')), $html);
+	pg_assert_same(false, strpos($html, 'data-ws-mail-show-pictures'), 'nothing to offer');
+	pg_assert_same(false, strpos($html, 'pictures=1'), 'no second address');
+	pg_assert_true(strpos($html, 'data-ws-mail-pictures-own>') < strpos($html, 'data-ws-mail-plain'), 'the line comes before Plain text');
+
+	$both = ws_mail_pane_body_html(workspace_mail_frame_test_item(array('own_pictures' => 1, 'outside_pictures' => 1)), 'Ayşe', '/pg/');
+	pg_assert_contains('data-ws-mail-show-pictures', $both, 'other pictures are still offered');
+	pg_assert_contains('data-ws-mail-pictures-own>', $both, 'and the line stays beside the offer');
+	pg_assert_same(false, strpos($both, '<span class="ws-mail-pictures" data-ws-mail-pictures><i class="bi bi-image me-1" aria-hidden="true"></i>' . h(lang('Pictures on this site\'s own address are not shown in an e-mail.'))), 'the line is not inside the offer');
+
+	// Show pictures hides only the offer's own element (an exact attribute
+	// selector), so the line stays: the site's own picture is still not shown.
+	$script = workspace_mail_frame_test_source('assets/js/workspace_mail.js');
+	pg_assert_contains("querySelector('[data-ws-mail-pictures]')", $script, 'the offer is found by its exact attribute');
+	pg_assert_same(false, strpos($script, 'data-ws-mail-pictures-own'), 'the script never touches the line');
+	pg_assert_same(false, strpos(ws_mail_pane_body_html(workspace_mail_frame_test_item(), 'Ayşe', '/pg/'), 'data-ws-mail-pictures-own'), 'no such picture, no line');
+}
+
+// The pane decides the offer from the addresses of the mails the cheap
+// column marks, read once for those mails only.
+function test_workspace_mail_pane_reads_picture_hosts()
+{
+	$pane = workspace_mail_frame_test_source('includes/workspace/mail_pane.php');
+	pg_assert_contains('ws_mail_picture_hosts((string) $row[\'body_html\'], $own)', $pane);
+	pg_assert_contains('SELECT id, body_html FROM ws_mail_items WHERE id IN (', $pane, 'only the marked mails\' HTML');
+}
+
 // No kept HTML, or no panel address: the text as before.
 function test_workspace_mail_pane_body_text_only()
 {

@@ -171,7 +171,7 @@ function ws_api_person_card_workday_schema()
 // One away range, dates as Y-m-d; source is plan or mail.
 function ws_api_person_card_away_schema()
 {
-    return array('start' => 'string', 'end' => 'string', 'now' => 'boolean', 'source' => 'string', 'title' => 'string');
+    return array('start' => 'date', 'end' => 'date', 'now' => 'boolean', 'source' => 'string', 'title' => 'string');
 }
 
 // The person's local time (H:i) in their zone; other when not the site's.

@@ -17,11 +17,15 @@ description: The flow box Read the records of a list (list_records, #9978): the 
 - Architect (2026-11-16): no earlier counted run: the window opens at the run's version's `published_at`; after a long pause it opens at the last counted run (50 records at most). `only_new` needs a flow that starts at a time (`ws_flow_records_time_problems()`).
 
 ## Which date has a record?
-- `forms.submitted_timestamp`, the feed's. Where the list's filters hold exactly one "date field is (at most) the current date (and time)" condition on a date field of the form (`ws_flow_records_live_field()`), the later of that and the field's value. `forms` keeps no set-live moment and gets no column (architect, 2026-11-16).
+- `forms.submitted_timestamp`, the feed's. Where the list's filters hold "date field is (at most) the current date (and time)" conditions on exactly one date field of the form (`ws_flow_records_live_field()`), the later of that and the field's value.
+- Counted by distinct field (#10095): the list's filters merged with its detail page's hold the news and magazine templates' `publish_date` filter twice, which once dated records by creation only, so a scheduled post was never sent (#10051). Two different fields still give no live field. `forms` keeps no set-live moment and gets no column (architect, 2026-11-16).
 - Left out (D11): records the list shows, dated before the window, changed (`last_modified_timestamp`) inside it. The box's text says so (`ws_flow_records_left_out_note()`).
 
 ## What does Try show?
 - `ws_step_list_records_try()`: the window a run now would read (last counted run to now), the records and up to 20 left-out titles; nothing moves.
 
 ## What is not verified?
-- No run on a database; the pure parts and the wiring are under tests. The canvas form, the icon and the palette are DG3.
+- No run on a database; the pure parts and the wiring are under tests.
+
+## Canvas? (#10176)
+- Palette Records group, offered while `FL.steps.list_pages` (`ws_flow_records_pages()`: pages with a public form list in a public folder) is not empty; `recordsFields()` (page, "Only records new since the last run" with the left-out note), `recordsMeta()`; icon `list_records` in workspace.js `FLOW_ICONS`. Try's records and left-out titles come as texts (`ws_flow_records_try_texts()`), drawn by `drawTry()` unchanged.

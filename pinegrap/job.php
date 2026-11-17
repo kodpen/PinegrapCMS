@@ -22,6 +22,7 @@
 // - Publishing scheduled comments
 // - Putting visual-designer pages on the site, and taking them off it, at
 //     their scheduled times
+// - Publishing release bundles at their scheduled times
 // - Creating order abandoned auto campaigns
 // - Unpublishing old calendar events so they don't appear on the calendar
 //     or in search results.
@@ -666,6 +667,25 @@ if (function_exists('pg_page_schedule_run')) {
 
     foreach ($page_schedule['home'] as $page_schedule_name) {
         log_activity(lang(array('string' => 'page ({var:1}) is the home page, so it stayed on the site at its scheduled time', 'vars' => array($page_schedule_name))), 'UNKNOWN');
+    }
+}
+
+// Release bundles (includes/fn/page_bundles.php): a scheduled bundle whose
+// time has come is published once, in the name of the person who set the
+// time; one that cannot go out whole goes back to open and its people get a
+// bell line. A publish that died part-way (a fatal error, a timeout) is
+// finished first, as the failure it was, when the bundle's lock is free.
+// With nothing due or stuck it is two small reads.
+if (function_exists('pg_page_bundle_job_run')) {
+
+    $page_bundles_due = pg_page_bundle_job_run();
+
+    foreach ($page_bundles_due['published'] as $page_bundle_name) {
+        log_activity(lang(array('string' => 'release bundle ({var:1}) was published at its scheduled time', 'vars' => array($page_bundle_name))), 'UNKNOWN');
+    }
+
+    foreach ($page_bundles_due['held'] as $page_bundle_name) {
+        log_activity(lang(array('string' => 'release bundle ({var:1}) was not published at its scheduled time', 'vars' => array($page_bundle_name))), 'UNKNOWN');
     }
 }
 

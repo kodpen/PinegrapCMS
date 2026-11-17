@@ -16,3 +16,8 @@ module: site_push
 
 ## What is tidied?
 - At the start of each pass (`pg_site_push_queue_tidy()`): waiting rows of a message older than a day are given up and counted as failed; rows no longer waiting whose message is older than 7 days are deleted. The queue is no history; the counts stay on the message (architect, agent channel message 6528).
+
+## Is the pass's size a limit on the audience?
+- No. Architect (2026-11-17, agent channel message 8731): N10 sends news to every subscriber and N11's day is for a device its push service cannot reach. One page of 100 rows, one request at a time, inside a budget of 10 s (`job.php`) or 20 s (`push_job.php`) is VP2's guard for the job's time.
+- At 100 a minute news to 20,000 subscribers takes over 3 hours, and above about 144,000 the rest is given up after the day: bug #10251.
+- The fix's shape: the pass reads page after page until its budget ends and sends 20 at a time through a new `api_http_request_many()` beside `api_http_request()` in `includes/api/outbound/http.php` (allowed beside a holder of that file). The lock, the two budgets, the order, the retry plan and the day stay; a 429 holds its service from the next group on.

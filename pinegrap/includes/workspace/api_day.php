@@ -177,19 +177,19 @@ function ws_api_plan_item_schema()
         'department_id' => 'integer?',
         'people'        => array('integer'),
         'all_day'       => 'boolean',
-        'start_date'    => 'string',
-        'end_date'      => 'string',
+        'start_date'    => 'date',
+        'end_date'      => 'date',
         'start_time'    => 'string?',
         'end_time'      => 'string?',
-        'starts_at'     => 'string?',
-        'ends_at'       => 'string?',
+        'starts_at'     => 'datetime?',
+        'ends_at'       => 'datetime?',
         'yearly'        => 'boolean',
         'from_calendar' => 'boolean',
         'meeting_url'   => 'string',
         'created_by'    => 'integer',
         'can_edit'      => 'boolean',
         'contact'       => 'WorkspacePlanItemContact?',
-        'created_at'    => 'string?',
+        'created_at'    => 'datetime?',
     );
 }
 
@@ -715,6 +715,53 @@ function ws_api_my_day_ack_present($ack, $times)
 }
 
 /**
+ * An agent question waiting for the person's answer
+ * (ws_agent_questions_for()): the poll, its message and channel, the
+ * question cut to 160 characters, the asking agent in the shape of a
+ * message's sender (WorkspaceMessageSender) and when it was asked.
+ *
+ * @param array $question
+ * @return array
+ */
+function ws_api_my_day_question_present($question)
+{
+    $text = (string) ($question['question'] ?? '');
+
+    if (mb_strlen($text) > 160) {
+        $text = rtrim(mb_substr($text, 0, 159)) . '…';
+    }
+
+    // The panel sender (ws_message_row_sender()) as the API names a
+    // message's sender: a team member carries their user id, an
+    // application none.
+    $asker = $question['asker'] ?? null;
+
+    if (is_array($asker)) {
+        $asker = array(
+            'user_id' => (empty($asker['app']) && ((int) ($asker['id'] ?? 0) > 0)) ? (int) $asker['id'] : null,
+            'name'    => (string) ($asker['name'] ?? ''),
+        );
+    } else {
+        $asker = null;
+    }
+
+    $channel = (array) ($question['channel'] ?? array());
+
+    return array(
+        'id'         => (int) $question['id'],
+        'message_id' => (int) $question['message_id'],
+        'channel'    => array(
+            'id'      => (int) ($channel['id'] ?? 0),
+            'name'    => (string) ($channel['name'] ?? ''),
+            'private' => !empty($channel['private']),
+        ),
+        'question'   => $text,
+        'asker'      => $asker,
+        'asked_at'   => api_time((int) ($question['created_at'] ?? 0)),
+    );
+}
+
+/**
  * The day as the API shows it, from the parts ws_api_my_day_get() gathered.
  *
  * @param array $day
@@ -736,6 +783,8 @@ function ws_api_my_day_present($day)
         'proposed_changes' => array_values($day['proposed_changes']),
         'read_receipts'    => array_values($day['read_receipts']),
         'written_to_me'    => array_values($day['written_to_me']),
+        'questions'        => array_map('ws_api_my_day_question_present', array_slice(array_values((array) ($day['questions'] ?? array())), 0, 5)),
+        'questions_count'  => (int) ($day['questions_count'] ?? 0),
         'inbox_unread'     => (int) $day['inbox_unread'],
     );
 }
@@ -744,7 +793,7 @@ function ws_api_my_day_present($day)
 function ws_api_my_day_schema()
 {
     return array(
-        'date'             => 'string',
+        'date'             => 'date',
         'left_out'         => array('string'),
         'tasks_open'       => 'integer',
         'tasks_overdue'    => 'integer',
@@ -761,7 +810,7 @@ function ws_api_my_day_schema()
             'channel'    => 'string',
             'asked_by'   => 'string',
             'text'       => 'string',
-            'created_at' => 'string?',
+            'created_at' => 'datetime?',
         )),
         'written_to_me'    => array(array(
             'message_id' => 'integer',
@@ -771,8 +820,17 @@ function ws_api_my_day_schema()
             'unread'     => 'boolean',
             'sender'     => 'string',
             'text'       => 'string',
-            'created_at' => 'string?',
+            'created_at' => 'datetime?',
         )),
+        'questions'        => array(array(
+            'id'         => 'integer',
+            'message_id' => 'integer',
+            'channel'    => array('id' => 'integer', 'name' => 'string', 'private' => 'boolean'),
+            'question'   => 'string',
+            'asker'      => 'WorkspaceMessageSender?',
+            'asked_at'   => 'datetime?',
+        )),
+        'questions_count'  => 'integer',
         'inbox_unread'     => 'integer',
     );
 }
@@ -798,6 +856,8 @@ function ws_api_my_day_get($params)
         'proposed_changes' => array(),
         'read_receipts'    => array(),
         'written_to_me'    => array(),
+        'questions'        => array(),
+        'questions_count'  => 0,
         'inbox_unread'     => ws_inbox_unread_count($me),
     );
 
@@ -910,6 +970,18 @@ function ws_api_my_day_get($params)
 
     foreach ($talk as $line) {
         $day['written_to_me'][] = ws_api_my_day_talk_present($line, $times);
+    }
+
+    // The agent questions asked of the person, counted as Today counts them
+    // (twenty read, five listed), in the channels they read.
+    if (function_exists('ws_agent_questions_for')) {
+        foreach (ws_agent_questions_for($viewer, 20) as $question) {
+            if ($allowed($question['channel']['id'])) {
+                $day['questions'][] = $question;
+            }
+        }
+
+        $day['questions_count'] = count($day['questions']);
     }
 
     api_ok(ws_api_my_day_present($day));

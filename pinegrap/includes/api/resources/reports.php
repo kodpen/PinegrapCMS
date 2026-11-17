@@ -391,7 +391,7 @@ function api_reports_cart_recovery($params) {
 
 	$to = strtotime($window['last'] . ' 00:00:00 +1 day');
 
-	return api_cart_recovery_present(pg_cart_recovery_period($from, $to), $window['first'], $window['last']);
+	api_ok(api_cart_recovery_present(pg_cart_recovery_period($from, $to), $window['first'], $window['last']));
 
 }
 

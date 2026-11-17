@@ -33,7 +33,7 @@ module: page_clicks
 - One setting with one reader and one saver: `visitors/page-clicks-switch.md`.
 
 ## What else is there?
-- The script and its Features card (CM2 #9946): `page-clicks-script.md`. The Visitors section and `GET /reports/page-clicks` (#9913): `ui/visitors-clicks-section.md`. The designer layer (CM4) is not there yet.
+- The script and its Features card (CM2 #9946): `page-clicks-script.md`. The Visitors section and `GET /reports/page-clicks` (#9913): `ui/visitors-clicks-section.md`. Designer layer: `page-clicks-designer-layer.md`.
 
 ## Tested?
-- `tests/page_clicks_test.php`. The step was run twice on MariaDB; record, bound, figures and sweep against it. No browser run (no script yet).
+- `tests/page_clicks_test.php`. The step was run twice on MariaDB; record, bound, figures and sweep against it. No browser run.

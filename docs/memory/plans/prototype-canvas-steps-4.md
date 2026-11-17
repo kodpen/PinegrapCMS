@@ -4,7 +4,7 @@ description: Plan prototype-canvas, steps PV11a and PV11b from the owner's answe
 ---
 
 ## Which steps came from the owner's answer?
-- PV11a (M) Further problems. After PV10.
+- PV11a (M) Further problems. After PV10. Done in #10204: `designer/prototype-problems.md`.
   - `PGProtoHotspots`: the mark `empty` for an address that is empty or `#` alone (F26); `#name`, a toggle and a bound link keep what they read as today. `CHIP_MARKS` gains nothing: an empty link has no chip and no arrow.
   - The view asks `G.check()` (PV1) with the Start page and marks the frames nothing reaches (F27); shared parts and chips are left out before the call.
   - The bar's amber "N to check", the three groups of the problems list, the head's amber count and the amber rectangle and list row (F28, F29).

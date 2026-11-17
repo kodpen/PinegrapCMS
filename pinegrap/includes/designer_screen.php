@@ -290,6 +290,13 @@ function pg_designer_screen_render($ctx)
         // its kind and the settings carried from the page's type settings,
         // for the offer to put that widget beside the region.
         'layoutWidgets' => pg_layout_widget_offers($layout_pages),
+        // Every page of the design whose classic type has a system widget,
+        // custom layout or not, in the same shape: "Convert to design
+        // elements" on its own system region puts that widget in its place.
+        'classicWidgets' => ((int)$user['role'] <= 1) ? pg_classic_widget_offers($tab_page_ids) : array(),
+        // Of those, the pages whose classic type has no widget: a muted line
+        // in the System region's panel instead of a converter.
+        'classicNoWidget' => ((int)$user['role'] <= 1) ? pg_classic_no_widget_page_ids($tab_page_ids) : array(),
         'layoutReadOnly' => pg_hosted(),
         // ?layout=1 (the toolbar's Ctrl+G button, pg_layout_tab_param()):
         // the page whose layout tab opens once the editor is up, or 0.
@@ -559,6 +566,19 @@ function pg_designer_screen_render($ctx)
                              (data-pg-menu-drawer-toggle). -->
                         <button type="button" id="sd-left-toggle" class="sd-icon-btn sd-left-toggle no-popover" data-pg-menu-drawer-toggle aria-controls="menu" aria-expanded="false" title="' . h(lang('Show menu')) . '" aria-label="' . h(lang('Show menu')) . '" data-label-show="' . h(lang('Show menu')) . '" data-label-hide="' . h(lang('Hide menu')) . '"><span class="bi bi-layout-sidebar pg-mt-shut" aria-hidden="true"></span><span class="bi bi-layout-sidebar-inset pg-mt-open" aria-hidden="true"></span></button>
                         <div class="sd-toolbar-group sd-toolbar-pages"' . ($sd_component ? ' hidden' : '') . '>
+                            <!-- The menu of the design: its name opens
+                                 Settings and, under a divider, Delete (the
+                                 delete item comes ready from the caller). The
+                                 label follows the name field of Settings. -->
+                            <div class="pg-menu-wrap sd-design-menu">
+                                <button type="button" class="sd-design-menu-btn" id="sd-design-menu-btn" data-bs-toggle="menu" aria-expanded="false" aria-haspopup="menu" title="' . h(lang('Design menu')) . '" data-sd-untitled="' . h(lang('New design')) . '">
+                                    <span class="sd-design-menu-name" id="sd-design-menu-name">' . h(isset($style['name']) && trim((string)$style['name']) !== '' ? (string)$style['name'] : lang('New design')) . '</span><span class="bi bi-chevron-down sd-design-menu-caret" aria-hidden="true"></span>
+                                </button>
+                                <ul data-bs-theme="dark" class="menu">
+                                    <li><button type="button" class="menu-item" id="sd-design-settings" data-bs-toggle="dialog" data-bs-target="#styleSettingsModal"><span class="bi bi-gear me-3" aria-hidden="true"></span>' . lang('Settings') . '</button></li>
+                                    ' . ($mode === 'edit' ? $ctx['delete_button'] : '') . '
+                                </ul>
+                            </div>
                             <div class="pg-menu-wrap sd-tabs-add">
                                 <button type="button" class="sd-tabs-add-btn" data-bs-toggle="menu" aria-expanded="false" title="' . lang('Add Page') . '">
                                     <span class="bi bi-plus-lg"></span><span class="sd-tabs-add-txt">' . lang('Add Page') . '</span>
@@ -571,8 +591,6 @@ function pg_designer_screen_render($ctx)
                                     <li><button type="button" class="menu-item" id="sd-tab-paste-html"><span class="bi bi-clipboard-plus me-3"></span>' . lang('Paste HTML content') . '</button></li>
                                 </ul>
                             </div>
-                            <button type="button" class="sd-icon-btn" data-bs-toggle="dialog" data-bs-target="#styleSettingsModal" title="' . lang('Settings') . '"><span class="bi bi-gear"></span></button>
-                            ' . ($mode === 'edit' ? $ctx['delete_button'] : '') . '
                         </div>
                         <div class="sd-tabs-scroll" id="sd-tabs-list" role="tablist"></div>
                         <!-- Every page in one list, for when the strip cannot
@@ -596,6 +614,10 @@ function pg_designer_screen_render($ctx)
                             ' . (!empty($sd_ai['enabled']) ? '<button type="button" id="sd-ai-btn" class="sd-icon-btn sd-ai-btn" title="' . h(lang('Ask the assistant')) . '" aria-expanded="false"><span class="bi bi-stars" aria-hidden="true"></span><span class="sd-ai-btn-txt">' . h(lang('Assistant')) . '</span><span class="sd-ai-btn-dot" aria-hidden="true"></span></button>' : '') . '
                             <button type="button" id="sd-main-undo" class="sd-vb-btn" onclick="StyleDesigner.undo()" title="' . lang('Undo') . ' (Ctrl+Z)" disabled><span class="bi bi-arrow-counterclockwise"></span></button>
                             <button type="button" id="sd-main-redo" class="sd-vb-btn" onclick="StyleDesigner.redo()" title="' . lang('Redo') . ' (Ctrl+Y)" disabled><span class="bi bi-arrow-clockwise"></span></button>
+                            <!-- The Preview menu: the page outside the editor (a new
+                                 window, the site as saved, the prototype). Its rows
+                                 are drawn by _sdPreviewMenuBuild(). -->
+                            <button type="button" id="sd-preview-menu-btn" class="sd-icon-btn sd-preview-btn" aria-haspopup="menu" aria-expanded="false" aria-controls="sd-preview-menu" title="' . h(lang('Preview')) . '"><span class="bi bi-window" aria-hidden="true"></span><span class="sd-preview-txt">' . h(lang('Preview')) . '</span><span class="bi bi-chevron-down sd-preview-caret" aria-hidden="true"></span></button>
                             <!-- The main action puts every page of the design on the
                                  site, so it says so. The label drops to the icon on
                                  narrow screens; the title still names it. -->
@@ -605,7 +627,6 @@ function pg_designer_screen_render($ctx)
                                  sheet. Hidden while the page on screen is on
                                  the site, where the main button opens it. -->
                             <button type="button" id="sd-publish-page" class="sd-icon-btn sd-icon-btn-primary sd-publish-btn d-none" title="' . h(lang('Choose the pages to put on the site.')) . '"><span class="bi bi-rocket-takeoff" aria-hidden="true"></span><span class="sd-publish-txt">' . lang('Publish') . '</span></button>' : '') . '
-                            <a href="#" id="sd-view-page" class="sd-icon-btn" target="_blank" rel="noopener" title="' . lang('View Page') . '" style="display:none"><span class="bi bi-box-arrow-up-right"></span></a>
                         </div>
                     </div>
 
