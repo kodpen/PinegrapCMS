@@ -30,166 +30,14 @@ validate_email_access($user);
 // given: it ended in an error page.
 pg_request_single_values(array('page_id'));
 
-// if form has not been submitted yet
-if (!$_POST) {
-    // A page passed in the address (a page's "Send as campaign") is the
-    // design chosen; without one the design is still the first kind shown.
-    $output_body_kind = 'design';
-    $output_preview = '';
-    $output_edit_url = '';
+// Refusals of the posted form, keyed by field. With any, the form is drawn
+// again below with what was posted, the refusals listed above it.
+$errors = array();
+$groups = array();
+$entered_email_address = '';
+$body_kind = null;
 
-    $output_body = '';
-
-    $plain_text_email_campaign_footer = db_value("SELECT plain_text_email_campaign_footer FROM config");
-
-    if ($plain_text_email_campaign_footer != '') {
-        $output_body =
-            "\n" .
-            "\n" .
-            "\n" .
-            $plain_text_email_campaign_footer;
-    }
-
-    // The design is the page picker field (kind page_view: any page the
-    // sender may view, searched as typed). A page passed in the address
-    // (a page's "Send as campaign") is drawn chosen, with its preview.
-    $output_page_id = (string) (int) ($_GET['page_id'] ?? '');
-
-    if ($output_page_id !== '0') {
-        $result = db_q("SELECT page_name, page_folder, page_style FROM page WHERE page_id = ?", array($output_page_id)) or output_error('Query failed.');
-        $row = mysqli_fetch_assoc($result);
-
-        if ($row && check_view_access($row['page_folder'])) {
-            $output_preview = OUTPUT_PATH . encode_url_path($row['page_name']) . '?edit=no&email=true';
-            $output_edit_url = check_edit_access($row['page_folder']) ? pg_page_edit_url(array('page_id' => $output_page_id, 'page_style' => $row['page_style'])) : '';
-        }
-    } else {
-        $output_page_id = '';
-    }
-
-    $output_page_field = pg_picker_field('page_view', 'page_id', $output_page_id, array('value_attributes' => array('data-pg-campaign-page' => ''))) . pg_picker_script();
-
-    // get all contact groups
-    $query =
-        "SELECT
-           id,
-           name,
-           email_subscription
-        FROM contact_groups
-        ORDER BY name";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-
-    $output_contact_group_rows = '';
-    
-    // loop through all contact groups
-    while ($row = mysqli_fetch_assoc($result)) {
-        $id = $row['id'];
-        $name = $row['name'];
-        
-        // if user has access to contact group, then include this contact group
-        if (validate_contact_group_access($user, $id) == true) {
-            // count the contacts with an address and those opted in: both are
-            // shown, so a change of purpose needs no reload
-            $result_count = db_q(pg_email_campaign_group_count_query($row['email_subscription'] == 1), array((string) $id)) or output_error('Query failed.');
-            $counts = mysqli_fetch_assoc($result_count);
-            
-            // if contact group has at least one contact with an address
-            if ((int) $counts['total'] > 0) {
-                $output_contact_group_rows .=
-                    '<tr>
-                        <td id="contact_group_name_' . $id . '">' . pg_email_campaign_group_label($name, $counts['total'], $counts['opted_in']) . '</td>
-                        <td class="text-center"><div class="form-field d-inline-grid"><input class="radio" type="radio" name="contact_group_' . $id . '" value="ignored" aria-labelledby="contact_group_name_' . $id . ' contact_group_ignore" checked="checked" /></div></td>
-                        <td class="text-center"><div class="form-field d-inline-grid"><input class="radio" type="radio" name="contact_group_' . $id . '" value="included" aria-labelledby="contact_group_name_' . $id . ' contact_group_include" /></div></td>
-                        <td class="text-center"><div class="form-field d-inline-grid"><input class="radio" type="radio" name="contact_group_' . $id . '" value="excluded" aria-labelledby="contact_group_name_' . $id . ' contact_group_exclude" /></div></td>
-                    </tr>';
-            }
-        }
-    }
-    
-    // if there is at least one contact group to show, then prepare to output contact groups
-    if ($output_contact_group_rows != '') {
-        $output_contact_groups =
-            '<div class="alert theme-primary"><p>' . lang('Send message to all Subscribers in my selected Contact Groups') . '</p></div>
-            <div class="mb-7">
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th scope="col"><span class="visually-hidden">' . lang('Contact Group') . '</span></th>
-                            <th id="contact_group_ignore" scope="col" class="text-center">' . lang('Ignore') . '</th>
-                            <th id="contact_group_include" scope="col" class="text-center">' . lang('Include') . '</th>
-                            <th id="contact_group_exclude" scope="col" class="text-center">' . lang('Exclude') . '</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                    ' . $output_contact_group_rows . '
-                    </tbody>
-                </table>
-            </div>';
-    } else {
-        $output_contact_groups = '<div class="alert theme-danger"><p>' . lang('You do not have access to any contact groups with subscribers.') . '</p></div>';
-    }
-    
-    print
-    
-    pg_page_shell(
-        array(
-            'title'=> lang('Create Campaign'),
-            'extra classes'=>'campaign pg-measure-edit',
-            'icon'=>'campaign',
-            'heading'=> lang('Create Campaign'),
-            'heading_description' => lang('Create a new e-mail campaign to send to all subscribers in selected contact groups.'),
-            'cancel'=>array('enable'=>'true','url'=>'view_email_campaigns.php'),
-            'breadcrumb' => array(
-                array('label' => lang('My Campaigns'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_email_campaigns.php'),
-                array('label' => lang('Create Campaign')),
-            ),
-        )
-    ) . '
-<main id="content" class="container-fluid">
-                <form name="form" action="add_email_campaign.php" method="post" >
-                    ' . get_token_field() . '
-                    ' . pg_email_campaign_layout(
-                        pg_campaign_content_card(array(
-                            'mode'         => 'add',
-                            'kind'         => $output_body_kind,
-                            'page_field'   => $output_page_field,
-                            'edit_url'     => $output_edit_url,
-                            'text'         => $output_body,
-                            'preview'      => $output_preview,
-                            // Making a design is a designer's job (add_system_style.php).
-                            'new_design'   => ((int) $user['role'] <= 1),
-                        )) . pg_email_campaign_card(
-                            lang('E-Mail Message To My Contact Groups'),
-                            '<div class="col-12 my-3">
-                                ' . $output_contact_groups . '
-                            </div>
-                            <div class="col-12 my-3">
-                                <div class="alert theme-secondary">
-                                    <div class="row align-items-center justify-content-between">
-                                        <div class="col-12 md:col-auto">
-                                            <label class="form-label md:mb-0" for="entered_email_address">' . lang('Also send message to the following e-mail address') . ':</label>
-                                        </div>
-                                        <div class="col-12 md:col-6">
-                                            <input type="text" class="form-control" id="entered_email_address" name="entered_email_address" maxlength="100" inputmode="email" data-inputmask-alias="email">
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>'
-                        ) . pg_email_campaign_from_card(array(
-                            'from_name' => ORGANIZATION_NAME,
-                            'from_email_address' => $user['email_address'],
-                            'reply_email_address' => $user['email_address'],
-                        )),
-                        pg_email_campaign_schedule_card('') . pg_email_campaign_purpose_card('commercial'),
-                        '<button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1  btn-solid theme-success "><span class="bi bi-plus-circle me-3"></span><span class="pg-btn-label">' . lang(array('string'=>'Create') ) . '</span></button>'
-                    ) . '
-                </form>
-                ' . pg_campaign_content_script() . '
-</main>' .
-    output_footer();
-    
-// else form has been submitted
-} else {
+if ($_POST) {
     validate_token_field();
 
     // The format and purpose are ones the form offers, and the subject and
@@ -208,27 +56,23 @@ if (!$_POST) {
     $_POST['from_name'] = trim(pg_email_campaign_posted_text($_POST, 'from_name'));
     $_POST['body'] = pg_email_campaign_posted_text($_POST, 'body');
 
-    $field_errors = pg_email_campaign_field_errors(array(
+    $errors = pg_email_campaign_field_errors(array(
         'subject' => $_POST['subject'] ?? '',
         'from_email_address' => $_POST['from_email_address'] ?? '',
         'reply_email_address' => $_POST['reply_email_address'] ?? '',
     ));
 
     if ($_POST['format'] === null) {
-        $field_errors['format'] = lang('Select a format.');
+        $errors['format'] = lang('Select a format.');
     }
 
     if ($_POST['purpose'] === null) {
-        $field_errors['purpose'] = lang('Select a purpose.');
+        $errors['purpose'] = lang('Select a purpose.');
     }
 
-    if ($field_errors) {
-        output_error(pg_email_campaign_field_errors_html($field_errors));
-    }
-
-    $_POST['subject'] = trim((string) $_POST['subject']);
-    $_POST['from_email_address'] = trim((string) $_POST['from_email_address']);
-    $_POST['reply_email_address'] = trim((string) ($_POST['reply_email_address'] ?? ''));
+    $_POST['subject'] = trim(pg_email_campaign_posted_text($_POST, 'subject'));
+    $_POST['from_email_address'] = trim(pg_email_campaign_posted_text($_POST, 'from_email_address'));
+    $_POST['reply_email_address'] = trim(pg_email_campaign_posted_text($_POST, 'reply_email_address'));
 
     // Pasted HTML: cleaned by the outgoing mode before anything else, so an
     // empty or refused paste stops here.
@@ -238,45 +82,37 @@ if (!$_POST) {
         $pasted_html = pg_mail_html_clean_outgoing(pg_email_campaign_posted_text($_POST, 'html_body'));
 
         if ($pasted_html === '') {
-            output_error(lang('Paste the HTML of the e-mail: nothing that can be sent was left of it.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+            $errors['html_body'] = lang('Paste the HTML of the e-mail: nothing that can be sent was left of it.');
         }
     }
 
-    // A plain text or pasted body is stored without a page.
-    if ($body_kind !== 'design') {
-        $_POST['page_id'] = '0';
-
-    // else the user selected HTML for the format, so do some checks
-    } else {
-        // if the user did not select a page, then output error
+    // A design needs a page the user may view.
+    if ($body_kind === 'design') {
+        // if the user did not select a page, then refuse
         if ($_POST['page_id'] == '') {
-            output_error(lang('Please select a page for the body of the campaign.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
-        }
+            $errors['page_id'] = lang('Please select a page for the body of the campaign.');
 
-        // get folder id for selected page in order to check if user has access to view content in folder
-        $query = "SELECT page_folder FROM page WHERE page_id = ?";
-        $result = db_q($query, array((string) ($_POST['page_id'] ?? ''))) or output_error('Query failed.');
-        $row = mysqli_fetch_assoc($result);
+        } else {
+            // get folder id for selected page in order to check if user has access to view content in folder
+            $query = "SELECT page_folder FROM page WHERE page_id = ?";
+            $result = db_q($query, array((string) $_POST['page_id'])) or output_error('Query failed.');
+            $row = mysqli_fetch_assoc($result);
 
-        // A page that does not exist (a stale form, a hand-made post) stored
-        // a ready campaign with an empty body.
-        if (!$row) {
-            output_error(lang('Please select a page for the body of the campaign.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
-        }
+            // A page that does not exist (a stale form, a hand-made post) stored
+            // a ready campaign with an empty body.
+            if (!$row) {
+                $errors['page_id'] = lang('Please select a page for the body of the campaign.');
 
-        $folder_id = $row['page_folder'];
-        
-        // if the user does not have view access to the selected page's folder, then log activity and output error
-        if (check_view_access($folder_id) == false) {
-            log_activity(lang('access denied for user to send a page for a campaign, because user does not have view access to the page'), $_SESSION['sessionusername']);
-            output_error(lang('You are not authorized to send that page for the body of the campaign.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+            // if the user does not have view access to the selected page's folder, then log activity and refuse
+            } elseif (check_view_access($row['page_folder']) == false) {
+                log_activity(lang('access denied for user to send a page for a campaign, because user does not have view access to the page'), $_SESSION['sessionusername']);
+                $errors['page_id'] = lang('You are not authorized to send that page for the body of the campaign.');
+            }
         }
     }
-    
+
     // The included and excluded groups as the form posts them
     // (contact_group_<id>), and the one entered address.
-    $groups = array();
-
     foreach ($_POST as $name => $value) {
         if ((preg_match('/^contact_group_(\d+)$/', (string) $name, $match) === 1) && is_string($value)) {
             $groups[(int) $match[1]] = $value;
@@ -286,77 +122,271 @@ if (!$_POST) {
     $entered_email_address = is_string($_POST['entered_email_address'] ?? null) ? $_POST['entered_email_address'] : '';
 
     if (($entered_email_address !== '') && (validate_email_address($entered_email_address) == false)) {
-        output_error(lang('The address you entered under Also send message to the following e-mail address is not valid.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+        $errors['entered_email_address'] = lang('The address you entered under Also send message to the following e-mail address is not valid.');
     }
 
-    $picked = pg_email_campaign_pick_recipients($user, $_POST['purpose'], $groups, $entered_email_address);
+    // The recipients are picked once the rest of the form is right.
+    if (!$errors) {
+        $picked = pg_email_campaign_pick_recipients($user, $_POST['purpose'], $groups, $entered_email_address);
 
-    if ($picked === false) {
-        output_error(lang('Query failed.'));
+        if ($picked === false) {
+            output_error(lang('Query failed.'));
+        }
+
+        // if there are no recipients, refuse
+        if (!$picked['recipients']) {
+            $errors['recipients'] = lang('Please select at least one recipient.');
+        }
     }
 
-    // if there are no recipients, output error
-    if (!$picked['recipients']) {
-        output_error(lang('Please select at least one recipient.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+    if (!$errors) {
+        // A plain text or pasted body is stored without a page.
+        if ($body_kind !== 'design') {
+            $_POST['page_id'] = '0';
+        }
+
+        // if plain text was selected for the format, then store body in variable
+        if ($_POST['format'] == 'plain_text') {
+            $body = $_POST['body'];
+
+        // Pasted HTML gets the same base, tracking code and footer as a design.
+        } elseif ($body_kind === 'html') {
+            $body = pg_email_campaign_prepare_html_body($pasted_html, $_POST['subject']);
+
+        // else HTML was selected for the format, so prepare body and store in variable
+        } else {
+            // The page as its recipients may read it: nothing of the sender's
+            // session (token, account widgets) goes into the e-mail.
+            $body = pg_email_campaign_design_body($_POST['page_id']);
+        }
+
+        $email_campaign_id = pg_email_campaign_insert(array(
+            'from_name'           => $_POST['from_name'],
+            'from_email_address'  => $_POST['from_email_address'],
+            'reply_email_address' => $_POST['reply_email_address'],
+            'subject'             => $_POST['subject'],
+            'format'              => $_POST['format'],
+            'body'                => $body,
+            'page_id'             => $_POST['page_id'],
+            'start_time'          => prepare_form_data_for_input((string) ($_POST['start_time'] ?? ''), 'date and time'),
+            'purpose'             => $_POST['purpose'],
+            'status'              => 'ready',
+        ), $picked, $user['id']);
+
+        if (!$email_campaign_id) {
+            output_error(lang('Query failed.'));
+        }
+
+        $log_page = '';
+
+        // if a design was chosen, then add page info to log message
+        if ($body_kind === 'design') {
+            $log_page = ', ' . lang('page') . ': ' . get_page_name($_POST['page_id']);
+        }
+
+        log_activity(lang(array('string'=>'campaign (subject: {var:1}) was created','vars'=>$_POST['subject'] . $log_page)), $_SESSION['sessionusername']);
+
+        include_once('liveform.class.php');
+        $liveform = new liveform('view_email_campaigns');
+
+        // if email campaign job is active
+        if (email_campaign_job_enabled()) {
+            $liveform->add_notice(lang('The campaign has been created, and it will be sent at the scheduled time.'));
+
+        // else email campaign job is not active
+        } else {
+            $liveform->add_notice(lang(array('string'=>'The campaign has been created, and you may {var:1}.','vars'=>'<a href="send_email_campaign.php?id=' . $email_campaign_id . get_token_query_string_field() . '" onclick="window.open(\'send_email_campaign.php?id=' . $email_campaign_id . get_token_query_string_field() . '\', \'\', \'width=450, height=350, resizable=1, scrollbars=0\'); return false;">' . lang('send it now') . '</a>')) );
+        }
+
+        // forward user to view e-mail campaigns screen
+        header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/view_email_campaigns.php');
+        exit;
     }
-
-    
-    // get subject
-    $subject = $_POST['subject'];
-
-    // if plain text was selected for the format, then store body in variable
-    if ($_POST['format'] == 'plain_text') {
-        $body = $_POST['body'];
-
-    // Pasted HTML gets the same base, tracking code and footer as a design.
-    } elseif ($body_kind === 'html') {
-        $body = pg_email_campaign_prepare_html_body($pasted_html, trim((string) $_POST['subject']));
-
-    // else HTML was selected for the format, so prepare body and store in variable
-    } else {
-        // The page as its recipients may read it: nothing of the sender's
-        // session (token, account widgets) goes into the e-mail.
-        $body = pg_email_campaign_design_body($_POST['page_id']);
-    }
-
-    $email_campaign_id = pg_email_campaign_insert(array(
-        'from_name'           => $_POST['from_name'],
-        'from_email_address'  => $_POST['from_email_address'],
-        'reply_email_address' => $_POST['reply_email_address'],
-        'subject'             => $_POST['subject'],
-        'format'              => $_POST['format'],
-        'body'                => $body,
-        'page_id'             => $_POST['page_id'],
-        'start_time'          => prepare_form_data_for_input((string) ($_POST['start_time'] ?? ''), 'date and time'),
-        'purpose'             => $_POST['purpose'],
-        'status'              => 'ready',
-    ), $picked, $user['id']);
-
-    if (!$email_campaign_id) {
-        output_error(lang('Query failed.'));
-    }
-
-    $log_page = '';
-
-    // if a design was chosen, then add page info to log message
-    if ($body_kind === 'design') {
-        $log_page = ', ' . lang('page') . ': ' . get_page_name($_POST['page_id']);
-    }
-    
-    log_activity(lang(array('string'=>'campaign (subject: {var:1}) was created','vars'=>$_POST['subject'] . $log_page)), $_SESSION['sessionusername']);
-
-    include_once('liveform.class.php');
-    $liveform = new liveform('view_email_campaigns');
-    
-    // if email campaign job is active
-    if (email_campaign_job_enabled()) {
-        $liveform->add_notice(lang('The campaign has been created, and it will be sent at the scheduled time.'));
-        
-    // else email campaign job is not active
-    } else {
-        $liveform->add_notice(lang(array('string'=>'The campaign has been created, and you may {var:1}.','vars'=>'<a href="send_email_campaign.php?id=' . $email_campaign_id . get_token_query_string_field() . '" onclick="window.open(\'send_email_campaign.php?id=' . $email_campaign_id . get_token_query_string_field() . '\', \'\', \'width=450, height=350, resizable=1, scrollbars=0\'); return false;">' . lang('send it now') . '</a>')) );
-    }
-    
-    // forward user to view e-mail campaigns screen
-    header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/view_email_campaigns.php');
 }
+
+// The form: empty on the first visit, what was posted after a refusal.
+$posted = (bool) $_POST;
+
+// A page passed in the address (a page's "Send as campaign") is the
+// design chosen; without one the design is still the first kind shown.
+$output_body_kind = ($body_kind !== null) ? $body_kind : 'design';
+$output_preview = '';
+$output_edit_url = '';
+
+if ($posted) {
+    $output_body = $_POST['body'];
+    $output_html = pg_email_campaign_posted_text($_POST, 'html_body');
+} else {
+    $output_body = '';
+    $output_html = '';
+
+    $plain_text_email_campaign_footer = db_value("SELECT plain_text_email_campaign_footer FROM config");
+
+    if ($plain_text_email_campaign_footer != '') {
+        $output_body =
+            "\n" .
+            "\n" .
+            "\n" .
+            $plain_text_email_campaign_footer;
+    }
+}
+
+// The design is the page picker field (kind page_view: any page the
+// sender may view, searched as typed). A page passed in the address
+// (a page's "Send as campaign") or posted is drawn chosen, with its preview.
+$output_page_id = (string) (int) ($posted ? $_POST['page_id'] : ($_GET['page_id'] ?? ''));
+
+if ($output_page_id !== '0') {
+    $result = db_q("SELECT page_name, page_folder, page_style FROM page WHERE page_id = ?", array($output_page_id)) or output_error('Query failed.');
+    $row = mysqli_fetch_assoc($result);
+
+    if ($row && check_view_access($row['page_folder'])) {
+        $output_preview = OUTPUT_PATH . encode_url_path($row['page_name']) . '?edit=no&email=true';
+        $output_edit_url = check_edit_access($row['page_folder']) ? pg_page_edit_url(array('page_id' => $output_page_id, 'page_style' => $row['page_style'])) : '';
+    } else {
+        // A page the user may not view is not drawn chosen again.
+        $output_page_id = '';
+    }
+} else {
+    $output_page_id = '';
+}
+
+$output_page_field = pg_picker_field('page_view', 'page_id', $output_page_id, array('value_attributes' => array('data-pg-campaign-page' => ''))) . pg_picker_script();
+
+// get all contact groups
+$query =
+    "SELECT
+       id,
+       name,
+       email_subscription
+    FROM contact_groups
+    ORDER BY name";
+$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+
+$output_contact_group_rows = '';
+
+// loop through all contact groups
+while ($row = mysqli_fetch_assoc($result)) {
+    $id = $row['id'];
+    $name = $row['name'];
+
+    // if user has access to contact group, then include this contact group
+    if (validate_contact_group_access($user, $id) == true) {
+        // count the contacts with an address and those opted in: both are
+        // shown, so a change of purpose needs no reload
+        $result_count = db_q(pg_email_campaign_group_count_query($row['email_subscription'] == 1), array((string) $id)) or output_error('Query failed.');
+        $counts = mysqli_fetch_assoc($result_count);
+
+        // if contact group has at least one contact with an address
+        if ((int) $counts['total'] > 0) {
+            // The choice posted for the group, ignored when none.
+            $choice = $groups[(int) $id] ?? 'ignored';
+
+            if (!in_array($choice, array('included', 'excluded'), true)) {
+                $choice = 'ignored';
+            }
+
+            $checked = function ($value) use ($choice) {
+                return ($choice === $value) ? ' checked="checked"' : '';
+            };
+
+            $output_contact_group_rows .=
+                '<tr>
+                    <td id="contact_group_name_' . $id . '">' . pg_email_campaign_group_label($name, $counts['total'], $counts['opted_in']) . '</td>
+                    <td class="text-center"><div class="form-field d-inline-grid"><input class="radio" type="radio" name="contact_group_' . $id . '" value="ignored" aria-labelledby="contact_group_name_' . $id . ' contact_group_ignore"' . $checked('ignored') . ' /></div></td>
+                    <td class="text-center"><div class="form-field d-inline-grid"><input class="radio" type="radio" name="contact_group_' . $id . '" value="included" aria-labelledby="contact_group_name_' . $id . ' contact_group_include"' . $checked('included') . ' /></div></td>
+                    <td class="text-center"><div class="form-field d-inline-grid"><input class="radio" type="radio" name="contact_group_' . $id . '" value="excluded" aria-labelledby="contact_group_name_' . $id . ' contact_group_exclude"' . $checked('excluded') . ' /></div></td>
+                </tr>';
+        }
+    }
+}
+
+// if there is at least one contact group to show, then prepare to output contact groups
+if ($output_contact_group_rows != '') {
+    $output_contact_groups =
+        '<div class="alert theme-primary"><p>' . lang('Send message to all Subscribers in my selected Contact Groups') . '</p></div>
+        <div class="mb-7">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th scope="col"><span class="visually-hidden">' . lang('Contact Group') . '</span></th>
+                        <th id="contact_group_ignore" scope="col" class="text-center">' . lang('Ignore') . '</th>
+                        <th id="contact_group_include" scope="col" class="text-center">' . lang('Include') . '</th>
+                        <th id="contact_group_exclude" scope="col" class="text-center">' . lang('Exclude') . '</th>
+                    </tr>
+                </thead>
+                <tbody>
+                ' . $output_contact_group_rows . '
+                </tbody>
+            </table>
+        </div>';
+} else {
+    $output_contact_groups = '<div class="alert theme-danger"><p>' . lang('You do not have access to any contact groups with subscribers.') . '</p></div>';
+}
+
+print
+
+pg_page_shell(
+    array(
+        'title'=> lang('Create Campaign'),
+        'extra classes'=>'campaign pg-measure-edit',
+        'icon'=>'campaign',
+        'heading'=> lang('Create Campaign'),
+        'heading_description' => lang('Create a new e-mail campaign to send to all subscribers in selected contact groups.'),
+        'cancel'=>array('enable'=>'true','url'=>'view_email_campaigns.php'),
+        'breadcrumb' => array(
+            array('label' => lang('My Campaigns'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_email_campaigns.php'),
+            array('label' => lang('Create Campaign')),
+        ),
+    )
+) . '
+<main id="content" class="container-fluid">
+            ' . pg_email_campaign_refusals_alert($errors) . '
+            <form name="form" action="add_email_campaign.php" method="post" >
+                ' . get_token_field() . '
+                ' . pg_email_campaign_layout(
+                    pg_campaign_content_card(array(
+                        'mode'         => 'add',
+                        'kind'         => $output_body_kind,
+                        'subject'      => $posted ? $_POST['subject'] : '',
+                        'page_field'   => $output_page_field,
+                        'edit_url'     => $output_edit_url,
+                        'html'         => $output_html,
+                        'text'         => $output_body,
+                        'preview'      => $output_preview,
+                        // Making a design is a designer's job (add_system_style.php).
+                        'new_design'   => ((int) $user['role'] <= 1),
+                    )) . pg_email_campaign_card(
+                        lang('E-Mail Message To My Contact Groups'),
+                        '<div class="col-12 my-3">
+                            ' . $output_contact_groups . '
+                        </div>
+                        <div class="col-12 my-3">
+                            <div class="alert theme-secondary">
+                                <div class="row align-items-center justify-content-between">
+                                    <div class="col-12 md:col-auto">
+                                        <label class="form-label md:mb-0" for="entered_email_address">' . lang('Also send message to the following e-mail address') . ':</label>
+                                    </div>
+                                    <div class="col-12 md:col-6">
+                                        <input type="text" class="form-control" id="entered_email_address" name="entered_email_address" maxlength="100" inputmode="email" data-inputmask-alias="email" value="' . h($entered_email_address) . '">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>'
+                    ) . pg_email_campaign_from_card($posted ? array(
+                        'from_name' => $_POST['from_name'],
+                        'from_email_address' => $_POST['from_email_address'],
+                        'reply_email_address' => $_POST['reply_email_address'],
+                    ) : array(
+                        'from_name' => ORGANIZATION_NAME,
+                        'from_email_address' => $user['email_address'],
+                        'reply_email_address' => $user['email_address'],
+                    )),
+                    pg_email_campaign_schedule_card($posted ? prepare_form_data_for_input(pg_email_campaign_posted_text($_POST, 'start_time'), 'date and time') : '')
+                        . pg_email_campaign_purpose_card(($posted && ($_POST['purpose'] !== null)) ? $_POST['purpose'] : 'commercial'),
+                    '<button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1  btn-solid theme-success "><span class="bi bi-plus-circle me-3"></span><span class="pg-btn-label">' . lang(array('string'=>'Create') ) . '</span></button>'
+                ) . '
+            </form>
+            ' . pg_campaign_content_script() . '
+</main>' .
+output_footer();
