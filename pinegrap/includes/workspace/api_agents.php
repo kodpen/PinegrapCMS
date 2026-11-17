@@ -115,7 +115,23 @@ function ws_agent_api_routes()
             'dry_run'      => true,
             'returns'      => 'WorkspaceChannelAgentRemoval',
             'summary'      => 'Take an agent out of a channel',
-            'description'  => 'Whoever may post in the channel takes an agent out of it, in a private channel as a member of it; an agent that was not in it is not an error: removed is then false. A Claude row made before Claude was left out of the channels is taken out here too. POST is accepted as well, because a default IIS install answers DELETE itself before PHP is reached.',
+            'description'  => 'Whoever may post in the channel takes an agent out of it, in a private channel as a member of it; an agent that was not in it is not an error: removed is then false. A Claude row made before Claude was left out of the channels is taken out here too. A client that cannot send DELETE, or talks to an IIS server, uses POST /workspace/channels/{id}/agents/{agent_id}/delete; a plain POST to this address does the same.',
+            'params'       => array(
+                $id,
+                array('name' => 'agent_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        array(
+            'id'           => 'workspace.channels.agents.remove_post',
+            'method'       => 'POST',
+            'path'         => '/workspace/channels/{id}/agents/{agent_id}/delete',
+            'scope'        => 'workspace:write',
+            'handler'      => 'ws_api_channel_agents_remove',
+            'dry_run'      => true,
+            'returns'      => 'WorkspaceChannelAgentRemoval',
+            'summary'      => 'Take an agent out of a channel, addressed as a POST',
+            'description'  => 'The same as DELETE /workspace/channels/{id}/agents/{agent_id}, for clients and servers that cannot send DELETE.',
             'params'       => array(
                 $id,
                 array('name' => 'agent_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),

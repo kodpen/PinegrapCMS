@@ -1,6 +1,6 @@
 ---
 name: external-api-iis-environment
-description: What IIS and the WAF impose on the external API: path-based API detection, rate buckets outside the sensitive limit, no PATCH/DELETE, POST twins, the webhooks exception, first-match routing
+description: What IIS and the WAF impose on the external API: path-based API detection, rate buckets outside the sensitive limit, no PATCH/DELETE, POST twins on every delete, the older deletes that also take a plain POST, first-match routing
 ---
 
 ## How does waf_is_api_request() detect API requests?
@@ -19,8 +19,9 @@ description: What IIS and the WAF impose on the external API: path-based API det
 ## How are routes written for it?
 - An update: `'method' => 'POST', 'also_accepts' => array('PATCH')` (other servers may still send PATCH).
 - A delete: the `'method' => 'DELETE'` route plus a twin route `POST /x/{id}/delete` whose id ends in `_post` (`products.delete_post`); the MCP server skips `_post` ids, so the action stays one tool.
-- Exception: `POST /webhooks/{id}` has been the delete since the first version (`webhooks.delete`, DELETE with `also_accepts` POST). A webhook is updated with `PATCH /webhooks/{id}` or `POST /webhooks/{id}/update`.
-- Likewise `POST /workspace/scheduled-messages/{id}` is the delete: a scheduled message is changed with `POST …/{id}/update` and sent now with `POST …/{id}/send` (CA9 #9786).
+- Every DELETE route has that twin since AM10 (#PRNUM); `tests/api_delete_twins_test.php` fails a DELETE without one, a twin with another handler, scope or dry run, or a twin offered as an MCP tool.
+- Six older deletes also take a plain POST on their own address (DELETE with `also_accepts` POST), and keep it so running clients go on working: `POST /webhooks/{id}` (since the first version), `POST /workspace/scheduled-messages/{id}` (CA9 #9786), channel members, channel group access, task time entries and channel agents. Their cards name the `…/delete` twin as the regular way.
+- So a change of those records has a path of its own: `POST /webhooks/{id}/update` (or `PATCH /webhooks/{id}`), `POST /workspace/scheduled-messages/{id}/update` and `…/send`, `POST /workspace/tasks/{id}/time/{entry_id}/update`.
 - The router takes the FIRST route whose path and method match (`api_route_match()`), so a new route's path must not collide with an older route's `also_accepts`. Path placeholders are typed (an int `{id}` matches digits only), which keeps `/products/inventory` off `/products/{id}`. A path that exists under another verb answers 405 with `Allow`.
 
 Related: `external-api-authorization.md`, `api-endpoint-rules.md`.
