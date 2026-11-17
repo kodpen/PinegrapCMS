@@ -41,7 +41,11 @@
      * @param {HTMLElement} holder
      * @param {object}      channel the channel as the screen holds it (id)
      * @param {object}      [options] reveal: scroll to the section once drawn
-     *                      (Manage in Channel info)
+     *                      (Manage in Channel info); discussion: drawn in a
+     *                      discussion's people panel, worded for it and left
+     *                      out for whoever may not change its agents;
+     *                      changed(channel): the channel read again after an
+     *                      add or a removal
      */
     function mount(holder, channel, options) {
         var h = window.PGWsKit;
@@ -50,8 +54,12 @@
             return;
         }
 
-        var t = h.t;
         var el = h.el;
+        var discussion = !!(options && options.discussion);
+        // A discussion's own words where it has them.
+        var t = function (key, value) {
+            return (discussion && h.t(key + '_thread') !== key + '_thread') ? h.t(key + '_thread', value) : h.t(key, value);
+        };
         var root = el('div', 'ws-channel-agents mb-5 d-none');
 
         holder.appendChild(root);
@@ -410,6 +418,10 @@
             return h.api('ws_channel_get', { channel_id: channel.id }).then(function (data) {
                 if (data && data.channel && (data.channel.id === channel.id)) {
                     channel.apps = data.channel.apps || [];
+
+                    if (options && options.changed) {
+                        options.changed(data.channel);
+                    }
                 }
             }).catch(function () {
                 // The drawer stands as drawn; a reload reads the list.
@@ -426,7 +438,9 @@
         function draw(state) {
             h.clear(root);
 
-            if (!state || !state.ready || (!state.agents.length && !state.addable.length)) {
+            // In a discussion whoever may not change its agents sees none of
+            // this: the agents are listed above it.
+            if (!state || !state.ready || (!state.agents.length && !state.addable.length) || (discussion && !state.can_edit)) {
                 root.classList.add('d-none');
                 return;
             }
@@ -450,7 +464,7 @@
 
             if (!state.can_edit) {
                 root.appendChild(el('div', 'pg-field-help', t('cha_readonly')));
-            } else if (state.addable.length) {
+            } else if (state.can_add && state.addable.length) {
                 root.appendChild(addNode(state));
             }
 
