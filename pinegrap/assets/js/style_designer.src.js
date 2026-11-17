@@ -71169,7 +71169,7 @@ const StyleDesigner = (function () {
     // undo history and content rights answer; the normal Save writes it.
     // Classic menus and regions stay read-only.
     var _sdProto = { open: false, ui: null, canvas: null, items: [], byId: {}, layout: null, view: { x: 40, y: 40, k: 1 }, seq: 0, selected: null, env: {}, warned: {}, menu: null,
-        link: null, lifted: '', drawing: false, broken: { list: [], count: {} }, problems: null,
+        link: null, lifted: '', drawing: false, broken: { list: [], count: {} }, issues: null, problems: null,
         edgeTo: {},
         pics: { gen: 0, io: null, boxes: {}, near: {}, live: {}, wait: [], loading: 0, cache: {}, rects: {}, partH: {}, settle: 0, refill: 0 } };
 
@@ -71186,7 +71186,8 @@ const StyleDesigner = (function () {
         contact: { icon: 'bi-envelope', text: function () { return _sdT('E-mail, phone or text message'); } },
         external: { icon: 'bi-box-arrow-up-right', text: function () { return _sdT('Another website'); } },
         hidden: { icon: 'bi-eye-slash', text: function () { return _sdT('A page you cannot see'); } },
-        broken: { icon: 'bi-exclamation-triangle', text: function () { return _sdT('Broken link'); } }
+        broken: { icon: 'bi-exclamation-triangle', text: function () { return _sdT('Broken link'); } },
+        empty: { icon: 'bi-dash-circle', text: function () { return _sdT('A link without a target'); } }
     };
 
     function _sdProtoReady() {
@@ -71284,9 +71285,20 @@ const StyleDesigner = (function () {
         ui.broken.setAttribute('aria-haspopup', 'dialog');
         ui.broken.addEventListener('click', function () {
             if (_sdProto.problems) _sdProtoProblemsClose(true);
-            else _sdProtoProblemsOpen();
+            else _sdProtoProblemsOpen(ui.broken);
         });
         bar.appendChild(ui.broken);
+        // "N to check" (F28), amber: links without a target and pages no
+        // link leads to, in the same list.
+        ui.check = _sdProtoEl('button', 'sd-proto-check');
+        ui.check.type = 'button';
+        ui.check.hidden = true;
+        ui.check.setAttribute('aria-haspopup', 'dialog');
+        ui.check.addEventListener('click', function () {
+            if (_sdProto.problems) _sdProtoProblemsClose(true);
+            else _sdProtoProblemsOpen(ui.check);
+        });
+        bar.appendChild(ui.check);
         var tools = _sdProtoEl('div', 'sd-proto-tools');
         // Play (F24): the prototype viewer at the selected page, else at
         // the first page it has; hidden when it has none.
@@ -71481,7 +71493,7 @@ const StyleDesigner = (function () {
         // A press outside the target menu closes it.
         ui.root.addEventListener('pointerdown', function (event) {
             if (_sdProto.menu && !_sdProto.menu.el.contains(event.target)) _sdProtoMenuClose(false);
-            if (_sdProto.problems && !_sdProto.problems.contains(event.target) && !ui.broken.contains(event.target)) _sdProtoProblemsClose(false);
+            if (_sdProto.problems && !_sdProto.problems.contains(event.target) && !ui.broken.contains(event.target) && !ui.check.contains(event.target)) _sdProtoProblemsClose(false);
         }, true);
         return ui;
     }
@@ -71611,6 +71623,16 @@ const StyleDesigner = (function () {
         } else if (item.key === _activeKey) {
             meta = _sdT('Open tab');
         }
+        // An amber count of the frame's links without a target (F29), and
+        // on a page no link leads to the amber "No link leads here" (F27).
+        var issues = _sdProto.issues;
+        var emptyHere = issues ? (issues.empty.count[item.id] || 0) : 0;
+        if (emptyHere) {
+            var amber = _sdProtoEl('span', 'sd-proto-badge sd-proto-badge-empty', String(emptyHere));
+            amber.title = _sdT('{var:1} without a target', emptyHere);
+            head.appendChild(amber);
+        }
+        if (issues && issues.unreached.indexOf(item.id) >= 0) head.appendChild(_sdProtoEl('span', 'sd-proto-unreached', _sdT('No link leads here')));
         if (meta) head.appendChild(_sdProtoEl('span', 'sd-proto-meta', meta));
         node.appendChild(head);
         node.setAttribute('aria-label', _sdProtoFrameName(item));
@@ -72042,7 +72064,7 @@ const StyleDesigner = (function () {
             main.appendChild(_sdProtoMarkIcon(row.mark));
             var text = _sdProtoEl('span', 'sd-proto-li-text');
             text.appendChild(_sdProtoEl('span', 'sd-proto-li-label', row.label));
-            text.appendChild(_sdProtoEl('span', 'sd-proto-li-to', row.why ? _sdProtoWhy(row.why) : '→ ' + _sdProtoTargetName(row)));
+            text.appendChild(_sdProtoEl('span', 'sd-proto-li-to', row.why ? _sdProtoWhy(row.why) : (row.mark === 'empty' ? _sdT('No target') : '→ ' + _sdProtoTargetName(row))));
             main.appendChild(text);
             main.addEventListener('click', function () { _sdProtoPick(data.id, row.port, false); });
             var change = function (anchor) { return _sdProtoMenuOpen(data.id, row.port, anchor); };
@@ -72054,6 +72076,7 @@ const StyleDesigner = (function () {
             });
             var li = line(outBox, data.id + '|' + row.port, main);
             if (row.why) li.classList.add('sd-proto-li-broken');
+            if (row.mark === 'empty') li.classList.add('sd-proto-li-empty');
             var acts = _sdProtoEl('span', 'sd-proto-li-acts');
             if (row.drawable) {
                 main.setAttribute('aria-keyshortcuts', 'L');
@@ -72098,28 +72121,46 @@ const StyleDesigner = (function () {
         }
     }
 
-    // Every broken link of the design (F19), under the bar's "N broken": a
-    // row picks the link.
-    function _sdProtoProblemsOpen() {
+    // The design's problems (F19, F28), under the bar's "N broken" or "N to
+    // check" (anchor): broken links, pages no link leads to, links without
+    // a target, a group with none left out. A link's row picks it; a page's
+    // row selects its frame and brings it into view.
+    function _sdProtoProblemsOpen(anchor) {
         var ui = _sdProto.ui;
-        var list = _sdProto.broken.list;
+        var issues = _sdProto.issues;
         _sdProtoProblemsClose(false);
-        if (!ui || !list.length) return;
+        if (!ui || !issues || !(issues.broken.list.length || issues.check)) return;
+        anchor = anchor || ui.broken;
         var el = _sdProtoEl('div', 'sd-proto-problems');
         el.setAttribute('role', 'dialog');
-        el.setAttribute('aria-label', _sdT('Broken links'));
-        el.appendChild(_sdProtoEl('div', 'sd-proto-menu-head', _sdT('Broken links')));
-        list.forEach(function (one) {
-            var b = _sdProtoEl('button', 'sd-proto-problem');
-            b.type = 'button';
-            b.appendChild(_sdProtoEl('span', 'sd-proto-li-label', _sdProtoFrameName(_sdProto.byId[one.frame]) + ' · ' + one.label));
-            b.appendChild(_sdProtoEl('span', 'sd-proto-li-to', _sdProtoWhy(one.why) + (one.href ? ' (' + one.href + ')' : '')));
-            b.addEventListener('click', function () {
-                _sdProtoProblemsClose(false);
-                _sdProtoPick(one.frame, one.port, true);
+        el.setAttribute('aria-label', anchor === ui.check ? _sdT('{var:1} to check', issues.check) : _sdT('Broken links'));
+        var group = function (title, cls, rows) {
+            if (!rows.length) return;
+            el.appendChild(_sdProtoEl('div', 'sd-proto-menu-head ' + cls, title));
+            rows.forEach(function (one) {
+                var b = _sdProtoEl('button', 'sd-proto-problem ' + cls);
+                b.type = 'button';
+                b.appendChild(_sdProtoEl('span', 'sd-proto-li-label', one.label));
+                if (one.to) b.appendChild(_sdProtoEl('span', 'sd-proto-li-to', one.to));
+                b.addEventListener('click', function () {
+                    _sdProtoProblemsClose(false);
+                    one.go();
+                });
+                el.appendChild(b);
             });
-            el.appendChild(b);
-        });
+        };
+        group(_sdT('Broken links'), 'sd-proto-problem-broken', issues.broken.list.map(function (one) {
+            return { label: _sdProtoFrameName(_sdProto.byId[one.frame]) + ' · ' + one.label, to: _sdProtoWhy(one.why) + (one.href ? ' (' + one.href + ')' : ''), go: function () { _sdProtoPick(one.frame, one.port, true); } };
+        }));
+        group(_sdT('Pages no link leads to'), 'sd-proto-problem-unreached', issues.unreached.map(function (id) {
+            return { label: _sdProtoFrameName(_sdProto.byId[id]), to: '', go: function () {
+                _sdProto.canvas.focus(id);
+                _sdProto.canvas.view.reveal(_sdProto.byId[id]);
+            } };
+        }));
+        group(_sdT('Links without a target'), 'sd-proto-problem-empty', issues.empty.list.map(function (one) {
+            return { label: _sdProtoFrameName(_sdProto.byId[one.frame]) + ' · ' + one.label, to: _sdT('No target'), go: function () { _sdProtoPick(one.frame, one.port, true); } };
+        }));
         el.addEventListener('keydown', function (event) {
             var items = Array.prototype.slice.call(el.querySelectorAll('.sd-proto-problem'));
             var at = items.indexOf(document.activeElement);
@@ -72134,8 +72175,9 @@ const StyleDesigner = (function () {
         });
         ui.root.appendChild(el);
         _sdProto.problems = el;
-        ui.broken.setAttribute('aria-expanded', 'true');
-        var r = ui.broken.getBoundingClientRect();
+        _sdProto.problemsAnchor = anchor;
+        anchor.setAttribute('aria-expanded', 'true');
+        var r = anchor.getBoundingClientRect();
         var o = ui.root.getBoundingClientRect();
         el.style.top = (r.bottom - o.top + 2) + 'px';
         el.style.left = Math.max(4, Math.min(r.left - o.left, o.width - el.offsetWidth - 4)) + 'px';
@@ -72147,9 +72189,11 @@ const StyleDesigner = (function () {
         if (!el) return;
         _sdProto.problems = null;
         if (el.parentNode) el.parentNode.removeChild(el);
-        if (_sdProto.ui) {
-            _sdProto.ui.broken.setAttribute('aria-expanded', 'false');
-            if (refocus) _sdProto.ui.broken.focus({ preventScroll: true });
+        var anchor = _sdProto.problemsAnchor || (_sdProto.ui ? _sdProto.ui.broken : null);
+        _sdProto.problemsAnchor = null;
+        if (anchor) {
+            anchor.setAttribute('aria-expanded', 'false');
+            if (refocus) anchor.focus({ preventScroll: true });
         }
     }
 
@@ -72181,7 +72225,8 @@ const StyleDesigner = (function () {
         _sdProto.marked = marked;
         _sdProto.layout = l;
         // The broken links before the frames are drawn: their badges (F20).
-        _sdProto.broken = H.brokenOf(l);
+        _sdProto.issues = H.problemsOf(l);
+        _sdProto.broken = _sdProto.issues.broken;
         _sdProto.items = l.frames.concat(l.chips);
         _sdProto.byId = {};
         _sdProto.items.forEach(function (item) { _sdProto.byId[item.id] = item; });
@@ -72231,9 +72276,13 @@ const StyleDesigner = (function () {
         var broken = _sdProto.broken.list.length;
         // "N links", and "N broken" in red when there are any (F19).
         _sdProtoStatus(_sdT('{var:1} links', count));
+        var toCheck = _sdProto.issues.check;
         ui.broken.hidden = !broken;
         ui.broken.textContent = broken ? _sdT('{var:1} broken', broken) : '';
-        canvas.announce(_sdT('{var:1} links', count) + (broken ? ' · ' + _sdT('{var:1} broken', broken) : ''));
+        // "N to check" in amber after it (F28).
+        ui.check.hidden = !toCheck;
+        ui.check.textContent = toCheck ? _sdT('{var:1} to check', toCheck) : '';
+        canvas.announce(_sdT('{var:1} links', count) + (broken ? ' · ' + _sdT('{var:1} broken', broken) : '') + (toCheck ? ' · ' + _sdT('{var:1} to check', toCheck) : ''));
         // A picked link of a frame no longer there, or no longer a link, goes.
         if (_sdProto.link && !_sdProtoRow(_sdProto.byId[_sdProto.link.frame], _sdProto.link.port)) _sdProto.link = null;
         // Opening selects the open tab's frame; a redraw keeps the selected

@@ -568,7 +568,7 @@ function test_proto_hotspots_view_list_and_problems()
 	pg_assert_contains('var change = function (anchor) { return _sdProtoMenuOpen(data.id, row.port, anchor); };', $source, '"Change target" opens today\'s target menu at the list row, whether or not the picture shows the link');
 	pg_assert_contains('_sdProtoOpenRow(data.id, row.port);', $source, '"Open in the editor" opens the element by its frame and port');
 	pg_assert_contains('if (other) canvas.view.reveal(other);', $source, 'a picked link\'s other end comes into view');
-	pg_assert_contains('_sdProto.broken = H.brokenOf(l);', $source, 'the broken links from the marked layout');
+	pg_assert_contains('_sdProto.issues = H.problemsOf(l);', $source, 'the broken links and what to check from the marked layout');
 	pg_assert_contains("var badge = _sdProtoEl('span', 'sd-proto-badge', String(brokenHere));", $source, 'a frame\'s badge');
 	pg_assert_contains("ui.broken.textContent = broken ? _sdT('{var:1} broken', broken) : '';", $source, '"N broken" in the bar');
 	pg_assert_contains("window.localStorage.getItem('pg_proto_list')", $source, 'the panel\'s state per browser');
@@ -1253,6 +1253,28 @@ function test_proto_hotspots_problems_of_a_design()
 	pg_assert_same(4, $out['check'], '"N to check": three empty links and one page');
 	pg_assert_same(array('p:c', 'p:d'), $out['unlinked'], 'without links the pages but the start are unreached; a self link reaches nothing');
 	pg_assert_same(array('broken' => array('list' => array(), 'count' => array()), 'empty' => array('list' => array(), 'count' => array()), 'unreached' => array(), 'check' => 0), $out['none'], 'nothing laid out');
+}
+
+// What to check in the view (F26 to F29): the bar's amber "N to check",
+// the problems list's three groups, a frame's amber count and "No link
+// leads here", a link without a target saying so in the list; all amber.
+function test_proto_hotspots_view_what_to_check()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/style_designer.css');
+
+	pg_assert_contains("ui.check.textContent = toCheck ? _sdT('{var:1} to check', toCheck) : '';", $source, '"N to check" in the bar');
+	pg_assert_contains("bar.appendChild(ui.check);", $source, 'after "N broken" in the view\'s own bar');
+	foreach (array("group(_sdT('Broken links'), 'sd-proto-problem-broken'", "group(_sdT('Pages no link leads to'), 'sd-proto-problem-unreached'", "group(_sdT('Links without a target'), 'sd-proto-problem-empty'") as $group) {
+		pg_assert_contains($group, $source, 'a group of the problems list');
+	}
+	pg_assert_contains("if (!rows.length) return;", $source, 'an empty group left out');
+	pg_assert_contains("var amber = _sdProtoEl('span', 'sd-proto-badge sd-proto-badge-empty', String(emptyHere));", $source, 'a frame\'s amber count beside the red one');
+	pg_assert_contains("head.appendChild(_sdProtoEl('span', 'sd-proto-unreached', _sdT('No link leads here')));", $source, 'a page nothing reaches says so');
+	pg_assert_contains("(row.mark === 'empty' ? _sdT('No target') : ", $source, 'a list row without a target says so');
+	foreach (array('.sd-proto-check {', '.sd-proto-badge.sd-proto-badge-empty', '.sd-proto-unreached {', '.sd-proto-hot.sd-proto-mark-empty', '.sd-proto-li-empty .sd-proto-li-to') as $selector) {
+		pg_assert_contains($selector, $css, 'styled: ' . $selector);
+	}
 }
 
 // Which marks a picture shows (F5, F13): the selected frame all of its own;
