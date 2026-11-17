@@ -6,7 +6,7 @@ description: Steps AM1 to AM6 of plan api-clean-modern: the two failing routes, 
 ## Which steps mend what is broken?
 - AM1 (S) `GET /users` and `GET /users/{id}` answer again (#10088). `api_user_optional_columns()` calls `pg_user_permission_ws_replies_column()`, whose file only the write handlers load. A test loads what a read loads and asks for the column list.
 - AM2 (S) `GET /reports/cart-recovery` answers again (#10089). The cause is read from the site's error log by the answer's `request_id`; a test for the pure part.
-- AM3 (S) A fatal error or an uncaught Throwable inside `integration.php` answers the envelope: 500 `server_error` as JSON with `request_id` and `X-Request-Id`. The answer never carries PHP's message; the log line carries the request id. Today the site's HTML error page comes back with no request id (seen on #10088). `mcp.php` is checked for the same.
+- AM3 (S) A fatal error or an uncaught Throwable inside `integration.php` answers the envelope: 500 `server_error` as JSON with `request_id` and `X-Request-Id`. The answer never carries PHP's message; the log line carries the request id. Today the site's HTML error page comes back with no request id (seen on #10088). `mcp.php` is checked for the same. Done (#10120): `api-fault-envelope.md`.
 
 ## Which steps make the document true?
 - AM4 (M) A moment says `format: date-time` and a day `format: date`: 309 such fields are plain strings today, and three `User` fields say `type: datetime`, which OpenAPI does not have.
