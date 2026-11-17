@@ -152,6 +152,35 @@ function test_designer_tree_search_hints_names_shown_twice()
 	pg_assert_false(strpos($res['once'], 'sd-ov-res-extra') !== false, 'a label shown once gets none');
 }
 
+// The part may arrive after the box changed: an answer draws only while the
+// box still holds its words, so an emptied box keeps no count and an older
+// search never draws over a newer one.
+function test_designer_tree_search_drops_a_late_answer()
+{
+	$res = designer_tree_search_run('style_designer_treesearch.js', array('_tsFold', '_tsPathCut', '_tsIndex', '_tsMatch', '_tsSearch'),
+		designer_tree_search_page_script()
+		. 'var MAX_SHOWN = 100, state = { entries: [], hits: [], active: 0, shown: {} }, drawn = [];' . "\n"
+		. 'function _tsDraw(host, total) { drawn.push(host.q + ":" + total); }' . "\n"
+		. 'var box = "";' . "\n"
+		. 'function host(q) { return { q: q, live: function () { return q === box; }, root: page, kids: function (n) { return n.children; }, fields: function (n) { return { name: n.name, label: n.f.label, text: n.f.text, cls: n.f.cls, id: n.f.id }; } }; }' . "\n"
+		. 'var emptied = host("link"); _tsSearch(emptied, "link"); var afterEmpty = drawn.slice();' . "\n"
+		. 'box = "link"; var older = host("link"); box = "links"; _tsSearch(host("links"), "links"); _tsSearch(older, "link");' . "\n"
+		. 'box = "link"; _tsSearch(host("link"), "link");' . "\n"
+		. '_tsSearch({ root: page, kids: function (n) { return n.children; }, fields: function () { return { name: "Link" }; }, q: "nolive" }, "link");' . "\n"
+		. 'console.log(JSON.stringify({ afterEmpty: afterEmpty, drawn: drawn }));');
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same(array(), $res['afterEmpty'], 'the box was emptied before the answer: nothing is drawn');
+	pg_assert_same(array('links:1', 'link:4'), array_slice($res['drawn'], 0, 2), 'the older "link" answer after "links" drew is dropped; "link" draws once the box holds it again');
+	pg_assert_same(3, count($res['drawn']), 'a host with no live check always draws');
+	$core = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	pg_assert_true(strpos($core, "_sdPartCall('treesearch', 'search', [_sdTreeSearchHost(q), q])") !== false, 'the core hands the search its words');
+	pg_assert_true(strpos($core, 'live: function () { return q === undefined || q === _sdTreeSearchQ; }') !== false, 'and the host checks them against the box');
+}
+
 // A result's path: its section down to its parent; longer than four steps,
 // the section, a gap and the last two.
 function test_designer_tree_search_gives_each_result_its_path()

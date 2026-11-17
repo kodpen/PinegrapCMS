@@ -27161,7 +27161,7 @@ const StyleDesigner = (function () {
             _sdTreeMapMarks();
             return Promise.resolve();
         }
-        return _sdPartCall('treesearch', 'search', [_sdTreeSearchHost(), q]).catch(_sdPartFailed);
+        return _sdPartCall('treesearch', 'search', [_sdTreeSearchHost(q), q]).catch(_sdPartFailed);
     }
 
     // The count of results at the box's right end; null puts the key hint back.
@@ -27172,10 +27172,13 @@ const StyleDesigner = (function () {
             : '<span class="sd-ov-search-count" title="' + esc(_sdT('{var} results', total)) + '">' + total + '</span>';
     }
 
-    // What the treesearch part reads the page through.
-    function _sdTreeSearchHost() {
+    // What the treesearch part reads the page through. `q`: the words of
+    // the search it serves; its answer draws only while the box still holds
+    // them (the part may arrive after the box was emptied or changed).
+    function _sdTreeSearchHost(q) {
         var seen = {};
         return {
+            live: function () { return q === undefined || q === _sdTreeSearchQ; },
             root: tree,
             // A node's children as the overview lists them: a shared
             // component's are its cached tree's, listed once.

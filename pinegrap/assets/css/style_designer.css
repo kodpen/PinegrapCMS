@@ -4844,6 +4844,8 @@ body.sd-resizing * { cursor: col-resize !important; }
 .sd-ov-body { flex: 1 1 0; min-height: 0; display: flex; }
 .sd-ov-body > .sd-overview-tree-wrap { min-width: 0; }
 .sd-ov-map { position: relative; flex: 0 0 14px; margin: 6px 4px 6px 0; cursor: pointer; }
+/* A finger needs a wider strip; the blocks stretch with it. */
+@media (pointer: coarse) { .sd-ov-map { flex-basis: 24px; } }
 .sd-ov-map[hidden],
 .sd-ov-map-view[hidden],
 .sd-ov-map-sel[hidden] { display: none; }

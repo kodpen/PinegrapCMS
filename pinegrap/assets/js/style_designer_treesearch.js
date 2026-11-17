@@ -178,20 +178,26 @@ StyleDesigner.definePart('treesearch', function (K) {
         if (host.input) host.input.setAttribute('aria-activedescendant', 'sd-ov-res-' + state.active);
     }
 
+    // Searches the page for `q` and draws the results, unless the box no
+    // longer holds these words (`host.live()`): a late answer is dropped, so
+    // no count stays beside an emptied box and an older search never draws
+    // over a newer one.
+    function _tsSearch(host, q) {
+        if (host.live && !host.live()) return;
+        state.entries = _tsIndex(host.root, host.kids, host.fields);
+        state.shown = {};
+        state.entries.forEach(function (e) {
+            var k = _tsFold(e.label || e.name);
+            state.shown[k] = (state.shown[k] || 0) + 1;
+        });
+        var res = _tsMatch(state.entries, q, MAX_SHOWN);
+        state.hits = res.hits;
+        state.active = 0;
+        _tsDraw(host, res.total);
+    }
+
     return {
-        // Searches the page for `q` and draws the results.
-        search: function (host, q) {
-            state.entries = _tsIndex(host.root, host.kids, host.fields);
-            state.shown = {};
-            state.entries.forEach(function (e) {
-                var k = _tsFold(e.label || e.name);
-                state.shown[k] = (state.shown[k] || 0) + 1;
-            });
-            var res = _tsMatch(state.entries, q, MAX_SHOWN);
-            state.hits = res.hits;
-            state.active = 0;
-            _tsDraw(host, res.total);
-        },
+        search: _tsSearch,
         // A key pressed in the box: ArrowDown, ArrowUp or Enter.
         key: function (host, key) {
             if (key === 'ArrowDown') _tsActivate(host, state.active + 1);
