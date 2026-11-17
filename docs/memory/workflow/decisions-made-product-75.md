@@ -1,6 +1,6 @@
 ---
 name: decisions-made-product-75
-description: Decisions list, product part 75 (2026-11-17): pictures drawn by themselves and by the server (poll 143); looks of the notification block (142) and the meeting link page (144); CH3b's change withdrawn (145)
+description: Decisions list, product part 75 (2026-11-17): pictures drawn by themselves and by the server (poll 143); looks of the notification block (142) and the meeting link page (144); CH3b's change (145)
 ---
 
 ## Where are the rules and the earlier parts?
