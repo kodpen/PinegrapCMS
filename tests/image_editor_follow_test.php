@@ -366,3 +366,36 @@ function test_image_editor_follow_fixture()
 	pg_assert_same(300, $r['frames'], 'Follow reads 300 frames');
 	pg_assert_true($r['once'], 'each source frame once');
 }
+
+// FW3: Follow in the bar over the object, after the type's own command, for
+// one movable layer that is not a video while a video shows at the playhead
+// in the Animate tool; never for a video, a redaction, several layers or
+// outside Animate.
+function test_image_editor_follow_bar()
+{
+	$r = image_editor_follow_node(
+		'var names = function (s) { return M.actionList(Object.assign({ place: "object", layers: 1, free: 1, animate: true, follow: true }, s)).map(function (a) { return a.name; }); };' . "\n"
+		. 'console.log(JSON.stringify({ text: names({ kind: "text" }), sticker: names({ kind: "sticker" }), noVideo: names({ kind: "sticker", follow: false }),'
+		. ' select: names({ kind: "sticker", animate: false }), video: names({ kind: "video" }), redact: names({ kind: "redact" }),'
+		. ' two: names({ kind: "", layers: 2, free: 2 }), locked: names({ kind: "sticker", free: 0 }), phone: names({ kind: "sticker", place: "stage", sheet: true }) }));'
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
+	pg_assert_same(array('editText', 'follow', 'motion', 'duplicate', 'remove', 'lock', 'more'), $r['text'], 'a text over a video: Edit text, then Follow');
+	pg_assert_same(array('follow', 'motion', 'duplicate', 'remove', 'lock', 'more'), $r['sticker'], 'a sticker over a video: Follow first');
+	pg_assert_same(array('motion', 'duplicate', 'remove', 'lock', 'more'), $r['noVideo'], 'no video at the playhead: no Follow');
+	pg_assert_same(array('duplicate', 'remove', 'lock', 'more'), $r['select'], 'outside Animate: no Follow');
+	pg_assert_same(array('split', 'motion', 'duplicate', 'remove', 'lock', 'more'), $r['video'], 'a video does not follow');
+	pg_assert_false(in_array('follow', $r['redact'], true), 'a redaction never moves');
+	pg_assert_false(in_array('follow', $r['two'], true), 'several layers: no Follow');
+	pg_assert_same(array('unlock', 'more'), $r['locked'], 'a locked layer: no Follow');
+	pg_assert_false(in_array('follow', $r['phone'], true), 'not in the phone\'s bar at the stage\'s foot');
+
+	$actions = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_image_editor_actions.js');
+
+	pg_assert_contains("follow: ['follow', 'followFollow',", $actions, 'the bar\'s command with Follow\'s own label');
+}
