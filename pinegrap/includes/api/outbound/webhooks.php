@@ -552,6 +552,22 @@ function api_webhook_max_attempts() {
 
 }
 
+// How many event subscriptions one application may hold. POST /webhooks
+// refuses the next one with 409 too_many_webhooks and names this number. The
+// dispatcher is bounded by time, not rows, so 50 subscribers of one event are
+// 50 queue rows that drain over as many runs as their receivers need.
+function api_webhook_subscription_limit() {
+
+	return 50;
+
+}
+
+function api_webhook_subscription_limit_reached($count) {
+
+	return (int)$count >= api_webhook_subscription_limit();
+
+}
+
 // The activity log line for a delivery given up after its last attempt. The
 // address is cut to scheme and host (pg_ops_alert_mask_url()): the log is read
 // by every manager and by API apps with site_log:read, and Slack, Discord and

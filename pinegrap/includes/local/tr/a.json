@@ -5823,6 +5823,7 @@
     "An application is mentioned in a public channel": "Herkese açık bir kanalda bir uygulamadan bahsedildi",
     "An application is mentioned in {var:1}": "{var:1} kanalında bir uygulamadan bahsedildi",
     "An application may hold ten subscriptions.": "Bir uygulama en fazla on abonelik tutabilir.",
+    "An application may hold {var:1} subscriptions.": "Bir uygulama en fazla {var:1} abonelik tutabilir.",
     "An application may register twenty commands.": "Bir uygulama en fazla yirmi komut kaydedebilir.",
     "An application on this device": "Bu cihazdaki bir uygulama",
     "An application that asks for a server address works with the address above. One that can only start a program on the computer reaches the server through the mcp-remote bridge, which needs Node.js and opens the sign-in in the browser: give it this as the command.": "Sunucu adresi isteyen bir uygulama yukarıdaki adresle çalışır. Bilgisayarda yalnız bir program başlatabilen uygulama sunucuya mcp-remote köprüsüyle ulaşır; Node.js gerektirir ve oturum açmayı tarayıcıda açar. Komut olarak bunu verin.",
