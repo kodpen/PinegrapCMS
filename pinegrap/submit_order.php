@@ -906,10 +906,10 @@ function submit_order($type) {
 
     $gift_card_discount = 0;
 
-    // If the total is greater than 0 then set gift card discount: the cards
-    // pay at most the total, and store credit at most the part of it that is
-    // not gift card lines, so credit bound to a customer never turns into a
-    // plain gift card (pg_gift_card_applied_discount()).
+    // If the total is greater than 0 then set gift card discount: store
+    // credit and plain cards together pay at most the part of the total that
+    // is not gift card lines, so no applied card ever buys a new gift card
+    // (pg_gift_card_applied_discount()).
     if ($total > 0) {
         $gift_card_discount = pg_gift_card_applied_discount($total, pg_gift_card_lines_part($charged_lines, $discount),
             $credit_balance, $gift_card_balance - $credit_balance)['discount'];

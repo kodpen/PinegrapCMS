@@ -2430,8 +2430,8 @@ function get_express_order($properties) {
                 
                 // if the total is greater than 0 and there is at least 1 applied gift card, then prepare to output gift card discount
                 if (($grand_total > 0) && (count($applied_gift_cards) > 0)) {
-                    // The cards pay at most the total, and store credit at most the part
-                    // of it that is not gift card lines, as submit_order.php charges it
+                    // Store credit and plain cards together pay at most the part of the
+                    // total that is not gift card lines, as submit_order.php charges it
                     // (pg_gift_card_applied_discount()).
                     $applied_balances = pg_gift_card_applied_balances((int) ($_SESSION['ecommerce']['order_id'] ?? 0));
                     $gift_card_discount = pg_gift_card_applied_discount((int) round($grand_total * 100),
@@ -5199,8 +5199,8 @@ function get_express_order($properties) {
                 // gift card, then prepare gift card info.
                 if (($total > 0) and $applied_gift_cards) {
                     
-                    // The cards pay at most the total, and store credit at most the part
-                    // of it that is not gift card lines, as submit_order.php charges it
+                    // Store credit and plain cards together pay at most the part of the
+                    // total that is not gift card lines, as submit_order.php charges it
                     // (pg_gift_card_applied_discount()).
                     $applied_balances = pg_gift_card_applied_balances((int) ($_SESSION['ecommerce']['order_id'] ?? 0));
                     $gift_card_discount = pg_gift_card_applied_discount((int) round($total * 100),

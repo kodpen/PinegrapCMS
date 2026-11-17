@@ -68,12 +68,15 @@ function test_gift_card_credit_cap_takes_the_discount_share_and_tax()
 	pg_assert_same(3240, $totals['total']);
 }
 
-function test_gift_card_plain_cards_fill_the_rest()
+function test_gift_card_plain_cards_share_the_cap()
 {
-	// Credit is held to the part that is not gift card lines; plain cards
-	// pay what is left of the total.
-	pg_assert_same(array('credit' => 100, 'cards' => 5000, 'discount' => 5100), pg_gift_card_applied_discount(10100, 10000, 10100, 5000));
-	pg_assert_same(array('credit' => 100, 'cards' => 10000, 'discount' => 10100), pg_gift_card_applied_discount(10100, 10000, 10100, 99999));
+	// Credit and plain cards share one cap: together they pay at most the
+	// part of the total that is not gift card lines, credit first.
+	pg_assert_same(array('credit' => 100, 'cards' => 0, 'discount' => 100), pg_gift_card_applied_discount(10100, 10000, 10100, 5000));
+	pg_assert_same(array('credit' => 100, 'cards' => 0, 'discount' => 100), pg_gift_card_applied_discount(10100, 10000, 10100, 99999));
+	pg_assert_same(array('credit' => 0, 'cards' => 100, 'discount' => 100), pg_gift_card_applied_discount(10100, 10000, 0, 5000));
+	pg_assert_same(array('credit' => 40, 'cards' => 60, 'discount' => 100), pg_gift_card_applied_discount(10100, 10000, 40, 5000));
+	pg_assert_same(array('credit' => 300, 'cards' => 200, 'discount' => 500), pg_gift_card_applied_discount(1000, 0, 300, 200));
 	pg_assert_same(array('credit' => 0, 'cards' => 0, 'discount' => 0), pg_gift_card_applied_discount(0, 0, 500, 500));
 }
 

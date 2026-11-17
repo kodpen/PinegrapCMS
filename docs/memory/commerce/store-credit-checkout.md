@@ -7,7 +7,7 @@ module: store_credit
 ## How does credit reach an order?
 - Where the checkout totals are read (`get_express_order()`, `get_order_preview()`, the designer express order widget in `widgets_cart.php`), `pg_credit_checkout_sync($order_id)` runs first, so the total shown is the total charged. It adds every open card of `pg_credit_cards()` (oldest expiry first) as an `applied_gift_cards` row with `old_balance` = balance, refreshes a row whose balance moved and removes one whose card is no longer open.
 - No amount per row: `submit_order()` takes the balances up to the total and `pg_order_complete_gift_cards()` redeems by row id. Pure decision: `pg_credit_checkout_plan()`.
-- Credit pays at most the part of that total that is not gift card lines (`gift-card-line-credit-cap.md`).
+- Credit and plain cards together pay at most the part of that total that is not gift card lines (`gift-card-line-credit-cap.md`).
 - Only `pg_credit_checkout_customer()`: gift cards on, columns there, a signed-in customer (not a guest, not a ghost order), at least one line that is not a gift card. Otherwise sync does nothing; `submit_order()` already drops credit someone else may not spend.
 
 ## Can a card count twice?

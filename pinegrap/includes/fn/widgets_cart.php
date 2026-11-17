@@ -2490,11 +2490,11 @@ function pg_gift_card_lines_part($charged, $discount)
 
 /**
  * How much of an order's total the applied cards pay, in minor units. Store
- * credit (a card with a user_id) pays at most the part of the total that is
- * not gift card product lines (pg_gift_card_lines_part()), so credit bound to
- * a customer and perhaps expiring never becomes a plain gift card; the plain
- * gift cards then pay what is left of the total, at most their balance.
- * Never below zero, never more than the total.
+ * credit (a card with a user_id) and plain gift cards together pay at most
+ * the part of the total that is not gift card product lines
+ * (pg_gift_card_lines_part()), so no applied card ever buys a new gift card;
+ * credit is taken first, the plain cards then pay what is left of that part,
+ * each at most its balance. Never below zero, never more than the total.
  *
  * @param int $total            the order's total before the cards: lines less discount, tax, shipping
  * @param int $gift_lines_part  pg_gift_card_lines_part()
@@ -2507,7 +2507,7 @@ function pg_gift_card_applied_discount($total, $gift_lines_part, $credit_balance
     $total = max(0, (int) $total);
     $room = max(0, $total - max(0, (int) $gift_lines_part));
     $credit = min(max(0, (int) $credit_balance), $room);
-    $cards = min(max(0, (int) $card_balance), $total - $credit);
+    $cards = min(max(0, (int) $card_balance), $room - $credit);
 
     return array('credit' => $credit, 'cards' => $cards, 'discount' => $credit + $cards);
 }
