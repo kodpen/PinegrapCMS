@@ -25,7 +25,7 @@ module: content_proposals
 
 ## Dismiss and take back?
 - Dismiss: a waiting or stale change, a reason of at most 300 characters (`pg_content_proposals_reason()`, characters not bytes), kept as `steps.reason`; no column.
-- Take back (`pg_content_proposals_revert()`): only by the designer who applied it, only while the stored tree's fingerprint is still `after_hash` (`pg_content_proposals_revert_check()`); it writes `before_tree` and the settings' `was` values back in one save, then `reverted`.
+- Take back (`pg_content_proposals_revert()`): only by the designer who applied it, while nobody saved the page since (`pg_content_proposals_revert_check()`): the tree is still `after_hash` and each setting the change wrote holds that value, else "saved again" (PR #10231: a Mass Edit title was lost). One save writes `before_tree` and the settings' `was` back, then `reverted`.
 
 ## Which test guards it?
 - `tests/content_proposals_test.php`: apply puts each operation, History names both, stale refused (gone, changed, setting, tree), the reason's limit and the 30 days, take back, the screen's gate.
