@@ -315,3 +315,15 @@ function test_workspace_mail_list_follows_pane()
 	pg_assert_contains("h.api('ws_mail_rows', data).then(function (result) {\n                var list = root.querySelector('.ws-mail-list');", $script, 'the list asked again with the address\'s filters');
 	pg_assert_contains('ws_mail_rows_answer($list, $filters, time(), !empty($request[\'whole\']), (int) ($request[\'conversation\'] ?? 0))', $actions);
 }
+
+function test_workspace_mail_pane_on_a_phone()
+{
+	$css = str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css'));
+	$script = str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_mail.js'));
+	$phone = substr($css, (int) strpos($css, '@media (max-width: 767.98px) {' . "\n" . '  .ws-mail-reading .ws-mail-columns {'));
+
+	pg_assert_contains(".ws-mail-reading > #button_bar.pg-toolbar,\n  .ws-mail-reading > .ws-mail-check-line {\n    display: none;", $phone, 'the toolbar folds away while a mail is read on a phone');
+	pg_assert_contains('.ws-mail-pane .ws-mail-item {', $phone, 'the mail keeps the width the paddings took');
+	pg_assert_contains("if (phone()) {\n                        root.scrollIntoView({ block: 'start' });", $script, 'an opened mail starts on the first screen');
+	pg_assert_contains("window.matchMedia('(max-width: 767.98px)').matches", $script, 'the same width as the stylesheet');
+}
