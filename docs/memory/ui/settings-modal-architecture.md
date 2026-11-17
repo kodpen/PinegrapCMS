@@ -32,7 +32,7 @@ assets/js/backend.src.js         pgSettingsModal, window.pgOpenSettings(), pgIni
 - `seo`: Site Icon, Social Sharing, Structured Data, AI Crawlers; Product Feeds went to `commerce`.
 - `privacy`: Visitor Tracking (`privacy_analytics.php`), Cookie Consent, Legal Documents.
 - `accounting`: ERP, E-Invoice (hidden outside Turkey, `pg_edoc_settings_shown()`), the `erp_settings.php` cards (`erp/erp-settings-cards.md`).
-- `api`: Google Reviews (from Communication), Related screens (`pg_settings_integration_links()`): Application Access and every System tools screen the registry of outside services names as a place, in System tools' order and under its gates (#PRNUM), then Workspace Settings for the settings right.
+- `api`: Google Reviews (from Communication), Related screens (`pg_settings_integration_links()`).
 - `maintenance`: Update Channel, Cron Jobs, Backups, Alerts, Maintenance Mode (out of General).
 - Appearance: Dashboard for role < 2 (`settings-dashboard-card.md`), Private Label for role 0 (`private_label.php` redirects to it).
 
