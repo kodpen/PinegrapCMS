@@ -27,7 +27,8 @@ description: Start file of the integrations census (2026-11-17, the owner's requ
 - Connections are spread: GitHub in five places, AI keys in six, mail in four, and "Connections" names four things. Each site registers its own application at Google, Microsoft or GitHub before a Connect button works.
 - Claude's directory now takes a listing where each user enters their own address (Verified listings only), and an install link fills its custom connector dialog.
 
-## What is still to decide?
-- Which packages become plans, and in which order; the architect's view first.
-- The owner's: the developer accounts, repositories and demo site the platform apps need; the wording of a figure; the broker's verification.
-- The architect's: webhooks for an OAuth connection and from the panel; the connector listing beside the bundle; where the connections hub lives.
+## What did the architect say? (2026-11-17, agent channel message 7524)
+- Three plans: automation platforms, the connections hub, the market's table stakes. The Claude button and the MCP Registry entry join `claude-plugin-bundle.md` (`api/claude-connector-listing.md`); MCP catalogue rows are single steps, each tried first.
+- The OAuth ceiling on webhooks stays: platform apps sign in with an application's key and secret. A form for a new subscription in Application Access is a step drawn first, on the owner's yes.
+- The hub is the redraw of Connected accounts under System tools › Connections: one list in code, no table, no second home for a field. Its first step moves nothing, its count is the public figure, its screen is drawn and approved first.
+- The owner's polls are the architect's to ask, in turn: the packages and their order, then the accounts, repositories and demo site, the figure's wording, Google's verification.
