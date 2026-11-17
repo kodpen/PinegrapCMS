@@ -27,6 +27,7 @@ function test_picture_group_listed()
 	pg_assert_true(isset($groups['pictures']), 'the Pictures group is listed');
 	pg_assert_same(array('file'), $groups['pictures']['types']);
 	pg_assert_same('bi-image', $groups['pictures']['icon']);
+	pg_assert_same(lang('Images'), $groups['pictures']['label'], 'named "Images" ("Görseller"), as the group\'s note says "görsel"');
 	pg_assert_same(array(array('file', '*')), pg_tr_scope_owners('group:pictures'), "a job's scope names every picture of the group");
 }
 

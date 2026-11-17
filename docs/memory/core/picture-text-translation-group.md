@@ -5,7 +5,8 @@ module: picture_translation
 ---
 
 ## What does the group hold?
-- `pg_tr_owner_groups()` (`includes/translate/content.php`) lists `pictures` ("Pictures", `bi-image`, types `file`) under Other texts, between Forms and the Cookie window.
+- Its name is "Görseller" (key `Images`), the word its note and the Design Canvas use; the owner chose it on poll 118 (agent channel message 8070). "Pictures" stays "Resimler" on other screens.
+- `pg_tr_owner_groups()` (`includes/translate/content.php`) lists `pictures` ("Images", Turkish "Görseller", `bi-image`, types `file`) under Other texts, between Forms and the Cookie window.
 - Its owners are never every file: `pg_tr_owner_where()` turns `('file', '*')` into `pg_tr_picture_owner_bound()`, the texts of a file with a row in `file_translation` (the page pass writes the row when a page in another language shows the picture). Before the table exists it is `0 = 1`.
 - The bound is the file's, not the language's: a picture a page showed in one language counts for every target language.
 

@@ -56,7 +56,7 @@ function pg_tr_owner_groups()
         // page in another language has shown, i.e. one with a row in
         // file_translation (pg_tr_picture_owner_bound()).
         'pictures' => array(
-            'label' => lang('Pictures'),
+            'label' => lang('Images'),
             'icon'  => 'bi-image',
             'types' => array('file'),
         ),

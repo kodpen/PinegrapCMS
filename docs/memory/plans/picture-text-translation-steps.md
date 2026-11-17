@@ -15,7 +15,7 @@ description: Plan picture-text-translation, steps PT1 to PT4b: the table and the
   - The swap of this site's picture addresses in `src`, `srcset`, a `<source>`'s `srcset`, an `og:image` meta, an `href` to a picture and `url()` in a `style` attribute, plain and with `?w=` or `?f=`. One query for a page, no document decoded. Only a drawn row is swapped. A picture with uses met in a language for the first time gets its waiting row; none for a right-to-left language.
   - Tests: each place swapped, each left-out place untouched; an out-of-date row not swapped; the query count; a private folder's picture served by the source's rights.
 
-- PT3 (M) after PT1: the "Pictures" group on the Translations screen.
+- PT3 (M) Done (PR #10102): the "Pictures" group on the Translations screen (`core/picture-text-translation-group.md`); owner's look: poll 118.
   - Existing: `includes/translate/content.php` (`pg_tr_owner_groups()`), `includes/translate/jobs.php` (`pg_tr_scope_owners()`: for this group the owners are the files that have a row, never every file), `includes/translate/extract.php` (the group's extraction, the prune).
   - A row names the file and opens it in the Design Canvas. The group joins "translate the whole site" with the same bound.
   - Tests: a picture no page showed neither counted nor sent; the counts by language; a job's scope.
