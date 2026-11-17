@@ -347,10 +347,10 @@ echo $course_shell . '
                                         <colgroup><col class="pg-course-col-number" /><col /><col class="pg-course-col-days" /><col class="pg-course-col-quiz" /><col class="pg-course-col-score" /><col class="pg-course-col-actions" /></colgroup>
                                         <thead><tr>
                                             <th scope="col"><span class="visually-hidden">' . h(lang('Order')) . '</span></th>
-                                            <th scope="col">' . h(lang('Lesson page')) . '</th>
-                                            <th scope="col">' . h(lang('Opens after')) . '</th>
-                                            <th scope="col">' . h(lang('Quiz to pass')) . '</th>
-                                            <th scope="col">' . h(lang('Score needed')) . '</th>
+                                            <th scope="col"><span class="pg-field-label mb-0">' . h(lang('Lesson page')) . '</span></th>
+                                            <th scope="col"><span class="pg-field-label mb-0">' . h(lang('Opens after')) . '</span></th>
+                                            <th scope="col"><span class="pg-field-label mb-0">' . h(lang('Quiz to pass')) . '</span></th>
+                                            <th scope="col"><span class="pg-field-label mb-0">' . h(lang('Score needed')) . '</span></th>
                                             <th scope="col"><span class="visually-hidden">' . h(lang('Actions')) . '</span></th>
                                         </tr></thead>
                                         <tbody id="course_lessons">' . $course_rows . '</tbody>
