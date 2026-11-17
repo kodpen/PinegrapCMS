@@ -190,7 +190,7 @@ function test_designer_overview_chain_folds()
 		'function w(id, kids, extra) { return { _id: id, type: "semantic", props: Object.assign({ tag: "div" }, extra || {}), children: kids || [] }; }' . "\n"
 		. 'var menu = { _id: "menu", type: "semantic", props: { tag: "ul" }, children: [w("li1"), w("li2"), w("li3")] };' . "\n"
 		. 'var w4 = w("w4", [menu]), w3 = w("w3", [w4]), w2 = w("w2", [w3], { tag: "nav" }), w1 = w("w1", [w2]);' . "\n"
-		. 'var ids = function (c) { return { hidden: c.hidden.map(function (n) { return n._id; }), next: c.next ? c.next._id : null }; };' . "\n"
+		. 'var ids = function (c) { return { hidden: c.hidden.map(function (n) { return n._id; }), next: c.next ? c.next._id : null, run: c.run.map(function (n) { return n._id; }) }; };' . "\n"
 		. 'var never = function () { return false; };' . "\n"
 		. 'var lone = w("lone", [menu]);' . "\n"
 		. 'var shut = w("s1", [w("s2", [w("s3", [menu])], { _x: 1 })]); shut.children[0]._expanded = false;' . "\n"
@@ -212,9 +212,10 @@ function test_designer_overview_chain_folds()
 		return;
 	}
 
-	pg_assert_same(array('hidden' => array('w1', 'w2', 'w3', 'w4'), 'next' => 'menu'), $res['four'], 'four wrappers with one child each fold into one line, the list after them drawn');
+	pg_assert_same(array('hidden' => array('w1', 'w2', 'w3', 'w4'), 'next' => 'menu', 'run' => array('w1', 'w2', 'w3', 'w4')), $res['four'], 'four wrappers with one child each fold into one line, the list after them drawn');
 	pg_assert_same(array(), $res['opened']['hidden'], 'an opened chain is drawn open');
 	pg_assert_same(array(), $res['selected']['hidden'], 'a chain holding the selection is drawn open');
+	pg_assert_same(array('w1', 'w2', 'w3', 'w4'), $res['selected']['run'], 'the whole chain is drawn open, below the selection too');
 	pg_assert_same(array(), $res['lone']['hidden'], 'one wrapper alone is no chain');
 	pg_assert_same(array(), $res['shut']['hidden'], 'a closed wrapper ends the chain before it is two long');
 	pg_assert_same(array('t1', 't2'), $res['content']['hidden'], 'a content element is never hidden');
@@ -263,5 +264,6 @@ function test_designer_overview_hint_cut_before_name()
 	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/style_designer.css');
 
 	pg_assert_true((bool) preg_match('/\.sd-tree-hint\s*\{[^}]*text-overflow:\s*ellipsis/', $css), 'the hint is cut with an ellipsis');
+	pg_assert_true((bool) preg_match('/\.sd-tree-lbl \{ flex: 0 0 auto;/', $css), 'the label does not shrink while a hint or a mark can');
 	pg_assert_true((bool) preg_match('/\.sd-tree-list li > \.sd-tree-lbl ~ :not\(\.sd-tree-sect-count\)\s*\{[^}]*flex-shrink:\s*100/', $css), 'what follows the label shrinks first');
 }

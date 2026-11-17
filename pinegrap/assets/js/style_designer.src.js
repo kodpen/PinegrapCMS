@@ -29907,6 +29907,7 @@ const StyleDesigner = (function () {
         var _wrapEl = document.getElementById('sd-overview-tree-wrap');
         _sdTreeRowWidth = _wrapEl ? _wrapEl.clientWidth : 0;
         _sdTreeNames = _sdTreeCountNames();
+        _sdTreeChainShown = [];
         list.innerHTML = '';
 
         // Refresh notes tab (count badge + list) whenever tree re-renders
@@ -31597,17 +31598,19 @@ const StyleDesigner = (function () {
     // A chain from `node` down: wrappers that are open and hold exactly one
     // child each. Two or more are drawn as one line; `next` is the first
     // element after them. `keepOpen(n)` is true for a node that must show
-    // (opened by the operator, selected): then nothing is folded.
+    // (opened by the operator, selected): then nothing is folded, and `run`
+    // lists the whole chain, to be drawn row by row.
     function _sdTreeChain(node, keepOpen) {
-        var hidden = [];
+        var run = [], open = false;
         var n = node;
         while (_sdTreeIsWrapper(n) && n._expanded !== false && n.children && n.children.length === 1) {
-            if (keepOpen(n)) return { hidden: [], next: node };
-            hidden.push(n);
+            if (keepOpen(n)) open = true;
+            run.push(n);
             n = n.children[0];
         }
-        if (hidden.length < 2 || !n) return { hidden: [], next: node };
-        return { hidden: hidden, next: n };
+        if (run.length < 2 || !n) return { hidden: [], next: node, run: [] };
+        if (open) return { hidden: [], next: node, run: run };
+        return { hidden: run, next: n, run: run };
     }
 
     // The names on a chain line: its first and last level, a gap between
@@ -31914,11 +31917,15 @@ const StyleDesigner = (function () {
     // A child row, or the line of the folded chain it starts and the
     // element after the chain. A chain opened, or holding the selection,
     // is drawn row by row.
+    var _sdTreeChainShown = [];
     function _sdTreeBuildChild(ul, node, depth, lvl) {
+        if (_sdTreeChainShown.indexOf(node) !== -1) { buildTreeItems(ul, node, depth, lvl); return; }
         var chain = _sdTreeChain(node, function (n) {
             return n === selectedNode || selectedNodes.indexOf(n) !== -1 ||
                 !!(_sdTreeChainsOpen && _sdTreeChainsOpen.has(n));
         });
+        // An open chain's later links are drawn as rows too, not folded anew.
+        if (!chain.hidden.length && chain.run.length) Array.prototype.push.apply(_sdTreeChainShown, chain.run);
         if (!chain.hidden.length || !_sdTreeChainsOpen) { buildTreeItems(ul, node, depth, lvl); return; }
         var li = document.createElement('li');
         li.className = 'sd-tree-chain';

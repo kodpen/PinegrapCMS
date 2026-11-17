@@ -648,7 +648,7 @@
 .sd-tree-chev-placeholder { display: inline-block; width: 14px; margin-right: 2px; }
 /* The marks after a label give way before it does; _sdTreeRowIndent()
    leaves the label at least 150 px of the row. */
-.sd-tree-lbl { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; margin-left: 2px; }
+.sd-tree-lbl { flex: 0 0 auto; max-width: calc(100% - 56px); min-width: 0; overflow: hidden; text-overflow: ellipsis; margin-left: 2px; }
 .sd-tree-list li > .sd-tree-lbl ~ :not(.sd-tree-sect-count) { flex-shrink: 100; min-width: 0; overflow: hidden; }
 /* The hint after a name the page uses more than once; cut before the name. */
 .sd-tree-hint {
