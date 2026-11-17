@@ -26,7 +26,7 @@ description: Plan designer-panels, steps DP11 to DP16 of the Overview chain: row
   - Pictures: the three targets and the refused row beside `overview-2-drag-move.jpg`.
   - Features: D37, D38, D39.
 
-- DP15 (M) after DP14: long drags.
+- DP15 (M) after DP14: long drags. Done: #10309.
   - Tests: the tree as it was after Esc and after a drop; a branch opened after 600 ms kept open; the scroll speed by distance.
   - Pictures: a drag from the page's foot to its head on the 500-row page, four frames.
   - Features: D40.

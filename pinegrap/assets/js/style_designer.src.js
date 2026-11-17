@@ -30096,6 +30096,7 @@ const StyleDesigner = (function () {
         _sdTreeRowWidth = _wrapEl ? _wrapEl.clientWidth : 0;
         _sdTreeNames = _sdTreeCountNames();
         _sdTreeChainShown = [];
+        _sdTreeLongPark(list);
         list.innerHTML = '';
 
         // Refresh notes tab (count badge + list) whenever tree re-renders
@@ -32184,7 +32185,304 @@ const StyleDesigner = (function () {
         l.style.top = at.top + 'px';
     }
 
-    // The hint after a name that repeats: the element's text, a picture's
+    // ── Long drags in the Overview ──
+    // A drag started on a row folds the tree to its sections; a closed
+    // branch under the pointer opens after 600 ms; the top and bottom 48 px
+    // of the tree scroll it. Esc gives the tree back as it was; a drop too,
+    // but a branch opened on the way that the drop went into stays open.
+
+    // The open state of every branch under `root` (`kids(n)` lists a row's
+    // children as the Overview draws them), for _sdTreeDragRestore().
+    function _sdTreeDragSave(root, kids) {
+        var out = [], seen = new Set();
+        (function walk(n) {
+            kids(n).forEach(function (c) {
+                if (!c || seen.has(c)) return;
+                seen.add(c);
+                out.push({ n: c, had: Object.prototype.hasOwnProperty.call(c, '_expanded'), v: c._expanded });
+                walk(c);
+            });
+        })(root);
+        return out;
+    }
+
+    // Closes every section (a child of `root` with rows under it); returns
+    // how many were open.
+    function _sdTreeDragFold(root, kids) {
+        var n = 0;
+        kids(root).forEach(function (c) {
+            if (kids(c).length && c._expanded !== false) { c._expanded = false; n++; }
+        });
+        return n;
+    }
+
+    // Gives every branch its saved state back; the ones in `keep` open.
+    function _sdTreeDragRestore(saved, keep) {
+        saved.forEach(function (s) {
+            if (keep.indexOf(s.n) !== -1) s.n._expanded = true;
+            else if (s.had) s.n._expanded = s.v;
+            else delete s.n._expanded;
+        });
+    }
+
+    // The branches opened during the drag that stay open after a drop into
+    // `dest`: `dest` itself and the branches over it.
+    function _sdTreeDragKeep(opened, dest, parentOf) {
+        var over = [];
+        for (var n = dest, g = 0; n && g < 256; g++) { over.push(n); n = parentOf(n); }
+        return opened.filter(function (o) { return over.indexOf(o) !== -1; });
+    }
+
+    // The closed branch under the pointer: `id` the row's (null for none),
+    // `now` in ms. The time starts when the pointer comes to a row and opens
+    // it after 600 ms there.
+    function _sdTreeDragHover(prev, id, now) {
+        if (id == null) return { id: null, since: now, open: false };
+        if (!prev || prev.id !== id) return { id: id, since: now, open: false };
+        return { id: id, since: prev.since, open: now - prev.since >= 600 };
+    }
+
+    // Pixels a frame the tree scrolls for a pointer `y` px under its top, the
+    // tree `h` px high: within 48 px of an edge, from 6 at the zone's inner
+    // edge to 24 at the tree's edge (negative is up); in a short tree the
+    // nearer edge wins.
+    function _sdTreeDragScroll(y, h) {
+        var zone = 48, top = y, bottom = h - y;
+        var up = top < zone, down = bottom < zone;
+        if (up && down) {
+            if (top === bottom) return 0;
+            if (top < bottom) down = false; else up = false;
+        }
+        if (!up && !down) return 0;
+        var d = Math.max(0, up ? top : bottom);
+        var v = Math.round(6 + 18 * (zone - d) / zone);
+        return up ? -v : v;
+    }
+
+    // A row's children as the Overview draws them: a shared component's
+    // from its own tree.
+    function _sdTreeKids(n) {
+        if (n && n.type === 'shared_ref') {
+            var sid = (n.props && n.props.sharedId) ? parseInt(n.props.sharedId, 10) : 0;
+            var c = sid > 0 ? _sharedCache[sid] : null;
+            return (c && c.tree && c.tree.children) || [];
+        }
+        return (n && n.children) || [];
+    }
+
+    // The drag running from an Overview row; null when none runs.
+    var _sdTreeLong = null;
+    // Tree drawings, so the end of a drag knows whether a move drew it.
+    var _sdTreeDraws = 0;
+    var _sdTreeScrolling = { step: 0, raf: 0, seen: 0, wrap: null };
+
+    function _sdTreeLongStart(li, node) {
+        _sdTreeLongBind();
+        _sdTreeLongUnpark();
+        var wrap = document.getElementById('sd-overview-tree-wrap');
+        var L = _sdTreeLong = { src: li, node: node, saved: _sdTreeDragSave(tree, _sdTreeKids), opened: [],
+            top: wrap ? wrap.scrollTop : 0, hover: null, timer: 0, folded: false };
+        // Rows changed inside dragstart cancel the drag in Chromium.
+        setTimeout(function () {
+            if (_sdTreeLong !== L || !_sdTreeDragFold(tree, _sdTreeKids)) return;
+            L.folded = true;
+            // The section of the dragged row comes where the row was.
+            var sect = node;
+            while (sect && _sdTreeParentOf(sect) && _sdTreeParentOf(sect) !== tree) sect = _sdTreeParentOf(sect);
+            var was = (wrap && li.isConnected) ? li.getBoundingClientRect().top - wrap.getBoundingClientRect().top : null;
+            // The section just folded under the pointer waits until the
+            // pointer has been on another row: it does not open again by
+            // itself while the drag sets off.
+            if (sect) L.hover = { id: sect._id, since: Infinity, open: false };
+            _sdTreeLongDraw();
+            var list = document.getElementById('sd-tree-list');
+            var row = (list && sect) ? _sdTreeRowOf(list, sect) : null;
+            if (row && was !== null) wrap.scrollTop += row.getBoundingClientRect().top - wrap.getBoundingClientRect().top - was;
+        }, 0);
+    }
+
+    // Draws the tree during a drag, the dragged rows dimmed again.
+    function _sdTreeLongDraw() {
+        renderTree();
+        var moving = (treeDragNode && treeDragNode._multiDrag && selectedNodes.length > 1) ? selectedNodes : [treeDragNode];
+        var list = document.getElementById('sd-tree-list');
+        if (!list) return;
+        moving.forEach(function (n) {
+            var r = n ? _sdTreeRowOf(list, n) : null;
+            if (r) r.classList.add('sd-tree-drag-src');
+        });
+    }
+
+    // Called by renderTree() before it empties the rows: the dragged row is
+    // kept in the document, where the browser sends it its dragend.
+    function _sdTreeLongPark(list) {
+        _sdTreeDraws++;
+        var L = _sdTreeLong;
+        if (!L || !L.src || !list.contains(L.src)) return;
+        var park = document.getElementById('sd-tree-drag-park');
+        if (!park) {
+            park = document.createElement('ul');
+            park.id = 'sd-tree-drag-park';
+            park.hidden = true;
+            document.body.appendChild(park);
+        }
+        park.appendChild(L.src);
+    }
+
+    function _sdTreeLongUnpark() {
+        var park = document.getElementById('sd-tree-drag-park');
+        if (park) park.textContent = '';
+    }
+
+    // Ends the drag: the tree as it was, but for the opened branches over
+    // `dest` (the parent a drop went into; null for Esc). A drop that moved
+    // something draws the tree itself; else it is drawn here, at the scroll
+    // it had when the drag started.
+    function _sdTreeLongEnd(dest) {
+        var L = _sdTreeLong;
+        if (!L) return;
+        _sdTreeLong = null;
+        clearTimeout(L.timer);
+        _sdTreeScrolling.step = 0;
+        _sdTreeZones(null, 0);
+        _sdTreeLongWait(null);
+        if (!L.folded && !L.opened.length) return;
+        _sdTreeDragRestore(L.saved, dest ? _sdTreeDragKeep(L.opened, dest, _sdTreeParentOf) : []);
+        var drawn = _sdTreeDraws;
+        setTimeout(function () {
+            if (_sdTreeDraws !== drawn) return;
+            renderTree();
+            var wrap = document.getElementById('sd-overview-tree-wrap');
+            if (wrap) wrap.scrollTop = L.top;
+        }, 0);
+    }
+
+    // Opens the closed branch the pointer stayed on.
+    function _sdTreeLongOpen(n) {
+        var L = _sdTreeLong;
+        if (!L || !L.hover || L.hover.id !== n._id) return;
+        if (!_sdTreeDragHover(L.hover, n._id, Date.now() + 1).open) return;
+        L.hover = null;
+        n._expanded = true;
+        if (L.opened.indexOf(n) === -1) L.opened.push(n);
+        _sdTreeLongDraw();
+    }
+
+    // Scrolls the tree by `step` px a frame while dragovers keep coming.
+    function _sdTreeScrollAt(wrap, step) {
+        var s = _sdTreeScrolling;
+        s.step = step;
+        s.wrap = wrap;
+        s.seen = Date.now();
+        if (!step || s.raf) return;
+        s.raf = requestAnimationFrame(function tick() {
+            if (!s.step || Date.now() - s.seen > 500) { s.step = 0; s.raf = 0; return; }
+            s.wrap.scrollTop += s.step;
+            if (_sdTreeLong) _sdTreeZones(s.wrap, s.step);
+            s.raf = requestAnimationFrame(tick);
+        });
+    }
+
+    // The closed row the pointer waits on says it is opening.
+    function _sdTreeLongWait(li) {
+        document.querySelectorAll('#sd-tree-list li.sd-tree-opening').forEach(function (x) {
+            x.classList.remove('sd-tree-opening');
+            var p = x.querySelector('.sd-tree-opening-pill');
+            if (p) p.remove();
+        });
+        if (!li) return;
+        li.classList.add('sd-tree-opening');
+        var pill = document.createElement('span');
+        pill.className = 'sd-tree-opening-pill';
+        pill.innerHTML = '<span class="bi bi-hourglass-split" aria-hidden="true"></span>' + esc(_sdT('opening'));
+        li.appendChild(pill);
+    }
+
+    // The scroll zones over the top and bottom 48 px of the tree during a
+    // drag, each shown while the tree can scroll that way and lit while it
+    // does; `wrap` null hides them. They let the pointer through.
+    var _sdTreeZoneEls = null;
+    function _sdTreeZones(wrap, step) {
+        var z = _sdTreeZoneEls;
+        if (!wrap) {
+            if (z) z[0].hidden = z[1].hidden = true;
+            return;
+        }
+        if (!z) {
+            z = _sdTreeZoneEls = ['up', 'down'].map(function (d) {
+                var el = document.createElement('div');
+                el.className = 'sd-tree-scroll-zone sd-tree-scroll-' + d;
+                el.setAttribute('aria-hidden', 'true');
+                el.innerHTML = '<span class="bi bi-chevron-double-' + d + '"></span>';
+                el.hidden = true;
+                document.body.appendChild(el);
+                return el;
+            });
+        }
+        var r = wrap.getBoundingClientRect();
+        var top = r.top + wrap.clientTop;
+        var max = wrap.scrollHeight - wrap.clientHeight;
+        [[z[0], wrap.scrollTop > 0, step < 0, top],
+         [z[1], wrap.scrollTop < max - 1, step > 0, top + wrap.clientHeight - 48]].forEach(function (a) {
+            a[0].hidden = !a[1];
+            a[0].classList.toggle('sd-tree-scroll-on', a[2]);
+            a[0].style.left = (r.left + wrap.clientLeft) + 'px';
+            a[0].style.width = wrap.clientWidth + 'px';
+            a[0].style.top = a[3] + 'px';
+        });
+    }
+
+    function _sdTreeLongBind() {
+        if (_sdTreeLongBind.done) return;
+        _sdTreeLongBind.done = true;
+        // Before the rows' own handlers: the scroll zones, and the time on a
+        // closed branch. The palette's drags scroll the tree too.
+        document.addEventListener('dragover', function (e) {
+            var wrap = e.target && e.target.closest ? e.target.closest('#sd-overview-tree-wrap') : null;
+            if (!wrap || !(treeDragNode || (dragData && dragData.source === 'palette'))) {
+                _sdTreeScrolling.step = 0;
+                _sdTreeZones(null, 0);
+                return;
+            }
+            var step = _sdTreeDragScroll(e.clientY - wrap.getBoundingClientRect().top - wrap.clientTop, wrap.clientHeight);
+            _sdTreeScrollAt(wrap, step);
+            var L = _sdTreeLong;
+            if (!L) return;
+            _sdTreeZones(wrap, step);
+            var li = e.target.closest('#sd-tree-list li');
+            var n = li ? li._sdNode : null;
+            var closed = !!(n && li.querySelector('.sd-tree-chev:not(.sd-tree-chev-open)'));
+            var prev = L.hover;
+            L.hover = _sdTreeDragHover(prev, closed ? n._id : null, Date.now());
+            if (prev && prev.id === L.hover.id) return;
+            clearTimeout(L.timer);
+            _sdTreeLongWait(closed ? li : null);
+            L.timer = closed ? setTimeout(function () { _sdTreeLongOpen(n); }, 600) : 0;
+        }, true);
+        document.addEventListener('drop', function (e) {
+            if (!_sdTreeLong) return;
+            var li = e.target && e.target.closest ? e.target.closest('#sd-tree-list li') : null;
+            var dp = li ? li._dropPos : null;
+            var dest = null;
+            if (dp) dest = dp.zone === 'inside' ? li._sdNode : (_sdTreeParentOf(dp.t.sib) || dp.t.parent);
+            _sdTreeLongEnd(dest);
+        }, true);
+        document.addEventListener('dragend', function () {
+            _sdTreeLongEnd(null);
+            setTimeout(_sdTreeLongUnpark, 0);
+        }, true);
+        // A pointer moving with no button held means the drag ended
+        // without a dragend (its row left the document).
+        document.addEventListener('pointermove', function (e) {
+            if (!_sdTreeLong || e.buttons) return;
+            _sdTreeLongEnd(null);
+            treeDragNode = null;
+            document.querySelectorAll('.sd-tree-drag-src').forEach(function (x) { x.classList.remove('sd-tree-drag-src'); });
+            _sdTreeLongUnpark();
+        }, true);
+    }
+
+    // The hint after a name that repeats:the element's text, a picture's
     // file name or a link's target, else the first of these inside it (60
     // elements looked at). At most `max` characters, cut with an ellipsis.
     function _sdTreeRowHint(node, max) {
@@ -32783,6 +33081,8 @@ const StyleDesigner = (function () {
                         if (sli) sli.classList.add('sd-tree-drag-src');
                     });
                 }
+                // The tree folds to its sections for the way.
+                _sdTreeLongStart(li, node);
             });
 
             li.addEventListener('dragend', function() {
