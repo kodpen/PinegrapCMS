@@ -11,7 +11,7 @@ module: ecommerce
 ## What happens on a variant switch?
 - The page marks the box `data-pg-civ-qty-prices` (`_civ_qty_prices_part_mark()`): the nearest node marked Hide when empty around the list, else the element holding it. Empty on a page with the variant picker, it stays `hidden data-pg-empty-wait`.
 - `pg_civ_variants.js` posts `get_quantity_prices_for_product` (product id, `widget_id`); `_civ_qty_prices_part_html()` draws the box alone with that variant's breaks on its own list price (`_civ_list_part_draw()`, shared with the cross-sell part) and the script swaps it in; '' hides the box. `settleEmptyBoxes()` leaves the box alone.
-- Why: the box was drawn once for the variant the page opened on, so after a switch it kept that variant's breaks (#10197, PR #PRNUM).
+- Why: the box was drawn once for the variant the page opened on, so after a switch it kept that variant's breaks (#10197, PR #10229).
 
 ## Which offers make a break?
 - `pg_offer_quantity_breaks($product_id, $list, $own)` (`includes/fn/ecommerce.php`): one query for offers that are enabled, need no code (`require_code = 0`), have a rule whose required products hold this one with no required subtotal, and a "discount product" action with an amount or a percentage. In PHP: running today (`pg_offer_is_running()`), the action aims at this product or its product group (never "the cheapest item").
