@@ -27,7 +27,7 @@ function order_bulk_cancel_refunds_row($id, $number, $method, $total, $paid_at, 
 		'total'              => $total,
 		'refunded_amount'    => 0,
 		'paid_at'            => $paid_at,
-		'gift_card_discount' => $gift_card,
+		'gift_card_owed'     => $gift_card,
 	);
 }
 
