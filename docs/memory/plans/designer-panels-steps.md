@@ -9,7 +9,7 @@ description: Plan designer-panels, steps DP1 to DP5: the chrome's tokens, the ri
   - Pictures: the whole editor before and after, an element selected, the bottom panel open, beside `options-4-whole-screen.jpg`.
   - The PR body counts the colours still written outside a token and where.
 
-- DP2 (M) after DP1: the right column.
+- DP2 (M) after DP1: the right column. Done in #10210.
   - Existing files: `includes/designer_screen.php` (`#sd-panel-right`, `#sd-properties`, the `#sd-assets-*` panel), `style_designer.css`, `assets/js/style_designer.src.js` (the column's two tabs, `_SD_RAIL_ICONS`, the bottom panel's remembered state).
   - The column's default width becomes 336 px above 1024 px; a width the user dragged stays; 240 px at 1024 and below stays, and under 300 px the panel is drawn as `designer-panels-measures-4.md` says.
   - Tests: the remembered state's reader as a pure function.

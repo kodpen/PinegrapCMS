@@ -41,7 +41,8 @@ function test_designer_palette_switch_blocks_live_in_the_components_tab()
 	pg_assert_true(strpos($source, 'data-tab="blocks"') === false, 'the tab strip has no Blocks tab');
 	pg_assert_true(strpos($source, "tab === 'blocks'") === false, 'the tab switcher no longer shows a Blocks pane');
 	pg_assert_contains("blocks: 'bi-magic'", designer_palette_switch_fn($source, '_sdPalSwitchHTML'), 'the Blocks option keeps its icon');
-	pg_assert_true(strpos($source, "var _SD_RAIL_ICONS = { components: 'bi-puzzle', shared: 'bi-puzzle-fill', system: 'bi-cpu' };") !== false, 'the rail has no Blocks button');
+	pg_assert_true(preg_match("/var _SD_RAIL_ICONS = \\{ components: 'bi-puzzle', shared: 'bi-puzzle-fill', system: 'bi-cpu'[^}\\n]*\\};/", $source, $rail) === 1, 'the rail icons are listed');
+	pg_assert_true(isset($rail[0]) && strpos($rail[0], 'blocks') === false, 'the rail has no Blocks button');
 
 	$markup = substr($source, (int) strpos($source, '<div id="sd-tab-components" class="sd-tab-pane">'), 3000);
 	pg_assert_contains("_sdPalSwitchHTML()", $markup, 'the switch heads the Components tab');

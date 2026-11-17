@@ -4,7 +4,7 @@ description: The designer draws only the panels that can be seen, debounces them
 ---
 
 ## Which panels are drawn only while seen?
-- The Layers tree (`#sd-overview-tree-wrap`), the HTML tree (`#sd-html-tree`), Attributes (`#sd-bp-attrs`) and Styles (`#sd-bp-styles`). Each drawing function asks `_sdPanelDefer(name)` first: a host that is not laid out (display:none on it or an ancestor: the Notes tab, a folded Overview) or sits in the folded bottom panel (`.sd-panel-bottom.collapsed`) is marked in `_sdPanelStale` and nothing is drawn.
+- The Layers tree (`#sd-overview-tree-wrap`), the HTML tree (`#sd-html-tree`), Attributes (`#sd-bp-attrs`) and Styles (`#sd-bp-styles`). Each drawing function asks `_sdPanelDefer(name)` first: a host that is not laid out (display:none on it or an ancestor: the Notes tab, a folded Overview) or sits in the folded bottom panel (`.sd-panel-bottom.collapsed:not(.sd-docked)`: the docked panel's strips open on their own) is marked in `_sdPanelStale` and nothing is drawn.
 - `renderTree()` still refreshes the notes list when it skips: that list may be the one on screen.
 - The code view (`_sdCodeRefresh()`) is not deferred: it is asked before the check.
 - The Properties panel is always drawn; the status bar is drawn by every full `render()`, and after a select or switch of one node once the changes pause (designer-option-change-panels.md).
