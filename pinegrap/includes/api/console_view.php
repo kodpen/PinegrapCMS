@@ -498,6 +498,27 @@ function api_console_event_anchor($event) {
 
 }
 
+// The body a delivery of an event's sample carries (api_webhook_body()), one
+// key to a line: a sample with a list of parcels runs past a hundred
+// characters, and a body cut only where the screen ends cannot be read
+// against the Data table above it. Decoded to objects, not arrays, so an
+// empty object stays {}. '' when the sample cannot be written. Pure.
+function api_console_event_example($event, $sample) {
+
+	$body = api_webhook_body($event, $sample, '2026-01-25T09:14:03Z');
+
+	if ($body === null) {
+
+		return '';
+
+	}
+
+	$pretty = json_encode(json_decode($body), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+	return is_string($pretty) ? $pretty : $body;
+
+}
+
 // One block for each event of GET /webhooks/events' rows
 // (api_webhook_event_rows()): its description, the fields of data with their
 // type and meaning, and the body a delivery of its sample would carry. Built
@@ -546,12 +567,12 @@ function api_console_event_blocks_html($rows) {
 
 		if ($row['sample'] !== null) {
 
-			$body = api_webhook_body($row['name'], $row['sample'], '2026-01-25T09:14:03Z');
+			$body = api_console_event_example($row['name'], $row['sample']);
 
-			if ($body !== null) {
+			if ($body !== '') {
 
 				$sample = '<div class="doc-params"><span class="doc-params-h">' . h(lang('Example')) . '</span>
-					<div class="doc-curl mt-1"><code>' . h($body) . '</code></div></div>';
+					<div class="doc-curl doc-sample mt-1"><code>' . h($body) . '</code></div></div>';
 
 			}
 
@@ -686,6 +707,8 @@ function api_console_css() {
 .doc-curl { margin-top: 12px; background: var(--pg-bg-1); border-radius: 6px;
 	padding: 7px 10px; overflow-wrap: anywhere; }
 .doc-curl code { font-size: 0.71875rem; color: var(--pg-fg-body); opacity: .75; }
+/* The example body of an event keeps its line breaks and indents, one key to a line. */
+.doc-sample code { white-space: pre-wrap; }
 .doc-try { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
 .doc-try-panel { margin-top: 12px; }
 .doc-try-panel pre { background: #1e1e1e; color: #d4d4d4; border-radius: 8px; padding: 12px;

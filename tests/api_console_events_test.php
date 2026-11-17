@@ -70,9 +70,31 @@ function test_api_console_event_blocks_show_fields_and_sample()
 	pg_assert_true(strpos($html, 'can be null &middot; Its number') !== false, 'a nullable field says so');
 	pg_assert_true(substr_count($html, 'can be null') === 1, 'only the nullable field says so');
 
-	$body = h('{"event":"order.created","created_at":"2026-01-25T09:14:03Z","data":{"id":1042,"order_number":null}}');
+	$body = h(api_console_event_example('order.created', array('id' => 1042, 'order_number' => null)));
 
 	pg_assert_true(strpos($html, $body) !== false, 'the sample is shown as the delivered envelope');
+}
+
+// The example is the delivered envelope, one key to a line; an empty object
+// stays an object.
+function test_api_console_event_example()
+{
+	$lines = explode("
+", api_console_event_example('order.created', array('id' => 1042, 'order_number' => null)));
+
+	pg_assert_same(array(
+		'{',
+		'    "event": "order.created",',
+		'    "created_at": "2026-01-25T09:14:03Z",',
+		'    "data": {',
+		'        "id": 1042,',
+		'        "order_number": null',
+		'    }',
+		'}',
+	), $lines, 'the envelope, one key to a line');
+
+	pg_assert_true(strpos(api_console_event_example('x.y', array('items' => (object) array(), 'url' => 'https://a.example/b')), '"items": {}') !== false, 'an empty object stays an object');
+	pg_assert_true(strpos(api_console_event_example('x.y', array('url' => 'https://a.example/b')), '"https://a.example/b"') !== false, 'slashes are not escaped');
 }
 
 // An event with no fields and no sample says so instead of printing an empty
@@ -111,5 +133,5 @@ function test_api_console_events_every_event_has_a_block()
 
 	pg_assert_same(array(), $missing, 'every event has one block and a link to it');
 	pg_assert_same(count($events), substr_count($html, 'class="doc-ep doc-event"'), 'one block per event');
-	pg_assert_same(count($events), substr_count($html, '<div class="doc-curl mt-1">'), 'every block shows an example');
+	pg_assert_same(count($events), substr_count($html, '<div class="doc-curl doc-sample mt-1">'), 'every block shows an example');
 }
