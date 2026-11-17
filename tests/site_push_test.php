@@ -335,6 +335,38 @@ function test_site_push_send_plan()
 	pg_assert_false(strpos($run, 'push_subscriptions') !== false, 'never the panel\'s table');
 }
 
+function test_site_push_refused_subscription_removed()
+{
+	pg_assert_true(pg_site_push_refused(400), 'BadDeviceToken is a refusal');
+	pg_assert_true(pg_site_push_refused(403), 'a push signed with another key is a refusal');
+	pg_assert_true(pg_site_push_refused(401), 'an unauthorised push is a refusal');
+	pg_assert_false(pg_site_push_refused(408), 'a timeout is no refusal');
+	pg_assert_false(pg_site_push_refused(429), 'a busy service is no refusal');
+	pg_assert_false(pg_site_push_refused(500), 'a service error is an outage, not a refusal');
+	pg_assert_false(pg_site_push_refused(503), 'an unavailable service is an outage');
+	pg_assert_false(pg_site_push_refused(0), 'no answer is an outage');
+	pg_assert_false(pg_site_push_refused(201), 'an accepted push is no refusal');
+
+	$now = 10000000;
+	$old = $now - PG_SITE_PUSH_UNSEEN;
+	pg_assert_same(15, PG_SITE_PUSH_REFUSALS, 'three given-up messages of five tries');
+	pg_assert_true(pg_site_push_failing(PG_SITE_PUSH_REFUSALS, $old, $now), 'refused three messages long and unseen a week: removed');
+	pg_assert_false(pg_site_push_failing(PG_SITE_PUSH_REFUSALS - 1, $old, $now), 'fewer refusals: kept');
+	pg_assert_false(pg_site_push_failing(PG_SITE_PUSH_REFUSALS * 4, $old + 1, $now), 'seen within the week: kept, whatever the refusals');
+
+	$run = pg_test_function_source('pg_site_push_queue_run');
+	pg_assert_contains('pg_site_push_failing(', $run, 'the failure path asks whether the subscription keeps failing');
+	pg_assert_contains('pg_site_push_refused(', $run, 'only a refusal raises fail_count');
+	pg_assert_contains("'removed_count'", $run, 'a dropped subscription counts as removed');
+	pg_assert_true(substr_count($run, 'pg_site_push_subscription_drop(') >= 2, 'a gone and a failing subscription go the same way');
+	pg_assert_contains('isset($dropped[$subscription_id])', $run, 'its later rows in the pass are not pushed');
+
+	$drop = pg_test_function_source('pg_site_push_subscription_drop');
+	pg_assert_contains('DELETE FROM site_push_queue', $drop, 'its queue rows go');
+	pg_assert_contains('DELETE FROM site_push_subscription', $drop, 'the subscription goes');
+	pg_assert_contains('pg_site_push_watch_forget(', $drop, 'its waits go');
+}
+
 function test_site_push_dropped_after_a_day_and_tidied()
 {
 	pg_assert_false(pg_site_push_expired(1000 - PG_SITE_PUSH_MESSAGE_TTL, 1000), 'exactly a day: still sent');

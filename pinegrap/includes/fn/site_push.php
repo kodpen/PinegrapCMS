@@ -89,6 +89,13 @@ define('PG_SITE_PUSH_PASS_ROWS', 100);
 define('PG_SITE_PUSH_ATTEMPTS', 5);
 define('PG_SITE_PUSH_KEEP', 7 * 86400);
 /**
+ * A subscription its push service keeps refusing is removed: after this many
+ * refusals with no accepted push between them (three messages' tries), once
+ * its browser has not fetched a message for PG_SITE_PUSH_UNSEEN.
+ */
+define('PG_SITE_PUSH_REFUSALS', 15);
+define('PG_SITE_PUSH_UNSEEN', 7 * 86400);
+/**
  * The lock name of the sender's pass in cron_runs, taken by whichever of
  * job.php and push_job.php comes first.
  */
@@ -908,6 +915,55 @@ function pg_site_push_send_plan($outcome, $attempts)
 }
 
 /**
+ * Whether a push service's answer refuses the subscription itself (a bad
+ * device token, a push signed with another key, an unknown path): a 4xx
+ * other than 404 and 410 (gone), 408 (a timeout) and 429 (busy). A 5xx or no
+ * answer is an outage of the service and says nothing about the
+ * subscription. Pure.
+ *
+ * @param int $status
+ * @return bool
+ */
+function pg_site_push_refused($status)
+{
+    $status = (int) $status;
+
+    return ($status >= 400) && ($status < 500) && !in_array($status, array(404, 408, 410, 429), true);
+}
+
+/**
+ * Whether a refused subscription is removed: PG_SITE_PUSH_REFUSALS refusals
+ * with no accepted push between them, and no message fetched by its browser
+ * for PG_SITE_PUSH_UNSEEN (a wrong clock or a passing fault of the service
+ * refuses every subscription for a while; a week is longer than that). Pure.
+ *
+ * @param int $fail_count    refusals so far, this one included
+ * @param int $last_seen_at  when its browser last fetched a message, or subscribed
+ * @param int $now
+ * @return bool
+ */
+function pg_site_push_failing($fail_count, $last_seen_at, $now)
+{
+    return ((int) $fail_count >= PG_SITE_PUSH_REFUSALS) && ((int) $last_seen_at <= (int) $now - PG_SITE_PUSH_UNSEEN);
+}
+
+/**
+ * Deletes a subscription the sender gave up on (gone, or refused for good)
+ * with its queue rows and its waits.
+ *
+ * @param int $subscription_id
+ * @return void
+ */
+function pg_site_push_subscription_drop($subscription_id)
+{
+    $id = (string) (int) $subscription_id;
+
+    db_q("DELETE FROM site_push_queue WHERE subscription_id = ?", array($id));
+    db_q("DELETE FROM site_push_subscription WHERE id = ?", array($id));
+    pg_site_push_watch_forget((int) $subscription_id);
+}
+
+/**
  * Whether a message is past the day it may be delivered in. Pure.
  *
  * @param int $created_at
@@ -1007,6 +1063,8 @@ function pg_site_push_queue_tidy($now)
  * the due rows, oldest message first, until the budget is spent. A row is
  * marked pushed as soon as its push is accepted. A service that answers 429
  * is held: its waiting rows wait for Retry-After and this pass skips it.
+ * A subscription its service keeps refusing (pg_site_push_failing()) is
+ * removed like a gone one and counted as removed.
  * Sends nothing while the switch is off; the tidy-up still runs.
  *
  * @param int $budget_seconds
@@ -1035,7 +1093,7 @@ function pg_site_push_queue_run($budget_seconds = 10)
         return 0;
     }
 
-    $rows = db_items("SELECT q.message_id, q.subscription_id, q.attempts, s.endpoint, s.service
+    $rows = db_items("SELECT q.message_id, q.subscription_id, q.attempts, s.endpoint, s.service, s.fail_count, s.last_seen_at
         FROM site_push_queue AS q
         INNER JOIN site_push_subscription AS s ON s.id = q.subscription_id
         WHERE q.status = '" . PG_SITE_PUSH_WAITING . "' AND q.next_at <= '" . $now . "'
@@ -1043,6 +1101,7 @@ function pg_site_push_queue_run($budget_seconds = 10)
         LIMIT " . PG_SITE_PUSH_PASS_ROWS);
 
     $held = array();
+    $dropped = array();
 
     foreach ($rows as $row) {
         if ((microtime(true) - $started) > $budget_seconds) {
@@ -1055,6 +1114,12 @@ function pg_site_push_queue_run($budget_seconds = 10)
 
         $message_id = (int) $row['message_id'];
         $subscription_id = (int) $row['subscription_id'];
+
+        // A subscription removed earlier in this pass has no rows left.
+        if (isset($dropped[$subscription_id])) {
+            continue;
+        }
+
         $result = pg_site_push_deliver((string) $row['endpoint']);
         $plan = pg_site_push_send_plan(pg_push_outcome($result['status']), (int) $row['attempts']);
         $time = time();
@@ -1065,9 +1130,8 @@ function pg_site_push_queue_run($budget_seconds = 10)
             db_q("UPDATE site_push_subscription SET fail_count = 0 WHERE id = ?", array((string) $subscription_id));
             $pushed++;
         } elseif ($plan['action'] === 'remove') {
-            db_q("DELETE FROM site_push_queue WHERE subscription_id = ?", array((string) $subscription_id));
-            db_q("DELETE FROM site_push_subscription WHERE id = ?", array((string) $subscription_id));
-            pg_site_push_watch_forget($subscription_id);
+            pg_site_push_subscription_drop($subscription_id);
+            $dropped[$subscription_id] = true;
         } elseif ($plan['action'] === 'hold') {
             $held[$row['service']] = true;
 
@@ -1081,11 +1145,24 @@ function pg_site_push_queue_run($budget_seconds = 10)
                 (string) ($time + max(1, (int) $result['retry_after'])),
             ));
         } else {
-            db_q("UPDATE site_push_queue SET status = ?, attempts = attempts + 1, next_at = ? WHERE message_id = ? AND subscription_id = ?", array_merge(array(
-                (string) (($plan['action'] === 'fail') ? PG_SITE_PUSH_FAILED : PG_SITE_PUSH_WAITING),
-                (string) ($time + $plan['wait']),
-            ), $key));
-            db_q("UPDATE site_push_subscription SET fail_count = fail_count + 1 WHERE id = ?", array((string) $subscription_id));
+            // fail_count counts refusals since the last accepted push; an
+            // outage of the service (5xx, no answer) leaves it.
+            $refused = pg_site_push_refused($result['status']);
+
+            if ($refused && pg_site_push_failing((int) $row['fail_count'] + 1, (int) $row['last_seen_at'], $time)) {
+                pg_site_push_subscription_drop($subscription_id);
+                $dropped[$subscription_id] = true;
+                $plan['count'] = 'removed_count';
+            } else {
+                db_q("UPDATE site_push_queue SET status = ?, attempts = attempts + 1, next_at = ? WHERE message_id = ? AND subscription_id = ?", array_merge(array(
+                    (string) (($plan['action'] === 'fail') ? PG_SITE_PUSH_FAILED : PG_SITE_PUSH_WAITING),
+                    (string) ($time + $plan['wait']),
+                ), $key));
+
+                if ($refused) {
+                    db_q("UPDATE site_push_subscription SET fail_count = LEAST(fail_count + 1, 65535) WHERE id = ?", array((string) $subscription_id));
+                }
+            }
         }
 
         pg_site_push_count($message_id, $plan['count']);
