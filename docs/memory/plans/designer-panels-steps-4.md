@@ -23,7 +23,7 @@ description: Plan designer-panels, steps DP17 to DP25: the page strip (the desig
 - DP21 (S) after DP20: suggested groups. New: a pure function from the pages (address, kind) to the suggested groups, with its test; accepted, it is written through `designer/tab_layout`. Features: D53.
 
 ## Which steps has the canvas bar?
-- DP22 (M) after DP1: the zones and the View menu.
+- DP22 (M) after DP1: the zones and the View menu. Done in #10205.
   - Functions: the bar built in `createCanvasIframe()` (`.sd-bp-bar`). The ids `#sd-vb-*` and `#sd-bp-label` stay, so handlers and shortcuts do.
   - The switch's Prototype side opens today's view with its own bar until DP24.
   - Tests: the menu's badge from the switches; the fold order by width as a pure function.

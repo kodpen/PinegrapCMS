@@ -663,32 +663,136 @@
 }
 .sd-canvas { flex:1; display:flex; flex-direction:column; overflow:hidden; }
 
-/* Breakpoint bar. Its own width (the canvas column, not the window)
-   decides how it gives way: the button labels drop first (each button keeps
-   its title as its name), and what still does not fit wraps to a second row
-   instead of running under the Options column. */
+/* The canvas bar in three zones: the mode switch, the canvas (screen size
+   and zoom), the view and the tools; Preview and Open on Site after them.
+   44px high, 28px controls, 6px between the controls of a zone, a 1px line
+   and 12px each side between zones. Its own width (the canvas column, not
+   the window) picks the fold level (data-fold, _sdCanvasBarFold()): 1 hides
+   the width text, 2 folds the sizes into one list, 3 hides the labels;
+   narrower still the zones wrap. A control is never hidden. */
 .sd-bp-bar {
-    display:flex; align-items:center; justify-content:space-between;
-    flex-wrap:wrap; row-gap:.2rem;
-    padding:.2rem .6rem; gap:.4rem;
+    display:flex; align-items:center; flex-wrap:wrap; gap:6px 0;
+    min-height:44px; padding:7px 10px 8px; box-sizing:border-box;
     background: var(--sd-input-bg); border-bottom:1px solid var(--sd-panel-border);
     flex-shrink:0;
-    container: sd-bp-bar / inline-size;
 }
-.sd-bp-bar-left  { display:flex; align-items:center; gap:.4rem; flex-wrap:wrap; }
-.sd-bp-bar-right { display:flex; align-items:center; gap:.15rem; flex-wrap:wrap; min-width:0; }
-@container sd-bp-bar (max-width: 70rem) {
-    .sd-bp-bar .sd-vb-txt { display:none; }
-    .sd-bp-bar .sd-vb-btn { padding-left:.4rem; padding-right:.4rem; }
+.sd-bp-bar .sd-bp-zone { display:flex; align-items:center; gap:6px; flex:0 0 auto; white-space:nowrap; }
+.sd-bp-bar .sd-bp-zsep { width:1px; height:20px; margin:0 12px; background:var(--sd-panel-border); flex:0 0 auto; }
+/* Wrapped onto two rows, a zone line would end a row: the zones keep their
+   12px apart without it. */
+.sd-bp-bar[data-fold="3"] { column-gap:12px; }
+.sd-bp-bar[data-fold="3"] .sd-bp-zsep { display:none; }
+.sd-bp-bar[data-fold="1"] .sd-bp-label,
+.sd-bp-bar[data-fold="2"] .sd-bp-label,
+.sd-bp-bar[data-fold="3"] .sd-bp-label,
+.sd-bp-bar[data-fold="2"] .sd-bp-sizes,
+.sd-bp-bar[data-fold="3"] .sd-bp-sizes,
+.sd-bp-bar[data-fold="3"] .sd-vb-txt { display:none; }
+.sd-bp-bar .sd-bp-size-select { display:none; }
+.sd-bp-bar[data-fold="2"] .sd-bp-size-select,
+.sd-bp-bar[data-fold="3"] .sd-bp-size-select { display:block; }
+
+/* A mode and a size are segments of a group: the chosen one is filled. */
+.sd-bp-bar .sd-bp-mode,
+.sd-bp-bar .sd-bp-sizes {
+    display:flex; align-items:center; gap:2px;
+    height:28px; padding:2px; box-sizing:border-box;
+    border:1px solid var(--sd-input-border); border-radius:7px;
+    background:var(--sd-panel-bg);
 }
-.sd-bp-bar .sd-bp-label { font-size:.68rem; font-weight:600; color:var(--sd-text-muted); font-variant-numeric:tabular-nums; margin-left:6px; }
+.sd-bp-bar .sd-bp-seg,
 .sd-bp-bar .sd-bp-btn {
-    background:none; border:none; border-radius:.2rem;
-    padding:.3rem .5rem; font-size:.85rem; cursor:pointer; color:var(--sd-text-muted);
-    line-height:1; display:flex; align-items:center; justify-content:center;
+    height:22px; min-width:28px; padding:0 .5rem; border:none; border-radius:5px;
+    background:none; color:var(--sd-text-muted); cursor:pointer;
+    display:inline-flex; align-items:center; justify-content:center; gap:.35rem;
+    font-size:.75rem; line-height:1;
+    transition:background .12s, color .12s;
 }
-.sd-bp-bar .sd-bp-btn:hover { color:var(--sd-text); background:color-mix(in srgb, var(--sd-text) 5%, transparent); }
-.sd-bp-bar .sd-bp-btn.active { color:var(--sd-accent); background:rgba(var(--sd-accent-rgb),.1); }
+.sd-bp-bar .sd-bp-btn { padding:0; font-size:.8rem; }
+.sd-bp-bar .sd-bp-seg:hover,
+.sd-bp-bar .sd-bp-btn:hover { color:var(--sd-text); background:color-mix(in srgb, var(--sd-text) 7%, transparent); }
+.sd-bp-bar .sd-bp-seg.active,
+.sd-bp-bar .sd-bp-btn.active { color:var(--sd-on-accent); background:var(--sd-accent-strong); }
+.sd-bp-bar .sd-bp-size-select {
+    height:28px; max-width:11rem; padding:0 .4rem; border-radius:6px;
+    border:1px solid var(--sd-input-border); background:var(--sd-panel-bg);
+    color:var(--sd-text); font-size:.75rem;
+}
+.sd-bp-bar .sd-bp-label { min-width:5.6rem; font-size:.72rem; font-weight:500; color:var(--sd-text-muted); font-variant-numeric:tabular-nums; }
+
+/* An action is a plain 28px button; a tool has a frame; the View menu's
+   button carries the accent line and the count of switches that are on. */
+.sd-bp-bar .sd-vb-btn { height:28px; min-width:28px; justify-content:center; border-radius:6px; }
+.sd-bp-bar .sd-vb-tool { border:1px solid var(--sd-input-border); }
+.sd-bp-bar .sd-vb-view {
+    gap:.4rem; padding:0 .55rem;
+    border:1px solid var(--sd-accent-line); background:var(--sd-accent-soft); color:var(--sd-text);
+}
+.sd-bp-bar .sd-vb-view .sd-vb-txt { font-size:.75rem; font-weight:600; }
+.sd-bp-bar .sd-vb-view[aria-expanded="true"] { background:rgba(var(--sd-accent-rgb), .22); }
+.sd-bp-bar .sd-vb-badge {
+    min-width:16px; height:16px; padding:0 4px; border-radius:8px; box-sizing:border-box;
+    background:var(--sd-accent-strong); color:var(--sd-on-accent);
+    font-size:.62rem; font-weight:700; line-height:16px; text-align:center;
+}
+.sd-bp-bar .sd-vb-badge[hidden] { display:none; }
+.sd-bp-bar .sd-vb-caret { font-size:.6rem; color:var(--sd-text-muted); }
+.sd-bp-bar .sd-vb-zoom {
+    height:28px; min-width:3rem; padding:0 .25rem; border:none; border-radius:6px; background:none; cursor:pointer;
+}
+.sd-bp-bar .sd-vb-zoom:hover { background:color-mix(in srgb, var(--sd-text) 7%, transparent); }
+/* Fitted (_sdCanvasFit()): the frame is scaled, so the handles that measure
+   pointer travel against it are hidden until Fit is left. */
+.sd-canvas-fitted .sd-resize-handle,
+.sd-canvas-fitted .sd-resize-handle-bottom,
+.sd-canvas-fitted .sd-resize-handle-corner,
+.sd-canvas-fitted .sd-icon-fs-handle { display:none !important; }
+.sd-canvas-fitted .sd-iframe-wrap { transition:none; }
+.sd-bp-bar #sd-vb-fit.active { color:var(--sd-accent); background:rgba(var(--sd-accent-rgb), .13); }
+/* No mode to switch to on an e-mail design: it has no prototype. */
+body.sd-email-design .sd-bp-bar .sd-bp-mode,
+body.sd-email-design .sd-bp-bar .sd-bp-zsep-mode { display:none; }
+
+/* The View menu: switch rows, on the overlay host under its button. */
+.sd-vb-menu {
+    position:fixed; z-index:1080; min-width:15.5rem; padding:6px;
+    background:var(--sd-raised-bg); border:1px solid var(--sd-panel-border); border-radius:10px;
+    box-shadow:0 12px 32px var(--sd-shadow);
+}
+.sd-vb-menu[hidden] { display:none; }
+.sd-vb-menu .sd-vb-menu-title {
+    padding:4px 8px 6px; font-size:.66rem; font-weight:600; letter-spacing:.06em;
+    text-transform:uppercase; color:var(--sd-text-muted);
+}
+.sd-vb-menu .sd-vb-row {
+    display:flex; align-items:center; gap:10px; width:100%; height:32px; padding:0 8px;
+    border:none; border-radius:6px; background:none; color:var(--sd-text);
+    font-size:.8rem; text-align:left; cursor:pointer;
+}
+.sd-vb-menu .sd-vb-row:hover { background:color-mix(in srgb, var(--sd-text) 7%, transparent); }
+.sd-vb-menu .sd-vb-row:focus-visible { outline:none; box-shadow:var(--sd-focus-ring); }
+.sd-vb-menu .sd-vb-row .bi { color:var(--sd-text-muted); }
+.sd-vb-menu .sd-vb-row-lbl { flex:1; }
+.sd-vb-menu .sd-vb-kbd {
+    padding:0 5px; border:1px solid var(--sd-input-border); border-radius:4px;
+    background:none; color:var(--sd-text-muted); font-size:.66rem; font-family:inherit;
+}
+.sd-vb-menu .sd-vb-switch {
+    position:relative; flex:0 0 auto; width:32px; height:18px; border-radius:9px;
+    background:var(--sd-input-border); transition:background .12s;
+}
+.sd-vb-menu .sd-vb-switch::after {
+    content:''; position:absolute; top:3px; left:3px; width:12px; height:12px; border-radius:50%;
+    background:var(--sd-text-muted); transition:transform .12s, background .12s;
+}
+.sd-vb-menu .sd-vb-row.active .sd-vb-switch { background:var(--sd-accent-strong); }
+.sd-vb-menu .sd-vb-row.active .sd-vb-switch::after { transform:translateX(14px); background:var(--sd-on-accent); }
+@media (prefers-reduced-motion: reduce) {
+    .sd-vb-menu .sd-vb-switch,
+    .sd-vb-menu .sd-vb-switch::after,
+    .sd-bp-bar .sd-bp-seg,
+    .sd-bp-bar .sd-bp-btn { transition:none; }
+}
 /* An e-mail design (root props.pgEmail) has two widths: the 600 px mail and
    the 375 px Phone view; the page widths are hidden while it is open. */
 .sd-bp-bar .sd-bp-btn.sd-bp-mail { display:none; }
@@ -6230,11 +6334,7 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
     /* ── Canvas view bar (breakpoints, zoom, tools) ── */
     /* Labels and wrapping follow the bar's own width (its block above);
        a narrow screen only tightens the spacing. */
-    .sd-bp-bar {
-        justify-content: flex-start;
-        padding: .25rem .4rem;
-    }
-    .sd-bp-bar .sd-bp-label { margin-left: 2px; }
+    .sd-bp-bar { padding-left: 6px; padding-right: 6px; }
 
     /* ── Settings modal ── */
     /* Full screen: the rail turns into a strip above the pane. */
@@ -6270,7 +6370,10 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
    mouse. createCanvasIframe() resets the canvas to full width under the
    same query. */
 @media (max-width: 767.98px), (hover: none) and (pointer: coarse) and (max-width: 1023.98px) {
-    .sd-bp-bar .sd-bp-bar-left { display: none; }
+    .sd-bp-bar .sd-bp-sizes,
+    .sd-bp-bar .sd-bp-label,
+    .sd-bp-bar .sd-bp-canvas .sd-vb-sep,
+    .sd-bp-bar[data-fold] .sd-bp-size-select { display: none; }
     .sd-resize-handle,
     .sd-resize-handle-bottom,
     .sd-resize-handle-corner { display: none; }
