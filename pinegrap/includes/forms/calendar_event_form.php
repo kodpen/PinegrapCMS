@@ -747,7 +747,7 @@ function pg_calendar_event_form_cards($liveform, $user, $calendars, $calendar_ev
 
         $output_locations = '
             <div class="col-12 my-3">
-                <h3 class="h5" id="multiselect-checkbox-checker-0_title">' . lang('Available Event Location(s)') . '</h3>
+                <h3 class="pg-group-label" id="multiselect-checkbox-checker-0_title">' . lang('Available Event Location(s)') . '</h3>
                 <div class="card multiselect-checkbox-container rounded-0 mb-1">
                     <div class="card-header border-0 bg-reset">
                         <div class="form-field">
@@ -760,13 +760,13 @@ function pg_calendar_event_form_cards($liveform, $user, $calendars, $calendar_ev
                     </div>
                 </div>
             </div>
-            <div class="col-12 md:col-6 my-1">
+            <div class="col-12 my-1">
                 <label for="location" class="form-label">' . lang('Or enter special Location') . '</label>
                 ' . $liveform->output_field(array('type'=>'text', 'name'=>'location', 'id'=>'location', 'class'=>'form-control', 'maxlength'=>'100')) . '
             </div>';
     } else {
         $output_locations = '
-        <div class="col-12 md:col-6 my-1">
+        <div class="col-12 my-1">
             <label for="location" class="form-label">' . lang('Enter special Location') . '</label>
             ' . $liveform->output_field(array('type'=>'text', 'name'=>'location', 'id'=>'location', 'class'=>'form-control', 'maxlength'=>'100')) . '
         </div>';
@@ -784,7 +784,7 @@ function pg_calendar_event_form_cards($liveform, $user, $calendars, $calendar_ev
         $separate_reservations_attributes['onclick'] = 'toggle_calendar_event_recurrence()';
         $number_of_initial_spots_row_display = 'none';
         $output_number_of_remaining_spots_row = '
-                                                                        <div class="col-12 sm:col-auto my-3" id="number_of_remaining_spots_row" style="display:block;">
+                                                                        <div class="col-12 md:col-3 my-3" id="number_of_remaining_spots_row" style="display:block;">
                                                                             <label class="form-label" for="number_of_remaining_spots">' . lang('Remaining Spots') . '</label>
                                                                             ' . $liveform->output_field(array('type'=>'text', 'id'=>'number_of_remaining_spots', 'name'=>'number_of_remaining_spots', 'size'=>'3', 'maxlength'=>'9', 'class' => 'form-control text-end', 'inputmode'=>'numeric', 'data-inputmask-alias'=>'integer', 'data-inputmask-allowminus'=>'false')) . '
                                                                         </div> ';
@@ -804,11 +804,11 @@ function pg_calendar_event_form_cards($liveform, $user, $calendars, $calendar_ev
                                 </h2>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 md:col-6 my-3">
+                                        <div class="col-12 my-3">
                                             <label for="name" class="form-label">' . lang(array('string'=>'{var:1} Name','vars'=>lang('Event'))) . '</label>
                                             ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'class'=>'form-control', 'maxlength'=>'100', 'required'=>'required')) . '
                                         </div>
-                                        <div class="col-12 md:col-6 my-3">
+                                        <div class="col-12 my-3">
                                             <label for="short_description" class="form-label">' . lang('Short Description') . '</label>
                                             ' . $liveform->output_field(array('type'=>'text', 'name'=>'short_description', 'id'=>'short_description', 'class'=>'form-control', 'maxlength'=>'255')) . '
                                         </div>
@@ -835,7 +835,7 @@ function pg_calendar_event_form_cards($liveform, $user, $calendars, $calendar_ev
                                                 <label class="" for="all_day">' . lang('All Day Event') . '</label>
                                             </div>
                                         </div>
-                                        <div class="col-12 md:col-6 my-3">
+                                        <div class="col-12 md:col-4 my-3">
                                             <div class="border-1 border p-3 my-3 rounded-4">
                                                 <label for="start_time" class="form-label">' . lang('Start Date') . '<span id="start_time_suffix"> ' . lang('& Time') . '</span><span class="pg-required-marker fg-danger ms-1" aria-hidden="true">*</span></label>
                                                 ' . $liveform->output_field($start_time_attributes) . '
@@ -847,7 +847,7 @@ function pg_calendar_event_form_cards($liveform, $user, $calendars, $calendar_ev
                                                 </span>
                                             </div>
                                         </div>
-                                        <div class="col-12 md:col-6 my-3">
+                                        <div class="col-12 md:col-4 my-3">
                                             <div class="border-1 border p-3 my-3 rounded-4">
                                                 <label for="end_time" class="form-label">' . lang('End Date') . '<span id="end_time_suffix"> ' . lang('& Time') . '</span><span class="pg-required-marker fg-danger ms-1" aria-hidden="true">*</span></label>
                                                 ' . $liveform->output_field($end_time_attributes) . '
@@ -1021,7 +1021,7 @@ function pg_calendar_event_form_cards($liveform, $user, $calendars, $calendar_ev
                                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                                                                 <div class="popover-body">
                                                                     <div class="row">
-                                                                        <div class="col-12 sm:col-auto my-3" id="number_of_initial_spots_row" style="display:' . $number_of_initial_spots_row_display . ';">
+                                                                        <div class="col-12 md:col-3 my-3" id="number_of_initial_spots_row" style="display:' . $number_of_initial_spots_row_display . ';">
                                                                             <label class="form-label" for="number_of_initial_spots">' . lang('Number Of Initial Spots') . '</label>
                                                                             ' . $liveform->output_field(array('type'=>'text', 'id'=>'number_of_initial_spots', 'name'=>'number_of_initial_spots', 'size'=>'3', 'maxlength'=>'9', 'class' => 'form-control text-end', 'inputmode'=>'numeric', 'data-inputmask-alias'=>'integer', 'data-inputmask-allowminus'=>'false')) . '
                                                                         </div> ' . $output_number_of_remaining_spots_row . '
@@ -1033,15 +1033,15 @@ function pg_calendar_event_form_cards($liveform, $user, $calendars, $calendar_ev
                                                                 </div> 
                                                             </div> 
                                                         </div> 
-                                                        <div class="col-12 md:col-6 xl:col-4 my-3">
+                                                        <div class="col-12 my-3">
                                                             <label for="reserve_button_label" class="form-label">' . lang('Reserve Button Label') . '</label>
                                                             ' . $liveform->output_field(array('type'=>'text', 'name'=>'reserve_button_label', 'id'=>'reserve_button_label', 'class'=>'form-control', 'maxlength'=>'50')) . '
                                                         </div>
-                                                        <div class="col-12 md:col-6 xl:col-4 my-3">
+                                                        <div class="col-12 md:col-6 my-3">
                                                             <label for="product_id" class="form-label">' . lang('Reservation Product') . '</label>
                                                             ' . $liveform->output_field(array('type'=>'select', 'name'=>'product_id', 'id'=>'product_id', 'class'=>'form-control', 'options'=>get_product_options(true, $product_id))) . '
                                                         </div>
-                                                        <div class="col-12 md:col-6 xl:col-4 my-3">
+                                                        <div class="col-12 md:col-6 my-3">
                                                             <label for="next_page_id" class="form-label">' . lang('Next Page') . '</label>
                                                             ' . pg_picker_field('page', 'next_page_id', $liveform->get_field_value('next_page_id')) . pg_picker_script() . '
                                                         </div>
@@ -1064,7 +1064,7 @@ function pg_calendar_event_form_cards($liveform, $user, $calendars, $calendar_ev
                                         <div class="row">
                                             ' . $output_publish_rows . '
                                             <div class="col-12 my-3">
-                                                <h3 class="h5" id="multiselect-checkbox-checker-1_title">' . lang('Post to any of my Calendars') . '</h3>
+                                                <h3 class="pg-group-label" id="multiselect-checkbox-checker-1_title">' . lang('Post to any of my Calendars') . '</h3>
                                                 <div class="card multiselect-checkbox-container rounded-0 mb-1">
                                                     <div class="card-header border-0 bg-reset">
                                                         <div class="form-field">

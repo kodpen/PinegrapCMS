@@ -213,7 +213,7 @@ if ($bookings_view === 'list') {
                 <section class="' . $bookings_column . '" aria-labelledby="bookings_day_' . h($bookings_day) . '">
                     <div class="card h-100' . ($bookings_today ? ' border-primary' : '') . '">
                         <div class="card-header d-flex justify-content-between align-items-center">
-                            <h2 class="h6 mb-0" id="bookings_day_' . h($bookings_day) . '"' . ($bookings_today ? ' aria-current="date"' : '') . '>' . h(pg_booking_agenda_weekday($bookings_day)) . ' <span class="fg-secondary fw-normal">' . h(prepare_form_data_for_output($bookings_day, 'date')) . '</span></h2>
+                            <h2 class="pg-title-section mb-0" id="bookings_day_' . h($bookings_day) . '"' . ($bookings_today ? ' aria-current="date"' : '') . '>' . h(pg_booking_agenda_weekday($bookings_day)) . ' <span class="fg-secondary fw-normal">' . h(prepare_form_data_for_output($bookings_day, 'date')) . '</span></h2>
                             <span class="badge badge-subtle theme-secondary" title="' . h(lang('Bookings')) . '">' . count($bookings_list) . '</span>
                         </div>
                         <ul class="list-group list-group-flush">' . $bookings_items . '</ul>

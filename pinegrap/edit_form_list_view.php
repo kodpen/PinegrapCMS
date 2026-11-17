@@ -799,24 +799,24 @@ if (!$_POST) {
                                                 <div class="col-12 md:col"><select class="form-control" id="order_by_3_type" name="order_by_3_type"' . $output_order_by_3_type_style . '>' . select_order_by_type($order_by_3_type) . '</select></div>
                                             </div>
                                         </div>
-                                        <div class="col-12 md:col-6 lg:col-4 my-3">
+                                        <div class="col-12 md:col-3 my-3">
                                             <label for="maximum_number_of_results" class="form-label">' . lang('Maximum Number of Results') . '</label>
                                             <input value="' . $maximum_number_of_results . '" type="text" name="maximum_number_of_results" id="maximum_number_of_results" class="form-control" size="7" maxlength="10" inputmode="numeric" data-inputmask-alias="integer"  style="text-align: right;" />
-                                            <div class="text-end form-text">' . lang('leave blank for no limit') . '</div>
+                                            <div class="form-text">' . lang('leave blank for no limit') . '</div>
                                         </div>
-                                        <div class="col-12 md:col-6 lg:col-4 my-3">
+                                        <div class="col-12 md:col-3 my-3">
                                             <label for="maximum_number_of_results_per_page" class="form-label">' . lang('Maximum Number of Results Per Page') . '</label>
                                             <input value="' . $maximum_number_of_results_per_page . '" type="text" name="maximum_number_of_results_per_page" id="maximum_number_of_results_per_page" class="form-control" size="7" maxlength="10" inputmode="numeric" data-inputmask-alias="integer"  style="text-align: right;" />
-                                            <div class="text-end form-text">' . lang('leave blank for no limit') . '</div>
+                                            <div class="form-text">' . lang('leave blank for no limit') . '</div>
                                         </div>
                                         <div class="col-12 my-3">
-                                            <h4 class="fw-bold fg-secondary">' . lang('Filters') . '</h4>
+                                            <h4 class="pg-group-label">' . lang('Filters') . '</h4>
                                         </div>
                                         <div>
                                             <button type="button" onclick="create_filter()" class="button btn btn-solid theme-primary">' . lang('Add Filter') . '</button>' . get_date_picker_format() . pg_fields_script() . '
                                         </div>
                                         <div class="table-responsive">
-                                            <table id="filter_table" class="chart_no_hover table">
+                                            <table id="filter_table" class="chart_no_hover table pg-embedded-table">
                                                 <thead>
                                                     <tr>
                                                         <th class="text-nowrap" style="min-width:200px">' . lang('Field') . '</th>
@@ -848,7 +848,7 @@ if (!$_POST) {
                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                                                 <div class="popover-body">
                                                     <div class="row">
-                                                        <div class="col-12 md:col-6 lg:col-4 my-1">
+                                                        <div class="col-12 my-1">
                                                             <label for="search_label" class="form-label">' . lang('Label') . '</label>
                                                             <input name="search_label" id="search_label" type="text" value="' . h($search_label) . '" size="30" maxlength="100" class="form-control" />
                                                         </div>
@@ -868,7 +868,7 @@ if (!$_POST) {
                                                                             </div>
                                                                         </div>
                                                                         <div class="col-12 my-1">
-                                                                            <h4 class="fw-bold fg-secondary">' . lang('All available fields for advanced search') . '</h4>
+                                                                            <h4 class="pg-group-label">' . lang('All available fields for advanced search') . '</h4>
                                                                         </div>
                                                                         <div class="col-12 md:col-auto lg:col my-3">
                                                                             <p class="mb-0 fg-primary ">' . lang('System Fields') . '</p>
@@ -915,12 +915,12 @@ if (!$_POST) {
                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                                                 <div class="popover-body">
                                                     <div class="row">
-                                                        <div class="col-12 md:col-6 lg:col-4 my-1">
+                                                        <div class="col-12 pg-field-span-6 my-1">
                                                             <label for="browse_show_by_default_form_field_id" class="form-label">' . lang('Expand by Default') . '</label>
                                                             <select class="form-control" id="browse_show_by_default_form_field_id" name="browse_show_by_default_form_field_id" onchange="if (this.selectedIndex != 0) {document.getElementById(\'search_advanced_show_by_default\').checked = false}">' . $output_browse_show_by_default_form_field_id_options . '</select>
                                                         </div>
                                                         <div class="col-12 my-3" id="calendar_view_calendars_row" style="' . $calendar_view_calendars_row_style . '">
-                                                            <h5>' . lang('Select Fields') . '</h5>
+                                                            <h5 class="pg-group-label">' . lang('Select Fields') . '</h5>
                                                             <div class="card multiselect-checkbox-container rounded-0 mb-7">
                                                                 <div class="card-body overflow-auto" >
                                                                     ' . $output_browse_field_rows . '
