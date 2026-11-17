@@ -73382,6 +73382,15 @@ const StyleDesigner = (function () {
             event.preventDefault();
             _sdProtoSuggestClose(true);
         });
+        // At the canvas's right under the view's bar, the map left of it; on
+        // a screen too narrow for that, 8 from the window's edges.
+        var r = _sdProto.ui.stage.getBoundingClientRect();
+        var right = Math.max(8, window.innerWidth - r.right + 8);
+        if (window.innerWidth - right - 8 < 320) right = 8;
+        el.style.top = Math.max(8, r.top + 8) + 'px';
+        el.style.right = right + 'px';
+        el.style.maxWidth = (window.innerWidth - right - 8) + 'px';
+        el.style.maxHeight = Math.max(240, window.innerHeight - Math.max(8, r.top + 8) - 8) + 'px';
         if (window.pgUI) pgUI.dialog.show(el, { backdrop: false });
         else el.show();
         var first = el.querySelector('input[type="checkbox"]');
@@ -73540,7 +73549,7 @@ const StyleDesigner = (function () {
         var batch = H.suggestBatch(picks);
         var reasons = {
             target: _sdT('Choose a page'),
-            tab: _sdT('No open page shows this shared component.'),
+            tab: _sdT('This shared component is on none of the pages you can open.'),
             locked: _sdT('You do not have content rights for this page\'s folder.'),
             busy: _sdT('Someone else is editing this page.'),
             changed: _sdT('This link has changed since the map was drawn.'),
@@ -73589,6 +73598,8 @@ const StyleDesigner = (function () {
                     _sdProto.canvas.announce(_sdT('{var} links connected', done));
                 }
                 s.rows = s.rows.filter(function (r) { return !r.written; });
+                s.count = { sure: 0, ask: 0, none: 0 };
+                s.rows.forEach(function (r) { s.count[r.kind]++; });
                 if (!s.rows.length) _sdProtoSuggestClose(true);
                 else _sdProtoSuggestDraw();
                 _sdProtoLoad();
