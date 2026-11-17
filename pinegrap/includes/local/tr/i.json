@@ -1525,6 +1525,7 @@
     "It never expires — no validity period is set in settings.": "Süresiz geçerlidir — ayarlarda geçerlilik süresi tanımlı değil.",
     "It never gets more than your own account may do. You can end the connection at any time by signing out everywhere or changing your password.": "Kendi hesabınızın yapabileceğinden fazlasını asla alamaz. Bağlantıyı istediğiniz an her yerden çıkış yaparak ya da parolanızı değiştirerek sonlandırabilirsiniz.",
     "It never gets more than your own account may do. You can end the connection at any time on the Connected applications screen, in your account menu on the panel.": "Kendi hesabınızın yapabileceğinden fazlasını asla alamaz. Bağlantıyı istediğiniz an paneldeki hesap menünüzde, Bağlı uygulamalar ekranından sonlandırabilirsiniz.",
+    "It now reads: {var:1}": "Artık şöyle: {var:1}",
     "It reached the desk; no editor has opened it yet.": "Masaya ulaştı; henüz bir editör açmadı.",
     "It reached the editors; no one has opened it yet.": "Editörlere ulaştı; henüz kimse açmadı.",
     "It reached the moderators. A moderator reads every report and acts on the posts that break the community guidelines.": "Şikâyetiniz moderatörlere ulaştı. Bir moderatör her şikâyeti okur ve topluluk yönergelerine aykırı gönderiler için gereğini yapar.",
