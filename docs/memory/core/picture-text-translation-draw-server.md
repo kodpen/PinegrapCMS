@@ -11,7 +11,7 @@ module: picture_translation
 
 ## Where is a language's picture hidden?
 - `pg_picture_tr_hidden_sql()` in both File Manager lists (`includes/explorer/handle_list.php`), the file pickers (`pg_picker_where_for()`) and the Design Canvas's pictures from Files (`pg_image_editor_action_sticker_files()`); Where used answers "could not find the file" for one (`pg_picture_tr_is_picture()`).
-- Moves, deletes, the bin and Disk Usage of these pictures are PT6's (`plans/picture-text-translation-steps-2.md`).
+- Moves, deletes, the bin, a folder copy and Disk Usage of these pictures: `core/picture-text-translation-doors.md`.
 
 ## Tests?
 - `tests/picture_translation_test.php`: the fit and its mark, the language document, Draw all, the states after a draw, the refusals and the stamp, the hidden lists, `pg_tr_load()` before the target languages (`pg_tr_target_languages()` lives in `includes/translate/seo.php`, read only by it: without it the list answered 500). Checked in a sandbox (#10208): every state, Draw and Draw all, a changed translation turning a drawn row Out of date.

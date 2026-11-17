@@ -641,6 +641,9 @@ function pg_explorer_handle_recycle_restore($type, $request, $user)
                 }
 
                 db("UPDATE files SET folder = '" . e($target_id) . "', timestamp = UNIX_TIMESTAMP(), user = '" . e($user['id']) . "' WHERE id = '" . e($item_id) . "'");
+
+                // Its languages' pictures, left where it was, join it.
+                pg_picture_tr_follow(array($item_id));
                 break;
 
             case 'page':
