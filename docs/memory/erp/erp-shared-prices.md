@@ -21,3 +21,10 @@ description: An ERP account using another account's prices (price_account_id, 11
 ## Where does retail stand?
 - Feeds call `get_discounted_product_prices(false)`, the structured data reads `products.price`, the API's product fields are the list price.
 - `pg_erp_member_prices()` marks the page personal (`pg_page_cache_personal('member_price')`) when it returns any price, so the page cache never keeps a page drawn with one member's price (signed-in pages already bypass it).
+
+## Where is it chosen?
+- On the account's prices screen (`erp_account_prices.php`), the card "Shared prices" in the side column: "Uses the prices of", a searchable list (`data-pg-combobox`) with "Its own prices" first.
+- It offers customer accounts (customer or both, passive ones too) but the account itself and accounts that use another's prices (`erp_account_price_pointer_options()`, pure); the account already chosen stays listed. Saved by its own action `price_account` through `erp_account_price_pointer_save()`; read-only ERP users see it disabled.
+- The hint says only prices and the discount follow and that making the chosen account passive does not stop its prices (architect, message 7602).
+- While the account follows another, a warning above names that account and links to its prices; its own list stays editable and is used again when it stops.
+- An account others follow shows them, linked, and its picker is disabled (one hop).

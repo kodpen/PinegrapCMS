@@ -263,6 +263,36 @@ function erp_account_delete_refusal($pointed_at_by)
 }
 
 /**
+ * The accounts the "Uses the prices of" picker offers: customer accounts
+ * (customer or both), passive ones included since a price list need not
+ * buy, but not the account itself and not an account that uses another's
+ * prices (one hop). The account already chosen stays, so the screen can
+ * show it. Pure.
+ *
+ * @param array $accounts   rows with id, title, kind, price_account_id, in the order to show
+ * @param int   $account_id the account whose screen it is
+ * @param int   $current    its pointer, 0 for none
+ * @return array id => title
+ */
+function erp_account_price_pointer_options(array $accounts, $account_id, $current)
+{
+    $options = array();
+
+    foreach ($accounts as $row) {
+        $id = (int) $row['id'];
+        $offered = ($id !== (int) $account_id)
+            && ((string) ($row['kind'] ?? '') !== 'supplier')
+            && ((int) ($row['price_account_id'] ?? 0) <= 0);
+
+        if ($offered || (($id === (int) $current) && ($id > 0))) {
+            $options[$id] = (string) $row['title'];
+        }
+    }
+
+    return $options;
+}
+
+/**
  * Sets whose prices an account buys at, or lets go with 0, after the
  * one-hop check.
  *
