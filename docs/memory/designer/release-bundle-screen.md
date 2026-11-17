@@ -22,4 +22,4 @@ module: page_bundles_screen
 - The three show only while the bundle is open or scheduled; Delete while open, scheduled or taken back, with a confirm saying the drafts stay in Drafts (B6).
 
 ## What does the screen leave to other steps?
-- Publish and take back (RB3), the preview (RB5), the Publish sheet's held row (RB2b). The screen draws no Publish button.
+- Publish and take back (RB3), the preview (RB5). The screen draws no Publish button; the Publish sheet's held row (RB2b) is in the editor.
