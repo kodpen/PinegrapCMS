@@ -6,7 +6,7 @@ module: content_proposals
 
 ## Where does a designer see the waiting changes?
 - (PA4a, #9930) `content_changes.php`, "Waiting Content Changes", for roles 0 and 1 (`validate_area_access($user, 'designer')`), whether or not the assistant or the Workspace is set up. It lists every waiting or stale change and, for 30 days (`PG_CONTENT_PROPOSALS_KEEP_DAYS`, by `decided_at`), the applied, taken-back and dismissed ones (`pg_content_proposals_list()`, `pg_content_proposals_listed()`).
-- Every waiting and stale change is listed, however old (own query, no limit); only closed ones are capped at the newest 200. One `LIMIT 200` for all hid an old waiting change the page list still counted (#10218, PR #PRNUM).
+- Every waiting and stale change is listed, however old (own query, no limit); only closed ones are capped at the newest 200. One `LIMIT 200` for all hid an old waiting change the page list still counted (#10218, PR #10227).
 - Order (`pg_content_proposals_order()`): waiting, then stale, then the closed ones; each newest first.
 - Each row: the page (a link into the Studio) and the editor on one line, the status pill, time and number of changes on the next, who applied or dismissed it (and the reason), Compare, then Apply and Dismiss side by side; Dismiss opens its own reason field.
 - Compare: kind, on the site, proposed; side by side from md, stacked on a phone; a picture of the site's own files with its small image (`pg_content_proposals_local_picture()`).
