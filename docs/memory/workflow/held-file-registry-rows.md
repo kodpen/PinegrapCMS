@@ -23,5 +23,6 @@ description: What a PR may change in a file a draft PR holds: its own registry r
 - Architect (2026-11-17): beside #10156 (AM8, waiting to land) on `includes/api/openapi.php`, AM6 (#10173) changes `api_openapi_build()` and adds functions of its own; #10156's hunks are in `api_openapi_components()` and `api_openapi_responses()` (agent channel message 8007).
 - Architect (2026-11-17): beside #10025 on `includes/api/schema.php`, AM9 adds its row `precondition_failed` (412) to `api_error_catalogue()` near line 6,278; #10025's one hunk is still the prototype link's POST near line 5,305 (agent channel message 8158).
 - Architect (2026-11-17): beside #10042 (PN3) on `includes/designer_screen.php`, DP17 edits the `.sd-toolbar-pages` group and DP2 `#sd-panel-right`, both at once, each only its own element of the markup in `pg_designer_screen_render()`; #10042's one hunk is the `'parts'` row of the config array. Two at a time here because the new interface goes first (poll 127; agent channel message 8248).
+- Architect (2026-11-17): a plan's steps file counts as a registry, a step's lines its entry: #10212 beside #10206 and #10210 (agent channel message 8344).
 
 Related: docs/memory/workflow/git-branches-and-shared-files.md, docs/memory/workflow/claim-work.md, docs/memory/workflow/held-file-bundled-sources.md
