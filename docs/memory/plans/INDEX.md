@@ -20,6 +20,10 @@
 - agent-work-apart.md: Plan (owner 2026-11-16, agent channel poll 80): an agent channel's tasks kept apart from the general task lists as its decisions are, a task an application created marked so; steps AW1 to AW4
 - agent-work-features.md: Plan (owner 2026-11-15, agent channel poll 49): an agent's duty text, its progress note, a task handed to a registry agent, Right or Wrong on an agent's answer; steps AF1 to AF5b
 - agents-card-settings.md: Plan (owner 2026-11-15): the Site Settings dialog keeps its place after a save; the agents' settings say what each door is for and are redrawn in the panel's look; AS1 to AS5
+- api-clean-modern-findings.md: What the test of 2026-11-17 measured on dev's external API: the GET sweep, write rounds, the document's gaps in figures, missing HTTP manners, the documentation pages; ground of plan api-clean-modern
+- api-clean-modern-steps-manners.md: Steps AM7 to AM13 of plan api-clean-modern: HEAD, Location and the 401 challenge, every wrong field, If-Match, delete twins, Accept-Language held, the documentation pages, close-out
+- api-clean-modern-steps.md: Steps AM1 to AM6 of plan api-clean-modern: the two failing routes, a fault as JSON, time formats in the document, the answer check tool, generated descriptions and example bodies
+- api-clean-modern.md: Plan (owner 2026-11-17): the external API made clean and modern after its test: failing routes, faults as JSON, a truthful document, HTTP manners, the documentation pages; steps AM1 to AM13
 - auto-dialog-popups-census.md: Census PU1 of auto-dialog-popups: who touches auto_dialogs, open_dialog() and jQuery UI, ui-dialog styles, the cookie notice layer and pg:consent, a shared component drawn outside a page
 - auto-dialog-popups-steps.md: Steps PU1 to PU10 of plans/auto-dialog-popups.md: census, the dialog script, consent, the columns, the screens, designed content, the four blocks, counts, the recovered carts touch, close-out
 - auto-dialog-popups.md: Plan (owner 2026-11-15, poll 51 and agent channel message 5139): pop-ups built by growing Auto Dialogs: the browser's own dialog in place of jQuery UI, new triggers, designed content, counts
