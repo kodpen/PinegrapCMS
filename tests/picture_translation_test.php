@@ -275,6 +275,7 @@ function test_picture_translation_language_doc()
 		. ' fitted: Object.keys(put.source),'
 		. ' kept: doc.layers[0].text,'
 		. ' none: M.languageDoc(null, []),'
+		. ' drawable: [M.languageDrawable({ total: 2, translated: 2 }), M.languageDrawable({ total: 2, translated: 1 }), M.languageDrawable({ total: 0, translated: 0 }), M.languageDrawable({ total: 2, translated: 2, rtl: true })],'
 		. ' all: M.languagesToDraw([{ code: "de", state: "translated", total: 2, translated: 2 }, { code: "fr", state: "out_of_date", total: 2, translated: 2 }, { code: "es", state: "drawn", total: 2, translated: 2 }, { code: "it", state: "not_translated", total: 2, translated: 1 }, { code: "ar", state: "translated", rtl: true, total: 2, translated: 2 }, { code: "nl", state: "look", total: 2, translated: 2 }, { code: "pt", state: "out_of_date", total: 2, translated: 1 }, { code: "sv", state: "translated", total: 0, translated: 0 }])'
 		. '}));');
 
@@ -288,6 +289,7 @@ function test_picture_translation_language_doc()
 	pg_assert_same(array('t1'), $r['fitted'], 'only a text layer whose words changed is fitted');
 	pg_assert_same('Sale', $r['kept'], 'the source document is not changed');
 	pg_assert_same(null, $r['none'], 'no document, nothing to draw');
+	pg_assert_same(array(true, false, false, false), $r['drawable'], 'Draw: only with every text translated, never right to left');
 	pg_assert_same(array('de', 'fr'), $r['all'], 'Draw all: translated and out of date, never right to left');
 	pg_assert_false(in_array('pt', $r['all'], true), 'Draw all: an out-of-date language with a text not translated is left out');
 }
@@ -334,6 +336,10 @@ function test_picture_translation_draw_refusals()
 	pg_assert_same('stamp', pg_picture_tr_draw_refusal(array_merge($facts, array('sent' => pg_picture_tr_stamp(8, 'es', str_repeat('a', 40), $texts)))), 'the picture of another file');
 	pg_assert_same('stamp', pg_picture_tr_draw_refusal(array_merge($facts, array('sent' => pg_picture_tr_stamp(7, 'de', str_repeat('a', 40), $texts)))), 'the picture of another language');
 	pg_assert_same('stamp', pg_picture_tr_draw_refusal(array_merge($facts, array('sent' => ''))), 'no stamp');
+	pg_assert_same('untranslated', pg_picture_tr_draw_refusal(array_merge($facts, array('missing' => 1))), 'a text not translated into the language');
+	pg_assert_same(1, pg_picture_tr_untranslated($texts), 'one text without a translation');
+	pg_assert_same(0, pg_picture_tr_untranslated(array($texts[0])), 'every text translated');
+	pg_assert_same(1, pg_picture_tr_untranslated(array(array('id' => 'a', 'field' => 'text', 'text' => ''))), 'an empty translation is none');
 
 	// The draw asks the editor's file check (the folder's edit right)
 	// before it reads or writes anything.
@@ -343,6 +349,8 @@ function test_picture_translation_draw_refusals()
 	pg_assert_true($check !== false, 'the draw checks the file and the right');
 	pg_assert_true($check < strpos($body, 'pg_image_editor_take_png('), 'before the picture is taken');
 	pg_assert_true(strpos($body, 'pg_page_cache_mark_dirty()') !== false, 'a draw marks the page cache');
+	pg_assert_true(strpos($body, "'missing'  => pg_picture_tr_untranslated(\$texts)") !== false, 'the draw counts the texts not translated');
+	pg_assert_true(strpos($body, 'count($texts), count($texts) - pg_picture_tr_untranslated($texts))') !== false, 'the state after a draw is read from the real count');
 
 	// The target languages live in a translate file only pg_tr_load() reads.
 	foreach (array('pg_picture_tr_draw_answer', 'pg_picture_tr_languages_answer') as $function) {

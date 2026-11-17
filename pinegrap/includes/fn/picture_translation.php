@@ -784,8 +784,9 @@ function pg_picture_tr_stamp($file_id, $language, $doc_hash, $texts)
  *
  * @param array $facts access (the folder may be edited), language (a target
  *                     language), rtl, live (the file holds its canvas
- *                     document), sent (the stamp posted), stamp (now)
- * @return string '' | access | language | rtl | changed | stamp
+ *                     document), missing (texts with no translation in the
+ *                     language), sent (the stamp posted), stamp (now)
+ * @return string '' | access | language | rtl | changed | untranslated | stamp
  */
 function pg_picture_tr_draw_refusal($facts)
 {
@@ -805,9 +806,33 @@ function pg_picture_tr_draw_refusal($facts)
         return 'changed';
     }
 
+    // A language is drawn only once every text is translated into it.
+    if (!empty($facts['missing'])) {
+        return 'untranslated';
+    }
+
     $sent = isset($facts['sent']) ? (string) $facts['sent'] : '';
 
     return (($sent !== '') && hash_equals((string) $facts['stamp'], $sent)) ? '' : 'stamp';
+}
+
+/**
+ * How many of a language's texts have no translation (none or empty). Pure.
+ *
+ * @param array $texts pg_picture_tr_language_texts()
+ * @return int
+ */
+function pg_picture_tr_untranslated($texts)
+{
+    $missing = 0;
+
+    foreach ($texts as $text) {
+        if (($text['text'] === null) || ($text['text'] === '')) {
+            $missing++;
+        }
+    }
+
+    return $missing;
 }
 
 /**
@@ -972,7 +997,7 @@ function pg_picture_tr_languages_answer($request, $user)
     foreach (array_keys($targets) as $code) {
         $code = (string) $code;
         $texts = pg_picture_tr_language_texts($file_id, $code);
-        $translated = count(array_filter($texts, function ($text) { return ($text['text'] !== null) && ($text['text'] !== ''); }));
+        $translated = count($texts) - pg_picture_tr_untranslated($texts);
         $row = isset($rows[$code]) ? $rows[$code] : null;
         $picture = ($row && ((string) $row['name'] !== '')) ? (string) $row['name'] : '';
 
@@ -1028,11 +1053,16 @@ function pg_picture_tr_draw_answer($request, $user)
         'language' => ($language !== '') && isset($targets[$language]),
         'rtl'      => pg_picture_tr_rtl($language),
         'live'     => (bool) $canvas,
+        'missing'  => pg_picture_tr_untranslated($texts),
         'sent'     => isset($request['stamp']) ? (string) $request['stamp'] : '',
         'stamp'    => $canvas ? pg_picture_tr_stamp($file_id, $language, $canvas['hash'], $texts) : ''));
 
     if (($why === 'changed') || ($why === 'stamp')) {
         return pg_image_editor_refusal(lang('This picture or its translations changed meanwhile. Open the Languages list again.'), 409);
+    }
+
+    if ($why === 'untranslated') {
+        return pg_image_editor_refusal(lang('Every text of the picture must be translated into this language before it is drawn.'), 409);
     }
 
     if ($why !== '') {
@@ -1088,6 +1118,6 @@ function pg_picture_tr_draw_answer($request, $user)
 
     return array(array(
         'status' => 'success',
-        'state'  => pg_picture_tr_list_state(array('state' => pg_picture_tr_state_after(0, 'draw'), 'fit' => $fit), count($texts), count($texts)),
+        'state'  => pg_picture_tr_list_state(array('state' => pg_picture_tr_state_after(0, 'draw'), 'fit' => $fit), count($texts), count($texts) - pg_picture_tr_untranslated($texts)),
         'url'    => PATH . encode_url_path($name) . '?v=' . $now), 200);
 }

@@ -2661,20 +2661,23 @@
         return { doc: next, source: source };
     }
 
-    // The languages Draw all draws: translated or out of date with every
-    // text translated, not right to left (a visitor sees the source
-    // picture there).
+    // Whether a language may be drawn: every text translated into it, not
+    // right to left (a visitor sees the source picture there).
+    function languageDrawable(lang) {
+        return !!lang && !lang.rtl && (Number(lang.total) > 0) && (Number(lang.translated) >= Number(lang.total));
+    }
+
+    // The languages Draw all draws: translated or out of date, and drawable.
     function languagesToDraw(list) {
         return (list || []).filter(function (lang) {
-            return !lang.rtl && ((lang.state === 'translated') || (lang.state === 'out_of_date'))
-                && (Number(lang.total) > 0) && (Number(lang.translated) >= Number(lang.total));
+            return ((lang.state === 'translated') || (lang.state === 'out_of_date')) && languageDrawable(lang);
         }).map(function (lang) {
             return lang.code;
         });
     }
 
     var ARTBOARD = {
-        LANGUAGE_FLOOR: LANGUAGE_FLOOR, languageFit: languageFit, languageDoc: languageDoc, languagesToDraw: languagesToDraw,
+        LANGUAGE_FLOOR: LANGUAGE_FLOOR, languageFit: languageFit, languageDoc: languageDoc, languageDrawable: languageDrawable, languagesToDraw: languagesToDraw,
         BOARD_PRESETS: BOARD_PRESETS, BOARD_BACKGROUNDS: BOARD_BACKGROUNDS, boardSide: boardSide, boardPreset: boardPreset,
         boardDrag: boardDrag, boardAnchored: boardAnchored, boardAround: boardAround, applyBoard: applyBoard,
         canvasBox: canvasBox, FRAME_OUT: FRAME_OUT, frameOutward: frameOutward, framePads: framePads, saveBox: saveBox,

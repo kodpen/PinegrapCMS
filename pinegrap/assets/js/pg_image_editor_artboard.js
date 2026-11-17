@@ -1564,7 +1564,7 @@
         this.confirmBox = el('div', { class: 'pgie-confirm', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'pgie-lang-title' }, [
             el('div', { class: 'pgie-confirm-box pgie-langbox' }, [
                 el('div', { class: 'pgie-importhead' }, [el('h2', { id: 'pgie-lang-title', text: t('languages') }), close]),
-                el('p', { class: 'pgie-note', text: t('langNote') }),
+                el('p', { class: 'pgie-note', text: t('langNote') + ' ' + t('langSame') }),
                 this.dirty ? el('p', { class: 'pgie-note pgie-langwarn', text: t('langUnsaved') }) : null,
                 this.langList,
                 el('div', { class: 'pgie-langfoot' }, [this.langStatus, this.langAll])
@@ -1597,13 +1597,16 @@
         data.languages.forEach(function (lang) {
             var state = lang.rtl ? '' : lang.state;
             var count = t('langCount').replace('{n}', String(lang.translated)).replace('{m}', String(lang.total));
-            var draw = el('button', { type: 'button', class: 'pgie-btn', text: t('langDraw'), disabled: lang.rtl || !lang.translated || self.langBusy,
+            var missing = Math.max(0, (Number(lang.total) || 0) - (Number(lang.translated) || 0));
+            var draw = el('button', { type: 'button', class: 'pgie-btn', text: t('langDraw'), disabled: !M.languageDrawable(lang) || self.langBusy,
                 'aria-label': t('langDraw') + ': ' + lang.name, onclick: function () {
                     self.drawLanguages([lang.code]);
                 } });
 
-            // The row says what a visitor sees where it asks for a draw.
-            var note = lang.rtl ? t('langRtl') : ((state === 'look') ? t('langLookNote') : ((state === 'out_of_date') ? t('langOutOfDateNote') : count));
+            // The row says what a visitor sees where it asks for a draw, and
+            // why Draw waits while a text is not translated.
+            var note = lang.rtl ? t('langRtl') : (missing ? t((missing === 1) ? 'langMissingOne' : 'langMissing').replace('{n}', String(missing))
+                : ((state === 'look') ? t('langLookNote') : ((state === 'out_of_date') ? t('langOutOfDateNote') : count)));
             var img = lang.url ? el('img', { src: lang.url, alt: '', loading: 'lazy', decoding: 'async', draggable: 'false' }) : null;
 
             // A drawn picture opens at full size in a new tab.
