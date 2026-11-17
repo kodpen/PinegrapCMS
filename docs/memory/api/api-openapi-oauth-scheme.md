@@ -13,7 +13,7 @@ description: The OpenAPI document's oauth2 security scheme: named only while the
 
 ## Where is it built and tested?
 - `api_openapi_security_schemes($oauth = null)` in `includes/api/openapi.php` is pure: `$oauth` comes from `api_openapi_oauth_server()`, the one function that reads the site. `api_openapi_oauth_scheme()` builds the scheme.
-- Tests: `tests/api_openapi_status_test.php` (with and without the application, empty ceiling). PR #PRNUM.
+- Tests: `tests/api_openapi_status_test.php` (with and without the application, empty ceiling). PR #10129.
 
 ## Why do operations not name oauth2 in their security?
 - An OAuth connection's token is a Bearer token, which every non-public operation already accepts under `deviceToken`; its description says what a connection may do.

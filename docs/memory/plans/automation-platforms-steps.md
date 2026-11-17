@@ -32,7 +32,7 @@ description: Plan automation-platforms, steps AU1 to AU7: the contract and its t
 - AU6 (M) after AU4: part 3, the modules' events through their own seam: the ERP's, the Workspace's. Cut as AU6a and AU6b when over 1,000 product lines, said before the claim.
   - After AU6 the test of AU4 refuses an event without fields and a sample.
 
-- AU7 (S) The API document names the OAuth server.
+- AU7 (S) The API document names the OAuth server. Done, PR #10129.
   - `api_openapi_security_schemes()` (`includes/api/openapi.php`); `php tools/check_api_schema.php` green; a test for the scheme with and without the OAuth application.
   - Features: A9.
 
