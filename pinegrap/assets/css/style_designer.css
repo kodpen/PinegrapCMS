@@ -6610,6 +6610,10 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
    thicker, the others faded. */
 .sd-proto .pgc-edges.sd-proto-lifting .pgc-edge:not(.sd-proto-edge-lift) { opacity: .25; }
 .sd-proto .pgc-edge.sd-proto-edge-lift .pgc-edge-line { stroke-width: 3; }
+/* An arrow being drawn from a mark or a head (F21, F22): the others fade,
+   the drawn one goes at full strength to the pointer. */
+.sd-proto .pgc-edges.sd-proto-drawing .pgc-edge { opacity: .2; }
+.sd-proto .pgc-edges.sd-proto-drawing .pgc-edge-temp { stroke: var(--sd-accent); stroke-width: 3; stroke-dasharray: none; opacity: 1; }
 .sd-proto-note { position: absolute; font-size: .75rem; line-height: 1.35; color: var(--pgc-in); pointer-events: none; }
 .sd-proto-note-line { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* Section headings (groups()), read at the zoom a large design fits at. */

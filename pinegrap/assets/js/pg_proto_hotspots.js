@@ -1407,6 +1407,40 @@
         return dx * dx + dy * dy <= 14 * 14;
     }
 
+    // Where the target menu opens ({ left, top }): under its anchor, else
+    // above it, else beside it (right, then left), always inside `area`
+    // (the canvas under the view's bar, never over the bar). anchor and
+    // area are { left, top, right, bottom }, menu { w, h }, all in one
+    // frame of reference; 4 apart from the area's edges, 2 from the anchor.
+    function menuPlace(anchor, menu, area) {
+        var a = isObject(anchor) ? anchor : {};
+        var m = isObject(menu) ? menu : {};
+        var r = isObject(area) ? area : {};
+        var w = Number(m.w) || 0;
+        var h = Number(m.h) || 0;
+        var minX = (Number(r.left) || 0) + 4;
+        var maxX = (Number(r.right) || 0) - 4;
+        var minY = (Number(r.top) || 0) + 4;
+        var maxY = (Number(r.bottom) || 0) - 4;
+        var clampY = function (y) { return Math.max(minY, Math.min(y, maxY - h)); };
+        var clampX = function (x) { return Math.max(minX, Math.min(x, maxX - w)); };
+        var below = (Number(a.bottom) || 0) + 2;
+        var above = (Number(a.top) || 0) - 2 - h;
+
+        if (below + h <= maxY) {
+            return { left: clampX(Number(a.left) || 0), top: below };
+        }
+
+        if (above >= minY) {
+            return { left: clampX(Number(a.left) || 0), top: above };
+        }
+
+        var right = (Number(a.right) || 0) + 2;
+        var left = (Number(a.left) || 0) - 2 - w;
+
+        return { left: (right + w <= maxX || left < minX) ? clampX(right) : left, top: clampY(Number(a.top) || 0) };
+    }
+
     // What a key does on a link's mark ({ key, shiftKey, ctrlKey, metaKey,
     // altKey }): 'pick' for Enter or Space, 'menu' for L, the menu key or
     // Shift+F10 (the target menu, the keyboard's way to draw), '' else.
@@ -1887,6 +1921,7 @@
         drawable: drawable,
         nearHead: nearHead,
         markKey: markKey,
+        menuPlace: menuPlace,
         nodeLabel: nodeLabel,
         hrefTo: hrefTo,
         setHtmlHref: setHtmlHref,

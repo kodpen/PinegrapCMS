@@ -1149,9 +1149,38 @@ function test_proto_hotspots_view_draws_from_a_mark()
 	pg_assert_contains("if (el && state === 'own') el.tabIndex = 0;", $source, 'Tab reaches only the selected frame\'s marks');
 	pg_assert_contains('_sdProtoLift(id || \'\');', $source, 'the pointer lifts an arrow');
 	pg_assert_false(strpos($source, "var dot = canvas.port('out', row.port);") !== false, 'no port dot: the whole mark draws');
+	pg_assert_contains('_sdProtoDrawing(true);', $source, 'while an arrow is drawn the others fade');
+	pg_assert_contains("window.addEventListener(type, function () { if (_sdProto.drawing) _sdProtoDrawing(false); }, true);", $source, 'and come back when it is let go');
+	pg_assert_contains('var at = window.PGProtoHotspots.menuPlace(', $source, 'the target menu is placed inside the canvas');
+	pg_assert_contains('.sd-proto .pgc-edges.sd-proto-drawing .pgc-edge-temp {', $css, 'the drawn arrow at full strength');
 	foreach (array('.sd-proto-hot:focus-visible', '.sd-proto .pgc-edges.sd-proto-lifting .pgc-edge:not(.sd-proto-edge-lift)') as $selector) {
 		pg_assert_contains($selector, $css, 'styled: ' . $selector);
 	}
+}
+
+// The target menu stays inside the canvas under the view's bar: under its
+// mark when there is room, else above it, else beside it, clamped; never
+// over the bar's zoom controls.
+function test_proto_hotspots_menu_inside_the_canvas()
+{
+	$out = proto_hotspots_test_node('var area = { left: 0, top: 40, right: 600, bottom: 440 }, menu = { w: 260, h: 200 };'
+		. ' out = { below: H.menuPlace({ left: 100, top: 60, right: 140, bottom: 80 }, menu, area),'
+		. ' above: H.menuPlace({ left: 100, top: 300, right: 140, bottom: 320 }, menu, area),'
+		. ' beside: H.menuPlace({ left: 100, top: 230, right: 140, bottom: 250 }, menu, area),'
+		. ' left: H.menuPlace({ left: 500, top: 230, right: 540, bottom: 250 }, menu, area),'
+		. ' edge: H.menuPlace({ left: 480, top: 60, right: 520, bottom: 80 }, menu, area),'
+		. ' tall: H.menuPlace({ left: 100, top: 230, right: 140, bottom: 250 }, { w: 260, h: 500 }, area) };');
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array('left' => 100, 'top' => 82), $out['below'], 'under the mark when there is room');
+	pg_assert_same(array('left' => 100, 'top' => 98), $out['above'], 'above it when not, never above the canvas\'s top');
+	pg_assert_same(array('left' => 142, 'top' => 230), $out['beside'], 'beside it when neither fits');
+	pg_assert_same(array('left' => 238, 'top' => 230), $out['left'], 'on its left when the right has no room');
+	pg_assert_same(array('left' => 336, 'top' => 82), $out['edge'], 'clamped inside the canvas\'s width');
+	pg_assert_same(array('left' => 142, 'top' => 44), $out['tall'], 'a menu taller than the canvas starts at its top');
 }
 
 // Which marks a picture shows (F5, F13): the selected frame all of its own;

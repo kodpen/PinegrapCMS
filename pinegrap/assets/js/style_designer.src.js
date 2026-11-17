@@ -70713,7 +70713,7 @@ const StyleDesigner = (function () {
     // undo history and content rights answer; the normal Save writes it.
     // Classic menus and regions stay read-only.
     var _sdProto = { open: false, ui: null, canvas: null, items: [], byId: {}, layout: null, view: { x: 40, y: 40, k: 1 }, seq: 0, selected: null, env: {}, warned: {}, menu: null,
-        link: null, lifted: '', broken: { list: [], count: {} }, problems: null,
+        link: null, lifted: '', drawing: false, broken: { list: [], count: {} }, problems: null,
         edgeTo: {},
         pics: { gen: 0, io: null, boxes: {}, near: {}, live: {}, wait: [], loading: 0, cache: {}, rects: {}, partH: {}, settle: 0, refill: 0 } };
 
@@ -70976,12 +70976,14 @@ const StyleDesigner = (function () {
                 drag.kind = 'connect';
                 drag.from = item;
                 drag.port = row.port;
+                // The arrow being drawn is the one to see: the others fade.
+                _sdProtoDrawing(true);
             },
             release: function (event, done) {
                 if (done.kind === 'row' && !done.moved && event.type === 'pointerup') _sdProtoPickRow(done.row);
                 if (done.kind === 'head' && !done.moved && event.type === 'pointerup') _sdProtoPick(done.link.frame, done.link.port, true);
             },
-            cancel: function () {},
+            cancel: function () { _sdProtoDrawing(false); },
             key: function (event) {
                 if (event.key === 'Escape') { _sdProtoClose(); return true; }
                 // The open tab's undo history, as on the canvas; the map is
@@ -71010,10 +71012,15 @@ const StyleDesigner = (function () {
         // The pointer on a mark or a links panel row lifts its arrow out of
         // the others.
         ui.root.addEventListener('pointerover', function (event) {
+            if (_sdProto.drawing) return;
             var hot = event.target.closest ? event.target.closest('.sd-proto-hot, .sd-proto-li[data-link]') : null;
             var link = hot ? (hot.classList.contains('sd-proto-hot') ? _sdProtoHotLink(hot) : null) : null;
             var id = link ? link.frame + '|' + link.port : (hot ? hot.getAttribute('data-link') : '');
             _sdProtoLift(id || '');
+        });
+        // A drawn arrow let go of, on a target or not.
+        ['pointerup', 'pointercancel'].forEach(function (type) {
+            window.addEventListener(type, function () { if (_sdProto.drawing) _sdProtoDrawing(false); }, true);
         });
         // A press outside the target menu closes it.
         ui.root.addEventListener('pointerdown', function (event) {
@@ -71198,6 +71205,15 @@ const StyleDesigner = (function () {
         });
         var edge = best ? _sdProto.layout.edges.filter(function (e) { return e.id === best; })[0] : null;
         return edge ? { frame: edge.from, port: edge.port } : null;
+    }
+
+    // While an arrow is drawn from a mark or a head: every drawn arrow
+    // fades and the one being drawn goes at full strength to the pointer.
+    function _sdProtoDrawing(on) {
+        var ui = _sdProto.ui;
+        _sdProto.drawing = !!on;
+        _sdProtoLift('');
+        if (ui) ui.svg.classList.toggle('sd-proto-drawing', !!on);
     }
 
     // One arrow lifted out of the others ('' for none): drawn last, the
@@ -72237,13 +72253,17 @@ const StyleDesigner = (function () {
         ui.root.appendChild(el);
         _sdProto.menu = { el: el, rowEl: anchor };
 
-        // Under the row, or above it when it would leave the view.
+        // Under its row or mark, else above, else beside it, always inside
+        // the canvas under the view's bar (never over its zoom controls).
         var r = anchor.getBoundingClientRect();
         var o = ui.root.getBoundingClientRect();
-        var top = r.bottom - o.top + 2;
-        if (top + el.offsetHeight > o.height) top = Math.max(4, r.top - o.top - el.offsetHeight - 2);
-        el.style.left = Math.max(4, Math.min(r.left - o.left, o.width - el.offsetWidth - 4)) + 'px';
-        el.style.top = top + 'px';
+        var c = ui.stage.getBoundingClientRect();
+        var near = anchor.closest && anchor.closest('.sd-proto-list') ? ui.root.getBoundingClientRect() : c;
+        var area = { left: near.left - o.left, top: c.top - o.top, right: near.right - o.left, bottom: c.bottom - o.top };
+        el.style.maxHeight = Math.max(120, area.bottom - area.top - 8) + 'px';
+        var at = window.PGProtoHotspots.menuPlace({ left: r.left - o.left, top: r.top - o.top, right: r.right - o.left, bottom: r.bottom - o.top }, { w: el.offsetWidth, h: el.offsetHeight }, area);
+        el.style.left = at.left + 'px';
+        el.style.top = at.top + 'px';
 
         var first = el.querySelector('.sd-proto-menu-item[aria-checked="true"]') || el.querySelector('.sd-proto-menu-item');
         if (!first) el.tabIndex = -1;
