@@ -186,6 +186,7 @@
     "Last entry 45 minutes before closing": "Son giriş kapanıştan 45 dakika önce",
     "Last entry is thirty minutes before closing.": "Son giriş kapanıştan otuz dakika öncedir.",
     "Last error": "Son hata",
+    "Last event": "Son olay",
     "Last event:": "Son olay:",
     "Last failure": "Son hata",
     "Last failure {var:1}: {var:2}": "Son hata {var:1}: {var:2}",

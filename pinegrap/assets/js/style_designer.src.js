@@ -13584,6 +13584,23 @@ const StyleDesigner = (function () {
               __booking_tone: 'secondary', __booking_details: '01.09.2026 14:00 – 15:30', __booking_manage_url: '',
               __booking_manage_label: '', __booking_ics_url: '' }
         ],
+        // A paused subscription beside the active one; a used store credit
+        // card beside the open one, and a second order that spent it.
+        'account.subscriptions': [
+            { __subscription_id: '7', __subscription_product: _sdT('Coffee of the month'), __subscription_amount: '89.00 TRY',
+              __subscription_status: 'paused', __subscription_status_label: _sdT('Paused'), __subscription_tone: 'secondary',
+              __subscription_next: _sdT('Next charge:') + ' 01.12.2026', __subscription_price: '', __subscription_card: '',
+              __subscription_event: _sdT('Last event:') + ' ' + _sdT('Paused') + ' (02.11.2026)', __subscription_confirm_url: '',
+              __subscription_has_actions: '1' }
+        ],
+        'account.store_credit': [
+            { __credit_id: '5', __credit_kind_label: _sdT('Refund'), __credit_reason: '', __credit_state: 'used',
+              __credit_state_label: _sdT('Used'), __credit_tone: 'secondary', __credit_balance: '₺0,00', __credit_amount: '₺40,00',
+              __credit_last_day: '', __credit_has_uses: '' }
+        ],
+        'account.store_credit_uses': [
+            { __credit_use_order_no: '12301', __credit_use_order_url: '/order?id=1038', __credit_use_date: '14.10.2026', __credit_use_amount: '₺15,00' }
+        ],
         // The second line of the sample order (_sdOrderSampleLineTwo()): the
         // mug, no product form.
         'checkout.lines': [
@@ -15898,6 +15915,10 @@ const StyleDesigner = (function () {
             return '<div class="small text-muted mt-1">' + esc(_sdT('Monogram')) + ': A.M. · ' +
                    esc(_sdT('Thread colour')) + ': ' + esc(_sdT('Navy')) + '</div>';
         },
+        // pg_subscription_customer_actions_html(): the row's buttons.
+        '__subscription_actions_html': function () {
+            return _sdAccountSubscriptionActionsHtml((_sdListSample && _sdListSample.__subscription_status) || 'active');
+        },
         // pg_return_actions_html(): the parcel's tracking number and the
         // customer's two moves.
         '__return_actions_html': function () {
@@ -16585,6 +16606,7 @@ const StyleDesigner = (function () {
             __username: 'alex', username: 'alex', account_id: '3',
             __email: email, __email_address: email, email_address: email, __user_email: email,
             __user_name: full, __user_first_name: bill[0], __user_initials: initials, __display_name: full,
+            __store_credit_balance: '₺35,00',
             full_name: full, first_name: bill[0], last_name: bill[1],
             __user_badge: _sdT('Gold member'), member_id: 'M-1042', member: '1',
             form_item_view: 'contact-form-abc123xyz',
@@ -25221,6 +25243,9 @@ const StyleDesigner = (function () {
                 { label: _sdT('Orders of the member'), type: 'loop_area', icon: 'bi-receipt', extra: { listSource: 'account.orders' } },
                 { label: _sdT('Upcoming bookings of the member'), type: 'loop_area', icon: 'bi-calendar-check', extra: { listSource: 'account.upcoming_bookings' } },
                 { label: _sdT('Past bookings of the member'), type: 'loop_area', icon: 'bi-calendar', extra: { listSource: 'account.past_bookings' } },
+                { label: _sdT('Subscriptions of the member'), type: 'loop_area', icon: 'bi-arrow-repeat', extra: { listSource: 'account.subscriptions' } },
+                { label: _sdT('Store credit of the member'), type: 'loop_area', icon: 'bi-wallet2', extra: { listSource: 'account.store_credit' } },
+                { label: _sdT('Orders that spent the card'), type: 'loop_area', icon: 'bi-receipt', extra: { listSource: 'account.store_credit_uses' } },
                 { label: _sdT('Products in the cart'), type: 'loop_area', icon: 'bi-cart', extra: { listSource: 'cart.items' } },
                 { label: _sdT('Offers applied to the order'), type: 'loop_area', icon: 'bi-tag', extra: { listSource: 'checkout.offers' } },
                 { label: _sdT('Offers to suggest'), type: 'loop_area', icon: 'bi-megaphone', extra: { listSource: 'checkout.suggestions' } },
@@ -34298,6 +34323,9 @@ const StyleDesigner = (function () {
             'account.orders':     _sdT('One row for every order of the signed-in member, newest first, at most 50: the orders the order history shows.'),
             'account.upcoming_bookings': _sdT('One row for every booking of the signed-in member still to come, soonest first, with its manage page.'),
             'account.past_bookings': _sdT('One row for every past or cancelled booking of the signed-in member, latest first.'),
+            'account.subscriptions': _sdT('One row for every subscription of the signed-in member, newest first, with its pause, resume, cancel and card update forms.'),
+            'account.store_credit': _sdT('One row for every store credit card of the signed-in member, newest first, at most 50.'),
+            'account.store_credit_uses': _sdT('One row for every order that spent the store credit card the row stands in, newest first.'),
             'cart.items':         _sdT('One row for every product in the visitor\'s cart, lines saved for later left out: a mini cart in the cart link, or a summary beside the cart\'s own rows.'),
             'cart.item_gift_cards': _sdT('One row for every gift card of the cart line the row stands in, one per unit: put the recipient controls in it; the cart gives them their names and values, and the recipient\'s e-mail comes back when it is deleted.'),
             'cart.item_forms':    _sdT('One row for every product form of the cart line the row stands in: one per unit when the product asks for a form per quantity. Put a list of the form\'s fields inside the row.'),
@@ -40019,7 +40047,7 @@ const StyleDesigner = (function () {
         '__comment_message_html', '__comment_seller_reply_html',
         '__field_value_html', '__field_info_html', '__gift_card_message_html',
         '__return_customer_note_html', '__return_decision_note_html', '__return_actions_html',
-        '__schedule_period_options_html', '__field_options_html', '__return_reason_options_html',
+        '__subscription_actions_html', '__schedule_period_options_html', '__field_options_html', '__return_reason_options_html',
         '__ship_to_cost_html', '__ship_to_form_html', '__line_title_html', '__line_price_html', '__line_amount_html',
         '__line_stock_html', '__line_forms_html',
         '__ad_content_html', '__ad_caption_html'
@@ -40932,6 +40960,7 @@ const StyleDesigner = (function () {
             ['email_address',            _sdT('Email')],
             ['full_name',                _sdT('Full name (first + last)')],
             ['__display_name',           _sdT('Name to greet by (full name, else the user name)')],
+            ['__store_credit_balance',   _sdT('Store credit balance')],
             ['first_name',               _sdT('First Name')],
             ['last_name',                _sdT('Last Name')],
             ['registered_date_and_time', _sdT('Registration Date & Time'), 'date'],
@@ -42528,6 +42557,7 @@ const StyleDesigner = (function () {
             out.push(['subscriptions',        _sdT('Subscriptions (shop sites; hidden when there are none)')]);
             out.push(['bookings',             _sdT('My bookings (hidden when there are none)')]);
             out.push(['store_credit',         _sdT('Store credit and points conversion (shop sites; hidden when there is none)')]);
+            out.push(['store_credit_convert', _sdT('Reward points conversion form (hidden when the member cannot convert)')]);
         } else if (type === 'change_password' || type === 'set_password') {
             out.push(['password_rules',       _sdT('Strong password rules (hidden when the site setting is off)')]);
         } else if (type === 'calendar_event_view') {
@@ -42587,7 +42617,7 @@ const StyleDesigner = (function () {
             return '<button type="button" class="btn btn-sm btn-outline theme-primary w-100 mt-2 text-wrap" data-sd-op-open>' +
                     '<span class="bi bi-magic me-1"></span>' + esc(_sdT('Convert to design elements')) + '</button>' +
                 '<div style="font-size:.66rem;color:#888;margin-top:3px">' +
-                    esc(_sdT('Puts what the site prints here as elements you design, a list repeating its row for each of the member\'s orders or bookings. The site prints the same until you change them.')) +
+                    esc(_sdT('Puts what the site prints here as elements you design, a list repeating its row for each of the member\'s orders, bookings, subscriptions or store credit cards. The site prints the same until you change them.')) +
                 '</div>';
         }
         if (!_sdSectionOpensAsList(kind, section)) return '';
@@ -44208,6 +44238,77 @@ const StyleDesigner = (function () {
             });
             return part;
         }
+        var tones = function (cls, token, toneToken, names) {
+            return names.map(function (t) {
+                return bound('span', 'badge text-bg-' + t + ' ' + cls, _sdT('Status'), token, _sdPartWhen(toneToken, 'eq', t));
+            });
+        };
+        if (section === 'subscriptions') {
+            var sub = _sdPartEl('div', 'list-group-item', _sdT('Subscription'), {}, [
+                _sdPartEl('div', 'd-flex flex-wrap justify-content-between align-items-center gap-2', _sdT('Heading'), {}, [
+                    bound('span', 'fw-semibold', _sdT('Product'), '__subscription_product'),
+                    bound('span', '', _sdT('Amount'), '__subscription_amount')
+                ]),
+                _sdPartEl('div', 'small text-body-secondary', _sdT('Details'), {},
+                    tones('me-2', '__subscription_status_label', '__subscription_tone', ['success', 'warning', 'secondary']).concat([
+                        bound('span', 'me-2', _sdT('Next charge or the last day'), '__subscription_next', _sdPartWhen('__subscription_next', 'not_empty')),
+                        bound('span', 'me-2', _sdT('Price change notice'), '__subscription_price', _sdPartWhen('__subscription_price', 'not_empty')),
+                        bound('span', 'me-2', _sdT('Card'), '__subscription_card', _sdPartWhen('__subscription_card', 'not_empty')),
+                        bound('span', '', _sdT('Last event'), '__subscription_event', _sdPartWhen('__subscription_event', 'not_empty'))
+                    ])),
+                _sdPartEl('div', 'mt-2', _sdT('Confirm the payment'), _sdPartWhen('__subscription_confirm_url', 'not_empty'), [
+                    _sdPartEl('a', 'btn btn-sm btn-warning', _sdT('Confirm the payment'), { text: _sdT('Confirm the payment'), href: '#',
+                        _bindings: { href: '__subscription_confirm_url' }, _attrs: [{ name: 'rel', value: 'noopener noreferrer' }] })
+                ]),
+                // The forms are the section's own: they post with the form token.
+                bound('div', 'd-flex flex-wrap gap-2 mt-2', _sdT('Pause, resume, cancel and card update forms'), '__subscription_actions_html',
+                    _sdPartWhen('__subscription_has_actions', 'not_empty'))
+            ]);
+            return [_sdPartEl('div', 'list-group pg-sw-subscriptions', _sdT('Subscriptions of the member'),
+                { _bindings: { eo_visible_if: 'has_subscriptions' } }, [list('account.subscriptions', [sub])])];
+        }
+        if (section === 'store_credit') {
+            var sentence = function (tag, cls, name, text, token, valueCls, props) {
+                var p = { text: text, _sentence: true };
+                Object.keys(props || {}).forEach(function (k) { p[k] = props[k]; });
+                return _sdPartEl(tag, cls, name, p, [_sdPartEl('span', valueCls || '', _sdT('Value'), { _bindings: { text: token } })]);
+            };
+            var linked = _sdPartWhen('__credit_use_order_url', 'not_empty');
+            var use = _sdPartEl('li', '', _sdT('Order'), {}, [
+                _sdPartEl('a', '', _sdT('Order number'), { text: '#{var:1}', _sentence: true, href: '#',
+                    _bindings: { href: '__credit_use_order_url', show_if: '__credit_use_order_url' }, _bindParams: linked._bindParams }, [
+                    _sdPartEl('span', '', _sdT('Value'), { _bindings: { text: '__credit_use_order_no' } })
+                ]),
+                sentence('span', '', _sdT('Order number'), '#{var:1}', '__credit_use_order_no', '', _sdPartWhen('__credit_use_order_url', 'empty')),
+                bound('span', 'text-body-secondary', _sdT('Order date'), '__credit_use_date'),
+                sentence('span', '', _sdT('Amount spent'), '−{var:1}', '__credit_use_amount')
+            ]);
+            var card = _sdPartEl('div', 'list-group-item', _sdT('Card'), {}, [
+                _sdPartEl('div', 'd-flex justify-content-between align-items-start gap-2', _sdT('Heading'), {}, [
+                    _sdPartEl('span', '', _sdT('Source'), {}, [bound('span', 'fw-semibold', _sdT('Source'), '__credit_kind_label')]
+                        .concat(tones('ms-1', '__credit_state_label', '__credit_tone', ['success', 'secondary', 'warning']))
+                        .concat([bound('span', 'd-block small text-body-secondary text-break', _sdT('Reason'), '__credit_reason',
+                            _sdPartWhen('__credit_reason', 'not_empty'))])),
+                    _sdPartEl('span', 'text-end', _sdT('Balance'), {}, [
+                        bound('span', 'fw-semibold', _sdT('Balance'), '__credit_balance'),
+                        sentence('span', 'd-block small text-body-secondary', _sdT('Amount'), _sdT('of {var:1}'), '__credit_amount')
+                    ])
+                ]),
+                sentence('div', 'small text-body-secondary', _sdT('Last day'), _sdT('Last day: {var:1}'), '__credit_last_day', '',
+                    _sdPartWhen('__credit_last_day', 'not_empty')),
+                _sdPartEl('ul', 'list-unstyled small mb-0 mt-1', _sdT('Orders that spent the card'), _sdPartWhen('__credit_has_uses', 'not_empty'), [
+                    list('account.store_credit_uses', [use])
+                ])
+            ]);
+            return [_sdPartEl('div', 'pg-sw-store-credit', _sdT('Store credit'), { _bindings: { eo_visible_if: 'has_store_credit' } }, [
+                sentence('p', 'mb-3', _sdT('Balance'), _sdT('Balance') + ': {var:1}', '__store_credit_balance', 'fw-semibold'),
+                // The points conversion form is the section's own: it posts with the form token.
+                _sdPartEl('div', '', _sdT('Convert reward points'), { _bindings: { section: 'store_credit_convert' } }),
+                _sdPartEl('div', 'list-group', _sdT('Store credit of the member'), { _bindings: { eo_visible_if: 'has_store_credit_cards' } }, [
+                    list('account.store_credit', [card])
+                ])
+            ])];
+        }
         return [];
     }
 
@@ -44274,9 +44375,109 @@ const StyleDesigner = (function () {
         return html;
     }
 
+    // pg_subscription_customer_actions_html() for a row of `status`, without
+    // the hidden fields: what the canvas shows of the forms.
+    /* @pg-site-output */
+    function _sdAccountSubscriptionActionsHtml(status) {
+        var actions = { active: ['pause', 'cancel', 'update_card'], past_due: ['cancel', 'update_card'], paused: ['resume', 'cancel', 'update_card'] }[status] || [];
+        var labels = { pause: _sdT('Pause'), resume: _sdT('Resume'), update_card: _sdT('Update card') };
+        return actions.map(function (a) {
+            if (a === 'cancel') {
+                return '<details class="pg-sw-subscription-cancel"><summary class="btn btn-sm btn-outline-danger">' + esc(_sdT('Cancel subscription')) + '</summary>'
+                    + '<form method="post" action="#" class="mt-2"><p class="small mb-2">' + esc(status === 'active'
+                        ? _sdT('No further charges will be made. The subscription runs until the end of the period already paid.')
+                        : _sdT('No further charges will be made and the subscription ends.')) + '</p>'
+                    + '<button type="submit" class="btn btn-sm btn-danger">' + esc(_sdT('Yes, cancel')) + '</button></form></details>';
+            }
+            return '<form method="post" action="#"><button type="submit" class="btn btn-sm btn-outline-secondary">' + esc(labels[a]) + '</button></form>';
+        }).join('');
+    }
+
+    // pg_subscription_customer_view_html(); view rows in
+    // pg_subscription_customer_view_rows()' shape.
+    /* @pg-site-output */
+    function _sdAccountSubscriptionsHtml(view) {
+        if (!view || !view.length) return '';
+        return '<div class="list-group pg-sw-subscriptions">' + view.map(function (r) {
+            var html = '<div class="list-group-item">'
+                + '<div class="d-flex flex-wrap justify-content-between align-items-center gap-2">'
+                + '<span class="fw-semibold">' + esc(r.product) + '</span>'
+                + '<span>' + esc(r.amount) + '</span>'
+                + '</div>'
+                + '<div class="small text-body-secondary">'
+                + '<span class="badge text-bg-' + esc(r.tone) + ' me-2">' + esc(r.status_label) + '</span>';
+            ['next', 'price', 'card'].forEach(function (k) {
+                if (r[k] !== '') html += '<span class="me-2">' + esc(r[k]) + '</span>';
+            });
+            if (r.event !== '') html += '<span>' + esc(r.event) + '</span>';
+            html += '</div>';
+            if (r.confirm_url !== '') {
+                html += '<div class="mt-2"><a href="' + esc(r.confirm_url) + '" class="btn btn-sm btn-warning" rel="noopener noreferrer">'
+                    + esc(_sdT('Confirm the payment')) + '</a></div>';
+            }
+            if (r.actions_html !== '') html += '<div class="d-flex flex-wrap gap-2 mt-2">' + r.actions_html + '</div>';
+            return html + '</div>';
+        }).join('') + '</div>';
+    }
+
+    // pg_credit_account_cards_html(); cards in pg_credit_account_view()'s
+    // shape (kind_label, state, state_label, reason, balance_info,
+    // amount_info, last_day_info, uses: order_number, view_url, date_info,
+    // amount_info).
+    /* @pg-site-output */
+    function _sdAccountCreditCardsHtml(cards) {
+        if (!cards || !cards.length) return '';
+        var tones = { open: 'success', used: 'secondary', expired: 'warning' };
+        return '<div class="list-group">' + cards.map(function (c) {
+            var html = '<div class="list-group-item">'
+                + '<div class="d-flex justify-content-between align-items-start gap-2">'
+                + '<span><span class="fw-semibold">' + esc(c.kind_label) + '</span>'
+                + ' <span class="badge text-bg-' + (tones[c.state] || 'secondary') + ' ms-1">' + esc(c.state_label) + '</span>'
+                + (c.reason !== '' ? '<span class="d-block small text-body-secondary text-break">' + esc(c.reason) + '</span>' : '')
+                + '</span>'
+                + '<span class="text-end"><span class="fw-semibold">' + esc(c.balance_info) + '</span>'
+                + '<span class="d-block small text-body-secondary">' + esc(_sdT('of {var:1}').replace('{var:1}', c.amount_info)) + '</span></span>'
+                + '</div>'
+                + (c.last_day_info !== '' ? '<div class="small text-body-secondary">' + esc(_sdT('Last day: {var:1}').replace('{var:1}', c.last_day_info)) + '</div>' : '');
+            if (c.uses && c.uses.length) {
+                html += '<ul class="list-unstyled small mb-0 mt-1">' + c.uses.map(function (u) {
+                    var number = '#' + esc(u.order_number);
+                    return '<li>' + (u.view_url !== '' ? '<a href="' + esc(u.view_url) + '">' + number + '</a>' : number)
+                        + ' <span class="text-body-secondary">' + esc(u.date_info) + '</span> −' + esc(u.amount_info) + '</li>';
+                }).join('') + '</ul>';
+            }
+            return html + '</div>';
+        }).join('') + '</div>';
+    }
+
+    // pg_credit_account_convert_html() for `points` worth `worth`, without
+    // the form token and the page to come back to.
+    /* @pg-site-output */
+    function _sdAccountCreditConvertHtml(points, worth) {
+        return '<form action="#" method="post" class="mb-3">'
+            + '<label for="pg_sw_reward_points_convert" class="form-label">' + esc(_sdT('Reward points: {var:1}').replace('{var:1}', points)) + '</label>'
+            + '<div class="input-group" style="max-width: 24rem">'
+            + '<input type="number" id="pg_sw_reward_points_convert" name="points" class="form-control" min="1" max="' + esc(points) + '" step="1" value="' + esc(points) + '" required>'
+            + '<button type="submit" class="btn btn-outline-primary">' + esc(_sdT('Convert to store credit')) + '</button>'
+            + '</div>'
+            + '<div class="form-text">' + esc(_sdT('All your points are worth {var:1}.').replace('{var:1}', worth)) + '</div>'
+            + '</form>';
+    }
+
+    // pg_credit_account_section_html(): the balance, the conversion form
+    // (convertHtml, '' for none) and the cards.
+    /* @pg-site-output */
+    function _sdAccountStoreCreditHtml(balance, convertHtml, cards) {
+        return '<div class="pg-sw-store-credit">'
+            + '<p class="mb-3">' + esc(_sdT('Balance')) + ': <span class="fw-semibold">' + esc(balance) + '</span></p>'
+            + convertHtml + _sdAccountCreditCardsHtml(cards) + '</div>';
+    }
+
     // What a my account page prints in its order history or bookings for a
     // sample member: the sample order and a cancelled one, two upcoming
-    // bookings and a past one (the booking lists' sample rows).
+    // bookings and a past one (the booking lists' sample rows); an active
+    // and a paused subscription; an open store credit card spent on two
+    // orders and a used one.
     /* @pg-site-output */
     function _sdAccountSectionHtml(section) {
         if (section === 'order_history') {
@@ -44297,6 +44498,25 @@ const StyleDesigner = (function () {
                 past: [view(_SD_LIST_CARD_SAMPLES['account.past_bookings'])].concat(SD_LIST_SAMPLE_ROWS['account.past_bookings'].map(view))
             });
         }
+        if (section === 'subscriptions') {
+            return _sdAccountSubscriptionsHtml([_SD_LIST_ROW_PREVIEWS].concat(SD_LIST_SAMPLE_ROWS['account.subscriptions']).map(function (r) {
+                return { product: r.__subscription_product, amount: r.__subscription_amount, tone: r.__subscription_tone,
+                    status_label: r.__subscription_status_label, next: r.__subscription_next, price: r.__subscription_price,
+                    card: r.__subscription_card, event: r.__subscription_event, confirm_url: r.__subscription_confirm_url,
+                    actions_html: _sdAccountSubscriptionActionsHtml(r.__subscription_status) };
+            }));
+        }
+        if (section === 'store_credit_convert') return _sdAccountCreditConvertHtml('120', '₺12,00');
+        if (section === 'store_credit') {
+            var use = function (u) {
+                return { order_number: u.__credit_use_order_no, view_url: u.__credit_use_order_url, date_info: u.__credit_use_date, amount_info: u.__credit_use_amount };
+            };
+            var uses = [use(_SD_LIST_ROW_PREVIEWS)].concat(SD_LIST_SAMPLE_ROWS['account.store_credit_uses'].map(use));
+            return _sdAccountStoreCreditHtml('₺35,00', _sdAccountCreditConvertHtml('120', '₺12,00'), [_SD_LIST_ROW_PREVIEWS].concat(SD_LIST_SAMPLE_ROWS['account.store_credit']).map(function (c, i) {
+                return { kind_label: c.__credit_kind_label, state: c.__credit_state, state_label: c.__credit_state_label, reason: c.__credit_reason,
+                    balance_info: c.__credit_balance, amount_info: c.__credit_amount, last_day_info: c.__credit_last_day, uses: i === 0 ? uses : [] };
+            }));
+        }
         return '';
     }
 
@@ -44309,9 +44529,14 @@ const StyleDesigner = (function () {
         box.className = 'sd-section-binding-hint sd-section-sample';
         box.setAttribute('inert', '');
         box.style.cssText = 'pointer-events:none';
-        box.innerHTML = html + '<div class="small text-body-secondary fst-italic mt-1">'
-            + esc(section === 'order_history' ? _sdT('The site lists the signed-in member\'s orders, newest first.')
-                : _sdT('The site lists the signed-in member\'s bookings: upcoming ones with their manage page, then past ones.')) + '</div>';
+        var notes = {
+            order_history: _sdT('The site lists the signed-in member\'s orders, newest first.'),
+            bookings: _sdT('The site lists the signed-in member\'s bookings: upcoming ones with their manage page, then past ones.'),
+            subscriptions: _sdT('The site lists the signed-in member\'s subscriptions, newest first, with the actions each one allows.'),
+            store_credit: _sdT('The site shows the signed-in member\'s balance, the reward points conversion form when they have points enough, and their cards.'),
+            store_credit_convert: _sdT('The site shows this form when the member has points enough to convert; it posts with the form token.')
+        };
+        box.innerHTML = html + '<div class="small text-body-secondary fst-italic mt-1">' + esc(notes[section]) + '</div>';
         return box;
     }
 
@@ -45606,7 +45831,9 @@ const StyleDesigner = (function () {
             ['has_bookings', _sdT('The member has bookings')],
             ['has_upcoming_bookings', _sdT('The member has upcoming bookings')],
             ['has_past_bookings', _sdT('The member has past bookings')],
-            ['has_store_credit', _sdT('The member has store credit or points to convert')]
+            ['has_store_credit', _sdT('The member has store credit or points to convert')],
+            ['has_store_credit_cards', _sdT('The member has store credit cards')],
+            ['has_subscriptions', _sdT('The member has subscriptions')]
         ],
         form_list_view: [
             ['has_filter_value', _sdT('A value from the page address, compared with is equal to, finds records')],
@@ -61156,6 +61383,57 @@ const StyleDesigner = (function () {
                 ['__booking_ics_url',      _sdT('Add to calendar URL')]
             ]
         },
+        // The member's subscriptions (pg_sw_list_account_subscription_rows()).
+        'account.subscriptions': {
+            label: _sdT('Subscriptions of the member'),
+            arg: '', argRequired: false,
+            kinds: ['my_account'],
+            rows: [
+                ['__subscription_id',           _sdT('Subscription ID')],
+                ['__subscription_product',      _sdT('Product')],
+                ['__subscription_amount',       _sdT('Amount')],
+                ['__subscription_status',       _sdT('Status (raw text)')],
+                ['__subscription_status_label', _sdT('Status')],
+                ['__subscription_tone',         _sdT('Status colour (warning, success or secondary)')],
+                ['__subscription_next',         _sdT('Next charge or the last day')],
+                ['__subscription_price',        _sdT('Price change notice')],
+                ['__subscription_card',         _sdT('Card')],
+                ['__subscription_event',        _sdT('Last event')],
+                ['__subscription_confirm_url',  _sdT('Payment confirmation URL')],
+                ['__subscription_actions_html', _sdT('Pause, resume, cancel and card update forms (HTML)')],
+                ['__subscription_has_actions',  _sdT('Offers an action (yes/no)')]
+            ]
+        },
+        // The member's store credit cards and the orders that spent each
+        // (pg_sw_list_account_credit_rows()).
+        'account.store_credit': {
+            label: _sdT('Store credit of the member'),
+            arg: '', argRequired: false,
+            kinds: ['my_account'],
+            rows: [
+                ['__credit_id',          _sdT('Card ID')],
+                ['__credit_kind_label',  _sdT('Source')],
+                ['__credit_reason',      _sdT('Reason')],
+                ['__credit_state',       _sdT('State (raw text)')],
+                ['__credit_state_label', _sdT('State')],
+                ['__credit_tone',        _sdT('State colour (success, secondary or warning)')],
+                ['__credit_balance',     _sdT('Balance')],
+                ['__credit_amount',      _sdT('Amount')],
+                ['__credit_last_day',    _sdT('Last day')],
+                ['__credit_has_uses',    _sdT('Spent on an order (yes/no)')]
+            ]
+        },
+        'account.store_credit_uses': {
+            label: _sdT('Orders that spent the card'),
+            arg: '', argRequired: false,
+            kinds: ['my_account'],
+            rows: [
+                ['__credit_use_order_no',  _sdT('Order number')],
+                ['__credit_use_order_url', _sdT('Order detail URL')],
+                ['__credit_use_date',      _sdT('Order date')],
+                ['__credit_use_amount',    _sdT('Amount spent')]
+            ]
+        },
         'cart.items': {
             label: _sdT('Products in the cart'),
             arg: '', argRequired: false,
@@ -61531,6 +61809,32 @@ const StyleDesigner = (function () {
         __booking_manage_url:   '#',
         __booking_manage_label: _sdT('Change or cancel'),
         __booking_ics_url:      '#',
+        __subscription_id:           '8',
+        __subscription_product:      _sdT('Weekly flower box'),
+        __subscription_amount:       '149.00 TRY',
+        __subscription_status:       'active',
+        __subscription_status_label: _sdT('Active'),
+        __subscription_tone:         'success',
+        __subscription_next:         _sdT('Next charge:') + ' 24.11.2026',
+        __subscription_price:        '',
+        __subscription_card:         _sdT('Card ending {var:1}').replace('{var:1}', '4242'),
+        __subscription_event:        _sdT('Last event:') + ' ' + _sdT('Renewed') + ' (17.11.2026)',
+        __subscription_confirm_url:  '',
+        __subscription_has_actions:  '1',
+        __credit_id:          '6',
+        __credit_kind_label:  _sdT('Manual'),
+        __credit_reason:      _sdT('Sorry for the late delivery'),
+        __credit_state:       'open',
+        __credit_state_label: _sdT('Open'),
+        __credit_tone:        'success',
+        __credit_balance:     '₺35,00',
+        __credit_amount:      '₺50,00',
+        __credit_last_day:    '31.12.2026',
+        __credit_has_uses:    '1',
+        __credit_use_order_no:  '12345',
+        __credit_use_order_url: '/order?id=1042',
+        __credit_use_date:      '20.10.2026',
+        __credit_use_amount:    '₺15,00',
         __menu_item_name: _sdT('Menu item'),
         __menu_item_id: '2',
         __menu_item_url: '#',
@@ -61730,6 +62034,9 @@ const StyleDesigner = (function () {
         // A booking list as the bookings part draws it (_sdAccountPart()).
         if (source === 'account.upcoming_bookings') return _sdAccountPart('bookings')[1];
         if (source === 'account.past_bookings') return _sdAccountPart('bookings')[3];
+        // The subscriptions and the store credit cards likewise.
+        if (source === 'account.subscriptions') return _sdAccountPart('subscriptions')[0];
+        if (source === 'account.store_credit') return _sdAccountPart('store_credit')[0].children[2];
         if (source.indexOf('order.') === 0 || source.indexOf('account.') === 0 || source === 'cart.items') return _sdOrderListStarter(source, bs);
         if (source.indexOf('checkout.') === 0) return _sdCheckoutListStarter(source, bs);
         if (source === 'menu.children') {
@@ -64528,8 +64835,7 @@ const StyleDesigner = (function () {
                         createNode('semantic', { tag: 'div', cssClass: 'mb-4', customName: _sdT('My Bookings') }, _sdAccountPart('bookings')),
                         createNode('content', { contentType: 'heading', tag: 'h5', text: _sdT('Store credit'), cssClass: 'mb-3',
                             _bindings: { eo_visible_if: 'has_store_credit' } }),
-                        createNode('semantic', { tag: 'div', cssClass: 'mb-4', customName: _sdT('Store credit'),
-                            _bindings: { section: 'store_credit' } }),
+                        createNode('semantic', { tag: 'div', cssClass: 'mb-4', customName: _sdT('Store credit') }, _sdAccountPart('store_credit')),
                         loopArea
                     ])
                 ]);
@@ -79928,6 +80234,12 @@ const StyleDesigner = (function () {
                                     d: _sdT('Repeats its row for each booking of the signed-in member still to come.') },
             'l:account.past_bookings': { v: 'l-steps', k: 'member bookings appointments past account list repeat loop',
                                     d: _sdT('Repeats its row for each past booking of the signed-in member.') },
+            'l:account.subscriptions': { v: 'l-account-orders', k: 'member subscriptions recurring renewals account list repeat loop',
+                                    d: _sdT('Repeats its row for each subscription of the signed-in member.') },
+            'l:account.store_credit': { v: 'l-account-orders', k: 'member store credit gift card balance account list repeat loop',
+                                    d: _sdT('Repeats its row for each store credit card of the signed-in member.') },
+            'l:account.store_credit_uses': { v: 'l-account-orders', k: 'store credit orders spent account list repeat loop',
+                                    d: _sdT('Repeats its row for each order that spent the store credit card.') },
             'l:cart.items': { v: 'l-cart-items', k: 'cart items products basket list repeat loop',
                                     d: _sdT('Repeats its row for each product in the cart, with its quantity and price.') },
             'l:checkout.offers': { v: 'l-offers', k: 'applied offers discounts checkout list repeat loop',

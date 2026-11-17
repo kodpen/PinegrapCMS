@@ -56,7 +56,8 @@ function account_blocks_test_run($expr)
 	$script = "function esc(s) { if (!s && s !== 0) return ''; return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;'); }\n"
 		. "function _sdT(s) { return s; }\n"
 		. "function createNode(type, props, children) { return { type: type, props: props || {}, children: children || [] }; }\n";
-	foreach (array('_sdPartEl', '_sdPartWhen', '_sdPartSentence', '_sdAccountPart', '_sdAccountOrderHistoryHtml', '_sdAccountBookingsHtml') as $fn) {
+	foreach (array('_sdPartEl', '_sdPartWhen', '_sdPartSentence', '_sdAccountPart', '_sdAccountOrderHistoryHtml', '_sdAccountBookingsHtml',
+		'_sdAccountSubscriptionsHtml', '_sdAccountSubscriptionActionsHtml', '_sdAccountCreditCardsHtml', '_sdAccountStoreCreditHtml') as $fn) {
 		$script .= account_blocks_test_function($source, $fn) . "\n";
 	}
 	$script .= 'console.log(JSON.stringify(' . $expr . '));';
@@ -172,20 +173,313 @@ function account_blocks_test_text($html)
 }
 
 // A part of the my account widget drawn with its lists filled from $rows.
-function account_blocks_test_draw($section, $rows, $flags)
+function account_blocks_test_draw($section, $rows, $flags, $sections = array(), $values = array())
 {
 	static $sid = 70;
 	$tree = array('type' => 'root', 'props' => array(), 'children' => pg_acct_part($section));
+	pg_cf_apply_section_bindings($tree, $sections);
 	_eo_apply_visibility_bindings($tree, $flags);
 	$scope = pg_sw_finish_open(array('sid' => ++$sid, 'kind' => 'my_account', 'email' => false));
 	try {
 		$html = trim(_render_tree_node($tree, 0, 0));
 		pg_sw_list_publish('account', $rows);
-		$html = _pg_member_apply_tokens($html, array('account_id' => '7'));
+		$html = _pg_member_apply_tokens($html, array('account_id' => '7') + $values);
 	} finally {
 		pg_sw_finish_close();
 	}
 	return pg_sw_finish_widget_html($html, $scope);
+}
+
+// The subscriptions section as development printed it.
+function account_blocks_test_subscriptions_as_development_printed($rows, $action_url, $send_to, $token)
+{
+	if (!$rows) {
+		return '';
+	}
+
+	$date_format = pg_sw_default_date_format('date');
+	$button_labels = array(
+		'pause'       => lang('Pause'),
+		'resume'      => lang('Resume'),
+		'update_card' => lang('Update card'),
+	);
+	$html = '<div class="list-group pg-sw-subscriptions">';
+
+	foreach ($rows as $row) {
+		$id = (int) $row['id'];
+		$amount = (int) $row['amount'];
+		$next = (int) $row['next_charge_at'];
+		$status = (string) $row['status'];
+		$event = pg_subscription_customer_event_label((string) $row['last_kind']);
+		$confirm = pg_subscription_customer_confirm_url($row, array('kind' => $row['renewal_kind'], 'detail' => $row['renewal_detail']));
+
+		$html .= '<div class="list-group-item">'
+			. '<div class="d-flex flex-wrap justify-content-between align-items-center gap-2">'
+			. '<span class="fw-semibold">' . h((string) $row['product_name']) . '</span>'
+			. '<span>' . h(trim(pg_format_number($amount / 100, 2) . ' ' . (string) $row['currency'])) . '</span>'
+			. '</div>'
+			. '<div class="small text-body-secondary">'
+			. '<span class="badge ' . (($status === 'past_due') ? 'text-bg-warning' : (($status === 'active') ? 'text-bg-success' : 'text-bg-secondary')) . ' me-2">'
+			. h(pg_subscription_customer_status_label($status)) . '</span>';
+
+		if (($next > 0) && in_array($status, array('active', 'past_due', 'paused'), true)) {
+			$html .= '<span class="me-2">' . h(lang('Next charge:')) . ' ' . h(_pg_sw_short_date($next, $date_format)) . '</span>';
+		} elseif (($status === 'cancelled') && ($next > 0) && ((int) $row['retry_count'] === 0)) {
+			$html .= '<span class="me-2">' . h(lang('Runs until:')) . ' ' . h(_pg_sw_short_date($next, $date_format)) . '</span>';
+		}
+
+		$pending = $row['price_pending'] ?? null;
+
+		if (is_array($pending) && in_array($status, array('active', 'past_due', 'paused'), true)) {
+			$html .= '<span class="me-2">' . h(lang(array(
+				'string' => 'New amount from {var:1}: {var:2}',
+				'vars'   => array(_pg_sw_short_date((int) strtotime($pending['date']), $date_format), trim(pg_format_number($pending['amount'] / 100, 2) . ' ' . (string) $row['currency'])),
+			))) . '</span>';
+		}
+
+		if ((string) $row['card_last4'] !== '') {
+			$html .= '<span class="me-2">' . h(lang(array('string' => 'Card ending {var:1}', 'vars' => array((string) $row['card_last4'])))) . '</span>';
+		}
+
+		if ($event !== '') {
+			$html .= '<span>' . h(lang('Last event:')) . ' ' . h($event)
+				. (((int) $row['last_at'] > 0) ? ' (' . h(_pg_sw_short_date((int) $row['last_at'], $date_format)) . ')' : '') . '</span>';
+		}
+
+		$html .= '</div>';
+
+		if ($confirm !== '') {
+			$html .= '<div class="mt-2"><a href="' . h($confirm) . '" class="btn btn-sm btn-warning" rel="noopener noreferrer">'
+				. h(lang('Confirm the payment')) . '</a></div>';
+		}
+
+		$actions = pg_subscription_customer_actions($row);
+
+		if ($actions) {
+			$html .= '<div class="d-flex flex-wrap gap-2 mt-2">';
+
+			foreach ($actions as $action) {
+				$fields = '<input type="hidden" name="token" value="' . h($token) . '">'
+					. '<input type="hidden" name="id" value="' . $id . '">'
+					. '<input type="hidden" name="action" value="' . h($action) . '">'
+					. '<input type="hidden" name="send_to" value="' . h($send_to) . '">';
+
+				if ($action === 'cancel') {
+					// Asked twice without a script: the button that cancels
+					// shows only once the customer opened this.
+					$html .= '<details class="pg-sw-subscription-cancel"><summary class="btn btn-sm btn-outline-danger">' . h(lang('Cancel subscription')) . '</summary>'
+						. '<form method="post" action="' . h($action_url) . '" class="mt-2">' . $fields
+						. '<p class="small mb-2">' . h(($status === 'active')
+							? lang('No further charges will be made. The subscription runs until the end of the period already paid.')
+							: lang('No further charges will be made and the subscription ends.')) . '</p>'
+						. '<button type="submit" class="btn btn-sm btn-danger">' . h(lang('Yes, cancel')) . '</button>'
+						. '</form></details>';
+				} else {
+					$html .= '<form method="post" action="' . h($action_url) . '">' . $fields
+						. '<button type="submit" class="btn btn-sm btn-outline-secondary">' . h($button_labels[$action]) . '</button>'
+						. '</form>';
+				}
+			}
+
+			$html .= '</div>';
+		}
+
+		$html .= '</div>';
+	}
+
+	return $html . '</div>';
+}
+
+// The store credit section as development printed it.
+function account_blocks_test_credit_as_development_printed(array $view)
+{
+	if (empty($view['shown'])) {
+		return '';
+	}
+
+	$badges = array('open' => 'text-bg-success', 'used' => 'text-bg-secondary', 'expired' => 'text-bg-warning');
+
+	$html = '<div class="pg-sw-store-credit">'
+		. '<p class="mb-3">' . h(lang('Balance')) . ': <span class="fw-semibold">' . h($view['balance_info']) . '</span></p>';
+
+	$convert = $view['convert'];
+
+	if (!empty($convert['shown'])) {
+		$html .= '<form action="' . h($convert['url']) . '" method="post" class="mb-3">'
+			. $convert['token_field']
+			. '<input type="hidden" name="send_to" value="' . h($convert['send_to']) . '">'
+			. '<label for="pg_sw_reward_points_convert" class="form-label">'
+			. h(lang(array('string' => 'Reward points: {var:1}', 'vars' => array(pg_format_number($convert['points'], 0))))) . '</label>'
+			. '<div class="input-group" style="max-width: 24rem">'
+			. '<input type="number" id="pg_sw_reward_points_convert" name="points" class="form-control" min="' . (int) $convert['minimum'] . '" max="' . (int) $convert['points'] . '" step="1" value="' . (int) $convert['points'] . '" required>'
+			. '<button type="submit" class="btn btn-outline-primary">' . h(lang('Convert to store credit')) . '</button>'
+			. '</div>'
+			. '<div class="form-text">' . h(lang(array('string' => 'All your points are worth {var:1}.', 'vars' => array(html_entity_decode($convert['value_info'], ENT_QUOTES, 'UTF-8'))))) . '</div>'
+			. '</form>';
+	}
+
+	if (!empty($view['cards'])) {
+		$html .= '<div class="list-group">';
+
+		foreach ($view['cards'] as $card) {
+			$html .= '<div class="list-group-item">'
+				. '<div class="d-flex justify-content-between align-items-start gap-2">'
+				. '<span><span class="fw-semibold">' . h($card['kind_label']) . '</span>'
+				. ' <span class="badge ' . $badges[$card['state']] . ' ms-1">' . h($card['state_label']) . '</span>'
+				. (($card['reason'] !== '') ? '<span class="d-block small text-body-secondary text-break">' . h($card['reason']) . '</span>' : '')
+				. '</span>'
+				. '<span class="text-end"><span class="fw-semibold">' . h($card['balance_info']) . '</span>'
+				. '<span class="d-block small text-body-secondary">' . h(lang(array('string' => 'of {var:1}', 'vars' => array($card['amount_info'])))) . '</span></span>'
+				. '</div>'
+				. (($card['last_day_info'] !== '') ? '<div class="small text-body-secondary">' . h(lang(array('string' => 'Last day: {var:1}', 'vars' => array($card['last_day_info'])))) . '</div>' : '');
+
+			if (!empty($card['uses'])) {
+				$html .= '<ul class="list-unstyled small mb-0 mt-1">';
+
+				foreach ($card['uses'] as $use) {
+					$number = '#' . h($use['order_number']);
+					$html .= '<li>' . (($use['view_url'] !== '') ? '<a href="' . h($use['view_url']) . '">' . $number . '</a>' : $number)
+						. ' <span class="text-body-secondary">' . h($use['date_info']) . '</span> −' . h($use['amount_info']) . '</li>';
+				}
+
+				$html .= '</ul>';
+			}
+
+			$html .= '</div>';
+		}
+
+		$html .= '</div>';
+	}
+
+	return $html . '</div>';
+}
+
+// A member's subscriptions: an active one with a price change told and a
+// name to escape, a paused one, one waiting for a payment confirmation and
+// a cancelled one running to the end of its period.
+function account_blocks_test_subscriptions()
+{
+	$s = function ($id, $status, $next, $extra = array()) {
+		return array_merge(array('id' => $id, 'user_id' => 7, 'product_name' => 'Box ' . $id, 'amount' => 14950, 'currency' => 'TRY',
+			'status' => $status, 'next_charge_at' => $next, 'retry_count' => 0, 'card_last4' => '', 'last_kind' => '', 'last_at' => 0,
+			'renewal_kind' => '', 'renewal_detail' => '', 'price_pending' => null), $extra);
+	};
+	return array(
+		$s(4, 'active', 1800000000, array('product_name' => 'Coffee & Tea', 'card_last4' => '4242', 'last_kind' => 'renewed', 'last_at' => 1799000000,
+			'price_pending' => array('date' => '2027-01-01', 'amount' => 15900))),
+		$s(3, 'paused', 1800500000, array('last_kind' => 'status_paused', 'last_at' => 1799100000)),
+		$s(2, 'past_due', 1800000000, array('retry_count' => 1, 'renewal_kind' => 'confirm_needed', 'renewal_detail' => 'https://pay.example/c?x=1&y=2',
+			'last_kind' => 'confirm_needed')),
+		$s(1, 'cancelled', 1801000000, array('last_kind' => 'status_cancelled')),
+	);
+}
+
+// The member's store credit as pg_credit_account_view() gives it: an open
+// card spent on two orders (one without a view order page), a used one and
+// an expired one; points enough to convert.
+function account_blocks_test_credit_view()
+{
+	$use = function ($no, $url) {
+		return array('order_id' => 1, 'order_number' => $no, 'order_date' => 1799000000, 'amount' => 1500,
+			'amount_info' => '₺15,00', 'date_info' => '14.10.2026', 'view_url' => $url);
+	};
+	$card = function ($id, $state, $label, $reason, $last, $uses) {
+		return array('id' => $id, 'kind' => 'manual', 'kind_label' => 'Manual', 'reason' => $reason, 'amount' => 5000, 'balance' => 3500,
+			'amount_info' => '₺50,00', 'balance_info' => '₺35,00', 'last_day' => '', 'last_day_info' => $last, 'state' => $state,
+			'state_label' => $label, 'uses' => $uses);
+	};
+	return array(
+		'shown' => true, 'balance' => 3500, 'balance_info' => '₺35,00',
+		'cards' => array(
+			$card(6, 'open', 'Open', 'Late <delivery>', '31.12.2026', array($use('1042', '/order?id=1042&a=1'), $use('1041<b>', ''))),
+			$card(5, 'used', 'Used', '', '', array()),
+			$card(4, 'expired', 'Expired', '', '01.01.2026', array()),
+		),
+		'convert' => array('enabled' => true, 'shown' => true, 'points' => 1200, 'minimum' => 100, 'url' => '/s/convert_reward_points.php',
+			'token_field' => '<input type="hidden" name="token" value="abc">', 'send_to' => '/account', 'value_info' => '&#8378;12,00'),
+	);
+}
+
+// The subscriptions and store credit sections built from their rows print
+// what development printed.
+function test_account_blocks_subscription_credit_sections_unchanged()
+{
+	$rows = account_blocks_test_subscriptions();
+	$old = account_blocks_test_subscriptions_as_development_printed($rows, '/s/subscription_action.php', '/account', 'tok"x');
+	pg_assert_contains('Coffee &amp; Tea', $old, 'the fixture reaches the subscriptions');
+	pg_assert_contains('Confirm the payment', $old, 'and the confirmation link');
+	pg_assert_same($old, pg_subscription_customer_section_html($rows, '/s/subscription_action.php', '/account', 'tok"x'), 'subscriptions, byte for byte');
+	pg_assert_same('', pg_subscription_customer_section_html(array(), '/s/subscription_action.php', '/account', 'tok'), 'no subscription, nothing');
+
+	$view = account_blocks_test_credit_view();
+	$old = account_blocks_test_credit_as_development_printed($view);
+	pg_assert_contains('pg_sw_reward_points_convert', $old, 'the fixture reaches the conversion form');
+	pg_assert_same($old, pg_credit_account_section_html($view), 'store credit, byte for byte');
+	$view['convert']['shown'] = false;
+	pg_assert_same(account_blocks_test_credit_as_development_printed($view), pg_credit_account_section_html($view), 'store credit without the form');
+	$view['cards'] = array();
+	pg_assert_same(account_blocks_test_credit_as_development_printed($view), pg_credit_account_section_html($view), 'store credit without a card');
+	pg_assert_same('', pg_credit_account_section_html(array('shown' => false)), 'nothing to show');
+}
+
+// The opened subscriptions and store credit say what the sections say; the
+// forms are the sections' own, with the form token.
+function test_account_blocks_subscription_credit_parts()
+{
+	$view = pg_subscription_customer_view_rows(account_blocks_test_subscriptions(), '/s/subscription_action.php', '/account', 'tok"x');
+	$old = pg_subscription_customer_view_html($view);
+	$new = account_blocks_test_draw('subscriptions', pg_sw_list_account_subscription_rows(7, $view), array('has_subscriptions' => true));
+	pg_assert_same(account_blocks_test_text($old), account_blocks_test_text($new), 'subscriptions: the same words');
+	preg_match_all('/class="([^"]*)"/', $old, $m);
+	foreach (array_unique($m[1]) as $class) {
+		pg_assert_contains('class="' . $class . '"', $new, 'class ' . $class);
+	}
+	pg_assert_same(substr_count($old, '<form method="post"'), substr_count($new, '<form method="post"'), 'every action form');
+	pg_assert_same(substr_count($old, 'name="token" value="tok&quot;x"'), substr_count($new, 'name="token" value="tok&quot;x"'), 'each with the form token, escaped once');
+	pg_assert_contains('href="https://pay.example/c?x=1&amp;y=2"', $new, 'the confirmation link escaped once');
+	pg_assert_contains('>Coffee &amp; Tea</span>', $new, 'the name escaped once');
+	pg_assert_same('', trim(account_blocks_test_draw('subscriptions', pg_sw_list_account_subscription_rows(7, array()), array('has_subscriptions' => false))),
+		'nothing without a subscription');
+
+	$credit = account_blocks_test_credit_view();
+	$old = pg_credit_account_section_html($credit);
+	$rows = pg_sw_list_account_credit_rows(7, $credit['cards']);
+	$flags = array('has_store_credit' => true, 'has_store_credit_cards' => true);
+	$new = account_blocks_test_draw('store_credit', $rows, $flags, array('store_credit_convert' => pg_credit_account_convert_html($credit['convert'])),
+		array('__store_credit_balance' => h($credit['balance_info'])));
+	pg_assert_same(account_blocks_test_text($old), account_blocks_test_text($new), 'store credit: the same words');
+	preg_match_all('/class="([^"]*)"/', $old, $m);
+	foreach (array_unique($m[1]) as $class) {
+		pg_assert_contains('class="' . $class . '"', $new, 'class ' . $class);
+	}
+	pg_assert_contains('<input type="hidden" name="token" value="abc">', $new, 'the conversion form keeps its token');
+	pg_assert_contains('href="/order?id=1042&amp;a=1"', $new, 'the order link escaped once');
+	pg_assert_contains('Late &lt;delivery&gt;', $new, 'the reason escaped once');
+	$credit['convert']['shown'] = false;
+	$credit['cards'] = array();
+	$old = pg_credit_account_section_html($credit);
+	$new = account_blocks_test_draw('store_credit', pg_sw_list_account_credit_rows(7, array()), array('has_store_credit' => true, 'has_store_credit_cards' => false),
+		array('store_credit_convert' => ''), array('__store_credit_balance' => h($credit['balance_info'])));
+	pg_assert_same(account_blocks_test_text($old), account_blocks_test_text($new), 'balance alone');
+	pg_assert_same(false, strpos($new, '<form'), 'no form without points enough');
+}
+
+// The list rows carry the views' words, raw; the uses under their card.
+function test_account_blocks_subscription_credit_rows()
+{
+	$view = pg_subscription_customer_view_rows(account_blocks_test_subscriptions(), '/s/subscription_action.php', '/account', 'tok');
+	pg_assert_same(array('success', 'secondary', 'warning', 'secondary'), array_column($view, 'tone'), 'the badge tone by status');
+	pg_assert_same('149.50 TRY', $view[0]['amount'], 'the amount from minor units');
+	pg_assert_same('', $view[3]['actions_html'], 'a cancelled row offers nothing');
+	pg_assert_contains('value="resume"', $view[1]['actions_html'], 'a paused row resumes');
+	$rows = pg_sw_list_account_subscription_rows(7, $view)['account.subscriptions'][7];
+	pg_assert_same('Coffee & Tea', $rows[0]['__subscription_product'], 'raw, escaped once by the pass');
+	pg_assert_same(true, isset(pg_sw_raw_token_keys()['__subscription_actions_html']), 'the forms are markup');
+	$credit = pg_sw_list_account_credit_rows(7, account_blocks_test_credit_view()['cards']);
+	pg_assert_same(array('success', 'secondary', 'warning'), array_column($credit['account.store_credit'][7], '__credit_tone'));
+	pg_assert_same(array('1', '', ''), array_column($credit['account.store_credit'][7], '__credit_has_uses'));
+	pg_assert_same(array(6, 5, 4), array_keys($credit['account.store_credit_uses']), 'the uses keyed by card');
+	pg_assert_same(array('1042', '1041<b>'), array_column($credit['account.store_credit_uses'][6], '__credit_use_order_no'));
 }
 
 // The sections built from the rows print what development printed.
@@ -246,8 +540,7 @@ function test_account_blocks_parts_print_the_sections_words()
 	$upcoming = account_blocks_test_draw('bookings', pg_sw_list_account_booking_rows(7, array('upcoming' => $view['upcoming'], 'past' => array())),
 		array('has_upcoming_bookings' => true, 'has_past_bookings' => false));
 	pg_assert_same(false, strpos($upcoming, 'Past'), 'no past heading without past bookings');
-	pg_assert_same(array(), pg_acct_part('subscriptions'), 'subscriptions stay a section');
-	pg_assert_same(array(), pg_acct_part('store_credit'), 'store credit stays a section');
+	pg_assert_same(array(), pg_acct_part('store_credit_convert'), 'the conversion form stays a section');
 }
 
 // The booking rows carry the view's words; each list under the member.
@@ -283,11 +576,31 @@ function test_account_blocks_twins()
 	}
 	pg_assert_same(json_decode(json_encode(pg_acct_part('order_history')), true), $drawn[0], 'the order history part');
 	pg_assert_same(json_decode(json_encode(pg_acct_part('bookings')), true), $drawn[1], 'the bookings part');
-	pg_assert_same(array(), $drawn[2], 'subscriptions do not open');
+	pg_assert_same(json_decode(json_encode(pg_acct_part('subscriptions')), true), $drawn[2], 'the subscriptions part');
 	pg_assert_same(pg_acct_order_history_html($rows, true, array_column($orders, 'total')), $drawn[3], 'order history, linked');
 	pg_assert_same(pg_acct_order_history_html($rows, false, array_column($orders, 'total')), $drawn[4], 'order history, plain');
 	pg_assert_same(pg_booking_customer_view_html($view), $drawn[5], 'bookings');
 	pg_assert_same('', $drawn[6], 'no booking');
+
+	$subs = pg_subscription_customer_view_rows(account_blocks_test_subscriptions(), '/s/subscription_action.php', '/account', 'tok');
+	$credit = account_blocks_test_credit_view();
+	$drawn = account_blocks_test_run('[_sdAccountPart("store_credit"), _sdAccountPart("store_credit_convert"), '
+		. '_sdAccountSubscriptionsHtml(' . json_encode($subs) . '), _sdAccountSubscriptionsHtml([]), '
+		. '_sdAccountStoreCreditHtml(' . json_encode($credit['balance_info']) . ', ' . json_encode(pg_credit_account_convert_html($credit['convert'])) . ', '
+		. json_encode($credit['cards']) . '), _sdAccountStoreCreditHtml("x", "", []), '
+		. '["active", "paused", "past_due", "cancelled"].map(_sdAccountSubscriptionActionsHtml)]');
+	pg_assert_same(json_decode(json_encode(pg_acct_part('store_credit')), true), $drawn[0], 'the store credit part');
+	pg_assert_same(array(), $drawn[1], 'the conversion form stays the section\'s');
+	pg_assert_same(pg_subscription_customer_view_html($subs), $drawn[2], 'subscriptions');
+	pg_assert_same('', $drawn[3], 'no subscription');
+	pg_assert_same(pg_credit_account_section_html($credit), $drawn[4], 'store credit');
+	pg_assert_same(pg_credit_account_section_html(array('shown' => true, 'balance_info' => 'x', 'cards' => array(), 'convert' => array())), $drawn[5], 'balance alone');
+	// The canvas draws the forms without their hidden fields.
+	foreach (array('active', 'paused', 'past_due', 'cancelled') as $i => $status) {
+		$row = array('id' => 1, 'status' => $status, 'next_charge_at' => 1800000000);
+		$site = preg_replace('/<input type="hidden"[^>]*>/', '', pg_subscription_customer_actions_html($row, '#', '/account', 'tok'));
+		pg_assert_same($site, $drawn[6][$i], 'the forms of a ' . $status . ' row');
+	}
 }
 
 // The widget publishes the booking rows with the orders, the starter opens
@@ -306,4 +619,12 @@ function test_account_blocks_wiring()
 	pg_assert_contains("_sdOrderPreviewSectionToTree(selectedNode) || _sdAccountSectionToTree(selectedNode)", $js);
 	pg_assert_contains("var _acSample = _sdAccountSectionSample(_sec, doc);", $js);
 	pg_assert_contains("['has_upcoming_bookings', _sdT('The member has upcoming bookings')],", $js);
+	pg_assert_contains("+ pg_sw_list_account_subscription_rows(\$values['account_id'], \$extras['subscriptions'])", $widgets);
+	pg_assert_contains("+ pg_sw_list_account_credit_rows(\$values['account_id'], \$extras['store_credit']['cards'])", $widgets);
+	pg_assert_contains("\$values['__store_credit_balance'] = h(\$extras['store_credit']['balance_info']);", $widgets);
+	pg_assert_contains("\$out['sections']['subscriptions'] = pg_subscription_customer_view_html(\$out['subscriptions']);", $account);
+	pg_assert_contains("\$out['sections']['store_credit_convert'] = pg_credit_account_convert_html(\$credit['convert']);", $account);
+	pg_assert_contains("customName: _sdT('Store credit') }, _sdAccountPart('store_credit')),", $js);
+	pg_assert_contains("['has_subscriptions', _sdT('The member has subscriptions')]", $js);
+	pg_assert_contains("'__subscription_actions_html', '__schedule_period_options_html',", $js);
 }

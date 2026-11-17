@@ -522,8 +522,8 @@ function pg_subscription_customer_view_rows($rows, $action_url, $send_to, $token
 
 /**
  * A row's action forms (subscription_action.php, the form token): pause,
- * resume and update card as one button each, cancel asked twice. '' when the
- * row offers none.
+ * resume and update card as one button each, cancel asked twice; the
+ * section puts them in a row of buttons. '' when the row offers none.
  *
  * @param array  $row        a pg_subscription_customer_rows() row
  * @param string $action_url subscription_action.php
@@ -544,7 +544,7 @@ function pg_subscription_customer_actions_html($row, $action_url, $send_to, $tok
         'resume'      => lang('Resume'),
         'update_card' => lang('Update card'),
     );
-    $html = '<div class="d-flex flex-wrap gap-2 mt-2">';
+    $html = '';
 
     foreach ($actions as $action) {
         $fields = '<input type="hidden" name="token" value="' . h($token) . '">'
@@ -569,7 +569,7 @@ function pg_subscription_customer_actions_html($row, $action_url, $send_to, $tok
         }
     }
 
-    return $html . '</div>';
+    return $html;
 }
 
 /**
@@ -629,7 +629,11 @@ function pg_subscription_customer_view_html($view)
                 . h(lang('Confirm the payment')) . '</a></div>';
         }
 
-        $html .= $s['actions_html'] . '</div>';
+        if ($s['actions_html'] !== '') {
+            $html .= '<div class="d-flex flex-wrap gap-2 mt-2">' . $s['actions_html'] . '</div>';
+        }
+
+        $html .= '</div>';
     }
 
     return $html . '</div>';

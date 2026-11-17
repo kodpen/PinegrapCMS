@@ -1898,8 +1898,12 @@ function _pg_acct_staff_url($staff_page_id)
 // balance, the cards with the orders that spent them and the reward points
 // conversion form, pg_credit_account_section_html()). Flags: has_orders,
 // no_orders, is_staff, has_bookings, has_upcoming_bookings,
-// has_past_bookings, has_store_credit. 'bookings': the booking lists' rows
-// (pg_booking_customer_view_rows()).
+// has_past_bookings, has_store_credit, has_store_credit_cards,
+// has_subscriptions; section store_credit_convert: the points conversion
+// form alone. 'bookings': the booking lists' rows
+// (pg_booking_customer_view_rows()); 'subscriptions'
+// (pg_subscription_customer_view_rows()) and 'store_credit'
+// (pg_credit_account_view(): balance_info, cards) likewise.
 function _pg_my_account_extras($logged_in, $cfg = array())
 {
     $shop  = defined('ECOMMERCE') && ECOMMERCE;
@@ -1914,10 +1918,13 @@ function _pg_my_account_extras($logged_in, $cfg = array())
     );
     // 'orders' and 'order_view_url': the history's rows and the view order
     // page, for a list of the member's orders (pg_sw_list_account_rows()).
-    $out = array('links' => $links, 'sections' => array('order_history' => '', 'subscriptions' => '', 'bookings' => '', 'store_credit' => ''),
+    $out = array('links' => $links, 'sections' => array('order_history' => '', 'subscriptions' => '', 'bookings' => '', 'store_credit' => '',
+                                                        'store_credit_convert' => ''),
                  'flags' => array('has_orders' => false, 'no_orders' => true, 'is_staff' => false, 'has_bookings' => false,
-                                  'has_upcoming_bookings' => false, 'has_past_bookings' => false, 'has_store_credit' => false),
-                 'orders' => array(), 'order_view_url' => '', 'bookings' => array('upcoming' => array(), 'past' => array()));
+                                  'has_upcoming_bookings' => false, 'has_past_bookings' => false, 'has_store_credit' => false,
+                                  'has_store_credit_cards' => false, 'has_subscriptions' => false),
+                 'orders' => array(), 'order_view_url' => '', 'bookings' => array('upcoming' => array(), 'past' => array()),
+                 'subscriptions' => array(), 'store_credit' => array('balance_info' => '', 'cards' => array()));
     if (!$logged_in) return $out;
 
     $links['__profile_url']           = _pg_acct_page_url(0, 'my account profile');
@@ -1963,15 +1970,23 @@ function _pg_my_account_extras($logged_in, $cfg = array())
         }
         // Balance, cards with the orders that spent them, and the points
         // conversion form, which comes back here with its notice.
-        $out['sections']['store_credit'] = pg_credit_account_section_html(
-            pg_credit_account_view((int)USER_ID, _pg_acct_page_url(0, 'view order'), time()));
+        // The section and the store credit lists read the same view.
+        $credit = pg_credit_account_view((int)USER_ID, _pg_acct_page_url(0, 'view order'), time());
+        $out['sections']['store_credit'] = pg_credit_account_section_html($credit);
         $out['flags']['has_store_credit'] = ($out['sections']['store_credit'] !== '');
+        if ($out['flags']['has_store_credit']) {
+            $out['store_credit'] = array('balance_info' => (string)$credit['balance_info'], 'cards' => (array)$credit['cards']);
+            $out['sections']['store_credit_convert'] = pg_credit_account_convert_html($credit['convert']);
+            $out['flags']['has_store_credit_cards'] = !empty($credit['cards']);
+        }
         // The actions post back to the page the member is on.
-        $out['sections']['subscriptions'] = pg_subscription_customer_section_html(
+        $out['subscriptions'] = pg_subscription_customer_view_rows(
             pg_subscription_customer_rows((int)USER_ID),
             _pg_acct_software_path() . '/subscription_action.php',
             pg_safe_redirect_path(isset($_SERVER['REQUEST_URI']) ? strtok((string)$_SERVER['REQUEST_URI'], '?') : '', defined('PATH') ? PATH : '/'),
             isset($_SESSION['software']['token']) ? (string)$_SESSION['software']['token'] : '');
+        $out['sections']['subscriptions'] = pg_subscription_customer_view_html($out['subscriptions']);
+        $out['flags']['has_subscriptions'] = !empty($out['subscriptions']);
     }
     return $out;
 }
@@ -2009,8 +2024,11 @@ function pg_acct_order_history_html($rows, $linked, $totals)
  * The elements that take a my account section's place when the designer
  * opens it ("Convert to design elements"), the twin of _sdAccountPart():
  * the order history on the account.orders list, the bookings on the two
- * booking lists, in the markup and words the sections print. Empty for any
- * other section (subscriptions, store credit).
+ * booking lists, the subscriptions on account.subscriptions (each row's
+ * action forms drawn by the section's own builder, with the form token),
+ * the store credit on account.store_credit and its orders (the points
+ * conversion form stays the section's own, store_credit_convert), in the
+ * markup and words the sections print. Empty for any other section.
  *
  * @param string $section
  * @return array tree nodes
@@ -2074,6 +2092,79 @@ function pg_acct_part($section)
             $part[] = pg_sw_part_el('div', 'list-group pg-sw-bookings', $heading, $flag, array($list('account.' . $key . '_bookings', array($item))));
         }
         return $part;
+    }
+    $tones = function ($cls, $token, $tone_token, $list) use ($bound, $when) {
+        $out = array();
+        foreach ($list as $tone) {
+            $out[] = $bound('span', 'badge text-bg-' . $tone . ' ' . $cls, lang('Status'), $token, $when($tone_token, 'eq', $tone));
+        }
+        return $out;
+    };
+    if ($section === 'subscriptions') {
+        $item = pg_sw_part_el('div', 'list-group-item', lang('Subscription'), array(), array(
+            pg_sw_part_el('div', 'd-flex flex-wrap justify-content-between align-items-center gap-2', lang('Heading'), array(), array(
+                $bound('span', 'fw-semibold', lang('Product'), '__subscription_product'),
+                $bound('span', '', lang('Amount'), '__subscription_amount'),
+            )),
+            pg_sw_part_el('div', 'small text-body-secondary', lang('Details'), array(), array_merge(
+                $tones('me-2', '__subscription_status_label', '__subscription_tone', array('success', 'warning', 'secondary')),
+                array(
+                    $bound('span', 'me-2', lang('Next charge or the last day'), '__subscription_next', $when('__subscription_next', 'not_empty')),
+                    $bound('span', 'me-2', lang('Price change notice'), '__subscription_price', $when('__subscription_price', 'not_empty')),
+                    $bound('span', 'me-2', lang('Card'), '__subscription_card', $when('__subscription_card', 'not_empty')),
+                    $bound('span', '', lang('Last event'), '__subscription_event', $when('__subscription_event', 'not_empty')),
+                ))),
+            pg_sw_part_el('div', 'mt-2', lang('Confirm the payment'), $when('__subscription_confirm_url', 'not_empty'), array(
+                pg_sw_part_el('a', 'btn btn-sm btn-warning', lang('Confirm the payment'), array('text' => lang('Confirm the payment'), 'href' => '#',
+                    '_bindings' => array('href' => '__subscription_confirm_url'), '_attrs' => array(array('name' => 'rel', 'value' => 'noopener noreferrer')))),
+            )),
+            // The forms are the section's own: they post with the form token.
+            $bound('div', 'd-flex flex-wrap gap-2 mt-2', lang('Pause, resume, cancel and card update forms'), '__subscription_actions_html',
+                $when('__subscription_has_actions', 'not_empty')),
+        ));
+        return array(pg_sw_part_el('div', 'list-group pg-sw-subscriptions', lang('Subscriptions of the member'),
+            array('_bindings' => array('eo_visible_if' => 'has_subscriptions')), array($list('account.subscriptions', array($item)))));
+    }
+    if ($section === 'store_credit') {
+        $sentence = function ($tag, $class, $name, $text, $token, $value_class = '', $props = array()) {
+            return pg_sw_part_el($tag, $class, $name, array_merge(array('text' => $text, '_sentence' => true), $props), array(
+                pg_sw_part_el('span', $value_class, lang('Value'), array('_bindings' => array('text' => $token))),
+            ));
+        };
+        $use = pg_sw_part_el('li', '', lang('Order'), array(), array(
+            pg_sw_part_el('a', '', lang('Order number'), array_merge_recursive(array('text' => '#{var:1}', '_sentence' => true, 'href' => '#',
+                '_bindings' => array('href' => '__credit_use_order_url')), $when('__credit_use_order_url', 'not_empty')), array(
+                pg_sw_part_el('span', '', lang('Value'), array('_bindings' => array('text' => '__credit_use_order_no'))),
+            )),
+            $sentence('span', '', lang('Order number'), '#{var:1}', '__credit_use_order_no', '', $when('__credit_use_order_url', 'empty')),
+            $bound('span', 'text-body-secondary', lang('Order date'), '__credit_use_date'),
+            $sentence('span', '', lang('Amount spent'), '−{var:1}', '__credit_use_amount'),
+        ));
+        $card = pg_sw_part_el('div', 'list-group-item', lang('Card'), array(), array(
+            pg_sw_part_el('div', 'd-flex justify-content-between align-items-start gap-2', lang('Heading'), array(), array(
+                pg_sw_part_el('span', '', lang('Source'), array(), array_merge(
+                    array($bound('span', 'fw-semibold', lang('Source'), '__credit_kind_label')),
+                    $tones('ms-1', '__credit_state_label', '__credit_tone', array('success', 'secondary', 'warning')),
+                    array($bound('span', 'd-block small text-body-secondary text-break', lang('Reason'), '__credit_reason', $when('__credit_reason', 'not_empty')))
+                )),
+                pg_sw_part_el('span', 'text-end', lang('Balance'), array(), array(
+                    $bound('span', 'fw-semibold', lang('Balance'), '__credit_balance'),
+                    $sentence('span', 'd-block small text-body-secondary', lang('Amount'), lang('of {var:1}'), '__credit_amount'),
+                )),
+            )),
+            $sentence('div', 'small text-body-secondary', lang('Last day'), lang('Last day: {var:1}'), '__credit_last_day', '', $when('__credit_last_day', 'not_empty')),
+            pg_sw_part_el('ul', 'list-unstyled small mb-0 mt-1', lang('Orders that spent the card'), $when('__credit_has_uses', 'not_empty'), array(
+                $list('account.store_credit_uses', array($use)),
+            )),
+        ));
+        return array(pg_sw_part_el('div', 'pg-sw-store-credit', lang('Store credit'), array('_bindings' => array('eo_visible_if' => 'has_store_credit')), array(
+            $sentence('p', 'mb-3', lang('Balance'), lang('Balance') . ': {var:1}', '__store_credit_balance', 'fw-semibold'),
+            // The points conversion form is the section's own: it posts with the form token.
+            pg_sw_part_el('div', '', lang('Convert reward points'), array('_bindings' => array('section' => 'store_credit_convert'))),
+            pg_sw_part_el('div', 'list-group', lang('Store credit of the member'), array('_bindings' => array('eo_visible_if' => 'has_store_credit_cards')), array(
+                $list('account.store_credit', array($card)),
+            )),
+        )));
     }
     return array();
 }
