@@ -2457,6 +2457,7 @@
     "Sets the price": "Fiyatı belirler",
     "Sets the stock of a product, or moves it with +5 or -3. Shown to you, old and new, before it is written.": "Bir ürünün stoğunu belirler ya da +5, -3 ile artırıp azaltır. Yazılmadan önce eskisi ve yenisi size gösterilir.",
     "Sets these folders to 0777 and the files in them that refuse to 0666, so that both the web server and your FTP or file manager user can replace them. Folders that belong to another system user cannot be changed from here and are listed afterwards.": "Bu klasörleri 0777, içlerinde yazılamayan dosyaları 0666 yapar; böylece hem web sunucusu hem FTP / dosya yöneticisi kullanıcınız bunları değiştirebilir. Başka bir sistem kullanıcısına ait klasörler buradan değiştirilemez, sonrasında listelenir.",
+    "Sets your notifications of this channel: all, mentions or never. Without a word it says the one in force.": "Bu kanaldaki bildirimlerinizi ayarlar: hepsi, anma ya da hiç. Kelime yazılmazsa geçerli olanı söyler.",
     "Sets: {var:1}. Styles that load the same stylesheets and scripts in the same order, with the same theme file and collection, form a set and move as one Legacy design.": "Setler: {var:1}. Aynı stil dosyalarını ve betikleri aynı sırayla, aynı tema dosyası ve koleksiyonla yükleyen stiller bir set oluşturur ve tek bir Eski tasarım olarak taşınır.",
     "Setting": "Ayar",
     "Setting a quantity and adjusting it - reading is under Products": "Adet belirleme ve artırma/azaltma — okuması Ürünler altında",

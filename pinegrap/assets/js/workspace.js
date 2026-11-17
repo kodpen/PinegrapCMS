@@ -19141,6 +19141,38 @@
                     return;
                 }
 
+                // /leave: the menu's question as a card to the writer alone;
+                // only its button leaves, sending the line again confirmed.
+                if (result.command && result.command.type === 'leave_card') {
+                    var leaveCard = el('div', 'ws-ephemeral');
+                    var leaveRow = el('div', 'd-flex flex-wrap gap-2 mt-2');
+                    var leaveGo = button('pg-button pg-button-danger pg-button-sm', t('leave_channel'), 'bi-box-arrow-right');
+                    var leaveStay = button('pg-button pg-button-ghost pg-button-sm', t('cancel'));
+
+                    leaveCard.appendChild(el('div', '', t(result.command.private ? 'leave_private_confirm' : 'leave_confirm')));
+                    leaveGo.addEventListener('click', function () {
+                        leaveCard.remove();
+                        self.send({ confirm: 1, body: body });
+                    });
+                    leaveStay.addEventListener('click', function () { leaveCard.remove(); });
+                    leaveRow.appendChild(leaveGo);
+                    leaveRow.appendChild(leaveStay);
+                    leaveCard.appendChild(leaveRow);
+                    self.pane.appendChild(leaveCard);
+                    self.clearInput();
+                    self.scrollToEnd();
+                    return;
+                }
+
+                // Left through /leave's card: as the menu's item, the list
+                // without the channel and an empty centre.
+                if (result.command && result.command.type === 'left') {
+                    self.clearInput();
+                    self.reloadChannels(0);
+                    self.drawEmptyCenter();
+                    return;
+                }
+
                 if (result.command && result.command.type === 'ephemeral') {
                     var box = el('div', 'ws-ephemeral');
                     setHtml(box, result.command.html);
@@ -20288,6 +20320,12 @@
             // The states /update reads.
             if (source === 'healths') {
                 show(fixed(values.healths, 'bi-activity'));
+                return;
+            }
+
+            // The choices /notify reads.
+            if (source === 'notify') {
+                show(fixed(values.notify, 'bi-bell'));
                 return;
             }
 
