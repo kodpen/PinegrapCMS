@@ -373,6 +373,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-69.md: What does Create do on New campaign › E-mail? (owner, 2026-11-17, agent channel poll 116, message 7554)
 - decisions-made-product-69.md: Are the integration packages of the census wanted, and when? (owner, 2026-11-17, typed to the architect, agent channel message 7562)
 - decisions-made-product-69.md: How does the Page Design Studio's Options panel come out in a 240 px column? (owner, 2026-11-17, agent channel poll 117, message 7593)
+- decisions-made-product-69.md: Can a text or a vector move with an area chosen on a video? (owner, 2026-11-16, agent channel poll 110, message 7306)
 - decisions-made-product-7.md: Do international labels carry customs data? (#3408)
 - decisions-made-product-7.md: Can a merchant request a carrier pickup from the panel? (#3415)
 - decisions-made-product-7.md: Does ShipWorks record tracking numbers through the shipment write path? (#3443)
@@ -865,6 +866,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - ui/image-editor-clip-bar.md: A video clip's bar on the tracks (V3b): the filmstrip of several frames from a second decoder, the clip's sound as a waveform under the frames
 - ui/image-editor-clip-timeline.md: Editing clips on the tracks (V3): one row per source cut, trim, split, move, snapping, ripple, the length following the clips but never cutting another layer's motion (V3b)
 - ui/image-editor-eraser.md: The Design Canvas's eraser (Draw panel): pen strokes cut, shapes and paths masked (l.erase), locked layers kept, the mask on the stage, in a save and in the SVG, refits that keep it in place
+- ui/image-editor-follow.md: The Design Canvas's Follow (Animate tool): a layer moves with an area boxed on a video, by an own template-matching tracker in a worker; the method's numbers, its limits and how it was checked
 - ui/image-editor-import.md: Import in the Design Canvas's top bar (E31): from this computer or Files, a picture as a picture layer, an SVG as one svg layer with unique ids, Break apart, svg layers painted on a save's canvas
 - ui/image-editor-layers.md: The Design Canvas's layers and the Select tool: the layer box model, selection and handles, snapping, align, distribute, order, the layers list, keys, pasting a picture, and the overlay a save draws
 - ui/image-editor-menu.md: The Design Canvas's context menu: where it opens (right click, long press, Shift+F10, menu key), which items M.menuList() gives, the keys and focus, the long-press traps it fixes

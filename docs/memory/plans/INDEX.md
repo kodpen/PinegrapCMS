@@ -60,9 +60,6 @@
 - customer-value-features.md: Plan customer-value, features U1 to U15: what counts as an order, who is a customer, the one summary the general job rebuilds, the Customers report's figures, rights, the API
 - customer-value-steps.md: Plan customer-value, steps CV1 to CV4: the measured rebuild and the one summary, the Customers report screen, the group from a cell with the CSV and the API, close-out
 - customer-value.md: Plan (owner 2026-11-16, agent channel poll 82): a Customers report of repeat purchase, value per customer, cohorts and customer groups, read from a summary the general job rebuilds; steps CV1 to CV4
-- design-canvas-follow-features.md: Plan design-canvas-follow, features F1 to F16: where Follow is offered, the box, the frames read, the tracker's method and its limits, the keys written, progress, cancel, lost, the tests
-- design-canvas-follow-steps.md: Plan design-canvas-follow, steps FW1 to FW3: the tracker and its tests, the Follow command in the Animate tool, then the bar's button, the phone and the close-out
-- design-canvas-follow.md: Plan (owner 2026-11-16): Follow in the Design Canvas's Animate tool: a text, vector or other layer moves with an area chosen on a video, by a tracker of our own that writes plain keyframes; FW1 to FW3
 - design-template-bikeshop-design.md: Design of plans/design-template-bikeshop.md: the shipped features the Bike Shop template reuses, what it does not build, its look and Turkish words
 - design-template-bikeshop.md: Plan: the Bike Shop design template (pinegrap-bikeshop): bikes and parts catalog, repair and service requests, bike fitting, group rides calendar, news; small steps
 - design-template-own-looks-order.md: Order of the polishing round after Launch: every shipped template's family and pages steps, in which order, and where each template stands

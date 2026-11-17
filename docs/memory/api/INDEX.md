@@ -56,6 +56,7 @@
 - api-offers-create.md: POST /offers and POST /offers/{id}/duplicate through the offer editor's validate and save: body shape, refusals before the editor, key code 409, offer.* events
 - api-openapi-declarations.md: How a route and an object are declared for the OpenAPI document: returns, field schemas beside presenters, nested nullable objects, list item types, 201/204, the panel's loader, check_api_schema.php
 - api-openapi-nullable-fields.md: When an external API field is declared nullable (string? in the resource's *_schema()), what decides it, and the tests that guard it
+- api-openapi-oauth-scheme.md: The OpenAPI document's oauth2 security scheme: named only while the site's OAuth application exists, the site's own authorize and token addresses, the ceiling's scopes, why operations do not list it
 - api-order-money-fields.md: The external API's order totals, the gift card and instalment amounts, and payment_installment (PR #3842)
 - api-orders-create.md: POST /orders records a counter (local) sale through the counter screen's completion: lines, customer, payment, the checks before the write, dry run, Idempotency-Key, what it answers
 - api-orders-list.md: GET /orders: status comma list, sort placed_desc, modified_since on last_modified_timestamp, cursor marks, and the writers that move the stamp (pg_order_touch_sql(), PR #2258)
@@ -91,6 +92,7 @@
 - api-webhook-stock-events.md: pg_product_stock_changed(): rules, callers, quiet writers, the out_of_stock flag; panel writers announcing product.updated
 - api-webhook-subscription-limit.md: How many event subscriptions one application may hold (50), the one function that holds the number, the 409 too_many_webhooks text, and why 50 subscribers of one event drain [decision: here]
 - application-access-keys.md: Application Access (api_settings.php): rows made and secrets issued through includes/api/keys.php, 24 h grace, keyless rows refused, rows of a higher-ranked owner locked, one OAuth app, per-app logs [decision: here]
+- automation-contract.md: pg_automation_contract(), the triggers, actions and searches an automation platform app is written from; its scopes, the test that holds it, what was left out
 - channel-api-differences.md: Where a /workspace/ route for a channel or its agents still differs from the panel action it mirrors: who may call it, what it lacks, the function it calls
 - channel-api-not-built.md: What of channels and their agents has no API route, on purpose or by its nature (comparison 2026-11-15): private channel opened by an admin, templates, guest links, settings cards [decision: here]
 - claude-connector-listing.md: A connector listing in Claude's directory for a server whose address is each customer's own, as Anthropic's pages state it (read 2026-11-17): the URL pattern, Verified only, sign-in, the install link [decision: here]
