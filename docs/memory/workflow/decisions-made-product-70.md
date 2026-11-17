@@ -1,6 +1,6 @@
 ---
 name: decisions-made-product-70
-description: Decisions list, product part 70 (2026-11-17): seven looks accepted in the agent channel; the Translations group is "Görseller", the hub screen is Connections, no platform names before the apps
+description: Decisions list, product part 70 (2026-11-17): nine looks accepted in the agent channel; the Translations group is "Görseller", the hub screen is Connections, no platform names before the apps
 ---
 
 ## Where are the rules and the earlier parts?
@@ -30,5 +30,11 @@ description: Decisions list, product part 70 (2026-11-17): seven looks accepted 
 
 ## Are the flow canvas's records box and the e-mail box's contact group accepted? (owner, 2026-11-17, agent channel poll 126, message 8042)
 - "Evet, böyle çıksın" to the two forms as shown (DG3 #10176): the box "Read the records of a list" and the e-mail box's recipient "A contact group".
+
+## Is the designer's Prototype view accepted? (owner, 2026-11-17, agent channel poll 119, message 7680)
+- "Evet, böyle çıksın" to the seven frames (PV10 #10101): an arrow leaves its link's own mark, a page that is not selected shows no detail and only the selected page's arrows are drawn, a link is joined by dragging its mark onto a page, L opens the target menu; the link list at the right stays.
+
+## Is the "Connect to Claude" button of the OAuth connection guide accepted? (owner, 2026-11-17, agent channel poll 122, message 7790)
+- "Evet, böyle çıksın" to the button as shown (CB4a #10130): at the top of the guide, above the MCP server address; on a site without https one line stands in its place.
 
 Related: docs/memory/workflow/decisions-made.md, docs/memory/workflow/decisions-made-product-69.md
