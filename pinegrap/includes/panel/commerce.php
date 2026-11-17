@@ -20,6 +20,8 @@
  *                                ones
  *   get_cross_sell_for_product   cross-sell items for one product,
  *                                same-group fallback
+ *   get_quantity_prices_for_product  a catalog detail widget's "Quantity
+ *                                prices" box drawn for one variant
  *   get_delivery_date            the delivery date of a shipping method
  *   get_product                  one product, for the storefront
  *   get_shipping_methods         the shipping methods and their rates for an
@@ -527,6 +529,22 @@ function pg_panel_get_cross_sell_for_product($request, $action)
         ? _civ_get_cross_sell_items($_x_pid, $_x_detail, $_x_count)
         : array();
     echo encode_json(array('status' => 'success', 'items' => $_x_items));
+    exit();
+}
+
+// The "Quantity prices" box of a catalog detail widget drawn for the variant
+// the visitor picked, for pg_civ_variants.js: product[id] and widget_id;
+// html is '' when the variant has no quantity price.
+function pg_panel_get_quantity_prices_for_product($request, $action)
+{
+    $product_id = isset($request['product']['id']) && is_scalar($request['product']['id']) ? (int)$request['product']['id'] : 0;
+    $widget_id  = isset($request['widget_id']) && is_scalar($request['widget_id']) ? (int)$request['widget_id'] : 0;
+    if (($product_id <= 0) || ($widget_id <= 0)) {
+        echo encode_json(array('status' => 'error', 'message' => lang('Product is required.')));
+        exit();
+    }
+    $html = function_exists('_civ_qty_prices_part_html') ? _civ_qty_prices_part_html($widget_id, $product_id) : '';
+    echo encode_json(array('status' => 'success', 'html' => $html));
     exit();
 }
 
