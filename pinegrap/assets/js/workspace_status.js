@@ -282,7 +282,9 @@
             var textRow = el('div', 'mb-5');
             textRow.appendChild(el('div', 'form-label', t('st_text')));
             textRow.appendChild(wrap);
-            textRow.appendChild(el('div', 'form-text', t('st_text_help')));
+            // The typed text is the person's own, not the figures' draft:
+            // only the tags are explained then.
+            textRow.appendChild(el('div', 'form-text', t((fill && fill.text) ? 'st_text_help_own' : 'st_text_help')));
             body.appendChild(textRow);
 
             // Pinegrap AI, only where it may read the channel.

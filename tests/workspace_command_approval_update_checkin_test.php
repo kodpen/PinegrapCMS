@@ -103,7 +103,7 @@ function test_workspace_command_update_reads_the_states()
 	}
 
 	pg_assert_same(array_keys(ws_status_healths()), array_map('ws_command_health_word', $en), 'every state, in the form\'s order');
-	pg_assert_same(lang('On track'), ws_command_suggestions('en')['healths'][0]['meta'], 'with the form\'s label');
+	pg_assert_same(array('', '', ''), array_column(ws_command_suggestions('tr')['healths'], 'meta'), 'the word is not said twice');
 	pg_assert_true(in_array('health', ws_command_argument_kinds(), true));
 }
 
@@ -238,4 +238,6 @@ function test_workspace_command_forms_take_the_fill()
 	pg_assert_contains('function form(view, h, fill, done)', $status);
 	pg_assert_contains('function checkinForm(view, h, fill, done)', $status);
 	pg_assert_contains("(fill && fill.question) || config.question || ''", $status);
+	pg_assert_contains("t((fill && fill.text) ? 'st_text_help_own' : 'st_text_help')", $status, 'typed text in place of the draft: no word of the figures');
+	pg_assert_same(lang('@ and # tags work here.'), ws_status_js_strings()['st_text_help_own'], 'only the tags are explained');
 }

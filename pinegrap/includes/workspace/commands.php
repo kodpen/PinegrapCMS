@@ -2606,8 +2606,8 @@ function ws_command_health_word($word)
 }
 
 /**
- * The state words the argument popup offers, in the screen's language,
- * each with the state's label. Pure.
+ * The state words the argument popup offers, in the screen's language.
+ * The word is the state's own name, so no label repeats it. Pure.
  *
  * @param bool $turkish
  * @return array[] value, meta, top
@@ -2617,11 +2617,10 @@ function ws_command_health_values($turkish)
     $words = $turkish
         ? array('on_track' => 'yolunda', 'at_risk' => 'riskte', 'off_track' => 'gecikti')
         : array('on_track' => 'on-track', 'at_risk' => 'at-risk', 'off_track' => 'off-track');
-    $labels = function_exists('ws_status_healths') ? ws_status_healths() : array();
     $out = array();
 
-    foreach ($words as $key => $word) {
-        $out[] = array('value' => $word, 'meta' => (string) ($labels[$key] ?? ''), 'top' => true);
+    foreach ($words as $word) {
+        $out[] = array('value' => $word, 'meta' => '', 'top' => true);
     }
 
     return $out;

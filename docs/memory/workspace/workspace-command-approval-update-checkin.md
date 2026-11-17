@@ -11,8 +11,8 @@ description: /approval (/onay), /update (/güncelleme) and /checkin (CC4, #10228
 
 ## What does /update (/güncelleme, /guncelleme) do?
 - `/güncelleme riskte Tedarikçi gecikti`: a status update through `ws_status_post()`, as the "Status update" form posts one. The state first, then the text (may be empty, as the form allows).
-- States (`ws_command_health_word()`): yolunda, riskte, riskli, gecikti, gecikmede; on-track, at-risk, off-track (also without the hyphen, or as two words "at risk"). The argument popup offers `ws_command_suggestions()['healths']` (`ws_command_health_values()`): yolunda, riskte, gecikti on a Turkish screen, on-track, at-risk, off-track on any other, each with the form's label. Argument kind `health`, source `healths`.
-- No state: answer `status_form` (`fill`: health '', text), drawn by `PGWsStatus.form(view, h, fill, done)` (workspace_status.js): the figures as always, the typed text in place of the draft, the suggested state chosen.
+- States (`ws_command_health_word()`): yolunda, riskte, riskli, gecikti, gecikmede; on-track, at-risk, off-track (also without the hyphen, or as two words "at risk"). The argument popup offers `ws_command_suggestions()['healths']` (`ws_command_health_values()`): yolunda, riskte, gecikti on a Turkish screen, on-track, at-risk, off-track on any other, with no label repeating the word. Argument kind `health`, source `healths`.
+- No state: answer `status_form` (`fill`: health '', text), drawn by `PGWsStatus.form(view, h, fill, done)` (workspace_status.js): the figures as always, the typed text in place of the draft and its help only the tags sentence (`st_text_help_own`), the suggested state chosen.
 - Live line: "Will post a status update: At risk · “text”" with `ws_status_post_check()`'s refusals, or "Will open Status update: …".
 
 ## What does /checkin do?
