@@ -1,6 +1,6 @@
 ---
 name: workspace-meeting-link-screen
-description: The Workspace screen My meeting link (PR #PRNUM): who sees it, link with Copy and QR, one short address, the meeting address, services with a deposit one marked
+description: The Workspace screen My meeting link (PR #10147): who sees it, link with Copy and QR, one short address, the meeting address, services with a deposit one marked
 module: booking_link_screen
 ---
 
