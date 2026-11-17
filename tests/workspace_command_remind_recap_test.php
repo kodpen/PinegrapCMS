@@ -87,6 +87,20 @@ function test_workspace_command_remind_plan_has_the_forms_reminder()
 	pg_assert_same(strtotime('2026-11-18 10:00:00'), $clean['starts_at'], 'starts at 10:00');
 	pg_assert_same(strtotime('2026-11-18 11:00:00'), $clean['ends_at'], 'an hour, as the form');
 	pg_assert_same($clean['starts_at'], $clean['remind_at'], 'reminds at its start');
+	pg_assert_same(0, $clean['remind'], 'a stored lead of 0 minutes, not an empty reminder');
+}
+
+// My calendar's own New plan keeps "No reminder": only a filled drawer that
+// names a reminder (/remind's) starts on one.
+function test_workspace_command_remind_leaves_my_calendars_form_default()
+{
+	$source = str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_my_calendar.js'));
+
+	pg_assert_contains("plan ? plan.remind : (defaults.remind || '')", $source, 'the drawer starts on the reminder it is given, else none');
+	pg_assert_contains("plans.drawer(null, { start: (data && data.today) || h.cfg.today })", $source, 'New plan in the toolbar names no reminder');
+	pg_assert_contains("plans.drawer(null, { start: day.date })", $source, 'nor does New plan on a day');
+	pg_assert_same(1, substr_count($source, 'remind:'), 'the only remind key sent is the save\'s');
+	pg_assert_same('', array_keys(ws_personal_plan_js_strings()['remind_options']) === array(0, 15, 60, 1440) ? '' : 'changed', 'the form\'s reminders are as they were');
 }
 
 // Without a time the New plan form opens with what was typed; nothing is
