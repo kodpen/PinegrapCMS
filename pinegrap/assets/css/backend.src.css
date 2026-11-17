@@ -31482,6 +31482,24 @@ button.pg-var-chip:focus-visible {
    them. On a phone the state moves under the text. */
 @layer custom {
 
+.connections-find {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.connections-find > form {
+  flex: 0 1 22rem;
+  min-width: 0;
+}
+.connections-search {
+  width: 100%;
+}
+.connections-find > .pg-list-seg {
+  min-width: 0;
+  max-width: 100%;
+}
 .connections-attention {
   border-color: color-mix(in srgb, var(--pg-tone-amber) 45%, transparent);
 }
@@ -31525,6 +31543,9 @@ button.pg-var-chip:focus-visible {
 }
 .connections-panel {
   padding: 16px 16px 20px 63px;
+}
+.connections-panel .list-group-item {
+  background: none;
 }
 
 @media (max-width: 575.98px) {

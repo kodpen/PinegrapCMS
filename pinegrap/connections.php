@@ -476,10 +476,10 @@ function connections_provider_panel($provider_key, $provider, $app, $accounts, $
 				</div>
 				<div class="d-flex flex-wrap gap-3 mt-3 ms-7 ps-3">
 					' . (($account['status'] === 'reauth')
-						? '<button type="button" class="pg-button pg-button-sm connections-connect"
+						? '<button type="button" class="pg-button pg-button-sm pg-button-quiet connections-connect"
 							data-provider="' . h($provider_key) . '" data-purpose="' . h($connect_purpose) . '" data-connection="' . $account['id'] . '"' . ($ready ? '' : ' disabled') . '>
 							<i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . h(lang('Connect again')) . '</button>'
-						: '<button type="button" class="pg-button pg-button-sm connections-action"
+						: '<button type="button" class="pg-button pg-button-sm pg-button-quiet connections-action"
 							data-action="check" data-id="' . $account['id'] . '">
 							<i class="bi bi-activity me-1" aria-hidden="true"></i>' . h(lang('Check')) . '</button>') . '
 					<button type="button" class="pg-button pg-button-sm pg-button-danger connections-action"
@@ -592,7 +592,7 @@ function connections_provider_panel($provider_key, $provider, $app, $accounts, $
 				</div>
 			</div>
 			<div class="d-flex flex-wrap align-items-center gap-3 mt-5">
-				<button type="submit" name="submit_save" class="pg-button pg-button-sm"' . ($can_seal ? '' : ' disabled') . '>' . h(lang('Save')) . '</button>
+				<button type="submit" name="submit_save" class="pg-button pg-button-sm pg-button-quiet"' . ($can_seal ? '' : ' disabled') . '>' . h(lang('Save')) . '</button>
 				<a class="pg-button pg-button-sm pg-button-quiet" href="' . h($provider['console_url']) . '" target="_blank" rel="noopener">
 					<i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Open the {var:1} console', 'vars' => $provider['label']))) . '</a>
 				' . ($can_fall_back
@@ -664,7 +664,7 @@ foreach ($facts['accounts'] as $account) {
 			</div>
 			<div class="connections-row-side">
 				' . (($account['user_id'] === 0)
-					? '<button type="button" class="pg-button pg-button-sm connections-connect" data-provider="' . h($account['provider']) . '"
+					? '<button type="button" class="pg-button pg-button-sm pg-button-quiet connections-connect" data-provider="' . h($account['provider']) . '"
 						data-purpose="' . h(!empty($provider['connect_purpose']) ? $provider['connect_purpose'] : 'account') . '" data-connection="' . $account['id'] . '"'
 						. ((pg_connect_app_ready($provider_apps[$account['provider']]) && $can_seal) ? '' : ' disabled') . '>' . h(lang('Connect again')) . '</button>'
 					: '<span class="pg-text-meta">' . h(lang('A person\'s own account: they connect it again.')) . '</span>') . '
@@ -685,7 +685,8 @@ foreach ($order as $group_key => $ids) {
 		$states[] = $rows[$id]['state'];
 	}
 
-	$fold_at = $folding ? pg_connections_screen_fold_at($states) : count($ids);
+	// The providers are the screen's own rows and never fold.
+	$fold_at = ($folding && ($group_key !== 'providers')) ? pg_connections_screen_fold_at($states) : count($ids);
 	$group_rows = '';
 
 	foreach ($ids as $index => $id) {
@@ -754,7 +755,7 @@ if ($groups_html === '') {
 				? lang(array('string' => 'No service matches “{var:1}”.', 'vars' => $query))
 				: lang('No service is in this state.')) . '</p>
 			<p class="pg-text-2">' . h(lang('The search looks in the names, groups, uses and places of the services.')) . '</p>
-			<a class="pg-button pg-button-sm" href="connections.php">' . h(lang('Clear search')) . '</a>
+			<a class="pg-button pg-button-sm pg-button-quiet" href="connections.php">' . h(lang('Clear search')) . '</a>
 		</div>';
 }
 
@@ -775,7 +776,7 @@ foreach (array('' => lang('All'), 'attention' => lang('Needs attention'), 'conne
 $search_form = '
 	<form method="get" action="connections.php" class="disable_shortcut" role="search">
 		' . (($filter !== '') ? '<input type="hidden" name="state" value="' . h($filter) . '">' : '') . '
-		<label class="form-control form-control-sm form-adorn rounded-pill pg-toolbar-search">
+		<label class="form-control form-control-sm form-adorn rounded-pill pg-toolbar-search connections-search">
 			<span class="form-adorn-text" aria-hidden="true"><i class="bi bi-search"></i></span>
 			<input type="search" class="form-ghost" name="q" value="' . h($query) . '" maxlength="100"
 				placeholder="' . h(lang('Search for a service, group or use')) . '" aria-label="' . h(lang('Search for a service, group or use')) . '">
@@ -793,7 +794,7 @@ $liveform->remove_form();
 // No save bar: each provider saves its own application through its own form.
 echo pg_page_shell(array(
 	'title'               => lang('Connections'),
-	'extra classes'       => 'pg-measure-edit',
+	'extra classes'       => 'pg-measure-edit pg-measure-single',
 	'icon'                => 'settings',
 	'heading'             => lang('Connections'),
 	'heading_description' => lang('The outside services the site works with: what is connected, what stopped, and the one place of each one\'s settings.'),
@@ -805,10 +806,12 @@ echo pg_page_shell(array(
 
 <main id="content" class="container-fluid">
 	' . pg_screen_toolbar(array(
-		'search' => $search_form,
-		'view'   => '<div class="pg-seg pg-list-seg" role="group" aria-label="' . h(lang('Filter by state')) . '">' . $segments . '</div>',
+		'grow' => '<div class="connections-find">' . $search_form
+			. '<div class="pg-seg pg-list-seg" role="group" aria-label="' . h(lang('Filter by state')) . '">' . $segments . '</div></div>',
 	), array('label' => lang('Connections'))) . '
-	<p class="pg-text-meta mb-5">' . h(lang(array('string' => '{var:1} services whose state cannot be read are listed only under All.', 'vars' => pg_format_number($counts['none'], 0)))) . '</p>
+	' . (($counts['none'] > 0)
+		? '<p class="pg-text-meta mb-5">' . h(lang(array('string' => '{var:1} services whose state cannot be read are listed only under All.', 'vars' => pg_format_number($counts['none'], 0)))) . '</p>'
+		: '') . '
 
 	<div class="row"><div class="col-12">
 		' . $liveform_messages . '
@@ -818,8 +821,8 @@ echo pg_page_shell(array(
 	</div></div>
 
 	<div class="row g-5">
-		<div class="col-12 lg:col-8 order-1">
-			' . ((($attention_rows !== '') && ($filter !== 'connected') && ($filter !== 'not_connected'))
+		<div class="col-12">
+			' . ((($attention_rows !== '') && ($query === '') && ($filter !== 'connected') && ($filter !== 'not_connected'))
 				? '<section class="pg-card connections-attention p-5 mb-6" aria-labelledby="connections-attention-title">
 					<h2 class="pg-title-section mb-1" id="connections-attention-title">' . h(lang('Needs attention')) . '<span class="pg-count">' . (int) $attention_count . '</span></h2>
 					<p class="pg-card-sub mb-4">' . h(lang('These connections stopped working; the features that use them wait until they are connected again.')) . '</p>
@@ -853,14 +856,19 @@ echo pg_page_shell(array(
 
 	// The panel a refused save, an address (#connections-google) or the
 	// return from a provider names is open when the screen opens.
-	document.querySelectorAll(".connections-toggle").forEach(function (toggle) {
-		var id = toggle.getAttribute("aria-controls");
-		var panel = document.getElementById(id);
-		if (panel.dataset.open === "1" || window.location.hash === "#" + id) {
-			toggle.closest(".connections-provider").hidden = false;
-			openPanel(toggle, true);
-		}
-	});
+	var openNamed = function () {
+		document.querySelectorAll(".connections-toggle").forEach(function (toggle) {
+			var id = toggle.getAttribute("aria-controls");
+			var panel = document.getElementById(id);
+			if (panel.dataset.open === "1" || window.location.hash === "#" + id) {
+				toggle.closest(".connections-provider").hidden = false;
+				openPanel(toggle, true);
+			}
+		});
+	};
+
+	openNamed();
+	window.addEventListener("hashchange", openNamed);
 
 	// Buttons post through forms outside the panels, so that no panel holds
 	// a form inside another and each destructive one asks first.
