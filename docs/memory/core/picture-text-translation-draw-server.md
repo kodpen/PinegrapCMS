@@ -5,9 +5,9 @@ module: picture_translation
 ---
 
 ## What does the server check and keep?
-- Action `picture_language_draw` (`pg_picture_tr_draw_answer()`): `pg_image_editor_file()` first (edit right on the folder, Recycle Bin, ERP), then `pg_picture_tr_draw_refusal()`: a target language, not right to left, a live canvas, every text translated (`pg_picture_tr_untranslated()`), and the stamp equal to now.
+- Action `picture_language_draw` (`pg_picture_tr_draw_answer()`): `pg_image_editor_file()` first (edit right on the folder, Recycle Bin, ERP), then `pg_picture_tr_draw_refusal()`: a target language, not right to left, a live document (`pg_picture_tr_live_doc()`: a canvas, or a photo whose base row is still there), every text translated (`pg_picture_tr_untranslated()`), and the stamp equal to now.
 - The stamp (`pg_picture_tr_stamp()`) is file id, language, doc hash and the words: another file's or language's picture, a changed document or changed translations get 409 "This picture or its translations changed meanwhile. Open the Languages list again."
-- The PNG must be the artboard's size. First draw: a new `files` row in the source's folder named `<stem>-<lang>.png` (made unique); a later draw writes over that row, id and name kept. The `file_translation` row is upserted: `picture_file_id`, state 1, `fit`, `doc_hash`, `drawn_at`, `drawn_by`. Then `pg_page_cache_mark_dirty()`.
+- A canvas's PNG must be the artboard's size; a photo's picture is drawn on its base (`core/picture-text-translation-draw-photo.md`). First draw: a new `files` row in the source's folder named `<stem>-<lang>.<ext>` (made unique); a later draw writes over that row, id and name kept, unless its format changed (a new row, the old one deleted). The `file_translation` row is upserted: `picture_file_id`, state 1, `fit`, `doc_hash`, `drawn_at`, `drawn_by`. Then `pg_page_cache_mark_dirty()`.
 
 ## Where is a language's picture hidden?
 - `pg_picture_tr_hidden_sql()` in both File Manager lists (`includes/explorer/handle_list.php`), the file pickers (`pg_picker_where_for()`) and the Design Canvas's pictures from Files (`pg_image_editor_action_sticker_files()`); Where used answers "could not find the file" for one (`pg_picture_tr_is_picture()`).
