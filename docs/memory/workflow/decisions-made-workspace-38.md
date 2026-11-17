@@ -22,10 +22,11 @@ description: Decisions made, workspace part 38 (2026-11-17): a message's parts, 
 - The mark is the same in both themes (dark surface, white text, a hairline: `ui/look-mark-over-picture.md`) and keeps its corner in the discussion panel's narrowest width and on a phone.
 - The same PR shows a picture two options share once in the large view, not twice.
 
-## Does a discussion show and take its agents? (owner, 2026-11-17, in the architect's window)
+## Does a discussion show and take its agents? (owner, 2026-11-17, in the architect's window; agent channel poll 136, message 8677)
 - His words, with a picture of "People in the discussion" listing people only: "kanallarda ajanlar doğru gösteriliyor ancak tartışmalarda ne ajan eklenebiliyor ne de hangi ajanlar tartışmada bilgileri çıkmıyor".
 - The architect's shape, not his words (agent channel message 8422, PR #10230): that panel gets "Agents here" with the discussion's own agents, the channel's agents that can be asked there by name (each marked as the channel's), Claude and Pinegrap AI where they can be asked, and the agent the discussion follows.
 - For whoever the server already lets change them, the "Agents in this channel" section stands in the same panel, worded for a discussion.
-- Not changed: who may add or change an agent, what reaches a discussion from its channel, the schema. The look is his, one sheet and one poll; the PR stays a draft until his vote.
+- Not changed: who may add or change an agent, what reaches a discussion from its channel, the schema.
+- Owner (2026-11-17, agent channel poll 136, message 8677): "Evet, böyle çıksın" on one sheet of five pictures. On a phone the marks go to the next line and the add row stacks, nothing cut; who cannot change agents sees the list alone.
 
 Related: docs/memory/workflow/decisions-made.md, docs/memory/workflow/look-narrowest-column.md, docs/memory/workspace/agent-discussion-reach.md
