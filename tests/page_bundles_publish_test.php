@@ -352,3 +352,26 @@ function test_page_bundle_publish_dialog_waits_for_choices()
 	pg_assert_contains('button.disabled = open', $script, 'then Publish is enabled');
 	pg_assert_contains('data-bs-dismiss="dialog" autofocus>', pg_test_function_source('pg_page_bundle_take_back_dialog'), 'the take-back dialog too');
 }
+
+// A failed publish takes back a replaced page with the revision its write
+// stored: the row kept for the take-back gets the write's revision before.
+function test_page_bundle_item_written_keeps_revision_before()
+{
+	$item = array('id' => 2, 'live_page_id' => 5, 'revision_before' => 0, 'written_state' => '', 'live_name' => 'home');
+	$done = array('ok' => true, 'error' => '', 'revision_before' => 7, 'written_state' => 'abc');
+	$after = pg_page_bundle_item_written($item, $done);
+
+	pg_assert_same(7, $after['revision_before'], 'the revision before the write');
+	pg_assert_same('abc', $after['written_state'], 'the state written');
+	pg_assert_same('home', $after['live_name'], 'the rest of the row stays');
+
+	$failed = pg_page_bundle_item_written($item, array('ok' => false, 'error' => 'x'));
+	pg_assert_same(0, $failed['revision_before'], 'a failed write changes nothing');
+
+	$publish = pg_test_function_source('pg_page_bundle_publish');
+	pg_assert_contains('use (&$items', $publish, 'the write updates the rows the take-back reads');
+	pg_assert_contains('pg_page_bundle_item_written(', $publish, 'through the written row');
+
+	$write = pg_test_function_source('pg_page_bundle_write_item');
+	pg_assert_contains("'revision_before' => \$before", $write, 'a replacement returns the revision it stored');
+}
