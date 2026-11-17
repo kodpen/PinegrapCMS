@@ -69,6 +69,7 @@ description: Generated from the module field of the memory files: each includes/
 - `common_regions`: [[api-design-dialogs-regions]]
 - `config_text`: [[config-table-no-varchar]], [[job-pass-time-claim]]
 - `connections_registry`: [[connections-registry]], [[connections-registry-rows]]
+- `connections_screen`: [[connections-screen-layout]]
 - `consent`: [[fn-module-errors-mail-backup-consent]]
 - `contact_list`: [[contact-delete-notice-groups]], [[contact-list-filters]], [[contact-list-names]], [[contact-merge-role]], [[contact-user-list-view-kept]], [[panel-image-alt]]
 - `contact_list_edit`: [[list-table-quick-edit-contacts]]
