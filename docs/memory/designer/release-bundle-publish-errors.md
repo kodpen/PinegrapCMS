@@ -13,5 +13,5 @@ module: page_bundles
 - The page save (`pg_designer_save_page()`) runs its queries through `db()`, and a failed one called `output_error()`, which ended the request. The first page stayed live with the bundle's content, the next item stayed claimed `written` with no write, and Publish, Take back and removing the item all refused; only Delete worked (#10047).
 
 ## What is still not covered?
-- A fatal error or a timeout cannot be caught: the run stops where it is, with the same stuck state. Recovering such a bundle (giving back claimed items with no `written_state`, or taking back from `open`) is a behaviour choice not made yet.
+- A fatal error or a timeout cannot be caught: the run stops where it is, with the same stuck state. Recovering such a bundle (giving back claimed items with no `written_state`, or taking back from `open`) is #10158: the publish holds the bundle's named lock (`GET_LOCK`), and the job or the next action on the bundle that gets it without waiting finishes the dead run as a failure.
 - A save that fails part-way may have changed the page row before the failed query; the item is given back, the page is not restored.
