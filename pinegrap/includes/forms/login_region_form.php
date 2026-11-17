@@ -40,7 +40,7 @@ function pg_login_region_form_card($liveform, $defaults = false)
                                 </h2>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 md:col-6 my-3">
+                                        <div class="col-12 my-3">
                                             <label for="name" class="form-label">' . lang(array('string'=>'{var:1} Name','vars'=>lang('Login Region'))) . '</label>
                                             <div class="input-group">
                                                 <div class="input-group-text">' . h('<login>') . '</div>
