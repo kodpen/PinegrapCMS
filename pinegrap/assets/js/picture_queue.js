@@ -75,7 +75,7 @@
         items[i].status = status;
 
         if (pill) {
-            pill.className = 'pg-pill ' + TONES[status];
+            pill.className = 'pg-pill text-nowrap ' + TONES[status];
             pill.textContent = s[status] || status;
         }
 

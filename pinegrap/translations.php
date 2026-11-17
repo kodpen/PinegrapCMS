@@ -106,10 +106,9 @@ if (($group === 'pictures') && !empty($_GET['draw'])) {
         $queue_rows .= '<li class="pg-list-row" data-pq-row="1">
                 <span class="pg-icon-tile" aria-hidden="true"><i class="bi bi-image"></i></span>
                 <div class="pg-list-row-main">
-                    <div class="pg-list-row-head"><span class="pg-list-row-title">' . h($queue_item['name']) . '</span></div>
+                    <div class="pg-list-row-head"><span class="pg-list-row-title">' . h($queue_item['name']) . '</span><span class="pg-pill pg-tone-gray text-nowrap">' . lang('Waiting') . '</span></div>
                     <div class="pg-list-row-text"><span' . $text_lang($queue_item['language']) . '>' . h($queue_item['label']) . '</span> · ' . (($queue_item['state'] === 2) ? lang('Out of date') : lang('Not drawn yet')) . '<span class="d-block" data-pq-note="1" hidden></span></div>
                 </div>
-                <div class="pg-list-row-side"><span class="pg-pill pg-tone-gray">' . lang('Waiting') . '</span></div>
             </li>';
     }
 
@@ -142,7 +141,7 @@ if (($group === 'pictures') && !empty($_GET['draw'])) {
             <span class="pg-toolbar-grow pg-text-2 pg-tabular" id="pg_pq_left" role="status" aria-live="polite">' . ($queue ? h(str_replace('{n}', (string) count($queue), lang('{n} left'))) : lang('Nothing is waiting to be drawn.')) . '</span>
             <button type="button" class="pg-button pg-button-fill" id="pg_pq_stop"' . ($queue ? '' : ' hidden') . '>' . lang('Stop') . '</button>
         </div>
-        <section class="pg-card" aria-labelledby="pg_pq_title">
+        <section class="pg-card p-5" aria-labelledby="pg_pq_title">
             <h2 class="pg-title-section" id="pg_pq_title">' . lang('Waiting pictures') . '</h2>
             <p class="pg-card-sub">' . lang('Each language is drawn from the picture\'s last saved version once every one of its texts is translated. The pages in that language show it from then on.') . '</p>
             ' . ($queue ? '<ul class="list-unstyled mb-0">' . $queue_rows . '</ul>' : '<p class="pg-text-2 mb-0">' . lang('Nothing is waiting to be drawn.') . '</p>') . '
