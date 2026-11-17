@@ -322,7 +322,7 @@ function test_page_bundle_writes_pages_only()
 // B7: the checks run before a single write, the write and its take-back only after.
 function test_page_bundle_publish_checks_before_writes()
 {
-	$code = pg_test_function_source('pg_page_bundle_publish');
+	$code = pg_test_function_source('pg_page_bundle_publish_locked');
 	$plan = strpos($code, 'pg_page_bundle_publish_check(');
 	$run = strpos($code, 'pg_page_bundle_publish_run(');
 
@@ -368,7 +368,7 @@ function test_page_bundle_item_written_keeps_revision_before()
 	$failed = pg_page_bundle_item_written($item, array('ok' => false, 'error' => 'x'));
 	pg_assert_same(0, $failed['revision_before'], 'a failed write changes nothing');
 
-	pg_assert_contains('pg_page_bundle_publish_ops(', pg_test_function_source('pg_page_bundle_publish'), 'the publish runs the shared write and take-back');
+	pg_assert_contains('pg_page_bundle_publish_ops(', pg_test_function_source('pg_page_bundle_publish_locked'), 'the publish runs the shared write and take-back');
 
 	$write = pg_test_function_source('pg_page_bundle_write_item');
 	pg_assert_contains("'revision_before' => \$before", $write, 'a replacement returns the revision it stored');
@@ -486,7 +486,7 @@ function test_page_bundle_with_throwing_errors_restores()
 
 	pg_error_throws($before);
 
-	$publish = pg_test_function_source('pg_page_bundle_publish');
+	$publish = pg_test_function_source('pg_page_bundle_publish_locked');
 	pg_assert_contains('pg_page_bundle_with_throwing_errors(', $publish, 'the publish runs its writes so');
 
 	$write = pg_test_function_source('pg_page_bundle_write_item');
