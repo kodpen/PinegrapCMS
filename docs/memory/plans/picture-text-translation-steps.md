@@ -21,7 +21,7 @@ description: Plan picture-text-translation, steps PT1 to PT4b: the table and the
   - Tests: a picture no page showed neither counted nor sent; the counts by language; a job's scope.
   - Pictures to the architect: the group and its rows, 1440 and 390, light and dark.
 
-- PT4 (M) after PT2 and PT3: drawing a canvas picture ("New image") in the Design Canvas.
+- PT4 (M) Done (PR #10208): drawing a canvas picture ("New image") in the Design Canvas (`core/picture-text-translation-draw.md`).
   - A "Languages" list for a picture with words: each site language with its state (Not translated, Translated, Drawn, Out of date, Look by hand), "Draw" and "Draw all". The browser puts the language's words into the layers, fits each to its box, draws with the save's renderer and posts the picture; the server keeps it as the language's `files` row, sets the row drawn and marks the page cache (`platform/page-cache-background-writers.md`).
   - The language's rows are not listed by File Manager, the file pickers and "Where used".
   - Tests: the fit (70% floor, the mark); a post without the right refused; the picture of another file or language refused; the states after a draw.

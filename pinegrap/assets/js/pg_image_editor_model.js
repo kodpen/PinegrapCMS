@@ -2601,7 +2601,83 @@
         return d;
     }
 
+    // A canvas in another language: the smallest share of the source's text
+    // size a translation is drawn at.
+    var LANGUAGE_FLOOR = 0.7;
+
+    // How much a translated text (w1 x h1 at the source's size) shrinks to
+    // fit the source's box (w0 x h0): never grown, never under the floor;
+    // mark when it still does not fit there.
+    function languageFit(w0, h0, w1, h1) {
+        var scale = 1;
+
+        if ((w0 > 0) && (w1 > w0)) {
+            scale = Math.min(scale, w0 / w1);
+        }
+
+        if ((h0 > 0) && (h1 > h0)) {
+            scale = Math.min(scale, h0 / h1);
+        }
+
+        if (scale < LANGUAGE_FLOOR - 1e-9) {
+            return { scale: LANGUAGE_FLOOR, mark: true };
+        }
+
+        return { scale: Math.round(scale * 10000) / 10000, mark: false };
+    }
+
+    // A canvas document with a language's words in its layers (texts:
+    // [{ id, field, text }], text null where none is translated, which
+    // keeps the source's words). Answers the new document and, by layer id,
+    // a copy of each text layer as it was, to fit the new words to; null
+    // without a document.
+    function languageDoc(doc, texts) {
+        if (!doc || !Array.isArray(doc.layers)) {
+            return null;
+        }
+
+        var next = clone(doc), byId = {}, source = {};
+
+        (texts || []).forEach(function (t) {
+            if (t && (typeof t.text === 'string') && (t.text !== '')) {
+                byId[t.id + '\n' + t.field] = t.text;
+            }
+        });
+
+        next.layers.forEach(function (l) {
+            var field = (l.type === 'text') ? 'text' : ((l.type === 'sticker') ? 'label' : ''), key = l.id + '\n' + field;
+
+            if (!field || !byId.hasOwnProperty(key) || (byId[key] === l[field])) {
+                return;
+            }
+
+            if (field === 'text') {
+                source[l.id] = clone(l);
+            }
+
+            l[field] = byId[key];
+        });
+
+        return { doc: next, source: source };
+    }
+
+    // Whether a language may be drawn: every text translated into it, not
+    // right to left (a visitor sees the source picture there).
+    function languageDrawable(lang) {
+        return !!lang && !lang.rtl && (Number(lang.total) > 0) && (Number(lang.translated) >= Number(lang.total));
+    }
+
+    // The languages Draw all draws: translated or out of date, and drawable.
+    function languagesToDraw(list) {
+        return (list || []).filter(function (lang) {
+            return ((lang.state === 'translated') || (lang.state === 'out_of_date')) && languageDrawable(lang);
+        }).map(function (lang) {
+            return lang.code;
+        });
+    }
+
     var ARTBOARD = {
+        LANGUAGE_FLOOR: LANGUAGE_FLOOR, languageFit: languageFit, languageDoc: languageDoc, languageDrawable: languageDrawable, languagesToDraw: languagesToDraw,
         BOARD_PRESETS: BOARD_PRESETS, BOARD_BACKGROUNDS: BOARD_BACKGROUNDS, boardSide: boardSide, boardPreset: boardPreset,
         boardDrag: boardDrag, boardAnchored: boardAnchored, boardAround: boardAround, applyBoard: applyBoard,
         canvasBox: canvasBox, FRAME_OUT: FRAME_OUT, frameOutward: frameOutward, framePads: framePads, saveBox: saveBox,
