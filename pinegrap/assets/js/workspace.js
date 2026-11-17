@@ -20684,7 +20684,7 @@
             // Tasks and records from the search the # picker uses: only what
             // the person may see. A task is written as its number (T-42), a
             // record as its tag.
-            var type = { tasks: 'task', products: 'product', records: 'all' }[source];
+            var type = { tasks: 'task', products: 'product', orders: 'order', records: 'all' }[source];
 
             if (!type || ((type !== 'all') && !(BOOT.ref_types && BOOT.ref_types[type]))) {
                 self.closePicker();

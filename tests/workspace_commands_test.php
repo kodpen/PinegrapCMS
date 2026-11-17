@@ -202,14 +202,14 @@ function test_workspace_command_registry_holds_every_name_once()
 		return $entry['key'];
 	}, ws_commands(null));
 
-	pg_assert_same(array('task', 'assign', 'done', 'postpone', 'status', 'timer', 'schedule', 'away', 'meeting', 'decision', 'note', 'plan', 'remind', 'poll', 'recap', 'approval', 'update', 'checkin', 'price', 'stock', 'create', 'product', 'wake', 'agent_channel', 'notify', 'invite', 'leave', 'topic', 'search', 'memory', 'help'), $keys, 'the commands, in order, with no assistant set up');
+	pg_assert_same(array('task', 'assign', 'done', 'postpone', 'status', 'timer', 'schedule', 'away', 'meeting', 'decision', 'note', 'plan', 'remind', 'poll', 'recap', 'approval', 'update', 'checkin', 'price', 'stock', 'tracking', 'create', 'product', 'wake', 'agent_channel', 'notify', 'invite', 'leave', 'topic', 'search', 'memory', 'help'), $keys, 'the commands, in order, with no assistant set up');
 }
 
 // Every argument is typed with a known kind, says whether it may be left
 // out, and names a suggestion source the composer knows (or none).
 function test_workspace_command_registry_arguments_are_typed()
 {
-	$sources = array('', 'people', 'people_departments', 'tasks', 'records', 'products', 'dates', 'estimates', 'priorities', 'statuses', 'kinds', 'healths', 'notify');
+	$sources = array('', 'people', 'people_departments', 'tasks', 'records', 'products', 'orders', 'dates', 'estimates', 'priorities', 'statuses', 'kinds', 'healths', 'notify');
 
 	foreach (ws_commands(null) as $entry) {
 		pg_assert_true(is_string($entry['description']) && ($entry['description'] !== ''), '/' . $entry['key'] . ' has a description');
