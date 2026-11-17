@@ -1181,6 +1181,12 @@
             control.disabled = true;
 
             h.api('ws_mail_conversation', data).then(function () {
+                // The E-mails screen says the change was kept and asks its
+                // list again; a channel's card is only drawn again.
+                if (view.changed) {
+                    view.changed(data.status ? 'state_saved' : 'holder_saved');
+                }
+
                 view.sync();
             }).catch(function (error) {
                 control.disabled = false;
@@ -1539,6 +1545,7 @@
 
                     if (choice === 'cancel') {
                         h.toast(t('mail_remind_off'), 'success');
+                        refresh();
                         open(id);
 
                         return;
@@ -1654,6 +1661,10 @@
                 channel: { id: data.channel_id, members: data.members || [] },
                 sync: function () {
                     open(data.reply);
+                },
+                changed: function (key) {
+                    h.toast(w(key), 'success');
+                    refresh();
                 }
             };
             var answer = replyButton(h, 'btn btn-sm btn-outline theme-primary', data.reply_off, function () {
@@ -1814,6 +1825,30 @@
             }).catch(function (error) {
                 link.classList.remove('disabled');
                 link.removeAttribute('aria-disabled');
+                h.fail(error);
+            });
+        }
+
+        // After a change made in the pane (status, holder, a cancelled
+        // reminder) the list is asked again as the address filters it, its
+        // first page: a conversation that no longer matches leaves it, one
+        // that matches again comes back, the open one stays marked.
+        function refresh() {
+            var data = { whole: '1', conversation: String(current || 0) };
+
+            new URLSearchParams(window.location.search).forEach(function (value, key) {
+                if (key !== 'before' && key !== 'conversation') {
+                    data[key] = value;
+                }
+            });
+
+            h.api('ws_mail_rows', data).then(function (result) {
+                var list = root.querySelector('.ws-mail-list');
+
+                if (list && typeof result.list === 'string') {
+                    list.innerHTML = result.list;
+                }
+            }).catch(function (error) {
                 h.fail(error);
             });
         }
