@@ -146,6 +146,7 @@
 - mail-rules.md: A support box's incoming mail rules (IB11): one condition and one action, kept in the box's settings JSON, run at ingest on a new conversation, the list and Add rule on the Mailboxes card [decision: decisions-made-workspace-29.md]
 - mail-screen-pane-wrap.md: Long file names and addresses without spaces wrap inside a mail of the E-mails reading pane (text-break on each mail, #9009)
 - mail-screen-pane.md: The Workspace E-mails reading pane (mail_pane.php) and the per-person unread marks (mail_reads.php): the unread rule, the floor, where marks are written, the menu count
+- mail-screen-phone.md: Communication › Incoming e-mail below 768 px: the pane in the list's place, the toolbar folded while a mail is read, the scroll to the pane, the narrower paddings (#10082)
 - mail-send-later.md: Send later (IB6): a time on the New e-mail form and the reply drawer, send_state later and ws_mail_items.send_at, the job that hands due mail to the queue, Send now and Cancel, the step 11.0.207 [decision: decisions-made-product-55.md, decisions-made-schema-20.md]
 - mail-send-outcome.md: How the queue's outcome reaches a Workspace mail (ws_mail_send_outcome(), #8646): sent is final, only the current attempt fails it, the unwritten row id race, a deleted queue row
 - mail-send-scope.md: Sending Workspace e-mail in a person's name over the API and MCP: the workspace:mail_send scope, who holds it, the gate that refuses a key, the send tools, the log line [decision: here]

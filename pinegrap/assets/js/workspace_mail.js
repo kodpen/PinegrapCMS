@@ -1392,6 +1392,11 @@
             window.history.replaceState(window.history.state, '', url.toString());
         }
 
+        // The phone layout of the stylesheet: the pane in the list's place.
+        function phone() {
+            return !!(window.matchMedia && window.matchMedia('(max-width: 767.98px)').matches);
+        }
+
         function mark(row) {
             each('.ws-mail-row[aria-current]', function (node) {
                 node.removeAttribute('aria-current');
@@ -1794,6 +1799,12 @@
                 if (!again) {
                     pane.scrollTop = 0;
                     pane.querySelector('h2').focus();
+
+                    // On a phone the page itself scrolls: the mail starts at
+                    // the top of the screen, not where the list was.
+                    if (phone()) {
+                        root.scrollIntoView({ block: 'start' });
+                    }
                 } else if (keep) {
                     pane.querySelector('h2').focus({ preventScroll: true });
                 }

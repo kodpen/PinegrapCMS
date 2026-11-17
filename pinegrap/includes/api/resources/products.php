@@ -2203,7 +2203,7 @@ function api_price_history_entry_schema() {
 		'price'           => 'integer',
 		'currency'        => 'string',
 		'source'          => 'string',
-		'changed_at'      => 'string?',
+		'changed_at'      => 'datetime?',
 		'changed_at_unix' => 'integer'
 	);
 
@@ -2305,8 +2305,8 @@ function api_product_marketplace_schema() {
 		'remote_id'      => 'string?',
 		'status'         => 'string',
 		'last_error'     => 'string?',
-		'last_pushed_at' => 'string?',
-		'created_at'     => 'string?'
+		'last_pushed_at' => 'datetime?',
+		'created_at'     => 'datetime?'
 	);
 
 }
@@ -2352,7 +2352,7 @@ function api_product_schema() {
 		// '' in the column (the shop default) answers null.
 		'hs_code'           => 'string?',
 		'origin_country'    => 'string?',
-		'preorder_date'     => 'string?',
+		'preorder_date'     => 'date?',
 		'inventory'         => array(
 			'tracked'      => 'boolean',
 			'quantity'     => 'integer',
@@ -2364,7 +2364,7 @@ function api_product_schema() {
 			'count'   => 'integer'
 		),
 		'recycled'        => 'boolean',
-		'updated_at'      => 'string?',
+		'updated_at'      => 'datetime?',
 		'updated_at_unix' => 'integer',
 		'seo'             => 'Seo'
 	);

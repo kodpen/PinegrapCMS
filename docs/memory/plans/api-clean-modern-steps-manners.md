@@ -21,5 +21,5 @@ description: Steps AM7 to AM13 of plan api-clean-modern: HEAD, Location and the 
   - If it is still open when AM12 lands, AM13 closes without it and the question moves to `api/`.
 
 ## Which steps are for the pages and the end?
-- AM12 (M) `api_docs.php` and `integration.php/docs`: an opening "Conventions" section (credentials, the error envelope and `X-Request-Id`, paging, Idempotency-Key, dry run, ETag and `If-Match`, the rate limit headers, the POST twins, formats, language); real headings for sections, groups and endpoints (the panel page has none); one translated line saying the reference is in English.
+- AM12 (M) `api_docs.php` and `integration.php/docs`: an opening "Conventions" section (credentials, the error envelope and `X-Request-Id`, paging, Idempotency-Key, dry run, ETag and `If-Match`, the rate limit headers, the POST twins, formats, language); real headings for sections, groups and endpoints (the panel page has none); one translated line saying the reference is in English. Done (#10144): `api-docs-conventions.md`.
 - AM13 (S) Close-out: what changed into `api/`, how AM5's tool is run into `workflow/`, this plan and its three other files deleted.

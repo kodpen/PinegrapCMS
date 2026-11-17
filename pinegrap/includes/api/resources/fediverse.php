@@ -50,7 +50,7 @@ function api_fediverse_follower_schema() {
 		'name'        => 'string?',
 		'avatar'      => 'string?',
 		'server'      => 'string',
-		'followed_at' => 'string?'
+		'followed_at' => 'datetime?'
 	);
 
 }
@@ -86,8 +86,8 @@ function api_fediverse_delivery_schema() {
 		'server'          => 'string',
 		'state'           => 'string',
 		'attempts'        => 'integer',
-		'next_attempt_at' => 'string?',
-		'created_at'      => 'string?'
+		'next_attempt_at' => 'datetime?',
+		'created_at'      => 'datetime?'
 	);
 
 }

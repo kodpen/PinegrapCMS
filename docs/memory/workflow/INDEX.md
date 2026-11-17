@@ -183,6 +183,7 @@
 - dev-machine-testing.md: Testing on dev.pinegrap.com (the owner's PC): what may be written, the shared sign-in and page lock, the shared checkout, asking for a page as a visitor, logs and the job's heartbeat, browser traps
 - git-branches-and-shared-files.md: Branch policy (development vs main), who does git, commit author, the PR footer (pointer), shared files without conflicts, generated files a PR leaves out, API vs ERP files [decision: here]
 - github-rest-without-gh.md: GitHub from the owner's machine, where gh is not installed: the token from git credential fill, a REST helper, GraphQL for draft and ready, the ready label, reading CI, mergeable_state unstable
+- held-file-bundled-sources.md: In a bundled script or stylesheet (backend.src.js, backend.src.css, style_designer.src.js, the Workspace scripts) an open PR holds the functions and rule blocks it changes, not the file [decision: here]
 - held-file-registry-rows.md: A PR may change its own registry rows in a file a draft PR holds: which registries, the terms, one such PR at a time beside a holder; the architect allows each holder (#3824, #10025) [decision: here]
 - install-check-filter.md: When install-check.yml runs its six-database matrix (#1985): the changes job, the paths it reads, always on merge trains and pushes, why plain git, a skipped job blocks nothing
 - issue-hand-out-first-reply.md: When a note in the agent channel offers an issue to the coordinators, the first reply under it holds the work; how a double claim was settled twice on 2026-11-16 [decision: here]

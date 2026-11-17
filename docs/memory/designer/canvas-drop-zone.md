@@ -1,6 +1,6 @@
 ---
 name: canvas-drop-zone
-description: Canvas drop bands (before, inside, after) by pointer height; the middle band of an element that takes no children falls back beside it; when an ancestor takes over.
+description: Canvas drop bands (before, inside, after) by pointer height; a closed element's middle band falls back beside it; when an ancestor takes over; one insert line at a time.
 ---
 
 ## Which band of an element does a canvas drop use?
@@ -18,3 +18,6 @@ description: Canvas drop bands (before, inside, after) by pointer height; the mi
 
 ## Where is it tested?
 - `tests/designer_drop_zone_test.php` cuts `_sdCanvasDropZone()` out of the source and runs it under Node (skipped without Node).
+
+## How many insert lines can show at once?
+- One. `_sdSetDropMark(el, mark)` remembers the marked element (`_sdDropMarkEl`); a mark on another element first clears the old one and its `_sdDropZone`. An element that takes the drag stops the dragover, so an ancestor marked a moment earlier is never reached again to clear itself: two lines showed until the pointer left it (issue #10071). Tested in `tests/designer_drop_mark_test.php`.

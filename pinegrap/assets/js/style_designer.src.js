@@ -17904,19 +17904,36 @@ const StyleDesigner = (function () {
         return canInside() ? 'inside' : null;
     }
 
-    function setupDropEvents(el, node) {
-        // The drop mark is written only when it changes. dragover fires many
-        // times a second; removing and adding the same class each time is an
-        // attribute change for the browser to restyle and for every
-        // MutationObserver of the design to process.
-        function _setInsertMark(mark) {
-            var cl = el.classList;
-            for (var i = 0; i < _SD_INSERT_MARKS.length; i++) {
-                var m = _SD_INSERT_MARKS[i];
-                if (m !== mark && cl.contains(m)) cl.remove(m);
-            }
-            if (mark && !cl.contains(mark)) cl.add(mark);
+    // The one canvas element that shows a drop mark. An element that takes
+    // the drag stops the dragover there, so an ancestor that marked itself a
+    // moment earlier is not reached again to clear its own mark: two insert
+    // lines showed at once until the pointer left that ancestor.
+    var _sdDropMarkEl = null;
+
+    // Writes `mark` (null clears) on `el` only when it changes: dragover
+    // fires many times a second, and each class written is a restyle and a
+    // call of every MutationObserver of the design. A mark on another element
+    // clears that element's mark and its remembered zone first.
+    function _sdSetDropMark(el, mark) {
+        if (mark && _sdDropMarkEl && _sdDropMarkEl !== el) {
+            _sdSetDropMark(_sdDropMarkEl, null);
         }
+        var cl = el.classList;
+        for (var i = 0; i < _SD_INSERT_MARKS.length; i++) {
+            var m = _SD_INSERT_MARKS[i];
+            if (m !== mark && cl.contains(m)) cl.remove(m);
+        }
+        if (mark) {
+            if (!cl.contains(mark)) cl.add(mark);
+            _sdDropMarkEl = el;
+        } else {
+            el._sdDropZone = null;
+            if (_sdDropMarkEl === el) _sdDropMarkEl = null;
+        }
+    }
+
+    function setupDropEvents(el, node) {
+        function _setInsertMark(mark) { _sdSetDropMark(el, mark); }
         function _clearInsertMarks() { _setInsertMark(null); }
         function _getZone(e, r) {
             var y = e.clientY - r.top;

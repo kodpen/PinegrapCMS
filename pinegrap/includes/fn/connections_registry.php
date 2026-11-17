@@ -285,6 +285,71 @@ function pg_connections_connector_count()
 }
 
 /**
+ * The names of the services each place holds, as search words: a service
+ * typed in the Site Settings search or the command palette finds the card
+ * or screen its setting lives on. Pure.
+ *
+ * A capital dotted İ is lowered to a plain i, since mb_strtolower() would
+ * add a combining dot that no typed query holds.
+ *
+ * @return array place ('#settings/<category>/<card>' or a script) => list
+ *               of lower-case names
+ */
+function pg_connections_place_keys()
+{
+    static $keys = null;
+
+    if ($keys !== null) {
+        return $keys;
+    }
+
+    $keys = array();
+
+    foreach (pg_connections_registry() as $row) {
+        $name = mb_strtolower(str_replace('İ', 'i', $row['name']), 'UTF-8');
+
+        if (!isset($keys[$row['place']]) || !in_array($name, $keys[$row['place']], true)) {
+            $keys[$row['place']][] = $name;
+        }
+    }
+
+    return $keys;
+}
+
+/**
+ * The search words a place's own words gain from the services it holds,
+ * merged without repeats. Pure.
+ *
+ * @param string $place a place as the registry writes it
+ * @param array  $words the place's own words
+ * @return array list of words
+ */
+function pg_connections_place_words($place, $words)
+{
+    $keys = pg_connections_place_keys();
+
+    if (!isset($keys[$place])) {
+        return array_values((array) $words);
+    }
+
+    return array_values(array_unique(array_merge(array_values((array) $words), $keys[$place])));
+}
+
+/**
+ * The names of the services one place holds, for the Site Settings search,
+ * which ranks them after every other match of a row. Pure.
+ *
+ * @param string $place a place as the registry writes it
+ * @return array list of lower-case names
+ */
+function pg_connections_place_services($place)
+{
+    $keys = pg_connections_place_keys();
+
+    return isset($keys[$place]) ? $keys[$place] : array();
+}
+
+/**
  * Every outside service, by id, in the groups' order. Pure.
  *
  * @return array id => row (see pg_connections_row_problems())

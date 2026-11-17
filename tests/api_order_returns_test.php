@@ -182,13 +182,15 @@ function test_api_order_returns_present_a_new_request()
 
 	$schema = api_order_return_schema();
 
-	foreach (array('carrier', 'reason_label', 'decided_at', 'shipped_at', 'received_at', 'refunded_at', 'closed_at') as $field) {
-		pg_assert_same('string?', $schema[$field], $field . ' may be null');
+	foreach (array('carrier' => 'string?', 'reason_label' => 'string?', 'decided_at' => 'datetime?', 'shipped_at' => 'datetime?', 'received_at' => 'datetime?', 'refunded_at' => 'datetime?', 'closed_at' => 'datetime?') as $field => $word) {
+		pg_assert_same($word, $schema[$field], $field . ' may be null');
 	}
 
-	foreach (array('status_label', 'customer_note', 'decision_note', 'carrier_code', 'tracking_number', 'requested_at') as $field) {
+	foreach (array('status_label', 'customer_note', 'decision_note', 'carrier_code', 'tracking_number') as $field) {
 		pg_assert_same('string', $schema[$field], $field . ' is never null');
 	}
+
+	pg_assert_same('datetime', $schema['requested_at'], 'requested_at is a moment, never null');
 }
 
 // The refund the return keeps: null until it was refunded, then what the
