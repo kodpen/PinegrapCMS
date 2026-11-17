@@ -12631,6 +12631,54 @@ body.workspace .ws-shell-main > #button_bar {
 .ws-info-guests .ws-info-person-role {
   white-space: normal;
 }
+/* An agent's row in a narrow column: the name and its role stay on the
+   first line with the last seen at its right, the role is the part cut;
+   the badges move to the next line whole; the line under it wraps. */
+.ws-info-agents .ws-info-person {
+  align-items: flex-start;
+}
+.ws-info-agents .ws-info-person-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: .15rem .4rem;
+  overflow: visible;
+  white-space: normal;
+}
+.ws-info-agent-title {
+  display: flex;
+  flex: 0 1 auto;
+  align-items: baseline;
+  gap: .4rem;
+  min-width: 0;
+  white-space: nowrap;
+}
+.ws-info-agent-name {
+  flex: none;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ws-info-agent-role {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ws-info-agent-badges {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: .3rem;
+}
+.ws-info-agent-badges .ws-info-badge {
+  margin-left: 0;
+}
+.ws-info-agents .ws-info-person-role {
+  white-space: normal;
+}
+.ws-info-agents .ws-info-seen {
+  margin-top: .1rem;
+}
 /* Channel info's agents and last seen: an agent's face is a rounded square
    with its mark, a person's stays round; the last seen sits at the right. */
 .avatar.ws-agent-face {
@@ -12788,9 +12836,21 @@ body.workspace .ws-shell-main > #button_bar {
 }
 .ws-cha-add {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   margin-top: 12px;
+}
+/* The chosen agent is read whole: the list is as wide as its longest
+   agent, and when it and the button do not fit side by side it takes a row
+   of its own and the button goes under. */
+.ws-cha-add > select {
+  flex: 1 0 auto;
+  width: auto;
+  max-width: 100%;
+}
+.ws-cha-add > button {
+  flex: none;
 }
 @media (max-width: 575.98px) {
   .ws-cha-head {
@@ -14577,12 +14637,24 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
 .ws-msg-avatar .avatar {
   --bs-avatar-size: var(--ws-avatar);
 }
+/* The head line wraps by its own column's width: the name keeps a line
+   of its own when it and the marks after it do not fit, and wraps between
+   words only when it alone is wider than the column. */
 .ws-msg-meta {
   font-size: .8rem;
   color: var(--pg-fg-2);
   display: flex;
-  gap: .5rem;
+  flex-wrap: wrap;
+  gap: .1rem .5rem;
   align-items: baseline;
+  min-width: 0;
+}
+/* A mark longer than the column (the client a message came through, an
+   MCP agent's mark) is cut with an ellipsis; its whole text is its title. */
+.ws-msg-meta > .badge {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .ws-msg-meta b {
   color: var(--pg-fg-body);
@@ -15157,7 +15229,10 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
 }
 
 /* A poll in the conversation. */
+/* The box is the container its narrow layout is read from (below), so it
+   follows the column it stands in, never the window. */
 .ws-poll {
+  container: ws-poll / inline-size;
   max-width: 34rem;
   margin-top: .4rem;
   padding: .55rem .65rem .45rem;
@@ -15273,6 +15348,7 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
   flex-direction: column;
   gap: .1rem;
   min-width: 0;
+  overflow-wrap: break-word;
 }
 .ws-poll-line {
   display: flex;
@@ -15302,8 +15378,13 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
 }
 .ws-poll-send {
   display: flex;
+  flex-wrap: wrap;
   gap: .4rem;
   margin-top: .4rem;
+}
+.ws-poll-send > :not(.btn) {
+  flex: 1 1 10rem;
+  min-width: 0;
 }
 .ws-poll-send > .btn {
   flex: 0 0 auto;
@@ -15351,6 +15432,31 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
   }
   .ws-poll-foot-tight .ws-poll-foot-label {
     display: none;
+  }
+}
+/* The same in a narrow box on a wide window (a discussion panel): read
+   from the box's own width. A picture beside the options goes above
+   them, and "Write your own answer" takes a line of its own over Send
+   when the two do not fit. */
+@container ws-poll (max-width: 30rem) {
+  .ws-poll-option {
+    flex-wrap: wrap;
+  }
+  .ws-poll-text {
+    flex: 1 1 0;
+  }
+  .ws-poll-meta {
+    flex-basis: 100%;
+    padding-left: 1.5rem;
+  }
+  .ws-poll-foot > .btn {
+    padding-inline: .35rem;
+  }
+  .ws-poll-foot-tight .ws-poll-foot-label {
+    display: none;
+  }
+  .ws-poll .ws-poll-split {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 .ws-poll-desc,
@@ -15414,12 +15520,37 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
   border-radius: var(--ws-radius-sm);
   background: var(--pg-bg-2);
   cursor: zoom-in;
+  position: relative;
 }
 .ws-poll-figure img {
   display: block;
   width: 100%;
   max-height: 18rem;
   object-fit: contain;
+}
+/* How many distinct pictures the viewer holds, at the frame's bottom right.
+   Its surface is nearly opaque, so it reads as one piece where it lies half
+   on the picture and half on the frame; the hairline keeps it standing on a
+   dark picture. The figures are tabular: the number may change while the
+   rows are pointed at. */
+.ws-poll-picture-count {
+  position: absolute;
+  right: .7rem;
+  bottom: .7rem;
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+  padding: .15rem .5rem;
+  border: 1px solid color-mix(in srgb, var(--pg-media-mark-fg) 30%, transparent);
+  border-radius: 999px;
+  background: var(--pg-media-mark-bg);
+  color: var(--pg-media-mark-fg);
+  font-size: var(--pg-text-meta);
+  font-weight: var(--pg-weight-medium);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.4;
+  white-space: nowrap;
+  pointer-events: none;
 }
 @media (max-width: 575.98px) {
   .ws-poll-split {
@@ -17826,6 +17957,17 @@ a.ws-chip-message:hover,
 .ws-preview dd {
   margin: 0;
 }
+/* The /create row card: a text column's box is one line high at rest and
+   grows with its lines up to eight where the browser can, scrolling past
+   them. The recipe's box (textarea.pg-input) is placed here, not changed. */
+.ws-row-card textarea.pg-input.ws-row-text {
+  min-height: 0;
+  max-height: calc(8lh + 20px);
+  /* One line as high as the card's other fields (36 px). */
+  padding-block: calc((36px - 1lh - 2px) / 2);
+  field-sizing: content;
+  overflow-y: auto;
+}
 .ws-warning {
   display: flex;
   gap: .4rem;
@@ -18565,6 +18707,7 @@ a.ws-chip-message:hover,
    while the microphone is on. */
 .ws-voice {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--ws-space-2);
   width: 22rem;
@@ -18588,9 +18731,18 @@ a.ws-chip-message:hover,
   border-radius: 50%;
   font-size: 1.1rem;
 }
+/* The name and the time keep at least 7rem: in a narrower player the
+   buttons after them take the next line as one group, at its right. */
 .ws-voice-main {
-  flex: 1 1 auto;
+  flex: 1 1 7rem;
   min-width: 0;
+}
+.ws-voice-tools {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--ws-space-2);
+  margin-left: auto;
 }
 .ws-voice-name {
   overflow: hidden;
@@ -18697,8 +18849,12 @@ a.ws-chip-message:hover,
     opacity: .3;
   }
 }
+/* A narrow column (a discussion panel, a phone) keeps the file's name at
+   least 8rem wide: the buttons then take the next line as one group, at
+   its right. */
 .ws-file-card {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: .6rem;
   max-width: min(28rem, 100%);
@@ -18706,6 +18862,17 @@ a.ws-chip-message:hover,
   border: 1px solid var(--pg-border-color-translucent);
   border-radius: var(--ws-radius-sm);
   background: var(--pg-bg-1);
+}
+.ws-file-card > .ws-grow {
+  flex: 1 1 8rem;
+  min-width: 0;
+}
+.ws-file-tools {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: .6rem;
+  margin-left: auto;
 }
 .ws-file-card .ws-file-name {
   display: block;
@@ -24440,6 +24607,12 @@ html.ws-flow-layer-on body {
 .pgc-edge.pgc-edge-faint {
   opacity: var(--pgc-faint, 0.3);
 }
+/* A proposed arrow (dashed()): dashed in a neutral colour, whatever the
+   focus makes of it. */
+.pgc-edge.pgc-edge-dashed .pgc-edge-line {
+  stroke: var(--pgc-proposed, var(--pg-secondary));
+  stroke-dasharray: 6 4;
+}
 .pgc-boxes .pgc-dim {
   opacity: var(--pgc-dim, 0.45);
 }
@@ -27969,6 +28142,11 @@ select.pg-list-table-field option.private {
      the scrim a dialog lays over the page. */
   --pg-surface-menu: light-dark(rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.016));
   --pg-scrim: light-dark(rgba(22, 27, 38, 0.3), rgba(3, 4, 7, 0.6));
+  /* The surface and the text of a mark laid over a picture (a poll
+     picture's count). A picture does not change with the theme, so neither
+     does the mark: one value for both. */
+  --pg-media-mark-bg: rgba(17, 19, 24, 0.94);
+  --pg-media-mark-fg: #ffffff;
   --pg-radius-card: 16px;
   --pg-radius-sheet: 20px;
 

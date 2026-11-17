@@ -9,14 +9,14 @@ description: Plan designer-panels, steps DP1 to DP5: the chrome's tokens, the ri
   - Pictures: the whole editor before and after, an element selected, the bottom panel open, beside `options-4-whole-screen.jpg`.
   - The PR body counts the colours still written outside a token and where.
 
-- DP2 (M) after DP1: the right column.
+- DP2 (M) after DP1: the right column. Done in #10210.
   - Existing files: `includes/designer_screen.php` (`#sd-panel-right`, `#sd-properties`, the `#sd-assets-*` panel), `style_designer.css`, `assets/js/style_designer.src.js` (the column's two tabs, `_SD_RAIL_ICONS`, the bottom panel's remembered state).
   - The column's default width becomes 336 px above 1024 px; a width the user dragged stays; 240 px at 1024 and below stays, and under 300 px the panel is drawn as `designer-panels-measures-4.md` says.
   - Tests: the remembered state's reader as a pure function.
   - Pictures: Options over the whole column, the Design tab, the bottom strip closed and open, docked under 992 px.
   - Features: D1, D2. Keeps K5.
 
-- DP3 (M) after DP2: the identity row and the section cards.
+- DP3 (M) after DP2: the identity row and the section cards. Done in #10240.
   - Functions: `renderProperties()`, `sect()`. New: a pure module for what counts as changed and for a section's summary, with its test.
   - Tests, red first: a row differing from its default counted; a section's and a tab's count; the summary of each kind (a colour, one value, none, default); a body not built while its section is closed.
   - Pictures: beside `options-1-content.jpg` and `measures-2-anatomy.jpg`, parts a, d, e, g.

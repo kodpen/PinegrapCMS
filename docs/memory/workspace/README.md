@@ -23,6 +23,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - Put in the channel menu (`channelMenu()` in workspace.js) only the channel's own settings and actions (channel settings, notifications, voice, the reader's application-lines choice, make private, move to group, templates, share link, export, clear, archive, leave; a customer channel's New sales quote; a mailbox channel's New e-mail (`mail-compose.md`); on a phone the header's channel info, members, search and tour): creating or changing other records is a / command or the record's own screen, never a channel-menu item; a new entry point whose place is not obvious is a product-behaviour question for the architect (`workflow/decisions-made-workspace-2.md`, `workspace-create-commands.md`).
 - Put on a message's hover bar (`messageTools()`, a number in `tool` of `messageActions()`) only the reaction, Reply, the discussion and Make a task of it; every other action goes to More and the context menu (`workspace-channel-messages.md`, `tests/workspace_message_bar_test.php`).
 - Set up scheduled work only on the flow canvas (its "At a time" start, a gallery template): no window or form of its own makes a scheduled flow, and a kind no new box is made of goes into `ws_flow_kinds_not_offered()`, which the palette and Pinegrap AI's catalogue honour (`workspace-scheduling-one-place.md`).
+- Build a new Workspace drawer, card, line or form from look A's recipes and the kit's form parts (`pg-button`, `pg-seg`, `formParts`), never with `btn btn-…`, `nav-tabs` or `formRow()` in an added line (`ui/look-new-parts.md`, `workspace-drawer-form-parts.md`).
 <!-- key-rules:end -->
 
 ## Clusters
@@ -33,7 +34,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - `workflow-tables-*`: 28 files; start at `workflow-tables.md`.
 - `workspace-api-*`: 17 files; start at `workspace-api-overview.md`.
 - `workspace-channel-*`: 20 files; start at `workspace-channel-overview.md`.
-- `workspace-command-*`: 11 files; start at `workspace-command-overview.md`.
+- `workspace-command-*`: 13 files; start at `workspace-command-overview.md`.
 - `workspace-editor-*`: 7 files.
 - `workspace-flows-*`: 130 files; start at `workspace-flows-overview.md`.
 - `workspace-message-*`: 6 files.

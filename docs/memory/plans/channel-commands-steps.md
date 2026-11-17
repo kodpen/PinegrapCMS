@@ -23,6 +23,7 @@ description: Plan channel-commands, steps CC1 to CC6: the registry with no chang
   - Features: K8, K9.
 
 - CC4 (M) after CC2: /onay, /güncelleme, /checkin.
+  - CC4 done (#10228): K10 /onay, K11 /güncelleme, K12 /checkin (`workspace/workspace-command-approval-update-checkin.md`).
   - Tests: complete, each writes through its button's function with that function's refusals; incomplete, the form opens filled; /güncelleme and /checkin not offered in a discussion; the healths in Turkish and English.
   - Pictures: the three live lines, a form opened filled.
   - Features: K10 to K12.
@@ -34,6 +35,7 @@ description: Plan channel-commands, steps CC1 to CC6: the registry with no chang
   - Features: K13, K14.
 
 - CC6 (M) after CC2: /bildirim, /davet, /ayrıl, /konu, /ara, /bellek. Over the size: CC6a (the first three) and CC6b.
+  - CC6a done (#10250): K15 /bildirim, K16 /davet, K17 /ayrıl (`workspace/workspace-command-notify-invite-leave.md`).
   - Tests: each right refused as the menu refuses it; /ayrıl writes nothing before the card's confirm; /bildirim's three words in both languages and without a value; /davet with somebody already in; /ara posts nothing.
   - Pictures: /ayrıl's card, /bildirim's and /davet's answers.
   - Features: K15 to K20.

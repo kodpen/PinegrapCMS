@@ -130,6 +130,7 @@ function ws_command_create_kinds()
         'urun' => 'product', 'product' => 'product',
         'grup' => 'product_group', 'group' => 'product_group',
         'kisi' => 'contact', 'contact' => 'contact',
+        'satir' => 'wtable_row', 'row' => 'wtable_row',
     );
 }
 
@@ -143,7 +144,7 @@ function ws_command_create_kinds()
  * @param callable $may    ($viewer, $type, $record_id) => bool
  * @return string[]
  */
-function ws_command_create_types_for($viewer, $may = 'ws_change_allowed')
+function ws_command_create_types_for($viewer, $may = 'ws_command_create_may')
 {
     $out = array();
 
@@ -154,6 +155,25 @@ function ws_command_create_types_for($viewer, $may = 'ws_change_allowed')
     }
 
     return $out;
+}
+
+/**
+ * May this person make a record of this kind of /create? A row: when they
+ * may write one workflow table at least (ws_command_row_tables()); the
+ * others: the right of their record's screen (ws_change_allowed()).
+ *
+ * @param array  $viewer
+ * @param string $type
+ * @param int    $record_id
+ * @return bool
+ */
+function ws_command_create_may($viewer, $type, $record_id = 0)
+{
+    if ($type === 'wtable_row') {
+        return ws_command_row_tables($viewer) !== array();
+    }
+
+    return function_exists('ws_change_allowed') && ws_change_allowed($viewer, $type, $record_id);
 }
 
 /**
@@ -338,6 +358,75 @@ function ws_command_gate_recap($viewer, $command = 'recap', $channel = null)
 }
 
 /**
+ * /approval: once approval requests are kept (the "Ask for approval" item
+ * of the box's Insert menu asks the same).
+ *
+ * @param array|null $viewer
+ * @return bool
+ */
+function ws_command_gate_approval($viewer)
+{
+    if (!is_array($viewer)) {
+        return true;
+    }
+
+    return function_exists('ws_approvals_ready') && ws_approvals_ready();
+}
+
+/**
+ * /update and /checkin: once status updates and check-ins are kept (the
+ * "Status update" and "Ask for a check-in" items ask the same).
+ *
+ * @param array|null $viewer
+ * @return bool
+ */
+function ws_command_gate_status($viewer)
+{
+    if (!is_array($viewer)) {
+        return true;
+    }
+
+    return function_exists('ws_status_ready') && ws_status_ready();
+}
+
+/**
+ * /notify and /leave: offered to a member of the channel, as the channel
+ * menu offers its notification choices and "Leave the channel" only to
+ * one. Without a channel, listed like the rest.
+ *
+ * @param array|null $viewer
+ * @param string     $command
+ * @param array|null $channel
+ * @return bool
+ */
+function ws_command_gate_member($viewer, $command = '', $channel = null)
+{
+    if (!is_array($viewer) || !is_array($channel)) {
+        return true;
+    }
+
+    return (bool) ws_channel_membership($channel['id'], $viewer['id']);
+}
+
+/**
+ * /invite: "Add people"'s rule, anybody in a public channel and only a
+ * member in any other.
+ *
+ * @param array|null $viewer
+ * @param string     $command
+ * @param array|null $channel
+ * @return bool
+ */
+function ws_command_gate_invite($viewer, $command = '', $channel = null)
+{
+    if (!is_array($viewer) || !is_array($channel) || ((string) $channel['kind'] === 'public')) {
+        return true;
+    }
+
+    return (bool) ws_channel_membership($channel['id'], $viewer['id']);
+}
+
+/**
  * /timer: once task time is kept.
  *
  * @param array|null $viewer
@@ -394,7 +483,7 @@ function ws_command_gate_create($viewer, $command)
  */
 function ws_command_argument_kinds()
 {
-    return array('person', 'people', 'department', 'task', 'record', 'date', 'time', 'estimate', 'priority', 'status', 'amount', 'quantity', 'text', 'options', 'record_kind');
+    return array('person', 'people', 'department', 'task', 'record', 'date', 'time', 'estimate', 'priority', 'status', 'amount', 'quantity', 'text', 'options', 'record_kind', 'health', 'notify');
 }
 
 /**
@@ -429,7 +518,7 @@ function ws_command_turkish($language = null)
  *                (ws_command_argument_kinds()), label, optional, suggest
  *                (where the composer finds values for it: people,
  *                people_departments, tasks, records, products, dates,
- *                estimates, priorities, statuses, kinds, or '' for none), multiple (takes more
+ *                estimates, priorities, statuses, kinds, healths, notify, or '' for none), multiple (takes more
  *                than one), anywhere (read wherever it is written, as /task
  *                reads its people, day, estimate and priority)
  *   live         the composer asks ws_command_suggest() for a line under
@@ -550,7 +639,8 @@ function ws_command_help($viewer = null, $channel = null)
  * @param string|null $language a language code, or null for the active one
  * @param array|null  $viewer   with a person, only the kinds they may make
  * @return array dates, estimates, priorities, statuses, kinds (what /create
- *               makes): each a list of value, meta, top
+ *               makes), healths (the states /update reads), notify (the
+ *               choices /notify reads): each a list of value, meta, top
  */
 function ws_command_suggestions($language = null, $viewer = null)
 {
@@ -574,9 +664,9 @@ function ws_command_suggestions($language = null, $viewer = null)
     $labels = function_exists('ws_task_priorities') ? ws_task_priorities() : array();
     $status_labels = function_exists('ws_task_statuses') ? ws_task_statuses() : array();
     $kinds = $turkish
-        ? array('product' => 'ürün', 'product_group' => 'grup', 'contact' => 'kişi')
-        : array('product' => 'product', 'product_group' => 'group', 'contact' => 'contact');
-    $kind_labels = array('product' => lang('Product'), 'product_group' => lang('Product group'), 'contact' => lang('Contact'));
+        ? array('product' => 'ürün', 'product_group' => 'grup', 'contact' => 'kişi', 'wtable_row' => 'satır')
+        : array('product' => 'product', 'product_group' => 'group', 'contact' => 'contact', 'wtable_row' => 'row');
+    $kind_labels = array('product' => lang('Product'), 'product_group' => lang('Product group'), 'contact' => lang('Contact'), 'wtable_row' => lang('Workflow table row'));
 
     if (is_array($viewer) && function_exists('ws_change_allowed')) {
         $kinds = array_intersect_key($kinds, array_flip(ws_command_create_types_for($viewer)));
@@ -605,6 +695,12 @@ function ws_command_suggestions($language = null, $viewer = null)
     foreach ($kinds as $key => $word) {
         $out['kinds'][] = array('value' => $word, 'meta' => $kind_labels[$key], 'top' => true);
     }
+
+    // The states /update reads.
+    $out['healths'] = ws_command_health_values($turkish);
+
+    // The choices /notify reads.
+    $out['notify'] = ws_command_notify_values($turkish);
 
     return $out;
 }
@@ -2350,6 +2446,645 @@ function ws_command_remind_line($fill)
 }
 
 /**
+ * /approval: an approval request posted through ws_approval_create(), as
+ * the "Ask for approval" form posts one (its checks in ws_approval_input()),
+ * asking the people named with @ on its first line and approved by any one
+ * of them. Without a
+ * title or without anybody named, that form opens filled with what was
+ * typed.
+ *
+ * @return array
+ */
+function ws_command_run_approval($viewer, $channel, $rest)
+{
+    $data = ws_command_approval_read($rest);
+
+    if (($data['title'] === '') || empty($data['people'])) {
+        return array('type' => 'approval_form', 'fill' => ws_command_approval_fill($data));
+    }
+
+    $result = ws_approval_create($viewer, $channel, array(
+        'title'     => $data['title'],
+        'text'      => $data['text'],
+        'approvers' => $data['people'],
+        'rule'      => 'any',
+        'closes_at' => 0,
+        // Written by a person, as the form is.
+        'may_ask_agents' => true,
+    ));
+
+    return $result['ok']
+        ? array('type' => 'done', 'message_id' => (int) $result['message_id'])
+        : array('type' => 'error', 'error' => $result['error']);
+}
+
+/**
+ * What /approval reads from the line typed, the team read only when a
+ * username is typed after an @.
+ *
+ * @param string $text the line after the command's name
+ * @return array ws_command_approval_data()
+ */
+function ws_command_approval_read($text)
+{
+    $typed = preg_match('/(?:^|\s)@[\p{L}\p{N}_]/u', preg_replace('/<@user:[0-9]{1,10}>/', ' ', (string) $text));
+
+    return ws_command_approval_data($text, $typed ? ws_team_members() : array());
+}
+
+/**
+ * What /approval reads: the first line is the request, the people on it
+ * tagged or typed after an @ (a team member's exact username, as /task
+ * reads them) and the rest of it the title; the lines under it are the
+ * details, as written, where a tag only tells. Pure.
+ *
+ * @param string  $text the line after the command's name
+ * @param array[] $team briefs with id and username (ws_team_members())
+ * @return array title, text, people (user ids), typed_unknown, typed_ambiguous
+ */
+function ws_command_approval_data($text, $team)
+{
+    $lines = explode("\n", str_replace("\r\n", "\n", trim((string) $text)), 2);
+    $first = $lines[0];
+    $people = array();
+
+    foreach (ws_tokens($first) as $token) {
+        if ($token['type'] === 'user') {
+            $people[] = (int) $token['id'];
+        }
+    }
+
+    $first = preg_replace('/<@user:[0-9]{1,10}>/', ' ', $first);
+    $typed = array();
+
+    if (preg_match_all('/(?:^|\s)@([\p{L}\p{N}_.\-]{1,40})[,;:!?]*(?=\s|$)/u', $first, $matches)) {
+        foreach ($matches[1] as $name) {
+            $typed[] = rtrim($name, '.-');
+        }
+    }
+
+    $parsed = ws_command_typed_assignees(array('title' => $first, 'assignees' => $people, 'typed_people' => $typed), $team);
+
+    return array(
+        'title'           => (string) $parsed['title'],
+        'text'            => trim((string) ($lines[1] ?? '')),
+        'people'          => array_values(array_unique(array_map('intval', $parsed['assignees']))),
+        'typed_unknown'   => $parsed['typed_unknown'],
+        'typed_ambiguous' => $parsed['typed_ambiguous'],
+    );
+}
+
+/**
+ * What the "Ask for approval" form is opened with. Pure.
+ *
+ * @param array $data ws_command_approval_data()
+ * @return array title, text, approvers
+ */
+function ws_command_approval_fill($data)
+{
+    return array('title' => $data['title'], 'text' => $data['text'], 'approvers' => $data['people']);
+}
+
+/**
+ * /approval's live line: who will be asked to approve what, or the form
+ * opening, with the refusals of ws_approval_input().
+ *
+ * @return array line, warnings
+ */
+function ws_command_live_approval($viewer, $channel, $rest)
+{
+    $out = array('line' => '', 'warnings' => array());
+
+    if (trim((string) $rest) === '') {
+        return $out;
+    }
+
+    $data = ws_command_approval_read($rest);
+    $names = array();
+
+    foreach (empty($data['people']) ? array() : ws_people($data['people']) as $person) {
+        $names[] = $person['name'];
+    }
+
+    $said = implode(' · ', array_filter(array(
+        ($data['title'] !== '') ? '“' . mb_substr($data['title'], 0, 80) . '”' : '',
+        implode(', ', $names),
+    ), 'strlen'));
+
+    foreach ($data['typed_unknown'] as $name) {
+        $out['warnings'][] = lang(array('string' => 'No team member is called @{var:1}.', 'vars' => $name));
+    }
+
+    if (($data['title'] === '') || empty($data['people'])) {
+        $out['line'] = lang(array('string' => 'Will open Ask for approval: {var:1}', 'vars' => $said));
+        $out['warnings'][] = ($data['title'] === '') ? lang('An approval request needs a title.') : lang('Choose who is to approve it.');
+
+        return $out;
+    }
+
+    $out['line'] = lang(array('string' => 'Will ask for approval: {var:1}', 'vars' => $said));
+    $checked = ws_approval_input($viewer, $channel, array('title' => $data['title'], 'text' => $data['text'], 'approvers' => $data['people']));
+
+    if (!$checked['ok']) {
+        $out['warnings'][] = $checked['error'];
+    }
+
+    return $out;
+}
+
+/**
+ * /update: a status update of the channel through ws_status_post(), as the
+ * "Status update" form posts one. Without a state the form opens, the text
+ * typed in place of its draft.
+ *
+ * @return array
+ */
+function ws_command_run_update($viewer, $channel, $rest)
+{
+    $data = ws_command_update_data($rest);
+
+    if ($data['health'] === '') {
+        return array('type' => 'status_form', 'fill' => $data);
+    }
+
+    $result = ws_status_post($viewer, $channel, $data['health'], $data['text']);
+
+    return $result['ok']
+        ? array('type' => 'done', 'message_id' => (int) $result['message_id'])
+        : array('type' => 'error', 'error' => $result['error']);
+}
+
+/**
+ * What /update reads: a state word first (ws_command_health_word()), then
+ * what to say, as written. A first word that is no state stays in the
+ * text. Pure.
+ *
+ * @param string $text the line after the command's name
+ * @return array health (a ws_status_healths() key, '' for none), text
+ */
+function ws_command_update_data($text)
+{
+    $text = trim((string) $text);
+    $words = ($text === '') ? array() : preg_split('/\s+/u', $text, 3);
+
+    // "on track", "at risk", "off track" are read as one word.
+    if (count($words) > 1) {
+        $health = ws_command_health_word($words[0] . '-' . $words[1]);
+
+        if ($health !== '') {
+            return array('health' => $health, 'text' => trim((string) ($words[2] ?? '')));
+        }
+    }
+
+    $health = ws_command_health_word($words[0] ?? '');
+
+    if ($health === '') {
+        return array('health' => '', 'text' => $text);
+    }
+
+    $rest = preg_split('/\s+/u', $text, 2);
+
+    return array('health' => $health, 'text' => trim((string) ($rest[1] ?? '')));
+}
+
+/**
+ * A state of the work typed after /update, in Turkish or English, with or
+ * without the Turkish letters. Pure.
+ *
+ * @param string $word
+ * @return string a ws_status_healths() key, '' when it is none
+ */
+function ws_command_health_word($word)
+{
+    $words = array(
+        'yolunda' => 'on_track', 'iyi' => 'on_track', 'on-track' => 'on_track', 'ontrack' => 'on_track', 'on_track' => 'on_track',
+        'riskte' => 'at_risk', 'riskli' => 'at_risk', 'risk' => 'at_risk', 'at-risk' => 'at_risk', 'atrisk' => 'at_risk', 'at_risk' => 'at_risk',
+        'gecikti' => 'off_track', 'gecikmede' => 'off_track', 'off-track' => 'off_track', 'offtrack' => 'off_track', 'off_track' => 'off_track',
+    );
+
+    return $words[ws_command_fold(trim((string) $word, " \t.,;:!"))] ?? '';
+}
+
+/**
+ * The state words the argument popup offers, in the screen's language.
+ * The word is the state's own name, so no label repeats it. Pure.
+ *
+ * @param bool $turkish
+ * @return array[] value, meta, top
+ */
+function ws_command_health_values($turkish)
+{
+    $words = $turkish
+        ? array('on_track' => 'yolunda', 'at_risk' => 'riskte', 'off_track' => 'gecikti')
+        : array('on_track' => 'on-track', 'at_risk' => 'at-risk', 'off_track' => 'off-track');
+    $out = array();
+
+    foreach ($words as $word) {
+        $out[] = array('value' => $word, 'meta' => '', 'top' => true);
+    }
+
+    return $out;
+}
+
+/**
+ * /update's live line: the state and the text that will be posted, or the
+ * form opening, with the refusals of ws_status_post_check().
+ *
+ * @return array line, warnings
+ */
+function ws_command_live_update($viewer, $channel, $rest)
+{
+    $out = array('line' => '', 'warnings' => array());
+
+    if (trim((string) $rest) === '') {
+        return $out;
+    }
+
+    $data = ws_command_update_data($rest);
+    $said = ($data['text'] !== '') ? '“' . mb_substr($data['text'], 0, 80) . '”' : '';
+
+    if ($data['health'] === '') {
+        $out['line'] = lang(array('string' => 'Will open Status update: {var:1}', 'vars' => $said));
+        $out['warnings'][] = lang('Choose how the work stands.');
+
+        return $out;
+    }
+
+    $out['line'] = lang(array('string' => 'Will post a status update: {var:1}', 'vars' => implode(' · ', array_filter(array(ws_status_healths()[$data['health']], $said), 'strlen'))));
+    $checked = ws_status_post_check($viewer, $channel, $data['health'], $data['text']);
+
+    if (!$checked['ok']) {
+        $out['warnings'][] = $checked['error'];
+    }
+
+    return $out;
+}
+
+/**
+ * /checkin: the question asked through ws_checkin_start(), as "Ask for a
+ * check-in" asks it. Without a question that form opens with the usual
+ * one written in.
+ *
+ * @return array
+ */
+function ws_command_run_checkin($viewer, $channel, $rest)
+{
+    $question = ws_checkin_question($rest);
+
+    if ($question === '') {
+        return array('type' => 'checkin_form', 'fill' => array('question' => ws_checkin_default_question()));
+    }
+
+    $result = ws_checkin_start($viewer, $channel, $question);
+
+    return $result['ok']
+        ? array('type' => 'done', 'message_id' => (int) $result['message_id'])
+        : array('type' => 'error', 'error' => $result['error']);
+}
+
+/**
+ * /checkin's live line: the question that will be asked, with the
+ * refusals of ws_checkin_start_check().
+ *
+ * @return array line, warnings
+ */
+function ws_command_live_checkin($viewer, $channel, $rest)
+{
+    $out = array('line' => '', 'warnings' => array());
+    $question = ws_checkin_question($rest);
+
+    if ($question === '') {
+        return $out;
+    }
+
+    $out['line'] = lang(array('string' => 'Will ask for a check-in: {var:1}', 'vars' => '“' . mb_substr($question, 0, 80) . '”'));
+    $checked = ws_checkin_start_check($viewer, $channel, $question);
+
+    if (!$checked['ok']) {
+        $out['warnings'][] = $checked['error'];
+    }
+
+    return $out;
+}
+
+/**
+ * /notify: the writer's notifications of this channel through
+ * ws_channel_set_notify(), as the channel menu's three choices set them.
+ * Without a word, the choice in force and the words that change it; both
+ * to the writer alone.
+ *
+ * @return array
+ */
+function ws_command_run_notify($viewer, $channel, $rest)
+{
+    $word = trim((string) $rest);
+    $notify = ws_command_notify_word($word);
+
+    if ($word === '') {
+        $membership = ws_channel_membership($channel['id'], $viewer['id']);
+
+        return array('type' => 'ephemeral', 'html' => ws_command_notify_html($membership ? (string) $membership['notify'] : '', false));
+    }
+
+    if ($notify === '') {
+        return array('type' => 'error', 'error' => ws_command_notify_unknown());
+    }
+
+    $result = ws_channel_set_notify($viewer, $channel, $notify);
+
+    if (!$result['ok']) {
+        return array('type' => 'error', 'error' => $result['error']);
+    }
+
+    return array('type' => 'ephemeral', 'html' => ws_command_notify_html($notify, true));
+}
+
+/**
+ * A notification choice typed after /notify, in Turkish or English, with
+ * or without the Turkish letters. Pure.
+ *
+ * @param string $word
+ * @return string all | mentions | none, '' when it is none of them
+ */
+function ws_command_notify_word($word)
+{
+    $words = array(
+        'hepsi' => 'all', 'tumu' => 'all', 'all' => 'all', 'every' => 'all',
+        'anma' => 'mentions', 'anmalar' => 'mentions', 'mentions' => 'mentions', 'mention' => 'mentions',
+        'hic' => 'none', 'hicbiri' => 'none', 'never' => 'none', 'none' => 'none',
+    );
+
+    return $words[ws_command_fold(trim((string) $word, " \t.,;:!"))] ?? '';
+}
+
+/**
+ * The three choices as the channel menu names them.
+ *
+ * @return array all | mentions | none => label
+ */
+function ws_command_notify_labels()
+{
+    return array(
+        'all'      => lang('Tell me about every message'),
+        'mentions' => lang('Only when I am mentioned'),
+        'none'     => lang('Never'),
+    );
+}
+
+/**
+ * The words /notify reads, as the argument popup offers them, in the
+ * screen's language. Pure.
+ *
+ * @param bool $turkish
+ * @return array[] value, meta, top
+ */
+function ws_command_notify_values($turkish)
+{
+    $words = $turkish ? array('all' => 'hepsi', 'mentions' => 'anma', 'none' => 'hiç') : array('all' => 'all', 'mentions' => 'mentions', 'none' => 'never');
+    $labels = ws_command_notify_labels();
+    $out = array();
+
+    foreach ($words as $key => $word) {
+        $out[] = array('value' => $word, 'meta' => $labels[$key], 'top' => true);
+    }
+
+    return $out;
+}
+
+/**
+ * The refusal for a word /notify does not read, naming the three.
+ *
+ * @return string
+ */
+function ws_command_notify_unknown()
+{
+    return lang(array('string' => 'Write one of: {var:1}.', 'vars' => implode(', ', array_column(ws_command_notify_values(ws_command_turkish()), 'value'))));
+}
+
+/**
+ * /notify's answer: the choice in force (or just set) and the words that
+ * change it. Pure.
+ *
+ * @param string $notify all | mentions | none, '' when not in the channel
+ * @param bool   $set    just changed
+ * @return string
+ */
+function ws_command_notify_html($notify, $set)
+{
+    $labels = ws_command_notify_labels();
+    $now = $labels[$notify] ?? lang('You are not in this channel.');
+    $words = array();
+
+    foreach (ws_command_notify_values(ws_command_turkish()) as $item) {
+        // A word and its meaning hold together; the line breaks only
+        // between them.
+        $words[] = '<span class="text-nowrap"><code>' . h($item['value']) . '</code> ' . h($item['meta']) . '</span>';
+    }
+
+    return '<div class="ws-ephemeral-title">' . h(lang('Notifications')) . '</div>'
+        . '<div>' . h($set ? lang(array('string' => 'Now set: {var:1}', 'vars' => $now)) : lang(array('string' => 'Now: {var:1}', 'vars' => $now))) . '</div>'
+        . '<div class="fg-secondary">' . h(lang('Change with one of:')) . ' ' . implode(' · ', $words) . '</div>';
+}
+
+/**
+ * /notify's live line: the choice Enter will set, or the one in force.
+ *
+ * @return array line, warnings
+ */
+function ws_command_live_notify($viewer, $channel, $rest)
+{
+    $out = array('line' => '', 'warnings' => array());
+    $word = trim((string) $rest);
+
+    if ($word === '') {
+        return $out;
+    }
+
+    $notify = ws_command_notify_word($word);
+
+    if ($notify === '') {
+        $out['warnings'][] = ws_command_notify_unknown();
+
+        return $out;
+    }
+
+    $out['line'] = lang(array('string' => 'Will set your notifications here: {var:1}', 'vars' => ws_command_notify_labels()[$notify]));
+
+    return $out;
+}
+
+/**
+ * /invite: the people named with @ brought into the channel through
+ * ws_channel_add_members(), as "Add people" brings them, with its rule: in
+ * a channel that is not public only a member may bring somebody in. The
+ * answer, to the writer alone, names who was added, who was in already and
+ * who could not be.
+ *
+ * @return array
+ */
+function ws_command_run_invite($viewer, $channel, $rest)
+{
+    $people = ws_command_approval_read($rest)['people'];
+
+    if (empty($people)) {
+        return array('type' => 'error', 'error' => lang('Name the people to add with @.'));
+    }
+
+    if (!ws_command_gate_invite($viewer, 'invite', $channel)) {
+        return array('type' => 'error', 'error' => lang('Access denied.'));
+    }
+
+    $already = array_values(array_filter($people, function ($user_id) use ($channel) {
+        return (bool) ws_channel_membership($channel['id'], $user_id);
+    }));
+    $split = ws_command_invite_split($people, $already, ws_channel_add_members($viewer, $channel, array_values(array_diff($people, $already))));
+
+    return array('type' => 'ephemeral', 'html' => ws_command_invite_html($split['added'], $split['already'], $split['refused']));
+}
+
+/**
+ * The people /invite named, told apart: added, in already, and refused by
+ * ws_channel_add_members() (not on the team, or not one a guest room or a
+ * discussion takes). Pure.
+ *
+ * @param int[] $people  named
+ * @param int[] $already in the channel before
+ * @param int[] $added   what ws_channel_add_members() added
+ * @return array added, already, refused
+ */
+function ws_command_invite_split($people, $already, $added)
+{
+    $added = array_values(array_map('intval', (array) $added));
+    $already = array_values(array_map('intval', (array) $already));
+
+    return array(
+        'added'   => $added,
+        'already' => $already,
+        'refused' => array_values(array_diff(array_map('intval', (array) $people), $already, $added)),
+    );
+}
+
+/**
+ * /invite's answer. Pure but for the names.
+ *
+ * @param int[] $added
+ * @param int[] $already
+ * @param int[] $refused
+ * @return string
+ */
+function ws_command_invite_html($added, $already, $refused)
+{
+    $names = function ($ids) {
+        return implode(', ', array_map('ws_person_name', $ids));
+    };
+
+    $html = '<div class="ws-ephemeral-title">' . h(lang('Add people')) . '</div>';
+
+    if (!empty($added)) {
+        $html .= '<div>' . h(lang(array('string' => 'Added: {var:1}', 'vars' => $names($added)))) . '</div>';
+    }
+
+    if (!empty($already)) {
+        $html .= '<div>' . h(lang(array('string' => 'Already in the channel: {var:1}', 'vars' => $names($already)))) . '</div>';
+    }
+
+    if (!empty($refused)) {
+        $html .= '<div>' . h(lang(array('string' => 'Could not be added: {var:1}', 'vars' => $names($refused)))) . '</div>';
+    }
+
+    return $html;
+}
+
+/**
+ * /invite's live line: who Enter will add, and who is in already.
+ *
+ * @return array line, warnings
+ */
+function ws_command_live_invite($viewer, $channel, $rest)
+{
+    $out = array('line' => '', 'warnings' => array());
+
+    if (trim((string) $rest) === '') {
+        return $out;
+    }
+
+    $data = ws_command_approval_read($rest);
+    $new = array();
+
+    foreach ($data['people'] as $user_id) {
+        if (ws_channel_membership($channel['id'], $user_id)) {
+            $out['warnings'][] = lang(array('string' => 'Already in the channel: {var:1}', 'vars' => ws_person_name($user_id)));
+        } else {
+            $new[] = ws_person_name($user_id);
+        }
+    }
+
+    foreach ($data['typed_unknown'] as $name) {
+        $out['warnings'][] = lang(array('string' => 'No team member is called @{var:1}.', 'vars' => $name));
+    }
+
+    if (!empty($new)) {
+        $out['line'] = lang(array('string' => 'Will add: {var:1}', 'vars' => implode(', ', $new)));
+    }
+
+    return $out;
+}
+
+/**
+ * /leave: a card to the writer alone asks first, as the channel menu's
+ * "Leave the channel" does; only its confirm leaves, through
+ * ws_channel_leave() with that function's refusals.
+ *
+ * @return array
+ */
+function ws_command_run_leave($viewer, $channel, $rest, $options)
+{
+    $step = ws_command_leave_step((bool) ws_channel_membership($channel['id'], $viewer['id']), !empty($options['confirm']), (string) $channel['kind']);
+
+    if ($step['type'] !== 'leave') {
+        return $step;
+    }
+
+    $result = ws_channel_leave($viewer, $channel);
+
+    return $result['ok']
+        ? array('type' => 'left')
+        : array('type' => 'error', 'error' => $result['error']);
+}
+
+/**
+ * What /leave does now: refused to somebody not in the channel, the card
+ * before a confirm, the leave only after it. Pure.
+ *
+ * @param bool   $member  the writer is in the channel
+ * @param bool   $confirm sent from the card's button
+ * @param string $kind    the channel's kind
+ * @return array type error | leave_card | leave
+ */
+function ws_command_leave_step($member, $confirm, $kind)
+{
+    if (!$member) {
+        return array('type' => 'error', 'error' => lang('You are not in this channel.'));
+    }
+
+    if (!$confirm) {
+        return array('type' => 'leave_card', 'private' => ($kind !== 'public'));
+    }
+
+    return array('type' => 'leave');
+}
+
+/**
+ * /leave's live line: the channel it leaves once the card is confirmed.
+ *
+ * @return array line, warnings
+ */
+function ws_command_live_leave($viewer, $channel, $rest)
+{
+    return array('line' => lang(array('string' => 'Will ask before you leave #{var:1}', 'vars' => (string) ($channel['name'] ?? ''))), 'warnings' => array());
+}
+
+/**
  * /meeting's live line.
  *
  * @return array line, warnings
@@ -3393,6 +4128,10 @@ function ws_command_create($viewer, $channel, $text, $options)
         return ws_command_contact($viewer, $channel, $parsed['rest'], $options);
     }
 
+    if ($parsed['kind'] === 'wtable_row') {
+        return ws_command_row($viewer, $channel, $parsed['rest'], $options);
+    }
+
     if ($parsed['kind'] === 'product') {
         return ws_command_product($viewer, $channel, $parsed['rest'], $options);
     }
@@ -3401,7 +4140,234 @@ function ws_command_create($viewer, $channel, $text, $options)
         return ws_command_group($viewer, $channel, $parsed['rest'], $options);
     }
 
-    return array('type' => 'error', 'error' => lang('Say what to create, a product, a group or a contact, like /create product Blue mug 149,90 or /create contact Ada Lovelace, Acme, ada@example.com.'));
+    return array('type' => 'error', 'error' => lang('Say what to create, a product, a group, a contact or a row, like /create product Blue mug 149,90 or /create row Leads.'));
+}
+
+/**
+ * The workflow tables this person may write (ws_wtables_reached(), edit
+ * access or more), the latest changed first.
+ *
+ * @param array $viewer
+ * @return array[] id, name
+ */
+function ws_command_row_tables($viewer)
+{
+    if (!is_array($viewer) || !function_exists('ws_wtables_reached')) {
+        return array();
+    }
+
+    $out = array();
+
+    foreach (ws_wtables_reached($viewer) as $table) {
+        if (ws_wtable_may((string) $table['access'], 'write')) {
+            $out[] = array('id' => (int) $table['id'], 'name' => (string) $table['name']);
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * The table the words after /create row name: the one whose whole name they
+ * are (case and Turkish letters folded), else the one table whose name
+ * starts with them. Several or none: 0, and the card asks. Pure.
+ *
+ * @param array[] $tables id, name (ws_command_row_tables())
+ * @param string  $text
+ * @return int table id, or 0
+ */
+function ws_command_row_table_match($tables, $text)
+{
+    $typed = ws_command_fold(trim((string) preg_replace('/\s+/u', ' ', (string) $text)));
+
+    if ($typed === '') {
+        return 0;
+    }
+
+    $whole = array();
+    $starts = array();
+
+    foreach ((array) $tables as $table) {
+        $name = ws_command_fold(trim((string) preg_replace('/\s+/u', ' ', (string) $table['name'])));
+
+        if ($name === $typed) {
+            $whole[] = (int) $table['id'];
+        } elseif (strpos($name, $typed) === 0) {
+            $starts[] = (int) $table['id'];
+        }
+    }
+
+    if (count($whole) === 1) {
+        return $whole[0];
+    }
+
+    return (($whole === array()) && (count($starts) === 1)) ? $starts[0] : 0;
+}
+
+/**
+ * A table's columns as the /create row card draws them: the ones a row
+ * stores (a formula, a lookup or a rollup is worked out), with what each
+ * offers - a status its choices, a person the team, a row link the rows of
+ * a table the person reads (none: left out, as the table screen leaves it).
+ *
+ * @param array $viewer
+ * @param int   $table_id
+ * @return array[] id, name, type, choices ([key, label]), time, hint
+ */
+function ws_command_row_columns($viewer, $table_id)
+{
+    $out = array();
+    $team = null;
+
+    foreach (ws_wtable_columns((int) $table_id) as $id => $column) {
+        if (!ws_wtable_type_stores($column['type'])) {
+            continue;
+        }
+
+        $options = (array) $column['options'];
+        $choices = array();
+        $hint = '';
+
+        if ($column['type'] === 'status') {
+            foreach ((array) ($options['choices'] ?? array()) as $choice) {
+                $choices[] = array((string) $choice['key'], (string) $choice['label']);
+            }
+        } elseif ($column['type'] === 'person') {
+            $team = ($team === null) ? ws_team_members() : $team;
+
+            foreach ($team as $person) {
+                $choices[] = array((string) $person['id'], (string) $person['name']);
+            }
+        } elseif ($column['type'] === 'row') {
+            $linked = ws_wtable_link_choices($viewer, $column);
+
+            if ($linked === null) {
+                continue;
+            }
+
+            foreach ($linked as $key => $label) {
+                $choices[] = array((string) $key, (string) $label);
+            }
+        } elseif ($column['type'] === 'money') {
+            $hint = (string) ($options['currency'] ?? '');
+        } elseif ($column['type'] === 'link') {
+            $hint = lang('kind:id, such as contact:12');
+        } elseif ($column['type'] === 'list') {
+            $hint = lang('One item a line.');
+        }
+
+        $out[] = array(
+            'id'      => (int) $id,
+            'name'    => (string) $column['name'],
+            'type'    => (string) $column['type'],
+            'choices' => $choices,
+            'time'    => !empty($options['time']),
+            'hint'    => $hint,
+        );
+    }
+
+    return $out;
+}
+
+/**
+ * A row refusal in words: each refused cell by its column, else the store's
+ * refusal as the table screen words it.
+ *
+ * @param array $result  ws_wtable_row_create()
+ * @param array $columns ws_wtable_columns()
+ * @return string
+ */
+function ws_command_row_refusal($result, $columns)
+{
+    $lines = array();
+
+    foreach ((array) ($result['errors'] ?? array()) as $id => $code) {
+        $lines[] = (isset($columns[$id]) ? $columns[$id]['name'] . ': ' : '') . ws_wtable_screen_error_text((string) $code);
+    }
+
+    return ($lines !== array()) ? implode(' ', $lines) : ws_wtable_screen_refusal_text($result);
+}
+
+/**
+ * /create row (/oluştur satır): a row of a workflow table the person may
+ * write, the table named after the command (ws_command_row_table_match())
+ * or picked on the card. The card shows the table's fields, empty; Create
+ * sends what was filled in, read as the table screen reads its form
+ * (ws_wtable_screen_cell_from_form()), and ws_wtable_row_create() writes it
+ * with the table's rights, key, limits and events. Nothing is written
+ * before Create.
+ *
+ * @param array  $viewer
+ * @param array  $channel
+ * @param string $text    what follows /create row
+ * @param array  $options confirm, table_id (the card's table), cells
+ *                        (column id => as typed)
+ * @return array
+ */
+function ws_command_row($viewer, $channel, $text, $options)
+{
+    $tables = ws_command_row_tables($viewer);
+
+    if ($tables === array()) {
+        return array('type' => 'error', 'error' => lang('You may not create this kind of record.'));
+    }
+
+    $ids = array_column($tables, 'id');
+    $chosen = (int) ($options['table_id'] ?? 0);
+    $table_id = ($chosen > 0) ? $chosen : ws_command_row_table_match($tables, $text);
+
+    // A table outside the person's list is refused as one that is not there.
+    if (($table_id > 0) && !in_array($table_id, $ids, true)) {
+        return array('type' => 'error', 'error' => ws_wtable_screen_error_text('not_found'));
+    }
+
+    if (!empty($options['confirm'])) {
+        $table = ($table_id > 0) ? ws_wtable($table_id) : null;
+
+        if (!$table) {
+            return array('type' => 'error', 'error' => lang('Choose the table.'));
+        }
+
+        $columns = ws_wtable_columns($table_id);
+        $typed = is_array($options['cells'] ?? null) ? $options['cells'] : array();
+        $cells = array();
+
+        // What the card sent, column by column, read as the table screen
+        // reads its form; a column it did not draw is not sent.
+        foreach ($columns as $id => $column) {
+            if (ws_wtable_type_stores($column['type']) && array_key_exists($id, $typed)) {
+                $cells[$id] = ws_wtable_screen_cell_from_form($column, is_scalar($typed[$id]) ? (string) $typed[$id] : '');
+            }
+        }
+
+        $result = ws_wtable_row_create($viewer, $table, array('cells' => $cells));
+
+        if (empty($result['ok'])) {
+            return array('type' => 'error', 'error' => ws_command_row_refusal($result, $columns));
+        }
+
+        return array(
+            'type'    => 'done',
+            'saved'   => true,
+            'created' => true,
+            'record'  => array('type' => 'wtable_row', 'id' => (int) $result['row_id'], 'name' => (string) $table['name'], 'table_id' => $table_id),
+        );
+    }
+
+    return array(
+        'type'    => 'create_preview',
+        'preview' => array(
+            'kind'     => 'wtable_row',
+            'rows'     => array(),
+            'on_sale'  => '',
+            'missing'  => array(),
+            'tables'   => $tables,
+            'table_id' => $table_id,
+            'columns'  => ($table_id > 0) ? ws_command_row_columns($viewer, $table_id) : array(),
+        ),
+        'values'  => array(),
+        'labels'  => array(),
+    );
 }
 
 /**

@@ -276,7 +276,8 @@ function ws_command_registry_plan()
 
 /**
  * The channel's own commands: a later message, decisions, notes, polls,
- * the help.
+ * a recap, an approval request, a status update, a check-in, the
+ * reader's notifications, adding people, leaving, the help.
  *
  * @return array[]
  */
@@ -330,6 +331,64 @@ function ws_command_registry_channel()
             'gate' => 'ws_command_gate_recap', 'runner' => 'ws_command_run_recap',
         ),
         array(
+            'key' => 'approval', 'tr' => 'onay', 'en' => 'approval', 'label' => '/approval · /onay',
+            'description' => lang('Asks people of the channel to approve: a title, then the people with @; any one of them decides. Without a title or people the Ask for approval form opens filled.'),
+            'example'     => lang('/approval Final logo @ayse @mehmet'),
+            'args'        => array(
+                $arg('title', 'text', lang('title'), false),
+                $arg('people', 'people', lang('@people'), false, 'people', array('multiple' => true, 'anywhere' => true)),
+            ),
+            'names' => array('onay', 'approval'), 'group' => 'channel', 'order' => 136,
+            'gate' => 'ws_command_gate_approval', 'runner' => 'ws_command_run_approval', 'live' => 'ws_command_live_approval',
+            'api' => 'ws_api_command_kind_approval',
+        ),
+        array(
+            'key' => 'update', 'tr' => 'güncelleme', 'en' => 'update', 'label' => '/update · /güncelleme',
+            'description' => lang('Posts a status update of the channel: on track, at risk or off track, then what to say. Without a state the Status update form opens filled.'),
+            'example'     => lang('/update at-risk The supplier is a week late'),
+            'args'        => array(
+                $arg('health', 'health', lang('state of the work'), false, 'healths'),
+                $arg('text', 'text', lang('what to say'), true),
+            ),
+            'names' => array('güncelleme', 'guncelleme', 'update'), 'group' => 'channel', 'where' => 'channel', 'order' => 137,
+            'gate' => 'ws_command_gate_status', 'runner' => 'ws_command_run_update', 'live' => 'ws_command_live_update',
+            'api' => 'ws_api_command_kind_update',
+        ),
+        array(
+            'key' => 'checkin', 'tr' => 'checkin', 'en' => 'checkin', 'label' => '/checkin',
+            'description' => lang('Asks the channel\'s people a check-in question; each answers on its card. Without a question the Ask for a check-in form opens with the usual one.'),
+            'example'     => lang('/checkin What is in your way this week?'),
+            'args'        => array($arg('question', 'text', lang('question'), true)),
+            'names' => array('checkin', 'check-in'), 'group' => 'channel', 'where' => 'channel', 'order' => 138,
+            'gate' => 'ws_command_gate_status', 'runner' => 'ws_command_run_checkin', 'live' => 'ws_command_live_checkin',
+            'api' => 'ws_api_command_kind_checkin',
+        ),
+        array(
+            'key' => 'notify', 'tr' => 'bildirim', 'en' => 'notify', 'label' => '/notify · /bildirim',
+            'description' => lang('Sets your notifications of this channel: all, mentions or never. Without a word it says the one in force.'),
+            'example'     => lang('/notify mentions'),
+            'args'        => array($arg('choice', 'notify', lang('all | mentions | never'), true, 'notify')),
+            'names' => array('bildirim', 'notify'), 'group' => 'channel', 'where' => 'channel', 'order' => 950,
+            'gate' => 'ws_command_gate_member', 'runner' => 'ws_command_run_notify', 'live' => 'ws_command_live_notify',
+        ),
+        array(
+            'key' => 'invite', 'tr' => 'davet', 'en' => 'invite', 'label' => '/invite · /davet',
+            'description' => lang('Adds people to this channel, as Add people does: name them with @.'),
+            'example'     => lang('/invite @ayse @mehmet'),
+            'args'        => array($arg('people', 'people', lang('@people'), false, 'people', array('multiple' => true))),
+            'names' => array('davet', 'invite'), 'group' => 'channel', 'order' => 960,
+            'gate' => 'ws_command_gate_invite', 'runner' => 'ws_command_run_invite', 'live' => 'ws_command_live_invite',
+        ),
+        array(
+            'key' => 'leave', 'tr' => 'ayrıl', 'en' => 'leave', 'label' => '/leave · /ayrıl',
+            'description' => lang('Leaves this channel once you confirm on the card shown to you.'),
+            'example'     => lang('/leave'),
+            'args'        => array(),
+            'names' => array('ayrıl', 'ayril', 'leave'), 'group' => 'channel', 'where' => 'channel', 'order' => 970,
+            'gate' => 'ws_command_gate_member', 'runner' => 'ws_command_run_leave', 'live' => 'ws_command_live_leave',
+            'api' => 'preview',
+        ),
+        array(
             'key' => 'help', 'tr' => 'yardım', 'en' => 'help', 'label' => '/help · /yardım',
             'description' => lang('Lists the commands and what they do.'),
             'example'     => lang('/help'),
@@ -370,7 +429,7 @@ function ws_command_registry_records()
         ),
         array(
             'key' => 'create', 'tr' => 'oluştur', 'en' => 'create', 'label' => '/create · /oluştur',
-            'description' => lang('Creates a product or a product group, off sale, or a contact: the kind, then its name; a product takes a price and a #group if you like, a contact its company and e-mail after commas. Shown to you before it is created. Several product lines, one per line, make one card of drafts for you to apply.'),
+            'description' => lang('Creates a product or a product group, off sale, a contact, or a row of a workflow table: the kind, then its name; a product takes a price and a #group if you like, a contact its company and e-mail after commas, a row the table\'s name. Shown to you before it is created. Several product lines, one per line, make one card of drafts for you to apply.'),
             'example'     => lang('/create product Blue mug 149,90'),
             'args'        => array(
                 $arg('kind', 'record_kind', lang('kind'), false, 'kinds'),
@@ -390,6 +449,11 @@ function ws_command_registry_records()
                         $arg('email', 'text', lang('e-mail'), false),
                     ),
                     'example' => lang('/create contact Ada Lovelace, Acme Ltd, ada@example.com'),
+                ),
+                array(
+                    'words'   => array('satir', 'row'),
+                    'args'    => array($arg('table', 'text', lang('table'), false, '', array('multiple' => true))),
+                    'example' => lang('/create row Leads'),
                 ),
             ),
             'names' => array('oluştur', 'olustur', 'create'), 'group' => 'records', 'order' => 160,
@@ -511,6 +575,44 @@ function ws_api_command_kind_poll($rest)
 function ws_api_command_kind_remind($rest)
 {
     return (ws_command_remind_data($rest)['time'] === '') ? 'preview' : 'run';
+}
+
+/**
+ * The API class of /approval: without a title or anybody named it opens
+ * the Ask for approval form, so nothing is written.
+ *
+ * @param string $rest
+ * @return string preview | run
+ */
+function ws_api_command_kind_approval($rest)
+{
+    $data = ws_command_approval_read($rest);
+
+    return (($data['title'] === '') || empty($data['people'])) ? 'preview' : 'run';
+}
+
+/**
+ * The API class of /update: without a state it opens the Status update
+ * form.
+ *
+ * @param string $rest
+ * @return string preview | run
+ */
+function ws_api_command_kind_update($rest)
+{
+    return (ws_command_update_data($rest)['health'] === '') ? 'preview' : 'run';
+}
+
+/**
+ * The API class of /checkin: without a question it opens the Ask for a
+ * check-in form.
+ *
+ * @param string $rest
+ * @return string preview | run
+ */
+function ws_api_command_kind_checkin($rest)
+{
+    return (ws_checkin_question($rest) === '') ? 'preview' : 'run';
 }
 
 /**

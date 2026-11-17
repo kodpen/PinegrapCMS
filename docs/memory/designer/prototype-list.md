@@ -14,8 +14,9 @@ description: The Prototype view's links panel (PV6): the selected frame's links 
 - A change of the selected frame lets go of a picked link that is neither the frame's own nor one into it; a redraw lets go of one whose row is gone.
 
 ## Where are the problems?
-- `brokenOf(layout)`: every broken row in the frames' order and each frame's count. The bar says "N links" and, when there are any, a red "N broken" button (`.sd-proto-broken`) opening `.sd-proto-problems`: one button per broken link (frame · label, why and address), which picks it. Escape closes it and refocuses the button; a press outside closes it.
+- `brokenOf(layout)`: every broken row in the frames' order and each frame's count. The bar says "N links" and, when there are any, a red "N broken" button (`.sd-proto-broken`) opening `.sd-proto-problems`, whose "Broken links" group has one button per broken link (frame · label, why and address), which picks it. A press outside closes it.
 - A frame with broken links carries a red count (`.sd-proto-badge`) on its head, also when dimmed.
+- Links without a target, pages no link leads to and "N to check": designer/prototype-problems.md.
 
 ## When is the panel open, and what does Play do?
 - The bar's "Links" button opens and closes it; the choice is kept in `localStorage` `pg_proto_list`. Without one it is open from 1,100 px and closed below; under 1,100 px it opens over the stage's right side.

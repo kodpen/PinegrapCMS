@@ -20,8 +20,8 @@ if (!defined('PG_TEST_RUNNER')) {
 function test_message_values_system_are_escaped()
 {
 	$lines = array(
-		array('api_settings.php', ': lang(array(\'string\' => \'Deliveries to {var:1} were stopped.\', \'vars\' => h($hook[\'url\']))));', 1),
-		array('api_settings.php', '? lang(array(\'string\' => \'Deliveries to {var:1} were switched back on.\', \'vars\' => h($hook[\'url\'])))', 1),
+		array('api_settings.php', ': lang(array(\'string\' => \'Deliveries to {var:1} were stopped.\', \'vars\' => h(pg_ops_alert_mask_url($hook[\'url\'])))));', 1),
+		array('api_settings.php', '? lang(array(\'string\' => \'Deliveries to {var:1} were switched back on.\', \'vars\' => h(pg_ops_alert_mask_url($hook[\'url\']))))', 1),
 		array('backups.php', '\'vars\'=>array(h($backup_folder), filter_var(ini_get(\'html_errors\'), FILTER_VALIDATE_BOOLEAN) ? $e->getMessage() : h($e->getMessage()))', 1),
 		array('backups.php', '$liveform->add_warning(h($delete_message));', 1),
 		array('backups.php', 'h(lang(array(\'string\' => \'The backup {var:1} could not be deleted.\', \'vars\' => array($backup_folder))))', 1),

@@ -19,7 +19,7 @@ description: The Prototype view's hotspot collector (assets/js/pg_proto_hotspots
 
 ## How is a hotspot marked?
 - `markHref(href, read, tabs)` through the twin (`resolve`, `parse`): `external` class mailto/tel/sms → `contact`, anchor → `anchor`, the rest `external`; a page in a bin folder → `broken`; a page whose id is a tab's, or for an unsaved tab (page_id 0) an unknown href whose first path part is its name (any case), → `tab` with its key; still unknown → `hidden` when the item is in `read.hidden`, else `broken`; otherwise `page` (files, products, short links included). `draft` is set for a page in `read.draft_folder`.
-- `mark(design, read, tabs)` answers a copy: link hotspots get mark, draft, type, class, pageId, tab; a menu or region hotspot gets `links` (each marked; a hidden menu item with no href and mark `hidden`), null when the read knows no such name.
+- `mark(design, read, tabs)` answers a copy (a node's own link with an empty or `#` address: `empty`, designer/prototype-problems.md): link hotspots get mark, draft, type, class, pageId, tab; a menu or region hotspot gets `links` (each marked; a hidden menu item with no href and mark `hidden`), null when the read knows no such name.
 - Entities: `htmlLinks()` decodes numeric references and amp, lt, gt, quot, apos, nbsp; PHP decodes every HTML5 name. Other names stay as written.
 
 ## How does layout() place things?

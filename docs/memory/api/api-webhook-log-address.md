@@ -5,8 +5,8 @@ description: Site Log lines about an event subscription name its address as sche
 
 ## How does a Site Log line name a subscription's address?
 - Always through `pg_ops_alert_mask_url()`: `https://hooks.slack.com/…`, never the stored URL. The Site Log is read by every manager and by API applications holding `site_log:read`, and Slack, Discord and Zapier addresses carry their secret in the path or query.
-- Lines covered: the API's `api_webhooks_update()` and `api_webhooks_rotate_secret()` (`includes/api/resources/webhooks.php`), the panel's stop/resume and removal (`api_settings.php`), and the given-up delivery (`api_webhook_given_up_note()`, `api-webhook-queue.md`).
-- The full address stays where its owner reads it: the application's own `GET /webhooks` and the notices on the Application Access screen (roles 0-1).
+- Lines covered: the API's `api_webhooks_update()` and `api_webhooks_rotate_secret()` (`includes/api/resources/webhooks.php`), the panel's New subscription, stop/resume and removal (`api_settings.php`), and the given-up delivery (`api_webhook_given_up_note()`, `api-webhook-queue.md`).
+- The full address stays where its owner reads it: the application's own `GET /webhooks`, and the Events tab's New subscription form while it is typed. Application Access's list, card and notices show scheme and host too (`application-access-automation.md`).
 
 ## What was the symptom?
 - A change, a secret renewal, a stop/resume or a removal wrote the whole address, path token included, into the Site Log, while only the given-up line was masked.

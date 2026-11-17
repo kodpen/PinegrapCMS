@@ -1216,6 +1216,9 @@ $liveform->remove_form('edit_file');
         // has to be on the disk.
         pg_file_storage_bring_home(array((int) $file_id));
 
+        // A new folder takes its languages' pictures along.
+        pg_picture_tr_follow(array((int) $file_id));
+
             log_activity(lang(array('string'=>'file ({var:1}) was modified','vars'=>$name)), $_SESSION['sessionusername']);
         include_once('liveform.class.php');
 

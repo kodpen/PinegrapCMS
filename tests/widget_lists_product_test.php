@@ -284,3 +284,56 @@ function test_widget_lists_product_quantity_prices_detail()
 
 	pg_assert_false(isset(pg_sw_kind_lists('catalog_listing')['product.quantity_prices']), 'not in the listing');
 }
+
+// On a product page with variants the "Quantity prices" box is the one the
+// variant script redraws: the nearest box marked Hide when empty around
+// the list, else the element holding it, marked data-pg-civ-qty-prices.
+// Drawn alone for each variant it holds that variant's breaks, worked out
+// on its own list price; an empty box waits hidden for a variant to fill it.
+function test_widget_lists_product_quantity_prices_variant_box()
+{
+	$list = _wlp_list('product.quantity_prices', array(_wlp_text('__qty_break_label', 'qb', 'li')));
+	$box = _wlp_node('div', 'mb-3 pg-hide-if-empty', array(
+		_wlp_text('__name', 'h6', 'h2'),
+		_wlp_node('ul', 'list-group pg-field-value', array($list)),
+	));
+	$tree = array('type' => 'root', 'props' => array(), 'children' => array(
+		array('type' => 'loop_area', 'props' => array(), 'children' => array(_wlp_text('__name', 'title', 'h1'), $box)),
+	));
+	pg_assert_same(array(0, 1), _civ_qty_prices_part_path($tree), 'the box marked Hide when empty');
+	$plain = array('type' => 'root', 'props' => array(), 'children' => array(_wlp_node('div', 'outer', array(_wlp_node('ul', 'breaks', array($list))))));
+	pg_assert_same(array(0, 0), _civ_qty_prices_part_path($plain), 'unmarked: the element holding the list');
+	pg_assert_same(null, _civ_qty_prices_part_path(array('type' => 'root', 'props' => array(), 'children' => array($list))), 'no element around it');
+	$none = array('type' => 'root', 'props' => array(), 'children' => array(_wlp_text('__name', 'title', 'h1')));
+	pg_assert_same(null, _civ_qty_prices_part_mark($none), 'no list, no box');
+
+	$node = _civ_qty_prices_part_mark($tree);
+	pg_assert_same('mb-3 pg-hide-if-empty', $node['props']['cssClass'], 'the box answered');
+	pg_assert_same(array(array('name' => 'data-pg-civ-qty-prices', 'value' => '1')), $tree['children'][0]['children'][1]['props']['_attrs'], 'marked in the tree');
+
+	// Two variants, S at 100.00 and XL at 150.00, one offer: 10% for 10.
+	$breaks = array(array('quantity' => 10, 'amount' => 0, 'percentage' => 10));
+	$drawn = array();
+	foreach (array(21 => 10000, 22 => 15000) as $pid => $list_cents) {
+		$rows = pg_sw_list_product_quantity_price_rows(pg_offer_quantity_break_rows($breaks, $list_cents, $list_cents), '$');
+		$drawn[$pid] = _civ_list_part_draw($node, 77, $pid, 'product.quantity_prices', $rows);
+	}
+	foreach (array(21 => '90', 22 => '135') as $pid => $amount) {
+		pg_assert_contains('data-pg-civ-qty-prices="1"', $drawn[$pid], 'the box keeps its mark');
+		$texts = _wlp_texts($drawn[$pid], 'qb');
+		pg_assert_same(1, count($texts), 'one break');
+		pg_assert_contains('10 or more: each for ', $texts[0]);
+		pg_assert_contains($amount, $texts[0], 'on the variant\'s own list price');
+		pg_assert_same(false, strpos($drawn[$pid], '^^'), 'no token left');
+	}
+	pg_assert_true(strpos($drawn[21], '135') === false && strpos($drawn[22], '90.00') === false, 'not the other variant\'s');
+
+	$empty = '<div class="mb-3 pg-hide-if-empty" data-pg-civ-qty-prices="1"><h2>Quantity prices</h2><ul class="pg-field-value"></ul></div>';
+	pg_assert_contains('hidden data-pg-empty-wait', pg_sw_hide_empty_fields($empty, null, true), 'waits for a variant with breaks');
+	pg_assert_same('', trim(pg_sw_hide_empty_fields($empty)), 'without a variant picker it goes');
+
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_civ_variants.js');
+	pg_assert_contains("action: 'get_quantity_prices_for_product'", $js, 'the script asks for the box');
+	$api = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/panel/commerce.php');
+	pg_assert_contains('_civ_qty_prices_part_html($widget_id, $product_id)', $api, 'the action draws it');
+}

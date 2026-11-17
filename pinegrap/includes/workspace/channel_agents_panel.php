@@ -220,7 +220,7 @@ function ws_channel_agents_addable($agents, $in)
 function ws_channel_agents_panel_state($viewer, $channel)
 {
     if (!ws_agents_ready()) {
-        return array('ready' => false, 'agents' => array(), 'addable' => array(), 'can_edit' => false, 'can_tier' => false);
+        return array('ready' => false, 'agents' => array(), 'addable' => array(), 'can_edit' => false, 'can_add' => false, 'can_tier' => false);
     }
 
     $rows = ws_channel_agents($channel['id']);
@@ -236,6 +236,7 @@ function ws_channel_agents_panel_state($viewer, $channel)
     // One grouped read of the requests for every agent of the channel, for
     // the card's working and waiting states.
     $counts = ws_agent_request_counts($agents, $now);
+    $can_edit = (ws_channel_agent_add_problem($viewer, $channel) === '');
 
     return array(
         'ready'    => true,
@@ -243,7 +244,11 @@ function ws_channel_agents_panel_state($viewer, $channel)
             return ws_channel_agent_panel_row($row, $now, $counts);
         }, $rows),
         'addable'  => ws_channel_agents_addable(ws_agents_list(), $in),
-        'can_edit' => (ws_channel_agent_add_problem($viewer, $channel) === ''),
+        'can_edit' => $can_edit,
+        // A new agent: in a private channel, and in a discussion of one,
+        // only from its manager (ws_channel_agent_enter_problem()), so
+        // nobody else is offered the list.
+        'can_add'  => $can_edit && (ws_channel_agent_enter_problem($viewer, $channel, null) === ''),
         'can_tier' => ws_can_manage_channel($viewer, $channel),
     );
 }
@@ -388,6 +393,13 @@ function ws_channel_agents_js_strings()
         'cha_loop_guard'  => lang('Stop long agent conversations'),
         'cha_loop_guard_help' => lang('Agents answering one another are told to stop after a few turns and wait for a person.'),
         'cha_readonly'    => lang('Only whoever may post here, and in a private channel only a member, changes the agents.'),
+        // The same section in a discussion's people panel.
+        'cha_title_thread' => lang('Agents in this discussion'),
+        'cha_help_thread' => lang('An agent added here is woken by this discussion\'s messages as you choose. The channel\'s agents answer here only when named.'),
+        'cha_empty_thread' => lang('No agent of its own yet.'),
+        'cha_remove_thread' => lang('Remove from the discussion'),
+        'cha_remove_ask_thread' => lang('Take this agent out of the discussion? It is no longer woken here.'),
+        'cm_following'    => lang('Follows here'),
         // Channel info and the channel head: people and agents.
         'cm_people'       => lang('People here'),
         'cm_agents'       => lang('Agents here'),
@@ -508,7 +520,9 @@ function ws_channel_member_agent($row, $now, $counts = null)
         $state = ((string) ($agent['door_error'] ?? '') !== '') ? 'late' : 'off';
     }
 
-    $wake = ws_channel_agent_wake_words($row['wake_rule'] ?? 'mention', $row['wake_prefix'] ?? '');
+    $reach_from = (int) ($row['reach_from'] ?? 0);
+    // A channel's agent in its discussion is asked there by name only.
+    $wake = ($reach_from > 0) ? lang('from the channel, answers when named') : ws_channel_agent_wake_words($row['wake_rule'] ?? 'mention', $row['wake_prefix'] ?? '');
 
     $out = array(
         'id'         => (int) ($agent['id'] ?? 0),
@@ -524,6 +538,10 @@ function ws_channel_member_agent($row, $now, $counts = null)
         'wake'       => $wake,
         'seen'       => $seen,
         'seen_state' => $state,
+        // In a discussion: the channel it comes from (0 for a row of its
+        // own) and whether the discussion follows it.
+        'reach_from' => $reach_from,
+        'following'  => !empty($row['following']),
     );
 
     if (is_array($counts)) {
@@ -534,8 +552,89 @@ function ws_channel_member_agent($row, $now, $counts = null)
 }
 
 /**
+ * The agent rows a channel's member list shows. A channel: its own rows. A
+ * discussion: its own rows, then the allowed rows of the channel it is
+ * about for every active app or model agent with no row of its own, read as
+ * ws_agent_reach_merge() reads them (an ask by name, tier 1, loop guard on,
+ * reach_from that channel's id); an archived or missing channel gives none.
+ * The row of the agent the discussion follows is marked following. Pure.
+ *
+ * @param array[]    $own         ws_channel_agents() of the channel
+ * @param array|null $parent      the channel a discussion is about, null for a channel
+ * @param array[]    $parent_rows ws_channel_agents() of that channel
+ * @param string     $follow      the key the discussion follows (agent:<id> | model:<id>), '' for none
+ * @return array[] ws_channel_agent_shape() rows with reach_from and following
+ */
+function ws_channel_member_agent_rows($own, $parent, $parent_rows, $follow = '')
+{
+    $out = array();
+    $own_ids = array();
+
+    foreach ((array) $own as $row) {
+        $own_ids[] = (int) $row['agent']['id'];
+        $row['reach_from'] = 0;
+        $out[] = $row;
+    }
+
+    if (is_array($parent) && ((int) ($parent['archived_at'] ?? 0) === 0)) {
+        foreach ((array) $parent_rows as $row) {
+            $agent = (array) $row['agent'];
+
+            if (in_array((int) $agent['id'], $own_ids, true) || empty($row['allowed'])
+                || ((string) ($agent['status'] ?? '') !== 'active') || !in_array((string) ($agent['kind'] ?? ''), array('app', 'model'), true)) {
+                continue;
+            }
+
+            $row['wake_rule'] = 'mention';
+            $row['wake_prefix'] = '';
+            $row['tier'] = 1;
+            $row['loop_guard'] = true;
+            $row['reach_from'] = (int) $parent['id'];
+            $out[] = $row;
+        }
+    }
+
+    foreach ($out as $index => $row) {
+        // Only a row that reaches the discussion is followed: allowed, and
+        // its agent active.
+        $out[$index]['following'] = ((string) $follow !== '') && !empty($row['allowed'])
+            && ((string) ($row['agent']['status'] ?? '') === 'active') && (ws_agent_request_value($row['agent']) === (string) $follow);
+    }
+
+    return $out;
+}
+
+/**
+ * The agent rows of a channel's member list, read for one channel
+ * (ws_channel_member_agent_rows()): Channel info, a discussion's people
+ * panel, the agent card and the API's agent_count read these.
+ *
+ * @param array $channel
+ * @return array[]
+ */
+function ws_channel_member_agent_list($channel)
+{
+    if (!ws_agents_ready() || !is_array($channel)) {
+        return array();
+    }
+
+    $own = ws_channel_agents($channel['id']);
+    $parent = (function_exists('ws_thread_parent_channel') && ws_channel_is_thread($channel)) ? ws_thread_parent_channel($channel) : null;
+
+    if (!is_array($parent)) {
+        return ws_channel_member_agent_rows($own, null, array());
+    }
+
+    $follow = ws_thread_follow_ready() ? ws_thread_follow_clean(db_value("SELECT follow_agent FROM ws_threads WHERE channel_id = '" . (int) $channel['id'] . "'")) : '';
+
+    return ws_channel_member_agent_rows($own, $parent, ws_channel_agents($parent['id']), $follow);
+}
+
+/**
  * A channel's registry agents for its head and Channel info, read by
- * everyone who reads the channel. Empty where the registry is not there.
+ * everyone who reads the channel; in a discussion also the channel's agents
+ * asked there by name (ws_channel_member_agent_list()). Empty where the
+ * registry is not there.
  *
  * @param array $channel
  * @param int   $now
@@ -547,7 +646,7 @@ function ws_channel_member_agents($channel, $now)
         return array();
     }
 
-    $rows = ws_channel_agents($channel['id']);
+    $rows = ws_channel_member_agent_list($channel);
     $counts = ws_agent_request_counts(array_map(function ($row) {
         return $row['agent'];
     }, $rows), $now);

@@ -8,7 +8,7 @@ description: Editor screen code, save flow, JSON api.php body, the dirty check a
 - Save sends all tabs in the `pages_json` field; the server first validates all of them with `dry_run`, then writes, with no transaction (the code opens none, and a table over the 2026.4.8 limits may still be MyISAM: `data/table-engines-and-row-size.md`). Save resets `page.page_custom_*`.
 - `api.php` reads the body as JSON; FormData returns "Invalid action".
 - The Delete button posts its own single-use form; `_protectMainForm()` blocks every submit of the main form.
-- "View Page" needs `p.savedName` (unsaved name -> no link).
+- "Open on the site (as saved)" in the Preview menu needs `p.savedName` (unsaved name -> no row).
 
 ## Which pages does a save write?
 - A page nothing touched goes without its tree, marked `unchanged: 1` (`_pgPageUnchanged()`: saved before, not a picked page, `_pgPageDirty()` clean, the validation removed nothing, and none of the shared components it shows, nested ones included, is `_sharedDirty`). The server neither writes, scores, translates nor logs it, and only puts it in the `pages` reply (the one save that folds the old design-wide body classes onto pages reads such pages back and writes them).
