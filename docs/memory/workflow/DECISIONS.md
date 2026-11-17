@@ -1066,7 +1066,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/personal-calendar-census-tables.md: PC1 proposal (2026-11-14), shaped by the architect and approved by the owner (decisions-made-schema-18): the tables and columns a person's private plans need, each with its reason and step
 - workspace/personal-calendar-census-words.md: PC1 census (2026-11-14): words taken beside "plan" (Plan item, Planning Board, /workspace/plan, "#plan") and the names proposed for a private plan
 - workspace/plan-board-grid.md: Planning Board (workspace_board.php) Turkish name, grid columns and why .ws-board's min-width equals the grid minimum (#3815)
-- workspace/poll-question-picture-box.md: A question's own picture in the poll box (#9964) and the New poll form's "Question picture" field: the question shape, thumbnails, "Other", answered, what is left out
+- workspace/poll-question-picture-box.md: A question's own picture in the poll box (#9964): the question shape, thumbnails, answered; the viewer's distinct pictures and count mark (#10023); the New poll form's "Question picture" field
 - workspace/poll-question-picture.md: A poll question's own picture (poll_picture.php, #9948): carried by the question's message, the image check, ask again carries it, change while unanswered, the API routes, ws_poll.php --file
 - workspace/quiet-hours.md: A person's quiet hours (plan quiet-hours, #9844 and QH2): set in a channel's Notifications, ws_profiles.quiet_hours, the rule pg_quiet_hours_left() reads, the person's own session only
 - workspace/workflow-table-channel.md: A workflow table of a channel (ws_wtables.channel_id, 11.0.191): rights from the channel, made in or moved to a channel, lists, bin, screen card, API, webhooks

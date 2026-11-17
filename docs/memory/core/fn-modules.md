@@ -208,6 +208,7 @@ description: Generated from the module field of the memory files: each includes/
 - `page_facts`: [[page-conditions]]
 - `page_home`: [[single-home-page]]
 - `page_list`: [[page-list-paging]]
+- `page_revisions`: [[page-history-editor-revision]]
 - `page_vitals`: [[page-vitals-beacon]], [[page-vitals-figures]]
 - `parasut`: [[erp-parasut-legacy-buyer-number]], [[erp-parasut-legacy-press-claim]], [[erp-parasut-legacy-token-401]], [[erp-parasut-overview]]
 - `payments`: [[card-brand-switches]], [[gateway-masked-keys]], [[order-refunded-amount-writes]], [[payment-driver-paytr-installments]], [[payment-gateway-secrets]]

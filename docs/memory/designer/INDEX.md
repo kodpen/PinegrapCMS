@@ -540,6 +540,7 @@
 - page-experiments-model.md: Page experiments model: the three tables (11.0.153), statuses and moves, the weighted draw, the pg_exp bucket cookie, which requests never join [decision: here]
 - page-experiments-serving.md: Serving a page experiment variant: body swap, the bucket at render and in the router, one cache copy per variant, private headers, views into experiment_hourly
 - page-experiments-sheet.md: The Experiments sheet (page_experiments.php, PX4 #6184): set-up with a variant draft, start/pause/end, Publish the winner through the page save, the chips, the holds on a variant draft
+- page-history-editor-revision.md: Which page revision History names "designer (change by editor)": only the one the apply wrote, kept as steps.revision_no; old changes matched on after_hash and the second (#10216)
 - page-html-rebuild.md: Rebuild Page HTML (pg_designer_rebuild_page_code()): every designer page drawn again from its stored tree; when it runs, what stays, session cursor; per-body once-assets
 - page-link-by-id.md: A link outside a widget kept by page id (__page_link, #6233): fallback href plus data-pg-page-link in the saved body, the current address put in by get_page_content(), '#' inside a widget [decision: decisions-made-product-23.md]
 - page-link-fixed-text.md: A value of a link to another page that is fixed text, the same in every record ({name, text} in _bindParams.href.params): spec, address, list rows, the panel's Fixed text row
