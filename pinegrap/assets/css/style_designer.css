@@ -340,10 +340,37 @@
 .sd-design-menu-btn:focus-visible { outline: none; box-shadow: var(--sd-focus-ring); }
 .sd-design-menu-name { max-width: 14rem; overflow: hidden; text-overflow: ellipsis; }
 .sd-design-menu-caret { font-size: .7rem; color: var(--sd-text-muted); }
-.sd-design-menu .menu { min-width: 12rem; }
-.sd-design-menu .sd-menu-item-danger { color: var(--sd-danger); }
+/* The menu wears the tab menu's look (.sd-tab-popmenu): same ground,
+   rows, text size and divider. */
+.sd-design-menu .menu {
+    min-width: 220px;
+    padding: .3rem;
+    background: var(--sd-panel-bg);
+    border: 1px solid var(--sd-panel-border);
+    border-radius: 6px;
+    box-shadow: 0 8px 24px color-mix(in srgb, var(--sd-shadow) 45%, transparent);
+}
+.sd-design-menu .menu-item {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding: .45rem .6rem;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--sd-text);
+    font-size: .8rem;
+    line-height: 1.5;
+    text-align: left;
+}
+.sd-design-menu .menu-item:hover,
+.sd-design-menu .menu-item:focus-visible { background: color-mix(in srgb, var(--sd-text) 6%, transparent); color: var(--sd-text); }
+.sd-design-menu .sd-menu-item-danger,
 .sd-design-menu .sd-menu-item-danger:hover,
-.sd-design-menu .sd-menu-item-danger:focus-visible { color: var(--sd-danger); background: color-mix(in srgb, var(--sd-danger) 16%, transparent); }
+.sd-design-menu .sd-menu-item-danger:focus-visible { color: var(--sd-danger); }
+.sd-design-menu .sd-menu-item-danger:hover,
+.sd-design-menu .sd-menu-item-danger:focus-visible { background: color-mix(in srgb, var(--sd-danger) 18%, transparent); }
+.sd-design-menu .menu-divider { height: 1px; margin: .3rem .2rem; border: 0; background: var(--sd-panel-border); opacity: 1; }
 .sd-toolbar-actions { flex: 0 0 auto; margin-left: auto; }
 @media (max-width: 1023.98px) {
     .sd-tabs-add-txt { display: none; }
