@@ -51,6 +51,15 @@ function pg_tr_owner_groups()
             'icon'  => 'bi-ui-checks',
             'types' => array('form', 'form_records'),
         ),
+        // The texts of Design Canvas pictures (owner type 'file',
+        // includes/fn/picture_translation.php): only those of a picture a
+        // page in another language has shown, i.e. one with a row in
+        // file_translation (pg_tr_picture_owner_bound()).
+        'pictures' => array(
+            'label' => lang('Pictures'),
+            'icon'  => 'bi-image',
+            'types' => array('file'),
+        ),
         // The cookie window (pg_consent_ui_keys(), pg_tr_ui_translate()):
         // the one part of the software's wording the site translates, and
         // only for a language with no language file. Left out of the
@@ -61,6 +70,48 @@ function pg_tr_owner_groups()
             'types' => array('ui'),
         ),
     );
+}
+
+/**
+ * The read of the pictures that use the given texts, within the Pictures
+ * group's bound: one row per text and picture, by the picture's name. Pure.
+ *
+ * @param int[]  $string_ids
+ * @param string $bound pg_tr_picture_owner_bound()
+ * @return string SQL, '' with no text
+ */
+function pg_tr_picture_files_sql($string_ids, $bound)
+{
+    $string_ids = array_values(array_unique(array_filter(array_map('intval', (array) $string_ids))));
+
+    if (!$string_ids) {
+        return '';
+    }
+
+    return "SELECT DISTINCT u.string_id, f.id, f.name
+            FROM translation_uses u
+            INNER JOIN files f ON f.id = u.owner_id
+            WHERE u.string_id IN (" . implode(',', $string_ids) . ") AND ($bound)
+            ORDER BY f.name, f.id";
+}
+
+/**
+ * The pictures each listed text of the Pictures group comes from, so a row
+ * can name the file and open it in the Design Canvas.
+ *
+ * @param int[] $string_ids
+ * @return array string id => list of array('id' => int, 'name' => string)
+ */
+function pg_tr_picture_files($string_ids)
+{
+    $sql = pg_tr_picture_files_sql($string_ids, pg_tr_picture_owner_bound());
+    $files = array();
+
+    foreach (($sql !== '') ? (array) db_items($sql) : array() as $row) {
+        $files[(int) $row['string_id']][] = array('id' => (int) $row['id'], 'name' => (string) $row['name']);
+    }
+
+    return $files;
 }
 
 /* ---------------------------------------------------------------------------

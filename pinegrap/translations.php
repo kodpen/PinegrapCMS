@@ -473,6 +473,11 @@ if ($language !== '') {
     }
 }
 
+// The Pictures group: the picture each text comes from, which opens in the
+// Design Canvas (pg_image_editor_includes(), its data-pg-image-edit button).
+$row_pictures = ($group === 'pictures') ? pg_tr_picture_files(array_column($rows, 'id')) : array();
+$open_picture_label = lang('Open in the Design Canvas');
+
 // The editor rows.
 $output_rows = '';
 $suspicious_text = lang('The length of the translation is out of proportion to the source text.');
@@ -500,6 +505,9 @@ foreach ($rows as $row) {
                         <div class="pg-tr-source' . (($row['format'] === 'inline') ? ' pg-tr-inline' : '') . '" id="pg_tr_source_' . (int) $row['id'] . '"' . $text_lang($source) . '>' . h($row['source_text']) . '</div>
                         <div class="mt-1 small fg-secondary">'
                             . ($row_owner ? '<span class="badge badge-subtle theme-secondary border me-1">' . h($index_owner_label($row_owner['kind'], $row_owner_name)) . '</span>' : '')
+                            . implode('', array_map(function ($picture) use ($open_picture_label) {
+                                return '<button type="button" class="badge badge-subtle theme-secondary border me-1 pg-tr-picture" data-pg-image-edit="' . h($picture['name']) . '" title="' . h($open_picture_label) . '"><i class="bi bi-image me-1" aria-hidden="true"></i>' . h($picture['name']) . '<span class="visually-hidden"> · ' . h($open_picture_label) . '</span></button>';
+                            }, isset($row_pictures[(int) $row['id']]) ? $row_pictures[(int) $row['id']] : array()))
                             . (($row['kind'] === 'seo') ? '<span class="badge badge-subtle theme-secondary border me-1">SEO</span>' : '')
                             . (($row['format'] === 'inline') ? '<span class="badge badge-subtle theme-secondary border me-1">HTML</span>' : '')
                             . '<span class="font-monospace opacity-50">' . h(substr($row['hash'], 0, 8)) . '</span>'
@@ -1024,4 +1032,5 @@ echo pg_page_shell(array(
         </dialog>' : '') . '
     </div>
     <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/translations.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/translations.js') . '"></script>
+    ' . ($row_pictures ? pg_image_editor_includes() : '') . '
 </main>' . output_footer();
