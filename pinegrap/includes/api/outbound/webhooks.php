@@ -411,6 +411,74 @@ function api_webhook_body($event, $payload, $created_at) {
 
 }
 
+// The body of an event's sample sent by POST /webhooks/{id}/test: the
+// envelope of a real event with test: true beside it, so a receiver can tell
+// a sample from the real thing by the body as well as by X-Pinegrap-Test.
+// Pure.
+function api_webhook_sample_body($event, $sample, $created_at) {
+
+	return pg_json_encode_answer(array(
+		'event'      => (string)$event,
+		'created_at' => (string)$created_at,
+		'data'       => $sample,
+		'test'       => true
+	));
+
+}
+
+// Whether a queued body is a sample (api_webhook_sample_body()): test: true
+// in the envelope, not inside data. Most bodies are not, and are told apart
+// without decoding them. Pure.
+function api_webhook_body_is_test($body) {
+
+	if (strpos((string)$body, '"test":true') === false) {
+
+		return false;
+
+	}
+
+	$envelope = json_decode((string)$body, true);
+
+	return is_array($envelope) && isset($envelope['test']) && ($envelope['test'] === true);
+
+}
+
+// The headers of one delivery: the event, the queue row as the delivery id,
+// the signature, and X-Pinegrap-Test: 1 on a sample. Pure.
+function api_webhook_delivery_headers($event, $delivery_id, $secret, $timestamp, $body) {
+
+	$headers = array(
+		'Content-Type: application/json',
+		'X-Pinegrap-Event: ' . $event,
+		'X-Pinegrap-Delivery: ' . (int)$delivery_id,
+		'X-Pinegrap-Signature: t=' . $timestamp . ',v1=' . api_webhook_signature($secret, $timestamp, $body)
+	);
+
+	if (api_webhook_body_is_test($body)) {
+
+		$headers[] = 'X-Pinegrap-Test: 1';
+
+	}
+
+	return $headers;
+
+}
+
+// Why the sample of $event may not be sent to a subscription listening to
+// $listened: 'not_listened' for an event it does not listen to, 'no_sample'
+// for one whose sample is not written yet, '' when it may. Pure.
+function api_webhook_sample_refusal($event, $listened, $payloads) {
+
+	if (((string)$event === '') || !in_array((string)$event, (array)$listened, true)) {
+
+		return 'not_listened';
+
+	}
+
+	return isset($payloads[$event]['sample']) ? '' : 'no_sample';
+
+}
+
 // Whether an event for a subscription in this status is queued on hold rather
 // than for sending: attempts 0 and next_attempt_at 0, which the dispatcher
 // does not pick up. A failing subscription's address stopped answering; trying
@@ -618,12 +686,7 @@ function api_webhook_deliver($row) {
 
 	$timestamp = (string)time();
 
-	$headers = array(
-		'Content-Type: application/json',
-		'X-Pinegrap-Event: ' . $row['event'],
-		'X-Pinegrap-Delivery: ' . (int)$row['id'],
-		'X-Pinegrap-Signature: t=' . $timestamp . ',v1=' . api_webhook_signature($hook['secret'], $timestamp, $body)
-	);
+	$headers = api_webhook_delivery_headers($row['event'], $row['id'], $hook['secret'], $timestamp, $body);
 
 	$outcome = api_http_post($hook['url'], $body, $headers, 10);
 
