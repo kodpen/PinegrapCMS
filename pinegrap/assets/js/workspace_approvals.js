@@ -259,7 +259,9 @@
 
     // The form behind "Ask for approval" in the writing box's + menu: the
     // people are the channel's (a discussion's own people in a discussion).
-    function form(view, h) {
+    // /approval opens it with fill (title, text, approvers) and done, called
+    // once the request is posted.
+    function form(view, h, fill, done) {
         var t = h.t;
         var el = h.el;
         var channel = view.channel;
@@ -273,6 +275,7 @@
         title.type = 'text';
         title.maxLength = 255;
         title.id = h.nextId('ws-apv-title-');
+        title.value = (fill && fill.title) || '';
         body.appendChild(h.formRow(t('apv_title'), title, t('apv_title_help')));
 
         // The details take @ and # like the writing box does.
@@ -281,12 +284,13 @@
         var area = null;
 
         if (rich) {
-            rich.set('', {});
+            rich.set((fill && fill.text) || '', {});
             wrap.appendChild(rich.input);
             wrap.appendChild(rich.tools(false));
         } else {
             area = el('textarea', 'form-control form-control-sm');
             area.rows = 3;
+            area.value = (fill && fill.text) || '';
             wrap.appendChild(area);
         }
 
@@ -297,7 +301,7 @@
         body.appendChild(textRow);
 
         var members = (channel.members || []).map(function (member) { return member.id; });
-        var people = h.peoplePicker([], members);
+        var people = h.peoplePicker((fill && fill.approvers) || [], members);
         var peopleRow = el('div', 'mb-5');
 
         peopleRow.appendChild(el('div', 'form-label', t('apv_people')));
@@ -394,6 +398,10 @@
                 send.disabled = false;
                 h.hideOffcanvas(node);
                 view.sync(true);
+
+                if (done) {
+                    done();
+                }
             }).catch(function (error) {
                 send.disabled = false;
                 h.fail(error);

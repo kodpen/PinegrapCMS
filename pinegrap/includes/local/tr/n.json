@@ -2300,6 +2300,7 @@
     "No tasks in the template yet.": "Şablonda henüz görev yok.",
     "No tasks.": "Görev yok.",
     "No tax number or e-mail on the row; the name alone was matched.": "Satırda vergi numarası ya da e-posta yok; yalnız ad eşleşti.",
+    "No team member is called @{var:1}.": "Ekipte @{var:1} adlı kimse yok.",
     "No telescope night is planned yet. Follow the news for the next one.": "Henüz planlanmış bir teleskop gecesi yok. Bir sonrakini haberlerden takip edin.",
     "No template": "Şablonsuz",
     "No template yet": "Henüz şablon yok",

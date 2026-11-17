@@ -23,6 +23,7 @@ description: Plan channel-commands, steps CC1 to CC6: the registry with no chang
   - Features: K8, K9.
 
 - CC4 (M) after CC2: /onay, /güncelleme, /checkin.
+  - CC4 done (#10228): K10 /onay, K11 /güncelleme, K12 /checkin (`workspace/workspace-command-approval-update-checkin.md`).
   - Tests: complete, each writes through its button's function with that function's refusals; incomplete, the form opens filled; /güncelleme and /checkin not offered in a discussion; the healths in Turkish and English.
   - Pictures: the three live lines, a form opened filled.
   - Features: K10 to K12.
