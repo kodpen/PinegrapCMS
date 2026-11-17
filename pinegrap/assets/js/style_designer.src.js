@@ -9748,11 +9748,11 @@ const StyleDesigner = (function () {
         // never through the tree (see "Toggleable open state").
         _syncToggleableShowStateFromDom();
         renderCanvas();
+        _sdEmailCanvasSync();
         // Set when only the scoped node's element was drawn again: the rest
         // of the canvas kept its DOM and its badges.
         var _redrawn = _scope ? _sdCanvasRedrawnEl : null;
         _sdCanvasRedrawnEl = null;
-        _sdEmailCanvasSync();
         renderProperties();
         if (_redrawn) {
             // One node's option changed: the Options panel answers now, the
