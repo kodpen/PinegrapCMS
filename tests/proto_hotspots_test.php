@@ -1143,7 +1143,7 @@ function test_proto_hotspots_view_draws_from_a_mark()
 	pg_assert_contains("if ((drag.kind !== 'row' && drag.kind !== 'head') || !drag.link) return;", $source, 'a mark or a head turns into a drawn arrow only once it moves');
 	pg_assert_contains("drag.kind = 'connect';", $source, 'the core draws it, lights its targets and calls connected()');
 	pg_assert_contains("if (done.kind === 'row' && !done.moved && event.type === 'pointerup') _sdProtoPickRow(done.row);", $source, 'a click on a mark still picks its link');
-	pg_assert_contains('return window.PGProtoHotspots.nearHead({ x: end.x, y: end.y }, at, _sdProto.view.k) ? { frame: edge.from, port: edge.port } : null;', $source, 'a press on an arrow\'s head takes it');
+	pg_assert_contains('if (!H.nearHead({ x: end.x, y: end.y }, at, k)) return;', $source, 'a press within reach of an arrow\'s head takes the nearest one');
 	pg_assert_contains('var act = hot ? window.PGProtoHotspots.markKey(event) : \'\';', $source, 'a mark\'s keys');
 	pg_assert_contains("return link ? _sdProtoMenuOpen(link.frame, link.port, hot) : false;", $source, 'L on a mark opens its target menu');
 	pg_assert_contains("if (el && state === 'own') el.tabIndex = 0;", $source, 'Tab reaches only the selected frame\'s marks');

@@ -71176,18 +71176,27 @@ const StyleDesigner = (function () {
         return row ? { frame: item.id, port: row.port } : null;
     }
 
-    // The link of a drawn arrow whose head a press takes (within 14
-    // screen pixels of its end), else null.
+    // The link of the drawn arrow whose head a press takes: the nearest
+    // head within 14 screen pixels of it, of the arrows shown (heads crowd
+    // on a frame's edge, under its box and the other arrows), else null.
     function _sdProtoHeadAt(event) {
-        var group = event.target.closest ? event.target.closest('g.pgc-edge[data-edge]') : null;
-        var line = group ? group.querySelector('path') : null;
-        if (!line || !line.getTotalLength || !_sdProto.layout) return null;
-        var id = group.getAttribute('data-edge');
-        var edge = _sdProto.layout.edges.filter(function (e) { return e.id === id; })[0];
-        if (!edge) return null;
-        var end = line.getPointAtLength(line.getTotalLength());
+        var ui = _sdProto.ui;
+        if (!ui || !_sdProto.layout) return null;
+        var H = window.PGProtoHotspots;
         var at = _sdProto.canvas.view.point(event.clientX, event.clientY);
-        return window.PGProtoHotspots.nearHead({ x: end.x, y: end.y }, at, _sdProto.view.k) ? { frame: edge.from, port: edge.port } : null;
+        var k = _sdProto.view.k;
+        var best = null;
+        var bestD = Infinity;
+        Array.prototype.forEach.call(ui.svg.querySelectorAll('g.pgc-edge[data-edge]'), function (group) {
+            var line = group.querySelector('path');
+            if (!line || !line.getTotalLength || window.getComputedStyle(group).display === 'none' || window.getComputedStyle(line).visibility === 'hidden') return;
+            var end = line.getPointAtLength(line.getTotalLength());
+            if (!H.nearHead({ x: end.x, y: end.y }, at, k)) return;
+            var d = (end.x - at.x) * (end.x - at.x) + (end.y - at.y) * (end.y - at.y);
+            if (d < bestD) { bestD = d; best = group.getAttribute('data-edge'); }
+        });
+        var edge = best ? _sdProto.layout.edges.filter(function (e) { return e.id === best; })[0] : null;
+        return edge ? { frame: edge.from, port: edge.port } : null;
     }
 
     // One arrow lifted out of the others ('' for none): drawn last, the
