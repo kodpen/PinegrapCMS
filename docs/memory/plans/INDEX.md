@@ -92,7 +92,7 @@
 - integrations-census-aggregators.md: Census (2026-11-17) of services where one integration brings many: marketplace integrators, channel and feed tools, cargo and payment aggregators, what each states and whether its API is open
 - integrations-census-connectors.md: Census (2026-11-17) of AI assistants' connector directories for a site's own MCP server: Claude's URL pattern and install link, the MCP Registry, the ecosystem's size, what may be claimed
 - integrations-census-machinery.md: Census (2026-11-17) of what an outside program can do with a site: API size, webhooks as REST hooks, the OAuth and MCP servers, no address shared by all sites, what an automation app would miss
-- integrations-census-order.md: After the owner's answer to the integrations census (2026-11-17): what goes now at priority 4, what waits for the release of 2026.11.0, how the three plans are written
+- integrations-census-order.md: After the owner's answer to the integrations census (2026-11-17): what goes now at priority 4, what waits for the release of 2026.11.0, where the three plans are
 - integrations-census-others.md: Census (2026-11-17) of how other products state an integrations figure and what it counts, who says about 2,000, the Turkish e-commerce platforms' lists and the services that head them
 - integrations-census-platforms.md: Census (2026-11-17) of automation platforms where one published app reaches the whole catalogue: the counts they state, customer domains, triggers, listing terms, wording, embeds, open catalogues
 - integrations-census-proposal.md: The R&D agent's proposal from the integrations census (2026-11-17): six packages (automation platforms, AI directories, MCP catalogue, connections hub, broker, market table stakes), order, left out
