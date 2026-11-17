@@ -273,7 +273,7 @@ if (!$linked) {
 		<div class="row g-5">
 			<div class="col-12 xl:col-8">
 				<div class="card h-100">
-					<div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('Link the site to Google Search Console')) . '</div>
+					<h2 class="card-header bg-reset border-0 pg-title-section">' . h(lang('Link the site to Google Search Console')) . '</h2>
 					<div class="card-body">' . $setup . '</div>
 				</div>
 			</div>
@@ -407,7 +407,7 @@ if (!$linked) {
 			}
 
 			return '
-				<table class="table table-sm table-hover align-middle mb-0" data-pg-sort id="search_console_' . $kind . '">
+				<table class="table table-sm table-hover align-middle mb-0 pg-card-table" data-pg-sort id="search_console_' . $kind . '">
 					<thead class="sticky-top">
 						<tr>
 							<th>' . h($label) . '</th>
@@ -426,7 +426,7 @@ if (!$linked) {
 			<div class="row g-5">' . $tiles . '</div>
 
 			<div class="card my-5">
-				<div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('By day')) . '</div>
+				<h2 class="card-header bg-reset border-0 pg-title-section">' . h(lang('By day')) . '</h2>
 				<div class="card-body">
 					<div style="height:16rem"><canvas id="search_console_chart" aria-hidden="true"></canvas></div>
 					<table class="visually-hidden" id="search_console_days">
@@ -446,13 +446,13 @@ if (!$linked) {
 			<div class="row g-5 my-1">
 				<div class="col-12 2xl:col-6">
 					<div class="card h-100">
-						<div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('Searches')) . '</div>
+						<h2 class="card-header bg-reset border-0 pg-title-section">' . h(lang('Searches')) . '</h2>
 						<div class="card-body p-0 table-responsive" style="max-height:36rem">' . $table('query', lang('Search query')) . '</div>
 					</div>
 				</div>
 				<div class="col-12 2xl:col-6">
 					<div class="card h-100">
-						<div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('Pages')) . '</div>
+						<h2 class="card-header bg-reset border-0 pg-title-section">' . h(lang('Pages')) . '</h2>
 						<div class="card-body p-0 table-responsive" style="max-height:36rem">' . $table('page', lang('Page')) . '</div>
 					</div>
 				</div>
@@ -579,7 +579,7 @@ if (!$linked) {
 			<div class="col-12 2xl:col-9">' . $figures . '</div>
 			<div class="col-12 2xl:col-3">
 				<div class="card">
-					<div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('Search Console')) . '</div>
+					<h2 class="card-header bg-reset border-0 pg-title-section">' . h(lang('Search Console')) . '</h2>
 					<div class="card-body">
 						' . $problems . '
 						<dl class="row small mb-5">' . $output_facts . '</dl>
