@@ -1,6 +1,6 @@
 ---
 name: workspace-create-commands
-description: /create (/oluştur) product|group|contact and its alias /product (/ürün) in a channel: kind word, parsers, the single-create card through ws_quick_create_input()/_save(), what Create sends
+description: /create (/oluştur) product|group and its alias /product (/ürün) in a channel: kind word, parsers, the single-create card through ws_quick_create_input()/_save(), what Create sends
 ---
 
 ## What does /create (/oluştur) take? (PR #2967)
@@ -11,7 +11,7 @@ description: /create (/oluştur) product|group|contact and its alias /product (/
 
 ## Why one command, and what stays out? (owner and architect, 2026-10-29)
 - Creates inside a chat go through `/create` (`/oluştur`), never the channel menu nor a window or button in the chat (`workflow/decisions-made-workspace-2.md`). Built in four steps: menu item out (#2927, guarded by tests/workspace_channel_menu_test.php), `/create` with the single card (#2967), several lines → bulk card (#2982), a channel spreadsheet as the source (#3014).
-- A contact came with the channel-commands plan (workspace-create-contact-row.md); `/task` (`/görev`) stays its own command (architect #2999).
+- A contact, a row, an ERP account and a calendar event came with the channel-commands plan (workspace-create-contact-row.md, workspace-create-row-command.md, workspace-create-account-event.md); `/task` (`/görev`) stays its own command (architect #2999).
 - Both go through `ws_command_create_card()` (check, card, confirm → `ws_quick_create_save()`); the card's `preview.kind` heads it (`qc_command_title_group` for a group) and opens the right drawer under "All fields".
 
 ## How does /product read its text?
