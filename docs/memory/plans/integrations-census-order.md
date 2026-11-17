@@ -11,7 +11,7 @@ description: After the owner's answer to the integrations census (2026-11-17): w
 - What needs nothing outside this repository.
 - Steps AU1 to AU10 of `automation-platforms.md`: the events' fields and sample data, newest-first order on the lists a trigger reads, a higher bound of subscriptions for each application (AU3), the OpenAPI `oauth2` block. No new route names the connection: `GET /meta` already gives the site's title, its domain and the key's permissions.
 - The hub's registry step and its drawing: CN1 and CN2 of `connections-hub.md`.
-- TS1 of `market-table-stakes.md`: a fourth format of the catalogue feed, `google_xml`, written from Google's public specification.
+- A fourth format of the catalogue feed, `google_xml`, written from Google's public specification: TS1 of `market-table-stakes.md`.
 - The "Connect to Claude" button alone, CB4a of `claude-plugin-bundle-steps.md`, once its sheet has been to the owner.
 
 ## What is prepared and waits for the release of 2026.11.0?
