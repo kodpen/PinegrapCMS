@@ -113,3 +113,99 @@ function test_api_console_endpoint_headings()
 	pg_assert_same($parts['count'] + 2, substr_count($parts['panels'], '<h3 class="doc-ep-head"'),
 		'an endpoint heading per endpoint, the event block and the error block');
 }
+
+// The source of an API file, for the figures that live only as literals there.
+function api_console_conventions_test_source($file)
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
+	pg_assert_true($source !== '', $file . ' is read');
+
+	return $source;
+}
+
+// One number the code spells, found by $pattern in $file.
+function api_console_conventions_test_number($file, $pattern)
+{
+	$found = preg_match($pattern, api_console_conventions_test_source($file), $match);
+	pg_assert_same(1, $found, $pattern . ' is found in ' . $file);
+
+	return $found ? (int) $match[1] : -1;
+}
+
+// Every figure the section states is the one the code holds, so the text
+// cannot drift from the API: a change to a figure fails here until the
+// sentence says the new one.
+function test_api_console_conventions_figures_follow_the_code()
+{
+	$text = array();
+
+	foreach (api_console_conventions('https://example.test/pinegrap/integration.php') as $item) {
+		$text[$item['id']] = $item['text'];
+	}
+
+	// Idempotency-Key: its length cap, the pending retry's wait, the day a record lives.
+	$max = api_console_conventions_test_number('includes/api/idempotency.php', '/strlen\(\$key\) > (\d+)/');
+	pg_assert_contains('up to ' . $max . ' characters', $text['idempotency']);
+
+	$retry = api_console_conventions_test_number('includes/api/idempotency.php', "/api_extra_headers\('Retry-After', '(\d+)'\);\s*api_fail\(409, 'idempotency_in_progress'/");
+	pg_assert_contains('Retry-After: ' . $retry, $text['idempotency']);
+
+	$kept = api_console_conventions_test_number('includes/api/maintenance.php', "/DELETE FROM api_idempotency WHERE created_timestamp < '\" \. \(time\(\) - (\d+)\)/");
+	pg_assert_same(86400, $kept, 'a stored answer is purged after a day');
+	pg_assert_contains('for about a day', $text['idempotency']);
+
+	// Rate limit: the default a new application gets, from the insert and the column.
+	$insert = api_console_conventions_test_number('includes/api/keys.php', "/'active',\s*'(\d+)',\s*'\" \. \\\$kind/");
+	$column = api_console_conventions_test_number('includes/migrations/2026.4.4.php', '/rate_limit_per_min\s+SMALLINT UNSIGNED NOT NULL DEFAULT (\d+)/');
+	pg_assert_same($column, $insert, 'a new application and the column default agree');
+	pg_assert_contains('(' . $insert . ' by default)', $text['rate-limit']);
+
+	// The statuses whose error carries docs, as api_fail() lists them.
+	$found = preg_match('/in_array\(\$status_code, array\(([\d, ]+)\), true\)\s*&& function_exists\(\'api_openapi_base_url\'\)/',
+		api_console_conventions_test_source('includes/api/response.php'), $match);
+	pg_assert_same(1, $found, 'the docs statuses are found in api_fail()');
+	pg_assert_contains('(' . ($found ? $match[1] : '') . ') also carries docs', $text['errors']);
+
+	// Each error code named, with the status the catalogue gives it.
+	$catalogue = api_error_catalogue();
+
+	foreach (array('idempotency' => array('idempotency_key_reused' => 409, 'idempotency_in_progress' => 409),
+		'dry-run' => array('dry_run_unsupported' => 400),
+		'rate-limit' => array('rate_limited' => 429)) as $id => $codes) {
+		foreach ($codes as $code => $status) {
+			pg_assert_true(isset($catalogue[$code]) && ((int) $catalogue[$code][0] === $status), $code . ' is ' . $status . ' in the catalogue');
+			pg_assert_contains($status . ' ' . $code, $text[$id]);
+		}
+	}
+
+	// Each header named is one the code reads or sends, in the file that does.
+	foreach (array(
+		'credentials' => array('X-Pinegrap-Key' => 'includes/api/auth.php', 'X-Pinegrap-Secret' => 'includes/api/auth.php'),
+		'errors'      => array('X-Request-Id' => 'includes/api/response.php'),
+		'idempotency' => array('Idempotency-Key' => 'includes/api/idempotency.php', 'Idempotent-Replay' => 'includes/api/idempotency.php'),
+		'dry-run'     => array('X-Dry-Run' => 'includes/api/dry_run.php'),
+		'etag'        => array('ETag' => 'includes/api/response.php', 'If-None-Match' => 'includes/api/response.php', 'Cache-Control: no-store' => 'includes/api/response.php'),
+		'rate-limit'  => array('X-RateLimit-Limit' => 'includes/api/ratelimit.php', 'X-RateLimit-Remaining' => 'includes/api/ratelimit.php', 'X-RateLimit-Reset' => 'includes/api/ratelimit.php', 'Retry-After' => 'includes/api/ratelimit.php'),
+		'post-twins'  => array('X-HTTP-Method-Override' => 'includes/api/router.php')
+	) as $id => $headers) {
+		foreach ($headers as $header => $file) {
+			pg_assert_contains($header, $text[$id]);
+			$name = explode(':', $header)[0];
+			pg_assert_true(strpos(api_console_conventions_test_source($file), "'" . $name) !== false, $name . ' is in ' . $file);
+		}
+	}
+
+	// The fields the envelopes are described with are the ones they are built with.
+	$response = api_console_conventions_test_source('includes/api/response.php');
+
+	foreach (array('code', 'message', 'request_id', 'field', 'docs', 'limit', 'has_more', 'next_cursor') as $key) {
+		pg_assert_true(strpos($response, "'" . $key . "'") !== false, $key . ' is built in response.php');
+	}
+
+	$dry = api_console_conventions_test_source('includes/api/dry_run.php');
+
+	foreach (array('dry_run', 'would', 'resource', 'detail') as $key) {
+		pg_assert_true(strpos($dry, "'" . $key . "'") !== false, $key . ' is built in dry_run.php');
+		pg_assert_contains($key, $text['dry-run']);
+	}
+}
