@@ -45,7 +45,25 @@
         return 'failed';
     }
 
-    var api = { left: left, statusOf: statusOf };
+    // Whether a row still says why it waits (Not drawn yet, Out of date):
+    // only until its draw ends; then the pill alone says the result.
+    function reasonShown(status) {
+        return (status === 'waiting') || (status === 'drawing');
+    }
+
+    // Whether a row offers the Design Canvas: a picture to look at by hand,
+    // once the run has ended or stopped (never while a draw is running).
+    function editShown(status, running) {
+        return (status === 'look') && !running;
+    }
+
+    // Stop is quiet while the run goes; Continue after a stop is the view's
+    // one fill.
+    function buttonTone(running) {
+        return running ? 'pg-button-quiet' : 'pg-button-fill';
+    }
+
+    var api = { left: left, statusOf: statusOf, reasonShown: reasonShown, editShown: editShown, buttonTone: buttonTone };
 
     if ((typeof module === 'object') && module.exports) {
         module.exports = api;
@@ -71,12 +89,17 @@
 
     function show(i, status, note) {
         var row = rows[i], pill = row && row.querySelector('.pg-pill'), text = row && row.querySelector('[data-pq-note]');
+        var reason = row && row.querySelector('[data-pq-reason]');
 
         items[i].status = status;
 
         if (pill) {
             pill.className = 'pg-pill text-nowrap ' + TONES[status];
             pill.textContent = s[status] || status;
+        }
+
+        if (reason) {
+            reason.hidden = !reasonShown(status);
         }
 
         if (text) {
@@ -95,6 +118,16 @@
         }
 
         stopBtn.hidden = !n;
+        stopBtn.classList.remove('pg-button-quiet', 'pg-button-fill');
+        stopBtn.classList.add(buttonTone(running));
+
+        items.forEach(function (it, i) {
+            var edit = rows[i] && rows[i].querySelector('[data-pq-edit]');
+
+            if (edit) {
+                edit.hidden = !editShown(it.status, running);
+            }
+        });
 
         // The button comes back once the picture being drawn is done.
         if (!running || !stopped) {

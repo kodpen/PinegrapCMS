@@ -101,13 +101,15 @@ if (($group === 'pictures') && !empty($_GET['draw'])) {
     $queue = pg_picture_tr_queue();
     $queue_back = 'translations.php?' . http_build_query(array('language' => $language, 'group' => 'pictures'));
     $queue_rows = '';
+    $open_picture_label = lang('Edit this image in the Design Canvas');
 
     foreach ($queue as $queue_item) {
         $queue_rows .= '<li class="pg-list-row" data-pq-row="1">
                 <span class="pg-icon-tile" aria-hidden="true"><i class="bi bi-image"></i></span>
                 <div class="pg-list-row-main">
-                    <div class="pg-list-row-head"><span class="pg-list-row-title">' . h($queue_item['name']) . '</span><span class="pg-pill pg-tone-gray text-nowrap">' . lang('Waiting') . '</span></div>
-                    <div class="pg-list-row-text"><span' . $text_lang($queue_item['language']) . '>' . h($queue_item['label']) . '</span> · ' . (($queue_item['state'] === 2) ? lang('Out of date') : lang('Not drawn yet')) . '<span class="d-block" data-pq-note="1" hidden></span></div>
+                    <div class="pg-list-row-head pg-list-row-head-wrap"><span class="pg-list-row-title">' . h($queue_item['name']) . '</span><span class="pg-pill pg-tone-gray text-nowrap">' . lang('Waiting') . '</span></div>
+                    <div class="pg-list-row-text"><span' . $text_lang($queue_item['language']) . '>' . h($queue_item['label']) . '</span><span data-pq-reason="1"> · ' . (($queue_item['state'] === 2) ? lang('Out of date') : lang('Not drawn yet')) . '</span><span class="d-block" data-pq-note="1" hidden></span></div>
+                    <div class="pg-list-row-actions" data-pq-edit="1" hidden><button type="button" class="pg-button pg-button-quiet pg-button-sm" data-pg-image-edit="' . h($queue_item['name']) . '" title="' . h($open_picture_label) . '"><i class="bi bi-brush" aria-hidden="true"></i>' . lang('Edit in the Design Canvas') . '</button></div>
                 </div>
             </li>';
     }
@@ -139,7 +141,7 @@ if (($group === 'pictures') && !empty($_GET['draw'])) {
         <div class="pg-toolbar d-flex flex-wrap align-items-center gap-3 mb-5">
             <a class="pg-button pg-button-quiet" href="' . h($queue_back) . '"><i class="bi bi-arrow-left" aria-hidden="true"></i>' . lang('Back to the pictures') . '</a>
             <span class="pg-toolbar-grow pg-text-2 pg-tabular" id="pg_pq_left" role="status" aria-live="polite">' . ($queue ? h(str_replace('{n}', (string) count($queue), lang('{n} left'))) : lang('Nothing is waiting to be drawn.')) . '</span>
-            <button type="button" class="pg-button pg-button-fill" id="pg_pq_stop"' . ($queue ? '' : ' hidden') . '>' . lang('Stop') . '</button>
+            <button type="button" class="pg-button pg-button-quiet" id="pg_pq_stop"' . ($queue ? '' : ' hidden') . '>' . lang('Stop') . '</button>
         </div>
         <section class="pg-card p-5" aria-labelledby="pg_pq_title">
             <h2 class="pg-title-section" id="pg_pq_title">' . lang('Waiting pictures') . '</h2>
@@ -974,7 +976,7 @@ echo pg_page_shell(array(
                     </div>
                     <div class="card-body pt-0">' . (($group === 'ui') ? '<div class="small fg-secondary py-3 border-bottom"><i class="bi bi-info-circle me-1" aria-hidden="true"></i>' . lang('The texts of the cookie window: the notice, its settings and what each cookie is for. This language has no language file, so the window is translated here; until a text is translated, the English wording is shown. The rest of the software\'s wording is not translated here.') . '</div>' : '')
                         . (($group === 'pictures') ? '<div class="small fg-secondary py-3 border-bottom"><i class="bi bi-info-circle me-1" aria-hidden="true"></i>' . lang('The texts of pictures made in the Design Canvas whose words are text layers. A picture is listed once a page in another language has shown it; a photo or an uploaded picture whose words are in its pixels is not.') . '</div>' : '')
-                        . ($picture_queue_count ? '<div class="d-flex justify-content-end py-3 border-bottom"><a class="pg-button pg-button-sm" href="' . h($url(array('draw' => 1, 'p' => 0))) . '"><i class="bi bi-brush" aria-hidden="true"></i>' . lang('Draw the waiting pictures') . ' <span class="pg-count">' . (int) $picture_queue_count . '</span></a></div>' : '') . $output_index_note . $output_bulk . $output_rows . '
+                        . ($picture_queue_count ? '<div class="d-flex justify-content-end py-3 border-bottom"><a class="pg-button pg-button-quiet pg-button-sm" href="' . h($url(array('draw' => 1, 'p' => 0))) . '"><i class="bi bi-brush" aria-hidden="true"></i>' . lang('Draw the waiting pictures') . ' <span class="pg-count">' . (int) $picture_queue_count . '</span></a></div>' : '') . $output_index_note . $output_bulk . $output_rows . '
                         ' . ($output_pagination !== '' ? '<div class="d-flex justify-content-center pt-5">' . $output_pagination . '</div>' : '') . '
                     </div>
                 </div>

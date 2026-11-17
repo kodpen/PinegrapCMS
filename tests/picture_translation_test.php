@@ -443,6 +443,12 @@ function test_picture_translation_queue_sql()
 	pg_assert_contains("'draw' => 1", $screen, 'a link to the queue');
 	pg_assert_contains('assets/js/picture_queue.js', $screen, 'the queue\'s script');
 	pg_assert_contains('pg_picture_tr_queue(', $screen, 'the queue\'s rows');
+	pg_assert_contains('data-pq-reason="1"', $screen, 'the reason a row waits is its own part, dropped once drawn');
+	pg_assert_contains('pg-list-row-head pg-list-row-head-wrap', $screen, 'the pill goes under a name it would cut');
+	pg_assert_contains('data-pq-edit="1" hidden', $screen, 'a row to look at by hand offers the Design Canvas, hidden until the run ends');
+	pg_assert_contains('data-pg-image-edit="\' . h($queue_item[\'name\'])', $screen, 'the button opens the row\'s picture');
+	pg_assert_contains('class="pg-button pg-button-quiet" id="pg_pq_stop"', $screen, 'Stop is quiet');
+	pg_assert_contains('class="pg-button pg-button-quiet pg-button-sm" href="\' . h($url(array(\'draw\' => 1', $screen, 'the group\'s button is quiet');
 }
 
 // The queue's script: the count left and the state a draw's answer gives.
@@ -462,7 +468,10 @@ function test_picture_translation_queue_script()
 		. ' look: Q.statusOf({ status: "success", state: "look" }),'
 		. ' refused: Q.statusOf({ status: "error", message: "No" }),'
 		. ' none: Q.statusOf(null),'
-		. ' skipped: Q.statusOf("skipped")'
+		. ' skipped: Q.statusOf("skipped"),'
+		. ' reason: ["waiting", "drawing", "drawn", "look", "skipped", "failed"].map(Q.reasonShown),'
+		. ' edit: [Q.editShown("look", false), Q.editShown("look", true), Q.editShown("drawn", false), Q.editShown("failed", false)],'
+		. ' tone: [Q.buttonTone(true), Q.buttonTone(false)]'
 		. '}));') . ' 2>&1', $out, $code);
 
 	if (($code !== 0) && (strpos(implode("\n", $out), 'not found') !== false)) {
@@ -472,5 +481,7 @@ function test_picture_translation_queue_script()
 
 	$r = json_decode(implode("\n", $out), true);
 
-	pg_assert_same(array('left' => 3, 'drawn' => 'drawn', 'look' => 'look', 'refused' => 'failed', 'none' => 'failed', 'skipped' => 'skipped'), $r, 'left counts what is waiting or drawing; an answer gives the row\'s state');
+	pg_assert_same(array('left' => 3, 'drawn' => 'drawn', 'look' => 'look', 'refused' => 'failed', 'none' => 'failed', 'skipped' => 'skipped',
+		'reason' => array(true, true, false, false, false, false), 'edit' => array(true, false, false, false),
+		'tone' => array('pg-button-quiet', 'pg-button-fill')), $r, 'left counts what is waiting or drawing; an answer gives the row\'s state; the reason goes once drawn; Look by hand offers the editor once the run ends; Stop is quiet, Continue the fill');
 }
