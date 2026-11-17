@@ -38,7 +38,7 @@ function designer_canvas_chrome_test_function($source, $name)
 	return substr($source, $from, $to - $from);
 }
 
-// Runs each [top, bottom, viewport height] through _sdTbSpot(); null without Node.
+// Runs each [top, bottom, viewport height, clip top, clip bottom, next top] through _sdTbSpot(); null without Node.
 function designer_canvas_chrome_test_spots($cases)
 {
 	$out = array();
@@ -50,7 +50,9 @@ function designer_canvas_chrome_test_spots($cases)
 	}
 
 	$script = designer_canvas_chrome_test_function(designer_canvas_chrome_test_source(), '_sdTbSpot')
-		. 'console.log(JSON.stringify(' . json_encode($cases) . '.map(function (c) { return _sdTbSpot(c[0], c[1], c[2], c[3], c[4]); })));';
+		// A new line first: the cut ends in the next function's comment,
+		// which would otherwise swallow the call and leave no output.
+		. "\n" . 'console.log(JSON.stringify(' . json_encode($cases) . '.map(function (c) { return _sdTbSpot(c[0], c[1], c[2], c[3], c[4], c[5]); })));';
 	$file = tempnam(sys_get_temp_dir(), 'pgtbspot');
 	file_put_contents($file, $script);
 	$out = array();
@@ -58,7 +60,10 @@ function designer_canvas_chrome_test_spots($cases)
 	unlink($file);
 	pg_assert_same(0, $code, implode("\n", $out));
 
-	return json_decode(implode("\n", $out), true);
+	$answer = json_decode(implode("\n", $out), true);
+	pg_assert_true(is_array($answer), 'Node printed the spots: ' . implode("\n", $out));
+
+	return $answer;
 }
 
 // Room above: above, as before. At the top of the canvas: under the element,
@@ -92,6 +97,33 @@ function test_designer_canvas_toolbar_spot()
 	pg_assert_same(array('above', 'above', 'below', 'below', 'below', 'below', 'inside', 'inside', 'below', 'inside', 'below', 'above', 'inside', 'above'), $answer);
 }
 
+// At the top of the canvas the strip goes below only when it fits in the gap
+// before the next element; otherwise inside at the element's right end
+// ('end'), never over the next element's first words (#10275). The measures
+// are the issue's: a heading with a 4 px margin at Full Width and at Mobile XS,
+// the hero heading with a 16 px margin.
+function test_designer_canvas_toolbar_spot_keeps_the_next_element_free()
+{
+	$answer = designer_canvas_chrome_test_spots(array(
+		array(8.0, 33.3, 600, 0, 600, 37.3),
+		array(8.0, 55.3, 600, 0, 600, 59.3),
+		array(8.0, 52.9, 600, 0, 600, 69.0),
+		// A gap the strip fits in keeps it below; nothing after it too.
+		array(8.0, 33.3, 600, 0, 600, 55.3),
+		array(8.0, 33.3, 600, 0, 600, 80),
+		array(8.0, 33.3, 600, 0, 600, null),
+		// Room above, or no room below at all: the next element does not matter.
+		array(40, 80, 600, 0, 600, 84),
+		array(0, 590, 600, 0, 600, 592),
+	));
+
+	if ($answer === null) {
+		return;
+	}
+
+	pg_assert_same(array('end', 'end', 'end', 'below', 'below', 'below', 'above', 'inside'), $answer);
+}
+
 // Every place that writes the toolbar's spot uses _sdTbSpot(): the hover, the
 // scroll pass, the full pass after a render and the script placement of
 // see-through wrappers' chrome. No path decides "inside" from the top alone.
@@ -101,17 +133,21 @@ function test_designer_canvas_toolbar_spot_is_used_everywhere()
 
 	pg_assert_false(strpos($source, "'sd-tb-inside', tops[") !== false, 'no toolbar flip decided from the top alone');
 	pg_assert_false(strpos($source, "'sd-tb-inside', _sdBoxRect(") !== false, 'no hover flip decided from the top alone');
-	pg_assert_contains('_sdTbSpot(r.top, r.bottom, _sdCanvasViewH(), c ? c[0] : 0, c ? c[1] : Infinity)', designer_canvas_chrome_test_function($source, '_sdTbFlip'));
-	pg_assert_contains('_sdTbClip(w, memo)', designer_canvas_chrome_test_function($source, '_sdTbFlipAll'));
+	pg_assert_contains('_sdTbSpotOf(w, _sdBoxRect(w), _sdCanvasViewH(), _sdTbClip(w))', designer_canvas_chrome_test_function($source, '_sdTbFlip'));
+	pg_assert_contains('_sdTbSpotOf(w, _sdBoxRect(w), vh, _sdTbClip(w, memo))', designer_canvas_chrome_test_function($source, '_sdTbFlipAll'));
+	pg_assert_contains('_sdTbNextTop(w, r.bottom)', designer_canvas_chrome_test_function($source, '_sdTbSpotOf'));
+	pg_assert_contains("w.classList.toggle('sd-tb-end', end)", designer_canvas_chrome_test_function($source, '_sdTbSpotWrite'));
 	pg_assert_contains('_sdTbFlipAll(ws);', designer_canvas_chrome_test_function($source, '_sdOnCanvasScroll'));
 	pg_assert_contains("_sdTbFlipAll(Array.prototype.slice.call(canvasDoc.querySelectorAll('div.sd-wrap')));", designer_canvas_chrome_test_function($source, 'adjustCanvasToolbars'));
 
 	$place = designer_canvas_chrome_test_function($source, '_sdPlaceChromeOf');
-	pg_assert_contains('_sdTbSpot(er.top, er.bottom, win.innerHeight, clip ? clip[0] : 0, clip ? clip[1] : Infinity)', $place);
+	pg_assert_contains('_sdTbSpotOf(w, er, win.innerHeight, _sdTbClip(w))', $place);
 	pg_assert_contains("spot === 'below' ? er.bottom + 2", $place);
+	pg_assert_contains("spot === 'end' ? er.right - p.offsetWidth : er.left", $place);
 
 	pg_assert_contains("'.sd-wrap.sd-tb-below > .sd-tb { top:calc(100% + 2px) !important;", $source);
 	pg_assert_contains("'.sd-wrap.sd-tb-inside > .sd-tb { top:2px !important;", $source);
+	pg_assert_contains("'.sd-wrap.sd-tb-end > .sd-tb { top:2px !important; left:auto; right:0;", $source);
 	// The root's tag at the canvas's bottom-left beats both spot rules.
 	pg_assert_contains("'body > .sd-wrap[data-sd-type=\"root\"] > .sd-tb { position:fixed; top:auto !important; bottom:0; left:0;", $source);
 

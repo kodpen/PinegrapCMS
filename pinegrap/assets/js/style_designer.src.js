@@ -6357,9 +6357,12 @@ const StyleDesigner = (function () {
         // .sd-tb-inside inside it (top:2px) when there is no room below either; JS decides (_sdTbSpot()).
         '.sd-tb { position:absolute; top:-20px; left:0; height:20px; display:none; align-items:center; gap:0; z-index:1100; border-radius:4px 4px 4px 0; overflow:hidden; pointer-events:none; max-width:180px; white-space:nowrap; }',
         // Toolbar flip: under the element when it is near the top of the iframe, inside it (top:2px)
-        // when it also reaches the bottom.
+        // when it also reaches the bottom; inside at its right end (sd-tb-end) when the next element
+        // starts in the strip's way below it, so the strip covers neither that element's first words
+        // nor the start of the element's own line.
         '.sd-wrap.sd-tb-below > .sd-tb { top:calc(100% + 2px) !important; border-radius:0 4px 4px 4px; }',
         '.sd-wrap.sd-tb-inside > .sd-tb { top:2px !important; border-radius:0 0 4px 4px; }',
+        '.sd-wrap.sd-tb-end > .sd-tb { top:2px !important; left:auto; right:0; border-radius:0 0 4px 4px; }',
         // The page root's (<body>) name tag and toolbar sit at the bottom-left corner of the canvas
         // viewport: at the top-left of the page they lay over whatever starts there (a switch, a
         // brand) and took its clicks whenever the pointer was over the page between elements.
@@ -10582,10 +10585,9 @@ const StyleDesigner = (function () {
                 if (p.classList.contains('sd-tb')) {
                     // Above the element; below it when there is no room
                     // above, inside it with no room below either.
-                    var clip = _sdTbClip(w);
-                    var spot = _sdTbSpot(er.top, er.bottom, win.innerHeight, clip ? clip[0] : 0, clip ? clip[1] : Infinity);
-                    top = (spot === 'below' ? er.bottom + 2 : er.top + (spot === 'inside' ? 2 : -20)) - by;
-                    left = er.left - bx;
+                    var spot = _sdTbSpotOf(w, er, win.innerHeight, _sdTbClip(w));
+                    top = (spot === 'below' ? er.bottom + 2 : er.top + (spot === 'above' ? -20 : 2)) - by;
+                    left = (spot === 'end' ? er.right - p.offsetWidth : er.left) - bx;
                 } else if (p.classList.contains('sd-persistent-note')) {
                     top = er.top - by + 2;
                     left = er.right - bx - 18;
@@ -10701,12 +10703,50 @@ const StyleDesigner = (function () {
     // only inside it: a card's cover picture at the top of an
     // overflow-hidden card had its toolbar above the picture, cut away by
     // the card, so it showed nowhere.
-    function _sdTbSpot(top, bottom, viewH, clipTop, clipBottom) {
+    // nextTop: the top of the element that follows below it (_sdTbNextTop()),
+    // when there is one. Below counts only when the 20 px strip fits in the
+    // gap before it; otherwise 'end', inside at the element's right end: a
+    // heading with a small bottom margin had its name tag and buttons over the
+    // first words of the paragraph under it, taking their clicks.
+    function _sdTbSpot(top, bottom, viewH, clipTop, clipBottom, nextTop) {
         var lo = (typeof clipTop === 'number' && clipTop > 0) ? clipTop : 0;
         var hi = (typeof clipBottom === 'number' && clipBottom < viewH) ? clipBottom : viewH;
         if (top - lo >= 22) return 'above';
-        if (bottom + 22 <= hi) return 'below';
-        return 'inside';
+        if (bottom + 22 > hi) return 'inside';
+        if (typeof nextTop === 'number' && nextTop < bottom + 22) return 'end';
+        return 'below';
+    }
+
+    // The spot of wrapper `w` with box `r` (_sdBoxRect()) and clip `c`
+    // (_sdTbClip()); the next element is measured only when there is no
+    // room above.
+    function _sdTbSpotOf(w, r, viewH, c) {
+        var lo = c ? c[0] : 0, hi = c ? c[1] : Infinity;
+        var next = (r.top - Math.max(lo, 0) < 22) ? _sdTbNextTop(w, r.bottom) : null;
+        return _sdTbSpot(r.top, r.bottom, viewH, lo, hi, next);
+    }
+
+    // The viewport top of the first element that follows wrapper `w` and
+    // starts at or under `bottom`: its next siblings, then those of each
+    // ancestor in turn. The editor's own chrome and elements out of the flow
+    // are skipped. null when nothing follows.
+    function _sdTbNextTop(w, bottom) {
+        var doc = w.ownerDocument, win = doc && doc.defaultView;
+        if (!win) return null;
+        var el = w, depth = 0;
+        while (el && el !== doc.body && el !== doc.documentElement && depth++ < 8) {
+            for (var s = el.nextElementSibling; s; s = s.nextElementSibling) {
+                if (/(^|\s)sd-(tb|persistent-note|issue-badge|chip-row|lbl)(\s|$)/.test(s.className || '')) continue;
+                var isWrap = s.classList.contains('sd-wrap');
+                var pos = win.getComputedStyle(isWrap ? (_sdWrapEl(s) || s) : s).position;
+                if (pos === 'absolute' || pos === 'fixed') continue;
+                var r = isWrap ? _sdBoxRect(s) : s.getBoundingClientRect();
+                if (!r.width && !r.height) continue;
+                if (r.top >= bottom - 0.5) return r.top;
+            }
+            el = el.parentElement;
+        }
+        return null;
     }
 
     // The viewport box ([top, bottom]) of the nearest ancestor of wrapper
@@ -10734,9 +10774,10 @@ const StyleDesigner = (function () {
 
     // Writes a spot as the wrapper's classes; only what changes is written.
     function _sdTbSpotWrite(w, spot) {
-        var inside = spot === 'inside', below = spot === 'below';
+        var inside = spot === 'inside', below = spot === 'below', end = spot === 'end';
         if (w.classList.contains('sd-tb-inside') !== inside) w.classList.toggle('sd-tb-inside', inside);
         if (w.classList.contains('sd-tb-below') !== below) w.classList.toggle('sd-tb-below', below);
+        if (w.classList.contains('sd-tb-end') !== end) w.classList.toggle('sd-tb-end', end);
     }
 
     // The canvas viewport's height, for _sdTbSpot().
@@ -10748,20 +10789,15 @@ const StyleDesigner = (function () {
     // Places one wrapper's toolbar (the hovered one).
     function _sdTbFlip(w) {
         if (!w || w.tagName !== 'DIV') return;
-        var r = _sdBoxRect(w), c = _sdTbClip(w);
-        _sdTbSpotWrite(w, _sdTbSpot(r.top, r.bottom, _sdCanvasViewH(), c ? c[0] : 0, c ? c[1] : Infinity));
+        _sdTbSpotWrite(w, _sdTbSpotOf(w, _sdBoxRect(w), _sdCanvasViewH(), _sdTbClip(w)));
     }
 
     // The same for several wrappers: all measured, then all written.
     function _sdTbFlipAll(ws) {
         var vh = _sdCanvasViewH();
         var memo = (typeof Map === 'function') ? new Map() : null;
-        var rs = ws.map(function (w) { return _sdBoxRect(w); });
-        var cs = ws.map(function (w) { return _sdTbClip(w, memo); });
-        ws.forEach(function (w, i) {
-            var c = cs[i];
-            _sdTbSpotWrite(w, _sdTbSpot(rs[i].top, rs[i].bottom, vh, c ? c[0] : 0, c ? c[1] : Infinity));
-        });
+        var spots = ws.map(function (w) { return _sdTbSpotOf(w, _sdBoxRect(w), vh, _sdTbClip(w, memo)); });
+        ws.forEach(function (w, i) { _sdTbSpotWrite(w, spots[i]); });
     }
 
     // What a scroll changes: nothing in the page, only where the viewport
@@ -11957,7 +11993,8 @@ const StyleDesigner = (function () {
      * When an element sits closer than 22px to the top of the iframe the toolbar
      * would overflow above it, so the sd-tb-below class moves it under the
      * element (sd-tb-inside, inside it, when there is no room below either;
-     * _sdTbSpot()). getBoundingClientRect() on an element inside an iframe returns coordinates
+     * sd-tb-end, inside at its right end, when the next element starts in the
+     * strip's way; _sdTbSpot()). getBoundingClientRect() on an element inside an iframe returns coordinates
      * relative to that iframe's viewport, which is exactly the frame of reference
      * this test needs.
      */
