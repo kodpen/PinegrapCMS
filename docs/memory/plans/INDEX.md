@@ -47,7 +47,8 @@
 - collection-rows-features.md: Plan collection-rows, features R1 to R12: the kind and the field's value, the writer of a posted list, the editor on the panel's record screens, delete and History
 - collection-rows-steps.md: Plan collection-rows, steps RW1 to RW7: the kind and writer, the panel editor, delete and History, the API, the site form, the list on the record page, close-out
 - collection-rows.md: Plan (owner 2026-11-16, agent channel message 5667): a "Rows" field of a collection, a record's own rows added, removed and ordered on its form; steps RW1 to RW7
-- connections-merges.md: Plan: an outside service set up in several places, merged into one only after the owner's answer each: GitHub, AI keys, mail, a provider's client, the names; steps CX1 to CX5
+- connections-merges-panel-rules.md: Connections management screen (plan connections-merges): the architect's rules for a service's panel: one connection per provider and its data step, the count stays 78, gates, card titles
+- connections-merges.md: Plan: Connections becomes the one place where outside services are set up (owner, poll 146); CX1 stopped at its sheet, CX2 the voice card, CX3 E-mail sending, the management screen drawn next
 - content-review-features.md: Plan content-review, features V1 to V17: which items, what an item keeps, the states, the Content review screen, its actions, who sees what, the task, the flow event, the API
 - content-review-steps.md: Plan content-review, steps CH1 to CH5: the table and its rules, the Content review screen, the task and the flow event, the API, close-out
 - content-review.md: Plan (owner 2026-11-16, agent channel message 5667): a person and a "review by" date for a page or collection record, and the Content review screen of what is due; steps CH1 to CH5
@@ -138,6 +139,8 @@
 - php-error-log-clean-census-4.md: Error log census part 4 (plan php-error-log-clean): the shapes already gone on development, by file with the PR that removed them, most frequent first; nothing here is left for EL5
 - php-error-log-clean-census.md: PHP error log census (plan php-error-log-clean, EL1): what was read, totals, how shapes were checked, the fatal errors' verdicts; shapes by file in parts 2 to 4
 - php-error-log-clean.md: Plan (owner 2026-11-14): the PHP error log of the owner's dev machine read for Pinegrap's own deprecations and warnings on PHP 8.5, and their causes fixed; steps EL1 to EL6
+- picture-text-auto-draw-steps.md: Plan picture-text-auto-draw, steps DA1 to DA5: rows and text jobs at save time, the waiting mark, the panel's background draw, the server's draw, the screens' words, close-out
+- picture-text-auto-draw.md: Plan (owner 2026-11-17, agent channel poll 143): a translated Design Canvas picture is drawn by itself, in an open panel in the background and by the server with nobody there; steps DA1 to DA5
 - place-map-census-2.md: Census MP1 of place-map, part 2: what OpenStreetMap's own tiles allow (tile usage policy, read 2026-11-16) and the security-header change the map needs (waf_csp_policy())
 - place-map-census-3.md: Census MP1 of place-map, part 3: how the cookie notice lists a service (pg_consent_page_services(), pg_consent_catalogue()), which class the map could go under, and the questions for the architect
 - place-map-census.md: Census MP1 of place-map, part 1: the three address providers' terms on keeping a looked-up coordinate and on showing it on another map (Google, Mapbox, Photon), read 2026-11-16

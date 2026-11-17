@@ -50,7 +50,8 @@ function test_panel_narrow_layout_facts_sit_in_the_grow_slot()
 
 	$theme = panel_narrow_layout_test_source('edit_theme_file.php');
 	pg_assert_true(preg_match("/pg_screen_toolbar\(array\(\s*'secondary'[^;]*'grow'\s*=>/s", $theme) === 1, 'Edit Theme File passes its facts as the grow slot');
-	pg_assert_true(strpos($theme, '<h2') === false, 'Edit Theme File has no second heading');
+	// Card titles are h2.card-header (look A); a heading outside a card's head would repeat the screen's title.
+	pg_assert_true(preg_match('/<h2(?! class="card-header)/', $theme) === 0, 'Edit Theme File has no second heading');
 }
 
 function test_panel_narrow_layout_grow_only_bar_is_drawn()
