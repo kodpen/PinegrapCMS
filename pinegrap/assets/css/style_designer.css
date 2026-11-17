@@ -6737,23 +6737,23 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
 }
 .sd-tab-cc .bi { font-size: .62rem; }
 .sd-tab-cc:focus-visible { outline: 2px solid var(--sd-accent); outline-offset: 1px; }
-.sd-tab-cc-wait { border-color: #e3b341; color: #e3b341; }
-.sd-tab-cc-applied { border: 0; padding: 0; color: #3fb950; font-size: .75rem; }
-.sd-tab-cc-dismissed, .sd-tab-cc-stale { border: 0; padding: 0; color: #ff7b72; font-size: .75rem; }
+.sd-tab-cc-wait { border-color: var(--sd-warning); background: var(--sd-warning-soft); color: var(--sd-warning); }
+.sd-tab-cc-applied { border: 0; padding: 0; color: var(--sd-success); font-size: .75rem; }
+.sd-tab-cc-dismissed, .sd-tab-cc-stale { border: 0; padding: 0; color: var(--sd-danger); font-size: .75rem; }
 .sd-tab-cc-applied .bi, .sd-tab-cc-dismissed .bi, .sd-tab-cc-stale .bi { font-size: .8rem; }
-.sd-tab-cc-count { min-width: 18px; justify-content: center; border-color: var(--sd-accent); background: var(--sd-accent); color: #fff; font-weight: 700; }
+.sd-tab-cc-count { min-width: 18px; justify-content: center; border-color: var(--sd-accent-strong); background: var(--sd-accent-strong); color: var(--sd-on-accent); font-weight: 700; }
 .sd-cc-pop {
     position: fixed; z-index: 1090; width: 300px; max-width: calc(100vw - 16px);
-    padding: 10px 12px; border: 1px solid var(--sd-panel-border); border-radius: 6px;
-    background: #2a2f36; color: var(--sd-text); box-shadow: 0 6px 18px rgba(0,0,0,.45); font-size: .8rem;
+    padding: 10px 12px; border: 1px solid var(--sd-border-strong); border-radius: 6px;
+    background: var(--sd-raised-bg); color: var(--sd-text); box-shadow: 0 6px 18px color-mix(in srgb, var(--sd-shadow) 45%, transparent); font-size: .8rem;
 }
 .sd-cc-pop-title { margin-bottom: 4px; font-weight: 600; }
 .sd-cc-pop p { margin: 0 0 8px; overflow-wrap: anywhere; }
 .sd-cc-pop-acts { display: flex; justify-content: flex-end; gap: 6px; }
 .sd-cc-pop-acts .sd-vb-btn { padding: .35rem .7rem; border: 1px solid var(--sd-text-muted); color: var(--sd-text); }
-.sd-cc-pop-acts .sd-vb-btn:hover, .sd-cc-pop-acts .sd-vb-btn:focus-visible { border-color: var(--sd-text); background: rgba(255,255,255,.1); outline: none; }
+.sd-cc-pop-acts .sd-vb-btn:hover, .sd-cc-pop-acts .sd-vb-btn:focus-visible { border-color: var(--sd-text); background: var(--sd-raised-bg-2); outline: none; }
 /* On the picked row of the page list the row's own colour carries it. */
 .sd-tabs-all-item.active .sd-tab-cc:not(.sd-tab-cc-count) { border-color: currentColor; color: inherit; }
-.sd-tabs-all-item.active .sd-tab-cc-count { border-color: #fff; }
+.sd-tabs-all-item.active .sd-tab-cc-count { border-color: var(--sd-on-accent); }
 /* A tab with a waiting change keeps room for its name beside the pill. */
 .sd-tab:has(.sd-tab-cc-wait) { max-width: 320px; }
