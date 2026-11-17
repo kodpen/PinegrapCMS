@@ -92,46 +92,41 @@
 }
 
 /* ── Page tabs (inside the toolbar) ──
-   One tab per page of the design, sitting between undo/redo and the
-   add-page menu. The strip scrolls sideways when there are many. */
+   The page strip, between the design's menu and the toolbar's actions. It
+   never scrolls or wraps: _pgTabsFit() hides what does not fit, step by
+   step (the open group's box, its tabs, "+N", the chips, "+N groups"). */
 .sd-toolbar-tabs { gap: .35rem; }
 .sd-tabs-scroll {
-    flex: 1 1 auto;
-    min-width: 120px;
-    align-self: stretch;
+    flex: 1 1 0;
+    min-width: 70px;              /* the open page's tab at its narrowest, in its box */
     display: flex;
-    align-items: stretch;
-    overflow-x: auto;
-    overflow-y: hidden;
-    scrollbar-width: thin;
-    margin: -.3rem 0;             /* let tabs use the toolbar's full height */
+    align-items: center;
+    gap: .3rem;
+    overflow: hidden;
 }
-.sd-tabs-scroll::-webkit-scrollbar { height: 4px; }
-.sd-tabs-scroll::-webkit-scrollbar-thumb { background: var(--sd-panel-border); border-radius: 2px; }
 .sd-tab {
     flex: 0 0 auto;
     display: inline-flex;
     align-items: center;
     gap: .4rem;
     max-width: 200px;
-    padding: 0 .7rem 0 .6rem;
+    height: 30px;
+    padding: 0 .6rem;
     border: 0;
-    border-right: 1px solid var(--sd-panel-border);
-    border-bottom: 2px solid transparent;
+    border-radius: 8px;
     background: transparent;
     /* The muted text colour alone reads 4.2:1 on a hovered or active
        tab; a third of the body text colour keeps the page names 4.5:1. */
     color: color-mix(in srgb, var(--sd-text-muted) 70%, var(--sd-text));
-    font-size: .76rem;
+    font-size: .78rem;
     white-space: nowrap;
     cursor: pointer;
 }
-.sd-tab:first-child { border-left: 1px solid var(--sd-panel-border); }
-.sd-tab:hover { color: var(--sd-text); background: color-mix(in srgb, var(--sd-text) 3%, transparent); }
+.sd-tab:hover { color: var(--sd-text); background: color-mix(in srgb, var(--sd-text) 4%, transparent); }
 .sd-tab.active {
     color: var(--sd-text);
-    background: color-mix(in srgb, var(--sd-text) 5%, transparent);
-    border-bottom-color: var(--sd-accent);
+    background: var(--sd-raised-bg-2);
+    box-shadow: inset 0 0 0 1px var(--sd-panel-border);
 }
 .sd-tab-name { overflow: hidden; text-overflow: ellipsis; }
 .sd-tab:focus-visible { outline: 1px solid var(--sd-accent); outline-offset: -1px; }
@@ -213,33 +208,35 @@
 /* ── Tab groups ──
    A chip leads a group's tabs and wears its colour; the tabs carry the
    colour as a line along their top. Colours are read on the dark panel. */
-.sd-tab-group[data-color="grey"],   .sd-tab[data-color="grey"],   .sd-tab-color[data-color="grey"],   .sd-tab-color-dot[data-color="grey"]   { --sd-tg: #8b949e; }
-.sd-tab-group[data-color="blue"],   .sd-tab[data-color="blue"],   .sd-tab-color[data-color="blue"],   .sd-tab-color-dot[data-color="blue"]   { --sd-tg: #58a6ff; }
-.sd-tab-group[data-color="red"],    .sd-tab[data-color="red"],    .sd-tab-color[data-color="red"],    .sd-tab-color-dot[data-color="red"]    { --sd-tg: #f85149; }
-.sd-tab-group[data-color="yellow"], .sd-tab[data-color="yellow"], .sd-tab-color[data-color="yellow"], .sd-tab-color-dot[data-color="yellow"] { --sd-tg: #d29922; }
-.sd-tab-group[data-color="green"],  .sd-tab[data-color="green"],  .sd-tab-color[data-color="green"],  .sd-tab-color-dot[data-color="green"]  { --sd-tg: #3fb950; }
-.sd-tab-group[data-color="pink"],   .sd-tab[data-color="pink"],   .sd-tab-color[data-color="pink"],   .sd-tab-color-dot[data-color="pink"]   { --sd-tg: #db61a2; }
-.sd-tab-group[data-color="purple"], .sd-tab[data-color="purple"], .sd-tab-color[data-color="purple"], .sd-tab-color-dot[data-color="purple"] { --sd-tg: #a371f7; }
-.sd-tab-group[data-color="cyan"],   .sd-tab[data-color="cyan"],   .sd-tab-color[data-color="cyan"],   .sd-tab-color-dot[data-color="cyan"]   { --sd-tg: #39c5cf; }
-.sd-tab-group[data-color="orange"], .sd-tab[data-color="orange"], .sd-tab-color[data-color="orange"], .sd-tab-color-dot[data-color="orange"] { --sd-tg: #f0883e; }
+.sd-tab-box[data-color="grey"], .sd-tab-group[data-color="grey"],   .sd-tab[data-color="grey"],   .sd-tab-color[data-color="grey"],   .sd-tab-color-dot[data-color="grey"]   { --sd-tg: #8b949e; }
+.sd-tab-box[data-color="blue"], .sd-tab-group[data-color="blue"],   .sd-tab[data-color="blue"],   .sd-tab-color[data-color="blue"],   .sd-tab-color-dot[data-color="blue"]   { --sd-tg: #58a6ff; }
+.sd-tab-box[data-color="red"], .sd-tab-group[data-color="red"],    .sd-tab[data-color="red"],    .sd-tab-color[data-color="red"],    .sd-tab-color-dot[data-color="red"]    { --sd-tg: #f85149; }
+.sd-tab-box[data-color="yellow"], .sd-tab-group[data-color="yellow"], .sd-tab[data-color="yellow"], .sd-tab-color[data-color="yellow"], .sd-tab-color-dot[data-color="yellow"] { --sd-tg: #d29922; }
+.sd-tab-box[data-color="green"], .sd-tab-group[data-color="green"],  .sd-tab[data-color="green"],  .sd-tab-color[data-color="green"],  .sd-tab-color-dot[data-color="green"]  { --sd-tg: #3fb950; }
+.sd-tab-box[data-color="pink"], .sd-tab-group[data-color="pink"],   .sd-tab[data-color="pink"],   .sd-tab-color[data-color="pink"],   .sd-tab-color-dot[data-color="pink"]   { --sd-tg: #db61a2; }
+.sd-tab-box[data-color="purple"], .sd-tab-group[data-color="purple"], .sd-tab[data-color="purple"], .sd-tab-color[data-color="purple"], .sd-tab-color-dot[data-color="purple"] { --sd-tg: #a371f7; }
+.sd-tab-box[data-color="cyan"], .sd-tab-group[data-color="cyan"],   .sd-tab[data-color="cyan"],   .sd-tab-color[data-color="cyan"],   .sd-tab-color-dot[data-color="cyan"]   { --sd-tg: #39c5cf; }
+.sd-tab-box[data-color="orange"], .sd-tab-group[data-color="orange"], .sd-tab[data-color="orange"], .sd-tab-color[data-color="orange"], .sd-tab-color-dot[data-color="orange"] { --sd-tg: #f0883e; }
 .sd-tab, .sd-tab-group { user-select: none; -webkit-user-select: none; }
+/* A folded group's chip: its colour's dot, its name and its page count. */
 .sd-tab-group {
     flex: 0 0 auto;
     display: inline-flex;
     align-items: center;
-    gap: .35rem;
-    max-width: 160px;
-    margin: .3rem .25rem .3rem .35rem;
-    padding: 0 .55rem;
-    border-radius: 999px;
-    background: color-mix(in srgb, var(--sd-tg) 18%, transparent);
-    color: var(--sd-tg);
-    font-size: .72rem;
-    font-weight: 600;
+    gap: .4rem;
+    max-width: 11rem;
+    height: 30px;
+    padding: 0 .6rem;
+    border: 1px solid var(--sd-panel-border);
+    border-radius: 8px;
+    background: var(--sd-raised-bg);
+    color: var(--sd-text);
+    font-size: .78rem;
+    font-weight: 500;
     white-space: nowrap;
     cursor: pointer;
 }
-.sd-tab-group:hover { background: color-mix(in srgb, var(--sd-tg) 28%, transparent); }
+.sd-tab-group:hover { background: var(--sd-raised-bg-2); }
 .sd-tab-group:focus-visible { outline: 1px solid var(--sd-tg); outline-offset: 1px; }
 .sd-tab-group-dot { flex: 0 0 auto; width: 8px; height: 8px; border-radius: 50%; background: var(--sd-tg); }
 .sd-tab-group-name { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
@@ -247,19 +244,94 @@
     flex: 0 0 auto;
     min-width: 1.1rem;
     padding: 0 .3rem;
-    border-radius: 999px;
-    background: var(--sd-tg);
-    color: var(--sd-input-bg);
-    font-size: .64rem;
-    line-height: 1.35;
+    border-radius: 6px;
+    background: var(--sd-accent-soft);
+    color: var(--sd-accent);
+    font-size: .68rem;
+    font-weight: 600;
+    line-height: 1.5;
     text-align: center;
-    display: none;
 }
-.sd-tab-group.collapsed .sd-tab-group-count { display: inline-block; }
+/* The open group: a box in its colour, its name at the head, its tabs in it. */
+.sd-tab-box {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: .3rem;
+    min-width: 0;
+    height: 36px;
+    padding: 0 3px;
+    border: 1px solid var(--sd-panel-border);
+    border-bottom: 2px solid var(--sd-tg);
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--sd-tg) 6%, transparent);
+}
+.sd-tab-group.sd-tab-box-head {
+    max-width: 9rem;
+    height: auto;
+    padding: 0 .2rem 0 .45rem;
+    border: 0;
+    background: transparent;
+    color: var(--sd-tg);
+    font-size: .72rem;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    cursor: default;
+}
+.sd-tab-group.sd-tab-box-head:hover { background: transparent; }
+.sd-tab-box .sd-tab.active { background: var(--sd-raised-bg-2); }
+/* "+N" (tabs that do not fit) and "+N groups" / "N groups". */
+.sd-tabs-more {
+    flex: 0 0 auto;
+    height: 30px;
+    padding: 0 .55rem;
+    border: 1px solid var(--sd-accent-line);
+    border-radius: 8px;
+    background: var(--sd-accent-soft);
+    color: var(--sd-accent);
+    font-size: .72rem;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+}
+.sd-tabs-more[hidden] { display: none; }
+.sd-tabs-more:hover { border-color: var(--sd-accent); }
+.sd-tabs-more:focus-visible { outline: none; box-shadow: var(--sd-focus-ring); }
+/* The short forms of the narrow strip (_pgTabsFit()). */
+.sd-strip-nocount .sd-tab-group-count { display: none; }
+.sd-strip-nohead .sd-tab-box-head .sd-tab-group-name:not(:has(> .sd-tab-rename)) { display: none; }
+.sd-strip-nohead .sd-tab-box-head { padding-left: .15rem; }
+.sd-tab-group.sd-tab-folded { display: none; }
+.sd-strip-cut .sd-tab-box { flex: 0 1 auto; }
+.sd-strip-cut .sd-tab-box-head:not(:has(.sd-tab-rename)) { display: none; }
+.sd-strip-cut .sd-tab.active { flex: 0 1 auto; min-width: 60px; }
+.sd-strip-cut .sd-tab.active .sd-tab-name { min-width: 0; }
+/* The open tab's state and its menu never go: only the name is cut
+   (_pgTabsFit() keeps the strip as wide as they need). The box keeps its
+   colour line only; last before the name, the draft pill keeps its dashed
+   mark without its word, which stays in its tip. */
+.sd-strip-cut .sd-tab-box { padding: 0; border-color: transparent; border-bottom-color: var(--sd-tg); background: transparent; }
+.sd-strip-cut .sd-tab.active { padding: 0 .3rem; gap: .2rem; }
+.sd-strip-cut .sd-tab.active > :not(.sd-tab-name) { flex: 0 0 auto; }
+.sd-strip-draftshort .sd-tab.active .sd-tab-draft-badge:not(.sd-tab-sched-badge) { width: 10px; height: 10px; padding: 0; font-size: 0; }
+/* Step 6 also gives the open tab's name room from the toolbar's row: the
+   Add Page button leaves it (its New Page leads the Pages list), then the
+   Pages button's count (it stays in the tip). */
+.sd-strip-noadd .sd-tabs-add { display: none; }
+.sd-strip-nopagecount .sd-tabs-all-count { display: none; }
+/* The rows a chip lists. */
+.sd-tabs-list { min-width: 220px; max-width: min(320px, calc(100vw - 16px)); max-height: min(420px, calc(100vh - 80px)); overflow-y: auto; }
+.sd-tabs-list-head { text-transform: uppercase; letter-spacing: .04em; font-weight: 600; }
+.sd-tabs-list-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sd-tabs-list-count { flex: 0 0 auto; color: var(--sd-text-muted); font-size: .72rem; }
+.sd-tabs-list-dirty { flex: 0 0 auto; width: 7px; height: 7px; margin-left: .4rem; border-radius: 50%; background: var(--sd-accent); }
+.sd-tabs-list-lock { margin-left: .4rem; color: var(--sd-text-muted); }
+.sd-tabs-list .sd-tab-draft-badge { margin-left: .4rem; }
+.sd-tabs-list-page.active { background: color-mix(in srgb, var(--sd-text) 6%, transparent); }
 .sd-tab-group-menu { flex: 0 0 auto; padding: 0 .1rem; border-radius: 3px; font-size: .75rem; line-height: 1; opacity: .6; }
 .sd-tab-group-menu:hover { opacity: 1; background: color-mix(in srgb, var(--sd-text) 8%, transparent); }
 .sd-tab-group .sd-tab-rename { width: 7rem; }
-.sd-tab[data-group] { box-shadow: inset 0 2px 0 var(--sd-tg); }
 .sd-tab.sd-tab-folded { display: none; }
 .sd-tab-dragging { opacity: .4; }
 .sd-tab-ghost {
@@ -292,13 +364,6 @@
 .sd-tab-color.active { border-color: var(--sd-text); }
 .sd-tab-color:focus-visible { outline: 1px solid var(--sd-accent); outline-offset: 1px; }
 .sd-tab-color-dot { display: inline-block; flex: 0 0 auto; width: 10px; height: 10px; border-radius: 50%; background: var(--sd-tg); }
-/* Narrow screens: the chip keeps its dot and its count. */
-@media (max-width: 1023.98px) {
-    .sd-tab-group-name { display: none; }
-    .sd-tab-group-name:has(> .sd-tab-rename) { display: block; }
-    .sd-tab-group .sd-tab-group-count { display: inline-block; }
-    .sd-tab-group .sd-tab-rename { width: 6rem; }
-}
 .sd-tabs-add { flex: 0 0 auto; display: flex; align-items: center; }
 .sd-tabs-add-btn {
     display: inline-flex;
@@ -340,6 +405,24 @@
 .sd-design-menu-btn:focus-visible { outline: none; box-shadow: var(--sd-focus-ring); }
 .sd-design-menu-name { max-width: 14rem; overflow: hidden; text-overflow: ellipsis; }
 .sd-design-menu-caret { font-size: .7rem; color: var(--sd-text-muted); }
+/* Step 4 of the narrow strip: the name becomes an icon, kept for screen
+   readers, in the tip and at the head of the menu; step 6: the icon alone. */
+.sd-design-menu-icon { display: none; font-size: .9rem; }
+.sd-design-icon .sd-design-menu-icon { display: inline-block; }
+.sd-design-icon .sd-design-menu-name { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.sd-design-bare .sd-design-menu-caret { display: none; }
+.sd-design-menu-head { display: none; }
+.sd-design-icon .sd-design-menu-head {
+    display: block;
+    max-width: 16rem;
+    padding: .2rem .6rem .35rem;
+    overflow: hidden;
+    color: var(--sd-text-muted);
+    font-size: .68rem;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
 /* The menu wears the tab menu's look (.sd-tab-popmenu): same ground,
    rows, text size and divider. */
 .sd-design-menu .menu {
@@ -391,6 +474,7 @@
 .sd-tabs-all-item:disabled .bi-lock-fill { margin-left: auto; font-size: .7rem; }
 .sd-tabs-all-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sd-tabs-all-dot { flex: 0 0 auto; width: 8px; height: 8px; border-radius: 50%; }
+.sd-tabs-all-plus { flex: 0 0 auto; width: 8px; display: inline-flex; justify-content: center; font-size: .78rem; line-height: 1; }
 .sd-tabs-all-dirty { flex: 0 0 auto; color: var(--sd-warning); font-size: .6rem; }
 /* The strip's Draft pill, on the dark menu: a lighter dashed outline, and
    on the active (accent) row the row's own text colour. */
@@ -1121,13 +1205,109 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
     padding: .25rem 0 .25rem .5rem; border-bottom: 1px solid var(--sd-panel-border);
     margin-bottom: .35rem;
 }
-.sd-props-section-title .bi:first-child { font-size: .8rem; opacity: .85; }
 .sd-sect-chev {
-    margin-left: auto; font-size: .6rem; opacity: .45; flex-shrink: 0;
-    transition: transform .15s;
+    font-size: 10px; color: var(--sd-text-muted); flex-shrink: 0;
+    transition: transform .12s;
 }
 .sd-sect-hdr.sd-sect-open .sd-sect-chev { transform: rotate(90deg); }
 .sd-sect-body { padding-bottom: .3rem; }
+
+/* Section cards (sect(), as()): 8 apart, 12 at the sides, corner 12. An
+   open card has the raised ground and a line over its body; a closed one
+   has no ground and shows its summary at the right. The head is 36 high:
+   chevron, name, the count of changed rows, the summary. */
+.sd-props-section.sd-card, .sd-app-sect.sd-card {
+    margin: 0 12px 8px; padding: 0;
+    border: 1px solid var(--sd-panel-border); border-radius: 12px;
+}
+.sd-card:has(> .sd-sect-hdr.sd-sect-open) { background: var(--sd-raised-bg); }
+.sd-card > .sd-sect-hdr {
+    min-height: 36px; margin: 0; padding: 0 12px 0 10px; gap: 8px;
+    border-bottom: 0; border-radius: 11px;
+    font-size: 12.5px; font-weight: 600; text-transform: none; letter-spacing: 0;
+    color: var(--sd-text);
+}
+.sd-card > .sd-sect-hdr:hover { background: color-mix(in srgb, var(--sd-text) 4%, transparent); }
+.sd-card > .sd-sect-hdr.sd-sect-open { border-bottom: 1px solid var(--sd-panel-border); border-radius: 11px 11px 0 0; }
+.sd-card > .sd-sect-body { padding: 10px 12px 6px; }
+.sd-sect-title { display: inline-flex; align-items: center; white-space: nowrap; flex-shrink: 0; }
+.sd-sect-count {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 18px; height: 17px; padding: 0 5px; border-radius: 6px;
+    background: var(--sd-raised-bg-2); color: var(--sd-text);
+    font-size: 10.5px; font-weight: 750; line-height: 1; flex-shrink: 0;
+}
+/* The summary gives way first. Its text is cut with an ellipsis and left
+   out when under five letters would stay: it wraps to a second line of
+   its one-line holder, which is clipped. The colour square stays. */
+.sd-sect-sum {
+    flex: 0 1000000 auto; min-width: 0; height: 34px; overflow: hidden;
+    margin-left: auto; color: var(--sd-text-muted);
+    font-size: 11.5px; font-weight: 400;
+}
+.sd-sect-sum-line {
+    display: flex; flex-wrap: wrap; align-items: center; align-content: flex-start;
+    justify-content: flex-end; column-gap: 6px; height: 34px;
+}
+.sd-sect-sum-line::before { content: ''; width: 0; height: 34px; }
+.sd-sect-sum-txt {
+    flex: 1 1 5ch; min-width: 5ch; max-width: max-content;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right;
+}
+.sd-sect-sum-txt.sd-sect-sum-whole { flex: 0 0 auto; min-width: max-content; }
+.sd-sect-sum .sd-color-preview { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+.sd-sect-hdr.sd-sect-open .sd-sect-sum,
+.sd-sect-hdr:has(+ .sd-sect-body[data-search-expanded]) .sd-sect-sum { display: none; }
+/* A section the search shows rows of has its arrow open. */
+.sd-sect-hdr:has(+ .sd-sect-body[data-search-expanded]) .sd-sect-chev { transform: rotate(90deg); }
+
+/* The identity row (60): icon box 36, the name and its tag, the path's
+   last three steps, the menu. */
+.sd-id-row {
+    display: flex; align-items: center; gap: 10px;
+    min-height: 60px; padding: 13px 14px 11px;
+}
+.sd-id-icon {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 36px; height: 36px; flex-shrink: 0; border-radius: 10px;
+    background: var(--sd-accent-soft); border: 1px solid var(--sd-accent-line);
+    color: var(--sd-accent); font-size: 16px;
+}
+.sd-id-main { flex: 1 1 auto; min-width: 0; }
+.sd-id-line { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.sd-id-name {
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    font-size: 14.5px; font-weight: 640; color: var(--sd-text); line-height: 1.45;
+}
+.sd-id-tag {
+    flex-shrink: 0; padding: 1px 6px; border-radius: 6px;
+    background: var(--sd-raised-bg-2); color: var(--sd-label);
+    font-size: 10.5px; font-weight: 750; line-height: 1.45;
+}
+.sd-id-path {
+    display: flex; align-items: center; min-width: 0; overflow: hidden;
+    font-size: 11.5px; color: var(--sd-text-muted); line-height: 1.45; white-space: nowrap;
+}
+.sd-id-step {
+    min-width: 0; padding: 0; border: 0; background: transparent;
+    color: inherit; font: inherit; cursor: pointer;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.sd-id-step:hover { color: var(--sd-text); text-decoration: underline; }
+.sd-id-sep { padding: 0 4px; flex-shrink: 0; }
+.sd-id-more {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 28px; height: 28px; flex-shrink: 0; border-radius: 8px;
+    border: 0; background: transparent; color: var(--sd-text-muted); cursor: pointer;
+}
+.sd-id-more:hover { color: var(--sd-text); background: color-mix(in srgb, var(--sd-text) 6%, transparent); }
+.sd-id-step:focus-visible, .sd-id-more:focus-visible { outline: 0; box-shadow: var(--sd-focus-ring); border-radius: 6px; }
+/* Under 300 px: the path keeps its last step after "… ›" (the whole path
+   is the tip). */
+.sd-rcol-narrow .sd-id-step:not(:last-child),
+.sd-rcol-narrow .sd-id-sep { display: none; }
+.sd-rcol-narrow .sd-id-path::before { content: '\2026\00a0\203a\00a0'; flex-shrink: 0; }
+@media (prefers-reduced-motion: reduce) { .sd-sect-chev { transition: none; } }
 .sd-prop-row { display:flex; align-items:flex-start; margin-bottom:.4rem; gap:.5rem; }
 /* The label column wraps. A fixed 65px column with nowrap let "Screen
    Reader Only" or "Aria Describedby" run under the control beside it. */
@@ -6358,9 +6538,6 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
     .sd-design-menu-btn { padding: 0 .4rem 0 .5rem; gap: .25rem; }
     .sd-design-menu-name { max-width: 7rem; }
     .sd-toolbar-actions { gap: 2px; }
-    /* The strip gives way all the way down; the page list reaches the tabs
-       it can no longer show, and Save never leaves the screen. */
-    .sd-tabs-scroll { min-width: 0; }
 
     /* ── Canvas view bar (breakpoints, zoom, tools) ── */
     /* Labels and wrapping follow the bar's own width (its block above);
@@ -6966,6 +7143,24 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
 .sd-proto-menu-head.sd-proto-problem-broken { color: #ff6b6b; }
 .sd-proto-menu-head.sd-proto-problem-unreached, .sd-proto-menu-head.sd-proto-problem-empty { color: var(--pgc-in); }
 .sd-proto-badge.sd-proto-badge-empty { background: var(--pgc-in); }
+/* Suggest targets (F30 to F33): the dialog stands at the canvas's right
+   without a backdrop, so the map and its dashed proposed arrows stay in
+   sight; a row is its tick, label and page selector, an unsure row's
+   question under them. */
+.dialog.dialog-nonmodal.sd-proto-suggest { inset: 64px 16px auto auto; width: 400px; max-width: calc(100vw - 16px); max-height: calc(100vh - 96px); margin: 0; }
+.sd-proto-suggest-line { display: flex; align-items: flex-start; gap: 8px; }
+/* The tick at the label's first line (the label is 28 high at least). */
+.sd-proto-suggest-line > .pg-checkbox { flex: none; margin-top: 6px; }
+.sd-proto-suggest-pick { display: flex; flex: 1 1 auto; flex-wrap: wrap; align-items: center; gap: 4px 8px; min-width: 0; }
+/* A long label or page name wraps by words inside its button. */
+.sd-proto-suggest-label, .sd-proto-suggest-ask .pg-button { max-width: 100%; height: auto; min-height: 28px; padding-block: 6px; line-height: 1.3; text-align: left; white-space: normal; overflow-wrap: break-word; }
+.sd-proto-suggest-label { flex: 1000 1 auto; justify-content: flex-start; min-width: 0; }
+.sd-proto-suggest-count { margin-left: 4px; font-variant-numeric: tabular-nums; }
+/* Beside a label that fits, under a long one across the row; a page name
+   longer than it ends with an ellipsis. */
+.sd-proto-suggest-pick select { flex: 1 1 150px; min-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sd-proto-suggest-ask { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; padding-left: 26px; }
+.sd-proto .pgc-edge.pgc-edge-dashed .pgc-edge-line { stroke: var(--sd-text-muted); marker-end: url(#sd-proto-arrow); }
 .sd-proto-unreached {
     flex: none; padding: 0 6px; border-radius: 9px; white-space: nowrap;
     background: color-mix(in srgb, var(--pgc-in) 22%, transparent); color: var(--pgc-in); font-size: .65rem; font-weight: 600; line-height: 18px;

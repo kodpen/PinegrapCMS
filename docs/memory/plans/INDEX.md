@@ -135,6 +135,10 @@
 - panel-old-screens-rules.md: Old panel screens to look A: what the looks decided beyond the sheet: the owner's kept screens, address parts, a narrow field alone in its row, mapping grids, values the sheet does not name
 - panel-old-screens-shared-steps.md: Old panel screens to look A: the shared steps cut after the groups, SH1 to SH10 (field, status list, ERP lists, figure cards, icon buttons, save bar, list title) and KS1, KS2 on kept screens
 - panel-old-screens.md: Plan (owner 2026-11-15): the panel screens still drawn the old way move to look A; censuses done, LM2 the shared buttons, then one census group per step (C1 to C5, E1 to E5, S1 to S6)
+- php-error-log-clean-census-2.md: Error log census part 2 (plan php-error-log-clean): the files with shapes still open, most frequent first, from get_order_preview.php to includes/fn/forms.php; verdict words are explained in part 1
+- php-error-log-clean-census-3.md: Error log census part 3 (plan php-error-log-clean): the files with shapes still open, from init.php to the smallest; verdict words are explained in part 1
+- php-error-log-clean-census-4.md: Error log census part 4 (plan php-error-log-clean): the shapes already gone on development, by file with the PR that removed them, most frequent first; nothing here is left for EL5
+- php-error-log-clean-census.md: PHP error log census (plan php-error-log-clean, EL1): what was read, totals, how shapes were checked, the fatal errors' verdicts; shapes by file in parts 2 to 4
 - php-error-log-clean.md: Plan (owner 2026-11-14): the PHP error log of the owner's dev machine read for Pinegrap's own deprecations and warnings on PHP 8.5, and their causes fixed; steps EL1 to EL6
 - picture-text-translation-census-draw.md: Picture text translation PT0 census, drawing: browser renderer without the editor, the server (fonts, three scripts), a longer text box, right-to-left
 - picture-text-translation-census-keep.md: Picture text translation PT0 census: keeping a language version (own table, source document, named file): schema, page pass cost, rename, delete, Recycle Bin, Disk Usage

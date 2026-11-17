@@ -16,7 +16,7 @@ description: Plan designer-panels, steps DP1 to DP5: the chrome's tokens, the ri
   - Pictures: Options over the whole column, the Design tab, the bottom strip closed and open, docked under 992 px.
   - Features: D1, D2. Keeps K5.
 
-- DP3 (M) after DP2: the identity row and the section cards.
+- DP3 (M) after DP2: the identity row and the section cards. Done in #10240.
   - Functions: `renderProperties()`, `sect()`. New: a pure module for what counts as changed and for a section's summary, with its test.
   - Tests, red first: a row differing from its default counted; a section's and a tab's count; the summary of each kind (a colour, one value, none, default); a body not built while its section is closed.
   - Pictures: beside `options-1-content.jpg` and `measures-2-anatomy.jpg`, parts a, d, e, g.

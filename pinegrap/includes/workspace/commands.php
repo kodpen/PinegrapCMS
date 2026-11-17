@@ -390,6 +390,43 @@ function ws_command_gate_status($viewer)
 }
 
 /**
+ * /notify and /leave: offered to a member of the channel, as the channel
+ * menu offers its notification choices and "Leave the channel" only to
+ * one. Without a channel, listed like the rest.
+ *
+ * @param array|null $viewer
+ * @param string     $command
+ * @param array|null $channel
+ * @return bool
+ */
+function ws_command_gate_member($viewer, $command = '', $channel = null)
+{
+    if (!is_array($viewer) || !is_array($channel)) {
+        return true;
+    }
+
+    return (bool) ws_channel_membership($channel['id'], $viewer['id']);
+}
+
+/**
+ * /invite: "Add people"'s rule, anybody in a public channel and only a
+ * member in any other.
+ *
+ * @param array|null $viewer
+ * @param string     $command
+ * @param array|null $channel
+ * @return bool
+ */
+function ws_command_gate_invite($viewer, $command = '', $channel = null)
+{
+    if (!is_array($viewer) || !is_array($channel) || ((string) $channel['kind'] === 'public')) {
+        return true;
+    }
+
+    return (bool) ws_channel_membership($channel['id'], $viewer['id']);
+}
+
+/**
  * /timer: once task time is kept.
  *
  * @param array|null $viewer
@@ -446,7 +483,7 @@ function ws_command_gate_create($viewer, $command)
  */
 function ws_command_argument_kinds()
 {
-    return array('person', 'people', 'department', 'task', 'record', 'date', 'time', 'estimate', 'priority', 'status', 'amount', 'quantity', 'text', 'options', 'record_kind', 'health');
+    return array('person', 'people', 'department', 'task', 'record', 'date', 'time', 'estimate', 'priority', 'status', 'amount', 'quantity', 'text', 'options', 'record_kind', 'health', 'notify');
 }
 
 /**
@@ -481,7 +518,7 @@ function ws_command_turkish($language = null)
  *                (ws_command_argument_kinds()), label, optional, suggest
  *                (where the composer finds values for it: people,
  *                people_departments, tasks, records, products, dates,
- *                estimates, priorities, statuses, kinds, healths, or '' for none), multiple (takes more
+ *                estimates, priorities, statuses, kinds, healths, notify, or '' for none), multiple (takes more
  *                than one), anywhere (read wherever it is written, as /task
  *                reads its people, day, estimate and priority)
  *   live         the composer asks ws_command_suggest() for a line under
@@ -602,8 +639,8 @@ function ws_command_help($viewer = null, $channel = null)
  * @param string|null $language a language code, or null for the active one
  * @param array|null  $viewer   with a person, only the kinds they may make
  * @return array dates, estimates, priorities, statuses, kinds (what /create
- *               makes), healths (the states /update reads): each a list of
- *               value, meta, top
+ *               makes), healths (the states /update reads), notify (the
+ *               choices /notify reads): each a list of value, meta, top
  */
 function ws_command_suggestions($language = null, $viewer = null)
 {
@@ -661,6 +698,9 @@ function ws_command_suggestions($language = null, $viewer = null)
 
     // The states /update reads.
     $out['healths'] = ws_command_health_values($turkish);
+
+    // The choices /notify reads.
+    $out['notify'] = ws_command_notify_values($turkish);
 
     return $out;
 }
@@ -2725,6 +2765,323 @@ function ws_command_live_checkin($viewer, $channel, $rest)
     }
 
     return $out;
+}
+
+/**
+ * /notify: the writer's notifications of this channel through
+ * ws_channel_set_notify(), as the channel menu's three choices set them.
+ * Without a word, the choice in force and the words that change it; both
+ * to the writer alone.
+ *
+ * @return array
+ */
+function ws_command_run_notify($viewer, $channel, $rest)
+{
+    $word = trim((string) $rest);
+    $notify = ws_command_notify_word($word);
+
+    if ($word === '') {
+        $membership = ws_channel_membership($channel['id'], $viewer['id']);
+
+        return array('type' => 'ephemeral', 'html' => ws_command_notify_html($membership ? (string) $membership['notify'] : '', false));
+    }
+
+    if ($notify === '') {
+        return array('type' => 'error', 'error' => ws_command_notify_unknown());
+    }
+
+    $result = ws_channel_set_notify($viewer, $channel, $notify);
+
+    if (!$result['ok']) {
+        return array('type' => 'error', 'error' => $result['error']);
+    }
+
+    return array('type' => 'ephemeral', 'html' => ws_command_notify_html($notify, true));
+}
+
+/**
+ * A notification choice typed after /notify, in Turkish or English, with
+ * or without the Turkish letters. Pure.
+ *
+ * @param string $word
+ * @return string all | mentions | none, '' when it is none of them
+ */
+function ws_command_notify_word($word)
+{
+    $words = array(
+        'hepsi' => 'all', 'tumu' => 'all', 'all' => 'all', 'every' => 'all',
+        'anma' => 'mentions', 'anmalar' => 'mentions', 'mentions' => 'mentions', 'mention' => 'mentions',
+        'hic' => 'none', 'hicbiri' => 'none', 'never' => 'none', 'none' => 'none',
+    );
+
+    return $words[ws_command_fold(trim((string) $word, " \t.,;:!"))] ?? '';
+}
+
+/**
+ * The three choices as the channel menu names them.
+ *
+ * @return array all | mentions | none => label
+ */
+function ws_command_notify_labels()
+{
+    return array(
+        'all'      => lang('Tell me about every message'),
+        'mentions' => lang('Only when I am mentioned'),
+        'none'     => lang('Never'),
+    );
+}
+
+/**
+ * The words /notify reads, as the argument popup offers them, in the
+ * screen's language. Pure.
+ *
+ * @param bool $turkish
+ * @return array[] value, meta, top
+ */
+function ws_command_notify_values($turkish)
+{
+    $words = $turkish ? array('all' => 'hepsi', 'mentions' => 'anma', 'none' => 'hiç') : array('all' => 'all', 'mentions' => 'mentions', 'none' => 'never');
+    $labels = ws_command_notify_labels();
+    $out = array();
+
+    foreach ($words as $key => $word) {
+        $out[] = array('value' => $word, 'meta' => $labels[$key], 'top' => true);
+    }
+
+    return $out;
+}
+
+/**
+ * The refusal for a word /notify does not read, naming the three.
+ *
+ * @return string
+ */
+function ws_command_notify_unknown()
+{
+    return lang(array('string' => 'Write one of: {var:1}.', 'vars' => implode(', ', array_column(ws_command_notify_values(ws_command_turkish()), 'value'))));
+}
+
+/**
+ * /notify's answer: the choice in force (or just set) and the words that
+ * change it. Pure.
+ *
+ * @param string $notify all | mentions | none, '' when not in the channel
+ * @param bool   $set    just changed
+ * @return string
+ */
+function ws_command_notify_html($notify, $set)
+{
+    $labels = ws_command_notify_labels();
+    $now = $labels[$notify] ?? lang('You are not in this channel.');
+    $words = array();
+
+    foreach (ws_command_notify_values(ws_command_turkish()) as $item) {
+        // A word and its meaning hold together; the line breaks only
+        // between them.
+        $words[] = '<span class="text-nowrap"><code>' . h($item['value']) . '</code> ' . h($item['meta']) . '</span>';
+    }
+
+    return '<div class="ws-ephemeral-title">' . h(lang('Notifications')) . '</div>'
+        . '<div>' . h($set ? lang(array('string' => 'Now set: {var:1}', 'vars' => $now)) : lang(array('string' => 'Now: {var:1}', 'vars' => $now))) . '</div>'
+        . '<div class="fg-secondary">' . h(lang('Change with one of:')) . ' ' . implode(' · ', $words) . '</div>';
+}
+
+/**
+ * /notify's live line: the choice Enter will set, or the one in force.
+ *
+ * @return array line, warnings
+ */
+function ws_command_live_notify($viewer, $channel, $rest)
+{
+    $out = array('line' => '', 'warnings' => array());
+    $word = trim((string) $rest);
+
+    if ($word === '') {
+        return $out;
+    }
+
+    $notify = ws_command_notify_word($word);
+
+    if ($notify === '') {
+        $out['warnings'][] = ws_command_notify_unknown();
+
+        return $out;
+    }
+
+    $out['line'] = lang(array('string' => 'Will set your notifications here: {var:1}', 'vars' => ws_command_notify_labels()[$notify]));
+
+    return $out;
+}
+
+/**
+ * /invite: the people named with @ brought into the channel through
+ * ws_channel_add_members(), as "Add people" brings them, with its rule: in
+ * a channel that is not public only a member may bring somebody in. The
+ * answer, to the writer alone, names who was added, who was in already and
+ * who could not be.
+ *
+ * @return array
+ */
+function ws_command_run_invite($viewer, $channel, $rest)
+{
+    $people = ws_command_approval_read($rest)['people'];
+
+    if (empty($people)) {
+        return array('type' => 'error', 'error' => lang('Name the people to add with @.'));
+    }
+
+    if (!ws_command_gate_invite($viewer, 'invite', $channel)) {
+        return array('type' => 'error', 'error' => lang('Access denied.'));
+    }
+
+    $already = array_values(array_filter($people, function ($user_id) use ($channel) {
+        return (bool) ws_channel_membership($channel['id'], $user_id);
+    }));
+    $split = ws_command_invite_split($people, $already, ws_channel_add_members($viewer, $channel, array_values(array_diff($people, $already))));
+
+    return array('type' => 'ephemeral', 'html' => ws_command_invite_html($split['added'], $split['already'], $split['refused']));
+}
+
+/**
+ * The people /invite named, told apart: added, in already, and refused by
+ * ws_channel_add_members() (not on the team, or not one a guest room or a
+ * discussion takes). Pure.
+ *
+ * @param int[] $people  named
+ * @param int[] $already in the channel before
+ * @param int[] $added   what ws_channel_add_members() added
+ * @return array added, already, refused
+ */
+function ws_command_invite_split($people, $already, $added)
+{
+    $added = array_values(array_map('intval', (array) $added));
+    $already = array_values(array_map('intval', (array) $already));
+
+    return array(
+        'added'   => $added,
+        'already' => $already,
+        'refused' => array_values(array_diff(array_map('intval', (array) $people), $already, $added)),
+    );
+}
+
+/**
+ * /invite's answer. Pure but for the names.
+ *
+ * @param int[] $added
+ * @param int[] $already
+ * @param int[] $refused
+ * @return string
+ */
+function ws_command_invite_html($added, $already, $refused)
+{
+    $names = function ($ids) {
+        return implode(', ', array_map('ws_person_name', $ids));
+    };
+
+    $html = '<div class="ws-ephemeral-title">' . h(lang('Add people')) . '</div>';
+
+    if (!empty($added)) {
+        $html .= '<div>' . h(lang(array('string' => 'Added: {var:1}', 'vars' => $names($added)))) . '</div>';
+    }
+
+    if (!empty($already)) {
+        $html .= '<div>' . h(lang(array('string' => 'Already in the channel: {var:1}', 'vars' => $names($already)))) . '</div>';
+    }
+
+    if (!empty($refused)) {
+        $html .= '<div>' . h(lang(array('string' => 'Could not be added: {var:1}', 'vars' => $names($refused)))) . '</div>';
+    }
+
+    return $html;
+}
+
+/**
+ * /invite's live line: who Enter will add, and who is in already.
+ *
+ * @return array line, warnings
+ */
+function ws_command_live_invite($viewer, $channel, $rest)
+{
+    $out = array('line' => '', 'warnings' => array());
+
+    if (trim((string) $rest) === '') {
+        return $out;
+    }
+
+    $data = ws_command_approval_read($rest);
+    $new = array();
+
+    foreach ($data['people'] as $user_id) {
+        if (ws_channel_membership($channel['id'], $user_id)) {
+            $out['warnings'][] = lang(array('string' => 'Already in the channel: {var:1}', 'vars' => ws_person_name($user_id)));
+        } else {
+            $new[] = ws_person_name($user_id);
+        }
+    }
+
+    foreach ($data['typed_unknown'] as $name) {
+        $out['warnings'][] = lang(array('string' => 'No team member is called @{var:1}.', 'vars' => $name));
+    }
+
+    if (!empty($new)) {
+        $out['line'] = lang(array('string' => 'Will add: {var:1}', 'vars' => implode(', ', $new)));
+    }
+
+    return $out;
+}
+
+/**
+ * /leave: a card to the writer alone asks first, as the channel menu's
+ * "Leave the channel" does; only its confirm leaves, through
+ * ws_channel_leave() with that function's refusals.
+ *
+ * @return array
+ */
+function ws_command_run_leave($viewer, $channel, $rest, $options)
+{
+    $step = ws_command_leave_step((bool) ws_channel_membership($channel['id'], $viewer['id']), !empty($options['confirm']), (string) $channel['kind']);
+
+    if ($step['type'] !== 'leave') {
+        return $step;
+    }
+
+    $result = ws_channel_leave($viewer, $channel);
+
+    return $result['ok']
+        ? array('type' => 'left')
+        : array('type' => 'error', 'error' => $result['error']);
+}
+
+/**
+ * What /leave does now: refused to somebody not in the channel, the card
+ * before a confirm, the leave only after it. Pure.
+ *
+ * @param bool   $member  the writer is in the channel
+ * @param bool   $confirm sent from the card's button
+ * @param string $kind    the channel's kind
+ * @return array type error | leave_card | leave
+ */
+function ws_command_leave_step($member, $confirm, $kind)
+{
+    if (!$member) {
+        return array('type' => 'error', 'error' => lang('You are not in this channel.'));
+    }
+
+    if (!$confirm) {
+        return array('type' => 'leave_card', 'private' => ($kind !== 'public'));
+    }
+
+    return array('type' => 'leave');
+}
+
+/**
+ * /leave's live line: the channel it leaves once the card is confirmed.
+ *
+ * @return array line, warnings
+ */
+function ws_command_live_leave($viewer, $channel, $rest)
+{
+    return array('line' => lang(array('string' => 'Will ask before you leave #{var:1}', 'vars' => (string) ($channel['name'] ?? ''))), 'warnings' => array());
 }
 
 /**

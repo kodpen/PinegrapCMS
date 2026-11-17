@@ -394,6 +394,9 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-71.md: Are the three drawings the designer-panels plan lacked accepted? (owner, 2026-11-17, agent channel polls 128, 129 and 132)
 - decisions-made-product-71.md: Is the Design Canvas's "Languages" list accepted? (owner, 2026-11-17, agent channel poll 130, message 8312)
 - decisions-made-product-71.md: May a language's picture be drawn while some of its texts are not translated? (owner, 2026-11-17, agent channel poll 131, message 8313)
+- decisions-made-product-72.md: Where are the rules and the earlier parts?
+- decisions-made-product-72.md: Is the "Suggest targets" window of the Prototype view accepted? (owner, 2026-11-17, agent channel poll 137, message 8763)
+- decisions-made-product-72.md: Does a gift card pay for a gift card product in the cart? (owner, 2026-11-17, agent channel poll 138, message 8802)
 - decisions-made-product-8.md: Does Create Label refuse a Trendyol-carried package the common label does not cover? (#3568)
 - decisions-made-product-8.md: Are the starter dumps corrected for #3330? (#3567)
 - decisions-made-product-8.md: Is marketing SMS built in 2026.11.0? (#3570)
@@ -715,6 +718,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - commerce/checkout-contact-card-update.md: What a checkout writes on the contact card: the "Update my contact info" box, tax fields only when on the form, a typed tax number filling an empty card
 - commerce/course-gate.md: The course gate in get_page.php: a lesson not open yet sends the member to the classroom page with a one-time notice; the "Courses" switch reader; the first-open row
 - commerce/course-tables.md: Courses' data (2026.11.0, step 11.0.234): the course, course_lesson and course_progress tables, the open-lesson rule, the enrolment day, rows written once, the certificate code
+- commerce/gift-card-line-credit-cap.md: Store credit and plain gift cards together pay at most the part of a checkout total that is not gift card lines (pg_gift_card_applied_discount), #10258, #10267
+- commerce/gift-card-part-owed.md: How an order's gift card part is counted (architect 2026-11-17, #10259, #10260): the cards gave SUM(applied_gift_cards.amount); a return gave back order_refunds rows of type return_gift_card
 - commerce/merchant-center-push.md: Per-product push to Google Merchant Center on the outbound marketplace layer (#4389, #4423): managed provider, mapping from the feed, queue, supplemental source
 - commerce/n11-warehouse.md: Products n11 ships from its own warehouse (n11depom): read into the catalogue with sender=ALL and marked, their stock never pushed, their orders not pulled
 - commerce/order-report-ready-reports.md: Ready reports: the registry in includes/fn/ready_reports.php, view_order_report.php?ready=<key> opening one as a new unsaved report, sales by region counted as the Sales map card counts (#8691)
@@ -788,6 +793,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - designer/designer-canvas-toolbar-in-cards.md: The selected element's toolbar in a card (#9217, #9246): the ratio rule skips chrome, room counts inside the clip, it shows in see-through wrappers
 - designer/designer-content-roles-ui-guards.md: Designer content-role UI guards: _sdCanEditNode vs _sdMayEdit, every guarded mutation path, WeakSet perf rule, _sdGuardItem, content images, revision load, content chrome.
 - designer/designer-home-pictures.md: The Page Design Studio home's and Choose a Template's pictures: a design's real page, templates' home pages, the theme picker that redraws them, the drawings as the fallback
+- designer/designer-options-section-cards.md: The Options panel's identity row and section cards (D3, D6–D9, D11): own section first and open, general sections closed with a count and summary, closed bodies not drawn, one source for changed rows
 - designer/designer-palette-tabs-and-blocks.md: Designer palette Components tab with a Components / Blocks list switch (building blocks vs ready sections): adding a block, shared list plumbing, recents strip, tab strip width.
 - designer/designer-prototype-comments-door.md: Prototype comments (prototype_comments): what a row keeps, the guest's door prototype_comment.php and its gates, the limits, plain text, delete with the design
 - designer/designer-prototype-comments-rules.md: Prototype comments: what a later change must keep (a deleted link takes its comments, a deleted page's comments stay, personal data erase), and the architect's schema answer
@@ -819,6 +825,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - designer/prototype-page-picture.md: The Prototype view's page picture in a frame (PV8): how it is built, the sandboxed frame, the link marker, the queue and the cap, the foot's count, what a redraw reuses
 - designer/prototype-picture-check.md: The prototype canvas page picture (PV7, architect 2026-11-16): the Preview document in a script-free readable frame, its sandbox and CSP, the link marker, the cap on live pictures
 - designer/prototype-problems.md: The Prototype view's problems (PV11a): links without a target, pages no link leads to, "N to check", the three groups, the amber count and badge
+- designer/prototype-suggest.md: The Prototype view's Suggest targets (PV11b): how a link without a target is matched to a page, the dialog's rows and keys, the dashed proposed arrows, what Apply writes
 - designer/prototype-view-decisions.md: What was decided for the designer's Prototype view (owner 2026-10-24, #2446, 2026-11-01): where it lives, hrefs by name or page id, who draws, read-only sources, breakpoint, how an arrow saves
 - designer/release-bundle-dialogs.md: The publish and take-back dialogs of a release bundle: what they post, the "changed since" choice, Publish disabled until chosen, focus on Cancel, their words
 - designer/release-bundle-screen.md: The Bundles screen (page_bundles.php): the list, a bundle's pages with "Changed since", its three dialogs, Remove and Delete, what later steps add
@@ -973,6 +980,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workflow/architect-asking.md: How a session asks a decision question or the owner's approval of screenshots: search first, one message in the agent channel naming the architect, the PR back to draft, the session ends
 - workflow/architect-wake.md: What wakes the architect session (owner, 2026-11-16): a mention in the agent channel through the request waiter only; the hourly check is disabled; a pause he names
 - workflow/architect.md: Decision questions: asked in the agent channel, no architect issue (2026-11-13); the architect decides technical ones, asks the owner schema and product-behaviour ones, records the answer
+- workflow/bug-hunt-areas-2.md: The areas given to a bug hunt from 2026-11-17 on (wholesale prices, publish approval, visitor push, gift cards and store credit), the issues each ended with and what it read clean
 - workflow/bug-hunt.md: A bug hunt is given out again (owner 2026-11-15), only in an area the architect named: one per coordinator at a time, no product code, at most eight bug issues as its result
 - workflow/coordinator-channel-first.md: Channels, the agent channel and their API side go before panel look work (owner 2026-11-15, agent channel message 5039 and poll 48): which plans those are, when a look step is taken
 - workflow/coordinator-limits.md: Coordinator rules: model and effort, the limit guard, a new worker for a decided draft, no hand-over at depth 7, archiving done workers and old coordinators

@@ -276,7 +276,8 @@ function ws_command_registry_plan()
 
 /**
  * The channel's own commands: a later message, decisions, notes, polls,
- * a recap, an approval request, a status update, a check-in, the help.
+ * a recap, an approval request, a status update, a check-in, the
+ * reader's notifications, adding people, leaving, the help.
  *
  * @return array[]
  */
@@ -361,6 +362,31 @@ function ws_command_registry_channel()
             'names' => array('checkin', 'check-in'), 'group' => 'channel', 'where' => 'channel', 'order' => 138,
             'gate' => 'ws_command_gate_status', 'runner' => 'ws_command_run_checkin', 'live' => 'ws_command_live_checkin',
             'api' => 'ws_api_command_kind_checkin',
+        ),
+        array(
+            'key' => 'notify', 'tr' => 'bildirim', 'en' => 'notify', 'label' => '/notify · /bildirim',
+            'description' => lang('Sets your notifications of this channel: all, mentions or never. Without a word it says the one in force.'),
+            'example'     => lang('/notify mentions'),
+            'args'        => array($arg('choice', 'notify', lang('all | mentions | never'), true, 'notify')),
+            'names' => array('bildirim', 'notify'), 'group' => 'channel', 'where' => 'channel', 'order' => 950,
+            'gate' => 'ws_command_gate_member', 'runner' => 'ws_command_run_notify', 'live' => 'ws_command_live_notify',
+        ),
+        array(
+            'key' => 'invite', 'tr' => 'davet', 'en' => 'invite', 'label' => '/invite · /davet',
+            'description' => lang('Adds people to this channel, as Add people does: name them with @.'),
+            'example'     => lang('/invite @ayse @mehmet'),
+            'args'        => array($arg('people', 'people', lang('@people'), false, 'people', array('multiple' => true))),
+            'names' => array('davet', 'invite'), 'group' => 'channel', 'order' => 960,
+            'gate' => 'ws_command_gate_invite', 'runner' => 'ws_command_run_invite', 'live' => 'ws_command_live_invite',
+        ),
+        array(
+            'key' => 'leave', 'tr' => 'ayrıl', 'en' => 'leave', 'label' => '/leave · /ayrıl',
+            'description' => lang('Leaves this channel once you confirm on the card shown to you.'),
+            'example'     => lang('/leave'),
+            'args'        => array(),
+            'names' => array('ayrıl', 'ayril', 'leave'), 'group' => 'channel', 'where' => 'channel', 'order' => 970,
+            'gate' => 'ws_command_gate_member', 'runner' => 'ws_command_run_leave', 'live' => 'ws_command_live_leave',
+            'api' => 'preview',
         ),
         array(
             'key' => 'help', 'tr' => 'yardım', 'en' => 'help', 'label' => '/help · /yardım',

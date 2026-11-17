@@ -142,7 +142,7 @@ function api_console_conventions($base_url) {
 		array(
 			'id'      => 'etag',
 			'title'   => lang('ETag and If-Match'),
-			'text'    => lang('Every successful GET carries an ETag. Send it back in If-None-Match and, while the answer is unchanged, the call is answered 304 Not Modified with no body; the tag is weak and compared without W/. Nothing is cached on the server: answers carry Cache-Control: no-store. A file download also answers Range requests. Updates do not read If-Match: when two clients change the same record, the later write stands.')
+			'text'    => lang('Every successful GET carries an ETag. Send it back in If-None-Match and, while the answer is unchanged, the call is answered 304 Not Modified with no body; the tag is weak and compared without W/. Nothing is cached on the server: answers carry Cache-Control: no-store. A file download also answers Range requests.') . ' ' . lang('An update whose address a GET also reads takes that ETag in If-Match: when the record has changed since, the update is refused with 412 precondition_failed and nothing is written, and * matches any record that exists. The tag is the one of the full GET, without fields=. It is checked right before the write with no lock, so a change landing in between is not caught. Without If-Match, or on an update with no GET of its own, the later write stands; the OpenAPI description lists If-Match on the updates that read it.')
 		),
 		array(
 			'id'      => 'rate-limit',

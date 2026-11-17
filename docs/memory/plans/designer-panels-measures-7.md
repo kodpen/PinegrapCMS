@@ -15,6 +15,8 @@ description: Plan designer-panels, the page strip on a narrow screen as text (`p
 - Step 4: the design's name becomes its icon, the name in the tip and at the head of its menu. The box loses the group's name and keeps its colour.
 - Step 5: all chips become one chip ("4 grup").
 - Step 6: only the open page's tab stays; a name that does not fit is cut with an ellipsis, the tab at least 60 px wide.
+- Architect (2026-11-17, agent channel message 8798, DP18 #10245): at step 6 the name is cut last. Before it, in this order: the Add page button ("+") leaves the row, the Pages button loses its count (the count in its tip), the draft pill takes its short form (its dashed outline without the word, the word in its tip). The box is its colour line.
+- Until DP20 puts "Sayfa ekle" in the head of the Pages window (D50), it is the first row of the list the Pages button opens and calls the "+" button's action. DP19 keeps the draft's short form and gives the other states theirs the same way; nothing changes above step 6.
 
 ## What never goes?
 - The open page's tab, its state (the changed dot, the draft pill, the lock) and its three-dot menu: at every step.
@@ -25,6 +27,7 @@ description: Plan designer-panels, the page strip on a narrow screen as text (`p
 - "+N" lists the tabs that did not fit ("Sığmayan 4 sayfa"), each row with its state.
 - "+N grup" lists the folded groups with colour, name and count; a click on a group lists its pages. A page opened from a chip opens its group in the strip.
 - A design without groups has its tabs in the strip without a box; they go behind "+N" the same way (the lower half's first strip).
+- Architect (2026-11-17, agent channel message 8779): the two lines at the foot of the drawing's "+3 grup" list are the sheet's captions; the list carries none. A list's actions ("8 sayfa daha", "Grubu şeritte aç") are in the ink of its rows, not in a hint's muted colour.
 
 ## What are the sizes?
 - "+N" and "+N grup": 30 px high, corner 8, 11.5 px, the accent-soft ground with the accent line. A tab is 30 px high, corner 8 (D49).

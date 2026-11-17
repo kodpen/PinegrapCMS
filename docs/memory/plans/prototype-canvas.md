@@ -30,6 +30,7 @@ priority: 6
 - The owner's, twice more: after PV10 (the arrangement, the arrows, pictures, marks, drawing an arrow) and after PV11b (the Suggest targets dialog), each as one sheet and one short question the architect brings him. Neither is marked ready before his yes.
 - Owner (2026-11-16, poll 89 and agent channel message 6541) on PV5's sheet: No. The direction is good, but arrows should leave from the link itself, a page that is not selected shows no detail, and a link is connected by dragging from it to a page; the list of links may stay. That is F5, F14, F21 and F15: PV9, PV10 and PV6.
 - Architect (2026-11-16, agent channel message 6548): PV5 lands as the base those steps build on; his look at the arrangement and the arrows is the sheet after PV10.
+- Owner (2026-11-17, agent channel poll 137, message 8763): Yes to PV11b's sheet, the "Suggest targets" window (#10243): `workflow/decisions-made-product-72.md`.
 - Every other step: the architect's, against the drawing.
 
 ## What is left out?
