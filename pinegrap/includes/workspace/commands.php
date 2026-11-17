@@ -130,6 +130,7 @@ function ws_command_create_kinds()
         'urun' => 'product', 'product' => 'product',
         'grup' => 'product_group', 'group' => 'product_group',
         'kisi' => 'contact', 'contact' => 'contact',
+        'satir' => 'wtable_row', 'row' => 'wtable_row',
     );
 }
 
@@ -143,7 +144,7 @@ function ws_command_create_kinds()
  * @param callable $may    ($viewer, $type, $record_id) => bool
  * @return string[]
  */
-function ws_command_create_types_for($viewer, $may = 'ws_change_allowed')
+function ws_command_create_types_for($viewer, $may = 'ws_command_create_may')
 {
     $out = array();
 
@@ -154,6 +155,25 @@ function ws_command_create_types_for($viewer, $may = 'ws_change_allowed')
     }
 
     return $out;
+}
+
+/**
+ * May this person make a record of this kind of /create? A row: when they
+ * may write one workflow table at least (ws_command_row_tables()); the
+ * others: the right of their record's screen (ws_change_allowed()).
+ *
+ * @param array  $viewer
+ * @param string $type
+ * @param int    $record_id
+ * @return bool
+ */
+function ws_command_create_may($viewer, $type, $record_id = 0)
+{
+    if ($type === 'wtable_row') {
+        return ws_command_row_tables($viewer) !== array();
+    }
+
+    return function_exists('ws_change_allowed') && ws_change_allowed($viewer, $type, $record_id);
 }
 
 /**
@@ -574,9 +594,9 @@ function ws_command_suggestions($language = null, $viewer = null)
     $labels = function_exists('ws_task_priorities') ? ws_task_priorities() : array();
     $status_labels = function_exists('ws_task_statuses') ? ws_task_statuses() : array();
     $kinds = $turkish
-        ? array('product' => 'ürün', 'product_group' => 'grup', 'contact' => 'kişi')
-        : array('product' => 'product', 'product_group' => 'group', 'contact' => 'contact');
-    $kind_labels = array('product' => lang('Product'), 'product_group' => lang('Product group'), 'contact' => lang('Contact'));
+        ? array('product' => 'ürün', 'product_group' => 'grup', 'contact' => 'kişi', 'wtable_row' => 'satır')
+        : array('product' => 'product', 'product_group' => 'group', 'contact' => 'contact', 'wtable_row' => 'row');
+    $kind_labels = array('product' => lang('Product'), 'product_group' => lang('Product group'), 'contact' => lang('Contact'), 'wtable_row' => lang('Workflow table row'));
 
     if (is_array($viewer) && function_exists('ws_change_allowed')) {
         $kinds = array_intersect_key($kinds, array_flip(ws_command_create_types_for($viewer)));
@@ -3393,6 +3413,10 @@ function ws_command_create($viewer, $channel, $text, $options)
         return ws_command_contact($viewer, $channel, $parsed['rest'], $options);
     }
 
+    if ($parsed['kind'] === 'wtable_row') {
+        return ws_command_row($viewer, $channel, $parsed['rest'], $options);
+    }
+
     if ($parsed['kind'] === 'product') {
         return ws_command_product($viewer, $channel, $parsed['rest'], $options);
     }
@@ -3401,7 +3425,234 @@ function ws_command_create($viewer, $channel, $text, $options)
         return ws_command_group($viewer, $channel, $parsed['rest'], $options);
     }
 
-    return array('type' => 'error', 'error' => lang('Say what to create, a product, a group or a contact, like /create product Blue mug 149,90 or /create contact Ada Lovelace, Acme, ada@example.com.'));
+    return array('type' => 'error', 'error' => lang('Say what to create, a product, a group, a contact or a row, like /create product Blue mug 149,90 or /create row Leads.'));
+}
+
+/**
+ * The workflow tables this person may write (ws_wtables_reached(), edit
+ * access or more), the latest changed first.
+ *
+ * @param array $viewer
+ * @return array[] id, name
+ */
+function ws_command_row_tables($viewer)
+{
+    if (!is_array($viewer) || !function_exists('ws_wtables_reached')) {
+        return array();
+    }
+
+    $out = array();
+
+    foreach (ws_wtables_reached($viewer) as $table) {
+        if (ws_wtable_may((string) $table['access'], 'write')) {
+            $out[] = array('id' => (int) $table['id'], 'name' => (string) $table['name']);
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * The table the words after /create row name: the one whose whole name they
+ * are (case and Turkish letters folded), else the one table whose name
+ * starts with them. Several or none: 0, and the card asks. Pure.
+ *
+ * @param array[] $tables id, name (ws_command_row_tables())
+ * @param string  $text
+ * @return int table id, or 0
+ */
+function ws_command_row_table_match($tables, $text)
+{
+    $typed = ws_command_fold(trim((string) preg_replace('/\s+/u', ' ', (string) $text)));
+
+    if ($typed === '') {
+        return 0;
+    }
+
+    $whole = array();
+    $starts = array();
+
+    foreach ((array) $tables as $table) {
+        $name = ws_command_fold(trim((string) preg_replace('/\s+/u', ' ', (string) $table['name'])));
+
+        if ($name === $typed) {
+            $whole[] = (int) $table['id'];
+        } elseif (strpos($name, $typed) === 0) {
+            $starts[] = (int) $table['id'];
+        }
+    }
+
+    if (count($whole) === 1) {
+        return $whole[0];
+    }
+
+    return (($whole === array()) && (count($starts) === 1)) ? $starts[0] : 0;
+}
+
+/**
+ * A table's columns as the /create row card draws them: the ones a row
+ * stores (a formula, a lookup or a rollup is worked out), with what each
+ * offers - a status its choices, a person the team, a row link the rows of
+ * a table the person reads (none: left out, as the table screen leaves it).
+ *
+ * @param array $viewer
+ * @param int   $table_id
+ * @return array[] id, name, type, choices ([key, label]), time, hint
+ */
+function ws_command_row_columns($viewer, $table_id)
+{
+    $out = array();
+    $team = null;
+
+    foreach (ws_wtable_columns((int) $table_id) as $id => $column) {
+        if (!ws_wtable_type_stores($column['type'])) {
+            continue;
+        }
+
+        $options = (array) $column['options'];
+        $choices = array();
+        $hint = '';
+
+        if ($column['type'] === 'status') {
+            foreach ((array) ($options['choices'] ?? array()) as $choice) {
+                $choices[] = array((string) $choice['key'], (string) $choice['label']);
+            }
+        } elseif ($column['type'] === 'person') {
+            $team = ($team === null) ? ws_team_members() : $team;
+
+            foreach ($team as $person) {
+                $choices[] = array((string) $person['id'], (string) $person['name']);
+            }
+        } elseif ($column['type'] === 'row') {
+            $linked = ws_wtable_link_choices($viewer, $column);
+
+            if ($linked === null) {
+                continue;
+            }
+
+            foreach ($linked as $key => $label) {
+                $choices[] = array((string) $key, (string) $label);
+            }
+        } elseif ($column['type'] === 'money') {
+            $hint = (string) ($options['currency'] ?? '');
+        } elseif ($column['type'] === 'link') {
+            $hint = lang('kind:id, such as contact:12');
+        } elseif ($column['type'] === 'list') {
+            $hint = lang('One item a line.');
+        }
+
+        $out[] = array(
+            'id'      => (int) $id,
+            'name'    => (string) $column['name'],
+            'type'    => (string) $column['type'],
+            'choices' => $choices,
+            'time'    => !empty($options['time']),
+            'hint'    => $hint,
+        );
+    }
+
+    return $out;
+}
+
+/**
+ * A row refusal in words: each refused cell by its column, else the store's
+ * refusal as the table screen words it.
+ *
+ * @param array $result  ws_wtable_row_create()
+ * @param array $columns ws_wtable_columns()
+ * @return string
+ */
+function ws_command_row_refusal($result, $columns)
+{
+    $lines = array();
+
+    foreach ((array) ($result['errors'] ?? array()) as $id => $code) {
+        $lines[] = (isset($columns[$id]) ? $columns[$id]['name'] . ': ' : '') . ws_wtable_screen_error_text((string) $code);
+    }
+
+    return ($lines !== array()) ? implode(' ', $lines) : ws_wtable_screen_refusal_text($result);
+}
+
+/**
+ * /create row (/oluştur satır): a row of a workflow table the person may
+ * write, the table named after the command (ws_command_row_table_match())
+ * or picked on the card. The card shows the table's fields, empty; Create
+ * sends what was filled in, read as the table screen reads its form
+ * (ws_wtable_screen_cell_from_form()), and ws_wtable_row_create() writes it
+ * with the table's rights, key, limits and events. Nothing is written
+ * before Create.
+ *
+ * @param array  $viewer
+ * @param array  $channel
+ * @param string $text    what follows /create row
+ * @param array  $options confirm, table_id (the card's table), cells
+ *                        (column id => as typed)
+ * @return array
+ */
+function ws_command_row($viewer, $channel, $text, $options)
+{
+    $tables = ws_command_row_tables($viewer);
+
+    if ($tables === array()) {
+        return array('type' => 'error', 'error' => lang('You may not create this kind of record.'));
+    }
+
+    $ids = array_column($tables, 'id');
+    $chosen = (int) ($options['table_id'] ?? 0);
+    $table_id = ($chosen > 0) ? $chosen : ws_command_row_table_match($tables, $text);
+
+    // A table outside the person's list is refused as one that is not there.
+    if (($table_id > 0) && !in_array($table_id, $ids, true)) {
+        return array('type' => 'error', 'error' => ws_wtable_screen_error_text('not_found'));
+    }
+
+    if (!empty($options['confirm'])) {
+        $table = ($table_id > 0) ? ws_wtable($table_id) : null;
+
+        if (!$table) {
+            return array('type' => 'error', 'error' => lang('Choose the table.'));
+        }
+
+        $columns = ws_wtable_columns($table_id);
+        $typed = is_array($options['cells'] ?? null) ? $options['cells'] : array();
+        $cells = array();
+
+        // What the card sent, column by column, read as the table screen
+        // reads its form; a column it did not draw is not sent.
+        foreach ($columns as $id => $column) {
+            if (ws_wtable_type_stores($column['type']) && array_key_exists($id, $typed)) {
+                $cells[$id] = ws_wtable_screen_cell_from_form($column, is_scalar($typed[$id]) ? (string) $typed[$id] : '');
+            }
+        }
+
+        $result = ws_wtable_row_create($viewer, $table, array('cells' => $cells));
+
+        if (empty($result['ok'])) {
+            return array('type' => 'error', 'error' => ws_command_row_refusal($result, $columns));
+        }
+
+        return array(
+            'type'    => 'done',
+            'saved'   => true,
+            'created' => true,
+            'record'  => array('type' => 'wtable_row', 'id' => (int) $result['row_id'], 'name' => (string) $table['name'], 'table_id' => $table_id),
+        );
+    }
+
+    return array(
+        'type'    => 'create_preview',
+        'preview' => array(
+            'kind'     => 'wtable_row',
+            'rows'     => array(),
+            'on_sale'  => '',
+            'missing'  => array(),
+            'tables'   => $tables,
+            'table_id' => $table_id,
+            'columns'  => ($table_id > 0) ? ws_command_row_columns($viewer, $table_id) : array(),
+        ),
+        'values'  => array(),
+        'labels'  => array(),
+    );
 }
 
 /**

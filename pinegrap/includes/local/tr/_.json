@@ -410,6 +410,7 @@
     "/create contact makes one contact: write it on one line.": "/oluştur kişi tek bir kişi oluşturur: onu tek satıra yazın.",
     "/create group makes one group: write its name on one line.": "/oluştur grup tek bir grup oluşturur: adını tek satıra yazın.",
     "/create product Blue mug 149,90": "/oluştur ürün Mavi kupa 149,90",
+    "/create row Leads": "/oluştur satır Adaylar",
     "/day": "/gün",
     "/decision The packaging will be kraft": "/karar Ambalaj kraft olacak",
     "/done T-42": "/bitti G-42",

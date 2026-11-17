@@ -19367,6 +19367,12 @@
                 self.autosize();
             };
 
+            // /create row: a form of the table's own fields.
+            if (preview.kind === 'wtable_row') {
+                self.drawRowCreate(command);
+                return;
+            }
+
             if (preview.missing && preview.missing.length) {
                 self.pending = null;
                 openRecord(preview.kind, 0, '', { values: command.values || {}, labels: command.labels || {}, channelId: self.channel.id, onCreated: created });
@@ -19446,6 +19452,127 @@
                 });
             });
             actions.appendChild(all);
+
+            var cancel = button('btn btn-sm btn-text theme-secondary', t('cancel'));
+            cancel.addEventListener('click', function () {
+                self.pending = null;
+                clear(self.previewBox);
+            });
+            actions.appendChild(cancel);
+            card.appendChild(actions);
+            box.appendChild(card);
+        },
+
+        // The /create row card: the table the line named, or a choice of the
+        // tables the person may write (choosing one draws the card again
+        // with its fields), then each field the row stores, empty, as the
+        // table screen draws them. Create sends what was filled in, as
+        // typed; the server reads it as the screen does. Nothing is written
+        // before Create.
+        drawRowCreate: function (command) {
+            var self = this;
+            var box = clear(self.previewBox);
+            var preview = command.preview;
+            var card = el('div', 'ws-preview');
+            var drawn = self.pending.body;
+            var inputs = {};
+            var tableId = preview.table_id || 0;
+
+            card.appendChild(el('div', 'fw-semibold mb-2', t('qc_command_title_row')));
+
+            var tables = el('select', 'form-control form-control-sm');
+            tables.appendChild(new Option(t('qc_row_choose'), ''));
+            (preview.tables || []).forEach(function (table) {
+                tables.appendChild(new Option(table.name, String(table.id), false, table.id === tableId));
+            });
+            tables.addEventListener('change', function () {
+                var id = parseInt(tables.value, 10) || 0;
+
+                if (id) {
+                    self.send({ body: drawn, table_id: id });
+                }
+            });
+            card.appendChild(saLabelled(t('qc_row_table'), tables, ''));
+
+            // Two fields a line on a wide screen; a long table scrolls
+            // inside the card, so the box stays in view.
+            var grid = el('div', 'row g-2 mt-1 overflow-auto');
+            grid.style.maxHeight = '45vh';
+            card.appendChild(grid);
+
+            (preview.columns || []).forEach(function (column) {
+                var input;
+                var cell = el('div', 'col-12 md:col-6');
+
+                if (column.type === 'checkbox') {
+                    // On a wide screen, on the line of its neighbour's
+                    // control, below that one's label.
+                    cell.classList.add('md:pt-7');
+                    var wrap = el('div', 'form-field mb-2 d-flex align-items-center');
+                    wrap.style.minHeight = '2rem';
+                    input = el('input', 'check');
+                    input.type = 'checkbox';
+                    input.id = nextId('ws-row-cell-');
+                    var label = el('label', 'small', column.name);
+                    label.htmlFor = input.id;
+                    wrap.appendChild(input);
+                    wrap.appendChild(label);
+                    input.read = function () { return input.checked ? '1' : '0'; };
+                    inputs[column.id] = input;
+                    cell.appendChild(wrap);
+                    grid.appendChild(cell);
+                    return;
+                }
+
+                if (column.choices.length || ['status', 'person', 'row'].indexOf(column.type) !== -1) {
+                    input = el('select', 'form-control form-control-sm');
+                    input.appendChild(new Option(t('qc_row_none'), ''));
+                    column.choices.forEach(function (choice) {
+                        input.appendChild(new Option(choice[1], choice[0]));
+                    });
+                } else if (column.type === 'text' || column.type === 'list') {
+                    input = el('textarea', 'form-control form-control-sm');
+                    input.rows = 1;
+                } else if (column.type === 'date') {
+                    input = pgDateField(el('input', 'form-control form-control-sm'), column.time ? 'datetime-local' : 'date');
+                } else {
+                    input = el('input', 'form-control form-control-sm');
+                    input.type = 'text';
+
+                    if (column.type === 'number' || column.type === 'money') {
+                        input.inputMode = 'decimal';
+                    }
+                }
+
+                input.read = function () { return input.value; };
+                inputs[column.id] = input;
+
+                // Money: its currency beside the amount, as a suffix.
+                if (column.type === 'money' && column.hint) {
+                    var group = el('div', 'input-group input-group-sm');
+                    group.appendChild(input);
+                    group.appendChild(el('span', 'input-group-text', column.hint));
+                    input.id = nextId('ws-row-cell-');
+                    var field = saLabelled(column.name, group, '');
+                    field.querySelector('label').htmlFor = input.id;
+                    cell.appendChild(field);
+                } else {
+                    cell.appendChild(saLabelled(column.name, input, column.hint || ''));
+                }
+
+                grid.appendChild(cell);
+            });
+
+            var actions = el('div', 'd-flex flex-wrap gap-3 mt-3');
+            var create = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('qc_create'), 'bi-plus-lg');
+            create.disabled = !tableId;
+            create.addEventListener('click', function () {
+                var cells = {};
+
+                Object.keys(inputs).forEach(function (id) { cells[id] = inputs[id].read(); });
+                self.send({ confirm: 1, body: drawn, table_id: tableId, cells: cells });
+            });
+            actions.appendChild(create);
 
             var cancel = button('btn btn-sm btn-text theme-secondary', t('cancel'));
             cancel.addEventListener('click', function () {
@@ -19937,6 +20064,16 @@
             var args = entry.args || [];
             var state = { entry: entry, typed: typed, query: word, start: before.length - word.length, index: -1, arg: null, extras: null };
 
+            // The kind word still being typed (/create row): the strip
+            // already shows that kind's line; the kind's popup stays.
+            var typing = (!variant && !done.length && word) ? (entry.variants || []).filter(function (item) {
+                return item.words.indexOf(foldText(word)) !== -1;
+            })[0] : null;
+
+            if (typing) {
+                state.shown = { typed: typed + ' ' + word, args: typing.args, example: typing.example };
+            }
+
             if (!args.length) {
                 return state;
             }
@@ -20222,14 +20359,17 @@
                 return;
             }
 
-            var entry = argument.entry;
+            // A kind word still being typed shows its kind's own line,
+            // nothing of it marked yet (commandArgument(), shown).
+            var shown = argument.shown || null;
+            var entry = shown || argument.entry;
             var row = el('div', 'ws-cmd-strip');
             var usage = el('span', 'ws-cmd-usage');
 
-            usage.appendChild(el('span', 'ws-cmd-name', argument.typed));
+            usage.appendChild(el('span', 'ws-cmd-name', shown ? shown.typed : argument.typed));
 
             (entry.args || []).forEach(function (arg, index) {
-                var current = (argument.index === index) || (!!argument.extras && (argument.extras.indexOf(arg) !== -1));
+                var current = !shown && ((argument.index === index) || (!!argument.extras && (argument.extras.indexOf(arg) !== -1)));
 
                 usage.appendChild(document.createTextNode(' '));
                 usage.appendChild(el('span', 'ws-cmd-arg' + (current ? ' ws-cmd-current' : ''), arg.optional ? '[' + arg.label + ']' : '<' + arg.label + '>'));

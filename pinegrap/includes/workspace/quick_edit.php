@@ -179,6 +179,11 @@ function ws_quick_edit_js_strings()
         'qc_command_title' => lang('The product that will be created'),
         'qc_command_title_group' => lang('The product group that will be created'),
         'qc_command_title_contact' => lang('The contact that will be created'),
+        // The /create row card.
+        'qc_command_title_row' => lang('The row that will be added'),
+        'qc_row_table'     => lang('Table'),
+        'qc_row_choose'    => lang('Choose the table.'),
+        'qc_row_none'      => lang('(none)'),
         'qc_new_contact'   => lang('New contact'),
         'qc_all_fields'    => lang('All fields'),
         'qc_unticked'      => lang('Left unticked, nobody sees it in the store yet.'),
