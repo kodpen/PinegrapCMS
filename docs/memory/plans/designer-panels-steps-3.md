@@ -34,7 +34,7 @@ description: Plan designer-panels, steps DP11 to DP16 of the Overview chain: row
 - DP16 (M) after DP15: moving without dragging.
   - New: the "Move…" window as a part; the row buttons; the keys on a focused row.
   - Tests: each key's move through `canDrop()`; one undo step; the moved element selected and in view; a refused move saying why.
-  - Pictures: the window, the row buttons; the window on a phone waits for its drawing.
+  - Pictures: the window, the row buttons; the window on a 390 px phone beside `phone-pages-move.jpg` (`designer-panels-measures-6.md`).
   - Features: D41, D42, D43, D44. Keeps K9.
 
 ## Which steps wait for each other?

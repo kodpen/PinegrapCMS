@@ -16,8 +16,8 @@ priority: 6
 - The page strip: 9 of 37 tabs visible, the whole design's bin 5 px from the gear. The canvas bar: 19 controls alike in one row; Prototype opens a second bar with a second zoom.
 
 ## Where are the drawings?
-- `plans/designer-panels/`: `options-1-content.jpg`, `options-2-style-advanced.jpg`, `options-3-search-review.jpg`, `options-4-whole-screen.jpg`, `options-5-narrow-column.jpg`; the sheets `measures-1-tokens.jpg`, `measures-2-anatomy.jpg`, `measures-3-controls.jpg`, `measures-4-sections-rules.jpg`; `overview-1-long-page.jpg`, `overview-2-drag-move.jpg`; `page-strip.jpg`; `canvas-bar.jpg`; their source `boards.html`, `boards.css`.
-- The measures as text, so no value is read off a picture: `designer-panels-measures.md`, `-measures-2.md`, `-measures-3.md`. Where they differ, the step asks.
+- `plans/designer-panels/`: the sheets as JPEG and their source `boards.html`. Which sheet shows what, its measures as text and the steps that build from it: `designer-panels-drawings.md`.
+- The measures as text, so no value is read off a picture: `designer-panels-measures.md`, `-measures-2.md` to `-measures-6.md`. Where they differ, the step asks.
 
 ## What is built?
 - The numbered features: `designer-panels-features.md` (Options: column, tabs, sections, rows), `-features-2.md` (Options: spacing box, layout, search, review, copy style), `-features-3.md` (Overview), `-features-4.md` (page strip), `-features-5.md` (canvas bar).
