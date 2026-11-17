@@ -90,9 +90,11 @@ function test_bs6_designer_toast_phone_width()
 {
 	$css = bs6_designer_toast_css();
 
-	pg_assert_true((bool) preg_match('/@media \(max-width: 575\.98px\) \{(.*?)\n\}/s', $css, $m), 'narrow-screen toast rule');
+	// Anchored on the toast container inside the block, so another
+	// 575.98px block elsewhere in the file cannot stand in for it.
+	pg_assert_true((bool) preg_match('/@media \(max-width: 575\.98px\) \{\s*(\.sd-toast-container \{.*?)\n\}/s', $css, $m), 'narrow-screen toast rule');
 	$rule = preg_replace('/\s+/', ' ', isset($m[1]) ? $m[1] : '');
-	pg_assert_true((bool) preg_match('/\.sd-toast-container \{[^}]*left: 12px;[^}]*right: 12px;[^}]*max-width: none;/', $rule), 'stack spans the screen');
+	pg_assert_true((bool) preg_match('/^\.sd-toast-container \{[^}]*left: 12px;[^}]*right: 12px;[^}]*max-width: none;/', $rule), 'stack spans the screen');
 	pg_assert_true((bool) preg_match('/\.sd-toast \{[^}]*--bs-toast-max-width: 100%;/', $rule), 'toast no wider than the stack');
 	// Wider screens keep the bottom-right stack, 400 px at most.
 	pg_assert_contains('position: fixed; bottom: 24px; right: 24px;', $css);
