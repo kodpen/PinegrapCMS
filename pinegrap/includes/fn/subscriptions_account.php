@@ -452,6 +452,127 @@ function pg_subscription_customer_event_label($kind)
 }
 
 /**
+ * What the subscriptions section shows of each row, as plain text (escape
+ * it): id, product, amount, status, status_label, tone (the badge's colour:
+ * success, warning or secondary), next ("Next charge: …" or "Runs until: …"),
+ * price (a price change told), card, event ("Last event: …"), confirm_url,
+ * and actions_html: the row's action forms with the form token (markup). The
+ * section and the account.subscriptions list both read it.
+ *
+ * @param array  $rows       pg_subscription_customer_rows()
+ * @param string $action_url subscription_action.php
+ * @param string $send_to    the page to come back to (a path)
+ * @param string $token      the session's form token
+ * @return array
+ */
+function pg_subscription_customer_view_rows($rows, $action_url, $send_to, $token)
+{
+    $date_format = pg_sw_default_date_format('date');
+    $view = array();
+
+    foreach ((array) $rows as $row) {
+        $id = (int) $row['id'];
+        $next = (int) $row['next_charge_at'];
+        $status = (string) $row['status'];
+        $running = in_array($status, array('active', 'past_due', 'paused'), true);
+        $event = pg_subscription_customer_event_label((string) $row['last_kind']);
+        $pending = $row['price_pending'] ?? null;
+        $line = array(
+            'id'           => $id,
+            'product'      => (string) $row['product_name'],
+            'amount'       => trim(pg_format_number((int) $row['amount'] / 100, 2) . ' ' . (string) $row['currency']),
+            'status'       => $status,
+            'status_label' => pg_subscription_customer_status_label($status),
+            'tone'         => ($status === 'past_due') ? 'warning' : (($status === 'active') ? 'success' : 'secondary'),
+            'next'         => '',
+            'price'        => '',
+            'card'         => '',
+            'event'        => '',
+            'confirm_url'  => pg_subscription_customer_confirm_url($row, array('kind' => $row['renewal_kind'], 'detail' => $row['renewal_detail'])),
+            'actions_html' => pg_subscription_customer_actions_html($row, $action_url, $send_to, $token),
+        );
+
+        if (($next > 0) && $running) {
+            $line['next'] = lang('Next charge:') . ' ' . _pg_sw_short_date($next, $date_format);
+        } elseif (($status === 'cancelled') && ($next > 0) && ((int) $row['retry_count'] === 0)) {
+            $line['next'] = lang('Runs until:') . ' ' . _pg_sw_short_date($next, $date_format);
+        }
+
+        if (is_array($pending) && $running) {
+            $line['price'] = lang(array(
+                'string' => 'New amount from {var:1}: {var:2}',
+                'vars'   => array(_pg_sw_short_date((int) strtotime($pending['date']), $date_format), trim(pg_format_number($pending['amount'] / 100, 2) . ' ' . (string) $row['currency'])),
+            ));
+        }
+
+        if ((string) $row['card_last4'] !== '') {
+            $line['card'] = lang(array('string' => 'Card ending {var:1}', 'vars' => array((string) $row['card_last4'])));
+        }
+
+        if ($event !== '') {
+            $line['event'] = lang('Last event:') . ' ' . $event
+                . (((int) $row['last_at'] > 0) ? ' (' . _pg_sw_short_date((int) $row['last_at'], $date_format) . ')' : '');
+        }
+
+        $view[] = $line;
+    }
+
+    return $view;
+}
+
+/**
+ * A row's action forms (subscription_action.php, the form token): pause,
+ * resume and update card as one button each, cancel asked twice. '' when the
+ * row offers none.
+ *
+ * @param array  $row        a pg_subscription_customer_rows() row
+ * @param string $action_url subscription_action.php
+ * @param string $send_to    the page to come back to (a path)
+ * @param string $token      the session's form token
+ * @return string
+ */
+function pg_subscription_customer_actions_html($row, $action_url, $send_to, $token)
+{
+    $actions = pg_subscription_customer_actions($row);
+
+    if (!$actions) {
+        return '';
+    }
+
+    $button_labels = array(
+        'pause'       => lang('Pause'),
+        'resume'      => lang('Resume'),
+        'update_card' => lang('Update card'),
+    );
+    $html = '<div class="d-flex flex-wrap gap-2 mt-2">';
+
+    foreach ($actions as $action) {
+        $fields = '<input type="hidden" name="token" value="' . h($token) . '">'
+            . '<input type="hidden" name="id" value="' . (int) $row['id'] . '">'
+            . '<input type="hidden" name="action" value="' . h($action) . '">'
+            . '<input type="hidden" name="send_to" value="' . h($send_to) . '">';
+
+        if ($action === 'cancel') {
+            // Asked twice without a script: the button that cancels shows
+            // only once the customer opened this.
+            $html .= '<details class="pg-sw-subscription-cancel"><summary class="btn btn-sm btn-outline-danger">' . h(lang('Cancel subscription')) . '</summary>'
+                . '<form method="post" action="' . h($action_url) . '" class="mt-2">' . $fields
+                . '<p class="small mb-2">' . h(((string) $row['status'] === 'active')
+                    ? lang('No further charges will be made. The subscription runs until the end of the period already paid.')
+                    : lang('No further charges will be made and the subscription ends.')) . '</p>'
+                . '<button type="submit" class="btn btn-sm btn-danger">' . h(lang('Yes, cancel')) . '</button>'
+                . '</form></details>';
+        } else {
+            $html .= '<form method="post" action="' . h($action_url) . '">' . $fields
+                . '<button type="submit" class="btn btn-sm btn-outline-secondary">' . h($button_labels[$action]) . '</button>'
+                . '</form>';
+        }
+    }
+
+    return $html . '</div>';
+}
+
+/**
  * The subscriptions section of the my_account widget: one item per row with
  * its figures and a form per action (subscription_action.php, the form
  * token). Site output, Bootstrap 5.3.8. '' when the customer has none.
@@ -464,98 +585,51 @@ function pg_subscription_customer_event_label($kind)
  */
 function pg_subscription_customer_section_html($rows, $action_url, $send_to, $token)
 {
-    if (!$rows) {
+    return pg_subscription_customer_view_html(pg_subscription_customer_view_rows($rows, $action_url, $send_to, $token));
+}
+
+/**
+ * The subscriptions section from pg_subscription_customer_view_rows(). Pure;
+ * the designer canvas draws its twin (_sdAccountSubscriptionsHtml()).
+ *
+ * @param array $view
+ * @return string
+ */
+function pg_subscription_customer_view_html($view)
+{
+    if (!$view) {
         return '';
     }
 
-    $date_format = pg_sw_default_date_format('date');
-    $button_labels = array(
-        'pause'       => lang('Pause'),
-        'resume'      => lang('Resume'),
-        'update_card' => lang('Update card'),
-    );
     $html = '<div class="list-group pg-sw-subscriptions">';
 
-    foreach ($rows as $row) {
-        $id = (int) $row['id'];
-        $amount = (int) $row['amount'];
-        $next = (int) $row['next_charge_at'];
-        $status = (string) $row['status'];
-        $event = pg_subscription_customer_event_label((string) $row['last_kind']);
-        $confirm = pg_subscription_customer_confirm_url($row, array('kind' => $row['renewal_kind'], 'detail' => $row['renewal_detail']));
-
+    foreach ($view as $s) {
         $html .= '<div class="list-group-item">'
             . '<div class="d-flex flex-wrap justify-content-between align-items-center gap-2">'
-            . '<span class="fw-semibold">' . h((string) $row['product_name']) . '</span>'
-            . '<span>' . h(trim(pg_format_number($amount / 100, 2) . ' ' . (string) $row['currency'])) . '</span>'
+            . '<span class="fw-semibold">' . h($s['product']) . '</span>'
+            . '<span>' . h($s['amount']) . '</span>'
             . '</div>'
             . '<div class="small text-body-secondary">'
-            . '<span class="badge ' . (($status === 'past_due') ? 'text-bg-warning' : (($status === 'active') ? 'text-bg-success' : 'text-bg-secondary')) . ' me-2">'
-            . h(pg_subscription_customer_status_label($status)) . '</span>';
+            . '<span class="badge text-bg-' . h($s['tone']) . ' me-2">' . h($s['status_label']) . '</span>';
 
-        if (($next > 0) && in_array($status, array('active', 'past_due', 'paused'), true)) {
-            $html .= '<span class="me-2">' . h(lang('Next charge:')) . ' ' . h(_pg_sw_short_date($next, $date_format)) . '</span>';
-        } elseif (($status === 'cancelled') && ($next > 0) && ((int) $row['retry_count'] === 0)) {
-            $html .= '<span class="me-2">' . h(lang('Runs until:')) . ' ' . h(_pg_sw_short_date($next, $date_format)) . '</span>';
+        foreach (array('next', 'price', 'card') as $key) {
+            if ($s[$key] !== '') {
+                $html .= '<span class="me-2">' . h($s[$key]) . '</span>';
+            }
         }
 
-        $pending = $row['price_pending'] ?? null;
-
-        if (is_array($pending) && in_array($status, array('active', 'past_due', 'paused'), true)) {
-            $html .= '<span class="me-2">' . h(lang(array(
-                'string' => 'New amount from {var:1}: {var:2}',
-                'vars'   => array(_pg_sw_short_date((int) strtotime($pending['date']), $date_format), trim(pg_format_number($pending['amount'] / 100, 2) . ' ' . (string) $row['currency'])),
-            ))) . '</span>';
-        }
-
-        if ((string) $row['card_last4'] !== '') {
-            $html .= '<span class="me-2">' . h(lang(array('string' => 'Card ending {var:1}', 'vars' => array((string) $row['card_last4'])))) . '</span>';
-        }
-
-        if ($event !== '') {
-            $html .= '<span>' . h(lang('Last event:')) . ' ' . h($event)
-                . (((int) $row['last_at'] > 0) ? ' (' . h(_pg_sw_short_date((int) $row['last_at'], $date_format)) . ')' : '') . '</span>';
+        if ($s['event'] !== '') {
+            $html .= '<span>' . h($s['event']) . '</span>';
         }
 
         $html .= '</div>';
 
-        if ($confirm !== '') {
-            $html .= '<div class="mt-2"><a href="' . h($confirm) . '" class="btn btn-sm btn-warning" rel="noopener noreferrer">'
+        if ($s['confirm_url'] !== '') {
+            $html .= '<div class="mt-2"><a href="' . h($s['confirm_url']) . '" class="btn btn-sm btn-warning" rel="noopener noreferrer">'
                 . h(lang('Confirm the payment')) . '</a></div>';
         }
 
-        $actions = pg_subscription_customer_actions($row);
-
-        if ($actions) {
-            $html .= '<div class="d-flex flex-wrap gap-2 mt-2">';
-
-            foreach ($actions as $action) {
-                $fields = '<input type="hidden" name="token" value="' . h($token) . '">'
-                    . '<input type="hidden" name="id" value="' . $id . '">'
-                    . '<input type="hidden" name="action" value="' . h($action) . '">'
-                    . '<input type="hidden" name="send_to" value="' . h($send_to) . '">';
-
-                if ($action === 'cancel') {
-                    // Asked twice without a script: the button that cancels
-                    // shows only once the customer opened this.
-                    $html .= '<details class="pg-sw-subscription-cancel"><summary class="btn btn-sm btn-outline-danger">' . h(lang('Cancel subscription')) . '</summary>'
-                        . '<form method="post" action="' . h($action_url) . '" class="mt-2">' . $fields
-                        . '<p class="small mb-2">' . h(($status === 'active')
-                            ? lang('No further charges will be made. The subscription runs until the end of the period already paid.')
-                            : lang('No further charges will be made and the subscription ends.')) . '</p>'
-                        . '<button type="submit" class="btn btn-sm btn-danger">' . h(lang('Yes, cancel')) . '</button>'
-                        . '</form></details>';
-                } else {
-                    $html .= '<form method="post" action="' . h($action_url) . '">' . $fields
-                        . '<button type="submit" class="btn btn-sm btn-outline-secondary">' . h($button_labels[$action]) . '</button>'
-                        . '</form>';
-                }
-            }
-
-            $html .= '</div>';
-        }
-
-        $html .= '</div>';
+        $html .= $s['actions_html'] . '</div>';
     }
 
     return $html . '</div>';
