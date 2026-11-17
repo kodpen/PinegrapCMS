@@ -30950,6 +30950,30 @@ const StyleDesigner = (function () {
         return true;
     }
 
+    // The selection after rows dragged in the overview were moved: the moved
+    // nodes, as a move on the canvas keeps the dropped node. One row is a
+    // plain selection; a multi-selection moved together stays one, with the
+    // same primary while it moved too, else the last moved node. Returns
+    // { node, nodes } for selectedNode and selectedNodes.
+    function _sdTreeMoveSelection(moved, primary) {
+        var nodes = (moved || []).filter(function (n) { return !!n; });
+        if (nodes.length < 2) return { node: nodes[0] || null, nodes: [] };
+        var node = (primary && nodes.indexOf(primary) !== -1) ? primary : nodes[nodes.length - 1];
+        return { node: node, nodes: nodes.slice() };
+    }
+
+    // Selects the nodes a tree drag moved and redraws. The moved node may be
+    // the one already selected, so the overview is told it is new: the
+    // branches over its new place open and its row comes into view.
+    function _sdTreeMoveSelect(moved) {
+        var sel = _sdTreeMoveSelection(moved, selectedNode);
+        selectedNode  = sel.node;
+        selectedNodes = sel.nodes;
+        _sdTreeOpenedFor = null;
+        _sdTreeShownFor  = null;
+        render();
+    }
+
     // ── Canvas Right-Click Context Menu ───────────────────────────────────────────
     function showCanvasCtxMenu(x, y, node) {
         // View mode: the menu still opens, because a menu that refuses to
@@ -31575,9 +31599,7 @@ const StyleDesigner = (function () {
                     // Mark the target widget's tree as dirty so _flushDirtyShared pushes it on save.
                     _sharedDirty[_rfSid] = true;
                     treeDragNode = null;
-                    selectedNodes = [];
-                    selectedNode = null;
-                    render();
+                    _sdTreeMoveSelect(nodesToMove);
                     return;
                 }
                 // Cache not loaded → fall through to normal handling (will still try to drop
@@ -31626,9 +31648,7 @@ const StyleDesigner = (function () {
                 if (_tgtInfo.sid) _sharedDirty[_tgtInfo.sid] = true;
             }
             treeDragNode = null;
-            selectedNodes = [];
-            selectedNode = null;
-            render();
+            _sdTreeMoveSelect(nodesToMove);
         });
 
         ul.appendChild(li);
