@@ -10,7 +10,7 @@ description: Plan channel-commands, steps CC7 to CC12 and the close-out: /oluşt
   - Pictures: the two cards.
   - Features: K21, K22.
 
-- CC8 (M) after CC7: /oluştur cari and /oluştur etkinlik. Tests: not offered with the ERP module off; each kind's right. Pictures: the two cards. Features: K23, K24.
+- CC8 (M) after CC7: /oluştur cari and /oluştur etkinlik. Tests: not offered with the ERP module off; each kind's right. Pictures: the two cards. Features: K23, K24. Done: #10262.
 
 - CC9 (S) after CC7: /kargo.
   - Tests: the card shows the old numbers beside the new; Save writes `tracking_numbers` only if the value is still the one the card showed; no mail is sent; the order right.

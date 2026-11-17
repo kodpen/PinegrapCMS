@@ -36,6 +36,7 @@ description: Plan channel-commands, steps CC1 to CC6: the registry with no chang
 
 - CC6 (M) after CC2: /bildirim, /davet, /ayrıl, /konu, /ara, /bellek. Over the size: CC6a (the first three) and CC6b.
   - CC6a done (#10250): K15 /bildirim, K16 /davet, K17 /ayrıl (`workspace/workspace-command-notify-invite-leave.md`).
+  - CC6b done (#10277): K18 /konu, K19 /ara, K20 /bellek (`workspace/workspace-command-topic-search-memory.md`).
   - Tests: each right refused as the menu refuses it; /ayrıl writes nothing before the card's confirm; /bildirim's three words in both languages and without a value; /davet with somebody already in; /ara posts nothing.
   - Pictures: /ayrıl's card, /bildirim's and /davet's answers.
   - Features: K15 to K20.

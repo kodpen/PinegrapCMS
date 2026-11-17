@@ -537,6 +537,7 @@
 - order-preview-widget.md: The Order Preview widget (last classic checkout step): values from get_order_preview()'s custom-layout branch, page row, controls by name, sections, what is left out. [decision: here]
 - order-view-not-found.md: Order view widget with no, unknown or foreign order id: message with a My Account link and a 404 with noindex; account order links skip order receipt e-mail pages
 - overview-chains-hints.md: Designer Overview (#10235): a chain of single-child wrappers folded into one line, opened by a click or by a selection in it; a hint after a name the page repeats; the pure functions
+- overview-drop-targets.md: Designer Overview drop targets (#10263): the gap between rows as one 14 px target, the middle 14 px as "inside", the level picked by the pointer among legal parents, the label and the refused row
 - overview-long-page.md: Designer Overview on a long page (#10207): section rows with counts, only the selection's section open on opening, 12 px indents and a depth badge, the sticky path, the pure functions
 - page-conditions.md: W18: an element outside a widget shown by visit facts (signed in, cart) or the page's record (found, allow-listed values); stored-body markers decided per request, cache, editor
 - page-designer-retired.md: The legacy page designer (page_designer.php) retired in 2026.11.0: the owner's decision, where each of its jobs went, what was removed and kept, the rules that stay, what is left [decision: decisions-made-product-2.md, decisions-made-product-40.md]

@@ -5500,6 +5500,30 @@
         return !!(box.noCommands || box.editing || box.editingScheduled);
     }
 
+    // The words after /search (/ara) when the line is that command, else
+    // null: the box opens the search palette with them itself, so nothing
+    // is posted and the server is not asked. "//ara" is no command.
+    function commandSearchWords(body, commands) {
+        var text = String(body || '').replace(/^\s+/, '');
+        var found = null;
+
+        (commands || []).forEach(function (item) {
+            if (item.key !== 'search') {
+                return;
+            }
+
+            (item.names || []).forEach(function (name) {
+                var after = text.charAt(name.length);
+
+                if ((found === null) && (text.slice(0, name.length).toLocaleLowerCase('tr') === name.toLocaleLowerCase('tr')) && ((after === '') || /\s/.test(after))) {
+                    found = text.slice(name.length).trim();
+                }
+            });
+        });
+
+        return found;
+    }
+
     // The "/" list's rows: every command a name of it matches as typed (the
     // name as typed first, "/gö" shows /görev, then with the Turkish
     // letters folded, "/go" finds it too); with nothing typed, the name in
@@ -11536,7 +11560,9 @@
             } else if (self.tab === 'tasks') {
                 self.drawTasks();
             } else if ((self.tab === 'memory') && window.PGWsMemory && channel.memory) {
-                window.PGWsMemory.mount(pane, channel);
+                // /memory without a text opens New entry, filled.
+                window.PGWsMemory.mount(pane, channel, self.memoryFill || null);
+                self.memoryFill = null;
             } else if ((self.tab === 'board') && self.hasBoard(channel)) {
                 window.PGWsChannelBoard.mount(pane, channel, {
                     openMessage: function (messageId) { self.open(channel.id, messageId); },
@@ -19344,6 +19370,17 @@
                 options = pending.confirm();
             }
 
+            // /search: the palette on this channel with the words, opened
+            // here; nothing is posted and the server is not asked.
+            var searchWords = (!options && !commandsOff(self) && window.PGWsPalette) ? commandSearchWords(body, BOOT ? BOOT.commands : []) : null;
+
+            if (searchWords !== null) {
+                self.busy = false;
+                self.clearInput();
+                window.PGWsPalette.open({ scope: 'here', query: searchWords });
+                return;
+            }
+
             var data = { channel_id: self.channel.id, body: body, parent_id: self.reply ? self.reply.id : 0 };
 
             if (self.reply && self.replyMore && self.replyMore.length) {
@@ -19416,6 +19453,19 @@
                     return;
                 }
 
+                // /memory without a text: the Memory tab's New entry form,
+                // filled with what the line carried (an answered message's
+                // link); the box empties, its text is in the form.
+                if (result.command && result.command.type === 'memory_form') {
+                    if (self.channel.memory && window.PGWsMemory) {
+                        self.clearInput();
+                        self.memoryFill = result.command.fill || {};
+                        self.tab = 'memory';
+                        self.drawCenter();
+                    }
+                    return;
+                }
+
                 // /remind without a time: My calendar's New plan drawer,
                 // filled with what was typed; the box empties once it saves.
                 if (result.command && result.command.type === 'plan_form') {
@@ -19467,6 +19517,12 @@
                     box.insertBefore(close, box.firstChild);
                     self.pane.appendChild(box);
                     self.scrollToEnd();
+
+                    // /topic changed what the channel is about: its header
+                    // and info panel show the new one.
+                    if (result.command.refresh) {
+                        self.refreshInfo();
+                    }
 
                     // A command that does not exist: nothing was posted, and
                     // the text stays in the box to be put right.
@@ -19709,7 +19765,12 @@
                 return;
             }
 
-            var titles = { product_group: 'qc_command_title_group', contact: 'qc_command_title_contact' };
+            var titles = {
+                product_group: 'qc_command_title_group',
+                contact: 'qc_command_title_contact',
+                erp_account: 'qc_command_title_account',
+                calendar_event: 'qc_command_title_event'
+            };
             card.appendChild(el('div', 'fw-semibold', t(titles[preview.kind] || 'qc_command_title')));
 
             var list = el('dl');
@@ -26021,6 +26082,24 @@
                 row.appendChild(tickLabel);
                 row.appendChild(el('div', 'form-text mt-0', t('qc_unticked')));
                 input.read = function () { return input.checked; };
+            } else if ((meta.kind === 'ids') && meta.choices) {
+                // Records the workspace does not tag (an event's calendars):
+                // one of the person's own, chosen from a list.
+                var chosen = (Array.isArray(given) && given.length) ? parseInt(given[0], 10) : 0;
+                var select = el('select', 'pg-input');
+                select.appendChild(el('option', '', t('qc_row_none'))).value = '';
+                meta.choices.forEach(function (choice) {
+                    var option = el('option', '', choice.label);
+                    option.value = String(choice.id);
+                    option.selected = choice.id === chosen;
+                    select.appendChild(option);
+                });
+                select.read = function () {
+                    var id = parseInt(select.value, 10);
+                    return id ? [id] : [];
+                };
+                input = select;
+                row = lookField(label, select, select, '');
             } else if (meta.kind === 'ids') {
                 // One record, picked among those the person may tag.
                 var first = (Array.isArray(given) && given.length) ? parseInt(given[0], 10) : 0;

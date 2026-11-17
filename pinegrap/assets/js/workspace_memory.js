@@ -41,8 +41,10 @@
      *
      * @param {HTMLElement} pane
      * @param {object}      channel the channel as the screen holds it (id)
+     * @param {object}      [fill]  opens New entry with these (title, text),
+     *                              as /memory without a text asks
      */
-    function mount(pane, channel) {
+    function mount(pane, channel, fill) {
         var h = window.PGWsKit;
 
         if (!h || !pane || !channel) {
@@ -173,19 +175,20 @@
             }).catch(h.fail);
         }
 
-        function form(entry) {
+        function form(entry, given) {
             h.clear(root);
+            given = given || {};
 
             var title = el('input', 'form-control');
             title.type = 'text';
             title.maxLength = 150;
-            title.value = entry ? entry.title : '';
+            title.value = entry ? entry.title : (given.title || '');
             root.appendChild(formRow(t('mem_title'), title));
 
             var text = el('textarea', 'form-control');
             text.rows = 6;
             text.maxLength = 4000;
-            text.value = entry ? entry.text : '';
+            text.value = entry ? entry.text : (given.text || '');
             root.appendChild(formRow(t('mem_text'), text));
 
             var tags = el('input', 'form-control');
@@ -247,7 +250,11 @@
             setTimeout(function () { title.focus(); }, 50);
         }
 
-        list();
+        if (fill) {
+            form(null, fill);
+        } else {
+            list();
+        }
     }
 
     window.PGWsMemory = { mount: mount };

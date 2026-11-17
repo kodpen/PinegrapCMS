@@ -4,7 +4,7 @@ description: Task time over the Workspace API (PR #2288): GET /workspace/time (o
 ---
 
 ## Which routes give task time?
-- Per task: `GET/POST /workspace/tasks/{id}/time` and the delete `DELETE /workspace/tasks/{id}/time/{entry_id}` (POST accepted too, for IIS).
+- Per task: `GET/POST /workspace/tasks/{id}/time` and the delete `DELETE /workspace/tasks/{id}/time/{entry_id}`, its twin `POST …/{entry_id}/delete` (since AM10), and a plain POST on the entry, kept for older clients.
 - Across tasks: `GET /workspace/time?from=&to=` (`tasks:read`, since #2288), the owner's own rows as My time reads them.
 - Changing one entry: `POST /workspace/tasks/{id}/time/{entry_id}/update` (`tasks:write`, dry run, since #2288). It has its own path because a POST on the entry deletes it, as `POST /webhooks/{id}/update` beside `POST /webhooks/{id}`.
 - Starting and stopping a timer is not in the API.

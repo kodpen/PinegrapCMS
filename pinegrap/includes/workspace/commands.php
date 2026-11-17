@@ -131,6 +131,8 @@ function ws_command_create_kinds()
         'grup' => 'product_group', 'group' => 'product_group',
         'kisi' => 'contact', 'contact' => 'contact',
         'satir' => 'wtable_row', 'row' => 'wtable_row',
+        'cari' => 'erp_account', 'account' => 'erp_account',
+        'etkinlik' => 'calendar_event', 'event' => 'calendar_event',
     );
 }
 
@@ -664,9 +666,10 @@ function ws_command_suggestions($language = null, $viewer = null)
     $labels = function_exists('ws_task_priorities') ? ws_task_priorities() : array();
     $status_labels = function_exists('ws_task_statuses') ? ws_task_statuses() : array();
     $kinds = $turkish
-        ? array('product' => 'ürün', 'product_group' => 'grup', 'contact' => 'kişi', 'wtable_row' => 'satır')
-        : array('product' => 'product', 'product_group' => 'group', 'contact' => 'contact', 'wtable_row' => 'row');
-    $kind_labels = array('product' => lang('Product'), 'product_group' => lang('Product group'), 'contact' => lang('Contact'), 'wtable_row' => lang('Workflow table row'));
+        ? array('product' => 'ürün', 'product_group' => 'grup', 'contact' => 'kişi', 'wtable_row' => 'satır', 'erp_account' => 'cari', 'calendar_event' => 'etkinlik')
+        : array('product' => 'product', 'product_group' => 'group', 'contact' => 'contact', 'wtable_row' => 'row', 'erp_account' => 'account', 'calendar_event' => 'event');
+    $kind_labels = array('product' => lang('Product'), 'product_group' => lang('Product group'), 'contact' => lang('Contact'), 'wtable_row' => lang('Workflow table row'),
+        'erp_account' => lang('ERP account'), 'calendar_event' => lang('Calendar Event'));
 
     if (is_array($viewer) && function_exists('ws_change_allowed')) {
         $kinds = array_intersect_key($kinds, array_flip(ws_command_create_types_for($viewer)));
@@ -3085,6 +3088,243 @@ function ws_command_live_leave($viewer, $channel, $rest)
 }
 
 /**
+ * /topic: what the channel is about, written through ws_channel_update()
+ * as the channel settings write it, with its rights and refusal. Without
+ * a text, the one in force to the writer alone.
+ *
+ * @return array
+ */
+function ws_command_run_topic($viewer, $channel, $rest)
+{
+    $topic = trim((string) $rest);
+
+    if ($topic === '') {
+        return array('type' => 'ephemeral', 'html' => ws_command_topic_html((string) ($channel['topic'] ?? ''), false));
+    }
+
+    $result = ws_channel_update($viewer, $channel, array('topic' => $topic));
+
+    if (!$result['ok']) {
+        return array('type' => 'error', 'error' => $result['error']);
+    }
+
+    // The header and the info panel show the new one (refreshInfo()).
+    return array('type' => 'ephemeral', 'html' => ws_command_topic_html(mb_substr($topic, 0, 255), true), 'refresh' => true);
+}
+
+/**
+ * /topic's answer: the text in force (or just set), or that there is none
+ * and how to set it. Pure but for the language.
+ *
+ * @param string $topic
+ * @param bool   $set   just changed
+ * @return string
+ */
+function ws_command_topic_html($topic, $set)
+{
+    $html = '<div class="ws-ephemeral-title">' . h(lang('What it is about')) . '</div>';
+
+    if ($topic === '') {
+        return $html . '<div>' . h(lang('This channel does not say what it is about yet.')) . '</div>'
+            . '<div class="fg-secondary">' . h(lang(array('string' => 'Set it with {var:1} and the text.', 'vars' => ws_command_turkish() ? '/konu' : '/topic'))) . '</div>';
+    }
+
+    $quoted = '“' . $topic . '”';
+
+    return $html . '<div>' . h($set ? lang(array('string' => 'It now reads: {var:1}', 'vars' => $quoted)) : lang(array('string' => 'Now: {var:1}', 'vars' => $quoted))) . '</div>';
+}
+
+/**
+ * /topic's live line: the text Enter will set, refused ahead as the
+ * settings refuse it; without a text, that it only shows the one in force.
+ *
+ * @return array line, warnings
+ */
+function ws_command_live_topic($viewer, $channel, $rest)
+{
+    $topic = trim((string) $rest);
+
+    if ($topic === '') {
+        return array('line' => lang('Will show what it is about, to you alone'), 'warnings' => array());
+    }
+
+    $out = array('line' => lang(array('string' => 'Will set what it is about: {var:1}', 'vars' => '“' . mb_substr($topic, 0, 80) . '”')), 'warnings' => array());
+
+    if (is_array($viewer) && is_array($channel) && !ws_can_manage_channel($viewer, $channel)) {
+        $out['warnings'][] = lang('Only the owner of the channel can change it.');
+    }
+
+    return $out;
+}
+
+/**
+ * /search: the composer opens the search palette on the channel with the
+ * words itself and never sends the line (commandSearchWords(),
+ * assets/js/workspace.js). Reached only over the API, it writes nothing and
+ * answers what the palette would be opened with.
+ *
+ * @return array
+ */
+function ws_command_run_search($viewer, $channel, $rest)
+{
+    return array('type' => 'search', 'query' => trim((string) $rest), 'channel_id' => (int) $channel['id']);
+}
+
+/**
+ * /search's live line: the channel and the words the palette opens with.
+ *
+ * @return array line, warnings
+ */
+function ws_command_live_search($viewer, $channel, $rest)
+{
+    $words = trim((string) $rest);
+    $name = (string) ($channel['name'] ?? '');
+
+    if ($words === '') {
+        return array('line' => lang(array('string' => 'Will open the search on #{var:1}', 'vars' => $name)), 'warnings' => array());
+    }
+
+    return array('line' => lang(array('string' => 'Will search #{var:1} for: {var:2}', 'vars' => array($name, '“' . mb_substr($words, 0, 80) . '”'))), 'warnings' => array());
+}
+
+/**
+ * /memory: whoever may write the channel's memory, as its New entry
+ * offers (ws_memory_check()); only where the memory table is there.
+ * Without a person or a channel, listed like the rest.
+ *
+ * @param array|null $viewer
+ * @param string     $command
+ * @param array|null $channel
+ * @return bool
+ */
+function ws_command_gate_memory($viewer, $command = '', $channel = null)
+{
+    if (!is_array($viewer) || !is_array($channel)) {
+        return true;
+    }
+
+    return function_exists('ws_memory_ready') && ws_memory_ready() && ws_can_post_channel($viewer, $channel);
+}
+
+/**
+ * /memory: an entry written through ws_memory_save(), checked by
+ * ws_memory_check() as the Memory tab's New entry is, with its refusals.
+ * Typed as a reply, the entry's text carries the answered message's link.
+ * Without a text, the New entry form opens, filled with the link if any.
+ *
+ * @return array
+ */
+function ws_command_run_memory($viewer, $channel, $rest, $options)
+{
+    $link = '';
+
+    if ((int) ($options['parent_id'] ?? 0) > 0) {
+        $message = ws_command_answered_message($viewer, $channel, $options);
+
+        if ($message === null) {
+            return array('type' => 'error', 'error' => lang('That message could not be found.'));
+        }
+
+        $link = ws_command_message_link($channel, $message);
+    }
+
+    $entry = ws_command_memory_entry($rest, $link);
+
+    if ($entry === null) {
+        return array('type' => 'memory_form', 'fill' => array('title' => '', 'text' => $link));
+    }
+
+    $check = ws_memory_check($viewer, $channel, $entry);
+
+    if (!$check['ok']) {
+        return array('type' => 'error', 'error' => $check['error']);
+    }
+
+    $id = ws_memory_save($channel['id'], $check['values'], 'user', $viewer['id']);
+
+    return array('type' => 'ephemeral', 'html' => ws_command_memory_html($check['values']['title'], $link !== ''), 'memory_id' => (int) $id);
+}
+
+/**
+ * The entry /memory writes of what was typed: the first line its title
+ * (cut to the title's limit, the whole text then kept as its text), the
+ * lines after it its text, and the answered message's link under them.
+ * Pure.
+ *
+ * @param string $typed the line after the command's name
+ * @param string $link  the answered message's address, '' for none
+ * @return array|null title, text; null when nothing was typed
+ */
+function ws_command_memory_entry($typed, $link)
+{
+    $typed = trim(str_replace("\r\n", "\n", (string) $typed));
+
+    if ($typed === '') {
+        return null;
+    }
+
+    $max = defined('WS_MEMORY_TITLE_MAX') ? WS_MEMORY_TITLE_MAX : 150;
+    $lines = explode("\n", $typed, 2);
+    $title = trim($lines[0]);
+    $text = trim((string) ($lines[1] ?? ''));
+
+    if (mb_strlen($title) > $max) {
+        $title = rtrim(mb_substr($title, 0, $max - 1)) . '…';
+        $text = $typed;
+    }
+
+    if ($link !== '') {
+        $text = trim($text . "\n\n" . $link);
+    }
+
+    return array('title' => $title, 'text' => $text);
+}
+
+/**
+ * /memory's answer to the writer alone. Pure but for the language.
+ *
+ * @param string $title
+ * @param bool   $linked the entry carries an answered message's link
+ * @return string
+ */
+function ws_command_memory_html($title, $linked)
+{
+    $html = '<div class="ws-ephemeral-title">' . h(lang('Saved in the channel\'s memory')) . '</div>'
+        . '<div>' . h('“' . $title . '”') . '</div>';
+
+    if ($linked) {
+        $html .= '<div class="fg-secondary">' . h(lang('With the link of the message you answered.')) . '</div>';
+    }
+
+    return $html;
+}
+
+/**
+ * /memory's live line: the entry's title, and a warning when the first
+ * line is longer than a title holds; without a text, the form it opens.
+ *
+ * @return array line, warnings
+ */
+function ws_command_live_memory($viewer, $channel, $rest)
+{
+    $entry = ws_command_memory_entry($rest, '');
+
+    if ($entry === null) {
+        return array('line' => lang('Will open New entry of the channel\'s memory'), 'warnings' => array());
+    }
+
+    $max = defined('WS_MEMORY_TITLE_MAX') ? WS_MEMORY_TITLE_MAX : 150;
+    $first = trim(explode("\n", trim(str_replace("\r\n", "\n", (string) $rest)))[0]);
+    $out = array('line' => lang(array('string' => 'Will remember: {var:1}', 'vars' => '“' . mb_substr($entry['title'], 0, 80) . '”')), 'warnings' => array());
+
+    if (mb_strlen($first) > $max) {
+        $out['warnings'][] = lang(array('string' => 'The first line is cut to {var:1} characters for the title; the whole text is kept.', 'vars' => $max));
+    }
+
+    return $out;
+}
+
+/**
  * /meeting's live line.
  *
  * @return array line, warnings
@@ -4107,7 +4347,8 @@ function ws_command_parse_create($text)
 /**
  * /create: the kind named after it, made through its own card - a product
  * as /product makes it, a group by ws_command_group(), a contact by
- * ws_command_contact(). A kind the person may not make is refused before
+ * ws_command_contact(), an ERP account by ws_command_account(), a calendar
+ * event by ws_command_event(). A kind the person may not make is refused before
  * anything is read, as its screen refuses it.
  *
  * @param array  $viewer
@@ -4140,7 +4381,15 @@ function ws_command_create($viewer, $channel, $text, $options)
         return ws_command_group($viewer, $channel, $parsed['rest'], $options);
     }
 
-    return array('type' => 'error', 'error' => lang('Say what to create, a product, a group, a contact or a row, like /create product Blue mug 149,90 or /create row Leads.'));
+    if ($parsed['kind'] === 'erp_account') {
+        return ws_command_account($viewer, $channel, $parsed['rest'], $options);
+    }
+
+    if ($parsed['kind'] === 'calendar_event') {
+        return ws_command_event($viewer, $channel, $parsed['rest'], $options);
+    }
+
+    return array('type' => 'error', 'error' => lang('Say what to create, a product, a group, a contact, a row, an account or an event, like /create product Blue mug 149,90 or /create event tomorrow 14:00 Opening.'));
 }
 
 /**
@@ -4432,6 +4681,168 @@ function ws_command_contact($viewer, $channel, $text, $options)
 }
 
 /**
+ * The words of /create account: an e-mail address anywhere, then the parts
+ * between commas - the first the account's name, a part of 10 digits (a tax
+ * number) or 11 not starting with 0 (a Turkish identity number) its tax
+ * number, a part of digits with + ( ) - and spaces its phone. Another part
+ * stays in the name. "Acme Ltd, 1234567890, info@acme.com" and
+ * "info@acme.com Acme Ltd, 0555 123 45 67" read alike. Pure.
+ *
+ * @param string $text
+ * @return array title, tax_number, email, phone (each '' when not written)
+ */
+function ws_command_parse_account($text)
+{
+    $text = trim((string) preg_replace('/\s+/u', ' ', (string) $text));
+    $out = array('title' => '', 'tax_number' => '', 'email' => '', 'phone' => '');
+
+    if (preg_match('/(?<![^\s,;])[^\s,;<>@]+@[^\s,;<>@]+\.[^\s,;<>@]+(?![^\s,;])/u', $text, $match)) {
+        $out['email'] = $match[0];
+        $text = str_replace($match[0], '', $text);
+    }
+
+    $name = array();
+
+    foreach (array_values(array_filter(array_map('trim', explode(',', $text)), 'strlen')) as $index => $part) {
+        $digits = preg_replace('/\s+/u', '', $part);
+
+        if (($index > 0) && ($out['tax_number'] === '') && preg_match('/^(?:[0-9]{10}|[1-9][0-9]{10})$/', $digits)) {
+            $out['tax_number'] = $digits;
+            continue;
+        }
+
+        if (($index > 0) && ($out['phone'] === '') && preg_match('/^\+?[0-9 ()\-]+$/', $part) && (strlen(preg_replace('/[^0-9]/', '', $part)) >= 7)) {
+            $out['phone'] = $part;
+            continue;
+        }
+
+        $name[] = $part;
+    }
+
+    $out['title'] = implode(', ', $name);
+
+    return $out;
+}
+
+/**
+ * /create account: a new ERP account through the catalogue
+ * (ws_command_create_card()), written by Create alone through
+ * ws_change_write_erp_account() and erp_account_save(), the function the
+ * ERP's New account screen saves with, its refusals included (a tax number
+ * that fails its check or belongs to an active account). A line without a
+ * name opens the drawer's new account, filled with what was typed.
+ *
+ * @param array  $viewer
+ * @param array  $channel
+ * @param string $text    what follows /create account
+ * @param array  $options confirm, decision
+ * @return array
+ */
+function ws_command_account($viewer, $channel, $text, $options)
+{
+    if (function_exists('ws_bulk_text_is_list') && ws_bulk_text_is_list($text)) {
+        return array('type' => 'error', 'error' => lang('/create account makes one account: write it on one line.'));
+    }
+
+    // A tag would be written into the name as its markup.
+    if (preg_match('/<[#@][a-z_]+:[0-9]+>/', (string) $text)) {
+        return array('type' => 'error', 'error' => lang('Write the account as plain text.'));
+    }
+
+    $fields = array_filter(ws_command_parse_account($text), 'strlen');
+
+    return ws_command_create_card($viewer, $channel, 'erp_account', $fields, $options);
+}
+
+/**
+ * The words of /create event: a day and a time at the start of the line,
+ * read as /remind reads them (ws_command_remind_data()), the rest the
+ * event's name. A day with a time starts the event then; a day alone makes
+ * it an all-day event; a time alone is today's. Pure.
+ *
+ * @param string   $text
+ * @param int|null $now  for tests
+ * @return array name, start_time (Y-m-d H:i, '' when no day or time was
+ *               read), all_day
+ */
+function ws_command_parse_event($text, $now = null)
+{
+    $data = ws_command_remind_data(trim((string) preg_replace('/\s+/u', ' ', (string) $text)), $now);
+    $start = '';
+
+    if ($data['date'] !== '') {
+        $start = $data['date'] . ' ' . (($data['time'] !== '') ? $data['time'] : '00:00');
+    }
+
+    return array('name' => $data['title'], 'start_time' => $start, 'all_day' => ($start !== '') && ($data['time'] === ''));
+}
+
+/**
+ * /create event: a new event of the site's calendars through the catalogue
+ * (ws_command_create_card()), written by Create alone through
+ * ws_change_write_calendar_event(), the event screen's starting values and
+ * its refusals: the calendars right, a calendar the person may use, the
+ * publish right (an event made here starts unpublished, as the screen's
+ * form does). It goes on the person's one calendar; a person with several,
+ * or a line without a name or a day, gets the drawer's new event, filled
+ * with what was typed.
+ *
+ * @param array  $viewer
+ * @param array  $channel
+ * @param string $text    what follows /create event
+ * @param array  $options confirm, decision
+ * @return array
+ */
+function ws_command_event($viewer, $channel, $text, $options)
+{
+    if (function_exists('ws_bulk_text_is_list') && ws_bulk_text_is_list($text)) {
+        return array('type' => 'error', 'error' => lang('/create event makes one event: write it on one line.'));
+    }
+
+    if (preg_match('/<[#@][a-z_]+:[0-9]+>/', (string) $text)) {
+        return array('type' => 'error', 'error' => lang('Write the event as plain text.'));
+    }
+
+    $parsed = ws_command_parse_event($text);
+    $fields = array_filter(array('name' => $parsed['name'], 'start_time' => $parsed['start_time']), 'strlen');
+
+    if ($parsed['all_day']) {
+        $fields['all_day'] = true;
+    }
+
+    $calendars = function_exists('ws_quick_create_calendars') ? ws_quick_create_calendars($viewer) : array();
+
+    if (count($calendars) === 1) {
+        $fields['calendar_ids'] = array((int) $calendars[0]['id']);
+    }
+
+    return ws_command_create_card($viewer, $channel, 'calendar_event', $fields, $options);
+}
+
+/**
+ * The fields a kind's new record needs beside its required list
+ * (ws_quick_create_missing()) that the catalogue's check refuses a create
+ * without: an event's start and its calendars. Pure.
+ *
+ * @param string $type
+ * @param array  $fields name => value
+ * @return string[] the names left out
+ */
+function ws_command_create_needs($type, $fields)
+{
+    $needs = array('calendar_event' => array('start_time', 'calendar_ids'));
+    $out = array();
+
+    foreach ($needs[(string) $type] ?? array() as $name) {
+        if (!isset($fields[$name]) || ($fields[$name] === '') || ($fields[$name] === array())) {
+            $out[] = $name;
+        }
+    }
+
+    return $out;
+}
+
+/**
  * What a /create group card creates: the rest of the line as the group's
  * name and as its short description (the words the store shows).
  *
@@ -4616,6 +5027,37 @@ function ws_command_is_product_file($body)
 }
 
 /**
+ * A stored date and time ("2026-11-18 14:00:00") as the create card shows
+ * it: the site's date order and clock (Site Settings > General > Date and
+ * Time), as the drawer's date field writes it ("18/11/2026 14:00"); with
+ * $all_day the day alone. A value that is no date is shown as it is.
+ *
+ * @param string      $value
+ * @param bool        $all_day
+ * @param string|null $date_code date() code of the day; the site's when null
+ * @param string|null $time_code date() code of the time; the site's when null
+ * @return string
+ */
+function ws_command_card_datetime($value, $all_day, $date_code = null, $time_code = null)
+{
+    if ($date_code === null) {
+        $date_code = (defined('DATE_FORMAT') && function_exists('get_date_format_code') ? get_date_format_code() : 'j/n') . '/Y';
+    }
+
+    if ($time_code === null) {
+        $time_code = function_exists('pg_time_format_code') ? pg_time_format_code() : 'H:i';
+    }
+
+    $time = preg_match('/^\d{4}-\d{2}-\d{2}/', (string) $value) ? strtotime((string) $value) : false;
+
+    if ($time === false) {
+        return (string) $value;
+    }
+
+    return date($all_day ? $date_code : $date_code . ' ' . $time_code, $time);
+}
+
+/**
  * The card a create command answers with, or the record it makes once
  * confirmed, through the drawer's create (ws_quick_create_save()): the same
  * rights, checks, writer, ws_ai_changes row, activity log line and decision
@@ -4624,7 +5066,7 @@ function ws_command_is_product_file($body)
  *
  * @param array  $viewer
  * @param array  $channel
- * @param string $type    product | product_group | contact
+ * @param string $type    product | product_group | contact | erp_account | calendar_event
  * @param array  $fields  field => value
  * @param array  $options confirm, decision, on_sale
  * @return array
@@ -4664,10 +5106,12 @@ function ws_command_create_card($viewer, $channel, $type, $fields, $options)
 
     $types = ws_change_types();
 
-    // None of the kind's required list written: nothing to check yet. The
-    // composer opens the drawer's new mode with what was typed, as the
-    // kind's button does.
-    $missing = ws_quick_create_missing((array) ($types[$type]['required'] ?? array()), ws_quick_create_change($type, $fields)['fields']);
+    // None of the kind's required list written, or a field its create
+    // cannot go without (an event's day, its calendar): nothing to check
+    // yet. The composer opens the drawer's new mode with what was typed, as
+    // the kind's button does.
+    $given = ws_quick_create_change($type, $fields)['fields'];
+    $missing = array_merge(ws_quick_create_missing((array) ($types[$type]['required'] ?? array()), $given), ws_command_create_needs($type, $given));
 
     if ($missing !== array()) {
         $check = ws_quick_create_check($viewer, $type);
@@ -4710,7 +5154,9 @@ function ws_command_create_card($viewer, $channel, $type, $fields, $options)
             continue;
         }
 
-        if ($field[0] === 'ids') {
+        // Records the workspace tags (product groups) as chips; calendars,
+        // which it does not, by their names.
+        if (($field[0] === 'ids') && isset($types[(string) $field[1]])) {
             $chips = '';
 
             foreach (ws_refs_resolve($viewer, ws_tokens(ws_change_ids_tokens($field, $item['to']))) as $ref) {
@@ -4719,6 +5165,13 @@ function ws_command_create_card($viewer, $channel, $type, $fields, $options)
             }
 
             $rows[] = array('label' => (string) $field[2], 'text' => '', 'html' => $chips);
+            continue;
+        }
+
+        // A date and time as the drawer's field writes it: the site's date
+        // order and clock; an all-day event's day alone.
+        if ($field[0] === 'datetime') {
+            $rows[] = array('label' => (string) $field[2], 'text' => ws_command_card_datetime($item['to'], !empty($input['values']['all_day'])), 'html' => '');
             continue;
         }
 

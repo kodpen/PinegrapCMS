@@ -5330,23 +5330,40 @@
 
     // ── Settings ───────────────────────────────────────────────────────
 
+    // A labelled control with an optional help line. A tick (a checkbox,
+    // .pg-checkbox) stands before its label on one line, the help under the
+    // label; any other control stands under its label.
     function field(label, control, help) {
         var wrap = el('div', 'mb-5');
         var id = 'wsf-f' + (++uid);
-        var caption = el('label', 'form-label small fw-semibold mb-1', label);
+        var tick = control.tagName === 'INPUT' && control.type === 'checkbox';
+        var caption = el('label', tick ? 'small' : 'form-label small fw-semibold mb-1', label);
+        var words = wrap;
 
         caption.htmlFor = id;
         control.id = id;
         control.disabled = control.disabled || !state.edit;
-        wrap.appendChild(caption);
-        wrap.appendChild(control);
+
+        if (tick) {
+            var line = el('div', 'd-flex align-items-start gap-3');
+
+            words = el('div', 'flex-fill min-w-0');
+            control.classList.add('mt-1');
+            line.appendChild(control);
+            line.appendChild(words);
+            words.appendChild(caption);
+            wrap.appendChild(line);
+        } else {
+            wrap.appendChild(caption);
+            wrap.appendChild(control);
+        }
 
         if (help) {
             var note = el('div', 'form-text', help);
 
             note.id = id + '-help';
             control.setAttribute('aria-describedby', note.id);
-            wrap.appendChild(note);
+            words.appendChild(note);
         }
 
         return wrap;
@@ -7790,7 +7807,7 @@
             box.appendChild(vars);
         }
 
-        var fallback = el('input', 'check');
+        var fallback = el('input', 'pg-checkbox');
 
         fallback.type = 'checkbox';
         fallback.checked = !!config.fallback;
@@ -7930,7 +7947,7 @@
             })));
             more.appendChild(field(t('fl_check_max_ms'), numberInput(config.max_ms, 0, 60000, function (value) { config.max_ms = value; }), t('fl_check_max_ms_help')));
 
-            var redirect = el('input', 'check');
+            var redirect = el('input', 'pg-checkbox');
 
             redirect.type = 'checkbox';
             redirect.checked = !!config.redirect;
@@ -7990,7 +8007,7 @@
 
     // A tick whose state goes to config[key].
     function tickField(box, node, key, label, onChange) {
-        var tick = el('input', 'check');
+        var tick = el('input', 'pg-checkbox');
 
         tick.type = 'checkbox';
         tick.checked = !!node.config[key];
@@ -8120,7 +8137,7 @@
     // it opens is private, and who is put in it.
     function leadFields(box, node) {
         var config = node.config;
-        var closed = el('input', 'check');
+        var closed = el('input', 'pg-checkbox');
 
         closed.type = 'checkbox';
         closed.checked = !!config.private;
@@ -9930,7 +9947,7 @@
         });
         box.appendChild(field(t('fl_records_page'), pick, t('fl_records_page_help')));
 
-        var only = el('input', 'check');
+        var only = el('input', 'pg-checkbox');
 
         only.type = 'checkbox';
         only.checked = !!config.only_new;

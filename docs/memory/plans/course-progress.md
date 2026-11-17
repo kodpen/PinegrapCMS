@@ -26,7 +26,7 @@ priority: 6
 - Architect (agent channel message 6553), after the owner asked that what exists be grown instead of a table (poll 84): the three tables stay. A form's submission cannot be the mark: `forms` has no index on the member, so that road needs schema too, makes every "done" a form record and every lesson a form page.
 - A block's setting cannot open or close a lesson: the access gate would hang on content, and deleting the block would open the lesson. A menu's row cannot hold the days, the quiz and the score. Used from what exists: the product that opens a folder, the lesson pages, the quiz form and its score.
 - Architect (message 6554): Z5 as planned; the first-open row is written once, only for a signed-in member with the folder.
-- Still the architect's: the tables' columns, in CO1's draft PR; who may open the Courses screen.
+- Architect (2026-11-17, message 9031): managers and above (role below 3) open the Courses screen. The tables' columns were settled in CO1's PR.
 
 ## What did the owner decide? (2026-11-16)
 - The three tables: yes, with the set's schema (agent channel poll 91, `plans/more-features.md`). Nothing else was his: no course row, no change on a site.
@@ -35,4 +35,4 @@ priority: 6
 - Closing a lesson's files and the site search's results; time watched of a video and SCORM; a PDF made on the server; a lesson opening on a fixed date (the page's publish time does it); an API resource; the Online Courses template placing the blocks (templates are paused). Each is a later yes.
 
 ## Whose look?
-- The owner's: the Courses screen and the learners (CO2), the three blocks (CO4), the certificate (CO5). The closed lesson's notice (CO3): the architect's.
+- The owner's: the Courses screen and the learners (CO2), the three blocks (CO4), the certificate (CO5). The closed lesson's notice (CO3): the architect's. CO2: yes (poll 141, `workflow/decisions-made-product-74.md`).

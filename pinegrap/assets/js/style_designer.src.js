@@ -6357,9 +6357,12 @@ const StyleDesigner = (function () {
         // .sd-tb-inside inside it (top:2px) when there is no room below either; JS decides (_sdTbSpot()).
         '.sd-tb { position:absolute; top:-20px; left:0; height:20px; display:none; align-items:center; gap:0; z-index:1100; border-radius:4px 4px 4px 0; overflow:hidden; pointer-events:none; max-width:180px; white-space:nowrap; }',
         // Toolbar flip: under the element when it is near the top of the iframe, inside it (top:2px)
-        // when it also reaches the bottom.
+        // when it also reaches the bottom; inside at its right end (sd-tb-end) when the next element
+        // starts in the strip's way below it, so the strip covers neither that element's first words
+        // nor the start of the element's own line.
         '.sd-wrap.sd-tb-below > .sd-tb { top:calc(100% + 2px) !important; border-radius:0 4px 4px 4px; }',
         '.sd-wrap.sd-tb-inside > .sd-tb { top:2px !important; border-radius:0 0 4px 4px; }',
+        '.sd-wrap.sd-tb-end > .sd-tb { top:2px !important; left:auto; right:0; border-radius:0 0 4px 4px; }',
         // The page root's (<body>) name tag and toolbar sit at the bottom-left corner of the canvas
         // viewport: at the top-left of the page they lay over whatever starts there (a switch, a
         // brand) and took its clicks whenever the pointer was over the page between elements.
@@ -10582,10 +10585,9 @@ const StyleDesigner = (function () {
                 if (p.classList.contains('sd-tb')) {
                     // Above the element; below it when there is no room
                     // above, inside it with no room below either.
-                    var clip = _sdTbClip(w);
-                    var spot = _sdTbSpot(er.top, er.bottom, win.innerHeight, clip ? clip[0] : 0, clip ? clip[1] : Infinity);
-                    top = (spot === 'below' ? er.bottom + 2 : er.top + (spot === 'inside' ? 2 : -20)) - by;
-                    left = er.left - bx;
+                    var spot = _sdTbSpotOf(w, er, win.innerHeight, _sdTbClip(w));
+                    top = (spot === 'below' ? er.bottom + 2 : er.top + (spot === 'above' ? -20 : 2)) - by;
+                    left = (spot === 'end' ? er.right - p.offsetWidth : er.left) - bx;
                 } else if (p.classList.contains('sd-persistent-note')) {
                     top = er.top - by + 2;
                     left = er.right - bx - 18;
@@ -10701,12 +10703,50 @@ const StyleDesigner = (function () {
     // only inside it: a card's cover picture at the top of an
     // overflow-hidden card had its toolbar above the picture, cut away by
     // the card, so it showed nowhere.
-    function _sdTbSpot(top, bottom, viewH, clipTop, clipBottom) {
+    // nextTop: the top of the element that follows below it (_sdTbNextTop()),
+    // when there is one. Below counts only when the 20 px strip fits in the
+    // gap before it; otherwise 'end', inside at the element's right end: a
+    // heading with a small bottom margin had its name tag and buttons over the
+    // first words of the paragraph under it, taking their clicks.
+    function _sdTbSpot(top, bottom, viewH, clipTop, clipBottom, nextTop) {
         var lo = (typeof clipTop === 'number' && clipTop > 0) ? clipTop : 0;
         var hi = (typeof clipBottom === 'number' && clipBottom < viewH) ? clipBottom : viewH;
         if (top - lo >= 22) return 'above';
-        if (bottom + 22 <= hi) return 'below';
-        return 'inside';
+        if (bottom + 22 > hi) return 'inside';
+        if (typeof nextTop === 'number' && nextTop < bottom + 22) return 'end';
+        return 'below';
+    }
+
+    // The spot of wrapper `w` with box `r` (_sdBoxRect()) and clip `c`
+    // (_sdTbClip()); the next element is measured only when there is no
+    // room above.
+    function _sdTbSpotOf(w, r, viewH, c) {
+        var lo = c ? c[0] : 0, hi = c ? c[1] : Infinity;
+        var next = (r.top - Math.max(lo, 0) < 22) ? _sdTbNextTop(w, r.bottom) : null;
+        return _sdTbSpot(r.top, r.bottom, viewH, lo, hi, next);
+    }
+
+    // The viewport top of the first element that follows wrapper `w` and
+    // starts at or under `bottom`: its next siblings, then those of each
+    // ancestor in turn. The editor's own chrome and elements out of the flow
+    // are skipped. null when nothing follows.
+    function _sdTbNextTop(w, bottom) {
+        var doc = w.ownerDocument, win = doc && doc.defaultView;
+        if (!win) return null;
+        var el = w, depth = 0;
+        while (el && el !== doc.body && el !== doc.documentElement && depth++ < 8) {
+            for (var s = el.nextElementSibling; s; s = s.nextElementSibling) {
+                if (/(^|\s)sd-(tb|persistent-note|issue-badge|chip-row|lbl)(\s|$)/.test(s.className || '')) continue;
+                var isWrap = s.classList.contains('sd-wrap');
+                var pos = win.getComputedStyle(isWrap ? (_sdWrapEl(s) || s) : s).position;
+                if (pos === 'absolute' || pos === 'fixed') continue;
+                var r = isWrap ? _sdBoxRect(s) : s.getBoundingClientRect();
+                if (!r.width && !r.height) continue;
+                if (r.top >= bottom - 0.5) return r.top;
+            }
+            el = el.parentElement;
+        }
+        return null;
     }
 
     // The viewport box ([top, bottom]) of the nearest ancestor of wrapper
@@ -10734,9 +10774,10 @@ const StyleDesigner = (function () {
 
     // Writes a spot as the wrapper's classes; only what changes is written.
     function _sdTbSpotWrite(w, spot) {
-        var inside = spot === 'inside', below = spot === 'below';
+        var inside = spot === 'inside', below = spot === 'below', end = spot === 'end';
         if (w.classList.contains('sd-tb-inside') !== inside) w.classList.toggle('sd-tb-inside', inside);
         if (w.classList.contains('sd-tb-below') !== below) w.classList.toggle('sd-tb-below', below);
+        if (w.classList.contains('sd-tb-end') !== end) w.classList.toggle('sd-tb-end', end);
     }
 
     // The canvas viewport's height, for _sdTbSpot().
@@ -10748,20 +10789,15 @@ const StyleDesigner = (function () {
     // Places one wrapper's toolbar (the hovered one).
     function _sdTbFlip(w) {
         if (!w || w.tagName !== 'DIV') return;
-        var r = _sdBoxRect(w), c = _sdTbClip(w);
-        _sdTbSpotWrite(w, _sdTbSpot(r.top, r.bottom, _sdCanvasViewH(), c ? c[0] : 0, c ? c[1] : Infinity));
+        _sdTbSpotWrite(w, _sdTbSpotOf(w, _sdBoxRect(w), _sdCanvasViewH(), _sdTbClip(w)));
     }
 
     // The same for several wrappers: all measured, then all written.
     function _sdTbFlipAll(ws) {
         var vh = _sdCanvasViewH();
         var memo = (typeof Map === 'function') ? new Map() : null;
-        var rs = ws.map(function (w) { return _sdBoxRect(w); });
-        var cs = ws.map(function (w) { return _sdTbClip(w, memo); });
-        ws.forEach(function (w, i) {
-            var c = cs[i];
-            _sdTbSpotWrite(w, _sdTbSpot(rs[i].top, rs[i].bottom, vh, c ? c[0] : 0, c ? c[1] : Infinity));
-        });
+        var spots = ws.map(function (w) { return _sdTbSpotOf(w, _sdBoxRect(w), vh, _sdTbClip(w, memo)); });
+        ws.forEach(function (w, i) { _sdTbSpotWrite(w, spots[i]); });
     }
 
     // What a scroll changes: nothing in the page, only where the viewport
@@ -11957,7 +11993,8 @@ const StyleDesigner = (function () {
      * When an element sits closer than 22px to the top of the iframe the toolbar
      * would overflow above it, so the sd-tb-below class moves it under the
      * element (sd-tb-inside, inside it, when there is no room below either;
-     * _sdTbSpot()). getBoundingClientRect() on an element inside an iframe returns coordinates
+     * sd-tb-end, inside at its right end, when the next element starts in the
+     * strip's way; _sdTbSpot()). getBoundingClientRect() on an element inside an iframe returns coordinates
      * relative to that iframe's viewport, which is exactly the frame of reference
      * this test needs.
      */
@@ -29959,6 +29996,9 @@ const StyleDesigner = (function () {
                 return target === list || !!(target.closest && target.closest('.sd-tree-locked-root'));
             }
             list.addEventListener('dragover', function(e) {
+                // Rows answer their own dragover: here the pointer is on
+                // none, so no row's drop label stays.
+                _sdTreeDropLabel(null);
                 if (!dragData || dragData.source !== 'palette') return;
                 if (!isOnBody(e.target)) return;
                 e.preventDefault();
@@ -29967,6 +30007,7 @@ const StyleDesigner = (function () {
                 if (bl) bl.classList.add('sd-tree-root-drop');
             });
             list.addEventListener('dragleave', function(e) {
+                if (!e.relatedTarget || !list.contains(e.relatedTarget)) _sdTreeDropLabel(null);
                 if (isOnBody(e.target)) {
                     list.classList.remove('sd-tree-root-drop');
                     var bl = list.querySelector('.sd-tree-locked-root');
@@ -31624,6 +31665,195 @@ const StyleDesigner = (function () {
         return names[0] + ' › … › ' + names[names.length - 1];
     }
 
+    // Why an Overview drop target refuses the element, in words: `code` from
+    // _sdTreeDropCode(), `name` the parent's row name.
+    function _sdTreeDropWhy(code, name) {
+        switch (code) {
+            case 'self': return _sdT('An element cannot go inside itself');
+            case 'same': return _sdT('The element is already here');
+            case 'locked': return _sdT('{var} is locked', name);
+            case 'rights': return _sdT('{var} is outside the areas you may edit', name);
+            case 'empty': return _sdT('{var} holds no other elements', name);
+            case 'form': return _sdT('A form cannot go inside another form');
+            case 'list': return _sdT('A list takes only list items');
+        }
+        return _sdT('{var} does not take this element', name);
+    }
+
+    // Where a drop over an Overview row lands. `p.y` and `p.x` are the
+    // pointer inside the row (from its top and its left), `p.h` the row's
+    // height; `p.inside` is the row as a parent, `p.gap` the targets of the
+    // gap the pointer is in, deepest first. A target is { indent, ok, name,
+    // place, code }: its row's drawn indent, whether canDrop() takes the
+    // element there, the parent's name, the 1-based place and why it
+    // refuses. The gap reaches 7 px into each row, the rest of the row (14 px
+    // of 28) is "inside". A target's dot sits 8 px after its indent, so 12 px
+    // of pointer travel is one level; only legal targets are chosen, the
+    // deeper on a tie. With none legal, the one nearest the pointer says why.
+    function _sdTreeDropPick(p) {
+        var reach = 7;
+        var zone = p.y < reach ? 'before' : (p.y >= p.h - reach ? 'after' : 'inside');
+        var list = zone === 'inside' ? (p.inside ? [p.inside] : []) : (p.gap || []);
+        if (!list.length) return { zone: zone, index: -1, ok: false, indent: 0, text: '' };
+        var best = -1, near = 0, bd = Infinity, nd = Infinity;
+        for (var i = 0; i < list.length; i++) {
+            var d = Math.abs(p.x - (list[i].indent + 8));
+            if (d < nd) { nd = d; near = i; }
+            if (list[i].ok && d < bd) { bd = d; best = i; }
+        }
+        if (best === -1) {
+            return { zone: zone, index: near, ok: false, indent: list[near].indent,
+                text: _sdTreeDropWhy(list[near].code, list[near].name) };
+        }
+        return { zone: zone, index: best, ok: true, indent: list[best].indent,
+            text: _sdT('Into {var:1}, place {var:2}', [list[best].name, list[best].place]) };
+    }
+
+    // Where the drop label stands for a pointer at (px, py), a label of
+    // lw x lh and a window of vw x vh: 14 px right of and 16 px below the
+    // pointer, left of it when it would cross the right edge, above it when
+    // it would cross the foot, never nearer than 8 px to an edge. maxWidth is
+    // what the label may take before its text wraps: 300 px, at most the
+    // window less 16 px.
+    function _sdTreeDropLabelPlace(px, py, lw, lh, vw, vh) {
+        var edge = 8;
+        var left = px + 14, top = py + 16;
+        if (left + lw > vw - edge) left = px - 14 - lw;
+        if (top + lh > vh - edge) top = py - 16 - lh;
+        left = Math.max(edge, Math.min(left, vw - edge - lw));
+        top = Math.max(edge, Math.min(top, vh - edge - lh));
+        return { left: left, top: top, maxWidth: Math.max(0, Math.min(300, vw - 2 * edge)) };
+    }
+
+    // Why canDrop() refuses `data` in `parent`, as a code for _sdTreeDropWhy().
+    function _sdTreeDropCode(data, parent) {
+        var dn = data.source === 'node' ? data.node : null;
+        if ((parent.props && parent.props._locked) || hasLockedAncestor(parent) ||
+            (dn && ((dn.props && dn.props._locked) || hasLockedAncestor(dn)))) return 'locked';
+        var tag = _semTag(parent);
+        var ct = parent.props ? parent.props.contentType : '';
+        if (parent.type === 'region' || parent.type === 'shared_ref' ||
+            (parent.type === 'content' && ['image', 'divider', 'icon', 'spacer', 'svg'].indexOf(ct) !== -1) ||
+            ['img', 'input', 'hr', 'br'].indexOf(tag) !== -1) return 'empty';
+        if (_sdDragCarriesForm(data) && _sdInForm(parent)) return 'form';
+        if (tag === 'ul' || tag === 'ol') return 'list';
+        return 'rule';
+    }
+
+    // The name a drop label gives a parent.
+    function _sdTreeDropName(parent) {
+        if (parent === tree) return '<body>';
+        if (parent.type === 'root') return _sdT('the component');
+        return _sdTreeRowName(parent);
+    }
+
+    // One Overview drop target: `parent` takes the element before `sib`, after
+    // it with `after`, at its end with no `sib`. `li` is the row whose indent
+    // the line takes; `moving` the elements the drop would move.
+    function _sdTreeDropTarget(data, parent, sib, after, li, moving) {
+        var kids = parent.children || [];
+        var at = sib ? kids.indexOf(sib) + (after ? 1 : 0) : kids.length;
+        // Moved elements already in the parent before the place leave a gap.
+        for (var i = 0, n = at; i < n && i < kids.length; i++) if (moving.indexOf(kids[i]) !== -1) at--;
+        var dn = data.source === 'node' ? data.node : null;
+        var code = '';
+        if (dn && sib === dn) code = 'same';
+        else if (dn && (parent === dn || isDescendant(dn, parent))) code = 'self';
+        else if (dn && !_sdMayEdit(sib || parent)) code = 'rights';
+        else if (!canDrop(data, parent)) code = _sdTreeDropCode(data, parent);
+        return { parent: parent, sib: sib, after: after, indent: parseFloat(li.style.getPropertyValue('--sd-ind')) || 0,
+            ok: !code, code: code, name: _sdTreeDropName(parent), place: at + 1 };
+    }
+
+    // The targets of the gap above (`zone` 'before') or below a drawn row,
+    // deepest first, read from the rows as drawn (folded chains included).
+    // The gap below a row whose branch is open is the first place in it;
+    // below a branch's last row, it is also after each branch that ends
+    // there, up to the row that comes next.
+    function _sdTreeDropGap(data, li, zone, moving) {
+        var a = li;
+        if (zone === 'before') {
+            var p = li.previousElementSibling;
+            while (p && p.tagName === 'UL') p = p.lastElementChild;
+            if (!p) {
+                var pu = li.parentElement;
+                p = (pu && pu.classList.contains('sd-tree-children')) ? pu.previousElementSibling : null;
+            }
+            if (!p || !p._sdNode) {
+                var bi = _findParentAnywhere(li._sdNode);
+                return bi ? [_sdTreeDropTarget(data, bi.parent, li._sdNode, false, li, moving)] : [];
+            }
+            a = p;
+        }
+        var next = a.nextElementSibling;
+        if (next && next.tagName === 'UL' && next.firstElementChild) {
+            var f = next.firstElementChild;
+            var fn = f._sdNode || f._sdChainFirst;
+            var fi = fn ? _findParentAnywhere(fn) : null;
+            return fi ? [_sdTreeDropTarget(data, fi.parent, fn, false, f, moving)] : [];
+        }
+        var out = [];
+        for (var cur = a, g = 0; cur && cur._sdNode && g < 64; g++) {
+            var ci = _findParentAnywhere(cur._sdNode);
+            if (ci) out.push(_sdTreeDropTarget(data, ci.parent, cur._sdNode, true, cur, moving));
+            // A later row in the same branch closes the gap here.
+            var s = cur.nextElementSibling;
+            if (s && s.tagName === 'UL') s = s.nextElementSibling;
+            if (s) break;
+            var up = cur.parentElement;
+            cur = (up && up.classList.contains('sd-tree-children')) ? up.previousElementSibling : null;
+        }
+        return out;
+    }
+
+    // The targets of one row and zone, asked once per drag: canDrop() is not
+    // asked again on every pointer move.
+    var _sdTreeDropMemo = null;
+
+    function _sdTreeDropClear() {
+        document.querySelectorAll('.sd-tree-drop-before,.sd-tree-drop-after,.sd-tree-drop-inside,.sd-tree-drop-refused').forEach(function (x) {
+            x.classList.remove('sd-tree-drop-before', 'sd-tree-drop-after', 'sd-tree-drop-inside', 'sd-tree-drop-refused');
+        });
+    }
+
+    // The label that follows the pointer over the Overview during a drag;
+    // no text hides it.
+    var _sdTreeDropLbl = null;
+    function _sdTreeDropLabel(text, x, y, refused) {
+        var l = _sdTreeDropLbl;
+        if (!text) {
+            if (l) l.hidden = true;
+            return;
+        }
+        if (!l) {
+            l = _sdTreeDropLbl = document.createElement('div');
+            l.id = 'sd-tree-drop-label';
+            l.setAttribute('role', 'status');
+            document.body.appendChild(l);
+            ['dragend', 'drop'].forEach(function (ev) {
+                document.addEventListener(ev, function () {
+                    _sdTreeDropLabel(null);
+                    _sdTreeDropMemo = null;
+                }, true);
+            });
+        }
+        if (l._sdText !== text || l._sdNo !== !!refused) {
+            l._sdText = text;
+            l._sdNo = !!refused;
+            l.classList.toggle('sd-tree-drop-label-no', !!refused);
+            l.innerHTML = '<span class="bi ' + (refused ? 'bi-slash-circle' : 'bi-arrow-return-right') + '" aria-hidden="true"></span>' +
+                '<span class="sd-tree-drop-label-txt">' + esc(text) + '</span>';
+        }
+        l.hidden = false;
+        // Kept in the window and never cut: the text wraps within maxWidth.
+        var vw = document.documentElement.clientWidth || window.innerWidth;
+        var vh = document.documentElement.clientHeight || window.innerHeight;
+        l.style.maxWidth = _sdTreeDropLabelPlace(0, 0, 0, 0, vw, vh).maxWidth + 'px';
+        var at = _sdTreeDropLabelPlace(x, y, l.offsetWidth, l.offsetHeight, vw, vh);
+        l.style.left = at.left + 'px';
+        l.style.top = at.top + 'px';
+    }
+
     // The hint after a name that repeats: the element's text, a picture's
     // file name or a link's target, else the first of these inside it (60
     // elements looked at). At most `max` characters, cut with an ellipsis.
@@ -31933,6 +32163,8 @@ const StyleDesigner = (function () {
         if (!chain.hidden.length || !_sdTreeChainsOpen) { buildTreeItems(ul, node, depth, lvl); return; }
         var li = document.createElement('li');
         li.className = 'sd-tree-chain';
+        // A drop in the gap above the line goes before the chain's first level.
+        li._sdChainFirst = chain.hidden[0];
         li.style.setProperty('--depth', depth);
         li.style.setProperty('--sd-ind', _sdTreeRowIndent(depth, _sdTreeRowWidth).indent + 'px');
         var text = _sdT('{var} levels hidden', chain.hidden.length) + ': ' + _sdTreeChainLabel(chain.hidden.map(_sdTreeRowName));
@@ -32224,79 +32456,75 @@ const StyleDesigner = (function () {
                 }
                 li._sdDragGhost = null;
                 document.querySelectorAll('.sd-tree-drag-src').forEach(function(el) { el.classList.remove('sd-tree-drag-src'); });
-                document.querySelectorAll('.sd-tree-drop-before,.sd-tree-drop-after,.sd-tree-drop-inside').forEach(function(el) {
-                    el.classList.remove('sd-tree-drop-before', 'sd-tree-drop-after', 'sd-tree-drop-inside');
-                });
+                _sdTreeDropClear();
             });
         }
 
         li.addEventListener('dragover', function(e) {
-            e.preventDefault(); e.stopPropagation(); // always accept; drop handler has its own guards
-            document.querySelectorAll('.sd-tree-drop-before,.sd-tree-drop-after,.sd-tree-drop-inside').forEach(function(x) {
-                x.classList.remove('sd-tree-drop-before','sd-tree-drop-after','sd-tree-drop-inside');
-            });
-            // Only the position this move found legal may be used by the
+            e.stopPropagation();
+            _sdTreeDropClear();
+            // Only the target this move found legal may be used by the
             // drop; one left from an earlier move over the row may not.
             li._dropPos = null;
 
             var isPalette = dragData && dragData.source === 'palette';
             var isTreeMove = treeDragNode && treeDragNode !== node;
-            if (!isPalette && !isTreeMove) return;
+            if (!isPalette && !isTreeMove) { _sdTreeDropLabel(null); return; }
 
-            // ── Drop zone picker — classic Y-band tree behaviour.
-            //   Y < 28% of the row → drop BEFORE this node (sibling above)
-            //   Y > 72%             → drop AFTER  (sibling below)
-            //   middle band         → drop INSIDE this node as a child
-            // The middle band falls back to AFTER when the target can't accept
-            // children (e.g. leaf rows like content nodes), so the cursor is
-            // never "stuck" with no valid drop. Sibling zones fall back to
-            // INSIDE if the parent refuses the drag (rare — keeps the user
-            // from being blocked when canDrop is asymmetric).
+            // The gap between two rows reaches 7 px into each, the middle
+            // of the row is "inside"; the pointer's horizontal place picks
+            // the level among the parents canDrop() lets the element into
+            // (_sdTreeDropPick()).
             var rect = li.getBoundingClientRect();
             var y = e.clientY - rect.top;
-            var h = rect.height;
-
-            // canDrop probes — palette uses dragData; tree-move builds a
-            // synthetic descriptor since treeDragNode isn't in dragData.
-            var moveData = isPalette
-                ? dragData
-                : { source: 'node', node: treeDragNode, type: treeDragNode.type };
-
-            function _canInside()  { return canDrop(moveData, node); }
-            function _canSibling() {
-                var sp = _findParentAnywhere(node);
-                return sp ? canDrop(moveData, sp.parent) : false;
+            var zone = _sdTreeDropPick({ y: y, x: 0, h: rect.height, inside: null, gap: [] }).zone;
+            var drag = isPalette ? dragData : treeDragNode;
+            var m = _sdTreeDropMemo;
+            if (!m || m.li !== li || m.zone !== zone || m.drag !== drag) {
+                // canDrop() probes: a tree move builds a descriptor, as
+                // treeDragNode is not in dragData.
+                var moveData = isPalette ? dragData : { source: 'node', node: treeDragNode, type: treeDragNode.type };
+                var moving = isPalette ? [] : ((treeDragNode._multiDrag && selectedNodes.length > 1) ? selectedNodes : [treeDragNode]);
+                m = _sdTreeDropMemo = { li: li, zone: zone, drag: drag,
+                    list: zone === 'inside' ? [_sdTreeDropTarget(moveData, node, null, false, li, moving)]
+                        : _sdTreeDropGap(moveData, li, zone, moving) };
             }
-
-            var pos;
-            if (y < h * 0.28) {
-                pos = _canSibling() ? 'before' : (_canInside() ? 'inside' : null);
-            } else if (y > h * 0.72) {
-                pos = _canSibling() ? 'after'  : (_canInside() ? 'inside' : null);
-            } else {
-                pos = _canInside() ? 'inside' : (_canSibling() ? 'after' : null);
+            var pick = _sdTreeDropPick({ y: y, x: e.clientX - rect.left, h: rect.height,
+                inside: zone === 'inside' ? m.list[0] : null, gap: zone === 'inside' ? [] : m.list });
+            if (pick.index === -1) { _sdTreeDropLabel(null); return; }
+            if (!pick.ok) {
+                // Not preventing the default leaves the "not allowed" cursor.
+                e.dataTransfer.dropEffect = 'none';
+                li.classList.add('sd-tree-drop-refused');
+                _sdTreeDropLabel(pick.text, e.clientX, e.clientY, true);
+                return;
             }
-            if (!pos) return;  // no legal drop zone here — leave the cursor as not-allowed
-
-            li.classList.add('sd-tree-drop-' + pos);
-            li._dropPos = pos;
+            e.preventDefault();
+            li.classList.add('sd-tree-drop-' + zone);
+            li.style.setProperty('--sd-drop-ind', pick.indent + 'px');
+            li._dropPos = { zone: zone, t: m.list[pick.index] };
+            _sdTreeDropLabel(pick.text, e.clientX, e.clientY, false);
         });
 
         li.addEventListener('dragleave', function() {
-            li.classList.remove('sd-tree-drop-before', 'sd-tree-drop-after', 'sd-tree-drop-inside');
+            li.classList.remove('sd-tree-drop-before', 'sd-tree-drop-after', 'sd-tree-drop-inside', 'sd-tree-drop-refused');
             li._dropPos = null;
         });
 
         li.addEventListener('drop', function(e) {
             e.preventDefault();
             e.stopPropagation();
-            li.classList.remove('sd-tree-drop-before','sd-tree-drop-after','sd-tree-drop-inside');
+            _sdTreeDropClear();
 
-            // No position means the dragover found no legal place on this
-            // row (canDrop() refused inside and beside it): nothing moves.
-            var pos = li._dropPos;
+            // No target means the dragover found no legal place on this row
+            // (canDrop() refused the level under the pointer): nothing moves.
+            // A gap's target names the row it goes before or after, which
+            // is this row's or one of its branches' (the level picked).
+            var dp = li._dropPos;
             li._dropPos = null;
-            if (!pos) return;
+            if (!dp) return;
+            var pos = dp.zone === 'inside' ? 'inside' : (dp.t.after ? 'after' : 'before');
+            var tgt = dp.zone === 'inside' ? node : dp.t.sib;
 
             // ── Palette → Tree ──────────────────────────────────────────────
             if (dragData && dragData.source === 'palette') {
@@ -32304,8 +32532,8 @@ const StyleDesigner = (function () {
                 // shared component's inner tree (shared_cache). The shared_ref's own
                 // `children` is invariant=[] (black box) — pushing there would lose
                 // the node entirely at next render.
-                if (pos === 'inside' && node.type === 'shared_ref') {
-                    var _rfSid2 = (node.props && node.props.sharedId) ? parseInt(node.props.sharedId, 10) : 0;
+                if (pos === 'inside' && tgt.type === 'shared_ref') {
+                    var _rfSid2 = (tgt.props && tgt.props.sharedId) ? parseInt(tgt.props.sharedId, 10) : 0;
                     var _rfCached2 = _rfSid2 > 0 ? _sharedCache[_rfSid2] : null;
                     if (_rfCached2 && _rfCached2.tree) {
                         if (!canDrop(dragData, _rfCached2.tree)) { dragData = null; return; }
@@ -32325,51 +32553,51 @@ const StyleDesigner = (function () {
                 }
                 if (pos === 'inside') {
                     // Drop inside target node — reuse handleDrop which pushes to children
-                    if (!canDrop(dragData, node)) return;
-                    handleDrop(node, false);
+                    if (!canDrop(dragData, tgt)) return;
+                    handleDrop(tgt, false);
                 } else {
                     // Drop before/after: into the parent, next to this node.
                     // The parent may live in a widget's or a shared
                     // component's own tree (the dragover found it there);
                     // handleDrop marks that tree dirty and adopts form
                     // controls, as a drop on the canvas does.
-                    var _tgtCtx = _findParentAnywhere(node);
+                    var _tgtCtx = _findParentAnywhere(tgt);
                     var tgtParent = _tgtCtx ? _tgtCtx.parent : null;
                     if (!tgtParent || !canDrop(dragData, tgtParent)) return;
-                    handleDrop(tgtParent, false, { sibling: node, after: pos === 'after' });
+                    handleDrop(tgtParent, false, { sibling: tgt, after: pos === 'after' });
                 }
                 dragData = null;
                 return;
             }
 
             // ── Tree → Tree (reorder) ────────────────────────────────────────
-            if (!treeDragNode || treeDragNode === node) return;
+            if (!treeDragNode || treeDragNode === tgt) return;
             // Where it lands matters as much as what moves: dropping into a
             // block they do not own would let a content operator restructure
             // the page one drag at a time.
-            if (!_sdMayEdit(node)) return;
+            if (!_sdMayEdit(tgt)) return;
 
             // Gather nodes to move (multi-drag or single). Reference equality
             // throughout so we never confuse cross-tree id collisions with
             // structural relationships.
             var isMultiDrag = treeDragNode._multiDrag && selectedNodes.length > 1;
             var nodesToMove = _sdTreeMoveSet(isMultiDrag
-                ? selectedNodes.filter(function(n) { return !isDescendant(node, n); })
-                : [treeDragNode], node);
+                ? selectedNodes.filter(function(n) { return !isDescendant(tgt, n); })
+                : [treeDragNode], tgt);
             if (!nodesToMove.length) return;
 
             // Every moved node must be one canDrop() lets into where it
             // lands, as on the canvas: the dragover asked only for the
             // dragged row, and a multi-selection carries others.
             var _destParent = null;
-            if (pos === 'inside' && node.type === 'shared_ref') {
-                var _dSid = (node.props && node.props.sharedId) ? parseInt(node.props.sharedId, 10) : 0;
+            if (pos === 'inside' && tgt.type === 'shared_ref') {
+                var _dSid = (tgt.props && tgt.props.sharedId) ? parseInt(tgt.props.sharedId, 10) : 0;
                 var _dCached = _dSid > 0 ? _sharedCache[_dSid] : null;
-                _destParent = (_dCached && _dCached.tree) ? _dCached.tree : node;
+                _destParent = (_dCached && _dCached.tree) ? _dCached.tree : tgt;
             } else if (pos === 'inside') {
-                _destParent = node;
+                _destParent = tgt;
             } else {
-                var _dInfo = _findParentAnywhere(node);
+                var _dInfo = _findParentAnywhere(tgt);
                 _destParent = _dInfo ? _dInfo.parent : null;
             }
             if (!_destParent) return;
@@ -32385,12 +32613,12 @@ const StyleDesigner = (function () {
             // node's own children — which is always [] by invariant (black box).
             // Otherwise the dragged node gets detached from the main tree and lost
             // in the shared_ref's invisible children array.
-            if (pos === 'inside' && node.type === 'shared_ref') {
-                var _rfSid = (node.props && node.props.sharedId) ? parseInt(node.props.sharedId, 10) : 0;
+            if (pos === 'inside' && tgt.type === 'shared_ref') {
+                var _rfSid = (tgt.props && tgt.props.sharedId) ? parseInt(tgt.props.sharedId, 10) : 0;
                 var _rfCached = _rfSid > 0 ? _sharedCache[_rfSid] : null;
                 if (_rfCached && _rfCached.tree) {
                     if (!_rfCached.tree.children) _rfCached.tree.children = [];
-                    if (isDescendant(treeDragNode, node)) return;
+                    if (isDescendant(treeDragNode, tgt)) return;
                     nodesToMove.forEach(function(n) {
                         // Remove from wherever it currently lives — main tree OR another shared cache
                         var sp = findParent(n, tree);
@@ -32416,28 +32644,28 @@ const StyleDesigner = (function () {
             }
 
             if (pos === 'inside') {
-                if (!node.children) node.children = [];
+                if (!tgt.children) tgt.children = [];
                 // Prevent dropping into self or own descendant (args: possibleAncestor, node)
-                if (isDescendant(treeDragNode, node)) return;
+                if (isDescendant(treeDragNode, tgt)) return;
                 nodesToMove.forEach(function(n) {
                     var srcInfo = _findParentAnywhere(n);
                     if (srcInfo) {
                         srcInfo.parent.children = srcInfo.parent.children.filter(function(c) { return c !== n; });
                         if (srcInfo.sid) _sharedDirty[srcInfo.sid] = true;
                     }
-                    node.children.push(n);
+                    tgt.children.push(n);
                 });
                 // If the drop target lives inside a widget cache, mark that widget dirty too.
-                var _tgtSidIns = _resolveSharedSid(node);
+                var _tgtSidIns = _resolveSharedSid(tgt);
                 if (_tgtSidIns) _sharedDirty[_tgtSidIns] = true;
             } else {
                 // before/after: insert as sibling of `node`. node may live in main tree
                 // OR in a shared cache (widget interior) — find its parent in either.
-                var _tgtInfo = _findParentAnywhere(node);
+                var _tgtInfo = _findParentAnywhere(tgt);
                 if (!_tgtInfo) return;
                 var tgtParent2 = _tgtInfo.parent;
                 // Prevent inserting before/after a node that is inside the dragged node's subtree
-                if (isDescendant(treeDragNode, node)) return;
+                if (isDescendant(treeDragNode, tgt)) return;
                 // Remove all first (may shift indices)
                 nodesToMove.forEach(function(n) {
                     var srcInfo = _findParentAnywhere(n);
@@ -32447,7 +32675,7 @@ const StyleDesigner = (function () {
                     }
                 });
                 // Re-find insertion index after removals
-                var idx2 = tgtParent2.children.indexOf(node);
+                var idx2 = tgtParent2.children.indexOf(tgt);
                 if (idx2 === -1) idx2 = tgtParent2.children.length;
                 if (pos === 'after') idx2 += 1;
                 nodesToMove.forEach(function(n, i) {
