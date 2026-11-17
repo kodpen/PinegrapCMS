@@ -72220,7 +72220,7 @@ const StyleDesigner = (function () {
     // undo history and content rights answer; the normal Save writes it.
     // Classic menus and regions stay read-only.
     var _sdProto = { open: false, ui: null, canvas: null, items: [], byId: {}, layout: null, view: { x: 40, y: 40, k: 1 }, seq: 0, selected: null, env: {}, warned: {}, menu: null,
-        link: null, lifted: '', drawing: false, broken: { list: [], count: {} }, issues: null, problems: null,
+        link: null, lifted: '', drawing: false, broken: { list: [], count: {} }, issues: null, problems: null, suggest: null,
         edgeTo: {},
         pics: { gen: 0, io: null, boxes: {}, near: {}, live: {}, wait: [], loading: 0, cache: {}, rects: {}, partH: {}, settle: 0, refill: 0 } };
 
@@ -72351,6 +72351,19 @@ const StyleDesigner = (function () {
         });
         bar.appendChild(ui.check);
         var tools = _sdProtoEl('div', 'sd-proto-tools');
+        // "Suggest targets · n" (F30) while links have no target: the bar's
+        // own quiet button with its count.
+        ui.suggest = _sdProtoButton('bi-magic', _sdT('Suggest targets'), function () {
+            if (_sdProto.suggest) _sdProtoSuggestClose(true);
+            else _sdProtoSuggestOpen();
+        });
+        ui.suggest.classList.add('sd-proto-suggest-btn');
+        ui.suggest.appendChild(_sdProtoEl('span', 'sd-proto-btn-label', _sdT('Suggest targets')));
+        ui.suggestCount = _sdProtoEl('span', 'sd-proto-suggest-count');
+        ui.suggest.appendChild(ui.suggestCount);
+        ui.suggest.hidden = true;
+        ui.suggest.setAttribute('aria-haspopup', 'dialog');
+        tools.appendChild(ui.suggest);
         // Play (F24): the prototype viewer at the selected page, else at
         // the first page it has; hidden when it has none.
         ui.play = _sdProtoButton('bi-play-fill', _sdT('Play the prototype from the selected page'), function () {
@@ -72603,6 +72616,7 @@ const StyleDesigner = (function () {
         if (!_sdProto.open) return;
         _sdProtoMenuClose(false);
         _sdProtoProblemsClose(false);
+        _sdProtoSuggestClose(false);
         _sdProto.open = false;
         _sdProto.seq++;
         if (_sdProto.canvas) _sdProto.canvas.cancel();
@@ -73016,6 +73030,7 @@ const StyleDesigner = (function () {
         _sdProtoPicked();
         _sdProtoListDraw();
         _sdProtoPlayState();
+        if (_sdProto.suggest) _sdProtoSuggestArrows();
     }
 
     // One link picked (F16) by its frame and port, from a row of the panel
@@ -73347,6 +73362,11 @@ const StyleDesigner = (function () {
         // "N to check" in amber after it (F28).
         ui.check.hidden = !toCheck;
         ui.check.textContent = toCheck ? _sdT('{var:1} to check', toCheck) : '';
+        var toSuggest = _sdProto.issues.empty.list.length;
+        ui.suggest.hidden = !toSuggest;
+        ui.suggestCount.textContent = toSuggest ? String(toSuggest) : '';
+        ui.suggest.title = toSuggest ? _sdT('Suggest targets · {var}', toSuggest) : '';
+        ui.suggest.setAttribute('aria-label', ui.suggest.title || _sdT('Suggest targets'));
         _sdProtoStatusFit();
         canvas.announce(_sdT('{var:1} links', count) + (broken ? ' · ' + _sdT('{var:1} broken', broken) : '') + (toCheck ? ' · ' + _sdT('{var:1} to check', toCheck) : ''));
         // A picked link of a frame no longer there, or no longer a link, goes.
@@ -73366,6 +73386,7 @@ const StyleDesigner = (function () {
         else canvas.view.apply();
         _sdProtoSelect(_sdProto.selected);
         _sdProtoPicWatch();
+        _sdProtoSuggestArrows();
     }
 
     // ── The page picture (F1, F3) ──
@@ -73753,6 +73774,365 @@ const StyleDesigner = (function () {
         } else {
             sdToast(esc(_sdT('This page is on the site: the changed link goes live when you click Publish.')), 'info', 6000);
         }
+    }
+
+    // ── Suggest targets (F30 to F34) ──
+    // A dialog over the canvas with one row per link without a target,
+    // grouped by page (PGProtoHotspots.suggestRows()): a sure row ticked
+    // with its page selected, an unsure one asking with its candidates, one
+    // without a suggestion on "Choose a page". While it is open the ticked
+    // rows of the selected frame are drawn as dashed arrows (the core's
+    // dashed()). Nothing is written before Apply; Cancel and Escape write
+    // nothing, and a skipped row is suggested again next time.
+
+    // The pages a link may be pointed at: the tab frames, with the title of
+    // their page settings.
+    function _sdProtoSuggestPages() {
+        return (_sdProto.layout ? _sdProto.layout.frames : []).filter(function (f) { return f.kind === 'page'; }).map(function (f) {
+            var page = _pgPageByKey(f.key);
+            return { id: f.id, name: f.name, title: page ? String(page.page_title || '') : '', bin: !!(page && parseInt(page.binned || 0, 10)) };
+        });
+    }
+
+    // The nearest heading above each link without a target, read from the
+    // tree of its tab or shared component.
+    function _sdProtoSuggestHeadings() {
+        var H = window.PGProtoHotspots;
+        var out = {};
+        (_sdProto.issues ? _sdProto.issues.empty.list : []).forEach(function (one) {
+            var item = _sdProto.byId[one.frame];
+            var row = _sdProtoRow(item, one.port);
+            if (!item || !row) return;
+            var page = (item.kind === 'page') ? _pgPageByKey(item.key) : null;
+            var root = (item.kind === 'shared') ? (_sharedCache[item.sharedId] && _sharedCache[item.sharedId].tree) : (page ? _pgTreeOf(page) : null);
+            if (root) out[one.frame + '|' + one.port] = H.headingOf(root, row.nodeId);
+        });
+        return out;
+    }
+
+    function _sdProtoSuggestOpen() {
+        var H = window.PGProtoHotspots;
+        _sdProtoSuggestClose(false);
+        _sdProtoMenuClose(false);
+        _sdProtoProblemsClose(false);
+        var pages = _sdProtoSuggestPages();
+        var found = H.suggestRows(_sdProto.layout, pages, _sdProtoSuggestHeadings());
+        if (!found.rows.length) return;
+        var rows = found.rows.map(function (r) {
+            r.ticked = r.kind === 'sure';
+            r.target = r.page || '';
+            r.asked = r.kind === 'ask';
+            r.why = '';
+            return r;
+        });
+
+        var el = document.createElement('dialog');
+        el.className = 'dialog dialog-scrollable sd-proto-suggest';
+        el.tabIndex = -1;
+        el.setAttribute('data-bs-modal', 'false');
+        el.setAttribute('aria-labelledby', 'sd-proto-suggest-title');
+        el.innerHTML =
+            '<div class="dialog-header py-3"><div><h6 class="dialog-title mb-0" id="sd-proto-suggest-title">' + esc(_sdT('Suggest targets')) + '</h6>' +
+                    '<div class="small fg-secondary" data-suggest-count></div></div>' +
+                '<button type="button" class="btn-close" data-suggest-cancel aria-label="' + esc(_sdT('Close')) + '"></button></div>' +
+            '<div class="dialog-body small p-0" data-suggest-list></div>' +
+            '<div class="dialog-footer py-3">' +
+                '<button type="button" class="pg-button pg-button-ghost" data-suggest-cancel>' + esc(_sdT('Cancel')) + '</button>' +
+                '<button type="button" class="pg-button pg-button-fill" data-suggest-apply></button>' +
+            '</div>';
+        document.body.appendChild(el);
+        _sdProto.suggest = { el: el, rows: rows, pages: pages, count: found.count, opener: document.activeElement };
+        _sdProtoSuggestDraw();
+
+        Array.prototype.forEach.call(el.querySelectorAll('[data-suggest-cancel]'), function (b) {
+            b.addEventListener('click', function () { _sdProtoSuggestClose(true); });
+        });
+        el.querySelector('[data-suggest-apply]').addEventListener('click', function () { _sdProtoSuggestApply(); });
+        el.addEventListener('keydown', function (event) {
+            // The designer's own keys stay out of the dialog.
+            event.stopPropagation();
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                _sdProtoSuggestClose(true);
+            }
+        });
+        el.addEventListener('cancel', function (event) {
+            event.preventDefault();
+            _sdProtoSuggestClose(true);
+        });
+        // At the canvas's right under the view's bar, the map left of it; on
+        // a screen too narrow for that, 8 from the window's edges.
+        var r = _sdProto.ui.stage.getBoundingClientRect();
+        var right = Math.max(8, window.innerWidth - r.right + 8);
+        if (window.innerWidth - right - 8 < 320) right = 8;
+        el.style.top = Math.max(8, r.top + 8) + 'px';
+        el.style.right = right + 'px';
+        el.style.maxWidth = (window.innerWidth - right - 8) + 'px';
+        el.style.maxHeight = Math.max(240, window.innerHeight - Math.max(8, r.top + 8) - 8) + 'px';
+        if (window.pgUI) pgUI.dialog.show(el, { backdrop: false });
+        else el.show();
+        var first = el.querySelector('input[type="checkbox"]');
+        if (first) first.focus({ preventScroll: true });
+    }
+
+    // The rows drawn again: the head's counts, a group per page, the Apply
+    // button's count; then the dashed arrows.
+    function _sdProtoSuggestDraw() {
+        var s = _sdProto.suggest;
+        if (!s) return;
+        var el = s.el;
+        var focusKey = document.activeElement && el.contains(document.activeElement) ? document.activeElement.getAttribute('data-focus') : null;
+        el.querySelector('[data-suggest-count]').textContent = _sdT('{var:1} sure · {var:2} to ask · {var:3} without a suggestion', [s.count.sure, s.count.ask, s.count.none]);
+        var list = el.querySelector('[data-suggest-list]');
+        list.innerHTML = '';
+        var group = null;
+        var lastFrame = null;
+        s.rows.forEach(function (r, i) {
+            if (r.frame !== lastFrame) {
+                lastFrame = r.frame;
+                var head = _sdProtoEl('div', 'sd-proto-suggest-head fw-semibold px-3 pt-3 pb-1', _sdProtoFrameName(_sdProto.byId[r.frame] || { name: '' }));
+                list.appendChild(head);
+                group = _sdProtoEl('ul', 'list-group list-group-flush');
+                list.appendChild(group);
+            }
+            var li = _sdProtoEl('li', 'list-group-item sd-proto-suggest-row');
+            var top = _sdProtoEl('div', 'sd-proto-suggest-line');
+            var tick = _sdProtoEl('input', 'pg-checkbox');
+            tick.type = 'checkbox';
+            tick.checked = r.ticked;
+            tick.disabled = !r.target;
+            tick.setAttribute('data-focus', 'tick' + i);
+            tick.setAttribute('aria-label', _sdT('Connect "{var}"', r.label));
+            tick.addEventListener('change', function () {
+                r.ticked = tick.checked && !!r.target;
+                _sdProtoSuggestDraw();
+            });
+            top.appendChild(tick);
+            // The label selects its link on the canvas behind.
+            var label = _sdProtoEl('button', 'pg-button pg-button-ghost pg-button-sm sd-proto-suggest-label', r.label);
+            label.type = 'button';
+            label.title = _sdT('Show this link on the map');
+            label.setAttribute('data-focus', 'label' + i);
+            label.addEventListener('click', function () { _sdProtoPick(r.frame, r.port, true); });
+            // The label and its selector: the selector beside a label that
+            // fits, under a long one (the line wraps), the tick before both.
+            var pick = _sdProtoEl('div', 'sd-proto-suggest-pick');
+            pick.appendChild(label);
+            top.appendChild(pick);
+            var select = _sdProtoEl('select', 'pg-input pg-input-sm');
+            select.setAttribute('data-focus', 'select' + i);
+            select.setAttribute('aria-label', _sdT('Where "{var}" goes', r.label));
+            var none = _sdProtoEl('option', '', _sdT('Choose a page'));
+            none.value = '';
+            select.appendChild(none);
+            s.pages.forEach(function (p) {
+                if (p.id === r.frame || p.bin) return;
+                var o = _sdProtoEl('option', '', _sdProtoFrameName(_sdProto.byId[p.id] || p));
+                o.value = p.id;
+                select.appendChild(o);
+            });
+            select.value = r.target;
+            // A page name longer than the selector is whole in its title.
+            select.title = select.selectedIndex >= 0 ? select.options[select.selectedIndex].textContent : '';
+            select.addEventListener('change', function () {
+                r.target = select.value;
+                r.ticked = !!r.target;
+                _sdProtoSuggestDraw();
+            });
+            pick.appendChild(select);
+            li.appendChild(top);
+            // An unsure row asks, its candidates as buttons and Skip.
+            if (r.asked) {
+                var ask = _sdProtoEl('div', 'sd-proto-suggest-ask');
+                ask.appendChild(_sdProtoEl('span', 'fg-secondary', _sdT('Where should "{var}" go?', r.label)));
+                r.candidates.forEach(function (id) {
+                    // The chosen one is pressed and carries a check.
+                    var b = _sdProtoEl('button', 'pg-button pg-button-quiet pg-button-sm');
+                    b.type = 'button';
+                    if (r.target === id) b.innerHTML = '<span class="bi bi-check2" aria-hidden="true"></span>';
+                    b.appendChild(document.createTextNode(_sdProtoFrameName(_sdProto.byId[id] || { name: id })));
+                    b.setAttribute('data-focus', 'pick' + i + id);
+                    b.setAttribute('aria-pressed', r.target === id ? 'true' : 'false');
+                    b.addEventListener('click', function () {
+                        r.target = id;
+                        r.ticked = true;
+                        _sdProtoSuggestDraw();
+                    });
+                    ask.appendChild(b);
+                });
+                var skip = _sdProtoEl('button', 'pg-button pg-button-ghost pg-button-sm', _sdT('Skip'));
+                skip.type = 'button';
+                skip.setAttribute('data-focus', 'skip' + i);
+                skip.addEventListener('click', function () {
+                    r.asked = false;
+                    r.target = '';
+                    r.ticked = false;
+                    _sdProtoSuggestDraw();
+                });
+                ask.appendChild(skip);
+                li.appendChild(ask);
+            }
+            if (r.why) li.appendChild(_sdProtoEl('div', 'fg-danger', r.why));
+            group.appendChild(li);
+        });
+        var n = s.rows.filter(function (r) { return r.ticked && r.target; }).length;
+        var apply = el.querySelector('[data-suggest-apply]');
+        apply.textContent = _sdT('Apply {var} targets', n);
+        apply.disabled = !n || !!s.busy;
+        if (focusKey) {
+            var back = el.querySelector('[data-focus="' + focusKey + '"]') || el.querySelector('[data-focus^="label"]');
+            if (back) back.focus({ preventScroll: true });
+        }
+        _sdProtoSuggestArrows();
+    }
+
+    // The ticked rows of the selected frame as dashed arrows from their
+    // mark to the chosen frame; none when the dialog is closed.
+    function _sdProtoSuggestArrows() {
+        var canvas = _sdProto.canvas;
+        if (!canvas) return;
+        var s = _sdProto.suggest;
+        var id = canvas.focused();
+        canvas.dashed(!s ? [] : s.rows.filter(function (r) {
+            return r.ticked && r.target && r.frame === id && _sdProto.byId[r.target];
+        }).map(function (r) {
+            return { id: 'suggest:' + r.frame + '|' + r.port, from: _sdProto.byId[r.frame], to: _sdProto.byId[r.target], port: r.port };
+        }));
+    }
+
+    function _sdProtoSuggestClose(refocus) {
+        var s = _sdProto.suggest;
+        if (!s) return;
+        _sdProto.suggest = null;
+        _sdProtoSuggestArrows();
+        if (window.pgUI) {
+            pgUI.dialog.on(s.el, 'hidden', function () { s.el.remove(); });
+            pgUI.dialog.hide(s.el);
+        } else {
+            s.el.remove();
+        }
+        var back = (_sdProto.ui && !_sdProto.ui.suggest.hidden) ? _sdProto.ui.suggest : (_sdProto.ui ? _sdProto.ui.viewport : null);
+        if (refocus && back) back.focus({ preventScroll: true });
+    }
+
+    // Apply (F34): each ticked row written as a drawn arrow is
+    // (_sdProtoConnect()), batched: the shared component and live page
+    // warnings asked once, naming what the batch touches; each tab opened
+    // in turn (its lock answered by a heartbeat), its rows written after one
+    // saveState(), so undo on that tab takes back its batch. A row that
+    // cannot be written stays with its reason; then "n links connected"
+    // and the links are read again.
+    function _sdProtoSuggestApply() {
+        var H = window.PGProtoHotspots;
+        var s = _sdProto.suggest;
+        if (!s || s.busy) return;
+        var picks = s.rows.filter(function (r) { return r.ticked && r.target; }).map(function (r) {
+            var item = _sdProto.byId[r.frame];
+            var key = item ? _sdProtoFrameTab(item) : '';
+            var page = key ? _pgPageByKey(key) : null;
+            return { frame: r.frame, port: r.port, page: r.target, tab: key, locked: !!(page && page.access === 'locked'), row: r };
+        });
+        if (!picks.length) return;
+        var batch = H.suggestBatch(picks);
+        var reasons = {
+            target: _sdT('Choose a page'),
+            tab: _sdT('This shared component is on none of the pages you can open.'),
+            locked: _sdT('You do not have content rights for this page\'s folder.'),
+            busy: _sdT('Someone else is editing this page.'),
+            changed: _sdT('This link has changed since the map was drawn.'),
+            rights: _sdT('You cannot change this part of the page.')
+        };
+        s.rows.forEach(function (r) { r.why = ''; });
+        batch.refused.forEach(function (one) { one.pick.row.why = reasons[one.why] || ''; });
+
+        var parts = [];
+        var live = [];
+        batch.tabs.forEach(function (tab) {
+            var page = _pgPageByKey(tab.key);
+            tab.picks.forEach(function (pick) {
+                var item = _sdProto.byId[pick.frame];
+                if (item && item.kind === 'shared') {
+                    if (parts.indexOf(item.name) < 0) parts.push(item.name);
+                } else if (page && page.page_id > 0 && _design && _design.styleId && !(_pgDraftsReady() && page.page_draft)) {
+                    var name = _sdProtoFrameName(item);
+                    if (live.indexOf(name) < 0) live.push(name);
+                }
+            });
+        });
+        var ask = [];
+        if (parts.length) ask.push(_sdT('Shared components: {var}. Save changes them on every page and design that shows them, without a revision.', parts.join(', ')));
+        if (live.length) ask.push(_sdT('Pages on the site: {var}. The changed links go live when you click Publish.', live.join(', ')));
+        var asked = (ask.length && typeof window.pgConfirm === 'function')
+            ? window.pgConfirm({ title: _sdT('Connect these links?'), message: ask.join(' '), confirmText: _sdT('Connect'), cancelText: _sdT('Cancel'), variant: 'warning' })
+            : Promise.resolve(true);
+
+        asked.then(function (ok) {
+            if (!ok || _sdProto.suggest !== s) return;
+            s.busy = true;
+            _sdProtoSuggestDraw();
+            var done = 0;
+            var chain = Promise.resolve();
+            batch.tabs.forEach(function (tab) {
+                chain = chain.then(function () {
+                    return _sdProtoSuggestTab(tab, reasons).then(function (n) { done += n; });
+                });
+            });
+            chain.then(function () {
+                if (_sdProto.suggest !== s) return;
+                s.busy = false;
+                if (done) {
+                    sdToast(esc(_sdT('{var} links connected', done)), 'success', 4000);
+                    _sdProto.canvas.announce(_sdT('{var} links connected', done));
+                }
+                s.rows = s.rows.filter(function (r) { return !r.written; });
+                s.count = { sure: 0, ask: 0, none: 0 };
+                s.rows.forEach(function (r) { s.count[r.kind]++; });
+                if (!s.rows.length) _sdProtoSuggestClose(true);
+                else _sdProtoSuggestDraw();
+                _sdProtoLoad();
+            });
+        });
+    }
+
+    // One tab's rows of a batch: the tab opened, its lock answered, the
+    // rows written after one saveState(). Resolves with how many were.
+    function _sdProtoSuggestTab(tab, reasons) {
+        var H = window.PGProtoHotspots;
+        var fail = function (why) {
+            tab.picks.forEach(function (pick) { pick.row.why = reasons[why]; });
+            return 0;
+        };
+        var write = function () {
+            if (_activeKey !== tab.key || !_sdProto.open) return fail('locked');
+            if (!_collab.mayEdit) return fail('busy');
+            var patches = [];
+            tab.picks.forEach(function (pick) {
+                var item = _sdProto.byId[pick.frame];
+                var row = _sdProtoRow(item, pick.port);
+                var to = _sdProto.byId[pick.page];
+                var href = (row && row.nodeId === pick.row.nodeId) ? _sdProtoArrowHref(item, to, pick.port) : null;
+                var sid = (item && item.kind === 'shared') ? item.sharedId : 0;
+                var root = sid ? (_sharedCache[sid] && _sharedCache[sid].tree) : tree;
+                var node = (href !== null && root) ? findNodeById(row.nodeId, root) : null;
+                var patch = node ? H.hrefPatch(node, row, href, to) : null;
+                if (!patch) { pick.row.why = reasons.changed; return; }
+                if (!_sdCanEditNode(node, row.source === 'text' ? 'text' : undefined)) { pick.row.why = reasons.rights; return; }
+                patches.push({ node: node, patch: patch, sid: sid, pick: pick });
+            });
+            if (!patches.length) return 0;
+            saveState();
+            patches.forEach(function (one) {
+                H.applyPatch(one.node.props, one.patch);
+                if (one.sid) _sdSharedMarkEdited(one.node);
+                one.pick.row.written = true;
+            });
+            render();
+            return patches.length;
+        };
+        if (_activeKey !== tab.key) _pgTabsSwitch(tab.key);
+        if (_activeKey !== tab.key) return Promise.resolve(fail('locked'));
+        if (!_collab.ready) return Promise.resolve(write());
+        return _collabBeatNow().then(write, write);
     }
 
     // The keyboard's way to draw a row's arrow: a menu of the tab frames

@@ -10,7 +10,7 @@ description: Plan prototype-canvas, steps PV11a and PV11b from the owner's answe
   - The bar's amber "N to check", the three groups of the problems list, the head's amber count and the amber rectangle and list row (F28, F29).
   - Tests: the mark of `''`, `#`, `#top`, a toggle and a bound link; the unreached set of a small graph with a shared part and with the Start page unlinked; the counts of the bar.
   - Features: F26, F27, F28, F29. No setting, no schema.
-- PV11b (M) Suggest targets. After PV11a.
+- PV11b (M) Suggest targets. After PV11a. Done in #10243: `designer/prototype-suggest.md`.
   - `PGProtoHotspots.suggest(link, pages)` as F31 says, pure: answers `{ sure: page or null, candidates: [...] }`. The filler words are one constant; the nearest heading comes from the tab's tree, read by the view and passed in, so the function stays pure.
   - The dialog (F30, F32): built from the panel's own modal, list and form parts, no new stylesheet rules beyond its layout; keyboard: Tab through rows, Space ticks, Enter on a candidate picks it, Escape cancels.
   - The dashed arrows of ticked rows (F33) go through the core as a set of edges with a `dashed` flag the core draws; no second arrow drawer.

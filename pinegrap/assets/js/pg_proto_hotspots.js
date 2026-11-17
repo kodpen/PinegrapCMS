@@ -2072,6 +2072,215 @@
         return out;
     }
 
+    // ── Suggested targets (F30 to F32) ──
+
+    // Words a link's label says without naming a page, dropped before a
+    // label, a page name or a page title is matched.
+    var SUGGEST_FILLER = ['go', 'to', 'the', 'page', 'view', 'see', 'git', 'sayfa', 'gör', 'incele'];
+
+    // At most this many pages offered for an unsure link.
+    var SUGGEST_MAX = 3;
+
+    // The words of a text as the match compares them: lower case, Turkish
+    // letters to plain ones (dotted capital I and dotless i to i, the marks
+    // of ç, ğ, ö, ş, ü, â, î, û dropped), punctuation and spaces between
+    // words, the filler words left out.
+    function foldWord(text) {
+        return String(text).replace(/İ/g, 'i').toLowerCase().replace(/ı/g, 'i')
+            .normalize('NFD').replace(/[̀-ͯ]/g, '');
+    }
+
+    function foldWords(text) {
+        var filler = SUGGEST_FILLER.map(foldWord);
+
+        return foldWord(str(text)).split(/[\s!-\/:-@\[-`{-~ -¿‐-‧‰-⁞]+/).filter(function (word) {
+            return word !== '' && filler.indexOf(word) < 0;
+        });
+    }
+
+    // How well a page matches the words of a label: 3 when its folded name
+    // or title is the label, 2 when every word of it begins a word of the
+    // label (a word of three letters or more as a beginning, a shorter one
+    // whole), between 1 and 1.5 when only some do, else 0.
+    function suggestScore(words, page) {
+        var said = words.join(' ');
+        var best = 0;
+
+        [page.name, page.title].forEach(function (text) {
+            var own = foldWords(text);
+
+            if (!own.length || !words.length) {
+                return;
+            }
+
+            if (own.join(' ') === said) {
+                best = Math.max(best, 3);
+                return;
+            }
+
+            var hit = own.filter(function (w) {
+                return words.some(function (l) { return l === w || (w.length >= 3 && l.indexOf(w) === 0); });
+            }).length;
+
+            if (hit === own.length) {
+                best = Math.max(best, 2);
+            } else if (hit > 0) {
+                best = Math.max(best, 1 + hit / own.length / 2);
+            }
+        });
+
+        return best;
+    }
+
+    function suggestMatches(words, pages) {
+        return pages.map(function (page, at) {
+            return { page: page, at: at, score: suggestScore(words, page) };
+        }).filter(function (m) { return m.score > 0; }).sort(function (a, b) {
+            return (b.score - a.score) || (a.at - b.at);
+        });
+    }
+
+    // The page a link without a target (link: { label, page, the id of the
+    // page it is on, heading, the nearest heading above it in its block })
+    // should lead to, among `pages` ([{ id, name, title, bin }]): { sure,
+    // the page when its label names it and no other page matches at all,
+    // else null; candidates, at most three pages best first }. A label
+    // that matches nothing is tried once more with its heading, and what
+    // that finds is unsure. The link's own page and a page in the bin are
+    // never offered.
+    function suggest(link, pages) {
+        link = isObject(link) ? link : {};
+
+        var own = str(link.page);
+        var open = (Array.isArray(pages) ? pages : []).filter(function (page) {
+            return isObject(page) && !page.bin && (own === '' || String(page.id) !== own);
+        });
+        var found = suggestMatches(foldWords(link.label), open);
+
+        if (found.length === 1 && found[0].score >= 2) {
+            return { sure: found[0].page, candidates: [found[0].page] };
+        }
+
+        if (!found.length) {
+            found = suggestMatches(foldWords(link.heading), open);
+        }
+
+        return { sure: null, candidates: found.slice(0, SUGGEST_MAX).map(function (m) { return m.page; }) };
+    }
+
+    // The text of the nearest heading above node `id` in its block (the
+    // top-level part of the tree holding it), '' for none: a heading
+    // content's or an h1 to h6's text, read before the node in document
+    // order.
+    function headingOf(tree, id) {
+        var top = (isObject(tree) && Array.isArray(tree.children)) ? tree.children : [];
+        var want = String(id);
+
+        for (var i = 0; i < top.length; i++) {
+            var last = '';
+            var found = (function walk(node) {
+                if (!isObject(node)) {
+                    return false;
+                }
+
+                if (String(node._id) === want) {
+                    return true;
+                }
+
+                var props = propsOf(node);
+                var tag = str(props.tag).toLowerCase();
+
+                if ((node.type === 'content' && props.contentType === 'heading' && (tag === '' || /^h[1-6]$/.test(tag))) || (node.type === 'semantic' && /^h[1-6]$/.test(tag))) {
+                    var text = plainText(str(props.text));
+
+                    if (text !== '') {
+                        last = text;
+                    }
+                }
+
+                return (Array.isArray(node.children) ? node.children : []).some(walk);
+            })(top[i]);
+
+            if (found) {
+                return last;
+            }
+        }
+
+        return '';
+    }
+
+    // The rows of the Suggest targets dialog: one per drawable link without
+    // a target in the frames' order (a shared part's once, as it has one
+    // frame), each { frame, port, nodeId, source, label, kind ('sure', 'ask'
+    // or 'none'), page (the sure page's id, else null), candidates (ids) };
+    // `headings` gives a link's heading by '<frame>|<port>'. count: the
+    // head's numbers { sure, ask, none }.
+    function suggestRows(laid, pages, headings) {
+        var out = { rows: [], count: { sure: 0, ask: 0, none: 0 } };
+
+        headings = isObject(headings) ? headings : {};
+
+        ((laid && laid.frames) || []).forEach(function (frame) {
+            (frame.rows || []).forEach(function (row) {
+                if (row.mark !== 'empty' || !drawable(row)) {
+                    return;
+                }
+
+                var key = frame.id + '|' + row.port;
+                var s = suggest({ label: row.label, page: frame.kind === 'page' ? frame.id : '', heading: has(headings, key) ? headings[key] : '' }, pages);
+                var kind = s.sure ? 'sure' : (s.candidates.length ? 'ask' : 'none');
+
+                out.count[kind]++;
+                out.rows.push({
+                    frame: frame.id,
+                    port: row.port,
+                    nodeId: str(row.nodeId),
+                    source: str(row.source),
+                    label: rowLabel(row),
+                    kind: kind,
+                    page: s.sure ? String(s.sure.id) : null,
+                    candidates: s.candidates.map(function (page) { return String(page.id); })
+                });
+            });
+        });
+
+        return out;
+    }
+
+    // What Apply writes of the dialog's ticked rows (each { frame, port,
+    // page, the target frame's id, tab, the key of the tab it is written
+    // on, locked, whether that tab is closed to the operator }): tabs, one
+    // per tab in the order of its first row, each { key, picks }, so a tab
+    // gets one undo entry; refused, the rows left unwritten with why
+    // ('target' with no page chosen, 'tab' for a link on no tab, 'locked').
+    function suggestBatch(picks) {
+        var out = { tabs: [], refused: [] };
+        var byKey = {};
+
+        (Array.isArray(picks) ? picks : []).forEach(function (pick) {
+            if (!isObject(pick)) {
+                return;
+            }
+
+            var key = str(pick.tab);
+            var why = (str(pick.page) === '') ? 'target' : (key === '' ? 'tab' : (pick.locked ? 'locked' : ''));
+
+            if (why !== '') {
+                out.refused.push({ pick: pick, why: why });
+                return;
+            }
+
+            if (!has(byKey, key)) {
+                byKey[key] = { key: key, picks: [] };
+                out.tabs.push(byKey[key]);
+            }
+
+            byKey[key].picks.push(pick);
+        });
+
+        return out;
+    }
+
     window.PGProtoHotspots = {
         FRAME: FRAME,
         layout: layout,
@@ -2120,6 +2329,12 @@
         problemsOf: problemsOf,
         widgetPages: widgetPages,
         widgetKind: widgetKind,
-        brokenWhy: brokenWhy
+        brokenWhy: brokenWhy,
+        SUGGEST_FILLER: SUGGEST_FILLER,
+        foldWords: foldWords,
+        suggest: suggest,
+        headingOf: headingOf,
+        suggestRows: suggestRows,
+        suggestBatch: suggestBatch
     };
 })();
