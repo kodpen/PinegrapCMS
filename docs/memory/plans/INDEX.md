@@ -64,6 +64,7 @@
 - design-template-own-looks-order.md: Order of the polishing round after Launch: every shipped template's family and pages steps, in which order, and where each template stands
 - design-template-own-looks.md: Plan (owner 2026-11-07): block families in their own source files (B0), Launch as an Apple-like product page (L1-L3), then a polishing round for every template
 - designer-panels-additions.md: Plan designer-panels: additions of other plans to the Options column, the Overview, the page strip or the canvas bar wait for that area's new shape (owner 2026-11-17); which steps wait
+- designer-panels-differences.md: Plan designer-panels: the list of differences between a landed step and its accepted picture, kept for the close-out DP25, which brings it to the owner as one list
 - designer-panels-drawings.md: Plan designer-panels: the sheets in `plans/designer-panels/`, what each shows, where its measures are as text, which board of `boards.html` it is and how a sheet is made from its board
 - designer-panels-features-2.md: Plan designer-panels, features D16 to D28: the spacing box and the size chooser, corners, layout by context, the search that also adds, the review view, copy and paste style
 - designer-panels-features-3.md: Plan designer-panels, features D29 to D44: the Overview tree for long pages: sections, folded chains, hints, search, the page map, wide drop targets, long drags, moving without dragging
