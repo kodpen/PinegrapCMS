@@ -22,7 +22,7 @@ priority: 10
 
 ## Which steps are there?
 - CX1 GitHub: stopped at its sheet. Drawn: messages 9308 to 9320; poll 146 (message 9334) answered by the rule above.
-- CX2 Voice message transcripts: the owner chose in poll 147 (message 9350) that the card moves to Assistants and agents and the category is named "Kanallar"; the key moves to Connections in a later step.
+- CX2 Voice message transcripts: Owner (poll 147, message 9350): the card moves to Assistants and agents, the category is named "Kanallar"; the key moves to Connections later. Drawn: messages 9321 to 9339; built.
 - CX3 Mail, as its sheet (messages 9351 to 9365). Owner (2026-11-17, poll 148, message 9374): a Site Settings category "E-posta gönderimi" between Communication and Mailboxes; SMTP Settings leaves System tools, its old addresses open it; the campaign's two texts and MailChimp join it. Two steps, CX3a and CX3b.
 - CX6 The management screen's sheet (mock, no product code): the Connections list as the one place, three service panels (GitHub, Google, OpenAI), e-mail sending as a list row, one feature card after the change. Drawn: agent channel message 9376 and replies; the owner's look: waiting.
 - The build steps come after the owner's yes to CX6 and are cut from its drawing.
