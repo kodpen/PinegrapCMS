@@ -1571,23 +1571,44 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
 
 /* ── Tree drag & drop indicators ── */
 .sd-tree-drag-src { opacity: .4; }
-/* Sibling drop indicators — dashed accent line with a soft glow so it reads
-   as "this is where the dragged item will land", not as a permanent border. */
-.sd-tree-drop-before {
-    border-top: 2px dashed var(--sd-accent) !important;
-    box-shadow: 0 -3px 0 -2px rgba(var(--sd-accent-rgb), .25) !important;
+/* A gap target: a 2 px line with an 8 px dot at the chosen level's indent
+   (--sd-drop-ind), on the row's top or foot; the gap reaches 7 px into each
+   row (_sdTreeDropPick()). */
+.sd-tree-list li.sd-tree-drop-before,
+.sd-tree-list li.sd-tree-drop-after { position: relative; overflow: visible; }
+.sd-tree-list li.sd-tree-drop-before::after,
+.sd-tree-list li.sd-tree-drop-after::after {
+    content: ''; position: absolute; z-index: 2; pointer-events: none;
+    left: calc(4px + var(--sd-drop-ind, 0px)); right: 4px; height: 8px;
+    background:
+        radial-gradient(circle 4px at 4px 50%, var(--sd-accent) 98%, transparent 100%),
+        linear-gradient(var(--sd-accent), var(--sd-accent)) 0 50% / 100% 2px no-repeat;
 }
-.sd-tree-drop-after {
-    border-bottom: 2px dashed var(--sd-accent) !important;
-    box-shadow: 0 3px 0 -2px rgba(var(--sd-accent-rgb), .25) !important;
-}
-/* Inside drop indicator — dashed outline + tinted background; clearly
-   distinct from the solid hover/selected states. */
-.sd-tree-drop-inside {
-    outline: 2px dashed var(--sd-accent) !important;
+.sd-tree-list li.sd-tree-drop-before::after { top: -4px; }
+.sd-tree-list li.sd-tree-drop-after::after { bottom: -4px; }
+/* "Inside": the middle 14 px of a row frame it. */
+.sd-tree-list li.sd-tree-drop-inside {
+    outline: 2px solid var(--sd-accent) !important;
     outline-offset: -2px;
-    background: rgba(var(--sd-accent-rgb), .12) !important;
+    background: var(--sd-accent-soft) !important;
 }
+/* A row that cannot take the drop is dimmed; the label says why. */
+.sd-tree-list li.sd-tree-drop-refused { opacity: .45; cursor: not-allowed; }
+/* The label that follows the pointer and names the target. */
+#sd-tree-drop-label {
+    position: fixed; z-index: 10050; pointer-events: none;
+    display: flex; align-items: center; gap: 6px; max-width: 300px;
+    padding: 3px 10px; border-radius: 6px; font-size: 12px; line-height: 18px;
+    background: var(--sd-accent-strong); color: var(--sd-on-accent);
+    box-shadow: 0 4px 12px color-mix(in srgb, var(--sd-shadow) 40%, transparent);
+    white-space: nowrap;
+}
+#sd-tree-drop-label[hidden] { display: none; }
+#sd-tree-drop-label.sd-tree-drop-label-no {
+    background: var(--sd-raised-bg); color: var(--sd-text); border: 1px solid var(--sd-danger);
+}
+#sd-tree-drop-label.sd-tree-drop-label-no .bi { color: var(--sd-danger); }
+.sd-tree-drop-label-txt { overflow: hidden; text-overflow: ellipsis; }
 .sd-tree-list li[draggable="true"] { cursor: grab; }
 .sd-tree-list li[draggable="true"]:active { cursor: grabbing; }
 /* Drag ghost — lightweight, semi-transparent clone that follows the cursor.
