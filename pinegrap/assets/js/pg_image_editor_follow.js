@@ -32,6 +32,11 @@
     // A phone held upright, as Record's: the sheet folds while Follow runs.
     var PHONE = '(max-width: 599.98px)';
 
+    // A touch screen with no fine pointer: no key to name in a hint.
+    function touchScreen() {
+        return !!(window.matchMedia && window.matchMedia('(hover: none) and (pointer: coarse)').matches);
+    }
+
     // The playhead as m:ss.d, as the play bar shows it.
     function clockText(ms) {
         var tenths = Math.max(0, Math.round(ms / 100)), m = Math.floor(tenths / 600), s = (tenths % 600) / 10;
@@ -639,7 +644,7 @@
         this.root.classList.toggle('pgie-followarmed', on);
 
         if (on) {
-            this.hint.textContent = t((f.phase === 'running') ? 'followHintRun' : 'followHint');
+            this.hint.textContent = t(M.followHint(f.phase === 'running', touchScreen()));
         }
 
         if (!on) {
@@ -679,7 +684,7 @@
         }
 
         p.classList.toggle('pgie-followsetup', !running);
-        p.querySelector('.pgie-followtext').textContent = t(running ? 'followBusy' : 'followHint');
+        p.querySelector('.pgie-followtext').textContent = t(running ? 'followBusy' : M.followHint(false, touchScreen()));
         share = (running && f.times && f.times.length) ? Math.min(100, Math.round(100 * f.next / f.times.length)) : 0;
         p.querySelector('.pgie-followshare').textContent = running ? pct(share) : '';
     };

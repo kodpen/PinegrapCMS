@@ -20,7 +20,7 @@ module: image_editor
 - Template matching likes a box inside the thing: ground inside the box that does not move with it lowers the score. On the fixture a box 6 px wider each side than the square was lost at 0.9 s; drawn inside, it held 10 s.
 
 ## How does a phone show it?
-- Arming folds the sheet as Record does (back when it ends, Path tab open); the pill over the stage holds the hint, then the share and İptal Et; a finger draws the box; the bar at the stage's foot hides while armed.
+- Arming folds the sheet as Record does (back when it ends, Path tab open); the pill over the stage holds the hint, then the share and İptal Et; on a touch screen the hints name no key (`M.followHint()`, the architect's look on #10123); a finger draws the box; the bar at the stage's foot hides while armed.
 
 ## How was it checked?
 - `tests/image_editor_follow_test.php` (Node): moves within 1.5 px with noise and light change, lost at the frame, the mapping for a turned and a mirrored clip, span, times, keys, the bar's list, the fixture's 300 frames.
