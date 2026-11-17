@@ -16,7 +16,7 @@ description: The "/" list in groups and by channel, the command gate (where: cha
 ## What else carries the group?
 - Each `ws_command_help()` entry: `group`, `group_label`, `where`. `ws_palette_commands()` rows: `group`, `group_label`, `where`.
 
-## What does the composer's "/" list show? (#PRNUM)
+## What does the composer's "/" list show? (#10166)
 - `commandPickerRows(commands, query, inThread)` (pure, workspace.js): the rows of `BOOT.commands` a name matches; a discussion's box (`isThread`, or a channel of `kind` thread) leaves out `where: channel`, so /agent-channel is offered only in the channel itself.
 - With nothing typed and the list longer than it shows (`.ws-picker-list` scrolls), it is drawn again by `commandPickerGroups(rows, BOOT.command_groups)`: a `.ws-picker-group` header per group, in `ws_command_group_labels()` order (BOOT `command_groups`), empty groups left out. With a word typed: no headers, the filter across all groups.
 - `drawPicker()` leaves a header out of `pickerItems`: the arrows, Enter and Tab skip it, a click on it does nothing; the chosen row is scrolled into view with its group's header.
