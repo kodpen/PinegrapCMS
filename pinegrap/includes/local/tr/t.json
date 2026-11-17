@@ -4962,6 +4962,7 @@
     "The marketplace was not removed, because its webhook could not be removed from {var:1}: {var:2} Try again, remove the webhook in your {var:1} seller panel first, or tick the box below the button to remove the marketplace anyway.": "Webhook'u {var:1} üzerinden kaldırılamadığı için pazaryeri kaldırılmadı: {var:2} Yeniden deneyin, önce webhook'u {var:1} satıcı panelinizden kaldırın ya da pazaryerini yine de kaldırmak için düğmenin altındaki kutuyu işaretleyin.",
     "The marketplace's order number": "Pazaryerinin sipariş numarası",
     "The marks are hidden.": "İşaretler gizlendi.",
+    "The markup changed too: links, formatting or styles.": "HTML de değişti: bağlantılar, biçimlendirme veya stiller.",
     "The markup of these pages has at least one serious fault, such as invalid nesting or images with no alt text.": "Bu sayfaların işaretlemesinde en az bir ciddi kusur var: geçersiz iç içe geçme veya alt metni olmayan görsel gibi.",
     "The master and every version you need, in the formats each screen and platform asks for.": "Ana kopya ve ihtiyacınız olan her sürüm, her ekranın ve platformun istediği formatlarda.",
     "The master and the project files kept safe after delivery": "Ana kopya ve proje dosyaları teslimattan sonra güvenle saklanır",

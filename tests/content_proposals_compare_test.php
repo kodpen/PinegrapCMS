@@ -32,7 +32,7 @@ function test_content_proposals_compare_link_address_shown()
 	$was = 'Order from <a href="https://shop.example.com/">our shop</a>.';
 	$now = 'Order from <a href="https://shop-example.net/pay">our shop</a>.';
 
-	pg_assert_true(pg_content_proposals_compare_markup_only($was, $now), 'same words, other link');
+	pg_assert_same('markup', pg_content_proposals_compare_kind($was, $now), 'same words, other link');
 
 	list($site, $proposed) = _content_proposals_compare_test_sides(pg_content_proposals_compare_line('Text', $was, $now));
 
@@ -58,7 +58,7 @@ function test_content_proposals_compare_words_differ_keep_plain_line()
 	$was = 'Order from <a href="https://shop.example.com/">our shop</a>.';
 	$now = 'Buy in <a href="https://shop.example.com/">our store</a>.';
 
-	pg_assert_false(pg_content_proposals_compare_markup_only($was, $now));
+	pg_assert_same('plain', pg_content_proposals_compare_kind($was, $now), 'same tags');
 
 	$line = pg_content_proposals_compare_line('Text', $was, $now);
 	list($site, $proposed) = _content_proposals_compare_test_sides($line);
@@ -70,9 +70,9 @@ function test_content_proposals_compare_words_differ_keep_plain_line()
 
 function test_content_proposals_compare_same_value_plain()
 {
-	pg_assert_false(pg_content_proposals_compare_markup_only('<b>x</b>', ' <b>x</b> '), 'only outer spaces');
-	pg_assert_false(pg_content_proposals_compare_markup_only(array('a' => 1), array('a' => 2)), 'not text');
-	pg_assert_false(pg_content_proposals_compare_markup_only(null, ''), 'both empty');
+	pg_assert_same('plain', pg_content_proposals_compare_kind('<b>x</b>', ' <b>x</b> '), 'only outer spaces');
+	pg_assert_same('plain', pg_content_proposals_compare_kind(array('a' => 1), array('a' => 2)), 'not text');
+	pg_assert_same('plain', pg_content_proposals_compare_kind(null, ''), 'both empty');
 }
 
 function test_content_proposals_compare_script_escaped()
@@ -108,4 +108,57 @@ function test_content_proposals_compare_markup_not_cut()
 	$line = pg_content_proposals_compare_line('Text', $words . '<a href="/a">end</a>', $words . '<a href="/zz-long-tail">end</a>');
 
 	pg_assert_contains('/zz-long-tail', $line, 'a change past the words width is still shown');
+}
+
+function test_content_proposals_compare_words_and_link_changed_together()
+{
+	$was = 'Order from <a href="https://shop.example.com/">our shop</a>.';
+	$now = 'Order from <a href="https://shop-example.net/pay">our store</a>.';
+
+	pg_assert_same('both', pg_content_proposals_compare_kind($was, $now));
+
+	$line = pg_content_proposals_compare_line('Text', $was, $now);
+	list($site, $proposed) = _content_proposals_compare_test_sides($line);
+
+	pg_assert_contains('The markup changed too', $line, 'the note says the HTML changed too');
+	pg_assert_contains('Order from our store.', $proposed, 'the words as now');
+	pg_assert_contains('https://shop.example.com/', $site, 'the old address is readable');
+	pg_assert_contains('https://shop-example.net/pay', $proposed, 'the new address is readable');
+	pg_assert_false(strpos($line, '<a href') !== false, 'no raw link reaches the page');
+}
+
+function test_content_proposals_compare_words_differ_past_the_cut()
+{
+	$words = str_repeat('word ', 200);
+	$line = pg_content_proposals_compare_line('Text', $words . 'old ending', $words . 'new ending');
+	list($site, $proposed) = _content_proposals_compare_test_sides($line);
+
+	pg_assert_true($site !== $proposed, 'the two sides print differently');
+	pg_assert_contains('old ending', $site);
+	pg_assert_contains('new ending', $proposed);
+
+	// Long values that differ before the cut keep it.
+	$line = pg_content_proposals_compare_line('Text', 'A ' . $words, 'B ' . $words);
+	pg_assert_contains('…', $line, 'cut when the cut shows the difference');
+}
+
+// For two values that differ, the two printed sides differ.
+function test_content_proposals_compare_different_values_never_print_the_same()
+{
+	$long = str_repeat('word ', 200);
+	$pairs = array(
+		array('Hello', 'Hello!'),
+		array('<b>Hello</b>', '<i>Hello</i>'),
+		array('<a href="/a">x</a> y', '<a href="/b">x</a> z'),
+		array('<span style="color:red">Sale</span>', '<span style="color:blue">Sale</span>'),
+		array($long . '<a href="/a">end</a>', $long . '<a href="/b">end</a>'),
+		array($long . 'one', $long . 'two'),
+		array('Hello', '<img src="/files/x.jpg">Hello'),
+		array('', '<a href="/a"></a>'),
+	);
+
+	foreach ($pairs as $i => $pair) {
+		list($site, $proposed) = _content_proposals_compare_test_sides(pg_content_proposals_compare_line('Text', $pair[0], $pair[1]));
+		pg_assert_true($site !== $proposed, 'pair ' . $i);
+	}
 }
