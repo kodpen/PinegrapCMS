@@ -318,12 +318,12 @@ function api_openapi_build() {
 				. 'Money is always a whole number of minor units - 1999 is 19.99. '
 				. 'Times are ISO-8601 in UTC. Listings are cursor paged: follow page.next_cursor until it is null. '
 				. 'Every read answers with an ETag and takes If-None-Match (304 when unchanged) and fields= (only the fields named). '
-				. 'An integration authenticates with its application key and secret (HTTP Basic). A person\'s own team devices session (POST /auth/login) and an OAuth connection send their access token as Authorization: Bearer. The two security schemes say which calls each of the three can make.'
+				. 'An integration authenticates with its application key and secret (HTTP Basic). A person\'s own team devices session (POST /auth/login) and an OAuth connection send their access token as Authorization: Bearer. The security schemes say which calls each of the three can make; while the site runs an OAuth server, the oauth2 scheme names its addresses.'
 		),
 		'servers' => array(array('url' => api_openapi_base_url())),
 		'components' => array(
 			'schemas' => api_openapi_components(),
-			'securitySchemes' => api_openapi_security_schemes()
+			'securitySchemes' => api_openapi_security_schemes(api_openapi_oauth_server())
 		),
 		'security' => array(array('applicationKey' => array()), array('deviceToken' => array())),
 		'paths' => $paths
@@ -342,11 +342,18 @@ function api_openapi_build() {
  * The Bearer scheme keeps the name deviceToken: a generated client refers to a
  * scheme by its name, and renaming it would break every client built so far.
  *
+ * While the site's OAuth application exists, a third scheme, oauth2, names
+ * where a connection is made: the site's own authorization and token
+ * addresses and the scopes of the operator's ceiling. Without the application
+ * every OAuth address answers 404, so the scheme is left out.
+ *
+ * @param array|null $oauth api_openapi_oauth_server(): authorizationUrl,
+ *                          tokenUrl, refreshUrl and scopes (a list), or null
  * @return array
  */
-function api_openapi_security_schemes() {
+function api_openapi_security_schemes($oauth = null) {
 
-	return array(
+	$schemes = array(
 		'applicationKey' => array(
 			'type'        => 'http',
 			'scheme'      => 'basic',
@@ -367,6 +374,103 @@ function api_openapi_security_schemes() {
 				. 'Neither can manage webhook subscriptions. '
 				. 'An access token lives an hour: renew a session with POST /auth/refresh, a connection with its refresh token at the OAuth server\'s token endpoint.'
 		)
+	);
+
+	if (is_array($oauth)) {
+
+		$schemes['oauth2'] = api_openapi_oauth_scheme($oauth);
+
+	}
+
+	return $schemes;
+
+}
+
+/**
+ * The oauth2 scheme: the authorization code flow (with PKCE, which the
+ * discovery document announces) at the given addresses. Each scope is
+ * described by its group's label, so a platform's sign-in screen can show
+ * what it asks for. Pure: the caller reads the site.
+ *
+ * @param array $oauth authorizationUrl, tokenUrl, refreshUrl, scopes (a list)
+ * @return array
+ */
+function api_openapi_oauth_scheme(array $oauth) {
+
+	$labels = array();
+
+	foreach (api_scope_groups() as $group) {
+
+		if ($group['read'] !== '') {
+
+			$labels[$group['read']] = 'Read ' . $group['label'];
+
+		}
+
+		if ($group['write'] !== '') {
+
+			$labels[$group['write']] = 'Write ' . $group['label'];
+
+		}
+
+	}
+
+	$scopes = array();
+
+	foreach ((array)$oauth['scopes'] as $scope) {
+
+		$scopes[(string)$scope] = isset($labels[$scope]) ? $labels[$scope] : (string)$scope;
+
+	}
+
+	ksort($scopes);
+
+	return array(
+		'type'        => 'oauth2',
+		'description' => 'The site\'s own OAuth server. A person signs in on this site and approves the connection; '
+			. 'the scopes offered are the ones the site\'s operator allows, within the person\'s own rights. '
+			. 'The access token it hands out is sent as Authorization: Bearer, so every call that names deviceToken takes it, '
+			. 'with what deviceToken says an OAuth connection may do. PKCE (S256) is required.',
+		'flows'       => array(
+			'authorizationCode' => array(
+				'authorizationUrl' => (string)$oauth['authorizationUrl'],
+				'tokenUrl'         => (string)$oauth['tokenUrl'],
+				'refreshUrl'       => (string)$oauth['refreshUrl'],
+				// An empty PHP array would encode as [], and OpenAPI wants a map.
+				'scopes'           => empty($scopes) ? new stdClass() : $scopes
+			)
+		)
+	);
+
+}
+
+/**
+ * The site's OAuth server as the oauth2 scheme needs it, or null while the
+ * site has no OAuth application (every OAuth address then answers 404).
+ *
+ * @return array|null
+ */
+function api_openapi_oauth_server() {
+
+	if (!function_exists('pg_oauth_app')) {
+
+		require_once(dirname(dirname(__FILE__)) . '/oauth/server.php');
+
+	}
+
+	$app = pg_oauth_app();
+
+	if ($app === null) {
+
+		return null;
+
+	}
+
+	return array(
+		'authorizationUrl' => pg_oauth_endpoint('authorize'),
+		'tokenUrl'         => pg_oauth_endpoint('token'),
+		'refreshUrl'       => pg_oauth_endpoint('token'),
+		'scopes'           => pg_oauth_ceiling($app)
 	);
 
 }
