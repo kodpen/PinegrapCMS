@@ -15,7 +15,7 @@ description: Steps AM7 to AM13 of plan api-clean-modern: HEAD, Location and the 
   - Honoured where the same path has a GET route; the document marks which updates do.
   - The tag is the one of the full GET answer for the same caller (no `fields=`), compared without `W/`; `*` matches an existing record.
   - `precondition_failed` goes into `api_error_catalogue()`. It is checked right before the write with no lock: Conventions says so.
-  - Done (#PRNUM): `api/api-if-match.md`.
+  - Done (#10192): `api/api-if-match.md`.
 - AM10 (S) `POST /webhooks/{id}/delete` and `POST /workspace/scheduled-messages/{id}/delete`, the twin every other resource has, ids ending in `_post`. The old addresses keep deleting; their cards name the regular way.
 - AM11 (S, held) `Accept-Language: en` or `tr` picks the language of `error.message` for that call; without it the site's language as today (`api/api-meta-language-timezone.md`).
   - It opens with a census: the texts a call stores or sends (notification and inbox texts, mail) and what `?pg_lang=` does today. Only if the choice can be kept to the answer does the architect ask the owner; nothing is built before.
