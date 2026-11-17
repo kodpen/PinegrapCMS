@@ -15414,12 +15414,37 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
   border-radius: var(--ws-radius-sm);
   background: var(--pg-bg-2);
   cursor: zoom-in;
+  position: relative;
 }
 .ws-poll-figure img {
   display: block;
   width: 100%;
   max-height: 18rem;
   object-fit: contain;
+}
+/* How many distinct pictures the viewer holds, at the frame's bottom right.
+   Its surface is nearly opaque, so it reads as one piece where it lies half
+   on the picture and half on the frame; the hairline keeps it standing on a
+   dark picture. The figures are tabular: the number may change while the
+   rows are pointed at. */
+.ws-poll-picture-count {
+  position: absolute;
+  right: .7rem;
+  bottom: .7rem;
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+  padding: .15rem .5rem;
+  border: 1px solid color-mix(in srgb, var(--pg-media-mark-fg) 30%, transparent);
+  border-radius: 999px;
+  background: var(--pg-media-mark-bg);
+  color: var(--pg-media-mark-fg);
+  font-size: var(--pg-text-meta);
+  font-weight: var(--pg-weight-medium);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.4;
+  white-space: nowrap;
+  pointer-events: none;
 }
 @media (max-width: 575.98px) {
   .ws-poll-split {
@@ -27969,6 +27994,11 @@ select.pg-list-table-field option.private {
      the scrim a dialog lays over the page. */
   --pg-surface-menu: light-dark(rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.016));
   --pg-scrim: light-dark(rgba(22, 27, 38, 0.3), rgba(3, 4, 7, 0.6));
+  /* The surface and the text of a mark laid over a picture (a poll
+     picture's count). A picture does not change with the theme, so neither
+     does the mark: one value for both. */
+  --pg-media-mark-bg: rgba(17, 19, 24, 0.94);
+  --pg-media-mark-fg: #ffffff;
   --pg-radius-card: 16px;
   --pg-radius-sheet: 20px;
 

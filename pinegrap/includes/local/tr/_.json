@@ -1667,6 +1667,7 @@
     "{var:1} person will be notified when a {var:2} is added.": "{var:2} eklendiğinde {var:1} kişiye bildirim gönderilir.",
     "{var:1} person(s)": "{var:1} kişi",
     "{var:1} picked up. Left and right arrows choose a column, Enter puts it down, Esc leaves it where it was.": "{var:1} tutuldu. Sol ve sağ oklar sütunu seçer, Enter bırakır, Esc yerinde bırakır.",
+    "{var:1} pictures": "{var:1} görsel",
     "{var:1} piece{suffix:1}": "{var:1} adet",
     "{var:1} pinned a message to the top of the channel.": "{var:1} kanalın en üstüne bir mesaj sabitledi.",
     "{var:1} planned a meeting: {var:2}, {var:3} with {var:4}": "{var:1} bir toplantı planladı: {var:2}, {var:3}, katılanlar: {var:4}",
