@@ -510,13 +510,11 @@ function connections_provider_drawer($provider_key, $provider, $app, $accounts, 
 		$option_bad = is_array($provider_draft) && ($provider_draft['invalid'] === $option_key);
 
 		$option_fields .= '
-			<div class="col-12">
-				<div class="form-field">
-					<label class="form-label" for="option_' . h($provider_key . '_' . $option_key) . '">' . h($option['label']) . '</label>
-					<input type="text" class="form-control' . ($option_bad ? ' is-invalid' : '') . '" id="option_' . h($provider_key . '_' . $option_key) . '"
-						name="option_' . h($option_key) . '" value="' . h($value) . '" maxlength="100" autocomplete="off"' . ($option_bad ? ' aria-invalid="true"' : '') . '>
-					<div class="form-text">' . h($option['help']) . '</div>
-				</div>
+			<div>
+				<label class="pg-field-label" for="option_' . h($provider_key . '_' . $option_key) . '">' . h($option['label']) . '</label>
+				<input type="text" class="pg-input' . ($option_bad ? ' is-invalid' : '') . '" id="option_' . h($provider_key . '_' . $option_key) . '"
+					name="option_' . h($option_key) . '" value="' . h($value) . '" maxlength="100" autocomplete="off"' . ($option_bad ? ' aria-invalid="true"' : '') . '>
+				<div class="pg-field-help">' . h($option['help']) . '</div>
 			</div>';
 
 	}
@@ -551,55 +549,50 @@ function connections_provider_drawer($provider_key, $provider, $app, $accounts, 
 
 	$can_fall_back = ($provider_key === 'google') && is_array($app) && ($app['source'] === 'connect') && (pg_signin_google_app() !== null);
 
+	$field_id = function ($name) use ($provider_key) {
+		return h($name . '_' . $provider_key);
+	};
+
 	$app_form = '
-		<form method="post" action="connections.php" class="mt-3">
+		<form method="post" action="connections.php" class="connections-app-form">
 			' . get_token_field() . '
 			<input type="hidden" name="connections_action" value="save_app">
 			<input type="hidden" name="provider" value="' . h($provider_key) . '">
+			<div class="d-flex align-items-center gap-3">
+				<input type="checkbox" class="pg-switch" role="switch" name="enabled" value="1" id="' . $field_id('enabled') . '"' . ($enabled_checked ? ' checked' : '') . '>
+				<label class="pg-text-2" for="' . $field_id('enabled') . '">' . h(lang('Connections through this application are allowed')) . '</label>
+			</div>
 			' . ((is_array($app) && ($app['source'] === 'signin'))
-				? '<div class="alert theme-info small py-3">' . h(lang('This is the application of Sign in with Google (Security settings). Add the redirect address below to it in Google Cloud Console, or save an application of its own here.')) . '</div>'
+				? '<div class="alert theme-info small py-3 mb-0">' . h(lang('This is the application of Sign in with Google (Security settings). Add the redirect address below to it in Google Cloud Console, or save an application of its own here.')) . '</div>'
 				: '') . '
 			' . ($ready
-				? '<details class="mb-5"><summary class="pg-text-2">' . h(lang('How to set it up')) . '</summary><ol class="small ps-5 mt-3 mb-0">' . $setup_steps . '</ol></details>'
-				: '<ol class="small ps-5 mb-5">' . $setup_steps . '</ol>') . '
-			<div class="form-field mb-5">
-				<label class="form-label" for="redirect_' . h($provider_key) . '">' . h(lang('Redirect address')) . '</label>
-				<div class="input-group">
-					<input type="text" class="form-control font-monospace" id="redirect_' . h($provider_key) . '" value="' . h($redirect_uri) . '" readonly>
-					<button type="button" class="btn btn-outline theme-secondary connections-copy" data-target="redirect_' . h($provider_key) . '">
+				? '<details><summary class="pg-text-2">' . h(lang('How to set it up')) . '</summary><ol class="pg-text-2 ps-5 mt-3 mb-0">' . $setup_steps . '</ol></details>'
+				: '<ol class="pg-text-2 ps-5 mb-0">' . $setup_steps . '</ol>') . '
+			<div>
+				<label class="pg-field-label" for="' . $field_id('redirect') . '">' . h(lang('Redirect address')) . '</label>
+				<div class="d-flex align-items-center gap-2">
+					<input type="text" class="pg-input flex-grow-1 min-w-0" id="' . $field_id('redirect') . '" value="' . h($redirect_uri) . '" readonly>
+					<button type="button" class="pg-button pg-button-quiet pg-button-sm connections-copy" data-target="' . $field_id('redirect') . '">
 						<i class="bi bi-clipboard me-1" aria-hidden="true"></i>' . h(lang('Copy')) . '</button>
 				</div>
-				<div class="form-text mb-0 connections-copy-status" role="status" aria-live="polite" data-copied="' . h(lang('Copied')) . '" data-refused="' . h(lang('The browser did not let the text be copied. Select it and copy it from here.')) . '"></div>
+				<div class="pg-field-help connections-copy-status" role="status" aria-live="polite" data-copied="' . h(lang('Copied')) . '" data-refused="' . h(lang('The browser did not let the text be copied. Select it and copy it from here.')) . '"></div>
 			</div>
-			<div class="row g-5">
-				<div class="col-12">
-					<div class="form-field">
-						<label class="form-label" for="client_id_' . h($provider_key) . '">' . h(lang('Client ID')) . '</label>
-						<input type="text" class="form-control' . ($client_id_bad ? ' is-invalid' : '') . '" id="client_id_' . h($provider_key) . '" name="client_id"
-							value="' . h($client_id_value) . '" maxlength="255" autocomplete="off"' . ($client_id_bad ? ' aria-invalid="true"' : '') . '>
-					</div>
-				</div>
-				<div class="col-12">
-					<div class="form-field">
-						<label class="form-label" for="client_secret_' . h($provider_key) . '">' . h(lang('Client secret')) . '</label>
-						<input type="password" class="form-control" id="client_secret_' . h($provider_key) . '" name="client_secret"
-							value="" autocomplete="new-password"
-							placeholder="' . h($secret_stored ? lang('Stored. Leave empty to keep it.') : '') . '">
-						' . ((is_array($provider_draft) && $provider_draft['had_secret'])
-							? '<div class="form-text fg-warning">' . h(lang('The secret you entered was not saved. Enter it again.')) . '</div>'
-							: '') . '
-					</div>
-				</div>
-				' . $option_fields . '
-				<div class="col-12">
-					<div class="form-field">
-						<div class="switch"><input class="" type="checkbox" role="switch" name="enabled" value="1" id="enabled_' . h($provider_key) . '"'
-							. ($enabled_checked ? ' checked' : '') . '></div>
-						<label class="" for="enabled_' . h($provider_key) . '">' . h(lang('Connections through this application are allowed')) . '</label>
-					</div>
-				</div>
+			<div>
+				<label class="pg-field-label" for="' . $field_id('client_id') . '">' . h(lang('Client ID')) . '</label>
+				<input type="text" class="pg-input' . ($client_id_bad ? ' is-invalid' : '') . '" id="' . $field_id('client_id') . '" name="client_id"
+					value="' . h($client_id_value) . '" maxlength="255" autocomplete="off"' . ($client_id_bad ? ' aria-invalid="true"' : '') . '>
 			</div>
-			<div class="d-flex flex-wrap align-items-center gap-3 mt-5">
+			<div>
+				<label class="pg-field-label" for="' . $field_id('client_secret') . '">' . h(lang('Client secret')) . '</label>
+				<input type="password" class="pg-input" id="' . $field_id('client_secret') . '" name="client_secret"
+					value="" autocomplete="new-password"
+					placeholder="' . h($secret_stored ? lang('Stored. Leave empty to keep it.') : '') . '">
+				' . ((is_array($provider_draft) && $provider_draft['had_secret'])
+					? '<div class="pg-field-help pg-field-error">' . h(lang('The secret you entered was not saved. Enter it again.')) . '</div>'
+					: '') . '
+			</div>
+			' . $option_fields . '
+			<div class="d-flex flex-wrap align-items-center gap-3">
 				<button type="submit" name="submit_save" class="pg-button pg-button-sm pg-button-quiet"' . ($can_seal ? '' : ' disabled') . '>' . h(lang('Save')) . '</button>
 				<a class="pg-button pg-button-sm pg-button-quiet" href="' . h($provider['console_url']) . '" target="_blank" rel="noopener">
 					<i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Open the {var:1} console', 'vars' => $provider['label']))) . '</a>
@@ -629,12 +622,12 @@ function connections_provider_drawer($provider_key, $provider, $app, $accounts, 
 					<h2 class="pg-title-status mb-0" id="connections-' . h($provider_key) . '-title" lang="en">' . h($provider['label']) . '</h2>
 					<div class="pg-text-meta">' . h($sub) . '</div>
 				</div>
-				<button type="button" class="btn-close" data-bs-dismiss="drawer" aria-label="' . h(lang('Close')) . '"></button>
+				<button type="button" class="pg-icon-button" data-bs-dismiss="drawer" aria-label="' . h(lang('Close')) . '" title="' . h(lang('Close')) . '"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
 			</div>
 			<div class="drawer-body">
 				<section class="pg-report-section">
 					<h3 class="pg-report-section-title d-flex align-items-center gap-3">' . h(lang('Application')) . ' ' . $app_pill . '</h3>
-					' . (($hint === '') ? '' : '<p class="form-text mt-0">' . h($hint) . '</p>') . '
+					' . (($hint === '') ? '' : '<p class="pg-field-help mt-0">' . h($hint) . '</p>') . '
 					' . $app_form . '
 				</section>
 				<section class="pg-report-section">
@@ -663,6 +656,7 @@ function connections_service_detail($id, $service, $row, $group_label, $tile, $f
 
 	$state = isset($service['state']) ? $service['state'] : null;
 	$accounts = pg_connections_screen_accounts_for($state, $facts['accounts']);
+	$error_html = '';
 
 	$facts_html = '<dt>' . h(lang('Status')) . '</dt><dd>' . connections_state_pill($row['state']) . '</dd>';
 
@@ -680,8 +674,14 @@ function connections_service_detail($id, $service, $row, $group_label, $tile, $f
 
 		$error = pg_connections_screen_last_error($accounts);
 
-		$facts_html .= '<dt>' . h(lang('Account')) . '</dt><dd>' . ($labels ? implode('', $labels) : h(lang('None connected'))) . '</dd>'
-			. '<dt>' . h(lang('Last error')) . '</dt><dd' . (($error !== '') ? ' class="text-break"' : '') . '>' . h(($error !== '') ? $error : lang('No error on file')) . '</dd>';
+		$facts_html .= '<dt>' . h(lang('Account')) . '</dt><dd>' . ($labels ? implode('', $labels) : h(lang('None connected'))) . '</dd>';
+
+		// A stored error is free text: its own line across the column under
+		// its label, as the provider drawer shows an account's.
+		$error_html = '<div class="mt-4"><div class="pg-field-label">' . h(lang('Last error')) . '</div>'
+			. (($error !== '')
+				? '<div class="alert theme-warning small py-3 mb-0 text-break">' . h($error) . '</div>'
+				: '<div class="pg-text-2">' . h(lang('No error on file')) . '</div>') . '</div>';
 
 	}
 
@@ -695,11 +695,11 @@ function connections_service_detail($id, $service, $row, $group_label, $tile, $f
 					<h2 class="pg-title-status mb-0" id="connections-detail-title">' . h($row['name']) . '</h2>
 					<div class="pg-text-meta">' . h($group_label) . '</div>
 				</div>
-				<button type="button" class="btn-close" data-bs-dismiss="drawer" aria-label="' . h(lang('Close')) . '"></button>
+				<button type="button" class="pg-icon-button" data-bs-dismiss="drawer" aria-label="' . h(lang('Close')) . '" title="' . h(lang('Close')) . '"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
 			</div>
 			<div class="drawer-body">
 				<section class="pg-report-section">
-					<dl class="pg-kv mb-0">' . $facts_html . '</dl>
+					<dl class="pg-kv mb-0">' . $facts_html . '</dl>' . $error_html . '
 				</section>
 				<section class="pg-report-section">
 					<h3 class="pg-report-section-title">' . h(lang('Used by')) . '</h3>
@@ -1075,7 +1075,7 @@ echo pg_page_shell(array(
 			// The button keeps its label; only the icon changes and the
 			// visible status under the field says whether the copy happened.
 			var field = document.getElementById(copy.dataset.target);
-			var status = copy.closest(".input-group").nextElementSibling;
+			var status = copy.parentNode.nextElementSibling;
 			var icon = copy.querySelector("i");
 			var done = function () {
 				icon.className = "bi bi-check2 me-1";

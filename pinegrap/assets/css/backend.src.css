@@ -31586,6 +31586,11 @@ button.pg-var-chip:focus-visible {
 .connections-drawer .list-group-item {
   background: none;
 }
+.connections-app-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
 
 @media (max-width: 575.98px) {
   .connections-row {

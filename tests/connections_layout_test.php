@@ -69,15 +69,19 @@ function test_connections_other_side_leads_to_application_access()
 	pg_assert_contains('<div class="col-12 lg:col-4 2xl:col-3 order-2">', $source, 'in the side column');
 }
 
-function test_connections_application_fields_are_form_field_boxes()
+function test_connections_application_fields_are_look_a_fields()
 {
 	$source = connections_layout_source();
-	$form = substr($source, (int) strpos($source, '$app_form = \''), 6000);
+	$start = (int) strpos($source, 'function connections_provider_drawer(');
+	$drawers = substr($source, $start, (int) strpos($source, '/* The attention block:') - $start);
 
-	foreach (array('redirect_', 'client_id_', 'client_secret_') as $id) {
-		pg_assert_true(preg_match('~<div class="form-field[^"]*">\s*<label class="form-label" for="' . preg_quote($id, '~') . '~', $form) === 1, $id . ' sits in a form-field box');
+	foreach (array('redirect', 'client_id', 'client_secret') as $id) {
+		pg_assert_true(preg_match('~<label class="pg-field-label" for="\' . \$field_id\(\'' . $id . '\'\) \. \'">~', $drawers) === 1, $id . ': a look A label');
 	}
 
-	pg_assert_true(strpos($form, 'form-control-sm') === false, 'the fields use the regular control size');
-	pg_assert_true(preg_match('~</div>\s*<div class="form-text mb-0 connections-copy-status"~', $form) === 1, 'the copy status still follows the input group the script reads');
+	pg_assert_contains('class="pg-switch" role="switch" name="enabled"', $drawers, 'the look\'s switch');
+	pg_assert_contains('class="pg-button pg-button-quiet pg-button-sm connections-copy"', $drawers, 'Copy is the look\'s small quiet button');
+	pg_assert_true(preg_match('~</button>\s*</div>\s*<div class="pg-field-help connections-copy-status"~', $drawers) === 1, 'the copy status follows the row the script reads');
+	pg_assert_true(preg_match('~class="(btn|form-control|form-label|form-text|nav-|switch")~', $drawers) === 0, 'no old button, field or tab markup in the drawers');
+	pg_assert_true(strpos($drawers, 'font-monospace') === false, 'the redirect address in the text face');
 }
