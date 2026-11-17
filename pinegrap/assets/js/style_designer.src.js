@@ -7281,13 +7281,9 @@ const StyleDesigner = (function () {
         //    canvas, the toolbar button's UI must follow the mode (so the
         //    user sees the same state from every surface).
         var tb = document.getElementById('sd-vb-theme');
-        if (tb) {
-            tb.classList.toggle('active', dark);
-            var icon = tb.querySelector('.bi');
-            var txt  = tb.querySelector('.sd-vb-txt');
-            if (icon) icon.className = dark ? 'bi bi-sun' : 'bi bi-moon';
-            if (txt)  txt.textContent = dark ? _sdT('Light') : _sdT('Dark');
-        }
+        // A switch named by what it does ("Dark canvas"): the state is its
+        // knob, never a word.
+        if (tb) tb.classList.toggle('active', dark);
 
         // 3. Themes panel mode tabs — only update if this call didn't
         //    originate from the panel itself (avoids redundant work and
@@ -7333,8 +7329,17 @@ const StyleDesigner = (function () {
         if (!wrapper) return;
 
         wrapper.innerHTML =
-            '<div class="sd-bp-bar">' +
-            '<div class="sd-bp-bar-left">' +
+            // Three zones (D54-D57): the mode, the canvas (screen size and
+            // zoom), the view and the tools; Preview and Open on Site after
+            // them. The ids are the ones every handler and shortcut reaches.
+            '<div class="sd-bp-bar" id="sd-bp-bar" data-fold="0">' +
+            '<div class="sd-bp-zone sd-bp-mode" role="group" aria-label="' + esc(_sdT('Mode')) + '">' +
+            '<button type="button" class="sd-bp-seg active" id="sd-vb-design" aria-pressed="true" title="' + esc(_sdT('Design')) + '"><span class="bi bi-pencil"></span><span class="sd-vb-txt">' + esc(_sdT('Design')) + '</span></button>' +
+            '<button type="button" class="sd-bp-seg" id="sd-vb-proto" aria-pressed="false" title="' + esc(_sdT('Prototype: the links between the pages')) + '"><span class="bi bi-diagram-3"></span><span class="sd-vb-txt">' + esc(_sdT('Prototype')) + '</span></button>' +
+            '</div>' +
+            '<span class="sd-bp-zsep sd-bp-zsep-mode" aria-hidden="true"></span>' +
+            '<div class="sd-bp-zone sd-bp-canvas">' +
+            '<div class="sd-bp-sizes" role="group" aria-label="' + esc(_sdT('Screen size')) + '">' +
             '<button type="button" class="sd-bp-btn" data-w="375" title="' + esc(_sdT('Mobile (XS)')) + '"><span class="bi bi-phone"></span></button>' +
             '<button type="button" class="sd-bp-btn" data-w="576" title="' + esc(_sdT('Small (SM)')) + '"><span class="bi bi-phone-landscape"></span></button>' +
             '<button type="button" class="sd-bp-btn" data-w="768" title="' + esc(_sdT('Tablet (MD)')) + '"><span class="bi bi-tablet"></span></button>' +
@@ -7344,21 +7349,24 @@ const StyleDesigner = (function () {
             // An e-mail design's two widths (_sdEmailCanvasSync()).
             '<button type="button" class="sd-bp-btn sd-bp-mail" data-w="600" title="' + esc(_sdT('E-mail, 600 px wide')) + '" aria-label="' + esc(_sdT('E-mail, 600 px wide')) + '"><span class="bi bi-envelope"></span></button>' +
             '<button type="button" class="sd-bp-btn sd-bp-mail" data-w="375" title="' + esc(_sdT('Phone view, 375 px wide')) + '" aria-label="' + esc(_sdT('Phone view, 375 px wide')) + '"><span class="bi bi-phone"></span></button>' +
-            '<span class="sd-bp-label" id="sd-bp-label">—</span>' +
             '</div>' +
-            '<div class="sd-bp-bar-right">' +
-            '<button type="button" class="sd-vb-btn" id="sd-vb-zoom-out" title="' + esc(_sdT('Zoom Out (Ctrl+-)')) + '"><span class="bi bi-zoom-out"></span></button>' +
-            '<span class="sd-vb-zoom" id="sd-vb-zoom-label">' + esc(_sdT('{var:1}%', 100)) + '</span>' +
-            '<button type="button" class="sd-vb-btn" id="sd-vb-zoom-in" title="' + esc(_sdT('Zoom In (Ctrl++)')) + '"><span class="bi bi-zoom-in"></span></button>' +
+            // The same sizes as one list, for a bar too narrow for the group.
+            '<select class="sd-bp-size-select" id="sd-bp-size-select" aria-label="' + esc(_sdT('Screen size')) + '"></select>' +
+            '<span class="sd-bp-label" id="sd-bp-label">—</span>' +
             '<span class="sd-vb-sep"></span>' +
-            '<button type="button" class="sd-vb-btn sd-vb-toggle" id="sd-vb-outline" title="' + esc(_sdT('Outline Grid')) + '"><span class="bi bi-grid-3x3"></span> <span class="sd-vb-txt">' + esc(_sdT('Outline')) + '</span></button>' +
-            '<button type="button" class="sd-vb-btn sd-vb-toggle" id="sd-vb-theme" title="' + esc(_sdT('Dark Canvas')) + '"><span class="bi bi-moon"></span> <span class="sd-vb-txt">' + esc(_sdT('Dark')) + '</span></button>' +
-            '<button type="button" class="sd-vb-btn sd-vb-toggle" id="sd-vb-grid" title="' + esc(_sdT('Grid Snap (8px)')) + '"><span class="bi bi-grid"></span> <span class="sd-vb-txt">' + esc(_sdT('Grid')) + '</span></button>' +
-            '<button type="button" class="sd-vb-btn sd-vb-toggle" id="sd-vb-motion" aria-pressed="false" title="' + esc(_sdT('Play animations')) + '"><span class="bi bi-play-circle"></span> <span class="sd-vb-txt">' + esc(_sdT('Animations')) + '</span></button>' +
-            '<span class="sd-vb-sep"></span>' +
-            '<button type="button" class="sd-vb-btn" id="sd-vb-find" title="' + esc(_sdT('Find & Replace (Ctrl+F)')) + '"><span class="bi bi-search"></span> <span class="sd-vb-txt">' + esc(_sdT('Find')) + '</span></button>' +
-            '<button type="button" class="sd-vb-btn" id="sd-vb-snapshots" title="' + esc(_sdT('History')) + '"><span class="bi bi-clock-history"></span> <span class="sd-vb-txt">' + esc(_sdT('History')) + '</span></button>' +
-            '<button type="button" class="sd-vb-btn sd-vb-toggle" id="sd-vb-proto" aria-pressed="false" title="' + esc(_sdT('Prototype: the links between the pages')) + '"><span class="bi bi-diagram-3"></span> <span class="sd-vb-txt">' + esc(_sdT('Prototype')) + '</span></button>' +
+            '<button type="button" class="sd-vb-btn" id="sd-vb-zoom-out" title="' + esc(_sdT('Zoom Out (Ctrl+-)')) + '" aria-label="' + esc(_sdT('Zoom Out (Ctrl+-)')) + '"><span class="bi bi-dash-lg"></span></button>' +
+            '<button type="button" class="sd-vb-zoom" id="sd-vb-zoom-label" title="' + esc(_sdT('Reset zoom to 100%')) + '">' + esc(_sdT('{var:1}%', 100)) + '</button>' +
+            '<button type="button" class="sd-vb-btn" id="sd-vb-zoom-in" title="' + esc(_sdT('Zoom In (Ctrl++)')) + '" aria-label="' + esc(_sdT('Zoom In (Ctrl++)')) + '"><span class="bi bi-plus-lg"></span></button>' +
+            '<button type="button" class="sd-vb-btn" id="sd-vb-fit" title="' + esc(_sdT('Fit the page to the canvas')) + '" aria-label="' + esc(_sdT('Fit the page to the canvas')) + '"><span class="bi bi-arrows-angle-contract"></span></button>' +
+            '</div>' +
+            '<span class="sd-bp-zsep" aria-hidden="true"></span>' +
+            '<div class="sd-bp-zone sd-bp-tools">' +
+            '<button type="button" class="sd-vb-btn sd-vb-view" id="sd-vb-view" aria-haspopup="menu" aria-expanded="false" aria-controls="sd-vb-view-menu" title="' + esc(_sdT('Canvas view')) + '"><span class="bi bi-eye"></span><span class="sd-vb-txt">' + esc(_sdT('Canvas view')) + '</span><span class="sd-vb-badge" id="sd-vb-view-badge" aria-hidden="true" hidden></span><span class="bi bi-chevron-down sd-vb-caret"></span></button>' +
+            '<button type="button" class="sd-vb-btn sd-vb-tool" id="sd-vb-find" title="' + esc(_sdT('Find & Replace (Ctrl+F)')) + '" aria-label="' + esc(_sdT('Find & Replace (Ctrl+F)')) + '"><span class="bi bi-search"></span></button>' +
+            '<button type="button" class="sd-vb-btn sd-vb-tool" id="sd-vb-snapshots" title="' + esc(_sdT('History')) + '" aria-label="' + esc(_sdT('History')) + '"><span class="bi bi-clock-history"></span></button>' +
+            '</div>' +
+            '<span class="sd-bp-zsep" aria-hidden="true"></span>' +
+            '<div class="sd-bp-zone sd-bp-out">' +
             '<button type="button" class="sd-vb-btn" id="sd-vb-preview" title="' + esc(_sdT('Preview in a new window (Ctrl+Alt+P)')) + '"><span class="bi bi-window" ></span> <span class="sd-vb-txt">' + esc(_sdT('Preview')) + '</span></button>' +
             // Preview renders the UNSAVED canvas in a blank window; this one
             // opens the page as the site actually serves it — theme, common
@@ -7387,6 +7395,48 @@ const StyleDesigner = (function () {
             // doesn\'t pollute the node tree or style_code. Positioned via JS using the
             // selected icon\'s bounding rect + iframe offset + canvas zoom.
             '<div class="sd-icon-fs-handle" id="sd-icon-fs-handle" title="' + esc(_sdT('Drag to resize the icon')) + '"></div>';
+
+        // The View menu (D56): switch rows named by what they do. It lives
+        // on the overlay host, not in the bar: the bar wraps and folds, and
+        // a menu inside it would be cut by the canvas column. The rows keep
+        // the ids of the old bar buttons, so their handlers, the command
+        // palette and the O shortcut reach them as before.
+        var _oldViewMenu = document.getElementById('sd-vb-view-menu');
+        if (_oldViewMenu) _oldViewMenu.remove();
+        var viewMenu = document.createElement('div');
+        viewMenu.id = 'sd-vb-view-menu';
+        viewMenu.className = 'sd-vb-menu';
+        viewMenu.setAttribute('role', 'menu');
+        viewMenu.setAttribute('aria-label', _sdT('Canvas view'));
+        viewMenu.hidden = true;
+        viewMenu.innerHTML =
+            '<div class="sd-vb-menu-title" aria-hidden="true">' + esc(_sdT('Canvas view')) + '</div>' +
+            '<button type="button" class="sd-vb-row" id="sd-vb-outline" role="menuitemcheckbox" aria-checked="false"><span class="bi bi-grid-3x3"></span><span class="sd-vb-row-lbl">' + esc(_sdT('Outline')) + '</span><kbd class="sd-vb-kbd">O</kbd><span class="sd-vb-switch" aria-hidden="true"></span></button>' +
+            '<button type="button" class="sd-vb-row" id="sd-vb-grid" role="menuitemcheckbox" aria-checked="false"><span class="bi bi-grid"></span><span class="sd-vb-row-lbl">' + esc(_sdT('Snap to grid (8 px)')) + '</span><span class="sd-vb-switch" aria-hidden="true"></span></button>' +
+            '<button type="button" class="sd-vb-row" id="sd-vb-theme" role="menuitemcheckbox" aria-checked="false"><span class="bi bi-moon"></span><span class="sd-vb-row-lbl">' + esc(_sdT('Dark canvas')) + '</span><span class="sd-vb-switch" aria-hidden="true"></span></button>' +
+            '<button type="button" class="sd-vb-row" id="sd-vb-motion" role="menuitemcheckbox" aria-checked="false"><span class="bi bi-play-circle"></span><span class="sd-vb-row-lbl">' + esc(_sdT('Play animations')) + '</span><span class="sd-vb-switch" aria-hidden="true"></span></button>';
+        ((window.pgUI && typeof pgUI.overlayHost === 'function') ? pgUI.overlayHost(wrapper) : document.body).appendChild(viewMenu);
+
+        // The sizes as one list: an option per width button, in its order.
+        var sizeSel = document.getElementById('sd-bp-size-select');
+        wrapper.querySelectorAll('.sd-bp-btn').forEach(function (b, i) {
+            var o = document.createElement('option');
+            o.value = String(i);
+            o.textContent = b.getAttribute('title') || '';
+            sizeSel.appendChild(o);
+        });
+        sizeSel.addEventListener('change', function () {
+            var b = wrapper.querySelectorAll('.sd-bp-btn')[parseInt(this.value, 10)];
+            if (b) b.click();
+        });
+
+        var viewBtn = document.getElementById('sd-vb-view');
+        viewBtn.addEventListener('click', function () { _sdViewMenuOpen(); });
+        document.getElementById('sd-vb-design').addEventListener('click', function () {
+            if (_sdProto.open) _sdProtoClose();
+        });
+        document.getElementById('sd-vb-zoom-label').addEventListener('click', function () { setCanvasZoom(1); });
+        document.getElementById('sd-vb-fit').addEventListener('click', _sdCanvasFit);
 
         // Breakpoint buttons
         wrapper.querySelectorAll('.sd-bp-btn').forEach(function (btn) {
@@ -7495,7 +7545,9 @@ const StyleDesigner = (function () {
         var _shortcutsBtn = document.getElementById('sd-vb-shortcuts');
         if (_previewBtn)   _previewBtn.addEventListener('click', openPreview);
         var _protoBtn = document.getElementById('sd-vb-proto');
-        if (_protoBtn) _protoBtn.addEventListener('click', _sdProtoToggle);
+        // The mode switch's Prototype side opens the view; its Design side
+        // closes it.
+        if (_protoBtn) _protoBtn.addEventListener('click', function () { if (!_sdProto.open) _sdProtoOpen(); });
         if (_shortcutsBtn) _shortcutsBtn.addEventListener('click', openShortcutsModal);
 
         // The tab strip was rendered before this bar existed, so its first
@@ -7549,6 +7601,201 @@ const StyleDesigner = (function () {
         document.getElementById('sd-ctx-hide').addEventListener('click', function () {
             ctxBarToggle(false);
         });
+
+        _sdCanvasBarWatch();
+    }
+
+    // ── The canvas bar's state and fold ─────────────────────────────────
+    //
+    // The View menu's badge, the switch rows' checked state, the mode
+    // switch and the size list follow the buttons' own `active` class, which
+    // every handler (and the Themes panel, the canvas switchers, the
+    // Prototype view) already sets: one observer reads it, so no writer has
+    // to know about the menu.
+
+    // How many of the View menu's switches are on and shown: an e-mail
+    // design does not offer animations, and one left on there is not
+    // counted. `switches` is [{ on, shown }].
+    function _sdCanvasBarBadge(switches) {
+        var n = 0;
+        (switches || []).forEach(function (s) { if (s && s.on && s.shown) n++; });
+        return n;
+    }
+
+    // The fold level of a bar `avail` px wide, from the width it needs at
+    // each level (`needs[0]` all of it; 1 without the width text; 2 with the
+    // sizes folded into one list; 3 without the labels too): the first
+    // level that fits, else the last, where the bar wraps. A bar not
+    // measured yet folds nothing. Labels go, controls never do
+    // (docs/memory/designer/designer-narrow-screen-bars.md).
+    function _sdCanvasBarFold(avail, needs) {
+        if (!(avail > 0) || !needs || !needs.length) return 0;
+        for (var i = 0; i < needs.length; i++) {
+            if (needs[i] <= avail) return i;
+        }
+        return needs.length - 1;
+    }
+
+    var _sdBarNeeds = null;
+    var _sdBarSoon = 0;
+
+    // The width the bar's zones take at each fold level, with the bar's
+    // padding and gaps, measured by setting each level in turn (one layout
+    // pass each, no paint between them).
+    function _sdCanvasBarMeasure(bar) {
+        var keep = bar.getAttribute('data-fold') || '0';
+        var cs = getComputedStyle(bar);
+        var pad = (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0);
+        var needs = [];
+        for (var lv = 0; lv <= 3; lv++) {
+            bar.setAttribute('data-fold', String(lv));
+            var gap = parseFloat(getComputedStyle(bar).columnGap) || 0;
+            var w = pad, n = 0;
+            Array.prototype.forEach.call(bar.children, function (ch) {
+                var st = getComputedStyle(ch);
+                if (st.display === 'none') return;
+                w += ch.getBoundingClientRect().width + (parseFloat(st.marginLeft) || 0) + (parseFloat(st.marginRight) || 0);
+                n++;
+            });
+            needs.push(Math.ceil(w + gap * Math.max(0, n - 1)));
+        }
+        bar.setAttribute('data-fold', keep);
+        return needs;
+    }
+
+    // Picks the fold level for the bar's width; measures first when what
+    // the bar holds has changed.
+    function _sdCanvasBarRefit() {
+        var bar = document.getElementById('sd-bp-bar');
+        if (!bar || !bar.clientWidth) return;
+        if (!_sdBarNeeds) _sdBarNeeds = _sdCanvasBarMeasure(bar);
+        var lv = String(_sdCanvasBarFold(bar.clientWidth, _sdBarNeeds));
+        if (bar.getAttribute('data-fold') !== lv) bar.setAttribute('data-fold', lv);
+    }
+
+    // The badge, the rows' checked state, the mode switch and the size
+    // list from the buttons' `active` class. Writes only what changed, as
+    // the observer that calls it sees its own writes.
+    function _sdCanvasBarSync() {
+        var bar = document.getElementById('sd-bp-bar');
+        if (!bar) return;
+        var setA = function (el, name, v) { if (el && el.getAttribute(name) !== v) el.setAttribute(name, v); };
+        var sw = ['sd-vb-outline', 'sd-vb-grid', 'sd-vb-theme', 'sd-vb-motion'].map(function (id) {
+            var el = document.getElementById(id);
+            var on = !!(el && el.classList.contains('active'));
+            setA(el, 'aria-checked', on ? 'true' : 'false');
+            return { on: on, shown: !!el && getComputedStyle(el).display !== 'none' };
+        });
+        var n = _sdCanvasBarBadge(sw);
+        var badge = document.getElementById('sd-vb-view-badge');
+        if (badge) {
+            var t = n ? String(n) : '';
+            if (badge.textContent !== t) badge.textContent = t;
+            if (badge.hidden !== !n) badge.hidden = !n;
+        }
+        setA(document.getElementById('sd-vb-view'), 'aria-label', n ? _sdT('Canvas view, {var:1} on', n) : _sdT('Canvas view'));
+        var proto = document.getElementById('sd-vb-proto');
+        var design = document.getElementById('sd-vb-design');
+        var protoOn = !!(proto && proto.classList.contains('active'));
+        if (design && design.classList.contains('active') === protoOn) design.classList.toggle('active', !protoOn);
+        setA(design, 'aria-pressed', protoOn ? 'false' : 'true');
+        var sel = document.getElementById('sd-bp-size-select');
+        bar.querySelectorAll('.sd-bp-btn').forEach(function (b, i) {
+            var on = b.classList.contains('active');
+            setA(b, 'aria-pressed', on ? 'true' : 'false');
+            if (!sel || !sel.options[i]) return;
+            var off = getComputedStyle(b).display === 'none';
+            if (sel.options[i].hidden !== off) sel.options[i].hidden = off;
+            if (on && sel.value !== String(i)) sel.value = String(i);
+        });
+    }
+
+    // Watches the bar once it is built: its width (fold), what it holds
+    // (measure again), the buttons' state (sync), the menu's dismissal.
+    function _sdCanvasBarWatch() {
+        var bar = document.getElementById('sd-bp-bar');
+        var menu = document.getElementById('sd-vb-view-menu');
+        if (!bar) return;
+        var soon = function (remeasure) {
+            if (remeasure) _sdBarNeeds = null;
+            if (_sdBarSoon) return;
+            _sdBarSoon = requestAnimationFrame(function () {
+                _sdBarSoon = 0;
+                _sdCanvasBarSync();
+                _sdCanvasBarRefit();
+            });
+        };
+        if (window.MutationObserver) {
+            var mo = new MutationObserver(function () { soon(true); });
+            var opts = { subtree: true, childList: true, attributes: true, attributeFilter: ['class', 'style', 'hidden'] };
+            mo.observe(bar, opts);
+            if (menu) mo.observe(menu, opts);
+            // An e-mail design hides the rows it does not offer.
+            mo.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+        }
+        if (window.ResizeObserver) new ResizeObserver(function () { soon(false); }).observe(bar);
+        else window.addEventListener('resize', function () { soon(false); });
+        // Icon and text fonts change the widths once they arrive.
+        if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { soon(true); });
+        soon(true);
+
+        if (window._sdViewMenuBound) return;
+        window._sdViewMenuBound = true;
+        document.addEventListener('mousedown', function (e) {
+            var m = document.getElementById('sd-vb-view-menu');
+            var b = document.getElementById('sd-vb-view');
+            if (!m || m.hidden || m.contains(e.target) || (b && b.contains(e.target))) return;
+            _sdViewMenuOpen(false);
+        }, true);
+        document.addEventListener('keydown', function (e) {
+            var m = document.getElementById('sd-vb-view-menu');
+            if (!m || m.hidden) return;
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                e.stopPropagation();
+                _sdViewMenuOpen(false);
+                var b = document.getElementById('sd-vb-view');
+                if (b) b.focus();
+                return;
+            }
+            if ((e.key !== 'ArrowDown' && e.key !== 'ArrowUp') || !m.contains(document.activeElement)) return;
+            var rows = Array.prototype.filter.call(m.querySelectorAll('[role="menuitemcheckbox"]'), function (r) { return r.offsetParent !== null; });
+            var at = rows.indexOf(document.activeElement);
+            if (at === -1 || !rows.length) return;
+            e.preventDefault();
+            rows[(at + (e.key === 'ArrowDown' ? 1 : rows.length - 1)) % rows.length].focus();
+        }, true);
+        window.addEventListener('resize', function () { _sdViewMenuOpen(false); });
+    }
+
+    // Opens or closes the View menu under its button (`open` omitted:
+    // toggles). The first row takes the focus, so the keyboard can switch
+    // what it offers at once.
+    function _sdViewMenuOpen(open) {
+        var btn = document.getElementById('sd-vb-view');
+        var menu = document.getElementById('sd-vb-view-menu');
+        if (!btn || !menu) return;
+        if (open === undefined) open = menu.hidden;
+        if (!open) {
+            if (!menu.hidden) {
+                menu.hidden = true;
+                btn.setAttribute('aria-expanded', 'false');
+            }
+            return;
+        }
+        menu.hidden = false;
+        btn.setAttribute('aria-expanded', 'true');
+        var r = btn.getBoundingClientRect();
+        var mw = menu.offsetWidth;
+        menu.style.top = Math.round(r.bottom + 6) + 'px';
+        menu.style.left = Math.round(Math.max(8, Math.min(r.left, window.innerWidth - mw - 8))) + 'px';
+        var first = menu.querySelector('[role="menuitemcheckbox"]');
+        if (first) first.focus();
+    }
+
+    // Fit: see the question in the plan step; filled in once answered.
+    function _sdCanvasFit() {
+        setCanvasZoom(1);
     }
 
     // The language of the page's text, as <html lang> carries it in the
@@ -8081,11 +8328,9 @@ const StyleDesigner = (function () {
         var btn = document.getElementById('sd-vb-motion');
         if (!btn) return;
         var paused = _sdMotionPaused();
+        // A switch row of the View menu: its knob shows the state
+        // (_sdCanvasBarSync() writes aria-checked from the class).
         btn.classList.toggle('active', !paused);
-        btn.setAttribute('aria-pressed', paused ? 'false' : 'true');
-        var ic = btn.querySelector('.bi');
-        if (ic) ic.className = 'bi ' + (paused ? 'bi-play-circle' : 'bi-pause-circle');
-        _sdSetButtonTitle(btn, paused ? _sdT('Play animations') : _sdT('Pause animations'));
     }
 
     // Runs in the canvas document before any script of the design.
@@ -69526,7 +69771,7 @@ const StyleDesigner = (function () {
         if (w >= 992) bp = 'LG';
         if (w >= 1200) bp = 'XL';
         if (w >= 1400) bp = 'XXL';
-        lbl.textContent = w + 'px · ' + bp;
+        lbl.textContent = w + ' px · ' + bp;
     }
 
     function setCanvasZoom(z) {
