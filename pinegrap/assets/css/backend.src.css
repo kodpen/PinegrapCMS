@@ -17552,10 +17552,11 @@ a.ws-chip-message:hover,
   .ws-mail-reading .ws-mail-list {
     display: none;
   }
-  /* While a mail is read the toolbar and its filters fold away: they stood
+  /* While a mail is read the toolbar and its filters fold away (the id
+     outranks #button_bar's own display rule): they stood
      about 490 px above the pane, so the mail began below the first screen.
      The pane's Close brings the list and the toolbar back. */
-  .ws-mail-reading > .pg-toolbar,
+  .ws-mail-reading > #button_bar.pg-toolbar,
   .ws-mail-reading > .ws-mail-check-line {
     display: none;
   }
