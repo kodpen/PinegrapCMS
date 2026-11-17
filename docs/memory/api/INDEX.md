@@ -60,6 +60,7 @@
 - api-openapi-declarations.md: How a route and an object are declared for the OpenAPI document: returns, field schemas beside presenters, nested nullable objects, list item types, 201/204, the panel's loader, check_api_schema.php
 - api-openapi-nullable-fields.md: When an external API field is declared nullable (string? in the resource's *_schema()), what decides it, and the tests that guard it
 - api-openapi-oauth-scheme.md: The OpenAPI document's oauth2 security scheme: named only while the site's OAuth application exists, the site's own authorize and token addresses, the ceiling's scopes, why operations do not list it
+- api-openapi-time-formats.md: How a time field is declared in the API document: datetime (date-time) for a moment, date for a day, read from the presenter; the word map and its check
 - api-order-money-fields.md: The external API's order totals, the gift card and instalment amounts, and payment_installment (PR #3842)
 - api-orders-create.md: POST /orders records a counter (local) sale through the counter screen's completion: lines, customer, payment, the checks before the write, dry run, Idempotency-Key, what it answers
 - api-orders-list.md: GET /orders: status comma list, sort placed_desc, modified_since on last_modified_timestamp, cursor marks, and the writers that move the stamp (pg_order_touch_sql(), PR #2258)
