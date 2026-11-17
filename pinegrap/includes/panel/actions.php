@@ -150,6 +150,7 @@ function pg_panel_actions()
         'add_to_cart' => array('file' => 'commerce.php', 'handler' => 'pg_panel_add_to_cart', 'exempt' => true, 'token' => false, 'write' => true, 'public' => true),
         'get_cross_sell_items' => array('file' => 'commerce.php', 'handler' => 'pg_panel_get_cross_sell_items', 'exempt' => true, 'token' => false, 'write' => false, 'public' => true),
         'get_cross_sell_for_product' => array('file' => 'commerce.php', 'handler' => 'pg_panel_get_cross_sell_for_product', 'exempt' => true, 'token' => false, 'write' => false, 'public' => true),
+        'get_quantity_prices_for_product' => array('file' => 'commerce.php', 'handler' => 'pg_panel_get_quantity_prices_for_product', 'exempt' => true, 'token' => false, 'write' => false, 'public' => true),
         'get_delivery_date' => array('file' => 'commerce.php', 'handler' => 'pg_panel_get_delivery_date', 'exempt' => true, 'token' => false, 'write' => true, 'public' => true),
         'get_product' => array('file' => 'commerce.php', 'handler' => 'pg_panel_get_product', 'exempt' => true, 'token' => false, 'write' => false, 'public' => true),
         'get_shipping_methods' => array('file' => 'commerce.php', 'handler' => 'pg_panel_get_shipping_methods', 'exempt' => true, 'token' => false, 'write' => true, 'public' => true),
