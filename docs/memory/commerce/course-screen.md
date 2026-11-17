@@ -7,6 +7,7 @@ module: courses_admin
 ## Where is it, and who opens it?
 - Site Settings, Features, card "Courses" (`pgset-courses`): the switch `courses` in `config_text`, saved by `pg_course_switch_save()`. Off on every site.
 - With the switch on, the Pages menu shows "Courses" to managers and above (role < 3, `pg_course_staff_allowed()`); both screens call `validate_area_access($user, 'manager')` and answer an error while the switch is off or the tables are missing.
+- Help: both screens open `pages#courses` (`get_help_url.php`), a section pinegrap.com does not have yet.
 - The role is the step's own choice (managers already manage folder access and members); the plan left it to the architect, asked in the PR.
 
 ## What does the list show?
@@ -14,6 +15,7 @@ module: courses_admin
 
 ## How is a course edited?
 - `edit_course.php`: name, private folder (only folders whose access, own or inherited, is private), classroom page, "Lessons in order", "Certificate"; a plain table of lessons (page, days after enrolment, quiz form, score needed), add, remove, move up and down. Page selects offer every private folder's pages and the script shows only the chosen folder's.
+- A page the course already uses stays on offer wherever it sits now (`pg_course_folder_pages()`), so a lesson whose page left the folder is not emptied and dropped by the next save.
 - `pg_course_input()` (pure) reads the parallel lists `lesson_id[]`, `lesson_page[]`, `lesson_days[]`, `lesson_quiz[]`, `lesson_score[]`; a row without a page is skipped; a page twice, days outside 0–3650, a quiz without a score from 1 to 100 are refused.
 - `pg_course_save()` refuses a page that is another course's lesson and names that course. A lesson left out, or whose page was changed, is deleted with its done rows first (the page key is unique), then kept lessons are updated and new ones inserted.
 - Delete removes the course, its lessons and every progress row; the folder, its pages and the members' access stay.

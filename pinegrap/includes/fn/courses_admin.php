@@ -228,23 +228,36 @@ function pg_course_folder_options()
 
 /**
  * The pages a course's lessons are chosen from: the pages right in the
- * private folders, with their folder.
+ * private folders, with their folder, and the pages the course already
+ * uses wherever they sit now, so a lesson whose page left the folder still
+ * shows its page instead of an empty choice that a save would drop.
  *
  * @param array $folder_ids
+ * @param array $page_ids pages kept on offer whatever their folder
  * @return array rows: page_id, folder_id, name (title, else page name)
  */
-function pg_course_folder_pages(array $folder_ids)
+function pg_course_folder_pages(array $folder_ids, array $page_ids = array())
 {
     $folder_ids = array_values(array_filter(array_map('intval', $folder_ids)));
+    $page_ids = array_values(array_filter(array_map('intval', $page_ids)));
+    $where = array();
 
-    if (!$folder_ids) {
+    if ($folder_ids) {
+        $where[] = "(page_folder IN (" . implode(',', $folder_ids) . "))";
+    }
+
+    if ($page_ids) {
+        $where[] = "(page_id IN (" . implode(',', $page_ids) . "))";
+    }
+
+    if (!$where) {
         return array();
     }
 
     $rows = db_items(
         "SELECT page_id, page_folder AS folder_id, page_name, page_title
         FROM page
-        WHERE page_folder IN (" . implode(',', $folder_ids) . ")
+        WHERE " . implode(' OR ', $where) . "
         ORDER BY page_name ASC");
 
     $out = array();

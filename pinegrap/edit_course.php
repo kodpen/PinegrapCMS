@@ -142,7 +142,7 @@ if ($course_view === 'learners') {
                 'email' => pg_list_cell(h($learner['email'])),
                 'enrolled' => pg_list_cell(($learner['enrolled'] !== '') ? h(get_absolute_time(array('timestamp' => strtotime($learner['enrolled'] . ' 12:00:00'), 'type' => 'date', 'format' => 'plain_text', 'timezone_type' => 'site'))) : '', 'align-middle', array('data-pg-sort-value' => str_replace('-', '', $learner['enrolled']))),
                 'done' => pg_list_cell(h(lang(array('string' => '{var:1} of {var:2}', 'vars' => array($learner['done'], $learner['lessons'])))), 'align-middle', array('data-pg-sort-value' => $learner['done'])),
-                'last' => pg_list_table_when_cell($learner['last_at']),
+                'last' => ($learner['last_at'] > 0) ? pg_list_table_when_cell($learner['last_at']) : pg_list_cell('', 'align-middle', array('data-pg-sort-value' => 0)),
                 'completed' => pg_list_cell(($learner['completed_at'] > 0) ? '<span class="pg-pill pg-tone-teal">' . h(get_absolute_time(array('timestamp' => $learner['completed_at'], 'type' => 'date', 'format' => 'plain_text'))) . '</span>' : '', 'align-middle', array('data-pg-sort-value' => $learner['completed_at'])),
                 'reset' => pg_list_cell(($learner['done'] + $learner['last_at'] > 0)
                     ? '<button type="button" class="pg-button pg-button-ghost pg-button-sm no-submit" data-pg-course-reset="' . $learner['user_id'] . '" data-pg-course-question="' . h(lang(array('string' => 'Reset the progress of {var:1}? The lessons done and the completion are removed, and the member starts again from the first lesson.', 'vars' => array($learner['name'])))) . '">' . h(lang('Reset progress')) . '</button>'
@@ -211,7 +211,7 @@ if ($course_view === 'learners') {
 // The course view. Pages are offered from every private folder, each
 // option naming its folder; the script shows only the chosen folder's.
 $course_folders = pg_course_folder_options();
-$course_pages = pg_course_folder_pages(array_keys($course_folders));
+$course_pages = pg_course_folder_pages(array_keys($course_folders), array_merge(array_column($course_lessons, 'page_id'), array($course_values['classroom_page_id'])));
 $course_quizzes = pg_course_quiz_pages();
 $course_folder_id = (int) $course_values['folder_id'];
 
@@ -286,7 +286,7 @@ if ($course !== null) {
 
         foreach ($course_problems as $problem) {
             $course_status .= '<div role="listitem" class="pg-text-2"><span class="pg-pill ' . (pg_course_problem_blocks($problem) ? 'pg-tone-rose' : 'pg-tone-amber') . ' me-2">'
-                . h(pg_course_problem_blocks($problem) ? lang('Closes nothing') : lang('Check')) . '</span>'
+                . h(pg_course_problem_blocks($problem) ? lang('Closes nothing') : lang('Needs a look')) . '</span>'
                 . h(pg_course_problem_text($problem, ($problem['page_id'] > 0) ? _pg_course_lesson_name($problem['page_id']) : '')) . '</div>';
         }
 
@@ -343,7 +343,8 @@ echo $course_shell . '
                             <div class="card-body pt-0">
                                 <p class="pg-text-2 fg-secondary mt-0">' . h(lang('Pages of the folder in the order they are taken. A lesson opens the given number of days after enrolment (0: at once); with a quiz it is done only when the member scored at least the score needed.')) . '</p>
                                 <div class="table-responsive">
-                                    <table class="table align-middle mb-3 course-lessons">
+                                    <table class="table align-middle mb-3 course-lessons" style="min-width:44rem; table-layout:fixed;">
+                                        <colgroup><col style="width:2.25rem;" /><col /><col style="width:7.5rem;" /><col style="width:28%;" /><col style="width:6.5rem;" /><col style="width:7rem;" /></colgroup>
                                         <thead><tr>
                                             <th scope="col"><span class="visually-hidden">' . h(lang('Order')) . '</span></th>
                                             <th scope="col">' . h(lang('Lesson page')) . '</th>

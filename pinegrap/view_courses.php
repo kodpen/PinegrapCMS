@@ -36,7 +36,7 @@ $courses_sort_columns = array(
     'lessons'     => lang('Lessons'),
     'learners'    => lang('Learners'),
     'completions' => lang('Completed'),
-    'state'       => lang('State'),
+    'state'       => lang('Status'),
 );
 $courses_sort_default = array('sort' => 'name', 'order' => 'asc');
 $courses_sort_levels = pg_list_state('view_courses', $courses_sort_columns, $courses_sort_default)['sorts'];
@@ -92,7 +92,7 @@ $courses_list = pg_list_table_printed(array(
         'lessons' => array('heading' => lang('Lessons'), 'kind' => 'number'),
         'learners' => array('heading' => lang('Learners'), 'kind' => 'number'),
         'completions' => array('heading' => lang('Completed'), 'kind' => 'number'),
-        'state' => array('heading' => lang('State')),
+        'state' => array('heading' => lang('Status')),
     ),
     'levels' => $courses_sort_levels,
     'rows' => $courses_rows,
