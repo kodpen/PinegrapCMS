@@ -65,6 +65,7 @@
 - design-template-own-looks-order.md: Order of the polishing round after Launch: every shipped template's family and pages steps, in which order, and where each template stands
 - design-template-own-looks.md: Plan (owner 2026-11-07): block families in their own source files (B0), Launch as an Apple-like product page (L1-L3), then a polishing round for every template
 - designer-panels-additions.md: Plan designer-panels: additions of other plans to the Options column, the Overview, the page strip or the canvas bar wait for that area's new shape (owner 2026-11-17); which steps wait
+- designer-panels-drawings.md: Plan designer-panels: the sheets in `plans/designer-panels/`, what each shows, where its measures are as text, which board of `boards.html` it is and how a sheet is made from its board
 - designer-panels-features-2.md: Plan designer-panels, features D16 to D28: the spacing box and the size chooser, corners, layout by context, the search that also adds, the review view, copy and paste style
 - designer-panels-features-3.md: Plan designer-panels, features D29 to D44: the Overview tree for long pages: sections, folded chains, hints, search, the page map, wide drop targets, long drags, moving without dragging
 - designer-panels-features-4.md: Plan designer-panels, features D45 to D53: the page strip: the design's menu, the open group as a box, folded groups as chips, tab states, the Pages window, suggested groups
@@ -73,6 +74,10 @@
 - designer-panels-measures-2.md: Plan designer-panels, the measure sheet as text, part 2: the Options panel's parts in order with their sizes, and every control's states (measures-2-anatomy.jpg, measures-3-controls.jpg)
 - designer-panels-measures-3.md: Plan designer-panels, the measure sheet as text, part 3: where each of today's Options sections goes in the three tabs, and the measures of the Overview rows, the page strip and the canvas bar
 - designer-panels-measures-4.md: Plan designer-panels, the Options panel under 300 px as text (drawn at 240, `options-5-narrow-column.jpg`, owner 2026-11-17): identity, tabs, labels, stacked rows, quick strip, closed sections
+- designer-panels-measures-5.md: Plan designer-panels, several elements selected in the Options panel as text (`options-6-multiple-selection.jpg`, owner 2026-11-17): identity, tabs, "— Multiple —", the ring dot, badges, brush, filter
+- designer-panels-measures-6.md: Plan designer-panels, the Pages and Move windows on a 390 px phone as text (`phone-pages-move.jpg`, owner 2026-11-17): the bottom sheet, 44 px rows, the row menu, the lock, Move's bar
+- designer-panels-measures-7.md: Plan designer-panels, the page strip on a narrow screen as text (`page-strip-narrow-approval.jpg`, upper half, owner 2026-11-17): the six steps that make room, what never goes, the "+N" chips
+- designer-panels-measures-8.md: Plan designer-panels, publish approval's marks on the new page strip as text (`page-strip-narrow-approval.jpg`, lower half, owner 2026-11-17): the waiting pill, answer icons, the count, folded pages
 - designer-panels-measures.md: Plan designer-panels, the measure sheet as text, part 1: the chrome's colours with use and contrast, type, heights, corners, the focus ring and the changed dot (measures-1-tokens.jpg)
 - designer-panels-rules.md: Plan designer-panels: what today's editor does that no step may lose (K1 to K12), every step's rules, the screens no drawing shows yet, and what a step's PR body carries
 - designer-panels-steps-2.md: Plan designer-panels, steps DP6 to DP10 of the Options chain: layout by context, the spacing box and size chooser, corners, the search that also adds, the review view, copy and paste style
