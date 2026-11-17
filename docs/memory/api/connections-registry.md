@@ -23,7 +23,7 @@ module: connections_registry
 
 ## What is the figure?
 - `pg_connections_count()`: 78 services, beside 12 MCP connectors; `tests/connections_registry_test.php` holds the number, so a PR adding a service changes it there and here.
-- Architect (2026-11-17): the public figure is the registry's count, kept by a test and never typed in a text (`plans/connections-hub.md`).
+- Architect (2026-11-17): the public figure is the registry's count, kept by a test and never typed in a text (`ui/connections-screen-rules.md`).
 
 ## How does it differ from the census's 79? (`plans/integrations-census-today.md`)
 - Left out, 2: Unsplash (only a constant in `data/config.php`, no place to set it), the WordPress, WooCommerce and Shopify importers (file uploads, no call to the service).
