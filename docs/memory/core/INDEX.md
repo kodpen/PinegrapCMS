@@ -148,6 +148,7 @@
 - php-regions-eval-and-content.md: get_page_content.php evaluates the assembled page when PHP_REGIONS is on; who may write PHP, where content-level markup is defused with pg_defuse_php_tags(), and the site importer's fetch rules. [decision: decisions-made-product-39.md]
 - php-warning-causes-report-screens.md: PHP 8.5 warnings logged by the Visitor Report, Order Report, Edit Form List View and workspace rights: which cause is fixed where; the missing collection B row
 - php85-log-warnings-already-fixed.md: Four files of the owner's PHP 8.5 error log (duplicate_products, get_file, view_order, designer_ai) whose warnings were already fixed on development between 4 and 13 November 2026, with the PR of each
+- phpexcel-embedding.md: The bundled PHPExcel (includes/phpexcel, 1.8.x, no longer maintained): which screens load it, and the local patch that keeps it quiet on PHP 8.5
 - phpmailer-embedding.md: Which PHPMailer the product loads (6.12.0 from includes/phpmailer/src), the unloaded 5.2.22 files beside it, and why both are quiet on PHP 8.5 (#9470)
 - picture-text-translation-doors.md: The file doors of a language's picture: it follows its source on a move, goes with it on a delete, is never swapped while the source is binned, counts in Disk Usage, the daily sweep's catch-up
 - picture-text-translation-draw-photo.md: A photo with text layers drawn per language from the Design Canvas Languages list (PT4b): the browser's overlay and parts, the server drawing on the base row as a save does, format kept

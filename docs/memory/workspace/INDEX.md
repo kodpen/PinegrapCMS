@@ -591,6 +591,7 @@
 - workspace-today-digest-decisions.md: Today's "What happened in the channels" and "Latest decisions" cards in the new dashboard's parts: rows, badge, the Activity line, why a decision row is no button
 - workspace-today-join-about.md: Today's "Channels you could join" and "What is the Workspace?" cards in the dashboard design: markup, where their styles live, what the Join button does
 - workspace-today-page.md: The Workspace's first page, Today (?view=home, was Overview): the greeting and its count line, the cards in the drawn order, what can be done from them, where each card's data comes from [decision: decisions-made-workspace-5.md]
+- workspace-tracking-command.md: The /tracking (/kargo) channel command: an order's tracking numbers set through the old-and-new card and Save, no mail to the customer, the order right, the stale check on Save
 - workspace-typed-mention.md: A mention typed by hand (@handle, @username) becomes the tag a pick from the @ list writes, when the message is written or changed: the rule, where it runs, what it leaves as typed
 - workspace-ui-notes.md: Where the Workspace screens are drawn and styled, its tokens, colour picker vs plan board legend class names, what a closed section of the channel list shows, cosmetic leftovers
 - workspace-ui-scale.md: The Workspace CSS scale (radii, spaces, row and header padding, avatar sizes, shadows as --ws-* tokens), keyboard-only focus rings, dark nav tones, where the block ends
