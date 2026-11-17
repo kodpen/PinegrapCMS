@@ -29,6 +29,7 @@
 - api-device-refresh-rotation.md: Refresh-token exchange (api_device_rotate_pair, devices and OAuth): next pair derived from the presented token so concurrent refreshes agree; conditional UPDATE; 60 s grace from the first exchange [decision: decisions-made-schema-11.md]
 - api-device-sessions.md: The three external API callers (application key, team devices session, OAuth connection): who the owner is, which scopes each holds, public token routes, account scopes, owner rights, revocation [decision: decisions-made-product-53.md]
 - api-discovery-document.md: The credential-free discovery document (.well-known/pinegrap.json and GET integration.php/discovery): its fields and sources, where it is wired, which gates apply, device_signin and pairing
+- api-docs-conventions.md: The Conventions section and the heading outline of the API reference (api_docs.php and integration.php/docs): one renderer, what each topic states, how to keep it true when a rule changes
 - api-dry-run.md: Making an external API write rehearsable (X-Dry-Run or ?dry_run=true): the route flag, where api_dry_run_stop() goes, batch endpoints, the *_check() split, side effects a rehearsal skips
 - api-endpoint-rules.md: Writing an external API endpoint: one route row, one presenter, list paging and batch reads, body checks, nullable fields, error codes, formats, partial updates, mirroring panel changes [decision: decisions-made-schema-9.md]
 - api-experiments.md: The experiments API resource (PX7, #6295; dry_run #8099): list, get with figures and the z-test, start/pause/end via the sheet move (dry_run), experiments:read/write for roles 0-1, two events
@@ -88,6 +89,7 @@
 - api-users-read.md: External API GET /users and /users/{id} (users:read, roles 0-1): the users screen row rule, the User object, columns never read, two-step state
 - api-users-write.md: External API POST /users, POST /users/{id}, DELETE and POST /users/{id}/delete (users:write, administrator owners only): the bounds in the handler, the fields, what is never written, events
 - api-visitor-reports.md: The visitor report routes under visitors:read (traffic, top-content, visitors, search, pages, ai-visibility, vitals, page-clicks): what each reads, the window, linked false
+- api-webhook-event-payloads.md: Fields and samples of webhook events (api_webhook_event_payloads()), GET /webhooks/events, POST /webhooks/{id}/test with event, the test that reads the announcing code
 - api-webhook-events.md: Announcing webhook events: pg_announce() from any screen, contact helpers, the event catalogue, no events from bulk imports, Workspace channel events, queue, signature and retries
 - api-webhook-log-address.md: Site Log lines about an event subscription name its address as scheme and host only (pg_ops_alert_mask_url()): API change and secret renewal, panel stop/resume and removal, given-up delivery
 - api-webhook-queue.md: Outgoing webhook queue (includes/api/outbound/webhooks.php): which subscriptions get an event, held rows for a failing subscription, the retry ladder, retry and the atomic claim of a row
