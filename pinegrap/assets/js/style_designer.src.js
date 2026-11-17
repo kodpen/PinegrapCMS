@@ -73441,7 +73441,11 @@ const StyleDesigner = (function () {
             label.title = _sdT('Show this link on the map');
             label.setAttribute('data-focus', 'label' + i);
             label.addEventListener('click', function () { _sdProtoPick(r.frame, r.port, true); });
-            top.appendChild(label);
+            // The label and its selector: the selector beside a label that
+            // fits, under a long one (the line wraps), the tick before both.
+            var pick = _sdProtoEl('div', 'sd-proto-suggest-pick');
+            pick.appendChild(label);
+            top.appendChild(pick);
             var select = _sdProtoEl('select', 'pg-input pg-input-sm');
             select.setAttribute('data-focus', 'select' + i);
             select.setAttribute('aria-label', _sdT('Where "{var}" goes', r.label));
@@ -73455,12 +73459,14 @@ const StyleDesigner = (function () {
                 select.appendChild(o);
             });
             select.value = r.target;
+            // A page name longer than the selector is whole in its title.
+            select.title = select.selectedIndex >= 0 ? select.options[select.selectedIndex].textContent : '';
             select.addEventListener('change', function () {
                 r.target = select.value;
                 r.ticked = !!r.target;
                 _sdProtoSuggestDraw();
             });
-            top.appendChild(select);
+            pick.appendChild(select);
             li.appendChild(top);
             // An unsure row asks, its candidates as buttons and Skip.
             if (r.asked) {
