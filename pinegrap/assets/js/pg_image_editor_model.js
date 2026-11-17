@@ -4204,8 +4204,14 @@
         return recordApply(l, samples, end, px);
     }
 
+    // The hint's label key: while the box is set up or while it runs; on a
+    // touch screen without naming Escape (the pill's Cancel is the way out).
+    function followHint(running, touch) {
+        return (running ? 'followHintRun' : 'followHint') + (touch ? 'Touch' : '');
+    }
+
     var FOLLOW = {
-        FOLLOW_MIN: FOLLOW_MIN, FOLLOW_BOX: FOLLOW_BOX, followClip: followClip, followToSource: followToSource, followFromSource: followFromSource,
+        followHint: followHint, FOLLOW_MIN: FOLLOW_MIN, FOLLOW_BOX: FOLLOW_BOX, followClip: followClip, followToSource: followToSource, followFromSource: followFromSource,
         followSize: followSize, followSpan: followSpan, followTimes: followTimes, followSamples: followSamples, followApply: followApply
     };
 
@@ -5009,6 +5015,12 @@
 
             if (s.animate && (s.kind === 'video')) {
                 add('split');
+            }
+
+            // Follow an area of the video showing at the playhead: never a
+            // video itself, never a redaction (it does not move).
+            if (s.animate && s.follow && (s.kind !== 'video') && (s.kind !== 'redact')) {
+                add('follow');
             }
 
             if (s.animate && (s.kind !== 'redact')) {
