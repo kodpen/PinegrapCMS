@@ -7,6 +7,7 @@ module: content_proposals
 ## What does the page's tab show?
 - (PA3, #10188) A mark after the page's name, from `pg_content_proposals_studio_rows()` (pure): the person's own waiting change ("Waiting for approval", amber pill); else the newest answer to one of their changes not closed, for 30 days (`PG_CONTENT_PROPOSALS_KEEP_DAYS`): applied, dismissed by a designer, or stale (an icon); else, for roles 0 and 1 only, how many changes wait on the page (a number).
 - A change the editor withdrew, or one taken back (`reverted`), is no answer. Nobody else's change or answer reaches an editor; a Manager gets no count.
+- The marks without words carry a title and aria-label (`_pgContentMarkName()`): "Applied", "Dismissed", "Cannot be applied", "N waiting changes" (architect, channel message 8183).
 - The mark opens a note under it (`#sd-cc-pop`); clicking it never switches the tab. The count opens `content_changes.php` (PA4a's list) in a new browser tab.
 - The list of every page (the strip's button, the only way on a phone) shows the same mark on the page's row; its note then sits under that button.
 
@@ -19,11 +20,12 @@ module: content_proposals
 - A tab the editor already changed is left alone. A change that no longer fits (a designer changed the page) is not laid; its note says so and offers Withdraw.
 
 ## What does Withdraw do?
+- The editor confirms first (`_pgContentWithdrawAsk()`, `pgConfirm`): what is withdrawn and that the page goes back to what is on the site; it cannot be undone (architect, message 8183, chose between a confirm and Undo).
 - `content_change_withdraw` → `pg_content_proposals_withdraw()`: only the editor who made it, only while it waits (`pg_content_proposals_withdraw_check()`); the row becomes `dismissed` with `decided_by = requested_by`, as a save of the page as it is does, and its Workspace request is taken back. Tells nobody.
 - The canvas then gets the page as stored (`page_load`), unless the editor changed it since: their edits stay.
 
 ## How is an answer closed?
-- The note's Close: `content_change_seen` → `pg_content_proposals_answer_seen()` sets `steps.seen` on the editor's own closed row; no column. The open page's answer opens by itself once per load.
+- The note's Close: `content_change_seen` → `pg_content_proposals_answer_seen()` sets `steps.seen` on the editor's own closed row; no column. The open page's answer opens by itself once per load; the waiting note opens only on a click on its pill.
 - The words are the bell line's sentence (`pg_content_proposals_answer_text()` → `pg_content_proposals_bell_words()`), the dismissal's reason whole. Role 3 has no bell, so this is where it is told (architect, agent channel message 6485).
 
 ## Which test guards it?

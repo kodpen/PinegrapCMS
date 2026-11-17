@@ -148,3 +148,19 @@ function test_content_proposals_studio_wiring()
 	pg_assert_contains("_pgApiPost('content_change_withdraw'", $js);
 	pg_assert_contains('_pgContentChangesStart();', $js);
 }
+
+// The marks that show no words carry a name (title and aria-label), in the
+// reader's language; Withdraw asks first.
+function test_content_proposals_studio_mark_names()
+{
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+
+	foreach (array("_sdT('Applied')", "_sdT('Dismissed')", "_sdT('Cannot be applied')", "_sdT('1 waiting change')", "_sdT('{var:1} waiting changes', n)") as $name) {
+		pg_assert_contains($name, $js);
+	}
+
+	pg_assert_contains("' title=\"' + esc(label) + '\" aria-label=\"' + esc(label) + '\">'", $js, 'an answer\'s icon');
+	pg_assert_contains("' title=\"' + esc(many) + '\" aria-label=\"' + esc(many) + '\">'", $js, 'the count');
+	pg_assert_contains("_pgContentWithdrawAsk(p, st.waiting, btn)", $js, 'Withdraw asks first');
+	pg_assert_contains("_sdT('Withdraw your waiting change?')", $js);
+}

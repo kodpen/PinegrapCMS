@@ -74526,14 +74526,14 @@ const StyleDesigner = (function () {
         }
         if (st.answer) {
             var icon = { applied: 'bi-check2-circle', dismissed: 'bi-x-circle', stale: 'bi-exclamation-triangle' }[st.answer.kind] || 'bi-info-circle';
-            var label = _pgContentAnswerLabel(st.answer.kind);
-            return '<span class="sd-tab-cc sd-tab-cc-' + esc(st.answer.kind) + '"' + key + ' title="' + esc(label) + '">' +
-                   '<span class="bi ' + icon + '" aria-hidden="true"></span><span class="visually-hidden">' + esc(label) + '</span></span>';
+            var label = _pgContentMarkName(st.answer.kind);
+            return '<span class="sd-tab-cc sd-tab-cc-' + esc(st.answer.kind) + '"' + key + ' title="' + esc(label) + '" aria-label="' + esc(label) + '">' +
+                   '<span class="bi ' + icon + '" aria-hidden="true"></span></span>';
         }
         if (st.count > 0) {
-            var many = _pgContentCountText(st.count);
-            return '<span class="sd-tab-cc sd-tab-cc-count"' + key + ' title="' + esc(many) + '">' +
-                   esc(String(st.count)) + '<span class="visually-hidden"> ' + esc(many) + '</span></span>';
+            var many = _pgContentMarkName('count', st.count);
+            return '<span class="sd-tab-cc sd-tab-cc-count"' + key + ' title="' + esc(many) + '" aria-label="' + esc(many) + '">' +
+                   '<span aria-hidden="true">' + esc(String(st.count)) + '</span></span>';
         }
         return '';
     }
@@ -74544,9 +74544,12 @@ const StyleDesigner = (function () {
         return _sdT('Change can no longer be applied');
     }
 
-    function _pgContentCountText(n) {
-        return (n === 1) ? _sdT('One content change waits for approval on this page.')
-                         : _sdT('{var:1} content changes wait for approval on this page.', n);
+    // The name of a mark that shows no words: its title and aria-label.
+    function _pgContentMarkName(kind, n) {
+        if (kind === 'applied') return _sdT('Applied');
+        if (kind === 'dismissed') return _sdT('Dismissed');
+        if (kind === 'stale') return _sdT('Cannot be applied');
+        return (n === 1) ? _sdT('1 waiting change') : _sdT('{var:1} waiting changes', n);
     }
 
     // The answer of the open page is shown once when the tab is drawn.
@@ -74603,9 +74606,24 @@ const StyleDesigner = (function () {
         pop.querySelector('[data-cc-act]').addEventListener('click', function (e) {
             var btn = e.currentTarget;
             btn.disabled = true;
-            if (btn.getAttribute('data-cc-act') === 'withdraw') _pgContentWithdraw(p, st.waiting, btn);
+            if (btn.getAttribute('data-cc-act') === 'withdraw') _pgContentWithdrawAsk(p, st.waiting, btn);
             else _pgContentSeen(p, st.answer.id);
         });
+    }
+
+    // Withdrawing cannot be undone: the editor confirms it first.
+    function _pgContentWithdrawAsk(p, id, btn) {
+        var msg = _sdT('Your waiting change to "{var:1}" is withdrawn: no designer will see it, and the page goes back to what is on the site.', p.page_name || '');
+        var go = function (ok) {
+            if (ok) _pgContentWithdraw(p, id, btn);
+            else btn.disabled = false;
+        };
+        if (typeof window.pgConfirm === 'function') {
+            window.pgConfirm({ title: _sdT('Withdraw your waiting change?'), message: msg,
+                               confirmText: _sdT('Withdraw'), cancelText: _sdT('Cancel'), variant: 'warning' }).then(go);
+        } else {
+            go(window.confirm(msg));
+        }
     }
 
     function _pgContentWithdraw(p, id, btn) {
