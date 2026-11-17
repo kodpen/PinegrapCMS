@@ -1262,3 +1262,97 @@ function pg_picture_tr_draw_photo($request, $file, $live)
 
     return array('refusal' => null, 'path' => $path, 'extension' => $extension);
 }
+
+/* ---------------------------------------------------------------------------
+   The queue: the waiting pictures drawn one after another
+   ---------------------------------------------------------------------------
+   "Draw the waiting pictures" on the Pictures group of the Translations
+   screen opens a view (translations.php?group=pictures&draw=1) that draws
+   each language row waiting or out of date, whose every text is
+   translated, in this browser with the Design Canvas's own drawing
+   (assets/js/picture_queue.js). Nothing is drawn with nobody there. */
+
+/**
+ * The queue's query: the language rows waiting (0) or out of date (2) of
+ * the given languages, whose picture has texts and every one of them
+ * translated into the row's language, with the picture's name and folder.
+ * A code other than letters, digits and hyphens is dropped. Pure.
+ *
+ * @param array $languages the target languages that are drawn
+ * @param int   $limit
+ * @return string SQL, or '' without a language
+ */
+function pg_picture_tr_queue_sql($languages, $limit)
+{
+    $codes = array();
+
+    foreach ((array) $languages as $code) {
+        if (is_string($code) && preg_match('/^[A-Za-z0-9-]{1,10}$/', $code)) {
+            $codes[] = "'" . $code . "'";
+        }
+    }
+
+    if (!$codes) {
+        return '';
+    }
+
+    return "SELECT ft.file_id, ft.language, ft.state, f.name, f.folder
+        FROM file_translation ft
+        INNER JOIN files f ON f.id = ft.file_id
+        WHERE ft.state IN (0, 2) AND ft.language IN (" . implode(', ', $codes) . ")
+          AND EXISTS (SELECT 1 FROM translation_uses u WHERE u.owner_type = 'file' AND u.owner_id = ft.file_id)
+          AND NOT EXISTS (SELECT 1 FROM translation_uses u
+              LEFT JOIN translations t ON t.string_id = u.string_id AND t.language = ft.language
+              WHERE u.owner_type = 'file' AND u.owner_id = ft.file_id AND (t.id IS NULL OR t.text = ''))
+        ORDER BY f.name, ft.language
+        LIMIT " . max(1, (int) $limit);
+}
+
+/**
+ * The pictures waiting to be drawn that this user may draw: the queue's
+ * rows of the target languages written left to right, in a folder the
+ * user may edit and not in the Recycle Bin.
+ *
+ * @param int $limit
+ * @return array of array(file_id, name, language, label, state)
+ */
+function pg_picture_tr_queue($limit = 200)
+{
+    if (!pg_picture_tr_ready() || !pg_picture_tr_store_ready()) {
+        return array();
+    }
+
+    pg_tr_load();
+
+    $languages = array();
+
+    foreach (array_keys(pg_tr_target_languages()) as $code) {
+        if (!pg_picture_tr_rtl((string) $code)) {
+            $languages[] = (string) $code;
+        }
+    }
+
+    $sql = pg_picture_tr_queue_sql($languages, $limit);
+    $rows = ($sql !== '') ? db_items($sql) : array();
+    $items = array();
+    $folders = array();
+
+    foreach (is_array($rows) ? $rows : array() as $row) {
+        $folder = (int) $row['folder'];
+
+        if (!isset($folders[$folder])) {
+            $folders[$folder] = !pg_folder_binned($folder) && check_edit_access($folder);
+        }
+
+        if ($folders[$folder]) {
+            $items[] = array(
+                'file_id'  => (int) $row['file_id'],
+                'name'     => (string) $row['name'],
+                'language' => (string) $row['language'],
+                'label'    => pg_tr_language_label((string) $row['language']),
+                'state'    => (int) $row['state']);
+        }
+    }
+
+    return $items;
+}
