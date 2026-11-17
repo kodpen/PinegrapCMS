@@ -25,6 +25,7 @@ if (!defined('PG_INIT_LOADED')) {
 require_once(PG_FUNCTIONS_DIR . '/includes/api/outbound/connectors/base.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/model_agents.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mcp_catalogue.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/erp/edoc/registry.php');
 
 // Category key => the card ids its 'sections' list, read from the source:
 // pg_settings_categories() asks the database.
@@ -81,13 +82,13 @@ function test_connections_registry_row_problems_names_what_is_missing()
 	$problems = pg_connections_row_problems(array(
 		'name'  => 'Example',
 		'group' => 'nowhere',
-		'place' => 'example.php',
+		'place' => 'settings/example',
 		'state' => null,
 		'uses'  => 'Something',
 	));
 
 	pg_assert_true(in_array('group', $problems, true), 'an unknown group is named');
-	pg_assert_true(in_array('place', $problems, true), 'a place outside the settings and the tools is named');
+	pg_assert_true(in_array('place', $problems, true), 'a place that is neither a card address nor a script is named');
 	pg_assert_true(in_array('state', $problems, true), 'a row with no reader and no reason is named');
 
 	$problems = pg_connections_row_problems(array(
@@ -123,6 +124,8 @@ function test_connections_registry_every_place_is_a_card_or_a_tool()
 	foreach (pg_connections_registry() as $id => $row) {
 		if (preg_match('~^#settings/([a-z_]+)/(pgset-[a-z0-9-]+)$~', $row['place'], $match)) {
 			pg_assert_true(isset($cards[$match[1]]) && in_array($match[2], $cards[$match[1]], true), $id . ': ' . $row['place'] . ' is a card of its category');
+		} elseif (in_array($row['place'], pg_connections_other_screens(), true)) {
+			pg_assert_true(is_file(PG_FUNCTIONS_DIR . '/' . $row['place']), $id . ': ' . $row['place'] . ' is a screen of the panel');
 		} else {
 			pg_assert_true(in_array($row['place'], $tools, true), $id . ': ' . $row['place'] . ' is a System tools screen');
 		}
@@ -145,7 +148,10 @@ function test_connections_registry_covers_every_existing_list()
 		'captcha'     => array_keys(pg_captcha_providers()),
 		'picker'      => array_keys(pg_cloud_picker_providers()),
 		'edoc'        => array_keys(erp_edoc_drivers()),
+		'notify'      => array_keys(pg_notify_channel_kinds()),
 	);
+
+	pg_assert_same(array_keys(pg_connections_source_lists()), array_keys($lists), 'every source list is checked');
 
 	$skipped = pg_connections_not_services();
 
@@ -182,7 +188,7 @@ function test_connections_registry_count_follows_its_rule()
 	pg_assert_same($services, pg_connections_count(), 'the figure counts every row but the ready-made MCP connectors');
 	pg_assert_same($connectors, pg_connections_connector_count(), 'the connectors are counted apart');
 	pg_assert_same(count(ws_mcp_catalogue()), pg_connections_connector_count(), 'one connector per catalogue entry');
-	pg_assert_same(81, pg_connections_count(), 'the figure: the census\'s 79, less what the rule leaves out, plus what it missed (api/connections-registry.md)');
+	pg_assert_same(78, pg_connections_count(), 'the figure: the census\'s 79, less what the rule leaves out, plus what it missed (api/connections-registry.md)');
 }
 
 function test_connections_registry_groups_are_used_and_ordered()
@@ -205,5 +211,37 @@ function test_connections_registry_needs_attention_only_from_an_account()
 		if (is_array($row['state']) && !empty($row['state']['attention'])) {
 			pg_assert_same('account', $row['state']['kind'], $id . ': only a connected account carries an error on file');
 		}
+	}
+}
+
+function test_connections_registry_every_reader_function_exists()
+{
+	$wanted = array();
+
+	foreach (pg_connections_registry() as $id => $row) {
+		if (is_array($row['state']) && ($row['state']['kind'] === 'reader')) {
+			$wanted[$row['state']['function']] = $id;
+		}
+	}
+
+	$found = array();
+	$files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator(PG_FUNCTIONS_DIR . '/includes', FilesystemIterator::SKIP_DOTS));
+
+	foreach ($files as $file) {
+		if (substr((string) $file, -4) !== '.php') {
+			continue;
+		}
+
+		$source = (string) file_get_contents((string) $file);
+
+		foreach (array_keys($wanted) as $function) {
+			if (strpos($source, 'function ' . $function . '(') !== false) {
+				$found[$function] = true;
+			}
+		}
+	}
+
+	foreach ($wanted as $function => $id) {
+		pg_assert_true(isset($found[$function]), $id . ': ' . $function . '() is declared');
 	}
 }
