@@ -97,10 +97,11 @@
             return pill;
         }
 
-        // The agent's own picture, else the robot in a quiet tile of its
-        // colour, as Channel info draws it; never a face.
+        // The agent's own picture, else its mark in a quiet tile of its
+        // colour, as Channel info draws it (a model agent's the assistant's
+        // stars, any other the robot); never a face.
         function agentPicture(agent) {
-            var face = h.agentFace({ tone: agent.agent_id, assistant: false });
+            var face = h.agentFace({ tone: agent.agent_id, assistant: agent.kind === 'model' });
 
             face.classList.add('ws-cha-face');
 

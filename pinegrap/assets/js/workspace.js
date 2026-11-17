@@ -3415,27 +3415,34 @@
     // One agent's row as Channel info and a discussion's people panel draw
     // it: its face and name (a registry agent's open its card), role, badge,
     // Paused, Following, under it @handle and what wakes it, its last seen
-    // at the right.
+    // at the right of the first line. In a narrow column the badges move
+    // to the next line and the role is the part cut (.ws-info-agents).
     function agentInfoRow(channel, agent, list) {
         var row = el('div', 'ws-info-person');
         var text = el('div', 'ws-info-person-text');
-        var name = el('div', 'ws-info-person-name', agent.name);
+        var name = el('div', 'ws-info-person-name');
+        var title = name.appendChild(el('span', 'ws-info-agent-title'));
+        var badges = el('span', 'ws-info-agent-badges');
         var face = agentFace(agent);
+
+        title.appendChild(el('span', 'ws-info-agent-name', agent.name));
 
         // The role the agent's form gives it, a label only.
         if (agent.role) {
-            name.appendChild(el('span', 'small fg-secondary fw-normal ms-2', agent.role));
+            title.appendChild(el('span', 'ws-info-agent-role small fg-secondary fw-normal', agent.role));
         }
 
-        name.appendChild(el('span', 'badge badge-subtle theme-accent ws-info-badge', t(agent.assistant ? 'cm_assistant' : 'cm_agent')));
+        badges.appendChild(el('span', 'badge badge-subtle theme-accent ws-info-badge', t(agent.assistant ? 'cm_assistant' : 'cm_agent')));
 
         if (!agent.active) {
-            name.appendChild(el('span', 'badge badge-subtle theme-secondary ws-info-badge', t('cha_paused')));
+            badges.appendChild(el('span', 'badge badge-subtle theme-secondary ws-info-badge', t('cha_paused')));
         }
 
         if (agent.following) {
-            name.appendChild(el('span', 'badge badge-subtle theme-success ws-info-badge', t('cm_following')));
+            badges.appendChild(el('span', 'badge badge-subtle theme-success ws-info-badge', t('cm_following')));
         }
+
+        name.appendChild(badges);
 
         // A registry agent's name and face open its card.
         if (agent.id) {
