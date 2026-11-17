@@ -7818,6 +7818,12 @@ const StyleDesigner = (function () {
     // element toolbars) scales with the frame.
     var _sdFit = null;   // { w, s, h0 } while fitted
 
+    // The percentage the bar shows: the canvas zoom times the frame's scale
+    // while fitted, so a fitted frame reads what it is drawn at.
+    function _sdCanvasZoomPct(zoom, scale) {
+        return Math.round(zoom * ((scale > 0) ? scale : 1) * 100);
+    }
+
     function _sdFitScale() {
         return (_sdFit && _sdFit.s > 0) ? _sdFit.s : 1;
     }
@@ -7852,6 +7858,8 @@ const StyleDesigner = (function () {
         wrap.style.marginBottom = (h - h / s) + 'px';
         _sdFitMark(true);
         updateBpLabel();
+        var zl = document.getElementById('sd-vb-zoom-label');
+        if (zl) zl.textContent = _sdT('{var:1}%', _sdCanvasZoomPct(canvasZoom, s));
     }
 
     function _sdFitLeave() {
@@ -7868,6 +7876,8 @@ const StyleDesigner = (function () {
         _sdFit = null;
         _sdFitMark(false);
         updateBpLabel();
+        var zl = document.getElementById('sd-vb-zoom-label');
+        if (zl) zl.textContent = _sdT('{var:1}%', _sdCanvasZoomPct(canvasZoom, 1));
     }
 
     function _sdFitMark(on) {
@@ -69848,14 +69858,20 @@ const StyleDesigner = (function () {
         var wrap = document.getElementById('sd-iframe-wrap');
         var lbl = document.getElementById('sd-bp-label');
         if (!wrap || !lbl) return;
-        var w = wrap.offsetWidth;
+        lbl.textContent = _sdBpLabelText(wrap.offsetWidth, !!(tree && tree.props && tree.props.pgEmail));
+    }
+
+    // The width text: the width and its Bootstrap breakpoint; an e-mail
+    // design has no breakpoint, so its width alone.
+    function _sdBpLabelText(w, email) {
+        if (email) return w + ' px';
         var bp = 'XS';
         if (w >= 576) bp = 'SM';
         if (w >= 768) bp = 'MD';
         if (w >= 992) bp = 'LG';
         if (w >= 1200) bp = 'XL';
         if (w >= 1400) bp = 'XXL';
-        lbl.textContent = w + ' px · ' + bp;
+        return w + ' px · ' + bp;
     }
 
     function setCanvasZoom(z) {

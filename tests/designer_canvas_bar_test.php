@@ -168,3 +168,34 @@ function test_designer_canvas_bar_fit_scales_the_frame()
 		pg_assert_contains($sel, $css, 'hidden while fitted: ' . $sel);
 	}
 }
+
+// The width text names a Bootstrap breakpoint only where there is one: an
+// e-mail design has none, so it reads the width alone.
+function test_designer_canvas_bar_width_text()
+{
+	$res = designer_canvas_bar_node(array('_sdBpLabelText'), array(
+		array(375, false), array(576, false), array(768, false), array(992, false),
+		array(1200, false), array(1400, false), array(1919, false),
+		array(600, true), array(375, true),
+	), '_sdBpLabelText(c[0], c[1])');
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same(array('375 px · XS', '576 px · SM', '768 px · MD', '992 px · LG', '1200 px · XL', '1400 px · XXL', '1919 px · XXL', '600 px', '375 px'), $res, 'a page names its breakpoint, an e-mail its width alone');
+}
+
+// While fitted the percentage is the frame's real scale, rounded.
+function test_designer_canvas_bar_zoom_shown()
+{
+	$res = designer_canvas_bar_node(array('_sdCanvasZoomPct'), array(
+		array(1, 1), array(1.1, 1), array(0.7, 1), array(1, 594 / 1400), array(1, 930 / 1200), array(1, 0),
+	), '_sdCanvasZoomPct(c[0], c[1])');
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same(array(100, 110, 70, 42, 78, 100), $res, 'the zoom times the fit scale, rounded; no scale reads as none');
+}
