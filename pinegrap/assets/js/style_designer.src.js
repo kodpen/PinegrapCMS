@@ -17885,6 +17885,25 @@ const StyleDesigner = (function () {
 
     var _SD_INSERT_MARKS = ['sd-drop-hl', 'sd-insert-before', 'sd-insert-after', 'sd-insert-before-x', 'sd-insert-after-x'];
 
+    // The canvas drop zone after the drag rules are asked. `zone` is the band
+    // the pointer is in (_getZone()), `y` and `h` the pointer's height in the
+    // element and the element's height; canInside() and canSibling() say
+    // whether the element itself and its parent take the drag (canSibling is
+    // false without a parent). A middle band the element refuses falls back
+    // to the nearer edge beside it, as the Overview tree does: bubbling on
+    // let an ancestor measure the pointer against its own box and mark a far
+    // edge. A before/after band the parent refuses falls back to inside.
+    // Returns null when neither takes the drag, so an ancestor may.
+    function _sdCanvasDropZone(zone, y, h, canInside, canSibling) {
+        if (zone === 'inside') {
+            if (canInside()) return 'inside';
+            if (canSibling()) return y < h / 2 ? 'before' : 'after';
+            return null;
+        }
+        if (canSibling()) return zone;
+        return canInside() ? 'inside' : null;
+    }
+
     function setupDropEvents(el, node) {
         // The drop mark is written only when it changes. dragover fires many
         // times a second; removing and adding the same class each time is an
@@ -17899,9 +17918,7 @@ const StyleDesigner = (function () {
             if (mark && !cl.contains(mark)) cl.add(mark);
         }
         function _clearInsertMarks() { _setInsertMark(null); }
-        function _getZone(e) {
-            // A see-through wrapper is measured by its element.
-            var r = _sdBoxRect(el);
+        function _getZone(e, r) {
             var y = e.clientY - r.top;
             var h = r.height;
             // Root nodes always go "inside"; very short elements get only before/after
@@ -17945,44 +17962,34 @@ const StyleDesigner = (function () {
             // are box-shadows and do not move anything, so clearing them first
             // changed no measurement — it only forced the browser to lay the
             // page out again before every single read.
-            var zone = _getZone(e);
+            // A see-through wrapper is measured by its element.
+            var _box = _sdBoxRect(el);
+            var zone = _getZone(e, _box);
 
             // One lookup for the whole handler. It used to be asked three
             // separate times, each a full walk of the tree before the drag
             // index existed.
             var _par = findParent(node, tree);
 
-            var dropOk;
-            if (zone === 'inside') {
-                dropOk = canDrop(dragData, node);
-            } else {
-                // before/after: check the parent's canDrop. Nodes in the main tree use
-                // findParent(); nodes inside a shared component's cached inner tree use
-                // _findParentInShared() so "drop as sibling" works for inner elements too
-                // (otherwise dragging a card's child above the card would fall through to
-                // "inside" and re-add the same child to the same card = no-op).
-                var par = _par;
-                if (!par) {
-                    var _sp = _findParentInShared(node);
-                    if (_sp) par = _sp.parent;
-                }
-                if (!par) { zone = 'inside'; dropOk = canDrop(dragData, node); }
-                else      { dropOk = canDrop(dragData, par); }
-                // ── Sibling-drop fallback to inside ─────────────────────
-                // If the parent rejects but the node itself would accept,
-                // promote the drop to 'inside' so the user lands where the
-                // visible drop highlight suggested. Common case: dragging a
-                // region (Comments Block) over the top/bottom 28% of a col
-                // — par=row rejects 'region' (allowed.row only includes
-                // col/shared_ref/loop_area), but col happily accepts it.
-                // Without this fallback, the drop silently bubbled up to
-                // container which DID accept — but that's not where the
-                // user thought they were dropping.
-                if (!dropOk && canDrop(dragData, node)) {
-                    zone = 'inside';
-                    dropOk = true;
-                }
-            }
+            // Parent check for before/after: nodes in the main tree use
+            // findParent(), nodes inside a shared component's cached inner
+            // tree _findParentInShared(), so "drop as sibling" works for inner
+            // elements too (otherwise dragging a card's child above the card
+            // fell through to "inside" and re-added it to the same card).
+            // A sibling band the parent refuses becomes "inside" when the node
+            // takes the drag: a region over the top of a col (a row takes no
+            // region) lands in the col, not in the container further up.
+            zone = _sdCanvasDropZone(zone, e.clientY - _box.top, _box.height,
+                function () { return canDrop(dragData, node); },
+                function () {
+                    var sibPar = _par;
+                    if (!sibPar) {
+                        var sp = _findParentInShared(node);
+                        if (sp) sibPar = sp.parent;
+                    }
+                    return !!sibPar && canDrop(dragData, sibPar);
+                });
+            var dropOk = zone !== null;
             if (!dropOk) {
                 // Do NOT stopPropagation — let an ancestor try to accept this drag.
                 // We also reset dropEffect so the browser shows "not-allowed" if nothing
