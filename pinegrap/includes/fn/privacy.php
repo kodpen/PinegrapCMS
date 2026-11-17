@@ -1928,17 +1928,23 @@ function _pg_privacy_erase_apply_gift_cards($where, array $fields, array $scope,
 /**
  * The person's store credit: every card with a balance is voided first, with
  * a note line and an audit line (pg_credit_void()), so nothing is left to
- * spend, then the cards stop naming the account.
+ * spend, then the cards brought to zero stop naming the account. A void that
+ * lost a race with an order spending the card is tried once more on a fresh
+ * read. A card that still holds a balance after that keeps its account, so
+ * it never turns into a plain gift card that pays for whoever knows the
+ * code; staff void it.
  */
 function _pg_privacy_erase_apply_store_credit($where, array $fields, array $scope, $name)
 {
     if (function_exists('pg_credit_void')) {
         foreach (db_values("SELECT id FROM gift_cards WHERE (balance > 0) AND " . $where) as $card_id) {
-            pg_credit_void((int) $card_id, lang('Personal data erased'));
+            if (!pg_credit_void((int) $card_id, lang('Personal data erased'))) {
+                pg_credit_void((int) $card_id, lang('Personal data erased'));
+            }
         }
     }
 
-    _pg_privacy_erase_write('gift_cards', $where, $fields, $name);
+    _pg_privacy_erase_write('gift_cards', '(' . $where . ') AND (balance = 0)', $fields, $name);
 }
 
 /**

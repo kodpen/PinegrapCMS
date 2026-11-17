@@ -276,7 +276,8 @@ function ws_command_registry_plan()
 
 /**
  * The channel's own commands: a later message, decisions, notes, polls,
- * a recap, an approval request, a status update, a check-in, the help.
+ * a recap, an approval request, a status update, a check-in, the
+ * reader's notifications, adding people, leaving, the help.
  *
  * @return array[]
  */
@@ -363,6 +364,31 @@ function ws_command_registry_channel()
             'api' => 'ws_api_command_kind_checkin',
         ),
         array(
+            'key' => 'notify', 'tr' => 'bildirim', 'en' => 'notify', 'label' => '/notify · /bildirim',
+            'description' => lang('Sets your notifications of this channel: all, mentions or never. Without a word it says the one in force.'),
+            'example'     => lang('/notify mentions'),
+            'args'        => array($arg('choice', 'notify', lang('all | mentions | never'), true, 'notify')),
+            'names' => array('bildirim', 'notify'), 'group' => 'channel', 'where' => 'channel', 'order' => 950,
+            'gate' => 'ws_command_gate_member', 'runner' => 'ws_command_run_notify', 'live' => 'ws_command_live_notify',
+        ),
+        array(
+            'key' => 'invite', 'tr' => 'davet', 'en' => 'invite', 'label' => '/invite · /davet',
+            'description' => lang('Adds people to this channel, as Add people does: name them with @.'),
+            'example'     => lang('/invite @ayse @mehmet'),
+            'args'        => array($arg('people', 'people', lang('@people'), false, 'people', array('multiple' => true))),
+            'names' => array('davet', 'invite'), 'group' => 'channel', 'order' => 960,
+            'gate' => 'ws_command_gate_invite', 'runner' => 'ws_command_run_invite', 'live' => 'ws_command_live_invite',
+        ),
+        array(
+            'key' => 'leave', 'tr' => 'ayrıl', 'en' => 'leave', 'label' => '/leave · /ayrıl',
+            'description' => lang('Leaves this channel once you confirm on the card shown to you.'),
+            'example'     => lang('/leave'),
+            'args'        => array(),
+            'names' => array('ayrıl', 'ayril', 'leave'), 'group' => 'channel', 'where' => 'channel', 'order' => 970,
+            'gate' => 'ws_command_gate_member', 'runner' => 'ws_command_run_leave', 'live' => 'ws_command_live_leave',
+            'api' => 'preview',
+        ),
+        array(
             'key' => 'help', 'tr' => 'yardım', 'en' => 'help', 'label' => '/help · /yardım',
             'description' => lang('Lists the commands and what they do.'),
             'example'     => lang('/help'),
@@ -403,7 +429,7 @@ function ws_command_registry_records()
         ),
         array(
             'key' => 'create', 'tr' => 'oluştur', 'en' => 'create', 'label' => '/create · /oluştur',
-            'description' => lang('Creates a product or a product group, off sale, a contact, or a row of a workflow table: the kind, then its name; a product takes a price and a #group if you like, a contact its company and e-mail after commas, a row the table\'s name. Shown to you before it is created. Several product lines, one per line, make one card of drafts for you to apply.'),
+            'description' => lang('Creates a product or a product group, off sale, a contact, a row of a workflow table, an ERP account or a calendar event: the kind, then its name; a product takes a price and a #group if you like, a contact its company and e-mail after commas, a row the table\'s name, an account its tax number and e-mail after commas, an event its day and time first. Shown to you before it is created. Several product lines, one per line, make one card of drafts for you to apply.'),
             'example'     => lang('/create product Blue mug 149,90'),
             'args'        => array(
                 $arg('kind', 'record_kind', lang('kind'), false, 'kinds'),
@@ -428,6 +454,24 @@ function ws_command_registry_records()
                     'words'   => array('satir', 'row'),
                     'args'    => array($arg('table', 'text', lang('table'), false, '', array('multiple' => true))),
                     'example' => lang('/create row Leads'),
+                ),
+                array(
+                    'words'   => array('cari', 'account'),
+                    'args'    => array(
+                        $arg('name', 'text', lang('name'), false, '', array('after' => ',')),
+                        $arg('tax_number', 'text', lang('tax number'), true, '', array('after' => ',')),
+                        $arg('email', 'text', lang('e-mail'), true),
+                    ),
+                    'example' => lang('/create account Acme Ltd, 1234567890, info@acme.com'),
+                ),
+                array(
+                    'words'   => array('etkinlik', 'event'),
+                    'args'    => array(
+                        $arg('day', 'date', lang('day'), false, 'dates'),
+                        $arg('time', 'time', lang('time'), true),
+                        $arg('name', 'text', lang('event name'), false, '', array('multiple' => true)),
+                    ),
+                    'example' => lang('/create event tomorrow 14:00 Opening'),
                 ),
             ),
             'names' => array('oluştur', 'olustur', 'create'), 'group' => 'records', 'order' => 160,

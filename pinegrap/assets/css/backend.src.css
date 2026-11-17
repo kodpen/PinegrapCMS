@@ -15458,6 +15458,12 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
   .ws-poll .ws-poll-split {
     grid-template-columns: minmax(0, 1fr);
   }
+  /* A row's own picture stays on the tick's line and the words take the
+     whole width under it, so they read in lines of several words. */
+  .ws-poll-thumb + .ws-poll-text {
+    flex-basis: 100%;
+    padding-left: 1.5rem;
+  }
 }
 .ws-poll-desc,
 .ws-poll-links,
@@ -24606,6 +24612,12 @@ html.ws-flow-layer-on body {
 }
 .pgc-edge.pgc-edge-faint {
   opacity: var(--pgc-faint, 0.3);
+}
+/* A proposed arrow (dashed()): dashed in a neutral colour, whatever the
+   focus makes of it. */
+.pgc-edge.pgc-edge-dashed .pgc-edge-line {
+  stroke: var(--pgc-proposed, var(--pg-secondary));
+  stroke-dasharray: 6 4;
 }
 .pgc-boxes .pgc-dim {
   opacity: var(--pgc-dim, 0.45);

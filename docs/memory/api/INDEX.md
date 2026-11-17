@@ -46,6 +46,7 @@
 - api-github-channel-links.md: GitHub repository links of a Workspace channel (G2): link tables, the settings card, hook creation and removal, github_webhook.php, the GitHub application, the [ci]/[pr]/[label] lines
 - api-http-manners.md: External API manners (#10142): HEAD as GET without a body, Location on a 201, Content-Language on an error, exposed headers, the Basic challenge on credentials_missing
 - api-idempotency-key.md: External API Idempotency-Key: reservation row before the write, 409 idempotency_in_progress on an overlapping retry, errors give the key back, 300 s stale take-over, secrets kept out of the record
+- api-if-match.md: If-Match on an update of the external API: 412 precondition_failed when the record changed since, which updates honour it (GET twin), how the tag is read, no lock
 - api-inventory-locations.md: Stock per location in the external API and MCP: GET /inventory/locations, /inventory, /inventory/moves, POST /inventory/transfer; scopes, refusals, dry run, inventory.changed
 - api-list-newest-first.md: sort=newest on the lists automation triggers sample (customers, form submissions, products, subscriptions, ERP invoices and quotes): the walk, the marked cursor, list_order.php
 - api-mcp-client-streams.md: The MCP client reads an event-stream answer only until the event that answers its request (api_http_request() option complete); why curl's error 23 then counts as success; other callers unchanged

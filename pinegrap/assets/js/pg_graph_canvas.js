@@ -1584,6 +1584,7 @@
         edgeOut: 'pgc-edge-out',
         edgeIn: 'pgc-edge-in',
         faint: 'pgc-edge-faint',
+        dashed: 'pgc-edge-dashed',
         dim: 'pgc-dim',
         group: 'pgc-group'
     };
@@ -1609,6 +1610,8 @@
         var classes = merge(CLASSES, adapter.classes);
         // The arrows drawn by id, to draw the ones of a box moved again.
         var drawn = {};
+        // The ids of the proposed arrows dashed() drew last.
+        var dashedIds = [];
         var watcher = null;
         // The focus (adapter.focus): the box in focus, null for none, and
         // whether the other arrows are drawn faintly.
@@ -1898,8 +1901,8 @@
         // An arrow from a box's right edge (or its named port) to a target's
         // left one, its id (an index, or a stable name) in data-edge, a wide
         // invisible path over it to press; its group is added to ui.svg.
-        // options: { port, slot, slots } (spread()). Its path and middle are
-        // returned.
+        // options: { port, slot, slots } (spread()), dashed (a proposed
+        // arrow, drawn dashed). Its path and middle are returned.
         function edge(id, source, target, options) {
             var one = { from: source, to: target, options: options || {}, points: null };
             var line = pathOf(one);
@@ -1908,6 +1911,12 @@
             var hit = svgEl('path', classes.edge + '-hit');
 
             group.setAttribute('data-edge', String(id));
+
+            if (one.options.dashed) {
+                group.classList.add(classes.dashed);
+                stroke.setAttribute('stroke-dasharray', '6 4');
+            }
+
             stroke.setAttribute('d', line.d);
             hit.setAttribute('d', line.d);
             group.appendChild(stroke);
@@ -1938,6 +1947,33 @@
             settleSoon();
 
             return { group: group, path: line };
+        }
+
+        // A set of proposed arrows, drawn dashed in place of the set drawn
+        // before (an empty list takes them all away): each { id, from, to,
+        // port }, from and to the boxes' items. Answers how many it drew.
+        function dashed(list) {
+            dashedIds.forEach(function (id) {
+                var one = drawn[id];
+
+                if (one && one.group.parentNode) {
+                    one.group.parentNode.removeChild(one.group);
+                }
+
+                delete drawn[id];
+            });
+            dashedIds = [];
+
+            (Array.isArray(list) ? list : []).forEach(function (one) {
+                if (!one || !one.from || !one.to) {
+                    return;
+                }
+
+                edge(one.id, one.from, one.to, { port: one.port, dashed: true });
+                dashedIds.push(String(one.id));
+            });
+
+            return dashedIds.length;
         }
 
         // ── Focus ──
@@ -2568,6 +2604,7 @@
             box: box,
             place: place,
             edge: edge,
+            dashed: dashed,
             reroute: reroute,
             port: port,
             size: size,

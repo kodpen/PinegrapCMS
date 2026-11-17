@@ -6,7 +6,7 @@ description: Plan picture-text-translation, steps PT5 to PT7 and their order: th
 ## Which steps follow PT4?
 - PT5 (S) after PT4: the queue. Done (PR #10266; `core/picture-text-translation-queue.md`). "Draw the waiting pictures" on the Pictures group opens a page that draws them one after another in this browser, as `assets/js/workspace_canvas_picture.js` draws an agent's canvas, with the count left and Stop. Pictures: running and finished.
 
-- PT6 (S) after PT4: the file doors. A language's picture follows its source on a move, goes with it on a delete, is never swapped while the source is binned; Disk Usage counts it; a daily sweep removes a picture whose source is gone. Tests for each door.
+- PT6 (S) Done (PR #10269): the file doors (`core/picture-text-translation-doors.md`). A language's picture follows its source on a move, goes with it on a delete, is never swapped while the source is binned; Disk Usage counts it; a daily sweep removes a picture whose source is gone. Tests for each door.
 
 - PT7 (S) close-out: every decided line checked against the code with its PR; `core/` and `ui/` memory files for the store type, the pass and the list; this plan's files and the census deleted. The PR body of PT4 names the `[NEW]` changelog line.
 

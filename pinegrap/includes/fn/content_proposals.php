@@ -978,6 +978,42 @@ function _pg_cp_page($row)
 }
 
 /**
+ * Why a change's page could not be read: 'gone' when its row is deleted,
+ * 'binned' when it is in the Recycle Bin (it can be restored), '' otherwise.
+ * Pure.
+ *
+ * @param bool $exists the page row is there
+ * @param bool $binned the page is in the Recycle Bin
+ * @return string
+ */
+function pg_content_proposals_missing_kind($exists, $binned)
+{
+    if (!$exists) {
+        return 'gone';
+    }
+
+    return $binned ? 'binned' : '';
+}
+
+/**
+ * pg_content_proposals_missing_kind() for a change's page as stored now.
+ *
+ * @param array $row design_proposals row
+ * @return string
+ */
+function _pg_cp_page_missing($row)
+{
+    $page_id = (int) $row['page_id'];
+    $exists = is_array(db_item((string) pg_db_bind("SELECT page_id FROM page WHERE page_id = ? LIMIT 1", array($page_id), 'escape')));
+
+    if ($exists && !function_exists('pg_recycle_page_binned')) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/designer.php');
+    }
+
+    return pg_content_proposals_missing_kind($exists, $exists && pg_recycle_page_binned($page_id));
+}
+
+/**
  * Writes a tree and settings to the page through the design save, as the
  * designer; refused while somebody has the page open in the editor.
  */
@@ -1041,7 +1077,22 @@ function pg_content_proposals_apply($user, $id)
     $page = _pg_cp_page($row);
 
     if (!$page) {
-        return array('ok' => false, 'error' => lang('The page could not be read.'));
+        $missing = _pg_cp_page_missing($row);
+
+        // A deleted page never comes back: the change is stale as for a
+        // missing node, and the editor is told. A page in the Recycle Bin can
+        // be restored, so its change keeps waiting.
+        if ($missing === 'gone') {
+            db_q("UPDATE design_proposals SET status = 'stale', error = ? WHERE id = ? AND status = 'pending'", array('page gone', (int) $row['id']));
+            pg_content_proposals_bell_editor($row, 'stale');
+            pg_content_proposals_request_close($row, (int) $user['id']);
+
+            return array('ok' => false, 'error' => lang('The page of this change was deleted, so it cannot be applied.'));
+        }
+
+        return array('ok' => false, 'error' => ($missing === 'binned')
+            ? lang('The page is in the Recycle Bin. Restore it to apply this change.')
+            : lang('The page could not be read.'));
     }
 
     $ops = json_decode((string) $row['ops'], true);
@@ -1409,8 +1460,9 @@ function pg_content_proposals_waiting_count($page_id = 0)
         return 0;
     }
 
-    return (int) db_value((string) pg_db_bind("SELECT COUNT(*) FROM design_proposals WHERE agent = ? AND status = 'pending'"
-        . (((int) $page_id > 0) ? ' AND page_id = ' . (int) $page_id : ''), array(PG_CONTENT_PROPOSALS_AGENT), 'escape'));
+    // A change whose page row is gone can never be applied: not counted.
+    return (int) db_value((string) pg_db_bind("SELECT COUNT(*) FROM design_proposals AS p JOIN page ON page.page_id = p.page_id WHERE p.agent = ? AND p.status = 'pending'"
+        . (((int) $page_id > 0) ? ' AND p.page_id = ' . (int) $page_id : ''), array(PG_CONTENT_PROPOSALS_AGENT), 'escape'));
 }
 
 /* ---------------------------------------------------------------------------

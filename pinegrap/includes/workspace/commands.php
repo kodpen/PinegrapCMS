@@ -131,6 +131,8 @@ function ws_command_create_kinds()
         'grup' => 'product_group', 'group' => 'product_group',
         'kisi' => 'contact', 'contact' => 'contact',
         'satir' => 'wtable_row', 'row' => 'wtable_row',
+        'cari' => 'erp_account', 'account' => 'erp_account',
+        'etkinlik' => 'calendar_event', 'event' => 'calendar_event',
     );
 }
 
@@ -390,6 +392,43 @@ function ws_command_gate_status($viewer)
 }
 
 /**
+ * /notify and /leave: offered to a member of the channel, as the channel
+ * menu offers its notification choices and "Leave the channel" only to
+ * one. Without a channel, listed like the rest.
+ *
+ * @param array|null $viewer
+ * @param string     $command
+ * @param array|null $channel
+ * @return bool
+ */
+function ws_command_gate_member($viewer, $command = '', $channel = null)
+{
+    if (!is_array($viewer) || !is_array($channel)) {
+        return true;
+    }
+
+    return (bool) ws_channel_membership($channel['id'], $viewer['id']);
+}
+
+/**
+ * /invite: "Add people"'s rule, anybody in a public channel and only a
+ * member in any other.
+ *
+ * @param array|null $viewer
+ * @param string     $command
+ * @param array|null $channel
+ * @return bool
+ */
+function ws_command_gate_invite($viewer, $command = '', $channel = null)
+{
+    if (!is_array($viewer) || !is_array($channel) || ((string) $channel['kind'] === 'public')) {
+        return true;
+    }
+
+    return (bool) ws_channel_membership($channel['id'], $viewer['id']);
+}
+
+/**
  * /timer: once task time is kept.
  *
  * @param array|null $viewer
@@ -446,7 +485,7 @@ function ws_command_gate_create($viewer, $command)
  */
 function ws_command_argument_kinds()
 {
-    return array('person', 'people', 'department', 'task', 'record', 'date', 'time', 'estimate', 'priority', 'status', 'amount', 'quantity', 'text', 'options', 'record_kind', 'health');
+    return array('person', 'people', 'department', 'task', 'record', 'date', 'time', 'estimate', 'priority', 'status', 'amount', 'quantity', 'text', 'options', 'record_kind', 'health', 'notify');
 }
 
 /**
@@ -481,7 +520,7 @@ function ws_command_turkish($language = null)
  *                (ws_command_argument_kinds()), label, optional, suggest
  *                (where the composer finds values for it: people,
  *                people_departments, tasks, records, products, dates,
- *                estimates, priorities, statuses, kinds, healths, or '' for none), multiple (takes more
+ *                estimates, priorities, statuses, kinds, healths, notify, or '' for none), multiple (takes more
  *                than one), anywhere (read wherever it is written, as /task
  *                reads its people, day, estimate and priority)
  *   live         the composer asks ws_command_suggest() for a line under
@@ -602,8 +641,8 @@ function ws_command_help($viewer = null, $channel = null)
  * @param string|null $language a language code, or null for the active one
  * @param array|null  $viewer   with a person, only the kinds they may make
  * @return array dates, estimates, priorities, statuses, kinds (what /create
- *               makes), healths (the states /update reads): each a list of
- *               value, meta, top
+ *               makes), healths (the states /update reads), notify (the
+ *               choices /notify reads): each a list of value, meta, top
  */
 function ws_command_suggestions($language = null, $viewer = null)
 {
@@ -627,9 +666,10 @@ function ws_command_suggestions($language = null, $viewer = null)
     $labels = function_exists('ws_task_priorities') ? ws_task_priorities() : array();
     $status_labels = function_exists('ws_task_statuses') ? ws_task_statuses() : array();
     $kinds = $turkish
-        ? array('product' => 'ürün', 'product_group' => 'grup', 'contact' => 'kişi', 'wtable_row' => 'satır')
-        : array('product' => 'product', 'product_group' => 'group', 'contact' => 'contact', 'wtable_row' => 'row');
-    $kind_labels = array('product' => lang('Product'), 'product_group' => lang('Product group'), 'contact' => lang('Contact'), 'wtable_row' => lang('Workflow table row'));
+        ? array('product' => 'ürün', 'product_group' => 'grup', 'contact' => 'kişi', 'wtable_row' => 'satır', 'erp_account' => 'cari', 'calendar_event' => 'etkinlik')
+        : array('product' => 'product', 'product_group' => 'group', 'contact' => 'contact', 'wtable_row' => 'row', 'erp_account' => 'account', 'calendar_event' => 'event');
+    $kind_labels = array('product' => lang('Product'), 'product_group' => lang('Product group'), 'contact' => lang('Contact'), 'wtable_row' => lang('Workflow table row'),
+        'erp_account' => lang('ERP account'), 'calendar_event' => lang('Calendar Event'));
 
     if (is_array($viewer) && function_exists('ws_change_allowed')) {
         $kinds = array_intersect_key($kinds, array_flip(ws_command_create_types_for($viewer)));
@@ -661,6 +701,9 @@ function ws_command_suggestions($language = null, $viewer = null)
 
     // The states /update reads.
     $out['healths'] = ws_command_health_values($turkish);
+
+    // The choices /notify reads.
+    $out['notify'] = ws_command_notify_values($turkish);
 
     return $out;
 }
@@ -2728,6 +2771,323 @@ function ws_command_live_checkin($viewer, $channel, $rest)
 }
 
 /**
+ * /notify: the writer's notifications of this channel through
+ * ws_channel_set_notify(), as the channel menu's three choices set them.
+ * Without a word, the choice in force and the words that change it; both
+ * to the writer alone.
+ *
+ * @return array
+ */
+function ws_command_run_notify($viewer, $channel, $rest)
+{
+    $word = trim((string) $rest);
+    $notify = ws_command_notify_word($word);
+
+    if ($word === '') {
+        $membership = ws_channel_membership($channel['id'], $viewer['id']);
+
+        return array('type' => 'ephemeral', 'html' => ws_command_notify_html($membership ? (string) $membership['notify'] : '', false));
+    }
+
+    if ($notify === '') {
+        return array('type' => 'error', 'error' => ws_command_notify_unknown());
+    }
+
+    $result = ws_channel_set_notify($viewer, $channel, $notify);
+
+    if (!$result['ok']) {
+        return array('type' => 'error', 'error' => $result['error']);
+    }
+
+    return array('type' => 'ephemeral', 'html' => ws_command_notify_html($notify, true));
+}
+
+/**
+ * A notification choice typed after /notify, in Turkish or English, with
+ * or without the Turkish letters. Pure.
+ *
+ * @param string $word
+ * @return string all | mentions | none, '' when it is none of them
+ */
+function ws_command_notify_word($word)
+{
+    $words = array(
+        'hepsi' => 'all', 'tumu' => 'all', 'all' => 'all', 'every' => 'all',
+        'anma' => 'mentions', 'anmalar' => 'mentions', 'mentions' => 'mentions', 'mention' => 'mentions',
+        'hic' => 'none', 'hicbiri' => 'none', 'never' => 'none', 'none' => 'none',
+    );
+
+    return $words[ws_command_fold(trim((string) $word, " \t.,;:!"))] ?? '';
+}
+
+/**
+ * The three choices as the channel menu names them.
+ *
+ * @return array all | mentions | none => label
+ */
+function ws_command_notify_labels()
+{
+    return array(
+        'all'      => lang('Tell me about every message'),
+        'mentions' => lang('Only when I am mentioned'),
+        'none'     => lang('Never'),
+    );
+}
+
+/**
+ * The words /notify reads, as the argument popup offers them, in the
+ * screen's language. Pure.
+ *
+ * @param bool $turkish
+ * @return array[] value, meta, top
+ */
+function ws_command_notify_values($turkish)
+{
+    $words = $turkish ? array('all' => 'hepsi', 'mentions' => 'anma', 'none' => 'hiç') : array('all' => 'all', 'mentions' => 'mentions', 'none' => 'never');
+    $labels = ws_command_notify_labels();
+    $out = array();
+
+    foreach ($words as $key => $word) {
+        $out[] = array('value' => $word, 'meta' => $labels[$key], 'top' => true);
+    }
+
+    return $out;
+}
+
+/**
+ * The refusal for a word /notify does not read, naming the three.
+ *
+ * @return string
+ */
+function ws_command_notify_unknown()
+{
+    return lang(array('string' => 'Write one of: {var:1}.', 'vars' => implode(', ', array_column(ws_command_notify_values(ws_command_turkish()), 'value'))));
+}
+
+/**
+ * /notify's answer: the choice in force (or just set) and the words that
+ * change it. Pure.
+ *
+ * @param string $notify all | mentions | none, '' when not in the channel
+ * @param bool   $set    just changed
+ * @return string
+ */
+function ws_command_notify_html($notify, $set)
+{
+    $labels = ws_command_notify_labels();
+    $now = $labels[$notify] ?? lang('You are not in this channel.');
+    $words = array();
+
+    foreach (ws_command_notify_values(ws_command_turkish()) as $item) {
+        // A word and its meaning hold together; the line breaks only
+        // between them.
+        $words[] = '<span class="text-nowrap"><code>' . h($item['value']) . '</code> ' . h($item['meta']) . '</span>';
+    }
+
+    return '<div class="ws-ephemeral-title">' . h(lang('Notifications')) . '</div>'
+        . '<div>' . h($set ? lang(array('string' => 'Now set: {var:1}', 'vars' => $now)) : lang(array('string' => 'Now: {var:1}', 'vars' => $now))) . '</div>'
+        . '<div class="fg-secondary">' . h(lang('Change with one of:')) . ' ' . implode(' · ', $words) . '</div>';
+}
+
+/**
+ * /notify's live line: the choice Enter will set, or the one in force.
+ *
+ * @return array line, warnings
+ */
+function ws_command_live_notify($viewer, $channel, $rest)
+{
+    $out = array('line' => '', 'warnings' => array());
+    $word = trim((string) $rest);
+
+    if ($word === '') {
+        return $out;
+    }
+
+    $notify = ws_command_notify_word($word);
+
+    if ($notify === '') {
+        $out['warnings'][] = ws_command_notify_unknown();
+
+        return $out;
+    }
+
+    $out['line'] = lang(array('string' => 'Will set your notifications here: {var:1}', 'vars' => ws_command_notify_labels()[$notify]));
+
+    return $out;
+}
+
+/**
+ * /invite: the people named with @ brought into the channel through
+ * ws_channel_add_members(), as "Add people" brings them, with its rule: in
+ * a channel that is not public only a member may bring somebody in. The
+ * answer, to the writer alone, names who was added, who was in already and
+ * who could not be.
+ *
+ * @return array
+ */
+function ws_command_run_invite($viewer, $channel, $rest)
+{
+    $people = ws_command_approval_read($rest)['people'];
+
+    if (empty($people)) {
+        return array('type' => 'error', 'error' => lang('Name the people to add with @.'));
+    }
+
+    if (!ws_command_gate_invite($viewer, 'invite', $channel)) {
+        return array('type' => 'error', 'error' => lang('Access denied.'));
+    }
+
+    $already = array_values(array_filter($people, function ($user_id) use ($channel) {
+        return (bool) ws_channel_membership($channel['id'], $user_id);
+    }));
+    $split = ws_command_invite_split($people, $already, ws_channel_add_members($viewer, $channel, array_values(array_diff($people, $already))));
+
+    return array('type' => 'ephemeral', 'html' => ws_command_invite_html($split['added'], $split['already'], $split['refused']));
+}
+
+/**
+ * The people /invite named, told apart: added, in already, and refused by
+ * ws_channel_add_members() (not on the team, or not one a guest room or a
+ * discussion takes). Pure.
+ *
+ * @param int[] $people  named
+ * @param int[] $already in the channel before
+ * @param int[] $added   what ws_channel_add_members() added
+ * @return array added, already, refused
+ */
+function ws_command_invite_split($people, $already, $added)
+{
+    $added = array_values(array_map('intval', (array) $added));
+    $already = array_values(array_map('intval', (array) $already));
+
+    return array(
+        'added'   => $added,
+        'already' => $already,
+        'refused' => array_values(array_diff(array_map('intval', (array) $people), $already, $added)),
+    );
+}
+
+/**
+ * /invite's answer. Pure but for the names.
+ *
+ * @param int[] $added
+ * @param int[] $already
+ * @param int[] $refused
+ * @return string
+ */
+function ws_command_invite_html($added, $already, $refused)
+{
+    $names = function ($ids) {
+        return implode(', ', array_map('ws_person_name', $ids));
+    };
+
+    $html = '<div class="ws-ephemeral-title">' . h(lang('Add people')) . '</div>';
+
+    if (!empty($added)) {
+        $html .= '<div>' . h(lang(array('string' => 'Added: {var:1}', 'vars' => $names($added)))) . '</div>';
+    }
+
+    if (!empty($already)) {
+        $html .= '<div>' . h(lang(array('string' => 'Already in the channel: {var:1}', 'vars' => $names($already)))) . '</div>';
+    }
+
+    if (!empty($refused)) {
+        $html .= '<div>' . h(lang(array('string' => 'Could not be added: {var:1}', 'vars' => $names($refused)))) . '</div>';
+    }
+
+    return $html;
+}
+
+/**
+ * /invite's live line: who Enter will add, and who is in already.
+ *
+ * @return array line, warnings
+ */
+function ws_command_live_invite($viewer, $channel, $rest)
+{
+    $out = array('line' => '', 'warnings' => array());
+
+    if (trim((string) $rest) === '') {
+        return $out;
+    }
+
+    $data = ws_command_approval_read($rest);
+    $new = array();
+
+    foreach ($data['people'] as $user_id) {
+        if (ws_channel_membership($channel['id'], $user_id)) {
+            $out['warnings'][] = lang(array('string' => 'Already in the channel: {var:1}', 'vars' => ws_person_name($user_id)));
+        } else {
+            $new[] = ws_person_name($user_id);
+        }
+    }
+
+    foreach ($data['typed_unknown'] as $name) {
+        $out['warnings'][] = lang(array('string' => 'No team member is called @{var:1}.', 'vars' => $name));
+    }
+
+    if (!empty($new)) {
+        $out['line'] = lang(array('string' => 'Will add: {var:1}', 'vars' => implode(', ', $new)));
+    }
+
+    return $out;
+}
+
+/**
+ * /leave: a card to the writer alone asks first, as the channel menu's
+ * "Leave the channel" does; only its confirm leaves, through
+ * ws_channel_leave() with that function's refusals.
+ *
+ * @return array
+ */
+function ws_command_run_leave($viewer, $channel, $rest, $options)
+{
+    $step = ws_command_leave_step((bool) ws_channel_membership($channel['id'], $viewer['id']), !empty($options['confirm']), (string) $channel['kind']);
+
+    if ($step['type'] !== 'leave') {
+        return $step;
+    }
+
+    $result = ws_channel_leave($viewer, $channel);
+
+    return $result['ok']
+        ? array('type' => 'left')
+        : array('type' => 'error', 'error' => $result['error']);
+}
+
+/**
+ * What /leave does now: refused to somebody not in the channel, the card
+ * before a confirm, the leave only after it. Pure.
+ *
+ * @param bool   $member  the writer is in the channel
+ * @param bool   $confirm sent from the card's button
+ * @param string $kind    the channel's kind
+ * @return array type error | leave_card | leave
+ */
+function ws_command_leave_step($member, $confirm, $kind)
+{
+    if (!$member) {
+        return array('type' => 'error', 'error' => lang('You are not in this channel.'));
+    }
+
+    if (!$confirm) {
+        return array('type' => 'leave_card', 'private' => ($kind !== 'public'));
+    }
+
+    return array('type' => 'leave');
+}
+
+/**
+ * /leave's live line: the channel it leaves once the card is confirmed.
+ *
+ * @return array line, warnings
+ */
+function ws_command_live_leave($viewer, $channel, $rest)
+{
+    return array('line' => lang(array('string' => 'Will ask before you leave #{var:1}', 'vars' => (string) ($channel['name'] ?? ''))), 'warnings' => array());
+}
+
+/**
  * /meeting's live line.
  *
  * @return array line, warnings
@@ -3750,7 +4110,8 @@ function ws_command_parse_create($text)
 /**
  * /create: the kind named after it, made through its own card - a product
  * as /product makes it, a group by ws_command_group(), a contact by
- * ws_command_contact(). A kind the person may not make is refused before
+ * ws_command_contact(), an ERP account by ws_command_account(), a calendar
+ * event by ws_command_event(). A kind the person may not make is refused before
  * anything is read, as its screen refuses it.
  *
  * @param array  $viewer
@@ -3783,7 +4144,15 @@ function ws_command_create($viewer, $channel, $text, $options)
         return ws_command_group($viewer, $channel, $parsed['rest'], $options);
     }
 
-    return array('type' => 'error', 'error' => lang('Say what to create, a product, a group, a contact or a row, like /create product Blue mug 149,90 or /create row Leads.'));
+    if ($parsed['kind'] === 'erp_account') {
+        return ws_command_account($viewer, $channel, $parsed['rest'], $options);
+    }
+
+    if ($parsed['kind'] === 'calendar_event') {
+        return ws_command_event($viewer, $channel, $parsed['rest'], $options);
+    }
+
+    return array('type' => 'error', 'error' => lang('Say what to create, a product, a group, a contact, a row, an account or an event, like /create product Blue mug 149,90 or /create event tomorrow 14:00 Opening.'));
 }
 
 /**
@@ -4075,6 +4444,168 @@ function ws_command_contact($viewer, $channel, $text, $options)
 }
 
 /**
+ * The words of /create account: an e-mail address anywhere, then the parts
+ * between commas - the first the account's name, a part of 10 digits (a tax
+ * number) or 11 not starting with 0 (a Turkish identity number) its tax
+ * number, a part of digits with + ( ) - and spaces its phone. Another part
+ * stays in the name. "Acme Ltd, 1234567890, info@acme.com" and
+ * "info@acme.com Acme Ltd, 0555 123 45 67" read alike. Pure.
+ *
+ * @param string $text
+ * @return array title, tax_number, email, phone (each '' when not written)
+ */
+function ws_command_parse_account($text)
+{
+    $text = trim((string) preg_replace('/\s+/u', ' ', (string) $text));
+    $out = array('title' => '', 'tax_number' => '', 'email' => '', 'phone' => '');
+
+    if (preg_match('/(?<![^\s,;])[^\s,;<>@]+@[^\s,;<>@]+\.[^\s,;<>@]+(?![^\s,;])/u', $text, $match)) {
+        $out['email'] = $match[0];
+        $text = str_replace($match[0], '', $text);
+    }
+
+    $name = array();
+
+    foreach (array_values(array_filter(array_map('trim', explode(',', $text)), 'strlen')) as $index => $part) {
+        $digits = preg_replace('/\s+/u', '', $part);
+
+        if (($index > 0) && ($out['tax_number'] === '') && preg_match('/^(?:[0-9]{10}|[1-9][0-9]{10})$/', $digits)) {
+            $out['tax_number'] = $digits;
+            continue;
+        }
+
+        if (($index > 0) && ($out['phone'] === '') && preg_match('/^\+?[0-9 ()\-]+$/', $part) && (strlen(preg_replace('/[^0-9]/', '', $part)) >= 7)) {
+            $out['phone'] = $part;
+            continue;
+        }
+
+        $name[] = $part;
+    }
+
+    $out['title'] = implode(', ', $name);
+
+    return $out;
+}
+
+/**
+ * /create account: a new ERP account through the catalogue
+ * (ws_command_create_card()), written by Create alone through
+ * ws_change_write_erp_account() and erp_account_save(), the function the
+ * ERP's New account screen saves with, its refusals included (a tax number
+ * that fails its check or belongs to an active account). A line without a
+ * name opens the drawer's new account, filled with what was typed.
+ *
+ * @param array  $viewer
+ * @param array  $channel
+ * @param string $text    what follows /create account
+ * @param array  $options confirm, decision
+ * @return array
+ */
+function ws_command_account($viewer, $channel, $text, $options)
+{
+    if (function_exists('ws_bulk_text_is_list') && ws_bulk_text_is_list($text)) {
+        return array('type' => 'error', 'error' => lang('/create account makes one account: write it on one line.'));
+    }
+
+    // A tag would be written into the name as its markup.
+    if (preg_match('/<[#@][a-z_]+:[0-9]+>/', (string) $text)) {
+        return array('type' => 'error', 'error' => lang('Write the account as plain text.'));
+    }
+
+    $fields = array_filter(ws_command_parse_account($text), 'strlen');
+
+    return ws_command_create_card($viewer, $channel, 'erp_account', $fields, $options);
+}
+
+/**
+ * The words of /create event: a day and a time at the start of the line,
+ * read as /remind reads them (ws_command_remind_data()), the rest the
+ * event's name. A day with a time starts the event then; a day alone makes
+ * it an all-day event; a time alone is today's. Pure.
+ *
+ * @param string   $text
+ * @param int|null $now  for tests
+ * @return array name, start_time (Y-m-d H:i, '' when no day or time was
+ *               read), all_day
+ */
+function ws_command_parse_event($text, $now = null)
+{
+    $data = ws_command_remind_data(trim((string) preg_replace('/\s+/u', ' ', (string) $text)), $now);
+    $start = '';
+
+    if ($data['date'] !== '') {
+        $start = $data['date'] . ' ' . (($data['time'] !== '') ? $data['time'] : '00:00');
+    }
+
+    return array('name' => $data['title'], 'start_time' => $start, 'all_day' => ($start !== '') && ($data['time'] === ''));
+}
+
+/**
+ * /create event: a new event of the site's calendars through the catalogue
+ * (ws_command_create_card()), written by Create alone through
+ * ws_change_write_calendar_event(), the event screen's starting values and
+ * its refusals: the calendars right, a calendar the person may use, the
+ * publish right (an event made here starts unpublished, as the screen's
+ * form does). It goes on the person's one calendar; a person with several,
+ * or a line without a name or a day, gets the drawer's new event, filled
+ * with what was typed.
+ *
+ * @param array  $viewer
+ * @param array  $channel
+ * @param string $text    what follows /create event
+ * @param array  $options confirm, decision
+ * @return array
+ */
+function ws_command_event($viewer, $channel, $text, $options)
+{
+    if (function_exists('ws_bulk_text_is_list') && ws_bulk_text_is_list($text)) {
+        return array('type' => 'error', 'error' => lang('/create event makes one event: write it on one line.'));
+    }
+
+    if (preg_match('/<[#@][a-z_]+:[0-9]+>/', (string) $text)) {
+        return array('type' => 'error', 'error' => lang('Write the event as plain text.'));
+    }
+
+    $parsed = ws_command_parse_event($text);
+    $fields = array_filter(array('name' => $parsed['name'], 'start_time' => $parsed['start_time']), 'strlen');
+
+    if ($parsed['all_day']) {
+        $fields['all_day'] = true;
+    }
+
+    $calendars = function_exists('ws_quick_create_calendars') ? ws_quick_create_calendars($viewer) : array();
+
+    if (count($calendars) === 1) {
+        $fields['calendar_ids'] = array((int) $calendars[0]['id']);
+    }
+
+    return ws_command_create_card($viewer, $channel, 'calendar_event', $fields, $options);
+}
+
+/**
+ * The fields a kind's new record needs beside its required list
+ * (ws_quick_create_missing()) that the catalogue's check refuses a create
+ * without: an event's start and its calendars. Pure.
+ *
+ * @param string $type
+ * @param array  $fields name => value
+ * @return string[] the names left out
+ */
+function ws_command_create_needs($type, $fields)
+{
+    $needs = array('calendar_event' => array('start_time', 'calendar_ids'));
+    $out = array();
+
+    foreach ($needs[(string) $type] ?? array() as $name) {
+        if (!isset($fields[$name]) || ($fields[$name] === '') || ($fields[$name] === array())) {
+            $out[] = $name;
+        }
+    }
+
+    return $out;
+}
+
+/**
  * What a /create group card creates: the rest of the line as the group's
  * name and as its short description (the words the store shows).
  *
@@ -4259,6 +4790,37 @@ function ws_command_is_product_file($body)
 }
 
 /**
+ * A stored date and time ("2026-11-18 14:00:00") as the create card shows
+ * it: the site's date order and clock (Site Settings > General > Date and
+ * Time), as the drawer's date field writes it ("18/11/2026 14:00"); with
+ * $all_day the day alone. A value that is no date is shown as it is.
+ *
+ * @param string      $value
+ * @param bool        $all_day
+ * @param string|null $date_code date() code of the day; the site's when null
+ * @param string|null $time_code date() code of the time; the site's when null
+ * @return string
+ */
+function ws_command_card_datetime($value, $all_day, $date_code = null, $time_code = null)
+{
+    if ($date_code === null) {
+        $date_code = (defined('DATE_FORMAT') && function_exists('get_date_format_code') ? get_date_format_code() : 'j/n') . '/Y';
+    }
+
+    if ($time_code === null) {
+        $time_code = function_exists('pg_time_format_code') ? pg_time_format_code() : 'H:i';
+    }
+
+    $time = preg_match('/^\d{4}-\d{2}-\d{2}/', (string) $value) ? strtotime((string) $value) : false;
+
+    if ($time === false) {
+        return (string) $value;
+    }
+
+    return date($all_day ? $date_code : $date_code . ' ' . $time_code, $time);
+}
+
+/**
  * The card a create command answers with, or the record it makes once
  * confirmed, through the drawer's create (ws_quick_create_save()): the same
  * rights, checks, writer, ws_ai_changes row, activity log line and decision
@@ -4267,7 +4829,7 @@ function ws_command_is_product_file($body)
  *
  * @param array  $viewer
  * @param array  $channel
- * @param string $type    product | product_group | contact
+ * @param string $type    product | product_group | contact | erp_account | calendar_event
  * @param array  $fields  field => value
  * @param array  $options confirm, decision, on_sale
  * @return array
@@ -4307,10 +4869,12 @@ function ws_command_create_card($viewer, $channel, $type, $fields, $options)
 
     $types = ws_change_types();
 
-    // None of the kind's required list written: nothing to check yet. The
-    // composer opens the drawer's new mode with what was typed, as the
-    // kind's button does.
-    $missing = ws_quick_create_missing((array) ($types[$type]['required'] ?? array()), ws_quick_create_change($type, $fields)['fields']);
+    // None of the kind's required list written, or a field its create
+    // cannot go without (an event's day, its calendar): nothing to check
+    // yet. The composer opens the drawer's new mode with what was typed, as
+    // the kind's button does.
+    $given = ws_quick_create_change($type, $fields)['fields'];
+    $missing = array_merge(ws_quick_create_missing((array) ($types[$type]['required'] ?? array()), $given), ws_command_create_needs($type, $given));
 
     if ($missing !== array()) {
         $check = ws_quick_create_check($viewer, $type);
@@ -4353,7 +4917,9 @@ function ws_command_create_card($viewer, $channel, $type, $fields, $options)
             continue;
         }
 
-        if ($field[0] === 'ids') {
+        // Records the workspace tags (product groups) as chips; calendars,
+        // which it does not, by their names.
+        if (($field[0] === 'ids') && isset($types[(string) $field[1]])) {
             $chips = '';
 
             foreach (ws_refs_resolve($viewer, ws_tokens(ws_change_ids_tokens($field, $item['to']))) as $ref) {
@@ -4362,6 +4928,13 @@ function ws_command_create_card($viewer, $channel, $type, $fields, $options)
             }
 
             $rows[] = array('label' => (string) $field[2], 'text' => '', 'html' => $chips);
+            continue;
+        }
+
+        // A date and time as the drawer's field writes it: the site's date
+        // order and clock; an all-day event's day alone.
+        if ($field[0] === 'datetime') {
+            $rows[] = array('label' => (string) $field[2], 'text' => ws_command_card_datetime($item['to'], !empty($input['values']['all_day'])), 'html' => '');
             continue;
         }
 

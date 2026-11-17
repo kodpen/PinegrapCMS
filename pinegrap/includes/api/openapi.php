@@ -23,6 +23,8 @@ if (!defined('PG_API_ENTRY') && !defined('PG_API_PANEL')) {
 	exit;
 }
 
+require_once(dirname(__FILE__) . '/preconditions.php');
+
 function api_openapi_base_url() {
 
 	$scheme = defined('URL_SCHEME') ? URL_SCHEME : 'https://';
@@ -41,7 +43,9 @@ function api_openapi_build() {
 
 	$tags = array();
 
-	foreach (api_schema() as $route) {
+	$routes = api_schema();
+
+	foreach ($routes as $route) {
 
 		$tags[] = api_openapi_tag($route['id']);
 
@@ -290,6 +294,28 @@ function api_openapi_build() {
 				);
 
 			}
+
+		}
+
+		// An update whose path a GET reads takes that GET's ETag in If-Match
+		// (api_if_match_check()); one without a GET twin ignores the header
+		// and does not list it.
+		if (api_update_get_twin($route, $routes) !== null) {
+
+			$operation['parameters'][] = array(
+				'name'        => 'If-Match',
+				'in'          => 'header',
+				'required'    => false,
+				'description' => 'The ETag of GET ' . $route['path'] . ' (read in full, without fields=). When the record has changed since, the answer is 412 precondition_failed and nothing is written; * matches any record that exists. Without it the later write stands. Checked right before the write, with no lock.',
+				'schema'      => array('type' => 'string')
+			);
+
+			$operation['responses']['412'] = array(
+				'description' => 'precondition_failed: the record no longer answers with the ETag sent in If-Match. Read it again and repeat the change.',
+				'content'     => $operation['responses']['409']['content']
+			);
+
+			ksort($operation['responses'], SORT_STRING);
 
 		}
 

@@ -122,7 +122,7 @@ function test_site_push_secret_reads_only_its_own_message()
 	pg_assert_same((string) (1794868200 - PG_SITE_PUSH_MESSAGE_TTL), $params[2], 'within a day');
 	pg_assert_same((string) PG_SITE_PUSH_READ, $params[3], 'or a row already read');
 	pg_assert_same((string) (1794868200 - PG_SITE_PUSH_REREAD), $params[4], 'within the last few minutes');
-	pg_assert_same(5, substr_count($sql, '?'), 'every value is bound');
+	pg_assert_same(6, substr_count($sql, '?'), 'every value is bound');
 
 	pg_assert_true(pg_site_push_secret_valid(pg_site_push_secret_new()), 'a new secret has the shape');
 	pg_assert_false(pg_site_push_secret_new() === pg_site_push_secret_new(), 'secrets differ');
@@ -133,6 +133,91 @@ function test_site_push_secret_reads_only_its_own_message()
 	$body = pg_test_function_source('pg_site_push_waiting_message');
 	pg_assert_contains('pg_site_push_subscription_by_secret($secret)', $body, 'the subscription comes from the secret');
 	pg_assert_contains('AND subscription_id = ? AND status = ?', $body, 'it marks only its own pushed row read, so a second read keeps the first time');
+}
+
+/**
+ * Runs the waiting query and the read mark of pg_site_push_waiting_message()
+ * on an in-memory SQLite copy of the two tables, one wake per call; returns
+ * the titles shown. Null when the runner has no pdo_sqlite.
+ */
+function _site_push_test_wakes(array $queue_rows, array $wakes)
+{
+	if (!class_exists('PDO') || !in_array('sqlite', PDO::getAvailableDrivers(), true)) {
+		return null;
+	}
+
+	$db = new PDO('sqlite::memory:');
+	$db->exec('CREATE TABLE site_push_message (id INTEGER PRIMARY KEY, title TEXT, body TEXT, url TEXT)');
+	$db->exec('CREATE TABLE site_push_queue (message_id INT, subscription_id INT, status INT, sent_at INT, fetched_at INT)');
+	$db->exec("INSERT INTO site_push_message VALUES (1, 'News A', '', '/'), (2, 'Stock B', '', '/'), (3, 'Order C', '', '/')");
+	$insert = $db->prepare('INSERT INTO site_push_queue VALUES (?, 7, ?, ?, ?)');
+
+	foreach ($queue_rows as $row) {
+		$insert->execute($row);
+	}
+
+	$shown = array();
+
+	foreach ($wakes as $now) {
+		list($sql, $params) = pg_site_push_waiting_query(7, $now);
+		$st = $db->prepare($sql);
+		$st->execute($params);
+		$row = $st->fetch(PDO::FETCH_ASSOC);
+
+		if (!$row) {
+			$shown[] = null;
+			continue;
+		}
+
+		$shown[] = $row['title'];
+		$db->prepare('UPDATE site_push_queue SET status = ?, fetched_at = ? WHERE message_id = ? AND subscription_id = 7 AND status = ?')
+			->execute(array(PG_SITE_PUSH_READ, $now, $row['message_id'], PG_SITE_PUSH_PUSHED));
+	}
+
+	return $shown;
+}
+
+function test_site_push_unread_before_a_reread()
+{
+	list($sql, $params) = pg_site_push_waiting_query(7, 1794868200);
+
+	pg_assert_contains('ORDER BY (q.status = ?) DESC, q.sent_at DESC, q.message_id DESC', $sql, 'an unread row before a re-read one, then the newest');
+	pg_assert_same((string) PG_SITE_PUSH_PUSHED, $params[5], 'the unread status is bound for the order');
+	pg_assert_same(6, substr_count($sql, '?'), 'every value is bound');
+
+	$now = 1794868200;
+	$pushed = PG_SITE_PUSH_PUSHED;
+
+	// Two messages pushed close together, before the worker's first read.
+	$shown = _site_push_test_wakes(
+		array(array(1, $pushed, $now - 2, 0), array(2, $pushed, $now - 1, 0)),
+		array($now, $now + 1, $now + 2)
+	);
+
+	if ($shown !== null) {
+		pg_assert_same(array('Stock B', 'News A', 'Stock B'), $shown, 'the newest first, then the older one, then a re-read once nothing is unread');
+	}
+
+	// Three messages: each wake shows a different one.
+	$shown = _site_push_test_wakes(
+		array(array(1, $pushed, $now - 3, 0), array(2, $pushed, $now - 2, 0), array(3, $pushed, $now - 1, 0)),
+		array($now, $now + 1, $now + 2)
+	);
+
+	if ($shown !== null) {
+		pg_assert_same(array('Order C', 'Stock B', 'News A'), $shown, 'three wakes show three messages');
+	}
+
+	// A worker woken twice for one message still reads it again, and not
+	// after the re-read window.
+	$shown = _site_push_test_wakes(
+		array(array(1, $pushed, $now - 1, 0)),
+		array($now, $now + 1, $now + PG_SITE_PUSH_REREAD + 1)
+	);
+
+	if ($shown !== null) {
+		pg_assert_same(array('News A', 'News A', null), $shown, 'a second wake re-reads the message within the window');
+	}
 }
 
 function test_site_push_nothing_written_with_the_switch_off()
@@ -248,6 +333,38 @@ function test_site_push_send_plan()
 	pg_assert_contains('pg_cron_claim(PG_SITE_PUSH_LOCK', $run, 'one run at a time');
 	pg_assert_true(strpos($run, 'pg_cron_claim(') < strpos($run, 'pg_site_push_deliver('), 'claimed before sending');
 	pg_assert_false(strpos($run, 'push_subscriptions') !== false, 'never the panel\'s table');
+}
+
+function test_site_push_refused_subscription_removed()
+{
+	pg_assert_true(pg_site_push_refused(400), 'BadDeviceToken is a refusal');
+	pg_assert_true(pg_site_push_refused(403), 'a push signed with another key is a refusal');
+	pg_assert_true(pg_site_push_refused(401), 'an unauthorised push is a refusal');
+	pg_assert_false(pg_site_push_refused(408), 'a timeout is no refusal');
+	pg_assert_false(pg_site_push_refused(429), 'a busy service is no refusal');
+	pg_assert_false(pg_site_push_refused(500), 'a service error is an outage, not a refusal');
+	pg_assert_false(pg_site_push_refused(503), 'an unavailable service is an outage');
+	pg_assert_false(pg_site_push_refused(0), 'no answer is an outage');
+	pg_assert_false(pg_site_push_refused(201), 'an accepted push is no refusal');
+
+	$now = 10000000;
+	$old = $now - PG_SITE_PUSH_UNSEEN;
+	pg_assert_same(15, PG_SITE_PUSH_REFUSALS, 'three given-up messages of five tries');
+	pg_assert_true(pg_site_push_failing(PG_SITE_PUSH_REFUSALS, $old, $now), 'refused three messages long and unseen a week: removed');
+	pg_assert_false(pg_site_push_failing(PG_SITE_PUSH_REFUSALS - 1, $old, $now), 'fewer refusals: kept');
+	pg_assert_false(pg_site_push_failing(PG_SITE_PUSH_REFUSALS * 4, $old + 1, $now), 'seen within the week: kept, whatever the refusals');
+
+	$run = pg_test_function_source('pg_site_push_queue_run');
+	pg_assert_contains('pg_site_push_failing(', $run, 'the failure path asks whether the subscription keeps failing');
+	pg_assert_contains('pg_site_push_refused(', $run, 'only a refusal raises fail_count');
+	pg_assert_contains("'removed_count'", $run, 'a dropped subscription counts as removed');
+	pg_assert_true(substr_count($run, 'pg_site_push_subscription_drop(') >= 2, 'a gone and a failing subscription go the same way');
+	pg_assert_contains('isset($dropped[$subscription_id])', $run, 'its later rows in the pass are not pushed');
+
+	$drop = pg_test_function_source('pg_site_push_subscription_drop');
+	pg_assert_contains('DELETE FROM site_push_queue', $drop, 'its queue rows go');
+	pg_assert_contains('DELETE FROM site_push_subscription', $drop, 'the subscription goes');
+	pg_assert_contains('pg_site_push_watch_forget(', $drop, 'its waits go');
 }
 
 function test_site_push_dropped_after_a_day_and_tidied()

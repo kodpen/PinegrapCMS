@@ -398,7 +398,115 @@ function pg_picture_tr_prune($deadline)
         }
     }
 
+    // What a door that does not call the module left: a picture still in
+    // the folder its source moved out of, a row whose picture is gone.
+    if (microtime(true) <= $deadline) {
+        pg_picture_tr_follow(null);
+        pg_picture_tr_lost();
+    }
+
     return $dropped;
+}
+
+/* ---------------------------------------------------------------------------
+   The file doors
+   ---------------------------------------------------------------------------
+   A language's picture sits in its source's folder: the page pass joins it
+   only there, so get_file.php serves it with the source's rights. A move of
+   the source carries it along (pg_picture_tr_follow()), a delete for good
+   takes it (pg_picture_tr_forget()), a source in the Recycle Bin is never
+   swapped (pg_picture_tr_page_apply()), and the daily sweep puts back what a
+   door missed. Disk Usage counts it as any files row. */
+
+/**
+ * Where each language's picture goes so it sits in its source's folder:
+ * picture id => folder id. A picture already there needs nothing; one whose
+ * source is in the Recycle Bin stays where it is, out of the bin's list, and
+ * follows when the source is restored. Pure.
+ *
+ * @param array $rows picture_id, picture_folder, source_folder, binned
+ * @return array
+ */
+function pg_picture_tr_follow_moves($rows)
+{
+    $moves = array();
+
+    foreach (is_array($rows) ? $rows : array() as $row) {
+        $picture = isset($row['picture_id']) ? (int) $row['picture_id'] : 0;
+        $source = isset($row['source_folder']) ? (int) $row['source_folder'] : 0;
+        $now = isset($row['picture_folder']) ? (int) $row['picture_folder'] : 0;
+
+        if (($picture > 0) && ($source !== $now) && empty($row['binned'])) {
+            $moves[$picture] = $source;
+        }
+    }
+
+    return $moves;
+}
+
+/**
+ * After a source picture changed folder: its languages' pictures follow it.
+ * Called by every door that moves a file; the daily sweep calls it for all.
+ *
+ * @param array|null $file_ids the moved files; null for every picture out of place
+ * @return int pictures moved
+ */
+function pg_picture_tr_follow($file_ids)
+{
+    if (!pg_picture_tr_ready()) {
+        return 0;
+    }
+
+    $where = 'p.folder <> s.folder';
+
+    if ($file_ids !== null) {
+        $ids = array_filter(array_map('intval', (array) $file_ids));
+
+        if (!$ids) {
+            return 0;
+        }
+
+        $where .= " AND ft.file_id IN ('" . implode("','", $ids) . "')";
+    }
+
+    $rows = db_items("SELECT ft.picture_file_id AS picture_id, p.folder AS picture_folder, s.folder AS source_folder
+        FROM file_translation ft
+        INNER JOIN files s ON s.id = ft.file_id
+        INNER JOIN files p ON p.id = ft.picture_file_id
+        WHERE " . $where);
+    $rows = is_array($rows) ? $rows : array();
+
+    foreach ($rows as $i => $row) {
+        $rows[$i]['binned'] = pg_folder_binned((int) $row['source_folder']);
+    }
+
+    $moves = pg_picture_tr_follow_moves($rows);
+
+    foreach ($moves as $picture_id => $folder_id) {
+        db("UPDATE files SET folder = '" . (int) $folder_id . "' WHERE id = '" . (int) $picture_id . "'");
+    }
+
+    if ($moves) {
+        pg_page_cache_mark_dirty();
+    }
+
+    return count($moves);
+}
+
+/**
+ * Rows whose language picture is gone (deleted with a folder, say) wait to
+ * be drawn again instead of naming a file that is not there.
+ */
+function pg_picture_tr_lost()
+{
+    if (!pg_picture_tr_ready()) {
+        return;
+    }
+
+    db("UPDATE file_translation ft
+        LEFT JOIN files p ON p.id = ft.picture_file_id
+        SET ft.picture_file_id = 0, ft.state = 0
+        WHERE ft.picture_file_id > 0 AND p.id IS NULL");
 }
 
 /* ---------------------------------------------------------------------------
@@ -628,7 +736,7 @@ function pg_picture_tr_page_sql($names, $language)
         return "'" . e($name) . "'";
     }, array_values($names)));
 
-    return "SELECT f.id, f.name, ft.state, p.name AS picture,
+    return "SELECT f.id, f.name, f.folder, ft.state, p.name AS picture,
                    (SELECT 1 FROM translation_uses u WHERE u.owner_type = 'file' AND u.owner_id = f.id LIMIT 1) AS has_uses
             FROM files f
             LEFT JOIN file_translation ft ON ft.file_id = f.id AND ft.language = '" . e($language) . "'
@@ -673,10 +781,11 @@ function pg_picture_tr_page_plan($rows, $rtl)
  * @param string   $base
  * @param array    $hosts
  * @param bool     $rtl
- * @param callable $query SQL => rows (a SELECT) or bool
+ * @param callable $query  SQL => rows (a SELECT) or bool
+ * @param callable|null $binned folder id => whether it is in the Recycle Bin
  * @return string
  */
-function pg_picture_tr_page_apply($html, $language, $base, $hosts, $rtl, $query)
+function pg_picture_tr_page_apply($html, $language, $base, $hosts, $rtl, $query, $binned = null)
 {
     $names = pg_picture_tr_page_names($html, $base, $hosts);
 
@@ -684,7 +793,18 @@ function pg_picture_tr_page_apply($html, $language, $base, $hosts, $rtl, $query)
         return $html;
     }
 
-    $plan = pg_picture_tr_page_plan($query(pg_picture_tr_page_sql($names, $language)), $rtl);
+    $rows = $query(pg_picture_tr_page_sql($names, $language));
+
+    // A file inside a binned folder keeps its name (only the binned row is
+    // parked), so its address still matches: it is neither swapped nor
+    // given a waiting row.
+    if ($binned && is_array($rows)) {
+        $rows = array_values(array_filter($rows, function ($row) use ($binned) {
+            return !$binned(isset($row['folder']) ? (int) $row['folder'] : 0);
+        }));
+    }
+
+    $plan = pg_picture_tr_page_plan($rows, $rtl);
 
     if ($plan['waiting']) {
         $now = time();
@@ -718,7 +838,7 @@ function pg_picture_tr_page_pass($content, $language)
 
     return pg_picture_tr_page_apply($content, $language, (string) PATH, pg_picture_tr_hosts(), $rtl, function ($sql) {
         return (strpos($sql, 'SELECT') === 0) ? db_items($sql) : db($sql);
-    });
+    }, 'pg_folder_binned');
 }
 
 /* ---------------------------------------------------------------------------

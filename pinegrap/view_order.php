@@ -178,10 +178,10 @@ if (!$_POST) {
     $installment_charges = $row['installment_charges'] / 100;
     $total = $row['total'] / 100;
     $total_cents = (int)$row['total'];
-    $gift_card_discount_cents = (int) round((float) $row['gift_card_discount']);
     $refunded_amount_cents = (int)($row['refunded_amount'] ?? 0);
     // What a cancelled order still owes (payment money only when a payment
-    // arrived, the gift card part always), read before $row is reused below.
+    // arrived, the gift card part the cards really gave), read before $row is
+    // reused below.
     $refund_owed = pg_order_cancel_refund_owed($row);
 
     // Captured here with the rest of the order fields, and deliberately NOT
@@ -2224,10 +2224,12 @@ if (!$_POST) {
     if ($refund_owed['payment'] > 0 || $refund_owed['gift_card'] <= 0) {
         $refund_instructions .= '<div class="small">' . pg_order_refund_instruction($payment_method) . '</div>';
     }
-    if ($gift_card_discount_cents > 0) {
+    // What the cards really gave, less what a return gave back of it: a card
+    // that failed at checkout paid nothing and is owed nothing.
+    if ($refund_owed['gift_card'] > 0) {
         $refund_instructions .= '<div class="small">' . lang(array(
             'string' => 'Gift cards paid {var:1} of this order. Return the amounts to the cards; the site log names them.',
-            'vars'   => array(pg_format_money($gift_card_discount_cents / 100, BASE_CURRENCY_SYMBOL)))) . '</div>';
+            'vars'   => array(pg_format_money($refund_owed['gift_card'] / 100, BASE_CURRENCY_SYMBOL)))) . '</div>';
     }
 
     if (in_array($refund_state, array('manual_required', 'failed', 'pending'), true)) {

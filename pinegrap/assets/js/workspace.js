@@ -1531,6 +1531,13 @@
     var ctxOpener = null;
     var ctxKeyAt = 0;
     var messageMetaSeq = 0;
+    // A menu of the writing box stands by its button (ctxFollow()): where it
+    // was asked for, the button's place then and the window's width.
+    var ctxAnchor = null;
+    var ctxNextAnchor = null;
+    var ctxAt = null;
+    var ctxWidth = 0;
+    var ctxPlaceTimer = 0;
 
     // Focus inside the menu (or already lost to the page) goes back to what
     // opened it: removing a focused node drops focus to the body.
@@ -1543,6 +1550,8 @@
             ctxNode.remove();
             ctxNode = null;
             ctxOpener = null;
+            ctxAnchor = null;
+            ctxAt = null;
 
             if (opener && opener.hasAttribute('aria-haspopup')) {
                 opener.setAttribute('aria-expanded', 'false');
@@ -1552,6 +1561,73 @@
                 giveFocusBack(opener);
             }
         }
+    }
+
+    // The next menu or floating box opened stands by this button of the
+    // writing box. On a phone the menu takes the focus from the field, the
+    // keyboard goes down and the window grows: the box, and the button with
+    // it, moves down while the menu has to stay open.
+    function ctxFollow(node) {
+        ctxNextAnchor = node || null;
+    }
+
+    // What a change of the window does to an open menu: one standing by a
+    // button of the writing box moves with it while only the height changed
+    // (the keyboard came or went); a new width (a turn of the phone, a
+    // resized window) or any other menu closes it.
+    function ctxAfterChange(oldWidth, newWidth, follows) {
+        return (follows && oldWidth === newWidth) ? 'place' : 'close';
+    }
+
+    // Called once the menu or box is in the page at its first place: the
+    // point it was asked for, kept as an offset from its button, and whether
+    // it stands over that point.
+    function ctxSettle(x, y, above) {
+        var box = null;
+
+        ctxAnchor = ctxNextAnchor;
+        ctxNextAnchor = null;
+        ctxWidth = window.innerWidth;
+
+        if (ctxAnchor) {
+            box = ctxAnchor.getBoundingClientRect();
+        }
+
+        ctxAt = box ? { dx: x - box.left, dy: y - box.top, above: !!above } : null;
+    }
+
+    // Puts the open menu at the same offset from its button, kept in the
+    // window. Its height is read again: a taller window lets it grow.
+    function ctxPlace() {
+        ctxPlaceTimer = 0;
+
+        if (!ctxNode || !ctxAnchor || !ctxAt) {
+            return;
+        }
+
+        var now = ctxAnchor.getBoundingClientRect();
+
+        // The button left the page or is no longer drawn: nothing to stand by.
+        if (!ctxAnchor.isConnected || (!now.width && !now.height)) {
+            closeCtx();
+            return;
+        }
+
+        var height = ctxNode.offsetHeight;
+        var x = now.left + ctxAt.dx;
+        var y = now.top + ctxAt.dy - (ctxAt.above ? height : 0);
+
+        ctxNode.style.left = Math.max(8, Math.min(x, window.innerWidth - ctxNode.offsetWidth - 8)) + 'px';
+        ctxNode.style.top = Math.max(8, Math.min(y, window.innerHeight - height - 8)) + 'px';
+    }
+
+    // After the box has settled: bindFit() lays it out a frame later.
+    function ctxPlaceSoon() {
+        if (ctxPlaceTimer) {
+            window.clearTimeout(ctxPlaceTimer);
+        }
+
+        ctxPlaceTimer = window.setTimeout(ctxPlace, 60);
     }
 
     function giveFocusBack(opener) {
@@ -1628,6 +1704,7 @@
         });
 
         if (!list.length) {
+            ctxNextAnchor = null;
             return;
         }
 
@@ -1734,6 +1811,7 @@
 
         var width = menu.offsetWidth;
         var height = menu.offsetHeight;
+        var asked = y;
 
         if (above) {
             y -= height;
@@ -1744,6 +1822,7 @@
 
         ctxNode = menu;
         ctxOpenedAt = Date.now();
+        ctxSettle(x, asked, above);
 
         var first = menu.querySelector('.ws-ctx-item:not([disabled])');
 
@@ -1844,9 +1923,41 @@
         }
     });
 
-    window.addEventListener('resize', closeCtx);
+    window.addEventListener('resize', function () {
+        if (!ctxNode) {
+            return;
+        }
+
+        if (ctxAfterChange(ctxWidth, window.innerWidth, !!ctxAnchor) === 'close') {
+            closeCtx();
+        } else {
+            ctxPlaceSoon();
+        }
+    });
+
+    // A phone's keyboard may change only the visual viewport (iOS): a menu
+    // of the writing box follows it; any other menu is left as it was.
+    if (window.visualViewport) {
+        ['resize', 'scroll'].forEach(function (name) {
+            window.visualViewport.addEventListener(name, function () {
+                if (ctxNode && ctxAnchor) {
+                    ctxPlaceSoon();
+                }
+            });
+        });
+    }
+
+    // A scroll closes a menu opened from a message's row; one of the writing
+    // box moves with its button instead (bindFit() scrolls the conversation
+    // to its end when the keyboard goes down).
     document.addEventListener('scroll', function (event) {
-        if (ctxNode && !ctxNode.contains(event.target) && (Date.now() - ctxOpenedAt > 350)) {
+        if (!ctxNode || ctxNode.contains(event.target)) {
+            return;
+        }
+
+        if (ctxAnchor) {
+            ctxPlaceSoon();
+        } else if (Date.now() - ctxOpenedAt > 350) {
             closeCtx();
         }
     }, true);
@@ -2637,7 +2748,8 @@
     }
 
     // A box that floats like a context menu and closes like one: a click
-    // elsewhere, Escape, a scroll or a resize. "above" places it over the
+    // elsewhere, Escape, a scroll or a resize (one of the writing box moves
+    // with its button instead, ctxFollow()). "above" places it over the
     // point instead of under it (for the composer, at the bottom).
     function floatBox(x, y, content, className, above) {
         closeCtx();
@@ -2654,6 +2766,7 @@
 
         var width = box.offsetWidth;
         var height = box.offsetHeight;
+        var asked = y;
 
         if (above) {
             y -= height;
@@ -2664,6 +2777,7 @@
 
         ctxNode = box;
         ctxOpenedAt = Date.now();
+        ctxSettle(x, asked, above);
 
         return box;
     }
@@ -17985,6 +18099,7 @@
                 }
 
                 event.stopPropagation();
+                ctxFollow(attach);
                 ctxMenu(box.left, box.top - 6, [
                     { icon: 'bi-laptop', label: t('lib_from_device'), action: function () { self.attach(); } },
                     { icon: 'bi-folder2-open', label: t('lib_from_manager'), action: function () { self.attachFromLibrary(); } }
@@ -18005,6 +18120,7 @@
                 var box = emoji.getBoundingClientRect();
 
                 event.stopPropagation();
+                ctxFollow(emoji);
                 emojiPicker(box.left, box.top - 6, function (picked) { self.insertText(picked); }, true);
             });
             parts.push(emoji);
@@ -18020,8 +18136,15 @@
                 var box = insert.getBoundingClientRect();
 
                 event.stopPropagation();
+                ctxFollow(insert);
                 ctxMenu(box.left, box.top - 6, [
-                    { icon: 'bi-table', label: t('insert_table'), action: function () { self.tablePicker(box.left, box.top - 6); } },
+                    // Read again: the keyboard may have gone down since.
+                    { icon: 'bi-table', label: t('insert_table'), action: function () {
+                        var now = insert.getBoundingClientRect();
+
+                        ctxFollow(insert);
+                        self.tablePicker(now.left, now.top - 6);
+                    } },
                     { icon: 'bi-calculator', label: t('insert_calc'), action: function () { self.insertCalc(); } },
                     { icon: 'bi-ui-checks', label: t('insert_checklist'), action: function () { self.insertChecklist(); } },
                     window.pgImageEditor ? { icon: 'pg-design-canvas', label: t('canvas_new'), action: function () { self.newCanvas(); } } : null,
@@ -18132,6 +18255,7 @@
                         });
                     } });
 
+                    ctxFollow(later);
                     ctxMenu(Math.max(8, place.right - 240), place.top - 6, items, true);
                 });
 
@@ -19292,6 +19416,38 @@
                     return;
                 }
 
+                // /leave: the menu's question as a card to the writer alone;
+                // only its button leaves, sending the line again confirmed.
+                if (result.command && result.command.type === 'leave_card') {
+                    var leaveCard = el('div', 'ws-ephemeral');
+                    var leaveRow = el('div', 'd-flex flex-wrap gap-2 mt-2');
+                    var leaveGo = button('pg-button pg-button-danger pg-button-sm', t('leave_channel'), 'bi-box-arrow-right');
+                    var leaveStay = button('pg-button pg-button-ghost pg-button-sm', t('cancel'));
+
+                    leaveCard.appendChild(el('div', '', t(result.command.private ? 'leave_private_confirm' : 'leave_confirm')));
+                    leaveGo.addEventListener('click', function () {
+                        leaveCard.remove();
+                        self.send({ confirm: 1, body: body });
+                    });
+                    leaveStay.addEventListener('click', function () { leaveCard.remove(); });
+                    leaveRow.appendChild(leaveGo);
+                    leaveRow.appendChild(leaveStay);
+                    leaveCard.appendChild(leaveRow);
+                    self.pane.appendChild(leaveCard);
+                    self.clearInput();
+                    self.scrollToEnd();
+                    return;
+                }
+
+                // Left through /leave's card: as the menu's item, the list
+                // without the channel and an empty centre.
+                if (result.command && result.command.type === 'left') {
+                    self.clearInput();
+                    self.reloadChannels(0);
+                    self.drawEmptyCenter();
+                    return;
+                }
+
                 if (result.command && result.command.type === 'ephemeral') {
                     var box = el('div', 'ws-ephemeral');
                     setHtml(box, result.command.html);
@@ -19542,7 +19698,12 @@
                 return;
             }
 
-            var titles = { product_group: 'qc_command_title_group', contact: 'qc_command_title_contact' };
+            var titles = {
+                product_group: 'qc_command_title_group',
+                contact: 'qc_command_title_contact',
+                erp_account: 'qc_command_title_account',
+                calendar_event: 'qc_command_title_event'
+            };
             card.appendChild(el('div', 'fw-semibold', t(titles[preview.kind] || 'qc_command_title')));
 
             var list = el('dl');
@@ -20416,6 +20577,12 @@
             // The states /update reads.
             if (source === 'healths') {
                 show(fixed(values.healths, 'bi-activity'));
+                return;
+            }
+
+            // The choices /notify reads.
+            if (source === 'notify') {
+                show(fixed(values.notify, 'bi-bell'));
                 return;
             }
 
@@ -25848,6 +26015,24 @@
                 row.appendChild(tickLabel);
                 row.appendChild(el('div', 'form-text mt-0', t('qc_unticked')));
                 input.read = function () { return input.checked; };
+            } else if ((meta.kind === 'ids') && meta.choices) {
+                // Records the workspace does not tag (an event's calendars):
+                // one of the person's own, chosen from a list.
+                var chosen = (Array.isArray(given) && given.length) ? parseInt(given[0], 10) : 0;
+                var select = el('select', 'pg-input');
+                select.appendChild(el('option', '', t('qc_row_none'))).value = '';
+                meta.choices.forEach(function (choice) {
+                    var option = el('option', '', choice.label);
+                    option.value = String(choice.id);
+                    option.selected = choice.id === chosen;
+                    select.appendChild(option);
+                });
+                select.read = function () {
+                    var id = parseInt(select.value, 10);
+                    return id ? [id] : [];
+                };
+                input = select;
+                row = lookField(label, select, select, '');
             } else if (meta.kind === 'ids') {
                 // One record, picked among those the person may tag.
                 var first = (Array.isArray(given) && given.length) ? parseInt(given[0], 10) : 0;

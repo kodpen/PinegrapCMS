@@ -12,10 +12,11 @@
 - architect-asking.md: How a session asks a decision question or the owner's approval of screenshots: search first, one message in the agent channel naming the architect, the PR back to draft, the session ends [decision: here]
 - architect-decision-record.md: An owner's answer stands in the agent channel, quoted by the architect, before the decisions list names it; a decisions entry that names no channel message is held by the merging session [decision: decisions-made-panel-4.md]
 - architect-no-hand-over.md: The architect session does not hand over to a fresh session at a token count (2026-11-10): auto-compact summarises its context in place; what it reads again after a compaction
-- architect-wake.md: What wakes the architect session (owner, 2026-11-16): a mention in the agent channel through the request waiter only; the hourly check is disabled; a pause he names [decision: here]
+- architect-wake.md: What wakes the architect session (owner, 2026-11-16): a mention in the agent channel through the request waiter only; the hourly check is disabled; a pause he names; economy mode (2026-11-17) [decision: here]
 - architect.md: Decision questions: asked in the agent channel, no architect issue (2026-11-13); the architect decides technical ones, asks the owner schema and product-behaviour ones, records the answer [decision: decisions-made-schema.md, decisions-made.md]
 - branch-guards.md: tools/check_pr.php (#1878): CI and pre-push fail a commit trailer, an author or committer other than Erdal Güral, a changelog.txt or data/config.php change; warn above 1,000 product lines
-- bug-hunt-areas.md: The areas given to a bug hunt so far (2026-11-15 on), the issues each ended with and what it read and found clean; the next area is not one of these
+- bug-hunt-areas-2.md: The areas given to a bug hunt from 2026-11-17 on (wholesale prices, publish approval, visitor push, gift cards and store credit), the issues each ended with and what it read clean [decision: here]
+- bug-hunt-areas.md: The areas given to a bug hunt on 2026-11-15 and 2026-11-16, the issues each ended with and what it read and found clean; the hunts from 2026-11-17 on are in bug-hunt-areas-2.md
 - bug-hunt.md: A bug hunt is given out again (owner 2026-11-15), only in an area the architect named: one per coordinator at a time, no product code, at most eight bug issues as its result [decision: here]
 - ci-workflows.md: GitHub Actions workflows: what each runs and when, the PHP versions the checks run on (8.3, 7.1), action versions (major tags, node24) and how to bump them, the Node line, runner labels
 - claim-work.md: How a session claims work before starting it: the open-PR check, the claiming draft PR and its title, the race between two drafts, finishing and marking ready
@@ -112,6 +113,8 @@
 - decisions-made-product-7.md: Decisions list, product part 7 (2026-10-30 on): customs data on international labels, carrier pickup requests from the panel, ShipWorks through the shipment write path
 - decisions-made-product-70.md: Decisions list, product part 70 (2026-11-17): nine looks accepted in the agent channel; the Translations group is "Görseller", the hub screen is Connections, no platform names before the apps
 - decisions-made-product-71.md: Decisions list, product part 71 (2026-11-17): designer additions wait for the four areas; three designer drawings and the Languages list accepted; a picture is drawn once every text is translated
+- decisions-made-product-72.md: Decisions list, product part 72 (2026-11-17): the "Suggest targets" window of the Prototype view accepted (poll 137); a gift card does not pay for a gift card product (poll 138)
+- decisions-made-product-73.md: Decisions list, product part 73 (2026-11-17): the Page Design Studio differs from the pictures the owner accepted, noted and compared at the close-out; the architect's look rules of that day
 - decisions-made-product-8.md: Decisions list, product part 8 (2026-10-30 midday on): Trendyol-carried packages refused by Create Label, starter dump corrections for #3330, marketing SMS in 2026.11.0, forum template wording
 - decisions-made-product-9.md: Decisions list, product part 9 (2026-10-30 afternoon on): form rules for visitors only, marketplace orders invoiced behind a switch, sales quote guest links and templates, Workspace density switch
 - decisions-made-product.md: Decisions list, product part: express order and order preview totals, cookie window as the only translated UI text, publish-only editing, robots.txt vs noindex, ERP limits, erasure.

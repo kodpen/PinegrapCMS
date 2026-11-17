@@ -1685,3 +1685,163 @@ function test_proto_hotspots_picture_marker_flag_never_reaches_save()
 	pg_assert_same('<div><a href="/z">Z</a><p><a href="/a">A</a> <a href="/b">B</a></p></div>', $out['extra'], 'markup with links the text lacks gets none');
 	pg_assert_same('<p>Hi</p>', $out['plain'], 'no link, unchanged');
 }
+
+// The target suggested for a link without one (F31): label, page name and
+// page title folded (lower case, Turkish letters plain, punctuation to
+// spaces, the filler words dropped); sure, unsure with at most three
+// candidates best first, or nothing; the link's own page and a page in the
+// bin never offered.
+function test_proto_hotspots_suggest_targets()
+{
+	$pages = array(
+		array('id' => 'p:home', 'name' => 'anasayfa', 'title' => 'Ana Sayfa'),
+		array('id' => 'p:cart', 'name' => 'sepet', 'title' => 'Alışveriş Sepeti'),
+		array('id' => 'p:blog', 'name' => 'blog', 'title' => 'Blog'),
+		array('id' => 'p:archive', 'name' => 'blog-arsivi', 'title' => 'Blog arşivi'),
+		array('id' => 'p:about', 'name' => 'hakkimizda', 'title' => 'Hakkımızda'),
+		array('id' => 'p:old', 'name' => 'iletisim', 'title' => 'İletişim', 'bin' => true),
+		array('id' => 'p:firm', 'name' => 'ŞİRKET', 'title' => ''),
+	);
+	$cases = array(
+		'sure' => array('label' => 'Sepete git', 'page' => 'p:home'),
+		'two' => array('label' => 'Blog', 'page' => 'p:home'),
+		'heading' => array('label' => 'Daha fazlası', 'page' => 'p:home', 'heading' => 'Blog'),
+		'none' => array('label' => 'Zzz qqq', 'page' => 'p:home'),
+		'own' => array('label' => 'Sepet', 'page' => 'p:cart'),
+		'bin' => array('label' => 'İletişim', 'page' => 'p:home'),
+		'folded' => array('label' => 'HAKKIMIZDA', 'page' => 'p:home'),
+		'upper' => array('label' => 'şirket sayfası', 'page' => 'p:home'),
+		'title' => array('label' => 'Alışveriş sepeti!', 'page' => 'p:home'),
+		'fillers' => array('label' => 'Go to the page', 'page' => 'p:home'),
+	);
+	$out = proto_hotspots_test_node('var pages = ' . proto_hotspots_test_js($pages) . ', cases = ' . proto_hotspots_test_js($cases) . '; out = { list: H.SUGGEST_FILLER };'
+		. ' Object.keys(cases).forEach(function (k) { var s = H.suggest(cases[k], pages); out[k] = { sure: s.sure ? s.sure.id : null, candidates: s.candidates.map(function (p) { return p.id; }) }; });'
+		. ' out.fold = H.foldWords("Ödeme, ŞİMDİ git: Sayfa-gör İncele ılık");');
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array('go', 'to', 'the', 'page', 'view', 'see', 'git', 'sayfa', 'gör', 'incele'), $out['list'], 'one list of filler words');
+	pg_assert_same(array('sure' => 'p:cart', 'candidates' => array('p:cart')), $out['sure'], '"Sepete git" finds Sepet: its one word begins a word of the label');
+	pg_assert_same(array('sure' => null, 'candidates' => array('p:blog', 'p:archive')), $out['two'], '"Blog": two pages match, the equal one first');
+	pg_assert_same(array('sure' => null, 'candidates' => array('p:blog', 'p:archive')), $out['heading'], 'no match by the label: the heading above it finds unsure candidates');
+	pg_assert_same(array('sure' => null, 'candidates' => array()), $out['none'], 'a label that matches nothing and no heading');
+	pg_assert_same(array('sure' => null, 'candidates' => array()), $out['own'], 'the link\'s own page is never a candidate');
+	pg_assert_same(array('sure' => null, 'candidates' => array()), $out['bin'], 'a page in the bin is never a candidate');
+	pg_assert_same(array('sure' => 'p:about', 'candidates' => array('p:about')), $out['folded'], 'upper case and dotless i fold to the name');
+	pg_assert_same(array('sure' => 'p:firm', 'candidates' => array('p:firm')), $out['upper'], 'a page name in Turkish capitals folds too; "sayfası" begins with a filler only as a word');
+	pg_assert_same(array('sure' => 'p:cart', 'candidates' => array('p:cart')), $out['title'], 'the page title counts; punctuation is a space');
+	pg_assert_same(array('sure' => null, 'candidates' => array()), $out['fillers'], 'filler words alone match nothing');
+	pg_assert_same(array('odeme', 'simdi', 'ilik'), $out['fold'], 'folded words: Turkish letters plain, punctuation a space, fillers dropped');
+}
+
+// The dialog's rows (F30, F32): one per link without a target in the
+// frames' order, a shared part's once; the nearest heading of a link's
+// block comes from the tree (headingOf()); the head's three counts.
+function test_proto_hotspots_suggest_rows()
+{
+	$laid = array(
+		'frames' => array(
+			array('id' => 'p:a', 'kind' => 'page', 'name' => 'anasayfa', 'rows' => array(
+				array('port' => 'h0', 'nodeId' => '3', 'source' => 'href', 'label' => 'Sepete git', 'href' => '', 'mark' => 'empty'),
+				array('port' => 'h1', 'nodeId' => '4', 'source' => 'href', 'label' => 'Daha fazlası', 'href' => '#', 'mark' => 'empty'),
+				array('port' => 'h2', 'nodeId' => '5', 'source' => 'href', 'label' => 'Blog', 'href' => '/blog', 'mark' => 'tab'),
+				array('port' => 'h3', 'nodeId' => '6', 'source' => 'href', 'label' => 'Old', 'href' => '/old', 'mark' => 'broken'),
+			)),
+			array('id' => 'p:b', 'kind' => 'page', 'name' => 'sepet', 'rows' => array()),
+			array('id' => 'p:c', 'kind' => 'page', 'name' => 'blog', 'rows' => array()),
+			array('id' => 's:7', 'kind' => 'shared', 'name' => 'Header', 'rows' => array(
+				array('port' => 'h0', 'nodeId' => '9', 'source' => 'href', 'label' => 'Xyz', 'href' => '', 'mark' => 'empty'),
+			)),
+		),
+		'chips' => array(),
+		'edges' => array(),
+	);
+	$tree = array('_id' => 'root', 'type' => 'root', 'props' => array(), 'children' => array(
+		array('_id' => '1', 'type' => 'semantic', 'props' => array('tag' => 'section'), 'children' => array(
+			array('_id' => '2', 'type' => 'content', 'props' => array('contentType' => 'heading', 'tag' => 'h2', 'text' => 'Son <b>Blog</b> yazıları'), 'children' => array()),
+			array('_id' => '10', 'type' => 'semantic', 'props' => array('tag' => 'div'), 'children' => array(
+				array('_id' => '4', 'type' => 'content', 'props' => array('contentType' => 'link', 'text' => 'Daha fazlası', 'href' => '#'), 'children' => array()),
+			)),
+		)),
+		array('_id' => '11', 'type' => 'semantic', 'props' => array('tag' => 'section'), 'children' => array(
+			array('_id' => '3', 'type' => 'content', 'props' => array('contentType' => 'link', 'text' => 'Sepete git', 'href' => ''), 'children' => array()),
+		)),
+	));
+	$pages = array(
+		array('id' => 'p:a', 'name' => 'anasayfa', 'title' => ''),
+		array('id' => 'p:b', 'name' => 'sepet', 'title' => ''),
+		array('id' => 'p:c', 'name' => 'blog', 'title' => ''),
+	);
+	$out = proto_hotspots_test_node('var l = ' . proto_hotspots_test_js($laid) . ', t = ' . proto_hotspots_test_js($tree) . ', pages = ' . proto_hotspots_test_js($pages) . ';'
+		. ' var heads = { "p:a|h1": H.headingOf(t, "4"), "p:a|h0": H.headingOf(t, "3") };'
+		. ' var s = H.suggestRows(l, pages, heads);'
+		. ' out = { heads: heads, rows: s.rows.map(function (r) { return r.frame + "|" + r.port + " " + r.label + " " + r.kind + " " + (r.page || "-") + " " + r.candidates.join(","); }), count: s.count, missing: H.headingOf(t, "99"), none: H.suggestRows(null, pages, {}) };');
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array('p:a|h1' => 'Son Blog yazıları', 'p:a|h0' => ''), $out['heads'], 'the heading above a link in its block; none in a block without one');
+	pg_assert_same(array(
+		'p:a|h0 Sepete git sure p:b p:b',
+		'p:a|h1 Daha fazlası ask - p:c',
+		's:7|h0 Xyz none - ',
+	), $out['rows'], 'one row per link without a target, the shared part\'s once; a target, a broken link untouched');
+	pg_assert_same(array('sure' => 1, 'ask' => 1, 'none' => 1), $out['count'], 'the head\'s counts');
+	pg_assert_same('', $out['missing'], 'a node not in the tree has no heading');
+	pg_assert_same(array('rows' => array(), 'count' => array('sure' => 0, 'ask' => 0, 'none' => 0)), $out['none'], 'nothing laid out');
+}
+
+// Apply's batch (F34): the ticked rows grouped by the tab they are written
+// on, a tab once in the order of its first row (one undo entry each); a row
+// on a tab closed to the operator, on no tab or with no page chosen stays
+// unwritten with its reason.
+function test_proto_hotspots_suggest_batch()
+{
+	$picks = array(
+		array('frame' => 'p:a', 'port' => 'h0', 'page' => 'p:c', 'tab' => 'a', 'locked' => false),
+		array('frame' => 's:5', 'port' => 'h1', 'page' => 'p:a', 'tab' => 'b', 'locked' => false),
+		array('frame' => 'p:a', 'port' => 'h2', 'page' => 'p:b', 'tab' => 'a', 'locked' => false),
+		array('frame' => 'p:d', 'port' => 'h0', 'page' => 'p:a', 'tab' => 'd', 'locked' => true),
+		array('frame' => 's:6', 'port' => 'h0', 'page' => 'p:a', 'tab' => '', 'locked' => false),
+		array('frame' => 'p:a', 'port' => 'h3', 'page' => '', 'tab' => 'a', 'locked' => false),
+	);
+	$out = proto_hotspots_test_node('var b = H.suggestBatch(' . proto_hotspots_test_js($picks) . ');'
+		. ' out = { tabs: b.tabs.map(function (t) { return t.key + ": " + t.picks.map(function (p) { return p.frame + "|" + p.port; }).join(" "); }),'
+		. ' refused: b.refused.map(function (r) { return r.pick.frame + "|" + r.pick.port + " " + r.why; }), none: H.suggestBatch(null) };');
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array('a: p:a|h0 p:a|h2', 'b: s:5|h1'), $out['tabs'], 'three rows on two tabs: two groups, two undo entries');
+	pg_assert_same(array('p:d|h0 locked', 's:6|h0 tab', 'p:a|h3 target'), $out['refused'], 'a locked tab\'s row, a row on no tab and one without a page stay unwritten');
+	pg_assert_same(array('tabs' => array(), 'refused' => array()), $out['none'], 'nothing ticked');
+}
+
+// The Suggest targets view (F30 to F34): the bar's button, the dialog from
+// the panel's dialog parts without a backdrop, the proposed arrows through
+// the core's dashed(), Apply writing one undo entry per tab, and the
+// dialog closed with the view.
+function test_proto_hotspots_view_suggest_targets()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	$at = strpos($source, 'function _sdProtoSuggestOpen()');
+	$end = strpos($source, 'function _sdProtoMenuOpen(', (int) $at);
+	pg_assert_true($at !== false && $end !== false, 'the dialog\'s functions sit before the target menu');
+	$block = substr($source, (int) $at, (int) $end - (int) $at);
+
+	pg_assert_contains("_sdT('Suggest targets · {var}', toSuggest)", $source, 'the bar says "Suggest targets · n"');
+	pg_assert_contains('H.suggestRows(_sdProto.layout, pages, _sdProtoSuggestHeadings())', $block, 'the rows come from the pure match');
+	pg_assert_contains("el.setAttribute('data-bs-modal', 'false');", $block, 'a dialog without a backdrop: the map stays in sight');
+	pg_assert_contains('canvas.dashed(', $block, 'the proposed arrows go through the core');
+	pg_assert_false(strpos($block, "G.svgEl('path'") !== false, 'and no arrow is drawn beside it');
+	pg_assert_contains('H.suggestBatch(picks)', $block, 'Apply groups its rows by tab');
+	$tab = substr($block, (int) strpos($block, 'function _sdProtoSuggestTab('));
+	pg_assert_same(1, substr_count($tab, 'saveState();'), 'one undo entry per tab');
+	pg_assert_contains("_sdT('{var} links connected', done)", $block, 'the toast counts what was written');
+	pg_assert_contains("_sdProtoSuggestClose(false);\n        _sdProto.open = false;", $source, 'closing the view closes the dialog');
+	pg_assert_contains("if (_sdProto.suggest) _sdProtoSuggestArrows();", $source, 'another selected frame shows its own proposed arrows');
+}
