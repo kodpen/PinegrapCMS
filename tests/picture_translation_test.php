@@ -461,7 +461,7 @@ function test_picture_translation_queue_script()
 
 	$out = array();
 	$code = 1;
-	@exec('node -e ' . escapeshellarg('var Q = require(' . json_encode(PG_FUNCTIONS_DIR . '/assets/js/picture_queue.js') . ');'
+	$script = 'var Q = require(' . json_encode(PG_FUNCTIONS_DIR . '/assets/js/picture_queue.js') . ');'
 		. 'console.log(JSON.stringify({'
 		. ' left: Q.left([{ status: "waiting" }, { status: "drawing" }, { status: "drawn" }, { status: "failed" }, { status: "waiting" }]),'
 		. ' drawn: Q.statusOf({ status: "success", state: "drawn" }),'
@@ -474,7 +474,19 @@ function test_picture_translation_queue_script()
 		. ' tone: [Q.buttonTone(true), Q.buttonTone(false)],'
 		. ' end: [[{ status: "drawn" }], [{ status: "drawn" }, { status: "look" }, { status: "look" }], [{ status: "failed" }, { status: "look" }]].map(function (rows) {'
 		. '  return Q.endText(rows, { done: "D", doneLook: "L{n}", doneFailed: "F{n}" }); })'
-		. '}));') . ' 2>&1', $out, $code);
+		. '}));';
+	// A file rather than node -e: escapeshellarg() on Windows turns the
+	// script's double quotes into spaces.
+	$file = @tempnam(sys_get_temp_dir(), 'pgqueue');
+
+	if ($file === false) {
+		pg_assert_true(true, 'No temporary file');
+		return;
+	}
+
+	file_put_contents($file, $script);
+	@exec('node ' . escapeshellarg($file) . ' 2>&1', $out, $code);
+	@unlink($file);
 
 	if (($code !== 0) && (strpos(implode("\n", $out), 'not found') !== false)) {
 		pg_assert_true(true, 'Node is not available');
