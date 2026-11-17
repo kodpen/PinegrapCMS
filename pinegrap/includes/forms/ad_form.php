@@ -37,7 +37,7 @@ function pg_ad_form_cards($liveform)
                                 </h2>
                                 <div class="card-body pt-0">
                                     <div class="row">
-                                        <div class="col-12 md:col-8 my-3">
+                                        <div class="col-12 my-3">
                                             <label for="name" class="form-label">' . lang(array('string'=>'{var:1} Name','vars'=>lang('Ad'))) . '</label>
                                             ' . $liveform->output_field(array('type'=>'text', 'id'=>'name', 'name'=>'name', 'size'=>'60', 'class'=>'form-control', 'maxlength'=>'100', 'required'=>'required')) . '
                                         </div>
@@ -54,11 +54,11 @@ function pg_ad_form_cards($liveform)
                                 </h2>
                                 <div class="card-body pt-0">
                                     <div class="row">
-                                        <div class="col-12 md:col-8 my-3">
+                                        <div class="col-12 my-3">
                                             <label for="label" class="form-label">' . lang('Label') . '</label>
                                             ' . $liveform->output_field(array('type'=>'text', 'id'=>'label', 'name'=>'label', 'size'=>'60', 'class'=>'form-control', 'maxlength'=>'255')) . '
                                         </div>
-                                        <div class="col-12 md:col-4 my-3">
+                                        <div class="col-12 pg-field-span-3 my-3">
                                             <label for="sort_order" class="form-label">' . lang('Sort Order') . '</label>
                                             ' . $liveform->output_field(array('type'=>'text', 'id'=>'sort_order', 'name'=>'sort_order', 'size'=>'5', 'class'=>'form-control', 'maxlength'=>'4', 'inputmode'=>'numeric')) . '
                                             <div class="form-text">' . lang('leave blank for random order') . '</div>
