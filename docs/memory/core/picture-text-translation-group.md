@@ -1,0 +1,23 @@
+---
+name: picture-text-translation-group
+description: Pictures group of the Translations screen (#10102): file texts bounded to pictures with a file_translation row, whole site alike, extraction, Design Canvas link
+module: picture_translation
+---
+
+## What does the group hold?
+- `pg_tr_owner_groups()` (`includes/translate/content.php`) lists `pictures` ("Pictures", `bi-image`, types `file`) under Other texts, between Forms and the Cookie window.
+- Its owners are never every file: `pg_tr_owner_where()` turns `('file', '*')` into `pg_tr_picture_owner_bound()`, the texts of a file with a row in `file_translation` (the page pass writes the row when a page in another language shows the picture). Before the table exists it is `0 = 1`.
+- The bound is the file's, not the language's: a picture a page showed in one language counts for every target language.
+
+## How does the whole site take it?
+- `pg_tr_owner_where(array())` is `u.owner_type NOT IN ('ui', 'file')` plus `OR (` the same bound `)` (`pg_tr_picture_owner_or()`), so "translate the whole site", its counts, CSV, Clear and Review all reach the same pictures as the group. Every caller wraps the condition in parentheses (`tests/picture_translation_group_test.php` checks).
+- `pg_tr_extract_all()` runs the group as its third step after catalog and forms.
+
+## What does extraction do?
+- `pg_tr_extract_pictures()` (`includes/translate/extract.php`) reads every file with a row: a live document (`pg_picture_tr_live()`) has its words written again; a binned, flattened or gone file is forgotten (`pg_picture_tr_forget()`: uses, rows, language pictures). A file with no row is never read; its uses go with the daily prune.
+
+## What does a row show?
+- On the group's view each text names the pictures it comes from (`pg_tr_picture_files()`, same bound), as a badge button with `data-pg-image-edit`, which opens the file in the Design Canvas (`ui/image-editor-callers.md`); the loader is printed only when such a badge is listed.
+
+## Tests?
+- `tests/picture_translation_group_test.php`. Checked in a sandbox (#10102): a picture no page showed neither counted nor sent; counts per language; the extraction dropping a picture with no live document.

@@ -14,8 +14,8 @@ module: picture_translation
 - A Workspace canvas (a member's or an agent's) keeps no texts: its callers leave `$words` false.
 - A flat save (no document kept) removes the file's uses. Every save turns the file's drawn rows out of date.
 
-## Why does the whole site leave them out?
-- `pg_tr_owner_where(array())` is `u.owner_type NOT IN ('ui', 'file')`: every canvas picture with words has uses, but only one a page in another language showed is counted and sent, by its own group. Without it a banner nobody shows went to the engines and weighed on the site counts.
+## Which pictures are counted and sent?
+- Only those a page in another language has shown (a `file_translation` row), in the Pictures group and in the whole site alike: `picture-text-translation-group.md`. Every canvas picture with words has uses; without the bound a banner nobody shows went to the engines and weighed on the site counts.
 
 ## What does file_translation hold?
 - Step `upgrade_2026_11_0_file_translation()` (11.0.231, after 11.0.230 of `task.app_id`), listed in `get_tables()`. One row per source file and language (columns `workflow/decisions-made-schema-25.md`): `state` 0 waiting, 1 drawn, 2 out of date; only 1 is shown (`pg_picture_tr_shown()`). Moves: `pg_picture_tr_state_after()`: a save or a changed translation turns 1 into 2; a draw makes any row 1.
