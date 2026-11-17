@@ -20,7 +20,7 @@ description: Plan designer-panels, steps DP11 to DP16 of the Overview chain: row
   - Tests: name, text, class and id found; a result's path; the map's ranges from the sections' sizes.
   - Features: D34, D35 and the search of D29.
 
-- DP14 (M) after DP11: wide drop targets.
+- DP14 (M) after DP11: wide drop targets. Done: #10263.
   - New: a pure function from the pointer, the row's box and the legal parents to (before, inside, after, level) and the label's words, with its test, red first. It replaces the 28 % and 72 % bands; `canDrop()` stays the judge.
   - Tests: the 7 px reach; the middle 14 px; a level chosen only among legal parents; the reason of a refused row.
   - Pictures: the three targets and the refused row beside `overview-2-drag-move.jpg`.
