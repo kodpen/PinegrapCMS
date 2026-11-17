@@ -11,6 +11,7 @@ description: An agent's duty text (AF1 #9785, AF3 #9821): the "Duty" box on the 
 
 ## Where is it set?
 - Site Settings › "Assistants and agents" › Edit (and the Workspace Settings card): a "Duty" box under Role (Turkish "Görev tanımı", on the form and the card: it reads better than "Görev" beside the tasks later steps bring), named `ws_agent[<id>][duty]`, for an application or a model agent. Claude's row has no box: its routine has instructions of its own.
+- The field's look and its label were the architect's call, not a look of the owner.
 
 ## Where does the agent read it?
 - `ws_agent_instructions_who_lines()` puts "Your duty, as the person who set you up wrote it:" and the text right after "You are …", before the Site API line, only when there is one. The instructions' version is a hash of the text, so it changes with the duty and the next brief tells the agent to read them again (`agent-instructions.md`).
