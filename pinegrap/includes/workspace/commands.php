@@ -126,7 +126,34 @@ function ws_command_registry_names($create)
  */
 function ws_command_create_kinds()
 {
-    return array('urun' => 'product', 'product' => 'product', 'grup' => 'product_group', 'group' => 'product_group');
+    return array(
+        'urun' => 'product', 'product' => 'product',
+        'grup' => 'product_group', 'group' => 'product_group',
+        'kisi' => 'contact', 'contact' => 'contact',
+    );
+}
+
+/**
+ * The kinds /create makes that this person may make, each once, in the
+ * order of ws_command_create_kinds(): a kind is the right of its record's
+ * screen (ws_change_allowed(): products the e-commerce right, contacts the
+ * contacts right), so the product right never opens a contact.
+ *
+ * @param array    $viewer
+ * @param callable $may    ($viewer, $type, $record_id) => bool
+ * @return string[]
+ */
+function ws_command_create_types_for($viewer, $may = 'ws_change_allowed')
+{
+    $out = array();
+
+    foreach (array_unique(array_values(ws_command_create_kinds())) as $type) {
+        if (is_callable($may) && call_user_func($may, $viewer, $type, 0)) {
+            $out[] = $type;
+        }
+    }
+
+    return $out;
 }
 
 /**
@@ -305,6 +332,23 @@ function ws_command_gate_product($viewer, $command)
 }
 
 /**
+ * /create: whoever may make one of its kinds (ws_command_create_types_for());
+ * the kind typed is checked again when it runs.
+ *
+ * @param array|null $viewer
+ * @param string     $command
+ * @return bool
+ */
+function ws_command_gate_create($viewer, $command)
+{
+    if (!is_array($viewer)) {
+        return true;
+    }
+
+    return function_exists('ws_change_allowed') && (ws_command_create_types_for($viewer) !== array());
+}
+
+/**
  * The kinds of argument a command takes, as the registry types them. The
  * composer suggests values for some of them (ws_commands(), suggest).
  *
@@ -464,10 +508,11 @@ function ws_command_help($viewer = null, $channel = null)
  * anything is typed; the others are found as they are typed.
  *
  * @param string|null $language a language code, or null for the active one
+ * @param array|null  $viewer   with a person, only the kinds they may make
  * @return array dates, estimates, priorities, statuses, kinds (what /create
  *               makes): each a list of value, meta, top
  */
-function ws_command_suggestions($language = null)
+function ws_command_suggestions($language = null, $viewer = null)
 {
     $turkish = ws_command_turkish($language);
     $today = date('Y-m-d');
@@ -488,8 +533,15 @@ function ws_command_suggestions($language = null)
 
     $labels = function_exists('ws_task_priorities') ? ws_task_priorities() : array();
     $status_labels = function_exists('ws_task_statuses') ? ws_task_statuses() : array();
-    $kinds = $turkish ? array('product' => 'ürün', 'product_group' => 'grup') : array('product' => 'product', 'product_group' => 'group');
-    $kind_labels = array('product' => lang('Product'), 'product_group' => lang('Product group'));
+    $kinds = $turkish
+        ? array('product' => 'ürün', 'product_group' => 'grup', 'contact' => 'kişi')
+        : array('product' => 'product', 'product_group' => 'group', 'contact' => 'contact');
+    $kind_labels = array('product' => lang('Product'), 'product_group' => lang('Product group'), 'contact' => lang('Contact'));
+
+    if (is_array($viewer) && function_exists('ws_change_allowed')) {
+        $kinds = array_intersect_key($kinds, array_flip(ws_command_create_types_for($viewer)));
+    }
+
     $out = array('dates' => array(), 'estimates' => array(), 'priorities' => array(), 'statuses' => array(), 'kinds' => array());
 
     foreach ($days as $index => $word) {
@@ -2992,7 +3044,9 @@ function ws_command_parse_create($text)
 
 /**
  * /create: the kind named after it, made through its own card - a product
- * as /product makes it, a group by ws_command_group().
+ * as /product makes it, a group by ws_command_group(), a contact by
+ * ws_command_contact(). A kind the person may not make is refused before
+ * anything is read, as its screen refuses it.
  *
  * @param array  $viewer
  * @param array  $channel
@@ -3004,6 +3058,14 @@ function ws_command_create($viewer, $channel, $text, $options)
 {
     $parsed = ws_command_parse_create($text);
 
+    if (is_array($viewer) && ($parsed['kind'] !== '') && !in_array($parsed['kind'], ws_command_create_types_for($viewer), true)) {
+        return array('type' => 'error', 'error' => lang('You may not create this kind of record.'));
+    }
+
+    if ($parsed['kind'] === 'contact') {
+        return ws_command_contact($viewer, $channel, $parsed['rest'], $options);
+    }
+
     if ($parsed['kind'] === 'product') {
         return ws_command_product($viewer, $channel, $parsed['rest'], $options);
     }
@@ -3012,7 +3074,68 @@ function ws_command_create($viewer, $channel, $text, $options)
         return ws_command_group($viewer, $channel, $parsed['rest'], $options);
     }
 
-    return array('type' => 'error', 'error' => lang('Say what to create, a product or a group, like /create product Blue mug 149,90 or /create group Mugs.'));
+    return array('type' => 'error', 'error' => lang('Say what to create, a product, a group or a contact, like /create product Blue mug 149,90 or /create contact Ada Lovelace, Acme, ada@example.com.'));
+}
+
+/**
+ * What follows /create contact, read into the contact's first fields: an
+ * e-mail address anywhere, then the parts between commas - the person's
+ * name (its first word the first name, the rest the last name), then the
+ * company. "Ada Lovelace, Acme Ltd, ada@example.com" and
+ * "ada@example.com Ada Lovelace, Acme Ltd" read alike. Pure.
+ *
+ * @param string $text
+ * @return array first_name, last_name, company, email (each '' when not written)
+ */
+function ws_command_parse_contact($text)
+{
+    $text = trim((string) preg_replace('/\s+/u', ' ', (string) $text));
+    $email = '';
+
+    if (preg_match('/(?<![^\s,;])[^\s,;<>@]+@[^\s,;<>@]+\.[^\s,;<>@]+(?![^\s,;])/u', $text, $match)) {
+        $email = $match[0];
+        $text = str_replace($match[0], '', $text);
+    }
+
+    $parts = array_values(array_filter(array_map('trim', explode(',', $text)), 'strlen'));
+    $name = preg_split('/ /u', (string) ($parts[0] ?? ''), 2);
+
+    return array(
+        'first_name' => trim((string) $name[0]),
+        'last_name'  => trim((string) ($name[1] ?? '')),
+        'company'    => trim(implode(', ', array_slice($parts, 1))),
+        'email'      => $email,
+    );
+}
+
+/**
+ * /create contact: a new contact through the contacts catalogue
+ * (ws_command_create_card()): its card shows the first name, last name,
+ * company and e-mail, and nothing is written before Create. A line that
+ * leaves one of the contact's required fields out answers with the card's
+ * values and what is missing, and the composer opens the drawer's new
+ * contact filled with what was typed.
+ *
+ * @param array  $viewer
+ * @param array  $channel
+ * @param string $text    what follows /create contact
+ * @param array  $options confirm, decision
+ * @return array
+ */
+function ws_command_contact($viewer, $channel, $text, $options)
+{
+    if (function_exists('ws_bulk_text_is_list') && ws_bulk_text_is_list($text)) {
+        return array('type' => 'error', 'error' => lang('/create contact makes one contact: write it on one line.'));
+    }
+
+    // A tag would be written into a name as its markup.
+    if (preg_match('/<[#@][a-z_]+:[0-9]+>/', (string) $text)) {
+        return array('type' => 'error', 'error' => lang('Write the contact as plain text.'));
+    }
+
+    $fields = array_filter(ws_command_parse_contact($text), 'strlen');
+
+    return ws_command_create_card($viewer, $channel, 'contact', $fields, $options);
 }
 
 /**
@@ -3208,7 +3331,7 @@ function ws_command_is_product_file($body)
  *
  * @param array  $viewer
  * @param array  $channel
- * @param string $type    product | product_group
+ * @param string $type    product | product_group | contact
  * @param array  $fields  field => value
  * @param array  $options confirm, decision, on_sale
  * @return array
@@ -3223,8 +3346,13 @@ function ws_command_create_card($viewer, $channel, $type, $fields, $options)
         return $error(lang('Invalid request.'));
     }
 
+    $switch = ws_quick_create_has_switch($type);
+
     if (!empty($options['confirm'])) {
-        $fields['enabled'] = !empty($options['on_sale']);
+        if ($switch) {
+            $fields['enabled'] = !empty($options['on_sale']);
+        }
+
         $saved = ws_quick_create_save($viewer, $type, $fields, (int) $channel['id'], !empty($options['decision']));
 
         if (!$saved['ok']) {
@@ -3241,6 +3369,34 @@ function ws_command_create_card($viewer, $channel, $type, $fields, $options)
         );
     }
 
+    $types = ws_change_types();
+
+    // A required field left out: nothing to check yet. The composer opens
+    // the drawer's new mode with what was typed, as the kind's button does.
+    $missing = ws_quick_create_missing((array) ($types[$type]['required'] ?? array()), ws_quick_create_change($type, $fields)['fields']);
+
+    if ($missing !== array()) {
+        $check = ws_quick_create_check($viewer, $type);
+
+        if (!$check['ok']) {
+            return $error($check['error']);
+        }
+
+        $names = array();
+
+        foreach ($missing as $name) {
+            $field = ws_change_field($types[$type], $name);
+            $names[] = ($field !== null) ? (string) $field[2] : $name;
+        }
+
+        return array(
+            'type'    => 'create_preview',
+            'preview' => array('kind' => $type, 'rows' => array(), 'on_sale' => '', 'missing' => $names),
+            'values'  => $fields,
+            'labels'  => array(),
+        );
+    }
+
     // Checked as the save will check it (a name already taken, a group
     // that is gone), so the card never offers what cannot be made.
     $input = ws_quick_create_input($viewer, $type, $fields, (int) $channel['id']);
@@ -3249,7 +3405,6 @@ function ws_command_create_card($viewer, $channel, $type, $fields, $options)
         return $error($input['error']);
     }
 
-    $types = ws_change_types();
     $rows = array();
     $labels = array();
 
@@ -3281,7 +3436,9 @@ function ws_command_create_card($viewer, $channel, $type, $fields, $options)
         'preview' => array(
             'kind'    => $type,
             'rows'    => $rows,
-            'on_sale' => (string) $types[$type]['fields']['enabled'][2],
+            // A kind with no on-sale switch (a contact) draws no tick.
+            'on_sale' => $switch ? (string) $types[$type]['fields']['enabled'][2] : '',
+            'missing' => array(),
         ),
         // The drawer's new mode, filled with the same values ("All fields"),
         // and the names of the records they pick.

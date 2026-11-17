@@ -3170,6 +3170,7 @@
     "The contact is already an approved affiliate.": "Kişi zaten onaylı bir ortak.",
     "The contact of the record": "Kaydın kişisi",
     "The contact record was not found.": "Rehber kaydı bulunamadı.",
+    "The contact that will be created": "Oluşturulacak kişi",
     "The contact the visit is with. The visit shows on that customer's card and history.": "Ziyaretin yapıldığı kişi. Ziyaret o müşterinin kartında ve geçmişinde görünür.",
     "The contact this order belongs to no longer exists, so there is no account to bill.": "Siparişin bağlı olduğu kişi kaydı artık yok, dolayısıyla faturalanacak cari yok.",
     "The contact {var:1} was in the contact group {var:2} already.": "{var:1} numaralı kişi zaten {var:2} rehber grubundaydı.",

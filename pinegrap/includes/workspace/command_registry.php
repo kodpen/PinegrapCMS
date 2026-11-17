@@ -349,7 +349,7 @@ function ws_command_registry_records()
         ),
         array(
             'key' => 'create', 'tr' => 'oluştur', 'en' => 'create', 'label' => '/create · /oluştur',
-            'description' => lang('Creates a product or a product group, off sale: the kind, then its name; a product takes a price and a #group if you like. Shown to you before it is created. Several product lines, one per line, make one card of drafts for you to apply.'),
+            'description' => lang('Creates a product or a product group, off sale, or a contact: the kind, then its name; a product takes a price and a #group if you like, a contact its company and e-mail after commas. Shown to you before it is created. Several product lines, one per line, make one card of drafts for you to apply.'),
             'example'     => lang('/create product Blue mug 149,90'),
             'args'        => array(
                 $arg('kind', 'record_kind', lang('kind'), false, 'kinds'),
@@ -359,7 +359,7 @@ function ws_command_registry_records()
                 $arg('group', 'record', lang('#group'), true, 'records', array('anywhere' => true)),
             ),
             'names' => array('oluştur', 'olustur', 'create'), 'group' => 'records', 'order' => 160,
-            'gate' => 'ws_command_gate_product', 'runner' => 'ws_command_run_create', 'api' => 'ws_api_command_kind_create',
+            'gate' => 'ws_command_gate_create', 'runner' => 'ws_command_run_create', 'api' => 'ws_api_command_kind_create',
         ),
         array(
             'key' => 'product', 'tr' => 'ürün', 'en' => 'product', 'label' => '/product · /ürün',

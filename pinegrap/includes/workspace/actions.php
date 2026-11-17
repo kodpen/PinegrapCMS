@@ -1895,7 +1895,7 @@ function ws_handle_action($action, $request)
                 'command_groups' => array_keys(ws_command_group_labels()),
                 // The days, estimates and priorities the argument popup
                 // offers after a command.
-                'command_values' => ws_command_suggestions(),
+                'command_values' => ws_command_suggestions(null, $viewer),
                 // The screen sends files as form parts (apiUpload()).
                 'upload'      => array('max' => ws_upload_form_max_bytes(), 'accept' => ''),
                 'interact'    => ws_interact_ready(),

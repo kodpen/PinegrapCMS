@@ -19324,16 +19324,33 @@
         },
 
         // The /product card: the values the product is made with, the "On
-        // sale" tick (off by default), the decision tick, and "All fields",
-        // which opens the drawer's new mode with the same values. As on the
-        // /price card, Enter draws the card again; only Create writes.
+        // sale" tick (off by default; a contact has none), the decision
+        // tick, and "All fields", which opens the drawer's new mode with the
+        // same values. As on the /price card, Enter draws the card again;
+        // only Create writes. A line that left a required field out
+        // (preview.missing) opens the drawer's new mode straight away,
+        // filled with what was typed.
         drawCreatePreview: function (command) {
             var self = this;
             var box = clear(self.previewBox);
             var preview = command.preview;
             var card = el('div', 'ws-preview');
+            var drawn = self.pending.body;
+            var created = function () {
+                self.pending = null;
+                clear(self.previewBox);
+                self.clearSent(drawn);
+                self.autosize();
+            };
 
-            card.appendChild(el('div', 'fw-semibold', t((preview.kind === 'product_group') ? 'qc_command_title_group' : 'qc_command_title')));
+            if (preview.missing && preview.missing.length) {
+                self.pending = null;
+                openRecord(preview.kind, 0, '', { values: command.values || {}, labels: command.labels || {}, channelId: self.channel.id, onCreated: created });
+                return;
+            }
+
+            var titles = { product_group: 'qc_command_title_group', contact: 'qc_command_title_contact' };
+            card.appendChild(el('div', 'fw-semibold', t(titles[preview.kind] || 'qc_command_title')));
 
             var list = el('dl');
             (preview.rows || []).forEach(function (item) {
@@ -19363,17 +19380,21 @@
                 return input;
             };
 
-            var onSale = tick(preview.on_sale, false, 'ws-cmd-sale-');
-            card.appendChild(el('div', 'small fg-secondary mb-1', t('qc_unticked')));
+            var onSale = null;
+
+            if (preview.on_sale) {
+                onSale = tick(preview.on_sale, false, 'ws-cmd-sale-');
+                card.appendChild(el('div', 'small fg-secondary mb-1', t('qc_unticked')));
+            }
+
             var decision = tick(t('qe_decision'), true, 'ws-cmd-decision-');
 
             // Create makes what the card shows: the text it was drawn from,
             // not what the box holds by then, as on the /task card.
-            var drawn = self.pending.body;
             var actions = el('div', 'd-flex flex-wrap gap-3 mt-3');
             var create = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('qc_create'), 'bi-plus-lg');
             create.addEventListener('click', function () {
-                self.send({ confirm: 1, body: drawn, decision: decision.checked ? 1 : 0, on_sale: onSale.checked ? 1 : 0 });
+                self.send({ confirm: 1, body: drawn, decision: decision.checked ? 1 : 0, on_sale: (onSale && onSale.checked) ? 1 : 0 });
             });
             actions.appendChild(create);
 
@@ -19382,7 +19403,10 @@
                 var values = {};
 
                 Object.keys(command.values || {}).forEach(function (name) { values[name] = command.values[name]; });
-                values.enabled = onSale.checked;
+
+                if (onSale) {
+                    values.enabled = onSale.checked;
+                }
 
                 openRecord(preview.kind, 0, '', {
                     values: values,
@@ -19394,12 +19418,7 @@
                     decision: decision.checked,
                     // Made from the drawer: the line that asked for it goes,
                     // a draft typed since the card appeared stays.
-                    onCreated: function () {
-                        self.pending = null;
-                        clear(self.previewBox);
-                        self.clearSent(drawn);
-                        self.autosize();
-                    }
+                    onCreated: created
                 });
             });
             actions.appendChild(all);
@@ -25347,9 +25366,9 @@
         return section;
     }
 
-    // The record drawer's new mode: an empty product or product group
-    // (includes/workspace/quick_edit.php, ws_quick_create_*), opened from
-    // the search box or a /product card. It is made off sale unless "On
+    // The record drawer's new mode: an empty product, product group or
+    // contact (includes/workspace/quick_edit.php, ws_quick_create_*), opened
+    // from the search box or a /product or /create card. It is made off sale unless "On
     // sale" is ticked; once written, the drawer shows the new record.
     // options.values fill the form (a /product card's), options.labels name
     // the records they pick, options.channelId is the channel its decision
@@ -25363,7 +25382,7 @@
 
         options = options || {};
         node.classList.add('ws-record-drawer');
-        node.querySelector('.drawer-title').textContent = t(type === 'product_group' ? 'qc_new_group' : 'qc_new_product');
+        node.querySelector('.drawer-title').textContent = t({ product_group: 'qc_new_group', contact: 'qc_new_contact' }[type] || 'qc_new_product');
         footer.classList.add('d-none');
         body.appendChild(skeleton(2, 'ws-skeleton-sm'));
         showOffcanvas(node);
