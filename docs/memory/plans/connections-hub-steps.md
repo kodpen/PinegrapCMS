@@ -24,7 +24,7 @@ description: Plan connections-hub, steps CN1 to CN7: the registry and its census
   - The drawer for each kind of row; the last error on file where one is stored; the block that leads to Application Access with its counts.
   - Features: H8, H10.
 
-- CN5 (S) after CN1: the searches and the Integrations category.
+- CN5 (S) after CN1: the searches and the Integrations category. Done: #10153.
   - Existing files: the Site Settings search index and `pg_panel_search_tool_actions()` (`ui/settings-modal-search.md`), `pg_settings_integration_links()`.
   - Features: H12.
 
