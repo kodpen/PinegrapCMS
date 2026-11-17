@@ -1121,13 +1121,109 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
     padding: .25rem 0 .25rem .5rem; border-bottom: 1px solid var(--sd-panel-border);
     margin-bottom: .35rem;
 }
-.sd-props-section-title .bi:first-child { font-size: .8rem; opacity: .85; }
 .sd-sect-chev {
-    margin-left: auto; font-size: .6rem; opacity: .45; flex-shrink: 0;
-    transition: transform .15s;
+    font-size: 10px; color: var(--sd-text-muted); flex-shrink: 0;
+    transition: transform .12s;
 }
 .sd-sect-hdr.sd-sect-open .sd-sect-chev { transform: rotate(90deg); }
 .sd-sect-body { padding-bottom: .3rem; }
+
+/* Section cards (sect(), as()): 8 apart, 12 at the sides, corner 12. An
+   open card has the raised ground and a line over its body; a closed one
+   has no ground and shows its summary at the right. The head is 36 high:
+   chevron, name, the count of changed rows, the summary. */
+.sd-props-section.sd-card, .sd-app-sect.sd-card {
+    margin: 0 12px 8px; padding: 0;
+    border: 1px solid var(--sd-panel-border); border-radius: 12px;
+}
+.sd-card:has(> .sd-sect-hdr.sd-sect-open) { background: var(--sd-raised-bg); }
+.sd-card > .sd-sect-hdr {
+    min-height: 36px; margin: 0; padding: 0 12px 0 10px; gap: 8px;
+    border-bottom: 0; border-radius: 11px;
+    font-size: 12.5px; font-weight: 600; text-transform: none; letter-spacing: 0;
+    color: var(--sd-text);
+}
+.sd-card > .sd-sect-hdr:hover { background: color-mix(in srgb, var(--sd-text) 4%, transparent); }
+.sd-card > .sd-sect-hdr.sd-sect-open { border-bottom: 1px solid var(--sd-panel-border); border-radius: 11px 11px 0 0; }
+.sd-card > .sd-sect-body { padding: 10px 12px 6px; }
+.sd-sect-title { display: inline-flex; align-items: center; white-space: nowrap; flex-shrink: 0; }
+.sd-sect-count {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 18px; height: 17px; padding: 0 5px; border-radius: 6px;
+    background: var(--sd-raised-bg-2); color: var(--sd-text);
+    font-size: 10.5px; font-weight: 750; line-height: 1; flex-shrink: 0;
+}
+/* The summary gives way first. Its text is cut with an ellipsis and left
+   out when under five letters would stay: it wraps to a second line of
+   its one-line holder, which is clipped. The colour square stays. */
+.sd-sect-sum {
+    flex: 0 1000000 auto; min-width: 0; height: 34px; overflow: hidden;
+    margin-left: auto; color: var(--sd-text-muted);
+    font-size: 11.5px; font-weight: 400;
+}
+.sd-sect-sum-line {
+    display: flex; flex-wrap: wrap; align-items: center; align-content: flex-start;
+    justify-content: flex-end; column-gap: 6px; height: 34px;
+}
+.sd-sect-sum-line::before { content: ''; width: 0; height: 34px; }
+.sd-sect-sum-txt {
+    flex: 1 1 5ch; min-width: 5ch; max-width: max-content;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right;
+}
+.sd-sect-sum-txt.sd-sect-sum-whole { flex: 0 0 auto; min-width: max-content; }
+.sd-sect-sum .sd-color-preview { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+.sd-sect-hdr.sd-sect-open .sd-sect-sum,
+.sd-sect-hdr:has(+ .sd-sect-body[data-search-expanded]) .sd-sect-sum { display: none; }
+/* A section the search shows rows of has its arrow open. */
+.sd-sect-hdr:has(+ .sd-sect-body[data-search-expanded]) .sd-sect-chev { transform: rotate(90deg); }
+
+/* The identity row (60): icon box 36, the name and its tag, the path's
+   last three steps, the menu. */
+.sd-id-row {
+    display: flex; align-items: center; gap: 10px;
+    min-height: 60px; padding: 13px 14px 11px;
+}
+.sd-id-icon {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 36px; height: 36px; flex-shrink: 0; border-radius: 10px;
+    background: var(--sd-accent-soft); border: 1px solid var(--sd-accent-line);
+    color: var(--sd-accent); font-size: 16px;
+}
+.sd-id-main { flex: 1 1 auto; min-width: 0; }
+.sd-id-line { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.sd-id-name {
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    font-size: 14.5px; font-weight: 640; color: var(--sd-text); line-height: 1.45;
+}
+.sd-id-tag {
+    flex-shrink: 0; padding: 1px 6px; border-radius: 6px;
+    background: var(--sd-raised-bg-2); color: var(--sd-label);
+    font-size: 10.5px; font-weight: 750; line-height: 1.45;
+}
+.sd-id-path {
+    display: flex; align-items: center; min-width: 0; overflow: hidden;
+    font-size: 11.5px; color: var(--sd-text-muted); line-height: 1.45; white-space: nowrap;
+}
+.sd-id-step {
+    min-width: 0; padding: 0; border: 0; background: transparent;
+    color: inherit; font: inherit; cursor: pointer;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.sd-id-step:hover { color: var(--sd-text); text-decoration: underline; }
+.sd-id-sep { padding: 0 4px; flex-shrink: 0; }
+.sd-id-more {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 28px; height: 28px; flex-shrink: 0; border-radius: 8px;
+    border: 0; background: transparent; color: var(--sd-text-muted); cursor: pointer;
+}
+.sd-id-more:hover { color: var(--sd-text); background: color-mix(in srgb, var(--sd-text) 6%, transparent); }
+.sd-id-step:focus-visible, .sd-id-more:focus-visible { outline: 0; box-shadow: var(--sd-focus-ring); border-radius: 6px; }
+/* Under 300 px: the path keeps its last step after "… ›" (the whole path
+   is the tip). */
+.sd-rcol-narrow .sd-id-step:not(:last-child),
+.sd-rcol-narrow .sd-id-sep { display: none; }
+.sd-rcol-narrow .sd-id-path::before { content: '\2026\00a0\203a\00a0'; flex-shrink: 0; }
+@media (prefers-reduced-motion: reduce) { .sd-sect-chev { transition: none; } }
 .sd-prop-row { display:flex; align-items:flex-start; margin-bottom:.4rem; gap:.5rem; }
 /* The label column wraps. A fixed 65px column with nowrap let "Screen
    Reader Only" or "Aria Describedby" run under the control beside it. */
