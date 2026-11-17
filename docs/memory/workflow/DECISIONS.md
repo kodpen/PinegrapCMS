@@ -636,7 +636,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-workspace-38.md: Where are the rules and the earlier parts?
 - decisions-made-workspace-38.md: Do a message's parts stand in the discussion panel's width as built? (owner, 2026-11-17, agent channel poll 133, message 8532)
 - decisions-made-workspace-38.md: Does the agent state line stand as built? (owner, 2026-11-17, agent channel poll 134, message 8543)
-- decisions-made-workspace-38.md: Does a discussion show and take its agents? (owner, 2026-11-17, in the architect's window)
+- decisions-made-workspace-38.md: Does a question's picture say how many pictures there are? (owner, 2026-11-17, agent channel poll 135, message 8575)
+- decisions-made-workspace-38.md: Does a discussion show and take its agents? (owner, 2026-11-17, in the architect's window; agent channel poll 136, message 8677)
 - decisions-made-workspace-4.md: May a thread end in a webhook box's URL? (#3410)
 - decisions-made-workspace-4.md: How does a customer with no order in N days produce a follow-up? (#3416, part 2)
 - decisions-made-workspace-4.md: Is `contacts.lead_source` picked from `referral_sources`? (#3416, part 3)
@@ -696,6 +697,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - api/api-plugin-scopes.md: The 'moves_money' route mark and api_plugin_scopes(), the scopes an assistant plugin is meant to hold: marked routes, offered writes, and the test that keeps them apart
 - api/api-team-devices-switch.md: The Team devices switch in Settings › API (includes/api/device_switch.php): which device application a save starts, widens, makes or disables, the ceiling, expiry, why off keeps the rows
 - api/api-webhook-subscription-limit.md: How many event subscriptions one application may hold (50), the one function that holds the number, the 409 too_many_webhooks text, and why 50 subscribers of one event drain
+- api/application-access-automation.md: Application Access for automation platforms: the "Automation platform" starting point, the secret sheet's three values, New subscription and Send a sample, one create check with POST /webhooks
 - api/application-access-keys.md: Application Access (api_settings.php): rows made and secrets issued through includes/api/keys.php, 24 h grace, keyless rows refused, rows of a higher-ranked owner locked, one OAuth app, per-app logs
 - api/channel-api-not-built.md: What of channels and their agents has no API route, on purpose or by its nature (comparison 2026-11-15): private channel opened by an admin, templates, guest links, settings cards
 - api/claude-connect-button.md: The "Connect to Claude" button on the panel's OAuth connection guide: Claude's install link with the site's name and MCP file address, who sees it, the https rule
@@ -764,6 +766,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - designer/comments-widget-open-slots.md: Comments widget slots opened (CB2, #9716): Pagination as page links a designer builds, shared with Search results; CAPTCHA, star rating, publish options drawn true
 - designer/common-region-to-shared-component.md: A common region made a shared component (R2): one _editable block opened to content editors, grants carried over, the <cregion> tag drawing the component, the old write paths refused
 - designer/content-proposals-bell.md: Waiting content changes, who is told: the designers' bell line (once an hour per page), the editor's lines on apply, dismiss and stale, and the count above the page list
+- designer/content-proposals-compare-markup.md: Compare on Waiting Content Changes when a text's HTML changes (link address, bold, style), alone or with its words, or past the 600-character cut: differing values never print the same
 - designer/content-proposals.md: Content changes that wait for approval: the switch, which content-level saves are held, the operations kept in design_proposals, the assistant's readers skipping editor rows
 - designer/custom-form-overview.md: Start file for the custom-form-* files: what a designed form is, the decisions that bind it, its parts by the panel label, which file holds what, how a new control or field setting is added
 - designer/custom-form-translate-switch.md: Per-field "Include in translation" switch of custom forms (form_fields.translate_values, step 11.0.26): three-state _cf.translate, extraction and render skip, legacy screens, stale store and pages
@@ -868,6 +871,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - platform/short-link-redirects.md: Redirects are short link options (2026.11.0, 11.0.12): answer 0/301/302, * patterns tried only at 404, loop checks on every entry point; names in short-link-names.md.
 - platform/sms-and-iys-rules.md: The lasting rules of SMS and İYS (approved 2026-10-19, built PR #600 to #3846): why İYS, providers, message kinds, consent and İYS rules, marketing SMS, where each part is described, what is left
 - platform/visitor-push-rules.md: Visitor notifications (11.0.227, #9947): the site_push tables, the switch, endpoints and keys taken, the door site_push.php, the secret, consent log, export and erasure
+- platform/visitor-push-sender.md: Visitor notifications' sender (#9957): the message writer, queue batches, the pass in job.php and push_job.php under one lock, held services, retries, a day's limit, the week's tidy-up, the counts
 - platform/visitor-push-watch.md: Visitor notifications to one device (11.0.229, VP6): the site_push_watch table a browser waits for one record in, its moments sent once, who deletes its rows, the helpers VP5 and VP6 share
 - platform/whatsapp-template-designer.md: WhatsApp template designer, first half (WA8, #9350): whatsapp_template.php, drafts in whatsapp_templates, the draft check, samples column, phone preview and its JS twin, Send myself a test
 - ui/admin-screen-toolbar.md: Panel screen basics (frame, notices, fields, width, icons, help), the one-toolbar principle with view_folders.php as reference, slot order, classes and the pg_screen_toolbar() helper.
@@ -918,6 +922,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - ui/look-icon-buttons.md: SH5: icon-only toolbar buttons and menu toggles of the old panel screens as look A's .pg-icon-button with a lang() name; what was left and why
 - ui/look-list-title-settings-tile.md: Look A shared recipes (SH9, #9726): a list screen's count beside its title, a list's filters as a segmented control (pg_list_seg_filters()), the 34 px icon tile of a settings row (pg_settings_tile())
 - ui/look-mapping-grids.md: Column-mapping grids (one small select per column of an uploaded file) keep their own narrow columns in look A; the field widths of add and edit screens are for a record's fields
+- ui/look-mark-over-picture.md: A mark laid over a picture (the poll's picture count, #10037): its own class, colours as the tokens --pg-media-mark-bg / -fg, the same in both themes; a recipe when a second is built
 - ui/look-marketplace-ranks.md: SH10 (#9755): the Marketplaces and Marketplace Products screens' button ranks (one fill per view, one quiet rank per card) and their views and filter rows as link segments
 - ui/look-new-parts.md: A step's new parts in the panel and Workspace are built from look A's recipes (owner 2026-11-17): pg-button, pg-seg for tabs, no btn btn- or nav-tabs in an added line; the count before a look
 - ui/look-page-widths.md: Look A's page widths: edit screens centred at 1700 px (1300 + 24 + 376), lists as wide as their columns (1700 px to the window, details panel added), held while searching; tokens, rail
@@ -976,6 +981,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workflow/git-branches-and-shared-files.md: Branch policy (development vs main), who does git, commit author, the PR footer (pointer), shared files without conflicts, generated files a PR leaves out, API vs ERP files
 - workflow/held-file-bundled-sources.md: A script or stylesheet under assets/ (backend.src.js, backend.src.css, style_designer.src.js, style_designer.css) is held by the functions and rule blocks a PR changes, not as a whole file
 - workflow/held-file-hunt-fixes.md: Several bug fixes of one hunt may be open at once in one PHP file beside a draft holder, each in the functions the architect named for it (includes/fn/content_proposals.php, #10188)
+- workflow/held-file-parked-draft.md: A draft that waits for an area's new shape holds nothing in that area: its lines leave the functions the redraw rewrites, so the redraw can start (#10188 PA3 beside DP18 on _pgTabsRender())
 - workflow/held-file-registry-rows.md: What a PR may change in a file a draft PR holds: its own registry rows, or a function the holder does not touch; the terms; the architect allows each holder (#3824, #10025, #10077)
 - workflow/issue-hand-out-first-reply.md: When a note in the agent channel offers an issue to the coordinators, the first reply under it holds the work; how a double claim was settled twice on 2026-11-16
 - workflow/look-narrowest-column.md: Before any look, a step that draws in a message row or a side panel posts pictures in its narrowest column with its longest content (owner's words 2026-11-16); what a set must hold
@@ -1033,6 +1039,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/channel-open-items-line.md: The open items line under a channel's pin (OI1 #9783) and on GET /workspace/channels/{id} (OI2 #9827): open polls, agent questions, the running check-in, waiting approvals; whose answer each waits for
 - workspace/channel-settings-drawer.md: The Channel settings drawer (channelForm(), #9616): four tabs, icon and colour popovers by the name, switches at the row end, one versions list; what stays in Channel info
 - workspace/claude-not-channel-agent.md: Claude is no channel agent: never offered in a channel's Agents list, refused with 422 on the add route, its old ws_channel_agents rows unread but removable
+- workspace/discussion-agents-panel.md: A discussion's people panel lists its agents (own, the channel's by name, the one it follows) and "Agents in this discussion" for whoever may change them; ws_channel_member_agent_rows()
 - workspace/mail-area-proposals.md: Incoming e-mail in the messages area as decided after MA10a (#9077, #9203): mail with the Workspace off, the tab's gate, who reads, what the mail card keeps beside its link, the steps
 - workspace/mail-away.md: "I am away" in My e-mail settings (IB12): ws_profiles.mail_away (11.0.211), the text once per sender, the stand-in for conversations given to an away person, the team plan
 - workspace/mail-blocks.md: A mailbox's block list (IB4, IB4b): Block sender under a mail, who may block where, what a blocked mail keeps, the list with Allow again on the Mailboxes card, the 30-day sweep, the schema step
@@ -1055,6 +1062,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/mail-send-scope.md: Sending Workspace e-mail in a person's name over the API and MCP: the workspace:mail_send scope, who holds it, the gate that refuses a key, the send tools, the log line
 - workspace/mail-support-box.md: A mailbox's "Support box" switch (WM14, #9061): what a plain box leaves out (status, holder, first-answer time, automatic answer), how lists count its conversations, the default
 - workspace/mail-workspace-off.md: Incoming e-mail with the Workspace off (MA10c): the gate ws_mail_on(), who asks it (tab, actions, jobs, frame, API, bell), a new box kept in the mailbox itself, the test
+- workspace/message-parts-narrow-column.md: Every part of a Workspace message follows the width of its own column (the 320 px discussion panel, a phone): wrapping, minimum widths, the ws-poll container (#10030)
 - workspace/message-reference-card.md: The card a <#message:N> chip opens (#9846, workspace.js): where chips are hooked, the agent card's frame and its closing, what it shows, Go to the message, the reader without the right
 - workspace/message-reference.md: Message references (<#message:N>): what the owner asked for, the pieces (tag, chip and card, Copy as reference and the paste), what agents are told, where tools and the API name it
 - workspace/model-assistant-channel-rule.md: Where a model assistant is asked (its own ws_channel_agents row; a channel closed to Pinegrap AI on purpose keeps it out too) and how the shared loop's failure sentences name it (PR #8413)
@@ -1065,7 +1073,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/personal-calendar-census-tables.md: PC1 proposal (2026-11-14), shaped by the architect and approved by the owner (decisions-made-schema-18): the tables and columns a person's private plans need, each with its reason and step
 - workspace/personal-calendar-census-words.md: PC1 census (2026-11-14): words taken beside "plan" (Plan item, Planning Board, /workspace/plan, "#plan") and the names proposed for a private plan
 - workspace/plan-board-grid.md: Planning Board (workspace_board.php) Turkish name, grid columns and why .ws-board's min-width equals the grid minimum (#3815)
-- workspace/poll-question-picture-box.md: A question's own picture in the poll box (#9964) and the New poll form's "Question picture" field: the question shape, thumbnails, "Other", answered, what is left out
+- workspace/poll-question-picture-box.md: A question's own picture in the poll box (#9964): the question shape, thumbnails, answered; the viewer's distinct pictures and count mark (#10023); the New poll form's "Question picture" field
 - workspace/poll-question-picture.md: A poll question's own picture (poll_picture.php, #9948): carried by the question's message, the image check, ask again carries it, change while unanswered, the API routes, ws_poll.php --file
 - workspace/quiet-hours.md: A person's quiet hours (plan quiet-hours, #9844 and QH2): set in a channel's Notifications, ws_profiles.quiet_hours, the rule pg_quiet_hours_left() reads, the person's own session only
 - workspace/workflow-table-channel.md: A workflow table of a channel (ws_wtables.channel_id, 11.0.191): rights from the channel, made in or moved to a channel, lists, bin, screen card, API, webhooks

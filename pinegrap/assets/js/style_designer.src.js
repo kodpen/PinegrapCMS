@@ -7331,8 +7331,9 @@ const StyleDesigner = (function () {
 
         wrapper.innerHTML =
             // Three zones (D54-D57): the mode, the canvas (screen size and
-            // zoom), the view and the tools; Preview and Open on Site after
-            // them. The ids are the ones every handler and shortcut reaches.
+            // zoom), the view and the tools. Preview and Open on Site are rows
+            // of the Preview menu beside Publish (_sdPreviewMenuBuild()). The
+            // ids are the ones every handler and shortcut reaches.
             '<div class="sd-bp-bar" id="sd-bp-bar" data-fold="0">' +
             '<div class="sd-bp-zone sd-bp-mode" role="group" aria-label="' + esc(_sdT('Mode')) + '">' +
             '<button type="button" class="sd-bp-seg active" id="sd-vb-design" aria-pressed="true" title="' + esc(_sdT('Design')) + '"><span class="bi bi-pencil"></span><span class="sd-vb-txt">' + esc(_sdT('Design')) + '</span></button>' +
@@ -7365,15 +7366,6 @@ const StyleDesigner = (function () {
             '<button type="button" class="sd-vb-btn sd-vb-view" id="sd-vb-view" aria-haspopup="menu" aria-expanded="false" aria-controls="sd-vb-view-menu" title="' + esc(_sdT('Canvas view')) + '"><span class="bi bi-eye"></span><span class="sd-vb-txt">' + esc(_sdT('Canvas view')) + '</span><span class="sd-vb-badge" id="sd-vb-view-badge" aria-hidden="true" hidden></span><span class="bi bi-chevron-down sd-vb-caret"></span></button>' +
             '<button type="button" class="sd-vb-btn sd-vb-tool" id="sd-vb-find" title="' + esc(_sdT('Find & Replace (Ctrl+F)')) + '" aria-label="' + esc(_sdT('Find & Replace (Ctrl+F)')) + '"><span class="bi bi-search"></span></button>' +
             '<button type="button" class="sd-vb-btn sd-vb-tool" id="sd-vb-snapshots" title="' + esc(_sdT('History')) + '" aria-label="' + esc(_sdT('History')) + '"><span class="bi bi-clock-history"></span></button>' +
-            '</div>' +
-            '<span class="sd-bp-zsep" aria-hidden="true"></span>' +
-            '<div class="sd-bp-zone sd-bp-out">' +
-            '<button type="button" class="sd-vb-btn" id="sd-vb-preview" title="' + esc(_sdT('Preview in a new window (Ctrl+Alt+P)')) + '"><span class="bi bi-window" ></span> <span class="sd-vb-txt">' + esc(_sdT('Preview')) + '</span></button>' +
-            // Preview renders the UNSAVED canvas in a blank window; this one
-            // opens the page as the site actually serves it — theme, common
-            // regions, dynamic content and all. Only for a page that exists
-            // on the site, so it is hidden until the first save.
-            '<a href="#" target="_blank" rel="noopener" class="sd-vb-btn" id="sd-vb-live" title="' + esc(_sdT('Open the page on the site (as saved)')) + '" style="display:none"><span class="bi bi-box-arrow-up-right"></span> <span class="sd-vb-txt">' + esc(_sdT('Open on Site')) + '</span></a>' +
             '</div>' +
             '</div>' +
             '<div class="sd-ctx-bar sd-ctx-idle" id="sd-ctx-bar">' +
@@ -7547,19 +7539,18 @@ const StyleDesigner = (function () {
         var _findBtn = document.getElementById('sd-vb-find');
         if (_findBtn) _findBtn.addEventListener('click', openFindReplaceModal);
 
-        // Preview + Shortcuts toolbar buttons
-        var _previewBtn   = document.getElementById('sd-vb-preview');
+        // The Preview menu beside Publish, and the Shortcuts button
+        _sdPreviewMenuBuild();
         var _shortcutsBtn = document.getElementById('sd-vb-shortcuts');
-        if (_previewBtn)   _previewBtn.addEventListener('click', openPreview);
         var _protoBtn = document.getElementById('sd-vb-proto');
         // The mode switch's Prototype side opens the view; its Design side
         // closes it.
         if (_protoBtn) _protoBtn.addEventListener('click', function () { if (!_sdProto.open) _sdProtoOpen(); });
         if (_shortcutsBtn) _shortcutsBtn.addEventListener('click', openShortcutsModal);
 
-        // The tab strip was rendered before this bar existed, so its first
-        // pass could not fill in "Open on Site" — do it now that the button is
-        // in the DOM. Every later tab switch / save keeps it in step.
+        // The tab strip was rendered before this menu existed, so its first
+        // pass could not fill in "Open on the site" — do it now that the row
+        // is in the DOM. Every later tab switch / save keeps it in step.
         if (typeof _pgTabsSyncViewButton === 'function') _pgTabsSyncViewButton();
 
         _sdInitCanvasDoc();
@@ -10056,11 +10047,12 @@ const StyleDesigner = (function () {
         var row = _sdTreeRowOf(list, node);
         if (!row || !row.parentNode) return false;
         var depth = parseInt(row.style.getPropertyValue('--depth'), 10) || 1;
+        var lvl = (row.dataset && parseInt(row.dataset.lvl, 10)) || depth;
         var next = row.nextElementSibling;
         var kids = (next && next.classList.contains('sd-tree-children')) ? next : null;
         var fresh = document.createElement('ul');
         _sdSharedOpen = {};
-        buildTreeItems(fresh, node, depth);
+        buildTreeItems(fresh, node, depth, lvl);
         var parent = row.parentNode;
         while (fresh.firstChild) parent.insertBefore(fresh.firstChild, row);
         parent.removeChild(row);
@@ -29905,6 +29897,8 @@ const StyleDesigner = (function () {
         _sdTreeOpenToSelection();
         var _wrapEl = document.getElementById('sd-overview-tree-wrap');
         _sdTreeRowWidth = _wrapEl ? _wrapEl.clientWidth : 0;
+        _sdTreeNames = _sdTreeCountNames();
+        _sdTreeChainShown = [];
         list.innerHTML = '';
 
         // Refresh notes tab (count badge + list) whenever tree re-renders
@@ -31580,6 +31574,69 @@ const StyleDesigner = (function () {
         return steps;
     }
 
+    // A wrapper the overview may fold into a chain line: a plain layout box
+    // (container, row, column, a block tag) with no words of its own and no
+    // mark the operator needs to see (an editable area, a lock, a note).
+    function _sdTreeIsWrapper(n) {
+        if (!n || !n.props) return false;
+        var p = n.props;
+        if (p._editable || p._locked || (p._notes && String(p._notes).trim()) || p.text) return false;
+        if (n.type === 'container' || n.type === 'row' || n.type === 'col') return true;
+        if (n.type !== 'semantic') return false;
+        return ['div', 'section', 'nav', 'header', 'footer', 'main', 'article', 'aside'].indexOf(String(p.tag || 'section').toLowerCase()) !== -1;
+    }
+
+    // A chain from `node` down: wrappers that are open and hold exactly one
+    // child each. Two or more are drawn as one line; `next` is the first
+    // element after them. `keepOpen(n)` is true for a node that must show
+    // (opened by the operator, selected): then nothing is folded, and `run`
+    // lists the whole chain, to be drawn row by row.
+    function _sdTreeChain(node, keepOpen) {
+        var run = [], open = false;
+        var n = node;
+        while (_sdTreeIsWrapper(n) && n._expanded !== false && n.children && n.children.length === 1) {
+            if (keepOpen(n)) open = true;
+            run.push(n);
+            n = n.children[0];
+        }
+        if (run.length < 2 || !n) return { hidden: [], next: node, run: [] };
+        if (open) return { hidden: [], next: node, run: run };
+        return { hidden: run, next: n, run: run };
+    }
+
+    // The names on a chain line: its first and last level, a gap between
+    // when there are more.
+    function _sdTreeChainLabel(names) {
+        if (names.length < 3) return names.join(' › ');
+        return names[0] + ' › … › ' + names[names.length - 1];
+    }
+
+    // The hint after a name that repeats: the element's text, a picture's
+    // file name or a link's target, else the first of these inside it (60
+    // elements looked at). At most `max` characters, cut with an ellipsis.
+    function _sdTreeRowHint(node, max) {
+        function own(n) {
+            var p = (n && n.props) || {};
+            var t = String(p.text || '').replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+            if (t) return t;
+            if (p.src) {
+                var f = String(p.src).split(/[?#]/)[0].split('/').pop();
+                if (f) return f;
+            }
+            if (p.href && p.href !== '#') return String(p.href);
+            return '';
+        }
+        var queue = [node], seen = 0, hint = '';
+        while (queue.length && seen < 60 && !hint) {
+            var n = queue.shift();
+            seen++;
+            hint = own(n);
+            if (n && n.children) queue = queue.concat(n.children);
+        }
+        if (max > 1 && hint.length > max) hint = hint.slice(0, max - 1).trim() + '…';
+        return hint;
+    }
+
     // The selection after rows dragged in the overview were moved: the moved
     // nodes, as a move on the canvas keeps the dropped node. One row is a
     // plain selection; a multi-selection moved together stays one, with the
@@ -31817,9 +31874,73 @@ const StyleDesigner = (function () {
         return null;
     }
 
-    function buildTreeItems(ul, node, depth) {
+    // Folded chains the operator opened (by their first node), and the row
+    // names the page uses, counted at each drawing of the tree.
+    var _sdTreeChainsOpen = (typeof WeakSet === 'function') ? new WeakSet() : null;
+    var _sdTreeNames = {};
+
+    function _sdTreeRowName(n) {
+        return (n.props && n.props._label) || _sdPartTreeLabel(n, getNodeLabel(n));
+    }
+
+    // How many rows of the page carry each name, shared components' trees
+    // included as the overview draws them.
+    function _sdTreeCountNames() {
+        var counts = {}, seen = {};
+        (function walk(n) {
+            if (!n) return;
+            if (n !== tree) {
+                var name = _sdPartTreeLabel(n, getNodeLabel(n));
+                counts[name] = (counts[name] || 0) + 1;
+            }
+            var kids = n.children;
+            if (n.type === 'shared_ref' && n.props && n.props.sharedId) {
+                var sid = parseInt(n.props.sharedId, 10);
+                if (seen[sid] || !_sharedCache[sid] || !_sharedCache[sid].tree) return;
+                seen[sid] = true;
+                kids = _sharedCache[sid].tree.children;
+            }
+            (kids || []).forEach(walk);
+        })(tree);
+        return counts;
+    }
+
+    // A child row, or the line of the folded chain it starts and the
+    // element after the chain. A chain opened, or holding the selection,
+    // is drawn row by row.
+    var _sdTreeChainShown = [];
+    function _sdTreeBuildChild(ul, node, depth, lvl) {
+        if (_sdTreeChainShown.indexOf(node) !== -1) { buildTreeItems(ul, node, depth, lvl); return; }
+        var chain = _sdTreeChain(node, function (n) {
+            return n === selectedNode || selectedNodes.indexOf(n) !== -1 ||
+                !!(_sdTreeChainsOpen && _sdTreeChainsOpen.has(n));
+        });
+        // An open chain's later links are drawn as rows too, not folded anew.
+        if (!chain.hidden.length && chain.run.length) Array.prototype.push.apply(_sdTreeChainShown, chain.run);
+        if (!chain.hidden.length || !_sdTreeChainsOpen) { buildTreeItems(ul, node, depth, lvl); return; }
+        var li = document.createElement('li');
+        li.className = 'sd-tree-chain';
+        li.style.setProperty('--depth', depth);
+        li.style.setProperty('--sd-ind', _sdTreeRowIndent(depth, _sdTreeRowWidth).indent + 'px');
+        var text = _sdT('{var} levels hidden', chain.hidden.length) + ': ' + _sdTreeChainLabel(chain.hidden.map(_sdTreeRowName));
+        li.innerHTML = '<button type="button" class="sd-tree-chain-btn" title="' + esc(_sdT('Show the hidden levels')) + '">' +
+            '<span class="bi bi-three-dots" aria-hidden="true"></span><span class="sd-tree-chain-txt">' + esc(text) + '</span></button>';
+        li.addEventListener('click', function (e) {
+            e.stopPropagation();
+            _sdTreeChainsOpen.add(chain.hidden[0]);
+            renderTree();
+        });
+        ul.appendChild(li);
+        buildTreeItems(ul, chain.next, depth, lvl + chain.hidden.length);
+    }
+
+    // `depth` is where the row is drawn, `lvl` its level in the page (deeper
+    // under a folded chain); 1 for a section.
+    function buildTreeItems(ul, node, depth, lvl) {
+        lvl = lvl || depth;
         var li = document.createElement('li');
         li.style.setProperty('--depth', depth);
+        if (lvl !== depth) li.dataset.lvl = lvl;
         // 12 px a level, six at most, the label never under 150 px.
         var _ind = _sdTreeRowIndent(depth, _sdTreeRowWidth);
         li.style.setProperty('--sd-ind', _ind.indent + 'px');
@@ -31872,10 +31993,12 @@ const StyleDesigner = (function () {
             icon = '<span class="bi ' + (semTagIcons[node.props.tag] || 'bi-code-slash') + '"></span>';
         }
 
-        var idBadge = node.props.id ? '<span class="sd-tree-id">#' + esc(node.props.id) + '</span>' : '';
+        // The id gives way first: cut with an ellipsis, left out when only a
+        // few letters would stay (it wraps out of its one-line holder).
+        var idBadge = node.props.id ? '<span class="sd-tree-id-wrap"><span class="sd-tree-id" title="#' + esc(node.props.id) + '">#' + esc(node.props.id) + '</span></span>' : '';
         var displayLabel = _sdPartTreeLabel(node, getNodeLabel(node));
         var userLabelBadge = node.props._label
-            ? '<span class="sd-tree-user-label" title="' + esc(node.props._label) + '"><i class="bi bi-tag-fill"></i>' + esc(node.props._label) + '</span>'
+            ? '<span class="sd-tree-user-label" title="' + esc(node.props._label) + '"><i class="bi bi-tag-fill"></i><span class="sd-tree-user-label-t">' + esc(node.props._label) + '</span></span>'
             : '';
         var lockBadge = (node.type !== 'root' && node.props._locked)
             ? '<span class="sd-tree-lock-badge bi bi-lock-fill" title="' + esc(_sdT('Locked')) + '"></span>'
@@ -31911,15 +32034,19 @@ const StyleDesigner = (function () {
         var addBtn = _treeCompType
             ? '<button type="button" class="sd-tree-add-btn bi bi-plus-lg" title="' + (COMPOSITE_ADD_LABELS[_treeCompType] || _sdT('Add')) + '"></button>'
             : '';
-        var depthBadge = _ind.badge
-            ? '<span class="sd-tree-depth" role="img" title="' + esc(_sdT('Level {var}', _ind.badge)) + '" aria-label="' + esc(_sdT('Level {var}', _ind.badge)) + '">' + _ind.badge + '</span>'
+        var _lvlShown = _ind.badge ? _ind.badge + (lvl - depth) : 0;
+        var depthBadge = _lvlShown
+            ? '<span class="sd-tree-depth" role="img" title="' + esc(_sdT('Level {var}', _lvlShown)) + '" aria-label="' + esc(_sdT('Level {var}', _lvlShown)) + '">' + _lvlShown + '</span>'
             : '';
+        // A name the page uses more than once gets a hint after it.
+        var _hint = (!node.props._label && _sdTreeNames[displayLabel] > 1) ? _sdTreeRowHint(node, 40) : '';
+        var hintHtml = (_hint && _hint !== displayLabel) ? '<span class="sd-tree-hint" title="' + esc(_hint) + '">· ' + esc(_hint) + '</span>' : '';
         var sectCount = '';
         if (_isSect) {
             var _cnt = _sdTreeNodeCount(_sharedRefTree || node);
             if (_cnt) sectCount = '<span class="sd-tree-sect-count" title="' + esc(_sdT('{var} elements inside', _cnt)) + '">' + _cnt + '</span>';
         }
-        li.innerHTML = depthBadge + chevHtml + icon + ' <span class="sd-tree-lbl">' + esc(displayLabel) + '</span>' + idBadge + foldBadge + userLabelBadge + lockBadge + sharedBadge + editableBadge + noteBadge + addBtn + sectCount;
+        li.innerHTML = depthBadge + chevHtml + icon + ' <span class="sd-tree-lbl">' + esc(displayLabel) + '</span>' + hintHtml + idBadge + foldBadge + userLabelBadge + lockBadge + sharedBadge + editableBadge + noteBadge + addBtn + sectCount;
         if (node.type === 'shared_ref') li.classList.add('sd-tree-shared');
         else if (node.props._locked) li.classList.add('sd-tree-locked');
         else if (hasLockedAncestor(node)) li.classList.add('sd-tree-locked-desc');
@@ -32328,7 +32455,7 @@ const StyleDesigner = (function () {
             var _childSource = _sharedRefTree ? _sharedRefTree.children : node.children;
             if (_sharedRefTree) _sdSharedOpen[_sharedRefSid] = true;
             try {
-                (_childSource || []).forEach(function(child) { buildTreeItems(childUl, child, depth + 1); });
+                (_childSource || []).forEach(function(child) { _sdTreeBuildChild(childUl, child, depth + 1, lvl + 1); });
             } finally {
                 if (_sharedRefTree) delete _sdSharedOpen[_sharedRefSid];
             }
@@ -78907,16 +79034,136 @@ const StyleDesigner = (function () {
         load();
     }
 
-    // "View page" next to Save AND next to Preview on the canvas bar: both
-    // only for a page that exists on the site.
+    // The Preview menu's rows that depend on the page on screen: Open on
+    // the site for a page that exists there, Play for a prototype the viewer
+    // can open, Share for an operator who may share it.
     function _pgTabsSyncViewButton() {
         var url = _pgPageViewUrl(_pgActivePage());
-        ['sd-view-page', 'sd-vb-live'].forEach(function (id) {
-            var btn = document.getElementById(id);
-            if (!btn) return;
-            btn.style.display = url ? '' : 'none';
-            btn.href = url || '#';
+        var rows = _sdPreviewMenuRows({ live: !!url, play: !!_sdPreviewPlayUrl(), share: _pgPrototypeShareReady() });
+        ['sd-vb-live', 'sd-vb-play', 'sd-vb-share'].forEach(function (id) {
+            var row = document.getElementById(id);
+            if (!row) return;
+            var off = rows.indexOf(id) === -1;
+            if (row.hidden !== off) row.hidden = off;
         });
+        var live = document.getElementById('sd-vb-live');
+        if (live) live.href = url || '#';
+    }
+
+    // ── Preview menu (D58) ───────────────────────────────────────────────
+    // Beside Publish, the ways to see the page outside the editor, in this
+    // order: Preview in a new window (the unsaved canvas, Ctrl+Alt+P), Open
+    // on the site (the page as the site serves it, as saved), Play as a
+    // prototype and Share the prototype… (the saved drafts). The rows a page
+    // cannot use are left out, never shown dead. s: { live, play, share }.
+    function _sdPreviewMenuRows(s) {
+        s = s || {};
+        var rows = ['sd-vb-preview'];
+        if (s.live) rows.push('sd-vb-live');
+        if (s.play) rows.push('sd-vb-play');
+        if (s.share) rows.push('sd-vb-share');
+        return rows;
+    }
+
+    // Where Play as a prototype opens the viewer: the page on screen when it
+    // is a saved draft, else the first page the viewer can show; '' for none.
+    function _sdPreviewPlayUrl() {
+        var url = _pgPrototypeUrl(_pgActivePage());
+        for (var i = 0; !url && i < _pages.length; i++) url = _pgPrototypeUrl(_pages[i]);
+        return url;
+    }
+
+    // Builds the menu on the overlay host, not in the toolbar, whose
+    // overflow would cut it. The rows keep the ids of the buttons they
+    // replace (#sd-vb-preview, #sd-vb-live).
+    function _sdPreviewMenuBuild() {
+        var btn = document.getElementById('sd-preview-menu-btn');
+        if (!btn) return;
+        var old = document.getElementById('sd-preview-menu');
+        if (old) old.remove();
+        var menu = document.createElement('div');
+        menu.id = 'sd-preview-menu';
+        menu.className = 'sd-vb-menu sd-preview-menu';
+        menu.setAttribute('role', 'menu');
+        menu.setAttribute('aria-label', _sdT('Preview'));
+        menu.hidden = true;
+        menu.innerHTML =
+            '<button type="button" class="sd-vb-row" id="sd-vb-preview" role="menuitem"><span class="bi bi-window"></span><span class="sd-vb-row-lbl">' + esc(_sdT('Preview in a new window')) + '</span><kbd class="sd-vb-kbd">Ctrl+Alt+P</kbd></button>' +
+            '<a href="#" class="sd-vb-row" id="sd-vb-live" role="menuitem" target="_blank" rel="noopener" hidden><span class="bi bi-box-arrow-up-right"></span><span class="sd-vb-row-lbl">' + esc(_sdT('Open on the site (as saved)')) + '</span></a>' +
+            '<button type="button" class="sd-vb-row" id="sd-vb-play" role="menuitem" hidden><span class="bi bi-play-btn"></span><span class="sd-vb-row-lbl">' + esc(_sdT('Play as a prototype')) + '</span></button>' +
+            '<button type="button" class="sd-vb-row" id="sd-vb-share" role="menuitem" hidden><span class="bi bi-share"></span><span class="sd-vb-row-lbl">' + esc(_sdT('Share the prototype…')) + '</span></button>';
+        ((window.pgUI && typeof pgUI.overlayHost === 'function') ? pgUI.overlayHost(btn) : document.body).appendChild(menu);
+
+        menu.addEventListener('click', function (e) {
+            var row = e.target.closest('.sd-vb-row');
+            if (!row) return;
+            _sdPreviewMenuOpen(false);
+            if (row.id === 'sd-vb-preview') {
+                openPreview();
+            } else if (row.id === 'sd-vb-live') {
+                if (row.getAttribute('href') === '#') e.preventDefault();
+            } else if (row.id === 'sd-vb-play') {
+                var url = _sdPreviewPlayUrl();
+                if (url) window.open(url, '_blank', 'noopener');
+            } else if (row.id === 'sd-vb-share') {
+                // A saved draft on screen is offered as the link's start page.
+                var p = _pgActivePage();
+                _pgPrototypeShareDialog((p && p.page_id > 0 && p.page_draft && !p.pickedPending) ? p.page_id : 0);
+            }
+        });
+
+        if (btn.getAttribute('data-sd-bound')) return;
+        btn.setAttribute('data-sd-bound', '1');
+        btn.addEventListener('click', function () { _sdPreviewMenuOpen(); });
+        document.addEventListener('mousedown', function (e) {
+            var m = document.getElementById('sd-preview-menu');
+            if (!m || m.hidden || m.contains(e.target) || btn.contains(e.target)) return;
+            _sdPreviewMenuOpen(false);
+        }, true);
+        document.addEventListener('keydown', function (e) {
+            var m = document.getElementById('sd-preview-menu');
+            if (!m || m.hidden) return;
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                e.stopPropagation();
+                _sdPreviewMenuOpen(false);
+                btn.focus();
+                return;
+            }
+            if ((e.key !== 'ArrowDown' && e.key !== 'ArrowUp') || !m.contains(document.activeElement)) return;
+            var rows = Array.prototype.filter.call(m.querySelectorAll('[role="menuitem"]'), function (r) { return !r.hidden; });
+            var at = rows.indexOf(document.activeElement);
+            if (at === -1 || !rows.length) return;
+            e.preventDefault();
+            rows[(at + (e.key === 'ArrowDown' ? 1 : rows.length - 1)) % rows.length].focus();
+        }, true);
+        window.addEventListener('resize', function () { _sdPreviewMenuOpen(false); });
+    }
+
+    // Opens or closes the Preview menu under its button, its right edge on
+    // the button's (`open` omitted: toggles). The rows are brought up to
+    // date first, as a draft can change state without a tab switch.
+    function _sdPreviewMenuOpen(open) {
+        var btn = document.getElementById('sd-preview-menu-btn');
+        var menu = document.getElementById('sd-preview-menu');
+        if (!btn || !menu) return;
+        if (open === undefined) open = menu.hidden;
+        if (!open) {
+            if (!menu.hidden) {
+                menu.hidden = true;
+                btn.setAttribute('aria-expanded', 'false');
+            }
+            return;
+        }
+        _pgTabsSyncViewButton();
+        menu.hidden = false;
+        btn.setAttribute('aria-expanded', 'true');
+        var r = btn.getBoundingClientRect();
+        var mw = menu.offsetWidth;
+        menu.style.top = Math.round(r.bottom + 6) + 'px';
+        menu.style.left = Math.round(Math.max(8, Math.min(r.right - mw, window.innerWidth - mw - 8))) + 'px';
+        var first = menu.querySelector('[role="menuitem"]');
+        if (first) first.focus();
     }
 
     // ── Drafts ────────────────────────────────────────────────────────────

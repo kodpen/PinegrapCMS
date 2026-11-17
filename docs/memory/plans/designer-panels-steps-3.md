@@ -10,7 +10,7 @@ description: Plan designer-panels, steps DP11 to DP16 of the Overview chain: row
   - Pictures: the 500-row page beside `overview-1-long-page.jpg`; a multiple selection.
   - Features: D29 (without the search), D30, D33, D36. Keeps K6.
 
-- DP12 (M) after DP11: folded chains and hints.
+- DP12 (M) after DP11: folded chains and hints. Done: #10235.
   - New: pure functions for a chain of single-child wrappers and for a row's hint (text, file name, link target), with their tests.
   - Tests: a chain of four folded and opened; a chain that holds the selection opened; 61 rows named alike each with its own hint; a hint cut, never the name.
   - Features: D31, D32.

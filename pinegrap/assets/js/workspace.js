@@ -510,6 +510,59 @@
         return node;
     }
 
+    // A button of the look's recipes (.pg-button and its ranks): the
+    // button's own gap spaces its icon, so the icon carries no margin.
+    function lookButton(className, label, iconName) {
+        var node = el('button', className);
+        node.type = 'button';
+
+        if (iconName) {
+            node.appendChild(icon(iconName, ''));
+        }
+
+        node.appendChild(document.createTextNode(label));
+
+        return node;
+    }
+
+    // A tick of the look's recipes (.pg-checkbox) with its label beside it,
+    // added to box; the tick is given back.
+    function lookCheck(box, label, checked, prefix) {
+        var wrap = el('div', 'd-flex align-items-center gap-2 mb-1');
+        var input = el('input', 'pg-checkbox');
+        input.type = 'checkbox';
+        input.checked = !!checked;
+        input.id = nextId(prefix);
+        var text = el('label', 'pg-text-2', label);
+        text.htmlFor = input.id;
+        wrap.appendChild(input);
+        wrap.appendChild(text);
+        box.appendChild(wrap);
+
+        return input;
+    }
+
+    // A field of the look's recipes: .pg-field-label over the control
+    // (.pg-input, or a .pg-input wrapper round it), the help under it.
+    function lookField(label, control, field, help) {
+        var wrap = el('div', 'mb-2');
+        var caption = el('label', 'pg-field-label', label);
+
+        if (!field.id) {
+            field.id = nextId('ws-look-field-');
+        }
+
+        caption.htmlFor = field.id;
+        wrap.appendChild(caption);
+        wrap.appendChild(control);
+
+        if (help) {
+            wrap.appendChild(el('div', 'pg-field-help', help));
+        }
+
+        return wrap;
+    }
+
     // "2026-10-16" as people write it: 16.10.2026.
     function dmy(value) {
         var parts = String(value || '').split('-');
@@ -906,6 +959,8 @@
         var title = el('div', 'fw-semibold', label);
         var file = el('div', 'small text-truncate', name);
         var bar = progressBar({ percent: 0 }, true, label);
+
+        file.title = name;
         var fill = bar.firstChild;
         var row = el('div', 'd-flex justify-content-between align-items-center gap-3 small mt-2');
         var bytes = el('span');
@@ -3375,16 +3430,19 @@
 
     // A channel's agents as its head and Channel info show them: Claude and
     // Pinegrap AI where they can be asked, then the registry agents the
-    // server sends (ws_channel_member_agents()).
+    // server sends (ws_channel_member_agents()); in a discussion also the
+    // channel's agents asked there by name (reach_from) and the one it
+    // follows (following).
     function channelAgents(channel) {
         var out = [];
+        var follow = (channel.thread && channel.thread.follow) || '';
 
         if (BOOT.claude && channel.claude && channel.claude.available) {
-            out.push({ key: 'claude', tone: 3, name: BOOT.claude.name, line: t('claude_member'), assistant: true, active: true, seen: t('cm_ready'), seen_state: 'ready' });
+            out.push({ key: 'claude', tone: 3, name: BOOT.claude.name, line: t('claude_member'), assistant: true, active: true, seen: t('cm_ready'), seen_state: 'ready', following: follow === 'claude' });
         }
 
         if (BOOT.ai && channel.ai && channel.ai.available) {
-            out.push({ key: 'ai', tone: 1, name: BOOT.ai.name, line: t('ai_member'), assistant: true, active: true, seen: t('cm_ready'), seen_state: 'ready' });
+            out.push({ key: 'ai', tone: 1, name: BOOT.ai.name, line: t('ai_member'), assistant: true, active: true, seen: t('cm_ready'), seen_state: 'ready', following: follow === 'ai' });
         }
 
         (channel.agents || []).forEach(function (agent) {
@@ -3400,11 +3458,69 @@
                 assistant: !!agent.assistant,
                 active: !!agent.active,
                 seen: agent.seen,
-                seen_state: agent.seen_state
+                seen_state: agent.seen_state,
+                reach_from: agent.reach_from || 0,
+                following: !!agent.following
             });
         });
 
         return out;
+    }
+
+    // One agent's row as Channel info and a discussion's people panel draw
+    // it: its face and name (a registry agent's open its card), role, badge,
+    // Paused, Following, under it @handle and what wakes it, its last seen
+    // at the right of the first line. In a narrow column the badges move
+    // to the next line and the role is the part cut (.ws-info-agents).
+    function agentInfoRow(channel, agent, list) {
+        var row = el('div', 'ws-info-person');
+        var text = el('div', 'ws-info-person-text');
+        var name = el('div', 'ws-info-person-name');
+        var title = name.appendChild(el('span', 'ws-info-agent-title'));
+        var badges = el('span', 'ws-info-agent-badges');
+        var face = agentFace(agent);
+
+        title.appendChild(el('span', 'ws-info-agent-name', agent.name));
+
+        // The role the agent's form gives it, a label only.
+        if (agent.role) {
+            title.appendChild(el('span', 'ws-info-agent-role small fg-secondary fw-normal', agent.role));
+        }
+
+        badges.appendChild(el('span', 'badge badge-subtle theme-accent ws-info-badge', t(agent.assistant ? 'cm_assistant' : 'cm_agent')));
+
+        if (!agent.active) {
+            badges.appendChild(el('span', 'badge badge-subtle theme-secondary ws-info-badge', t('cha_paused')));
+        }
+
+        if (agent.following) {
+            badges.appendChild(el('span', 'badge badge-subtle theme-success ws-info-badge', t('cm_following')));
+        }
+
+        name.appendChild(badges);
+
+        // A registry agent's name and face open its card.
+        if (agent.id) {
+            agentCardHook(name, channel, agent, true);
+            agentCardHook(face, channel, agent, false);
+        }
+
+        row.appendChild(face);
+        text.appendChild(name);
+
+        if (agent.line) {
+            text.appendChild(el('div', 'ws-info-person-role', agent.line));
+        }
+
+        row.appendChild(text);
+
+        if (agent.seen) {
+            row.appendChild(el('span', 'ws-info-seen' + (agent.seen_state ? ' is-' + agent.seen_state : ''), agent.seen));
+        }
+
+        list.appendChild(row);
+
+        return row;
     }
 
     // The "Who has seen it" drawer's parts from ws_message_seen's answer:
@@ -11944,29 +12060,7 @@
                 var agentList = el('div', 'ws-info-people ws-info-agents');
 
                 agents.forEach(function (agent) {
-                    var name = el('div', 'ws-info-person-name', agent.name);
-
-                    // The role the agent's form gives it, a label only.
-                    if (agent.role) {
-                        name.appendChild(el('span', 'small fg-secondary fw-normal ms-2', agent.role));
-                    }
-
-                    name.appendChild(el('span', 'badge badge-subtle theme-accent ws-info-badge', t(agent.assistant ? 'cm_assistant' : 'cm_agent')));
-
-                    if (!agent.active) {
-                        name.appendChild(el('span', 'badge badge-subtle theme-secondary ws-info-badge', t('cha_paused')));
-                    }
-
-                    // A registry agent's name and face open its card.
-                    if (agent.id) {
-                        agentCardHook(name, channel, agent, true);
-                    }
-
-                    var row = personRow(agent.id ? agentCardHook(agentFace(agent), channel, agent, false) : agentFace(agent), name, agent.line, agentList);
-
-                    if (agent.seen) {
-                        row.appendChild(seenNode(agent.seen, agent.seen_state));
-                    }
+                    agentInfoRow(channel, agent, agentList);
                 });
 
                 body.appendChild(agentList);
@@ -12645,7 +12739,10 @@
             // A person's message written through an OAuth connection: their
             // name, and the client it came through beside it.
             if (message.via) {
-                meta.appendChild(el('span', 'badge rounded-pill ws-via-badge', t('via_badge', message.via)));
+                var via = el('span', 'badge rounded-pill ws-via-badge', t('via_badge', message.via));
+
+                via.title = via.textContent;
+                meta.appendChild(via);
             }
 
             // An MCP agent's answer, under the agent's own name: who asked and
@@ -13554,7 +13651,10 @@
 
                 var bar = el('div', 'ws-media-bar');
                 bar.appendChild(icon(kind === 'video' ? 'bi-film' : 'bi-music-note-beamed'));
-                bar.appendChild(el('span', 'ws-grow text-truncate', file.name));
+                var barName = el('span', 'ws-grow text-truncate', file.name);
+
+                barName.title = file.name;
+                bar.appendChild(barName);
 
                 if (kind === 'video') {
                     var large = button('btn btn-sm btn-text theme-secondary py-0', '', 'bi-arrows-fullscreen', t('preview'));
@@ -13582,19 +13682,24 @@
             name.target = '_blank';
             name.rel = 'noopener';
             name.textContent = file.name;
+            name.title = file.name;
             text.appendChild(name);
             card.appendChild(text);
+
+            // The buttons wrap as one group: all beside the name, or all
+            // under it at the right in a narrow column.
+            var tools = el('div', 'ws-file-tools');
 
             if (kind === 'pdf' || file.office) {
                 var look = button('btn btn-sm btn-outline theme-secondary', t('preview'), 'bi-eye');
                 look.addEventListener('click', function () { previewFile(file, function (result) { self.fileEdited(result); }); });
-                card.appendChild(look);
+                tools.appendChild(look);
             }
 
             if (file.text) {
                 var read = button('btn btn-sm btn-outline theme-secondary', t('file_edit_text'), 'bi-file-earmark-text');
                 read.addEventListener('click', function () { self.openText(message); });
-                card.appendChild(read);
+                tools.appendChild(read);
             }
 
             var get = el('a', 'btn btn-sm btn-text theme-secondary');
@@ -13602,7 +13707,8 @@
             get.setAttribute('download', file.name);
             get.title = t('download');
             get.appendChild(icon('bi-download'));
-            card.appendChild(get);
+            tools.appendChild(get);
+            card.appendChild(tools);
 
             return card;
         },
@@ -15820,30 +15926,75 @@
             return (!poll.multiple && !others.length && (pictured.length === options.length)) ? 'split' : 'rows';
         },
 
-        // The pictures of a poll's options, opened in the image viewer at
-        // the one asked for; the question's own picture ({ src, alt }), when
-        // it has one, comes first and is opened when no option is asked for.
-        pollPictures: function (poll, optionId, question) {
+        // A poll's distinct pictures for the viewer: the question's own
+        // ({ src, alt }) first when it has one, then the options' in their
+        // order. One file on several options is one entry, captioned with
+        // the first of those options' labels; start maps each pictured
+        // option's id to its entry.
+        pollPictureList: function (poll, question) {
             var images = [];
-            var start = 0;
+            var start = {};
+            var seen = {};
 
             if (question) {
+                seen[question.src] = images.length;
                 images.push({ src: question.src, alt: question.alt, caption: question.alt });
             }
 
-            poll.options.forEach(function (option) {
-                if (option.picture && option.picture.image) {
-                    if (option.id === optionId) {
-                        start = images.length;
-                    }
-
-                    images.push({ src: option.picture.url, alt: option.label, caption: option.label });
+            (poll.options || []).forEach(function (option) {
+                if (!option.picture || !option.picture.image) {
+                    return;
                 }
+
+                var src = option.picture.url;
+
+                if (!Object.prototype.hasOwnProperty.call(seen, src)) {
+                    seen[src] = images.length;
+                    images.push({ src: src, alt: option.label, caption: option.label });
+                }
+
+                start[option.id] = seen[src];
             });
 
-            if (images.length) {
-                viewImages(images, start);
+            return { images: images, start: start };
+        },
+
+        // Opens the image viewer over the poll's distinct pictures at the
+        // asked option's picture, else at the first (the question's own).
+        pollPictures: function (poll, optionId, question) {
+            var list = this.pollPictureList(poll, question);
+
+            if (list.images.length) {
+                viewImages(list.images, Object.prototype.hasOwnProperty.call(list.start, optionId) ? list.start[optionId] : 0);
             }
+        },
+
+        // The count mark on a large figure when the poll has two or more
+        // distinct pictures; its words go into the figure's name too
+        // (pollFigureName()). One picture: no mark.
+        pollFigureCount: function (figure, poll, question) {
+            var count = this.pollPictureList(poll, question).images.length;
+
+            if (count < 2) {
+                return;
+            }
+
+            var words = t('poll_pictures_count', count);
+            var mark = el('span', 'ws-poll-picture-count');
+
+            mark.setAttribute('aria-hidden', 'true');
+            mark.appendChild(icon('bi-images'));
+            mark.appendChild(el('span', '', words));
+            figure.appendChild(mark);
+            figure.setAttribute('data-count-words', words);
+        },
+
+        // A large figure's title, and its accessible name with the count.
+        pollFigureName: function (figure, name) {
+            var words = figure.getAttribute('data-count-words');
+
+            figure.title = name;
+            figure.setAttribute('aria-label', words ? name + ', ' + words : name);
         },
 
         // The question's own picture: the poll message's image file, or null
@@ -15903,8 +16054,8 @@
             image.src = question.src;
             image.alt = question.alt;
             figure.appendChild(image);
-            figure.title = t('poll_question_picture_open');
-            figure.setAttribute('aria-label', figure.title);
+            self.pollFigureCount(figure, poll, question);
+            self.pollFigureName(figure, t('poll_question_picture_open'));
             figure.addEventListener('click', function () {
                 self.pollPictures(poll, 0, question);
             });
@@ -16069,8 +16220,7 @@
                 image.src = option.picture.url;
                 image.alt = option.label;
                 figure.setAttribute('data-option-id', String(option.id));
-                figure.title = t('poll_picture_open', option.label);
-                figure.setAttribute('aria-label', figure.title);
+                self.pollFigureName(figure, t('poll_picture_open', option.label));
             }
 
             if (layout.figure === 'question') {
@@ -16085,6 +16235,7 @@
 
                 figure = button('ws-poll-figure');
                 figure.appendChild(el('img'));
+                self.pollFigureCount(figure, poll, null);
                 figure.addEventListener('click', function () {
                     self.pollPictures(poll, parseInt(figure.getAttribute('data-option-id') || '0', 10));
                 });
@@ -16412,8 +16563,7 @@
                 image.src = option.picture.url;
                 image.alt = option.label;
                 figure.setAttribute('data-option-id', String(option.id));
-                figure.title = t('poll_picture_open', option.label);
-                figure.setAttribute('aria-label', figure.title);
+                self.pollFigureName(figure, t('poll_picture_open', option.label));
             }
 
             if (layout.figure === 'question') {
@@ -16429,6 +16579,7 @@
 
                 figure = button('ws-poll-figure');
                 figure.appendChild(el('img'));
+                self.pollFigureCount(figure, poll, null);
                 figure.addEventListener('click', function () {
                     self.pollPictures(poll, parseInt(figure.getAttribute('data-option-id') || '0', 10));
                 });
@@ -19109,6 +19260,27 @@
                     return;
                 }
 
+                // /approval without a title or people, /update without a
+                // state, /checkin without a question: the form of the box's
+                // Insert menu, filled with what was typed; the box empties
+                // once it is sent.
+                var commandForms = {
+                    approval_form: [window.PGWsApprovals, 'form'],
+                    status_form: [window.PGWsStatus, 'form'],
+                    checkin_form: [window.PGWsStatus, 'checkinForm']
+                };
+
+                if (result.command && commandForms[result.command.type]) {
+                    var opener = commandForms[result.command.type];
+
+                    if (opener[0] && opener[0][opener[1]]) {
+                        opener[0][opener[1]](self, featureHelpers(), result.command.fill || {}, function () {
+                            self.clearInput();
+                        });
+                    }
+                    return;
+                }
+
                 // /remind without a time: My calendar's New plan drawer,
                 // filled with what was typed; the box empties once it saves.
                 if (result.command && result.command.type === 'plan_form') {
@@ -19316,28 +19488,19 @@
             }
 
             // Kept in this channel as a decision, as from the record drawer.
-            var tick = el('div', 'form-field mb-1');
-            var decision = el('input', 'check');
-            decision.type = 'checkbox';
-            decision.checked = true;
-            decision.id = nextId('ws-cmd-decision-');
-            var tickLabel = el('label', 'small', t('qe_decision'));
-            tickLabel.htmlFor = decision.id;
-            tick.appendChild(decision);
-            tick.appendChild(tickLabel);
-            card.appendChild(tick);
+            var decision = lookCheck(card, t('qe_decision'), true, 'ws-cmd-decision-');
 
             // Save writes the text this card was drawn from, not what the box
             // holds by then, which nobody has seen as a card.
             var drawn = self.pending.body;
             var actions = el('div', 'd-flex flex-wrap gap-3 mt-3');
-            var save = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('qe_save'), 'bi-check2');
+            var save = lookButton('pg-button pg-button-fill pg-button-sm', t('qe_save'), 'bi-check2');
             save.addEventListener('click', function () {
                 self.send({ confirm: 1, body: drawn, from: command.from, decision: decision.checked ? 1 : 0 });
             });
             actions.appendChild(save);
 
-            var cancel = button('btn btn-sm btn-text theme-secondary', t('cancel'));
+            var cancel = lookButton('pg-button pg-button-ghost pg-button-sm', t('cancel'));
             cancel.addEventListener('click', function () {
                 self.pending = null;
                 clear(self.previewBox);
@@ -19396,18 +19559,7 @@
             card.appendChild(list);
 
             var tick = function (label, checked, prefix) {
-                var wrap = el('div', 'form-field mb-1');
-                var input = el('input', 'check');
-                input.type = 'checkbox';
-                input.checked = checked;
-                input.id = nextId(prefix);
-                var text = el('label', 'small', label);
-                text.htmlFor = input.id;
-                wrap.appendChild(input);
-                wrap.appendChild(text);
-                card.appendChild(wrap);
-
-                return input;
+                return lookCheck(card, label, checked, prefix);
             };
 
             var onSale = null;
@@ -19422,13 +19574,13 @@
             // Create makes what the card shows: the text it was drawn from,
             // not what the box holds by then, as on the /task card.
             var actions = el('div', 'd-flex flex-wrap gap-3 mt-3');
-            var create = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('qc_create'), 'bi-plus-lg');
+            var create = lookButton('pg-button pg-button-fill pg-button-sm', t('qc_create'), 'bi-plus-lg');
             create.addEventListener('click', function () {
                 self.send({ confirm: 1, body: drawn, decision: decision.checked ? 1 : 0, on_sale: (onSale && onSale.checked) ? 1 : 0 });
             });
             actions.appendChild(create);
 
-            var all = button('btn btn-sm btn-outline theme-secondary', t('qc_all_fields'), 'bi-layout-sidebar-inset-reverse');
+            var all = lookButton('pg-button pg-button-quiet pg-button-sm', t('qc_all_fields'), 'bi-layout-sidebar-inset-reverse');
             all.addEventListener('click', function () {
                 var values = {};
 
@@ -19453,7 +19605,7 @@
             });
             actions.appendChild(all);
 
-            var cancel = button('btn btn-sm btn-text theme-secondary', t('cancel'));
+            var cancel = lookButton('pg-button pg-button-ghost pg-button-sm', t('cancel'));
             cancel.addEventListener('click', function () {
                 self.pending = null;
                 clear(self.previewBox);
@@ -19473,14 +19625,14 @@
             var self = this;
             var box = clear(self.previewBox);
             var preview = command.preview;
-            var card = el('div', 'ws-preview');
+            var card = el('div', 'ws-preview ws-row-card');
             var drawn = self.pending.body;
             var inputs = {};
             var tableId = preview.table_id || 0;
 
             card.appendChild(el('div', 'fw-semibold mb-2', t('qc_command_title_row')));
 
-            var tables = el('select', 'form-control form-control-sm');
+            var tables = el('select', 'pg-input');
             tables.appendChild(new Option(t('qc_row_choose'), ''));
             (preview.tables || []).forEach(function (table) {
                 tables.appendChild(new Option(table.name, String(table.id), false, table.id === tableId));
@@ -19492,7 +19644,7 @@
                     self.send({ body: drawn, table_id: id });
                 }
             });
-            card.appendChild(saLabelled(t('qc_row_table'), tables, ''));
+            card.appendChild(lookField(t('qc_row_table'), tables, tables, ''));
 
             // Two fields a line on a wide screen; a long table scrolls
             // inside the card, so the box stays in view.
@@ -19508,35 +19660,34 @@
                     // On a wide screen, on the line of its neighbour's
                     // control, below that one's label.
                     cell.classList.add('md:pt-7');
-                    var wrap = el('div', 'form-field mb-2 d-flex align-items-center');
-                    wrap.style.minHeight = '2rem';
-                    input = el('input', 'check');
-                    input.type = 'checkbox';
-                    input.id = nextId('ws-row-cell-');
-                    var label = el('label', 'small', column.name);
-                    label.htmlFor = input.id;
-                    wrap.appendChild(input);
-                    wrap.appendChild(label);
+                    input = lookCheck(cell, column.name, false, 'ws-row-cell-');
+                    input.parentNode.style.minHeight = '2.25rem';
                     input.read = function () { return input.checked ? '1' : '0'; };
                     inputs[column.id] = input;
-                    cell.appendChild(wrap);
                     grid.appendChild(cell);
                     return;
                 }
 
                 if (column.choices.length || ['status', 'person', 'row'].indexOf(column.type) !== -1) {
-                    input = el('select', 'form-control form-control-sm');
+                    input = el('select', 'pg-input');
                     input.appendChild(new Option(t('qc_row_none'), ''));
                     column.choices.forEach(function (choice) {
                         input.appendChild(new Option(choice[1], choice[0]));
                     });
-                } else if (column.type === 'text' || column.type === 'list') {
-                    input = el('textarea', 'form-control form-control-sm');
+                } else if (column.type === 'list') {
+                    // One item a line: the recipe's text box.
+                    input = el('textarea', 'pg-input');
+                    input.rows = 2;
+                } else if (column.type === 'text') {
+                    // A text keeps its line breaks (a pasted address or
+                    // note): a text box, one line high at rest, growing
+                    // with its lines (.ws-row-text).
+                    input = el('textarea', 'pg-input ws-row-text');
                     input.rows = 1;
                 } else if (column.type === 'date') {
-                    input = pgDateField(el('input', 'form-control form-control-sm'), column.time ? 'datetime-local' : 'date');
+                    input = pgDateField(el('input', 'pg-input'), column.time ? 'datetime-local' : 'date');
                 } else {
-                    input = el('input', 'form-control form-control-sm');
+                    input = el('input', (column.type === 'money' && column.hint) ? '' : 'pg-input');
                     input.type = 'text';
 
                     if (column.type === 'number' || column.type === 'money') {
@@ -19547,24 +19698,22 @@
                 input.read = function () { return input.value; };
                 inputs[column.id] = input;
 
-                // Money: its currency beside the amount, as a suffix.
+                // Money: its currency beside the amount, the bare input in a
+                // .pg-input wrapper with .pg-input-end.
                 if (column.type === 'money' && column.hint) {
-                    var group = el('div', 'input-group input-group-sm');
+                    var group = el('span', 'pg-input');
                     group.appendChild(input);
-                    group.appendChild(el('span', 'input-group-text', column.hint));
-                    input.id = nextId('ws-row-cell-');
-                    var field = saLabelled(column.name, group, '');
-                    field.querySelector('label').htmlFor = input.id;
-                    cell.appendChild(field);
+                    group.appendChild(el('span', 'pg-input-end', column.hint));
+                    cell.appendChild(lookField(column.name, group, input, ''));
                 } else {
-                    cell.appendChild(saLabelled(column.name, input, column.hint || ''));
+                    cell.appendChild(lookField(column.name, input, input, column.hint || ''));
                 }
 
                 grid.appendChild(cell);
             });
 
             var actions = el('div', 'd-flex flex-wrap gap-3 mt-3');
-            var create = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('qc_create'), 'bi-plus-lg');
+            var create = lookButton('pg-button pg-button-fill pg-button-sm', t('qc_create'), 'bi-plus-lg');
             create.disabled = !tableId;
             create.addEventListener('click', function () {
                 var cells = {};
@@ -19574,7 +19723,7 @@
             });
             actions.appendChild(create);
 
-            var cancel = button('btn btn-sm btn-text theme-secondary', t('cancel'));
+            var cancel = lookButton('pg-button pg-button-ghost pg-button-sm', t('cancel'));
             cancel.addEventListener('click', function () {
                 self.pending = null;
                 clear(self.previewBox);
@@ -20264,6 +20413,12 @@
                 return;
             }
 
+            // The states /update reads.
+            if (source === 'healths') {
+                show(fixed(values.healths, 'bi-activity'));
+                return;
+            }
+
             // What /create makes: a product, a group.
             if (source === 'kinds') {
                 show(fixed(values.kinds, 'bi-plus-square'));
@@ -20727,6 +20882,15 @@
         drawPicker: function (items, emptyText) {
             var self = this;
             var picker = clear(self.picker);
+            // A line the row cuts with an ellipsis in a narrow column keeps
+            // its whole text as its title.
+            var pickerText = function (className, text) {
+                var node = el('span', className, text);
+
+                node.title = text;
+
+                return node;
+            };
 
             if (self.pickerMode === 'record') {
                 var types = el('div', 'ws-picker-types');
@@ -20826,11 +20990,11 @@
                 if (item.detail) {
                     var text = el('span', 'ws-picker-text');
 
-                    text.appendChild(el('span', 'ws-picker-label', item.label));
-                    text.appendChild(el('span', 'ws-picker-detail', item.detail));
+                    text.appendChild(pickerText('ws-picker-label', item.label));
+                    text.appendChild(pickerText('ws-picker-detail', item.detail));
                     row.appendChild(text);
                 } else {
-                    row.appendChild(el('span', 'ws-picker-label', item.label));
+                    row.appendChild(pickerText('ws-picker-label', item.label));
                 }
 
                 // The state in words for a screen reader; the dot shows it.
@@ -20856,7 +21020,7 @@
                     meta.appendChild(el('span', '', item.role));
                     row.appendChild(meta);
                 } else if (item.meta) {
-                    row.appendChild(el('span', 'ws-picker-meta', item.meta));
+                    row.appendChild(pickerText('ws-picker-meta', item.meta));
                 }
 
                 row.addEventListener('mousedown', function (event) {
@@ -22181,6 +22345,7 @@
             var where = el('div', 'ws-topic');
             var parent = (BOOT.channels || []).filter(function (item) { return item.id === thread.channel_id; })[0];
             where.textContent = t('th_in', parent ? parent.name : '');
+            where.title = where.textContent;
             title.appendChild(where);
             head.appendChild(title);
 
@@ -22385,23 +22550,35 @@
         };
 
         // The people in it, and the people of the channel who could be
-        // brought in.
+        // brought in; then its agents as Channel info lists them, and for
+        // whoever the server lets change them its own agents' settings.
         view.showPeople = function () {
             var self = this;
             var channel = self.channel;
             var node = offcanvas('ws-thread-people', t('th_people'));
             var body = clear(node.querySelector('.drawer-body'));
             var footer = clear(node.querySelector('.drawer-footer'));
+            var people = el('div', 'ws-info-people');
 
             footer.classList.add('d-none');
+            body.appendChild(el('h3', 'ws-panel-kicker', t('cm_people') + ' · ' + (channel.members || []).length));
 
             (channel.members || []).forEach(function (member) {
-                var row = el('div', 'd-flex align-items-center gap-3 py-3 border-bottom');
-                var face = avatar(member, '2rem');
-                row.appendChild(face);
-                row.appendChild(el('div', 'flex-grow-1 fw-semibold', member.name));
-                body.appendChild(row);
+                var row = people.appendChild(el('div', 'ws-info-person'));
+                var text = el('div', 'ws-info-person-text');
+                var name = text.appendChild(el('div', 'ws-info-person-name', member.name));
+
+                row.appendChild(personCardHook(avatar(member, null, true), channel, member, false));
+                personCardHook(name, channel, member, true);
+
+                if (member.id === channel.owner_id) {
+                    text.appendChild(el('div', 'ws-info-person-role', t('owner')));
+                }
+
+                row.appendChild(text);
             });
+
+            body.appendChild(people);
 
             var parent = main.channel;
 
@@ -22433,6 +22610,42 @@
                     });
                     footer.appendChild(add);
                 }
+            }
+
+            // Its own agents, the channel's asked here by name, Claude and
+            // Pinegrap AI where they can be asked, the one it follows.
+            var agentsBox = body.appendChild(el('div'));
+
+            function drawAgents() {
+                var agents = channelAgents(channel);
+
+                clear(agentsBox);
+
+                if (!agents.length) {
+                    return;
+                }
+
+                agentsBox.appendChild(el('h3', 'ws-panel-kicker mt-5', t('cm_agents') + ' · ' + agents.length));
+
+                var list = agentsBox.appendChild(el('div', 'ws-info-people ws-info-agents'));
+
+                agents.forEach(function (agent) {
+                    agentInfoRow(channel, agent, list);
+                });
+            }
+
+            drawAgents();
+
+            // Drawn only for whoever may change them (the server's can_edit);
+            // an add or a removal redraws the list above.
+            if (window.PGWsChannelAgents && !channel.guest) {
+                window.PGWsChannelAgents.mount(body, channel, {
+                    discussion: true,
+                    changed: function (fresh) {
+                        channel.agents = fresh.agents || [];
+                        drawAgents();
+                    }
+                });
             }
 
             showOffcanvas(node);

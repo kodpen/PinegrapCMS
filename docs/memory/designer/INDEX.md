@@ -107,6 +107,7 @@
 - comments-widget.md: The comments system widget (regionType comments): whose thread it shows, options, the recent mode, e-mails, tokens, flags, escaping, default layout, checks
 - common-region-to-shared-component.md: A common region made a shared component (R2): one _editable block opened to content editors, grants carried over, the <cregion> tag drawing the component, the old write paths refused [decision: decisions-made-product-20.md, decisions-made-product-3.md, decisions-made.md]
 - content-proposals-bell.md: Waiting content changes, who is told: the designers' bell line (once an hour per page), the editor's lines on apply, dismiss and stale, and the count above the page list [decision: here]
+- content-proposals-compare-markup.md: Compare on Waiting Content Changes when a text's HTML changes (link address, bold, style), alone or with its words, or past the 600-character cut: differing values never print the same [decision: here]
 - content-proposals-designer-side.md: Waiting content changes, the designer's side: the list screen, Compare, apply through the gate with one revision, stale, dismiss with a reason, take back
 - content-proposals-workspace.md: Waiting content changes asked in the Workspace: when and as whom, who is asked, what a yes or no does, a withdrawn or replaced change taking its request back
 - content-proposals.md: Content changes that wait for approval: the switch, which content-level saves are held, the operations kept in design_proposals, the assistant's readers skipping editor rows [decision: here]
@@ -401,6 +402,7 @@
 - designer-paste-clipboard.md: Designer Ctrl+V: node clipboard vs outside markup, /*pinegrap-nodes*/ prefix, conditional preventDefault, text sinks, where pastes land (into, or beside a node that looks like the paste).
 - designer-performance.md: How the visual designer's speed is measured (the ?sd_perf=1 probe, the paint table, the big fixture page and its Node timing) and the numbers measured so far
 - designer-picked-page-pending.md: Designer "Var Olan Sayfayı Seç": a picked page belongs to the other design until saved; three tab states, pickedPending, remove vs detach.
+- designer-preview-menu.md: The designer's Preview menu beside Publish (DP23, D58, #10244): its four rows and when each shows, the ids it keeps, why Open on Site and View Page left the bars
 - designer-preview-page-scripts.md: Platform scripts a designer page gets from its markup (theme switcher, tooltips/popovers, scroller buttons) on the page and in the Preview; one Bootstrap bundle; Preview link guard and dark view.
 - designer-preview-play.md: Links in the designer's Preview (#1867): a page link plays the open tab of that name, unsaved too; others open the site in a new tab; the Hotspots toggle
 - designer-prototype-comments-door.md: Prototype comments (prototype_comments): what a row keeps, the guest's door prototype_comment.php and its gates, the limits, plain text, delete with the design [decision: here]
@@ -532,6 +534,7 @@
 - order-form-widget.md: The Order Form widget (classic "order form" page type): handler and page row, list and drop-down layouts, row controls by name, flags, schedule section, what is left out.
 - order-preview-widget.md: The Order Preview widget (last classic checkout step): values from get_order_preview()'s custom-layout branch, page row, controls by name, sections, what is left out. [decision: here]
 - order-view-not-found.md: Order view widget with no, unknown or foreign order id: message with a My Account link and a 404 with noindex; account order links skip order receipt e-mail pages
+- overview-chains-hints.md: Designer Overview (#10235): a chain of single-child wrappers folded into one line, opened by a click or by a selection in it; a hint after a name the page repeats; the pure functions
 - overview-long-page.md: Designer Overview on a long page (#10207): section rows with counts, only the selection's section open on opening, 12 px indents and a depth badge, the sticky path, the pure functions
 - page-conditions.md: W18: an element outside a widget shown by visit facts (signed in, cart) or the page's record (found, allow-listed values); stored-body markers decided per request, cache, editor
 - page-designer-retired.md: The legacy page designer (page_designer.php) retired in 2026.11.0: the owner's decision, where each of its jobs went, what was removed and kept, the rules that stay, what is left [decision: decisions-made-product-2.md, decisions-made-product-40.md]
@@ -539,6 +542,7 @@
 - page-experiments-model.md: Page experiments model: the three tables (11.0.153), statuses and moves, the weighted draw, the pg_exp bucket cookie, which requests never join [decision: here]
 - page-experiments-serving.md: Serving a page experiment variant: body swap, the bucket at render and in the router, one cache copy per variant, private headers, views into experiment_hourly
 - page-experiments-sheet.md: The Experiments sheet (page_experiments.php, PX4 #6184): set-up with a variant draft, start/pause/end, Publish the winner through the page save, the chips, the holds on a variant draft
+- page-history-editor-revision.md: Which page revision History names "designer (change by editor)": only the one the apply wrote, kept as steps.revision_no; old changes matched on after_hash and the second (#10216)
 - page-html-rebuild.md: Rebuild Page HTML (pg_designer_rebuild_page_code()): every designer page drawn again from its stored tree; when it runs, what stays, session cursor; per-body once-assets
 - page-link-by-id.md: A link outside a widget kept by page id (__page_link, #6233): fallback href plus data-pg-page-link in the saved body, the current address put in by get_page_content(), '#' inside a widget [decision: decisions-made-product-23.md]
 - page-link-fixed-text.md: A value of a link to another page that is fixed text, the same in every record ({name, text} in _bindParams.href.params): spec, address, list rows, the panel's Fixed text row

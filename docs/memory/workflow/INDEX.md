@@ -175,7 +175,7 @@
 - decisions-made-workspace-35.md: Decisions made, workspace part 35 (2026-11-15 on): quiet hours, Translate on a message and the link preview card go into plans (poll 54); message boxes keep a maximum width on a wide screen
 - decisions-made-workspace-36.md: Decisions made, workspace part 36 (2026-11-16 on): the two plan drawers look the same; a question's picture stands in its box; an agent channel's tasks apart, a task's application marked
 - decisions-made-workspace-37.md: Decisions made, workspace part 37 (2026-11-16 on): channel commands grown in five packages, flows in the / list, an agent's command, a mention typed by hand becoming a tag, a question's picture look
-- decisions-made-workspace-38.md: Decisions made, workspace part 38 (2026-11-17): a message's parts and the agent state line accepted as built in the narrow column; a discussion shows and takes its agents in its people panel
+- decisions-made-workspace-38.md: Decisions made, workspace part 38 (2026-11-17): a message's parts, the agent state line and the picture count mark accepted as built; a discussion shows and takes its agents in its people panel
 - decisions-made-workspace-4.md: Decisions list, workspace part 4 (2026-10-30 on): webhook URL digits exception, CRM seams 10 (N-days start, lead_source), flow run notices per chain
 - decisions-made-workspace-5.md: Decisions list, workspace part 5 (from 2026-10-30 evening): Workspace list and channel redrawn; who builds the design; one inbox; panel colours; a deleted Flows box takes its values; Today page
 - decisions-made-workspace-6.md: Decisions list, workspace part 6 (2026-11-01 on): calendar move writes a due date back; the pinned My Notes row opens the Workspace list; the list's top and the tour's place; flow draft card read-only
@@ -190,6 +190,7 @@
 - github-rest-without-gh.md: GitHub from the owner's machine, where gh is not installed: the token from git credential fill, a REST helper, GraphQL for draft and ready, the ready label, reading CI, mergeable_state unstable
 - held-file-bundled-sources.md: A script or stylesheet under assets/ (backend.src.js, backend.src.css, style_designer.src.js, style_designer.css) is held by the functions and rule blocks a PR changes, not as a whole file [decision: here]
 - held-file-hunt-fixes.md: Several bug fixes of one hunt may be open at once in one PHP file beside a draft holder, each in the functions the architect named for it (includes/fn/content_proposals.php, #10188) [decision: here]
+- held-file-parked-draft.md: A draft that waits for an area's new shape holds nothing in that area: its lines leave the functions the redraw rewrites, so the redraw can start (#10188 PA3 beside DP18 on _pgTabsRender()) [decision: here]
 - held-file-registry-rows.md: What a PR may change in a file a draft PR holds: its own registry rows, or a function the holder does not touch; the terms; the architect allows each holder (#3824, #10025, #10077) [decision: here]
 - install-check-filter.md: When install-check.yml runs its six-database matrix (#1985): the changes job, the paths it reads, always on merge trains and pushes, why plain git, a skipped job blocks nothing
 - issue-hand-out-first-reply.md: When a note in the agent channel offers an issue to the coordinators, the first reply under it holds the work; how a double claim was settled twice on 2026-11-16 [decision: here]

@@ -615,6 +615,10 @@ function pg_designer_screen_render($ctx)
                             ' . (!empty($sd_ai['enabled']) ? '<button type="button" id="sd-ai-btn" class="sd-icon-btn sd-ai-btn" title="' . h(lang('Ask the assistant')) . '" aria-expanded="false"><span class="bi bi-stars" aria-hidden="true"></span><span class="sd-ai-btn-txt">' . h(lang('Assistant')) . '</span><span class="sd-ai-btn-dot" aria-hidden="true"></span></button>' : '') . '
                             <button type="button" id="sd-main-undo" class="sd-vb-btn" onclick="StyleDesigner.undo()" title="' . lang('Undo') . ' (Ctrl+Z)" disabled><span class="bi bi-arrow-counterclockwise"></span></button>
                             <button type="button" id="sd-main-redo" class="sd-vb-btn" onclick="StyleDesigner.redo()" title="' . lang('Redo') . ' (Ctrl+Y)" disabled><span class="bi bi-arrow-clockwise"></span></button>
+                            <!-- The Preview menu: the page outside the editor (a new
+                                 window, the site as saved, the prototype). Its rows
+                                 are drawn by _sdPreviewMenuBuild(). -->
+                            <button type="button" id="sd-preview-menu-btn" class="sd-icon-btn sd-preview-btn" aria-haspopup="menu" aria-expanded="false" aria-controls="sd-preview-menu" title="' . h(lang('Preview')) . '"><span class="bi bi-window" aria-hidden="true"></span><span class="sd-preview-txt">' . h(lang('Preview')) . '</span><span class="bi bi-chevron-down sd-preview-caret" aria-hidden="true"></span></button>
                             <!-- The main action puts every page of the design on the
                                  site, so it says so. The label drops to the icon on
                                  narrow screens; the title still names it. -->
@@ -624,7 +628,6 @@ function pg_designer_screen_render($ctx)
                                  sheet. Hidden while the page on screen is on
                                  the site, where the main button opens it. -->
                             <button type="button" id="sd-publish-page" class="sd-icon-btn sd-icon-btn-primary sd-publish-btn d-none" title="' . h(lang('Choose the pages to put on the site.')) . '"><span class="bi bi-rocket-takeoff" aria-hidden="true"></span><span class="sd-publish-txt">' . lang('Publish') . '</span></button>' : '') . '
-                            <a href="#" id="sd-view-page" class="sd-icon-btn" target="_blank" rel="noopener" title="' . lang('View Page') . '" style="display:none"><span class="bi bi-box-arrow-up-right"></span></a>
                         </div>
                     </div>
 

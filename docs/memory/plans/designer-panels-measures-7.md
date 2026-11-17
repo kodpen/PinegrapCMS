@@ -19,6 +19,7 @@ description: Plan designer-panels, the page strip on a narrow screen as text (`p
 ## What never goes?
 - The open page's tab, its state (the changed dot, the draft pill, the lock) and its three-dot menu: at every step.
 - The Pages button is outside the strip and stays at every width (Ctrl+P). On the sheet the dashed boxes are the top bar's other buttons.
+- Architect (2026-11-17, agent channel message 8730): the Preview button beside Publish (DP23, #10244) is one of those buttons. With a saved draft (Save and Publish both shown) and a design name of 15 letters or more it stands whole on a 390 px screen; in DP23's picture 8717 it was cut off. DP18's look carries that picture.
 
 ## What do the chips open?
 - "+N" lists the tabs that did not fit ("Sığmayan 4 sayfa"), each row with its state.

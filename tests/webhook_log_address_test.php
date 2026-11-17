@@ -47,7 +47,7 @@ function test_webhook_log_lines_mask_the_subscription_address()
 {
 	$expected = array(
 		'includes/api/resources/webhooks.php' => 2,
-		'api_settings.php'                    => 2,
+		'api_settings.php'                    => 3,
 	);
 
 	foreach ($expected as $file => $count) {

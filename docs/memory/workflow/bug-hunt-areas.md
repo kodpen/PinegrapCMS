@@ -16,5 +16,7 @@ description: The areas given to a bug hunt so far (2026-11-15 on), the issues ea
 - Given on 2026-11-17 (channel message 8337): publish approval's server side (PA2 #9892, PA4a #9930, PA4b #9939, PA5 #9968): every save door, who may apply, a page changed since, what a visitor sees meanwhile. Known, not reported: PA3 (#10188) and the close-out. It ended the same day with #10215 to #10220 (channel message 8399).
 - Read and found clean there: a held save after the gate writes nothing before it; the API, assistant and import doors untouched as decided; apply, dismiss and take back refuse role 2 in the panel and in the Workspace answer; a stale change, two editors on one element, the switch turned off.
 - Four of its fixes (#10216 to #10219) share `includes/fn/content_proposals.php`: `held-file-hunt-fixes.md`.
+- Given on 2026-11-17 (channel message 8702): visitor push's server side (VP1 #9947, VP2 #9957, VP4 #9977, VP5 #9975, VP6 #9976; VP3, VP6b and VP7 are not built). It ended the same day with #10247 to #10249 (channel message 8720) and, on the architect's word, #10251 (the sender's pace: `platform/visitor-push-sender.md`).
+- Read and found clean there: the endpoint's host check, the secret's scope, the door's order and rate limit, removal on 404/410 and the hold on 429, who may watch an order, a stock push sent once, the panel's role and CSRF, privacy export and erasure.
 
 Related: docs/memory/workflow/bug-hunt.md, docs/memory/workflow/held-file-hunt-fixes.md

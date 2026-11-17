@@ -27,7 +27,7 @@ description: Plan picture-text-translation, steps PT1 to PT4b: the table and the
   - Tests: the fit (70% floor, the mark); a post without the right refused; the picture of another file or language refused; the states after a draw.
   - Pictures: the list in each state, a drawn picture beside its source.
 
-- PT4b (M) after PT4: the same for a photo with text layers (a save row over a base row): the browser sends the overlay, the server draws it on the base as a save does.
+- PT4b (M) Done (PR #10242): the same for a photo with text layers (a save row over a base row): the browser sends the overlay, the server draws it on the base as a save does (`core/picture-text-translation-draw-photo.md`).
 
 ## Where are the later steps?
 - PT5 to PT7 and which steps wait for each other: `plans/picture-text-translation-steps-2.md`.

@@ -347,7 +347,8 @@ function test_picture_translation_draw_refusals()
 	$check = strpos($body, 'pg_image_editor_file(');
 
 	pg_assert_true($check !== false, 'the draw checks the file and the right');
-	pg_assert_true($check < strpos($body, 'pg_image_editor_take_png('), 'before the picture is taken');
+	pg_assert_true($check < strpos($body, 'pg_picture_tr_draw_canvas('), 'before a canvas\'s picture is taken');
+	pg_assert_true($check < strpos($body, 'pg_picture_tr_draw_photo('), 'before a photo\'s is drawn');
 	pg_assert_true(strpos($body, 'pg_page_cache_mark_dirty()') !== false, 'a draw marks the page cache');
 	pg_assert_true(strpos($body, "'missing'  => pg_picture_tr_untranslated(\$texts)") !== false, 'the draw counts the texts not translated');
 	pg_assert_true(strpos($body, 'count($texts), count($texts) - pg_picture_tr_untranslated($texts))') !== false, 'the state after a draw is read from the real count');
@@ -375,4 +376,47 @@ function test_picture_translation_pictures_hidden()
 	pg_assert_true(strpos(picture_translation_body('includes/fn/picker.php', 'pg_picker_where_for'), 'pg_picture_tr_hidden_sql(') !== false, 'the file pickers');
 	pg_assert_true(strpos(picture_translation_body('includes/fn/image_editor.php', 'pg_image_editor_action_sticker_files'), 'pg_picture_tr_hidden_sql(') !== false, 'the Design Canvas\'s pictures from Files');
 	pg_assert_true(strpos(picture_translation_body('includes/explorer/handle_file_usage.php', 'pg_explorer_handle_file_usage'), 'pg_picture_tr_is_picture(') !== false, 'Where used');
+}
+
+// A photo with text layers is drawn as well as a canvas: its live document
+// is the newest save over a base row; the language's picture keeps the
+// photo's format.
+function test_picture_translation_photo_kinds()
+{
+	$canvas = picture_translation_doc(array());
+	$photo = array('v' => 1, 'source' => array('fileId' => 7, 'width' => 800, 'height' => 600, 'base' => 2), 'geometry' => array('rot' => 0), 'layers' => array());
+
+	pg_assert_same('canvas', pg_picture_tr_doc_kind($canvas), 'an artboard is a canvas');
+	pg_assert_same('photo', pg_picture_tr_doc_kind($photo), 'a source picture is a photo');
+	pg_assert_same('photo', pg_picture_tr_doc_kind(json_decode(json_encode($photo))), 'decoded as objects too');
+	pg_assert_same('', pg_picture_tr_doc_kind(array('v' => 1, 'geometry' => array())), 'neither');
+	pg_assert_same('', pg_picture_tr_doc_kind(null), 'no document');
+	pg_assert_same('', pg_picture_tr_doc_kind(array('v' => 1, 'source' => array('base' => 2), 'artboard' => array('width' => 9, 'height' => 9))), 'both is neither');
+
+	pg_assert_same('summer-de.jpg', pg_picture_tr_picture_name('summer.jpg', 'de', 'jpg'), 'a photo keeps its format');
+	pg_assert_same('summer-de.webp', pg_picture_tr_picture_name('summer.jpg', 'de', 'webp'), 'or the export\'s');
+	pg_assert_same('summer-de.png', pg_picture_tr_picture_name('summer.jpg', 'de'), 'a canvas is a PNG');
+
+	// The pixels are made from the base the live document names, never a
+	// base the request names, through the save's own steps.
+	$body = picture_translation_body('includes/fn/picture_translation.php', 'pg_picture_tr_draw_photo');
+	pg_assert_true(strpos($body, 'pg_image_editor_photo_parts(') !== false, 'the browser\'s overlay and masks taken as a save takes them');
+	pg_assert_true(strpos($body, 'pg_image_editor_photo_pixels(') !== false, 'drawn on the base as a save draws');
+	pg_assert_true(strpos($body, "\$live['base']") !== false, 'from the live document\'s base');
+	pg_assert_false(strpos($body, "\$request['base']") !== false, 'not one the request names');
+	pg_assert_true(strpos($body, "'first_frame'] = true") !== false, 'an animated photo gives its first frame');
+
+	// The save reads the redaction from its recipe after the parts moved out.
+	pg_assert_true(strpos(picture_translation_body('includes/fn/image_editor.php', 'pg_image_editor_save'), "!empty(\$edit['redact'])") !== false, 'a redacted save is still marked');
+
+	$r = picture_translation_node('var doc = { v: 1, source: { fileId: 3, width: 800, height: 600, base: 2 }, geometry: { rot: 0 }, layers: [ { id: "t1", type: "text", text: "Sale" } ] };'
+		. 'var put = M.languageDoc(M.versionOpenDoc(doc, 9), [{ id: "t1", field: "text", text: "Rebajas" }]);'
+		. 'console.log(JSON.stringify({ text: put.doc.layers[0].text, file: put.doc.source.fileId, base: put.doc.source.base === undefined, fitted: Object.keys(put.source) }));');
+
+	if ($r === null) {
+		pg_assert_true(true, 'Node is not available');
+		return;
+	}
+
+	pg_assert_same(array('text' => 'Rebajas', 'file' => 9, 'base' => true, 'fitted' => array('t1')), $r, 'a photo\'s document takes the words as a canvas\'s does');
 }
