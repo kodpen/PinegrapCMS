@@ -15,7 +15,7 @@ description: Steps AM1 to AM6 of plan api-clean-modern: the two failing routes, 
   - `tools/check_api_schema.php` refuses a type word the document cannot say.
   - If its files cross open PRs: AM4a (the words, the check, the core objects, `User`, `seo.issues`), then AM4b (Workspace and ERP objects).
   - AM4a done (#10151): `api-openapi-time-formats.md`; `seo.issues` was declared by #10116. AM4b also takes `includes/api/resources/design.php` and the translation objects.
-- AM5 (M) `tools/check_api_answers.php` calls every GET route of a running site (lists first, then one record by a list's first id) and compares each answer with the document: status, JSON, required fields, types, null only where declared, undeclared fields. Read only.
+- AM5 (M) done (#10136). `tools/check_api_answers.php` calls every GET route of a running site (lists first, then one record by a list's first id) and compares each answer with the document: status, JSON, required fields, types, null only where declared, undeclared fields. Read only.
   - Address, key and secret come from the environment as `tools/ws_client.php` reads them: never an argument, never printed.
   - It skips routes marked `moves_money` and binary answers, and keeps under the rate limit.
   - It needs a database, so it is not a CI check. AM1, AM2 and #10090 are what it would have caught.

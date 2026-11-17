@@ -3196,6 +3196,8 @@
     "The conversation starts again. Nothing is deleted: what was written so far is kept as an earlier version, listed here, that everybody in the channel can read as it was.": "Konuşma baştan başlar. Hiçbir şey silinmez: şimdiye kadar yazılanlar burada listelenen önceki bir sürüm olarak saklanır ve kanaldaki herkes onu olduğu gibi okuyabilir.",
     "The conversation was cleared, so the request was cancelled.": "Konuşma temizlendi, bu yüzden istek iptal edildi.",
     "The conversation with {var:1} has ended. A new link opens the room again.": "{var:1} ile görüşme sona erdi. Yeni bağlantı odayı yeniden açar.",
+    "The conversation's holder was saved.": "Konuşmayı üstlenen kişi kaydedildi.",
+    "The conversation's status was saved.": "Konuşmanın durumu kaydedildi.",
     "The conversion rate fell by more than half: {var:1} % against {var:2} % in the period before.": "Dönüşüm oranı yarıdan fazla düştü: önceki dönemde %{var:2}, şimdi %{var:1}.",
     "The conversion was rejected.": "Dönüştürme reddedildi.",
     "The cookie policy address must start with / or https://.": "Çerez politikası adresi / ya da https:// ile başlamalıdır.",

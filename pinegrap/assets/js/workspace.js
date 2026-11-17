@@ -777,12 +777,27 @@
 
     var toastRoot = null;
 
-    function toast(message, kind, action) {
+    // The corner the notices stand in. While a drawer or dialog is open it
+    // lives inside it: a modal <dialog> and its backdrop are in the top
+    // layer, above every z-index of the page, so a notice left on the body
+    // is drawn dimmed under the backdrop. pgUI.hostLayer() moves it back to
+    // the body as that dialog starts hiding.
+    function toastHost() {
         if (!toastRoot) {
             toastRoot = el('div', 'toast-container position-fixed bottom-0 start-0 p-5');
             toastRoot.style.zIndex = 1090;
             document.body.appendChild(toastRoot);
         }
+
+        if (window.pgUI && pgUI.hostLayer) {
+            pgUI.hostLayer(toastRoot);
+        }
+
+        return toastRoot;
+    }
+
+    function toast(message, kind, action) {
+        toastHost();
 
         // Bootstrap 6 has no text-bg-*: the fill and its ink are two
         // classes, and the dark notice is the inverse surface.
@@ -883,11 +898,7 @@
     // MB" and Cancel upload, which calls onCancel. progress(loaded, total)
     // moves it; remove() takes it away once the request has ended.
     function uploadCard(label, name, onCancel) {
-        if (!toastRoot) {
-            toastRoot = el('div', 'toast-container position-fixed bottom-0 start-0 p-5');
-            toastRoot.style.zIndex = 1090;
-            document.body.appendChild(toastRoot);
-        }
+        toastHost();
 
         var box = el('div', 'toast show border-0 bg-inverse fg-contrast-inverse');
         var inner = el('div', 'toast-body');
