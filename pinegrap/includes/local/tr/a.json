@@ -2035,6 +2035,7 @@
     "A page in a folder you cannot open": "Açamadığınız bir klasördeki sayfa",
     "A page is at most {var:1} KB.": "Bir sayfa en fazla {var:1} KB olabilir.",
     "A page is changed": "Bir sayfa değiştirilir",
+    "A page is due for review": "Gözden geçirme tarihi gelen sayfa",
     "A page is made": "Bir sayfa oluşturulur",
     "A page made in the Page Design Studio keeps the style it was designed with.": "Sayfa Tasarım Stüdyosu'nda yapılan sayfa, tasarlandığı stili korur.",
     "A page marked \"Changed since\" was published on the site after its copy was made. Look at the copy again; when the bundle is published you choose for it: Replace anyway or Leave out.": "\"Sonradan değişti\" işaretli sayfa, kopyası alındıktan sonra sitede yayımlandı. Kopyaya yeniden bakın; paket yayımlanırken onun için seçersiniz: Yine de değiştir ya da Dışarıda bırak.",
