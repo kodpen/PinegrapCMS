@@ -19,7 +19,7 @@ description: Designer Overview on a long page (#10207): section rows with counts
 ## How is a row indented?
 - `_sdTreeRowIndent(depth, width)`: 12 px a level under the section, six indents at most; a row drawn shallower than it is shows `.sd-tree-depth` with its level, named "Level N" (title and aria-label, `_sdT('Level {var}')`). With the tree's width, indents go before the label's 150 px. Set as `--sd-ind` on each `li`; `renderTree()` measures the width (`_sdTreeRowWidth`), a ResizeObserver on the tree draws again when it changes by 12 px or more.
 - The label does not shrink (`flex: 0 0 auto`, at most the row less 56 px); the hint and marks after it (`#id`, user label, badges) shrink to nothing first (`flex-shrink: 100`); the section count never does (#10235).
-- Folded chains and name hints: `overview-chains-hints.md`.
+- Folded chains and name hints: `overview-chains-hints.md`; drop targets, the level and the label (#10263): `overview-drop-targets.md`.
 
 ## Which functions are pure, and where is the test?
 - `_sdTreeRowIndent()`, `_sdTreeSectionStates(root, sel, parentOf)`, `_sdTreeNodeCount()`, `_sdTreePathSteps(root, sel, parentOf, max)` in `style_designer.src.js`, run under Node by `tests/designer_overview_rows_test.php` (fourteen levels keep a 150 px label; only the selection's section open; the path, a long one cut to its section, a gap and its last three steps).
