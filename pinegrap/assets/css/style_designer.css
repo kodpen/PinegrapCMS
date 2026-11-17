@@ -3717,6 +3717,14 @@ body.sd-resizing * { cursor: col-resize !important; }
 .sd-toast.theme-danger  { --bs-toast-bg: var(--pg-danger-bg-subtle);  --bs-toast-color: var(--pg-danger-fg-emphasis);  border-inline-start-color: var(--pg-danger); }
 .sd-toast.theme-warning { --bs-toast-bg: var(--pg-warning-bg-subtle); --bs-toast-color: var(--pg-warning-fg-emphasis); border-inline-start-color: var(--pg-warning); }
 .sd-toast.theme-info    { --bs-toast-bg: var(--pg-info-bg-subtle);    --bs-toast-color: var(--pg-info-fg-emphasis);    border-inline-start-color: var(--pg-info); }
+/* On a phone-width editor a 400 px toast at right: 24px ran off the left
+   edge. Below the small breakpoint the stack spans the screen with 12 px at
+   each side and a toast takes no more than the stack's width, so its text
+   wraps inside the screen. */
+@media (max-width: 575.98px) {
+    .sd-toast-container { left: 12px; right: 12px; max-width: none; }
+    .sd-toast { --bs-toast-max-width: 100%; width: 100%; }
+}
 
 /* ========================= FIND & REPLACE MODAL ========================= */
 .sd-fr-overlay {
