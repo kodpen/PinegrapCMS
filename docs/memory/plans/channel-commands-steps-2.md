@@ -34,7 +34,7 @@ description: Plan channel-commands, steps CC7 to CC12 and the close-out: /oluşt
 - Close-out, with the last step that lands: every K number checked against the code with its PR; `workspace/workspace-command-registry.md`, `workspace/workspace-app-commands.md` and `workspace/workspace-command-api.md` current; this plan's files deleted.
 
 ## Which steps wait for each other?
-- CC1, then CC2. After CC2 the steps CC3 to CC7 and CC10 may run side by side, at most two at a time, and never two that both edit `assets/js/workspace.js` (CC5, CC7, CC10) or the same group function of the registry.
+- CC1, then CC2. After CC2 the steps CC3 to CC7 and CC10 may run side by side, at most two at a time, and never two that edit the same function of `assets/js/workspace.js` or the same group function of the registry (PR Merge, agent channel 8073, 8076).
 - CC8 and CC9 after CC7; CC11 after CC10; CC12 after CC11.
 - A step that meets another plan's open PR on `assets/js/workspace.js` waits for it and says so in the agent channel.
 

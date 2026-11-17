@@ -5267,13 +5267,19 @@
     // the screen's language. A discussion's box leaves out what runs only
     // in the channel itself (where: channel, ws_command_runs_here()). Each
     // row carries its group and the group's header for commandPickerGroups().
-    function commandPickerRows(commands, query, inThread) {
+    function commandPickerRows(commands, query, inThread, recapHere) {
         var typed = ('/' + query).toLocaleLowerCase('tr');
         var typedFolded = foldText(typed);
         var rows = [];
 
         (commands || []).forEach(function (item) {
             if (inThread && (item.where === 'channel')) {
+                return;
+            }
+
+            // /recap only where the catch-up line offers "Sum up what I
+            // missed" (recapHere false); left as it was when not told.
+            if ((recapHere === false) && (item.key === 'recap')) {
                 return;
             }
 
@@ -19058,6 +19064,12 @@
                 data.quote_ids = self.replyMore.map(function (item) { return item.id; });
             }
 
+            // /recap sums up from where this visit began, as the catch-up
+            // line's button does.
+            if (!self.isThread && self.briefing && self.briefing.recap && (body.charAt(0) === '/')) {
+                data.since_id = self.briefing.recap.since_id;
+            }
+
             Object.keys(options || {}).forEach(function (key) { data[key] = options[key]; });
 
             if (self.sendButton && self.sendButton.isConnected) {
@@ -19094,6 +19106,17 @@
                     self.pollForm({ question: result.command.question, options: result.command.options }, function () {
                         self.clearInput();
                     });
+                    return;
+                }
+
+                // /remind without a time: My calendar's New plan drawer,
+                // filled with what was typed; the box empties once it saves.
+                if (result.command && result.command.type === 'plan_form') {
+                    if (window.PGWsMyCalendar && window.PGWsMyCalendar.fill) {
+                        window.PGWsMyCalendar.fill(featureHelpers(), result.command.fill, result.command.strings, function () {
+                            self.clearInput();
+                        });
+                    }
                     return;
                 }
 
@@ -20377,7 +20400,8 @@
             // nothing typed and more of them than the list shows, drawn
             // again under the headers of their groups.
             if (mode === 'command') {
-                var commands = commandPickerRows(BOOT.commands, query, !!self.isThread || !!(self.channel && (self.channel.kind === 'thread')));
+                var inThread = !!self.isThread || !!(self.channel && (self.channel.kind === 'thread'));
+                var commands = commandPickerRows(BOOT.commands, query, inThread, !inThread && !!(self.briefing && self.briefing.catchup && self.briefing.recap));
                 var shown;
 
                 self.drawPicker(commands);

@@ -239,7 +239,8 @@ function ws_command_offered($viewer, $command, $channel = null)
         return true;
     }
 
-    return (bool) call_user_func($entry['gate'], $viewer, $command);
+    // A gate may read the channel too (/recap), when one is known.
+    return (bool) call_user_func($entry['gate'], $viewer, $command, $channel);
 }
 
 /**
@@ -297,6 +298,43 @@ function ws_command_gate_agent_channel($viewer)
     }
 
     return function_exists('ws_agent_channel_ready') && ws_agent_channel_ready();
+}
+
+/**
+ * /remind: a team member, once their own plans are kept (the New plan
+ * button of My calendar asks the same).
+ *
+ * @param array|null $viewer
+ * @return bool
+ */
+function ws_command_gate_remind($viewer)
+{
+    if (!is_array($viewer)) {
+        return true;
+    }
+
+    return function_exists('ws_personal_plans_ready') && ws_personal_plans_ready() && !empty($viewer['member']);
+}
+
+/**
+ * /recap: where the catch-up line offers "Sum up what I missed", that is
+ * where Pinegrap AI may read the channel (ws_channel_briefing()'s offer).
+ * Without a channel it is listed like the rest.
+ *
+ * @param array|null $viewer
+ * @param string     $command
+ * @param array|null $channel
+ * @return bool
+ */
+function ws_command_gate_recap($viewer, $command = 'recap', $channel = null)
+{
+    if (!is_array($channel)) {
+        return true;
+    }
+
+    $state = function_exists('ws_ai_channel_state') ? ws_ai_channel_state($channel) : null;
+
+    return is_array($state) && !empty($state['available']);
 }
 
 /**
@@ -1531,6 +1569,102 @@ function ws_command_run_away($viewer, $channel, $rest)
 }
 
 /**
+ * /remind: a plan of the writer's own on My calendar, saved through
+ * ws_personal_plan_save() as the New plan form saves one, with a reminder
+ * at its start. Typed as a reply, the plan's note carries the answered
+ * message's link (and its line is the title when nothing else is written).
+ * Without a time the New plan form opens with what was typed.
+ *
+ * @return array
+ */
+function ws_command_run_remind($viewer, $channel, $rest, $options)
+{
+    $fill = ws_command_remind_fill($viewer, $channel, $rest, $options);
+
+    if (isset($fill['error'])) {
+        return array('type' => 'error', 'error' => $fill['error']);
+    }
+
+    if ($fill['start_time'] === '') {
+        return array('type' => 'plan_form', 'fill' => $fill, 'strings' => ws_personal_plan_js_strings());
+    }
+
+    $saved = ws_personal_plan_save($viewer, $fill);
+
+    if (empty($saved['ok'])) {
+        return array('type' => 'error', 'error' => (string) ($saved['error'] ?? lang('Access denied')));
+    }
+
+    return ws_command_remind_answer($fill, (int) ($saved['plan']['id'] ?? 0));
+}
+
+/**
+ * /remind's answer once the plan is saved, to the writer alone: what will
+ * be reminded and when, and a link to the plan on My calendar. Pure.
+ *
+ * @param array $fill    ws_command_remind_fill()
+ * @param int   $plan_id
+ * @return array
+ */
+function ws_command_remind_answer($fill, $plan_id)
+{
+    $url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace_my_calendar.php?plan=' . (int) $plan_id;
+    $html = '<div class="ws-ephemeral-title">' . h(lang('Reminder set')) . '</div>'
+        . '<div>' . h(ws_command_remind_line($fill)) . '</div>'
+        . '<div class="fg-secondary">' . h(lang('Only you see this plan.')) . ' <a href="' . h($url) . '">' . h(lang('Open the plan')) . '</a></div>';
+
+    return array('type' => 'ephemeral', 'html' => $html, 'plan_id' => (int) $plan_id);
+}
+
+/**
+ * /recap: "Sum up what I missed" (ws_recap_ai()), to the writer alone, with
+ * the button's refusals. since_id is the last message read before this
+ * visit, as the catch-up line hands it; without one, the writer's own
+ * read mark.
+ *
+ * @return array
+ */
+function ws_command_run_recap($viewer, $channel, $rest, $options)
+{
+    if (!ws_command_gate_recap($viewer, 'recap', $channel)) {
+        return array('type' => 'error', 'error' => lang('Pinegrap AI cannot be asked in this channel.'));
+    }
+
+    $since_id = (int) ($options['since_id'] ?? 0);
+
+    if ($since_id <= 0) {
+        $membership = ws_channel_membership((int) $channel['id'], (int) $viewer['id']);
+        $since_id = $membership ? (int) $membership['last_read_id'] : 0;
+    }
+
+    if (function_exists('set_time_limit') && defined('WS_AI_CALL_TIMEOUT')) {
+        @set_time_limit(WS_AI_CALL_TIMEOUT + 30);
+    }
+
+    $recap = ws_recap_ai($viewer, $channel, $since_id);
+
+    if (empty($recap['ok'])) {
+        return array('type' => 'error', 'error' => (string) $recap['error']);
+    }
+
+    return array('type' => 'ephemeral', 'html' => ws_command_recap_html($recap['text']));
+}
+
+/**
+ * /recap's answer: the summary and who wrote it, as the catch-up line
+ * shows them under itself. Pure.
+ *
+ * @param string $text
+ * @return string
+ */
+function ws_command_recap_html($text)
+{
+    return '<div class="ws-ephemeral-title">' . h(lang('Sum up what I missed')) . '</div>'
+        . '<div class="ws-catchup-recap-text">' . nl2br(h((string) $text)) . '</div>'
+        . '<div class="ws-catchup-recap-by fg-secondary">' . h(lang('Summed up by Pinegrap AI')) . '</div>';
+}
+
+/**
  * Does a command act on the message it answers? Only when it is typed as a
  * reply and nothing follows its name: with a text it does as it always did.
  *
@@ -2022,6 +2156,197 @@ function ws_command_live_timer($viewer, $channel, $rest)
 function ws_command_live_away($viewer, $channel, $rest)
 {
     return ws_command_event_suggest($viewer, ws_command_away_data($rest));
+}
+
+/**
+ * /remind's live line: what will be reminded and when, or that the New
+ * plan form opens when no time is given.
+ *
+ * @return array line, warnings
+ */
+function ws_command_live_remind($viewer, $channel, $rest, $options = array(), $now = null)
+{
+    $out = array('line' => '', 'warnings' => array());
+
+    if (trim((string) $rest) === '') {
+        return $out;
+    }
+
+    $fill = ws_command_remind_fill($viewer, $channel, $rest, $options, $now);
+
+    if (isset($fill['error'])) {
+        $out['warnings'][] = $fill['error'];
+
+        return $out;
+    }
+
+    $out['line'] = ws_command_remind_line($fill);
+
+    if ($fill['title'] === '') {
+        $out['warnings'][] = lang('Write what to remind after the time.');
+    }
+
+    if (($fill['start_time'] !== '') && (strtotime($fill['start'] . ' ' . $fill['start_time'] . ':00') <= (($now === null) ? time() : (int) $now))) {
+        $out['warnings'][] = lang('That time has already gone by.');
+    }
+
+    return $out;
+}
+
+/**
+ * The words of /remind: a day word and a time ("yarın 10:00", "10:00",
+ * "cuma saat 14:30"), in either order, at the start of the line, read as
+ * /task reads them (ws_parse_date_word(), ws_parse_time_word()); the rest
+ * is what to remind, as written. A time with no day is today's. Pure.
+ *
+ * @param string   $text the line after the command's name
+ * @param int|null $now  for tests
+ * @return array date (Y-m-d, '' when none was read), time (H:i, '' when
+ *               none), title
+ */
+function ws_command_remind_data($text, $now = null)
+{
+    $now = ($now === null) ? time() : (int) $now;
+    $today = date('Y-m-d', $now);
+    $text = trim((string) $text);
+    $words = ($text === '') ? array() : preg_split('/\s+/u', $text);
+    $date = '';
+    $clock = '';
+    $taken = 0;
+
+    foreach ($words as $index => $word) {
+        if ($index > 3) {
+            break;
+        }
+
+        if (($date === '') && (ws_parse_date_word($word, $today) !== '')) {
+            $date = ws_parse_date_word($word, $today);
+            $taken = $index + 1;
+            continue;
+        }
+
+        // "saat 14:00" / "at 14:00": the word before the time is no title.
+        if (($clock === '') && in_array(ws_lower($word), array('saat', 'at'), true) && (ws_parse_time_word($words[$index + 1] ?? '') !== '')) {
+            continue;
+        }
+
+        if (($clock === '') && (ws_parse_time_word($word) !== '')) {
+            $clock = ws_parse_time_word($word);
+            $taken = $index + 1;
+            continue;
+        }
+
+        break;
+    }
+
+    $rest = ($taken > 0) ? preg_split('/\s+/u', $text, $taken + 1) : array($text);
+    $title = trim((string) (($taken > 0) ? ($rest[$taken] ?? '') : $text));
+
+    if (($clock !== '') && ($date === '')) {
+        $date = $today;
+    }
+
+    return array('date' => $date, 'time' => $clock, 'title' => $title);
+}
+
+/**
+ * What /remind hands to ws_personal_plan_save(), or to the New plan form
+ * when no time was given: the day (today when none), the time, the title,
+ * the reminder at the start, and as a reply the answered message's link in
+ * the note.
+ *
+ * @param array    $viewer
+ * @param array    $channel
+ * @param string   $text
+ * @param array    $options parent_id
+ * @param int|null $now
+ * @return array title, note, start, end, all_day, start_time, end_time,
+ *               remind, or error
+ */
+function ws_command_remind_fill($viewer, $channel, $text, $options = array(), $now = null)
+{
+    $now = ($now === null) ? time() : (int) $now;
+    $data = ws_command_remind_data($text, $now);
+    $note = '';
+    $title = $data['title'];
+
+    if ((int) ($options['parent_id'] ?? 0) > 0) {
+        $message = ws_command_answered_message($viewer, $channel, $options);
+
+        if ($message === null) {
+            return array('error' => lang('That message could not be found.'));
+        }
+
+        $note = ws_command_message_link($channel, $message);
+
+        if ($title === '') {
+            $title = (string) mb_substr(ws_plain_line($viewer, (string) $message['body']), 0, 200);
+        }
+    }
+
+    return ws_command_remind_plan($data, $title, $note, $now);
+}
+
+/**
+ * The plan's values from what /remind read. Pure.
+ *
+ * @param array  $data  ws_command_remind_data()
+ * @param string $title
+ * @param string $note
+ * @param int    $now
+ * @return array
+ */
+function ws_command_remind_plan($data, $title, $note, $now)
+{
+    $day = ($data['date'] !== '') ? $data['date'] : date('Y-m-d', (int) $now);
+
+    return array(
+        'title'      => trim((string) $title),
+        'note'       => (string) $note,
+        'start'      => $day,
+        'end'        => $day,
+        'all_day'    => 0,
+        'start_time' => $data['time'],
+        'end_time'   => '',
+        // A reminder command reminds: the New plan form's first reminder,
+        // at the start ("No reminder" is the form's empty choice).
+        'remind'     => '0',
+    );
+}
+
+/**
+ * A message's own address, written into a plan's note as plain text.
+ *
+ * @param array $channel
+ * @param array $message
+ * @return string
+ */
+function ws_command_message_link($channel, $message)
+{
+    $base = (defined('URL_SCHEME') && defined('HOSTNAME_SETTING')) ? URL_SCHEME . HOSTNAME_SETTING : '';
+
+    return $base . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace.php?channel=' . (int) $channel['id'] . '&message=' . (int) $message['id'];
+}
+
+/**
+ * The line /remind's live line and answer say: "Will remind you: “title” ·
+ * Tomorrow 10:00", or the New plan form opening on a day.
+ *
+ * @param array $fill ws_command_remind_fill()
+ * @return string
+ */
+function ws_command_remind_line($fill)
+{
+    $title = ($fill['title'] !== '') ? '“' . mb_substr($fill['title'], 0, 80) . '”' : '';
+
+    if ($fill['start_time'] === '') {
+        return lang(array('string' => 'Will open New plan: {var:1}', 'vars' => implode(' · ', array_filter(array($title, ws_day_label($fill['start'])), 'strlen'))));
+    }
+
+    $at = strtotime($fill['start'] . ' ' . $fill['start_time'] . ':00');
+    $when = function_exists('ws_scheduled_moment') ? ws_scheduled_moment($at) : ws_day_label($fill['start']) . ' ' . $fill['start_time'];
+
+    return lang(array('string' => 'Will remind you: {var:1}', 'vars' => implode(' · ', array_filter(array($title, $when), 'strlen'))));
 }
 
 /**
