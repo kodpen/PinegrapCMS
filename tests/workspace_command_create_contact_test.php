@@ -79,20 +79,70 @@ function test_workspace_command_parse_contact()
 	pg_assert_same('', ws_command_parse_contact('Ada @home, Acme')['email'], 'a word with @ and no domain is no e-mail');
 }
 
-// The contact's required list is the catalogue's: first name, last name,
-// company and e-mail; a line leaving one out names it, empty counts as out.
+// The contact's required list is the catalogue's and read as it reads it
+// (ws_change_create_check()): at least one of first name, last name, company
+// and e-mail. A product needs its name, as before.
 function test_workspace_command_create_contact_required_list()
 {
 	$kind = pg_test_ws_change_types()['contact'];
 	$required = (array) $kind['required'];
+	$check = function ($type, $fields) {
+		return ws_quick_create_missing((array) pg_test_ws_change_types()[$type]['required'], ws_quick_create_change($type, $fields)['fields']);
+	};
 
 	pg_assert_same(array('first_name', 'last_name', 'company', 'email'), $required, 'the catalogue\'s required list');
-	pg_assert_same(array('first_name', 'last_name', 'company', 'email'), ws_quick_create_short_list('contact'), 'the card and the drawer show the required fields first');
+	pg_assert_same(array('first_name', 'last_name', 'company', 'email'), ws_quick_create_short_list('contact'), 'the card and the drawer show the four first');
 
-	$fields = array_filter(ws_command_parse_contact('Ada Lovelace, ada@example.com'), 'strlen');
-	pg_assert_same(array('company'), ws_quick_create_missing($required, ws_quick_create_change('contact', $fields)['fields']), 'the company left out');
-	pg_assert_same(array(), ws_quick_create_missing($required, ws_command_parse_contact('Ada Lovelace, Acme, ada@example.com')), 'a whole line misses nothing');
-	pg_assert_same(array('last_name', 'email'), ws_quick_create_missing($required, array('first_name' => 'Ada', 'last_name' => '  ', 'company' => 'Acme', 'email' => array())), 'blank and not text are missing');
+	pg_assert_same(array(), $check('contact', array('first_name' => 'Grace', 'last_name' => 'Hopper')), 'only a name is accepted');
+	pg_assert_same(array(), $check('contact', array('company' => 'Acme')), 'only a company is accepted');
+	pg_assert_same(array(), $check('contact', array('email' => 'grace@example.com')), 'only an e-mail is accepted');
+	pg_assert_same(array(), $check('contact', array_filter(ws_command_parse_contact('Grace Hopper, grace@example.com'), 'strlen')), 'a line without a company answers with the card');
+	pg_assert_same($required, $check('contact', array('first_name' => '  ', 'description' => 'x')), 'none of the four is refused');
+	pg_assert_same($required, $check('contact', array()), 'nothing at all is refused');
+	pg_assert_same('A customer needs at least a name, a company or an e-mail address.', ws_quick_create_missing_error('contact', 'First name'), 'with the catalogue\'s sentence');
+
+	pg_assert_same(array('name'), $check('product', array('price' => 100)), 'a product without a name is refused, as before');
+	pg_assert_same('Name is required', ws_quick_create_missing_error('product', 'Name'), 'naming the field');
+	pg_assert_same(array(), $check('product', array('name' => 'KUPA-01')), 'a product with its name passes');
+
+	// The drawer stars a field that must be filled on its own only.
+	pg_assert_same(array(), ws_quick_create_starred($required), 'none of a contact\'s four is starred');
+	pg_assert_same(array('name'), ws_quick_create_starred(pg_test_ws_change_types()['product']['required']), 'a product\'s name is');
+
+	// The card and the save ask the same helper.
+	$quick = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/quick_edit.php');
+	$commands = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/commands.php');
+	pg_assert_contains('ws_quick_create_missing(', workspace_command_create_contact_test_body($quick, 'ws_quick_create_input'), 'the save');
+	pg_assert_contains('ws_quick_create_missing(', workspace_command_create_contact_test_body($commands, 'ws_command_create_card'), 'the card');
+	pg_assert_contains("'required' => ws_quick_create_starred(", workspace_command_create_contact_test_body($quick, 'ws_quick_create_fields'), 'the drawer\'s stars');
+}
+
+// Once "kişi" or "contact" is typed after /create, the strip shows the
+// contact's own arguments and example; before a kind, the command's own.
+function test_workspace_command_create_contact_strip()
+{
+	$entry = ws_command_registry()['create'];
+	$variant = $entry['variants'][0];
+
+	pg_assert_same(array('kisi', 'contact'), $variant['words'], 'the contact\'s words, folded');
+	pg_assert_same(array('name', 'company', 'email'), array_column($variant['args'], 'name'), 'name, company, e-mail');
+	pg_assert_same(array(',', ',', null), array_map(function ($arg) { return $arg['after'] ?? null; }, $variant['args']), 'with the commas the line takes');
+	pg_assert_same('/create contact Ada Lovelace, Acme Ltd, ada@example.com', $variant['example'], 'its example');
+	pg_assert_same('record_kind', $entry['args'][0]['kind'], 'before a kind, <kind> as today');
+
+	foreach (ws_command_registry() as $key => $item) {
+		pg_assert_true(is_array($item['variants']), $key . ' has a list of kind lines');
+	}
+
+	foreach ($variant['words'] as $word) {
+		pg_assert_same('contact', ws_command_create_kinds()[$word] ?? '', $word . ' is a kind the parser reads');
+	}
+
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js');
+	$argument = workspace_command_create_contact_test_js($js, 'commandArgument');
+	pg_assert_contains('return item.words.indexOf(foldText(done[0])) !== -1;', $argument, 'the typed kind word picks its line');
+	pg_assert_contains("entry = Object.assign({}, entry, { args: variant.args, example: variant.example });", $argument, 'with its arguments and example');
+	pg_assert_contains("if (arg.after) {", workspace_command_create_contact_test_js($js, 'drawCommandStrip'), 'the strip writes the commas');
 }
 
 // A contact has no on-sale switch: nothing adds "enabled" to its create, the

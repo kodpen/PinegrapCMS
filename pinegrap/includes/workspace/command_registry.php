@@ -111,7 +111,7 @@ function ws_command_registry()
     $registry = array();
 
     foreach ($entries as $entry) {
-        $registry[$entry['key']] = $entry + array('where' => 'any', 'gate' => '', 'live' => '', 'api' => 'run');
+        $registry[$entry['key']] = $entry + array('where' => 'any', 'gate' => '', 'live' => '', 'api' => 'run', 'variants' => array());
     }
 
     uasort($registry, function ($a, $b) {
@@ -357,6 +357,19 @@ function ws_command_registry_records()
                 $arg('name', 'text', lang('name'), false, '', array('multiple' => true)),
                 $arg('price', 'amount', lang('price'), true),
                 $arg('group', 'record', lang('#group'), true, 'records', array('anywhere' => true)),
+            ),
+            // Once a kind word is typed, the strip shows that kind's own
+            // arguments and example; a kind without a line keeps the above.
+            'variants' => array(
+                array(
+                    'words'   => array('kisi', 'contact'),
+                    'args'    => array(
+                        $arg('name', 'text', lang('first and last name'), false, '', array('after' => ',')),
+                        $arg('company', 'text', lang('company'), false, '', array('after' => ',')),
+                        $arg('email', 'text', lang('e-mail'), false),
+                    ),
+                    'example' => lang('/create contact Ada Lovelace, Acme Ltd, ada@example.com'),
+                ),
             ),
             'names' => array('oluştur', 'olustur', 'create'), 'group' => 'records', 'order' => 160,
             'gate' => 'ws_command_gate_create', 'runner' => 'ws_command_run_create', 'api' => 'ws_api_command_kind_create',

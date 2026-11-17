@@ -19897,8 +19897,21 @@
             var rest = match[3];
             var word = /[^\s\uFFFC]*$/.exec(rest)[0];
             var done = rest.slice(0, rest.length - word.length).replace(/\uFFFC/g, ' \uFFFC ').split(/\s+/).filter(Boolean);
+            var typed = '/' + match[1];
+            // A kind word typed (/create contact): that kind's own
+            // arguments and example, after the word.
+            var variant = done.length ? (entry.variants || []).filter(function (item) {
+                return item.words.indexOf(foldText(done[0])) !== -1;
+            })[0] : null;
+
+            if (variant) {
+                typed += ' ' + done[0];
+                done = done.slice(1);
+                entry = Object.assign({}, entry, { args: variant.args, example: variant.example });
+            }
+
             var args = entry.args || [];
-            var state = { entry: entry, typed: '/' + match[1], query: word, start: before.length - word.length, index: -1, arg: null, extras: null };
+            var state = { entry: entry, typed: typed, query: word, start: before.length - word.length, index: -1, arg: null, extras: null };
 
             if (!args.length) {
                 return state;
@@ -20196,6 +20209,11 @@
 
                 usage.appendChild(document.createTextNode(' '));
                 usage.appendChild(el('span', 'ws-cmd-arg' + (current ? ' ws-cmd-current' : ''), arg.optional ? '[' + arg.label + ']' : '<' + arg.label + '>'));
+
+                // The mark the line puts after it (a contact's commas).
+                if (arg.after) {
+                    usage.appendChild(document.createTextNode(arg.after));
+                }
             });
 
             row.appendChild(usage);

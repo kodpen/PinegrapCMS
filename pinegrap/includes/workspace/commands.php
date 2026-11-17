@@ -442,6 +442,7 @@ function ws_commands($viewer = null, $shadowed = false, $channel = null)
             'usage'       => $usage,
             'example'     => $entry['example'],
             'args'        => $entry['args'],
+            'variants'    => $entry['variants'],
             'live'        => ($entry['live'] !== ''),
             'app_id'      => 0,
             'app'         => '',
@@ -489,6 +490,7 @@ function ws_command_help($viewer = null, $channel = null)
             'name'        => $entry['name'],
             'usage'       => $entry['usage'],
             'args'        => $entry['args'],
+            'variants'    => $entry['variants'] ?? array(),
             'live'        => $entry['live'],
             'group'       => $entry['group'],
             'group_label' => $labels[$entry['group']] ?? '',
@@ -3111,10 +3113,10 @@ function ws_command_parse_contact($text)
 /**
  * /create contact: a new contact through the contacts catalogue
  * (ws_command_create_card()): its card shows the first name, last name,
- * company and e-mail, and nothing is written before Create. A line that
- * leaves one of the contact's required fields out answers with the card's
- * values and what is missing, and the composer opens the drawer's new
- * contact filled with what was typed.
+ * company and e-mail it was given, and nothing is written before Create.
+ * One of the four is enough, as on the contact screen; a line with none
+ * answers with what is missing, and the composer opens the drawer's new
+ * contact.
  *
  * @param array  $viewer
  * @param array  $channel
@@ -3371,8 +3373,9 @@ function ws_command_create_card($viewer, $channel, $type, $fields, $options)
 
     $types = ws_change_types();
 
-    // A required field left out: nothing to check yet. The composer opens
-    // the drawer's new mode with what was typed, as the kind's button does.
+    // None of the kind's required list written: nothing to check yet. The
+    // composer opens the drawer's new mode with what was typed, as the
+    // kind's button does.
     $missing = ws_quick_create_missing((array) ($types[$type]['required'] ?? array()), ws_quick_create_change($type, $fields)['fields']);
 
     if ($missing !== array()) {

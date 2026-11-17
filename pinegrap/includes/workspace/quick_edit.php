@@ -484,8 +484,11 @@ function ws_quick_create_has_switch($type)
 }
 
 /**
- * The required fields of a kind a new record's fields leave out or leave
- * empty, in the order the catalogue lists them. Pure.
+ * A kind's required list as the catalogue reads it (ws_change_create_check()):
+ * at least one of its fields filled - a product or a group its name, a
+ * contact one of first name, last name, company and e-mail. Nothing when
+ * one is filled; else the whole list, in the catalogue's order. The /create
+ * card and the save both ask it. Pure.
  *
  * @param string[] $required the kind's required list (ws_change_types())
  * @param array    $fields   name => value
@@ -493,15 +496,43 @@ function ws_quick_create_has_switch($type)
  */
 function ws_quick_create_missing($required, $fields)
 {
-    $out = array();
-
     foreach ((array) $required as $name) {
-        if (!isset($fields[$name]) || !is_scalar($fields[$name]) || (trim((string) $fields[$name]) === '')) {
-            $out[] = (string) $name;
+        if (isset($fields[$name]) && is_scalar($fields[$name]) && (trim((string) $fields[$name]) !== '')) {
+            return array();
         }
     }
 
-    return $out;
+    return array_values(array_map('strval', (array) $required));
+}
+
+/**
+ * The fields the drawer's new mode marks with a star: each one that must be
+ * filled on its own, which is a required list of one (a product's name).
+ * A list read as "one of these" (a contact's) marks none. Pure.
+ *
+ * @param string[] $required
+ * @return string[]
+ */
+function ws_quick_create_starred($required)
+{
+    $required = array_values((array) $required);
+
+    return (count($required) === 1) ? $required : array();
+}
+
+/**
+ * What a create with none of its required list filled is refused with: the
+ * catalogue's own sentence (ws_change_create_check()).
+ *
+ * @param string $type
+ * @param string $label the first required field's label
+ * @return string
+ */
+function ws_quick_create_missing_error($type, $label)
+{
+    return ($type === 'contact')
+        ? lang('A customer needs at least a name, a company or an e-mail address.')
+        : lang(array('string' => '{var:1} is required', 'vars' => array($label)));
 }
 
 /**
@@ -685,13 +716,13 @@ function ws_quick_create_fields($viewer, $type)
         'tag'      => (string) $types[$type]['tag'],
         'fields'   => ws_quick_create_form($type, $types[$type]),
         'short'    => ws_quick_create_short_list($type),
-        'required' => array_values((array) ($types[$type]['required'] ?? array())),
+        'required' => ws_quick_create_starred((array) ($types[$type]['required'] ?? array())),
     );
 }
 
 /**
  * A new record's fields checked as a save checks them, nothing written: the
- * person's right, a required field named by its label, then changes.php's
+ * person's right, the kind's required list (ws_quick_create_missing()), then changes.php's
  * typing, bounds and rules (ws_changes_input(): a name already taken, a
  * group that is gone or in the Recycle Bin). The /product card asks it
  * before it is drawn.
@@ -720,7 +751,7 @@ function ws_quick_create_input($viewer, $type, $fields, $channel_id = 0)
     foreach (ws_quick_create_missing((array) ($types[$type]['required'] ?? array()), $change['fields']) as $name) {
         $field = ws_change_field($types[$type], $name);
 
-        return $fail(lang(array('string' => '{var:1} is required', 'vars' => array(($field !== null) ? (string) $field[2] : $name))));
+        return $fail(ws_quick_create_missing_error($type, ($field !== null) ? (string) $field[2] : $name));
     }
 
     $input = ws_changes_input(array($change), (int) $viewer['id'], (int) $channel_id);
