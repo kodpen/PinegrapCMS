@@ -1,6 +1,6 @@
 ---
 name: workspace-command-approval-update-checkin
-description: /approval (/onay), /update (/güncelleme) and /checkin (CC4, #PRNUM): what each reads, the function it writes through, gate, where it runs, live line, the form opened filled
+description: /approval (/onay), /update (/güncelleme) and /checkin (CC4, #10228): what each reads, the function it writes through, gate, where it runs, live line, the form opened filled
 ---
 
 ## What does /approval (/onay) do?
