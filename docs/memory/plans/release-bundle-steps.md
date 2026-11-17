@@ -13,20 +13,20 @@ description: Plan release-bundle, steps RB1 to RB8 (RB0, the owner's answer, is 
   - Tests, red first: the allowed moves, one open bundle per draft and per live page, the hold's four refusals, "changed since".
   - Features: B1 to B6; B5 without the Publish sheet's held row (RB2b).
 
-- RB2 (M) after RB1: the Bundles screen.
+- RB2 Done (#9998): the Bundles screen; the owner's look, agent channel poll 107.
   - New: the root screen `page_bundles.php`, built as `page_experiments.php` is.
   - Pictures: the list, a bundle with a new page, a replacement and a "changed since" one, the two Add dialogs, a phone. To the owner; not marked ready before his look.
   - Features: the screen's side of B1 to B6.
 
 - RB2b (S) after RB1, when no open PR holds assets/js/style_designer.src.js: the Publish sheet's held row for a bundled draft. The row state held and its disabled box as an experiment's variant has them; the row's words name the bundle, never an experiment; the page load gives the sheet the hold and its text from pg_page_bundle_hold(). Pictures at 1440 and 390, light and dark, to the architect. Features: B5 (the sheet).
 
-- RB3 (M) after RB1: publish and take back.
+- RB3 Done (#9999): publish and take back.
   - New, in the module: the checks (`pg_collab_may_edit_page()`, the dry run of `pg_designer_save_page()`), the writes (`pg_page_draft_move()`, the page save with the source `bundle`), the take back (`pg_page_revision_get()` and a save with the source `restore`).
   - Tests: a locked page stopping everything before any write, a failure taking back what was written and leaving the bundle open, "partly published" only when that take-back fails, a page saved since not taken back, a swept revision named; a live page publishing at once with a replacement waiting, a shared component saved from a replacement's tab live at once.
   - Pictures: the publish dialog with a "changed since" page, the take-back dialog with a page it cannot take back. To the owner.
   - Features: B7 to B12, B17, B18.
 
-- RB4 (S) after RB3: the time. Existing files: `job.php` (one pass). The person's name swapped as `api_design_save_as_owner()` does. Features: B13.
+- RB4 Done (#10108): the time. Existing files: `job.php` (one pass). The person's name swapped as `api_design_save_as_owner()` does. Features: B13.
 
 - RB5 (M) after RB2: the preview. Existing files: `prototype.php` and `includes/fn/prototype.php` (`pg_proto_page_set()` takes a bundle; the link resolver opens a replacement). Features: B14.
 

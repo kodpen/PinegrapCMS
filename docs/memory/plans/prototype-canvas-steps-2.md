@@ -22,7 +22,7 @@ description: Plan prototype-canvas, the view steps PV2, PV4, PV4b and PV6: the g
   - `fit()` takes an option the view passes: when the whole does not fit at the smallest zoom, the view shows the start box's corner, not the middle of the bounds. Flows passes neither.
   - Tests: fifty boxes beside five rows wrap, a short column stays one; the view's x and y when it does not fit.
   - Pictures, 1440 and 390: Fit on a design with about 50 shared parts, before and after. The look is the architect's. Features: F4.
-- PV6 (M) The list and the problems. After PV5.
+- PV6 (M) The list and the problems. After PV5. Done (#9956).
   - `aside.sd-proto-list` right of the stage inside `section#sd-proto`; rows are buttons. Its rows come from `G.linksOf()` and the marked design, never from the DOM.
   - One selection state (frame id and port) for a row click and a mark click; `reveal()` brings the other end into view.
   - "Change target" and "Open in the editor" call today's `_sdProtoMenuOpen()` and `_sdProtoRow()`; L and the menu key work on a row.

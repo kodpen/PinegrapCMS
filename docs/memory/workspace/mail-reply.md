@@ -16,6 +16,7 @@ description: Answering a Workspace e-mail by e-mail (WM7): the queued answer, Cc
 
 ## Where does a person answer?
 - The card's "Reply by e-mail" (`ws_mail_reply_offer()`: the card, for a reader who may post); the E-mails pane's Reply, and Reply to all when `ws_mail_pane_tools()` counts others; "Open the reply draft" under Pinegrap AI's draft.
+- For a box that cannot send, Reply is disabled with its reason: `mail-reply-offer.md`.
 - The drawer (`replyForm()` asks `ws_mail_reply_form`, then `answerForm()`): "To …", the "Reply to all" box with "Also to …", Cc and Bcc, the answer with saved replies, Files, Send. Texts `ws_mail_js_strings()`.
 - Under a failed answer only Send again: workspace.js draws `node()` where `mail_reply` or `mail_resend` is set; the resend offer stands on the item's own message, not its files.
 

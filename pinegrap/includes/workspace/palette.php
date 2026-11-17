@@ -588,6 +588,7 @@ function ws_palette_commands($query, $viewer = null)
 {
     $query = ws_lower((string) $query);
     $out = array();
+    $labels = ws_command_group_labels();
 
     foreach (ws_commands($viewer) as $entry) {
         $names = ($query === '') ? array($entry['name']) : $entry['names'];
@@ -605,6 +606,11 @@ function ws_palette_commands($query, $viewer = null)
                 'date'   => '',
                 'icon'   => 'bi-slash-square',
                 'insert' => $name . ' ',
+                // The list draws its group headers from these and leaves
+                // out what does not run in the open channel.
+                'group'       => $entry['group'],
+                'group_label' => $labels[$entry['group']] ?? '',
+                'where'       => $entry['where'],
             );
             break;
         }

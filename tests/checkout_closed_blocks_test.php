@@ -311,7 +311,7 @@ function test_checkout_blocks_row_sample_wins_in_checkout_lists()
 	$script = "function _sdT(s) { return s; }\nvar SW_SHIP_TO_ENTITY_TOKENS = [], SW_ORDER_LINE_ENTITY_TOKENS = [], SW_PRODUCT_ENTITY_TOKENS = [];\n"
 		. "function _sdListsAbove(n) { return n.lists.map(function (s) { return { props: { source: s } }; }); }\n"
 		. checkout_blocks_test_var($source, 'SW_LIST_SOURCES') . checkout_blocks_test_var($source, '_SD_LIST_ROW_PREVIEWS')
-		. checkout_blocks_test_var($source, 'SD_LIST_SAMPLE_ROWS')
+		. checkout_blocks_test_var($source, 'SD_LIST_SAMPLE_ROWS') . checkout_blocks_test_var($source, '_SD_LIST_CARD_SAMPLES')
 		. checkout_blocks_test_function($source, '_sdCheckoutRowSample') . "\n"
 		. checkout_blocks_test_function($source, '_sdOrderAmounts') . "\n"
 		. "var num = function (t) { return parseFloat(String(t).replace(/[^0-9,]/g, '').replace(',', '.')); };\n"
@@ -322,6 +322,8 @@ function test_checkout_blocks_row_sample_wins_in_checkout_lists()
 		. "  item: _sdCheckoutRowSample('__gift_card_amount', { lists: ['order.item_gift_cards'] }),\n"
 		. "  none: _sdCheckoutRowSample('__gift_card_amount', { lists: [] }),\n"
 		. "  period: _sdCheckoutRowSample('__period_total', { lists: ['checkout.periods'] }),\n"
+		. "  past: _sdCheckoutRowSample('__booking_manage_url', { lists: ['account.past_bookings'] }),\n"
+		. "  upcoming: _sdCheckoutRowSample('__booking_manage_url', { lists: ['account.upcoming_bookings'] }),\n"
 		. "  codes: rows.map(function (r) { return r.__gift_card_code; }),\n"
 		. "  sum: Math.round(rows.reduce(function (a, r) { return a + num(r.__gift_card_amount); }, 0) * 100), gift: Math.round(_sdOrderAmounts().gift * 100)\n"
 		. "}));";
@@ -337,6 +339,8 @@ function test_checkout_blocks_row_sample_wins_in_checkout_lists()
 	pg_assert_same(null, $r['item'], 'an order view item gift card keeps the sample order\'s amount');
 	pg_assert_same(null, $r['none'], 'outside a list the sample order\'s value stays');
 	pg_assert_same('₺59,88', $r['period'], 'a period row draws its own total');
+	pg_assert_same('', $r['past'], 'a past booking\'s card has no manage page');
+	pg_assert_same(null, $r['upcoming'], 'an upcoming one reads the shared sample');
 	pg_assert_same(3, count(array_unique($r['codes'])), 'the three sample cards are told apart');
 	pg_assert_same($r['gift'], $r['sum'], 'the sample cards add up to the gift card discount of the totals');
 }

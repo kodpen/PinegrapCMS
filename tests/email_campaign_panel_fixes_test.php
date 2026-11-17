@@ -97,7 +97,7 @@ function test_email_campaign_create_refuses_a_missing_page()
 {
 	$source = email_campaign_panel_fixes_source('add_email_campaign.php');
 
-	pg_assert_true((bool) preg_match('/\$row = mysqli_fetch_assoc\(\$result\);\s+\/\/[^\n]*\n[^\n]*\n\s+if \(!\$row\) \{\s+output_error\(lang\(\'Please select a page for the body of the campaign\.\'\)/', $source), 'a page id with no page is refused before anything is stored');
+	pg_assert_true((bool) preg_match('/\$row = mysqli_fetch_assoc\(\$result\);\s+\/\/[^\n]*\n[^\n]*\n\s+if \(!\$row\) \{\s+\$errors\[\'page_id\'\] = lang\(\'Please select a page for the body of the campaign\.\'\)/', $source), 'a page id with no page is refused on the form before anything is stored');
 }
 
 function test_edit_email_campaign_back_arrow_follows_send_to()

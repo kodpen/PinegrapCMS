@@ -51,4 +51,6 @@ include('init.php');
 
 require_once(dirname(__FILE__) . '/includes/api/bootstrap.php');
 
-api_run();
+// A fault that escapes a handler answers the API's 500 envelope with its
+// request id rather than the site's HTML error text (includes/api/fault.php).
+api_fault_guard('api_run');

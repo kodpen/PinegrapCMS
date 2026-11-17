@@ -138,7 +138,7 @@ function translate_api_routes()
             'handler'     => 'translate_api_pages_get',
             'returns'     => 'TranslationPage',
             'summary'     => 'How far a page is translated',
-            'description' => 'One page: its name and address, and for every target language the address it is served under there, how many of its texts are translated and reviewed, and whether search engines are let in under that language\'s index policy. The texts themselves are read with GET /translations/strings?page_id=.',
+            'description' => 'One page: its name and address, and for every target language the address it is served under there, how many of its texts are translated and reviewed, and whether search engines are let in under that language\'s index policy. The texts themselves are read with GET /translations/strings?page_id=. A page in the Recycle Bin is 404, as on the Translations screen, though GET /pages lists it with recycled true.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
             ),
@@ -979,6 +979,7 @@ function translate_api_status($params)
             // source shows again and the text waits for a translation.
             db("DELETE FROM translations WHERE string_id = '$string_id' AND language = '" . e($language) . "'");
             pg_tr_invalidate_pages($language);
+            pg_picture_tr_translations_removed($language);
         } else {
             pg_tr_set_status($string_id, $language, $status, $user_id);
         }

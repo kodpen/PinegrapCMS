@@ -234,3 +234,41 @@ function test_workspace_mail_reply_reaches_the_screen()
 		pg_assert_contains("'" . $key . "'", $script, $key . ' is used');
 	}
 }
+
+function test_workspace_mail_reply_blocked()
+{
+	$box = array('enabled' => 1, 'address' => 'support@shop.test', 'reply_via' => 'box',
+		'settings' => json_encode(array('user' => 'support@shop.test', 'secret' => 'sealed:iv', 'smtp_host' => 'smtp.shop.test')));
+
+	pg_assert_same('', ws_mail_reply_blocked($box, 'can@client.test', 'shop.test'), 'a box that sends');
+	pg_assert_same('no_box', ws_mail_reply_blocked(null, 'can@client.test', 'shop.test'), 'the box deleted');
+	pg_assert_same('no_box', ws_mail_reply_blocked(array_merge($box, array('enabled' => 0)), 'can@client.test', 'shop.test'), 'the box switched off');
+	pg_assert_same('no_customer', ws_mail_reply_blocked($box, 'no address', 'shop.test'), 'nobody to answer');
+	pg_assert_same('no_smtp', ws_mail_reply_blocked(array_merge($box, array('settings' => json_encode(array('user' => 'u', 'secret' => 's')))), 'can@client.test', 'shop.test'),
+		'read from .eml files only, no sending server');
+	pg_assert_same('domain', ws_mail_reply_blocked(array_merge($box, array('reply_via' => 'site')), 'can@client.test', 'other.test'), 'the route\'s own reason');
+
+	// The click-time check and the offer read the same test.
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/mail_reply.php');
+	$start = strpos($source, 'function ws_mail_reply_target(');
+
+	pg_assert_contains('ws_mail_reply_blocked($box, (string) $conversation[\'customer_email\'], ws_mail_reply_site_domain())', substr($source, $start, 1500), 'the answer\'s check');
+}
+
+function test_workspace_mail_reply_off_is_offered_disabled()
+{
+	pg_assert_same('', ws_mail_reply_off(array('enabled' => 1, 'address' => 'a@shop.test', 'reply_via' => 'site', 'settings' => '{}'), 'can@client.test', 'shop.test'));
+	pg_assert_same(ws_mail_reply_error_text('no_box'), ws_mail_reply_off(null, 'can@client.test', 'shop.test'), 'the reason the answer would be refused with');
+
+	$pane = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/mail_pane.php');
+	$map = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/mail.php');
+	$messages = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/messages.php');
+	$script = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_mail.js');
+
+	pg_assert_contains("'reply_off'  => \$pane['can_post'] ? ws_mail_reply_off(\$box, (string) \$conversation['customer_email'], ws_mail_reply_site_domain()) : '',", $pane, 'the pane');
+	pg_assert_contains("\$items[\$id]['reply_off'] = \$conversation ? ws_mail_reply_off(", $map, 'the card\'s mail');
+	pg_assert_contains("'mail_reply_off' =>", $messages, 'the card');
+	pg_assert_contains('replyButton(', $script, 'drawn by one function in both places');
+	pg_assert_contains("button.disabled = true;", $script, 'disabled, not hidden');
+	pg_assert_contains("button.setAttribute('aria-describedby', note.id);", $script, 'the reason printed and tied to the button');
+}

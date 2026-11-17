@@ -206,7 +206,7 @@ $social_css = implode("\n", array(
 
 return array(
     'name'        => lang('Social Community'),
-    'version'     => '1.0.1',
+    'version'     => '1.0.2',
     'framework'   => 'bootstrap5',
     'order'       => 78,
     'icon'        => 'bi-camera',

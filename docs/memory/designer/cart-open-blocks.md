@@ -5,7 +5,7 @@ module: widgets_cart
 ---
 
 ## What did CB6c open?
-- Step CB6c of `plans/designer-closed-blocks-steps.md`; the census: [[canvas-closed-blocks-widgets]]. The shop steps before it: [[catalog-detail-open-blocks]], [[catalog-listing-open-blocks]].
+- Step CB6c (#9901) of the closed-blocks opening ([[canvas-closed-blocks]]); the census: [[canvas-closed-blocks-widgets]]. The shop steps before it: [[catalog-detail-open-blocks]], [[catalog-listing-open-blocks]].
 - The sections `applied_offers`, `pending_offers` and `quick_add` of a shopping cart widget, and the `applied_offers` content node the shop templates use: settings only, drawn true. Each depends on the request: the offers applied to this cart, the gifts it has earned, the products of the group the visitor can buy now (stock, prices, discounts).
 - `pending_offers` is the campaign gifts box: gifts the cart qualifies for that wait for the visitor to press Add. A gift waits only when the site must ask where it goes (several recipients, a gift that ships); otherwise `apply_offers_to_cart()` places it by itself and it shows among the applied offers.
 

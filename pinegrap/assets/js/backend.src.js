@@ -12045,7 +12045,8 @@ var pgSettingsModal = (function () {
      * How well one row answers the query, best first: 0 its name, 1 a
      * keyword that starts with the query, 2 a field label, 3 a keyword the
      * query starts with ("zaman" for "zaman damgasi sunucu"), 4 every word
-     * somewhere; -1 not at all. A keyword that holds only the query's first
+     * somewhere, 5 the name of an outside service the place holds; -1 not
+     * at all. A keyword that holds only the query's first
      * word ranks under a field label that holds all of it, so typing a
      * setting's full name brings its own card first.
      *
@@ -12108,14 +12109,29 @@ var pgSettingsModal = (function () {
         if (words.length > 1) {
 
             var all = fold([row.title, row.place].concat(keys, fields).join(' '));
+            var every = true;
 
             for (i = 0; i < words.length; i++) {
                 if (words[i] && (all.indexOf(words[i]) === -1)) {
-                    return { rank: -1, field: '', fit: 0 };
+                    every = false;
+                    break;
                 }
             }
 
-            return { rank: 4, field: '', fit: 0 };
+            if (every) {
+                return { rank: 4, field: '', fit: 0 };
+            }
+        }
+
+        // Last, the names of the outside services the place holds: they
+        // only add hits after every other one, so none they bring pushes
+        // an earlier hit out of the list.
+        var services = row.services || [];
+
+        for (i = 0; i < services.length; i++) {
+            if (wordStarts(services[i], q)) {
+                return { rank: 5, field: '', fit: (fold(services[i]) === q) ? 1 : 0 };
+            }
         }
 
         return { rank: -1, field: '', fit: 0 };

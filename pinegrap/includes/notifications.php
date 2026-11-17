@@ -196,6 +196,13 @@ function pg_notification_visible($notification, $rights)
 		return ((FORMS === true) && $rights['manage_forms'] && pg_notification_form_visible($notification, $rights));
 	}
 
+	// A release bundle that did not go out at its time
+	// (includes/fn/page_bundles.php): addressed to who set the time and who
+	// made it.
+	if ($action == 'bundle_held') {
+		return ($target > 0);
+	}
+
 	// A booking's move in a staff member's own calendar that was written back
 	// (includes/fn/booking_agenda.php): always addressed to them.
 	if ($action == 'booking_refused') {
@@ -658,6 +665,20 @@ function pg_notification_display($notification, $reader_role = null)
 				$display['place']       = h((string) ($described['place'] ?? ''));
 			}
 		}
+
+	} elseif ($action == 'bundle_held') {
+
+		// The row keeps the bundle's name; the reason is read from the bundle
+		// when the line is drawn, in the reader's language.
+		$bundle_words = pg_page_bundle_bell_display($notification);
+		$display['title']       = h($bundle_words['title']);
+		$display['short']       = h($bundle_words['short']);
+		$display['brief']       = h($bundle_words['brief']);
+		$display['description'] = h($bundle_words['description']);
+		$display['url']         = $bundle_words['url'];
+		$display['icon']        = 'assets/images/notification-general.png';
+		$display['badge']       = 'assets/images/notification-general-badge.png';
+		$display['action']      = $action;
 
 	} elseif ($action == 'booking_refused') {
 
@@ -1126,6 +1147,11 @@ function pg_notification_module($action)
 
 	if (in_array($action, array('new_order', 'order_return', 'out_stock', 'booking_refused', 'whatsapp_message'), true)) {
 		return 'shop';
+	}
+
+	// A release bundle that did not go out at its time.
+	if ($action === 'bundle_held') {
+		return 'content';
 	}
 
 	if (strpos($action, 'erp_') === 0) {

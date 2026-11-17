@@ -51,4 +51,6 @@ require_once(dirname(__FILE__) . '/includes/mcp/tools.php');
 require_once(dirname(__FILE__) . '/includes/mcp/resources.php');
 require_once(dirname(__FILE__) . '/includes/mcp/prompts.php');
 
-pg_mcp_run();
+// A fault that escapes a handler answers the API's 500 envelope with its
+// request id rather than the site's HTML error text (includes/api/fault.php).
+api_fault_guard('pg_mcp_run');

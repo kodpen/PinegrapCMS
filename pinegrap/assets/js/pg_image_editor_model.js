@@ -4084,6 +4084,137 @@
 
     var RECORD = { RECORD_RATES: RECORD_RATES, recordClock: recordClock, recordThin: recordThin, recordApply: recordApply };
 
+    // ---- FOLLOW (pg_image_editor_follow.js) ----
+    //
+    // Follow: a layer moved with an area of a video. The tracker
+    // (pg_image_editor_track.js) finds the area's centre in the clip's
+    // frames; these turn its points into the layer's samples and keys. The
+    // clip is taken as standing still in its box (its own keys and presets
+    // are not counted).
+
+    // The most frames a second read, the longer side they are read at, the
+    // shortest span (ms) and the smallest box side on the screen (px).
+    var FOLLOW_FPS = 30, FOLLOW_EDGE = 320, FOLLOW_MIN = 200, FOLLOW_BOX = 12;
+
+    // The topmost visible video layer showing at document time t whose box
+    // holds document point p, or null.
+    function followClip(doc, p, t) {
+        var layers = (doc && Array.isArray(doc.layers)) ? doc.layers : [], i, l, q;
+
+        for (i = layers.length - 1; i >= 0; i--) {
+            l = layers[i];
+
+            if (!l || (l.type !== 'video') || l.hidden || (clipAt(l, t) === null)) {
+                continue;
+            }
+
+            q = followLocal(l, p);
+
+            if ((Math.abs(q[0]) <= Math.abs(l.w) / 2) && (Math.abs(q[1]) <= Math.abs(l.h) / 2)) {
+                return l;
+            }
+        }
+
+        return null;
+    }
+
+    // Document point p from the clip box's centre, turned back.
+    function followLocal(l, p) {
+        var a = -(Number(l.rot) || 0) * Math.PI / 180, dx = p[0] - (Number(l.x) || 0) - (Number(l.w) || 0) / 2, dy = p[1] - (Number(l.y) || 0) - (Number(l.h) || 0) / 2;
+
+        return [dx * Math.cos(a) - dy * Math.sin(a), dx * Math.sin(a) + dy * Math.cos(a)];
+    }
+
+    // Document point p in the source's pixels of clip l: through its box
+    // (the source's size over the box's), its turn and its mirror.
+    function followToSource(l, p) {
+        var q = followLocal(l, p), w = Math.abs(Number(l.w)) || 1, h = Math.abs(Number(l.h)) || 1;
+
+        if (l.mirror) {
+            q[0] = -q[0];
+        }
+
+        return [(q[0] / w + 0.5) * (Number(l.width) || w), (q[1] / h + 0.5) * (Number(l.height) || h)];
+    }
+
+    // A move of du, dv source pixels in clip l as a move in document units.
+    function followFromSource(l, du, dv) {
+        var w = Math.abs(Number(l.w)) || 1, h = Math.abs(Number(l.h)) || 1, a = (Number(l.rot) || 0) * Math.PI / 180;
+        var x = du * w / (Number(l.width) || w), y = dv * h / (Number(l.height) || h);
+
+        if (l.mirror) {
+            x = -x;
+        }
+
+        return [x * Math.cos(a) - y * Math.sin(a), x * Math.sin(a) + y * Math.cos(a)];
+    }
+
+    // The size frames are read at: FOLLOW_EDGE on the longer side, never
+    // enlarged; k is that size over the source's.
+    function followSize(width, height) {
+        var w = Math.max(1, Number(width) || 1), h = Math.max(1, Number(height) || 1), k = Math.min(1, FOLLOW_EDGE / Math.max(w, h));
+
+        return { w: Math.max(1, Math.round(w * k)), h: Math.max(1, Math.round(h * k)), k: k };
+    }
+
+    // What Follow covers from document time now: to the first of the clip's
+    // end, the layer's own end and the document's. ok is false under
+    // FOLLOW_MIN.
+    function followSpan(doc, l, clip, now) {
+        var end = docMotion(doc).duration, to = Math.min(clipSpan(clip).to, layerUntil(l, end), end);
+
+        return { from: now, to: to, ok: (to - now) >= FOLLOW_MIN };
+    }
+
+    // The frames read from document time from up to (not at) to: one per
+    // source frame (frameMs long, the speed counted) but at most FOLLOW_FPS
+    // a second. [{ t, src }] in whole ms, t the document's, src the source's.
+    function followTimes(clip, from, to, frameMs) {
+        var c = clipLayer(clip), step = Math.max(1000 / FOLLOW_FPS, ((frameMs > 0) ? frameMs : 1000 / FOLLOW_FPS) / c.speed), list = [], i, t, src;
+
+        for (i = 0; (t = from + i * step) < to; i++) {
+            src = clipAt(clip, t);
+
+            if (src !== null) {
+                list.push({ t: Math.round(t), src: Math.round(src) });
+            }
+        }
+
+        return list;
+    }
+
+    // The layer's samples from the tracker's points [{ t, x, y }] (document
+    // time, the frame's pixels at k of the source; the first at now): the
+    // place the layer shows at now plus what the point moved since.
+    function followSamples(l, clip, now, points, k) {
+        var base = keyAt(l, now) || { x: 0, y: 0 }, first = (points || [])[0];
+
+        k = (k > 0) ? k : 1;
+
+        return first ? points.map(function (q) {
+            var d = followFromSource(clip, (q.x - first.x) / k, (q.y - first.y) / k);
+
+            return { t: q.t, x: base.x + d[0], y: base.y + d[1] };
+        }) : [];
+    }
+
+    // The samples as the layer's keys, as a recorded move's are: thinned,
+    // the keys inside their span replaced. { keys, end }.
+    function followApply(l, samples, end, px) {
+        return recordApply(l, samples, end, px);
+    }
+
+    // The hint's label key: while the box is set up or while it runs; on a
+    // touch screen without naming Escape (the pill's Cancel is the way out).
+    function followHint(running, touch) {
+        return (running ? 'followHintRun' : 'followHint') + (touch ? 'Touch' : '');
+    }
+
+    var FOLLOW = {
+        followHint: followHint, FOLLOW_MIN: FOLLOW_MIN, FOLLOW_BOX: FOLLOW_BOX, followClip: followClip, followToSource: followToSource, followFromSource: followFromSource,
+        followSize: followSize, followSpan: followSpan, followTimes: followTimes, followSamples: followSamples, followApply: followApply
+    };
+
     // -- tracks (pg_image_editor_tracks.js) --
     //
     // A row per layer under the play bar: a bar per phase from M.motionSpans(),
@@ -4210,7 +4341,36 @@
         return { delay: Math.round(end - nt), ms: Math.round(nt - nf), at: Math.round(nt) };
     }
 
-    var TRACKS = { TRACK_STEP: TRACK_STEP, trackBars: trackBars, trackTargets: trackTargets, trackSnap: trackSnap, trackEdit: trackEdit };
+    // Where the selected bar's tip goes, from the bar's start and end and
+    // the length (ms): 'right' of the bar, 'left' of it when the bar ends
+    // past the middle, or 'in' it at its start when neither side has room
+    // (a whole-length loop), so the tip never leaves the lane over the
+    // names. Room is a quarter of the lane, about a tip's width.
+    var TRACK_TIP_ROOM = 0.25;
+
+    function trackTipPlace(from, to, end) {
+        var room = TRACK_TIP_ROOM * end;
+
+        if (!(end > 0) || (to <= end / 2)) {
+            return 'right';
+        }
+
+        if (from >= room) {
+            return 'left';
+        }
+
+        return (end - to >= room) ? 'right' : 'in';
+    }
+
+    // Whether a track row offers the Motion button that opens the bar's
+    // Motion popover: a shown, unlocked layer that may move (a redaction
+    // never moves; a locked one's bar offers only Unlock and More), and
+    // never on a phone, whose rows and selection bar stay as they are.
+    function trackMotionOn(l, phone) {
+        return !!l && !phone && (l.type !== 'redact') && !l.locked && !l.hidden;
+    }
+
+    var TRACKS = { TRACK_STEP: TRACK_STEP, trackBars: trackBars, trackTargets: trackTargets, trackSnap: trackSnap, trackEdit: trackEdit, trackMotionOn: trackMotionOn, trackTipPlace: trackTipPlace };
 
     // -- frames and animation files (pg_image_editor_render.js) --
 
@@ -4771,6 +4931,10 @@
         var can = s.can || {}, out = [];
         var add = function (name, off) { out.push({ name: name, off: !!off }); };
 
+        if (s.place === 'object') {
+            return objectActions(s);
+        }
+
         if (!s.layers && !s.picture && !s.area) {
             return out;
         }
@@ -4823,7 +4987,79 @@
         return (pointer === 'touch') || (pointer === 'pen') || (!!shift !== !!ratio);
     }
 
-    var ACTIONS = { actionList: actionList, keepRatio: keepRatio };
+    // The bar over the selected object where the panel is not a sheet (s as
+    // actionList() reads it, and s.kind: the one layer's type; s.animate:
+    // the Animate tool). The type's own command (a text: Edit text; a video
+    // in Animate: Split), Motion in Animate (never for a redaction, which
+    // does not move), Duplicate, Delete, Lock, More (the context menu's
+    // list). Every layer locked: Unlock and More. The picture and an area
+    // keep their commands in the panel: no bar.
+    function objectActions(s) {
+        var out = [];
+        var add = function (name) { out.push({ name: name, off: false }); };
+
+        if (!s.layers) {
+            return out;
+        }
+
+        if (!s.free) {
+            add('unlock');
+            add('more');
+            return out;
+        }
+
+        if (s.layers === 1) {
+            if (s.kind === 'text') {
+                add('editText');
+            }
+
+            if (s.animate && (s.kind === 'video')) {
+                add('split');
+            }
+
+            // Follow an area of the video showing at the playhead: never a
+            // video itself, never a redaction (it does not move).
+            if (s.animate && s.follow && (s.kind !== 'video') && (s.kind !== 'redact')) {
+                add('follow');
+            }
+
+            if (s.animate && (s.kind !== 'redact')) {
+                add('motion');
+            }
+        }
+
+        ['duplicate', 'remove', 'lock', 'more'].forEach(add);
+
+        return out;
+    }
+
+    // How far the bar keeps from the selection's box in screen px: the gap,
+    // a box handle's half size, and the turning handle's reach above the
+    // box (26 px out, 5 px its half size).
+    var ACT_GAP = 8, ACT_HANDLE = 5, ACT_TURN = 31;
+
+    // Where the bar over the object goes, in px of the stage: box { x, y,
+    // w, h } the selection's bounds, bar { w, h } its size, stage { w, h,
+    // bottom } with bottom what the play bar and the tracks cover. Centred
+    // above the box, clear of the turning handle; below it where there is
+    // no room above; always inside the stage and above its covered bottom.
+    // { x, y, below }.
+    function actBarPlace(box, bar, stage) {
+        var pad = ACT_GAP, floor = (stage.h - (stage.bottom || 0)) - bar.h - pad;
+        var x = box.x + box.w / 2 - bar.w / 2, y = box.y - ACT_TURN - ACT_GAP - bar.h, below = false;
+
+        if (y < pad) {
+            y = box.y + box.h + ACT_HANDLE + ACT_GAP;
+            below = true;
+        }
+
+        x = Math.max(pad, Math.min(x, stage.w - bar.w - pad));
+        y = Math.max(pad, Math.min(y, floor));
+
+        return { x: Math.round(x), y: Math.round(y), below: below };
+    }
+
+    var ACTIONS = { actionList: actionList, keepRatio: keepRatio, actBarPlace: actBarPlace };
 
     // -- The context menu (pg_image_editor_menu.js) --
 
@@ -10398,7 +10634,7 @@
 
     // A name taken twice would hide a function: the model refuses to load,
     // so the tests stop it.
-    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, KEYS, RECORD, TRACKS, RENDER, ANIMSAVE, SVGMOTION, ACCESS, GFONTS, GLYPH, WARP, PUPPET, SCENES, PRESENT, OUTLINE, BUILDER, SELECTION, ACTIONS, MENU, VIDEO, SOUND, CLIP, MIX, UPLOAD, PHONE].forEach(function (part) {
+    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, KEYS, RECORD, FOLLOW, TRACKS, RENDER, ANIMSAVE, SVGMOTION, ACCESS, GFONTS, GLYPH, WARP, PUPPET, SCENES, PRESENT, OUTLINE, BUILDER, SELECTION, ACTIONS, MENU, VIDEO, SOUND, CLIP, MIX, UPLOAD, PHONE].forEach(function (part) {
         Object.keys(part).forEach(function (name) {
             if (api.hasOwnProperty(name)) {
                 throw new Error('PgImageEditorModel: ' + name + ' is named twice');

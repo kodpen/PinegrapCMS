@@ -55,6 +55,7 @@ function api_console_group_labels() {
 		'files'          => lang('Files'),
 		'forms'          => lang('Forms'),
 		'seo'            => lang('SEO'),
+		'content_review' => lang('Content review'),
 		'system'         => lang('System'),
 		'reports'        => lang('Reports'),
 		'offers'         => lang('Offers'),
@@ -101,6 +102,105 @@ function api_console_range_note($param) {
 
 }
 
+// The rules every endpoint shares, in reading order, as the code answers them:
+// a list of array('id', 'title', 'text', optional 'example'). $base_url is the
+// API's address, used in the first call's example. Each sentence states what
+// response.php, fault.php, idempotency.php, dry_run.php, ratelimit.php and
+// router.php do now; a rule that is not built is not described.
+function api_console_conventions($base_url) {
+
+	return array(
+		array(
+			'id'      => 'credentials',
+			'title'   => lang('Credentials'),
+			'text'    => lang('Send the application key and its secret as HTTP Basic credentials: the user name is the key, the password is the secret. A client that cannot set the Authorization header may send them in X-Pinegrap-Key and X-Pinegrap-Secret. A team devices session and an OAuth connection send Authorization: Bearer with their access token instead. Only a test key (pg_test_…) is read from the query string or the body; a live key there is ignored, and the call is answered 401.'),
+			'example' => 'curl -u APPLICATION_KEY:SECRET_KEY "' . $base_url . '/meta"'
+		),
+		array(
+			'id'      => 'errors',
+			'title'   => lang('Errors and X-Request-Id'),
+			'text'    => lang('A failure answers with its HTTP status and one error object: code is the stable name to branch on, message is a sentence for a person, field names the input at fault when there is one, and request_id identifies the call. A refusal about how the call was made (400, 401, 403, 405, 422, 429) also carries docs, the address of this page. Every answer carries the same id in the X-Request-Id header: quote it when you ask the site\'s operator about a call. A 409 is named in the description of the endpoint that can answer it; the full list of codes is under Errors at the end.') . ' ' . lang('A 422 from the endpoint\'s own checks lists every refused field in errors, each with field, code and message, at most 20; field and message above are the first of them.'),
+			'example' => '{"error": {"code": "validation_failed", "message": "...", "field": "limit", "request_id": "8f2c...", "docs": "...", "errors": [{"field": "limit", "code": "above_max", "message": "..."}]}}'
+		),
+		array(
+			'id'      => 'paging',
+			'title'   => lang('Paging'),
+			'text'    => lang('A listing answers data, the records of one page, and page: limit, has_more and next_cursor. Ask for the next page with cursor set to next_cursor, and stop when has_more is false and next_cursor is null. limit sets the rows per page within the range the listing declares. A cursor is opaque: send it back as it came.'),
+			'example' => '{"data": [...], "page": {"limit": 50, "has_more": true, "next_cursor": "..."}}'
+		),
+		array(
+			'id'      => 'idempotency',
+			'title'   => lang('Idempotency-Key'),
+			'text'    => lang('A write (POST, PUT, PATCH or DELETE) may carry an Idempotency-Key of up to 64 characters, kept for the application that sent it. The first call stores its answer under the key for about a day; the same call sent again with the same key gets that answer back with Idempotent-Replay: true instead of being carried out twice. The same key with another method, path or body is refused with 409 idempotency_key_reused; a retry that arrives while the first call is still running gets 409 idempotency_in_progress with Retry-After: 1. A failed call keeps nothing, so it can be sent again with the same key.')
+		),
+		array(
+			'id'      => 'dry-run',
+			'title'   => lang('Dry run'),
+			'text'    => lang('A write marked "Can be rehearsed" takes X-Dry-Run: true, or dry_run=true in the query. It makes every check the real call makes, writes nothing and answers 200 with dry_run, would, resource and, where there is one, detail; a refusal is the one the real call would get. Only what the write itself would find, such as a name taken in the meantime, is not foreseen. Any other write refuses a rehearsal with 400 dry_run_unsupported. A rehearsal stores nothing under an Idempotency-Key, so the real call can follow with the same key.'),
+			'example' => '{"dry_run": true, "would": "updated", "resource": "product", "detail": {"id": 12, "fields": 2}}'
+		),
+		array(
+			'id'      => 'etag',
+			'title'   => lang('ETag and If-Match'),
+			'text'    => lang('Every successful GET carries an ETag. Send it back in If-None-Match and, while the answer is unchanged, the call is answered 304 Not Modified with no body; the tag is weak and compared without W/. Nothing is cached on the server: answers carry Cache-Control: no-store. A file download also answers Range requests. Updates do not read If-Match: when two clients change the same record, the later write stands.')
+		),
+		array(
+			'id'      => 'rate-limit',
+			'title'   => lang('Rate limit'),
+			'text'    => lang('Calls are counted per application and minute against the limit on its row in Application Access (120 by default); a team devices session and an OAuth connection are each counted on their own against the same limit. Every answer to a signed-in call carries X-RateLimit-Limit, X-RateLimit-Remaining and X-RateLimit-Reset, the Unix time the minute ends. Past the limit the call is refused with 429 rate_limited and Retry-After in seconds.')
+		),
+		array(
+			'id'      => 'post-twins',
+			'title'   => lang('POST in place of PATCH and DELETE'),
+			'text'    => lang('Some servers refuse PATCH and DELETE before the call reaches the site. So an update is a POST, and an endpoint that takes PATCH as well says so; a delete has a POST twin, its address followed by /delete, listed beside it, or its description names the POST address. A POST may also carry X-HTTP-Method-Override: PATCH, PUT or DELETE.')
+		),
+		array(
+			'id'      => 'formats',
+			'title'   => lang('Formats'),
+			'text'    => lang('Answers are JSON in UTF-8, apart from file downloads and this page. A body is read as JSON when its Content-Type names JSON, otherwise as a form (application/x-www-form-urlencoded, or multipart/form-data where a file is sent). Money is a whole number of minor units: 1999 is 19.99. Times are ISO-8601 in UTC. On a GET, fields=name,price keeps only those top-level fields of each record; id always stays.')
+		),
+		array(
+			'id'      => 'language',
+			'title'   => lang('Language'),
+			'text'    => lang('error.message and the other texts written for a person come in the site\'s language, which GET /meta names in language. Codes, field names and the values a client branches on do not change with it.')
+		)
+	);
+
+}
+
+// The Conventions section both pages print above the endpoint list: one h2,
+// the line saying the reference is in English, and an h3 per topic with an id
+// of its own to link to. $items is api_console_conventions()'s list.
+function api_console_conventions_html($items) {
+
+	$topics = '';
+
+	foreach ($items as $item) {
+
+		$example = isset($item['example'])
+			? '<div class="doc-curl"><code>' . h($item['example']) . '</code></div>'
+			: '';
+
+		$topics .= '
+			<div class="doc-conv-item" id="conv_' . h($item['id']) . '">
+				<h3 class="pg-title-status doc-conv-h">' . h($item['title']) . '</h3>
+				<p class="doc-desc mb-0">' . h($item['text']) . '</p>
+				' . $example . '
+			</div>';
+
+	}
+
+	return '<section class="doc-conv card mb-5" id="conventions" aria-labelledby="conventions_h">
+		<div class="card-body py-5">
+			<h2 class="pg-title-section mb-2" id="conventions_h">' . h(lang('Conventions')) . '</h2>
+			<p class="pg-text-2 mb-0"><i class="bi bi-translate me-1" aria-hidden="true"></i>' . h(lang('This reference is in English: endpoint summaries, descriptions and field names are the API\'s own words and are not translated.')) . '</p>
+			<div class="doc-conv-grid">' . $topics . '
+			</div>
+		</div>
+	</section>';
+
+}
+
 // The endpoint blocks and the index beside them, grouped by resource in the
 // order the schema declares them. Returns array('nav' => html, 'panels' => html,
 // 'count' => endpoints, 'groups' => groups). $try_hint is a sentence shown
@@ -129,6 +229,13 @@ function api_console_endpoints_html($try_hint = '') {
 
 	$count = 0;
 
+	// The index opens with the rules every endpoint shares. The section itself
+	// is printed by each page above the list (api_console_conventions_html()),
+	// so the console shows it before a key is entered.
+	$nav .= '<a class="doc-nav-item doc-nav-conv" href="#conventions">
+		<i class="bi bi-book" aria-hidden="true"></i>
+		<span>' . h(lang('Conventions')) . '</span></a>';
+
 	foreach ($groups as $tag => $routes) {
 
 		// A prefix with no line in the list still reads as words, never as
@@ -137,7 +244,7 @@ function api_console_endpoints_html($try_hint = '') {
 
 		$nav .= '<div class="doc-nav-group">' . h($label) . '</div>';
 
-		$panels .= '<div class="doc-group-h">' . h($label) . '</div>';
+		$panels .= '<h2 class="doc-group-h" id="group_' . h($tag) . '">' . h($label) . '</h2>';
 
 		foreach ($routes as $route) {
 
@@ -294,11 +401,11 @@ function api_console_endpoints_html($try_hint = '') {
 			$panels .= '
 			<div class="doc-ep" id="' . $anchor . '" data-id="' . h($route['id']) . '"
 				data-method="' . h($route['method']) . '" data-path="' . h($route['path']) . '">
-				<div class="doc-ep-head">
+				<h3 class="doc-ep-head">
 					<span class="doc-m ' . $method_class . '">' . h($route['method']) . '</span>
 					<code class="doc-path">' . h($route['path']) . '</code>
 					' . ($route['scope'] !== '' ? '<span class="doc-scope"><i class="bi bi-shield-check"></i> ' . h($route['scope']) . '</span>' : '') . '
-				</div>
+				</h3>
 				<div class="doc-ep-body">
 					<p class="doc-summary">' . h($route['summary']) . $accepts . '</p>
 					' . (isset($route['description']) ? '<p class="doc-desc">' . h($route['description']) . '</p>' : '') . '
@@ -326,7 +433,7 @@ function api_console_endpoints_html($try_hint = '') {
 			<span class="doc-m post">~</span>
 			<span>' . h(lang('What this site can tell you')) . '</span></a>';
 
-	$panels .= '<div class="doc-group-h">' . h(lang('Webhook events')) . '</div>' . api_console_events_html();
+	$panels .= '<h2 class="doc-group-h" id="group_events">' . h(lang('Webhook events')) . '</h2>' . api_console_events_html();
 
 	// The failures, last, with their own place in the list on the left. Neither
 	// block is counted as an endpoint - neither is one - so "31 endpoints"
@@ -336,7 +443,7 @@ function api_console_endpoints_html($try_hint = '') {
 			<span class="doc-m del">!</span>
 			<span>' . h(lang('Codes and the answer shape')) . '</span></a>';
 
-	$panels .= '<div class="doc-group-h">' . h(lang('Errors')) . '</div>' . api_console_errors_html();
+	$panels .= '<h2 class="doc-group-h" id="group_errors">' . h(lang('Errors')) . '</h2>' . api_console_errors_html();
 
 	return array('nav' => $nav, 'panels' => $panels, 'count' => $count, 'groups' => count($groups));
 
@@ -364,10 +471,10 @@ function api_console_events_html() {
 	}
 
 	return '<div class="doc-ep" id="ep_events">
-		<div class="doc-ep-head">
+		<h3 class="doc-ep-head">
 			<span class="doc-m post">' . h(lang('Webhook events')) . '</span>
 			<code class="doc-path">' . h(lang('Registered with POST /webhooks')) . '</code>
-		</div>
+		</h3>
 		<div class="doc-ep-body">
 			<p class="doc-desc">' . h(lang('Rather than ask this API on a timer, an application can register an address and be told. The site posts a JSON body carrying the event name, created_at as a UTC instant, and the few fields in data that identify the thing, and signs it with the subscription secret in the X-Pinegrap-Signature header. Delivery is queued and sent by the scheduled task, so nothing an outside server does can slow down a checkout. Fetch the object itself when you need more than the identifiers.')) . '</p>
 			<div class="doc-curl"><code>{"event": "order.created", "created_at": "2026-01-25T09:14:03Z", "data": {"id": 1042}}</code></div>
@@ -398,16 +505,15 @@ function api_console_errors_html() {
 	}
 
 	return '<div class="doc-ep" id="ep_errors">
-		<div class="doc-ep-head">
+		<h3 class="doc-ep-head">
 			<span class="doc-m del">' . h(lang('Errors')) . '</span>
 			<code class="doc-path">' . h(lang('Every failure answers with the same shape')) . '</code>
-		</div>
+		</h3>
 		<div class="doc-ep-body">
 			<p class="doc-desc">' . h(lang('A failure carries the code to branch on, a message written for a person, the request_id that identifies the call in this site\'s API log, and - when the failure is about how the call was made - the address of this page. The message may be reworded or translated; the code will not be.')) . '</p>
 			<div class="doc-curl"><code>{"error": {"code": "validation_failed", "message": "...", "field": "limit", "request_id": "8f2c...", "docs": "..."}}</code></div>
 			<div class="doc-params mt-5"><span class="doc-params-h">' . h(lang('Codes')) . '</span>
 				<table class="table table-sm mb-0"><tbody>' . $rows . '</tbody></table></div>
-			<p class="doc-desc mt-5">' . h(lang('Rate limit: every answer carries X-RateLimit-Limit, X-RateLimit-Remaining and X-RateLimit-Reset, and a refused call carries Retry-After. A 409 is reported by the endpoint that can produce it and is named in that endpoint\'s description.')) . '</p>
 		</div>
 	</div>';
 
@@ -445,10 +551,20 @@ function api_console_css() {
 .doc-m.get { color: var(--pg-primary-fg-emphasis); }
 .doc-m.patch, .doc-m.put { color: var(--pg-warning-fg-emphasis); }
 .doc-m.delete { color: var(--pg-danger-fg-emphasis); }
-.doc-group-h { font-size: 0.6875rem; text-transform: uppercase; letter-spacing: .06em; color: var(--pg-fg-2); margin: 22px 0 10px; }
+.doc-group-h { font-size: 0.6875rem; font-weight: var(--pg-weight-strong); line-height: var(--pg-leading); text-transform: uppercase; letter-spacing: .06em; color: var(--pg-fg-2); margin: 22px 0 10px; scroll-margin-top: 16px; }
 .doc-group-h:first-child { margin-top: 0; }
+.doc-nav-conv { font-weight: var(--pg-weight-medium); }
 .doc-ep { border: 1px solid var(--pg-border-color); border-radius: 10px; margin-bottom: 14px; overflow: hidden; }
-.doc-ep-head { display: flex; align-items: center; gap: 10px; padding: 11px 14px; background: var(--pg-bg-1); }
+.doc-ep-head { display: flex; align-items: center; gap: 10px; padding: 11px 14px; background: var(--pg-bg-1);
+	margin: 0; font-size: inherit; font-weight: inherit; line-height: inherit; }
+/* The Conventions section: two columns of topics where there is room. */
+.doc-conv-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px 28px; margin-top: 18px; }
+.doc-conv-h { margin: 0 0 6px; }
+.doc-conv-item { min-width: 0; scroll-margin-top: 16px; }
+.doc-conv-item .doc-curl { margin-top: 8px; }
+@media (max-width: 1024px) {
+	.doc-conv-grid { grid-template-columns: 1fr; }
+}
 .doc-path { font-size: 0.8125rem; font-weight: 600; word-break: break-all; }
 .doc-scope { margin-left: auto; font-size: 0.65625rem; opacity: .7; }
 .doc-ep-body { padding: 14px; }

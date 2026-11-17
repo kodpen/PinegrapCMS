@@ -114,7 +114,7 @@ function api_system_status_schema() {
 
 	return array(
 		'score'      => 'integer',
-		'checked_at' => 'string?',
+		'checked_at' => 'datetime?',
 		'checks'     => array(array(
 			'key'     => 'string',
 			'group'   => 'string',
@@ -133,11 +133,11 @@ function api_system_status_schema() {
 			'backup_bytes'   => 'integer',
 			'file_bytes'     => 'integer',
 			'total_bytes'    => 'integer',
-			'measured_at'    => 'string?'
+			'measured_at'    => 'datetime?'
 		),
 		'maintenance' => array(
 			'active' => 'boolean',
-			'until'  => 'string?'
+			'until'  => 'datetime?'
 		)
 	);
 

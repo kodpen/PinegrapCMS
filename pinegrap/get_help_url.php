@@ -486,6 +486,8 @@ function get_help_url($properties = array())
         'messages_mail'           => 'workspace-cont#e-mails',
         'workspace_calendar_feed' => 'workspace#work-calendar-subscription',
         'workspace_mcp'           => 'api#mcp',
+        // The meeting link's page is written up with the bookings.
+        'workspace_meeting_link'  => 'site-settings#bookings',
 
         // API and integrations
         'api_settings'         => 'api#api-keys',

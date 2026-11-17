@@ -9,14 +9,12 @@ description: Plan channel-commands, steps CC1 to CC6: the registry with no chang
   - Existing: `includes/workspace/commands.php`: the literal list of `ws_commands()`, the switch of `ws_command_run()`, the branches of `ws_command_suggest()`, `ws_command_offered()` and `ws_api_command_kind()` become lookups. A `case` body moves into a runner function unchanged; no `lang()` text is touched.
   - Tests, red first: every key has a runner that exists; the ordered keys equal today's; an application's command named as a built-in is shadowed. `tests/workspace_commands_test.php` and `tests/workspace_command_run_test.php` stay green.
   - Memory: `workspace/workspace-command-registry.md` rewritten for the entry; the census files deleted, what lasts moved there.
-  - Cut: CC1a done (#10007, list, names, gate, API class); CC1b open (runners, live lines).
+  - Cut: CC1a done (#10007, list, names, gate, API class); CC1b done (#10016, runners, live lines).
   - Features: K1 to K3.
 
 - CC2 (M) after CC1: the gate, /help, the list in groups, commands as a reply.
-  - Existing: the registry, `commands.php` (`ws_command_offered()` takes the channel, `ws_command_help()`), `ws_palette_commands()`, `assets/js/workspace.js` (`drawPicker()` header rows; an entry says where it runs and the list filters by the open channel; the server refuses all the same).
-  - Tests: a channel-only entry not offered in a discussion (PHP and, for the list, Node); /help's groups in order; `/help task` and `/yardım görev`; an unknown `/help xyz` answered with the closest names; a header row never picked; K7's three textless replies, and the same three with a text unchanged.
-  - Pictures: /help, `/yardım görev`, the list with headers.
-  - Features: K4 to K7.
+  - CC2a done (#10057): the server side, K4 gate, K5 /help, K7 replies (`workspace/workspace-command-help.md`).
+  - CC2b done (#10166): the "/" list in groups and by channel, K4 on the client, K6 (`workspace/workspace-command-help.md`).
 
 - CC3 (M) after CC2: /hatırlat and /özet.
   - Tests: `/hatırlat yarın 10:00 Teklifi gönder` gives the plan's day, time and title with the form's default reminder; no time opens the form filled; as a reply the note holds the message's link; the live line; /özet not offered where the button is not; both answers `ephemeral`.

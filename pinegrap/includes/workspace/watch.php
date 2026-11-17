@@ -209,6 +209,14 @@ function ws_events_catalog()
         'page.updated'     => array('label' => lang('A page is changed'), 'when' => lang('When a page is changed in the designer or through the API'), 'record' => 'page', 'right' => 'member', 'filter' => ''),
     );
 
+    // Content review: a page or a collection record whose review date has
+    // passed, checked against the items its creator may edit
+    // (ws_events_creator_sees()). The record is the page, or the record as a
+    // form (ws_events_record_of()).
+    if (function_exists('pg_content_review_ready') && pg_content_review_ready()) {
+        $catalog['content.review_due'] = array('label' => lang('A page or record is due for review'), 'when' => lang('When a page or collection record passes its review date'), 'record' => 'page', 'right' => 'member', 'filter' => '');
+    }
+
     // The ERP's: invoices, receipts and payments, incoming e-documents and
     // sales quotes, for the ERP's readers (a receipt for its cash right).
     if (defined('ERP_ENABLED') && ERP_ENABLED) {
@@ -517,6 +525,18 @@ function ws_events_creator_sees($user_id, $event, $payload)
         return is_array($ref) && !empty($ref['known']);
     }
 
+    // An item due for review: one the creator may edit, by content
+    // review's own rule (the people who may be its person).
+    if ((string) $event === 'content.review_due') {
+        if (!function_exists('pg_content_review_user_may_edit')) {
+            return false;
+        }
+
+        $kind = (($payload['kind'] ?? '') === 'record') ? 'record' : 'page';
+
+        return pg_content_review_user_may_edit($user_id, $kind, pg_content_review_item_facts($kind, (int) ($payload['id'] ?? 0)));
+    }
+
     if (strpos((string) $event, 'workspace.task.') === 0) {
         $task = ws_task((int) ($payload['id'] ?? 0));
 
@@ -659,6 +679,10 @@ function ws_events_record_of($event, $payload)
         case 'page.created':
         case 'page.updated':
             return array('page', (int) ($payload['id'] ?? 0));
+
+        // A page, or a record as the form it is.
+        case 'content.review_due':
+            return array((($payload['kind'] ?? '') === 'record') ? 'form' : 'page', (int) ($payload['id'] ?? 0));
 
         case 'calendar_event.reserved':
             return array('calendar_event', (int) ($payload['id'] ?? 0));

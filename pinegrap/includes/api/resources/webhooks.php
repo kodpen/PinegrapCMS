@@ -24,6 +24,7 @@ if (!defined('PG_API_ENTRY') && !defined('PG_API_PANEL')) {
 }
 
 require_once(dirname(dirname(__FILE__)) . '/outbound/webhooks.php');
+require_once(dirname(dirname(__FILE__)) . '/outbound/webhook_payloads.php');
 
 function api_webhook_present($row) {
 
@@ -137,6 +138,53 @@ function api_webhooks_list($params) {
 
 }
 
+// Every event that can be subscribed to, with what it carries: for an
+// application's own event chooser. GET /webhooks keeps its list of names.
+function api_webhooks_events($params) {
+
+	api_ok(array('data' => api_webhook_event_rows(api_webhook_events(), api_webhook_event_modules(), api_webhook_event_payloads())));
+
+}
+
+// The module of each event a module adds, by name. The flows and the incoming
+// mail merged on their own with the Workspace off are still the Workspace's
+// events.
+function api_webhook_event_modules() {
+
+	api_modules_load();
+
+	$core = api_webhook_core_events();
+
+	$names = array('flows' => 'workspace', 'mail' => 'workspace');
+
+	$out = array();
+
+	foreach (api_modules() as $key => $module) {
+
+		$declare = $module['prefix'] . 'webhook_events';
+
+		if (!$module['enabled'] || !function_exists($declare)) {
+
+			continue;
+
+		}
+
+		foreach ((array)call_user_func($declare) as $name => $description) {
+
+			if (!isset($core[$name]) && !isset($out[$name])) {
+
+				$out[$name] = isset($names[$key]) ? $names[$key] : (string)$key;
+
+			}
+
+		}
+
+	}
+
+	return $out;
+
+}
+
 function api_webhooks_create($params) {
 
 	$app = api_current_app();
@@ -156,15 +204,18 @@ function api_webhooks_create($params) {
 
 	$group_id = api_webhook_clean_channel_group(isset($params['channel_group_id']) ? $params['channel_group_id'] : 0, $clean);
 
-	if ((int)api_value("SELECT COUNT(*) FROM api_webhooks WHERE app_id = '" . (int)$app['id'] . "'") >= 10) {
+	if (api_webhook_subscription_limit_reached(api_value("SELECT COUNT(*) FROM api_webhooks WHERE app_id = '" . (int)$app['id'] . "'"))) {
 
-		api_fail(409, 'too_many_webhooks', lang('An application may hold ten subscriptions.'));
+		api_fail(409, 'too_many_webhooks', lang(array(
+			'string' => 'An application may hold {var:1} subscriptions.',
+			'vars'   => api_webhook_subscription_limit()
+		)));
 
 	}
 
 	// Above: the address answers, every event named exists, the group (if
 	// one is named) is there for those events, and the application is under
-	// its ten subscriptions. Below: the row, and the one and only time its
+	// its subscription limit. Below: the row, and the one and only time its
 	// secret is readable.
 	api_dry_run_stop('created', 'webhook', array(
 		'url'              => $params['url'],
@@ -441,19 +492,54 @@ function api_webhooks_test($params) {
 
 	}
 
-	api_dry_run_stop('queued', 'webhook_test', array('id' => $id));
+	// With event, that event's sample, one of the subscription's own events:
+	// queued for this subscription alone and never announced, so no flow,
+	// channel or other subscriber hears it.
+	$event = isset($params['event']) ? trim((string)$params['event']) : '';
 
-	$body = json_encode(array(
-		'event'      => 'webhook.test',
-		'created_at' => gmdate('Y-m-d\TH:i:s\Z'),
-		'data'       => array('webhook_id' => $id)
-	), JSON_UNESCAPED_UNICODE);
+	$sample = null;
+
+	if ($event !== '') {
+
+		$payloads = api_webhook_event_payloads();
+
+		$refused = api_webhook_sample_refusal($event, (array)json_decode((string)$row['events'], true), $payloads);
+
+		if ($refused === 'not_listened') {
+
+			api_fail_validation(lang(array('string' => 'This subscription does not listen to {var:1}.', 'vars' => $event)), 'event');
+
+		}
+
+		if ($refused === 'no_sample') {
+
+			api_fail_validation(lang(array('string' => 'There is no sample of {var:1} yet. Send the test without an event.', 'vars' => $event)), 'event');
+
+		}
+
+		$sample = $payloads[$event]['sample'];
+
+	}
+
+	$name = ($sample !== null) ? $event : 'webhook.test';
+
+	api_dry_run_stop('queued', 'webhook_test', array('id' => $id, 'event' => $name));
+
+	$created_at = gmdate('Y-m-d\TH:i:s\Z');
+
+	$body = ($sample !== null)
+		? api_webhook_sample_body($event, $sample, $created_at)
+		: json_encode(array(
+			'event'      => 'webhook.test',
+			'created_at' => $created_at,
+			'data'       => array('webhook_id' => $id)
+		), JSON_UNESCAPED_UNICODE);
 
 	api_exec("INSERT INTO api_webhook_queue
 		(webhook_id, event, payload, attempts, next_attempt_at, created_timestamp)
 		VALUES (
 			'" . $id . "',
-			'webhook.test',
+			'" . escape($name) . "',
 			'" . escape($body) . "',
 			'0',
 			UNIX_TIMESTAMP(),
@@ -463,7 +549,7 @@ function api_webhooks_test($params) {
 	api_ok(array(
 		'webhook_id'  => $id,
 		'delivery_id' => (int)api_insert_id(),
-		'event'       => 'webhook.test',
+		'event'       => $name,
 		'queued'      => true
 	));
 
@@ -518,10 +604,25 @@ function api_webhook_schema() {
 		'last_status_code' => 'integer?',
 		'last_error'       => 'string?',
 		'channel_group_id' => 'integer?',
-		'created_at'       => 'string?',
+		'created_at'       => 'datetime?',
 		'secret'           => 'string',
 		'signature_header' => 'string',
 		'requeued'         => 'integer'
+	);
+
+}
+
+// One row of GET /webhooks/events (api_webhook_event_rows()), declared for the
+// OpenAPI document. Each field is name, type, nullable and description; the
+// sample is null for an event whose payload is not written yet.
+function api_webhook_event_schema() {
+
+	return array(
+		'name'        => 'string',
+		'description' => 'string',
+		'module'      => 'string',
+		'fields'      => 'object[]',
+		'sample'      => 'object?'
 	);
 
 }

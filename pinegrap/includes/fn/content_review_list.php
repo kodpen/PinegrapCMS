@@ -357,13 +357,14 @@ function pg_content_review_list_state_label($state)
  * Whether a role may do an action on the list, pure: roles under 3 every
  * one; a user (role 3) only "Mark reviewed", on their own items.
  *
- * @param string $action set_person, set_date, mark_reviewed or clear
+ * @param string $action set_person, set_date, mark_reviewed, clear or
+ *                       make_task
  * @param int    $role
  * @return bool
  */
 function pg_content_review_list_action_allowed($action, $role)
 {
-    if (!in_array($action, array('set_person', 'set_date', 'mark_reviewed', 'clear'), true)) {
+    if (!in_array($action, array('set_person', 'set_date', 'mark_reviewed', 'clear', 'make_task'), true)) {
         return false;
     }
 
@@ -413,11 +414,22 @@ function pg_content_review_list_facts(array $records)
         }
     }
 
-    $facts = array('names' => array(), 'revisions' => array(), 'findings' => array());
+    $facts = array('names' => array(), 'revisions' => array(), 'findings' => array(), 'members' => array());
 
     if ($user_ids) {
-        foreach ((array) db_items('SELECT user_id, user_username FROM user WHERE user_id IN (' . implode(', ', array_keys($user_ids)) . ')') as $row) {
+        $roles = array();
+
+        foreach ((array) db_items('SELECT user_id, user_username, user_role FROM user WHERE user_id IN (' . implode(', ', array_keys($user_ids)) . ')') as $row) {
             $facts['names'][(int) $row['user_id']] = (string) $row['user_username'];
+            $roles[(int) $row['user_id']] = (int) $row['user_role'];
+        }
+
+        // Who is on the Workspace team, for "Make a task" (none with the
+        // Workspace off).
+        if (pg_content_review_workspace()) {
+            foreach ($roles as $user_id => $role) {
+                $facts['members'][$user_id] = !empty(ws_rights(array('id' => $user_id, 'role' => $role))['member']);
+            }
         }
     }
 
@@ -544,7 +556,7 @@ function pg_content_review_list_row(array $record, array $facts, array $context)
             'user_id' => $person_id,
             'review_on' => (string) $review_on,
             'interval_months' => $months,
-        )), 'align-middle text-nowrap'),
+        ), pg_content_review_task_offered(!empty($facts['members']), $person_id, !empty($facts['members'][$person_id]))), 'align-middle text-nowrap'),
     ));
 }
 
@@ -557,9 +569,11 @@ function pg_content_review_list_row(array $record, array $facts, array $context)
  * @param bool   $managers role under 3
  * @param array  $values   the row's user_id, review_on (as typed) and
  *                         interval_months, for its dialogs (the date ISO)
+ * @param bool   $task     whether "Make a task" is offered
+ *                         (pg_content_review_task_offered())
  * @return string
  */
-function pg_content_review_list_menu($id, $kind, $managers, array $values = array())
+function pg_content_review_list_menu($id, $kind, $managers, array $values = array(), $task = false)
 {
     // The row's values fill its dialog's fields (data-pg-cr-value-<field>).
     $filled = '';
@@ -579,7 +593,8 @@ function pg_content_review_list_menu($id, $kind, $managers, array $values = arra
         $items = $item('set_person', 'person', lang('Set person'))
             . $item('set_date', 'calendar-event', lang('Set review date'))
             . $items
-            . $item('clear', 'x-circle', lang('Clear'));
+            . $item('clear', 'x-circle', lang('Clear'))
+            . ($task ? '<li><hr class="menu-divider"></li>' . $item('make_task', 'list-check', lang('Make a task')) : '');
 
         if ($kind === 'page') {
             $items .= '<li><hr class="menu-divider"></li>'

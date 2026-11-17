@@ -12,6 +12,7 @@ description: Announcing webhook events: pg_announce() from any screen, contact h
 ## What must the event name be?
 - A key of `api_webhook_events()` (`includes/api/outbound/webhooks.php`): an unknown name is dropped without a word (`api_webhook_event_is_valid()`). A module adds its own events through its seam; the core list wins a name it already has, so a module cannot redefine `order.created`.
 - The catalogue text says honestly what is NOT announced ("not bulk imports", "through the API").
+- What `data` carries, field by field, with a sample: `api_webhook_event_payloads()` (`api-webhook-event-payloads.md`). A key added to an announcement gets its field and sample there, or the test fails.
 
 ## What is never announced?
 - Bulk paths (contact import, campaign upload, design or theme import): one listing tells a receiver more than five thousand queue rows. The catalogue line says so.

@@ -323,7 +323,7 @@ function test_workspace_command_suggestions_are_read_by_the_parser()
 			$kinds[] = ws_command_parse_create($item['value'] . ' x')['kind'];
 		}
 
-		pg_assert_same(array('product', 'product_group'), $kinds, $language . ' kinds, every one read');
+		pg_assert_same(array('product', 'product_group', 'contact'), $kinds, $language . ' kinds, every one read');
 	}
 
 	pg_assert_same('bugün', ws_command_suggestions('tr')['dates'][0]['value'], 'Turkish first day');

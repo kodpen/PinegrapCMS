@@ -4,7 +4,7 @@ description: Plan meeting-link, steps SL1 to SL4: the link's code and rules with
 ---
 
 ## Which steps are there?
-- SL1 (M) The link and its rules, server and data only.
+- SL1 (M) The link and its rules, server and data only. Done in #10031.
   - A migration step adds one column to `ws_profiles` (the member's meeting address); the draft PR's body carries its type for the architect.
   - Existing files: the Workspace profile's read and save (the new column). The engine's functions are called, not changed.
   - New: `includes/fn/booking_links.php` (the code made and checked, the member a code names, the services a link offers, the meeting address of a booking), `tests/booking_links_test.php`.
@@ -18,7 +18,7 @@ description: Plan meeting-link, steps SL1 to SL4: the link's code and rules with
   - Pictures: the services, the time pick, the form, the confirmation, a taken time, a phone. To the owner; not marked ready before his look.
   - Features: M4, M5, M8, M9, M10, M11, M12.
 
-- SL3 (S) after SL1: the Workspace screen.
+- SL3 (S) after SL1: the Workspace screen. Done in #10147.
   - Existing files: `includes/workspace/nav.php` (one entry in `ws_nav_groups()`), the short links' checks called, not changed.
   - New: the screen "My meeting link" with the address, Copy, the QR, the short address and the meeting address.
   - Pictures: with and without a short address, a member with no services, a service with a deposit. To the owner.
