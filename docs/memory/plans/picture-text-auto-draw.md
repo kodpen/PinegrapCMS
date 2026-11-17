@@ -1,6 +1,6 @@
 ---
 name: picture-text-auto-draw
-description: Plan (owner 2026-11-17, agent channel poll 143): a translated Design Canvas picture is drawn by itself, in an open panel in the background and by the server with nobody there; steps PA1 to PA5
+description: Plan (owner 2026-11-17, agent channel poll 143): a translated Design Canvas picture is drawn by itself, in an open panel in the background and by the server with nobody there; steps DA1 to DA5
 priority: 6
 ---
 
@@ -35,4 +35,4 @@ priority: 6
 - Drawing on the site's pages for a signed-in visitor; a browser's redraw of the server's picture; a toast or a count of what was drawn; flat pictures, svg words and right-to-left languages, as in the first version.
 
 ## Whose look?
-- The architect's: PA4 changes words on screens the owner accepted (polls 118, 130, 140) and draws nothing new. A new control, if a step turns out to need one, goes to the owner.
+- The architect's: DA4 changes words on screens the owner accepted (polls 118, 130, 140) and draws nothing new. A new control, if a step turns out to need one, goes to the owner.
