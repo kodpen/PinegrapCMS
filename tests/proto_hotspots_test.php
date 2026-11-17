@@ -1272,9 +1272,41 @@ function test_proto_hotspots_view_what_to_check()
 	pg_assert_contains("var amber = _sdProtoEl('span', 'sd-proto-badge sd-proto-badge-empty', String(emptyHere));", $source, 'a frame\'s amber count beside the red one');
 	pg_assert_contains("head.appendChild(_sdProtoEl('span', 'sd-proto-unreached', _sdT('No link leads here')));", $source, 'a page nothing reaches says so');
 	pg_assert_contains("(row.mark === 'empty' ? _sdT('No target') : ", $source, 'a list row without a target says so');
+	pg_assert_contains("if (el.scrollWidth > el.clientWidth + 1) el.classList.add('sd-proto-status-out');", $source, 'a link count that does not fit is left out whole');
+	pg_assert_contains('el.parentNode.title = el.textContent;', $source, 'its words stay in the bar\'s title');
+	pg_assert_contains('.sd-proto-status.sd-proto-status-out { visibility: hidden; }', $css, 'never cut with an ellipsis');
+	pg_assert_contains('.sd-proto-menu-head.sd-proto-problem-broken { color: #ff6b6b; }', $css, '"Broken links" in its button\'s red');
 	foreach (array('.sd-proto-check {', '.sd-proto-badge.sd-proto-badge-empty', '.sd-proto-unreached {', '.sd-proto-hot.sd-proto-mark-empty', '.sd-proto-li-empty .sd-proto-li-to') as $selector) {
 		pg_assert_contains($selector, $css, 'styled: ' . $selector);
 	}
+}
+
+// A system widget leads to pages its settings name (the login widget's
+// "Giriş Yap" to the login page): those pages are reached as by a shared
+// part's link. A form's data page and an e-mail's page are no links; a
+// register link that is not shown leads nowhere.
+function test_proto_hotspots_widget_settings_reach_pages()
+{
+	$config = '{"regionType":"login_region","login_page_id":12,"register_page_id":13,"show_register_link":false,"account_page_id":"0","welcome_email_page_id":14,"custom_form_page_id":15,"detail_page_id":16,"redirect_page_id":12}';
+	$pages = array();
+	foreach (array(10 => 'home', 12 => 'giris', 13 => 'kayit-ol', 14 => 'e-posta', 16 => 'detay') as $id => $name) {
+		$pages[] = array('key' => 'p' . $id, 'page_id' => $id, 'page_name' => $name, 'tree' => array('_id' => 'r' . $id, 'type' => 'root', 'children' => $id === 10 ? array(array('_id' => 'w', 'type' => 'shared_ref', 'props' => array('sharedId' => 1), 'children' => array())) : array()));
+	}
+	$out = proto_hotspots_test_node('var d = H.design(' . proto_hotspots_test_js($pages) . ', { 1: { name: "login", tree: null, system_region_config: ' . proto_hotspots_test_js($config) . ' } });'
+		. ' var l = H.layout(H.mark(d, ' . proto_hotspots_test_js(proto_hotspots_test_read()) . ', []), {});'
+		. ' out = { reaches: d.shared[0].reaches, frame: l.frames.filter(function (f) { return f.id === "s:1"; })[0].reaches, unreached: H.problemsOf(l).unreached,'
+		. ' none: H.widgetPages(null), object: H.widgetPages({ login_page_id: 7, staff_page_id: 7, my_account_page_id: 8 }), bad: H.widgetPages("{bad") };');
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array(12, 16), $out['reaches'], 'the login page and the detail page; no hidden register link, no e-mail, no data page, no zero');
+	pg_assert_same(array(12, 16), $out['frame'], 'the widget\'s frame keeps them');
+	pg_assert_same(array('p:p13', 'p:p14'), $out['unreached'], 'giris and detay are reached by the widget; the hidden register page and the e-mail page are not');
+	pg_assert_same(array(), $out['none'], 'no settings');
+	pg_assert_same(array(7, 8), $out['object'], 'settings as an object, each page once');
+	pg_assert_same(array(), $out['bad'], 'settings that do not parse');
 }
 
 // Which marks a picture shows (F5, F13): the selected frame all of its own;

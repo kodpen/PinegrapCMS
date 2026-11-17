@@ -574,6 +574,38 @@
     // gets no hotspots and loaded: false), and the request for the map
     // read. `pages` are the designer's tabs: key, page_id, page_name and
     // their tree (the open tab's live tree handed in by the caller).
+    // The settings of a system widget that lead a visitor to a page (the
+    // login widget's "Giriş Yap", a list's detail page, where a form goes
+    // after it is sent). Not links: a form's data page, an e-mail's page.
+    var WIDGET_LINKS = ['login_page_id', 'register_page_id', 'account_page_id', 'my_account_page_id', 'staff_page_id', 'forgot_password_page_id', 'detail_page_id', 'redirect_page_id'];
+
+    // The page ids a system widget's settings (JSON text or an object) lead
+    // to, each once, in WIDGET_LINKS order; a register link that is not
+    // shown leads nowhere. [] for none or settings that do not parse.
+    function widgetPages(config) {
+        var c = config;
+
+        if (typeof c === 'string') {
+            try { c = JSON.parse(c); } catch (e) { c = null; }
+        }
+
+        if (!isObject(c)) {
+            return [];
+        }
+
+        var out = [];
+
+        WIDGET_LINKS.forEach(function (key) {
+            var id = parseInt(c[key], 10) || 0;
+
+            if (id > 0 && !(key === 'register_page_id' && c.show_register_link === false) && out.indexOf(id) < 0) {
+                out.push(id);
+            }
+        });
+
+        return out;
+    }
+
     function design(pages, shared) {
         shared = isObject(shared) ? shared : {};
 
@@ -604,7 +636,7 @@
                 var tree = (entry && entry.tree) ? entry.tree : null;
                 var found = tree ? collect(tree) : { hotspots: [], shared: [], menus: [], regions: [] };
 
-                byId[sid] = { id: sid, name: entry ? str(entry.name) : '', loaded: !!tree, pages: 0, hotspots: found.hotspots, sharedIn: found.shared, sketch: tree ? sketch(tree) : null };
+                byId[sid] = { id: sid, name: entry ? str(entry.name) : '', loaded: !!tree, pages: 0, hotspots: found.hotspots, sharedIn: found.shared, sketch: tree ? sketch(tree) : null, reaches: widgetPages(entry && entry.system_region_config) };
                 reach[sid] = [];
                 out.shared.push(byId[sid]);
                 take(found);
@@ -984,6 +1016,8 @@
                     // added below).
                     parts: (group[0] === 'page' && Array.isArray(frame.shared)) ? frame.shared.slice() : [],
                     sketch: bands,
+                    // A system widget's pages, reached as by a link (problemsOf()).
+                    reaches: (group[0] === 'shared' && Array.isArray(frame.reaches)) ? frame.reaches.slice() : [],
                     pic: pic,
                     thumb: thumb,
                     x: 0,
@@ -1827,7 +1861,8 @@
     // frame's count; `unreached`, the page frames no link of another page
     // or of a shared part leads to (the graph canvas core's check(), from
     // the Start page, which never counts; shared parts and chips are no
-    // boxes of it, a shared part's links stand in as one source); `check`,
+    // boxes of it, a shared part's links and a system widget's pages
+    // (`reaches`, widgetPages()) stand in as one source); `check`,
     // the empty links plus the unreached pages.
     function problemsOf(laid) {
         var out = { broken: brokenOf(laid), empty: { list: [], count: {} }, unreached: [], check: 0 };
@@ -1858,6 +1893,22 @@
                 return kind[edge.to] === 'page' && (kind[edge.from] === 'page' || kind[edge.from] === 'shared');
             }).map(function (edge) {
                 return { from: kind[edge.from] === 'shared' ? SHARED : edge.from, to: edge.to };
+            });
+            // A system widget's settings lead to pages as a shared part's
+            // links do.
+            var byPage = {};
+
+            frames.forEach(function (frame) {
+                if (frame.kind === 'page' && frame.pageId) {
+                    byPage[frame.pageId] = frame.id;
+                }
+            });
+            frames.forEach(function (frame) {
+                (frame.kind === 'shared' && Array.isArray(frame.reaches) ? frame.reaches : []).forEach(function (id) {
+                    if (byPage[id]) {
+                        edges.push({ from: SHARED, to: byPage[id] });
+                    }
+                });
             });
 
             out.unreached = window.PGGraphCanvas.check(pages.concat([SHARED]), edges, str(laid.start)).unreached.filter(function (id) {
@@ -2000,6 +2051,7 @@
         listOf: listOf,
         brokenOf: brokenOf,
         problemsOf: problemsOf,
+        widgetPages: widgetPages,
         brokenWhy: brokenWhy
     };
 })();

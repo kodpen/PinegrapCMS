@@ -6524,7 +6524,9 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
     padding: 4px 8px; border-bottom: 1px solid var(--sd-panel-border);
 }
 .sd-proto-title { font-weight: 600; font-size: .85rem; }
-.sd-proto-status { flex: 1; min-width: 0; font-size: .75rem; color: var(--sd-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sd-proto-status { flex: 1; min-width: 0; font-size: .75rem; color: var(--sd-text-muted); overflow: hidden; white-space: nowrap; }
+/* The count that does not fit is left out whole, never cut (_sdProtoStatusFit()). */
+.sd-proto-status.sd-proto-status-out { visibility: hidden; }
 .sd-proto-tools { display: flex; align-items: center; gap: 2px; }
 .sd-proto-btn-label { font-size: .75rem; }
 @media (max-width: 767.98px) {
@@ -6627,6 +6629,7 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
 .sd-proto-check[hidden] { display: none; }
 .sd-proto-check:hover, .sd-proto-check:focus-visible { background: color-mix(in srgb, var(--pgc-in) 16%, transparent); outline: none; }
 .sd-proto-problem.sd-proto-problem-empty .sd-proto-li-to { color: var(--pgc-in); }
+.sd-proto-menu-head.sd-proto-problem-broken { color: #ff6b6b; }
 .sd-proto-menu-head.sd-proto-problem-unreached, .sd-proto-menu-head.sd-proto-problem-empty { color: var(--pgc-in); }
 .sd-proto-badge.sd-proto-badge-empty { background: var(--pgc-in); }
 .sd-proto-unreached {

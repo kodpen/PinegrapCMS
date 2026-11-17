@@ -71486,6 +71486,7 @@ const StyleDesigner = (function () {
             var id = link ? link.frame + '|' + link.port : (hot ? hot.getAttribute('data-link') : '');
             _sdProtoLift(id || '');
         });
+        window.addEventListener('resize', function () { if (_sdProto.open) _sdProtoStatusFit(); });
         // A drawn arrow let go of, on a target or not.
         ['pointerup', 'pointercancel'].forEach(function (type) {
             window.addEventListener(type, function () { if (_sdProto.drawing) _sdProtoDrawing(false); }, true);
@@ -71505,6 +71506,19 @@ const StyleDesigner = (function () {
 
     function _sdProtoStatus(text) {
         if (_sdProto.ui) _sdProto.ui.status.textContent = text || '';
+        _sdProtoStatusFit();
+    }
+
+    // The bar's link count is shown whole or not at all: when it does not
+    // fit beside "N broken" and "N to check" it is left out (its place
+    // kept), and its words stay in the bar's title.
+    function _sdProtoStatusFit() {
+        var ui = _sdProto.ui;
+        if (!ui) return;
+        var el = ui.status;
+        el.classList.remove('sd-proto-status-out');
+        el.parentNode.title = el.textContent;
+        if (el.scrollWidth > el.clientWidth + 1) el.classList.add('sd-proto-status-out');
     }
 
     function _sdProtoToggle() {
@@ -72282,6 +72296,7 @@ const StyleDesigner = (function () {
         // "N to check" in amber after it (F28).
         ui.check.hidden = !toCheck;
         ui.check.textContent = toCheck ? _sdT('{var:1} to check', toCheck) : '';
+        _sdProtoStatusFit();
         canvas.announce(_sdT('{var:1} links', count) + (broken ? ' · ' + _sdT('{var:1} broken', broken) : '') + (toCheck ? ' · ' + _sdT('{var:1} to check', toCheck) : ''));
         // A picked link of a frame no longer there, or no longer a link, goes.
         if (_sdProto.link && !_sdProtoRow(_sdProto.byId[_sdProto.link.frame], _sdProto.link.port)) _sdProto.link = null;
