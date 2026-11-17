@@ -892,7 +892,10 @@ function pg_content_proposals_get($id)
 }
 
 /**
- * The changes the list shows, newest first, with their page and people.
+ * The changes the list shows, newest first, with their page and people:
+ * every waiting and stale change, however old (the count above the page
+ * list counts them all), then the newest 200 changes closed in the last
+ * PG_CONTENT_PROPOSALS_KEEP_DAYS days.
  *
  * @return array
  */
@@ -902,18 +905,18 @@ function pg_content_proposals_list()
         return array();
     }
 
-    $since = time() - PG_CONTENT_PROPOSALS_KEEP_DAYS * 86400;
-    $rows = db_items((string) pg_db_bind(
-        "SELECT p.*, page.page_name, page.page_style, editor.user_username AS editor_name, decider.user_username AS decider_name
+    $select = "SELECT p.*, page.page_name, page.page_style, editor.user_username AS editor_name, decider.user_username AS decider_name
          FROM design_proposals AS p
          LEFT JOIN page ON page.page_id = p.page_id
          LEFT JOIN user AS editor ON editor.user_id = p.requested_by
          LEFT JOIN user AS decider ON decider.user_id = p.decided_by
-         WHERE p.agent = ? AND (p.status IN ('pending', 'stale') OR p.decided_at >= ?)
-         ORDER BY p.id DESC LIMIT 200",
-        array(PG_CONTENT_PROPOSALS_AGENT, $since), 'escape'));
+         WHERE p.agent = ? AND ";
+    $open = db_items((string) pg_db_bind($select . "p.status IN ('pending', 'stale') ORDER BY p.id DESC",
+        array(PG_CONTENT_PROPOSALS_AGENT), 'escape'));
+    $closed = db_items((string) pg_db_bind($select . "p.status NOT IN ('pending', 'stale') AND p.decided_at >= ? ORDER BY p.id DESC LIMIT 200",
+        array(PG_CONTENT_PROPOSALS_AGENT, time() - PG_CONTENT_PROPOSALS_KEEP_DAYS * 86400), 'escape'));
 
-    return is_array($rows) ? $rows : array();
+    return array_merge(is_array($open) ? $open : array(), is_array($closed) ? $closed : array());
 }
 
 /**
