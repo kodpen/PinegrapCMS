@@ -199,7 +199,7 @@ if (is_array($bw_made_row) && ((int) $bw_made_row['staff_id'] === (int) $bw_memb
     $bw_content .= '</dl>';
 
     if ((string) $bw_made[1] !== '') {
-        $bw_content .= '<p class="mb-0"><a class="btn btn-outline theme-secondary" href="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/booking_manage.php?b=' . (int) $bw_made[0] . '&t=' . $bw_made[1] . '&ics=1') . '">'
+        $bw_content .= '<p class="mb-0"><a class="pg-button pg-button-quiet" href="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/booking_manage.php?b=' . (int) $bw_made[0] . '&t=' . $bw_made[1] . '&ics=1') . '">'
             . '<i class="bi bi-calendar-plus me-3" aria-hidden="true"></i>' . h(lang('Add to calendar')) . '</a></p>';
     }
 
@@ -250,11 +250,11 @@ if ($bw_show_form) {
         $attributes = ' id="' . $id . '" name="' . $name . '" autocomplete="' . $autocomplete . '"' . ($required ? ' required' : '')
             . ($invalid ? ' aria-invalid="true" aria-describedby="' . $id . '_error"' : '');
         $control = ($type === 'textarea')
-            ? '<textarea class="form-control' . ($invalid ? ' is-invalid' : '') . '"' . $attributes . ' rows="3" maxlength="1000">' . h($bw_values[$name]) . '</textarea>'
-            : '<input type="' . $type . '" class="form-control' . ($invalid ? ' is-invalid' : '') . '"' . $attributes . ' value="' . h($bw_values[$name]) . '">';
+            ? '<textarea class="pg-input"' . $attributes . ' rows="3" maxlength="1000">' . h($bw_values[$name]) . '</textarea>'
+            : '<input type="' . $type . '" class="pg-input"' . $attributes . ' value="' . h($bw_values[$name]) . '">';
 
-        return '<div class="mb-5"><label class="form-label" for="' . $id . '">' . h($label) . '</label>' . $control
-            . ($invalid ? '<div class="invalid-feedback" id="' . $id . '_error">' . h($bw_errors[$name]) . '</div>' : '') . '</div>';
+        return '<div class="mb-5"><label class="pg-field-label" for="' . $id . '">' . h($label) . '</label>' . $control
+            . ($invalid ? '<div class="pg-field-help pg-field-error" id="' . $id . '_error">' . h($bw_errors[$name]) . '</div>' : '') . '</div>';
     };
     $bw_privacy = pg_booking_widget_privacy_url();
 
@@ -269,12 +269,13 @@ if ($bw_show_form) {
         . $bw_field('email', lang('E-mail'), 'email', 'email', true)
         . $bw_field('phone', lang('Phone'), 'tel', 'tel', false)
         . $bw_field('notes', lang('Note'), 'textarea', 'off', false)
-        . '<div class="form-field mb-7"><input class="check' . (isset($bw_errors['consent']) ? ' is-invalid' : '') . '" type="checkbox" id="bw_consent" name="consent" value="1" required'
+        . '<div class="d-flex align-items-start gap-3 mb-7"><input class="pg-checkbox mt-1" type="checkbox" id="bw_consent" name="consent" value="1" required'
+        . (isset($bw_errors['consent']) ? ' aria-invalid="true" aria-describedby="bw_consent_error"' : '')
         . (!empty($_POST['consent']) ? ' checked' : '') . '>'
-        . '<label for="bw_consent">' . h(lang('I agree that my details are kept to arrange this appointment.'))
+        . '<div><label class="pg-text-2" for="bw_consent">' . h(lang('I agree that my details are kept to arrange this appointment.'))
         . (($bw_privacy !== '') ? ' <a href="' . $bw_privacy . '" target="_blank" rel="noopener">' . h(lang('Privacy notice')) . '</a>' : '') . '</label>'
-        . (isset($bw_errors['consent']) ? '<div class="invalid-feedback">' . h($bw_errors['consent']) . '</div>' : '') . '</div>'
-        . '<button type="submit" class="btn btn-solid theme-primary w-100">' . h(lang('Confirm')) . '</button></form>';
+        . (isset($bw_errors['consent']) ? '<div class="pg-field-help pg-field-error" id="bw_consent_error">' . h($bw_errors['consent']) . '</div>' : '') . '</div></div>'
+        . '<button type="submit" class="pg-button pg-button-fill w-100">' . h(lang('Confirm')) . '</button></form>';
 
     print output_header_secure(array('title' => $bw_title))
         . pg_secure_card('bi-calendar-plus', $bw_title, $bw_content)
@@ -297,11 +298,11 @@ if ($bw_day === '') {
 
 $bw_content .= '<div class="d-flex align-items-center justify-content-between mb-5">';
 $bw_content .= ($bw_index > 0)
-    ? '<a class="btn btn-sm btn-outline theme-secondary" href="' . $bw_service_link . '&amp;m=' . $bw_months[$bw_index - 1] . '" aria-label="' . h(lang('Previous month')) . '"><i class="bi bi-chevron-left" aria-hidden="true"></i></a>'
+    ? '<a class="pg-icon-button" href="' . $bw_service_link . '&amp;m=' . $bw_months[$bw_index - 1] . '" aria-label="' . h(lang('Previous month')) . '"><i class="bi bi-chevron-left" aria-hidden="true"></i></a>'
     : '<span></span>';
 $bw_content .= '<span class="fw-semibold">' . h(pg_widget_month_name((int) substr($bw_month, 5, 2)) . ' ' . substr($bw_month, 0, 4)) . '</span>';
 $bw_content .= ($bw_index < count($bw_months) - 1)
-    ? '<a class="btn btn-sm btn-outline theme-secondary" href="' . $bw_service_link . '&amp;m=' . $bw_months[$bw_index + 1] . '" aria-label="' . h(lang('Next month')) . '"><i class="bi bi-chevron-right" aria-hidden="true"></i></a>'
+    ? '<a class="pg-icon-button" href="' . $bw_service_link . '&amp;m=' . $bw_months[$bw_index + 1] . '" aria-label="' . h(lang('Next month')) . '"><i class="bi bi-chevron-right" aria-hidden="true"></i></a>'
     : '<span></span>';
 $bw_content .= '</div>';
 
@@ -312,7 +313,7 @@ if (!$bw_days) {
 
     foreach ($bw_days as $bw_free_day) {
         $bw_label = (new DateTime($bw_free_day . ' 12:00:00', $bw_zone))->format($bw_context['date_code']);
-        $bw_content .= '<a class="btn btn-sm ' . (($bw_free_day === $bw_day) ? 'btn-solid theme-primary' : 'btn-outline theme-secondary') . '"'
+        $bw_content .= '<a class="pg-button pg-button-sm ' . (($bw_free_day === $bw_day) ? 'pg-button-fill' : 'pg-button-quiet') . '"'
             . ' href="' . $bw_service_link . '&amp;m=' . $bw_month . '&amp;d=' . $bw_free_day . '"'
             . (($bw_free_day === $bw_day) ? ' aria-current="date"' : '') . '>' . h($bw_label) . '</a>';
     }
@@ -334,7 +335,7 @@ if ($bw_day !== '') {
             . '<p class="mb-5">' . h(lang('Choose a time:')) . '</p><div class="d-flex flex-wrap gap-3">';
 
         foreach ($bw_starts as $bw_start) {
-            $bw_content .= '<button type="submit" name="start" value="' . (int) $bw_start . '" class="btn btn-sm btn-outline theme-primary">'
+            $bw_content .= '<button type="submit" name="start" value="' . (int) $bw_start . '" class="pg-button pg-button-sm pg-button-quiet">'
                 . h(pg_booking_time_label($bw_start, $bw_policy['zone'])) . '</button>';
         }
 
