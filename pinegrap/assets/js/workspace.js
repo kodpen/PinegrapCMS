@@ -15647,7 +15647,7 @@
             }
 
             var words = t('poll_pictures_count', count);
-            var mark = el('span', 'ws-poll-count');
+            var mark = el('span', 'ws-poll-picture-count');
 
             mark.setAttribute('aria-hidden', 'true');
             mark.appendChild(icon('bi-images'));

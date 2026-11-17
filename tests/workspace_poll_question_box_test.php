@@ -284,6 +284,7 @@ function test_workspace_poll_pictures_count_mark()
 	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/screen.php');
 
 	pg_assert_true(strpos($figure, 'self.pollFigureCount(figure, poll, question);') !== false, 'the question\'s figure carries the mark');
+	pg_assert_true(strpos(workspace_poll_question_box_test_method('pollFigureCount'), "el('span', 'ws-poll-picture-count')") !== false, 'the mark has its own class, apart from a row\'s vote count (ws-poll-count)');
 	pg_assert_same(2, substr_count($source, 'self.pollFigureCount(figure, poll, null);'), 'the split figure of both boxes carries the mark');
 	pg_assert_true(strpos($pictures, 'this.pollPictureList(poll, question)') !== false, 'the viewer opens the distinct list');
 	pg_assert_true(strpos($screen, "'poll_pictures_count'    => ws_js_template('{var:1} pictures', 1)") !== false, 'the mark\'s words are a translated text');
