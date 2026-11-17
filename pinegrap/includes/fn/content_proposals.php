@@ -953,6 +953,24 @@ function _pg_cp_write($user, $row, $style_id, $fields, $tree)
 }
 
 /**
+ * The change's steps with the number of the revision its apply wrote (0 when
+ * the save wrote none): History names that revision only
+ * (pg_page_revisions_editor()). Pure.
+ *
+ * @param string $steps_json
+ * @param int    $revision_no
+ * @return string
+ */
+function pg_content_proposals_steps_revision($steps_json, $revision_no)
+{
+    $steps = json_decode((string) $steps_json, true);
+    $steps = is_array($steps) ? $steps : array();
+    $steps['revision_no'] = max(0, (int) $revision_no);
+
+    return (string) json_encode($steps, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+}
+
+/**
  * Applies an editor's waiting change to the page: the operations on the
  * page as it is now, the result through the content gate again, one save
  * as the designer (one revision). A change that no longer fits is marked
@@ -1004,8 +1022,8 @@ function pg_content_proposals_apply($user, $id)
         return array('ok' => false, 'error' => $error);
     }
 
-    db_q("UPDATE design_proposals SET status = 'applied', applied_to = 'page', before_tree = ?, after_hash = ?, decided_by = ?, decided_at = ?, error = '' WHERE id = ?",
-        array($before, pg_content_proposals_stored_hash((int) $row['page_id']), (int) $user['id'], time(), (int) $row['id']));
+    db_q("UPDATE design_proposals SET status = 'applied', applied_to = 'page', before_tree = ?, after_hash = ?, steps = ?, decided_by = ?, decided_at = ?, error = '' WHERE id = ?",
+        array($before, pg_content_proposals_stored_hash((int) $row['page_id']), pg_content_proposals_steps_revision((string) $row['steps'], pg_page_revision_written((int) $row['page_id'])), (int) $user['id'], time(), (int) $row['id']));
     pg_content_proposals_bell_editor($row, 'applied');
     pg_content_proposals_request_close($row, (int) $user['id']);
 

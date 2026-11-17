@@ -20,7 +20,7 @@ module: content_proposals
 - A note an editor changed is stamped with the designer who applied it (the save stamps changed notes with its user).
 
 ## How does History name both?
-- `pg_page_revisions_list()` reads the page's applied editor rows by `after_hash` and writes the revision's author as "designer (change by editor)" (`pg_content_proposals_revision_by()`); the History panel shows it unchanged.
+- `pg_page_revisions_list()` writes the author of the revision an apply wrote as "designer (change by editor)" (`pg_content_proposals_revision_by()`); the History panel shows it unchanged. Which revision: `page-history-editor-revision.md`.
 
 ## Dismiss and take back?
 - Dismiss: a waiting or stale change, a reason of at most 300 characters (`pg_content_proposals_reason()`, characters not bytes), kept as `steps.reason`; no column.
