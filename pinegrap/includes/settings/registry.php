@@ -1262,16 +1262,16 @@ function pg_settings_tool_groups($user)
 
 
 /**
- * Search words of each system tool, by its script, in Turkish and English,
- * and the names of the outside services whose setting it holds. A tool
- * missing here is still found by its own label. The command palette and the
- * Site Settings search both read them.
+ * Search words of each system tool, by its script, in Turkish and English.
+ * A tool missing here is still found by its own label. The command palette
+ * and the Site Settings search both read them; each adds the names of the
+ * outside services a tool holds in its own way.
  *
  * @return array script => list of words
  */
 function pg_settings_tool_keys()
 {
-    $keys = array(
+    return array(
         'system_tools.php'          => array('sistem araclari', 'sistem araçları', 'araclar', 'araçlar', 'system tools', 'tools', 'sis'),
         'view_log.php'              => array('log', 'kayit', 'site log', 'journal', 'akt'),
         'view_audit_log.php'        => array('denetim', 'denetim izi', 'audit', 'audit trail', 'kim degistirdi', 'den'),
@@ -1295,14 +1295,6 @@ function pg_settings_tool_keys()
         'backups.php'               => array('yedek', 'yedekler', 'backup', 'backups', 'bak', 'yed'),
         'cloudflare.php'            => array('cloudflare', 'cdn', 'clo'),
     );
-
-    // The outside services whose setting lives on a tool screen are found
-    // by their names too (includes/fn/connections_registry.php).
-    foreach ($keys as $script => $words) {
-        $keys[$script] = pg_connections_place_words($script, $words);
-    }
-
-    return $keys;
 }
 
 

@@ -700,7 +700,8 @@ function pg_panel_search_score($name, $query, $secondary = '')
 }
 
 // Palette rows for the System tools screen and each of its tools, from
-// pg_settings_tool_groups(). A tool that asks first (a confirm) opens the
+// pg_settings_tool_groups(), found by the names of the outside services a
+// tool holds too (pg_connections_place_words()). A tool that asks first (a confirm) opens the
 // screen, where the question is asked: the palette follows its row without
 // one. A screen the palette already lists ($actions) is not repeated. No
 // tool, no row, not even the screen's.
@@ -734,9 +735,9 @@ function pg_panel_search_tool_actions($groups, $base_url, $actions)
                 'label' => $item['label'],
                 'icon'  => $item['icon'],
                 'url'   => $url,
-                'keys'  => array_merge(
+                'keys'  => pg_connections_place_words($script, array_merge(
                     array(mb_strtolower($item['label'], 'UTF-8')),
-                    isset($keys[$script]) ? $keys[$script] : array()),
+                    isset($keys[$script]) ? $keys[$script] : array())),
             );
         }
     }

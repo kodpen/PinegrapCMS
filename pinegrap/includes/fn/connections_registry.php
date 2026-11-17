@@ -336,6 +336,20 @@ function pg_connections_place_words($place, $words)
 }
 
 /**
+ * The names of the services one place holds, for the Site Settings search,
+ * which ranks them after every other match of a row. Pure.
+ *
+ * @param string $place a place as the registry writes it
+ * @return array list of lower-case names
+ */
+function pg_connections_place_services($place)
+{
+    $keys = pg_connections_place_keys();
+
+    return isset($keys[$place]) ? $keys[$place] : array();
+}
+
+/**
  * Every outside service, by id, in the groups' order. Pure.
  *
  * @return array id => row (see pg_connections_row_problems())

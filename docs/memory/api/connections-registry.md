@@ -9,7 +9,7 @@ module: connections_registry
 - A place is a Site Settings card `#settings/<category>/<card>`, a System tools screen, or a screen of `pg_connections_other_screens()` (only `search_console.php`). Group labels and `uses` are English source text; the screen that draws them adds their Turkish.
 
 ## What follows the registry elsewhere?
-- Search (#10153): every service's name is a search word of its place in the Site Settings search and the palette (`pg_connections_place_keys()`, `ui/settings-modal-search.md`); `search_console.php` is not in either, as before.
+- Search (#10153): every service's name finds its place in the Site Settings search (ranked after every other match) and the palette (`pg_connections_place_keys()`, `ui/settings-modal-search.md`); `search_console.php` is not in either, as before.
 - Integrations › Related screens (`pg_settings_integration_links()`): Application Access and the registry's System tools screens, in System tools' order and under its gates, then Workspace Settings for its right.
 
 ## Which state readers are there?
