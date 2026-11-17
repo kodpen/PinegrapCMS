@@ -1,6 +1,6 @@
 ---
 name: visitor-push-sender
-description: Visitor notifications' sender (#9957): the message writer, queue batches, the pass in job.php and push_job.php under one lock, held services, retries, a day's limit, the week's tidy-up, the counts
+description: Visitor notifications' sender (#9957): message writer, queue batches, the pass under one lock, held services, retries, refused subscriptions removed, a day's limit, tidy-up, counts
 module: site_push
 ---
 
@@ -13,6 +13,11 @@ module: site_push
 - `pg_site_push_queue_run()` runs from `job.php` (its own block, only while the visitor switch is on: the device notifications job is opt-in and separate) and from `push_job.php`. One run at a time: `pg_cron_claim('site_push_send', 120)`, released at the end and on shutdown.
 - Each due row (status 0, `next_at` passed, at most 100 a pass) gets an empty push signed with the panel's VAPID key (`pg_site_push_deliver()`, `api_http_request()` with the webhook agent, `TTL` a day). The worker then fetches the text with its secret.
 - `pg_site_push_send_plan()` decides from `pg_push_outcome()`: accepted, the row is 1 at once and `sent_count` rises; 404/410, the subscription and its rows are deleted and `removed_count` rises; 429, every waiting row of that service waits for Retry-After and the pass skips the service; another failure waits 1 min, 5 min, 30 min, 2 h, and the fifth try gives up (3, `failed_count`).
+
+## When is a subscription its service keeps refusing removed?
+- `fail_count` counts refusals since the last accepted push: a 4xx other than 404, 408, 410 and 429 (`pg_site_push_refused()`: Apple's BadDeviceToken 400, a 403 for another VAPID key, an unknown path). A 5xx or no answer is an outage and leaves it; an accepted push or a new subscribe sets it to 0.
+- `pg_site_push_failing()`: at 15 refusals (`PG_SITE_PUSH_REFUSALS`, three messages' tries) and no message fetched for 7 days (`PG_SITE_PUSH_UNSEEN`, `last_seen_at`), the refusing try deletes the subscription like a gone one (`pg_site_push_subscription_drop()`: queue rows, row, waits) and counts `removed_count`. The week covers a wrong clock or a passing fault that refuses everyone. Bug #10248; before it nothing read `fail_count`.
+- `pg_push_outcome()` is not changed: the panel's own queue shares it.
 
 ## What is tidied?
 - At the start of each pass (`pg_site_push_queue_tidy()`): waiting rows of a message older than a day are given up and counted as failed; rows no longer waiting whose message is older than 7 days are deleted. The queue is no history; the counts stay on the message (architect, agent channel message 6528).
