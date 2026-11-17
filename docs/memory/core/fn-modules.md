@@ -77,6 +77,7 @@ description: Generated from the module field of the memory files: each includes/
 - `content_review_list`: [[content-review-actions]], [[content-review-screen]]
 - `core`: [[app-screen-messages]], [[build-url-host-parts]], [[error-screen-language-and-status]], [[gift-card-code-in-site-log]], [[recurring-calendar-days]], [[schema-cache-file]], [[send-to-url-safety]], [[style-tag-css]], [[time-zone-list-labels]], [[web-address-rule]]
 - `country_list_edit`: [[list-table-quick-edit-countries]]
+- `courses`: [[course-tables]]
 - `cron`: [[job-script-claims]], [[scheduled-job-resume]]
 - `currency_list_edit`: [[list-table-quick-edit-currencies]]
 - `currency_rates`: [[exchange-rates-update]], [[visitor-currency-zero-rate]]
