@@ -22,6 +22,7 @@ description: Plan customer-value, steps CV1 to CV4: the measured rebuild and the
   - Existing files: the report rows of the API schema; the group editor is opened with its existing rules, not changed.
   - Tests: the rules a cell hands over; the CSV refused without the contacts right; the route's scopes; `php tools/check_api_schema.php`.
   - Features: U12 (the CSV), U13, U14.
+  - Done (#10297).
 
 - CV4 (S) close-out: every U number checked against the code with its PR; `commerce/customer-value-report.md`; this plan's three files deleted and its line in `plans/more-features.md` removed.
 
