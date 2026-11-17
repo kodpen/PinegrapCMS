@@ -9736,7 +9736,7 @@ const StyleDesigner = (function () {
         // The node an edit limited this render to (_sdRenderNode()), read
         // before renderCanvas() takes it.
         var _scope = _sdCanvasScope;
-        _sdPanelsCancel();
+        _sdCanvasRedrawnEl = null;
         // The tree may have changed since the last paint; the editable-area
         // set is derived from it.
         _sdEditableInvalidate();
@@ -9748,17 +9748,31 @@ const StyleDesigner = (function () {
         // never through the tree (see "Toggleable open state").
         _syncToggleableShowStateFromDom();
         renderCanvas();
+        // Set when only the scoped node's element was drawn again: the rest
+        // of the canvas kept its DOM and its badges.
+        var _redrawn = _scope ? _sdCanvasRedrawnEl : null;
+        _sdCanvasRedrawnEl = null;
         _sdEmailCanvasSync();
         renderProperties();
-        renderStatusBar();
-        _sdTreeRefresh(_scope);
-        renderHtmlTree();
-        renderAttrsPanel();
+        if (_redrawn) {
+            // One node's option changed: the Options panel answers now, the
+            // Layers rows, status bar, Attributes and HTML tree follow once
+            // the changes pause (_sdPanelsSoon()), as for typing. A run put
+            // off for another node is kept and merged, not dropped.
+            _sdPanelsSoon(_scope);
+        } else {
+            _sdPanelsCancel();
+            renderStatusBar();
+            _sdTreeRefresh(_scope);
+            renderHtmlTree();
+            renderAttrsPanel();
+        }
         renderStylesPanel();
         updateCtxBar();
         // Badges from the LAST pass go on right away (the canvas was just
-        // rebuilt without them); the debounced pass below refreshes them.
-        applyIssueBadges();
+        // rebuilt without them; after an in-place redraw only the new
+        // element lacks them); the debounced pass below refreshes them.
+        applyIssueBadges(_redrawn);
         scheduleValidation();
         _sdLivePreviewSchedule();
         _sdSharedBaseline();
@@ -11273,6 +11287,10 @@ const StyleDesigner = (function () {
     // names none and gets the full rebuild. Anything the node's element
     // cannot be redrawn alone for falls back to the full rebuild too.
     var _sdCanvasScope = null;
+    // The element the last in-place redraw put on the canvas; render()
+    // clears it before renderCanvas() and reads it after, to know whether
+    // the canvas kept its DOM.
+    var _sdCanvasRedrawnEl = null;
 
     // Runs `fn` (render() by default, or renderCanvas()) with the canvas
     // limited to `node`. The scope lasts for this call only: a later render
@@ -11362,6 +11380,7 @@ const StyleDesigner = (function () {
         _sdSharedOpen = {};
         var el = buildNodeEl(node);
         old.parentNode.replaceChild(el, old);
+        _sdCanvasRedrawnEl = el;
         _sdCanvasOpenRestore(el, open, _sdFindNodeForEl);
         _reExecuteCanvasScripts(el);
         _sdThemeSwitchers();
@@ -26959,52 +26978,70 @@ const StyleDesigner = (function () {
         }).join(' ');
     }
 
+    // ── Class control lookup
+    // The Options panel control that manages a CSS class, for the class
+    // chips of the Attributes panel. The panel is read once into an index
+    // (_sdClassControlIndex()) and every chip is looked up in it
+    // (_sdClassControlFind()): a lookup per chip that queried the panel's
+    // few thousand elements cost most of the Attributes panel's draw.
+
+    // Reads the controls of `panel` that manage classes, in document order;
+    // `node` is the element the panel shows (built-in class bindings).
+    function _sdClassControlIndex(panel, node) {
+        var idx = { panel: panel, node: node, btn: {}, cb: {}, util: [], group: [], bm: [], bySel: {} };
+        if (!panel) return idx;
+        var each = function (sel, fn) {
+            var list = panel.querySelectorAll(sel);
+            for (var i = 0; i < list.length; i++) fn(list[i]);
+        };
+        each('button[data-util-toggle]', function (el) {
+            var c = el.getAttribute('data-util-toggle');
+            if (!Object.prototype.hasOwnProperty.call(idx.btn, c)) idx.btn[c] = el;
+        });
+        each('input[type="checkbox"][data-util-toggle]', function (el) {
+            var c = el.getAttribute('data-util-toggle');
+            if (!Object.prototype.hasOwnProperty.call(idx.cb, c)) idx.cb[c] = el;
+        });
+        each('select[data-util]', function (el) { idx.util.push([el.getAttribute('data-util'), el]); });
+        each('select[data-stylegroup]', function (el) { idx.group.push([String(el.getAttribute('data-stylegroup')).split(','), el]); });
+        each('[data-bm]', function (el) { idx.bm.push([el.getAttribute('data-bm'), el]); });
+        return idx;
+    }
+
+    // The control of index `idx` that manages class `cls`, or null. The
+    // order is the one the panel is searched in: a toggle button, a toggle
+    // checkbox, a utility select whose prefix starts the class, a style
+    // group select listing it, a box model field whose prefix starts it,
+    // then the built-in class binding of the node (findBuiltinClassBinding()).
+    function _sdClassControlFind(idx, cls) {
+        if (!idx || !idx.panel || !cls) return null;
+        if (Object.prototype.hasOwnProperty.call(idx.btn, cls)) return idx.btn[cls];
+        if (Object.prototype.hasOwnProperty.call(idx.cb, cls)) return idx.cb[cls];
+        var i;
+        for (i = 0; i < idx.util.length; i++) {
+            if (idx.util[i][0] && cls.startsWith(idx.util[i][0])) return idx.util[i][1];
+        }
+        for (i = 0; i < idx.group.length; i++) {
+            if (idx.group[i][0].indexOf(cls) !== -1) return idx.group[i][1];
+        }
+        for (i = 0; i < idx.bm.length; i++) {
+            if (cls.startsWith(idx.bm[i][0])) return idx.bm[i][1];
+        }
+        var bb = findBuiltinClassBinding(cls, idx.node);
+        if (bb) {
+            if (!Object.prototype.hasOwnProperty.call(idx.bySel, bb.selector)) {
+                idx.bySel[bb.selector] = idx.panel.querySelector(bb.selector);
+            }
+            if (idx.bySel[bb.selector]) return idx.bySel[bb.selector];
+        }
+        return null;
+    }
+    // ── end of class control lookup
+
     // Find the right-panel DOM control that manages a given CSS class
     function findControlForClass(cls) {
-        var panel = document.getElementById('sd-properties');
-        if (!panel || !cls) return null;
-
-        // 1. data-util-toggle button (e.g. border, border-top, text-truncate)
-        var el = panel.querySelector('button[data-util-toggle="' + cls + '"]');
-        if (el) return el;
-
-        // 2. checkbox data-util-toggle
-        el = panel.querySelector('input[type="checkbox"][data-util-toggle="' + cls + '"]');
-        if (el) return el;
-
-        // 3. data-util select — cls starts with the util prefix
-        var utilSels = panel.querySelectorAll('select[data-util]');
-        for (var i = 0; i < utilSels.length; i++) {
-            var pfx = utilSels[i].dataset.util;
-            if (pfx && cls.startsWith(pfx)) return utilSels[i];
-        }
-
-        // 4. data-stylegroup select — cls is one of the group values
-        var sgSels = panel.querySelectorAll('select[data-stylegroup]');
-        for (var j = 0; j < sgSels.length; j++) {
-            var group = sgSels[j].dataset.stylegroup.split(',');
-            if (group.indexOf(cls) !== -1) return sgSels[j];
-        }
-
-        // 5. Box model (.sd-bm-v) — cls starts with m-/p-/etc.
-        var bmEl = panel.querySelector('[data-bm]');
-        if (bmEl) {
-            var allBm = panel.querySelectorAll('[data-bm]');
-            for (var k = 0; k < allBm.length; k++) {
-                if (cls.startsWith(allBm[k].dataset.bm)) return allBm[k];
-            }
-        }
-
-        // 6. Built-in class binding (for data-prop selects whose option values
-        //    don't match the rendered class string, e.g. container's fluid:true/false
-        //    produces container/container-fluid).
-        var bb = findBuiltinClassBinding(cls, selectedNode);
-        if (bb) {
-            var bEl = panel.querySelector(bb.selector);
-            if (bEl) return bEl;
-        }
-
-        return null;
+        if (!cls) return null;
+        return _sdClassControlFind(_sdClassControlIndex(document.getElementById('sd-properties'), selectedNode), cls);
     }
 
     // Scroll & highlight the right-panel control for a given class
@@ -28069,15 +28106,17 @@ const StyleDesigner = (function () {
         // User classes (from cssClass prop) — editable with × remove button
         var userClasses = (n.props.cssClass || '').split(' ').filter(function (c) { return c.trim() !== ''; });
 
+        // The Options panel is read once for every chip.
+        var ctIdx = _sdClassControlIndex(document.getElementById('sd-properties'), n);
         var classTagsHtml = '<div class="sd-class-tags" id="sd-class-tags-wrap">';
         // Builtin chips — clickable (navigate to control), no remove
         builtinClasses.forEach(function (cls) {
-            var hasCt = findControlForClass(cls) !== null;
+            var hasCt = _sdClassControlFind(ctIdx, cls) !== null;
             classTagsHtml += '<span class="sd-class-tag sd-class-tag-builtin' + (hasCt ? ' sd-class-tag-linked' : '') + '" data-cls="' + esc(cls) + '" title="' + (hasCt ? _sdT('Click to show it in the right-hand panel') : _sdT('Component class')) + '">' + esc(cls) + (hasCt ? '<span class="sd-class-tag-goto bi bi-arrow-right-short"></span>' : '') + '</span>';
         });
         // User chips — removable, also clickable to focus right panel
         userClasses.forEach(function (cls) {
-            var hasCt = findControlForClass(cls) !== null;
+            var hasCt = _sdClassControlFind(ctIdx, cls) !== null;
             // Conflict: built-in class has the same mutex prefix
             var hasConflict = builtinClasses.some(function(bc) {
                 for (var pi = 0; pi < CLASS_MUTEX_PREFIXES.length; pi++) {
@@ -82648,8 +82687,12 @@ const StyleDesigner = (function () {
     // A small "!" on the wrapper of every node with an issue, so the
     // operator sees WHERE the warning is without opening the list. Kept in
     // sync by validation (debounced) and re-applied after each render.
-    function applyIssueBadges() {
+    // `within`: an element drawn again in place, which alone lacks its
+    // badges; only its wrappers get them and the rest of the canvas keeps
+    // what it has. None: every badge of the canvas is put on again.
+    function applyIssueBadges(within) {
         if (!canvasDoc || !canvasDoc.body) return;
+        if (within && !canvasDoc.body.contains(within)) within = null;
         // One group per node, not per id: a page node and a node of a
         // widget may carry the same id (_sdIdFloor()).
         var groups = [];
@@ -82660,12 +82703,14 @@ const StyleDesigner = (function () {
             if (!g) { g = { node: i.node, labels: [] }; groups.push(g); }
             g.labels.push(i.label);
         });
-        canvasDoc.querySelectorAll('.sd-issue-badge').forEach(function (b) { b.remove(); });
-        canvasDoc.querySelectorAll('.sd-wrap.sd-has-issue').forEach(function (w) { w.classList.remove('sd-has-issue'); });
+        var scope = within || canvasDoc;
+        scope.querySelectorAll('.sd-issue-badge').forEach(function (b) { b.remove(); });
+        scope.querySelectorAll('.sd-wrap.sd-has-issue').forEach(function (w) { w.classList.remove('sd-has-issue'); });
         var badged = [];
         groups.forEach(function (g) {
             var id = g.node._id;
             _sdIssueWrapsOf(g.node).forEach(function (wrap) {
+                if (within && !within.contains(wrap)) return;
                 wrap.classList.add('sd-has-issue');
                 var b = canvasDoc.createElement('span');
                 b.className = 'sd-issue-badge';
