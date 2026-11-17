@@ -17,7 +17,7 @@ priority: 6
 
 ## Where are the drawings?
 - `plans/designer-panels/`: the sheets as JPEG and their source `boards.html`. Which sheet shows what, its measures as text and the steps that build from it: `designer-panels-drawings.md`.
-- The measures as text, so no value is read off a picture: `designer-panels-measures.md`, `-measures-2.md` to `-measures-6.md`. Where they differ, the step asks.
+- The measures as text, so no value is read off a picture: `designer-panels-measures.md`, `-measures-2.md` to `-measures-8.md`. Where they differ, the step asks.
 
 ## What is built?
 - The numbered features: `designer-panels-features.md` (Options: column, tabs, sections, rows), `-features-2.md` (Options: spacing box, layout, search, review, copy style), `-features-3.md` (Overview), `-features-4.md` (page strip), `-features-5.md` (canvas bar).
