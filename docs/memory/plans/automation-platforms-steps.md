@@ -4,7 +4,7 @@ description: Plan automation-platforms, steps AU1 to AU7: the contract and its t
 ---
 
 ## Which steps are there?
-- AU1 (S) The contract.
+- AU1 (S) The contract. Done, PR #10127.
   - New: the list as a pure function, `tests/automation_contract_test.php`, memory `api/automation-contract.md`. No route and no behaviour changes.
   - The test also refuses a row whose route is marked `moves_money` (`api/api-plugin-scopes.md`), so the starting point of A10 never ticks such a scope.
   - The PR body: each candidate of A3 with its event, record route and list route, and what a candidate left out lacks.
