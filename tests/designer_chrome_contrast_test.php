@@ -2,7 +2,8 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Contrast of the visual editor's dark chrome (style_designer.css): page
+ * Contrast of the visual editor's dark chrome (style_designer.css): the
+ * measured colour table and its tokens, page
  * tabs, Publish, tree id labels, lock icons, the "off" and "Legacy" badges
  * and "No selection" reach 4.5:1 for text and 3:1 for icons, computed from
  * the editor's own --sd-* tokens.
@@ -91,8 +92,8 @@ function test_designer_chrome_contrast()
 	$soft = designer_chrome_mix($muted, $text, 0.7);
 	pg_assert_true(designer_chrome_ratio($soft, $active_tab) >= 4.5, 'a tab name reads 4.5:1 on a lit tab');
 
-	pg_assert_contains('background: color-mix(in srgb, var(--sd-accent) 85%, var(--sd-panel-border));', $css, 'Publish sits on the deepened accent');
-	$publish = designer_chrome_mix($accent, designer_chrome_rgb($t['panel-border']), 0.85);
+	pg_assert_true(preg_match('/^\.sd-icon-btn-primary \{[^}]*background: var\(--sd-accent-strong\);/m', $css) === 1, 'Publish sits on the strong accent');
+	$publish = designer_chrome_rgb($t['accent-strong']);
 	pg_assert_true(designer_chrome_ratio($white, $publish) >= 4.5, 'the Publish label reads 4.5:1');
 
 	pg_assert_contains('color: color-mix(in srgb, var(--sd-accent) 55%, var(--sd-text));', $css, 'tree ids mix the accent with the text colour');
@@ -237,7 +238,7 @@ function test_designer_chrome_areas_read_tokens_only()
 	$css = preg_replace_callback('#/\*.*?\*/#s', function ($m) {
 		return preg_replace('/[^\n]/', ' ', $m[0]);
 	}, $css);
-	$areas = '/\.sd-tabs?(?:-[a-z-]+)?\b|\.sd-bp-bar|\.sd-vb-|\.sd-tree|\.sd-overview|\.sd-ov-|#sd-properties|\.sd-props?-|\.sd-panel-tabs\b|\.sd-assets-tabs|\.sd-sect-|\.sd-sp-|\.sd-cp-(?:label|menu|option|opt-|trigger|grp)|\.sd-bm-|\.sd-align-|\.sd-bcp|\.sd-ctx-wrap|\.sd-quick-layouts|\.sd-tr-/';
+	$areas = '/\.sd-tabs?(?:-[a-z-]+)?\b|\.sd-bp-bar|\.sd-vb-|\.sd-tree|\.sd-overview|\.sd-ov-|#sd-properties|\.sd-props?-|\.sd-panel-tabs\b|\.sd-assets-tabs|\.sd-sect-|\.sd-sp-|\.sd-cp-(?:label|menu|option|opt-|trigger|grp)|\.sd-bm-|\.sd-align-|\.sd-bcp|\.sd-ctx-wrap|\.sd-quick-layouts|\.sd-tr-|\.sd-notes-/';
 	$literal = '/#[0-9a-fA-F]{3,8}\b|\brgba?\(\s*\d|\b(?:white|black)\b(?!-)/';
 	$found = array();
 
@@ -250,7 +251,10 @@ function test_designer_chrome_areas_read_tokens_only()
 			continue;
 		}
 
-		if (preg_match($literal, $rule[2][0], $hit)) {
+		// A custom property set inside a rule is a token (a tab group's colour).
+		$body = preg_replace('/--[a-z0-9-]+\s*:[^;]*;/', '', $rule[2][0]);
+
+		if (preg_match($literal, $body, $hit)) {
 			$found[] = 'line ' . (substr_count($css, "\n", 0, $rule[2][1]) + 1) . ' ' . $hit[0];
 		}
 	}
