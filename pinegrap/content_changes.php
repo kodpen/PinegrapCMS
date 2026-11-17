@@ -130,7 +130,12 @@ foreach (pg_content_proposals_order(pg_content_proposals_list(), time()) as $row
     $note = '';
     $decider = (string) $row['decider_name'];
 
-    if ($status === 'stale') {
+    // The page row is gone (LEFT JOIN): deleted, or the Recycle Bin emptied.
+    $page_gone = ($row['page_name'] === null);
+
+    if (($status === 'stale') && $page_gone) {
+        $note = lang('The page of this change was deleted; it can only be dismissed.');
+    } elseif ($status === 'stale') {
         $note = lang('The page was changed after this change was saved; it can only be dismissed.');
     } elseif (($status === 'applied') && ((int) $row['decided_by'] === (int) $user['id'])) {
         // The one who applied it has the button; nobody else may take it back.
@@ -147,7 +152,7 @@ foreach (pg_content_proposals_order(pg_content_proposals_list(), time()) as $row
 
     $page_link = ((int) $row['page_style'] > 0)
         ? '<a href="edit_system_style.php?id=' . (int) $row['page_style'] . '&amp;page=' . (int) $row['page_id'] . '">' . h((string) $row['page_name']) . '</a>'
-        : h((string) $row['page_name']);
+        : h($page_gone ? lang('Deleted page') : (string) $row['page_name']);
 
     $rows_html .= '<div class="pg-list-row is-read"><span class="pg-initials" aria-hidden="true">' . h(mb_strtoupper(mb_substr((string) $row['editor_name'], 0, 2))) . '</span><div class="pg-list-row-main">'
         . '<div class="pg-list-row-title text-break">' . $page_link . ' <span class="pg-list-row-title-verb">' . h(lang(array('string' => 'by {var:1}', 'vars' => array((string) $row['editor_name'])))) . '</span></div>'
