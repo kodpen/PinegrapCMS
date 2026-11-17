@@ -186,7 +186,7 @@ $output_date_range_time = h(pg_list_period_heading($_SESSION['software']['forms'
 // if user requested to export forms, export forms
 if (($_GET['submit_data'] ?? '') == 'Export Forms') {
     if (($_SESSION['software']['forms']['view_submitted_forms']['advanced_filters'] ?? '') == true) {
-        $custom_form_page_id = $_SESSION['software']['forms']['view_submitted_forms']['custom_forms'][0];
+        $custom_form_page_id = ($_SESSION['software']['forms']['view_submitted_forms']['custom_forms'][0] ?? '');
     } else {
         $custom_form_page_id = ($_SESSION['software']['forms']['view_submitted_forms']['custom_form'] ?? '');
     }
@@ -203,7 +203,8 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
         WHERE page_id = ?";
     $result = db_q($query, array((string) $custom_form_page_id)) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
-    $quiz = $row['quiz'];
+    // An export with no form chosen has no form row, and so no quiz column.
+    $quiz = $row['quiz'] ?? '';
 
     // if custom form is a quiz, then include quiz score column
     if ($quiz == 1) {

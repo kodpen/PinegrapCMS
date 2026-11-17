@@ -203,15 +203,18 @@ if ((isset($_POST['product_group_id'])) && ($_POST['product_group_id'] != '')) {
 
 $liveform = new liveform('view_fields');
 
+// Delete with no box ticked posts no list at all.
+$selected_fields = (isset($_POST['fields']) && is_array($_POST['fields'])) ? $_POST['fields'] : array();
+
 // if at least one field was selected
-if ($_POST['fields']) {
+if ($selected_fields) {
     $number_of_fields = 0;
 
     $access_error_exists = false;
     $designer_field_exists = false;
 
     // loop through all fields that were selected for deletion
-    foreach ($_POST['fields'] as $field_id) {
+    foreach ($selected_fields as $field_id) {
         // get page_id, product_id and page_folder for this field, in order to validate access
         $query = "SELECT 
                      form_fields.page_id,
