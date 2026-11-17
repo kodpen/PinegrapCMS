@@ -1183,6 +1183,78 @@ function test_proto_hotspots_menu_inside_the_canvas()
 	pg_assert_same(array('left' => 142, 'top' => 44), $out['tall'], 'a menu taller than the canvas starts at its top');
 }
 
+// An empty link (F26): its address is empty or '#' alone; '#name' stays an
+// anchor, a toggle is no link at all, a link kept by page id reads its page.
+// An empty link gets no chip and no arrow.
+function test_proto_hotspots_empty_links_marked()
+{
+	$pages = array(array('key' => 'p1', 'page_id' => 1, 'page_name' => 'home', 'tree' => array('_id' => 'r', 'type' => 'root', 'children' => array(
+		array('_id' => 'e1', 'type' => 'content', 'props' => array('contentType' => 'link', 'text' => 'Blank', 'href' => ''), 'children' => array()),
+		array('_id' => 'e2', 'type' => 'content', 'props' => array('contentType' => 'link', 'text' => 'Hash', 'href' => '#'), 'children' => array()),
+		array('_id' => 'a1', 'type' => 'semantic', 'props' => array('tag' => 'a', 'text' => 'Top', 'href' => '#top'), 'children' => array()),
+		array('_id' => 't1', 'type' => 'semantic', 'props' => array('tag' => 'a', 'text' => 'Menu', 'href' => '#', '_attrs' => array(array('name' => 'data-bs-toggle', 'value' => 'collapse'))), 'children' => array()),
+		array('_id' => 'b1', 'type' => 'content', 'props' => array('contentType' => 'link', 'text' => 'Kept', 'href' => '#', '_bindings' => array('href' => '__page_link'), '_bindParams' => array('href' => array('page_id' => 1))), 'children' => array()),
+		array('_id' => 'x1', 'type' => 'content', 'props' => array('contentType' => 'paragraph', 'text' => 'See <a href="#">this</a> and <a href=" # ">that</a>'), 'children' => array()),
+	))));
+	$out = proto_hotspots_test_node('var read = ' . proto_hotspots_test_js(proto_hotspots_test_read()) . ';'
+		. ' var m = H.mark(H.design(' . proto_hotspots_test_js($pages) . ', {}), read, [{ key: "p1", page_id: 1, page_name: "home" }]);'
+		. ' var l = H.layout(m, {});'
+		. ' out = { marks: m.pages[0].hotspots.map(function (h) { return h.nodeId + (h.source === "text" ? "." + h.index : "") + " " + h.mark; }), edges: l.edges.map(function (e) { return e.id; }), chips: l.chips.map(function (c) { return c.mark; }) };');
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array('e1 empty', 'e2 empty', 'a1 anchor', 'b1 tab', 'x1.0 empty', 'x1.1 empty'), $out['marks'], 'empty and \'#\' are empty, \'#top\' an anchor, the toggle no link, the kept link its page');
+	pg_assert_same(array('p:p1|h2', 'p:p1|h3'), $out['edges'], 'no arrow from an empty link');
+	pg_assert_same(array('anchor'), $out['chips'], 'and no chip');
+}
+
+// The problems of a design (F27, F28, F29): broken links, empty links with
+// each frame's count, the pages nothing reaches. A page reached only by a
+// shared part's link is reached; the Start page never counts, linked or
+// not; shared parts and chips are never unreached. "To check" is empty
+// links plus unreached pages.
+function test_proto_hotspots_problems_of_a_design()
+{
+	$laid = array(
+		'start' => 'p:a',
+		'frames' => array(
+			array('id' => 'p:a', 'kind' => 'page', 'name' => 'Home', 'rows' => array(array('port' => 'h0', 'label' => 'Go', 'href' => '', 'mark' => 'empty'), array('port' => 'h1', 'label' => 'Old', 'href' => '/old', 'mark' => 'broken'), array('port' => 'h2', 'label' => 'B', 'href' => '/b', 'mark' => 'tab'))),
+			array('id' => 'p:b', 'kind' => 'page', 'name' => 'B', 'rows' => array(array('port' => 'h0', 'label' => 'More', 'href' => '#', 'mark' => 'empty'), array('port' => 'h1', 'label' => 'Self', 'href' => '/b', 'mark' => 'tab'))),
+			array('id' => 'p:c', 'kind' => 'page', 'name' => 'C', 'rows' => array()),
+			array('id' => 'p:d', 'kind' => 'page', 'name' => 'D', 'rows' => array(array('port' => 'h0', 'label' => 'To B', 'href' => '/b', 'mark' => 'tab'))),
+			array('id' => 's:5', 'kind' => 'shared', 'name' => 'Header', 'rows' => array(array('port' => 'h0', 'label' => 'C', 'href' => '/c', 'mark' => 'tab'), array('port' => 'h1', 'label' => 'Cart', 'href' => '', 'mark' => 'empty'))),
+		),
+		'chips' => array(array('id' => 'c:0', 'kind' => 'chip', 'mark' => 'broken')),
+		'edges' => array(
+			array('id' => 'p:a|h1', 'from' => 'p:a', 'port' => 'h1', 'to' => 'c:0'),
+			array('id' => 'p:a|h2', 'from' => 'p:a', 'port' => 'h2', 'to' => 'p:b'),
+			array('id' => 'p:b|h1', 'from' => 'p:b', 'port' => 'h1', 'to' => 'p:b'),
+			array('id' => 'p:d|h0', 'from' => 'p:d', 'port' => 'h0', 'to' => 'p:b'),
+			array('id' => 's:5|h0', 'from' => 's:5', 'port' => 'h0', 'to' => 'p:c'),
+		),
+	);
+	$unlinked = $laid;
+	$unlinked['edges'] = array($laid['edges'][1]);
+	$out = proto_hotspots_test_node('var l = ' . proto_hotspots_test_js($laid) . ', u = ' . proto_hotspots_test_js($unlinked) . ';'
+		. ' var p = H.problemsOf(l), q = H.problemsOf(u);'
+		. ' out = { unreached: p.unreached, empty: p.empty.list.map(function (e) { return e.frame + "|" + e.port + " " + e.label; }), count: p.empty.count, broken: p.broken.list.length, check: p.check,'
+		. ' unlinked: q.unreached, none: H.problemsOf(null) };');
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array('p:d'), $out['unreached'], 'D: nothing leads there; C is reached by the shared part; B by Home; Home is the start');
+	pg_assert_same(array('p:a|h0 Go', 'p:b|h0 More', 's:5|h1 Cart'), $out['empty'], 'every empty link, a shared part\'s too');
+	pg_assert_same(array('p:a' => 1, 'p:b' => 1, 's:5' => 1), $out['count'], 'each frame\'s amber count');
+	pg_assert_same(1, $out['broken'], 'the broken links as before');
+	pg_assert_same(4, $out['check'], '"N to check": three empty links and one page');
+	pg_assert_same(array('p:c', 'p:d'), $out['unlinked'], 'without links the pages but the start are unreached; a self link reaches nothing');
+	pg_assert_same(array('broken' => array('list' => array(), 'count' => array()), 'empty' => array('list' => array(), 'count' => array()), 'unreached' => array(), 'check' => 0), $out['none'], 'nothing laid out');
+}
+
 // Which marks a picture shows (F5, F13): the selected frame all of its own;
 // another frame those starting an arrow into it; a shared part's link into
 // the selected page in amber. Nothing selected shows none.

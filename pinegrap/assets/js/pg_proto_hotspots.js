@@ -793,6 +793,15 @@
     // The design of design() with every hotspot marked; a menu or region
     // hotspot gets its links (`links`, each marked; null when the read
     // knows no menu or region by that name). Answers a copy.
+    // Whether a link's own address leads nowhere: empty or '#' alone. '#name'
+    // is an anchor; a toggle is no link (collect()); a link kept by page id
+    // reads its page (markBound()).
+    function emptyHref(href) {
+        var h = str(href).trim();
+
+        return h === '' || h === '#';
+    }
+
     function mark(designed, read, tabs, resolver) {
         var menus = (read && isObject(read.menus)) ? read.menus : {};
         var regions = (read && isObject(read.regions)) ? read.regions : {};
@@ -823,6 +832,14 @@
                 var bound = markBound(spot, read, tabs, resolver);
 
                 ['href', 'mark', 'draft', 'type', 'class', 'pageId', 'tab'].forEach(function (key) { copy[key] = bound[key]; });
+            } else if (emptyHref(spot.href)) {
+                // An empty link (F26): it leads nowhere and gets no chip.
+                copy.mark = 'empty';
+                copy.draft = false;
+                copy.type = 'unknown';
+                copy['class'] = 'unknown';
+                copy.pageId = 0;
+                copy.tab = '';
             } else {
                 var marked = markHref(spot.href, read, tabs, resolver);
 
@@ -1805,6 +1822,54 @@
         return out;
     }
 
+    // What to check in a design (F27, F28, F29): `broken` as brokenOf();
+    // `empty`, the links with no target in the frames' order and each
+    // frame's count; `unreached`, the page frames no link of another page
+    // or of a shared part leads to (the graph canvas core's check(), from
+    // the Start page, which never counts; shared parts and chips are no
+    // boxes of it, a shared part's links stand in as one source); `check`,
+    // the empty links plus the unreached pages.
+    function problemsOf(laid) {
+        var out = { broken: brokenOf(laid), empty: { list: [], count: {} }, unreached: [], check: 0 };
+        var frames = (laid && Array.isArray(laid.frames)) ? laid.frames : [];
+        var pages = [];
+        var kind = {};
+
+        frames.forEach(function (frame) {
+            kind[frame.id] = frame.kind;
+
+            if (frame.kind === 'page') {
+                pages.push(frame.id);
+            }
+
+            (frame.rows || []).forEach(function (row) {
+                if (row.mark !== 'empty') {
+                    return;
+                }
+
+                out.empty.list.push({ frame: frame.id, port: row.port, label: rowLabel(row), href: str(row.href) });
+                out.empty.count[frame.id] = (out.empty.count[frame.id] || 0) + 1;
+            });
+        });
+
+        if (pages.length) {
+            var SHARED = '#shared';
+            var edges = ((laid && laid.edges) || []).filter(function (edge) {
+                return kind[edge.to] === 'page' && (kind[edge.from] === 'page' || kind[edge.from] === 'shared');
+            }).map(function (edge) {
+                return { from: kind[edge.from] === 'shared' ? SHARED : edge.from, to: edge.to };
+            });
+
+            out.unreached = window.PGGraphCanvas.check(pages.concat([SHARED]), edges, str(laid.start)).unreached.filter(function (id) {
+                return id !== SHARED;
+            });
+        }
+
+        out.check = out.empty.list.length + out.unreached.length;
+
+        return out;
+    }
+
     // Where Fit starts when a design does not fit at the smallest zoom: the
     // start frame's top left corner, raised to its band's heading when that
     // stands right above it; null without a start frame.
@@ -1934,6 +1999,7 @@
         fitStart: fitStart,
         listOf: listOf,
         brokenOf: brokenOf,
+        problemsOf: problemsOf,
         brokenWhy: brokenWhy
     };
 })();
