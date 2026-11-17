@@ -2502,6 +2502,7 @@
     "replaced $ matches": "$ eşleşme değiştirildi",
     "replaced by {var:1}": "değiştiren: {var:1}",
     "replaced match on line $": "$. satırdaki eşleşme değiştirildi",
+    "replaces {var:1}": "{var:1} sayfasının yerine",
     "replied": "yanıtladı",
     "replies": "yanıt",
     "reply": "yanıt",
