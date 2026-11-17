@@ -15,7 +15,7 @@ description: Plan wholesale, steps WS1 to WS7: the offers' group condition, an a
   - Tests: an account buying at another's prices and discount; a second hop refused at the save; a pointed-at account's delete refused; the recorded rule against a campaign; retail in the feed, the structured data and the kept page copy; an account that uses nobody's prices priced as today.
   - Features: J4 (data), J5, J6, J7, J10.
 
-- WS3 (S) after WS2: the picker. Existing files: the account's prices screen (`includes/erp/price_lists.php` and the screen that draws it). Pictures to the owner; not marked ready before his look. Features: J4.
+- WS3 (S) after WS2: the picker. Done in #10134. Existing files: the account's prices screen (`includes/erp/price_lists.php` and the screen that draws it). Pictures to the owner; not marked ready before his look. Features: J4.
 
 - WS4 Done (#9987): the minimum order (`commerce/minimum-order.md`): one settings text group → amount, the highest of a customer's groups, the cart's warning (designer widget and classic cart) and the refusal at submit from one function, the field on the contact group edit screen. Look: architect, agent channel message 6895. Features: J8, J9.
 
