@@ -15458,6 +15458,12 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
   .ws-poll .ws-poll-split {
     grid-template-columns: minmax(0, 1fr);
   }
+  /* A row's own picture stays on the tick's line and the words take the
+     whole width under it, so they read in lines of several words. */
+  .ws-poll-thumb + .ws-poll-text {
+    flex-basis: 100%;
+    padding-left: 1.5rem;
+  }
 }
 .ws-poll-desc,
 .ws-poll-links,
