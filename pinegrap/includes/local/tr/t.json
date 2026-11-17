@@ -5760,6 +5760,7 @@
     "The payment of this expense could not be found.": "Bu giderin ödemesi bulunamadı.",
     "The payment of this order cannot be refunded from here. Give the money back another way (a bank transfer, for example), then record it here.": "Bu siparişin ödemesi buradan iade edilemiyor. Ücreti başka bir yolla (örneğin havaleyle) geri verin, ardından burada kaydedin.",
     "The payment of this order cannot be refunded from here. Refund it another way and record it.": "Bu siparişin ödemesi buradan iade edilemiyor. Başka bir yolla iade edip kaydedin.",
+    "The payment service can give back at most {var:1}; the rest was paid with gift cards or store credit. Give it as store credit or record it.": "Ödeme hizmeti en fazla {var:1} iade edebilir; kalanı hediye kartı veya mağaza kredisiyle ödendi. Bunu mağaza kredisi olarak verin ya da kaydedin.",
     "The payment service could not be reached.": "Ödeme sağlayıcısına ulaşılamadı.",
     "The payment service did not forget the card of cancelled subscription {var:1}.": "Ödeme servisi, iptal edilen {var:1} numaralı aboneliğin kartını silmedi.",
     "The payment service gave an answer that cannot be read. Check the payment on the service's own screen before trying again.": "Ödeme sağlayıcısının cevabı okunamadı. Yeniden denemeden önce ödemeyi sağlayıcının kendi ekranında kontrol edin.",
