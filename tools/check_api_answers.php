@@ -6,7 +6,11 @@
  * answer with the site's own OpenAPI document: the status, whether the body
  * is JSON, required fields, types and formats, null only where a field is
  * declared nullable, and fields the document does not declare. Lists are read
- * first; a route that reads one record takes the first id of its list.
+ * first; a route that reads one record takes the first row of its list (the
+ * list at the path before it, or the one api_answer_check_parents() names),
+ * each path parameter filled from the row's field of its name. A refusal the
+ * route's own description names for that record (a 404, a 409) tries the
+ * next rows, up to API_ANSWER_CHECK_TRIES, and is a skip when none answers.
  *
  * Read only: it sends GET requests and nothing else. It leaves out routes
  * marked 'moves_money' (read from the route rows of this checkout), routes
@@ -46,7 +50,7 @@ require_once(__DIR__ . '/ws_client.php');
  * first (a record waits for the list its id comes from), then by path.
  *
  * @param array<string,mixed> $document
- * @return array<int,array{method: string, path: string, id: string, binary: bool, schema: array|null, codes: int[], query: string[], required_query: string[]}>
+ * @return array<int,array{method: string, path: string, id: string, description: string, binary: bool, schema: array|null, codes: int[], query: string[], required_query: string[]}>
  */
 function api_answer_check_routes($document)
 {
@@ -102,6 +106,7 @@ function api_answer_check_routes($document)
 			'method'         => 'GET',
 			'path'           => (string) $path,
 			'id'             => isset($operation['operationId']) ? (string) $operation['operationId'] : '',
+			'description'    => isset($operation['description']) ? (string) $operation['description'] : '',
 			'binary'         => $binary,
 			'schema'         => $schema,
 			'codes'          => $codes ?: array(200),
@@ -163,8 +168,8 @@ function api_answer_check_first_id($answer)
 
 /**
  * A route's path with each {parameter} replaced by the first id of the list
- * read at the path before it; null when that list was not read or was
- * empty.
+ * read at the path before it (or named by api_answer_check_parents()); null
+ * when that list was not read or was empty.
  *
  * @param string $path
  * @param array<string,int|string|null> $first first id by resolved list path
@@ -172,21 +177,270 @@ function api_answer_check_first_id($answer)
  */
 function api_answer_check_fill_path($path, $first)
 {
-	$done = '';
+	return api_answer_check_fill($path, array(), function ($list) use ($first) {
+		return isset($first[$list]) ? array('data' => array(array('id' => $first[$list]))) : null;
+	});
+}
 
-	foreach (explode('/', trim($path, '/')) as $segment) {
-		if ($segment !== '' && $segment[0] === '{') {
-			if (!isset($first[$done])) {
+/**
+ * How many records of its lists a route is tried with, at most, when each
+ * answers a refusal its own description names for that record.
+ */
+if (!defined('API_ANSWER_CHECK_TRIES')) {
+	define('API_ANSWER_CHECK_TRIES', 5);
+}
+
+/**
+ * Where the records of a path parameter come from when no list route sits
+ * at the path before it: the list (or record) to read, its parameters filled
+ * as far as they share the route's path and from first rows beyond, and
+ * where its rows are in the answer (see api_answer_check_rows()).
+ *
+ * @return array<string,array{list: string, rows: string}> by the path before the parameter
+ */
+function api_answer_check_parents()
+{
+	$messages = array('list' => '/workspace/channels/{id}/messages', 'rows' => 'data');
+
+	return array(
+		// A canvas is the message that carries it.
+		'/workspace/messages'          => $messages,
+		'/workspace/canvases'          => $messages,
+		'/workspace/memory'            => array('list' => '/workspace/channels/{id}/memory', 'rows' => 'data'),
+		'/workspace/mail/items'        => array('list' => '/workspace/mail/conversations/{id}', 'rows' => 'mails'),
+		'/workspace/flow-runs'         => array('list' => '/workspace/flows/{id}/runs', 'rows' => 'data'),
+		'/workspace/flows/{id}/boxes'  => array('list' => '/workspace/flows/{id}', 'rows' => 'draft.nodes'),
+		'/design/proposals'            => array('list' => '/design/pages/{id}/proposals', 'rows' => 'data'),
+		'/store/states'                => array('list' => '/store/countries', 'rows' => 'data[].states'),
+		'/translations/pages'          => array('list' => '/pages', 'rows' => 'data'),
+	);
+}
+
+/**
+ * The rows of a decoded answer at a dotted path; "name[]" takes every item
+ * of that list and reads the rest of the path in each, one after another.
+ *
+ * @param mixed $answer
+ * @param string $spec such as 'data', 'draft.nodes', 'data[].states'
+ * @return array<int,array<string,mixed>>
+ */
+function api_answer_check_rows($answer, $spec)
+{
+	$values = array($answer);
+
+	foreach (explode('.', $spec) as $part) {
+		$each = substr($part, -2) === '[]';
+		$name = $each ? substr($part, 0, -2) : $part;
+		$next = array();
+
+		foreach ($values as $value) {
+			if (!is_array($value) || !isset($value[$name]) || !is_array($value[$name])) {
+				continue;
+			}
+
+			if ($each) {
+				foreach ($value[$name] as $item) {
+					$next[] = $item;
+				}
+			} else {
+				$next[] = $value[$name];
+			}
+		}
+
+		$values = $next;
+	}
+
+	$rows = array();
+
+	foreach ($values as $list) {
+		foreach (is_array($list) ? $list : array() as $row) {
+			if (is_array($row)) {
+				$rows[] = $row;
+			}
+		}
+	}
+
+	return $rows;
+}
+
+/**
+ * The value a row gives a path parameter: the row's field of the
+ * parameter's name ({no} reads revision_no), else its id; null when it has
+ * neither.
+ *
+ * @param array<string,mixed> $row
+ * @param string $name the parameter without its braces
+ * @return int|string|null
+ */
+function api_answer_check_param_value($row, $name)
+{
+	$aliases = array('no' => 'revision_no');
+	$fields = array($name);
+
+	if (isset($aliases[$name])) {
+		$fields[] = $aliases[$name];
+	}
+
+	$fields[] = 'id';
+
+	foreach ($fields as $field) {
+		$value = isset($row[$field]) ? $row[$field] : null;
+
+		if (is_int($value) || (is_string($value) && $value !== '')) {
+			return $value;
+		}
+	}
+
+	return null;
+}
+
+/**
+ * A route's path with each {parameter} filled from a row of its list: the
+ * list at the path before it, or the one api_answer_check_parents() names.
+ * $tuple holds the row to take for each parameter in order (0 when left
+ * out); null when a list cannot be read or has no such row.
+ *
+ * @param string $path
+ * @param int[] $tuple
+ * @param callable $fetch function (string $filled_path, string $template): mixed, the decoded answer or null
+ * @param array{0: string, 1: string}|null $seed a path template and its filled path whose shared start is reused
+ * @return string|null
+ */
+function api_answer_check_fill($path, $tuple, $fetch, $seed = null)
+{
+	$parents = api_answer_check_parents();
+	$seed_template = $seed === null ? array() : explode('/', trim($seed[0], '/'));
+	$seed_filled = $seed === null ? array() : explode('/', trim($seed[1], '/'));
+	$aligned = true;
+	$done = '';
+	$template = '';
+	$k = 0;
+
+	foreach (explode('/', trim($path, '/')) as $i => $segment) {
+		$filled = $segment;
+		$aligned = $aligned && isset($seed_template[$i], $seed_filled[$i]) && $seed_template[$i] === $segment;
+
+		if ($aligned) {
+			$filled = $seed_filled[$i];
+		} elseif ($segment !== '' && $segment[0] === '{') {
+			if (isset($parents[$template])) {
+				$list_template = $parents[$template]['list'];
+				$list = api_answer_check_fill($list_template, array(), $fetch, array($template, $done));
+				$spec = $parents[$template]['rows'];
+			} else {
+				$list_template = $template;
+				$list = $done;
+				$spec = 'data';
+			}
+
+			if ($list === null) {
 				return null;
 			}
 
-			$segment = rawurlencode((string) $first[$done]);
+			$rows = api_answer_check_rows(call_user_func($fetch, $list, $list_template), $spec);
+			$index = isset($tuple[$k]) ? (int) $tuple[$k] : 0;
+			$value = isset($rows[$index]) ? api_answer_check_param_value($rows[$index], substr($segment, 1, -1)) : null;
+
+			if ($value === null) {
+				return null;
+			}
+
+			$filled = rawurlencode((string) $value);
 		}
 
-		$done .= '/' . $segment;
+		if ($segment !== '' && $segment[0] === '{') {
+			$k++;
+		}
+
+		$done .= '/' . $filled;
+		$template .= '/' . $segment;
 	}
 
 	return $done;
+}
+
+/**
+ * The row of each list to try a route with, in order: the first rows
+ * first, then by the sum of the rows, the outer list moving before the
+ * inner one.
+ *
+ * @param int $depth the route's number of path parameters
+ * @param int $bound rows of each list
+ * @return array<int,int[]>
+ */
+function api_answer_check_tuples($depth, $bound)
+{
+	$tuples = array(array());
+
+	for ($level = 0; $level < $depth; $level++) {
+		$next = array();
+
+		foreach ($tuples as $tuple) {
+			for ($row = 0; $row < $bound; $row++) {
+				$next[] = array_merge($tuple, array($row));
+			}
+		}
+
+		$tuples = $next;
+	}
+
+	usort($tuples, function ($a, $b) {
+		$sum = array_sum($a) - array_sum($b);
+
+		if ($sum !== 0) {
+			return $sum;
+		}
+
+		// The same sum: the tuple whose outer list moved further comes first.
+		foreach ($a as $i => $row) {
+			if ($row !== $b[$i]) {
+				return $b[$i] - $row;
+			}
+		}
+
+		return 0;
+	});
+
+	return $tuples;
+}
+
+/**
+ * Whether an answer is a refusal the route's own description names for the
+ * record it was called with ("404 for a task that has never repeated",
+ * "409 not_a_collection"), so another record may answer: the status and
+ * its code, '' when it is not. Only a route with a path parameter has
+ * another record to try.
+ *
+ * @param array{path: string, description?: string} $route
+ * @param array{status: int, body: string} $answer
+ * @return string
+ */
+function api_answer_check_named_refusal($route, $answer)
+{
+	$status = (int) $answer['status'];
+	$description = isset($route['description']) ? (string) $route['description'] : '';
+
+	if ($status < 400 || $status > 499 || $status === 403 || $status === 429
+		|| strpos($route['path'], '{') === false
+		|| !preg_match('/\b' . $status . '\b/', $description)) {
+		return '';
+	}
+
+	$json = json_decode($answer['body'], true);
+	$code = isset($json['error']['code']) && is_scalar($json['error']['code']) ? ' ' . $json['error']['code'] : '';
+
+	return 'status ' . $status . $code;
+}
+
+/**
+ * The SKIP reason of a route every record tried refused as it describes.
+ *
+ * @param string[] $refusals "path status code" of each try
+ * @return string
+ */
+function api_answer_check_refusal_skip($refusals)
+{
+	return 'every record tried (' . count($refusals) . ') was refused as the route describes: ' . implode('; ', $refusals);
 }
 
 /**
@@ -601,10 +855,34 @@ function api_answer_check_main($argv)
 	}
 
 	$money = api_answer_check_money_routes();
-	$first = array();
+	$routes = api_answer_check_routes($document);
 	$count = array('ok' => 0, 'diff' => 0, 'skip' => 0);
 
-	foreach (api_answer_check_routes($document) as $route) {
+	// Answers read so far by filled path (null when not 200), and the
+	// templates read with a short page.
+	$read = array();
+	$paged = array();
+
+	foreach ($routes as $route) {
+		$paged[$route['path']] = in_array('limit', $route['query'], true);
+	}
+
+	// A short page is enough to see the shape and the first rows.
+	$call = function ($url_path, $template) use ($settings, $paged) {
+		return api_answer_check_get($settings['site'] . $url_path . (!empty($paged[$template]) ? '?limit=5' : ''), $settings);
+	};
+
+	// A list a record needs and no route read yet is read when needed.
+	$fetch = function ($url_path, $template) use (&$read, $call) {
+		if (!array_key_exists($url_path, $read)) {
+			$answer = $call($url_path, $template);
+			$read[$url_path] = $answer['status'] === 200 ? json_decode($answer['body'], true) : null;
+		}
+
+		return $read[$url_path];
+	};
+
+	foreach ($routes as $route) {
 		$path = $route['path'];
 		$is_list = substr($path, -1) !== '}';
 
@@ -614,25 +892,45 @@ function api_answer_check_main($argv)
 		}
 
 		$why = api_answer_check_skip($route, $money);
-		$url_path = $why === '' ? api_answer_check_fill_path($path, $first) : null;
+		$url_path = null;
+		$answer = null;
+		$refusals = array();
 
-		if ($why === '' && $url_path === null) {
-			$why = 'no record to read: its list is empty or was not read';
+		if ($why === '') {
+			foreach (api_answer_check_tuples(substr_count($path, '{'), API_ANSWER_CHECK_TRIES) as $tuple) {
+				$candidate = api_answer_check_fill($path, $tuple, $fetch);
+
+				if ($candidate === null) {
+					continue;
+				}
+
+				$url_path = $candidate;
+				$answer = $call($url_path, $path);
+				$read[$url_path] = $answer['status'] === 200 ? json_decode($answer['body'], true) : null;
+				$named = api_answer_check_named_refusal($route, $answer);
+
+				if ($named === '') {
+					break;
+				}
+
+				// A refusal the route names for this one record: the next row.
+				$refusals[] = $url_path . ' ' . $named;
+				$answer = null;
+
+				if (count($refusals) >= API_ANSWER_CHECK_TRIES) {
+					break;
+				}
+			}
+
+			if ($answer === null) {
+				$why = $refusals !== array() ? api_answer_check_refusal_skip($refusals) : 'no record to read: its list is empty or was not read';
+			}
 		}
 
 		if ($why !== '') {
 			echo 'SKIP ' . $route['method'] . ' ' . $path . ' - ' . $why . "\n";
 			$count['skip']++;
 			continue;
-		}
-
-		// A short page is enough to see the shape and the first id.
-		$url = $settings['site'] . $url_path . (in_array('limit', $route['query'], true) ? '?limit=5' : '');
-		$answer = api_answer_check_get($url, $settings);
-		$json = json_decode($answer['body'], true);
-
-		if ($is_list) {
-			$first[$url_path] = api_answer_check_first_id($json);
 		}
 
 		$refused = api_answer_check_refused($answer);
