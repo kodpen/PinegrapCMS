@@ -244,7 +244,10 @@ if ($bw_show_form) {
     }
 
     $bw_times = pg_booking_message_times($bw_hold['start'], $bw_hold['start'] + ((int) $bw_service['length_minutes'] * 60), $bw_context['zone'], $bw_context['date_code'], $bw_context['time_code']);
-    $bw_field = function ($name, $label, $type, $autocomplete, $required) use ($bw_values, $bw_errors) {
+    // The required mark is printed here, not left to the panel script, so it
+    // shows in every state, before any script has run.
+    $bw_required_mark = '<span class="pg-required-marker fg-danger ms-1" aria-hidden="true">*</span>';
+    $bw_field = function ($name, $label, $type, $autocomplete, $required) use ($bw_values, $bw_errors, $bw_required_mark) {
         $invalid = isset($bw_errors[$name]);
         $id = 'bw_' . $name;
         $attributes = ' id="' . $id . '" name="' . $name . '" autocomplete="' . $autocomplete . '"' . ($required ? ' required' : '')
@@ -253,7 +256,7 @@ if ($bw_show_form) {
             ? '<textarea class="pg-input"' . $attributes . ' rows="3" maxlength="1000">' . h($bw_values[$name]) . '</textarea>'
             : '<input type="' . $type . '" class="pg-input"' . $attributes . ' value="' . h($bw_values[$name]) . '">';
 
-        return '<div class="mb-5"><label class="pg-field-label" for="' . $id . '">' . h($label) . '</label>' . $control
+        return '<div class="mb-5"><label class="pg-field-label" for="' . $id . '">' . h($label) . ($required ? $bw_required_mark : '') . '</label>' . $control
             . ($invalid ? '<div class="pg-field-help pg-field-error" id="' . $id . '_error">' . h($bw_errors[$name]) . '</div>' : '') . '</div>';
     };
     $bw_privacy = pg_booking_widget_privacy_url();
@@ -273,7 +276,7 @@ if ($bw_show_form) {
         . (isset($bw_errors['consent']) ? ' aria-invalid="true" aria-describedby="bw_consent_error"' : '')
         . (!empty($_POST['consent']) ? ' checked' : '') . '>'
         . '<div><label class="pg-text-2" for="bw_consent">' . h(lang('I agree that my details are kept to arrange this appointment.'))
-        . (($bw_privacy !== '') ? ' <a href="' . $bw_privacy . '" target="_blank" rel="noopener">' . h(lang('Privacy notice')) . '</a>' : '') . '</label>'
+        . (($bw_privacy !== '') ? ' <a href="' . $bw_privacy . '" target="_blank" rel="noopener">' . h(lang('Privacy notice')) . '</a>' : '') . $bw_required_mark . '</label>'
         . (isset($bw_errors['consent']) ? '<div class="pg-field-help pg-field-error" id="bw_consent_error">' . h($bw_errors['consent']) . '</div>' : '') . '</div></div>'
         . '<button type="submit" class="pg-button pg-button-fill w-100">' . h(lang('Confirm')) . '</button></form>';
 
