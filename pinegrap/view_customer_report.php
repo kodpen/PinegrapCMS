@@ -213,7 +213,7 @@ if ($summary !== null) {
             $cell = isset($summary['cells'][$age][$band]) ? $summary['cells'][$age][$band] : array(0, 0);
             $cells .= '<td class="text-end" data-label="' . h($band_labels[$band]) . '"><span class="d-block">' . h(lang(array('string' => '{var:1} customer{suffix:1}', 'vars' => pg_format_number((int) $cell[0], 0), 'suffix' => ((int) $cell[0] == 1) ? '' : 's'))) . '</span>'
                 . '<small class="fg-secondary">' . h(pg_report_view_money((int) $cell[1], $symbol)) . ' · ' . h($group_names[pg_customer_value_cell_group($age, $band)]) . '</small>'
-                . ($may_make_groups ? '<button type="submit" name="make_group" value="' . $age . '-' . $band . '" class="btn btn-link btn-sm p-0 d-block ms-auto pg-customer-group-make" aria-label="' . h(lang('Make a contact group') . ': ' . pg_customer_value_cell_group_name($age, $band)) . '"><i class="bi bi-people me-1" aria-hidden="true"></i>' . h(lang('Make a contact group')) . '</button>' : '')
+                . ($may_make_groups ? '<button type="submit" name="make_group" value="' . $age . '-' . $band . '" class="pg-button pg-button-quiet pg-button-sm d-block ms-auto pg-customer-group-make" aria-label="' . h(lang('Make a contact group') . ': ' . pg_customer_value_cell_group_name($age, $band)) . '"><i class="bi bi-people me-1" aria-hidden="true"></i>' . h(lang('Make a contact group')) . '</button>' : '')
                 . '</td>';
         }
 
