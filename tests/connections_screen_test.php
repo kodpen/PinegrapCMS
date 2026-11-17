@@ -141,3 +141,26 @@ function test_connections_screen_fold()
 	pg_assert_same(3, pg_connections_screen_fold_at(array('not_connected', 'not_connected', 'off')), 'one row is never folded alone');
 	pg_assert_same(1, pg_connections_screen_fold_at(array('none')), 'a one-row group');
 }
+
+function test_connections_screen_a_services_accounts_and_its_last_error()
+{
+	$accounts = array(
+		array('id' => 1, 'provider' => 'google', 'purposes' => array('account', 'backup'), 'status' => 'active', 'last_error' => ''),
+		array('id' => 2, 'provider' => 'google', 'purposes' => array('backup'), 'status' => 'reauth', 'last_error' => 'invalid_grant'),
+		array('id' => 3, 'provider' => 'microsoft', 'purposes' => array('backup'), 'status' => 'reauth', 'last_error' => 'expired'),
+		array('id' => 4, 'provider' => 'google', 'purposes' => array('mail'), 'status' => 'active', 'last_error' => 'old'),
+	);
+	$backup = array('kind' => 'account', 'provider' => 'google', 'purpose' => 'backup');
+
+	pg_assert_same(array(1, 2), array_column(pg_connections_screen_accounts_for($backup, $accounts), 'id'), 'the provider\'s accounts for the purpose');
+	pg_assert_same(array(), pg_connections_screen_accounts_for(array('kind' => 'app', 'key' => 'mail_postmark'), $accounts), 'a service with no account reader has no account');
+	pg_assert_same(array(), pg_connections_screen_accounts_for(null, $accounts), 'nor does a row without a reader');
+
+	pg_assert_same('invalid_grant', pg_connections_screen_last_error(pg_connections_screen_accounts_for($backup, $accounts)), 'the stopped account\'s error');
+	pg_assert_same('old', pg_connections_screen_last_error(array($accounts[0], $accounts[3])), 'an error kept on a working account is still the last one on file');
+	pg_assert_same('', pg_connections_screen_last_error(array($accounts[0])), 'no error on file');
+
+	pg_assert_true(pg_connections_screen_keeps_errors($backup), 'an account reader keeps the last error');
+	pg_assert_false(pg_connections_screen_keeps_errors(array('kind' => 'config', 'names' => array('X'))), 'a config reader keeps none, so the drawer has no last error line');
+	pg_assert_false(pg_connections_screen_keeps_errors(null), 'nor a row without a reader');
+}

@@ -35,16 +35,38 @@ function test_connections_is_one_list_of_groups()
 	pg_assert_true(strpos($source, 'pg_connect_api(') === false && strpos($source, 'pg_connect_check($account);') < strpos($source, 'Reads'), 'no outside call while the list is drawn: only the Check write calls the provider');
 }
 
-function test_connections_provider_panel_keeps_what_the_screen_did()
+function test_connections_provider_drawer_keeps_what_the_screen_did()
 {
 	$source = connections_layout_source();
 
-	pg_assert_contains('id="connections-\' . h($provider_key) . \'"', $source, 'each provider panel keeps the id old links jump to');
-	pg_assert_contains('aria-controls="connections-\' . h($provider_key) . \'"', $source, 'the provider row opens its panel');
+	pg_assert_contains('<dialog class="drawer drawer-end connections-drawer" id="connections-\' . h($provider_key) . \'"', $source, 'each provider has its drawer, under the id old links jump to');
+	pg_assert_contains('data-drawer="connections-\' . h($provider_key) . \'"', $source, 'the provider row opens its drawer');
 
 	foreach (array('data-action="check"', 'data-action="disconnect"', 'connections-connect', 'name="connections_action" value="save_app"', 'data-action="remove_app"') as $part) {
 		pg_assert_contains($part, $source, $part . ' stays on the screen');
 	}
+}
+
+function test_connections_service_drawer_repeats_no_field()
+{
+	$source = connections_layout_source();
+	$detail = substr($source, (int) strpos($source, 'function connections_service_detail('), 6000);
+
+	pg_assert_contains('<dialog class="drawer drawer-end connections-drawer" id="connections-detail"', $source, 'one drawer for the services');
+	pg_assert_contains('<template id="connections-detail-', $detail, 'each service\'s drawer content is drawn on the server');
+	pg_assert_true(strpos($detail, '<input') === false && strpos($detail, '<form') === false, 'no field of a setting is repeated in it');
+	pg_assert_contains('pg_connections_screen_last_error(', $detail, 'the last error on file');
+	pg_assert_contains("lang('Open its settings')", $detail, 'one button opens the setting\'s one place');
+}
+
+function test_connections_other_side_leads_to_application_access()
+{
+	$source = connections_layout_source();
+
+	pg_assert_contains('id="connections-other-side"', $source, 'the other side\'s block');
+	pg_assert_contains('href="api_settings.php"', $source, 'it leads to Application Access');
+	pg_assert_contains('pg_connections_screen_other_side()', $source, 'with its counts');
+	pg_assert_contains('<div class="col-12 lg:col-4 2xl:col-3 order-2">', $source, 'in the side column');
 }
 
 function test_connections_application_fields_are_form_field_boxes()

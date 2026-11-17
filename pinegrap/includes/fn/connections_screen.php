@@ -192,6 +192,96 @@ function pg_connections_screen_provider_state($accounts, $app)
 }
 
 /**
+ * The connected accounts a service's account reader stands on: the
+ * provider's accounts holding its purpose, whoever owns them. Pure.
+ *
+ * @param array|null $state    a row's 'state'
+ * @param array      $accounts pg_connect_accounts() rows
+ * @return array list of accounts, in the given order
+ */
+function pg_connections_screen_accounts_for($state, $accounts)
+{
+    if (!is_array($state) || !isset($state['kind']) || ($state['kind'] !== 'account')) {
+        return array();
+    }
+
+    $found = array();
+
+    foreach ((array) $accounts as $account) {
+        if (($account['provider'] === $state['provider']) && in_array($state['purpose'], (array) $account['purposes'], true)) {
+            $found[] = $account;
+        }
+    }
+
+    return $found;
+}
+
+/**
+ * The last error on file among some accounts: a stopped account's first,
+ * else any account's kept error; '' when none is stored. Pure.
+ *
+ * @param array $accounts
+ * @return string
+ */
+function pg_connections_screen_last_error($accounts)
+{
+    $kept = '';
+
+    foreach ((array) $accounts as $account) {
+        $error = isset($account['last_error']) ? (string) $account['last_error'] : '';
+
+        if ($error === '') {
+            continue;
+        }
+
+        if ($account['status'] === 'reauth') {
+            return $error;
+        }
+
+        if ($kept === '') {
+            $kept = $error;
+        }
+    }
+
+    return $kept;
+}
+
+/**
+ * Whether the site stores a service's last error: only a connected account
+ * keeps one (connect_accounts.last_error); no other reader has a place for
+ * it, and none is added. Pure.
+ *
+ * @param array|null $state a row's 'state'
+ * @return bool
+ */
+function pg_connections_screen_keeps_errors($state)
+{
+    return is_array($state) && isset($state['kind']) && ($state['kind'] === 'account');
+}
+
+/**
+ * What connects to the site, as Application Access counts it: applications
+ * (keys, the documentation's temporary ones left out), team devices signed
+ * in, applications people connected with OAuth, webhook subscriptions. A
+ * table not yet installed counts none.
+ *
+ * @return array applications, devices, connected, webhooks (int)
+ */
+function pg_connections_screen_other_side()
+{
+    $count = function ($table, $column, $sql) {
+        return (function_exists('waf_table_has_column') && waf_table_has_column($table, $column)) ? (int) db_value($sql) : 0;
+    };
+
+    return array(
+        'applications' => $count('api_apps', 'id', "SELECT COUNT(*) FROM api_apps WHERE name NOT LIKE '\\_\\_test\\_\\_%'"),
+        'devices'      => $count('api_devices', 'oauth_client_id', "SELECT COUNT(*) FROM api_devices WHERE oauth_client_id IS NULL OR oauth_client_id = 0"),
+        'connected'    => $count('oauth_clients', 'id', "SELECT COUNT(*) FROM oauth_clients"),
+        'webhooks'     => $count('api_webhooks', 'id', "SELECT COUNT(*) FROM api_webhooks"),
+    );
+}
+
+/**
  * Whether a user may open a row's place, so may see the row: a card of Site
  * Settings in a category they may open, a System tools screen their tools
  * list holds, or one of pg_connections_other_screens() for a manager. Pure.
