@@ -244,6 +244,29 @@ function test_prototype_bundle_shell_names_the_replaced_page_and_its_empty_state
 	pg_assert_false(strpos($html, 'This design has no draft pages.') !== false);
 }
 
+function test_prototype_bundle_page_chooser_takes_the_width_its_names_need()
+{
+	$view = array(
+		'design' => 'Spring campaign',
+		'pages' => pg_proto_page_set(prototype_bundle_test_rows(), 50, array(60), '', prototype_bundle_test_items()),
+		'current' => 33,
+		'viewer' => '/pinegrap/prototype.php?bundle=5',
+		'wide_pages' => true,
+	);
+	$html = pg_proto_shell_html($view);
+
+	// "(replaces …)" tells a replacement from a new page, so a bundle's
+	// chooser is not held to the design's 16rem.
+	pg_assert_contains('<div class="pg-proto-nav pg-proto-nav-wide">', $html);
+	pg_assert_contains('.pg-proto-nav-wide select.form-control { max-width: none; }', $html);
+
+	// A design's prototype keeps its chooser as it was.
+	unset($view['wide_pages']);
+	$html = pg_proto_shell_html($view);
+	pg_assert_contains('<div class="pg-proto-nav">', $html);
+	pg_assert_contains('.pg-proto-nav select.form-control { width: auto; max-width: 16rem; min-width: 8rem; }', $html);
+}
+
 function test_prototype_php_keeps_the_bundle_preview_to_bundle_makers()
 {
 	$source = file_get_contents(PG_FUNCTIONS_DIR . '/prototype.php');

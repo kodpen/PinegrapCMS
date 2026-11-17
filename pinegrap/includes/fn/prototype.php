@@ -1238,7 +1238,9 @@ function pg_proto_frame_inject($html, $strings, $cookies = array())
  * @param array $view design, pages (pg_proto_page_set()), current, fallback,
  *                    fallback_text (optional), frame_url, viewer, close_url
  *                    ('' for none), software, lang, error, empty_title and
- *                    empty_text (optional: what an empty set says)
+ *                    empty_text (optional: what an empty set says),
+ *                    wide_pages (optional: the page chooser is not held
+ *                    to 16rem, for a release bundle's longer names)
  * @return string
  */
 function pg_proto_shell_html($view)
@@ -1290,7 +1292,7 @@ function pg_proto_shell_html($view)
     $nav = '';
 
     if ($pages) {
-        $nav = '<div class="pg-proto-nav">'
+        $nav = '<div class="pg-proto-nav' . (!empty($view['wide_pages']) ? ' pg-proto-nav-wide' : '') . '">'
             . $step(($index >= 0) ? $index - 1 : -1, 'bi-chevron-left', lang('Previous page'))
             . '<select class="form-control form-control-sm" id="pg-proto-pages" aria-label="' . h(lang('Pages')) . '">' . $options . '</select>'
             . $step(($index >= 0) ? $index + 1 : -1, 'bi-chevron-right', lang('Next page'))
@@ -1345,6 +1347,12 @@ body.pg-proto { display: flex; flex-direction: column; margin: 0; overflow: hidd
 .pg-proto-name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pg-proto-nav { display: flex; align-items: center; gap: .375rem; flex: 0 1 auto; min-width: 0; }
 .pg-proto-nav select.form-control { width: auto; max-width: 16rem; min-width: 8rem; }
+/* A wide chooser is as wide as its longest name needs, up to the bar\'s
+   width; the bar wraps it to its own row before a name is cut. */
+@media (min-width: 576px) {
+  .pg-proto-nav-wide { max-width: 100%; }
+  .pg-proto-nav-wide select.form-control { max-width: none; }
+}
 .pg-proto-count { white-space: nowrap; }
 .pg-proto-tools { display: flex; align-items: center; gap: .375rem; margin-left: auto; }
 .pg-proto-frame { flex: 1 1 auto; width: 100%; border: 0; background: #fff; }

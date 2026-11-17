@@ -426,6 +426,7 @@ if (!$pg_proto_link_mode) {
             'error' => $pg_proto_error,
             'empty_title' => lang('No page of this bundle is waiting to be published.'),
             'empty_text' => lang('Add a copy of a page or a draft on the Bundles screen to look at it here before it goes live.'),
+            'wide_pages' => true,
         ));
         exit;
     }
