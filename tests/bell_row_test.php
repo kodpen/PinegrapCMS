@@ -74,6 +74,7 @@ function test_bell_row_module_of_every_known_action()
 		'mail_failed'      => 'system',
 		'ops'              => 'system',
 		'profile_flows'    => 'system',
+		'bundle_held'      => 'content',
 	);
 	$known = bell_row_known_actions();
 

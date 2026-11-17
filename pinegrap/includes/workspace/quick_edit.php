@@ -178,6 +178,8 @@ function ws_quick_edit_js_strings()
         'qc_created'       => lang('Created.'),
         'qc_command_title' => lang('The product that will be created'),
         'qc_command_title_group' => lang('The product group that will be created'),
+        'qc_command_title_contact' => lang('The contact that will be created'),
+        'qc_new_contact'   => lang('New contact'),
         'qc_all_fields'    => lang('All fields'),
         'qc_unticked'      => lang('Left unticked, nobody sees it in the store yet.'),
         'qc_name_help'     => lang('The product\'s own code (SKU): no two products share one.'),
@@ -459,14 +461,78 @@ function ws_quick_edit_log_name($viewer)
 
 /**
  * The kinds of record a person makes from the Workspace: the catalogue's
- * creates. Each starts off sale (a group switched off) unless the person
- * ticks it.
+ * creates. A product starts off sale (a group switched off) unless the
+ * person ticks it; a contact has no such switch.
  *
  * @return string[]
  */
 function ws_quick_create_types()
 {
-    return array('product', 'product_group');
+    return array('product', 'product_group', 'contact');
+}
+
+/**
+ * Does a kind start switched off, with the "On sale" ("Enabled") tick that
+ * puts it on? A product and a product group do; a contact does not.
+ *
+ * @param string $type
+ * @return bool
+ */
+function ws_quick_create_has_switch($type)
+{
+    return in_array((string) $type, array('product', 'product_group'), true);
+}
+
+/**
+ * A kind's required list as the catalogue reads it (ws_change_create_check()):
+ * at least one of its fields filled - a product or a group its name, a
+ * contact one of first name, last name, company and e-mail. Nothing when
+ * one is filled; else the whole list, in the catalogue's order. The /create
+ * card and the save both ask it. Pure.
+ *
+ * @param string[] $required the kind's required list (ws_change_types())
+ * @param array    $fields   name => value
+ * @return string[]
+ */
+function ws_quick_create_missing($required, $fields)
+{
+    foreach ((array) $required as $name) {
+        if (isset($fields[$name]) && is_scalar($fields[$name]) && (trim((string) $fields[$name]) !== '')) {
+            return array();
+        }
+    }
+
+    return array_values(array_map('strval', (array) $required));
+}
+
+/**
+ * The fields the drawer's new mode marks with a star: each one that must be
+ * filled on its own, which is a required list of one (a product's name).
+ * A list read as "one of these" (a contact's) marks none. Pure.
+ *
+ * @param string[] $required
+ * @return string[]
+ */
+function ws_quick_create_starred($required)
+{
+    $required = array_values((array) $required);
+
+    return (count($required) === 1) ? $required : array();
+}
+
+/**
+ * What a create with none of its required list filled is refused with: the
+ * catalogue's own sentence (ws_change_create_check()).
+ *
+ * @param string $type
+ * @param string $label the first required field's label
+ * @return string
+ */
+function ws_quick_create_missing_error($type, $label)
+{
+    return ($type === 'contact')
+        ? lang('A customer needs at least a name, a company or an e-mail address.')
+        : lang(array('string' => '{var:1} is required', 'vars' => array($label)));
 }
 
 /**
@@ -494,6 +560,7 @@ function ws_quick_create_short_list($type)
     $lists = array(
         'product'       => array('name', 'short_description', 'price', 'enabled', WS_QUICK_EDIT_STOCK_FIELD, 'group_ids'),
         'product_group' => array('name', 'short_description', 'enabled', 'parent_id'),
+        'contact'       => array('first_name', 'last_name', 'company', 'email'),
     );
 
     return $lists[$type] ?? array();
@@ -574,7 +641,7 @@ function ws_quick_create_change($type, $fields)
         $out[(string) $name] = $value;
     }
 
-    if (!array_key_exists('enabled', $out)) {
+    if (ws_quick_create_has_switch($type) && !array_key_exists('enabled', $out)) {
         $out['enabled'] = false;
     }
 
@@ -589,6 +656,10 @@ function ws_quick_create_change($type, $fields)
  */
 function ws_quick_create_title($type)
 {
+    if ($type === 'contact') {
+        return lang('New contact');
+    }
+
     return ($type === 'product_group') ? lang('New product group') : lang('New product');
 }
 
@@ -645,13 +716,13 @@ function ws_quick_create_fields($viewer, $type)
         'tag'      => (string) $types[$type]['tag'],
         'fields'   => ws_quick_create_form($type, $types[$type]),
         'short'    => ws_quick_create_short_list($type),
-        'required' => array_values((array) ($types[$type]['required'] ?? array())),
+        'required' => ws_quick_create_starred((array) ($types[$type]['required'] ?? array())),
     );
 }
 
 /**
  * A new record's fields checked as a save checks them, nothing written: the
- * person's right, a required field named by its label, then changes.php's
+ * person's right, the kind's required list (ws_quick_create_missing()), then changes.php's
  * typing, bounds and rules (ws_changes_input(): a name already taken, a
  * group that is gone or in the Recycle Bin). The /product card asks it
  * before it is drawn.
@@ -677,12 +748,10 @@ function ws_quick_create_input($viewer, $type, $fields, $channel_id = 0)
     $types = ws_change_types();
     $change = ws_quick_create_change($type, $fields);
 
-    foreach ((array) ($types[$type]['required'] ?? array()) as $name) {
-        if (!isset($change['fields'][$name]) || !is_scalar($change['fields'][$name]) || (trim((string) $change['fields'][$name]) === '')) {
-            $field = ws_change_field($types[$type], $name);
+    foreach (ws_quick_create_missing((array) ($types[$type]['required'] ?? array()), $change['fields']) as $name) {
+        $field = ws_change_field($types[$type], $name);
 
-            return $fail(lang(array('string' => '{var:1} is required', 'vars' => array(($field !== null) ? (string) $field[2] : $name))));
-        }
+        return $fail(ws_quick_create_missing_error($type, ($field !== null) ? (string) $field[2] : $name));
     }
 
     $input = ws_changes_input(array($change), (int) $viewer['id'], (int) $channel_id);
@@ -702,8 +771,8 @@ function ws_quick_create_input($viewer, $type, $fields, $channel_id = 0)
 }
 
 /**
- * Makes a new product or product group from what a person filled in: the
- * drawer's new mode or a confirmed /product card.
+ * Makes a new product, product group or contact from what a person filled
+ * in: the drawer's new mode or a confirmed /product or /create card.
  *
  * Off sale (switched off) unless "On sale" ("Enabled") was ticked. Written
  * by the kind's writer through ws_change_write() - a product by
@@ -790,7 +859,12 @@ function ws_quick_create_save($viewer, $type, $fields, $channel_id = 0, $decisio
     $channel = ((int) $channel_id > 0) ? ws_channel((int) $channel_id) : null;
 
     if ($decision && $channel && ws_can_post_channel($viewer, $channel)) {
-        $body = lang(array('string' => '{var:1} was added. {var:2}', 'vars' => array($tag, implode(' · ', $lines))));
+        // A contact's decision names it by its tag alone: the tag shows the
+        // contact only to who may see contacts, the lines would show its
+        // e-mail address to every member.
+        $body = ($type === 'contact')
+            ? lang(array('string' => '{var:1} was added.', 'vars' => array($tag)))
+            : lang(array('string' => '{var:1} was added. {var:2}', 'vars' => array($tag, implode(' · ', $lines))));
         $sent = ws_message_send($viewer, $channel, mb_substr($body, 0, WS_MESSAGE_MAX), array('kind' => 'decision'));
 
         if ($sent['ok']) {

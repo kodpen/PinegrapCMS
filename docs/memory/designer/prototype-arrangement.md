@@ -4,8 +4,8 @@ description: The Prototype view's layout(): frames, rows, chips, arrows; a grid 
 ---
 
 ## What does layout() build?
-- `PGProtoHotspots.layout(marked, saved, opts)`: frames `p:<tab key>` and `s:<shared id>`, each 248 wide (`FRAME`), 44 + 30 per row + 10 high; a menu or region gives one row per link (label "menu › item"), one broken row when the read knows no such name.
-- One chip (`c:<n>`) per mark and href outside the tabs; arrows `<frame id>|<port>` to the tab frame or chip; `rowY()` is a row port's height.
+- `PGProtoHotspots.layout(marked, saved, opts)`: frames `p:<tab key>` and `s:<shared id>`, each 248 wide (`FRAME`), the 44 head, the picture's box (`thumb`; 30 without one) and 10 high, the rows taking no room (designer/prototype-marks.md); a menu or region gives one row per link (label "menu › item"), one broken row when the read knows no such name.
+- One chip (`c:<n>`) per mark and href outside the tabs; arrows `<frame id>|<port>` to the tab frame or chip.
 - Answers `{ frames, chips, edges, headings, start }`.
 
 ## Where does each go?

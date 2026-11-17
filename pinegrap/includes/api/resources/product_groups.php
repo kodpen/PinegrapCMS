@@ -1350,7 +1350,7 @@ function api_product_group_schema() {
 		)),
 		'product_ids'     => 'integer[]',
 		'recycled'        => 'boolean',
-		'updated_at'      => 'string?',
+		'updated_at'      => 'datetime?',
 		'updated_at_unix' => 'integer',
 		'seo'             => 'Seo',
 		'description'      => 'string',

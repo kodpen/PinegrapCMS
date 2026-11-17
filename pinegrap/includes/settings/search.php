@@ -119,7 +119,9 @@ function pg_settings_card_labels($html, $ids)
  * @param array $categories as pg_settings_categories() returns them
  * @param array $labels     category key => pg_settings_card_labels() result
  * @return array list of rows: pane, card ('' for the category), title, place,
- *               keys (keywords), fields (labels)
+ *               keys (keywords), fields (labels), services (the names of
+ *               the outside services the card holds, ranked after every
+ *               other match: pg_connections_place_services())
  */
 function pg_settings_search_index($categories, $labels)
 {
@@ -131,7 +133,7 @@ function pg_settings_search_index($categories, $labels)
 
         $index[] = array(
             'pane' => (string) $key, 'card' => '', 'title' => $place,
-            'place' => '', 'keys' => array(), 'fields' => array(),
+            'place' => '', 'keys' => array(), 'fields' => array(), 'services' => array(),
         );
 
         $sections = isset($category['sections']) ? $category['sections'] : array();
@@ -156,6 +158,7 @@ function pg_settings_search_index($categories, $labels)
                 'place'  => $place,
                 'keys'   => isset($category['keywords'][$id]) ? array_values($category['keywords'][$id]) : array(),
                 'fields' => $fields,
+                'services' => pg_connections_place_services('#settings/' . $key . '/' . $id),
             );
         }
     }
@@ -205,6 +208,7 @@ function pg_settings_search_tool_rows($groups, $base_url)
                 'place'  => $screen . ' › ' . $group['label'],
                 'keys'   => pg_settings_search_tool_words($item['label'], $words),
                 'fields' => array(),
+                'services' => pg_connections_place_services($script),
                 'url'    => isset($item['confirm']) ? $screen_url : $base_url . $item['url'],
                 'target' => isset($item['target']) ? (string) $item['target'] : '',
                 'icon'   => (string) $item['icon'],
@@ -219,7 +223,7 @@ function pg_settings_search_tool_rows($groups, $base_url)
     array_unshift($rows, array(
         'pane' => '', 'card' => '', 'title' => $screen, 'place' => '',
         'keys' => pg_settings_search_tool_words($screen, $keys['system_tools.php']),
-        'fields' => array(), 'url' => $screen_url, 'target' => '', 'icon' => 'bi-tools',
+        'fields' => array(), 'services' => array(), 'url' => $screen_url, 'target' => '', 'icon' => 'bi-tools',
     ));
 
     return $rows;

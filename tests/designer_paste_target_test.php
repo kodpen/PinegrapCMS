@@ -305,7 +305,8 @@ function designer_paste_target_test_run($cases, $history = false)
 		'_sdNodeObjects', '_sdTreeObjects');
 
 	if ($history) {
-		$names = array_merge($names, array('saveState', 'undo', 'redo', 'reindex', '_sdIdFloor', '_snapshotShared', '_restoreShared', '_pgBaselineTreeKey', '_sdSharedTreeJSON', 'onDuplicate'));
+		$names = array_merge($names, array('saveState', 'undo', 'redo', 'reindex', '_sdIdFloor', '_snapshotShared', '_restoreShared', '_pgBaselineTreeKey', '_sdSharedTreeJSON', 'onDuplicate',
+			'_sdStepSelectionKeep', '_sdStepSelection', '_sdStepReselect', '_findNodeAnywhereById'));
 	}
 
 	foreach ($names as $name) {
@@ -339,6 +340,7 @@ function designer_paste_target_test_run($cases, $history = false)
 				. 'function _snapshotAssetFields() { return null; } function _restoreAssetFields() {}'
 				. 'function _sdMayEdit() { return true; } function _blockDuplicateWithToast() { return false; }'
 				. 'var _sdLgState = null, _sdLgDrawing = false; function _sdLgKeep() {} function _sdLgCancel() { return false; }'
+				. 'var document = { getElementById: function () { return null; } };'
 			: 'var saves = 0; function saveState() { saves++; }')
 		. 'var nodeIdCounter = 100; function gid() { return "sd_" + (++nodeIdCounter); }'
 		. 'function cloneTree(n) { return JSON.parse(JSON.stringify(n)); }'

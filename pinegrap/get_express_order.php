@@ -4219,6 +4219,7 @@ function get_express_order($properties) {
         $custom_field_2 = false;
         $opt_in = false;
         $opt_in_label = '';
+        $opt_in_sms = false;
         $referral_source = false;
         $update_contact = false;
         $tax_exempt = false;

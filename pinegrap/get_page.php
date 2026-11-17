@@ -512,6 +512,11 @@ case 'membership':
 	}
 	break;
 }
+// A lesson of a course that is not open yet for this member sends them to the
+// course's classroom page with a notice (includes/fn/courses.php).
+if (function_exists('pg_course_gate')) {
+	pg_course_gate($page_id, $folder_id, $access_control_type);
+}
 // Only the normal render branch below decides whether to draw the toolbar; the
 // PDF, RSS and iCalendar branches never touch it and all four fall through to
 // the same tail. Declared here so that tail can read it on every path.
@@ -3359,6 +3364,12 @@ if (function_exists('pg_tr_finalize')) {
 
 if (function_exists('pg_version_assets')) {
 	$content = pg_version_assets($content);
+}
+
+// The notice a closed lesson left for its classroom page, shown once
+// (includes/fn/courses.php); it marks the page as drawn for this member alone.
+if (function_exists('pg_course_notice_inject') && $rendered_html_page) {
+	$content = pg_course_notice_inject($content, $page_id);
 }
 
 // The real-user speed beacon (includes/fn/page_vitals.php): only on the page a

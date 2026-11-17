@@ -5,7 +5,7 @@ description: A mail's HTML in the E-mails reading pane (WM12, PR #8861): the gua
 
 ## How does the pane draw a mail's HTML?
 - `ws_mail_pane_body_html()` (`mail_pane.php`): a mail with kept HTML gets `<iframe class="ws-mail-frame" src="workspace_mail_frame.php?item=<id>" loading="lazy">` with the mail mode's sandbox, a Plain text switch (`aria-pressed`) and its text hidden beside it. A mail without HTML, or a pane drawn without the panel's address, keeps the escaped text.
-- The pane reads named columns (`ws_mail_pane_columns()`), never `body_html` (up to 1 MB each). `has_html` and `outside_pictures` (LOCATE of ` data-pg-src="http` or ` data-pg-background="http`) come from SQL; before the column exists both are 0.
+- The pane reads named columns (`ws_mail_pane_columns()`), never `body_html` (up to 1 MB each). `has_html` and `outside_pictures` (LOCATE of ` data-pg-src="http` or ` data-pg-background="http`) come from SQL; before the column exists both are 0. A marked mail's hosts decide the offer (`mail-own-host-pictures.md`).
 
 ## What does workspace_mail_frame.php answer?
 - Only as a frame (`pg_guarded_frame_request_framed()`), to a Workspace member, for a mail of a conversation with its card whose channel the reader may read (`ws_mail_frame()`); else the same 404 line. `&pictures=1` asks for pictures from outside.
@@ -18,7 +18,7 @@ description: A mail's HTML in the E-mails reading pane (WM12, PR #8861): the gua
 - The height sent adds a sideways scroll bar's: a wide newsletter scrolls inside its frame.
 
 ## How does Show pictures work?
-- "Pictures from outside are not shown." with Show pictures appears only for a mail whose HTML names outside pictures. Pressed, every frame of that sender loads its `&pictures=1` address, the line goes and focus moves to Plain text.
+- "Pictures from outside are not shown." with Show pictures appears only for a mail whose HTML names a picture on another host than the site's own. Pressed, every frame of that sender loads its `&pictures=1` address, the line goes and focus moves to Plain text.
 - Remembered per sender in localStorage `ws-mail-pictures:<api url>|<user id>`: lower-case addresses, newest first, at most 500. A pane drawn later, by the script or the server, loads them at once; a storage that fails loses only the memory. Owner decision: `workflow/decisions-made-workspace-17.md`.
 
 ## How does the height reach the pane?

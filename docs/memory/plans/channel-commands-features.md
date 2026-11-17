@@ -15,7 +15,8 @@ description: Plan channel-commands, features K1 to K14: the registry, the gate t
 - (K7) A reply reaches every runner. Typed as a reply and without a text, /task makes the task from that message (what "Make a task of it" does), /decision and /note mark that message (`ws_message_mark()`). With a text they do as today.
 
 ## The person's own (CC3)
-- (K8) /hatırlat (/remind) `<when> <text>`: a personal plan with its reminder (`ws_personal_plan_save()`), as "New plan" on My calendar writes one. The day and time words are the ones /task reads (`workspace/workspace-command-live-line.md`). Typed as a reply, the plan's note carries the message's link. The live line says what will be reminded and when; the answer is the writer's alone. No time: the form opens filled.
+- (K8) /hatırlat (/remind) `<when> <text>`: a personal plan reminded at its start (`ws_personal_plan_save()`, the reminder "At the start"), as "New plan" on My calendar writes one. The day and time words are the ones /task reads (`workspace/workspace-command-live-line.md`). Typed as a reply, the plan's note carries the message's link. The live line says what will be reminded and when; the answer is the writer's alone. No time: the form opens filled, "At the start" chosen.
+- Architect (2026-11-17, agent channel message 8102): the time typed is the moment the person wants to be told, so the lead is 0 minutes. The New plan form's own default stays "No reminder"; CC3's test line "the form's default reminder" means "At the start".
 - (K9) /özet (/recap): "Sum up what I missed" (`ws_recap_ai()`), to the writer alone. Offered only where the catch-up line's button is; its refusals are the button's.
 
 ## What the box's Insert menu has (CC4)

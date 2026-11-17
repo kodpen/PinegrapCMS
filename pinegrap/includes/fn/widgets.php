@@ -933,6 +933,9 @@ function pg_sw_raw_token_keys()
         '__return_customer_note_html',
         '__return_decision_note_html',
         '__return_actions_html',
+        // My account: a subscription's action forms, built by
+        // subscriptions_account.php with the form token.
+        '__subscription_actions_html',
         // Cart: a payment schedule's frequency choices, the value selected.
         '__schedule_period_options_html',
         // Cart: a product form's pick list choices, the value selected.
@@ -4422,13 +4425,18 @@ function _render_system_widget_my_account($tree_json, $widget_id, $cfg = array()
         '__display_name' => h($full_name !== '' ? $full_name : ($user_row ? (string)$user_row['user_username'] : (defined('USER_USERNAME') ? (string)USER_USERNAME : ''))),
         'not_logged_in' => '',
     ) + $link_values;
+    // The member's store credit balance, as the store credit section prints it.
+    $values['__store_credit_balance'] = h($extras['store_credit']['balance_info']);
     // The member's own allow-listed account values (pg_sw_entity_fields('account')).
     $values += pg_sw_entity_account_tokens($uid, pg_sw_cond_tree_json($tree_decoded));
 
     // A list of the member's orders (widgets_lists_order.php): the order
     // history's rows, filed only when the tree drew one.
     if (pg_sw_list_wanted('account')) {
-        pg_sw_list_publish('account', pg_sw_list_account_rows($values['account_id'], $extras['orders'], $extras['order_view_url'], pg_sw_default_date_format('date')));
+        pg_sw_list_publish('account', pg_sw_list_account_rows($values['account_id'], $extras['orders'], $extras['order_view_url'], pg_sw_default_date_format('date'))
+            + pg_sw_list_account_booking_rows($values['account_id'], $extras['bookings'])
+            + pg_sw_list_account_subscription_rows($values['account_id'], $extras['subscriptions'])
+            + pg_sw_list_account_credit_rows($values['account_id'], $extras['store_credit']['cards']));
     }
 
     // ── No loop_area — render entire tree once with account tokens ─────────

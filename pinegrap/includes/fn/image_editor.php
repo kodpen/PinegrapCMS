@@ -31,7 +31,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  */
 function pg_image_editor_parts()
 {
-    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'area', 'versions', 'artboard', 'export', 'vector', 'svg', 'motion', 'tracks', 'sound', 'keyframes', 'render', 'scenes', 'present', 'access', 'record', 'fonts', 'glyph', 'warp', 'puppet', 'outline', 'builder', 'video', 'clip', 'mix', 'upload', 'phone', 'actions', 'menu');
+    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'area', 'versions', 'artboard', 'export', 'vector', 'svg', 'motion', 'tracks', 'sound', 'keyframes', 'render', 'scenes', 'present', 'access', 'record', 'follow', 'fonts', 'glyph', 'warp', 'puppet', 'outline', 'builder', 'video', 'clip', 'mix', 'upload', 'phone', 'actions', 'menu');
 }
 
 /**
@@ -2309,6 +2309,9 @@ function pg_file_versions_prune($file_id)
  */
 function pg_file_versions_delete_file($file_id)
 {
+    // Its texts in the translation and its languages' pictures go too.
+    pg_picture_tr_forget($file_id);
+
     if (((int) $file_id <= 0) || !pg_file_versions_ready()) {
         return;
     }
@@ -2373,6 +2376,10 @@ function pg_file_versions_sweep($seconds = 5)
     if ($through) {
         @file_put_contents(pg_file_versions_sweep_file(), json_encode(array('done_at' => time())));
     }
+
+    // The translated texts of pictures deleted elsewhere, binned or changed
+    // outside the editor, in what is left of the budget.
+    pg_picture_tr_prune($deadline);
 
     return $removed;
 }
@@ -2504,6 +2511,10 @@ function pg_file_versions_after_save($file_id, $path, $doc, $base, $user_id, $re
 
     pg_file_versions_add($file_id, $path, $json, $redacted ? 'redact' : 'save', $user_id, $redacted);
     pg_file_versions_prune($file_id);
+
+    // The texts of the picture are the kept document's now (none when it
+    // could not be kept), and its languages' pictures are out of date.
+    pg_picture_tr_saved($file_id, ($json !== '') ? json_decode($json, true) : null);
 }
 
 // A version as the drawer lists it: kind original, restored, redacted or
@@ -2639,6 +2650,7 @@ function pg_image_editor_action_restore($request, $user)
     if ((int) $row['version_id'] !== (int) ($newest ? $newest['version_id'] : 0)) {
         pg_file_versions_add($file_id, $file['path'], (string) $row['doc_json'], 'restore', $user['id'], (int) $row['redacted'] === 1);
         pg_file_versions_prune($file_id);
+        pg_picture_tr_saved($file_id, pg_picture_tr_row_doc($row));
     }
 
     $state = pg_file_versions_open_state($file_id, $file['path']);
@@ -3001,7 +3013,7 @@ function pg_image_editor_save_canvas($request, $board, $mode, $user)
         $record[0]['mode'] = $mode;
 
         // After the pictures: the kept document points at their files.
-        if (pg_image_editor_canvas_keep((int) $record[0]['id'], isset($request['doc_object']) ? $request['doc_object'] : null, $user['id'], ($mode === 'replace') ? 'saved' : 'new')
+        if (pg_image_editor_canvas_keep((int) $record[0]['id'], isset($request['doc_object']) ? $request['doc_object'] : null, $user['id'], ($mode === 'replace') ? 'saved' : 'new', true)
             && ($mode === 'replace')) {
             pg_file_versions_prune((int) $record[0]['id']);
         }
@@ -3063,18 +3075,24 @@ function pg_image_editor_canvas_doc_json($doc)
  * @param mixed  $doc     decoded as objects
  * @param int    $user_id
  * @param string $source
+ * @param bool   $words   whether its texts enter the site's translation: a
+ *                        canvas in Files; a Workspace canvas's do not
  * @return bool kept
  */
-function pg_image_editor_canvas_keep($file_id, $doc, $user_id, $source = 'new')
+function pg_image_editor_canvas_keep($file_id, $doc, $user_id, $source = 'new', $words = false)
 {
     $json = pg_image_editor_canvas_doc_json($doc);
     $stored = ($json !== '') ? (string) db_value("SELECT name FROM files WHERE id = '" . (int) $file_id . "'") : '';
+    $kept = ($stored !== '') && pg_file_versions_ready()
+        && (bool) pg_file_versions_add((int) $file_id, FILE_DIRECTORY_PATH . '/' . basename($stored), $json, $source, $user_id);
 
-    if (($stored === '') || !pg_file_versions_ready()) {
-        return false;
+    // The texts of the canvas are the kept document's (none when it was not
+    // kept: the file holds flat pixels now).
+    if ($words) {
+        pg_picture_tr_saved($file_id, $kept ? json_decode($json, true) : null);
     }
 
-    return (bool) pg_file_versions_add((int) $file_id, FILE_DIRECTORY_PATH . '/' . basename($stored), $json, $source, $user_id);
+    return $kept;
 }
 
 /**
@@ -5555,8 +5573,12 @@ function pg_image_editor_strings_builder()
 function pg_image_editor_strings_actions()
 {
     return array(
-        'actBar'     => lang('Selection actions'),
-        'actOptions' => lang('Options'),
+        'actBar'         => lang('Selection actions'),
+        'actOptions'     => lang('Options'),
+        'actEditText'    => lang('Edit text'),
+        'actMotion'      => lang('Motion'),
+        'actMore'        => lang('More'),
+        'actMoreOptions' => lang('More options'),
     );
 }
 
@@ -5668,6 +5690,37 @@ function pg_image_editor_strings_record()
         'recPick'      => lang('Select one layer to record its move.'),
         'recHint'      => lang('Recording: drag the layer, letting go stops it · Esc cancels the recording'),
         'recHintPhone' => lang('Drag the layer; letting go stops the recording.'),
+    );
+}
+
+// -- Follow (pg_image_editor_follow.js) --
+
+/**
+ * Follow's labels: its button in the Path tab, the hint while a box is
+ * drawn, the progress pill, and what is said when it cannot start or the
+ * followed area is lost.
+ *
+ * @return array key => translated text
+ */
+function pg_image_editor_strings_follow()
+{
+    return array(
+        'followFollow'    => lang('Follow'),
+        'followCancel'    => lang('Cancel Follow'),
+        'followPick'      => lang('Select one layer that is not a video to make it follow an area of a video.'),
+        'followNote'      => lang('Follow moves the layer with an area of a video from the playhead on. A clip trimmed, moved, split or sped up later is not followed again by itself: press Follow again.'),
+        'followHint'      => lang('Drag a box over what to follow · Esc cancels'),
+        'followHintRun'   => lang('Following the area through the video · Esc cancels'),
+        // On a touch screen the hints name no key.
+        'followHintTouch'    => lang('Drag a box over what to follow'),
+        'followHintRunTouch' => lang('Following the area through the video'),
+        'followNoVideo'   => lang('Move the playhead onto a video first.'),
+        'followShort'     => lang('Less than 0.2 s of the video is left from the playhead. Move the playhead back.'),
+        'followBusy'      => lang('Following…'),
+        'followCancelRun' => lang('Cancel'),
+        'followLost'      => lang('Lost it at {var:1}. The move up to there is kept; move the playhead there and follow again.'),
+        'followFlat'      => lang('There is nothing in the box to follow. Draw it over a part with some detail.'),
+        'followError'     => lang('The video could not be followed.'),
     );
 }
 

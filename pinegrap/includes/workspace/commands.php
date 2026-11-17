@@ -126,7 +126,34 @@ function ws_command_registry_names($create)
  */
 function ws_command_create_kinds()
 {
-    return array('urun' => 'product', 'product' => 'product', 'grup' => 'product_group', 'group' => 'product_group');
+    return array(
+        'urun' => 'product', 'product' => 'product',
+        'grup' => 'product_group', 'group' => 'product_group',
+        'kisi' => 'contact', 'contact' => 'contact',
+    );
+}
+
+/**
+ * The kinds /create makes that this person may make, each once, in the
+ * order of ws_command_create_kinds(): a kind is the right of its record's
+ * screen (ws_change_allowed(): products the e-commerce right, contacts the
+ * contacts right), so the product right never opens a contact.
+ *
+ * @param array    $viewer
+ * @param callable $may    ($viewer, $type, $record_id) => bool
+ * @return string[]
+ */
+function ws_command_create_types_for($viewer, $may = 'ws_change_allowed')
+{
+    $out = array();
+
+    foreach (array_unique(array_values(ws_command_create_kinds())) as $type) {
+        if (is_callable($may) && call_user_func($may, $viewer, $type, 0)) {
+            $out[] = $type;
+        }
+    }
+
+    return $out;
 }
 
 /**
@@ -187,16 +214,28 @@ function ws_command_assistant_ready($command)
  * person every command the parser answers to is listed, and the assistants
  * are left out: that list is read without asking the database anything.
  *
+ * A command that runs only in the channel itself is not offered in one of
+ * its discussions (ws_command_runs_here()).
+ *
  * @param array|null $viewer
  * @param string     $command the command's own name (ws_command_table()
  *                            value, or claude | ai)
+ * @param array|null $channel where it would run; null for anywhere
  * @return bool
  */
-function ws_command_offered($viewer, $command)
+function ws_command_offered($viewer, $command, $channel = null)
 {
     $entry = ws_command_registry()[$command] ?? null;
 
-    if (($entry === null) || ($entry['gate'] === '')) {
+    if ($entry === null) {
+        return true;
+    }
+
+    if (!ws_command_runs_here($entry['where'], $channel)) {
+        return false;
+    }
+
+    if ($entry['gate'] === '') {
         return true;
     }
 
@@ -293,6 +332,23 @@ function ws_command_gate_product($viewer, $command)
 }
 
 /**
+ * /create: whoever may make one of its kinds (ws_command_create_types_for());
+ * the kind typed is checked again when it runs.
+ *
+ * @param array|null $viewer
+ * @param string     $command
+ * @return bool
+ */
+function ws_command_gate_create($viewer, $command)
+{
+    if (!is_array($viewer)) {
+        return true;
+    }
+
+    return function_exists('ws_change_allowed') && (ws_command_create_types_for($viewer) !== array());
+}
+
+/**
  * The kinds of argument a command takes, as the registry types them. The
  * composer suggests values for some of them (ws_commands(), suggest).
  *
@@ -349,17 +405,21 @@ function ws_command_turkish($language = null)
  *
  * The built-in entries come from ws_command_registry().
  *
+ *   group        ws_command_groups() value; agents for an application's
+ *   where        where it runs (ws_command_runs_here()): any | channel
+ *
  * @param array|null $viewer   leaves out the commands this person may not use
  * @param bool       $shadowed lists the shadowed application commands too
+ * @param array|null $channel  leaves out the commands that do not run there
  * @return array[]
  */
-function ws_commands($viewer = null, $shadowed = false)
+function ws_commands($viewer = null, $shadowed = false, $channel = null)
 {
     $turkish = ws_command_turkish();
     $out = array();
 
     foreach (ws_command_registry() as $entry) {
-        if (!ws_command_offered($viewer, $entry['key'])) {
+        if (!ws_command_offered($viewer, $entry['key'], $channel)) {
             continue;
         }
 
@@ -382,17 +442,22 @@ function ws_commands($viewer = null, $shadowed = false)
             'usage'       => $usage,
             'example'     => $entry['example'],
             'args'        => $entry['args'],
-            'live'        => !empty($entry['live']),
+            'variants'    => $entry['variants'],
+            'live'        => ($entry['live'] !== ''),
             'app_id'      => 0,
             'app'         => '',
             'shadowed'    => false,
+            'group'       => $entry['group'],
+            'where'       => $entry['where'],
         );
     }
 
     // The commands applications registered, after the built-in ones; only for
     // a person, so the registry without one touches no table.
     if (is_array($viewer) && function_exists('ws_app_commands_live')) {
-        $out = array_merge($out, ws_command_app_entries(ws_app_commands_live(), $shadowed));
+        foreach (ws_command_app_entries(ws_app_commands_live(), $shadowed) as $app_entry) {
+            $out[] = $app_entry + array('group' => 'agents', 'where' => 'any');
+        }
     }
 
     return $out;
@@ -402,17 +467,20 @@ function ws_commands($viewer = null, $shadowed = false)
  * The help text the /help command, the composer's / picker and the command
  * palette show: the registry (ws_commands()) in the shape they read.
  *
- * @param array|null $viewer leaves out the commands this person may not use
+ * @param array|null $viewer  leaves out the commands this person may not use
+ * @param array|null $channel leaves out the commands that do not run there
  * @return array[] command (the label), names (every name it answers to, each
  *                 with its slash, for the composer's / picker), example,
  *                 description; and from the registry key, name, usage, args,
- *                 live for the composer's argument popup and live line
+ *                 live for the composer's argument popup and live line;
+ *                 group, group_label and where for the list's headers
  */
-function ws_command_help($viewer = null)
+function ws_command_help($viewer = null, $channel = null)
 {
     $help = array();
+    $labels = ws_command_group_labels();
 
-    foreach (ws_commands($viewer) as $entry) {
+    foreach (ws_commands($viewer, false, $channel) as $entry) {
         $help[] = array(
             'command'     => $entry['label'],
             'names'       => $entry['names'],
@@ -422,7 +490,11 @@ function ws_command_help($viewer = null)
             'name'        => $entry['name'],
             'usage'       => $entry['usage'],
             'args'        => $entry['args'],
+            'variants'    => $entry['variants'] ?? array(),
             'live'        => $entry['live'],
+            'group'       => $entry['group'],
+            'group_label' => $labels[$entry['group']] ?? '',
+            'where'       => $entry['where'],
         );
     }
 
@@ -438,10 +510,11 @@ function ws_command_help($viewer = null)
  * anything is typed; the others are found as they are typed.
  *
  * @param string|null $language a language code, or null for the active one
+ * @param array|null  $viewer   with a person, only the kinds they may make
  * @return array dates, estimates, priorities, statuses, kinds (what /create
  *               makes): each a list of value, meta, top
  */
-function ws_command_suggestions($language = null)
+function ws_command_suggestions($language = null, $viewer = null)
 {
     $turkish = ws_command_turkish($language);
     $today = date('Y-m-d');
@@ -462,8 +535,15 @@ function ws_command_suggestions($language = null)
 
     $labels = function_exists('ws_task_priorities') ? ws_task_priorities() : array();
     $status_labels = function_exists('ws_task_statuses') ? ws_task_statuses() : array();
-    $kinds = $turkish ? array('product' => 'ürün', 'product_group' => 'grup') : array('product' => 'product', 'product_group' => 'group');
-    $kind_labels = array('product' => lang('Product'), 'product_group' => lang('Product group'));
+    $kinds = $turkish
+        ? array('product' => 'ürün', 'product_group' => 'grup', 'contact' => 'kişi')
+        : array('product' => 'product', 'product_group' => 'group', 'contact' => 'contact');
+    $kind_labels = array('product' => lang('Product'), 'product_group' => lang('Product group'), 'contact' => lang('Contact'));
+
+    if (is_array($viewer) && function_exists('ws_change_allowed')) {
+        $kinds = array_intersect_key($kinds, array_flip(ws_command_create_types_for($viewer)));
+    }
+
     $out = array('dates' => array(), 'estimates' => array(), 'priorities' => array(), 'statuses' => array(), 'kinds' => array());
 
     foreach ($days as $index => $word) {
@@ -1285,201 +1365,415 @@ function ws_command_run($viewer, $channel, $body, $options = array())
         return ws_command_unknown_answer($viewer, $unknown);
     }
 
-    $rest = $split['rest'];
+    $entry = ws_command_registry()[$split['command']] ?? null;
+    $runner = ($entry !== null) ? $entry['runner'] : 'ws_command_run_help';
 
-    switch ($split['command']) {
-
-        case 'task':
-            return ws_command_task($viewer, $channel, $rest, $options);
-
-        case 'assign':
-            list($task_id, $rest_text) = ws_command_task_ref($rest);
-            $task = ws_task($task_id);
-
-            if (!$task || !ws_can_see_task($viewer, $task)) {
-                return array('type' => 'error', 'error' => lang('That task could not be found.'));
-            }
-
-            $people = array();
-
-            foreach (ws_tokens($rest_text) as $token) {
-                if ($token['type'] === 'user') {
-                    $people[] = $token['id'];
-                }
-            }
-
-            if (empty($people)) {
-                return array('type' => 'error', 'error' => lang('Name the people with @.'));
-            }
-
-            $result = ws_task_update($viewer, $task, array('assignees' => array_values(array_unique(array_merge(ws_task_assignee_ids($task_id), $people)))));
-
-            if (!$result['ok']) {
-                return array('type' => 'error', 'error' => $result['error']);
-            }
-
-            ws_message_system($channel['id'], lang(array(
-                'string' => '{var:1} gave {var:2} to {var:3}',
-                'vars'   => array('<@user:' . (int) $viewer['id'] . '>', '<#task:' . $task_id . '>', implode(', ', array_map(function ($id) {
-                    return '<@user:' . (int) $id . '>';
-                }, $people))),
-            )), $task_id);
-
-            return array('type' => 'done');
-
-        case 'done':
-            list($task_id) = ws_command_task_ref($rest);
-            $task = ws_task($task_id);
-
-            if (!$task || !ws_can_see_task($viewer, $task)) {
-                return array('type' => 'error', 'error' => lang('That task could not be found.'));
-            }
-
-            $result = ws_task_set_status($viewer, $task, 'done');
-
-            if (!$result['ok']) {
-                return array('type' => 'error', 'error' => $result['error']);
-            }
-
-            // The completion line goes to the task's own channel; a task from
-            // another channel, or from none, is still said here.
-            if ((int) $task['channel_id'] !== (int) $channel['id']) {
-                ws_message_system($channel['id'], lang(array(
-                    'string' => '{var:1} completed {var:2}',
-                    'vars'   => array('<@user:' . (int) $viewer['id'] . '>', '<#task:' . $task_id . '>'),
-                )), $task_id);
-            }
-
-            return array('type' => 'done');
-
-        case 'postpone':
-            list($task_id, $rest_text) = ws_command_task_ref($rest);
-            $task = ws_task($task_id);
-
-            if (!$task || !ws_can_see_task($viewer, $task)) {
-                return array('type' => 'error', 'error' => lang('That task could not be found.'));
-            }
-
-            $new_due = '';
-
-            foreach (preg_split('/\s+/u', $rest_text) as $word) {
-                $new_due = ws_parse_date_word($word, (ws_task_date_value($task['due_date']) !== '') ? $task['due_date'] : date('Y-m-d'));
-
-                if (($new_due !== '') && (strpos($word, '+') !== 0)) {
-                    // An absolute day is read from today, not from the old due date.
-                    $new_due = ws_parse_date_word($word, date('Y-m-d'));
-                }
-
-                if ($new_due !== '') {
-                    break;
-                }
-            }
-
-            if ($new_due === '') {
-                return array('type' => 'error', 'error' => lang('Say when: a day, a date or +2d.'));
-            }
-
-            // The start moves with the due date, so the task keeps its length;
-            // a start without a due date stays where it is.
-            $data = ws_task_move_dates($task, $new_due);
-
-            if (array_key_exists('start_date', $data) && ($data['start_date'] === null)) {
-                unset($data['start_date']);
-            }
-
-            $result = ws_task_update($viewer, $task, $data);
-
-            if (!$result['ok']) {
-                return array('type' => 'error', 'error' => $result['error']);
-            }
-
-            ws_message_system($channel['id'], lang(array(
-                'string' => '{var:1} moved {var:2} to {var:3}',
-                'vars'   => array('<@user:' . (int) $viewer['id'] . '>', '<#task:' . $task_id . '>', ws_day_label($new_due)),
-            )), $task_id);
-
-            return array('type' => 'done');
-
-        case 'status':
-            return ws_command_status($viewer, $channel, $rest);
-
-        case 'schedule':
-            return ws_command_schedule($viewer, $channel, $rest, $options);
-
-        case 'timer':
-            return ws_command_timer($viewer, $rest);
-
-        case 'away':
-            return ws_command_away($viewer, $rest);
-
-        case 'meeting':
-            return ws_command_meeting($viewer, $channel, $rest);
-
-        case 'decision':
-        case 'note':
-            if ($rest === '') {
-                return array('type' => 'error', 'error' => lang('Write the text after the command.'));
-            }
-
-            $result = ws_message_send($viewer, $channel, $rest, array('kind' => $split['command']));
-
-            // A tag in a note or a decision asks as in a message.
-            if ($result['ok']) {
-                ws_message_ask_noted($viewer, $channel, $result['message_id'], $rest);
-            }
-
-            return $result['ok']
-                ? array('type' => 'done', 'message_id' => $result['message_id'])
-                : array('type' => 'error', 'error' => $result['error']);
-
-        case 'plan':
-            return ws_command_plan($viewer, $rest);
-
-        case 'price':
-        case 'stock':
-            return ws_command_record_change($viewer, $channel, $split['command'], $rest, $options);
-
-        // The text as typed goes along: several lines become the message
-        // a bulk card hangs under.
-        case 'create':
-            return ws_command_create($viewer, $channel, $rest, $options + array('typed' => (string) $body));
-
-        case 'product':
-            return ws_command_product($viewer, $channel, $rest, $options + array('typed' => (string) $body));
-
-        case 'poll':
-            $parts = array_values(array_filter(array_map('trim', explode('|', $rest)), 'strlen'));
-
-            // A question with fewer than two options goes to the form, with
-            // what was written already in it.
-            if (count($parts) < 3) {
-                return array('type' => 'poll_form', 'question' => $parts[0] ?? '', 'options' => array_slice($parts, 1));
-            }
-
-            $result = ws_poll_create($viewer, $channel, array('question' => array_shift($parts), 'options' => $parts));
-
-            return $result['ok']
-                ? array('type' => 'done', 'message_id' => $result['message_id'])
-                : array('type' => 'error', 'error' => $result['error']);
-
-        case 'agent_channel':
-            return ws_command_agent_channel($viewer, $channel, $rest);
-
-        case 'wake':
-            return function_exists('ws_command_wake') ? ws_command_wake($viewer, $channel, $rest) : array('type' => 'error', 'error' => lang('Agents are not set up on this site yet.'));
-
-        case 'help':
-        default:
-            $html = '<div class="ws-ephemeral-title">' . h(lang('Slash commands')) . '</div><dl class="ws-help">';
-
-            foreach (ws_command_help($viewer) as $item) {
-                $html .= '<dt><code>' . h($item['command']) . '</code></dt><dd>' . h($item['description'])
-                    . '<br><code class="ws-help-usage">' . h($item['usage']) . '</code>'
-                    . '<br><span class="fg-secondary">' . h($item['example']) . '</span></dd>';
-            }
-
-            return array('type' => 'ephemeral', 'html' => $html . '</dl>');
+    if (($entry !== null) && !ws_command_runs_here($entry['where'], $channel)) {
+        return array('type' => 'error', 'error' => lang('This command runs in the channel itself, not in one of its discussions.'));
     }
+
+    return call_user_func($runner, $viewer, $channel, $split['rest'], $options, $body, $split['command']);
+}
+
+/*
+ * The runners: each one is a command's registry runner, called by
+ * ws_command_run() as ($viewer, $channel, $rest, $options, $body, $key),
+ * $rest the line after the command's name, $body the text as typed.
+ */
+
+/**
+ * /assign: adds people to a task.
+ *
+ * @return array
+ */
+function ws_command_run_assign($viewer, $channel, $rest)
+{
+    list($task_id, $rest_text) = ws_command_task_ref($rest);
+    $task = ws_task($task_id);
+
+    if (!$task || !ws_can_see_task($viewer, $task)) {
+        return array('type' => 'error', 'error' => lang('That task could not be found.'));
+    }
+
+    $people = array();
+
+    foreach (ws_tokens($rest_text) as $token) {
+        if ($token['type'] === 'user') {
+            $people[] = $token['id'];
+        }
+    }
+
+    if (empty($people)) {
+        return array('type' => 'error', 'error' => lang('Name the people with @.'));
+    }
+
+    $result = ws_task_update($viewer, $task, array('assignees' => array_values(array_unique(array_merge(ws_task_assignee_ids($task_id), $people)))));
+
+    if (!$result['ok']) {
+        return array('type' => 'error', 'error' => $result['error']);
+    }
+
+    ws_message_system($channel['id'], lang(array(
+        'string' => '{var:1} gave {var:2} to {var:3}',
+        'vars'   => array('<@user:' . (int) $viewer['id'] . '>', '<#task:' . $task_id . '>', implode(', ', array_map(function ($id) {
+            return '<@user:' . (int) $id . '>';
+        }, $people))),
+    )), $task_id);
+
+    return array('type' => 'done');
+}
+
+/**
+ * /done: marks a task as done.
+ *
+ * @return array
+ */
+function ws_command_run_done($viewer, $channel, $rest)
+{
+    list($task_id) = ws_command_task_ref($rest);
+    $task = ws_task($task_id);
+
+    if (!$task || !ws_can_see_task($viewer, $task)) {
+        return array('type' => 'error', 'error' => lang('That task could not be found.'));
+    }
+
+    $result = ws_task_set_status($viewer, $task, 'done');
+
+    if (!$result['ok']) {
+        return array('type' => 'error', 'error' => $result['error']);
+    }
+
+    // The completion line goes to the task's own channel; a task from
+    // another channel, or from none, is still said here.
+    if ((int) $task['channel_id'] !== (int) $channel['id']) {
+        ws_message_system($channel['id'], lang(array(
+            'string' => '{var:1} completed {var:2}',
+            'vars'   => array('<@user:' . (int) $viewer['id'] . '>', '<#task:' . $task_id . '>'),
+        )), $task_id);
+    }
+
+    return array('type' => 'done');
+}
+
+/**
+ * /postpone: moves a task's due date.
+ *
+ * @return array
+ */
+function ws_command_run_postpone($viewer, $channel, $rest)
+{
+    list($task_id, $rest_text) = ws_command_task_ref($rest);
+    $task = ws_task($task_id);
+
+    if (!$task || !ws_can_see_task($viewer, $task)) {
+        return array('type' => 'error', 'error' => lang('That task could not be found.'));
+    }
+
+    $new_due = '';
+
+    foreach (preg_split('/\s+/u', $rest_text) as $word) {
+        $new_due = ws_parse_date_word($word, (ws_task_date_value($task['due_date']) !== '') ? $task['due_date'] : date('Y-m-d'));
+
+        if (($new_due !== '') && (strpos($word, '+') !== 0)) {
+            // An absolute day is read from today, not from the old due date.
+            $new_due = ws_parse_date_word($word, date('Y-m-d'));
+        }
+
+        if ($new_due !== '') {
+            break;
+        }
+    }
+
+    if ($new_due === '') {
+        return array('type' => 'error', 'error' => lang('Say when: a day, a date or +2d.'));
+    }
+
+    // The start moves with the due date, so the task keeps its length;
+    // a start without a due date stays where it is.
+    $data = ws_task_move_dates($task, $new_due);
+
+    if (array_key_exists('start_date', $data) && ($data['start_date'] === null)) {
+        unset($data['start_date']);
+    }
+
+    $result = ws_task_update($viewer, $task, $data);
+
+    if (!$result['ok']) {
+        return array('type' => 'error', 'error' => $result['error']);
+    }
+
+    ws_message_system($channel['id'], lang(array(
+        'string' => '{var:1} moved {var:2} to {var:3}',
+        'vars'   => array('<@user:' . (int) $viewer['id'] . '>', '<#task:' . $task_id . '>', ws_day_label($new_due)),
+    )), $task_id);
+
+    return array('type' => 'done');
+}
+
+/**
+ * /timer.
+ *
+ * @return array
+ */
+function ws_command_run_timer($viewer, $channel, $rest)
+{
+    return ws_command_timer($viewer, $rest);
+}
+
+/**
+ * /away.
+ *
+ * @return array
+ */
+function ws_command_run_away($viewer, $channel, $rest)
+{
+    return ws_command_away($viewer, $rest);
+}
+
+/**
+ * Does a command act on the message it answers? Only when it is typed as a
+ * reply and nothing follows its name: with a text it does as it always did.
+ *
+ * @param string $rest    the line after the command's name
+ * @param array  $options ws_command_run() options (parent_id)
+ * @return bool
+ */
+function ws_command_acts_on_reply($rest, $options)
+{
+    return (trim((string) $rest) === '') && ((int) ($options['parent_id'] ?? 0) > 0);
+}
+
+/**
+ * The message a command answers: in this channel, not deleted, and read by
+ * the writer.
+ *
+ * @param array $viewer
+ * @param array $channel
+ * @param array $options ws_command_run() options (parent_id)
+ * @return array|null ws_messages row
+ */
+function ws_command_answered_message($viewer, $channel, $options)
+{
+    $message = ws_message((int) ($options['parent_id'] ?? 0));
+
+    if (!$message || ((int) $message['channel_id'] !== (int) $channel['id']) || ((int) $message['deleted_at'] > 0)
+        || !ws_can_read_channel($viewer, $channel)) {
+        return null;
+    }
+
+    return $message;
+}
+
+/**
+ * /decision and /note: the text posted as that kind of message; typed as a
+ * reply without a text, the answered message marked.
+ *
+ * @return array
+ */
+function ws_command_run_noted($viewer, $channel, $rest, $options, $body, $command)
+{
+    // Typed as a reply without a text: the answered message is marked, as
+    // its menu's "Mark as a decision" or "Mark as a channel note" does.
+    if (ws_command_acts_on_reply($rest, $options)) {
+        $message = ws_command_answered_message($viewer, $channel, $options);
+
+        if ($message === null) {
+            return array('type' => 'error', 'error' => lang('That message could not be found.'));
+        }
+
+        $marked = ws_message_mark($viewer, $message, $command);
+
+        return $marked['ok']
+            ? array('type' => 'done', 'message_id' => (int) $message['id'])
+            : array('type' => 'error', 'error' => $marked['error']);
+    }
+
+    if ($rest === '') {
+        return array('type' => 'error', 'error' => lang('Write the text after the command.'));
+    }
+
+    $result = ws_message_send($viewer, $channel, $rest, array('kind' => $command));
+
+    // A tag in a note or a decision asks as in a message.
+    if ($result['ok']) {
+        ws_message_ask_noted($viewer, $channel, $result['message_id'], $rest);
+    }
+
+    return $result['ok']
+        ? array('type' => 'done', 'message_id' => $result['message_id'])
+        : array('type' => 'error', 'error' => $result['error']);
+}
+
+/**
+ * /plan.
+ *
+ * @return array
+ */
+function ws_command_run_plan($viewer, $channel, $rest)
+{
+    return ws_command_plan($viewer, $rest);
+}
+
+/**
+ * /price and /stock.
+ *
+ * @return array
+ */
+function ws_command_run_record($viewer, $channel, $rest, $options, $body, $command)
+{
+    return ws_command_record_change($viewer, $channel, $command, $rest, $options);
+}
+
+/**
+ * /create and /product. The text as typed goes along: several lines become
+ * the message a bulk card hangs under.
+ *
+ * @return array
+ */
+function ws_command_run_create($viewer, $channel, $rest, $options, $body, $command)
+{
+    if ($command === 'product') {
+        return ws_command_product($viewer, $channel, $rest, $options + array('typed' => (string) $body));
+    }
+
+    return ws_command_create($viewer, $channel, $rest, $options + array('typed' => (string) $body));
+}
+
+/**
+ * /poll: posted with two options or more, the form below that.
+ *
+ * @return array
+ */
+function ws_command_run_poll($viewer, $channel, $rest)
+{
+    $parts = array_values(array_filter(array_map('trim', explode('|', $rest)), 'strlen'));
+
+    // A question with fewer than two options goes to the form, with
+    // what was written already in it.
+    if (count($parts) < 3) {
+        return array('type' => 'poll_form', 'question' => $parts[0] ?? '', 'options' => array_slice($parts, 1));
+    }
+
+    $result = ws_poll_create($viewer, $channel, array('question' => array_shift($parts), 'options' => $parts));
+
+    return $result['ok']
+        ? array('type' => 'done', 'message_id' => $result['message_id'])
+        : array('type' => 'error', 'error' => $result['error']);
+}
+
+/**
+ * /wake, once agents are there.
+ *
+ * @return array
+ */
+function ws_command_run_wake($viewer, $channel, $rest)
+{
+    return function_exists('ws_command_wake') ? ws_command_wake($viewer, $channel, $rest) : array('type' => 'error', 'error' => lang('Agents are not set up on this site yet.'));
+}
+
+/**
+ * /help: the commands this person may use, to them alone.
+ *
+ * @return array
+ */
+function ws_command_run_help($viewer, $channel = null, $rest = '')
+{
+    $word = ltrim((string) preg_split('/\s+/u', trim((string) $rest))[0], '/');
+
+    if ($word !== '') {
+        return ws_command_help_one($viewer, $channel, $word);
+    }
+
+    $html = '<div class="ws-ephemeral-title">' . h(lang('Slash commands')) . '</div>';
+    $groups = array();
+
+    foreach (ws_command_help($viewer, $channel) as $item) {
+        $groups[$item['group']][] = $item;
+    }
+
+    foreach (ws_command_group_labels() as $group => $label) {
+        if (empty($groups[$group])) {
+            continue;
+        }
+
+        $html .= '<div class="ws-help-group fw-semibold fg-secondary mt-2">' . h($label) . '</div><dl class="ws-help">';
+
+        foreach ($groups[$group] as $item) {
+            $html .= '<dt><code>' . h($item['command']) . '</code></dt><dd>' . h($item['description'])
+                . '<br><code class="ws-help-usage">' . ws_command_usage_html($item) . '</code>'
+                . '<br><span class="fg-secondary">' . h($item['example']) . '</span></dd>';
+        }
+
+        $html .= '</dl>';
+    }
+
+    return array('type' => 'ephemeral', 'html' => $html);
+}
+
+/**
+ * A command's usage line as /help shows it: each argument kept whole on a
+ * line (text-nowrap), so a narrow screen wraps between arguments only. An
+ * application's command, whose usage is its own free text, is shown as
+ * written.
+ *
+ * @param array $item ws_command_help() entry
+ * @return string HTML
+ */
+function ws_command_usage_html($item)
+{
+    if (empty($item['args'])) {
+        return h($item['usage']);
+    }
+
+    $html = h($item['name']);
+
+    foreach ($item['args'] as $arg) {
+        $html .= ' <span class="text-nowrap">' . h($arg['optional'] ? '[' . $arg['label'] . ']' : '<' . $arg['label'] . '>') . '</span>';
+    }
+
+    return $html;
+}
+
+/**
+ * /help <command>: that command alone, with every name it answers to, its
+ * usage and an example; a name that is no command here is answered with
+ * the closest ones.
+ *
+ * @param array|null $viewer
+ * @param array|null $channel
+ * @param string     $word the name asked about, without its slash
+ * @return array an ephemeral answer
+ */
+function ws_command_help_one($viewer, $channel, $word)
+{
+    $folded = ws_command_fold($word);
+
+    foreach (ws_command_help($viewer, $channel) as $item) {
+        foreach ($item['names'] as $name) {
+            if (ws_command_fold(ltrim($name, '/')) !== $folded) {
+                continue;
+            }
+
+            $html = '<div class="ws-ephemeral-title">' . h($item['command']) . '</div>'
+                . '<div>' . h($item['description']) . '</div>'
+                . '<code class="ws-help-usage">' . ws_command_usage_html($item) . '</code>'
+                . '<div>' . h(lang(array('string' => 'Names: {var:1}', 'vars' => implode(' ', $item['names'])))) . '</div>'
+                . '<div class="fg-secondary">' . h(lang(array('string' => 'Example: {var:1}', 'vars' => $item['example']))) . '</div>';
+
+            return array('type' => 'ephemeral', 'html' => $html);
+        }
+    }
+
+    $closest = ws_command_closest($word, $viewer);
+    $html = '<div class="ws-ephemeral-title">' . h(lang(array('string' => 'There is no {var:1} command.', 'vars' => '/' . $word))) . '</div>';
+
+    if (!empty($closest)) {
+        $html .= '<div>' . h(lang('Did you mean:')) . ' ' . implode(' ', array_map(function ($name) {
+            return '<code>' . h($name) . '</code>';
+        }, $closest)) . '</div>';
+    }
+
+    return array('type' => 'ephemeral', 'html' => $html, 'closest' => $closest);
 }
 
 /**
@@ -1490,6 +1784,24 @@ function ws_command_run($viewer, $channel, $body, $options = array())
 function ws_command_task($viewer, $channel, $text, $options)
 {
     $parsed = ws_command_typed_assignees(ws_command_parse_task($text), ws_team_members());
+    $description = null;
+
+    // Typed as a reply without a text: the task is made of the answered
+    // message, as its menu's "Make a task of it" does.
+    if (ws_command_acts_on_reply($text, $options)) {
+        $message = ws_command_answered_message($viewer, $channel, $options);
+
+        if ($message === null) {
+            return array('type' => 'error', 'error' => lang('That message could not be found.'));
+        }
+
+        $parsed['title'] = mb_substr(ws_plain_line($viewer, (string) $message['body']), 0, 200, 'UTF-8');
+
+        // The menu fills the description only from the writer's own message.
+        if (((string) $message['sender_kind'] === 'user') && ((int) $message['sender_id'] === (int) $viewer['id'])) {
+            $description = (string) $message['body'];
+        }
+    }
 
     if ($parsed['title'] === '') {
         return array('type' => 'error', 'error' => lang('Write what the task is after the command.'));
@@ -1558,6 +1870,10 @@ function ws_command_task($viewer, $channel, $text, $options)
         'refs'             => $parsed['refs'],
     );
 
+    if ($description !== null) {
+        $data['description'] = $description;
+    }
+
     // Checked and written by ws_task_reminder_validate() when the site has
     // the column.
     if ($parsed['due_time'] !== null) {
@@ -1597,32 +1913,32 @@ function ws_command_suggest($viewer, $channel, $body)
 {
     $out = array('line' => '', 'warnings' => array());
     $split = ws_command_split($body);
+    $entry = $split ? (ws_command_registry()[$split['command']] ?? null) : null;
 
-    if ($split && ($split['command'] === 'status')) {
-        return ws_command_status_suggest($viewer, $split['rest']);
-    }
-
-    if ($split && ($split['command'] === 'schedule')) {
-        return ws_command_schedule_suggest($viewer, $channel, $split['rest']);
-    }
-
-    if ($split && ($split['command'] === 'timer')) {
-        return ws_command_timer_suggest($viewer, $split['rest']);
-    }
-
-    if ($split && ($split['command'] === 'away')) {
-        return ws_command_event_suggest($viewer, ws_command_away_data($split['rest']));
-    }
-
-    if ($split && ($split['command'] === 'meeting')) {
-        return ws_command_event_suggest($viewer, ws_command_meeting_data($split['rest']));
-    }
-
-    if (!$split || ($split['command'] !== 'task') || ($split['rest'] === '')) {
+    if (($entry === null) || ($entry['live'] === '')) {
         return $out;
     }
 
-    $parsed = ws_command_typed_assignees(ws_command_parse_task($split['rest']), ws_team_members());
+    return call_user_func($entry['live'], $viewer, $channel, $split['rest']);
+}
+
+/**
+ * /task's live line: "Will create: …" and its warnings.
+ *
+ * @param array  $viewer
+ * @param array  $channel
+ * @param string $rest the line after the command's name
+ * @return array line, warnings
+ */
+function ws_command_task_suggest($viewer, $channel, $rest)
+{
+    $out = array('line' => '', 'warnings' => array());
+
+    if ($rest === '') {
+        return $out;
+    }
+
+    $parsed = ws_command_typed_assignees(ws_command_parse_task($rest), ws_team_members());
 
     foreach ($parsed['typed_unknown'] as $name) {
         $out['warnings'][] = lang(array('string' => 'Nobody in the team has the username {var:1}, so nobody is assigned by it: pick the person from the @ list.', 'vars' => '@' . $name));
@@ -1676,6 +1992,46 @@ function ws_command_suggest($viewer, $channel, $body)
     }
 
     return $out;
+}
+
+/**
+ * /status's live line.
+ *
+ * @return array line, warnings
+ */
+function ws_command_live_status($viewer, $channel, $rest)
+{
+    return ws_command_status_suggest($viewer, $rest);
+}
+
+/**
+ * /timer's live line.
+ *
+ * @return array line, warnings
+ */
+function ws_command_live_timer($viewer, $channel, $rest)
+{
+    return ws_command_timer_suggest($viewer, $rest);
+}
+
+/**
+ * /away's live line.
+ *
+ * @return array line, warnings
+ */
+function ws_command_live_away($viewer, $channel, $rest)
+{
+    return ws_command_event_suggest($viewer, ws_command_away_data($rest));
+}
+
+/**
+ * /meeting's live line.
+ *
+ * @return array line, warnings
+ */
+function ws_command_live_meeting($viewer, $channel, $rest)
+{
+    return ws_command_event_suggest($viewer, ws_command_meeting_data($rest));
 }
 
 /**
@@ -2690,7 +3046,9 @@ function ws_command_parse_create($text)
 
 /**
  * /create: the kind named after it, made through its own card - a product
- * as /product makes it, a group by ws_command_group().
+ * as /product makes it, a group by ws_command_group(), a contact by
+ * ws_command_contact(). A kind the person may not make is refused before
+ * anything is read, as its screen refuses it.
  *
  * @param array  $viewer
  * @param array  $channel
@@ -2702,6 +3060,14 @@ function ws_command_create($viewer, $channel, $text, $options)
 {
     $parsed = ws_command_parse_create($text);
 
+    if (is_array($viewer) && ($parsed['kind'] !== '') && !in_array($parsed['kind'], ws_command_create_types_for($viewer), true)) {
+        return array('type' => 'error', 'error' => lang('You may not create this kind of record.'));
+    }
+
+    if ($parsed['kind'] === 'contact') {
+        return ws_command_contact($viewer, $channel, $parsed['rest'], $options);
+    }
+
     if ($parsed['kind'] === 'product') {
         return ws_command_product($viewer, $channel, $parsed['rest'], $options);
     }
@@ -2710,7 +3076,68 @@ function ws_command_create($viewer, $channel, $text, $options)
         return ws_command_group($viewer, $channel, $parsed['rest'], $options);
     }
 
-    return array('type' => 'error', 'error' => lang('Say what to create, a product or a group, like /create product Blue mug 149,90 or /create group Mugs.'));
+    return array('type' => 'error', 'error' => lang('Say what to create, a product, a group or a contact, like /create product Blue mug 149,90 or /create contact Ada Lovelace, Acme, ada@example.com.'));
+}
+
+/**
+ * What follows /create contact, read into the contact's first fields: an
+ * e-mail address anywhere, then the parts between commas - the person's
+ * name (its first word the first name, the rest the last name), then the
+ * company. "Ada Lovelace, Acme Ltd, ada@example.com" and
+ * "ada@example.com Ada Lovelace, Acme Ltd" read alike. Pure.
+ *
+ * @param string $text
+ * @return array first_name, last_name, company, email (each '' when not written)
+ */
+function ws_command_parse_contact($text)
+{
+    $text = trim((string) preg_replace('/\s+/u', ' ', (string) $text));
+    $email = '';
+
+    if (preg_match('/(?<![^\s,;])[^\s,;<>@]+@[^\s,;<>@]+\.[^\s,;<>@]+(?![^\s,;])/u', $text, $match)) {
+        $email = $match[0];
+        $text = str_replace($match[0], '', $text);
+    }
+
+    $parts = array_values(array_filter(array_map('trim', explode(',', $text)), 'strlen'));
+    $name = preg_split('/ /u', (string) ($parts[0] ?? ''), 2);
+
+    return array(
+        'first_name' => trim((string) $name[0]),
+        'last_name'  => trim((string) ($name[1] ?? '')),
+        'company'    => trim(implode(', ', array_slice($parts, 1))),
+        'email'      => $email,
+    );
+}
+
+/**
+ * /create contact: a new contact through the contacts catalogue
+ * (ws_command_create_card()): its card shows the first name, last name,
+ * company and e-mail it was given, and nothing is written before Create.
+ * One of the four is enough, as on the contact screen; a line with none
+ * answers with what is missing, and the composer opens the drawer's new
+ * contact.
+ *
+ * @param array  $viewer
+ * @param array  $channel
+ * @param string $text    what follows /create contact
+ * @param array  $options confirm, decision
+ * @return array
+ */
+function ws_command_contact($viewer, $channel, $text, $options)
+{
+    if (function_exists('ws_bulk_text_is_list') && ws_bulk_text_is_list($text)) {
+        return array('type' => 'error', 'error' => lang('/create contact makes one contact: write it on one line.'));
+    }
+
+    // A tag would be written into a name as its markup.
+    if (preg_match('/<[#@][a-z_]+:[0-9]+>/', (string) $text)) {
+        return array('type' => 'error', 'error' => lang('Write the contact as plain text.'));
+    }
+
+    $fields = array_filter(ws_command_parse_contact($text), 'strlen');
+
+    return ws_command_create_card($viewer, $channel, 'contact', $fields, $options);
 }
 
 /**
@@ -2906,7 +3333,7 @@ function ws_command_is_product_file($body)
  *
  * @param array  $viewer
  * @param array  $channel
- * @param string $type    product | product_group
+ * @param string $type    product | product_group | contact
  * @param array  $fields  field => value
  * @param array  $options confirm, decision, on_sale
  * @return array
@@ -2921,8 +3348,13 @@ function ws_command_create_card($viewer, $channel, $type, $fields, $options)
         return $error(lang('Invalid request.'));
     }
 
+    $switch = ws_quick_create_has_switch($type);
+
     if (!empty($options['confirm'])) {
-        $fields['enabled'] = !empty($options['on_sale']);
+        if ($switch) {
+            $fields['enabled'] = !empty($options['on_sale']);
+        }
+
         $saved = ws_quick_create_save($viewer, $type, $fields, (int) $channel['id'], !empty($options['decision']));
 
         if (!$saved['ok']) {
@@ -2939,6 +3371,35 @@ function ws_command_create_card($viewer, $channel, $type, $fields, $options)
         );
     }
 
+    $types = ws_change_types();
+
+    // None of the kind's required list written: nothing to check yet. The
+    // composer opens the drawer's new mode with what was typed, as the
+    // kind's button does.
+    $missing = ws_quick_create_missing((array) ($types[$type]['required'] ?? array()), ws_quick_create_change($type, $fields)['fields']);
+
+    if ($missing !== array()) {
+        $check = ws_quick_create_check($viewer, $type);
+
+        if (!$check['ok']) {
+            return $error($check['error']);
+        }
+
+        $names = array();
+
+        foreach ($missing as $name) {
+            $field = ws_change_field($types[$type], $name);
+            $names[] = ($field !== null) ? (string) $field[2] : $name;
+        }
+
+        return array(
+            'type'    => 'create_preview',
+            'preview' => array('kind' => $type, 'rows' => array(), 'on_sale' => '', 'missing' => $names),
+            'values'  => $fields,
+            'labels'  => array(),
+        );
+    }
+
     // Checked as the save will check it (a name already taken, a group
     // that is gone), so the card never offers what cannot be made.
     $input = ws_quick_create_input($viewer, $type, $fields, (int) $channel['id']);
@@ -2947,7 +3408,6 @@ function ws_command_create_card($viewer, $channel, $type, $fields, $options)
         return $error($input['error']);
     }
 
-    $types = ws_change_types();
     $rows = array();
     $labels = array();
 
@@ -2979,7 +3439,9 @@ function ws_command_create_card($viewer, $channel, $type, $fields, $options)
         'preview' => array(
             'kind'    => $type,
             'rows'    => $rows,
-            'on_sale' => (string) $types[$type]['fields']['enabled'][2],
+            // A kind with no on-sale switch (a contact) draws no tick.
+            'on_sale' => $switch ? (string) $types[$type]['fields']['enabled'][2] : '',
+            'missing' => array(),
         ),
         // The drawer's new mode, filled with the same values ("All fields"),
         // and the names of the records they pick.

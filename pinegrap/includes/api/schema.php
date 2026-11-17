@@ -91,6 +91,7 @@ function api_schema() {
 				array('name' => 'in_stock',      'in' => 'query', 'type' => 'bool',   'description' => 'Limit to products that are or are not out of stock.'),
 				array('name' => 'limit',         'in' => 'query', 'type' => 'int',    'min' => 1, 'max' => 250, 'default' => 50, 'description' => 'Rows per page.'),
 				array('name' => 'cursor',        'in' => 'query', 'type' => 'string', 'max_length' => 200, 'description' => 'next_cursor from the previous page.'),
+				array('name' => 'sort',          'in' => 'query', 'type' => 'enum', 'values' => array('oldest', 'newest'), 'default' => 'oldest', 'description' => 'oldest (the default) walks the last change oldest first; newest walks it newest first. The next page keeps the sort its cursor was made under; a cursor of the other sort is 400 invalid_cursor.'),
 				array('name' => 'include_count', 'in' => 'query', 'type' => 'bool',   'description' => 'Also count every matching row. Costs an extra query, so it is off by default.')
 			)
 		),
@@ -1025,6 +1026,7 @@ function api_schema() {
 				array('name' => 'email',         'in' => 'query', 'type' => 'string', 'max_length' => 190),
 				array('name' => 'limit',         'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
 				array('name' => 'cursor',        'in' => 'query', 'type' => 'string', 'max_length' => 200),
+				array('name' => 'sort',          'in' => 'query', 'type' => 'enum', 'values' => array('oldest', 'newest'), 'default' => 'oldest', 'description' => 'oldest (the default) lists by id, oldest first; newest lists the newest customer first. The next page keeps the sort its cursor was made under; a cursor of the other sort is 400 invalid_cursor.'),
 				array('name' => 'include_count', 'in' => 'query', 'type' => 'bool')
 			)
 		),
@@ -3176,6 +3178,18 @@ function api_schema() {
 		),
 
 		array(
+			'id'      => 'webhooks.events',
+			'method'  => 'GET',
+			'path'    => '/webhooks/events',
+			'scope'   => 'webhooks:manage',
+			'handler' => 'api_webhooks_events',
+			'returns' => array('data' => 'WebhookEvent[]'),
+			'summary' => 'The events and what each carries',
+			'description' => 'Every event that can be subscribed to, with its description, its module (empty for the core, erp or workspace), the fields of its data (name, type, nullable, description) and one sample of its data, for an application\'s own event chooser. An event whose fields are not written yet has an empty list and a null sample. GET /webhooks keeps its list of names.',
+			'params'  => array()
+		),
+
+		array(
 			'id'      => 'webhooks.create',
 			'method'  => 'POST',
 			'path'    => '/webhooks',
@@ -3285,9 +3299,10 @@ function api_schema() {
 			'dry_run' => true,
 			'returns' => array('webhook_id' => 'integer', 'delivery_id' => 'integer', 'event' => 'string', 'queued' => 'boolean'),
 			'summary' => 'Send a test event',
-			'description' => 'Queues one webhook.test event for this subscription only, signed and sent by the scheduled task exactly like a real one, so the receiver can be checked without waiting for an order. delivery_id is the X-Pinegrap-Delivery header it will carry. Refused with 409 webhook_disabled while the subscription is switched off.',
+			'description' => 'Queues one webhook.test event for this subscription only, signed and sent by the scheduled task exactly like a real one, so the receiver can be checked without waiting for an order. With event, that event\'s sample (GET /webhooks/events) is queued instead, under its own name, with the header X-Pinegrap-Test: 1 and test: true in the body; it is never announced, so no other subscriber hears it. delivery_id is the X-Pinegrap-Delivery header it will carry. Refused with 409 webhook_disabled while the subscription is switched off.',
 			'params'  => array(
-				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'event', 'in' => 'body', 'type' => 'string', 'max_length' => 100, 'description' => 'One of the subscription\'s own events whose sample is written; refused with 422 otherwise. Left out: webhook.test.')
 			)
 		),
 
@@ -3565,7 +3580,8 @@ function api_schema() {
 				array('name' => 'order_id',      'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only the subscriptions started by this order.'),
 				array('name' => 'updated_since', 'in' => 'query', 'type' => 'datetime', 'description' => 'Only subscriptions made or changed at or after this moment.'),
 				array('name' => 'limit',         'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
-				array('name' => 'cursor',        'in' => 'query', 'type' => 'string', 'max_length' => 200)
+				array('name' => 'cursor',        'in' => 'query', 'type' => 'string', 'max_length' => 200),
+				array('name' => 'sort',          'in' => 'query', 'type' => 'enum', 'values' => array('oldest', 'newest'), 'default' => 'oldest', 'description' => 'oldest (the default) walks the last change oldest first; newest walks it newest first. The next page keeps the sort its cursor was made under; a cursor of the other sort is 400 invalid_cursor.')
 			)
 		),
 
@@ -3915,6 +3931,46 @@ function api_schema() {
 			)
 		),
 
+		/* ----- Content review ----------------------------------------------- */
+
+		array(
+			'id'      => 'content_review.list',
+			'method'  => 'GET',
+			'path'    => '/content-review',
+			'scope'   => 'content_review:read',
+			'handler' => 'api_content_review_list',
+			'returns' => array('list' => 'ContentReviewItem'),
+			'summary' => 'Pages and records due for review',
+			'description' => 'The Content review screen as a list: pages and collection records with the person who reads them again (user_id, a panel user) and the day by which they do it (review_on, Y-m-d in the site\'s time). state is overdue (before today), due_soon (today to 30 days ahead), later or not_set. filter: all (every page and record, the undated ones too), overdue, soon, nobody (a date but no person), notset (no date), mine (the caller is the person); the default is all. An account with the user role reads only the items it is the person of, with mine (the default), overdue and soon; another filter is 422. kind narrows to page or record. Paged by the item, pages and records interleaved in a fixed order, with the cursor; a page in the Recycle Bin and a record whose form is not a collection are not listed. interval_months is how far "reviewed" moves the date (0 clears it); reviewed_at and reviewed_by say when and by whom it was last marked. Read only; POST /content-review/{kind}/{id} sets them.',
+			'params'  => array(
+				array('name' => 'filter', 'in' => 'query', 'type' => 'enum', 'values' => array('all', 'overdue', 'soon', 'nobody', 'notset', 'mine'), 'description' => 'The screen\'s filters. Default all; mine for an account with the user role.'),
+				array('name' => 'kind',   'in' => 'query', 'type' => 'enum', 'values' => array('page', 'record'), 'description' => 'Only pages, or only collection records.'),
+				array('name' => 'limit',  'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50, 'description' => 'Rows per page.'),
+				array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 255, 'description' => 'next_cursor from the previous page, with the same filter and kind.')
+			)
+		),
+
+		array(
+			'id'      => 'content_review.update',
+			'method'  => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path'    => '/content-review/{kind}/{id}',
+			'scope'   => 'content_review:write',
+			'handler' => 'api_content_review_update',
+			'dry_run' => true,
+			'returns' => 'ContentReviewItem',
+			'summary' => 'Set a page\'s or record\'s review',
+			'description' => 'Only the fields sent change. user_id: the person, a panel user who may edit the item (else 422); null or 0 for nobody. review_on: the day, Y-m-d; null clears it. interval_months: 0, 3, 6 or 12. reviewed true marks it read again now, by the caller: the date moves to today plus the interval, or is cleared without one; sent with the other fields, they are written first. An account with the user role may only send reviewed, and only for an item it is the person of (another field is 403, another item 404). A page that does not exist or is in the Recycle Bin, and a record whose form is not a collection, are 404. Use POST: PATCH does not reach PHP on an IIS server.',
+			'params'  => array(
+				array('name' => 'kind',            'in' => 'path', 'type' => 'enum', 'values' => array('page', 'record'), 'required' => true, 'description' => 'page, or record (a collection record, a submitted form).'),
+				array('name' => 'id',              'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The page id, or the record id.'),
+				array('name' => 'user_id',         'in' => 'body', 'type' => 'int', 'min' => 0, 'nullable' => true, 'description' => 'The person; null or 0 for nobody.'),
+				array('name' => 'review_on',       'in' => 'body', 'type' => 'string', 'max_length' => 10, 'nullable' => true, 'description' => 'Y-m-d, in the site\'s time; null clears it.'),
+				array('name' => 'interval_months', 'in' => 'body', 'type' => 'enum', 'values' => array('0', '3', '6', '12'), 'description' => 'How far reviewed moves the date; 0 clears it.'),
+				array('name' => 'reviewed',        'in' => 'body', 'type' => 'bool', 'description' => 'true marks it read again now, by the caller.')
+			)
+		),
+
 		/* ----- Forms -------------------------------------------------------- */
 
 		array(
@@ -3962,7 +4018,8 @@ function api_schema() {
 				array('name' => 'complete',        'in' => 'query', 'type' => 'bool', 'description' => 'false returns the saved-but-not-sent ones instead.'),
 				array('name' => 'reference_code',  'in' => 'query', 'type' => 'string', 'max_length' => 10, 'description' => 'The code the visitor was shown after sending.'),
 				array('name' => 'limit',           'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50, 'description' => '1-250. Rows per page.'),
-				array('name' => 'cursor',          'in' => 'query', 'type' => 'string', 'max_length' => 255, 'description' => 'next_cursor from the previous page.')
+				array('name' => 'cursor',          'in' => 'query', 'type' => 'string', 'max_length' => 255, 'description' => 'next_cursor from the previous page.'),
+				array('name' => 'sort',          'in' => 'query', 'type' => 'enum', 'values' => array('oldest', 'newest'), 'default' => 'oldest', 'description' => 'oldest (the default) lists by id, oldest first; newest lists the newest submission first. The next page keeps the sort its cursor was made under; a cursor of the other sort is 400 invalid_cursor.')
 			)
 		),
 
