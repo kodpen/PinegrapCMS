@@ -83,7 +83,7 @@ function pg_booking_link_screen_member($user_id)
         return null;
     }
 
-    $staff_id = pg_booking_agenda_user_staff_id($user_id);
+    $staff_id = (int) db_value("SELECT id FROM booking_staff WHERE user_id = '" . (int) $user_id . "' AND enabled = 1");
     $row = ($staff_id > 0) ? pg_booking_link_staff_row($staff_id) : null;
 
     // A user of role 3 cannot be booking staff.

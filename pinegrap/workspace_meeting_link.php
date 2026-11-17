@@ -41,6 +41,7 @@ if ($member === null) {
 }
 
 require_once(PG_FUNCTIONS_DIR . '/includes/forms/short_link_form.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/explorer/recycle_bin.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/explorer/short_links.php');
 
 $liveform = new liveform('workspace_meeting_link');
@@ -181,7 +182,7 @@ $bookable = pg_booking_link_bookable($member);
 $link_url = $bookable ? pg_booking_link_url($member) : '';
 $short_url = ($short && $link_url !== '') ? URL_SCHEME . HOSTNAME_SETTING . PATH . encode_url_path((string) $short['name']) : '';
 
-list(, $all_services) = pg_booking_widget_data();
+list($all_services) = pg_booking_widget_data();
 $services = pg_booking_link_screen_services($all_services, $member);
 
 if ($liveform->field_in_session('meeting_url') == false) {
@@ -296,7 +297,7 @@ $service_rows = '';
 
 foreach ($services as $service) {
     $price = (int) $service['price'];
-    $facts = array(lang('{var:1} min', (int) $service['length_minutes']));
+    $facts = array(lang(array('string' => '{var:1} min', 'vars' => (int) $service['length_minutes'])));
 
     if ($price > 0) {
         $facts[] = html_entity_decode(prepare_price_for_output($price, false, 0, 'plain_text'), ENT_QUOTES | ENT_HTML5, 'UTF-8');
