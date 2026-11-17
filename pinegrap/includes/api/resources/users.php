@@ -17,6 +17,11 @@ if (!defined('PG_API_ENTRY') && !defined('PG_API_PANEL')) {
 	exit;
 }
 
+// The workspace right probes (pg_user_permission_ws_replies_column(),
+// pg_user_permission_ws_available()) live with the panel's rights screen; the
+// reads ask them too, not only the writes that load user_write.php.
+require_once(PG_FUNCTIONS_DIR . '/includes/user_permissions.php');
+
 // The roles as the API names them, by the number user.user_role holds.
 function api_user_roles() {
 
