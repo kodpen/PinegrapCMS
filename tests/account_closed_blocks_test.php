@@ -450,7 +450,8 @@ function test_account_blocks_subscription_credit_parts()
 	pg_assert_same(account_blocks_test_text($old), account_blocks_test_text($new), 'store credit: the same words');
 	preg_match_all('/class="([^"]*)"/', $old, $m);
 	foreach (array_unique($m[1]) as $class) {
-		pg_assert_contains('class="' . $class . '"', $new, 'class ' . $class);
+		// A use's date and amount add ms-1 (the canvas draws no white space).
+		pg_assert_contains('class="' . $class, $new, 'class ' . $class);
 	}
 	pg_assert_contains('<input type="hidden" name="token" value="abc">', $new, 'the conversion form keeps its token');
 	pg_assert_contains('href="/order?id=1042&amp;a=1"', $new, 'the order link escaped once');

@@ -13587,7 +13587,7 @@ const StyleDesigner = (function () {
         // A paused subscription beside the active one; a used store credit
         // card beside the open one, and a second order that spent it.
         'account.subscriptions': [
-            { __subscription_id: '7', __subscription_product: _sdT('Coffee of the month'), __subscription_amount: '89.00 TRY',
+            { __subscription_id: '7', __subscription_product: _sdT('Coffee of the month'), __subscription_amount: '89,00 TRY',
               __subscription_status: 'paused', __subscription_status_label: _sdT('Paused'), __subscription_tone: 'secondary',
               __subscription_next: _sdT('Next charge:') + ' 01.12.2026', __subscription_price: '', __subscription_card: '',
               __subscription_event: _sdT('Last event:') + ' ' + _sdT('Paused') + ' (02.11.2026)', __subscription_confirm_url: '',
@@ -44280,8 +44280,9 @@ const StyleDesigner = (function () {
                     _sdPartEl('span', '', _sdT('Value'), { _bindings: { text: '__credit_use_order_no' } })
                 ]),
                 sentence('span', '', _sdT('Order number'), '#{var:1}', '__credit_use_order_no', '', _sdPartWhen('__credit_use_order_url', 'empty')),
-                bound('span', 'text-body-secondary', _sdT('Order date'), '__credit_use_date'),
-                sentence('span', '', _sdT('Amount spent'), '−{var:1}', '__credit_use_amount')
+                // ms-1: the canvas draws no white space between inline elements.
+                bound('span', 'text-body-secondary ms-1', _sdT('Order date'), '__credit_use_date'),
+                sentence('span', 'ms-1', _sdT('Amount spent'), '−{var:1}', '__credit_use_amount')
             ]);
             var card = _sdPartEl('div', 'list-group-item', _sdT('Card'), {}, [
                 _sdPartEl('div', 'd-flex justify-content-between align-items-start gap-2', _sdT('Heading'), {}, [
@@ -61811,7 +61812,7 @@ const StyleDesigner = (function () {
         __booking_ics_url:      '#',
         __subscription_id:           '8',
         __subscription_product:      _sdT('Weekly flower box'),
-        __subscription_amount:       '149.00 TRY',
+        __subscription_amount:       '149,00 TRY',
         __subscription_status:       'active',
         __subscription_status_label: _sdT('Active'),
         __subscription_tone:         'success',

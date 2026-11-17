@@ -2137,8 +2137,9 @@ function pg_acct_part($section)
                 pg_sw_part_el('span', '', lang('Value'), array('_bindings' => array('text' => '__credit_use_order_no'))),
             )),
             $sentence('span', '', lang('Order number'), '#{var:1}', '__credit_use_order_no', '', $when('__credit_use_order_url', 'empty')),
-            $bound('span', 'text-body-secondary', lang('Order date'), '__credit_use_date'),
-            $sentence('span', '', lang('Amount spent'), '−{var:1}', '__credit_use_amount'),
+            // ms-1: the canvas draws no white space between inline elements.
+            $bound('span', 'text-body-secondary ms-1', lang('Order date'), '__credit_use_date'),
+            $sentence('span', 'ms-1', lang('Amount spent'), '−{var:1}', '__credit_use_amount'),
         ));
         $card = pg_sw_part_el('div', 'list-group-item', lang('Card'), array(), array(
             pg_sw_part_el('div', 'd-flex justify-content-between align-items-start gap-2', lang('Heading'), array(), array(
