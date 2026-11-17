@@ -59,9 +59,37 @@ function test_erp_shared_prices_picker_screen_saves_through_the_check()
 	pg_assert_contains("\$action === 'price_account'", $screen, 'its own action');
 	pg_assert_contains('erp_account_price_pointer_save(', $screen, 'saved through the one-hop check');
 	pg_assert_contains('erp_account_price_pointer_options(', $screen, 'the offered accounts');
-	pg_assert_contains('erp_account_price_users(', $screen, 'the accounts that use this one\'s prices');
+	pg_assert_contains('erp_account_price_users_shown($account_id, 10)', $screen, 'the accounts that use this one\'s prices, ten at most');
+	pg_assert_true(strpos($screen, "lang('Open those prices')") === false, 'the followed account\'s name is the link');
+	pg_assert_contains("(!\$followed ? '<div class=\"form-text\">'", $screen, 'no choosing hint while the picker is disabled');
 	pg_assert_contains("lang('Uses the prices of')", $screen, 'the label');
 	pg_assert_contains("lang('Only the prices and the discount follow; payment terms and the credit limit stay this account\\'s. Making the chosen account passive does not stop its prices.')", $screen, 'the hint the architect asked for');
 	pg_assert_contains('data-pg-combobox', $screen, 'a searchable list');
 	pg_assert_contains('pg_fields_script()', $screen, 'its script');
+}
+
+// The accounts that use this one's prices: at most ten by title, the count
+// named, one line for the rest.
+function test_erp_shared_prices_picker_followers_bounded()
+{
+	$rows = array();
+	for ($i = 1; $i <= 10; $i++) {
+		$rows[] = array('id' => $i, 'title' => 'Buyer ' . $i, 'total' => '12');
+	}
+
+	$lines = erp_account_price_users_lines($rows, 10);
+	pg_assert_same(12, $lines['count'], 'the count of all');
+	pg_assert_same(10, count($lines['rows']), 'ten shown');
+	pg_assert_same(2, $lines['more'], 'two in the closing line');
+
+	$lines = erp_account_price_users_lines(array_slice($rows, 0, 3), 10);
+	pg_assert_same(array(12, 3, 9), array($lines['count'], count($lines['rows']), $lines['more']), 'the total wins over the rows read');
+
+	pg_assert_same(array('count' => 0, 'rows' => array(), 'more' => 0), erp_account_price_users_lines(array(), 10), 'nobody');
+
+	$lists = (string) file_get_contents(dirname(__DIR__) . '/pinegrap/includes/erp/price_lists.php');
+	$start = strpos($lists, 'function erp_account_price_users_shown(');
+	$body = substr($lists, $start, strpos($lists, "\n}\n", $start) - $start);
+	pg_assert_same(1, substr_count($body, 'db_items('), 'one query');
+	pg_assert_contains('ORDER BY title ASC', $body, 'in title order');
 }

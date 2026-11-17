@@ -125,12 +125,17 @@ if ($ready && ((string) $account['kind'] === 'supplier')) {
 $shared = $ready && erp_shared_prices_ready();
 $price_account_id = $shared ? (int) ($account['price_account_id'] ?? 0) : 0;
 $price_account = ($price_account_id > 0) ? erp_account($price_account_id) : null;
-$price_users = $shared ? erp_account_price_users($account_id) : array();
+$price_users = $shared ? erp_account_price_users_shown($account_id, 10) : array('count' => 0, 'rows' => array(), 'more' => 0);
 $price_account_refused = $liveform->check_field_error('price_account_id');
 
 if (is_array($price_account)) {
-    $liveform->add_warning(h(lang(array('string' => 'This account buys at the prices of {var:1}. Its own prices below are kept and are used again when it stops.', 'vars' => (string) $price_account['title'])))
-        . ' <a href="erp_account_prices.php?account_id=' . (int) $price_account['id'] . '">' . h(lang('Open those prices')) . '</a>');
+    // The account's name links to its prices; the sentence is escaped first
+    // and the link put in its place.
+    $liveform->add_warning(str_replace(
+        '{account}',
+        '<a href="erp_account_prices.php?account_id=' . (int) $price_account['id'] . '">' . h((string) $price_account['title']) . '</a>',
+        h(lang(array('string' => 'This account buys at the prices of {var:1}. Its own prices below are kept and are used again when it stops.', 'vars' => '{account}')))
+    ));
 }
 
 $output_price_account = '';
@@ -144,16 +149,18 @@ if ($shared) {
 
     // An account others follow cannot follow another (one hop): the list is
     // shown, not offered, with who follows it.
-    $locked = $readonly || ($price_users && ($price_account_id <= 0));
+    $followed = ($price_users['count'] > 0) && ($price_account_id <= 0);
+    $locked = $readonly || $followed;
     $users_html = '';
 
-    foreach ($price_users as $user_account_id) {
-        $user_account = erp_account($user_account_id);
-
-        if (is_array($user_account)) {
-            $users_html .= '<li><a href="erp_account_prices.php?account_id=' . (int) $user_account_id . '">' . h((string) $user_account['title']) . '</a></li>';
-        }
+    foreach ($price_users['rows'] as $user_row) {
+        $users_html .= '<li><a href="erp_account_prices.php?account_id=' . (int) $user_row['id'] . '">' . h($user_row['title']) . '</a></li>';
     }
+
+    // The rest past the first ten: one plain line under the list.
+    $users_more_html = ($price_users['more'] > 0)
+        ? '<p class="pg-text-2 fg-secondary mt-2 mb-0">' . h(lang(array('string' => 'and {var:1} more accounts', 'vars' => pg_format_number($price_users['more'], 0)))) . '</p>'
+        : '';
 
     $output_price_account = '
                 <form method="post" action="erp_account_prices.php" class="card pg-card mb-7">
@@ -165,9 +172,9 @@ if ($shared) {
                         <div class="form-field">
                             <label class="form-label" for="price_account_id">' . h(lang('Uses the prices of')) . '</label>
                             <select class="form-control' . ($price_account_refused ? ' is-invalid' : '') . '" id="price_account_id" name="price_account_id" data-pg-combobox' . ($price_account_refused ? ' aria-invalid="true"' : '') . ($locked ? ' disabled' : '') . '>' . $options_html . '</select>
-                            <div class="form-text">' . h(lang('Only the prices and the discount follow; payment terms and the credit limit stay this account\'s. Making the chosen account passive does not stop its prices.')) . '</div>
+                            ' . (!$followed ? '<div class="form-text">' . h(lang('Only the prices and the discount follow; payment terms and the credit limit stay this account\'s. Making the chosen account passive does not stop its prices.')) . '</div>' : '') . '
                         </div>
-                        ' . ($users_html !== '' ? '<p class="pg-text-2 fg-secondary mt-5 mb-2">' . h(lang('These accounts use this account\'s prices, so it keeps its own:')) . '</p><ul class="pg-text-2 mb-0">' . $users_html . '</ul>' : '') . '
+                        ' . ($users_html !== '' ? '<p class="pg-text-2 fg-secondary mt-5 mb-2">' . (($price_users['count'] === 1) ? h(lang('One account uses this account\'s prices, so it keeps its own:')) : h(lang(array('string' => '{var:1} accounts use this account\'s prices, so it keeps its own:', 'vars' => pg_format_number($price_users['count'], 0))))) . '</p><ul class="pg-text-2 mb-0">' . $users_html . '</ul>' . $users_more_html : '') . '
                         ' . (!$locked ? '<button type="submit" class="btn btn-solid theme-success w-100 mt-5"><i class="bi bi-check-circle me-3" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Save')) . '</span></button>' : '') . '
                     </div>
                 </form>';
