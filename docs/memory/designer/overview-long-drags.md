@@ -1,6 +1,6 @@
 ---
 name: overview-long-drags
-description: Designer Overview long drags: tree folded to its sections, a closed branch opened after 600 ms, 48 px scroll zones, the tree given back after Esc or a drop
+description: Designer Overview long drags (#10309): tree folded to its sections, a closed branch opened after 600 ms, 48 px scroll zones, the tree given back after Esc or a drop
 ---
 
 ## What happens when a row drag starts?
