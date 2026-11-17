@@ -17,7 +17,7 @@ description: The existing files that steps of more than one website-side plan to
 - The API schema (`includes/api/schema.php`): RW4, CM3, CH4, RB7; PN2 for the link routes' "Allow comments".
 - A report route's object names (`api_openapi_objects()` in `includes/api/openapi.php`) and a new resource file's `require_once` (`includes/api/bootstrap.php`): CM3 (#9913); CH4 and RB7 when theirs are new objects or files.
 - `includes/panel/designer.php` (the designer's panel actions): PN3, CM4, PA3.
-- `prototype.php` and `includes/fn/prototype.php`: PN2, RB5. The Prototype view's own plan (prototype-canvas) has ended with PV12 and holds them no more.
+- `prototype.php` and `includes/fn/prototype.php`: PN2, RB5. The Prototype view's own plan (prototype-canvas) has ended with PV12 (#10307) and holds them no more.
 - `includes/fn/custom_form.php`: RW1, RW5.
 - `includes/fn/output.php`: CM2 (`pg_js_bundles()`), CH2 (`output_menu()`), VP4 (`output_menu()`'s active row 9 for `messages_notifications.php`).
 - `page_view.php` and `assets/js/pg_vitals.src.js`: CM1 and CM2 only (the clicks travel with the speed beacon); a step of another plan that sends a beacon is listed here first.
