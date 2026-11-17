@@ -1713,6 +1713,7 @@
     "{var:1} quote(s) expire within {var:2} days.": "{var:1} teklifin süresi {var:2} gün içinde doluyor.",
     "{var:1} rate": "{var:1} oranı",
     "{var:1} rate of the fee (%)": "Vade farkının {var:1} oranı (%)",
+    "{var:1} reach here": "Buraya kadar inen: {var:1}",
     "{var:1} reached · {var:2} came back": "{var:1} ulaşıldı · {var:2} geri döndü",
     "{var:1} reacted with {var:2}": "{var:1}: {var:2}",
     "{var:1} read receipt{suffix:1} asked of you": "{var:1} okundu onayı isteği",
