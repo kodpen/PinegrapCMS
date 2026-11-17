@@ -587,3 +587,307 @@ function pg_course_certificate_parse($code, $key)
 
     return (($out['user_id'] > 0) && ($out['course_id'] > 0) && ($out['completed_at'] > 0)) ? $out : null;
 }
+
+/**
+ * The settings text of the "Courses" switch (Site Settings, Features): '1'
+ * on, missing off, so every site and a new install start off.
+ */
+define('PG_COURSE_SWITCH', 'courses');
+
+/**
+ * Whether the "Courses" switch is on.
+ *
+ * @return bool
+ */
+function pg_course_switch_on()
+{
+    if (!function_exists('pg_config_text')) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/config_text.php');
+    }
+
+    return pg_config_text(PG_COURSE_SWITCH) === '1';
+}
+
+/**
+ * The gate's answer for a page a signed-in member may already see: whether
+ * the lesson it is stays closed, why, and where the member is sent. Only a
+ * lesson of a private folder is ever closed: a lesson in a public folder
+ * is a free preview. A classroom page is never sent to itself (0: the
+ * caller answers in place). Pure.
+ *
+ * @param bool       $switch_on     the "Courses" switch
+ * @param string     $access_type   the page folder's access control type
+ * @param array|null $lesson        pg_course_lesson_for_page(), null for no lesson
+ * @param array      $lessons       the course's lessons
+ * @param array      $done_ids      the lessons the member has done
+ * @param string     $enrolment_day Y-m-d, '' for none yet
+ * @param string     $today         Y-m-d
+ * @param bool       $can_edit      whether the member may edit the page
+ * @return array closed (bool), reason, opens_on, before_id (as
+ *               pg_course_lesson_state()), classroom_page_id
+ */
+function pg_course_gate_answer($switch_on, $access_type, $lesson, array $lessons, array $done_ids, $enrolment_day, $today, $can_edit)
+{
+    $pass = array('closed' => false, 'reason' => '', 'opens_on' => '', 'before_id' => 0, 'classroom_page_id' => 0);
+
+    if (!$switch_on || ((string) $access_type !== 'private') || !is_array($lesson) || !isset($lesson['course']) || !is_array($lesson['course'])) {
+        return $pass;
+    }
+
+    $course = $lesson['course'];
+    $state = pg_course_lesson_state($lessons, $lesson['id'] ?? 0, $done_ids, $enrolment_day, !empty($course['in_order']), $today, $can_edit);
+
+    if ($state['open']) {
+        return $pass;
+    }
+
+    $classroom = (int) ($course['classroom_page_id'] ?? 0);
+
+    if ($classroom === (int) ($lesson['page_id'] ?? 0)) {
+        $classroom = 0;
+    }
+
+    return array(
+        'closed'            => true,
+        'reason'            => $state['reason'],
+        'opens_on'          => $state['opens_on'],
+        'before_id'         => (int) $state['before_id'],
+        'classroom_page_id' => max(0, $classroom),
+    );
+}
+
+/**
+ * The notice a closed lesson gives, plain text. It is read on the
+ * classroom page, where every lesson is listed, so it names the lesson:
+ * the closed lesson and the day it opens, or the lesson to finish first
+ * and the lesson it opens. Pure but for lang().
+ *
+ * @param array  $answer      pg_course_gate_answer() of a closed lesson
+ * @param string $name        the closed lesson's name
+ * @param string $before_name the lesson to finish first, '' for unknown
+ * @param string $day         the day it opens, as the site writes a date
+ * @return string
+ */
+function pg_course_gate_notice_text(array $answer, $name, $before_name, $day)
+{
+    $name = trim((string) $name);
+    $before_name = trim((string) $before_name);
+
+    if ($answer['reason'] === 'days') {
+        return lang(array('string' => '"{var:1}" opens on {var:2}.', 'vars' => array($name, (string) $day)));
+    }
+
+    if ($before_name === '') {
+        return lang(array('string' => '"{var:1}" opens when the lesson before it is done.', 'vars' => $name));
+    }
+
+    return lang(array('string' => 'Finish "{var:1}" to open "{var:2}".', 'vars' => array($before_name, $name)));
+}
+
+/**
+ * A lesson's name: its page's title, else its page name.
+ *
+ * @param int $page_id
+ * @return string
+ */
+function _pg_course_lesson_name($page_id)
+{
+    $page = db_item("SELECT page_name, page_title FROM page WHERE page_id = '" . (int) $page_id . "'");
+
+    if (!is_array($page) || !$page) {
+        return '';
+    }
+
+    $title = trim((string) $page['page_title']);
+
+    return ($title !== '') ? $title : (string) $page['page_name'];
+}
+
+/**
+ * The notice a closed lesson gives, plain text, with the names and the
+ * day read.
+ *
+ * @param array $answer  pg_course_gate_answer() of a closed lesson
+ * @param array $lesson  pg_course_lesson_for_page()
+ * @param array $lessons the course's lessons
+ * @return string
+ */
+function pg_course_gate_notice(array $answer, array $lesson, array $lessons)
+{
+    $day = '';
+    $before_name = '';
+
+    if ($answer['reason'] === 'days') {
+        $day = get_absolute_time(array(
+            'timestamp'     => strtotime($answer['opens_on'] . ' 12:00:00'),
+            'type'          => 'date',
+            'format'        => 'plain_text',
+            'size'          => 'long',
+            'timezone_type' => 'site',
+        ));
+    } else {
+        foreach ($lessons as $row) {
+            if ((int) $row['id'] === (int) $answer['before_id']) {
+                $before_name = _pg_course_lesson_name($row['page_id']);
+                break;
+            }
+        }
+    }
+
+    return pg_course_gate_notice_text($answer, _pg_course_lesson_name($lesson['page_id']), $before_name, $day);
+}
+
+/**
+ * The notice's markup on the classroom page, '' for no text. Its look is
+ * its own, scoped by its class, so it reads on a theme without Bootstrap;
+ * a site in dark mode (data-bs-theme on <html> or <body>) gets the dark
+ * tones. Pure.
+ *
+ * @param string $text plain text
+ * @return string
+ */
+function pg_course_notice_html($text)
+{
+    $text = trim((string) $text);
+
+    if ($text === '') {
+        return '';
+    }
+
+    $css = '.pg-course-notice{box-sizing:border-box;margin:0;padding:.75rem 1rem;background:#e8f1fb;color:#0a3a63;border-bottom:1px solid #b9d3ee;font-family:inherit;font-size:1rem;line-height:1.5;text-align:center}'
+        . '[data-bs-theme="dark"] .pg-course-notice,.pg-course-notice[data-bs-theme="dark"]{background:#132a40;color:#d6e8fa;border-bottom-color:#2b4c6d}';
+
+    return '<style>' . pg_style_tag_css($css) . '</style>'
+        . '<div class="pg-course-notice" role="status">' . h($text) . '</div>';
+}
+
+/**
+ * Puts the notice right after the page's <body> tag, or first in a page
+ * without one. Pure.
+ *
+ * @param string $content the page
+ * @param string $html    pg_course_notice_html()
+ * @return string
+ */
+function pg_course_notice_insert($content, $html)
+{
+    $content = (string) $content;
+
+    if ((string) $html === '') {
+        return $content;
+    }
+
+    if (preg_match('/<body\b[^>]*>/i', $content, $match, PREG_OFFSET_CAPTURE)) {
+        $at = $match[0][1] + strlen($match[0][0]);
+
+        return substr($content, 0, $at) . $html . substr($content, $at);
+    }
+
+    return $html . $content;
+}
+
+/**
+ * The address of a page for a redirect, in the language being drawn.
+ *
+ * @param int $page_id
+ * @return string a path from PATH, '' for no page
+ */
+function _pg_course_page_path($page_id)
+{
+    $name = (string) get_page_name((int) $page_id);
+
+    if ($name === '') {
+        return '';
+    }
+
+    $path = PATH . encode_url_path($name);
+
+    if (function_exists('pg_tr_active') && pg_tr_active()) {
+        pg_tr_load();
+        $path = html_entity_decode(pg_tr_rewrite_url($path, pg_tr_prefix(pg_tr_language()), true), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    }
+
+    return $path;
+}
+
+/**
+ * The gate in the page's access path (get_page.php, after the access
+ * switch has let the member in): a closed lesson sends the member to its
+ * course's classroom page with a notice that names the day it opens or the
+ * lesson to finish first; without a classroom page it answers 403 with the
+ * notice. A member given the folder by hand gets the first-open row here,
+ * the day their days count from.
+ *
+ * @param int    $page_id
+ * @param int    $folder_id
+ * @param string $access_type the folder's access control type
+ * @return void
+ */
+function pg_course_gate($page_id, $folder_id, $access_type)
+{
+    if (((string) $access_type !== 'private') || !USER_LOGGED_IN || !pg_course_ready() || !pg_course_switch_on()) {
+        return;
+    }
+
+    $lesson = pg_course_lesson_for_page($page_id);
+
+    if ($lesson === null) {
+        return;
+    }
+
+    $course = $lesson['course'];
+    $user_id = (int) USER_ID;
+    $can_edit = (bool) check_edit_access($folder_id);
+    $progress = pg_course_member_progress($user_id, $course['id']);
+    $enrolment_day = pg_course_member_enrolment_day($user_id, $course, $progress);
+
+    // The folder was given by hand (no counting order): the first open is
+    // the day the member's days count from.
+    if (!$can_edit && ($enrolment_day === '') && pg_course_record_first_open($user_id, $course['id'], true)) {
+        $enrolment_day = date('Y-m-d');
+    }
+
+    $lessons = pg_course_lessons($course['id']);
+    $answer = pg_course_gate_answer(true, $access_type, $lesson, $lessons, $progress['done_ids'], $enrolment_day, date('Y-m-d'), $can_edit);
+
+    if (!$answer['closed']) {
+        return;
+    }
+
+    $notice = pg_course_gate_notice($answer, $lesson, $lessons);
+    $path = ($answer['classroom_page_id'] > 0) ? _pg_course_page_path($answer['classroom_page_id']) : '';
+
+    if ($path === '') {
+        output_error(h($notice), 403);
+    }
+
+    $_SESSION['software']['course_notice'] = array('page_id' => (int) $answer['classroom_page_id'], 'text' => $notice);
+
+    header('Location: ' . URL_SCHEME . HOSTNAME . $path);
+    exit();
+}
+
+/**
+ * The classroom page with the notice a closed lesson left for it: taken
+ * once, on that page only. The page is then drawn for this member alone.
+ *
+ * @param string $content the page
+ * @param int    $page_id the page being drawn
+ * @return string
+ */
+function pg_course_notice_inject($content, $page_id)
+{
+    $notice = $_SESSION['software']['course_notice'] ?? null;
+
+    if (!is_array($notice) || ((int) ($notice['page_id'] ?? 0) !== (int) $page_id)) {
+        return $content;
+    }
+
+    unset($_SESSION['software']['course_notice']);
+
+    if (function_exists('pg_page_cache_personal')) {
+        pg_page_cache_personal('course_notice');
+    }
+
+    return pg_course_notice_insert($content, pg_course_notice_html($notice['text'] ?? ''));
+}

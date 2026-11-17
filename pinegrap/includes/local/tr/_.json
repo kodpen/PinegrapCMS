@@ -67,6 +67,8 @@
     "\"{var:1}\" is open in the Page Design Studio.": "\"{var:1}\" Sayfa Tasarım Stüdyosu'nda açık.",
     "\"{var:1}\" is used on {var:2} pages:": "\"{var:1}\" {var:2} sayfada kullanılıyor:",
     "\"{var:1}\" keeps its page regions: some of them sit in a shared component.": "\"{var:1}\" sayfa bölgelerini koruyor: bazıları paylaşılan bir bileşende.",
+    "\"{var:1}\" opens on {var:2}.": "\"{var:1}\" dersi {var:2} tarihinde açılır.",
+    "\"{var:1}\" opens when the lesson before it is done.": "\"{var:1}\" dersi, önceki ders bitince açılır.",
     "\"{var:1}\" was published again after the copy was made.": "\"{var:1}\" kopya alındıktan sonra yeniden yayınlandı.",
     "\"{var}\" added.": "\"{var}\" eklendi.",
     "\"{var}\" has no Account E-mail widget yet, so the e-mail cannot show the member's name or links. Add one to that page.": "\"{var}\" sayfasında henüz Hesap E-postası widget'ı yok; e-posta üyenin adını ve bağlantılarını gösteremez. O sayfaya bir tane ekleyin.",
