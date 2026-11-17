@@ -399,3 +399,26 @@ function test_image_editor_follow_bar()
 
 	pg_assert_contains("follow: ['follow', 'followFollow',", $actions, 'the bar\'s command with Follow\'s own label');
 }
+
+// The hint names Escape only where there is a keyboard: on a touch screen
+// the pill's Cancel is the way out.
+function test_image_editor_follow_hint()
+{
+	$r = image_editor_follow_node(
+		'console.log(JSON.stringify([M.followHint(false, false), M.followHint(true, false), M.followHint(false, true), M.followHint(true, true)]));'
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
+	pg_assert_same(array('followHint', 'followHintRun', 'followHintTouch', 'followHintRunTouch'), $r, 'the hint by phase and by touch');
+
+	$strings = pg_image_editor_strings_follow();
+
+	foreach (array('followHintTouch', 'followHintRunTouch') as $key) {
+		pg_assert_true(isset($strings[$key]), 'string ' . $key);
+		pg_assert_false(strpos($strings[$key], 'Esc') !== false, $key . ' names no key');
+	}
+}
