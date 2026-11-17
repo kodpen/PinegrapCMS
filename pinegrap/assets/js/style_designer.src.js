@@ -60533,20 +60533,27 @@ const StyleDesigner = (function () {
 
     // How a list of values is drawn: up to six as a button group, seven or
     // more (or none) as a select. Widths are estimated from the segments'
-    // 11.5 px text: a group wider than the control beside its label (172 at
-    // 336 px: the dot's place 14, the label 92, a gap of 10) stands under
-    // it, one wider than the row (274) stays a select. Under 300 px
-    // (control 104) a group of four or more written segments, or a wider
-    // one, stands under its label; four icons stay beside it.
+    // 11.5 px text at 600 (a capital 8.4, any other character 6.8, the
+    // segment's padding and gap 14): a group wider than the control beside
+    // its label (162 at 336 px: the dot's place 14, the label 92, a gap of
+    // 10) stands under it, one wider than the row (262) stays a select, so
+    // no segment text is cut. Under 300 px (control 104) a group of four or
+    // more written segments, or a wider one, stands under its label; four
+    // icons stay beside it.
     function _sdSegPlan(labels, icons) {
         var n = (labels || []).length;
         if (!n || n > 6) return { kind: 'select', stack: false, stackNarrow: false };
         var w = icons ? n * 28 : labels.reduce(function (s, l) {
-            return s + String(l).replace(/&[a-z#0-9]+;/gi, '_').length * 6.4 + 12;
+            var t = String(l).replace(/&[a-z#0-9]+;/gi, '_');
+            for (var i = 0; i < t.length; i++) {
+                var ch = t.charAt(i);
+                s += (ch !== ch.toLowerCase() ? 8.4 : 6.8);
+            }
+            return s + 14;
         }, 0);
-        if (w > 274) return { kind: 'select', stack: false, stackNarrow: false };
+        if (w > 262) return { kind: 'select', stack: false, stackNarrow: false };
         var narrow = icons ? n > 4 : (n >= 4 || w > 104);
-        return { kind: 'group', stack: w > 172, stackNarrow: w > 172 || narrow };
+        return { kind: 'group', stack: w > 162, stackNarrow: w > 162 || narrow };
     }
 
     // A lone select of a row's markup read into { attrs, opts: [{ v, l, on }] }:

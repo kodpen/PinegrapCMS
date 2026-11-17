@@ -133,7 +133,7 @@ JS
 
 // Up to six values are a button group, seven or more a select. A group
 // that does not fit beside its label stands under it; one that would not
-// fit the row's whole width stays a select. Under 300 px a group of four
+// fit the row's whole width stays a select, so no segment text is cut. Under 300 px a group of four
 // or more written segments stands under its label, icons stay beside it.
 function test_designer_options_group_or_select()
 {
@@ -147,7 +147,8 @@ out = [
 	p(['Static', 'Relative', 'Absolute', 'Fixed', 'Sticky']),
 	p(['Contain (whole image)', 'Cover (crop to fill)', 'Stretch to fill', 'Scale down only', 'Natural size']),
 	p(['a', 'b', 'c', 'd'], true),
-	p(['None', 'Start', 'End'])
+	p(['None', 'Start', 'End']),
+	p(['Start', 'Center', 'End', 'Between'])
 ];
 JS
 	);
@@ -157,7 +158,7 @@ JS
 	}
 
 	pg_assert_same(array(
-		'group/narrow', 'group/narrow', 'select', 'select', 'group/stack/narrow', 'select', 'group', 'group/narrow',
+		'group/narrow', 'group/narrow', 'select', 'select', 'select', 'select', 'group', 'group/narrow', 'group/stack/narrow',
 	), $answer);
 }
 
