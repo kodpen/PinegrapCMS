@@ -128,6 +128,13 @@ function test_workspace_mail_pane_body_own_pictures()
 	$both = ws_mail_pane_body_html(workspace_mail_frame_test_item(array('own_pictures' => 1, 'outside_pictures' => 1)), 'Ayşe', '/pg/');
 	pg_assert_contains('data-ws-mail-show-pictures', $both, 'other pictures are still offered');
 	pg_assert_contains('data-ws-mail-pictures-own>', $both, 'and the line stays beside the offer');
+	pg_assert_same(false, strpos($both, '<span class="ws-mail-pictures" data-ws-mail-pictures><i class="bi bi-image me-1" aria-hidden="true"></i>' . h(lang('Pictures on this site\'s own address are not shown in an e-mail.'))), 'the line is not inside the offer');
+
+	// Show pictures hides only the offer's own element (an exact attribute
+	// selector), so the line stays: the site's own picture is still not shown.
+	$script = workspace_mail_frame_test_source('assets/js/workspace_mail.js');
+	pg_assert_contains("querySelector('[data-ws-mail-pictures]')", $script, 'the offer is found by its exact attribute');
+	pg_assert_same(false, strpos($script, 'data-ws-mail-pictures-own'), 'the script never touches the line');
 	pg_assert_same(false, strpos(ws_mail_pane_body_html(workspace_mail_frame_test_item(), 'Ayşe', '/pg/'), 'data-ws-mail-pictures-own'), 'no such picture, no line');
 }
 
