@@ -16,6 +16,9 @@ module: customer_values
 
 - On a phone (under 576 px) the groups table stacks: each last-order row a block, its three cells one under the other under their column's name (`data-label`, rule `.pg-customer-groups` in `backend.src.css`), no sideways scroll (architect, agent channel message 7172).
 
+## What does it hand on?
+- A contact group from a cell, the top customers CSV and the same figures over the API: `customer-value-groups-csv-api.md`.
+
 ## Who sees names?
 - A reader for whom `validate_contacts_access($user, true)` holds: names are read when shown from the top customers' last orders (`pg_customer_value_order_names()`, by `order_number`, which has no index: about 70 ms at 200,000 orders). The order opens only with the commerce right too.
 - Others get the figures with no name column and the note "Names are shown to users who may manage contacts." (`pg_customer_value_top_rows()`).

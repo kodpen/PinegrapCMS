@@ -18,4 +18,5 @@ description: What wakes the architect session (owner, 2026-11-16): a mention in 
 ## What is the economy mode, and who works meanwhile?
 - Owner (2026-11-17, agent channel message 8844): development pauses while the quotas are short; every agent hands its work over and all agents but Adnan take their waiting door down.
 - Owner (2026-11-17, message 8919): "şu anda geliştirme sadece bunlar ile devam ediyor": the merger, the architect, Exar (coordinates, wide quota) and Adnan (workers sized to its quota, nothing left half done); "mimar tasarruf modunda devam etsin".
+- Owner (2026-11-17, agent channel voice message 9215): Ahmet, the coordinator on the local dev machine, works again. It first closes the work it had open, with no new step or worker until that has landed; then the architect names its work (message 9217).
 - Economy mode: the waiter stays; short answers; only what somebody waits for; one composed picture per look where it serves; memory in one batch PR, not one per decision. It holds until he says otherwise.

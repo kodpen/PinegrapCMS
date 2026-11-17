@@ -113,6 +113,7 @@
 - lang-function-syntax.md: lang() call forms: plain, variables {var:N}, case modifiers |c |u |l, plural suffix, no text concatenated outside lang(), and the lang(['info' => true]) active-language query.
 - lang-loader.md: Where lang() lives (includes/fn/lang.php), how get_file.php loads it without functions.php, the software language a request outside init.php speaks
 - lang-placeholders.md: How lang() fills {var:N}, its case modifiers and {suffix}: one strtr() pass, values never re-scanned, plain {var} left for JavaScript
+- log-warnings-forms-default-screens.md: Form, calendar and default screen warnings of the PHP 8.5 error log fixed by cause (plan php-error-log-clean, EL5): what each screen now does when a row, a page or a posted key is missing
 - login-as-sign-out.md: Sign-out after Login as User: the operator lands on Edit User of that account, signed back in by their cookie, with a notice; without one the logout page (#9007)
 - mail-bounce-screens.md: Where the bounce record is shown: campaign delivery counts, the Suppressed contact view and export column, the contact card badge with Allow again, personal data export and erasure
 - mail-bounce-verp.md: VERP return path with a signed per-message token, pg_mail_parse_dsn() for delivery reports and ARF complaints, and the Workspace mailbox that reads bounces and records them

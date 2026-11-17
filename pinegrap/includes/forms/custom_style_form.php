@@ -280,7 +280,7 @@ function pg_custom_style_form_cards($style, $social_networking, $name_error = ''
                                 </h2>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 md:col-8 lg:col-6 mb-3">
+                                        <div class="col-12 mb-3">
                                             <label for="name" class="form-label">' . lang('Name') . '</label>
                                             <input value="' . h($style['style_name']) . '" name="name" id="name" type="text" placeholder="' . lang('new page style') . '" class="form-control' . pg_region_form_name_error_attributes($name_error) . '" maxlength="' . pg_name_max_length() . '" required />' . pg_region_form_name_error($name_error) . '
                                             <div class="invalid-feedback">' . lang('Required Area') . '</div>

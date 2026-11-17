@@ -25,7 +25,7 @@ if (!defined('PG_TEST_RUNNER')) {
 function test_order_view_screen_defaults_before_layouts()
 {
 	$source = file_get_contents(PG_FUNCTIONS_DIR . '/get_view_order_screen_content.php');
-	$layouts = strpos($source, "if (\$layout_type == 'system') {");
+	$layouts = strpos($source, "if (\$layout_type == 'system' || !\$layout_type) {");
 
 	foreach (array("\$recurring_products_exist = false;", "\$applied_offers = array();", "\$output_recurring_products = '';") as $default) {
 		$position = strpos($source, $default);
@@ -67,7 +67,7 @@ function test_order_view_screen_returns()
 	// The whole gate: USER_ID owns the order, and the page is not an e-mail.
 	$visible = strpos($source, "if (pg_return_classic_visible(defined('USER_ID') ? USER_ID : 0, \$order_user_id, !empty(\$render_context['email']))) {");
 	$block = strpos($source, '$output_returns = pg_return_classic_block($order_id, REQUEST_URL);');
-	$layouts = strpos($source, "if (\$layout_type == 'system') {");
+	$layouts = strpos($source, "if (\$layout_type == 'system' || !\$layout_type) {");
 
 	pg_assert_true(($owner !== false) && ($visible !== false) && ($block !== false) && ($layouts !== false), 'all four are there');
 	pg_assert_true(($owner < $visible) && ($visible < $block) && ($block < $layouts), 'owner check, visibility, block, layouts');

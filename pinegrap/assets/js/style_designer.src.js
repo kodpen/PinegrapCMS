@@ -25519,12 +25519,17 @@ const StyleDesigner = (function () {
                 '</div>' +
                 '<div class="sd-ov-search-box" id="sd-ov-search-wrap">' +
                     '<span class="bi bi-search"></span>' +
-                    '<input type="text" id="sd-ov-search-input" placeholder="' + esc(_sdT('Search...')) + '" autocomplete="off">' +
+                    '<input type="text" id="sd-ov-search-input" placeholder="' + esc(_sdT('Search the tree…')) + '" aria-label="' + esc(_sdT('Search the tree…')) + '" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="sd-ov-results" aria-autocomplete="list">' +
+                    '<span class="sd-ov-search-hint" id="sd-ov-search-hint">' + _sdTreeSearchKbd() + '</span>' +
                     '<button type="button" class="sd-ov-collapse-btn sd-ov-reveal-btn" id="sd-ov-reveal-btn" title="' + esc(_sdT('Show the selection')) + '" aria-label="' + esc(_sdT('Show the selection')) + '"><span class="bi bi-crosshair"></span></button>' +
                     '<button type="button" class="sd-ov-collapse-btn" id="sd-ov-collapse-btn" title="' + esc(_sdT('Collapse every branch')) + '"><span class="bi bi-arrows-collapse"></span></button>' +
                 '</div>' +
                 '<nav class="sd-ov-path" id="sd-ov-path" aria-label="' + esc(_sdT('Path of the selection')) + '" hidden></nav>' +
-                '<div class="sd-overview-tree-wrap" id="sd-overview-tree-wrap"><ul class="sd-tree-list" id="sd-tree-list"></ul></div>' +
+                '<div class="sd-ov-results" id="sd-ov-results" hidden></div>' +
+                '<div class="sd-ov-body" id="sd-ov-body">' +
+                    '<div class="sd-overview-tree-wrap" id="sd-overview-tree-wrap"><ul class="sd-tree-list" id="sd-tree-list"></ul></div>' +
+                    '<div class="sd-ov-map" id="sd-ov-map" aria-hidden="true" hidden></div>' +
+                '</div>' +
                 '<div class="sd-overview-notes-wrap" id="sd-overview-notes-wrap" style="display:none">' +
                     '<div id="sd-notes-list"></div>' +
                 '</div>' +
@@ -25864,6 +25869,22 @@ const StyleDesigner = (function () {
                 clearTimeout(_ovResizeT);
                 _ovResizeT = setTimeout(renderTree, 150);
             }).observe(_ovTreeWrap);
+        }
+        // The page map's range in view follows the tree's scroll, once a
+        // frame; a click on the map goes to that place of the page.
+        if (_ovTreeWrap) {
+            var _ovMapFrame = 0;
+            _ovTreeWrap.addEventListener('scroll', function () {
+                if (_ovMapFrame) return;
+                _ovMapFrame = requestAnimationFrame(function () { _ovMapFrame = 0; _sdTreeMapMarks(); });
+            }, { passive: true });
+        }
+        var _ovMap = document.getElementById('sd-ov-map');
+        if (_ovMap) {
+            _ovMap.addEventListener('click', function (e) {
+                var r = _ovMap.getBoundingClientRect();
+                if (r.height > 0) _sdTreeMapGo((e.clientY - r.top) / r.height * 100);
+            });
         }
 
         // ── Show the selection; the path's steps select their element ────────
@@ -26993,14 +27014,49 @@ const StyleDesigner = (function () {
             xhr.send(JSON.stringify({ action: 'shared_component', sub_action: 'list', token: token }));
         }
 
-        // Overview search (always visible)
+        // The tree search: results 120 ms after typing, drawn by the
+        // treesearch part in place of the tree (_sdTreeSearchSet()).
         var ovSearchInput = document.getElementById('sd-ov-search-input');
         if (ovSearchInput) {
+            var _ovSearchT = null;
             ovSearchInput.addEventListener('input', function() {
-                var q = this.value.toLowerCase().trim();
-                filterOverviewTree(q);
+                var inp = this;
+                clearTimeout(_ovSearchT);
+                _ovSearchT = setTimeout(function () { _sdTreeSearchSet(inp.value); }, 120);
+            });
+            ovSearchInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    // The first Esc clears the search, the second leaves the box.
+                    e.preventDefault();
+                    e.stopPropagation();
+                    clearTimeout(_ovSearchT);
+                    if (this.value) { this.value = ''; _sdTreeSearchSet(''); } else this.blur();
+                    return;
+                }
+                if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp' && e.key !== 'Enter') return;
+                if (!this.value.trim()) return;
+                e.preventDefault();
+                clearTimeout(_ovSearchT);
+                var key = e.key;
+                var run = (this.value.trim() === _sdTreeSearchQ) ? Promise.resolve() : _sdTreeSearchSet(this.value);
+                run.then(function () { return _sdPartCall('treesearch', 'key', [_sdTreeSearchHost(), key]); }).catch(_sdPartFailed);
             });
         }
+        // Ctrl+F (Cmd+F) with the pointer over the Overview, or the focus in
+        // it, goes to the tree search; elsewhere the browser's own find.
+        document.addEventListener('keydown', function (e) {
+            if (!(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey || String(e.key).toLowerCase() !== 'f') return;
+            var sec = document.getElementById('sd-overview-section');
+            var inp = document.getElementById('sd-ov-search-input');
+            if (!sec || !inp || !inp.offsetParent) return;
+            var act = document.activeElement;
+            var inside = !!(act && sec.contains(act));
+            var typing = !!(act && act !== document.body && (act.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(act.tagName)));
+            if (!inside && (typing || !sec.matches(':hover'))) return;
+            e.preventDefault();
+            inp.focus();
+            inp.select();
+        });
 
         // Left panel vertical resize — inline so _ovCollapsed/_setOvCollapsed are in scope
         (function() {
@@ -27072,18 +27128,104 @@ const StyleDesigner = (function () {
         })();
     }
 
-    function filterOverviewTree(q) {
-        if (!q) { renderTree(); return; }
-        var items = document.querySelectorAll('#sd-tree-list li, #sd-tree-list .sd-tree-children li');
-        // A row matches on its label, its designer label (props._label) or
-        // its #id badge.
-        items.forEach(function(li) {
-            var txt = ['.sd-tree-lbl', '.sd-tree-user-label', '.sd-tree-id'].map(function(sel) {
-                var el = li.querySelector(sel);
-                return el ? el.textContent : '';
-            }).join(' ').toLowerCase();
-            li.style.display = (txt.indexOf(q) !== -1) ? '' : 'none';
-        });
+    // ── The Overview's tree search ───────────────────────────────────────────
+    //
+    // "Search the tree…" looks in every element's name, text, class and id
+    // and lists the results with their path in place of the tree; Enter
+    // selects one and shows its row. The finding and the list are the
+    // treesearch part (style_designer_treesearch.js), run the first time the
+    // box is typed into; the core hands it the page through a host.
+    var _sdTreeSearchQ = '';
+
+    // The key hint at the box's right end while it is empty.
+    function _sdTreeSearchKbd() {
+        var mac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || '');
+        return '<kbd class="sd-ov-search-kbd">' + (mac ? '⌘ F' : 'Ctrl F') + '</kbd>';
+    }
+
+    // Search for `q`, or leave the search with an empty one: the tree and
+    // the page map give way to the results while there are words.
+    function _sdTreeSearchSet(q) {
+        q = String(q || '').trim();
+        _sdTreeSearchQ = q;
+        var sec = document.getElementById('sd-overview-section');
+        var box = document.getElementById('sd-ov-results');
+        var inp = document.getElementById('sd-ov-search-input');
+        if (sec) sec.classList.toggle('sd-ov-searching', !!q);
+        if (box) box.hidden = !q;
+        if (inp) inp.setAttribute('aria-expanded', q ? 'true' : 'false');
+        if (!q) {
+            if (box) box.innerHTML = '';
+            if (inp) inp.removeAttribute('aria-activedescendant');
+            _sdTreeSearchTotal(null);
+            _sdTreeMapMarks();
+            return Promise.resolve();
+        }
+        return _sdPartCall('treesearch', 'search', [_sdTreeSearchHost(q), q]).catch(_sdPartFailed);
+    }
+
+    // The count of results at the box's right end; null puts the key hint back.
+    function _sdTreeSearchTotal(total) {
+        var el = document.getElementById('sd-ov-search-hint');
+        if (!el) return;
+        el.innerHTML = (total === null) ? _sdTreeSearchKbd()
+            : '<span class="sd-ov-search-count" title="' + esc(_sdT('{var} results', total)) + '">' + total + '</span>';
+    }
+
+    // What the treesearch part reads the page through. `q`: the words of
+    // the search it serves; its answer draws only while the box still holds
+    // them (the part may arrive after the box was emptied or changed).
+    function _sdTreeSearchHost(q) {
+        var seen = {};
+        return {
+            live: function () { return q === undefined || q === _sdTreeSearchQ; },
+            root: tree,
+            // A node's children as the overview lists them: a shared
+            // component's are its cached tree's, listed once.
+            kids: function (n) {
+                if (n && n.type === 'shared_ref' && n.props && n.props.sharedId) {
+                    var sid = parseInt(n.props.sharedId, 10);
+                    if (seen[sid] || !_sharedCache[sid] || !_sharedCache[sid].tree) return [];
+                    seen[sid] = true;
+                    return _sharedCache[sid].tree.children || [];
+                }
+                return (n && n.children) || [];
+            },
+            fields: function (n) {
+                var p = n.props || {};
+                return {
+                    name: _sdPartTreeLabel(n, getNodeLabel(n)),
+                    label: p._label ? String(p._label) : '',
+                    text: String(p.text || '').replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim(),
+                    cls: p.cssClass ? String(p.cssClass) : '',
+                    id: p.id ? String(p.id) : ''
+                };
+            },
+            // The row hint (its text, a file name, a link target); the part
+            // asks for it only for a name more than one result shows.
+            hint: function (n) { return _sdTreeRowHint(n, 40); },
+            icon: _sdTreeIconHtml,
+            pick: _sdTreeSearchPick,
+            total: _sdTreeSearchTotal,
+            box: document.getElementById('sd-ov-results'),
+            input: document.getElementById('sd-ov-search-input')
+        };
+    }
+
+    // A result picked: the search ends, the element is selected and its row
+    // shown in the tree.
+    function _sdTreeSearchPick(node) {
+        var inp = document.getElementById('sd-ov-search-input');
+        if (inp) inp.value = '';
+        _sdTreeSearchSet('');
+        // A result whose element an edit has taken out of the page since.
+        if (!node || !_sdTreeParentOf(node)) return;
+        selectedNodes = [];
+        _sdInner = null;
+        selectedNode = node;
+        _sdSelectRender();
+        scrollCanvasToNode(node);
+        _sdTreeRevealSelection(true);
     }
 
 
@@ -29954,6 +30096,7 @@ const StyleDesigner = (function () {
         _sdTreeRowWidth = _wrapEl ? _wrapEl.clientWidth : 0;
         _sdTreeNames = _sdTreeCountNames();
         _sdTreeChainShown = [];
+        _sdTreeLongPark(list);
         list.innerHTML = '';
 
         // Refresh notes tab (count badge + list) whenever tree re-renders
@@ -29992,6 +30135,7 @@ const StyleDesigner = (function () {
         list._sdTreeEpoch = _sdEditEpoch;
         _sdTreePathRender();
         _sdTreeRevealSelection();
+        _sdTreeMapRender();
 
         // Attach palette-drop handlers ONCE on the list element.
         // Using a flag prevents duplicate handlers from accumulating on every render.
@@ -31633,6 +31777,188 @@ const StyleDesigner = (function () {
         return steps;
     }
 
+    // ── The page map at the tree's right edge ──────────────────────────────
+    //
+    // The page's sections as blocks by their size, the range of the page the
+    // tree shows, and the selection; a click goes there. Places are counted
+    // in the page's order: each section, then every element it holds (a
+    // shared component placed as a section holds its cached tree), as the
+    // section rows count them.
+
+    // The map's blocks, one per section, in percent of the map's height:
+    // each by its size (`sizes`: the section and what it holds), none under
+    // `min` percent while all of them have room for that.
+    function _sdTreeMapRanges(sizes, min) {
+        var n = sizes.length, total = 0;
+        if (!n) return [];
+        sizes.forEach(function (s) { total += Math.max(0, s); });
+        var floor = (n * min <= 100) ? min : 100 / n;
+        var free = 100 - n * floor, top = 0;
+        return sizes.map(function (s) {
+            var h = floor + free * (total ? Math.max(0, s) / total : 1 / n);
+            var r = { top: top, height: h };
+            top += h;
+            return r;
+        });
+    }
+
+    // Where place `idx` stands on the map, in percent: inside its section's
+    // block by its place in the section. `starts` holds each section's first
+    // place.
+    function _sdTreeMapPos(ranges, starts, sizes, idx) {
+        for (var i = 0; i < ranges.length; i++) {
+            if (idx >= starts[i] && idx < starts[i] + sizes[i]) {
+                return ranges[i].top + ranges[i].height * (idx - starts[i]) / sizes[i];
+            }
+        }
+        return (idx < 0 || !ranges.length) ? 0 : 100;
+    }
+
+    // The place at `pct` percent of the map's height: { section, idx }.
+    function _sdTreeMapAt(ranges, starts, sizes, pct) {
+        for (var i = 0; i < ranges.length; i++) {
+            var r = ranges[i];
+            if (pct < r.top + r.height || i === ranges.length - 1) {
+                var k = Math.floor(Math.max(0, pct - r.top) / (r.height || 1) * sizes[i]);
+                return { section: i, idx: starts[i] + Math.min(sizes[i] - 1, Math.max(0, k)) };
+            }
+        }
+        return null;
+    }
+
+    // The page's places at the last drawing of the tree.
+    var _sdTreeMapData = null;
+    function _sdTreeMapBuild() {
+        var d = { sizes: [], starts: [], nodes: [], index: (typeof Map === 'function') ? new Map() : null };
+        ((tree && tree.children) || []).forEach(function (s) {
+            var first = d.nodes.length;
+            d.starts.push(first);
+            var sid = (s.type === 'shared_ref' && s.props && s.props.sharedId) ? parseInt(s.props.sharedId, 10) : 0;
+            var inner = (sid > 0 && _sharedCache[sid] && _sharedCache[sid].tree) ? _sharedCache[sid].tree : s;
+            var stack = [s];
+            while (stack.length) {
+                var n = stack.pop();
+                if (d.index) d.index.set(n, d.nodes.length);
+                d.nodes.push(n);
+                var kids = (n === s) ? inner.children : n.children;
+                for (var j = (kids || []).length - 1; j >= 0; j--) stack.push(kids[j]);
+            }
+            d.sizes.push(d.nodes.length - first);
+        });
+        return d;
+    }
+
+    // A node's place, or its nearest listed ancestor's; -1 for none.
+    function _sdTreeMapIndexOf(n) {
+        var d = _sdTreeMapData;
+        for (var guard = 0; d && d.index && n && n !== tree && guard < 10000; guard++) {
+            if (d.index.has(n)) return d.index.get(n);
+            n = _sdTreeParentOf(n);
+        }
+        return -1;
+    }
+
+    function _sdTreeMapRender() {
+        var map = document.getElementById('sd-ov-map');
+        if (!map) return;
+        var d = _sdTreeMapData = _sdTreeMapBuild();
+        if (d.sizes.length < 2 || !d.index) { map.hidden = true; map.innerHTML = ''; return; }
+        d.ranges = _sdTreeMapRanges(d.sizes, 3);
+        map.hidden = false;
+        map.innerHTML = d.ranges.map(function (r, i) {
+            var s = d.nodes[d.starts[i]];
+            var tip = _sdTreeRowName(s) + ' · ' + _sdT('{var} elements inside', d.sizes[i] - 1);
+            return '<span class="sd-ov-map-sect" data-sect="' + i + '" style="top:' + r.top.toFixed(3) + '%;height:' + r.height.toFixed(3) + '%" title="' + esc(tip) + '"></span>';
+        }).join('') + '<span class="sd-ov-map-view"></span><span class="sd-ov-map-sel"></span>';
+        _sdTreeMapMarks();
+    }
+
+    // The range in view and the selection on the map.
+    function _sdTreeMapMarks() {
+        var map = document.getElementById('sd-ov-map');
+        var d = _sdTreeMapData;
+        if (!map || map.hidden || !d || !d.ranges) return;
+        var wrap = document.getElementById('sd-overview-tree-wrap');
+        var list = document.getElementById('sd-tree-list');
+        var view = map.querySelector('.sd-ov-map-view');
+        var dot = map.querySelector('.sd-ov-map-sel');
+        var span = (wrap && list) ? _sdTreeMapView(wrap, list) : null;
+        if (view) {
+            view.hidden = !span;
+            if (span) {
+                var a = _sdTreeMapPos(d.ranges, d.starts, d.sizes, span[0]);
+                var b = (span[1] >= d.nodes.length) ? 100 : _sdTreeMapPos(d.ranges, d.starts, d.sizes, span[1]);
+                view.style.top = a.toFixed(3) + '%';
+                view.style.height = Math.max(0, b - a).toFixed(3) + '%';
+            }
+        }
+        var si = (selectedNode && selectedNode !== tree) ? _sdTreeMapIndexOf(selectedNode) : -1;
+        if (dot) {
+            dot.hidden = si < 0;
+            if (si >= 0) dot.style.top = _sdTreeMapPos(d.ranges, d.starts, d.sizes, si).toFixed(3) + '%';
+        }
+        map.querySelectorAll('.sd-ov-map-sect').forEach(function (el, i) {
+            el.classList.toggle('sd-ov-map-cur', si >= d.starts[i] && si < d.starts[i] + d.sizes[i]);
+        });
+    }
+
+    // The places the tree shows: [first, end), from the first row in view to
+    // the first row under it (the page's end when none); null when the tree
+    // cannot be seen.
+    function _sdTreeMapView(wrap, list) {
+        var box = wrap.getBoundingClientRect();
+        if (!box.height) return null;
+        var rows = list.querySelectorAll('li');
+        function idx(k) {
+            for (; k < rows.length; k++) {
+                var n = rows[k]._sdNode || rows[k]._sdChainFirst;
+                var i = n ? _sdTreeMapIndexOf(n) : -1;
+                if (i >= 0) return i;
+            }
+            return _sdTreeMapData.nodes.length;
+        }
+        // The first row whose foot is under the tree's top, then the first
+        // whose head is under its foot.
+        function after(edge, side) {
+            var lo = 0, hi = rows.length;
+            while (lo < hi) {
+                var mid = (lo + hi) >> 1;
+                var r = rows[mid].getBoundingClientRect();
+                if ((side === 'bottom' ? r.bottom : r.top) > edge) hi = mid; else lo = mid + 1;
+            }
+            return lo;
+        }
+        var first = after(box.top, 'bottom');
+        if (first >= rows.length) return null;
+        var end = after(box.bottom - 1, 'top');
+        var a = idx(first), b = idx(Math.max(end, first + 1));
+        return [a, Math.max(a + 1, b)];
+    }
+
+    // A click on the map: the section at that height is opened and the tree
+    // scrolled to the drawn row nearest the place clicked.
+    function _sdTreeMapGo(pct) {
+        var d = _sdTreeMapData;
+        if (!d || !d.ranges) return;
+        var at = _sdTreeMapAt(d.ranges, d.starts, d.sizes, pct);
+        if (!at) return;
+        var section = d.nodes[d.starts[at.section]];
+        if (section._expanded === false) { section._expanded = true; renderTree(); }
+        var list = document.getElementById('sd-tree-list');
+        var wrap = document.getElementById('sd-overview-tree-wrap');
+        if (!list || !wrap) return;
+        // The place's row, else its nearest ancestor's (a closed branch, a
+        // folded chain); the section's own row is always drawn.
+        var row = null;
+        for (var n = d.nodes[at.idx], guard = 0; n && n !== tree && !row && guard < 10000; guard++) {
+            row = _sdTreeRowOf(list, n);
+            if (!row) n = _sdTreeParentOf(n);
+        }
+        if (!row) return;
+        wrap.scrollTop += row.getBoundingClientRect().top - wrap.getBoundingClientRect().top - wrap.clientTop;
+        _sdTreeMapMarks();
+    }
+
     // A wrapper the overview may fold into a chain line: a plain layout box
     // (container, row, column, a block tag) with no words of its own and no
     // mark the operator needs to see (an editable area, a lock, a note).
@@ -31859,7 +32185,304 @@ const StyleDesigner = (function () {
         l.style.top = at.top + 'px';
     }
 
-    // The hint after a name that repeats: the element's text, a picture's
+    // ── Long drags in the Overview ──
+    // A drag started on a row folds the tree to its sections; a closed
+    // branch under the pointer opens after 600 ms; the top and bottom 48 px
+    // of the tree scroll it. Esc gives the tree back as it was; a drop too,
+    // but a branch opened on the way that the drop went into stays open.
+
+    // The open state of every branch under `root` (`kids(n)` lists a row's
+    // children as the Overview draws them), for _sdTreeDragRestore().
+    function _sdTreeDragSave(root, kids) {
+        var out = [], seen = new Set();
+        (function walk(n) {
+            kids(n).forEach(function (c) {
+                if (!c || seen.has(c)) return;
+                seen.add(c);
+                out.push({ n: c, had: Object.prototype.hasOwnProperty.call(c, '_expanded'), v: c._expanded });
+                walk(c);
+            });
+        })(root);
+        return out;
+    }
+
+    // Closes every section (a child of `root` with rows under it); returns
+    // how many were open.
+    function _sdTreeDragFold(root, kids) {
+        var n = 0;
+        kids(root).forEach(function (c) {
+            if (kids(c).length && c._expanded !== false) { c._expanded = false; n++; }
+        });
+        return n;
+    }
+
+    // Gives every branch its saved state back; the ones in `keep` open.
+    function _sdTreeDragRestore(saved, keep) {
+        saved.forEach(function (s) {
+            if (keep.indexOf(s.n) !== -1) s.n._expanded = true;
+            else if (s.had) s.n._expanded = s.v;
+            else delete s.n._expanded;
+        });
+    }
+
+    // The branches opened during the drag that stay open after a drop into
+    // `dest`: `dest` itself and the branches over it.
+    function _sdTreeDragKeep(opened, dest, parentOf) {
+        var over = [];
+        for (var n = dest, g = 0; n && g < 256; g++) { over.push(n); n = parentOf(n); }
+        return opened.filter(function (o) { return over.indexOf(o) !== -1; });
+    }
+
+    // The closed branch under the pointer: `id` the row's (null for none),
+    // `now` in ms. The time starts when the pointer comes to a row and opens
+    // it after 600 ms there.
+    function _sdTreeDragHover(prev, id, now) {
+        if (id == null) return { id: null, since: now, open: false };
+        if (!prev || prev.id !== id) return { id: id, since: now, open: false };
+        return { id: id, since: prev.since, open: now - prev.since >= 600 };
+    }
+
+    // Pixels a frame the tree scrolls for a pointer `y` px under its top, the
+    // tree `h` px high: within 48 px of an edge, from 6 at the zone's inner
+    // edge to 24 at the tree's edge (negative is up); in a short tree the
+    // nearer edge wins.
+    function _sdTreeDragScroll(y, h) {
+        var zone = 48, top = y, bottom = h - y;
+        var up = top < zone, down = bottom < zone;
+        if (up && down) {
+            if (top === bottom) return 0;
+            if (top < bottom) down = false; else up = false;
+        }
+        if (!up && !down) return 0;
+        var d = Math.max(0, up ? top : bottom);
+        var v = Math.round(6 + 18 * (zone - d) / zone);
+        return up ? -v : v;
+    }
+
+    // A row's children as the Overview draws them: a shared component's
+    // from its own tree.
+    function _sdTreeKids(n) {
+        if (n && n.type === 'shared_ref') {
+            var sid = (n.props && n.props.sharedId) ? parseInt(n.props.sharedId, 10) : 0;
+            var c = sid > 0 ? _sharedCache[sid] : null;
+            return (c && c.tree && c.tree.children) || [];
+        }
+        return (n && n.children) || [];
+    }
+
+    // The drag running from an Overview row; null when none runs.
+    var _sdTreeLong = null;
+    // Tree drawings, so the end of a drag knows whether a move drew it.
+    var _sdTreeDraws = 0;
+    var _sdTreeScrolling = { step: 0, raf: 0, seen: 0, wrap: null };
+
+    function _sdTreeLongStart(li, node) {
+        _sdTreeLongBind();
+        _sdTreeLongUnpark();
+        var wrap = document.getElementById('sd-overview-tree-wrap');
+        var L = _sdTreeLong = { src: li, node: node, saved: _sdTreeDragSave(tree, _sdTreeKids), opened: [],
+            top: wrap ? wrap.scrollTop : 0, hover: null, timer: 0, folded: false };
+        // Rows changed inside dragstart cancel the drag in Chromium.
+        setTimeout(function () {
+            if (_sdTreeLong !== L || !_sdTreeDragFold(tree, _sdTreeKids)) return;
+            L.folded = true;
+            // The section of the dragged row comes where the row was.
+            var sect = node;
+            while (sect && _sdTreeParentOf(sect) && _sdTreeParentOf(sect) !== tree) sect = _sdTreeParentOf(sect);
+            var was = (wrap && li.isConnected) ? li.getBoundingClientRect().top - wrap.getBoundingClientRect().top : null;
+            // The section just folded under the pointer waits until the
+            // pointer has been on another row: it does not open again by
+            // itself while the drag sets off.
+            if (sect) L.hover = { id: sect._id, since: Infinity, open: false };
+            _sdTreeLongDraw();
+            var list = document.getElementById('sd-tree-list');
+            var row = (list && sect) ? _sdTreeRowOf(list, sect) : null;
+            if (row && was !== null) wrap.scrollTop += row.getBoundingClientRect().top - wrap.getBoundingClientRect().top - was;
+        }, 0);
+    }
+
+    // Draws the tree during a drag, the dragged rows dimmed again.
+    function _sdTreeLongDraw() {
+        renderTree();
+        var moving = (treeDragNode && treeDragNode._multiDrag && selectedNodes.length > 1) ? selectedNodes : [treeDragNode];
+        var list = document.getElementById('sd-tree-list');
+        if (!list) return;
+        moving.forEach(function (n) {
+            var r = n ? _sdTreeRowOf(list, n) : null;
+            if (r) r.classList.add('sd-tree-drag-src');
+        });
+    }
+
+    // Called by renderTree() before it empties the rows: the dragged row is
+    // kept in the document, where the browser sends it its dragend.
+    function _sdTreeLongPark(list) {
+        _sdTreeDraws++;
+        var L = _sdTreeLong;
+        if (!L || !L.src || !list.contains(L.src)) return;
+        var park = document.getElementById('sd-tree-drag-park');
+        if (!park) {
+            park = document.createElement('ul');
+            park.id = 'sd-tree-drag-park';
+            park.hidden = true;
+            document.body.appendChild(park);
+        }
+        park.appendChild(L.src);
+    }
+
+    function _sdTreeLongUnpark() {
+        var park = document.getElementById('sd-tree-drag-park');
+        if (park) park.textContent = '';
+    }
+
+    // Ends the drag: the tree as it was, but for the opened branches over
+    // `dest` (the parent a drop went into; null for Esc). A drop that moved
+    // something draws the tree itself; else it is drawn here, at the scroll
+    // it had when the drag started.
+    function _sdTreeLongEnd(dest) {
+        var L = _sdTreeLong;
+        if (!L) return;
+        _sdTreeLong = null;
+        clearTimeout(L.timer);
+        _sdTreeScrolling.step = 0;
+        _sdTreeZones(null, 0);
+        _sdTreeLongWait(null);
+        if (!L.folded && !L.opened.length) return;
+        _sdTreeDragRestore(L.saved, dest ? _sdTreeDragKeep(L.opened, dest, _sdTreeParentOf) : []);
+        var drawn = _sdTreeDraws;
+        setTimeout(function () {
+            if (_sdTreeDraws !== drawn) return;
+            renderTree();
+            var wrap = document.getElementById('sd-overview-tree-wrap');
+            if (wrap) wrap.scrollTop = L.top;
+        }, 0);
+    }
+
+    // Opens the closed branch the pointer stayed on.
+    function _sdTreeLongOpen(n) {
+        var L = _sdTreeLong;
+        if (!L || !L.hover || L.hover.id !== n._id) return;
+        if (!_sdTreeDragHover(L.hover, n._id, Date.now() + 1).open) return;
+        L.hover = null;
+        n._expanded = true;
+        if (L.opened.indexOf(n) === -1) L.opened.push(n);
+        _sdTreeLongDraw();
+    }
+
+    // Scrolls the tree by `step` px a frame while dragovers keep coming.
+    function _sdTreeScrollAt(wrap, step) {
+        var s = _sdTreeScrolling;
+        s.step = step;
+        s.wrap = wrap;
+        s.seen = Date.now();
+        if (!step || s.raf) return;
+        s.raf = requestAnimationFrame(function tick() {
+            if (!s.step || Date.now() - s.seen > 500) { s.step = 0; s.raf = 0; return; }
+            s.wrap.scrollTop += s.step;
+            if (_sdTreeLong) _sdTreeZones(s.wrap, s.step);
+            s.raf = requestAnimationFrame(tick);
+        });
+    }
+
+    // The closed row the pointer waits on says it is opening.
+    function _sdTreeLongWait(li) {
+        document.querySelectorAll('#sd-tree-list li.sd-tree-opening').forEach(function (x) {
+            x.classList.remove('sd-tree-opening');
+            var p = x.querySelector('.sd-tree-opening-pill');
+            if (p) p.remove();
+        });
+        if (!li) return;
+        li.classList.add('sd-tree-opening');
+        var pill = document.createElement('span');
+        pill.className = 'sd-tree-opening-pill';
+        pill.innerHTML = '<span class="bi bi-hourglass-split" aria-hidden="true"></span>' + esc(_sdT('opening'));
+        li.appendChild(pill);
+    }
+
+    // The scroll zones over the top and bottom 48 px of the tree during a
+    // drag, each shown while the tree can scroll that way and lit while it
+    // does; `wrap` null hides them. They let the pointer through.
+    var _sdTreeZoneEls = null;
+    function _sdTreeZones(wrap, step) {
+        var z = _sdTreeZoneEls;
+        if (!wrap) {
+            if (z) z[0].hidden = z[1].hidden = true;
+            return;
+        }
+        if (!z) {
+            z = _sdTreeZoneEls = ['up', 'down'].map(function (d) {
+                var el = document.createElement('div');
+                el.className = 'sd-tree-scroll-zone sd-tree-scroll-' + d;
+                el.setAttribute('aria-hidden', 'true');
+                el.innerHTML = '<span class="bi bi-chevron-double-' + d + '"></span>';
+                el.hidden = true;
+                document.body.appendChild(el);
+                return el;
+            });
+        }
+        var r = wrap.getBoundingClientRect();
+        var top = r.top + wrap.clientTop;
+        var max = wrap.scrollHeight - wrap.clientHeight;
+        [[z[0], wrap.scrollTop > 0, step < 0, top],
+         [z[1], wrap.scrollTop < max - 1, step > 0, top + wrap.clientHeight - 48]].forEach(function (a) {
+            a[0].hidden = !a[1];
+            a[0].classList.toggle('sd-tree-scroll-on', a[2]);
+            a[0].style.left = (r.left + wrap.clientLeft) + 'px';
+            a[0].style.width = wrap.clientWidth + 'px';
+            a[0].style.top = a[3] + 'px';
+        });
+    }
+
+    function _sdTreeLongBind() {
+        if (_sdTreeLongBind.done) return;
+        _sdTreeLongBind.done = true;
+        // Before the rows' own handlers: the scroll zones, and the time on a
+        // closed branch. The palette's drags scroll the tree too.
+        document.addEventListener('dragover', function (e) {
+            var wrap = e.target && e.target.closest ? e.target.closest('#sd-overview-tree-wrap') : null;
+            if (!wrap || !(treeDragNode || (dragData && dragData.source === 'palette'))) {
+                _sdTreeScrolling.step = 0;
+                _sdTreeZones(null, 0);
+                return;
+            }
+            var step = _sdTreeDragScroll(e.clientY - wrap.getBoundingClientRect().top - wrap.clientTop, wrap.clientHeight);
+            _sdTreeScrollAt(wrap, step);
+            var L = _sdTreeLong;
+            if (!L) return;
+            _sdTreeZones(wrap, step);
+            var li = e.target.closest('#sd-tree-list li');
+            var n = li ? li._sdNode : null;
+            var closed = !!(n && li.querySelector('.sd-tree-chev:not(.sd-tree-chev-open)'));
+            var prev = L.hover;
+            L.hover = _sdTreeDragHover(prev, closed ? n._id : null, Date.now());
+            if (prev && prev.id === L.hover.id) return;
+            clearTimeout(L.timer);
+            _sdTreeLongWait(closed ? li : null);
+            L.timer = closed ? setTimeout(function () { _sdTreeLongOpen(n); }, 600) : 0;
+        }, true);
+        document.addEventListener('drop', function (e) {
+            if (!_sdTreeLong) return;
+            var li = e.target && e.target.closest ? e.target.closest('#sd-tree-list li') : null;
+            var dp = li ? li._dropPos : null;
+            var dest = null;
+            if (dp) dest = dp.zone === 'inside' ? li._sdNode : (_sdTreeParentOf(dp.t.sib) || dp.t.parent);
+            _sdTreeLongEnd(dest);
+        }, true);
+        document.addEventListener('dragend', function () {
+            _sdTreeLongEnd(null);
+            setTimeout(_sdTreeLongUnpark, 0);
+        }, true);
+        // A pointer moving with no button held means the drag ended
+        // without a dragend (its row left the document).
+        document.addEventListener('pointermove', function (e) {
+            if (!_sdTreeLong || e.buttons) return;
+            _sdTreeLongEnd(null);
+            treeDragNode = null;
+            document.querySelectorAll('.sd-tree-drag-src').forEach(function (x) { x.classList.remove('sd-tree-drag-src'); });
+            _sdTreeLongUnpark();
+        }, true);
+    }
+
+    // The hint after a name that repeats:the element's text, a picture's
     // file name or a link's target, else the first of these inside it (60
     // elements looked at). At most `max` characters, cut with an ellipsis.
     function _sdTreeRowHint(node, max) {
@@ -32111,6 +32734,7 @@ const StyleDesigner = (function () {
         if (_refreshNotesPanel) _refreshNotesPanel();
         _sdTreePathRender();
         _sdTreeRevealSelection();
+        _sdTreeMapMarks();
         return true;
     }
 
@@ -32184,6 +32808,34 @@ const StyleDesigner = (function () {
         buildTreeItems(ul, chain.next, depth, lvl + chain.hidden.length);
     }
 
+    // The icon of a node's row in the overview (and of its tree search result).
+    function _sdTreeIconHtml(node) {
+        var icon = '<span class="bi bi-box"></span>';
+        var cType = node.props && node.props.contentType ? node.props.contentType : node.type;
+        var cntDef = COMPONENTS[node.type] || CONTENT[cType];
+        if (cntDef && cntDef.icon) icon = '<span class="bi ' + cntDef.icon + '"></span>';
+        if (node.type === 'row' || node.type === 'col') icon = '<span class="bi bi-layout-split"></span>';
+        if (node.type === 'root') icon = '<span class="bi bi-filetype-html"></span>';
+        if (node.type === 'shared_ref') {
+            var _sid_tree = (node.props && node.props.sharedId) ? parseInt(node.props.sharedId, 10) : 0;
+            var _cachedTree = _sid_tree > 0 ? _sharedCache[_sid_tree] : null;
+            var _isSysWidgetTree = !!(_cachedTree && _cachedTree.system_region_config);
+            icon = _isSysWidgetTree
+                ? '<span class="bi bi-cpu" style="color:#6366f1"></span>'
+                : '<span class="bi bi-puzzle-fill" style="color:#22c55e"></span>';
+        }
+        if (node.type === 'semantic') {
+            var semTagIcons = { nav: 'bi-signpost-2', ul: 'bi-list-ul', ol: 'bi-list-ol', li: 'bi-dash-lg',
+                button: 'bi-hand-index', a: 'bi-link-45deg', form: 'bi-input-cursor-text',
+                header: 'bi-layout-text-window-reverse', footer: 'bi-layout-text-window',
+                section: 'bi-layers', article: 'bi-file-text', main: 'bi-body-text',
+                aside: 'bi-layout-sidebar-reverse', h1: 'bi-type-h1', h2: 'bi-type-h2', h3: 'bi-type-h3',
+                span: 'bi-fonts', p: 'bi-paragraph', div: 'bi-bounding-box' };
+            icon = '<span class="bi ' + (semTagIcons[node.props.tag] || 'bi-code-slash') + '"></span>';
+        }
+        return icon;
+    }
+
     // `depth` is where the row is drawn, `lvl` its level in the page (deeper
     // under a folded chain); 1 for a section.
     function buildTreeItems(ul, node, depth, lvl) {
@@ -32219,29 +32871,7 @@ const StyleDesigner = (function () {
             ? '<span class="bi bi-chevron-right sd-tree-chev' + (isExpanded ? ' sd-tree-chev-open' : '') + '"></span>'
             : '<span class="sd-tree-chev-placeholder"></span>';
 
-        var icon = '<span class="bi bi-box"></span>';
-        var cType = node.props && node.props.contentType ? node.props.contentType : node.type;
-        var cntDef = COMPONENTS[node.type] || CONTENT[cType];
-        if (cntDef && cntDef.icon) icon = '<span class="bi ' + cntDef.icon + '"></span>';
-        if (node.type === 'row' || node.type === 'col') icon = '<span class="bi bi-layout-split"></span>';
-        if (node.type === 'root') icon = '<span class="bi bi-filetype-html"></span>';
-        if (node.type === 'shared_ref') {
-            var _sid_tree = (node.props && node.props.sharedId) ? parseInt(node.props.sharedId, 10) : 0;
-            var _cachedTree = _sid_tree > 0 ? _sharedCache[_sid_tree] : null;
-            var _isSysWidgetTree = !!(_cachedTree && _cachedTree.system_region_config);
-            icon = _isSysWidgetTree
-                ? '<span class="bi bi-cpu" style="color:#6366f1"></span>'
-                : '<span class="bi bi-puzzle-fill" style="color:#22c55e"></span>';
-        }
-        if (node.type === 'semantic') {
-            var semTagIcons = { nav: 'bi-signpost-2', ul: 'bi-list-ul', ol: 'bi-list-ol', li: 'bi-dash-lg',
-                button: 'bi-hand-index', a: 'bi-link-45deg', form: 'bi-input-cursor-text',
-                header: 'bi-layout-text-window-reverse', footer: 'bi-layout-text-window',
-                section: 'bi-layers', article: 'bi-file-text', main: 'bi-body-text',
-                aside: 'bi-layout-sidebar-reverse', h1: 'bi-type-h1', h2: 'bi-type-h2', h3: 'bi-type-h3',
-                span: 'bi-fonts', p: 'bi-paragraph', div: 'bi-bounding-box' };
-            icon = '<span class="bi ' + (semTagIcons[node.props.tag] || 'bi-code-slash') + '"></span>';
-        }
+        var icon = _sdTreeIconHtml(node);
 
         // The id gives way first: cut with an ellipsis, left out when only a
         // few letters would stay (it wraps out of its one-line holder).
@@ -32451,6 +33081,8 @@ const StyleDesigner = (function () {
                         if (sli) sli.classList.add('sd-tree-drag-src');
                     });
                 }
+                // The tree folds to its sections for the way.
+                _sdTreeLongStart(li, node);
             });
 
             li.addEventListener('dragend', function() {
