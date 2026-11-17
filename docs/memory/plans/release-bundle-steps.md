@@ -28,7 +28,7 @@ description: Plan release-bundle, steps RB1 to RB8 (RB0, the owner's answer, is 
 
 - RB4 Done (#10108): the time. Existing files: `job.php` (one pass). The person's name swapped as `api_design_save_as_owner()` does. Features: B13.
 
-- RB5 (M) after RB2: the preview. Existing files: `prototype.php` and `includes/fn/prototype.php` (`pg_proto_page_set()` takes a bundle; the link resolver opens a replacement). Features: B14.
+- RB5 Done (#10296): the preview. Existing files: `prototype.php` and `includes/fn/prototype.php` (`pg_proto_page_set()` takes a bundle; the link resolver opens a replacement). Features: B14.
 
 - RB6 (S) after RB5: the share link. A bundle named on `prototype_links` (its place the architect's, in the PR). Features: B15.
 

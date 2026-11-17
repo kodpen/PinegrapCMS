@@ -1974,6 +1974,7 @@
     "No page of a visual design can be added: every page is already in an open bundle or in an open experiment.": "Eklenebilecek görsel tasarım sayfası yok: her sayfa zaten açık bir pakette ya da açık bir deneyde.",
     "No page of the trial design came from this design.": "Deneme tasarımının hiçbir sayfası bu tasarımdan gelmedi.",
     "No page of this bundle can be taken back.": "Bu paketin hiçbir sayfası geri alınamıyor.",
+    "No page of this bundle is waiting to be published.": "Bu pakette yayımlanmayı bekleyen sayfa yok.",
     "No page of this design has a Form Item View or comments on.": "Bu tasarımın hiçbir sayfasında Form Öğesi Görünümü ya da açık yorumlar yok.",
     "No page of this design prints a page type that has a system widget.": "Bu tasarımın hiçbir sayfası, sistem bileşeni olan bir sayfa türü basmıyor.",
     "No page or address to point it at": "Yönlendirilecek bir sayfa ya da adres yok",
