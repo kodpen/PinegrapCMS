@@ -74096,6 +74096,9 @@ const StyleDesigner = (function () {
                 // dirty dots clear.
                 _pgTabsAfterSave(res.data);
                 _pgSaveHold = {};
+                // A content editor's save may start, replace or withdraw a
+                // waiting change: the tabs' marks are read again.
+                if (_sdIsContentLevel()) _pgContentChangesLoad(false);
                 var _warnings = Array.isArray(res.data.warnings) ? res.data.warnings : [];
                 var _notes = Array.isArray(res.data.notes) ? res.data.notes : [];
                 // Server may request a redirect (used by add_system_style after creating
@@ -74445,6 +74448,213 @@ const StyleDesigner = (function () {
         _pgTabsRefreshDirty();
     });
 
+    // ── Content changes that wait for approval ────────────────────────────
+    // With "Content changes wait for approval" on, a content editor's save
+    // of a live page waits for a designer (includes/fn/content_proposals.php).
+    // The page's tab then says so: the editor's own waiting change, with
+    // Withdraw; the answer to one of their changes (applied, dismissed with
+    // its reason, or stale) until they close it; and, for designers, how
+    // many changes wait, which opens the list where they are applied.
+    // The editor's waiting change is laid on their canvas when the editor
+    // opens, as the page they saved: nothing writes it but a new save.
+    var _pgCc = { pages: {}, listUrl: '', laid: false, shown: {} };
+
+    function _pgContentChangesStart() {
+        _pgContentChangesLoad(true);
+    }
+
+    // Reads the state of the design's tabs; lay: also lay the editor's
+    // waiting changes on the canvas (only when the editor opens).
+    function _pgContentChangesLoad(lay) {
+        var styleId = _collabStyleId();
+        if (!styleId || _sdComponentOnly()) return;
+        _pgApiPost('content_change_state', { style_id: styleId }).then(function (res) {
+            if (!res || res.status !== 'success') return;
+            _pgCc.pages = (res.pages && typeof res.pages === 'object') ? res.pages : {};
+            _pgCc.listUrl = res.list_url || '';
+            if (lay && !_pgCc.laid) {
+                _pgCc.laid = true;
+                _pages.forEach(function (p) {
+                    var st = _pgCc.pages[p.page_id];
+                    if (st && st.waiting > 0 && st.laid && st.laid.tree) _pgContentLay(p, st.laid.tree, st.laid.fields);
+                });
+            }
+            _pgTabsRender();
+        }).catch(function () {});
+    }
+
+    // Puts a page's tree and settings on its tab as its saved state: the tab
+    // stays clean. A page the editor has already changed is left alone.
+    function _pgContentLay(p, t, fields) {
+        if (!p || !t || _pgPageDirty(p)) return false;
+        _sdTreeObjects(t);
+        _normalizeToggleableShowState(t);
+        var count = reindex(t);
+        Object.keys(fields || {}).forEach(function (k) {
+            if (_PG_PAGE_FIELDS.indexOf(k) !== -1 || _PG_CMT_FIELDS.indexOf(k) !== -1) p[k] = fields[k];
+        });
+        p.tree = t;
+        p.undoStack = [];
+        p.redoStack = [];
+        p.nodeIdCounter = count;
+        if (p.key === _activeKey) {
+            tree = t;
+            undoStack = [];
+            redoStack = [];
+            nodeIdCounter = Math.max(count, _sdIdFloor());
+            selectedNode = null;
+            selectedNodes = [];
+            _pgLoadPageIntoFields(p);
+            updateUndoRedoState();
+            render();
+            renderHtmlTree();
+        }
+        p.baseline = _pgBaselineOf(p);
+        return true;
+    }
+
+    // The tab's mark: the editor's waiting change, an answer, or the count.
+    function _pgContentChangeBadge(p) {
+        var st = (p && p.page_id > 0) ? _pgCc.pages[p.page_id] : null;
+        if (!st) return '';
+        var key = ' data-cc="' + esc(p.key) + '" role="button" tabindex="0"';
+        if (st.waiting > 0) {
+            return '<span class="sd-tab-cc sd-tab-cc-wait"' + key + ' title="' + esc(_sdT('Waiting for approval')) + '">' +
+                   '<span class="bi bi-hourglass-split" aria-hidden="true"></span>' + esc(_sdT('Waiting for approval')) + '</span>';
+        }
+        if (st.answer) {
+            var icon = { applied: 'bi-check2-circle', dismissed: 'bi-x-circle', stale: 'bi-exclamation-triangle' }[st.answer.kind] || 'bi-info-circle';
+            var label = _pgContentAnswerLabel(st.answer.kind);
+            return '<span class="sd-tab-cc sd-tab-cc-' + esc(st.answer.kind) + '"' + key + ' title="' + esc(label) + '">' +
+                   '<span class="bi ' + icon + '" aria-hidden="true"></span><span class="visually-hidden">' + esc(label) + '</span></span>';
+        }
+        if (st.count > 0) {
+            var many = _pgContentCountText(st.count);
+            return '<span class="sd-tab-cc sd-tab-cc-count"' + key + ' title="' + esc(many) + '">' +
+                   esc(String(st.count)) + '<span class="visually-hidden"> ' + esc(many) + '</span></span>';
+        }
+        return '';
+    }
+
+    function _pgContentAnswerLabel(kind) {
+        if (kind === 'applied') return _sdT('Change applied');
+        if (kind === 'dismissed') return _sdT('Change dismissed');
+        return _sdT('Change can no longer be applied');
+    }
+
+    function _pgContentCountText(n) {
+        return (n === 1) ? _sdT('One content change waits for approval on this page.')
+                         : _sdT('{var:1} content changes wait for approval on this page.', n);
+    }
+
+    // The answer of the open page is shown once when the tab is drawn.
+    function _pgContentAnswerAuto() {
+        var p = _pgActivePage();
+        var st = (p && p.page_id > 0) ? _pgCc.pages[p.page_id] : null;
+        if (!st || st.waiting > 0 || !st.answer || _pgCc.shown[st.answer.id]) return;
+        _pgCc.shown[st.answer.id] = true;
+        setTimeout(function () {
+            var el = document.querySelector('.sd-tab-cc[data-cc="' + p.key + '"]');
+            if (el) _pgContentPop(el, p);
+        }, 0);
+    }
+
+    function _pgContentPopClose() {
+        var old = document.getElementById('sd-cc-pop');
+        if (old) old.remove();
+    }
+
+    // The note under a tab's mark, with its one action.
+    function _pgContentPop(anchor, p) {
+        _pgContentPopClose();
+        var st = _pgCc.pages[p.page_id];
+        if (!st) return;
+        if (!(st.waiting > 0) && !st.answer && st.count > 0) {
+            if (_pgCc.listUrl) window.open(_pgCc.listUrl, '_blank', 'noopener');
+            return;
+        }
+        var pop = document.createElement('div');
+        pop.id = 'sd-cc-pop';
+        pop.className = 'sd-cc-pop';
+        pop.setAttribute('role', 'dialog');
+        var html;
+        if (st.waiting > 0) {
+            html = '<div class="sd-cc-pop-title"><span class="bi bi-hourglass-split" aria-hidden="true"></span> ' + esc(_sdT('Waiting for approval')) + '</div>' +
+                   '<p>' + esc(_sdT('Your change to this page waits for a designer\'s approval. Visitors see the page as it was until it is applied.')) + '</p>' +
+                   (st.laid ? '' : '<p>' + esc(_sdT('A designer changed the page after your change, so it is not shown here. Withdraw it, or make your change again and save.')) + '</p>') +
+                   '<div class="sd-cc-pop-acts"><button type="button" class="sd-vb-btn" data-cc-act="withdraw">' + esc(_sdT('Withdraw')) + '</button></div>';
+        } else {
+            html = '<div class="sd-cc-pop-title">' + esc(_pgContentAnswerLabel(st.answer.kind)) + '</div>' +
+                   '<p>' + esc(st.answer.text || '') + '</p>' +
+                   '<div class="sd-cc-pop-acts"><button type="button" class="sd-vb-btn" data-cc-act="seen">' + esc(_sdT('Close')) + '</button></div>';
+        }
+        pop.innerHTML = html;
+        document.body.appendChild(pop);
+        var r = anchor.getBoundingClientRect();
+        var left = Math.max(8, Math.min(r.left, window.innerWidth - pop.offsetWidth - 8));
+        pop.style.left = left + 'px';
+        pop.style.top = (r.bottom + 6) + 'px';
+        pop.querySelector('[data-cc-act]').addEventListener('click', function (e) {
+            var btn = e.currentTarget;
+            btn.disabled = true;
+            if (btn.getAttribute('data-cc-act') === 'withdraw') _pgContentWithdraw(p, st.waiting, btn);
+            else _pgContentSeen(p, st.answer.id);
+        });
+    }
+
+    function _pgContentWithdraw(p, id, btn) {
+        _pgApiPost('content_change_withdraw', { id: id }).then(function (res) {
+            if (!res || res.status !== 'success') {
+                btn.disabled = false;
+                sdToast(esc((res && res.message) ? res.message : _sdT('Network error.')), 'error', 6000);
+                return;
+            }
+            _pgContentPopClose();
+            if (_pgCc.pages[p.page_id]) _pgCc.pages[p.page_id].waiting = 0;
+            // The page as it is on the site goes back on the canvas, unless
+            // the editor changed it since: their edits stay.
+            var clean = !_pgPageDirty(p);
+            sdToast(esc(clean ? _sdT('Your waiting change was withdrawn. The page is shown as it is on the site.')
+                              : _sdT('Your waiting change was withdrawn. Your edits stay on the canvas until you save or reload.')), 'success', 5000);
+            if (clean) {
+                _pgApiPost('page_load', { page_id: p.page_id }).then(function (r2) {
+                    if (r2 && r2.status === 'success' && r2.page && r2.page.tree) _pgContentLay(p, r2.page.tree, r2.page);
+                    _pgTabsRender();
+                }).catch(function () {});
+            }
+            _pgContentChangesLoad(false);
+        }).catch(function () {
+            btn.disabled = false;
+            sdToast(esc(_sdT('Network error.')), 'error', 5000);
+        });
+    }
+
+    function _pgContentSeen(p, id) {
+        _pgContentPopClose();
+        var st = _pgCc.pages[p.page_id];
+        if (st) st.answer = null;
+        _pgTabsRender();
+        _pgApiPost('content_change_seen', { id: id }).catch(function () {});
+    }
+
+    // The tab's mark opens its note instead of switching tabs: caught on
+    // the way down, before the strip's own handler.
+    ['click', 'keydown'].forEach(function (type) {
+        document.addEventListener(type, function (e) {
+            if (type === 'keydown' && e.key !== 'Enter' && e.key !== ' ') return;
+            var mark = (e.target && e.target.closest) ? e.target.closest('.sd-tab-cc') : null;
+            if (!mark) {
+                if (type === 'click' && !(e.target && e.target.closest && e.target.closest('#sd-cc-pop'))) _pgContentPopClose();
+                return;
+            }
+            e.preventDefault();
+            e.stopPropagation();
+            var p = _pgPageByKey(mark.getAttribute('data-cc'));
+            if (p) _pgContentPop(mark, p);
+        }, true);
+    });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') _pgContentPopClose(); });
+
     // ── Tab bar ───────────────────────────────────────────────────────────
     function _pgTabsRender() {
         var list = document.getElementById('sd-tabs-list');
@@ -74505,10 +74715,12 @@ const StyleDesigner = (function () {
                     '<span class="sd-tab-name">' + esc(name) + '</span>' +
                     (sched ? '<span class="sd-tab-draft-badge sd-tab-sched-badge" title="' + esc(sched) + '"><span class="bi bi-clock" aria-hidden="true"></span><span class="visually-hidden">' + esc(sched) + '</span></span>'
                            : (draft ? '<span class="sd-tab-draft-badge" title="' + esc(_sdT('Draft: not on the site. Visitors cannot open it.')) + '">' + esc(_sdT('Draft')) + '</span>' : '')) +
+                    _pgContentChangeBadge(p) +
                     extra +
                     '</div>';
         });
         list.innerHTML = html;
+        _pgContentAnswerAuto();
         _pgTabsSyncViewButton();
         _pgTabsSyncPublishButton();
         _pgTabsAllSync();
@@ -78335,6 +78547,7 @@ const StyleDesigner = (function () {
         // so an installation whose database has not been upgraded simply gets
         // `ready: false` back and the editor behaves exactly as before.
         _collabStart();
+        _pgContentChangesStart();
 
         // Browser-level guard. `_suppressUnloadWarn` is set by the save and
         // exit paths right before an intentional navigation.

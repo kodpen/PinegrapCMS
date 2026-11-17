@@ -6686,3 +6686,27 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
 .sd-proto-hot.sd-proto-hot-picked { border-width: 3px; box-shadow: 0 0 0 3px color-mix(in srgb, var(--sd-accent) 35%, transparent); }
 .sd-proto .pgc-edge.sd-proto-edge-picked .pgc-edge-line { stroke-width: 3; }
 .sd-proto-tools .sd-vb-btn[hidden] { display: none; }
+/* Content changes that wait for approval, on a page's tab: the editor's
+   waiting change (a pill with its words), the answer to one of their
+   changes (an icon), a designer's count of waiting changes (a number); each
+   opens a note under it. */
+.sd-tab-cc {
+    flex: 0 0 auto; display: inline-flex; align-items: center; gap: .25rem;
+    padding: 0 .35rem; border: 1px solid currentColor; border-radius: 999px;
+    font-size: .6rem; line-height: 1.45; cursor: pointer;
+}
+.sd-tab-cc .bi { font-size: .62rem; }
+.sd-tab-cc:focus-visible { outline: 2px solid var(--sd-accent); outline-offset: 1px; }
+.sd-tab-cc-wait { border-color: #e3b341; color: #e3b341; }
+.sd-tab-cc-applied { border: 0; padding: 0; color: #3fb950; font-size: .75rem; }
+.sd-tab-cc-dismissed, .sd-tab-cc-stale { border: 0; padding: 0; color: #ff7b72; font-size: .75rem; }
+.sd-tab-cc-applied .bi, .sd-tab-cc-dismissed .bi, .sd-tab-cc-stale .bi { font-size: .8rem; }
+.sd-tab-cc-count { min-width: 18px; justify-content: center; border-color: var(--sd-accent); background: var(--sd-accent); color: #fff; font-weight: 700; }
+.sd-cc-pop {
+    position: fixed; z-index: 1090; width: 300px; max-width: calc(100vw - 16px);
+    padding: 10px 12px; border: 1px solid var(--sd-panel-border); border-radius: 6px;
+    background: #2a2f36; color: var(--sd-text); box-shadow: 0 6px 18px rgba(0,0,0,.45); font-size: .8rem;
+}
+.sd-cc-pop-title { margin-bottom: 4px; font-weight: 600; }
+.sd-cc-pop p { margin: 0 0 8px; overflow-wrap: anywhere; }
+.sd-cc-pop-acts { display: flex; justify-content: flex-end; gap: 6px; }
