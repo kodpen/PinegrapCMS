@@ -3303,8 +3303,8 @@ function ws_handle_action($action, $request)
 
             return ws_action_ok($answer);
 
-        // The E-mails screen: the next page of the list, a conversation in
-        // the reading pane (read from then on), Mark all as read
+        // The E-mails screen: the next page of the list (or the whole list
+        // after a change in the pane), a conversation in the reading pane (read from then on), Mark all as read
         // (mail_list.php, mail_pane.php, mail_reads.php).
         case 'ws_mail_rows':
         case 'ws_mail_pane':
@@ -3323,10 +3323,7 @@ function ws_handle_action($action, $request)
                 $filters = ws_mail_list_filters($request);
                 $list = ws_mail_list($viewer, $filters, time());
 
-                return ws_action_ok(array(
-                    'html' => ws_mail_list_rows_html($list['rows'], $filters, time()),
-                    'more' => ws_mail_list_more_html($filters, $list['next']),
-                ));
+                return ws_action_ok(ws_mail_rows_answer($list, $filters, time(), !empty($request['whole']), (int) ($request['conversation'] ?? 0)));
             }
 
             $pane = ws_mail_pane_open($viewer, (int) ($request['conversation_id'] ?? 0));

@@ -449,5 +449,7 @@ function ws_mail_screen_js_strings()
         'delete'        => lang('Delete'),
         'checking'   => lang('Checking e-mail…'),
         'not_found'  => lang('This conversation cannot be opened.'),
+        'state_saved'  => lang('The conversation\'s status was saved.'),
+        'holder_saved' => lang('The conversation\'s holder was saved.'),
     );
 }
