@@ -25,6 +25,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-messages.md: Is the back-in-stock text message a marketing message?
 - decisions-made-messages.md: Which orders ask for the cash-on-delivery code?
 - decisions-made-messages.md: What is the member's SMS sign-in code?
+- decisions-made-panel-10.md: Where are the rules and the earlier parts?
+- decisions-made-panel-10.md: Is every newly drawn screen built in the design language? (owner, 2026-11-17, agent channel message 8553)
 - decisions-made-panel-2.md: Why is there no Site Settings row in the main menu? (owner, 2026-11-02)
 - decisions-made-panel-2.md: Why are the panel entries' icons on coloured tiles? (owner, 2026-11-02)
 - decisions-made-panel-2.md: Why do the File Manager and the visual designer print no alert boxes? (owner, 2026-11-02)
@@ -631,6 +633,10 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-workspace-37.md: What did the architect fix for channel commands? (architect, 2026-11-16, agent channel message 6770)
 - decisions-made-workspace-37.md: Does a mention typed by hand become a tag? (owner, 2026-11-16, in the architect's window)
 - decisions-made-workspace-37.md: Does a question's own picture stand in its box as built? (owner, 2026-11-16, agent channel poll 92, message 6751)
+- decisions-made-workspace-38.md: Where are the rules and the earlier parts?
+- decisions-made-workspace-38.md: Do a message's parts stand in the discussion panel's width as built? (owner, 2026-11-17, agent channel poll 133, message 8532)
+- decisions-made-workspace-38.md: Does the agent state line stand as built? (owner, 2026-11-17, agent channel poll 134, message 8543)
+- decisions-made-workspace-38.md: Does a discussion show and take its agents? (owner, 2026-11-17, in the architect's window)
 - decisions-made-workspace-4.md: May a thread end in a webhook box's URL? (#3410)
 - decisions-made-workspace-4.md: How does a customer with no order in N days produce a follow-up? (#3416, part 2)
 - decisions-made-workspace-4.md: Is `contacts.lead_source` picked from `referral_sources`? (#3416, part 3)
@@ -913,6 +919,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - ui/look-list-title-settings-tile.md: Look A shared recipes (SH9, #9726): a list screen's count beside its title, a list's filters as a segmented control (pg_list_seg_filters()), the 34 px icon tile of a settings row (pg_settings_tile())
 - ui/look-mapping-grids.md: Column-mapping grids (one small select per column of an uploaded file) keep their own narrow columns in look A; the field widths of add and edit screens are for a record's fields
 - ui/look-marketplace-ranks.md: SH10 (#9755): the Marketplaces and Marketplace Products screens' button ranks (one fill per view, one quiet rank per card) and their views and filter rows as link segments
+- ui/look-new-parts.md: A step's new parts in the panel and Workspace are built from look A's recipes (owner 2026-11-17): pg-button, pg-seg for tabs, no btn btn- or nav-tabs in an added line; the count before a look
 - ui/look-page-widths.md: Look A's page widths: edit screens centred at 1700 px (1300 + 24 + 376), lists as wide as their columns (1700 px to the window, details panel added), held while searching; tokens, rail
 - ui/look-people-screens.md: Users, contacts, privacy and campaign screens in look A (S2, #9692): titles, group labels, field spans per field, campaign cards unwrapped, what stayed
 - ui/look-report-erp-screens.md: ERP Dashboard, Cash Flow, Profit and Aging on look A's report recipes (#9696): server-drawn figure cards, the tools rows, the profit chart on the report view, what stayed
@@ -968,6 +975,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workflow/design-template-owner-line.md: Owner (2026-11-11): during the template pause his own line polishes the shipped templates, bolder and with motion, appstudio and dealership first; two workers of one more coordinator take the rest
 - workflow/git-branches-and-shared-files.md: Branch policy (development vs main), who does git, commit author, the PR footer (pointer), shared files without conflicts, generated files a PR leaves out, API vs ERP files
 - workflow/held-file-bundled-sources.md: A script or stylesheet under assets/ (backend.src.js, backend.src.css, style_designer.src.js, style_designer.css) is held by the functions and rule blocks a PR changes, not as a whole file
+- workflow/held-file-hunt-fixes.md: Several bug fixes of one hunt may be open at once in one PHP file beside a draft holder, each in the functions the architect named for it (includes/fn/content_proposals.php, #10188)
 - workflow/held-file-registry-rows.md: What a PR may change in a file a draft PR holds: its own registry rows, or a function the holder does not touch; the terms; the architect allows each holder (#3824, #10025, #10077)
 - workflow/issue-hand-out-first-reply.md: When a note in the agent channel offers an issue to the coordinators, the first reply under it holds the work; how a double claim was settled twice on 2026-11-16
 - workflow/look-narrowest-column.md: Before any look, a step that draws in a message row or a side panel posts pictures in its narrowest column with its longest content (owner's words 2026-11-16); what a set must hold
