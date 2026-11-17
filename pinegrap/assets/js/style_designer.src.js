@@ -7357,7 +7357,7 @@ const StyleDesigner = (function () {
             '<button type="button" class="sd-vb-btn" id="sd-vb-zoom-out" title="' + esc(_sdT('Zoom Out (Ctrl+-)')) + '" aria-label="' + esc(_sdT('Zoom Out (Ctrl+-)')) + '"><span class="bi bi-dash-lg"></span></button>' +
             '<button type="button" class="sd-vb-zoom" id="sd-vb-zoom-label" title="' + esc(_sdT('Reset zoom to 100%')) + '">' + esc(_sdT('{var:1}%', 100)) + '</button>' +
             '<button type="button" class="sd-vb-btn" id="sd-vb-zoom-in" title="' + esc(_sdT('Zoom In (Ctrl++)')) + '" aria-label="' + esc(_sdT('Zoom In (Ctrl++)')) + '"><span class="bi bi-plus-lg"></span></button>' +
-            '<button type="button" class="sd-vb-btn" id="sd-vb-fit" title="' + esc(_sdT('Fit the page to the canvas')) + '" aria-label="' + esc(_sdT('Fit the page to the canvas')) + '"><span class="bi bi-arrows-angle-contract"></span></button>' +
+            '<button type="button" class="sd-vb-btn" id="sd-vb-fit" aria-pressed="false" title="' + esc(_sdT('Fit the page to the canvas')) + '" aria-label="' + esc(_sdT('Fit the page to the canvas')) + '"><span class="bi bi-arrows-angle-contract"></span></button>' +
             '</div>' +
             '<span class="sd-bp-zsep" aria-hidden="true"></span>' +
             '<div class="sd-bp-zone sd-bp-tools">' +
@@ -7437,10 +7437,16 @@ const StyleDesigner = (function () {
         });
         document.getElementById('sd-vb-zoom-label').addEventListener('click', function () { setCanvasZoom(1); });
         document.getElementById('sd-vb-fit').addEventListener('click', _sdCanvasFit);
+        // A canvas built again starts unfitted; a column that changes width
+        // while fitted is fitted again.
+        _sdFit = null;
+        var _fitArea = wrapper.querySelector('.sd-iframe-area');
+        if (_fitArea && window.ResizeObserver) new ResizeObserver(function () { if (_sdFit) _sdFitApply(); }).observe(_fitArea);
 
         // Breakpoint buttons
         wrapper.querySelectorAll('.sd-bp-btn').forEach(function (btn) {
             btn.addEventListener('click', function () {
+                _sdFitLeave();
                 wrapper.querySelectorAll('.sd-bp-btn').forEach(function (b) { b.classList.remove('active'); });
                 this.classList.add('active');
                 var w = parseInt(this.dataset.w, 10);
@@ -7793,9 +7799,85 @@ const StyleDesigner = (function () {
         if (first) first.focus();
     }
 
-    // Fit: see the question in the plan step; filled in once answered.
+    // ── Fit (D55) ───────────────────────────────────────────────────────
+    //
+    // A frame wider than the canvas column (a width button or the resize
+    // handle) is scaled down to the column with a transform, so the canvas
+    // keeps its chosen width: Bootstrap draws that width's breakpoint and
+    // the width text stays true. The canvas zoom cannot do this: it is CSS
+    // zoom on the canvas <html>, and media queries keep reading the frame's
+    // own width. A frame that fits, or Full Width, just goes back to 100%.
+    // − and +, a width button and a resize handle leave Fit; a column that
+    // changes width while fitted is fitted again.
+    //
+    // While fitted, what the editor draws in its own document from the
+    // frame's position takes the scale (_sdFitScale(): the canvas context
+    // menu, the size badge) or is hidden (the frame's resize handles and the
+    // icon size handle, which measure pointer travel against the frame).
+    // What is drawn inside the canvas (outlines, drop lines, hover boxes,
+    // element toolbars) scales with the frame.
+    var _sdFit = null;   // { w, s, h0 } while fitted
+
+    function _sdFitScale() {
+        return (_sdFit && _sdFit.s > 0) ? _sdFit.s : 1;
+    }
+
     function _sdCanvasFit() {
+        var wrap = document.getElementById('sd-iframe-wrap');
         setCanvasZoom(1);
+        if (!wrap) return;
+        // The chosen width, not the drawn one: a frame wider than the column
+        // is shrunk by the flex layout, so its width text names the column.
+        var w = /px$/.test(wrap.style.width) ? parseFloat(wrap.style.width) : 0;
+        var area = wrap.parentNode;
+        if (!w || !area || w <= area.clientWidth) return;
+        _sdFit = { w: w, s: 1, h0: wrap.style.height };
+        _sdFitApply();
+    }
+
+    function _sdFitApply() {
+        var wrap = document.getElementById('sd-iframe-wrap');
+        var area = wrap ? wrap.parentNode : null;
+        if (!_sdFit || !wrap || !area || !area.clientWidth) return;
+        var s = Math.min(1, area.clientWidth / _sdFit.w);
+        var h = area.clientHeight;
+        _sdFit.s = s;
+        wrap.style.flexShrink = '0';
+        wrap.style.transformOrigin = 'top left';
+        wrap.style.transform = 'scale(' + s + ')';
+        // The transform leaves the layout box at full size: negative margins
+        // give the area the scaled box, so it centres it and does not scroll.
+        wrap.style.marginRight = (-_sdFit.w * (1 - s)) + 'px';
+        wrap.style.height = (h / s) + 'px';
+        wrap.style.marginBottom = (h - h / s) + 'px';
+        _sdFitMark(true);
+        updateBpLabel();
+    }
+
+    function _sdFitLeave() {
+        if (!_sdFit) return;
+        var wrap = document.getElementById('sd-iframe-wrap');
+        if (wrap) {
+            wrap.style.flexShrink = '';
+            wrap.style.transform = '';
+            wrap.style.transformOrigin = '';
+            wrap.style.marginRight = '';
+            wrap.style.marginBottom = '';
+            wrap.style.height = _sdFit.h0 || '';
+        }
+        _sdFit = null;
+        _sdFitMark(false);
+        updateBpLabel();
+    }
+
+    function _sdFitMark(on) {
+        var canvas = document.getElementById('sd-canvas');
+        if (canvas) canvas.classList.toggle('sd-canvas-fitted', on);
+        var btn = document.getElementById('sd-vb-fit');
+        if (btn) {
+            btn.classList.toggle('active', on);
+            btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+        }
     }
 
     // The language of the page's text, as <html lang> carries it in the
@@ -8165,7 +8247,8 @@ const StyleDesigner = (function () {
                 renderSelectionOnly(); renderProperties();
             }
             var rect = canvasIframe.getBoundingClientRect();
-            showCanvasCtxMenu(rect.left + e.clientX, rect.top + e.clientY, node);
+            var fs = _sdFitScale();
+            showCanvasCtxMenu(rect.left + e.clientX * fs, rect.top + e.clientY * fs, node);
         }, true);
 
         // Keyboard shortcuts inside canvas iframe (Delete, Ctrl+C/V, Ctrl+Z/Y)
@@ -56290,7 +56373,7 @@ const StyleDesigner = (function () {
             var elRect = target.getBoundingClientRect();
             var iframeRect = canvasIframe.getBoundingClientRect();
             var wrapperRect = (document.querySelector('.sd-canvas-wrapper') || document.body).getBoundingClientRect();
-            var z = (typeof canvasZoom === 'number' && canvasZoom > 0) ? canvasZoom : 1;
+            var z = ((typeof canvasZoom === 'number' && canvasZoom > 0) ? canvasZoom : 1) * _sdFitScale();
 
             // A toolbar drawn under the element (sd-tb-below) shares that
             // corner's row: the badge goes after it, not over its buttons.
@@ -69607,6 +69690,7 @@ const StyleDesigner = (function () {
             if (!handle) return;
             handle.addEventListener('mousedown', function (e) {
                 e.preventDefault();
+                _sdFitLeave();
                 var startX = e.clientX;
                 var startY = e.clientY;
                 var startW = wrap.offsetWidth;
@@ -69775,6 +69859,8 @@ const StyleDesigner = (function () {
     }
 
     function setCanvasZoom(z) {
+        // −, + and the reset leave Fit (guarded: tests run this alone).
+        if (typeof _sdFitLeave === 'function') _sdFitLeave();
         canvasZoom = Math.max(0.25, Math.min(2.0, Math.round(z * 10) / 10));
         // Content-only zoom: scale the iframe's document body rather than the
         // outer wrapper. The iframe container width stays constant so the

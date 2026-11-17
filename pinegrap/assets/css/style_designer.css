@@ -625,6 +625,14 @@
     height:28px; min-width:3rem; padding:0 .25rem; border:none; border-radius:6px; background:none; cursor:pointer;
 }
 .sd-bp-bar .sd-vb-zoom:hover { background:color-mix(in srgb, var(--sd-text) 7%, transparent); }
+/* Fitted (_sdCanvasFit()): the frame is scaled, so the handles that measure
+   pointer travel against it are hidden until Fit is left. */
+.sd-canvas-fitted .sd-resize-handle,
+.sd-canvas-fitted .sd-resize-handle-bottom,
+.sd-canvas-fitted .sd-resize-handle-corner,
+.sd-canvas-fitted .sd-icon-fs-handle { display:none !important; }
+.sd-canvas-fitted .sd-iframe-wrap { transition:none; }
+.sd-bp-bar #sd-vb-fit.active { color:var(--sd-accent); background:rgba(var(--sd-accent-rgb), .13); }
 /* No mode to switch to on an e-mail design: it has no prototype. */
 body.sd-email-design .sd-bp-bar .sd-bp-mode,
 body.sd-email-design .sd-bp-bar .sd-bp-zsep-mode { display:none; }

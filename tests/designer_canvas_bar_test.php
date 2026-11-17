@@ -149,3 +149,22 @@ function test_designer_canvas_bar_keeps_ids_and_names_switches()
 	$motion = designer_canvas_bar_fn($js, '_sdSyncMotionButton');
 	pg_assert_true(strpos($motion, "_sdT('Pause animations')") === false, 'the Play animations switch keeps its name');
 }
+
+// Fit scales the frame (the canvas keeps its width, so Bootstrap keeps the
+// breakpoint); what the editor draws in its own document from the frame's
+// position takes the scale or is hidden while fitted.
+function test_designer_canvas_bar_fit_scales_the_frame()
+{
+	$js = designer_canvas_bar_source();
+	$apply = designer_canvas_bar_fn($js, '_sdFitApply');
+	pg_assert_contains("wrap.style.transform = 'scale(' + s + ')';", $apply, 'Fit scales the frame, it does not zoom the canvas');
+	pg_assert_contains('_sdFitLeave()', designer_canvas_bar_fn($js, 'setCanvasZoom'), '− and + leave Fit');
+	pg_assert_contains('_sdFitLeave();', designer_canvas_bar_fn($js, 'initResize'), 'a resize handle leaves Fit');
+	pg_assert_contains('rect.left + e.clientX * fs', $js, 'the canvas context menu takes the scale');
+	pg_assert_contains('* _sdFitScale();', designer_canvas_bar_fn($js, '_positionSizeBadge'), 'the size badge takes the scale');
+
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/style_designer.css');
+	foreach (array('.sd-canvas-fitted .sd-resize-handle,', '.sd-canvas-fitted .sd-icon-fs-handle') as $sel) {
+		pg_assert_contains($sel, $css, 'hidden while fitted: ' . $sel);
+	}
+}
