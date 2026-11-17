@@ -216,10 +216,13 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_auto_dialog_daily();       // 11.0.223
 	upgrade_2026_11_0_page_click_daily();        // 11.0.224
 	upgrade_2026_11_0_prototype_comments();      // 11.0.225
+	upgrade_2026_11_0_courses();                 // 11.0.234
 	upgrade_2026_11_0_content_review();          // 11.0.226
 	upgrade_2026_11_0_site_push();               // 11.0.227
 	upgrade_2026_11_0_page_bundle();             // 11.0.228
 	upgrade_2026_11_0_site_push_watch();         // 11.0.229
+	upgrade_2026_11_0_ws_meeting_url();          // 11.0.232
+	upgrade_2026_11_0_file_translation();        // 11.0.231
 
 }
 
@@ -7201,6 +7204,66 @@ function upgrade_2026_11_0_content_review() {
 
 }
 
+// Courses (11.0.234, includes/fn/courses.php). course: a private folder a
+// product already opens, its classroom page, "Lessons in order" (in_order)
+// and "Certificate" (certificate); idx_folder finds a folder's courses
+// (one folder may hold several).
+// course_lesson: a page of that folder, its place (sort_order), the days
+// after enrolment it opens (open_days, 0 at once) and an optional quiz form
+// page with the score it needs (quiz_pass_score, 0-100, 0 with no quiz;
+// forms.quiz_score is the score a member got). idx_page keeps a page a
+// lesson of one course only and serves the page's access gate; idx_course
+// lists a course's lessons in order. course_progress: one
+// row per fact, written once by its key with INSERT IGNORE: kind 1 a lesson
+// done, 2 the first open of a course given by hand (lesson_id 0), 3 the
+// completion (lesson_id 0); idx_course serves the course's learners list.
+// No row names an order: the enrolment day is read from the orders. No
+// backfill: no course existed before this step. Columns confirmed by the
+// architect.
+function upgrade_2026_11_0_courses() {
+
+	install_create_table('course', "CREATE TABLE course (
+		id                INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		name              VARCHAR(255) NOT NULL DEFAULT '',
+		folder_id         INT UNSIGNED NOT NULL DEFAULT 0,
+		classroom_page_id INT UNSIGNED NOT NULL DEFAULT 0,
+		in_order          TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		certificate       TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		created_at        INT UNSIGNED NOT NULL DEFAULT 0,
+		created_by        INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at        INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_by        INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_folder (folder_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('course_lesson', "CREATE TABLE course_lesson (
+		id              INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		course_id       INT UNSIGNED NOT NULL DEFAULT 0,
+		page_id         INT UNSIGNED NOT NULL DEFAULT 0,
+		sort_order      SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+		open_days       SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+		quiz_page_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		quiz_pass_score TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY idx_page (page_id),
+		KEY idx_course (course_id, sort_order)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('course_progress', "CREATE TABLE course_progress (
+		user_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		course_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		lesson_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		kind       TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		created_at INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (user_id, course_id, kind, lesson_id),
+		KEY idx_course (course_id, kind)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Courses: the tables for courses, their lessons and each member\'s progress are ready; nothing changes on the site until a course is made.');
+
+}
+
 // Visitor notifications (11.0.227, includes/fn/site_push.php): a site
 // visitor's browser subscribed to the site's news without an account, the
 // messages sent from the panel and one queue row per message and browser.
@@ -7355,5 +7418,57 @@ function upgrade_2026_11_0_site_push_watch() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Visitor notifications: a browser can now wait for one product to come back or one order to ship; nothing changes until the switch is turned on in Features.');
+
+}
+
+// A booking staff member's meeting address (11.0.232,
+// includes/fn/booking_links.php): the one address a member pastes for the
+// bookings made through their meeting link, cleaned by
+// ws_meeting_url_clean(). NULL is no address; an emptied field is stored as
+// NULL. The length is ws_events.meeting_url's. No backfill: until a member
+// sets one, nothing changes.
+function upgrade_2026_11_0_ws_meeting_url() {
+
+	if (!install_table_exists('ws_profiles')) {
+
+		install_skipped('ws_profiles does not exist, skipped');
+
+		return;
+
+	}
+
+	install_add_column('ws_profiles', 'meeting_url', 'VARCHAR(500) NULL');
+
+	install_note('Bookings: a staff member can keep a meeting address for the bookings made through their meeting link.');
+
+}
+
+// A language's picture of a Design Canvas picture (11.0.231, includes/fn/
+// picture_translation.php): one row per source file and language. state 0
+// waiting, 1 drawn, 2 out of date; only a drawn row is shown to a visitor.
+// picture_file_id is the language's picture, a files row of its own (0 until
+// drawn); fit 1 marks a text that did not fit at the smallest size; doc_hash
+// names the source document it was drawn from. idx_picture finds the row of
+// a language's picture, idx_state the rows to draw per language. No backfill:
+// no picture had a language's version before this step. Columns confirmed by
+// the architect.
+function upgrade_2026_11_0_file_translation() {
+
+	install_create_table('file_translation', "CREATE TABLE file_translation (
+		file_id         INT UNSIGNED NOT NULL DEFAULT 0,
+		language        VARCHAR(10) CHARACTER SET ascii NOT NULL DEFAULT '',
+		picture_file_id INT UNSIGNED NOT NULL DEFAULT 0,
+		state           TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		fit             TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		doc_hash        CHAR(40) CHARACTER SET ascii NOT NULL DEFAULT '',
+		created_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		drawn_at        INT UNSIGNED NOT NULL DEFAULT 0,
+		drawn_by        INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (file_id, language),
+		KEY idx_picture (picture_file_id),
+		KEY idx_state (state, language)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Picture texts: the table for a picture\'s versions in the site\'s other languages is ready; nothing changes on the site until one is drawn.');
 
 }

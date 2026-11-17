@@ -22,7 +22,7 @@ description: The Prototype view's hotspot collector (assets/js/pg_proto_hotspots
 - Entities: `htmlLinks()` decodes numeric references and amp, lt, gt, quot, apos, nbsp; PHP decodes every HTML5 name. Other names stay as written.
 
 ## How does layout() place things?
-- Frames, rows, chips and arrows, and where they stand (a grid of sections from the graph canvas core): designer/prototype-arrangement.md.
+- Frames, rows, chips and arrows, and where they stand (a grid of sections from the graph canvas core): designer/prototype-arrangement.md. A link's mark on the picture and where its arrow starts (`picRects()`, `markPort()`, `markState()`, `picPartBox()`): designer/prototype-marks.md.
 
 ## What does an arrow drawn by hand write?
 - `hrefPatch(node, row, href)` answers `{ key, value }`, a copy of the prop (`drawable()`, `hrefTo()`); `setHtmlHref()` rewrites the nth link's href in double quotes, the rest byte for byte. Rows carry `index`. Use: designer/prototype-view.md.

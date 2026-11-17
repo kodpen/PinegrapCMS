@@ -4,7 +4,7 @@ description: Plan picture-text-translation, steps PT1 to PT4b: the table and the
 ---
 
 ## Which steps are there?
-- PT1 (M) The table and the texts. Schema (the owner's yes, poll 98): the draft PR's body repeats the table of `workflow/decisions-made-schema-25.md`; a change to it is asked of the architect there.
+- PT1 (M) Done (PR #10028). The table and the texts. Schema (the owner's yes, poll 98): the draft PR's body repeats the table of `workflow/decisions-made-schema-25.md`; a change to it is asked of the architect there.
   - New: `includes/fn/picture_translation.php` (the reader of a live document's words: a text layer's `text`, a sticker's `label`; the uses of owner type `file`; the prune; the state rules as pure functions), `tests/picture_translation_test.php`, the migration step with `install_create_table()`, run twice.
   - Existing: `includes/fn/image_editor.php` (`pg_file_versions_after_save()`, `pg_image_editor_canvas_keep()`: a save refreshes the file's uses and sets its rows out of date; `pg_file_versions_delete_file()`), the place a translation is written (a changed string sets the rows of the files that use it out of date).
   - Tests, red first: the words read and what `pg_tr_translatable()` skips; a page's same words giving the same string; a flat row giving none; uses gone when the file is deleted, binned or changed outside the editor; each state move.

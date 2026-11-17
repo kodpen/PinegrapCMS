@@ -14547,10 +14547,10 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
 @media (min-width: 1700px) {
   :where(.ws-pane-messages:not(.ws-thread-pane) > .ws-msg[data-ws-tone]) {
     --ws-msg-tone: var(--pg-primary);
-    background: color-mix(in srgb, var(--ws-msg-tone) 1.6%, transparent);
+    background: color-mix(in srgb, var(--ws-msg-tone) 5%, transparent);
   }
   .ws-pane-messages:not(.ws-thread-pane) > .ws-msg[data-ws-tone]:hover:not(.ws-msg-highlight, .ws-msg-selected) {
-    background: color-mix(in srgb, var(--ws-msg-tone) 2.6%, transparent);
+    background: color-mix(in srgb, var(--ws-msg-tone) 8%, transparent);
   }
   :where(html[data-bs-theme="dark"] .ws-pane-messages:not(.ws-thread-pane) > .ws-msg[data-ws-tone]) {
     background: color-mix(in srgb, var(--ws-msg-tone) 2.2%, transparent);
@@ -29407,6 +29407,11 @@ body.erp_aging .pg-report-table th[scope="row"] {
   font-weight: 600;
   line-height: 1.3;
 }
+.pg-report-legends {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+}
 .pg-report-legend {
   display: inline-flex;
   align-items: center;
@@ -29746,6 +29751,26 @@ body.erp_aging .pg-report-table th[scope="row"] {
 .pg-report-table .pg-report-day {
   padding: 0 6px;
   min-width: 3.25rem;
+}
+/* The Customers report on a phone: the groups table's last-order rows as
+   blocks, their three cells one under the other, each under its column's
+   name (data-label), no sideways scroll; the period control and the
+   groups' definitions below. */
+@media (max-width: 575.98px) {
+  .pg-report-table.pg-customer-groups thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .pg-report-table.pg-customer-groups tr { display: block; padding: 8px 16px; border-bottom: 1px solid var(--pg-border-color-translucent); }
+  .pg-report-table.pg-customer-groups tbody > tr:last-child { border-bottom: 0; }
+  .pg-report-table.pg-customer-groups th,
+  .pg-report-table.pg-customer-groups td { display: block; height: auto; padding: 4px 0; border: 0; text-align: start !important; white-space: normal; position: static; background: none; max-width: none; }
+  .pg-report-table.pg-customer-groups th { font-weight: var(--pg-weight-strong); }
+  .pg-report-table.pg-customer-groups td::before { content: attr(data-label); display: block; font-size: var(--pg-text-meta); color: var(--pg-fg-3); }
+  /* The period control: two rows of three equal cells across the column,
+     no word cut and no sideways scroll. */
+  .pg-report-tools .pg-seg.pg-customer-periods { display: grid; grid-template-columns: repeat(3, 1fr); width: 100%; overflow: visible; }
+  .pg-report-tools .pg-customer-periods .pg-seg-item { justify-content: center; }
+  /* The groups' definitions: one line each. */
+  .pg-customer-group-terms > span { display: block; }
+  .pg-customer-group-terms .pg-customer-group-sep { display: none; }
 }
 /* The frame's foot: Show all under a table that lists its first rows. */
 .pg-report-frame-foot:not([hidden]) {

@@ -70,9 +70,11 @@
 - erp-invoice-screen-layout.md: Invoice create and draft, new quote and new purchase order screens: the columns option of erp_invoice_form_cards(), what the status column holds, why the split starts at 2xl, the save bar column.
 - erp-invoice-settlement.md: ERP invoice closing by settlement (erp_settlements): why it posts no money, derived paid_total, no auto matching, transaction nesting, and why balance caches never feed a report.
 - erp-isbasi-driver.md: Logo İşbaşı e-document driver (edoc/isbasi.php): source document, fields and environments, login without getplatform, session and quota, request helper, success envelope, test limits.
-- erp-isbasi-internet-sale.md: What an internet sale adds to the İşbaşı SimpleInv body: the e-Arşiv block, the carrier, the payment type codes, and the open test-environment refusal.
+- erp-isbasi-internet-sale.md: What an internet sale adds to the İşbaşı SimpleInv body: the e-Arşiv block, the payment date format, the carrier and its title, the payment type codes.
 - erp-isbasi-invoice-payload.md: What goes to İşbaşı: draft then hand-over (integrationInvoices, eInvoiceWithJson), the final consumer, pre-send checks, SimpleInv fields (order number, line discount), type codes. [decision: here]
 - erp-isbasi-poll-documents-screens.md: İşbaşı poll status mapping, fetch_document pitfalls and the e-Arşiv portal printer, taking a document back, the invoice card and list column, the edoc_changed event, 4.62 schema.
+- erp-isbasi-product-card.md: How İşbaşı keeps a product card per item code and reads the withholding from it, and why a withholding line's item code names its withholding (2026-11-17).
+- erp-isbasi-sales-return.md: The İşbaşı sales return endpoint and body found in the test environment (2026-11-17), why the driver still sends no return, and what Logo was asked.
 - erp-late-fee.md: ERP late payment fee (10.61): the rate setting, the pure day-by-day calculation, what lowers what is owed, draft-only writing, late_fee_through so no day is charged twice, the API.
 - erp-line-quantity-places.md: Line quantities are priced at the four places they are stored with: erp_quantity_round(), erp_decimal_units() (float units, 32-bit safe), the editor's quantityRound(), the e-invoice inbox fold.
 - erp-line-total-and-rate-rounding.md: Line totals and rates round half away from zero on the exact product of the written decimals (erp_multiply_units(), #1243): every PHP version and width, the editor, the checkout (#1329).

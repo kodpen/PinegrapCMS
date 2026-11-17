@@ -651,6 +651,17 @@ function pg_page_bundle_insert_item($bundle, $draft_page_id, $live_page_id, $liv
 }
 
 /**
+ * Loads the Recycle Bin's functions as the panel's screens have them:
+ * pg_recycle_page() and pg_delete_page_record() live in the explorer's files
+ * and call the folder helpers of view_folder_and_files_f.php, which loads
+ * them all. recycle_bin.php alone ends in a call to an undefined function.
+ */
+function pg_page_bundle_load_recycle()
+{
+    require_once(PG_FUNCTIONS_DIR . '/view_folder_and_files_f.php');
+}
+
+/**
  * Adds a copy of a live designer page to a bundle, as a replacement: the
  * copy is made in the Drafts folder as pg_experiment_sheet_create() copies a
  * variant, and the live page's state now is kept for "changed since". A
@@ -720,7 +731,7 @@ function pg_page_bundle_add_copy($bundle, $live_page_id, $user)
     if ($written['error'] !== '') {
         // Somebody added a replacement of this page at the same moment: the
         // copy made for this one is taken back with its row.
-        require_once(PG_FUNCTIONS_DIR . '/includes/explorer/recycle_bin.php');
+        pg_page_bundle_load_recycle();
         pg_delete_page_record($draft_page_id, $user);
 
         return $fail($written['error']);
@@ -1521,7 +1532,7 @@ function pg_page_bundle_publish($bundle, $user, $choices = array())
         }
 
         // The used replacements: their live pages carry them now.
-        require_once(PG_FUNCTIONS_DIR . '/includes/explorer/recycle_bin.php');
+        pg_page_bundle_load_recycle();
 
         foreach ($run['written'] as $id) {
             if ((int) $items[$id]['live_page_id'] > 0) {

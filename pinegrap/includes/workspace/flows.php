@@ -1274,6 +1274,13 @@ function ws_flow_graph_check($graph)
 
         // Only the records new since the last run need runs that start at a
         // time, whose start moments make the window (flow_records.php).
+        // An e-mail box draws the records of a records box of the flow.
+        if (($node['kind'] === 'email') && function_exists('ws_flow_mail_records_box_problems')) {
+            foreach (ws_flow_mail_records_box_problems($node['config'], $name, $graph) as $text) {
+                $problems[] = ws_flow_problem('bad_config', $id, null, $text);
+            }
+        }
+
         if (($node['kind'] === 'list_records') && function_exists('ws_flow_records_time_problems')) {
             foreach (ws_flow_records_time_problems($node['config'], $name, ws_flow_records_starts_at_time($graph)) as $text) {
                 $problems[] = ws_flow_problem('bad_config', $id, null, $text);
