@@ -33974,9 +33974,12 @@ const StyleDesigner = (function () {
 
     // ── The identity row and the section heads of the single element's panel
 
-    // The identity row's icon: the one the Overview gives the element.
+    // The identity row's icon: the one the Overview gives the element; a
+    // heading shows its own level's glyph (an H2 heading 'bi-type-h2').
     function _sdIdIcon(node) {
         var p = node.props || {};
+        var lvl = /^h([1-6])$/.exec(String(p.tag || '').toLowerCase());
+        if (lvl && (p.contentType === 'heading' || node.type === 'semantic')) return 'bi-type-h' + lvl[1];
         if (node.type === 'root') return 'bi-filetype-html';
         if (node.type === 'row' || node.type === 'col') return 'bi-layout-split';
         if (node.type === 'shared_ref') return 'bi-puzzle-fill';
@@ -53169,7 +53172,8 @@ const StyleDesigner = (function () {
     // Property HTML helpers
     function sect(icon, title, body) {
         var sid = 'sdsc' + (icon + title).replace(/[^a-zA-Z0-9]/g, '').toLowerCase().slice(0, 24);
-        return _sdSectMake(sid, 'sd-props-section', 'sd-props-section-title', '<span class="bi ' + icon + '"></span> ' + title, body);
+        // A card's head carries no icon: the arrow, the name, the count.
+        return _sdSectMake(sid, 'sd-props-section', 'sd-props-section-title', title, body);
     }
     function row(label, ctrl) { return '<div class="sd-prop-row"><label class="sd-prop-label">' + label + '</label><div class="sd-prop-control">' + ctrl + '</div></div>'; }
     /** Boolean toggle — renders as a Bootstrap Studio-style pill switch */
@@ -60278,7 +60282,7 @@ const StyleDesigner = (function () {
         } else {
             inner = '<span class="sd-sect-sum-txt">' + esc(sum.kind === 'none' ? _sdT('none') : _sdT('default')) + '</span>';
         }
-        return badge + '<span class="sd-sect-sum">' + inner + '</span>';
+        return badge + '<span class="sd-sect-sum"><span class="sd-sect-sum-line">' + inner + '</span></span>';
     }
 
     // A section card's markup. o: { sid, cls, hdrCls, head (markup), body
