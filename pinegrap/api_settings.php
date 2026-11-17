@@ -1296,7 +1296,23 @@ function api_settings_oauth_guide($id_prefix, $button_class) {
 
 	}
 
+	// Claude's install link opens its "Add custom connector" dialog with the
+	// site's name and the MCP server address filled in. It is built from the
+	// file's address, the one the guide gives first, so it works on every
+	// server; a site that is not on https cannot be a connector at all.
+	$claude_link = pg_oauth_claude_connect_link($mcp_file, defined('ORGANIZATION_NAME') ? (string)ORGANIZATION_NAME : '');
+
+	$claude_row = ($claude_link !== '')
+		? '<a class="btn btn-sm theme-primary" id="' . $id_prefix . '_claude_connect" href="' . h($claude_link) . '" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>' . lang('Connect to Claude') . '</a>
+		<div class="form-text">' . lang('Opens Claude in a new tab with the Add custom connector dialog filled in with this site\'s address. Sign in to Claude, press Add, then Connect.') . '</div>'
+		: '<div class="form-text">' . lang('Claude connects only to an https address. Switch the site to https to connect it to Claude.') . '</div>';
+
 	return '
+	<div class="form-field mb-5">
+		<label class="form-label small">' . lang('Claude') . '</label>
+		<div>' . $claude_row . '</div>
+	</div>
+
 	<div class="form-field mb-5">
 		<label class="form-label small" id="' . $id_prefix . '_mcp_label">' . lang('MCP server address') . '</label>
 		' . $box($id_prefix . '_mcp', $mcp_file) . '
