@@ -11,7 +11,7 @@ module: courses
 
 ## What does a closed lesson do?
 - A 302 to the course's classroom page, in the language being drawn, with the notice in `$_SESSION['software']['course_notice']` (page id and plain text).
-- The notice names the day the lesson opens (`get_absolute_time()`, long date, site time zone) or the lesson to finish first by its page title (else its page name).
+- The notice is read on the classroom page, where every lesson is listed, so it names the lesson (architect, 2026-11-17, agent channel message 7785): `"<lesson>" opens on <day>.` (`get_absolute_time()`, long date, site time zone) or `Finish "<before>" to open "<lesson>".` A lesson's name is its page title, else its page name. The 403 without a classroom page uses the same texts. Built by the pure `pg_course_gate_notice_text()`.
 - The classroom page is never sent to itself, and a course without a classroom page answers 403 with the notice.
 
 ## How is the notice shown?

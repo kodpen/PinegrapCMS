@@ -657,15 +657,66 @@ function pg_course_gate_answer($switch_on, $access_type, $lesson, array $lessons
 }
 
 /**
- * The notice a closed lesson gives, plain text: the day it opens, or the
- * lesson to finish first.
+ * The notice a closed lesson gives, plain text. It is read on the
+ * classroom page, where every lesson is listed, so it names the lesson:
+ * the closed lesson and the day it opens, or the lesson to finish first
+ * and the lesson it opens. Pure but for lang().
  *
- * @param array $answer pg_course_gate_answer() of a closed lesson
+ * @param array  $answer      pg_course_gate_answer() of a closed lesson
+ * @param string $name        the closed lesson's name
+ * @param string $before_name the lesson to finish first, '' for unknown
+ * @param string $day         the day it opens, as the site writes a date
+ * @return string
+ */
+function pg_course_gate_notice_text(array $answer, $name, $before_name, $day)
+{
+    $name = trim((string) $name);
+    $before_name = trim((string) $before_name);
+
+    if ($answer['reason'] === 'days') {
+        return lang(array('string' => '"{var:1}" opens on {var:2}.', 'vars' => array($name, (string) $day)));
+    }
+
+    if ($before_name === '') {
+        return lang(array('string' => '"{var:1}" opens when the lesson before it is done.', 'vars' => $name));
+    }
+
+    return lang(array('string' => 'Finish "{var:1}" to open "{var:2}".', 'vars' => array($before_name, $name)));
+}
+
+/**
+ * A lesson's name: its page's title, else its page name.
+ *
+ * @param int $page_id
+ * @return string
+ */
+function _pg_course_lesson_name($page_id)
+{
+    $page = db_item("SELECT page_name, page_title FROM page WHERE page_id = '" . (int) $page_id . "'");
+
+    if (!is_array($page) || !$page) {
+        return '';
+    }
+
+    $title = trim((string) $page['page_title']);
+
+    return ($title !== '') ? $title : (string) $page['page_name'];
+}
+
+/**
+ * The notice a closed lesson gives, plain text, with the names and the
+ * day read.
+ *
+ * @param array $answer  pg_course_gate_answer() of a closed lesson
+ * @param array $lesson  pg_course_lesson_for_page()
  * @param array $lessons the course's lessons
  * @return string
  */
-function pg_course_gate_notice(array $answer, array $lessons)
+function pg_course_gate_notice(array $answer, array $lesson, array $lessons)
 {
+    $day = '';
+    $before_name = '';
+
     if ($answer['reason'] === 'days') {
         $day = get_absolute_time(array(
             'timestamp'     => strtotime($answer['opens_on'] . ' 12:00:00'),
@@ -674,25 +725,16 @@ function pg_course_gate_notice(array $answer, array $lessons)
             'size'          => 'long',
             'timezone_type' => 'site',
         ));
-
-        return lang(array('string' => 'This lesson opens on {var:1}.', 'vars' => $day));
-    }
-
-    $name = '';
-
-    foreach ($lessons as $row) {
-        if ((int) $row['id'] === (int) $answer['before_id']) {
-            $page = db_item("SELECT page_name, page_title FROM page WHERE page_id = '" . (int) $row['page_id'] . "'");
-            $name = is_array($page) ? (trim((string) $page['page_title']) !== '' ? trim((string) $page['page_title']) : (string) $page['page_name']) : '';
-            break;
+    } else {
+        foreach ($lessons as $row) {
+            if ((int) $row['id'] === (int) $answer['before_id']) {
+                $before_name = _pg_course_lesson_name($row['page_id']);
+                break;
+            }
         }
     }
 
-    if ($name === '') {
-        return lang('Finish the lesson before this one to open it.');
-    }
-
-    return lang(array('string' => 'Finish "{var:1}" to open this lesson.', 'vars' => $name));
+    return pg_course_gate_notice_text($answer, _pg_course_lesson_name($lesson['page_id']), $before_name, $day);
 }
 
 /**
@@ -812,7 +854,7 @@ function pg_course_gate($page_id, $folder_id, $access_type)
         return;
     }
 
-    $notice = pg_course_gate_notice($answer, $lessons);
+    $notice = pg_course_gate_notice($answer, $lesson, $lessons);
     $path = ($answer['classroom_page_id'] > 0) ? _pg_course_page_path($answer['classroom_page_id']) : '';
 
     if ($path === '') {

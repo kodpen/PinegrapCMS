@@ -313,3 +313,25 @@ function test_courses_gate_notice_inject_after_body()
 	pg_assert_same('<p>x</p>', pg_course_notice_insert('<p>x</p>', ''), 'nothing to insert');
 	pg_assert_contains('<div id="n">', pg_course_notice_insert('<p>x</p>', '<div id="n"></div>'), 'a fragment without a body gets it first');
 }
+
+function test_courses_gate_notice_names_the_lessons()
+{
+	$name = 'Light <b>&</b> "exposure"';
+	$days = array('closed' => true, 'reason' => 'days', 'opens_on' => '2026-11-24', 'before_id' => 0, 'classroom_page_id' => 40);
+	$order = array('closed' => true, 'reason' => 'order', 'opens_on' => '', 'before_id' => 11, 'classroom_page_id' => 40);
+
+	$text = pg_course_gate_notice_text($days, $name, '', '24 November 2026');
+	pg_assert_contains($name, $text, 'days: names the closed lesson');
+	pg_assert_contains('24 November 2026', $text, 'days: names the day it opens');
+
+	$text = pg_course_gate_notice_text($order, $name, 'Week 1 <i>start</i>', '');
+	pg_assert_contains('Week 1 <i>start</i>', $text, 'order: names the lesson to finish first');
+	pg_assert_contains($name, $text, 'order: names the lesson it opens');
+
+	$text = pg_course_gate_notice_text($order, $name, '', '');
+	pg_assert_contains($name, $text, 'order without the lesson before\'s name: still names the closed lesson');
+
+	$html = pg_course_notice_html(pg_course_gate_notice_text($days, $name, '', '24 November 2026'));
+	pg_assert_contains('Light &lt;b&gt;&amp;&lt;/b&gt; &quot;exposure&quot;', $html, 'the name is escaped on the page');
+	pg_assert_false(strpos($html, '<b>') !== false, 'no markup from the name');
+}
