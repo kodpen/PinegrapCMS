@@ -572,9 +572,10 @@ function pg_designer_screen_render($ctx)
                                  label follows the name field of Settings. -->
                             <div class="pg-menu-wrap sd-design-menu">
                                 <button type="button" class="sd-design-menu-btn" id="sd-design-menu-btn" data-bs-toggle="menu" aria-expanded="false" aria-haspopup="menu" title="' . h(lang('Design menu')) . '" data-sd-untitled="' . h(lang('New design')) . '">
-                                    <span class="sd-design-menu-name" id="sd-design-menu-name">' . h(isset($style['name']) && trim((string)$style['name']) !== '' ? (string)$style['name'] : lang('New design')) . '</span><span class="bi bi-chevron-down sd-design-menu-caret" aria-hidden="true"></span>
+                                    <span class="bi bi-palette2 sd-design-menu-icon" aria-hidden="true"></span><span class="sd-design-menu-name" id="sd-design-menu-name">' . h(isset($style['name']) && trim((string)$style['name']) !== '' ? (string)$style['name'] : lang('New design')) . '</span><span class="bi bi-chevron-down sd-design-menu-caret" aria-hidden="true"></span>
                                 </button>
                                 <ul data-bs-theme="dark" class="menu">
+                                    <li class="sd-design-menu-head" id="sd-design-menu-head" aria-hidden="true"></li>
                                     <li><button type="button" class="menu-item" id="sd-design-settings" data-bs-toggle="dialog" data-bs-target="#styleSettingsModal"><span class="bi bi-gear me-3" aria-hidden="true"></span>' . lang('Settings') . '</button></li>
                                     ' . ($mode === 'edit' ? $ctx['delete_button'] : '') . '
                                 </ul>

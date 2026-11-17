@@ -1,6 +1,6 @@
 ---
 name: designer-tab-groups
-description: Page tab order and named coloured groups in the designer (style.style_tab_layout, 2026.4.8): shape, own endpoint apart from Save, twin normalisers, colours, folding per browser, new tabs, drag.
+description: Page tab order and named coloured groups in the designer (style.style_tab_layout, 2026.4.8): shape, own endpoint apart from Save, twin normalisers, colours, the open group and the strip that fits, new tabs, drag.
 ---
 
 ## Where are tab order and groups kept?
@@ -12,12 +12,14 @@ description: Page tab order and named coloured groups in the designer (style.sty
 - The normaliser has two faces, changed in lockstep: `pg_designer_tab_layout_normalize()` (PHP, `tests/designer_tab_layout_test.php`) and `_pgTabsNormalizeGroups()` (JS, run by `_pgTabsRender()` on every draw). Unknown or repeated ids are dropped, missing pages appended, a group's tabs pulled together where its first tab stands, empty groups dropped; names cut to 60 characters, at most 50 groups, group id `^[a-z0-9_-]{1,20}$`.
 - The colours use the same keys in three places: `pg_designer_tab_layout_colors()`, `_PG_TAB_GROUP_COLORS` and the `[data-color]` rules in `style_designer.css`; an unknown colour becomes grey.
 
-## What stays in the browser?
-- Folding is not stored on the design: `localStorage` `pg_sd_tabgroups_<styleId>`. The tabs of a folded group stay in the DOM, hidden with `sd-tab-folded`; the open page stays visible, and switching to a tab of a folded group unfolds it.
+## Which group is open, and how does the strip fit?
+- One group is open at a time: always the open page's (`_pgTabStripOpenGroup()`), drawn as a box with its name, colour and tabs; every other group is a chip with name and count, "Other" (pages without a group) last. Nothing about folding is stored; the old `pg_sd_tabgroups_<styleId>` key is no longer read (#10245).
+- A chip lists its pages (first five, "N more pages", "Open the group in the strip": that group's last open page, else its first). A page picked there opens, and its group with it.
+- The strip never scrolls: `_pgTabsFit()` measures it and `_pgTabStripPlan()` (pure, `tests/designer_tab_strip_test.php`) picks the first of the six steps that fits; hidden tabs go behind "+N", chips behind "+N groups" / "N groups". Steps: `plans/designer-panels-measures-7.md` until close-out.
 
 ## How does new code open a tab?
 - With `_pgTabsInsertAfterActive(p)`, not `_pages.push`: right of the active tab, in its group.
-- Dragging uses pointer events (`_pgTabsDragBind()`); it is off at content level and without the column.
+- Dragging uses pointer events (`_pgTabsDragBind()`), over the box's head and tabs and the chips in strip order; "Other" is not dragged. It is off at content level and without the column.
 
 ## How is the "All pages" list built?
 - `#sd-tabs-all` (`designer_screen.php`) is a Bootstrap 6 menu (`data-bs-toggle="menu"`); `_pgTabsAllToggle()` finds that button for `isOpen`/`hide`. It looked for `data-bs-toggle="dropdown"` before #2600, so a picked page left the list open.

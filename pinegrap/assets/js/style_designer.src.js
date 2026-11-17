@@ -75376,6 +75376,61 @@ const StyleDesigner = (function () {
         return '';
     }
 
+    var _pgTabGroupLast = {};   // gid → the key last open in that group
+    var _pgTabsFitPlan = null;  // the plan the strip is drawn with
+    var _pgTabsFitObs = null;
+    var _pgTabsFitRaf = 0;
+
+    // One tab. A <div>, not a <button>: the label becomes an <input> while
+    // renaming, and form controls inside a button cannot take focus in
+    // every browser.
+    function _pgTabHtml(p, gid) {
+        var name  = p.page_name ? p.page_name : _sdT('New Page');
+        var dirty = _pgPageDirty(p);
+        // Active tab: a ⋮ menu (rename, settings, duplicate, detach,
+        // delete). Inactive unsaved tab: an × that discards it. Only the
+        // active tab carries the menu so the strip stays quiet; every tab
+        // opens the same menu on right-click.
+        var extra = '';
+        if (_sdComponentOnly()) {
+            extra = '';
+        } else if (p.key === _activeKey) {
+            extra = '<span class="sd-tab-menu" data-menu="' + esc(p.key) + '" title="' + esc(_sdT('Page options')) + '"><span class="bi bi-three-dots-vertical"></span></span>';
+        } else if (p.page_id === 0) {
+            extra = '<span class="sd-tab-close" data-close="' + esc(p.key) + '" title="' + esc(_sdT('Remove')) + '">&times;</span>';
+        }
+        // A page in a folder the operator has no content rights to is listed
+        // and does not open. It is shown rather than hidden because they
+        // already know it exists — the design's other pages link to it. A
+        // page behind a private or membership folder never reached the
+        // browser at all (pg_designer_page_access).
+        var locked = (p.access === 'locked');
+        if (locked) {
+            extra = '<span class="sd-tab-lock bi bi-lock-fill" title="' +
+                    esc(_sdT('You do not have content rights for this page\'s folder.')) + '"></span>';
+        }
+        // A page kept off the site says so on its tab; one that goes on or
+        // comes off at a set time says when.
+        var draft = _pgDraftsReady() && !!p.page_draft;
+        var sched = _pgScheduleNote(p);
+        return '<div class="sd-tab' + (p.key === _activeKey ? ' active' : '') + (dirty ? ' dirty' : '') +
+               (locked ? ' sd-tab-locked' : '') + (draft ? ' sd-tab-draft' : '') + '"' +
+               ' data-key="' + esc(p.key) + '"' +
+               (gid ? ' data-group="' + esc(gid) + '" data-color="' + esc(_pgTabGroups[gid].color) + '"' : '') +
+               ' role="tab" tabindex="0" title="' + esc(name) + '">' +
+               '<span class="sd-tab-dot" aria-hidden="true"></span>' +
+               '<span class="sd-tab-name">' + esc(name) + '</span>' +
+               (sched ? '<span class="sd-tab-draft-badge sd-tab-sched-badge" title="' + esc(sched) + '"><span class="bi bi-clock" aria-hidden="true"></span><span class="visually-hidden">' + esc(sched) + '</span></span>'
+                      : (draft ? '<span class="sd-tab-draft-badge" title="' + esc(_sdT('Draft: not on the site. Visitors cannot open it.')) + '">' + esc(_sdT('Draft')) + '</span>' : '')) +
+               extra +
+               '</div>';
+    }
+
+    // The strip: in a design with groups, the open page's group is a box
+    // with its name, colour and tabs, and every other group is a chip with
+    // its name and count ("Other" for the pages without a group, last). A
+    // design without groups has its tabs alone. What does not fit goes
+    // behind "+N" and "+N groups" (_pgTabsFit()); the strip never scrolls.
     function _pgTabsRender() {
         var list = document.getElementById('sd-tabs-list');
         if (!list) return;
@@ -75383,86 +75438,238 @@ const StyleDesigner = (function () {
         // where a group's tabs are pulled together and an empty group goes.
         _pgTabsNormalizeGroups();
         var editable = _pgTabLayoutEditable();
-        var chipDone = {};
-        var html = '';
+        var grouped = Object.keys(_pgTabGroups).length > 0;
+        var open = grouped ? _pgTabStripOpenGroup(_pages, _activeKey) : '';
+        if (grouped) _pgTabGroupLast[open] = _activeKey;
+        // One group is open at a time: every other one is folded.
+        _pgTabGroupsCollapsed = {};
+        Object.keys(_pgTabGroups).forEach(function (gid) { if (gid !== open) _pgTabGroupsCollapsed[gid] = true; });
+        var tabs = '';
         _pages.forEach(function (p) {
-            var name  = p.page_name ? p.page_name : _sdT('New Page');
-            var dirty = _pgPageDirty(p);
-            // A group's chip leads its tabs. The tabs of a folded group stay
-            // in the strip, hidden, so folding is a class change; the open
-            // page stays visible inside a folded group.
-            var gid = (p.tabGroup && _pgTabGroups[p.tabGroup]) ? p.tabGroup : '';
-            if (gid && !chipDone[gid]) {
-                chipDone[gid] = true;
-                html += _pgTabGroupChipHtml(gid, editable);
-            }
-            var folded = !!(gid && _pgTabGroupsCollapsed[gid] && p.key !== _activeKey);
-            // Active tab: a ⋮ menu (rename, settings, duplicate, detach,
-            // delete). Inactive unsaved tab: an × that discards it. Only the
-            // active tab carries the menu so the strip stays quiet; every
-            // tab opens the same menu on right-click.
-            var extra = '';
-            if (_sdComponentOnly()) {
-                extra = '';
-            } else if (p.key === _activeKey) {
-                extra = '<span class="sd-tab-menu" data-menu="' + esc(p.key) + '" title="' + esc(_sdT('Page options')) + '"><span class="bi bi-three-dots-vertical"></span></span>';
-            } else if (p.page_id === 0) {
-                extra = '<span class="sd-tab-close" data-close="' + esc(p.key) + '" title="' + esc(_sdT('Remove')) + '">&times;</span>';
-            }
-            // A <div>, not a <button>: the label becomes an <input> while
-            // renaming, and form controls inside a button cannot take focus
-            // in every browser.
-            // A page in a folder the operator has no content rights to is
-            // listed and does not open. It is shown rather than hidden
-            // because they already know it exists — the design's other pages
-            // link to it. A page behind a private or membership folder never
-            // reached the browser at all (pg_designer_page_access).
-            var locked = (p.access === 'locked');
-            if (locked) {
-                extra = '<span class="sd-tab-lock bi bi-lock-fill" title="' +
-                        esc(_sdT('You do not have content rights for this page\'s folder.')) + '"></span>';
-            }
-            // A page kept off the site says so on its tab; one that goes on
-            // or comes off at a set time says when.
-            var draft = _pgDraftsReady() && !!p.page_draft;
-            var sched = _pgScheduleNote(p);
-            html += '<div class="sd-tab' + (p.key === _activeKey ? ' active' : '') + (dirty ? ' dirty' : '') +
-                    (locked ? ' sd-tab-locked' : '') + (draft ? ' sd-tab-draft' : '') + (folded ? ' sd-tab-folded' : '') + '"' +
-                    ' data-key="' + esc(p.key) + '"' +
-                    (gid ? ' data-group="' + esc(gid) + '" data-color="' + esc(_pgTabGroups[gid].color) + '"' : '') +
-                    ' role="tab" tabindex="0" title="' + esc(name) + '">' +
-                    '<span class="sd-tab-dot" aria-hidden="true"></span>' +
-                    '<span class="sd-tab-name">' + esc(name) + '</span>' +
-                    (sched ? '<span class="sd-tab-draft-badge sd-tab-sched-badge" title="' + esc(sched) + '"><span class="bi bi-clock" aria-hidden="true"></span><span class="visually-hidden">' + esc(sched) + '</span></span>'
-                           : (draft ? '<span class="sd-tab-draft-badge" title="' + esc(_sdT('Draft: not on the site. Visitors cannot open it.')) + '">' + esc(_sdT('Draft')) + '</span>' : '')) +
-                    extra +
-                    '</div>';
+            if (grouped && (p.tabGroup || '') !== open) return;
+            tabs += _pgTabHtml(p, p.tabGroup || '');
         });
+        var more = '<button type="button" class="sd-tabs-more" data-more="tabs" aria-haspopup="menu" hidden></button>';
+        var html = tabs + more;
+        if (grouped) {
+            html = '<div class="sd-tab-box" data-group="' + esc(open) + '" data-color="' + esc(open ? _pgTabGroups[open].color : 'grey') + '">' +
+                   _pgTabGroupChipHtml(open, editable, true) + tabs + more + '</div>';
+            var order = [], seen = {};
+            _pages.forEach(function (p) {
+                var gid = p.tabGroup || '';
+                if (gid && gid !== open && !seen[gid]) { seen[gid] = true; order.push(gid); }
+            });
+            if (open && _pages.some(function (p) { return !p.tabGroup; })) order.push('');
+            order.forEach(function (gid) { html += _pgTabGroupChipHtml(gid, editable, false); });
+            html += '<button type="button" class="sd-tabs-more sd-tabs-more-groups" data-more="groups" aria-haspopup="menu" hidden></button>';
+        }
+        list.classList.toggle('sd-tabs-grouped', grouped);
         list.innerHTML = html;
         _pgTabsSyncViewButton();
         _pgTabsSyncPublishButton();
-        _pgTabsAllSync();
-        // The strip scrolls on its own; keep the active tab in view.
-        var act = list.querySelector('.sd-tab.active');
-        if (act && list.scrollWidth > list.clientWidth) {
-            var l = act.offsetLeft, r = l + act.offsetWidth;
-            if (l < list.scrollLeft) list.scrollLeft = l - 8;
-            else if (r > list.scrollLeft + list.clientWidth) list.scrollLeft = r - list.clientWidth + 8;
+        _pgTabsFit();
+    }
+
+    // Measures the strip drawn in full and its short forms, asks the plan
+    // (_pgTabStripPlan()) what fits, and hides the rest. Runs again when
+    // the toolbar changes width.
+    function _pgTabsFit(again) {
+        var list = document.getElementById('sd-tabs-list');
+        if (!list || list.querySelector('.sd-tab-rename')) return;
+        // The strip's own width: it changes with the window and with the
+        // toolbar's other buttons, which come and go after the first draw.
+        // A refit keeps the width it measures, so it settles in one round.
+        if (!_pgTabsFitObs && window.ResizeObserver) {
+            _pgTabsFitObs = new ResizeObserver(function () {
+                cancelAnimationFrame(_pgTabsFitRaf);
+                _pgTabsFitRaf = requestAnimationFrame(function () { _pgTabsFit(); });
+            });
+            _pgTabsFitObs.observe(list);
         }
+        var body = document.body;
+        var designBtn = document.getElementById('sd-design-menu-btn');
+        var shortForms = function (on) {
+            list.classList.toggle('sd-strip-nocount', on);
+            list.classList.toggle('sd-strip-nohead', on);
+            body.classList.toggle('sd-design-icon', on);
+        };
+        // Everything shown, the counters with a two-digit sample.
+        shortForms(false);
+        list.classList.remove('sd-strip-cut');
+        body.classList.remove('sd-design-bare');
+        var tabEls  = [].slice.call(list.querySelectorAll('.sd-tab'));
+        var chipEls = [].slice.call(list.querySelectorAll('.sd-tab-group.collapsed'));
+        var head    = list.querySelector('.sd-tab-box-head');
+        var box     = list.querySelector('.sd-tab-box');
+        var moreEl  = list.querySelector('.sd-tabs-more[data-more="tabs"]');
+        var groupsEl = list.querySelector('.sd-tabs-more-groups');
+        tabEls.concat(chipEls).forEach(function (el) { el.classList.remove('sd-tab-folded'); });
+        if (moreEl) { moreEl.hidden = false; moreEl.textContent = '+88'; }
+        if (groupsEl) { groupsEl.hidden = false; groupsEl.textContent = _sdT('+{n} groups').replace('{n}', '88'); }
+        var w = function (el) { return el ? el.getBoundingClientRect().width : 0; };
+        var gap = parseFloat(getComputedStyle(list).columnGap) || 0;
+        // Two pixels kept back for rounding.
+        var room = list.clientWidth - 2;
+        var tabW = tabEls.map(w), chipW = chipEls.map(w);
+        var headW = w(head), moreW = w(moreEl), groupsW = w(groupsEl);
+        var boxExtra = 0;
+        if (box) {
+            var inner = [].slice.call(box.children).map(w);
+            boxExtra = w(box) - inner.reduce(function (a, b) { return a + b; }, 0) - gap * Math.max(0, inner.length - 1);
+        }
+        if (groupsEl) groupsEl.textContent = _sdT('{n} groups').replace('{n}', '88');
+        var allW = w(groupsEl);
+        // The room the icon gives back is measured, not assumed: a toolbar
+        // already at its narrowest gives nothing.
+        shortForms(true);
+        var headShort = w(head), chipShort = chipEls.map(w), designSave = Math.max(0, list.clientWidth - 2 - room);
+        shortForms(false);
+        var plan = _pgTabStripPlan({
+            width: room, gap: gap, designSave: designSave,
+            grouped: !!box, active: _activeKey, boxExtra: boxExtra,
+            head: { w: headW, wShort: headShort },
+            tabs: tabEls.map(function (el, i) { return { key: el.dataset.key, w: tabW[i] }; }),
+            chips: chipEls.map(function (el, i) { return { id: el.dataset.group || '', w: chipW[i], wShort: chipShort[i] }; }),
+            more: moreW, moreGroups: groupsW, allGroups: allW
+        });
+        _pgTabsFitPlan = plan;
+        tabEls.forEach(function (el) { el.classList.toggle('sd-tab-folded', plan.tabs.indexOf(el.dataset.key) === -1); });
+        chipEls.forEach(function (el) { el.classList.toggle('sd-tab-folded', plan.chips.indexOf(el.dataset.group || '') === -1); });
+        if (moreEl) {
+            moreEl.hidden = !plan.more;
+            moreEl.textContent = '+' + plan.hidden.length;
+            moreEl.title = _sdT('{n} pages that do not fit').replace('{n}', plan.hidden.length);
+        }
+        if (groupsEl) {
+            groupsEl.hidden = !(plan.chipMode === 'some' || plan.chipMode === 'one');
+            groupsEl.textContent = (plan.chipMode === 'one' ? _sdT('{n} groups') : _sdT('+{n} groups')).replace('{n}', plan.folded.length);
+        }
+        list.classList.toggle('sd-strip-nocount', !plan.counts);
+        list.classList.toggle('sd-strip-nohead', !plan.headName);
+        list.classList.toggle('sd-strip-cut', plan.cut);
+        body.classList.toggle('sd-design-icon', plan.designIcon);
+        body.classList.toggle('sd-design-bare', plan.cut);
+        list.setAttribute('data-step', String(plan.step));
+        // As an icon, the design's name is in the button's tip.
+        if (designBtn) {
+            if (!designBtn.hasAttribute('data-sd-title')) designBtn.setAttribute('data-sd-title', designBtn.title || '');
+            var nm = document.getElementById('sd-design-menu-name');
+            designBtn.title = plan.designIcon && nm ? nm.textContent : designBtn.getAttribute('data-sd-title');
+        }
+        // The "All pages" button beside the strip comes and goes with what
+        // is hidden; the strip's width changes with it, so it is fitted once
+        // more when it did.
+        var all = document.getElementById('sd-tabs-all');
+        var was = all ? all.hidden : true;
+        _pgTabsAllSync();
+        if (all && all.hidden !== was && !again) _pgTabsFit(true);
+    }
+
+    // The list a chip opens, under it: a group's pages ("8 more pages",
+    // "Open the group in the strip"), the tabs behind "+N", or the groups
+    // behind "+N groups" (a group lists its pages). A page picked here is
+    // opened, and its group with it.
+    function _pgTabsChipList(anchor, kind, gid, all) {
+        _pgTabsCloseMenu();
+        var plan = _pgTabsFitPlan;
+        var LIMIT = 5;
+        var head = '', rows = '';
+        var pageRow = function (p) {
+            if (!p) return '';
+            var locked = (p.access === 'locked');
+            return '<button type="button" class="sd-tab-popmenu-item sd-tabs-list-page' + (p.key === _activeKey ? ' active' : '') + '" data-key="' + esc(p.key) + '"' + (locked ? ' disabled' : '') + '>' +
+                   '<span class="bi bi-file-earmark me-3" aria-hidden="true"></span>' +
+                   '<span class="sd-tabs-list-name">' + esc(p.page_name || _sdT('New Page')) + '</span>' +
+                   (_pgPageDirty(p) ? '<span class="sd-tabs-list-dirty" title="' + esc(_sdT('Unsaved Changes')) + '"></span>' : '') +
+                   ((_pgDraftsReady() && p.page_draft) ? '<span class="sd-tab-draft-badge">' + esc(_sdT('Draft')) + '</span>' : '') +
+                   (locked ? '<span class="bi bi-lock-fill sd-tabs-list-lock" aria-hidden="true"></span>' : '') +
+                   '</button>';
+        };
+        if (kind === 'tabs') {
+            var keys = plan ? plan.hidden : [];
+            head = _sdT('{n} pages that do not fit').replace('{n}', keys.length);
+            keys.forEach(function (k) { rows += pageRow(_pgPageByKey(k)); });
+        } else if (kind === 'group') {
+            var members = gid ? _pgTabGroupMembers(gid) : _pages.filter(function (p) { return !p.tabGroup; });
+            head = gid ? _pgTabGroupLabel(gid) : _sdT('Other');
+            members.slice(0, all ? members.length : LIMIT).forEach(function (p) { rows += pageRow(p); });
+            if (!all && members.length > LIMIT) {
+                rows += '<button type="button" class="sd-tab-popmenu-item sd-tabs-list-rest" data-act="all"><span class="bi bi-three-dots me-3" aria-hidden="true"></span>' +
+                        esc(_sdT('{n} more pages').replace('{n}', members.length - LIMIT)) + '</button>';
+            }
+            rows += '<div class="sd-tab-popmenu-sep"></div>' +
+                    '<button type="button" class="sd-tab-popmenu-item sd-tabs-list-rest" data-act="open"><span class="bi bi-arrows-expand-vertical me-3" aria-hidden="true"></span>' +
+                    esc(_sdT('Open the group in the strip')) + '</button>';
+        } else {
+            head = _sdT('Groups');
+            (plan ? plan.folded : []).forEach(function (id) {
+                var n = id ? _pgTabGroupMembers(id).length : _pages.filter(function (p) { return !p.tabGroup; }).length;
+                rows += '<button type="button" class="sd-tab-popmenu-item" data-group-row="' + esc(id) + '">' +
+                        '<span class="sd-tab-color-dot me-3" data-color="' + esc(id ? _pgTabGroups[id].color : 'grey') + '" aria-hidden="true"></span>' +
+                        '<span class="sd-tabs-list-name">' + esc(id ? _pgTabGroupLabel(id) : _sdT('Other')) + '</span>' +
+                        '<span class="sd-tabs-list-count">' + n + '</span><span class="bi bi-chevron-right ms-2" aria-hidden="true"></span></button>';
+            });
+        }
+        var m = document.createElement('div');
+        m.className = 'sd-tab-popmenu sd-tabs-list';
+        m.setAttribute('role', 'menu');
+        m.setAttribute('aria-label', head);
+        m.innerHTML = '<div class="sd-tab-popmenu-hint sd-tabs-list-head">' + esc(head) + '</div>' + rows;
+        document.body.appendChild(m);
+        var r = anchor.getBoundingClientRect();
+        m.style.left = Math.max(4, Math.min(r.left, window.innerWidth - m.offsetWidth - 8)) + 'px';
+        m.style.top  = Math.max(4, Math.min(r.bottom + 4, window.innerHeight - m.offsetHeight - 8)) + 'px';
+        m.addEventListener('click', function (e) {
+            var b = e.target.closest('button');
+            if (!b || b.disabled) return;
+            if (b.dataset.key) {
+                _pgTabsCloseMenu();
+                if (b.dataset.key !== _activeKey) _pgTabsSwitch(b.dataset.key);
+            } else if (b.dataset.act === 'all') {
+                _pgTabsChipList(anchor, 'group', gid, true);
+                _pgTabsListFocus(window._pgTabMenuEl, 0);
+            } else if (b.dataset.act === 'open') {
+                _pgTabsCloseMenu();
+                _pgTabGroupToggle(gid);
+            } else if (b.hasAttribute('data-group-row')) {
+                _pgTabsChipList(anchor, 'group', b.getAttribute('data-group-row'), false);
+                _pgTabsListFocus(window._pgTabMenuEl, 0);
+            }
+        });
+        // Up and Down walk the rows; Escape (_pgTabsMenuKey) closes, and
+        // the focus goes back to the chip.
+        m.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && anchor.isConnected) { anchor.focus(); return; }
+            if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+            e.preventDefault();
+            var btns = [].slice.call(m.querySelectorAll('button:not([disabled])'));
+            var i = btns.indexOf(document.activeElement);
+            _pgTabsListFocus(m, i + (e.key === 'ArrowDown' ? 1 : -1));
+        });
+        setTimeout(function () {
+            document.addEventListener('mousedown', _pgTabsMenuOutside, true);
+            document.addEventListener('keydown', _pgTabsMenuKey, true);
+        }, 0);
+        window._pgTabMenuEl = m;
+    }
+    function _pgTabsListFocus(m, i) {
+        if (!m) return;
+        var btns = [].slice.call(m.querySelectorAll('button:not([disabled])'));
+        if (!btns.length) return;
+        btns[(i + btns.length) % btns.length].focus();
     }
 
     // ── All pages ──
-    // A design with many pages does not fit the strip, and a strip that
-    // scrolls sideways is slow to search. The button after it lists every
-    // page; it shows only while the strip overflows (or a group is folded),
-    // with the number of pages on it.
+    // A design with many pages does not fit the strip. The button after it
+    // lists every page; it shows only while a page has no tab in view (in
+    // a folded group or behind "+N"), with the number of pages on it.
     function _pgTabsAllSync() {
         var wrap = document.getElementById('sd-tabs-all');
         var list = document.getElementById('sd-tabs-list');
         if (!wrap || !list) return;
         var count = document.getElementById('sd-tabs-all-count');
         if (count) count.textContent = _pages.length > 1 ? String(_pages.length) : '';
-        var hidden = list.scrollWidth <= list.clientWidth + 1 && !list.querySelector('.sd-tab-folded');
+        var hidden = list.querySelectorAll('.sd-tab:not(.sd-tab-folded)').length >= _pages.length;
         if (wrap.hidden !== hidden) {
             if (hidden && pgUI.menu.isOpen(_pgTabsAllToggle())) return;
             wrap.hidden = hidden;
@@ -75623,20 +75830,27 @@ const StyleDesigner = (function () {
                     return;
                 }
                 if (e.target.closest('.sd-tab-rename')) return;
-                var chip = e.target.closest('.sd-tab-group');
-                if (chip) { _pgTabGroupToggle(chip.dataset.group); return; }
+                // A folded group's chip and the "+N" chips list their pages.
+                var more = e.target.closest('.sd-tabs-more');
+                if (more) {
+                    _pgTabsChipList(more, more.dataset.more);
+                    // From the keyboard the focus goes into the list.
+                    if (!e.detail) _pgTabsListFocus(window._pgTabMenuEl, 0);
+                    return;
+                }
+                var chip = e.target.closest('.sd-tab-group.collapsed');
+                if (chip) { _pgTabsChipList(chip, 'group', chip.dataset.group || ''); return; }
                 var tab = e.target.closest('.sd-tab');
                 if (tab && tab.dataset.key && tab.dataset.key !== _activeKey) _pgTabsSwitch(tab.dataset.key);
             });
             // Double-click on a tab name renames it in place.
             list.addEventListener('dblclick', function (e) {
                 if (e.target.closest('.sd-tab-rename, .sd-tab-menu, .sd-tab-close, .sd-tab-group-menu')) return;
-                // On a group chip: rename the group (its two clicks folded
-                // and unfolded it, leaving it as it was).
+                // On the open group's name: rename the group.
                 var chip = e.target.closest('.sd-tab-group');
                 if (chip) {
                     e.preventDefault();
-                    _pgTabGroupRename(chip.dataset.group);
+                    if (chip.classList.contains('sd-tab-box-head')) _pgTabGroupRename(chip.dataset.group);
                     return;
                 }
                 var tab = e.target.closest('.sd-tab');
@@ -75648,9 +75862,13 @@ const StyleDesigner = (function () {
             // Tabs are <div>s; Enter / Space activate like a button would.
             list.addEventListener('keydown', function (e) {
                 if (e.target.closest('.sd-tab-rename')) return;
-                var chip = e.target.closest('.sd-tab-group');
+                var chip = e.target.closest('.sd-tab-group.collapsed');
                 if (chip) {
-                    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); _pgTabGroupToggle(chip.dataset.group); }
+                    if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        _pgTabsChipList(chip, 'group', chip.dataset.group || '');
+                        _pgTabsListFocus(window._pgTabMenuEl, 0);
+                    }
                     return;
                 }
                 var tab = e.target.closest('.sd-tab');
@@ -76447,17 +76665,16 @@ const StyleDesigner = (function () {
     // ── Tab order and groups ──────────────────────────────────────────────
     // The strip follows _pages: their order is the tab order, and
     // `p.tabGroup` ('' or a key of _pgTabGroups) puts a tab in a named,
-    // coloured group. A group's tabs always stand together behind a chip
-    // that names the group; clicking the chip folds it. The layout is kept
-    // on the design (style.style_tab_layout) through designer/tab_layout,
-    // apart from Save: it is how the editor looks, so it does not wait for
-    // Publish and is not an unsaved change. Folding is kept per browser
-    // (localStorage), so one operator folding a group does not fold it for
-    // another. _pgTabsNormalizeGroups() is the twin of
+    // coloured group. A group's tabs always stand together. The open
+    // page's group is open in the strip; every other group is folded into
+    // a chip that lists its pages. The layout is kept on the design
+    // (style.style_tab_layout) through designer/tab_layout, apart from
+    // Save: it is how the editor looks, so it does not wait for Publish and
+    // is not an unsaved change. _pgTabsNormalizeGroups() is the twin of
     // pg_designer_tab_layout_normalize() on the server; change them together.
     var _PG_TAB_GROUP_COLORS = ['grey', 'blue', 'red', 'yellow', 'green', 'pink', 'purple', 'cyan', 'orange'];
     var _pgTabGroups = {};            // gid → { name, color }
-    var _pgTabGroupsCollapsed = {};   // gid → true, this browser only
+    var _pgTabGroupsCollapsed = {};   // gid → true: every group but the open one
     var _pgTabProto = {};             // 'p<page_id>' / 's<id>' → { x, y }: Prototype view frames
     var _pgTabLayoutTimer = 0;
     var _pgTabDrag = null;
@@ -76481,27 +76698,6 @@ const StyleDesigner = (function () {
     // operator sees the layout and folds groups but does not rearrange.
     function _pgTabLayoutReady()    { return !!(_design && _design.tabLayout && _design.tabLayout.ready); }
     function _pgTabLayoutEditable() { return _pgTabLayoutReady() && !_sdIsContentLevel(); }
-
-    function _pgTabGroupsStorageKey() {
-        return (_design && _design.styleId) ? 'pg_sd_tabgroups_' + _design.styleId : '';
-    }
-    function _pgTabGroupsLoadCollapsed() {
-        _pgTabGroupsCollapsed = {};
-        var k = _pgTabGroupsStorageKey();
-        if (!k) return;
-        try {
-            var o = JSON.parse(localStorage.getItem(k) || '{}');
-            if (o && typeof o === 'object') Object.keys(o).forEach(function (g) { if (o[g] === true) _pgTabGroupsCollapsed[g] = true; });
-        } catch (e) {}
-    }
-    function _pgTabGroupsStoreCollapsed() {
-        var k = _pgTabGroupsStorageKey();
-        if (!k) return;
-        try {
-            if (Object.keys(_pgTabGroupsCollapsed).length) localStorage.setItem(k, JSON.stringify(_pgTabGroupsCollapsed));
-            else localStorage.removeItem(k);
-        } catch (e) {}
-    }
 
     // The stored layout onto the tabs the server sent: their order, their
     // groups. A page the layout does not name keeps its place after the
@@ -76532,7 +76728,6 @@ const StyleDesigner = (function () {
         });
         _pages.forEach(function (p) { if (order.indexOf(p) === -1) order.push(p); });
         _pages = order;
-        _pgTabGroupsLoadCollapsed();
         _pgTabsNormalizeGroups();
     }
 
@@ -76553,11 +76748,6 @@ const StyleDesigner = (function () {
         });
         _pages = out;
         Object.keys(_pgTabGroups).forEach(function (gid) { if (!members[gid]) delete _pgTabGroups[gid]; });
-        var stale = Object.keys(_pgTabGroupsCollapsed).filter(function (gid) { return !_pgTabGroups[gid]; });
-        if (stale.length) {
-            stale.forEach(function (gid) { delete _pgTabGroupsCollapsed[gid]; });
-            _pgTabGroupsStoreCollapsed();
-        }
     }
 
     // Only saved pages are stored: a new tab has no id yet, and takes its
@@ -76625,46 +76815,39 @@ const StyleDesigner = (function () {
         }
         return _PG_TAB_GROUP_COLORS[Math.floor(Math.random() * _PG_TAB_GROUP_COLORS.length)];
     }
-    // The page on the canvas is never inside a folded group.
+    // The page on the canvas is never inside a folded group: its group is
+    // the open one (_pgTabsRender() folds the others).
     function _pgTabGroupRevealActive() {
         var a = _pgActivePage();
-        if (a && a.tabGroup && _pgTabGroupsCollapsed[a.tabGroup]) {
-            delete _pgTabGroupsCollapsed[a.tabGroup];
-            _pgTabGroupsStoreCollapsed();
-        }
+        if (a && a.tabGroup) delete _pgTabGroupsCollapsed[a.tabGroup];
     }
 
-    function _pgTabGroupChipHtml(gid, editable) {
-        var g = _pgTabGroups[gid];
-        var folded = !!_pgTabGroupsCollapsed[gid];
-        var label = _pgTabGroupLabel(gid);
-        return '<div class="sd-tab-group' + (folded ? ' collapsed' : '') + '" data-group="' + esc(gid) + '" data-color="' + esc(g.color) + '"' +
-               ' role="button" tabindex="0" aria-expanded="' + (folded ? 'false' : 'true') + '" title="' + esc(label) + '">' +
-               '<span class="sd-tab-group-dot" aria-hidden="true"></span>' +
+    // A folded group's chip (name and count; "Other" for the pages without
+    // a group), or with `head` the open group's name at the head of its box.
+    // The group menu sits on the head only; a chip opens it on right-click.
+    function _pgTabGroupChipHtml(gid, editable, head) {
+        var g = gid ? _pgTabGroups[gid] : null;
+        var label = gid ? _pgTabGroupLabel(gid) : _sdT('Other');
+        var count = gid ? _pgTabGroupMembers(gid).length : _pages.filter(function (p) { return !p.tabGroup; }).length;
+        return '<div class="sd-tab-group' + (head ? ' sd-tab-box-head' : ' collapsed') + (gid ? '' : ' sd-tab-other') + '"' +
+               ' data-group="' + esc(gid) + '" data-color="' + esc(g ? g.color : 'grey') + '"' +
+               (head ? '' : ' role="button" tabindex="0" aria-haspopup="menu"') +
+               ' title="' + esc(label + (head ? '' : ' (' + count + ')')) + '">' +
+               (head ? '' : '<span class="sd-tab-group-dot" aria-hidden="true"></span>') +
                '<span class="sd-tab-group-name">' + esc(label) + '</span>' +
-               '<span class="sd-tab-group-count">' + _pgTabGroupMembers(gid).length + '</span>' +
-               (editable ? '<span class="sd-tab-group-menu" data-group-menu="' + esc(gid) + '" title="' + esc(_sdT('Group options')) + '"><span class="bi bi-three-dots-vertical"></span></span>' : '') +
+               (head ? '' : '<span class="sd-tab-group-count">' + count + '</span>') +
+               (head && g && editable ? '<span class="sd-tab-group-menu" data-group-menu="' + esc(gid) + '" title="' + esc(_sdT('Group options')) + '"><span class="bi bi-three-dots-vertical"></span></span>' : '') +
                '</div>';
     }
 
-    // Folds or unfolds in place, without redrawing the strip: the chip a
-    // double-click lands on has to be the one its first click hit.
-    function _pgTabGroupToggle(gid, fold) {
-        if (!_pgTabGroups[gid]) return;
-        if (typeof fold !== 'boolean') fold = !_pgTabGroupsCollapsed[gid];
-        if (fold) _pgTabGroupsCollapsed[gid] = true;
-        else delete _pgTabGroupsCollapsed[gid];
-        _pgTabGroupsStoreCollapsed();
-        var list = document.getElementById('sd-tabs-list');
-        if (!list) return;
-        var chip = list.querySelector('.sd-tab-group[data-group="' + gid + '"]');
-        if (chip) {
-            chip.classList.toggle('collapsed', fold);
-            chip.setAttribute('aria-expanded', fold ? 'false' : 'true');
-        }
-        list.querySelectorAll('.sd-tab[data-group="' + gid + '"]').forEach(function (t) {
-            t.classList.toggle('sd-tab-folded', fold && t.dataset.key !== _activeKey);
-        });
+    // Opens a group in the strip: its page last open here, or its first
+    // page that opens. The strip always opens the open page's group.
+    function _pgTabGroupToggle(gid) {
+        var members = gid ? _pgTabGroupMembers(gid) : _pages.filter(function (p) { return !p.tabGroup; });
+        var last = _pgPageByKey(_pgTabGroupLast[gid || '']);
+        var p = (last && members.indexOf(last) !== -1 && last.access !== 'locked') ? last
+              : members.filter(function (q) { return q.access !== 'locked'; })[0];
+        if (p && p.key !== _activeKey) _pgTabsSwitch(p.key);
     }
 
     function _pgTabGroupCreate(key) {
@@ -76787,7 +76970,7 @@ const StyleDesigner = (function () {
             item('rename', 'bi-pencil', _sdT('Rename group')) +
             '<div class="sd-tab-popmenu-hint">' + esc(_sdT('Group colour')) + '</div>' +
             '<div class="sd-tab-colors" role="group" aria-label="' + esc(_sdT('Group colour')) + '">' + dots + '</div>' +
-            item('fold', folded ? 'bi-arrows-expand' : 'bi-arrows-collapse', folded ? _sdT('Expand group') : _sdT('Collapse group')) +
+            (folded ? item('fold', 'bi-arrows-expand-vertical', _sdT('Open the group in the strip')) : '') +
             '<div class="sd-tab-popmenu-sep"></div>' +
             item('ungroup', 'bi-x-square', _sdT('Ungroup'));
         document.body.appendChild(m);
@@ -76867,7 +77050,8 @@ const StyleDesigner = (function () {
             if (e.button !== 0 || _pgTabDrag || !_pgTabLayoutEditable()) return;
             if (e.target.closest('.sd-tab-rename, .sd-tab-menu, .sd-tab-close, .sd-tab-group-menu')) return;
             var el = e.target.closest('.sd-tab, .sd-tab-group');
-            if (!el) return;
+            // "Other" is no group of its own to carry.
+            if (!el || el.classList.contains('sd-tab-other')) return;
             _pgTabDrag = { list: list, el: el, id: e.pointerId, x0: e.clientX, y0: e.clientY, x: e.clientX, on: false };
         });
         list.addEventListener('pointermove', function (e) {
@@ -76978,7 +77162,8 @@ const StyleDesigner = (function () {
     // Where the pointer would drop: { group, before: element|null, after:
     // gid (end of a folded group), lineX, chip }.
     function _pgTabsDropTarget(d) {
-        var items = [].filter.call(d.list.children, function (el) {
+        // The box's head and tabs and the chips after it, in strip order.
+        var items = [].filter.call(d.list.querySelectorAll('.sd-tab, .sd-tab-group'), function (el) {
             return d.dragEls.indexOf(el) === -1 && !el.classList.contains('sd-tab-folded')
                 && (el.classList.contains('sd-tab') || el.classList.contains('sd-tab-group'));
         });
@@ -77033,18 +77218,19 @@ const StyleDesigner = (function () {
         var rest   = _pages.filter(function (p) { return d.keys.indexOf(p.key) === -1; });
         // The index in `rest` in front of a strip element: a tab is itself,
         // a chip is its group's first remaining tab (or whatever follows).
+        // The strip's items are walked in order, the box's included.
+        var stripItems = [].slice.call(d.list.querySelectorAll('.sd-tab, .sd-tab-group'));
         var indexBefore = function (el) {
-            while (el) {
-                if (d.dragEls.indexOf(el) === -1) {
-                    var at = -1;
-                    if (el.classList.contains('sd-tab-group')) {
-                        for (var k = 0; k < rest.length; k++) if (rest[k].tabGroup === el.dataset.group) { at = k; break; }
-                    } else if (el.classList.contains('sd-tab')) {
-                        at = rest.indexOf(_pgPageByKey(el.dataset.key));
-                    }
-                    if (at !== -1) return at;
+            for (var i = el ? stripItems.indexOf(el) : -1; i !== -1 && i < stripItems.length; i++) {
+                var it = stripItems[i];
+                if (d.dragEls.indexOf(it) !== -1) continue;
+                var at = -1;
+                if (it.classList.contains('sd-tab-group')) {
+                    for (var k = 0; k < rest.length; k++) if ((rest[k].tabGroup || '') === (it.dataset.group || '')) { at = k; break; }
+                } else {
+                    at = rest.indexOf(_pgPageByKey(it.dataset.key));
                 }
-                el = el.nextElementSibling;
+                if (at !== -1) return at;
             }
             return rest.length;
         };
@@ -78393,10 +78579,8 @@ const StyleDesigner = (function () {
         _styleBaseline = _pgStyleJSON();
         _pgTabsRender();
         _pgTabsSyncUrl();
-        // The design may have just been created: folding is now kept under
-        // its id, and the tabs that got ids keep their places. Sent at once,
-        // since a new design's editor reloads moments after this.
-        _pgTabGroupsStoreCollapsed();
+        // The tabs that got ids keep their places. Sent at once, since a new
+        // design's editor reloads moments after this.
         if (layoutFresh) _pgTabsLayoutSave(true);
         // A page picker on screen may have named a tab that now has an id;
         // redraw so it reads "page" rather than "page (unsaved)".
@@ -79208,6 +79392,9 @@ const StyleDesigner = (function () {
             var field = document.getElementById('sd-style-name');
             var name = field ? field.value.trim() : '';
             label.textContent = name || btn.getAttribute('data-sd-untitled') || '';
+            // Shown when the name is an icon on a narrow strip.
+            var head = document.getElementById('sd-design-menu-head');
+            if (head) head.textContent = label.textContent;
         };
         btn.addEventListener('click', sync);
         // A chosen item closes the menu before its own handler runs (capture):

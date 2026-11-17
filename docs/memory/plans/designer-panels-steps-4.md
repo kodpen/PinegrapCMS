@@ -8,7 +8,7 @@ description: Plan designer-panels, steps DP17 to DP25: the page strip (the desig
   - Existing files: `includes/designer_screen.php` (`.sd-toolbar-pages`, the gear of `#styleSettingsModal`, `$ctx['delete_button']`), `style_designer.css`.
   - Pictures: the menu open, the question of Delete, 390. Features: D45.
 
-- DP18 (M) after DP17: the open group as a box, folded groups as chips.
+- DP18 (M) after DP17: the open group as a box, folded groups as chips. Done in #10245.
   - Functions: `_pgTabsRender()`. New: a pure function from the tab layout and the strip's width to what is drawn (the box, its tabs, "+N", the chips), with its test.
   - Tests: one group open; a design without groups; "Other"; a tab that does not fit behind "+N"; the open page's group opened when a page is opened from a chip.
   - Features: D46, D47, D48. Keeps K7. On a narrow strip the function draws the six steps of `designer-panels-measures-7.md`, each with its test case; picture beside `page-strip-narrow-approval.jpg`.
