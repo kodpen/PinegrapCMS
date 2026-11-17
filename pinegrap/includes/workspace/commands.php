@@ -338,6 +338,38 @@ function ws_command_gate_recap($viewer, $command = 'recap', $channel = null)
 }
 
 /**
+ * /approval: once approval requests are kept (the "Ask for approval" item
+ * of the box's Insert menu asks the same).
+ *
+ * @param array|null $viewer
+ * @return bool
+ */
+function ws_command_gate_approval($viewer)
+{
+    if (!is_array($viewer)) {
+        return true;
+    }
+
+    return function_exists('ws_approvals_ready') && ws_approvals_ready();
+}
+
+/**
+ * /update and /checkin: once status updates and check-ins are kept (the
+ * "Status update" and "Ask for a check-in" items ask the same).
+ *
+ * @param array|null $viewer
+ * @return bool
+ */
+function ws_command_gate_status($viewer)
+{
+    if (!is_array($viewer)) {
+        return true;
+    }
+
+    return function_exists('ws_status_ready') && ws_status_ready();
+}
+
+/**
  * /timer: once task time is kept.
  *
  * @param array|null $viewer
@@ -394,7 +426,7 @@ function ws_command_gate_create($viewer, $command)
  */
 function ws_command_argument_kinds()
 {
-    return array('person', 'people', 'department', 'task', 'record', 'date', 'time', 'estimate', 'priority', 'status', 'amount', 'quantity', 'text', 'options', 'record_kind');
+    return array('person', 'people', 'department', 'task', 'record', 'date', 'time', 'estimate', 'priority', 'status', 'amount', 'quantity', 'text', 'options', 'record_kind', 'health');
 }
 
 /**
@@ -429,7 +461,7 @@ function ws_command_turkish($language = null)
  *                (ws_command_argument_kinds()), label, optional, suggest
  *                (where the composer finds values for it: people,
  *                people_departments, tasks, records, products, dates,
- *                estimates, priorities, statuses, kinds, or '' for none), multiple (takes more
+ *                estimates, priorities, statuses, kinds, healths, or '' for none), multiple (takes more
  *                than one), anywhere (read wherever it is written, as /task
  *                reads its people, day, estimate and priority)
  *   live         the composer asks ws_command_suggest() for a line under
@@ -550,7 +582,8 @@ function ws_command_help($viewer = null, $channel = null)
  * @param string|null $language a language code, or null for the active one
  * @param array|null  $viewer   with a person, only the kinds they may make
  * @return array dates, estimates, priorities, statuses, kinds (what /create
- *               makes): each a list of value, meta, top
+ *               makes), healths (the states /update reads): each a list of
+ *               value, meta, top
  */
 function ws_command_suggestions($language = null, $viewer = null)
 {
@@ -605,6 +638,9 @@ function ws_command_suggestions($language = null, $viewer = null)
     foreach ($kinds as $key => $word) {
         $out['kinds'][] = array('value' => $word, 'meta' => $kind_labels[$key], 'top' => true);
     }
+
+    // The states /update reads.
+    $out['healths'] = ws_command_health_values($turkish);
 
     return $out;
 }
@@ -2347,6 +2383,329 @@ function ws_command_remind_line($fill)
     $when = function_exists('ws_scheduled_moment') ? ws_scheduled_moment($at) : ws_day_label($fill['start']) . ' ' . $fill['start_time'];
 
     return lang(array('string' => 'Will remind you: {var:1}', 'vars' => implode(' · ', array_filter(array($title, $when), 'strlen'))));
+}
+
+/**
+ * /approval: an approval request posted through ws_approval_create(), as
+ * the "Ask for approval" form posts one (its checks in ws_approval_input()),
+ * asking the people named with @ on its first line and approved by any one
+ * of them. Without a
+ * title or without anybody named, that form opens filled with what was
+ * typed.
+ *
+ * @return array
+ */
+function ws_command_run_approval($viewer, $channel, $rest)
+{
+    $data = ws_command_approval_read($rest);
+
+    if (($data['title'] === '') || empty($data['people'])) {
+        return array('type' => 'approval_form', 'fill' => ws_command_approval_fill($data));
+    }
+
+    $result = ws_approval_create($viewer, $channel, array(
+        'title'     => $data['title'],
+        'text'      => $data['text'],
+        'approvers' => $data['people'],
+        'rule'      => 'any',
+        'closes_at' => 0,
+        // Written by a person, as the form is.
+        'may_ask_agents' => true,
+    ));
+
+    return $result['ok']
+        ? array('type' => 'done', 'message_id' => (int) $result['message_id'])
+        : array('type' => 'error', 'error' => $result['error']);
+}
+
+/**
+ * What /approval reads from the line typed, the team read only when a
+ * username is typed after an @.
+ *
+ * @param string $text the line after the command's name
+ * @return array ws_command_approval_data()
+ */
+function ws_command_approval_read($text)
+{
+    $typed = preg_match('/(?:^|\s)@[\p{L}\p{N}_]/u', preg_replace('/<@user:[0-9]{1,10}>/', ' ', (string) $text));
+
+    return ws_command_approval_data($text, $typed ? ws_team_members() : array());
+}
+
+/**
+ * What /approval reads: the first line is the request, the people on it
+ * tagged or typed after an @ (a team member's exact username, as /task
+ * reads them) and the rest of it the title; the lines under it are the
+ * details, as written, where a tag only tells. Pure.
+ *
+ * @param string  $text the line after the command's name
+ * @param array[] $team briefs with id and username (ws_team_members())
+ * @return array title, text, people (user ids), typed_unknown, typed_ambiguous
+ */
+function ws_command_approval_data($text, $team)
+{
+    $lines = explode("\n", str_replace("\r\n", "\n", trim((string) $text)), 2);
+    $first = $lines[0];
+    $people = array();
+
+    foreach (ws_tokens($first) as $token) {
+        if ($token['type'] === 'user') {
+            $people[] = (int) $token['id'];
+        }
+    }
+
+    $first = preg_replace('/<@user:[0-9]{1,10}>/', ' ', $first);
+    $typed = array();
+
+    if (preg_match_all('/(?:^|\s)@([\p{L}\p{N}_.\-]{1,40})[,;:!?]*(?=\s|$)/u', $first, $matches)) {
+        foreach ($matches[1] as $name) {
+            $typed[] = rtrim($name, '.-');
+        }
+    }
+
+    $parsed = ws_command_typed_assignees(array('title' => $first, 'assignees' => $people, 'typed_people' => $typed), $team);
+
+    return array(
+        'title'           => (string) $parsed['title'],
+        'text'            => trim((string) ($lines[1] ?? '')),
+        'people'          => array_values(array_unique(array_map('intval', $parsed['assignees']))),
+        'typed_unknown'   => $parsed['typed_unknown'],
+        'typed_ambiguous' => $parsed['typed_ambiguous'],
+    );
+}
+
+/**
+ * What the "Ask for approval" form is opened with. Pure.
+ *
+ * @param array $data ws_command_approval_data()
+ * @return array title, text, approvers
+ */
+function ws_command_approval_fill($data)
+{
+    return array('title' => $data['title'], 'text' => $data['text'], 'approvers' => $data['people']);
+}
+
+/**
+ * /approval's live line: who will be asked to approve what, or the form
+ * opening, with the refusals of ws_approval_input().
+ *
+ * @return array line, warnings
+ */
+function ws_command_live_approval($viewer, $channel, $rest)
+{
+    $out = array('line' => '', 'warnings' => array());
+
+    if (trim((string) $rest) === '') {
+        return $out;
+    }
+
+    $data = ws_command_approval_read($rest);
+    $names = array();
+
+    foreach (empty($data['people']) ? array() : ws_people($data['people']) as $person) {
+        $names[] = $person['name'];
+    }
+
+    $said = implode(' · ', array_filter(array(
+        ($data['title'] !== '') ? '“' . mb_substr($data['title'], 0, 80) . '”' : '',
+        implode(', ', $names),
+    ), 'strlen'));
+
+    foreach ($data['typed_unknown'] as $name) {
+        $out['warnings'][] = lang(array('string' => 'No team member is called @{var:1}.', 'vars' => $name));
+    }
+
+    if (($data['title'] === '') || empty($data['people'])) {
+        $out['line'] = lang(array('string' => 'Will open Ask for approval: {var:1}', 'vars' => $said));
+        $out['warnings'][] = ($data['title'] === '') ? lang('An approval request needs a title.') : lang('Choose who is to approve it.');
+
+        return $out;
+    }
+
+    $out['line'] = lang(array('string' => 'Will ask for approval: {var:1}', 'vars' => $said));
+    $checked = ws_approval_input($viewer, $channel, array('title' => $data['title'], 'text' => $data['text'], 'approvers' => $data['people']));
+
+    if (!$checked['ok']) {
+        $out['warnings'][] = $checked['error'];
+    }
+
+    return $out;
+}
+
+/**
+ * /update: a status update of the channel through ws_status_post(), as the
+ * "Status update" form posts one. Without a state the form opens, the text
+ * typed in place of its draft.
+ *
+ * @return array
+ */
+function ws_command_run_update($viewer, $channel, $rest)
+{
+    $data = ws_command_update_data($rest);
+
+    if ($data['health'] === '') {
+        return array('type' => 'status_form', 'fill' => $data);
+    }
+
+    $result = ws_status_post($viewer, $channel, $data['health'], $data['text']);
+
+    return $result['ok']
+        ? array('type' => 'done', 'message_id' => (int) $result['message_id'])
+        : array('type' => 'error', 'error' => $result['error']);
+}
+
+/**
+ * What /update reads: a state word first (ws_command_health_word()), then
+ * what to say, as written. A first word that is no state stays in the
+ * text. Pure.
+ *
+ * @param string $text the line after the command's name
+ * @return array health (a ws_status_healths() key, '' for none), text
+ */
+function ws_command_update_data($text)
+{
+    $text = trim((string) $text);
+    $words = ($text === '') ? array() : preg_split('/\s+/u', $text, 3);
+
+    // "on track", "at risk", "off track" are read as one word.
+    if (count($words) > 1) {
+        $health = ws_command_health_word($words[0] . '-' . $words[1]);
+
+        if ($health !== '') {
+            return array('health' => $health, 'text' => trim((string) ($words[2] ?? '')));
+        }
+    }
+
+    $health = ws_command_health_word($words[0] ?? '');
+
+    if ($health === '') {
+        return array('health' => '', 'text' => $text);
+    }
+
+    $rest = preg_split('/\s+/u', $text, 2);
+
+    return array('health' => $health, 'text' => trim((string) ($rest[1] ?? '')));
+}
+
+/**
+ * A state of the work typed after /update, in Turkish or English, with or
+ * without the Turkish letters. Pure.
+ *
+ * @param string $word
+ * @return string a ws_status_healths() key, '' when it is none
+ */
+function ws_command_health_word($word)
+{
+    $words = array(
+        'yolunda' => 'on_track', 'iyi' => 'on_track', 'on-track' => 'on_track', 'ontrack' => 'on_track', 'on_track' => 'on_track',
+        'riskte' => 'at_risk', 'riskli' => 'at_risk', 'risk' => 'at_risk', 'at-risk' => 'at_risk', 'atrisk' => 'at_risk', 'at_risk' => 'at_risk',
+        'gecikti' => 'off_track', 'gecikmede' => 'off_track', 'off-track' => 'off_track', 'offtrack' => 'off_track', 'off_track' => 'off_track',
+    );
+
+    return $words[ws_command_fold(trim((string) $word, " \t.,;:!"))] ?? '';
+}
+
+/**
+ * The state words the argument popup offers, in the screen's language,
+ * each with the state's label. Pure.
+ *
+ * @param bool $turkish
+ * @return array[] value, meta, top
+ */
+function ws_command_health_values($turkish)
+{
+    $words = $turkish
+        ? array('on_track' => 'yolunda', 'at_risk' => 'riskte', 'off_track' => 'gecikti')
+        : array('on_track' => 'on-track', 'at_risk' => 'at-risk', 'off_track' => 'off-track');
+    $labels = function_exists('ws_status_healths') ? ws_status_healths() : array();
+    $out = array();
+
+    foreach ($words as $key => $word) {
+        $out[] = array('value' => $word, 'meta' => (string) ($labels[$key] ?? ''), 'top' => true);
+    }
+
+    return $out;
+}
+
+/**
+ * /update's live line: the state and the text that will be posted, or the
+ * form opening, with the refusals of ws_status_post_check().
+ *
+ * @return array line, warnings
+ */
+function ws_command_live_update($viewer, $channel, $rest)
+{
+    $out = array('line' => '', 'warnings' => array());
+
+    if (trim((string) $rest) === '') {
+        return $out;
+    }
+
+    $data = ws_command_update_data($rest);
+    $said = ($data['text'] !== '') ? '“' . mb_substr($data['text'], 0, 80) . '”' : '';
+
+    if ($data['health'] === '') {
+        $out['line'] = lang(array('string' => 'Will open Status update: {var:1}', 'vars' => $said));
+        $out['warnings'][] = lang('Choose how the work stands.');
+
+        return $out;
+    }
+
+    $out['line'] = lang(array('string' => 'Will post a status update: {var:1}', 'vars' => implode(' · ', array_filter(array(ws_status_healths()[$data['health']], $said), 'strlen'))));
+    $checked = ws_status_post_check($viewer, $channel, $data['health'], $data['text']);
+
+    if (!$checked['ok']) {
+        $out['warnings'][] = $checked['error'];
+    }
+
+    return $out;
+}
+
+/**
+ * /checkin: the question asked through ws_checkin_start(), as "Ask for a
+ * check-in" asks it. Without a question that form opens with the usual
+ * one written in.
+ *
+ * @return array
+ */
+function ws_command_run_checkin($viewer, $channel, $rest)
+{
+    $question = ws_checkin_question($rest);
+
+    if ($question === '') {
+        return array('type' => 'checkin_form', 'fill' => array('question' => ws_checkin_default_question()));
+    }
+
+    $result = ws_checkin_start($viewer, $channel, $question);
+
+    return $result['ok']
+        ? array('type' => 'done', 'message_id' => (int) $result['message_id'])
+        : array('type' => 'error', 'error' => $result['error']);
+}
+
+/**
+ * /checkin's live line: the question that will be asked, with the
+ * refusals of ws_checkin_start_check().
+ *
+ * @return array line, warnings
+ */
+function ws_command_live_checkin($viewer, $channel, $rest)
+{
+    $out = array('line' => '', 'warnings' => array());
+    $question = ws_checkin_question($rest);
+
+    if ($question === '') {
+        return $out;
+    }
+
+    $out['line'] = lang(array('string' => 'Will ask for a check-in: {var:1}', 'vars' => '“' . mb_substr($question, 0, 80) . '”'));
+    $checked = ws_checkin_start_check($viewer, $channel, $question);
+
+    if (!$checked['ok']) {
+        $out['warnings'][] = $checked['error'];
+    }
+
+    return $out;
 }
 
 /**

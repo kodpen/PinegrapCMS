@@ -15,7 +15,7 @@ description: Start file of the / commands in a Workspace channel's writing box: 
 - The registry, an entry's fields, what a new command adds, shadowed application commands: `workspace-command-registry.md`.
 - The "/" list, the Tab argument popup, unknown names and "//": `workspace-command-picker.md`. Groups, where a command runs, /help and commands typed as a reply: `workspace-command-help.md`.
 - The live line under a command and the /task parser: `workspace-command-live-line.md`.
-- /status: `workspace-command-status.md`. /schedule: `workspace-command-schedule.md`. /timer, /away, /meeting: `workspace-command-plan-items.md`. /remind, /recap: `workspace-command-remind-recap.md`.
+- /status: `workspace-command-status.md`. /schedule: `workspace-command-schedule.md`. /timer, /away, /meeting: `workspace-command-plan-items.md`. /remind, /recap: `workspace-command-remind-recap.md`. /approval, /update, /checkin: `workspace-command-approval-update-checkin.md`.
 - /price, /stock: `workspace-record-commands.md`. /create, /product: `workspace-create-commands.md`. /task's preview card: `workspace-task-command.md`.
 - Over the API: `workspace-command-api.md`. What other team chats do: `workspace-command-other-chats.md`.
 

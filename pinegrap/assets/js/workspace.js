@@ -19109,6 +19109,27 @@
                     return;
                 }
 
+                // /approval without a title or people, /update without a
+                // state, /checkin without a question: the form of the box's
+                // Insert menu, filled with what was typed; the box empties
+                // once it is sent.
+                var commandForms = {
+                    approval_form: [window.PGWsApprovals, 'form'],
+                    status_form: [window.PGWsStatus, 'form'],
+                    checkin_form: [window.PGWsStatus, 'checkinForm']
+                };
+
+                if (result.command && commandForms[result.command.type]) {
+                    var opener = commandForms[result.command.type];
+
+                    if (opener[0] && opener[0][opener[1]]) {
+                        opener[0][opener[1]](self, featureHelpers(), result.command.fill || {}, function () {
+                            self.clearInput();
+                        });
+                    }
+                    return;
+                }
+
                 // /remind without a time: My calendar's New plan drawer,
                 // filled with what was typed; the box empties once it saves.
                 if (result.command && result.command.type === 'plan_form') {
@@ -20124,6 +20145,12 @@
 
             if (source === 'statuses') {
                 show(fixed(values.statuses, 'bi-circle-half'));
+                return;
+            }
+
+            // The states /update reads.
+            if (source === 'healths') {
+                show(fixed(values.healths, 'bi-activity'));
                 return;
             }
 

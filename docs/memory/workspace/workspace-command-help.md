@@ -4,7 +4,7 @@ description: The "/" list in groups and by channel, the command gate (where: cha
 ---
 
 ## Where may a command run?
-- An entry's `where` (command_registry.php): `any`, or `channel` (the channel itself, never one of its discussions: `ws_command_runs_here()` refuses `kind` thread). Only /agent-channel is `channel` today.
+- An entry's `where` (command_registry.php): `any`, or `channel` (the channel itself, never one of its discussions: `ws_command_runs_here()` refuses `kind` thread). /agent-channel, /update and /checkin are `channel`.
 - `ws_command_offered($viewer, $key, $channel)`, `ws_commands($viewer, $shadowed, $channel)` and `ws_command_help($viewer, $channel)` leave such a command out where it does not run; without a channel nothing is left out (the composer's `BOOT.commands`, the API list).
 - `ws_command_run()` refuses it all the same before its runner: "This command runs in the channel itself, not in one of its discussions."
 
