@@ -384,6 +384,7 @@
 - designer-node-attributes.md: The attributes every designer content, semantic and grid node writes on the page and in the editor HTML: one style order, font quoting, title and tooltip, Attributes panel rules, sizing on content
 - designer-node-ids.md: The designer's node ids (sd_N): each saved tree numbers its own, the counter kept above every loaded tree, a filled-in id never repeats one of its tree, issue badges on the issue's own node (#9958)
 - designer-note-author-stamping.md: Node notes get their author stamped in pg_designer_save_page via pg_stamp_note_authors, not in save_system_style; unchanged notes keep their stamp.
+- designer-option-change-panels.md: One Options panel select or switch change draws the Options panel and the node now; Layers rows, status bar, Attributes, HTML tree after the pause; badges of the redrawn element (#10013)
 - designer-options-panel-names.md: How controls of the visual editor's Options/Appearance panel get their accessible names (one naming pass), keyboard section headers, per-screen-size toggles, Styles inspector names
 - designer-options-panel-search.md: Options panel Search... box in the designer (filterPropertiesPanel()): what it matches, sections without rows, the No option matches line, Turkish İ and capitals
 - designer-overview-follows-selection.md: The designer's Overview tree follows the selection from every panel: one place opens and scrolls to the row (_sdTreeRevealSelection), identity lookup, instant scroll, when it must not move.
@@ -434,6 +435,7 @@
 - editor-audit-panel.md: Editor audit panel Accessibility section: rows per registry concept, the rendered draft's a11y findings, canvas checks under them, badges via data-pg-node
 - editor-chrome-contrast.md: Visual editor dark chrome text and icon contrast: --sd-* mixes for tabs, Publish, tree ids, lock icons, left panel small texts (#9099), no opacity
 - editor-turkish-terms.md: The names Page Design Studio, Design Canvas, Designs and their Turkish; English terms the editor's Turkish labels may not keep (legacy, checkbox, alert, Breadcrumb); _sdT() test [decision: decisions-made-panel-6.md]
+- email-design-check-rules.md: The editor's check list (Audit panel) on an e-mail design or a page sent as an e-mail: which web page rules it leaves out (main, landmarks, skip link, SEO score) and why (#10069)
 - email-designs-copies.md: Pages offered as copies of a new e-mail design (MA5d2 #9542): the installed template's e-mail pages and earlier campaigns' pages, which are left out, what a copy keeps
 - email-designs-editor.md: How the visual editor shows an e-mail design (MA5c #9465): the 600 px canvas and Phone view, the mail palette group, what a mail cannot carry hidden, the note on style sheets
 - email-designs-parts.md: The E-mail group's parts in the palette (MA5c, MA5c2 #9520): what each holds, the footer filled when a campaign is stored, the greeting's merge field, the product card written by hand
@@ -577,6 +579,7 @@
 - record-view-filters.md: form_item_view filters (opt-in record visibility, e.g. Status = Published): where they apply, fail-closed cases, the e-mail bypass, viewer_filter lists without feed or sitemap (#1194)
 - region-node-to-widget.md: "Make designable" on a classic menu, menu sequence, ad or tag cloud region node: the widget kind and setting per type, where the widget goes, what stays the same.
 - release-bundle-dialogs.md: The publish and take-back dialogs of a release bundle: what they post, the "changed since" choice, Publish disabled until chosen, focus on Cancel, their words [decision: here]
+- release-bundle-publish-errors.md: A database error, fatal error or timeout while a release bundle publishes: what is taken back, what is left, why
 - release-bundle-publish.md: Publishing and taking back a release bundle: checks before any write, the writes, a failure taken back, partly published, what cannot come back
 - release-bundle-screen.md: The Bundles screen (page_bundles.php): the list, a bundle's pages with "Changed since", its three dialogs, Remove and Delete, what later steps add [decision: here]
 - release-bundle-tables.md: Release bundles' two tables, statuses and moves, the hold on a bundled draft, the copy of a live page and "changed since" (includes/fn/page_bundles.php) [decision: decisions-made-schema-26.md]

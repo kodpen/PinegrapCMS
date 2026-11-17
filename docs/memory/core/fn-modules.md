@@ -199,7 +199,7 @@ description: Generated from the module field of the memory files: each includes/
 - `output`: [[designer-left-panel-hide]], [[list-status-words]], [[look-erp-lists]], [[look-shared-buttons]], [[main-menu-communication-icon]], [[main-menu-drawer-only]], [[panel-old-browser-notice]], [[settings-pane-stale-page]]
 - `page_audience`: [[audience-conditions]]
 - `page_bulk`: [[page-bulk-edit]], [[page-bulk-edit-dialog]]
-- `page_bundles`: [[release-bundle-dialogs]], [[release-bundle-publish]], [[release-bundle-tables]], [[release-bundle-time]]
+- `page_bundles`: [[release-bundle-dialogs]], [[release-bundle-publish]], [[release-bundle-publish-errors]], [[release-bundle-tables]], [[release-bundle-time]]
 - `page_bundles_screen`: [[release-bundle-screen]]
 - `page_clicks`: [[page-clicks]], [[page-clicks-designer-layer]], [[page-clicks-script]], [[page-clicks-switch]]
 - `page_facts`: [[page-conditions]]
