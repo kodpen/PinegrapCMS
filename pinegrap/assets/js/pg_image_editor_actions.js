@@ -33,7 +33,8 @@
     X.icons.invert = 'M12 3.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17zM12 3.5v17M12 8.5l6.6-3.4M12 13l8.3-4.2M12 17.5l7.4-3.8';
 
     // A command: its icon, its label's key, what it does (this is the
-    // editor) and whether it removes something (drawn in the danger colour).
+    // editor), whether it removes something (drawn in the danger colour)
+    // and, where it differs, its label's key on the bar over the object.
     var COMMANDS = {
         options: ['more', 'actOptions', function () {
             this.layersOpen = false;
@@ -41,7 +42,10 @@
             this.render();
         }],
         removePin: ['puppet', 'puppetRemove', function () { this.removeChosenPin(); }, true],
-        split: ['scissors', 'actSplit', function () { this.clipSplitHere(this.selected()[0].id); }],
+        // The phone's bar says Split (its approved label); the bar over the
+        // object uses the clip part's own Split clip, as the panel and the
+        // play bar do.
+        split: ['scissors', 'actSplit', function () { this.clipSplitHere(this.selected()[0].id); }, false, 'clipSplit'],
         duplicate: ['duplicate', 'duplicate', function () { this.addLayers(this.selected(), 10); }],
         remove: ['trash', 'delete', function () { this.removeLayers(); }, true],
         lockPicture: ['lock', 'lock', function () { this.lockPicture(true); }],
@@ -64,6 +68,8 @@
                 this.openMotionPop(b);
             }
         }],
+        // Follow (pg_image_editor_follow.js): arms the box over the video.
+        follow: ['follow', 'followFollow', function () { this.followToggle(); }],
         lock: ['lock', 'lock', function () { this.lockSelected(true); }],
         unlock: ['unlock', 'unlock', function () { this.lockSelected(false); }],
         more: ['more', 'actMore', function (b) {
@@ -99,6 +105,8 @@
             sheet: !!this.panel && !this.sheetOpen,
             // One clip in the Animate tool: Split at the playhead.
             split: (this.tool === 'motion') && (picked.length === 1) && (picked[0].type === 'video') && !!this.clipSplitHere,
+            // A layer Follow may move while a video shows at the playhead.
+            follow: !!this.followOffered && this.followOffered(),
             can: {
                 erase: !!this.areaErase, keep: !!this.areaKeep, copy: !!this.areaCopy, cutToLayer: !!this.areaCut, adjust: !!this.areaAdjust,
                 redact: !!this.newRedaction, pictureLayer: !!this.pictureLayerOn && this.pictureLayerOn()
@@ -127,12 +135,16 @@
             this.stage.appendChild(this.actWrap);
         }
 
+        var object = this.actObject();
+
+        key += object ? '|object' : '';
+
         if (key !== this.actKey) {
             this.actKey = key;
             this.actBar.textContent = '';
 
             list.forEach(function (item) {
-                var c = COMMANDS[item.name], b = button('pgie-act' + (c[3] ? ' pgie-act-danger' : ''), t(c[1]), c[0], function () {
+                var c = COMMANDS[item.name], b = button('pgie-act' + (c[3] ? ' pgie-act-danger' : ''), t((object && c[4]) || c[1]), c[0], function () {
                     c[2].call(self, b);
                 }, true);
 
@@ -142,10 +154,10 @@
             });
         }
 
-        var on = list.length > 0, object = this.actObject();
+        var on = list.length > 0;
 
         this.actWrap.classList.toggle('pgie-actobj', object);
-        this.actWrap.classList.toggle('on', on && !this.drag && !(object && ((this.playsAll && this.playsAll()) || this.recording)));
+        this.actWrap.classList.toggle('on', on && !this.drag && !(object && ((this.playsAll && this.playsAll()) || this.recording || this.follow)));
 
         if (on && object) {
             this.placeObjectBar();

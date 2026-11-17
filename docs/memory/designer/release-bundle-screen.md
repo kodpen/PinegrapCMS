@@ -22,4 +22,8 @@ module: page_bundles_screen
 - The three show only while the bundle is open or scheduled; Delete while open, scheduled or taken back, with a confirm saying the drafts stay in Drafts (B6).
 
 ## What does the screen leave to other steps?
-- Publish and take back (RB3), the preview (RB5), the Publish sheet's held row (RB2b). The screen draws no Publish button.
+- Publish and take back (RB3). The screen draws no Publish button; the Publish sheet's held row (RB2b) is in the editor.
+- "Preview the bundle" in the toolbar opens the bundle's preview in a new tab while it holds a waiting draft (`release-bundle-preview.md`).
+
+## Which name does a bundle's page carry?
+- `pg_page_bundle_items()` names each page through `pg_page_bundle_page_label()`: a page in the Recycle Bin by its own name, not the parked `pgbin_<id>_` one; a page deleted for good as `#<id>`, never `""`. Every message, dialog and log line reads these names (#10048).

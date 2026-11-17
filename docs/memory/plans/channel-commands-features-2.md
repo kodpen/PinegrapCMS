@@ -13,7 +13,9 @@ description: Plan channel-commands, features K15 to K28: /bildirim, /davet, /ayr
 
 ## Records (CC7 to CC9)
 - (K21) /oluştur kişi (/create contact): the create card with first name, last name, company, e-mail and "All fields", written through the catalogue of `includes/workspace/changes.php` (`ws_quick_create_types()` grows by the kind).
-- (K22) /oluştur satır (/create row): a row of a workflow table, the table picked with `#`. The card shows the table's fields; `ws_wtable_row_create()` writes with the table's rights.
+- Architect (2026-11-17, agent channel messages 8138, 8140): a contact is complete with at least one of the four, as the catalogue's create check has it; no field is starred, and only a line with none of them opens "New contact". The argument strip shows the typed kind's own arguments.
+- (K22) /oluştur satır (/create row) `<table>`: a row of a workflow table. The words after the kind are matched against the names of the tables the person may write (the whole name, else a prefix only one has): one match shows that table's fields, none or several put a select of those tables first. `ws_wtable_row_create()` writes with the table's rights.
+- Architect (2026-11-17, message 8138): no `#` tag kind for a table. A tag kind reaches every message box, the stored tokens and the API's tag types: a feature of its own, the owner's to want.
 - (K23) /oluştur cari (/create account): an ERP account through the catalogue. Offered only with the ERP module on and the right.
 - (K24) /oluştur etkinlik (/create event): a site calendar event through the catalogue.
 - (K25) /kargo (/tracking) `#order <number>`: the order's tracking number through the old-and-new card and Save. The card says the customer is not mailed. "Keep it in this channel as a decision" as /price has it.

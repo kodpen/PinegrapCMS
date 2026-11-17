@@ -119,7 +119,7 @@ function test_api_returns_route_declares_modified_since()
 
 	pg_assert_true(is_array($found), 'GET /returns takes modified_since');
 	pg_assert_same('datetime', $found['type'], 'as a moment');
-	pg_assert_same('string?', api_order_return_schema()['modified_at'], 'the OrderReturn declares modified_at');
+	pg_assert_same('datetime?', api_order_return_schema()['modified_at'], 'the OrderReturn declares modified_at');
 }
 
 function test_api_order_return_present_carries_modified_at()

@@ -13,17 +13,17 @@ description: Plan channel-commands, steps CC1 to CC6: the registry with no chang
   - Features: K1 to K3.
 
 - CC2 (M) after CC1: the gate, /help, the list in groups, commands as a reply.
-  - Existing: the registry, `commands.php` (`ws_command_offered()` takes the channel, `ws_command_help()`), `ws_palette_commands()`, `assets/js/workspace.js` (`drawPicker()` header rows; an entry says where it runs and the list filters by the open channel; the server refuses all the same).
-  - Tests: a channel-only entry not offered in a discussion (PHP and, for the list, Node); /help's groups in order; `/help task` and `/yardım görev`; an unknown `/help xyz` answered with the closest names; a header row never picked; K7's three textless replies, and the same three with a text unchanged.
-  - Pictures: /help, `/yardım görev`, the list with headers.
-  - Features: K4 to K7.
+  - CC2a done (#10057): the server side, K4 gate, K5 /help, K7 replies (`workspace/workspace-command-help.md`).
+  - CC2b done (#10166): the "/" list in groups and by channel, K4 on the client, K6 (`workspace/workspace-command-help.md`).
 
 - CC3 (M) after CC2: /hatırlat and /özet.
+  - CC3 done (#10186): K8 /hatırlat, K9 /özet (`workspace/workspace-command-remind-recap.md`).
   - Tests: `/hatırlat yarın 10:00 Teklifi gönder` gives the plan's day, time and title with the form's default reminder; no time opens the form filled; as a reply the note holds the message's link; the live line; /özet not offered where the button is not; both answers `ephemeral`.
   - Pictures: each command's live line and answer. The PR body names the plan's `[NEW]` changelog line.
   - Features: K8, K9.
 
 - CC4 (M) after CC2: /onay, /güncelleme, /checkin.
+  - CC4 done (#10228): K10 /onay, K11 /güncelleme, K12 /checkin (`workspace/workspace-command-approval-update-checkin.md`).
   - Tests: complete, each writes through its button's function with that function's refusals; incomplete, the form opens filled; /güncelleme and /checkin not offered in a discussion; the healths in Turkish and English.
   - Pictures: the three live lines, a form opened filled.
   - Features: K10 to K12.
@@ -35,6 +35,8 @@ description: Plan channel-commands, steps CC1 to CC6: the registry with no chang
   - Features: K13, K14.
 
 - CC6 (M) after CC2: /bildirim, /davet, /ayrıl, /konu, /ara, /bellek. Over the size: CC6a (the first three) and CC6b.
+  - CC6a done (#10250): K15 /bildirim, K16 /davet, K17 /ayrıl (`workspace/workspace-command-notify-invite-leave.md`).
+  - CC6b done (#10277): K18 /konu, K19 /ara, K20 /bellek (`workspace/workspace-command-topic-search-memory.md`).
   - Tests: each right refused as the menu refuses it; /ayrıl writes nothing before the card's confirm; /bildirim's three words in both languages and without a value; /davet with somebody already in; /ara posts nothing.
   - Pictures: /ayrıl's card, /bildirim's and /davet's answers.
   - Features: K15 to K20.

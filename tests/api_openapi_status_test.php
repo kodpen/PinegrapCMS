@@ -11,7 +11,8 @@
  * that may be nobody, and the columns and parts a record may not have -
  * declared so a generated client takes null there, and the DEFAULT NULL
  * columns every create path writes, declared without it. Last, the two
- * security schemes and the three kinds of caller they describe.
+ * security schemes and the three kinds of caller they describe, and the
+ * oauth2 scheme named only while the site's OAuth application exists.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -630,4 +631,54 @@ function test_api_openapi_status_workspace_and_erp_nulls_are_declared()
 	}
 
 	pg_assert_true($pairs > 60, 'presenters read: ' . $pairs);
+}
+
+// With no OAuth application the document names the two schemes of today and
+// nothing else: a client must not be sent to an OAuth server that answers 404.
+function test_api_openapi_status_no_oauth_scheme_without_the_application()
+{
+	pg_assert_same(array('applicationKey', 'deviceToken'), array_keys(api_openapi_security_schemes(null)));
+}
+
+// With the site's OAuth application the document adds an oauth2 scheme: the
+// authorization code flow at the site's own addresses, offering the scopes of
+// the operator's ceiling, each described by its group. The two schemes of
+// today keep their names.
+function test_api_openapi_status_oauth_scheme_names_the_site_server()
+{
+	$schemes = api_openapi_security_schemes(array(
+		'authorizationUrl' => 'https://shop.example/pinegrap/oauth.php/authorize',
+		'tokenUrl'         => 'https://shop.example/pinegrap/oauth.php/token',
+		'refreshUrl'       => 'https://shop.example/pinegrap/oauth.php/token',
+		'scopes'           => array('products:write', 'products:read', 'not:known')
+	));
+
+	pg_assert_same(array('applicationKey', 'deviceToken', 'oauth2'), array_keys($schemes));
+	pg_assert_same('oauth2', $schemes['oauth2']['type']);
+	pg_assert_same(array('authorizationCode'), array_keys($schemes['oauth2']['flows']));
+
+	$flow = $schemes['oauth2']['flows']['authorizationCode'];
+
+	pg_assert_same('https://shop.example/pinegrap/oauth.php/authorize', $flow['authorizationUrl']);
+	pg_assert_same('https://shop.example/pinegrap/oauth.php/token', $flow['tokenUrl']);
+	pg_assert_same('https://shop.example/pinegrap/oauth.php/token', $flow['refreshUrl']);
+	pg_assert_same(array('not:known', 'products:read', 'products:write'), array_keys($flow['scopes']));
+	pg_assert_same('Read Products', $flow['scopes']['products:read']);
+	pg_assert_same('Write Products', $flow['scopes']['products:write']);
+	pg_assert_same('not:known', $flow['scopes']['not:known']);
+	pg_assert_contains('deviceToken', $schemes['oauth2']['description']);
+}
+
+// An application whose ceiling holds nothing still declares the scheme, with
+// an empty scope map: OpenAPI 3.0 requires the map, not entries in it.
+function test_api_openapi_status_oauth_scheme_with_an_empty_ceiling()
+{
+	$schemes = api_openapi_security_schemes(array(
+		'authorizationUrl' => 'https://shop.example/oauth.php/authorize',
+		'tokenUrl'         => 'https://shop.example/oauth.php/token',
+		'refreshUrl'       => 'https://shop.example/oauth.php/token',
+		'scopes'           => array()
+	));
+
+	pg_assert_true(is_object($schemes['oauth2']['flows']['authorizationCode']['scopes']), 'an empty map encodes as {}');
 }

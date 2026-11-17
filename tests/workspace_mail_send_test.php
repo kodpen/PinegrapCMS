@@ -344,3 +344,26 @@ function test_workspace_mail_send_answer_wiring()
 	pg_assert_same('box_off', (ws_mail_send_error_text('box_off') === ws_mail_reply_error_text('no_box')) ? 'box_off' : '', 'the conversation\'s mailbox is off');
 	pg_assert_same(ws_mail_reply_error_text('no_customer'), ws_mail_send_error_text('no_customer'));
 }
+
+// A refused new mail names the field of the New e-mail drawer it is about,
+// so the drawer marks it beside the notice: the address field that holds a
+// bad or refused address, else To; the subject; the text; none otherwise.
+function test_workspace_mail_send_error_field()
+{
+	$mail = workspace_mail_send_test_mail(array('to' => 'ali@example.com', 'cc' => 'Not-An-Address', 'bcc' => 'gone@x.test'));
+
+	pg_assert_same('to', ws_mail_send_error_field('bad_address', 'not-an-address', workspace_mail_send_test_mail(array('to' => 'not-an-address'))), 'a bad address under To');
+	pg_assert_same('cc', ws_mail_send_error_field('bad_address', 'not-an-address', $mail), 'under Cc, whatever its case');
+	pg_assert_same('bcc', ws_mail_send_error_field('blocked', 'gone@x.test', $mail), 'a refused address under Bcc');
+	pg_assert_same('to', ws_mail_send_error_field('bad_address', 'elsewhere@x.test', $mail), 'not found: To');
+	pg_assert_same('to', ws_mail_send_error_field('no_to'), 'no address');
+	pg_assert_same('to', ws_mail_send_error_field('too_many'), 'too many addresses');
+	pg_assert_same('subject', ws_mail_send_error_field('no_subject'));
+	pg_assert_same('text', ws_mail_send_error_field('empty'));
+	pg_assert_same('text', ws_mail_send_error_field('too_long'));
+	pg_assert_same('', ws_mail_send_error_field('hourly'), 'no field at fault');
+	pg_assert_same('', ws_mail_send_error_field('unknown_domain', 'x'), 'the domain warning has its own place');
+
+	// The panel's New e-mail answers with that field.
+	pg_assert_contains("ws_mail_send_error_field(\$result['error'], \$result['detail'], \$mail)", workspace_mail_send_test_source('includes/workspace/actions.php'));
+}

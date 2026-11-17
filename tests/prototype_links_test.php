@@ -365,10 +365,11 @@ function test_prototype_links_frame_opens_only_in_the_session_that_opened_the_li
 	pg_assert_same('invalid', pg_proto_link_frame_state(pg_proto_link_frame_parse($forged), $key, $now, 'session-a'));
 	pg_assert_same('expired', pg_proto_link_frame_state($parsed, $key, $expires + 1, 'session-a'));
 
-	// The viewer binds both kinds of frame address to its session, and the
-	// frame checks a link's against the session cookie it kept.
+	// The viewer binds every kind of frame address (a design's, a release
+	// bundle's, a link's) to its session, and the frame checks a link's
+	// against the session cookie it kept.
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/prototype.php');
-	pg_assert_same(2, substr_count($source, 'pg_proto_frame_bind($pg_proto_signature, session_id(), $pg_proto_key)'));
+	pg_assert_same(3, substr_count($source, 'pg_proto_frame_bind($pg_proto_signature, session_id(), $pg_proto_key)'));
 	pg_assert_contains('pg_proto_link_frame_state($parsed, $pg_proto_key, $pg_proto_now, $pg_proto_client)', $source);
 }
 

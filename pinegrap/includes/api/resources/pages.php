@@ -932,7 +932,7 @@ function api_page_schema() {
 		'draft'            => 'boolean',
 		'recycled'         => 'boolean',
 		'layout_type'      => 'string',
-		'updated_at'       => 'string?',
+		'updated_at'       => 'datetime?',
 		'updated_at_unix'  => 'integer',
 		'seo'              => 'Seo'
 	);

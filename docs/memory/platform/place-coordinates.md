@@ -14,12 +14,13 @@ module: place_map
 - Drawn right under the later of the two coordinate fields on a record's add and edit screens: `pg_place_map_form_tools()` prints at the end of `pg_submitted_form_fields_markup()` and its script moves the box after that field's column.
 - A press posts the address as it stands in the form to `place_coordinates.php` (`action=lookup`) and fills the two fields; the user saves. The lookup writes nothing. A help line names where the address is sent.
 - One answer line at a time, under the button: an address edited while coordinates are there replaces "found" with the warning that they are still those of the address before.
-- Answers: found, not found, address empty, the service asks to wait (HTTP 429), the service did not answer.
+- Answers: found, not found, address empty, the service asks to wait (HTTP 429 or 503), the service did not answer.
 
 ## What does "Find missing coordinates" do?
 - A button beside Create on the record list while one form with place fields is chosen. Each press looks up the next `PG_PLACE_MAP_BULK` (10) records that have an address and lack a coordinate, and writes what is found (`last_modified_*` set, no revision row).
 - The report is the list's notice above the list, never in the toolbar: the endpoint adds it to the `view_submitted_forms` liveform and the page is drawn again (`pg_place_map_bulk_notice()`): found, left, then each address not found on its own line.
 - A record found nothing for is not asked again in that session (`software.place_map_skip`). A "wait" or a failure stops the call; the records not asked count as left.
+- On the public Photon instance the call waits `PG_PLACE_MAP_PUBLIC_PAUSE` (1 second) between two requests (`pg_place_map_bulk_pause()`), so a press of 10 takes about ten seconds; the site's own Photon server is not paused for. Why (#10050): the public server answered back-to-back calls with a bare HTTP 503, which stopped a press after 7; 503 now also counts as "wait".
 
 ## Who may use it, and which service answers?
 - The record screens' rule (`pg_place_map_may()`): Manager and above, or the forms right with edit access to the form's folder. Token checked; a refusal is JSON 403.

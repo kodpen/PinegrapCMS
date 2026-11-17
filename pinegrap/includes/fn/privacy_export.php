@@ -61,6 +61,7 @@ function pg_privacy_export_sections()
         'wishlist'           => lang('Favourites'),
         'stock_notify'       => lang('Back-in-stock requests'),
         'bookings'           => lang('Appointment bookings'),
+        'courses'            => lang('Course progress'),
         'campaigns'          => lang('E-mail campaigns'),
         'consents'           => lang('Consents'),
         'mail'               => lang('E-mail messages'),
@@ -1034,6 +1035,19 @@ function pg_privacy_export_collect(array $found)
             ($booking_where !== '') ? array(1) : array(),
             array(),
             array('manage_token', 'slot_at', 'hold_until')
+        );
+    }
+
+    // Course progress: each lesson done, the first open of a course given by
+    // hand and the completion (kind 1, 2, 3), with the course's name.
+    if (pg_course_ready()) {
+        $sections['courses'] = _pg_privacy_export_select(
+            "SELECT course_progress.user_id, course_progress.course_id, course.name AS course_name, course_progress.lesson_id, course_progress.kind, course_progress.created_at
+            FROM course_progress
+            LEFT JOIN course ON course.id = course_progress.course_id
+            WHERE " . _pg_privacy_export_in('course_progress.user_id', $user_ids) . "
+            ORDER BY course_progress.course_id, course_progress.created_at",
+            $user_ids
         );
     }
 

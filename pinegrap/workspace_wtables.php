@@ -1278,8 +1278,9 @@ if (!$table) {
                     $input = '<input type="text" class="form-control form-control-sm' . $invalid . '" name="' . h($name) . '" id="' . $field_id . '" value="' . h($value) . '"'
                         . (in_array($column['type'], array('number', 'money'), true) ? ' inputmode="decimal"' : '') . '>';
 
-                    if ($column['type'] === 'money') {
-                        $hint = (string) ($options['currency'] ?? '');
+                    // Money: its currency beside the amount, as a suffix.
+                    if (($column['type'] === 'money') && ((string) ($options['currency'] ?? '') !== '')) {
+                        $input = '<div class="input-group input-group-sm">' . $input . '<span class="input-group-text">' . h((string) $options['currency']) . '</span></div>';
                     } elseif ($column['type'] === 'link') {
                         $hint = lang('kind:id, such as contact:12');
                     }

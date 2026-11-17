@@ -1,6 +1,6 @@
 ---
 name: designer-panels
-description: Plan (owner 2026-11-16): the Page Design Studio's Options panel, Overview tree, page strip and canvas bar redrawn from twelve approved drawings; features D1 to D62, steps DP1 to DP25
+description: Plan (owner 2026-11-16): the Page Design Studio's Options panel, Overview tree, page strip and canvas bar redrawn from the approved drawings; features D1 to D62, steps DP1 to DP25
 priority: 6
 ---
 
@@ -8,16 +8,16 @@ priority: 6
 - Owner (2026-11-16, discussion "Görsel Tasarımcı geliştirme", message 7186) on the four Options drawings: "4 çizimine de bayıldım. hepsi süper olur ama detaylı çizimler olmazsa … ajanları çizimdeki görünümü atlar yada yanlış yapar. birde overview de tekrar elden geçmeli uzayan içerikli sayfalarda resmen kayboluyorsun sürükleme ve yer değiştirme çok zorlayıcı oluyor".
 - (7190): "bu sayfa alanı da gelişmeli ben zorlanıyorum açıkçası. özellikle katlanan sayfaları erişmesi zor. … birde alttaki canvas için olan ayarlar ile prototip te karıştı sanki aynı özellik grubu gibi iç içe oldular".
 - (7266): "önerilerin yerinde hepsi kabul son çizimleri de ekle. plana koyarken de çizimleri koymayı unutma." (7297): "attığın son görünümleri de onaylıyorum."
-- So the twelve drawings are the approved design and every PR accounts for its own numbers (`designer-panels-rules.md`).
+- So the drawings are the approved design and every PR accounts for its own numbers (`designer-panels-rules.md`).
 
 ## What is wrong today?
-- Measured on a 145-node home page: the Options panel shows 416 px of 2,300 to 3,900 px; the same eight general sections open on every element; 300 px of the right column always go to the style and script files.
+- Measured on a 145-node home page: the Options panel shows 416 px of 2,300 to 3,900 px; the same eight general sections open on every element; 300 px of the right column go to the style and script files.
 - The Overview: 502 rows all open, 13 visible, 14 levels deep, 102 labels cut, 61 rows named "Link"; a drop band is 6 px.
 - The page strip: 9 of 37 tabs visible, the whole design's bin 5 px from the gear. The canvas bar: 19 controls alike in one row; Prototype opens a second bar with a second zoom.
 
 ## Where are the drawings?
-- `plans/designer-panels/`: `options-1-content.jpg`, `options-2-style-advanced.jpg`, `options-3-search-review.jpg`, `options-4-whole-screen.jpg`; the measure sheets `measures-1-tokens.jpg`, `measures-2-anatomy.jpg`, `measures-3-controls.jpg`, `measures-4-sections-rules.jpg`; `overview-1-long-page.jpg`, `overview-2-drag-move.jpg`; `page-strip.jpg`; `canvas-bar.jpg`; the drawings' stylesheet `boards.css`.
-- The measures as text, so no value is read off a picture: `designer-panels-measures.md`, `-measures-2.md`, `-measures-3.md`. Where picture and text differ, the step asks.
+- `plans/designer-panels/`: the sheets as JPEG and their source `boards.html`. Which sheet shows what, its measures as text and the steps that build from it: `designer-panels-drawings.md`.
+- The measures as text, so no value is read off a picture: `designer-panels-measures.md`, `-measures-2.md` to `-measures-8.md`. Where they differ, the step asks.
 
 ## What is built?
 - The numbered features: `designer-panels-features.md` (Options: column, tabs, sections, rows), `-features-2.md` (Options: spacing box, layout, search, review, copy style), `-features-3.md` (Overview), `-features-4.md` (page strip), `-features-5.md` (canvas bar).

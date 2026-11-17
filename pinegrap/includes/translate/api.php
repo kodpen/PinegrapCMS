@@ -138,7 +138,7 @@ function translate_api_routes()
             'handler'     => 'translate_api_pages_get',
             'returns'     => 'TranslationPage',
             'summary'     => 'How far a page is translated',
-            'description' => 'One page: its name and address, and for every target language the address it is served under there, how many of its texts are translated and reviewed, and whether search engines are let in under that language\'s index policy. The texts themselves are read with GET /translations/strings?page_id=.',
+            'description' => 'One page: its name and address, and for every target language the address it is served under there, how many of its texts are translated and reviewed, and whether search engines are let in under that language\'s index policy. The texts themselves are read with GET /translations/strings?page_id=. A page in the Recycle Bin is 404, as on the Translations screen, though GET /pages lists it with recycled true.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
             ),
@@ -485,7 +485,7 @@ function translate_api_string_schema()
         'status'      => 'string',
         'engine'      => 'string',
         'suspicious'  => 'boolean',
-        'updated_at'  => 'string?',
+        'updated_at'  => 'datetime?',
         'where'       => array('owner' => 'string', 'owner_type' => 'string', 'field' => 'string', 'before' => 'string', 'after' => 'string'),
         'previous'    => array('text' => 'string', 'translation' => 'string'),
     );
@@ -1219,9 +1219,9 @@ function translate_api_job_schema()
         'failed'      => 'integer',
         'waiting'     => 'integer',
         'error'       => 'string',
-        'created_at'  => 'string',
-        'claimed_at'  => 'string?',
-        'finished_at' => 'string?',
+        'created_at'  => 'datetime',
+        'claimed_at'  => 'datetime?',
+        'finished_at' => 'datetime?',
     );
 }
 

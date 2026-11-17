@@ -320,6 +320,13 @@ class PHPExcel_Reader_Excel5 extends PHPExcel_Reader_Abstract implements PHPExce
     private $textObjects;
 
     /**
+     * Identifier of the text object the last OBJ record named
+     *
+     * @var int
+     */
+    public $textObjRef;
+
+    /**
      * Cell Annotations (BIFF8)
      *
      * @var array
@@ -2348,7 +2355,7 @@ class PHPExcel_Reader_Excel5 extends PHPExcel_Reader_Abstract implements PHPExce
             }
 
             // update XF index for when we read next record
-            ++$this->xfIndex;
+            $this->xfIndex = (int) $this->xfIndex + 1;
         }
     }
 
@@ -4491,9 +4498,9 @@ class PHPExcel_Reader_Excel5 extends PHPExcel_Reader_Abstract implements PHPExce
         if ($this->getReadFilter() !== null) {
             $includeCellRange = false;
             $rangeBoundaries = PHPExcel_Cell::getRangeBoundaries($cellRangeAddress);
-            $rangeBoundaries[1][0]++;
+            $rangeBoundaries[1][0] = PHPExcel_Cell::stringFromColumnIndex(PHPExcel_Cell::columnIndexFromString($rangeBoundaries[1][0]));
             for ($row = $rangeBoundaries[0][1]; $row <= $rangeBoundaries[1][1]; $row++) {
-                for ($column = $rangeBoundaries[0][0]; $column != $rangeBoundaries[1][0]; $column++) {
+                for ($column = $rangeBoundaries[0][0]; $column != $rangeBoundaries[1][0]; $column = PHPExcel_Cell::stringFromColumnIndex(PHPExcel_Cell::columnIndexFromString($column))) {
                     if ($this->getReadFilter()->readCell($column, $row, $this->phpSheet->getTitle())) {
                         $includeCellRange = true;
                         break 2;

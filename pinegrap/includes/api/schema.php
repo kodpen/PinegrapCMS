@@ -91,6 +91,7 @@ function api_schema() {
 				array('name' => 'in_stock',      'in' => 'query', 'type' => 'bool',   'description' => 'Limit to products that are or are not out of stock.'),
 				array('name' => 'limit',         'in' => 'query', 'type' => 'int',    'min' => 1, 'max' => 250, 'default' => 50, 'description' => 'Rows per page.'),
 				array('name' => 'cursor',        'in' => 'query', 'type' => 'string', 'max_length' => 200, 'description' => 'next_cursor from the previous page.'),
+				array('name' => 'sort',          'in' => 'query', 'type' => 'enum', 'values' => array('oldest', 'newest'), 'default' => 'oldest', 'description' => 'oldest (the default) walks the last change oldest first; newest walks it newest first. The next page keeps the sort its cursor was made under; a cursor of the other sort is 400 invalid_cursor.'),
 				array('name' => 'include_count', 'in' => 'query', 'type' => 'bool',   'description' => 'Also count every matching row. Costs an extra query, so it is off by default.')
 			)
 		),
@@ -1025,6 +1026,7 @@ function api_schema() {
 				array('name' => 'email',         'in' => 'query', 'type' => 'string', 'max_length' => 190),
 				array('name' => 'limit',         'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
 				array('name' => 'cursor',        'in' => 'query', 'type' => 'string', 'max_length' => 200),
+				array('name' => 'sort',          'in' => 'query', 'type' => 'enum', 'values' => array('oldest', 'newest'), 'default' => 'oldest', 'description' => 'oldest (the default) lists by id, oldest first; newest lists the newest customer first. The next page keeps the sort its cursor was made under; a cursor of the other sort is 400 invalid_cursor.'),
 				array('name' => 'include_count', 'in' => 'query', 'type' => 'bool')
 			)
 		),
@@ -3176,6 +3178,18 @@ function api_schema() {
 		),
 
 		array(
+			'id'      => 'webhooks.events',
+			'method'  => 'GET',
+			'path'    => '/webhooks/events',
+			'scope'   => 'webhooks:manage',
+			'handler' => 'api_webhooks_events',
+			'returns' => array('data' => 'WebhookEvent[]'),
+			'summary' => 'The events and what each carries',
+			'description' => 'Every event that can be subscribed to, with its description, its module (empty for the core, erp or workspace), the fields of its data (name, type, nullable, description) and one sample of its data, for an application\'s own event chooser. An event whose fields are not written yet has an empty list and a null sample. GET /webhooks keeps its list of names.',
+			'params'  => array()
+		),
+
+		array(
 			'id'      => 'webhooks.create',
 			'method'  => 'POST',
 			'path'    => '/webhooks',
@@ -3203,7 +3217,22 @@ function api_schema() {
 			'dry_run' => true,
 			'status'  => 204,
 			'summary' => 'Remove a subscription',
-			'description' => 'POST is accepted as well, because a default IIS install answers DELETE itself before PHP is reached.',
+			'description' => 'A client that cannot send DELETE, or talks to an IIS server, uses POST /webhooks/{id}/delete, the way every other record is deleted. A plain POST to /webhooks/{id} removes the subscription as well, as it has since the first release, and keeps doing so.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'webhooks.delete_post',
+			'method'  => 'POST',
+			'path'    => '/webhooks/{id}/delete',
+			'scope'   => 'webhooks:manage',
+			'handler' => 'api_webhooks_delete',
+			'dry_run' => true,
+			'status'  => 204,
+			'summary' => 'Remove a subscription, addressed as a POST',
+			'description' => 'The same removal as DELETE /webhooks/{id}, for clients and servers that cannot send DELETE.',
 			'params'  => array(
 				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
 			)
@@ -3285,9 +3314,10 @@ function api_schema() {
 			'dry_run' => true,
 			'returns' => array('webhook_id' => 'integer', 'delivery_id' => 'integer', 'event' => 'string', 'queued' => 'boolean'),
 			'summary' => 'Send a test event',
-			'description' => 'Queues one webhook.test event for this subscription only, signed and sent by the scheduled task exactly like a real one, so the receiver can be checked without waiting for an order. delivery_id is the X-Pinegrap-Delivery header it will carry. Refused with 409 webhook_disabled while the subscription is switched off.',
+			'description' => 'Queues one webhook.test event for this subscription only, signed and sent by the scheduled task exactly like a real one, so the receiver can be checked without waiting for an order. With event, that event\'s sample (GET /webhooks/events) is queued instead, under its own name, with the header X-Pinegrap-Test: 1 and test: true in the body; it is never announced, so no other subscriber hears it. delivery_id is the X-Pinegrap-Delivery header it will carry. Refused with 409 webhook_disabled while the subscription is switched off.',
 			'params'  => array(
-				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'event', 'in' => 'body', 'type' => 'string', 'max_length' => 100, 'description' => 'One of the subscription\'s own events whose sample is written; refused with 422 otherwise. Left out: webhook.test.')
 			)
 		),
 
@@ -3565,7 +3595,8 @@ function api_schema() {
 				array('name' => 'order_id',      'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only the subscriptions started by this order.'),
 				array('name' => 'updated_since', 'in' => 'query', 'type' => 'datetime', 'description' => 'Only subscriptions made or changed at or after this moment.'),
 				array('name' => 'limit',         'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
-				array('name' => 'cursor',        'in' => 'query', 'type' => 'string', 'max_length' => 200)
+				array('name' => 'cursor',        'in' => 'query', 'type' => 'string', 'max_length' => 200),
+				array('name' => 'sort',          'in' => 'query', 'type' => 'enum', 'values' => array('oldest', 'newest'), 'default' => 'oldest', 'description' => 'oldest (the default) walks the last change oldest first; newest walks it newest first. The next page keeps the sort its cursor was made under; a cursor of the other sort is 400 invalid_cursor.')
 			)
 		),
 
@@ -4002,7 +4033,8 @@ function api_schema() {
 				array('name' => 'complete',        'in' => 'query', 'type' => 'bool', 'description' => 'false returns the saved-but-not-sent ones instead.'),
 				array('name' => 'reference_code',  'in' => 'query', 'type' => 'string', 'max_length' => 10, 'description' => 'The code the visitor was shown after sending.'),
 				array('name' => 'limit',           'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50, 'description' => '1-250. Rows per page.'),
-				array('name' => 'cursor',          'in' => 'query', 'type' => 'string', 'max_length' => 255, 'description' => 'next_cursor from the previous page.')
+				array('name' => 'cursor',          'in' => 'query', 'type' => 'string', 'max_length' => 255, 'description' => 'next_cursor from the previous page.'),
+				array('name' => 'sort',          'in' => 'query', 'type' => 'enum', 'values' => array('oldest', 'newest'), 'default' => 'oldest', 'description' => 'oldest (the default) lists by id, oldest first; newest lists the newest submission first. The next page keeps the sort its cursor was made under; a cursor of the other sort is 400 invalid_cursor.')
 			)
 		),
 
@@ -6295,6 +6327,8 @@ function api_error_catalogue() {
 		'idempotency_key_reused'   => array(409, 'The same Idempotency-Key was used for a different request.'),
 		'unknown_domain'           => array(409, 'An e-mail address names a domain that does not exist, so the mail would not arrive. Correct the address, or send the same call again with send_anyway true.'),
 		'idempotency_in_progress'  => array(409, 'A request with the same Idempotency-Key is still being carried out. Retry-After says when to send it again; the answer is then the first request\'s.'),
+
+		'precondition_failed'      => array(412, 'The record changed since the ETag sent in If-Match was read; nothing was written. Read it again and repeat the change.'),
 
 		'file_too_large'           => array(413, 'The upload is over the limit reported by /meta.'),
 

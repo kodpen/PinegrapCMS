@@ -369,6 +369,34 @@ function pg_page_revision_seed($page_id)
 }
 
 /**
+ * The revision number this request's last save of a page wrote, for a
+ * caller that saves through pg_designer_save_page() without reading its
+ * answer (the apply of a waiting content change). Called with a number it
+ * keeps it; called without, it returns it once and forgets it (0 for none).
+ *
+ * @param int      $page_id
+ * @param int|null $revision_no to keep; null to take
+ * @return int
+ */
+function pg_page_revision_written($page_id, $revision_no = null)
+{
+    static $written = array();
+
+    $page_id = (int) $page_id;
+
+    if ($revision_no !== null) {
+        $written[$page_id] = (int) $revision_no;
+
+        return (int) $revision_no;
+    }
+
+    $taken = isset($written[$page_id]) ? $written[$page_id] : 0;
+    unset($written[$page_id]);
+
+    return $taken;
+}
+
+/**
  * Writes a revision of a page as it was just published. Returns the revision
  * number, or 0 when nothing was written (table not there, identical to the
  * newest revision, or a failed statement).
@@ -402,6 +430,9 @@ function pg_page_revision_record($page_id, $style_id, $tree_json, $tree_code, $u
          WHERE page_id = '$page_id'
          ORDER BY revision_no DESC
          LIMIT 1");
+
+    // Cleared first: a save that writes no revision leaves no number behind.
+    pg_page_revision_written($page_id, 0);
 
     if (pg_page_revision_identical($latest, $tree_hash, $settings_json)) {
         return 0;
@@ -450,6 +481,7 @@ function pg_page_revision_record($page_id, $style_id, $tree_json, $tree_code, $u
                 : (int) db_value("SELECT MAX(revision_no) FROM page_revisions WHERE page_id = '$page_id'");
 
             pg_page_revisions_trim($page_id);
+            pg_page_revision_written($page_id, $revision_no);
 
             return $revision_no;
         }
@@ -614,6 +646,48 @@ function pg_page_revisions_trim($page_id)
 }
 
 /**
+ * The content editor whose applied change wrote this revision, or ''. Pure.
+ * A change keeps the number of the revision its apply wrote
+ * (`steps.revision_no`) and names that revision only: a save that changes
+ * only the page settings keeps the tree, so the tree's fingerprint alone
+ * would name revisions before and after it too. A change applied before the
+ * number was kept is matched on its tree (`after_hash`) and on being
+ * decided in the revision's second or the one after (`decided_at` is taken
+ * just after the save).
+ *
+ * @param array $revision revision_no, tree_hash, created_at
+ * @param array $changes  applied editor changes: steps (JSON), after_hash, decided_at, user_username
+ * @return string
+ */
+function pg_page_revisions_editor($revision, $changes)
+{
+    $no = (int) ($revision['revision_no'] ?? 0);
+    $created = (int) ($revision['created_at'] ?? 0);
+
+    foreach ((array) $changes as $change) {
+        $steps = json_decode((string) ($change['steps'] ?? ''), true);
+        $written = is_array($steps) ? (int) ($steps['revision_no'] ?? 0) : 0;
+
+        if (is_array($steps) && array_key_exists('revision_no', $steps)) {
+            if ($written > 0 && $written === $no) {
+                return (string) ($change['user_username'] ?? '');
+            }
+
+            continue;
+        }
+
+        $decided = (int) ($change['decided_at'] ?? 0);
+
+        if ($decided > 0 && $created > 0 && ((string) ($change['after_hash'] ?? '') === (string) ($revision['tree_hash'] ?? ''))
+            && $decided >= $created && $decided <= $created + 1) {
+            return (string) ($change['user_username'] ?? '');
+        }
+    }
+
+    return '';
+}
+
+/**
  * The revisions of a page, newest first, without their trees: for the
  * History panel and the API. `$before_no` pages backwards.
  *
@@ -649,24 +723,21 @@ function pg_page_revisions_list($page_id, $limit = 50, $before_no = 0)
 
     // A content editor's change a designer applied (includes/fn/content_proposals.php):
     // the revision is the designer's, and History names the editor beside them.
+    // Only the revision that apply wrote is named (pg_page_revisions_editor()).
     require_once(PG_FUNCTIONS_DIR . '/includes/fn/content_proposals.php');
     $editors = pg_content_proposals_ready() ? (array) db_items(
-        "SELECT p.after_hash, user.user_username
+        "SELECT p.after_hash, p.steps, p.decided_at, user.user_username
          FROM design_proposals AS p
          LEFT JOIN user ON user.user_id = p.requested_by
          WHERE p.page_id = '$page_id' AND p.agent = 'editor' AND p.applied_to = 'page' AND p.after_hash <> ''") : array();
-    $editor_of = array();
-
-    foreach ($editors as $editor) {
-        $editor_of[(string) $editor['after_hash']] = (string) $editor['user_username'];
-    }
 
     foreach ((array) $rows as $row) {
         $settings = json_decode((string) $row['settings_json'], true);
         $by = (string) ($row['user_username'] ?? '');
+        $editor = pg_page_revisions_editor($row, $editors);
 
-        if (isset($editor_of[(string) $row['tree_hash']])) {
-            $by = pg_content_proposals_revision_by($by, $editor_of[(string) $row['tree_hash']]);
+        if ($editor !== '') {
+            $by = pg_content_proposals_revision_by($by, $editor);
         }
 
         $out[] = array(

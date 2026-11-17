@@ -88,7 +88,8 @@ function test_site_push_watch_take_sends_each_moment_once()
 function test_site_push_watch_wiring()
 {
 	pg_assert_contains('pg_site_push_watch_forget(', pg_test_function_source('pg_site_push_subscription_remove'), 'Stop forgets the waits');
-	pg_assert_contains('pg_site_push_watch_forget(', pg_test_function_source('pg_site_push_queue_run'), 'a gone endpoint forgets the waits');
+	pg_assert_contains('pg_site_push_subscription_drop(', pg_test_function_source('pg_site_push_queue_run'), 'a gone endpoint is dropped');
+	pg_assert_contains('pg_site_push_watch_forget(', pg_test_function_source('pg_site_push_subscription_drop'), 'a dropped subscription forgets the waits');
 	pg_assert_contains('pg_site_push_watch_tidy(', pg_test_function_source('pg_site_push_queue_tidy'));
 	pg_assert_contains('INNER JOIN site_push_subscription', pg_test_function_source('pg_site_push_watchers'), 'a wait without its browser reaches nobody');
 	pg_assert_contains("pg_site_push_order_moment((int) \$recipient['order_id'], \$ship_to_id, 'delivered')", pg_test_function_source('pg_shipment_delivered'));

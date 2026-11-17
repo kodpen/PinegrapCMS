@@ -313,7 +313,7 @@ function test_content_proposals_history_names_both()
 	pg_assert_contains('ayse', pg_content_proposals_revision_by('ayse', 'mehmet'));
 
 	$revisions = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/page_revisions.php');
-	pg_assert_contains("\$by = pg_content_proposals_revision_by(\$by, \$editor_of[(string) \$row['tree_hash']]);", $revisions);
+	pg_assert_contains("\$by = pg_content_proposals_revision_by(\$by, \$editor);", $revisions);
 }
 
 // A9: a change whose node is gone, or whose node a designer changed since,

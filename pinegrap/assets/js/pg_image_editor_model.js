@@ -2601,7 +2601,83 @@
         return d;
     }
 
+    // A canvas in another language: the smallest share of the source's text
+    // size a translation is drawn at.
+    var LANGUAGE_FLOOR = 0.7;
+
+    // How much a translated text (w1 x h1 at the source's size) shrinks to
+    // fit the source's box (w0 x h0): never grown, never under the floor;
+    // mark when it still does not fit there.
+    function languageFit(w0, h0, w1, h1) {
+        var scale = 1;
+
+        if ((w0 > 0) && (w1 > w0)) {
+            scale = Math.min(scale, w0 / w1);
+        }
+
+        if ((h0 > 0) && (h1 > h0)) {
+            scale = Math.min(scale, h0 / h1);
+        }
+
+        if (scale < LANGUAGE_FLOOR - 1e-9) {
+            return { scale: LANGUAGE_FLOOR, mark: true };
+        }
+
+        return { scale: Math.round(scale * 10000) / 10000, mark: false };
+    }
+
+    // A canvas document with a language's words in its layers (texts:
+    // [{ id, field, text }], text null where none is translated, which
+    // keeps the source's words). Answers the new document and, by layer id,
+    // a copy of each text layer as it was, to fit the new words to; null
+    // without a document.
+    function languageDoc(doc, texts) {
+        if (!doc || !Array.isArray(doc.layers)) {
+            return null;
+        }
+
+        var next = clone(doc), byId = {}, source = {};
+
+        (texts || []).forEach(function (t) {
+            if (t && (typeof t.text === 'string') && (t.text !== '')) {
+                byId[t.id + '\n' + t.field] = t.text;
+            }
+        });
+
+        next.layers.forEach(function (l) {
+            var field = (l.type === 'text') ? 'text' : ((l.type === 'sticker') ? 'label' : ''), key = l.id + '\n' + field;
+
+            if (!field || !byId.hasOwnProperty(key) || (byId[key] === l[field])) {
+                return;
+            }
+
+            if (field === 'text') {
+                source[l.id] = clone(l);
+            }
+
+            l[field] = byId[key];
+        });
+
+        return { doc: next, source: source };
+    }
+
+    // Whether a language may be drawn: every text translated into it, not
+    // right to left (a visitor sees the source picture there).
+    function languageDrawable(lang) {
+        return !!lang && !lang.rtl && (Number(lang.total) > 0) && (Number(lang.translated) >= Number(lang.total));
+    }
+
+    // The languages Draw all draws: translated or out of date, and drawable.
+    function languagesToDraw(list) {
+        return (list || []).filter(function (lang) {
+            return ((lang.state === 'translated') || (lang.state === 'out_of_date')) && languageDrawable(lang);
+        }).map(function (lang) {
+            return lang.code;
+        });
+    }
+
     var ARTBOARD = {
+        LANGUAGE_FLOOR: LANGUAGE_FLOOR, languageFit: languageFit, languageDoc: languageDoc, languageDrawable: languageDrawable, languagesToDraw: languagesToDraw,
         BOARD_PRESETS: BOARD_PRESETS, BOARD_BACKGROUNDS: BOARD_BACKGROUNDS, boardSide: boardSide, boardPreset: boardPreset,
         boardDrag: boardDrag, boardAnchored: boardAnchored, boardAround: boardAround, applyBoard: applyBoard,
         canvasBox: canvasBox, FRAME_OUT: FRAME_OUT, frameOutward: frameOutward, framePads: framePads, saveBox: saveBox,
@@ -4204,8 +4280,14 @@
         return recordApply(l, samples, end, px);
     }
 
+    // The hint's label key: while the box is set up or while it runs; on a
+    // touch screen without naming Escape (the pill's Cancel is the way out).
+    function followHint(running, touch) {
+        return (running ? 'followHintRun' : 'followHint') + (touch ? 'Touch' : '');
+    }
+
     var FOLLOW = {
-        FOLLOW_MIN: FOLLOW_MIN, FOLLOW_BOX: FOLLOW_BOX, followClip: followClip, followToSource: followToSource, followFromSource: followFromSource,
+        followHint: followHint, FOLLOW_MIN: FOLLOW_MIN, FOLLOW_BOX: FOLLOW_BOX, followClip: followClip, followToSource: followToSource, followFromSource: followFromSource,
         followSize: followSize, followSpan: followSpan, followTimes: followTimes, followSamples: followSamples, followApply: followApply
     };
 
@@ -4335,7 +4417,36 @@
         return { delay: Math.round(end - nt), ms: Math.round(nt - nf), at: Math.round(nt) };
     }
 
-    var TRACKS = { TRACK_STEP: TRACK_STEP, trackBars: trackBars, trackTargets: trackTargets, trackSnap: trackSnap, trackEdit: trackEdit };
+    // Where the selected bar's tip goes, from the bar's start and end and
+    // the length (ms): 'right' of the bar, 'left' of it when the bar ends
+    // past the middle, or 'in' it at its start when neither side has room
+    // (a whole-length loop), so the tip never leaves the lane over the
+    // names. Room is a quarter of the lane, about a tip's width.
+    var TRACK_TIP_ROOM = 0.25;
+
+    function trackTipPlace(from, to, end) {
+        var room = TRACK_TIP_ROOM * end;
+
+        if (!(end > 0) || (to <= end / 2)) {
+            return 'right';
+        }
+
+        if (from >= room) {
+            return 'left';
+        }
+
+        return (end - to >= room) ? 'right' : 'in';
+    }
+
+    // Whether a track row offers the Motion button that opens the bar's
+    // Motion popover: a shown, unlocked layer that may move (a redaction
+    // never moves; a locked one's bar offers only Unlock and More), and
+    // never on a phone, whose rows and selection bar stay as they are.
+    function trackMotionOn(l, phone) {
+        return !!l && !phone && (l.type !== 'redact') && !l.locked && !l.hidden;
+    }
+
+    var TRACKS = { TRACK_STEP: TRACK_STEP, trackBars: trackBars, trackTargets: trackTargets, trackSnap: trackSnap, trackEdit: trackEdit, trackMotionOn: trackMotionOn, trackTipPlace: trackTipPlace };
 
     // -- frames and animation files (pg_image_editor_render.js) --
 
@@ -4980,6 +5091,12 @@
 
             if (s.animate && (s.kind === 'video')) {
                 add('split');
+            }
+
+            // Follow an area of the video showing at the playhead: never a
+            // video itself, never a redaction (it does not move).
+            if (s.animate && s.follow && (s.kind !== 'video') && (s.kind !== 'redact')) {
+                add('follow');
             }
 
             if (s.animate && (s.kind !== 'redact')) {

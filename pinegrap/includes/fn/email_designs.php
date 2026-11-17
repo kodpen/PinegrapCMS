@@ -226,6 +226,37 @@ function pg_email_design_free_page_name($words)
 }
 
 /**
+ * The tree with an editor id (`sd_<n>`) on every node that has none. The
+ * canvas finds an element by its node id, so a node without one resolves
+ * to the first element on the page. Ids already present are kept; new ones
+ * count on past the highest `sd_<n>` the tree holds, so none repeats.
+ *
+ * @param array $tree
+ * @return array
+ */
+function pg_email_design_tree_ids($tree)
+{
+    $n = 0;
+    $walk = function ($node) use (&$walk, &$n) {
+        if (!is_array($node)) {
+            return;
+        }
+        if (isset($node['_id']) && preg_match('/^sd_(\d+)$/', (string) $node['_id'], $m) && (int) $m[1] > $n) {
+            $n = (int) $m[1];
+        }
+        if (!empty($node['children']) && is_array($node['children'])) {
+            foreach ($node['children'] as $child) {
+                $walk($child);
+            }
+        }
+    };
+    $walk($tree);
+    _pg_tpl_assign_ids($tree, 'sd_', $n);
+
+    return $tree;
+}
+
+/**
  * The editor's first tab for a new e-mail design: the starter tree, in the
  * e-mail designs folder, kept out of search, the sitemap and the search
  * engines, never a draft (the folder is private already).
@@ -237,7 +268,7 @@ function pg_email_design_free_page_name($words)
  */
 function pg_email_design_new_page($folder_id, $page_name = '', $tree = null)
 {
-    $page = pg_designer_blank_page(0, is_array($tree) ? $tree : pg_email_design_starter_tree());
+    $page = pg_designer_blank_page(0, pg_email_design_tree_ids(is_array($tree) ? $tree : pg_email_design_starter_tree()));
     // The tab carries the design's own words, not the editor's "New Page".
     $page['page_name']     = (string) $page_name;
     $page['page_folder']   = (int) $folder_id;

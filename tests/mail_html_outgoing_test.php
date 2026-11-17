@@ -36,6 +36,7 @@ function mail_html_outgoing_test_newsletter()
 		. '<h1 style="color: #222">Hello ^^first_name^^</h1>'
 		. '<img src="https://cdn.example.com/p.png" alt="Product" width="280">'
 		. '<img src="http://cdn.example.com/plain.png" alt="Plain">'
+		. '<img src="//cdn.example.com/rel.png" alt="Relative">'
 		. '<img src="cid:abc@x" alt="Inline">'
 		. '<p><a href="https://shop.example.com/sale" style="color: #0a58ca">Shop</a> '
 		. '<a href="^^unsubscribe_url^^">Leave</a> <a href="javascript:alert(1)">x</a> <a href="^^bad name^^">y</a></p>'
@@ -64,6 +65,7 @@ function test_mail_html_outgoing_keeps_media_rules_and_https_pictures()
 	pg_assert_contains('.hero {background-image: url("https://cdn.example.com/hero.jpg")}', $out, 'an https url() in the sheet stays');
 	pg_assert_contains('background: url(&#039;https://cdn.example.com/bg.png&#039;) #fff; padding: 24px', $out, 'an https url() in a style attribute stays');
 	pg_assert_contains('<img src="https://cdn.example.com/p.png" alt="Product" width="280">', $out, 'an https picture keeps its src');
+	pg_assert_contains('<img src="https://cdn.example.com/rel.png" alt="Relative">', $out, 'a protocol-relative picture is sent as https');
 	pg_assert_contains('href="https://shop.example.com/sale"', $out, 'a web link stays');
 	pg_assert_contains('href="^^unsubscribe_url^^"', $out, 'a merge field link stays');
 }

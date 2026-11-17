@@ -216,7 +216,9 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_auto_dialog_daily();       // 11.0.223
 	upgrade_2026_11_0_page_click_daily();        // 11.0.224
 	upgrade_2026_11_0_prototype_comments();      // 11.0.225
+	upgrade_2026_11_0_courses();                 // 11.0.234
 	upgrade_2026_11_0_content_review();          // 11.0.226
+	upgrade_2026_11_0_erp_price_account();       // 11.0.235
 	upgrade_2026_11_0_site_push();               // 11.0.227
 	upgrade_2026_11_0_page_bundle();             // 11.0.228
 	upgrade_2026_11_0_site_push_watch();         // 11.0.229
@@ -7203,6 +7205,66 @@ function upgrade_2026_11_0_content_review() {
 
 }
 
+// Courses (11.0.234, includes/fn/courses.php). course: a private folder a
+// product already opens, its classroom page, "Lessons in order" (in_order)
+// and "Certificate" (certificate); idx_folder finds a folder's courses
+// (one folder may hold several).
+// course_lesson: a page of that folder, its place (sort_order), the days
+// after enrolment it opens (open_days, 0 at once) and an optional quiz form
+// page with the score it needs (quiz_pass_score, 0-100, 0 with no quiz;
+// forms.quiz_score is the score a member got). idx_page keeps a page a
+// lesson of one course only and serves the page's access gate; idx_course
+// lists a course's lessons in order. course_progress: one
+// row per fact, written once by its key with INSERT IGNORE: kind 1 a lesson
+// done, 2 the first open of a course given by hand (lesson_id 0), 3 the
+// completion (lesson_id 0); idx_course serves the course's learners list.
+// No row names an order: the enrolment day is read from the orders. No
+// backfill: no course existed before this step. Columns confirmed by the
+// architect.
+function upgrade_2026_11_0_courses() {
+
+	install_create_table('course', "CREATE TABLE course (
+		id                INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		name              VARCHAR(255) NOT NULL DEFAULT '',
+		folder_id         INT UNSIGNED NOT NULL DEFAULT 0,
+		classroom_page_id INT UNSIGNED NOT NULL DEFAULT 0,
+		in_order          TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		certificate       TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		created_at        INT UNSIGNED NOT NULL DEFAULT 0,
+		created_by        INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at        INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_by        INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_folder (folder_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('course_lesson', "CREATE TABLE course_lesson (
+		id              INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		course_id       INT UNSIGNED NOT NULL DEFAULT 0,
+		page_id         INT UNSIGNED NOT NULL DEFAULT 0,
+		sort_order      SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+		open_days       SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+		quiz_page_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		quiz_pass_score TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY idx_page (page_id),
+		KEY idx_course (course_id, sort_order)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('course_progress', "CREATE TABLE course_progress (
+		user_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		course_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		lesson_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		kind       TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		created_at INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (user_id, course_id, kind, lesson_id),
+		KEY idx_course (course_id, kind)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Courses: the tables for courses, their lessons and each member\'s progress are ready; nothing changes on the site until a course is made.');
+
+}
+
 // Visitor notifications (11.0.227, includes/fn/site_push.php): a site
 // visitor's browser subscribed to the site's news without an account, the
 // messages sent from the panel and one queue row per message and browser.
@@ -7271,6 +7333,31 @@ function upgrade_2026_11_0_site_push() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Visitor notifications: the tables for browsers subscribed to the site\'s news and the messages sent to them are ready; nothing is offered to visitors until the switch is turned on in Features.');
+
+}
+
+// An ERP account that uses another account's prices (11.0.235,
+// includes/erp/price_lists.php): price_account_id names the account whose
+// rows and discount it buys at instead of its own; 0 uses its own, as every
+// account did before. One hop only, checked at the save
+// (erp_account_price_pointer_refusal()). idx_price_account finds the
+// accounts that use an account's prices, for that check and for the
+// refusal to delete an account others point at. No backfill: no account
+// uses another's prices until one is chosen.
+function upgrade_2026_11_0_erp_price_account() {
+
+	if (!install_table_exists('erp_accounts')) {
+
+		install_skipped('erp_accounts does not exist, skipped');
+
+		return;
+
+	}
+
+	install_add_column('erp_accounts', 'price_account_id', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_index('erp_accounts', 'idx_price_account', "INDEX idx_price_account (price_account_id)");
+
+	install_note('ERP: an account can now use another account\'s prices; every account keeps its own until one is chosen.');
 
 }
 

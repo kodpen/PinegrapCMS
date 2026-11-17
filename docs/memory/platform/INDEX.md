@@ -165,6 +165,7 @@
 - panel-picture-change-stamp.md: A panel picture drawn by a file's own address carries its change stamp (?v=, pg_file_stamped_address()), so a picture saved again under its name shows at once (#8913) [decision: decisions-made-product-46.md]
 - performance-monitor-cost.md: Performance monitor cost rules (perf_monitor_shutdown()): hourly perf_stats buckets, slow requests only in perf_log, no percentile, sanity gate, flush-gated sweep, row cap, sampling.
 - place-coordinates.md: Coordinates of a collection's places: fields found by name, "Find from the address" on a record, "Find missing coordinates" on the record list, place_coordinates.php, always Photon [decision: here]
+- place-list.md: The "Map of places" block's list (place-map MP3): places.php and its gate, the records and fields an answer carries, the cut at 500, the designer's note, pg_map.js, the locations-map block [decision: here]
 - proxy-https-trust.md: HTTPS behind a proxy: pg_forwarded_https() parses the headers, pg_https_peer_trusted() says whose word counts (Trusted Proxies, Cloudflare, the constant); who asks which. [decision: decisions-made-product-19.md]
 - record-breadcrumb-list-step.md: The middle step of a post's BreadcrumbList JSON-LD: the list page that links its records to the record page (pg_record_list_page(), #2181), how one is picked, when there is none
 - record-page-schema-type.md: A custom form chooses the schema.org type of its record pages (BlogPosting, Article, NewsArticle, none) and their author; where each is stored, read and set.
@@ -228,7 +229,7 @@
 - vendor-api-update.md: The Kodpen API's release check (GET /releases/latest, PR #3282, PG_VENDOR_API_V1 on): how an answer is read, what it offers, the pin the later steps read, flag and notification, screen texts [decision: decisions-made-product-5.md]
 - visitor-push-order.md: Visitor notifications for an order (kind 3, VP6): the door's order action, who may follow an order, shipped and delivered sent once per address beside the SMS, the text, language and link
 - visitor-push-rules.md: Visitor notifications (11.0.227, #9947): the site_push tables, the switch, endpoints and keys taken, the door site_push.php, the secret, consent log, export and erasure [decision: decisions-made-schema-24.md]
-- visitor-push-sender.md: Visitor notifications' sender (#9957): the message writer, queue batches, the pass in job.php and push_job.php under one lock, held services, retries, a day's limit, the week's tidy-up, the counts
+- visitor-push-sender.md: Visitor notifications' sender (#9957): message writer, queue batches, the pass under one lock, held services, retries, refused subscriptions removed, a day's limit, tidy-up, counts [decision: here]
 - visitor-push-stock.md: Back-in-stock notice to a subscribed browser (VP5, #9975): push_secret on the request, a site_push_watch row (kind 2), the push beside the mail, once, the forget hooks
 - visitor-push-watch.md: Visitor notifications to one device (11.0.229, VP6): the site_push_watch table a browser waits for one record in, its moments sent once, who deletes its rows, the helpers VP5 and VP6 share [decision: here]
 - whatsapp-cloud-api-facts.md: Meta's WhatsApp Cloud API on 2026-11-12: Graph version, ids and permanent token, sending a template, the 24-hour window, template limits, categories, prices, media

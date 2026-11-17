@@ -170,8 +170,10 @@
     }
 
     // The form behind "Status update": the channel's figures, the state
-    // they point at chosen, and a draft to change.
-    function form(view, h) {
+    // they point at chosen, and a draft to change. /update opens it with
+    // fill (health, text: what was typed, in place of the draft) and done,
+    // called once the update is posted.
+    function form(view, h, fill, done) {
         var t = h.t;
         var el = h.el;
         var channel = view.channel;
@@ -182,7 +184,8 @@
             var footer = h.clear(node.querySelector('.drawer-footer'));
             var facts = data.facts;
             var counts = facts.counts;
-            var health = facts.suggest;
+            var health = (fill && HEALTHS.indexOf(fill.health) >= 0) ? fill.health : facts.suggest;
+            var draft = (fill && fill.text) ? fill.text : (data.draft || '');
 
             footer.classList.remove('d-none');
 
@@ -266,20 +269,22 @@
             var area = null;
 
             if (rich) {
-                rich.set(data.draft || '', {});
+                rich.set(draft, {});
                 wrap.appendChild(rich.input);
                 wrap.appendChild(rich.tools(false));
             } else {
                 area = el('textarea', 'form-control form-control-sm');
                 area.rows = 8;
-                area.value = data.draft || '';
+                area.value = draft;
                 wrap.appendChild(area);
             }
 
             var textRow = el('div', 'mb-5');
             textRow.appendChild(el('div', 'form-label', t('st_text')));
             textRow.appendChild(wrap);
-            textRow.appendChild(el('div', 'form-text', t('st_text_help')));
+            // The typed text is the person's own, not the figures' draft:
+            // only the tags are explained then.
+            textRow.appendChild(el('div', 'form-text', t((fill && fill.text) ? 'st_text_help_own' : 'st_text_help')));
             body.appendChild(textRow);
 
             // Pinegrap AI, only where it may read the channel.
@@ -319,6 +324,10 @@
                     send.disabled = false;
                     h.hideOffcanvas(node);
                     view.open(channel.id, 0);
+
+                    if (done) {
+                        done();
+                    }
                 }).catch(function (error) {
                     send.disabled = false;
                     h.fail(error);
@@ -331,7 +340,9 @@
     }
 
     // "Ask for a check-in": the question, with the usual one written in.
-    function checkinForm(view, h) {
+    // /checkin opens it with fill (question) and done, called once it is
+    // asked.
+    function checkinForm(view, h, fill, done) {
         var t = h.t;
         var el = h.el;
         var config = h.cfg.status || {};
@@ -340,7 +351,7 @@
 
         question.type = 'text';
         question.maxLength = config.question_max || 255;
-        question.value = config.question || '';
+        question.value = (fill && fill.question) || config.question || '';
         question.setAttribute('aria-label', t('ci_question'));
         box.appendChild(question);
         box.appendChild(el('div', 'form-text', t('ci_question_help')));
@@ -352,6 +363,10 @@
 
             h.api('ws_checkin_start', { channel_id: view.channel.id, question: question.value }).then(function () {
                 view.sync(true);
+
+                if (done) {
+                    done();
+                }
             }).catch(h.fail);
         });
     }

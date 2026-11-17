@@ -90,6 +90,9 @@
 - counter-sale-keyboard-focus.md: Create Order screen (add_order.js): focus kept on the cart row, quick-amount chip and customer card when a server answer redraws them; Enter in a quantity box keeps the box
 - country-names-display.md: Country names on screen through pg_geo_country_label() and pg_geo_sort_by_label() in the current language; the starter dumps' corrected country rows (#2522) [decision: decisions-made-product-20.md]
 - country-names-in-addresses.md: The order view's address blocks and the address book name the stored country code in the site language; the country tokens keep the code
+- course-gate.md: The course gate in get_page.php: a lesson not open yet sends the member to the classroom page with a one-time notice; the "Courses" switch reader; the first-open row [decision: here]
+- course-screen.md: The Courses screen (view_courses.php, edit_course.php): switch and menu link, who opens it, lessons and their save, problems named (Z17), learners, CSV, Reset progress [decision: here]
+- course-tables.md: Courses' data (2026.11.0, step 11.0.234): the course, course_lesson and course_progress tables, the open-lesson rule, the enrolment day, rows written once, the certificate code [decision: decisions-made-product-34.md]
 - currency-form-rules.md: What the currency create/edit screens refuse and how the currency list sorts
 - currency-names-display.md: Stored currency names shown through pg_currency_label() in the panel language; the currency list's rate with the panel's separators (#4430)
 - customer-value-report-screen.md: Customers Report screen (view_customer_report.php, Reports menu): periods, tiles, months, cohorts, groups, top customers, who sees names, states before data (#10020)
@@ -113,8 +116,10 @@
 - gift-card-balance-edit.md: The gift card screen (edit_gift_card.php) writes the balance only when it was changed there, and only over the balance it opened with; why, and what a stale save sees
 - gift-card-code-in-site-log.md: Site Log lines name a gift card by its last four characters (pg_gift_card_log_code()), never the full spendable code.
 - gift-card-email-variables.md: The product screen's Email Gift Card variable buttons (^^code^^, ^^amount^^ …): where the list lives, how it stays in step with the sender (#4449), what ^^amount^^ prints, the starter dumps' texts
+- gift-card-line-credit-cap.md: Store credit and plain gift cards together pay at most the part of a checkout total that is not gift card lines (pg_gift_card_applied_discount), #10258, #10267 [decision: here]
 - gift-card-line-quantity-limit.md: A gift card line holds at most 100 units; every door that writes a line quantity refuses more with one translated error (#6806, #6820) [decision: decisions-made-product-29.md]
 - gift-card-order-expiry.md: How a gift card bought in an order gets its expiration date (validity days on the calendar from the delivery date or today), and the 1971-01-01 fault it fixed
+- gift-card-part-owed.md: How an order's gift card part is counted (architect 2026-11-17, #10259, #10260): the cards gave SUM(applied_gift_cards.amount); a return gave back order_refunds rows of type return_gift_card [decision: decisions-made-product-32.md]
 - gift-card-recipient-check.md: The order preview refuses an order while a gift card unit has no recipient row with a valid e-mail; why a card used to be issued with no recipient and a 1971 end date
 - gift-card-screens-store-credit.md: Gift card screens: store credit shown with its owner and kind, credit balance edits audited, code search without dashes, amount and quantity box sizes [decision: decisions-made-product-27.md, decisions-made-product-29.md, decisions-made-product-52.md]
 - givex-gift-card.md: How Givex gift card replies are read (pg_givex_parse_response), what an unreadable reply does at apply, at the submit check and at redemption, and how to test Givex without the real service.
@@ -180,10 +185,12 @@
 - order-documents-address.md: How the site's order documents (Order Summary widget, its e-mail, the recipients list, the legal documents) print the district and the country, and the starter's payment and arrival date labels
 - order-export-filter-joins.md: Order exports of view_orders.php select DISTINCT while a product name or shipping filter joins order_items or ship_tos, so no row is written twice (PR #5210)
 - order-form-posted-quantity.md: The order form's drop-down layout refuses quantity 0; a donation falls back to the default quantity
+- order-gift-card-owed.md: The gift card part an order owes back is what the cards gave (applied_gift_cards.amount) less gift card returns, never gift_card_discount; pg_order_gift_card_owed*() and the ERP settlement (#10260)
 - order-legal-documents.md: Legal documents (pre-information form, distance sales contract): settings, templates, order_documents, kept copy for customer and staff, receipt attachments, panel card
 - order-page-stored-figures.md: Order view (My Account) and receipt page/e-mail show a placed order's own orders.discount, tax and total (pg_order_page_figures), never the session cart's order_discount; what an unplaced order shows
 - order-payment-method-normalization.md: submit_order.php payment_method normalization to the four constants, the Pay With Iyzico ENUM addition (4.48) and the old Turkish layout cause.
 - order-preview-later-recipient-shipping.md: The classic Order Preview shows and counts the shipping of a recipient whose lines all start later, as submit_order.php charges it
+- order-preview-receipt-warnings.md: Why the built-in Order Preview and Order Receipt layouts write no PHP warnings on an empty cart, an order without shipping, items that are not shipped or a receipt page without its settings row
 - order-preview-step-links-and-installments.md: Order Preview without earlier checkout step pages in the session (pg_op_step_page_id/url, no Change link) and the Iyzipay installment table shared with Express Order (#4019)
 - order-reference-code-link.md: How the cart, quote and express order pages read the ?r= / ?reference_code= saved-cart link (one string, list = not given), and the order history screens' translated messages.
 - order-refunded-amount-writes.md: How orders.refunded_amount is written: every writer adds to the column (pg_order_refunded_add_expr()), the order screen's refund re-reads the total after the add
@@ -244,6 +251,7 @@
 - print-order-header-facts.md: The printed order (print_order.php) carries the order screen's tax number, on-account, unpaid and cancelled state, order codes, installments and gift cards
 - print-order-id.md: print_order.php reads every order query with the one id it checked ($id from $_REQUEST, whole number), never $_GET['id'] again
 - print-order-shipping-card.md: The printed order (print_order.php) prints one shipping card per real recipient above its items, empty rows hidden, every parcel with its carrier [decision: decisions-made-product-12.md, decisions-made-product-6.md]
+- privacy-erase-store-credit.md: What the personal data erasure does with a person's store credit: void with one retry, user_id cleared only on cards at 0, a card that lost the race keeps its owner (#10261)
 - product-attribute-options-save.md: How the product attribute create/edit screens clean, check and save options, and what removing one resets
 - product-builder-parent-group.md: The Product Builder's parent group list for a new variant group (PR #4309): no empty choice, opens on the top group; what a posted 0 still does
 - product-bulk-duplicate-code.md: The bulk copy (duplicate_products.php): product code and description rules, why the old "[1]" cut wrote duplicate codes, binned products left out, attribute option field, export redirect
@@ -256,9 +264,10 @@
 - product-customs-fields.md: products.hs_code and origin_country (2026.11.0, 11.0.130, #3408): customs data per product, empty is the shop default; product screen, copy, import/export, products API [decision: decisions-made-product-7.md]
 - product-duplicate.md: What a product copy (duplicate_product() and the bulk duplicate_products.php) keeps: later columns via pg_product_copy_extra_sql(), the gallery, a bundle's contents and refresh
 - product-feed-decisions.md: Product feed decisions (plan approved 2026-10-19; PRs #561, #571, #572, #576, #577): search-only eligibility, catalog scope, no UCP manifest, fields not sent, GET /store/feeds
+- product-feed-google-xml.md: The fourth product feed format, google_xml (PR #10133): Google Merchant Center's RSS 2.0 file from the google_tsv rows, one XML escape helper, streamed like the others, content type, card switch
 - product-feed-serving.md: How product feeds are kept, built, served and watched (PR #571): config.product_feeds (11.0.4), tokens, product_feed_job.php, feed.php, WAF exemption, status tile
 - product-feed-streaming.md: How the daily product feed build streams a large catalog to data/feeds/ chunk by chunk (writer open/add/close, CSV/TSV work file), why, and the out-of-memory symptom it fixed (PR #1056)
-- product-feeds.md: Product feed builder (includes/fn/product_feeds.php, PR #561): which products go into the OpenAI JSONL/CSV and Google TSV feeds, field rules, skip reasons, variant families, writers
+- product-feeds.md: Product feed builder (includes/fn/product_feeds.php, PR #561): which products go into the OpenAI JSONL/CSV and Google TSV/XML feeds, field rules, skip reasons, variant families, writers
 - product-group-copy.md: Product group copies (duplicate_product_group.php, pg_catalog_copy_group()): product copy links, Recycle Bin, duplicate notice, default options, variant set form and price rules [decision: decisions-made-product-26.md]
 - product-group-edit-checks.md: Edit Product Group, Duplicate Product Group and Featured and New Items (PR #5551): the Recycle Bin left out of status changes and lists, the parent checked on the server, the duplicate form cleared
 - product-import-prices.md: Product import price cells (price, extra shipping, compare-at): one reader for spreadsheet numbers and typed figures; a row that is not an amount is named (#749, PR #1262)
@@ -271,6 +280,7 @@
 - product-price-history-offers.md: Offer rows of product_price_history (2026.11.0, PR #681): the hourly general-job record of what open offers charge a visitor with no code or account; why recorded, marker, lock, limits
 - product-price-history-retention.md: product_price_history keeps 13 months (396 days, PR #1425): the general job's daily trim pg_price_history_trim_run(), which old rows stay and why, how the pass walks, verification
 - product-price-history.md: product_price_history (2026.11.0, 11.0.2, PR #545): one row per change of the price sold at, pg_price_history_record() / queue after every writer, offer rows, initial rows, API read, limits
+- product-quantity-prices.md: Quantity prices on a product page (wholesale J3): the product.quantity_prices list, which offers make a break, the group condition, the price of a break, what draws nothing
 - product-reference-price-decisions.md: Reference price decisions: rule setting, coverage, compare-at only under manual, offers, POS, window end while a reduction runs (2026-10-27) [decision: decisions-made-widgets.md]
 - product-reference-price-storefront.md: Reference price on the storefront: __reference_price / __reference_label tokens, variant payload, legacy catalog print, one page read by pg_price_reference_page()
 - product-reference-price.md: Reference price ("price before the discount"): pg_price_history_reference(), the window query (PR #1803), the rule setting pg_price_reference_rule() (11.0.49), coverage, labels
@@ -328,7 +338,7 @@
 - store-credit-points-take-back.md: An order's reward points taken back on cancel, full refund and line refund (#6256, decision #6306): recomputed from the lines, balance first, the converted rest off the newest points cards [decision: decisions-made-product-25.md]
 - store-credit-points.md: Reward points to store credit (2026.11.0): two config_text settings, the My Account form, convert_reward_points.php, the guarded UPDATE then pg_credit_issue() kind points, the goal left as it was
 - store-credit-refunds.md: Refunds given as store credit (2026.11.0): the return refund's credit method, the cancelled order's refund dialog, the bonus setting, what is written, the mails [decision: decisions-made-product-32.md]
-- store-credit-rules.md: What binds store credit (owner, 2026-11-02, #5039, #6306): a customer-bound gift card, not a payment method, never pays for a gift card product, the reward goal kept, money in minor units [decision: decisions-made-product-25.md]
+- store-credit-rules.md: What binds store credit (owner, 2026-11-02, #5039, #6306): a customer-bound gift card, not a payment method, never pays for a gift card product, the reward goal kept, money in minor units [decision: decisions-made-product-25.md, decisions-made-product-72.md]
 - store-credit-screens.md: Store credit screens (2026.11.0): the staff card on edit_user.php (issue, void, rights) and the customer's My Account section (built-in templates, designer widget section store_credit)
 - storefront-api-missing-fields.md: Public api.php storefront actions (get_cross_sell_items, get_product, get_installment_options) answer malformed fields in JSON, never a warning or a 500; get_product answers enabled products only
 - storefront-pack-decisions.md: Lasting decisions of the storefront pack (reviews, wishlist, back in stock, bundles; 2026-10-19, finished with #2902) and where each part is documented
