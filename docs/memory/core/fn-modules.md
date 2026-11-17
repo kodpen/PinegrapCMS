@@ -199,7 +199,7 @@ description: Generated from the module field of the memory files: each includes/
 - `page_bulk`: [[page-bulk-edit]], [[page-bulk-edit-dialog]]
 - `page_bundles`: [[release-bundle-dialogs]], [[release-bundle-publish]], [[release-bundle-tables]]
 - `page_bundles_screen`: [[release-bundle-screen]]
-- `page_clicks`: [[page-clicks]], [[page-clicks-script]], [[page-clicks-switch]]
+- `page_clicks`: [[page-clicks]], [[page-clicks-designer-layer]], [[page-clicks-script]], [[page-clicks-switch]]
 - `page_facts`: [[page-conditions]]
 - `page_home`: [[single-home-page]]
 - `page_list`: [[page-list-paging]]

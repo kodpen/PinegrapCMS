@@ -291,6 +291,7 @@
 - workspace-claude-routine.md: "@Claude" in Workspace channels through one site-wide claude.ai routine: how it runs, limits, setup on claude.ai, security rules, what was never tested live
 - workspace-colon-emoji.md: ":" and two letters in a Workspace writing box with the emoji button suggest matching emoji (colonEmojiAt(), colonEmojiList()): where it opens, order, keys, undo, which boxes
 - workspace-command-api.md: / commands over the API: GET /workspace/commands lists the registry (#1991); POST /workspace/commands/run runs one as the composer does (#3823); dry run previews; no MCP tool [decision: decisions-made-product-11.md]
+- workspace-command-help.md: The command gate that knows the channel (where: channel), /help in groups and /help <command>, the palette's group and place, and /task, /decision, /note typed as a reply without a text (CC2a)
 - workspace-command-live-line.md: The live line under a /task and a /status (ws_command_suggest: "Will create: …", warnings), a typed @username assigning, and what the parser reads: next week, datives, 14:00, "1.5 saat" as an estimate [decision: decisions-made-workspace.md]
 - workspace-command-other-chats.md: What other team chats do with / commands (read 2026-11-16 for plan channel-commands): their built-ins, application commands, no-code commands, record lookups, and what goes wrong there
 - workspace-command-picker.md: What ws_commands($viewer) gives the / picker, /help, palette and API; the Tab argument popup after "/name "; an unknown /word refused with the closest names; "//" posts it
