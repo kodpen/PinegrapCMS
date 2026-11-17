@@ -410,6 +410,10 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-75.md: Is the "Bana Haber Ver" block's look accepted? (owner, 2026-11-17, agent channel poll 142, message 9277)
 - decisions-made-product-75.md: Is the meeting link page's look accepted? (owner, 2026-11-17, agent channel poll 144, message 9289)
 - decisions-made-product-75.md: Which change did he want on CH3b? (owner, 2026-11-17, agent channel poll 145, message 9290)
+- decisions-made-product-76.md: Where are the rules and the earlier parts?
+- decisions-made-product-76.md: Where are the connectors of outside services managed? (owner, 2026-11-17, agent channel poll 146, message 9334)
+- decisions-made-product-76.md: Where does the Voice message transcripts card sit? (owner, 2026-11-17, agent channel poll 147, message 9342)
+- decisions-made-product-76.md: Where is e-mail sending set up? (owner, 2026-11-17, agent channel poll 148, message 9367)
 - decisions-made-product-8.md: Does Create Label refuse a Trendyol-carried package the common label does not cover? (#3568)
 - decisions-made-product-8.md: Are the starter dumps corrected for #3330? (#3567)
 - decisions-made-product-8.md: Is marketing SMS built in 2026.11.0? (#3570)
