@@ -5,7 +5,7 @@ module: widgets_account, subscriptions_account, store_credit_account
 ---
 
 ## What did CB6e2 open?
-- Step CB6e of `plans/designer-closed-blocks-steps.md`, after CB6e1 ([[account-order-open-blocks]], the model: rows, builder, `pg_acct_part()` / `_sdAccountPart()`, starter, canvas sample).
+- Step CB6e2 (#10163) of the closed-blocks opening ([[canvas-closed-blocks]]), after CB6e1 ([[account-order-open-blocks]], the model: rows, builder, `pg_acct_part()` / `_sdAccountPart()`, starter, canvas sample).
 - Tree: `subscriptions` on the new list `account.subscriptions`; `store_credit` on `account.store_credit` (key `account_id`) and `account.store_credit_uses` (key `__credit_id`), the balance as the widget value `__store_credit_balance`.
 - Kept the sections' own: a subscription's action forms (pause, resume, cancel asked twice, update card) are the raw row value `__subscription_actions_html` from `pg_subscription_customer_actions_html()`, with the form token; the points conversion form is the new section `store_credit_convert` (`pg_credit_account_convert_html()`, its token field). No form is drawn by the tree.
 

@@ -5,7 +5,7 @@ module: widgets_catalog
 ---
 
 ## What did CB6b open?
-- Step CB6b of `plans/designer-closed-blocks-steps.md`; the census: [[canvas-closed-blocks-widgets]]. The catalog detail page's blocks: [[catalog-detail-open-blocks]].
+- Step CB6b (#9890) of the closed-blocks opening ([[canvas-closed-blocks]]); the census: [[canvas-closed-blocks-widgets]]. The catalog detail page's blocks: [[catalog-detail-open-blocks]].
 - The sections `group_tree`, `filters_offcanvas` and the legacy `attribute_filters`, and the tokens `__group_tree_html`, `__filters_offcanvas`, `__attribute_filters_html`: settings only, drawn true. They depend on the request: the visitor's group, the attributes of the products in scope, the filters picked, the address's parameters.
 - The Filters and Clear Filters buttons were already design elements in the starter, on the actions `open_filters` and `clear_filters` ([[system-widget-bindings]]); `__filters_button` and `__clear_filters_button` stay old tokens with their previews.
 
