@@ -121,3 +121,32 @@ function test_erp_shared_prices_schema_step()
 	pg_assert_contains("install_add_column('erp_accounts', 'price_account_id', \"INT UNSIGNED NOT NULL DEFAULT 0", $schema, 'the column');
 	pg_assert_contains("install_add_index('erp_accounts', 'idx_price_account'", $schema, 'the index for who points at an account');
 }
+
+// The read follows exactly one pointer, also when a row got past the save's
+// check: account 5 points at 9, which (wrongly) points at 12; 5 buys at 9's
+// own prices, never 12's.
+function test_erp_shared_prices_read_follows_one_hop()
+{
+	pg_assert_same(9, erp_account_price_source_id(5, 9), 'the pointer of 5');
+	pg_assert_same(9, erp_account_price_source_id(9, 9), 'a pointer at itself reads as its own prices');
+
+	$lists = _erp_shared_prices_test_file('includes/erp/price_lists.php');
+	$start = strpos($lists, 'function erp_account_price_terms(');
+	$body = substr($lists, $start, strpos($lists, "\n}\n", $start) - $start);
+	pg_assert_same(1, substr_count($body, 'erp_account_price_source('), 'the source is asked once');
+	pg_assert_contains("WHERE account_id = '\" . \$source_id . \"'", $body, 'the source account\'s own rows are read');
+
+	$start = strpos($lists, 'function erp_account_price_source(');
+	$body = substr($lists, $start, strpos($lists, "\n}\n", $start) - $start);
+	pg_assert_same(1, substr_count($body, 'erp_account_price_source('), 'the source never asks itself again (its own name only)');
+}
+
+// A pointer at an account that no longer exists finds no rows and no
+// discount: the list price, not the buyer's own rows.
+function test_erp_shared_prices_pointer_at_missing_account_gives_list_price()
+{
+	$missing = array('entries' => array(), 'discount_rate' => 0.0);
+
+	pg_assert_same(null, erp_account_price_terms_pick($missing, 42), 'no terms');
+	pg_assert_same(array('price' => 10000, 'source' => 'list'), erp_storefront_price(10000, erp_account_price_terms_pick($missing, 42)), 'the list price');
+}

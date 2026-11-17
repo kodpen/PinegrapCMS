@@ -7343,8 +7343,7 @@ function upgrade_2026_11_0_site_push() {
 // (erp_account_price_pointer_refusal()). idx_price_account finds the
 // accounts that use an account's prices, for that check and for the
 // refusal to delete an account others point at. No backfill: no account
-// uses another's prices until one is chosen. Column confirmed by the
-// architect.
+// uses another's prices until one is chosen.
 function upgrade_2026_11_0_erp_price_account() {
 
 	if (!install_table_exists('erp_accounts')) {

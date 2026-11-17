@@ -9,7 +9,7 @@ description: Plan wholesale, steps WS1 to WS7: the offers' group condition, an a
   - Tests, red first: a member, a non-member and a guest; a break for a group; an offer without the condition judged as before.
   - Features: J1, J2, J10.
 
-- WS2 (M) Shared prices, server and data only.
+- WS2 (M) Shared prices, server and data only. Done in #10103.
   - A migration step adds one column to `erp_accounts`; the draft PR's body carries it for the architect.
   - Existing files: where the ERP reads an account's prices (`erp_account_price_terms()` in `includes/erp/price_lists.php`) and its save's check. `includes/fn/ecommerce.php` only if `pg_erp_member_prices()` itself must follow the pointer, and then last in that file's order (`plans/more-features-shared-files.md`).
   - Tests: an account buying at another's prices and discount; a second hop refused at the save; a pointed-at account's delete refused; the recorded rule against a campaign; retail in the feed, the structured data and the kept page copy; an account that uses nobody's prices priced as today.

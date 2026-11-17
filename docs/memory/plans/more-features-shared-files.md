@@ -12,7 +12,7 @@ description: The existing files that steps of more than one of the eight plans o
 ## Which files do several steps touch?
 - `includes/migrations/2026.11.0.php` (and `install/index.php` `get_tables()` for a table): SL1 (a column), RF1 (a value), WS2 (a column), TK1 (a table and a column), TK4 (two columns and an index), CO1 (three tables). Step labels are taken from the open version's call list (`release/version-numbering.md`).
 - `functions.php` (a module's `require_once`): SL1, MP2, CV1, RF1, TK1, CO1.
-- `includes/fn/ecommerce.php` (the cart module): WS1 (where offers are judged), RF1 and TK1 (a call where an order is cancelled and restored), TK4 (places given back). Architect (2026-11-16, agent channel message 6554): the order is WS1, RF1, TK1, TK4; WS2 last, if it still enters the file.
+- `includes/fn/ecommerce.php` (the cart module): WS1 (where offers are judged), RF1 and TK1 (a call where an order is cancelled and restored), TK4 (places given back). Architect (2026-11-17, agent channel message 7603): the order is WS1, WS2, RF1, TK1, TK4; RF1 puts its call in after WS2 has landed.
 - `includes/fn/order_completion.php`: RF1 (at the commission's call), TK1 (beside the gift cards' call and the folder access take-back). Never open side by side.
 - `includes/fn/widgets_account.php` (`_pg_my_account_extras()`): RF3, TK2.
 - `assets/js/style_designer.src.js`: MP3 and CO4 (a row in `_SD_PAGE_SCRIPTS`, CO4 also the palette rows), RF3 and TK2 (the account lists), WS5 (the token list).
