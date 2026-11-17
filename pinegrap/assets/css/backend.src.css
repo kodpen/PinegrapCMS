@@ -17798,6 +17798,9 @@ a.ws-chip-message:hover,
 /* A flow of the "/" list or of /flow's list: the name is what the row is
    for, so "Start this flow" gives way first (it shrinks long before the
    name is cut) and goes on a phone. */
+.ws-picker-flow-row .ws-picker-label {
+  flex-shrink: .001;
+}
 .ws-picker-flow-row .ws-picker-meta {
   flex: 0 1000 auto;
   min-width: 0;

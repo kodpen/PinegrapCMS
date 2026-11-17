@@ -288,9 +288,9 @@ function test_workspace_command_flow_row_name_comes_first()
 	pg_assert_contains("(item.flow ? ' ws-picker-flow-row' : '')", $draw, 'a flow\'s row is marked');
 
 	$css = workspace_command_flow_test_source('assets/css/backend.src.css');
-	$start = strpos($css, '.ws-picker-flow-row .ws-picker-meta {');
+	$start = strpos($css, '.ws-picker-flow-row .ws-picker-label {');
 
 	pg_assert_true($start !== false, 'the hint of a flow\'s row has its own rule');
-	pg_assert_contains('flex: 0 1000 auto;', substr($css, $start, 120), 'the hint gives way first');
+	pg_assert_contains("flex-shrink: .001;\n}\n.ws-picker-flow-row .ws-picker-meta {\n  flex: 0 1000 auto;", substr($css, $start, 160), 'the hint gives way first');
 	pg_assert_contains("@media (max-width: 575.98px) {\n  .ws-picker-flow-row .ws-picker-meta {\n    display: none;", $css, 'and goes on a phone');
 }
