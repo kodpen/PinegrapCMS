@@ -59962,6 +59962,106 @@ const StyleDesigner = (function () {
         });
     }
 
+    // ── What counts as changed: pure helpers ──
+    // No DOM and no editor state here: the Options panel's counts, the
+    // closed section's summary and the section card's markup are decided
+    // by these, and tests/designer_options_changed_test.php runs them
+    // under Node.
+
+    // Whether a control's value differs from its default, compared as the
+    // panel always has (markModifiedProps()). `kind` 'checkbox' passes the
+    // box's state as `raw`; any other control passes its value text, read
+    // as true for 'true' or '1' when the default is a boolean and as a
+    // number when the default is one.
+    function _sdChgDiffers(kind, raw, def) {
+        var cur;
+        if (kind === 'checkbox') cur = !!raw;
+        else if (typeof def === 'boolean') cur = (raw === 'true' || raw === '1' || raw === true);
+        else if (typeof def === 'number') cur = parseFloat(raw);
+        else cur = raw;
+        return String(cur) !== String(def);
+    }
+
+    // A section's head from its rows, each { changed, text, swatch } (the
+    // swatch is a colour dot's class, '' for none): `count` its changed
+    // rows; the summary is the first changed row's colour with its name
+    // ('color'), else its value ('value'), 'none' when that value is
+    // empty, and 'default' when no row is changed.
+    function _sdChgSummary(rows) {
+        var changed = (rows || []).filter(function (r) { return r && r.changed; });
+        var out = { count: changed.length, kind: 'default', text: '', swatch: '' };
+        if (!changed.length) return out;
+        var first = changed[0];
+        var text = String(first.text == null ? '' : first.text).replace(/\s+/g, ' ').trim();
+        if (first.swatch) { out.kind = 'color'; out.swatch = String(first.swatch); out.text = text; }
+        else if (text) { out.kind = 'value'; out.text = text; }
+        else out.kind = 'none';
+        return out;
+    }
+
+    // A tab's count: the counts of its sections added.
+    function _sdChgTotal(sums) {
+        return (sums || []).reduce(function (n, s) { return n + ((s && s.count) || 0); }, 0);
+    }
+
+    // Whether a section opens, from what this browser kept under
+    // sd_cs_<sid>: '1' closed, '0' open. With nothing kept the element's
+    // own section opens and a general one stays closed.
+    function _sdSectOpenRead(stored, own) {
+        if (stored === '1') return false;
+        if (stored === '0') return true;
+        return stored == null ? !!own : false;
+    }
+
+    // The kind of element the panel shows: a selection of another kind
+    // opens the panel at the top, one of the same kind keeps its scroll.
+    function _sdPanelKind(node) {
+        if (!node) return '';
+        var p = node.props || {};
+        return node.type + ':' + (p.contentType || p.componentType || (node.type === 'semantic' ? (p.tag || '') : ''));
+    }
+
+    // The last `n` steps of a path (nearest last).
+    function _sdPathTail(steps, n) {
+        steps = steps || [];
+        return steps.slice(Math.max(0, steps.length - n));
+    }
+
+    // The count badge and the summary of a section's head (`sum` from
+    // _sdChgSummary(), or null while it is not known yet). A count of 0
+    // draws no badge. The summary shows while the section is closed.
+    function _sdSectHeadExtras(sum) {
+        if (!sum) return '<span class="sd-sect-sum"></span>';
+        var badge = sum.count ? '<span class="sd-sect-count">' + sum.count + '</span>' : '';
+        var inner;
+        if (sum.kind === 'color') {
+            inner = '<span class="sd-color-preview ' + esc(sum.swatch) + '" aria-hidden="true"></span>' +
+                '<span class="sd-sect-sum-txt">' + esc(sum.text) + '</span>';
+        } else if (sum.kind === 'value') {
+            inner = '<span class="sd-sect-sum-txt">' + esc(sum.text) + '</span>';
+        } else {
+            inner = '<span class="sd-sect-sum-txt">' + esc(sum.kind === 'none' ? _sdT('none') : _sdT('default')) + '</span>';
+        }
+        return badge + '<span class="sd-sect-sum">' + inner + '</span>';
+    }
+
+    // A section card's markup. o: { sid, cls, hdrCls, head (markup), body
+    // (markup), open, lazy, sum }. A closed card of the single element's
+    // panel (lazy) carries no body: it is built when the card opens.
+    function _sdSectCard(o) {
+        var open = !!o.open;
+        var hold = !open && o.lazy;
+        return '<div class="' + o.cls + ' sd-card" data-sd-card="' + o.sid + '">' +
+            '<div class="' + o.hdrCls + ' sd-sect-hdr' + (open ? ' sd-sect-open' : '') + '" data-sid="' + o.sid + '" role="button" tabindex="0" aria-expanded="' + (open ? 'true' : 'false') + '">' +
+                '<span class="sd-sect-chev bi bi-chevron-right" aria-hidden="true"></span>' +
+                '<span class="sd-sect-title">' + o.head + '</span>' +
+                _sdSectHeadExtras(o.sum || null) +
+            '</div>' +
+            '<div class="sd-sect-body"' + (hold ? ' data-sd-lazy="' + o.sid + '"' : '') + (open ? '' : ' style="display:none"') + '>' + (hold ? '' : o.body) + '</div>' +
+        '</div>';
+    }
+    // ── end of what counts as changed
+
     // ========================= MODIFIED PROPS HIGHLIGHT =========================
     // Static default props map for structural node types (no formal defaultProps in component defs)
     var STRUCTURAL_DEFAULTS = {
