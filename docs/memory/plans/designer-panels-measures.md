@@ -6,9 +6,9 @@ description: Plan designer-panels, the measure sheet as text, part 1: the chrome
 ## Which colours, and for what?
 - Grounds: panel `#171b21`; an open section card `#1f242c`; the active tab and a badge's ground `#262c36`; a field, a button group and the tab holder `#11151a`.
 - Lines: border `#2a313b`; strong border `#343c48`.
-- Text: `#e8ebf0` (14.5:1 on the panel); a row's label `#aab3bf` (7.4:1); secondary text `#8c96a4` (5.8:1); `#5d6673` (3.0:1) only for an icon that says nothing by itself, never for text.
+- Text: `#e8ebf0` (14.5:1 on the panel); a row's label `#aab3bf` (7.4:1 on a section card, 8.2:1 on the panel); secondary text `#8c96a4` (5.8:1); `#5d6673` (2.97:1 on the panel, 2.68:1 on a section card, both under 3:1) only for an icon that says nothing by itself; never for text, and never for an icon that is the only sign of a state or an action: that one takes the secondary text colour `#8c96a4`.
 - Accent `#5b9bff`; the selected segment and the primary button `#2563eb` with white text (5.2:1); a soft accent ground `rgba(91,155,255,.14)` and line `rgba(91,155,255,.45)`.
-- States: screen-size badge `#f5b54a`; positive `#3ecf8e`; error `#ff6b6b`.
+- States: screen-size badge `#f5b54a` on the soft ground `rgba(245,181,74,.14)`; positive `#3ecf8e`; error `#ff6b6b`.
 - These go into the editor's `--sd-*` tokens in `style_designer.css` (DP1): today's values change and new tokens are added; no rule writes a hex of its own, and `tests/designer_chrome_contrast_test.php` checks every pair above.
 
 ## Which type?

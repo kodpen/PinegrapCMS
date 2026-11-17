@@ -34,7 +34,7 @@
     --sd-text: #e8ebf0;            /* 14.5:1 */
     --sd-label: #aab3bf;           /* a row's label, 7.4:1 on a section card */
     --sd-text-muted: #8c96a4;      /* secondary text, 5.8:1 */
-    --sd-icon-quiet: #5d6673;      /* 3.0:1, only an icon that says nothing by itself, never text */
+    --sd-icon-quiet: #5d6673;      /* 2.97:1, only an icon that says nothing by itself; never text, never the only sign of a state or an action */
     /* Accent */
     --sd-accent: #5b9bff;          /* the changed dot, a badge, an icon, a link */
     --sd-accent-rgb: 91,155,255;
@@ -44,6 +44,7 @@
     --sd-accent-line: rgba(91,155,255,.45);
     /* States */
     --sd-warning: #f5b54a;         /* the screen-size badge */
+    --sd-warning-soft: rgba(245,181,74,.14); /* the screen-size badge's ground */
     --sd-success: #3ecf8e;
     --sd-danger: #ff6b6b;
     /* Shadows and rings */

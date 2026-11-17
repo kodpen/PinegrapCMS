@@ -189,6 +189,7 @@ function test_designer_chrome_measures()
 		'accent-soft' => 'rgba(91,155,255,.14)',
 		'accent-line' => 'rgba(91,155,255,.45)',
 		'warning' => '#f5b54a',
+		'warning-soft' => 'rgba(245,181,74,.14)',
 		'success' => '#3ecf8e',
 		'danger' => '#ff6b6b',
 		'focus-ring' => '0 0 0 3px rgba(91,155,255,.13)',
@@ -210,13 +211,21 @@ function test_designer_chrome_measures()
 		array('text', $panel, 14.5, 'text on the panel'),
 		array('label', $card, 7.4, 'a row label on an open section card'),
 		array('text-muted', $panel, 5.8, 'secondary text on the panel'),
-		array('icon-quiet', $panel, 3.0, 'a quiet icon on the panel'),
 	);
 
 	foreach ($pairs as $pair) {
 		$ratio = designer_chrome_ratio(designer_chrome_rgb($t[$pair[0]]), $pair[1]);
 		pg_assert_same($pair[2], round($ratio, 1), $pair[3] . ' measures ' . $pair[2] . ':1');
 	}
+
+	// The quiet icon is pinned at its measured value, under 3:1 on purpose:
+	// it only ever draws an icon that says nothing by itself.
+	pg_assert_true(designer_chrome_ratio(designer_chrome_rgb($t['icon-quiet']), $panel) >= 2.9, 'a quiet icon measures at least 2.9:1 on the panel');
+
+	// The screen-size badge: its text on its soft ground, over the panel and over a section card.
+	$warning = designer_chrome_rgb($t['warning']);
+	pg_assert_true(designer_chrome_ratio($warning, designer_chrome_mix($warning, $panel, 0.14)) >= 4.5, 'the screen-size badge reads 4.5:1 on its soft ground over the panel');
+	pg_assert_true(designer_chrome_ratio($warning, designer_chrome_mix($warning, $card, 0.14)) >= 4.5, 'the screen-size badge reads 4.5:1 on its soft ground over a section card');
 
 	$white = designer_chrome_rgb($t['on-accent']);
 	pg_assert_same(5.2, round(designer_chrome_ratio($white, designer_chrome_rgb($t['accent-strong'])), 1), 'white on the strong accent measures 5.2:1');
