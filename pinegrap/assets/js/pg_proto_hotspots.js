@@ -252,10 +252,40 @@
         return out;
     }
 
-    function nodeLabel(props) {
+    // What a link says: its own text, its aria-label, its alt; else what
+    // its children show (their text and their pictures' alternative text,
+    // in document order, up to 80 characters), as a logo link of an icon
+    // and a name does.
+    function nodeLabel(props, node) {
         var text = plainText(str(props.text));
+        var own = text || str(props.ariaLabel) || str(attrOf(props, 'aria-label')) || str(props.alt);
 
-        return text || str(props.ariaLabel) || str(attrOf(props, 'aria-label')) || str(props.alt);
+        if (own !== '' || !node || !Array.isArray(node.children)) {
+            return own;
+        }
+
+        var parts = [];
+
+        (function walk(list) {
+            list.forEach(function (child) {
+                if (!isObject(child)) {
+                    return;
+                }
+
+                var p = propsOf(child);
+                var said = plainText(str(p.text)) || str(p.alt);
+
+                if (said !== '') {
+                    parts.push(said);
+                }
+
+                if (Array.isArray(child.children)) {
+                    walk(child.children);
+                }
+            });
+        })(node.children);
+
+        return parts.join(' ').replace(/\s+/g, ' ').trim().substring(0, 80);
     }
 
     // The page a link kept by page id opens (_bindParams.href.page_id of a
@@ -329,19 +359,19 @@
                 // The renderer prints '#' for an empty address.
                 var fromAttrs = (str(props.href) === '') && (str(attrOf(props, 'href')) !== '');
 
-                add(fromAttrs ? 'attrs' : 'href', (fromAttrs ? attrOf(props, 'href') : str(props.href)) || '#', nodeLabel(props), 0, toggle, target);
+                add(fromAttrs ? 'attrs' : 'href', (fromAttrs ? attrOf(props, 'href') : str(props.href)) || '#', nodeLabel(props, node), 0, toggle, target);
             } else if (type === 'component' && props.componentType === 'btn') {
                 if ((str(props.btnElement) || 'a') === 'a') {
-                    add('btn', str(props.href) || '#', nodeLabel(props), 0, toggle, target);
+                    add('btn', str(props.href) || '#', nodeLabel(props, node), 0, toggle, target);
                 }
             } else if (type === 'semantic' && str(props.tag).toLowerCase() === 'a') {
                 var own = str(props.href);
                 var written = attrOf(props, 'href');
 
                 if (own !== '') {
-                    add('href', own, nodeLabel(props), 0, toggle, target);
+                    add('href', own, nodeLabel(props, node), 0, toggle, target);
                 } else if (written !== null) {
-                    add('attrs', written, nodeLabel(props), 0, toggle, target);
+                    add('attrs', written, nodeLabel(props, node), 0, toggle, target);
                 }
             }
         }
@@ -1362,6 +1392,39 @@
 
     // ── Drawing an arrow ──
 
+    // Whether a press at `at` ({ x, y }, canvas units) takes the head of an
+    // arrow ending at `end`: within 14 screen pixels of it at zoom `k`.
+    function nearHead(end, at, k) {
+        var zoom = Number(k) > 0 ? Number(k) : 1;
+
+        if (!isObject(end) || !isObject(at)) {
+            return false;
+        }
+
+        var dx = (Number(at.x) - Number(end.x)) * zoom;
+        var dy = (Number(at.y) - Number(end.y)) * zoom;
+
+        return dx * dx + dy * dy <= 14 * 14;
+    }
+
+    // What a key does on a link's mark ({ key, shiftKey, ctrlKey, metaKey,
+    // altKey }): 'pick' for Enter or Space, 'menu' for L, the menu key or
+    // Shift+F10 (the target menu, the keyboard's way to draw), '' else.
+    function markKey(event) {
+        var e = isObject(event) ? event : {};
+        var name = str(e.key).toLowerCase();
+
+        if (e.key === 'Enter' || e.key === ' ') {
+            return 'pick';
+        }
+
+        if ((name === 'l' && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey) || e.key === 'ContextMenu' || (e.key === 'F10' && e.shiftKey)) {
+            return 'menu';
+        }
+
+        return '';
+    }
+
     // The marks of the chips a link may be pointed at: what the href of
     // such a chip means does not depend on the page it is written on.
     var DRAW_CHIPS = { page: true, external: true, contact: true };
@@ -1822,6 +1885,9 @@
         markHref: markHref,
         mark: mark,
         drawable: drawable,
+        nearHead: nearHead,
+        markKey: markKey,
+        nodeLabel: nodeLabel,
         hrefTo: hrefTo,
         setHtmlHref: setHtmlHref,
         hrefPatch: hrefPatch,

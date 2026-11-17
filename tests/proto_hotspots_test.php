@@ -1092,6 +1092,45 @@ function test_proto_hotspots_picture_refill_after_the_view_moves()
 	pg_assert_same(array(), $out['empty'], 'nothing near');
 }
 
+// A link without words of its own is named by what its children show (a
+// logo link: the icon has none, the name's text and a picture's alt do),
+// not by its address; its own text, aria-label or alt still come first.
+function test_proto_hotspots_link_named_by_its_children()
+{
+	$logo = array('_id' => 'l', 'type' => 'semantic', 'props' => array('tag' => 'a', 'href' => '/anasayfa'), 'children' => array(
+		array('_id' => 'i', 'type' => 'content', 'props' => array('contentType' => 'icon', 'icon' => 'bi-heart'), 'children' => array()),
+		array('_id' => 's', 'type' => 'semantic', 'props' => array('tag' => 'span', 'text' => 'Clinic <b>Care</b>'), 'children' => array(
+			array('_id' => 'g', 'type' => 'content', 'props' => array('contentType' => 'image', 'alt' => 'Logo'), 'children' => array()),
+		)),
+	));
+	$own = $logo;
+	$own['props']['ariaLabel'] = 'Home';
+	$bare = array('_id' => 'b', 'type' => 'semantic', 'props' => array('tag' => 'a', 'href' => '/x'), 'children' => array());
+	$out = proto_hotspots_test_node('out = [H.collect(' . proto_hotspots_test_js(array('_id' => 'r', 'type' => 'root', 'props' => array(), 'children' => array($logo, $own, $bare))) . ').hotspots.map(function (h) { return h.label; })];');
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array('Clinic Care Logo', 'Home', ''), $out[0], 'the children\'s words, its own first, nothing for a bare link (the address stands in)');
+}
+
+// Drawing from a mark (F21, F22, F23): a press on an arrow's head re-points
+// it within 14 screen pixels at any zoom; the keys of a mark.
+function test_proto_hotspots_head_and_mark_keys()
+{
+	$out = proto_hotspots_test_node('var e = { x: 100, y: 100 };'
+		. ' out = { near: [H.nearHead(e, { x: 110, y: 100 }, 1), H.nearHead(e, { x: 115, y: 100 }, 1), H.nearHead(e, { x: 120, y: 100 }, 0.5), H.nearHead(e, { x: 110, y: 100 }, 2), H.nearHead(null, e, 1)],'
+		. ' keys: [{ key: "Enter" }, { key: " " }, { key: "l" }, { key: "L" }, { key: "l", ctrlKey: true }, { key: "ContextMenu" }, { key: "F10", shiftKey: true }, { key: "F10" }, { key: "x" }, null].map(H.markKey) };');
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array(true, false, true, false, false), $out['near'], 'within 14 screen pixels of the head, by the zoom');
+	pg_assert_same(array('pick', 'pick', 'menu', 'menu', '', 'menu', 'menu', '', '', ''), $out['keys'], 'Enter and Space pick, L and the menu key open the target menu');
+}
+
 // Which marks a picture shows (F5, F13): the selected frame all of its own;
 // another frame those starting an arrow into it; a shared part's link into
 // the selected page in amber. Nothing selected shows none.
