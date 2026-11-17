@@ -15,7 +15,7 @@ module: messages_sends
 - E-mail Retry while queued or failed (`pg_mail_queue_retry()`: sends at once while no job works the queue); SMS and WhatsApp Retry while queued, failed or outcome unknown and not expired, asked first when unknown (the WhatsApp queue's retry, delete and counts are `pg_messages_sends_whatsapp_*()` in the same module); Delete on every row (a campaign through its own delete). Campaign recipients have no Retry. A campaign row folds open to its recipients (`?recipients=<sid>`, at most 200).
 
 ## How does the list fit its card?
-- At 1440 px with Retry and Delete in view (#10087, PR #PR): Message, To and Result stop at 15, 12 and 12rem on one line (`pg_messages_sends_caps()`, the driver's `--pg-list-table-cell-max` lowered on the cell), Date 10rem; the error no longer wraps. The whole text: the cell's title, the details panel, the phone card. Before: 1551 px in a 1316 px card, an error on five lines.
+- At 1440 px with Retry and Delete in view (#10087, PR #10117): Message, To and Result stop at 15, 12 and 12rem on one line (`pg_messages_sends_caps()`, the driver's `--pg-list-table-cell-max` lowered on the cell), Date 10rem; the error no longer wraps. The whole text: the cell's title, the details panel, the phone card. Before: 1551 px in a 1316 px card, an error on five lines.
 
 ## Where does an e-mail's source come from?
 - A queueing caller puts `source` in the `email()` properties (`order:<id>`, `form:<id>`, `account`, `comment`, `flow:<id>`); `pg_mail_source_kind()` copies its kind into `mail_type`, else `type` as before; filter and search read `mail_type` only. The SMTP connection still follows `type`. Order, form, password reset and comment mails carry it.
