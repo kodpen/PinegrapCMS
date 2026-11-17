@@ -229,8 +229,8 @@ function erp_api_account_schema()
         'invoice_email' => 'string',
         'status' => 'string',
         'notes' => 'string',
-        'created_at' => 'string?',
-        'updated_at' => 'string?',
+        'created_at' => 'datetime?',
+        'updated_at' => 'datetime?',
     );
 }
 
@@ -316,7 +316,7 @@ function erp_api_account_transaction_schema()
     return array(
         'id' => 'integer',
         'account_id' => 'integer',
-        'date' => 'string?',
+        'date' => 'date?',
         'kind' => 'string',
         'direction' => 'string',
         'amount' => 'integer',
@@ -326,7 +326,7 @@ function erp_api_account_transaction_schema()
         'doc_type' => 'string',
         'doc_id' => 'integer',
         'description' => 'string',
-        'created_at' => 'string?',
+        'created_at' => 'datetime?',
     );
 }
 
@@ -950,10 +950,10 @@ function erp_api_invoice_schema()
         'parent_invoice_id' => 'integer',
         'quote_id' => 'integer',
         'purchase_order_id' => 'integer',
-        'late_fee_through' => 'string?',
+        'late_fee_through' => 'date?',
         'supplier_invoice_no' => 'string',
-        'issue_date' => 'string?',
-        'due_date' => 'string?',
+        'issue_date' => 'date?',
+        'due_date' => 'date?',
         'currency' => 'string',
         'exchange_rate' => 'number',
         'totals' => array(
@@ -973,8 +973,8 @@ function erp_api_invoice_schema()
         'is_internet_sale' => 'boolean',
         'payment_method' => 'string',
         'payment_method_code' => 'string',
-        'payment_date' => 'string?',
-        'shipment_date' => 'string?',
+        'payment_date' => 'date?',
+        'shipment_date' => 'date?',
         'carrier' => array(
             'title' => 'string',
             'tax_number' => 'string',
@@ -986,7 +986,7 @@ function erp_api_invoice_schema()
             'external_id' => 'string',
             'gib_number' => 'string',
             'gib_uuid' => 'string',
-            'sent_at' => 'string?',
+            'sent_at' => 'datetime?',
         ),
         'notes' => 'string',
         'lines' => array(array(
@@ -1014,8 +1014,8 @@ function erp_api_invoice_schema()
             'returned_quantity' => 'number',
             'purchase_order_line' => 'string',
         )),
-        'created_at' => 'string?',
-        'updated_at' => 'string?',
+        'created_at' => 'datetime?',
+        'updated_at' => 'datetime?',
     );
 }
 
@@ -1239,7 +1239,7 @@ function erp_api_receipt_schema()
     return array(
         'id' => 'integer',
         'direction' => 'string',
-        'date' => 'string?',
+        'date' => 'date?',
         'amount' => 'integer',
         'currency' => 'string',
         'exchange_rate' => 'number',
@@ -1256,7 +1256,7 @@ function erp_api_receipt_schema()
             'invoice_number' => 'string',
             'amount' => 'integer',
         )),
-        'created_at' => 'string?',
+        'created_at' => 'datetime?',
     );
 }
 
@@ -1646,8 +1646,8 @@ function erp_api_waybill_schema()
         'order_number' => 'string',
         'invoice_id' => 'integer',
         'invoice_number' => 'string',
-        'issue_date' => 'string?',
-        'ship_date' => 'string?',
+        'issue_date' => 'date?',
+        'ship_date' => 'date?',
         'ship_time' => 'string?',
         'carrier' => array(
             'title' => 'string',
@@ -1673,8 +1673,8 @@ function erp_api_waybill_schema()
             'quantity' => 'number',
             'unit' => 'string',
         )),
-        'created_at' => 'string?',
-        'updated_at' => 'string?',
+        'created_at' => 'datetime?',
+        'updated_at' => 'datetime?',
     );
 }
 
@@ -1915,7 +1915,7 @@ function erp_api_expense_schema()
 {
     return array(
         'id' => 'integer',
-        'date' => 'string?',
+        'date' => 'date?',
         'category_id' => 'integer',
         'category_name' => 'string',
         'category_code' => 'string',
@@ -1934,24 +1934,24 @@ function erp_api_expense_schema()
         'total_base' => 'integer',
         'tax_deductible' => 'boolean',
         'status' => 'string',
-        'due_date' => 'string?',
-        'paid_date' => 'string?',
+        'due_date' => 'date?',
+        'paid_date' => 'date?',
         'cash_account_id' => 'integer',
         'cash_account_name' => 'string',
         'payment_method' => 'string',
         'cash_id' => 'integer',
         'cancel_reason' => 'string',
-        'cancelled_at' => 'string?',
+        'cancelled_at' => 'datetime?',
         'recurrence_id' => 'integer',
         'receipt' => array(
             'kept' => 'boolean',
             'content_type' => 'string',
             'size' => 'integer',
-            'kept_at' => 'string?',
+            'kept_at' => 'datetime?',
             'replaced' => 'integer',
         ),
-        'created_at' => 'string?',
-        'updated_at' => 'string?',
+        'created_at' => 'datetime?',
+        'updated_at' => 'datetime?',
     );
 }
 
@@ -2649,7 +2649,7 @@ function erp_api_quote_signature_schema()
 {
     return array(
         'signer_name' => 'string',
-        'signed_at' => 'string',
+        'signed_at' => 'datetime',
         'document_changed' => 'boolean',
         'seal_valid' => 'boolean',
     );
@@ -2709,8 +2709,8 @@ function erp_api_quote_schema()
         'state' => 'string',
         'account_id' => 'integer',
         'account_title' => 'string',
-        'issue_date' => 'string?',
-        'valid_until' => 'string?',
+        'issue_date' => 'date?',
+        'valid_until' => 'date?',
         'currency' => 'string',
         'exchange_rate' => 'number',
         'totals' => array(
@@ -2749,9 +2749,9 @@ function erp_api_quote_schema()
         )),
         // A nested object cannot be nullable inline; a nullable reference can.
         'signature' => 'ErpQuoteSignature?',
-        'decided_at' => 'string?',
-        'created_at' => 'string?',
-        'updated_at' => 'string?',
+        'decided_at' => 'datetime?',
+        'created_at' => 'datetime?',
+        'updated_at' => 'datetime?',
     );
 }
 
@@ -2921,8 +2921,8 @@ function erp_api_cheque_schema()
         'amount' => 'integer',
         'currency' => 'string',
         'amount_base' => 'integer',
-        'date' => 'string?',
-        'due_date' => 'string?',
+        'date' => 'date?',
+        'due_date' => 'date?',
         'serial_no' => 'string',
         'bank_name' => 'string',
         'branch' => 'string',
@@ -2935,10 +2935,10 @@ function erp_api_cheque_schema()
         'endorsed_account_title' => 'string',
         'open_cash_id' => 'integer',
         'close_cash_id' => 'integer',
-        'closed_date' => 'string?',
+        'closed_date' => 'date?',
         'notes' => 'string',
-        'created_at' => 'string?',
-        'updated_at' => 'string?',
+        'created_at' => 'datetime?',
+        'updated_at' => 'datetime?',
     );
 }
 
@@ -3148,7 +3148,7 @@ function erp_api_stock_move_schema()
 {
     return array(
         'id' => 'integer',
-        'date' => 'string?',
+        'date' => 'date?',
         'product_id' => 'integer',
         'sku' => 'string',
         'product_name' => 'string',
@@ -3164,7 +3164,7 @@ function erp_api_stock_move_schema()
         'invoice_direction' => 'string',
         'invoice_doc_type' => 'string',
         'reverses_id' => 'integer',
-        'created_at' => 'string?',
+        'created_at' => 'datetime?',
     );
 }
 
@@ -3293,9 +3293,9 @@ function erp_api_stock_count_schema()
         'status' => 'string',
         'line_count' => 'integer',
         'items' => 'ErpStockCountItem[]?',
-        'created_at' => 'string?',
-        'applied_at' => 'string?',
-        'updated_at' => 'string?',
+        'created_at' => 'datetime?',
+        'applied_at' => 'datetime?',
+        'updated_at' => 'datetime?',
     );
 }
 
@@ -3434,7 +3434,7 @@ function erp_api_aging_report_schema()
 {
     return array(
         'direction' => 'string',
-        'as_of' => 'string',
+        'as_of' => 'date',
         'currency' => 'string',
         'count' => 'integer',
         'total' => 'integer',
@@ -3606,8 +3606,8 @@ function erp_api_vat_report_present($report)
 function erp_api_vat_report_schema()
 {
     return array(
-        'from' => 'string',
-        'to' => 'string',
+        'from' => 'date',
+        'to' => 'date',
         'currency' => 'string',
         'net_withholding' => 'boolean',
         'has_tax2' => 'boolean',

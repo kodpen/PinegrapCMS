@@ -485,7 +485,7 @@ function translate_api_string_schema()
         'status'      => 'string',
         'engine'      => 'string',
         'suspicious'  => 'boolean',
-        'updated_at'  => 'string?',
+        'updated_at'  => 'datetime?',
         'where'       => array('owner' => 'string', 'owner_type' => 'string', 'field' => 'string', 'before' => 'string', 'after' => 'string'),
         'previous'    => array('text' => 'string', 'translation' => 'string'),
     );
@@ -1219,9 +1219,9 @@ function translate_api_job_schema()
         'failed'      => 'integer',
         'waiting'     => 'integer',
         'error'       => 'string',
-        'created_at'  => 'string',
-        'claimed_at'  => 'string?',
-        'finished_at' => 'string?',
+        'created_at'  => 'datetime',
+        'claimed_at'  => 'datetime?',
+        'finished_at' => 'datetime?',
     );
 }
 
