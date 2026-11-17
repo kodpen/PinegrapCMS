@@ -1,6 +1,6 @@
 ---
 name: designer-tab-groups
-description: Page tab order and named coloured groups in the designer (style.style_tab_layout, 2026.4.8): shape, own endpoint apart from Save, twin normalisers, colours, the open group and the strip that fits, new tabs, drag.
+description: Page tab order and named coloured groups in the designer (style.style_tab_layout): shape, own endpoint apart from Save, twin normalisers, colours, the open group, the fitting strip, drag.
 ---
 
 ## Where are tab order and groups kept?
