@@ -97,3 +97,13 @@ function test_workspace_narrow_poll_reads_its_own_width()
 	pg_assert_true(strpos($narrow, '.ws-poll .ws-poll-split') !== false, 'a picture beside the options goes above them');
 	pg_assert_true(strpos(workspace_narrow_rule($css, '.ws-poll-text'), 'overflow-wrap: break-word') !== false, 'a long word in an option wraps');
 }
+
+function test_workspace_narrow_poll_row_picture_above_words()
+{
+	$narrow = workspace_narrow_container(workspace_narrow_css(), 'ws-poll (max-width: 30rem)');
+	$rule = workspace_narrow_rule(preg_replace('/^\s+/m', '', $narrow), '.ws-poll-thumb + .ws-poll-text');
+
+	// A row's thumbnail would leave the words about 90 px in a 320 px
+	// panel: they take a line of their own under it.
+	pg_assert_true(strpos($rule, 'flex-basis: 100%') !== false, 'the words of a row with a picture take the whole width');
+}
