@@ -1433,6 +1433,7 @@
     "A link to the pack was e-mailed to {var:1}.": "Paketin bağlantısı {var:1} adresine e-postayla gönderildi.",
     "A link to the shopping cart with the number of items in it.": "İçindeki ürün sayısıyla birlikte alışveriş sepetine bağlantı.",
     "A link with a generated address has no name to change.": "Adresi otomatik üretilen bağlantının değiştirilecek bir adı yok.",
+    "A link without a target": "Hedefi olmayan bağlantı",
     "A linked card is not put aside; undo the link first.": "Bağlı bir kart kenara ayrılamaz; önce bağı çözün.",
     "A linked repository writes its CI results, pull requests and labels into a channel. The site adds the webhook itself; nothing is set up in the repository.": "Bağlı bir depo CI sonuçlarını, çekme isteklerini ve etiketlerini bir kanala yazar. Webhook'u site kendisi ekler; depoda hiçbir şey kurulmaz.",
     "A linked value or a picture in the cell. Change it in a spreadsheet program.": "Bağlantılı bir değer ya da hücre içi resim. Bir tablo programında değiştirin.",

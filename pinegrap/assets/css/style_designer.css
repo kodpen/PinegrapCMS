@@ -6800,7 +6800,9 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
     padding: 4px 8px; border-bottom: 1px solid var(--sd-panel-border);
 }
 .sd-proto-title { font-weight: 600; font-size: .85rem; }
-.sd-proto-status { flex: 1; min-width: 0; font-size: .75rem; color: var(--sd-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sd-proto-status { flex: 1; min-width: 0; font-size: .75rem; color: var(--sd-text-muted); overflow: hidden; white-space: nowrap; }
+/* The count that does not fit is left out whole, never cut (_sdProtoStatusFit()). */
+.sd-proto-status.sd-proto-status-out { visibility: hidden; }
 .sd-proto-tools { display: flex; align-items: center; gap: 2px; }
 .sd-proto-btn-label { font-size: .75rem; }
 @media (max-width: 767.98px) {
@@ -6892,6 +6894,27 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
 .sd-proto .pgc-edge.pgc-edge-in.sd-proto-from-shared { display: none; }
 .sd-proto-arrowhead-in { fill: var(--pgc-in); }
 .sd-proto-arrowhead-broken { fill: #ff6b6b; }
+/* What to check (F26 to F29), in amber: "N to check" in the bar, its
+   groups in the list, a frame's count of links without a target, the
+   "No link leads here" of a page nothing reaches (readable when dimmed),
+   a link without a target on the picture and in the list. */
+.sd-proto-check {
+    flex: none; padding: 1px 8px; border: 1px solid var(--pgc-in); border-radius: 10px;
+    background: none; color: var(--pgc-in); font-size: .75rem; font-weight: 600; cursor: pointer;
+}
+.sd-proto-check[hidden] { display: none; }
+.sd-proto-check:hover, .sd-proto-check:focus-visible { background: color-mix(in srgb, var(--pgc-in) 16%, transparent); outline: none; }
+.sd-proto-problem.sd-proto-problem-empty .sd-proto-li-to { color: var(--pgc-in); }
+.sd-proto-menu-head.sd-proto-problem-broken { color: #ff6b6b; }
+.sd-proto-menu-head.sd-proto-problem-unreached, .sd-proto-menu-head.sd-proto-problem-empty { color: var(--pgc-in); }
+.sd-proto-badge.sd-proto-badge-empty { background: var(--pgc-in); }
+.sd-proto-unreached {
+    flex: none; padding: 0 6px; border-radius: 9px; white-space: nowrap;
+    background: color-mix(in srgb, var(--pgc-in) 22%, transparent); color: var(--pgc-in); font-size: .65rem; font-weight: 600; line-height: 18px;
+}
+.sd-proto .pgc-dim .sd-proto-unreached { opacity: 1; }
+.sd-proto-hot.sd-proto-mark-empty { border-color: var(--pgc-in); background: color-mix(in srgb, var(--pgc-in) 18%, transparent); }
+.sd-proto-li-empty .sd-proto-li-to, .sd-proto-li-empty .sd-proto-icon, .sd-proto-mark-empty .sd-proto-icon { color: var(--pgc-in); }
 .sd-proto .pgc-node.sd-proto-focused { outline: 2px solid var(--sd-accent); outline-offset: 3px; }
 .sd-proto-focused .sd-proto-name { color: var(--sd-accent); }
 /* A link's mark on the picture (_sdProtoHots(), F5): a rounded rectangle
