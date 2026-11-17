@@ -2876,7 +2876,9 @@ function ws_command_notify_html($notify, $set)
     $words = array();
 
     foreach (ws_command_notify_values(ws_command_turkish()) as $item) {
-        $words[] = '<code>' . h($item['value']) . '</code> ' . h($item['meta']);
+        // A word and its meaning hold together; the line breaks only
+        // between them.
+        $words[] = '<span class="text-nowrap"><code>' . h($item['value']) . '</code> ' . h($item['meta']) . '</span>';
     }
 
     return '<div class="ws-ephemeral-title">' . h(lang('Notifications')) . '</div>'

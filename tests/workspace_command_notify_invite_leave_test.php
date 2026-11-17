@@ -89,7 +89,7 @@ function test_workspace_command_notify_answers_without_and_with_a_word()
 	pg_assert_contains(h(lang(array('string' => 'Now: {var:1}', 'vars' => lang('Only when I am mentioned')))), $now, 'the choice in force');
 
 	foreach (ws_command_notify_values(ws_command_turkish()) as $item) {
-		pg_assert_contains('<code>' . h($item['value']) . '</code>', $now, 'names ' . $item['value']);
+		pg_assert_contains('<span class="text-nowrap"><code>' . h($item['value']) . '</code> ' . h($item['meta']) . '</span>', $now, 'names ' . $item['value'] . ' with its meaning, never broken apart');
 	}
 
 	pg_assert_contains(h(lang(array('string' => 'Now set: {var:1}', 'vars' => lang('Never')))), ws_command_notify_html('none', true), 'just set');

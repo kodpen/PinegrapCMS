@@ -6,7 +6,7 @@ description: /notify (/bildirim), /invite (/davet) and /leave (/ayrıl) in a Wor
 ## What does /notify (/bildirim) do?
 - `/bildirim anma`: the writer's notifications of this channel through `ws_channel_set_notify()`, as the channel menu's three choices set them. The answer, to the writer alone (`ephemeral`), says "Now set: Only when I am mentioned".
 - Words (`ws_command_notify_word()`): hepsi, tümü, all, every → all; anma, anmalar, mentions, mention → mentions; hiç, hiçbiri, never, none → none (folded: hic, HİÇ). The popup offers `ws_command_suggestions()['notify']` (`ws_command_notify_values()`): hepsi, anma, hiç on a Turkish screen, all, mentions, never on any other, each with the menu's label (argument kind and source `notify`).
-- No word: the choice in force and the three words with their labels (`ws_command_notify_html()`), to the writer alone; nothing is written. A word it does not read: "Write one of: …".
+- No word: the choice in force and the three words with their labels (`ws_command_notify_html()`), each pair in a `text-nowrap` span so a narrow screen breaks only between pairs; to the writer alone, nothing is written. A word it does not read: "Write one of: …".
 - Live line: "Will set your notifications here: Never", or that refusal.
 
 ## What does /invite (/davet) do?
