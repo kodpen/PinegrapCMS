@@ -340,6 +340,7 @@
 - designer-canvas-style-designer.md: style_designer.js canvas rules: widget tree root, lockstep cfg, table loop areas, the two wrapper models (IFRAME_CSS, measuring, chrome, column padding, margins), express order frame, cycle guard.
 - designer-canvas-theme-view.md: The editor's Dark/Light canvas view and the theme switchers on the canvas are one state on the canvas <html>, never stored: applyCanvasTheme(), pgThemeNoStore, why not <body>.
 - designer-canvas-toolbar-in-cards.md: The selected element's toolbar in a card (#9217, #9246): the ratio rule skips chrome, room counts inside the clip, it shows in see-through wrappers [decision: here]
+- designer-chrome-tokens.md: The Page Design Studio chrome's --sd-* colour tokens in style_designer.css: which token is for what, the measured ratios, the four areas that read tokens only, and the test that checks them
 - designer-class-dedupe.md: How the designer replaces a class of the same family when one is added (deduplicateCssClass, CLASS_MUTEX_PREFIXES): longest prefix, same breakpoint only, callers, test
 - designer-code-editor-decisions.md: The designer's code editor: owner rules (2026-10-19) and lasting decisions behind it (CodeMirror 6 facade, lazy load, half-locked code, one emitter), and which PRs built which part
 - designer-code-view-bindings.md: Data bindings in the designer's code view: a bound text, href, src or alt prints as {{token}}, typing a token binds, a literal unbinds, {{ offers the widget's tokens; where the rules live
@@ -425,7 +426,8 @@
 - designer-theme-panel-light-selector.md: Which blocks the designer's Themes panel writes light and dark variables into, why colours and fonts/radii use different light selectors, and how old designs are split.
 - designer-theme-panel-value-check.md: What the Themes panel's text boxes write: one CSS value only (no ; { } < > comment, backslash or open bracket or quote), a colour row also a colour by CSS.supports; a refused box stays marked.
 - designer-theme-part.md: The Themes tab of the designer's assets panel as the part 'theme' (D5 part 5): what moved, what the core keeps, the host the part works through
-- designer-tree-move-keeps-selection.md: A move made by dragging rows in the designer's Overview tree keeps the moved elements selected, as a canvas move does; a multi-selection moved together stays one (#10067).
+- designer-toast-phone-width.md: Visual designer toasts (sdToast()) on a phone-width editor span the screen with 12 px at each side so a long message wraps inside it (#10072)
+- designer-tree-move-keeps-selection.md: Dragging rows in the designer's Overview tree: which picked rows move (#10169) and the moved elements stay selected, as on the canvas (#10067).
 - designer-turkish-terms-2.md: More Turkish designer words, continued from designer-turkish-terms: Parola (never Şifre) in the account widgets, their Bind Data labels and the account e-mails; tests/designer_password_word_test.php
 - designer-turkish-terms.md: Turkish terms for designer layer names, palette labels and panel rows; how a shared language key with a misfit Turkish is fixed (in place or a narrower key); tests/designer_turkish_terms_test.php
 - designer-undo-keeps-selection.md: Undo and Redo in the designer keep the selected element (found again by _id in the restored tree) and the Options panel's scroll; dropped only when the step removed it.
@@ -562,6 +564,7 @@
 - product-questions-output.md: Product questions outside the widget: the asker's mail when answered, API kind and answer_of, the Question/Answer JSON-LD on the Product, the templates' questions widget
 - product-questions.md: Product questions on the comments system: kind question/answer and answer_of, the widget Shows choice and its own claim, the answer box, the unanswered filter [decision: decisions-made-product-19.md]
 - prototype-arrangement.md: The Prototype view's layout(): frames, rows, chips, arrows; a grid of tab-group sections in flow order, shared parts left (wrapped at the grid's height), chips right, Start, Fit's corner, Tidy up [decision: here]
+- prototype-drawing.md: The Prototype view's drawing from a mark (PV10, #10101): a mark's drag draws its arrow, an arrow head's drag re-points it, the marks' keys, the pointer lifting an arrow, a link named by its children [decision: here]
 - prototype-focus.md: The Prototype view draws only the selected frame's arrows: the core's focus, opening on the open tab, All arrows, row marks, a shared part's link as an amber note, arrow colours and heads [decision: here]
 - prototype-hotspots.md: The Prototype view's hotspot collector (assets/js/pg_proto_hotspots.js, window.PGProtoHotspots): which nodes are hotspots, shared frames, the map read's request, the marks, the layout
 - prototype-links-in-code.md: Where a design's links sit in the code, page-name hrefs and renames, the resolver, editor state, rights and Publish: what the Prototype view reads
