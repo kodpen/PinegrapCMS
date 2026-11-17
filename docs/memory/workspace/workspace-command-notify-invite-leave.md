@@ -1,6 +1,6 @@
 ---
 name: workspace-command-notify-invite-leave
-description: /notify (/bildirim), /invite (/davet) and /leave (/ayrıl) in a Workspace channel (CC6a, #PRNUM): what each reads, the function it writes through, its gate, live line and answer
+description: /notify (/bildirim), /invite (/davet) and /leave (/ayrıl) in a Workspace channel (CC6a, #10250): what each reads, the function it writes through, its gate, live line and answer
 ---
 
 ## What does /notify (/bildirim) do?
