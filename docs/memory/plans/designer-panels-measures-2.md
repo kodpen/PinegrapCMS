@@ -21,4 +21,4 @@ description: Plan designer-panels, the measure sheet as text, part 2: the Option
 
 ## What does the sheet not show?
 - A colour, icon or picture picker: it stays as today, at height 30 and corner 9.
-- A multiple selection: drawn before the step that needs it (`designer-panels-rules.md`). The panel under 300 px is drawn: `designer-panels-measures-4.md`.
+- The panel under 300 px: `designer-panels-measures-4.md`. Several elements selected: `designer-panels-measures-5.md`.
