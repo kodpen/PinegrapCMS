@@ -3472,6 +3472,7 @@
     "product cant be found.": "ürün bulunamadı.",
     "product detail": "ürün detay",
     "product feed, feed, merchant center, google shopping, openai, chatgpt, shopping agent, jsonl, csv, tsv": "product feed, feed, merchant center, google shopping, openai, chatgpt, shopping agent, jsonl, csv, tsv, ürün akışı, akış, besleme, google alışveriş, alışveriş asistanı, yapay zeka",
+    "product feed, feed, merchant center, google shopping, openai, chatgpt, shopping agent, jsonl, csv, tsv, xml, rss": "product feed, feed, merchant center, google shopping, openai, chatgpt, shopping agent, jsonl, csv, tsv, xml, rss, ürün akışı, akış, besleme, google alışveriş, alışveriş asistanı, yapay zeka, xml akışı",
     "product form": "ürün formu",
     "product group": "ürün grubu",
     "product group ({var:1}) and all appropriate items in it were disabled": "ürün grubu ({var:1}) ve içindeki uygun tüm ürünler devre dışı bırakıldı",
