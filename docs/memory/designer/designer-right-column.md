@@ -4,7 +4,7 @@ description: The designer's right column (Options and Design tabs, 336 px defaul
 ---
 
 ## What does the right column hold?
-- Two tabs, its header: Options (the selected element's panel, `#sd-rcol-options` with the search and `#sd-properties`) and Design (`#sd-rcol-design`: the style sheets, scripts, fonts and the Themes tab, `initAssetsPanel()`). Each takes the whole height under the tabs; the dock toggle sits at the strip's end.
+- Two tabs, its header: Options (the selected element's panel, `#sd-rcol-options` with the search and `#sd-properties`) and Design (`#sd-rcol-design`, `initAssetsPanel()`: its inner tabs Files, the style sheets, scripts and fonts, and Themes). Each takes the whole height under the tabs; the dock toggle sits at the strip's end.
 - Built by `initRightPanel()`; `_sdRcolShow('options'|'design')` switches, Left and Right move between the tabs. Paths that reveal an option (`focusClassControl()`, `_sdOpenWidgetSection()`) switch to Options first.
 - Why: the Options panel showed 416 px of a 1440 x 900 window with the Design block fixed at 300 px under it. Owner (2026-11-16): `plans/designer-panels/options-4-whole-screen.jpg`, D1.
 - A content-level user gets no Design tab (it holds only the design's files) and no rail button for it (`_sdApplyContentChrome()`).
@@ -18,3 +18,6 @@ description: The designer's right column (Options and Design tabs, 336 px defaul
 - Closed, it is one 28 px strip (chevron, "HTML · Attributes · Styles"); nothing inside is drawn, and a click anywhere on it opens it. D2.
 - Open or closed is kept per browser in `pinegrap_designer_bp_collapsed` ('0' open, '1' closed), written by the chevron, the strip, the edge drag and its double-click. A browser that never chose starts closed (`_sdBpOpenRead()`).
 - Below 992 px the docked panel keeps its three strips (`designer-sticky-panel-layout.md`); the folded state does not apply there.
+
+## What stays under a docked layer?
+- The selected element's size badge (`.sd-canvas-size-badge`, z-index 200 in the editor body, as the canvas wrapper makes no stacking context) drops to 50 while a side panel is docked or the bottom panel is docked (51), so the drawers, the backdrop and the sheet cover it.

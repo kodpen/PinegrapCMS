@@ -824,10 +824,14 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
 }
 /* The column's two tabs, Options and Design, are its header; each pane
    takes the whole height under them. */
+/* The line under the strip is a shadow under the tabs: the open tab's
+   ground covers it, so that tab joins the pane below. */
 .sd-panel-header.sd-rcol-head {
     min-height: 40px; padding: 0 .25rem 0 0;
     text-transform: none; letter-spacing: 0;
     background: var(--sd-input-bg);
+    border-bottom: 0;
+    box-shadow: inset 0 -1px 0 var(--sd-panel-border);
 }
 .sd-rcol-tabs { display: flex; align-self: stretch; min-width: 0; }
 .sd-rcol-tab {
@@ -5921,7 +5925,14 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
 .sd-dock-toggle:hover { color: var(--sd-text); }
 
 /* ── Docked bottom panel: three strips on the bottom edge ── */
-.sd-panel-bottom.sd-docked { height: auto !important; min-height: 0; overflow: visible; }
+.sd-panel-bottom.sd-docked { height: auto !important; min-height: 0; overflow: visible; z-index: 51; }
+/* The selected element's size badge stays under every docked layer: the
+   drawers (60), the backdrop (55) and the bottom sheet (51). Its own 200
+   counts in the editor body, as the canvas wrapper makes no stacking
+   context. */
+.sd-body.sd-dock-left .sd-canvas-size-badge,
+.sd-body.sd-dock-right .sd-canvas-size-badge,
+.sd-panel-bottom.sd-docked ~ .sd-canvas-size-badge { z-index: 50; }
 .sd-panel-bottom.sd-docked.sd-dock-open { height: 52vh !important; overflow: hidden; }
 .sd-panel-bottom.sd-docked .sd-bp-vresize,
 .sd-panel-bottom.sd-docked .sd-bp-grid-col-resize,

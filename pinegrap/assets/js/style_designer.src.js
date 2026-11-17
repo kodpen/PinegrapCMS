@@ -56682,7 +56682,7 @@ const StyleDesigner = (function () {
             // consistent. Active tab swaps the body between #sd-tab-design
             // and #sd-tab-themes.
             '<div class="sd-panel-tabs sd-assets-tabs" id="sd-assets-tabs">' +
-                '<button type="button" class="sd-panel-tab active" data-as-tab="design"><span class="bi bi-file-code me-1"></span>' + esc(_sdT('Design')) + '</button>' +
+                '<button type="button" class="sd-panel-tab active" data-as-tab="design"><span class="bi bi-file-code me-1"></span>' + esc(_sdT('Files')) + '</button>' +
                 '<button type="button" class="sd-panel-tab" data-as-tab="themes"><span class="bi bi-palette2 me-1"></span>' + esc(_sdT('Themes')) + '</button>' +
             '</div>' +
             '<div id="sd-assets-body">' +
