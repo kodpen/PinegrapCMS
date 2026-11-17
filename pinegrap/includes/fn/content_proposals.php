@@ -810,15 +810,48 @@ function pg_content_proposals_reason($reason)
 }
 
 /**
- * May an applied change be taken back? By the person who applied it, while
- * the page is still as the apply left it.
+ * Do the page's settings still hold every value a change's settings
+ * operation wrote? A save after the apply that changed one of them (Mass
+ * Edit of the title, for example) leaves the tree and its fingerprint as
+ * they were, so only this comparison shows it.
  *
- * @param array  $row     design_proposals row
- * @param int    $user_id
- * @param string $now_hash fingerprint of the stored tree now (pg_content_proposals_stored_hash())
+ * @param mixed $ops        the row's operations (decoded)
+ * @param array $now_fields the page's settings now (pg_content_proposals_stored_fields())
+ * @return bool
+ */
+function pg_content_proposals_revert_fields_kept($ops, $now_fields)
+{
+    $now_fields = is_array($now_fields) ? $now_fields : array();
+
+    foreach ((array) $ops as $op) {
+        if (!is_array($op) || (($op['op'] ?? '') !== 'fields') || !isset($op['fields']) || !is_array($op['fields'])) {
+            continue;
+        }
+
+        foreach ($op['fields'] as $key => $value) {
+            $now = array_key_exists($key, $now_fields) ? $now_fields[$key] : null;
+
+            if (pg_content_proposals_field_value($now) !== pg_content_proposals_field_value($value)) {
+                return false;
+            }
+        }
+    }
+
+    return true;
+}
+
+/**
+ * May an applied change be taken back? By the person who applied it, while
+ * the page is still as the apply left it: its tree and the settings the
+ * change wrote.
+ *
+ * @param array      $row        design_proposals row
+ * @param int        $user_id
+ * @param string     $now_hash   fingerprint of the stored tree now (pg_content_proposals_stored_hash())
+ * @param array|null $now_fields the page's settings now; null skips the settings test
  * @return string '' when it may, else why not: closed | other | saved
  */
-function pg_content_proposals_revert_check($row, $user_id, $now_hash)
+function pg_content_proposals_revert_check($row, $user_id, $now_hash, $now_fields = null)
 {
     if (((string) $row['status'] !== 'applied') || ((string) $row['applied_to'] !== 'page') || ((string) $row['before_tree'] === '')) {
         return 'closed';
@@ -828,7 +861,15 @@ function pg_content_proposals_revert_check($row, $user_id, $now_hash)
         return 'other';
     }
 
-    return ((string) $now_hash === (string) $row['after_hash']) ? '' : 'saved';
+    if ((string) $now_hash !== (string) $row['after_hash']) {
+        return 'saved';
+    }
+
+    if (($now_fields !== null) && !pg_content_proposals_revert_fields_kept(json_decode((string) ($row['ops'] ?? ''), true), $now_fields)) {
+        return 'saved';
+    }
+
+    return '';
 }
 
 /**
@@ -892,7 +933,10 @@ function pg_content_proposals_get($id)
 }
 
 /**
- * The changes the list shows, newest first, with their page and people.
+ * The changes the list shows, newest first, with their page and people:
+ * every waiting and stale change, however old (the count above the page
+ * list counts them all), then the newest 200 changes closed in the last
+ * PG_CONTENT_PROPOSALS_KEEP_DAYS days.
  *
  * @return array
  */
@@ -902,18 +946,18 @@ function pg_content_proposals_list()
         return array();
     }
 
-    $since = time() - PG_CONTENT_PROPOSALS_KEEP_DAYS * 86400;
-    $rows = db_items((string) pg_db_bind(
-        "SELECT p.*, page.page_name, page.page_style, editor.user_username AS editor_name, decider.user_username AS decider_name
+    $select = "SELECT p.*, page.page_name, page.page_style, editor.user_username AS editor_name, decider.user_username AS decider_name
          FROM design_proposals AS p
          LEFT JOIN page ON page.page_id = p.page_id
          LEFT JOIN user AS editor ON editor.user_id = p.requested_by
          LEFT JOIN user AS decider ON decider.user_id = p.decided_by
-         WHERE p.agent = ? AND (p.status IN ('pending', 'stale') OR p.decided_at >= ?)
-         ORDER BY p.id DESC LIMIT 200",
-        array(PG_CONTENT_PROPOSALS_AGENT, $since), 'escape'));
+         WHERE p.agent = ? AND ";
+    $open = db_items((string) pg_db_bind($select . "p.status IN ('pending', 'stale') ORDER BY p.id DESC",
+        array(PG_CONTENT_PROPOSALS_AGENT), 'escape'));
+    $closed = db_items((string) pg_db_bind($select . "p.status NOT IN ('pending', 'stale') AND p.decided_at >= ? ORDER BY p.id DESC LIMIT 200",
+        array(PG_CONTENT_PROPOSALS_AGENT, time() - PG_CONTENT_PROPOSALS_KEEP_DAYS * 86400), 'escape'));
 
-    return is_array($rows) ? $rows : array();
+    return array_merge(is_array($open) ? $open : array(), is_array($closed) ? $closed : array());
 }
 
 /**
@@ -934,6 +978,42 @@ function _pg_cp_page($row)
 }
 
 /**
+ * Why a change's page could not be read: 'gone' when its row is deleted,
+ * 'binned' when it is in the Recycle Bin (it can be restored), '' otherwise.
+ * Pure.
+ *
+ * @param bool $exists the page row is there
+ * @param bool $binned the page is in the Recycle Bin
+ * @return string
+ */
+function pg_content_proposals_missing_kind($exists, $binned)
+{
+    if (!$exists) {
+        return 'gone';
+    }
+
+    return $binned ? 'binned' : '';
+}
+
+/**
+ * pg_content_proposals_missing_kind() for a change's page as stored now.
+ *
+ * @param array $row design_proposals row
+ * @return string
+ */
+function _pg_cp_page_missing($row)
+{
+    $page_id = (int) $row['page_id'];
+    $exists = is_array(db_item((string) pg_db_bind("SELECT page_id FROM page WHERE page_id = ? LIMIT 1", array($page_id), 'escape')));
+
+    if ($exists && !function_exists('pg_recycle_page_binned')) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/designer.php');
+    }
+
+    return pg_content_proposals_missing_kind($exists, $exists && pg_recycle_page_binned($page_id));
+}
+
+/**
  * Writes a tree and settings to the page through the design save, as the
  * designer; refused while somebody has the page open in the editor.
  */
@@ -950,6 +1030,24 @@ function _pg_cp_write($user, $row, $style_id, $fields, $tree)
     $saved = pg_designer_save_page($style_id, $fields, $user);
 
     return $saved['ok'] ? '' : implode(' ', (array) $saved['errors']);
+}
+
+/**
+ * The change's steps with the number of the revision its apply wrote (0 when
+ * the save wrote none): History names that revision only
+ * (pg_page_revisions_editor()). Pure.
+ *
+ * @param string $steps_json
+ * @param int    $revision_no
+ * @return string
+ */
+function pg_content_proposals_steps_revision($steps_json, $revision_no)
+{
+    $steps = json_decode((string) $steps_json, true);
+    $steps = is_array($steps) ? $steps : array();
+    $steps['revision_no'] = max(0, (int) $revision_no);
+
+    return (string) json_encode($steps, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 }
 
 /**
@@ -979,7 +1077,22 @@ function pg_content_proposals_apply($user, $id)
     $page = _pg_cp_page($row);
 
     if (!$page) {
-        return array('ok' => false, 'error' => lang('The page could not be read.'));
+        $missing = _pg_cp_page_missing($row);
+
+        // A deleted page never comes back: the change is stale as for a
+        // missing node, and the editor is told. A page in the Recycle Bin can
+        // be restored, so its change keeps waiting.
+        if ($missing === 'gone') {
+            db_q("UPDATE design_proposals SET status = 'stale', error = ? WHERE id = ? AND status = 'pending'", array('page gone', (int) $row['id']));
+            pg_content_proposals_bell_editor($row, 'stale');
+            pg_content_proposals_request_close($row, (int) $user['id']);
+
+            return array('ok' => false, 'error' => lang('The page of this change was deleted, so it cannot be applied.'));
+        }
+
+        return array('ok' => false, 'error' => ($missing === 'binned')
+            ? lang('The page is in the Recycle Bin. Restore it to apply this change.')
+            : lang('The page could not be read.'));
     }
 
     $ops = json_decode((string) $row['ops'], true);
@@ -1004,8 +1117,8 @@ function pg_content_proposals_apply($user, $id)
         return array('ok' => false, 'error' => $error);
     }
 
-    db_q("UPDATE design_proposals SET status = 'applied', applied_to = 'page', before_tree = ?, after_hash = ?, decided_by = ?, decided_at = ?, error = '' WHERE id = ?",
-        array($before, pg_content_proposals_stored_hash((int) $row['page_id']), (int) $user['id'], time(), (int) $row['id']));
+    db_q("UPDATE design_proposals SET status = 'applied', applied_to = 'page', before_tree = ?, after_hash = ?, steps = ?, decided_by = ?, decided_at = ?, error = '' WHERE id = ?",
+        array($before, pg_content_proposals_stored_hash((int) $row['page_id']), pg_content_proposals_steps_revision((string) $row['steps'], pg_page_revision_written((int) $row['page_id'])), (int) $user['id'], time(), (int) $row['id']));
     pg_content_proposals_bell_editor($row, 'applied');
     pg_content_proposals_request_close($row, (int) $user['id']);
 
@@ -1071,7 +1184,8 @@ function pg_content_proposals_revert($user, $id)
     }
 
     $row = pg_content_proposals_get($id);
-    $check = $row ? pg_content_proposals_revert_check($row, (int) $user['id'], pg_content_proposals_stored_hash((int) $row['page_id'])) : 'closed';
+    $page = $row ? _pg_cp_page($row) : null;
+    $check = $row ? pg_content_proposals_revert_check($row, (int) $user['id'], pg_content_proposals_stored_hash((int) $row['page_id']), $page ? $page['fields'] : null) : 'closed';
 
     if ($check === 'other') {
         return array('ok' => false, 'error' => lang('Only the person who applied the change can take it back.'));
@@ -1081,7 +1195,7 @@ function pg_content_proposals_revert($user, $id)
         return array('ok' => false, 'error' => lang('The page was saved again after this change, so it cannot be taken back here. Use History in the Page Design Studio instead.'));
     }
 
-    $page = ($check === '') ? _pg_cp_page($row) : null;
+    $page = ($check === '') ? $page : null;
     $before = $page ? json_decode((string) $row['before_tree'], true) : null;
 
     if (!is_array($before)) {
@@ -1346,8 +1460,9 @@ function pg_content_proposals_waiting_count($page_id = 0)
         return 0;
     }
 
-    return (int) db_value((string) pg_db_bind("SELECT COUNT(*) FROM design_proposals WHERE agent = ? AND status = 'pending'"
-        . (((int) $page_id > 0) ? ' AND page_id = ' . (int) $page_id : ''), array(PG_CONTENT_PROPOSALS_AGENT), 'escape'));
+    // A change whose page row is gone can never be applied: not counted.
+    return (int) db_value((string) pg_db_bind("SELECT COUNT(*) FROM design_proposals AS p JOIN page ON page.page_id = p.page_id WHERE p.agent = ? AND p.status = 'pending'"
+        . (((int) $page_id > 0) ? ' AND p.page_id = ' . (int) $page_id : ''), array(PG_CONTENT_PROPOSALS_AGENT), 'escape'));
 }
 
 /* ---------------------------------------------------------------------------

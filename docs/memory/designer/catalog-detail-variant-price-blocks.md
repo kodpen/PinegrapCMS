@@ -4,7 +4,7 @@ description: Catalog detail closed blocks a variant switch redraws (CB6a2): the 
 ---
 
 ## What did CB6a2 open?
-- The second part of step CB6a (`plans/designer-closed-blocks-steps.md`); the first is [[catalog-detail-open-blocks]].
+- The second part of step CB6a (#9871) of the closed-blocks opening ([[canvas-closed-blocks]]); the first is [[catalog-detail-open-blocks]].
 - Price block (`__price_block_html`) and Variant Attribute (content node `variant_attr`): settings only, drawn true on the canvas. Both depend on the product, its variants and the shopper's pick.
 
 ## Why is neither a tree?

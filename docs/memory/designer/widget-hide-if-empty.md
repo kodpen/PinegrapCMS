@@ -13,7 +13,7 @@ module: widgets_finish
 - The form list and item views and both comments kinds judge it in their renderer; the finish pass judges again around a cut. Every other kind is judged in the finish pass, stage 4 ([[widget-finish-pass]]).
 
 ## What about a value a variant fills later?
-- On a product page with the variant picker (`pgCivVariants.push(` in the markup, `catalog_item_view`), an empty marked element holding a `data-pg-bind` element stays with `hidden data-pg-empty-wait`; an outer pass leaves it.
+- On a product page with the variant picker (`pgCivVariants.push(` in the markup, `catalog_item_view`), an empty marked element holding a `data-pg-bind` element, or the "Quantity prices" box (`data-pg-civ-qty-prices`, [[product-quantity-prices]]), stays with `hidden data-pg-empty-wait`; an outer pass leaves it.
 - `pg_civ_variants.js` (`settleEmptyBoxes()`, after a variant and after the API refresh) shows or hides every marked element around a `data-pg-bind` value by the same rule, hidden children not counting; a `data-pg-variant-flag` element stays the flag's.
 - `[data-pg-empty-wait][hidden]{display:none!important}` is printed once before the widget, so Bootstrap's `d-flex` cannot show it.
 

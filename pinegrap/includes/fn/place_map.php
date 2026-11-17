@@ -36,6 +36,13 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 define('PG_PLACE_MAP_BULK', 10);
 
 /**
+ * Microseconds a bulk call waits between two requests to the public Photon
+ * instance: it answers back-to-back calls with HTTP 503, and its usage
+ * policy asks for moderate use. Nine pauses keep a press near ten seconds.
+ */
+define('PG_PLACE_MAP_PUBLIC_PAUSE', 1000000);
+
+/**
  * The longest address text sent to the provider.
  */
 define('PG_PLACE_MAP_ADDRESS_MAX', 300);
@@ -230,7 +237,8 @@ function pg_place_map_answer($http)
     if (empty($http['ok'])) {
         $status = isset($http['status']) ? (int) $http['status'] : 0;
 
-        return array('state' => ($status === 429) ? 'wait' : 'error', 'lat' => '', 'lng' => '', 'error' => isset($http['error']) ? (string) $http['error'] : '');
+        // 429 asks to wait; the public instance throttles with a bare 503.
+        return array('state' => in_array($status, array(429, 503), true) ? 'wait' : 'error', 'lat' => '', 'lng' => '', 'error' => isset($http['error']) ? (string) $http['error'] : '');
     }
 
     $point = pg_geocode_photon_point(isset($http['data']) ? $http['data'] : null);
@@ -390,10 +398,29 @@ function pg_place_map_write_value($form_id, $field_id, $value)
 }
 
 /**
+ * Microseconds to wait before a bulk call's request: none before the first,
+ * PG_PLACE_MAP_PUBLIC_PAUSE before the others while the public instance
+ * answers. Pure.
+ *
+ * @param string $host     pg_place_map_source()['host']
+ * @param int    $position the request's place in this call, from 0
+ * @return int
+ */
+function pg_place_map_bulk_pause($host, $position)
+{
+    if ((int) $position < 1 || rtrim((string) $host, '/') !== PG_ADDR_PHOTON_HOST) {
+        return 0;
+    }
+
+    return PG_PLACE_MAP_PUBLIC_PAUSE;
+}
+
+/**
  * Looks up the next records of a form that lack coordinates and writes what
  * is found. Stops at the first answer that is neither found nor not found
  * (the service asks to wait, or fails), so a busy service is not asked again
- * in the same call.
+ * in the same call. Requests to the public instance are spaced by
+ * pg_place_map_bulk_pause().
  *
  * @param int   $page_id
  * @param array $roles   pg_place_map_field_roles()
@@ -407,9 +434,23 @@ function pg_place_map_bulk($page_id, $roles, $skip, $user_id)
     $summary = array('found' => 0, 'not_found' => array(), 'left' => 0, 'state' => 'done', 'error' => '');
     $plan = pg_place_map_bulk_plan(pg_place_map_bulk_ids($page_id, $roles, $skip), PG_PLACE_MAP_BULK);
     $summary['left'] = $plan['left'];
+    pg_place_map_load_driver();
+    $host = pg_place_map_source(pg_place_map_photon_app())['host'];
+    $asked = 0;
 
     foreach ($plan['now'] as $position => $form_id) {
         $text = pg_place_map_address_text(pg_place_map_record_values($form_id, $roles['address']), $roles['address']);
+
+        if (trim($text) !== '') {
+            $pause = pg_place_map_bulk_pause($host, $asked);
+
+            if ($pause > 0) {
+                usleep($pause);
+            }
+
+            $asked++;
+        }
+
         $result = pg_place_map_lookup($text);
 
         if ($result['state'] === 'found') {

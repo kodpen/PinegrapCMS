@@ -21,9 +21,11 @@ function get_order_receipt($properties) {
     $page_id = $properties['page_id'];
     $device_type = $properties['device_type'];
 
-    $properties = get_page_type_properties($page_id, 'order receipt');
+    // A page made an order receipt without its settings row reads the
+    // defaults: the short description.
+    $properties = get_page_type_properties($page_id, 'order receipt') ?: array();
 
-    $product_description_type = $properties['product_description_type'];
+    $product_description_type = $properties['product_description_type'] ?? '';
 
     $layout_type = get_layout_type($page_id);
 
@@ -282,6 +284,9 @@ function get_order_receipt($properties) {
                 }
 
                 $output_products = '';
+                // A recipient without a shipping address (ship to 0) gets no
+                // shipping row.
+                $output_shipping = '';
                 $output_recurring_products = '';
 
                 // initialize variables to determine which types of products are being displayed

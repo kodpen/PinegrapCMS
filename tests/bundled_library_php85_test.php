@@ -2,8 +2,8 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Tests that the bundled dompdf, PHPMailer and iyzico SDK stay quiet on
- * PHP 8.5. They call handle-freeing functions that PHP 8.5 deprecates
+ * Tests that the bundled dompdf, PHPMailer, iyzico SDK and PHPExcel stay
+ * quiet on PHP 8.5. They call handle-freeing functions that PHP 8.5 deprecates
  * (imagedestroy(), xml_parser_free(), curl_close(), openssl_pkey_free()) only
  * behind a PHP 7 check, and a library update that drops one would log a
  * deprecation on every PDF render, DKIM-signed mail or iyzico call.
@@ -28,7 +28,7 @@ function pg_test_bundled_php85_files()
 {
 	$files = array();
 
-	foreach (array('/includes/dompdf', '/includes/phpmailer/src', '/includes/iyzipay-php/src') as $folder) {
+	foreach (array('/includes/dompdf', '/includes/phpmailer/src', '/includes/iyzipay-php/src', '/includes/phpexcel') as $folder) {
 		$directory = new RecursiveIteratorIterator(new RecursiveDirectoryIterator(PG_FUNCTIONS_DIR . $folder, FilesystemIterator::SKIP_DOTS));
 
 		foreach ($directory as $file) {

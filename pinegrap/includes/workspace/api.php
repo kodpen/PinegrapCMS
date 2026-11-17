@@ -579,7 +579,23 @@ function ws_api_routes()
             'dry_run' => true,
             'returns'      => 'WorkspaceChannelMembers',
             'summary'      => 'Take somebody out of a channel',
-            'description'  => 'With the owner\'s own id the owner of the application leaves the channel; anybody else is removed only by an owner who may manage it. An owner of the channel who leaves hands it to the member who has been in it longest, and a private channel nobody is left in is archived. A private channel gets a line saying who left or was removed. Somebody who was not in the channel is not an error: removed is then empty. members is empty once the owner of the application can no longer read the channel. POST is accepted as well, because a default IIS install answers DELETE itself before PHP is reached.',
+            'description'  => 'With the owner\'s own id the owner of the application leaves the channel; anybody else is removed only by an owner who may manage it. An owner of the channel who leaves hands it to the member who has been in it longest, and a private channel nobody is left in is archived. A private channel gets a line saying who left or was removed. Somebody who was not in the channel is not an error: removed is then empty. members is empty once the owner of the application can no longer read the channel. A client that cannot send DELETE, or talks to an IIS server, uses POST /workspace/channels/{id}/members/{user_id}/delete; a plain POST to this address does the same.',
+            'params'       => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'user_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        array(
+            'id'           => 'workspace.channels.members.remove_post',
+            'method'       => 'POST',
+            'path'         => '/workspace/channels/{id}/members/{user_id}/delete',
+            'scope'        => 'workspace:write',
+            'handler'      => 'ws_api_channel_members_remove',
+            'dry_run'      => true,
+            'returns'      => 'WorkspaceChannelMembers',
+            'summary'      => 'Take somebody out of a channel, addressed as a POST',
+            'description'  => 'The same as DELETE /workspace/channels/{id}/members/{user_id}, for clients and servers that cannot send DELETE.',
             'params'       => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'user_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
@@ -1091,7 +1107,23 @@ function ws_api_routes()
             'dry_run'      => true,
             'returns'      => 'WorkspaceChannelGroupAccessChange',
             'summary'      => 'Take back somebody\'s access on a group of channels',
-            'description'  => 'Takes the access on the group back from one person the way Take the access back does; staff alone may (403 otherwise). They leave the channels only that access had brought them into: a channel they joined by themselves, one they own and one a group still brings them into keeps them. Each channel they leave gets a line saying so. Access given on a group further up is taken back there, not here. Somebody who did not hold access on the group is not an error. memberships names who leaves which channel, in the answer and in a dry run (X-Dry-Run: true). The activity log gets the line the panel writes. POST is accepted as well, because a default IIS install answers DELETE itself before PHP is reached.',
+            'description'  => 'Takes the access on the group back from one person the way Take the access back does; staff alone may (403 otherwise). They leave the channels only that access had brought them into: a channel they joined by themselves, one they own and one a group still brings them into keeps them. Each channel they leave gets a line saying so. Access given on a group further up is taken back there, not here. Somebody who did not hold access on the group is not an error. memberships names who leaves which channel, in the answer and in a dry run (X-Dry-Run: true). The activity log gets the line the panel writes. A client that cannot send DELETE, or talks to an IIS server, uses POST /workspace/channel-groups/{id}/access/{user_id}/delete; a plain POST to this address does the same.',
+            'params'       => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'user_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        array(
+            'id'           => 'workspace.channel_groups.access.revoke_post',
+            'method'       => 'POST',
+            'path'         => '/workspace/channel-groups/{id}/access/{user_id}/delete',
+            'scope'        => 'workspace:write',
+            'handler'      => 'ws_api_channel_groups_access_revoke',
+            'dry_run'      => true,
+            'returns'      => 'WorkspaceChannelGroupAccessChange',
+            'summary'      => 'Take back somebody\'s access on a group of channels, addressed as a POST',
+            'description'  => 'The same as DELETE /workspace/channel-groups/{id}/access/{user_id}, for clients and servers that cannot send DELETE.',
             'params'       => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'user_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
@@ -1274,8 +1306,23 @@ function ws_api_routes()
             'dry_run'      => true,
             'returns'      => 'WorkspaceScheduledMessage',
             'summary'      => 'Delete a scheduled message',
-            'description'  => 'Deletes one of the owner\'s scheduled messages before it is posted, waiting or failed, and answers with it as it was. Somebody else\'s, or one already posted, is answered with 404; one being posted at this very moment is refused with 422. POST is accepted as well, because a default IIS install answers DELETE itself before PHP is reached.',
+            'description'  => 'Deletes one of the owner\'s scheduled messages before it is posted, waiting or failed, and answers with it as it was. Somebody else\'s, or one already posted, is answered with 404; one being posted at this very moment is refused with 422. A client that cannot send DELETE, or talks to an IIS server, uses POST /workspace/scheduled-messages/{id}/delete, the way every other record is deleted. A plain POST to /workspace/scheduled-messages/{id} deletes it as well and keeps doing so.',
             'params'       => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.scheduled_messages.delete_post',
+            'method'      => 'POST',
+            'path'        => '/workspace/scheduled-messages/{id}/delete',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_scheduled_messages_delete',
+            'dry_run'     => true,
+            'returns'     => 'WorkspaceScheduledMessage',
+            'summary'     => 'Delete a scheduled message, addressed as a POST',
+            'description' => 'The same deletion as DELETE /workspace/scheduled-messages/{id}, for clients and servers that cannot send DELETE.',
+            'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
             ),
         ),
@@ -2070,7 +2117,23 @@ function ws_api_routes()
             'dry_run'      => true,
             'returns'      => 'WorkspaceTaskTime',
             'summary'      => 'Delete an entry of time',
-            'description'  => 'The owner\'s own entry, or anybody\'s for an owner who is staff; answers with the entry as it was. An entry on an ERP invoice draft is refused with 422 until the tie is undone. POST is accepted as well, because a default IIS install answers DELETE itself before PHP is reached.',
+            'description'  => 'The owner\'s own entry, or anybody\'s for an owner who is staff; answers with the entry as it was. An entry on an ERP invoice draft is refused with 422 until the tie is undone. A client that cannot send DELETE, or talks to an IIS server, uses POST /workspace/tasks/{id}/time/{entry_id}/delete; a plain POST to this address does the same.',
+            'params'       => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'entry_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        array(
+            'id'           => 'workspace.tasks.time.delete_post',
+            'method'       => 'POST',
+            'path'         => '/workspace/tasks/{id}/time/{entry_id}/delete',
+            'scope'        => 'tasks:write',
+            'handler'      => 'ws_api_task_time_delete',
+            'dry_run'      => true,
+            'returns'      => 'WorkspaceTaskTime',
+            'summary'      => 'Delete an entry of time, addressed as a POST',
+            'description'  => 'The same as DELETE /workspace/tasks/{id}/time/{entry_id}, for clients and servers that cannot send DELETE.',
             'params'       => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'entry_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
@@ -2349,7 +2412,7 @@ function ws_api_routes()
             'returns'     => array('list' => 'WorkspaceCommand'),
             'mcp'         => false,
             'summary'     => 'List the channel commands',
-            'description' => 'The / commands the owner of the application may type into a channel, in the order the panel\'s picker lists them, for an app that offers the same picker: names holds every name a command answers to (Turkish and English, each with its slash), name the one shown first in the language of the site, usage the name and its arguments (<required> [optional]), and args each argument in the order it is typed, with its kind and where the panel suggests values for it (suggest: people, people_departments, tasks, records, products, dates, estimates, priorities, statuses, kinds, or null). anywhere true means the argument is read wherever it is written on the line; live true means the panel shows a line under the command while it is typed. A command the owner may not use is left out: /price, /stock, /create and /product without the product rights, /claude and /ai until they are set up. After the built-in ones come the commands applications registered (POST /workspace/commands) whose key works and holds workspace:commands: their app_id and app name the application, their key is app:<name>, they take free text and have no live line; app_id is 0 and app null for a built-in command. shadowed true marks a command of an application whose name a built-in command took later: it is kept but never offered, and the built-in one runs. Nothing is run here: what a command does has its own endpoint.',
+            'description' => 'The / commands the owner of the application may type into a channel, in the order the panel\'s picker lists them, for an app that offers the same picker: names holds every name a command answers to (Turkish and English, each with its slash), name the one shown first in the language of the site, usage the name and its arguments (<required> [optional]), and args each argument in the order it is typed, with its kind and where the panel suggests values for it (suggest: people, people_departments, tasks, records, products, dates, estimates, priorities, statuses, kinds, healths, notify, or null). anywhere true means the argument is read wherever it is written on the line; live true means the panel shows a line under the command while it is typed. A command the owner may not use is left out: /price, /stock, /create and /product without the product rights, /claude and /ai until they are set up. After the built-in ones come the commands applications registered (POST /workspace/commands) whose key works and holds workspace:commands: their app_id and app name the application, their key is app:<name>, they take free text and have no live line; app_id is 0 and app null for a built-in command. shadowed true marks a command of an application whose name a built-in command took later: it is kept but never offered, and the built-in one runs. Nothing is run here: what a command does has its own endpoint.',
             'params'      => array(),
         ),
 
@@ -2414,7 +2477,7 @@ function ws_api_routes()
             'returns'     => array('command' => 'object'),
             'mcp'         => false,
             'summary'     => 'Run a channel command',
-            'description' => 'Runs a / command typed into a channel, as the panel\'s writing box runs it, for a chat client that offers the same commands. The contract is what the web composer accepts: the commands, their words and the shape of command may change between releases; an integration that wants a stable contract calls the typed endpoints (tasks, plan items, scheduled messages, changes). Only the person\'s own team devices session (POST /auth/login) runs one (403 otherwise), in a channel they may post in. /claude and /ai become the assistant\'s tag first, as in the panel, and so are messages: a text that is not a command is refused with 400 not_a_command and never posted. command is what the panel receives: type preview (a /task shown back: send it again with confirm true; force true hands it over despite a clash with somebody\'s leave; assignees replaces the people), record_preview (/price, /stock: send again with confirm true and from, the value the preview showed), create_preview (/product, /create: confirm true, on_sale true to put it on sale), poll_form (a question with fewer than two options), done (written; message_id, task_id or record when there is one), ephemeral (an answer only the person sees, as html) or error (nothing written; error says why). decision true keeps a record change in the channel as a decision; parent_id is the message a command answers. Each right is checked inside the run as in the chat. A dry run writes nothing: its detail names the command and, for the commands shown back before they write (/task, /price, /stock, /product, /create, a /poll without its options), preview is the answer the unconfirmed run gives; for the others preview is null.',
+            'description' => 'Runs a / command typed into a channel, as the panel\'s writing box runs it, for a chat client that offers the same commands. The contract is what the web composer accepts: the commands, their words and the shape of command may change between releases; an integration that wants a stable contract calls the typed endpoints (tasks, plan items, scheduled messages, changes). Only the person\'s own team devices session (POST /auth/login) runs one (403 otherwise), in a channel they may post in. /claude and /ai become the assistant\'s tag first, as in the panel, and so are messages: a text that is not a command is refused with 400 not_a_command and never posted. command is what the panel receives: type preview (a /task shown back: send it again with confirm true; force true hands it over despite a clash with somebody\'s leave; assignees replaces the people), record_preview (/price, /stock, /tracking: send again with confirm true and from, the value the preview showed), create_preview (/product, /create: confirm true, on_sale true to put it on sale), poll_form (a question with fewer than two options), plan_form (a /remind without a time: fill holds the values the New plan form opens with), done (written; message_id, task_id or record when there is one), ephemeral (an answer only the person sees, as html) or error (nothing written; error says why). decision true keeps a record change in the channel as a decision; parent_id is the message a command answers. Each right is checked inside the run as in the chat. A dry run writes nothing: its detail names the command and, for the commands shown back before they write (/task, /price, /stock, /tracking, /product, /create, a /poll without its options, a /remind without a time), preview is the answer the unconfirmed run gives; for the others preview is null.',
             'params'      => array(
                 array('name' => 'channel_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The channel the command is typed into.'),
                 array('name' => 'text', 'in' => 'body', 'type' => 'string', 'max_length' => 4000, 'required' => true, 'description' => 'The line as typed, starting with its / command.'),

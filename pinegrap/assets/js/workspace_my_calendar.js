@@ -570,9 +570,9 @@
             // The panel's select (its own caret), as the panel's forms draw one.
             var remind = part.select([['', s('plan_no_remind')]].concat(Object.keys(S.remind_options || {}).map(function (key) {
                 return [key, S.remind_options[key]];
-            })), plan ? plan.remind : '');
+            })), plan ? plan.remind : (defaults.remind || ''));
 
-            if (remind.value !== (plan ? plan.remind : '')) {
+            if (remind.value !== (plan ? plan.remind : (defaults.remind || ''))) {
                 remind.value = '';
             }
 
@@ -926,5 +926,12 @@
         }).catch(h.fail);
     }
 
-    window.PGWsMyCalendar = { screen: screen, fromMail: fromMail };
+    // /remind without a time (workspace.js): the New plan drawer opened on
+    // the channel's screen with what was typed, its texts sent with it.
+    // done() once the plan is saved.
+    function fill(h, values, strings, done) {
+        planKit(h, strings || {}, done || function () {}).drawer(null, values || {});
+    }
+
+    window.PGWsMyCalendar = { screen: screen, fromMail: fromMail, fill: fill };
 })();

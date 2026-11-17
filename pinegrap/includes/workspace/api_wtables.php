@@ -558,8 +558,8 @@ function ws_api_wtable_schema()
         'row_count'   => 'integer',
         'revision'    => 'integer',
         'columns'     => 'WorkspaceTableColumn[]?',
-        'created_at'  => 'string?',
-        'updated_at'  => 'string?',
+        'created_at'  => 'datetime?',
+        'updated_at'  => 'datetime?',
     );
 }
 
@@ -592,7 +592,7 @@ function ws_api_wtable_column_schema()
         'type'       => 'string',
         'options'    => 'object',
         'position'   => 'integer',
-        'created_at' => 'string?',
+        'created_at' => 'datetime?',
     );
 }
 
@@ -645,8 +645,8 @@ function ws_api_wtable_bin_row_schema()
     return ws_api_wtable_row_schema() + array(
         'bin_id'     => 'integer',
         'deleted_by' => 'integer',
-        'deleted_at' => 'string?',
-        'expires_at' => 'string?',
+        'deleted_at' => 'datetime?',
+        'expires_at' => 'datetime?',
     );
 }
 
@@ -674,8 +674,8 @@ function ws_api_wtable_deleted_schema()
         'id'         => 'integer',
         'name'       => 'string',
         'row_count'  => 'integer',
-        'deleted_at' => 'string?',
-        'expires_at' => 'string?',
+        'deleted_at' => 'datetime?',
+        'expires_at' => 'datetime?',
     );
 }
 
@@ -690,9 +690,9 @@ function ws_api_wtable_row_schema()
         'cells'          => 'object',
         'formula_errors' => 'object',
         'created_by'     => 'integer',
-        'created_at'     => 'string?',
+        'created_at'     => 'datetime?',
         'updated_by'     => 'integer',
-        'updated_at'     => 'string?',
+        'updated_at'     => 'datetime?',
         'via_message_id' => 'integer',
     );
 }
@@ -762,7 +762,7 @@ function ws_api_wtable_share_schema()
         'effective_level' => 'string',
         'name'            => 'string',
         'created_by'      => 'integer',
-        'created_at'      => 'string?',
+        'created_at'      => 'datetime?',
     );
 }
 

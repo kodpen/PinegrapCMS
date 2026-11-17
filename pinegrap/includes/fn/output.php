@@ -4081,6 +4081,11 @@ function output_menu($properties = false)
         if (function_exists('pg_content_review_ready') && pg_content_review_ready()) {
             $menu_items[2]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_content_review.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-calendar-check bi-me-2\'>' . lang('Content review') . '</a>';
         }
+        // PAGES > Courses (view_courses.php): managers and up, while the
+        // Courses switch is on.
+        if (($user['role'] < 3) && function_exists('pg_course_switch_on') && pg_course_ready() && pg_course_switch_on()) {
+            $menu_items[2]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_courses.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-mortarboard bi-me-2\'>' . lang('Courses') . '</a>';
+        }
         // PAGES > Search and audits (search_audits.php: the search index and
         // the SEO, structure and accessibility passes, managers and up)
         if ($user['role'] < 3) {
@@ -4197,6 +4202,7 @@ function output_menu($properties = false)
             $menu_items[6]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
             $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order_reports.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-graph-up-arrow bi-me-2\'>' . lang('All Order Reports') . '</a>';
             $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order_report.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Order Report'))) . '</a>';
+            $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_customer_report.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-people bi-me-2\'>' . lang('Customers Report') . '</a>';
         }
         if (ECOMMERCE === true and USER_MANAGE_ECOMMERCE_REPORTS and ECOMMERCE_SHIPPING) {
             // ECOMMERCE > Shipping Reports
@@ -4863,6 +4869,8 @@ function output_menu($properties = false)
         case 'view_not_found_log.php':
         case 'view_accessibility.php':
         case 'view_content_review.php':
+        case 'view_courses.php':
+        case 'edit_course.php':
         case 'view_auto_dialogs.php':
         case 'add_auto_dialog.php':
         case 'edit_auto_dialog.php':
@@ -7977,7 +7985,7 @@ function pg_js_bundles()
             'assets/js/pg_image_editor_draw.js', 'assets/js/pg_image_editor_text.js', 'assets/js/pg_image_editor_sticker.js',
             'assets/js/pg_image_editor_redact.js', 'assets/js/pg_image_editor_area.js', 'assets/js/pg_image_editor_versions.js', 'assets/js/pg_image_editor_artboard.js',
             'assets/js/pg_image_editor_export.js', 'assets/js/pg_image_editor_vector.js', 'assets/js/pg_image_editor_svg.js',
-            'assets/js/pg_image_editor_motion.js', 'assets/js/pg_image_editor_tracks.js', 'assets/js/pg_image_editor_sound.js', 'assets/js/pg_image_editor_keyframes.js', 'assets/js/pg_image_editor_render.js', 'assets/js/pg_image_editor_scenes.js', 'assets/js/pg_image_editor_present.js', 'assets/js/pg_image_editor_access.js', 'assets/js/pg_image_editor_record.js', 'assets/js/pg_image_editor_fonts.js',
+            'assets/js/pg_image_editor_motion.js', 'assets/js/pg_image_editor_tracks.js', 'assets/js/pg_image_editor_sound.js', 'assets/js/pg_image_editor_keyframes.js', 'assets/js/pg_image_editor_render.js', 'assets/js/pg_image_editor_scenes.js', 'assets/js/pg_image_editor_present.js', 'assets/js/pg_image_editor_access.js', 'assets/js/pg_image_editor_record.js', 'assets/js/pg_image_editor_follow.js', 'assets/js/pg_image_editor_fonts.js',
             'assets/js/pg_image_editor_glyph.js', 'assets/js/pg_image_editor_warp.js', 'assets/js/pg_image_editor_puppet.js', 'assets/js/pg_image_editor_outline.js', 'assets/js/pg_image_editor_builder.js',
             'assets/js/pg_image_editor_video.js', 'assets/js/pg_image_editor_clip.js', 'assets/js/pg_image_editor_mix.js', 'assets/js/pg_image_editor_upload.js', 'assets/js/pg_image_editor_phone.js', 'assets/js/pg_image_editor_actions.js', 'assets/js/pg_image_editor_menu.js'),
         // The image editor's animation encoder, started as a worker (or on the

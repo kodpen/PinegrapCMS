@@ -200,7 +200,7 @@ function test_api_contact_groups_answer_says_whether_rules_fill_the_group()
 	$schema = api_contact_group_schema();
 
 	pg_assert_same('boolean', $schema['by_rule'], 'by_rule in the schema');
-	pg_assert_same('string?', $schema['computed_at'], 'computed_at in the schema');
+	pg_assert_same('datetime?', $schema['computed_at'], 'computed_at in the schema');
 }
 
 // Refresh now answers as the screen's action does, so a client asks again

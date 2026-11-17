@@ -24,4 +24,7 @@ description: Flow e-mail box to a contact group (post-digest DG2): one campaign 
 - Mails the e-mail to the person trying alone, as a campaign's test (`pg_campaign_test_send()`, `campaign_test` rate limit of `pg_campaign_test_hourly_limit()` an hour) and says how many of the group a run would reach. No campaign is made; the records are the chosen run's, else what the records box would read now; nothing is written, so no window moves.
 
 ## What is not verified?
-- No run on a database; the canvas recipient picker and the records box choice are DG3.
+- No run on a database.
+
+## Canvas? (#10176)
+- `emailFields()` offers "A contact group" while `FL.steps.mail_groups` (`ws_flow_mail_groups()`: every group, role below 3) is not empty or the box writes to one; `emailGroupFields()`: group, why, "Records drawn after the text" (the flow's `list_records` boxes or none). The box's line: `mailGroupMeta()`.

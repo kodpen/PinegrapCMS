@@ -333,7 +333,10 @@ function erp_order_lines($order, $items, $charges_taxed = null, $settle_charges 
     // two lines account for; they are informational and are NOT added again.
     // A reader that sums subtotal + shipping_total + tax_total counts the
     // shipping twice. gift_card_total is not part of the sale at all - it is
-    // how part of the grand total was paid. charges_left is the part of the
+    // how part of the grand total was paid: what the cards really gave
+    // ($order['gift_card_redeemed'], pg_order_gift_card_redeemed_sql()), never
+    // orders.gift_card_discount, which keeps what was asked of a card that
+    // failed at checkout; without the figure nothing is settled. charges_left is the part of the
     // charges the invoice leaves to the payment (above): the order's total
     // and gift card come to the grand total plus it.
     $totals = array(
@@ -341,7 +344,7 @@ function erp_order_lines($order, $items, $charges_taxed = null, $settle_charges 
         'discount_total' => $discount_total,
         'shipping_total' => $shipping,
         'surcharge_total' => $surcharge,
-        'gift_card_total' => (int) ($order['gift_card_discount'] ?? 0),
+        'gift_card_total' => max(0, (int) round((float) ($order['gift_card_redeemed'] ?? 0))),
         'tax_total' => $tax_total,
         'grand_total' => $subtotal - $discount_total + $tax_total,
         'charges_left' => max(0, $charges_left),
@@ -921,6 +924,10 @@ function erp_invoice_from_order_locked($order_id, $options = array())
     if (!is_array($order)) {
         return $fail(lang('Order not found.'));
     }
+
+    // The invoice states the whole sale (gift_card_discount added back
+    // below), and the gift card settles only what the cards gave.
+    $order['gift_card_redeemed'] = (int) db_value("SELECT " . pg_order_gift_card_redeemed_sql("'" . $order_id . "'"));
 
     // Only a finished sale is invoiced. Checked here, not only by the screens
     // that offer the step: a delivery note written before the order was

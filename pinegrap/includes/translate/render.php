@@ -880,6 +880,11 @@ function pg_tr_render_finalize($content)
 
         $content = pg_tr_rewrite_links($content, $prefix);
 
+        // A Design Canvas picture drawn in this language in place of the
+        // source's (includes/fn/picture_translation.php); the links are
+        // root-relative by now.
+        $content = pg_picture_tr_page_pass($content, $current);
+
         // A form that posts carries the language, so the script that handles
         // it answers in it (init.php reads pg_lang): its messages, its
         // redirect, the e-mail it sends.

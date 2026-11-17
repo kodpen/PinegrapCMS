@@ -8,7 +8,7 @@ description: Steps of plans/addon-hook-system.md, started 2026-11-15: AH1 the ce
 - On 2026-11-14 he set the start after the running plans. Those are closed out but for the last steps of `channel-profile-cards` and `poll-agent-questions`, so the architect started the part before the release (`addon-hook-system-site.md`, "In which part does each go?").
 
 ## Which steps are there?
-- AH1 (S, no product code) Census, into `plans/addon-hook-system-census.md`, more files past 4 KB: every moment `includes/fn/events.php` announces and where it is fired; the driver interfaces an add-on registers through (payments, shipping, marketplace connectors, SMS, e-document, jobs) and how a shipped driver is found today; the core screens where a UI slot would sit; what file integrity, backup, System Status and the migration runner must learn.
+- AH1 (S, no product code) Done (#9653). Census, into `plans/addon-hook-system-census.md`, more files past 4 KB: every moment `includes/fn/events.php` announces and where it is fired; the driver interfaces an add-on registers through (payments, shipping, marketplace connectors, SMS, e-document, jobs) and how a shipped driver is found today; the core screens where a UI slot would sit; what file integrity, backup, System Status and the migration runner must learn.
 - AH2 (architect) The design note from the census: the hook list, the manifest, the slots, the site's own add-on. It goes to the owner; from his answer the slices of `addon-hook-system.md` ("What remains?") become steps AH3 and on.
 
 ## What does every step keep?

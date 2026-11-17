@@ -276,6 +276,7 @@ if (!$translations_is_import && !$translations_is_export) {
                 // again and the text is pending once more.
                 db("DELETE FROM translations WHERE string_id = '$string_id' AND language = '" . e($language) . "'");
                 pg_tr_invalidate_pages($language);
+                pg_picture_tr_translations_removed($language);
 
                 translations_respond(array('status' => 'success', 'string_id' => $string_id, 'text' => '', 'engine' => '', 'state' => 'pending', 'suspicious' => 0));
             }

@@ -689,7 +689,7 @@ function pg_tr_translatable_pages()
  *
  * With a deadline the work is done in turns. It stops after the step that
  * passes the deadline and says where the next turn starts: 'next' out of
- * 'total' steps (the pages, then the two groups). A site of many pages took
+ * 'total' steps (the pages, then the three groups). A site of many pages took
  * longer than the server's time limit in one request.
  *
  * @param float $deadline microtime(true) to stop after; 0 = no limit
@@ -699,7 +699,9 @@ function pg_tr_translatable_pages()
 function pg_tr_extract_all($deadline = 0, $from = 0)
 {
     $pages = pg_tr_translatable_pages();
-    $groups = array('catalog', 'forms');
+    // The pictures a page in another language has shown join the whole
+    // site with the bound of their own group (pg_tr_picture_owner_bound()).
+    $groups = array('catalog', 'forms', 'pictures');
     $total = count($pages) + count($groups);
     $summary = array('pages' => 0, 'segments' => 0, 'next' => $total, 'total' => $total);
 
@@ -800,7 +802,58 @@ function pg_tr_extract_group($group)
             return pg_tr_extract_forms();
         case 'ui':
             return array('owners' => 0, 'segments' => pg_tr_ui_sync());
+        case 'pictures':
+            return pg_tr_extract_pictures();
     }
 
     return array('owners' => 0, 'segments' => 0);
+}
+
+/**
+ * The Pictures group: the texts of every picture a page in another language
+ * has shown (a row in file_translation) read again from its live document.
+ * A picture deleted, binned or changed outside the editor since loses its
+ * texts and rows (pg_picture_tr_forget()), as the daily sweep would. A
+ * picture no page showed is not read.
+ *
+ * @return array('owners' => int, 'segments' => int)
+ */
+function pg_tr_extract_pictures()
+{
+    $summary = array('owners' => 0, 'segments' => 0);
+
+    if (!function_exists('pg_picture_tr_ready') || !pg_picture_tr_ready() || !pg_picture_tr_store_ready()) {
+        return $summary;
+    }
+
+    $files = db_items("SELECT f.id, f.name, f.folder
+                       FROM files f
+                       INNER JOIN (SELECT DISTINCT file_id FROM file_translation) ft ON ft.file_id = f.id");
+    $found = array();
+
+    foreach (is_array($files) ? $files : array() as $file) {
+        $file_id = (int) $file['id'];
+        $found[$file_id] = true;
+        $binned = pg_folder_binned((int) $file['folder']);
+        $live = !$binned && pg_picture_tr_live($file_id, $file['name']);
+
+        if (pg_picture_tr_prune_reason(true, $binned, $live) !== '') {
+            pg_picture_tr_forget($file_id);
+            continue;
+        }
+
+        $words = pg_picture_tr_doc_words(pg_picture_tr_row_doc(pg_file_versions_newest($file_id)));
+        pg_picture_tr_uses_write($file_id, $words);
+        $summary['owners']++;
+        $summary['segments'] += count($words);
+    }
+
+    // A row whose source is gone from files altogether.
+    foreach ((array) db_items("SELECT DISTINCT file_id FROM file_translation") as $row) {
+        if (!isset($found[(int) $row['file_id']])) {
+            pg_picture_tr_forget((int) $row['file_id']);
+        }
+    }
+
+    return $summary;
 }

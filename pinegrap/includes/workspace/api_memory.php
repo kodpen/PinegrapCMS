@@ -154,12 +154,12 @@ function ws_api_memory_index_entry_schema()
         'title'      => 'string',
         'tags'       => array('string'),
         'pinned'     => 'boolean',
-        'expires_at' => 'string?',
+        'expires_at' => 'datetime?',
         'expired'    => 'boolean',
         'author'     => 'WorkspaceMemoryWriter',
         'updated_by' => 'WorkspaceMemoryWriter',
-        'created_at' => 'string?',
-        'updated_at' => 'string?',
+        'created_at' => 'datetime?',
+        'updated_at' => 'datetime?',
     );
 }
 

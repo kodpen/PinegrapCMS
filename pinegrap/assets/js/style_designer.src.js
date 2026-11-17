@@ -3528,9 +3528,11 @@ const StyleDesigner = (function () {
         selectedNode  = ref;
         selectedNodes = [];
         if (typeof expandAncestorsAnywhere === 'function') expandAncestorsAnywhere(ref);
+        _sdRcolShow('options');
         _sdSelectRender();
         setTimeout(function () {
             var anchor = document.getElementById(anchorId);
+            if (!anchor && _sdSectOpenFor(anchorId)) anchor = document.getElementById(anchorId);
             var sect = anchor ? anchor.closest('.sd-props-section') : null;
             if (!sect) return;
             var hdr = sect.querySelector('.sd-sect-hdr');
@@ -4970,13 +4972,15 @@ const StyleDesigner = (function () {
     // JSON.stringify of the entire tree, on every `input` event a range slider
     // fires. A call with no key, or with a different one, ends the run and
     // snapshots as before — so every existing caller keeps its behaviour.
-    var _saveStateRun    = { key: null, at: 0 };
+    // `one` is set while _sdUndoAsOne() runs: every snapshot inside joins
+    // the first (a reset that writes several things is one step).
+    var _saveStateRun    = { key: null, at: 0, one: null, seq: 0 };
     var SAVE_STATE_RUN_MS = 700;
 
     function saveState(coalesceKey) {
         // Editing a tried layout keeps it first (_sdLgKeep()).
         if (_sdLgState && !_sdLgDrawing) _sdLgKeep();
-        var key = (typeof coalesceKey === 'string' && coalesceKey !== '') ? coalesceKey : null;
+        var key = _saveStateRun.one || ((typeof coalesceKey === 'string' && coalesceKey !== '') ? coalesceKey : null);
         var now = Date.now();
 
         // The tree is about to change; anything indexed by its shape is stale.
@@ -4984,17 +4988,13 @@ const StyleDesigner = (function () {
         // it only skips the history entry.
         _dragIndexDrop();
 
-        if (key !== null && key === _saveStateRun.key && (now - _saveStateRun.at) < SAVE_STATE_RUN_MS) {
+        if (!_sdStateRunTakes(_saveStateRun, key, now, SAVE_STATE_RUN_MS)) {
             // Still the same edit. The tree did change, so the editable-area
             // cache and the autosave timer still need it; the history does not.
-            _saveStateRun.at = now;
             _sdEditableInvalidate();
             scheduleAutosave();
             return;
         }
-
-        _saveStateRun.key = key;
-        _saveStateRun.at  = now;
 
         // Every mutation is preceded by a saveState(), so this is the other
         // half of keeping the editable-area set honest between paints.
@@ -6355,9 +6355,12 @@ const StyleDesigner = (function () {
         // .sd-tb-inside inside it (top:2px) when there is no room below either; JS decides (_sdTbSpot()).
         '.sd-tb { position:absolute; top:-20px; left:0; height:20px; display:none; align-items:center; gap:0; z-index:1100; border-radius:4px 4px 4px 0; overflow:hidden; pointer-events:none; max-width:180px; white-space:nowrap; }',
         // Toolbar flip: under the element when it is near the top of the iframe, inside it (top:2px)
-        // when it also reaches the bottom.
+        // when it also reaches the bottom; inside at its right end (sd-tb-end) when the next element
+        // starts in the strip's way below it, so the strip covers neither that element's first words
+        // nor the start of the element's own line.
         '.sd-wrap.sd-tb-below > .sd-tb { top:calc(100% + 2px) !important; border-radius:0 4px 4px 4px; }',
         '.sd-wrap.sd-tb-inside > .sd-tb { top:2px !important; border-radius:0 0 4px 4px; }',
+        '.sd-wrap.sd-tb-end > .sd-tb { top:2px !important; left:auto; right:0; border-radius:0 0 4px 4px; }',
         // The page root's (<body>) name tag and toolbar sit at the bottom-left corner of the canvas
         // viewport: at the top-left of the page they lay over whatever starts there (a switch, a
         // brand) and took its clicks whenever the pointer was over the page between elements.
@@ -7281,13 +7284,9 @@ const StyleDesigner = (function () {
         //    canvas, the toolbar button's UI must follow the mode (so the
         //    user sees the same state from every surface).
         var tb = document.getElementById('sd-vb-theme');
-        if (tb) {
-            tb.classList.toggle('active', dark);
-            var icon = tb.querySelector('.bi');
-            var txt  = tb.querySelector('.sd-vb-txt');
-            if (icon) icon.className = dark ? 'bi bi-sun' : 'bi bi-moon';
-            if (txt)  txt.textContent = dark ? _sdT('Light') : _sdT('Dark');
-        }
+        // A switch named by what it does ("Dark canvas"): the state is its
+        // knob, never a word.
+        if (tb) tb.classList.toggle('active', dark);
 
         // 3. Themes panel mode tabs — only update if this call didn't
         //    originate from the panel itself (avoids redundant work and
@@ -7333,8 +7332,18 @@ const StyleDesigner = (function () {
         if (!wrapper) return;
 
         wrapper.innerHTML =
-            '<div class="sd-bp-bar">' +
-            '<div class="sd-bp-bar-left">' +
+            // Three zones (D54-D57): the mode, the canvas (screen size and
+            // zoom), the view and the tools. Preview and Open on Site are rows
+            // of the Preview menu beside Publish (_sdPreviewMenuBuild()). The
+            // ids are the ones every handler and shortcut reaches.
+            '<div class="sd-bp-bar" id="sd-bp-bar" data-fold="0">' +
+            '<div class="sd-bp-zone sd-bp-mode" role="group" aria-label="' + esc(_sdT('Mode')) + '">' +
+            '<button type="button" class="sd-bp-seg active" id="sd-vb-design" aria-pressed="true" title="' + esc(_sdT('Design')) + '"><span class="bi bi-pencil"></span><span class="sd-vb-txt">' + esc(_sdT('Design')) + '</span></button>' +
+            '<button type="button" class="sd-bp-seg" id="sd-vb-proto" aria-pressed="false" title="' + esc(_sdT('Prototype: the links between the pages')) + '"><span class="bi bi-diagram-3"></span><span class="sd-vb-txt">' + esc(_sdT('Prototype')) + '</span></button>' +
+            '</div>' +
+            '<span class="sd-bp-zsep sd-bp-zsep-mode" aria-hidden="true"></span>' +
+            '<div class="sd-bp-zone sd-bp-canvas">' +
+            '<div class="sd-bp-sizes" role="group" aria-label="' + esc(_sdT('Screen size')) + '">' +
             '<button type="button" class="sd-bp-btn" data-w="375" title="' + esc(_sdT('Mobile (XS)')) + '"><span class="bi bi-phone"></span></button>' +
             '<button type="button" class="sd-bp-btn" data-w="576" title="' + esc(_sdT('Small (SM)')) + '"><span class="bi bi-phone-landscape"></span></button>' +
             '<button type="button" class="sd-bp-btn" data-w="768" title="' + esc(_sdT('Tablet (MD)')) + '"><span class="bi bi-tablet"></span></button>' +
@@ -7344,27 +7353,21 @@ const StyleDesigner = (function () {
             // An e-mail design's two widths (_sdEmailCanvasSync()).
             '<button type="button" class="sd-bp-btn sd-bp-mail" data-w="600" title="' + esc(_sdT('E-mail, 600 px wide')) + '" aria-label="' + esc(_sdT('E-mail, 600 px wide')) + '"><span class="bi bi-envelope"></span></button>' +
             '<button type="button" class="sd-bp-btn sd-bp-mail" data-w="375" title="' + esc(_sdT('Phone view, 375 px wide')) + '" aria-label="' + esc(_sdT('Phone view, 375 px wide')) + '"><span class="bi bi-phone"></span></button>' +
-            '<span class="sd-bp-label" id="sd-bp-label">—</span>' +
             '</div>' +
-            '<div class="sd-bp-bar-right">' +
-            '<button type="button" class="sd-vb-btn" id="sd-vb-zoom-out" title="' + esc(_sdT('Zoom Out (Ctrl+-)')) + '"><span class="bi bi-zoom-out"></span></button>' +
-            '<span class="sd-vb-zoom" id="sd-vb-zoom-label">' + esc(_sdT('{var:1}%', 100)) + '</span>' +
-            '<button type="button" class="sd-vb-btn" id="sd-vb-zoom-in" title="' + esc(_sdT('Zoom In (Ctrl++)')) + '"><span class="bi bi-zoom-in"></span></button>' +
+            // The same sizes as one list, for a bar too narrow for the group.
+            '<select class="sd-bp-size-select" id="sd-bp-size-select" aria-label="' + esc(_sdT('Screen size')) + '"></select>' +
+            '<span class="sd-bp-label" id="sd-bp-label">—</span>' +
             '<span class="sd-vb-sep"></span>' +
-            '<button type="button" class="sd-vb-btn sd-vb-toggle" id="sd-vb-outline" title="' + esc(_sdT('Outline Grid')) + '"><span class="bi bi-grid-3x3"></span> <span class="sd-vb-txt">' + esc(_sdT('Outline')) + '</span></button>' +
-            '<button type="button" class="sd-vb-btn sd-vb-toggle" id="sd-vb-theme" title="' + esc(_sdT('Dark Canvas')) + '"><span class="bi bi-moon"></span> <span class="sd-vb-txt">' + esc(_sdT('Dark')) + '</span></button>' +
-            '<button type="button" class="sd-vb-btn sd-vb-toggle" id="sd-vb-grid" title="' + esc(_sdT('Grid Snap (8px)')) + '"><span class="bi bi-grid"></span> <span class="sd-vb-txt">' + esc(_sdT('Grid')) + '</span></button>' +
-            '<button type="button" class="sd-vb-btn sd-vb-toggle" id="sd-vb-motion" aria-pressed="false" title="' + esc(_sdT('Play animations')) + '"><span class="bi bi-play-circle"></span> <span class="sd-vb-txt">' + esc(_sdT('Animations')) + '</span></button>' +
-            '<span class="sd-vb-sep"></span>' +
-            '<button type="button" class="sd-vb-btn" id="sd-vb-find" title="' + esc(_sdT('Find & Replace (Ctrl+F)')) + '"><span class="bi bi-search"></span> <span class="sd-vb-txt">' + esc(_sdT('Find')) + '</span></button>' +
-            '<button type="button" class="sd-vb-btn" id="sd-vb-snapshots" title="' + esc(_sdT('History')) + '"><span class="bi bi-clock-history"></span> <span class="sd-vb-txt">' + esc(_sdT('History')) + '</span></button>' +
-            '<button type="button" class="sd-vb-btn sd-vb-toggle" id="sd-vb-proto" aria-pressed="false" title="' + esc(_sdT('Prototype: the links between the pages')) + '"><span class="bi bi-diagram-3"></span> <span class="sd-vb-txt">' + esc(_sdT('Prototype')) + '</span></button>' +
-            '<button type="button" class="sd-vb-btn" id="sd-vb-preview" title="' + esc(_sdT('Preview in a new window (Ctrl+Alt+P)')) + '"><span class="bi bi-window" ></span> <span class="sd-vb-txt">' + esc(_sdT('Preview')) + '</span></button>' +
-            // Preview renders the UNSAVED canvas in a blank window; this one
-            // opens the page as the site actually serves it — theme, common
-            // regions, dynamic content and all. Only for a page that exists
-            // on the site, so it is hidden until the first save.
-            '<a href="#" target="_blank" rel="noopener" class="sd-vb-btn" id="sd-vb-live" title="' + esc(_sdT('Open the page on the site (as saved)')) + '" style="display:none"><span class="bi bi-box-arrow-up-right"></span> <span class="sd-vb-txt">' + esc(_sdT('Open on Site')) + '</span></a>' +
+            '<button type="button" class="sd-vb-btn" id="sd-vb-zoom-out" title="' + esc(_sdT('Zoom Out (Ctrl+-)')) + '" aria-label="' + esc(_sdT('Zoom Out (Ctrl+-)')) + '"><span class="bi bi-dash-lg"></span></button>' +
+            '<button type="button" class="sd-vb-zoom" id="sd-vb-zoom-label" title="' + esc(_sdT('Reset zoom to 100%')) + '">' + esc(_sdT('{var:1}%', 100)) + '</button>' +
+            '<button type="button" class="sd-vb-btn" id="sd-vb-zoom-in" title="' + esc(_sdT('Zoom In (Ctrl++)')) + '" aria-label="' + esc(_sdT('Zoom In (Ctrl++)')) + '"><span class="bi bi-plus-lg"></span></button>' +
+            '<button type="button" class="sd-vb-btn" id="sd-vb-fit" aria-pressed="false" title="' + esc(_sdT('Fit the page to the canvas')) + '" aria-label="' + esc(_sdT('Fit the page to the canvas')) + '"><span class="bi bi-arrows-angle-contract"></span></button>' +
+            '</div>' +
+            '<span class="sd-bp-zsep" aria-hidden="true"></span>' +
+            '<div class="sd-bp-zone sd-bp-tools">' +
+            '<button type="button" class="sd-vb-btn sd-vb-view" id="sd-vb-view" aria-haspopup="menu" aria-expanded="false" aria-controls="sd-vb-view-menu" title="' + esc(_sdT('Canvas view')) + '"><span class="bi bi-eye"></span><span class="sd-vb-txt">' + esc(_sdT('Canvas view')) + '</span><span class="sd-vb-badge" id="sd-vb-view-badge" aria-hidden="true" hidden></span><span class="bi bi-chevron-down sd-vb-caret"></span></button>' +
+            '<button type="button" class="sd-vb-btn sd-vb-tool" id="sd-vb-find" title="' + esc(_sdT('Find & Replace (Ctrl+F)')) + '" aria-label="' + esc(_sdT('Find & Replace (Ctrl+F)')) + '"><span class="bi bi-search"></span></button>' +
+            '<button type="button" class="sd-vb-btn sd-vb-tool" id="sd-vb-snapshots" title="' + esc(_sdT('History')) + '" aria-label="' + esc(_sdT('History')) + '"><span class="bi bi-clock-history"></span></button>' +
             '</div>' +
             '</div>' +
             '<div class="sd-ctx-bar sd-ctx-idle" id="sd-ctx-bar">' +
@@ -7388,9 +7391,57 @@ const StyleDesigner = (function () {
             // selected icon\'s bounding rect + iframe offset + canvas zoom.
             '<div class="sd-icon-fs-handle" id="sd-icon-fs-handle" title="' + esc(_sdT('Drag to resize the icon')) + '"></div>';
 
+        // The View menu (D56): switch rows named by what they do. It lives
+        // on the overlay host, not in the bar: the bar wraps and folds, and
+        // a menu inside it would be cut by the canvas column. The rows keep
+        // the ids of the old bar buttons, so their handlers, the command
+        // palette and the O shortcut reach them as before.
+        var _oldViewMenu = document.getElementById('sd-vb-view-menu');
+        if (_oldViewMenu) _oldViewMenu.remove();
+        var viewMenu = document.createElement('div');
+        viewMenu.id = 'sd-vb-view-menu';
+        viewMenu.className = 'sd-vb-menu';
+        viewMenu.setAttribute('role', 'menu');
+        viewMenu.setAttribute('aria-label', _sdT('Canvas view'));
+        viewMenu.hidden = true;
+        viewMenu.innerHTML =
+            '<div class="sd-vb-menu-title" aria-hidden="true">' + esc(_sdT('Canvas view')) + '</div>' +
+            '<button type="button" class="sd-vb-row" id="sd-vb-outline" role="menuitemcheckbox" aria-checked="false"><span class="bi bi-grid-3x3"></span><span class="sd-vb-row-lbl">' + esc(_sdT('Outline')) + '</span><kbd class="sd-vb-kbd">O</kbd><span class="sd-vb-switch" aria-hidden="true"></span></button>' +
+            '<button type="button" class="sd-vb-row" id="sd-vb-grid" role="menuitemcheckbox" aria-checked="false"><span class="bi bi-grid"></span><span class="sd-vb-row-lbl">' + esc(_sdT('Snap to grid (8 px)')) + '</span><span class="sd-vb-switch" aria-hidden="true"></span></button>' +
+            '<button type="button" class="sd-vb-row" id="sd-vb-theme" role="menuitemcheckbox" aria-checked="false"><span class="bi bi-moon"></span><span class="sd-vb-row-lbl">' + esc(_sdT('Dark canvas')) + '</span><span class="sd-vb-switch" aria-hidden="true"></span></button>' +
+            '<button type="button" class="sd-vb-row" id="sd-vb-motion" role="menuitemcheckbox" aria-checked="false"><span class="bi bi-play-circle"></span><span class="sd-vb-row-lbl">' + esc(_sdT('Play animations')) + '</span><span class="sd-vb-switch" aria-hidden="true"></span></button>';
+        ((window.pgUI && typeof pgUI.overlayHost === 'function') ? pgUI.overlayHost(wrapper) : document.body).appendChild(viewMenu);
+
+        // The sizes as one list: an option per width button, in its order.
+        var sizeSel = document.getElementById('sd-bp-size-select');
+        wrapper.querySelectorAll('.sd-bp-btn').forEach(function (b, i) {
+            var o = document.createElement('option');
+            o.value = String(i);
+            o.textContent = b.getAttribute('title') || '';
+            sizeSel.appendChild(o);
+        });
+        sizeSel.addEventListener('change', function () {
+            var b = wrapper.querySelectorAll('.sd-bp-btn')[parseInt(this.value, 10)];
+            if (b) b.click();
+        });
+
+        var viewBtn = document.getElementById('sd-vb-view');
+        viewBtn.addEventListener('click', function () { _sdViewMenuOpen(); });
+        document.getElementById('sd-vb-design').addEventListener('click', function () {
+            if (_sdProto.open) _sdProtoClose();
+        });
+        document.getElementById('sd-vb-zoom-label').addEventListener('click', function () { setCanvasZoom(1); });
+        document.getElementById('sd-vb-fit').addEventListener('click', _sdCanvasFit);
+        // A canvas built again starts unfitted; a column that changes width
+        // while fitted is fitted again.
+        _sdFit = null;
+        var _fitArea = wrapper.querySelector('.sd-iframe-area');
+        if (_fitArea && window.ResizeObserver) new ResizeObserver(function () { if (_sdFit) _sdFitApply(); }).observe(_fitArea);
+
         // Breakpoint buttons
         wrapper.querySelectorAll('.sd-bp-btn').forEach(function (btn) {
             btn.addEventListener('click', function () {
+                _sdFitLeave();
                 wrapper.querySelectorAll('.sd-bp-btn').forEach(function (b) { b.classList.remove('active'); });
                 this.classList.add('active');
                 var w = parseInt(this.dataset.w, 10);
@@ -7490,17 +7541,18 @@ const StyleDesigner = (function () {
         var _findBtn = document.getElementById('sd-vb-find');
         if (_findBtn) _findBtn.addEventListener('click', openFindReplaceModal);
 
-        // Preview + Shortcuts toolbar buttons
-        var _previewBtn   = document.getElementById('sd-vb-preview');
+        // The Preview menu beside Publish, and the Shortcuts button
+        _sdPreviewMenuBuild();
         var _shortcutsBtn = document.getElementById('sd-vb-shortcuts');
-        if (_previewBtn)   _previewBtn.addEventListener('click', openPreview);
         var _protoBtn = document.getElementById('sd-vb-proto');
-        if (_protoBtn) _protoBtn.addEventListener('click', _sdProtoToggle);
+        // The mode switch's Prototype side opens the view; its Design side
+        // closes it.
+        if (_protoBtn) _protoBtn.addEventListener('click', function () { if (!_sdProto.open) _sdProtoOpen(); });
         if (_shortcutsBtn) _shortcutsBtn.addEventListener('click', openShortcutsModal);
 
-        // The tab strip was rendered before this bar existed, so its first
-        // pass could not fill in "Open on Site" — do it now that the button is
-        // in the DOM. Every later tab switch / save keeps it in step.
+        // The tab strip was rendered before this menu existed, so its first
+        // pass could not fill in "Open on the site" — do it now that the row
+        // is in the DOM. Every later tab switch / save keeps it in step.
         if (typeof _pgTabsSyncViewButton === 'function') _pgTabsSyncViewButton();
 
         _sdInitCanvasDoc();
@@ -7549,6 +7601,287 @@ const StyleDesigner = (function () {
         document.getElementById('sd-ctx-hide').addEventListener('click', function () {
             ctxBarToggle(false);
         });
+
+        _sdCanvasBarWatch();
+    }
+
+    // ── The canvas bar's state and fold ─────────────────────────────────
+    //
+    // The View menu's badge, the switch rows' checked state, the mode
+    // switch and the size list follow the buttons' own `active` class, which
+    // every handler (and the Themes panel, the canvas switchers, the
+    // Prototype view) already sets: one observer reads it, so no writer has
+    // to know about the menu.
+
+    // How many of the View menu's switches are on and shown: an e-mail
+    // design does not offer animations, and one left on there is not
+    // counted. `switches` is [{ on, shown }].
+    function _sdCanvasBarBadge(switches) {
+        var n = 0;
+        (switches || []).forEach(function (s) { if (s && s.on && s.shown) n++; });
+        return n;
+    }
+
+    // The fold level of a bar `avail` px wide, from the width it needs at
+    // each level (`needs[0]` all of it; 1 without the width text; 2 with the
+    // sizes folded into one list; 3 without the labels too): the first
+    // level that fits, else the last, where the bar wraps. A bar not
+    // measured yet folds nothing. Labels go, controls never do
+    // (docs/memory/designer/designer-narrow-screen-bars.md).
+    function _sdCanvasBarFold(avail, needs) {
+        if (!(avail > 0) || !needs || !needs.length) return 0;
+        for (var i = 0; i < needs.length; i++) {
+            if (needs[i] <= avail) return i;
+        }
+        return needs.length - 1;
+    }
+
+    var _sdBarNeeds = null;
+    var _sdBarSoon = 0;
+
+    // The width the bar's zones take at each fold level, with the bar's
+    // padding and gaps, measured by setting each level in turn (one layout
+    // pass each, no paint between them).
+    function _sdCanvasBarMeasure(bar) {
+        var keep = bar.getAttribute('data-fold') || '0';
+        var cs = getComputedStyle(bar);
+        var pad = (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0);
+        var needs = [];
+        for (var lv = 0; lv <= 3; lv++) {
+            bar.setAttribute('data-fold', String(lv));
+            var gap = parseFloat(getComputedStyle(bar).columnGap) || 0;
+            var w = pad, n = 0;
+            Array.prototype.forEach.call(bar.children, function (ch) {
+                var st = getComputedStyle(ch);
+                if (st.display === 'none') return;
+                w += ch.getBoundingClientRect().width + (parseFloat(st.marginLeft) || 0) + (parseFloat(st.marginRight) || 0);
+                n++;
+            });
+            needs.push(Math.ceil(w + gap * Math.max(0, n - 1)));
+        }
+        bar.setAttribute('data-fold', keep);
+        return needs;
+    }
+
+    // Picks the fold level for the bar's width; measures first when what
+    // the bar holds has changed.
+    function _sdCanvasBarRefit() {
+        var bar = document.getElementById('sd-bp-bar');
+        if (!bar || !bar.clientWidth) return;
+        if (!_sdBarNeeds) _sdBarNeeds = _sdCanvasBarMeasure(bar);
+        var lv = String(_sdCanvasBarFold(bar.clientWidth, _sdBarNeeds));
+        if (bar.getAttribute('data-fold') !== lv) bar.setAttribute('data-fold', lv);
+    }
+
+    // The badge, the rows' checked state, the mode switch and the size
+    // list from the buttons' `active` class. Writes only what changed, as
+    // the observer that calls it sees its own writes.
+    function _sdCanvasBarSync() {
+        var bar = document.getElementById('sd-bp-bar');
+        if (!bar) return;
+        var setA = function (el, name, v) { if (el && el.getAttribute(name) !== v) el.setAttribute(name, v); };
+        var sw = ['sd-vb-outline', 'sd-vb-grid', 'sd-vb-theme', 'sd-vb-motion'].map(function (id) {
+            var el = document.getElementById(id);
+            var on = !!(el && el.classList.contains('active'));
+            setA(el, 'aria-checked', on ? 'true' : 'false');
+            return { on: on, shown: !!el && getComputedStyle(el).display !== 'none' };
+        });
+        var n = _sdCanvasBarBadge(sw);
+        var badge = document.getElementById('sd-vb-view-badge');
+        if (badge) {
+            var t = n ? String(n) : '';
+            if (badge.textContent !== t) badge.textContent = t;
+            if (badge.hidden !== !n) badge.hidden = !n;
+        }
+        setA(document.getElementById('sd-vb-view'), 'aria-label', n ? _sdT('Canvas view, {var:1} on', n) : _sdT('Canvas view'));
+        var proto = document.getElementById('sd-vb-proto');
+        var design = document.getElementById('sd-vb-design');
+        var protoOn = !!(proto && proto.classList.contains('active'));
+        if (design && design.classList.contains('active') === protoOn) design.classList.toggle('active', !protoOn);
+        setA(design, 'aria-pressed', protoOn ? 'false' : 'true');
+        var sel = document.getElementById('sd-bp-size-select');
+        bar.querySelectorAll('.sd-bp-btn').forEach(function (b, i) {
+            var on = b.classList.contains('active');
+            setA(b, 'aria-pressed', on ? 'true' : 'false');
+            if (!sel || !sel.options[i]) return;
+            var off = getComputedStyle(b).display === 'none';
+            if (sel.options[i].hidden !== off) sel.options[i].hidden = off;
+            if (on && sel.value !== String(i)) sel.value = String(i);
+        });
+    }
+
+    // Watches the bar once it is built: its width (fold), what it holds
+    // (measure again), the buttons' state (sync), the menu's dismissal.
+    function _sdCanvasBarWatch() {
+        var bar = document.getElementById('sd-bp-bar');
+        var menu = document.getElementById('sd-vb-view-menu');
+        if (!bar) return;
+        var soon = function (remeasure) {
+            if (remeasure) _sdBarNeeds = null;
+            if (_sdBarSoon) return;
+            _sdBarSoon = requestAnimationFrame(function () {
+                _sdBarSoon = 0;
+                _sdCanvasBarSync();
+                _sdCanvasBarRefit();
+            });
+        };
+        if (window.MutationObserver) {
+            var mo = new MutationObserver(function () { soon(true); });
+            var opts = { subtree: true, childList: true, attributes: true, attributeFilter: ['class', 'style', 'hidden'] };
+            mo.observe(bar, opts);
+            if (menu) mo.observe(menu, opts);
+            // An e-mail design hides the rows it does not offer.
+            mo.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+        }
+        if (window.ResizeObserver) new ResizeObserver(function () { soon(false); }).observe(bar);
+        else window.addEventListener('resize', function () { soon(false); });
+        // Icon and text fonts change the widths once they arrive.
+        if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { soon(true); });
+        soon(true);
+
+        if (window._sdViewMenuBound) return;
+        window._sdViewMenuBound = true;
+        document.addEventListener('mousedown', function (e) {
+            var m = document.getElementById('sd-vb-view-menu');
+            var b = document.getElementById('sd-vb-view');
+            if (!m || m.hidden || m.contains(e.target) || (b && b.contains(e.target))) return;
+            _sdViewMenuOpen(false);
+        }, true);
+        document.addEventListener('keydown', function (e) {
+            var m = document.getElementById('sd-vb-view-menu');
+            if (!m || m.hidden) return;
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                e.stopPropagation();
+                _sdViewMenuOpen(false);
+                var b = document.getElementById('sd-vb-view');
+                if (b) b.focus();
+                return;
+            }
+            if ((e.key !== 'ArrowDown' && e.key !== 'ArrowUp') || !m.contains(document.activeElement)) return;
+            var rows = Array.prototype.filter.call(m.querySelectorAll('[role="menuitemcheckbox"]'), function (r) { return r.offsetParent !== null; });
+            var at = rows.indexOf(document.activeElement);
+            if (at === -1 || !rows.length) return;
+            e.preventDefault();
+            rows[(at + (e.key === 'ArrowDown' ? 1 : rows.length - 1)) % rows.length].focus();
+        }, true);
+        window.addEventListener('resize', function () { _sdViewMenuOpen(false); });
+    }
+
+    // Opens or closes the View menu under its button (`open` omitted:
+    // toggles). The first row takes the focus, so the keyboard can switch
+    // what it offers at once.
+    function _sdViewMenuOpen(open) {
+        var btn = document.getElementById('sd-vb-view');
+        var menu = document.getElementById('sd-vb-view-menu');
+        if (!btn || !menu) return;
+        if (open === undefined) open = menu.hidden;
+        if (!open) {
+            if (!menu.hidden) {
+                menu.hidden = true;
+                btn.setAttribute('aria-expanded', 'false');
+            }
+            return;
+        }
+        menu.hidden = false;
+        btn.setAttribute('aria-expanded', 'true');
+        var r = btn.getBoundingClientRect();
+        var mw = menu.offsetWidth;
+        menu.style.top = Math.round(r.bottom + 6) + 'px';
+        menu.style.left = Math.round(Math.max(8, Math.min(r.left, window.innerWidth - mw - 8))) + 'px';
+        var first = menu.querySelector('[role="menuitemcheckbox"]');
+        if (first) first.focus();
+    }
+
+    // ── Fit (D55) ───────────────────────────────────────────────────────
+    //
+    // A frame wider than the canvas column (a width button or the resize
+    // handle) is scaled down to the column with a transform, so the canvas
+    // keeps its chosen width: Bootstrap draws that width's breakpoint and
+    // the width text stays true. The canvas zoom cannot do this: it is CSS
+    // zoom on the canvas <html>, and media queries keep reading the frame's
+    // own width. A frame that fits, or Full Width, just goes back to 100%.
+    // − and +, a width button and a resize handle leave Fit; a column that
+    // changes width while fitted is fitted again.
+    //
+    // While fitted, what the editor draws in its own document from the
+    // frame's position takes the scale (_sdFitScale(): the canvas context
+    // menu, the size badge) or is hidden (the frame's resize handles and the
+    // icon size handle, which measure pointer travel against the frame).
+    // What is drawn inside the canvas (outlines, drop lines, hover boxes,
+    // element toolbars) scales with the frame.
+    var _sdFit = null;   // { w, s, h0 } while fitted
+
+    // The percentage the bar shows: the canvas zoom times the frame's scale
+    // while fitted, so a fitted frame reads what it is drawn at.
+    function _sdCanvasZoomPct(zoom, scale) {
+        return Math.round(zoom * ((scale > 0) ? scale : 1) * 100);
+    }
+
+    function _sdFitScale() {
+        return (_sdFit && _sdFit.s > 0) ? _sdFit.s : 1;
+    }
+
+    function _sdCanvasFit() {
+        var wrap = document.getElementById('sd-iframe-wrap');
+        setCanvasZoom(1);
+        if (!wrap) return;
+        // The chosen width, not the drawn one: a frame wider than the column
+        // is shrunk by the flex layout, so its width text names the column.
+        var w = /px$/.test(wrap.style.width) ? parseFloat(wrap.style.width) : 0;
+        var area = wrap.parentNode;
+        if (!w || !area || w <= area.clientWidth) return;
+        _sdFit = { w: w, s: 1, h0: wrap.style.height };
+        _sdFitApply();
+    }
+
+    function _sdFitApply() {
+        var wrap = document.getElementById('sd-iframe-wrap');
+        var area = wrap ? wrap.parentNode : null;
+        if (!_sdFit || !wrap || !area || !area.clientWidth) return;
+        var s = Math.min(1, area.clientWidth / _sdFit.w);
+        var h = area.clientHeight;
+        _sdFit.s = s;
+        wrap.style.flexShrink = '0';
+        wrap.style.transformOrigin = 'top left';
+        wrap.style.transform = 'scale(' + s + ')';
+        // The transform leaves the layout box at full size: negative margins
+        // give the area the scaled box, so it centres it and does not scroll.
+        wrap.style.marginRight = (-_sdFit.w * (1 - s)) + 'px';
+        wrap.style.height = (h / s) + 'px';
+        wrap.style.marginBottom = (h - h / s) + 'px';
+        _sdFitMark(true);
+        updateBpLabel();
+        var zl = document.getElementById('sd-vb-zoom-label');
+        if (zl) zl.textContent = _sdT('{var:1}%', _sdCanvasZoomPct(canvasZoom, s));
+    }
+
+    function _sdFitLeave() {
+        if (!_sdFit) return;
+        var wrap = document.getElementById('sd-iframe-wrap');
+        if (wrap) {
+            wrap.style.flexShrink = '';
+            wrap.style.transform = '';
+            wrap.style.transformOrigin = '';
+            wrap.style.marginRight = '';
+            wrap.style.marginBottom = '';
+            wrap.style.height = _sdFit.h0 || '';
+        }
+        _sdFit = null;
+        _sdFitMark(false);
+        updateBpLabel();
+        var zl = document.getElementById('sd-vb-zoom-label');
+        if (zl) zl.textContent = _sdT('{var:1}%', _sdCanvasZoomPct(canvasZoom, 1));
+    }
+
+    function _sdFitMark(on) {
+        var canvas = document.getElementById('sd-canvas');
+        if (canvas) canvas.classList.toggle('sd-canvas-fitted', on);
+        var btn = document.getElementById('sd-vb-fit');
+        if (btn) {
+            btn.classList.toggle('active', on);
+            btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+        }
     }
 
     // The language of the page's text, as <html lang> carries it in the
@@ -7918,7 +8251,8 @@ const StyleDesigner = (function () {
                 renderSelectionOnly(); renderProperties();
             }
             var rect = canvasIframe.getBoundingClientRect();
-            showCanvasCtxMenu(rect.left + e.clientX, rect.top + e.clientY, node);
+            var fs = _sdFitScale();
+            showCanvasCtxMenu(rect.left + e.clientX * fs, rect.top + e.clientY * fs, node);
         }, true);
 
         // Keyboard shortcuts inside canvas iframe (Delete, Ctrl+C/V, Ctrl+Z/Y)
@@ -8081,11 +8415,9 @@ const StyleDesigner = (function () {
         var btn = document.getElementById('sd-vb-motion');
         if (!btn) return;
         var paused = _sdMotionPaused();
+        // A switch row of the View menu: its knob shows the state
+        // (_sdCanvasBarSync() writes aria-checked from the class).
         btn.classList.toggle('active', !paused);
-        btn.setAttribute('aria-pressed', paused ? 'false' : 'true');
-        var ic = btn.querySelector('.bi');
-        if (ic) ic.className = 'bi ' + (paused ? 'bi-play-circle' : 'bi-pause-circle');
-        _sdSetButtonTitle(btn, paused ? _sdT('Play animations') : _sdT('Pause animations'));
     }
 
     // Runs in the canvas document before any script of the design.
@@ -9641,7 +9973,7 @@ const StyleDesigner = (function () {
     // the panel's own function decides what to do.
     function _sdPanelHidden(host) {
         if (!host) return false;
-        if (host.closest && host.closest('.sd-panel-bottom.collapsed')) return true;
+        if (host.closest && host.closest('.sd-panel-bottom.collapsed:not(.sd-docked)')) return true;
         return !(host.getClientRects && host.getClientRects().length);
     }
 
@@ -9717,11 +10049,12 @@ const StyleDesigner = (function () {
         var row = _sdTreeRowOf(list, node);
         if (!row || !row.parentNode) return false;
         var depth = parseInt(row.style.getPropertyValue('--depth'), 10) || 1;
+        var lvl = (row.dataset && parseInt(row.dataset.lvl, 10)) || depth;
         var next = row.nextElementSibling;
         var kids = (next && next.classList.contains('sd-tree-children')) ? next : null;
         var fresh = document.createElement('ul');
         _sdSharedOpen = {};
-        buildTreeItems(fresh, node, depth);
+        buildTreeItems(fresh, node, depth, lvl);
         var parent = row.parentNode;
         while (fresh.firstChild) parent.insertBefore(fresh.firstChild, row);
         parent.removeChild(row);
@@ -9736,7 +10069,7 @@ const StyleDesigner = (function () {
         // The node an edit limited this render to (_sdRenderNode()), read
         // before renderCanvas() takes it.
         var _scope = _sdCanvasScope;
-        _sdPanelsCancel();
+        _sdCanvasRedrawnEl = null;
         // The tree may have changed since the last paint; the editable-area
         // set is derived from it.
         _sdEditableInvalidate();
@@ -9749,16 +10082,30 @@ const StyleDesigner = (function () {
         _syncToggleableShowStateFromDom();
         renderCanvas();
         _sdEmailCanvasSync();
+        // Set when only the scoped node's element was drawn again: the rest
+        // of the canvas kept its DOM and its badges.
+        var _redrawn = _scope ? _sdCanvasRedrawnEl : null;
+        _sdCanvasRedrawnEl = null;
         renderProperties();
-        renderStatusBar();
-        _sdTreeRefresh(_scope);
-        renderHtmlTree();
-        renderAttrsPanel();
+        if (_redrawn) {
+            // One node's option changed: the Options panel answers now, the
+            // Layers rows, status bar, Attributes and HTML tree follow once
+            // the changes pause (_sdPanelsSoon()), as for typing. A run put
+            // off for another node is kept and merged, not dropped.
+            _sdPanelsSoon(_scope);
+        } else {
+            _sdPanelsCancel();
+            renderStatusBar();
+            _sdTreeRefresh(_scope);
+            renderHtmlTree();
+            renderAttrsPanel();
+        }
         renderStylesPanel();
         updateCtxBar();
         // Badges from the LAST pass go on right away (the canvas was just
-        // rebuilt without them); the debounced pass below refreshes them.
-        applyIssueBadges();
+        // rebuilt without them; after an in-place redraw only the new
+        // element lacks them); the debounced pass below refreshes them.
+        applyIssueBadges(_redrawn);
         scheduleValidation();
         _sdLivePreviewSchedule();
         _sdSharedBaseline();
@@ -10236,10 +10583,9 @@ const StyleDesigner = (function () {
                 if (p.classList.contains('sd-tb')) {
                     // Above the element; below it when there is no room
                     // above, inside it with no room below either.
-                    var clip = _sdTbClip(w);
-                    var spot = _sdTbSpot(er.top, er.bottom, win.innerHeight, clip ? clip[0] : 0, clip ? clip[1] : Infinity);
-                    top = (spot === 'below' ? er.bottom + 2 : er.top + (spot === 'inside' ? 2 : -20)) - by;
-                    left = er.left - bx;
+                    var spot = _sdTbSpotOf(w, er, win.innerHeight, _sdTbClip(w));
+                    top = (spot === 'below' ? er.bottom + 2 : er.top + (spot === 'above' ? -20 : 2)) - by;
+                    left = (spot === 'end' ? er.right - p.offsetWidth : er.left) - bx;
                 } else if (p.classList.contains('sd-persistent-note')) {
                     top = er.top - by + 2;
                     left = er.right - bx - 18;
@@ -10355,12 +10701,50 @@ const StyleDesigner = (function () {
     // only inside it: a card's cover picture at the top of an
     // overflow-hidden card had its toolbar above the picture, cut away by
     // the card, so it showed nowhere.
-    function _sdTbSpot(top, bottom, viewH, clipTop, clipBottom) {
+    // nextTop: the top of the element that follows below it (_sdTbNextTop()),
+    // when there is one. Below counts only when the 20 px strip fits in the
+    // gap before it; otherwise 'end', inside at the element's right end: a
+    // heading with a small bottom margin had its name tag and buttons over the
+    // first words of the paragraph under it, taking their clicks.
+    function _sdTbSpot(top, bottom, viewH, clipTop, clipBottom, nextTop) {
         var lo = (typeof clipTop === 'number' && clipTop > 0) ? clipTop : 0;
         var hi = (typeof clipBottom === 'number' && clipBottom < viewH) ? clipBottom : viewH;
         if (top - lo >= 22) return 'above';
-        if (bottom + 22 <= hi) return 'below';
-        return 'inside';
+        if (bottom + 22 > hi) return 'inside';
+        if (typeof nextTop === 'number' && nextTop < bottom + 22) return 'end';
+        return 'below';
+    }
+
+    // The spot of wrapper `w` with box `r` (_sdBoxRect()) and clip `c`
+    // (_sdTbClip()); the next element is measured only when there is no
+    // room above.
+    function _sdTbSpotOf(w, r, viewH, c) {
+        var lo = c ? c[0] : 0, hi = c ? c[1] : Infinity;
+        var next = (r.top - Math.max(lo, 0) < 22) ? _sdTbNextTop(w, r.bottom) : null;
+        return _sdTbSpot(r.top, r.bottom, viewH, lo, hi, next);
+    }
+
+    // The viewport top of the first element that follows wrapper `w` and
+    // starts at or under `bottom`: its next siblings, then those of each
+    // ancestor in turn. The editor's own chrome and elements out of the flow
+    // are skipped. null when nothing follows.
+    function _sdTbNextTop(w, bottom) {
+        var doc = w.ownerDocument, win = doc && doc.defaultView;
+        if (!win) return null;
+        var el = w, depth = 0;
+        while (el && el !== doc.body && el !== doc.documentElement && depth++ < 8) {
+            for (var s = el.nextElementSibling; s; s = s.nextElementSibling) {
+                if (/(^|\s)sd-(tb|persistent-note|issue-badge|chip-row|lbl)(\s|$)/.test(s.className || '')) continue;
+                var isWrap = s.classList.contains('sd-wrap');
+                var pos = win.getComputedStyle(isWrap ? (_sdWrapEl(s) || s) : s).position;
+                if (pos === 'absolute' || pos === 'fixed') continue;
+                var r = isWrap ? _sdBoxRect(s) : s.getBoundingClientRect();
+                if (!r.width && !r.height) continue;
+                if (r.top >= bottom - 0.5) return r.top;
+            }
+            el = el.parentElement;
+        }
+        return null;
     }
 
     // The viewport box ([top, bottom]) of the nearest ancestor of wrapper
@@ -10388,9 +10772,10 @@ const StyleDesigner = (function () {
 
     // Writes a spot as the wrapper's classes; only what changes is written.
     function _sdTbSpotWrite(w, spot) {
-        var inside = spot === 'inside', below = spot === 'below';
+        var inside = spot === 'inside', below = spot === 'below', end = spot === 'end';
         if (w.classList.contains('sd-tb-inside') !== inside) w.classList.toggle('sd-tb-inside', inside);
         if (w.classList.contains('sd-tb-below') !== below) w.classList.toggle('sd-tb-below', below);
+        if (w.classList.contains('sd-tb-end') !== end) w.classList.toggle('sd-tb-end', end);
     }
 
     // The canvas viewport's height, for _sdTbSpot().
@@ -10402,20 +10787,15 @@ const StyleDesigner = (function () {
     // Places one wrapper's toolbar (the hovered one).
     function _sdTbFlip(w) {
         if (!w || w.tagName !== 'DIV') return;
-        var r = _sdBoxRect(w), c = _sdTbClip(w);
-        _sdTbSpotWrite(w, _sdTbSpot(r.top, r.bottom, _sdCanvasViewH(), c ? c[0] : 0, c ? c[1] : Infinity));
+        _sdTbSpotWrite(w, _sdTbSpotOf(w, _sdBoxRect(w), _sdCanvasViewH(), _sdTbClip(w)));
     }
 
     // The same for several wrappers: all measured, then all written.
     function _sdTbFlipAll(ws) {
         var vh = _sdCanvasViewH();
         var memo = (typeof Map === 'function') ? new Map() : null;
-        var rs = ws.map(function (w) { return _sdBoxRect(w); });
-        var cs = ws.map(function (w) { return _sdTbClip(w, memo); });
-        ws.forEach(function (w, i) {
-            var c = cs[i];
-            _sdTbSpotWrite(w, _sdTbSpot(rs[i].top, rs[i].bottom, vh, c ? c[0] : 0, c ? c[1] : Infinity));
-        });
+        var spots = ws.map(function (w) { return _sdTbSpotOf(w, _sdBoxRect(w), vh, _sdTbClip(w, memo)); });
+        ws.forEach(function (w, i) { _sdTbSpotWrite(w, spots[i]); });
     }
 
     // What a scroll changes: nothing in the page, only where the viewport
@@ -11273,6 +11653,10 @@ const StyleDesigner = (function () {
     // names none and gets the full rebuild. Anything the node's element
     // cannot be redrawn alone for falls back to the full rebuild too.
     var _sdCanvasScope = null;
+    // The element the last in-place redraw put on the canvas; render()
+    // clears it before renderCanvas() and reads it after, to know whether
+    // the canvas kept its DOM.
+    var _sdCanvasRedrawnEl = null;
 
     // Runs `fn` (render() by default, or renderCanvas()) with the canvas
     // limited to `node`. The scope lasts for this call only: a later render
@@ -11362,6 +11746,7 @@ const StyleDesigner = (function () {
         _sdSharedOpen = {};
         var el = buildNodeEl(node);
         old.parentNode.replaceChild(el, old);
+        _sdCanvasRedrawnEl = el;
         _sdCanvasOpenRestore(el, open, _sdFindNodeForEl);
         _reExecuteCanvasScripts(el);
         _sdThemeSwitchers();
@@ -11606,7 +11991,8 @@ const StyleDesigner = (function () {
      * When an element sits closer than 22px to the top of the iframe the toolbar
      * would overflow above it, so the sd-tb-below class moves it under the
      * element (sd-tb-inside, inside it, when there is no room below either;
-     * _sdTbSpot()). getBoundingClientRect() on an element inside an iframe returns coordinates
+     * sd-tb-end, inside at its right end, when the next element starts in the
+     * strip's way; _sdTbSpot()). getBoundingClientRect() on an element inside an iframe returns coordinates
      * relative to that iframe's viewport, which is exactly the frame of reference
      * this test needs.
      */
@@ -13584,6 +13970,23 @@ const StyleDesigner = (function () {
               __booking_tone: 'secondary', __booking_details: '01.09.2026 14:00 – 15:30', __booking_manage_url: '',
               __booking_manage_label: '', __booking_ics_url: '' }
         ],
+        // A paused subscription beside the active one; a used store credit
+        // card beside the open one, and a second order that spent it.
+        'account.subscriptions': [
+            { __subscription_id: '7', __subscription_product: _sdT('Coffee of the month'), __subscription_amount: '89,00 TRY',
+              __subscription_status: 'paused', __subscription_status_label: _sdT('Paused'), __subscription_tone: 'secondary',
+              __subscription_next: _sdT('Next charge:') + ' 01.12.2026', __subscription_price: '', __subscription_card: '',
+              __subscription_event: _sdT('Last event:') + ' ' + _sdT('Paused') + ' (02.11.2026)', __subscription_confirm_url: '',
+              __subscription_has_actions: '1' }
+        ],
+        'account.store_credit': [
+            { __credit_id: '5', __credit_kind_label: _sdT('Refund'), __credit_reason: '', __credit_state: 'used',
+              __credit_state_label: _sdT('Used'), __credit_tone: 'secondary', __credit_balance: '₺0,00', __credit_amount: '₺40,00',
+              __credit_last_day: '', __credit_has_uses: '' }
+        ],
+        'account.store_credit_uses': [
+            { __credit_use_order_no: '12301', __credit_use_order_url: '/order?id=1038', __credit_use_date: '14.10.2026', __credit_use_amount: '₺15,00' }
+        ],
         // The second line of the sample order (_sdOrderSampleLineTwo()): the
         // mug, no product form.
         'checkout.lines': [
@@ -14575,6 +14978,10 @@ const StyleDesigner = (function () {
                     innerEl.appendChild(typeof piece === 'number' ? buildNodeEl(node.children[piece - 1])
                         : doc.createTextNode(piece));
                 });
+                // A mark glued to its value ("/ ₺50,00", "#1042") keeps one
+                // line: the canvas's condition chips narrow a column the site
+                // leaves wide. The site's markup is not touched.
+                if (_sdSentenceIsMark(node.props.text)) innerEl.style.whiteSpace = 'nowrap';
             } else if (node.children && node.children.length > 0) {
                 // A stepped form's progress and buttons (_sdFormStepSamples()).
                 var _stepPlan = _sdFormStepPlan(node);
@@ -15898,6 +16305,10 @@ const StyleDesigner = (function () {
             return '<div class="small text-muted mt-1">' + esc(_sdT('Monogram')) + ': A.M. · ' +
                    esc(_sdT('Thread colour')) + ': ' + esc(_sdT('Navy')) + '</div>';
         },
+        // pg_subscription_customer_actions_html(): the row's buttons.
+        '__subscription_actions_html': function () {
+            return _sdAccountSubscriptionActionsHtml((_sdListSample && _sdListSample.__subscription_status) || 'active');
+        },
         // pg_return_actions_html(): the parcel's tracking number and the
         // customer's two moves.
         '__return_actions_html': function () {
@@ -16585,6 +16996,7 @@ const StyleDesigner = (function () {
             __username: 'alex', username: 'alex', account_id: '3',
             __email: email, __email_address: email, email_address: email, __user_email: email,
             __user_name: full, __user_first_name: bill[0], __user_initials: initials, __display_name: full,
+            __store_credit_balance: '₺35,00',
             full_name: full, first_name: bill[0], last_name: bill[1],
             __user_badge: _sdT('Gold member'), member_id: 'M-1042', member: '1',
             form_item_view: 'contact-form-abc123xyz',
@@ -17127,6 +17539,13 @@ const StyleDesigner = (function () {
     // (pg_sentence_layout()).
     function _sdIsSentence(node) {
         return !!(node && node.type === 'semantic' && node.props && node.props._sentence);
+    }
+
+    // Whether a sentence's words, its values left out, are a mark of at
+    // most three characters (a slash, a number sign, a minus).
+    function _sdSentenceIsMark(text) {
+        var words = String(text == null ? '' : text).replace(/\{var:[1-9][0-9]?\}/g, '').trim();
+        return words !== '' && words.length <= 3;
     }
 
     // The layout of a sentence with values (pg_sentence_layout()): words
@@ -17885,23 +18304,57 @@ const StyleDesigner = (function () {
 
     var _SD_INSERT_MARKS = ['sd-drop-hl', 'sd-insert-before', 'sd-insert-after', 'sd-insert-before-x', 'sd-insert-after-x'];
 
-    function setupDropEvents(el, node) {
-        // The drop mark is written only when it changes. dragover fires many
-        // times a second; removing and adding the same class each time is an
-        // attribute change for the browser to restyle and for every
-        // MutationObserver of the design to process.
-        function _setInsertMark(mark) {
-            var cl = el.classList;
-            for (var i = 0; i < _SD_INSERT_MARKS.length; i++) {
-                var m = _SD_INSERT_MARKS[i];
-                if (m !== mark && cl.contains(m)) cl.remove(m);
-            }
-            if (mark && !cl.contains(mark)) cl.add(mark);
+    // The canvas drop zone after the drag rules are asked. `zone` is the band
+    // the pointer is in (_getZone()), `y` and `h` the pointer's height in the
+    // element and the element's height; canInside() and canSibling() say
+    // whether the element itself and its parent take the drag (canSibling is
+    // false without a parent). A middle band the element refuses falls back
+    // to the nearer edge beside it, as the Overview tree does: bubbling on
+    // let an ancestor measure the pointer against its own box and mark a far
+    // edge. A before/after band the parent refuses falls back to inside.
+    // Returns null when neither takes the drag, so an ancestor may.
+    function _sdCanvasDropZone(zone, y, h, canInside, canSibling) {
+        if (zone === 'inside') {
+            if (canInside()) return 'inside';
+            if (canSibling()) return y < h / 2 ? 'before' : 'after';
+            return null;
         }
+        if (canSibling()) return zone;
+        return canInside() ? 'inside' : null;
+    }
+
+    // The one canvas element that shows a drop mark. An element that takes
+    // the drag stops the dragover there, so an ancestor that marked itself a
+    // moment earlier is not reached again to clear its own mark: two insert
+    // lines showed at once until the pointer left that ancestor.
+    var _sdDropMarkEl = null;
+
+    // Writes `mark` (null clears) on `el` only when it changes: dragover
+    // fires many times a second, and each class written is a restyle and a
+    // call of every MutationObserver of the design. A mark on another element
+    // clears that element's mark and its remembered zone first.
+    function _sdSetDropMark(el, mark) {
+        if (mark && _sdDropMarkEl && _sdDropMarkEl !== el) {
+            _sdSetDropMark(_sdDropMarkEl, null);
+        }
+        var cl = el.classList;
+        for (var i = 0; i < _SD_INSERT_MARKS.length; i++) {
+            var m = _SD_INSERT_MARKS[i];
+            if (m !== mark && cl.contains(m)) cl.remove(m);
+        }
+        if (mark) {
+            if (!cl.contains(mark)) cl.add(mark);
+            _sdDropMarkEl = el;
+        } else {
+            el._sdDropZone = null;
+            if (_sdDropMarkEl === el) _sdDropMarkEl = null;
+        }
+    }
+
+    function setupDropEvents(el, node) {
+        function _setInsertMark(mark) { _sdSetDropMark(el, mark); }
         function _clearInsertMarks() { _setInsertMark(null); }
-        function _getZone(e) {
-            // A see-through wrapper is measured by its element.
-            var r = _sdBoxRect(el);
+        function _getZone(e, r) {
             var y = e.clientY - r.top;
             var h = r.height;
             // Root nodes always go "inside"; very short elements get only before/after
@@ -17945,44 +18398,34 @@ const StyleDesigner = (function () {
             // are box-shadows and do not move anything, so clearing them first
             // changed no measurement — it only forced the browser to lay the
             // page out again before every single read.
-            var zone = _getZone(e);
+            // A see-through wrapper is measured by its element.
+            var _box = _sdBoxRect(el);
+            var zone = _getZone(e, _box);
 
             // One lookup for the whole handler. It used to be asked three
             // separate times, each a full walk of the tree before the drag
             // index existed.
             var _par = findParent(node, tree);
 
-            var dropOk;
-            if (zone === 'inside') {
-                dropOk = canDrop(dragData, node);
-            } else {
-                // before/after: check the parent's canDrop. Nodes in the main tree use
-                // findParent(); nodes inside a shared component's cached inner tree use
-                // _findParentInShared() so "drop as sibling" works for inner elements too
-                // (otherwise dragging a card's child above the card would fall through to
-                // "inside" and re-add the same child to the same card = no-op).
-                var par = _par;
-                if (!par) {
-                    var _sp = _findParentInShared(node);
-                    if (_sp) par = _sp.parent;
-                }
-                if (!par) { zone = 'inside'; dropOk = canDrop(dragData, node); }
-                else      { dropOk = canDrop(dragData, par); }
-                // ── Sibling-drop fallback to inside ─────────────────────
-                // If the parent rejects but the node itself would accept,
-                // promote the drop to 'inside' so the user lands where the
-                // visible drop highlight suggested. Common case: dragging a
-                // region (Comments Block) over the top/bottom 28% of a col
-                // — par=row rejects 'region' (allowed.row only includes
-                // col/shared_ref/loop_area), but col happily accepts it.
-                // Without this fallback, the drop silently bubbled up to
-                // container which DID accept — but that's not where the
-                // user thought they were dropping.
-                if (!dropOk && canDrop(dragData, node)) {
-                    zone = 'inside';
-                    dropOk = true;
-                }
-            }
+            // Parent check for before/after: nodes in the main tree use
+            // findParent(), nodes inside a shared component's cached inner
+            // tree _findParentInShared(), so "drop as sibling" works for inner
+            // elements too (otherwise dragging a card's child above the card
+            // fell through to "inside" and re-added it to the same card).
+            // A sibling band the parent refuses becomes "inside" when the node
+            // takes the drag: a region over the top of a col (a row takes no
+            // region) lands in the col, not in the container further up.
+            zone = _sdCanvasDropZone(zone, e.clientY - _box.top, _box.height,
+                function () { return canDrop(dragData, node); },
+                function () {
+                    var sibPar = _par;
+                    if (!sibPar) {
+                        var sp = _findParentInShared(node);
+                        if (sp) sibPar = sp.parent;
+                    }
+                    return !!sibPar && canDrop(dragData, sibPar);
+                });
+            var dropOk = zone !== null;
             if (!dropOk) {
                 // Do NOT stopPropagation — let an ancestor try to accept this drag.
                 // We also reset dropEffect so the browser shows "not-allowed" if nothing
@@ -24826,21 +25269,78 @@ const StyleDesigner = (function () {
         });
     }
 
-    // ========================= LEFT PANEL =========================
+    // ========================= RIGHT COLUMN =========================
+    // Two tabs over the whole height of the column: Options (the selected
+    // element's panel) and Design (the design's style sheets, scripts, fonts
+    // and themes, initAssetsPanel()). The tab strip is the column's header,
+    // so the dock toggle sits at its end and the docked rail is made from
+    // it (_sdBuildRail()).
+    var _SD_RCOL_TABS = ['options', 'design'];
+
     function initRightPanel() {
         var outer = document.getElementById('sd-panel-right');
         if (!outer) return;
+        var props = document.getElementById('sd-properties');
         var header = document.createElement('div');
-        header.className = 'sd-panel-header';
-        header.innerHTML = '<span class="bi bi-sliders me-1"></span>' + esc(_sdT('Options')) + '';
+        header.className = 'sd-panel-header sd-rcol-head';
+        header.innerHTML =
+            '<div class="sd-rcol-tabs" id="sd-rcol-tabs" role="tablist">' +
+                '<button type="button" class="sd-rcol-tab active" id="sd-rcol-tab-options" data-rcol-tab="options" role="tab" aria-selected="true" aria-controls="sd-rcol-options">' +
+                    '<span class="bi bi-sliders" aria-hidden="true"></span><span class="sd-rcol-tab-txt">' + esc(_sdT('Options')) + '</span></button>' +
+                '<button type="button" class="sd-rcol-tab" id="sd-rcol-tab-design" data-rcol-tab="design" role="tab" aria-selected="false" aria-controls="sd-rcol-design" tabindex="-1">' +
+                    '<span class="bi bi-file-code" aria-hidden="true"></span><span class="sd-rcol-tab-txt">' + esc(_sdT('Design')) + '</span></button>' +
+            '</div>';
+        var optPane = document.createElement('div');
+        optPane.id = 'sd-rcol-options';
+        optPane.className = 'sd-rcol-pane';
+        optPane.setAttribute('role', 'tabpanel');
+        optPane.setAttribute('aria-labelledby', 'sd-rcol-tab-options');
+        var designPane = document.createElement('div');
+        designPane.id = 'sd-rcol-design';
+        designPane.className = 'sd-rcol-pane';
+        designPane.setAttribute('role', 'tabpanel');
+        designPane.setAttribute('aria-labelledby', 'sd-rcol-tab-design');
+        designPane.hidden = true;
         var searchWrap = document.createElement('div');
         searchWrap.className = 'sd-props-search-wrap';
         searchWrap.innerHTML =
             '<span class="bi bi-search"></span>' +
             '<input type="text" id="sd-props-search" placeholder="' + esc(_sdT('Search...')) + '" autocomplete="off">';
-        // Insert before #sd-properties (which is the first child)
-        outer.insertBefore(searchWrap, outer.firstChild);
-        outer.insertBefore(header, outer.firstChild);
+        optPane.appendChild(searchWrap);
+        if (props) optPane.appendChild(props);
+        outer.insertBefore(designPane, outer.firstChild);
+        outer.insertBefore(optPane, designPane);
+        outer.insertBefore(header, optPane);
+
+        var tabs = header.querySelector('#sd-rcol-tabs');
+        tabs.addEventListener('click', function (e) {
+            var btn = e.target.closest ? e.target.closest('.sd-rcol-tab') : null;
+            if (btn) _sdRcolShow(btn.getAttribute('data-rcol-tab'));
+        });
+        // Left and Right move between the tabs, as in a tab list.
+        tabs.addEventListener('keydown', function (e) {
+            if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+            var open = Array.prototype.filter.call(tabs.querySelectorAll('.sd-rcol-tab'), function (t) { return !t.hidden; });
+            var at = open.indexOf(document.activeElement);
+            if (at === -1 || open.length < 2) return;
+            e.preventDefault();
+            var next = open[(at + (e.key === 'ArrowRight' ? 1 : open.length - 1)) % open.length];
+            _sdRcolShow(next.getAttribute('data-rcol-tab'));
+            next.focus();
+        });
+
+        // Under 300 px the column draws its narrow form (sd-rcol-narrow): its
+        // width, not the window's, decides, as a drag can make it narrow
+        // on any screen.
+        if (typeof ResizeObserver === 'function') {
+            new ResizeObserver(function () {
+                var w = outer.getBoundingClientRect().width;
+                if (!(w > 0)) return;
+                var was = outer.classList.contains('sd-rcol-narrow');
+                outer.classList.toggle('sd-rcol-narrow', w < 300);
+                if (!was && w < 300) _sdNarrowStack(document.getElementById('sd-properties'));
+            }).observe(outer);
+        }
 
         var inp = document.getElementById('sd-props-search');
         if (inp) {
@@ -24850,15 +25350,56 @@ const StyleDesigner = (function () {
         }
     }
 
+    // Shows tab `key` of the right column ('options' or 'design').
+    function _sdRcolShow(key) {
+        if (_SD_RCOL_TABS.indexOf(key) === -1) return;
+        _SD_RCOL_TABS.forEach(function (k) {
+            var tab = document.getElementById('sd-rcol-tab-' + k);
+            var pane = document.getElementById('sd-rcol-' + k);
+            var on = (k === key);
+            if (tab) {
+                tab.classList.toggle('active', on);
+                tab.setAttribute('aria-selected', on ? 'true' : 'false');
+                tab.tabIndex = on ? 0 : -1;
+            }
+            if (pane) pane.hidden = !on;
+        });
+        _sdRailSyncRight();
+    }
+
+    // The line under the Options search box that says nothing matched; made
+    // on first use, after the box, so a panel redraw does not remove it.
+    function _sdPropsSearchEmpty(typed) {
+        var line = document.getElementById('sd-props-search-empty');
+        if (!typed) {
+            if (line) line.style.display = 'none';
+            return;
+        }
+        if (!line) {
+            var inp = document.getElementById('sd-props-search');
+            var wrap = inp && inp.parentElement;
+            if (!wrap || !wrap.parentElement) return;
+            line = document.createElement('div');
+            line.id = 'sd-props-search-empty';
+            line.className = 'sd-props-search-empty';
+            line.setAttribute('role', 'status');
+            wrap.parentElement.insertBefore(line, wrap.nextSibling);
+        }
+        line.textContent = _sdT('No option matches “{var}”.', typed);
+        line.style.display = '';
+    }
+
     // Both the typed text and the labels are folded by _sdCondFold() so a
     // Turkish capital İ, I and the dotless ı match a typed i, and capitals
     // match lower case; toLowerCase() alone turns İ into i + U+0307.
     function filterPropertiesPanel(q) {
         var panel = document.getElementById('sd-properties');
         if (!panel) return;
-        q = _sdCondFold(q || '').trim();
+        var typed = String(q || '').trim();
+        q = _sdCondFold(typed).trim();
 
         if (!q) {
+            _sdPropsSearchEmpty('');
             // Restore bodies that were temporarily expanded during search
             panel.querySelectorAll('.sd-sect-body[data-search-expanded]').forEach(function(body) {
                 body.style.display = 'none';
@@ -24870,14 +25411,32 @@ const StyleDesigner = (function () {
             return;
         }
 
+        // The bodies of closed cards are held back; the search draws the
+        // panel with all of them first (renderProperties() filters again).
+        if (panel.querySelector('[data-sd-lazy]')) { renderProperties(); return; }
+
+        var isSect = function(el) {
+            return el.classList.contains('sd-props-section') || el.classList.contains('sd-app-sect');
+        };
+        // Show a section and open its collapsed body for the search
+        var showSect = function(sect) {
+            sect.style.display = '';
+            var body = sect.querySelector('.sd-sect-body');
+            if (body && body.style.display === 'none' && !body.hasAttribute('data-search-expanded')) {
+                body.setAttribute('data-search-expanded', '1');
+                body.style.display = '';
+            }
+        };
+        var shown = [];
+
         // Filter both Options sections (.sd-props-section) and Appearance sections (.sd-app-sect)
         panel.querySelectorAll('.sd-props-section, .sd-app-sect').forEach(function(sect) {
             var isApp = sect.classList.contains('sd-app-sect');
-            var titleEl = sect.querySelector(isApp ? '.sd-app-sect-hdr' : '.sd-props-section-title');
+            var titleEl = sect.querySelector('.sd-sect-title') || sect.querySelector(isApp ? '.sd-app-sect-hdr' : '.sd-props-section-title');
             var titleText = titleEl ? _sdCondFold(titleEl.textContent) : '';
             var titleMatch = titleText.indexOf(q) !== -1;
             var anyVisible = false;
-            var body = sect.querySelector('.sd-sect-body');
+            var ownRows = 0;
 
             sect.querySelectorAll('.sd-prop-row, .sd-sp-row').forEach(function(rowEl) {
                 // Skip rows that are nested inside a child section (avoid double-counting)
@@ -24890,6 +25449,7 @@ const StyleDesigner = (function () {
                     parentSect = parentSect.parentElement;
                 }
                 if (!parentSect) return;
+                ownRows++;
 
                 var label = rowEl.querySelector('.sd-prop-label, .sd-sp-label');
                 var labelText = label ? _sdCondFold(label.textContent) : '';
@@ -24899,14 +25459,37 @@ const StyleDesigner = (function () {
                 if (match) anyVisible = true;
             });
 
-            sect.style.display = anyVisible ? '' : 'none';
+            // A section built without option rows (the translation box, the
+            // quick layout buttons) is found by its title or by the text of
+            // its own buttons and labels.
+            if (!ownRows) {
+                anyVisible = titleMatch;
+                if (!anyVisible) {
+                    sect.querySelectorAll('button, label').forEach(function(el) {
+                        if (anyVisible) return;
+                        for (var p = el.parentElement; p && p !== sect; p = p.parentElement) {
+                            if (isSect(p)) return;
+                        }
+                        if (_sdCondFold(el.textContent).indexOf(q) !== -1) anyVisible = true;
+                    });
+                }
+            }
 
-            // Temporarily expand collapsed body so matching rows are visible
-            if (anyVisible && body && body.style.display === 'none' && !body.hasAttribute('data-search-expanded')) {
-                body.setAttribute('data-search-expanded', '1');
-                body.style.display = '';
+            sect.style.display = anyVisible ? '' : 'none';
+            if (anyVisible) {
+                showSect(sect);
+                shown.push(sect);
             }
         });
+
+        // A shown section keeps the sections around it shown
+        shown.forEach(function(sect) {
+            for (var p = sect.parentElement; p && p !== panel; p = p.parentElement) {
+                if (isSect(p)) showSect(p);
+            }
+        });
+
+        _sdPropsSearchEmpty(shown.length ? '' : typed);
     }
 
     function initLeftPanel() {
@@ -24937,8 +25520,10 @@ const StyleDesigner = (function () {
                 '<div class="sd-ov-search-box" id="sd-ov-search-wrap">' +
                     '<span class="bi bi-search"></span>' +
                     '<input type="text" id="sd-ov-search-input" placeholder="' + esc(_sdT('Search...')) + '" autocomplete="off">' +
+                    '<button type="button" class="sd-ov-collapse-btn sd-ov-reveal-btn" id="sd-ov-reveal-btn" title="' + esc(_sdT('Show the selection')) + '" aria-label="' + esc(_sdT('Show the selection')) + '"><span class="bi bi-crosshair"></span></button>' +
                     '<button type="button" class="sd-ov-collapse-btn" id="sd-ov-collapse-btn" title="' + esc(_sdT('Collapse every branch')) + '"><span class="bi bi-arrows-collapse"></span></button>' +
                 '</div>' +
+                '<nav class="sd-ov-path" id="sd-ov-path" aria-label="' + esc(_sdT('Path of the selection')) + '" hidden></nav>' +
                 '<div class="sd-overview-tree-wrap" id="sd-overview-tree-wrap"><ul class="sd-tree-list" id="sd-tree-list"></ul></div>' +
                 '<div class="sd-overview-notes-wrap" id="sd-overview-notes-wrap" style="display:none">' +
                     '<div id="sd-notes-list"></div>' +
@@ -25139,6 +25724,7 @@ const StyleDesigner = (function () {
                 { label: _sdT('Attributes of the product'), type: 'loop_area', icon: 'bi-card-list', extra: { listSource: 'product.attributes' } },
                 { label: _sdT('Products bought together'), type: 'loop_area', icon: 'bi-bag', extra: { listSource: 'product.related' } },
                 { label: _sdT('Contents of the bundle'), type: 'loop_area', icon: 'bi-box-seam', extra: { listSource: 'product.bundle_items' } },
+                { label: _sdT('Quantity prices'), type: 'loop_area', icon: 'bi-tags', extra: { listSource: 'product.quantity_prices' } },
                 { label: _sdT('Crumbs of the catalog path'), type: 'loop_area', icon: 'bi-signpost-split', extra: { listSource: 'catalog.crumbs' } },
                 { label: _sdT('Active attribute filters'), type: 'loop_area', icon: 'bi-funnel', extra: { listSource: 'catalog.active_filters' } },
                 { label: _sdT('Month grid'), type: 'loop_area', icon: 'bi-calendar3', extra: { listSource: 'calendar.weeks' } },
@@ -25152,6 +25738,9 @@ const StyleDesigner = (function () {
                 { label: _sdT('Orders of the member'), type: 'loop_area', icon: 'bi-receipt', extra: { listSource: 'account.orders' } },
                 { label: _sdT('Upcoming bookings of the member'), type: 'loop_area', icon: 'bi-calendar-check', extra: { listSource: 'account.upcoming_bookings' } },
                 { label: _sdT('Past bookings of the member'), type: 'loop_area', icon: 'bi-calendar', extra: { listSource: 'account.past_bookings' } },
+                { label: _sdT('Subscriptions of the member'), type: 'loop_area', icon: 'bi-arrow-repeat', extra: { listSource: 'account.subscriptions' } },
+                { label: _sdT('Store credit of the member'), type: 'loop_area', icon: 'bi-wallet2', extra: { listSource: 'account.store_credit' } },
+                { label: _sdT('Orders that spent the card'), type: 'loop_area', icon: 'bi-receipt', extra: { listSource: 'account.store_credit_uses' } },
                 { label: _sdT('Products in the cart'), type: 'loop_area', icon: 'bi-cart', extra: { listSource: 'cart.items' } },
                 { label: _sdT('Offers applied to the order'), type: 'loop_area', icon: 'bi-tag', extra: { listSource: 'checkout.offers' } },
                 { label: _sdT('Offers to suggest'), type: 'loop_area', icon: 'bi-megaphone', extra: { listSource: 'checkout.suggestions' } },
@@ -25256,9 +25845,45 @@ const StyleDesigner = (function () {
                 }
                 // Search box only meaningful for tree view
                 if (searchBox) searchBox.style.display = sub === 'tree' ? '' : 'none';
+                var ovSecEl = document.getElementById('sd-overview-section');
+                if (ovSecEl) ovSecEl.classList.toggle('sd-ov-notes-on', sub === 'notes');
                 _setCollapseBtnVisibility(sub);
                 if (sub === 'notes') renderNotesPanel();
                 else _sdTreeRevealSelection();
+            });
+        }
+
+        // The rows' indents follow the tree's width (_sdTreeRowIndent()): a
+        // resized or newly docked panel draws them again.
+        var _ovTreeWrap = document.getElementById('sd-overview-tree-wrap');
+        if (_ovTreeWrap && typeof ResizeObserver === 'function') {
+            var _ovResizeT = null;
+            new ResizeObserver(function () {
+                var w = _ovTreeWrap.clientWidth;
+                if (!w || Math.abs(w - _sdTreeRowWidth) < 12) return;
+                clearTimeout(_ovResizeT);
+                _ovResizeT = setTimeout(renderTree, 150);
+            }).observe(_ovTreeWrap);
+        }
+
+        // ── Show the selection; the path's steps select their element ────────
+        var _ovRevealBtn = document.getElementById('sd-ov-reveal-btn');
+        if (_ovRevealBtn) {
+            _ovRevealBtn.addEventListener('click', function() {
+                if (selectedNode && selectedNode !== tree) scrollTreeToNode(selectedNode);
+            });
+        }
+        var _ovPath = document.getElementById('sd-ov-path');
+        if (_ovPath) {
+            _ovPath.addEventListener('click', function(e) {
+                var b = e.target.closest('.sd-ov-path-step');
+                var n = b && _ovPath._sdSteps ? _ovPath._sdSteps[parseInt(b.dataset.step, 10)] : null;
+                if (!n) return;
+                selectedNodes = [];
+                _sdInner = null;
+                selectedNode = n;
+                _sdSelectRender();
+                scrollCanvasToNode(n);
             });
         }
 
@@ -26464,6 +27089,13 @@ const StyleDesigner = (function () {
 
 
     // ========================= BOTTOM PANEL (HTML TREE ║ ATTRIBUTES) =========================
+    // Whether the bottom panel opens, from what this browser kept under
+    // pinegrap_designer_bp_collapsed: '0' when it was last left open. A
+    // browser that never chose, or any other value, gets the closed strip.
+    function _sdBpOpenRead(stored) {
+        return typeof stored === 'string' && stored.trim() === '0';
+    }
+
     function initBottomPanel() {
         // Append to .sd-canvas-wrapper (NOT to sd-canvas!)
         // createCanvasIframe() → the panel survives when #sd-canvas.innerHTML is reset.
@@ -26494,7 +27126,7 @@ const StyleDesigner = (function () {
                     '<div class="sd-bp-quad-hdr">' +
                         '<span class="bi bi-code-slash me-1"></span>' + esc(_sdT('HTML')) + '' +
                         '<span class="sd-bp-quad-spacer"></span>' +
-                        '<span class="bi bi-chevron-down sd-panel-caret sd-bp-collapse" id="sd-bp-collapse" title="' + esc(_sdT('Collapse/Expand')) + '"></span>' +
+                        '<button type="button" class="bi bi-chevron-down sd-panel-caret sd-bp-collapse" id="sd-bp-collapse" title="' + esc(_sdT('Collapse/Expand')) + '" aria-label="' + esc(_sdT('Collapse/Expand')) + '" aria-controls="sd-bottom-panel" aria-expanded="true"></button>' +
                     '</div>' +
                     '<div class="sd-bp-quad-body">' +
                         '<div class="sd-html-tree" id="sd-html-tree">' +
@@ -26542,21 +27174,41 @@ const StyleDesigner = (function () {
         // The code view's switch and host live in the HTML column.
         _sdCodeInit();
 
-        // ── Collapse/expand: header click or button click ──
+        // ── Open or closed ──
+        // Closed, the panel is a thin strip naming its three columns and
+        // nothing inside it is drawn (_sdPanelHidden()); the whole strip
+        // opens it. Open or closed is kept in this browser; one that never
+        // chose starts closed (_sdBpOpenRead()).
         var colBtn = document.getElementById('sd-bp-collapse');
-        var bpHdr  = p.querySelector('.sd-panel-bottom-header');
         var _BP_COL_KEY = 'pinegrap_designer_bp_collapsed';
+        function _bpShowState() {
+            var shut = p.classList.contains('collapsed');
+            if (colBtn) {
+                colBtn.classList.toggle('bi-chevron-up', shut);
+                colBtn.classList.toggle('bi-chevron-down', !shut);
+                colBtn.setAttribute('aria-expanded', shut ? 'false' : 'true');
+            }
+        }
+        function _bpRemember() {
+            try { localStorage.setItem(_BP_COL_KEY, p.classList.contains('collapsed') ? '1' : '0'); } catch(e) {}
+        }
         function _toggleBpCollapse() {
             p.classList.toggle('collapsed');
             var isNowCollapsed = p.classList.contains('collapsed');
-            if (colBtn) { colBtn.classList.toggle('bi-chevron-up', isNowCollapsed); colBtn.classList.toggle('bi-chevron-down', !isNowCollapsed); }
-            try { localStorage.setItem(_BP_COL_KEY, isNowCollapsed ? '1' : '0'); } catch(e) {}
+            _bpShowState();
+            _bpRemember();
             if (!isNowCollapsed) _sdPanelsFlush();
         }
-        // Restore collapsed state
-        try { if (localStorage.getItem(_BP_COL_KEY) === '1') { p.classList.add('collapsed'); if (colBtn) { colBtn.classList.remove('bi-chevron-down'); colBtn.classList.add('bi-chevron-up'); } } } catch(e) {}
+        var _bpStored = null;
+        try { _bpStored = localStorage.getItem(_BP_COL_KEY); } catch(e) {}
+        if (!_sdBpOpenRead(_bpStored)) p.classList.add('collapsed');
+        _bpShowState();
         if (colBtn) { colBtn.addEventListener('click', function(e) { e.stopPropagation(); _toggleBpCollapse(); }); }
-        if (bpHdr) { bpHdr.style.cursor = 'pointer'; bpHdr.addEventListener('click', function(e) { if (!e.target.closest('button')) _toggleBpCollapse(); }); }
+        p.addEventListener('click', function (e) {
+            if (!p.classList.contains('collapsed') || p.classList.contains('sd-docked')) return;
+            if (e.target.closest && e.target.closest('#sd-bp-vresize, #sd-bp-collapse')) return;
+            _toggleBpCollapse();
+        });
 
         // ── Vertical resize (snap-to-collapse) ──
         var _BP_SNAP_THRESHOLD = 60;
@@ -26623,14 +27275,13 @@ const StyleDesigner = (function () {
                         p.classList.add('collapsed');
                     } else {
                         p.classList.remove('collapsed');
-                        colBtn.classList.remove('bi-chevron-up'); colBtn.classList.add('bi-chevron-down');
                         p.style.height = Math.max(80, newH) + 'px';
                     }
                 }, function () {
                     p.classList.remove('sd-resizing');
-                    if (p.classList.contains('collapsed')) {
-                        colBtn.classList.remove('bi-chevron-down'); colBtn.classList.add('bi-chevron-up');
-                    }
+                    _bpShowState();
+                    _bpRemember();
+                    if (!p.classList.contains('collapsed')) _sdPanelsFlush();
                     saveLayout();
                 });
             });
@@ -26639,12 +27290,13 @@ const StyleDesigner = (function () {
                 if (p.classList.contains('collapsed')) {
                     p.classList.remove('collapsed');
                     p.style.height = _BP_EXPAND_DEFAULT + 'px';
-                    colBtn.classList.remove('bi-chevron-up'); colBtn.classList.add('bi-chevron-down');
+                    _sdPanelsFlush();
                 } else {
                     p.classList.add('collapsed');
                     p.style.height = '';
-                    colBtn.classList.remove('bi-chevron-down'); colBtn.classList.add('bi-chevron-up');
                 }
+                _bpShowState();
+                _bpRemember();
                 saveLayout();
             });
         }
@@ -26890,65 +27542,96 @@ const StyleDesigner = (function () {
         }).join(' ');
     }
 
+    // ── Class control lookup
+    // The Options panel control that manages a CSS class, for the class
+    // chips of the Attributes panel. The panel is read once into an index
+    // (_sdClassControlIndex()) and every chip is looked up in it
+    // (_sdClassControlFind()): a lookup per chip that queried the panel's
+    // few thousand elements cost most of the Attributes panel's draw.
+
+    // Reads the controls of `panel` that manage classes, in document order;
+    // `node` is the element the panel shows (built-in class bindings).
+    function _sdClassControlIndex(panel, node) {
+        var idx = { panel: panel, node: node, btn: {}, cb: {}, util: [], group: [], bm: [], bySel: {} };
+        if (!panel) return idx;
+        var each = function (sel, fn) {
+            var list = panel.querySelectorAll(sel);
+            for (var i = 0; i < list.length; i++) fn(list[i]);
+        };
+        each('button[data-util-toggle]', function (el) {
+            var c = el.getAttribute('data-util-toggle');
+            if (!Object.prototype.hasOwnProperty.call(idx.btn, c)) idx.btn[c] = el;
+        });
+        each('input[type="checkbox"][data-util-toggle]', function (el) {
+            var c = el.getAttribute('data-util-toggle');
+            if (!Object.prototype.hasOwnProperty.call(idx.cb, c)) idx.cb[c] = el;
+        });
+        each('select[data-util]', function (el) { idx.util.push([el.getAttribute('data-util'), el]); });
+        each('select[data-stylegroup]', function (el) { idx.group.push([String(el.getAttribute('data-stylegroup')).split(','), el]); });
+        each('[data-bm]', function (el) { idx.bm.push([el.getAttribute('data-bm'), el]); });
+        return idx;
+    }
+
+    // The control of index `idx` that manages class `cls`, or null. The
+    // order is the one the panel is searched in: a toggle button, a toggle
+    // checkbox, a utility select whose prefix starts the class, a style
+    // group select listing it, a box model field whose prefix starts it,
+    // then the built-in class binding of the node (findBuiltinClassBinding()).
+    function _sdClassControlFind(idx, cls) {
+        if (!idx || !idx.panel || !cls) return null;
+        if (Object.prototype.hasOwnProperty.call(idx.btn, cls)) return idx.btn[cls];
+        if (Object.prototype.hasOwnProperty.call(idx.cb, cls)) return idx.cb[cls];
+        var i;
+        for (i = 0; i < idx.util.length; i++) {
+            if (idx.util[i][0] && cls.startsWith(idx.util[i][0])) return idx.util[i][1];
+        }
+        for (i = 0; i < idx.group.length; i++) {
+            if (idx.group[i][0].indexOf(cls) !== -1) return idx.group[i][1];
+        }
+        for (i = 0; i < idx.bm.length; i++) {
+            if (cls.startsWith(idx.bm[i][0])) return idx.bm[i][1];
+        }
+        var bb = findBuiltinClassBinding(cls, idx.node);
+        if (bb) {
+            if (!Object.prototype.hasOwnProperty.call(idx.bySel, bb.selector)) {
+                idx.bySel[bb.selector] = idx.panel.querySelector(bb.selector);
+            }
+            if (idx.bySel[bb.selector]) return idx.bySel[bb.selector];
+        }
+        return null;
+    }
+    // ── end of class control lookup
+
     // Find the right-panel DOM control that manages a given CSS class
     function findControlForClass(cls) {
-        var panel = document.getElementById('sd-properties');
-        if (!panel || !cls) return null;
-
-        // 1. data-util-toggle button (e.g. border, border-top, text-truncate)
-        var el = panel.querySelector('button[data-util-toggle="' + cls + '"]');
-        if (el) return el;
-
-        // 2. checkbox data-util-toggle
-        el = panel.querySelector('input[type="checkbox"][data-util-toggle="' + cls + '"]');
-        if (el) return el;
-
-        // 3. data-util select — cls starts with the util prefix
-        var utilSels = panel.querySelectorAll('select[data-util]');
-        for (var i = 0; i < utilSels.length; i++) {
-            var pfx = utilSels[i].dataset.util;
-            if (pfx && cls.startsWith(pfx)) return utilSels[i];
-        }
-
-        // 4. data-stylegroup select — cls is one of the group values
-        var sgSels = panel.querySelectorAll('select[data-stylegroup]');
-        for (var j = 0; j < sgSels.length; j++) {
-            var group = sgSels[j].dataset.stylegroup.split(',');
-            if (group.indexOf(cls) !== -1) return sgSels[j];
-        }
-
-        // 5. Box model (.sd-bm-v) — cls starts with m-/p-/etc.
-        var bmEl = panel.querySelector('[data-bm]');
-        if (bmEl) {
-            var allBm = panel.querySelectorAll('[data-bm]');
-            for (var k = 0; k < allBm.length; k++) {
-                if (cls.startsWith(allBm[k].dataset.bm)) return allBm[k];
-            }
-        }
-
-        // 6. Built-in class binding (for data-prop selects whose option values
-        //    don't match the rendered class string, e.g. container's fluid:true/false
-        //    produces container/container-fluid).
-        var bb = findBuiltinClassBinding(cls, selectedNode);
-        if (bb) {
-            var bEl = panel.querySelector(bb.selector);
-            if (bEl) return bEl;
-        }
-
-        return null;
+        if (!cls) return null;
+        return _sdClassControlFind(_sdClassControlIndex(document.getElementById('sd-properties'), selectedNode), cls);
     }
 
     // Scroll & highlight the right-panel control for a given class
     function focusClassControl(cls) {
         var ctrl = findControlForClass(cls);
+        // The control may sit in a closed card whose body was not drawn.
+        if (!ctrl && document.querySelector('#sd-properties [data-sd-lazy]')) {
+            _sdSectAllOnce = true;
+            renderProperties();
+            ctrl = findControlForClass(cls);
+        }
         if (!ctrl) return;
+        // A button group's select is hidden: its selected segment stands in.
+        if (ctrl.classList.contains('sd-seg-src')) {
+            ctrl = ctrl.parentNode.querySelector('.sd-seg-on') || ctrl.parentNode.querySelector('.sd-seg') || ctrl.parentNode;
+        }
+        var _hidden = ctrl.closest('.sd-sect-body');
+        if (_hidden && _hidden.style.display === 'none' && _hidden.previousElementSibling) _hidden.previousElementSibling.click();
+        _sdRcolShow('options');
         // Scroll the properties panel to the control
         ctrl.scrollIntoView({ behavior: 'smooth', block: 'center' });
         // Highlight
         ctrl.classList.add('sd-ctrl-flash');
         setTimeout(function () { ctrl.classList.remove('sd-ctrl-flash'); }, 1200);
-        // Focus selects
-        if (ctrl.tagName === 'SELECT') {
+        // Focus selects and segments
+        if (ctrl.tagName === 'SELECT' || ctrl.classList.contains('sd-seg')) {
             ctrl.focus();
         }
     }
@@ -28000,15 +28683,17 @@ const StyleDesigner = (function () {
         // User classes (from cssClass prop) — editable with × remove button
         var userClasses = (n.props.cssClass || '').split(' ').filter(function (c) { return c.trim() !== ''; });
 
+        // The Options panel is read once for every chip.
+        var ctIdx = _sdClassControlIndex(document.getElementById('sd-properties'), n);
         var classTagsHtml = '<div class="sd-class-tags" id="sd-class-tags-wrap">';
         // Builtin chips — clickable (navigate to control), no remove
         builtinClasses.forEach(function (cls) {
-            var hasCt = findControlForClass(cls) !== null;
+            var hasCt = _sdClassControlFind(ctIdx, cls) !== null;
             classTagsHtml += '<span class="sd-class-tag sd-class-tag-builtin' + (hasCt ? ' sd-class-tag-linked' : '') + '" data-cls="' + esc(cls) + '" title="' + (hasCt ? _sdT('Click to show it in the right-hand panel') : _sdT('Component class')) + '">' + esc(cls) + (hasCt ? '<span class="sd-class-tag-goto bi bi-arrow-right-short"></span>' : '') + '</span>';
         });
         // User chips — removable, also clickable to focus right panel
         userClasses.forEach(function (cls) {
-            var hasCt = findControlForClass(cls) !== null;
+            var hasCt = _sdClassControlFind(ctIdx, cls) !== null;
             // Conflict: built-in class has the same mutex prefix
             var hasConflict = builtinClasses.some(function(bc) {
                 for (var pi = 0; pi < CLASS_MUTEX_PREFIXES.length; pi++) {
@@ -29263,7 +29948,12 @@ const StyleDesigner = (function () {
         // Hidden (the Notes tab, a folded Overview): drawn when shown; the
         // notes list it also refreshes may be the one on screen.
         if (_sdPanelDefer('tree')) { if (_refreshNotesPanel) _refreshNotesPanel(); return; }
+        _sdTreeOpenSectionsOnce();
         _sdTreeOpenToSelection();
+        var _wrapEl = document.getElementById('sd-overview-tree-wrap');
+        _sdTreeRowWidth = _wrapEl ? _wrapEl.clientWidth : 0;
+        _sdTreeNames = _sdTreeCountNames();
+        _sdTreeChainShown = [];
         list.innerHTML = '';
 
         // Refresh notes tab (count badge + list) whenever tree re-renders
@@ -29300,6 +29990,7 @@ const StyleDesigner = (function () {
         // What the rows were drawn from (_sdTreeSelectInPlace()).
         list._sdTreeOf = tree;
         list._sdTreeEpoch = _sdEditEpoch;
+        _sdTreePathRender();
         _sdTreeRevealSelection();
 
         // Attach palette-drop handlers ONCE on the list element.
@@ -29310,6 +30001,9 @@ const StyleDesigner = (function () {
                 return target === list || !!(target.closest && target.closest('.sd-tree-locked-root'));
             }
             list.addEventListener('dragover', function(e) {
+                // Rows answer their own dragover: here the pointer is on
+                // none, so no row's drop label stays.
+                _sdTreeDropLabel(null);
                 if (!dragData || dragData.source !== 'palette') return;
                 if (!isOnBody(e.target)) return;
                 e.preventDefault();
@@ -29318,6 +30012,7 @@ const StyleDesigner = (function () {
                 if (bl) bl.classList.add('sd-tree-root-drop');
             });
             list.addEventListener('dragleave', function(e) {
+                if (!e.relatedTarget || !list.contains(e.relatedTarget)) _sdTreeDropLabel(null);
                 if (isOnBody(e.target)) {
                     list.classList.remove('sd-tree-root-drop');
                     var bl = list.querySelector('.sd-tree-locked-root');
@@ -30825,6 +31520,420 @@ const StyleDesigner = (function () {
         return true;
     }
 
+    // The parent of a node as the overview draws it: inside a shared
+    // component or widget, the top of its own tree hangs under its
+    // placement on the page.
+    function _sdTreeParentOf(n) {
+        if (!n || n === tree) return null;
+        var p = findParent(n, tree);
+        if (p) return p;
+        var sp = _findParentInShared(n);
+        if (!sp) return null;
+        var cached = _sharedCache[sp.sid];
+        if (!cached || sp.parent !== cached.tree) return sp.parent;
+        var ref = null;
+        (function walk(x) {
+            if (ref || !x) return;
+            if (x.type === 'shared_ref' && x.props && parseInt(x.props.sharedId, 10) === sp.sid) { ref = x; return; }
+            (x.children || []).forEach(walk);
+        })(tree);
+        return ref;
+    }
+
+    // On a page's first drawing only the section of the selection is open
+    // (none without one); a page drawn again keeps what the operator opened.
+    var _sdTreeSectionsSet = {};
+    // The tree's width at its last drawing, for each row's indent.
+    var _sdTreeRowWidth = 0;
+    function _sdTreeOpenSectionsOnce() {
+        if (!tree || !tree.children) return;
+        var key = String(_activeKey || '');
+        if (_sdTreeSectionsSet[key]) return;
+        _sdTreeSectionsSet[key] = true;
+        var states = _sdTreeSectionStates(tree, selectedNode, _sdTreeParentOf);
+        tree.children.forEach(function (k, i) { k._expanded = states[i]; });
+    }
+
+    // The selection's path over the tree, sticky (outside the scrolled
+    // list); a step selects its element.
+    function _sdTreePathRender() {
+        var bar = document.getElementById('sd-ov-path');
+        if (!bar) return;
+        var steps = _sdTreePathSteps(tree, selectedNode, _sdTreeParentOf, 5);
+        bar._sdSteps = steps;
+        if (!steps.length) { bar.innerHTML = ''; bar.hidden = true; return; }
+        bar.hidden = false;
+        bar.innerHTML = '<span class="bi bi-pin-angle sd-ov-path-pin" aria-hidden="true"></span>' + steps.map(function (s, i) {
+            var sep = i ? '<span class="sd-ov-path-sep" aria-hidden="true">›</span>' : '';
+            if (!s) return sep + '<span class="sd-ov-path-gap">…</span>';
+            var last = i === steps.length - 1;
+            return sep + '<button type="button" class="sd-ov-path-step' + (last ? ' sd-ov-path-cur' : '') + '" data-step="' + i + '"' +
+                (last ? ' aria-current="true"' : '') + '>' + esc(_sdPartTreeLabel(s, getNodeLabel(s))) + '</button>';
+        }).join('');
+    }
+
+    // ── The overview's rows on a long page ─────────────────────────────────
+    //
+    // A row's indent: 12 px a level, at most six indents; a deeper row
+    // carries its level in a badge. In a tree `width` px wide (0: not
+    // measured) the label keeps at least 150 px: indents go first. `depth`
+    // is 1 for a section row (a child of the body). Returns the levels under
+    // the section, the indent in px, the badge's level (0: none) and the
+    // label's px (null without a width).
+    function _sdTreeRowIndent(depth, width) {
+        var STEP = 12, MAX = 6, HEAD = 48, BADGE = 22, LABEL = 150;
+        var levels = Math.max(0, (parseInt(depth, 10) || 1) - 1);
+        var shown = Math.min(levels, MAX);
+        var room = (width > 0) ? width - HEAD - LABEL : Infinity;
+        while (shown > 0 && shown * STEP + (shown < levels ? BADGE : 0) > room) shown--;
+        var badge = shown < levels ? levels + 1 : 0;
+        var label = (width > 0) ? width - HEAD - shown * STEP - (badge ? BADGE : 0) : null;
+        return { levels: levels, indent: shown * STEP, badge: badge, label: label };
+    }
+
+    // Which of the body's children (the sections) are open when a page is
+    // opened: only the one that holds `sel`. `parentOf(node)` gives a
+    // node's parent (null at the top).
+    function _sdTreeSectionStates(root, sel, parentOf) {
+        var kids = (root && root.children) || [];
+        var top = null;
+        for (var n = sel, guard = 0; n && n !== root && guard < 10000; guard++) {
+            var p = parentOf(n);
+            if (p === root) { top = n; break; }
+            n = p;
+        }
+        return kids.map(function (k) { return k === top; });
+    }
+
+    // The count on a section row: every element under the node.
+    function _sdTreeNodeCount(node) {
+        var c = 0;
+        var stack = (node && node.children) ? node.children.slice() : [];
+        while (stack.length) {
+            var n = stack.pop();
+            c++;
+            if (n && n.children && n.children.length) Array.prototype.push.apply(stack, n.children);
+        }
+        return c;
+    }
+
+    // The steps of the selection's path, from its section down to it; the
+    // body is no step. Longer than `max`, the section and the last `max - 2`
+    // steps are kept with a gap (null) between them.
+    function _sdTreePathSteps(root, sel, parentOf, max) {
+        var steps = [];
+        for (var n = sel, guard = 0; n && n !== root && guard < 10000; guard++) {
+            steps.unshift(n);
+            n = parentOf(n);
+        }
+        if (n !== root) return [];
+        if (max > 2 && steps.length > max) {
+            steps = [steps[0], null].concat(steps.slice(steps.length - (max - 2)));
+        }
+        return steps;
+    }
+
+    // A wrapper the overview may fold into a chain line: a plain layout box
+    // (container, row, column, a block tag) with no words of its own and no
+    // mark the operator needs to see (an editable area, a lock, a note).
+    function _sdTreeIsWrapper(n) {
+        if (!n || !n.props) return false;
+        var p = n.props;
+        if (p._editable || p._locked || (p._notes && String(p._notes).trim()) || p.text) return false;
+        if (n.type === 'container' || n.type === 'row' || n.type === 'col') return true;
+        if (n.type !== 'semantic') return false;
+        return ['div', 'section', 'nav', 'header', 'footer', 'main', 'article', 'aside'].indexOf(String(p.tag || 'section').toLowerCase()) !== -1;
+    }
+
+    // A chain from `node` down: wrappers that are open and hold exactly one
+    // child each. Two or more are drawn as one line; `next` is the first
+    // element after them. `keepOpen(n)` is true for a node that must show
+    // (opened by the operator, selected): then nothing is folded, and `run`
+    // lists the whole chain, to be drawn row by row.
+    function _sdTreeChain(node, keepOpen) {
+        var run = [], open = false;
+        var n = node;
+        while (_sdTreeIsWrapper(n) && n._expanded !== false && n.children && n.children.length === 1) {
+            if (keepOpen(n)) open = true;
+            run.push(n);
+            n = n.children[0];
+        }
+        if (run.length < 2 || !n) return { hidden: [], next: node, run: [] };
+        if (open) return { hidden: [], next: node, run: run };
+        return { hidden: run, next: n, run: run };
+    }
+
+    // The names on a chain line: its first and last level, a gap between
+    // when there are more.
+    function _sdTreeChainLabel(names) {
+        if (names.length < 3) return names.join(' › ');
+        return names[0] + ' › … › ' + names[names.length - 1];
+    }
+
+    // Why an Overview drop target refuses the element, in words: `code` from
+    // _sdTreeDropCode(), `name` the parent's row name.
+    function _sdTreeDropWhy(code, name) {
+        switch (code) {
+            case 'self': return _sdT('An element cannot go inside itself');
+            case 'same': return _sdT('The element is already here');
+            case 'locked': return _sdT('{var} is locked', name);
+            case 'rights': return _sdT('{var} is outside the areas you may edit', name);
+            case 'empty': return _sdT('{var} holds no other elements', name);
+            case 'form': return _sdT('A form cannot go inside another form');
+            case 'list': return _sdT('A list takes only list items');
+        }
+        return _sdT('{var} does not take this element', name);
+    }
+
+    // Where a drop over an Overview row lands. `p.y` and `p.x` are the
+    // pointer inside the row (from its top and its left), `p.h` the row's
+    // height; `p.inside` is the row as a parent, `p.gap` the targets of the
+    // gap the pointer is in, deepest first. A target is { indent, ok, name,
+    // place, code }: its row's drawn indent, whether canDrop() takes the
+    // element there, the parent's name, the 1-based place and why it
+    // refuses. The gap reaches 7 px into each row, the rest of the row (14 px
+    // of 28) is "inside". A target's dot sits 8 px after its indent, so 12 px
+    // of pointer travel is one level; only legal targets are chosen, the
+    // deeper on a tie. With none legal, the one nearest the pointer says why.
+    function _sdTreeDropPick(p) {
+        var reach = 7;
+        var zone = p.y < reach ? 'before' : (p.y >= p.h - reach ? 'after' : 'inside');
+        var list = zone === 'inside' ? (p.inside ? [p.inside] : []) : (p.gap || []);
+        if (!list.length) return { zone: zone, index: -1, ok: false, indent: 0, text: '' };
+        var best = -1, near = 0, bd = Infinity, nd = Infinity;
+        for (var i = 0; i < list.length; i++) {
+            var d = Math.abs(p.x - (list[i].indent + 8));
+            if (d < nd) { nd = d; near = i; }
+            if (list[i].ok && d < bd) { bd = d; best = i; }
+        }
+        if (best === -1) {
+            return { zone: zone, index: near, ok: false, indent: list[near].indent,
+                text: _sdTreeDropWhy(list[near].code, list[near].name) };
+        }
+        return { zone: zone, index: best, ok: true, indent: list[best].indent,
+            text: _sdT('Into {var:1}, place {var:2}', [list[best].name, list[best].place]) };
+    }
+
+    // Where the drop label stands for a pointer at (px, py), a label of
+    // lw x lh and a window of vw x vh: 14 px right of and 16 px below the
+    // pointer, left of it when it would cross the right edge, above it when
+    // it would cross the foot, never nearer than 8 px to an edge. maxWidth is
+    // what the label may take before its text wraps: 300 px, at most the
+    // window less 16 px.
+    function _sdTreeDropLabelPlace(px, py, lw, lh, vw, vh) {
+        var edge = 8;
+        var left = px + 14, top = py + 16;
+        if (left + lw > vw - edge) left = px - 14 - lw;
+        if (top + lh > vh - edge) top = py - 16 - lh;
+        left = Math.max(edge, Math.min(left, vw - edge - lw));
+        top = Math.max(edge, Math.min(top, vh - edge - lh));
+        return { left: left, top: top, maxWidth: Math.max(0, Math.min(300, vw - 2 * edge)) };
+    }
+
+    // Why canDrop() refuses `data` in `parent`, as a code for _sdTreeDropWhy().
+    function _sdTreeDropCode(data, parent) {
+        var dn = data.source === 'node' ? data.node : null;
+        if ((parent.props && parent.props._locked) || hasLockedAncestor(parent) ||
+            (dn && ((dn.props && dn.props._locked) || hasLockedAncestor(dn)))) return 'locked';
+        var tag = _semTag(parent);
+        var ct = parent.props ? parent.props.contentType : '';
+        if (parent.type === 'region' || parent.type === 'shared_ref' ||
+            (parent.type === 'content' && ['image', 'divider', 'icon', 'spacer', 'svg'].indexOf(ct) !== -1) ||
+            ['img', 'input', 'hr', 'br'].indexOf(tag) !== -1) return 'empty';
+        if (_sdDragCarriesForm(data) && _sdInForm(parent)) return 'form';
+        if (tag === 'ul' || tag === 'ol') return 'list';
+        return 'rule';
+    }
+
+    // The name a drop label gives a parent.
+    function _sdTreeDropName(parent) {
+        if (parent === tree) return '<body>';
+        if (parent.type === 'root') return _sdT('the component');
+        return _sdTreeRowName(parent);
+    }
+
+    // One Overview drop target: `parent` takes the element before `sib`, after
+    // it with `after`, at its end with no `sib`. `li` is the row whose indent
+    // the line takes; `moving` the elements the drop would move.
+    function _sdTreeDropTarget(data, parent, sib, after, li, moving) {
+        var kids = parent.children || [];
+        var at = sib ? kids.indexOf(sib) + (after ? 1 : 0) : kids.length;
+        // Moved elements already in the parent before the place leave a gap.
+        for (var i = 0, n = at; i < n && i < kids.length; i++) if (moving.indexOf(kids[i]) !== -1) at--;
+        var dn = data.source === 'node' ? data.node : null;
+        var code = '';
+        if (dn && sib === dn) code = 'same';
+        else if (dn && (parent === dn || isDescendant(dn, parent))) code = 'self';
+        else if (dn && !_sdMayEdit(sib || parent)) code = 'rights';
+        else if (!canDrop(data, parent)) code = _sdTreeDropCode(data, parent);
+        return { parent: parent, sib: sib, after: after, indent: parseFloat(li.style.getPropertyValue('--sd-ind')) || 0,
+            ok: !code, code: code, name: _sdTreeDropName(parent), place: at + 1 };
+    }
+
+    // The targets of the gap above (`zone` 'before') or below a drawn row,
+    // deepest first, read from the rows as drawn (folded chains included).
+    // The gap below a row whose branch is open is the first place in it;
+    // below a branch's last row, it is also after each branch that ends
+    // there, up to the row that comes next.
+    function _sdTreeDropGap(data, li, zone, moving) {
+        var a = li;
+        if (zone === 'before') {
+            var p = li.previousElementSibling;
+            while (p && p.tagName === 'UL') p = p.lastElementChild;
+            if (!p) {
+                var pu = li.parentElement;
+                p = (pu && pu.classList.contains('sd-tree-children')) ? pu.previousElementSibling : null;
+            }
+            if (!p || !p._sdNode) {
+                var bi = _findParentAnywhere(li._sdNode);
+                return bi ? [_sdTreeDropTarget(data, bi.parent, li._sdNode, false, li, moving)] : [];
+            }
+            a = p;
+        }
+        var next = a.nextElementSibling;
+        if (next && next.tagName === 'UL' && next.firstElementChild) {
+            var f = next.firstElementChild;
+            var fn = f._sdNode || f._sdChainFirst;
+            var fi = fn ? _findParentAnywhere(fn) : null;
+            return fi ? [_sdTreeDropTarget(data, fi.parent, fn, false, f, moving)] : [];
+        }
+        var out = [];
+        for (var cur = a, g = 0; cur && cur._sdNode && g < 64; g++) {
+            var ci = _findParentAnywhere(cur._sdNode);
+            if (ci) out.push(_sdTreeDropTarget(data, ci.parent, cur._sdNode, true, cur, moving));
+            // A later row in the same branch closes the gap here.
+            var s = cur.nextElementSibling;
+            if (s && s.tagName === 'UL') s = s.nextElementSibling;
+            if (s) break;
+            var up = cur.parentElement;
+            cur = (up && up.classList.contains('sd-tree-children')) ? up.previousElementSibling : null;
+        }
+        return out;
+    }
+
+    // The targets of one row and zone, asked once per drag: canDrop() is not
+    // asked again on every pointer move.
+    var _sdTreeDropMemo = null;
+
+    function _sdTreeDropClear() {
+        document.querySelectorAll('.sd-tree-drop-before,.sd-tree-drop-after,.sd-tree-drop-inside,.sd-tree-drop-refused').forEach(function (x) {
+            x.classList.remove('sd-tree-drop-before', 'sd-tree-drop-after', 'sd-tree-drop-inside', 'sd-tree-drop-refused');
+        });
+    }
+
+    // The label that follows the pointer over the Overview during a drag;
+    // no text hides it.
+    var _sdTreeDropLbl = null;
+    function _sdTreeDropLabel(text, x, y, refused) {
+        var l = _sdTreeDropLbl;
+        if (!text) {
+            if (l) l.hidden = true;
+            return;
+        }
+        if (!l) {
+            l = _sdTreeDropLbl = document.createElement('div');
+            l.id = 'sd-tree-drop-label';
+            l.setAttribute('role', 'status');
+            document.body.appendChild(l);
+            ['dragend', 'drop'].forEach(function (ev) {
+                document.addEventListener(ev, function () {
+                    _sdTreeDropLabel(null);
+                    _sdTreeDropMemo = null;
+                }, true);
+            });
+        }
+        if (l._sdText !== text || l._sdNo !== !!refused) {
+            l._sdText = text;
+            l._sdNo = !!refused;
+            l.classList.toggle('sd-tree-drop-label-no', !!refused);
+            l.innerHTML = '<span class="bi ' + (refused ? 'bi-slash-circle' : 'bi-arrow-return-right') + '" aria-hidden="true"></span>' +
+                '<span class="sd-tree-drop-label-txt">' + esc(text) + '</span>';
+        }
+        l.hidden = false;
+        // Kept in the window and never cut: the text wraps within maxWidth.
+        var vw = document.documentElement.clientWidth || window.innerWidth;
+        var vh = document.documentElement.clientHeight || window.innerHeight;
+        l.style.maxWidth = _sdTreeDropLabelPlace(0, 0, 0, 0, vw, vh).maxWidth + 'px';
+        var at = _sdTreeDropLabelPlace(x, y, l.offsetWidth, l.offsetHeight, vw, vh);
+        l.style.left = at.left + 'px';
+        l.style.top = at.top + 'px';
+    }
+
+    // The hint after a name that repeats: the element's text, a picture's
+    // file name or a link's target, else the first of these inside it (60
+    // elements looked at). At most `max` characters, cut with an ellipsis.
+    function _sdTreeRowHint(node, max) {
+        function own(n) {
+            var p = (n && n.props) || {};
+            var t = String(p.text || '').replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+            if (t) return t;
+            if (p.src) {
+                var f = String(p.src).split(/[?#]/)[0].split('/').pop();
+                if (f) return f;
+            }
+            if (p.href && p.href !== '#') return String(p.href);
+            return '';
+        }
+        var queue = [node], seen = 0, hint = '';
+        while (queue.length && seen < 60 && !hint) {
+            var n = queue.shift();
+            seen++;
+            hint = own(n);
+            if (n && n.children) queue = queue.concat(n.children);
+        }
+        if (max > 1 && hint.length > max) hint = hint.slice(0, max - 1).trim() + '…';
+        return hint;
+    }
+
+    // The selection after rows dragged in the overview were moved: the moved
+    // nodes, as a move on the canvas keeps the dropped node. One row is a
+    // plain selection; a multi-selection moved together stays one, with the
+    // same primary while it moved too, else the last moved node. Returns
+    // { node, nodes } for selectedNode and selectedNodes.
+    function _sdTreeMoveSelection(moved, primary) {
+        var nodes = (moved || []).filter(function (n) { return !!n; });
+        if (nodes.length < 2) return { node: nodes[0] || null, nodes: [] };
+        var node = (primary && nodes.indexOf(primary) !== -1) ? primary : nodes[nodes.length - 1];
+        return { node: node, nodes: nodes.slice() };
+    }
+
+    // The nodes a drag of rows in the overview moves, from the picked ones
+    // (the dragged row, or the multi-selection it belongs to) and the row it
+    // lands on. A picked node inside another picked node travels inside it
+    // and is not moved on its own: taking it out and putting both in would
+    // leave the outer one in the page twice. A node holding the target
+    // cannot move next to or into its own descendant. The target, the root
+    // and repeats are left out; the order of the pick is kept.
+    function _sdTreeMoveSet(picked, target) {
+        var holds = function (anc, n) {
+            var kids = (anc && anc.children) || [];
+            for (var i = 0; i < kids.length; i++) {
+                if (kids[i] === n || holds(kids[i], n)) return true;
+            }
+            return false;
+        };
+        var list = [];
+        (picked || []).forEach(function (n) {
+            if (n && n !== target && n.type !== 'root' && list.indexOf(n) === -1) list.push(n);
+        });
+        return list.filter(function (n) {
+            if (target && holds(n, target)) return false;
+            return !list.some(function (m) { return m !== n && holds(m, n); });
+        });
+    }
+
+    // Selects the nodes a tree drag moved and redraws. The moved node may be
+    // the one already selected, so the overview is told it is new: the
+    // branches over its new place open and its row comes into view.
+    function _sdTreeMoveSelect(moved) {
+        var sel = _sdTreeMoveSelection(moved, selectedNode);
+        selectedNode  = sel.node;
+        selectedNodes = sel.nodes;
+        _sdTreeOpenedFor = null;
+        _sdTreeShownFor  = null;
+        render();
+    }
+
     // ── Canvas Right-Click Context Menu ───────────────────────────────────────────
     function showCanvasCtxMenu(x, y, node) {
         // View mode: the menu still opens, because a menu that refuses to
@@ -31000,6 +32109,7 @@ const StyleDesigner = (function () {
             if (r) r.classList.add('sd-multi-selected');
         });
         if (_refreshNotesPanel) _refreshNotesPanel();
+        _sdTreePathRender();
         _sdTreeRevealSelection();
         return true;
     }
@@ -31012,9 +32122,80 @@ const StyleDesigner = (function () {
         return null;
     }
 
-    function buildTreeItems(ul, node, depth) {
+    // Folded chains the operator opened (by their first node), and the row
+    // names the page uses, counted at each drawing of the tree.
+    var _sdTreeChainsOpen = (typeof WeakSet === 'function') ? new WeakSet() : null;
+    var _sdTreeNames = {};
+
+    function _sdTreeRowName(n) {
+        return (n.props && n.props._label) || _sdPartTreeLabel(n, getNodeLabel(n));
+    }
+
+    // How many rows of the page carry each name, shared components' trees
+    // included as the overview draws them.
+    function _sdTreeCountNames() {
+        var counts = {}, seen = {};
+        (function walk(n) {
+            if (!n) return;
+            if (n !== tree) {
+                var name = _sdPartTreeLabel(n, getNodeLabel(n));
+                counts[name] = (counts[name] || 0) + 1;
+            }
+            var kids = n.children;
+            if (n.type === 'shared_ref' && n.props && n.props.sharedId) {
+                var sid = parseInt(n.props.sharedId, 10);
+                if (seen[sid] || !_sharedCache[sid] || !_sharedCache[sid].tree) return;
+                seen[sid] = true;
+                kids = _sharedCache[sid].tree.children;
+            }
+            (kids || []).forEach(walk);
+        })(tree);
+        return counts;
+    }
+
+    // A child row, or the line of the folded chain it starts and the
+    // element after the chain. A chain opened, or holding the selection,
+    // is drawn row by row.
+    var _sdTreeChainShown = [];
+    function _sdTreeBuildChild(ul, node, depth, lvl) {
+        if (_sdTreeChainShown.indexOf(node) !== -1) { buildTreeItems(ul, node, depth, lvl); return; }
+        var chain = _sdTreeChain(node, function (n) {
+            return n === selectedNode || selectedNodes.indexOf(n) !== -1 ||
+                !!(_sdTreeChainsOpen && _sdTreeChainsOpen.has(n));
+        });
+        // An open chain's later links are drawn as rows too, not folded anew.
+        if (!chain.hidden.length && chain.run.length) Array.prototype.push.apply(_sdTreeChainShown, chain.run);
+        if (!chain.hidden.length || !_sdTreeChainsOpen) { buildTreeItems(ul, node, depth, lvl); return; }
+        var li = document.createElement('li');
+        li.className = 'sd-tree-chain';
+        // A drop in the gap above the line goes before the chain's first level.
+        li._sdChainFirst = chain.hidden[0];
+        li.style.setProperty('--depth', depth);
+        li.style.setProperty('--sd-ind', _sdTreeRowIndent(depth, _sdTreeRowWidth).indent + 'px');
+        var text = _sdT('{var} levels hidden', chain.hidden.length) + ': ' + _sdTreeChainLabel(chain.hidden.map(_sdTreeRowName));
+        li.innerHTML = '<button type="button" class="sd-tree-chain-btn" title="' + esc(_sdT('Show the hidden levels')) + '">' +
+            '<span class="bi bi-three-dots" aria-hidden="true"></span><span class="sd-tree-chain-txt">' + esc(text) + '</span></button>';
+        li.addEventListener('click', function (e) {
+            e.stopPropagation();
+            _sdTreeChainsOpen.add(chain.hidden[0]);
+            renderTree();
+        });
+        ul.appendChild(li);
+        buildTreeItems(ul, chain.next, depth, lvl + chain.hidden.length);
+    }
+
+    // `depth` is where the row is drawn, `lvl` its level in the page (deeper
+    // under a folded chain); 1 for a section.
+    function buildTreeItems(ul, node, depth, lvl) {
+        lvl = lvl || depth;
         var li = document.createElement('li');
         li.style.setProperty('--depth', depth);
+        if (lvl !== depth) li.dataset.lvl = lvl;
+        // 12 px a level, six at most, the label never under 150 px.
+        var _ind = _sdTreeRowIndent(depth, _sdTreeRowWidth);
+        li.style.setProperty('--sd-ind', _ind.indent + 'px');
+        var _isSect = depth === 1;
+        if (_isSect) li.classList.add('sd-tree-sect');
         li.dataset.nid = node._id;
         li._sdNode = node;
 
@@ -31062,10 +32243,12 @@ const StyleDesigner = (function () {
             icon = '<span class="bi ' + (semTagIcons[node.props.tag] || 'bi-code-slash') + '"></span>';
         }
 
-        var idBadge = node.props.id ? '<span class="sd-tree-id">#' + esc(node.props.id) + '</span>' : '';
+        // The id gives way first: cut with an ellipsis, left out when only a
+        // few letters would stay (it wraps out of its one-line holder).
+        var idBadge = node.props.id ? '<span class="sd-tree-id-wrap"><span class="sd-tree-id" title="#' + esc(node.props.id) + '">#' + esc(node.props.id) + '</span></span>' : '';
         var displayLabel = _sdPartTreeLabel(node, getNodeLabel(node));
         var userLabelBadge = node.props._label
-            ? '<span class="sd-tree-user-label" title="' + esc(node.props._label) + '"><i class="bi bi-tag-fill"></i>' + esc(node.props._label) + '</span>'
+            ? '<span class="sd-tree-user-label" title="' + esc(node.props._label) + '"><i class="bi bi-tag-fill"></i><span class="sd-tree-user-label-t">' + esc(node.props._label) + '</span></span>'
             : '';
         var lockBadge = (node.type !== 'root' && node.props._locked)
             ? '<span class="sd-tree-lock-badge bi bi-lock-fill" title="' + esc(_sdT('Locked')) + '"></span>'
@@ -31101,7 +32284,19 @@ const StyleDesigner = (function () {
         var addBtn = _treeCompType
             ? '<button type="button" class="sd-tree-add-btn bi bi-plus-lg" title="' + (COMPOSITE_ADD_LABELS[_treeCompType] || _sdT('Add')) + '"></button>'
             : '';
-        li.innerHTML = chevHtml + icon + ' <span class="sd-tree-lbl">' + esc(displayLabel) + '</span>' + idBadge + foldBadge + userLabelBadge + lockBadge + sharedBadge + editableBadge + noteBadge + addBtn;
+        var _lvlShown = _ind.badge ? _ind.badge + (lvl - depth) : 0;
+        var depthBadge = _lvlShown
+            ? '<span class="sd-tree-depth" role="img" title="' + esc(_sdT('Level {var}', _lvlShown)) + '" aria-label="' + esc(_sdT('Level {var}', _lvlShown)) + '">' + _lvlShown + '</span>'
+            : '';
+        // A name the page uses more than once gets a hint after it.
+        var _hint = (!node.props._label && _sdTreeNames[displayLabel] > 1) ? _sdTreeRowHint(node, 40) : '';
+        var hintHtml = (_hint && _hint !== displayLabel) ? '<span class="sd-tree-hint" title="' + esc(_hint) + '">· ' + esc(_hint) + '</span>' : '';
+        var sectCount = '';
+        if (_isSect) {
+            var _cnt = _sdTreeNodeCount(_sharedRefTree || node);
+            if (_cnt) sectCount = '<span class="sd-tree-sect-count" title="' + esc(_sdT('{var} elements inside', _cnt)) + '">' + _cnt + '</span>';
+        }
+        li.innerHTML = depthBadge + chevHtml + icon + ' <span class="sd-tree-lbl">' + esc(displayLabel) + '</span>' + hintHtml + idBadge + foldBadge + userLabelBadge + lockBadge + sharedBadge + editableBadge + noteBadge + addBtn + sectCount;
         if (node.type === 'shared_ref') li.classList.add('sd-tree-shared');
         else if (node.props._locked) li.classList.add('sd-tree-locked');
         else if (hasLockedAncestor(node)) li.classList.add('sd-tree-locked-desc');
@@ -31266,79 +32461,75 @@ const StyleDesigner = (function () {
                 }
                 li._sdDragGhost = null;
                 document.querySelectorAll('.sd-tree-drag-src').forEach(function(el) { el.classList.remove('sd-tree-drag-src'); });
-                document.querySelectorAll('.sd-tree-drop-before,.sd-tree-drop-after,.sd-tree-drop-inside').forEach(function(el) {
-                    el.classList.remove('sd-tree-drop-before', 'sd-tree-drop-after', 'sd-tree-drop-inside');
-                });
+                _sdTreeDropClear();
             });
         }
 
         li.addEventListener('dragover', function(e) {
-            e.preventDefault(); e.stopPropagation(); // always accept; drop handler has its own guards
-            document.querySelectorAll('.sd-tree-drop-before,.sd-tree-drop-after,.sd-tree-drop-inside').forEach(function(x) {
-                x.classList.remove('sd-tree-drop-before','sd-tree-drop-after','sd-tree-drop-inside');
-            });
-            // Only the position this move found legal may be used by the
+            e.stopPropagation();
+            _sdTreeDropClear();
+            // Only the target this move found legal may be used by the
             // drop; one left from an earlier move over the row may not.
             li._dropPos = null;
 
             var isPalette = dragData && dragData.source === 'palette';
             var isTreeMove = treeDragNode && treeDragNode !== node;
-            if (!isPalette && !isTreeMove) return;
+            if (!isPalette && !isTreeMove) { _sdTreeDropLabel(null); return; }
 
-            // ── Drop zone picker — classic Y-band tree behaviour.
-            //   Y < 28% of the row → drop BEFORE this node (sibling above)
-            //   Y > 72%             → drop AFTER  (sibling below)
-            //   middle band         → drop INSIDE this node as a child
-            // The middle band falls back to AFTER when the target can't accept
-            // children (e.g. leaf rows like content nodes), so the cursor is
-            // never "stuck" with no valid drop. Sibling zones fall back to
-            // INSIDE if the parent refuses the drag (rare — keeps the user
-            // from being blocked when canDrop is asymmetric).
+            // The gap between two rows reaches 7 px into each, the middle
+            // of the row is "inside"; the pointer's horizontal place picks
+            // the level among the parents canDrop() lets the element into
+            // (_sdTreeDropPick()).
             var rect = li.getBoundingClientRect();
             var y = e.clientY - rect.top;
-            var h = rect.height;
-
-            // canDrop probes — palette uses dragData; tree-move builds a
-            // synthetic descriptor since treeDragNode isn't in dragData.
-            var moveData = isPalette
-                ? dragData
-                : { source: 'node', node: treeDragNode, type: treeDragNode.type };
-
-            function _canInside()  { return canDrop(moveData, node); }
-            function _canSibling() {
-                var sp = _findParentAnywhere(node);
-                return sp ? canDrop(moveData, sp.parent) : false;
+            var zone = _sdTreeDropPick({ y: y, x: 0, h: rect.height, inside: null, gap: [] }).zone;
+            var drag = isPalette ? dragData : treeDragNode;
+            var m = _sdTreeDropMemo;
+            if (!m || m.li !== li || m.zone !== zone || m.drag !== drag) {
+                // canDrop() probes: a tree move builds a descriptor, as
+                // treeDragNode is not in dragData.
+                var moveData = isPalette ? dragData : { source: 'node', node: treeDragNode, type: treeDragNode.type };
+                var moving = isPalette ? [] : ((treeDragNode._multiDrag && selectedNodes.length > 1) ? selectedNodes : [treeDragNode]);
+                m = _sdTreeDropMemo = { li: li, zone: zone, drag: drag,
+                    list: zone === 'inside' ? [_sdTreeDropTarget(moveData, node, null, false, li, moving)]
+                        : _sdTreeDropGap(moveData, li, zone, moving) };
             }
-
-            var pos;
-            if (y < h * 0.28) {
-                pos = _canSibling() ? 'before' : (_canInside() ? 'inside' : null);
-            } else if (y > h * 0.72) {
-                pos = _canSibling() ? 'after'  : (_canInside() ? 'inside' : null);
-            } else {
-                pos = _canInside() ? 'inside' : (_canSibling() ? 'after' : null);
+            var pick = _sdTreeDropPick({ y: y, x: e.clientX - rect.left, h: rect.height,
+                inside: zone === 'inside' ? m.list[0] : null, gap: zone === 'inside' ? [] : m.list });
+            if (pick.index === -1) { _sdTreeDropLabel(null); return; }
+            if (!pick.ok) {
+                // Not preventing the default leaves the "not allowed" cursor.
+                e.dataTransfer.dropEffect = 'none';
+                li.classList.add('sd-tree-drop-refused');
+                _sdTreeDropLabel(pick.text, e.clientX, e.clientY, true);
+                return;
             }
-            if (!pos) return;  // no legal drop zone here — leave the cursor as not-allowed
-
-            li.classList.add('sd-tree-drop-' + pos);
-            li._dropPos = pos;
+            e.preventDefault();
+            li.classList.add('sd-tree-drop-' + zone);
+            li.style.setProperty('--sd-drop-ind', pick.indent + 'px');
+            li._dropPos = { zone: zone, t: m.list[pick.index] };
+            _sdTreeDropLabel(pick.text, e.clientX, e.clientY, false);
         });
 
         li.addEventListener('dragleave', function() {
-            li.classList.remove('sd-tree-drop-before', 'sd-tree-drop-after', 'sd-tree-drop-inside');
+            li.classList.remove('sd-tree-drop-before', 'sd-tree-drop-after', 'sd-tree-drop-inside', 'sd-tree-drop-refused');
             li._dropPos = null;
         });
 
         li.addEventListener('drop', function(e) {
             e.preventDefault();
             e.stopPropagation();
-            li.classList.remove('sd-tree-drop-before','sd-tree-drop-after','sd-tree-drop-inside');
+            _sdTreeDropClear();
 
-            // No position means the dragover found no legal place on this
-            // row (canDrop() refused inside and beside it): nothing moves.
-            var pos = li._dropPos;
+            // No target means the dragover found no legal place on this row
+            // (canDrop() refused the level under the pointer): nothing moves.
+            // A gap's target names the row it goes before or after, which
+            // is this row's or one of its branches' (the level picked).
+            var dp = li._dropPos;
             li._dropPos = null;
-            if (!pos) return;
+            if (!dp) return;
+            var pos = dp.zone === 'inside' ? 'inside' : (dp.t.after ? 'after' : 'before');
+            var tgt = dp.zone === 'inside' ? node : dp.t.sib;
 
             // ── Palette → Tree ──────────────────────────────────────────────
             if (dragData && dragData.source === 'palette') {
@@ -31346,8 +32537,8 @@ const StyleDesigner = (function () {
                 // shared component's inner tree (shared_cache). The shared_ref's own
                 // `children` is invariant=[] (black box) — pushing there would lose
                 // the node entirely at next render.
-                if (pos === 'inside' && node.type === 'shared_ref') {
-                    var _rfSid2 = (node.props && node.props.sharedId) ? parseInt(node.props.sharedId, 10) : 0;
+                if (pos === 'inside' && tgt.type === 'shared_ref') {
+                    var _rfSid2 = (tgt.props && tgt.props.sharedId) ? parseInt(tgt.props.sharedId, 10) : 0;
                     var _rfCached2 = _rfSid2 > 0 ? _sharedCache[_rfSid2] : null;
                     if (_rfCached2 && _rfCached2.tree) {
                         if (!canDrop(dragData, _rfCached2.tree)) { dragData = null; return; }
@@ -31367,51 +32558,51 @@ const StyleDesigner = (function () {
                 }
                 if (pos === 'inside') {
                     // Drop inside target node — reuse handleDrop which pushes to children
-                    if (!canDrop(dragData, node)) return;
-                    handleDrop(node, false);
+                    if (!canDrop(dragData, tgt)) return;
+                    handleDrop(tgt, false);
                 } else {
                     // Drop before/after: into the parent, next to this node.
                     // The parent may live in a widget's or a shared
                     // component's own tree (the dragover found it there);
                     // handleDrop marks that tree dirty and adopts form
                     // controls, as a drop on the canvas does.
-                    var _tgtCtx = _findParentAnywhere(node);
+                    var _tgtCtx = _findParentAnywhere(tgt);
                     var tgtParent = _tgtCtx ? _tgtCtx.parent : null;
                     if (!tgtParent || !canDrop(dragData, tgtParent)) return;
-                    handleDrop(tgtParent, false, { sibling: node, after: pos === 'after' });
+                    handleDrop(tgtParent, false, { sibling: tgt, after: pos === 'after' });
                 }
                 dragData = null;
                 return;
             }
 
             // ── Tree → Tree (reorder) ────────────────────────────────────────
-            if (!treeDragNode || treeDragNode === node) return;
+            if (!treeDragNode || treeDragNode === tgt) return;
             // Where it lands matters as much as what moves: dropping into a
             // block they do not own would let a content operator restructure
             // the page one drag at a time.
-            if (!_sdMayEdit(node)) return;
+            if (!_sdMayEdit(tgt)) return;
 
             // Gather nodes to move (multi-drag or single). Reference equality
             // throughout so we never confuse cross-tree id collisions with
             // structural relationships.
             var isMultiDrag = treeDragNode._multiDrag && selectedNodes.length > 1;
-            var nodesToMove = isMultiDrag
-                ? selectedNodes.filter(function(n) { return n !== node && n.type !== 'root' && !isDescendant(node, n); })
-                : [treeDragNode];
+            var nodesToMove = _sdTreeMoveSet(isMultiDrag
+                ? selectedNodes.filter(function(n) { return !isDescendant(tgt, n); })
+                : [treeDragNode], tgt);
             if (!nodesToMove.length) return;
 
             // Every moved node must be one canDrop() lets into where it
             // lands, as on the canvas: the dragover asked only for the
             // dragged row, and a multi-selection carries others.
             var _destParent = null;
-            if (pos === 'inside' && node.type === 'shared_ref') {
-                var _dSid = (node.props && node.props.sharedId) ? parseInt(node.props.sharedId, 10) : 0;
+            if (pos === 'inside' && tgt.type === 'shared_ref') {
+                var _dSid = (tgt.props && tgt.props.sharedId) ? parseInt(tgt.props.sharedId, 10) : 0;
                 var _dCached = _dSid > 0 ? _sharedCache[_dSid] : null;
-                _destParent = (_dCached && _dCached.tree) ? _dCached.tree : node;
+                _destParent = (_dCached && _dCached.tree) ? _dCached.tree : tgt;
             } else if (pos === 'inside') {
-                _destParent = node;
+                _destParent = tgt;
             } else {
-                var _dInfo = _findParentAnywhere(node);
+                var _dInfo = _findParentAnywhere(tgt);
                 _destParent = _dInfo ? _dInfo.parent : null;
             }
             if (!_destParent) return;
@@ -31427,12 +32618,12 @@ const StyleDesigner = (function () {
             // node's own children — which is always [] by invariant (black box).
             // Otherwise the dragged node gets detached from the main tree and lost
             // in the shared_ref's invisible children array.
-            if (pos === 'inside' && node.type === 'shared_ref') {
-                var _rfSid = (node.props && node.props.sharedId) ? parseInt(node.props.sharedId, 10) : 0;
+            if (pos === 'inside' && tgt.type === 'shared_ref') {
+                var _rfSid = (tgt.props && tgt.props.sharedId) ? parseInt(tgt.props.sharedId, 10) : 0;
                 var _rfCached = _rfSid > 0 ? _sharedCache[_rfSid] : null;
                 if (_rfCached && _rfCached.tree) {
                     if (!_rfCached.tree.children) _rfCached.tree.children = [];
-                    if (isDescendant(treeDragNode, node)) return;
+                    if (isDescendant(treeDragNode, tgt)) return;
                     nodesToMove.forEach(function(n) {
                         // Remove from wherever it currently lives — main tree OR another shared cache
                         var sp = findParent(n, tree);
@@ -31450,9 +32641,7 @@ const StyleDesigner = (function () {
                     // Mark the target widget's tree as dirty so _flushDirtyShared pushes it on save.
                     _sharedDirty[_rfSid] = true;
                     treeDragNode = null;
-                    selectedNodes = [];
-                    selectedNode = null;
-                    render();
+                    _sdTreeMoveSelect(nodesToMove);
                     return;
                 }
                 // Cache not loaded → fall through to normal handling (will still try to drop
@@ -31460,31 +32649,30 @@ const StyleDesigner = (function () {
             }
 
             if (pos === 'inside') {
-                if (!node.children) node.children = [];
+                if (!tgt.children) tgt.children = [];
                 // Prevent dropping into self or own descendant (args: possibleAncestor, node)
-                if (isDescendant(treeDragNode, node)) return;
+                if (isDescendant(treeDragNode, tgt)) return;
                 nodesToMove.forEach(function(n) {
                     var srcInfo = _findParentAnywhere(n);
                     if (srcInfo) {
                         srcInfo.parent.children = srcInfo.parent.children.filter(function(c) { return c !== n; });
                         if (srcInfo.sid) _sharedDirty[srcInfo.sid] = true;
                     }
-                    node.children.push(n);
+                    tgt.children.push(n);
                 });
                 // If the drop target lives inside a widget cache, mark that widget dirty too.
-                var _tgtSidIns = _resolveSharedSid(node);
+                var _tgtSidIns = _resolveSharedSid(tgt);
                 if (_tgtSidIns) _sharedDirty[_tgtSidIns] = true;
             } else {
                 // before/after: insert as sibling of `node`. node may live in main tree
                 // OR in a shared cache (widget interior) — find its parent in either.
-                var _tgtInfo = _findParentAnywhere(node);
+                var _tgtInfo = _findParentAnywhere(tgt);
                 if (!_tgtInfo) return;
                 var tgtParent2 = _tgtInfo.parent;
                 // Prevent inserting before/after a node that is inside the dragged node's subtree
-                if (isDescendant(treeDragNode, node)) return;
+                if (isDescendant(treeDragNode, tgt)) return;
                 // Remove all first (may shift indices)
                 nodesToMove.forEach(function(n) {
-                    if (isDescendant(n, treeDragNode) && n !== treeDragNode) return;
                     var srcInfo = _findParentAnywhere(n);
                     if (srcInfo) {
                         srcInfo.parent.children = srcInfo.parent.children.filter(function(c) { return c !== n; });
@@ -31492,7 +32680,7 @@ const StyleDesigner = (function () {
                     }
                 });
                 // Re-find insertion index after removals
-                var idx2 = tgtParent2.children.indexOf(node);
+                var idx2 = tgtParent2.children.indexOf(tgt);
                 if (idx2 === -1) idx2 = tgtParent2.children.length;
                 if (pos === 'after') idx2 += 1;
                 nodesToMove.forEach(function(n, i) {
@@ -31501,9 +32689,7 @@ const StyleDesigner = (function () {
                 if (_tgtInfo.sid) _sharedDirty[_tgtInfo.sid] = true;
             }
             treeDragNode = null;
-            selectedNodes = [];
-            selectedNode = null;
-            render();
+            _sdTreeMoveSelect(nodesToMove);
         });
 
         ul.appendChild(li);
@@ -31515,7 +32701,7 @@ const StyleDesigner = (function () {
             var _childSource = _sharedRefTree ? _sharedRefTree.children : node.children;
             if (_sharedRefTree) _sdSharedOpen[_sharedRefSid] = true;
             try {
-                (_childSource || []).forEach(function(child) { buildTreeItems(childUl, child, depth + 1); });
+                (_childSource || []).forEach(function(child) { _sdTreeBuildChild(childUl, child, depth + 1, lvl + 1); });
             } finally {
                 if (_sharedRefTree) delete _sdSharedOpen[_sharedRefSid];
             }
@@ -33146,11 +34332,186 @@ const StyleDesigner = (function () {
         });
     }
 
+    // ── The identity row and the section heads of the single element's panel
+
+    // The identity row's icon: the one the Overview gives the element; a
+    // heading shows its own level's glyph (an H2 heading 'bi-type-h2').
+    function _sdIdIcon(node) {
+        var p = node.props || {};
+        var lvl = /^h([1-6])$/.exec(String(p.tag || '').toLowerCase());
+        if (lvl && (p.contentType === 'heading' || node.type === 'semantic')) return 'bi-type-h' + lvl[1];
+        if (node.type === 'root') return 'bi-filetype-html';
+        if (node.type === 'row' || node.type === 'col') return 'bi-layout-split';
+        if (node.type === 'shared_ref') return 'bi-puzzle-fill';
+        if (node.type === 'semantic') {
+            var semTagIcons = { nav: 'bi-signpost-2', ul: 'bi-list-ul', ol: 'bi-list-ol', li: 'bi-dash-lg',
+                button: 'bi-hand-index', a: 'bi-link-45deg', form: 'bi-input-cursor-text',
+                header: 'bi-layout-text-window-reverse', footer: 'bi-layout-text-window',
+                section: 'bi-layers', article: 'bi-file-text', main: 'bi-body-text',
+                aside: 'bi-layout-sidebar-reverse', h1: 'bi-type-h1', h2: 'bi-type-h2', h3: 'bi-type-h3',
+                span: 'bi-fonts', p: 'bi-paragraph', div: 'bi-bounding-box' };
+            return semTagIcons[p.tag] || 'bi-code-slash';
+        }
+        var def = COMPONENTS[node.type] || CONTENT[p.contentType || node.type];
+        return (def && def.icon) || 'bi-box';
+    }
+
+    // The tag the element draws on the canvas ('H2'), or its tag prop.
+    function _sdIdTag(node) {
+        var tag = '';
+        try {
+            var wrap = canvasDoc ? canvasDoc.querySelector('[data-sd-id="' + node._id + '"]') : null;
+            if (wrap) {
+                var el = wrap.hasAttribute('data-sd-self') ? wrap : null;
+                for (var i = 0; !el && i < wrap.children.length; i++) {
+                    if (!wrap.children[i].classList.contains('sd-tb')) el = wrap.children[i];
+                }
+                tag = el ? el.tagName : '';
+            }
+        } catch (e) {}
+        if (!tag && node.props && node.props.tag) tag = node.props.tag;
+        return String(tag || '').toUpperCase();
+    }
+
+    // The row over the sections: the element's icon, name and tag, the last
+    // three steps of its path (a click selects that parent) and a menu with
+    // Duplicate, Delete and Show in Overview.
+    function _sdIdentityRow(node) {
+        var name = getNodeLabel(node);
+        var tag = _sdIdTag(node);
+        var steps = getAncestors(node, tree).filter(function (a) { return a.type !== 'root'; }).reverse();
+        var path = _sdPathTail(steps, 3).map(function (a) {
+            return '<button type="button" class="sd-id-step" data-sd-path="' + esc(a._id) + '" title="' + esc(getNodeLabel(a)) + '">' + esc(getNodeLabel(a)) + '</button>';
+        }).join('<span class="sd-id-sep" aria-hidden="true">›</span>');
+        var fullPath = steps.map(function (a) { return getNodeLabel(a); }).join(' › ');
+        return '<div class="sd-id-row">' +
+            '<span class="sd-id-icon bi ' + _sdIdIcon(node) + '" aria-hidden="true"></span>' +
+            '<div class="sd-id-main">' +
+                '<div class="sd-id-line"><span class="sd-id-name" title="' + esc(name) + '">' + esc(name) + '</span>' +
+                    (tag ? '<span class="sd-id-tag">' + esc(tag) + '</span>' : '') + '</div>' +
+                (path ? '<div class="sd-id-path" title="' + esc(fullPath) + '">' + path + '</div>' : '') +
+            '</div>' +
+            (node.type !== 'root' ? '<button type="button" class="sd-id-more bi bi-three-dots" id="sd-id-more" title="' + esc(_sdT('More actions')) + '" aria-label="' + esc(_sdT('More actions')) + '" aria-haspopup="menu"></button>' : '') +
+        '</div>';
+    }
+
+    function _sdIdentityBind(panel, node) {
+        panel.querySelectorAll('.sd-id-step').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var r = _findNodeAnywhereById(this.getAttribute('data-sd-path'));
+                if (!r || !r.node) return;
+                selectedNode = r.node;
+                selectedNodes = [];
+                _sdSelectRender();
+            });
+        });
+        var more = panel.querySelector('#sd-id-more');
+        if (!more) return;
+        more.addEventListener('click', function (e) {
+            e.stopPropagation();
+            var r = more.getBoundingClientRect();
+            showCtxMenu(r.left, r.bottom + 4, [
+                _sdGuardItem({ icon: 'bi-copy', label: _sdT('Duplicate'), handler: function () { onDuplicate(node); } }, [node]),
+                _sdGuardItem({ icon: 'bi-trash', label: _sdT('Delete'), danger: true, handler: function () { onDelete(node); } }, [node]),
+                { sep: true },
+                { icon: 'bi-list-nested', label: _sdT('Show in Overview'), handler: function () { scrollTreeToNode(node); } }
+            ]);
+        });
+    }
+
+    // A held-back body put into a detached copy, with the bodies of the
+    // closed cards inside it, so its rows can be read.
+    function _sdSectExpand(sid) {
+        var t = document.createElement('template');
+        t.innerHTML = _sdPanelLazy[sid] || '';
+        var guard = 0, held;
+        while ((held = t.content.querySelector('[data-sd-lazy]')) && guard++ < 50) {
+            var inner = held.getAttribute('data-sd-lazy');
+            held.removeAttribute('data-sd-lazy');
+            held.innerHTML = _sdPanelLazy[inner] || '';
+        }
+        return t.content;
+    }
+
+    // A changed row's value for a summary: a colour's name and dot class,
+    // a select's chosen option, a field's text, a switch's own label.
+    function _sdChgRowOf(lbl) {
+        var row = lbl.closest('.sd-prop-row, .sd-sp-row');
+        var out = { changed: true, text: '', swatch: '' };
+        if (!row) return out;
+        var cp = row.querySelector('.sd-cp');
+        if (cp) {
+            var dot = cp.querySelector('.sd-cp-trigger .sd-color-preview');
+            var lab = cp.querySelector('.sd-cp-label');
+            out.text = lab ? lab.textContent : '';
+            out.swatch = dot ? Array.prototype.filter.call(dot.classList, function (c) { return c !== 'sd-color-preview'; }).join(' ') : '';
+            return out;
+        }
+        var ctrl = row.querySelector('select, input:not([type="hidden"]), textarea');
+        var activeBtn = row.querySelector('button.active');
+        if (ctrl && ctrl.tagName === 'SELECT') {
+            var opt = ctrl.options[ctrl.selectedIndex];
+            out.text = opt ? opt.text : ctrl.value;
+        } else if (ctrl && (ctrl.type === 'checkbox' || ctrl.type === 'radio')) {
+            out.text = ctrl.checked ? lbl.textContent : '';
+        } else if (ctrl) {
+            out.text = ctrl.value;
+        } else if (activeBtn) {
+            out.text = activeBtn.textContent.trim() || activeBtn.title || '';
+        }
+        return out;
+    }
+
+    // The count and the summary of every section card on the panel, from
+    // the dots markModifiedProps() put on its rows: on screen for a drawn
+    // body, on a detached copy for a held-back one.
+    function _sdSectHeadsFill(panel) {
+        panel.querySelectorAll('[data-sd-card]').forEach(function (card) {
+            var hdr = card.querySelector(':scope > .sd-sect-hdr');
+            var body = card.querySelector(':scope > .sd-sect-body');
+            if (!hdr || !body) return;
+            var sid = body.getAttribute('data-sd-lazy');
+            var root = body;
+            if (sid) {
+                root = _sdSectExpand(sid);
+                markModifiedProps(root);
+            }
+            var rows = Array.prototype.map.call(root.querySelectorAll('.sd-prop-label.sd-prop-modified, .sd-sp-label.sd-prop-modified'), _sdChgRowOf);
+            var sum = _sdChgSummary(rows);
+            hdr.querySelectorAll(':scope > .sd-sect-count, :scope > .sd-sect-sum').forEach(function (el) { el.remove(); });
+            hdr.insertAdjacentHTML('beforeend', _sdSectHeadExtras(sum));
+        });
+    }
+
+    // Opens the closed card whose held-back body holds element `id` and
+    // draws the panel again; true when there was one.
+    function _sdSectOpenFor(id) {
+        var needle = 'id="' + id + '"';
+        var hit = Object.keys(_sdPanelLazy).filter(function (sid) { return String(_sdPanelLazy[sid]).indexOf(needle) !== -1; });
+        if (!hit.length) return false;
+        hit.forEach(function (sid) { try { localStorage.setItem('sd_cs_' + sid, '0'); } catch (e) {} });
+        renderProperties();
+        return true;
+    }
+
+    // The kind of element the panel showed last (_sdPanelKind()); '' after
+    // a panel of another sort (none, read-only, several, a text's inner).
+    var _sdPanelLastKind = '';
+    // Set for one draw: build every section's body (the search, a jump to a
+    // control in a closed section).
+    var _sdSectAllOnce = false;
+
     function renderProperties() {
         var panel = document.getElementById('sd-properties');
         if (!panel) return;
         _sdPaletteRefresh();
         _sdPropsA11yInit(panel);
+        _sdControlsInit(panel);
+        var _kind = _sdPanelKind(selectedNode);
+        var _keepScroll = (_kind && _kind === _sdPanelLastKind) ? panel.scrollTop : 0;
+        _sdPanelLastKind = '';
+        _sdPanelLazy = {};
+        _sdSectBuild = null;
         if (!selectedNode) {
             panel.innerHTML = '<div class="sd-props-empty"><div><span class="bi bi-cursor d-block mb-3" style="font-size:1.5rem"></span>' + esc(_sdT('Select an element to edit its properties')) + '</div></div>';
             return;
@@ -33257,6 +34618,14 @@ const StyleDesigner = (function () {
         // The same for a link's window and relationship kept in _attrs.
         migrateNodeLinkProps(selectedNode);
 
+        _sdPanelLastKind = _kind;
+        // While the search has text every body is built: it looks through
+        // all of them.
+        var _srchBox = document.getElementById('sd-props-search');
+        var _allBodies = _sdSectAllOnce || !!(_srchBox && _srchBox.value.trim());
+        _sdSectAllOnce = false;
+        _sdSectBuild = { cards: {}, lazy: _allBodies ? null : {} };
+
         // Options section (node-specific)
         var optHtml = '';
         switch (selectedNode.type) {
@@ -33272,6 +34641,8 @@ const StyleDesigner = (function () {
             case 'loop_area':  optHtml += propsLoopArea(selectedNode);   break;
             case 'recipient_loop_area': optHtml += propsRecipientLoopArea(selectedNode); break;
         }
+        var _own = _sdSectTakeOwn(optHtml);
+        optHtml = _own.rest;
 
         // An element drawing a Bootstrap icon through its class gets the icon
         // picker an icon node has (_sdBiIconSection()).
@@ -33323,9 +34694,15 @@ const StyleDesigner = (function () {
             }
         }
 
-        // The Appearance section runs in the same flow as the options
-        panel.innerHTML = '<div class="sd-tab-content">' + _cfSettingsShortcut(selectedNode) + _sdCommentsSettingsShortcut(selectedNode) +
-            _sdPartSettingsBox(selectedNode) + _sdTrSection(selectedNode) + ctxHtml + optHtml + rowCss(selectedNode) + '</div>';
+        // The Appearance section runs in the same flow as the options. The
+        // element's own section comes first, under the identity row.
+        var _restHtml = _sdTrSection(selectedNode) + ctxHtml + optHtml + rowCss(selectedNode);
+        var _build = _sdSectBuild;
+        _sdSectBuild = null;
+        _sdPanelLazy = _build.lazy || {};
+        panel.innerHTML = _sdIdentityRow(selectedNode) + '<div class="sd-tab-content">' + _cfSettingsShortcut(selectedNode) + _sdCommentsSettingsShortcut(selectedNode) +
+            _sdPartSettingsBox(selectedNode) + _own.own + _restHtml + '</div>';
+        _sdIdentityBind(panel, selectedNode);
         _sdHideBootstrapControls(panel);
         bindPropEvents();
         _sdPartSettingsBind(selectedNode);
@@ -33337,6 +34714,8 @@ const StyleDesigner = (function () {
         _sdFxBind(selectedNode);
         _sdTrLoad(selectedNode);
         markModifiedProps();
+        _sdSectHeadsFill(panel);
+        panel.scrollTop = _keepScroll;
         // Re-apply search filter if user had typed something
         var srch = document.getElementById('sd-props-search');
         if (srch && srch.value.trim()) filterPropertiesPanel(srch.value.toLowerCase().trim());
@@ -33623,10 +35002,11 @@ const StyleDesigner = (function () {
             return h + '</select>';
         }
 
+        // The label, the control, then the per-size chevron, in reading order.
         var widthHtml = '<div class="sd-sp-row">';
-        widthHtml += '<button type="button" class="sd-sp-toggle bi bi-chevron-right' + (hasBpW ? ' sd-sp-open' : '') + '" data-sp-target="sdcol_width"></button>';
         widthHtml += '<span class="sd-sp-label">' + esc(_sdT('Width')) + '</span>';
         widthHtml += colSel('xs', xs, n.props.xs || '12');
+        widthHtml += '<button type="button" class="sd-sp-toggle bi bi-chevron-right' + (hasBpW ? ' sd-sp-open' : '') + '" data-sp-target="sdcol_width"></button>';
         widthHtml += '</div>';
         widthHtml += '<div class="sd-sp-bps" id="sdcol_width"' + (hasBpW ? '' : ' style="display:none"') + '>';
         [['sm','SM'],['md','MD'],['lg','LG'],['xl','XL'],['xxl','XXL']].forEach(function(pair) {
@@ -34126,7 +35506,7 @@ const StyleDesigner = (function () {
             row(_sdT('Type'), sel('regionType', typeOpts, n.props.regionType)) +
             '<div id="sd-rn" style="' + (show ? '' : 'display:none') + '">' + row(_sdT('Name'), sel('regionName', nameOpts, n.props.regionName)) + '</div>' +
             (n.props.regionType === 'dynamic' ? _sdDregionPropsHtml(n) : '') +
-            (n.props.regionType === 'system' ? _sdLayoutPropsHtml() + _sdLayoutWidgetPropsHtml(n) : '') +
+            (n.props.regionType === 'system' ? _sdClassicConvertPropsHtml(n) + _sdLayoutPropsHtml() + _sdLayoutWidgetPropsHtml(n) : '') +
             (n.props.regionType === 'designer' || n.props.regionType === 'common' ? _sdDesignerRegionPropsHtml(n) : '') +
             (n.props.regionType === 'page' ? _sdPageRegionPropsHtml(n) : '') +
             _sdRegionWidgetPropsHtml(n) +
@@ -34209,6 +35589,7 @@ const StyleDesigner = (function () {
             'product.attributes': _sdT('One row for every attribute the product has a value for, such as its colour or size. Bind the row\'s elements to "Attribute" and "Attribute value" in Bind Data.'),
             'product.related':    _sdT('One row for every product ordered together with this one, else for the products of its groups, at most 12. With this list on the page the automatic "Frequently bought together" block is not added.'),
             'product.bundle_items': _sdT('One row for every product the bundle holds, in its order; nothing for a product that is not a bundle. Bind the row\'s elements to "Product name", "Quantity in the bundle" or "Product address" in Bind Data.'),
+            'product.quantity_prices': _sdT('One row for every quantity price of the product, such as "10 or more: each for 9.00", read from the running offers that hold for the visitor; nothing when there is none. Bind the row\'s elements to "Quantity and price" in Bind Data.'),
             'catalog.crumbs':     _sdT('One row for every crumb of the path to what the page shows: the catalog, its groups, then the group or product itself. A condition on "Kind of crumb" draws a link, words, or where the visitor is.'),
             'catalog.active_filters': _sdT('One row for every attribute filter the visitor applied, such as "Colour: Red". Bind a link to "Address without the filter": it opens the listing without that filter. With this list on the page the automatic chip row above the products is not added.'),
             'calendar.weekdays':  _sdT('One row for every day of the week, in the widget\'s week order: the heads of a month grid. Bind the row\'s elements to "Day name" or "Short day name" in Bind Data.'),
@@ -34229,6 +35610,9 @@ const StyleDesigner = (function () {
             'account.orders':     _sdT('One row for every order of the signed-in member, newest first, at most 50: the orders the order history shows.'),
             'account.upcoming_bookings': _sdT('One row for every booking of the signed-in member still to come, soonest first, with its manage page.'),
             'account.past_bookings': _sdT('One row for every past or cancelled booking of the signed-in member, latest first.'),
+            'account.subscriptions': _sdT('One row for every subscription of the signed-in member, newest first, with its pause, resume, cancel and card update forms.'),
+            'account.store_credit': _sdT('One row for every store credit card of the signed-in member, newest first, at most 50.'),
+            'account.store_credit_uses': _sdT('One row for every order that spent the store credit card the row stands in, newest first.'),
             'cart.items':         _sdT('One row for every product in the visitor\'s cart, lines saved for later left out: a mini cart in the cart link, or a summary beside the cart\'s own rows.'),
             'cart.item_gift_cards': _sdT('One row for every gift card of the cart line the row stands in, one per unit: put the recipient controls in it; the cart gives them their names and values, and the recipient\'s e-mail comes back when it is deleted.'),
             'cart.item_forms':    _sdT('One row for every product form of the cart line the row stands in: one per unit when the product asks for a form per quantity. Put a list of the form\'s fields inside the row.'),
@@ -39950,7 +41334,7 @@ const StyleDesigner = (function () {
         '__comment_message_html', '__comment_seller_reply_html',
         '__field_value_html', '__field_info_html', '__gift_card_message_html',
         '__return_customer_note_html', '__return_decision_note_html', '__return_actions_html',
-        '__schedule_period_options_html', '__field_options_html', '__return_reason_options_html',
+        '__subscription_actions_html', '__schedule_period_options_html', '__field_options_html', '__return_reason_options_html',
         '__ship_to_cost_html', '__ship_to_form_html', '__line_title_html', '__line_price_html', '__line_amount_html',
         '__line_stock_html', '__line_forms_html',
         '__ad_content_html', '__ad_caption_html'
@@ -40863,6 +42247,7 @@ const StyleDesigner = (function () {
             ['email_address',            _sdT('Email')],
             ['full_name',                _sdT('Full name (first + last)')],
             ['__display_name',           _sdT('Name to greet by (full name, else the user name)')],
+            ['__store_credit_balance',   _sdT('Store credit balance')],
             ['first_name',               _sdT('First Name')],
             ['last_name',                _sdT('Last Name')],
             ['registered_date_and_time', _sdT('Registration Date & Time'), 'date'],
@@ -42459,6 +43844,7 @@ const StyleDesigner = (function () {
             out.push(['subscriptions',        _sdT('Subscriptions (shop sites; hidden when there are none)')]);
             out.push(['bookings',             _sdT('My bookings (hidden when there are none)')]);
             out.push(['store_credit',         _sdT('Store credit and points conversion (shop sites; hidden when there is none)')]);
+            out.push(['store_credit_convert', _sdT('Reward points conversion form (hidden when the member cannot convert)')]);
         } else if (type === 'change_password' || type === 'set_password') {
             out.push(['password_rules',       _sdT('Strong password rules (hidden when the site setting is off)')]);
         } else if (type === 'calendar_event_view') {
@@ -42518,7 +43904,7 @@ const StyleDesigner = (function () {
             return '<button type="button" class="btn btn-sm btn-outline theme-primary w-100 mt-2 text-wrap" data-sd-op-open>' +
                     '<span class="bi bi-magic me-1"></span>' + esc(_sdT('Convert to design elements')) + '</button>' +
                 '<div style="font-size:.66rem;color:#888;margin-top:3px">' +
-                    esc(_sdT('Puts what the site prints here as elements you design, a list repeating its row for each of the member\'s orders or bookings. The site prints the same until you change them.')) +
+                    esc(_sdT('Puts what the site prints here as elements you design, a list repeating its row for each of the member\'s orders, bookings, subscriptions or store credit cards. The site prints the same until you change them.')) +
                 '</div>';
         }
         if (!_sdSectionOpensAsList(kind, section)) return '';
@@ -44139,6 +45525,78 @@ const StyleDesigner = (function () {
             });
             return part;
         }
+        var tones = function (cls, token, toneToken, names) {
+            return names.map(function (t) {
+                return bound('span', 'badge text-bg-' + t + ' ' + cls, _sdT('Status'), token, _sdPartWhen(toneToken, 'eq', t));
+            });
+        };
+        if (section === 'subscriptions') {
+            var sub = _sdPartEl('div', 'list-group-item', _sdT('Subscription'), {}, [
+                _sdPartEl('div', 'd-flex flex-wrap justify-content-between align-items-center gap-2', _sdT('Heading'), {}, [
+                    bound('span', 'fw-semibold', _sdT('Product'), '__subscription_product'),
+                    bound('span', '', _sdT('Amount'), '__subscription_amount')
+                ]),
+                _sdPartEl('div', 'small text-body-secondary', _sdT('Details'), {},
+                    tones('me-2', '__subscription_status_label', '__subscription_tone', ['success', 'warning', 'secondary']).concat([
+                        bound('span', 'me-2', _sdT('Next charge or the last day'), '__subscription_next', _sdPartWhen('__subscription_next', 'not_empty')),
+                        bound('span', 'me-2', _sdT('Price change notice'), '__subscription_price', _sdPartWhen('__subscription_price', 'not_empty')),
+                        bound('span', 'me-2', _sdT('Card'), '__subscription_card', _sdPartWhen('__subscription_card', 'not_empty')),
+                        bound('span', '', _sdT('Last event'), '__subscription_event', _sdPartWhen('__subscription_event', 'not_empty'))
+                    ])),
+                _sdPartEl('div', 'mt-2', _sdT('Confirm the payment'), _sdPartWhen('__subscription_confirm_url', 'not_empty'), [
+                    _sdPartEl('a', 'btn btn-sm btn-warning', _sdT('Confirm the payment'), { text: _sdT('Confirm the payment'), href: '#',
+                        _bindings: { href: '__subscription_confirm_url' }, _attrs: [{ name: 'rel', value: 'noopener noreferrer' }] })
+                ]),
+                // The forms are the section's own: they post with the form token.
+                bound('div', 'd-flex flex-wrap gap-2 mt-2', _sdT('Pause, resume, cancel and card update forms'), '__subscription_actions_html',
+                    _sdPartWhen('__subscription_has_actions', 'not_empty'))
+            ]);
+            return [_sdPartEl('div', 'list-group pg-sw-subscriptions', _sdT('Subscriptions of the member'),
+                { _bindings: { eo_visible_if: 'has_subscriptions' } }, [list('account.subscriptions', [sub])])];
+        }
+        if (section === 'store_credit') {
+            var sentence = function (tag, cls, name, text, token, valueCls, props) {
+                var p = { text: text, _sentence: true };
+                Object.keys(props || {}).forEach(function (k) { p[k] = props[k]; });
+                return _sdPartEl(tag, cls, name, p, [_sdPartEl('span', valueCls || '', _sdT('Value'), { _bindings: { text: token } })]);
+            };
+            var linked = _sdPartWhen('__credit_use_order_url', 'not_empty');
+            var use = _sdPartEl('li', '', _sdT('Order'), {}, [
+                _sdPartEl('a', '', _sdT('Order number'), { text: '#{var:1}', _sentence: true, href: '#',
+                    _bindings: { href: '__credit_use_order_url', show_if: '__credit_use_order_url' }, _bindParams: linked._bindParams }, [
+                    _sdPartEl('span', '', _sdT('Value'), { _bindings: { text: '__credit_use_order_no' } })
+                ]),
+                sentence('span', '', _sdT('Order number'), '#{var:1}', '__credit_use_order_no', '', _sdPartWhen('__credit_use_order_url', 'empty')),
+                // ms-1: the canvas draws no white space between inline elements.
+                bound('span', 'text-body-secondary ms-1', _sdT('Order date'), '__credit_use_date'),
+                sentence('span', 'ms-1', _sdT('Amount spent'), '−{var:1}', '__credit_use_amount')
+            ]);
+            var card = _sdPartEl('div', 'list-group-item', _sdT('Card'), {}, [
+                _sdPartEl('div', 'd-flex justify-content-between align-items-start gap-2', _sdT('Heading'), {}, [
+                    _sdPartEl('span', '', _sdT('Source'), {}, [bound('span', 'fw-semibold', _sdT('Source'), '__credit_kind_label')]
+                        .concat(tones('ms-1', '__credit_state_label', '__credit_tone', ['success', 'secondary', 'warning']))
+                        .concat([bound('span', 'd-block small text-body-secondary text-break', _sdT('Reason'), '__credit_reason',
+                            _sdPartWhen('__credit_reason', 'not_empty'))])),
+                    _sdPartEl('span', 'text-end', _sdT('Balance'), {}, [
+                        bound('span', 'fw-semibold', _sdT('Balance'), '__credit_balance'),
+                        sentence('span', 'd-block small text-body-secondary', _sdT('Amount'), _sdT('of {var:1}'), '__credit_amount')
+                    ])
+                ]),
+                sentence('div', 'small text-body-secondary', _sdT('Last day'), _sdT('Last day: {var:1}'), '__credit_last_day', '',
+                    _sdPartWhen('__credit_last_day', 'not_empty')),
+                _sdPartEl('ul', 'list-unstyled small mb-0 mt-1', _sdT('Orders that spent the card'), _sdPartWhen('__credit_has_uses', 'not_empty'), [
+                    list('account.store_credit_uses', [use])
+                ])
+            ]);
+            return [_sdPartEl('div', 'pg-sw-store-credit', _sdT('Store credit'), { _bindings: { eo_visible_if: 'has_store_credit' } }, [
+                sentence('p', 'mb-3', _sdT('Balance'), _sdT('Balance') + ': {var:1}', '__store_credit_balance', 'fw-semibold'),
+                // The points conversion form is the section's own: it posts with the form token.
+                _sdPartEl('div', '', _sdT('Convert reward points'), { _bindings: { section: 'store_credit_convert' } }),
+                _sdPartEl('div', 'list-group', _sdT('Store credit of the member'), { _bindings: { eo_visible_if: 'has_store_credit_cards' } }, [
+                    list('account.store_credit', [card])
+                ])
+            ])];
+        }
         return [];
     }
 
@@ -44205,9 +45663,109 @@ const StyleDesigner = (function () {
         return html;
     }
 
+    // pg_subscription_customer_actions_html() for a row of `status`, without
+    // the hidden fields: what the canvas shows of the forms.
+    /* @pg-site-output */
+    function _sdAccountSubscriptionActionsHtml(status) {
+        var actions = { active: ['pause', 'cancel', 'update_card'], past_due: ['cancel', 'update_card'], paused: ['resume', 'cancel', 'update_card'] }[status] || [];
+        var labels = { pause: _sdT('Pause'), resume: _sdT('Resume'), update_card: _sdT('Update card') };
+        return actions.map(function (a) {
+            if (a === 'cancel') {
+                return '<details class="pg-sw-subscription-cancel"><summary class="btn btn-sm btn-outline-danger">' + esc(_sdT('Cancel subscription')) + '</summary>'
+                    + '<form method="post" action="#" class="mt-2"><p class="small mb-2">' + esc(status === 'active'
+                        ? _sdT('No further charges will be made. The subscription runs until the end of the period already paid.')
+                        : _sdT('No further charges will be made and the subscription ends.')) + '</p>'
+                    + '<button type="submit" class="btn btn-sm btn-danger">' + esc(_sdT('Yes, cancel')) + '</button></form></details>';
+            }
+            return '<form method="post" action="#"><button type="submit" class="btn btn-sm btn-outline-secondary">' + esc(labels[a]) + '</button></form>';
+        }).join('');
+    }
+
+    // pg_subscription_customer_view_html(); view rows in
+    // pg_subscription_customer_view_rows()' shape.
+    /* @pg-site-output */
+    function _sdAccountSubscriptionsHtml(view) {
+        if (!view || !view.length) return '';
+        return '<div class="list-group pg-sw-subscriptions">' + view.map(function (r) {
+            var html = '<div class="list-group-item">'
+                + '<div class="d-flex flex-wrap justify-content-between align-items-center gap-2">'
+                + '<span class="fw-semibold">' + esc(r.product) + '</span>'
+                + '<span>' + esc(r.amount) + '</span>'
+                + '</div>'
+                + '<div class="small text-body-secondary">'
+                + '<span class="badge text-bg-' + esc(r.tone) + ' me-2">' + esc(r.status_label) + '</span>';
+            ['next', 'price', 'card'].forEach(function (k) {
+                if (r[k] !== '') html += '<span class="me-2">' + esc(r[k]) + '</span>';
+            });
+            if (r.event !== '') html += '<span>' + esc(r.event) + '</span>';
+            html += '</div>';
+            if (r.confirm_url !== '') {
+                html += '<div class="mt-2"><a href="' + esc(r.confirm_url) + '" class="btn btn-sm btn-warning" rel="noopener noreferrer">'
+                    + esc(_sdT('Confirm the payment')) + '</a></div>';
+            }
+            if (r.actions_html !== '') html += '<div class="d-flex flex-wrap gap-2 mt-2">' + r.actions_html + '</div>';
+            return html + '</div>';
+        }).join('') + '</div>';
+    }
+
+    // pg_credit_account_cards_html(); cards in pg_credit_account_view()'s
+    // shape (kind_label, state, state_label, reason, balance_info,
+    // amount_info, last_day_info, uses: order_number, view_url, date_info,
+    // amount_info).
+    /* @pg-site-output */
+    function _sdAccountCreditCardsHtml(cards) {
+        if (!cards || !cards.length) return '';
+        var tones = { open: 'success', used: 'secondary', expired: 'warning' };
+        return '<div class="list-group">' + cards.map(function (c) {
+            var html = '<div class="list-group-item">'
+                + '<div class="d-flex justify-content-between align-items-start gap-2">'
+                + '<span><span class="fw-semibold">' + esc(c.kind_label) + '</span>'
+                + ' <span class="badge text-bg-' + (tones[c.state] || 'secondary') + ' ms-1">' + esc(c.state_label) + '</span>'
+                + (c.reason !== '' ? '<span class="d-block small text-body-secondary text-break">' + esc(c.reason) + '</span>' : '')
+                + '</span>'
+                + '<span class="text-end"><span class="fw-semibold">' + esc(c.balance_info) + '</span>'
+                + '<span class="d-block small text-body-secondary">' + esc(_sdT('of {var:1}').replace('{var:1}', c.amount_info)) + '</span></span>'
+                + '</div>'
+                + (c.last_day_info !== '' ? '<div class="small text-body-secondary">' + esc(_sdT('Last day: {var:1}').replace('{var:1}', c.last_day_info)) + '</div>' : '');
+            if (c.uses && c.uses.length) {
+                html += '<ul class="list-unstyled small mb-0 mt-1">' + c.uses.map(function (u) {
+                    var number = '#' + esc(u.order_number);
+                    return '<li>' + (u.view_url !== '' ? '<a href="' + esc(u.view_url) + '">' + number + '</a>' : number)
+                        + ' <span class="text-body-secondary">' + esc(u.date_info) + '</span> −' + esc(u.amount_info) + '</li>';
+                }).join('') + '</ul>';
+            }
+            return html + '</div>';
+        }).join('') + '</div>';
+    }
+
+    // pg_credit_account_convert_html() for `points` worth `worth`, without
+    // the form token and the page to come back to.
+    /* @pg-site-output */
+    function _sdAccountCreditConvertHtml(points, worth) {
+        return '<form action="#" method="post" class="mb-3">'
+            + '<label for="pg_sw_reward_points_convert" class="form-label">' + esc(_sdT('Reward points: {var:1}').replace('{var:1}', points)) + '</label>'
+            + '<div class="input-group" style="max-width: 24rem">'
+            + '<input type="number" id="pg_sw_reward_points_convert" name="points" class="form-control" min="1" max="' + esc(points) + '" step="1" value="' + esc(points) + '" required>'
+            + '<button type="submit" class="btn btn-outline-primary">' + esc(_sdT('Convert to store credit')) + '</button>'
+            + '</div>'
+            + '<div class="form-text">' + esc(_sdT('All your points are worth {var:1}.').replace('{var:1}', worth)) + '</div>'
+            + '</form>';
+    }
+
+    // pg_credit_account_section_html(): the balance, the conversion form
+    // (convertHtml, '' for none) and the cards.
+    /* @pg-site-output */
+    function _sdAccountStoreCreditHtml(balance, convertHtml, cards) {
+        return '<div class="pg-sw-store-credit">'
+            + '<p class="mb-3">' + esc(_sdT('Balance')) + ': <span class="fw-semibold">' + esc(balance) + '</span></p>'
+            + convertHtml + _sdAccountCreditCardsHtml(cards) + '</div>';
+    }
+
     // What a my account page prints in its order history or bookings for a
     // sample member: the sample order and a cancelled one, two upcoming
-    // bookings and a past one (the booking lists' sample rows).
+    // bookings and a past one (the booking lists' sample rows); an active
+    // and a paused subscription; an open store credit card spent on two
+    // orders and a used one.
     /* @pg-site-output */
     function _sdAccountSectionHtml(section) {
         if (section === 'order_history') {
@@ -44228,6 +45786,25 @@ const StyleDesigner = (function () {
                 past: [view(_SD_LIST_CARD_SAMPLES['account.past_bookings'])].concat(SD_LIST_SAMPLE_ROWS['account.past_bookings'].map(view))
             });
         }
+        if (section === 'subscriptions') {
+            return _sdAccountSubscriptionsHtml([_SD_LIST_ROW_PREVIEWS].concat(SD_LIST_SAMPLE_ROWS['account.subscriptions']).map(function (r) {
+                return { product: r.__subscription_product, amount: r.__subscription_amount, tone: r.__subscription_tone,
+                    status_label: r.__subscription_status_label, next: r.__subscription_next, price: r.__subscription_price,
+                    card: r.__subscription_card, event: r.__subscription_event, confirm_url: r.__subscription_confirm_url,
+                    actions_html: _sdAccountSubscriptionActionsHtml(r.__subscription_status) };
+            }));
+        }
+        if (section === 'store_credit_convert') return _sdAccountCreditConvertHtml('120', '₺12,00');
+        if (section === 'store_credit') {
+            var use = function (u) {
+                return { order_number: u.__credit_use_order_no, view_url: u.__credit_use_order_url, date_info: u.__credit_use_date, amount_info: u.__credit_use_amount };
+            };
+            var uses = [use(_SD_LIST_ROW_PREVIEWS)].concat(SD_LIST_SAMPLE_ROWS['account.store_credit_uses'].map(use));
+            return _sdAccountStoreCreditHtml('₺35,00', _sdAccountCreditConvertHtml('120', '₺12,00'), [_SD_LIST_ROW_PREVIEWS].concat(SD_LIST_SAMPLE_ROWS['account.store_credit']).map(function (c, i) {
+                return { kind_label: c.__credit_kind_label, state: c.__credit_state, state_label: c.__credit_state_label, reason: c.__credit_reason,
+                    balance_info: c.__credit_balance, amount_info: c.__credit_amount, last_day_info: c.__credit_last_day, uses: i === 0 ? uses : [] };
+            }));
+        }
         return '';
     }
 
@@ -44240,9 +45817,14 @@ const StyleDesigner = (function () {
         box.className = 'sd-section-binding-hint sd-section-sample';
         box.setAttribute('inert', '');
         box.style.cssText = 'pointer-events:none';
-        box.innerHTML = html + '<div class="small text-body-secondary fst-italic mt-1">'
-            + esc(section === 'order_history' ? _sdT('The site lists the signed-in member\'s orders, newest first.')
-                : _sdT('The site lists the signed-in member\'s bookings: upcoming ones with their manage page, then past ones.')) + '</div>';
+        var notes = {
+            order_history: _sdT('The site lists the signed-in member\'s orders, newest first.'),
+            bookings: _sdT('The site lists the signed-in member\'s bookings: upcoming ones with their manage page, then past ones.'),
+            subscriptions: _sdT('The site lists the signed-in member\'s subscriptions, newest first, with the actions each one allows.'),
+            store_credit: _sdT('The site shows the signed-in member\'s balance, the reward points conversion form when they have points enough, and their cards.'),
+            store_credit_convert: _sdT('The site shows this form when the member has points enough to convert; it posts with the form token.')
+        };
+        box.innerHTML = html + '<div class="small text-body-secondary fst-italic mt-1">' + esc(notes[section]) + '</div>';
         return box;
     }
 
@@ -45537,7 +47119,9 @@ const StyleDesigner = (function () {
             ['has_bookings', _sdT('The member has bookings')],
             ['has_upcoming_bookings', _sdT('The member has upcoming bookings')],
             ['has_past_bookings', _sdT('The member has past bookings')],
-            ['has_store_credit', _sdT('The member has store credit or points to convert')]
+            ['has_store_credit', _sdT('The member has store credit or points to convert')],
+            ['has_store_credit_cards', _sdT('The member has store credit cards')],
+            ['has_subscriptions', _sdT('The member has subscriptions')]
         ],
         form_list_view: [
             ['has_filter_value', _sdT('A value from the page address, compared with is equal to, finds records')],
@@ -47941,26 +49525,24 @@ const StyleDesigner = (function () {
             });
             h += '</select>';
             // Visible icon buttons
+            // A click on the selected button removes the value.
             h += '<div class="sd-align-btns">';
-            h += '<button type="button" class="sd-align-btn' + (!_found ? ' sd-align-active' : '') + '" data-cls="" title="' + esc(_sdT('Default')) + '"><i class="bi bi-x-lg"></i></button>';
             _alignVals.forEach(function(v) {
                 var c = 'text-' + bpInfix + v[0];
-                h += '<button type="button" class="sd-align-btn' + (c === _found ? ' sd-align-active' : '') + '" data-cls="' + c + '" title="' + v[1] + '"><i class="bi ' + _alignIconMap[v[0]] + '"></i></button>';
+                h += '<button type="button" class="sd-align-btn' + (c === _found ? ' sd-align-active' : '') + '" data-cls="' + c + '" title="' + v[1] + '" aria-label="' + esc(v[1]) + '" aria-pressed="' + (c === _found ? 'true' : 'false') + '"><i class="bi ' + _alignIconMap[v[0]] + '" aria-hidden="true"></i></button>';
             });
             h += '</div></div>';
             return h;
         }
-        var _alignHasBp = _alignBps.some(function(bp) {
-            return _alignVals.some(function(v) { return (' ' + cls + ' ').indexOf(' text-' + bp + '-' + v[0] + ' ') !== -1; });
-        });
+        var _alignBadge = _sdSizeBadge(cls, 'text-', _alignVals);
         var _alignRowId = 'sdresp_ta_' + n._id;
         var _alignHtml =
             '<div class="sd-sp-row">' +
-                '<button type="button" class="sd-sp-toggle bi bi-chevron-right' + (_alignHasBp ? ' sd-sp-open' : '') + '" data-sp-target="' + _alignRowId + '"></button>' +
                 '<span class="sd-sp-label">' + esc(_sdT('Alignment')) + '</span>' +
                 _alignBtnGrp('') +
+                _sdSizeToggle(_alignRowId, _alignBadge, esc(_sdT('Alignment'))) +
             '</div>' +
-            '<div class="sd-sp-bps" id="' + _alignRowId + '"' + (_alignHasBp ? '' : ' style="display:none"') + '>' +
+            '<div class="sd-sp-bps" id="' + _alignRowId + '" style="display:none">' +
             _alignBps.map(function(bp) {
                 return '<div class="sd-sp-bp-item"><span class="sd-sp-bp-lbl">' + bp.toUpperCase() + '</span>' + _alignBtnGrp(bp + '-') + '</div>';
             }).join('') +
@@ -51492,7 +53074,23 @@ const StyleDesigner = (function () {
         tag_cloud:     { kind: 'tag_cloud_region',     key: 'search_page_name' }
     };
 
+    // The session-aware regions and the comments block: the widget doing
+    // the same job. They name no item the widget would read, so it starts
+    // with its defaults; the classic region's own settings (a login
+    // region's row, a cart region's labels) are not carried.
+    var SD_REGION_WIDGETS_PLAIN = { login: 'login_region', cart: 'cart_link', comments_block: 'comments' };
+
     function _sdRegionWidgetPropsHtml(n) {
+        if (SD_REGION_WIDGETS_PLAIN[n.props.regionType]) {
+            return '<div class="sd-prop-row">' +
+                    '<button type="button" class="btn btn-sm btn-outline theme-primary w-100" id="sd-region-make-widget">' +
+                        '<span class="bi bi-magic me-1"></span>' + esc(_sdT('Make designable')) +
+                    '</button>' +
+                '</div>' +
+                '<div class="sd-prop-row"><div style="font-size:.66rem;color:#888;line-height:1.3">' +
+                    esc(_sdT('Puts a "{var}" widget in its place, in a layout you design, with the widget\'s default settings; the classic region\'s own settings are not carried. Inside a shared component every page that places it changes; elsewhere only this page.', _swTypeInfo(SD_REGION_WIDGETS_PLAIN[n.props.regionType]).label)) +
+                '</div></div>';
+        }
         if (!SD_REGION_WIDGETS[n.props.regionType] || !n.props.regionName) return '';
         return '<div class="sd-prop-row">' +
                 '<button type="button" class="btn btn-sm btn-outline theme-primary w-100" id="sd-region-make-widget">' +
@@ -51508,15 +53106,32 @@ const StyleDesigner = (function () {
     // region node's place, in the page tree or in the shared component the
     // node sits in; one undo step.
     function _sdRegionMakeWidget(regionNode) {
-        var map = (regionNode && regionNode.type === 'region' && regionNode.props) ? SD_REGION_WIDGETS[regionNode.props.regionType] : null;
+        var rt = (regionNode && regionNode.type === 'region' && regionNode.props) ? regionNode.props.regionType : '';
+        if (SD_REGION_WIDGETS_PLAIN[rt]) {
+            var plainKind = SD_REGION_WIDGETS_PLAIN[rt];
+            _sdRegionToWidget(regionNode, plainKind, _swTypeDefaults({}, plainKind), function () {
+                sdToast(esc(_sdT('The region is now a "{var}" widget you design; save the page to keep it.', _swTypeInfo(plainKind).label)), 'success', 7000);
+            });
+            return;
+        }
+        var map = SD_REGION_WIDGETS[rt] || null;
         if (!map || !regionNode.props.regionName) return;
-        if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
         var regionName = regionNode.props.regionName;
         var cfg = _swTypeDefaults({}, map.kind);
         cfg[map.key] = regionName;
+        _sdRegionToWidget(regionNode, map.kind, cfg, function () {
+            sdToast(esc(_sdT('"{var}" is now a widget you design; its items are still edited where they were.', regionName)), 'success', 7000);
+        });
+    }
+
+    // A new widget of `kind` with `cfg` and its starter layout takes the
+    // region node's place, in the page tree or in the shared component the
+    // node sits in; one undo step. `done()` runs once it is placed.
+    function _sdRegionToWidget(regionNode, kind, cfg, done) {
+        if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
         var start = _sdAnyParent(regionNode);
-        var name = _swAutoName(map.kind, null, { target: start ? start.parent : null });
-        _swCreateRow(name, cfg, _buildStarterTree(map.kind), function (newId, newName) {
+        var name = _swAutoName(kind, null, { target: start ? start.parent : null });
+        _swCreateRow(name, cfg, _buildStarterTree(kind), function (newId, newName) {
             // The node may have gone meanwhile (another tab, an undo); the
             // widget is then listed in the design, unplaced.
             var hit = _sdAnyParent(regionNode);
@@ -51535,7 +53150,7 @@ const StyleDesigner = (function () {
             if (typeof expandAncestorsAnywhere === 'function') expandAncestorsAnywhere(ref);
             render();
             if (typeof _refreshSystemTab === 'function') _refreshSystemTab();
-            sdToast(esc(_sdT('"{var}" is now a widget you design; its items are still edited where they were.', regionName)), 'success', 7000);
+            if (done) done(newName);
         });
     }
 
@@ -51685,6 +53300,55 @@ const StyleDesigner = (function () {
         sdToast(esc(_sdT('The classic region was removed; save the page to keep it.')), 'success', 7000);
     }
 
+    // The widget a classic page's own system region converts into, custom
+    // layout or not (_design.classicWidgets, pg_classic_widget_offers()):
+    // { kind, cfg }; null for a page type with no widget (custom form,
+    // e-mail a friend, form view directory, the affiliate confirmation and
+    // welcome pages, order receipt) and for a named region.
+    function _sdClassicWidgetOffer(n) {
+        var p = _pgActivePage();
+        if (!_design || !_design.classicWidgets || !p || !(p.page_id > 0) || !_sdLegacyRegionOwn(n)) return null;
+        var o = _design.classicWidgets[p.page_id];
+        return (o && _swIsType(o.kind)) ? o : null;
+    }
+
+    function _sdClassicConvertPropsHtml(n) {
+        var o = _sdClassicWidgetOffer(n);
+        if (!o) {
+            // A classic page type no widget stands in for: no button, a
+            // muted line saying where its page is set up.
+            var p = _pgActivePage();
+            if (!_design || !p || !(p.page_id > 0) || !_sdLegacyRegionOwn(n) || (_design.classicNoWidget || []).indexOf(p.page_id) === -1) return '';
+            var withLayout = (_design.layoutPages || []).indexOf(p.page_id) !== -1;
+            return '<div class="sd-prop-row"><div style="font-size:.66rem;color:#888;line-height:1.3">' +
+                    esc(withLayout
+                        ? _sdT('This page type has no design widget; its layout is edited in the Layout tab.')
+                        : _sdT('This page type has no design widget; the region keeps drawing it from the page type\'s settings.')) +
+                '</div></div>';
+        }
+        return '<div class="sd-prop-row">' +
+                '<button type="button" class="btn btn-sm btn-outline theme-primary w-100" id="sd-classic-convert">' +
+                    '<span class="bi bi-magic me-1"></span>' + esc(_sdT('Convert to design elements')) +
+                '</button>' +
+            '</div>' +
+            '<div class="sd-prop-row"><div style="font-size:.66rem;color:#888;line-height:1.3">' +
+                esc(_sdT('Puts a "{var}" widget with this page\'s settings and its default layout in the region\'s place, for you to design. The page type and its settings stay; undo brings the region back.', _swTypeInfo(o.kind).label)) +
+            '</div></div>';
+    }
+
+    // The page's own system region becomes the widget of its page type, in
+    // its place; one undo step, after asking.
+    function _sdClassicConvert(regionNode) {
+        var o = _sdClassicWidgetOffer(regionNode);
+        if (!o) return;
+        if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
+        var label = _swTypeInfo(o.kind).label;
+        if (!window.confirm(_sdT('Put a "{var}" widget in the place of the classic region? The widget draws the page from then on; undo brings the region back.', label))) return;
+        _sdRegionToWidget(regionNode, o.kind, _sdLayoutWidgetCfg(o), function () {
+            sdToast(esc(_sdT('The page is now drawn by a "{var}" widget; save the page to keep it.', label)), 'success', 7000);
+        });
+    }
+
     // What the converter left out of the widget, by its code (layout_code
     // convert, pg_layout_form_convert()).
     var SD_LAYOUT_DROPPED = {
@@ -51825,20 +53489,94 @@ const StyleDesigner = (function () {
         return o;
     }
 
+    // ── Section cards of the single element's panel
+    // While renderProperties() builds that panel (_sdSectBuild set) every
+    // section is a general one, closed until this browser opened it
+    // (_sdSectOpenRead()); the first card in the markup of the element's own
+    // options becomes its own section, put first and open
+    // (_sdSectTakeOwn()). A closed card's body is kept in _sdSectBuild.lazy,
+    // not drawn; opening the card draws the panel again with it. Outside
+    // that build (the several-element panel, a text's inner element) a
+    // section opens as before.
+    var _sdSectBuild = null;
+    // The bodies held back by the last single-element panel, by section id.
+    var _sdPanelLazy = {};
+
+    function _sdSectMake(sid, cls, hdrCls, head, body) {
+        var b = _sdSectBuild;
+        var stored = null;
+        try { stored = localStorage.getItem('sd_cs_' + sid); } catch(e) {}
+        var open = _sdSectOpenRead(stored, !b);
+        var lazy = !!(b && b.lazy);
+        if (lazy && !open) b.lazy[sid] = body;
+        var o = { sid: sid, cls: cls, hdrCls: hdrCls, head: head, body: body, open: open, lazy: lazy, stored: stored };
+        o.html = _sdSectCard(o);
+        if (b) b.cards[sid] = o;
+        return o.html;
+    }
+
+    // Takes the element's own section out of `html` (the markup of its own
+    // options): the first card in it, drawn open unless this browser closed
+    // it. Returns { own, rest }.
+    function _sdSectTakeOwn(html) {
+        var b = _sdSectBuild;
+        var m = b ? /data-sd-card="([^"]+)"/.exec(html) : null;
+        var o = m ? b.cards[m[1]] : null;
+        if (!o || html.indexOf(o.html) === -1) return { own: '', rest: html };
+        var rest = html.replace(o.html, function () { return ''; });
+        o.open = _sdSectOpenRead(o.stored, true);
+        if (o.open && b.lazy) delete b.lazy[o.sid];
+        return { own: _sdSectCard(o), rest: rest };
+    }
+
     // Property HTML helpers
     function sect(icon, title, body) {
         var sid = 'sdsc' + (icon + title).replace(/[^a-zA-Z0-9]/g, '').toLowerCase().slice(0, 24);
-        var collapsed = false;
-        try { collapsed = localStorage.getItem('sd_cs_' + sid) === '1'; } catch(e) {}
-        return '<div class="sd-props-section">' +
-            '<div class="sd-props-section-title sd-sect-hdr' + (collapsed ? '' : ' sd-sect-open') + '" data-sid="' + sid + '" role="button" tabindex="0" aria-expanded="' + (collapsed ? 'false' : 'true') + '">' +
-                '<span class="bi ' + icon + '"></span> ' + title +
-                '<span class="sd-sect-chev bi bi-chevron-right"></span>' +
-            '</div>' +
-            '<div class="sd-sect-body"' + (collapsed ? ' style="display:none"' : '') + '>' + body + '</div>' +
-        '</div>';
+        // A card's head carries no icon: the arrow, the name, the count.
+        return _sdSectMake(sid, 'sd-props-section', 'sd-props-section-title', title, body);
     }
-    function row(label, ctrl) { return '<div class="sd-prop-row"><label class="sd-prop-label">' + label + '</label><div class="sd-prop-control">' + ctrl + '</div></div>'; }
+    // A row: the changed dot's place, the label, the control. While the
+    // single element's panel is built (_sdSectBuild) a lone select of up to
+    // six values is drawn as a button group (_sdSegPlan()).
+    function row(label, ctrl) {
+        var extra = '';
+        var ps = _sdSectBuild ? _sdSelParse(ctrl) : null;
+        if (ps) {
+            var plan = _sdSegPlan(ps.opts.filter(function (o) { return o.v !== ''; }).map(function (o) { return o.l; }));
+            if (plan.kind === 'group') { ctrl = _sdSegGroup(ps); extra = _sdSegRowCls(plan); }
+        }
+        return '<div class="sd-prop-row' + extra + '"><label class="sd-prop-label">' + label + '</label><div class="sd-prop-control">' + ctrl + '</div></div>';
+    }
+    // A button group from a read select (_sdSelParse()). The select stays,
+    // hidden, and is what writes: a segment sets its value and fires its
+    // change (_sdSegClick()), so every handler, the changed dot and the
+    // search read it as before.
+    function _sdSegGroup(ps) {
+        var h = '<div class="sd-seg-grp" role="group">' +
+            '<select class="sd-seg-src" hidden tabindex="-1" aria-hidden="true"' + ps.attrs + '>' +
+            ps.opts.map(function (o) { return '<option value="' + o.v + '"' + (o.on ? ' selected' : '') + '>' + o.l + '</option>'; }).join('') +
+            '</select>';
+        ps.opts.forEach(function (o) {
+            if (o.v === '') return;
+            h += '<button type="button" class="sd-seg' + (o.on ? ' sd-seg-on' : '') + '" data-seg-val="' + o.v + '" aria-pressed="' + (o.on ? 'true' : 'false') + '" title="' + o.l.replace(/"/g, '&quot;') + '">' + o.l + '</button>';
+        });
+        return h + '</div>';
+    }
+    // The row classes of a group that stands under its label (always, or
+    // only under 300 px).
+    function _sdSegRowCls(plan) {
+        return (plan.stack ? ' sd-row-stack' : '') + (plan.stackNarrow ? ' sd-row-stack-n' : '');
+    }
+    // The button that opens a row's per-size box: the screen-size badge
+    // ("MD", "all") when a value starts at a size (_sdSizeBadge()), else a
+    // chevron, which stays until the section's size chooser takes its place.
+    function _sdSizeToggle(rowId, badge, label) {
+        if (!badge) return '<button type="button" class="sd-sp-toggle bi bi-chevron-right" data-sp-target="' + rowId + '"></button>';
+        var txt = badge === 'all' ? _sdT('all') : badge;
+        var name = String(label || '').replace(/<[^>]*>/g, '').trim();
+        return '<button type="button" class="sd-sp-toggle sd-size-badge' + (badge === 'all' ? ' sd-size-all' : '') + '" data-sp-target="' + rowId + '"' +
+            ' aria-label="' + esc(_sdT('Screen sizes for {var}', name) + ': ' + txt) + '" title="' + esc(_sdT('Screen sizes')) + '">' + esc(txt) + '</button>';
+    }
     /** Boolean toggle — renders as a Bootstrap Studio-style pill switch */
     function sw(prop, checked, label) {
         var lbl = label || '';
@@ -52450,19 +54188,21 @@ const StyleDesigner = (function () {
         var RESP_BPS     = ['sm', 'md', 'lg', 'xl', 'xxl'];
         var RESP_BP_LBLS = ['SM', 'MD', 'LG', 'XL', 'XXL'];
         var respRowCounter = 0;
+        // The row's value at every size is a button group of up to six
+        // values (D13); a value from a size up shows its badge, a click on it
+        // opens the per-size box (D12), closed until then.
         function mkRespRow(label, prefix, valuePairs, placeholder) {
             var rowId = 'sdresp_' + prefix.replace(/[^a-z0-9]/gi, '_') + '_' + (++respRowCounter);
-            var paddedCls = ' ' + cls + ' ';
-            var hasBpVal = RESP_BPS.some(function(bp) {
-                var bpPfx = prefix + bp + '-';
-                return valuePairs.some(function(p) { return paddedCls.indexOf(' ' + bpPfx + p[0] + ' ') !== -1; });
-            });
-            var h = '<div class="sd-sp-row">';
-            h += '<button type="button" class="sd-sp-toggle bi bi-chevron-right' + (hasBpVal ? ' sd-sp-open' : '') + '" data-sp-target="' + rowId + '"></button>';
+            var badge = _sdSizeBadge(cls, prefix, valuePairs);
+            var main = mkRespSelect(prefix, valuePairs, placeholder);
+            var plan = _sdSectBuild ? _sdSegPlan(valuePairs.map(function (p) { return p[1]; })) : { kind: 'select' };
+            var ps = plan.kind === 'group' ? _sdSelParse(main) : null;
+            var h = '<div class="sd-sp-row' + (ps ? _sdSegRowCls(plan) : '') + '">';
             h += '<span class="sd-sp-label">' + label + '</span>';
-            h += mkRespSelect(prefix, valuePairs, placeholder);
+            h += ps ? _sdSegGroup(ps) : main;
+            h += _sdSizeToggle(rowId, badge, label);
             h += '</div>';
-            h += '<div class="sd-sp-bps" id="' + rowId + '"' + (hasBpVal ? '' : ' style="display:none"') + '>';
+            h += '<div class="sd-sp-bps" id="' + rowId + '" style="display:none">';
             RESP_BPS.forEach(function(bp, i) {
                 h += '<div class="sd-sp-bp-item"><span class="sd-sp-bp-lbl">' + RESP_BP_LBLS[i] + '</span>' + mkRespSelect(prefix + bp + '-', valuePairs, placeholder) + '</div>';
             });
@@ -52473,25 +54213,18 @@ const StyleDesigner = (function () {
         // Non-responsive row (Position / Z Index / Width / Height / Overflow / Aspect Ratio)
         // uses the same sd-sp-row grid for visual alignment but leaves the toggle column empty.
         function mkNonRespRow(label, pairs, placeholder) {
-            var h = '<div class="sd-sp-row">';
-            h += '<span class="sd-sp-toggle-spacer"></span>';
-            h += '<span class="sd-sp-label">' + label + '</span>';
-            h += selPairs(pairs, placeholder);
-            h += '</div>';
-            return h;
+            var ctrl = selPairs(pairs, placeholder);
+            var plan = _sdSectBuild ? _sdSegPlan(pairs.filter(function (p) { return p[0]; }).map(function (p) { return p[1]; })) : { kind: 'select' };
+            var ps = plan.kind === 'group' ? _sdSelParse(ctrl) : null;
+            return '<div class="sd-sp-row' + (ps ? _sdSegRowCls(plan) : '') + '">' +
+                '<span class="sd-sp-label">' + label + '</span>' + (ps ? _sdSegGroup(ps) : ctrl) +
+            '</div>';
         }
 
         // ── Appearance collapsible sub-section wrapper ──
         function as(title, content) {
             var sid = 'sdsc-ap-' + title.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
-            var collapsed = false;
-            try { collapsed = localStorage.getItem('sd_cs_' + sid) === '1'; } catch(e) {}
-            return '<div class="sd-app-sect">' +
-                '<div class="sd-app-sect-hdr sd-sect-hdr' + (collapsed ? '' : ' sd-sect-open') + '" data-sid="' + sid + '" role="button" tabindex="0" aria-expanded="' + (collapsed ? 'false' : 'true') + '">' +
-                    title + '<span class="sd-sect-chev bi bi-chevron-right"></span>' +
-                '</div>' +
-                '<div class="sd-sect-body"' + (collapsed ? ' style="display:none"' : '') + '>' + content + '</div>' +
-            '</div>';
+            return _sdSectMake(sid, 'sd-app-sect', 'sd-app-sect-hdr', title, content);
         }
 
         // ── Display & Sizing ──
@@ -52511,12 +54244,21 @@ const StyleDesigner = (function () {
             ovOpts.forEach(function(o) { h += '<option value="' + o[0] + '"' + (o[0] === (propVal||'') ? ' selected' : '') + '>' + o[1] + '</option>'; });
             return h + '</select>';
         }
+        // A length field of the Sizing rows: a bare number is pixels
+        // (_sdCssLen()), so "px" stands grey at its right while the value
+        // has no unit of its own; an invalid value is not written (_sdLenCheck()).
+        function lenInp(prop, val, ph) {
+            var v = (val == null) ? '' : String(val);
+            return '<span class="sd-unit-field' + (/^[-+]?[\d.]*$/.test(v.trim()) ? '' : ' sd-unit-off') + '">' +
+                '<input type="text" class="form-control form-control-sm" data-prop="' + prop + '" data-sd-len="len" value="' + esc(v) + '" placeholder="' + esc(ph) + '">' +
+                '<span class="sd-unit" aria-hidden="true">px</span></span>';
+        }
         function mkExpandRow(label, mainCtrl, subRows) {
             var rowId = 'sdexp_' + label.replace(/[^a-z0-9]/gi, '_').toLowerCase() + '_' + (++respRowCounter);
             var hasSubVal = subRows.some(function(sr) { return !!sr.val; });
             var h = '<div class="sd-sp-row">' +
-                '<button type="button" class="sd-sp-toggle bi bi-chevron-right' + (hasSubVal ? ' sd-sp-open' : '') + '" data-sp-target="' + rowId + '"></button>' +
-                '<span class="sd-sp-label">' + label + '</span>' + mainCtrl + '</div>';
+                '<span class="sd-sp-label">' + label + '</span>' + mainCtrl +
+                '<button type="button" class="sd-sp-toggle bi bi-chevron-right' + (hasSubVal ? ' sd-sp-open' : '') + '" data-sp-target="' + rowId + '"></button></div>';
             h += '<div class="sd-sp-bps" id="' + rowId + '"' + (hasSubVal ? '' : ' style="display:none"') + '>';
             subRows.forEach(function(sr) {
                 h += '<div class="sd-sp-bp-item"><span class="sd-sp-bp-lbl">' + sr.label + '</span>' + sr.ctrl + '</div>';
@@ -52531,31 +54273,31 @@ const StyleDesigner = (function () {
         var _posRowId = 'sdexp_pos_' + (++respRowCounter);
         var _posSel = mkRespSelect('position-', [['static',_sdT('Static')],['relative',_sdT('Relative')],['absolute',_sdT('Absolute')],['fixed',_sdT('Fixed')],['sticky',_sdT('Sticky')]], _sdT('Default'));
         var _posSubRows = [
-            { label: _sdT('Top'),    ctrl: '<input type="text" class="form-control form-control-sm" data-prop="top"    value="' + esc(p.top    || '') + '" placeholder="e.g. 0">', val: p.top    },
-            { label: _sdT('Right'),  ctrl: '<input type="text" class="form-control form-control-sm" data-prop="right"  value="' + esc(p.right  || '') + '" placeholder="e.g. 0">', val: p.right  },
-            { label: _sdT('Bottom'), ctrl: '<input type="text" class="form-control form-control-sm" data-prop="bottom" value="' + esc(p.bottom || '') + '" placeholder="e.g. 0">', val: p.bottom },
-            { label: _sdT('Left'),   ctrl: '<input type="text" class="form-control form-control-sm" data-prop="left"   value="' + esc(p.left   || '') + '" placeholder="e.g. 0">', val: p.left   }
+            { label: _sdT('Top'),    ctrl: lenInp('top', p.top, _sdT('e.g. 0')), val: p.top    },
+            { label: _sdT('Right'),  ctrl: lenInp('right', p.right, _sdT('e.g. 0')), val: p.right  },
+            { label: _sdT('Bottom'), ctrl: lenInp('bottom', p.bottom, _sdT('e.g. 0')), val: p.bottom },
+            { label: _sdT('Left'),   ctrl: lenInp('left', p.left, _sdT('e.g. 0')), val: p.left   }
         ];
         var _posHasSub = _posSubRows.some(function(sr) { return !!sr.val; });
         var _posRow = '<div class="sd-sp-row">' +
-            '<button type="button" class="sd-sp-toggle bi bi-chevron-right' + (_posHasSub ? ' sd-sp-open' : '') + '" data-sp-target="' + _posRowId + '"></button>' +
-            '<span class="sd-sp-label">' + esc(_sdT('Position')) + '</span>' + _posSel + '</div>' +
+            '<span class="sd-sp-label">' + esc(_sdT('Position')) + '</span>' + _posSel +
+            '<button type="button" class="sd-sp-toggle bi bi-chevron-right' + (_posHasSub ? ' sd-sp-open' : '') + '" data-sp-target="' + _posRowId + '"></button></div>' +
             '<div class="sd-sp-bps" id="' + _posRowId + '"' + (_posHasSub ? '' : ' style="display:none"') + '>' +
             _posSubRows.map(function(sr) { return '<div class="sd-sp-bp-item"><span class="sd-sp-bp-lbl">' + sr.label + '</span>' + sr.ctrl + '</div>'; }).join('') +
             '</div>';
 
         var _widthRow = mkExpandRow(_sdT('Width'),
-            '<input type="text" class="form-control form-control-sm" data-prop="width"    value="' + esc(p.width    || '') + '" placeholder="e.g. 100%">',
+            lenInp('width', p.width, _sdT('e.g. 100%')),
             [
-                { label: _sdT('Min'), ctrl: '<input type="text" class="form-control form-control-sm" data-prop="minWidth"  value="' + esc(p.minWidth  || '') + '" placeholder="e.g. 200px">', val: p.minWidth  },
-                { label: _sdT('Max'), ctrl: '<input type="text" class="form-control form-control-sm" data-prop="maxWidth"  value="' + esc(p.maxWidth  || '') + '" placeholder="e.g. 960px">', val: p.maxWidth  }
+                { label: _sdT('Min'), ctrl: lenInp('minWidth', p.minWidth, _sdT('e.g. 200px')), val: p.minWidth  },
+                { label: _sdT('Max'), ctrl: lenInp('maxWidth', p.maxWidth, _sdT('e.g. 960px')), val: p.maxWidth  }
             ]
         );
         var _heightRow = mkExpandRow(_sdT('Height'),
-            '<input type="text" class="form-control form-control-sm" data-prop="height"   value="' + esc(p.height   || '') + '" placeholder="e.g. auto">',
+            lenInp('height', p.height, _sdT('e.g. auto')),
             [
-                { label: _sdT('Min'), ctrl: '<input type="text" class="form-control form-control-sm" data-prop="minHeight" value="' + esc(p.minHeight || '') + '" placeholder="e.g. 200px">', val: p.minHeight },
-                { label: _sdT('Max'), ctrl: '<input type="text" class="form-control form-control-sm" data-prop="maxHeight" value="' + esc(p.maxHeight || '') + '" placeholder="e.g. 800px">', val: p.maxHeight }
+                { label: _sdT('Min'), ctrl: lenInp('minHeight', p.minHeight, _sdT('e.g. 200px')), val: p.minHeight },
+                { label: _sdT('Max'), ctrl: lenInp('maxHeight', p.maxHeight, _sdT('e.g. 800px')), val: p.maxHeight }
             ]
         );
         var _overflowRow = mkExpandRow(_sdT('Overflow'),
@@ -52578,7 +54320,7 @@ const StyleDesigner = (function () {
             _arPresetSel += '</select>';
             _arHtml += '<div class="sd-sp-row"><span class="sd-sp-toggle-spacer"></span><span class="sd-sp-label">' + esc(_sdT('Preset')) + '</span>' + _arPresetSel + '</div>';
             if (_arValue === 'custom') {
-                _arHtml += mkStyleRow(_sdT('Value'), 'aspectRatioCustom', p.aspectRatioCustom, 'e.g. 56.25%');
+                _arHtml += mkStyleRow(_sdT('Value'), 'aspectRatioCustom', p.aspectRatioCustom, _sdT('e.g. 56.25%'));
             }
         }
 
@@ -52708,9 +54450,9 @@ const StyleDesigner = (function () {
             var rowId = 'sdsp_' + basePfx.replace(/-/g, '');
             var hasBpVal = bpPfxs.some(function(p) { return spVal(p) !== ''; });
             var h = '<div class="sd-sp-row">';
-            h += '<button type="button" class="sd-sp-toggle bi bi-chevron-right' + (hasBpVal ? ' sd-sp-open' : '') + '" data-sp-target="' + rowId + '"></button>';
             h += '<span class="sd-sp-label">' + label + '</span>';
             h += mkSpSel(basePfx, isMargin);
+            h += '<button type="button" class="sd-sp-toggle bi bi-chevron-right' + (hasBpVal ? ' sd-sp-open' : '') + '" data-sp-target="' + rowId + '"></button>';
             h += '</div>';
             h += '<div class="sd-sp-bps" id="' + rowId + '"' + (hasBpVal ? '' : ' style="display:none"') + '>';
             bpPfxs.forEach(function(pfx, i) {
@@ -53508,10 +55250,20 @@ const StyleDesigner = (function () {
                 if (e.target.tagName === 'SELECT' || e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON') return;
                 var body = hdr.nextElementSibling;
                 if (!body || !body.classList.contains('sd-sect-body')) return;
+                var sid = hdr.dataset.sid;
+                // A closed card's body was never drawn: the panel is drawn
+                // again with it, keeping its scroll and the head's focus.
+                if (body.hasAttribute('data-sd-lazy')) {
+                    if (sid) try { localStorage.setItem('sd_cs_' + sid, '0'); } catch(e3) {}
+                    renderProperties();
+                    var again = document.querySelector('#sd-properties .sd-sect-hdr[data-sid="' + sid + '"]');
+                    if (again) again.focus();
+                    return;
+                }
                 var isOpen = hdr.classList.toggle('sd-sect-open');
                 hdr.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
                 body.style.display = isOpen ? '' : 'none';
-                var sid = hdr.dataset.sid;
+                if (isOpen) _sdNarrowStack(body);
                 if (sid) try { localStorage.setItem('sd_cs_' + sid, isOpen ? '0' : '1'); } catch(e2) {}
             });
         });
@@ -54396,6 +56148,17 @@ const StyleDesigner = (function () {
             el.addEventListener(eventName, function () {
                 if (!selectedNode) return;
                 var prop = this.dataset.prop;
+                // A length of the Sizing rows: an invalid one is not written
+                // and says why under the field (D13).
+                var _lenKind = this.getAttribute('data-sd-len');
+                if (_lenKind) {
+                    var _why = _sdLenCheck(_lenKind, this.value);
+                    _sdFieldInvalid(this, _why);
+                    if (this.parentNode && this.parentNode.classList) {
+                        this.parentNode.classList.toggle('sd-unit-off', !/^[-+]?[\d.]*$/.test(this.value.trim()));
+                    }
+                    if (_why) return;
+                }
                 // Before the change, so undo returns to the value it had.
                 // Typing into a field (or a picker filling it) is one edit:
                 // one undo step per run, not one per key, and not folded
@@ -54687,6 +56450,8 @@ const StyleDesigner = (function () {
         // region's removal once that widget is on the page.
         var layoutWidgetBtn = document.getElementById('sd-layout-widget');
         if (layoutWidgetBtn) layoutWidgetBtn.addEventListener('click', function () { _sdLayoutWidgetPlace(selectedNode); });
+        var classicConvertBtn = document.getElementById('sd-classic-convert');
+        if (classicConvertBtn) classicConvertBtn.addEventListener('click', function () { _sdClassicConvert(selectedNode); });
         var layoutRemoveBtn = document.getElementById('sd-layout-remove-region');
         if (layoutRemoveBtn) layoutRemoveBtn.addEventListener('click', function () { _sdLayoutRegionRemove(selectedNode); });
 
@@ -54832,7 +56597,7 @@ const StyleDesigner = (function () {
                 if (!grp) return;
                 var sel = grp.querySelector('select[data-stylegroup]');
                 if (!sel) return;
-                sel.value = this.dataset.cls || '';
+                sel.value = _sdSegNext(sel.value, this.dataset.cls || '', true);
                 sel.dispatchEvent(new Event('change', { bubbles: true }));
             });
         });
@@ -55551,7 +57316,7 @@ const StyleDesigner = (function () {
             var elRect = target.getBoundingClientRect();
             var iframeRect = canvasIframe.getBoundingClientRect();
             var wrapperRect = (document.querySelector('.sd-canvas-wrapper') || document.body).getBoundingClientRect();
-            var z = (typeof canvasZoom === 'number' && canvasZoom > 0) ? canvasZoom : 1;
+            var z = ((typeof canvasZoom === 'number' && canvasZoom > 0) ? canvasZoom : 1) * _sdFitScale();
 
             // A toolbar drawn under the element (sd-tb-below) shares that
             // corner's row: the badge goes after it, not over its buttons.
@@ -55655,7 +57420,11 @@ const StyleDesigner = (function () {
         var bottomP    = document.getElementById('sd-bottom-panel');
         var attrsCol   = document.getElementById('sd-bp-attrs-col');
         if (leftPanel)  layout.leftW      = leftPanel.offsetWidth;
-        if (rightPanel) layout.rightW     = rightPanel.offsetWidth;
+        // Only a width the user dragged: the inline variable is set by the
+        // column's drag and by loadLayout(), never by the default.
+        var rightW = parseInt(document.documentElement.style.getPropertyValue('--sd-right-width'), 10);
+        if (rightPanel && rightW) layout.rightW = rightW;
+        layout.v = 2;
         if (compSec && compSec.style.height) layout.leftSplit  = parseInt(compSec.style.height, 10) || null;
         if (bottomP && bottomP.style.height) layout.bottomH    = parseInt(bottomP.style.height, 10) || null;
         if (attrsCol && attrsCol.style.width) layout.attrsW    = parseInt(attrsCol.style.width,  10) || null;
@@ -55667,7 +57436,8 @@ const StyleDesigner = (function () {
             var saved = JSON.parse(localStorage.getItem(SD_LAYOUT_KEY) || 'null');
             if (!saved) return;
             if (saved.leftW)  document.documentElement.style.setProperty('--sd-left-width',  saved.leftW  + 'px');
-            if (saved.rightW) document.documentElement.style.setProperty('--sd-right-width', saved.rightW + 'px');
+            var rightW = _sdLayoutRightWidth(saved);
+            if (rightW) document.documentElement.style.setProperty('--sd-right-width', rightW + 'px');
             // Deferred so the panels are fully built before we apply heights
             setTimeout(function() {
                 if (saved.leftSplit) {
@@ -55686,6 +57456,18 @@ const StyleDesigner = (function () {
                 }
             }, 0);
         } catch(e) {}
+    }
+
+    // The right column's width a drag kept in the stored layout `saved`, or
+    // 0 for the default. A layout saved before it carried `v: 2` held the
+    // column's width on every save, dragged or not, so the two old defaults
+    // there (260, and 240 at 1024 px and below) are not a choice. A value
+    // outside the drag's bounds (200 to 600) is none.
+    function _sdLayoutRightWidth(saved) {
+        var w = saved ? parseInt(saved.rightW, 10) : 0;
+        if (!w || w < 200 || w > 600) return 0;
+        if (!(saved.v >= 2) && (w === 260 || w === 240)) return 0;
+        return w;
     }
 
     function resetLayout() {
@@ -55707,9 +57489,6 @@ const StyleDesigner = (function () {
     // Data flows through hidden form fields: #sd-custom-css-field, #sd-custom-js-field,
     // #sd-custom-fonts-field — submitted with the rest of the style form on Save.
 
-    var _assetsH = 220;   // panel height in px (persisted to localStorage)
-    var _ASSETS_H_KEY = 'sd_assets_h';
-
     function _getCustomField(id) {
         var el = document.getElementById(id);
         return el ? el.value : '';
@@ -55721,11 +57500,12 @@ const StyleDesigner = (function () {
     }
 
     function initAssetsPanel() {
-        var rightPanel = document.getElementById('sd-panel-right');
+        // The right column's Design tab; the column itself on a screen
+        // without the tabs.
+        var rightPanel = document.getElementById('sd-rcol-design') || document.getElementById('sd-panel-right');
         if (!rightPanel) return;
-
-        try { _assetsH = parseInt(localStorage.getItem(_ASSETS_H_KEY), 10) || 300; } catch(e) {}
-        _assetsH = Math.min(Math.max(_assetsH, 100), 700);
+        // The panel's height and fold of the time it sat under Options.
+        try { localStorage.removeItem('sd_assets_h'); localStorage.removeItem('sd_assets_h_col'); } catch(e) {}
 
         // ── ID generator ──────────────────────────────────────────────────────
         var _idCtr = Date.now();
@@ -56067,19 +57847,13 @@ const StyleDesigner = (function () {
         // ── Build panel HTML ──────────────────────────────────────────────────
         var wrap = document.createElement('div');
         wrap.id = 'sd-assets-panel';
-        wrap.style.height = _assetsH + 'px';
         wrap.innerHTML =
-            '<div id="sd-assets-resize" class="sd-assets-resize sd-left-vsep" title="' + esc(_sdT('Double-click to collapse/expand')) + '"></div>' +
-            '<div class="sd-panel-header sd-assets-header" id="sd-assets-header" style="cursor:pointer">' +
-                '<span class="bi bi-file-code me-1"></span><span id="sd-assets-header-title">' + esc(_sdT('Design')) + '</span>' +
-                '<span class="bi bi-chevron-down sd-panel-caret" id="sd-assets-caret"></span>' +
-            '</div>' +
             // Top-level tabs: Design ↔ Themes. Mirrors the left panel's
             // `sd-panel-tabs` look so the two ends of the editor feel
             // consistent. Active tab swaps the body between #sd-tab-design
             // and #sd-tab-themes.
             '<div class="sd-panel-tabs sd-assets-tabs" id="sd-assets-tabs">' +
-                '<button type="button" class="sd-panel-tab active" data-as-tab="design"><span class="bi bi-file-code me-1"></span>' + esc(_sdT('Design')) + '</button>' +
+                '<button type="button" class="sd-panel-tab active" data-as-tab="design"><span class="bi bi-file-code me-1"></span>' + esc(_sdT('Files')) + '</button>' +
                 '<button type="button" class="sd-panel-tab" data-as-tab="themes"><span class="bi bi-palette2 me-1"></span>' + esc(_sdT('Themes')) + '</button>' +
             '</div>' +
             '<div id="sd-assets-body">' +
@@ -57381,9 +59155,6 @@ const StyleDesigner = (function () {
                 var tPane = document.getElementById('sd-tab-themes');
                 if (dPane) dPane.style.display = (tab === 'design') ? '' : 'none';
                 if (tPane) tPane.style.display = (tab === 'themes') ? '' : 'none';
-                // Update header title to mirror the active tab
-                var hdrTitle = document.getElementById('sd-assets-header-title');
-                if (hdrTitle) hdrTitle.textContent = (tab === 'themes') ? _sdT('Themes') : _sdT('Design');
                 // Re-render the Theme panel when switching to it — picks up
                 // any changes the bottom Styles panel made while we were
                 // looking at the Design tab.
@@ -57409,82 +59180,6 @@ const StyleDesigner = (function () {
                 else showHdrCtx(t, e.clientX, e.clientY);
             });
         });
-
-        // ── Resize handle (with snap-to-collapse) ──────────────────────────────
-        var _ASSETS_SNAP_THRESHOLD = 80;
-        var _ASSETS_COLLAPSE_H    = 32; // header-only height when collapsed
-        var _ASSETS_EXPAND_H      = 220;
-        var _assetsCollapsed = false;
-
-        function _setAssetsCollapsed(collapsed) {
-            _assetsCollapsed = collapsed;
-            var caret = document.getElementById('sd-assets-caret');
-            if (collapsed) {
-                wrap.classList.add('sd-assets-collapsed');
-                wrap.style.height = _ASSETS_COLLAPSE_H + 'px';
-                if (caret) { caret.classList.remove('bi-chevron-down'); caret.classList.add('bi-chevron-up'); }
-            } else {
-                wrap.classList.remove('sd-assets-collapsed');
-                wrap.style.height = _assetsH + 'px';
-                if (caret) { caret.classList.remove('bi-chevron-up'); caret.classList.add('bi-chevron-down'); }
-            }
-            try { localStorage.setItem(_ASSETS_H_KEY + '_col', collapsed ? '1' : '0'); } catch(e) {}
-        }
-
-        // Restore collapsed state
-        try { if (localStorage.getItem(_ASSETS_H_KEY + '_col') === '1') _setAssetsCollapsed(true); } catch(e) {}
-
-        var _drag = false, _dragStartY = 0, _dragStartH = 0;
-        var resizeHandle = document.getElementById('sd-assets-resize');
-        if (resizeHandle) {
-            resizeHandle.addEventListener('mousedown', function(e) {
-                _drag = true; _dragStartY = e.clientY;
-                _dragStartH = _assetsCollapsed ? _ASSETS_EXPAND_H : _assetsH;
-                document.body.classList.add('sd-resizing-v'); e.preventDefault();
-            });
-            document.addEventListener('mousemove', function(e) {
-                if (!_drag) return;
-                var newH = Math.min(Math.max(_dragStartH + (_dragStartY - e.clientY), 20), 700);
-                if (newH < _ASSETS_SNAP_THRESHOLD) {
-                    wrap.style.height = _ASSETS_COLLAPSE_H + 'px';
-                } else {
-                    wrap.classList.remove('sd-assets-collapsed');
-                    _assetsH = newH;
-                    wrap.style.height = newH + 'px';
-                }
-            });
-            document.addEventListener('mouseup', function() {
-                if (!_drag) return;
-                _drag = false;
-                document.body.classList.remove('sd-resizing-v');
-                var curH = parseInt(wrap.style.height, 10) || _assetsH;
-                if (curH < _ASSETS_SNAP_THRESHOLD) {
-                    _setAssetsCollapsed(true);
-                } else {
-                    _assetsCollapsed = false;
-                    wrap.classList.remove('sd-assets-collapsed');
-                    try { localStorage.setItem(_ASSETS_H_KEY, _assetsH); localStorage.setItem(_ASSETS_H_KEY + '_col', '0'); } catch(e) {}
-                }
-            });
-            // Double-click: toggle collapse
-            resizeHandle.addEventListener('dblclick', function() {
-                if (_assetsCollapsed) {
-                    _assetsH = _ASSETS_EXPAND_H;
-                    _setAssetsCollapsed(false);
-                } else {
-                    _setAssetsCollapsed(true);
-                }
-            });
-        }
-
-        // Header click: toggle collapse
-        var _assetsHdr = document.getElementById('sd-assets-header');
-        if (_assetsHdr) {
-            _assetsHdr.addEventListener('click', function() {
-                if (_assetsCollapsed) { _assetsH = _ASSETS_EXPAND_H; _setAssetsCollapsed(false); }
-                else { _setAssetsCollapsed(true); }
-            });
-        }
 
         // ── Initial render ────────────────────────────────────────────────────
         renderFileList('css');
@@ -57794,9 +59489,9 @@ const StyleDesigner = (function () {
     var _sdDockForced = false;
     var _sdDockResizeTimer = null;
 
-    // Rail icons mirror the palette tab strip so the rail reads the same
-    // way the open panel does.
-    var _SD_RAIL_ICONS = { components: 'bi-puzzle', shared: 'bi-puzzle-fill', system: 'bi-cpu' };
+    // Rail icons mirror the palette tab strip and the right column's tabs,
+    // so the rail reads the same way the open panel does.
+    var _SD_RAIL_ICONS = { components: 'bi-puzzle', shared: 'bi-puzzle-fill', system: 'bi-cpu', options: 'bi-sliders', design: 'bi-file-code' };
 
     function _sdDockBody() { return document.querySelector('.sd-body'); }
 
@@ -57903,6 +59598,15 @@ const StyleDesigner = (function () {
         });
     }
 
+    function _sdRailSyncRight() {
+        var act = document.querySelector('#sd-rcol-tabs .sd-rcol-tab.active');
+        var key = act ? act.getAttribute('data-rcol-tab') : '';
+        document.querySelectorAll('#sd-rail-right .sd-rail-btn').forEach(function (b) {
+            b.classList.toggle('active', b.getAttribute('data-rail-tab') === key);
+            b.hidden = !!(b._sdTab && b._sdTab.hidden);
+        });
+    }
+
     function _sdBuildRail(side) {
         var rail = document.createElement('div');
         rail.id = 'sd-rail-' + side;
@@ -57936,7 +59640,29 @@ const StyleDesigner = (function () {
             lbl.textContent = _sdT('Components');
             rail.appendChild(lbl);
         } else {
-            rail.appendChild(_sdRailFallbackBtn('right', 'bi-sliders', _sdT('Options')));
+            var rtabs = document.querySelectorAll('#sd-rcol-tabs .sd-rcol-tab');
+            if (rtabs.length) {
+                rtabs.forEach(function (t) {
+                    var key = t.getAttribute('data-rcol-tab') || '';
+                    var b = document.createElement('button');
+                    b.type = 'button';
+                    b.className = 'sd-rail-btn bi ' + (_SD_RAIL_ICONS[key] || 'bi-grid');
+                    b.title = (t.textContent || '').replace(/\s+/g, ' ').trim();
+                    b.setAttribute('aria-label', b.title);
+                    b.setAttribute('data-rail-tab', key);
+                    b._sdTab = t;
+                    b.addEventListener('click', function () {
+                        var body = _sdDockBody();
+                        var isOpen = !!(body && body.classList.contains('sd-open-right'));
+                        var isActive = t.classList.contains('active');
+                        if (!isActive) _sdRcolShow(key);
+                        _sdDockSetOpen('right', !(isOpen && isActive));
+                    });
+                    rail.appendChild(b);
+                });
+            } else {
+                rail.appendChild(_sdRailFallbackBtn('right', 'bi-sliders', _sdT('Options')));
+            }
             var rlbl = document.createElement('span');
             rlbl.className = 'sd-rail-label';
             rlbl.textContent = _sdT('Options');
@@ -58053,6 +59779,7 @@ const StyleDesigner = (function () {
         window.addEventListener('resize', _sdDockOnResize);
         _sdDockApply();
         _sdRailSyncTabs();
+        _sdRailSyncRight();
         _sdLeftHideForget();
     }
 
@@ -58899,6 +60626,244 @@ const StyleDesigner = (function () {
         });
     }
 
+    // ── What counts as changed: pure helpers ──
+    // No DOM and no editor state here: the Options panel's counts, the
+    // closed section's summary and the section card's markup are decided
+    // by these, and tests/designer_options_changed_test.php runs them
+    // under Node.
+
+    // Whether a control's value differs from its default, compared as the
+    // panel always has (markModifiedProps()). `kind` 'checkbox' passes the
+    // box's state as `raw`; any other control passes its value text, read
+    // as true for 'true' or '1' when the default is a boolean and as a
+    // number when the default is one.
+    function _sdChgDiffers(kind, raw, def) {
+        var cur;
+        if (kind === 'checkbox') cur = !!raw;
+        else if (typeof def === 'boolean') cur = (raw === 'true' || raw === '1' || raw === true);
+        else if (typeof def === 'number') cur = parseFloat(raw);
+        else cur = raw;
+        return String(cur) !== String(def);
+    }
+
+    // A section's head from its rows, each { changed, text, swatch } (the
+    // swatch is a colour dot's class, '' for none): `count` its changed
+    // rows; the summary is the first changed row's colour with its name
+    // ('color'), else its value ('value'), 'none' when that value is
+    // empty, and 'default' when no row is changed.
+    function _sdChgSummary(rows) {
+        var changed = (rows || []).filter(function (r) { return r && r.changed; });
+        var out = { count: changed.length, kind: 'default', text: '', swatch: '' };
+        if (!changed.length) return out;
+        var first = changed[0];
+        var text = String(first.text == null ? '' : first.text).replace(/\s+/g, ' ').trim();
+        if (first.swatch) { out.kind = 'color'; out.swatch = String(first.swatch); out.text = text; }
+        else if (text) { out.kind = 'value'; out.text = text; }
+        else out.kind = 'none';
+        return out;
+    }
+
+    // A tab's count: the counts of its sections added.
+    function _sdChgTotal(sums) {
+        return (sums || []).reduce(function (n, s) { return n + ((s && s.count) || 0); }, 0);
+    }
+
+    // Whether a section opens, from what this browser kept under
+    // sd_cs_<sid>: '1' closed, '0' open. With nothing kept the element's
+    // own section opens and a general one stays closed.
+    function _sdSectOpenRead(stored, own) {
+        if (stored === '1') return false;
+        if (stored === '0') return true;
+        return stored == null ? !!own : false;
+    }
+
+    // The kind of element the panel shows: a selection of another kind
+    // opens the panel at the top, one of the same kind keeps its scroll.
+    function _sdPanelKind(node) {
+        if (!node) return '';
+        var p = node.props || {};
+        return node.type + ':' + (p.contentType || p.componentType || (node.type === 'semantic' ? (p.tag || '') : ''));
+    }
+
+    // The last `n` steps of a path (nearest last).
+    function _sdPathTail(steps, n) {
+        steps = steps || [];
+        return steps.slice(Math.max(0, steps.length - n));
+    }
+
+    // The count badge and the summary of a section's head (`sum` from
+    // _sdChgSummary(), or null while it is not known yet). A count of 0
+    // draws no badge. The summary shows while the section is closed; a
+    // value may be cut, the words "default" and "none" never are.
+    function _sdSectHeadExtras(sum) {
+        if (!sum) return '<span class="sd-sect-sum"></span>';
+        var badge = sum.count ? '<span class="sd-sect-count">' + sum.count + '</span>' : '';
+        var inner;
+        if (sum.kind === 'color') {
+            inner = '<span class="sd-color-preview ' + esc(sum.swatch) + '" aria-hidden="true"></span>' +
+                '<span class="sd-sect-sum-txt">' + esc(sum.text) + '</span>';
+        } else if (sum.kind === 'value') {
+            inner = '<span class="sd-sect-sum-txt">' + esc(sum.text) + '</span>';
+        } else {
+            // A word of the panel, not a value: whole or left out, never
+            // cut (a cut "varsayılan" reads as another word).
+            inner = '<span class="sd-sect-sum-txt sd-sect-sum-whole">' + esc(sum.kind === 'none' ? _sdT('none') : _sdT('default')) + '</span>';
+        }
+        return badge + '<span class="sd-sect-sum"><span class="sd-sect-sum-line">' + inner + '</span></span>';
+    }
+
+    // A section card's markup. o: { sid, cls, hdrCls, head (markup), body
+    // (markup), open, lazy, sum }. A closed card of the single element's
+    // panel (lazy) carries no body: it is built when the card opens.
+    function _sdSectCard(o) {
+        var open = !!o.open;
+        var hold = !open && o.lazy;
+        return '<div class="' + o.cls + ' sd-card" data-sd-card="' + o.sid + '">' +
+            '<div class="' + o.hdrCls + ' sd-sect-hdr' + (open ? ' sd-sect-open' : '') + '" data-sid="' + o.sid + '" role="button" tabindex="0" aria-expanded="' + (open ? 'true' : 'false') + '">' +
+                '<span class="sd-sect-chev bi bi-chevron-right" aria-hidden="true"></span>' +
+                '<span class="sd-sect-title">' + o.head + '</span>' +
+                _sdSectHeadExtras(o.sum || null) +
+            '</div>' +
+            '<div class="sd-sect-body"' + (hold ? ' data-sd-lazy="' + o.sid + '"' : '') + (open ? '' : ' style="display:none"') + '>' + (hold ? '' : o.body) + '</div>' +
+        '</div>';
+    }
+    // ── end of what counts as changed
+
+    // ── The Options panel controls: pure helpers ──
+    // No DOM and no editor state here: how a row's control is drawn and
+    // what it writes, run under Node by tests/designer_options_controls_test.php.
+
+    // Whether saveState() takes a snapshot, keeping `run` ({ key, at, one,
+    // seq }). A call with the key of the run still going, inside the run's
+    // time or inside _sdUndoAsOne(), joins the snapshot already taken.
+    function _sdStateRunTakes(run, key, now, ms) {
+        if (key !== null && key === run.key && (run.one || (now - run.at) < ms)) {
+            run.at = now;
+            return false;
+        }
+        run.key = key;
+        run.at = now;
+        return true;
+    }
+
+    // Runs `fn` as one undo step: every saveState() it makes joins the
+    // first. Nested calls stay inside the outer step; the edit after it
+    // starts a step of its own.
+    function _sdUndoAsOne(run, fn) {
+        if (run.one) { fn(); return; }
+        run.one = 'one:' + (++run.seq);
+        try { fn(); } finally { run.one = null; run.key = null; }
+    }
+
+    // The value a segment click writes: the clicked one, or '' (the value
+    // removed) when it is already selected and the control has an empty
+    // choice.
+    function _sdSegNext(cur, clicked, canClear) {
+        if (clicked === cur) return canClear ? '' : cur;
+        return clicked;
+    }
+
+    // How a list of values is drawn: up to six as a button group, seven or
+    // more (or none) as a select. Widths are estimated from the segments'
+    // 11.5 px text at 600 (a capital 8.4, any other character 6.8, the
+    // segment's padding and gap 14): a group wider than the control beside
+    // its label (162 at 336 px: the dot's place 14, the label 92, a gap of
+    // 10) stands under it, one wider than the row (262) stays a select, so
+    // no segment text is cut. Under 300 px (control 104) a group of four or
+    // more written segments, or a wider one, stands under its label; four
+    // icons stay beside it.
+    function _sdSegPlan(labels, icons) {
+        var n = (labels || []).length;
+        if (!n || n > 6) return { kind: 'select', stack: false, stackNarrow: false };
+        var w = icons ? n * 28 : labels.reduce(function (s, l) {
+            var t = String(l).replace(/&[a-z#0-9]+;/gi, '_');
+            for (var i = 0; i < t.length; i++) {
+                var ch = t.charAt(i);
+                s += (ch !== ch.toLowerCase() ? 8.4 : 6.8);
+            }
+            return s + 14;
+        }, 0);
+        if (w > 262) return { kind: 'select', stack: false, stackNarrow: false };
+        var narrow = icons ? n > 4 : (n >= 4 || w > 104);
+        return { kind: 'group', stack: w > 162, stackNarrow: w > 162 || narrow };
+    }
+
+    // A lone select of a row's markup read into { attrs, opts: [{ v, l, on }] }:
+    // `attrs` its attributes but the class (one of them data-stylegroup,
+    // data-prop or data-util, which writes it), the labels kept as written.
+    // Null for anything else: other markup around it, an id other code may
+    // hold, several choices, a group, an option with attributes of its own.
+    function _sdSelParse(html) {
+        var m = /^\s*<select\b([^>]*)>([\s\S]*)<\/select>\s*$/.exec(String(html || ''));
+        if (!m || /<select|<optgroup/i.test(m[2])) return null;
+        var head = m[1];
+        if (/\s(id|multiple)(=|\s|$)/i.test(head)) return null;
+        if (!/\sdata-(?:stylegroup|prop|util)="[^"]*"/.test(head)) return null;
+        var opts = [];
+        var re = /<option\b([^>]*)>([\s\S]*?)<\/option>/g;
+        var o;
+        while ((o = re.exec(m[2]))) {
+            var v = /\svalue="([^"]*)"/.exec(' ' + o[1]);
+            if (o[1].replace(/\s*value="[^"]*"/, '').replace(/\s*selected\b/, '').trim() !== '') return null;
+            opts.push({ v: v ? v[1] : o[2], l: o[2].trim(), on: /\sselected\b/.test(' ' + o[1]) });
+        }
+        return opts.length ? { attrs: ' ' + head.replace(/\s*\bclass="[^"]*"/, '').trim(), opts: opts } : null;
+    }
+
+    // Why a length typed into the Sizing rows is not written, '' when it is
+    // valid (kind 'len'): a CSS length, a bare number (pixels, _sdCssLen()),
+    // a keyword or a CSS function with its brackets closed. Empty is valid.
+    function _sdLenCheck(kind, raw) {
+        var s = String(raw == null ? '' : raw).trim();
+        if (s === '') return '';
+        var num = '[-+]?(?:\\d+\\.?\\d*|\\.\\d+)';
+        var units = 'px|%|r?em|ch|ex|vw|vh|vmin|vmax|[sdl]v[hw]|cq[whib]|cm|mm|in|pt|pc|fr';
+        if (new RegExp('^' + num + '(?:' + units + ')?$', 'i').test(s)) return '';
+        if (/^(auto|none|inherit|initial|unset|revert|fit-content|min-content|max-content)$/i.test(s)) return '';
+        var f = /^(calc|min|max|clamp|var|fit-content)\((.*)\)$/i.exec(s);
+        if (f) {
+            var depth = 0;
+            for (var i = 0; i < f[2].length; i++) {
+                if (f[2][i] === '(') depth++;
+                else if (f[2][i] === ')' && --depth < 0) break;
+            }
+            if (depth === 0 && f[2].trim() !== '') return '';
+        }
+        return _sdT('Use a number with a unit (px, %, rem, vh), auto or calc().');
+    }
+
+    // The screen-size badge of a row whose classes are `prefix` + value at
+    // every size and `prefix` + size + '-' + value from a size up: the first
+    // size holding a value when none holds at every size ('MD'), 'all' when
+    // one holds at every size and a size changes it, '' otherwise.
+    var _SD_SIZES = ['sm', 'md', 'lg', 'xl', 'xxl'];
+    function _sdSizeBadge(cls, prefix, values) {
+        var have = ' ' + String(cls || '') + ' ';
+        var vals = (values || []).map(function (v) { return Array.isArray(v) ? v[0] : v; });
+        var has = function (pfx) { return vals.some(function (v) { return have.indexOf(' ' + pfx + v + ' ') !== -1; }); };
+        var first = '';
+        _SD_SIZES.forEach(function (bp) { if (!first && has(prefix + bp + '-')) first = bp; });
+        if (!first) return '';
+        return has(prefix) ? 'all' : first.toUpperCase();
+    }
+
+    // A size row is changed when any of its sizes holds a value.
+    function _sdSizeHeld(values) {
+        return (values || []).some(function (v) { return v !== '' && v != null; });
+    }
+
+    // Clears a row at every size: each control set to its empty value and
+    // its change fired, so the normal handler writes it. Run inside
+    // _sdUndoAsOne(), everything it writes is one undo step.
+    function _sdSizesClear(ctrls) {
+        (ctrls || []).forEach(function (c) {
+            if (c.value === '') return;
+            c.value = '';
+            c.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+    }
+    // ── end of the Options panel controls
+
     // ========================= MODIFIED PROPS HIGHLIGHT =========================
     // Static default props map for structural node types (no formal defaultProps in component defs)
     var STRUCTURAL_DEFAULTS = {
@@ -58917,13 +60882,21 @@ const StyleDesigner = (function () {
     };
 
     /**
-     * Mark the label of each Options-panel row as "modified" (blue, clickable) when its control's
-     * current value diverges from the element's factory default. Clicking a modified label
-     * dispatches a change event on the control with the default value, so the normal prop-change
-     * handler updates the node and re-renders — one code path for both user edits and resets.
+     * Mark the label of each Options-panel row as "modified" (the changed dot) when its control's
+     * current value diverges from the element's factory default. The dot's reset button
+     * (_sdChgResetButtons()) dispatches a change event on the control with the default value, so
+     * the normal prop-change handler updates the node and re-renders — one code path for both
+     * user edits and resets (_sdRowReset()).
      */
-    function markModifiedProps() {
+    // `root`: the rows to mark, the panel when left out. A detached copy of a
+    // closed section's body is marked the same way, so its count comes from
+    // the same rules as the dots on screen (_sdSectHeadsFill()); only the
+    // panel itself gets the reset clicks and the other bindings below.
+    function markModifiedProps(root) {
         if (!selectedNode) return;
+        var live = !root;
+        root = root || document.getElementById('sd-properties');
+        if (!root) return;
 
         // Resolve defaults for direct [data-prop] controls
         var defaults = null;
@@ -58941,15 +60914,9 @@ const StyleDesigner = (function () {
         var SKIP_PROPS = { customName: 1, cssClass: 1, fontFamily: 1, id: 1 };
 
         function markRow(el, defVal) {
-            var curVal;
-            if (el.type === 'checkbox') {
-                curVal = el.checked;
-            } else {
-                curVal = el.value;
-                if (typeof defVal === 'boolean') curVal = (el.value === 'true' || el.value === '1' || el.checked === true);
-                else if (typeof defVal === 'number') curVal = parseFloat(el.value);
-            }
-            var isModified = String(curVal) !== String(defVal);
+            var isModified = el.type === 'checkbox'
+                ? _sdChgDiffers('checkbox', el.checked, defVal)
+                : _sdChgDiffers(el.tagName === 'SELECT' ? 'select' : 'text', el.value, defVal);
 
             var propRow = el.closest('.sd-prop-row, .sd-sp-row');
             if (!propRow) return;
@@ -58959,7 +60926,6 @@ const StyleDesigner = (function () {
             if (isModified) {
                 lbl.classList.add('sd-prop-modified');
                 lbl.dataset.resetVal = JSON.stringify(defVal);
-                lbl.title = _sdT('Click to reset to default');
             } else {
                 lbl.classList.remove('sd-prop-modified');
                 delete lbl.dataset.resetVal;
@@ -58981,7 +60947,7 @@ const StyleDesigner = (function () {
 
         // 1. Direct [data-prop] controls (Container, Row, Col, Area, Semantic, Component/Content props
         //    + Display & Sizing inline-style props)
-        document.querySelectorAll('#sd-properties [data-prop]').forEach(function(el) {
+        root.querySelectorAll('[data-prop]').forEach(function(el) {
             var prop = el.dataset.prop;
             if (SKIP_PROPS[prop]) return;
             if (defaults && (prop in defaults)) {
@@ -58992,24 +60958,24 @@ const StyleDesigner = (function () {
         });
 
         // 2. Dropdown Options — [data-dd-prop]
-        document.querySelectorAll('#sd-properties [data-dd-prop]').forEach(function(el) {
+        root.querySelectorAll('[data-dd-prop]').forEach(function(el) {
             var prop = el.dataset.ddProp;
             if (!(prop in DROPDOWN_DEFAULTS)) return;
             markRow(el, DROPDOWN_DEFAULTS[prop]);
         });
 
         // 3. Modal Options — fade defaults true (Bootstrap default), sections visible, centered/scrollable false
-        document.querySelectorAll('#sd-properties [data-modal-fade]').forEach(function(el) {
+        root.querySelectorAll('[data-modal-fade]').forEach(function(el) {
             markRow(el, true);
         });
-        document.querySelectorAll('#sd-properties [data-modal-cls]').forEach(function(el) {
+        root.querySelectorAll('[data-modal-cls]').forEach(function(el) {
             markRow(el, false);  // centered/scrollable default off
         });
-        document.querySelectorAll('#sd-properties [data-modal-section-vis]').forEach(function(el) {
+        root.querySelectorAll('[data-modal-section-vis]').forEach(function(el) {
             markRow(el, true);  // header/footer visible by default
         });
         // Modal size: default is the btn with empty data-modal-size
-        document.querySelectorAll('#sd-properties .sd-prop-row').forEach(function(propRow) {
+        root.querySelectorAll('.sd-prop-row').forEach(function(propRow) {
             var modalSizeBtns = propRow.querySelectorAll('[data-modal-size]');
             if (!modalSizeBtns.length) return;
             var active = propRow.querySelector('[data-modal-size].active');
@@ -59020,7 +60986,6 @@ const StyleDesigner = (function () {
                 lbl.classList.add('sd-prop-modified');
                 lbl.dataset.resetVal = JSON.stringify('');
                 lbl.dataset.resetKind = 'modal-size';
-                lbl.title = _sdT('Click to reset to default');
             } else {
                 lbl.classList.remove('sd-prop-modified');
                 delete lbl.dataset.resetVal;
@@ -59030,41 +60995,41 @@ const StyleDesigner = (function () {
         });
 
         // 4. Offcanvas Options — position default 'offcanvas-start' (now a select), header visible
-        document.querySelectorAll('#sd-properties [data-oc-pos-sel]').forEach(function(el) {
+        root.querySelectorAll('[data-oc-pos-sel]').forEach(function(el) {
             markRow(el, 'offcanvas-start');
         });
-        document.querySelectorAll('#sd-properties [data-oc-header-vis]').forEach(function(el) {
+        root.querySelectorAll('[data-oc-header-vis]').forEach(function(el) {
             markRow(el, true);
         });
         // Modal fullscreen variant and Offcanvas responsive variant — default '' (off)
-        document.querySelectorAll('#sd-properties [data-modal-fullscreen]').forEach(function(el) {
+        root.querySelectorAll('[data-modal-fullscreen]').forEach(function(el) {
             markRow(el, '');
         });
-        document.querySelectorAll('#sd-properties [data-oc-resp]').forEach(function(el) {
+        root.querySelectorAll('[data-oc-resp]').forEach(function(el) {
             markRow(el, '');
         });
 
         // 5. Appearance — [data-stylegroup] mutex selects (Display, Position, Float, Flex, etc.)
         //    Default is always empty (no class applied). Modified when .value !== ''.
-        document.querySelectorAll('#sd-properties select[data-stylegroup]').forEach(function(el) {
+        root.querySelectorAll('select[data-stylegroup]').forEach(function(el) {
             markRow(el, '');
         });
 
         // 6. Appearance — [data-util] selects (spacing-like util selectors that aren't data-stylegroup).
         //    Covers both .sd-prop-row and .sd-sp-row (Display & Sizing section).
-        document.querySelectorAll('#sd-properties select[data-util]').forEach(function(el) {
+        root.querySelectorAll('select[data-util]').forEach(function(el) {
             markRow(el, '');
         });
 
         // 7. Appearance — [data-util-toggle] checkboxes (text-truncate, text-nowrap, etc.)
         //    Default unchecked; modified when checked.
-        document.querySelectorAll('#sd-properties input[type="checkbox"][data-util-toggle]').forEach(function(cb) {
+        root.querySelectorAll('input[type="checkbox"][data-util-toggle]').forEach(function(cb) {
             markRow(cb, false);
         });
 
         // 8. Appearance — [data-util-toggle] buttons (Border / Border-side toggles). Default inactive.
         //    Handle here (not via markRow) because these are buttons without a .value / .checked property.
-        document.querySelectorAll('#sd-properties button[data-util-toggle]').forEach(function(btn) {
+        root.querySelectorAll('button[data-util-toggle]').forEach(function(btn) {
             var propRow = btn.closest('.sd-prop-row');
             if (!propRow) return;
             var lbl = propRow.querySelector('.sd-prop-label');
@@ -59077,7 +61042,6 @@ const StyleDesigner = (function () {
             if (anyActive) {
                 lbl.classList.add('sd-prop-modified');
                 lbl.dataset.resetKind = 'util-toggle-btns';
-                lbl.title = _sdT('Click to reset to default');
             } else if (!lbl.dataset.resetVal && !lbl.dataset.resetKind) {
                 // Only clear if no other logic already marked it
                 lbl.classList.remove('sd-prop-modified');
@@ -59086,12 +61050,12 @@ const StyleDesigner = (function () {
         });
 
         // 9. Background section selects (Bg Size / Pos / Repeat / Attach) — default ''
-        document.querySelectorAll('#sd-properties select[data-bg-prop]').forEach(function(el) {
+        root.querySelectorAll('select[data-bg-prop]').forEach(function(el) {
             markRow(el, '');
         });
 
         // 10. Background color picker row — modified when background-color OR gradient is set
-        var _bcpRow = document.getElementById('sd-bcp-row');
+        var _bcpRow = root.querySelector('#sd-bcp-row');
         if (_bcpRow && selectedNode) {
             var _bcpLbl = _bcpRow.querySelector('.sd-prop-label');
             var _hasBg  = !!(getAttrStyleProp(selectedNode, 'background-color') ||
@@ -59100,7 +61064,6 @@ const StyleDesigner = (function () {
                 if (_hasBg) {
                     _bcpLbl.classList.add('sd-prop-modified');
                     _bcpLbl.dataset.resetKind = 'bg-color-all';
-                    _bcpLbl.title = _sdT('Click to reset background color/gradient');
                 } else {
                     _bcpLbl.classList.remove('sd-prop-modified');
                     delete _bcpLbl.dataset.resetKind;
@@ -59110,77 +61073,41 @@ const StyleDesigner = (function () {
         }
 
         // 11. Image row
-        var _bgImgInp = document.getElementById('sd-bg-img-inp');
+        var _bgImgInp = root.querySelector('#sd-bg-img-inp');
         if (_bgImgInp) markRow(_bgImgInp, '');
 
         // 12. An Image element's Loading row — default '' (the page decides)
-        document.querySelectorAll('#sd-properties select[data-img-loading]').forEach(function(el) {
+        root.querySelectorAll('select[data-img-loading]').forEach(function(el) {
             markRow(el, '');
         });
 
         // Color pickers (Text Col / Bg Col / Border Color) are <select data-stylegroup> — already
         // covered by rule #5 above, so no dedicated swatch-marking branch is needed here anymore.
 
-        // Attach click handlers — reset by dispatching a change event on the control (or clicking the default button)
-        document.querySelectorAll('#sd-properties .sd-prop-label.sd-prop-modified, #sd-properties .sd-sp-label.sd-prop-modified').forEach(function(lbl) {
-            if (lbl._sdResetBound) return;
-            lbl._sdResetBound = true;
-            lbl.addEventListener('click', function() {
-                var propRow = lbl.closest('.sd-prop-row, .sd-sp-row');
-                if (!propRow) return;
-                var kind = lbl.dataset.resetKind;
-
-                if (kind === 'bg-color-all') {
-                    if (!selectedNode) return;
-                    saveState();
-                    selectedNode.props._bgGrad = null;
-                    setAttrStyleProp(selectedNode, 'background-color', '');
-                    setAttrStyleProp(selectedNode, 'background-image', '');
-                    renderCanvas(); renderProperties(); renderAttrsPanel(); renderHtmlTree();
-                    return;
-                }
-
-                // Button-group kinds: find the default button and click it
-                if (kind === 'modal-size') {
-                    var def1 = JSON.parse(lbl.dataset.resetVal);
-                    var b = propRow.querySelector('[data-modal-size="' + def1 + '"]');
-                    if (b) b.click();
-                    return;
-                }
-                // Util-toggle buttons (Border / border-side toggles): click each active button to untoggle
-                if (kind === 'util-toggle-btns') {
-                    propRow.querySelectorAll('button[data-util-toggle].active').forEach(function(b) { b.click(); });
-                    return;
-                }
-                // Standard controls (select/checkbox/input): set value + dispatch change
-                if (!lbl.dataset.resetVal) return;
-                var def = JSON.parse(lbl.dataset.resetVal);
-                var ctrl = propRow.querySelector(
-                    'select[data-stylegroup], select[data-util], ' +
-                    'select[data-bg-prop], input[data-bg-prop], select[data-img-loading], ' +
-                    '[data-prop], [data-dd-prop], ' +
-                    '[data-modal-fade], [data-modal-cls], [data-modal-section-vis], [data-modal-fullscreen], ' +
-                    '[data-oc-header-vis], [data-oc-resp], [data-oc-pos-sel], ' +
-                    '[data-card-section-vis], [data-cr-dark], [data-cr-section-vis], [data-cr-attr-bool], ' +
-                    '[data-navitem-active], ' +
-                    'input[type="checkbox"][data-util-toggle]'
-                );
-                if (!ctrl) return;
-                if (ctrl.type === 'checkbox') {
-                    ctrl.checked = def === true;
-                } else {
-                    ctrl.value = String(def);
-                }
-                // Text/textarea [data-prop] listeners bind to 'input', not 'change' — fire
-                // whichever matches so reset works uniformly across control types.
-                var _tag = ctrl.tagName;
-                var _isTextInput = (_tag === 'TEXTAREA') ||
-                                   (_tag === 'INPUT' && ctrl.type !== 'checkbox' &&
-                                    ctrl.type !== 'radio' && ctrl.type !== 'submit' &&
-                                    ctrl.type !== 'button');
-                ctrl.dispatchEvent(new Event(_isTextInput ? 'input' : 'change', { bubbles: true }));
-            });
+        // 13. A row whose value can start at a screen size is changed when
+        //     any size in its per-size box holds a value, its own control
+        //     unchanged or not; its reset clears every size (_sdRowReset()).
+        root.querySelectorAll('.sd-sp-row').forEach(function (r) {
+            var lbl = r.querySelector(':scope > .sd-sp-label');
+            if (!lbl) return;
+            if (_sdSizeHeld(_sdSizeCtrls(r).map(function (c) { return c.value; }))) {
+                lbl.classList.add('sd-prop-modified');
+                lbl.dataset.resetSizes = '1';
+            } else {
+                delete lbl.dataset.resetSizes;
+            }
         });
+
+        if (!live) return;
+
+        // Under 300 px the rows that would not fit beside their label stand
+        // their control under it (_sdNarrowStack()).
+        _sdNarrowStack(root);
+
+        // The button groups show their select's value; a changed row gets
+        // the reset button on its dot (_sdChgResetButtons()).
+        _sdSegSync(root);
+        _sdChgResetButtons(root);
 
         // ── Shared Component: Detach button ─────────────────────────────────
         var _scDetachBtn = document.getElementById('sd-sc-detach-btn');
@@ -59210,6 +61137,201 @@ const StyleDesigner = (function () {
         if (typeof _cfBindFieldSection === 'function') _cfBindFieldSection();
         // The Membership Field panel of a control inside a registration widget.
         if (typeof _memberBindFieldSection === 'function') _memberBindFieldSection();
+    }
+
+    // Resets a changed row (its label `lbl`) to the default: a change event
+    // on its control with the default value, or a click on the default
+    // button, so the normal handler writes it. Called inside _sdUndoAsOne():
+    // what it writes is one undo step.
+    function _sdRowReset(lbl) {
+        var propRow = lbl.closest('.sd-prop-row, .sd-sp-row');
+        if (!propRow) return;
+        var kind = lbl.dataset.resetKind;
+
+        if (kind === 'bg-color-all') {
+            if (!selectedNode) return;
+            saveState();
+            selectedNode.props._bgGrad = null;
+            setAttrStyleProp(selectedNode, 'background-color', '');
+            setAttrStyleProp(selectedNode, 'background-image', '');
+            renderCanvas(); renderProperties(); renderAttrsPanel(); renderHtmlTree();
+            return;
+        }
+
+        // Button-group kinds: find the default button and click it
+        if (kind === 'modal-size') {
+            var def1 = JSON.parse(lbl.dataset.resetVal);
+            var b = propRow.querySelector('[data-modal-size="' + def1 + '"]');
+            if (b) b.click();
+            return;
+        }
+        // Util-toggle buttons (Border / border-side toggles): click each active button to untoggle
+        if (kind === 'util-toggle-btns') {
+            propRow.querySelectorAll('button[data-util-toggle].active').forEach(function(b) { b.click(); });
+            return;
+        }
+        // A value from a screen size: every size cleared first, then the
+        // row's own control below when it is changed too.
+        if (lbl.dataset.resetSizes) _sdSizesClear(_sdSizeCtrls(propRow));
+        // Standard controls (select/checkbox/input): set value + dispatch change
+        if (!lbl.dataset.resetVal) return;
+        var def = JSON.parse(lbl.dataset.resetVal);
+        var ctrl = propRow.querySelector(
+            'select[data-stylegroup], select[data-util], ' +
+            'select[data-bg-prop], input[data-bg-prop], select[data-img-loading], ' +
+            '[data-prop], [data-dd-prop], ' +
+            '[data-modal-fade], [data-modal-cls], [data-modal-section-vis], [data-modal-fullscreen], ' +
+            '[data-oc-header-vis], [data-oc-resp], [data-oc-pos-sel], ' +
+            '[data-card-section-vis], [data-cr-dark], [data-cr-section-vis], [data-cr-attr-bool], ' +
+            '[data-navitem-active], ' +
+            'input[type="checkbox"][data-util-toggle]'
+        );
+        if (!ctrl) return;
+        if (ctrl.type === 'checkbox') {
+            ctrl.checked = def === true;
+        } else {
+            ctrl.value = String(def);
+        }
+        // Text/textarea [data-prop] listeners bind to 'input', not 'change' — fire
+        // whichever matches so reset works uniformly across control types.
+        var _tag = ctrl.tagName;
+        var _isTextInput = (_tag === 'TEXTAREA') ||
+                           (_tag === 'INPUT' && ctrl.type !== 'checkbox' &&
+                            ctrl.type !== 'radio' && ctrl.type !== 'submit' &&
+                            ctrl.type !== 'button');
+        ctrl.dispatchEvent(new Event(_isTextInput ? 'input' : 'change', { bubbles: true }));
+    }
+
+    // Puts the reset button on the dot of every changed row under `root`
+    // and takes it off a row no longer changed. The button sits on the
+    // dot's place (CSS), outside the label, so the label still names the
+    // row's control alone; it is a real button, reached from the keyboard.
+    function _sdChgResetButtons(root) {
+        root.querySelectorAll('.sd-chg-reset').forEach(function (b) {
+            var l = b.nextElementSibling;
+            if (!l || !l.classList.contains('sd-prop-modified')) b.remove();
+        });
+        root.querySelectorAll('.sd-prop-label.sd-prop-modified, .sd-sp-label.sd-prop-modified').forEach(function (lbl) {
+            var prev = lbl.previousElementSibling;
+            if (prev && prev.classList.contains('sd-chg-reset')) return;
+            var name = (lbl.textContent || '').trim();
+            var b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'sd-chg-reset';
+            b.title = _sdT('Reset to default');
+            b.setAttribute('aria-label', name ? _sdT('Reset {var} to default', name) : _sdT('Reset to default'));
+            if (lbl.closest('.sd-panel-readonly')) b.disabled = true;
+            lbl.parentNode.insertBefore(b, lbl);
+        });
+    }
+
+    // The per-size selects of a size row that hold a value: its per-size
+    // box is the row's next sibling, named by the chevron or badge. A box
+    // of plain fields (Min / Max, Top / Left) is not a size box.
+    function _sdSizeCtrls(row) {
+        var t = row.querySelector(':scope > .sd-sp-toggle[data-sp-target]');
+        var box = row.nextElementSibling;
+        if (!t || !box || box.id !== t.getAttribute('data-sp-target')) return [];
+        return Array.prototype.filter.call(box.querySelectorAll('select[data-stylegroup], select[data-util], select[data-prop]'), function (c) {
+            return c.value !== '';
+        });
+    }
+
+    // Under 300 px (.sd-rcol-narrow, CSS) a row stands its control under its
+    // label (.sd-row-stack-n) when the control would not fit 104 px beside
+    // it: a size row, whose chevron or badge takes that place, and a row
+    // whose label needs more than two lines, which would cut it. The first
+    // is set always (only the narrow column reads it); the label is
+    // measured only while the column is narrow and the row shown.
+    function _sdNarrowStack(root) {
+        if (!root) return;
+        root.querySelectorAll('.sd-sp-row').forEach(function (r) {
+            if (r.querySelector(':scope > .sd-sp-toggle')) r.classList.add('sd-row-stack-n');
+        });
+        if (!root.closest || !root.closest('.sd-rcol-narrow')) return;
+        var cut = Array.prototype.filter.call(root.querySelectorAll(
+            '.sd-prop-row:not(.sd-row-stack):not(.sd-row-stack-n) > .sd-prop-label, ' +
+            '.sd-sp-row:not(.sd-row-stack):not(.sd-row-stack-n) > .sd-sp-label'
+        ), function (l) { return l.clientHeight > 0 && l.scrollHeight > l.clientHeight + 1; });
+        cut.forEach(function (l) { l.parentNode.classList.add('sd-row-stack-n'); });
+    }
+
+    // Marks the segment of each button group under `root` (or `root`
+    // itself) that its hidden select holds, and names the group by its
+    // row's label, as the naming pass names a select.
+    function _sdSegSync(root) {
+        var grps = root.classList && root.classList.contains('sd-seg-grp') ? [root] : root.querySelectorAll('.sd-seg-grp');
+        Array.prototype.forEach.call(grps, function (grp) {
+            var sel = grp.querySelector('select.sd-seg-src');
+            if (!sel) return;
+            if (!grp.hasAttribute('aria-labelledby')) {
+                var row = grp.closest('.sd-prop-row, .sd-sp-row');
+                var lbl = row ? (_sdPropsChild(row, 'sd-prop-label') || _sdPropsChild(row, 'sd-sp-label')) : null;
+                if (lbl && (lbl.textContent || '').trim() !== '') grp.setAttribute('aria-labelledby', _sdPropsLabelId(lbl));
+            }
+            grp.querySelectorAll('.sd-seg').forEach(function (b) {
+                var on = b.getAttribute('data-seg-val') === sel.value;
+                b.classList.toggle('sd-seg-on', on);
+                b.setAttribute('aria-pressed', on ? 'true' : 'false');
+                if (sel.disabled) b.disabled = true;
+            });
+        });
+    }
+
+    // A segment clicked: its value, or none when it was the selected one
+    // (_sdSegNext()), is set on the group's select and its change fired.
+    function _sdSegClick(seg) {
+        var grp = seg.parentNode;
+        var sel = grp ? grp.querySelector('select.sd-seg-src') : null;
+        if (!sel || sel.disabled || seg.disabled) return;
+        var canClear = Array.prototype.some.call(sel.options, function (o) { return o.value === ''; });
+        var next = _sdSegNext(sel.value, seg.getAttribute('data-seg-val'), canClear);
+        if (next === sel.value) return;
+        sel.value = next;
+        sel.dispatchEvent(new Event('change', { bubbles: true }));
+        if (grp.isConnected) _sdSegSync(grp);
+    }
+
+    // Installed once on #sd-properties: the segments' clicks and the reset
+    // button's, whatever part of the panel was drawn later.
+    function _sdControlsInit(panel) {
+        if (panel._sdCtl) return;
+        panel._sdCtl = true;
+        panel.addEventListener('click', function (e) {
+            var t = e.target;
+            if (!t || !t.closest) return;
+            var seg = t.closest('.sd-seg');
+            if (seg && panel.contains(seg)) { _sdSegClick(seg); return; }
+            var rb = t.closest('.sd-chg-reset');
+            if (!rb || !panel.contains(rb) || rb.disabled) return;
+            var lbl = rb.nextElementSibling;
+            if (!lbl || !lbl.classList.contains('sd-prop-modified')) return;
+            _sdUndoAsOne(_saveStateRun, function () { _sdRowReset(lbl); });
+        });
+    }
+
+    // Shows or clears why a field's value is not written: the field drawn
+    // invalid, one line under it named by aria-describedby.
+    var _sdFieldErrSeq = 0;
+    function _sdFieldInvalid(el, why) {
+        el.classList.toggle('sd-invalid', !!why);
+        if (why) el.setAttribute('aria-invalid', 'true'); else el.removeAttribute('aria-invalid');
+        var host = el.closest('.sd-sp-bp-item, .sd-sp-row, .sd-prop-row');
+        if (!host) return;
+        var line = host.querySelector(':scope > .sd-field-err');
+        if (!why) {
+            if (line) line.remove();
+            el.removeAttribute('aria-describedby');
+            return;
+        }
+        if (!line) {
+            line = document.createElement('div');
+            line.className = 'sd-field-err';
+            line.id = 'sd-fe-' + (++_sdFieldErrSeq);
+            host.appendChild(line);
+        }
+        line.textContent = why;
+        el.setAttribute('aria-describedby', line.id);
     }
 
     // ========================= SHARED COMPONENT OPERATIONS =========================
@@ -60711,6 +62833,19 @@ const StyleDesigner = (function () {
                 ['__bundle_item_image_url',         _sdT('Image address')]
             ]
         },
+        // The breaks of the running offers for this product and visitor
+        // (pg_offer_quantity_breaks()); the listing does not read offers
+        // for each card.
+        'product.quantity_prices': {
+            label: _sdT('Quantity prices'),
+            arg: '', argRequired: false,
+            kinds: ['catalog_item_view'],
+            rows: [
+                ['__qty_break_quantity', _sdT('Smallest quantity')],
+                ['__qty_break_price',    _sdT('Price of one piece')],
+                ['__qty_break_label',    _sdT('Quantity and price')]
+            ]
+        },
         // The crumbs of the catalog path (pg_sw_list_crumb_sources()): the
         // page's, so a list of them stands anywhere in either widget.
         'catalog.crumbs': {
@@ -61001,6 +63136,57 @@ const StyleDesigner = (function () {
                 ['__booking_manage_url',   _sdT('Manage booking URL')],
                 ['__booking_manage_label', _sdT('Manage button label')],
                 ['__booking_ics_url',      _sdT('Add to calendar URL')]
+            ]
+        },
+        // The member's subscriptions (pg_sw_list_account_subscription_rows()).
+        'account.subscriptions': {
+            label: _sdT('Subscriptions of the member'),
+            arg: '', argRequired: false,
+            kinds: ['my_account'],
+            rows: [
+                ['__subscription_id',           _sdT('Subscription ID')],
+                ['__subscription_product',      _sdT('Product')],
+                ['__subscription_amount',       _sdT('Amount')],
+                ['__subscription_status',       _sdT('Status (raw text)')],
+                ['__subscription_status_label', _sdT('Status')],
+                ['__subscription_tone',         _sdT('Status colour (warning, success or secondary)')],
+                ['__subscription_next',         _sdT('Next charge or the last day')],
+                ['__subscription_price',        _sdT('Price change notice')],
+                ['__subscription_card',         _sdT('Card')],
+                ['__subscription_event',        _sdT('Last event')],
+                ['__subscription_confirm_url',  _sdT('Payment confirmation URL')],
+                ['__subscription_actions_html', _sdT('Pause, resume, cancel and card update forms (HTML)')],
+                ['__subscription_has_actions',  _sdT('Offers an action (yes/no)')]
+            ]
+        },
+        // The member's store credit cards and the orders that spent each
+        // (pg_sw_list_account_credit_rows()).
+        'account.store_credit': {
+            label: _sdT('Store credit of the member'),
+            arg: '', argRequired: false,
+            kinds: ['my_account'],
+            rows: [
+                ['__credit_id',          _sdT('Card ID')],
+                ['__credit_kind_label',  _sdT('Source')],
+                ['__credit_reason',      _sdT('Reason')],
+                ['__credit_state',       _sdT('State (raw text)')],
+                ['__credit_state_label', _sdT('State')],
+                ['__credit_tone',        _sdT('State colour (success, secondary or warning)')],
+                ['__credit_balance',     _sdT('Balance')],
+                ['__credit_amount',      _sdT('Amount')],
+                ['__credit_last_day',    _sdT('Last day')],
+                ['__credit_has_uses',    _sdT('Spent on an order (yes/no)')]
+            ]
+        },
+        'account.store_credit_uses': {
+            label: _sdT('Orders that spent the card'),
+            arg: '', argRequired: false,
+            kinds: ['my_account'],
+            rows: [
+                ['__credit_use_order_no',  _sdT('Order number')],
+                ['__credit_use_order_url', _sdT('Order detail URL')],
+                ['__credit_use_date',      _sdT('Order date')],
+                ['__credit_use_amount',    _sdT('Amount spent')]
             ]
         },
         'cart.items': {
@@ -61344,6 +63530,9 @@ const StyleDesigner = (function () {
         __bundle_item_quantity: '2',
         __bundle_item_url: '#',
         __bundle_item_image_url: '',
+        __qty_break_quantity: '10',
+        __qty_break_price: '9.00',
+        __qty_break_label: _sdT('10 or more: each for 9.00'),
         __crumb_label:   _sdT('Main Catalog'),
         __crumb_url:     '#',
         __crumb_kind:    'link',
@@ -61378,6 +63567,32 @@ const StyleDesigner = (function () {
         __booking_manage_url:   '#',
         __booking_manage_label: _sdT('Change or cancel'),
         __booking_ics_url:      '#',
+        __subscription_id:           '8',
+        __subscription_product:      _sdT('Weekly flower box'),
+        __subscription_amount:       '149,00 TRY',
+        __subscription_status:       'active',
+        __subscription_status_label: _sdT('Active'),
+        __subscription_tone:         'success',
+        __subscription_next:         _sdT('Next charge:') + ' 24.11.2026',
+        __subscription_price:        '',
+        __subscription_card:         _sdT('Card ending {var:1}').replace('{var:1}', '4242'),
+        __subscription_event:        _sdT('Last event:') + ' ' + _sdT('Renewed') + ' (17.11.2026)',
+        __subscription_confirm_url:  '',
+        __subscription_has_actions:  '1',
+        __credit_id:          '6',
+        __credit_kind_label:  _sdT('Manual'),
+        __credit_reason:      _sdT('Sorry for the late delivery'),
+        __credit_state:       'open',
+        __credit_state_label: _sdT('Open'),
+        __credit_tone:        'success',
+        __credit_balance:     '₺35,00',
+        __credit_amount:      '₺50,00',
+        __credit_last_day:    '31.12.2026',
+        __credit_has_uses:    '1',
+        __credit_use_order_no:  '12345',
+        __credit_use_order_url: '/order?id=1042',
+        __credit_use_date:      '20.10.2026',
+        __credit_use_amount:    '₺15,00',
         __menu_item_name: _sdT('Menu item'),
         __menu_item_id: '2',
         __menu_item_url: '#',
@@ -61577,6 +63792,9 @@ const StyleDesigner = (function () {
         // A booking list as the bookings part draws it (_sdAccountPart()).
         if (source === 'account.upcoming_bookings') return _sdAccountPart('bookings')[1];
         if (source === 'account.past_bookings') return _sdAccountPart('bookings')[3];
+        // The subscriptions and the store credit cards likewise.
+        if (source === 'account.subscriptions') return _sdAccountPart('subscriptions')[0];
+        if (source === 'account.store_credit') return _sdAccountPart('store_credit')[0].children[2];
         if (source.indexOf('order.') === 0 || source.indexOf('account.') === 0 || source === 'cart.items') return _sdOrderListStarter(source, bs);
         if (source.indexOf('checkout.') === 0) return _sdCheckoutListStarter(source, bs);
         if (source === 'menu.children') {
@@ -62020,6 +64238,19 @@ const StyleDesigner = (function () {
                         _bindings: { href: '__bundle_item_url', text: '__bundle_item_short_description' } })
                 ])
             ])]);
+        }
+        if (source === 'product.quantity_prices') {
+            // The box goes with its heading when no break holds: it is
+            // marked Hide when empty, the list's holder its value.
+            return createNode('semantic', { tag: 'div', cssClass: (bs ? 'mb-3 ' : '') + 'pg-hide-if-empty', customName: _sdT('Quantity prices') }, [
+                sem('h2', 'h6 mb-2', _sdT('Heading'), { text: _sdT('Quantity prices') }),
+                createNode('semantic', { tag: 'ul', cssClass: (bs ? 'list-group mb-0 ' : '') + 'pg-field-value', customName: _sdT('Quantity prices') }, [
+                    createNode('loop_area', { source: source }, [
+                        sem('li', 'list-group-item small', _sdT('Quantity price'), { text: _sdT('10 or more: each for 9.00'),
+                            _bindings: { text: '__qty_break_label' } })
+                    ])
+                ])
+            ]);
         }
         if (source === 'product.attributes') {
             return sem('dl', 'row mb-0', _sdT('Attributes'), {}, [createNode('loop_area', { source: source }, [
@@ -64375,8 +66606,7 @@ const StyleDesigner = (function () {
                         createNode('semantic', { tag: 'div', cssClass: 'mb-4', customName: _sdT('My Bookings') }, _sdAccountPart('bookings')),
                         createNode('content', { contentType: 'heading', tag: 'h5', text: _sdT('Store credit'), cssClass: 'mb-3',
                             _bindings: { eo_visible_if: 'has_store_credit' } }),
-                        createNode('semantic', { tag: 'div', cssClass: 'mb-4', customName: _sdT('Store credit'),
-                            _bindings: { section: 'store_credit' } }),
+                        createNode('semantic', { tag: 'div', cssClass: 'mb-4', customName: _sdT('Store credit') }, _sdAccountPart('store_credit')),
                         loopArea
                     ])
                 ]);
@@ -68760,6 +70990,7 @@ const StyleDesigner = (function () {
             if (!handle) return;
             handle.addEventListener('mousedown', function (e) {
                 e.preventDefault();
+                _sdFitLeave();
                 var startX = e.clientX;
                 var startY = e.clientY;
                 var startW = wrap.offsetWidth;
@@ -68917,17 +71148,25 @@ const StyleDesigner = (function () {
         var wrap = document.getElementById('sd-iframe-wrap');
         var lbl = document.getElementById('sd-bp-label');
         if (!wrap || !lbl) return;
-        var w = wrap.offsetWidth;
+        lbl.textContent = _sdBpLabelText(wrap.offsetWidth, !!(tree && tree.props && tree.props.pgEmail));
+    }
+
+    // The width text: the width and its Bootstrap breakpoint; an e-mail
+    // design has no breakpoint, so its width alone.
+    function _sdBpLabelText(w, email) {
+        if (email) return w + ' px';
         var bp = 'XS';
         if (w >= 576) bp = 'SM';
         if (w >= 768) bp = 'MD';
         if (w >= 992) bp = 'LG';
         if (w >= 1200) bp = 'XL';
         if (w >= 1400) bp = 'XXL';
-        lbl.textContent = w + 'px · ' + bp;
+        return w + ' px · ' + bp;
     }
 
     function setCanvasZoom(z) {
+        // −, + and the reset leave Fit (guarded: tests run this alone).
+        if (typeof _sdFitLeave === 'function') _sdFitLeave();
         canvasZoom = Math.max(0.25, Math.min(2.0, Math.round(z * 10) / 10));
         // Content-only zoom: scale the iframe's document body rather than the
         // outer wrapper. The iframe container width stays constant so the
@@ -70315,7 +72554,8 @@ const StyleDesigner = (function () {
         { test: /data-bs-toggle\s*=\s*["']?(?:tooltip|popover|tab|pill|list)\b/i, file: 'assets/js/pg_bs_tips.js' },
         { test: /\sdata-pg-scroller(?=[\s=>\/])/i, file: 'assets/js/pg_scroller.js' },
         { test: /\sdata-pg-fx(?=[\s=>\/])/i, file: 'assets/js/pg_fx.min.js' },
-        { test: /\sdata-pg-listen(?=[\s=>\/])/i, file: 'assets/js/pg_listen.js' }
+        { test: /\sdata-pg-listen(?=[\s=>\/])/i, file: 'assets/js/pg_listen.js' },
+        { test: /\sdata-pg-map(?=[\s=>\/])/i, file: 'assets/js/pg_map.js' }
     ];
 
     // The absolute addresses of the platform scripts `markup` asks for (the
@@ -70567,8 +72807,9 @@ const StyleDesigner = (function () {
     // undo history and content rights answer; the normal Save writes it.
     // Classic menus and regions stay read-only.
     var _sdProto = { open: false, ui: null, canvas: null, items: [], byId: {}, layout: null, view: { x: 40, y: 40, k: 1 }, seq: 0, selected: null, env: {}, warned: {}, menu: null,
-        link: null, broken: { list: [], count: {} }, problems: null,
-        pics: { gen: 0, io: null, boxes: {}, near: {}, live: {}, wait: [], loading: 0, cache: {} } };
+        link: null, lifted: '', drawing: false, broken: { list: [], count: {} }, issues: null, problems: null, suggest: null,
+        edgeTo: {},
+        pics: { gen: 0, io: null, boxes: {}, near: {}, live: {}, wait: [], loading: 0, cache: {}, rects: {}, partH: {}, settle: 0, refill: 0 } };
 
     // Pictures (_sdProtoPicMake()): at most this many loading at once, the
     // widget requests among them, and at most this many alive; past it the
@@ -70583,7 +72824,8 @@ const StyleDesigner = (function () {
         contact: { icon: 'bi-envelope', text: function () { return _sdT('E-mail, phone or text message'); } },
         external: { icon: 'bi-box-arrow-up-right', text: function () { return _sdT('Another website'); } },
         hidden: { icon: 'bi-eye-slash', text: function () { return _sdT('A page you cannot see'); } },
-        broken: { icon: 'bi-exclamation-triangle', text: function () { return _sdT('Broken link'); } }
+        broken: { icon: 'bi-exclamation-triangle', text: function () { return _sdT('Broken link'); } },
+        empty: { icon: 'bi-dash-circle', text: function () { return _sdT('A link without a target'); } }
     };
 
     function _sdProtoReady() {
@@ -70681,10 +72923,34 @@ const StyleDesigner = (function () {
         ui.broken.setAttribute('aria-haspopup', 'dialog');
         ui.broken.addEventListener('click', function () {
             if (_sdProto.problems) _sdProtoProblemsClose(true);
-            else _sdProtoProblemsOpen();
+            else _sdProtoProblemsOpen(ui.broken);
         });
         bar.appendChild(ui.broken);
+        // "N to check" (F28), amber: links without a target and pages no
+        // link leads to, in the same list.
+        ui.check = _sdProtoEl('button', 'sd-proto-check');
+        ui.check.type = 'button';
+        ui.check.hidden = true;
+        ui.check.setAttribute('aria-haspopup', 'dialog');
+        ui.check.addEventListener('click', function () {
+            if (_sdProto.problems) _sdProtoProblemsClose(true);
+            else _sdProtoProblemsOpen(ui.check);
+        });
+        bar.appendChild(ui.check);
         var tools = _sdProtoEl('div', 'sd-proto-tools');
+        // "Suggest targets · n" (F30) while links have no target: the bar's
+        // own quiet button with its count.
+        ui.suggest = _sdProtoButton('bi-magic', _sdT('Suggest targets'), function () {
+            if (_sdProto.suggest) _sdProtoSuggestClose(true);
+            else _sdProtoSuggestOpen();
+        });
+        ui.suggest.classList.add('sd-proto-suggest-btn');
+        ui.suggest.appendChild(_sdProtoEl('span', 'sd-proto-btn-label', _sdT('Suggest targets')));
+        ui.suggestCount = _sdProtoEl('span', 'sd-proto-suggest-count');
+        ui.suggest.appendChild(ui.suggestCount);
+        ui.suggest.hidden = true;
+        ui.suggest.setAttribute('aria-haspopup', 'dialog');
+        tools.appendChild(ui.suggest);
         // Play (F24): the prototype viewer at the selected page, else at
         // the first page it has; hidden when it has none.
         ui.play = _sdProtoButton('bi-play-fill', _sdT('Play the prototype from the selected page'), function () {
@@ -70787,31 +73053,56 @@ const StyleDesigner = (function () {
             // 40 clear of a frame: about a dozen side by side in a 96 gap.
             route: 'elbow',
             routeMargin: 40,
-            portAt: function (item, name) { return item.rows ? { y: window.PGProtoHotspots.rowY(item, name) } : null; },
+            portAt: function (item, name) { return item.rows ? _sdProtoPort(item, name) : null; },
             select: function (selected) { _sdProtoSelect(selected); },
             moved: function (item) { _sdProtoKeep(item); },
             canConnect: function (from, to, port) { return _sdProtoArrowHref(from, to, port) !== null; },
             connected: function (from, to, port) { _sdProtoConnect(from, to, port); },
+            // The core reads the view on every pan and zoom (and changes it
+            // in place): the pictures near the view are made again soon
+            // after it settles.
             view: function (next) {
                 if (next) _sdProto.view = next;
+                _sdProtoPicSoon();
                 return _sdProto.view;
             },
             items: function () { return _sdProto.items; },
-            // A row: no drag, its element selected on release. Its port is
-            // the core's: an arrow drawn from it.
+            // A link's mark on a picture: a click picks its link, a drag
+            // draws its arrow (F21). The head of a drawn arrow: a drag
+            // points it elsewhere (F22). Either becomes the core's own
+            // 'connect' once it moves, so what may take the arrow lights up.
             press: function (event, next) {
-                if (event.target.closest && event.target.closest('.pgc-port-out')) return;
-                var row = event.target.closest ? event.target.closest('.sd-proto-row') : null;
+                var row = event.target.closest ? event.target.closest('.sd-proto-hot') : null;
                 if (row) {
                     next.kind = 'row';
                     next.row = row;
+                    next.link = _sdProtoHotLink(row);
+                    return;
+                }
+                var head = _sdProtoHeadAt(event);
+                if (head) {
+                    next.kind = 'head';
+                    next.link = head;
+                    event.preventDefault();
                 }
             },
-            move: function () {},
+            move: function (event, drag) {
+                if ((drag.kind !== 'row' && drag.kind !== 'head') || !drag.link) return;
+                var item = _sdProto.byId[drag.link.frame];
+                var row = _sdProtoRow(item, drag.link.port);
+                if (!row || !window.PGProtoHotspots.drawable(row)) return;
+                _sdProtoMenuClose(false);
+                drag.kind = 'connect';
+                drag.from = item;
+                drag.port = row.port;
+                // The arrow being drawn is the one to see: the others fade.
+                _sdProtoDrawing(true);
+            },
             release: function (event, done) {
                 if (done.kind === 'row' && !done.moved && event.type === 'pointerup') _sdProtoPickRow(done.row);
+                if (done.kind === 'head' && !done.moved && event.type === 'pointerup') _sdProtoPick(done.link.frame, done.link.port, true);
             },
-            cancel: function () {},
+            cancel: function () { _sdProtoDrawing(false); },
             key: function (event) {
                 if (event.key === 'Escape') { _sdProtoClose(); return true; }
                 // The open tab's undo history, as on the canvas; the map is
@@ -70823,20 +73114,38 @@ const StyleDesigner = (function () {
                     _sdProtoLoad();
                     return true;
                 }
-                var row = event.target.closest ? event.target.closest('.sd-proto-row') : null;
-                if (row && (event.key === 'Enter' || event.key === ' ')) { _sdProtoPickRow(row); return true; }
-                // L, the context menu key or Shift+F10: where the link goes,
-                // chosen from a list (the keyboard's way to draw its arrow).
-                var menuKey = (name === 'l' && !event.ctrlKey && !event.metaKey && !event.shiftKey) || event.key === 'ContextMenu' || (event.key === 'F10' && event.shiftKey);
-                if (row && menuKey) return _sdProtoMenuOpen(row);
+                // A mark of the selected frame (F23): Enter or Space picks
+                // its link; L, the menu key or Shift+F10 opens its target
+                // menu, the keyboard's way to draw its arrow.
+                var hot = event.target.closest ? event.target.closest('.sd-proto-hot') : null;
+                var act = hot ? window.PGProtoHotspots.markKey(event) : '';
+                if (act === 'pick') { _sdProtoPickRow(hot); return true; }
+                if (act === 'menu') {
+                    var link = _sdProtoHotLink(hot);
+                    return link ? _sdProtoMenuOpen(link.frame, link.port, hot) : false;
+                }
                 return false;
             }
         });
         _sdProto.canvas.bind();
+        // The pointer on a mark or a links panel row lifts its arrow out of
+        // the others.
+        ui.root.addEventListener('pointerover', function (event) {
+            if (_sdProto.drawing) return;
+            var hot = event.target.closest ? event.target.closest('.sd-proto-hot, .sd-proto-li[data-link]') : null;
+            var link = hot ? (hot.classList.contains('sd-proto-hot') ? _sdProtoHotLink(hot) : null) : null;
+            var id = link ? link.frame + '|' + link.port : (hot ? hot.getAttribute('data-link') : '');
+            _sdProtoLift(id || '');
+        });
+        window.addEventListener('resize', function () { if (_sdProto.open) _sdProtoStatusFit(); });
+        // A drawn arrow let go of, on a target or not.
+        ['pointerup', 'pointercancel'].forEach(function (type) {
+            window.addEventListener(type, function () { if (_sdProto.drawing) _sdProtoDrawing(false); }, true);
+        });
         // A press outside the target menu closes it.
         ui.root.addEventListener('pointerdown', function (event) {
             if (_sdProto.menu && !_sdProto.menu.el.contains(event.target)) _sdProtoMenuClose(false);
-            if (_sdProto.problems && !_sdProto.problems.contains(event.target) && !ui.broken.contains(event.target)) _sdProtoProblemsClose(false);
+            if (_sdProto.problems && !_sdProto.problems.contains(event.target) && !ui.broken.contains(event.target) && !ui.check.contains(event.target)) _sdProtoProblemsClose(false);
         }, true);
         return ui;
     }
@@ -70848,6 +73157,19 @@ const StyleDesigner = (function () {
 
     function _sdProtoStatus(text) {
         if (_sdProto.ui) _sdProto.ui.status.textContent = text || '';
+        _sdProtoStatusFit();
+    }
+
+    // The bar's link count is shown whole or not at all: when it does not
+    // fit beside "N broken" and "N to check" it is left out (its place
+    // kept), and its words stay in the bar's title.
+    function _sdProtoStatusFit() {
+        var ui = _sdProto.ui;
+        if (!ui) return;
+        var el = ui.status;
+        el.classList.remove('sd-proto-status-out');
+        el.parentNode.title = el.textContent;
+        if (el.scrollWidth > el.clientWidth + 1) el.classList.add('sd-proto-status-out');
     }
 
     function _sdProtoToggle() {
@@ -70881,6 +73203,7 @@ const StyleDesigner = (function () {
         if (!_sdProto.open) return;
         _sdProtoMenuClose(false);
         _sdProtoProblemsClose(false);
+        _sdProtoSuggestClose(false);
         _sdProto.open = false;
         _sdProto.seq++;
         if (_sdProto.canvas) _sdProto.canvas.cancel();
@@ -70948,7 +73271,6 @@ const StyleDesigner = (function () {
     }
 
     function _sdProtoFill(item, node) {
-        var canvas = _sdProto.canvas;
         var head = _sdProtoEl('div', 'sd-proto-head');
         head.appendChild(_sdProtoEl('span', 'bi ' + (item.kind === 'shared' ? 'bi-puzzle' : 'bi-file-earmark') + ' sd-proto-kind'));
         head.lastChild.setAttribute('aria-hidden', 'true');
@@ -70967,38 +73289,130 @@ const StyleDesigner = (function () {
         } else if (item.key === _activeKey) {
             meta = _sdT('Open tab');
         }
+        // An amber count of the frame's links without a target (F29), and
+        // on a page no link leads to the amber "No link leads here" (F27).
+        var issues = _sdProto.issues;
+        var emptyHere = issues ? (issues.empty.count[item.id] || 0) : 0;
+        if (emptyHere) {
+            var amber = _sdProtoEl('span', 'sd-proto-badge sd-proto-badge-empty', String(emptyHere));
+            amber.title = _sdT('{var:1} without a target', emptyHere);
+            head.appendChild(amber);
+        }
+        if (issues && issues.unreached.indexOf(item.id) >= 0) head.appendChild(_sdProtoEl('span', 'sd-proto-unreached', _sdT('No link leads here')));
         if (meta) head.appendChild(_sdProtoEl('span', 'sd-proto-meta', meta));
         node.appendChild(head);
         node.setAttribute('aria-label', _sdProtoFrameName(item));
+        // The links are marked on the picture once it has loaded; the
+        // links panel lists them (F5, F15).
         if (item.pic) node.appendChild(_sdProtoPicBox(item));
         else if (item.thumb) node.appendChild(_sdProtoThumb(item));
+        else if (!item.rows.length) node.appendChild(_sdProtoEl('div', 'sd-proto-empty', _sdT('No links')));
+    }
 
-        if (!item.rows.length) {
-            node.appendChild(_sdProtoEl('div', 'sd-proto-empty', _sdT('No links')));
-            return;
-        }
+    // Where an arrow leaves its frame (F14): at its link's mark on the
+    // picture, by the side facing its target; from the foot for a link the
+    // picture cannot show (F3); from the middle of the box until the
+    // picture has loaded.
+    function _sdProtoPort(item, port) {
+        var rects = _sdProto.pics.rects[item.id];
+        var to = _sdProto.edgeTo[item.id + '|' + port];
+        return window.PGProtoHotspots.markPort(item, rects ? (rects[port] || null) : undefined, to ? _sdProto.byId[to] : null);
+    }
 
-        item.rows.forEach(function (row, i) {
-            var r = _sdProtoEl('div', 'sd-proto-row sd-proto-mark-' + row.mark);
-            r.tabIndex = 0;
-            r.setAttribute('role', 'button');
-            r.setAttribute('data-row', String(i));
-            r.title = row.href || '';
-            if (window.PGProtoHotspots.drawable(row)) {
-                r.title += (r.title ? ' · ' : '') + _sdT('L: choose where this link goes');
-                r.setAttribute('aria-keyshortcuts', 'L');
-            }
-            r.appendChild(_sdProtoMarkIcon(row.mark));
-            r.appendChild(_sdProtoEl('span', 'sd-proto-label', row.from ? row.from + ' › ' + row.label : row.label));
-            if (row.draft) r.appendChild(_sdProtoEl('span', 'sd-proto-draft', _sdT('Draft')));
-            // Only a link of a tree gets a port to draw its arrow from.
-            if (window.PGProtoHotspots.drawable(row)) {
-                var dot = canvas.port('out', row.port);
-                dot.title = _sdT('Drag to a page or an address to change where this link goes');
-                r.appendChild(dot);
-            }
-            node.appendChild(r);
+    // The link a mark stands for: its frame's id and its row's port.
+    function _sdProtoHotLink(hot) {
+        var box = hot && hot.closest ? hot.closest('[data-node]') : null;
+        var item = box ? _sdProto.byId[box.getAttribute('data-node')] : null;
+        var row = item && item.rows ? item.rows[parseInt(hot.getAttribute('data-row'), 10) || 0] : null;
+        return row ? { frame: item.id, port: row.port } : null;
+    }
+
+    // The link of the drawn arrow whose head a press takes: the nearest
+    // head within 14 screen pixels of it, of the arrows shown (heads crowd
+    // on a frame's edge, so another arrow may be on top), else null. A
+    // press on a frame or a chip stays theirs (select, move).
+    function _sdProtoHeadAt(event) {
+        var ui = _sdProto.ui;
+        if (!ui || !_sdProto.layout || (event.target.closest && event.target.closest('[data-node]'))) return null;
+        var H = window.PGProtoHotspots;
+        var at = _sdProto.canvas.view.point(event.clientX, event.clientY);
+        var k = _sdProto.view.k;
+        var best = null;
+        var bestD = Infinity;
+        Array.prototype.forEach.call(ui.svg.querySelectorAll('g.pgc-edge[data-edge]'), function (group) {
+            var line = group.querySelector('path');
+            if (!line || !line.getTotalLength || window.getComputedStyle(group).display === 'none' || window.getComputedStyle(line).visibility === 'hidden') return;
+            var end = line.getPointAtLength(line.getTotalLength());
+            if (!H.nearHead({ x: end.x, y: end.y }, at, k)) return;
+            var d = (end.x - at.x) * (end.x - at.x) + (end.y - at.y) * (end.y - at.y);
+            if (d < bestD) { bestD = d; best = group.getAttribute('data-edge'); }
         });
+        var edge = best ? _sdProto.layout.edges.filter(function (e) { return e.id === best; })[0] : null;
+        return edge ? { frame: edge.from, port: edge.port } : null;
+    }
+
+    // While an arrow is drawn from a mark or a head: every drawn arrow
+    // fades and the one being drawn goes at full strength to the pointer.
+    function _sdProtoDrawing(on) {
+        var ui = _sdProto.ui;
+        _sdProto.drawing = !!on;
+        _sdProtoLift('');
+        if (ui) ui.svg.classList.toggle('sd-proto-drawing', !!on);
+    }
+
+    // One arrow lifted out of the others ('' for none): drawn last, the
+    // others faded while it is.
+    function _sdProtoLift(id) {
+        var ui = _sdProto.ui;
+        if (!ui || _sdProto.lifted === id) return;
+        _sdProto.lifted = id;
+        var old = ui.svg.querySelector('.sd-proto-edge-lift');
+        if (old) old.classList.remove('sd-proto-edge-lift');
+        var group = id ? ui.svg.querySelector('g.pgc-edge[data-edge="' + id.replace(/"/g, '') + '"]') : null;
+        ui.svg.classList.toggle('sd-proto-lifting', !!group);
+        if (!group) return;
+        group.classList.add('sd-proto-edge-lift');
+        ui.svg.appendChild(group);
+    }
+
+    // A loaded picture's marks (F5): a rounded rectangle over each link's
+    // element, in the colour of where it leads; a link of a tree carries
+    // the port its arrow is drawn from. Which of them show is
+    // _sdProtoFocusMarks()'s; the arrows of the frame leave from them.
+    function _sdProtoHots(item, pic) {
+        var H = window.PGProtoHotspots;
+        var canvas = _sdProto.canvas;
+        var rects = H.picRects(item.rows, pic.marks, item.sharedId);
+        var old = pic.box.querySelector('.sd-proto-hots');
+        if (old) old.parentNode.removeChild(old);
+        var layer = _sdProtoEl('div', 'sd-proto-hots');
+        item.rows.forEach(function (row, i) {
+            var r = rects[row.port];
+            if (!r) return;
+            var hot = _sdProtoEl('span', 'sd-proto-hot sd-proto-mark-' + row.mark);
+            hot.setAttribute('data-row', String(i));
+            hot.style.left = r.x + 'px';
+            hot.style.top = r.y + 'px';
+            hot.style.width = Math.max(6, r.w) + 'px';
+            hot.style.height = Math.max(6, r.h) + 'px';
+            var name = row.from ? row.from + ' › ' + row.label : row.label;
+            hot.title = name + (row.href ? ' · ' + row.href : '');
+            hot.setAttribute('role', 'button');
+            hot.setAttribute('aria-label', name);
+            hot.tabIndex = -1;
+            // The whole mark is where its arrow is drawn from (F21).
+            if (H.drawable(row)) {
+                hot.classList.add('sd-proto-hot-draw');
+                hot.title += ' · ' + _sdT('Drag to a page or an address to change where this link goes');
+                hot.setAttribute('aria-keyshortcuts', 'L');
+            }
+            layer.appendChild(hot);
+        });
+        pic.box.appendChild(layer);
+        _sdProto.pics.rects[item.id] = rects;
+        _sdProtoFocusMarks(canvas.focused());
+        _sdProtoPicked();
+        canvas.reroute([item.id]);
     }
 
     // The frame's thumbnail: its page as bands (PGProtoHotspots.sketch()),
@@ -71058,7 +73472,9 @@ const StyleDesigner = (function () {
             }
             byGroup[gid].keys.push(p.key);
         });
-        return { sections: sections, rest: _sdT('Pages'), shared: _sdT('Shared parts'), outside: _sdT('Outside this design') };
+        // partH: the shared parts' measured heights, so each frame is as
+        // tall as its part (_sdProtoPicLoaded()).
+        return { sections: sections, rest: _sdT('Pages'), shared: _sdT('Shared parts'), outside: _sdT('Outside this design'), partH: _sdProto.pics.partH };
     }
 
     // Tidy up: every frame and chip back in the arrangement, after a
@@ -71109,24 +73525,26 @@ const StyleDesigner = (function () {
         if (!ui || !_sdProto.layout) return;
         Array.prototype.slice.call(ui.boxes.querySelectorAll('.sd-proto-note')).forEach(function (n) { n.parentNode.removeChild(n); });
         Array.prototype.slice.call(ui.boxes.querySelectorAll('.sd-proto-focused')).forEach(function (n) { n.classList.remove('sd-proto-focused'); });
-        Array.prototype.slice.call(ui.boxes.querySelectorAll('.sd-proto-row')).forEach(function (r) {
-            r.classList.remove('sd-proto-row-quiet', 'sd-proto-row-lit', 'sd-proto-row-shared');
+        Array.prototype.slice.call(ui.boxes.querySelectorAll('.sd-proto-hot')).forEach(function (r) {
+            r.classList.remove('sd-proto-hot-own', 'sd-proto-hot-lit', 'sd-proto-hot-shared');
+            r.tabIndex = -1;
         });
         if (id === null || id === undefined) return;
         var f = window.PGProtoHotspots.focusOf(_sdProto.layout, id);
-        var mark = {};
-        Object.keys(f.lit).forEach(function (frame) { f.lit[frame].forEach(function (port) { mark[frame + '|' + port] = 'sd-proto-row-lit'; }); });
-        f.shared.forEach(function (link) { mark[link.frame + '|' + link.port] = 'sd-proto-row-shared'; });
+        // The selected frame shows all its marks, another frame those that
+        // start an arrow into it, a shared part's link into it in amber
+        // (F5, F13); the rest stay hidden.
+        var mark = window.PGProtoHotspots.markState(_sdProto.layout, id);
         _sdProto.layout.frames.forEach(function (item) {
             var node = ui.boxes.querySelector('[data-node="' + String(item.id).replace(/"/g, '') + '"]');
             if (!node) return;
-            if (item.id === String(id)) {
-                node.classList.add('sd-proto-focused');
-                return;
-            }
+            if (item.id === String(id)) node.classList.add('sd-proto-focused');
             item.rows.forEach(function (row, i) {
-                var el = node.querySelector('.sd-proto-row[data-row="' + i + '"]');
-                if (el) el.classList.add(mark[item.id + '|' + row.port] || 'sd-proto-row-quiet');
+                var el = node.querySelector('.sd-proto-hot[data-row="' + i + '"]');
+                var state = mark[item.id + '|' + row.port];
+                if (el && state) el.classList.add('sd-proto-hot-' + state);
+                // Tab reaches the selected frame's marks after its frame (F23).
+                if (el && state === 'own') el.tabIndex = 0;
             });
         });
         var notes = {};
@@ -71160,7 +73578,7 @@ const StyleDesigner = (function () {
         if (!item || !item.rows || !ui) return null;
         for (var i = 0; i < item.rows.length; i++) {
             if (item.rows[i].port === port) {
-                return ui.boxes.querySelector('[data-node="' + String(frameId).replace(/"/g, '') + '"] .sd-proto-row[data-row="' + i + '"]');
+                return ui.boxes.querySelector('[data-node="' + String(frameId).replace(/"/g, '') + '"] .sd-proto-hot[data-row="' + i + '"]');
             }
         }
         return null;
@@ -71199,6 +73617,7 @@ const StyleDesigner = (function () {
         _sdProtoPicked();
         _sdProtoListDraw();
         _sdProtoPlayState();
+        if (_sdProto.suggest) _sdProtoSuggestArrows();
     }
 
     // One link picked (F16) by its frame and port, from a row of the panel
@@ -71236,13 +73655,13 @@ const StyleDesigner = (function () {
     function _sdProtoPicked() {
         var ui = _sdProto.ui;
         if (!ui) return;
-        Array.prototype.slice.call(ui.root.querySelectorAll('.sd-proto-row-picked, .sd-proto-edge-picked')).forEach(function (n) {
-            n.classList.remove('sd-proto-row-picked', 'sd-proto-edge-picked');
+        Array.prototype.slice.call(ui.root.querySelectorAll('.sd-proto-hot-picked, .sd-proto-edge-picked')).forEach(function (n) {
+            n.classList.remove('sd-proto-hot-picked', 'sd-proto-edge-picked');
         });
         var l = _sdProto.link;
         if (!l) return;
         var rowEl = _sdProtoRowEl(l.frame, l.port);
-        if (rowEl) rowEl.classList.add('sd-proto-row-picked');
+        if (rowEl) rowEl.classList.add('sd-proto-hot-picked');
         var group = ui.svg.querySelector('[data-edge="' + (l.frame + '|' + l.port).replace(/"/g, '') + '"]');
         if (group) group.classList.add('sd-proto-edge-picked');
     }
@@ -71312,13 +73731,10 @@ const StyleDesigner = (function () {
             main.appendChild(_sdProtoMarkIcon(row.mark));
             var text = _sdProtoEl('span', 'sd-proto-li-text');
             text.appendChild(_sdProtoEl('span', 'sd-proto-li-label', row.label));
-            text.appendChild(_sdProtoEl('span', 'sd-proto-li-to', row.why ? _sdProtoWhy(row.why) : '→ ' + _sdProtoTargetName(row)));
+            text.appendChild(_sdProtoEl('span', 'sd-proto-li-to', row.why ? _sdProtoWhy(row.why) : (row.mark === 'empty' ? _sdT('No target') : '→ ' + _sdProtoTargetName(row))));
             main.appendChild(text);
             main.addEventListener('click', function () { _sdProtoPick(data.id, row.port, false); });
-            var change = function (anchor) {
-                var rowEl = _sdProtoRowEl(data.id, row.port);
-                return rowEl ? _sdProtoMenuOpen(rowEl, anchor) : false;
-            };
+            var change = function (anchor) { return _sdProtoMenuOpen(data.id, row.port, anchor); };
             // L, the menu key or Shift+F10: the target menu, as on the canvas.
             main.addEventListener('keydown', function (event) {
                 var name = String(event.key || '').toLowerCase();
@@ -71327,6 +73743,7 @@ const StyleDesigner = (function () {
             });
             var li = line(outBox, data.id + '|' + row.port, main);
             if (row.why) li.classList.add('sd-proto-li-broken');
+            if (row.mark === 'empty') li.classList.add('sd-proto-li-empty');
             var acts = _sdProtoEl('span', 'sd-proto-li-acts');
             if (row.drawable) {
                 main.setAttribute('aria-keyshortcuts', 'L');
@@ -71334,8 +73751,7 @@ const StyleDesigner = (function () {
                 acts.appendChild(changeBtn);
             }
             acts.appendChild(_sdProtoListButton('sd-proto-li-act', 'bi-box-arrow-in-up-left', _sdT('Open in the editor'), function () {
-                var rowEl = _sdProtoRowEl(data.id, row.port);
-                if (rowEl) _sdProtoOpenRow(rowEl);
+                _sdProtoOpenRow(data.id, row.port);
             }));
             li.appendChild(acts);
         });
@@ -71372,28 +73788,46 @@ const StyleDesigner = (function () {
         }
     }
 
-    // Every broken link of the design (F19), under the bar's "N broken": a
-    // row picks the link.
-    function _sdProtoProblemsOpen() {
+    // The design's problems (F19, F28), under the bar's "N broken" or "N to
+    // check" (anchor): broken links, pages no link leads to, links without
+    // a target, a group with none left out. A link's row picks it; a page's
+    // row selects its frame and brings it into view.
+    function _sdProtoProblemsOpen(anchor) {
         var ui = _sdProto.ui;
-        var list = _sdProto.broken.list;
+        var issues = _sdProto.issues;
         _sdProtoProblemsClose(false);
-        if (!ui || !list.length) return;
+        if (!ui || !issues || !(issues.broken.list.length || issues.check)) return;
+        anchor = anchor || ui.broken;
         var el = _sdProtoEl('div', 'sd-proto-problems');
         el.setAttribute('role', 'dialog');
-        el.setAttribute('aria-label', _sdT('Broken links'));
-        el.appendChild(_sdProtoEl('div', 'sd-proto-menu-head', _sdT('Broken links')));
-        list.forEach(function (one) {
-            var b = _sdProtoEl('button', 'sd-proto-problem');
-            b.type = 'button';
-            b.appendChild(_sdProtoEl('span', 'sd-proto-li-label', _sdProtoFrameName(_sdProto.byId[one.frame]) + ' · ' + one.label));
-            b.appendChild(_sdProtoEl('span', 'sd-proto-li-to', _sdProtoWhy(one.why) + (one.href ? ' (' + one.href + ')' : '')));
-            b.addEventListener('click', function () {
-                _sdProtoProblemsClose(false);
-                _sdProtoPick(one.frame, one.port, true);
+        el.setAttribute('aria-label', anchor === ui.check ? _sdT('{var:1} to check', issues.check) : _sdT('Broken links'));
+        var group = function (title, cls, rows) {
+            if (!rows.length) return;
+            el.appendChild(_sdProtoEl('div', 'sd-proto-menu-head ' + cls, title));
+            rows.forEach(function (one) {
+                var b = _sdProtoEl('button', 'sd-proto-problem ' + cls);
+                b.type = 'button';
+                b.appendChild(_sdProtoEl('span', 'sd-proto-li-label', one.label));
+                if (one.to) b.appendChild(_sdProtoEl('span', 'sd-proto-li-to', one.to));
+                b.addEventListener('click', function () {
+                    _sdProtoProblemsClose(false);
+                    one.go();
+                });
+                el.appendChild(b);
             });
-            el.appendChild(b);
-        });
+        };
+        group(_sdT('Broken links'), 'sd-proto-problem-broken', issues.broken.list.map(function (one) {
+            return { label: _sdProtoFrameName(_sdProto.byId[one.frame]) + ' · ' + one.label, to: _sdProtoWhy(one.why) + (one.href ? ' (' + one.href + ')' : ''), go: function () { _sdProtoPick(one.frame, one.port, true); } };
+        }));
+        group(_sdT('Pages no link leads to'), 'sd-proto-problem-unreached', issues.unreached.map(function (id) {
+            return { label: _sdProtoFrameName(_sdProto.byId[id]), to: '', go: function () {
+                _sdProto.canvas.focus(id);
+                _sdProto.canvas.view.reveal(_sdProto.byId[id]);
+            } };
+        }));
+        group(_sdT('Links without a target'), 'sd-proto-problem-empty', issues.empty.list.map(function (one) {
+            return { label: _sdProtoFrameName(_sdProto.byId[one.frame]) + ' · ' + one.label, to: _sdT('No target'), go: function () { _sdProtoPick(one.frame, one.port, true); } };
+        }));
         el.addEventListener('keydown', function (event) {
             var items = Array.prototype.slice.call(el.querySelectorAll('.sd-proto-problem'));
             var at = items.indexOf(document.activeElement);
@@ -71408,8 +73842,9 @@ const StyleDesigner = (function () {
         });
         ui.root.appendChild(el);
         _sdProto.problems = el;
-        ui.broken.setAttribute('aria-expanded', 'true');
-        var r = ui.broken.getBoundingClientRect();
+        _sdProto.problemsAnchor = anchor;
+        anchor.setAttribute('aria-expanded', 'true');
+        var r = anchor.getBoundingClientRect();
         var o = ui.root.getBoundingClientRect();
         el.style.top = (r.bottom - o.top + 2) + 'px';
         el.style.left = Math.max(4, Math.min(r.left - o.left, o.width - el.offsetWidth - 4)) + 'px';
@@ -71421,9 +73856,11 @@ const StyleDesigner = (function () {
         if (!el) return;
         _sdProto.problems = null;
         if (el.parentNode) el.parentNode.removeChild(el);
-        if (_sdProto.ui) {
-            _sdProto.ui.broken.setAttribute('aria-expanded', 'false');
-            if (refocus) _sdProto.ui.broken.focus({ preventScroll: true });
+        var anchor = _sdProto.problemsAnchor || (_sdProto.ui ? _sdProto.ui.broken : null);
+        _sdProto.problemsAnchor = null;
+        if (anchor) {
+            anchor.setAttribute('aria-expanded', 'false');
+            if (refocus) anchor.focus({ preventScroll: true });
         }
     }
 
@@ -71455,12 +73892,17 @@ const StyleDesigner = (function () {
         _sdProto.marked = marked;
         _sdProto.layout = l;
         // The broken links before the frames are drawn: their badges (F20).
-        _sdProto.broken = H.brokenOf(l);
+        _sdProto.issues = H.problemsOf(l);
+        _sdProto.broken = _sdProto.issues.broken;
         _sdProto.items = l.frames.concat(l.chips);
         _sdProto.byId = {};
         _sdProto.items.forEach(function (item) { _sdProto.byId[item.id] = item; });
+        _sdProto.edgeTo = {};
+        l.edges.forEach(function (e) { _sdProto.edgeTo[e.id] = e.to; });
 
         Array.prototype.slice.call(ui.svg.querySelectorAll('g.pgc-edge')).forEach(function (g) { g.parentNode.removeChild(g); });
+        _sdProto.lifted = '';
+        ui.svg.classList.remove('sd-proto-lifting');
         _sdProtoPicReset(false);
         ui.boxes.innerHTML = '';
 
@@ -71486,7 +73928,7 @@ const StyleDesigner = (function () {
 
         var slots = G.spread(l.edges.map(function (e) {
             var from = _sdProto.byId[e.from];
-            return { to: e.to, y: from.y + H.rowY(from, e.port) };
+            return { to: e.to, y: from.y + _sdProtoPort(from, e.port).y };
         }));
         l.edges.forEach(function (e, i) {
             var drawn = canvas.edge(e.id, _sdProto.byId[e.from], _sdProto.byId[e.to], { port: e.port, slot: slots[i].slot, slots: slots[i].slots });
@@ -71501,9 +73943,19 @@ const StyleDesigner = (function () {
         var broken = _sdProto.broken.list.length;
         // "N links", and "N broken" in red when there are any (F19).
         _sdProtoStatus(_sdT('{var:1} links', count));
+        var toCheck = _sdProto.issues.check;
         ui.broken.hidden = !broken;
         ui.broken.textContent = broken ? _sdT('{var:1} broken', broken) : '';
-        canvas.announce(_sdT('{var:1} links', count) + (broken ? ' · ' + _sdT('{var:1} broken', broken) : ''));
+        // "N to check" in amber after it (F28).
+        ui.check.hidden = !toCheck;
+        ui.check.textContent = toCheck ? _sdT('{var:1} to check', toCheck) : '';
+        var toSuggest = _sdProto.issues.empty.list.length;
+        ui.suggest.hidden = !toSuggest;
+        ui.suggestCount.textContent = toSuggest ? String(toSuggest) : '';
+        ui.suggest.title = toSuggest ? _sdT('Suggest targets · {var}', toSuggest) : '';
+        ui.suggest.setAttribute('aria-label', ui.suggest.title || _sdT('Suggest targets'));
+        _sdProtoStatusFit();
+        canvas.announce(_sdT('{var:1} links', count) + (broken ? ' · ' + _sdT('{var:1} broken', broken) : '') + (toCheck ? ' · ' + _sdT('{var:1} to check', toCheck) : ''));
         // A picked link of a frame no longer there, or no longer a link, goes.
         if (_sdProto.link && !_sdProtoRow(_sdProto.byId[_sdProto.link.frame], _sdProto.link.port)) _sdProto.link = null;
         // Opening selects the open tab's frame; a redraw keeps the selected
@@ -71521,6 +73973,7 @@ const StyleDesigner = (function () {
         else canvas.view.apply();
         _sdProtoSelect(_sdProto.selected);
         _sdProtoPicWatch();
+        _sdProtoSuggestArrows();
     }
 
     // ── The page picture (F1, F3) ──
@@ -71549,11 +74002,18 @@ const StyleDesigner = (function () {
         return box;
     }
 
-    // The page markup of a page frame's picture with the widget markers and
-    // the link markers in, or null without the tab's tree.
+    // The page markup of a frame's picture with the widget markers and the
+    // link markers in, or null without its tree: a page frame's tab, a
+    // shared frame's part alone (its links marked 's<id>:').
     function _sdProtoPicRaw(item) {
-        var p = _pgPageByKey(item.key);
-        var t = p ? _pgTreeOf(p) : null;
+        var t = null;
+        if (item.kind === 'shared') {
+            var part = _sharedCache[item.sharedId];
+            if (part && (part.tree || part.system_region_config)) t = { _id: 'pic-root', type: 'root', props: {}, children: [{ _id: 'pic-part', type: 'shared_ref', props: { sharedId: item.sharedId }, children: [] }] };
+        } else {
+            var p = _pgPageByKey(item.key);
+            t = p ? _pgTreeOf(p) : null;
+        }
         if (!t) return null;
         var nameEl = document.querySelector('[name="name"]');
         var bcEl = document.querySelector('[name="additional_body_classes"]');
@@ -71587,6 +74047,9 @@ const StyleDesigner = (function () {
         });
         P.live = {};
         P.boxes = {};
+        P.rects = {};
+        clearTimeout(P.settle);
+        clearTimeout(P.refill);
     }
 
     // Watches the drawn picture boxes: one coming within the margin of
@@ -71606,6 +74069,27 @@ const StyleDesigner = (function () {
             _sdProtoPicPump();
         }, { root: ui.viewport, rootMargin: SD_PROTO_PIC.margin + 'px' });
         Object.keys(P.boxes).forEach(function (id) { P.io.observe(P.boxes[id]); });
+    }
+
+    // After the view has moved: the boxes near it nearest its centre, up to
+    // the cap of those alive, that are back at their sketch (dropped by the
+    // cap while farther away) join the queue. The observer does not call
+    // again for a box that stayed near the view.
+    function _sdProtoPicSoon() {
+        var P = _sdProto.pics;
+        clearTimeout(P.refill);
+        P.refill = setTimeout(function () {
+            var ui = _sdProto.ui;
+            if (!ui || !_sdProto.open) return;
+            var ids = Object.keys(P.near).filter(function (id) { return P.near[id] && P.boxes[id]; });
+            var vr = ui.viewport.getBoundingClientRect();
+            var fresh = window.PGProtoHotspots.picRefill(ids.map(function (id) {
+                var r = P.boxes[id].getBoundingClientRect();
+                return { id: id, x: r.left, y: r.top, w: r.width, h: r.height };
+            }), { x: vr.left, y: vr.top, w: vr.width, h: vr.height }, P.live, SD_PROTO_PIC.alive);
+            P.wait = fresh.concat(P.wait.filter(function (id) { return fresh.indexOf(id) < 0; }));
+            _sdProtoPicPump();
+        }, 300);
     }
 
     // Starts the waiting pictures still near the view, up to the cap of
@@ -71629,7 +74113,9 @@ const StyleDesigner = (function () {
         var gen = P.gen;
         var raw = _sdProtoPicRaw(item);
         if (raw === null) return;
-        var payload = _sdPreviewWidgetPayload(raw, item.pageId || 0);
+        // A shared part's widgets are asked for with the page it is edited on.
+        var onPage = item.kind === 'shared' ? _pgPageByKey(_sdProtoFrameTab(item)) : null;
+        var payload = _sdPreviewWidgetPayload(raw, item.pageId || (onPage && onPage.page_id) || 0);
         var key = raw + '\n' + (payload ? JSON.stringify(payload) : '') + '\n' + (canvasDarkTheme ? 'dark' : 'light');
         var job = { stage: 'doc', done: false };
         var pic = { box: box, frame: null, job: job, marks: [] };
@@ -71676,9 +74162,10 @@ const StyleDesigner = (function () {
         });
     }
 
-    // A loaded picture: its markers read in page pixels (kept for the
-    // marks on the picture), the fade when the page runs past the cut,
-    // the foot's count of links it cannot show.
+    // A loaded picture: its markers read in page pixels and the marks put
+    // on it, the fade when the page runs past the cut, the foot's count of
+    // links it cannot show. A shared part is measured: a frame not as
+    // tall as its part is drawn again at its height.
     function _sdProtoPicLoaded(item, pic) {
         var H = window.PGProtoHotspots;
         var doc = null;
@@ -71688,13 +74175,63 @@ const StyleDesigner = (function () {
             var r = el.getBoundingClientRect();
             return { pic: el.getAttribute('data-pg-pic'), left: r.left, top: r.top, w: r.width, h: r.height };
         });
+        var height = doc.documentElement.scrollHeight;
+        if (item.kind === 'shared') {
+            // The part's own height: the lowest edge of what the body holds
+            // (the document is at least the frame's 1600 high).
+            height = 0;
+            Array.prototype.forEach.call(doc.body ? doc.body.children : [], function (el) {
+                height = Math.max(height, el.getBoundingClientRect().bottom);
+            });
+            _sdProto.pics.partH[item.sharedId] = height;
+            if (H.picPartBox(height) !== item.thumb) _sdProtoPicSettle();
+        }
         pic.box.classList.add('sd-proto-pic-on');
-        pic.box.classList.toggle('sd-proto-pic-long', H.picLong(doc.documentElement.scrollHeight));
+        pic.box.classList.toggle('sd-proto-pic-long', H.picLong(height));
         var foot = H.picFoot(item.rows, pic.marks, item.sharedId);
         var footEl = pic.box.querySelector('.sd-proto-pic-foot');
-        if (!footEl) return;
-        footEl.hidden = !foot.below;
-        footEl.textContent = foot.below === 1 ? _sdT('+1 link below') : _sdT('+{var:1} links below', foot.below);
+        if (footEl) {
+            footEl.hidden = !foot.below;
+            footEl.textContent = foot.below === 1 ? _sdT('+1 link below') : _sdT('+{var:1} links below', foot.below);
+        }
+        _sdProtoHots(item, pic);
+    }
+
+    // The shared frames measured since the last arrangement get their
+    // heights: soon after the last of them, everything is placed again
+    // (a moved frame keeps its place), the boxes resized and moved where
+    // they are, their arrows routed again. The pictures stay.
+    function _sdProtoPicSettle() {
+        var P = _sdProto.pics;
+        var gen = P.gen;
+        clearTimeout(P.settle);
+        P.settle = setTimeout(function () {
+            var canvas = _sdProto.canvas;
+            var ui = _sdProto.ui;
+            if (gen !== P.gen || !_sdProto.layout || !ui) return;
+            var next = window.PGProtoHotspots.layout(_sdProto.marked, _sdProtoSaved(), _sdProtoSections());
+            var at = {};
+            next.frames.concat(next.chips).forEach(function (one) { at[one.id] = one; });
+            _sdProto.items.forEach(function (item) {
+                var n = at[item.id];
+                var node = ui.boxes.querySelector('[data-node="' + String(item.id).replace(/"/g, '') + '"]');
+                if (!n || !node) return;
+                item.x = n.x;
+                item.y = n.y;
+                if (item.thumb !== n.thumb) {
+                    item.thumb = n.thumb;
+                    item.h = n.h;
+                    node.style.height = item.h + 'px';
+                    if (P.boxes[item.id]) P.boxes[item.id].style.height = item.thumb + 'px';
+                }
+                canvas.place(node, item);
+            });
+            _sdProto.layout.headings = next.headings;
+            canvas.groups();
+            canvas.reroute(_sdProto.items.map(function (item) { return item.id; }));
+            _sdProtoFocusMarks(canvas.focused());
+            _sdProtoPicked();
+        }, 150);
     }
 
     // Past the cap of pictures alive, the ones farthest from the view's
@@ -71714,8 +74251,13 @@ const StyleDesigner = (function () {
             pic.box.classList.remove('sd-proto-pic-on', 'sd-proto-pic-long');
             var footEl = pic.box.querySelector('.sd-proto-pic-foot');
             if (footEl) footEl.hidden = true;
+            var hots = pic.box.querySelector('.sd-proto-hots');
+            if (hots) hots.parentNode.removeChild(hots);
             delete P.live[id];
+            delete P.rects[id];
         });
+        // Their arrows leave from the middle again.
+        _sdProto.canvas.reroute(order.slice(SD_PROTO_PIC.alive));
     }
 
     // The tab a frame's links are edited on: a page's own, a shared
@@ -71821,18 +74363,377 @@ const StyleDesigner = (function () {
         }
     }
 
+    // ── Suggest targets (F30 to F34) ──
+    // A dialog over the canvas with one row per link without a target,
+    // grouped by page (PGProtoHotspots.suggestRows()): a sure row ticked
+    // with its page selected, an unsure one asking with its candidates, one
+    // without a suggestion on "Choose a page". While it is open the ticked
+    // rows of the selected frame are drawn as dashed arrows (the core's
+    // dashed()). Nothing is written before Apply; Cancel and Escape write
+    // nothing, and a skipped row is suggested again next time.
+
+    // The pages a link may be pointed at: the tab frames, with the title of
+    // their page settings.
+    function _sdProtoSuggestPages() {
+        return (_sdProto.layout ? _sdProto.layout.frames : []).filter(function (f) { return f.kind === 'page'; }).map(function (f) {
+            var page = _pgPageByKey(f.key);
+            return { id: f.id, name: f.name, title: page ? String(page.page_title || '') : '', bin: !!(page && parseInt(page.binned || 0, 10)) };
+        });
+    }
+
+    // The nearest heading above each link without a target, read from the
+    // tree of its tab or shared component.
+    function _sdProtoSuggestHeadings() {
+        var H = window.PGProtoHotspots;
+        var out = {};
+        (_sdProto.issues ? _sdProto.issues.empty.list : []).forEach(function (one) {
+            var item = _sdProto.byId[one.frame];
+            var row = _sdProtoRow(item, one.port);
+            if (!item || !row) return;
+            var page = (item.kind === 'page') ? _pgPageByKey(item.key) : null;
+            var root = (item.kind === 'shared') ? (_sharedCache[item.sharedId] && _sharedCache[item.sharedId].tree) : (page ? _pgTreeOf(page) : null);
+            if (root) out[one.frame + '|' + one.port] = H.headingOf(root, row.nodeId);
+        });
+        return out;
+    }
+
+    function _sdProtoSuggestOpen() {
+        var H = window.PGProtoHotspots;
+        _sdProtoSuggestClose(false);
+        _sdProtoMenuClose(false);
+        _sdProtoProblemsClose(false);
+        var pages = _sdProtoSuggestPages();
+        var found = H.suggestRows(_sdProto.layout, pages, _sdProtoSuggestHeadings());
+        if (!found.rows.length) return;
+        var rows = found.rows.map(function (r) {
+            r.ticked = r.kind === 'sure';
+            r.target = r.page || '';
+            r.asked = r.kind === 'ask';
+            r.why = '';
+            return r;
+        });
+
+        var el = document.createElement('dialog');
+        el.className = 'dialog dialog-scrollable sd-proto-suggest';
+        el.tabIndex = -1;
+        el.setAttribute('data-bs-modal', 'false');
+        el.setAttribute('aria-labelledby', 'sd-proto-suggest-title');
+        el.innerHTML =
+            '<div class="dialog-header py-3"><div><h6 class="dialog-title mb-0" id="sd-proto-suggest-title">' + esc(_sdT('Suggest targets')) + '</h6>' +
+                    '<div class="small fg-secondary" data-suggest-count></div></div>' +
+                '<button type="button" class="btn-close" data-suggest-cancel aria-label="' + esc(_sdT('Close')) + '"></button></div>' +
+            '<div class="dialog-body small p-0" data-suggest-list></div>' +
+            '<div class="dialog-footer py-3">' +
+                '<button type="button" class="pg-button pg-button-ghost" data-suggest-cancel>' + esc(_sdT('Cancel')) + '</button>' +
+                '<button type="button" class="pg-button pg-button-fill" data-suggest-apply></button>' +
+            '</div>';
+        document.body.appendChild(el);
+        _sdProto.suggest = { el: el, rows: rows, pages: pages, count: found.count, opener: document.activeElement };
+        _sdProtoSuggestDraw();
+
+        Array.prototype.forEach.call(el.querySelectorAll('[data-suggest-cancel]'), function (b) {
+            b.addEventListener('click', function () { _sdProtoSuggestClose(true); });
+        });
+        el.querySelector('[data-suggest-apply]').addEventListener('click', function () { _sdProtoSuggestApply(); });
+        el.addEventListener('keydown', function (event) {
+            // The designer's own keys stay out of the dialog.
+            event.stopPropagation();
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                _sdProtoSuggestClose(true);
+            }
+        });
+        el.addEventListener('cancel', function (event) {
+            event.preventDefault();
+            _sdProtoSuggestClose(true);
+        });
+        // At the canvas's right under the view's bar, the map left of it; on
+        // a screen too narrow for that, 8 from the window's edges.
+        var r = _sdProto.ui.stage.getBoundingClientRect();
+        var right = Math.max(8, window.innerWidth - r.right + 8);
+        if (window.innerWidth - right - 8 < 320) right = 8;
+        el.style.top = Math.max(8, r.top + 8) + 'px';
+        el.style.right = right + 'px';
+        el.style.maxWidth = (window.innerWidth - right - 8) + 'px';
+        el.style.maxHeight = Math.max(240, window.innerHeight - Math.max(8, r.top + 8) - 8) + 'px';
+        if (window.pgUI) pgUI.dialog.show(el, { backdrop: false });
+        else el.show();
+        var first = el.querySelector('input[type="checkbox"]');
+        if (first) first.focus({ preventScroll: true });
+    }
+
+    // The rows drawn again: the head's counts, a group per page, the Apply
+    // button's count; then the dashed arrows.
+    function _sdProtoSuggestDraw() {
+        var s = _sdProto.suggest;
+        if (!s) return;
+        var el = s.el;
+        var focusKey = document.activeElement && el.contains(document.activeElement) ? document.activeElement.getAttribute('data-focus') : null;
+        el.querySelector('[data-suggest-count]').textContent = _sdT('{var:1} sure · {var:2} to ask · {var:3} without a suggestion', [s.count.sure, s.count.ask, s.count.none]);
+        var list = el.querySelector('[data-suggest-list]');
+        list.innerHTML = '';
+        var group = null;
+        var lastFrame = null;
+        s.rows.forEach(function (r, i) {
+            if (r.frame !== lastFrame) {
+                lastFrame = r.frame;
+                var head = _sdProtoEl('div', 'sd-proto-suggest-head fw-semibold px-3 pt-3 pb-1', _sdProtoFrameName(_sdProto.byId[r.frame] || { name: '' }));
+                list.appendChild(head);
+                group = _sdProtoEl('ul', 'list-group list-group-flush');
+                list.appendChild(group);
+            }
+            var li = _sdProtoEl('li', 'list-group-item sd-proto-suggest-row');
+            var top = _sdProtoEl('div', 'sd-proto-suggest-line');
+            var tick = _sdProtoEl('input', 'pg-checkbox');
+            tick.type = 'checkbox';
+            tick.checked = r.ticked;
+            tick.disabled = !r.target;
+            tick.setAttribute('data-focus', 'tick' + i);
+            tick.setAttribute('aria-label', _sdT('Connect "{var}"', r.label));
+            tick.addEventListener('change', function () {
+                r.ticked = tick.checked && !!r.target;
+                _sdProtoSuggestDraw();
+            });
+            top.appendChild(tick);
+            // The label selects its link on the canvas behind.
+            var label = _sdProtoEl('button', 'pg-button pg-button-ghost pg-button-sm sd-proto-suggest-label', r.label);
+            label.type = 'button';
+            label.title = _sdT('Show this link on the map');
+            label.setAttribute('data-focus', 'label' + i);
+            label.addEventListener('click', function () { _sdProtoPick(r.frame, r.port, true); });
+            // The label and its selector: the selector beside a label that
+            // fits, under a long one (the line wraps), the tick before both.
+            var pick = _sdProtoEl('div', 'sd-proto-suggest-pick');
+            pick.appendChild(label);
+            top.appendChild(pick);
+            var select = _sdProtoEl('select', 'pg-input pg-input-sm');
+            select.setAttribute('data-focus', 'select' + i);
+            select.setAttribute('aria-label', _sdT('Where "{var}" goes', r.label));
+            var none = _sdProtoEl('option', '', _sdT('Choose a page'));
+            none.value = '';
+            select.appendChild(none);
+            s.pages.forEach(function (p) {
+                if (p.id === r.frame || p.bin) return;
+                var o = _sdProtoEl('option', '', _sdProtoFrameName(_sdProto.byId[p.id] || p));
+                o.value = p.id;
+                select.appendChild(o);
+            });
+            select.value = r.target;
+            // A page name longer than the selector is whole in its title.
+            select.title = select.selectedIndex >= 0 ? select.options[select.selectedIndex].textContent : '';
+            select.addEventListener('change', function () {
+                r.target = select.value;
+                r.ticked = !!r.target;
+                _sdProtoSuggestDraw();
+            });
+            pick.appendChild(select);
+            li.appendChild(top);
+            // An unsure row asks, its candidates as buttons and Skip.
+            if (r.asked) {
+                var ask = _sdProtoEl('div', 'sd-proto-suggest-ask');
+                ask.appendChild(_sdProtoEl('span', 'fg-secondary', _sdT('Where should "{var}" go?', r.label)));
+                r.candidates.forEach(function (id) {
+                    // The chosen one is pressed and carries a check.
+                    var b = _sdProtoEl('button', 'pg-button pg-button-quiet pg-button-sm');
+                    b.type = 'button';
+                    if (r.target === id) b.innerHTML = '<span class="bi bi-check2" aria-hidden="true"></span>';
+                    b.appendChild(document.createTextNode(_sdProtoFrameName(_sdProto.byId[id] || { name: id })));
+                    b.setAttribute('data-focus', 'pick' + i + id);
+                    b.setAttribute('aria-pressed', r.target === id ? 'true' : 'false');
+                    b.addEventListener('click', function () {
+                        r.target = id;
+                        r.ticked = true;
+                        _sdProtoSuggestDraw();
+                    });
+                    ask.appendChild(b);
+                });
+                var skip = _sdProtoEl('button', 'pg-button pg-button-ghost pg-button-sm', _sdT('Skip'));
+                skip.type = 'button';
+                skip.setAttribute('data-focus', 'skip' + i);
+                skip.addEventListener('click', function () {
+                    r.asked = false;
+                    r.target = '';
+                    r.ticked = false;
+                    _sdProtoSuggestDraw();
+                });
+                ask.appendChild(skip);
+                li.appendChild(ask);
+            }
+            if (r.why) li.appendChild(_sdProtoEl('div', 'fg-danger', r.why));
+            group.appendChild(li);
+        });
+        var n = s.rows.filter(function (r) { return r.ticked && r.target; }).length;
+        var apply = el.querySelector('[data-suggest-apply]');
+        apply.textContent = _sdT('Apply {var} targets', n);
+        apply.disabled = !n || !!s.busy;
+        if (focusKey) {
+            var back = el.querySelector('[data-focus="' + focusKey + '"]') || el.querySelector('[data-focus^="label"]');
+            if (back) back.focus({ preventScroll: true });
+        }
+        _sdProtoSuggestArrows();
+    }
+
+    // The ticked rows of the selected frame as dashed arrows from their
+    // mark to the chosen frame; none when the dialog is closed.
+    function _sdProtoSuggestArrows() {
+        var canvas = _sdProto.canvas;
+        if (!canvas) return;
+        var s = _sdProto.suggest;
+        var id = canvas.focused();
+        canvas.dashed(!s ? [] : s.rows.filter(function (r) {
+            return r.ticked && r.target && r.frame === id && _sdProto.byId[r.target];
+        }).map(function (r) {
+            return { id: 'suggest:' + r.frame + '|' + r.port, from: _sdProto.byId[r.frame], to: _sdProto.byId[r.target], port: r.port };
+        }));
+    }
+
+    function _sdProtoSuggestClose(refocus) {
+        var s = _sdProto.suggest;
+        if (!s) return;
+        _sdProto.suggest = null;
+        _sdProtoSuggestArrows();
+        if (window.pgUI) {
+            pgUI.dialog.on(s.el, 'hidden', function () { s.el.remove(); });
+            pgUI.dialog.hide(s.el);
+        } else {
+            s.el.remove();
+        }
+        var back = (_sdProto.ui && !_sdProto.ui.suggest.hidden) ? _sdProto.ui.suggest : (_sdProto.ui ? _sdProto.ui.viewport : null);
+        if (refocus && back) back.focus({ preventScroll: true });
+    }
+
+    // Apply (F34): each ticked row written as a drawn arrow is
+    // (_sdProtoConnect()), batched: the shared component and live page
+    // warnings asked once, naming what the batch touches; each tab opened
+    // in turn (its lock answered by a heartbeat), its rows written after one
+    // saveState(), so undo on that tab takes back its batch. A row that
+    // cannot be written stays with its reason; then "n links connected"
+    // and the links are read again.
+    function _sdProtoSuggestApply() {
+        var H = window.PGProtoHotspots;
+        var s = _sdProto.suggest;
+        if (!s || s.busy) return;
+        var picks = s.rows.filter(function (r) { return r.ticked && r.target; }).map(function (r) {
+            var item = _sdProto.byId[r.frame];
+            var key = item ? _sdProtoFrameTab(item) : '';
+            var page = key ? _pgPageByKey(key) : null;
+            return { frame: r.frame, port: r.port, page: r.target, tab: key, locked: !!(page && page.access === 'locked'), row: r };
+        });
+        if (!picks.length) return;
+        var batch = H.suggestBatch(picks);
+        var reasons = {
+            target: _sdT('Choose a page'),
+            tab: _sdT('This shared component is on none of the pages you can open.'),
+            locked: _sdT('You do not have content rights for this page\'s folder.'),
+            busy: _sdT('Someone else is editing this page.'),
+            changed: _sdT('This link has changed since the map was drawn.'),
+            rights: _sdT('You cannot change this part of the page.')
+        };
+        s.rows.forEach(function (r) { r.why = ''; });
+        batch.refused.forEach(function (one) { one.pick.row.why = reasons[one.why] || ''; });
+
+        var parts = [];
+        var live = [];
+        batch.tabs.forEach(function (tab) {
+            var page = _pgPageByKey(tab.key);
+            tab.picks.forEach(function (pick) {
+                var item = _sdProto.byId[pick.frame];
+                if (item && item.kind === 'shared') {
+                    if (parts.indexOf(item.name) < 0) parts.push(item.name);
+                } else if (page && page.page_id > 0 && _design && _design.styleId && !(_pgDraftsReady() && page.page_draft)) {
+                    var name = _sdProtoFrameName(item);
+                    if (live.indexOf(name) < 0) live.push(name);
+                }
+            });
+        });
+        var ask = [];
+        if (parts.length) ask.push(_sdT('Shared components: {var}. Save changes them on every page and design that shows them, without a revision.', parts.join(', ')));
+        if (live.length) ask.push(_sdT('Pages on the site: {var}. The changed links go live when you click Publish.', live.join(', ')));
+        var asked = (ask.length && typeof window.pgConfirm === 'function')
+            ? window.pgConfirm({ title: _sdT('Connect these links?'), message: ask.join(' '), confirmText: _sdT('Connect'), cancelText: _sdT('Cancel'), variant: 'warning' })
+            : Promise.resolve(true);
+
+        asked.then(function (ok) {
+            if (!ok || _sdProto.suggest !== s) return;
+            s.busy = true;
+            _sdProtoSuggestDraw();
+            var done = 0;
+            var chain = Promise.resolve();
+            batch.tabs.forEach(function (tab) {
+                chain = chain.then(function () {
+                    return _sdProtoSuggestTab(tab, reasons).then(function (n) { done += n; });
+                });
+            });
+            chain.then(function () {
+                if (_sdProto.suggest !== s) return;
+                s.busy = false;
+                if (done) {
+                    sdToast(esc(_sdT('{var} links connected', done)), 'success', 4000);
+                    _sdProto.canvas.announce(_sdT('{var} links connected', done));
+                }
+                s.rows = s.rows.filter(function (r) { return !r.written; });
+                s.count = { sure: 0, ask: 0, none: 0 };
+                s.rows.forEach(function (r) { s.count[r.kind]++; });
+                if (!s.rows.length) _sdProtoSuggestClose(true);
+                else _sdProtoSuggestDraw();
+                _sdProtoLoad();
+            });
+        });
+    }
+
+    // One tab's rows of a batch: the tab opened, its lock answered, the
+    // rows written after one saveState(). Resolves with how many were.
+    function _sdProtoSuggestTab(tab, reasons) {
+        var H = window.PGProtoHotspots;
+        var fail = function (why) {
+            tab.picks.forEach(function (pick) { pick.row.why = reasons[why]; });
+            return 0;
+        };
+        var write = function () {
+            if (_activeKey !== tab.key || !_sdProto.open) return fail('locked');
+            if (!_collab.mayEdit) return fail('busy');
+            var patches = [];
+            tab.picks.forEach(function (pick) {
+                var item = _sdProto.byId[pick.frame];
+                var row = _sdProtoRow(item, pick.port);
+                var to = _sdProto.byId[pick.page];
+                var href = (row && row.nodeId === pick.row.nodeId) ? _sdProtoArrowHref(item, to, pick.port) : null;
+                var sid = (item && item.kind === 'shared') ? item.sharedId : 0;
+                var root = sid ? (_sharedCache[sid] && _sharedCache[sid].tree) : tree;
+                var node = (href !== null && root) ? findNodeById(row.nodeId, root) : null;
+                var patch = node ? H.hrefPatch(node, row, href, to) : null;
+                if (!patch) { pick.row.why = reasons.changed; return; }
+                if (!_sdCanEditNode(node, row.source === 'text' ? 'text' : undefined)) { pick.row.why = reasons.rights; return; }
+                patches.push({ node: node, patch: patch, sid: sid, pick: pick });
+            });
+            if (!patches.length) return 0;
+            saveState();
+            patches.forEach(function (one) {
+                H.applyPatch(one.node.props, one.patch);
+                if (one.sid) _sdSharedMarkEdited(one.node);
+                one.pick.row.written = true;
+            });
+            render();
+            return patches.length;
+        };
+        if (_activeKey !== tab.key) _pgTabsSwitch(tab.key);
+        if (_activeKey !== tab.key) return Promise.resolve(fail('locked'));
+        if (!_collab.ready) return Promise.resolve(write());
+        return _collabBeatNow().then(write, write);
+    }
+
     // The keyboard's way to draw a row's arrow: a menu of the tab frames
     // and chips its link may be pointed at (PGProtoHotspots.drawTargets()),
     // the current one checked; a choice goes through _sdProtoConnect() like
     // a drawn arrow. Arrows, Home and End move, Escape closes and gives the
     // focus back to the row. Answers whether it opened.
-    // The target menu of a frame's link row; anchor (optional) is where it
-    // opens and what takes the focus back (a row of the links panel).
-    function _sdProtoMenuOpen(rowEl, anchor) {
+    // The target menu of a frame's link (its frame id and port); anchor is
+    // where it opens and what takes the focus back (a row of the links
+    // panel).
+    function _sdProtoMenuOpen(frameId, port, anchor) {
         var H = window.PGProtoHotspots;
-        var box = rowEl.closest('[data-node]');
-        var item = box ? _sdProto.byId[box.getAttribute('data-node')] : null;
-        var row = item && item.rows ? item.rows[parseInt(rowEl.getAttribute('data-row'), 10) || 0] : null;
+        var item = _sdProto.byId[frameId] || null;
+        var row = _sdProtoRow(item, port);
         if (!row || !H.drawable(row)) return false;
         _sdProtoMenuClose(false);
 
@@ -71888,15 +74789,19 @@ const StyleDesigner = (function () {
             }
         });
         ui.root.appendChild(el);
-        _sdProto.menu = { el: el, rowEl: anchor || rowEl };
+        _sdProto.menu = { el: el, rowEl: anchor };
 
-        // Under the row, or above it when it would leave the view.
-        var r = (anchor || rowEl).getBoundingClientRect();
+        // Under its row or mark, else above, else beside it, always inside
+        // the canvas under the view's bar (never over its zoom controls).
+        var r = anchor.getBoundingClientRect();
         var o = ui.root.getBoundingClientRect();
-        var top = r.bottom - o.top + 2;
-        if (top + el.offsetHeight > o.height) top = Math.max(4, r.top - o.top - el.offsetHeight - 2);
-        el.style.left = Math.max(4, Math.min(r.left - o.left, o.width - el.offsetWidth - 4)) + 'px';
-        el.style.top = top + 'px';
+        var c = ui.stage.getBoundingClientRect();
+        var near = anchor.closest && anchor.closest('.sd-proto-list') ? ui.root.getBoundingClientRect() : c;
+        var area = { left: near.left - o.left, top: c.top - o.top, right: near.right - o.left, bottom: c.bottom - o.top };
+        el.style.maxHeight = Math.max(120, area.bottom - area.top - 8) + 'px';
+        var at = window.PGProtoHotspots.menuPlace({ left: r.left - o.left, top: r.top - o.top, right: r.right - o.left, bottom: r.bottom - o.top }, { w: el.offsetWidth, h: el.offsetHeight }, area);
+        el.style.left = at.left + 'px';
+        el.style.top = at.top + 'px';
 
         var first = el.querySelector('.sd-proto-menu-item[aria-checked="true"]') || el.querySelector('.sd-proto-menu-item');
         if (!first) el.tabIndex = -1;
@@ -71914,10 +74819,9 @@ const StyleDesigner = (function () {
 
     // A row's element selected on the canvas: its tab opened first (a
     // shared component's on a tab placing it), the prototype view closed.
-    function _sdProtoOpenRow(rowEl) {
-        var box = rowEl.closest('[data-node]');
-        var item = box ? _sdProto.byId[box.getAttribute('data-node')] : null;
-        var row = item && item.rows ? item.rows[parseInt(rowEl.getAttribute('data-row'), 10) || 0] : null;
+    function _sdProtoOpenRow(frameId, port) {
+        var item = _sdProto.byId[frameId] || null;
+        var row = _sdProtoRow(item, port);
         if (!row) return;
 
         var key = _sdProtoFrameTab(item);
@@ -73791,6 +76695,255 @@ const StyleDesigner = (function () {
     });
 
     // ── Tab bar ───────────────────────────────────────────────────────────
+    // ── The strip's plan ──
+    // Pure: what the page strip draws for its width. The strip never scrolls
+    // or wraps; what does not fit makes room step by step, the fullest
+    // drawing first and the first step that fits wins:
+    //   0  everything: the open group's box with its name, all its tabs,
+    //      a chip with name and count for every other group;
+    //   1  the chips lose their count;
+    //   2  the box's far tabs go behind "+N" (the tabs nearest the open
+    //      page stay, down to three);
+    //   3  the chips fold from the right into "+N groups";
+    //   4  the design's name becomes its icon, the box loses its name; the
+    //      box may keep two tabs;
+    //   5  all chips become one ("4 groups"), the box down to one tab;
+    //   6  the open page's tab alone, its name cut, at least o.minTab wide.
+    // A design without groups has its tabs without a box and chips: only
+    // steps 2, 4 and 6 apply, down to the open tab and "+N".
+    // `o`: width (px the strip has), gap (between two items), designSave
+    // (px the design's name gives back as an icon), grouped, active (key),
+    // tabs [{key, w}] (the open group's, or every tab), head {w, wShort}
+    // and boxExtra (the box's name and its own padding), chips [{id, w,
+    // wShort}] (the other groups, in order), more, moreGroups, allGroups
+    // (the widths of "+N", "+N groups" and "N groups").
+    // Returns { step, tabs, hidden, chips, folded, counts, headName,
+    // designIcon, chipMode ('all', 'some', 'one', 'none'), more, cut }.
+    function _pgTabStripPlan(o) {
+        var gap = +o.gap || 0;
+        var tabs = o.tabs || [], chips = o.chips || [];
+        var n = tabs.length, C = chips.length;
+        var grouped = !!o.grouped;
+        var at = -1;
+        tabs.forEach(function (t, i) { if (t.key === o.active) at = i; });
+        if (at === -1) at = 0;
+        // The order in which tabs are kept: the open one, then right and
+        // left of it in turn.
+        var rank = n ? [at] : [];
+        for (var d = 1; rank.length < n; d++) {
+            if (at + d < n) rank.push(at + d);
+            if (at - d >= 0) rank.push(at - d);
+        }
+        var keep = function (k) {
+            var pick = rank.slice(0, k);
+            return tabs.filter(function (t, i) { return pick.indexOf(i) !== -1; });
+        };
+        var row = function (ws) {
+            var s = 0;
+            ws.forEach(function (w) { s += (+w || 0); });
+            return s + (ws.length > 1 ? gap * (ws.length - 1) : 0);
+        };
+        var build = function (step, k, c, mode, icon) {
+            var shown = keep(k);
+            var more = k < n && step !== 6;
+            var counts = step === 0;
+            var headName = grouped && !icon;
+            var items = [];
+            if (grouped) {
+                var inBox = [headName ? o.head.w : o.head.wShort];
+                shown.forEach(function (t) { inBox.push(t.w); });
+                if (more) inBox.push(o.more);
+                items.push(row(inBox) + (+o.boxExtra || 0));
+                var vis = (mode === 'one' || mode === 'none') ? [] : chips.slice(0, c);
+                vis.forEach(function (ch) { items.push(counts ? ch.w : ch.wShort); });
+                if (mode === 'some') items.push(o.moreGroups);
+                if (mode === 'one') items.push(o.allGroups);
+            } else {
+                shown.forEach(function (t) { items.push(t.w); });
+                if (more) items.push(o.more);
+            }
+            var visIds = (mode === 'all' || mode === 'some') ? chips.slice(0, c).map(function (ch) { return ch.id; }) : [];
+            return {
+                need: row(items),
+                room: (+o.width || 0) + (icon ? (+o.designSave || 0) : 0),
+                plan: {
+                    step: step,
+                    tabs: shown.map(function (t) { return t.key; }),
+                    hidden: tabs.filter(function (t) { return shown.indexOf(t) === -1; }).map(function (t) { return t.key; }),
+                    chips: visIds,
+                    folded: chips.filter(function (ch) { return visIds.indexOf(ch.id) === -1; }).map(function (ch) { return ch.id; }),
+                    counts: counts && C > 0,
+                    headName: headName,
+                    designIcon: !!icon,
+                    chipMode: grouped ? (C ? mode : 'none') : 'none',
+                    more: more,
+                    cut: step === 6
+                }
+            };
+        };
+        var tries = [];
+        var k, c;
+        var kMin3 = Math.min(3, n), kMin2 = Math.min(2, n), kMin1 = Math.min(1, n);
+        if (grouped) {
+            tries.push([0, n, C, 'all', false]);
+            if (C) tries.push([1, n, C, 'all', false]);
+            for (k = n - 1; k >= kMin3; k--) tries.push([2, k, C, 'all', false]);
+            if (C > 1) for (c = C - 1; c >= 1; c--) tries.push([3, kMin3, c, 'some', false]);
+            for (k = kMin3; k >= kMin2; k--) {
+                for (c = C; c >= 1; c--) tries.push([4, k, c, c < C ? 'some' : 'all', true]);
+                if (!C) tries.push([4, k, 0, 'all', true]);
+            }
+            if (C) for (k = kMin2; k >= kMin1; k--) tries.push([5, k, 0, 'one', true]);
+        } else {
+            tries.push([0, n, 0, 'all', false]);
+            for (k = n - 1; k >= kMin1; k--) tries.push([2, k, 0, 'all', false]);
+            for (k = n; k >= kMin1; k--) tries.push([4, k, 0, 'all', true]);
+        }
+        for (var i = 0; i < tries.length; i++) {
+            var t = tries[i];
+            var b = build(t[0], t[1], t[2], t[3], t[4]);
+            if (b.need <= b.room) return b.plan;
+        }
+        return build(6, kMin1, 0, 'none', true).plan;
+    }
+
+    // The group the strip opens: always the open page's ('' when the page
+    // has none, "Other" in a design with groups).
+    function _pgTabStripOpenGroup(pages, activeKey) {
+        for (var i = 0; i < pages.length; i++) {
+            if (pages[i].key === activeKey) return pages[i].tabGroup || '';
+        }
+        return '';
+    }
+
+    var _pgTabGroupLast = {};   // gid → the key last open in that group
+    var _pgTabsFitPlan = null;  // the plan the strip is drawn with
+    var _pgTabsFitObs = null;
+    var _pgTabsFitRaf = 0;
+
+    // ── Tab states ──
+    // What a tab shows beside its name, in the drawing's order. Before the
+    // name: the changed dot (always in the markup, shown by the `dirty`
+    // class), the lock of a page somebody else has open for editing, the
+    // home page's house. After it: the draft pill, or the schedule badge in
+    // its place; a mark of another feature that belongs after the name goes
+    // into `after` too. Last: the open tab's three-dot menu, the × of a page
+    // never saved, or the lock of a page whose folder the operator has no
+    // content rights to (that tab does not open, and nobody's lock is shown
+    // on it). `tip` lists the states that show as a mark only, for the
+    // tab's title. Pure: s = { active, drafts, sched, holder, menus }.
+    function _pgTabState(p, s) {
+        var before = [], after = [], tip = [], end = '';
+        var rights = (p.access === 'locked');
+        if (s.holder && !rights) { before.push('busy'); tip.push('busy'); }
+        if (p.page_home) { before.push('home'); tip.push('home'); }
+        if (s.sched) { after.push('sched'); tip.push('sched'); }
+        else if (s.drafts && p.page_draft) { after.push('draft'); tip.push('draft'); }
+        if (rights) { end = 'rights'; tip.push('rights'); }
+        else if (s.menus && s.active) end = 'menu';
+        else if (s.menus && p.page_id === 0) end = 'close';
+        return { before: before, after: after, end: end, tip: tip };
+    }
+
+    // One tab. A <div>, not a <button>: the label becomes an <input> while
+    // renaming, and form controls inside a button cannot take focus in
+    // every browser.
+    function _pgTabHtml(p, gid) {
+        var name  = p.page_name ? p.page_name : _sdT('New Page');
+        var dirty = _pgPageDirty(p);
+        // A page in a folder the operator has no content rights to is listed
+        // and does not open. It is shown rather than hidden because they
+        // already know it exists — the design's other pages link to it. A
+        // page behind a private or membership folder never reached the
+        // browser at all (pg_designer_page_access).
+        var locked = (p.access === 'locked');
+        // A page kept off the site says so on its tab; one that goes on or
+        // comes off at a set time says when.
+        var draft = _pgDraftsReady() && !!p.page_draft;
+        var sched = _pgScheduleNote(p);
+        var holder = _pgTabHolder(p);
+        // Only the active tab carries the ⋮ menu (rename, settings,
+        // duplicate, detach, delete) so the strip stays quiet; every tab
+        // opens the same menu on right-click.
+        var st = _pgTabState(p, { active: p.key === _activeKey, drafts: draft, sched: sched, holder: holder, menus: !_sdComponentOnly() });
+        var words = {
+            busy:   _sdT('Open for editing by {name}').replace('{name}', holder),
+            home:   _sdT('Home page'),
+            sched:  sched,
+            draft:  _sdT('Draft: not on the site. Visitors cannot open it.'),
+            rights: _sdT('You do not have content rights for this page\'s folder.')
+        };
+        var marks = {
+            busy:   '<span class="sd-tab-busy bi bi-lock" title="' + esc(words.busy) + '" aria-hidden="true"></span>',
+            home:   '<span class="sd-tab-home bi bi-house" title="' + esc(words.home) + '" aria-hidden="true"></span>',
+            sched:  '<span class="sd-tab-draft-badge sd-tab-sched-badge" title="' + esc(sched) + '"><span class="bi bi-clock" aria-hidden="true"></span><span class="visually-hidden">' + esc(sched) + '</span></span>',
+            draft:  '<span class="sd-tab-draft-badge" title="' + esc(words.draft) + '">' + esc(_sdT('Draft')) + '</span>',
+            menu:   '<span class="sd-tab-menu" data-menu="' + esc(p.key) + '" title="' + esc(_sdT('Page options')) + '"><span class="bi bi-three-dots-vertical"></span></span>',
+            close:  '<span class="sd-tab-close" data-close="' + esc(p.key) + '" title="' + esc(_sdT('Remove')) + '">&times;</span>',
+            rights: '<span class="sd-tab-lock bi bi-lock-fill" title="' + esc(words.rights) + '"></span>'
+        };
+        var pick = function (k) { return marks[k] || ''; };
+        var title = [name].concat(st.tip.map(function (k) { return words[k]; })).join(' · ');
+        return '<div class="sd-tab' + (p.key === _activeKey ? ' active' : '') + (dirty ? ' dirty' : '') +
+               (locked ? ' sd-tab-locked' : '') + (draft ? ' sd-tab-draft' : '') + '"' +
+               ' data-key="' + esc(p.key) + '"' +
+               (gid ? ' data-group="' + esc(gid) + '" data-color="' + esc(_pgTabGroups[gid].color) + '"' : '') +
+               ' role="tab" tabindex="0" title="' + esc(title) + '">' +
+               '<span class="sd-tab-dot" aria-hidden="true"></span>' +
+               st.before.map(pick).join('') +
+               '<span class="sd-tab-name">' + esc(name) + '</span>' +
+               st.after.map(pick).join('') +
+               pick(st.end) +
+               '</div>';
+    }
+
+    // The name of the person who has this page open for editing, from the
+    // presence beat (pg_collab_peers()); '' when nobody else has.
+    function _pgTabHolder(p) {
+        if (!p || !(p.page_id > 0)) return '';
+        var peers = (typeof _collab !== 'undefined' && _collab && _collab.peers) ? _collab.peers : [];
+        for (var i = 0; i < peers.length; i++) {
+            var peer = peers[i];
+            if (peer && peer.editing && parseInt(peer.page_id, 10) === p.page_id) {
+                return peer.name || peer.username || _sdT('another user');
+            }
+        }
+        return '';
+    }
+
+    // The pages somebody else holds, as one string: the strip is drawn
+    // again only when it changes (_pgTabsSyncBusy()).
+    var _pgTabBusySig = '';
+    function _pgTabBusyKey() {
+        return _pages.map(function (p) {
+            var who = _pgTabHolder(p);
+            return who ? p.page_id + ':' + who : '';
+        }).filter(Boolean).join('|');
+    }
+    // Runs after every presence beat. A tab being renamed or dragged is
+    // left alone; the next beat draws the change.
+    function _pgTabsSyncBusy() {
+        if (_pgTabBusyKey() === _pgTabBusySig) return;
+        var list = document.getElementById('sd-tabs-list');
+        if (list && list.querySelector('.sd-tab-rename, .sd-tab-dragging')) return;
+        _pgTabsRender();
+    }
+
+    // The changed dot takes room only while it shows, so a tab that
+    // becomes changed (or saved) grows or shrinks: the strip is fitted
+    // again in the next frame.
+    function _pgTabSetDirty(t, on) {
+        if (!t || t.classList.contains('dirty') === on) return;
+        t.classList.toggle('dirty', on);
+        cancelAnimationFrame(_pgTabsFitRaf);
+        _pgTabsFitRaf = requestAnimationFrame(function () { _pgTabsFit(); });
+    }
+
+    // The strip: in a design with groups, the open page's group is a box
+    // with its name, colour and tabs, and every other group is a chip with
+    // its name and count ("Other" for the pages without a group, last). A
+    // design without groups has its tabs alone. What does not fit goes
+    // behind "+N" and "+N groups" (_pgTabsFit()); the strip never scrolls.
     function _pgTabsRender() {
         var list = document.getElementById('sd-tabs-list');
         if (!list) return;
@@ -73798,86 +76951,275 @@ const StyleDesigner = (function () {
         // where a group's tabs are pulled together and an empty group goes.
         _pgTabsNormalizeGroups();
         var editable = _pgTabLayoutEditable();
-        var chipDone = {};
-        var html = '';
+        var grouped = Object.keys(_pgTabGroups).length > 0;
+        var open = grouped ? _pgTabStripOpenGroup(_pages, _activeKey) : '';
+        if (grouped) _pgTabGroupLast[open] = _activeKey;
+        // One group is open at a time: every other one is folded.
+        _pgTabGroupsCollapsed = {};
+        Object.keys(_pgTabGroups).forEach(function (gid) { if (gid !== open) _pgTabGroupsCollapsed[gid] = true; });
+        var tabs = '';
         _pages.forEach(function (p) {
-            var name  = p.page_name ? p.page_name : _sdT('New Page');
-            var dirty = _pgPageDirty(p);
-            // A group's chip leads its tabs. The tabs of a folded group stay
-            // in the strip, hidden, so folding is a class change; the open
-            // page stays visible inside a folded group.
-            var gid = (p.tabGroup && _pgTabGroups[p.tabGroup]) ? p.tabGroup : '';
-            if (gid && !chipDone[gid]) {
-                chipDone[gid] = true;
-                html += _pgTabGroupChipHtml(gid, editable);
-            }
-            var folded = !!(gid && _pgTabGroupsCollapsed[gid] && p.key !== _activeKey);
-            // Active tab: a ⋮ menu (rename, settings, duplicate, detach,
-            // delete). Inactive unsaved tab: an × that discards it. Only the
-            // active tab carries the menu so the strip stays quiet; every
-            // tab opens the same menu on right-click.
-            var extra = '';
-            if (_sdComponentOnly()) {
-                extra = '';
-            } else if (p.key === _activeKey) {
-                extra = '<span class="sd-tab-menu" data-menu="' + esc(p.key) + '" title="' + esc(_sdT('Page options')) + '"><span class="bi bi-three-dots-vertical"></span></span>';
-            } else if (p.page_id === 0) {
-                extra = '<span class="sd-tab-close" data-close="' + esc(p.key) + '" title="' + esc(_sdT('Remove')) + '">&times;</span>';
-            }
-            // A <div>, not a <button>: the label becomes an <input> while
-            // renaming, and form controls inside a button cannot take focus
-            // in every browser.
-            // A page in a folder the operator has no content rights to is
-            // listed and does not open. It is shown rather than hidden
-            // because they already know it exists — the design's other pages
-            // link to it. A page behind a private or membership folder never
-            // reached the browser at all (pg_designer_page_access).
-            var locked = (p.access === 'locked');
-            if (locked) {
-                extra = '<span class="sd-tab-lock bi bi-lock-fill" title="' +
-                        esc(_sdT('You do not have content rights for this page\'s folder.')) + '"></span>';
-            }
-            // A page kept off the site says so on its tab; one that goes on
-            // or comes off at a set time says when.
-            var draft = _pgDraftsReady() && !!p.page_draft;
-            var sched = _pgScheduleNote(p);
-            html += '<div class="sd-tab' + (p.key === _activeKey ? ' active' : '') + (dirty ? ' dirty' : '') +
-                    (locked ? ' sd-tab-locked' : '') + (draft ? ' sd-tab-draft' : '') + (folded ? ' sd-tab-folded' : '') + '"' +
-                    ' data-key="' + esc(p.key) + '"' +
-                    (gid ? ' data-group="' + esc(gid) + '" data-color="' + esc(_pgTabGroups[gid].color) + '"' : '') +
-                    ' role="tab" tabindex="0" title="' + esc(name) + '">' +
-                    '<span class="sd-tab-dot" aria-hidden="true"></span>' +
-                    '<span class="sd-tab-name">' + esc(name) + '</span>' +
-                    (sched ? '<span class="sd-tab-draft-badge sd-tab-sched-badge" title="' + esc(sched) + '"><span class="bi bi-clock" aria-hidden="true"></span><span class="visually-hidden">' + esc(sched) + '</span></span>'
-                           : (draft ? '<span class="sd-tab-draft-badge" title="' + esc(_sdT('Draft: not on the site. Visitors cannot open it.')) + '">' + esc(_sdT('Draft')) + '</span>' : '')) +
-                    extra +
-                    '</div>';
+            if (grouped && (p.tabGroup || '') !== open) return;
+            tabs += _pgTabHtml(p, p.tabGroup || '');
         });
+        var more = '<button type="button" class="sd-tabs-more" data-more="tabs" aria-haspopup="menu" hidden></button>';
+        var html = tabs + more;
+        if (grouped) {
+            html = '<div class="sd-tab-box" data-group="' + esc(open) + '" data-color="' + esc(open ? _pgTabGroups[open].color : 'grey') + '">' +
+                   _pgTabGroupChipHtml(open, editable, true) + tabs + more + '</div>';
+            var order = [], seen = {};
+            _pages.forEach(function (p) {
+                var gid = p.tabGroup || '';
+                if (gid && gid !== open && !seen[gid]) { seen[gid] = true; order.push(gid); }
+            });
+            if (open && _pages.some(function (p) { return !p.tabGroup; })) order.push('');
+            order.forEach(function (gid) { html += _pgTabGroupChipHtml(gid, editable, false); });
+            html += '<button type="button" class="sd-tabs-more sd-tabs-more-groups" data-more="groups" aria-haspopup="menu" hidden></button>';
+        }
+        _pgTabBusySig = _pgTabBusyKey();
+        list.classList.toggle('sd-tabs-grouped', grouped);
         list.innerHTML = html;
         _pgTabsSyncViewButton();
         _pgTabsSyncPublishButton();
-        _pgTabsAllSync();
-        // The strip scrolls on its own; keep the active tab in view.
-        var act = list.querySelector('.sd-tab.active');
-        if (act && list.scrollWidth > list.clientWidth) {
-            var l = act.offsetLeft, r = l + act.offsetWidth;
-            if (l < list.scrollLeft) list.scrollLeft = l - 8;
-            else if (r > list.scrollLeft + list.clientWidth) list.scrollLeft = r - list.clientWidth + 8;
+        _pgTabsFit();
+    }
+
+    // Measures the strip drawn in full and its short forms, asks the plan
+    // (_pgTabStripPlan()) what fits, and hides the rest. Runs again when
+    // the toolbar changes width.
+    function _pgTabsFit(again) {
+        var list = document.getElementById('sd-tabs-list');
+        if (!list || list.querySelector('.sd-tab-rename')) return;
+        // The strip's own width: it changes with the window and with the
+        // toolbar's other buttons, which come and go after the first draw.
+        // A refit keeps the width it measures, so it settles in one round.
+        if (!_pgTabsFitObs && window.ResizeObserver) {
+            _pgTabsFitObs = new ResizeObserver(function () {
+                cancelAnimationFrame(_pgTabsFitRaf);
+                _pgTabsFitRaf = requestAnimationFrame(function () { _pgTabsFit(); });
+            });
+            _pgTabsFitObs.observe(list);
         }
+        var body = document.body;
+        var designBtn = document.getElementById('sd-design-menu-btn');
+        var shortForms = function (on) {
+            list.classList.toggle('sd-strip-nocount', on);
+            list.classList.toggle('sd-strip-nohead', on);
+            body.classList.toggle('sd-design-icon', on);
+        };
+        // Everything shown, the counters with a two-digit sample.
+        shortForms(false);
+        list.classList.remove('sd-strip-cut', 'sd-strip-draftshort');
+        body.classList.remove('sd-design-bare', 'sd-strip-noadd', 'sd-strip-nopagecount');
+        list.style.minWidth = '';
+        var tabEls  = [].slice.call(list.querySelectorAll('.sd-tab'));
+        var chipEls = [].slice.call(list.querySelectorAll('.sd-tab-group.collapsed'));
+        var head    = list.querySelector('.sd-tab-box-head');
+        var box     = list.querySelector('.sd-tab-box');
+        var moreEl  = list.querySelector('.sd-tabs-more[data-more="tabs"]');
+        var groupsEl = list.querySelector('.sd-tabs-more-groups');
+        tabEls.concat(chipEls).forEach(function (el) { el.classList.remove('sd-tab-folded'); });
+        if (moreEl) { moreEl.hidden = false; moreEl.textContent = '+88'; }
+        if (groupsEl) { groupsEl.hidden = false; groupsEl.textContent = _sdT('+{n} groups').replace('{n}', '88'); }
+        var w = function (el) { return el ? el.getBoundingClientRect().width : 0; };
+        var gap = parseFloat(getComputedStyle(list).columnGap) || 0;
+        // Two pixels kept back for rounding.
+        var room = list.clientWidth - 2;
+        var tabW = tabEls.map(w), chipW = chipEls.map(w);
+        var headW = w(head), moreW = w(moreEl), groupsW = w(groupsEl);
+        var boxExtra = 0;
+        if (box) {
+            var inner = [].slice.call(box.children).map(w);
+            boxExtra = w(box) - inner.reduce(function (a, b) { return a + b; }, 0) - gap * Math.max(0, inner.length - 1);
+        }
+        if (groupsEl) groupsEl.textContent = _sdT('{n} groups').replace('{n}', '88');
+        var allW = w(groupsEl);
+        // The room the icon gives back is measured, not assumed: a toolbar
+        // already at its narrowest gives nothing.
+        shortForms(true);
+        var headShort = w(head), chipShort = chipEls.map(w), designSave = Math.max(0, list.clientWidth - 2 - room);
+        shortForms(false);
+        var plan = _pgTabStripPlan({
+            width: room, gap: gap, designSave: designSave,
+            grouped: !!box, active: _activeKey, boxExtra: boxExtra,
+            head: { w: headW, wShort: headShort },
+            tabs: tabEls.map(function (el, i) { return { key: el.dataset.key, w: tabW[i] }; }),
+            chips: chipEls.map(function (el, i) { return { id: el.dataset.group || '', w: chipW[i], wShort: chipShort[i] }; }),
+            more: moreW, moreGroups: groupsW, allGroups: allW
+        });
+        _pgTabsFitPlan = plan;
+        tabEls.forEach(function (el) { el.classList.toggle('sd-tab-folded', plan.tabs.indexOf(el.dataset.key) === -1); });
+        chipEls.forEach(function (el) { el.classList.toggle('sd-tab-folded', plan.chips.indexOf(el.dataset.group || '') === -1); });
+        if (moreEl) {
+            moreEl.hidden = !plan.more;
+            moreEl.textContent = '+' + plan.hidden.length;
+            moreEl.title = _sdT('{n} pages that do not fit').replace('{n}', plan.hidden.length);
+        }
+        if (groupsEl) {
+            groupsEl.hidden = !(plan.chipMode === 'some' || plan.chipMode === 'one');
+            groupsEl.textContent = (plan.chipMode === 'one' ? _sdT('{n} groups') : _sdT('+{n} groups')).replace('{n}', plan.folded.length);
+        }
+        list.classList.toggle('sd-strip-nocount', !plan.counts);
+        list.classList.toggle('sd-strip-nohead', !plan.headName);
+        list.classList.toggle('sd-strip-cut', plan.cut);
+        body.classList.toggle('sd-design-icon', plan.designIcon);
+        body.classList.toggle('sd-design-bare', plan.cut);
+        // At step 6 the open tab's state and menu stay and its name is cut
+        // last: first the Add Page button leaves the row (its action is the
+        // first row of the Pages list), then the Pages button's count, then
+        // the draft pill's word, each only while the name is still cut. The
+        // strip keeps the room of the state, the menu and a short name.
+        var act = plan.cut ? list.querySelector('.sd-tab.active') : null;
+        var nameEl = act ? act.querySelector('.sd-tab-name') : null;
+        var hold = function () {
+            list.style.minWidth = '';
+            if (!act || !nameEl) return;
+            var need = act.scrollWidth - w(nameEl) + Math.min(nameEl.scrollWidth, 16) + (box ? w(box) - w(act) : 0);
+            list.style.minWidth = Math.ceil(need) + 'px';
+        };
+        hold();
+        if (act && nameEl) {
+            var gives = [[body, 'sd-strip-noadd'], [body, 'sd-strip-nopagecount'], [list, 'sd-strip-draftshort']];
+            for (var g = 0; g < gives.length; g++) {
+                if (g > 0 && nameEl.scrollWidth <= nameEl.clientWidth + 1) break;
+                // With one page there is no Pages list to carry Add Page.
+                if (g === 0 && _pages.length < 2) continue;
+                gives[g][0].classList.add(gives[g][1]);
+                hold();
+            }
+        }
+        list.setAttribute('data-step', String(plan.step));
+        // As an icon, the design's name is in the button's tip.
+        if (designBtn) {
+            if (!designBtn.hasAttribute('data-sd-title')) designBtn.setAttribute('data-sd-title', designBtn.title || '');
+            var nm = document.getElementById('sd-design-menu-name');
+            designBtn.title = plan.designIcon && nm ? nm.textContent : designBtn.getAttribute('data-sd-title');
+        }
+        // The "All pages" button beside the strip comes and goes with what
+        // is hidden; the strip's width changes with it, so it is fitted once
+        // more when it did.
+        var all = document.getElementById('sd-tabs-all');
+        var was = all ? all.hidden : true;
+        _pgTabsAllSync();
+        if (all && all.hidden !== was && !again) _pgTabsFit(true);
+    }
+
+    // The list a chip opens, under it: a group's pages ("8 more pages",
+    // "Open the group in the strip"), the tabs behind "+N", or the groups
+    // behind "+N groups" (a group lists its pages). A page picked here is
+    // opened, and its group with it.
+    function _pgTabsChipList(anchor, kind, gid, all) {
+        _pgTabsCloseMenu();
+        var plan = _pgTabsFitPlan;
+        var LIMIT = 5;
+        var head = '', rows = '';
+        var pageRow = function (p) {
+            if (!p) return '';
+            var locked = (p.access === 'locked');
+            // A row carries its tab's states: the home page's house in place
+            // of the page icon, the changed dot, the lock of a page somebody
+            // else edits, the draft pill.
+            var holder = locked ? '' : _pgTabHolder(p);
+            return '<button type="button" class="sd-tab-popmenu-item sd-tabs-list-page' + (p.key === _activeKey ? ' active' : '') + '" data-key="' + esc(p.key) + '"' + (locked ? ' disabled' : '') + '>' +
+                   '<span class="bi ' + (p.page_home ? 'bi-house' : 'bi-file-earmark') + ' me-3"' + (p.page_home ? ' title="' + esc(_sdT('Home page')) + '"' : '') + ' aria-hidden="true"></span>' +
+                   '<span class="sd-tabs-list-name">' + esc(p.page_name || _sdT('New Page')) + '</span>' +
+                   (_pgPageDirty(p) ? '<span class="sd-tabs-list-dirty" title="' + esc(_sdT('Unsaved Changes')) + '"></span>' : '') +
+                   (holder ? '<span class="bi bi-lock sd-tabs-list-busy" title="' + esc(_sdT('Open for editing by {name}').replace('{name}', holder)) + '"></span>' : '') +
+                   ((_pgDraftsReady() && p.page_draft) ? '<span class="sd-tab-draft-badge">' + esc(_sdT('Draft')) + '</span>' : '') +
+                   (locked ? '<span class="bi bi-lock-fill sd-tabs-list-lock" aria-hidden="true"></span>' : '') +
+                   '</button>';
+        };
+        if (kind === 'tabs') {
+            var keys = plan ? plan.hidden : [];
+            head = _sdT('{n} pages that do not fit').replace('{n}', keys.length);
+            keys.forEach(function (k) { rows += pageRow(_pgPageByKey(k)); });
+        } else if (kind === 'group') {
+            var members = gid ? _pgTabGroupMembers(gid) : _pages.filter(function (p) { return !p.tabGroup; });
+            head = gid ? _pgTabGroupLabel(gid) : _sdT('Other');
+            members.slice(0, all ? members.length : LIMIT).forEach(function (p) { rows += pageRow(p); });
+            if (!all && members.length > LIMIT) {
+                rows += '<button type="button" class="sd-tab-popmenu-item sd-tabs-list-rest" data-act="all"><span class="bi bi-three-dots me-3" aria-hidden="true"></span>' +
+                        esc(_sdT('{n} more pages').replace('{n}', members.length - LIMIT)) + '</button>';
+            }
+            rows += '<div class="sd-tab-popmenu-sep"></div>' +
+                    '<button type="button" class="sd-tab-popmenu-item sd-tabs-list-rest" data-act="open"><span class="bi bi-arrows-expand-vertical me-3" aria-hidden="true"></span>' +
+                    esc(_sdT('Open the group in the strip')) + '</button>';
+        } else {
+            head = _sdT('Groups');
+            (plan ? plan.folded : []).forEach(function (id) {
+                var n = id ? _pgTabGroupMembers(id).length : _pages.filter(function (p) { return !p.tabGroup; }).length;
+                rows += '<button type="button" class="sd-tab-popmenu-item" data-group-row="' + esc(id) + '">' +
+                        '<span class="sd-tab-color-dot me-3" data-color="' + esc(id ? _pgTabGroups[id].color : 'grey') + '" aria-hidden="true"></span>' +
+                        '<span class="sd-tabs-list-name">' + esc(id ? _pgTabGroupLabel(id) : _sdT('Other')) + '</span>' +
+                        '<span class="sd-tabs-list-count">' + n + '</span><span class="bi bi-chevron-right ms-2" aria-hidden="true"></span></button>';
+            });
+        }
+        var m = document.createElement('div');
+        m.className = 'sd-tab-popmenu sd-tabs-list';
+        m.setAttribute('role', 'menu');
+        m.setAttribute('aria-label', head);
+        m.innerHTML = '<div class="sd-tab-popmenu-hint sd-tabs-list-head">' + esc(head) + '</div>' + rows;
+        document.body.appendChild(m);
+        var r = anchor.getBoundingClientRect();
+        m.style.left = Math.max(4, Math.min(r.left, window.innerWidth - m.offsetWidth - 8)) + 'px';
+        m.style.top  = Math.max(4, Math.min(r.bottom + 4, window.innerHeight - m.offsetHeight - 8)) + 'px';
+        m.addEventListener('click', function (e) {
+            var b = e.target.closest('button');
+            if (!b || b.disabled) return;
+            if (b.dataset.key) {
+                _pgTabsCloseMenu();
+                if (b.dataset.key !== _activeKey) _pgTabsSwitch(b.dataset.key);
+            } else if (b.dataset.act === 'all') {
+                _pgTabsChipList(anchor, 'group', gid, true);
+                _pgTabsListFocus(window._pgTabMenuEl, 0);
+            } else if (b.dataset.act === 'open') {
+                _pgTabsCloseMenu();
+                _pgTabGroupToggle(gid);
+            } else if (b.hasAttribute('data-group-row')) {
+                _pgTabsChipList(anchor, 'group', b.getAttribute('data-group-row'), false);
+                _pgTabsListFocus(window._pgTabMenuEl, 0);
+            }
+        });
+        // Up and Down walk the rows; Escape (_pgTabsMenuKey) closes, and
+        // the focus goes back to the chip.
+        m.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && anchor.isConnected) { anchor.focus(); return; }
+            if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+            e.preventDefault();
+            var btns = [].slice.call(m.querySelectorAll('button:not([disabled])'));
+            var i = btns.indexOf(document.activeElement);
+            _pgTabsListFocus(m, i + (e.key === 'ArrowDown' ? 1 : -1));
+        });
+        setTimeout(function () {
+            document.addEventListener('mousedown', _pgTabsMenuOutside, true);
+            document.addEventListener('keydown', _pgTabsMenuKey, true);
+        }, 0);
+        window._pgTabMenuEl = m;
+    }
+    function _pgTabsListFocus(m, i) {
+        if (!m) return;
+        var btns = [].slice.call(m.querySelectorAll('button:not([disabled])'));
+        if (!btns.length) return;
+        btns[(i + btns.length) % btns.length].focus();
     }
 
     // ── All pages ──
-    // A design with many pages does not fit the strip, and a strip that
-    // scrolls sideways is slow to search. The button after it lists every
-    // page; it shows only while the strip overflows (or a group is folded),
-    // with the number of pages on it.
+    // A design with many pages does not fit the strip. The button after it
+    // lists every page; it shows only while a page has no tab in view (in
+    // a folded group or behind "+N"), with the number of pages on it.
     function _pgTabsAllSync() {
         var wrap = document.getElementById('sd-tabs-all');
         var list = document.getElementById('sd-tabs-list');
         if (!wrap || !list) return;
         var count = document.getElementById('sd-tabs-all-count');
         if (count) count.textContent = _pages.length > 1 ? String(_pages.length) : '';
-        var hidden = list.scrollWidth <= list.clientWidth + 1 && !list.querySelector('.sd-tab-folded');
+        // The count is in the tip too, for the narrowest strip that hides it.
+        var btn = _pgTabsAllToggle();
+        if (btn) {
+            if (!btn.hasAttribute('data-sd-title')) btn.setAttribute('data-sd-title', btn.title || '');
+            btn.title = btn.getAttribute('data-sd-title') + (_pages.length > 1 ? ' (' + _pages.length + ')' : '');
+        }
+        var hidden = list.querySelectorAll('.sd-tab:not(.sd-tab-folded)').length >= _pages.length;
         if (wrap.hidden !== hidden) {
             if (hidden && pgUI.menu.isOpen(_pgTabsAllToggle())) return;
             wrap.hidden = hidden;
@@ -73908,7 +77250,13 @@ const StyleDesigner = (function () {
                     (locked ? '<span class="bi bi-lock-fill" aria-hidden="true"></span>' : '') +
                     '</button>';
         });
-        box.innerHTML = html || '<div class="menu-text sd-tabs-all-empty">' + esc(_sdT('No page matches.')) + '</div>';
+        // Add Page leads the list while the Add Page button is not in the
+        // toolbar's row (the narrowest strip); it runs the button's New Page.
+        var newPageItem = document.getElementById('sd-tab-new-page');
+        var addRow = (!q && newPageItem && document.body.classList.contains('sd-strip-noadd') && !_sdIsContentLevel())
+            ? '<button type="button" class="menu-item sd-tabs-all-item sd-tabs-all-add" data-add="1"><span class="bi bi-plus-lg sd-tabs-all-plus" aria-hidden="true"></span><span class="sd-tabs-all-name">' + esc(_sdT('Add Page')) + '</span></button>'
+            : '';
+        box.innerHTML = addRow + (html || '<div class="menu-text sd-tabs-all-empty">' + esc(_sdT('No page matches.')) + '</div>');
     }
     // The page menu of a row, the one a tab of the strip opens: the list
     // closes first (it is a v6 menu, below the page menu's layer, and
@@ -73943,9 +77291,16 @@ const StyleDesigner = (function () {
                 _pgTabsAllFill();
             });
             pgUI.menu.on(all, 'shown', function () {
-                if (filter) filter.focus();
+                // Without scrolling: the toolbar scrolls sideways on a narrow
+                // screen, and the focus would push its start off the screen.
+                if (filter) filter.focus({ preventScroll: true });
                 var act = all.querySelector('.sd-tabs-all-item.active');
-                if (act) act.scrollIntoView({ block: 'nearest' });
+                var rowsBox = document.getElementById('sd-tabs-all-list');
+                if (act && rowsBox) {
+                    // The list scrolls to the open page, nothing around it.
+                    var ar = act.getBoundingClientRect(), br = rowsBox.getBoundingClientRect();
+                    if (ar.top < br.top || ar.bottom > br.bottom) rowsBox.scrollTop += ar.top - br.top - (br.height - ar.height) / 2;
+                }
             });
             pgUI.menu.on(all, 'hidden', function () { _pgTabsAllSync(); });
             if (filter) {
@@ -73953,7 +77308,7 @@ const StyleDesigner = (function () {
                 filter.addEventListener('keydown', function (e) {
                     if (e.key !== 'Enter') return;
                     e.preventDefault();
-                    var first = all.querySelector('.sd-tabs-all-item:not([disabled])');
+                    var first = all.querySelector('.sd-tabs-all-item[data-key]:not([disabled])');
                     if (first) first.click();
                 });
             }
@@ -73962,6 +77317,7 @@ const StyleDesigner = (function () {
                 if (!it || it.disabled) return;
                 var btn = _pgTabsAllToggle();
                 if (btn) pgUI.menu.hide(btn);
+                if (it.dataset.add) { _pgTabsAddNew(); return; }
                 if (it.dataset.key !== _activeKey) _pgTabsSwitch(it.dataset.key);
             });
             // Right-click on a row: the page menu, as on a tab of the strip.
@@ -74038,20 +77394,27 @@ const StyleDesigner = (function () {
                     return;
                 }
                 if (e.target.closest('.sd-tab-rename')) return;
-                var chip = e.target.closest('.sd-tab-group');
-                if (chip) { _pgTabGroupToggle(chip.dataset.group); return; }
+                // A folded group's chip and the "+N" chips list their pages.
+                var more = e.target.closest('.sd-tabs-more');
+                if (more) {
+                    _pgTabsChipList(more, more.dataset.more);
+                    // From the keyboard the focus goes into the list.
+                    if (!e.detail) _pgTabsListFocus(window._pgTabMenuEl, 0);
+                    return;
+                }
+                var chip = e.target.closest('.sd-tab-group.collapsed');
+                if (chip) { _pgTabsChipList(chip, 'group', chip.dataset.group || ''); return; }
                 var tab = e.target.closest('.sd-tab');
                 if (tab && tab.dataset.key && tab.dataset.key !== _activeKey) _pgTabsSwitch(tab.dataset.key);
             });
             // Double-click on a tab name renames it in place.
             list.addEventListener('dblclick', function (e) {
                 if (e.target.closest('.sd-tab-rename, .sd-tab-menu, .sd-tab-close, .sd-tab-group-menu')) return;
-                // On a group chip: rename the group (its two clicks folded
-                // and unfolded it, leaving it as it was).
+                // On the open group's name: rename the group.
                 var chip = e.target.closest('.sd-tab-group');
                 if (chip) {
                     e.preventDefault();
-                    _pgTabGroupRename(chip.dataset.group);
+                    if (chip.classList.contains('sd-tab-box-head')) _pgTabGroupRename(chip.dataset.group);
                     return;
                 }
                 var tab = e.target.closest('.sd-tab');
@@ -74063,9 +77426,13 @@ const StyleDesigner = (function () {
             // Tabs are <div>s; Enter / Space activate like a button would.
             list.addEventListener('keydown', function (e) {
                 if (e.target.closest('.sd-tab-rename')) return;
-                var chip = e.target.closest('.sd-tab-group');
+                var chip = e.target.closest('.sd-tab-group.collapsed');
                 if (chip) {
-                    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); _pgTabGroupToggle(chip.dataset.group); }
+                    if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        _pgTabsChipList(chip, 'group', chip.dataset.group || '');
+                        _pgTabsListFocus(window._pgTabMenuEl, 0);
+                    }
                     return;
                 }
                 var tab = e.target.closest('.sd-tab');
@@ -74255,14 +77622,14 @@ const StyleDesigner = (function () {
         _pgDirtyPollEpoch = _sdEditEpoch;
         var p = _pgActivePage();
         var t = p ? document.querySelector('.sd-tab[data-key="' + p.key + '"]') : null;
-        if (t) t.classList.toggle('dirty', _pgPageDirty(p));
+        _pgTabSetDirty(t, _pgPageDirty(p));
     }
 
     // Cheap re-paint of the dirty dots without rebuilding the strip.
     function _pgTabsRefreshDirty() {
         _pages.forEach(function (p) {
             var t = document.querySelector('.sd-tab[data-key="' + p.key + '"]');
-            if (t) t.classList.toggle('dirty', _pgPageDirty(p));
+            _pgTabSetDirty(t, _pgPageDirty(p));
         });
     }
 
@@ -74862,17 +78229,16 @@ const StyleDesigner = (function () {
     // ── Tab order and groups ──────────────────────────────────────────────
     // The strip follows _pages: their order is the tab order, and
     // `p.tabGroup` ('' or a key of _pgTabGroups) puts a tab in a named,
-    // coloured group. A group's tabs always stand together behind a chip
-    // that names the group; clicking the chip folds it. The layout is kept
-    // on the design (style.style_tab_layout) through designer/tab_layout,
-    // apart from Save: it is how the editor looks, so it does not wait for
-    // Publish and is not an unsaved change. Folding is kept per browser
-    // (localStorage), so one operator folding a group does not fold it for
-    // another. _pgTabsNormalizeGroups() is the twin of
+    // coloured group. A group's tabs always stand together. The open
+    // page's group is open in the strip; every other group is folded into
+    // a chip that lists its pages. The layout is kept on the design
+    // (style.style_tab_layout) through designer/tab_layout, apart from
+    // Save: it is how the editor looks, so it does not wait for Publish and
+    // is not an unsaved change. _pgTabsNormalizeGroups() is the twin of
     // pg_designer_tab_layout_normalize() on the server; change them together.
     var _PG_TAB_GROUP_COLORS = ['grey', 'blue', 'red', 'yellow', 'green', 'pink', 'purple', 'cyan', 'orange'];
     var _pgTabGroups = {};            // gid → { name, color }
-    var _pgTabGroupsCollapsed = {};   // gid → true, this browser only
+    var _pgTabGroupsCollapsed = {};   // gid → true: every group but the open one
     var _pgTabProto = {};             // 'p<page_id>' / 's<id>' → { x, y }: Prototype view frames
     var _pgTabLayoutTimer = 0;
     var _pgTabDrag = null;
@@ -74896,27 +78262,6 @@ const StyleDesigner = (function () {
     // operator sees the layout and folds groups but does not rearrange.
     function _pgTabLayoutReady()    { return !!(_design && _design.tabLayout && _design.tabLayout.ready); }
     function _pgTabLayoutEditable() { return _pgTabLayoutReady() && !_sdIsContentLevel(); }
-
-    function _pgTabGroupsStorageKey() {
-        return (_design && _design.styleId) ? 'pg_sd_tabgroups_' + _design.styleId : '';
-    }
-    function _pgTabGroupsLoadCollapsed() {
-        _pgTabGroupsCollapsed = {};
-        var k = _pgTabGroupsStorageKey();
-        if (!k) return;
-        try {
-            var o = JSON.parse(localStorage.getItem(k) || '{}');
-            if (o && typeof o === 'object') Object.keys(o).forEach(function (g) { if (o[g] === true) _pgTabGroupsCollapsed[g] = true; });
-        } catch (e) {}
-    }
-    function _pgTabGroupsStoreCollapsed() {
-        var k = _pgTabGroupsStorageKey();
-        if (!k) return;
-        try {
-            if (Object.keys(_pgTabGroupsCollapsed).length) localStorage.setItem(k, JSON.stringify(_pgTabGroupsCollapsed));
-            else localStorage.removeItem(k);
-        } catch (e) {}
-    }
 
     // The stored layout onto the tabs the server sent: their order, their
     // groups. A page the layout does not name keeps its place after the
@@ -74947,7 +78292,6 @@ const StyleDesigner = (function () {
         });
         _pages.forEach(function (p) { if (order.indexOf(p) === -1) order.push(p); });
         _pages = order;
-        _pgTabGroupsLoadCollapsed();
         _pgTabsNormalizeGroups();
     }
 
@@ -74968,11 +78312,6 @@ const StyleDesigner = (function () {
         });
         _pages = out;
         Object.keys(_pgTabGroups).forEach(function (gid) { if (!members[gid]) delete _pgTabGroups[gid]; });
-        var stale = Object.keys(_pgTabGroupsCollapsed).filter(function (gid) { return !_pgTabGroups[gid]; });
-        if (stale.length) {
-            stale.forEach(function (gid) { delete _pgTabGroupsCollapsed[gid]; });
-            _pgTabGroupsStoreCollapsed();
-        }
     }
 
     // Only saved pages are stored: a new tab has no id yet, and takes its
@@ -75040,46 +78379,39 @@ const StyleDesigner = (function () {
         }
         return _PG_TAB_GROUP_COLORS[Math.floor(Math.random() * _PG_TAB_GROUP_COLORS.length)];
     }
-    // The page on the canvas is never inside a folded group.
+    // The page on the canvas is never inside a folded group: its group is
+    // the open one (_pgTabsRender() folds the others).
     function _pgTabGroupRevealActive() {
         var a = _pgActivePage();
-        if (a && a.tabGroup && _pgTabGroupsCollapsed[a.tabGroup]) {
-            delete _pgTabGroupsCollapsed[a.tabGroup];
-            _pgTabGroupsStoreCollapsed();
-        }
+        if (a && a.tabGroup) delete _pgTabGroupsCollapsed[a.tabGroup];
     }
 
-    function _pgTabGroupChipHtml(gid, editable) {
-        var g = _pgTabGroups[gid];
-        var folded = !!_pgTabGroupsCollapsed[gid];
-        var label = _pgTabGroupLabel(gid);
-        return '<div class="sd-tab-group' + (folded ? ' collapsed' : '') + '" data-group="' + esc(gid) + '" data-color="' + esc(g.color) + '"' +
-               ' role="button" tabindex="0" aria-expanded="' + (folded ? 'false' : 'true') + '" title="' + esc(label) + '">' +
-               '<span class="sd-tab-group-dot" aria-hidden="true"></span>' +
+    // A folded group's chip (name and count; "Other" for the pages without
+    // a group), or with `head` the open group's name at the head of its box.
+    // The group menu sits on the head only; a chip opens it on right-click.
+    function _pgTabGroupChipHtml(gid, editable, head) {
+        var g = gid ? _pgTabGroups[gid] : null;
+        var label = gid ? _pgTabGroupLabel(gid) : _sdT('Other');
+        var count = gid ? _pgTabGroupMembers(gid).length : _pages.filter(function (p) { return !p.tabGroup; }).length;
+        return '<div class="sd-tab-group' + (head ? ' sd-tab-box-head' : ' collapsed') + (gid ? '' : ' sd-tab-other') + '"' +
+               ' data-group="' + esc(gid) + '" data-color="' + esc(g ? g.color : 'grey') + '"' +
+               (head ? '' : ' role="button" tabindex="0" aria-haspopup="menu"') +
+               ' title="' + esc(label + (head ? '' : ' (' + count + ')')) + '">' +
+               (head ? '' : '<span class="sd-tab-group-dot" aria-hidden="true"></span>') +
                '<span class="sd-tab-group-name">' + esc(label) + '</span>' +
-               '<span class="sd-tab-group-count">' + _pgTabGroupMembers(gid).length + '</span>' +
-               (editable ? '<span class="sd-tab-group-menu" data-group-menu="' + esc(gid) + '" title="' + esc(_sdT('Group options')) + '"><span class="bi bi-three-dots-vertical"></span></span>' : '') +
+               (head ? '' : '<span class="sd-tab-group-count">' + count + '</span>') +
+               (head && g && editable ? '<span class="sd-tab-group-menu" data-group-menu="' + esc(gid) + '" title="' + esc(_sdT('Group options')) + '"><span class="bi bi-three-dots-vertical"></span></span>' : '') +
                '</div>';
     }
 
-    // Folds or unfolds in place, without redrawing the strip: the chip a
-    // double-click lands on has to be the one its first click hit.
-    function _pgTabGroupToggle(gid, fold) {
-        if (!_pgTabGroups[gid]) return;
-        if (typeof fold !== 'boolean') fold = !_pgTabGroupsCollapsed[gid];
-        if (fold) _pgTabGroupsCollapsed[gid] = true;
-        else delete _pgTabGroupsCollapsed[gid];
-        _pgTabGroupsStoreCollapsed();
-        var list = document.getElementById('sd-tabs-list');
-        if (!list) return;
-        var chip = list.querySelector('.sd-tab-group[data-group="' + gid + '"]');
-        if (chip) {
-            chip.classList.toggle('collapsed', fold);
-            chip.setAttribute('aria-expanded', fold ? 'false' : 'true');
-        }
-        list.querySelectorAll('.sd-tab[data-group="' + gid + '"]').forEach(function (t) {
-            t.classList.toggle('sd-tab-folded', fold && t.dataset.key !== _activeKey);
-        });
+    // Opens a group in the strip: its page last open here, or its first
+    // page that opens. The strip always opens the open page's group.
+    function _pgTabGroupToggle(gid) {
+        var members = gid ? _pgTabGroupMembers(gid) : _pages.filter(function (p) { return !p.tabGroup; });
+        var last = _pgPageByKey(_pgTabGroupLast[gid || '']);
+        var p = (last && members.indexOf(last) !== -1 && last.access !== 'locked') ? last
+              : members.filter(function (q) { return q.access !== 'locked'; })[0];
+        if (p && p.key !== _activeKey) _pgTabsSwitch(p.key);
     }
 
     function _pgTabGroupCreate(key) {
@@ -75202,7 +78534,7 @@ const StyleDesigner = (function () {
             item('rename', 'bi-pencil', _sdT('Rename group')) +
             '<div class="sd-tab-popmenu-hint">' + esc(_sdT('Group colour')) + '</div>' +
             '<div class="sd-tab-colors" role="group" aria-label="' + esc(_sdT('Group colour')) + '">' + dots + '</div>' +
-            item('fold', folded ? 'bi-arrows-expand' : 'bi-arrows-collapse', folded ? _sdT('Expand group') : _sdT('Collapse group')) +
+            (folded ? item('fold', 'bi-arrows-expand-vertical', _sdT('Open the group in the strip')) : '') +
             '<div class="sd-tab-popmenu-sep"></div>' +
             item('ungroup', 'bi-x-square', _sdT('Ungroup'));
         document.body.appendChild(m);
@@ -75282,7 +78614,8 @@ const StyleDesigner = (function () {
             if (e.button !== 0 || _pgTabDrag || !_pgTabLayoutEditable()) return;
             if (e.target.closest('.sd-tab-rename, .sd-tab-menu, .sd-tab-close, .sd-tab-group-menu')) return;
             var el = e.target.closest('.sd-tab, .sd-tab-group');
-            if (!el) return;
+            // "Other" is no group of its own to carry.
+            if (!el || el.classList.contains('sd-tab-other')) return;
             _pgTabDrag = { list: list, el: el, id: e.pointerId, x0: e.clientX, y0: e.clientY, x: e.clientX, on: false };
         });
         list.addEventListener('pointermove', function (e) {
@@ -75393,7 +78726,8 @@ const StyleDesigner = (function () {
     // Where the pointer would drop: { group, before: element|null, after:
     // gid (end of a folded group), lineX, chip }.
     function _pgTabsDropTarget(d) {
-        var items = [].filter.call(d.list.children, function (el) {
+        // The box's head and tabs and the chips after it, in strip order.
+        var items = [].filter.call(d.list.querySelectorAll('.sd-tab, .sd-tab-group'), function (el) {
             return d.dragEls.indexOf(el) === -1 && !el.classList.contains('sd-tab-folded')
                 && (el.classList.contains('sd-tab') || el.classList.contains('sd-tab-group'));
         });
@@ -75448,18 +78782,19 @@ const StyleDesigner = (function () {
         var rest   = _pages.filter(function (p) { return d.keys.indexOf(p.key) === -1; });
         // The index in `rest` in front of a strip element: a tab is itself,
         // a chip is its group's first remaining tab (or whatever follows).
+        // The strip's items are walked in order, the box's included.
+        var stripItems = [].slice.call(d.list.querySelectorAll('.sd-tab, .sd-tab-group'));
         var indexBefore = function (el) {
-            while (el) {
-                if (d.dragEls.indexOf(el) === -1) {
-                    var at = -1;
-                    if (el.classList.contains('sd-tab-group')) {
-                        for (var k = 0; k < rest.length; k++) if (rest[k].tabGroup === el.dataset.group) { at = k; break; }
-                    } else if (el.classList.contains('sd-tab')) {
-                        at = rest.indexOf(_pgPageByKey(el.dataset.key));
-                    }
-                    if (at !== -1) return at;
+            for (var i = el ? stripItems.indexOf(el) : -1; i !== -1 && i < stripItems.length; i++) {
+                var it = stripItems[i];
+                if (d.dragEls.indexOf(it) !== -1) continue;
+                var at = -1;
+                if (it.classList.contains('sd-tab-group')) {
+                    for (var k = 0; k < rest.length; k++) if ((rest[k].tabGroup || '') === (it.dataset.group || '')) { at = k; break; }
+                } else {
+                    at = rest.indexOf(_pgPageByKey(it.dataset.key));
                 }
-                el = el.nextElementSibling;
+                if (at !== -1) return at;
             }
             return rest.length;
         };
@@ -75647,6 +78982,7 @@ const StyleDesigner = (function () {
             if (res.beat > 0) _collab.beat = res.beat;
             _collab.peers  = Array.isArray(res.peers) ? res.peers : [];
             _collabRenderPresence();
+            _pgTabsSyncBusy();
             _collabSetMode(res.may_edit !== false, res.holder || null);
             _collabSyncNotes(res.notes);
             return res;
@@ -76808,10 +80144,8 @@ const StyleDesigner = (function () {
         _styleBaseline = _pgStyleJSON();
         _pgTabsRender();
         _pgTabsSyncUrl();
-        // The design may have just been created: folding is now kept under
-        // its id, and the tabs that got ids keep their places. Sent at once,
-        // since a new design's editor reloads moments after this.
-        _pgTabGroupsStoreCollapsed();
+        // The tabs that got ids keep their places. Sent at once, since a new
+        // design's editor reloads moments after this.
         if (layoutFresh) _pgTabsLayoutSave(true);
         // A page picker on screen may have named a tab that now has an id;
         // redraw so it reads "page" rather than "page (unsaved)".
@@ -77129,16 +80463,136 @@ const StyleDesigner = (function () {
         load();
     }
 
-    // "View page" next to Save AND next to Preview on the canvas bar: both
-    // only for a page that exists on the site.
+    // The Preview menu's rows that depend on the page on screen: Open on
+    // the site for a page that exists there, Play for a prototype the viewer
+    // can open, Share for an operator who may share it.
     function _pgTabsSyncViewButton() {
         var url = _pgPageViewUrl(_pgActivePage());
-        ['sd-view-page', 'sd-vb-live'].forEach(function (id) {
-            var btn = document.getElementById(id);
-            if (!btn) return;
-            btn.style.display = url ? '' : 'none';
-            btn.href = url || '#';
+        var rows = _sdPreviewMenuRows({ live: !!url, play: !!_sdPreviewPlayUrl(), share: _pgPrototypeShareReady() });
+        ['sd-vb-live', 'sd-vb-play', 'sd-vb-share'].forEach(function (id) {
+            var row = document.getElementById(id);
+            if (!row) return;
+            var off = rows.indexOf(id) === -1;
+            if (row.hidden !== off) row.hidden = off;
         });
+        var live = document.getElementById('sd-vb-live');
+        if (live) live.href = url || '#';
+    }
+
+    // ── Preview menu (D58) ───────────────────────────────────────────────
+    // Beside Publish, the ways to see the page outside the editor, in this
+    // order: Preview in a new window (the unsaved canvas, Ctrl+Alt+P), Open
+    // on the site (the page as the site serves it, as saved), Play as a
+    // prototype and Share the prototype… (the saved drafts). The rows a page
+    // cannot use are left out, never shown dead. s: { live, play, share }.
+    function _sdPreviewMenuRows(s) {
+        s = s || {};
+        var rows = ['sd-vb-preview'];
+        if (s.live) rows.push('sd-vb-live');
+        if (s.play) rows.push('sd-vb-play');
+        if (s.share) rows.push('sd-vb-share');
+        return rows;
+    }
+
+    // Where Play as a prototype opens the viewer: the page on screen when it
+    // is a saved draft, else the first page the viewer can show; '' for none.
+    function _sdPreviewPlayUrl() {
+        var url = _pgPrototypeUrl(_pgActivePage());
+        for (var i = 0; !url && i < _pages.length; i++) url = _pgPrototypeUrl(_pages[i]);
+        return url;
+    }
+
+    // Builds the menu on the overlay host, not in the toolbar, whose
+    // overflow would cut it. The rows keep the ids of the buttons they
+    // replace (#sd-vb-preview, #sd-vb-live).
+    function _sdPreviewMenuBuild() {
+        var btn = document.getElementById('sd-preview-menu-btn');
+        if (!btn) return;
+        var old = document.getElementById('sd-preview-menu');
+        if (old) old.remove();
+        var menu = document.createElement('div');
+        menu.id = 'sd-preview-menu';
+        menu.className = 'sd-vb-menu sd-preview-menu';
+        menu.setAttribute('role', 'menu');
+        menu.setAttribute('aria-label', _sdT('Preview'));
+        menu.hidden = true;
+        menu.innerHTML =
+            '<button type="button" class="sd-vb-row" id="sd-vb-preview" role="menuitem"><span class="bi bi-window"></span><span class="sd-vb-row-lbl">' + esc(_sdT('Preview in a new window')) + '</span><kbd class="sd-vb-kbd">Ctrl+Alt+P</kbd></button>' +
+            '<a href="#" class="sd-vb-row" id="sd-vb-live" role="menuitem" target="_blank" rel="noopener" hidden><span class="bi bi-box-arrow-up-right"></span><span class="sd-vb-row-lbl">' + esc(_sdT('Open on the site (as saved)')) + '</span></a>' +
+            '<button type="button" class="sd-vb-row" id="sd-vb-play" role="menuitem" hidden><span class="bi bi-play-btn"></span><span class="sd-vb-row-lbl">' + esc(_sdT('Play as a prototype')) + '</span></button>' +
+            '<button type="button" class="sd-vb-row" id="sd-vb-share" role="menuitem" hidden><span class="bi bi-share"></span><span class="sd-vb-row-lbl">' + esc(_sdT('Share the prototype…')) + '</span></button>';
+        ((window.pgUI && typeof pgUI.overlayHost === 'function') ? pgUI.overlayHost(btn) : document.body).appendChild(menu);
+
+        menu.addEventListener('click', function (e) {
+            var row = e.target.closest('.sd-vb-row');
+            if (!row) return;
+            _sdPreviewMenuOpen(false);
+            if (row.id === 'sd-vb-preview') {
+                openPreview();
+            } else if (row.id === 'sd-vb-live') {
+                if (row.getAttribute('href') === '#') e.preventDefault();
+            } else if (row.id === 'sd-vb-play') {
+                var url = _sdPreviewPlayUrl();
+                if (url) window.open(url, '_blank', 'noopener');
+            } else if (row.id === 'sd-vb-share') {
+                // A saved draft on screen is offered as the link's start page.
+                var p = _pgActivePage();
+                _pgPrototypeShareDialog((p && p.page_id > 0 && p.page_draft && !p.pickedPending) ? p.page_id : 0);
+            }
+        });
+
+        if (btn.getAttribute('data-sd-bound')) return;
+        btn.setAttribute('data-sd-bound', '1');
+        btn.addEventListener('click', function () { _sdPreviewMenuOpen(); });
+        document.addEventListener('mousedown', function (e) {
+            var m = document.getElementById('sd-preview-menu');
+            if (!m || m.hidden || m.contains(e.target) || btn.contains(e.target)) return;
+            _sdPreviewMenuOpen(false);
+        }, true);
+        document.addEventListener('keydown', function (e) {
+            var m = document.getElementById('sd-preview-menu');
+            if (!m || m.hidden) return;
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                e.stopPropagation();
+                _sdPreviewMenuOpen(false);
+                btn.focus();
+                return;
+            }
+            if ((e.key !== 'ArrowDown' && e.key !== 'ArrowUp') || !m.contains(document.activeElement)) return;
+            var rows = Array.prototype.filter.call(m.querySelectorAll('[role="menuitem"]'), function (r) { return !r.hidden; });
+            var at = rows.indexOf(document.activeElement);
+            if (at === -1 || !rows.length) return;
+            e.preventDefault();
+            rows[(at + (e.key === 'ArrowDown' ? 1 : rows.length - 1)) % rows.length].focus();
+        }, true);
+        window.addEventListener('resize', function () { _sdPreviewMenuOpen(false); });
+    }
+
+    // Opens or closes the Preview menu under its button, its right edge on
+    // the button's (`open` omitted: toggles). The rows are brought up to
+    // date first, as a draft can change state without a tab switch.
+    function _sdPreviewMenuOpen(open) {
+        var btn = document.getElementById('sd-preview-menu-btn');
+        var menu = document.getElementById('sd-preview-menu');
+        if (!btn || !menu) return;
+        if (open === undefined) open = menu.hidden;
+        if (!open) {
+            if (!menu.hidden) {
+                menu.hidden = true;
+                btn.setAttribute('aria-expanded', 'false');
+            }
+            return;
+        }
+        _pgTabsSyncViewButton();
+        menu.hidden = false;
+        btn.setAttribute('aria-expanded', 'true');
+        var r = btn.getBoundingClientRect();
+        var mw = menu.offsetWidth;
+        menu.style.top = Math.round(r.bottom + 6) + 'px';
+        menu.style.left = Math.round(Math.max(8, Math.min(r.right - mw, window.innerWidth - mw - 8))) + 'px';
+        var first = menu.querySelector('[role="menuitem"]');
+        if (first) first.focus();
     }
 
     // ── Drafts ────────────────────────────────────────────────────────────
@@ -77186,7 +80640,7 @@ const StyleDesigner = (function () {
         var held = on ? [] : list.filter(_pgExperimentHeld);
         if (held.length) {
             list = list.filter(function (p) { return !_pgExperimentHeld(p); });
-            if (!list.length) { sdToast(esc(_sdT('This page is a variant in an experiment: it stays a draft until the experiment ends.')), 'info', 4000); return false; }
+            if (!list.length) { sdToast(esc(_pgHeldText(held[0])), 'info', 4000); return false; }
         }
         // The home page stays on the site; the server would refuse it too.
         var home = on ? list.filter(function (p) { return p.page_home; }) : [];
@@ -77303,7 +80757,7 @@ const StyleDesigner = (function () {
                      : (waits ? _sdT('The page stays a draft until its publish time.') : '');
         if (_pgExperimentHeld(p)) {
             box.disabled = true;
-            box.title = _sdT('This page is a variant in an experiment: it stays a draft until the experiment ends.');
+            box.title = _pgHeldText(p);
         }
         _pgSyncScheduleFields(p, home);
     }
@@ -77321,6 +80775,13 @@ const StyleDesigner = (function () {
         return ex.pages[String(p.page_id)] || null;
     }
     function _pgExperimentHeld(p) { var st = _pgExperimentOf(p); return !!(st && st.held); }
+    // Why a held page stays a draft: a release bundle's draft carries its
+    // bundle's text (pg_experiment_editor_page_state()), a variant the
+    // experiment's.
+    function _pgHeldText(p) {
+        var st = _pgExperimentOf(p);
+        return (st && st.hold_text) || _sdT('This page is a variant in an experiment: it stays a draft until the experiment ends.');
+    }
     function _pgExperimentSync(a) {
         var ex = (_design && _design.experiments) || {};
         var st = _pgExperimentOf(a);
@@ -77510,10 +80971,13 @@ const StyleDesigner = (function () {
             var state = !p.page_draft ? 'live'
                       : (_pgExperimentHeld(p) ? 'held' : (_pgScheduleAhead(p.page_publish_at) ? 'scheduled' : 'draft'));
             var t = _pgTreeOf(p);
+            var hold = (state === 'held') ? _pgExperimentOf(p) : null;
             return {
                 key: p.key,
                 name: p.page_name || _sdT('New Page'),
                 state: state,
+                label: (hold && hold.label) || '',
+                note: (hold && hold.hold_text) || '',
                 changed: !(p.page_id > 0) || !_pgPageUnchanged(p, t || createDefaultTree(), null),
                 locked: p.access === 'locked',
                 home: !!p.page_home,
@@ -77600,6 +81064,39 @@ const StyleDesigner = (function () {
         }
     }
 
+    // The design's menu on the page strip shows the design's name. It
+    // follows the Settings name field as it is typed and is read again each
+    // time the menu opens, since a template fills that field without an
+    // input event; an empty name shows the button's untitled label.
+    function _sdDesignMenuBind() {
+        var btn = document.getElementById('sd-design-menu-btn');
+        var label = document.getElementById('sd-design-menu-name');
+        if (!btn || !label || btn._pgBound) return;
+        btn._pgBound = true;
+        var sync = function () {
+            var field = document.getElementById('sd-style-name');
+            var name = field ? field.value.trim() : '';
+            label.textContent = name || btn.getAttribute('data-sd-untitled') || '';
+            // Shown when the name is an icon on a narrow strip.
+            var head = document.getElementById('sd-design-menu-head');
+            if (head) head.textContent = label.textContent;
+        };
+        btn.addEventListener('click', sync);
+        // A chosen item closes the menu before its own handler runs (capture):
+        // Settings and the Delete question open dialogs, and a menu hidden
+        // once a dialog is open stays open under it.
+        var menu = btn.parentNode ? btn.parentNode.querySelector('.menu') : null;
+        if (menu) {
+            menu.addEventListener('click', function (e) {
+                if (e.target.closest && e.target.closest('.menu-item') && window.pgUI) pgUI.menu.hide(btn);
+            }, true);
+        }
+        document.addEventListener('input', function (e) {
+            if (e.target && e.target.id === 'sd-style-name') sync();
+        });
+        sync();
+    }
+
     function _pgTabsInit(design) {
         _design = design || null;
         _pages  = [];
@@ -77671,6 +81168,7 @@ const StyleDesigner = (function () {
         _pgLoadPageIntoFields(a);
         _pgTabsRender();
         _pgTabsBind();
+        _sdDesignMenuBind();
         _styleBaseline = _pgStyleJSON();
         _sdThemeRender();
         document.dispatchEvent(new CustomEvent('pg-design-theme-change'));
@@ -77877,6 +81375,14 @@ const StyleDesigner = (function () {
             var el = document.getElementById(id);
             if (el) el.style.display = 'none';
         });
+        // The right column's Design tab holds only those panels: the column
+        // stays on Options and its rail button goes too.
+        var designTab = document.getElementById('sd-rcol-tab-design');
+        if (designTab) {
+            _sdRcolShow('options');
+            designTab.hidden = true;
+            _sdRailSyncRight();
+        }
         // The right rail's own Design / Themes tabs. They are plain
         // .sd-panel-tab buttons with no data attribute, so they are found by
         // their label — the two panes beside them are the design's assets.
@@ -79641,6 +83147,8 @@ const StyleDesigner = (function () {
                                     d: _sdT('Repeats its row for each product often bought together with this one.') },
             'l:product.bundle_items': { v: 'l-bundle', k: 'bundle contents items product list repeat loop',
                                     d: _sdT('Repeats its row for each product inside the bundle, with how many come in it.') },
+            'l:product.quantity_prices': { v: 'l-qty-prices', k: 'quantity prices price breaks tiered volume wholesale offer list repeat loop',
+                                    d: _sdT('Repeats its row for each quantity price of the product, such as 10 or more at a lower price each.') },
             'l:catalog.crumbs': { v: 'l-crumbs', k: 'breadcrumb crumbs catalog path list repeat loop',
                                     d: _sdT('Repeats its row for each step of the path from the catalog home to this category or product.') },
             'l:catalog.active_filters': { v: 'l-filters', k: 'active filters chips catalog attributes list repeat loop',
@@ -79667,6 +83175,12 @@ const StyleDesigner = (function () {
                                     d: _sdT('Repeats its row for each booking of the signed-in member still to come.') },
             'l:account.past_bookings': { v: 'l-steps', k: 'member bookings appointments past account list repeat loop',
                                     d: _sdT('Repeats its row for each past booking of the signed-in member.') },
+            'l:account.subscriptions': { v: 'l-account-orders', k: 'member subscriptions recurring renewals account list repeat loop',
+                                    d: _sdT('Repeats its row for each subscription of the signed-in member.') },
+            'l:account.store_credit': { v: 'l-account-orders', k: 'member store credit gift card balance account list repeat loop',
+                                    d: _sdT('Repeats its row for each store credit card of the signed-in member.') },
+            'l:account.store_credit_uses': { v: 'l-account-orders', k: 'store credit orders spent account list repeat loop',
+                                    d: _sdT('Repeats its row for each order that spent the store credit card.') },
             'l:cart.items': { v: 'l-cart-items', k: 'cart items products basket list repeat loop',
                                     d: _sdT('Repeats its row for each product in the cart, with its quantity and price.') },
             'l:checkout.offers': { v: 'l-offers', k: 'applied offers discounts checkout list repeat loop',
@@ -80500,6 +84014,9 @@ const StyleDesigner = (function () {
             },
             'l-bundle': function () {
                 return R(0, 0, 200, 110, W) + Rows(14, 32, 28, function (y) { return Pic(22, y, 26, 20) + L(56, y + 4, 70, D) + Tx(170, y + 13, '×2', 10, S, 'end'); });
+            },
+            'l-qty-prices': function () {
+                return R(0, 0, 200, 110, W) + Rows(16, 28, 26, function (y) { return L(24, y + 6, 60, D) + Tx(176, y + 12, '9.00', 10, S, 'end') + R(18, y + 21, 164, 1, B); });
             },
             'l-crumbs': function () {
                 return R(0, 0, 200, 110, W) + R(10, 40, 180, 30, LG, 5) + Cols(22, 52, 46, 48, 15, function (x) {
@@ -82332,7 +85849,9 @@ const StyleDesigner = (function () {
             _validationRules.forEach(function(rule) { if (rule.exit) rule.exit(node, ctx); });
         }
         if (root.children) root.children.forEach(traverse);
+        var email = _sdActivePageIsEmail(root);
         _pageLevelIssues(root).forEach(function (pi) {
+            if (email && _sdAuditDropsOnEmail(pi.rule)) return;
             // Most page-level findings belong to the page as a whole; a few
             // can name the exact element, and those get a canvas badge.
             issues.push({
@@ -82345,6 +85864,50 @@ const StyleDesigner = (function () {
         _sdCanvasAuditIssues(root).forEach(function (ci) { issues.push(ci); });
         _sdMailCheckIssues(root).forEach(function (mi) { issues.push(mi); });
         return issues;
+    }
+
+    // Whether a page goes out as an e-mail rather than as a web page: an
+    // e-mail design (its root carries props.pgEmail), a comment e-mail page
+    // (_sdCommentsEmailPageOf()), or a page a widget's setting ending in
+    // '_email_page_id' names (order receipt, welcome, password reset, a
+    // form's replies), by id or by its tab ('tab:<key>').
+    function _sdPageIsEmail(page, root, pages, configs) {
+        if (root && root.props && root.props.pgEmail) return true;
+        if (!page) return false;
+        if (_sdCommentsEmailPageOf(page, pages)) return true;
+        var id = parseInt(page.page_id, 10) || 0;
+        var tab = 'tab:' + page.key;
+        return (configs || []).some(function (cfg) {
+            if (!cfg || typeof cfg !== 'object') return false;
+            return Object.keys(cfg).some(function (k) {
+                if (!/_email_page_id$/.test(k)) return false;
+                var v = cfg[k];
+                if (typeof v === 'string' && v === tab) return true;
+                return id > 0 && (parseInt(v, 10) || 0) === id;
+            });
+        });
+    }
+
+    // _sdPageIsEmail() for the open page, with the widget settings of the
+    // shared components loaded.
+    function _sdActivePageIsEmail(root) {
+        var configs = [];
+        Object.keys(_sharedCache).forEach(function (k) {
+            var raw = _sharedCache[k] ? _sharedCache[k].system_region_config : null;
+            var cfg = raw;
+            if (typeof raw === 'string') { try { cfg = JSON.parse(raw); } catch (e) { cfg = null; } }
+            if (cfg && typeof cfg === 'object') configs.push(cfg);
+        });
+        return _sdPageIsEmail(_pgActivePage(), root, _pages, configs);
+    }
+
+    // The check rules (editor rule ids and accessibility codes) a web page
+    // needs and an e-mail cannot follow: a mail program draws no <main> and
+    // no header / nav / footer landmarks, and one dropped into an e-mail
+    // design is "Not an e-mail block", so there is no main area to skip to.
+    // The SEO score is left out of an e-mail as a whole: it is not indexed.
+    function _sdAuditDropsOnEmail(code) {
+        return ['main_missing', 'main_multiple', 'landmark_missing', 'a11y_main_missing'].indexOf(String(code || '')) !== -1;
     }
 
     // In an e-mail design (root props.pgEmail), the outermost element that
@@ -82387,8 +85950,12 @@ const StyleDesigner = (function () {
     // A small "!" on the wrapper of every node with an issue, so the
     // operator sees WHERE the warning is without opening the list. Kept in
     // sync by validation (debounced) and re-applied after each render.
-    function applyIssueBadges() {
+    // `within`: an element drawn again in place, which alone lacks its
+    // badges; only its wrappers get them and the rest of the canvas keeps
+    // what it has. None: every badge of the canvas is put on again.
+    function applyIssueBadges(within) {
         if (!canvasDoc || !canvasDoc.body) return;
+        if (within && !canvasDoc.body.contains(within)) within = null;
         // One group per node, not per id: a page node and a node of a
         // widget may carry the same id (_sdIdFloor()).
         var groups = [];
@@ -82399,12 +85966,14 @@ const StyleDesigner = (function () {
             if (!g) { g = { node: i.node, labels: [] }; groups.push(g); }
             g.labels.push(i.label);
         });
-        canvasDoc.querySelectorAll('.sd-issue-badge').forEach(function (b) { b.remove(); });
-        canvasDoc.querySelectorAll('.sd-wrap.sd-has-issue').forEach(function (w) { w.classList.remove('sd-has-issue'); });
+        var scope = within || canvasDoc;
+        scope.querySelectorAll('.sd-issue-badge').forEach(function (b) { b.remove(); });
+        scope.querySelectorAll('.sd-wrap.sd-has-issue').forEach(function (w) { w.classList.remove('sd-has-issue'); });
         var badged = [];
         groups.forEach(function (g) {
             var id = g.node._id;
             _sdIssueWrapsOf(g.node).forEach(function (wrap) {
+                if (within && !within.contains(wrap)) return;
                 wrap.classList.add('sd-has-issue');
                 var b = canvasDoc.createElement('span');
                 b.className = 'sd-issue-badge';
@@ -82570,6 +86139,7 @@ const StyleDesigner = (function () {
         if (!host) return;
         var concepts = (res && res.concepts) || [];
         var a11y = (res && Array.isArray(res.a11y)) ? res.a11y : null;
+        if (a11y && _sdActivePageIsEmail(tree)) a11y = a11y.filter(function (f) { return !_sdAuditDropsOnEmail(f.code); });
         var sevIcon = function (sev) {
             return sev === 'error' ? 'bi-x-circle text-danger' : (sev === 'warning' ? 'bi-exclamation-circle text-warning' : 'bi-info-circle text-info');
         };
@@ -82632,6 +86202,10 @@ const StyleDesigner = (function () {
         if (!host) return;
         var draw = function (res) {
             _renderAuditConcepts(panel, res);
+            if (_sdActivePageIsEmail(tree)) {
+                host.innerHTML = '<div class="sd-val-empty"><span class="bi bi-info-circle me-1"></span>' + esc(_sdT('An e-mail is not indexed by search engines: it gets no SEO score.')) + '</div>';
+                return;
+            }
             if (!res || res.status !== 'success') {
                 host.innerHTML = '<div class="sd-val-empty fg-warning"><span class="bi bi-exclamation-triangle me-1"></span>' + esc((res && res.message) || _sdT('The SEO check could not be run.')) + '</div>';
                 return;
@@ -83822,7 +87396,9 @@ const StyleDesigner = (function () {
             // helper so any shared_ref nodes in the new tree get their
             // content fetched before/around the first render — otherwise
             // the canvas would paint with "Not found" placeholders for a
-            // tree whose shared IDs weren't in _sharedCache.
+            // tree whose shared IDs weren't in _sharedCache. A tree loaded
+            // whole counts as opened: only the selection's section is open.
+            delete _sdTreeSectionsSet[String(_activeKey || '')];
             _replaceTreeWithPrefetch(d, { resetHistory: true });
         },
         undo: undo,

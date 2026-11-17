@@ -618,6 +618,33 @@ function ws_mail_list_html($list, $filters, $now, $open = 0)
 }
 
 /**
+ * The answer of the panel action ws_mail_rows: the next page's rows and its
+ * Load more link, or, after a change made in the reading pane (its status,
+ * holder or a cancelled reminder), the whole list as the address filters it,
+ * so a conversation that no longer matches leaves it.
+ *
+ * @param array $list    ws_mail_list()
+ * @param array $filters ws_mail_list_filters()
+ * @param int   $now     the time
+ * @param bool  $whole   the whole list instead of one page
+ * @param int   $open    the conversation open in the pane
+ * @return array html and more, or list (none in the Blocked and Drafts views)
+ */
+function ws_mail_rows_answer($list, $filters, $now, $whole, $open = 0)
+{
+    if ($whole) {
+        // The Blocked and Drafts views list no conversations: kept as drawn.
+        return in_array($filters['view'], array('blocked', 'drafts'), true)
+            ? array() : array('list' => ws_mail_list_html($list, $filters, $now, $open));
+    }
+
+    return array(
+        'html' => ws_mail_list_rows_html($list['rows'], $filters, $now),
+        'more' => ws_mail_list_more_html($filters, $list['next']),
+    );
+}
+
+/**
  * Load more: a link to the next page, which the screen's script reads in
  * place under the rows.
  *

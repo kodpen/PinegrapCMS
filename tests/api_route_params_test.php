@@ -87,5 +87,6 @@ function test_api_route_params_webhook_address_refusal_is_translated()
 	$source = file_get_contents(PG_FUNCTIONS_DIR . '/includes/api/resources/webhooks.php');
 
 	pg_assert_false(strpos($source, "api_fail_validation(\$check['error']") !== false, 'no untranslated address refusal');
-	pg_assert_same(2, substr_count($source, "api_fail_validation(lang(\$check['error']), 'url')"), 'create and update translate the refusal');
+	pg_assert_same(1, substr_count($source, "api_fail_validation(lang(\$check['error']), 'url')"), 'update translates the refusal');
+	pg_assert_same(1, substr_count($source, "'validation_failed', 'url', lang(\$check['error'])"), 'the create check translates the refusal');
 }

@@ -643,9 +643,10 @@ function pg_sw_default_date_format($type)
 // elements that hold $mark are judged, and one that goes leaves $mark in
 // its place, so the element around it is judged in turn.
 // With $wait (a product page whose variant picker redraws the values bound
-// to data-pg-bind), an empty element holding such a value stays, marked
-// hidden and data-pg-empty-wait, for the picker to show when it fills it;
-// an element already so marked is left as it is.
+// to data-pg-bind, and the "Quantity prices" box, data-pg-civ-qty-prices),
+// an empty element holding such a value, or that box, stays, marked hidden
+// and data-pg-empty-wait, for the picker to show when it fills it; an
+// element already so marked is left as it is.
 function pg_sw_hide_empty_fields($html, $mark = null, $wait = false)
 {
     if (!is_string($html) || strpos($html, 'pg-hide-if-empty') === false) return $html;
@@ -679,7 +680,7 @@ function pg_sw_hide_empty_fields($html, $mark = null, $wait = false)
         // A player is judged with its own address, which its opening tag holds.
         $judged = pg_sw_is_player_tag($tag) ? $open . $inner . '</' . $tag . '>' : pg_sw_field_value($inner);
         if (pg_sw_has_content($judged)) continue;
-        if ($wait && strpos($open . $inner, 'data-pg-bind=') !== false) {
+        if ($wait && ((strpos($open . $inner, 'data-pg-bind=') !== false) || (strpos($open, 'data-pg-civ-qty-prices') !== false))) {
             $html = substr($html, 0, $start) . pg_sw_empty_wait_tag($open) . substr($html, $start + strlen($open));
             continue;
         }
@@ -933,6 +934,9 @@ function pg_sw_raw_token_keys()
         '__return_customer_note_html',
         '__return_decision_note_html',
         '__return_actions_html',
+        // My account: a subscription's action forms, built by
+        // subscriptions_account.php with the form token.
+        '__subscription_actions_html',
         // Cart: a payment schedule's frequency choices, the value selected.
         '__schedule_period_options_html',
         // Cart: a product form's pick list choices, the value selected.
@@ -4422,6 +4426,8 @@ function _render_system_widget_my_account($tree_json, $widget_id, $cfg = array()
         '__display_name' => h($full_name !== '' ? $full_name : ($user_row ? (string)$user_row['user_username'] : (defined('USER_USERNAME') ? (string)USER_USERNAME : ''))),
         'not_logged_in' => '',
     ) + $link_values;
+    // The member's store credit balance, as the store credit section prints it.
+    $values['__store_credit_balance'] = h($extras['store_credit']['balance_info']);
     // The member's own allow-listed account values (pg_sw_entity_fields('account')).
     $values += pg_sw_entity_account_tokens($uid, pg_sw_cond_tree_json($tree_decoded));
 
@@ -4429,7 +4435,9 @@ function _render_system_widget_my_account($tree_json, $widget_id, $cfg = array()
     // history's rows, filed only when the tree drew one.
     if (pg_sw_list_wanted('account')) {
         pg_sw_list_publish('account', pg_sw_list_account_rows($values['account_id'], $extras['orders'], $extras['order_view_url'], pg_sw_default_date_format('date'))
-            + pg_sw_list_account_booking_rows($values['account_id'], $extras['bookings']));
+            + pg_sw_list_account_booking_rows($values['account_id'], $extras['bookings'])
+            + pg_sw_list_account_subscription_rows($values['account_id'], $extras['subscriptions'])
+            + pg_sw_list_account_credit_rows($values['account_id'], $extras['store_credit']['cards']));
     }
 
     // ── No loop_area — render entire tree once with account tokens ─────────

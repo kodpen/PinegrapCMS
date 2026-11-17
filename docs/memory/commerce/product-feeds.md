@@ -1,11 +1,11 @@
 ---
 name: product-feeds
-description: Product feed builder (includes/fn/product_feeds.php, PR #561): which products go into the OpenAI JSONL/CSV and Google TSV feeds, field rules, skip reasons, variant families, writers
+description: Product feed builder (includes/fn/product_feeds.php, PR #561): which products go into the OpenAI JSONL/CSV and Google TSV/XML feeds, field rules, skip reasons, variant families, writers
 ---
 
 ## What exists?
-- `includes/fn/product_feeds.php` builds feeds in `openai_jsonl`, `openai_csv` or `google_tsv`: `pg_product_feed_render()` from items in memory, the daily build streamed (docs/memory/commerce/product-feed-streaming.md). Setup, daily build and feed.php: docs/memory/commerce/product-feed-serving.md. The catalog's `?rss=true` feed is untouched.
-- Pure parts tested in `tests/product_feeds_test.php`.
+- `includes/fn/product_feeds.php` builds feeds in `openai_jsonl`, `openai_csv`, `google_tsv` or `google_xml` (RSS 2.0 from the TSV's rows, #10133: product-feed-google-xml.md): `pg_product_feed_render()` in memory, the daily build streamed (product-feed-streaming.md). Setup, build, feed.php: product-feed-serving.md. The catalog's `?rss=true` feed is untouched.
+- Tests: `tests/product_feeds_test.php`.
 
 ## Which products go in?
 - Enabled products in a group the shop's catalogs show: `pg_product_feed_catalog_roots()` takes the group of each legacy catalog page and each Catalog widget (0 = the top-level group) whose page is in a public folder, and `pg_product_feed_group_index()` walks enabled groups under them. Templates keep dues, exam, event and membership groups beside the shop under the top group; without this scope they would be listed.

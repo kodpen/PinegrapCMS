@@ -75,6 +75,15 @@ function test_api_store_feeds_present_off_and_failing()
 	pg_assert_same('failing', $failing['state']);
 }
 
+// The XML feed is listed with its own content type.
+function test_api_store_feeds_present_google_xml()
+{
+	$feed = api_store_feed_present('google_xml', pg_product_feed_format_defaults(), 'off');
+
+	pg_assert_same('google_xml', $feed['format']);
+	pg_assert_same('application/xml; charset=utf-8', $feed['content_type']);
+}
+
 // The route reads with products:read and answers with the declared object.
 function test_api_store_feeds_route()
 {

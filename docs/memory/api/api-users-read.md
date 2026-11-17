@@ -15,6 +15,9 @@ description: External API GET /users and /users/{id} (users:read, roles 0-1): th
 - `permissions` is what is stored: the `user_` ENUM rights read `'yes'`, the TINYINT ones `1` (`api_user_permission_columns()`), plus `page_types` from the `user_set_page_type_*` columns. Roles 0-2 hold the module rights by role whatever is stored (`core/permission-columns.md`).
 - The ERP and Workspace columns and `user_created`/`user_google_id` are named in the SELECT only behind their probes (`pg_user_has_erp_columns()`, `pg_user_has_ws_columns()`, `pg_user_has_erp_readonly_column()`, `pg_auth_column_exists()`); a missing one reads false/null.
 
+## Why does users.php load includes/user_permissions.php?
+- The column probe for `manage_workspace_replies` (`pg_user_permission_ws_replies_column()`) and `pg_user_permission_ws_available()` live there, and reads ask them too. Until #10088 only the write handlers loaded it (through `user_write.php`), so every read on a site with the Workspace columns answered 500 "An unexpected error occurred.". `tests/api_users_read_load_test.php` loads a read alone in its own PHP process and checks the probes exist.
+
 ## What is never read?
 - The SELECT names its columns (`api_users_select_sql()`, never `user.*`): no `user_password`, hint, `token`, `user_devpasspin`, `secret_key*`, nor the `user_mfa` secrets; Google only as `google_linked`. `tests/api_users_test.php` checks the SQL and the field names.
 

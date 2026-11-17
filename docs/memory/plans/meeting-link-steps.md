@@ -18,7 +18,7 @@ description: Plan meeting-link, steps SL1 to SL4: the link's code and rules with
   - Pictures: the services, the time pick, the form, the confirmation, a taken time, a phone. To the owner; not marked ready before his look.
   - Features: M4, M5, M8, M9, M10, M11, M12.
 
-- SL3 (S) after SL1: the Workspace screen.
+- SL3 (S) after SL1: the Workspace screen. Done in #10147.
   - Existing files: `includes/workspace/nav.php` (one entry in `ws_nav_groups()`), the short links' checks called, not changed.
   - New: the screen "My meeting link" with the address, Copy, the QR, the short address and the meeting address.
   - Pictures: with and without a short address, a member with no services, a service with a deposit. To the owner.

@@ -322,7 +322,7 @@ function test_page_bundle_writes_pages_only()
 // B7: the checks run before a single write, the write and its take-back only after.
 function test_page_bundle_publish_checks_before_writes()
 {
-	$code = pg_test_function_source('pg_page_bundle_publish');
+	$code = pg_test_function_source('pg_page_bundle_publish_locked');
 	$plan = strpos($code, 'pg_page_bundle_publish_check(');
 	$run = strpos($code, 'pg_page_bundle_publish_run(');
 
@@ -351,4 +351,184 @@ function test_page_bundle_publish_dialog_waits_for_choices()
 	pg_assert_contains('!group.querySelector("input:checked")', $script, 'every row needs its choice');
 	pg_assert_contains('button.disabled = open', $script, 'then Publish is enabled');
 	pg_assert_contains('data-bs-dismiss="dialog" autofocus>', pg_test_function_source('pg_page_bundle_take_back_dialog'), 'the take-back dialog too');
+}
+
+// A failed publish takes back a replaced page with the revision its write
+// stored: the row kept for the take-back gets the write's revision before.
+function test_page_bundle_item_written_keeps_revision_before()
+{
+	$item = array('id' => 2, 'live_page_id' => 5, 'revision_before' => 0, 'written_state' => '', 'live_name' => 'home');
+	$done = array('ok' => true, 'error' => '', 'revision_before' => 7, 'written_state' => 'abc');
+	$after = pg_page_bundle_item_written($item, $done);
+
+	pg_assert_same(7, $after['revision_before'], 'the revision before the write');
+	pg_assert_same('abc', $after['written_state'], 'the state written');
+	pg_assert_same('home', $after['live_name'], 'the rest of the row stays');
+
+	$failed = pg_page_bundle_item_written($item, array('ok' => false, 'error' => 'x'));
+	pg_assert_same(0, $failed['revision_before'], 'a failed write changes nothing');
+
+	pg_assert_contains('pg_page_bundle_publish_ops(', pg_test_function_source('pg_page_bundle_publish_locked'), 'the publish runs the shared write and take-back');
+
+	$write = pg_test_function_source('pg_page_bundle_write_item');
+	pg_assert_contains("'revision_before' => \$before", $write, 'a replacement returns the revision it stored');
+}
+
+// A take-back in the same run gets the row its write left: a replaced page
+// goes back to the revision stored by its write, not the 0 read before.
+function test_page_bundle_publish_ops_take_back_reads_written_row()
+{
+	$items = array(
+		1 => array('id' => 1, 'live_page_id' => 5, 'revision_before' => 0, 'written_state' => ''),
+		2 => array('id' => 2, 'live_page_id' => 6, 'revision_before' => 0, 'written_state' => ''),
+	);
+	$seen = new ArrayObject();
+	$write_item = function ($item) {
+		if ((int) $item['id'] === 2) {
+			return array('ok' => false, 'error' => 'refused 2');
+		}
+
+		return array('ok' => true, 'error' => '', 'revision_before' => 7, 'written_state' => 's1');
+	};
+	$undo_item = function ($item) use ($seen) {
+		$seen[(int) $item['id']] = array((int) $item['revision_before'], (string) $item['written_state']);
+
+		return (int) $item['revision_before'] > 0;
+	};
+
+	list($write, $undo) = pg_page_bundle_publish_ops($items, $write_item, $undo_item);
+	$run = pg_page_bundle_publish_run(array(1, 2), $write, $undo);
+
+	pg_assert_same(array(1 => array(7, 's1')), $seen->getArrayCopy(), 'the take-back reads the revision its write stored');
+	pg_assert_same('taken_back', $run['outcome'], 'so the replaced page comes back and nothing stands');
+	pg_assert_same(2, $run['failed'], 'the page that failed is named');
+}
+
+// A database error during a write (output_error() throwing while the publish
+// runs) is a failed write: what was written is taken back and the bundle
+// stays as it was, instead of the request ending with the run half done.
+function test_page_bundle_publish_ops_query_failure_is_a_failed_write()
+{
+	$items = array(
+		1 => array('id' => 1, 'live_page_id' => 5, 'revision_before' => 0, 'written_state' => ''),
+		2 => array('id' => 2, 'live_page_id' => 6, 'revision_before' => 0, 'written_state' => ''),
+	);
+	$undone = new ArrayObject();
+	$write_item = function ($item) {
+		if ((int) $item['id'] === 2) {
+			throw new RuntimeException('Query failed.');
+		}
+
+		return array('ok' => true, 'error' => '', 'revision_before' => 3, 'written_state' => 's1');
+	};
+	$undo_item = function ($item) use ($undone) {
+		$undone[] = (int) $item['id'];
+
+		return true;
+	};
+
+	list($write, $undo) = pg_page_bundle_publish_ops($items, $write_item, $undo_item);
+	$run = pg_page_bundle_publish_run(array(1, 2), $write, $undo);
+
+	pg_assert_same('taken_back', $run['outcome'], 'the bundle stays as it was');
+	pg_assert_same(2, $run['failed'], 'the page whose query failed is named');
+	pg_assert_same('Query failed.', $run['reason'], 'with the error');
+	pg_assert_same(array(1), $undone->getArrayCopy(), 'the page written before is taken back');
+}
+
+// A take-back that hits a database error is one that failed: the page stands
+// and the bundle is partly published, so "Publish the rest" can go on.
+function test_page_bundle_publish_ops_query_failure_in_take_back_stands()
+{
+	$items = array(
+		1 => array('id' => 1, 'live_page_id' => 5),
+		2 => array('id' => 2, 'live_page_id' => 6),
+	);
+	$write_item = function ($item) {
+		return array('ok' => (int) $item['id'] === 1, 'error' => 'refused');
+	};
+	$undo_item = function ($item) {
+		throw new RuntimeException('Query failed.');
+	};
+
+	list($write, $undo) = pg_page_bundle_publish_ops($items, $write_item, $undo_item);
+	$run = pg_page_bundle_publish_run(array(1, 2), $write, $undo);
+
+	pg_assert_same('partial', $run['outcome'], 'partly published');
+	pg_assert_same(array(1), $run['stands'], 'the page that could not come back stands');
+}
+
+// While the publish runs, output_error() throws; afterwards it is as before,
+// also when the run itself throws.
+function test_page_bundle_with_throwing_errors_restores()
+{
+	$before = pg_error_throws();
+	pg_error_throws(false);
+
+	$inside = pg_page_bundle_with_throwing_errors(function () {
+		return pg_error_throws();
+	});
+	pg_assert_true($inside, 'errors throw during the run');
+	pg_assert_true(!pg_error_throws(), 'and not after it');
+
+	$caught = '';
+
+	try {
+		pg_page_bundle_with_throwing_errors(function () {
+			throw new RuntimeException('boom');
+		});
+	} catch (RuntimeException $e) {
+		$caught = $e->getMessage();
+	}
+
+	pg_assert_same('boom', $caught, 'a throw goes on to the caller');
+	pg_assert_true(!pg_error_throws(), 'with the setting given back');
+
+	pg_error_throws($before);
+
+	$publish = pg_test_function_source('pg_page_bundle_publish_locked');
+	pg_assert_contains('pg_page_bundle_with_throwing_errors(', $publish, 'the publish runs its writes so');
+
+	$write = pg_test_function_source('pg_page_bundle_write_item');
+	pg_assert_contains('catch (Throwable', $write, 'a write that throws gives its item back');
+}
+
+// A page in the Recycle Bin is named by its own name, not the parked
+// "pgbin_<id>_" one; a page that is gone by its id, never by "".
+function test_page_bundle_page_label()
+{
+	pg_assert_same('awards-and-press', pg_page_bundle_page_label('pgbin_1095_awards-and-press', 1095), 'a parked name is unparked');
+	pg_assert_same('pgbin_7_x', pg_page_bundle_page_label('pgbin_7_x', 8), 'only the page\'s own parking');
+	pg_assert_same('home', pg_page_bundle_page_label('home', 5), 'a plain name stays');
+	pg_assert_same('#42', pg_page_bundle_page_label('', 42), 'a page deleted for good by its id');
+	pg_assert_same('#42', pg_page_bundle_page_label(null, 42), 'also when the join found no row');
+	pg_assert_same('', pg_page_bundle_page_label(null, 0), 'no page, no name');
+
+	pg_assert_contains('pg_page_bundle_page_label(', pg_test_function_source('pg_page_bundle_items'), 'the items are named so');
+}
+
+// The revision a replacement goes back to: the one before the revision it
+// wrote; when it wrote none, the page's latest; when the page has none (a
+// page a bundle published new, saved unchanged), the page as it is, seeded.
+function test_page_bundle_revision_before()
+{
+	$seeded = new ArrayObject();
+	$seed = function () use ($seeded) {
+		$seeded[] = 1;
+
+		return 1;
+	};
+
+	pg_assert_same(4, pg_page_bundle_revision_before(5, 4, $seed), 'the one before the revision written');
+	pg_assert_same(1, pg_page_bundle_revision_before(2, 0, $seed), 'a first save seeds revision 1, then writes 2');
+	pg_assert_same(3, pg_page_bundle_revision_before(0, 3, $seed), 'nothing written: the latest');
+	pg_assert_same(0, count($seeded), 'with revisions kept, nothing is seeded');
+	pg_assert_same(1, pg_page_bundle_revision_before(0, 0, $seed), 'no revision at all: the page as it is');
+	pg_assert_same(1, count($seeded), 'seeded once');
+	pg_assert_same(0, pg_page_bundle_revision_before(0, 0, function () {
+		return 0;
+	}), 'a seed that failed keeps 0');
+
+	pg_assert_contains('pg_page_bundle_revision_before(', pg_test_function_source('pg_page_bundle_write_item'), 'the write keeps it so');
+	pg_assert_contains('pg_page_revision_seed(', pg_test_function_source('pg_page_bundle_write_item'), 'seeding through the revisions\' own seed');
 }

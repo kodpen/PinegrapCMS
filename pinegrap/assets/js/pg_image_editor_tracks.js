@@ -7,6 +7,8 @@
  * and the playhead. Dragging a bar moves its delay, dragging an end changes
  * its length; ends snap to a tenth of a second and to the other layers'
  * ends (Shift: a hundredth, no snap). On a phone the panel's fields do it.
+ * A row's name cell ends in a Motion button that selects the layer and
+ * opens the bar's Motion popover at it (M.trackMotionOn()).
  *
  * The drag shows on the bar and is one change on release (M.trackEdit()), so
  * the play bar is not drawn again under the pointer.
@@ -63,7 +65,7 @@
             return this.trackKeyNow;
         }
 
-        this.trackKeyNow = this.tracksShown() ? JSON.stringify([this.sel, this.doc.layers.map(function (l) { return [l.id, self.layerName(l), l.hidden ? 1 : 0]; })]) : '';
+        this.trackKeyNow = this.tracksShown() ? JSON.stringify([this.sel, this.doc.layers.map(function (l) { return [l.id, self.layerName(l), l.hidden ? 1 : 0, l.locked ? 1 : 0]; })]) : '';
 
         return this.trackKeyNow;
     };
@@ -76,8 +78,14 @@
         return (kind ? t('motion_' + kind) : t(PHASE_LABELS[b.phase])) + ' · ' + seconds(b.from) + ' → ' + seconds(b.to);
     }
 
+    function tipClass(from, to, end) {
+        var at = M.trackTipPlace(from, to, end);
+
+        return 'pgie-trtip' + ((at === 'right') ? '' : ' pgie-trtip-' + at);
+    }
+
     Editor.prototype.tracksNode = function () {
-        var self = this, end = this.motionEnd(), rows, ruler, head, s;
+        var self = this, end = this.motionEnd(), rows, ruler, head, s, phone = !!(window.matchMedia && window.matchMedia(NO_TRACKS).matches);
 
         if (!this.tracksShown()) {
             this.trackEls = null;
@@ -118,8 +126,16 @@
                 });
 
                 if (own === undefined) {
-                    rows.appendChild(self.trackRow(l, end));
-                } else if (own) {
+                    own = self.trackRow(l, end);
+                }
+
+                if (own) {
+                    // A clip's row too: the layer it is drawn for is its top clip.
+                    if (M.trackMotionOn(l, phone)) {
+                        own.classList.add('pgie-trmo');
+                        own.appendChild(self.trackMotionButton(l));
+                    }
+
                     rows.appendChild(own);
                 }
             }
@@ -161,8 +177,9 @@
                     });
                 }
 
-                // Past the middle the tip goes left of the bar, inside the stage.
-                bar.appendChild(el('span', { class: 'pgie-trtip' + ((b.to > end / 2) ? ' pgie-trtip-left' : ''), text: barTip(l, b) }));
+                // Right of the bar, left of it past the middle, inside it
+                // where neither side has room: never over the names.
+                bar.appendChild(el('span', { class: tipClass(b.from, b.to, end), text: barTip(l, b) }));
             }
 
             lane.appendChild(bar);
@@ -180,6 +197,48 @@
 
         // A screen reader hears the layer's name before its bars and keys.
         return el('div', { class: 'pgie-trrow' + (on ? ' on' : '') + (l.anim ? '' : ' pgie-trstill'), role: 'group', 'aria-label': name }, [pick, lane]);
+    };
+
+    // The row's Motion button, at the right end of its name cell: a press
+    // selects the layer and opens the bar's Motion popover at the button; a
+    // second press closes it.
+    Editor.prototype.trackMotionButton = function (l) {
+        var self = this;
+
+        return el('button', { type: 'button', class: 'pgie-trmotion', 'data-layer': l.id, title: t('actMotion') + ' · ' + this.layerName(l), 'aria-label': t('actMotion'), onclick: function () {
+            self.trackMotion(l.id);
+        } }, [icon('motion')]);
+    };
+
+    // The rows are drawn again on a selection or a pick, so the popover
+    // finds its button anew by the layer's id.
+    Editor.prototype.trackMotionAt = function (id) {
+        var bs = this.trackEls ? this.trackEls.box.querySelectorAll('.pgie-trmotion') : [];
+
+        return Array.prototype.filter.call(bs, function (b) { return b.getAttribute('data-layer') === String(id); })[0] || null;
+    };
+
+    Editor.prototype.trackMotion = function (id) {
+        var self = this, p = this.motionPop, b;
+
+        if (p && (p.id === id) && p.refind) {
+            this.closeMotionPop(true);
+            return;
+        }
+
+        if (this.playing) {
+            this.pause();
+        }
+
+        if ((this.sel.length !== 1) || (this.sel[0] !== id)) {
+            this.select([id]);
+        }
+
+        b = this.trackMotionAt(id);
+
+        if (b) {
+            this.openMotionPop(b, function () { return self.trackMotionAt(id); });
+        }
     };
 
     // The panel's note under a phase's fields, where the tracks show.
@@ -251,6 +310,7 @@
 
                 if (tip) {
                     tip.textContent = barTip(start, nb);
+                    tip.className = tipClass(nb.from, nb.to, end);
                 }
             }
         };

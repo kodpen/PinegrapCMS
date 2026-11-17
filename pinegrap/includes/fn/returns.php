@@ -3851,8 +3851,12 @@ function pg_return_erp_hand_off($user, $erp_on = null)
  *
  * @param array $return pg_return_load()
  * @return array|null order (id, order_number, status, payment_method),
- *                    refunded, remaining, driver (key, '' when the money
- *                    cannot be sent back from here), driver_label, estimate,
+ *                    refunded, remaining (payment money not refunded yet),
+ *                    gift_card_owed (what gift cards and store credit paid
+ *                    that is not given back yet), credit_remaining (the two
+ *                    together: what store credit or a recorded refund can
+ *                    give back), driver (key, '' when the money cannot be
+ *                    sent back from here), driver_label, estimate,
  *                    suggested, erp (invoice_id, invoice_number, quantities);
  *                    null when the order is gone
  */
@@ -3867,6 +3871,11 @@ function pg_return_refund_plan($return)
     $status = (string) $order['status'];
     $refunded = max(0, (int) (isset($order['refunded_amount']) ? $order['refunded_amount'] : 0));
     $remaining = max(0, (int) $order['total'] - $refunded);
+    // orders.total has the gift card part taken off already: what the cards
+    // and store credit gave, less what a return gave back of it, can still
+    // come back as store credit or a recorded refund, never through the
+    // payment service.
+    $gift_card_owed = pg_order_gift_card_owed((int) $order['id']);
     $driver = function_exists('pg_payment_refund_driver') ? pg_payment_refund_driver((string) $order['payment_method']) : '';
 
     // The same conditions the order screen offers its refund on.
@@ -3941,11 +3950,15 @@ function pg_return_refund_plan($return)
             'payment_method' => (string) $order['payment_method'],
         ),
         'refunded'     => $refunded,
-        'remaining'    => $remaining,
-        'driver'       => $driver,
-        'driver_label' => is_array($definition) ? (string) $definition['label'] : '',
-        'estimate'     => $estimate,
-        'suggested'    => min($estimate, $remaining),
+        'remaining'        => $remaining,
+        'gift_card_owed'   => $gift_card_owed,
+        'credit_remaining' => $remaining + $gift_card_owed,
+        'driver'           => $driver,
+        'driver_label'     => is_array($definition) ? (string) $definition['label'] : '',
+        'estimate'         => $estimate,
+        // The form opens on the driver when there is one, which can give
+        // back payment money alone.
+        'suggested'        => min($estimate, ($driver !== '') ? $remaining : $remaining + $gift_card_owed),
         'erp'          => $erp,
     );
 }
@@ -3967,6 +3980,36 @@ function pg_return_refund_order_open($status)
 }
 
 /**
+ * How a refund of a return splits between payment money and the gift card
+ * part (what gift cards and store credit paid). A payment service ('driver')
+ * gives back at most the payment money left; store credit and a recorded
+ * refund ('credit', 'manual') also give back the gift card part still owed,
+ * payment money first. Pure.
+ *
+ * @param string $method         driver, credit or manual (anything else is
+ *                               held to the payment money, as a driver)
+ * @param int    $amount         minor units
+ * @param int    $remaining      payment money not refunded yet
+ * @param int    $gift_card_owed gift card part not given back yet
+ * @return array|null payment, gift_card (minor units); null when the amount
+ *                    is below 0 or above what the method can give back
+ */
+function pg_return_refund_split($method, $amount, $remaining, $gift_card_owed)
+{
+    $amount = (int) $amount;
+    $remaining = max(0, (int) $remaining);
+    $owed = in_array((string) $method, array('credit', 'manual'), true) ? max(0, (int) $gift_card_owed) : 0;
+
+    if (($amount < 0) || ($amount > $remaining + $owed)) {
+        return null;
+    }
+
+    $payment = min($amount, $remaining);
+
+    return array('payment' => $payment, 'gift_card' => $amount - $payment);
+}
+
+/**
  * Gives the money of a received return back and marks it refunded.
  *
  * Through the payment's driver ('driver': the one that took the order's
@@ -3981,7 +4024,11 @@ function pg_return_refund_order_open($status)
  * the service's own screen - reopening it sent a second refund on the next
  * click. What was paid back is added to the order's refunded amount with an
  * order_refunds row; the order's status and totals stay as they are (a
- * return is not a cancellation).
+ * return is not a cancellation). Store credit and a recorded refund may go
+ * beyond the payment money up to the gift card part still owed
+ * (pg_return_refund_split()): that part is a second order_refunds row of
+ * type return_gift_card and adds nothing to the refunded amount, which is
+ * payment money alone.
  *
  * The caller has checked the person's commerce rights.
  *
@@ -4074,8 +4121,16 @@ function pg_return_refund($return_id, $options, $user_id = 0)
         return $fail(lang('The refund amount must be greater than 0.'), 'amount');
     }
 
-    if ($amount > $plan['remaining']) {
+    $split = pg_return_refund_split($method, $amount, $plan['remaining'], $plan['gift_card_owed']);
+
+    if ($split === null) {
         $release();
+
+        // A payment service cannot give back what gift cards or store credit
+        // paid: say so when the amount would fit as store credit.
+        if (($method === 'driver') && ($amount <= (int) $plan['credit_remaining'])) {
+            return $fail(lang(array('string' => 'The payment service can give back at most {var:1}; the rest was paid with gift cards or store credit. Give it as store credit or record it.', 'vars' => array(pg_format_money((int) $plan['remaining'] / 100, BASE_CURRENCY_SYMBOL)))), 'amount_exceeds');
+        }
 
         return $fail(lang('The refund amount exceeds the remaining refundable amount.'), 'amount_exceeds');
     }
@@ -4096,12 +4151,12 @@ function pg_return_refund($return_id, $options, $user_id = 0)
 
     if ($method === 'credit') {
         // The card is the refund: its id is the reference, the bonus is on
-        // the card only and only on payment money not refunded yet
-        // (plan remaining), never on what gift cards paid. No card written
-        // puts the return back to received.
+        // the card only and only on its payment money part, never on what
+        // gift cards or store credit paid. No card written puts the return
+        // back to received.
         $issued = pg_credit_refund_issue($customer_id, $amount,
             'Refund of return request #' . (int) $return['id'] . ' of order #' . $plan['order']['order_number'], (int) $user_id,
-            min($amount, (int) $plan['remaining']));
+            $split['payment']);
 
         if ($issued['card_id'] <= 0) {
             db("UPDATE order_returns SET status = 'received', refunded_at = 0" . pg_return_touch_sql() . "
@@ -4170,16 +4225,32 @@ function pg_return_refund($return_id, $options, $user_id = 0)
         }
     }
 
-    if ($amount > 0) {
-        db("UPDATE orders SET refunded_amount = COALESCE(refunded_amount, 0) + " . $amount . " WHERE id = '" . (int) $return['order_id'] . "'");
+    // Payment money grows refunded_amount and keeps the method's row; the
+    // gift card part is its own row of type return_gift_card, which
+    // pg_order_gift_card_owed() subtracts, so a later cancellation or return
+    // does not give it a second time.
+    $refund_note = 'Return request #' . (int) $return['id'] . (($unclear !== null) ? ' (unconfirmed: no clear answer from ' . $plan['driver_label'] . ')' : '');
+    $refund_rows = array(
+        array($split['payment'], ($method === 'driver') ? 'return' : (($method === 'credit') ? 'return_credit' : 'return_manual')),
+        array($split['gift_card'], 'return_gift_card'),
+    );
+
+    if ($split['payment'] > 0) {
+        db("UPDATE orders SET refunded_amount = " . pg_order_refunded_add_expr($split['payment']) . " WHERE id = '" . (int) $return['order_id'] . "'");
+    }
+
+    foreach ($refund_rows as $refund_row) {
+        if ($refund_row[0] <= 0) {
+            continue;
+        }
 
         db("INSERT INTO order_refunds (order_id, amount_cents, refund_type, transaction_id, notes, created_at)
             VALUES (
                 '" . (int) $return['order_id'] . "',
-                '" . $amount . "',
-                '" . (($method === 'driver') ? 'return' : (($method === 'credit') ? 'return_credit' : 'return_manual')) . "',
+                '" . (int) $refund_row[0] . "',
+                '" . e($refund_row[1]) . "',
                 '" . e($reference) . "',
-                '" . e('Return request #' . (int) $return['id'] . (($unclear !== null) ? ' (unconfirmed: no clear answer from ' . $plan['driver_label'] . ')' : '')) . "',
+                '" . e($refund_note) . "',
                 NOW())");
     }
 

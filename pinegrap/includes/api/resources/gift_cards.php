@@ -82,15 +82,15 @@ function api_gift_card_schema() {
 		'amount'          => 'integer',
 		'balance'         => 'integer',
 		'status'          => 'string',
-		'expires_on'      => 'string?',
+		'expires_on'      => 'date?',
 		'notes'           => 'string',
 		'order_id'        => 'integer?',
 		'from_name'       => 'string?',
 		'recipient_email' => 'string?',
 		'message'         => 'string?',
-		'delivery_date'   => 'string?',
-		'created_at'      => 'string?',
-		'updated_at'      => 'string?',
+		'delivery_date'   => 'date?',
+		'created_at'      => 'datetime?',
+		'updated_at'      => 'datetime?',
 		'updated_at_unix' => 'integer',
 		// The single-card read adds where it was spent.
 		'redemptions'     => 'GiftCardRedemption[]'
@@ -118,7 +118,7 @@ function api_gift_card_redemption_schema() {
 		'amount'      => 'integer',
 		'old_balance' => 'integer',
 		'new_balance' => 'integer',
-		'ordered_at'  => 'string?'
+		'ordered_at'  => 'datetime?'
 	);
 
 }
