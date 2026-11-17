@@ -15,6 +15,7 @@ module: experiments_sheet
 ## What does the row say?
 - `_pgPublishRows()` hands a held row's `label` and `note` (the hold text) to `pg_designer_publish.js`: the badge shows the label, the row's tooltip the note. Without a label the badge reads the markup's "Held by an experiment".
 - `_pgHeldText()` gives the draft settings box's title and the toast of a refused Publish the bundle's text, or the experiment's. The row's words never name an experiment for a bundled draft.
+- A pill that does not fit beside the page name goes under it, starting where the name starts, and its text breaks into lines; the name is cut only when it is longer than the row alone. One rule in the sheet's block of `style_designer.css` (the box out of the flow in the row's start padding), for every state's pill. Architect (2026-11-17, agent channel message 8148): accepted at 1440, this change at 390.
 - The hold is read when the editor opens; a bundle changed meanwhile shows at the next load. The server refuses the publish with the bundle's name either way.
 
 Built in #10191 (release bundle step RB2b). Test: `tests/experiments_editor_bundle_hold_test.php`.
