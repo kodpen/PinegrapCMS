@@ -34771,10 +34771,11 @@ const StyleDesigner = (function () {
             return h + '</select>';
         }
 
+        // The label, the control, then the per-size chevron, in reading order.
         var widthHtml = '<div class="sd-sp-row">';
-        widthHtml += '<button type="button" class="sd-sp-toggle bi bi-chevron-right' + (hasBpW ? ' sd-sp-open' : '') + '" data-sp-target="sdcol_width"></button>';
         widthHtml += '<span class="sd-sp-label">' + esc(_sdT('Width')) + '</span>';
         widthHtml += colSel('xs', xs, n.props.xs || '12');
+        widthHtml += '<button type="button" class="sd-sp-toggle bi bi-chevron-right' + (hasBpW ? ' sd-sp-open' : '') + '" data-sp-target="sdcol_width"></button>';
         widthHtml += '</div>';
         widthHtml += '<div class="sd-sp-bps" id="sdcol_width"' + (hasBpW ? '' : ' style="display:none"') + '>';
         [['sm','SM'],['md','MD'],['lg','LG'],['xl','XL'],['xxl','XXL']].forEach(function(pair) {
@@ -54218,9 +54219,9 @@ const StyleDesigner = (function () {
             var rowId = 'sdsp_' + basePfx.replace(/-/g, '');
             var hasBpVal = bpPfxs.some(function(p) { return spVal(p) !== ''; });
             var h = '<div class="sd-sp-row">';
-            h += '<button type="button" class="sd-sp-toggle bi bi-chevron-right' + (hasBpVal ? ' sd-sp-open' : '') + '" data-sp-target="' + rowId + '"></button>';
             h += '<span class="sd-sp-label">' + label + '</span>';
             h += mkSpSel(basePfx, isMargin);
+            h += '<button type="button" class="sd-sp-toggle bi bi-chevron-right' + (hasBpVal ? ' sd-sp-open' : '') + '" data-sp-target="' + rowId + '"></button>';
             h += '</div>';
             h += '<div class="sd-sp-bps" id="' + rowId + '"' + (hasBpVal ? '' : ' style="display:none"') + '>';
             bpPfxs.forEach(function(pfx, i) {
@@ -60949,12 +60950,18 @@ const StyleDesigner = (function () {
     }
 
     // Marks the segment of each button group under `root` (or `root`
-    // itself) that its hidden select holds.
+    // itself) that its hidden select holds, and names the group by its
+    // row's label, as the naming pass names a select.
     function _sdSegSync(root) {
         var grps = root.classList && root.classList.contains('sd-seg-grp') ? [root] : root.querySelectorAll('.sd-seg-grp');
         Array.prototype.forEach.call(grps, function (grp) {
             var sel = grp.querySelector('select.sd-seg-src');
             if (!sel) return;
+            if (!grp.hasAttribute('aria-labelledby')) {
+                var row = grp.closest('.sd-prop-row, .sd-sp-row');
+                var lbl = row ? (_sdPropsChild(row, 'sd-prop-label') || _sdPropsChild(row, 'sd-sp-label')) : null;
+                if (lbl && (lbl.textContent || '').trim() !== '') grp.setAttribute('aria-labelledby', _sdPropsLabelId(lbl));
+            }
             grp.querySelectorAll('.sd-seg').forEach(function (b) {
                 var on = b.getAttribute('data-seg-val') === sel.value;
                 b.classList.toggle('sd-seg-on', on);

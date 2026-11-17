@@ -306,7 +306,7 @@ function designer_paste_target_test_run($cases, $history = false)
 
 	if ($history) {
 		$names = array_merge($names, array('saveState', 'undo', 'redo', 'reindex', '_sdIdFloor', '_snapshotShared', '_restoreShared', '_pgBaselineTreeKey', '_sdSharedTreeJSON', 'onDuplicate',
-			'_sdStepSelectionKeep', '_sdStepSelection', '_sdStepReselect', '_findNodeAnywhereById'));
+			'_sdStepSelectionKeep', '_sdStepSelection', '_sdStepReselect', '_findNodeAnywhereById', '_sdStateRunTakes'));
 	}
 
 	foreach ($names as $name) {
@@ -335,7 +335,7 @@ function designer_paste_target_test_run($cases, $history = false)
 
 	$script = 'var tree, selectedNode = null, selectedNodes = [], _sharedCache = {}, _sharedDirty = {}, mark = {};'
 		. ($history
-			? 'var saves = 0, undoStack = [], redoStack = [], _sharedSnapshots = {}, _saveStateRun = { key: null, at: 0 }, SAVE_STATE_RUN_MS = 700;'
+			? 'var saves = 0, undoStack = [], redoStack = [], _sharedSnapshots = {}, _saveStateRun = { key: null, at: 0, one: null, seq: 0 }, SAVE_STATE_RUN_MS = 700;'
 				. 'function _dragIndexDrop() {} function _sdEditableInvalidate() {} function scheduleAutosave() {} function updateUndoRedoState() {}'
 				. 'function _snapshotAssetFields() { return null; } function _restoreAssetFields() {}'
 				. 'function _sdMayEdit() { return true; } function _blockDuplicateWithToast() { return false; }'
