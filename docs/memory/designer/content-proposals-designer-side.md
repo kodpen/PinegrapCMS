@@ -9,6 +9,7 @@ module: content_proposals
 - Order (`pg_content_proposals_order()`): waiting, then stale, then the closed ones; each newest first.
 - Each row: the page (a link into the Studio) and the editor on one line, the status pill, time and number of changes on the next, who applied or dismissed it (and the reason), Compare, then Apply and Dismiss side by side; Dismiss opens its own reason field.
 - Compare: kind, on the site, proposed; side by side from md, stacked on a phone; a picture of the site's own files with its small image (`pg_content_proposals_local_picture()`).
+- A change only in a text's markup (same words, other link or formatting) shows both sides' HTML escaped as code: `content-proposals-compare-markup.md`.
 - Actions are POST forms with the CSRF token; the screen reads `$_POST` itself (`post_value()` exists only in the settings screens).
 - With the switch off the screen says new saves go live and the waiting ones stay.
 - Take back is "Take back the change" ("Değişikliği geri al"), its own key: "Take back" is the Workspace's word for withdrawing a request. The designer who applied a change reads "Applied by …"; the others are told only they can take it back. The reason field and its limit say "Sebep".
