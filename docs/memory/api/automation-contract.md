@@ -8,7 +8,7 @@ module: automation_contract
 - `pg_automation_contract()` in `includes/fn/automation_contract.php`: a list of rows, data only, nothing reads it at request time. Not loaded by `functions.php`; a caller `require_once`s it.
 - A row: `key` (stable name), `kind` (trigger, action, search), `module` ('' core, `erp`, `workspace`), `scope`.
 - A trigger adds `events`, `record` and `record_ids` (each `{placeholder}` of the record route => the field of the event's `data`, a dot for nested: `table.id`), `list` and `list_ids`, `newest`.
-- `newest`: the query parameters that list newest first (`sort=placed_desc` on `/orders`); `array()` when the list already does (`/returns`); `null` when it cannot yet.
+- `newest`: the query parameters that list newest first (`sort=placed_desc` on `/orders`, `sort=newest` on the other core and ERP lists, `dir=desc` on a table's rows); `array()` when the list already does (`/returns`); `null` when it cannot yet (the Workspace task list). How `sort=newest` walks: `api-list-newest-first.md`.
 - An action: `route` (a POST route). A search: `route` (a GET list) and `by` (its query parameters).
 - `pg_automation_contract_scopes()`: `meta:read`, `webhooks:manage` and every row's scope, each once. The "Automation platform" starting point of New application ticks these.
 
@@ -22,7 +22,7 @@ module: automation_contract
 - `order.return.requested`: record `/returns/{id}` by `return_id`, list `/returns` (newest first already).
 - `customer.created`, `form.submitted` (record by `form_id` and `id`), `product.created`, `stock.low` (by `product_id`, list `/products`), `subscription.renewed`/`.failed`/`.cancelled`.
 - Workspace: `workspace.task.created`/`.completed`, `workspace.wtable.row.created` (only tables shared in a public channel, as the event is). ERP: `erp.invoice.created`/`.paid`, `erp.quote.created`/`.accepted`.
-- `newest` is `null` for all but orders and returns; the newest-first orders of the other lists are a later change.
+- `newest` is `sort=newest` on customers, form submissions, products, subscriptions and the ERP invoice and quote lists, `dir=desc` on a table's rows (PR #10174); `null` only on the Workspace task list, whose files were held by other PRs then.
 
 ## Which actions and searches?
 - No labels: each app names its own triggers in its platform's words.
