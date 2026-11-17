@@ -8,7 +8,7 @@ description: Plan automation-platforms, steps AU8 to AU10 and the order of all t
   - One sheet at 1440, 1024 and 390, light and dark, the longest Turkish labels: New application with the starting point, the sheet with the three values, the Events tab with "New subscription" open and its event list searched, "Send a sample".
   - Posted in the agent channel; the architect brings it to the owner as one question.
   - Features: A10, A11, A12, A13 as drawn.
-  - Drawn (PR #10126): agent channel message 7736, the legend, with its ten pictures in replies 7737 to 7746; waiting for the owner's answer through the architect.
+  - Drawn (PR #10126): agent channel message 7736, the legend, first pictures 7737 to 7746. Architect (2026-11-17, message 7749): the starting point is a second choice under "Bir entegrasyon", not a fourth kind; nothing about it is stored; the three values are on every integration's secret sheet, the automation note only after that starting point. Corrected pictures 7754 to 7763, the owner's overview 7753; waiting for the owner's answer through the architect.
 
 - AU9 (M) after AU8's yes, AU3 and AU4: the panel.
   - Existing files: `api_settings.php` (New application, the Events tab, the webhook card, the guides), `includes/api/resources/webhooks.php`: the checks of `api_webhooks_create()` move into one function both callers use.
