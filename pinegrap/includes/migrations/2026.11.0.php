@@ -218,6 +218,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_prototype_comments();      // 11.0.225
 	upgrade_2026_11_0_courses();                 // 11.0.234
 	upgrade_2026_11_0_content_review();          // 11.0.226
+	upgrade_2026_11_0_erp_price_account();       // 11.0.235
 	upgrade_2026_11_0_site_push();               // 11.0.227
 	upgrade_2026_11_0_page_bundle();             // 11.0.228
 	upgrade_2026_11_0_site_push_watch();         // 11.0.229
@@ -7332,6 +7333,31 @@ function upgrade_2026_11_0_site_push() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Visitor notifications: the tables for browsers subscribed to the site\'s news and the messages sent to them are ready; nothing is offered to visitors until the switch is turned on in Features.');
+
+}
+
+// An ERP account that uses another account's prices (11.0.235,
+// includes/erp/price_lists.php): price_account_id names the account whose
+// rows and discount it buys at instead of its own; 0 uses its own, as every
+// account did before. One hop only, checked at the save
+// (erp_account_price_pointer_refusal()). idx_price_account finds the
+// accounts that use an account's prices, for that check and for the
+// refusal to delete an account others point at. No backfill: no account
+// uses another's prices until one is chosen.
+function upgrade_2026_11_0_erp_price_account() {
+
+	if (!install_table_exists('erp_accounts')) {
+
+		install_skipped('erp_accounts does not exist, skipped');
+
+		return;
+
+	}
+
+	install_add_column('erp_accounts', 'price_account_id', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_index('erp_accounts', 'idx_price_account', "INDEX idx_price_account (price_account_id)");
+
+	install_note('ERP: an account can now use another account\'s prices; every account keeps its own until one is chosen.');
 
 }
 
