@@ -22,10 +22,13 @@ description: A step's new parts in the panel and Workspace are built from look A
 ## How is it checked before a look?
 - The worker runs `git diff origin/development...HEAD -- pinegrap | grep -E '^\+' | grep -c -E 'btn btn-|nav-tabs|nav-pills|nav-underline'` and writes the count in the look's closing message; a line that stays is named with its reason (moved, not new).
 - A set with an unexplained count gets no look from the architect, and no sheet goes to the owner. Drawings use the same parts.
+- The count is of what the new part draws, not only of its added lines: old markup carried into a new drawer, dialog or card moves to the recipes with it. CN4 (#10237) carried the provider panel's application form into its drawer with the function, so the added-line count read 0 (Architect, 2026-11-17, agent channel message 8648).
 - Asked as a tools PR on 2026-11-17: `tools/check_look.php` counting these classes per file of the panel's PHP screens and script sources, in a baseline that may only fall (`look-check.md`). Until it lands, the count above is the check.
 
 ## Where was it first applied?
 - AU9 (#10225): the buttons it adds move to `pg-button` before its `ready` label. The application drawer's old tab strip and its other buttons are the API screen's step of panel-old-screens, taken once AU9 has landed.
-- CC7b (#10213) was already in a train: a small PR after it moves the /oluştur line's buttons.
+- CC7b (#10213) was already in a train: #10234 moved the /oluştur line's cards to the recipes after it.
+- A change of look does not change behaviour: in #10234 a text column stays a text box that takes lines (`textarea.pg-input`, one line high at rest, growing to eight), not a one-line input that drops a pasted address's line breaks (Architect, 2026-11-17, agent channel message 8593).
+- A sheet drawn before the rule gives way to the ranks on file: in CN4's drawers one fill at the foot, Save quiet, Disconnect as `pg-button-danger`, where CN2's sheet drew two fills and a ghost (message 8648).
 
-Related: docs/memory/ui/look-type-and-recipes.md, docs/memory/ui/look-check.md, docs/memory/workflow/look-narrowest-column.md
+Related: docs/memory/ui/look-type-and-recipes.md, docs/memory/ui/look-check.md, docs/memory/ui/look-mark-over-picture.md, docs/memory/workflow/look-narrowest-column.md
