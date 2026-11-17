@@ -24,7 +24,8 @@ description: What the test of 2026-11-17 measured on dev's external API: the GET
 - 309 fields named like a moment (`*_at`, `*_date`, `*_time`) are strings without a format; `User.last_online_at`, `created_at` and `updated_at` say `type: datetime`.
 
 ## Which manners are missing?
-- HEAD is 405. A 201 has no `Location`. A 401 has no `WWW-Authenticate`.
+- HEAD is 405. A 201 has no `Location`.
+- A 401 `unauthorized` carries the Basic `WWW-Authenticate` challenge; a 401 `credentials_missing` (no credentials sent) carried none on dev.
 - No `Content-Language`; a message comes in the site's language whatever `Accept-Language` says.
 - A refusal names one field, the first. A JSON list as body is read as an empty object.
 - `If-Match` with a wrong ETag still writes (200).

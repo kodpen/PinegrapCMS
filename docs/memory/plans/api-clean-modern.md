@@ -6,7 +6,7 @@ priority: 6
 
 ## What is asked?
 - Owner (2026-11-17, agent channel message 7514, under the API test report 7513): "Ek bulgularını düzeltme için bir plan da ekle lütfen. API uçları temiz ve modern olmalı."
-- The test called every GET route of the document on dev, ran write rounds on five collections and in the Workspace, and read both documentation pages. Its figures: `plans/api-clean-modern-findings.md`. The steps: `plans/api-clean-modern-steps.md`.
+- The test's figures: `plans/api-clean-modern-findings.md`. The steps: `plans/api-clean-modern-steps.md` (AM1 to AM6) and `plans/api-clean-modern-steps-manners.md` (AM7 to AM13).
 
 ## What does "clean and modern" mean here?
 - An answer is always the JSON envelope, a fault too.
@@ -22,14 +22,19 @@ priority: 6
 - `POST /webhooks/{id}` and `POST /workspace/scheduled-messages/{id}` keep deleting.
 - No version in the address: the API grows by adding.
 - The 64 lists that answer whole (lookups, a record's own rows) keep doing so.
+- Field descriptions get no sweep (2,989 fields have none): AM6 adds only what a builder can generate.
+
+## What did the architect settle?
+- Architect (2026-11-17, channel message 7552): AM9 `If-Match` is built: opt-in by a header, nothing changes without it.
+- Architect (2026-11-17, channel message 7552): AM10's delete twins are built: the `api/` key rule already asks for a `POST …/delete` twin whose id ends in `_post`.
+- Architect (2026-11-17, channel message 7552): the endpoint texts stay English: the MCP tool a model reads prints the same text, and user documentation is English only (`api/api-openapi-declarations.md`). AM12 writes one translated line saying so.
+- Architect (2026-11-17, channel message 7552): `WWW-Authenticate` is no question: `api_fail_unauthorized()` sends it unless `X-Requested-With` marks a script-made call. Only `credentials_missing` lacks it while OAuth is off: AM7.
 
 ## What waits for a decision?
-- AM9 (`If-Match`), AM10 (the two delete twins) and AM11 (`Accept-Language`) add behaviour: the architect asks the owner before a worker takes one.
-- The endpoint texts of the documentation pages are English while the page's frame is in the panel's language (798 summaries and descriptions): translate them, or say on the page that the reference is in English? AM12 does the second until it is answered.
-- A 401 carries no `WWW-Authenticate`. The standard asks for it; a browser may answer it with its own sign-in window on the console page. Left out of the steps until decided.
+- AM11 (`Accept-Language`) alone, held by the architect: browsers and phones send that header by themselves, and a call-wide language also reaches what the call stores or sends. The step opens with a census; the owner is asked only if the choice can be kept to the answer.
 
 ## In which order?
-- AM1, AM2 and AM3 first, beside each other: AM1 and AM2 are open `bug` issues.
-- AM4 before AM5 and AM6. AM7, AM8 and AM12 wait for nothing. AM13 last.
+- AM1 and AM2 are open `bug` issues and go ahead of any step; AM3 beside them.
+- AM4 before AM5 and AM6. AM7, AM8, AM9, AM10 and AM12 wait for nothing. AM13 last, with or without AM11.
 - Claim as `[plan:api-clean-modern] <step> — <topic>`.
 - After AM5 the test agent runs the tool on dev and files what it finds as `bug` issues.
