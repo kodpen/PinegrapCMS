@@ -74,8 +74,8 @@ function test_form_card_titles_are_h2_with_the_same_look()
 function test_form_group_titles_are_h3_inside_cards()
 {
 	$expected = array(
-		'ad_region_form.php' => '<h3 class="h5 mt-12">\' . lang(\'Region Behavior\') . \'</h3>',
-		'login_region_form.php' => '<h3 class="h5 mt-12">\' . lang(\'Logged In\') . \'</h3>',
+		'ad_region_form.php' => '<h3 class="pg-group-label mt-12">\' . lang(\'Region Behavior\') . \'</h3>',
+		'login_region_form.php' => '<h3 class="pg-group-label mt-12">\' . lang(\'Logged In\') . \'</h3>',
 		'field_form.php' => '<h3 class="pg-group-label">\' . lang(\'Amount of Rows and Columns to Display\') . \'</h3>',
 		'calendar_event_form.php' => '<h3 class="pg-group-label" id="multiselect-checkbox-checker-1_title">\' . lang(\'Post to any of my Calendars\') . \'</h3>',
 		'shipping_method_form.php' => '<h3 class="pg-group-label mt-5 mb-3">\' . lang(\'Available on\') . \'</h3>',
