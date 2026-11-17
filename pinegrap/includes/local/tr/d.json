@@ -203,6 +203,7 @@
     "Days": "Günler",
     "Days ({var:1})": "Günler ({var:1})",
     "Days Left": "Kalan Gün",
+    "Days after enrolment are a whole number from 0 to {var:1}.": "Kayıttan sonraki gün sayısı 0 ile {var:1} arasında bir tam sayıdır.",
     "Days and Tracks": "Günler ve Oturum Dizileri",
     "Days are counted in calendar days from the day the template is applied; 0 is that day.": "Günler, şablonun uygulandığı günden itibaren takvim günü olarak sayılır; 0 o gündür.",
     "Days before it expires": "Süre dolmadan kaç gün önce",
