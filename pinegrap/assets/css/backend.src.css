@@ -18636,12 +18636,16 @@ a.ws-chip-message:hover,
   font-size: 1.1rem;
 }
 /* The name and the time keep at least 7rem: in a narrower player the
-   buttons after them take the next line, at its right. */
+   buttons after them take the next line as one group, at its right. */
 .ws-voice-main {
   flex: 1 1 7rem;
   min-width: 0;
 }
-.ws-voice-main + * {
+.ws-voice-tools {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--ws-space-2);
   margin-left: auto;
 }
 .ws-voice-name {
@@ -18750,7 +18754,8 @@ a.ws-chip-message:hover,
   }
 }
 /* A narrow column (a discussion panel, a phone) keeps the file's name at
-   least 8rem wide: the buttons then take the next line, at its right. */
+   least 8rem wide: the buttons then take the next line as one group, at
+   its right. */
 .ws-file-card {
   display: flex;
   flex-wrap: wrap;
@@ -18766,7 +18771,11 @@ a.ws-chip-message:hover,
   flex: 1 1 8rem;
   min-width: 0;
 }
-.ws-file-card > .ws-grow + * {
+.ws-file-tools {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: .6rem;
   margin-left: auto;
 }
 .ws-file-card .ws-file-name {

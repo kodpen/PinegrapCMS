@@ -79,6 +79,9 @@ function test_workspace_narrow_file_and_voice_wrap()
 	pg_assert_true(strpos(workspace_narrow_rule($css, '.ws-file-card > .ws-grow'), 'flex: 1 1 8rem') !== false, 'the file name keeps 8rem');
 	pg_assert_true(strpos(workspace_narrow_rule($css, '.ws-voice'), 'flex-wrap: wrap') !== false, 'the voice player wraps');
 	pg_assert_true(strpos(workspace_narrow_rule($css, '.ws-voice-main'), 'flex: 1 1 7rem') !== false, 'the voice name keeps 7rem');
+	// The buttons wrap as one group, never one by one.
+	pg_assert_true(strpos(workspace_narrow_rule($css, '.ws-file-tools'), 'flex: none') !== false, 'the file card buttons are one group');
+	pg_assert_true(strpos(workspace_narrow_rule($css, '.ws-voice-tools'), 'flex: none') !== false, 'the voice player buttons are one group');
 }
 
 function test_workspace_narrow_poll_reads_its_own_width()

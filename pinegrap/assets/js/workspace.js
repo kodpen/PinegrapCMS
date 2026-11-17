@@ -13588,16 +13588,20 @@
             text.appendChild(name);
             card.appendChild(text);
 
+            // The buttons wrap as one group: all beside the name, or all
+            // under it at the right in a narrow column.
+            var tools = el('div', 'ws-file-tools');
+
             if (kind === 'pdf' || file.office) {
                 var look = button('btn btn-sm btn-outline theme-secondary', t('preview'), 'bi-eye');
                 look.addEventListener('click', function () { previewFile(file, function (result) { self.fileEdited(result); }); });
-                card.appendChild(look);
+                tools.appendChild(look);
             }
 
             if (file.text) {
                 var read = button('btn btn-sm btn-outline theme-secondary', t('file_edit_text'), 'bi-file-earmark-text');
                 read.addEventListener('click', function () { self.openText(message); });
-                card.appendChild(read);
+                tools.appendChild(read);
             }
 
             var get = el('a', 'btn btn-sm btn-text theme-secondary');
@@ -13605,7 +13609,8 @@
             get.setAttribute('download', file.name);
             get.title = t('download');
             get.appendChild(icon('bi-download'));
-            card.appendChild(get);
+            tools.appendChild(get);
+            card.appendChild(tools);
 
             return card;
         },

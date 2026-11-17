@@ -10,8 +10,9 @@ description: Every part of a Workspace message follows the width of its own colu
 
 ## What does each part do in a narrow column? (#10030)
 - Message head (`.ws-msg-meta`): wraps; the name keeps a line of its own and wraps between words only when it alone is wider; a mark (`.badge`: via, MCP agent) is cut with an ellipsis, the via mark's whole text in its title.
-- File card (`.ws-file-card`): the name keeps at least 8rem (`flex: 1 1 8rem`), the buttons take the next line at its right; the name's title is the whole file name.
-- Voice player (`.ws-voice`): the name and time keep at least 7rem, the buttons wrap to the next line at its right.
+- File card (`.ws-file-card`): the name keeps at least 8rem (`flex: 1 1 8rem`), the buttons (`.ws-file-tools`) wrap as one group: all beside the name, or all under it at the right; the name's title is the whole file name.
+- Voice player (`.ws-voice`): the name and time keep at least 7rem; speed, answer, "Aa" and download (`.ws-voice-tools`) wrap as one group at its right.
+- Architect (2026-11-17, agent channel message 8533): a card's buttons wrap as one group, never one alone on a line, at every width from 320 to 390.
 - Poll and agent question: `.ws-poll` is a named container (`container: ws-poll / inline-size`); `@container ws-poll (max-width: 30rem)` repeats the phone layout (counts under the option, the foot's plain buttons by their icon, a picture beside the options above them) and "Write your own answer" takes a line over Send. An option's long word wraps (`overflow-wrap: break-word`, not `anywhere`: that splits every word in a narrow split column).
 - Canvas card head: the name keeps the icon's row and 8rem (`flex: 1 1 8rem`), the part chips wrap under it.
 - Titles for cut text: the "/" and "@" lists' label, example and meta (`pickerText()` in `drawPicker()`), the discussion head's channel line, the upload toast's file name, a media bar's name, a page card's name.
