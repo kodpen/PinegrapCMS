@@ -290,3 +290,49 @@ function api_app_start_choices($scopes, $groups) {
 	return $choices;
 
 }
+
+// The label an event row of "New subscription" carries beside its name: the
+// part of the site it is about, read from the name's first segment
+// (order.created: Orders). A module's event takes the module's label; a
+// segment with no area of its own takes $module_label (often ''). Pure.
+function api_app_event_area($name, $module_label = '') {
+
+	$first = strtok((string)$name, '.');
+
+	$areas = array(
+		'order'           => 'Orders',
+		'marketplace'     => 'Marketplaces',
+		'cart_quote'      => 'Cart quotes',
+		'mail'            => 'E-mail',
+		'whatsapp'        => 'WhatsApp',
+		'booking'         => 'Bookings',
+		'subscription'    => 'Subscriptions',
+		'credit'          => 'Store credit',
+		'commission'      => 'Commissions',
+		'affiliate'       => 'Affiliates',
+		'product'         => 'Products',
+		'product_group'   => 'Products',
+		'inventory'       => 'Products',
+		'stock'           => 'Products',
+		'customer'        => 'Customers',
+		'contact_group'   => 'Customers',
+		'user'            => 'Users',
+		'page'            => 'Pages',
+		'experiment'      => 'Pages',
+		'content'         => 'Pages',
+		'zone'            => 'Store settings',
+		'tax_zone'        => 'Store settings',
+		'shipping_method' => 'Store settings',
+		'currency'        => 'Store settings',
+		'offer'           => 'Offers',
+		'file'            => 'Files',
+		'form'            => 'Forms',
+		'calendar_event'  => 'Calendars',
+		'campaign'        => 'Campaigns',
+		'erp'             => 'ERP',
+		'workspace'       => 'Workspace'
+	);
+
+	return isset($areas[$first]) ? lang($areas[$first]) : (string)$module_label;
+
+}

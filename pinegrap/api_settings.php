@@ -1318,7 +1318,11 @@ function api_settings_copy_button($id, $caption_id, $button_class) {
 	// of what it copies ("Copy Key"). The status sits in the same box: the
 	// drawer is a modal dialog and the one-time sheet makes everything else
 	// inert, so a region outside them would never be heard.
-	return '<button type="button" class="btn btn-sm ' . $button_class . ' api-copy" id="' . $id . '_copy" data-copy="#' . $id . '" aria-labelledby="' . $id . '_copy ' . $caption_id . '"><i class="bi bi-clipboard me-1" aria-hidden="true"></i>' . lang('Copy') . '</button>'
+	// A class list of the design language (pg-button …) is the whole list;
+	// the older screens pass a Bootstrap variant added to the small button.
+	$classes = (strpos($button_class, 'pg-') === 0) ? $button_class : 'btn btn-sm ' . $button_class;
+
+	return '<button type="button" class="' . $classes . ' api-copy" id="' . $id . '_copy" data-copy="#' . $id . '" aria-labelledby="' . $id . '_copy ' . $caption_id . '"><i class="bi bi-clipboard me-1" aria-hidden="true"></i>' . lang('Copy') . '</button>'
 		. '<span class="visually-hidden" role="status" aria-live="polite" data-copied="' . h(lang('Copied')) . '" data-refused="' . h(lang('The browser did not let the text be copied. Select it and copy it from here.')) . '"></span>';
 
 }
@@ -1529,7 +1533,7 @@ foreach ($hook_events_all as $event_name => $event_text) {
 
 	$hook_catalogue[] = array(
 		'name'   => (string)$event_name,
-		'module' => isset($hook_module_names[$event_module]) ? $hook_module_names[$event_module] : '',
+		'module' => api_app_event_area($event_name, isset($hook_module_names[$event_module]) ? $hook_module_names[$event_module] : ''),
 		'text'   => lang((string)$event_text)
 	);
 
@@ -1549,7 +1553,7 @@ if (is_array($hooks_back) && isset($hooks_back['secret']['secret'])) {
 					<div class="mb-3">' . lang('The signing secret is shown only now; once you leave this tab it is not shown again.') . '</div>
 					<span class="visually-hidden" id="d_hook_secret_label">' . lang('Signing secret') . '</span>
 					<div class="api-secret-box"><code id="d_hook_secret_value">' . h($hooks_back['secret']['secret']) . '</code>
-						' . api_settings_copy_button('d_hook_secret_value', 'd_hook_secret_label', 'btn-outline theme-success') . '</div>
+						' . api_settings_copy_button('d_hook_secret_value', 'd_hook_secret_label', 'pg-button pg-button-quiet pg-button-sm') . '</div>
 				</div>';
 
 }
@@ -2033,7 +2037,7 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 .api-event { display: flex; gap: 8px; align-items: flex-start; padding: 7px 10px; margin: 0;
 	border-top: 1px solid var(--pg-border-color); cursor: pointer; }
 .api-event:first-child { border-top: 0; }
-.api-event .check { margin-top: 2px; flex: none; }
+.api-event .pg-checkbox { margin-top: 2px; flex: none; }
 .api-event-name { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .api-event-text { display: block; color: var(--pg-fg-2); }
 .api-event mark { padding: 0; background: var(--pg-warning-bg-subtle); color: inherit; }
@@ -2277,29 +2281,32 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 			<div class="tab-pane fade" id="d_hooks">
 				<div class="d-flex align-items-center flex-wrap gap-3 mb-3">
 					<span class="small opacity-75">' . lang('Addresses this application asked to be told at') . ' &middot; <span class="text-nowrap" id="d_hook_count"></span></span>
-					<button type="button" class="btn btn-sm btn-outline theme-primary ms-auto api-hook-new" id="d_hook_new" aria-expanded="false" aria-controls="d_hook_form">
-						<i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . lang('New subscription') . '</button>
+					<button type="button" class="pg-button pg-button-quiet pg-button-sm ms-auto api-hook-new" id="d_hook_new" aria-expanded="false" aria-controls="d_hook_form">
+						<i class="bi bi-plus-lg" aria-hidden="true"></i>' . lang('New subscription') . '</button>
 				</div>
 				<div id="d_hook_secret_slot">' . $hook_secret_html . '</div>
 				<div class="api-hook-form mb-5 d-none" id="d_hook_form" role="group" aria-labelledby="d_hook_form_title">
 					<div class="d-flex align-items-center mb-3">
 						<b class="small" id="d_hook_form_title">' . lang('New subscription') . '</b>
-						<button type="button" class="btn-close ms-auto" id="d_hook_form_close" aria-label="' . h(lang('Close')) . '"></button>
+						<button type="button" class="pg-icon-button pg-icon-button-sm ms-auto" id="d_hook_form_close" aria-label="' . h(lang('Close')) . '"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
 					</div>
 					<div class="alert theme-danger py-3 px-5 small mb-3 d-none" id="d_hook_form_error" role="alert"></div>
-					<div class="form-field mb-5">
-						<label class="form-label small" for="d_hook_url">' . lang('Address') . '</label>
-						<textarea class="form-control form-control-sm api-hook-address" name="hook_url" id="d_hook_url" rows="3" maxlength="' . (int)$hook_bounds['url'] . '"
-							spellcheck="false" autocomplete="off" aria-describedby="d_hook_url_help" placeholder="https://"></textarea>
-						<div class="form-text" id="d_hook_url_help">' . lang('The address the platform gives for incoming webhooks. It is checked when it is saved: an https address that resolves and lies outside this network.') . '</div>
+					<div class="alert theme-warning py-3 px-5 small mb-3 d-none" id="d_hook_unsaved" role="alert">
+						<i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i>' . lang('The subscription is not created yet: create it or close the form.') . '
 					</div>
-					<div class="form-field mb-3">
-						<label class="form-label small" for="d_hook_search">' . lang('Webhook events') . '</label>
-						<div class="input-group input-group-sm">
-							<span class="input-group-text"><i class="bi bi-search" aria-hidden="true"></i></span>
-							<input type="search" class="form-control" id="d_hook_search" autocomplete="off" aria-controls="d_hook_events"
+					<div class="mb-5">
+						<label class="pg-field-label" for="d_hook_url">' . lang('Address') . '</label>
+						<textarea class="pg-input api-hook-address" name="hook_url" id="d_hook_url" rows="3" maxlength="' . (int)$hook_bounds['url'] . '"
+							spellcheck="false" autocomplete="off" aria-describedby="d_hook_url_help" placeholder="https://"></textarea>
+						<div class="pg-field-help" id="d_hook_url_help">' . lang('The address the platform gives for incoming webhooks. It is checked when it is saved: an https address that resolves and lies outside this network.') . '</div>
+					</div>
+					<div class="mb-3">
+						<label class="pg-field-label" for="d_hook_search">' . lang('Webhook events') . '</label>
+						<span class="pg-input">
+							<input type="search" id="d_hook_search" autocomplete="off" aria-controls="d_hook_events"
 								placeholder="' . h(lang('Search events')) . '">
-						</div>
+							<span class="pg-input-end"><i class="bi bi-search" aria-hidden="true"></i></span>
+						</span>
 					</div>
 					<div class="api-event-list" id="d_hook_events" role="group" aria-label="' . h(lang('Webhook events')) . '"></div>
 					<div class="d-flex flex-wrap gap-3 small fg-2 mt-2">
@@ -2314,8 +2321,8 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 						<i class="bi bi-key me-1" aria-hidden="true"></i>' . lang('Once it is saved the subscription\'s signing secret is shown once. Paste it into the platform if it checks the signature.') . '
 					</div>
 					<div class="d-flex gap-3 justify-content-end">
-						<button type="button" class="btn btn-sm btn-outline theme-secondary" id="d_hook_form_cancel">' . lang('Cancel') . '</button>
-						<button type="button" class="btn btn-sm btn-solid theme-primary" id="d_hook_create">' . lang('Create the subscription') . '</button>
+						<button type="button" class="pg-button pg-button-ghost pg-button-sm" id="d_hook_form_cancel">' . lang('Cancel') . '</button>
+						<button type="button" class="pg-button pg-button-fill pg-button-sm" id="d_hook_create">' . lang('Create the subscription') . '</button>
 					</div>
 				</div>
 				<div id="d_hook_rows"></div>
@@ -2679,8 +2686,8 @@ echo '
 						: "") +
 					// A stopped subscription is sent nothing, a sample neither.
 					((h.status !== "disabled")
-						? "<button type=\'button\' class=\'btn btn-sm btn-outline theme-primary api-sample-open\' data-id=\'" + h.id + "\' aria-expanded=\'false\'>" +
-							"<i class=\'bi bi-send me-1\' aria-hidden=\'true\'></i>" + ' . json_encode(lang('Send a sample'), JSON_UNESCAPED_UNICODE) . ' + "</button>"
+						? "<button type=\'button\' class=\'pg-button pg-button-quiet pg-button-sm api-sample-open\' data-id=\'" + h.id + "\' aria-expanded=\'false\'>" +
+							"<i class=\'bi bi-send\' aria-hidden=\'true\'></i>" + ' . json_encode(lang('Send a sample'), JSON_UNESCAPED_UNICODE) . ' + "</button>"
 						: "") +
 					"<button type=\'button\' class=\'btn btn-sm btn-outline theme-secondary api-hook-act\' data-act=\'webhook_status\' data-id=\'" + h.id + "\'>" +
 						(h.status === "disabled"
@@ -2954,9 +2961,9 @@ echo '
 		list.innerHTML = shown.length ? shown.map(function (e) {
 			var chosen = hookChosen.indexOf(e.name) > -1;
 			return "<label class=\'api-event small\'>" +
-				"<input class=\'check\' type=\'checkbox\' value=\'" + esc(e.name) + "\'" + (chosen ? " checked" : "") + ((full && !chosen) ? " disabled" : "") + ">" +
+				"<input class=\'pg-checkbox\' type=\'checkbox\' value=\'" + esc(e.name) + "\'" + (chosen ? " checked" : "") + ((full && !chosen) ? " disabled" : "") + ">" +
 				"<span><span class=\'api-event-name\'><code>" + markText(e.name, needle) + "</code>" +
-					(e.module ? "<span class=\'api-chip\'>" + esc(e.module) + "</span>" : "") + "</span>" +
+					(e.module ? "<span class=\'pg-pill pg-tone-gray\'>" + esc(e.module) + "</span>" : "") + "</span>" +
 				"<span class=\'api-event-text\'>" + markText(e.text, needle) + "</span></span></label>";
 		}).join("") : "<div class=\'api-event-none small\'>" + ' . json_encode(lang('Nothing found.'), JSON_UNESCAPED_UNICODE) . ' + "</div>";
 		var found = document.getElementById("d_hook_found");
@@ -2991,6 +2998,7 @@ echo '
 		document.getElementById("d_hook_new").setAttribute("aria-expanded", "false");
 		document.getElementById("d_hook_url").value = "";
 		document.getElementById("d_hook_form_error").classList.add("d-none");
+		document.getElementById("d_hook_unsaved").classList.add("d-none");
 		hookSearch.value = "";
 		hookChosen = [];
 		renderHookChosen();
@@ -3043,6 +3051,28 @@ echo '
 		document.getElementById("d_action").form.submit();
 	});
 
+	// Nothing typed is dropped in silence: Save posts the application, not
+	// the form, so while the form holds an address or a chosen event Save
+	// does not post; it brings the form into view with a line saying the
+	// subscription is not created yet. Its other buttons (new secret, delete)
+	// post as before.
+	function hookFormHolds() {
+		return !document.getElementById("d_hook_form").classList.contains("d-none")
+			&& (document.getElementById("d_hook_url").value.trim() !== "" || hookChosen.length > 0);
+	}
+
+	document.getElementById("d_action").form.addEventListener("submit", function (e) {
+		var submitter = e.submitter;
+		var saving = !submitter || submitter.id === "d_save" || !submitter.name;
+		if (!saving || !hookFormHolds()) { return; }
+		e.preventDefault();
+		var tab = document.querySelector("#api_drawer .nav-link[data-bs-target=\'#d_hooks\']");
+		if (tab) { pgUI.tab.show(tab); }
+		document.getElementById("d_hook_unsaved").classList.remove("d-none");
+		document.getElementById("d_hook_form").scrollIntoView({ block: "start" });
+		document.getElementById("d_hook_create").focus({ preventScroll: true });
+	});
+
 	// Leaving the Events tab takes the new subscription\'s secret out.
 	document.addEventListener("click", function (e) {
 		var tab = e.target.closest("#api_drawer .nav-link");
@@ -3072,17 +3102,17 @@ echo '
 		box.className = "api-hook-sample";
 		box.dataset.id = hook.id;
 		box.innerHTML =
-			"<label class=\'form-label small fw-bold\' for=\'d_sample_select\'>" + ' . json_encode(lang('Send a sample'), JSON_UNESCAPED_UNICODE) . ' + "</label>" +
-			"<select class=\'form-control form-control-sm mb-3\' id=\'d_sample_select\' aria-describedby=\'d_sample_help\'>" +
+			"<label class=\'pg-field-label\' for=\'d_sample_select\'>" + ' . json_encode(lang('Send a sample'), JSON_UNESCAPED_UNICODE) . ' + "</label>" +
+			"<select class=\'pg-input pg-input-sm mb-3\' id=\'d_sample_select\' aria-describedby=\'d_sample_help\'>" +
 			hook.events.map(function (name) {
 				return "<option value=\'" + esc(name) + "\'>" + esc(name + (HOOK_TEXT[name] ? " — " + HOOK_TEXT[name] : "")) + "</option>";
 			}).join("") + "</select>" +
 			"<div class=\'d-flex gap-3 mb-2\'>" +
-				"<button type=\'button\' class=\'btn btn-sm btn-solid theme-primary\' id=\'d_sample_send\'><i class=\'bi bi-send me-1\' aria-hidden=\'true\'></i>" +
+				"<button type=\'button\' class=\'pg-button pg-button-quiet pg-button-sm\' id=\'d_sample_send\'><i class=\'bi bi-send\' aria-hidden=\'true\'></i>" +
 					' . json_encode(lang('Send'), JSON_UNESCAPED_UNICODE) . ' + "</button>" +
-				"<button type=\'button\' class=\'btn btn-sm btn-outline theme-secondary\' id=\'d_sample_cancel\'>" + ' . json_encode(lang('Cancel'), JSON_UNESCAPED_UNICODE) . ' + "</button>" +
+				"<button type=\'button\' class=\'pg-button pg-button-ghost pg-button-sm\' id=\'d_sample_cancel\'>" + ' . json_encode(lang('Cancel'), JSON_UNESCAPED_UNICODE) . ' + "</button>" +
 			"</div>" +
-			"<div class=\'form-text\' id=\'d_sample_help\'>" + esc(' . json_encode(lang('The chosen event\'s sample goes only to this address, with the header X-Pinegrap-Test: 1; no other subscription, flow or channel hears it.'), JSON_UNESCAPED_UNICODE) . ') + "</div>";
+			"<div class=\'pg-field-help\' id=\'d_sample_help\'>" + esc(' . json_encode(lang('The chosen event\'s sample goes only to this address, with the header X-Pinegrap-Test: 1; no other subscription, flow or channel hears it.'), JSON_UNESCAPED_UNICODE) . ') + "</div>";
 		button.closest(".api-hook").appendChild(box);
 		button.setAttribute("aria-expanded", "true");
 		document.getElementById("d_sample_select").focus();

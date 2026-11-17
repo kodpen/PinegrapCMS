@@ -278,3 +278,69 @@ function test_api_app_automation_texts_name_no_platform()
 
 	pg_assert_contains("lang('An automation platform connects to the site with this application. The permissions the platform uses are ticked.')", $panel);
 }
+
+// Every event row of "New subscription" carries the label of the part of the
+// site it is about; a module's event its module's.
+function test_api_app_event_area_labels_every_catalogue_row()
+{
+	pg_assert_same('Orders', api_app_event_area('order.created'));
+	pg_assert_same('Products', api_app_event_area('stock.low'));
+	pg_assert_same('ERP', api_app_event_area('erp.invoice.created', 'ERP'));
+	pg_assert_same('Workspace', api_app_event_area('workspace.task.created', 'Workspace'));
+	pg_assert_same('Workspace', api_app_event_area('nothing.known', 'Workspace'), 'a segment of no area takes the module label');
+	pg_assert_same('', api_app_event_area('nothing.known'));
+
+	$bare = array();
+
+	foreach (array_merge(array_keys(api_webhook_core_events()), array_keys(erp_webhook_events()), array_keys(ws_webhook_events())) as $name) {
+		if (api_app_event_area($name) === '') {
+			$bare[] = $name;
+		}
+	}
+
+	pg_assert_same(array(), $bare, 'catalogue events without a label');
+
+	$panel = (string) file_get_contents(PG_FUNCTIONS_DIR . '/api_settings.php');
+	pg_assert_contains("'module' => api_app_event_area(\$event_name,", $panel, 'the catalogue rows take the label');
+	pg_assert_contains('(e.module ? "<span class=\\\'pg-pill pg-tone-gray\\\'>"', $panel, 'the row draws it');
+}
+
+// Save never drops a filled subscription form: it stops, shows the form
+// and says the subscription is not created yet.
+function test_api_app_save_keeps_a_filled_subscription_form()
+{
+	$panel = (string) file_get_contents(PG_FUNCTIONS_DIR . '/api_settings.php');
+
+	pg_assert_contains('function hookFormHolds()', $panel);
+	pg_assert_contains('document.getElementById("d_hook_url").value.trim() !== "" || hookChosen.length > 0', $panel, 'an address or a chosen event holds it');
+
+	$at = strpos($panel, 'document.getElementById("d_action").form.addEventListener("submit"');
+	pg_assert_true($at !== false, 'the drawer form is watched on submit');
+
+	$handler = substr($panel, $at, 900);
+	pg_assert_contains('submitter.id === "d_save" || !submitter.name', $handler, 'Save and Return are the saves');
+	pg_assert_contains('if (!saving || !hookFormHolds()) { return; }', $handler);
+	pg_assert_contains('e.preventDefault();', $handler, 'nothing is posted');
+	pg_assert_contains('d_hook_unsaved', $handler, 'the line is shown');
+	pg_assert_contains("lang('The subscription is not created yet: create it or close the form.')", $panel);
+}
+
+// The parts this screen added are drawn with the design language's buttons
+// and fields, not Bootstrap's old button classes.
+function test_api_app_automation_parts_use_the_look()
+{
+	$panel = (string) file_get_contents(PG_FUNCTIONS_DIR . '/api_settings.php');
+
+	$start = strpos($panel, '<div class="tab-pane fade" id="d_hooks">');
+	$pane = substr($panel, $start, strpos($panel, '<div class="tab-pane fade" id="d_log">') - $start);
+	$sample = substr($panel, strpos($panel, 'box.className = "api-hook-sample";'), 2600);
+
+	foreach (array('Events tab' => $pane, 'sample box' => $sample) as $name => $part) {
+		pg_assert_false(strpos($part, 'btn btn-') !== false, $name . ': no old button');
+		pg_assert_false(strpos($part, 'btn-close') !== false, $name . ': no old close button');
+		pg_assert_false(strpos($part, 'form-control') !== false, $name . ': no old field');
+		pg_assert_contains('pg-button', $part, $name . ': pg-button');
+	}
+
+	pg_assert_contains('class="pg-button pg-button-fill pg-button-sm" id="d_hook_create"', $pane, 'Create is the form\'s one fill');
+}
