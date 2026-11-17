@@ -3062,6 +3062,7 @@
     "Write the cache rule": "Önbellek kuralını yaz",
     "Write the carrier on the \"{var:1}\" shipping method once and the next orders bring it along.": "Taşıyıcıyı \"{var:1}\" kargo yöntemine bir kez yazın; sonraki siparişlerde faturaya kendiliğinden gelir.",
     "Write the chosen values to the ERP account and to {var:1}?": "Seçilen değerler ERP carisine ve {var:1} tarafına yazılsın mı?",
+    "Write the contact as plain text.": "Kişiyi düz metin olarak yazın.",
     "Write the country in place of \"turkish\" (usa, uk, german, french…).": "\"turkish\" yerine ülkeyi yazın (usa, uk, german, french…).",
     "Write the customer's reason when it is \"Another reason\".": "Neden \"Başka bir neden\" ise müşterinin nedenini yazın.",
     "Write the date as day.month.year.": "Tarihi gün.ay.yıl olarak yazın.",
