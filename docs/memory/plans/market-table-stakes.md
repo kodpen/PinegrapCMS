@@ -14,7 +14,7 @@ priority: 4
 - Payment drivers iyzico, Stripe, PayPal, PayTR (`pg_payment_builtin_drivers()`); marketplaces n11, Trendyol; Hepsiburada planned (`marketplace-trendyol-hepsiburada.md`).
 
 ## Which steps are there?
-- TS1 (M) A fourth feed format, `google_xml`: Google's product data as RSS 2.0, by Google's public specification, from the same items and rules as `google_tsv`.
+- TS1 (M, done #10133) A fourth feed format, `google_xml`: Google's product data as RSS 2.0, by Google's public specification, from the same items and rules as `google_tsv`.
   - Files: `includes/fn/product_feeds.php` (a writer streaming like the others), the Product Feeds card, `feed.php`, `GET /store/feeds` (a fourth row), `tests/product_feeds_test.php`.
   - The writer escapes through one XML helper; its test feeds it what breaks XML in a product's name and description: `&`, `<`, control bytes, `]]>`.
   - State in `config.product_feeds` as the other formats: no schema change. The card's new switch is the architect's look.
