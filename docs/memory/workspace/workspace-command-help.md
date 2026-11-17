@@ -1,6 +1,6 @@
 ---
 name: workspace-command-help
-description: The command gate that knows the channel (where: channel), /help in groups and /help <command>, the palette's group and place, and /task, /decision, /note typed as a reply without a text (CC2a)
+description: The "/" list in groups and by channel, the command gate (where: channel), /help in groups and /help <command>, the palette's group, and /task, /decision, /note as a reply without a text
 ---
 
 ## Where may a command run?
@@ -14,7 +14,12 @@ description: The command gate that knows the channel (where: channel), /help in 
 - A name that is no command here: "There is no /x command." and "Did you mean:" with `ws_command_closest()`; the answer carries `closest`.
 
 ## What else carries the group?
-- Each `ws_command_help()` entry: `group`, `group_label`, `where`. `ws_palette_commands()` rows: `group`, `group_label`, `where`. The "/" list's header rows and its filter by the open channel are CC2b in `assets/js/workspace.js`.
+- Each `ws_command_help()` entry: `group`, `group_label`, `where`. `ws_palette_commands()` rows: `group`, `group_label`, `where`.
+
+## What does the composer's "/" list show? (#PRNUM)
+- `commandPickerRows(commands, query, inThread)` (pure, workspace.js): the rows of `BOOT.commands` a name matches; a discussion's box (`isThread`, or a channel of `kind` thread) leaves out `where: channel`, so /agent-channel is offered only in the channel itself.
+- With nothing typed and the list longer than it shows (`.ws-picker-list` scrolls), it is drawn again by `commandPickerGroups(rows, BOOT.command_groups)`: a `.ws-picker-group` header per group, in `ws_command_group_labels()` order (BOOT `command_groups`), empty groups left out. With a word typed: no headers, the filter across all groups.
+- `drawPicker()` leaves a header out of `pickerItems`: the arrows, Enter and Tab skip it, a click on it does nothing; the chosen row is scrolled into view with its group's header.
 
 ## What does a command typed as a reply do?
 - `ws_command_acts_on_reply()`: a reply (`parent_id`) and nothing after the name. Then `ws_command_answered_message()` reads the answered message: this channel, not deleted, readable; else "That message could not be found.".
@@ -23,4 +28,5 @@ description: The command gate that knows the channel (where: channel), /help in 
 - With a text, or without a reply, all three do as before.
 
 ## Tests?
+- tests/workspace_command_picker_js_test.php (Node: rows by channel, groups in order, headers never picked, typed word drops them).
 - tests/workspace_command_help_test.php (gate by channel, refusal, groups in order, `/help task`, `/yardım görev`, unknown with closest, palette fields, the reply rule).
