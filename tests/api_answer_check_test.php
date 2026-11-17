@@ -406,3 +406,19 @@ function test_api_answer_check_reaches_records_through_their_parent_list()
 	pg_assert_same(array(), api_answer_check_rows(null, 'data'), 'an answer not read');
 	pg_assert_same(null, api_answer_check_fill('/workspace/memory/{id}', array(), api_answer_check_test_fetch(array())), 'its parent list was not read');
 }
+
+function test_api_answer_check_a_binned_page_is_a_named_refusal_of_translations_pages()
+{
+	api_answer_check_money_routes();
+
+	$route = null;
+	foreach (translate_api_routes() as $row) {
+		if ($row['method'] === 'GET' && $row['path'] === '/translations/pages/{id}') {
+			$route = $row;
+		}
+	}
+
+	$answer = array('status' => 404, 'headers' => '', 'body' => json_encode(array('error' => array('code' => 'not_found'))), 'error' => '');
+
+	pg_assert_same('status 404 not_found', api_answer_check_named_refusal($route, $answer), 'a page in the Recycle Bin, listed by GET /pages, tries the next page');
+}
