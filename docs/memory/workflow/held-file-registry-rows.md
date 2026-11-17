@@ -17,4 +17,4 @@ description: A PR may change its own registry rows in a file a draft PR holds: w
 - #3824: one line of a registry beside a draft holder, the first case.
 - Architect (2026-11-17): a route's rows and parameters count as one entry, not only a single line; several steps may be allowed beside one holder, one PR at a time, in the order their coordinator chooses. Reason: six steps waited on `includes/api/schema.php` for their route rows alone while its holder, #10025, changed one hunk of it (the parameters of the prototype link's POST) and waited for the owner's look (agent channel message 7852).
 
-Related: docs/memory/workflow/git-branches-and-shared-files.md, docs/memory/workflow/claim-work.md
+Related: docs/memory/workflow/git-branches-and-shared-files.md, docs/memory/workflow/claim-work.md, docs/memory/workflow/held-file-bundled-sources.md
