@@ -7,14 +7,14 @@ description: The designer draws only the panels that can be seen, debounces them
 - The Layers tree (`#sd-overview-tree-wrap`), the HTML tree (`#sd-html-tree`), Attributes (`#sd-bp-attrs`) and Styles (`#sd-bp-styles`). Each drawing function asks `_sdPanelDefer(name)` first: a host that is not laid out (display:none on it or an ancestor: the Notes tab, a folded Overview) or sits in the folded bottom panel (`.sd-panel-bottom.collapsed`) is marked in `_sdPanelStale` and nothing is drawn.
 - `renderTree()` still refreshes the notes list when it skips: that list may be the one on screen.
 - The code view (`_sdCodeRefresh()`) is not deferred: it is asked before the check.
-- The Properties panel and the status bar are always drawn.
+- The Properties panel is always drawn; the status bar is drawn by every full `render()`, and after a select or switch of one node once the changes pause (designer-option-change-panels.md).
 
 ## How does a skipped panel catch up?
 - `_sdPanelsFlush()` draws every marked panel that can be seen now. It runs when the bottom panel unfolds, when the Overview's Tree tab is picked, and from a `ResizeObserver` put on a host the first time it is skipped (any other way of showing it).
 
 ## What happens while a field is typed into?
 - The canvas is drawn on every key (D2's in-place redraw); the Layers tree, status bar, Attributes, HTML tree and live preview wait for a 180 ms pause (`_sdPanelsSoon(node)`, `SD_PANELS_TYPING_MS`). Paths: Properties `[data-prop]` text fields, `[data-nodeattr]` inputs, popover fields.
-- Keys into two nodes before the pause draw the whole Layers tree. `render()` cancels a pending run (`_sdPanelsCancel()`): it draws everything itself.
+- Keys into two nodes before the pause draw the whole Layers tree. A full `render()` cancels a pending run (`_sdPanelsCancel()`): it draws everything itself; a one-node `render()` adds its node to the run instead.
 - The validation was already debounced (`scheduleValidation()`, 500 ms).
 
 ## When is only one node's Layers row redrawn?
