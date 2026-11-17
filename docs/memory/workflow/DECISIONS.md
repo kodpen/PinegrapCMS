@@ -680,6 +680,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - api/claude-connector-listing.md: A connector listing in Claude's directory for a server whose address is each customer's own, as Anthropic's pages state it (read 2026-11-17): the URL pattern, Verified only, sign-in, the install link
 - api/claude-plugin-census.md: Claude plugin bundle as Anthropic's pages state it (read 2026-11-14): folder and manifest, directory checks and policy, which Claude app loads what, and how a bundle can (not) ask for a site's address
 - api/claude-plugin-tool-check.md: The site's MCP tools checked against Claude's directory rules (2026-11-14): name length, annotations, and the routes that move money or issue stored value, by route id and scope
+- api/connections-registry.md: Registry of outside services (pg_connections_registry()): a row, the count rule, the figure (78 + 12 MCP connectors), the difference from the census's 79, adding a service
 - api/oauth-client-automation-platforms.md: Whether one OAuth client could serve an automation platform on every site (read 2026-11-17): the client metadata document a site reads, what Zapier, Make, Pabbly and n8n allow, why it is not used
 - commerce/address-labels-by-country.md: City and state labels that follow the country (İlçe and İl for Turkey): pg_address_labels(), the render stamp in designer widgets, init_country() on classic pages, default words only
 - commerce/back-in-stock-sms.md: Back-in-stock notice by SMS (PR #1864): kind stock (transactional, owner decision), the stock_back event, the optional number field, text instead of mail, the one-message promise
@@ -688,6 +689,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - commerce/cart-recovery-touches.md: Recovered carts record (cart_recovery_touch, PR #9778): the touch row, its writers, the 6-hour left and 7-day recovered rule, the no-touch row, readiness, what was left out
 - commerce/cart-recovery-whatsapp-page.md: Recovered carts: a WhatsApp single-use offer key as a touch and its use as clicked/restored, a pop-up taken up on a page (channel page, source popup), the left-cart test of 6 hours to 30 days
 - commerce/checkout-contact-card-update.md: What a checkout writes on the contact card: the "Update my contact info" box, tax fields only when on the form, a typed tax number filling an empty card
+- commerce/course-gate.md: The course gate in get_page.php: a lesson not open yet sends the member to the classroom page with a one-time notice; the "Courses" switch reader; the first-open row
 - commerce/course-tables.md: Courses' data (2026.11.0, step 11.0.234): the course, course_lesson and course_progress tables, the open-lesson rule, the enrolment day, rows written once, the certificate code
 - commerce/merchant-center-push.md: Per-product push to Google Merchant Center on the outbound marketplace layer (#4389, #4423): managed provider, mapping from the feed, queue, supplemental source
 - commerce/n11-warehouse.md: Products n11 ships from its own warehouse (n11depom): read into the catalogue with sender=ALL and marked, their stock never pushed, their orders not pulled
