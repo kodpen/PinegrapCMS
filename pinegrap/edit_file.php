@@ -330,9 +330,9 @@ if (!isset($_POST['name'])) {
         $edit_file_button_value = 'Edit ' . strtoupper($file_extension);
         $output_file_content_row = '
             <div class="card my-7">
-                <div class="card-header bg-reset border-0 pg-title-section">
+                <h2 class="card-header bg-reset border-0 pg-title-section">
                     ' . lang('File Content') . '
-                </div>
+                </h2>
                 <div class="card-body">
                     <div class="row">
                         <div class="col-12 my-3">
@@ -357,9 +357,9 @@ if (!isset($_POST['name'])) {
         $svg_h = (is_numeric($image_height) && $image_height > 0) ? (int)$image_height : 0;
         $output_convert_rows = '
             <div class="card my-7">
-                <div class="card-header bg-reset border-0 pg-title-section">
+                <h2 class="card-header bg-reset border-0 pg-title-section">
                     ' . lang('Convert') . '
-                </div>
+                </h2>
                 <div class="card-body">
                     <div class="col-12 my-3">
                         <div class="form-field">
@@ -457,9 +457,9 @@ if (!isset($_POST['name'])) {
             if($file['type'] !== 'webp'){
                 $output_convert_rows = '
                     <div class="card my-7">
-                        <div class="card-header bg-reset border-0 pg-title-section">
+                        <h2 class="card-header bg-reset border-0 pg-title-section">
                             ' . lang('Convert') . '
-                        </div>
+                        </h2>
                         <div class="card-body">
                             <div class="col-12 my-3">
                                 <div class="form-field">
@@ -587,7 +587,7 @@ if (!isset($_POST['name'])) {
                     var html = "<div class=\"fw-bold mb-1\">" + esc(texts.count.replace("{var:1}", response.total)) + "</div>";
 
                     (response.groups || []).forEach(function (group) {
-                        html += "<div class=\"text-uppercase fg-secondary mt-3\">" + esc(group.label) + "</div>";
+                        html += "<div class=\"pg-group-label mt-3\">" + esc(group.label) + "</div>";
 
                         (group.items || []).forEach(function (entry) {
                             var label = esc(entry.name) + (entry.note ? (" <span class=\"fg-secondary\">· " + esc(entry.note) + "</span>") : "");
@@ -656,7 +656,7 @@ if (!isset($_POST['name'])) {
                                 </h2>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 md:col-6 my-3">
+                                        <div class="col-12 my-3">
                                             <label for="name" class="form-label">' . lang('File Name') . '</label>
                                             <input value="' . h($file_name) . '" type="text" name="name" id="name" class="form-control"/>
                                         </div>
