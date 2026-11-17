@@ -17,4 +17,4 @@ module: experiments_sheet
 - `_pgHeldText()` gives the draft settings box's title and the toast of a refused Publish the bundle's text, or the experiment's. The row's words never name an experiment for a bundled draft.
 - The hold is read when the editor opens; a bundle changed meanwhile shows at the next load. The server refuses the publish with the bundle's name either way.
 
-Built in #PRNUM (release bundle step RB2b). Test: `tests/experiments_editor_bundle_hold_test.php`.
+Built in #10191 (release bundle step RB2b). Test: `tests/experiments_editor_bundle_hold_test.php`.
