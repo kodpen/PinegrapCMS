@@ -5811,6 +5811,143 @@ function pg_offers_any_running($offers, $today)
 }
 
 /**
+ * The quantity prices of one product: from $candidates (quantity, amount,
+ * percentage: "contains this many" and the product discount of an offer
+ * that holds for the visitor), the price of one piece at each quantity,
+ * worked out on the list price as the cart does (an amount off, or a
+ * percentage off rounded half away from zero, never below zero), the
+ * lowest for one quantity, ordered by quantity. A break is kept only when
+ * it is cheaper than $own_cents (the visitor's price without an offer: the
+ * list price, or a member's agreed price, which never stacks with an
+ * offer) and than every break for fewer pieces: the cart would charge
+ * neither.
+ *
+ * @param array $candidates
+ * @param int   $list_cents
+ * @param int   $own_cents
+ * @return array list of ['quantity' => int, 'price' => int]
+ */
+function pg_offer_quantity_break_rows($candidates, $list_cents, $own_cents)
+{
+    $list_cents = (int) $list_cents;
+    $best = array();
+    if ($list_cents <= 0) {
+        return array();
+    }
+    foreach ((array) $candidates as $candidate) {
+        if (!is_array($candidate)) {
+            continue;
+        }
+        $quantity = isset($candidate['quantity']) ? (int) $candidate['quantity'] : 0;
+        $amount = isset($candidate['amount']) ? (int) round((float) $candidate['amount']) : 0;
+        $percentage = isset($candidate['percentage']) ? (string) $candidate['percentage'] : '0';
+        if (($quantity <= 0) || (($amount == 0) && ((float) $percentage == 0))) {
+            continue;
+        }
+        $price = ($amount != 0) ? ($list_cents - $amount) : (int) pg_percent_off($list_cents, $percentage);
+        $price = max(0, $price);
+        if (!isset($best[$quantity]) || ($price < $best[$quantity])) {
+            $best[$quantity] = $price;
+        }
+    }
+    ksort($best);
+    $out = array();
+    $ceiling = (int) $own_cents;
+    foreach ($best as $quantity => $price) {
+        if ($price < $ceiling) {
+            $out[] = array('quantity' => (int) $quantity, 'price' => (int) $price);
+            $ceiling = $price;
+        }
+    }
+    return $out;
+}
+
+/**
+ * The quantity prices of product $product_id for the visitor in front of
+ * the page (pg_offer_quantity_break_rows()). A break is a running offer
+ * that applies without a code, asks for this many of a list of products
+ * holding this one (and no subtotal), and discounts this product or its
+ * product group. Its customer conditions (the contact group, a new
+ * customer, a usage limit) must hold for the visitor; an offer that also
+ * asks about the rest of the cart (cart quantity, product groups) is not a
+ * price of this product and is left out. Nothing appears by itself: with
+ * no such offer the list is empty.
+ *
+ * @param int $product_id
+ * @param int $list_cents the product's list price
+ * @param int $own_cents  the visitor's price without an offer
+ * @return array list of ['quantity' => int, 'price' => int]
+ */
+function pg_offer_quantity_breaks($product_id, $list_cents, $own_cents)
+{
+    $product_id = (int) $product_id;
+    if (($product_id <= 0) || ((int) $list_cents <= 0)) {
+        return array();
+    }
+    $rows = db_items("SELECT
+
+            offers.id,
+            offers.status,
+            offers.start_date,
+            offers.end_date,
+            offer_rules.required_quantity,
+            offer_actions.discount_product_product_id,
+            offer_actions.discount_product_group_id,
+            offer_actions.discount_product_target,
+            offer_actions.discount_product_amount,
+            offer_actions.discount_product_percentage
+
+        FROM offers
+
+        INNER JOIN offer_rules ON offer_rules.id = offers.offer_rule_id
+
+        INNER JOIN offer_rules_products_xref x ON x.offer_rule_id = offer_rules.id
+
+        INNER JOIN offers_offer_actions_xref ON offers_offer_actions_xref.offer_id = offers.id
+
+        INNER JOIN offer_actions ON offer_actions.id = offers_offer_actions_xref.offer_action_id
+
+        WHERE
+
+            (x.product_id = '" . e($product_id) . "')
+
+            AND (offers.status = 'enabled')
+
+            AND (offers.require_code = 0)
+
+            AND (offer_rules.required_subtotal = 0)
+
+            AND (offer_actions.type = 'discount product')
+
+            AND ((offer_actions.discount_product_amount != 0) OR (offer_actions.discount_product_percentage != 0))");
+    $today = date('Y-m-d');
+    $candidates = array();
+    foreach ((array) $rows as $row) {
+        if (!pg_offer_is_running($row, $today)
+            || (pg_offer_action_target($row) == 'cheapest')
+            || !pg_offer_action_targets_product($row, $product_id)) {
+            continue;
+        }
+        $on_cart = false;
+        foreach (pg_offer_conditions($row['id']) as $condition) {
+            if (in_array($condition['type'], array('cart quantity', 'product group'), true)) {
+                $on_cart = true;
+                break;
+            }
+        }
+        if ($on_cart || !pg_offer_customer_conditions_met($row['id'])) {
+            continue;
+        }
+        $candidates[] = array(
+            'quantity'   => (int) $row['required_quantity'],
+            'amount'     => $row['discount_product_amount'],
+            'percentage' => $row['discount_product_percentage'],
+        );
+    }
+    return pg_offer_quantity_break_rows($candidates, $list_cents, $own_cents);
+}
+
+/**
  * Whether a typed special offer code (an offer code or a key code) leads to
  * an offer that runs today. A key code of a disabled or out-of-date offer
  * resolves through get_offer_code_for_special_offer_code() but is refused by

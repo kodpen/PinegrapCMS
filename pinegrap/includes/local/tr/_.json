@@ -1543,6 +1543,7 @@
     "{var:1} optimized in {var:2} s: {var:3} → {var:4} ({var:5} freed). The server said: {var:6}": "{var:1} {var:2} sn'de optimize edildi: {var:3} → {var:4} ({var:5} boşaldı). Sunucunun yanıtı: {var:6}",
     "{var:1} or fewer left": "{var:1} veya daha az kaldı",
     "{var:1} or leave blank for no limit": "{var:1} yada limitsiz için boş bırakın",
+    "{var:1} or more: each for {var:2}": "{var:1} ve üzeri: tanesi {var:2}",
     "{var:1} or {var:2}": "{var:1} veya {var:2}",
     "{var:1} order(s)": "{var:1} sipariş",
     "{var:1} order(s) already have a tracking number and were skipped": "{var:1} siparişin zaten takip numarası olduğu için atlandı",

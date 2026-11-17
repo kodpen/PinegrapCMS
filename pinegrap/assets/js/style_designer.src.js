@@ -25277,6 +25277,7 @@ const StyleDesigner = (function () {
                 { label: _sdT('Attributes of the product'), type: 'loop_area', icon: 'bi-card-list', extra: { listSource: 'product.attributes' } },
                 { label: _sdT('Products bought together'), type: 'loop_area', icon: 'bi-bag', extra: { listSource: 'product.related' } },
                 { label: _sdT('Contents of the bundle'), type: 'loop_area', icon: 'bi-box-seam', extra: { listSource: 'product.bundle_items' } },
+                { label: _sdT('Quantity prices'), type: 'loop_area', icon: 'bi-tags', extra: { listSource: 'product.quantity_prices' } },
                 { label: _sdT('Crumbs of the catalog path'), type: 'loop_area', icon: 'bi-signpost-split', extra: { listSource: 'catalog.crumbs' } },
                 { label: _sdT('Active attribute filters'), type: 'loop_area', icon: 'bi-funnel', extra: { listSource: 'catalog.active_filters' } },
                 { label: _sdT('Month grid'), type: 'loop_area', icon: 'bi-calendar3', extra: { listSource: 'calendar.weeks' } },
@@ -34390,6 +34391,7 @@ const StyleDesigner = (function () {
             'product.attributes': _sdT('One row for every attribute the product has a value for, such as its colour or size. Bind the row\'s elements to "Attribute" and "Attribute value" in Bind Data.'),
             'product.related':    _sdT('One row for every product ordered together with this one, else for the products of its groups, at most 12. With this list on the page the automatic "Frequently bought together" block is not added.'),
             'product.bundle_items': _sdT('One row for every product the bundle holds, in its order; nothing for a product that is not a bundle. Bind the row\'s elements to "Product name", "Quantity in the bundle" or "Product address" in Bind Data.'),
+            'product.quantity_prices': _sdT('One row for every quantity price of the product, such as "10 or more: each for 9.00", read from the running offers that hold for the visitor; nothing when there is none. Bind the row\'s elements to "Quantity and price" in Bind Data.'),
             'catalog.crumbs':     _sdT('One row for every crumb of the path to what the page shows: the catalog, its groups, then the group or product itself. A condition on "Kind of crumb" draws a link, words, or where the visitor is.'),
             'catalog.active_filters': _sdT('One row for every attribute filter the visitor applied, such as "Colour: Red". Bind a link to "Address without the filter": it opens the listing without that filter. With this list on the page the automatic chip row above the products is not added.'),
             'calendar.weekdays':  _sdT('One row for every day of the week, in the widget\'s week order: the heads of a month grid. Bind the row\'s elements to "Day name" or "Short day name" in Bind Data.'),
@@ -61179,6 +61181,19 @@ const StyleDesigner = (function () {
                 ['__bundle_item_image_url',         _sdT('Image address')]
             ]
         },
+        // The breaks of the running offers for this product and visitor
+        // (pg_offer_quantity_breaks()); the listing does not read offers
+        // for each card.
+        'product.quantity_prices': {
+            label: _sdT('Quantity prices'),
+            arg: '', argRequired: false,
+            kinds: ['catalog_item_view'],
+            rows: [
+                ['__qty_break_quantity', _sdT('Smallest quantity')],
+                ['__qty_break_price',    _sdT('Price of one piece')],
+                ['__qty_break_label',    _sdT('Quantity and price')]
+            ]
+        },
         // The crumbs of the catalog path (pg_sw_list_crumb_sources()): the
         // page's, so a list of them stands anywhere in either widget.
         'catalog.crumbs': {
@@ -61863,6 +61878,9 @@ const StyleDesigner = (function () {
         __bundle_item_quantity: '2',
         __bundle_item_url: '#',
         __bundle_item_image_url: '',
+        __qty_break_quantity: '10',
+        __qty_break_price: '9.00',
+        __qty_break_label: _sdT('10 or more: each for 9.00'),
         __crumb_label:   _sdT('Main Catalog'),
         __crumb_url:     '#',
         __crumb_kind:    'link',
@@ -62568,6 +62586,19 @@ const StyleDesigner = (function () {
                         _bindings: { href: '__bundle_item_url', text: '__bundle_item_short_description' } })
                 ])
             ])]);
+        }
+        if (source === 'product.quantity_prices') {
+            // The box goes with its heading when no break holds: it is
+            // marked Hide when empty, the list's holder its value.
+            return createNode('semantic', { tag: 'div', cssClass: (bs ? 'mb-3 ' : '') + 'pg-hide-if-empty', customName: _sdT('Quantity prices') }, [
+                sem('h2', 'h6 mb-2', _sdT('Heading'), { text: _sdT('Quantity prices') }),
+                createNode('semantic', { tag: 'ul', cssClass: (bs ? 'list-group mb-0 ' : '') + 'pg-field-value', customName: _sdT('Quantity prices') }, [
+                    createNode('loop_area', { source: source }, [
+                        sem('li', 'list-group-item small', _sdT('Quantity price'), { text: _sdT('10 or more: each for 9.00'),
+                            _bindings: { text: '__qty_break_label' } })
+                    ])
+                ])
+            ]);
         }
         if (source === 'product.attributes') {
             return sem('dl', 'row mb-0', _sdT('Attributes'), {}, [createNode('loop_area', { source: source }, [
@@ -80296,6 +80327,8 @@ const StyleDesigner = (function () {
                                     d: _sdT('Repeats its row for each product often bought together with this one.') },
             'l:product.bundle_items': { v: 'l-bundle', k: 'bundle contents items product list repeat loop',
                                     d: _sdT('Repeats its row for each product inside the bundle, with how many come in it.') },
+            'l:product.quantity_prices': { v: 'l-qty-prices', k: 'quantity prices price breaks tiered volume wholesale offer list repeat loop',
+                                    d: _sdT('Repeats its row for each quantity price of the product, such as 10 or more at a lower price each.') },
             'l:catalog.crumbs': { v: 'l-crumbs', k: 'breadcrumb crumbs catalog path list repeat loop',
                                     d: _sdT('Repeats its row for each step of the path from the catalog home to this category or product.') },
             'l:catalog.active_filters': { v: 'l-filters', k: 'active filters chips catalog attributes list repeat loop',
@@ -81161,6 +81194,9 @@ const StyleDesigner = (function () {
             },
             'l-bundle': function () {
                 return R(0, 0, 200, 110, W) + Rows(14, 32, 28, function (y) { return Pic(22, y, 26, 20) + L(56, y + 4, 70, D) + Tx(170, y + 13, '×2', 10, S, 'end'); });
+            },
+            'l-qty-prices': function () {
+                return R(0, 0, 200, 110, W) + Rows(16, 28, 26, function (y) { return L(24, y + 6, 60, D) + Tx(176, y + 12, '9.00', 10, S, 'end') + R(18, y + 21, 164, 1, B); });
             },
             'l-crumbs': function () {
                 return R(0, 0, 200, 110, W) + R(10, 40, 180, 30, LG, 5) + Cols(22, 52, 46, 48, 15, function (x) {
