@@ -26,6 +26,7 @@ $pg_api_directory = dirname(__FILE__);
 
 require_once($pg_api_directory . '/db.php');
 require_once($pg_api_directory . '/response.php');
+require_once($pg_api_directory . '/fault.php');
 require_once($pg_api_directory . '/time.php');
 require_once($pg_api_directory . '/log.php');
 require_once($pg_api_directory . '/keys.php');
