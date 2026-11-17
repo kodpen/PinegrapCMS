@@ -71178,10 +71178,11 @@ const StyleDesigner = (function () {
 
     // The link of the drawn arrow whose head a press takes: the nearest
     // head within 14 screen pixels of it, of the arrows shown (heads crowd
-    // on a frame's edge, under its box and the other arrows), else null.
+    // on a frame's edge, so another arrow may be on top), else null. A
+    // press on a frame or a chip stays theirs (select, move).
     function _sdProtoHeadAt(event) {
         var ui = _sdProto.ui;
-        if (!ui || !_sdProto.layout) return null;
+        if (!ui || !_sdProto.layout || (event.target.closest && event.target.closest('[data-node]'))) return null;
         var H = window.PGProtoHotspots;
         var at = _sdProto.canvas.view.point(event.clientX, event.clientY);
         var k = _sdProto.view.k;
