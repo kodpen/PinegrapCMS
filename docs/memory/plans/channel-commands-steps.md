@@ -14,7 +14,7 @@ description: Plan channel-commands, steps CC1 to CC6: the registry with no chang
 
 - CC2 (M) after CC1: the gate, /help, the list in groups, commands as a reply.
   - CC2a done (#10057): the server side, K4 gate, K5 /help, K7 replies (`workspace/workspace-command-help.md`).
-  - CC2b, when no open PR holds `assets/js/workspace.js`: `drawPicker()` header rows (never picked) and the list filtered by the open channel; Node tests; the list's picture. Features K4, K6.
+  - CC2b done (#10166): the "/" list in groups and by channel, K4 on the client, K6 (`workspace/workspace-command-help.md`).
 
 - CC3 (M) after CC2: /hatırlat and /özet.
   - Tests: `/hatırlat yarın 10:00 Teklifi gönder` gives the plan's day, time and title with the form's default reminder; no time opens the form filled; as a reply the note holds the message's link; the live line; /özet not offered where the button is not; both answers `ephemeral`.
