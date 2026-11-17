@@ -13,4 +13,4 @@ module: mail_settings
 - Owner (2026-11-17, agent channel poll 148, message 9374): SMTP Settings becomes the "E-posta gönderimi" (E-mail sending) category of Site Settings. CX3a moved the logic out of `smtp_settings.php` with no change to what the screen does, so the category reuses it; the screen keeps its log line and "saved" notice.
 - The DKIM notice no longer carries a textarea: it points at the record the DKIM TXT Record card shows, which a dialog's text notice could not hold.
 
-Tests: `tests/mail_settings_save_test.php`, `tests/dkim_key_test.php`.
+Tests: `tests/mail_settings_save_test.php` (the save, the buttons, the account select), `tests/dkim_key_test.php`.

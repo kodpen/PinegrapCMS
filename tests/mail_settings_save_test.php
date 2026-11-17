@@ -129,3 +129,23 @@ function test_mail_settings_save_labels_say_they_save()
 	pg_assert_contains("lang('Save and test')", $source);
 	pg_assert_contains("lang('Save and generate a DKIM key')", $source);
 }
+
+// The System card's account select: this server first, then each account
+// connected for sending, the stored one chosen, one to reconnect marked.
+function test_mail_settings_connection_field_lists_the_accounts()
+{
+	$accounts = array(
+		array('id' => 7, 'provider' => 'google', 'label' => 'news@example.com', 'status' => 'active'),
+		array('id' => 9, 'provider' => 'microsoft', 'label' => 'shop@example.com', 'status' => 'reauth'),
+	);
+
+	$field = pg_mail_settings_connection_field('system_mail_connection', 9, $accounts);
+
+	pg_assert_contains('<select name="system_mail_connection" id="setting_system_mail_connection" class="form-control">', $field, 'named as the save reads it');
+	pg_assert_true(strpos($field, '<option value="">') < strpos($field, '<option value="7"'), 'this server comes first');
+	pg_assert_contains('<option value="9" selected>', $field, 'the stored account is chosen');
+	pg_assert_false(strpos($field, '<option value="7" selected>') !== false, 'only the stored account is chosen');
+	pg_assert_contains('shop@example.com', $field, 'each account by its address');
+	pg_assert_same(1, substr_count($field, ' - '), 'only the account to reconnect is marked');
+	pg_assert_contains('<option value="">', pg_mail_settings_connection_field('campaign_mail_connection', 0, array()), 'no account: this server alone');
+}
