@@ -492,3 +492,43 @@ function test_page_bundle_with_throwing_errors_restores()
 	$write = pg_test_function_source('pg_page_bundle_write_item');
 	pg_assert_contains('catch (Throwable', $write, 'a write that throws gives its item back');
 }
+
+// A page in the Recycle Bin is named by its own name, not the parked
+// "pgbin_<id>_" one; a page that is gone by its id, never by "".
+function test_page_bundle_page_label()
+{
+	pg_assert_same('awards-and-press', pg_page_bundle_page_label('pgbin_1095_awards-and-press', 1095), 'a parked name is unparked');
+	pg_assert_same('pgbin_7_x', pg_page_bundle_page_label('pgbin_7_x', 8), 'only the page\'s own parking');
+	pg_assert_same('home', pg_page_bundle_page_label('home', 5), 'a plain name stays');
+	pg_assert_same('#42', pg_page_bundle_page_label('', 42), 'a page deleted for good by its id');
+	pg_assert_same('#42', pg_page_bundle_page_label(null, 42), 'also when the join found no row');
+	pg_assert_same('', pg_page_bundle_page_label(null, 0), 'no page, no name');
+
+	pg_assert_contains('pg_page_bundle_page_label(', pg_test_function_source('pg_page_bundle_items'), 'the items are named so');
+}
+
+// The revision a replacement goes back to: the one before the revision it
+// wrote; when it wrote none, the page's latest; when the page has none (a
+// page a bundle published new, saved unchanged), the page as it is, seeded.
+function test_page_bundle_revision_before()
+{
+	$seeded = new ArrayObject();
+	$seed = function () use ($seeded) {
+		$seeded[] = 1;
+
+		return 1;
+	};
+
+	pg_assert_same(4, pg_page_bundle_revision_before(5, 4, $seed), 'the one before the revision written');
+	pg_assert_same(1, pg_page_bundle_revision_before(2, 0, $seed), 'a first save seeds revision 1, then writes 2');
+	pg_assert_same(3, pg_page_bundle_revision_before(0, 3, $seed), 'nothing written: the latest');
+	pg_assert_same(0, count($seeded), 'with revisions kept, nothing is seeded');
+	pg_assert_same(1, pg_page_bundle_revision_before(0, 0, $seed), 'no revision at all: the page as it is');
+	pg_assert_same(1, count($seeded), 'seeded once');
+	pg_assert_same(0, pg_page_bundle_revision_before(0, 0, function () {
+		return 0;
+	}), 'a seed that failed keeps 0');
+
+	pg_assert_contains('pg_page_bundle_revision_before(', pg_test_function_source('pg_page_bundle_write_item'), 'the write keeps it so');
+	pg_assert_contains('pg_page_revision_seed(', pg_test_function_source('pg_page_bundle_write_item'), 'seeding through the revisions\' own seed');
+}

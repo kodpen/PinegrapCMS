@@ -1142,23 +1142,78 @@ function pg_tr_pending_string_ids($language, $owners = array())
 }
 
 /**
+ * The condition on translation_uses u that keeps a picture's texts to the
+ * pictures a page in another language has shown: those with a row in
+ * file_translation (the page pass writes it, PT2). Before the table exists
+ * no picture qualifies. Pure but for the table check.
+ *
+ * @return string SQL
+ */
+function pg_tr_picture_owner_bound()
+{
+    return pg_tr_picture_owner_bound_sql(function_exists('pg_picture_tr_ready') && pg_picture_tr_ready());
+}
+
+/**
+ * @param bool $ready whether file_translation exists
+ * @return string SQL
+ */
+function pg_tr_picture_owner_bound_sql($ready)
+{
+    if (!$ready) {
+        return '0 = 1';
+    }
+
+    return "u.owner_type = 'file' AND u.owner_id IN (SELECT ft.file_id FROM file_translation ft)";
+}
+
+/**
+ * The whole site's share of the pictures' texts, as an OR to the rest: the
+ * same bound as the Pictures group, so "translate the whole site" counts
+ * and sends no picture that group leaves out.
+ *
+ * @return string SQL, '' before the table exists
+ */
+function pg_tr_picture_owner_or()
+{
+    return pg_tr_picture_owner_or_sql(function_exists('pg_picture_tr_ready') && pg_picture_tr_ready());
+}
+
+/**
+ * @param bool $ready whether file_translation exists
+ * @return string SQL. Pure.
+ */
+function pg_tr_picture_owner_or_sql($ready)
+{
+    return $ready ? ' OR (' . pg_tr_picture_owner_bound_sql(true) . ')' : '';
+}
+
+/**
  * SQL for a set of owners. No owner is the whole site: every text but the
  * cookie window (owner 'ui'), which is translated on its own, as the
  * "Cookie window" group, and only for a language with no language file
- * (pg_tr_ui_text()), and but a picture's (owner 'file'): every Design Canvas
- * picture with words has uses, and only those a page in another language
- * showed are counted and sent, by their own group.
+ * (pg_tr_ui_text()), and but a picture's (owner 'file') no page in another
+ * language has shown: every Design Canvas picture with words has uses, and
+ * only those with a file_translation row are counted and sent, in the whole
+ * site as in the Pictures group (pg_tr_picture_owner_bound()).
  */
 function pg_tr_owner_where($owners)
 {
     if (!$owners) {
-        return "u.owner_type NOT IN ('ui', 'file')";
+        return "u.owner_type NOT IN ('ui', 'file')" . pg_tr_picture_owner_or();
     }
 
     $parts = array();
 
     foreach ((array) $owners as $owner) {
         if (!is_array($owner) || empty($owner[0])) {
+            continue;
+        }
+
+        // A picture's texts only while a page in another language has shown
+        // it: never every picture with words.
+        if (($owner[0] === 'file') && ($owner[1] === '*')) {
+            $parts[] = '(' . pg_tr_picture_owner_bound() . ')';
             continue;
         }
 

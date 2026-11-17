@@ -91,6 +91,7 @@ function api_schema() {
 				array('name' => 'in_stock',      'in' => 'query', 'type' => 'bool',   'description' => 'Limit to products that are or are not out of stock.'),
 				array('name' => 'limit',         'in' => 'query', 'type' => 'int',    'min' => 1, 'max' => 250, 'default' => 50, 'description' => 'Rows per page.'),
 				array('name' => 'cursor',        'in' => 'query', 'type' => 'string', 'max_length' => 200, 'description' => 'next_cursor from the previous page.'),
+				array('name' => 'sort',          'in' => 'query', 'type' => 'enum', 'values' => array('oldest', 'newest'), 'default' => 'oldest', 'description' => 'oldest (the default) walks the last change oldest first; newest walks it newest first. The next page keeps the sort its cursor was made under; a cursor of the other sort is 400 invalid_cursor.'),
 				array('name' => 'include_count', 'in' => 'query', 'type' => 'bool',   'description' => 'Also count every matching row. Costs an extra query, so it is off by default.')
 			)
 		),
@@ -1025,6 +1026,7 @@ function api_schema() {
 				array('name' => 'email',         'in' => 'query', 'type' => 'string', 'max_length' => 190),
 				array('name' => 'limit',         'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
 				array('name' => 'cursor',        'in' => 'query', 'type' => 'string', 'max_length' => 200),
+				array('name' => 'sort',          'in' => 'query', 'type' => 'enum', 'values' => array('oldest', 'newest'), 'default' => 'oldest', 'description' => 'oldest (the default) lists by id, oldest first; newest lists the newest customer first. The next page keeps the sort its cursor was made under; a cursor of the other sort is 400 invalid_cursor.'),
 				array('name' => 'include_count', 'in' => 'query', 'type' => 'bool')
 			)
 		),
@@ -3578,7 +3580,8 @@ function api_schema() {
 				array('name' => 'order_id',      'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only the subscriptions started by this order.'),
 				array('name' => 'updated_since', 'in' => 'query', 'type' => 'datetime', 'description' => 'Only subscriptions made or changed at or after this moment.'),
 				array('name' => 'limit',         'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
-				array('name' => 'cursor',        'in' => 'query', 'type' => 'string', 'max_length' => 200)
+				array('name' => 'cursor',        'in' => 'query', 'type' => 'string', 'max_length' => 200),
+				array('name' => 'sort',          'in' => 'query', 'type' => 'enum', 'values' => array('oldest', 'newest'), 'default' => 'oldest', 'description' => 'oldest (the default) walks the last change oldest first; newest walks it newest first. The next page keeps the sort its cursor was made under; a cursor of the other sort is 400 invalid_cursor.')
 			)
 		),
 
@@ -4015,7 +4018,8 @@ function api_schema() {
 				array('name' => 'complete',        'in' => 'query', 'type' => 'bool', 'description' => 'false returns the saved-but-not-sent ones instead.'),
 				array('name' => 'reference_code',  'in' => 'query', 'type' => 'string', 'max_length' => 10, 'description' => 'The code the visitor was shown after sending.'),
 				array('name' => 'limit',           'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50, 'description' => '1-250. Rows per page.'),
-				array('name' => 'cursor',          'in' => 'query', 'type' => 'string', 'max_length' => 255, 'description' => 'next_cursor from the previous page.')
+				array('name' => 'cursor',          'in' => 'query', 'type' => 'string', 'max_length' => 255, 'description' => 'next_cursor from the previous page.'),
+				array('name' => 'sort',          'in' => 'query', 'type' => 'enum', 'values' => array('oldest', 'newest'), 'default' => 'oldest', 'description' => 'oldest (the default) lists by id, oldest first; newest lists the newest submission first. The next page keeps the sort its cursor was made under; a cursor of the other sort is 400 invalid_cursor.')
 			)
 		),
 

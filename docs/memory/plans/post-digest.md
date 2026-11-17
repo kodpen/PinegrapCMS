@@ -37,4 +37,4 @@ priority: 6
 - A record set live after its date has passed, where no moment of going live is kept (it is not sent, and the box says so); a subscriber's own choice of how often; several lists in one mail; the digest as a visitor notification (`plans/visitor-push.md`); an introduction written by AI. Each is a later yes.
 
 ## Whose look?
-- The owner's. The mail (DG2 #10026): Owner (2026-11-16, agent channel poll 109): "Evet, böyle çıksın". The two boxes (DG3): still to be shown.
+- The owner's. The mail (DG2 #10026): Owner (2026-11-16, agent channel poll 109): "Evet, böyle çıksın". The two boxes (DG3 #10176): Owner (2026-11-17, agent channel poll 126): "Evet, böyle çıksın".

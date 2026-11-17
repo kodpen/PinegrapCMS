@@ -1092,6 +1092,97 @@ function test_proto_hotspots_picture_refill_after_the_view_moves()
 	pg_assert_same(array(), $out['empty'], 'nothing near');
 }
 
+// A link without words of its own is named by what its children show (a
+// logo link: the icon has none, the name's text and a picture's alt do),
+// not by its address; its own text, aria-label or alt still come first.
+function test_proto_hotspots_link_named_by_its_children()
+{
+	$logo = array('_id' => 'l', 'type' => 'semantic', 'props' => array('tag' => 'a', 'href' => '/anasayfa'), 'children' => array(
+		array('_id' => 'i', 'type' => 'content', 'props' => array('contentType' => 'icon', 'icon' => 'bi-heart'), 'children' => array()),
+		array('_id' => 's', 'type' => 'semantic', 'props' => array('tag' => 'span', 'text' => 'Clinic <b>Care</b>'), 'children' => array(
+			array('_id' => 'g', 'type' => 'content', 'props' => array('contentType' => 'image', 'alt' => 'Logo'), 'children' => array()),
+		)),
+	));
+	$own = $logo;
+	$own['props']['ariaLabel'] = 'Home';
+	$bare = array('_id' => 'b', 'type' => 'semantic', 'props' => array('tag' => 'a', 'href' => '/x'), 'children' => array());
+	$out = proto_hotspots_test_node('out = [H.collect(' . proto_hotspots_test_js(array('_id' => 'r', 'type' => 'root', 'props' => array(), 'children' => array($logo, $own, $bare))) . ').hotspots.map(function (h) { return h.label; })];');
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array('Clinic Care Logo', 'Home', ''), $out[0], 'the children\'s words, its own first, nothing for a bare link (the address stands in)');
+}
+
+// Drawing from a mark (F21, F22, F23): a press on an arrow's head re-points
+// it within 14 screen pixels at any zoom; the keys of a mark.
+function test_proto_hotspots_head_and_mark_keys()
+{
+	$out = proto_hotspots_test_node('var e = { x: 100, y: 100 };'
+		. ' out = { near: [H.nearHead(e, { x: 110, y: 100 }, 1), H.nearHead(e, { x: 115, y: 100 }, 1), H.nearHead(e, { x: 120, y: 100 }, 0.5), H.nearHead(e, { x: 110, y: 100 }, 2), H.nearHead(null, e, 1)],'
+		. ' keys: [{ key: "Enter" }, { key: " " }, { key: "l" }, { key: "L" }, { key: "l", ctrlKey: true }, { key: "ContextMenu" }, { key: "F10", shiftKey: true }, { key: "F10" }, { key: "x" }, null].map(H.markKey) };');
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array(true, false, true, false, false), $out['near'], 'within 14 screen pixels of the head, by the zoom');
+	pg_assert_same(array('pick', 'pick', 'menu', 'menu', '', 'menu', 'menu', '', '', ''), $out['keys'], 'Enter and Space pick, L and the menu key open the target menu');
+}
+
+// Drawing from a mark (F21, F22, F23): a mark's drag and an arrow head's
+// drag become the core's connect once they move; the selected frame's
+// marks take Tab, Enter and L; the pointer on a mark or a row lifts its
+// arrow.
+function test_proto_hotspots_view_draws_from_a_mark()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/style_designer.css');
+
+	pg_assert_contains("if ((drag.kind !== 'row' && drag.kind !== 'head') || !drag.link) return;", $source, 'a mark or a head turns into a drawn arrow only once it moves');
+	pg_assert_contains("drag.kind = 'connect';", $source, 'the core draws it, lights its targets and calls connected()');
+	pg_assert_contains("if (done.kind === 'row' && !done.moved && event.type === 'pointerup') _sdProtoPickRow(done.row);", $source, 'a click on a mark still picks its link');
+	pg_assert_contains('if (!H.nearHead({ x: end.x, y: end.y }, at, k)) return;', $source, 'a press within reach of an arrow\'s head takes the nearest one');
+	pg_assert_contains('var act = hot ? window.PGProtoHotspots.markKey(event) : \'\';', $source, 'a mark\'s keys');
+	pg_assert_contains("return link ? _sdProtoMenuOpen(link.frame, link.port, hot) : false;", $source, 'L on a mark opens its target menu');
+	pg_assert_contains("if (el && state === 'own') el.tabIndex = 0;", $source, 'Tab reaches only the selected frame\'s marks');
+	pg_assert_contains('_sdProtoLift(id || \'\');', $source, 'the pointer lifts an arrow');
+	pg_assert_false(strpos($source, "var dot = canvas.port('out', row.port);") !== false, 'no port dot: the whole mark draws');
+	pg_assert_contains('_sdProtoDrawing(true);', $source, 'while an arrow is drawn the others fade');
+	pg_assert_contains("window.addEventListener(type, function () { if (_sdProto.drawing) _sdProtoDrawing(false); }, true);", $source, 'and come back when it is let go');
+	pg_assert_contains('var at = window.PGProtoHotspots.menuPlace(', $source, 'the target menu is placed inside the canvas');
+	pg_assert_contains('.sd-proto .pgc-edges.sd-proto-drawing .pgc-edge-temp {', $css, 'the drawn arrow at full strength');
+	foreach (array('.sd-proto-hot:focus-visible', '.sd-proto .pgc-edges.sd-proto-lifting .pgc-edge:not(.sd-proto-edge-lift)') as $selector) {
+		pg_assert_contains($selector, $css, 'styled: ' . $selector);
+	}
+}
+
+// The target menu stays inside the canvas under the view's bar: under its
+// mark when there is room, else above it, else beside it, clamped; never
+// over the bar's zoom controls.
+function test_proto_hotspots_menu_inside_the_canvas()
+{
+	$out = proto_hotspots_test_node('var area = { left: 0, top: 40, right: 600, bottom: 440 }, menu = { w: 260, h: 200 };'
+		. ' out = { below: H.menuPlace({ left: 100, top: 60, right: 140, bottom: 80 }, menu, area),'
+		. ' above: H.menuPlace({ left: 100, top: 300, right: 140, bottom: 320 }, menu, area),'
+		. ' beside: H.menuPlace({ left: 100, top: 230, right: 140, bottom: 250 }, menu, area),'
+		. ' left: H.menuPlace({ left: 500, top: 230, right: 540, bottom: 250 }, menu, area),'
+		. ' edge: H.menuPlace({ left: 480, top: 60, right: 520, bottom: 80 }, menu, area),'
+		. ' tall: H.menuPlace({ left: 100, top: 230, right: 140, bottom: 250 }, { w: 260, h: 500 }, area) };');
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array('left' => 100, 'top' => 82), $out['below'], 'under the mark when there is room');
+	pg_assert_same(array('left' => 100, 'top' => 98), $out['above'], 'above it when not, never above the canvas\'s top');
+	pg_assert_same(array('left' => 142, 'top' => 230), $out['beside'], 'beside it when neither fits');
+	pg_assert_same(array('left' => 238, 'top' => 230), $out['left'], 'on its left when the right has no room');
+	pg_assert_same(array('left' => 336, 'top' => 82), $out['edge'], 'clamped inside the canvas\'s width');
+	pg_assert_same(array('left' => 142, 'top' => 44), $out['tall'], 'a menu taller than the canvas starts at its top');
+}
+
 // Which marks a picture shows (F5, F13): the selected frame all of its own;
 // another frame those starting an arrow into it; a shared part's link into
 // the selected page in amber. Nothing selected shows none.

@@ -76,6 +76,7 @@ function test_widget_lists_product_descriptors()
 		'product.attributes' => pg_sw_list_product_attr_rows(array(array('name' => 'color', 'label' => 'Colour', 'option_label' => 'Red', 'no_value' => '0'))),
 		'product.related'    => pg_sw_list_product_related_rows(array(array('id' => 4, 'name' => 'Cup'))),
 		'product.bundle_items' => pg_sw_list_product_bundle_rows(array(array('product_id' => 4, 'quantity' => 2, 'enabled' => '1')), ''),
+		'product.quantity_prices' => pg_sw_list_product_quantity_price_rows(array(array('quantity' => 10, 'price' => 900)), '$'),
 	);
 	$sources = pg_sw_list_sources();
 	pg_assert_same(array_merge(array_keys($rows), array('catalog.crumbs')), array_keys(pg_sw_kind_lists('catalog_item_view')), 'the detail view offers the product sources and the crumbs');
@@ -248,4 +249,38 @@ function test_widget_lists_product_listing_cards()
 	pg_assert_same(array('S', 'M', 'L'), _wlp_texts($out, 'v'), 'the group card lists nothing, each product its own');
 	pg_assert_same(false, strpos($out, 'pg-l'), 'no span left');
 	pg_assert_same(false, strpos($out, '^^'), 'no token left');
+}
+
+// The quantity prices of the product page: one row per break, the
+// sentence escaped once; a product without a break draws nothing. The
+// listing does not offer them: each card would read the offers again.
+function test_widget_lists_product_quantity_prices_detail()
+{
+	$tree = array('type' => 'root', 'props' => array(), 'children' => array(
+		array('type' => 'loop_area', 'props' => array(), 'children' => array(
+			_wlp_text('__name', 'title', 'h1'),
+			_wlp_node('ul', 'breaks', array(_wlp_list('product.quantity_prices', array(
+				_wlp_text('__qty_break_label', 'qb', 'li'),
+			)))),
+		)),
+	));
+	$read = array('product.quantity_prices' => pg_sw_list_product_quantity_price_rows(array(
+		array('quantity' => 10, 'price' => 9000),
+		array('quantity' => 20, 'price' => 7500),
+	), '<b>&'));
+	list($out, $wanted) = _wlp_detail($tree, 12, 'Mug', $read);
+	pg_assert_true(isset($wanted['product.quantity_prices']), 'the source drawn');
+	$texts = _wlp_texts($out, 'qb');
+	pg_assert_same(2, count($texts), 'one row per break');
+	pg_assert_contains('10 or more: each for ', $texts[0]);
+	pg_assert_contains('&lt;b&gt;&amp;', $texts[0], 'escaped once');
+	pg_assert_same(false, strpos($out, '<b>&'), 'never raw');
+	pg_assert_same(false, strpos($out, '&amp;amp;'), 'never twice');
+	pg_assert_same(false, strpos($out, '^^'), 'no token left');
+
+	list($none) = _wlp_detail($tree, 12, 'Mug', array('product.quantity_prices' => array()));
+	pg_assert_same(0, count(_wlp_texts($none, 'qb')), 'no break, nothing drawn');
+	pg_assert_same(false, strpos($none, 'pg-list'));
+
+	pg_assert_false(isset(pg_sw_kind_lists('catalog_listing')['product.quantity_prices']), 'not in the listing');
 }

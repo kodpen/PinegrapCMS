@@ -25277,6 +25277,7 @@ const StyleDesigner = (function () {
                 { label: _sdT('Attributes of the product'), type: 'loop_area', icon: 'bi-card-list', extra: { listSource: 'product.attributes' } },
                 { label: _sdT('Products bought together'), type: 'loop_area', icon: 'bi-bag', extra: { listSource: 'product.related' } },
                 { label: _sdT('Contents of the bundle'), type: 'loop_area', icon: 'bi-box-seam', extra: { listSource: 'product.bundle_items' } },
+                { label: _sdT('Quantity prices'), type: 'loop_area', icon: 'bi-tags', extra: { listSource: 'product.quantity_prices' } },
                 { label: _sdT('Crumbs of the catalog path'), type: 'loop_area', icon: 'bi-signpost-split', extra: { listSource: 'catalog.crumbs' } },
                 { label: _sdT('Active attribute filters'), type: 'loop_area', icon: 'bi-funnel', extra: { listSource: 'catalog.active_filters' } },
                 { label: _sdT('Month grid'), type: 'loop_area', icon: 'bi-calendar3', extra: { listSource: 'calendar.weeks' } },
@@ -30998,6 +30999,31 @@ const StyleDesigner = (function () {
         return { node: node, nodes: nodes.slice() };
     }
 
+    // The nodes a drag of rows in the overview moves, from the picked ones
+    // (the dragged row, or the multi-selection it belongs to) and the row it
+    // lands on. A picked node inside another picked node travels inside it
+    // and is not moved on its own: taking it out and putting both in would
+    // leave the outer one in the page twice. A node holding the target
+    // cannot move next to or into its own descendant. The target, the root
+    // and repeats are left out; the order of the pick is kept.
+    function _sdTreeMoveSet(picked, target) {
+        var holds = function (anc, n) {
+            var kids = (anc && anc.children) || [];
+            for (var i = 0; i < kids.length; i++) {
+                if (kids[i] === n || holds(kids[i], n)) return true;
+            }
+            return false;
+        };
+        var list = [];
+        (picked || []).forEach(function (n) {
+            if (n && n !== target && n.type !== 'root' && list.indexOf(n) === -1) list.push(n);
+        });
+        return list.filter(function (n) {
+            if (target && holds(n, target)) return false;
+            return !list.some(function (m) { return m !== n && holds(m, n); });
+        });
+    }
+
     // Selects the nodes a tree drag moved and redraws. The moved node may be
     // the one already selected, so the overview is told it is new: the
     // branches over its new place open and its row comes into view.
@@ -31580,9 +31606,9 @@ const StyleDesigner = (function () {
             // throughout so we never confuse cross-tree id collisions with
             // structural relationships.
             var isMultiDrag = treeDragNode._multiDrag && selectedNodes.length > 1;
-            var nodesToMove = isMultiDrag
-                ? selectedNodes.filter(function(n) { return n !== node && n.type !== 'root' && !isDescendant(node, n); })
-                : [treeDragNode];
+            var nodesToMove = _sdTreeMoveSet(isMultiDrag
+                ? selectedNodes.filter(function(n) { return !isDescendant(node, n); })
+                : [treeDragNode], node);
             if (!nodesToMove.length) return;
 
             // Every moved node must be one canDrop() lets into where it
@@ -31667,7 +31693,6 @@ const StyleDesigner = (function () {
                 if (isDescendant(treeDragNode, node)) return;
                 // Remove all first (may shift indices)
                 nodesToMove.forEach(function(n) {
-                    if (isDescendant(n, treeDragNode) && n !== treeDragNode) return;
                     var srcInfo = _findParentAnywhere(n);
                     if (srcInfo) {
                         srcInfo.parent.children = srcInfo.parent.children.filter(function(c) { return c !== n; });
@@ -34390,6 +34415,7 @@ const StyleDesigner = (function () {
             'product.attributes': _sdT('One row for every attribute the product has a value for, such as its colour or size. Bind the row\'s elements to "Attribute" and "Attribute value" in Bind Data.'),
             'product.related':    _sdT('One row for every product ordered together with this one, else for the products of its groups, at most 12. With this list on the page the automatic "Frequently bought together" block is not added.'),
             'product.bundle_items': _sdT('One row for every product the bundle holds, in its order; nothing for a product that is not a bundle. Bind the row\'s elements to "Product name", "Quantity in the bundle" or "Product address" in Bind Data.'),
+            'product.quantity_prices': _sdT('One row for every quantity price of the product, such as "10 or more: each for 9.00", read from the running offers that hold for the visitor; nothing when there is none. Bind the row\'s elements to "Quantity and price" in Bind Data.'),
             'catalog.crumbs':     _sdT('One row for every crumb of the path to what the page shows: the catalog, its groups, then the group or product itself. A condition on "Kind of crumb" draws a link, words, or where the visitor is.'),
             'catalog.active_filters': _sdT('One row for every attribute filter the visitor applied, such as "Colour: Red". Bind a link to "Address without the filter": it opens the listing without that filter. With this list on the page the automatic chip row above the products is not added.'),
             'calendar.weekdays':  _sdT('One row for every day of the week, in the widget\'s week order: the heads of a month grid. Bind the row\'s elements to "Day name" or "Short day name" in Bind Data.'),
@@ -61179,6 +61205,19 @@ const StyleDesigner = (function () {
                 ['__bundle_item_image_url',         _sdT('Image address')]
             ]
         },
+        // The breaks of the running offers for this product and visitor
+        // (pg_offer_quantity_breaks()); the listing does not read offers
+        // for each card.
+        'product.quantity_prices': {
+            label: _sdT('Quantity prices'),
+            arg: '', argRequired: false,
+            kinds: ['catalog_item_view'],
+            rows: [
+                ['__qty_break_quantity', _sdT('Smallest quantity')],
+                ['__qty_break_price',    _sdT('Price of one piece')],
+                ['__qty_break_label',    _sdT('Quantity and price')]
+            ]
+        },
         // The crumbs of the catalog path (pg_sw_list_crumb_sources()): the
         // page's, so a list of them stands anywhere in either widget.
         'catalog.crumbs': {
@@ -61863,6 +61902,9 @@ const StyleDesigner = (function () {
         __bundle_item_quantity: '2',
         __bundle_item_url: '#',
         __bundle_item_image_url: '',
+        __qty_break_quantity: '10',
+        __qty_break_price: '9.00',
+        __qty_break_label: _sdT('10 or more: each for 9.00'),
         __crumb_label:   _sdT('Main Catalog'),
         __crumb_url:     '#',
         __crumb_kind:    'link',
@@ -62568,6 +62610,19 @@ const StyleDesigner = (function () {
                         _bindings: { href: '__bundle_item_url', text: '__bundle_item_short_description' } })
                 ])
             ])]);
+        }
+        if (source === 'product.quantity_prices') {
+            // The box goes with its heading when no break holds: it is
+            // marked Hide when empty, the list's holder its value.
+            return createNode('semantic', { tag: 'div', cssClass: (bs ? 'mb-3 ' : '') + 'pg-hide-if-empty', customName: _sdT('Quantity prices') }, [
+                sem('h2', 'h6 mb-2', _sdT('Heading'), { text: _sdT('Quantity prices') }),
+                createNode('semantic', { tag: 'ul', cssClass: (bs ? 'list-group mb-0 ' : '') + 'pg-field-value', customName: _sdT('Quantity prices') }, [
+                    createNode('loop_area', { source: source }, [
+                        sem('li', 'list-group-item small', _sdT('Quantity price'), { text: _sdT('10 or more: each for 9.00'),
+                            _bindings: { text: '__qty_break_label' } })
+                    ])
+                ])
+            ]);
         }
         if (source === 'product.attributes') {
             return sem('dl', 'row mb-0', _sdT('Attributes'), {}, [createNode('loop_area', { source: source }, [
@@ -71114,7 +71169,7 @@ const StyleDesigner = (function () {
     // undo history and content rights answer; the normal Save writes it.
     // Classic menus and regions stay read-only.
     var _sdProto = { open: false, ui: null, canvas: null, items: [], byId: {}, layout: null, view: { x: 40, y: 40, k: 1 }, seq: 0, selected: null, env: {}, warned: {}, menu: null,
-        link: null, broken: { list: [], count: {} }, problems: null,
+        link: null, lifted: '', drawing: false, broken: { list: [], count: {} }, problems: null,
         edgeTo: {},
         pics: { gen: 0, io: null, boxes: {}, near: {}, live: {}, wait: [], loading: 0, cache: {}, rects: {}, partH: {}, settle: 0, refill: 0 } };
 
@@ -71349,21 +71404,42 @@ const StyleDesigner = (function () {
                 return _sdProto.view;
             },
             items: function () { return _sdProto.items; },
-            // A link's mark on a picture: no drag, its link picked on
-            // release. Its port is the core's: an arrow drawn from it.
+            // A link's mark on a picture: a click picks its link, a drag
+            // draws its arrow (F21). The head of a drawn arrow: a drag
+            // points it elsewhere (F22). Either becomes the core's own
+            // 'connect' once it moves, so what may take the arrow lights up.
             press: function (event, next) {
-                if (event.target.closest && event.target.closest('.pgc-port-out')) return;
                 var row = event.target.closest ? event.target.closest('.sd-proto-hot') : null;
                 if (row) {
                     next.kind = 'row';
                     next.row = row;
+                    next.link = _sdProtoHotLink(row);
+                    return;
+                }
+                var head = _sdProtoHeadAt(event);
+                if (head) {
+                    next.kind = 'head';
+                    next.link = head;
+                    event.preventDefault();
                 }
             },
-            move: function () {},
+            move: function (event, drag) {
+                if ((drag.kind !== 'row' && drag.kind !== 'head') || !drag.link) return;
+                var item = _sdProto.byId[drag.link.frame];
+                var row = _sdProtoRow(item, drag.link.port);
+                if (!row || !window.PGProtoHotspots.drawable(row)) return;
+                _sdProtoMenuClose(false);
+                drag.kind = 'connect';
+                drag.from = item;
+                drag.port = row.port;
+                // The arrow being drawn is the one to see: the others fade.
+                _sdProtoDrawing(true);
+            },
             release: function (event, done) {
                 if (done.kind === 'row' && !done.moved && event.type === 'pointerup') _sdProtoPickRow(done.row);
+                if (done.kind === 'head' && !done.moved && event.type === 'pointerup') _sdProtoPick(done.link.frame, done.link.port, true);
             },
-            cancel: function () {},
+            cancel: function () { _sdProtoDrawing(false); },
             key: function (event) {
                 if (event.key === 'Escape') { _sdProtoClose(); return true; }
                 // The open tab's undo history, as on the canvas; the map is
@@ -71375,12 +71451,33 @@ const StyleDesigner = (function () {
                     _sdProtoLoad();
                     return true;
                 }
-                // A link's keys (Enter, L, the menu key) are on its row in
-                // the links panel.
+                // A mark of the selected frame (F23): Enter or Space picks
+                // its link; L, the menu key or Shift+F10 opens its target
+                // menu, the keyboard's way to draw its arrow.
+                var hot = event.target.closest ? event.target.closest('.sd-proto-hot') : null;
+                var act = hot ? window.PGProtoHotspots.markKey(event) : '';
+                if (act === 'pick') { _sdProtoPickRow(hot); return true; }
+                if (act === 'menu') {
+                    var link = _sdProtoHotLink(hot);
+                    return link ? _sdProtoMenuOpen(link.frame, link.port, hot) : false;
+                }
                 return false;
             }
         });
         _sdProto.canvas.bind();
+        // The pointer on a mark or a links panel row lifts its arrow out of
+        // the others.
+        ui.root.addEventListener('pointerover', function (event) {
+            if (_sdProto.drawing) return;
+            var hot = event.target.closest ? event.target.closest('.sd-proto-hot, .sd-proto-li[data-link]') : null;
+            var link = hot ? (hot.classList.contains('sd-proto-hot') ? _sdProtoHotLink(hot) : null) : null;
+            var id = link ? link.frame + '|' + link.port : (hot ? hot.getAttribute('data-link') : '');
+            _sdProtoLift(id || '');
+        });
+        // A drawn arrow let go of, on a target or not.
+        ['pointerup', 'pointercancel'].forEach(function (type) {
+            window.addEventListener(type, function () { if (_sdProto.drawing) _sdProtoDrawing(false); }, true);
+        });
         // A press outside the target menu closes it.
         ui.root.addEventListener('pointerdown', function (event) {
             if (_sdProto.menu && !_sdProto.menu.el.contains(event.target)) _sdProtoMenuClose(false);
@@ -71534,6 +71631,62 @@ const StyleDesigner = (function () {
         return window.PGProtoHotspots.markPort(item, rects ? (rects[port] || null) : undefined, to ? _sdProto.byId[to] : null);
     }
 
+    // The link a mark stands for: its frame's id and its row's port.
+    function _sdProtoHotLink(hot) {
+        var box = hot && hot.closest ? hot.closest('[data-node]') : null;
+        var item = box ? _sdProto.byId[box.getAttribute('data-node')] : null;
+        var row = item && item.rows ? item.rows[parseInt(hot.getAttribute('data-row'), 10) || 0] : null;
+        return row ? { frame: item.id, port: row.port } : null;
+    }
+
+    // The link of the drawn arrow whose head a press takes: the nearest
+    // head within 14 screen pixels of it, of the arrows shown (heads crowd
+    // on a frame's edge, so another arrow may be on top), else null. A
+    // press on a frame or a chip stays theirs (select, move).
+    function _sdProtoHeadAt(event) {
+        var ui = _sdProto.ui;
+        if (!ui || !_sdProto.layout || (event.target.closest && event.target.closest('[data-node]'))) return null;
+        var H = window.PGProtoHotspots;
+        var at = _sdProto.canvas.view.point(event.clientX, event.clientY);
+        var k = _sdProto.view.k;
+        var best = null;
+        var bestD = Infinity;
+        Array.prototype.forEach.call(ui.svg.querySelectorAll('g.pgc-edge[data-edge]'), function (group) {
+            var line = group.querySelector('path');
+            if (!line || !line.getTotalLength || window.getComputedStyle(group).display === 'none' || window.getComputedStyle(line).visibility === 'hidden') return;
+            var end = line.getPointAtLength(line.getTotalLength());
+            if (!H.nearHead({ x: end.x, y: end.y }, at, k)) return;
+            var d = (end.x - at.x) * (end.x - at.x) + (end.y - at.y) * (end.y - at.y);
+            if (d < bestD) { bestD = d; best = group.getAttribute('data-edge'); }
+        });
+        var edge = best ? _sdProto.layout.edges.filter(function (e) { return e.id === best; })[0] : null;
+        return edge ? { frame: edge.from, port: edge.port } : null;
+    }
+
+    // While an arrow is drawn from a mark or a head: every drawn arrow
+    // fades and the one being drawn goes at full strength to the pointer.
+    function _sdProtoDrawing(on) {
+        var ui = _sdProto.ui;
+        _sdProto.drawing = !!on;
+        _sdProtoLift('');
+        if (ui) ui.svg.classList.toggle('sd-proto-drawing', !!on);
+    }
+
+    // One arrow lifted out of the others ('' for none): drawn last, the
+    // others faded while it is.
+    function _sdProtoLift(id) {
+        var ui = _sdProto.ui;
+        if (!ui || _sdProto.lifted === id) return;
+        _sdProto.lifted = id;
+        var old = ui.svg.querySelector('.sd-proto-edge-lift');
+        if (old) old.classList.remove('sd-proto-edge-lift');
+        var group = id ? ui.svg.querySelector('g.pgc-edge[data-edge="' + id.replace(/"/g, '') + '"]') : null;
+        ui.svg.classList.toggle('sd-proto-lifting', !!group);
+        if (!group) return;
+        group.classList.add('sd-proto-edge-lift');
+        ui.svg.appendChild(group);
+    }
+
     // A loaded picture's marks (F5): a rounded rectangle over each link's
     // element, in the colour of where it leads; a link of a tree carries
     // the port its arrow is drawn from. Which of them show is
@@ -71554,11 +71707,16 @@ const StyleDesigner = (function () {
             hot.style.top = r.y + 'px';
             hot.style.width = Math.max(6, r.w) + 'px';
             hot.style.height = Math.max(6, r.h) + 'px';
-            hot.title = (row.from ? row.from + ' › ' + row.label : row.label) + (row.href ? ' · ' + row.href : '');
+            var name = row.from ? row.from + ' › ' + row.label : row.label;
+            hot.title = name + (row.href ? ' · ' + row.href : '');
+            hot.setAttribute('role', 'button');
+            hot.setAttribute('aria-label', name);
+            hot.tabIndex = -1;
+            // The whole mark is where its arrow is drawn from (F21).
             if (H.drawable(row)) {
-                var dot = canvas.port('out', row.port);
-                dot.title = _sdT('Drag to a page or an address to change where this link goes');
-                hot.appendChild(dot);
+                hot.classList.add('sd-proto-hot-draw');
+                hot.title += ' · ' + _sdT('Drag to a page or an address to change where this link goes');
+                hot.setAttribute('aria-keyshortcuts', 'L');
             }
             layer.appendChild(hot);
         });
@@ -71681,6 +71839,7 @@ const StyleDesigner = (function () {
         Array.prototype.slice.call(ui.boxes.querySelectorAll('.sd-proto-focused')).forEach(function (n) { n.classList.remove('sd-proto-focused'); });
         Array.prototype.slice.call(ui.boxes.querySelectorAll('.sd-proto-hot')).forEach(function (r) {
             r.classList.remove('sd-proto-hot-own', 'sd-proto-hot-lit', 'sd-proto-hot-shared');
+            r.tabIndex = -1;
         });
         if (id === null || id === undefined) return;
         var f = window.PGProtoHotspots.focusOf(_sdProto.layout, id);
@@ -71696,6 +71855,8 @@ const StyleDesigner = (function () {
                 var el = node.querySelector('.sd-proto-hot[data-row="' + i + '"]');
                 var state = mark[item.id + '|' + row.port];
                 if (el && state) el.classList.add('sd-proto-hot-' + state);
+                // Tab reaches the selected frame's marks after its frame (F23).
+                if (el && state === 'own') el.tabIndex = 0;
             });
         });
         var notes = {};
@@ -72028,6 +72189,8 @@ const StyleDesigner = (function () {
         l.edges.forEach(function (e) { _sdProto.edgeTo[e.id] = e.to; });
 
         Array.prototype.slice.call(ui.svg.querySelectorAll('g.pgc-edge')).forEach(function (g) { g.parentNode.removeChild(g); });
+        _sdProto.lifted = '';
+        ui.svg.classList.remove('sd-proto-lifting');
         _sdProtoPicReset(false);
         ui.boxes.innerHTML = '';
 
@@ -72546,13 +72709,17 @@ const StyleDesigner = (function () {
         ui.root.appendChild(el);
         _sdProto.menu = { el: el, rowEl: anchor };
 
-        // Under the row, or above it when it would leave the view.
+        // Under its row or mark, else above, else beside it, always inside
+        // the canvas under the view's bar (never over its zoom controls).
         var r = anchor.getBoundingClientRect();
         var o = ui.root.getBoundingClientRect();
-        var top = r.bottom - o.top + 2;
-        if (top + el.offsetHeight > o.height) top = Math.max(4, r.top - o.top - el.offsetHeight - 2);
-        el.style.left = Math.max(4, Math.min(r.left - o.left, o.width - el.offsetWidth - 4)) + 'px';
-        el.style.top = top + 'px';
+        var c = ui.stage.getBoundingClientRect();
+        var near = anchor.closest && anchor.closest('.sd-proto-list') ? ui.root.getBoundingClientRect() : c;
+        var area = { left: near.left - o.left, top: c.top - o.top, right: near.right - o.left, bottom: c.bottom - o.top };
+        el.style.maxHeight = Math.max(120, area.bottom - area.top - 8) + 'px';
+        var at = window.PGProtoHotspots.menuPlace({ left: r.left - o.left, top: r.top - o.top, right: r.right - o.left, bottom: r.bottom - o.top }, { w: el.offsetWidth, h: el.offsetHeight }, area);
+        el.style.left = at.left + 'px';
+        el.style.top = at.top + 'px';
 
         var first = el.querySelector('.sd-proto-menu-item[aria-checked="true"]') || el.querySelector('.sd-proto-menu-item');
         if (!first) el.tabIndex = -1;
@@ -80534,6 +80701,8 @@ const StyleDesigner = (function () {
                                     d: _sdT('Repeats its row for each product often bought together with this one.') },
             'l:product.bundle_items': { v: 'l-bundle', k: 'bundle contents items product list repeat loop',
                                     d: _sdT('Repeats its row for each product inside the bundle, with how many come in it.') },
+            'l:product.quantity_prices': { v: 'l-qty-prices', k: 'quantity prices price breaks tiered volume wholesale offer list repeat loop',
+                                    d: _sdT('Repeats its row for each quantity price of the product, such as 10 or more at a lower price each.') },
             'l:catalog.crumbs': { v: 'l-crumbs', k: 'breadcrumb crumbs catalog path list repeat loop',
                                     d: _sdT('Repeats its row for each step of the path from the catalog home to this category or product.') },
             'l:catalog.active_filters': { v: 'l-filters', k: 'active filters chips catalog attributes list repeat loop',
@@ -81399,6 +81568,9 @@ const StyleDesigner = (function () {
             },
             'l-bundle': function () {
                 return R(0, 0, 200, 110, W) + Rows(14, 32, 28, function (y) { return Pic(22, y, 26, 20) + L(56, y + 4, 70, D) + Tx(170, y + 13, '×2', 10, S, 'end'); });
+            },
+            'l-qty-prices': function () {
+                return R(0, 0, 200, 110, W) + Rows(16, 28, 26, function (y) { return L(24, y + 6, 60, D) + Tx(176, y + 12, '9.00', 10, S, 'end') + R(18, y + 21, 164, 1, B); });
             },
             'l-crumbs': function () {
                 return R(0, 0, 200, 110, W) + R(10, 40, 180, 30, LG, 5) + Cols(22, 52, 46, 48, 15, function (x) {

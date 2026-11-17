@@ -16,6 +16,7 @@ description: tools/check_api_answers.php, the read-only check that calls every G
 
 ## When is a refusal not a difference?
 - A 4xx (not 403, not 429) whose status the route's own description names for one record ("404 for a task that has never repeated", "409 not_a_collection") tries the next rows, up to `API_ANSWER_CHECK_TRIES` (5) records: first rows first, the outer list moving before the inner one. When none answers otherwise, the route is a `SKIP` naming each try (#10155).
+- `GET /translations/pages/{id}` names its 404 for a page in the Recycle Bin, which `GET /pages` lists with `recycled: true`; before #10180 such a first page was reported as a `DIFF`.
 
 ## How is it run?
 - `PG_WS_SITE=https://site/pinegrap/integration.php PG_WS_KEY=… PG_WS_SECRET=… php tools/check_api_answers.php [--only=/users]`. The settings are read by `ws_client_settings()` as the Workspace tools read them: environment only, never printed; plain http only for localhost.

@@ -702,5 +702,66 @@ function ws_step_list_records_try($action, $flow)
         'said'     => ws_step_list_records_said((string) $action['page_name'], count($records), count($read['left_out']), $window !== null),
         'records'  => $records,
         'left_out' => $titles,
+        'texts'    => ws_flow_records_try_texts($records, $titles),
     );
+}
+
+/**
+ * The pages the box's form offers: those with a list of form records shown
+ * to everyone (pg_sw_form_widget_public()), in a folder everybody may open,
+ * by title. The run checks the page again (ws_flow_records_page()).
+ *
+ * @return array[] id, name, title
+ */
+function ws_flow_records_pages()
+{
+    $out = array();
+
+    foreach (array('form_list_view', 'submitted_forms_list', 'form_list', 'blog_list') as $type) {
+        foreach (pg_sw_widget_pages($type, 'pg_sw_form_widget_public') as $page) {
+            $id = (int) $page['page_id'];
+
+            if (isset($out[$id]) || (get_access_control_type((int) ($page['page_folder'] ?? 0)) !== 'public')) {
+                continue;
+            }
+
+            $out[$id] = array('id' => $id, 'name' => (string) $page['page_name'], 'title' => (string) $page['page_title']);
+        }
+    }
+
+    usort($out, function ($a, $b) {
+        return strcasecmp(($a['title'] !== '') ? $a['title'] : $a['name'], ($b['title'] !== '') ? $b['title'] : $b['name']);
+    });
+
+    return array_values($out);
+}
+
+/**
+ * Try's lists in the shape the canvas draws a box's texts: the records a
+ * run now would read, one a line with its date, and the titles left out.
+ * Pure but for lang().
+ *
+ * @param array[]  $records  title, date
+ * @param string[] $left_out titles
+ * @return array[] key, text
+ */
+function ws_flow_records_try_texts($records, $left_out)
+{
+    $texts = array();
+
+    if (!empty($records)) {
+        $lines = array();
+
+        foreach ($records as $record) {
+            $lines[] = '• ' . (string) $record['title'] . ' (' . (string) $record['date'] . ')';
+        }
+
+        $texts[] = array('key' => 'records', 'text' => lang('Would read:') . "\n" . implode("\n", $lines));
+    }
+
+    if (!empty($left_out)) {
+        $texts[] = array('key' => 'left_out', 'text' => lang('Left out, dated before the last run:') . "\n• " . implode("\n• ", array_map('strval', $left_out)));
+    }
+
+    return $texts;
 }

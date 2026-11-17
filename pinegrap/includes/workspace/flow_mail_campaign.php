@@ -687,3 +687,26 @@ function ws_flow_mail_group_try($viewer, $owner, $action, $config, $values, $gra
         ? lang(array('string' => 'A test was mailed to you alone ({var:1}).', 'vars' => $to))
         : lang(array('string' => 'The test to {var:1} could not be sent.', 'vars' => $to))));
 }
+
+/**
+ * The contact groups an e-mail box's form offers for a group send: every
+ * group, by name, for a team member above role 3; none otherwise
+ * (ws_flow_mail_group_refusal_for()).
+ *
+ * @param array $viewer
+ * @return array[] id, name
+ */
+function ws_flow_mail_groups($viewer)
+{
+    if ((int) ($viewer['role'] ?? 3) >= 3) {
+        return array();
+    }
+
+    $out = array();
+
+    foreach ((array) db_items("SELECT id, name FROM contact_groups ORDER BY name, id") as $row) {
+        $out[] = array('id' => (int) $row['id'], 'name' => (string) $row['name']);
+    }
+
+    return $out;
+}
