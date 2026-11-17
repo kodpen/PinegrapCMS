@@ -356,6 +356,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-66.md: Who gets the task of the gallery flow "A page is due for review"? (architect, 2026-11-16, agent channel message 7026)
 - decisions-made-product-66.md: Where do a record's coordinates come from while Google Places or Mapbox is on? (architect, 2026-11-16, agent channel message 6927)
 - decisions-made-product-66.md: When does the Bundles screen get its main menu row? (architect, 2026-11-16, agent channel message 6918)
+- decisions-made-product-67.md: Do the Design Canvas's bar over the object and the Motion popover come out as on the sheet? (owner, 2026-11-16, agent channel poll 103, message 7038)
 - decisions-made-product-67.md: Does "Find from the address" come out as on the sheet? (owner, 2026-11-16, agent channel poll 105, message 7114)
 - decisions-made-product-67.md: Do the publish and take-back dialogs come out as on the sheet? (owner, 2026-11-16, agent channel poll 106, message 7125)
 - decisions-made-product-67.md: Which words do RB3's dialogs use? (architect, 2026-11-16, message 7027)
@@ -853,7 +854,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - ui/explorer-context-menu-visible.md: The file manager's right-click menu is a Bootstrap 6 .menu shown by display, not .show, so the screen draws it and its flyouts visible itself; a right click seemed dead before
 - ui/file-manager-replaces-folder-and-file-screens.md: The folder screens (add_folder, edit_folder, their form) and the classic files list (view_files) are retired; where each of their jobs is in the File Manager, what is not there, the links that moved
 - ui/graph-canvas-core-module.md: The graph canvas core (pg_graph_canvas.js, window.PGGraphCanvas, includes/fn/graph_canvas.php): what it owns, its adapter, its texts, its pgc- CSS and tokens, its first user the Flows canvas
-- ui/image-editor-actions.md: The Design Canvas's selection bar on a small screen: which commands show (M.actionList()), where it sits, when it hides, why it exists, how it was checked
+- ui/image-editor-actions.md: The Design Canvas's selection bar, over the object on the desktop and at the stage's foot on a small screen: its commands (M.actionList()), labels, place and when it hides
 - ui/image-editor-animation.md: The Design Canvas's animation as a whole: what binds it (own code, no schema change, editor-only presentation), the AN step ids and their topic files, the timeline keys and the WCAG 2.2.2 note
 - ui/image-editor-area-cut.md: The Design Canvas's Cut to a layer (owner, 2026-11-05), why Erase is named Erase inside, and why the hole an erase leaves is the picture's own, not a piece
 - ui/image-editor-clip-bar.md: A video clip's bar on the tracks (V3b): the filmstrip of several frames from a second decoder, the clip's sound as a waveform under the frames

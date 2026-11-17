@@ -253,7 +253,7 @@
 - guided-tour.md: The guided tour engine (assets/js/pg_tour.js, pg_tour.css): who uses it, how steps are counted, Back at the start, how a step is read out, where focus goes at the end, the bubble's size
 - icon-ligature-button-names.md: Buttons whose content is a Material Icons ligature (north, south, delete, living) are named by that word; how the product attribute and product group screens name them (#2893)
 - image-editor-access.md: The Design Canvas's access part: tool letters, the keyboard help sheet with its per-tool groups, shortcut names on the controls, Tab kept inside, reduced motion
-- image-editor-actions.md: The Design Canvas's selection bar on a small screen: which commands show (M.actionList()), where it sits, when it hides, why it exists, how it was checked [decision: decisions-made-product-28.md]
+- image-editor-actions.md: The Design Canvas's selection bar, over the object on the desktop and at the stage's foot on a small screen: its commands (M.actionList()), labels, place and when it hides [decision: decisions-made-product-28.md, decisions-made-product-67.md]
 - image-editor-adjust.md: The Design Canvas's Adjust tool: eight adjustments, nine filters as fixed values of them, one colour matrix shared by the preview and the server, the vignette and sharpening, the GD colour layer
 - image-editor-animation-save.md: Saving an animation into Files (AN4): Save to Files, the upload limit, action animation (binary body, type by bytes), its version with the document, reopening, same-format replace
 - image-editor-animation.md: The Design Canvas's animation as a whole: what binds it (own code, no schema change, editor-only presentation), the AN step ids and their topic files, the timeline keys and the WCAG 2.2.2 note [decision: decisions-made-product-15.md, decisions-made-product-16.md]
@@ -286,7 +286,7 @@
 - image-editor-menu.md: The Design Canvas's context menu: where it opens (right click, long press, Shift+F10, menu key), which items M.menuList() gives, the keys and focus, the long-press traps it fixes [decision: here]
 - image-editor-mix.md: An animation's sound in its MP4 or WebM (V7, #8484): the mix plan, OfflineAudioContext, AAC or Opus via AudioEncoder, the muxers' second track, the dialog's note, Sound field and steps
 - image-editor-modal.md: The Design Canvas core (window.PgImageEditor): files, loader, bundles, the pure model, labels via lang(), options, full screen, the phone layout, recording a change
-- image-editor-motion.md: The Design Canvas's Animate tool: anim and doc.motion, M.motionAt() and its spans, the play bar, the playhead and previews, the empty panel, what a still save sees
+- image-editor-motion.md: The Design Canvas's Animate tool: anim and doc.motion, M.motionAt() and its spans, the play bar, the playhead and previews, the Motion popover, the empty panel [decision: decisions-made-product-67.md]
 - image-editor-outline.md: The Design Canvas's text to outlines: the model's own OpenType reader, where the font file comes from (action font, data/fonts), the path it makes, what is refused
 - image-editor-overview.md: The Design Canvas (code name image editor) as a whole: what it is, the decisions that bind it, browser or server, the document in rotated space, which file holds each part [decision: decisions-made-panel-6.md, decisions-made-product-14.md, decisions-made-product-24.md, decisions-made-product-27.md]
 - image-editor-parts.md: The Design Canvas in parts: core, model, one file per tool; the hooks a tool hangs on the editor (panels, pointers, layer types), its model section, labels, API actions, styles and tests
@@ -313,7 +313,7 @@
 - image-editor-svg.md: The Design Canvas's SVG files: opened as layers on a transparent artboard, saved as SVG through the allowlist sanitizer pg_svg_sanitize()
 - image-editor-text.md: The Design Canvas's text layers: fields, the one line layout the stage and the save share, typing in place, system and site fonts, resize scaling the letters, the panel
 - image-editor-touch.md: The Design Canvas on touch: the two-finger twist that turns a layer, 44 px handle targets and the finger's reach for points and edges (M.touchReach())
-- image-editor-tracks.md: The Animate tool's tracks under the play bar: a row per layer, the bars from M.trackBars(), dragging a bar or an end (M.trackEdit()), snapping, the dock hook in the motion part, no tracks on a phone
+- image-editor-tracks.md: The Animate tool's tracks: a row per layer, bars from M.trackBars(), dragging (M.trackEdit()), snapping, a row's Motion button, the dock hook, no tracks on a phone [decision: decisions-made-product-67.md]
 - image-editor-upload-setting.md: The Design Canvas's largest upload as a setting (V8b): the config_text row image_editor_upload_max_mb in MB, 0 keeps upload_max_filesize, 10240 at most, its field on Settings, Features [decision: here]
 - image-editor-upload.md: Large files in the Design Canvas (V8, V8b): video, sound and saved animation sent in parts and resumed, type by bytes, pg_image_editor_upload_limits(), parts in data/temp
 - image-editor-vector.md: The Design Canvas's vector pen: path layers as boxes with knots inside, drawing point by point, editing points and handles, smooth and corner, open and closed, convert to path

@@ -104,7 +104,7 @@
 - decisions-made-product-64.md: Decisions list, product part 64 (2026-11-16 on): the second study's eight features and his answers, picture text translation's first version, the architect's rules for DG1, MP1 and VP5
 - decisions-made-product-65.md: Decisions list, product part 65 (2026-11-16 on): the place map default tiles (poll 99), his look at the Content review screen (poll 100), the amount a minimum order compares
 - decisions-made-product-66.md: Decisions list, product part 66 (2026-11-16 on): his looks of polls 101 to 104 (VP4, the Content review row "Make a task", QR3, AF5b), the architect's rules for CH3, CH4, MP2 and RB2
-- decisions-made-product-67.md: Decisions list, product part 67 (2026-11-16 on): the owner's looks of polls 105 (MP2) and 106 (RB3), his asks on the mention tag and the highlight toolbar, RB3's dialog words
+- decisions-made-product-67.md: Decisions list, product part 67 (2026-11-16 on): the owner's looks of polls 103 (Design Canvas bar), 105 (MP2), 106 (RB3); the mention tag, the highlight toolbar, RB3's words
 - decisions-made-product-68.md: Decisions list, product part 68 (2026-11-16 late): the Bundles screen and the digest mail accepted; the highlight bar as one sentence; a picture count on a poll's box; squeezes; RF1's part refund
 - decisions-made-product-69.md: Decisions list, product part 69 (2026-11-17 on): Create on New campaign › E-mail stores it paused and opens Edit Campaign; integration packages wanted at priority 4, outside steps after 2026.11.0
 - decisions-made-product-7.md: Decisions list, product part 7 (2026-10-30 on): customs data on international labels, carrier pickup requests from the panel, ShipWorks through the shipment write path
