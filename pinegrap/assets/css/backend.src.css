@@ -24440,6 +24440,12 @@ html.ws-flow-layer-on body {
 .pgc-edge.pgc-edge-faint {
   opacity: var(--pgc-faint, 0.3);
 }
+/* A proposed arrow (dashed()): dashed in a neutral colour, whatever the
+   focus makes of it. */
+.pgc-edge.pgc-edge-dashed .pgc-edge-line {
+  stroke: var(--pgc-proposed, var(--pg-secondary));
+  stroke-dasharray: 6 4;
+}
 .pgc-boxes .pgc-dim {
   opacity: var(--pgc-dim, 0.45);
 }

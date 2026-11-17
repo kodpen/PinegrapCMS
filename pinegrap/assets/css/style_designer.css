@@ -6908,6 +6908,16 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
 .sd-proto-menu-head.sd-proto-problem-broken { color: #ff6b6b; }
 .sd-proto-menu-head.sd-proto-problem-unreached, .sd-proto-menu-head.sd-proto-problem-empty { color: var(--pgc-in); }
 .sd-proto-badge.sd-proto-badge-empty { background: var(--pgc-in); }
+/* Suggest targets (F30 to F33): the dialog stands at the canvas's right
+   without a backdrop, so the map and its dashed proposed arrows stay in
+   sight; a row is its tick, label and page selector, an unsure row's
+   question under them. */
+.dialog.dialog-nonmodal.sd-proto-suggest { inset: 64px 16px auto auto; width: 440px; max-width: calc(100vw - 32px); max-height: calc(100vh - 96px); margin: 0; }
+.sd-proto-suggest-line { display: flex; align-items: center; gap: 8px; }
+.sd-proto-suggest-label { flex: 1 1 auto; min-width: 0; overflow: hidden; text-align: left; text-overflow: ellipsis; white-space: nowrap; }
+.sd-proto-suggest-line select { flex: 0 0 168px; width: 168px; }
+.sd-proto-suggest-ask { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; padding-left: 26px; }
+.sd-proto .pgc-edge.pgc-edge-dashed .pgc-edge-line { stroke: var(--sd-text-muted); marker-end: url(#sd-proto-arrow); }
 .sd-proto-unreached {
     flex: none; padding: 0 6px; border-radius: 9px; white-space: nowrap;
     background: color-mix(in srgb, var(--pgc-in) 22%, transparent); color: var(--pgc-in); font-size: .65rem; font-weight: 600; line-height: 18px;

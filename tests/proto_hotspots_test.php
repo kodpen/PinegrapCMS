@@ -1793,3 +1793,55 @@ function test_proto_hotspots_suggest_rows()
 	pg_assert_same('', $out['missing'], 'a node not in the tree has no heading');
 	pg_assert_same(array('rows' => array(), 'count' => array('sure' => 0, 'ask' => 0, 'none' => 0)), $out['none'], 'nothing laid out');
 }
+
+// Apply's batch (F34): the ticked rows grouped by the tab they are written
+// on, a tab once in the order of its first row (one undo entry each); a row
+// on a tab closed to the operator, on no tab or with no page chosen stays
+// unwritten with its reason.
+function test_proto_hotspots_suggest_batch()
+{
+	$picks = array(
+		array('frame' => 'p:a', 'port' => 'h0', 'page' => 'p:c', 'tab' => 'a', 'locked' => false),
+		array('frame' => 's:5', 'port' => 'h1', 'page' => 'p:a', 'tab' => 'b', 'locked' => false),
+		array('frame' => 'p:a', 'port' => 'h2', 'page' => 'p:b', 'tab' => 'a', 'locked' => false),
+		array('frame' => 'p:d', 'port' => 'h0', 'page' => 'p:a', 'tab' => 'd', 'locked' => true),
+		array('frame' => 's:6', 'port' => 'h0', 'page' => 'p:a', 'tab' => '', 'locked' => false),
+		array('frame' => 'p:a', 'port' => 'h3', 'page' => '', 'tab' => 'a', 'locked' => false),
+	);
+	$out = proto_hotspots_test_node('var b = H.suggestBatch(' . proto_hotspots_test_js($picks) . ');'
+		. ' out = { tabs: b.tabs.map(function (t) { return t.key + ": " + t.picks.map(function (p) { return p.frame + "|" + p.port; }).join(" "); }),'
+		. ' refused: b.refused.map(function (r) { return r.pick.frame + "|" + r.pick.port + " " + r.why; }), none: H.suggestBatch(null) };');
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array('a: p:a|h0 p:a|h2', 'b: s:5|h1'), $out['tabs'], 'three rows on two tabs: two groups, two undo entries');
+	pg_assert_same(array('p:d|h0 locked', 's:6|h0 tab', 'p:a|h3 target'), $out['refused'], 'a locked tab\'s row, a row on no tab and one without a page stay unwritten');
+	pg_assert_same(array('tabs' => array(), 'refused' => array()), $out['none'], 'nothing ticked');
+}
+
+// The Suggest targets view (F30 to F34): the bar's button, the dialog from
+// the panel's dialog parts without a backdrop, the proposed arrows through
+// the core's dashed(), Apply writing one undo entry per tab, and the
+// dialog closed with the view.
+function test_proto_hotspots_view_suggest_targets()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	$at = strpos($source, 'function _sdProtoSuggestOpen()');
+	$end = strpos($source, 'function _sdProtoMenuOpen(', (int) $at);
+	pg_assert_true($at !== false && $end !== false, 'the dialog\'s functions sit before the target menu');
+	$block = substr($source, (int) $at, (int) $end - (int) $at);
+
+	pg_assert_contains("_sdT('Suggest targets · {var}', toSuggest)", $source, 'the bar says "Suggest targets · n"');
+	pg_assert_contains('H.suggestRows(_sdProto.layout, pages, _sdProtoSuggestHeadings())', $block, 'the rows come from the pure match');
+	pg_assert_contains("el.setAttribute('data-bs-modal', 'false');", $block, 'a dialog without a backdrop: the map stays in sight');
+	pg_assert_contains('canvas.dashed(', $block, 'the proposed arrows go through the core');
+	pg_assert_false(strpos($block, "G.svgEl('path'") !== false, 'and no arrow is drawn beside it');
+	pg_assert_contains('H.suggestBatch(picks)', $block, 'Apply groups its rows by tab');
+	$tab = substr($block, (int) strpos($block, 'function _sdProtoSuggestTab('));
+	pg_assert_same(1, substr_count($tab, 'saveState();'), 'one undo entry per tab');
+	pg_assert_contains("_sdT('{var} links connected', done)", $block, 'the toast counts what was written');
+	pg_assert_contains("_sdProtoSuggestClose(false);\n        _sdProto.open = false;", $source, 'closing the view closes the dialog');
+	pg_assert_contains("if (_sdProto.suggest) _sdProtoSuggestArrows();", $source, 'another selected frame shows its own proposed arrows');
+}

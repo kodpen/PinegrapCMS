@@ -2247,6 +2247,40 @@
         return out;
     }
 
+    // What Apply writes of the dialog's ticked rows (each { frame, port,
+    // page, the target frame's id, tab, the key of the tab it is written
+    // on, locked, whether that tab is closed to the operator }): tabs, one
+    // per tab in the order of its first row, each { key, picks }, so a tab
+    // gets one undo entry; refused, the rows left unwritten with why
+    // ('target' with no page chosen, 'tab' for a link on no tab, 'locked').
+    function suggestBatch(picks) {
+        var out = { tabs: [], refused: [] };
+        var byKey = {};
+
+        (Array.isArray(picks) ? picks : []).forEach(function (pick) {
+            if (!isObject(pick)) {
+                return;
+            }
+
+            var key = str(pick.tab);
+            var why = (str(pick.page) === '') ? 'target' : (key === '' ? 'tab' : (pick.locked ? 'locked' : ''));
+
+            if (why !== '') {
+                out.refused.push({ pick: pick, why: why });
+                return;
+            }
+
+            if (!has(byKey, key)) {
+                byKey[key] = { key: key, picks: [] };
+                out.tabs.push(byKey[key]);
+            }
+
+            byKey[key].picks.push(pick);
+        });
+
+        return out;
+    }
+
     window.PGProtoHotspots = {
         FRAME: FRAME,
         layout: layout,
@@ -2300,6 +2334,7 @@
         foldWords: foldWords,
         suggest: suggest,
         headingOf: headingOf,
-        suggestRows: suggestRows
+        suggestRows: suggestRows,
+        suggestBatch: suggestBatch
     };
 })();
