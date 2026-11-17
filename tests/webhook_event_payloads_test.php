@@ -29,27 +29,20 @@ require_once(PG_FUNCTIONS_DIR . '/includes/api/schema.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/api/outbound/webhooks.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/api/outbound/orders.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/api/resources/webhooks.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/api/resources/users.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/api/outbound/webhook_payloads.php');
 
-// The families of events whose fields and samples are written now. Every
-// event of the catalogue under one of these names must have them.
-function webhook_payloads_test_families()
-{
-	return array(
-		'order.', 'marketplace.order.', 'cart_quote.', 'booking.', 'subscription.',
-		'credit.', 'commission.', 'product.', 'product_group.', 'inventory.changed', 'stock.low',
-	);
-}
-
+// Every event of the core catalogue must have its fields and sample; the
+// modules' events (their own seam) are not checked here yet.
 function webhook_payloads_test_in_family($event)
 {
-	foreach (webhook_payloads_test_families() as $family) {
-		if (($event === $family) || ((substr($family, -1) === '.') && (strpos($event, $family) === 0))) {
-			return true;
-		}
+	static $core = null;
+
+	if ($core === null) {
+		$core = api_webhook_core_events();
 	}
 
-	return false;
+	return isset($core[$event]);
 }
 
 // The payload functions the announcing code calls, each run on a fixture:
@@ -90,6 +83,36 @@ function webhook_payloads_test_builders()
 		'pg_shipment_event_values' => function () {
 			return pg_shipment_event_values(array());
 		},
+		'pg_store_currency_event' => function () {
+			return pg_store_currency_event('EUR', 2, '0.0281', 0);
+		},
+		'pg_affiliate_approved_event' => function () {
+			return pg_affiliate_approved_event(5, 'ayse10', 'Ayşe');
+		},
+		'pg_order_reservation_event' => function () {
+			return pg_order_reservation_event(array('calendar_event_id' => 3, 'recurrence_number' => 0, 'quantity' => 2, 'order_item_id' => 9), 4, array('order_id' => 1, 'order_number' => 1001), '2026-11-20 10:00:00');
+		},
+		'pg_campaign_sent_event' => function () {
+			return pg_campaign_sent_event('email', 4, 'manual');
+		},
+		'pg_content_review_due_payload' => function () {
+			return pg_content_review_due_payload(array('item_id' => 3, 'item_kind' => 'page', 'user_id' => 2, 'review_on' => '2026-11-17'), 'About', 'Deniz');
+		},
+		'pg_form_paid_event_payload' => function () {
+			return pg_form_paid_event_payload(array('id' => 4, 'page_id' => 2, 'reference_code' => 'R', 'contact_id' => 3, 'order_id' => 1, 'order_number' => '1001', 'paid_at' => 1000));
+		},
+		'api_user_event_payload' => function () {
+			return api_user_event_payload(3, array('username' => 'deniz', 'email' => 'd@example.com', 'role' => 2));
+		},
+		'pg_whatsapp_received_event' => function () {
+			return pg_whatsapp_received_event(4, array('from' => '905551112233', 'profile_name' => 'A', 'type' => 'text', 'body' => 'Hi'), 7);
+		},
+		'pg_consent_changed_event' => function () {
+			return pg_consent_changed_event(9, array('channel' => 'email', 'purpose' => 'marketing', 'status' => 'granted', 'source' => 'checkout', 'created_at' => 1000), 4);
+		},
+		'pg_contact_group_members_event' => function () {
+			return pg_contact_group_members_event(3, 'Newsletter', array(4), array());
+		},
 	);
 }
 
@@ -106,8 +129,11 @@ function webhook_payloads_test_helpers()
 }
 
 // The calls whose event name is not written where they are, by file: the
-// events they may announce (a family; 'other' for one this step does not
-// cover; '' for a function that only passes an announcement on).
+// events they may announce (a family, its literal keys counted for each of
+// them; 'stock' for pg_product_stock_events(), run on its own; 'other' for a
+// module's; '' for a function that only passes an announcement on). A choice
+// between names written in place ($new ? 'a.created' : 'a.updated') is read
+// as those names.
 function webhook_payloads_test_dynamic_calls()
 {
 	return array(
@@ -119,13 +145,8 @@ function webhook_payloads_test_dynamic_calls()
 		'includes/fn/subscription_renewal.php'  => 'subscription.',
 		'includes/api/outbound/orders.php'      => 'marketplace.order.',
 		'includes/fn/ecommerce.php'             => 'stock',
-		'includes/fn/store_currencies.php'      => 'other',
 		'includes/workspace/groups.php'         => 'other',
-		'includes/fn/mail_bounces.php'          => 'other',
-		'edit_offer_f.php'                      => 'other',
-		'includes/fn/shipping_methods.php'      => 'other',
-		'includes/fn/store_zones.php'           => 'other',
-		'includes/fn/experiments_sheet.php'     => 'other',
+		'includes/fn/experiments_sheet.php'     => 'experiment.',
 	);
 }
 
@@ -342,8 +363,28 @@ function webhook_payloads_test_calls()
 			$prefix = false;
 
 			if (isset($event[0]) && is_array($event[0]) && ($event[0][0] === T_CONSTANT_ENCAPSED_STRING)) {
-				$name = stripslashes(substr($event[0][1], 1, -1));
-				$prefix = (count($event) > 1);
+				$name = array(stripslashes(substr($event[0][1], 1, -1)));
+				$prefix = (count($event) > 1) && (webhook_payloads_test_text($event[1]) === '.');
+			}
+
+			// $created ? 'zone.created' : 'zone.updated': every name in place,
+			// unless a function gives one.
+			$calls_one = false;
+
+			foreach ($event as $at => $part) {
+				$calls_one = $calls_one || (is_array($part) && ($part[0] === T_STRING) && isset($event[$at + 1]) && ($event[$at + 1] === '('));
+			}
+
+			if (in_array('?', array_map('webhook_payloads_test_text', $event), true) && !$calls_one) {
+				$name = array();
+
+				foreach ($event as $part) {
+					if (is_array($part) && ($part[0] === T_CONSTANT_ENCAPSED_STRING)) {
+						$name[] = stripslashes(substr($part[1], 1, -1));
+					}
+				}
+
+				$name = empty($name) ? null : $name;
 			}
 
 			$place = isset($helpers[$token[1]]) ? $helpers[$token[1]][1] : 1;
@@ -406,10 +447,28 @@ function webhook_payloads_test_written()
 		$keys = array_merge($call['payload']['keys'], webhook_payloads_test_builder_keys($call['payload']['calls'], $call['file']));
 
 		foreach (array_keys($events) as $event) {
-			$hit = $call['prefix'] ? (strpos($event, $call['event']) === 0) : ($event === $call['event']);
+			$hit = $call['prefix'] ? (strpos($event, $call['event'][0]) === 0) : in_array($event, $call['event'], true);
 
 			if ($hit && webhook_payloads_test_in_family($event)) {
 				$add($event, $keys);
+			}
+		}
+	}
+
+	// A call whose name is chosen elsewhere, with a literal payload: its keys
+	// count for every event of the family its file is listed with.
+	$dynamic = webhook_payloads_test_dynamic_calls();
+
+	foreach (webhook_payloads_test_calls() as $call) {
+		$family = isset($dynamic[$call['file']]) ? $dynamic[$call['file']] : '';
+
+		if (($call['event'] !== null) || (substr($family, -1) !== '.') || empty($call['payload']['keys'])) {
+			continue;
+		}
+
+		foreach (array_keys($events) as $event) {
+			if ((strpos($event, $family) === 0) && webhook_payloads_test_in_family($event)) {
+				$add($event, $call['payload']['keys']);
 			}
 		}
 	}
@@ -515,6 +574,10 @@ function test_webhook_payloads_samples_match_their_fields()
 		'object'  => 'is_array',
 		'object[]' => 'is_array',
 		'string[]' => 'is_array',
+		'integer[]' => 'is_array',
+		'number'  => function ($value) {
+			return is_float($value) || is_int($value);
+		},
 	);
 
 	foreach (api_webhook_event_payloads() as $event => $payload) {

@@ -329,6 +329,233 @@ function api_webhook_event_payloads() {
 			'sample' => array('product_id' => 215, 'name' => 'Ceramic mug', 'quantity' => 4, 'threshold' => 5) + $location_sample
 		)
 
+	) + api_webhook_event_payloads_site();
+
+}
+
+// The rest of the core's events: customers and users, contact groups and
+// consents, pages and content, the store's settings, files, forms, calendar
+// reservations, campaigns, mail and WhatsApp.
+function api_webhook_event_payloads_site() {
+
+	$customer = array(
+		'id'    => array('integer', 'The customer record (GET /customers/{id}).'),
+		'email' => array('string', 'The customer\'s e-mail address, empty for none.')
+	);
+
+	$customer_sample = array('id' => 884, 'email' => 'ayse@example.com');
+
+	$user = array(
+		'id'       => array('integer', 'The panel user account (GET /users/{id}).'),
+		'username' => array('string', 'The account\'s username.'),
+		'email'    => array('string', 'The account\'s e-mail address.'),
+		'role'     => array('string', 'administrator, designer, manager or user.')
+	);
+
+	$user_sample = array('id' => 12, 'username' => 'deniz', 'email' => 'deniz@example.com', 'role' => 'manager');
+
+	$page = array(
+		'id'   => array('integer', 'The page (GET /pages/{id}).'),
+		'name' => array('string', 'The page\'s name.')
+	);
+
+	$experiment = array(
+		'id'                => array('integer', 'The page experiment.'),
+		'page_id'           => array('integer', 'The page it tests.'),
+		'name'              => array('string', 'The experiment\'s name.'),
+		'goal_kind'         => array('string', 'What counts as a success, such as a form submission or an order.'),
+		'winner_variant_id' => array('integer', 'On an end, the winning variant, 0 for none; 0 on a start.')
+	);
+
+	$named = function ($what, $route) {
+		return array(
+			'id'   => array('integer', 'The ' . $what . ($route !== '' ? ' (' . $route . ').' : '.')),
+			'name' => array('string', 'The ' . $what . '\'s name.')
+		);
+	};
+
+	$currency = array(
+		'id'            => array('integer', 'The currency.'),
+		'code'          => array('string', 'The currency code, such as EUR.'),
+		'exchange_rate' => array('number', 'Its exchange rate against the base currency.'),
+		'base'          => array('boolean', 'Whether it is the site\'s base currency.')
+	);
+
+	$offer = array(
+		'id'      => array('integer', 'The offer (GET /offers/{id}).'),
+		'code'    => array('string', 'The offer\'s code.'),
+		'enabled' => array('boolean', 'Whether the offer is switched on.')
+	);
+
+	$mail = array(
+		'address'     => array('string', 'The address the message went to.'),
+		'kind'        => array('string', 'hard, soft or complaint.'),
+		'source'      => array('string', 'What reported it, such as a mail service\'s report.'),
+		'suppressed'  => array('boolean', 'Whether mail to the address is now stopped.'),
+		'message_id'  => array('string', 'The message\'s id at the mail service, empty when not known.'),
+		'campaign_id' => array('integer', 'The e-mail campaign the message belonged to, 0 for none.')
+	);
+
+	$mail_sample = function ($kind) {
+		return array('address' => 'ayse@example.com', 'kind' => $kind, 'source' => 'ses', 'suppressed' => true, 'message_id' => '0102018f3c2a9b1e', 'campaign_id' => 15);
+	};
+
+	return array(
+
+		'customer.created' => array('fields' => $customer, 'sample' => $customer_sample),
+		'customer.updated' => array('fields' => $customer, 'sample' => $customer_sample),
+		'customer.deleted' => array('fields' => $customer, 'sample' => $customer_sample),
+
+		'customer.consent_changed' => array(
+			'fields' => array(
+				'id'      => array('integer', 'The customer record (GET /customers/{id}/consents lists the answers).'),
+				'consent' => array('object', 'The answer: id, channel, purpose, status, source and created_at (UTC).')
+			),
+			'sample' => array('id' => 884, 'consent' => array('id' => 3120, 'channel' => 'email', 'purpose' => 'marketing', 'status' => 'granted', 'source' => 'checkout', 'created_at' => '2026-11-17T09:12:00Z'))
+		),
+
+		'affiliate.approved' => array(
+			'fields' => array(
+				'id'             => array('integer', 'The contact approved as an affiliate.'),
+				'affiliate_code' => array('string', 'The affiliate\'s code.'),
+				'affiliate_name' => array('string?', 'The affiliate\'s name, null for none.')
+			),
+			'sample' => array('id' => 884, 'affiliate_code' => 'ayse10', 'affiliate_name' => 'Ayşe Demir')
+		),
+
+		'contact_group.members_changed' => array(
+			'fields' => array(
+				'id'      => array('integer', 'The contact group.'),
+				'name'    => array('string', 'The contact group\'s name.'),
+				'added'   => array('integer[]', 'The contacts put into the group.'),
+				'removed' => array('integer[]', 'The contacts taken out of the group.')
+			),
+			'sample' => array('id' => 6, 'name' => 'Newsletter', 'added' => array(884, 885), 'removed' => array())
+		),
+
+		'user.created' => array('fields' => $user, 'sample' => $user_sample),
+		'user.updated' => array('fields' => $user, 'sample' => $user_sample),
+		'user.deleted' => array('fields' => $user, 'sample' => $user_sample),
+
+		'page.created' => array('fields' => $page, 'sample' => array('id' => 57, 'name' => 'about-us')),
+		'page.updated' => array('fields' => $page, 'sample' => array('id' => 57, 'name' => 'about-us')),
+
+		'experiment.started' => array('fields' => $experiment, 'sample' => array('id' => 8, 'page_id' => 57, 'name' => 'Shorter headline', 'goal_kind' => 'form', 'winner_variant_id' => 0)),
+		'experiment.ended'   => array('fields' => $experiment, 'sample' => array('id' => 8, 'page_id' => 57, 'name' => 'Shorter headline', 'goal_kind' => 'form', 'winner_variant_id' => 21)),
+
+		'content.review_due' => array(
+			'fields' => array(
+				'id'        => array('integer', 'The page or collection record.'),
+				'kind'      => array('string', 'page or record.'),
+				'name'      => array('string', 'Its name.'),
+				'user_id'   => array('integer', 'The person who reviews it, 0 for nobody.'),
+				'person'    => array('string', 'That person\'s name, empty for nobody.'),
+				'review_on' => array('string', 'The review date that passed (YYYY-MM-DD).')
+			),
+			'sample' => array('id' => 57, 'kind' => 'page', 'name' => 'about-us', 'user_id' => 12, 'person' => 'Deniz', 'review_on' => '2026-11-16')
+		),
+
+		'zone.created' => array('fields' => $named('shipping zone', ''), 'sample' => array('id' => 3, 'name' => 'Europe')),
+		'zone.updated' => array('fields' => $named('shipping zone', ''), 'sample' => array('id' => 3, 'name' => 'Europe')),
+		'zone.deleted' => array('fields' => $named('shipping zone', ''), 'sample' => array('id' => 3, 'name' => 'Europe')),
+
+		'tax_zone.created' => array('fields' => $named('tax zone', ''), 'sample' => array('id' => 2, 'name' => 'EU VAT')),
+		'tax_zone.updated' => array('fields' => $named('tax zone', ''), 'sample' => array('id' => 2, 'name' => 'EU VAT')),
+		'tax_zone.deleted' => array('fields' => $named('tax zone', ''), 'sample' => array('id' => 2, 'name' => 'EU VAT')),
+
+		'shipping_method.created' => array('fields' => $named('shipping method', ''), 'sample' => array('id' => 4, 'name' => 'Express')),
+		'shipping_method.updated' => array('fields' => $named('shipping method', ''), 'sample' => array('id' => 4, 'name' => 'Express')),
+		'shipping_method.deleted' => array('fields' => $named('shipping method', ''), 'sample' => array('id' => 4, 'name' => 'Express')),
+
+		'currency.created' => array('fields' => $currency, 'sample' => array('id' => 2, 'code' => 'EUR', 'exchange_rate' => 0.0281, 'base' => false)),
+		'currency.updated' => array('fields' => $currency, 'sample' => array('id' => 2, 'code' => 'EUR', 'exchange_rate' => 0.0279, 'base' => false)),
+
+		'currency.deleted' => array(
+			'fields' => array_slice($currency, 0, 2, true),
+			'sample' => array('id' => 2, 'code' => 'EUR')
+		),
+
+		'offer.created' => array('fields' => $offer, 'sample' => array('id' => 19, 'code' => 'WINTER10', 'enabled' => true)),
+		'offer.updated' => array('fields' => $offer, 'sample' => array('id' => 19, 'code' => 'WINTER10', 'enabled' => false)),
+
+		'offer.deleted' => array(
+			'fields' => array_slice($offer, 0, 2, true),
+			'sample' => array('id' => 19, 'code' => 'WINTER10')
+		),
+
+		'file.created' => array('fields' => $named('file', 'GET /files/{id}'), 'sample' => array('id' => 310, 'name' => 'price-list.pdf')),
+
+		'form.submitted' => array(
+			'fields' => array(
+				'id'             => array('integer', 'The submission (GET /forms/{id}/submissions/{submission_id}).'),
+				'form_id'        => array('integer', 'The form.'),
+				'form_name'      => array('string', 'The form\'s name.'),
+				'reference_code' => array('string', 'The submission\'s reference code.'),
+				'contact_id'     => array('integer?', 'The contact the submission was filed under, null for none. The answers themselves are never sent.')
+			),
+			'sample' => array('id' => 2210, 'form_id' => 14, 'form_name' => 'Contact us', 'reference_code' => 'K4M9QZ', 'contact_id' => 884)
+		),
+
+		'form.paid' => array(
+			'fields' => array(
+				'id'             => array('integer', 'The submission whose fee was paid.'),
+				'form_id'        => array('integer', 'The form.'),
+				'reference_code' => array('string', 'The submission\'s reference code.'),
+				'contact_id'     => array('integer?', 'The contact, null for none.'),
+				'order_id'       => array('integer', 'The order that carried the payment, 0 for none.'),
+				'order_number'   => array('string?', 'That order\'s number, null for none.'),
+				'paid_at'        => array('string?', 'When it was paid (UTC), null when not known.')
+			),
+			'sample' => array('id' => 2210, 'form_id' => 14, 'reference_code' => 'K4M9QZ', 'contact_id' => 884, 'order_id' => 1042, 'order_number' => '100318', 'paid_at' => '2026-11-17T09:40:00Z')
+		),
+
+		'form.submission.deleted' => array(
+			'fields' => array(
+				'id'             => array('integer', 'The submission that was deleted.'),
+				'form_id'        => array('integer', 'The form.'),
+				'reference_code' => array('string', 'The submission\'s reference code.')
+			),
+			'sample' => array('id' => 2210, 'form_id' => 14, 'reference_code' => 'K4M9QZ')
+		),
+
+		'calendar_event.reserved' => array(
+			'fields' => array(
+				'id'                => array('integer', 'The calendar event (GET /calendars/events/{id}/reservations).'),
+				'recurrence_number' => array('integer', 'The repeat reserved, 0 for the event as a whole.'),
+				'quantity'          => array('integer', 'How many spots.'),
+				'order_item_id'     => array('integer', 'The order line that reserved them.'),
+				'order_id'          => array('integer', 'The order.'),
+				'order_number'      => array('integer', 'The order\'s number.'),
+				'contact_id'        => array('integer?', 'The customer\'s contact, null for none.'),
+				'start_at'          => array('string?', 'The reserved repeat\'s start (UTC), null when not known.')
+			),
+			'sample' => array('id' => 77, 'recurrence_number' => 0, 'quantity' => 2, 'order_item_id' => 5521, 'order_id' => 1042, 'order_number' => 100318, 'contact_id' => 884, 'start_at' => '2026-11-22T17:00:00Z')
+		),
+
+		'campaign.sent' => array(
+			'fields' => array(
+				'id'      => array('integer', 'The campaign (GET /campaigns/{id}).'),
+				'channel' => array('string', 'email or sms.'),
+				'type'    => array('string', 'manual or automatic.')
+			),
+			'sample' => array('id' => 15, 'channel' => 'email', 'type' => 'manual')
+		),
+
+		'mail.bounced'    => array('fields' => $mail, 'sample' => $mail_sample('hard')),
+		'mail.complained' => array('fields' => $mail, 'sample' => $mail_sample('complaint')),
+
+		'whatsapp.received' => array(
+			'fields' => array(
+				'id'           => array('integer', 'The message as the inbox keeps it.'),
+				'from'         => array('string', 'The sender\'s number, digits only.'),
+				'profile_name' => array('string', 'The sender\'s WhatsApp name.'),
+				'type'         => array('string', 'The message type, such as text or image. Media is never sent.'),
+				'body'         => array('string', 'The text, up to 1,000 characters.'),
+				'contact_id'   => array('integer', 'The contact of the number, 0 for none.')
+			),
+			'sample' => array('id' => 501, 'from' => '905551112233', 'profile_name' => 'Ayşe', 'type' => 'text', 'body' => 'Is my order on its way?', 'contact_id' => 884)
+		)
+
 	);
 
 }

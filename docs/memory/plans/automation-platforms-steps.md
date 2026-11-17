@@ -27,7 +27,7 @@ description: Plan automation-platforms, steps AU1 to AU7: the contract and its t
   - Events: orders, returns, marketplace orders, cart quotes, bookings, subscriptions, credits, commissions, products, stock.
   - Features: A6, A7, A8.
 
-- AU5 (M) after AU4: part 2, the rest of the core's events (customers, users, contact groups, pages, files, forms, offers, zones, currencies, campaigns, mail, WhatsApp, experiments).
+- AU5 (M) after AU4: part 2, the rest of the core's events (customers, users, contact groups, pages, files, forms, offers, zones, currencies, campaigns, mail, WhatsApp, experiments). Done, PR #10170.
 
 - AU6 (M) after AU4: part 3, the modules' events through their own seam: the ERP's, the Workspace's. Cut as AU6a and AU6b when over 1,000 product lines, said before the claim.
   - After AU6 the test of AU4 refuses an event without fields and a sample.

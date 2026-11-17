@@ -4,14 +4,14 @@ description: Fields and samples of webhook events (api_webhook_event_payloads())
 ---
 
 ## Where are an event's fields and sample?
-- `api_webhook_event_payloads()` in `includes/api/outbound/webhook_payloads.php`: event => `fields` (name => array(type, meaning)) and `sample` (data with every field, in the same order). A type ending in `?` may be null; types: integer, string, boolean, object, object[], string[].
+- `api_webhook_event_payloads()` in `includes/api/outbound/webhook_payloads.php`: event => `fields` (name => array(type, meaning)) and `sample` (data with every field, in the same order). A type ending in `?` may be null; types: integer, number, string, boolean, object, object[], string[], integer[].
 - The catalogue's text stays in `api_webhook_events()`; the core's own list is `api_webhook_core_events()`, the modules' are merged after it.
-- Written now (#10149): orders, returns, marketplace orders, cart quotes, bookings, subscriptions, store credit, commissions, products and product groups, `inventory.changed`, `stock.low`. The rest of the core and the modules' events come with AU5 and AU6 (`plans/automation-platforms-steps.md`).
+- Every core event has them: the shop's events since #10149 (`api_webhook_event_payloads()`), the rest of the core since AU5 (`api_webhook_event_payloads_site()`: customers, users, contact groups, consents, pages, experiments, content review, zones, shipping methods, currencies, offers, files, forms, calendar reservations, campaigns, mail, WhatsApp). The modules' events come with AU6 (`plans/automation-platforms-steps.md`).
 
 ## What does the test hold?
 - `tests/webhook_event_payloads_test.php` reads every `pg_announce()`, `api_webhook_enqueue()` and announcing helper (`pg_return_announce`, `pg_cart_quote_announce`, `pg_credit_announce`, `mp_order_announce`) with the tokenizer: a literal array's keys, a variable's last literal array, and payload functions run on a fixture. Per event, the keys of all places together must equal the fields.
 - A field only some places write says so in its meaning (`source` of `inventory.changed`, the `location_*` fields, `recycled` of `product.deleted`).
-- An announcement whose event name is built elsewhere must be listed in `webhook_payloads_test_dynamic_calls()`, else the test fails: a new one says which events it announces.
+- The test asks this of every event of `api_webhook_core_events()`. A choice of names written in place (`$new ? 'zone.created' : 'zone.updated'`) is read as those names. An announcement whose name is built elsewhere must be listed in `webhook_payloads_test_dynamic_calls()` with its family, else the test fails.
 - So a key added to an announcement fails the test until its field and sample are added.
 
 ## What does GET /webhooks/events answer?
