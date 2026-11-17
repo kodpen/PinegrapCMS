@@ -43,6 +43,10 @@ function api_request_method($set = null) {
 
 	$method = isset($_SERVER['REQUEST_METHOD']) ? strtoupper($_SERVER['REQUEST_METHOD']) : 'GET';
 
+	// HEAD is the GET of the same address; api_send() leaves the body out
+	// (api_request_is_head()).
+	$method = api_route_method($method);
+
 	// Some managed hosts and corporate proxies drop PATCH and DELETE outright.
 	// The override header is the usual way round it and is honoured only on a
 	// POST, so it can never widen what a GET is allowed to do.
@@ -328,6 +332,32 @@ function api_all_routes() {
 
 }
 
+// The path patterns of every GET route, for the Location of a 201
+// (api_location_path()).
+function api_get_route_patterns() {
+
+	static $patterns = null;
+
+	if ($patterns === null) {
+
+		$patterns = array();
+
+		foreach (api_all_routes() as $route) {
+
+			if ($route['method'] === 'GET') {
+
+				$patterns[] = api_route_pattern($route);
+
+			}
+
+		}
+
+	}
+
+	return $patterns;
+
+}
+
 // The regular expression a route's path matches, with each placeholder narrowed
 // to what its parameter is declared to be.
 //
@@ -425,7 +455,7 @@ function api_route_match($method, $path) {
 
 	if (!empty($allowed)) {
 
-		api_extra_headers('Allow', implode(', ', array_unique($allowed)));
+		api_extra_headers('Allow', implode(', ', api_allow_methods($allowed)));
 
 		api_fail(405, 'method_not_allowed', lang(array(
 			'string' => 'This address does not accept {var:1} requests.',

@@ -152,6 +152,32 @@ function api_send($status_code, $body, $error_code = '') {
 
 	}
 
+	// A new record's address, where a GET route reads it.
+	$extra = api_extra_headers();
+
+	if (($status_code === 201) && !isset($extra['Location'])) {
+
+		$location = api_location_path(api_request_path(), $body, api_get_route_patterns());
+
+		if ($location !== '') {
+
+			api_extra_headers('Location', api_openapi_base_url() . $location);
+
+		}
+
+	}
+
+	// The language of error.message (api/api-meta-language-timezone.md).
+	$language = function_exists('api_text_language') ? api_answer_language($body, api_text_language()) : '';
+
+	if ($language !== '') {
+
+		api_extra_headers('Content-Language', $language);
+
+	}
+
+	$head = api_request_is_head();
+
 	if (!headers_sent()) {
 
 		header('Content-Type: application/json; charset=utf-8');
@@ -164,7 +190,14 @@ function api_send($status_code, $body, $error_code = '') {
 
 		pg_send_nosniff();
 
-		foreach (api_extra_headers() as $name => $value) {
+		// HEAD answers the length the GET body would have.
+		if ($head && ($status_code !== 204) && ($status_code !== 304)) {
+
+			header('Content-Length: ' . strlen((string)$json));
+
+		}
+
+		foreach (api_with_exposed_headers(api_extra_headers()) as $name => $value) {
 
 			header($name . ': ' . $value);
 
@@ -186,7 +219,7 @@ function api_send($status_code, $body, $error_code = '') {
 
 	api_log_request($status_code, $error_code);
 
-	if (($status_code !== 204) && ($status_code !== 304)) {
+	if (($status_code !== 204) && ($status_code !== 304) && !$head) {
 
 		echo $json;
 
@@ -381,7 +414,11 @@ function api_send_html($status_code, $html) {
 
 	api_log_request($status_code, '');
 
-	echo $html;
+	if (!api_request_is_head()) {
+
+		echo $html;
+
+	}
 
 	exit();
 
@@ -492,6 +529,12 @@ function api_send_file($path, $mime, $file_name, $inline = false) {
 	}
 
 	api_log_request($status_code, '');
+
+	if (api_request_is_head()) {
+
+		exit();
+
+	}
 
 	if ($status_code === 200) {
 
@@ -643,13 +686,22 @@ function api_fail_unauthorized($message = '') {
 	// would hang on a mistyped secret. A request that identifies itself as
 	// script-made is therefore answered without it; a command-line client or a
 	// generated SDK never sends that header and keeps the challenge.
-	if (strtolower(trim(api_header('X-Requested-With'))) !== 'xmlhttprequest') {
+	api_basic_challenge();
+
+	api_fail(401, 'unauthorized', $message);
+
+}
+
+// The Basic challenge on a 401, unless the call is script-made
+// (api_basic_challenge_wanted()). A Bearer challenge api_fail() adds while
+// OAuth is on takes its place.
+function api_basic_challenge() {
+
+	if (api_basic_challenge_wanted(api_header('X-Requested-With'))) {
 
 		api_extra_headers('WWW-Authenticate', 'Basic realm="Pinegrap API"');
 
 	}
-
-	api_fail(401, 'unauthorized', $message);
 
 }
 
