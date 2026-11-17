@@ -27,7 +27,7 @@ function test_translate_product_fields_unchanged_without_a_language()
 	pg_assert_same('x', pg_tr_product_fields('x'), 'not a row');
 }
 
-// Both refreshes post to an address that carries <html data-pg-lang>, the
+// Every refresh posts to an address that carries <html data-pg-lang>, the
 // answer goes through the translation, and a value with blocks in the
 // variant data is translated block by block.
 function test_translate_product_answer_wiring()
@@ -37,7 +37,7 @@ function test_translate_product_answer_wiring()
 	$content = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/translate/content.php');
 
 	pg_assert_false(strpos($script, 'fetch(data.api_url') !== false, 'no refresh posts without the language');
-	pg_assert_same(2, substr_count($script, 'fetch(apiUrl(), {'), 'cross-sell and product refresh');
+	pg_assert_same(3, substr_count($script, 'fetch(apiUrl(), {'), 'cross-sell, quantity prices and product refresh');
 	pg_assert_contains("getAttribute('data-pg-lang')", $script, 'the language the page says it is in');
 
 	$from = strpos($panel, 'function pg_panel_get_product(');
