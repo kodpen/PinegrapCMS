@@ -402,7 +402,9 @@ foreach (array(
 
 // The page list.
 $output_pages = '';
-$output_pages .= '<a class="list-group-item list-group-item-action d-flex align-items-center gap-3' . (($page_id === 0) ? ' active" aria-current="page' : '') . '" href="' . h($url(array('page_id' => 0, 'p' => 0))) . '">'
+// All pages is the view with no page and no group: a group chosen is the
+// one current row, and pressing a page or All pages leaves the group.
+$output_pages .= '<a class="list-group-item list-group-item-action d-flex align-items-center gap-3' . ((($page_id === 0) && ($group === '')) ? ' active" aria-current="page' : '') . '" href="' . h($url(array('page_id' => 0, 'group' => '', 'p' => 0))) . '">'
     . '<i class="bi bi-collection" aria-hidden="true"></i><span class="flex-grow-1 text-truncate">' . lang('All pages') . '</span>'
     . '<span class="small opacity-75"><span class="pg-tr-all-done">' . (int) $site_stats['translated'] . '</span>/' . (int) $site_stats['total'] . '</span></a>';
 
@@ -439,7 +441,7 @@ foreach ($pages as $row) {
         $output_verdict = '<i class="bi ' . $verdict_icon . ' small" title="' . h($verdict_label) . '" aria-hidden="true"></i><span class="visually-hidden">' . h($verdict_label) . '</span>';
     }
 
-    $output_pages .= '<a class="list-group-item list-group-item-action' . (($pid === $page_id) ? ' active" aria-current="page' : '') . '" href="' . h($url(array('page_id' => $pid, 'p' => 0))) . '">'
+    $output_pages .= '<a class="list-group-item list-group-item-action' . (($pid === $page_id) ? ' active" aria-current="page' : '') . '" href="' . h($url(array('page_id' => $pid, 'group' => '', 'p' => 0))) . '">'
         . '<div class="d-flex align-items-center gap-3">'
         . '<span class="flex-grow-1 text-truncate" title="' . h($title) . '">' . (($row['page_home'] === 'yes') ? '<i class="bi bi-house-door me-1" aria-hidden="true"></i>' : '') . h($row['page_name']) . '</span>'
         . '<span class="small opacity-75">' . (($stat['total'] > 0) ? (int) $stat['translated'] . '/' . (int) $stat['total'] : lang('Not scanned')) . '</span>'
@@ -469,14 +471,14 @@ if ($language !== '') {
 
         $output_groups .= '<a class="list-group-item list-group-item-action d-flex align-items-center gap-3' . (($group_key === $group) ? ' active" aria-current="page' : '') . '" href="' . h($url(array('group' => $group_key, 'page_id' => 0, 'p' => 0))) . '">'
             . '<i class="bi ' . h($group_spec['icon']) . '" aria-hidden="true"></i><span class="flex-grow-1 text-truncate">' . h($group_spec['label']) . '</span>'
-            . '<span class="small opacity-75">' . (($group_total > 0) ? $group_done . '/' . $group_total : (($group_key === 'ui') ? lang('None yet') : lang('Not scanned'))) . '</span></a>';
+            . '<span class="small opacity-75">' . (($group_total > 0) ? $group_done . '/' . $group_total : (in_array($group_key, array('ui', 'pictures'), true) ? lang('None yet') : lang('Not scanned'))) . '</span></a>';
     }
 }
 
 // The Pictures group: the picture each text comes from, which opens in the
 // Design Canvas (pg_image_editor_includes(), its data-pg-image-edit button).
 $row_pictures = ($group === 'pictures') ? pg_tr_picture_files(array_column($rows, 'id')) : array();
-$open_picture_label = lang('Open in the Design Canvas');
+$open_picture_label = lang('Edit this image in the Design Canvas');
 
 // The editor rows.
 $output_rows = '';
@@ -537,9 +539,12 @@ foreach ($rows as $row) {
 if (($language !== '') && !$rows) {
     $output_rows = '<div class="py-12 text-center fg-secondary">'
         // No text at all in the page or group, whatever the filter: it has
-        // not been scanned yet.
+        // not been scanned yet. A picture enters only once a page in another
+        // language has shown it, so Update lists none before that.
         . (($scope_stats['total'] === 0)
-            ? lang(array('string' => 'No text has been scanned yet. Press "{var:1}": the pages are read and their texts are listed here.', 'vars' => h($update_button_label)))
+            ? (($group === 'pictures')
+                ? lang('No picture yet. A picture made in the Design Canvas whose words are text layers is listed here once a page in another language has shown it.')
+                : lang(array('string' => 'No text has been scanned yet. Press "{var:1}": the pages are read and their texts are listed here.', 'vars' => h($update_button_label))))
             : lang('No text matches the filter.'))
         . '</div>';
 }
@@ -902,7 +907,8 @@ echo pg_page_shell(array(
                         <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . ($selected_page ? h($selected_page['page_name']) : (($group !== '') ? h($owner_groups[$group]['label']) : lang('All texts'))) . '</span>
                         <span class="small fg-secondary">' . h(lang(array('string' => '{var:1} text(s)', 'vars' => array($total_rows)))) . ($selected_page ? ' · <a href="' . h(PATH . pg_tr_prefix($language) . '/' . (($selected_page['page_home'] === 'yes') ? '' : encode_url_path($selected_page['page_name']))) . '" target="_blank" rel="noopener">' . lang('Open the page') . ' <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a>' : '') . '</span>
                     </div>
-                    <div class="card-body pt-0">' . (($group === 'ui') ? '<div class="small fg-secondary py-3 border-bottom"><i class="bi bi-info-circle me-1" aria-hidden="true"></i>' . lang('The texts of the cookie window: the notice, its settings and what each cookie is for. This language has no language file, so the window is translated here; until a text is translated, the English wording is shown. The rest of the software\'s wording is not translated here.') . '</div>' : '') . $output_index_note . $output_bulk . $output_rows . '
+                    <div class="card-body pt-0">' . (($group === 'ui') ? '<div class="small fg-secondary py-3 border-bottom"><i class="bi bi-info-circle me-1" aria-hidden="true"></i>' . lang('The texts of the cookie window: the notice, its settings and what each cookie is for. This language has no language file, so the window is translated here; until a text is translated, the English wording is shown. The rest of the software\'s wording is not translated here.') . '</div>' : '')
+                        . (($group === 'pictures') ? '<div class="small fg-secondary py-3 border-bottom"><i class="bi bi-info-circle me-1" aria-hidden="true"></i>' . lang('The texts of pictures made in the Design Canvas whose words are text layers. A picture is listed once a page in another language has shown it; a photo or an uploaded picture whose words are in its pixels is not.') . '</div>' : '') . $output_index_note . $output_bulk . $output_rows . '
                         ' . ($output_pagination !== '' ? '<div class="d-flex justify-content-center pt-5">' . $output_pagination . '</div>' : '') . '
                     </div>
                 </div>

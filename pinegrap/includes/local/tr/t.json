@@ -7390,6 +7390,7 @@
     "The text the visitor typed": "Ziyaretçinin girdiği metin",
     "The text to look for…": "Aranacak metin…",
     "The text was not approved.": "Metin onaylanmadı.",
+    "The texts of pictures made in the Design Canvas whose words are text layers. A picture is listed once a page in another language has shown it; a photo or an uploaded picture whose words are in its pixels is not.": "Tasarım Tuvali'nde yapılmış, yazıları metin katmanı olan görsellerin metinleri. Bir görsel, başka dildeki bir sayfa onu gösterdikten sonra listelenir; yazısı piksellerinde olan bir fotoğraf ya da yüklenmiş görsel listelenmez.",
     "The texts of the cookie window: the notice, its settings and what each cookie is for. This language has no language file, so the window is translated here; until a text is translated, the English wording is shown. The rest of the software's wording is not translated here.": "Çerez penceresinin metinleri: bildirim, ayarları ve her çerezin ne için kullanıldığı. Bu dilin dil dosyası olmadığı için pencere burada çevrilir; bir metin çevrilene kadar İngilizcesi gösterilir. Yazılımın diğer metinleri burada çevrilmez.",
     "The texts sent for orders and back-in-stock notices.": "Siparişler ve stoğa giren ürün bildirimleri için gönderilen metinler.",
     "The texts the site sends on its own. A text left empty on the card is the built-in one, in the site's language.": "Sitenin kendiliğinden gönderdiği metinler. Kartta boş bırakılan metin, sitenin dilindeki yerleşik metindir.",

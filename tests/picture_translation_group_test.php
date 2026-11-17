@@ -98,3 +98,25 @@ function test_picture_group_row_files()
 	pg_assert_contains('data-pg-image-edit="', $screen, 'the picture opens in the Design Canvas');
 	pg_assert_contains("(\$row_pictures ? pg_image_editor_includes() : '')", $screen, 'the editor loads only where a picture is listed');
 }
+
+// One current row: All pages only with no page and no group; a page link
+// and All pages leave a chosen group.
+function test_picture_group_one_current_row()
+{
+	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/translations.php');
+
+	pg_assert_contains("(((\$page_id === 0) && (\$group === '')) ? ' active\" aria-current=\"page' : '')", $screen, 'All pages is not current while a group is');
+	pg_assert_contains("\$url(array('page_id' => 0, 'group' => '', 'p' => 0))", $screen, 'All pages leaves the group');
+	pg_assert_contains("\$url(array('page_id' => \$pid, 'group' => '', 'p' => 0))", $screen, 'a page leaves the group');
+}
+
+// The empty group says when a picture is listed, never "press Update".
+function test_picture_group_empty_wording()
+{
+	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/translations.php');
+
+	pg_assert_contains("in_array(\$group_key, array('ui', 'pictures'), true) ? lang('None yet') : lang('Not scanned')", $screen);
+	pg_assert_contains("lang('No picture yet. A picture made in the Design Canvas whose words are text layers is listed here once a page in another language has shown it.')", $screen);
+	pg_assert_contains("((\$group === 'pictures') ? '<div class=\"small fg-secondary py-3 border-bottom\">", $screen, 'the group has a note of its own');
+	pg_assert_contains("\$open_picture_label = lang('Edit this image in the Design Canvas');", $screen, 'the badge says what its press does');
+}

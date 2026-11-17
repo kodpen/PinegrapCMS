@@ -17,7 +17,11 @@ module: picture_translation
 - `pg_tr_extract_pictures()` (`includes/translate/extract.php`) reads every file with a row: a live document (`pg_picture_tr_live()`) has its words written again; a binned, flattened or gone file is forgotten (`pg_picture_tr_forget()`: uses, rows, language pictures). A file with no row is never read; its uses go with the daily prune.
 
 ## What does a row show?
-- On the group's view each text names the pictures it comes from (`pg_tr_picture_files()`, same bound), as a badge button with `data-pg-image-edit`, which opens the file in the Design Canvas (`ui/image-editor-callers.md`); the loader is printed only when such a badge is listed.
+- On the group's view each text names the pictures it comes from (`pg_tr_picture_files()`, same bound), as a badge button with `data-pg-image-edit` (title "Edit this image in the Design Canvas"), which opens the file in the Design Canvas (`ui/image-editor-callers.md`); the loader is printed only when such a badge is listed.
+
+## What does the empty group say?
+- The list reads "None yet" (as the Cookie window), never "Not scanned": Update lists no picture before a page in another language has shown it. The panel carries a note of its own saying which pictures are listed and when, and the empty panel says the same instead of "press Update".
+- A chosen group is the one current row: All pages is current only with no page and no group, and a page link or All pages leaves the group (before, a page pressed while a group was open stayed in the group).
 
 ## Tests?
 - `tests/picture_translation_group_test.php`. Checked in a sandbox (#10102): a picture no page showed neither counted nor sent; counts per language; the extraction dropping a picture with no live document.

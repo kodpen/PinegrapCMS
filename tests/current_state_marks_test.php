@@ -27,7 +27,8 @@ function test_current_state_translations_links()
 	$source = current_state_marks_source('translations.php');
 	pg_assert_contains("(\$code === \$language) ? ' active\" aria-current=\"page' : ''", $source, 'language menu');
 	pg_assert_contains("(\$key === \$filter) ? ' active\" aria-current=\"true' : ''", $source, 'filter chips');
-	pg_assert_contains("(\$page_id === 0) ? ' active\" aria-current=\"page' : ''", $source, 'all pages');
+	// All pages only with no page and no group: a chosen group is the one current row.
+	pg_assert_contains("((\$page_id === 0) && (\$group === '')) ? ' active\" aria-current=\"page' : ''", $source, 'all pages');
 	pg_assert_contains("(\$pid === \$page_id) ? ' active\" aria-current=\"page' : ''", $source, 'page list');
 	pg_assert_contains("(\$group_key === \$group) ? ' active\" aria-current=\"page' : ''", $source, 'group list');
 	pg_assert_contains("<a class=\"page-link\"' . ((\$i === \$page_number) ? ' aria-current=\"page\"' : '')", $source, 'pager');
