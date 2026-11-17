@@ -9,13 +9,14 @@ module: booking_link_screen
 - Who is staff, their services and hours stay the administrator's in Settings, Bookings; the screen changes none of it.
 
 ## What does it show?
-- The link (`pg_booking_link_url()`) in a read-only field with Copy, its QR code (`pg_qr_svg()`, white box so it reads in the dark theme), Open the page and Download the QR code (an SVG data URI). With a short address the QR carries the short one.
+- The link (`pg_booking_link_url()`) shown whole and wrapping (never cut off in a field), with Copy beside it (under it on a phone), its QR code (`pg_qr_svg()`, white box so it reads in the dark theme), Open the page and Download the QR code (an SVG data URI). The QR always carries the link itself: a short address can be renamed or removed, and a printed code must keep working (architect, agent channel message 7881).
 - A member with no services: a warning and no address (the link would answer 404). A site with no key: a warning that it cannot make links.
 - Services on your link: the member's services from `pg_booking_widget_data()`, each "On your link" or "Not on the link: it takes a deposit" (`pg_booking_link_screen_services()`, pure).
 - Copy is the calendar subscription screen's inline pattern (clipboard API, `execCommand` fallback, a polite status line); `assets/js/workspace.js` is not touched.
 
 ## How is the short address kept?
 - One `short_links` row with `destination_type = 'url'` and `url` the site path `PATH . 'book_with.php?c=<code>'` (`pg_booking_link_short_target()`): a path, so a new host name keeps it. `pg_booking_link_short_link()` finds it (live, not one-time, oldest first).
+- The site address stands on its own line above the name field at every width: a real host is long and would squeeze the field (architect, agent channel message 7881).
 - Saved through the short links' own checks: `pg_short_link_form_validate_name()` (name rule, pasted address, free name, binned name) and `pg_short_link_redirect_columns()` (loops). Save renames the row; Remove moves it to the Recycle Bin (`pg_short_link_to_bin()`) after a question. The link itself stays.
 
 ## Where is the meeting address saved?

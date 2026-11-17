@@ -193,13 +193,18 @@ if (($liveform->field_in_session('name') == false) && $short) {
     $liveform->assign_field_value('name', (string) $short['name']);
 }
 
-// An address in a read-only field with a Copy button beside it.
+// An address shown whole (it wraps, never cut off in a field) with a Copy
+// button beside it, under it on a narrow screen.
 $copy_field = function ($id, $label, $value) {
     return '
-                <label class="form-label small fw-semibold" for="' . h($id) . '">' . h($label) . '</label>
-                <div class="input-group mb-3">
-                    <input type="text" class="form-control font-monospace" id="' . h($id) . '" value="' . h($value) . '" readonly>
-                    <button type="button" class="btn btn-outline theme-secondary ws-meeting-copy" data-copy="' . h($id) . '"><i class="bi bi-clipboard me-1" aria-hidden="true"></i>' . h(lang('Copy')) . '</button>
+                <p class="form-label small fw-semibold mb-1" id="' . h($id) . '_label">' . h($label) . '</p>
+                <div class="row g-3 align-items-start mb-3">
+                    <div class="col-12 md:col">
+                        <div class="form-control font-monospace text-break user-select-all" id="' . h($id) . '" aria-labelledby="' . h($id) . '_label">' . h($value) . '</div>
+                    </div>
+                    <div class="col-12 md:col-auto">
+                        <button type="button" class="btn btn-outline theme-secondary ws-meeting-copy" data-copy="' . h($id) . '"><i class="bi bi-clipboard me-1" aria-hidden="true"></i>' . h(lang('Copy')) . '</button>
+                    </div>
                 </div>';
 };
 
@@ -228,9 +233,9 @@ if (!$bookable) {
 
 } else {
 
-    // The QR code carries the short address when there is one: fewer
-    // characters, a simpler code to scan.
-    $qr_text = ($short_url !== '') ? $short_url : $link_url;
+    // The QR code always carries the link itself: a short address can be
+    // renamed or removed, and a printed code must keep working.
+    $qr_text = $link_url;
 
     $link_card = '
         <div class="card mb-5">
@@ -259,10 +264,8 @@ if (!$bookable) {
                     ' . get_token_field() . '
                     <input type="hidden" name="meeting_action" value="short">
                     <label class="form-label small fw-semibold" for="name">' . h(lang('Name')) . '</label>
-                    <div class="input-group mb-3">
-                        <span class="input-group-text font-monospace">' . h(HOSTNAME_SETTING . PATH) . '</span>
-                        ' . $liveform->output_field(array('type' => 'text', 'name' => 'name', 'id' => 'name', 'class' => 'form-control', 'maxlength' => pg_short_link_name_max(), 'required' => 'required')) . '
-                    </div>
+                    <div class="font-monospace small fg-secondary text-break mb-1">' . h(HOSTNAME_SETTING . PATH) . '</div>
+                    ' . $liveform->output_field(array('type' => 'text', 'name' => 'name', 'id' => 'name', 'class' => 'form-control mb-3', 'maxlength' => pg_short_link_name_max(), 'required' => 'required')) . '
                     <div class="d-flex flex-wrap gap-3">
                         <button type="submit" class="btn btn-solid theme-primary">' . h($short ? lang('Save') : lang('Make the short address')) . '</button>
                         ' . ($short ? '<button type="submit" class="btn btn-outline theme-danger" form="ws_meeting_short_remove"><i class="bi bi-x-circle me-1" aria-hidden="true"></i>' . h(lang('Remove')) . '</button>' : '') . '
@@ -385,8 +388,11 @@ echo pg_page_shell(array(
         // selected and say so.
         var fallback = function () {
             var copied = false;
-            field.focus();
-            field.select();
+            var range = document.createRange();
+            var selection = window.getSelection();
+            range.selectNodeContents(field);
+            selection.removeAllRanges();
+            selection.addRange(range);
             try { copied = document.execCommand("copy"); } catch (error) {}
             if (copied) {
                 done();
@@ -395,7 +401,7 @@ echo pg_page_shell(array(
             }
         };
         if (navigator.clipboard && window.isSecureContext) {
-            navigator.clipboard.writeText(field.value).then(done, fallback);
+            navigator.clipboard.writeText(field.textContent).then(done, fallback);
         } else {
             fallback();
         }
