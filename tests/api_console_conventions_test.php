@@ -61,6 +61,8 @@ function test_api_console_conventions_match_the_code()
 	pg_assert_contains('64', $text['idempotency']);
 	pg_assert_contains('dry_run_unsupported', $text['dry-run']);
 	pg_assert_contains('If-None-Match', $text['etag']);
+	pg_assert_contains('If-Match', $text['etag']);
+	pg_assert_contains('no lock', $text['etag']);
 	pg_assert_contains('X-RateLimit-Remaining', $text['rate-limit']);
 	pg_assert_contains('Retry-After', $text['rate-limit']);
 	pg_assert_contains('X-HTTP-Method-Override', $text['post-twins']);
@@ -71,7 +73,7 @@ function test_api_console_conventions_match_the_code()
 	// Rules a later change brings are not promised before they exist.
 	$all = implode(' ', $text);
 
-	foreach (array('precondition_failed', 'Accept-Language', 'error.errors', 'Location', 'HEAD') as $later) {
+	foreach (array('Accept-Language', 'error.errors', 'Location', 'HEAD') as $later) {
 		pg_assert_true(strpos($all, $later) === false, $later . ' is not promised');
 	}
 }
@@ -184,7 +186,7 @@ function test_api_console_conventions_figures_follow_the_code()
 		'errors'      => array('X-Request-Id' => 'includes/api/response.php'),
 		'idempotency' => array('Idempotency-Key' => 'includes/api/idempotency.php', 'Idempotent-Replay' => 'includes/api/idempotency.php'),
 		'dry-run'     => array('X-Dry-Run' => 'includes/api/dry_run.php'),
-		'etag'        => array('ETag' => 'includes/api/response.php', 'If-None-Match' => 'includes/api/response.php', 'Cache-Control: no-store' => 'includes/api/response.php'),
+		'etag'        => array('ETag' => 'includes/api/response.php', 'If-None-Match' => 'includes/api/response.php', 'Cache-Control: no-store' => 'includes/api/response.php', 'If-Match' => 'includes/api/preconditions.php'),
 		'rate-limit'  => array('X-RateLimit-Limit' => 'includes/api/ratelimit.php', 'X-RateLimit-Remaining' => 'includes/api/ratelimit.php', 'X-RateLimit-Reset' => 'includes/api/ratelimit.php', 'Retry-After' => 'includes/api/ratelimit.php'),
 		'post-twins'  => array('X-HTTP-Method-Override' => 'includes/api/router.php')
 	) as $id => $headers) {

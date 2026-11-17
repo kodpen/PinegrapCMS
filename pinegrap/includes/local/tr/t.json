@@ -6237,6 +6237,7 @@
     "The record could not be saved.": "Kayıt kaydedilemedi.",
     "The record does not name the server the site sends through.": "Kayıt, sitenin gönderdiği sunucuyu içermiyor.",
     "The record has been deleted at Paraşüt.": "Kayıt Paraşüt'ten silindi.",
+    "The record has changed since the ETag sent in If-Match was read. Read it again and repeat the change.": "Kayıt, If-Match ile gönderilen ETag okunduktan sonra değişti. Kaydı yeniden okuyup değişikliği tekrarlayın.",
     "The record has no valid policy (p=).": "Kayıtta geçerli bir politika (p=) yok.",
     "The record is deleted at Paraşüt in the same click.": "Kayıt aynı tıkla Paraşüt'ten silinir.",
     "The record is gone.": "Kayıt artık yok.",
