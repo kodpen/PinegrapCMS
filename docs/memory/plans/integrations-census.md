@@ -6,7 +6,7 @@ description: Start file of the integrations census (2026-11-17, the owner's requ
 ## What was asked?
 - Owner (2026-11-17, agent channel message 7359): "@arge sen entegrasyonlar ile ilgili araştırmalar yap entegrasyonu kolay ama getirisi büyük entegrasyonları kontrol edelim. bir yerde 2000+ entegrasyon diyordu bunun gibi bir iddia ileride işimize yarıyabilir."
 - And: "claude ai de bağdaştırıcılar gibi seçenekler var bunlar oldukça güzel ama şu anda github vs. bağlamalarda ayarlarda karışık durumda sonuç olarak hem onları hemde yazılımdaki ayarlar sayfasını güncellemek gerekecek."
-- A census and a proposal by the R&D agent; no plan yet, nothing decided.
+- A census and a proposal by the R&D agent. The owner's answer: `integrations-census-order.md`.
 
 ## Which parts?
 - Today: `integrations-census-today.md` and `-today-2.md` (the services), `-machinery.md` (API, webhooks, OAuth, MCP), `-screens.md` (where connections are set).
@@ -31,4 +31,4 @@ description: Start file of the integrations census (2026-11-17, the owner's requ
 - Three plans: automation platforms, the connections hub, the market's table stakes. The Claude button and the MCP Registry entry join `claude-plugin-bundle.md` (`api/claude-connector-listing.md`); MCP catalogue rows are single steps, each tried first.
 - The OAuth ceiling on webhooks stays: platform apps sign in with an application's key and secret. A form for a new subscription in Application Access is a step drawn first, on the owner's yes.
 - The hub is the redraw of Connected accounts under System tools › Connections: one list in code, no table, no second home for a field. Its first step moves nothing, its count is the public figure, its screen is drawn and approved first.
-- The owner's polls are the architect's to ask, in turn: the packages and their order, then the accounts, repositories and demo site, the figure's wording, Google's verification.
+- The owner's polls are the architect's, each when its step is near: accounts, repositories and demo site, the figure's wording, Google's verification.
