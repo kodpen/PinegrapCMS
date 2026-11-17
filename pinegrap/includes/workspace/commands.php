@@ -461,6 +461,22 @@ function ws_command_gate_product($viewer, $command)
 }
 
 /**
+ * /tracking: whoever may change orders, as the order screen lets them.
+ *
+ * @param array|null $viewer
+ * @param string     $command
+ * @return bool
+ */
+function ws_command_gate_order($viewer, $command = '')
+{
+    if (!is_array($viewer)) {
+        return true;
+    }
+
+    return function_exists('ws_change_allowed') && ws_change_allowed($viewer, 'order', 0);
+}
+
+/**
  * /create: whoever may make one of its kinds (ws_command_create_types_for());
  * the kind typed is checked again when it runs.
  *
@@ -1855,6 +1871,16 @@ function ws_command_run_plan($viewer, $channel, $rest)
 function ws_command_run_record($viewer, $channel, $rest, $options, $body, $command)
 {
     return ws_command_record_change($viewer, $channel, $command, $rest, $options);
+}
+
+/**
+ * /tracking.
+ *
+ * @return array
+ */
+function ws_command_run_tracking($viewer, $channel, $rest, $options, $body, $command)
+{
+    return ws_command_tracking($viewer, $channel, $rest, $options);
 }
 
 /**
@@ -4257,6 +4283,129 @@ function ws_command_record_change($viewer, $channel, $command, $text, $options)
 
     $from = (isset($options['from']) && is_scalar($options['from'])) ? array($name => $options['from']) : array();
     $saved = ws_quick_edit_save($viewer, 'product', $id, array($name => $value), $from, (int) $channel['id'], !empty($options['decision']));
+
+    if (!$saved['ok']) {
+        return $error($saved['stale'] ? lang('The record changed meanwhile, so nothing was written. Send the command again to see what it holds now.') : $saved['error']);
+    }
+
+    return array('type' => 'done', 'saved' => true, 'lines' => $saved['lines'], 'message_id' => $saved['decision_id']);
+}
+
+/**
+ * The tracking numbers typed after an order's tag, in the shape the order's
+ * field keeps them (commas or new lines between numbers, spaces folded),
+ * or null when there is none or one does not fit the field.
+ *
+ * @param array  $field the order's tracking_numbers field
+ * @param string $text
+ * @return string[]|null
+ */
+function ws_command_tracking_numbers($field, $text)
+{
+    $numbers = ws_change_value($field, (string) $text);
+
+    return (is_array($numbers) && ($numbers !== array())) ? $numbers : null;
+}
+
+/**
+ * The /tracking card: the order's chip, the numbers it holds now beside the
+ * new ones, the note that the customer is not mailed, and what the card
+ * showed as the value Save sends back (the numbers one a line).
+ *
+ * @param string   $record_html the order's chip
+ * @param array    $field       the order's tracking_numbers field
+ * @param string[] $current     what the order holds now
+ * @param string[] $numbers     the new list
+ * @return array
+ */
+function ws_command_tracking_preview($record_html, $field, $current, $numbers)
+{
+    // As ws_change_show() writes a list of lines.
+    $show = function ($list) {
+        $list = array_values(array_filter(array_map('strval', (array) $list), 'strlen'));
+
+        return empty($list) ? lang('(empty)') : implode(', ', $list);
+    };
+
+    return array(
+        'type'    => 'record_preview',
+        'preview' => array(
+            'record_html' => (string) $record_html,
+            'label'       => (string) $field[2],
+            'from'        => $show($current),
+            'to'          => $show($numbers),
+            'note'        => lang('The customer is not e-mailed about these numbers.'),
+        ),
+        'from'    => implode("\n", array_map('strval', (array) $current)),
+    );
+}
+
+/**
+ * /tracking (/kargo): an order's tracking numbers, shown back beside what it
+ * holds now, written on confirmation through the drawer's save
+ * (ws_quick_edit_save()): the order right, the one-address rule, the check
+ * that the numbers are still those the card showed, the log line and the
+ * decision in the channel. The order screen's own save writes them with
+ * shipped off, so no shipping mail goes to the customer.
+ *
+ * @param array  $viewer
+ * @param array  $channel
+ * @param string $text    what follows the command
+ * @param array  $options confirm, from, decision
+ * @return array
+ */
+function ws_command_tracking($viewer, $channel, $text, $options)
+{
+    $error = function ($text) {
+        return array('type' => 'error', 'error' => $text);
+    };
+
+    if (!function_exists('ws_quick_edit_check')) {
+        return $error(lang('Invalid request.'));
+    }
+
+    list($id, $numbers_text) = ws_command_record_ref($text, 'order');
+
+    if ($id <= 0) {
+        return $error(lang('Name the order with #.'));
+    }
+
+    $check = ws_quick_edit_check($viewer, 'order', $id);
+
+    if (!$check['ok']) {
+        return $error($check['error']);
+    }
+
+    $field = ws_change_field(ws_change_types()['order'], 'tracking_numbers');
+    $current = ws_change_value($field, ws_change_current_value($field, $check['record']));
+    $current = is_array($current) ? $current : array();
+    $numbers = ws_command_tracking_numbers($field, $numbers_text);
+
+    if ($numbers === null) {
+        return $error(lang('Write the tracking number after the order; separate several with commas.'));
+    }
+
+    if ($numbers === $current) {
+        return $error(lang('Nothing in it differs from what the record holds now.'));
+    }
+
+    if (empty($options['confirm'])) {
+        $chips = '';
+
+        foreach (ws_refs_resolve($viewer, ws_tokens('<#order:' . $id . '>')) as $ref) {
+            $chips .= ws_chip_html($ref);
+        }
+
+        return ws_command_tracking_preview($chips, $field, $current, $numbers);
+    }
+
+    // Written only over the numbers the card showed: without them nothing
+    // tells what the person saw.
+    if (!isset($options['from']) || !is_scalar($options['from'])) {
+        return $error(lang('The record changed meanwhile, so nothing was written. Send the command again to see what it holds now.'));
+    }
+
+    $saved = ws_quick_edit_save($viewer, 'order', $id, array('tracking_numbers' => $numbers), array('tracking_numbers' => (string) $options['from']), (int) $channel['id'], !empty($options['decision']));
 
     if (!$saved['ok']) {
         return $error($saved['stale'] ? lang('The record changed meanwhile, so nothing was written. Send the command again to see what it holds now.') : $saved['error']);
