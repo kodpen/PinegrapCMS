@@ -57,7 +57,8 @@ function account_blocks_test_run($expr)
 		. "function _sdT(s) { return s; }\n"
 		. "function createNode(type, props, children) { return { type: type, props: props || {}, children: children || [] }; }\n";
 	foreach (array('_sdPartEl', '_sdPartWhen', '_sdPartSentence', '_sdAccountPart', '_sdAccountOrderHistoryHtml', '_sdAccountBookingsHtml',
-		'_sdAccountSubscriptionsHtml', '_sdAccountSubscriptionActionsHtml', '_sdAccountCreditCardsHtml', '_sdAccountStoreCreditHtml') as $fn) {
+		'_sdAccountSubscriptionsHtml', '_sdAccountSubscriptionActionsHtml', '_sdAccountCreditCardsHtml', '_sdAccountStoreCreditHtml',
+		'_sdSentenceIsMark') as $fn) {
 		$script .= account_blocks_test_function($source, $fn) . "\n";
 	}
 	$script .= 'console.log(JSON.stringify(' . $expr . '));';
@@ -594,6 +595,8 @@ function test_account_blocks_twins()
 	pg_assert_same(array(), $drawn[1], 'the conversion form stays the section\'s');
 	pg_assert_same(pg_subscription_customer_view_html($subs), $drawn[2], 'subscriptions');
 	pg_assert_same('', $drawn[3], 'no subscription');
+	$marks = account_blocks_test_run('["/ {var:1}", "of {var:1}", "#{var:1}", "−{var:1}", "Last day: {var:1}", "{var:1}"].map(_sdSentenceIsMark)');
+	pg_assert_same(array(true, true, true, true, false, false), $marks, 'a mark glued to its value keeps one line on the canvas');
 	pg_assert_same(pg_credit_account_section_html($credit), $drawn[4], 'store credit');
 	pg_assert_same(pg_credit_account_section_html(array('shown' => true, 'balance_info' => 'x', 'cards' => array(), 'convert' => array())), $drawn[5], 'balance alone');
 	// The canvas draws the forms without their hidden fields.

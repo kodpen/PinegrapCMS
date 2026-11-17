@@ -14592,6 +14592,10 @@ const StyleDesigner = (function () {
                     innerEl.appendChild(typeof piece === 'number' ? buildNodeEl(node.children[piece - 1])
                         : doc.createTextNode(piece));
                 });
+                // A mark glued to its value ("/ ₺50,00", "#1042") keeps one
+                // line: the canvas's condition chips narrow a column the site
+                // leaves wide. The site's markup is not touched.
+                if (_sdSentenceIsMark(node.props.text)) innerEl.style.whiteSpace = 'nowrap';
             } else if (node.children && node.children.length > 0) {
                 // A stepped form's progress and buttons (_sdFormStepSamples()).
                 var _stepPlan = _sdFormStepPlan(node);
@@ -17149,6 +17153,13 @@ const StyleDesigner = (function () {
     // (pg_sentence_layout()).
     function _sdIsSentence(node) {
         return !!(node && node.type === 'semantic' && node.props && node.props._sentence);
+    }
+
+    // Whether a sentence's words, its values left out, are a mark of at
+    // most three characters (a slash, a number sign, a minus).
+    function _sdSentenceIsMark(text) {
+        var words = String(text == null ? '' : text).replace(/\{var:[1-9][0-9]?\}/g, '').trim();
+        return words !== '' && words.length <= 3;
     }
 
     // The layout of a sentence with values (pg_sentence_layout()): words
