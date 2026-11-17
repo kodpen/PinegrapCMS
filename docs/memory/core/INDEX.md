@@ -149,6 +149,7 @@
 - php-warning-causes-report-screens.md: PHP 8.5 warnings logged by the Visitor Report, Order Report, Edit Form List View and workspace rights: which cause is fixed where; the missing collection B row
 - php85-log-warnings-already-fixed.md: Four files of the owner's PHP 8.5 error log (duplicate_products, get_file, view_order, designer_ai) whose warnings were already fixed on development between 4 and 13 November 2026, with the PR of each
 - phpmailer-embedding.md: Which PHPMailer the product loads (6.12.0 from includes/phpmailer/src), the unloaded 5.2.22 files beside it, and why both are quiet on PHP 8.5 (#9470)
+- picture-text-translation-doors.md: The file doors of a language's picture: it follows its source on a move, goes with it on a delete, is never swapped while the source is binned, counts in Disk Usage, the daily sweep's catch-up
 - picture-text-translation-draw-photo.md: A photo with text layers drawn per language from the Design Canvas Languages list (PT4b): the browser's overlay and parts, the server drawing on the base row as a save does, format kept
 - picture-text-translation-draw-server.md: The Design Canvas Languages list's server side (#10208): what a language's draw is checked by, where its picture is kept, how it is hidden from file lists, tests
 - picture-text-translation-draw.md: The Design Canvas Languages list (#10208): its rows and states, drawing only when every text is translated, the browser draw and the 70% fit floor [decision: here]
