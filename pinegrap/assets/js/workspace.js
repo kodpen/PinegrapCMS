@@ -3430,16 +3430,19 @@
 
     // A channel's agents as its head and Channel info show them: Claude and
     // Pinegrap AI where they can be asked, then the registry agents the
-    // server sends (ws_channel_member_agents()).
+    // server sends (ws_channel_member_agents()); in a discussion also the
+    // channel's agents asked there by name (reach_from) and the one it
+    // follows (following).
     function channelAgents(channel) {
         var out = [];
+        var follow = (channel.thread && channel.thread.follow) || '';
 
         if (BOOT.claude && channel.claude && channel.claude.available) {
-            out.push({ key: 'claude', tone: 3, name: BOOT.claude.name, line: t('claude_member'), assistant: true, active: true, seen: t('cm_ready'), seen_state: 'ready' });
+            out.push({ key: 'claude', tone: 3, name: BOOT.claude.name, line: t('claude_member'), assistant: true, active: true, seen: t('cm_ready'), seen_state: 'ready', following: follow === 'claude' });
         }
 
         if (BOOT.ai && channel.ai && channel.ai.available) {
-            out.push({ key: 'ai', tone: 1, name: BOOT.ai.name, line: t('ai_member'), assistant: true, active: true, seen: t('cm_ready'), seen_state: 'ready' });
+            out.push({ key: 'ai', tone: 1, name: BOOT.ai.name, line: t('ai_member'), assistant: true, active: true, seen: t('cm_ready'), seen_state: 'ready', following: follow === 'ai' });
         }
 
         (channel.agents || []).forEach(function (agent) {
@@ -3455,11 +3458,69 @@
                 assistant: !!agent.assistant,
                 active: !!agent.active,
                 seen: agent.seen,
-                seen_state: agent.seen_state
+                seen_state: agent.seen_state,
+                reach_from: agent.reach_from || 0,
+                following: !!agent.following
             });
         });
 
         return out;
+    }
+
+    // One agent's row as Channel info and a discussion's people panel draw
+    // it: its face and name (a registry agent's open its card), role, badge,
+    // Paused, Following, under it @handle and what wakes it, its last seen
+    // at the right of the first line. In a narrow column the badges move
+    // to the next line and the role is the part cut (.ws-info-agents).
+    function agentInfoRow(channel, agent, list) {
+        var row = el('div', 'ws-info-person');
+        var text = el('div', 'ws-info-person-text');
+        var name = el('div', 'ws-info-person-name');
+        var title = name.appendChild(el('span', 'ws-info-agent-title'));
+        var badges = el('span', 'ws-info-agent-badges');
+        var face = agentFace(agent);
+
+        title.appendChild(el('span', 'ws-info-agent-name', agent.name));
+
+        // The role the agent's form gives it, a label only.
+        if (agent.role) {
+            title.appendChild(el('span', 'ws-info-agent-role small fg-secondary fw-normal', agent.role));
+        }
+
+        badges.appendChild(el('span', 'badge badge-subtle theme-accent ws-info-badge', t(agent.assistant ? 'cm_assistant' : 'cm_agent')));
+
+        if (!agent.active) {
+            badges.appendChild(el('span', 'badge badge-subtle theme-secondary ws-info-badge', t('cha_paused')));
+        }
+
+        if (agent.following) {
+            badges.appendChild(el('span', 'badge badge-subtle theme-success ws-info-badge', t('cm_following')));
+        }
+
+        name.appendChild(badges);
+
+        // A registry agent's name and face open its card.
+        if (agent.id) {
+            agentCardHook(name, channel, agent, true);
+            agentCardHook(face, channel, agent, false);
+        }
+
+        row.appendChild(face);
+        text.appendChild(name);
+
+        if (agent.line) {
+            text.appendChild(el('div', 'ws-info-person-role', agent.line));
+        }
+
+        row.appendChild(text);
+
+        if (agent.seen) {
+            row.appendChild(el('span', 'ws-info-seen' + (agent.seen_state ? ' is-' + agent.seen_state : ''), agent.seen));
+        }
+
+        list.appendChild(row);
+
+        return row;
     }
 
     // The "Who has seen it" drawer's parts from ws_message_seen's answer:
@@ -11999,29 +12060,7 @@
                 var agentList = el('div', 'ws-info-people ws-info-agents');
 
                 agents.forEach(function (agent) {
-                    var name = el('div', 'ws-info-person-name', agent.name);
-
-                    // The role the agent's form gives it, a label only.
-                    if (agent.role) {
-                        name.appendChild(el('span', 'small fg-secondary fw-normal ms-2', agent.role));
-                    }
-
-                    name.appendChild(el('span', 'badge badge-subtle theme-accent ws-info-badge', t(agent.assistant ? 'cm_assistant' : 'cm_agent')));
-
-                    if (!agent.active) {
-                        name.appendChild(el('span', 'badge badge-subtle theme-secondary ws-info-badge', t('cha_paused')));
-                    }
-
-                    // A registry agent's name and face open its card.
-                    if (agent.id) {
-                        agentCardHook(name, channel, agent, true);
-                    }
-
-                    var row = personRow(agent.id ? agentCardHook(agentFace(agent), channel, agent, false) : agentFace(agent), name, agent.line, agentList);
-
-                    if (agent.seen) {
-                        row.appendChild(seenNode(agent.seen, agent.seen_state));
-                    }
+                    agentInfoRow(channel, agent, agentList);
                 });
 
                 body.appendChild(agentList);
@@ -22511,23 +22550,35 @@
         };
 
         // The people in it, and the people of the channel who could be
-        // brought in.
+        // brought in; then its agents as Channel info lists them, and for
+        // whoever the server lets change them its own agents' settings.
         view.showPeople = function () {
             var self = this;
             var channel = self.channel;
             var node = offcanvas('ws-thread-people', t('th_people'));
             var body = clear(node.querySelector('.drawer-body'));
             var footer = clear(node.querySelector('.drawer-footer'));
+            var people = el('div', 'ws-info-people');
 
             footer.classList.add('d-none');
+            body.appendChild(el('h3', 'ws-panel-kicker', t('cm_people') + ' · ' + (channel.members || []).length));
 
             (channel.members || []).forEach(function (member) {
-                var row = el('div', 'd-flex align-items-center gap-3 py-3 border-bottom');
-                var face = avatar(member, '2rem');
-                row.appendChild(face);
-                row.appendChild(el('div', 'flex-grow-1 fw-semibold', member.name));
-                body.appendChild(row);
+                var row = people.appendChild(el('div', 'ws-info-person'));
+                var text = el('div', 'ws-info-person-text');
+                var name = text.appendChild(el('div', 'ws-info-person-name', member.name));
+
+                row.appendChild(personCardHook(avatar(member, null, true), channel, member, false));
+                personCardHook(name, channel, member, true);
+
+                if (member.id === channel.owner_id) {
+                    text.appendChild(el('div', 'ws-info-person-role', t('owner')));
+                }
+
+                row.appendChild(text);
             });
+
+            body.appendChild(people);
 
             var parent = main.channel;
 
@@ -22559,6 +22610,42 @@
                     });
                     footer.appendChild(add);
                 }
+            }
+
+            // Its own agents, the channel's asked here by name, Claude and
+            // Pinegrap AI where they can be asked, the one it follows.
+            var agentsBox = body.appendChild(el('div'));
+
+            function drawAgents() {
+                var agents = channelAgents(channel);
+
+                clear(agentsBox);
+
+                if (!agents.length) {
+                    return;
+                }
+
+                agentsBox.appendChild(el('h3', 'ws-panel-kicker mt-5', t('cm_agents') + ' · ' + agents.length));
+
+                var list = agentsBox.appendChild(el('div', 'ws-info-people ws-info-agents'));
+
+                agents.forEach(function (agent) {
+                    agentInfoRow(channel, agent, list);
+                });
+            }
+
+            drawAgents();
+
+            // Drawn only for whoever may change them (the server's can_edit);
+            // an add or a removal redraws the list above.
+            if (window.PGWsChannelAgents && !channel.guest) {
+                window.PGWsChannelAgents.mount(body, channel, {
+                    discussion: true,
+                    changed: function (fresh) {
+                        channel.agents = fresh.agents || [];
+                        drawAgents();
+                    }
+                });
             }
 
             showOffcanvas(node);

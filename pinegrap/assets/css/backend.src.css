@@ -12631,6 +12631,54 @@ body.workspace .ws-shell-main > #button_bar {
 .ws-info-guests .ws-info-person-role {
   white-space: normal;
 }
+/* An agent's row in a narrow column: the name and its role stay on the
+   first line with the last seen at its right, the role is the part cut;
+   the badges move to the next line whole; the line under it wraps. */
+.ws-info-agents .ws-info-person {
+  align-items: flex-start;
+}
+.ws-info-agents .ws-info-person-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: .15rem .4rem;
+  overflow: visible;
+  white-space: normal;
+}
+.ws-info-agent-title {
+  display: flex;
+  flex: 0 1 auto;
+  align-items: baseline;
+  gap: .4rem;
+  min-width: 0;
+  white-space: nowrap;
+}
+.ws-info-agent-name {
+  flex: none;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ws-info-agent-role {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ws-info-agent-badges {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: .3rem;
+}
+.ws-info-agent-badges .ws-info-badge {
+  margin-left: 0;
+}
+.ws-info-agents .ws-info-person-role {
+  white-space: normal;
+}
+.ws-info-agents .ws-info-seen {
+  margin-top: .1rem;
+}
 /* Channel info's agents and last seen: an agent's face is a rounded square
    with its mark, a person's stays round; the last seen sits at the right. */
 .avatar.ws-agent-face {
@@ -12788,9 +12836,21 @@ body.workspace .ws-shell-main > #button_bar {
 }
 .ws-cha-add {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   margin-top: 12px;
+}
+/* The chosen agent is read whole: the list is as wide as its longest
+   agent, and when it and the button do not fit side by side it takes a row
+   of its own and the button goes under. */
+.ws-cha-add > select {
+  flex: 1 0 auto;
+  width: auto;
+  max-width: 100%;
+}
+.ws-cha-add > button {
+  flex: none;
 }
 @media (max-width: 575.98px) {
   .ws-cha-head {
