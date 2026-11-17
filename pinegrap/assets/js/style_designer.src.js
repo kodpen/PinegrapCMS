@@ -34188,7 +34188,7 @@ const StyleDesigner = (function () {
             row(_sdT('Type'), sel('regionType', typeOpts, n.props.regionType)) +
             '<div id="sd-rn" style="' + (show ? '' : 'display:none') + '">' + row(_sdT('Name'), sel('regionName', nameOpts, n.props.regionName)) + '</div>' +
             (n.props.regionType === 'dynamic' ? _sdDregionPropsHtml(n) : '') +
-            (n.props.regionType === 'system' ? _sdLayoutPropsHtml() + _sdLayoutWidgetPropsHtml(n) : '') +
+            (n.props.regionType === 'system' ? _sdClassicConvertPropsHtml(n) + _sdLayoutPropsHtml() + _sdLayoutWidgetPropsHtml(n) : '') +
             (n.props.regionType === 'designer' || n.props.regionType === 'common' ? _sdDesignerRegionPropsHtml(n) : '') +
             (n.props.regionType === 'page' ? _sdPageRegionPropsHtml(n) : '') +
             _sdRegionWidgetPropsHtml(n) +
@@ -51554,7 +51554,23 @@ const StyleDesigner = (function () {
         tag_cloud:     { kind: 'tag_cloud_region',     key: 'search_page_name' }
     };
 
+    // The session-aware regions and the comments block: the widget doing
+    // the same job. They name no item the widget would read, so it starts
+    // with its defaults; the classic region's own settings (a login
+    // region's row, a cart region's labels) are not carried.
+    var SD_REGION_WIDGETS_PLAIN = { login: 'login_region', cart: 'cart_link', comments_block: 'comments' };
+
     function _sdRegionWidgetPropsHtml(n) {
+        if (SD_REGION_WIDGETS_PLAIN[n.props.regionType]) {
+            return '<div class="sd-prop-row">' +
+                    '<button type="button" class="btn btn-sm btn-outline theme-primary w-100" id="sd-region-make-widget">' +
+                        '<span class="bi bi-magic me-1"></span>' + esc(_sdT('Make designable')) +
+                    '</button>' +
+                '</div>' +
+                '<div class="sd-prop-row"><div style="font-size:.66rem;color:#888;line-height:1.3">' +
+                    esc(_sdT('Puts a "{var}" widget in its place, in a layout you design, with the widget\'s default settings; the classic region\'s own settings are not carried. Inside a shared component every page that places it changes; elsewhere only this page.', _swTypeInfo(SD_REGION_WIDGETS_PLAIN[n.props.regionType]).label)) +
+                '</div></div>';
+        }
         if (!SD_REGION_WIDGETS[n.props.regionType] || !n.props.regionName) return '';
         return '<div class="sd-prop-row">' +
                 '<button type="button" class="btn btn-sm btn-outline theme-primary w-100" id="sd-region-make-widget">' +
@@ -51570,15 +51586,32 @@ const StyleDesigner = (function () {
     // region node's place, in the page tree or in the shared component the
     // node sits in; one undo step.
     function _sdRegionMakeWidget(regionNode) {
-        var map = (regionNode && regionNode.type === 'region' && regionNode.props) ? SD_REGION_WIDGETS[regionNode.props.regionType] : null;
+        var rt = (regionNode && regionNode.type === 'region' && regionNode.props) ? regionNode.props.regionType : '';
+        if (SD_REGION_WIDGETS_PLAIN[rt]) {
+            var plainKind = SD_REGION_WIDGETS_PLAIN[rt];
+            _sdRegionToWidget(regionNode, plainKind, _swTypeDefaults({}, plainKind), function () {
+                sdToast(esc(_sdT('The region is now a "{var}" widget you design; save the page to keep it.', _swTypeInfo(plainKind).label)), 'success', 7000);
+            });
+            return;
+        }
+        var map = SD_REGION_WIDGETS[rt] || null;
         if (!map || !regionNode.props.regionName) return;
-        if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
         var regionName = regionNode.props.regionName;
         var cfg = _swTypeDefaults({}, map.kind);
         cfg[map.key] = regionName;
+        _sdRegionToWidget(regionNode, map.kind, cfg, function () {
+            sdToast(esc(_sdT('"{var}" is now a widget you design; its items are still edited where they were.', regionName)), 'success', 7000);
+        });
+    }
+
+    // A new widget of `kind` with `cfg` and its starter layout takes the
+    // region node's place, in the page tree or in the shared component the
+    // node sits in; one undo step. `done()` runs once it is placed.
+    function _sdRegionToWidget(regionNode, kind, cfg, done) {
+        if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
         var start = _sdAnyParent(regionNode);
-        var name = _swAutoName(map.kind, null, { target: start ? start.parent : null });
-        _swCreateRow(name, cfg, _buildStarterTree(map.kind), function (newId, newName) {
+        var name = _swAutoName(kind, null, { target: start ? start.parent : null });
+        _swCreateRow(name, cfg, _buildStarterTree(kind), function (newId, newName) {
             // The node may have gone meanwhile (another tab, an undo); the
             // widget is then listed in the design, unplaced.
             var hit = _sdAnyParent(regionNode);
@@ -51597,7 +51630,7 @@ const StyleDesigner = (function () {
             if (typeof expandAncestorsAnywhere === 'function') expandAncestorsAnywhere(ref);
             render();
             if (typeof _refreshSystemTab === 'function') _refreshSystemTab();
-            sdToast(esc(_sdT('"{var}" is now a widget you design; its items are still edited where they were.', regionName)), 'success', 7000);
+            if (done) done(newName);
         });
     }
 
@@ -51745,6 +51778,55 @@ const StyleDesigner = (function () {
         if (!window.confirm(_sdT('Remove the classic region from this page? The widget draws the page from then on; the layout file stays.'))) return;
         onDelete(regionNode);
         sdToast(esc(_sdT('The classic region was removed; save the page to keep it.')), 'success', 7000);
+    }
+
+    // The widget a classic page's own system region converts into, custom
+    // layout or not (_design.classicWidgets, pg_classic_widget_offers()):
+    // { kind, cfg }; null for a page type with no widget (custom form,
+    // e-mail a friend, form view directory, the affiliate confirmation and
+    // welcome pages, order receipt) and for a named region.
+    function _sdClassicWidgetOffer(n) {
+        var p = _pgActivePage();
+        if (!_design || !_design.classicWidgets || !p || !(p.page_id > 0) || !_sdLegacyRegionOwn(n)) return null;
+        var o = _design.classicWidgets[p.page_id];
+        return (o && _swIsType(o.kind)) ? o : null;
+    }
+
+    function _sdClassicConvertPropsHtml(n) {
+        var o = _sdClassicWidgetOffer(n);
+        if (!o) {
+            // A classic page type no widget stands in for: no button, a
+            // muted line saying where its page is set up.
+            var p = _pgActivePage();
+            if (!_design || !p || !(p.page_id > 0) || !_sdLegacyRegionOwn(n) || (_design.classicNoWidget || []).indexOf(p.page_id) === -1) return '';
+            var withLayout = (_design.layoutPages || []).indexOf(p.page_id) !== -1;
+            return '<div class="sd-prop-row"><div style="font-size:.66rem;color:#888;line-height:1.3">' +
+                    esc(withLayout
+                        ? _sdT('This page type has no design widget; its layout is edited in the Layout tab.')
+                        : _sdT('This page type has no design widget; the region keeps drawing it from the page type\'s settings.')) +
+                '</div></div>';
+        }
+        return '<div class="sd-prop-row">' +
+                '<button type="button" class="btn btn-sm btn-outline theme-primary w-100" id="sd-classic-convert">' +
+                    '<span class="bi bi-magic me-1"></span>' + esc(_sdT('Convert to design elements')) +
+                '</button>' +
+            '</div>' +
+            '<div class="sd-prop-row"><div style="font-size:.66rem;color:#888;line-height:1.3">' +
+                esc(_sdT('Puts a "{var}" widget with this page\'s settings and its default layout in the region\'s place, for you to design. The page type and its settings stay; undo brings the region back.', _swTypeInfo(o.kind).label)) +
+            '</div></div>';
+    }
+
+    // The page's own system region becomes the widget of its page type, in
+    // its place; one undo step, after asking.
+    function _sdClassicConvert(regionNode) {
+        var o = _sdClassicWidgetOffer(regionNode);
+        if (!o) return;
+        if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
+        var label = _swTypeInfo(o.kind).label;
+        if (!window.confirm(_sdT('Put a "{var}" widget in the place of the classic region? The widget draws the page from then on; undo brings the region back.', label))) return;
+        _sdRegionToWidget(regionNode, o.kind, _sdLayoutWidgetCfg(o), function () {
+            sdToast(esc(_sdT('The page is now drawn by a "{var}" widget; save the page to keep it.', label)), 'success', 7000);
+        });
     }
 
     // What the converter left out of the widget, by its code (layout_code
@@ -54749,6 +54831,8 @@ const StyleDesigner = (function () {
         // region's removal once that widget is on the page.
         var layoutWidgetBtn = document.getElementById('sd-layout-widget');
         if (layoutWidgetBtn) layoutWidgetBtn.addEventListener('click', function () { _sdLayoutWidgetPlace(selectedNode); });
+        var classicConvertBtn = document.getElementById('sd-classic-convert');
+        if (classicConvertBtn) classicConvertBtn.addEventListener('click', function () { _sdClassicConvert(selectedNode); });
         var layoutRemoveBtn = document.getElementById('sd-layout-remove-region');
         if (layoutRemoveBtn) layoutRemoveBtn.addEventListener('click', function () { _sdLayoutRegionRemove(selectedNode); });
 
