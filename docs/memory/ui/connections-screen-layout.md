@@ -1,6 +1,6 @@
 ---
 name: connections-screen-layout
-description: Connections screen (connections.php, CN3): registry services in groups with their state, the attention block, search and filter, rows under their place's gate, each provider's panel
+description: Connections screen (connections.php, CN3): registry services in groups with their state, the attention block, search and filter, rows under their place's gate
 module: connections_screen
 ---
 
@@ -21,9 +21,8 @@ module: connections_screen
 ## How do the search and filter work?
 - Both in the address: `?q=` (every word in the name, group, uses or place, Turkish letters folded: `pg_connections_screen_search()`), `?state=attention|connected|not_connected` as link segments with counts. No match: what was searched, where, Clear search.
 
-## What stays of the old screen?
-- A provider row opens its panel under it (`#connections-<provider>`, the old card id; an address with that hash or a refused save opens it, and every write returns to it): accounts with Check, Connect again and Disconnect, Connect an account, the application form, Google's fallback. Field ids, names and posts are unchanged.
+## Where are the drawers and the other side?
+- `connections-screen-drawers.md`.
 - The attention block on top lists every account in `reauth`: the site's with Connect again, a person's with who reconnects it.
-- One centred column (`pg-measure-single`) until CN4 turns the panel into the drawer and adds the service drawer and the other side's block as a side column; CN4 then moves `connections` back to the two-column pages of `tests/look_page_widths_test.php`.
 
 Tests: `tests/connections_screen_test.php`, `tests/connections_layout_test.php`.
