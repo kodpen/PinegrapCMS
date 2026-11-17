@@ -327,7 +327,6 @@
 .sd-tabs-list-lock { margin-left: .4rem; color: var(--sd-text-muted); }
 .sd-tabs-list .sd-tab-draft-badge { margin-left: .4rem; }
 .sd-tabs-list-page.active { background: color-mix(in srgb, var(--sd-text) 6%, transparent); }
-.sd-tabs-list-rest { color: var(--sd-text-muted); }
 .sd-tab-group-menu { flex: 0 0 auto; padding: 0 .1rem; border-radius: 3px; font-size: .75rem; line-height: 1; opacity: .6; }
 .sd-tab-group-menu:hover { opacity: 1; background: color-mix(in srgb, var(--sd-text) 8%, transparent); }
 .sd-tab-group .sd-tab-rename { width: 7rem; }
