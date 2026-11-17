@@ -1131,6 +1131,29 @@ function test_proto_hotspots_head_and_mark_keys()
 	pg_assert_same(array('pick', 'pick', 'menu', 'menu', '', 'menu', 'menu', '', '', ''), $out['keys'], 'Enter and Space pick, L and the menu key open the target menu');
 }
 
+// Drawing from a mark (F21, F22, F23): a mark's drag and an arrow head's
+// drag become the core's connect once they move; the selected frame's
+// marks take Tab, Enter and L; the pointer on a mark or a row lifts its
+// arrow.
+function test_proto_hotspots_view_draws_from_a_mark()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/style_designer.css');
+
+	pg_assert_contains("if ((drag.kind !== 'row' && drag.kind !== 'head') || !drag.link) return;", $source, 'a mark or a head turns into a drawn arrow only once it moves');
+	pg_assert_contains("drag.kind = 'connect';", $source, 'the core draws it, lights its targets and calls connected()');
+	pg_assert_contains("if (done.kind === 'row' && !done.moved && event.type === 'pointerup') _sdProtoPickRow(done.row);", $source, 'a click on a mark still picks its link');
+	pg_assert_contains('return window.PGProtoHotspots.nearHead({ x: end.x, y: end.y }, at, _sdProto.view.k) ? { frame: edge.from, port: edge.port } : null;', $source, 'a press on an arrow\'s head takes it');
+	pg_assert_contains('var act = hot ? window.PGProtoHotspots.markKey(event) : \'\';', $source, 'a mark\'s keys');
+	pg_assert_contains("return link ? _sdProtoMenuOpen(link.frame, link.port, hot) : false;", $source, 'L on a mark opens its target menu');
+	pg_assert_contains("if (el && state === 'own') el.tabIndex = 0;", $source, 'Tab reaches only the selected frame\'s marks');
+	pg_assert_contains('_sdProtoLift(id || \'\');', $source, 'the pointer lifts an arrow');
+	pg_assert_false(strpos($source, "var dot = canvas.port('out', row.port);") !== false, 'no port dot: the whole mark draws');
+	foreach (array('.sd-proto-hot:focus-visible', '.sd-proto .pgc-edges.sd-proto-lifting .pgc-edge:not(.sd-proto-edge-lift)') as $selector) {
+		pg_assert_contains($selector, $css, 'styled: ' . $selector);
+	}
+}
+
 // Which marks a picture shows (F5, F13): the selected frame all of its own;
 // another frame those starting an arrow into it; a shared part's link into
 // the selected page in amber. Nothing selected shows none.
