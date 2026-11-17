@@ -9,7 +9,7 @@ description: The R&D agent's proposal from the integrations census (2026-11-17):
 ## 1. Reach through automation platforms (the large figure)
 - A platform kit in the API (S to M, no schema): a sample payload for each event, a route that names the account, the OpenAPI document with its `oauth2` block. To decide by the architect: may an OAuth connection hold its own webhook subscriptions, and may the panel make one (today by API only), so that a pasted catch-hook address works with no app at all.
 - An n8n community node (M): an npm package; a self-hosted n8n installs it at once, the verified list takes up to four weeks.
-- A Zapier app (M): private invite link first, public after three users with live Zaps. Then Make and Pabbly Connect on the same triggers and actions. No payment actions (Zapier's rule).
+- A Zapier app (M): private first (up to 100 users), then the public listing. Then Make and Pabbly Connect on the same triggers and actions. No payment actions (Zapier's rule).
 - They live outside this repository: the owner opens the repositories and developer accounts, as for the Claude bundle.
 
 ## 2. AI assistants' directories (beside `claude-plugin-bundle.md`)
