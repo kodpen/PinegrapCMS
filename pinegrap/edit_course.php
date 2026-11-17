@@ -142,7 +142,7 @@ if ($course_view === 'learners') {
                 'email' => pg_list_cell(h($learner['email'])),
                 'enrolled' => pg_list_cell(($learner['enrolled'] !== '') ? h(get_absolute_time(array('timestamp' => strtotime($learner['enrolled'] . ' 12:00:00'), 'type' => 'date', 'format' => 'plain_text', 'timezone_type' => 'site'))) : '', 'align-middle', array('data-pg-sort-value' => str_replace('-', '', $learner['enrolled']))),
                 'done' => pg_list_cell(h(lang(array('string' => '{var:1} of {var:2}', 'vars' => array($learner['done'], $learner['lessons'])))), 'align-middle', array('data-pg-sort-value' => $learner['done'])),
-                'last' => ($learner['last_at'] > 0) ? pg_list_table_when_cell($learner['last_at']) : pg_list_cell('', 'align-middle', array('data-pg-sort-value' => 0)),
+                'last' => ($learner['last_at'] > 0) ? pg_list_table_when_cell($learner['last_at']) : pg_list_cell('<span class="pg-text-meta">' . h(lang('Not started yet')) . '</span>', 'align-middle', array('data-pg-sort-value' => 0)),
                 'completed' => pg_list_cell(($learner['completed_at'] > 0) ? '<span class="pg-pill pg-tone-teal">' . h(get_absolute_time(array('timestamp' => $learner['completed_at'], 'type' => 'date', 'format' => 'plain_text'))) . '</span>' : '', 'align-middle', array('data-pg-sort-value' => $learner['completed_at'])),
                 'reset' => pg_list_cell(($learner['done'] + $learner['last_at'] > 0)
                     ? '<button type="button" class="pg-button pg-button-ghost pg-button-sm no-submit" data-pg-course-reset="' . $learner['user_id'] . '" data-pg-course-question="' . h(lang(array('string' => 'Reset the progress of {var:1}? The lessons done and the completion are removed, and the member starts again from the first lesson.', 'vars' => array($learner['name'])))) . '">' . h(lang('Reset progress')) . '</button>'
@@ -248,12 +248,12 @@ $course_lesson_row = function (array $lesson) use ($course_page_options, $course
 
     return '<tr data-pg-course-lesson>
         <td class="pg-text-meta fg-secondary pg-tabular align-middle" data-pg-course-number></td>
-        <td><input type="hidden" name="lesson_id[]" value="' . (int) $lesson['id'] . '" />
+        <td class="pg-course-cell-page" data-label="' . h(lang('Lesson page')) . '"><input type="hidden" name="lesson_id[]" value="' . (int) $lesson['id'] . '" />
             <select name="lesson_page[]" class="pg-input pg-input-sm" aria-label="' . h(lang('Lesson page')) . '" data-pg-course-page>' . $course_page_options($lesson['page_id'], lang('Choose a page')) . '</select></td>
-        <td><span class="pg-input pg-input-sm"><input type="text" name="lesson_days[]" inputmode="numeric" maxlength="4" class="text-end" value="' . (int) $lesson['open_days'] . '" aria-label="' . h(lang('Opens after')) . '" /><span class="pg-input-end">' . h(lang('days')) . '</span></span></td>
-        <td><select name="lesson_quiz[]" class="pg-input pg-input-sm" aria-label="' . h(lang('Quiz to pass')) . '" data-pg-course-quiz>' . $course_quiz_options($lesson['quiz_page_id']) . '</select></td>
-        <td><span class="pg-input pg-input-sm"><input type="text" name="lesson_score[]" inputmode="numeric" maxlength="3" class="text-end" value="' . ($quiz ? (int) $lesson['quiz_pass_score'] : '') . '" aria-label="' . h(lang('Score needed')) . '"' . ($quiz ? '' : ' disabled') . ' data-pg-course-score /><span class="pg-input-end">%</span></span></td>
-        <td class="text-end text-nowrap">
+        <td class="pg-course-cell-days" data-label="' . h(lang('Opens after')) . '"><span class="pg-input pg-input-sm"><input type="text" name="lesson_days[]" inputmode="numeric" maxlength="4" class="text-end" value="' . (int) $lesson['open_days'] . '" aria-label="' . h(lang('Opens after')) . '" /><span class="pg-input-end">' . h(lang('days')) . '</span></span></td>
+        <td class="pg-course-cell-quiz" data-label="' . h(lang('Quiz to pass')) . '"><select name="lesson_quiz[]" class="pg-input pg-input-sm" aria-label="' . h(lang('Quiz to pass')) . '" data-pg-course-quiz>' . $course_quiz_options($lesson['quiz_page_id']) . '</select></td>
+        <td class="pg-course-cell-score" data-label="' . h(lang('Score needed')) . '"><span class="pg-input pg-input-sm"><input type="text" name="lesson_score[]" inputmode="numeric" maxlength="3" class="text-end" value="' . ($quiz ? (int) $lesson['quiz_pass_score'] : '') . '" aria-label="' . h(lang('Score needed')) . '"' . ($quiz ? '' : ' disabled') . ' data-pg-course-score /><span class="pg-input-end">%</span></span></td>
+        <td class="pg-course-cell-actions text-end text-nowrap">
             <button type="button" class="pg-icon-button pg-icon-button-sm no-submit" data-pg-course-move="-1" aria-label="' . h(lang('Move up')) . '"><i class="bi bi-arrow-up" aria-hidden="true"></i></button>
             <button type="button" class="pg-icon-button pg-icon-button-sm no-submit" data-pg-course-move="1" aria-label="' . h(lang('Move down')) . '"><i class="bi bi-arrow-down" aria-hidden="true"></i></button>
             <button type="button" class="pg-icon-button pg-icon-button-sm no-submit" data-pg-course-remove aria-label="' . h(lang('Remove lesson')) . '"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
@@ -343,8 +343,8 @@ echo $course_shell . '
                             <div class="card-body pt-0">
                                 <p class="pg-text-2 fg-secondary mt-0">' . h(lang('Pages of the folder in the order they are taken. A lesson opens the given number of days after enrolment (0: at once); with a quiz it is done only when the member scored at least the score needed.')) . '</p>
                                 <div class="table-responsive">
-                                    <table class="table align-middle mb-3 course-lessons" style="min-width:44rem; table-layout:fixed;">
-                                        <colgroup><col style="width:2.25rem;" /><col /><col style="width:7.5rem;" /><col style="width:28%;" /><col style="width:6.5rem;" /><col style="width:7rem;" /></colgroup>
+                                    <table class="table align-middle mb-3 pg-course-lessons">
+                                        <colgroup><col class="pg-course-col-number" /><col /><col class="pg-course-col-days" /><col class="pg-course-col-quiz" /><col class="pg-course-col-score" /><col class="pg-course-col-actions" /></colgroup>
                                         <thead><tr>
                                             <th scope="col"><span class="visually-hidden">' . h(lang('Order')) . '</span></th>
                                             <th scope="col">' . h(lang('Lesson page')) . '</th>
