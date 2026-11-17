@@ -2276,7 +2276,7 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 
 			<div class="tab-pane fade" id="d_hooks">
 				<div class="d-flex align-items-center flex-wrap gap-3 mb-3">
-					<span class="small opacity-75">' . lang('Addresses this application asked to be told at') . ' &middot; <span id="d_hook_count"></span></span>
+					<span class="small opacity-75">' . lang('Addresses this application asked to be told at') . ' &middot; <span class="text-nowrap" id="d_hook_count"></span></span>
 					<button type="button" class="btn btn-sm btn-outline theme-primary ms-auto api-hook-new" id="d_hook_new" aria-expanded="false" aria-controls="d_hook_form">
 						<i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . lang('New subscription') . '</button>
 				</div>
@@ -2294,14 +2294,14 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 						<div class="form-text" id="d_hook_url_help">' . lang('The address the platform gives for incoming webhooks. It is checked when it is saved: an https address that resolves and lies outside this network.') . '</div>
 					</div>
 					<div class="form-field mb-3">
-						<label class="form-label small" for="d_hook_search">' . lang('Events') . '</label>
+						<label class="form-label small" for="d_hook_search">' . lang('Webhook events') . '</label>
 						<div class="input-group input-group-sm">
 							<span class="input-group-text"><i class="bi bi-search" aria-hidden="true"></i></span>
 							<input type="search" class="form-control" id="d_hook_search" autocomplete="off" aria-controls="d_hook_events"
 								placeholder="' . h(lang('Search events')) . '">
 						</div>
 					</div>
-					<div class="api-event-list" id="d_hook_events" role="group" aria-label="' . h(lang('Events')) . '"></div>
+					<div class="api-event-list" id="d_hook_events" role="group" aria-label="' . h(lang('Webhook events')) . '"></div>
 					<div class="d-flex flex-wrap gap-3 small fg-2 mt-2">
 						<span id="d_hook_found" aria-live="polite"
 							data-all="' . h(lang(array('string' => '{var:1} events in the catalogue', 'vars' => '{1}'))) . '"
