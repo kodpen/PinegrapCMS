@@ -261,3 +261,32 @@ function api_app_log_time_label($timestamp) {
 	));
 
 }
+
+// The permission rows New application's "Automation platform" starting point
+// ticks: each scope of $scopes (pg_automation_contract_scopes()) on the row of
+// api_scope_groups() that offers it, as 'read' or 'write'; a row offering
+// both takes write, which holds read. A scope no row offers (a module that is
+// off) is left out. Group key => choice, in the rows' order. Pure.
+function api_app_start_choices($scopes, $groups) {
+
+	$scopes = (array)$scopes;
+
+	$choices = array();
+
+	foreach ((array)$groups as $key => $group) {
+
+		if (!empty($group['write']) && in_array($group['write'], $scopes, true)) {
+
+			$choices[$key] = 'write';
+
+		} elseif (!empty($group['read']) && in_array($group['read'], $scopes, true)) {
+
+			$choices[$key] = 'read';
+
+		}
+
+	}
+
+	return $choices;
+
+}
