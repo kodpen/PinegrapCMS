@@ -82649,7 +82649,9 @@ const StyleDesigner = (function () {
             _validationRules.forEach(function(rule) { if (rule.exit) rule.exit(node, ctx); });
         }
         if (root.children) root.children.forEach(traverse);
+        var email = _sdActivePageIsEmail(root);
         _pageLevelIssues(root).forEach(function (pi) {
+            if (email && _sdAuditDropsOnEmail(pi.rule)) return;
             // Most page-level findings belong to the page as a whole; a few
             // can name the exact element, and those get a canvas badge.
             issues.push({
@@ -82662,6 +82664,50 @@ const StyleDesigner = (function () {
         _sdCanvasAuditIssues(root).forEach(function (ci) { issues.push(ci); });
         _sdMailCheckIssues(root).forEach(function (mi) { issues.push(mi); });
         return issues;
+    }
+
+    // Whether a page goes out as an e-mail rather than as a web page: an
+    // e-mail design (its root carries props.pgEmail), a comment e-mail page
+    // (_sdCommentsEmailPageOf()), or a page a widget's setting ending in
+    // '_email_page_id' names (order receipt, welcome, password reset, a
+    // form's replies), by id or by its tab ('tab:<key>').
+    function _sdPageIsEmail(page, root, pages, configs) {
+        if (root && root.props && root.props.pgEmail) return true;
+        if (!page) return false;
+        if (_sdCommentsEmailPageOf(page, pages)) return true;
+        var id = parseInt(page.page_id, 10) || 0;
+        var tab = 'tab:' + page.key;
+        return (configs || []).some(function (cfg) {
+            if (!cfg || typeof cfg !== 'object') return false;
+            return Object.keys(cfg).some(function (k) {
+                if (!/_email_page_id$/.test(k)) return false;
+                var v = cfg[k];
+                if (typeof v === 'string' && v === tab) return true;
+                return id > 0 && (parseInt(v, 10) || 0) === id;
+            });
+        });
+    }
+
+    // _sdPageIsEmail() for the open page, with the widget settings of the
+    // shared components loaded.
+    function _sdActivePageIsEmail(root) {
+        var configs = [];
+        Object.keys(_sharedCache).forEach(function (k) {
+            var raw = _sharedCache[k] ? _sharedCache[k].system_region_config : null;
+            var cfg = raw;
+            if (typeof raw === 'string') { try { cfg = JSON.parse(raw); } catch (e) { cfg = null; } }
+            if (cfg && typeof cfg === 'object') configs.push(cfg);
+        });
+        return _sdPageIsEmail(_pgActivePage(), root, _pages, configs);
+    }
+
+    // The check rules (editor rule ids and accessibility codes) a web page
+    // needs and an e-mail cannot follow: a mail program draws no <main> and
+    // no header / nav / footer landmarks, and one dropped into an e-mail
+    // design is "Not an e-mail block", so there is no main area to skip to.
+    // The SEO score is left out of an e-mail as a whole: it is not indexed.
+    function _sdAuditDropsOnEmail(code) {
+        return ['main_missing', 'main_multiple', 'landmark_missing', 'a11y_main_missing'].indexOf(String(code || '')) !== -1;
     }
 
     // In an e-mail design (root props.pgEmail), the outermost element that
@@ -82893,6 +82939,7 @@ const StyleDesigner = (function () {
         if (!host) return;
         var concepts = (res && res.concepts) || [];
         var a11y = (res && Array.isArray(res.a11y)) ? res.a11y : null;
+        if (a11y && _sdActivePageIsEmail(tree)) a11y = a11y.filter(function (f) { return !_sdAuditDropsOnEmail(f.code); });
         var sevIcon = function (sev) {
             return sev === 'error' ? 'bi-x-circle text-danger' : (sev === 'warning' ? 'bi-exclamation-circle text-warning' : 'bi-info-circle text-info');
         };
@@ -82955,6 +83002,10 @@ const StyleDesigner = (function () {
         if (!host) return;
         var draw = function (res) {
             _renderAuditConcepts(panel, res);
+            if (_sdActivePageIsEmail(tree)) {
+                host.innerHTML = '<div class="sd-val-empty"><span class="bi bi-info-circle me-1"></span>' + esc(_sdT('An e-mail is not indexed by search engines: it gets no SEO score.')) + '</div>';
+                return;
+            }
             if (!res || res.status !== 'success') {
                 host.innerHTML = '<div class="sd-val-empty fg-warning"><span class="bi bi-exclamation-triangle me-1"></span>' + esc((res && res.message) || _sdT('The SEO check could not be run.')) + '</div>';
                 return;
