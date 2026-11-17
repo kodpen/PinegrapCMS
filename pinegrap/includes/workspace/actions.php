@@ -3111,7 +3111,8 @@ function ws_handle_action($action, $request)
             $result = ws_mail_send($viewer, $mail + array('send_at' => ws_mail_undo_send_at($request, $later['at'], ws_mail_later_ready(), time())));
 
             if (!$result['ok']) {
-                return ws_action_error(ws_mail_send_error_text($result['error'], $result['detail'])) + array('code' => $result['error']);
+                return ws_action_error(ws_mail_send_error_text($result['error'], $result['detail']), ws_mail_send_error_field($result['error'], $result['detail'], $mail))
+                    + array('code' => $result['error']);
             }
 
             ws_mail_forward_line($viewer, $forward['source'], (int) $result['item_id']);

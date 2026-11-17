@@ -2900,6 +2900,29 @@
 
         var send = h.button('btn btn-solid theme-primary rounded-pill px-5', t('mail_new_send'), 'bi-send');
 
+        // The field a refusal names (ws_mail_send_error_field()) is marked
+        // beside the notice and focused, till it is changed.
+        function markField(name) {
+            var fields = { to: to.field, cc: cc.field, bcc: bcc.field, subject: subject.field, text: body.input };
+            var field = fields[name];
+
+            if (!field) {
+                return;
+            }
+
+            if ((name === 'cc') || (name === 'bcc')) {
+                setCopies(true);
+            }
+
+            field.classList.add('is-invalid');
+            field.setAttribute('aria-invalid', 'true');
+            field.addEventListener('input', function () {
+                field.classList.remove('is-invalid');
+                field.removeAttribute('aria-invalid');
+            }, { once: true });
+            field.focus();
+        }
+
         function sendNew(anyway) {
             var fields = current();
             var empty = [[to.field, fields.to], [subject.field, fields.subject], [body.input, fields.text]].filter(function (pair) {
@@ -2981,6 +3004,7 @@
                 }
 
                 h.fail(error);
+                markField(error.field);
             });
         }
 
