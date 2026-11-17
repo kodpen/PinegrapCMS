@@ -76462,49 +76462,122 @@ const StyleDesigner = (function () {
     var _pgTabsFitObs = null;
     var _pgTabsFitRaf = 0;
 
+    // ── Tab states ──
+    // What a tab shows beside its name, in the drawing's order. Before the
+    // name: the changed dot (always in the markup, shown by the `dirty`
+    // class), the lock of a page somebody else has open for editing, the
+    // home page's house. After it: the draft pill, or the schedule badge in
+    // its place; a mark of another feature that belongs after the name goes
+    // into `after` too. Last: the open tab's three-dot menu, the × of a page
+    // never saved, or the lock of a page whose folder the operator has no
+    // content rights to (that tab does not open, and nobody's lock is shown
+    // on it). `tip` lists the states that show as a mark only, for the
+    // tab's title. Pure: s = { active, drafts, sched, holder, menus }.
+    function _pgTabState(p, s) {
+        var before = [], after = [], tip = [], end = '';
+        var rights = (p.access === 'locked');
+        if (s.holder && !rights) { before.push('busy'); tip.push('busy'); }
+        if (p.page_home) { before.push('home'); tip.push('home'); }
+        if (s.sched) { after.push('sched'); tip.push('sched'); }
+        else if (s.drafts && p.page_draft) { after.push('draft'); tip.push('draft'); }
+        if (rights) { end = 'rights'; tip.push('rights'); }
+        else if (s.menus && s.active) end = 'menu';
+        else if (s.menus && p.page_id === 0) end = 'close';
+        return { before: before, after: after, end: end, tip: tip };
+    }
+
     // One tab. A <div>, not a <button>: the label becomes an <input> while
     // renaming, and form controls inside a button cannot take focus in
     // every browser.
     function _pgTabHtml(p, gid) {
         var name  = p.page_name ? p.page_name : _sdT('New Page');
         var dirty = _pgPageDirty(p);
-        // Active tab: a ⋮ menu (rename, settings, duplicate, detach,
-        // delete). Inactive unsaved tab: an × that discards it. Only the
-        // active tab carries the menu so the strip stays quiet; every tab
-        // opens the same menu on right-click.
-        var extra = '';
-        if (_sdComponentOnly()) {
-            extra = '';
-        } else if (p.key === _activeKey) {
-            extra = '<span class="sd-tab-menu" data-menu="' + esc(p.key) + '" title="' + esc(_sdT('Page options')) + '"><span class="bi bi-three-dots-vertical"></span></span>';
-        } else if (p.page_id === 0) {
-            extra = '<span class="sd-tab-close" data-close="' + esc(p.key) + '" title="' + esc(_sdT('Remove')) + '">&times;</span>';
-        }
         // A page in a folder the operator has no content rights to is listed
         // and does not open. It is shown rather than hidden because they
         // already know it exists — the design's other pages link to it. A
         // page behind a private or membership folder never reached the
         // browser at all (pg_designer_page_access).
         var locked = (p.access === 'locked');
-        if (locked) {
-            extra = '<span class="sd-tab-lock bi bi-lock-fill" title="' +
-                    esc(_sdT('You do not have content rights for this page\'s folder.')) + '"></span>';
-        }
         // A page kept off the site says so on its tab; one that goes on or
         // comes off at a set time says when.
         var draft = _pgDraftsReady() && !!p.page_draft;
         var sched = _pgScheduleNote(p);
+        var holder = _pgTabHolder(p);
+        // Only the active tab carries the ⋮ menu (rename, settings,
+        // duplicate, detach, delete) so the strip stays quiet; every tab
+        // opens the same menu on right-click.
+        var st = _pgTabState(p, { active: p.key === _activeKey, drafts: draft, sched: sched, holder: holder, menus: !_sdComponentOnly() });
+        var words = {
+            busy:   _sdT('Open for editing by {name}').replace('{name}', holder),
+            home:   _sdT('Home page'),
+            sched:  sched,
+            draft:  _sdT('Draft: not on the site. Visitors cannot open it.'),
+            rights: _sdT('You do not have content rights for this page\'s folder.')
+        };
+        var marks = {
+            busy:   '<span class="sd-tab-busy bi bi-lock" title="' + esc(words.busy) + '" aria-hidden="true"></span>',
+            home:   '<span class="sd-tab-home bi bi-house" title="' + esc(words.home) + '" aria-hidden="true"></span>',
+            sched:  '<span class="sd-tab-draft-badge sd-tab-sched-badge" title="' + esc(sched) + '"><span class="bi bi-clock" aria-hidden="true"></span><span class="visually-hidden">' + esc(sched) + '</span></span>',
+            draft:  '<span class="sd-tab-draft-badge" title="' + esc(words.draft) + '">' + esc(_sdT('Draft')) + '</span>',
+            menu:   '<span class="sd-tab-menu" data-menu="' + esc(p.key) + '" title="' + esc(_sdT('Page options')) + '"><span class="bi bi-three-dots-vertical"></span></span>',
+            close:  '<span class="sd-tab-close" data-close="' + esc(p.key) + '" title="' + esc(_sdT('Remove')) + '">&times;</span>',
+            rights: '<span class="sd-tab-lock bi bi-lock-fill" title="' + esc(words.rights) + '"></span>'
+        };
+        var pick = function (k) { return marks[k] || ''; };
+        var title = [name].concat(st.tip.map(function (k) { return words[k]; })).join(' · ');
         return '<div class="sd-tab' + (p.key === _activeKey ? ' active' : '') + (dirty ? ' dirty' : '') +
                (locked ? ' sd-tab-locked' : '') + (draft ? ' sd-tab-draft' : '') + '"' +
                ' data-key="' + esc(p.key) + '"' +
                (gid ? ' data-group="' + esc(gid) + '" data-color="' + esc(_pgTabGroups[gid].color) + '"' : '') +
-               ' role="tab" tabindex="0" title="' + esc(name) + '">' +
+               ' role="tab" tabindex="0" title="' + esc(title) + '">' +
                '<span class="sd-tab-dot" aria-hidden="true"></span>' +
+               st.before.map(pick).join('') +
                '<span class="sd-tab-name">' + esc(name) + '</span>' +
-               (sched ? '<span class="sd-tab-draft-badge sd-tab-sched-badge" title="' + esc(sched) + '"><span class="bi bi-clock" aria-hidden="true"></span><span class="visually-hidden">' + esc(sched) + '</span></span>'
-                      : (draft ? '<span class="sd-tab-draft-badge" title="' + esc(_sdT('Draft: not on the site. Visitors cannot open it.')) + '">' + esc(_sdT('Draft')) + '</span>' : '')) +
-               extra +
+               st.after.map(pick).join('') +
+               pick(st.end) +
                '</div>';
+    }
+
+    // The name of the person who has this page open for editing, from the
+    // presence beat (pg_collab_peers()); '' when nobody else has.
+    function _pgTabHolder(p) {
+        if (!p || !(p.page_id > 0)) return '';
+        var peers = (typeof _collab !== 'undefined' && _collab && _collab.peers) ? _collab.peers : [];
+        for (var i = 0; i < peers.length; i++) {
+            var peer = peers[i];
+            if (peer && peer.editing && parseInt(peer.page_id, 10) === p.page_id) {
+                return peer.name || peer.username || _sdT('another user');
+            }
+        }
+        return '';
+    }
+
+    // The pages somebody else holds, as one string: the strip is drawn
+    // again only when it changes (_pgTabsSyncBusy()).
+    var _pgTabBusySig = '';
+    function _pgTabBusyKey() {
+        return _pages.map(function (p) {
+            var who = _pgTabHolder(p);
+            return who ? p.page_id + ':' + who : '';
+        }).filter(Boolean).join('|');
+    }
+    // Runs after every presence beat. A tab being renamed or dragged is
+    // left alone; the next beat draws the change.
+    function _pgTabsSyncBusy() {
+        if (_pgTabBusyKey() === _pgTabBusySig) return;
+        var list = document.getElementById('sd-tabs-list');
+        if (list && list.querySelector('.sd-tab-rename, .sd-tab-dragging')) return;
+        _pgTabsRender();
+    }
+
+    // The changed dot takes room only while it shows, so a tab that
+    // becomes changed (or saved) grows or shrinks: the strip is fitted
+    // again in the next frame.
+    function _pgTabSetDirty(t, on) {
+        if (!t || t.classList.contains('dirty') === on) return;
+        t.classList.toggle('dirty', on);
+        cancelAnimationFrame(_pgTabsFitRaf);
+        _pgTabsFitRaf = requestAnimationFrame(function () { _pgTabsFit(); });
     }
 
     // The strip: in a design with groups, the open page's group is a box
@@ -76544,6 +76617,7 @@ const StyleDesigner = (function () {
             order.forEach(function (gid) { html += _pgTabGroupChipHtml(gid, editable, false); });
             html += '<button type="button" class="sd-tabs-more sd-tabs-more-groups" data-more="groups" aria-haspopup="menu" hidden></button>';
         }
+        _pgTabBusySig = _pgTabBusyKey();
         list.classList.toggle('sd-tabs-grouped', grouped);
         list.innerHTML = html;
         _pgTabsSyncViewButton();
@@ -76683,10 +76757,15 @@ const StyleDesigner = (function () {
         var pageRow = function (p) {
             if (!p) return '';
             var locked = (p.access === 'locked');
+            // A row carries its tab's states: the home page's house in place
+            // of the page icon, the changed dot, the lock of a page somebody
+            // else edits, the draft pill.
+            var holder = locked ? '' : _pgTabHolder(p);
             return '<button type="button" class="sd-tab-popmenu-item sd-tabs-list-page' + (p.key === _activeKey ? ' active' : '') + '" data-key="' + esc(p.key) + '"' + (locked ? ' disabled' : '') + '>' +
-                   '<span class="bi bi-file-earmark me-3" aria-hidden="true"></span>' +
+                   '<span class="bi ' + (p.page_home ? 'bi-house' : 'bi-file-earmark') + ' me-3"' + (p.page_home ? ' title="' + esc(_sdT('Home page')) + '"' : '') + ' aria-hidden="true"></span>' +
                    '<span class="sd-tabs-list-name">' + esc(p.page_name || _sdT('New Page')) + '</span>' +
                    (_pgPageDirty(p) ? '<span class="sd-tabs-list-dirty" title="' + esc(_sdT('Unsaved Changes')) + '"></span>' : '') +
+                   (holder ? '<span class="bi bi-lock sd-tabs-list-busy" title="' + esc(_sdT('Open for editing by {name}').replace('{name}', holder)) + '"></span>' : '') +
                    ((_pgDraftsReady() && p.page_draft) ? '<span class="sd-tab-draft-badge">' + esc(_sdT('Draft')) + '</span>' : '') +
                    (locked ? '<span class="bi bi-lock-fill sd-tabs-list-lock" aria-hidden="true"></span>' : '') +
                    '</button>';
@@ -77184,14 +77263,14 @@ const StyleDesigner = (function () {
         _pgDirtyPollEpoch = _sdEditEpoch;
         var p = _pgActivePage();
         var t = p ? document.querySelector('.sd-tab[data-key="' + p.key + '"]') : null;
-        if (t) t.classList.toggle('dirty', _pgPageDirty(p));
+        _pgTabSetDirty(t, _pgPageDirty(p));
     }
 
     // Cheap re-paint of the dirty dots without rebuilding the strip.
     function _pgTabsRefreshDirty() {
         _pages.forEach(function (p) {
             var t = document.querySelector('.sd-tab[data-key="' + p.key + '"]');
-            if (t) t.classList.toggle('dirty', _pgPageDirty(p));
+            _pgTabSetDirty(t, _pgPageDirty(p));
         });
     }
 
@@ -78544,6 +78623,7 @@ const StyleDesigner = (function () {
             if (res.beat > 0) _collab.beat = res.beat;
             _collab.peers  = Array.isArray(res.peers) ? res.peers : [];
             _collabRenderPresence();
+            _pgTabsSyncBusy();
             _collabSetMode(res.may_edit !== false, res.holder || null);
             _collabSyncNotes(res.notes);
             return res;

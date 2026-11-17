@@ -143,14 +143,19 @@
     line-height: 1.4;
     outline: 0;
 }
-/* Unsaved marker: a dot that only shows while the tab is dirty. */
+/* Unsaved marker: a dot that takes room only while the tab is dirty; a
+   flip refits the strip (_pgTabSetDirty()). */
 .sd-tab-dot {
+    display: none;
+    flex: 0 0 auto;
     width: 7px; height: 7px; border-radius: 50%;
     background: var(--sd-accent);
-    opacity: 0;
-    transition: opacity .15s;
 }
-.sd-tab.dirty .sd-tab-dot { opacity: 1; }
+.sd-tab.dirty .sd-tab-dot { display: block; }
+/* Before the name: the lock of a page somebody else has open for editing
+   (their name in the tip) and the home page's house. */
+.sd-tab-busy { flex: 0 0 auto; color: var(--sd-warning); font-size: .72rem; line-height: 1; }
+.sd-tab-home { flex: 0 0 auto; font-size: .78rem; line-height: 1; }
 .sd-tab-close {
     margin-left: .15rem;
     padding: 0 .2rem;
@@ -314,7 +319,7 @@
 .sd-strip-cut .sd-tab-box { padding: 0; border-color: transparent; border-bottom-color: var(--sd-tg); background: transparent; }
 .sd-strip-cut .sd-tab.active { padding: 0 .3rem; gap: .2rem; }
 .sd-strip-cut .sd-tab.active > :not(.sd-tab-name) { flex: 0 0 auto; }
-.sd-strip-draftshort .sd-tab.active .sd-tab-draft-badge:not(.sd-tab-sched-badge) { width: 10px; height: 10px; padding: 0; font-size: 0; }
+.sd-strip-draftshort .sd-tab.active .sd-tab-draft-badge:not(.sd-tab-sched-badge) { width: 10px; height: 10px; padding: 0; border: 1px dashed var(--sd-warning); border-radius: 999px; background: transparent; font-size: 0; }
 /* Step 6 also gives the open tab's name room from the toolbar's row: the
    Add Page button leaves it (its New Page leads the Pages list), then the
    Pages button's count (it stays in the tip). */
@@ -327,6 +332,7 @@
 .sd-tabs-list-count { flex: 0 0 auto; color: var(--sd-text-muted); font-size: .72rem; }
 .sd-tabs-list-dirty { flex: 0 0 auto; width: 7px; height: 7px; margin-left: .4rem; border-radius: 50%; background: var(--sd-accent); }
 .sd-tabs-list-lock { margin-left: .4rem; color: var(--sd-text-muted); }
+.sd-tabs-list-busy { margin-left: .4rem; color: var(--sd-warning); }
 .sd-tabs-list .sd-tab-draft-badge { margin-left: .4rem; }
 .sd-tabs-list-page.active { background: color-mix(in srgb, var(--sd-text) 6%, transparent); }
 .sd-tab-group-menu { flex: 0 0 auto; padding: 0 .1rem; border-radius: 3px; font-size: .75rem; line-height: 1; opacity: .6; }
@@ -476,10 +482,9 @@
 .sd-tabs-all-dot { flex: 0 0 auto; width: 8px; height: 8px; border-radius: 50%; }
 .sd-tabs-all-plus { flex: 0 0 auto; width: 8px; display: inline-flex; justify-content: center; font-size: .78rem; line-height: 1; }
 .sd-tabs-all-dirty { flex: 0 0 auto; color: var(--sd-warning); font-size: .6rem; }
-/* The strip's Draft pill, on the dark menu: a lighter dashed outline, and
-   on the active (accent) row the row's own text colour. */
-.sd-tabs-all-item .sd-tabs-all-badge { color: var(--sd-label); border-color: var(--sd-text-muted); }
-.sd-tabs-all-item.active .sd-tabs-all-badge { color: inherit; border-color: currentColor; }
+/* The strip's Draft pill; on the active (accent) row an outline in the
+   row's own text colour. */
+.sd-tabs-all-item.active .sd-tabs-all-badge { border-color: currentColor; background: transparent; color: inherit; }
 .sd-tabs-all-item.active .sd-tabs-all-dirty { color: inherit; }
 .sd-tabs-all-empty { padding: .4rem .6rem; font-size: .75rem; color: var(--sd-text-muted); }
 
@@ -6938,19 +6943,25 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
    state of this page or of every page of the design. The caret sits flush
    against the button: the toolbar's gap is taken back with a negative
    margin of the same size. */
-.sd-tab-draft .sd-tab-name { font-style: italic; }
+/* The draft pill: 15 px high, corner 6, 9.5 px, the warning-soft ground
+   with warning text. */
 .sd-tab-draft-badge {
     flex: 0 0 auto;
-    padding: 0 .35rem;
-    border: 1px dashed currentColor;
-    border-radius: 999px;
-    color: inherit;
-    font-size: .6rem;
-    line-height: 1.45;
+    display: inline-flex;
+    align-items: center;
+    height: 15px;
+    padding: 0 .4rem;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    background: var(--sd-warning-soft);
+    color: var(--sd-warning);
+    font-size: 9.5px;
+    font-weight: 600;
+    line-height: 1;
 }
 /* A page that goes on the site or comes off it at a set time: a clock in
-   the same pill, solid rather than dashed; the time is its title. */
-.sd-tab-sched-badge { border-style: solid; padding: 0 .3rem; }
+   the same pill, outlined in the tab's ink; the time is its title. */
+.sd-tab-sched-badge { padding: 0 .3rem; border-color: currentColor; background: transparent; color: inherit; }
 .sd-tab-sched-badge .bi { font-size: .62rem; }
 #sd-ajax-save.sd-publish-draft { background: #373e47; border-color: #545d68; }
 #sd-ajax-save.sd-publish-draft:hover { background: #444c56; }
