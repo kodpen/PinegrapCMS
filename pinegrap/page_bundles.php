@@ -330,8 +330,10 @@ foreach ($items as $item) {
     }
 }
 
+$output_preview = '';
+
 if ($waiting && pg_page_bundle_holds($bundle['status'])) {
-    $output_buttons .= '
+    $output_preview = '
         <a class="pg-button pg-button-quiet pg-button-sm" href="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/prototype.php?bundle=' . (int) $bundle['id']) . '" target="_blank" rel="noopener" title="' . h(lang('Look at the drafts of the bundle together: a link to a page it replaces opens the replacement, other links open the site.')) . '"><i class="bi bi-play-circle" aria-hidden="true"></i>' . h(lang('Preview the bundle')) . '</a>';
 }
 
@@ -362,11 +364,13 @@ if ($may_change) {
             </div>',
         '<button type="submit" class="btn btn-solid theme-primary"><i class="bi bi-check-lg me-1" aria-hidden="true"></i>' . h(lang('Save')) . '</button>');
 
-    $output_buttons .= '
+    $output_buttons = '
         <button type="button" class="btn btn-sm btn-solid theme-primary" data-bs-toggle="dialog" data-bs-target="#page_bundle_add_copy"><i class="bi bi-files me-1" aria-hidden="true"></i>' . h(lang('Add a copy of a page')) . '</button>
         <button type="button" class="btn btn-sm btn-outline theme-primary" data-bs-toggle="dialog" data-bs-target="#page_bundle_add_draft"><i class="bi bi-file-earmark-plus me-1" aria-hidden="true"></i>' . h(lang('Add a draft')) . '</button>
         <button type="button" class="btn btn-sm btn-text theme-secondary" data-bs-toggle="dialog" data-bs-target="#page_bundle_settings"><i class="bi bi-gear me-1" aria-hidden="true"></i>' . h(lang('Bundle settings')) . '</button>';
 }
+
+$output_buttons .= $output_preview;
 
 if (pg_page_bundle_may_delete($bundle['status'])) {
     $output_buttons .= '
