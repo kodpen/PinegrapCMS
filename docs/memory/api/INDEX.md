@@ -31,6 +31,7 @@
 - api-dry-run.md: Making an external API write rehearsable (X-Dry-Run or ?dry_run=true): the route flag, where api_dry_run_stop() goes, batch endpoints, the *_check() split, side effects a rehearsal skips
 - api-endpoint-rules.md: Writing an external API endpoint: one route row, one presenter, list paging and batch reads, body checks, nullable fields, error codes, formats, partial updates, mirroring panel changes [decision: decisions-made-schema-9.md]
 - api-experiments.md: The experiments API resource (PX7, #6295; dry_run #8099): list, get with figures and the z-test, start/pause/end via the sheet move (dry_run), experiments:read/write for roles 0-1, two events
+- api-fault-envelope.md: An uncaught Throwable or a fatal error inside integration.php or mcp.php answers 500 server_error as JSON with request_id and X-Request-Id, never PHP's message; the error log line carries the same id
 - api-fediverse.md: GET /fediverse/followers and /fediverse/deliveries (fediverse:read): shapes, paging, the state filter, who may hold the scope; the personal data export and erasure of a Fediverse account
 - api-fields-parameter.md: External API ?fields= on reads: which answers are trimmed row by row (paged listings and GET /webhooks, api_route_returns_listing()) and which as one record
 - api-file-endpoints.md: External API routes that send or take a file: api_send_file() and binary routes, Range/If-Range, multipart form_file uploads, $_FILES outside MCP, the Idempotency-Key fingerprint, picture copies
@@ -88,6 +89,7 @@
 - api-webhook-log-address.md: Site Log lines about an event subscription name its address as scheme and host only (pg_ops_alert_mask_url()): API change and secret renewal, panel stop/resume and removal, given-up delivery
 - api-webhook-queue.md: Outgoing webhook queue (includes/api/outbound/webhooks.php): which subscriptions get an event, held rows for a failing subscription, the retry ladder, retry and the atomic claim of a row
 - api-webhook-stock-events.md: pg_product_stock_changed(): rules, callers, quiet writers, the out_of_stock flag; panel writers announcing product.updated
+- api-webhook-subscription-limit.md: How many event subscriptions one application may hold (50), the one function that holds the number, the 409 too_many_webhooks text, and why 50 subscribers of one event drain [decision: here]
 - application-access-keys.md: Application Access (api_settings.php): rows made and secrets issued through includes/api/keys.php, 24 h grace, keyless rows refused, rows of a higher-ranked owner locked, one OAuth app, per-app logs [decision: here]
 - channel-api-differences.md: Where a /workspace/ route for a channel or its agents still differs from the panel action it mirrors: who may call it, what it lacks, the function it calls
 - channel-api-not-built.md: What of channels and their agents has no API route, on purpose or by its nature (comparison 2026-11-15): private channel opened by an admin, templates, guest links, settings cards [decision: here]

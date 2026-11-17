@@ -201,6 +201,7 @@
 - design-template-magazine-layout.md: Magazine look and shapes: pm- User Styles, fonts and serif body, color-mix() paper, rust accent, sticky pull quote, drop cap resets, vanishing bands, preview placeholders.
 - design-template-magazine-publishing.md: Magazine template publishing: the shared live rule and leak closures, the desk lists, letter names (the contact's display name), author HTML and photos, the staff note's rules for renaming fields.
 - design-template-magazine.md: Long-Read Magazine template (pinegrap-magazine): what it ships, the contract shared with news, what it adds or drops, samples, no "haber", platform limits.
+- design-template-mail-frame-light.md: Every design template's E-mail Frame is data-bs-theme="light" so the 600 px E-mail Card stays light under a dark page theme; the test over all templates (#10070).
 - design-template-marina-pages.md: Marina template 2.0.0: home, berths, the kind pages and arriving on the Marina blocks: the builders, each page's composition, motion, what left, the test
 - design-template-marina.md: Marina template (pinegrap-marina): kinds of berth, rates as words, Charter Boats and Events collections, berth requests, charter enquiries, event entries, no shop, pmn- look, tests.
 - design-template-market.md: Marketplace template (pinegrap-market): makers as a Sellers collection beside the store's catalog, one cart, maker applications and order help followed from the account, pmk- look, tests.
