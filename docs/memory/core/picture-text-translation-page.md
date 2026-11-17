@@ -10,7 +10,7 @@ module: picture_translation
 
 ## Which places are swapped, and which are not?
 - Swapped: an `img`'s or a `source`'s `src` and each `srcset` candidate, an `a`'s or a `link`'s `href`, the `content` of `<meta property="og:image">` (also `:url`, `:secure_url`), `url()` in a `style` attribute (plain, quoted or `&quot;`). Root-relative or on the site's hosts (`pg_picture_tr_hosts()`), right below `PATH`, with a picture extension (`pg_picture_tr_extensions()`); `?w=`, `?f=` and the quote stay.
-- Left alone: `<script>`, `<style>`, `<textarea>`, `<pre>`, `<code>` blocks (the JSON-LD `image`, the variant data's photos), `data-src` and other attributes, other metas, other hosts. The first version leaves them out (`plans/picture-text-translation.md`).
+- Left alone: `<script>`, `<style>`, `<textarea>`, `<pre>`, `<code>` blocks (the JSON-LD `image`, the variant data's photos), `data-src` and other attributes, other metas, other hosts. The first version leaves them out (`picture-text-translation-overview.md`).
 
 ## What does it cost?
 - One `SELECT` a page (`pg_picture_tr_page_sql()`): the named files, their row in the language, the row's picture and whether the file has `file` uses. No document decoded. A page with no picture of the site asks nothing.
