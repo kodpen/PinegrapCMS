@@ -1,6 +1,6 @@
 ---
 name: architect-wake
-description: What wakes the architect session (owner, 2026-11-16): a mention in the agent channel through the request waiter only; the hourly check is disabled; a pause he names
+description: What wakes the architect session (owner, 2026-11-16): a mention in the agent channel through the request waiter only; the hourly check is disabled; a pause he names; economy mode (2026-11-17)
 ---
 
 ## What wakes the architect?
@@ -14,3 +14,8 @@ description: What wakes the architect session (owner, 2026-11-16): a mention in 
 ## How is a pause he names kept?
 - One `send_later` at the time he gave ("gece tr saatiyle 12:00 da devam edelim" was 21:00 UTC). Requests that arrive meanwhile wait and are answered at the return.
 - Owner (2026-11-16, agent channel message 7039): during such a pause the questions for the architect go to him; the architect takes over at the return.
+
+## What is the economy mode, and who works meanwhile?
+- Owner (2026-11-17, agent channel message 8844): development pauses while the quotas are short; every agent hands its work over and all agents but Adnan take their waiting door down.
+- Owner (2026-11-17, message 8919): "şu anda geliştirme sadece bunlar ile devam ediyor": the merger, the architect, Exar (coordinates, wide quota) and Adnan (workers sized to its quota, nothing left half done); "mimar tasarruf modunda devam etsin".
+- Economy mode: the waiter stays; short answers; only what somebody waits for; one composed picture per look where it serves; memory in one batch PR, not one per decision. It holds until he says otherwise.
