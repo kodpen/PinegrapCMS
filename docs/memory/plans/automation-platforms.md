@@ -17,7 +17,7 @@ priority: 4
 - An application's key and secret reach the whole API; with `webhooks:manage` it subscribes to events by itself, signed and tried six times (`api/api-webhook-events.md`). `GET /meta` names the site and `/.well-known/pinegrap.json` leads from its address to its API: no new route is needed to name a connection.
 - An event carries its record's id and little else (`order.created`: `id`, `order_number`); the record is read from its own route.
 - In the way: an application may hold ten subscriptions (409 `too_many_webhooks`) and a platform makes one for each automation; only `/orders` lists the newest first, and a platform's editor shows a trigger's newest records as samples.
-- What an event carries: fields and a sample beside the catalogue for every core event since AU4 and AU5 (`api/api-webhook-event-payloads.md`); the modules' events come with AU6.
+- What an event carries: fields and a sample beside the catalogue for every event, the modules' too, since AU4 to AU6 (`api/api-webhook-event-payloads.md`).
 - The panel lists, stops and removes subscriptions and cannot make one; "New application" offers 60 scopes and no starting point.
 
 ## What is built, and by which steps?

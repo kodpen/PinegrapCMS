@@ -33,6 +33,9 @@ require_once(PG_FUNCTIONS_DIR . '/includes/api/resources/users.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/api/outbound/webhook_payloads.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/api.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api.php');
+foreach (array('tasks', 'flow_run_events', 'messages', 'app_commands', 'groups', 'wtable_shares') as $webhook_payloads_test_file) {
+	require_once(PG_FUNCTIONS_DIR . '/includes/workspace/' . $webhook_payloads_test_file . '.php');
+}
 
 // Every event a subscription may name, the modules' too, whether or not the
 // module is switched on in this run.
@@ -41,21 +44,21 @@ function webhook_payloads_test_catalogue()
 	return api_webhook_core_events() + erp_webhook_events() + ws_webhook_events();
 }
 
-// The events that must have their fields and sample: the core's and the
-// ERP's. The Workspace's are not checked here yet.
+// The events that must have their fields and sample: every one.
 function webhook_payloads_test_in_family($event)
 {
 	static $events = null;
 
 	if ($events === null) {
-		$events = api_webhook_core_events() + erp_webhook_events();
+		$events = webhook_payloads_test_catalogue();
 	}
 
 	return isset($events[$event]);
 }
 
 // The payload functions the announcing code calls, each run on a fixture:
-// the keys it writes are the keys it answers.
+// the keys it writes are the keys it answers. A fixture may take the event,
+// for a function whose keys depend on what its caller hands it.
 function webhook_payloads_test_builders()
 {
 	return array(
@@ -119,6 +122,25 @@ function webhook_payloads_test_builders()
 		'pg_consent_changed_event' => function () {
 			return pg_consent_changed_event(9, array('channel' => 'email', 'purpose' => 'marketing', 'status' => 'granted', 'source' => 'checkout', 'created_at' => 1000), 4);
 		},
+		'ws_task_event_payload' => function () {
+			return ws_task_event_payload(array('id' => 1, 'title' => 'T', 'status' => 'todo', 'priority' => 'normal', 'due_date' => '', 'department_id' => 0, 'channel_id' => 2, 'creator_id' => 3), array(3));
+		},
+		'ws_flow_run_event_body' => function () {
+			return ws_flow_run_event_body(array('id' => 1, 'channel_id' => 2, 'flow_id' => 3), array('flow_name' => 'F'), true, array());
+		},
+		'ws_app_mention_payload' => function () {
+			return ws_app_mention_payload(array('id' => 1, 'sender_kind' => 'user', 'sender_id' => 2, 'parent_id' => 0, 'kind' => 'text', 'body' => 'b', 'task_id' => 0), array('id' => 3, 'name' => 'c', 'kind' => 'public'), null, 4, 't');
+		},
+		'ws_app_command_payload' => function () {
+			return ws_app_command_payload(array('id' => 3, 'name' => 'c', 'kind' => 'public'), null, 4, 'stock', 2, 't', 'b');
+		},
+		'ws_group_event_payload' => function () {
+			return ws_group_event_payload(array('id' => 1, 'name' => 'G', 'parent_id' => 0, 'color' => 0), '');
+		},
+		// Only an update hands it the columns written.
+		'ws_wtable_row_event_body' => function ($event = '') {
+			return ws_wtable_row_event_body(array('id' => 1, 'name' => 'T'), array('id' => 2), array(3), 4, ($event === 'workspace.wtable.row.updated') ? array(5) : array());
+		},
 		'pg_contact_group_members_event' => function () {
 			return pg_contact_group_members_event(3, 'Newsletter', array(4), array());
 		},
@@ -134,6 +156,7 @@ function webhook_payloads_test_helpers()
 		'pg_cart_quote_announce' => array('pg_cart_quote_event_payload', 2),
 		'pg_credit_announce'     => array('pg_credit_event_data', 2),
 		'mp_order_announce'      => array('mp_order_event_payload', 4),
+		'ws_group_announce'      => array('ws_group_event_payload', 2),
 	);
 }
 
@@ -173,7 +196,7 @@ function webhook_payloads_test_dynamic_calls()
 		'includes/fn/subscription_renewal.php'  => 'subscription.',
 		'includes/api/outbound/orders.php'      => 'marketplace.order.',
 		'includes/fn/ecommerce.php'             => 'stock',
-		'includes/workspace/groups.php'         => 'other',
+		'includes/workspace/groups.php'         => '',
 		'includes/fn/experiments_sheet.php'     => 'experiment.',
 		'includes/erp/quotes.php'               => 'erp.quote.',
 	);
@@ -232,78 +255,116 @@ function webhook_payloads_test_arguments(array $tokens, $open)
 	return $arguments;
 }
 
-// What one payload argument writes: the string keys of a literal array at
-// its start, and the functions it calls (a payload function, or one whose
-// answer is added with +).
-function webhook_payloads_test_payload(array $argument)
+// The builder functions an argument of which is laid over what they answer
+// (ws_flow_run_event_body()'s $about), by that argument's place.
+function webhook_payloads_test_builder_arguments()
 {
-	$out = array('keys' => array(), 'calls' => array(), 'literal' => false, 'variable' => '', 'adds' => array());
+	return array('ws_flow_run_event_body' => 3);
+}
+
+// The string keys of the literal array whose array( or [ is at $i, and the
+// place just after it.
+function webhook_payloads_test_literal_keys(array $argument, $i)
+{
+	$keys = array();
+	$i += ($argument[$i] === '[') ? 1 : 2;
+	$depth = 0;
+	$expect = true;
+
+	for ($count = count($argument); $i < $count; $i++) {
+		$text = webhook_payloads_test_text($argument[$i]);
+
+		if (in_array($text, array('(', '['), true)) {
+			$depth++;
+			continue;
+		}
+
+		if (in_array($text, array(')', ']'), true)) {
+			if ($depth === 0) {
+				return array($keys, $i + 1);
+			}
+
+			$depth--;
+			continue;
+		}
+
+		if ($depth > 0) {
+			continue;
+		}
+
+		if ($text === ',') {
+			$expect = true;
+			continue;
+		}
+
+		if ($expect && is_array($argument[$i]) && ($argument[$i][0] === T_CONSTANT_ENCAPSED_STRING)) {
+			$keys[] = stripslashes(substr($argument[$i][1], 1, -1));
+		}
+
+		$expect = false;
+	}
+
+	return array($keys, $i);
+}
+
+// What one payload argument writes, read at its own level: the string keys
+// of its literal arrays (at the start or laid over with +), the keys of a
+// variable laid over with + (read from $tokens, the file, before $line), the
+// functions it calls (a payload function, or one whose answer is added with
+// +), and the keys of a builder's own argument that is laid over its answer.
+// A function called inside a value (a nested task) is not the payload's.
+function webhook_payloads_test_payload(array $argument, array $tokens = array(), $line = 0)
+{
+	$out = array('keys' => array(), 'calls' => array(), 'literal' => false, 'variable' => '');
 
 	if (empty($argument)) {
 		return $out;
 	}
 
-	$first = $argument[0];
-	$i = 0;
-
-	if (is_array($first) && ($first[0] === T_VARIABLE) && (count($argument) === 1)) {
-		$out['variable'] = $first[1];
+	if (is_array($argument[0]) && ($argument[0][0] === T_VARIABLE) && (count($argument) === 1)) {
+		$out['variable'] = $argument[0][1];
 		return $out;
 	}
 
-	if ((is_array($first) && ($first[0] === T_ARRAY)) || ($first === '[')) {
-		$out['literal'] = true;
-		$i = ($first === '[') ? 1 : 2;
-		$depth = 0;
-		$expect = true;
+	$takes = webhook_payloads_test_builder_arguments();
+	$depth = 0;
 
-		for ($count = count($argument); $i < $count; $i++) {
-			$text = webhook_payloads_test_text($argument[$i]);
+	for ($i = 0, $count = count($argument); $i < $count; $i++) {
+		$text = webhook_payloads_test_text($argument[$i]);
+		$starts = ($depth === 0) && (($i === 0) || ($argument[$i - 1] === '+'));
 
-			if (in_array($text, array('(', '['), true)) {
-				$depth++;
-				continue;
-			}
+		if ($starts && ((is_array($argument[$i]) && ($argument[$i][0] === T_ARRAY)) || ($text === '['))) {
+			list($keys, $next) = webhook_payloads_test_literal_keys($argument, $i);
+			$out['keys'] = array_merge($out['keys'], $keys);
+			$out['literal'] = $out['literal'] || ($i === 0);
+			$i = $next - 1;
+			continue;
+		}
 
-			if (in_array($text, array(')', ']'), true)) {
-				if ($depth === 0) {
-					$i++;
-					break;
+		if ($starts && is_array($argument[$i]) && ($argument[$i][0] === T_VARIABLE) && ($i > 0)) {
+			$found = webhook_payloads_test_variable($tokens, $argument[$i][1], $line);
+			$out['keys'] = array_merge($out['keys'], $found['keys']);
+			$out['calls'] = array_merge($out['calls'], $found['calls']);
+			continue;
+		}
+
+		if (($depth === 0) && is_array($argument[$i]) && ($argument[$i][0] === T_STRING) && isset($argument[$i + 1]) && ($argument[$i + 1] === '(')) {
+			$out['calls'][] = $argument[$i][1];
+
+			if (isset($takes[$argument[$i][1]])) {
+				$inner = webhook_payloads_test_arguments($argument, $i + 1);
+				$given = isset($inner[$takes[$argument[$i][1]]]) ? $inner[$takes[$argument[$i][1]]] : array();
+				$found = webhook_payloads_test_payload($given, $tokens, $line);
+
+				if ($found['variable'] !== '') {
+					$found = webhook_payloads_test_variable($tokens, $found['variable'], $line);
 				}
 
-				$depth--;
-				continue;
+				$out['keys'] = array_merge($out['keys'], $found['keys']);
 			}
-
-			if ($depth > 0) {
-				continue;
-			}
-
-			if ($text === ',') {
-				$expect = true;
-				continue;
-			}
-
-			if ($expect && is_array($argument[$i]) && ($argument[$i][0] === T_CONSTANT_ENCAPSED_STRING)) {
-				$out['keys'][] = stripslashes(substr($argument[$i][1], 1, -1));
-			}
-
-			$expect = false;
-		}
-	}
-
-	for ($count = count($argument), $depth = 0; $i < $count - 1; $i++) {
-		if (is_array($argument[$i]) && ($argument[$i][0] === T_STRING) && ($argument[$i + 1] === '(')) {
-			$out['calls'][] = $argument[$i][1];
 		}
 
-		$text = webhook_payloads_test_text($argument[$i]);
 		$depth += (in_array($text, array('(', '['), true) ? 1 : 0) - (in_array($text, array(')', ']'), true) ? 1 : 0);
-
-		// array(…) + $columns: the variable's literal array is laid over.
-		if (($depth === 0) && ($argument[$i] === '+') && is_array($argument[$i + 1]) && ($argument[$i + 1][0] === T_VARIABLE)) {
-			$out['adds'][] = $argument[$i + 1][1];
-		}
 	}
 
 	return $out;
@@ -313,7 +374,7 @@ function webhook_payloads_test_payload(array $argument)
 // file: the stock API builds its payload in a variable first.
 function webhook_payloads_test_variable(array $tokens, $variable, $line)
 {
-	$found = array('keys' => array(), 'calls' => array(), 'literal' => false, 'variable' => '', 'adds' => array());
+	$found = array('keys' => array(), 'calls' => array(), 'literal' => false, 'variable' => '');
 
 	for ($i = 0, $count = count($tokens); $i < $count; $i++) {
 		if (!is_array($tokens[$i]) || ($tokens[$i][0] !== T_VARIABLE) || ($tokens[$i][1] !== $variable) || ($tokens[$i][2] >= $line)) {
@@ -334,7 +395,7 @@ function webhook_payloads_test_variable(array $tokens, $variable, $line)
 			}
 		}
 
-		$found = webhook_payloads_test_payload($argument);
+		$found = webhook_payloads_test_payload($argument, $tokens, $tokens[$i][2]);
 	}
 
 	return $found;
@@ -441,14 +502,10 @@ function webhook_payloads_test_calls()
 			}
 
 			$place = isset($helpers[$token[1]]) ? $helpers[$token[1]][1] : (isset($erp[$token[1]]) ? $erp[$token[1]]['extra'] : 1);
-			$payload = webhook_payloads_test_payload((($place !== null) && isset($arguments[$place])) ? $arguments[$place] : array());
+			$payload = webhook_payloads_test_payload((($place !== null) && isset($arguments[$place])) ? $arguments[$place] : array(), $tokens, $token[2]);
 
 			if ($payload['variable'] !== '') {
 				$payload = webhook_payloads_test_variable($tokens, $payload['variable'], $token[2]);
-			}
-
-			foreach ($payload['adds'] as $variable) {
-				$payload['keys'] = array_merge($payload['keys'], webhook_payloads_test_variable($tokens, $variable, $token[2])['keys']);
 			}
 
 			// The $payload['…'] = keys a helper assigns in its own body.
@@ -482,7 +539,7 @@ function webhook_payloads_test_calls()
 }
 
 // The keys a set of payload functions write, run on their fixtures.
-function webhook_payloads_test_builder_keys(array $functions, $where)
+function webhook_payloads_test_builder_keys(array $functions, $where, $event = '')
 {
 	$builders = webhook_payloads_test_builders();
 	$keys = array();
@@ -492,7 +549,7 @@ function webhook_payloads_test_builder_keys(array $functions, $where)
 			continue;
 		}
 
-		$keys = array_merge($keys, array_keys($builders[$function]()));
+		$keys = array_merge($keys, array_keys($builders[$function]($event)));
 	}
 
 	return $keys;
@@ -513,13 +570,11 @@ function webhook_payloads_test_written()
 			continue;
 		}
 
-		$keys = array_merge($call['payload']['keys'], webhook_payloads_test_builder_keys($call['payload']['calls'], $call['file']));
-
 		foreach (array_keys($events) as $event) {
 			$hit = $call['prefix'] ? (strpos($event, $call['event'][0]) === 0) : in_array($event, $call['event'], true);
 
 			if ($hit && webhook_payloads_test_in_family($event)) {
-				$add($event, $keys);
+				$add($event, array_merge($call['payload']['keys'], webhook_payloads_test_builder_keys($call['payload']['calls'], $call['file'], $event)));
 			}
 		}
 	}
