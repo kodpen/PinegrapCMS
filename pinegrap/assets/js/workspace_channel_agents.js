@@ -448,7 +448,9 @@
             root.classList.remove('d-none');
             // The drawer's other parts keep .form-label titles until the drawer is
             // redrawn; the section's title matches them.
-            var title = root.appendChild(el('div', 'form-label', t('cha_title')));
+            // In a discussion's people panel it is titled as the panel's other
+            // sections are.
+            var title = root.appendChild(discussion ? el('h3', 'ws-panel-kicker mt-5', t('cha_title')) : el('div', 'form-label', t('cha_title')));
             root.appendChild(el('div', 'pg-field-help ws-cha-intro', t('cha_help')));
 
             if (!state.agents.length) {
