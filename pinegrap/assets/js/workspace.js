@@ -21274,7 +21274,7 @@
                 }
 
                 var index = rows.indexOf(item);
-                var row = el('button', 'ws-picker-item' + ((index === 0) ? (argMode ? ' ws-picker-next' : ' active') : ''));
+                var row = el('button', 'ws-picker-item' + ((index === 0) ? (argMode ? ' ws-picker-next' : ' active') : '') + (item.flow ? ' ws-picker-flow-row' : ''));
                 row.type = 'button';
 
                 if (item.glyph) {

@@ -8,6 +8,7 @@ description: The channel's flows in the composer's "/" list and /flow (/akış) 
 - Read once, as the channel opens: `ws_channel_open` answers `flows_here` (bool) and `flows` (the entries); the screen keeps `self.flowsHere` and `self.flowsList` until the channel opens again. "/" reads no server.
 - None in a discussion, an earlier era, a direct message, a mailbox room or a guest channel (`flowsOffered()` in workspace.js).
 - In the list: after the built-in commands, under the header "Flows" (`cmd_flows`), each row "Start this flow" (`cmd_flow_meta`), icon `bi-play-circle`. Filtered by a folded prefix of the name or of a word in it (`flowPickerRows()`, pure); the header goes with the last row (`commandPickerAddFlows()`, pure).
+- The name comes first: a flow's row (`ws-picker-flow-row`, backend.src.css) lets "Start this flow" shrink long before the name is cut, and hides it under 576px. Architect (2026-11-17, agent channel 9133).
 
 ## What does a pick or Enter do?
 - What Start a flow does: the typed "/…" goes, the flow is asked (`fl_run_ask`) and started by `startFlowHere()` → panel action `ws_flow_run_start` with the channel and a start token. The rights and refusals are `ws_flow_run_start()`'s. No new action or route.

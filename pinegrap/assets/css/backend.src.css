@@ -17795,6 +17795,19 @@ a.ws-chip-message:hover,
   white-space: nowrap;
   max-width: 45%;
 }
+/* A flow of the "/" list or of /flow's list: the name is what the row is
+   for, so "Start this flow" gives way first (it shrinks long before the
+   name is cut) and goes on a phone. */
+.ws-picker-flow-row .ws-picker-meta {
+  flex: 0 1000 auto;
+  min-width: 0;
+  margin-left: auto;
+}
+@media (max-width: 575.98px) {
+  .ws-picker-flow-row .ws-picker-meta {
+    display: none;
+  }
+}
 /* A label with a second line under it (a slash command and its example). */
 .ws-picker-item .ws-picker-text {
   display: flex;

@@ -278,3 +278,19 @@ function test_workspace_command_flow_customer_channel_contact()
 	pg_assert_contains("ws_flow_run_channel_contact(\$viewer, ws_channel(\$fields['channel_id']))", $case, 'the composer\'s start names the customer');
 	pg_assert_contains("!isset(\$fields['contact_id'])", $case, 'a customer picked on the canvas stays');
 }
+
+// A flow's row is about its name: "Start this flow" shrinks long before the
+// name is cut, and goes on a phone.
+function test_workspace_command_flow_row_name_comes_first()
+{
+	$draw = workspace_command_flow_test_js_method('drawPicker');
+
+	pg_assert_contains("(item.flow ? ' ws-picker-flow-row' : '')", $draw, 'a flow\'s row is marked');
+
+	$css = workspace_command_flow_test_source('assets/css/backend.src.css');
+	$start = strpos($css, '.ws-picker-flow-row .ws-picker-meta {');
+
+	pg_assert_true($start !== false, 'the hint of a flow\'s row has its own rule');
+	pg_assert_contains('flex: 0 1000 auto;', substr($css, $start, 120), 'the hint gives way first');
+	pg_assert_contains("@media (max-width: 575.98px) {\n  .ws-picker-flow-row .ws-picker-meta {\n    display: none;", $css, 'and goes on a phone');
+}
