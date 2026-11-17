@@ -54,7 +54,7 @@
     --sd-segment-shadow: 0 3px 8px -3px rgba(37,99,235,.8);
 
     --sd-left-width: 250px;
-    --sd-right-width: 260px;
+    --sd-right-width: 336px;
 }
 /* Re-style body typography for dark mode */
 .sd-wrapper {
@@ -456,6 +456,40 @@
 .sd-panel-bottom.collapsed { height: 28px !important; overflow: hidden; }
 .sd-panel-bottom.sd-resizing { transition: none; }
 
+/* Closed, the panel is one thin strip: the chevron and the three column
+   names; nothing inside is drawn and a click anywhere on it opens it. The
+   docked panel keeps its own three strips. */
+.sd-panel-bottom.collapsed:not(.sd-docked) {
+    cursor: pointer;
+    border-top: 1px solid var(--sd-panel-border);
+}
+.sd-panel-bottom.collapsed:not(.sd-docked) .sd-bp-grid {
+    display: flex; align-items: center;
+    padding: 0 .5rem;
+}
+.sd-panel-bottom.collapsed:not(.sd-docked) .sd-bp-quad {
+    flex: 0 0 auto; flex-direction: row; align-items: center;
+    background: transparent;
+}
+.sd-panel-bottom.collapsed:not(.sd-docked) .sd-bp-quad-hdr {
+    min-height: 0; padding: 0 .4rem;
+    background: transparent; border-bottom: 0;
+    font-size: .68rem; color: var(--sd-label);
+}
+.sd-panel-bottom.collapsed:not(.sd-docked):hover .sd-bp-quad-hdr { color: var(--sd-text); }
+.sd-panel-bottom.collapsed:not(.sd-docked) .sd-bp-quad-bl::before,
+.sd-panel-bottom.collapsed:not(.sd-docked) .sd-bp-quad-tr::before {
+    content: '\00b7'; color: var(--sd-text-muted); font-weight: 700;
+}
+.sd-panel-bottom.collapsed:not(.sd-docked) .sd-bp-quad-body,
+.sd-panel-bottom.collapsed:not(.sd-docked) .sd-bp-grid-col-resize,
+.sd-panel-bottom.collapsed:not(.sd-docked) .sd-bp-quad-spacer,
+.sd-panel-bottom.collapsed:not(.sd-docked) .sd-attrs-elem-badge,
+.sd-panel-bottom.collapsed:not(.sd-docked) .sd-styles-tool,
+.sd-panel-bottom.collapsed:not(.sd-docked) .sd-styles-find,
+.sd-panel-bottom.collapsed:not(.sd-docked) .sd-bp-quad-hdr > .bi:not(.sd-bp-collapse) { display: none; }
+.sd-panel-bottom.collapsed:not(.sd-docked) .sd-bp-collapse { order: -1; padding: 0 .4rem 0 0; }
+
 /* ── Vertical resize handle (resizes the bottom panel up/down) ──
    The panel's top edge owns a strip 4px above the line and 5px below it,
    above the canvas, across the whole width: grabbing the line anywhere
@@ -490,9 +524,11 @@
 .sd-bp-collapse {
     cursor: pointer; font-size: .85rem; color: var(--sd-text-muted);
     padding: 0 .65rem; flex-shrink: 0;
+    background: transparent; border: 0; line-height: 1;
     transition: color .12s;
 }
 .sd-bp-collapse:hover { color: var(--sd-text); }
+.sd-bp-collapse:focus-visible { outline: 0; box-shadow: var(--sd-focus-ring); border-radius: 4px; }
 
 /* ── Bottom Body: 2 kolon ── */
 .sd-bp-body {
@@ -786,6 +822,36 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
     overflow: hidden; flex-shrink:0;
     display: flex; flex-direction: column;
 }
+/* The column's two tabs, Options and Design, are its header; each pane
+   takes the whole height under them. */
+.sd-panel-header.sd-rcol-head {
+    min-height: 40px; padding: 0 .25rem 0 0;
+    text-transform: none; letter-spacing: 0;
+    background: var(--sd-input-bg);
+}
+.sd-rcol-tabs { display: flex; align-self: stretch; min-width: 0; }
+.sd-rcol-tab {
+    display: inline-flex; align-items: center; gap: .4rem;
+    padding: 0 .9rem; min-width: 0;
+    background: transparent; border: 0;
+    border-right: 1px solid var(--sd-panel-border);
+    color: var(--sd-text-muted);
+    font-size: 12.5px; font-weight: 600; white-space: nowrap;
+    cursor: pointer;
+}
+.sd-panel-header .sd-rcol-tab .bi { font-size: .8rem; }
+.sd-rcol-tab:hover { color: var(--sd-text); background: color-mix(in srgb, var(--sd-text) 4%, transparent); }
+.sd-rcol-tab.active { color: var(--sd-text); background: var(--sd-panel-bg); font-weight: 630; }
+.sd-rcol-tab:focus-visible { outline: 0; box-shadow: inset 0 0 0 2px var(--sd-accent); }
+.sd-rcol-tab[hidden],
+.sd-rail-btn[hidden] { display: none; }
+.sd-rcol-tab-txt { overflow: hidden; text-overflow: ellipsis; }
+/* Under 300 px a tab carries no icon. */
+.sd-rcol-narrow .sd-rcol-tab { padding: 0 .7rem; }
+.sd-rcol-narrow .sd-rcol-head .sd-rcol-tab .bi { display: none; }
+.sd-rcol-pane { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.sd-rcol-pane[hidden] { display: none; }
+
 /* Inner scrollable properties area */
 #sd-properties {
     flex: 1;
@@ -5031,9 +5097,8 @@ body.sd-resizing * { cursor: col-resize !important; }
    ASSETS PANEL — vertical list (Bootstrap Studio style)
    ============================================================ */
 #sd-assets-panel {
-    flex-shrink: 0;
-    border-top: 1px solid var(--sd-panel-border);
-    background: #1c2128;
+    flex: 1 1 auto;
+    background: var(--sd-panel-bg);
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -5047,20 +5112,9 @@ body.sd-resizing * { cursor: col-resize !important; }
     min-height: 0;
 }
 #sd-assets-body::-webkit-scrollbar { width: 4px; }
-#sd-assets-body::-webkit-scrollbar-track { background: #1c2128; }
-#sd-assets-body::-webkit-scrollbar-thumb { background: #30363d; border-radius: 2px; }
+#sd-assets-body::-webkit-scrollbar-track { background: var(--sd-panel-bg); }
+#sd-assets-body::-webkit-scrollbar-thumb { background: var(--sd-panel-border); border-radius: 2px; }
 
-/* Resize handle */
-.sd-assets-resize {
-    height: 5px;
-    cursor: ns-resize;
-    background: transparent;
-    flex-shrink: 0;
-    transition: background .15s;
-    z-index: 1;
-}
-.sd-assets-resize:hover,
-body.sd-resizing-v .sd-assets-resize { background: var(--sd-panel-border); }
 body.sd-resizing-v { cursor: ns-resize !important; -webkit-user-select: none; user-select: none; }
 
 /* Section */
@@ -5460,7 +5514,6 @@ textarea.sd-as-co-input { resize: vertical; min-height: 38px; }
    animate under it either. */
 .sd-panel-bottom.sd-resizing,
 .sd-panel-bottom.sd-resizing.collapsed { transition: none; }
-#sd-assets-panel { transition: height .2s cubic-bezier(.4,0,.2,1); }
 
 
 /* ── HTML tree node type colors ── */

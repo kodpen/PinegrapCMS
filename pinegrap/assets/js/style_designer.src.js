@@ -3528,6 +3528,7 @@ const StyleDesigner = (function () {
         selectedNode  = ref;
         selectedNodes = [];
         if (typeof expandAncestorsAnywhere === 'function') expandAncestorsAnywhere(ref);
+        _sdRcolShow('options');
         _sdSelectRender();
         setTimeout(function () {
             var anchor = document.getElementById(anchorId);
@@ -9641,7 +9642,7 @@ const StyleDesigner = (function () {
     // the panel's own function decides what to do.
     function _sdPanelHidden(host) {
         if (!host) return false;
-        if (host.closest && host.closest('.sd-panel-bottom.collapsed')) return true;
+        if (host.closest && host.closest('.sd-panel-bottom.collapsed:not(.sd-docked)')) return true;
         return !(host.getClientRects && host.getClientRects().length);
     }
 
@@ -24902,21 +24903,75 @@ const StyleDesigner = (function () {
         });
     }
 
-    // ========================= LEFT PANEL =========================
+    // ========================= RIGHT COLUMN =========================
+    // Two tabs over the whole height of the column: Options (the selected
+    // element's panel) and Design (the design's style sheets, scripts, fonts
+    // and themes, initAssetsPanel()). The tab strip is the column's header,
+    // so the dock toggle sits at its end and the docked rail is made from
+    // it (_sdBuildRail()).
+    var _SD_RCOL_TABS = ['options', 'design'];
+
     function initRightPanel() {
         var outer = document.getElementById('sd-panel-right');
         if (!outer) return;
+        var props = document.getElementById('sd-properties');
         var header = document.createElement('div');
-        header.className = 'sd-panel-header';
-        header.innerHTML = '<span class="bi bi-sliders me-1"></span>' + esc(_sdT('Options')) + '';
+        header.className = 'sd-panel-header sd-rcol-head';
+        header.innerHTML =
+            '<div class="sd-rcol-tabs" id="sd-rcol-tabs" role="tablist">' +
+                '<button type="button" class="sd-rcol-tab active" id="sd-rcol-tab-options" data-rcol-tab="options" role="tab" aria-selected="true" aria-controls="sd-rcol-options">' +
+                    '<span class="bi bi-sliders" aria-hidden="true"></span><span class="sd-rcol-tab-txt">' + esc(_sdT('Options')) + '</span></button>' +
+                '<button type="button" class="sd-rcol-tab" id="sd-rcol-tab-design" data-rcol-tab="design" role="tab" aria-selected="false" aria-controls="sd-rcol-design" tabindex="-1">' +
+                    '<span class="bi bi-file-code" aria-hidden="true"></span><span class="sd-rcol-tab-txt">' + esc(_sdT('Design')) + '</span></button>' +
+            '</div>';
+        var optPane = document.createElement('div');
+        optPane.id = 'sd-rcol-options';
+        optPane.className = 'sd-rcol-pane';
+        optPane.setAttribute('role', 'tabpanel');
+        optPane.setAttribute('aria-labelledby', 'sd-rcol-tab-options');
+        var designPane = document.createElement('div');
+        designPane.id = 'sd-rcol-design';
+        designPane.className = 'sd-rcol-pane';
+        designPane.setAttribute('role', 'tabpanel');
+        designPane.setAttribute('aria-labelledby', 'sd-rcol-tab-design');
+        designPane.hidden = true;
         var searchWrap = document.createElement('div');
         searchWrap.className = 'sd-props-search-wrap';
         searchWrap.innerHTML =
             '<span class="bi bi-search"></span>' +
             '<input type="text" id="sd-props-search" placeholder="' + esc(_sdT('Search...')) + '" autocomplete="off">';
-        // Insert before #sd-properties (which is the first child)
-        outer.insertBefore(searchWrap, outer.firstChild);
-        outer.insertBefore(header, outer.firstChild);
+        optPane.appendChild(searchWrap);
+        if (props) optPane.appendChild(props);
+        outer.insertBefore(designPane, outer.firstChild);
+        outer.insertBefore(optPane, designPane);
+        outer.insertBefore(header, optPane);
+
+        var tabs = header.querySelector('#sd-rcol-tabs');
+        tabs.addEventListener('click', function (e) {
+            var btn = e.target.closest ? e.target.closest('.sd-rcol-tab') : null;
+            if (btn) _sdRcolShow(btn.getAttribute('data-rcol-tab'));
+        });
+        // Left and Right move between the tabs, as in a tab list.
+        tabs.addEventListener('keydown', function (e) {
+            if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+            var open = Array.prototype.filter.call(tabs.querySelectorAll('.sd-rcol-tab'), function (t) { return !t.hidden; });
+            var at = open.indexOf(document.activeElement);
+            if (at === -1 || open.length < 2) return;
+            e.preventDefault();
+            var next = open[(at + (e.key === 'ArrowRight' ? 1 : open.length - 1)) % open.length];
+            _sdRcolShow(next.getAttribute('data-rcol-tab'));
+            next.focus();
+        });
+
+        // Under 300 px the column draws its narrow form (sd-rcol-narrow): its
+        // width, not the window's, decides, as a drag can make it narrow
+        // on any screen.
+        if (typeof ResizeObserver === 'function') {
+            new ResizeObserver(function () {
+                var w = outer.getBoundingClientRect().width;
+                if (w > 0) outer.classList.toggle('sd-rcol-narrow', w < 300);
+            }).observe(outer);
+        }
 
         var inp = document.getElementById('sd-props-search');
         if (inp) {
@@ -24924,6 +24979,23 @@ const StyleDesigner = (function () {
                 filterPropertiesPanel(this.value.trim());
             });
         }
+    }
+
+    // Shows tab `key` of the right column ('options' or 'design').
+    function _sdRcolShow(key) {
+        if (_SD_RCOL_TABS.indexOf(key) === -1) return;
+        _SD_RCOL_TABS.forEach(function (k) {
+            var tab = document.getElementById('sd-rcol-tab-' + k);
+            var pane = document.getElementById('sd-rcol-' + k);
+            var on = (k === key);
+            if (tab) {
+                tab.classList.toggle('active', on);
+                tab.setAttribute('aria-selected', on ? 'true' : 'false');
+                tab.tabIndex = on ? 0 : -1;
+            }
+            if (pane) pane.hidden = !on;
+        });
+        _sdRailSyncRight();
     }
 
     // The line under the Options search box that says nothing matched; made
@@ -26606,6 +26678,13 @@ const StyleDesigner = (function () {
 
 
     // ========================= BOTTOM PANEL (HTML TREE ║ ATTRIBUTES) =========================
+    // Whether the bottom panel opens, from what this browser kept under
+    // pinegrap_designer_bp_collapsed: '0' when it was last left open. A
+    // browser that never chose, or any other value, gets the closed strip.
+    function _sdBpOpenRead(stored) {
+        return typeof stored === 'string' && stored.trim() === '0';
+    }
+
     function initBottomPanel() {
         // Append to .sd-canvas-wrapper (NOT to sd-canvas!)
         // createCanvasIframe() → the panel survives when #sd-canvas.innerHTML is reset.
@@ -26636,7 +26715,7 @@ const StyleDesigner = (function () {
                     '<div class="sd-bp-quad-hdr">' +
                         '<span class="bi bi-code-slash me-1"></span>' + esc(_sdT('HTML')) + '' +
                         '<span class="sd-bp-quad-spacer"></span>' +
-                        '<span class="bi bi-chevron-down sd-panel-caret sd-bp-collapse" id="sd-bp-collapse" title="' + esc(_sdT('Collapse/Expand')) + '"></span>' +
+                        '<button type="button" class="bi bi-chevron-down sd-panel-caret sd-bp-collapse" id="sd-bp-collapse" title="' + esc(_sdT('Collapse/Expand')) + '" aria-label="' + esc(_sdT('Collapse/Expand')) + '" aria-controls="sd-bottom-panel" aria-expanded="true"></button>' +
                     '</div>' +
                     '<div class="sd-bp-quad-body">' +
                         '<div class="sd-html-tree" id="sd-html-tree">' +
@@ -26684,21 +26763,41 @@ const StyleDesigner = (function () {
         // The code view's switch and host live in the HTML column.
         _sdCodeInit();
 
-        // ── Collapse/expand: header click or button click ──
+        // ── Open or closed ──
+        // Closed, the panel is a thin strip naming its three columns and
+        // nothing inside it is drawn (_sdPanelHidden()); the whole strip
+        // opens it. Open or closed is kept in this browser; one that never
+        // chose starts closed (_sdBpOpenRead()).
         var colBtn = document.getElementById('sd-bp-collapse');
-        var bpHdr  = p.querySelector('.sd-panel-bottom-header');
         var _BP_COL_KEY = 'pinegrap_designer_bp_collapsed';
+        function _bpShowState() {
+            var shut = p.classList.contains('collapsed');
+            if (colBtn) {
+                colBtn.classList.toggle('bi-chevron-up', shut);
+                colBtn.classList.toggle('bi-chevron-down', !shut);
+                colBtn.setAttribute('aria-expanded', shut ? 'false' : 'true');
+            }
+        }
+        function _bpRemember() {
+            try { localStorage.setItem(_BP_COL_KEY, p.classList.contains('collapsed') ? '1' : '0'); } catch(e) {}
+        }
         function _toggleBpCollapse() {
             p.classList.toggle('collapsed');
             var isNowCollapsed = p.classList.contains('collapsed');
-            if (colBtn) { colBtn.classList.toggle('bi-chevron-up', isNowCollapsed); colBtn.classList.toggle('bi-chevron-down', !isNowCollapsed); }
-            try { localStorage.setItem(_BP_COL_KEY, isNowCollapsed ? '1' : '0'); } catch(e) {}
+            _bpShowState();
+            _bpRemember();
             if (!isNowCollapsed) _sdPanelsFlush();
         }
-        // Restore collapsed state
-        try { if (localStorage.getItem(_BP_COL_KEY) === '1') { p.classList.add('collapsed'); if (colBtn) { colBtn.classList.remove('bi-chevron-down'); colBtn.classList.add('bi-chevron-up'); } } } catch(e) {}
+        var _bpStored = null;
+        try { _bpStored = localStorage.getItem(_BP_COL_KEY); } catch(e) {}
+        if (!_sdBpOpenRead(_bpStored)) p.classList.add('collapsed');
+        _bpShowState();
         if (colBtn) { colBtn.addEventListener('click', function(e) { e.stopPropagation(); _toggleBpCollapse(); }); }
-        if (bpHdr) { bpHdr.style.cursor = 'pointer'; bpHdr.addEventListener('click', function(e) { if (!e.target.closest('button')) _toggleBpCollapse(); }); }
+        p.addEventListener('click', function (e) {
+            if (!p.classList.contains('collapsed') || p.classList.contains('sd-docked')) return;
+            if (e.target.closest && e.target.closest('#sd-bp-vresize, #sd-bp-collapse')) return;
+            _toggleBpCollapse();
+        });
 
         // ── Vertical resize (snap-to-collapse) ──
         var _BP_SNAP_THRESHOLD = 60;
@@ -26765,14 +26864,13 @@ const StyleDesigner = (function () {
                         p.classList.add('collapsed');
                     } else {
                         p.classList.remove('collapsed');
-                        colBtn.classList.remove('bi-chevron-up'); colBtn.classList.add('bi-chevron-down');
                         p.style.height = Math.max(80, newH) + 'px';
                     }
                 }, function () {
                     p.classList.remove('sd-resizing');
-                    if (p.classList.contains('collapsed')) {
-                        colBtn.classList.remove('bi-chevron-down'); colBtn.classList.add('bi-chevron-up');
-                    }
+                    _bpShowState();
+                    _bpRemember();
+                    if (!p.classList.contains('collapsed')) _sdPanelsFlush();
                     saveLayout();
                 });
             });
@@ -26781,12 +26879,13 @@ const StyleDesigner = (function () {
                 if (p.classList.contains('collapsed')) {
                     p.classList.remove('collapsed');
                     p.style.height = _BP_EXPAND_DEFAULT + 'px';
-                    colBtn.classList.remove('bi-chevron-up'); colBtn.classList.add('bi-chevron-down');
+                    _sdPanelsFlush();
                 } else {
                     p.classList.add('collapsed');
                     p.style.height = '';
-                    colBtn.classList.remove('bi-chevron-down'); colBtn.classList.add('bi-chevron-up');
                 }
+                _bpShowState();
+                _bpRemember();
                 saveLayout();
             });
         }
@@ -27102,6 +27201,7 @@ const StyleDesigner = (function () {
     function focusClassControl(cls) {
         var ctrl = findControlForClass(cls);
         if (!ctrl) return;
+        _sdRcolShow('options');
         // Scroll the properties panel to the control
         ctrl.scrollIntoView({ behavior: 'smooth', block: 'center' });
         // Highlight
@@ -56149,7 +56249,11 @@ const StyleDesigner = (function () {
         var bottomP    = document.getElementById('sd-bottom-panel');
         var attrsCol   = document.getElementById('sd-bp-attrs-col');
         if (leftPanel)  layout.leftW      = leftPanel.offsetWidth;
-        if (rightPanel) layout.rightW     = rightPanel.offsetWidth;
+        // Only a width the user dragged: the inline variable is set by the
+        // column's drag and by loadLayout(), never by the default.
+        var rightW = parseInt(document.documentElement.style.getPropertyValue('--sd-right-width'), 10);
+        if (rightPanel && rightW) layout.rightW = rightW;
+        layout.v = 2;
         if (compSec && compSec.style.height) layout.leftSplit  = parseInt(compSec.style.height, 10) || null;
         if (bottomP && bottomP.style.height) layout.bottomH    = parseInt(bottomP.style.height, 10) || null;
         if (attrsCol && attrsCol.style.width) layout.attrsW    = parseInt(attrsCol.style.width,  10) || null;
@@ -56161,7 +56265,8 @@ const StyleDesigner = (function () {
             var saved = JSON.parse(localStorage.getItem(SD_LAYOUT_KEY) || 'null');
             if (!saved) return;
             if (saved.leftW)  document.documentElement.style.setProperty('--sd-left-width',  saved.leftW  + 'px');
-            if (saved.rightW) document.documentElement.style.setProperty('--sd-right-width', saved.rightW + 'px');
+            var rightW = _sdLayoutRightWidth(saved);
+            if (rightW) document.documentElement.style.setProperty('--sd-right-width', rightW + 'px');
             // Deferred so the panels are fully built before we apply heights
             setTimeout(function() {
                 if (saved.leftSplit) {
@@ -56180,6 +56285,18 @@ const StyleDesigner = (function () {
                 }
             }, 0);
         } catch(e) {}
+    }
+
+    // The right column's width a drag kept in the stored layout `saved`, or
+    // 0 for the default. A layout saved before it carried `v: 2` held the
+    // column's width on every save, dragged or not, so the two old defaults
+    // there (260, and 240 at 1024 px and below) are not a choice. A value
+    // outside the drag's bounds (200 to 600) is none.
+    function _sdLayoutRightWidth(saved) {
+        var w = saved ? parseInt(saved.rightW, 10) : 0;
+        if (!w || w < 200 || w > 600) return 0;
+        if (!(saved.v >= 2) && (w === 260 || w === 240)) return 0;
+        return w;
     }
 
     function resetLayout() {
@@ -56201,9 +56318,6 @@ const StyleDesigner = (function () {
     // Data flows through hidden form fields: #sd-custom-css-field, #sd-custom-js-field,
     // #sd-custom-fonts-field — submitted with the rest of the style form on Save.
 
-    var _assetsH = 220;   // panel height in px (persisted to localStorage)
-    var _ASSETS_H_KEY = 'sd_assets_h';
-
     function _getCustomField(id) {
         var el = document.getElementById(id);
         return el ? el.value : '';
@@ -56215,11 +56329,12 @@ const StyleDesigner = (function () {
     }
 
     function initAssetsPanel() {
-        var rightPanel = document.getElementById('sd-panel-right');
+        // The right column's Design tab; the column itself on a screen
+        // without the tabs.
+        var rightPanel = document.getElementById('sd-rcol-design') || document.getElementById('sd-panel-right');
         if (!rightPanel) return;
-
-        try { _assetsH = parseInt(localStorage.getItem(_ASSETS_H_KEY), 10) || 300; } catch(e) {}
-        _assetsH = Math.min(Math.max(_assetsH, 100), 700);
+        // The panel's height and fold of the time it sat under Options.
+        try { localStorage.removeItem('sd_assets_h'); localStorage.removeItem('sd_assets_h_col'); } catch(e) {}
 
         // ── ID generator ──────────────────────────────────────────────────────
         var _idCtr = Date.now();
@@ -56561,13 +56676,7 @@ const StyleDesigner = (function () {
         // ── Build panel HTML ──────────────────────────────────────────────────
         var wrap = document.createElement('div');
         wrap.id = 'sd-assets-panel';
-        wrap.style.height = _assetsH + 'px';
         wrap.innerHTML =
-            '<div id="sd-assets-resize" class="sd-assets-resize sd-left-vsep" title="' + esc(_sdT('Double-click to collapse/expand')) + '"></div>' +
-            '<div class="sd-panel-header sd-assets-header" id="sd-assets-header" style="cursor:pointer">' +
-                '<span class="bi bi-file-code me-1"></span><span id="sd-assets-header-title">' + esc(_sdT('Design')) + '</span>' +
-                '<span class="bi bi-chevron-down sd-panel-caret" id="sd-assets-caret"></span>' +
-            '</div>' +
             // Top-level tabs: Design ↔ Themes. Mirrors the left panel's
             // `sd-panel-tabs` look so the two ends of the editor feel
             // consistent. Active tab swaps the body between #sd-tab-design
@@ -57875,9 +57984,6 @@ const StyleDesigner = (function () {
                 var tPane = document.getElementById('sd-tab-themes');
                 if (dPane) dPane.style.display = (tab === 'design') ? '' : 'none';
                 if (tPane) tPane.style.display = (tab === 'themes') ? '' : 'none';
-                // Update header title to mirror the active tab
-                var hdrTitle = document.getElementById('sd-assets-header-title');
-                if (hdrTitle) hdrTitle.textContent = (tab === 'themes') ? _sdT('Themes') : _sdT('Design');
                 // Re-render the Theme panel when switching to it — picks up
                 // any changes the bottom Styles panel made while we were
                 // looking at the Design tab.
@@ -57903,82 +58009,6 @@ const StyleDesigner = (function () {
                 else showHdrCtx(t, e.clientX, e.clientY);
             });
         });
-
-        // ── Resize handle (with snap-to-collapse) ──────────────────────────────
-        var _ASSETS_SNAP_THRESHOLD = 80;
-        var _ASSETS_COLLAPSE_H    = 32; // header-only height when collapsed
-        var _ASSETS_EXPAND_H      = 220;
-        var _assetsCollapsed = false;
-
-        function _setAssetsCollapsed(collapsed) {
-            _assetsCollapsed = collapsed;
-            var caret = document.getElementById('sd-assets-caret');
-            if (collapsed) {
-                wrap.classList.add('sd-assets-collapsed');
-                wrap.style.height = _ASSETS_COLLAPSE_H + 'px';
-                if (caret) { caret.classList.remove('bi-chevron-down'); caret.classList.add('bi-chevron-up'); }
-            } else {
-                wrap.classList.remove('sd-assets-collapsed');
-                wrap.style.height = _assetsH + 'px';
-                if (caret) { caret.classList.remove('bi-chevron-up'); caret.classList.add('bi-chevron-down'); }
-            }
-            try { localStorage.setItem(_ASSETS_H_KEY + '_col', collapsed ? '1' : '0'); } catch(e) {}
-        }
-
-        // Restore collapsed state
-        try { if (localStorage.getItem(_ASSETS_H_KEY + '_col') === '1') _setAssetsCollapsed(true); } catch(e) {}
-
-        var _drag = false, _dragStartY = 0, _dragStartH = 0;
-        var resizeHandle = document.getElementById('sd-assets-resize');
-        if (resizeHandle) {
-            resizeHandle.addEventListener('mousedown', function(e) {
-                _drag = true; _dragStartY = e.clientY;
-                _dragStartH = _assetsCollapsed ? _ASSETS_EXPAND_H : _assetsH;
-                document.body.classList.add('sd-resizing-v'); e.preventDefault();
-            });
-            document.addEventListener('mousemove', function(e) {
-                if (!_drag) return;
-                var newH = Math.min(Math.max(_dragStartH + (_dragStartY - e.clientY), 20), 700);
-                if (newH < _ASSETS_SNAP_THRESHOLD) {
-                    wrap.style.height = _ASSETS_COLLAPSE_H + 'px';
-                } else {
-                    wrap.classList.remove('sd-assets-collapsed');
-                    _assetsH = newH;
-                    wrap.style.height = newH + 'px';
-                }
-            });
-            document.addEventListener('mouseup', function() {
-                if (!_drag) return;
-                _drag = false;
-                document.body.classList.remove('sd-resizing-v');
-                var curH = parseInt(wrap.style.height, 10) || _assetsH;
-                if (curH < _ASSETS_SNAP_THRESHOLD) {
-                    _setAssetsCollapsed(true);
-                } else {
-                    _assetsCollapsed = false;
-                    wrap.classList.remove('sd-assets-collapsed');
-                    try { localStorage.setItem(_ASSETS_H_KEY, _assetsH); localStorage.setItem(_ASSETS_H_KEY + '_col', '0'); } catch(e) {}
-                }
-            });
-            // Double-click: toggle collapse
-            resizeHandle.addEventListener('dblclick', function() {
-                if (_assetsCollapsed) {
-                    _assetsH = _ASSETS_EXPAND_H;
-                    _setAssetsCollapsed(false);
-                } else {
-                    _setAssetsCollapsed(true);
-                }
-            });
-        }
-
-        // Header click: toggle collapse
-        var _assetsHdr = document.getElementById('sd-assets-header');
-        if (_assetsHdr) {
-            _assetsHdr.addEventListener('click', function() {
-                if (_assetsCollapsed) { _assetsH = _ASSETS_EXPAND_H; _setAssetsCollapsed(false); }
-                else { _setAssetsCollapsed(true); }
-            });
-        }
 
         // ── Initial render ────────────────────────────────────────────────────
         renderFileList('css');
@@ -58288,9 +58318,9 @@ const StyleDesigner = (function () {
     var _sdDockForced = false;
     var _sdDockResizeTimer = null;
 
-    // Rail icons mirror the palette tab strip so the rail reads the same
-    // way the open panel does.
-    var _SD_RAIL_ICONS = { components: 'bi-puzzle', shared: 'bi-puzzle-fill', system: 'bi-cpu' };
+    // Rail icons mirror the palette tab strip and the right column's tabs,
+    // so the rail reads the same way the open panel does.
+    var _SD_RAIL_ICONS = { components: 'bi-puzzle', shared: 'bi-puzzle-fill', system: 'bi-cpu', options: 'bi-sliders', design: 'bi-file-code' };
 
     function _sdDockBody() { return document.querySelector('.sd-body'); }
 
@@ -58397,6 +58427,15 @@ const StyleDesigner = (function () {
         });
     }
 
+    function _sdRailSyncRight() {
+        var act = document.querySelector('#sd-rcol-tabs .sd-rcol-tab.active');
+        var key = act ? act.getAttribute('data-rcol-tab') : '';
+        document.querySelectorAll('#sd-rail-right .sd-rail-btn').forEach(function (b) {
+            b.classList.toggle('active', b.getAttribute('data-rail-tab') === key);
+            b.hidden = !!(b._sdTab && b._sdTab.hidden);
+        });
+    }
+
     function _sdBuildRail(side) {
         var rail = document.createElement('div');
         rail.id = 'sd-rail-' + side;
@@ -58430,7 +58469,29 @@ const StyleDesigner = (function () {
             lbl.textContent = _sdT('Components');
             rail.appendChild(lbl);
         } else {
-            rail.appendChild(_sdRailFallbackBtn('right', 'bi-sliders', _sdT('Options')));
+            var rtabs = document.querySelectorAll('#sd-rcol-tabs .sd-rcol-tab');
+            if (rtabs.length) {
+                rtabs.forEach(function (t) {
+                    var key = t.getAttribute('data-rcol-tab') || '';
+                    var b = document.createElement('button');
+                    b.type = 'button';
+                    b.className = 'sd-rail-btn bi ' + (_SD_RAIL_ICONS[key] || 'bi-grid');
+                    b.title = (t.textContent || '').replace(/\s+/g, ' ').trim();
+                    b.setAttribute('aria-label', b.title);
+                    b.setAttribute('data-rail-tab', key);
+                    b._sdTab = t;
+                    b.addEventListener('click', function () {
+                        var body = _sdDockBody();
+                        var isOpen = !!(body && body.classList.contains('sd-open-right'));
+                        var isActive = t.classList.contains('active');
+                        if (!isActive) _sdRcolShow(key);
+                        _sdDockSetOpen('right', !(isOpen && isActive));
+                    });
+                    rail.appendChild(b);
+                });
+            } else {
+                rail.appendChild(_sdRailFallbackBtn('right', 'bi-sliders', _sdT('Options')));
+            }
             var rlbl = document.createElement('span');
             rlbl.className = 'sd-rail-label';
             rlbl.textContent = _sdT('Options');
@@ -58547,6 +58608,7 @@ const StyleDesigner = (function () {
         window.addEventListener('resize', _sdDockOnResize);
         _sdDockApply();
         _sdRailSyncTabs();
+        _sdRailSyncRight();
         _sdLeftHideForget();
     }
 
@@ -78699,6 +78761,14 @@ const StyleDesigner = (function () {
             var el = document.getElementById(id);
             if (el) el.style.display = 'none';
         });
+        // The right column's Design tab holds only those panels: the column
+        // stays on Options and its rail button goes too.
+        var designTab = document.getElementById('sd-rcol-tab-design');
+        if (designTab) {
+            _sdRcolShow('options');
+            designTab.hidden = true;
+            _sdRailSyncRight();
+        }
         // The right rail's own Design / Themes tabs. They are plain
         // .sd-panel-tab buttons with no data attribute, so they are found by
         // their label — the two panes beside them are the design's assets.
