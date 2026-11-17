@@ -471,7 +471,9 @@ function test_picture_translation_queue_script()
 		. ' skipped: Q.statusOf("skipped"),'
 		. ' reason: ["waiting", "drawing", "drawn", "look", "skipped", "failed"].map(Q.reasonShown),'
 		. ' edit: [Q.editShown("look", false), Q.editShown("look", true), Q.editShown("drawn", false), Q.editShown("failed", false)],'
-		. ' tone: [Q.buttonTone(true), Q.buttonTone(false)]'
+		. ' tone: [Q.buttonTone(true), Q.buttonTone(false)],'
+		. ' end: [[{ status: "drawn" }], [{ status: "drawn" }, { status: "look" }, { status: "look" }], [{ status: "failed" }, { status: "look" }]].map(function (rows) {'
+		. '  return Q.endText(rows, { done: "D", doneLook: "L{n}", doneFailed: "F{n}" }); })'
 		. '}));') . ' 2>&1', $out, $code);
 
 	if (($code !== 0) && (strpos(implode("\n", $out), 'not found') !== false)) {
@@ -483,5 +485,5 @@ function test_picture_translation_queue_script()
 
 	pg_assert_same(array('left' => 3, 'drawn' => 'drawn', 'look' => 'look', 'refused' => 'failed', 'none' => 'failed', 'skipped' => 'skipped',
 		'reason' => array(true, true, false, false, false, false), 'edit' => array(true, false, false, false),
-		'tone' => array('pg-button-quiet', 'pg-button-fill')), $r, 'left counts what is waiting or drawing; an answer gives the row\'s state; the reason goes once drawn; Look by hand offers the editor once the run ends; Stop is quiet, Continue the fill');
+		'tone' => array('pg-button-quiet', 'pg-button-fill'), 'end' => array('D', 'L2', 'F1')), $r, 'left counts what is waiting or drawing; an answer gives the row\'s state; the reason goes once drawn; Look by hand offers the editor once the run ends; Stop is quiet, Continue the fill; the end line counts the rows to look at by hand, after the failed ones');
 }

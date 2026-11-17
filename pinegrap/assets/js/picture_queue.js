@@ -63,7 +63,24 @@
         return running ? 'pg-button-quiet' : 'pg-button-fill';
     }
 
-    var api = { left: left, statusOf: statusOf, reasonShown: reasonShown, editShown: editShown, buttonTone: buttonTone };
+    // The line once nothing is left: the failed rows first, else the rows
+    // drawn but still to look at by hand, else all drawn.
+    function endText(items, strings) {
+        var failed = 0, look = 0;
+
+        (items || []).forEach(function (it) {
+            failed += (it.status === 'failed') ? 1 : 0;
+            look += (it.status === 'look') ? 1 : 0;
+        });
+
+        if (failed) {
+            return strings.doneFailed.replace('{n}', String(failed));
+        }
+
+        return look ? strings.doneLook.replace('{n}', String(look)) : strings.done;
+    }
+
+    var api = { left: left, statusOf: statusOf, reasonShown: reasonShown, editShown: editShown, buttonTone: buttonTone, endText: endText };
 
     if ((typeof module === 'object') && module.exports) {
         module.exports = api;
@@ -109,12 +126,12 @@
     }
 
     function count() {
-        var n = left(items), failed = items.filter(function (it) { return it.status === 'failed'; }).length;
+        var n = left(items);
 
         if (n) {
             leftEl.textContent = (stopped && !running) ? s.stopped.replace('{n}', String(n)) : s.left.replace('{n}', String(n));
         } else {
-            leftEl.textContent = failed ? s.doneFailed.replace('{n}', String(failed)) : s.done;
+            leftEl.textContent = endText(items, s);
         }
 
         stopBtn.hidden = !n;

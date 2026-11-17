@@ -134,6 +134,7 @@ if (($group === 'pictures') && !empty($_GET['draw'])) {
             'left'       => lang('{n} left'),
             'stopped'    => lang('Stopped: {n} left'),
             'done'       => lang('All the waiting pictures are drawn.'),
+            'doneLook'   => lang('All the waiting pictures are drawn; {n} to look at by hand.'),
             'doneFailed' => lang('Done; {n} could not be drawn.'),
             'stop'       => lang('Stop'),
             'stopping'   => lang('Stopping…'),

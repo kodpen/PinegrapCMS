@@ -23,7 +23,7 @@ module: picture_translation
 ## What do Stop and Continue do?
 - Stop ends the run after the picture being drawn ("Stopping…", button disabled); the count reads "Stopped: {n} left" and the button becomes Continue, which starts again from the next waiting row.
 - Ranks (architect, channel 25 message 8927): Stop is quiet; Continue after a stop is the view's one fill; a running or finished view has no fill (`buttonTone()`).
-- At the end the count reads "All the waiting pictures are drawn." or "Done; {n} could not be drawn."; Stop hides when nothing is left.
+- At the end the count reads "Done; {n} could not be drawn." when a row failed, else "All the waiting pictures are drawn; {n} to look at by hand." when a row ended Look by hand (architect, channel 25 message 8978), else "All the waiting pictures are drawn." (`endText()`); Stop hides when nothing is left.
 
 ## Where are its tests?
 - `tests/picture_translation_test.php`: the query (states, languages, untranslated left out, bound, codes), the screen's link and view, and under Node the script's count left and an answer's state.
