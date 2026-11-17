@@ -260,3 +260,38 @@ function test_workspace_flow_records_data()
 	pg_assert_same(1, count(json_decode(ws_flow_records_data($items, 0, 120)['records'], true)), 'whole items only');
 	pg_assert_same(2, ws_flow_records_data($items, 0, 120)['count'], 'the count is every record');
 }
+
+// Try draws what it would read as the box's texts: one record a line with
+// its date, then the titles left out; nothing when there is none.
+function test_workspace_flow_records_try_texts()
+{
+	pg_assert_same(array(), ws_flow_records_try_texts(array(), array()));
+
+	$texts = ws_flow_records_try_texts(array(array('title' => 'A', 'date' => '2026-11-16 09:00')), array('Old'));
+
+	pg_assert_same(array('records', 'left_out'), array_column($texts, 'key'));
+	pg_assert_contains('• A (2026-11-16 09:00)', $texts[0]['text']);
+	pg_assert_contains('• Old', $texts[1]['text']);
+	pg_assert_contains('ws_flow_records_try_texts(', workspace_flow_records_test_source('ws_step_list_records_try'));
+}
+
+// The canvas: the box in the palette's Records group while a list page is
+// offered, its form (page and only new) and line, its icon; the lists come
+// from ws_flow_js_config().
+function test_workspace_flow_records_canvas()
+{
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js');
+	$icons = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js');
+
+	pg_assert_contains("list_records: { name: 'fl_kind_list_records', group: 'system', into: true, out: ['done', 'failed'] }", $js);
+	pg_assert_contains("['list_records', 'fl_kind_list_records']", $js);
+	pg_assert_contains("((item[0] !== 'list_records') || (((FL.steps || {}).list_pages || []).length > 0))", $js, 'offered while a page is');
+	pg_assert_contains("if (node.kind === 'list_records') {\n            recordsFields(box, node);", $js);
+	pg_assert_contains("config = { page_id: (pages.length === 1) ? pages[0].id : 0, only_new: 0 };", $js);
+	pg_assert_contains("t('fl_records_only_new_help')", $js, 'the note under the option');
+	pg_assert_contains('list_records: [', $icons, 'its icon');
+
+	$config = workspace_flow_records_test_source('ws_flow_js_config');
+	pg_assert_contains("\$steps['list_pages'] = function_exists('ws_flow_records_pages') ? ws_flow_records_pages() : array();", $config);
+	pg_assert_contains("\$steps['mail_groups'] = function_exists('ws_flow_mail_groups') ? ws_flow_mail_groups(\$viewer) : array();", $config);
+}

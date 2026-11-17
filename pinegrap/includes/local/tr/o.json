@@ -1087,6 +1087,7 @@
     "Only products that are not matched to this marketplace yet.": "Yalnızca bu pazaryerine henüz eşleştirilmemiş ürünler.",
     "Only read and write messages": "Yalnızca mesaj okur ve yazar",
     "Only reads": "Yalnızca okur",
+    "Only records new since the last run": "Yalnız son koşudan beri yeni kayıtlar",
     "Only records not yet exported in this format": "Yalnız bu biçimde henüz dışa aktarılmamış kayıtlar",
     "Only sales documents are sent; a purchase invoice is the supplier's to issue.": "Yalnız satış belgeleri gönderilir; alış faturasını tedarikçi keser.",
     "Only sales invoices go to Paraşüt.": "Paraşüt'e yalnız satış faturaları gider.",

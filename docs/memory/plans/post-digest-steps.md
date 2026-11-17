@@ -8,10 +8,7 @@ description: Plan post-digest, steps DG1 to DG5: the records box on the server, 
 
 - DG2 (M) after DG1: the contact group as a campaign: done in #10026 (e-mail recipient `group`, `records` box; `workspace/workspace-flows-email-group.md`). Features D7, D8, D9, D11, D12. Pictures of the mail to the owner through the architect.
 
-- DG3 (M) after DG2: the canvas.
-  - Existing files: `assets/js/workspace_flow.js` (the box in the palette, its form, the e-mail box's recipient), `assets/js/workspace.js` (the box's icon). Both are held by other open PRs: the step names the clash and opens when they have landed.
-  - Pictures: the records box's form, the e-mail box with a group. To the owner; not marked ready before his look.
-  - Features: the canvas side of D1, D3, D7.
+- DG3 (M) after DG2: the canvas: done in #10176 (palette, records box form, e-mail box's contact group; beside #10077 by the architect's leave, agent channel 8001). Pictures to the owner before ready.
 
 - DG4 (S) after DG3: the ready flow. Existing files: `includes/workspace/flow_templates.php`. Tests: `tests/workspace_flow_templates_test.php`. Features: D10.
 

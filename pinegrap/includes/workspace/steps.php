@@ -2544,7 +2544,7 @@ function ws_flow_box_try($viewer, $flow, $data)
         // A list page's records are read as a run now would read them: its
         // window from the last run that sent to now, which nothing moves.
         if ($kind === 'list_records') {
-            return array('outcome' => 'done', 'texts' => $tried['texts'], 'empty' => $tried['empty']) + ws_step_list_records_try($action, $flow) + $answer;
+            return ws_step_list_records_try($action, $flow) + array('outcome' => 'done', 'empty' => $tried['empty']) + $answer;
         }
 
         // An e-mail to a contact group is mailed to the person trying alone.
