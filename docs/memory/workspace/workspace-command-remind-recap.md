@@ -1,0 +1,26 @@
+---
+name: workspace-command-remind-recap
+description: /remind (/hatırlat) and /recap (/özet) in a Workspace channel (CC3 of channel-commands): what each reads, the function it writes through, its gate, live line and writer-only answer
+---
+
+## What does /remind (/hatırlat, /hatirlat) do?
+- `/hatırlat yarın 10:00 Teklifi gönder`: a plan of the writer's own on My calendar, saved through `ws_personal_plan_save()` as "New plan" saves one: that day, an hour from 10:00, the title, only the writer sees it, a reminder at the start (the `plan_reminder` line, `workspace-personal-plans.md`).
+- The reminder is the form's "At the start" (`remind` 0). The form's own default for a new plan is "No reminder", and a reminder command must remind, so the command takes the list's first reminder.
+- Words (`ws_command_remind_data()`, pure): a day word and a time at the start of the line, in either order, read by `ws_parse_date_word()` and `ws_parse_time_word()` as /task reads them; `saat` / `at` before the time is dropped. A time with no day is today's. The rest is the title, as written.
+- No time: the New plan form opens filled (answer type `plan_form`, `fill` with title, note, start, end, remind, and `strings` from `ws_personal_plan_js_strings()`). Nothing is written.
+- Typed as a reply (`parent_id`): the answered message (`ws_command_answered_message()`) gives the note its link (`ws_command_message_link()`, `workspace.php?channel=…&message=…`) and, with no title typed, its line as the title. A message it cannot read: "That message could not be found.".
+- Gate `ws_command_gate_remind()`: a team member once `ws_personal_plans_ready()`. The save's own refusals stay (title, day, plan limit).
+
+## What does /hatırlat show and answer?
+- Live line `ws_command_live_remind()`: "Will remind you: “title” · Tomorrow 10:00", or "Will open New plan: “title” · day". Warnings: no title, a time gone by.
+- Answer `ws_command_remind_answer()`: `ephemeral`, "Reminder set", the line and a link to the plan (`workspace_my_calendar.php?plan=N`).
+- API class `ws_api_command_kind_remind()`: `preview` without a time (the form, nothing written), `run` with one. `plan_form` is one of `ws_api_command_preview_types()`.
+
+## What does /recap (/özet, /ozet) do?
+- "Sum up what I missed" (`ws_recap_ai()`, briefing.php) as the catch-up line's button asks it, to the writer alone: `ephemeral`, the summary and "Summed up by Pinegrap AI" (`ws_command_recap_html()`).
+- `since_id`, which `ws_send` passes through, is the last message read before the visit, as the button sends `brief.recap.since_id`. Without it the writer's read mark is used, which after opening the channel is the newest message, so the answer is "Nothing new was written here since your last visit.".
+- Gate `ws_command_gate_recap()`: where Pinegrap AI may read the channel (`ws_ai_channel_state()` available), the button's condition the server knows. The gate gets the channel: `ws_command_offered()` passes it as a third argument to every gate. The refusals are the button's ("Pinegrap AI cannot be asked in this channel.", nothing new).
+- The button also needs at least `WS_RECAP_AI_MIN` missed messages at opening (`brief.recap`), which only the client knows.
+
+## Tests?
+- tests/workspace_command_remind_recap_test.php: the words, the plan with the form's reminder, the form without a time, the link in the note, the live line, /recap not offered without Pinegrap AI, both answers ephemeral. The order and live lists in `workspace_command_registry_test.php` and `workspace_commands_test.php`.
