@@ -707,7 +707,13 @@ function api_openapi_type_spec($spec)
 
     } else {
 
-        $schema = array('type' => ($spec === '') ? 'string' : $spec);
+        $words = api_openapi_field_words();
+
+        $word = ($spec === '') ? 'string' : $spec;
+
+        // tools/check_api_schema.php refuses a word that is not in the map, so
+        // the fallback only keeps an unchecked declaration readable.
+        $schema = isset($words[$word]) ? $words[$word] : array('type' => $word);
 
     }
 
@@ -722,6 +728,33 @@ function api_openapi_type_spec($spec)
     }
 
     return $schema;
+}
+
+/**
+ * The type words a field declaration may use, and what each says in the
+ * document. A moment (api_time(): ISO-8601 in UTC) is datetime, a day
+ * (YYYY-MM-DD) is date; which one a field is comes from its presenter, never
+ * from its name. A time of day or a minute without a zone stays a string.
+ *
+ * tools/check_api_schema.php reads the keys of this array and refuses a
+ * declaration that uses any other word. Parameters have their own types
+ * (api_openapi_type()): a datetime parameter also takes a day or a unix
+ * timestamp, so it says no format.
+ *
+ * @return array word => schema
+ */
+function api_openapi_field_words()
+{
+    return array(
+        'string'   => array('type' => 'string'),
+        'integer'  => array('type' => 'integer'),
+        'number'   => array('type' => 'number'),
+        'boolean'  => array('type' => 'boolean'),
+        'object'   => array('type' => 'object'),
+        'array'    => array('type' => 'array'),
+        'datetime' => array('type' => 'string', 'format' => 'date-time'),
+        'date'     => array('type' => 'string', 'format' => 'date'),
+    );
 }
 
 /**

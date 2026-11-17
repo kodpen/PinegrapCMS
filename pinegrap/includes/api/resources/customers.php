@@ -432,7 +432,7 @@ function api_wishlist_item_schema() {
 		'name'              => 'string?',
 		'short_description' => 'string?',
 		'available'         => 'boolean',
-		'added_at'          => 'string?',
+		'added_at'          => 'datetime?',
 		'added_at_unix'     => 'integer'
 	);
 
@@ -532,7 +532,7 @@ function api_consent_schema() {
 		'purpose'         => 'string',
 		'status'          => 'string',
 		'source'          => 'string',
-		'created_at'      => 'string?',
+		'created_at'      => 'datetime?',
 		'created_at_unix' => 'integer'
 	);
 
@@ -680,13 +680,13 @@ function api_subscription_schema() {
 		'period'         => 'string',
 		'amount'         => 'integer',
 		'currency'       => 'string',
-		'next_charge_at' => 'string?',
+		'next_charge_at' => 'datetime?',
 		'retry_count'    => 'integer',
 		'card_last4'     => 'string?',
 		'actions'        => 'string[]',
-		'created_at'     => 'string?',
-		'cancelled_at'   => 'string?',
-		'ended_at'       => 'string?'
+		'created_at'     => 'datetime?',
+		'cancelled_at'   => 'datetime?',
+		'ended_at'       => 'datetime?'
 	);
 
 }
