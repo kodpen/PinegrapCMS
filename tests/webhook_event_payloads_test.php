@@ -31,18 +31,27 @@ require_once(PG_FUNCTIONS_DIR . '/includes/api/outbound/orders.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/api/resources/webhooks.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/api/resources/users.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/api/outbound/webhook_payloads.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/erp/api.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api.php');
 
-// Every event of the core catalogue must have its fields and sample; the
-// modules' events (their own seam) are not checked here yet.
+// Every event a subscription may name, the modules' too, whether or not the
+// module is switched on in this run.
+function webhook_payloads_test_catalogue()
+{
+	return api_webhook_core_events() + erp_webhook_events() + ws_webhook_events();
+}
+
+// The events that must have their fields and sample: the core's and the
+// ERP's. The Workspace's are not checked here yet.
 function webhook_payloads_test_in_family($event)
 {
-	static $core = null;
+	static $events = null;
 
-	if ($core === null) {
-		$core = api_webhook_core_events();
+	if ($events === null) {
+		$events = api_webhook_core_events() + erp_webhook_events();
 	}
 
-	return isset($core[$event]);
+	return isset($events[$event]);
 }
 
 // The payload functions the announcing code calls, each run on a fixture:
@@ -128,6 +137,25 @@ function webhook_payloads_test_helpers()
 	);
 }
 
+// The ERP's announcing helpers (includes/erp/events.php): each reads its
+// record and calls erp_event() with a literal array. The place of the event
+// name in a call (null: the helper names it itself), the place of the extra
+// fields laid over it (null: none), the event a call without the name means,
+// and the events only for which the helper adds $payload['…'] keys.
+function webhook_payloads_test_erp_helpers()
+{
+	return array(
+		'erp_event_invoice'        => array('event' => 1, 'extra' => 2, 'default' => null, 'adds_for' => array()),
+		'erp_event_receipt'        => array('event' => 1, 'extra' => null, 'default' => null, 'adds_for' => array()),
+		'erp_event_account'        => array('event' => null, 'extra' => null, 'default' => null, 'adds_for' => array()),
+		'erp_event_waybill'        => array('event' => 1, 'extra' => null, 'default' => 'erp.waybill.created', 'adds_for' => array()),
+		'erp_event_expense'        => array('event' => 1, 'extra' => null, 'default' => null, 'adds_for' => array()),
+		'erp_event_quote'          => array('event' => 1, 'extra' => null, 'default' => null, 'adds_for' => array('erp.quote.signed')),
+		'erp_event_purchase_order' => array('event' => 1, 'extra' => null, 'default' => null, 'adds_for' => array()),
+		'erp_event_stock_count'    => array('event' => null, 'extra' => null, 'default' => null, 'adds_for' => array()),
+	);
+}
+
 // The calls whose event name is not written where they are, by file: the
 // events they may announce (a family, its literal keys counted for each of
 // them; 'stock' for pg_product_stock_events(), run on its own; 'other' for a
@@ -147,6 +175,7 @@ function webhook_payloads_test_dynamic_calls()
 		'includes/fn/ecommerce.php'             => 'stock',
 		'includes/workspace/groups.php'         => 'other',
 		'includes/fn/experiments_sheet.php'     => 'experiment.',
+		'includes/erp/quotes.php'               => 'erp.quote.',
 	);
 }
 
@@ -208,7 +237,7 @@ function webhook_payloads_test_arguments(array $tokens, $open)
 // answer is added with +).
 function webhook_payloads_test_payload(array $argument)
 {
-	$out = array('keys' => array(), 'calls' => array(), 'literal' => false, 'variable' => '');
+	$out = array('keys' => array(), 'calls' => array(), 'literal' => false, 'variable' => '', 'adds' => array());
 
 	if (empty($argument)) {
 		return $out;
@@ -263,9 +292,17 @@ function webhook_payloads_test_payload(array $argument)
 		}
 	}
 
-	for ($count = count($argument); $i < $count - 1; $i++) {
+	for ($count = count($argument), $depth = 0; $i < $count - 1; $i++) {
 		if (is_array($argument[$i]) && ($argument[$i][0] === T_STRING) && ($argument[$i + 1] === '(')) {
 			$out['calls'][] = $argument[$i][1];
+		}
+
+		$text = webhook_payloads_test_text($argument[$i]);
+		$depth += (in_array($text, array('(', '['), true) ? 1 : 0) - (in_array($text, array(')', ']'), true) ? 1 : 0);
+
+		// array(…) + $columns: the variable's literal array is laid over.
+		if (($depth === 0) && ($argument[$i] === '+') && is_array($argument[$i + 1]) && ($argument[$i + 1][0] === T_VARIABLE)) {
+			$out['adds'][] = $argument[$i + 1][1];
 		}
 	}
 
@@ -276,7 +313,7 @@ function webhook_payloads_test_payload(array $argument)
 // file: the stock API builds its payload in a variable first.
 function webhook_payloads_test_variable(array $tokens, $variable, $line)
 {
-	$found = array('keys' => array(), 'calls' => array(), 'literal' => false, 'variable' => '');
+	$found = array('keys' => array(), 'calls' => array(), 'literal' => false, 'variable' => '', 'adds' => array());
 
 	for ($i = 0, $count = count($tokens); $i < $count; $i++) {
 		if (!is_array($tokens[$i]) || ($tokens[$i][0] !== T_VARIABLE) || ($tokens[$i][1] !== $variable) || ($tokens[$i][2] >= $line)) {
@@ -316,7 +353,8 @@ function webhook_payloads_test_calls()
 
 	$calls = array();
 	$helpers = webhook_payloads_test_helpers();
-	$names = array_merge(array('pg_announce', 'api_webhook_enqueue'), array_keys($helpers));
+	$erp = webhook_payloads_test_erp_helpers();
+	$names = array_merge(array('pg_announce', 'api_webhook_enqueue', 'erp_event'), array_keys($helpers), array_keys($erp));
 	$root = rtrim(str_replace('\\', '/', PG_FUNCTIONS_DIR), '/') . '/';
 	$files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator(PG_FUNCTIONS_DIR, FilesystemIterator::SKIP_DOTS));
 
@@ -329,14 +367,24 @@ function webhook_payloads_test_calls()
 
 		$source = (string) file_get_contents($path);
 
-		if ((strpos($source, 'pg_announce') === false) && (strpos($source, 'api_webhook_enqueue') === false) && (strpos($source, '_announce(') === false)) {
+		if ((strpos($source, 'pg_announce') === false) && (strpos($source, 'api_webhook_enqueue') === false) && (strpos($source, '_announce(') === false) && (strpos($source, 'erp_event') === false)) {
 			continue;
 		}
 
 		$tokens = token_get_all($source);
 		$relative = substr($path, strlen($root));
 
+		$within = '';
+
 		foreach ($tokens as $i => $token) {
+			if (is_array($token) && ($token[0] === T_FUNCTION)) {
+				$next = webhook_payloads_test_skip($tokens, $i + 1);
+
+				if (is_array($tokens[$next]) && ($tokens[$next][0] === T_STRING)) {
+					$within = $tokens[$next][1];
+				}
+			}
+
 			if (!is_array($token) || ($token[0] !== T_STRING) || !in_array($token[1], $names, true)) {
 				continue;
 			}
@@ -358,7 +406,8 @@ function webhook_payloads_test_calls()
 			}
 
 			$arguments = webhook_payloads_test_arguments($tokens, $open);
-			$event = isset($arguments[0]) ? $arguments[0] : array();
+			$spot = isset($erp[$token[1]]) ? $erp[$token[1]]['event'] : 0;
+			$event = (($spot !== null) && isset($arguments[$spot])) ? $arguments[$spot] : array();
 			$name = null;
 			$prefix = false;
 
@@ -387,11 +436,29 @@ function webhook_payloads_test_calls()
 				$name = empty($name) ? null : $name;
 			}
 
-			$place = isset($helpers[$token[1]]) ? $helpers[$token[1]][1] : 1;
-			$payload = webhook_payloads_test_payload(isset($arguments[$place]) ? $arguments[$place] : array());
+			if (isset($erp[$token[1]]) && ($name === null) && ($spot !== null) && !isset($arguments[$spot]) && ($erp[$token[1]]['default'] !== null)) {
+				$name = array($erp[$token[1]]['default']);
+			}
+
+			$place = isset($helpers[$token[1]]) ? $helpers[$token[1]][1] : (isset($erp[$token[1]]) ? $erp[$token[1]]['extra'] : 1);
+			$payload = webhook_payloads_test_payload((($place !== null) && isset($arguments[$place])) ? $arguments[$place] : array());
 
 			if ($payload['variable'] !== '') {
 				$payload = webhook_payloads_test_variable($tokens, $payload['variable'], $token[2]);
+			}
+
+			foreach ($payload['adds'] as $variable) {
+				$payload['keys'] = array_merge($payload['keys'], webhook_payloads_test_variable($tokens, $variable, $token[2])['keys']);
+			}
+
+			// The $payload['…'] = keys a helper assigns in its own body.
+			$assigned = array();
+
+			for ($j = $i; ($token[1] === 'erp_event') && ($j > 0) && !(is_array($tokens[$j]) && ($tokens[$j][0] === T_FUNCTION)); $j--) {
+				if (is_array($tokens[$j]) && ($tokens[$j][0] === T_VARIABLE) && ($tokens[$j][1] === '$payload') && ($tokens[$j + 1] === '[')
+					&& is_array($tokens[$j + 2]) && ($tokens[$j + 2][0] === T_CONSTANT_ENCAPSED_STRING)) {
+					$assigned[] = stripslashes(substr($tokens[$j + 2][1], 1, -1));
+				}
 			}
 
 			if (isset($helpers[$token[1]])) {
@@ -405,6 +472,8 @@ function webhook_payloads_test_calls()
 				'event'    => $name,
 				'prefix'   => $prefix,
 				'payload'  => $payload,
+				'within'   => $within,
+				'assigned' => $assigned,
 			);
 		}
 	}
@@ -433,7 +502,7 @@ function webhook_payloads_test_builder_keys(array $functions, $where)
 // together, and where they come from.
 function webhook_payloads_test_written()
 {
-	$events = api_webhook_events();
+	$events = webhook_payloads_test_catalogue();
 	$written = array();
 	$add = function ($event, array $keys) use (&$written) {
 		$written[$event] = array_values(array_unique(array_merge(isset($written[$event]) ? $written[$event] : array(), $keys)));
@@ -501,6 +570,50 @@ function webhook_payloads_test_written()
 		}
 	}
 
+	// An ERP helper's call: the keys of the erp_event() call in its body, the
+	// $payload['…'] keys it adds for some events, and the extra fields the
+	// caller lays over them.
+	$erp = webhook_payloads_test_erp_helpers();
+	$base = array();
+	$assigned = array();
+
+	foreach (webhook_payloads_test_calls() as $call) {
+		if (($call['function'] === 'erp_event') && isset($erp[$call['within']])) {
+			$base[$call['within']] = array_merge(isset($base[$call['within']]) ? $base[$call['within']] : array(), $call['payload']['keys']);
+			$assigned[$call['within']] = array_merge(isset($assigned[$call['within']]) ? $assigned[$call['within']] : array(), $call['assigned']);
+		}
+	}
+
+	foreach (webhook_payloads_test_calls() as $call) {
+		$helper = $call['function'];
+
+		if (!isset($erp[$helper]) || ($erp[$helper]['event'] === null)) {
+			continue;
+		}
+
+		$family = ($call['event'] === null) ? (isset($dynamic[$call['file']]) ? $dynamic[$call['file']] : '') : '';
+
+		foreach (array_keys($events) as $event) {
+			if ($call['event'] === null) {
+				$hit = (substr($family, -1) === '.') && (strpos($event, $family) === 0);
+			} else {
+				$hit = $call['prefix'] ? (strpos($event, $call['event'][0]) === 0) : in_array($event, $call['event'], true);
+			}
+
+			if (!$hit || !webhook_payloads_test_in_family($event)) {
+				continue;
+			}
+
+			$keys = array_merge(isset($base[$helper]) ? $base[$helper] : array(), $call['payload']['keys']);
+
+			if (in_array($event, $erp[$helper]['adds_for'], true) && isset($assigned[$helper])) {
+				$keys = array_merge($keys, $assigned[$helper]);
+			}
+
+			$add($event, $keys);
+		}
+	}
+
 	// A subscription event is named by pg_subscription_webhook_event().
 	foreach (array('renewed', 'renewal_failed', 'status_paused', 'status_cancelled') as $kind) {
 		pg_assert_true(isset($written[pg_subscription_webhook_event($kind, 'active', '')]), 'subscription kind ' . $kind . ' is announced');
@@ -520,7 +633,7 @@ function webhook_payloads_test_written()
 function test_webhook_payloads_cover_this_steps_events()
 {
 	$payloads = api_webhook_event_payloads();
-	$events = api_webhook_events();
+	$events = webhook_payloads_test_catalogue();
 
 	foreach (array_keys($events) as $event) {
 		if (webhook_payloads_test_in_family($event)) {
@@ -536,10 +649,21 @@ function test_webhook_payloads_cover_this_steps_events()
 function test_webhook_payloads_every_dynamic_call_is_known()
 {
 	$known = webhook_payloads_test_dynamic_calls();
+	$erp = webhook_payloads_test_erp_helpers();
 
 	foreach (webhook_payloads_test_calls() as $call) {
-		if (($call['event'] === null) && ($call['function'] === 'pg_announce' || $call['function'] === 'api_webhook_enqueue')) {
-			pg_assert_true(isset($known[$call['file']]), $call['file'] . ':' . $call['line'] . ' names its event elsewhere: say which events it announces');
+		if ($call['event'] !== null) {
+			continue;
+		}
+
+		$where = $call['file'] . ':' . $call['line'];
+
+		if (($call['function'] === 'pg_announce') || ($call['function'] === 'api_webhook_enqueue')) {
+			pg_assert_true(isset($known[$call['file']]), $where . ' names its event elsewhere: say which events it announces');
+		} elseif ($call['function'] === 'erp_event') {
+			pg_assert_true(isset($erp[$call['within']]) || isset($known[$call['file']]), $where . ' names its event elsewhere: say which events it announces');
+		} elseif (isset($erp[$call['function']]) && ($erp[$call['function']]['event'] !== null)) {
+			pg_assert_true(isset($known[$call['file']]), $where . ' names its event elsewhere: say which events it announces');
 		}
 	}
 }
