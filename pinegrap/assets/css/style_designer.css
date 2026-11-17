@@ -98,7 +98,7 @@
 .sd-toolbar-tabs { gap: .35rem; }
 .sd-tabs-scroll {
     flex: 1 1 0;
-    min-width: 84px;              /* the open page's tab at its narrowest */
+    min-width: 70px;              /* the open page's tab at its narrowest, in its box */
     display: flex;
     align-items: center;
     gap: .3rem;
@@ -307,6 +307,10 @@
 .sd-strip-cut .sd-tab-box-head:not(:has(.sd-tab-rename)) { display: none; }
 .sd-strip-cut .sd-tab.active { flex: 0 1 auto; min-width: 60px; }
 .sd-strip-cut .sd-tab.active .sd-tab-name { min-width: 0; }
+.sd-strip-cut .sd-tab.active { padding: 0 .4rem; gap: .25rem; }
+/* Step 6 also leaves the toolbar's buttons their room: the Pages button
+   keeps its icon and loses its count (its name stays in the tip). */
+.sd-design-bare .sd-tabs-all-count { display: none; }
 /* The rows a chip lists. */
 .sd-tabs-list { min-width: 220px; max-width: min(320px, calc(100vw - 16px)); max-height: min(420px, calc(100vh - 80px)); overflow-y: auto; }
 .sd-tabs-list-head { text-transform: uppercase; letter-spacing: .04em; font-weight: 600; }
