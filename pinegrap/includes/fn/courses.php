@@ -609,6 +609,21 @@ function pg_course_switch_on()
 }
 
 /**
+ * Saves the "Courses" switch: '1' on, the row removed when off.
+ *
+ * @param bool $on
+ * @return bool
+ */
+function pg_course_switch_save($on)
+{
+    if (!function_exists('pg_config_text_save')) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/config_text.php');
+    }
+
+    return (bool) pg_config_text_save(PG_COURSE_SWITCH, $on ? '1' : '');
+}
+
+/**
  * The gate's answer for a page a signed-in member may already see: whether
  * the lesson it is stays closed, why, and where the member is sent. Only a
  * lesson of a private folder is ever closed: a lesson in a public folder
