@@ -407,6 +407,8 @@ function ws_message_payload($viewer, $row, $refs, $people, $tasks, $assignees, $
         // A WhatsApp conversation is not answered by e-mail (mail_phone.php).
         'mail_reply'  => ($mail && !$deleted && function_exists('ws_mail_reply_offer') && !(function_exists('ws_mail_item_is_phone') && ws_mail_item_is_phone($extra['mail'][(int) $row['sender_id']] ?? null)))
             ? ws_mail_reply_offer($row, $extra['mail'][(int) $row['sender_id']] ?? null, $can_post) : 0,
+        // Why that box cannot send now, '' when it can: the offer is drawn disabled with it.
+        'mail_reply_off' => ($mail && !$deleted) ? (string) ($extra['mail'][(int) $row['sender_id']]['reply_off'] ?? '') : '',
         // The WhatsApp conversation the card answers by WhatsApp, and the
         // seconds left of the customer's 24 hours (mail_phone.php); 0 for none.
         'whatsapp_reply'  => ($mail && !$deleted && function_exists('ws_mail_phone_reply_offer')) ? ws_mail_phone_reply_offer($row, $extra['mail'][(int) $row['sender_id']] ?? null, $can_post) : 0,
