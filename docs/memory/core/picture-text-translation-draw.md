@@ -1,6 +1,6 @@
 ---
 name: picture-text-translation-draw
-description: The Design Canvas Languages list (#PT4): a canvas picture drawn per language in the browser, the 70% fit floor, the draw stamp, where the picture is kept and hidden
+description: The Design Canvas Languages list (#10208): a canvas picture drawn per language in the browser, the 70% fit floor, the draw stamp, where the picture is kept and hidden
 module: picture_translation
 ---
 
@@ -24,4 +24,4 @@ module: picture_translation
 - Moves, deletes, the bin and Disk Usage of these pictures are PT6's (`plans/picture-text-translation-steps-2.md`).
 
 ## Tests?
-- `tests/picture_translation_test.php`: the fit and its mark, the language document, Draw all, the states after a draw, the refusals and the stamp, the hidden lists. The database paths and the browser drawing were checked by hand only (see the PR).
+- `tests/picture_translation_test.php`: the fit and its mark, the language document, Draw all, the states after a draw, the refusals and the stamp, the hidden lists, `pg_tr_load()` before the target languages (`pg_tr_target_languages()` lives in `includes/translate/seo.php`, read only by it: without it the list answered 500). Checked in a sandbox (#10208): every state, Draw and Draw all, a changed translation turning a drawn row Out of date.

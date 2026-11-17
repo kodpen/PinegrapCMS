@@ -342,6 +342,14 @@ function test_picture_translation_draw_refusals()
 	pg_assert_true($check !== false, 'the draw checks the file and the right');
 	pg_assert_true($check < strpos($body, 'pg_image_editor_take_png('), 'before the picture is taken');
 	pg_assert_true(strpos($body, 'pg_page_cache_mark_dirty()') !== false, 'a draw marks the page cache');
+
+	// The target languages live in a translate file only pg_tr_load() reads.
+	foreach (array('pg_picture_tr_draw_answer', 'pg_picture_tr_languages_answer') as $function) {
+		$code = picture_translation_body('includes/fn/picture_translation.php', $function);
+		$load = strpos($code, 'pg_tr_load()');
+
+		pg_assert_true(($load !== false) && ($load < strpos($code, 'pg_tr_target_languages()')), $function . ' loads the translate files first');
+	}
 }
 
 // A language's picture has a name beside its source's and is left out of

@@ -914,6 +914,8 @@ function pg_picture_tr_language_texts($file_id, $language)
  */
 function pg_picture_tr_rtl($language)
 {
+    pg_tr_load();
+
     $known = pg_tr_known_languages();
 
     return isset($known[$language]) && ((int) $known[$language][5] === 1);
@@ -943,6 +945,9 @@ function pg_picture_tr_languages_answer($request, $user)
     if (!pg_picture_tr_ready() || !pg_picture_tr_store_ready()) {
         return $none;
     }
+
+    // The language helpers (target languages, labels) load with the store.
+    pg_tr_load();
 
     $canvas = pg_picture_tr_canvas($file_id, $file['row']['name']);
     $targets = pg_tr_target_languages();
@@ -1002,6 +1007,8 @@ function pg_picture_tr_draw_answer($request, $user)
     if (!pg_picture_tr_ready() || !pg_picture_tr_store_ready()) {
         return pg_image_editor_refusal(lang('Invalid request.'));
     }
+
+    pg_tr_load();
 
     // The folder's edit right, the Recycle Bin and an ERP document, as for
     // a save of the picture itself.
