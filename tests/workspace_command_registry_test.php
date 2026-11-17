@@ -64,10 +64,10 @@ function test_workspace_command_registry_every_key_has_a_runner()
 // The order, the keys and the names are today's.
 function test_workspace_command_registry_keeps_the_order_and_names()
 {
-	pg_assert_same(array('task', 'assign', 'done', 'postpone', 'status', 'timer', 'schedule', 'away', 'meeting', 'decision', 'note', 'plan', 'remind', 'poll', 'recap', 'approval', 'update', 'checkin', 'price', 'stock', 'create', 'product', 'wake', 'agent_channel', 'claude', 'ai', 'notify', 'invite', 'leave', 'topic', 'search', 'memory', 'help'),
+	pg_assert_same(array('task', 'assign', 'done', 'postpone', 'status', 'timer', 'schedule', 'away', 'meeting', 'decision', 'note', 'plan', 'remind', 'poll', 'recap', 'approval', 'update', 'checkin', 'price', 'stock', 'create', 'product', 'flow', 'wake', 'agent_channel', 'claude', 'ai', 'notify', 'invite', 'leave', 'topic', 'search', 'memory', 'help'),
 		array_keys(ws_command_registry()), 'the registry in picker order');
 
-	pg_assert_same(array('task', 'assign', 'done', 'postpone', 'status', 'timer', 'schedule', 'away', 'meeting', 'decision', 'note', 'plan', 'remind', 'poll', 'recap', 'approval', 'update', 'checkin', 'price', 'stock', 'create', 'product', 'wake', 'agent_channel', 'notify', 'invite', 'leave', 'topic', 'search', 'memory', 'help'),
+	pg_assert_same(array('task', 'assign', 'done', 'postpone', 'status', 'timer', 'schedule', 'away', 'meeting', 'decision', 'note', 'plan', 'remind', 'poll', 'recap', 'approval', 'update', 'checkin', 'price', 'stock', 'create', 'product', 'flow', 'wake', 'agent_channel', 'notify', 'invite', 'leave', 'topic', 'search', 'memory', 'help'),
 		array_column(ws_commands(null), 'key'), 'without a person the assistants are left out');
 
 	pg_assert_same(array(
@@ -91,6 +91,7 @@ function test_workspace_command_registry_keeps_the_order_and_names()
 		'checkin' => 'checkin', 'check-in' => 'checkin',
 		'fiyat' => 'price', 'price' => 'price',
 		'stok' => 'stock', 'stock' => 'stock',
+		'akış' => 'flow', 'akis' => 'flow', 'flow' => 'flow',
 		'uyandır' => 'wake', 'uyandir' => 'wake', 'wake' => 'wake',
 		'ajan-kanalı' => 'agent_channel', 'ajan-kanali' => 'agent_channel', 'agent-channel' => 'agent_channel',
 		'bildirim' => 'notify', 'notify' => 'notify',

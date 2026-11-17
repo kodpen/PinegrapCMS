@@ -5521,7 +5521,7 @@
     // the screen's language. A discussion's box leaves out what runs only
     // in the channel itself (where: channel, ws_command_runs_here()). Each
     // row carries its group and the group's header for commandPickerGroups().
-    function commandPickerRows(commands, query, inThread, recapHere) {
+    function commandPickerRows(commands, query, inThread, recapHere, flowsHere) {
         var typed = ('/' + query).toLocaleLowerCase('tr');
         var typedFolded = foldText(typed);
         var rows = [];
@@ -5534,6 +5534,12 @@
             // /recap only where the catch-up line offers "Sum up what I
             // missed" (recapHere false); left as it was when not told.
             if ((recapHere === false) && (item.key === 'recap')) {
+                return;
+            }
+
+            // /flow only where Add › Start a flow lists a flow (flowsHere
+            // false); left as it was when not told.
+            if ((flowsHere === false) && (item.key === 'flow')) {
                 return;
             }
 
@@ -5592,6 +5598,32 @@
         });
 
         return out;
+    }
+
+    // The channel's flows as rows of the "/" list and of /flow's argument
+    // list: every flow with nothing typed, else those whose name, or a word
+    // of it, starts with what is typed (Turkish letters folded). A row
+    // carries its flow: picking it starts the flow, it writes nothing.
+    function flowPickerRows(flows, query, meta) {
+        var typed = foldText(String(query || '').trim());
+
+        return (flows || []).filter(function (flow) {
+            var name = foldText(String(flow.name || ''));
+
+            return !typed || (name.indexOf(typed) === 0) || (name.indexOf(' ' + typed) !== -1);
+        }).map(function (flow) {
+            return { label: flow.name, meta: meta, icon: 'bi-play-circle', flow: flow };
+        });
+    }
+
+    // The "/" list with the channel's flows after the commands, under a
+    // header of their own whatever is typed: a flow is no command.
+    function commandPickerAddFlows(rows, flowRows, header) {
+        if (!flowRows.length) {
+            return rows;
+        }
+
+        return rows.concat([{ header: true, label: header }], flowRows);
     }
 
     // Where a list of people or records opens at the caret (placePicker()):
@@ -10988,8 +11020,11 @@
 
                 self.channel = data.channel;
                 self.era = data.era || null;
-                // Whether Add › Start a flow has a flow to offer here.
+                // Whether Add › Start a flow has a flow to offer here, and
+                // which: the "/" list and /flow offer the same, read once
+                // as the channel opens.
                 self.flowsHere = !!data.flows_here;
+                self.flowsList = data.flows || [];
                 self.messages = data.messages;
                 self.briefing = data.briefing || null;
                 self.openItems = data.open_items || [];
@@ -15801,6 +15836,15 @@
 
         // ── Polls ──
 
+        // Whether this box offers the channel's flows (the "/" list, /flow):
+        // where Add › Start a flow is offered.
+        flowsOffered: function () {
+            var self = this;
+
+            return !!(CFG.flows && CFG.flows.nav && self.flowsHere && (self.flowsList || []).length && !self.isThread && !self.era
+                && self.channel && ((self.channel.kind === 'public') || (self.channel.kind === 'private')));
+        },
+
         // Add › Start a flow: the flows the person may start in this
         // channel (ws_flows_runnable_in()), each with its last run's flag.
         flowStarter: function () {
@@ -15851,19 +15895,22 @@
         // Starts a flow from the drawer, asked first as the canvas asks. The
         // token stays with the flow until the server answers, so a start sent
         // again after a lost answer gets the run the first one started.
+        // From the "/" list or /flow there is no button: the flow itself
+        // keeps a second pick away while it is asked or sent.
         startFlowHere: function (flow, control, node) {
             var self = this;
             var channelId = self.channel.id;
+            var hold = control || flow;
 
-            if (control.disabled) {
+            if (hold.disabled) {
                 return;
             }
 
-            control.disabled = true;
+            hold.disabled = true;
 
             ask(t('fl_run_ask', flow.name, flow.version), t('fl_run_do')).then(function (yes) {
                 if (!yes) {
-                    control.disabled = false;
+                    hold.disabled = false;
                     return null;
                 }
 
@@ -15872,7 +15919,11 @@
                 // start_token, not token: api() sends the CSRF token as token.
                 return api('ws_flow_run_start', { flow_id: flow.id, channel_id: channelId, start_token: flow.startToken }).then(function (data) {
                     flow.startToken = null;
-                    hideOffcanvas(node);
+                    hold.disabled = false;
+
+                    if (node) {
+                        hideOffcanvas(node);
+                    }
                     toast(data.started ? t('fl_run_started') : t('fl_run_again'), 'success');
 
                     if (self.channel && (self.channel.id === channelId)) {
@@ -15884,7 +15935,7 @@
                     flow.startToken = null;
                 }
 
-                control.disabled = false;
+                hold.disabled = false;
                 fail(error);
             });
         },
@@ -19442,6 +19493,24 @@
                     return;
                 }
 
+                // /flow with a flow of the channel named: asked and started as
+                // Start a flow does; without one, Start a flow's list opens.
+                if (result.command && ((result.command.type === 'flow_start') || (result.command.type === 'flow_form'))) {
+                    self.clearInput();
+
+                    if (result.command.type === 'flow_form') {
+                        self.flowStarter();
+                        return;
+                    }
+
+                    var named = (self.flowsList || []).filter(function (flow) {
+                        return flow.id === result.command.flow.id;
+                    })[0] || result.command.flow;
+
+                    self.startFlowHere(named, null, null);
+                    return;
+                }
+
                 // /memory without a text: the Memory tab's New entry form,
                 // filled with what the line carried (an answered message's
                 // link); the box empties, its text is in the form.
@@ -20642,6 +20711,12 @@
                 return;
             }
 
+            // /flow: the channel's flows; a pick starts one.
+            if (source === 'flows') {
+                show(self.flowsOffered() ? flowPickerRows(self.flowsList, query, t('cmd_flow_meta')) : []);
+                return;
+            }
+
             // What /create makes: a product, a group.
             if (source === 'kinds') {
                 show(fixed(values.kinds, 'bi-plus-square'));
@@ -20919,14 +20994,17 @@
             // again under the headers of their groups.
             if (mode === 'command') {
                 var inThread = !!self.isThread || !!(self.channel && (self.channel.kind === 'thread'));
-                var commands = commandPickerRows(BOOT.commands, query, inThread, !inThread && !!(self.briefing && self.briefing.catchup && self.briefing.recap));
+                var flowsHere = !inThread && self.flowsOffered();
+                var commands = commandPickerRows(BOOT.commands, query, inThread, !inThread && !!(self.briefing && self.briefing.catchup && self.briefing.recap), flowsHere);
+                // The channel's flows by name, after the commands.
+                var flowRows = flowsHere ? flowPickerRows(self.flowsList, query, t('cmd_flow_meta')) : [];
                 var shown;
 
-                self.drawPicker(commands);
+                self.drawPicker(commandPickerAddFlows(commands, flowRows, t('cmd_flows')));
                 shown = self.picker.querySelector('.ws-picker-list');
 
                 if ((query === '') && shown && (shown.scrollHeight > shown.clientHeight + 1)) {
-                    self.drawPicker(commandPickerGroups(commands, BOOT.command_groups));
+                    self.drawPicker(commandPickerAddFlows(commandPickerGroups(commands, BOOT.command_groups), flowRows, t('cmd_flows')));
                 }
 
                 return;
@@ -21432,6 +21510,25 @@
                 this.closePicker();
                 this.rich.insertStored(typedReply, item.reply.text, item.reply.labels || {});
                 this.autosize();
+                return;
+            }
+
+            // A flow of the "/" list or of /flow's list: the command line goes,
+            // and the flow is asked and started as Start a flow does.
+            if (item.flow) {
+                if (this.rich) {
+                    this.rich.replaceTyped(this.beforeCaret().length, { text: '' });
+                } else {
+                    var line = this.input;
+
+                    line.value = line.value.slice(line.selectionStart);
+                    line.selectionStart = line.selectionEnd = 0;
+                }
+
+                this.closePicker();
+                this.drawCommandStrip(null);
+                this.autosize();
+                this.startFlowHere(item.flow, null, null);
                 return;
             }
 

@@ -44,29 +44,32 @@ function test_workspace_flow_run_cards_runnable_here()
 }
 
 // Add › Start a flow is offered only where it has a flow to start: the
-// channel's opening says so (flows_here), from the same list the drawer
-// shows, never in a direct message, a customer channel or a discussion.
+// channel's opening says so (flows_here) and hands the same list to the "/"
+// list and /flow (flows), never in a direct message, a channel of no kind or
+// a discussion.
 function test_workspace_flow_run_cards_offered_only_with_a_flow()
 {
 	$viewer = array('id' => 5, 'member' => true, 'role' => 1);
 
-	pg_assert_false(ws_flows_startable_in($viewer, null), 'no channel');
+	pg_assert_same(array(), ws_flows_here($viewer, null), 'no channel');
 
-	foreach (array('direct', 'customer', '') as $kind) {
-		pg_assert_false(ws_flows_startable_in($viewer, array('id' => 3, 'kind' => $kind)), 'a channel of kind "' . $kind . '"');
+	foreach (array('direct', 'customer', 'thread', '') as $kind) {
+		pg_assert_same(array(), ws_flows_here($viewer, array('id' => 3, 'kind' => $kind)), 'a channel of kind "' . $kind . '"');
 	}
 
-	$function = new ReflectionFunction('ws_flows_startable_in');
+	$function = new ReflectionFunction('ws_flows_here');
 	$lines = file($function->getFileName());
 	$source = implode('', array_slice($lines, $function->getStartLine() - 1, $function->getEndLine() - $function->getStartLine() + 1));
 
 	pg_assert_contains('ws_flows_nav_visible($viewer)', $source, 'only for whoever sees Flows');
-	pg_assert_contains("!empty(ws_flows_runnable_in(\$viewer, (int) \$channel['id']))", $source, 'the list the drawer shows');
+	pg_assert_contains("ws_flows_runnable_in(\$viewer, (int) \$channel['id'])", $source, 'the list the drawer shows');
 
 	$actions = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/actions.php');
-	$open = substr($actions, (int) strpos($actions, "case 'ws_channel_open':"), 6000);
+	$open = substr($actions, (int) strpos($actions, "case 'ws_channel_open':"), 7000);
 
-	pg_assert_contains("'flows_here' => empty(\$request['as_thread']) && ws_flows_startable_in(\$viewer, \$channel),", $open, 'the opening answers it');
+	pg_assert_contains("\$flows_here = empty(\$request['as_thread']) ? ws_flows_here(\$viewer, \$channel) : array();", $open, 'read once, never for a discussion');
+	pg_assert_contains("'flows_here' => !empty(\$flows_here),", $open, 'the opening answers whether there is one');
+	pg_assert_contains("'flows'      => \$flows_here,", $open, 'and which');
 
 	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js');
 
