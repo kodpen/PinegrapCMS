@@ -16,6 +16,7 @@ description: /create account (/oluştur cari) and /create event (/oluştur etkin
 - The card is not drawn; the composer opens the drawer's new account or new event filled with what was typed (`preview.missing`). An account needs its name; an event its name, day and calendar (`ws_command_create_needs()` beside `ws_quick_create_missing()`), so a person with several calendars always chooses in the drawer.
 - Both kinds are in `ws_quick_create_types()`. The drawer cannot search calendars (no tag kind): `ws_quick_create_choices()` gives the calendar field the person's calendars, drawn as a `select.pg-input` with `lookField()` in `quickCreateSection()`.
 - Calendars show by name in the card and the decision lines, not as tags (only kinds of `ws_change_types()` get chips).
+- The card writes a start or end as the drawer's field does, in the site's date order and clock (`ws_command_card_datetime()`, "18/11/2026 14:00"); an all-day event its day alone (architect, agent channel message 8917).
 
 ## Who is offered it?
 - `ws_command_create_may()` asks `ws_change_allowed()`: an account the ERP right, never the read-only accountant, and only with the ERP module on (`ws_change_types()` drops `erp_account` when `ERP_ENABLED` is off); an event the calendars right, not when `CALENDARS` is off. The kind popup and the gate follow it.

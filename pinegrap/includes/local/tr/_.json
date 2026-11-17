@@ -409,7 +409,7 @@
     "/checkin What is in your way this week?": "/checkin Bu hafta önünüzde ne engel var?",
     "/claude summarise this week": "/claude bu haftayı özetle",
     "/create account Acme Ltd, 1234567890, info@acme.com": "/oluştur cari Acme Ltd, 1234567890, info@acme.com",
-    "/create account makes one account: write it on one line.": "/oluştur cari tek bir cari açar: onu tek satıra yazın.",
+    "/create account makes one account: write it on one line.": "/oluştur cari tek bir cari oluşturur: onu tek satıra yazın.",
     "/create contact Ada Lovelace, Acme Ltd, ada@example.com": "/oluştur kişi Ada Lovelace, Acme Ltd, ada@example.com",
     "/create contact makes one contact: write it on one line.": "/oluştur kişi tek bir kişi oluşturur: onu tek satıra yazın.",
     "/create event makes one event: write it on one line.": "/oluştur etkinlik tek bir etkinlik oluşturur: onu tek satıra yazın.",

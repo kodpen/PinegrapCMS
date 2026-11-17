@@ -238,3 +238,16 @@ function test_workspace_command_create_account_event_strip()
 	$parsed = ws_command_parse_event(ws_command_parse_create('etkinlik yarın 14:00 Açılış')['rest']);
 	pg_assert_same('Açılış', $parsed['name'], 'the example reads as the strip says');
 }
+
+// The card writes a date as the drawer's field does: the site's date order
+// and clock; an all-day event its day alone.
+function test_workspace_command_create_event_card_date()
+{
+	pg_assert_same('18/11/2026 14:00', ws_command_card_datetime('2026-11-18 14:00:00', false, 'j/n/Y', 'H:i'), 'day first, 24-hour clock');
+	pg_assert_same('11/18/2026 2:00 PM', ws_command_card_datetime('2026-11-18 14:00', false, 'n/j/Y', 'g:i A'), 'month first, 12-hour clock');
+	pg_assert_same('5/1/2027', ws_command_card_datetime('2027-01-05 00:00:00', true, 'j/n/Y', 'H:i'), 'an all-day event: its day, no time');
+	pg_assert_same('not a date', ws_command_card_datetime('not a date', false, 'j/n/Y', 'H:i'), 'anything else as it is');
+
+	$card = pg_test_function_source('ws_command_create_card');
+	pg_assert_contains("ws_command_card_datetime(\$item['to'], !empty(\$input['values']['all_day']))", $card, 'the card writes its dates so');
+}

@@ -4433,6 +4433,37 @@ function ws_command_is_product_file($body)
 }
 
 /**
+ * A stored date and time ("2026-11-18 14:00:00") as the create card shows
+ * it: the site's date order and clock (Site Settings > General > Date and
+ * Time), as the drawer's date field writes it ("18/11/2026 14:00"); with
+ * $all_day the day alone. A value that is no date is shown as it is.
+ *
+ * @param string      $value
+ * @param bool        $all_day
+ * @param string|null $date_code date() code of the day; the site's when null
+ * @param string|null $time_code date() code of the time; the site's when null
+ * @return string
+ */
+function ws_command_card_datetime($value, $all_day, $date_code = null, $time_code = null)
+{
+    if ($date_code === null) {
+        $date_code = (defined('DATE_FORMAT') && function_exists('get_date_format_code') ? get_date_format_code() : 'j/n') . '/Y';
+    }
+
+    if ($time_code === null) {
+        $time_code = function_exists('pg_time_format_code') ? pg_time_format_code() : 'H:i';
+    }
+
+    $time = preg_match('/^\d{4}-\d{2}-\d{2}/', (string) $value) ? strtotime((string) $value) : false;
+
+    if ($time === false) {
+        return (string) $value;
+    }
+
+    return date($all_day ? $date_code : $date_code . ' ' . $time_code, $time);
+}
+
+/**
  * The card a create command answers with, or the record it makes once
  * confirmed, through the drawer's create (ws_quick_create_save()): the same
  * rights, checks, writer, ws_ai_changes row, activity log line and decision
@@ -4540,6 +4571,13 @@ function ws_command_create_card($viewer, $channel, $type, $fields, $options)
             }
 
             $rows[] = array('label' => (string) $field[2], 'text' => '', 'html' => $chips);
+            continue;
+        }
+
+        // A date and time as the drawer's field writes it: the site's date
+        // order and clock; an all-day event's day alone.
+        if ($field[0] === 'datetime') {
+            $rows[] = array('label' => (string) $field[2], 'text' => ws_command_card_datetime($item['to'], !empty($input['values']['all_day'])), 'html' => '');
             continue;
         }
 

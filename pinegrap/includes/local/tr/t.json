@@ -1950,7 +1950,7 @@
     "The account that owns this application may not manage event locations.": "Bu uygulamanın sahibi olan hesap etkinlik konumlarını yönetemez.",
     "The account that owns this application may not publish calendar events.": "Bu uygulamanın sahibi olan hesap takvim etkinliği yayınlayamaz.",
     "The account that signed in on this device is no longer available.": "Bu cihazda oturum açan hesap artık kullanılamıyor.",
-    "The account that will be created": "Açılacak cari",
+    "The account that will be created": "Oluşturulacak cari",
     "The account was not found.": "Cari bulunamadı.",
     "The account with this tax number. The purchase invoice is written to it.": "Bu vergi numarasının carisi. Alış faturası buna yazılır.",
     "The account's credit limit is {var:1}; with this invoice it would owe {var:2}, {var:3} over.": "Carinin kredi limiti {var:1}; bu faturayla borcu {var:2} olur, limit {var:3} aşılır.",
