@@ -1,6 +1,6 @@
 ---
 name: decisions-made-product-69
-description: Decisions list, product part 69 (2026-11-17 on): Create on New campaign › E-mail stores it paused and opens Edit Campaign; integration packages wanted at priority 4, outside steps after 2026.11.0
+description: Decisions list, product part 69 (2026-11-17 on): the e-mail campaign's Create stores it paused; integration packages at priority 4, outside steps after 2026.11.0; the Options panel in a 240 px column
 ---
 
 ## Where are the rules and the earlier parts?
@@ -17,3 +17,9 @@ description: Decisions list, product part 69 (2026-11-17 on): Create on New camp
 - So the packages of `plans/integrations-census-proposal.md` are wanted and their plans carry `priority: 4`. What needs a demo site, a test account or his repositories and developer accounts is prepared now and done after 2026.11.0 is released.
 - The architect's reading, not his words: which item goes now and which waits (`plans/integrations-census-order.md`), and that the poll "which packages, in which order" is no longer asked.
 - Still his, each when its step is near: the look of the hub's drawing, the subscription form in Application Access, each setting that moves, the wording of the public figure, Google's verification with the broker.
+
+## How does the Page Design Studio's Options panel come out in a 240 px column? (owner, 2026-11-17, agent channel poll 117, message 7593)
+- He chose "Evet, böyle çıksın" for the R&D agent's drawing (discussion "Görsel Tasarımcı geliştirme", message 7583): on a 1024 px screen the right column is 240 px, and the panel keeps the parts and the order of the approved drawings; only what does not fit moves, as the drawing's ten notes say.
+- The one difference from the measure sheets, his by this answer: a button group that does not fit beside its label gets the label above it and stays on one line (note 4).
+- Not chosen: "Hayır, böyle çıkmasın".
+- The drawing joins `plans/designer-panels/` by the R&D agent's PR; a step that draws the panel accounts for it as for the other drawings (`plans/designer-panels-rules.md`).
