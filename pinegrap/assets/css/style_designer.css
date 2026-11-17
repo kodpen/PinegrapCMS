@@ -6418,6 +6418,13 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
     #sd-preview-menu-btn.sd-preview-btn { padding: 0 .4rem; }
     #sd-preview-menu-btn .sd-preview-txt { display: none; }
 }
+/* A phone's toolbar has no room to spare: the caret goes too, the button
+   keeps its icon and announces its menu (aria-haspopup), and it moves after
+   Publish, so a long design name pushes Preview to the edge before Publish. */
+@media (max-width: 767.98px) {
+    #sd-preview-menu-btn.sd-preview-btn { width: 32px; padding: 0; order: 1; }
+    #sd-preview-menu-btn .sd-preview-caret { display: none; }
+}
 
 /* ── Template: "your design is being prepared" ──
    Drawn over the whole editor while a template's pages are fetched and
