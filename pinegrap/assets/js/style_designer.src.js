@@ -7331,8 +7331,9 @@ const StyleDesigner = (function () {
 
         wrapper.innerHTML =
             // Three zones (D54-D57): the mode, the canvas (screen size and
-            // zoom), the view and the tools; Preview and Open on Site after
-            // them. The ids are the ones every handler and shortcut reaches.
+            // zoom), the view and the tools. Preview and Open on Site are rows
+            // of the Preview menu beside Publish (_sdPreviewMenuBuild()). The
+            // ids are the ones every handler and shortcut reaches.
             '<div class="sd-bp-bar" id="sd-bp-bar" data-fold="0">' +
             '<div class="sd-bp-zone sd-bp-mode" role="group" aria-label="' + esc(_sdT('Mode')) + '">' +
             '<button type="button" class="sd-bp-seg active" id="sd-vb-design" aria-pressed="true" title="' + esc(_sdT('Design')) + '"><span class="bi bi-pencil"></span><span class="sd-vb-txt">' + esc(_sdT('Design')) + '</span></button>' +
@@ -7365,15 +7366,6 @@ const StyleDesigner = (function () {
             '<button type="button" class="sd-vb-btn sd-vb-view" id="sd-vb-view" aria-haspopup="menu" aria-expanded="false" aria-controls="sd-vb-view-menu" title="' + esc(_sdT('Canvas view')) + '"><span class="bi bi-eye"></span><span class="sd-vb-txt">' + esc(_sdT('Canvas view')) + '</span><span class="sd-vb-badge" id="sd-vb-view-badge" aria-hidden="true" hidden></span><span class="bi bi-chevron-down sd-vb-caret"></span></button>' +
             '<button type="button" class="sd-vb-btn sd-vb-tool" id="sd-vb-find" title="' + esc(_sdT('Find & Replace (Ctrl+F)')) + '" aria-label="' + esc(_sdT('Find & Replace (Ctrl+F)')) + '"><span class="bi bi-search"></span></button>' +
             '<button type="button" class="sd-vb-btn sd-vb-tool" id="sd-vb-snapshots" title="' + esc(_sdT('History')) + '" aria-label="' + esc(_sdT('History')) + '"><span class="bi bi-clock-history"></span></button>' +
-            '</div>' +
-            '<span class="sd-bp-zsep" aria-hidden="true"></span>' +
-            '<div class="sd-bp-zone sd-bp-out">' +
-            '<button type="button" class="sd-vb-btn" id="sd-vb-preview" title="' + esc(_sdT('Preview in a new window (Ctrl+Alt+P)')) + '"><span class="bi bi-window" ></span> <span class="sd-vb-txt">' + esc(_sdT('Preview')) + '</span></button>' +
-            // Preview renders the UNSAVED canvas in a blank window; this one
-            // opens the page as the site actually serves it — theme, common
-            // regions, dynamic content and all. Only for a page that exists
-            // on the site, so it is hidden until the first save.
-            '<a href="#" target="_blank" rel="noopener" class="sd-vb-btn" id="sd-vb-live" title="' + esc(_sdT('Open the page on the site (as saved)')) + '" style="display:none"><span class="bi bi-box-arrow-up-right"></span> <span class="sd-vb-txt">' + esc(_sdT('Open on Site')) + '</span></a>' +
             '</div>' +
             '</div>' +
             '<div class="sd-ctx-bar sd-ctx-idle" id="sd-ctx-bar">' +
@@ -7547,19 +7539,18 @@ const StyleDesigner = (function () {
         var _findBtn = document.getElementById('sd-vb-find');
         if (_findBtn) _findBtn.addEventListener('click', openFindReplaceModal);
 
-        // Preview + Shortcuts toolbar buttons
-        var _previewBtn   = document.getElementById('sd-vb-preview');
+        // The Preview menu beside Publish, and the Shortcuts button
+        _sdPreviewMenuBuild();
         var _shortcutsBtn = document.getElementById('sd-vb-shortcuts');
-        if (_previewBtn)   _previewBtn.addEventListener('click', openPreview);
         var _protoBtn = document.getElementById('sd-vb-proto');
         // The mode switch's Prototype side opens the view; its Design side
         // closes it.
         if (_protoBtn) _protoBtn.addEventListener('click', function () { if (!_sdProto.open) _sdProtoOpen(); });
         if (_shortcutsBtn) _shortcutsBtn.addEventListener('click', openShortcutsModal);
 
-        // The tab strip was rendered before this bar existed, so its first
-        // pass could not fill in "Open on Site" — do it now that the button is
-        // in the DOM. Every later tab switch / save keeps it in step.
+        // The tab strip was rendered before this menu existed, so its first
+        // pass could not fill in "Open on the site" — do it now that the row
+        // is in the DOM. Every later tab switch / save keeps it in step.
         if (typeof _pgTabsSyncViewButton === 'function') _pgTabsSyncViewButton();
 
         _sdInitCanvasDoc();
@@ -78729,16 +78720,136 @@ const StyleDesigner = (function () {
         load();
     }
 
-    // "View page" next to Save AND next to Preview on the canvas bar: both
-    // only for a page that exists on the site.
+    // The Preview menu's rows that depend on the page on screen: Open on
+    // the site for a page that exists there, Play for a prototype the viewer
+    // can open, Share for an operator who may share it.
     function _pgTabsSyncViewButton() {
         var url = _pgPageViewUrl(_pgActivePage());
-        ['sd-view-page', 'sd-vb-live'].forEach(function (id) {
-            var btn = document.getElementById(id);
-            if (!btn) return;
-            btn.style.display = url ? '' : 'none';
-            btn.href = url || '#';
+        var rows = _sdPreviewMenuRows({ live: !!url, play: !!_sdPreviewPlayUrl(), share: _pgPrototypeShareReady() });
+        ['sd-vb-live', 'sd-vb-play', 'sd-vb-share'].forEach(function (id) {
+            var row = document.getElementById(id);
+            if (!row) return;
+            var off = rows.indexOf(id) === -1;
+            if (row.hidden !== off) row.hidden = off;
         });
+        var live = document.getElementById('sd-vb-live');
+        if (live) live.href = url || '#';
+    }
+
+    // ── Preview menu (D58) ───────────────────────────────────────────────
+    // Beside Publish, the ways to see the page outside the editor, in this
+    // order: Preview in a new window (the unsaved canvas, Ctrl+Alt+P), Open
+    // on the site (the page as the site serves it, as saved), Play as a
+    // prototype and Share the prototype… (the saved drafts). The rows a page
+    // cannot use are left out, never shown dead. s: { live, play, share }.
+    function _sdPreviewMenuRows(s) {
+        s = s || {};
+        var rows = ['sd-vb-preview'];
+        if (s.live) rows.push('sd-vb-live');
+        if (s.play) rows.push('sd-vb-play');
+        if (s.share) rows.push('sd-vb-share');
+        return rows;
+    }
+
+    // Where Play as a prototype opens the viewer: the page on screen when it
+    // is a saved draft, else the first page the viewer can show; '' for none.
+    function _sdPreviewPlayUrl() {
+        var url = _pgPrototypeUrl(_pgActivePage());
+        for (var i = 0; !url && i < _pages.length; i++) url = _pgPrototypeUrl(_pages[i]);
+        return url;
+    }
+
+    // Builds the menu on the overlay host, not in the toolbar, whose
+    // overflow would cut it. The rows keep the ids of the buttons they
+    // replace (#sd-vb-preview, #sd-vb-live).
+    function _sdPreviewMenuBuild() {
+        var btn = document.getElementById('sd-preview-menu-btn');
+        if (!btn) return;
+        var old = document.getElementById('sd-preview-menu');
+        if (old) old.remove();
+        var menu = document.createElement('div');
+        menu.id = 'sd-preview-menu';
+        menu.className = 'sd-vb-menu sd-preview-menu';
+        menu.setAttribute('role', 'menu');
+        menu.setAttribute('aria-label', _sdT('Preview'));
+        menu.hidden = true;
+        menu.innerHTML =
+            '<button type="button" class="sd-vb-row" id="sd-vb-preview" role="menuitem"><span class="bi bi-window"></span><span class="sd-vb-row-lbl">' + esc(_sdT('Preview in a new window')) + '</span><kbd class="sd-vb-kbd">Ctrl+Alt+P</kbd></button>' +
+            '<a href="#" class="sd-vb-row" id="sd-vb-live" role="menuitem" target="_blank" rel="noopener" hidden><span class="bi bi-box-arrow-up-right"></span><span class="sd-vb-row-lbl">' + esc(_sdT('Open on the site (as saved)')) + '</span></a>' +
+            '<button type="button" class="sd-vb-row" id="sd-vb-play" role="menuitem" hidden><span class="bi bi-play-btn"></span><span class="sd-vb-row-lbl">' + esc(_sdT('Play as a prototype')) + '</span></button>' +
+            '<button type="button" class="sd-vb-row" id="sd-vb-share" role="menuitem" hidden><span class="bi bi-share"></span><span class="sd-vb-row-lbl">' + esc(_sdT('Share the prototype…')) + '</span></button>';
+        ((window.pgUI && typeof pgUI.overlayHost === 'function') ? pgUI.overlayHost(btn) : document.body).appendChild(menu);
+
+        menu.addEventListener('click', function (e) {
+            var row = e.target.closest('.sd-vb-row');
+            if (!row) return;
+            _sdPreviewMenuOpen(false);
+            if (row.id === 'sd-vb-preview') {
+                openPreview();
+            } else if (row.id === 'sd-vb-live') {
+                if (row.getAttribute('href') === '#') e.preventDefault();
+            } else if (row.id === 'sd-vb-play') {
+                var url = _sdPreviewPlayUrl();
+                if (url) window.open(url, '_blank', 'noopener');
+            } else if (row.id === 'sd-vb-share') {
+                // A saved draft on screen is offered as the link's start page.
+                var p = _pgActivePage();
+                _pgPrototypeShareDialog((p && p.page_id > 0 && p.page_draft && !p.pickedPending) ? p.page_id : 0);
+            }
+        });
+
+        if (btn.getAttribute('data-sd-bound')) return;
+        btn.setAttribute('data-sd-bound', '1');
+        btn.addEventListener('click', function () { _sdPreviewMenuOpen(); });
+        document.addEventListener('mousedown', function (e) {
+            var m = document.getElementById('sd-preview-menu');
+            if (!m || m.hidden || m.contains(e.target) || btn.contains(e.target)) return;
+            _sdPreviewMenuOpen(false);
+        }, true);
+        document.addEventListener('keydown', function (e) {
+            var m = document.getElementById('sd-preview-menu');
+            if (!m || m.hidden) return;
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                e.stopPropagation();
+                _sdPreviewMenuOpen(false);
+                btn.focus();
+                return;
+            }
+            if ((e.key !== 'ArrowDown' && e.key !== 'ArrowUp') || !m.contains(document.activeElement)) return;
+            var rows = Array.prototype.filter.call(m.querySelectorAll('[role="menuitem"]'), function (r) { return !r.hidden; });
+            var at = rows.indexOf(document.activeElement);
+            if (at === -1 || !rows.length) return;
+            e.preventDefault();
+            rows[(at + (e.key === 'ArrowDown' ? 1 : rows.length - 1)) % rows.length].focus();
+        }, true);
+        window.addEventListener('resize', function () { _sdPreviewMenuOpen(false); });
+    }
+
+    // Opens or closes the Preview menu under its button, its right edge on
+    // the button's (`open` omitted: toggles). The rows are brought up to
+    // date first, as a draft can change state without a tab switch.
+    function _sdPreviewMenuOpen(open) {
+        var btn = document.getElementById('sd-preview-menu-btn');
+        var menu = document.getElementById('sd-preview-menu');
+        if (!btn || !menu) return;
+        if (open === undefined) open = menu.hidden;
+        if (!open) {
+            if (!menu.hidden) {
+                menu.hidden = true;
+                btn.setAttribute('aria-expanded', 'false');
+            }
+            return;
+        }
+        _pgTabsSyncViewButton();
+        menu.hidden = false;
+        btn.setAttribute('aria-expanded', 'true');
+        var r = btn.getBoundingClientRect();
+        var mw = menu.offsetWidth;
+        menu.style.top = Math.round(r.bottom + 6) + 'px';
+        menu.style.left = Math.round(Math.max(8, Math.min(r.right - mw, window.innerWidth - mw - 8))) + 'px';
+        var first = menu.querySelector('[role="menuitem"]');
+        if (first) first.focus();
     }
 
     // ── Drafts ────────────────────────────────────────────────────────────

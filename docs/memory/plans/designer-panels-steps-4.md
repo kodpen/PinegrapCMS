@@ -30,7 +30,7 @@ description: Plan designer-panels, steps DP17 to DP25: the page strip (the desig
   - Pictures: beside `canvas-bar.jpg` at 1440, 1024 and 390; an e-mail design.
   - Features: D54, D55, D56, D57, D61, D62. Keeps K8.
 
-- DP23 (S) after DP22: the Preview menu (`#sd-vb-preview`, `#sd-vb-live`, `#sd-view-page`). Features: D58.
+- DP23 (S) after DP22: the Preview menu (`#sd-vb-preview`, `#sd-vb-live`, `#sd-view-page`). Features: D58 Done in #10244.
 
 - DP24 (M) after DP23 and after the plan prototype-canvas has ended: Prototype mode in the same bar. That plan's bar features (F24, F25) move here; its Close button gives way to the switch, as `canvas-bar.jpg` shows. Features: D59, D60. Keeps K11.
 
