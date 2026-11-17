@@ -216,3 +216,100 @@ function test_courses_certificate_changed_code_refused()
 	pg_assert_same(null, pg_course_certificate_parse($code, 'another-secret'), 'another site\'s secret');
 	pg_assert_same(null, pg_course_certificate_parse('nonsense', $key), 'not a code');
 }
+
+function _courses_test_gate_lesson($lesson_id, $page_id)
+{
+	return array(
+		'id'      => $lesson_id,
+		'page_id' => $page_id,
+		'course'  => array('id' => 5, 'in_order' => '1', 'classroom_page_id' => 40),
+	);
+}
+
+function test_courses_gate_closed_by_days()
+{
+	$answer = pg_course_gate_answer(true, 'private', _courses_test_gate_lesson(12, 52), _courses_test_lessons(), array(11), '2026-11-01', '2026-11-07', false);
+
+	pg_assert_true($answer['closed'], 'day 6 of 7: closed');
+	pg_assert_same('days', $answer['reason'], 'closed by its days');
+	pg_assert_same('2026-11-08', $answer['opens_on'], 'names the day it opens');
+	pg_assert_same(40, $answer['classroom_page_id'], 'sends the member to the classroom');
+}
+
+function test_courses_gate_closed_by_order()
+{
+	$answer = pg_course_gate_answer(true, 'private', _courses_test_gate_lesson(12, 52), _courses_test_lessons(), array(), '2026-11-01', '2026-11-20', false);
+
+	pg_assert_true($answer['closed'], 'lesson before not done: closed');
+	pg_assert_same('order', $answer['reason'], 'closed by the order');
+	pg_assert_same(11, $answer['before_id'], 'names the lesson to finish first');
+}
+
+function test_courses_gate_open_lesson_passes()
+{
+	$answer = pg_course_gate_answer(true, 'private', _courses_test_gate_lesson(12, 52), _courses_test_lessons(), array(11), '2026-11-01', '2026-11-20', false);
+
+	pg_assert_false($answer['closed'], 'days passed and the lesson before done');
+}
+
+function test_courses_gate_public_lesson_never_closed()
+{
+	foreach (array('public', 'registration', 'guest', 'membership', '') as $type) {
+		$answer = pg_course_gate_answer(true, $type, _courses_test_gate_lesson(12, 52), _courses_test_lessons(), array(), '2026-11-01', '2026-11-02', false);
+		pg_assert_false($answer['closed'], 'a lesson in a ' . ($type === '' ? 'blank' : $type) . ' folder is a free preview');
+	}
+}
+
+function test_courses_gate_editor_passes()
+{
+	$answer = pg_course_gate_answer(true, 'private', _courses_test_gate_lesson(12, 52), _courses_test_lessons(), array(), '2026-11-01', '2026-11-02', true);
+
+	pg_assert_false($answer['closed'], 'whoever may edit the page passes');
+}
+
+function test_courses_gate_page_that_is_no_lesson()
+{
+	$answer = pg_course_gate_answer(true, 'private', null, _courses_test_lessons(), array(), '2026-11-01', '2026-11-02', false);
+	pg_assert_false($answer['closed'], 'a page that is no lesson');
+
+	$answer = pg_course_gate_answer(true, 'private', _courses_test_gate_lesson(99, 59), _courses_test_lessons(), array(), '2026-11-01', '2026-11-02', false);
+	pg_assert_false($answer['closed'], 'a lesson row missing from the course\'s list');
+}
+
+function test_courses_gate_switch_off()
+{
+	$answer = pg_course_gate_answer(false, 'private', _courses_test_gate_lesson(12, 52), _courses_test_lessons(), array(), '2026-11-01', '2026-11-02', false);
+
+	pg_assert_false($answer['closed'], 'with the switch off no lesson is closed');
+}
+
+function test_courses_gate_classroom_never_sends_to_itself()
+{
+	$lesson = _courses_test_gate_lesson(12, 40);
+	$answer = pg_course_gate_answer(true, 'private', $lesson, _courses_test_lessons(), array(), '2026-11-01', '2026-11-02', false);
+	pg_assert_true($answer['closed'], 'the classroom page as a closed lesson is still closed');
+	pg_assert_same(0, $answer['classroom_page_id'], 'but it is not sent to itself');
+
+	$lesson['course']['classroom_page_id'] = 0;
+	$answer = pg_course_gate_answer(true, 'private', $lesson, _courses_test_lessons(), array(), '2026-11-01', '2026-11-02', false);
+	pg_assert_same(0, $answer['classroom_page_id'], 'a course without a classroom page');
+}
+
+function test_courses_gate_notice_markup()
+{
+	$html = pg_course_notice_html('Finish <b>"Week 1"</b> first.');
+
+	pg_assert_contains('role="status"', $html, 'announced to a screen reader');
+	pg_assert_contains('Finish &lt;b&gt;', $html, 'the text is escaped');
+	pg_assert_same('', pg_course_notice_html(''), 'no text: nothing printed');
+}
+
+function test_courses_gate_notice_inject_after_body()
+{
+	$page = '<html><body class="x"><p>Classroom</p></body></html>';
+	$out = pg_course_notice_insert($page, '<div id="n">$1</div>');
+
+	pg_assert_contains('<body class="x"><div id="n">$1</div><p>', $out, 'right after the body tag, a dollar sign kept');
+	pg_assert_same('<p>x</p>', pg_course_notice_insert('<p>x</p>', ''), 'nothing to insert');
+	pg_assert_contains('<div id="n">', pg_course_notice_insert('<p>x</p>', '<div id="n"></div>'), 'a fragment without a body gets it first');
+}
