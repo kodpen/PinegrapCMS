@@ -1139,14 +1139,13 @@ function get_order_preview($properties) {
                     $output_gift_card_label_plural_suffix = 's';
                 }
                 
-                // if the total gift card balance is less than the grand total, then set the gift card discount to the total gift card balance
-                if ($total_gift_card_balance < $grand_total) {
-                    $gift_card_discount = $total_gift_card_balance;
-                    
-                // else the total gift card balance is greater than or equal to the grand total, so set the gift card discount to the grand total
-                } else {
-                    $gift_card_discount = $grand_total;
-                }
+                // The cards pay at most the total, and store credit at most the part
+                // of it that is not gift card lines, as submit_order.php charges it
+                // (pg_gift_card_applied_discount()).
+                $applied_balances = pg_gift_card_applied_balances((int) $order_id);
+                $gift_card_discount = pg_gift_card_applied_discount((int) round($grand_total * 100),
+                    pg_order_items_gift_card_lines_part($charged_item_ids, (int) round($order_discount * 100)),
+                    $applied_balances['credit'], $applied_balances['cards'])['discount'] / 100;
                 
                 // update the grand total
                 $grand_total = $grand_total - $gift_card_discount;
@@ -2722,14 +2721,13 @@ function get_order_preview($properties) {
                 // gift card, then prepare gift card info.
                 if (($total > 0) and $applied_gift_cards) {
                     
-                    // if the total gift card balance is less than the grand total, then set the gift card discount to the total gift card balance
-                    if ($total_gift_card_balance < $total) {
-                        $gift_card_discount = $total_gift_card_balance;
-                        
-                    // else the total gift card balance is greater than or equal to the grand total, so set the gift card discount to the grand total
-                    } else {
-                        $gift_card_discount = $total;
-                    }
+                    // The cards pay at most the total, and store credit at most the part
+                    // of it that is not gift card lines, as submit_order.php charges it
+                    // (pg_gift_card_applied_discount()).
+                    $applied_balances = pg_gift_card_applied_balances((int) ($_SESSION['ecommerce']['order_id'] ?? 0));
+                    $gift_card_discount = pg_gift_card_applied_discount((int) round($total * 100),
+                        pg_order_items_gift_card_lines_part($charged_item_ids, (int) round($discount * 100)),
+                        $applied_balances['credit'], $applied_balances['cards'])['discount'] / 100;
                     
                     // update the grand total
                     $total -= $gift_card_discount;

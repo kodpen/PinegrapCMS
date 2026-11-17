@@ -2192,11 +2192,9 @@ function pg_express_order_live_totals($order_id, $lines, $needs_shipping)
 {
     // A gift card is not taken on an order of gift cards alone; submit_order()
     // removes the applied ones then.
-    $gift_card_balance = 0;
+    $gift_card_balance = array('credit' => 0, 'cards' => 0);
     if ((int) $order_id > 0 && defined('ECOMMERCE_GIFT_CARD') && ECOMMERCE_GIFT_CARD == true) {
-        $gift_card_balance = (int) db_value(
-            "SELECT COALESCE(SUM(old_balance), 0) FROM applied_gift_cards WHERE order_id = '" . (int) $order_id . "'"
-        );
+        $gift_card_balance = pg_gift_card_applied_balances($order_id);
     }
     $shipping_drawn = ((int) $order_id > 0 && $needs_shipping)
         ? (int) db_value("SELECT COALESCE(SUM(shipping_cost),0) FROM ship_tos WHERE order_id = '" . (int) $order_id . "'")
@@ -2401,7 +2399,8 @@ function pg_cart_estimate_tax($lines, $default_rate, $order_discount = 0, $today
  * @param string $today           Y-m-d
  * @param bool   $clearcommerce   the gateway charges recurring lines itself
  * @return array subtotal, discount, tax (of the lines charged today), charged (those lines as
- *               pg_order_charged_tax() reads them), later_tax (the lines charged later, as given)
+ *               pg_order_charged_tax() reads them, each with its gift_card flag), later_tax (the
+ *               lines charged later, as given)
  */
 function pg_order_charged_today_totals($lines, $order_discount, $today, $clearcommerce)
 {
@@ -2423,6 +2422,7 @@ function pg_order_charged_today_totals($lines, $order_discount, $today, $clearco
             'amount' => (int) $line['price'] * max(1, (int) $line['quantity']),
             'rate' => isset($line['tax_rate']) ? $line['tax_rate'] : null,
             'tax' => (int) $line['tax_total'],
+            'gift_card' => !empty($line['gift_card']),
         );
     }
 
@@ -2443,12 +2443,151 @@ function pg_order_charged_today_totals($lines, $order_discount, $today, $clearco
 }
 
 /**
+ * What the gift card product lines charged today come to in an order's
+ * total, in minor units: their amounts, less their share of the order
+ * discount (pg_tax_spread() over the amounts, the share the order's invoice
+ * gives each line), plus their tax once that discount is off
+ * (pg_order_line_charged_taxes()). Applied store credit may pay only the
+ * rest of the total (pg_gift_card_applied_discount()): a gift card product
+ * is paid by another method, never by credit.
+ *
+ * @param array $charged   key => ['amount' => int, 'rate' => float|string|null, 'tax' => int,
+ *                         'gift_card' => bool], the lines charged today in the order of their ids
+ * @param int   $discount  the order discount charged today, minor units
+ * @return int  never below zero
+ */
+function pg_gift_card_lines_part($charged, $discount)
+{
+    $amounts = array();
+    $subtotal = 0;
+    $any = false;
+
+    foreach ((array) $charged as $key => $line) {
+        $amounts[$key] = (int) ($line['amount'] ?? 0);
+        $subtotal += $amounts[$key];
+        if (!empty($line['gift_card'])) {
+            $any = true;
+        }
+    }
+
+    if (!$any) {
+        return 0;
+    }
+
+    $discount = min(max(0, (int) $discount), max(0, $subtotal));
+    $shares = (($discount > 0) && ($subtotal > 0)) ? pg_tax_spread($discount, $amounts) : array();
+    $taxes = pg_order_line_charged_taxes($charged, $discount);
+    $part = 0;
+
+    foreach ((array) $charged as $key => $line) {
+        if (!empty($line['gift_card'])) {
+            $part += $amounts[$key] - (int) ($shares[$key] ?? 0) + max(0, (int) ($taxes[$key] ?? 0));
+        }
+    }
+
+    return max(0, $part);
+}
+
+/**
+ * How much of an order's total the applied cards pay, in minor units. Store
+ * credit (a card with a user_id) pays at most the part of the total that is
+ * not gift card product lines (pg_gift_card_lines_part()), so credit bound to
+ * a customer and perhaps expiring never becomes a plain gift card; the plain
+ * gift cards then pay what is left of the total, at most their balance.
+ * Never below zero, never more than the total.
+ *
+ * @param int $total            the order's total before the cards: lines less discount, tax, shipping
+ * @param int $gift_lines_part  pg_gift_card_lines_part()
+ * @param int $credit_balance   the applied store credit rows' balance
+ * @param int $card_balance     the applied plain gift cards' balance
+ * @return array  credit, cards (the part each pays), discount (their sum)
+ */
+function pg_gift_card_applied_discount($total, $gift_lines_part, $credit_balance, $card_balance)
+{
+    $total = max(0, (int) $total);
+    $room = max(0, $total - max(0, (int) $gift_lines_part));
+    $credit = min(max(0, (int) $credit_balance), $room);
+    $cards = min(max(0, (int) $card_balance), $total - $credit);
+
+    return array('credit' => $credit, 'cards' => $cards, 'discount' => $credit + $cards);
+}
+
+/**
+ * The applied cards' balances of an order, store credit apart from plain
+ * gift cards: an applied_gift_cards row whose card has a user_id is credit;
+ * a Givex card or a card of no account is plain. Each row counts its
+ * old_balance, as the checkout totals read it.
+ *
+ * @param int $order_id
+ * @return array  credit, cards: minor units
+ */
+function pg_gift_card_applied_balances($order_id)
+{
+    $balances = array('credit' => 0, 'cards' => 0);
+
+    if ((int) $order_id <= 0) {
+        return $balances;
+    }
+
+    $owner = (function_exists('pg_credit_ready') && pg_credit_ready()) ? 'gift_cards.user_id' : '0';
+
+    foreach ((array) db_items(
+        "SELECT applied_gift_cards.old_balance, applied_gift_cards.givex, " . $owner . " AS user_id
+        FROM applied_gift_cards
+        LEFT JOIN gift_cards ON gift_cards.id = applied_gift_cards.gift_card_id
+        WHERE applied_gift_cards.order_id = '" . (int) $order_id . "'") as $row) {
+        $credit = empty($row['givex']) && ((int) $row['user_id'] > 0);
+        $balances[$credit ? 'credit' : 'cards'] += (int) $row['old_balance'];
+    }
+
+    return $balances;
+}
+
+/**
+ * pg_gift_card_lines_part() for order lines given by id, read from the order:
+ * for the classic express order and order preview pages, which hold the ids
+ * of the lines charged today.
+ *
+ * @param int[] $item_ids  the order_items charged today
+ * @param int   $discount  minor units
+ * @return int
+ */
+function pg_order_items_gift_card_lines_part($item_ids, $discount)
+{
+    $ids = array_values(array_filter(array_map('intval', (array) $item_ids)));
+
+    if (!$ids) {
+        return 0;
+    }
+
+    $with_rate = pg_schema_has('order_items', 'tax_rate');
+    $lines = array();
+
+    foreach ((array) db_items("SELECT order_items.id, order_items.price, order_items.quantity, order_items.tax_total"
+        . ($with_rate ? ", order_items.tax_rate" : "") . ", products.gift_card
+        FROM order_items
+        LEFT JOIN products ON products.id = order_items.product_id
+        WHERE order_items.id IN (" . implode(', ', $ids) . ")
+        ORDER BY order_items.id") as $item) {
+        $lines[(int) $item['id']] = array(
+            'amount' => (int) $item['price'] * max(1, (int) $item['quantity']),
+            'rate' => $with_rate ? $item['tax_rate'] : null,
+            'tax' => (int) $item['tax_total'],
+            'gift_card' => !empty($item['gift_card']),
+        );
+    }
+
+    return pg_gift_card_lines_part($lines, $discount);
+}
+
+/**
  * The totals of the cart as submit_order() charges them when the order is
  * placed, in minor units: the lines charged today, their tax and the cart's
  * order discount as pg_order_charged_today_totals() takes them (the step
  * the cart widget's tax goes through too), the
  * shipping, the applied gift cards at most the total (none on an order of
- * gift cards alone), and the card surcharge on what is left (pg_percent_of(),
+ * gift cards alone; store credit never on the gift card lines,
+ * pg_gift_card_applied_discount()), and the card surcharge on what is left (pg_percent_of(),
  * the same figure on every PHP version). Where the shipping and the
  * surcharge hold tax on the order's invoice, each is a minor unit lower when
  * it would leave a rate's total no amount reaches
@@ -2461,7 +2600,8 @@ function pg_order_charged_today_totals($lines, $order_discount, $today, $clearco
  *                                        start), gift_card
  * @param int          $order_discount    the cart's order discount ($_SESSION['ecommerce']['order_discount'])
  * @param int          $shipping
- * @param int          $gift_card_balance the applied gift cards' balance
+ * @param int|array    $gift_card_balance the applied cards' balance: ['credit' => int, 'cards' => int]
+ *                                        (pg_gift_card_applied_balances()), or one int counted as credit
  * @param float|string $surcharge_percent ECOMMERCE_SURCHARGE_PERCENTAGE, the decimal string the database gives
  * @param string       $today             Y-m-d
  * @param bool         $clearcommerce     the gateway charges recurring lines itself
@@ -2495,7 +2635,11 @@ function pg_express_order_charged_totals($lines, $order_discount, $shipping, $gi
     $gift_card_discount = 0;
 
     if (($total > 0) && !$only_gift_cards) {
-        $gift_card_discount = min(max(0, (int) $gift_card_balance), $total);
+        $balances = is_array($gift_card_balance)
+            ? $gift_card_balance + array('credit' => 0, 'cards' => 0)
+            : array('credit' => $gift_card_balance, 'cards' => 0);
+        $gift_card_discount = pg_gift_card_applied_discount($total, pg_gift_card_lines_part($charged, $discount),
+            $balances['credit'], $balances['cards'])['discount'];
     }
 
     $total = max(0, $total - $gift_card_discount);

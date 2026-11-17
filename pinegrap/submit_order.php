@@ -218,6 +218,10 @@ function submit_order($type) {
     
     // initialize a variable for storing the total balance of all gift cards
     $gift_card_balance = 0;
+
+    // The part of it that is store credit (a card with a user_id): credit
+    // never pays for the order's gift card lines (pg_gift_card_applied_discount()).
+    $credit_balance = 0;
     
     // if gift cards are enabled, then check if applied gift cards are still valid and refresh balances
     if (ECOMMERCE_GIFT_CARD == TRUE) {
@@ -332,6 +336,10 @@ function submit_order($type) {
 
                         // update total gift card balance
                         $gift_card_balance = $gift_card_balance + $balance;
+
+                        if ((int) $gift_card['user_id'] > 0) {
+                            $credit_balance += (int) $balance;
+                        }
                     }
 
                 // Otherwise this is a givex gift card, so check if gift card still exists
@@ -835,6 +843,7 @@ function submit_order($type) {
             'amount' => (int) $product['price'] * max(1, (int) $product['quantity']),
             'rate' => $product['line_tax_rate'] ?? null,
             'tax' => (int) $product['tax_total'],
+            'gift_card' => !empty($product['gift_card']),
         );
     }
 
@@ -897,16 +906,13 @@ function submit_order($type) {
 
     $gift_card_discount = 0;
 
-    // If the total is greater than 0 then set gift card discount
+    // If the total is greater than 0 then set gift card discount: the cards
+    // pay at most the total, and store credit at most the part of it that is
+    // not gift card lines, so credit bound to a customer never turns into a
+    // plain gift card (pg_gift_card_applied_discount()).
     if ($total > 0) {
-        // if the gift card balance is greater than the total, then set the gift card discount to the total
-        if ($gift_card_balance > $total) {
-            $gift_card_discount = $total;
-            
-        // else the gift card balance is less than or equal to the total, so set the gift card discount to the gift card balance
-        } else {
-            $gift_card_discount = $gift_card_balance;
-        }
+        $gift_card_discount = pg_gift_card_applied_discount($total, pg_gift_card_lines_part($charged_lines, $discount),
+            $credit_balance, $gift_card_balance - $credit_balance)['discount'];
     }
     
     // update the total to include the gift card discount

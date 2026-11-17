@@ -9,7 +9,7 @@ description: What binds store credit (owner, 2026-11-02, #5039, #6306): a custom
 
 ## What is it not?
 - Not a payment method: no driver, no charge, no refund to a payment service. A refund to credit is a refund with `refund_method = credit` and the card id as its reference (`store-credit-refunds.md`).
-- It never pays for a gift card product: the rule `submit_order.php` already keeps for gift cards.
+- It never pays for a gift card product: not on an order of gift cards alone, and on a mixed cart at most the part of the total that is not gift card lines (`gift-card-line-credit-cap.md`, #10258).
 
 ## Which owner decisions bind it?
 - The reward goal (membership, reward mail) keeps working beside the conversion (`store-credit-points.md`).
