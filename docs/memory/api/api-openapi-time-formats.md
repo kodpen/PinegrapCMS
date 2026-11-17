@@ -16,6 +16,6 @@ description: How a time field is declared in the API document: datetime (date-ti
 - Tests: `tests/api_openapi_time_formats_test.php`.
 
 ## Which objects are done?
-- PR #PRNUM: the core objects of `includes/api/` (143 fields: 125 moments, 18 days) and `User`. `seo.issues` rows were declared by #10116.
+- PR #10151: the core objects of `includes/api/` (143 fields: 125 moments, 18 days) and `User`. `seo.issues` rows were declared by #10116.
 - Left as plain strings, the source not read as a sure ISO form: `CommissionRecurringProfile.start_date`, `OrderReturnWithdrawal.delivered_on`, `Order.shipments[].parcels[].delivered_at`, `DesignAutoDialog.open_on`.
 - Not yet: Workspace, ERP and translation objects, and `includes/api/resources/design.php` (the next part of the step).
