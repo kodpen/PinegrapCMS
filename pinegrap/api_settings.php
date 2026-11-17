@@ -3073,7 +3073,7 @@ echo '
 		box.dataset.id = hook.id;
 		box.innerHTML =
 			"<label class=\'form-label small fw-bold\' for=\'d_sample_select\'>" + ' . json_encode(lang('Send a sample'), JSON_UNESCAPED_UNICODE) . ' + "</label>" +
-			"<select class=\'form-select form-select-sm mb-3\' id=\'d_sample_select\' aria-describedby=\'d_sample_help\'>" +
+			"<select class=\'form-control form-control-sm mb-3\' id=\'d_sample_select\' aria-describedby=\'d_sample_help\'>" +
 			hook.events.map(function (name) {
 				return "<option value=\'" + esc(name) + "\'>" + esc(name + (HOOK_TEXT[name] ? " — " + HOOK_TEXT[name] : "")) + "</option>";
 			}).join("") + "</select>" +
