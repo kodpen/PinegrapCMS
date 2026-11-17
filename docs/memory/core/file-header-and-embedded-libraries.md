@@ -32,6 +32,7 @@ description: The Pinegrap file header every new PHP/JS file must carry, which fi
 - `includes/iyzipay-php`, to load on PHP 7.1 (above) and to stay quiet on 8.4/8.5 (commerce/iyzipay-sdk-php85-patch.md).
 - `includes/stripe` (classic 1.17.2), to stay quiet on PHP 8.1 to 8.5 (`stripe-classic-embedding.md`).
 - `includes/phpexcel` (1.8.x, no longer maintained), for the .ods reader's cell ceiling and to stay quiet on PHP 8.5 (`phpexcel-embedding.md`).
+- `includes/boxpacker` (1.x), to stay quiet on PHP 8.5 (`boxpacker-embedding.md`).
 - `mysqldump.php` (ifsnop/mysqldump-php at the software root; the backup, `includes/fn/backup.php`): its constructor sets the buffered-query option through `Pdo\Mysql::ATTR_USE_BUFFERED_QUERY` when that class exists (PHP 8.4 and later; the same value, 1000), because `PDO::MYSQL_ATTR_USE_BUFFERED_QUERY` is deprecated from 8.5 (#1451). On 8.5 the unit tests stopped with an ERROR there. An update re-applies it.
 
 Related: docs/memory/core/dompdf-embedding.md
