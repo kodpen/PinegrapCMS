@@ -25408,6 +25408,19 @@ const StyleDesigner = (function () {
             });
         }
 
+        // The rows' indents follow the tree's width (_sdTreeRowIndent()): a
+        // resized or newly docked panel draws them again.
+        var _ovTreeWrap = document.getElementById('sd-overview-tree-wrap');
+        if (_ovTreeWrap && typeof ResizeObserver === 'function') {
+            var _ovResizeT = null;
+            new ResizeObserver(function () {
+                var w = _ovTreeWrap.clientWidth;
+                if (!w || Math.abs(w - _sdTreeRowWidth) < 12) return;
+                clearTimeout(_ovResizeT);
+                _ovResizeT = setTimeout(renderTree, 150);
+            }).observe(_ovTreeWrap);
+        }
+
         // ── Show the selection; the path's steps select their element ────────
         var _ovRevealBtn = document.getElementById('sd-ov-reveal-btn');
         if (_ovRevealBtn) {
@@ -84868,7 +84881,9 @@ const StyleDesigner = (function () {
             // helper so any shared_ref nodes in the new tree get their
             // content fetched before/around the first render — otherwise
             // the canvas would paint with "Not found" placeholders for a
-            // tree whose shared IDs weren't in _sharedCache.
+            // tree whose shared IDs weren't in _sharedCache. A tree loaded
+            // whole counts as opened: only the selection's section is open.
+            delete _sdTreeSectionsSet[String(_activeKey || '')];
             _replaceTreeWithPrefetch(d, { resetHistory: true });
         },
         undo: undo,
