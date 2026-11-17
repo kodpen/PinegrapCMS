@@ -1,6 +1,6 @@
 ---
 name: decisions-made-product-75
-description: Decisions list, product part 75 (2026-11-17): translated pictures are drawn by themselves and by the server with nobody there (poll 143); the "Bana Haber Ver" block's look (poll 142)
+description: Decisions list, product part 75 (2026-11-17): pictures drawn by themselves and by the server (poll 143); looks of the notification block (142) and the meeting link page (144); CH3b's change withdrawn (145)
 ---
 
 ## Where are the rules and the earlier parts?
@@ -16,5 +16,13 @@ description: Decisions list, product part 75 (2026-11-17): translated pictures a
 ## Is the "Bana Haber Ver" block's look accepted? (owner, 2026-11-17, agent channel poll 142, message 9277)
 - "Evet, böyle çıksın" to one sheet of nine pictures (VP3 #10288): the first state (heading, text, "Bana Haber Ver"); after a yes "Bildirimler açık." with "Durdur"; the line that says how to allow when the browser blocks notifications; "Bildirimler açılamadı. Lütfen yeniden deneyin." under the button when it fails; dark; the same states on a phone.
 - The poll told him: the block shows nothing while "Ziyaretçi bildirimleri" is off (as on every site at first) or in a browser that cannot subscribe; its texts and colours are changed in the visual editor.
+
+## Is the meeting link page's look accepted? (owner, 2026-11-17, agent channel poll 144, message 9289)
+- "Evet, böyle çıksın" to one sheet of nine pictures (SL2 #10073, `book_with.php`): the member's services with length and price; the month, the free days and times; the form (name, e-mail, phone, note, the consent box) with the time held for 10 minutes; the form sent empty; the confirmation with the meeting address and "Takvime ekle"; a wrong or dead link; services, times and form on a phone.
+- The poll told him in words what the sheet lacked: a time taken meanwhile says "Bu saat az önce alındı. Lütfen başka bir saat seçin." and the times are drawn again.
+
+## Which change did he want on CH3b? (owner, 2026-11-17, agent channel poll 145, message 9290)
+- In poll 115 he had chosen "A change is wanted" for "the person the event names" on a flow's task box (CH3b #10077) and written none. Asked which, he typed: "hatırlamıyorum kapatabiliriz."
+- The architect's reading, told to him under the poll: the change is withdrawn and the screen goes as it stands; he writes there if he meant the PR itself.
 
 Related: docs/memory/workflow/decisions-made.md, docs/memory/workflow/decisions-made-product-74.md
