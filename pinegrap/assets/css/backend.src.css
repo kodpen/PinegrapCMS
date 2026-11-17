@@ -31734,15 +31734,59 @@ button.pg-var-chip:focus-visible {
 .connections-toggle[aria-expanded="true"] .connections-row-chevron {
   transform: rotate(180deg);
 }
-.connections-list > * + *,
-.connections-panel {
+.connections-list > * + * {
   border-top: 1px solid var(--pg-border-color-translucent);
 }
-.connections-panel {
-  padding: 16px 16px 20px 63px;
+
+/* The drawers: 480 px floating off the right edge with the sheet's corners
+   and shadow (the report settings drawer's shape), sections split by a
+   line; on a phone a sheet from the bottom. */
+.connections-drawer {
+  --pg-drawer-width: 480px;
+  --pg-drawer-height: 88vh;
+  background: linear-gradient(180deg, var(--pg-surface-1), var(--pg-surface-2));
+  border-color: var(--pg-border-color-translucent);
+  box-shadow: var(--pg-shadow-sheet);
 }
-.connections-panel .list-group-item {
+@media (min-width: 576px) {
+  .connections-drawer {
+    --pg-drawer-inset: 12px;
+    --pg-drawer-border-radius: var(--pg-radius-sheet);
+  }
+}
+.connections-drawer.drawer-bottom {
+  border-start-start-radius: var(--pg-radius-sheet);
+  border-start-end-radius: var(--pg-radius-sheet);
+}
+.connections-drawer > .drawer-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 12px 12px 20px;
+  border-bottom: 1px solid var(--pg-border-color-translucent);
+}
+.connections-drawer-head {
+  flex: 1;
+  min-width: 0;
+}
+.connections-drawer > .drawer-body {
+  gap: 0;
+  padding: 0;
+}
+.connections-drawer > .drawer-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px 20px;
+  border-top: 1px solid var(--pg-border-color-translucent);
+}
+.connections-drawer .list-group-item {
   background: none;
+}
+.connections-app-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 @media (max-width: 575.98px) {
@@ -31757,9 +31801,6 @@ button.pg-var-chip:focus-visible {
     order: 3;
     flex-basis: 100%;
     padding-left: 47px;
-  }
-  .connections-panel {
-    padding-left: 16px;
   }
 }
 

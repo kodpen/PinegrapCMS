@@ -1541,6 +1541,7 @@
     "It runs once for each time it happens; {{record}} in a text tags the record it is about.": "Her olduğunda bir kez çalışır; metindeki {{record}} ilgili kaydı etiketler.",
     "It sends at a time of day before the calendar event's start, which a Wait box would move to later.": "Takvim etkinliğinin başlangıcından önce günün bir saatinde gönderiyor; bir Bekle kutusu bunu daha sonraya kaydırırdı.",
     "It sends before its action, which no Wait box can do.": "Eyleminden önce gönderiyor; bunu hiçbir Bekle kutusu yapamaz.",
+    "It signs in as a user of the site; nothing stored says it is used.": "Sitenin bir kullanıcısı olarak oturum açar; kullanıldığını söyleyen kayıtlı bir şey yok.",
     "It started as a joke: one drawing of Pixel a day, for a month. Five years later I still have not stopped, and he still has not posed once.": "Bir şaka olarak başladı: bir ay boyunca her gün bir Pixel çizimi. Beş yıl sonra hâlâ bırakmadım, o da hâlâ bir kez bile poz vermedi.",
     "It starts only for what you may read: the task, the channel of the request or the guest's room.": "Yalnız sizin okuyabildikleriniz için başlar: görev, isteğin kanalı ya da misafirin odası.",
     "It starts with the browser engine, which needs no key; Claude or another engine can be chosen on its row afterwards.": "Dil, anahtar gerektirmeyen tarayıcı motoruyla başlar; Claude ya da başka bir motor sonradan dilin satırından seçilebilir.",

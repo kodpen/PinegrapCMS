@@ -22,7 +22,7 @@ description: Plan connections-hub, steps CN1 to CN7: the registry and its census
   - Tests: the order (attention, connected, the rest) and the search as pure functions; a row hidden from a user who may not open its place.
   - Features: H6, H7, H9, H11.
 
-- CN4 (M) after CN3: the drawers and the other side.
+- CN4 (M) after CN3: the drawers and the other side. Done: #10237.
   - The drawer for each kind of row; the last error on file where one is stored; the block that leads to Application Access with its counts.
   - Features: H8, H10.
 
