@@ -4972,13 +4972,15 @@ const StyleDesigner = (function () {
     // JSON.stringify of the entire tree, on every `input` event a range slider
     // fires. A call with no key, or with a different one, ends the run and
     // snapshots as before — so every existing caller keeps its behaviour.
-    var _saveStateRun    = { key: null, at: 0 };
+    // `one` is set while _sdUndoAsOne() runs: every snapshot inside joins
+    // the first (a reset that writes several things is one step).
+    var _saveStateRun    = { key: null, at: 0, one: null, seq: 0 };
     var SAVE_STATE_RUN_MS = 700;
 
     function saveState(coalesceKey) {
         // Editing a tried layout keeps it first (_sdLgKeep()).
         if (_sdLgState && !_sdLgDrawing) _sdLgKeep();
-        var key = (typeof coalesceKey === 'string' && coalesceKey !== '') ? coalesceKey : null;
+        var key = _saveStateRun.one || ((typeof coalesceKey === 'string' && coalesceKey !== '') ? coalesceKey : null);
         var now = Date.now();
 
         // The tree is about to change; anything indexed by its shape is stale.
@@ -4986,17 +4988,13 @@ const StyleDesigner = (function () {
         // it only skips the history entry.
         _dragIndexDrop();
 
-        if (key !== null && key === _saveStateRun.key && (now - _saveStateRun.at) < SAVE_STATE_RUN_MS) {
+        if (!_sdStateRunTakes(_saveStateRun, key, now, SAVE_STATE_RUN_MS)) {
             // Still the same edit. The tree did change, so the editable-area
             // cache and the autosave timer still need it; the history does not.
-            _saveStateRun.at = now;
             _sdEditableInvalidate();
             scheduleAutosave();
             return;
         }
-
-        _saveStateRun.key = key;
-        _saveStateRun.at  = now;
 
         // Every mutation is preceded by a saveState(), so this is the other
         // half of keeping the editable-area set honest between paints.
@@ -25337,7 +25335,10 @@ const StyleDesigner = (function () {
         if (typeof ResizeObserver === 'function') {
             new ResizeObserver(function () {
                 var w = outer.getBoundingClientRect().width;
-                if (w > 0) outer.classList.toggle('sd-rcol-narrow', w < 300);
+                if (!(w > 0)) return;
+                var was = outer.classList.contains('sd-rcol-narrow');
+                outer.classList.toggle('sd-rcol-narrow', w < 300);
+                if (!was && w < 300) _sdNarrowStack(document.getElementById('sd-properties'));
             }).observe(outer);
         }
 
@@ -27617,6 +27618,10 @@ const StyleDesigner = (function () {
             ctrl = findControlForClass(cls);
         }
         if (!ctrl) return;
+        // A button group's select is hidden: its selected segment stands in.
+        if (ctrl.classList.contains('sd-seg-src')) {
+            ctrl = ctrl.parentNode.querySelector('.sd-seg-on') || ctrl.parentNode.querySelector('.sd-seg') || ctrl.parentNode;
+        }
         var _hidden = ctrl.closest('.sd-sect-body');
         if (_hidden && _hidden.style.display === 'none' && _hidden.previousElementSibling) _hidden.previousElementSibling.click();
         _sdRcolShow('options');
@@ -27625,8 +27630,8 @@ const StyleDesigner = (function () {
         // Highlight
         ctrl.classList.add('sd-ctrl-flash');
         setTimeout(function () { ctrl.classList.remove('sd-ctrl-flash'); }, 1200);
-        // Focus selects
-        if (ctrl.tagName === 'SELECT') {
+        // Focus selects and segments
+        if (ctrl.tagName === 'SELECT' || ctrl.classList.contains('sd-seg')) {
             ctrl.focus();
         }
     }
@@ -34501,6 +34506,7 @@ const StyleDesigner = (function () {
         if (!panel) return;
         _sdPaletteRefresh();
         _sdPropsA11yInit(panel);
+        _sdControlsInit(panel);
         var _kind = _sdPanelKind(selectedNode);
         var _keepScroll = (_kind && _kind === _sdPanelLastKind) ? panel.scrollTop : 0;
         _sdPanelLastKind = '';
@@ -34996,10 +35002,11 @@ const StyleDesigner = (function () {
             return h + '</select>';
         }
 
+        // The label, the control, then the per-size chevron, in reading order.
         var widthHtml = '<div class="sd-sp-row">';
-        widthHtml += '<button type="button" class="sd-sp-toggle bi bi-chevron-right' + (hasBpW ? ' sd-sp-open' : '') + '" data-sp-target="sdcol_width"></button>';
         widthHtml += '<span class="sd-sp-label">' + esc(_sdT('Width')) + '</span>';
         widthHtml += colSel('xs', xs, n.props.xs || '12');
+        widthHtml += '<button type="button" class="sd-sp-toggle bi bi-chevron-right' + (hasBpW ? ' sd-sp-open' : '') + '" data-sp-target="sdcol_width"></button>';
         widthHtml += '</div>';
         widthHtml += '<div class="sd-sp-bps" id="sdcol_width"' + (hasBpW ? '' : ' style="display:none"') + '>';
         [['sm','SM'],['md','MD'],['lg','LG'],['xl','XL'],['xxl','XXL']].forEach(function(pair) {
@@ -49518,26 +49525,24 @@ const StyleDesigner = (function () {
             });
             h += '</select>';
             // Visible icon buttons
+            // A click on the selected button removes the value.
             h += '<div class="sd-align-btns">';
-            h += '<button type="button" class="sd-align-btn' + (!_found ? ' sd-align-active' : '') + '" data-cls="" title="' + esc(_sdT('Default')) + '"><i class="bi bi-x-lg"></i></button>';
             _alignVals.forEach(function(v) {
                 var c = 'text-' + bpInfix + v[0];
-                h += '<button type="button" class="sd-align-btn' + (c === _found ? ' sd-align-active' : '') + '" data-cls="' + c + '" title="' + v[1] + '"><i class="bi ' + _alignIconMap[v[0]] + '"></i></button>';
+                h += '<button type="button" class="sd-align-btn' + (c === _found ? ' sd-align-active' : '') + '" data-cls="' + c + '" title="' + v[1] + '" aria-label="' + esc(v[1]) + '" aria-pressed="' + (c === _found ? 'true' : 'false') + '"><i class="bi ' + _alignIconMap[v[0]] + '" aria-hidden="true"></i></button>';
             });
             h += '</div></div>';
             return h;
         }
-        var _alignHasBp = _alignBps.some(function(bp) {
-            return _alignVals.some(function(v) { return (' ' + cls + ' ').indexOf(' text-' + bp + '-' + v[0] + ' ') !== -1; });
-        });
+        var _alignBadge = _sdSizeBadge(cls, 'text-', _alignVals);
         var _alignRowId = 'sdresp_ta_' + n._id;
         var _alignHtml =
             '<div class="sd-sp-row">' +
-                '<button type="button" class="sd-sp-toggle bi bi-chevron-right' + (_alignHasBp ? ' sd-sp-open' : '') + '" data-sp-target="' + _alignRowId + '"></button>' +
                 '<span class="sd-sp-label">' + esc(_sdT('Alignment')) + '</span>' +
                 _alignBtnGrp('') +
+                _sdSizeToggle(_alignRowId, _alignBadge, esc(_sdT('Alignment'))) +
             '</div>' +
-            '<div class="sd-sp-bps" id="' + _alignRowId + '"' + (_alignHasBp ? '' : ' style="display:none"') + '>' +
+            '<div class="sd-sp-bps" id="' + _alignRowId + '" style="display:none">' +
             _alignBps.map(function(bp) {
                 return '<div class="sd-sp-bp-item"><span class="sd-sp-bp-lbl">' + bp.toUpperCase() + '</span>' + _alignBtnGrp(bp + '-') + '</div>';
             }).join('') +
@@ -53530,7 +53535,48 @@ const StyleDesigner = (function () {
         // A card's head carries no icon: the arrow, the name, the count.
         return _sdSectMake(sid, 'sd-props-section', 'sd-props-section-title', title, body);
     }
-    function row(label, ctrl) { return '<div class="sd-prop-row"><label class="sd-prop-label">' + label + '</label><div class="sd-prop-control">' + ctrl + '</div></div>'; }
+    // A row: the changed dot's place, the label, the control. While the
+    // single element's panel is built (_sdSectBuild) a lone select of up to
+    // six values is drawn as a button group (_sdSegPlan()).
+    function row(label, ctrl) {
+        var extra = '';
+        var ps = _sdSectBuild ? _sdSelParse(ctrl) : null;
+        if (ps) {
+            var plan = _sdSegPlan(ps.opts.filter(function (o) { return o.v !== ''; }).map(function (o) { return o.l; }));
+            if (plan.kind === 'group') { ctrl = _sdSegGroup(ps); extra = _sdSegRowCls(plan); }
+        }
+        return '<div class="sd-prop-row' + extra + '"><label class="sd-prop-label">' + label + '</label><div class="sd-prop-control">' + ctrl + '</div></div>';
+    }
+    // A button group from a read select (_sdSelParse()). The select stays,
+    // hidden, and is what writes: a segment sets its value and fires its
+    // change (_sdSegClick()), so every handler, the changed dot and the
+    // search read it as before.
+    function _sdSegGroup(ps) {
+        var h = '<div class="sd-seg-grp" role="group">' +
+            '<select class="sd-seg-src" hidden tabindex="-1" aria-hidden="true"' + ps.attrs + '>' +
+            ps.opts.map(function (o) { return '<option value="' + o.v + '"' + (o.on ? ' selected' : '') + '>' + o.l + '</option>'; }).join('') +
+            '</select>';
+        ps.opts.forEach(function (o) {
+            if (o.v === '') return;
+            h += '<button type="button" class="sd-seg' + (o.on ? ' sd-seg-on' : '') + '" data-seg-val="' + o.v + '" aria-pressed="' + (o.on ? 'true' : 'false') + '" title="' + o.l.replace(/"/g, '&quot;') + '">' + o.l + '</button>';
+        });
+        return h + '</div>';
+    }
+    // The row classes of a group that stands under its label (always, or
+    // only under 300 px).
+    function _sdSegRowCls(plan) {
+        return (plan.stack ? ' sd-row-stack' : '') + (plan.stackNarrow ? ' sd-row-stack-n' : '');
+    }
+    // The button that opens a row's per-size box: the screen-size badge
+    // ("MD", "all") when a value starts at a size (_sdSizeBadge()), else a
+    // chevron, which stays until the section's size chooser takes its place.
+    function _sdSizeToggle(rowId, badge, label) {
+        if (!badge) return '<button type="button" class="sd-sp-toggle bi bi-chevron-right" data-sp-target="' + rowId + '"></button>';
+        var txt = badge === 'all' ? _sdT('all') : badge;
+        var name = String(label || '').replace(/<[^>]*>/g, '').trim();
+        return '<button type="button" class="sd-sp-toggle sd-size-badge' + (badge === 'all' ? ' sd-size-all' : '') + '" data-sp-target="' + rowId + '"' +
+            ' aria-label="' + esc(_sdT('Screen sizes for {var}', name) + ': ' + txt) + '" title="' + esc(_sdT('Screen sizes')) + '">' + esc(txt) + '</button>';
+    }
     /** Boolean toggle — renders as a Bootstrap Studio-style pill switch */
     function sw(prop, checked, label) {
         var lbl = label || '';
@@ -54142,19 +54188,21 @@ const StyleDesigner = (function () {
         var RESP_BPS     = ['sm', 'md', 'lg', 'xl', 'xxl'];
         var RESP_BP_LBLS = ['SM', 'MD', 'LG', 'XL', 'XXL'];
         var respRowCounter = 0;
+        // The row's value at every size is a button group of up to six
+        // values (D13); a value from a size up shows its badge, a click on it
+        // opens the per-size box (D12), closed until then.
         function mkRespRow(label, prefix, valuePairs, placeholder) {
             var rowId = 'sdresp_' + prefix.replace(/[^a-z0-9]/gi, '_') + '_' + (++respRowCounter);
-            var paddedCls = ' ' + cls + ' ';
-            var hasBpVal = RESP_BPS.some(function(bp) {
-                var bpPfx = prefix + bp + '-';
-                return valuePairs.some(function(p) { return paddedCls.indexOf(' ' + bpPfx + p[0] + ' ') !== -1; });
-            });
-            var h = '<div class="sd-sp-row">';
-            h += '<button type="button" class="sd-sp-toggle bi bi-chevron-right' + (hasBpVal ? ' sd-sp-open' : '') + '" data-sp-target="' + rowId + '"></button>';
+            var badge = _sdSizeBadge(cls, prefix, valuePairs);
+            var main = mkRespSelect(prefix, valuePairs, placeholder);
+            var plan = _sdSectBuild ? _sdSegPlan(valuePairs.map(function (p) { return p[1]; })) : { kind: 'select' };
+            var ps = plan.kind === 'group' ? _sdSelParse(main) : null;
+            var h = '<div class="sd-sp-row' + (ps ? _sdSegRowCls(plan) : '') + '">';
             h += '<span class="sd-sp-label">' + label + '</span>';
-            h += mkRespSelect(prefix, valuePairs, placeholder);
+            h += ps ? _sdSegGroup(ps) : main;
+            h += _sdSizeToggle(rowId, badge, label);
             h += '</div>';
-            h += '<div class="sd-sp-bps" id="' + rowId + '"' + (hasBpVal ? '' : ' style="display:none"') + '>';
+            h += '<div class="sd-sp-bps" id="' + rowId + '" style="display:none">';
             RESP_BPS.forEach(function(bp, i) {
                 h += '<div class="sd-sp-bp-item"><span class="sd-sp-bp-lbl">' + RESP_BP_LBLS[i] + '</span>' + mkRespSelect(prefix + bp + '-', valuePairs, placeholder) + '</div>';
             });
@@ -54165,12 +54213,12 @@ const StyleDesigner = (function () {
         // Non-responsive row (Position / Z Index / Width / Height / Overflow / Aspect Ratio)
         // uses the same sd-sp-row grid for visual alignment but leaves the toggle column empty.
         function mkNonRespRow(label, pairs, placeholder) {
-            var h = '<div class="sd-sp-row">';
-            h += '<span class="sd-sp-toggle-spacer"></span>';
-            h += '<span class="sd-sp-label">' + label + '</span>';
-            h += selPairs(pairs, placeholder);
-            h += '</div>';
-            return h;
+            var ctrl = selPairs(pairs, placeholder);
+            var plan = _sdSectBuild ? _sdSegPlan(pairs.filter(function (p) { return p[0]; }).map(function (p) { return p[1]; })) : { kind: 'select' };
+            var ps = plan.kind === 'group' ? _sdSelParse(ctrl) : null;
+            return '<div class="sd-sp-row' + (ps ? _sdSegRowCls(plan) : '') + '">' +
+                '<span class="sd-sp-label">' + label + '</span>' + (ps ? _sdSegGroup(ps) : ctrl) +
+            '</div>';
         }
 
         // ── Appearance collapsible sub-section wrapper ──
@@ -54196,12 +54244,21 @@ const StyleDesigner = (function () {
             ovOpts.forEach(function(o) { h += '<option value="' + o[0] + '"' + (o[0] === (propVal||'') ? ' selected' : '') + '>' + o[1] + '</option>'; });
             return h + '</select>';
         }
+        // A length field of the Sizing rows: a bare number is pixels
+        // (_sdCssLen()), so "px" stands grey at its right while the value
+        // has no unit of its own; an invalid value is not written (_sdLenCheck()).
+        function lenInp(prop, val, ph) {
+            var v = (val == null) ? '' : String(val);
+            return '<span class="sd-unit-field' + (/^[-+]?[\d.]*$/.test(v.trim()) ? '' : ' sd-unit-off') + '">' +
+                '<input type="text" class="form-control form-control-sm" data-prop="' + prop + '" data-sd-len="len" value="' + esc(v) + '" placeholder="' + esc(ph) + '">' +
+                '<span class="sd-unit" aria-hidden="true">px</span></span>';
+        }
         function mkExpandRow(label, mainCtrl, subRows) {
             var rowId = 'sdexp_' + label.replace(/[^a-z0-9]/gi, '_').toLowerCase() + '_' + (++respRowCounter);
             var hasSubVal = subRows.some(function(sr) { return !!sr.val; });
             var h = '<div class="sd-sp-row">' +
-                '<button type="button" class="sd-sp-toggle bi bi-chevron-right' + (hasSubVal ? ' sd-sp-open' : '') + '" data-sp-target="' + rowId + '"></button>' +
-                '<span class="sd-sp-label">' + label + '</span>' + mainCtrl + '</div>';
+                '<span class="sd-sp-label">' + label + '</span>' + mainCtrl +
+                '<button type="button" class="sd-sp-toggle bi bi-chevron-right' + (hasSubVal ? ' sd-sp-open' : '') + '" data-sp-target="' + rowId + '"></button></div>';
             h += '<div class="sd-sp-bps" id="' + rowId + '"' + (hasSubVal ? '' : ' style="display:none"') + '>';
             subRows.forEach(function(sr) {
                 h += '<div class="sd-sp-bp-item"><span class="sd-sp-bp-lbl">' + sr.label + '</span>' + sr.ctrl + '</div>';
@@ -54216,31 +54273,31 @@ const StyleDesigner = (function () {
         var _posRowId = 'sdexp_pos_' + (++respRowCounter);
         var _posSel = mkRespSelect('position-', [['static',_sdT('Static')],['relative',_sdT('Relative')],['absolute',_sdT('Absolute')],['fixed',_sdT('Fixed')],['sticky',_sdT('Sticky')]], _sdT('Default'));
         var _posSubRows = [
-            { label: _sdT('Top'),    ctrl: '<input type="text" class="form-control form-control-sm" data-prop="top"    value="' + esc(p.top    || '') + '" placeholder="e.g. 0">', val: p.top    },
-            { label: _sdT('Right'),  ctrl: '<input type="text" class="form-control form-control-sm" data-prop="right"  value="' + esc(p.right  || '') + '" placeholder="e.g. 0">', val: p.right  },
-            { label: _sdT('Bottom'), ctrl: '<input type="text" class="form-control form-control-sm" data-prop="bottom" value="' + esc(p.bottom || '') + '" placeholder="e.g. 0">', val: p.bottom },
-            { label: _sdT('Left'),   ctrl: '<input type="text" class="form-control form-control-sm" data-prop="left"   value="' + esc(p.left   || '') + '" placeholder="e.g. 0">', val: p.left   }
+            { label: _sdT('Top'),    ctrl: lenInp('top', p.top, _sdT('e.g. 0')), val: p.top    },
+            { label: _sdT('Right'),  ctrl: lenInp('right', p.right, _sdT('e.g. 0')), val: p.right  },
+            { label: _sdT('Bottom'), ctrl: lenInp('bottom', p.bottom, _sdT('e.g. 0')), val: p.bottom },
+            { label: _sdT('Left'),   ctrl: lenInp('left', p.left, _sdT('e.g. 0')), val: p.left   }
         ];
         var _posHasSub = _posSubRows.some(function(sr) { return !!sr.val; });
         var _posRow = '<div class="sd-sp-row">' +
-            '<button type="button" class="sd-sp-toggle bi bi-chevron-right' + (_posHasSub ? ' sd-sp-open' : '') + '" data-sp-target="' + _posRowId + '"></button>' +
-            '<span class="sd-sp-label">' + esc(_sdT('Position')) + '</span>' + _posSel + '</div>' +
+            '<span class="sd-sp-label">' + esc(_sdT('Position')) + '</span>' + _posSel +
+            '<button type="button" class="sd-sp-toggle bi bi-chevron-right' + (_posHasSub ? ' sd-sp-open' : '') + '" data-sp-target="' + _posRowId + '"></button></div>' +
             '<div class="sd-sp-bps" id="' + _posRowId + '"' + (_posHasSub ? '' : ' style="display:none"') + '>' +
             _posSubRows.map(function(sr) { return '<div class="sd-sp-bp-item"><span class="sd-sp-bp-lbl">' + sr.label + '</span>' + sr.ctrl + '</div>'; }).join('') +
             '</div>';
 
         var _widthRow = mkExpandRow(_sdT('Width'),
-            '<input type="text" class="form-control form-control-sm" data-prop="width"    value="' + esc(p.width    || '') + '" placeholder="e.g. 100%">',
+            lenInp('width', p.width, _sdT('e.g. 100%')),
             [
-                { label: _sdT('Min'), ctrl: '<input type="text" class="form-control form-control-sm" data-prop="minWidth"  value="' + esc(p.minWidth  || '') + '" placeholder="e.g. 200px">', val: p.minWidth  },
-                { label: _sdT('Max'), ctrl: '<input type="text" class="form-control form-control-sm" data-prop="maxWidth"  value="' + esc(p.maxWidth  || '') + '" placeholder="e.g. 960px">', val: p.maxWidth  }
+                { label: _sdT('Min'), ctrl: lenInp('minWidth', p.minWidth, _sdT('e.g. 200px')), val: p.minWidth  },
+                { label: _sdT('Max'), ctrl: lenInp('maxWidth', p.maxWidth, _sdT('e.g. 960px')), val: p.maxWidth  }
             ]
         );
         var _heightRow = mkExpandRow(_sdT('Height'),
-            '<input type="text" class="form-control form-control-sm" data-prop="height"   value="' + esc(p.height   || '') + '" placeholder="e.g. auto">',
+            lenInp('height', p.height, _sdT('e.g. auto')),
             [
-                { label: _sdT('Min'), ctrl: '<input type="text" class="form-control form-control-sm" data-prop="minHeight" value="' + esc(p.minHeight || '') + '" placeholder="e.g. 200px">', val: p.minHeight },
-                { label: _sdT('Max'), ctrl: '<input type="text" class="form-control form-control-sm" data-prop="maxHeight" value="' + esc(p.maxHeight || '') + '" placeholder="e.g. 800px">', val: p.maxHeight }
+                { label: _sdT('Min'), ctrl: lenInp('minHeight', p.minHeight, _sdT('e.g. 200px')), val: p.minHeight },
+                { label: _sdT('Max'), ctrl: lenInp('maxHeight', p.maxHeight, _sdT('e.g. 800px')), val: p.maxHeight }
             ]
         );
         var _overflowRow = mkExpandRow(_sdT('Overflow'),
@@ -54263,7 +54320,7 @@ const StyleDesigner = (function () {
             _arPresetSel += '</select>';
             _arHtml += '<div class="sd-sp-row"><span class="sd-sp-toggle-spacer"></span><span class="sd-sp-label">' + esc(_sdT('Preset')) + '</span>' + _arPresetSel + '</div>';
             if (_arValue === 'custom') {
-                _arHtml += mkStyleRow(_sdT('Value'), 'aspectRatioCustom', p.aspectRatioCustom, 'e.g. 56.25%');
+                _arHtml += mkStyleRow(_sdT('Value'), 'aspectRatioCustom', p.aspectRatioCustom, _sdT('e.g. 56.25%'));
             }
         }
 
@@ -54393,9 +54450,9 @@ const StyleDesigner = (function () {
             var rowId = 'sdsp_' + basePfx.replace(/-/g, '');
             var hasBpVal = bpPfxs.some(function(p) { return spVal(p) !== ''; });
             var h = '<div class="sd-sp-row">';
-            h += '<button type="button" class="sd-sp-toggle bi bi-chevron-right' + (hasBpVal ? ' sd-sp-open' : '') + '" data-sp-target="' + rowId + '"></button>';
             h += '<span class="sd-sp-label">' + label + '</span>';
             h += mkSpSel(basePfx, isMargin);
+            h += '<button type="button" class="sd-sp-toggle bi bi-chevron-right' + (hasBpVal ? ' sd-sp-open' : '') + '" data-sp-target="' + rowId + '"></button>';
             h += '</div>';
             h += '<div class="sd-sp-bps" id="' + rowId + '"' + (hasBpVal ? '' : ' style="display:none"') + '>';
             bpPfxs.forEach(function(pfx, i) {
@@ -55206,6 +55263,7 @@ const StyleDesigner = (function () {
                 var isOpen = hdr.classList.toggle('sd-sect-open');
                 hdr.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
                 body.style.display = isOpen ? '' : 'none';
+                if (isOpen) _sdNarrowStack(body);
                 if (sid) try { localStorage.setItem('sd_cs_' + sid, isOpen ? '0' : '1'); } catch(e2) {}
             });
         });
@@ -56090,6 +56148,17 @@ const StyleDesigner = (function () {
             el.addEventListener(eventName, function () {
                 if (!selectedNode) return;
                 var prop = this.dataset.prop;
+                // A length of the Sizing rows: an invalid one is not written
+                // and says why under the field (D13).
+                var _lenKind = this.getAttribute('data-sd-len');
+                if (_lenKind) {
+                    var _why = _sdLenCheck(_lenKind, this.value);
+                    _sdFieldInvalid(this, _why);
+                    if (this.parentNode && this.parentNode.classList) {
+                        this.parentNode.classList.toggle('sd-unit-off', !/^[-+]?[\d.]*$/.test(this.value.trim()));
+                    }
+                    if (_why) return;
+                }
                 // Before the change, so undo returns to the value it had.
                 // Typing into a field (or a picker filling it) is one edit:
                 // one undo step per run, not one per key, and not folded
@@ -56528,7 +56597,7 @@ const StyleDesigner = (function () {
                 if (!grp) return;
                 var sel = grp.querySelector('select[data-stylegroup]');
                 if (!sel) return;
-                sel.value = this.dataset.cls || '';
+                sel.value = _sdSegNext(sel.value, this.dataset.cls || '', true);
                 sel.dispatchEvent(new Event('change', { bubbles: true }));
             });
         });
@@ -60660,6 +60729,141 @@ const StyleDesigner = (function () {
     }
     // ── end of what counts as changed
 
+    // ── The Options panel controls: pure helpers ──
+    // No DOM and no editor state here: how a row's control is drawn and
+    // what it writes, run under Node by tests/designer_options_controls_test.php.
+
+    // Whether saveState() takes a snapshot, keeping `run` ({ key, at, one,
+    // seq }). A call with the key of the run still going, inside the run's
+    // time or inside _sdUndoAsOne(), joins the snapshot already taken.
+    function _sdStateRunTakes(run, key, now, ms) {
+        if (key !== null && key === run.key && (run.one || (now - run.at) < ms)) {
+            run.at = now;
+            return false;
+        }
+        run.key = key;
+        run.at = now;
+        return true;
+    }
+
+    // Runs `fn` as one undo step: every saveState() it makes joins the
+    // first. Nested calls stay inside the outer step; the edit after it
+    // starts a step of its own.
+    function _sdUndoAsOne(run, fn) {
+        if (run.one) { fn(); return; }
+        run.one = 'one:' + (++run.seq);
+        try { fn(); } finally { run.one = null; run.key = null; }
+    }
+
+    // The value a segment click writes: the clicked one, or '' (the value
+    // removed) when it is already selected and the control has an empty
+    // choice.
+    function _sdSegNext(cur, clicked, canClear) {
+        if (clicked === cur) return canClear ? '' : cur;
+        return clicked;
+    }
+
+    // How a list of values is drawn: up to six as a button group, seven or
+    // more (or none) as a select. Widths are estimated from the segments'
+    // 11.5 px text at 600 (a capital 8.4, any other character 6.8, the
+    // segment's padding and gap 14): a group wider than the control beside
+    // its label (162 at 336 px: the dot's place 14, the label 92, a gap of
+    // 10) stands under it, one wider than the row (262) stays a select, so
+    // no segment text is cut. Under 300 px (control 104) a group of four or
+    // more written segments, or a wider one, stands under its label; four
+    // icons stay beside it.
+    function _sdSegPlan(labels, icons) {
+        var n = (labels || []).length;
+        if (!n || n > 6) return { kind: 'select', stack: false, stackNarrow: false };
+        var w = icons ? n * 28 : labels.reduce(function (s, l) {
+            var t = String(l).replace(/&[a-z#0-9]+;/gi, '_');
+            for (var i = 0; i < t.length; i++) {
+                var ch = t.charAt(i);
+                s += (ch !== ch.toLowerCase() ? 8.4 : 6.8);
+            }
+            return s + 14;
+        }, 0);
+        if (w > 262) return { kind: 'select', stack: false, stackNarrow: false };
+        var narrow = icons ? n > 4 : (n >= 4 || w > 104);
+        return { kind: 'group', stack: w > 162, stackNarrow: w > 162 || narrow };
+    }
+
+    // A lone select of a row's markup read into { attrs, opts: [{ v, l, on }] }:
+    // `attrs` its attributes but the class (one of them data-stylegroup,
+    // data-prop or data-util, which writes it), the labels kept as written.
+    // Null for anything else: other markup around it, an id other code may
+    // hold, several choices, a group, an option with attributes of its own.
+    function _sdSelParse(html) {
+        var m = /^\s*<select\b([^>]*)>([\s\S]*)<\/select>\s*$/.exec(String(html || ''));
+        if (!m || /<select|<optgroup/i.test(m[2])) return null;
+        var head = m[1];
+        if (/\s(id|multiple)(=|\s|$)/i.test(head)) return null;
+        if (!/\sdata-(?:stylegroup|prop|util)="[^"]*"/.test(head)) return null;
+        var opts = [];
+        var re = /<option\b([^>]*)>([\s\S]*?)<\/option>/g;
+        var o;
+        while ((o = re.exec(m[2]))) {
+            var v = /\svalue="([^"]*)"/.exec(' ' + o[1]);
+            if (o[1].replace(/\s*value="[^"]*"/, '').replace(/\s*selected\b/, '').trim() !== '') return null;
+            opts.push({ v: v ? v[1] : o[2], l: o[2].trim(), on: /\sselected\b/.test(' ' + o[1]) });
+        }
+        return opts.length ? { attrs: ' ' + head.replace(/\s*\bclass="[^"]*"/, '').trim(), opts: opts } : null;
+    }
+
+    // Why a length typed into the Sizing rows is not written, '' when it is
+    // valid (kind 'len'): a CSS length, a bare number (pixels, _sdCssLen()),
+    // a keyword or a CSS function with its brackets closed. Empty is valid.
+    function _sdLenCheck(kind, raw) {
+        var s = String(raw == null ? '' : raw).trim();
+        if (s === '') return '';
+        var num = '[-+]?(?:\\d+\\.?\\d*|\\.\\d+)';
+        var units = 'px|%|r?em|ch|ex|vw|vh|vmin|vmax|[sdl]v[hw]|cq[whib]|cm|mm|in|pt|pc|fr';
+        if (new RegExp('^' + num + '(?:' + units + ')?$', 'i').test(s)) return '';
+        if (/^(auto|none|inherit|initial|unset|revert|fit-content|min-content|max-content)$/i.test(s)) return '';
+        var f = /^(calc|min|max|clamp|var|fit-content)\((.*)\)$/i.exec(s);
+        if (f) {
+            var depth = 0;
+            for (var i = 0; i < f[2].length; i++) {
+                if (f[2][i] === '(') depth++;
+                else if (f[2][i] === ')' && --depth < 0) break;
+            }
+            if (depth === 0 && f[2].trim() !== '') return '';
+        }
+        return _sdT('Use a number with a unit (px, %, rem, vh), auto or calc().');
+    }
+
+    // The screen-size badge of a row whose classes are `prefix` + value at
+    // every size and `prefix` + size + '-' + value from a size up: the first
+    // size holding a value when none holds at every size ('MD'), 'all' when
+    // one holds at every size and a size changes it, '' otherwise.
+    var _SD_SIZES = ['sm', 'md', 'lg', 'xl', 'xxl'];
+    function _sdSizeBadge(cls, prefix, values) {
+        var have = ' ' + String(cls || '') + ' ';
+        var vals = (values || []).map(function (v) { return Array.isArray(v) ? v[0] : v; });
+        var has = function (pfx) { return vals.some(function (v) { return have.indexOf(' ' + pfx + v + ' ') !== -1; }); };
+        var first = '';
+        _SD_SIZES.forEach(function (bp) { if (!first && has(prefix + bp + '-')) first = bp; });
+        if (!first) return '';
+        return has(prefix) ? 'all' : first.toUpperCase();
+    }
+
+    // A size row is changed when any of its sizes holds a value.
+    function _sdSizeHeld(values) {
+        return (values || []).some(function (v) { return v !== '' && v != null; });
+    }
+
+    // Clears a row at every size: each control set to its empty value and
+    // its change fired, so the normal handler writes it. Run inside
+    // _sdUndoAsOne(), everything it writes is one undo step.
+    function _sdSizesClear(ctrls) {
+        (ctrls || []).forEach(function (c) {
+            if (c.value === '') return;
+            c.value = '';
+            c.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+    }
+    // ── end of the Options panel controls
+
     // ========================= MODIFIED PROPS HIGHLIGHT =========================
     // Static default props map for structural node types (no formal defaultProps in component defs)
     var STRUCTURAL_DEFAULTS = {
@@ -60678,10 +60882,11 @@ const StyleDesigner = (function () {
     };
 
     /**
-     * Mark the label of each Options-panel row as "modified" (blue, clickable) when its control's
-     * current value diverges from the element's factory default. Clicking a modified label
-     * dispatches a change event on the control with the default value, so the normal prop-change
-     * handler updates the node and re-renders — one code path for both user edits and resets.
+     * Mark the label of each Options-panel row as "modified" (the changed dot) when its control's
+     * current value diverges from the element's factory default. The dot's reset button
+     * (_sdChgResetButtons()) dispatches a change event on the control with the default value, so
+     * the normal prop-change handler updates the node and re-renders — one code path for both
+     * user edits and resets (_sdRowReset()).
      */
     // `root`: the rows to mark, the panel when left out. A detached copy of a
     // closed section's body is marked the same way, so its count comes from
@@ -60721,7 +60926,6 @@ const StyleDesigner = (function () {
             if (isModified) {
                 lbl.classList.add('sd-prop-modified');
                 lbl.dataset.resetVal = JSON.stringify(defVal);
-                lbl.title = _sdT('Click to reset to default');
             } else {
                 lbl.classList.remove('sd-prop-modified');
                 delete lbl.dataset.resetVal;
@@ -60782,7 +60986,6 @@ const StyleDesigner = (function () {
                 lbl.classList.add('sd-prop-modified');
                 lbl.dataset.resetVal = JSON.stringify('');
                 lbl.dataset.resetKind = 'modal-size';
-                lbl.title = _sdT('Click to reset to default');
             } else {
                 lbl.classList.remove('sd-prop-modified');
                 delete lbl.dataset.resetVal;
@@ -60839,7 +61042,6 @@ const StyleDesigner = (function () {
             if (anyActive) {
                 lbl.classList.add('sd-prop-modified');
                 lbl.dataset.resetKind = 'util-toggle-btns';
-                lbl.title = _sdT('Click to reset to default');
             } else if (!lbl.dataset.resetVal && !lbl.dataset.resetKind) {
                 // Only clear if no other logic already marked it
                 lbl.classList.remove('sd-prop-modified');
@@ -60862,7 +61064,6 @@ const StyleDesigner = (function () {
                 if (_hasBg) {
                     _bcpLbl.classList.add('sd-prop-modified');
                     _bcpLbl.dataset.resetKind = 'bg-color-all';
-                    _bcpLbl.title = _sdT('Click to reset background color/gradient');
                 } else {
                     _bcpLbl.classList.remove('sd-prop-modified');
                     delete _bcpLbl.dataset.resetKind;
@@ -60883,68 +61084,30 @@ const StyleDesigner = (function () {
         // Color pickers (Text Col / Bg Col / Border Color) are <select data-stylegroup> — already
         // covered by rule #5 above, so no dedicated swatch-marking branch is needed here anymore.
 
+        // 13. A row whose value can start at a screen size is changed when
+        //     any size in its per-size box holds a value, its own control
+        //     unchanged or not; its reset clears every size (_sdRowReset()).
+        root.querySelectorAll('.sd-sp-row').forEach(function (r) {
+            var lbl = r.querySelector(':scope > .sd-sp-label');
+            if (!lbl) return;
+            if (_sdSizeHeld(_sdSizeCtrls(r).map(function (c) { return c.value; }))) {
+                lbl.classList.add('sd-prop-modified');
+                lbl.dataset.resetSizes = '1';
+            } else {
+                delete lbl.dataset.resetSizes;
+            }
+        });
+
         if (!live) return;
 
-        // Attach click handlers — reset by dispatching a change event on the control (or clicking the default button)
-        document.querySelectorAll('#sd-properties .sd-prop-label.sd-prop-modified, #sd-properties .sd-sp-label.sd-prop-modified').forEach(function(lbl) {
-            if (lbl._sdResetBound) return;
-            lbl._sdResetBound = true;
-            lbl.addEventListener('click', function() {
-                var propRow = lbl.closest('.sd-prop-row, .sd-sp-row');
-                if (!propRow) return;
-                var kind = lbl.dataset.resetKind;
+        // Under 300 px the rows that would not fit beside their label stand
+        // their control under it (_sdNarrowStack()).
+        _sdNarrowStack(root);
 
-                if (kind === 'bg-color-all') {
-                    if (!selectedNode) return;
-                    saveState();
-                    selectedNode.props._bgGrad = null;
-                    setAttrStyleProp(selectedNode, 'background-color', '');
-                    setAttrStyleProp(selectedNode, 'background-image', '');
-                    renderCanvas(); renderProperties(); renderAttrsPanel(); renderHtmlTree();
-                    return;
-                }
-
-                // Button-group kinds: find the default button and click it
-                if (kind === 'modal-size') {
-                    var def1 = JSON.parse(lbl.dataset.resetVal);
-                    var b = propRow.querySelector('[data-modal-size="' + def1 + '"]');
-                    if (b) b.click();
-                    return;
-                }
-                // Util-toggle buttons (Border / border-side toggles): click each active button to untoggle
-                if (kind === 'util-toggle-btns') {
-                    propRow.querySelectorAll('button[data-util-toggle].active').forEach(function(b) { b.click(); });
-                    return;
-                }
-                // Standard controls (select/checkbox/input): set value + dispatch change
-                if (!lbl.dataset.resetVal) return;
-                var def = JSON.parse(lbl.dataset.resetVal);
-                var ctrl = propRow.querySelector(
-                    'select[data-stylegroup], select[data-util], ' +
-                    'select[data-bg-prop], input[data-bg-prop], select[data-img-loading], ' +
-                    '[data-prop], [data-dd-prop], ' +
-                    '[data-modal-fade], [data-modal-cls], [data-modal-section-vis], [data-modal-fullscreen], ' +
-                    '[data-oc-header-vis], [data-oc-resp], [data-oc-pos-sel], ' +
-                    '[data-card-section-vis], [data-cr-dark], [data-cr-section-vis], [data-cr-attr-bool], ' +
-                    '[data-navitem-active], ' +
-                    'input[type="checkbox"][data-util-toggle]'
-                );
-                if (!ctrl) return;
-                if (ctrl.type === 'checkbox') {
-                    ctrl.checked = def === true;
-                } else {
-                    ctrl.value = String(def);
-                }
-                // Text/textarea [data-prop] listeners bind to 'input', not 'change' — fire
-                // whichever matches so reset works uniformly across control types.
-                var _tag = ctrl.tagName;
-                var _isTextInput = (_tag === 'TEXTAREA') ||
-                                   (_tag === 'INPUT' && ctrl.type !== 'checkbox' &&
-                                    ctrl.type !== 'radio' && ctrl.type !== 'submit' &&
-                                    ctrl.type !== 'button');
-                ctrl.dispatchEvent(new Event(_isTextInput ? 'input' : 'change', { bubbles: true }));
-            });
-        });
+        // The button groups show their select's value; a changed row gets
+        // the reset button on its dot (_sdChgResetButtons()).
+        _sdSegSync(root);
+        _sdChgResetButtons(root);
 
         // ── Shared Component: Detach button ─────────────────────────────────
         var _scDetachBtn = document.getElementById('sd-sc-detach-btn');
@@ -60974,6 +61137,201 @@ const StyleDesigner = (function () {
         if (typeof _cfBindFieldSection === 'function') _cfBindFieldSection();
         // The Membership Field panel of a control inside a registration widget.
         if (typeof _memberBindFieldSection === 'function') _memberBindFieldSection();
+    }
+
+    // Resets a changed row (its label `lbl`) to the default: a change event
+    // on its control with the default value, or a click on the default
+    // button, so the normal handler writes it. Called inside _sdUndoAsOne():
+    // what it writes is one undo step.
+    function _sdRowReset(lbl) {
+        var propRow = lbl.closest('.sd-prop-row, .sd-sp-row');
+        if (!propRow) return;
+        var kind = lbl.dataset.resetKind;
+
+        if (kind === 'bg-color-all') {
+            if (!selectedNode) return;
+            saveState();
+            selectedNode.props._bgGrad = null;
+            setAttrStyleProp(selectedNode, 'background-color', '');
+            setAttrStyleProp(selectedNode, 'background-image', '');
+            renderCanvas(); renderProperties(); renderAttrsPanel(); renderHtmlTree();
+            return;
+        }
+
+        // Button-group kinds: find the default button and click it
+        if (kind === 'modal-size') {
+            var def1 = JSON.parse(lbl.dataset.resetVal);
+            var b = propRow.querySelector('[data-modal-size="' + def1 + '"]');
+            if (b) b.click();
+            return;
+        }
+        // Util-toggle buttons (Border / border-side toggles): click each active button to untoggle
+        if (kind === 'util-toggle-btns') {
+            propRow.querySelectorAll('button[data-util-toggle].active').forEach(function(b) { b.click(); });
+            return;
+        }
+        // A value from a screen size: every size cleared first, then the
+        // row's own control below when it is changed too.
+        if (lbl.dataset.resetSizes) _sdSizesClear(_sdSizeCtrls(propRow));
+        // Standard controls (select/checkbox/input): set value + dispatch change
+        if (!lbl.dataset.resetVal) return;
+        var def = JSON.parse(lbl.dataset.resetVal);
+        var ctrl = propRow.querySelector(
+            'select[data-stylegroup], select[data-util], ' +
+            'select[data-bg-prop], input[data-bg-prop], select[data-img-loading], ' +
+            '[data-prop], [data-dd-prop], ' +
+            '[data-modal-fade], [data-modal-cls], [data-modal-section-vis], [data-modal-fullscreen], ' +
+            '[data-oc-header-vis], [data-oc-resp], [data-oc-pos-sel], ' +
+            '[data-card-section-vis], [data-cr-dark], [data-cr-section-vis], [data-cr-attr-bool], ' +
+            '[data-navitem-active], ' +
+            'input[type="checkbox"][data-util-toggle]'
+        );
+        if (!ctrl) return;
+        if (ctrl.type === 'checkbox') {
+            ctrl.checked = def === true;
+        } else {
+            ctrl.value = String(def);
+        }
+        // Text/textarea [data-prop] listeners bind to 'input', not 'change' — fire
+        // whichever matches so reset works uniformly across control types.
+        var _tag = ctrl.tagName;
+        var _isTextInput = (_tag === 'TEXTAREA') ||
+                           (_tag === 'INPUT' && ctrl.type !== 'checkbox' &&
+                            ctrl.type !== 'radio' && ctrl.type !== 'submit' &&
+                            ctrl.type !== 'button');
+        ctrl.dispatchEvent(new Event(_isTextInput ? 'input' : 'change', { bubbles: true }));
+    }
+
+    // Puts the reset button on the dot of every changed row under `root`
+    // and takes it off a row no longer changed. The button sits on the
+    // dot's place (CSS), outside the label, so the label still names the
+    // row's control alone; it is a real button, reached from the keyboard.
+    function _sdChgResetButtons(root) {
+        root.querySelectorAll('.sd-chg-reset').forEach(function (b) {
+            var l = b.nextElementSibling;
+            if (!l || !l.classList.contains('sd-prop-modified')) b.remove();
+        });
+        root.querySelectorAll('.sd-prop-label.sd-prop-modified, .sd-sp-label.sd-prop-modified').forEach(function (lbl) {
+            var prev = lbl.previousElementSibling;
+            if (prev && prev.classList.contains('sd-chg-reset')) return;
+            var name = (lbl.textContent || '').trim();
+            var b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'sd-chg-reset';
+            b.title = _sdT('Reset to default');
+            b.setAttribute('aria-label', name ? _sdT('Reset {var} to default', name) : _sdT('Reset to default'));
+            if (lbl.closest('.sd-panel-readonly')) b.disabled = true;
+            lbl.parentNode.insertBefore(b, lbl);
+        });
+    }
+
+    // The per-size selects of a size row that hold a value: its per-size
+    // box is the row's next sibling, named by the chevron or badge. A box
+    // of plain fields (Min / Max, Top / Left) is not a size box.
+    function _sdSizeCtrls(row) {
+        var t = row.querySelector(':scope > .sd-sp-toggle[data-sp-target]');
+        var box = row.nextElementSibling;
+        if (!t || !box || box.id !== t.getAttribute('data-sp-target')) return [];
+        return Array.prototype.filter.call(box.querySelectorAll('select[data-stylegroup], select[data-util], select[data-prop]'), function (c) {
+            return c.value !== '';
+        });
+    }
+
+    // Under 300 px (.sd-rcol-narrow, CSS) a row stands its control under its
+    // label (.sd-row-stack-n) when the control would not fit 104 px beside
+    // it: a size row, whose chevron or badge takes that place, and a row
+    // whose label needs more than two lines, which would cut it. The first
+    // is set always (only the narrow column reads it); the label is
+    // measured only while the column is narrow and the row shown.
+    function _sdNarrowStack(root) {
+        if (!root) return;
+        root.querySelectorAll('.sd-sp-row').forEach(function (r) {
+            if (r.querySelector(':scope > .sd-sp-toggle')) r.classList.add('sd-row-stack-n');
+        });
+        if (!root.closest || !root.closest('.sd-rcol-narrow')) return;
+        var cut = Array.prototype.filter.call(root.querySelectorAll(
+            '.sd-prop-row:not(.sd-row-stack):not(.sd-row-stack-n) > .sd-prop-label, ' +
+            '.sd-sp-row:not(.sd-row-stack):not(.sd-row-stack-n) > .sd-sp-label'
+        ), function (l) { return l.clientHeight > 0 && l.scrollHeight > l.clientHeight + 1; });
+        cut.forEach(function (l) { l.parentNode.classList.add('sd-row-stack-n'); });
+    }
+
+    // Marks the segment of each button group under `root` (or `root`
+    // itself) that its hidden select holds, and names the group by its
+    // row's label, as the naming pass names a select.
+    function _sdSegSync(root) {
+        var grps = root.classList && root.classList.contains('sd-seg-grp') ? [root] : root.querySelectorAll('.sd-seg-grp');
+        Array.prototype.forEach.call(grps, function (grp) {
+            var sel = grp.querySelector('select.sd-seg-src');
+            if (!sel) return;
+            if (!grp.hasAttribute('aria-labelledby')) {
+                var row = grp.closest('.sd-prop-row, .sd-sp-row');
+                var lbl = row ? (_sdPropsChild(row, 'sd-prop-label') || _sdPropsChild(row, 'sd-sp-label')) : null;
+                if (lbl && (lbl.textContent || '').trim() !== '') grp.setAttribute('aria-labelledby', _sdPropsLabelId(lbl));
+            }
+            grp.querySelectorAll('.sd-seg').forEach(function (b) {
+                var on = b.getAttribute('data-seg-val') === sel.value;
+                b.classList.toggle('sd-seg-on', on);
+                b.setAttribute('aria-pressed', on ? 'true' : 'false');
+                if (sel.disabled) b.disabled = true;
+            });
+        });
+    }
+
+    // A segment clicked: its value, or none when it was the selected one
+    // (_sdSegNext()), is set on the group's select and its change fired.
+    function _sdSegClick(seg) {
+        var grp = seg.parentNode;
+        var sel = grp ? grp.querySelector('select.sd-seg-src') : null;
+        if (!sel || sel.disabled || seg.disabled) return;
+        var canClear = Array.prototype.some.call(sel.options, function (o) { return o.value === ''; });
+        var next = _sdSegNext(sel.value, seg.getAttribute('data-seg-val'), canClear);
+        if (next === sel.value) return;
+        sel.value = next;
+        sel.dispatchEvent(new Event('change', { bubbles: true }));
+        if (grp.isConnected) _sdSegSync(grp);
+    }
+
+    // Installed once on #sd-properties: the segments' clicks and the reset
+    // button's, whatever part of the panel was drawn later.
+    function _sdControlsInit(panel) {
+        if (panel._sdCtl) return;
+        panel._sdCtl = true;
+        panel.addEventListener('click', function (e) {
+            var t = e.target;
+            if (!t || !t.closest) return;
+            var seg = t.closest('.sd-seg');
+            if (seg && panel.contains(seg)) { _sdSegClick(seg); return; }
+            var rb = t.closest('.sd-chg-reset');
+            if (!rb || !panel.contains(rb) || rb.disabled) return;
+            var lbl = rb.nextElementSibling;
+            if (!lbl || !lbl.classList.contains('sd-prop-modified')) return;
+            _sdUndoAsOne(_saveStateRun, function () { _sdRowReset(lbl); });
+        });
+    }
+
+    // Shows or clears why a field's value is not written: the field drawn
+    // invalid, one line under it named by aria-describedby.
+    var _sdFieldErrSeq = 0;
+    function _sdFieldInvalid(el, why) {
+        el.classList.toggle('sd-invalid', !!why);
+        if (why) el.setAttribute('aria-invalid', 'true'); else el.removeAttribute('aria-invalid');
+        var host = el.closest('.sd-sp-bp-item, .sd-sp-row, .sd-prop-row');
+        if (!host) return;
+        var line = host.querySelector(':scope > .sd-field-err');
+        if (!why) {
+            if (line) line.remove();
+            el.removeAttribute('aria-describedby');
+            return;
+        }
+        if (!line) {
+            line = document.createElement('div');
+            line.className = 'sd-field-err';
+            line.id = 'sd-fe-' + (++_sdFieldErrSeq);
+            host.appendChild(line);
+        }
+        line.textContent = why;
+        el.setAttribute('aria-describedby', line.id);
     }
 
     // ========================= SHARED COMPONENT OPERATIONS =========================

@@ -1308,12 +1308,18 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
 .sd-rcol-narrow .sd-id-sep { display: none; }
 .sd-rcol-narrow .sd-id-path::before { content: '\2026\00a0\203a\00a0'; flex-shrink: 0; }
 @media (prefers-reduced-motion: reduce) { .sd-sect-chev { transition: none; } }
-.sd-prop-row { display:flex; align-items:flex-start; margin-bottom:.4rem; gap:.5rem; }
+/* A row: the changed dot's place (14), the label column (92), a gap of
+   10, the control; at least 32 high, 6 apart. The dot's reset button
+   (.sd-chg-reset) stands on that place, out of the flow. */
+.sd-prop-row {
+    position:relative; display:flex; flex-wrap:wrap; align-items:flex-start; gap:6px 10px;
+    min-height:32px; margin-bottom:6px; padding-left:14px;
+}
 /* The label column wraps. A fixed 65px column with nowrap let "Screen
    Reader Only" or "Aria Describedby" run under the control beside it. */
 .sd-prop-label {
-    width:92px; min-width:92px; font-size:.68rem; color:var(--sd-text-muted); text-align:right;
-    flex-shrink:0; white-space:normal; overflow-wrap:anywhere; line-height:1.25; padding-top:5px;
+    width:92px; min-width:92px; font-size:12px; font-weight:400; color:var(--sd-label); text-align:left;
+    flex-shrink:0; white-space:normal; overflow-wrap:anywhere; line-height:1.25; padding-top:7px; margin:0;
 }
 .sd-prop-control { flex:1; min-width:0; }
 .sd-prop-control > .sd-prop-switch { margin-top: 5px; }
@@ -1382,12 +1388,17 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
    per-breakpoint children (.sd-sp-bp-item), so every select/input in the properties sidebar renders
    with identical compact height, radius and chevron — matches the Width/Radius screenshot baseline. */
 .sd-prop-control select, .sd-prop-control input, .sd-prop-control textarea,
-.sd-sp-row > select, .sd-sp-row > input, .sd-sp-bp-item > select, .sd-sp-bp-item > input {
-    font-size:.72rem; padding:.3rem .5rem; line-height:1.4; width:100%;
+.sd-sp-row > select, .sd-sp-row > input, .sd-sp-bp-item > select, .sd-sp-bp-item > input,
+.sd-unit-field > input {
+    font-size:12px; padding:.3rem .6rem; line-height:1.4; width:100%;
     background-color: var(--sd-input-bg); border: 1px solid var(--sd-input-border);
-    color: var(--sd-text); border-radius: 3px; outline: none; transition: border .15s;
+    color: var(--sd-text); border-radius: 9px; outline: none; transition: border-color .12s, box-shadow .12s;
     box-shadow: none;
 }
+/* A field and a select are 30 high (a textarea grows). */
+.sd-prop-control select, .sd-sp-row > select, .sd-sp-bp-item > select,
+.sd-prop-control input:not([type=checkbox]):not([type=radio]):not([type=color]):not([type=range]):not([type=file]),
+.sd-sp-row > input, .sd-sp-bp-item > input, .sd-unit-field > input { height:30px; min-height:30px; }
 /* Visible chevron for the dark theme (Bootstrap's default light SVG disappears on a dark background) */
 .sd-prop-control select:is(select.form-control),
 .sd-prop-control select,
@@ -1402,27 +1413,50 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
     background-size: 12px 10px;
     padding-right: 1.75rem;
     cursor: pointer;
-    height: 28px;
-    min-height: 28px;
+    height: 30px;
+    min-height: 30px;
 }
 .sd-prop-control select:hover,
 .sd-sp-row > select:hover,
 .sd-sp-bp-item > select:hover { border-color: var(--sd-border-strong); }
 .sd-prop-control select:focus, .sd-prop-control input:focus, .sd-prop-control textarea:focus,
 .sd-sp-row > select:focus, .sd-sp-row > input:focus,
-.sd-sp-bp-item > select:focus, .sd-sp-bp-item > input:focus {
-    border-color: var(--sd-accent); box-shadow: 0 0 0 2px rgba(var(--sd-accent-rgb), .15);
+.sd-sp-bp-item > select:focus, .sd-sp-bp-item > input:focus, .sd-unit-field > input:focus {
+    border-color: var(--sd-accent); box-shadow: var(--sd-focus-ring);
 }
+/* An invalid value is not written: the field stays red, one line under
+   the row says why (_sdFieldInvalid()). */
+.sd-prop-control .sd-invalid, .sd-sp-row > .sd-invalid, .sd-sp-bp-item > .sd-invalid,
+.sd-unit-field > .sd-invalid, .sd-unit-field > .sd-invalid:focus {
+    border-color: var(--sd-danger); box-shadow: 0 0 0 3px color-mix(in srgb, var(--sd-danger) 13%, transparent);
+}
+.sd-field-err {
+    font-size: 11.5px; line-height: 1.45; color: var(--sd-danger); overflow-wrap: anywhere;
+}
+.sd-prop-row > .sd-field-err { flex: 0 0 100%; padding-left: 102px; }
+.sd-sp-row > .sd-field-err { grid-column: 2 / -1; grid-row: 2; }
+.sd-sp-bp-item > .sd-field-err { grid-column: 2; }
+.sd-rcol-narrow .sd-prop-row > .sd-field-err { padding-left: 12px; }
+.sd-rcol-narrow .sd-sp-row > .sd-field-err { grid-column: 1 / -1; padding-left: 12px; }
+/* A length field: a bare number is pixels, so "px" stands grey at its
+   right while the value has no unit of its own (.sd-unit-off). */
+.sd-unit-field { position: relative; display: block; width: 100%; min-width: 0; }
+.sd-unit-field > input { padding-right: 30px; }
+.sd-unit {
+    position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+    font-size: 11.5px; line-height: 1; color: var(--sd-text-muted); pointer-events: none;
+}
+.sd-unit-off > .sd-unit, .sd-unit-field > input:placeholder-shown + .sd-unit { display: none; }
 .sd-prop-control select option,
 .sd-sp-row > select option,
 .sd-sp-bp-item > select option { background: var(--sd-panel-bg); color: var(--sd-text); }
 .sd-prop-control textarea { resize:vertical; min-height:60px; font-family:monospace; font-size:.7rem; height: auto; }
 /* Also applies to a select inside an input-group (href file picker etc.) */
-.sd-prop-control .input-group > select:is(select.form-control) { height: 28px; }
+.sd-prop-control .input-group > select:is(select.form-control) { height: 30px; }
 /* Normalize input-group corner radius to match other panel inputs */
 .sd-prop-control .input-group {
-    --bs-border-radius: 3px;
-    --bs-border-radius-sm: 3px;
+    --bs-border-radius: 9px;
+    --bs-border-radius-sm: 9px;
 }
 
 /* Quick layout buttons */
@@ -3052,13 +3086,24 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
     background: var(--sd-panel-border);
     margin: 6px 0;
 }
+/* The label column takes the gap after it (102 = 92 + 10), so a row with
+   no size toggle ends where a .sd-prop-row does. Placed by role, not by
+   order: a few rows still write the toggle first. */
 .sd-sp-row {
+    position: relative;
     display: grid;
-    grid-template-columns: 20px 1fr 1fr;
-    gap: 4px;
-    align-items: center;
-    margin-bottom: 2px;
+    grid-template-columns: 102px minmax(0, 1fr) auto;
+    row-gap: 6px;
+    align-items: start;
+    min-height: 32px;
+    margin-bottom: 6px;
+    padding-left: 14px;
 }
+.sd-sp-row > .sd-sp-label { grid-column: 1; grid-row: 1; padding: 7px 10px 0 0; }
+.sd-sp-row > .sd-sp-toggle { grid-column: 3; grid-row: 1; align-self: center; margin-left: 6px; }
+.sd-sp-row > .sd-sp-toggle-spacer { display: none; }
+.sd-sp-row > :not(.sd-sp-label):not(.sd-sp-toggle):not(.sd-sp-toggle-spacer):not(.sd-field-err):not(.sd-chg-reset) { grid-column: 2; grid-row: 1; min-width: 0; }
+.sd-sp-row > .sd-prop-switch { margin-top: 5px; }
 .sd-sp-toggle {
     background: none;
     border: none;
@@ -3071,13 +3116,26 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 20px;
-    height: 20px;
-    border-radius: 3px;
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
     flex-shrink: 0;
 }
 .sd-sp-toggle:hover { color: var(--sd-accent); background: color-mix(in srgb, var(--sd-text) 6%, transparent); }
 .sd-sp-toggle.sd-sp-open { transform: rotate(90deg); color: var(--sd-accent); }
+/* The screen-size badge: a value that starts at a size ("MD"), or one set
+   at every size that a size changes ("all"). 18 high inside a 24 target. */
+.sd-sp-toggle.sd-size-badge {
+    width: auto; min-width: 24px; height: 24px; padding: 0 6px;
+    border: 3px solid transparent; background-clip: padding-box; border-radius: 9px;
+    background-color: var(--sd-warning-soft); color: var(--sd-warning);
+    font-family: inherit; font-size: 10.5px; font-weight: 750; line-height: 1; letter-spacing: .02em;
+    text-transform: uppercase; white-space: nowrap; transform: none;
+}
+.sd-sp-toggle.sd-size-badge.sd-size-all { background-color: var(--sd-raised-bg-2); color: var(--sd-label); text-transform: none; }
+.sd-sp-toggle.sd-size-badge:hover { background-color: color-mix(in srgb, var(--sd-warning) 24%, transparent); color: var(--sd-warning); }
+.sd-sp-toggle.sd-size-badge.sd-size-all:hover { background-color: var(--sd-border-strong); color: var(--sd-text); }
+.sd-sp-toggle.sd-size-badge.sd-sp-open { transform: none; box-shadow: inset 0 0 0 1px currentColor; }
 /* Empty placeholder used by non-responsive rows to keep grid alignment with responsive rows. */
 .sd-sp-toggle-spacer {
     width: 20px;
@@ -3085,15 +3143,14 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
     display: inline-block;
 }
 .sd-sp-label {
-    font-size: .72rem;
-    color: var(--sd-text);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    line-height: 1.2;
+    font-size: 12px;
+    color: var(--sd-label);
+    white-space: normal;
+    overflow-wrap: anywhere;
+    line-height: 1.25;
 }
 .sd-sp-bps {
-    margin-left: 22px;
+    margin-left: 14px;
     margin-bottom: 4px;
     padding: 3px 0 3px 8px;
     border-left: 2px solid var(--sd-panel-border);
@@ -3116,34 +3173,51 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
     opacity: .8;
 }
 
-/* ── Alignment icon button group (Text Options / Appearance panels) ── */
+/* ── Button groups: up to six values (.sd-seg-grp, the alignment icons) ──
+   The group 28 high, corner 9; a segment 24, corner 7, 11.5 px at 600.
+   Default: muted text on the field ground; under the pointer a raised
+   ground; selected: the strong accent, white text, its shadow; locked:
+   dimmed, no pointer. The group keeps one line of segments. */
 .sd-align-grp { width: 100%; }
-.sd-align-btns {
-    display: flex;
-    border: 1px solid var(--sd-input-border);
-    border-radius: 4px;
-    overflow: hidden;
-    width: 100%;
-}
-.sd-align-btn {
-    flex: 1;
-    border: none;
-    border-right: 1px solid var(--sd-input-border);
-    background: var(--sd-input-bg);
-    color: var(--sd-text-muted);
-    padding: 4px 0;
-    font-size: .68rem;
-    cursor: pointer;
-    line-height: 1;
-    transition: background .1s, color .1s;
+.sd-seg-grp, .sd-align-btns {
     display: flex;
     align-items: center;
-    justify-content: center;
-    min-height: 26px;
+    gap: 2px;
+    width: 100%;
+    height: 28px;
+    margin-top: 1px;
+    padding: 1px;
+    border: 1px solid var(--sd-input-border);
+    border-radius: 9px;
+    background: var(--sd-input-bg);
+    box-sizing: border-box;
 }
-.sd-align-btn:last-child { border-right: none; }
-.sd-align-btn:hover { background: color-mix(in srgb, var(--sd-text) 8%, transparent); color: var(--sd-text); }
-.sd-align-btn.sd-align-active { background: var(--sd-accent-strong); color: var(--sd-on-accent); }
+.sd-seg, .sd-align-btn {
+    flex: 1 1 auto;
+    min-width: 24px;
+    height: 24px;
+    padding: 0 6px;
+    border: none;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--sd-label);
+    font-size: 11.5px;
+    font-weight: 600;
+    line-height: 24px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
+    transition: background-color .12s, color .12s, box-shadow .12s;
+}
+.sd-align-btn { display: flex; align-items: center; justify-content: center; font-size: .78rem; line-height: 1; }
+.sd-seg:hover:not(:disabled), .sd-align-btn:hover:not(:disabled) { background: var(--sd-raised-bg-2); color: var(--sd-text); }
+.sd-seg.sd-seg-on, .sd-seg.sd-seg-on:hover,
+.sd-align-btn.sd-align-active, .sd-align-btn.sd-align-active:hover {
+    background: var(--sd-accent-strong); color: var(--sd-on-accent); box-shadow: var(--sd-segment-shadow);
+}
+.sd-seg:focus-visible, .sd-align-btn:focus-visible { outline: 2px solid var(--sd-accent); outline-offset: -2px; }
+.sd-seg:disabled, .sd-align-btn:disabled { opacity: .45; cursor: default; box-shadow: none; }
 /* Ensure button group fits inside both sd-sp-row (3rd col) and sd-sp-bp-item (2nd col) */
 .sd-sp-row .sd-align-grp,
 .sd-sp-bp-item .sd-align-grp { width: 100%; }
@@ -3245,23 +3319,97 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
     line-height: 1;
 }
 
-/* ── Modified prop label (Options panel) — click to reset to default ── */
-.sd-prop-label.sd-prop-modified,
-.sd-sp-label.sd-prop-modified {
-    color: var(--sd-accent) !important;
+/* ── The changed dot (Options panel) ──
+   A changed row's label (.sd-prop-modified) gets a reset button before
+   it (_sdChgResetButtons()), on the dot's place the row keeps for every
+   row: a 7 px accent dot with its ring, under the pointer or the keyboard
+   an undo arrow. A 24 target centred on the dot, at the label's first line. */
+.sd-chg-reset {
+    position: absolute;
+    left: -9px;
+    top: 3px;
+    z-index: 1;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--sd-accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
     cursor: pointer;
-    transition: color .12s;
-    text-decoration: none !important;
-    -webkit-user-select: none; user-select: none;
 }
-.sd-prop-label.sd-prop-modified:hover,
-.sd-sp-label.sd-prop-modified:hover {
-    color: var(--sd-accent) !important;
-    text-decoration: none !important;
+.sd-chg-reset::before {
+    content: '';
+    display: block;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--sd-accent);
+    box-shadow: var(--sd-dot-ring);
 }
-.sd-prop-label.sd-prop-modified:active,
-.sd-sp-label.sd-prop-modified:active {
-    color: var(--sd-accent-strong) !important;
+.sd-chg-reset:not(:disabled):hover::before,
+.sd-chg-reset:not(:disabled):focus-visible::before {
+    content: '\f117';
+    font-family: 'bootstrap-icons';
+    font-size: 13px;
+    line-height: 1;
+    width: auto;
+    height: auto;
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
+}
+.sd-chg-reset:not(:disabled):hover { background: var(--sd-accent-soft); }
+.sd-chg-reset:focus-visible { outline: 2px solid var(--sd-accent); outline-offset: -2px; }
+.sd-chg-reset:disabled { cursor: default; }
+
+/* ── A row that stands its control under its label ──
+   Always (.sd-row-stack: the group does not fit beside the label) or
+   only under 300 px (.sd-row-stack-n: four or more written segments, a
+   size row, a label over two lines; _sdSegPlan(), _sdNarrowStack()). */
+.sd-prop-row.sd-row-stack > .sd-prop-label,
+.sd-rcol-narrow .sd-prop-row.sd-row-stack-n > .sd-prop-label { width: auto; min-width: 0; flex: 1 1 100%; padding-top: 0; }
+.sd-prop-row.sd-row-stack > .sd-prop-control,
+.sd-rcol-narrow .sd-prop-row.sd-row-stack-n > .sd-prop-control { flex: 1 1 100%; }
+.sd-sp-row.sd-row-stack,
+.sd-rcol-narrow .sd-sp-row.sd-row-stack-n { grid-template-columns: minmax(0, 1fr) auto; }
+.sd-sp-row.sd-row-stack > .sd-sp-label,
+.sd-rcol-narrow .sd-sp-row.sd-row-stack-n > .sd-sp-label { grid-column: 1; padding-top: 0; align-self: center; }
+.sd-sp-row.sd-row-stack > .sd-sp-toggle,
+.sd-rcol-narrow .sd-sp-row.sd-row-stack-n > .sd-sp-toggle { grid-column: 2; }
+.sd-sp-row.sd-row-stack > :not(.sd-sp-label):not(.sd-sp-toggle):not(.sd-sp-toggle-spacer):not(.sd-field-err):not(.sd-chg-reset),
+.sd-rcol-narrow .sd-sp-row.sd-row-stack-n > :not(.sd-sp-label):not(.sd-sp-toggle):not(.sd-sp-toggle-spacer):not(.sd-field-err):not(.sd-chg-reset) { grid-column: 1 / -1; grid-row: 2; }
+.sd-row-stack > .sd-chg-reset,
+.sd-rcol-narrow .sd-row-stack-n > .sd-chg-reset { top: -5px; }
+.sd-prop-row.sd-row-stack > .sd-field-err,
+.sd-rcol-narrow .sd-prop-row.sd-row-stack-n > .sd-field-err { padding-left: 0; }
+.sd-sp-row.sd-row-stack > .sd-field-err,
+.sd-rcol-narrow .sd-sp-row.sd-row-stack-n > .sd-field-err { grid-column: 1 / -1; grid-row: 3; padding-left: 0; }
+
+/* ── Under 300 px: the label column 78 holds the dot's place (12), a
+   label wraps to two lines at most, a gap of 10, the control 104. ── */
+.sd-rcol-narrow .sd-prop-row,
+.sd-rcol-narrow .sd-sp-row { padding-left: 0; }
+.sd-rcol-narrow .sd-prop-label { width: 78px; min-width: 78px; padding-left: 12px; }
+.sd-rcol-narrow .sd-sp-row { grid-template-columns: 88px minmax(0, 1fr) auto; }
+.sd-rcol-narrow .sd-sp-row > .sd-sp-label { padding-left: 12px; }
+.sd-rcol-narrow .sd-prop-label,
+.sd-rcol-narrow .sd-sp-row > .sd-sp-label {
+    display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden;
+}
+.sd-rcol-narrow .sd-row-stack > .sd-prop-label,
+.sd-rcol-narrow .sd-row-stack-n > .sd-prop-label,
+.sd-rcol-narrow .sd-row-stack > .sd-sp-label,
+.sd-rcol-narrow .sd-row-stack-n > .sd-sp-label { padding-left: 12px; }
+.sd-rcol-narrow .sd-sp-bps { margin-left: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+    .sd-seg, .sd-align-btn, .sd-sp-toggle, .sd-unit-field > input,
+    .sd-prop-control select, .sd-prop-control input, .sd-sp-row > select, .sd-sp-row > input,
+    .sd-sp-bp-item > select, .sd-sp-bp-item > input { transition: none; }
 }
 
 /* ── Panel resize handles ── */
