@@ -510,7 +510,7 @@ function connections_provider_drawer($provider_key, $provider, $app, $accounts, 
 		$option_bad = is_array($provider_draft) && ($provider_draft['invalid'] === $option_key);
 
 		$option_fields .= '
-			<div class="col-12 md:col-6">
+			<div class="col-12">
 				<div class="form-field">
 					<label class="form-label" for="option_' . h($provider_key . '_' . $option_key) . '">' . h($option['label']) . '</label>
 					<input type="text" class="form-control' . ($option_bad ? ' is-invalid' : '') . '" id="option_' . h($provider_key . '_' . $option_key) . '"
@@ -572,14 +572,14 @@ function connections_provider_drawer($provider_key, $provider, $app, $accounts, 
 				<div class="form-text mb-0 connections-copy-status" role="status" aria-live="polite" data-copied="' . h(lang('Copied')) . '" data-refused="' . h(lang('The browser did not let the text be copied. Select it and copy it from here.')) . '"></div>
 			</div>
 			<div class="row g-5">
-				<div class="col-12 md:col-6">
+				<div class="col-12">
 					<div class="form-field">
 						<label class="form-label" for="client_id_' . h($provider_key) . '">' . h(lang('Client ID')) . '</label>
 						<input type="text" class="form-control' . ($client_id_bad ? ' is-invalid' : '') . '" id="client_id_' . h($provider_key) . '" name="client_id"
 							value="' . h($client_id_value) . '" maxlength="255" autocomplete="off"' . ($client_id_bad ? ' aria-invalid="true"' : '') . '>
 					</div>
 				</div>
-				<div class="col-12 md:col-6">
+				<div class="col-12">
 					<div class="form-field">
 						<label class="form-label" for="client_secret_' . h($provider_key) . '">' . h(lang('Client secret')) . '</label>
 						<input type="password" class="form-control" id="client_secret_' . h($provider_key) . '" name="client_secret"
@@ -1013,6 +1013,16 @@ echo pg_page_shell(array(
 		window.addEventListener("hashchange", openNamed);
 	}
 
+	// Caught before the panel\'s own link handlers, which would open the
+	// Site Settings window behind the drawer.
+	document.addEventListener("click", function (e) {
+		var open = e.target.closest(".connections-open");
+		if (open && openDrawer(open.dataset.drawer, open.dataset.detail)) {
+			e.preventDefault();
+			e.stopPropagation();
+		}
+	}, true);
+
 	// On a narrow screen the filter scrolls sideways: the chosen one is
 	// brought into view.
 	var chosen = document.querySelector(".connections-find .pg-seg-item.is-active");
@@ -1028,14 +1038,6 @@ echo pg_page_shell(array(
 	// a form inside another and each destructive one asks first.
 	document.addEventListener("click", function (e) {
 
-		var open = e.target.closest(".connections-open");
-
-		if (open) {
-			if (openDrawer(open.dataset.drawer, open.dataset.detail)) {
-				e.preventDefault();
-			}
-			return;
-		}
 
 		var more = e.target.closest(".connections-more");
 
