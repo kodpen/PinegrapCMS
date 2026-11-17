@@ -75622,8 +75622,9 @@ const StyleDesigner = (function () {
         };
         // Everything shown, the counters with a two-digit sample.
         shortForms(false);
-        list.classList.remove('sd-strip-cut');
-        body.classList.remove('sd-design-bare');
+        list.classList.remove('sd-strip-cut', 'sd-strip-draftshort');
+        body.classList.remove('sd-design-bare', 'sd-strip-noadd', 'sd-strip-nopagecount');
+        list.style.minWidth = '';
         var tabEls  = [].slice.call(list.querySelectorAll('.sd-tab'));
         var chipEls = [].slice.call(list.querySelectorAll('.sd-tab-group.collapsed'));
         var head    = list.querySelector('.sd-tab-box-head');
@@ -75676,14 +75677,29 @@ const StyleDesigner = (function () {
         list.classList.toggle('sd-strip-cut', plan.cut);
         body.classList.toggle('sd-design-icon', plan.designIcon);
         body.classList.toggle('sd-design-bare', plan.cut);
-        // At step 6 the strip keeps the room of the open tab's state and
-        // menu and of a short name; the name alone is cut.
-        list.style.minWidth = '';
+        // At step 6 the open tab's state and menu stay and its name is cut
+        // last: first the Add Page button leaves the row (its action is the
+        // first row of the Pages list), then the Pages button's count, then
+        // the draft pill's word, each only while the name is still cut. The
+        // strip keeps the room of the state, the menu and a short name.
         var act = plan.cut ? list.querySelector('.sd-tab.active') : null;
         var nameEl = act ? act.querySelector('.sd-tab-name') : null;
-        if (act && nameEl) {
-            var need = act.scrollWidth - w(nameEl) + Math.min(w(nameEl), 16) + (box ? w(box) - w(act) : 0);
+        var hold = function () {
+            list.style.minWidth = '';
+            if (!act || !nameEl) return;
+            var need = act.scrollWidth - w(nameEl) + Math.min(nameEl.scrollWidth, 16) + (box ? w(box) - w(act) : 0);
             list.style.minWidth = Math.ceil(need) + 'px';
+        };
+        hold();
+        if (act && nameEl) {
+            var gives = [[body, 'sd-strip-noadd'], [body, 'sd-strip-nopagecount'], [list, 'sd-strip-draftshort']];
+            for (var g = 0; g < gives.length; g++) {
+                if (g > 0 && nameEl.scrollWidth <= nameEl.clientWidth + 1) break;
+                // With one page there is no Pages list to carry Add Page.
+                if (g === 0 && _pages.length < 2) continue;
+                gives[g][0].classList.add(gives[g][1]);
+                hold();
+            }
         }
         list.setAttribute('data-step', String(plan.step));
         // As an icon, the design's name is in the button's tip.
@@ -75805,6 +75821,12 @@ const StyleDesigner = (function () {
         if (!wrap || !list) return;
         var count = document.getElementById('sd-tabs-all-count');
         if (count) count.textContent = _pages.length > 1 ? String(_pages.length) : '';
+        // The count is in the tip too, for the narrowest strip that hides it.
+        var btn = _pgTabsAllToggle();
+        if (btn) {
+            if (!btn.hasAttribute('data-sd-title')) btn.setAttribute('data-sd-title', btn.title || '');
+            btn.title = btn.getAttribute('data-sd-title') + (_pages.length > 1 ? ' (' + _pages.length + ')' : '');
+        }
         var hidden = list.querySelectorAll('.sd-tab:not(.sd-tab-folded)').length >= _pages.length;
         if (wrap.hidden !== hidden) {
             if (hidden && pgUI.menu.isOpen(_pgTabsAllToggle())) return;
@@ -75836,7 +75858,13 @@ const StyleDesigner = (function () {
                     (locked ? '<span class="bi bi-lock-fill" aria-hidden="true"></span>' : '') +
                     '</button>';
         });
-        box.innerHTML = html || '<div class="menu-text sd-tabs-all-empty">' + esc(_sdT('No page matches.')) + '</div>';
+        // Add Page leads the list while the Add Page button is not in the
+        // toolbar's row (the narrowest strip); it runs the button's New Page.
+        var newPageItem = document.getElementById('sd-tab-new-page');
+        var addRow = (!q && newPageItem && document.body.classList.contains('sd-strip-noadd') && !_sdIsContentLevel())
+            ? '<button type="button" class="menu-item sd-tabs-all-item sd-tabs-all-add" data-add="1"><span class="bi bi-plus-lg sd-tabs-all-plus" aria-hidden="true"></span><span class="sd-tabs-all-name">' + esc(_sdT('Add Page')) + '</span></button>'
+            : '';
+        box.innerHTML = addRow + (html || '<div class="menu-text sd-tabs-all-empty">' + esc(_sdT('No page matches.')) + '</div>');
     }
     // The page menu of a row, the one a tab of the strip opens: the list
     // closes first (it is a v6 menu, below the page menu's layer, and
@@ -75871,9 +75899,16 @@ const StyleDesigner = (function () {
                 _pgTabsAllFill();
             });
             pgUI.menu.on(all, 'shown', function () {
-                if (filter) filter.focus();
+                // Without scrolling: the toolbar scrolls sideways on a narrow
+                // screen, and the focus would push its start off the screen.
+                if (filter) filter.focus({ preventScroll: true });
                 var act = all.querySelector('.sd-tabs-all-item.active');
-                if (act) act.scrollIntoView({ block: 'nearest' });
+                var rowsBox = document.getElementById('sd-tabs-all-list');
+                if (act && rowsBox) {
+                    // The list scrolls to the open page, nothing around it.
+                    var ar = act.getBoundingClientRect(), br = rowsBox.getBoundingClientRect();
+                    if (ar.top < br.top || ar.bottom > br.bottom) rowsBox.scrollTop += ar.top - br.top - (br.height - ar.height) / 2;
+                }
             });
             pgUI.menu.on(all, 'hidden', function () { _pgTabsAllSync(); });
             if (filter) {
@@ -75881,7 +75916,7 @@ const StyleDesigner = (function () {
                 filter.addEventListener('keydown', function (e) {
                     if (e.key !== 'Enter') return;
                     e.preventDefault();
-                    var first = all.querySelector('.sd-tabs-all-item:not([disabled])');
+                    var first = all.querySelector('.sd-tabs-all-item[data-key]:not([disabled])');
                     if (first) first.click();
                 });
             }
@@ -75890,6 +75925,7 @@ const StyleDesigner = (function () {
                 if (!it || it.disabled) return;
                 var btn = _pgTabsAllToggle();
                 if (btn) pgUI.menu.hide(btn);
+                if (it.dataset.add) { _pgTabsAddNew(); return; }
                 if (it.dataset.key !== _activeKey) _pgTabsSwitch(it.dataset.key);
             });
             // Right-click on a row: the page menu, as on a tab of the strip.

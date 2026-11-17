@@ -309,15 +309,17 @@
 .sd-strip-cut .sd-tab.active .sd-tab-name { min-width: 0; }
 /* The open tab's state and its menu never go: only the name is cut
    (_pgTabsFit() keeps the strip as wide as they need). The box keeps its
-   colour line only, and the draft pill keeps its dashed mark without its
-   word, which stays in its tip. */
+   colour line only; last before the name, the draft pill keeps its dashed
+   mark without its word, which stays in its tip. */
 .sd-strip-cut .sd-tab-box { padding: 0; border-color: transparent; border-bottom-color: var(--sd-tg); background: transparent; }
 .sd-strip-cut .sd-tab.active { padding: 0 .3rem; gap: .2rem; }
 .sd-strip-cut .sd-tab.active > :not(.sd-tab-name) { flex: 0 0 auto; }
-.sd-strip-cut .sd-tab.active .sd-tab-draft-badge:not(.sd-tab-sched-badge) { width: 10px; height: 10px; padding: 0; font-size: 0; }
-/* Step 6 also leaves the toolbar's buttons their room: the Pages button
-   keeps its icon and loses its count (its name stays in the tip). */
-.sd-design-bare .sd-tabs-all-count { display: none; }
+.sd-strip-draftshort .sd-tab.active .sd-tab-draft-badge:not(.sd-tab-sched-badge) { width: 10px; height: 10px; padding: 0; font-size: 0; }
+/* Step 6 also gives the open tab's name room from the toolbar's row: the
+   Add Page button leaves it (its New Page leads the Pages list), then the
+   Pages button's count (it stays in the tip). */
+.sd-strip-noadd .sd-tabs-add { display: none; }
+.sd-strip-nopagecount .sd-tabs-all-count { display: none; }
 /* The rows a chip lists. */
 .sd-tabs-list { min-width: 220px; max-width: min(320px, calc(100vw - 16px)); max-height: min(420px, calc(100vh - 80px)); overflow-y: auto; }
 .sd-tabs-list-head { text-transform: uppercase; letter-spacing: .04em; font-weight: 600; }
@@ -472,6 +474,7 @@
 .sd-tabs-all-item:disabled .bi-lock-fill { margin-left: auto; font-size: .7rem; }
 .sd-tabs-all-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sd-tabs-all-dot { flex: 0 0 auto; width: 8px; height: 8px; border-radius: 50%; }
+.sd-tabs-all-plus { flex: 0 0 auto; width: 8px; display: inline-flex; justify-content: center; font-size: .78rem; line-height: 1; }
 .sd-tabs-all-dirty { flex: 0 0 auto; color: var(--sd-warning); font-size: .6rem; }
 /* The strip's Draft pill, on the dark menu: a lighter dashed outline, and
    on the active (accent) row the row's own text colour. */
