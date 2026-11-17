@@ -6344,6 +6344,7 @@
     "The repository was linked. GitHub sends a test delivery now; the channel gets the events from here on.": "Depo bağlandı. GitHub şimdi bir deneme gönderimi yapıyor; kanal bundan sonra olayları alacak.",
     "The repository was not found, or the connected account may not manage its webhooks.": "Depo bulunamadı ya da bağlı hesap webhook'larını yönetemiyor.",
     "The request body is not valid JSON.": "İstek gövdesi geçerli JSON değil.",
+    "The request body must be a JSON object, not a list.": "İstek gövdesi liste değil, bir JSON nesnesi olmalıdır.",
     "The request could not be completed. Please try again.": "İstek tamamlanamadı. Lütfen tekrar deneyin.",
     "The request could not be saved.": "İstek kaydedilemedi.",
     "The request could not be sent: {var:1}": "İstek gönderilemedi: {var:1}",
