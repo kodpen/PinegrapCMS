@@ -35,6 +35,7 @@
 - api-experiments.md: The experiments API resource (PX7, #6295; dry_run #8099): list, get with figures and the z-test, start/pause/end via the sheet move (dry_run), experiments:read/write for roles 0-1, two events
 - api-fault-envelope.md: An uncaught Throwable or a fatal error inside integration.php or mcp.php answers 500 server_error as JSON with request_id and X-Request-Id, never PHP's message; the error log line carries the same id
 - api-fediverse.md: GET /fediverse/followers and /fediverse/deliveries (fediverse:read): shapes, paging, the state filter, who may hold the scope; the personal data export and erasure of a Fediverse account
+- api-field-errors.md: External API 422 lists every wrong field in error.errors (field, code, message; at most 20); a JSON list as body is 400 invalid_json, [] an empty body (#10156)
 - api-fields-parameter.md: External API ?fields= on reads: which answers are trimmed row by row (paged listings and GET /webhooks, api_route_returns_listing()) and which as one record
 - api-file-endpoints.md: External API routes that send or take a file: api_send_file() and binary routes, Range/If-Range, multipart form_file uploads, $_FILES outside MCP, the Idempotency-Key fingerprint, picture copies
 - api-folder-access-widening.md: External API page and folder moves keep or narrow access: access type rank, and for private folders the aclfolder reader list (PR #1786); 409 access_widening_refused
@@ -58,6 +59,7 @@
 - api-oauth-server.md: The site as an OAuth 2.1 server (oauth.php, includes/oauth/, 2026.4.10): api_devices tokens, the oauth app, scopes, resources, error format, CIMD clients, switching clients off, ending connections [decision: decisions-made-product-35.md]
 - api-offers-create.md: POST /offers and POST /offers/{id}/duplicate through the offer editor's validate and save: body shape, refusals before the editor, key code 409, offer.* events
 - api-openapi-declarations.md: How a route and an object are declared for the OpenAPI document: returns, field schemas beside presenters, nested nullable objects, list item types, 201/204, the panel's loader, check_api_schema.php
+- api-openapi-explains.md: What the OpenAPI document adds beyond the route table: a sentence for each tag, generated id descriptions, one example body per write route, all kept out of the MCP tool list
 - api-openapi-nullable-fields.md: When an external API field is declared nullable (string? in the resource's *_schema()), what decides it, and the tests that guard it
 - api-openapi-oauth-scheme.md: The OpenAPI document's oauth2 security scheme: named only while the site's OAuth application exists, the site's own authorize and token addresses, the ceiling's scopes, why operations do not list it
 - api-openapi-time-formats.md: How a time field is declared in the API document: datetime (date-time) for a moment, date for a day, read from the presenter; the word map and its check
