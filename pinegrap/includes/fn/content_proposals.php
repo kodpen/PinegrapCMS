@@ -1027,9 +1027,55 @@ function _pg_cp_write($user, $row, $style_id, $fields, $tree)
 
     $fields['tree_json'] = pg_designer_tree_encode($tree);
     $fields['revision_source'] = 'publish';
+    $name = pg_content_proposals_name_set($user);
     $saved = pg_designer_save_page($style_id, $fields, $user);
+    pg_content_proposals_name_restore($name);
 
     return $saved['ok'] ? '' : implode(' ', (array) $saved['errors']);
+}
+
+/**
+ * Give the session the acting person's username when it has none, so a save
+ * outside the panel (an approval answered over the API, the approvals job)
+ * writes its Site Log line in that person's name. A name already set (the
+ * panel) is kept.
+ *
+ * @param array $user the person the write acts for
+ * @return array|null the state to put back with
+ *                    pg_content_proposals_name_restore(), null when nothing
+ *                    was changed
+ */
+function pg_content_proposals_name_set($user)
+{
+    $had = isset($_SESSION) && is_array($_SESSION) && array_key_exists('sessionusername', $_SESSION);
+
+    if ($had && ((string) $_SESSION['sessionusername'] !== '')) {
+        return null;
+    }
+
+    $state = array('had' => $had, 'old' => $had ? $_SESSION['sessionusername'] : null);
+    $_SESSION['sessionusername'] = (string) ($user['username'] ?? '');
+
+    return $state;
+}
+
+/**
+ * Put the session's username back as it was before
+ * pg_content_proposals_name_set().
+ *
+ * @param array|null $state
+ */
+function pg_content_proposals_name_restore($state)
+{
+    if (!is_array($state)) {
+        return;
+    }
+
+    if ($state['had']) {
+        $_SESSION['sessionusername'] = $state['old'];
+    } else {
+        unset($_SESSION['sessionusername']);
+    }
 }
 
 /**
