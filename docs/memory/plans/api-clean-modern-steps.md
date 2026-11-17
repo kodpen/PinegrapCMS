@@ -22,6 +22,7 @@ description: Steps AM1 to AM6 of plan api-clean-modern: the two failing routes, 
 - AM6 (M) The document explains itself: a `tags` list with one sentence a group (none today) and, generated and never written by hand, a description on every id parameter (800 parameters have none) and one example body a write route (340 bodies have none).
   - Descriptions and example bodies come from one builder, the request builder of `tests/api_route_examples_test.php`, one function for the test and the document.
   - They go into the OpenAPI document only. The MCP tool list must not grow: the PR gives its size before and after.
+  - Done (#PRNUM): `api-openapi-explains.md`.
 
 ## What does every step of the plan keep?
 - One route row, one presenter (`api/api-endpoint-rules.md`); a new error code is explained in `api_error_catalogue()`.

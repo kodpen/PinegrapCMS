@@ -39,7 +39,11 @@ function api_openapi_build() {
 
 	$paths = array();
 
+	$tags = array();
+
 	foreach (api_schema() as $route) {
+
+		$tags[] = api_openapi_tag($route['id']);
 
 		$path = $route['path'];
 
@@ -92,11 +96,13 @@ function api_openapi_build() {
 
 				// A body field is described in its own schema: unlike a query
 				// parameter it has no entry of its own to carry the text.
-				if (isset($param['description'])) {
+				$said = isset($param['description']) ? $param['description'] : api_openapi_id_description($route, $param);
+
+				if ($said !== null) {
 
 					$property['description'] = isset($property['description'])
-						? $param['description'] . ' ' . $property['description']
-						: $param['description'];
+						? $said . ' ' . $property['description']
+						: $said;
 
 				}
 
@@ -140,6 +146,10 @@ function api_openapi_build() {
 			if (isset($param['description'])) {
 
 				$entry['description'] = $param['description'];
+
+			} elseif (($generated = api_openapi_id_description($route, $param)) !== null) {
+
+				$entry['description'] = $generated;
 
 			}
 
@@ -212,7 +222,9 @@ function api_openapi_build() {
 
 			}
 
-			$content = array('application/json' => array('schema' => $body_schema));
+			// One body that passes the router's validator: the same values
+			// tests/api_route_examples_test.php sends through it.
+			$content = array('application/json' => array('schema' => $body_schema, 'example' => api_openapi_example_body($route)));
 
 			// A route that also takes its file as a form part names the part
 			// ('form_file'): the form carries the same fields, with the file
@@ -326,6 +338,7 @@ function api_openapi_build() {
 			'securitySchemes' => api_openapi_security_schemes(api_openapi_oauth_server())
 		),
 		'security' => array(array('applicationKey' => array()), array('deviceToken' => array())),
+		'tags' => api_openapi_tags($tags),
 		'paths' => $paths
 	);
 
@@ -474,6 +487,250 @@ function api_openapi_oauth_server() {
 	);
 
 }
+
+/**
+ * One sentence for each group the document lists its operations under, by the
+ * tag api_openapi_tag() gives a route. tests/api_openapi_explains_test.php
+ * keeps it in step with the route table: a group without a sentence, or a
+ * sentence without a group, fails it.
+ *
+ * @return array tag => sentence
+ */
+function api_openapi_tag_sentences()
+{
+    return array(
+        'Meta'               => 'What this site is: the API version, the software, its time zone, the store\'s currency and order statuses.',
+        'Products'           => 'Products of the store: read, create, change, delete, and set prices in bulk.',
+        'Inventory'          => 'Stock of the products: levels by location, moves between locations, and the history of every change.',
+        'Product_groups'     => 'Product groups, which show several products on one page, and their variant sets.',
+        'Product_attributes' => 'Product attributes, such as size or colour, and their options.',
+        'Orders'             => 'Orders: read them, change their status, ship them, print their documents and record what was paid.',
+        'Returns'            => 'Return requests of orders: read them and decide them.',
+        'Cart_quotes'        => 'Price quotes for a cart: what checkout would charge for a set of products and an address.',
+        'Customers'          => 'The store\'s customers: their accounts, addresses, store credit and consents.',
+        'Store'              => 'How checkout charges: shipping methods, shipping and tax zones, countries, currencies and product feeds.',
+        'Campaigns'          => 'E-mail and SMS campaigns, their sending profiles and their recipients.',
+        'Contact_groups'     => 'Contact groups, filled by hand or by a rule, and their members.',
+        'Site_log'           => 'The site log: what was done on the site, by whom and when.',
+        'Fediverse'          => 'The site\'s fediverse account: who follows it and how its posts were delivered.',
+        'Audit_log'          => 'The audit trail: who changed what, as the Audit trail screen lists it.',
+        'Gift_cards'         => 'Gift cards: their balance, expiry and redemptions.',
+        'Commissions'        => 'Affiliate commissions and their recurring profiles.',
+        'Affiliates'         => 'Affiliates: approving a contact as one.',
+        'Calendars'          => 'Calendars, their events, locations and reservations.',
+        'Webhooks'           => 'Webhook subscriptions: the events the site sends to an address, signed, with their deliveries.',
+        'Subscriptions'      => 'Subscriptions the store charges from a stored card.',
+        'Users'              => 'The site\'s users: their accounts, roles and permissions.',
+        'System'             => 'The state of the site\'s server: maintenance, storage and the checks it runs.',
+        'Reports'            => 'Read-only figures: sales, cart recovery, traffic, visitors, search and the most read content.',
+        'Seo'                => 'Search engine findings: the issues of each page and the addresses that answered not found.',
+        'Content_review'     => 'Pages due for a review of their content, and the reviews made.',
+        'Forms'              => 'Forms, their fields and the submissions they received.',
+        'Pages'              => 'The site\'s pages: their settings, folder and publishing.',
+        'Folders'            => 'Folders, which hold pages and files and decide who can open them.',
+        'Menus'              => 'Menus and their items.',
+        'Comments'           => 'Comments and product reviews, with the store\'s replies.',
+        'Experiments'        => 'A/B experiments between versions of a page, and their results.',
+        'Short_links'        => 'Short links that send a visitor on to an address.',
+        'Files'              => 'Files of the site: upload, read, replace and delete.',
+        'Offers'             => 'Offers, the discounts checkout applies, and their rules.',
+        'Key_codes'          => 'Key codes, which a customer enters at checkout to unlock an offer.',
+        'Design'             => 'The visual designer: designs, pages, proposals, revisions, ads, auto dialogs and common regions.',
+        'Auth'               => 'A person\'s own team devices session: sign in, pair, refresh, sign out, and the devices signed in.',
+        'Notifications'      => 'The caller\'s notifications and what of them was read.',
+        'Push'               => 'Push notifications to the caller\'s browsers and devices.',
+        'Bookings'           => 'Bookings of a service, and the free slots to book.',
+        'Erp'                => 'The accounting module: accounts, invoices, payments, cash, stock documents and e-documents.',
+        'Workspace'          => 'The team workspace: channels, messages, discussions, tasks, notes, tables, flows and agents.',
+        'Translations'       => 'Translations of the site: languages, strings, pages and the glossary.',
+    );
+}
+
+/**
+ * The document's tags list: each group with its sentence, in the order the
+ * groups first appear. A group with no sentence is listed by name alone.
+ *
+ * @param array $names tags in use
+ * @return array
+ */
+function api_openapi_tags(array $names)
+{
+    $sentences = api_openapi_tag_sentences();
+
+    $tags = array();
+
+    foreach (array_values(array_unique($names)) as $name) {
+
+        $tag = array('name' => $name);
+
+        if (isset($sentences[$name])) {
+
+            $tag['description'] = $sentences[$name];
+
+        }
+
+        $tags[] = $tag;
+
+    }
+
+    return $tags;
+}
+
+/**
+ * One value a client would send for a parameter, read only from its
+ * declaration: the smallest accepted number, the first enum value, one item.
+ * The document's example bodies and tests/helpers/api_route_examples_run.php
+ * (which sends every one through the router's validator) both use it.
+ *
+ * @param array $param a route parameter
+ * @return mixed
+ */
+function api_openapi_example_value($param)
+{
+    $type = isset($param['type']) ? $param['type'] : 'string';
+
+    switch ($type) {
+
+        case 'int':
+        case 'money':
+
+            return isset($param['min']) ? (int)$param['min'] : (isset($param['max']) ? min(1, (int)$param['max']) : 1);
+
+        case 'decimal':
+
+            return isset($param['min']) ? $param['min'] : (isset($param['max']) ? min(1, $param['max']) : 1);
+
+        case 'bool':
+
+            return true;
+
+        case 'enum':
+
+            return isset($param['values'][0]) ? $param['values'][0] : '';
+
+        case 'datetime':
+
+            return '2026-11-07';
+
+        case 'object':
+
+            return array('key' => 'value');
+
+        case 'list':
+
+            $of = isset($param['of']) ? $param['of'] : null;
+
+            if ($of === 'integer') {
+
+                return array(1);
+
+            }
+
+            if ($of === 'string') {
+
+                return array('a');
+
+            }
+
+            return array(array());
+
+        default:
+
+            return 'a';
+
+    }
+}
+
+/**
+ * An example body for a route: every body field with the value
+ * api_openapi_example_value() gives it. Null when the route takes no body.
+ *
+ * @param array $route
+ * @return array|null
+ */
+function api_openapi_example_body($route)
+{
+    $body = array();
+
+    foreach ($route['params'] as $param) {
+
+        if ((isset($param['in']) ? $param['in'] : 'query') === 'body') {
+
+            $body[$param['name']] = api_openapi_example_value($param);
+
+        }
+
+    }
+
+    return empty($body) ? null : $body;
+}
+
+/**
+ * A description for an id parameter the route table leaves undescribed:
+ * which record the id names, read from its name (or, for a bare id, from the
+ * path). Null for a parameter that has a description or is not an id. Only
+ * the document carries it; the MCP tool list reads the route table.
+ *
+ * @param array $route
+ * @param array $param
+ * @return string|null
+ */
+function api_openapi_id_description($route, $param)
+{
+    if (isset($param['description'])) {
+
+        return null;
+
+    }
+
+    $name = (string)$param['name'];
+
+    if ($name === 'id') {
+
+        return 'Id of the record at ' . (isset($route['path']) ? $route['path'] : '') . '.';
+
+    }
+
+    if (!preg_match('/^([a-z][a-z0-9_]*?)_(id|ids)$/', $name, $match)) {
+
+        return null;
+
+    }
+
+    $words = str_replace('_', ' ', $match[1]);
+
+    if ($match[2] === 'ids') {
+
+        $plural = preg_match('/[^aeiou]y$/', $words) ? substr($words, 0, -1) . 'ies'
+            : (preg_match('/(s|x|ch|sh)$/', $words) ? $words . 'es' : $words . 's');
+
+        return 'Ids of the ' . $plural . ', as a list.';
+
+    }
+
+    switch ($words) {
+
+        case 'since':
+
+            return 'Only the records after the one with this id.';
+
+        case 'before':
+
+            return 'Only the records before the one with this id.';
+
+        case 'after':
+
+            return 'Only the records after the one with this id.';
+
+        case 'ref':
+
+            return 'Id of the record ref_type names.';
+
+    }
+
+    return 'Id of the ' . $words . '.';
+}
+
 
 function api_openapi_tag($route_id) {
 
