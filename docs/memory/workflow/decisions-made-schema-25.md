@@ -27,4 +27,4 @@ description: Decisions list, schema part 25 (2026-11-16 on): the second study's 
 
 ## May ws_app_commands get a column for a command's arguments? (owner, 2026-11-16, agent channel poll 97, message 6795)
 - Owner: "Evet, eklenebilir; sütunu Mimar onaylasın". Existing rows and running sites are untouched: a command without a definition works as today.
-- The column's name and type come in the draft PR of CC10 (`plans/channel-commands-steps-2.md`) and are written here once confirmed.
+- The column, confirmed on CC10's draft PR (`plans/channel-commands-steps-2.md`): `decisions-made-schema-26.md`.

@@ -4,7 +4,7 @@ description: Connections management screen (plan connections-merges): the archit
 ---
 
 ## What is this file?
-- The architect's technical rules for the screen the owner asked for in poll 146 (`workflow/decisions-made-product-76.md`), given on the first mock (agent channel message 9376, answered 2026-11-17). The plan is `connections-merges.md`; the look itself is the owner's, by one sheet and one poll.
+- The architect's technical rules for the screen the owner asked for in poll 146 (`workflow/decisions-made-product-76.md`), given on the first mock (agent channel message 9376, answered 2026-11-17). The plan is `connections-merges.md`.
 
 ## How is a key shared by several features kept?
 - Architect (2026-11-17): one connection per provider (OpenAI, Anthropic…), no table and no column, stored where the registry's key services keep theirs. A feature names the provider, never a second connection of the same provider.
@@ -28,7 +28,7 @@ description: Connections management screen (plan connections-merges): the archit
 - No key. A "Sağlayıcı" select, then the chosen provider's connection with its state and "Bağlantılar'da yönet"; the feature's own settings (switch, model) stay.
 - When the provider is not connected the block says so and offers "Bağlantılar'da bağla"; the switch cannot be turned on.
 
-## What is asked of the owner with the sheet?
-- The screen as drawn, and as its own point the entry: a "Bağlantılar ›" row above "Sistem araçları ›" at the end of the Site Settings list. The main menu stays as it is.
+## What did the owner accept?
+- Owner (2026-11-17, poll 149): the screen as its sheet shows, with the entry: a "Bağlantılar ›" row above "Sistem Araçları ›" at the end of the Site Settings list (`workflow/decisions-made-product-77.md`, where the build's cut is too). The main menu stays as it is.
 
 Related: docs/memory/plans/connections-merges.md, docs/memory/ui/connections-screen-layout.md, docs/memory/api/connections-registry.md
