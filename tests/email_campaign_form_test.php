@@ -130,3 +130,40 @@ function test_email_campaign_form_screens_use_the_layout()
 	$edit = file_get_contents(PG_FUNCTIONS_DIR . '/edit_email_campaign.php');
 	pg_assert_contains('<label class="form-label" for="status">', $edit, 'the status select has a visible label');
 }
+
+// New campaign refuses on its own form (#10086): the refusals are listed
+// above the form, escaped, and nothing is drawn without one.
+function test_email_campaign_refusals_alert()
+{
+	pg_assert_same('', pg_email_campaign_refusals_alert(array()), 'no refusal, no alert');
+
+	$html = pg_email_campaign_refusals_alert(array(
+		'subject' => 'Enter a subject.',
+		'recipients' => 'A <b> & C',
+	));
+	pg_assert_contains('<div class="alert theme-danger" role="alert">', $html, 'an alert the screen reader announces');
+	pg_assert_contains('<li>Enter a subject.</li>', $html, 'each refusal listed');
+	pg_assert_contains('<li>A &lt;b&gt; &amp; C</li>', $html, 'escaped');
+	pg_assert_false(strpos($html, 'history.go(-1)') !== false, 'no Go back link: the form is still on the screen');
+}
+
+function test_email_campaign_create_refuses_on_the_form()
+{
+	$add = (string) file_get_contents(PG_FUNCTIONS_DIR . '/add_email_campaign.php');
+
+	foreach (array(
+		'pg_email_campaign_field_errors_html(',
+		"output_error(lang('Paste the HTML",
+		"output_error(lang('Please select a page",
+		"output_error(lang('You are not authorized to send that page",
+		"output_error(lang('The address you entered",
+		"output_error(lang('Please select at least one recipient.')",
+		'javascript:history.go(-1)',
+	) as $gone) {
+		pg_assert_false(strpos($add, $gone) !== false, 'no bare error page: ' . $gone);
+	}
+
+	pg_assert_contains('pg_email_campaign_refusals_alert($errors)', $add, 'the refusals are shown on the form');
+	pg_assert_contains("\$errors['recipients'] = lang('Please select at least one recipient.');", $add, 'the recipient check keeps its wording');
+	pg_assert_contains('validate_token_field();', $add, 'the token check stays');
+}
