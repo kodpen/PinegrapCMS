@@ -578,6 +578,7 @@
 - release-bundle-publish.md: Publishing and taking back a release bundle: checks before any write, the writes, a failure taken back, partly published, what cannot come back
 - release-bundle-screen.md: The Bundles screen (page_bundles.php): the list, a bundle's pages with "Changed since", its three dialogs, Remove and Delete, what later steps add [decision: here]
 - release-bundle-tables.md: Release bundles' two tables, statuses and moves, the hold on a bundled draft, the copy of a live page and "changed since" (includes/fn/page_bundles.php) [decision: decisions-made-schema-26.md]
+- release-bundle-time.md: A release bundle's publish time: the general job's pass, publishing once in the name of who set the time, a bundle held back to open with its reason, the bell line
 - responsive-images.md: Designer and widget images with srcset/sizes, AVIF/WebP <picture> on the Image element: which images, sizes rule, widget pass, variant swap, version stamp, e-mail strip (loading order: image-loading)
 - rich-text-profiles.md: pg_sanitize_rich_text() profiles: visitor (default, site output) drops class, layout styles and outside images and marks links ugc; staff keeps the shared allow-list; which callers pass staff. [decision: decisions-made-product-39.md]
 - search-index-item-parts.md: Parts inside a search index item (page render, events, classic records, a host's records): budget after each part, pause and resume, the part marker, what a tick that died keeps
