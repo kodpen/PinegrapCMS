@@ -112,8 +112,8 @@ function test_api_console_endpoint_headings()
 	pg_assert_same(0, substr_count($parts['panels'], '<div class="doc-ep-head"'), 'no endpoint heading is a div');
 	pg_assert_same($parts['groups'] + 2, substr_count($parts['panels'], '<h2 class="doc-group-h"'),
 		'a group heading per group, Webhook events and Errors');
-	pg_assert_same($parts['count'] + 2, substr_count($parts['panels'], '<h3 class="doc-ep-head"'),
-		'an endpoint heading per endpoint, the event block and the error block');
+	pg_assert_same($parts['count'] + 2 + count(api_webhook_events()), substr_count($parts['panels'], '<h3 class="doc-ep-head"'),
+		'an endpoint heading per endpoint, the event block, one per event and the error block');
 }
 
 // The source of an API file, for the figures that live only as literals there.

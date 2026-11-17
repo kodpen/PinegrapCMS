@@ -449,23 +449,29 @@ function api_console_endpoints_html($try_hint = '') {
 
 }
 
-// The event catalogue, as one block both pages print under the endpoint list.
+// The event catalogue, as one block both pages print under the endpoint list,
+// then one block for each event with what its data carries.
 //
 // A webhook is only worth registering if you know what can arrive at it, and
 // the names were readable nowhere but the source and the panel's own form. Each
 // line says what the event really covers, including where it does not fire: a
 // bulk import writes thousands of contacts and stays quiet on purpose, and an
 // integrator needs to read that here rather than discover it in production.
+// The catalogue lines link to the event blocks below them: a receiver is
+// written against the fields of data, which GET /webhooks/events also lists.
 function api_console_events_html() {
 
 	require_once(dirname(__FILE__) . '/outbound/webhooks.php');
+	require_once(dirname(__FILE__) . '/resources/webhooks.php');
+
+	$events = api_webhook_events();
 
 	$rows = '';
 
-	foreach (api_webhook_events() as $event => $description) {
+	foreach ($events as $event => $description) {
 
 		$rows .= '<tr>
-			<td><code>' . h($event) . '</code></td>
+			<td><a href="#' . h(api_console_event_anchor($event)) . '"><code>' . h($event) . '</code></a></td>
 			<td class="doc-note">' . h($description) . '</td></tr>';
 
 	}
@@ -481,7 +487,97 @@ function api_console_events_html() {
 			<div class="doc-params mt-5"><span class="doc-params-h">' . h(lang('Webhook events')) . '</span>
 				<table class="table table-sm mb-0"><tbody>' . $rows . '</tbody></table></div>
 		</div>
-	</div>';
+	</div>' . api_console_event_blocks_html(api_webhook_event_rows($events, api_webhook_event_modules(), api_webhook_event_payloads()));
+
+}
+
+// The anchor of an event's block: order.created is #ev_order_created.
+function api_console_event_anchor($event) {
+
+	return 'ev_' . preg_replace('/[^a-z0-9_]/', '_', strtolower((string)$event));
+
+}
+
+// One block for each event of GET /webhooks/events' rows
+// (api_webhook_event_rows()): its description, the fields of data with their
+// type and meaning, and the body a delivery of its sample would carry. Built
+// from the same rows as that route, so the page and an application's event
+// chooser cannot tell two stories. An event without fields says so instead of
+// printing an empty table. Pure.
+function api_console_event_blocks_html($rows) {
+
+	$modules = array('erp' => lang('ERP'), 'workspace' => lang('Workspace'));
+
+	$html = '';
+
+	foreach ($rows as $row) {
+
+		$fields = '';
+
+		foreach ($row['fields'] as $field) {
+
+			$note = h($field['description']);
+
+			if (!empty($field['nullable'])) {
+
+				$note = h(lang('can be null')) . ' &middot; ' . $note;
+
+			}
+
+			$fields .= '<tr>
+				<td><code>' . h($field['name']) . '</code></td>
+				<td><span class="doc-type">' . h($field['type']) . '</span></td>
+				<td class="doc-note">' . $note . '</td></tr>';
+
+		}
+
+		if ($fields === '') {
+
+			$table = '<p class="small fg-2 mb-0">' . h(lang('This event carries no fields in data.')) . '</p>';
+
+		} else {
+
+			$table = '<div class="doc-params"><span class="doc-params-h">' . h(lang('Data')) . '</span>
+				<table class="table table-sm mb-0"><tbody>' . $fields . '</tbody></table></div>';
+
+		}
+
+		$sample = '';
+
+		if ($row['sample'] !== null) {
+
+			$body = api_webhook_body($row['name'], $row['sample'], '2026-01-25T09:14:03Z');
+
+			if ($body !== null) {
+
+				$sample = '<div class="doc-params"><span class="doc-params-h">' . h(lang('Example')) . '</span>
+					<div class="doc-curl mt-1"><code>' . h($body) . '</code></div></div>';
+
+			}
+
+		}
+
+		$module = (isset($modules[$row['module']]))
+			? '<span class="doc-scope">' . h($modules[$row['module']]) . '</span>'
+			: '';
+
+		$html .= '
+		<div class="doc-ep doc-event" id="' . h(api_console_event_anchor($row['name'])) . '">
+			<h3 class="doc-ep-head">
+				<span class="doc-m post">' . h(lang('Webhook event')) . '</span>
+				<code class="doc-path">' . h($row['name']) . '</code>
+				' . $module . '
+			</h3>
+			<div class="doc-ep-body">
+				<p class="doc-summary">' . h($row['description']) . '</p>
+				' . $table . '
+				' . $sample . '
+			</div>
+		</div>';
+
+	}
+
+	return $html;
 
 }
 

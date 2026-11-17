@@ -20,6 +20,7 @@ description: Plan automation-platforms, steps AU8 to AU10 and the order of all t
   - Done: PR #10225 (`api/application-access-automation.md`).
 
 - AU10 (S) after AU5, AU6 and AU9: the events section of both documentation pages shows fields and sample (`includes/api/console_view.php`); the lasting rules into `api/`. The plan's files stay for AX1 to AX4.
+  - Building: draft PR (`api/api-docs-webhook-events.md`).
 
 ## What waits for what?
 - Waiting for nothing: AU1, AU3, AU4, AU7, AU8. AU2 waits for AU1; AU5 and AU6 for AU4; AU9 for AU8's yes, AU3 and AU4; AU10 for AU5, AU6 and AU9.
