@@ -4,7 +4,7 @@ description: Plan channel-commands, steps CC7 to CC12 and the close-out: /oluşt
 ---
 
 ## Which steps follow?
-- CC7 (M) after CC2: /oluştur kişi and /oluştur satır.
+- CC7 (M) after CC2: /oluştur kişi and /oluştur satır. CC7a (kişi) done: #10187; CC7b next.
   - Existing: `includes/workspace/quick_edit.php` (`ws_quick_create_types()`), `includes/workspace/changes.php` (the contact is in the catalogue), `ws_command_create_names()`, the drawer's new mode in `assets/js/workspace.js`.
   - Tests: a contact's required list; a person without the contacts right neither offered nor let through; a row of a table the person may not write refused; nothing written before Save; "All fields".
   - Pictures: the two cards.
