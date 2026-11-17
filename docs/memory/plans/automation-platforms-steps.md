@@ -20,7 +20,7 @@ description: Plan automation-platforms, steps AU1 to AU7: the contract and its t
   - The PR body says how many rows one run of the dispatcher sends, so that 50 subscribers of one event are known to drain.
   - Features: A5.
 
-- AU4 (M) Event fields and samples, part 1: the way and the shop's events.
+- AU4 (M) Event fields and samples, part 1: the way and the shop's events. Done, PR #10149.
   - Existing files: `api_webhook_events()` (`includes/api/outbound/webhooks.php`), `includes/api/resources/webhooks.php`, the route rows.
   - New: fields and sample beside the catalogue; `GET /webhooks/events`; `event` on `POST /webhooks/{id}/test`; the test that reads the announcing code (a literal array by the tokenizer, a payload function by its own test).
   - A test that the router reads `/webhooks/events` as that route and not as `/webhooks/{id}`.
