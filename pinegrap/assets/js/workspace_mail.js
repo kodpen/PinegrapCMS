@@ -34,6 +34,31 @@
     // and reads Waiting to be sent or Not sent until it has left. A draft
     // fills the answer; nothing leaves before the member presses Send. all:
     // Reply to all is on from the start.
+    // Reply by e-mail, on the card and in the E-mails pane alike. A box that
+    // cannot send (switched off, deleted, no sending server) keeps the
+    // button, disabled, with the server's reason printed beside it
+    // (ws_mail_reply_off()); the answer's own check stays on the server.
+    // Returns what to insert: the button, or the button and its reason.
+    function replyButton(h, classes, off, click) {
+        var button = h.button(classes, h.t('mail_reply'), 'bi-reply');
+
+        if (!off) {
+            button.addEventListener('click', click);
+            return button;
+        }
+
+        var place = document.createDocumentFragment();
+        var note = h.el('span', 'small fg-secondary ms-2', off);
+
+        note.id = 'ws-mail-reply-off-' + Math.random().toString(36).slice(2, 8);
+        button.disabled = true;
+        button.setAttribute('aria-describedby', note.id);
+        place.appendChild(button);
+        place.appendChild(note);
+
+        return place;
+    }
+
     function replyForm(message, view, h, draft, all) {
         h.api('ws_mail_reply_form', { conversation_id: message.mail_reply }).then(function (data) {
             answerForm(message.mail_reply, data, view, h, draft, all);
@@ -1098,14 +1123,10 @@
         }
 
         if (message.mail_reply) {
-            var open = h.button('btn btn-sm btn-outline theme-primary py-0', h.t('mail_reply'), 'bi-reply');
-
-            open.addEventListener('click', function (event) {
+            row.appendChild(replyButton(h, 'btn btn-sm btn-outline theme-primary py-0', message.mail_reply_off, function (event) {
                 event.stopPropagation();
                 replyForm(message, view, h);
-            });
-
-            row.appendChild(open);
+            }));
         }
 
         // Forward as e-mail: the New e-mail form filled with this mail.
@@ -1635,22 +1656,22 @@
                     open(data.reply);
                 }
             };
-            var answer = h.button('btn btn-sm btn-outline theme-primary', h.t('mail_reply'), 'bi-reply');
-
-            answer.addEventListener('click', function () {
+            var answer = replyButton(h, 'btn btn-sm btn-outline theme-primary', data.reply_off, function () {
                 replyForm(message, view, h);
             });
-            place.insertBefore(answer, place.firstChild);
+            var after = place.firstChild;
+
+            place.insertBefore(answer, after);
 
             // Reply to all, when the last mail named anybody besides the
-            // customer and the mailbox.
-            if (data.others) {
+            // customer and the mailbox, and the box can send.
+            if (data.others && !data.reply_off) {
                 var everyone = h.button('btn btn-sm btn-outline theme-primary', h.t('mail_reply_all'), 'bi-reply-all');
 
                 everyone.addEventListener('click', function () {
                     replyForm(message, view, h, '', true);
                 });
-                place.insertBefore(everyone, answer.nextSibling);
+                place.insertBefore(everyone, after);
             }
 
             if (data.state) {

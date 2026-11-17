@@ -390,7 +390,8 @@ function ws_mail_frame($viewer, $item_id)
  * @param array $pane   ws_mail_pane()
  * @param array $viewer
  * @return array reply (the conversation id, 0 when the person may not
- *               write), to, channel_id, state, members, others (how many
+ *               write), reply_off (why the box cannot send, '' when it
+ *               can), to, channel_id, state, members, others (how many
  *               Reply to all adds, mail_reply.php)
  */
 function ws_mail_pane_tools($pane, $viewer)
@@ -417,6 +418,8 @@ function ws_mail_pane_tools($pane, $viewer)
 
     return array(
         'reply'      => $pane['can_post'] ? (int) $conversation['id'] : 0,
+        // Why the box cannot send now: Reply is drawn disabled with it.
+        'reply_off'  => $pane['can_post'] ? ws_mail_reply_off($box, (string) $conversation['customer_email'], ws_mail_reply_site_domain()) : '',
         'to'         => (string) $conversation['customer_email'],
         'channel_id' => (int) $pane['channel']['id'],
         'state'      => $pane['can_post'] ? ws_mail_state_offer(array('conversation' => $conversation, 'support' => ws_mail_box_is_support($box)), (int) $conversation['id'], (int) $viewer['id']) : null,
