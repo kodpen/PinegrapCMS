@@ -16,6 +16,7 @@ description: Field widths of the add and edit screens in look A (DL5c, #9658): t
 - Architect, 2026-11-15: spans from md (768 px), whole row below; a value cut at 1024 px may take the next span up from lg.
 - Architect, 2026-11-15: one 16 px column gap rule; `my-3` leaves all fields in one later step.
 - Architect, 2026-11-15: a narrow field alone in its row keeps the row (`pg-field-span-N`): label on one line, help the row's width, only the control spans.
+- Architect, 2026-11-17: fields side by side whose labels do not each fit one line at their span go each alone in its row (`pg-field-span-N`); a wrapped label pushes its input out of line (Edit Form List View's two counts, #10314).
 
 ## Where is the gap set?
 - In the "Look A: add and edit screens" block of `backend.src.css`: `body.pg-measure-edit .order-1 .card-body .row { --bs-gutter-x: 16px; }` (Bootstrap's row gutter was 24 px), and the `.pg-field-span-N` rules (from md, every child but `.form-label`, `.form-text`, `.invalid-feedback`, `legend` gets `max-width: calc((100% + gutter) * N / 12 - gutter)`). The vertical spacing (`my-3`) is unchanged.
