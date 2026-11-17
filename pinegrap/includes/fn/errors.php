@@ -217,15 +217,7 @@ function pg_error_once($key)
  */
 function pg_error_uncaught($throwable)
 {
-    pg_error_once(pg_error_once_key(E_ERROR, $throwable->getFile(), $throwable->getLine(), $throwable->getMessage()));
-
-    pg_error_write(pg_error_entry(
-        'fatal',
-        get_class($throwable),
-        $throwable->getMessage(),
-        $throwable->getFile(),
-        $throwable->getLine(),
-        pg_error_trace_short($throwable->getTrace())));
+    pg_error_record_throwable($throwable);
 
     $previous = pg_error_previous_handler('exception');
 
@@ -265,6 +257,26 @@ function pg_error_uncaught($throwable)
     }
 
     exit(255);
+}
+
+/**
+ * One log line for a Throwable, as the exception handler writes it. Also used
+ * by the external API, which answers the fault itself (includes/api/fault.php).
+ *
+ * @param Throwable $throwable
+ * @return void
+ */
+function pg_error_record_throwable($throwable)
+{
+    pg_error_once(pg_error_once_key(E_ERROR, $throwable->getFile(), $throwable->getLine(), $throwable->getMessage()));
+
+    pg_error_write(pg_error_entry(
+        'fatal',
+        get_class($throwable),
+        $throwable->getMessage(),
+        $throwable->getFile(),
+        $throwable->getLine(),
+        pg_error_trace_short($throwable->getTrace())));
 }
 
 /**
@@ -494,6 +506,13 @@ function pg_error_entry($level, $type, $message, $file, $line, array $trace)
  */
 function pg_error_request_id()
 {
+    // An external API or MCP request already has an id: the one its answer
+    // gives in X-Request-Id and its log row keeps. The error line carries the
+    // same, so a client's report leads to it.
+    if (defined('PG_API_ENTRY') && function_exists('api_request_id')) {
+        return (string) api_request_id();
+    }
+
     static $id = null;
 
     if ($id === null) {

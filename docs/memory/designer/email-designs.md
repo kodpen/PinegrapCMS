@@ -6,6 +6,7 @@ module: email_designs
 
 ## What is an e-mail design?
 - A page of a visual design whose root carries `props.pgEmail` (`pg_email_design_tree_is()`, `includes/fn/email_designs.php`). It is made with "New e-mail design" on New campaign (role <= 1) or `add_system_style.php?start=email`: one unsaved tab with the starter tree (frame, heading, text, button), the folder set, no search, no sitemap, noindex, nofollow, never a draft.
+- Its first tab's tree, the starter or a ready design or copy, gets an `sd_<n>` id on every node without one (`pg_email_design_tree_ids()`, ids present kept, new ones past the highest) before `pg_email_design_new_page()` returns; the editor raises its counter past them (`_pgTabsInit` reindexes). Without ids every canvas lookup by `data-sd-id` hit the root: a click marked the whole canvas (#10068, PR #10122).
 - Its page and tab name is the words "E-mail design" as an address with the first free number (`pg_email_design_free_page_name()`), never the editor's "New Page" (architect, channel 2941). The editor: `email-designs-editor.md`.
 - Its folder: the private "E-mail designs" folder, made on first use; the id is `config_text` `email_designs_folder_id` (`pg_email_designs_folder_id($create)`). A folder deleted or in the bin is replaced by a new one.
 

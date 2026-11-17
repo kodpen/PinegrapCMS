@@ -3942,7 +3942,8 @@ button.pgie-sndfile:hover {
     box-shadow: var(--pgie-shadow);
   }
 
-  .pgie.pgie-recarmed .pgie-actwrap.on {
+  .pgie.pgie-recarmed .pgie-actwrap.on,
+  .pgie.pgie-followarmed .pgie-actwrap.on {
     display: none;
   }
 }

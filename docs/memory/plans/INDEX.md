@@ -60,9 +60,6 @@
 - customer-value-features.md: Plan customer-value, features U1 to U15: what counts as an order, who is a customer, the one summary the general job rebuilds, the Customers report's figures, rights, the API
 - customer-value-steps.md: Plan customer-value, steps CV1 to CV4: the measured rebuild and the one summary, the Customers report screen, the group from a cell with the CSV and the API, close-out
 - customer-value.md: Plan (owner 2026-11-16, agent channel poll 82): a Customers report of repeat purchase, value per customer, cohorts and customer groups, read from a summary the general job rebuilds; steps CV1 to CV4
-- design-canvas-follow-features.md: Plan design-canvas-follow, features F1 to F16: where Follow is offered, the box, the frames read, the tracker's method and its limits, the keys written, progress, cancel, lost, the tests
-- design-canvas-follow-steps.md: Plan design-canvas-follow, steps FW1 to FW3: the tracker and its tests, the Follow command in the Animate tool, then the bar's button, the phone and the close-out
-- design-canvas-follow.md: Plan (owner 2026-11-16): Follow in the Design Canvas's Animate tool: a text, vector or other layer moves with an area chosen on a video, by a tracker of our own that writes plain keyframes; FW1 to FW3
 - design-template-bikeshop-design.md: Design of plans/design-template-bikeshop.md: the shipped features the Bike Shop template reuses, what it does not build, its look and Turkish words
 - design-template-bikeshop.md: Plan: the Bike Shop design template (pinegrap-bikeshop): bikes and parts catalog, repair and service requests, bike fitting, group rides calendar, news; small steps
 - design-template-own-looks-order.md: Order of the polishing round after Launch: every shipped template's family and pages steps, in which order, and where each template stands
@@ -76,13 +73,14 @@
 - designer-panels-features.md: Plan designer-panels, features D1 to D15: the Options panel's column, identity row, three tabs, section cards, the changed dot and counts, controls, the quick strip
 - designer-panels-measures-2.md: Plan designer-panels, the measure sheet as text, part 2: the Options panel's parts in order with their sizes, and every control's states (measures-2-anatomy.jpg, measures-3-controls.jpg)
 - designer-panels-measures-3.md: Plan designer-panels, the measure sheet as text, part 3: where each of today's Options sections goes in the three tabs, and the measures of the Overview rows, the page strip and the canvas bar
+- designer-panels-measures-4.md: Plan designer-panels, the Options panel under 300 px as text (drawn at 240, `options-5-narrow-column.jpg`, owner 2026-11-17): identity, tabs, labels, stacked rows, quick strip, closed sections
 - designer-panels-measures.md: Plan designer-panels, the measure sheet as text, part 1: the chrome's colours with use and contrast, type, heights, corners, the focus ring and the changed dot (measures-1-tokens.jpg)
 - designer-panels-rules.md: Plan designer-panels: what today's editor does that no step may lose (K1 to K12), every step's rules, the screens no drawing shows yet, and what a step's PR body carries
 - designer-panels-steps-2.md: Plan designer-panels, steps DP6 to DP10 of the Options chain: layout by context, the spacing box and size chooser, corners, the search that also adds, the review view, copy and paste style
 - designer-panels-steps-3.md: Plan designer-panels, steps DP11 to DP16 of the Overview chain: rows and sections, folded chains and hints, the tree search and page map, wide drop targets, long drags, moving without dragging
 - designer-panels-steps-4.md: Plan designer-panels, steps DP17 to DP25: the page strip (the design's menu, groups, tab states, the Pages window, suggested groups), the canvas bar (zones, Preview menu, Prototype mode), close-out
 - designer-panels-steps.md: Plan designer-panels, steps DP1 to DP5: the chrome's tokens, the right column, the Options panel's identity row and section cards, its controls and changed dot, the three tabs
-- designer-panels.md: Plan (owner 2026-11-16): the Page Design Studio's Options panel, Overview tree, page strip and canvas bar redrawn from twelve approved drawings; features D1 to D62, steps DP1 to DP25
+- designer-panels.md: Plan (owner 2026-11-16): the Page Design Studio's Options panel, Overview tree, page strip and canvas bar redrawn from the approved drawings; features D1 to D62, steps DP1 to DP25
 - erp-edocument-leftovers.md: Open ERP work (e-document phase 3): Paraşüt send path, queue worker, İşbaşı live key, code lists, e-waybill, accountant sign-off; owner works on it locally
 - erp-parasut-open-work.md: Paraşüt work left after the rounds of 2026-10-23 to 26 (#1405-#1682): one live round when a new demo key comes, three decisions (#2440-#2442), the queue worker, incoming e-invoices; where to start
 - event-tickets-features.md: Plan event-tickets, features T1 to T15: which order lines give tickets, the ticket and its code, the holder's page and mail, check-in and its answers, cancel, places given back, the waiting list

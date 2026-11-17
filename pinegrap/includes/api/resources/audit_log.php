@@ -55,7 +55,7 @@ function api_audit_log_schema() {
 
 	return array(
 		'id'          => 'integer',
-		'created_at'  => 'string?',
+		'created_at'  => 'datetime?',
 		'source'      => 'string',
 		'user_id'     => 'integer?',
 		'username'    => 'string?',

@@ -5711,6 +5711,9 @@ function pg_image_editor_strings_follow()
         'followNote'      => lang('Follow moves the layer with an area of a video from the playhead on. A clip trimmed, moved, split or sped up later is not followed again by itself: press Follow again.'),
         'followHint'      => lang('Drag a box over what to follow · Esc cancels'),
         'followHintRun'   => lang('Following the area through the video · Esc cancels'),
+        // On a touch screen the hints name no key.
+        'followHintTouch'    => lang('Drag a box over what to follow'),
+        'followHintRunTouch' => lang('Following the area through the video'),
         'followNoVideo'   => lang('Move the playhead onto a video first.'),
         'followShort'     => lang('Less than 0.2 s of the video is left from the playhead. Move the playhead back.'),
         'followBusy'      => lang('Following…'),

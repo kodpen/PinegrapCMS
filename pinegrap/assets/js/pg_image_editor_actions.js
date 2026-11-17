@@ -68,6 +68,8 @@
                 this.openMotionPop(b);
             }
         }],
+        // Follow (pg_image_editor_follow.js): arms the box over the video.
+        follow: ['follow', 'followFollow', function () { this.followToggle(); }],
         lock: ['lock', 'lock', function () { this.lockSelected(true); }],
         unlock: ['unlock', 'unlock', function () { this.lockSelected(false); }],
         more: ['more', 'actMore', function (b) {
@@ -103,6 +105,8 @@
             sheet: !!this.panel && !this.sheetOpen,
             // One clip in the Animate tool: Split at the playhead.
             split: (this.tool === 'motion') && (picked.length === 1) && (picked[0].type === 'video') && !!this.clipSplitHere,
+            // A layer Follow may move while a video shows at the playhead.
+            follow: !!this.followOffered && this.followOffered(),
             can: {
                 erase: !!this.areaErase, keep: !!this.areaKeep, copy: !!this.areaCopy, cutToLayer: !!this.areaCut, adjust: !!this.areaAdjust,
                 redact: !!this.newRedaction, pictureLayer: !!this.pictureLayerOn && this.pictureLayerOn()
@@ -153,7 +157,7 @@
         var on = list.length > 0;
 
         this.actWrap.classList.toggle('pgie-actobj', object);
-        this.actWrap.classList.toggle('on', on && !this.drag && !(object && ((this.playsAll && this.playsAll()) || this.recording)));
+        this.actWrap.classList.toggle('on', on && !this.drag && !(object && ((this.playsAll && this.playsAll()) || this.recording || this.follow)));
 
         if (on && object) {
             this.placeObjectBar();

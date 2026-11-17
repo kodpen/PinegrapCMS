@@ -777,12 +777,27 @@
 
     var toastRoot = null;
 
-    function toast(message, kind, action) {
+    // The corner the notices stand in. While a drawer or dialog is open it
+    // lives inside it: a modal <dialog> and its backdrop are in the top
+    // layer, above every z-index of the page, so a notice left on the body
+    // is drawn dimmed under the backdrop. pgUI.hostLayer() moves it back to
+    // the body as that dialog starts hiding.
+    function toastHost() {
         if (!toastRoot) {
             toastRoot = el('div', 'toast-container position-fixed bottom-0 start-0 p-5');
             toastRoot.style.zIndex = 1090;
             document.body.appendChild(toastRoot);
         }
+
+        if (window.pgUI && pgUI.hostLayer) {
+            pgUI.hostLayer(toastRoot);
+        }
+
+        return toastRoot;
+    }
+
+    function toast(message, kind, action) {
+        toastHost();
 
         // Bootstrap 6 has no text-bg-*: the fill and its ink are two
         // classes, and the dark notice is the inverse surface.
@@ -883,11 +898,7 @@
     // MB" and Cancel upload, which calls onCancel. progress(loaded, total)
     // moves it; remove() takes it away once the request has ended.
     function uploadCard(label, name, onCancel) {
-        if (!toastRoot) {
-            toastRoot = el('div', 'toast-container position-fixed bottom-0 start-0 p-5');
-            toastRoot.style.zIndex = 1090;
-            document.body.appendChild(toastRoot);
-        }
+        toastHost();
 
         var box = el('div', 'toast show border-0 bg-inverse fg-contrast-inverse');
         var inner = el('div', 'toast-body');
@@ -5247,6 +5258,79 @@
     // run. No command list, no argument strip there.
     function commandsOff(box) {
         return !!(box.noCommands || box.editing || box.editingScheduled);
+    }
+
+    // The "/" list's rows: every command a name of it matches as typed (the
+    // name as typed first, "/gö" shows /görev, then with the Turkish
+    // letters folded, "/go" finds it too); with nothing typed, the name in
+    // the screen's language. A discussion's box leaves out what runs only
+    // in the channel itself (where: channel, ws_command_runs_here()). Each
+    // row carries its group and the group's header for commandPickerGroups().
+    function commandPickerRows(commands, query, inThread) {
+        var typed = ('/' + query).toLocaleLowerCase('tr');
+        var typedFolded = foldText(typed);
+        var rows = [];
+
+        (commands || []).forEach(function (item) {
+            if (inThread && (item.where === 'channel')) {
+                return;
+            }
+
+            var aliases = String(item.command || '').split(' · ');
+            var names = (item.names && item.names.length) ? item.names : aliases;
+            var match = item.name || aliases[0];
+
+            if (query !== '') {
+                match = null;
+
+                names.forEach(function (name) {
+                    if (!match && name.toLocaleLowerCase('tr').indexOf(typed) === 0) {
+                        match = name;
+                    }
+                });
+
+                names.forEach(function (name) {
+                    if (!match && foldText(name).indexOf(typedFolded) === 0) {
+                        match = name;
+                    }
+                });
+            }
+
+            if (match) {
+                rows.push({ label: match, meta: item.description, detail: item.example, icon: 'bi-slash-square', insert: match + ' ', group: item.group || '', groupLabel: item.group_label || '' });
+            }
+        });
+
+        return rows;
+    }
+
+    // The same rows under one header per group, in the groups' order
+    // (BOOT.command_groups, ws_command_group_labels()), as /help shows
+    // them; a group the order does not name comes after, as met. A group
+    // without rows has no header. A header ({ header: true, label }) is
+    // never picked: drawPicker() leaves it out of the rows the keys walk.
+    function commandPickerGroups(rows, order) {
+        var groups = (order || []).slice();
+        var out = [];
+
+        rows.forEach(function (row) {
+            if (groups.indexOf(row.group) === -1) {
+                groups.push(row.group);
+            }
+        });
+
+        groups.forEach(function (group) {
+            var inGroup = rows.filter(function (row) {
+                return row.group === group;
+            });
+
+            if (inGroup.length) {
+                out.push({ header: true, label: inGroup[0].groupLabel || group });
+                out = out.concat(inGroup);
+            }
+        });
+
+        return out;
     }
 
     // Where a list of people or records opens at the caret (placePicker()):
@@ -20251,42 +20335,20 @@
                 return;
             }
 
-            // Every name a command answers to, Turkish or English: the name
-            // as typed first ("/gö" shows /görev), then with the Turkish
-            // letters folded ("/go" finds it too, "/YARDIM" finds /yardım).
-            // With nothing typed, the name in the screen's language.
+            // The commands that run in this box (commandPickerRows()); with
+            // nothing typed and more of them than the list shows, drawn
+            // again under the headers of their groups.
             if (mode === 'command') {
-                var typed = ('/' + query).toLocaleLowerCase('tr');
-                var typedFolded = foldText(typed);
-                var commands = [];
-
-                (BOOT.commands || []).forEach(function (item) {
-                    var aliases = item.command.split(' · ');
-                    var names = (item.names && item.names.length) ? item.names : aliases;
-                    var match = item.name || aliases[0];
-
-                    if (query !== '') {
-                        match = null;
-
-                        names.forEach(function (name) {
-                            if (!match && name.toLocaleLowerCase('tr').indexOf(typed) === 0) {
-                                match = name;
-                            }
-                        });
-
-                        names.forEach(function (name) {
-                            if (!match && foldText(name).indexOf(typedFolded) === 0) {
-                                match = name;
-                            }
-                        });
-                    }
-
-                    if (match) {
-                        commands.push({ label: match, meta: item.description, detail: item.example, icon: 'bi-slash-square', insert: match + ' ' });
-                    }
-                });
+                var commands = commandPickerRows(BOOT.commands, query, !!self.isThread || !!(self.channel && (self.channel.kind === 'thread')));
+                var shown;
 
                 self.drawPicker(commands);
+                shown = self.picker.querySelector('.ws-picker-list');
+
+                if ((query === '') && shown && (shown.scrollHeight > shown.clientHeight + 1)) {
+                    self.drawPicker(commandPickerGroups(commands, BOOT.command_groups));
+                }
+
                 return;
             }
 
@@ -20519,14 +20581,32 @@
             // Enter still sends the line; the row Tab would write is marked.
             var argMode = (self.pickerMode === 'arg');
 
-            self.pickerItems = items;
+            // A group's header row (commandPickerGroups()) is drawn but never
+            // picked: the arrows, Enter and Tab walk the other rows only.
+            var rows = items.filter(function (item) {
+                return !item.header;
+            });
+
+            self.pickerItems = rows;
             self.pickerIndex = argMode ? -1 : 0;
 
-            if (!items.length) {
+            if (!rows.length) {
                 list.appendChild(el('div', 'ws-picker-empty', emptyText || t('nothing_found')));
             }
 
-            items.forEach(function (item, index) {
+            items.forEach(function (item) {
+                if (item.header) {
+                    var head = el('div', 'ws-picker-group', item.label);
+
+                    head.setAttribute('role', 'presentation');
+                    head.addEventListener('mousedown', function (event) {
+                        event.preventDefault();
+                    });
+                    list.appendChild(head);
+                    return;
+                }
+
+                var index = rows.indexOf(item);
                 var row = el('button', 'ws-picker-item' + ((index === 0) ? (argMode ? ' ws-picker-next' : ' active') : ''));
                 row.type = 'button';
 
@@ -20708,6 +20788,15 @@
 
                     if (argMode) {
                         row.classList.toggle('ws-picker-next', index === this.pickerIndex);
+                    }
+
+                    // The chosen row stays in view, with its group's header
+                    // when it is the group's first.
+                    if ((index === this.pickerIndex) && row.scrollIntoView) {
+                        var head = row.previousElementSibling;
+
+                        (head && head.classList.contains('ws-picker-group') ? head : row).scrollIntoView({ block: 'nearest' });
+                        row.scrollIntoView({ block: 'nearest' });
                     }
                 }, this);
 

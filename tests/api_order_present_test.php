@@ -155,7 +155,7 @@ function test_api_order_schema_declares_the_state_nullable()
 {
 	$schema = api_order_schema();
 
-	foreach (array('type', 'cancelled_at', 'cancellation_reason', 'refund_status') as $field) {
-		pg_assert_same('string?', isset($schema[$field]) ? $schema[$field] : null, $field . ' is a nullable string');
+	foreach (array('type' => 'string?', 'cancelled_at' => 'datetime?', 'cancellation_reason' => 'string?', 'refund_status' => 'string?') as $field => $word) {
+		pg_assert_same($word, isset($schema[$field]) ? $schema[$field] : null, $field . ' is nullable');
 	}
 }

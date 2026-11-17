@@ -6,6 +6,7 @@ description: Which Workspace API reads need tasks:read for the tasks they carry 
 ## Which Workspace reads hand out tasks, and under which scope?
 - Every read that carries tasks needs `tasks:read` for them; `workspace:read` alone opens channels, messages and notes, never the tasks filed there.
 - GET /workspace/my-day: tasks, timer and plan items empty, `left_out` names `tasks:read`.
+- GET /workspace/my-day also carries `questions` (five agent questions waiting for the person: poll `id`, `message_id`, `channel` {id, name, private}, `question` cut at 160, `asker` as WorkspaceMessageSender, `asked_at`) and `questions_count` (counted of `ws_agent_questions_for($viewer, 20)`, as Today) under `workspace:read` alone, like `read_receipts` and `written_to_me`: no `left_out` entry; Claude's application only in channels Claude may be asked in (#10145).
 - GET /workspace/search: the tasks group is dropped (403 when only tasks were asked for).
 - GET /workspace/channels/{id}/context: `open_tasks` empty and not read (`ws_api_channel_context_tasks()`), `left_out` names `tasks:read`.
 - GET /workspace/refs: `tasks` (ids) empty.

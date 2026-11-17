@@ -28,6 +28,7 @@
 - canvas-closed-blocks-regions.md: CB0 list, region nodes and classic page types the canvas draws closed: the System region of a classic page, the page types with no widget, the legacy regions of a classic style, what opens each [decision: here]
 - canvas-closed-blocks-widgets.md: CB0 list: the closed slots inside system widgets, their section bindings and HTML values per widget kind, template use and what opening each takes
 - canvas-closed-blocks.md: CB0 list (2026-11-13): what the designer canvas draws as one closed block, in four families, the counts, and the proposed order of opening them (for CB1, the owner's answer) [decision: decisions-made-product-54.md]
+- canvas-drop-zone.md: Canvas drop bands (before, inside, after) by pointer height; a closed element's middle band falls back beside it; when an ancestor takes over; one insert line at a time.
 - canvas-loop-as-published.md: A loop on the designer canvas draws one line of its grid (the card and hatched copies), a listing with no record too; a bound picture is a sample photo with its field in the title (#9104, CF4)
 - canvas-picture-stand-in-box.md: A bound picture's canvas stand-in (a sample photo SVG) takes the node's own box: no minimum size, so a round 40x40 avatar stays a circle (#9184, CF1)
 - canvas-sample-account.md: The sample account (Alex Morgan) the designer canvas draws in every account and member widget, and the site words it reads (CS4b, #9280)
@@ -201,6 +202,7 @@
 - design-template-magazine-layout.md: Magazine look and shapes: pm- User Styles, fonts and serif body, color-mix() paper, rust accent, sticky pull quote, drop cap resets, vanishing bands, preview placeholders.
 - design-template-magazine-publishing.md: Magazine template publishing: the shared live rule and leak closures, the desk lists, letter names (the contact's display name), author HTML and photos, the staff note's rules for renaming fields.
 - design-template-magazine.md: Long-Read Magazine template (pinegrap-magazine): what it ships, the contract shared with news, what it adds or drops, samples, no "haber", platform limits.
+- design-template-mail-frame-light.md: Every design template's E-mail Frame is data-bs-theme="light" so the 600 px E-mail Card stays light under a dark page theme; the test over all templates (#10070).
 - design-template-marina-pages.md: Marina template 2.0.0: home, berths, the kind pages and arriving on the Marina blocks: the builders, each page's composition, motion, what left, the test
 - design-template-marina.md: Marina template (pinegrap-marina): kinds of berth, rates as words, Charter Boats and Events collections, berth requests, charter enquiries, event entries, no shop, pmn- look, tests.
 - design-template-market.md: Marketplace template (pinegrap-market): makers as a Sellers collection beside the store's catalog, one cart, maker applications and order help followed from the account, pmk- look, tests.
@@ -382,6 +384,7 @@
 - designer-node-attributes.md: The attributes every designer content, semantic and grid node writes on the page and in the editor HTML: one style order, font quoting, title and tooltip, Attributes panel rules, sizing on content
 - designer-node-ids.md: The designer's node ids (sd_N): each saved tree numbers its own, the counter kept above every loaded tree, a filled-in id never repeats one of its tree, issue badges on the issue's own node (#9958)
 - designer-note-author-stamping.md: Node notes get their author stamped in pg_designer_save_page via pg_stamp_note_authors, not in save_system_style; unchanged notes keep their stamp.
+- designer-option-change-panels.md: One Options panel select or switch change draws the Options panel and the node now; Layers rows, status bar, Attributes, HTML tree after the pause; badges of the redrawn element (#10013)
 - designer-options-panel-names.md: How controls of the visual editor's Options/Appearance panel get their accessible names (one naming pass), keyboard section headers, per-screen-size toggles, Styles inspector names
 - designer-options-panel-search.md: Options panel Search... box in the designer (filterPropertiesPanel()): what it matches, sections without rows, the No option matches line, Turkish İ and capitals
 - designer-overview-follows-selection.md: The designer's Overview tree follows the selection from every panel: one place opens and scrolls to the row (_sdTreeRevealSelection), identity lookup, instant scroll, when it must not move.
@@ -421,6 +424,7 @@
 - designer-theme-panel-light-selector.md: Which blocks the designer's Themes panel writes light and dark variables into, why colours and fonts/radii use different light selectors, and how old designs are split.
 - designer-theme-panel-value-check.md: What the Themes panel's text boxes write: one CSS value only (no ; { } < > comment, backslash or open bracket or quote), a colour row also a colour by CSS.supports; a refused box stays marked.
 - designer-theme-part.md: The Themes tab of the designer's assets panel as the part 'theme' (D5 part 5): what moved, what the core keeps, the host the part works through
+- designer-tree-move-keeps-selection.md: A move made by dragging rows in the designer's Overview tree keeps the moved elements selected, as a canvas move does; a multi-selection moved together stays one (#10067).
 - designer-turkish-terms-2.md: More Turkish designer words, continued from designer-turkish-terms: Parola (never Şifre) in the account widgets, their Bind Data labels and the account e-mails; tests/designer_password_word_test.php
 - designer-turkish-terms.md: Turkish terms for designer layer names, palette labels and panel rows; how a shared language key with a misfit Turkish is fixed (in place or a narrower key); tests/designer_turkish_terms_test.php
 - designer-undo-keeps-selection.md: Undo and Redo in the designer keep the selected element (found again by _id in the restored tree) and the Options panel's scroll; dropped only when the step removed it.
@@ -432,6 +436,7 @@
 - editor-audit-panel.md: Editor audit panel Accessibility section: rows per registry concept, the rendered draft's a11y findings, canvas checks under them, badges via data-pg-node
 - editor-chrome-contrast.md: Visual editor dark chrome text and icon contrast: --sd-* mixes for tabs, Publish, tree ids, lock icons, left panel small texts (#9099), no opacity
 - editor-turkish-terms.md: The names Page Design Studio, Design Canvas, Designs and their Turkish; English terms the editor's Turkish labels may not keep (legacy, checkbox, alert, Breadcrumb); _sdT() test [decision: decisions-made-panel-6.md]
+- email-design-check-rules.md: The editor's check list (Audit panel) on an e-mail design or a page sent as an e-mail: which web page rules it leaves out (main, landmarks, skip link, SEO score) and why (#10069)
 - email-designs-copies.md: Pages offered as copies of a new e-mail design (MA5d2 #9542): the installed template's e-mail pages and earlier campaigns' pages, which are left out, what a copy keeps
 - email-designs-editor.md: How the visual editor shows an e-mail design (MA5c #9465): the 600 px canvas and Phone view, the mail palette group, what a mail cannot carry hidden, the note on style sheets
 - email-designs-parts.md: The E-mail group's parts in the palette (MA5c, MA5c2 #9520): what each holds, the footer filled when a campaign is stored, the greeting's merge field, the product card written by hand
@@ -575,9 +580,11 @@
 - record-view-filters.md: form_item_view filters (opt-in record visibility, e.g. Status = Published): where they apply, fail-closed cases, the e-mail bypass, viewer_filter lists without feed or sitemap (#1194)
 - region-node-to-widget.md: "Make designable" on a classic menu, menu sequence, ad or tag cloud region node: the widget kind and setting per type, where the widget goes, what stays the same.
 - release-bundle-dialogs.md: The publish and take-back dialogs of a release bundle: what they post, the "changed since" choice, Publish disabled until chosen, focus on Cancel, their words [decision: here]
+- release-bundle-publish-errors.md: A database error, fatal error or timeout while a release bundle publishes: what is taken back, what is left, why
 - release-bundle-publish.md: Publishing and taking back a release bundle: checks before any write, the writes, a failure taken back, partly published, what cannot come back
 - release-bundle-screen.md: The Bundles screen (page_bundles.php): the list, a bundle's pages with "Changed since", its three dialogs, Remove and Delete, what later steps add [decision: here]
 - release-bundle-tables.md: Release bundles' two tables, statuses and moves, the hold on a bundled draft, the copy of a live page and "changed since" (includes/fn/page_bundles.php) [decision: decisions-made-schema-26.md]
+- release-bundle-time.md: A release bundle's publish time: the general job's pass, publishing once in the name of who set the time, a bundle held back to open with its reason, the bell line
 - responsive-images.md: Designer and widget images with srcset/sizes, AVIF/WebP <picture> on the Image element: which images, sizes rule, widget pass, variant swap, version stamp, e-mail strip (loading order: image-loading)
 - rich-text-profiles.md: pg_sanitize_rich_text() profiles: visitor (default, site output) drops class, layout styles and outside images and marks links ugc; staff keeps the shared allow-list; which callers pass staff. [decision: decisions-made-product-39.md]
 - search-index-item-parts.md: Parts inside a search index item (page render, events, classic records, a host's records): budget after each part, pause and resume, the part marker, what a tick that died keeps

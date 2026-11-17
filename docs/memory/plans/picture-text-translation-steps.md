@@ -10,7 +10,7 @@ description: Plan picture-text-translation, steps PT1 to PT4b: the table and the
   - Tests, red first: the words read and what `pg_tr_translatable()` skips; a page's same words giving the same string; a flat row giving none; uses gone when the file is deleted, binned or changed outside the editor; each state move.
   - No screen.
 
-- PT2 (M) after PT1: the page pass.
+- PT2 (M) after PT1: the page pass. Done (PR #10106).
   - Existing: `includes/translate/render.php` (`pg_tr_render_finalize()`).
   - The swap of this site's picture addresses in `src`, `srcset`, a `<source>`'s `srcset`, an `og:image` meta, an `href` to a picture and `url()` in a `style` attribute, plain and with `?w=` or `?f=`. One query for a page, no document decoded. Only a drawn row is swapped. A picture with uses met in a language for the first time gets its waiting row; none for a right-to-left language.
   - Tests: each place swapped, each left-out place untouched; an out-of-date row not swapped; the query count; a private folder's picture served by the source's rights.

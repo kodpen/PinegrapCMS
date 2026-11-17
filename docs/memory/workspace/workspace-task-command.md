@@ -17,6 +17,7 @@ description: The /task (/görev) command in the composer: Enter on its preview c
 ## How does the / picker find a command?
 - Each `ws_command_help()` entry, built from the registry `ws_commands()` (workspace-command-registry.md), carries `names`: every `ws_command_names()` key of its command with the slash, in table order (`ws_command_aliases()`). A `/help · /yardım` entry lists /help itself. The task label is `/task · /görev`; `ws_palette_commands()` reads the registry too.
 - `openPicker('command')` matches every name, first in Turkish lower case as typed (`/gö` shows /görev), then folded with `foldText()` (ı→i, ö→o, ü→u, ş→s, ç→c, ğ→g: `/go`, `/YARDIM`). A row shows the matched name, the description and the example as a muted second line (`detail` in `drawPicker()`, `.ws-picker-detail`). With nothing typed each row shows the command's `name`, Turkish on a Turkish screen (/görev). A picked name opens the argument popup for its first argument.
+- The rows come from `commandPickerRows()`; the groups and the filter by channel are in `workspace-command-help.md`.
 
 ## Where are the tests?
 - `tests/workspace_commands_test.php`: `ws_command_parse_task()` (people, department, `~2sa`, `!acil`), day words (`cuma`, `+2g`), `/Görev` and `/YARDIM`, every name in a help entry. The composer was checked in headless Chromium on workspace.min.js with a stubbed API; no running instance.

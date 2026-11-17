@@ -4,7 +4,7 @@ description: Plan connections-hub, steps CN1 to CN7: the registry and its census
 ---
 
 ## Which steps are there?
-- CN1 (M) The registry and its census.
+- CN1 (M) The registry and its census. Done: #10131.
   - New: the list as pure data in a module of its own (named in its memory file's `module:`), its tests, memory `api/connections-registry.md` with every row's place and state reader and the services that show no state.
   - The rule of the count (what is one service, what is not counted) stands beside H5's test, and the PR body explains every difference from the census's 79.
   - No screen changes. Cut as CN1a (shop and communication) and CN1b (the rest) when over 1,000 product lines, said before the claim.
@@ -24,7 +24,7 @@ description: Plan connections-hub, steps CN1 to CN7: the registry and its census
   - The drawer for each kind of row; the last error on file where one is stored; the block that leads to Application Access with its counts.
   - Features: H8, H10.
 
-- CN5 (S) after CN1: the searches and the Integrations category.
+- CN5 (S) after CN1: the searches and the Integrations category. Done: #10153.
   - Existing files: the Site Settings search index and `pg_panel_search_tool_actions()` (`ui/settings-modal-search.md`), `pg_settings_integration_links()`.
   - Features: H12.
 

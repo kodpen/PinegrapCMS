@@ -30,7 +30,19 @@ require_once(dirname(__FILE__) . '/http.php');
 // be stored, so a subscription always means something.
 function api_webhook_events() {
 
-	$events = array(
+	// A module announces its own events from its own file. The core list wins a
+	// name it already uses, so a module cannot quietly redefine order.created.
+	require_once(dirname(__FILE__) . '/../modules.php');
+
+	return api_webhook_core_events() + api_module_contributions('webhook_events');
+
+}
+
+// The core's own events, without the modules'. What each carries in data is
+// beside it in api_webhook_event_payloads() (webhook_payloads.php).
+function api_webhook_core_events() {
+
+	return array(
 		'order.created'        => 'A new order was placed',
 		'order.status_changed' => 'An order moved to another status',
 		'order.shipped'        => 'A tracking number was recorded for an order',
@@ -246,12 +258,6 @@ function api_webhook_events() {
 		'campaign.sent'        => 'An e-mail campaign finished sending, or an SMS campaign was queued'
 	);
 
-	// A module announces its own events from its own file. The core list wins a
-	// name it already uses, so a module cannot quietly redefine order.created.
-	require_once(dirname(__FILE__) . '/../modules.php');
-
-	return $events + api_module_contributions('webhook_events');
-
 }
 
 function api_webhook_event_is_valid($event) {
@@ -411,6 +417,74 @@ function api_webhook_body($event, $payload, $created_at) {
 
 }
 
+// The body of an event's sample sent by POST /webhooks/{id}/test: the
+// envelope of a real event with test: true beside it, so a receiver can tell
+// a sample from the real thing by the body as well as by X-Pinegrap-Test.
+// Pure.
+function api_webhook_sample_body($event, $sample, $created_at) {
+
+	return pg_json_encode_answer(array(
+		'event'      => (string)$event,
+		'created_at' => (string)$created_at,
+		'data'       => $sample,
+		'test'       => true
+	));
+
+}
+
+// Whether a queued body is a sample (api_webhook_sample_body()): test: true
+// in the envelope, not inside data. Most bodies are not, and are told apart
+// without decoding them. Pure.
+function api_webhook_body_is_test($body) {
+
+	if (strpos((string)$body, '"test":true') === false) {
+
+		return false;
+
+	}
+
+	$envelope = json_decode((string)$body, true);
+
+	return is_array($envelope) && isset($envelope['test']) && ($envelope['test'] === true);
+
+}
+
+// The headers of one delivery: the event, the queue row as the delivery id,
+// the signature, and X-Pinegrap-Test: 1 on a sample. Pure.
+function api_webhook_delivery_headers($event, $delivery_id, $secret, $timestamp, $body) {
+
+	$headers = array(
+		'Content-Type: application/json',
+		'X-Pinegrap-Event: ' . $event,
+		'X-Pinegrap-Delivery: ' . (int)$delivery_id,
+		'X-Pinegrap-Signature: t=' . $timestamp . ',v1=' . api_webhook_signature($secret, $timestamp, $body)
+	);
+
+	if (api_webhook_body_is_test($body)) {
+
+		$headers[] = 'X-Pinegrap-Test: 1';
+
+	}
+
+	return $headers;
+
+}
+
+// Why the sample of $event may not be sent to a subscription listening to
+// $listened: 'not_listened' for an event it does not listen to, 'no_sample'
+// for one whose sample is not written yet, '' when it may. Pure.
+function api_webhook_sample_refusal($event, $listened, $payloads) {
+
+	if (((string)$event === '') || !in_array((string)$event, (array)$listened, true)) {
+
+		return 'not_listened';
+
+	}
+
+	return isset($payloads[$event]['sample']) ? '' : 'no_sample';
+
+}
+
 // Whether an event for a subscription in this status is queued on hold rather
 // than for sending: attempts 0 and next_attempt_at 0, which the dispatcher
 // does not pick up. A failing subscription's address stopped answering; trying
@@ -552,6 +626,22 @@ function api_webhook_max_attempts() {
 
 }
 
+// How many event subscriptions one application may hold. POST /webhooks
+// refuses the next one with 409 too_many_webhooks and names this number. The
+// dispatcher is bounded by time, not rows, so 50 subscribers of one event are
+// 50 queue rows that drain over as many runs as their receivers need.
+function api_webhook_subscription_limit() {
+
+	return 50;
+
+}
+
+function api_webhook_subscription_limit_reached($count) {
+
+	return (int)$count >= api_webhook_subscription_limit();
+
+}
+
 // The activity log line for a delivery given up after its last attempt. The
 // address is cut to scheme and host (pg_ops_alert_mask_url()): the log is read
 // by every manager and by API apps with site_log:read, and Slack, Discord and
@@ -602,12 +692,7 @@ function api_webhook_deliver($row) {
 
 	$timestamp = (string)time();
 
-	$headers = array(
-		'Content-Type: application/json',
-		'X-Pinegrap-Event: ' . $row['event'],
-		'X-Pinegrap-Delivery: ' . (int)$row['id'],
-		'X-Pinegrap-Signature: t=' . $timestamp . ',v1=' . api_webhook_signature($hook['secret'], $timestamp, $body)
-	);
+	$headers = api_webhook_delivery_headers($row['event'], $row['id'], $hook['secret'], $timestamp, $body);
 
 	$outcome = api_http_post($hook['url'], $body, $headers, 10);
 

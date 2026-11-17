@@ -104,14 +104,16 @@ function test_mail_html_pictures_from_outside_are_set_aside()
 		. '<table background="http://cdn.example/bg.png"><tr><td background="//cdn.example/c.png">c</td></tr></table>'
 		. '<img src="cid:Logo.Part1%40Example.com" alt="Logo"><img src="cid:&lt;bad id&gt;">'
 		. '<img src="data:image/png;base64,iVBORw0K Gg==" alt="dot"><img src="data:image/svg+xml;base64,PHN2Zz4=">'
-		. '<img src="javascript:alert(1)"><img src="/local.png"><img>');
+		. '<img src="javascript:alert(1)"><img src="/local.png"><img>'
+		. '<img src="//cdn.example.com/logo.png" alt="CDN"><img src="///nohost.png"><img src="// space.png">');
 
 	pg_assert_contains('<img data-pg-src="https://tracker.example/open.gif" width="1" height="1">', $clean, 'an outside picture keeps its address aside, nothing loads');
 	pg_assert_contains('<table data-pg-background="http://cdn.example/bg.png">', $clean, 'an outside background too');
-	pg_assert_contains('<td>c</td>', $clean, 'a protocol-relative background is dropped');
+	pg_assert_contains('<td data-pg-background="https://cdn.example/c.png">c</td>', $clean, 'a protocol-relative background is read as https');
 	pg_assert_contains('<img data-pg-cid="logo.part1@example.com" alt="Logo">', $clean, 'a picture of the mail named by its Content-ID');
 	pg_assert_contains('<img src="data:image/png;base64,iVBORw0KGg==" alt="dot">', $clean, 'an embedded raster picture keeps its src');
-	pg_assert_same(3, substr_count($clean, '<img'), 'a picture with nothing left to show is left out (bad cid, SVG, script, relative, none)');
+	pg_assert_contains('<img data-pg-src="https://cdn.example.com/logo.png" alt="CDN">', $clean, 'a protocol-relative picture is read as https, its alt text kept');
+	pg_assert_same(4, substr_count($clean, '<img'), 'a picture with nothing left to show is left out (bad cid, SVG, script, relative, no host, none)');
 	mail_html_test_absent(' src="https', $clean, 'no outside src');
 	mail_html_test_absent('svg', $clean, 'no SVG picture');
 }

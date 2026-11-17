@@ -167,3 +167,16 @@ function test_email_campaign_create_refuses_on_the_form()
 	pg_assert_contains("\$errors['recipients'] = lang('Please select at least one recipient.');", $add, 'the recipient check keeps its wording');
 	pg_assert_contains('validate_token_field();', $add, 'the token check stays');
 }
+
+// New campaign stores the campaign paused and opens Edit Campaign (#10085,
+// owner poll 116): nothing goes out before the sender sets Ready to Send.
+function test_email_campaign_create_stores_it_paused()
+{
+	$add = (string) file_get_contents(PG_FUNCTIONS_DIR . '/add_email_campaign.php');
+
+	pg_assert_contains("'status'              => 'paused',", $add, 'Create stores the campaign paused');
+	pg_assert_false(strpos($add, "'status'              => 'ready',") !== false, 'never queued at once');
+	pg_assert_contains("new liveform('edit_email_campaign')", $add, 'the notice is shown on Edit Campaign');
+	pg_assert_contains("'/edit_email_campaign.php?id=' . (int) \$email_campaign_id", $add, 'Create opens Edit Campaign for it');
+	pg_assert_contains("lang('The campaign was created and nothing has been sent yet. It goes out once Status is set to Ready to Send and saved.')", $add, 'the notice says how it goes out');
+}

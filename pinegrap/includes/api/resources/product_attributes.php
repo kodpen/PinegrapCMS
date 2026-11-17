@@ -78,9 +78,9 @@ function api_product_attribute_schema() {
 		'options'         => 'ProductAttributeOption[]',
 		'products'        => 'integer',
 		'product_groups'  => 'integer',
-		'created_at'      => 'string?',
+		'created_at'      => 'datetime?',
 		'updated_by'      => 'string?',
-		'updated_at'      => 'string?',
+		'updated_at'      => 'datetime?',
 		'updated_at_unix' => 'integer'
 	);
 

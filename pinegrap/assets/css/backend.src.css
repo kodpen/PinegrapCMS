@@ -17552,9 +17552,23 @@ a.ws-chip-message:hover,
   .ws-mail-reading .ws-mail-list {
     display: none;
   }
+  /* While a mail is read the toolbar and its filters fold away (the id
+     outranks #button_bar's own display rule): they stood
+     about 490 px above the pane, so the mail began below the first screen.
+     The pane's Close brings the list and the toolbar back. */
+  .ws-mail-reading > #button_bar.pg-toolbar,
+  .ws-mail-reading > .ws-mail-check-line {
+    display: none;
+  }
   .ws-mail-pane {
     position: static;
     max-height: none;
+    padding: .5rem;
+  }
+  /* The pane's and each mail's paddings left a mail about 260 px of a
+     375 px screen. */
+  .ws-mail-pane .ws-mail-item {
+    padding: .5rem;
   }
 }
 /* The "/" list of a note's inserts, under the caret. */
@@ -17657,6 +17671,19 @@ a.ws-chip-message:hover,
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+/* A group's header in the "/" list (commandPickerGroups()): a muted line
+   as /help's group header, never picked, so no hover and no pointer. */
+.ws-picker-group {
+  padding: .5rem .5rem .2rem;
+  font-size: .75rem;
+  font-weight: 550;
+  color: var(--pg-fg-2);
+  cursor: default;
+  user-select: none;
+}
+.ws-picker-group:first-child {
+  padding-top: .25rem;
 }
 /* A registry agent in the @ menu: its icon with the state mark in the
    corner, its name cut before its role, and the usage mark of a window at

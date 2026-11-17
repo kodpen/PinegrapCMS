@@ -170,7 +170,9 @@ if ($_POST) {
             'page_id'             => $_POST['page_id'],
             'start_time'          => prepare_form_data_for_input((string) ($_POST['start_time'] ?? ''), 'date and time'),
             'purpose'             => $_POST['purpose'],
-            'status'              => 'ready',
+            // Stored paused: it is looked at, tested and given its send time on
+            // Edit Campaign, and goes out once its status is Ready to Send.
+            'status'              => 'paused',
         ), $picked, $user['id']);
 
         if (!$email_campaign_id) {
@@ -187,19 +189,11 @@ if ($_POST) {
         log_activity(lang(array('string'=>'campaign (subject: {var:1}) was created','vars'=>$_POST['subject'] . $log_page)), $_SESSION['sessionusername']);
 
         include_once('liveform.class.php');
-        $liveform = new liveform('view_email_campaigns');
+        $edit_liveform = new liveform('edit_email_campaign');
+        $edit_liveform->add_notice(lang('The campaign was created and nothing has been sent yet. It goes out once Status is set to Ready to Send and saved.'));
 
-        // if email campaign job is active
-        if (email_campaign_job_enabled()) {
-            $liveform->add_notice(lang('The campaign has been created, and it will be sent at the scheduled time.'));
-
-        // else email campaign job is not active
-        } else {
-            $liveform->add_notice(lang(array('string'=>'The campaign has been created, and you may {var:1}.','vars'=>'<a href="send_email_campaign.php?id=' . $email_campaign_id . get_token_query_string_field() . '" onclick="window.open(\'send_email_campaign.php?id=' . $email_campaign_id . get_token_query_string_field() . '\', \'\', \'width=450, height=350, resizable=1, scrollbars=0\'); return false;">' . lang('send it now') . '</a>')) );
-        }
-
-        // forward user to view e-mail campaigns screen
-        header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/view_email_campaigns.php');
+        // open the new campaign on Edit Campaign
+        header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/edit_email_campaign.php?id=' . (int) $email_campaign_id);
         exit;
     }
 }
