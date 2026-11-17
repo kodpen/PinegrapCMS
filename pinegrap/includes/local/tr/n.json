@@ -112,6 +112,7 @@
     "Names starting with og:, fb: or article: are written as property, the others as name, and a tag replaces the Open Graph or Twitter tag of the same name the site writes. viewport, description and robots come from the page settings.": "og:, fb: ya da article: ile başlayan adlar property, ötekiler name olarak yazılır; bir etiket, sitenin kendi yazdığı aynı adlı Open Graph ya da Twitter etiketinin yerine geçer. viewport, description ve robots sayfa ayarlarından gelir.",
     "Names with no Bootstrap 5.3.8 twin: a designer finishes them in the editor.": "Bootstrap 5.3.8'de karşılığı olmayan adlar: bir tasarımcı bunları düzenleyicide tamamlar.",
     "Names, lines and icons": "Adlar, tanıtım cümleleri ve simgeler",
+    "Names: {var:1}": "Adları: {var:1}",
     "Naming things": "Bir şeylere isim koymak",
     "Nappy Cream": "Pişik Kremi",
     "Narince": "Narince",

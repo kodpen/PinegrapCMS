@@ -13,10 +13,8 @@ description: Plan channel-commands, steps CC1 to CC6: the registry with no chang
   - Features: K1 to K3.
 
 - CC2 (M) after CC1: the gate, /help, the list in groups, commands as a reply.
-  - Existing: the registry, `commands.php` (`ws_command_offered()` takes the channel, `ws_command_help()`), `ws_palette_commands()`, `assets/js/workspace.js` (`drawPicker()` header rows; an entry says where it runs and the list filters by the open channel; the server refuses all the same).
-  - Tests: a channel-only entry not offered in a discussion (PHP and, for the list, Node); /help's groups in order; `/help task` and `/yardım görev`; an unknown `/help xyz` answered with the closest names; a header row never picked; K7's three textless replies, and the same three with a text unchanged.
-  - Pictures: /help, `/yardım görev`, the list with headers.
-  - Features: K4 to K7.
+  - CC2a done (#10057): the server side, K4 gate, K5 /help, K7 replies (`workspace/workspace-command-help.md`).
+  - CC2b, when no open PR holds `assets/js/workspace.js`: `drawPicker()` header rows (never picked) and the list filtered by the open channel; Node tests; the list's picture. Features K4, K6.
 
 - CC3 (M) after CC2: /hatırlat and /özet.
   - Tests: `/hatırlat yarın 10:00 Teklifi gönder` gives the plan's day, time and title with the form's default reminder; no time opens the form filled; as a reply the note holds the message's link; the live line; /özet not offered where the button is not; both answers `ephemeral`.

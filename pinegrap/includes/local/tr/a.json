@@ -4941,6 +4941,7 @@
     "Agents": "Danışmanlar",
     "Agents act as members of the channels they are added to, each through its own application and within the tier the channel's manager allows.": "Ajanlar eklendikleri kanallarda birer üye gibi çalışır; her biri kendi uygulamasıyla ve kanal yöneticisinin izin verdiği kademe içinde.",
     "Agents act as members of the channels they are added to, each through its own application. In each channel its manager chooses when it is woken and what it may do by itself.": "Ajanlar eklendikleri kanalların üyesi gibi, her biri kendi uygulamasıyla çalışır. Her kanalda ne zaman uyandırılacağını ve kendi başına neler yapabileceğini o kanalın yöneticisi seçer.",
+    "Agents and applications": "Ajanlar ve uygulamalar",
     "Agents answering one another are told to stop after a few turns and wait for a person.": "Birbirine cevap veren ajanlara birkaç turdan sonra durup bir kişiyi beklemeleri söylenir.",
     "Agents are not set up on this site yet.": "Bu sitede ajanlar henüz kurulmadı.",
     "Agents have answered one another too many times in a row. A person's message starts the count again.": "Ajanlar arka arkaya birbirine çok fazla yanıt verdi. Bir kişinin mesajı sayımı yeniden başlatır.",

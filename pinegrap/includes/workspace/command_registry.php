@@ -20,7 +20,8 @@
  *                for /claude and /ai, which become the assistant's tag
  *                before the commands are read
  *   group        ws_command_groups() value
- *   where        where it runs: any
+ *   where        where it runs (ws_command_runs_here()): any, or channel
+ *                (the channel itself, never one of its discussions)
  *   gate         function ($viewer, $key) => bool, '' for anybody; called
  *                with a null viewer as well
  *   runner       function ($viewer, $channel, $rest, $options, $body, $key)
@@ -48,6 +49,39 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 function ws_command_groups()
 {
     return array('tasks', 'plan', 'channel', 'records', 'agents');
+}
+
+/**
+ * The header of each group, as /help and the "/" list show it.
+ *
+ * @return array group => label
+ */
+function ws_command_group_labels()
+{
+    return array(
+        'tasks'   => lang('Tasks'),
+        'plan'    => lang('Plan'),
+        'channel' => lang('The channel'),
+        'records' => lang('Records'),
+        'agents'  => lang('Agents and applications'),
+    );
+}
+
+/**
+ * May a command whose entry says $where run in this channel? Without a
+ * channel, everywhere.
+ *
+ * @param string     $where   an entry's where: any | channel
+ * @param array|null $channel ws_channels row
+ * @return bool
+ */
+function ws_command_runs_here($where, $channel)
+{
+    if (!is_array($channel) || ($where !== 'channel')) {
+        return true;
+    }
+
+    return (string) ($channel['kind'] ?? '') !== 'thread';
 }
 
 /**
@@ -372,7 +406,7 @@ function ws_command_registry_agents()
             'args'        => array(
                 $arg('state', 'text', lang('on | off'), true),
             ),
-            'names' => array('ajan-kanalı', 'ajan-kanali', 'agent-channel'), 'group' => 'agents', 'order' => 190,
+            'names' => array('ajan-kanalı', 'ajan-kanali', 'agent-channel'), 'group' => 'agents', 'where' => 'channel', 'order' => 190,
             'gate' => 'ws_command_gate_agent_channel', 'runner' => 'ws_command_agent_channel',
         ),
         array(
