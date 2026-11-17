@@ -167,6 +167,23 @@ function test_workspace_command_create_row_strip_and_refusal()
 		pg_assert_same('wtable_row', ws_command_create_kinds()[$word] ?? '', $word . ' is a kind the parser reads');
 	}
 
+	// "/oluştur satır" typed, the table not yet: the strip already shows
+	// the row's own line, never the product's arguments.
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js');
+	$argument = workspace_command_create_row_test_js($js, 'commandArgument');
+	pg_assert_contains("var typing = (!variant && !done.length && word) ? (entry.variants || []).filter(function (item) {\n                return item.words.indexOf(foldText(word)) !== -1;", $argument, 'the kind word being typed picks its line');
+	pg_assert_contains("state.shown = { typed: typed + ' ' + word, args: typing.args, example: typing.example };", $argument, 'shown with its arguments and example');
+	$strip = workspace_command_create_row_test_js($js, 'drawCommandStrip');
+	pg_assert_contains('var entry = shown || argument.entry;', $strip, 'the strip draws the shown line');
+
+	// The card's money field carries its currency as a suffix, as the
+	// table screen's row form now does; a checkbox sits on its neighbour's
+	// control line.
+	$draw = workspace_command_create_row_test_js($js, 'drawRowCreate');
+	pg_assert_contains("group.appendChild(el('span', 'input-group-text', column.hint));", $draw, 'the card\'s currency suffix');
+	pg_assert_contains("cell.classList.add('md:pt-7');", $draw, 'the checkbox on the control line');
+	pg_assert_contains("'<span class=\"input-group-text\">' . h((string) \$options['currency']) . '</span></div>'", (string) file_get_contents(PG_FUNCTIONS_DIR . '/workspace_wtables.php'), 'the screen\'s currency suffix');
+
 	$text = ws_command_row_refusal(array('error' => 'cells_invalid', 'errors' => array(4 => 'not_number')), array(4 => array('name' => 'Amount')));
 	pg_assert_true(strpos($text, 'Amount: ') === 0, 'a refused cell names its column');
 }

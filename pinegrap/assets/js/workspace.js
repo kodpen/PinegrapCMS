@@ -19482,7 +19482,11 @@
                 var cell = el('div', 'col-12 md:col-6');
 
                 if (column.type === 'checkbox') {
-                    var wrap = el('div', 'form-field mb-2');
+                    // On a wide screen, on the line of its neighbour's
+                    // control, below that one's label.
+                    cell.classList.add('md:pt-7');
+                    var wrap = el('div', 'form-field mb-2 d-flex align-items-center');
+                    wrap.style.minHeight = '2rem';
                     input = el('input', 'check');
                     input.type = 'checkbox';
                     input.id = nextId('ws-row-cell-');
@@ -19519,7 +19523,20 @@
 
                 input.read = function () { return input.value; };
                 inputs[column.id] = input;
-                cell.appendChild(saLabelled(column.name, input, column.hint || ''));
+
+                // Money: its currency beside the amount, as a suffix.
+                if (column.type === 'money' && column.hint) {
+                    var group = el('div', 'input-group input-group-sm');
+                    group.appendChild(input);
+                    group.appendChild(el('span', 'input-group-text', column.hint));
+                    input.id = nextId('ws-row-cell-');
+                    var field = saLabelled(column.name, group, '');
+                    field.querySelector('label').htmlFor = input.id;
+                    cell.appendChild(field);
+                } else {
+                    cell.appendChild(saLabelled(column.name, input, column.hint || ''));
+                }
+
                 grid.appendChild(cell);
             });
 
@@ -20024,6 +20041,16 @@
             var args = entry.args || [];
             var state = { entry: entry, typed: typed, query: word, start: before.length - word.length, index: -1, arg: null, extras: null };
 
+            // The kind word still being typed (/create row): the strip
+            // already shows that kind's line; the kind's popup stays.
+            var typing = (!variant && !done.length && word) ? (entry.variants || []).filter(function (item) {
+                return item.words.indexOf(foldText(word)) !== -1;
+            })[0] : null;
+
+            if (typing) {
+                state.shown = { typed: typed + ' ' + word, args: typing.args, example: typing.example };
+            }
+
             if (!args.length) {
                 return state;
             }
@@ -20309,14 +20336,17 @@
                 return;
             }
 
-            var entry = argument.entry;
+            // A kind word still being typed shows its kind's own line,
+            // nothing of it marked yet (commandArgument(), shown).
+            var shown = argument.shown || null;
+            var entry = shown || argument.entry;
             var row = el('div', 'ws-cmd-strip');
             var usage = el('span', 'ws-cmd-usage');
 
-            usage.appendChild(el('span', 'ws-cmd-name', argument.typed));
+            usage.appendChild(el('span', 'ws-cmd-name', shown ? shown.typed : argument.typed));
 
             (entry.args || []).forEach(function (arg, index) {
-                var current = (argument.index === index) || (!!argument.extras && (argument.extras.indexOf(arg) !== -1));
+                var current = !shown && ((argument.index === index) || (!!argument.extras && (argument.extras.indexOf(arg) !== -1)));
 
                 usage.appendChild(document.createTextNode(' '));
                 usage.appendChild(el('span', 'ws-cmd-arg' + (current ? ' ws-cmd-current' : ''), arg.optional ? '[' + arg.label + ']' : '<' + arg.label + '>'));
