@@ -54,7 +54,7 @@
     --sd-segment-shadow: 0 3px 8px -3px rgba(37,99,235,.8);
 
     --sd-left-width: 250px;
-    --sd-right-width: 260px;
+    --sd-right-width: 336px;
 }
 /* Re-style body typography for dark mode */
 .sd-wrapper {
@@ -314,9 +314,63 @@
     white-space: nowrap;
 }
 .sd-tabs-add-btn:hover { color: var(--sd-text); background: color-mix(in srgb, var(--sd-text) 4%, transparent); }
-/* Left cluster: add / settings / duplicate / delete. Never shrinks; the tab
+/* Left cluster: the design's menu and Add Page. Never shrinks; the tab
    strip next to it is what gives way and scrolls. */
 .sd-toolbar-pages { flex: 0 0 auto; gap: .2rem; padding-right: .35rem; border-right: 1px solid var(--sd-panel-border); }
+/* The design's menu: its name opens Settings and, under a divider, Delete.
+   A long name is cut with an ellipsis; the full name is in Settings. */
+.sd-design-menu { flex: 0 0 auto; display: flex; align-items: center; margin-right: .3rem; }
+.sd-design-menu-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    height: 30px;
+    padding: 0 .55rem 0 .7rem;
+    border: 1px solid var(--sd-panel-border);
+    border-radius: 8px;
+    background: var(--sd-input-bg);
+    color: var(--sd-text);
+    font-size: .78rem;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.sd-design-menu-btn:hover,
+.sd-design-menu-btn[aria-expanded="true"] { background: color-mix(in srgb, var(--sd-text) 6%, var(--sd-input-bg)); border-color: var(--sd-border-strong); }
+.sd-design-menu-btn:focus-visible { outline: none; box-shadow: var(--sd-focus-ring); }
+.sd-design-menu-name { max-width: 14rem; overflow: hidden; text-overflow: ellipsis; }
+.sd-design-menu-caret { font-size: .7rem; color: var(--sd-text-muted); }
+/* The menu wears the tab menu's look (.sd-tab-popmenu): same ground,
+   rows, text size and divider. */
+.sd-design-menu .menu {
+    min-width: 220px;
+    padding: .3rem;
+    background: var(--sd-panel-bg);
+    border: 1px solid var(--sd-panel-border);
+    border-radius: 6px;
+    box-shadow: 0 8px 24px color-mix(in srgb, var(--sd-shadow) 45%, transparent);
+}
+.sd-design-menu .menu-item {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding: .45rem .6rem;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--sd-text);
+    font-size: .8rem;
+    line-height: 1.5;
+    text-align: left;
+}
+.sd-design-menu .menu-item:hover,
+.sd-design-menu .menu-item:focus-visible { background: color-mix(in srgb, var(--sd-text) 6%, transparent); color: var(--sd-text); }
+.sd-design-menu .sd-menu-item-danger,
+.sd-design-menu .sd-menu-item-danger:hover,
+.sd-design-menu .sd-menu-item-danger:focus-visible { color: var(--sd-danger); }
+.sd-design-menu .sd-menu-item-danger:hover,
+.sd-design-menu .sd-menu-item-danger:focus-visible { background: color-mix(in srgb, var(--sd-danger) 18%, transparent); }
+.sd-design-menu .menu-divider { height: 1px; margin: .3rem .2rem; border: 0; background: var(--sd-panel-border); opacity: 1; }
 .sd-toolbar-actions { flex: 0 0 auto; margin-left: auto; }
 @media (max-width: 1023.98px) {
     .sd-tabs-add-txt { display: none; }
@@ -456,6 +510,40 @@
 .sd-panel-bottom.collapsed { height: 28px !important; overflow: hidden; }
 .sd-panel-bottom.sd-resizing { transition: none; }
 
+/* Closed, the panel is one thin strip: the chevron and the three column
+   names; nothing inside is drawn and a click anywhere on it opens it. The
+   docked panel keeps its own three strips. */
+.sd-panel-bottom.collapsed:not(.sd-docked) {
+    cursor: pointer;
+    border-top: 1px solid var(--sd-panel-border);
+}
+.sd-panel-bottom.collapsed:not(.sd-docked) .sd-bp-grid {
+    display: flex; align-items: center;
+    padding: 0 .5rem;
+}
+.sd-panel-bottom.collapsed:not(.sd-docked) .sd-bp-quad {
+    flex: 0 0 auto; flex-direction: row; align-items: center;
+    background: transparent;
+}
+.sd-panel-bottom.collapsed:not(.sd-docked) .sd-bp-quad-hdr {
+    min-height: 0; padding: 0 .4rem;
+    background: transparent; border-bottom: 0;
+    font-size: .68rem; color: var(--sd-label);
+}
+.sd-panel-bottom.collapsed:not(.sd-docked):hover .sd-bp-quad-hdr { color: var(--sd-text); }
+.sd-panel-bottom.collapsed:not(.sd-docked) .sd-bp-quad-bl::before,
+.sd-panel-bottom.collapsed:not(.sd-docked) .sd-bp-quad-tr::before {
+    content: '\00b7'; color: var(--sd-text-muted); font-weight: 700;
+}
+.sd-panel-bottom.collapsed:not(.sd-docked) .sd-bp-quad-body,
+.sd-panel-bottom.collapsed:not(.sd-docked) .sd-bp-grid-col-resize,
+.sd-panel-bottom.collapsed:not(.sd-docked) .sd-bp-quad-spacer,
+.sd-panel-bottom.collapsed:not(.sd-docked) .sd-attrs-elem-badge,
+.sd-panel-bottom.collapsed:not(.sd-docked) .sd-styles-tool,
+.sd-panel-bottom.collapsed:not(.sd-docked) .sd-styles-find,
+.sd-panel-bottom.collapsed:not(.sd-docked) .sd-bp-quad-hdr > .bi:not(.sd-bp-collapse) { display: none; }
+.sd-panel-bottom.collapsed:not(.sd-docked) .sd-bp-collapse { order: -1; padding: 0 .4rem 0 0; }
+
 /* ── Vertical resize handle (resizes the bottom panel up/down) ──
    The panel's top edge owns a strip 4px above the line and 5px below it,
    above the canvas, across the whole width: grabbing the line anywhere
@@ -490,9 +578,11 @@
 .sd-bp-collapse {
     cursor: pointer; font-size: .85rem; color: var(--sd-text-muted);
     padding: 0 .65rem; flex-shrink: 0;
+    background: transparent; border: 0; line-height: 1;
     transition: color .12s;
 }
 .sd-bp-collapse:hover { color: var(--sd-text); }
+.sd-bp-collapse:focus-visible { outline: 0; box-shadow: var(--sd-focus-ring); border-radius: 4px; }
 
 /* ── Bottom Body: 2 kolon ── */
 .sd-bp-body {
@@ -513,13 +603,36 @@
 .sd-tree-list, .sd-tree-children { list-style:none; margin:0; padding:0; font-size:.72rem; }
 .sd-tree-children > li { position: relative; }
 .sd-tree-children > li::before {
-    content: ''; position: absolute; left: calc(var(--depth) * 0.8rem - 0.2rem);
-    top: 0; bottom: 0; width: 1px; background: color-mix(in srgb, var(--sd-text) 6%, transparent);
+    content: ''; position: absolute; left: calc(var(--sd-ind, 0px) + 3px);
+    top: 0; bottom: 0; width: 1px; background: color-mix(in srgb, var(--sd-text) 7%, transparent);
 }
+/* A row is 28 px; its indent (--sd-ind, 12 px a level, six at most) is set
+   by _sdTreeRowIndent(), which keeps the label at least 150 px. */
 .sd-tree-list li {
-    padding:.15rem .5rem .15rem calc(.2rem + var(--depth,0) * .8rem);
+    box-sizing: border-box; min-height: 28px;
+    padding: 0 .5rem 0 calc(8px + var(--sd-ind, 0px));
     cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
     transition:background .1s; display: flex; align-items: center;
+}
+/* The body's children are the page's sections: a raised row with the count
+   of what it holds, 4 px apart. */
+.sd-tree-list > li.sd-tree-sect {
+    margin: 4px 4px 0; border: 1px solid var(--sd-panel-border); border-radius: 6px;
+    background: var(--sd-raised-bg); font-size: 12.5px; font-weight: 640; color: var(--sd-text);
+}
+.sd-tree-list > li.sd-tree-sect:hover { background: color-mix(in srgb, var(--sd-text) 4%, var(--sd-raised-bg)); }
+.sd-tree-list > li.sd-tree-sect.sd-multi-selected { background: rgba(var(--sd-accent-rgb), .08); color: var(--sd-accent); }
+.sd-tree-list > li.sd-tree-sect.active { background: rgba(var(--sd-accent-rgb), .12); color: var(--sd-accent); }
+.sd-tree-sect-count {
+    margin-left: auto; padding: 0 6px; min-width: 20px; text-align: center; flex-shrink: 0;
+    border-radius: 9px; font-size: 11px; font-weight: 600; line-height: 18px;
+    color: var(--sd-accent); background: var(--sd-raised-bg-2);
+}
+/* A row deeper than six indents (or than the width allows) says its level. */
+.sd-tree-depth {
+    flex: 0 0 18px; margin-right: 4px; border-radius: 4px; text-align: center;
+    font-size: 10px; font-weight: 600; line-height: 16px;
+    color: var(--sd-text-muted); background: var(--sd-raised-bg-2);
 }
 .sd-tree-list li:hover { background:rgba(var(--sd-accent-rgb),.06); }
 .sd-tree-list li.active { background:rgba(var(--sd-accent-rgb),.12); font-weight:600; color:var(--sd-accent); }
@@ -533,7 +646,10 @@
 .sd-tree-chev:hover { opacity: 1; color: var(--sd-accent); }
 .sd-tree-chev.sd-tree-chev-open { transform: rotate(90deg); opacity: 0.7; }
 .sd-tree-chev-placeholder { display: inline-block; width: 14px; margin-right: 2px; }
-.sd-tree-lbl { flex: 1; overflow: hidden; text-overflow: ellipsis; margin-left: 2px; }
+/* The marks after a label give way before it does; _sdTreeRowIndent()
+   leaves the label at least 150 px of the row. */
+.sd-tree-lbl { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; margin-left: 2px; }
+.sd-tree-list li > .sd-tree-lbl ~ :not(.sd-tree-sect-count) { flex-shrink: 100; min-width: 0; overflow: hidden; }
 
 /* ── Canvas Area ── */
 .sd-canvas-wrapper {
@@ -547,32 +663,136 @@
 }
 .sd-canvas { flex:1; display:flex; flex-direction:column; overflow:hidden; }
 
-/* Breakpoint bar. Its own width (the canvas column, not the window)
-   decides how it gives way: the button labels drop first (each button keeps
-   its title as its name), and what still does not fit wraps to a second row
-   instead of running under the Options column. */
+/* The canvas bar in three zones: the mode switch, the canvas (screen size
+   and zoom), the view and the tools; Preview and Open on Site after them.
+   44px high, 28px controls, 6px between the controls of a zone, a 1px line
+   and 12px each side between zones. Its own width (the canvas column, not
+   the window) picks the fold level (data-fold, _sdCanvasBarFold()): 1 hides
+   the width text, 2 folds the sizes into one list, 3 hides the labels;
+   narrower still the zones wrap. A control is never hidden. */
 .sd-bp-bar {
-    display:flex; align-items:center; justify-content:space-between;
-    flex-wrap:wrap; row-gap:.2rem;
-    padding:.2rem .6rem; gap:.4rem;
+    display:flex; align-items:center; flex-wrap:wrap; gap:6px 0;
+    min-height:44px; padding:7px 10px 8px; box-sizing:border-box;
     background: var(--sd-input-bg); border-bottom:1px solid var(--sd-panel-border);
     flex-shrink:0;
-    container: sd-bp-bar / inline-size;
 }
-.sd-bp-bar-left  { display:flex; align-items:center; gap:.4rem; flex-wrap:wrap; }
-.sd-bp-bar-right { display:flex; align-items:center; gap:.15rem; flex-wrap:wrap; min-width:0; }
-@container sd-bp-bar (max-width: 70rem) {
-    .sd-bp-bar .sd-vb-txt { display:none; }
-    .sd-bp-bar .sd-vb-btn { padding-left:.4rem; padding-right:.4rem; }
+.sd-bp-bar .sd-bp-zone { display:flex; align-items:center; gap:6px; flex:0 0 auto; white-space:nowrap; }
+.sd-bp-bar .sd-bp-zsep { width:1px; height:20px; margin:0 12px; background:var(--sd-panel-border); flex:0 0 auto; }
+/* Wrapped onto two rows, a zone line would end a row: the zones keep their
+   12px apart without it. */
+.sd-bp-bar[data-fold="3"] { column-gap:12px; }
+.sd-bp-bar[data-fold="3"] .sd-bp-zsep { display:none; }
+.sd-bp-bar[data-fold="1"] .sd-bp-label,
+.sd-bp-bar[data-fold="2"] .sd-bp-label,
+.sd-bp-bar[data-fold="3"] .sd-bp-label,
+.sd-bp-bar[data-fold="2"] .sd-bp-sizes,
+.sd-bp-bar[data-fold="3"] .sd-bp-sizes,
+.sd-bp-bar[data-fold="3"] .sd-vb-txt { display:none; }
+.sd-bp-bar .sd-bp-size-select { display:none; }
+.sd-bp-bar[data-fold="2"] .sd-bp-size-select,
+.sd-bp-bar[data-fold="3"] .sd-bp-size-select { display:block; }
+
+/* A mode and a size are segments of a group: the chosen one is filled. */
+.sd-bp-bar .sd-bp-mode,
+.sd-bp-bar .sd-bp-sizes {
+    display:flex; align-items:center; gap:2px;
+    height:28px; padding:2px; box-sizing:border-box;
+    border:1px solid var(--sd-input-border); border-radius:7px;
+    background:var(--sd-panel-bg);
 }
-.sd-bp-bar .sd-bp-label { font-size:.68rem; font-weight:600; color:var(--sd-text-muted); font-variant-numeric:tabular-nums; margin-left:6px; }
+.sd-bp-bar .sd-bp-seg,
 .sd-bp-bar .sd-bp-btn {
-    background:none; border:none; border-radius:.2rem;
-    padding:.3rem .5rem; font-size:.85rem; cursor:pointer; color:var(--sd-text-muted);
-    line-height:1; display:flex; align-items:center; justify-content:center;
+    height:22px; min-width:28px; padding:0 .5rem; border:none; border-radius:5px;
+    background:none; color:var(--sd-text-muted); cursor:pointer;
+    display:inline-flex; align-items:center; justify-content:center; gap:.35rem;
+    font-size:.75rem; line-height:1;
+    transition:background .12s, color .12s;
 }
-.sd-bp-bar .sd-bp-btn:hover { color:var(--sd-text); background:color-mix(in srgb, var(--sd-text) 5%, transparent); }
-.sd-bp-bar .sd-bp-btn.active { color:var(--sd-accent); background:rgba(var(--sd-accent-rgb),.1); }
+.sd-bp-bar .sd-bp-btn { padding:0; font-size:.8rem; }
+.sd-bp-bar .sd-bp-seg:hover,
+.sd-bp-bar .sd-bp-btn:hover { color:var(--sd-text); background:color-mix(in srgb, var(--sd-text) 7%, transparent); }
+.sd-bp-bar .sd-bp-seg.active,
+.sd-bp-bar .sd-bp-btn.active { color:var(--sd-on-accent); background:var(--sd-accent-strong); }
+.sd-bp-bar .sd-bp-size-select {
+    height:28px; max-width:11rem; padding:0 .4rem; border-radius:6px;
+    border:1px solid var(--sd-input-border); background:var(--sd-panel-bg);
+    color:var(--sd-text); font-size:.75rem;
+}
+.sd-bp-bar .sd-bp-label { min-width:5.6rem; font-size:.72rem; font-weight:500; color:var(--sd-text-muted); font-variant-numeric:tabular-nums; }
+
+/* An action is a plain 28px button; a tool has a frame; the View menu's
+   button carries the accent line and the count of switches that are on. */
+.sd-bp-bar .sd-vb-btn { height:28px; min-width:28px; justify-content:center; border-radius:6px; }
+.sd-bp-bar .sd-vb-tool { border:1px solid var(--sd-input-border); }
+.sd-bp-bar .sd-vb-view {
+    gap:.4rem; padding:0 .55rem;
+    border:1px solid var(--sd-accent-line); background:var(--sd-accent-soft); color:var(--sd-text);
+}
+.sd-bp-bar .sd-vb-view .sd-vb-txt { font-size:.75rem; font-weight:600; }
+.sd-bp-bar .sd-vb-view[aria-expanded="true"] { background:rgba(var(--sd-accent-rgb), .22); }
+.sd-bp-bar .sd-vb-badge {
+    min-width:16px; height:16px; padding:0 4px; border-radius:8px; box-sizing:border-box;
+    background:var(--sd-accent-strong); color:var(--sd-on-accent);
+    font-size:.62rem; font-weight:700; line-height:16px; text-align:center;
+}
+.sd-bp-bar .sd-vb-badge[hidden] { display:none; }
+.sd-bp-bar .sd-vb-caret { font-size:.6rem; color:var(--sd-text-muted); }
+.sd-bp-bar .sd-vb-zoom {
+    height:28px; min-width:3rem; padding:0 .25rem; border:none; border-radius:6px; background:none; cursor:pointer;
+}
+.sd-bp-bar .sd-vb-zoom:hover { background:color-mix(in srgb, var(--sd-text) 7%, transparent); }
+/* Fitted (_sdCanvasFit()): the frame is scaled, so the handles that measure
+   pointer travel against it are hidden until Fit is left. */
+.sd-canvas-fitted .sd-resize-handle,
+.sd-canvas-fitted .sd-resize-handle-bottom,
+.sd-canvas-fitted .sd-resize-handle-corner,
+.sd-canvas-fitted .sd-icon-fs-handle { display:none !important; }
+.sd-canvas-fitted .sd-iframe-wrap { transition:none; }
+.sd-bp-bar #sd-vb-fit.active { color:var(--sd-accent); background:rgba(var(--sd-accent-rgb), .13); }
+/* No mode to switch to on an e-mail design: it has no prototype. */
+body.sd-email-design .sd-bp-bar .sd-bp-mode,
+body.sd-email-design .sd-bp-bar .sd-bp-zsep-mode { display:none; }
+
+/* The View menu: switch rows, on the overlay host under its button. */
+.sd-vb-menu {
+    position:fixed; z-index:1080; min-width:15.5rem; padding:6px;
+    background:var(--sd-raised-bg); border:1px solid var(--sd-panel-border); border-radius:10px;
+    box-shadow:0 12px 32px var(--sd-shadow);
+}
+.sd-vb-menu[hidden] { display:none; }
+.sd-vb-menu .sd-vb-menu-title {
+    padding:4px 8px 6px; font-size:.66rem; font-weight:600; letter-spacing:.06em;
+    text-transform:uppercase; color:var(--sd-text-muted);
+}
+.sd-vb-menu .sd-vb-row {
+    display:flex; align-items:center; gap:10px; width:100%; height:32px; padding:0 8px;
+    border:none; border-radius:6px; background:none; color:var(--sd-text);
+    font-size:.8rem; text-align:left; cursor:pointer;
+}
+.sd-vb-menu .sd-vb-row:hover { background:color-mix(in srgb, var(--sd-text) 7%, transparent); }
+.sd-vb-menu .sd-vb-row:focus-visible { outline:none; box-shadow:var(--sd-focus-ring); }
+.sd-vb-menu .sd-vb-row .bi { color:var(--sd-text-muted); }
+.sd-vb-menu .sd-vb-row-lbl { flex:1; }
+.sd-vb-menu .sd-vb-kbd {
+    padding:0 5px; border:1px solid var(--sd-input-border); border-radius:4px;
+    background:none; color:var(--sd-text-muted); font-size:.66rem; font-family:inherit;
+}
+.sd-vb-menu .sd-vb-switch {
+    position:relative; flex:0 0 auto; width:32px; height:18px; border-radius:9px;
+    background:var(--sd-input-border); transition:background .12s;
+}
+.sd-vb-menu .sd-vb-switch::after {
+    content:''; position:absolute; top:3px; left:3px; width:12px; height:12px; border-radius:50%;
+    background:var(--sd-text-muted); transition:transform .12s, background .12s;
+}
+.sd-vb-menu .sd-vb-row.active .sd-vb-switch { background:var(--sd-accent-strong); }
+.sd-vb-menu .sd-vb-row.active .sd-vb-switch::after { transform:translateX(14px); background:var(--sd-on-accent); }
+@media (prefers-reduced-motion: reduce) {
+    .sd-vb-menu .sd-vb-switch,
+    .sd-vb-menu .sd-vb-switch::after,
+    .sd-bp-bar .sd-bp-seg,
+    .sd-bp-bar .sd-bp-btn { transition:none; }
+}
 /* An e-mail design (root props.pgEmail) has two widths: the 600 px mail and
    the 375 px Phone view; the page widths are hidden while it is open. */
 .sd-bp-bar .sd-bp-btn.sd-bp-mail { display:none; }
@@ -786,6 +1006,40 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
     overflow: hidden; flex-shrink:0;
     display: flex; flex-direction: column;
 }
+/* The column's two tabs, Options and Design, are its header; each pane
+   takes the whole height under them. */
+/* The line under the strip is a shadow under the tabs: the open tab's
+   ground covers it, so that tab joins the pane below. */
+.sd-panel-header.sd-rcol-head {
+    min-height: 40px; padding: 0 .25rem 0 0;
+    text-transform: none; letter-spacing: 0;
+    background: var(--sd-input-bg);
+    border-bottom: 0;
+    box-shadow: inset 0 -1px 0 var(--sd-panel-border);
+}
+.sd-rcol-tabs { display: flex; align-self: stretch; min-width: 0; }
+.sd-rcol-tab {
+    display: inline-flex; align-items: center; gap: .4rem;
+    padding: 0 .9rem; min-width: 0;
+    background: transparent; border: 0;
+    border-right: 1px solid var(--sd-panel-border);
+    color: var(--sd-text-muted);
+    font-size: 12.5px; font-weight: 600; white-space: nowrap;
+    cursor: pointer;
+}
+.sd-panel-header .sd-rcol-tab .bi { font-size: .8rem; }
+.sd-rcol-tab:hover { color: var(--sd-text); background: color-mix(in srgb, var(--sd-text) 4%, transparent); }
+.sd-rcol-tab.active { color: var(--sd-text); background: var(--sd-panel-bg); font-weight: 630; }
+.sd-rcol-tab:focus-visible { outline: 0; box-shadow: inset 0 0 0 2px var(--sd-accent); }
+.sd-rcol-tab[hidden],
+.sd-rail-btn[hidden] { display: none; }
+.sd-rcol-tab-txt { overflow: hidden; text-overflow: ellipsis; }
+/* Under 300 px a tab carries no icon. */
+.sd-rcol-narrow .sd-rcol-tab { padding: 0 .7rem; }
+.sd-rcol-narrow .sd-rcol-head .sd-rcol-tab .bi { display: none; }
+.sd-rcol-pane { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.sd-rcol-pane[hidden] { display: none; }
+
 /* Inner scrollable properties area */
 #sd-properties {
     flex: 1;
@@ -3704,8 +3958,6 @@ body.sd-resizing * { cursor: col-resize !important; }
     border-color: var(--sd-accent-strong);
 }
 .sd-icon-btn-primary:hover { background: color-mix(in srgb, var(--sd-accent-strong) 85%, var(--sd-shadow)); }
-.sd-icon-btn-danger { color: #e74c3c !important; }
-.sd-icon-btn-danger:hover { background: rgba(231,76,60,.15); }
 .sd-icon-btn[disabled], .sd-icon-btn.disabled { opacity: .4; pointer-events: none; }
 
 /* The classic style's "Also convert the pages that take it from their
@@ -4144,8 +4396,29 @@ body.sd-resizing * { cursor: col-resize !important; }
     color: var(--sd-text);
     background: color-mix(in srgb, var(--sd-text) 6%, transparent);
 }
-/* Make sure the search input doesn't run under the collapse-all button */
-#sd-ov-search-input { padding-right: 30px; }
+/* Show the selection sits left of collapse-all; the input runs under neither */
+.sd-ov-collapse-btn.sd-ov-reveal-btn { right: 28px; }
+#sd-ov-search-input { padding-right: 54px; }
+/* The selection's path: above the scrolled tree, so it stays in view */
+.sd-ov-path {
+    display: flex; align-items: center; gap: 4px; flex-shrink: 0; min-width: 0;
+    padding: 4px .6rem; font-size: 11.5px; white-space: nowrap; overflow: hidden;
+    color: var(--sd-text-muted); background: var(--sd-panel-bg);
+    border-bottom: 1px solid var(--sd-panel-border);
+}
+.sd-ov-path[hidden],
+.sd-overview-section.sd-ov-collapsed .sd-ov-path,
+.sd-overview-section.sd-ov-notes-on .sd-ov-path { display: none; }
+.sd-ov-path-pin { font-size: .68rem; color: var(--sd-accent); flex-shrink: 0; }
+.sd-ov-path-sep, .sd-ov-path-gap { flex-shrink: 0; }
+.sd-ov-path-step {
+    min-width: 0; max-width: 40%; overflow: hidden; text-overflow: ellipsis;
+    border: 0; padding: 1px 2px; border-radius: 3px; background: transparent;
+    color: var(--sd-text-muted); font: inherit; cursor: pointer;
+}
+.sd-ov-path-step:hover { color: var(--sd-text); background: color-mix(in srgb, var(--sd-text) 6%, transparent); }
+.sd-ov-path-step:focus-visible { outline: none; box-shadow: var(--sd-focus-ring); }
+.sd-ov-path-step.sd-ov-path-cur { flex-shrink: 0; max-width: 60%; color: var(--sd-text); font-weight: 600; }
 .sd-ov-subtab .bi { font-size: .72rem; }
 .sd-ov-subtab .sd-notes-tab-count {
     display: inline-block;
@@ -5031,9 +5304,8 @@ body.sd-resizing * { cursor: col-resize !important; }
    ASSETS PANEL — vertical list (Bootstrap Studio style)
    ============================================================ */
 #sd-assets-panel {
-    flex-shrink: 0;
-    border-top: 1px solid var(--sd-panel-border);
-    background: #1c2128;
+    flex: 1 1 auto;
+    background: var(--sd-panel-bg);
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -5047,20 +5319,9 @@ body.sd-resizing * { cursor: col-resize !important; }
     min-height: 0;
 }
 #sd-assets-body::-webkit-scrollbar { width: 4px; }
-#sd-assets-body::-webkit-scrollbar-track { background: #1c2128; }
-#sd-assets-body::-webkit-scrollbar-thumb { background: #30363d; border-radius: 2px; }
+#sd-assets-body::-webkit-scrollbar-track { background: var(--sd-panel-bg); }
+#sd-assets-body::-webkit-scrollbar-thumb { background: var(--sd-panel-border); border-radius: 2px; }
 
-/* Resize handle */
-.sd-assets-resize {
-    height: 5px;
-    cursor: ns-resize;
-    background: transparent;
-    flex-shrink: 0;
-    transition: background .15s;
-    z-index: 1;
-}
-.sd-assets-resize:hover,
-body.sd-resizing-v .sd-assets-resize { background: var(--sd-panel-border); }
 body.sd-resizing-v { cursor: ns-resize !important; -webkit-user-select: none; user-select: none; }
 
 /* Section */
@@ -5460,7 +5721,6 @@ textarea.sd-as-co-input { resize: vertical; min-height: 38px; }
    animate under it either. */
 .sd-panel-bottom.sd-resizing,
 .sd-panel-bottom.sd-resizing.collapsed { transition: none; }
-#sd-assets-panel { transition: height .2s cubic-bezier(.4,0,.2,1); }
 
 
 /* ── HTML tree node type colors ── */
@@ -5868,7 +6128,14 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
 .sd-dock-toggle:hover { color: var(--sd-text); }
 
 /* ── Docked bottom panel: three strips on the bottom edge ── */
-.sd-panel-bottom.sd-docked { height: auto !important; min-height: 0; overflow: visible; }
+.sd-panel-bottom.sd-docked { height: auto !important; min-height: 0; overflow: visible; z-index: 51; }
+/* The selected element's size badge stays under every docked layer: the
+   drawers (60), the backdrop (55) and the bottom sheet (51). Its own 200
+   counts in the editor body, as the canvas wrapper makes no stacking
+   context. */
+.sd-body.sd-dock-left .sd-canvas-size-badge,
+.sd-body.sd-dock-right .sd-canvas-size-badge,
+.sd-panel-bottom.sd-docked ~ .sd-canvas-size-badge { z-index: 50; }
 .sd-panel-bottom.sd-docked.sd-dock-open { height: 52vh !important; overflow: hidden; }
 .sd-panel-bottom.sd-docked .sd-bp-vresize,
 .sd-panel-bottom.sd-docked .sd-bp-grid-col-resize,
@@ -6056,6 +6323,9 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
     .sd-tabs-add-txt { display: none; }
     .sd-tabs-add-btn { padding-left: .45rem; padding-right: .45rem; }
     .sd-toolbar-pages { padding-right: .25rem; gap: .15rem; }
+    .sd-design-menu { margin-right: .1rem; }
+    .sd-design-menu-btn { padding: 0 .4rem 0 .5rem; gap: .25rem; }
+    .sd-design-menu-name { max-width: 7rem; }
     .sd-toolbar-actions { gap: 2px; }
     /* The strip gives way all the way down; the page list reaches the tabs
        it can no longer show, and Save never leaves the screen. */
@@ -6064,11 +6334,7 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
     /* ── Canvas view bar (breakpoints, zoom, tools) ── */
     /* Labels and wrapping follow the bar's own width (its block above);
        a narrow screen only tightens the spacing. */
-    .sd-bp-bar {
-        justify-content: flex-start;
-        padding: .25rem .4rem;
-    }
-    .sd-bp-bar .sd-bp-label { margin-left: 2px; }
+    .sd-bp-bar { padding-left: 6px; padding-right: 6px; }
 
     /* ── Settings modal ── */
     /* Full screen: the rail turns into a strip above the pane. */
@@ -6104,7 +6370,10 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
    mouse. createCanvasIframe() resets the canvas to full width under the
    same query. */
 @media (max-width: 767.98px), (hover: none) and (pointer: coarse) and (max-width: 1023.98px) {
-    .sd-bp-bar .sd-bp-bar-left { display: none; }
+    .sd-bp-bar .sd-bp-sizes,
+    .sd-bp-bar .sd-bp-label,
+    .sd-bp-bar .sd-bp-canvas .sd-vb-sep,
+    .sd-bp-bar[data-fold] .sd-bp-size-select { display: none; }
     .sd-resize-handle,
     .sd-resize-handle-bottom,
     .sd-resize-handle-corner { display: none; }
@@ -6437,6 +6706,13 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
 .sd-publish-state-draft { color: #8b949e; }
 .sd-publish-state-scheduled { color: #d29922; }
 .sd-publish-state-held { color: #a371f7; }
+/* When the name and the pill do not fit side by side, the row wraps and the
+   pill goes under the name, starting where the name starts: the box stands
+   in the row's start padding, on the first line, out of the flow. The pill's
+   text may break; the name is cut only when it is longer than the row. */
+.sd-publish-row { position: relative; flex-wrap: wrap; row-gap: .25rem; padding-inline-start: 2.5rem; }
+.sd-publish-row > .check { position: absolute; inset-inline-start: 1rem; top: .625rem; }
+.sd-publish-row > .sd-publish-state { max-width: 100%; white-space: normal; text-align: start; line-height: 1.3; }
 
 /* ── Palette hover card (_sdPalTipShow): what an item is, with a drawing
    of the grid and Bootstrap items. It never takes the pointer, so a drag
@@ -6524,7 +6800,9 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
     padding: 4px 8px; border-bottom: 1px solid var(--sd-panel-border);
 }
 .sd-proto-title { font-weight: 600; font-size: .85rem; }
-.sd-proto-status { flex: 1; min-width: 0; font-size: .75rem; color: var(--sd-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sd-proto-status { flex: 1; min-width: 0; font-size: .75rem; color: var(--sd-text-muted); overflow: hidden; white-space: nowrap; }
+/* The count that does not fit is left out whole, never cut (_sdProtoStatusFit()). */
+.sd-proto-status.sd-proto-status-out { visibility: hidden; }
 .sd-proto-tools { display: flex; align-items: center; gap: 2px; }
 .sd-proto-btn-label { font-size: .75rem; }
 @media (max-width: 767.98px) {
@@ -6616,6 +6894,27 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
 .sd-proto .pgc-edge.pgc-edge-in.sd-proto-from-shared { display: none; }
 .sd-proto-arrowhead-in { fill: var(--pgc-in); }
 .sd-proto-arrowhead-broken { fill: #ff6b6b; }
+/* What to check (F26 to F29), in amber: "N to check" in the bar, its
+   groups in the list, a frame's count of links without a target, the
+   "No link leads here" of a page nothing reaches (readable when dimmed),
+   a link without a target on the picture and in the list. */
+.sd-proto-check {
+    flex: none; padding: 1px 8px; border: 1px solid var(--pgc-in); border-radius: 10px;
+    background: none; color: var(--pgc-in); font-size: .75rem; font-weight: 600; cursor: pointer;
+}
+.sd-proto-check[hidden] { display: none; }
+.sd-proto-check:hover, .sd-proto-check:focus-visible { background: color-mix(in srgb, var(--pgc-in) 16%, transparent); outline: none; }
+.sd-proto-problem.sd-proto-problem-empty .sd-proto-li-to { color: var(--pgc-in); }
+.sd-proto-menu-head.sd-proto-problem-broken { color: #ff6b6b; }
+.sd-proto-menu-head.sd-proto-problem-unreached, .sd-proto-menu-head.sd-proto-problem-empty { color: var(--pgc-in); }
+.sd-proto-badge.sd-proto-badge-empty { background: var(--pgc-in); }
+.sd-proto-unreached {
+    flex: none; padding: 0 6px; border-radius: 9px; white-space: nowrap;
+    background: color-mix(in srgb, var(--pgc-in) 22%, transparent); color: var(--pgc-in); font-size: .65rem; font-weight: 600; line-height: 18px;
+}
+.sd-proto .pgc-dim .sd-proto-unreached { opacity: 1; }
+.sd-proto-hot.sd-proto-mark-empty { border-color: var(--pgc-in); background: color-mix(in srgb, var(--pgc-in) 18%, transparent); }
+.sd-proto-li-empty .sd-proto-li-to, .sd-proto-li-empty .sd-proto-icon, .sd-proto-mark-empty .sd-proto-icon { color: var(--pgc-in); }
 .sd-proto .pgc-node.sd-proto-focused { outline: 2px solid var(--sd-accent); outline-offset: 3px; }
 .sd-proto-focused .sd-proto-name { color: var(--sd-accent); }
 /* A link's mark on the picture (_sdProtoHots(), F5): a rounded rectangle

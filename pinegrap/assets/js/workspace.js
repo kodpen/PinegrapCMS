@@ -5267,13 +5267,19 @@
     // the screen's language. A discussion's box leaves out what runs only
     // in the channel itself (where: channel, ws_command_runs_here()). Each
     // row carries its group and the group's header for commandPickerGroups().
-    function commandPickerRows(commands, query, inThread) {
+    function commandPickerRows(commands, query, inThread, recapHere) {
         var typed = ('/' + query).toLocaleLowerCase('tr');
         var typedFolded = foldText(typed);
         var rows = [];
 
         (commands || []).forEach(function (item) {
             if (inThread && (item.where === 'channel')) {
+                return;
+            }
+
+            // /recap only where the catch-up line offers "Sum up what I
+            // missed" (recapHere false); left as it was when not told.
+            if ((recapHere === false) && (item.key === 'recap')) {
                 return;
             }
 
@@ -19058,6 +19064,12 @@
                 data.quote_ids = self.replyMore.map(function (item) { return item.id; });
             }
 
+            // /recap sums up from where this visit began, as the catch-up
+            // line's button does.
+            if (!self.isThread && self.briefing && self.briefing.recap && (body.charAt(0) === '/')) {
+                data.since_id = self.briefing.recap.since_id;
+            }
+
             Object.keys(options || {}).forEach(function (key) { data[key] = options[key]; });
 
             if (self.sendButton && self.sendButton.isConnected) {
@@ -19094,6 +19106,17 @@
                     self.pollForm({ question: result.command.question, options: result.command.options }, function () {
                         self.clearInput();
                     });
+                    return;
+                }
+
+                // /remind without a time: My calendar's New plan drawer,
+                // filled with what was typed; the box empties once it saves.
+                if (result.command && result.command.type === 'plan_form') {
+                    if (window.PGWsMyCalendar && window.PGWsMyCalendar.fill) {
+                        window.PGWsMyCalendar.fill(featureHelpers(), result.command.fill, result.command.strings, function () {
+                            self.clearInput();
+                        });
+                    }
                     return;
                 }
 
@@ -19325,16 +19348,39 @@
         },
 
         // The /product card: the values the product is made with, the "On
-        // sale" tick (off by default), the decision tick, and "All fields",
-        // which opens the drawer's new mode with the same values. As on the
-        // /price card, Enter draws the card again; only Create writes.
+        // sale" tick (off by default; a contact has none), the decision
+        // tick, and "All fields", which opens the drawer's new mode with the
+        // same values. As on the /price card, Enter draws the card again;
+        // only Create writes. A line that left a required field out
+        // (preview.missing) opens the drawer's new mode straight away,
+        // filled with what was typed.
         drawCreatePreview: function (command) {
             var self = this;
             var box = clear(self.previewBox);
             var preview = command.preview;
             var card = el('div', 'ws-preview');
+            var drawn = self.pending.body;
+            var created = function () {
+                self.pending = null;
+                clear(self.previewBox);
+                self.clearSent(drawn);
+                self.autosize();
+            };
 
-            card.appendChild(el('div', 'fw-semibold', t((preview.kind === 'product_group') ? 'qc_command_title_group' : 'qc_command_title')));
+            // /create row: a form of the table's own fields.
+            if (preview.kind === 'wtable_row') {
+                self.drawRowCreate(command);
+                return;
+            }
+
+            if (preview.missing && preview.missing.length) {
+                self.pending = null;
+                openRecord(preview.kind, 0, '', { values: command.values || {}, labels: command.labels || {}, channelId: self.channel.id, onCreated: created });
+                return;
+            }
+
+            var titles = { product_group: 'qc_command_title_group', contact: 'qc_command_title_contact' };
+            card.appendChild(el('div', 'fw-semibold', t(titles[preview.kind] || 'qc_command_title')));
 
             var list = el('dl');
             (preview.rows || []).forEach(function (item) {
@@ -19364,17 +19410,21 @@
                 return input;
             };
 
-            var onSale = tick(preview.on_sale, false, 'ws-cmd-sale-');
-            card.appendChild(el('div', 'small fg-secondary mb-1', t('qc_unticked')));
+            var onSale = null;
+
+            if (preview.on_sale) {
+                onSale = tick(preview.on_sale, false, 'ws-cmd-sale-');
+                card.appendChild(el('div', 'small fg-secondary mb-1', t('qc_unticked')));
+            }
+
             var decision = tick(t('qe_decision'), true, 'ws-cmd-decision-');
 
             // Create makes what the card shows: the text it was drawn from,
             // not what the box holds by then, as on the /task card.
-            var drawn = self.pending.body;
             var actions = el('div', 'd-flex flex-wrap gap-3 mt-3');
             var create = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('qc_create'), 'bi-plus-lg');
             create.addEventListener('click', function () {
-                self.send({ confirm: 1, body: drawn, decision: decision.checked ? 1 : 0, on_sale: onSale.checked ? 1 : 0 });
+                self.send({ confirm: 1, body: drawn, decision: decision.checked ? 1 : 0, on_sale: (onSale && onSale.checked) ? 1 : 0 });
             });
             actions.appendChild(create);
 
@@ -19383,7 +19433,10 @@
                 var values = {};
 
                 Object.keys(command.values || {}).forEach(function (name) { values[name] = command.values[name]; });
-                values.enabled = onSale.checked;
+
+                if (onSale) {
+                    values.enabled = onSale.checked;
+                }
 
                 openRecord(preview.kind, 0, '', {
                     values: values,
@@ -19395,15 +19448,131 @@
                     decision: decision.checked,
                     // Made from the drawer: the line that asked for it goes,
                     // a draft typed since the card appeared stays.
-                    onCreated: function () {
-                        self.pending = null;
-                        clear(self.previewBox);
-                        self.clearSent(drawn);
-                        self.autosize();
-                    }
+                    onCreated: created
                 });
             });
             actions.appendChild(all);
+
+            var cancel = button('btn btn-sm btn-text theme-secondary', t('cancel'));
+            cancel.addEventListener('click', function () {
+                self.pending = null;
+                clear(self.previewBox);
+            });
+            actions.appendChild(cancel);
+            card.appendChild(actions);
+            box.appendChild(card);
+        },
+
+        // The /create row card: the table the line named, or a choice of the
+        // tables the person may write (choosing one draws the card again
+        // with its fields), then each field the row stores, empty, as the
+        // table screen draws them. Create sends what was filled in, as
+        // typed; the server reads it as the screen does. Nothing is written
+        // before Create.
+        drawRowCreate: function (command) {
+            var self = this;
+            var box = clear(self.previewBox);
+            var preview = command.preview;
+            var card = el('div', 'ws-preview');
+            var drawn = self.pending.body;
+            var inputs = {};
+            var tableId = preview.table_id || 0;
+
+            card.appendChild(el('div', 'fw-semibold mb-2', t('qc_command_title_row')));
+
+            var tables = el('select', 'form-control form-control-sm');
+            tables.appendChild(new Option(t('qc_row_choose'), ''));
+            (preview.tables || []).forEach(function (table) {
+                tables.appendChild(new Option(table.name, String(table.id), false, table.id === tableId));
+            });
+            tables.addEventListener('change', function () {
+                var id = parseInt(tables.value, 10) || 0;
+
+                if (id) {
+                    self.send({ body: drawn, table_id: id });
+                }
+            });
+            card.appendChild(saLabelled(t('qc_row_table'), tables, ''));
+
+            // Two fields a line on a wide screen; a long table scrolls
+            // inside the card, so the box stays in view.
+            var grid = el('div', 'row g-2 mt-1 overflow-auto');
+            grid.style.maxHeight = '45vh';
+            card.appendChild(grid);
+
+            (preview.columns || []).forEach(function (column) {
+                var input;
+                var cell = el('div', 'col-12 md:col-6');
+
+                if (column.type === 'checkbox') {
+                    // On a wide screen, on the line of its neighbour's
+                    // control, below that one's label.
+                    cell.classList.add('md:pt-7');
+                    var wrap = el('div', 'form-field mb-2 d-flex align-items-center');
+                    wrap.style.minHeight = '2rem';
+                    input = el('input', 'check');
+                    input.type = 'checkbox';
+                    input.id = nextId('ws-row-cell-');
+                    var label = el('label', 'small', column.name);
+                    label.htmlFor = input.id;
+                    wrap.appendChild(input);
+                    wrap.appendChild(label);
+                    input.read = function () { return input.checked ? '1' : '0'; };
+                    inputs[column.id] = input;
+                    cell.appendChild(wrap);
+                    grid.appendChild(cell);
+                    return;
+                }
+
+                if (column.choices.length || ['status', 'person', 'row'].indexOf(column.type) !== -1) {
+                    input = el('select', 'form-control form-control-sm');
+                    input.appendChild(new Option(t('qc_row_none'), ''));
+                    column.choices.forEach(function (choice) {
+                        input.appendChild(new Option(choice[1], choice[0]));
+                    });
+                } else if (column.type === 'text' || column.type === 'list') {
+                    input = el('textarea', 'form-control form-control-sm');
+                    input.rows = 1;
+                } else if (column.type === 'date') {
+                    input = pgDateField(el('input', 'form-control form-control-sm'), column.time ? 'datetime-local' : 'date');
+                } else {
+                    input = el('input', 'form-control form-control-sm');
+                    input.type = 'text';
+
+                    if (column.type === 'number' || column.type === 'money') {
+                        input.inputMode = 'decimal';
+                    }
+                }
+
+                input.read = function () { return input.value; };
+                inputs[column.id] = input;
+
+                // Money: its currency beside the amount, as a suffix.
+                if (column.type === 'money' && column.hint) {
+                    var group = el('div', 'input-group input-group-sm');
+                    group.appendChild(input);
+                    group.appendChild(el('span', 'input-group-text', column.hint));
+                    input.id = nextId('ws-row-cell-');
+                    var field = saLabelled(column.name, group, '');
+                    field.querySelector('label').htmlFor = input.id;
+                    cell.appendChild(field);
+                } else {
+                    cell.appendChild(saLabelled(column.name, input, column.hint || ''));
+                }
+
+                grid.appendChild(cell);
+            });
+
+            var actions = el('div', 'd-flex flex-wrap gap-3 mt-3');
+            var create = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('qc_create'), 'bi-plus-lg');
+            create.disabled = !tableId;
+            create.addEventListener('click', function () {
+                var cells = {};
+
+                Object.keys(inputs).forEach(function (id) { cells[id] = inputs[id].read(); });
+                self.send({ confirm: 1, body: drawn, table_id: tableId, cells: cells });
+            });
+            actions.appendChild(create);
 
             var cancel = button('btn btn-sm btn-text theme-secondary', t('cancel'));
             cancel.addEventListener('click', function () {
@@ -19879,8 +20048,31 @@
             var rest = match[3];
             var word = /[^\s\uFFFC]*$/.exec(rest)[0];
             var done = rest.slice(0, rest.length - word.length).replace(/\uFFFC/g, ' \uFFFC ').split(/\s+/).filter(Boolean);
+            var typed = '/' + match[1];
+            // A kind word typed (/create contact): that kind's own
+            // arguments and example, after the word.
+            var variant = done.length ? (entry.variants || []).filter(function (item) {
+                return item.words.indexOf(foldText(done[0])) !== -1;
+            })[0] : null;
+
+            if (variant) {
+                typed += ' ' + done[0];
+                done = done.slice(1);
+                entry = Object.assign({}, entry, { args: variant.args, example: variant.example });
+            }
+
             var args = entry.args || [];
-            var state = { entry: entry, typed: '/' + match[1], query: word, start: before.length - word.length, index: -1, arg: null, extras: null };
+            var state = { entry: entry, typed: typed, query: word, start: before.length - word.length, index: -1, arg: null, extras: null };
+
+            // The kind word still being typed (/create row): the strip
+            // already shows that kind's line; the kind's popup stays.
+            var typing = (!variant && !done.length && word) ? (entry.variants || []).filter(function (item) {
+                return item.words.indexOf(foldText(word)) !== -1;
+            })[0] : null;
+
+            if (typing) {
+                state.shown = { typed: typed + ' ' + word, args: typing.args, example: typing.example };
+            }
 
             if (!args.length) {
                 return state;
@@ -20167,17 +20359,25 @@
                 return;
             }
 
-            var entry = argument.entry;
+            // A kind word still being typed shows its kind's own line,
+            // nothing of it marked yet (commandArgument(), shown).
+            var shown = argument.shown || null;
+            var entry = shown || argument.entry;
             var row = el('div', 'ws-cmd-strip');
             var usage = el('span', 'ws-cmd-usage');
 
-            usage.appendChild(el('span', 'ws-cmd-name', argument.typed));
+            usage.appendChild(el('span', 'ws-cmd-name', shown ? shown.typed : argument.typed));
 
             (entry.args || []).forEach(function (arg, index) {
-                var current = (argument.index === index) || (!!argument.extras && (argument.extras.indexOf(arg) !== -1));
+                var current = !shown && ((argument.index === index) || (!!argument.extras && (argument.extras.indexOf(arg) !== -1)));
 
                 usage.appendChild(document.createTextNode(' '));
                 usage.appendChild(el('span', 'ws-cmd-arg' + (current ? ' ws-cmd-current' : ''), arg.optional ? '[' + arg.label + ']' : '<' + arg.label + '>'));
+
+                // The mark the line puts after it (a contact's commas).
+                if (arg.after) {
+                    usage.appendChild(document.createTextNode(arg.after));
+                }
             });
 
             row.appendChild(usage);
@@ -20340,7 +20540,8 @@
             // nothing typed and more of them than the list shows, drawn
             // again under the headers of their groups.
             if (mode === 'command') {
-                var commands = commandPickerRows(BOOT.commands, query, !!self.isThread || !!(self.channel && (self.channel.kind === 'thread')));
+                var inThread = !!self.isThread || !!(self.channel && (self.channel.kind === 'thread'));
+                var commands = commandPickerRows(BOOT.commands, query, inThread, !inThread && !!(self.briefing && self.briefing.catchup && self.briefing.recap));
                 var shown;
 
                 self.drawPicker(commands);
@@ -25348,9 +25549,9 @@
         return section;
     }
 
-    // The record drawer's new mode: an empty product or product group
-    // (includes/workspace/quick_edit.php, ws_quick_create_*), opened from
-    // the search box or a /product card. It is made off sale unless "On
+    // The record drawer's new mode: an empty product, product group or
+    // contact (includes/workspace/quick_edit.php, ws_quick_create_*), opened
+    // from the search box or a /product or /create card. It is made off sale unless "On
     // sale" is ticked; once written, the drawer shows the new record.
     // options.values fill the form (a /product card's), options.labels name
     // the records they pick, options.channelId is the channel its decision
@@ -25364,7 +25565,7 @@
 
         options = options || {};
         node.classList.add('ws-record-drawer');
-        node.querySelector('.drawer-title').textContent = t(type === 'product_group' ? 'qc_new_group' : 'qc_new_product');
+        node.querySelector('.drawer-title').textContent = t({ product_group: 'qc_new_group', contact: 'qc_new_contact' }[type] || 'qc_new_product');
         footer.classList.add('d-none');
         body.appendChild(skeleton(2, 'ws-skeleton-sm'));
         showOffcanvas(node);

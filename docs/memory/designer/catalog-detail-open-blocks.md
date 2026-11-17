@@ -4,7 +4,7 @@ description: Catalog detail closed blocks opened (CB6a1, #9849): the Breadcrumb 
 ---
 
 ## What did CB6a1 open?
-- Step CB6a of `plans/designer-closed-blocks-steps.md`, cut by size; this part is #9849. The census: [[canvas-closed-blocks-content]], [[canvas-closed-blocks-widgets]].
+- Step CB6a of the closed-blocks opening ([[canvas-closed-blocks]]), cut by size; this part is #9849. The census: [[canvas-closed-blocks-content]], [[canvas-closed-blocks-widgets]].
 - Breadcrumb (content node): a tree, the crumbs part ([[widget-default-parts-breadcrumb]]).
 - Carousel (content node) and Checkout Options (`payment_methods` section): settings only, drawn true on the canvas; their output depends on the product and the store's settings.
 - The price block and the Variant Attribute node, both redrawn by a variant switch, are CB6a2: [[catalog-detail-variant-price-blocks]].

@@ -17,7 +17,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 
 - `addon-hook-*`: 10 files.
 - `automation-platforms-*`: 6 files; start at `automation-platforms.md`.
-- `designer-panels-*`: 15 files; start at `designer-panels.md`.
+- `designer-panels-*`: 21 files; start at `designer-panels.md`.
 - `integrations-census-*`: 12 files; start at `integrations-census.md`.
 - `panel-old-*`: 13 files.
 - `picture-text-*`: 8 files.

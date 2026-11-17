@@ -76,8 +76,10 @@ function test_page_bundle_job_shape()
 	pg_assert_contains('publish_at = 0', $run, 'the time is cleared first');
 	pg_assert_contains("AND status = 'scheduled' AND publish_at = ?", $run, 'by one run only: the time read is in the WHERE');
 	pg_assert_contains('pg_page_bundle_publish(', $run, 'through the publish and its checks');
-	pg_assert_contains("\$_SESSION['sessionusername'] = ", $run, 'the save\'s log lines in the person\'s name');
-	pg_assert_contains("unset(\$_SESSION['sessionusername'])", $run, 'and the name given back');
+	pg_assert_contains('pg_page_bundle_as_person(', $run, 'the save\'s log lines in the person\'s name');
+	$as = pg_test_function_source('pg_page_bundle_as_person');
+	pg_assert_contains("\$_SESSION['sessionusername'] = ", $as, 'the name is set');
+	pg_assert_contains("unset(\$_SESSION['sessionusername'])", $as, 'and given back');
 	pg_assert_contains('pg_page_bundle_bell(', $run, 'its people are told');
 
 	// The used replacements go to the Recycle Bin from the job too, where

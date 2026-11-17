@@ -17,6 +17,7 @@ description: Plan channel-commands, steps CC1 to CC6: the registry with no chang
   - CC2b done (#10166): the "/" list in groups and by channel, K4 on the client, K6 (`workspace/workspace-command-help.md`).
 
 - CC3 (M) after CC2: /hatırlat and /özet.
+  - CC3 done (#10186): K8 /hatırlat, K9 /özet (`workspace/workspace-command-remind-recap.md`).
   - Tests: `/hatırlat yarın 10:00 Teklifi gönder` gives the plan's day, time and title with the form's default reminder; no time opens the form filled; as a reply the note holds the message's link; the live line; /özet not offered where the button is not; both answers `ephemeral`.
   - Pictures: each command's live line and answer. The PR body names the plan's `[NEW]` changelog line.
   - Features: K8, K9.

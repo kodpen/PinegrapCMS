@@ -14,6 +14,7 @@ priority: 6
 - Who draws: a signed-in person in the panel, in their browser. Nothing is drawn by itself with nobody there.
 - While a language's picture is not ready, or once the source changed, a visitor sees the source picture until the new one is drawn. Not chosen: the older translated picture meanwhile.
 - The languages' pictures are kept in a small table of their own; the architect confirms its columns.
+- Owner (2026-11-17, poll 131, message 8313): a language's picture is drawn only once every counted text of the picture is translated; until then "Draw" is closed and says why, in the list and on the server. A text kept the same in every language gets the same word as its translation.
 
 ## What did the architect decide? (2026-11-16, agent channel message 6748, and with the steps)
 - Right-to-left languages are not in the first version: the editor has no text direction and its letter spacing breaks Arabic joining. A visitor sees the source picture there and the panel says so.

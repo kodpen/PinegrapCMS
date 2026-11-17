@@ -1165,7 +1165,7 @@ function pg_settings_tool_groups($user)
     $connections = array(
         array('label' => lang('SMTP Settings'),      'icon' => 'bi-envelope-at', 'url' => 'smtp_settings.php'),
         array('label' => lang('Application Access'), 'icon' => 'bi-key',         'url' => 'api_settings.php'),
-        array('label' => lang('Connected accounts'), 'icon' => 'bi-cloud-check', 'url' => 'connections.php'),
+        array('label' => lang('Connections'),        'icon' => 'bi-cloud-check', 'url' => 'connections.php'),
     );
 
     if ($ecommerce) {
@@ -1278,7 +1278,7 @@ function pg_settings_tool_keys()
         'view_sessions.php'         => array('oturum', 'oturumlar', 'session', 'sessions', 'giris yapan', 'otu'),
         'smtp_settings.php'         => array('smtp', 'mail ayar', 'email ayar', 'smtpayar'),
         'api_settings.php'          => array('uygulama erisimi', 'uygulama erişimi', 'api anahtar', 'application access', 'api key', 'token', 'uyg'),
-        'connections.php'           => array('bagli hesap', 'connected account', 'google', 'microsoft', 'oauth', 'bagla', 'connect'),
+        'connections.php'           => array('baglanti', 'connections', 'bagli hesap', 'connected account', 'entegrasyon', 'integration', 'dis hizmet', 'service', 'google', 'microsoft', 'oauth', 'bagla', 'connect'),
         'marketplace_settings.php'  => array('pazaryeri', 'pazar yeri', 'marketplace', 'trendyol', 'hepsiburada', 'n11', 'paz'),
         'view_referral_sources.php' => array('yonlendiren', 'yönlendiren', 'referans kaynak', 'referral', 'referral source', 'yon'),
         'view_currencies.php'       => array('para', 'doviz', 'döviz', 'currency', 'cur'),

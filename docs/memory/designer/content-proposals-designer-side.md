@@ -6,6 +6,7 @@ module: content_proposals
 
 ## Where does a designer see the waiting changes?
 - (PA4a, #9930) `content_changes.php`, "Waiting Content Changes", for roles 0 and 1 (`validate_area_access($user, 'designer')`), whether or not the assistant or the Workspace is set up. It lists every waiting or stale change and, for 30 days (`PG_CONTENT_PROPOSALS_KEEP_DAYS`, by `decided_at`), the applied, taken-back and dismissed ones (`pg_content_proposals_list()`, `pg_content_proposals_listed()`).
+- (#10227) Every waiting and stale change is listed (own query, no limit); only closed ones are capped at 200: one cap for all hid an old waiting change the count showed. Test: `content_proposals_list_test.php`.
 - Order (`pg_content_proposals_order()`): waiting, then stale, then the closed ones; each newest first.
 - Each row: the page (a link into the Studio) and the editor on one line, the status pill, time and number of changes on the next, who applied or dismissed it (and the reason), Compare, then Apply and Dismiss side by side; Dismiss opens its own reason field.
 - Compare: kind, on the site, proposed; side by side from md, stacked on a phone; a picture of the site's own files with its small image (`pg_content_proposals_local_picture()`).
@@ -24,7 +25,7 @@ module: content_proposals
 
 ## Dismiss and take back?
 - Dismiss: a waiting or stale change, a reason of at most 300 characters (`pg_content_proposals_reason()`, characters not bytes), kept as `steps.reason`; no column.
-- Take back (`pg_content_proposals_revert()`): only by the designer who applied it, only while the stored tree's fingerprint is still `after_hash` (`pg_content_proposals_revert_check()`); it writes `before_tree` and the settings' `was` values back in one save, then `reverted`.
+- Take back (`pg_content_proposals_revert()`): only by the designer who applied it, while nobody saved the page since (`pg_content_proposals_revert_check()`): the tree is still `after_hash` and each setting the change wrote holds that value, else "saved again" (PR #10231: a Mass Edit title was lost). One save writes `before_tree` and the settings' `was` back, then `reverted`.
 
 ## Which test guards it?
 - `tests/content_proposals_test.php`: apply puts each operation, History names both, stale refused (gone, changed, setting, tree), the reason's limit and the 30 days, take back, the screen's gate.

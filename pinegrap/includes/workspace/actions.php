@@ -1895,7 +1895,7 @@ function ws_handle_action($action, $request)
                 'command_groups' => array_keys(ws_command_group_labels()),
                 // The days, estimates and priorities the argument popup
                 // offers after a command.
-                'command_values' => ws_command_suggestions(),
+                'command_values' => ws_command_suggestions(null, $viewer),
                 // The screen sends files as form parts (apiUpload()).
                 'upload'      => array('max' => ws_upload_form_max_bytes(), 'accept' => ''),
                 'interact'    => ws_interact_ready(),
@@ -2220,7 +2220,12 @@ function ws_handle_action($action, $request)
                     'from'      => (isset($request['from']) && is_scalar($request['from'])) ? $request['from'] : null,
                     'decision'  => !empty($request['decision']),
                     'on_sale'   => !empty($request['on_sale']),
+                    'table_id'  => (int) ($request['table_id'] ?? 0),
+                    'cells'     => (array) ($request['cells'] ?? array()),
                     'parent_id' => (int) ($request['parent_id'] ?? 0),
+                    // /recap: the last message read before this visit, as
+                    // the catch-up line hands it.
+                    'since_id'  => max(0, (int) ($request['since_id'] ?? 0)),
                 ));
 
                 if ($command !== null) {

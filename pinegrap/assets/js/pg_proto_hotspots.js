@@ -403,7 +403,7 @@
     // The links of a tree in document order; shared components, classic
     // menus and common or designer regions it places, each once.
     function collect(tree) {
-        var out = { hotspots: [], shared: [], menus: [], regions: [] };
+        var out = { hotspots: [], shared: [], menus: [], regions: [], urls: [] };
 
         (function walk(node) {
             if (!isObject(node)) {
@@ -436,6 +436,14 @@
             }
 
             out.hotspots = out.hotspots.concat(nodeLinks(node));
+
+            // A link the server fills per request (an href bound to a field
+            // such as __profile_url) is no hotspot; its field is listed.
+            var field = isObject(props._bindings) ? str(props._bindings.href) : '';
+
+            if (field.indexOf('__') === 0 && field !== '__page_link') {
+                addOnce(out.urls, field);
+            }
 
             (Array.isArray(node.children) ? node.children : []).forEach(walk);
         })(tree);
@@ -574,6 +582,61 @@
     // gets no hotspots and loaded: false), and the request for the map
     // read. `pages` are the designer's tabs: key, page_id, page_name and
     // their tree (the open tab's live tree handed in by the caller).
+    // The settings of a system widget that lead a visitor to a page (the
+    // login widget's "Giriş Yap", a list's detail page, where a form goes
+    // after it is sent). Not links: a form's data page, an e-mail's page.
+    var WIDGET_LINKS = ['login_page_id', 'register_page_id', 'account_page_id', 'my_account_page_id', 'staff_page_id', 'forgot_password_page_id', 'detail_page_id', 'redirect_page_id'];
+
+    // The fields the server fills with the address of the page that places a
+    // system widget of a kind (pg_sw_page_type_widget_url()): a link bound to
+    // one leads to that page.
+    var BOUND_WIDGET_URLS = {
+        __login_url: 'login_form', __register_url: 'registration', __forgot_password_url: 'forgot_password',
+        __set_password_url: 'set_password', __new_account_set_password_url: 'set_password', __my_account_url: 'my_account',
+        __profile_url: 'account_profile', __change_password_url: 'change_password', __email_preferences_url: 'email_preferences',
+        __address_book_url: 'address_book', __logout_url: 'logout'
+    };
+
+    function settingsOf(config) {
+        var c = config;
+
+        if (typeof c === 'string') {
+            try { c = JSON.parse(c); } catch (e) { c = null; }
+        }
+
+        return isObject(c) ? c : null;
+    }
+
+    // A system widget's kind (its regionType), '' for none.
+    function widgetKind(config) {
+        var c = settingsOf(config);
+
+        return c ? str(c.regionType) : '';
+    }
+
+    // The page ids a system widget's settings (JSON text or an object) lead
+    // to, each once, in WIDGET_LINKS order; a register link that is not
+    // shown leads nowhere. [] for none or settings that do not parse.
+    function widgetPages(config) {
+        var c = settingsOf(config);
+
+        if (!c) {
+            return [];
+        }
+
+        var out = [];
+
+        WIDGET_LINKS.forEach(function (key) {
+            var id = parseInt(c[key], 10) || 0;
+
+            if (id > 0 && !(key === 'register_page_id' && c.show_register_link === false) && out.indexOf(id) < 0) {
+                out.push(id);
+            }
+        });
+
+        return out;
+    }
+
     function design(pages, shared) {
         shared = isObject(shared) ? shared : {};
 
@@ -602,9 +665,10 @@
             if (!has(byId, sid)) {
                 var entry = shared[sid] || shared[String(sid)] || null;
                 var tree = (entry && entry.tree) ? entry.tree : null;
-                var found = tree ? collect(tree) : { hotspots: [], shared: [], menus: [], regions: [] };
+                var found = tree ? collect(tree) : { hotspots: [], shared: [], menus: [], regions: [], urls: [] };
 
-                byId[sid] = { id: sid, name: entry ? str(entry.name) : '', loaded: !!tree, pages: 0, hotspots: found.hotspots, sharedIn: found.shared, sketch: tree ? sketch(tree) : null };
+                byId[sid] = { id: sid, name: entry ? str(entry.name) : '', loaded: !!tree, pages: 0, hotspots: found.hotspots, sharedIn: found.shared, sketch: tree ? sketch(tree) : null, reaches: widgetPages(entry && entry.system_region_config),
+                    urls: found.urls, widget: widgetKind(entry && entry.system_region_config) };
                 reach[sid] = [];
                 out.shared.push(byId[sid]);
                 take(found);
@@ -628,7 +692,7 @@
             var found = collect(page.tree);
             var key = String(page.key !== undefined ? page.key : '');
 
-            out.pages.push({ key: key, pageId: parseInt(page.page_id, 10) || 0, name: str(page.page_name), hotspots: found.hotspots, shared: found.shared, sketch: sketch(page.tree) });
+            out.pages.push({ key: key, pageId: parseInt(page.page_id, 10) || 0, name: str(page.page_name), hotspots: found.hotspots, shared: found.shared, sketch: sketch(page.tree), urls: found.urls });
             take(found);
             found.shared.forEach(function (sid) { frame(sid, key, []); });
         });
@@ -793,6 +857,15 @@
     // The design of design() with every hotspot marked; a menu or region
     // hotspot gets its links (`links`, each marked; null when the read
     // knows no menu or region by that name). Answers a copy.
+    // Whether a link's own address leads nowhere: empty or '#' alone. '#name'
+    // is an anchor; a toggle is no link (collect()); a link kept by page id
+    // reads its page (markBound()).
+    function emptyHref(href) {
+        var h = str(href).trim();
+
+        return h === '' || h === '#';
+    }
+
     function mark(designed, read, tabs, resolver) {
         var menus = (read && isObject(read.menus)) ? read.menus : {};
         var regions = (read && isObject(read.regions)) ? read.regions : {};
@@ -823,6 +896,14 @@
                 var bound = markBound(spot, read, tabs, resolver);
 
                 ['href', 'mark', 'draft', 'type', 'class', 'pageId', 'tab'].forEach(function (key) { copy[key] = bound[key]; });
+            } else if (emptyHref(spot.href)) {
+                // An empty link (F26): it leads nowhere and gets no chip.
+                copy.mark = 'empty';
+                copy.draft = false;
+                copy.type = 'unknown';
+                copy['class'] = 'unknown';
+                copy.pageId = 0;
+                copy.tab = '';
             } else {
                 var marked = markHref(spot.href, read, tabs, resolver);
 
@@ -967,6 +1048,12 @@
                     // added below).
                     parts: (group[0] === 'page' && Array.isArray(frame.shared)) ? frame.shared.slice() : [],
                     sketch: bands,
+                    // A system widget's pages, reached as by a link (problemsOf()).
+                    reaches: (group[0] === 'shared' && Array.isArray(frame.reaches)) ? frame.reaches.slice() : [],
+                    // The fields its links are bound to, and a system
+                    // widget's kind (problemsOf()).
+                    urls: Array.isArray(frame.urls) ? frame.urls.slice() : [],
+                    widget: (group[0] === 'shared') ? str(frame.widget) : '',
                     pic: pic,
                     thumb: thumb,
                     x: 0,
@@ -1805,6 +1892,102 @@
         return out;
     }
 
+    // What to check in a design (F27, F28, F29): `broken` as brokenOf();
+    // `empty`, the links with no target in the frames' order and each
+    // frame's count; `unreached`, the page frames no link of another page
+    // or of a shared part leads to (the graph canvas core's check(), from
+    // the Start page, which never counts; shared parts and chips are no
+    // boxes of it, a shared part's links, a system widget's pages
+    // (`reaches`, widgetPages()) and its links bound to a field the server
+    // fills (`urls`, BOUND_WIDGET_URLS) stand in as one source); `check`,
+    // the empty links plus the unreached pages.
+    function problemsOf(laid) {
+        var out = { broken: brokenOf(laid), empty: { list: [], count: {} }, unreached: [], check: 0 };
+        var frames = (laid && Array.isArray(laid.frames)) ? laid.frames : [];
+        var pages = [];
+        var kind = {};
+
+        frames.forEach(function (frame) {
+            kind[frame.id] = frame.kind;
+
+            if (frame.kind === 'page') {
+                pages.push(frame.id);
+            }
+
+            (frame.rows || []).forEach(function (row) {
+                if (row.mark !== 'empty') {
+                    return;
+                }
+
+                out.empty.list.push({ frame: frame.id, port: row.port, label: rowLabel(row), href: str(row.href) });
+                out.empty.count[frame.id] = (out.empty.count[frame.id] || 0) + 1;
+            });
+        });
+
+        if (pages.length) {
+            var SHARED = '#shared';
+            var edges = ((laid && laid.edges) || []).filter(function (edge) {
+                return kind[edge.to] === 'page' && (kind[edge.from] === 'page' || kind[edge.from] === 'shared');
+            }).map(function (edge) {
+                return { from: kind[edge.from] === 'shared' ? SHARED : edge.from, to: edge.to };
+            });
+            // A system widget's settings lead to pages as a shared part's
+            // links do.
+            var byPage = {};
+
+            frames.forEach(function (frame) {
+                if (frame.kind === 'page' && frame.pageId) {
+                    byPage[frame.pageId] = frame.id;
+                }
+            });
+            frames.forEach(function (frame) {
+                (frame.kind === 'shared' && Array.isArray(frame.reaches) ? frame.reaches : []).forEach(function (id) {
+                    if (byPage[id]) {
+                        edges.push({ from: SHARED, to: byPage[id] });
+                    }
+                });
+            });
+            // A link bound to a field the server fills (BOUND_WIDGET_URLS)
+            // leads to the pages placing a widget of that kind.
+            var kindOf = {};
+            var placing = {};
+
+            frames.forEach(function (frame) {
+                if (frame.kind === 'shared' && frame.widget) {
+                    kindOf[frame.id] = frame.widget;
+                }
+            });
+            frames.forEach(function (frame) {
+                if (frame.kind !== 'page') {
+                    return;
+                }
+
+                (frame.parts || []).forEach(function (part) {
+                    if (kindOf[part]) {
+                        (placing[kindOf[part]] = placing[kindOf[part]] || []).push(frame.id);
+                    }
+                });
+            });
+            frames.forEach(function (frame) {
+                (Array.isArray(frame.urls) ? frame.urls : []).forEach(function (field) {
+                    var widget = has(BOUND_WIDGET_URLS, field) ? BOUND_WIDGET_URLS[field] : '';
+
+                    (placing[widget] || []).forEach(function (to) {
+                        edges.push({ from: frame.kind === 'shared' ? SHARED : frame.id, to: to });
+                    });
+                });
+            });
+
+            out.unreached = window.PGGraphCanvas.check(pages.concat([SHARED]), edges, str(laid.start)).unreached.filter(function (id) {
+                return id !== SHARED;
+            });
+        }
+
+        out.check = out.empty.list.length + out.unreached.length;
+
+        return out;
+    }
+
     // Where Fit starts when a design does not fit at the smallest zoom: the
     // start frame's top left corner, raised to its band's heading when that
     // stands right above it; null without a start frame.
@@ -1934,6 +2117,9 @@
         fitStart: fitStart,
         listOf: listOf,
         brokenOf: brokenOf,
+        problemsOf: problemsOf,
+        widgetPages: widgetPages,
+        widgetKind: widgetKind,
         brokenWhy: brokenWhy
     };
 })();

@@ -126,7 +126,54 @@ function ws_command_registry_names($create)
  */
 function ws_command_create_kinds()
 {
-    return array('urun' => 'product', 'product' => 'product', 'grup' => 'product_group', 'group' => 'product_group');
+    return array(
+        'urun' => 'product', 'product' => 'product',
+        'grup' => 'product_group', 'group' => 'product_group',
+        'kisi' => 'contact', 'contact' => 'contact',
+        'satir' => 'wtable_row', 'row' => 'wtable_row',
+    );
+}
+
+/**
+ * The kinds /create makes that this person may make, each once, in the
+ * order of ws_command_create_kinds(): a kind is the right of its record's
+ * screen (ws_change_allowed(): products the e-commerce right, contacts the
+ * contacts right), so the product right never opens a contact.
+ *
+ * @param array    $viewer
+ * @param callable $may    ($viewer, $type, $record_id) => bool
+ * @return string[]
+ */
+function ws_command_create_types_for($viewer, $may = 'ws_command_create_may')
+{
+    $out = array();
+
+    foreach (array_unique(array_values(ws_command_create_kinds())) as $type) {
+        if (is_callable($may) && call_user_func($may, $viewer, $type, 0)) {
+            $out[] = $type;
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * May this person make a record of this kind of /create? A row: when they
+ * may write one workflow table at least (ws_command_row_tables()); the
+ * others: the right of their record's screen (ws_change_allowed()).
+ *
+ * @param array  $viewer
+ * @param string $type
+ * @param int    $record_id
+ * @return bool
+ */
+function ws_command_create_may($viewer, $type, $record_id = 0)
+{
+    if ($type === 'wtable_row') {
+        return ws_command_row_tables($viewer) !== array();
+    }
+
+    return function_exists('ws_change_allowed') && ws_change_allowed($viewer, $type, $record_id);
 }
 
 /**
@@ -212,7 +259,8 @@ function ws_command_offered($viewer, $command, $channel = null)
         return true;
     }
 
-    return (bool) call_user_func($entry['gate'], $viewer, $command);
+    // A gate may read the channel too (/recap), when one is known.
+    return (bool) call_user_func($entry['gate'], $viewer, $command, $channel);
 }
 
 /**
@@ -273,6 +321,43 @@ function ws_command_gate_agent_channel($viewer)
 }
 
 /**
+ * /remind: a team member, once their own plans are kept (the New plan
+ * button of My calendar asks the same).
+ *
+ * @param array|null $viewer
+ * @return bool
+ */
+function ws_command_gate_remind($viewer)
+{
+    if (!is_array($viewer)) {
+        return true;
+    }
+
+    return function_exists('ws_personal_plans_ready') && ws_personal_plans_ready() && !empty($viewer['member']);
+}
+
+/**
+ * /recap: where the catch-up line offers "Sum up what I missed", that is
+ * where Pinegrap AI may read the channel (ws_channel_briefing()'s offer).
+ * Without a channel it is listed like the rest.
+ *
+ * @param array|null $viewer
+ * @param string     $command
+ * @param array|null $channel
+ * @return bool
+ */
+function ws_command_gate_recap($viewer, $command = 'recap', $channel = null)
+{
+    if (!is_array($channel)) {
+        return true;
+    }
+
+    $state = function_exists('ws_ai_channel_state') ? ws_ai_channel_state($channel) : null;
+
+    return is_array($state) && !empty($state['available']);
+}
+
+/**
  * /timer: once task time is kept.
  *
  * @param array|null $viewer
@@ -302,6 +387,23 @@ function ws_command_gate_product($viewer, $command)
     }
 
     return function_exists('ws_change_allowed') && ws_change_allowed($viewer, ($command === 'stock') ? 'stock' : 'product', 0);
+}
+
+/**
+ * /create: whoever may make one of its kinds (ws_command_create_types_for());
+ * the kind typed is checked again when it runs.
+ *
+ * @param array|null $viewer
+ * @param string     $command
+ * @return bool
+ */
+function ws_command_gate_create($viewer, $command)
+{
+    if (!is_array($viewer)) {
+        return true;
+    }
+
+    return function_exists('ws_change_allowed') && (ws_command_create_types_for($viewer) !== array());
 }
 
 /**
@@ -398,6 +500,7 @@ function ws_commands($viewer = null, $shadowed = false, $channel = null)
             'usage'       => $usage,
             'example'     => $entry['example'],
             'args'        => $entry['args'],
+            'variants'    => $entry['variants'],
             'live'        => ($entry['live'] !== ''),
             'app_id'      => 0,
             'app'         => '',
@@ -445,6 +548,7 @@ function ws_command_help($viewer = null, $channel = null)
             'name'        => $entry['name'],
             'usage'       => $entry['usage'],
             'args'        => $entry['args'],
+            'variants'    => $entry['variants'] ?? array(),
             'live'        => $entry['live'],
             'group'       => $entry['group'],
             'group_label' => $labels[$entry['group']] ?? '',
@@ -464,10 +568,11 @@ function ws_command_help($viewer = null, $channel = null)
  * anything is typed; the others are found as they are typed.
  *
  * @param string|null $language a language code, or null for the active one
+ * @param array|null  $viewer   with a person, only the kinds they may make
  * @return array dates, estimates, priorities, statuses, kinds (what /create
  *               makes): each a list of value, meta, top
  */
-function ws_command_suggestions($language = null)
+function ws_command_suggestions($language = null, $viewer = null)
 {
     $turkish = ws_command_turkish($language);
     $today = date('Y-m-d');
@@ -488,8 +593,15 @@ function ws_command_suggestions($language = null)
 
     $labels = function_exists('ws_task_priorities') ? ws_task_priorities() : array();
     $status_labels = function_exists('ws_task_statuses') ? ws_task_statuses() : array();
-    $kinds = $turkish ? array('product' => 'ürün', 'product_group' => 'grup') : array('product' => 'product', 'product_group' => 'group');
-    $kind_labels = array('product' => lang('Product'), 'product_group' => lang('Product group'));
+    $kinds = $turkish
+        ? array('product' => 'ürün', 'product_group' => 'grup', 'contact' => 'kişi', 'wtable_row' => 'satır')
+        : array('product' => 'product', 'product_group' => 'group', 'contact' => 'contact', 'wtable_row' => 'row');
+    $kind_labels = array('product' => lang('Product'), 'product_group' => lang('Product group'), 'contact' => lang('Contact'), 'wtable_row' => lang('Workflow table row'));
+
+    if (is_array($viewer) && function_exists('ws_change_allowed')) {
+        $kinds = array_intersect_key($kinds, array_flip(ws_command_create_types_for($viewer)));
+    }
+
     $out = array('dates' => array(), 'estimates' => array(), 'priorities' => array(), 'statuses' => array(), 'kinds' => array());
 
     foreach ($days as $index => $word) {
@@ -1477,6 +1589,102 @@ function ws_command_run_away($viewer, $channel, $rest)
 }
 
 /**
+ * /remind: a plan of the writer's own on My calendar, saved through
+ * ws_personal_plan_save() as the New plan form saves one, with a reminder
+ * at its start. Typed as a reply, the plan's note carries the answered
+ * message's link (and its line is the title when nothing else is written).
+ * Without a time the New plan form opens with what was typed.
+ *
+ * @return array
+ */
+function ws_command_run_remind($viewer, $channel, $rest, $options)
+{
+    $fill = ws_command_remind_fill($viewer, $channel, $rest, $options);
+
+    if (isset($fill['error'])) {
+        return array('type' => 'error', 'error' => $fill['error']);
+    }
+
+    if ($fill['start_time'] === '') {
+        return array('type' => 'plan_form', 'fill' => $fill, 'strings' => ws_personal_plan_js_strings());
+    }
+
+    $saved = ws_personal_plan_save($viewer, $fill);
+
+    if (empty($saved['ok'])) {
+        return array('type' => 'error', 'error' => (string) ($saved['error'] ?? lang('Access denied')));
+    }
+
+    return ws_command_remind_answer($fill, (int) ($saved['plan']['id'] ?? 0));
+}
+
+/**
+ * /remind's answer once the plan is saved, to the writer alone: what will
+ * be reminded and when, and a link to the plan on My calendar. Pure.
+ *
+ * @param array $fill    ws_command_remind_fill()
+ * @param int   $plan_id
+ * @return array
+ */
+function ws_command_remind_answer($fill, $plan_id)
+{
+    $url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace_my_calendar.php?plan=' . (int) $plan_id;
+    $html = '<div class="ws-ephemeral-title">' . h(lang('Reminder set')) . '</div>'
+        . '<div>' . h(ws_command_remind_line($fill)) . '</div>'
+        . '<div class="fg-secondary">' . h(lang('Only you see this plan.')) . ' <a href="' . h($url) . '">' . h(lang('Open the plan')) . '</a></div>';
+
+    return array('type' => 'ephemeral', 'html' => $html, 'plan_id' => (int) $plan_id);
+}
+
+/**
+ * /recap: "Sum up what I missed" (ws_recap_ai()), to the writer alone, with
+ * the button's refusals. since_id is the last message read before this
+ * visit, as the catch-up line hands it; without one, the writer's own
+ * read mark.
+ *
+ * @return array
+ */
+function ws_command_run_recap($viewer, $channel, $rest, $options)
+{
+    if (!ws_command_gate_recap($viewer, 'recap', $channel)) {
+        return array('type' => 'error', 'error' => lang('Pinegrap AI cannot be asked in this channel.'));
+    }
+
+    $since_id = (int) ($options['since_id'] ?? 0);
+
+    if ($since_id <= 0) {
+        $membership = ws_channel_membership((int) $channel['id'], (int) $viewer['id']);
+        $since_id = $membership ? (int) $membership['last_read_id'] : 0;
+    }
+
+    if (function_exists('set_time_limit') && defined('WS_AI_CALL_TIMEOUT')) {
+        @set_time_limit(WS_AI_CALL_TIMEOUT + 30);
+    }
+
+    $recap = ws_recap_ai($viewer, $channel, $since_id);
+
+    if (empty($recap['ok'])) {
+        return array('type' => 'error', 'error' => (string) $recap['error']);
+    }
+
+    return array('type' => 'ephemeral', 'html' => ws_command_recap_html($recap['text']));
+}
+
+/**
+ * /recap's answer: the summary and who wrote it, as the catch-up line
+ * shows them under itself. Pure.
+ *
+ * @param string $text
+ * @return string
+ */
+function ws_command_recap_html($text)
+{
+    return '<div class="ws-ephemeral-title">' . h(lang('Sum up what I missed')) . '</div>'
+        . '<div class="ws-catchup-recap-text">' . nl2br(h((string) $text)) . '</div>'
+        . '<div class="ws-catchup-recap-by fg-secondary">' . h(lang('Summed up by Pinegrap AI')) . '</div>';
+}
+
+/**
  * Does a command act on the message it answers? Only when it is typed as a
  * reply and nothing follows its name: with a text it does as it always did.
  *
@@ -1968,6 +2176,197 @@ function ws_command_live_timer($viewer, $channel, $rest)
 function ws_command_live_away($viewer, $channel, $rest)
 {
     return ws_command_event_suggest($viewer, ws_command_away_data($rest));
+}
+
+/**
+ * /remind's live line: what will be reminded and when, or that the New
+ * plan form opens when no time is given.
+ *
+ * @return array line, warnings
+ */
+function ws_command_live_remind($viewer, $channel, $rest, $options = array(), $now = null)
+{
+    $out = array('line' => '', 'warnings' => array());
+
+    if (trim((string) $rest) === '') {
+        return $out;
+    }
+
+    $fill = ws_command_remind_fill($viewer, $channel, $rest, $options, $now);
+
+    if (isset($fill['error'])) {
+        $out['warnings'][] = $fill['error'];
+
+        return $out;
+    }
+
+    $out['line'] = ws_command_remind_line($fill);
+
+    if ($fill['title'] === '') {
+        $out['warnings'][] = lang('Write what to remind after the time.');
+    }
+
+    if (($fill['start_time'] !== '') && (strtotime($fill['start'] . ' ' . $fill['start_time'] . ':00') <= (($now === null) ? time() : (int) $now))) {
+        $out['warnings'][] = lang('That time has already gone by.');
+    }
+
+    return $out;
+}
+
+/**
+ * The words of /remind: a day word and a time ("yarın 10:00", "10:00",
+ * "cuma saat 14:30"), in either order, at the start of the line, read as
+ * /task reads them (ws_parse_date_word(), ws_parse_time_word()); the rest
+ * is what to remind, as written. A time with no day is today's. Pure.
+ *
+ * @param string   $text the line after the command's name
+ * @param int|null $now  for tests
+ * @return array date (Y-m-d, '' when none was read), time (H:i, '' when
+ *               none), title
+ */
+function ws_command_remind_data($text, $now = null)
+{
+    $now = ($now === null) ? time() : (int) $now;
+    $today = date('Y-m-d', $now);
+    $text = trim((string) $text);
+    $words = ($text === '') ? array() : preg_split('/\s+/u', $text);
+    $date = '';
+    $clock = '';
+    $taken = 0;
+
+    foreach ($words as $index => $word) {
+        if ($index > 3) {
+            break;
+        }
+
+        if (($date === '') && (ws_parse_date_word($word, $today) !== '')) {
+            $date = ws_parse_date_word($word, $today);
+            $taken = $index + 1;
+            continue;
+        }
+
+        // "saat 14:00" / "at 14:00": the word before the time is no title.
+        if (($clock === '') && in_array(ws_lower($word), array('saat', 'at'), true) && (ws_parse_time_word($words[$index + 1] ?? '') !== '')) {
+            continue;
+        }
+
+        if (($clock === '') && (ws_parse_time_word($word) !== '')) {
+            $clock = ws_parse_time_word($word);
+            $taken = $index + 1;
+            continue;
+        }
+
+        break;
+    }
+
+    $rest = ($taken > 0) ? preg_split('/\s+/u', $text, $taken + 1) : array($text);
+    $title = trim((string) (($taken > 0) ? ($rest[$taken] ?? '') : $text));
+
+    if (($clock !== '') && ($date === '')) {
+        $date = $today;
+    }
+
+    return array('date' => $date, 'time' => $clock, 'title' => $title);
+}
+
+/**
+ * What /remind hands to ws_personal_plan_save(), or to the New plan form
+ * when no time was given: the day (today when none), the time, the title,
+ * the reminder at the start, and as a reply the answered message's link in
+ * the note.
+ *
+ * @param array    $viewer
+ * @param array    $channel
+ * @param string   $text
+ * @param array    $options parent_id
+ * @param int|null $now
+ * @return array title, note, start, end, all_day, start_time, end_time,
+ *               remind, or error
+ */
+function ws_command_remind_fill($viewer, $channel, $text, $options = array(), $now = null)
+{
+    $now = ($now === null) ? time() : (int) $now;
+    $data = ws_command_remind_data($text, $now);
+    $note = '';
+    $title = $data['title'];
+
+    if ((int) ($options['parent_id'] ?? 0) > 0) {
+        $message = ws_command_answered_message($viewer, $channel, $options);
+
+        if ($message === null) {
+            return array('error' => lang('That message could not be found.'));
+        }
+
+        $note = ws_command_message_link($channel, $message);
+
+        if ($title === '') {
+            $title = (string) mb_substr(ws_plain_line($viewer, (string) $message['body']), 0, 200);
+        }
+    }
+
+    return ws_command_remind_plan($data, $title, $note, $now);
+}
+
+/**
+ * The plan's values from what /remind read. Pure.
+ *
+ * @param array  $data  ws_command_remind_data()
+ * @param string $title
+ * @param string $note
+ * @param int    $now
+ * @return array
+ */
+function ws_command_remind_plan($data, $title, $note, $now)
+{
+    $day = ($data['date'] !== '') ? $data['date'] : date('Y-m-d', (int) $now);
+
+    return array(
+        'title'      => trim((string) $title),
+        'note'       => (string) $note,
+        'start'      => $day,
+        'end'        => $day,
+        'all_day'    => 0,
+        'start_time' => $data['time'],
+        'end_time'   => '',
+        // A reminder command reminds: the New plan form's first reminder,
+        // at the start ("No reminder" is the form's empty choice).
+        'remind'     => '0',
+    );
+}
+
+/**
+ * A message's own address, written into a plan's note as plain text.
+ *
+ * @param array $channel
+ * @param array $message
+ * @return string
+ */
+function ws_command_message_link($channel, $message)
+{
+    $base = (defined('URL_SCHEME') && defined('HOSTNAME_SETTING')) ? URL_SCHEME . HOSTNAME_SETTING : '';
+
+    return $base . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace.php?channel=' . (int) $channel['id'] . '&message=' . (int) $message['id'];
+}
+
+/**
+ * The line /remind's live line and answer say: "Will remind you: “title” ·
+ * Tomorrow 10:00", or the New plan form opening on a day.
+ *
+ * @param array $fill ws_command_remind_fill()
+ * @return string
+ */
+function ws_command_remind_line($fill)
+{
+    $title = ($fill['title'] !== '') ? '“' . mb_substr($fill['title'], 0, 80) . '”' : '';
+
+    if ($fill['start_time'] === '') {
+        return lang(array('string' => 'Will open New plan: {var:1}', 'vars' => implode(' · ', array_filter(array($title, ws_day_label($fill['start'])), 'strlen'))));
+    }
+
+    $at = strtotime($fill['start'] . ' ' . $fill['start_time'] . ':00');
+    $when = function_exists('ws_scheduled_moment') ? ws_scheduled_moment($at) : ws_day_label($fill['start']) . ' ' . $fill['start_time'];
+
+    return lang(array('string' => 'Will remind you: {var:1}', 'vars' => implode(' · ', array_filter(array($title, $when), 'strlen'))));
 }
 
 /**
@@ -2992,7 +3391,9 @@ function ws_command_parse_create($text)
 
 /**
  * /create: the kind named after it, made through its own card - a product
- * as /product makes it, a group by ws_command_group().
+ * as /product makes it, a group by ws_command_group(), a contact by
+ * ws_command_contact(). A kind the person may not make is refused before
+ * anything is read, as its screen refuses it.
  *
  * @param array  $viewer
  * @param array  $channel
@@ -3004,6 +3405,18 @@ function ws_command_create($viewer, $channel, $text, $options)
 {
     $parsed = ws_command_parse_create($text);
 
+    if (is_array($viewer) && ($parsed['kind'] !== '') && !in_array($parsed['kind'], ws_command_create_types_for($viewer), true)) {
+        return array('type' => 'error', 'error' => lang('You may not create this kind of record.'));
+    }
+
+    if ($parsed['kind'] === 'contact') {
+        return ws_command_contact($viewer, $channel, $parsed['rest'], $options);
+    }
+
+    if ($parsed['kind'] === 'wtable_row') {
+        return ws_command_row($viewer, $channel, $parsed['rest'], $options);
+    }
+
     if ($parsed['kind'] === 'product') {
         return ws_command_product($viewer, $channel, $parsed['rest'], $options);
     }
@@ -3012,7 +3425,295 @@ function ws_command_create($viewer, $channel, $text, $options)
         return ws_command_group($viewer, $channel, $parsed['rest'], $options);
     }
 
-    return array('type' => 'error', 'error' => lang('Say what to create, a product or a group, like /create product Blue mug 149,90 or /create group Mugs.'));
+    return array('type' => 'error', 'error' => lang('Say what to create, a product, a group, a contact or a row, like /create product Blue mug 149,90 or /create row Leads.'));
+}
+
+/**
+ * The workflow tables this person may write (ws_wtables_reached(), edit
+ * access or more), the latest changed first.
+ *
+ * @param array $viewer
+ * @return array[] id, name
+ */
+function ws_command_row_tables($viewer)
+{
+    if (!is_array($viewer) || !function_exists('ws_wtables_reached')) {
+        return array();
+    }
+
+    $out = array();
+
+    foreach (ws_wtables_reached($viewer) as $table) {
+        if (ws_wtable_may((string) $table['access'], 'write')) {
+            $out[] = array('id' => (int) $table['id'], 'name' => (string) $table['name']);
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * The table the words after /create row name: the one whose whole name they
+ * are (case and Turkish letters folded), else the one table whose name
+ * starts with them. Several or none: 0, and the card asks. Pure.
+ *
+ * @param array[] $tables id, name (ws_command_row_tables())
+ * @param string  $text
+ * @return int table id, or 0
+ */
+function ws_command_row_table_match($tables, $text)
+{
+    $typed = ws_command_fold(trim((string) preg_replace('/\s+/u', ' ', (string) $text)));
+
+    if ($typed === '') {
+        return 0;
+    }
+
+    $whole = array();
+    $starts = array();
+
+    foreach ((array) $tables as $table) {
+        $name = ws_command_fold(trim((string) preg_replace('/\s+/u', ' ', (string) $table['name'])));
+
+        if ($name === $typed) {
+            $whole[] = (int) $table['id'];
+        } elseif (strpos($name, $typed) === 0) {
+            $starts[] = (int) $table['id'];
+        }
+    }
+
+    if (count($whole) === 1) {
+        return $whole[0];
+    }
+
+    return (($whole === array()) && (count($starts) === 1)) ? $starts[0] : 0;
+}
+
+/**
+ * A table's columns as the /create row card draws them: the ones a row
+ * stores (a formula, a lookup or a rollup is worked out), with what each
+ * offers - a status its choices, a person the team, a row link the rows of
+ * a table the person reads (none: left out, as the table screen leaves it).
+ *
+ * @param array $viewer
+ * @param int   $table_id
+ * @return array[] id, name, type, choices ([key, label]), time, hint
+ */
+function ws_command_row_columns($viewer, $table_id)
+{
+    $out = array();
+    $team = null;
+
+    foreach (ws_wtable_columns((int) $table_id) as $id => $column) {
+        if (!ws_wtable_type_stores($column['type'])) {
+            continue;
+        }
+
+        $options = (array) $column['options'];
+        $choices = array();
+        $hint = '';
+
+        if ($column['type'] === 'status') {
+            foreach ((array) ($options['choices'] ?? array()) as $choice) {
+                $choices[] = array((string) $choice['key'], (string) $choice['label']);
+            }
+        } elseif ($column['type'] === 'person') {
+            $team = ($team === null) ? ws_team_members() : $team;
+
+            foreach ($team as $person) {
+                $choices[] = array((string) $person['id'], (string) $person['name']);
+            }
+        } elseif ($column['type'] === 'row') {
+            $linked = ws_wtable_link_choices($viewer, $column);
+
+            if ($linked === null) {
+                continue;
+            }
+
+            foreach ($linked as $key => $label) {
+                $choices[] = array((string) $key, (string) $label);
+            }
+        } elseif ($column['type'] === 'money') {
+            $hint = (string) ($options['currency'] ?? '');
+        } elseif ($column['type'] === 'link') {
+            $hint = lang('kind:id, such as contact:12');
+        } elseif ($column['type'] === 'list') {
+            $hint = lang('One item a line.');
+        }
+
+        $out[] = array(
+            'id'      => (int) $id,
+            'name'    => (string) $column['name'],
+            'type'    => (string) $column['type'],
+            'choices' => $choices,
+            'time'    => !empty($options['time']),
+            'hint'    => $hint,
+        );
+    }
+
+    return $out;
+}
+
+/**
+ * A row refusal in words: each refused cell by its column, else the store's
+ * refusal as the table screen words it.
+ *
+ * @param array $result  ws_wtable_row_create()
+ * @param array $columns ws_wtable_columns()
+ * @return string
+ */
+function ws_command_row_refusal($result, $columns)
+{
+    $lines = array();
+
+    foreach ((array) ($result['errors'] ?? array()) as $id => $code) {
+        $lines[] = (isset($columns[$id]) ? $columns[$id]['name'] . ': ' : '') . ws_wtable_screen_error_text((string) $code);
+    }
+
+    return ($lines !== array()) ? implode(' ', $lines) : ws_wtable_screen_refusal_text($result);
+}
+
+/**
+ * /create row (/oluştur satır): a row of a workflow table the person may
+ * write, the table named after the command (ws_command_row_table_match())
+ * or picked on the card. The card shows the table's fields, empty; Create
+ * sends what was filled in, read as the table screen reads its form
+ * (ws_wtable_screen_cell_from_form()), and ws_wtable_row_create() writes it
+ * with the table's rights, key, limits and events. Nothing is written
+ * before Create.
+ *
+ * @param array  $viewer
+ * @param array  $channel
+ * @param string $text    what follows /create row
+ * @param array  $options confirm, table_id (the card's table), cells
+ *                        (column id => as typed)
+ * @return array
+ */
+function ws_command_row($viewer, $channel, $text, $options)
+{
+    $tables = ws_command_row_tables($viewer);
+
+    if ($tables === array()) {
+        return array('type' => 'error', 'error' => lang('You may not create this kind of record.'));
+    }
+
+    $ids = array_column($tables, 'id');
+    $chosen = (int) ($options['table_id'] ?? 0);
+    $table_id = ($chosen > 0) ? $chosen : ws_command_row_table_match($tables, $text);
+
+    // A table outside the person's list is refused as one that is not there.
+    if (($table_id > 0) && !in_array($table_id, $ids, true)) {
+        return array('type' => 'error', 'error' => ws_wtable_screen_error_text('not_found'));
+    }
+
+    if (!empty($options['confirm'])) {
+        $table = ($table_id > 0) ? ws_wtable($table_id) : null;
+
+        if (!$table) {
+            return array('type' => 'error', 'error' => lang('Choose the table.'));
+        }
+
+        $columns = ws_wtable_columns($table_id);
+        $typed = is_array($options['cells'] ?? null) ? $options['cells'] : array();
+        $cells = array();
+
+        // What the card sent, column by column, read as the table screen
+        // reads its form; a column it did not draw is not sent.
+        foreach ($columns as $id => $column) {
+            if (ws_wtable_type_stores($column['type']) && array_key_exists($id, $typed)) {
+                $cells[$id] = ws_wtable_screen_cell_from_form($column, is_scalar($typed[$id]) ? (string) $typed[$id] : '');
+            }
+        }
+
+        $result = ws_wtable_row_create($viewer, $table, array('cells' => $cells));
+
+        if (empty($result['ok'])) {
+            return array('type' => 'error', 'error' => ws_command_row_refusal($result, $columns));
+        }
+
+        return array(
+            'type'    => 'done',
+            'saved'   => true,
+            'created' => true,
+            'record'  => array('type' => 'wtable_row', 'id' => (int) $result['row_id'], 'name' => (string) $table['name'], 'table_id' => $table_id),
+        );
+    }
+
+    return array(
+        'type'    => 'create_preview',
+        'preview' => array(
+            'kind'     => 'wtable_row',
+            'rows'     => array(),
+            'on_sale'  => '',
+            'missing'  => array(),
+            'tables'   => $tables,
+            'table_id' => $table_id,
+            'columns'  => ($table_id > 0) ? ws_command_row_columns($viewer, $table_id) : array(),
+        ),
+        'values'  => array(),
+        'labels'  => array(),
+    );
+}
+
+/**
+ * What follows /create contact, read into the contact's first fields: an
+ * e-mail address anywhere, then the parts between commas - the person's
+ * name (its first word the first name, the rest the last name), then the
+ * company. "Ada Lovelace, Acme Ltd, ada@example.com" and
+ * "ada@example.com Ada Lovelace, Acme Ltd" read alike. Pure.
+ *
+ * @param string $text
+ * @return array first_name, last_name, company, email (each '' when not written)
+ */
+function ws_command_parse_contact($text)
+{
+    $text = trim((string) preg_replace('/\s+/u', ' ', (string) $text));
+    $email = '';
+
+    if (preg_match('/(?<![^\s,;])[^\s,;<>@]+@[^\s,;<>@]+\.[^\s,;<>@]+(?![^\s,;])/u', $text, $match)) {
+        $email = $match[0];
+        $text = str_replace($match[0], '', $text);
+    }
+
+    $parts = array_values(array_filter(array_map('trim', explode(',', $text)), 'strlen'));
+    $name = preg_split('/ /u', (string) ($parts[0] ?? ''), 2);
+
+    return array(
+        'first_name' => trim((string) $name[0]),
+        'last_name'  => trim((string) ($name[1] ?? '')),
+        'company'    => trim(implode(', ', array_slice($parts, 1))),
+        'email'      => $email,
+    );
+}
+
+/**
+ * /create contact: a new contact through the contacts catalogue
+ * (ws_command_create_card()): its card shows the first name, last name,
+ * company and e-mail it was given, and nothing is written before Create.
+ * One of the four is enough, as on the contact screen; a line with none
+ * answers with what is missing, and the composer opens the drawer's new
+ * contact.
+ *
+ * @param array  $viewer
+ * @param array  $channel
+ * @param string $text    what follows /create contact
+ * @param array  $options confirm, decision
+ * @return array
+ */
+function ws_command_contact($viewer, $channel, $text, $options)
+{
+    if (function_exists('ws_bulk_text_is_list') && ws_bulk_text_is_list($text)) {
+        return array('type' => 'error', 'error' => lang('/create contact makes one contact: write it on one line.'));
+    }
+
+    // A tag would be written into a name as its markup.
+    if (preg_match('/<[#@][a-z_]+:[0-9]+>/', (string) $text)) {
+        return array('type' => 'error', 'error' => lang('Write the contact as plain text.'));
+    }
+
+    $fields = array_filter(ws_command_parse_contact($text), 'strlen');
+
+    return ws_command_create_card($viewer, $channel, 'contact', $fields, $options);
 }
 
 /**
@@ -3208,7 +3909,7 @@ function ws_command_is_product_file($body)
  *
  * @param array  $viewer
  * @param array  $channel
- * @param string $type    product | product_group
+ * @param string $type    product | product_group | contact
  * @param array  $fields  field => value
  * @param array  $options confirm, decision, on_sale
  * @return array
@@ -3223,8 +3924,13 @@ function ws_command_create_card($viewer, $channel, $type, $fields, $options)
         return $error(lang('Invalid request.'));
     }
 
+    $switch = ws_quick_create_has_switch($type);
+
     if (!empty($options['confirm'])) {
-        $fields['enabled'] = !empty($options['on_sale']);
+        if ($switch) {
+            $fields['enabled'] = !empty($options['on_sale']);
+        }
+
         $saved = ws_quick_create_save($viewer, $type, $fields, (int) $channel['id'], !empty($options['decision']));
 
         if (!$saved['ok']) {
@@ -3241,6 +3947,35 @@ function ws_command_create_card($viewer, $channel, $type, $fields, $options)
         );
     }
 
+    $types = ws_change_types();
+
+    // None of the kind's required list written: nothing to check yet. The
+    // composer opens the drawer's new mode with what was typed, as the
+    // kind's button does.
+    $missing = ws_quick_create_missing((array) ($types[$type]['required'] ?? array()), ws_quick_create_change($type, $fields)['fields']);
+
+    if ($missing !== array()) {
+        $check = ws_quick_create_check($viewer, $type);
+
+        if (!$check['ok']) {
+            return $error($check['error']);
+        }
+
+        $names = array();
+
+        foreach ($missing as $name) {
+            $field = ws_change_field($types[$type], $name);
+            $names[] = ($field !== null) ? (string) $field[2] : $name;
+        }
+
+        return array(
+            'type'    => 'create_preview',
+            'preview' => array('kind' => $type, 'rows' => array(), 'on_sale' => '', 'missing' => $names),
+            'values'  => $fields,
+            'labels'  => array(),
+        );
+    }
+
     // Checked as the save will check it (a name already taken, a group
     // that is gone), so the card never offers what cannot be made.
     $input = ws_quick_create_input($viewer, $type, $fields, (int) $channel['id']);
@@ -3249,7 +3984,6 @@ function ws_command_create_card($viewer, $channel, $type, $fields, $options)
         return $error($input['error']);
     }
 
-    $types = ws_change_types();
     $rows = array();
     $labels = array();
 
@@ -3281,7 +4015,9 @@ function ws_command_create_card($viewer, $channel, $type, $fields, $options)
         'preview' => array(
             'kind'    => $type,
             'rows'    => $rows,
-            'on_sale' => (string) $types[$type]['fields']['enabled'][2],
+            // A kind with no on-sale switch (a contact) draws no tick.
+            'on_sale' => $switch ? (string) $types[$type]['fields']['enabled'][2] : '',
+            'missing' => array(),
         ),
         // The drawer's new mode, filled with the same values ("All fields"),
         // and the names of the records they pick.

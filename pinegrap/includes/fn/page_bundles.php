@@ -581,12 +581,26 @@ function pg_page_bundle_set_time($bundle, $publish_at, $user, $now = null)
 }
 
 /**
- * Deletes a bundle with its pages. Its drafts stay drafts.
+ * Deletes a bundle with its pages. Its drafts stay drafts. A publish that
+ * died is finished first (pg_page_bundle_with_lock()): one that leaves the
+ * bundle partly published keeps it.
  *
  * @param array $bundle pg_page_bundle_get()
+ * @param array $user   the person deleting it
  * @return array ok, error
  */
-function pg_page_bundle_delete($bundle)
+function pg_page_bundle_delete($bundle, $user)
+{
+    return pg_page_bundle_with_lock($bundle, $user, pg_page_bundle_busy_answer(), 'pg_page_bundle_delete_locked');
+}
+
+/**
+ * Deletes a bundle with its pages, under the bundle's lock.
+ *
+ * @param array $bundle pg_page_bundle_get(), read under the lock
+ * @return array ok, error
+ */
+function pg_page_bundle_delete_locked($bundle)
 {
     if (!pg_page_bundle_may_delete($bundle['status'])) {
         return array('ok' => false, 'error' => lang('A published bundle is kept so that it can be taken back.'));
@@ -832,13 +846,28 @@ function pg_page_bundle_add_draft($bundle, $draft_page_id, $user)
 
 /**
  * Removes a page from a bundle that is not published yet. The draft stays a
- * draft.
+ * draft. A publish that died is finished first (pg_page_bundle_with_lock()).
  *
  * @param array $bundle  pg_page_bundle_get()
  * @param int   $item_id
+ * @param array $user    the person removing it
  * @return array ok, error
  */
-function pg_page_bundle_remove_item($bundle, $item_id)
+function pg_page_bundle_remove_item($bundle, $item_id, $user)
+{
+    return pg_page_bundle_with_lock($bundle, $user, pg_page_bundle_busy_answer(), function ($bundle) use ($item_id) {
+        return pg_page_bundle_remove_item_locked($bundle, $item_id);
+    });
+}
+
+/**
+ * Removes a waiting page from a bundle, under the bundle's lock.
+ *
+ * @param array $bundle  pg_page_bundle_get(), read under the lock
+ * @param int   $item_id
+ * @return array ok, error
+ */
+function pg_page_bundle_remove_item_locked($bundle, $item_id)
 {
     if (!pg_page_bundle_may_change($bundle['status'])) {
         return array('ok' => false, 'error' => lang('A published bundle cannot be changed.'));
@@ -1006,7 +1035,8 @@ function pg_page_bundle_publish_status($outcome, $from)
  *                      (a replaced page's state now), revision (the revision
  *                      before is still kept)
  * @return array can (ids), cannot (item_id, name, reason: gone, home,
- *               changed, swept)
+ *               unfinished: a publish stopped while writing it, changed,
+ *               swept)
  */
 function pg_page_bundle_take_back_plan($items, $probes)
 {
@@ -1022,6 +1052,8 @@ function pg_page_bundle_take_back_plan($items, $probes)
             $reason = 'gone';
         } elseif (!$replacement) {
             $reason = !empty($probe['home']) ? 'home' : '';
+        } elseif ((string) $item['written_state'] === '') {
+            $reason = 'unfinished';
         } elseif ((string) ($probe['state'] ?? '') !== (string) $item['written_state']) {
             $reason = 'changed';
         } elseif (((int) $item['revision_before'] <= 0) || empty($probe['revision'])) {
@@ -1070,7 +1102,7 @@ function pg_page_bundle_take_back_allowed($plan, $accepted)
 /**
  * Why a page cannot be taken back, for the take-back dialog.
  *
- * @param string $reason gone, home, changed, swept
+ * @param string $reason gone, home, unfinished, changed, swept
  * @return string
  */
 function pg_page_bundle_take_back_reason_text($reason)
@@ -1080,6 +1112,8 @@ function pg_page_bundle_take_back_reason_text($reason)
             return lang('The page is no longer on the site.');
         case 'home':
             return lang('The page is the home page now, so it stays on the site.');
+        case 'unfinished':
+            return lang('A publish stopped while writing this page, so what it holds is not known; it keeps what it has.');
         case 'changed':
             return lang('The page was published again since; it keeps that version.');
         case 'swept':
@@ -1619,12 +1653,35 @@ function pg_page_bundle_undo_item($item, $bundle, $user, $to)
  * and names the page on the bundle; only when that take-back fails is the
  * bundle partly published.
  *
+ * The whole publish holds the bundle's named lock, so a publish that dies
+ * is told from a running one (pg_page_bundle_with_lock()).
+ *
  * @param array $bundle  pg_page_bundle_get()
  * @param array $user
  * @param array $choices item id => 'replace' or 'leave', for pages changed since
- * @return array ok, error, outcome ('' when nothing was tried), check, run
+ * @return array ok, error, outcome ('' when nothing was tried), check, run,
+ *               busy (another publish of the bundle is running)
  */
 function pg_page_bundle_publish($bundle, $user, $choices = array())
+{
+    $none = array('ok' => false, 'write' => array(), 'leave' => array(), 'ask' => array(), 'pages' => array());
+    $busy = pg_page_bundle_busy_answer();
+    $busy += array('outcome' => '', 'check' => array('error' => $busy['error'], 'plan' => $none), 'run' => null);
+
+    return pg_page_bundle_with_lock($bundle, $user, $busy, function ($bundle) use ($user, $choices) {
+        return pg_page_bundle_publish_locked($bundle, $user, $choices);
+    });
+}
+
+/**
+ * Publishes a bundle under its lock (pg_page_bundle_publish()).
+ *
+ * @param array $bundle  pg_page_bundle_get(), read under the lock
+ * @param array $user
+ * @param array $choices
+ * @return array as pg_page_bundle_publish()
+ */
+function pg_page_bundle_publish_locked($bundle, $user, $choices = array())
 {
     $check = pg_page_bundle_publish_check($bundle, $user, $choices);
     $out = array('ok' => false, 'error' => $check['error'], 'outcome' => '', 'check' => $check, 'run' => null);
@@ -1777,6 +1834,22 @@ function pg_page_bundle_take_back($bundle, $user, $accepted = array())
         return $out;
     }
 
+    return pg_page_bundle_with_lock($bundle, $user, pg_page_bundle_busy_answer() + $out, function ($bundle) use ($user, $accepted, $out) {
+        return pg_page_bundle_take_back_locked($bundle, $user, $accepted, $out);
+    });
+}
+
+/**
+ * Takes a bundle back under its lock (pg_page_bundle_take_back()).
+ *
+ * @param array $bundle   pg_page_bundle_get(), read under the lock
+ * @param array $user
+ * @param array $accepted
+ * @param array $out      the answer's empty shape
+ * @return array as pg_page_bundle_take_back()
+ */
+function pg_page_bundle_take_back_locked($bundle, $user, $accepted, $out)
+{
     $check = pg_page_bundle_take_back_check($bundle);
     $out['check'] = $check;
 
@@ -1819,6 +1892,390 @@ function pg_page_bundle_take_back($bundle, $user, $accepted = array())
 
     $out['ok'] = $moved['ok'];
     $out['error'] = $moved['ok'] ? '' : $moved['error'];
+
+    return $out;
+}
+
+// ── A publish that died ────────────────────────────────────────────────
+//
+// A fatal error, a timeout or a lost connection cannot be caught: the run
+// stops where it is, with pages written and the next item claimed 'written'
+// with no written_state. The publish holds the bundle's named lock while it
+// runs, and MySQL frees a named lock when its connection ends, so a free
+// lock on a bundle with written items means its publish died. The general
+// job's pass and the start of every action on the bundle (Publish, Take
+// back, Remove, Delete) finish such a run as the failure it was, each only
+// when it gets the lock without waiting; a plain read of the screen writes
+// nothing.
+
+/**
+ * The name of a bundle's lock. GET_LOCK names belong to the whole server,
+ * so the database is part of the name; MySQL allows 64 characters.
+ *
+ * @param int $bundle_id
+ * @return string
+ */
+function pg_page_bundle_lock_name($bundle_id)
+{
+    $database = defined('DB_DATABASE') ? DB_DATABASE . '@' . (defined('DB_HOST') ? DB_HOST : '') : '';
+
+    return 'pg_page_bundle_' . md5($database) . '_' . (int) $bundle_id;
+}
+
+/**
+ * Takes a bundle's lock without waiting: false while a publish (or another
+ * action) of the bundle is running.
+ *
+ * @param int $bundle_id
+ * @return bool
+ */
+function pg_page_bundle_lock($bundle_id)
+{
+    return (int) db_value("SELECT GET_LOCK('" . e(pg_page_bundle_lock_name($bundle_id)) . "', 0)") === 1;
+}
+
+/**
+ * Gives a bundle's lock back.
+ *
+ * @param int $bundle_id
+ */
+function pg_page_bundle_unlock($bundle_id)
+{
+    db_value("SELECT RELEASE_LOCK('" . e(pg_page_bundle_lock_name($bundle_id)) . "')");
+}
+
+/**
+ * The answer of an action refused because the bundle is busy.
+ *
+ * @return array ok, error, busy
+ */
+function pg_page_bundle_busy_answer()
+{
+    return array('ok' => false, 'error' => lang('The bundle is being published right now. Try again in a moment.'), 'busy' => true);
+}
+
+/**
+ * Runs an action on a bundle under its lock: takes the lock without waiting
+ * (answers $busy when it is held), finishes a publish that died, and gives
+ * $action the bundle as it is then. The lock is given back whatever happens.
+ *
+ * @param array    $bundle pg_page_bundle_get()
+ * @param array    $user   the person acting, who takes a dead publish back
+ * @param array    $busy   the answer while the lock is held
+ * @param callable $action function (bundle): array
+ * @return array
+ */
+function pg_page_bundle_with_lock($bundle, $user, $busy, $action)
+{
+    $id = (int) $bundle['id'];
+
+    if (!pg_page_bundle_lock($id)) {
+        return $busy;
+    }
+
+    try {
+        $fresh = pg_page_bundle_finish_dead($bundle, $user);
+
+        if (!$fresh) {
+            return array('ok' => false, 'error' => lang('The bundle was not found.')) + $busy;
+        }
+
+        return $action($fresh);
+    } finally {
+        pg_page_bundle_unlock($id);
+    }
+}
+
+/**
+ * What finishing a dead publish does. In an open or scheduled bundle every
+ * written item is looked at; in a partly published one only a claim with no
+ * written_state (the written ones are what stands). A claim with no
+ * written_state whose page is as it was is given back; one whose page is
+ * not stays as it is (unfinished); the rest are taken back, newest first.
+ * Pure.
+ *
+ * @param string $status the bundle's status
+ * @param array  $items  page_bundle_item rows (id, status, written_state,
+ *                       written_at)
+ * @param array  $probes item id => as_was (a claim's page is as it was: a
+ *                       replaced page's state equals live_state, a new page
+ *                       is still in Drafts)
+ * @return array give_back (ids), take_back (ids, newest first), unfinished
+ *               (ids), failed (the claim's item id, 0 for none)
+ */
+function pg_page_bundle_dead_plan($status, $items, $probes)
+{
+    $plan = array('give_back' => array(), 'take_back' => array(), 'unfinished' => array(), 'failed' => 0);
+    $status = (string) $status;
+
+    if (!in_array($status, array('open', 'scheduled', 'partial'), true)) {
+        return $plan;
+    }
+
+    $written = array();
+
+    foreach ((array) $items as $item) {
+        if ((string) $item['status'] !== 'written') {
+            continue;
+        }
+
+        $id = (int) $item['id'];
+
+        if ((string) $item['written_state'] === '') {
+            if (!empty($probes[$id]['as_was'])) {
+                $plan['give_back'][] = $id;
+            } else {
+                $plan['unfinished'][] = $id;
+            }
+
+            $plan['failed'] = $id;
+        } elseif ($status !== 'partial') {
+            $written[] = array((int) $item['written_at'], $id);
+        }
+    }
+
+    rsort($written);
+
+    foreach ($written as $row) {
+        $plan['take_back'][] = $row[1];
+    }
+
+    return $plan;
+}
+
+/**
+ * Whether a dead publish's plan has anything to finish. Pure.
+ *
+ * @param array $plan pg_page_bundle_dead_plan()
+ * @return bool
+ */
+function pg_page_bundle_dead_plan_has_work($plan)
+{
+    return (bool) ($plan['give_back'] || $plan['take_back'] || $plan['unfinished']);
+}
+
+/**
+ * Finishes a dead publish by its plan: gives the claims back, then takes
+ * the written pages back, newest first; every page is tried. Pure: the
+ * writes are given.
+ *
+ * @param array    $plan      pg_page_bundle_dead_plan()
+ * @param callable $give_back function (id): bool
+ * @param callable $undo      function (id): bool
+ * @return array outcome ('' nothing to do, taken_back, partial), stands
+ *               (ids left as they are)
+ */
+function pg_page_bundle_dead_run($plan, $give_back, $undo)
+{
+    $run = array('outcome' => '', 'stands' => array());
+
+    if (!pg_page_bundle_dead_plan_has_work($plan)) {
+        return $run;
+    }
+
+    foreach ($plan['give_back'] as $id) {
+        if (!$give_back((int) $id)) {
+            $run['stands'][] = (int) $id;
+        }
+    }
+
+    foreach ($plan['take_back'] as $id) {
+        if (!$undo((int) $id)) {
+            $run['stands'][] = (int) $id;
+        }
+    }
+
+    foreach ($plan['unfinished'] as $id) {
+        $run['stands'][] = (int) $id;
+    }
+
+    $run['outcome'] = $run['stands'] ? 'partial' : 'taken_back';
+
+    return $run;
+}
+
+/**
+ * Finishes a publish of the bundle that died, as the failure it was (B9).
+ * The caller holds the bundle's lock. The bundle keeps its status with the
+ * failed page and a reason; a page that cannot be given or taken back moves
+ * it to partly published. A scheduled bundle whose time the job had taken
+ * goes back to open and tells its people, as a timed publish that failed.
+ *
+ * @param array $bundle   pg_page_bundle_get()
+ * @param array $user     who takes the pages back
+ * @param bool  $finished set to true when something was finished
+ * @return array|null the bundle as it is now, null when it is gone
+ */
+function pg_page_bundle_finish_dead($bundle, $user, &$finished = null)
+{
+    $finished = false;
+    $fresh = pg_page_bundle_get((int) $bundle['id']);
+
+    if (!$fresh) {
+        return null;
+    }
+
+    $rows = array();
+    $probes = array();
+
+    foreach (pg_page_bundle_items($fresh['id']) as $item) {
+        $id = (int) $item['id'];
+        $rows[$id] = $item;
+
+        if (((string) $item['status'] !== 'written') || ((string) $item['written_state'] !== '')) {
+            continue;
+        }
+
+        if ((int) $item['live_page_id'] > 0) {
+            $state = pg_page_bundle_live_state($item['live_page_id']);
+            $probes[$id] = array('as_was' => ($state !== '') && ($state === (string) $item['live_state']));
+        } else {
+            $page = pg_page_bundle_draft_row($item['draft_page_id']);
+            $probes[$id] = array('as_was' => $page && pg_page_is_draft($page['page_folder']));
+        }
+    }
+
+    $plan = pg_page_bundle_dead_plan($fresh['status'], array_values($rows), $probes);
+
+    if (!pg_page_bundle_dead_plan_has_work($plan)) {
+        return $fresh;
+    }
+
+    list(, $undo) = pg_page_bundle_publish_ops($rows,
+        function ($item) {
+            return array('ok' => false, 'error' => '');
+        },
+        function ($item) use ($fresh, $user) {
+            return pg_page_bundle_undo_item($item, $fresh, $user, 'waiting');
+        });
+    $give_back = function ($id) {
+        try {
+            db_q("UPDATE page_bundle_item SET status = 'waiting', written_at = 0 WHERE id = ? AND status = 'written' AND written_state = ''", array((int) $id));
+        } catch (Throwable $t) {
+            return false;
+        }
+
+        return mysqli_affected_rows(db::$con) > 0;
+    };
+
+    $run = pg_page_bundle_with_throwing_errors(function () use ($plan, $give_back, $undo) {
+        return pg_page_bundle_dead_run($plan, $give_back, $undo);
+    });
+
+    // Nothing was written: a partly published bundle whose claim is still
+    // not as it was stays as it is.
+    if (!$plan['give_back'] && !$plan['take_back'] && ($fresh['status'] === 'partial')) {
+        return $fresh;
+    }
+
+    $failed_page = 0;
+
+    if ($plan['failed'] > 0) {
+        $failed = $rows[$plan['failed']];
+        $failed_page = ((int) $failed['live_page_id'] > 0) ? (int) $failed['live_page_id'] : (int) $failed['draft_page_id'];
+    }
+
+    $partial = ($run['outcome'] === 'partial');
+
+    // A partly published bundle still has pages that stand, so its reason
+    // never says that everything was taken back.
+    $reason = ($partial || ($fresh['status'] === 'partial'))
+        ? lang('A publish stopped before it finished (an error, a timeout or a lost connection), and not everything it wrote could be taken back.')
+        : lang('A publish stopped before it finished (an error, a timeout or a lost connection), so what it wrote was taken back.');
+    $set = array('failed_page_id' => $failed_page, 'failed_reason' => $reason);
+    $timed = ($fresh['status'] === 'scheduled') && ((int) $fresh['publish_at'] === 0);
+
+    if ($partial && ($fresh['status'] !== 'partial')) {
+        pg_page_bundle_move($fresh, 'partial', $set);
+    } elseif (!$partial && $timed) {
+        pg_page_bundle_move($fresh, 'open', $set + array('publish_at' => 0, 'scheduled_by' => 0));
+    } else {
+        db_q("UPDATE page_bundle SET failed_page_id = ?, failed_reason = ?, updated_at = ? WHERE id = ? AND status = ?",
+            array($failed_page, mb_substr($reason, 0, 500, 'UTF-8'), time(), (int) $fresh['id'], (string) $fresh['status']));
+    }
+
+    if ($timed) {
+        pg_page_bundle_bell($fresh);
+    }
+
+    $finished = true;
+
+    log_activity(lang(array('string' => 'release bundle ({var:1}): a publish that stopped was finished', 'vars' => array((string) $fresh['name']))),
+        isset($user['username']) ? (string) $user['username'] : '');
+
+    return pg_page_bundle_get((int) $fresh['id']);
+}
+
+/**
+ * Runs $action with the Site Log's name set to $person's, as the page save
+ * logs through the session, then gives the old name back.
+ *
+ * @param array    $person pg_page_bundle_time_person()
+ * @param callable $action
+ * @return mixed what $action returns
+ */
+function pg_page_bundle_as_person($person, $action)
+{
+    $had_name = isset($_SESSION) && array_key_exists('sessionusername', $_SESSION);
+    $old_name = $had_name ? $_SESSION['sessionusername'] : null;
+    $_SESSION['sessionusername'] = $person['username'];
+
+    try {
+        return $action();
+    } finally {
+        if ($had_name) {
+            $_SESSION['sessionusername'] = $old_name;
+        } else {
+            unset($_SESSION['sessionusername']);
+        }
+    }
+}
+
+/**
+ * The general job's part of finishing dead publishes: open, scheduled and
+ * partly published bundles with a written item to look at, a few a tick,
+ * each only when its lock is free. The pages are taken back in the name of
+ * who set the time, else who made the bundle, while they may still publish
+ * bundles; otherwise the next person's action finishes it.
+ *
+ * @param int $limit bundles a tick
+ * @return array names of the bundles finished
+ */
+function pg_page_bundle_job_finish_dead($limit = 5)
+{
+    $out = array();
+    $bundles = (array) db_items("SELECT page_bundle.* FROM page_bundle
+        WHERE page_bundle.status IN ('open', 'scheduled', 'partial')
+        AND EXISTS (SELECT 1 FROM page_bundle_item WHERE page_bundle_item.bundle_id = page_bundle.id
+            AND page_bundle_item.status = 'written'
+            AND (page_bundle.status <> 'partial' OR page_bundle_item.written_state = ''))
+        ORDER BY page_bundle.id LIMIT " . max(1, (int) $limit));
+
+    foreach ($bundles as $bundle) {
+        $person = null;
+
+        foreach (array('scheduled_by', 'created_by') as $column) {
+            $person = $person ?: pg_page_bundle_time_person(db_item((string) pg_db_bind(
+                "SELECT user_id, user_role, user_username FROM user WHERE user_id = ? LIMIT 1", array((int) $bundle[$column]), 'escape')));
+        }
+
+        if (!$person || !pg_page_bundle_lock((int) $bundle['id'])) {
+            continue;
+        }
+
+        try {
+            $finished = false;
+            pg_page_bundle_as_person($person, function () use ($bundle, $person, &$finished) {
+                return pg_page_bundle_finish_dead($bundle, $person, $finished);
+            });
+
+            if ($finished) {
+                $out[] = (string) $bundle['name'];
+            }
+        } finally {
+            pg_page_bundle_unlock((int) $bundle['id']);
+        }
+    }
 
     return $out;
 }
@@ -2150,15 +2607,20 @@ function pg_page_bundle_bell_display($notification)
  *
  * @param int|null $now
  * @param int      $limit bundles a tick
- * @return array published (names), held (names)
+ * @return array published (names), held (names), finished (names of bundles
+ *               whose dead publish was finished)
  */
 function pg_page_bundle_job_run($now = null, $limit = 5)
 {
-    $out = array('published' => array(), 'held' => array());
+    $out = array('published' => array(), 'held' => array(), 'finished' => array());
 
     if (!pg_page_bundles_ready()) {
         return $out;
     }
+
+    // A publish that died (a fatal error, a timeout) is finished first, so a
+    // due bundle is published from a clean state.
+    $out['finished'] = pg_page_bundle_job_finish_dead();
 
     $now = ($now === null) ? time() : (int) $now;
     $due = (array) db_items((string) pg_db_bind(
@@ -2181,16 +2643,13 @@ function pg_page_bundle_job_run($now = null, $limit = 5)
         $reason = lang('The person who set the time can no longer publish release bundles.');
 
         if ($person) {
-            $had_name = isset($_SESSION) && array_key_exists('sessionusername', $_SESSION);
-            $old_name = $had_name ? $_SESSION['sessionusername'] : null;
-            $_SESSION['sessionusername'] = $person['username'];
+            $published = pg_page_bundle_as_person($person, function () use ($bundle, $person) {
+                return pg_page_bundle_publish($bundle, $person);
+            });
 
-            $published = pg_page_bundle_publish($bundle, $person);
-
-            if ($had_name) {
-                $_SESSION['sessionusername'] = $old_name;
-            } else {
-                unset($_SESSION['sessionusername']);
+            // A person's publish of the bundle is running: it decides.
+            if (!empty($published['busy'])) {
+                continue;
             }
 
             $outcome = (string) $published['outcome'];

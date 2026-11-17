@@ -64,10 +64,10 @@ function test_workspace_command_registry_every_key_has_a_runner()
 // The order, the keys and the names are today's.
 function test_workspace_command_registry_keeps_the_order_and_names()
 {
-	pg_assert_same(array('task', 'assign', 'done', 'postpone', 'status', 'timer', 'schedule', 'away', 'meeting', 'decision', 'note', 'plan', 'poll', 'price', 'stock', 'create', 'product', 'wake', 'agent_channel', 'claude', 'ai', 'help'),
+	pg_assert_same(array('task', 'assign', 'done', 'postpone', 'status', 'timer', 'schedule', 'away', 'meeting', 'decision', 'note', 'plan', 'remind', 'poll', 'recap', 'price', 'stock', 'create', 'product', 'wake', 'agent_channel', 'claude', 'ai', 'help'),
 		array_keys(ws_command_registry()), 'the registry in picker order');
 
-	pg_assert_same(array('task', 'assign', 'done', 'postpone', 'status', 'timer', 'schedule', 'away', 'meeting', 'decision', 'note', 'plan', 'poll', 'price', 'stock', 'create', 'product', 'wake', 'agent_channel', 'help'),
+	pg_assert_same(array('task', 'assign', 'done', 'postpone', 'status', 'timer', 'schedule', 'away', 'meeting', 'decision', 'note', 'plan', 'remind', 'poll', 'recap', 'price', 'stock', 'create', 'product', 'wake', 'agent_channel', 'help'),
 		array_column(ws_commands(null), 'key'), 'without a person the assistants are left out');
 
 	pg_assert_same(array(
@@ -83,7 +83,9 @@ function test_workspace_command_registry_keeps_the_order_and_names()
 		'karar' => 'decision', 'decision' => 'decision',
 		'not' => 'note', 'note' => 'note',
 		'plan' => 'plan',
+		'hatırlat' => 'remind', 'hatirlat' => 'remind', 'remind' => 'remind',
 		'oylama' => 'poll', 'anket' => 'poll', 'sor' => 'poll', 'poll' => 'poll',
+		'özet' => 'recap', 'ozet' => 'recap', 'recap' => 'recap',
 		'fiyat' => 'price', 'price' => 'price',
 		'stok' => 'stock', 'stock' => 'stock',
 		'uyandır' => 'wake', 'uyandir' => 'wake', 'wake' => 'wake',
@@ -101,7 +103,7 @@ function test_workspace_command_registry_keeps_the_order_and_names()
 		}
 	}
 
-	pg_assert_same(array('task', 'status', 'timer', 'schedule', 'away', 'meeting'), $live, 'the commands with a live line');
+	pg_assert_same(array('task', 'status', 'timer', 'schedule', 'away', 'meeting', 'remind'), $live, 'the commands with a live line');
 
 	$classes = array();
 

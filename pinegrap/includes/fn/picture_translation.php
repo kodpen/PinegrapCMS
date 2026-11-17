@@ -720,3 +720,404 @@ function pg_picture_tr_page_pass($content, $language)
         return (strpos($sql, 'SELECT') === 0) ? db_items($sql) : db($sql);
     });
 }
+
+/* ---------------------------------------------------------------------------
+   Drawing a language's picture
+   ---------------------------------------------------------------------------
+   The Design Canvas's Languages list, for a canvas file with words: each
+   target language with its state and its words. The browser puts a
+   language's words into the layers, fits each text to its source's box and
+   draws the picture with the save's own renderer; the draw action keeps it
+   as the language's files row beside the source, sets the row drawn and
+   marks the page cache. The language's picture is listed nowhere: not in
+   the File Manager, the file pickers or Where used. */
+
+/**
+ * The list's state of a language: Drawn, Look by hand (a text drawn at the
+ * smallest size still did not fit) or Out of date from its row, otherwise
+ * Translated when every text has a translation. Pure.
+ *
+ * @param array|null $row        the file_translation row (state, fit), or null
+ * @param int        $total      the picture's texts
+ * @param int        $translated those with a translation in the language
+ * @return string not_translated | translated | drawn | look | out_of_date
+ */
+function pg_picture_tr_list_state($row, $total, $translated)
+{
+    $state = is_array($row) ? (int) $row['state'] : 0;
+
+    if ($state === 1) {
+        return empty($row['fit']) ? 'drawn' : 'look';
+    }
+
+    if ($state === 2) {
+        return 'out_of_date';
+    }
+
+    return (($total > 0) && ($translated >= $total)) ? 'translated' : 'not_translated';
+}
+
+/**
+ * The stamp a draw is posted with: the file, the language, the document
+ * drawn from and the words given. A picture of another file or language, or
+ * drawn from words or a document that changed since, carries another. Pure.
+ *
+ * @param int    $file_id
+ * @param string $language
+ * @param string $doc_hash
+ * @param array  $texts pg_picture_tr_language_texts()
+ * @return string SHA-1
+ */
+function pg_picture_tr_stamp($file_id, $language, $doc_hash, $texts)
+{
+    $lines = array();
+
+    foreach ($texts as $text) {
+        $lines[] = $text['id'] . "\x1f" . $text['field'] . "\x1f" . (($text['text'] === null) ? "\x00" : (string) $text['text']);
+    }
+
+    return sha1((int) $file_id . "\x1e" . $language . "\x1e" . $doc_hash . "\x1e" . implode("\x1e", $lines));
+}
+
+/**
+ * Why a draw is refused, or '' when it is taken. Pure.
+ *
+ * @param array $facts access (the folder may be edited), language (a target
+ *                     language), rtl, live (the file holds its canvas
+ *                     document), missing (texts with no translation in the
+ *                     language), sent (the stamp posted), stamp (now)
+ * @return string '' | access | language | rtl | changed | untranslated | stamp
+ */
+function pg_picture_tr_draw_refusal($facts)
+{
+    if (empty($facts['access'])) {
+        return 'access';
+    }
+
+    if (empty($facts['language'])) {
+        return 'language';
+    }
+
+    if (!empty($facts['rtl'])) {
+        return 'rtl';
+    }
+
+    if (empty($facts['live'])) {
+        return 'changed';
+    }
+
+    // A language is drawn only once every text is translated into it.
+    if (!empty($facts['missing'])) {
+        return 'untranslated';
+    }
+
+    $sent = isset($facts['sent']) ? (string) $facts['sent'] : '';
+
+    return (($sent !== '') && hash_equals((string) $facts['stamp'], $sent)) ? '' : 'stamp';
+}
+
+/**
+ * How many of a language's texts have no translation (none or empty). Pure.
+ *
+ * @param array $texts pg_picture_tr_language_texts()
+ * @return int
+ */
+function pg_picture_tr_untranslated($texts)
+{
+    $missing = 0;
+
+    foreach ($texts as $text) {
+        if (($text['text'] === null) || ($text['text'] === '')) {
+            $missing++;
+        }
+    }
+
+    return $missing;
+}
+
+/**
+ * The name a language's picture is first given: its source's stem and the
+ * language, as a PNG. Made unique by the caller; found only through
+ * file_translation, never by this name. Pure.
+ *
+ * @param string $source the source's name
+ * @param string $language
+ * @return string
+ */
+function pg_picture_tr_picture_name($source, $language)
+{
+    $stem = preg_replace('/\.[a-z0-9]{2,5}$/i', '', (string) $source);
+
+    return $stem . '-' . strtolower(preg_replace('/[^A-Za-z0-9-]/', '', (string) $language)) . '.png';
+}
+
+/**
+ * The condition that leaves the languages' pictures out of a files list.
+ *
+ * @param string    $column the files id column of the query
+ * @param bool|null $ready  whether the table is there; null asks the schema
+ * @return string ' AND (…)' or ''
+ */
+function pg_picture_tr_hidden_sql($column, $ready = null)
+{
+    if ($ready === null) {
+        $ready = pg_picture_tr_ready();
+    }
+
+    return $ready ? ' AND (' . $column . ' NOT IN (SELECT picture_file_id FROM file_translation))' : '';
+}
+
+/**
+ * Whether a file is a language's picture.
+ *
+ * @param int $file_id
+ * @return bool
+ */
+function pg_picture_tr_is_picture($file_id)
+{
+    return ((int) $file_id > 0) && pg_picture_tr_ready()
+        && (bool) db_value("SELECT 1 FROM file_translation WHERE picture_file_id = '" . (int) $file_id . "' LIMIT 1");
+}
+
+/**
+ * A canvas file's live document and its hash: the newest version's, while
+ * the file still holds its pixels; null for any other picture.
+ *
+ * @param int    $file_id
+ * @param string $name the file's stored name
+ * @return array|null doc (decoded as objects), hash
+ */
+function pg_picture_tr_canvas($file_id, $name)
+{
+    $newest = pg_file_versions_ready() ? pg_file_versions_newest((int) $file_id) : null;
+    $json = $newest ? (string) $newest['doc_json'] : '';
+
+    if (($json === '') || !pg_file_versions_matches_file($newest, FILE_DIRECTORY_PATH . '/' . basename((string) $name))) {
+        return null;
+    }
+
+    $doc = json_decode($json);
+
+    if (!is_object($doc) || !pg_image_editor_canvas_is_doc($doc)) {
+        return null;
+    }
+
+    $hash = isset($newest['doc_hash']) ? (string) $newest['doc_hash'] : '';
+
+    return array('doc' => $doc, 'hash' => ($hash !== '') ? $hash : sha1($json));
+}
+
+/**
+ * A file's texts in a language, in layer order: the layer's id, the field
+ * and the translation, null where there is none.
+ *
+ * @param int    $file_id
+ * @param string $language
+ * @return array of array(id, field, text)
+ */
+function pg_picture_tr_language_texts($file_id, $language)
+{
+    $rows = db_items("SELECT u.node_id, u.field, t.text
+        FROM translation_uses u
+        LEFT JOIN translations t ON t.string_id = u.string_id AND t.language = '" . e($language) . "'
+        WHERE u.owner_type = 'file' AND u.owner_id = '" . (int) $file_id . "'
+        ORDER BY u.position, u.node_id");
+    $texts = array();
+
+    foreach (is_array($rows) ? $rows : array() as $row) {
+        $texts[] = array('id' => (string) $row['node_id'], 'field' => (string) $row['field'], 'text' => ($row['text'] === null) ? null : (string) $row['text']);
+    }
+
+    return $texts;
+}
+
+/**
+ * Whether a language is written right to left; its picture is not drawn.
+ *
+ * @param string $language
+ * @return bool
+ */
+function pg_picture_tr_rtl($language)
+{
+    pg_tr_load();
+
+    $known = pg_tr_known_languages();
+
+    return isset($known[$language]) && ((int) $known[$language][5] === 1);
+}
+
+/**
+ * Action picture_languages of the Design Canvas: the Languages list of a
+ * canvas file. words is 0 for a file with none (or before translation is
+ * set up), and the list is then left closed.
+ *
+ *   { file_id } -> { status, words, hash, doc, languages: [{ code, name,
+ *   rtl, state, total, translated, texts, stamp, url }] }
+ *
+ * @return array array(payload, HTTP status)
+ */
+function pg_picture_tr_languages_answer($request, $user)
+{
+    $file = pg_image_editor_file(isset($request['file_id']) ? $request['file_id'] : 0, $user);
+
+    if ($file['refusal']) {
+        return $file['refusal'];
+    }
+
+    $none = array(array('status' => 'success', 'words' => 0, 'languages' => array()), 200);
+    $file_id = (int) $file['row']['id'];
+
+    if (!pg_picture_tr_ready() || !pg_picture_tr_store_ready()) {
+        return $none;
+    }
+
+    // The language helpers (target languages, labels) load with the store.
+    pg_tr_load();
+
+    $canvas = pg_picture_tr_canvas($file_id, $file['row']['name']);
+    $targets = pg_tr_target_languages();
+    $words = $canvas ? (int) db_value("SELECT COUNT(*) FROM translation_uses WHERE owner_type = 'file' AND owner_id = '$file_id'") : 0;
+
+    if (!$words || !$targets) {
+        return $none;
+    }
+
+    $rows = array();
+
+    $found = db_items("SELECT ft.language, ft.state, ft.fit, ft.drawn_at, f.name
+        FROM file_translation ft LEFT JOIN files f ON f.id = ft.picture_file_id
+        WHERE ft.file_id = '$file_id'");
+
+    foreach (is_array($found) ? $found : array() as $row) {
+        $rows[(string) $row['language']] = $row;
+    }
+
+    $languages = array();
+
+    foreach (array_keys($targets) as $code) {
+        $code = (string) $code;
+        $texts = pg_picture_tr_language_texts($file_id, $code);
+        $translated = count($texts) - pg_picture_tr_untranslated($texts);
+        $row = isset($rows[$code]) ? $rows[$code] : null;
+        $picture = ($row && ((string) $row['name'] !== '')) ? (string) $row['name'] : '';
+
+        $languages[] = array(
+            'code'       => $code,
+            'name'       => pg_tr_language_label($code),
+            'rtl'        => pg_picture_tr_rtl($code),
+            'state'      => pg_picture_tr_list_state($row, count($texts), $translated),
+            'total'      => count($texts),
+            'translated' => $translated,
+            'texts'      => $texts,
+            'stamp'      => pg_picture_tr_stamp($file_id, $code, $canvas['hash'], $texts),
+            'url'        => ($picture !== '') ? PATH . encode_url_path($picture) . '?v=' . (int) $row['drawn_at'] : '');
+    }
+
+    return array(array('status' => 'success', 'words' => $words, 'hash' => $canvas['hash'], 'doc' => $canvas['doc'], 'languages' => $languages), 200);
+}
+
+/**
+ * Action picture_language_draw of the Design Canvas: a language's picture
+ * drawn in the browser, kept as its own files row in the source's folder
+ * (written over on a later draw, its id and name kept), the row set drawn
+ * (fit 1 when a text did not fit at the smallest size) and the page cache
+ * marked.
+ *
+ *   { file_id, language, stamp, fit, picture } -> { status, state, url }
+ *
+ * @return array array(payload, HTTP status)
+ */
+function pg_picture_tr_draw_answer($request, $user)
+{
+    if (!pg_picture_tr_ready() || !pg_picture_tr_store_ready()) {
+        return pg_image_editor_refusal(lang('Invalid request.'));
+    }
+
+    pg_tr_load();
+
+    // The folder's edit right, the Recycle Bin and an ERP document, as for
+    // a save of the picture itself.
+    $file = pg_image_editor_file(isset($request['file_id']) ? $request['file_id'] : 0, $user);
+
+    if ($file['refusal']) {
+        return $file['refusal'];
+    }
+
+    $file_id = (int) $file['row']['id'];
+    $language = isset($request['language']) ? (string) $request['language'] : '';
+    $targets = pg_tr_target_languages();
+    $canvas = pg_picture_tr_canvas($file_id, $file['row']['name']);
+    $texts = ($canvas && isset($targets[$language])) ? pg_picture_tr_language_texts($file_id, $language) : array();
+    $why = pg_picture_tr_draw_refusal(array(
+        'access'   => true,
+        'language' => ($language !== '') && isset($targets[$language]),
+        'rtl'      => pg_picture_tr_rtl($language),
+        'live'     => (bool) $canvas,
+        'missing'  => pg_picture_tr_untranslated($texts),
+        'sent'     => isset($request['stamp']) ? (string) $request['stamp'] : '',
+        'stamp'    => $canvas ? pg_picture_tr_stamp($file_id, $language, $canvas['hash'], $texts) : ''));
+
+    if (($why === 'changed') || ($why === 'stamp')) {
+        return pg_image_editor_refusal(lang('This picture or its translations changed meanwhile. Open the Languages list again.'), 409);
+    }
+
+    if ($why === 'untranslated') {
+        return pg_image_editor_refusal(lang('Every text of the picture must be translated into this language before it is drawn.'), 409);
+    }
+
+    if ($why !== '') {
+        return pg_image_editor_refusal(lang('Invalid request.'));
+    }
+
+    $board = $canvas['doc']->artboard;
+    $width = (int) round(max(16, min(8000, (float) $board->width)));
+    $height = (int) round(max(16, min(8000, (float) $board->height)));
+    $now = time();
+
+    // A later draw writes over the language's picture, so its address stays.
+    $old = db_item("SELECT f.id, f.name, f.folder FROM file_translation ft INNER JOIN files f ON f.id = ft.picture_file_id
+        WHERE ft.file_id = '$file_id' AND ft.language = '" . e($language) . "' LIMIT 1");
+    $folder = $old ? (int) $old['folder'] : (int) $file['row']['folder'];
+    $name = $old ? (string) $old['name']
+        : get_unique_name(array('name' => prepare_file_name(pg_picture_tr_picture_name($file['row']['name'], $language)), 'type' => 'file'));
+
+    if (pg_upload_name_blocked($name)) {
+        return pg_image_editor_refusal(pg_upload_blocked_message($name));
+    }
+
+    $path = FILE_DIRECTORY_PATH . '/' . $name;
+    $temporary = $path . '.' . (function_exists('getmypid') ? getmypid() : uniqid()) . '.tmp';
+
+    if (!pg_image_editor_take_png(isset($request['picture']) ? $request['picture'] : '', $temporary, $width, $height)) {
+        return pg_image_editor_refusal(lang('Invalid request.'));
+    }
+
+    pg_process_image_file($temporary);
+
+    if (!@rename($temporary, $path)) {
+        @unlink($temporary);
+        return pg_image_editor_refusal(lang('Sorry, the file could not be saved.'));
+    }
+
+    $record = pg_image_editor_record($old ? 'replace' : 'new', $name, $folder, 'png', $old, $user);
+
+    if ($record[0]['status'] !== 'success') {
+        return $record;
+    }
+
+    $fit = empty($request['fit']) ? 0 : 1;
+
+    db_q("INSERT INTO file_translation (file_id, language, picture_file_id, state, fit, doc_hash, created_at, drawn_at, drawn_by)
+        VALUES (?, ?, ?, 1, ?, ?, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE picture_file_id = VALUES(picture_file_id), state = 1, fit = VALUES(fit), doc_hash = VALUES(doc_hash),
+            drawn_at = VALUES(drawn_at), drawn_by = VALUES(drawn_by)",
+        array($file_id, $language, (int) $record[0]['id'], $fit, (string) $canvas['hash'], $now, $now, (int) $user['id']));
+
+    // A page in this language shows the new picture from the next request.
+    pg_page_cache_mark_dirty();
+
+    return array(array(
+        'status' => 'success',
+        'state'  => pg_picture_tr_list_state(array('state' => pg_picture_tr_state_after(0, 'draw'), 'fit' => $fit), count($texts), count($texts) - pg_picture_tr_untranslated($texts)),
+        'url'    => PATH . encode_url_path($name) . '?v=' . $now), 200);
+}

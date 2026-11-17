@@ -9,7 +9,7 @@ description: Plan designer-panels, steps DP1 to DP5: the chrome's tokens, the ri
   - Pictures: the whole editor before and after, an element selected, the bottom panel open, beside `options-4-whole-screen.jpg`.
   - The PR body counts the colours still written outside a token and where.
 
-- DP2 (M) after DP1: the right column.
+- DP2 (M) after DP1: the right column. Done in #10210.
   - Existing files: `includes/designer_screen.php` (`#sd-panel-right`, `#sd-properties`, the `#sd-assets-*` panel), `style_designer.css`, `assets/js/style_designer.src.js` (the column's two tabs, `_SD_RAIL_ICONS`, the bottom panel's remembered state).
   - The column's default width becomes 336 px above 1024 px; a width the user dragged stays; 240 px at 1024 and below stays, and under 300 px the panel is drawn as `designer-panels-measures-4.md` says.
   - Tests: the remembered state's reader as a pure function.
@@ -33,7 +33,8 @@ description: Plan designer-panels, steps DP1 to DP5: the chrome's tokens, the ri
   - Tests: every section of today reached in a tab for a heading, a row, a picture, a link and a form field; a content-level user's hidden rows still hidden and an empty tab not drawn; another kind opens Content at the top.
   - Pictures: the three tabs beside `options-1-content.jpg` and `options-2-style-advanced.jpg`.
   - Features: D4, D5, D14. Keeps K4.
-  - Over 1,000 product lines: cut as DP5a (the tabs, Content) and DP5b (Style, Advanced), said before the claim.
+  - Several elements selected (`renderMultiProperties()`, `_postProcessMultiPanel()`): as `designer-panels-measures-5.md` says. Tests: the shared options by kind, a mixed value, the dot's ring, a change written to all as one undo step. Picture: beside `options-6-multiple-selection.jpg`. Keeps K6.
+  - Over 1,000 product lines: cut as DP5a (the tabs, Content), DP5b (Style, Advanced) and DP5c (several elements selected), said before the claim.
 
 ## Which steps wait for each other?
-- Each waits for the one before it. DP5 also waits for the drawing of a multiple selection (`designer-panels-rules.md`). DP3 to DP5 draw their parts under 300 px as `options-5-narrow-column.jpg` shows.
+- Each waits for the one before it. DP3 to DP5 draw their parts under 300 px as `options-5-narrow-column.jpg` shows.

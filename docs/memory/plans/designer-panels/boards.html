@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <title>Seçenekler paneli önerileri</title>
-<!-- The boards of plans/designer-panels: one board at a time, 1280 x 900, picked with ?b=1 to 9, 0, a, b or c.
+<!-- The boards of plans/designer-panels: one board at a time, 1280 x 900 (board f: 1280 x 1070), picked with ?b=1 to 9, 0 or a to f.
      The icons are the product's own Bootstrap Icons. -->
 <link rel="stylesheet" href="../../../../pinegrap/assets/fonts/bootstrap-icons/bootstrap-icons.min.css">
 <style>
@@ -1572,6 +1572,501 @@ table.sp code,.card code,.rule code{font:600 11px Consolas,monospace;color:#9fc3
     </div>
   </div>
   <div class="foot"><span>Ölçü: sütun 240, bölüm kartı 216, satır içi 192; etiket 78 + boşluk 10 + denetim 104 (panel sütunu doldururken)</span><span>Seçenekler paneli · dar sütun</span></div>
+</section>
+
+<!-- ============================ BOARD D ============================ -->
+<style>
+/* ---------- a multiple selection in the Options panel ---------- */
+.ms .idn .ico{position:relative}
+.ms .idn .ico b.k{position:absolute;right:-6px;bottom:-6px;min-width:18px;height:18px;padding:0 4px;border-radius:99px;background:var(--acc);color:#06122b;font-size:10.5px;font-weight:750;display:grid;place-items:center;box-shadow:0 0 0 2px var(--panel)}
+.ms .seg span.mx{box-shadow:0 0 0 1px var(--accline) inset;color:var(--text);border-radius:7px}
+.ms .inp.mxd{color:var(--muted);font-style:italic}
+.ms .dot.ring{background:transparent;box-shadow:0 0 0 2px var(--acc) inset}
+.ms .sw.mx2{background:linear-gradient(135deg,#7c3aed 50%,#0ea5e9 50%)}
+.ms .bm .v.mx{box-shadow:0 0 0 1px var(--accline) inset;color:var(--acc);background:transparent}
+.ms .mxn{color:var(--muted);font-size:11px;line-height:1.35;margin:6px 0 0 102px}
+.ms .only{margin:8px 12px 2px;padding:9px 11px;border-radius:10px;background:#11151a;border:1px solid var(--line);color:#aab3bf;font-size:12px;display:flex;gap:9px;align-items:flex-start;line-height:1.4}
+.ms .only i{color:var(--muted);font-size:14px;margin-top:1px}
+.ms .all{display:flex;align-items:center;gap:8px;margin:10px 12px 0;padding:8px 11px;border-radius:10px;background:var(--accsoft);border:1px solid var(--accline);color:#cfe0ff;font-size:12px}
+.ms .q .mxd2{color:var(--muted);font-style:italic;font-weight:500}
+.ms .frac{color:var(--muted);font-size:10.5px;font-weight:650;margin-left:auto}
+</style>
+<section class="board" id="bd">
+  <div class="kicker">Sayfa Tasarım Stüdyosu · Seçenekler paneli · çoklu seçim</div>
+  <h1>Birden çok öğe seçiliyken panel</h1>
+  <div class="sub">Shift ya da Ctrl ile seçilen öğeler tek panelde düzenlenir: ortak olan gösterilir, farklı olan "— Çoklu —" yazar.</div>
+
+  <div class="stage" style="gap:30px;margin-top:18px">
+    <div style="position:relative">
+      <div class="col-title"><span class="tag new">AYNI TÜR</span> Üç başlık · İçerik</div>
+      <div class="np ms">
+        <div class="idn">
+          <div class="ico"><i class="bi bi-type-h2"></i><b class="k">3</b></div>
+          <div class="t"><b>3 öğe seçili <span class="chip a" style="display:inline-flex">Başlık</span></b><span>Hepsi aynı üst öğede: Satır</span></div>
+          <div class="ib h"><i class="bi bi-brush"></i></div>
+          <div class="ib"><i class="bi bi-three-dots"></i></div>
+        </div>
+        <div class="tabs">
+          <div class="on"><i class="bi bi-card-text"></i> İçerik <span class="cnt">1</span></div>
+          <div><i class="bi bi-palette"></i> Stil <span class="cnt s">5</span></div>
+          <div><i class="bi bi-gear"></i> Gelişmiş</div>
+        </div>
+        <div class="find"><i class="bi bi-search"></i><span>Seçenek ara ya da ekle…</span><kbd>/</kbd></div>
+
+        <div class="sec">
+          <div class="sh"><i class="bi bi-chevron-down cv"></i> Başlık <span class="sp"></span><span class="st2">ortak seçenekler</span></div>
+          <div class="sb">
+            <div class="row"><label><span class="dot ring"></span>Düzey</label><div class="ctl"><div class="seg"><span>H1</span><span class="mx">H2</span><span class="mx">H3</span><span>H4</span><span>H5</span><span>H6</span></div></div></div>
+            <div class="mxn">— Çoklu —: iki öğe H2, bir öğe H3</div>
+          </div>
+        </div>
+
+        <div class="only"><i class="bi bi-info-circle"></i><span>Metin, bağlantı, çeviri ve veri bağlama öğeye özeldir; tek öğe seçilince görünür.</span></div>
+
+        <div class="quick">
+          <div class="q">Hizalama<b><i class="bi bi-text-center"></i> Orta</b></div>
+          <div class="q">Boyut<b><span class="mxd2">— Çoklu —</span></b></div>
+          <div class="q">Renk<b><span class="sw" style="background:#7c3aed"></span> Birincil</b></div>
+        </div>
+
+        <div class="all"><i class="bi bi-layers"></i> Değişiklik üç öğeye birden yazılır</div>
+        <div class="pf"><i class="bi bi-funnel"></i> Yalnız değiştirdiklerim <span class="cnt s">6</span><span class="sp"></span><span class="tg"></span></div>
+      </div>
+      <div class="col-title" style="margin-top:16px"><span class="tag new">SÜZGEÇ AÇIKKEN</span> Yalnız değiştirdiklerim</div>
+      <div class="res ms" style="width:336px;margin:0">
+        <div class="chg"><div class="tx"><b>Hizalama</b><span>Stil › Metin</span></div><div class="val">Orta <span class="frac">3/3</span></div><i class="bi bi-arrow-counterclockwise x"></i></div>
+        <div class="chg"><div class="tx"><b>Boyut</b><span>Stil › Metin</span></div><div class="val"><span style="color:var(--muted);font-style:italic;font-weight:500">— Çoklu —</span> <span class="frac">2/3</span></div><i class="bi bi-arrow-counterclockwise x"></i></div>
+      </div>
+      <span class="pin n" style="left:-11px;top:46px">1</span>
+      <span class="pin n" style="right:-11px;top:47px">8</span>
+      <span class="pin n" style="right:-11px;top:97px">6</span>
+      <span class="pin n" style="left:-11px;top:225px">2</span>
+      <span class="pin n" style="right:-11px;top:233px">3</span>
+      <span class="pin n" style="right:-11px;top:317px">2</span>
+      <span class="pin n" style="left:-11px;top:377px">7</span>
+      <span class="pin n" style="left:-11px;top:431px">4</span>
+      <span class="pin n" style="right:-11px;top:605px">9</span>
+    </div>
+
+    <div style="position:relative">
+      <div class="col-title"><span class="tag new">FARKLI TÜRLER</span> Başlık, paragraf, düğme · Stil</div>
+      <div class="np ms">
+        <div class="idn">
+          <div class="ico"><i class="bi bi-layers"></i><b class="k">3</b></div>
+          <div class="t"><b>3 öğe seçili <span class="chip" style="display:inline-flex">karışık</span></b><span>Başlık · Paragraf · Düğme</span></div>
+          <div class="ib h"><i class="bi bi-brush"></i></div>
+          <div class="ib"><i class="bi bi-three-dots"></i></div>
+        </div>
+        <div class="tabs">
+          <div class="on"><i class="bi bi-palette"></i> Stil <span class="cnt">4</span></div>
+          <div><i class="bi bi-gear"></i> Gelişmiş <span class="cnt s">1</span></div>
+        </div>
+        <div class="find"><i class="bi bi-search"></i><span>Seçenek ara ya da ekle…</span><kbd>/</kbd></div>
+
+        <div class="sec">
+          <div class="sh"><i class="bi bi-chevron-down cv"></i> Metin <span class="sp"></span><span class="cnt s">3</span></div>
+          <div class="sb">
+            <div class="row"><label><span class="dot"></span>Hizalama</label><div class="ctl"><div class="seg"><span><i class="bi bi-text-left"></i></span><span class="on"><i class="bi bi-text-center"></i></span><span><i class="bi bi-text-right"></i></span><span><i class="bi bi-justify"></i></span></div></div></div>
+            <div class="row"><label><span class="dot ring"></span>Boyut</label><div class="ctl"><div class="inp mxd">— Çoklu — <i class="bi bi-chevron-down"></i></div></div></div>
+            <div class="row"><label><span class="dot ring"></span>Renk</label><div class="ctl"><span class="sw mx2"></span><div class="inp mxd">— Çoklu — <i class="bi bi-chevron-down"></i></div></div></div>
+          </div>
+        </div>
+
+        <div class="sec">
+          <div class="sh"><i class="bi bi-chevron-down cv"></i> Boşluklar <span class="sp"></span><div class="bps"><span>XS</span><span>SM</span><span class="on">MD</span><span>LG</span><span>XL</span></div></div>
+          <div class="sb">
+            <div class="bm">
+              <span class="lab">Dış</span>
+              <span class="v t set">3</span><span class="v b mx">~</span><span class="v l">0</span><span class="v rr">0</span>
+              <div class="in">
+                <span class="lab">İç</span>
+                <span class="v t">0</span><span class="v b">0</span><span class="v l mx">~</span><span class="v rr mx">~</span>
+                <div class="core">3 öğe</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="sec cl"><div class="sh"><i class="bi bi-chevron-right cv"></i> Renk ve arka plan <span class="sp"></span><span class="st2">çoklu</span><span class="cnt s">1</span></div></div>
+        <div class="pf"><i class="bi bi-funnel"></i> Yalnız değiştirdiklerim <span class="cnt s">5</span><span class="sp"></span><span class="tg"></span></div>
+      </div>
+      <span class="pin n" style="right:-11px;top:97px">2</span>
+      <span class="pin n" style="left:-11px;top:271px">3</span>
+      <span class="pin n" style="right:-11px;top:309px">5</span>
+      <span class="pin n" style="right:-11px;top:456px">3</span>
+      <span class="pin n" style="left:-11px;top:558px">6</span>
+    </div>
+
+    <div class="rules">
+      <div class="note"><span class="n">1</span><p><b>Kimlik:</b> kaç öğe seçili; türleri aynıysa türün adı, değilse "karışık". Yol yerine ortak üst öğe ya da türlerin listesi.</p></div>
+      <div class="note"><span class="n">2</span><p><b>İçerik yalnız ortak seçenekleri gösterir</b> (bugünkü kural: metin, bağlantı ve görsel adresi öğeye özeldir). Türler farklıysa sekme çizilmez, Stil açılır.</p></div>
+      <div class="note"><span class="n">3</span><p><b>Değerler aynıysa denetim tek öğedeki gibidir.</b> Farklıysa "— Çoklu —": grupta seçili parça yok, seçimde bulunan değerler çerçeveli; alanda gri yazı; kutuda "~".</p></div>
+      <div class="note"><span class="n">4</span><p><b>Seçmek ya da yazmak hepsine yazar,</b> tek geri-al adımı olarak.</p></div>
+      <div class="note"><span class="n">5</span><p><b>Nokta:</b> hepsinde değişmişse dolu, bir kısmında değişmişse halka; ipucu "3 öğenin 2'sinde". Geri al oku satırı hepsinde varsayılana döndürür.</p></div>
+      <div class="note"><span class="n">6</span><p><b>Rozetler</b> en az bir öğede değişmiş satırları sayar; özet farklıysa "çoklu" yazar.</p></div>
+      <div class="note"><span class="n">7</span><p><b>Hızlı şerit</b> yalnız türler aynıyken görünür.</p></div>
+      <div class="note"><span class="n">8</span><p><b>Fırça:</b> "Stili yapıştır" hepsine yazar; "Stili kopyala" tek öğe ister, soluk durur.</p></div>
+      <div class="note"><span class="n">9</span><p><b>Yalnız değiştirdiklerim:</b> her satır bir kez, yanında kaç öğede değiştiği.</p></div>
+      <div class="fact"><strong>Kaybolan bir şey yok:</strong> ortak seçeneklerin listesi ve "— Çoklu —" bugünkü çoklu düzenleyicinin kuralıdır; yeni olan çerçeve, halka nokta ve sayılardır.</div>
+    </div>
+  </div>
+  <div class="foot"><span>Değerler örnektir; panel 336 px. Dar sütunda dar sütun panosunun kuralları aynen geçerlidir</span><span>Seçenekler paneli · çoklu seçim</span></div>
+</section>
+
+<!-- ============================ BOARD E ============================ -->
+<style>
+/* ---------- the Pages and Move windows on a phone ---------- */
+.fon{width:390px;height:708px;border-radius:28px;border:1px solid var(--line2);background:#0c1014;position:relative;overflow:hidden;box-shadow:0 30px 70px -30px #000}
+.fon .tbar{height:46px;display:flex;align-items:center;gap:12px;padding:0 14px;color:var(--dim);font-size:15px;border-bottom:1px solid var(--line);opacity:.55}
+.fon .tbar .tabn{flex:1;min-width:0;height:30px;border-radius:8px;background:var(--raise2);color:#aab3bf;font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px;padding:0 9px;white-space:nowrap;overflow:hidden}
+.fon .sht{position:absolute;left:0;right:0;top:58px;bottom:0;background:var(--panel);border-radius:20px 20px 0 0;border-top:1px solid var(--line2);box-shadow:0 -20px 50px -10px #000;display:flex;flex-direction:column}
+.fon .grab{width:38px;height:4px;border-radius:9px;background:var(--line2);margin:8px auto 2px;flex:none}
+.fon .hd2{display:flex;align-items:center;gap:9px;padding:6px 12px 8px;font-weight:640;font-size:15px;flex:none}
+.fon .hd2 .sp{flex:1}
+.fon .tbt{height:36px;padding:0 12px;border-radius:10px;background:var(--raise2);border:1px solid var(--line2);color:var(--text);font-size:12.5px;font-weight:600;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.fon .tbt.sq{width:36px;padding:0;justify-content:center;font-size:15px;color:var(--muted)}
+.fon .find{height:40px;margin:0 12px 8px;font-size:13.5px;flex:none}
+.fon .fchips{padding:0 12px 8px;gap:7px;flex:none;overflow:hidden}
+.fon .fchips span{height:32px;padding:0 12px;font-size:12.5px;flex:none}
+.fon .gh2{display:flex;align-items:center;gap:8px;height:34px;padding:0 14px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;color:var(--muted);flex:none}
+.fon .gh2 .c{width:9px;height:9px;border-radius:3px}
+.fon .gh2 .sp{flex:1}
+.fon .rw{display:flex;align-items:center;gap:10px;height:44px;margin:0 6px;padding:0 4px 0 10px;border-radius:10px;font-size:13.5px;color:#d6dbe3;white-space:nowrap;flex:none}
+.fon .rw.on{background:var(--accsoft);box-shadow:0 0 0 1px var(--accline) inset;color:#fff}
+.fon .rw>i{font-size:14px;color:var(--muted);flex:none}
+.fon .rw .d{width:7px;height:7px;border-radius:50%;background:var(--acc);flex:none;margin-left:-3px}
+.fon .rw .ad{color:var(--muted);font-size:12px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.fon .rw .who{font-size:11.5px;color:var(--warn);display:flex;align-items:center;gap:5px;flex:none}
+.fon .rw .dots{width:36px;height:44px;display:grid;place-items:center;color:var(--muted);font-size:15px;flex:none}
+.fon .ttl{padding:6px 12px 10px;display:flex;gap:10px;align-items:flex-start;font-weight:640;font-size:14.5px;line-height:1.3;flex:none}
+.fon .ttl i.mv{color:var(--acc);font-size:16px;margin-top:1px}
+.fon .ttl span{flex:1}
+.fon .hit{display:flex;align-items:center;gap:11px;height:54px;margin:0 8px;padding:0 10px;border-radius:11px;flex:none}
+.fon .hit.on{background:var(--accsoft);box-shadow:0 0 0 1px var(--accline) inset}
+.fon .hit i.ic2{width:32px;height:32px;border-radius:9px;background:#11151a;border:1px solid var(--line);display:grid;place-items:center;color:var(--acc);font-size:15px;flex:none}
+.fon .hit .tx{flex:1;min-width:0}
+.fon .hit .tx b{display:block;font-weight:620;font-size:13.5px}
+.fon .hit .tx span{display:block;color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fon .hit mark{background:rgba(245,181,74,.25);color:#ffd68a;border-radius:3px;padding:0 1px}
+.fon .hit .ck{color:var(--acc);font-size:16px}
+.fon .acts{margin-top:auto;display:flex;gap:8px;padding:10px 12px;border-top:1px solid var(--line);background:#141920;flex:none}
+.fon .acts .seg{height:44px;padding:3px;flex:1}
+.fon .acts .seg span{height:36px;font-size:12.5px}
+.fon .acts .go{height:44px;padding:0 20px;border-radius:10px;background:var(--acc2);color:#fff;font-weight:650;font-size:13.5px;display:grid;place-items:center;flex:none}
+.fon .kbd{height:236px;background:#1b2027;border-top:1px solid var(--line);display:grid;place-items:center;color:var(--dim);font-size:12px;letter-spacing:.08em;text-transform:uppercase;flex:none}
+.fon .rmn{position:absolute;right:14px;top:300px;width:200px;padding:5px;border-radius:12px;background:var(--raise);border:1px solid var(--line2);box-shadow:0 18px 40px -14px #000;z-index:4}
+.fon .rmn .mi{height:44px;font-size:13.5px}
+</style>
+<section class="board" id="be">
+  <div class="kicker">Sayfa Tasarım Stüdyosu · telefonda pencereler</div>
+  <h1>Sayfalar ve Taşı pencereleri, 390 px'lik telefonda</h1>
+  <div class="sub">İki pencere de alttan açılan tam boy bir sayfa olur. İçerik onaylı çizimlerdeki gibidir; ölçüler dokunmaya göre büyür.</div>
+
+  <div class="stage" style="gap:30px;margin-top:14px">
+    <div style="position:relative">
+      <div class="fon">
+        <div class="tbar"><i class="bi bi-layout-sidebar"></i><i class="bi bi-palette2"></i><span class="tabn"><span style="width:6px;height:6px;border-radius:50%;background:var(--acc)"></span> urun-detay</span><i class="bi bi-files"></i><i class="bi bi-rocket-takeoff"></i></div>
+        <div class="sht">
+          <div class="grab"></div>
+          <div class="hd2"><i class="bi bi-files" style="color:var(--acc)"></i> Sayfalar <span class="cnt s">37</span><span class="sp"></span><span class="tbt"><i class="bi bi-plus-lg"></i> Sayfa ekle</span><span class="tbt sq"><i class="bi bi-x-lg"></i></span></div>
+          <div class="find"><i class="bi bi-search"></i><span>Ad ya da adres yaz…</span></div>
+          <div class="fchips"><span class="on">Tümü 37</span><span><i style="width:6px;height:6px;border-radius:50%;background:var(--acc);display:block"></i>Değişen 2</span><span>Taslak 3</span><span>Son açılan</span></div>
+          <div class="gh2"><span class="c" style="background:var(--ok)"></span> Mağaza <span class="sp"></span>6</div>
+          <div class="rw"><i class="bi bi-house"></i> anasayfa <span class="ad">/</span><span class="who"><i class="bi bi-lock"></i> Erdal'da açık</span><span class="dots"><i class="bi bi-three-dots-vertical"></i></span></div>
+          <div class="rw"><i class="bi bi-file-earmark"></i> magaza <span class="ad">/magaza</span><span class="dots"><i class="bi bi-three-dots-vertical"></i></span></div>
+          <div class="rw on"><span class="d"></span><i class="bi bi-file-earmark" style="color:#cfe0ff"></i> urun-detay <span class="ad" style="color:#b9cdf5">/urun-detay · açık</span><span class="dots"><i class="bi bi-three-dots-vertical" style="color:#fff"></i></span></div>
+          <div class="rw"><i class="bi bi-file-earmark"></i> sepet <span class="ad">/sepet</span><span class="dots"><i class="bi bi-three-dots-vertical"></i></span></div>
+          <div class="rw"><i class="bi bi-file-earmark"></i> odeme <span class="ad">/odeme</span><span class="chip w">taslak</span><span class="dots"><i class="bi bi-three-dots-vertical"></i></span></div>
+          <div class="rw"><span class="d"></span><i class="bi bi-file-earmark"></i> siparis-ozeti <span class="ad">/siparis-ozeti</span><span class="dots"><i class="bi bi-three-dots-vertical"></i></span></div>
+          <div class="gh2" style="margin-top:4px"><span class="c" style="background:#5b9bff"></span> Hesap <span class="sp"></span>13</div>
+          <div class="rw"><i class="bi bi-file-earmark"></i> giris <span class="ad">/giris</span><span class="dots"><i class="bi bi-three-dots-vertical"></i></span></div>
+          <div class="rw" style="color:var(--muted)"><i class="bi bi-three-dots"></i> 12 sayfa daha</div>
+          <div class="gh2" style="margin-top:4px"><i class="bi bi-chevron-right" style="font-size:10px"></i><span class="c" style="background:#f5b54a"></span> Blog <span class="sp"></span>3</div>
+        </div>
+        <div class="rmn">
+          <div class="mi"><i class="bi bi-pencil"></i> Adını değiştir</div>
+          <div class="mi"><i class="bi bi-folder-symlink"></i> Gruba taşı…</div>
+        </div>
+      </div>
+      <span class="pin n" style="left:-11px;top:59px">1</span>
+      <span class="pin n" style="right:-11px;top:133px">2</span>
+      <span class="pin n" style="left:-11px;top:181px">4</span>
+      <span class="pin n" style="right:-11px;top:257px">5</span>
+      <span class="pin n" style="left:-11px;top:301px">2</span>
+      <span class="pin n" style="right:-11px;top:345px">3</span>
+    </div>
+
+    <div style="position:relative">
+      <div class="fon">
+        <div class="tbar"><i class="bi bi-layout-sidebar"></i><i class="bi bi-palette2"></i><span class="tabn"><span style="width:6px;height:6px;border-radius:50%;background:var(--acc)"></span> urun-detay</span><i class="bi bi-files"></i><i class="bi bi-rocket-takeoff"></i></div>
+        <div class="sht" style="top:58px">
+          <div class="grab"></div>
+          <div class="ttl"><i class="bi bi-arrows-move mv"></i><span>"Bağlantı · Siparişlerim" nereye taşınsın?</span><span class="tbt sq" style="flex:none"><i class="bi bi-x-lg"></i></span></div>
+          <div class="find act"><i class="bi bi-search" style="color:var(--acc)"></i><span style="color:var(--text)">alt bilgi<i class="cur"></i></span></div>
+          <div class="hit on"><i class="bi bi-list ic2"></i><div class="tx"><b>Bağlantı Listesi</b><span>Mağaza <mark>Alt Bilgi</mark>si › Sütun 2</span></div><i class="bi bi-check-lg ck"></i></div>
+          <div class="hit"><i class="bi bi-layout-three-columns ic2"></i><div class="tx"><b>Sütun 3</b><span>Mağaza <mark>Alt Bilgi</mark>si › Satır</span></div></div>
+          <div class="acts"><div class="seg"><span>Öncesine</span><span class="on">İçine</span><span>Sonrasına</span></div><span class="go">Taşı</span></div>
+          <div class="kbd">klavye</div>
+        </div>
+      </div>
+      <span class="pin n" style="right:-11px;top:89px">6</span>
+      <span class="pin n" style="right:-11px;top:190px">7</span>
+      <span class="pin n" style="left:-11px;top:428px">6</span>
+    </div>
+
+    <div class="rules" style="padding-top:6px">
+      <div class="note"><span class="n">1</span><p><b>Alttan açılan tam boy sayfa.</b> Tutamaçtan aşağı çekmek ya da × kapatır. Telefonda aynı anda tek katman açıktır; bugünkü kural.</p></div>
+      <div class="note"><span class="n">2</span><p><b>Satır 44 px, arama 40 px:</b> dokunma hedefi. Klavye ipuçları (↑ ↓, Enter, F2, Ctrl P) çizilmez.</p></div>
+      <div class="note"><span class="n">3</span><p><b>F2 ve sürüklemenin karşılığı satırın üç noktasıdır:</b> "Adını değiştir" ve "Gruba taşı…".</p></div>
+      <div class="note"><span class="n">4</span><p><b>Süzgeçler tek satır;</b> sığmazsa yana kayar.</p></div>
+      <div class="note"><span class="n">5</span><p><b>Kilit:</b> ipucu olmadığı için kimde açık olduğu satırda yazar.</p></div>
+      <div class="note"><span class="n">6</span><p><b>Taşı:</b> pencere arama odaklı açılır, klavye gelir. Yer seçimi ve "Taşı" düğmesi klavyenin üstünde sabit durur, 44 px.</p></div>
+      <div class="note"><span class="n">7</span><p><b>Sonuç satırı 54 px;</b> seçilen hedef işaretlenir.</p></div>
+      <div class="fact"><strong>Telefonda nereden açılır?</strong> Sayfalar: üst çubuktaki düğmeden. Taşı: seçili öğenin tuval araç çubuğundan ve Genel Bakış satırının menüsünden. Kısayollar (Ctrl P, M) klavyesi olan cihazda çalışmaya devam eder.</div>
+    </div>
+  </div>
+  <div class="foot"><span>Çerçeve 390 × 708 px. Sayfa ve grup adları Online Mağaza tasarımından; kilit ve taslak işaretleri örnek</span><span>Telefonda pencereler</span></div>
+</section>
+
+<!-- ============================ BOARD F ============================ -->
+<style>
+/* ---------- the page strip: on a narrow screen, and with publish approval on (1280 x 1070, the only board not 900 high) ---------- */
+#bf{height:1070px}
+#bf .sub{max-width:1120px}
+.sct{display:flex;align-items:center;gap:9px;margin-top:11px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.sct small{letter-spacing:0;text-transform:none;font-size:12px;font-weight:400;color:var(--muted)}
+.tag.sec,.nsl .tag.sec{background:var(--accsoft);color:var(--acc);letter-spacing:.06em;font-size:10.5px;text-transform:uppercase}
+.ns{display:flex;align-items:center;gap:10px;margin-top:6px}
+.ns .side{flex:none;height:44px;border-radius:12px;border:1px dashed var(--line2);color:var(--dim);font-size:11px;display:flex;align-items:center;justify-content:center;gap:10px;padding:0 10px}
+.ns .side i{font-size:14px}
+.ns .tb{flex:none;overflow:hidden}
+.ns .tb .ptab.cut{min-width:0;flex:0 1 auto}
+.ns .tb .ptab.cut span.nm2{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.more{height:30px;padding:0 8px;border-radius:8px;display:flex;align-items:center;gap:5px;font-weight:650;color:#cfe0ff;background:var(--accsoft);border:1px solid var(--accline);flex:none;font-size:11.5px}
+.ns .grp.ic{padding:0 7px}
+.ns .gbox.nolab{padding-left:4px}
+.nsl{display:flex;align-items:center;gap:10px;margin-top:10px}
+.nsl b{font-size:13px;font-weight:650}
+.nsl span{color:var(--muted);font-size:12px}
+.nsl .mk{display:flex;gap:5px;margin-left:6px}
+.nsl .mk .n{width:20px;height:20px;font-size:11px;box-shadow:none;color:#06122b}
+.lv{display:grid;grid-template-columns:22px 1fr;gap:6px 10px;font-size:12.5px;color:#b9c1cc;line-height:1.4}
+.lv b{color:var(--text);font-weight:620}
+.lv .n{width:20px;height:20px;font-size:11px}
+.nt3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px 26px;margin-top:10px}
+/* publish approval: the label and the count (a pill with the hourglass), an answer's icon */
+.am{display:inline-flex;align-items:center;gap:4px;height:15px;padding:0 6px;border-radius:6px;background:rgba(245,181,74,.14);color:var(--warn);font-size:9.5px;font-weight:650;flex:none;white-space:nowrap}
+#bf .am i{font-size:9px;color:var(--warn)}
+.am.ic{padding:0 4px}
+#bf i.ai{font-size:13px;flex:none}
+#bf i.ai.ok{color:var(--ok)}
+#bf i.ai.no{color:var(--bad)}
+#bf i.ai.st{color:var(--warn)}
+.lg{display:flex;flex-direction:column;gap:6px;font-size:12.5px;color:#b9c1cc;line-height:1.45}
+.lg b{color:var(--text);font-weight:620}
+.lg .am{vertical-align:1px;margin-right:3px}
+#bf .lg i.ai{vertical-align:-1.5px;margin-right:5px;line-height:1}
+.npop{padding:10px 12px 11px}
+.npop .t{display:flex;align-items:center;gap:7px;font-weight:640;font-size:12.5px}
+.npop p{margin:5px 0 9px;color:#b9c1cc;font-size:11.5px;line-height:1.4}
+.npop .a{display:flex;justify-content:flex-end}
+.cap{margin:6px 2px 0;color:var(--muted);font-size:11px;line-height:1.35}
+/* step 6: the Pages button beside the strip carries the mark of the pages that are not open */
+.ns .pgb{border-color:var(--line2);font-size:12px;gap:7px}
+.ns .pgb i.bi-files{font-size:14px;color:#d6dbe3}
+.ns .rl{color:var(--muted);font-size:11.5px}
+</style>
+<section class="board" id="bf">
+  <div class="kicker">Sayfa Tasarım Stüdyosu · Sayfalar · dar ekran ve yayın onayı</div>
+  <h1>Sayfa şeridi: daraldıkça ve yayın onayı açıkken</h1>
+  <div class="sub">Şerit kaymaz, ikinci satıra inmez; sığmayan aşağıdaki sırayla yer açar. Yayın onayı açık sitede sekme bir onay işareti de taşır; şerit daralınca o da kaybolmaz.</div>
+
+  <div class="nsl" style="margin-top:14px"><span class="tag sec">DAR EKRAN</span><b>Şerit 1.130 px ve üstü</b><span>1440 px'lik ekranda · onaylı çizim, her şey sığar</span></div>
+  <div class="ns">
+    <div class="tb" style="width:1130px;font-size:12px">
+      <span class="grp" style="background:transparent"> Online Mağaza <i class="bi bi-chevron-down" style="font-size:10px;color:var(--muted)"></i></span>
+      <span class="dv"></span>
+      <span class="gbox"><b>Mağaza</b>
+        <span class="ptab"><i class="bi bi-house"></i> anasayfa</span><span class="ptab">magaza</span><span class="ptab on"><span class="d"></span> urun-detay <i class="bi bi-three-dots-vertical"></i></span><span class="ptab">sepet</span><span class="ptab">odeme <span class="chip w" style="height:15px;font-size:9.5px">taslak</span></span><span class="ptab">siparis-ozeti</span>
+      </span>
+      <span class="grp"><span class="c" style="background:#5b9bff"></span> Hesap <span class="cnt s">13</span></span>
+      <span class="grp"><span class="c" style="background:#f5b54a"></span> Blog <span class="cnt s">3</span></span>
+      <span class="grp"><span class="c" style="background:#c084fc"></span> E-postalar <span class="cnt s">7</span></span>
+      <span class="grp"><span class="c" style="background:#8c96a4"></span> Diğer <span class="cnt s">8</span></span>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:30px">
+    <div style="width:826px;flex:none;position:relative">
+      <div class="nsl"><b>Şerit 640 px</b><span>1024 px'lik ekranda</span><span class="mk"><span class="n">1</span><span class="n">2</span><span class="n">3</span></span></div>
+      <div class="ns">
+        <div class="tb" style="width:640px;font-size:12px">
+          <span class="grp" style="background:transparent"> Online Mağaza <i class="bi bi-chevron-down" style="font-size:10px;color:var(--muted)"></i></span>
+          <span class="dv"></span>
+          <span class="gbox"><b>Mağaza</b>
+            <span class="ptab">magaza</span><span class="ptab on"><span class="d"></span> urun-detay <i class="bi bi-three-dots-vertical"></i></span><span class="ptab">sepet</span><span class="more">+3</span>
+          </span>
+          <span class="grp"><span class="c" style="background:#5b9bff"></span> Hesap</span>
+          <span class="more">+3 grup</span>
+        </div>
+        <div class="side"><i class="bi bi-files"></i><i class="bi bi-stars"></i><i class="bi bi-arrow-counterclockwise"></i><i class="bi bi-arrow-clockwise"></i><i class="bi bi-rocket-takeoff"></i></div>
+      </div>
+
+      <div class="nsl"><b>Şerit 380 px</b><span>768 px'lik ekranda</span><span class="mk"><span class="n">4</span><span class="n">5</span></span></div>
+      <div class="ns">
+        <div class="tb" style="width:380px;font-size:12px">
+          <span class="grp ic" style="background:transparent"><i class="bi bi-palette2"></i><i class="bi bi-chevron-down" style="font-size:10px;color:var(--muted)"></i></span>
+          <span class="dv"></span>
+          <span class="gbox nolab">
+            <span class="ptab on"><span class="d"></span> urun-detay <i class="bi bi-three-dots-vertical"></i></span><span class="ptab">sepet</span><span class="more">+4</span>
+          </span>
+          <span class="more">4 grup</span>
+        </div>
+        <div class="side"><i class="bi bi-files"></i><i class="bi bi-stars"></i><i class="bi bi-arrow-counterclockwise"></i><i class="bi bi-arrow-clockwise"></i><i class="bi bi-rocket-takeoff"></i></div>
+      </div>
+
+      <div class="nsl"><b>Şerit 150 px</b><span>390 px'lik telefonda</span><span class="mk"><span class="n">6</span></span></div>
+      <div class="ns">
+        <div class="side" style="padding:0 8px"><i class="bi bi-layout-sidebar"></i></div>
+        <div class="tb" style="width:150px;font-size:12px;padding:0 5px;gap:3px">
+          <span class="grp ic" style="background:transparent;padding:0 5px"><i class="bi bi-palette2"></i></span>
+          <span class="gbox nolab" style="min-width:0;flex:1 1 auto">
+            <span class="ptab on cut"><span class="d"></span><span class="nm2">kargo-ve-iade-kosullari</span><i class="bi bi-three-dots-vertical"></i></span>
+          </span>
+        </div>
+        <div class="side" style="padding:0 8px"><i class="bi bi-files"></i><i class="bi bi-stars"></i><i class="bi bi-arrow-counterclockwise"></i><i class="bi bi-arrow-clockwise"></i><i class="bi bi-rocket-takeoff"></i></div>
+      </div>
+
+      <div style="position:absolute;left:596px;top:84px;width:230px">
+        <div class="col-title" style="margin:0 0 6px">"+3 grup" çipine tıklayınca</div>
+        <div class="pp">
+          <div class="pr" style="margin-top:6px"><span class="c" style="width:8px;height:8px;border-radius:3px;background:#f5b54a"></span> Blog <span class="ad"></span>3 <i class="bi bi-chevron-right" style="font-size:10px"></i></div>
+          <div class="pr"><span class="c" style="width:8px;height:8px;border-radius:3px;background:#c084fc"></span> E-postalar <span class="ad"></span>7 <i class="bi bi-chevron-right" style="font-size:10px"></i></div>
+          <div class="pr" style="margin-bottom:6px"><span class="c" style="width:8px;height:8px;border-radius:3px;background:#8c96a4"></span> Diğer <span class="ad"></span>8 <i class="bi bi-chevron-right" style="font-size:10px"></i></div>
+          <div class="pfoot"><i class="bi bi-files"></i> Bir gruba tıklayınca sayfaları açılır</div>
+          <div class="pfoot" style="border-top:0;height:22px;align-items:flex-start"><i class="bi bi-arrows-expand" style="margin-top:2px"></i> Açılan sayfanın grubu şeritte açılır</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="flex:1;min-width:0;padding-top:14px">
+      <div class="col-title" style="margin:0 0 6px">Yer açma sırası</div>
+      <div class="lv">
+        <span class="n">1</span><div><b>Çiplerden sayı gider,</b> ad kalır.</div>
+        <span class="n">2</span><div><b>Açık grubun uzak sekmeleri "+N" çipine girer;</b> açık sayfaya en yakınlar kalır.</div>
+        <span class="n">3</span><div><b>Çipler sağdan katlanır:</b> sığmayanlar "+N grup" çipinde listelenir.</div>
+        <span class="n">4</span><div><b>Tasarımın adı simgeye iner;</b> adı ipucunda ve menünün başında yazar. Kutudan grubun adı gider, rengi kalır.</div>
+        <span class="n">5</span><div><b>Bütün çipler tek çipte toplanır</b> ("4 grup").</div>
+        <span class="n">6</span><div><b>Yalnız açık sayfanın sekmesi kalır;</b> adı sığmazsa üç noktayla kesilir, en az 60 px.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="lv nt3">
+    <div style="display:flex;gap:10px"><span class="n r">!</span><div><b>Hiçbir basamakta kaybolmayanlar:</b> açık sayfanın sekmesi, durumu (değişti noktası, taslak, kilit) ve üç nokta menüsü.</div></div>
+    <div style="display:flex;gap:10px"><span class="n r">!</span><div><b>Sayfalar düğmesi şeridin dışındadır,</b> her genişlikte durur (Ctrl+P). Kesikli kutular üst çubuğun öbür düğmeleridir.</div></div>
+    <div style="display:flex;gap:10px"><span class="n r">!</span><div><b>Kural tek:</b> en dolu çizimden başlanır, sığan ilk basamak çizilir. Şerit kendi genişliğine bakar; genişlikler örnektir.</div></div>
+  </div>
+
+  <div class="sct" style="margin-top:13px"><span class="tag sec">YAYIN ONAYI</span> açık sitede sekmenin beş işareti <small>Site Ayarları › Özellikler › "İçerik değişiklikleri onay bekler". Kapalıyken şerit bunların hiçbirini çizmez.</small></div>
+  <div style="display:flex;gap:28px">
+    <div style="width:740px;flex:none">
+      <div class="nsl" style="margin-top:8px"><b>İçerik editörünün şeridi</b><span>kendi değişikliğinin durumunu görür, başkasınınkini görmez · grupsuz tasarım</span></div>
+      <div class="ns">
+        <div class="tb" style="width:740px;font-size:12px">
+          <span class="grp" style="background:transparent"> Kurumsal Site <i class="bi bi-chevron-down" style="font-size:10px;color:var(--muted)"></i></span>
+          <span class="dv"></span>
+          <span class="ptab"><i class="bi bi-house"></i> anasayfa</span><span class="ptab on">hakkimizda <span class="am"><i class="bi bi-hourglass-split"></i> Onay Bekleyen</span> <i class="bi bi-three-dots-vertical"></i></span><span class="ptab">iletisim <i class="bi bi-check-circle ai ok"></i></span><span class="ptab">fiyatlar <i class="bi bi-x-circle ai no"></i></span><span class="ptab">ekip <i class="bi bi-exclamation-triangle ai st"></i></span><span class="more">+4 <i class="bi bi-hourglass-split ai st" style="font-size:11px"></i></span>
+        </div>
+      </div>
+      <div class="nsl"><b>Tasarımcının şeridi</b><span>sayfada kaç değişikliğin beklediğini görür</span></div>
+      <div class="ns">
+        <div class="tb" style="width:740px;font-size:12px">
+          <span class="grp" style="background:transparent"> Online Mağaza <i class="bi bi-chevron-down" style="font-size:10px;color:var(--muted)"></i></span>
+          <span class="dv"></span>
+          <span class="gbox"><b>Mağaza</b>
+            <span class="ptab">magaza <span class="am"><i class="bi bi-hourglass-split"></i> 1</span></span><span class="ptab on"><span class="d"></span> urun-detay <i class="bi bi-three-dots-vertical"></i></span><span class="ptab">sepet <span class="am"><i class="bi bi-hourglass-split"></i> 2</span></span><span class="more">+3</span>
+          </span>
+          <span class="grp"><span class="c" style="background:#5b9bff"></span> Hesap <span class="am"><i class="bi bi-hourglass-split"></i> 3</span></span>
+          <span class="more">+3 grup</span>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:16px;margin-top:14px;align-items:flex-start">
+        <div style="width:256px;flex:none">
+          <div class="col-title" style="margin:0 0 6px">Etikete tıklayınca</div>
+          <div class="pp npop">
+            <div class="t"><i class="bi bi-hourglass-split" style="color:var(--warn)"></i> Onay Bekleyen</div>
+            <p>Bu sayfadaki değişikliğiniz bir tasarımcının onayını bekliyor. Uygulanana kadar ziyaretçiler sayfayı eski hâliyle görür.</p>
+            <div class="a"><span class="btn">Geri çek</span></div>
+          </div>
+          <div class="cap">Bu not yalnız etikete tıklayınca açılır.</div>
+        </div>
+        <div style="width:256px;flex:none">
+          <div class="col-title" style="margin:0 0 6px">Yanıt gelince</div>
+          <div class="pp npop">
+            <div class="t"><i class="bi bi-x-circle" style="color:var(--bad)"></i> Değişikliğiniz reddedildi</div>
+            <p>"fiyatlar" sayfasındaki değişikliğiniz reddedildi. Sebep: Lütfen eski fiyatları koruyun; yenileri Mart'ta başlıyor.</p>
+            <div class="a"><span class="btn">Kapat</span></div>
+          </div>
+          <div class="cap">Açık sayfada bir kez kendiliğinden açılır; Kapat işareti kaldırır.</div>
+        </div>
+        <div style="flex:1;min-width:0">
+          <div class="col-title" style="margin:0 0 6px">"+4" çipine tıklayınca</div>
+          <div class="pp">
+            <div class="gh" style="height:28px">Sığmayan 4 sayfa</div>
+            <div class="pr">&nbsp;<i class="bi bi-file-earmark"></i> referanslar</div>
+            <div class="pr">&nbsp;<i class="bi bi-file-earmark"></i> kariyer <span class="chip w" style="height:15px;font-size:9.5px">taslak</span></div>
+            <div class="pr">&nbsp;<i class="bi bi-file-earmark"></i> sss <span class="am"><i class="bi bi-hourglass-split"></i> Onay Bekleyen</span></div>
+            <div class="pr" style="margin-bottom:6px">&nbsp;<i class="bi bi-file-earmark"></i> gizlilik</div>
+          </div>
+          <div class="cap">Katlı sayfanın işareti her listede satırındadır: "+N", çipin listesi, Sayfalar penceresi.</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="flex:1;min-width:0;padding-top:10px">
+      <div class="col-title" style="margin:0 0 6px">Beş işaret</div>
+      <div class="lg">
+        <div><span class="am"><i class="bi bi-hourglass-split"></i> Onay Bekleyen</span> <b>Etiket:</b> editörün kendi değişikliği bir tasarımcıyı bekliyor. Tıklayınca notu açılır; Geri çek oradadır.</div>
+        <div><i class="bi bi-check-circle ai ok"></i><b>Uygulandı:</b> tasarımcı uyguladı, değişiklik sitede.</div>
+        <div><i class="bi bi-x-circle ai no"></i><b>Reddedildi:</b> sebebi notunda yazar.</div>
+        <div><i class="bi bi-exclamation-triangle ai st"></i><b>Uygulanamıyor:</b> sayfa sonradan değişti; editör sayfayı açıp değişikliğini yeniden kaydeder.</div>
+        <div><span class="am"><i class="bi bi-hourglass-split"></i> 2</span> <b>Tasarımcının sayısı:</b> sayfada bekleyen değişiklikler. Tıklayınca listeleri yeni sekmede açılır.</div>
+      </div>
+      <div class="lg" style="margin-top:6px"><div><b>Sekmede en çok bir onay işareti olur;</b> adın sağında, üç nokta menüsünden önce durur. İşarete tıklamak sekmeyi değiştirmez.</div></div>
+
+      <div class="col-title" style="margin:13px 0 0">Dar şeritte işaretler <span style="letter-spacing:0;text-transform:none;font-weight:400;font-size:11.5px">6. basamak · şerit 150 px</span></div>
+      <div class="ns">
+        <div class="tb" style="width:150px;font-size:12px;padding:0 5px;gap:3px">
+          <span class="grp ic" style="background:transparent;padding:0 5px"><i class="bi bi-palette2"></i></span>
+          <span class="ptab on cut" style="flex:1 1 auto"><span class="nm2">hakkimizda</span><span class="am ic"><i class="bi bi-hourglass-split"></i></span><i class="bi bi-three-dots-vertical"></i></span>
+        </div>
+        <span class="grp pgb"><i class="bi bi-files"></i><i class="bi bi-exclamation-triangle ai st"></i></span>
+        <div class="side" style="padding:0 8px"><i class="bi bi-stars"></i><i class="bi bi-arrow-counterclockwise"></i><i class="bi bi-arrow-clockwise"></i><i class="bi bi-rocket-takeoff"></i></div>
+        <span class="rl">editör</span>
+      </div>
+      <div class="ns">
+        <div class="tb" style="width:150px;font-size:12px;padding:0 5px;gap:3px">
+          <span class="grp ic" style="background:transparent;padding:0 5px"><i class="bi bi-palette2"></i></span>
+          <span class="gbox nolab" style="min-width:0;flex:1 1 auto">
+            <span class="ptab on cut"><span class="nm2">sepet</span><span class="am"><i class="bi bi-hourglass-split"></i> 2</span><i class="bi bi-three-dots-vertical"></i></span>
+          </span>
+        </div>
+        <span class="grp pgb"><i class="bi bi-files"></i><span class="am"><i class="bi bi-hourglass-split"></i> 4</span></span>
+        <div class="side" style="padding:0 8px"><i class="bi bi-stars"></i><i class="bi bi-arrow-counterclockwise"></i><i class="bi bi-arrow-clockwise"></i><i class="bi bi-rocket-takeoff"></i></div>
+        <span class="rl">tasarımcı</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="lv nt3" style="margin-top:12px">
+    <div style="display:flex;gap:10px"><span class="n r">!</span><div><b>4. basamaktan sonra etiketin yazısı gider, kum saati kalır;</b> adı ipucunda ve notunda yazar. Sayı olduğu gibi kalır.</div></div>
+    <div style="display:flex;gap:10px"><span class="n r">!</span><div><b>Katlı sayfanın işareti çipine çıkar:</b> tasarımcıda sayıların toplamı; editörde en önemlisi (uygulanamıyor, reddedildi, uygulandı, onay bekleyen sırasıyla).</div></div>
+    <div style="display:flex;gap:10px"><span class="n r">!</span><div><b>6. basamakta çip kalmaz:</b> açık olmayan sayfaların işareti Sayfalar düğmesine (<i class="bi bi-files" style="font-size:12px;color:var(--text)"></i>) çıkar; tasarımcıda toplam, editörde en önemlisi.</div></div>
+  </div>
+
+  <div class="foot"><span>Etiket ve sayı 15 px, yazı 9,5 px; yanıt simgesi 13 px; tıklama alanı en az 24 × 24. Sekme 30 px, köşe 8, yazı 12,5 px. Renkler: uyarı sarısı, olumlu yeşili, hata kırmızısı. Sayfa adları ve işaretler örnek</span><span>Sayfalar · dar ekran ve yayın onayı</span></div>
 </section>
 
 <script>

@@ -14,7 +14,7 @@ module: connections_registry
 
 ## Which state readers are there?
 - `pg_connections_state_kinds()`: `account` (a connected account of a provider for a purpose; the only kind that reads "needs attention", from `reauth`), `app` (an enabled `connect_apps` row), `service` (`pg_connect_service_get()`), `config` (constants set, or the first equal to `equals`), `reader` (a function answering true from stored data), `marketplace`, `edoc`, `model`, `mcp`, `notify`.
-- Nothing is read yet: the Connections screen implements one reader per kind. A state that nothing stored can tell is left out and named (`no_state`), never kept in a new table.
+- The Connections screen reads them (`ui/connections-screen-layout.md`). A state nothing stored can tell is left out and named (`no_state`), never kept in a new table.
 
 ## What is one service, and what is not counted?
 - One outside product or API the code was written for, with a place to set it up, counted once however many drivers, purposes or screens reach it: iyzico's card and redirect drivers are one row; Google Drive and Google Analytics are two products behind one Google account.

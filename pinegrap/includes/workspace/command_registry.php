@@ -111,7 +111,7 @@ function ws_command_registry()
     $registry = array();
 
     foreach ($entries as $entry) {
-        $registry[$entry['key']] = $entry + array('where' => 'any', 'gate' => '', 'live' => '', 'api' => 'run');
+        $registry[$entry['key']] = $entry + array('where' => 'any', 'gate' => '', 'live' => '', 'api' => 'run', 'variants' => array());
     }
 
     uasort($registry, function ($a, $b) {
@@ -215,7 +215,7 @@ function ws_command_registry_tasks()
 }
 
 /**
- * The plan commands: leave, meetings, a person's week.
+ * The plan commands: leave, meetings, a person's week, a reminder.
  *
  * @return array[]
  */
@@ -257,6 +257,19 @@ function ws_command_registry_plan()
             'args'        => array($arg('person', 'person', lang('@person'), true, 'people')),
             'names' => array('plan'), 'group' => 'plan', 'order' => 120,
             'runner' => 'ws_command_run_plan',
+        ),
+        array(
+            'key' => 'remind', 'tr' => 'hatırlat', 'en' => 'remind', 'label' => '/remind · /hatırlat',
+            'description' => lang('Puts a plan on My calendar that reminds you at its start: a day, a time such as 10:00, then what to remind. Without a time the New plan form opens filled.'),
+            'example'     => lang('/remind tomorrow 10:00 Send the quote'),
+            'args'        => array(
+                $arg('day', 'date', lang('day'), true, 'dates'),
+                $arg('time', 'time', lang('time'), true),
+                $arg('title', 'text', lang('what to remind'), false),
+            ),
+            'names' => array('hatırlat', 'hatirlat', 'remind'), 'group' => 'plan', 'order' => 125,
+            'gate' => 'ws_command_gate_remind', 'runner' => 'ws_command_run_remind', 'live' => 'ws_command_live_remind',
+            'api' => 'ws_api_command_kind_remind',
         ),
     );
 }
@@ -309,6 +322,14 @@ function ws_command_registry_channel()
             'runner' => 'ws_command_run_poll', 'api' => 'ws_api_command_kind_poll',
         ),
         array(
+            'key' => 'recap', 'tr' => 'özet', 'en' => 'recap', 'label' => '/recap · /özet',
+            'description' => lang('Sum up what I missed'),
+            'example'     => lang('/recap'),
+            'args'        => array(),
+            'names' => array('özet', 'ozet', 'recap'), 'group' => 'channel', 'order' => 135,
+            'gate' => 'ws_command_gate_recap', 'runner' => 'ws_command_run_recap',
+        ),
+        array(
             'key' => 'help', 'tr' => 'yardım', 'en' => 'help', 'label' => '/help · /yardım',
             'description' => lang('Lists the commands and what they do.'),
             'example'     => lang('/help'),
@@ -349,7 +370,7 @@ function ws_command_registry_records()
         ),
         array(
             'key' => 'create', 'tr' => 'oluştur', 'en' => 'create', 'label' => '/create · /oluştur',
-            'description' => lang('Creates a product or a product group, off sale: the kind, then its name; a product takes a price and a #group if you like. Shown to you before it is created. Several product lines, one per line, make one card of drafts for you to apply.'),
+            'description' => lang('Creates a product or a product group, off sale, a contact, or a row of a workflow table: the kind, then its name; a product takes a price and a #group if you like, a contact its company and e-mail after commas, a row the table\'s name. Shown to you before it is created. Several product lines, one per line, make one card of drafts for you to apply.'),
             'example'     => lang('/create product Blue mug 149,90'),
             'args'        => array(
                 $arg('kind', 'record_kind', lang('kind'), false, 'kinds'),
@@ -358,8 +379,26 @@ function ws_command_registry_records()
                 $arg('price', 'amount', lang('price'), true),
                 $arg('group', 'record', lang('#group'), true, 'records', array('anywhere' => true)),
             ),
+            // Once a kind word is typed, the strip shows that kind's own
+            // arguments and example; a kind without a line keeps the above.
+            'variants' => array(
+                array(
+                    'words'   => array('kisi', 'contact'),
+                    'args'    => array(
+                        $arg('name', 'text', lang('first and last name'), false, '', array('after' => ',')),
+                        $arg('company', 'text', lang('company'), false, '', array('after' => ',')),
+                        $arg('email', 'text', lang('e-mail'), false),
+                    ),
+                    'example' => lang('/create contact Ada Lovelace, Acme Ltd, ada@example.com'),
+                ),
+                array(
+                    'words'   => array('satir', 'row'),
+                    'args'    => array($arg('table', 'text', lang('table'), false, '', array('multiple' => true))),
+                    'example' => lang('/create row Leads'),
+                ),
+            ),
             'names' => array('oluştur', 'olustur', 'create'), 'group' => 'records', 'order' => 160,
-            'gate' => 'ws_command_gate_product', 'runner' => 'ws_command_run_create', 'api' => 'ws_api_command_kind_create',
+            'gate' => 'ws_command_gate_create', 'runner' => 'ws_command_run_create', 'api' => 'ws_api_command_kind_create',
         ),
         array(
             'key' => 'product', 'tr' => 'ürün', 'en' => 'product', 'label' => '/product · /ürün',
@@ -465,6 +504,18 @@ function ws_api_command_kind_poll($rest)
     $parts = array_filter(array_map('trim', explode('|', $rest)), 'strlen');
 
     return (count($parts) < 3) ? 'preview' : 'run';
+}
+
+/**
+ * The API class of /remind: without a time it opens the New plan form, so
+ * nothing is written; with one the plan is saved.
+ *
+ * @param string $rest
+ * @return string preview | run
+ */
+function ws_api_command_kind_remind($rest)
+{
+    return (ws_command_remind_data($rest)['time'] === '') ? 'preview' : 'run';
 }
 
 /**
