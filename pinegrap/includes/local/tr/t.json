@@ -3169,6 +3169,7 @@
     "The contact group does not exist.": "Kişi grubu yok.",
     "The contact group for the custom form could not be changed, because you do not have access to the contact group you selected.": "Seçtiğiniz rehber grubuna erişiminiz olmadığı için özel formun rehber grubu değiştirilemedi.",
     "The contact group has been created.": "Rehber grubu oluşturuldu.",
+    "The contact group has been created. It is filled by rules that count every order but a cart, by contact, so its size can differ from the cell of the report.": "Kişi grubu oluşturuldu. Sepet dışındaki her siparişi kişi bazında sayan kurallarla doluyor; bu yüzden büyüklüğü rapordaki hücreden farklı olabilir.",
     "The contact group has been deleted.": "Rehber grubu silindi.",
     "The contact group has been saved.": "Rehber grubu kaydedildi.",
     "The contact groups chosen hold no address this campaign may go to.": "Seçilen kişi gruplarında bu kampanyanın gönderilebileceği bir adres yok.",
