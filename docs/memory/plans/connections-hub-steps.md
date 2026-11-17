@@ -13,6 +13,7 @@ description: Plan connections-hub, steps CN1 to CN7: the registry and its census
 - CN2 (S, the sheet) The screen, drawn before it is built.
   - One sheet at 1440, 1024 and 390, light and dark, the longest Turkish names: the list with every state, the attention block, the drawer of a provider with its application and accounts, the drawer of a service whose fields live on a card, the other side's block, a search with no result.
   - Posted in the agent channel; the architect brings it to the owner as one question.
+  - Drawn: the pictures go to the agent channel (message numbers follow here), then the owner's answer.
 
 - CN3 (M) after CN1 and the yes to CN2: the screen.
   - Existing files: `connections.php` (595 lines, an old screen), `includes/settings/registry.php` (the tool's label, its search words).
