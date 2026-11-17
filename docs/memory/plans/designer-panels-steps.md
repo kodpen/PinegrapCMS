@@ -11,7 +11,7 @@ description: Plan designer-panels, steps DP1 to DP5: the chrome's tokens, the ri
 
 - DP2 (M) after DP1: the right column.
   - Existing files: `includes/designer_screen.php` (`#sd-panel-right`, `#sd-properties`, the `#sd-assets-*` panel), `style_designer.css`, `assets/js/style_designer.src.js` (the column's two tabs, `_SD_RAIL_ICONS`, the bottom panel's remembered state).
-  - The column's default width becomes 336 px above 1024 px; a width the user dragged stays; 240 px at 1024 and below stays until the narrow drawing.
+  - The column's default width becomes 336 px above 1024 px; a width the user dragged stays; 240 px at 1024 and below stays, and under 300 px the panel is drawn as `designer-panels-measures-4.md` says.
   - Tests: the remembered state's reader as a pure function.
   - Pictures: Options over the whole column, the Design tab, the bottom strip closed and open, docked under 992 px.
   - Features: D1, D2. Keeps K5.
@@ -36,4 +36,4 @@ description: Plan designer-panels, steps DP1 to DP5: the chrome's tokens, the ri
   - Over 1,000 product lines: cut as DP5a (the tabs, Content) and DP5b (Style, Advanced), said before the claim.
 
 ## Which steps wait for each other?
-- Each waits for the one before it. DP3 also waits for the drawing of the column under 300 px, DP5 for the drawing of a multiple selection (`designer-panels-rules.md`).
+- Each waits for the one before it. DP5 also waits for the drawing of a multiple selection (`designer-panels-rules.md`). DP3 to DP5 draw their parts under 300 px as `options-5-narrow-column.jpg` shows.

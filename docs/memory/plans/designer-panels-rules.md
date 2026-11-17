@@ -26,7 +26,7 @@ description: Plan designer-panels: what today's editor does that no step may los
 - A step that finds its feature cannot be built as written stops and asks; it does not leave the feature out.
 
 ## Which screens does no drawing show yet?
-- The Options column under 300 px (before DP3), a multiple selection in the new panel (before DP5), the page strip on a narrow screen (before DP18), the Pages and Move windows on a phone (before DP20 and DP16).
+- A multiple selection in the new panel (before DP5), the page strip on a narrow screen (before DP18), the Pages and Move windows on a phone (before DP20 and DP16).
 - Each is asked from the drawings' author through the architect and is the owner's to approve. Until its drawing is in `plans/designer-panels/`, that state draws what it draws today inside the new shell, and the PR says so.
 
 ## What does a step's PR body carry?
