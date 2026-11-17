@@ -27,7 +27,7 @@ description: Census LM1b of old panel screens (pages, files, forms, comments, us
 - One group a step, most used first; estimate in brackets, lines of the files in the group after it. Screens and files per group in the part files.
 - S1 Pages, comments, short links, pop-ups, 404 log, accessibility, page tests (620; 12,230): `-content.md`. Done in #9773 (`ui/look-content-screens.md`).
 - S2 Users, sessions, contacts, contact groups, privacy, campaigns, Messages (720; 13,880): `-people.md`. Done in #9692 (`ui/look-people-screens.md`).
-- S3 Submitted forms, form fields and views, files, calendars, bookings (650; 15,170): `-forms.md`. Done in #10314 (`ui/look-forms-files-screens.md`); held files wait (its memory).
-- S4 Menus, regions, ads, styles, themes, design files (430; 9,280), with visitors and logs (320; 3,650): `-content.md`, `-system.md`. Done in #10316 (`ui/look-menus-regions-screens.md`).
+- S3 Submitted forms, form fields and views, files, calendars, bookings (650; 15,170): `-forms.md`. Done in #10314 (`ui/look-forms-files-screens.md`, which lists the held files).
+- S4 Menus, regions, ads, styles, themes, design files, visitors and logs (750; 12,930): `-content.md`, `-system.md`. Done in #10316 (`ui/look-menus-regions-screens.md`).
 - S5 Site Settings categories (565 without fields, which the dialog CSS already sizes; 10,270): `-settings.md`.
 - S6 System tools, Translations, settings pages outside the dialog (825; 14,400): `-system.md`.
