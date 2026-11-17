@@ -2085,6 +2085,140 @@
   }
 }
 
+/* Languages in the top bar: each language's picture, its state, Draw. */
+
+.pgie-langbox {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(600px, calc(100% - 32px));
+  max-height: min(680px, calc(100dvh - 48px));
+}
+
+.pgie-confirm-box.pgie-langbox h2 {
+  margin: 0;
+}
+
+.pgie-langlist {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.pgie-langrow {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border: 1px solid var(--pgie-line);
+  border-radius: 10px;
+}
+
+.pgie-langthumb {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 44px;
+  overflow: hidden;
+  border-radius: 6px;
+  background-color: var(--pgie-hover);
+}
+
+.pgie-langthumb img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.pgie-langname {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.pgie-langname strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pgie-langstate {
+  padding: 2px 8px;
+  border: 1px solid var(--pgie-line);
+  border-radius: 999px;
+  font-size: 12px;
+  white-space: nowrap;
+  color: var(--pgie-muted);
+}
+
+.pgie-langstate.pgie-lang-translated {
+  border-color: var(--pgie-pline);
+  background: var(--pgie-pw);
+  color: var(--pgie-ink);
+}
+
+.pgie-langstate.pgie-lang-drawn {
+  border-color: var(--pgie-primary);
+  background: var(--pgie-primary);
+  color: var(--pgie-on-primary);
+}
+
+.pgie-langstate.pgie-lang-out_of_date {
+  border-style: dashed;
+  color: var(--pgie-tx);
+}
+
+.pgie-langstate.pgie-lang-look {
+  border-color: var(--pgie-danger);
+  color: var(--pgie-danger);
+}
+
+.pgie-langwarn {
+  color: var(--pgie-tx);
+}
+
+.pgie-langfoot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.pgie-langstatus {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.pgie-langstatus.pgie-error {
+  color: var(--pgie-danger);
+}
+
+@media (max-width: 599.98px) {
+  .pgie-langrow {
+    grid-template-columns: 56px minmax(0, 1fr) auto;
+  }
+
+  .pgie-langthumb {
+    width: 56px;
+    height: 40px;
+  }
+
+  .pgie-langstate {
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  .pgie-langrow > .pgie-btn {
+    grid-column: 3;
+    grid-row: 1 / span 2;
+  }
+}
+
 /* -- Export (pg_image_editor_export.js) -- */
 
 /* The result card: before and after, a bar of after against before, the

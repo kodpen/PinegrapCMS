@@ -1481,4 +1481,222 @@
             });
         } });
     });
+
+    // ---- Languages: a canvas file's pictures in the site's other languages ----
+
+    // A canvas opened from Files whose texts the site translates gets a
+    // Languages button in the top bar: each target language with its state,
+    // Draw and Draw all. A language's picture is drawn here, from the last
+    // saved document with that language's words, by the save's own renderer
+    // (drawArtboard() of a painter that opens no dialog), and posted to
+    // action picture_language_draw, which keeps it beside the source.
+    X.icons.languages = 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM3.5 9h17M3.5 15h17M12 3c-2.4 2.6-3.6 5.6-3.6 9s1.2 6.4 3.6 9M12 3c2.4 2.6 3.6 5.6 3.6 9s-1.2 6.4-3.6 9';
+
+    var LANG_STATES = { not_translated: 'langNotTranslated', translated: 'langTranslated', drawn: 'langDrawn', out_of_date: 'langOutOfDate', look: 'langLook' };
+
+    Editor.topItems.push(function () {
+        var self = this;
+
+        if (!X.config().api || (this.tools.list.indexOf('select') < 0)) {
+            return null;
+        }
+
+        this.langBtn = el('button', { type: 'button', class: 'pgie-btn pgie-langbtn', title: t('languages'), hidden: true, 'aria-haspopup': 'dialog', onclick: function () {
+            self.openLanguages();
+        } }, [X.icon('languages'), el('span', { class: 'pgie-vlabel', text: t('languages') })]);
+
+        return this.langBtn;
+    });
+
+    Editor.inits.push(function () {
+        this.langFileId = 0;
+        this.langData = null;
+        this.langBusy = false;
+        this.langList = null;
+    });
+
+    // The button shows once the file is known to be a canvas with words.
+    var openLanguagesFile = Editor.prototype.openFile;
+
+    Editor.prototype.openFile = function (r) {
+        var self = this;
+
+        openLanguagesFile.call(this, r);
+
+        if (!this.langBtn || !r || !r.canvas || this.opts.src) {
+            return;
+        }
+
+        this.langFileId = (r.file && r.file.id) || this.opts.fileId || 0;
+        this.loadLanguages().then(function (data) {
+            self.langBtn.hidden = !(data && data.words && data.languages && data.languages.length);
+        });
+    };
+
+    // The list from the server; null when it could not be read.
+    Editor.prototype.loadLanguages = function () {
+        var self = this;
+
+        if (!this.langFileId) {
+            return Promise.resolve(null);
+        }
+
+        return this.request({ action: 'picture_languages', file_id: this.langFileId }).then(function (r) {
+            self.langData = (r && (r.status === 'success')) ? r : null;
+
+            return self.langData;
+        }, function () {
+            self.langData = null;
+
+            return null;
+        });
+    };
+
+    Editor.prototype.openLanguages = function () {
+        var self = this;
+        var close = button('pgie-ibtn', t('close'), 'close', function () { self.closeConfirm(); });
+
+        this.langList = el('div', { class: 'pgie-langlist', 'aria-busy': 'true' }, [el('p', { class: 'pgie-note', text: t('langLoading') })]);
+        this.langAll = el('button', { type: 'button', class: 'pgie-btn pgie-primary', text: t('langDrawAll'), disabled: true, onclick: function () {
+            self.drawLanguages(M.languagesToDraw(self.langData ? self.langData.languages : []));
+        } });
+        this.langStatus = el('p', { class: 'pgie-note pgie-langstatus', role: 'status' });
+        this.confirmBox = el('div', { class: 'pgie-confirm', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'pgie-lang-title' }, [
+            el('div', { class: 'pgie-confirm-box pgie-langbox' }, [
+                el('div', { class: 'pgie-importhead' }, [el('h2', { id: 'pgie-lang-title', text: t('languages') }), close]),
+                el('p', { class: 'pgie-note', text: t('langNote') }),
+                this.dirty ? el('p', { class: 'pgie-note pgie-langwarn', text: t('langUnsaved') }) : null,
+                this.langList,
+                el('div', { class: 'pgie-langfoot' }, [this.langStatus, this.langAll])
+            ])
+        ]);
+        this.confirmReturn = this.langBtn;
+        this.root.appendChild(this.confirmBox);
+        close.focus();
+        this.loadLanguages().then(function () { self.showLanguages(); });
+    };
+
+    // One row per language: the drawn picture beside its name, the state,
+    // how many texts are translated, Draw.
+    Editor.prototype.showLanguages = function () {
+        var self = this, list = this.langList, data = this.langData;
+
+        if (!list || !this.confirmBox || !this.confirmBox.contains(list)) {
+            return;
+        }
+
+        list.textContent = '';
+        list.setAttribute('aria-busy', 'false');
+
+        if (!data || !data.words || !data.languages.length) {
+            list.appendChild(el('p', { class: 'pgie-note', text: t(data ? 'langNone' : 'langError') }));
+            this.langAll.disabled = true;
+            return;
+        }
+
+        data.languages.forEach(function (lang) {
+            var state = lang.rtl ? '' : lang.state;
+            var count = t('langCount').replace('{n}', String(lang.translated)).replace('{m}', String(lang.total));
+            var draw = el('button', { type: 'button', class: 'pgie-btn', text: t('langDraw'), disabled: lang.rtl || !lang.translated || self.langBusy,
+                'aria-label': t('langDraw') + ': ' + lang.name, onclick: function () {
+                    self.drawLanguages([lang.code]);
+                } });
+
+            list.appendChild(el('div', { class: 'pgie-langrow', 'data-lang': lang.code }, [
+                el('span', { class: 'pgie-langthumb pgie-checker' }, [lang.url ? el('img', { src: lang.url, alt: '', loading: 'lazy', decoding: 'async', draggable: 'false' }) : null]),
+                el('span', { class: 'pgie-langname' }, [
+                    el('strong', { text: lang.name }),
+                    el('span', { class: 'pgie-note', text: lang.rtl ? t('langRtl') : ((state === 'look') ? t('langLookNote') : count) })
+                ]),
+                state ? el('span', { class: 'pgie-langstate pgie-lang-' + state, text: t(LANG_STATES[state] || 'langNotTranslated') }) : null,
+                draw
+            ]));
+        });
+
+        this.langAll.disabled = this.langBusy || !M.languagesToDraw(data.languages).length;
+    };
+
+    // Draws the languages one after another, then reads the list again.
+    Editor.prototype.drawLanguages = function (codes) {
+        var self = this, data = this.langData, failed = false;
+
+        if (this.langBusy || !data || !codes.length) {
+            return;
+        }
+
+        this.langBusy = true;
+        this.showLanguages();
+        this.langStatus.textContent = t('langDrawing');
+
+        codes.reduce(function (chain, code) {
+            return chain.then(function () {
+                var lang = data.languages.filter(function (l) { return l.code === code; })[0];
+
+                return lang ? self.drawLanguage(data, lang).then(function (r) {
+                    if (!r || (r.status !== 'success')) {
+                        failed = (r && r.message) || t('langDrawError');
+                    }
+                }, function () {
+                    failed = t('langDrawError');
+                }) : null;
+            });
+        }, Promise.resolve()).then(function () {
+            return self.loadLanguages();
+        }).then(function () {
+            self.langBusy = false;
+
+            if (self.langStatus) {
+                self.langStatus.textContent = failed || '';
+                self.langStatus.classList.toggle('pgie-error', !!failed);
+            }
+
+            self.showLanguages();
+        });
+    };
+
+    // One language's picture: its words in the layers, each changed text
+    // fitted to its source's box (smaller, never under the floor; the
+    // middle kept upright, the aligned side kept across), drawn and posted.
+    Editor.prototype.drawLanguage = function (data, lang) {
+        var self = this, opened = M.canvasOpenDoc(data.doc), put = opened ? M.languageDoc(opened, lang.texts) : null;
+
+        if (!put) {
+            return Promise.resolve(null);
+        }
+
+        var painter = Object.create(Editor.prototype), mark = false;
+
+        painter.doc = put.doc;
+        painter.pictures = {};
+        painter.textFonts = {};
+        painter.layersDirty = true;
+        painter.renderView = function () { /* no stage to draw */ };
+
+        return painter.layersReady().then(function () {
+            put.doc.layers.forEach(function (l) {
+                var src = put.source[l.id];
+
+                if (!src) {
+                    return;
+                }
+
+                var before = painter.textLayout(src), wide = painter.textLayout(l);
+                var fit = M.languageFit(before.w, before.h, wide.w, wide.h);
+
+                l.size = Math.round((Number(src.size) || 1) * fit.scale * 100) / 100;
+
+                var after = painter.textLayout(l), box = M.textFit(src, after);
+
+                l.x = box.x;
+                l.w = box.w;
+                l.h = box.h;
+                l.y = Math.round(((Number(src.y) || 0) + (before.h - after.h) / 2) * 100) / 100;
+                mark = mark || fit.mark;
+            });
+
+            return painter.layersReady();
+        }).then(function () {
+            return self.request({ action: 'picture_language_draw', file_id: self.langFileId, language: lang.code, stamp: lang.stamp, fit: mark ? 1 : 0, picture: painter.drawArtboard() });
+        });
+    };
 }(window.PgImageEditor.parts));

@@ -3334,6 +3334,7 @@
     "A text": "Bir metin",
     "A text box with a piece of text or a button attached to its side.": "Yanına bir metin parçası ya da düğme eklenmiş metin kutusu.",
     "A text column: each row with a step becomes a task.": "Bir metin sütunu: adımı olan her satır bir görev olur.",
+    "A text did not fit even at the smallest size: check this picture.": "Bir metin en küçük boyutta bile sığmadı: bu görsele bakın.",
     "A text field whose label sits inside it and moves up when typing starts.": "Etiketi içinde duran ve yazmaya başlanınca yukarı kayan metin alanı.",
     "A text is warped once its letters are outlines.": "Bir metin, harfleri dış hatlara dönüştürüldüğünde bükülebilir.",
     "A text message to +{var:1} was not sent: {var:2}": "+{var:1} numarasına giden kısa mesaj gönderilmedi: {var:2}",

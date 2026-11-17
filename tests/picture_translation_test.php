@@ -201,3 +201,161 @@ function test_picture_translation_module_loaded()
 	pg_assert_contains("/includes/fn/picture_translation.php'", $manifest, 'listed in the manifest');
 	pg_assert_true(function_exists('pg_picture_tr_saved'), 'loaded');
 }
+
+// Runs $script with the editor's model as M and answers its JSON; null
+// without Node.
+function picture_translation_node($script)
+{
+	if (!function_exists('exec')) {
+		return null;
+	}
+
+	$out = array();
+	$code = 1;
+	@exec('node --version 2>&1', $out, $code);
+
+	if ($code !== 0) {
+		return null;
+	}
+
+	$file = @tempnam(sys_get_temp_dir(), 'pgpictr');
+
+	if ($file === false) {
+		return null;
+	}
+
+	file_put_contents($file, 'var M = require(' . json_encode(PG_FUNCTIONS_DIR . '/assets/js/pg_image_editor_model.js') . ');' . "\n" . $script);
+
+	$out = array();
+	@exec('node ' . escapeshellarg($file) . ' 2>&1', $out, $code);
+	@unlink($file);
+
+	return ($code === 0) ? json_decode(implode("\n", $out), true) : array('error' => implode("\n", $out));
+}
+
+// A translated text is fitted to the source's box: it shrinks to fit, never
+// under 70% of the source's size; one that still does not fit is drawn at
+// 70% and marked.
+function test_picture_translation_fit_floor_and_mark()
+{
+	$r = picture_translation_node('console.log(JSON.stringify(['
+		. ' M.languageFit(200, 50, 180, 50),'
+		. ' M.languageFit(200, 50, 250, 50),'
+		. ' M.languageFit(200, 70, 200, 100),'
+		. ' M.languageFit(200, 50, 400, 50),'
+		. ' M.languageFit(0, 0, 0, 0)'
+		. ']));');
+
+	if ($r === null) {
+		pg_assert_true(true, 'Node is not available');
+		return;
+	}
+
+	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'model loaded');
+	pg_assert_same(array('scale' => 1, 'mark' => false), $r[0], 'a shorter text keeps its size');
+	pg_assert_same(array('scale' => 0.8, 'mark' => false), $r[1], 'a longer one shrinks to the width');
+	pg_assert_same(array('scale' => 0.7, 'mark' => false), array('scale' => round($r[2]['scale'], 4), 'mark' => $r[2]['mark']), 'more lines shrink to the height, 70% still fits');
+	pg_assert_same(array('scale' => 0.7, 'mark' => true), $r[3], 'never under 70%, and marked');
+	pg_assert_same(array('scale' => 1, 'mark' => false), $r[4], 'an empty box is left alone');
+}
+
+// The language's words go into the layers by id and field; a text with no
+// translation keeps the source's words; the source layers are kept apart.
+// Draw all takes the languages that are translated or out of date.
+function test_picture_translation_language_doc()
+{
+	$r = picture_translation_node('var doc = { v: 1, artboard: { width: 100, height: 50 }, layers: ['
+		. ' { id: "t1", type: "text", text: "Sale", size: 40 },'
+		. ' { id: "t2", type: "text", text: "199 TL only", size: 20 },'
+		. ' { id: "s1", type: "sticker", label: "New" },'
+		. ' { id: "r1", type: "rect" } ] };'
+		. 'var put = M.languageDoc(doc, [{ id: "t1", field: "text", text: "Rebajas" }, { id: "t2", field: "text", text: null }, { id: "s1", field: "label", text: "Nuevo" }, { id: "x", field: "text", text: "Lost" }]);'
+		. 'console.log(JSON.stringify({'
+		. ' texts: put.doc.layers.map(function (l) { return l.text || l.label || ""; }),'
+		. ' fitted: Object.keys(put.source),'
+		. ' kept: doc.layers[0].text,'
+		. ' none: M.languageDoc(null, []),'
+		. ' all: M.languagesToDraw([{ code: "de", state: "translated" }, { code: "fr", state: "out_of_date" }, { code: "es", state: "drawn" }, { code: "it", state: "not_translated" }, { code: "ar", state: "translated", rtl: true }, { code: "nl", state: "look" }])'
+		. '}));');
+
+	if ($r === null) {
+		pg_assert_true(true, 'Node is not available');
+		return;
+	}
+
+	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'model loaded');
+	pg_assert_same(array('Rebajas', '199 TL only', 'Nuevo', ''), $r['texts'], 'translations in place, an untranslated text kept');
+	pg_assert_same(array('t1'), $r['fitted'], 'only a text layer whose words changed is fitted');
+	pg_assert_same('Sale', $r['kept'], 'the source document is not changed');
+	pg_assert_same(null, $r['none'], 'no document, nothing to draw');
+	pg_assert_same(array('de', 'fr'), $r['all'], 'Draw all: translated and out of date, never right to left');
+}
+
+// The list's state of a language: from its row when drawn or out of date,
+// else from how many of the texts are translated; after a draw the row is
+// Drawn, or Look by hand when a text did not fit.
+function test_picture_translation_list_states()
+{
+	pg_assert_same('not_translated', pg_picture_tr_list_state(null, 3, 0), 'no row, nothing translated');
+	pg_assert_same('not_translated', pg_picture_tr_list_state(array('state' => 0, 'fit' => 0), 3, 2), 'partly translated');
+	pg_assert_same('translated', pg_picture_tr_list_state(array('state' => 0, 'fit' => 0), 3, 3), 'every text translated, not drawn');
+	pg_assert_same('not_translated', pg_picture_tr_list_state(null, 0, 0), 'no texts');
+	pg_assert_same('out_of_date', pg_picture_tr_list_state(array('state' => 2, 'fit' => 0), 3, 3), 'out of date');
+
+	foreach (array(0, 1, 2) as $before) {
+		pg_assert_same('drawn', pg_picture_tr_list_state(array('state' => pg_picture_tr_state_after($before, 'draw'), 'fit' => 0), 3, 3), 'a draw from ' . $before . ' is Drawn');
+		pg_assert_same('look', pg_picture_tr_list_state(array('state' => pg_picture_tr_state_after($before, 'draw'), 'fit' => 1), 3, 1), 'a draw that did not fit is Look by hand');
+	}
+
+	pg_assert_same('out_of_date', pg_picture_tr_list_state(array('state' => pg_picture_tr_state_after(1, 'save'), 'fit' => 1), 3, 3), 'a save after a draw: out of date');
+}
+
+// A draw names the picture by a stamp of the file, the language, the
+// document and the words it was given: another file, another language, a
+// changed document or changed words do not match it.
+function test_picture_translation_draw_refusals()
+{
+	$texts = array(array('id' => 't1', 'field' => 'text', 'text' => 'Rebajas'), array('id' => 't2', 'field' => 'text', 'text' => null));
+	$stamp = pg_picture_tr_stamp(7, 'es', str_repeat('a', 40), $texts);
+	$facts = array('access' => true, 'language' => true, 'rtl' => false, 'live' => true, 'sent' => $stamp, 'stamp' => $stamp);
+
+	pg_assert_same(40, strlen($stamp), 'a SHA-1');
+	pg_assert_false($stamp === pg_picture_tr_stamp(8, 'es', str_repeat('a', 40), $texts), 'another file');
+	pg_assert_false($stamp === pg_picture_tr_stamp(7, 'de', str_repeat('a', 40), $texts), 'another language');
+	pg_assert_false($stamp === pg_picture_tr_stamp(7, 'es', str_repeat('b', 40), $texts), 'another document');
+	pg_assert_false($stamp === pg_picture_tr_stamp(7, 'es', str_repeat('a', 40), array($texts[0])), 'other words');
+
+	pg_assert_same('', pg_picture_tr_draw_refusal($facts), 'a right draw goes through');
+	pg_assert_same('access', pg_picture_tr_draw_refusal(array_merge($facts, array('access' => false))), 'no right to the folder');
+	pg_assert_same('language', pg_picture_tr_draw_refusal(array_merge($facts, array('language' => false))), 'not a target language');
+	pg_assert_same('rtl', pg_picture_tr_draw_refusal(array_merge($facts, array('rtl' => true))), 'right to left is not drawn');
+	pg_assert_same('changed', pg_picture_tr_draw_refusal(array_merge($facts, array('live' => false))), 'no live canvas document');
+	pg_assert_same('stamp', pg_picture_tr_draw_refusal(array_merge($facts, array('sent' => pg_picture_tr_stamp(8, 'es', str_repeat('a', 40), $texts)))), 'the picture of another file');
+	pg_assert_same('stamp', pg_picture_tr_draw_refusal(array_merge($facts, array('sent' => pg_picture_tr_stamp(7, 'de', str_repeat('a', 40), $texts)))), 'the picture of another language');
+	pg_assert_same('stamp', pg_picture_tr_draw_refusal(array_merge($facts, array('sent' => ''))), 'no stamp');
+
+	// The draw asks the editor's file check (the folder's edit right)
+	// before it reads or writes anything.
+	$body = picture_translation_body('includes/fn/picture_translation.php', 'pg_picture_tr_draw_answer');
+	$check = strpos($body, 'pg_image_editor_file(');
+
+	pg_assert_true($check !== false, 'the draw checks the file and the right');
+	pg_assert_true($check < strpos($body, 'pg_image_editor_take_png('), 'before the picture is taken');
+	pg_assert_true(strpos($body, 'pg_page_cache_mark_dirty()') !== false, 'a draw marks the page cache');
+}
+
+// A language's picture has a name beside its source's and is left out of
+// the File Manager, the file pickers and Where used.
+function test_picture_translation_pictures_hidden()
+{
+	pg_assert_same('banner-de.png', pg_picture_tr_picture_name('banner.jpg', 'de'), 'the stem and the language');
+	pg_assert_same('banner-pt-br.png', pg_picture_tr_picture_name('banner.png', 'pt-BR'), 'lower case');
+	pg_assert_same('', pg_picture_tr_hidden_sql('files.id', false), 'nothing before the table');
+	pg_assert_same(' AND (files.id NOT IN (SELECT picture_file_id FROM file_translation))', pg_picture_tr_hidden_sql('files.id', true), 'the table\'s pictures left out');
+
+	$list = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/explorer/handle_list.php');
+	pg_assert_same(2, substr_count($list, "pg_picture_tr_hidden_sql('files.id')"), 'both File Manager lists');
+	pg_assert_true(strpos(picture_translation_body('includes/fn/picker.php', 'pg_picker_where_for'), 'pg_picture_tr_hidden_sql(') !== false, 'the file pickers');
+	pg_assert_true(strpos(picture_translation_body('includes/fn/image_editor.php', 'pg_image_editor_action_sticker_files'), 'pg_picture_tr_hidden_sql(') !== false, 'the Design Canvas\'s pictures from Files');
+	pg_assert_true(strpos(picture_translation_body('includes/explorer/handle_file_usage.php', 'pg_explorer_handle_file_usage'), 'pg_picture_tr_is_picture(') !== false, 'Where used');
+}

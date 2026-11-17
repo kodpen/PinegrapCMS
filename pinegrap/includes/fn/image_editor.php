@@ -1750,7 +1750,7 @@ function pg_image_editor_action_sticker_files($request, $user)
     $rows = ($where === null) ? array() : db_items(
         "SELECT id, name, type, folder, image_width, image_height
         FROM files
-        WHERE $where
+        WHERE $where" . pg_picture_tr_hidden_sql('id') . "
         ORDER BY timestamp DESC
         LIMIT 60");
 
@@ -2747,7 +2747,47 @@ function pg_image_editor_strings_artboard()
         'importComputer'    => lang('From this computer'),
         'importSite'        => lang('From the site'),
         'importError'       => lang('This file cannot be imported.'),
+        'languages'         => lang('Languages'),
+        'langNote'          => lang('Each language\'s picture is drawn from the last saved version with its translated words, and shown on the pages in that language.'),
+        'langUnsaved'       => lang('Changes not saved yet are not in these pictures.'),
+        'langLoading'       => lang('Loading…'),
+        'langError'         => lang('The languages could not be loaded.'),
+        'langNone'          => lang('This picture has no words to translate.'),
+        'langCount'         => lang('{n} of {m} texts translated'),
+        'langNotTranslated' => lang('Not translated'),
+        'langTranslated'    => lang('Translated'),
+        'langDrawn'         => lang('Picture drawn'),
+        'langOutOfDate'     => lang('Out of date'),
+        'langLook'          => lang('Look by hand'),
+        'langLookNote'      => lang('A text did not fit even at the smallest size: check this picture.'),
+        'langRtl'           => lang('Right to left: the source picture is shown.'),
+        'langDraw'          => lang('Draw'),
+        'langDrawAll'       => lang('Draw all'),
+        'langDrawing'       => lang('Drawing…'),
+        'langDrawError'     => lang('The picture could not be drawn.'),
     );
+}
+
+/**
+ * Action picture_languages: the Languages list of a canvas file
+ * (pg_picture_tr_languages_answer()).
+ *
+ * @return array array(payload, HTTP status)
+ */
+function pg_image_editor_action_picture_languages($request, $user)
+{
+    return pg_picture_tr_languages_answer($request, $user);
+}
+
+/**
+ * Action picture_language_draw: a language's picture drawn in the browser
+ * (pg_picture_tr_draw_answer()).
+ *
+ * @return array array(payload, HTTP status)
+ */
+function pg_image_editor_action_picture_language_draw($request, $user)
+{
+    return pg_picture_tr_draw_answer($request, $user);
 }
 
 /**
