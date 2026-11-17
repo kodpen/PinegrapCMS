@@ -95,14 +95,14 @@ function api_store_arrival_date_schema() {
 		'name'                        => 'string',
 		'description'                 => 'string',
 		'code'                        => 'string',
-		'arrival_date'                => 'string?',
+		'arrival_date'                => 'date?',
 		'enabled'                     => 'boolean',
-		'start_date'                  => 'string?',
-		'end_date'                    => 'string?',
+		'start_date'                  => 'date?',
+		'end_date'                    => 'date?',
 		'default'                     => 'boolean',
 		'sort_order'                  => 'integer',
 		'custom'                      => 'boolean',
-		'custom_maximum_arrival_date' => 'string?',
+		'custom_maximum_arrival_date' => 'date?',
 		'shipping_cutoffs'            => array(array('shipping_method_id' => 'integer', 'date_and_time' => 'string'))
 	);
 

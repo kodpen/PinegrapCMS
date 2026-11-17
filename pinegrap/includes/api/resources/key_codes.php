@@ -145,10 +145,10 @@ function api_key_code_schema() {
 		'enabled'         => 'boolean',
 		'single_use'      => 'boolean',
 		'report'          => 'string',
-		'expires_on'      => 'string?',
+		'expires_on'      => 'date?',
 		'notes'           => 'string',
 		'updated_by'      => 'string?',
-		'updated_at'      => 'string?',
+		'updated_at'      => 'datetime?',
 		'updated_at_unix' => 'integer'
 	);
 

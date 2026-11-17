@@ -269,8 +269,8 @@ function api_seo_schema()
             'links'     => 'integer?',
             'speed'     => 'integer?'
         ),
-        'scored_at'   => 'string?',
-        'analyzed_at' => 'string?',
+        'scored_at'   => 'datetime?',
+        'analyzed_at' => 'datetime?',
         'stale' => array(
             'meta'      => 'boolean',
             'structure' => 'boolean'

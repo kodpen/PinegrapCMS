@@ -38,7 +38,7 @@ function api_site_log_schema() {
 		'description' => 'string',
 		'user'        => 'string?',
 		'ip'          => 'string?',
-		'created_at'  => 'string?'
+		'created_at'  => 'datetime?'
 	);
 
 }

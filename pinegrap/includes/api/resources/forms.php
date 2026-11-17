@@ -1407,7 +1407,7 @@ function api_form_revision_schema() {
 		'address_name'    => 'string?',
 		'complete'        => 'boolean',
 		'current'         => 'boolean',
-		'created_at'      => 'string?',
+		'created_at'      => 'datetime?',
 		'created_at_unix' => 'integer'
 	);
 
@@ -2181,7 +2181,7 @@ function api_form_schema() {
 		'title'              => 'string',
 		'field_count'        => 'integer',
 		'submission_count'   => 'integer',
-		'last_submission_at' => 'string?',
+		'last_submission_at' => 'datetime?',
 		'fields'             => 'FormField[]',
 		'framework'          => 'string',
 		'is_collection'      => 'boolean',
@@ -2247,9 +2247,9 @@ function api_form_submission_schema() {
 		'complete'          => 'boolean',
 		'contact_id'        => 'integer?',
 		'quiz_score'        => 'integer?',
-		'submitted_at'      => 'string?',
+		'submitted_at'      => 'datetime?',
 		'submitted_at_unix' => 'integer',
-		'updated_at'        => 'string?',
+		'updated_at'        => 'datetime?',
 		'order_number'      => 'string?',
 		'paid'              => 'boolean?',
 		'url'               => 'string?',

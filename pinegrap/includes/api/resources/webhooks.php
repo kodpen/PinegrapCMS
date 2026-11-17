@@ -604,7 +604,7 @@ function api_webhook_schema() {
 		'last_status_code' => 'integer?',
 		'last_error'       => 'string?',
 		'channel_group_id' => 'integer?',
-		'created_at'       => 'string?',
+		'created_at'       => 'datetime?',
 		'secret'           => 'string',
 		'signature_header' => 'string',
 		'requeued'         => 'integer'

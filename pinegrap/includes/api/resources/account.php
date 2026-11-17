@@ -450,10 +450,10 @@ function api_auth_session_schema() {
 		'token_type'         => 'string',
 		'access_token'       => 'string',
 		'expires_in'         => 'integer',
-		'expires_at'         => 'string',
+		'expires_at'         => 'datetime',
 		'refresh_token'      => 'string',
 		'refresh_expires_in' => 'integer',
-		'refresh_expires_at' => 'string',
+		'refresh_expires_at' => 'datetime',
 		'device'             => 'Device',
 		'user'               => array('id' => 'integer', 'username' => 'string')
 	);
@@ -544,7 +544,7 @@ function api_auth_me_schema() {
 		'scopes'      => 'string[]',
 		'features'    => 'object',
 		'unread_notifications' => 'integer?',
-		'server_time' => 'string'
+		'server_time' => 'datetime'
 	);
 
 }
@@ -826,7 +826,7 @@ function api_notification_schema() {
 		'url'        => 'string?',
 		'subject'    => array('type' => 'string?', 'id' => 'integer?'),
 		'read'       => 'boolean',
-		'created_at' => 'string',
+		'created_at' => 'datetime',
 		'fold'       => 'string?'
 	);
 

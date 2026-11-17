@@ -145,8 +145,8 @@ function api_campaign_profile_schema() {
 		'schedule_base'   => 'string',
 		'purpose'         => 'string',
 		'created_by'      => 'string?',
-		'created_at'      => 'string?',
-		'updated_at'      => 'string?'
+		'created_at'      => 'datetime?',
+		'updated_at'      => 'datetime?'
 	);
 
 }

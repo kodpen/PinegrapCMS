@@ -200,10 +200,10 @@ function api_content_review_schema() {
 		'name'            => 'string',
 		'collection'      => 'string?',
 		'user_id'         => 'integer?',
-		'review_on'       => 'string?',
+		'review_on'       => 'date?',
 		'state'           => 'string',
 		'interval_months' => 'integer',
-		'reviewed_at'     => 'string?',
+		'reviewed_at'     => 'datetime?',
 		'reviewed_by'     => 'integer?'
 	);
 
