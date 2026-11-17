@@ -110,7 +110,7 @@ description: Generated from the module field of the memory files: each includes/
 - `events`: [[workspace-flows-event-depth]]
 - `experiments`: [[experiment-goals]], [[page-experiments-model]], [[page-experiments-serving]]
 - `experiments_results`: [[experiments-screen]]
-- `experiments_sheet`: [[page-experiments-sheet]]
+- `experiments_sheet`: [[designer-publish-sheet-held-row]], [[page-experiments-sheet]]
 - `explorer_side`: [[explorer-menu-tree]]
 - `field_list`: [[list-table-region-lists]]
 - `file_copy_gate`: [[file-copy-chat-attachments]]

@@ -408,6 +408,7 @@
 - designer-prototype-share-link-frame.md: A prototype share link's frame: signed by link id (never the token), bound to the viewer's session; clicks go back through the viewer, new tabs by ?l=<id>; a failing page shows no reason
 - designer-prototype-share-links.md: Share links of a design's prototype (prototype_links, 11.0.35): makers, audiences, what anyone sees, the password lock, the token kept out of logs and the frame, uses, revoked with the design
 - designer-prototype-viewer.md: prototype.php plays a design's saved drafts (roles 0-2, or a share link): a session-less frame signed for one browser, link kinds, inert forms, no tracking, link_resolve.php
+- designer-publish-sheet-held-row.md: The Publish sheet's held row: where the hold comes from (an open experiment's variant, a release bundle's draft), the bundle's label and text, the toast and box title naming the bundle [decision: here]
 - designer-publish-sheet.md: The visual designer's Publish sheet: which pages it lists and checks, what Publish selected writes, how an unchecked changed page is held out of the one save, and where the old publishing menu went [decision: decisions-made-product-36.md]
 - designer-records-site-search.md: How the search index finds records of visual-editor pages: qualifying lists, item fields and folder, no record page items, failure isolation (#1197)
 - designer-region-to-shared-component.md: A classic designer region made a designer-only shared component from the designer (R3): PHP blocks as custom_php nodes, placeholders as region nodes, nested refs
