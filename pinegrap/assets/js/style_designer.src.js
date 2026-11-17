@@ -31474,7 +31474,7 @@ const StyleDesigner = (function () {
             ? '<button type="button" class="sd-tree-add-btn bi bi-plus-lg" title="' + (COMPOSITE_ADD_LABELS[_treeCompType] || _sdT('Add')) + '"></button>'
             : '';
         var depthBadge = _ind.badge
-            ? '<span class="sd-tree-depth" title="' + esc(_sdT('Level {var}', _ind.badge)) + '">' + _ind.badge + '</span>'
+            ? '<span class="sd-tree-depth" role="img" title="' + esc(_sdT('Level {var}', _ind.badge)) + '" aria-label="' + esc(_sdT('Level {var}', _ind.badge)) + '">' + _ind.badge + '</span>'
             : '';
         var sectCount = '';
         if (_isSect) {

@@ -4,7 +4,7 @@ description: Plan designer-panels, steps DP11 to DP16 of the Overview chain: row
 ---
 
 ## Which steps are there?
-- DP11 (M) after DP1: rows, sections, what is open.
+- DP11 (M) after DP1: rows, sections, what is open. Done: #10207.
   - Functions: `renderTree()`, `buildTreeItems()`; the head and the sticky path.
   - Tests: only the selection's section open on opening; the path's steps; the label's 150 px with fourteen levels (a pure function for the indent and the depth badge).
   - Pictures: the 500-row page beside `overview-1-long-page.jpg`; a multiple selection.

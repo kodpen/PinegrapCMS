@@ -17,7 +17,7 @@ description: Designer Overview on a long page (#10207): section rows with counts
 - `_expanded` is never part of the saved page or the dirty check (`_pgBaselineTreeKey()`), so closing sections changes nothing that is saved.
 
 ## How is a row indented?
-- `_sdTreeRowIndent(depth, width)`: 12 px a level under the section, six indents at most; a row drawn shallower than it is shows `.sd-tree-depth` with its level. With the tree's width, indents go before the label's 150 px. Set as `--sd-ind` on each `li`; `renderTree()` measures the width (`_sdTreeRowWidth`), a ResizeObserver on the tree draws again when it changes by 12 px or more.
+- `_sdTreeRowIndent(depth, width)`: 12 px a level under the section, six indents at most; a row drawn shallower than it is shows `.sd-tree-depth` with its level, named "Level N" (title and aria-label, `_sdT('Level {var}')`). With the tree's width, indents go before the label's 150 px. Set as `--sd-ind` on each `li`; `renderTree()` measures the width (`_sdTreeRowWidth`), a ResizeObserver on the tree draws again when it changes by 12 px or more.
 - The marks after a label (`#id`, user label, badges) shrink first (`flex-shrink: 100`); the section count never does.
 
 ## Which functions are pure, and where is the test?
