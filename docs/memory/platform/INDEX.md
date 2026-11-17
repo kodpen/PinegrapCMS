@@ -165,6 +165,7 @@
 - panel-picture-change-stamp.md: A panel picture drawn by a file's own address carries its change stamp (?v=, pg_file_stamped_address()), so a picture saved again under its name shows at once (#8913) [decision: decisions-made-product-46.md]
 - performance-monitor-cost.md: Performance monitor cost rules (perf_monitor_shutdown()): hourly perf_stats buckets, slow requests only in perf_log, no percentile, sanity gate, flush-gated sweep, row cap, sampling.
 - place-coordinates.md: Coordinates of a collection's places: fields found by name, "Find from the address" on a record, "Find missing coordinates" on the record list, place_coordinates.php, always Photon [decision: here]
+- place-list.md: The "Map of places" block's list (place-map MP3): places.php and its gate, the records and fields an answer carries, the cut at 500, the designer's note, pg_map.js, the locations-map block [decision: here]
 - proxy-https-trust.md: HTTPS behind a proxy: pg_forwarded_https() parses the headers, pg_https_peer_trusted() says whose word counts (Trusted Proxies, Cloudflare, the constant); who asks which. [decision: decisions-made-product-19.md]
 - record-breadcrumb-list-step.md: The middle step of a post's BreadcrumbList JSON-LD: the list page that links its records to the record page (pg_record_list_page(), #2181), how one is picked, when there is none
 - record-page-schema-type.md: A custom form chooses the schema.org type of its record pages (BlogPosting, Article, NewsArticle, none) and their author; where each is stored, read and set.
