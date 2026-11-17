@@ -38,12 +38,15 @@ function test_system_screens_smtp_ligatures_hidden()
 	}
 }
 
-function test_system_screens_dkim_notice_record_named()
+// The DKIM record to publish is a named, read-only box on its card; the
+// notice after generating says where it is instead of repeating it.
+function test_system_screens_dkim_record_named()
 {
 	$source = system_screens_names_source('smtp_settings.php');
 
-	pg_assert_contains('<label for="dkim_notice_record" class="form-label mt-3">', $source, 'notice label for');
-	pg_assert_contains('<textarea id="dkim_notice_record" class="form-control" rows="4" readonly>', $source, 'notice textarea id');
+	pg_assert_contains('<label for="textrecord" class="form-label">', $source, 'record label for');
+	pg_assert_contains('<textarea id="textrecord" class="form-control" rows="4" readonly>', $source, 'record textarea id');
+	pg_assert_contains("lang('Add the TXT record shown on the DKIM TXT Record card to your DNS.')", system_screens_names_source('includes/fn/mail_settings.php'), 'the notice points at the card');
 }
 
 function test_system_screens_efatura_date_and_share()
