@@ -4,7 +4,8 @@
  *
  * Product feeds for shopping agents and merchant platforms: the shop's
  * sellable products as an OpenAI product feed (JSONL or CSV) and a Google
- * Merchant Center file (TSV), built from one read of the catalog.
+ * Merchant Center file (TSV, or XML as RSS 2.0), built from one read of the
+ * catalog.
  *
  * The work is split in three so most of it can be tested without a database:
  *
@@ -15,8 +16,8 @@
  *     minor units, availability, variant family);
  *   - pg_product_feed_openai_row() and pg_product_feed_google_row() map an
  *     item onto one format's fields, or say why the format cannot carry it;
- *   - pg_product_feed_jsonl(), pg_product_feed_csv() and pg_product_feed_tsv()
- *     serialise the rows.
+ *   - pg_product_feed_jsonl(), pg_product_feed_csv(), pg_product_feed_tsv()
+ *     and pg_product_feed_xml() serialise the rows.
  *
  * pg_product_feed_render() joins the last two for one format in memory;
  * the daily build streams them to the file chunk by chunk instead
@@ -34,7 +35,9 @@
  *
  * Field rules follow the OpenAI product feed specification (nine required
  * fields: item_id, title, description, url, brand, seller_name, image_url,
- * availability, price) and the Google Merchant Center product data columns.
+ * availability, price) and the Google Merchant Center product data
+ * specification; the XML file follows Merchant Center's RSS 2.0 specification
+ * (support.google.com/merchants/answer/160589).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -74,14 +77,16 @@ function pg_product_feed_formats()
         'openai_jsonl' => array('extension' => 'jsonl', 'content_type' => 'application/jsonl; charset=utf-8'),
         'openai_csv'   => array('extension' => 'csv', 'content_type' => 'text/csv; charset=utf-8'),
         'google_tsv'   => array('extension' => 'tsv', 'content_type' => 'text/tab-separated-values; charset=utf-8'),
+        'google_xml'   => array('extension' => 'xml', 'content_type' => 'application/xml; charset=utf-8'),
     );
 }
 
 // Column order of each format. A writer keeps this order and leaves out a
-// column no row fills.
+// column no row fills. The XML feed writes the TSV's fields as g: elements
+// in the same order.
 function pg_product_feed_columns($format)
 {
-    if ($format === 'google_tsv') {
+    if (($format === 'google_tsv') || ($format === 'google_xml')) {
         return array(
             'id', 'title', 'description', 'link', 'image_link', 'additional_image_link',
             'availability', 'price', 'sale_price', 'brand', 'gtin', 'mpn', 'identifier_exists',
@@ -102,7 +107,7 @@ function pg_product_feed_columns($format)
 // still names.
 function pg_product_feed_required_columns($format)
 {
-    if ($format === 'google_tsv') {
+    if (($format === 'google_tsv') || ($format === 'google_xml')) {
         return array('id', 'title', 'description', 'link', 'image_link', 'availability', 'price');
     }
 
@@ -840,6 +845,92 @@ function pg_product_feed_tsv_line($cells)
     return implode("\t", $clean);
 }
 
+// The namespace of Merchant Center's product attributes in an XML feed.
+if (!defined('PG_PRODUCT_FEED_GOOGLE_NS')) {
+    define('PG_PRODUCT_FEED_GOOGLE_NS', 'http://base.google.com/ns/1.0');
+}
+
+// Text as XML character data: broken UTF-8 replaced with U+FFFD, the
+// control bytes XML 1.0 cannot carry (all below 0x20 but tab and line
+// breaks) and U+FFFE/U+FFFF left out, then &, <, >, " and ' written as
+// entities. Escaping > also breaks up a "]]>" in the text. Every value the
+// XML feed writes goes through here.
+function pg_product_feed_xml_text($value)
+{
+    $text = (string) $value;
+
+    if (function_exists('mb_check_encoding') && !mb_check_encoding($text, 'UTF-8')) {
+        $text = mb_convert_encoding($text, 'UTF-8', 'UTF-8');
+    }
+
+    $clean = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x{FFFE}\x{FFFF}]/u', '', $text);
+
+    if ($clean === null) {
+        $clean = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F]/', '', $text);
+    }
+
+    return htmlspecialchars((string) $clean, ENT_QUOTES | ENT_XML1 | ENT_SUBSTITUTE, 'UTF-8');
+}
+
+// The start of an RSS 2.0 feed up to the first item: the channel's title
+// (the seller name), link (the seller website) and description, which RSS
+// requires. Merchant Center reads only the items.
+function pg_product_feed_xml_head($options = array())
+{
+    $seller = pg_product_feed_seller($options);
+    $title = ($seller['name'] !== '') ? $seller['name'] : 'Products';
+
+    return '<?xml version="1.0" encoding="UTF-8"?>' . "\n"
+        . '<rss version="2.0" xmlns:g="' . PG_PRODUCT_FEED_GOOGLE_NS . '">' . "\n"
+        . "<channel>\n"
+        . '<title>' . pg_product_feed_xml_text($title) . "</title>\n"
+        . '<link>' . pg_product_feed_xml_text(trim($seller['url'])) . "</link>\n"
+        . '<description>' . pg_product_feed_xml_text($title) . "</description>\n";
+}
+
+// The end of an RSS 2.0 feed.
+function pg_product_feed_xml_foot()
+{
+    return "</channel>\n</rss>\n";
+}
+
+// One row as an <item>, its fields as g: elements in the format's column
+// order; a list (additional_image_link) is one element per value, as the
+// specification asks of a repeated attribute. A field the row leaves out is
+// not written.
+function pg_product_feed_xml_item($row)
+{
+    $text = "<item>\n";
+
+    foreach (pg_product_feed_columns('google_xml') as $column) {
+        if (!isset($row[$column])) {
+            continue;
+        }
+
+        foreach ((array) $row[$column] as $value) {
+            if (is_bool($value)) {
+                $value = $value ? 'true' : 'false';
+            }
+
+            $text .= '<g:' . $column . '>' . pg_product_feed_xml_text($value) . '</g:' . $column . ">\n";
+        }
+    }
+
+    return $text . "</item>\n";
+}
+
+// Merchant Center's RSS 2.0 feed of the rows.
+function pg_product_feed_xml($rows, $options = array())
+{
+    $body = pg_product_feed_xml_head($options);
+
+    foreach ((array) $rows as $row) {
+        $body .= pg_product_feed_xml_item($row);
+    }
+
+    return $body . pg_product_feed_xml_foot();
+}
+
 // ---------------------------------------------------------------------------
 // Build
 // ---------------------------------------------------------------------------
@@ -871,6 +962,8 @@ function pg_product_feed_render($format, $items, $options = array())
 
     if ($format === 'openai_jsonl') {
         $result['body'] = pg_product_feed_jsonl($rows);
+    } elseif ($format === 'google_xml') {
+        $result['body'] = pg_product_feed_xml($rows, $options);
     } else {
         $columns = pg_product_feed_used_columns($format, $rows);
 
@@ -1552,6 +1645,12 @@ function pg_product_feed_writer_open($format, $path, $options = array())
     if (!$writer['handle']) {
         $writer['error'] = 'write_failed';
         $writer['handle'] = null;
+    } elseif ($format === 'google_xml') {
+        $head = pg_product_feed_xml_head($options);
+
+        if (@fwrite($writer['handle'], $head) !== strlen($head)) {
+            $writer['error'] = 'write_failed';
+        }
     }
 
     return $writer;
@@ -1566,10 +1665,16 @@ function pg_product_feed_writer_add(&$writer, $items)
     }
 
     $format = $writer['format'];
-    $columns = ($format === 'openai_jsonl') ? array() : pg_product_feed_columns($format);
+    $columns = (($format === 'openai_jsonl') || ($format === 'google_xml')) ? array() : pg_product_feed_columns($format);
     $text = '';
 
     foreach (pg_product_feed_rows($format, $items, $writer['seller'], $writer['skipped']) as $row) {
+        if ($format === 'google_xml') {
+            $text .= pg_product_feed_xml_item($row);
+            $writer['count']++;
+            continue;
+        }
+
         if ($format === 'openai_jsonl') {
             $line = pg_product_feed_jsonl_line($row);
 
@@ -1607,6 +1712,14 @@ function pg_product_feed_writer_add(&$writer, $items)
 function pg_product_feed_writer_close(&$writer, $error = '')
 {
     $result = array('ok' => false, 'error' => '', 'count' => 0, 'bytes' => 0, 'skipped' => $writer['skipped']);
+
+    if ($writer['handle'] && ($writer['format'] === 'google_xml') && ($writer['error'] === '') && ($error === '')) {
+        $foot = pg_product_feed_xml_foot();
+
+        if (@fwrite($writer['handle'], $foot) !== strlen($foot)) {
+            $writer['error'] = 'write_failed';
+        }
+    }
 
     if ($writer['handle']) {
         if (!@fclose($writer['handle']) && ($writer['error'] === '')) {
@@ -1654,13 +1767,14 @@ function pg_product_feed_writer_close(&$writer, $error = '')
 }
 
 // The finished file of a writer, still beside the feed under a temporary
-// name: the work file itself for JSON Lines, a new file with the header and
-// the used columns for CSV and TSV. '' when it could not be written.
+// name: the work file itself for JSON Lines and XML, a new file with the
+// header and the used columns for CSV and TSV. '' when it could not be
+// written.
 function pg_product_feed_writer_finish($writer)
 {
     $format = $writer['format'];
 
-    if ($format === 'openai_jsonl') {
+    if (($format === 'openai_jsonl') || ($format === 'google_xml')) {
         return $writer['work'];
     }
 
@@ -1750,6 +1864,8 @@ function pg_product_feed_refresh($only = null)
     $writers = array();
     $statuses = array();
 
+    $build = pg_product_feed_formats_to_build($settings, $only);
+
     foreach ($settings['formats'] as $format => $entry) {
         if (($only !== null) && !in_array($format, (array) $only, true)) {
             continue;
@@ -1757,7 +1873,7 @@ function pg_product_feed_refresh($only = null)
 
         $path = pg_product_feed_path($format);
 
-        if (!$entry['enabled']) {
+        if (!in_array($format, $build, true)) {
             if (is_file($path)) {
                 @unlink($path);
             }
@@ -1802,6 +1918,21 @@ function pg_product_feed_refresh($only = null)
     }
 
     return $report;
+}
+
+// The formats a build writes: those switched on, limited to $only when
+// given, in the setup's order.
+function pg_product_feed_formats_to_build($settings, $only = null)
+{
+    $formats = array();
+
+    foreach ($settings['formats'] as $format => $entry) {
+        if ($entry['enabled'] && (($only === null) || in_array($format, (array) $only, true))) {
+            $formats[] = $format;
+        }
+    }
+
+    return $formats;
 }
 
 // Adds the daily build to the jobs the general job runs, when the general job
@@ -2003,6 +2134,10 @@ function pg_product_feed_format_texts()
         'google_tsv' => array(
             'label' => lang('Google Merchant Center (TSV)'),
             'help'  => lang('Add this address in Merchant Center as a scheduled fetch; Google Shopping and its AI answers read your products from there.'),
+        ),
+        'google_xml' => array(
+            'label' => lang('Google product feed (XML)'),
+            'help'  => lang('The same products as an XML (RSS 2.0) file, for Merchant Center or a price comparison site that asks for an XML feed.'),
         ),
     );
 }
