@@ -173,7 +173,8 @@ function test_api_console_conventions_figures_follow_the_code()
 
 	foreach (array('idempotency' => array('idempotency_key_reused' => 409, 'idempotency_in_progress' => 409),
 		'dry-run' => array('dry_run_unsupported' => 400),
-		'rate-limit' => array('rate_limited' => 429)) as $id => $codes) {
+		'rate-limit' => array('rate_limited' => 429),
+		'etag' => array('precondition_failed' => 412)) as $id => $codes) {
 		foreach ($codes as $code => $status) {
 			pg_assert_true(isset($catalogue[$code]) && ((int) $catalogue[$code][0] === $status), $code . ' is ' . $status . ' in the catalogue');
 			pg_assert_contains($status . ' ' . $code, $text[$id]);

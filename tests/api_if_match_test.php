@@ -133,6 +133,17 @@ function test_api_if_match_router_decision()
 	pg_assert_same(0, $reads, 'ignored: the record is not read');
 }
 
+// The 412 answer is the usual envelope with a code the catalogue explains.
+function test_api_if_match_code_is_catalogued()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/api/schema.php');
+
+	$catalogue = api_error_catalogue();
+
+	pg_assert_true(isset($catalogue['precondition_failed']), 'precondition_failed is catalogued');
+	pg_assert_same(412, isset($catalogue['precondition_failed']) ? (int) $catalogue['precondition_failed'][0] : 0, 'with 412');
+}
+
 // The helper's outcomes, run once.
 function api_if_match_test_run_result()
 {

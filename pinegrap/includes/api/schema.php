@@ -6313,6 +6313,8 @@ function api_error_catalogue() {
 		'unknown_domain'           => array(409, 'An e-mail address names a domain that does not exist, so the mail would not arrive. Correct the address, or send the same call again with send_anyway true.'),
 		'idempotency_in_progress'  => array(409, 'A request with the same Idempotency-Key is still being carried out. Retry-After says when to send it again; the answer is then the first request\'s.'),
 
+		'precondition_failed'      => array(412, 'The record changed since the ETag sent in If-Match was read; nothing was written. Read it again and repeat the change.'),
+
 		'file_too_large'           => array(413, 'The upload is over the limit reported by /meta.'),
 
 		'validation_failed'        => array(422, 'A parameter is missing, the wrong type or out of range. The field is named in the answer.'),
