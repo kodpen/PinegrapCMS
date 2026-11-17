@@ -16,11 +16,12 @@ description: Every part of a Workspace message follows the width of its own colu
 - Poll and agent question: `.ws-poll` is a named container (`container: ws-poll / inline-size`); `@container ws-poll (max-width: 30rem)` repeats the phone layout (counts under the option, the foot's plain buttons by their icon, a picture beside the options above them) and "Write your own answer" takes a line over Send. An option's long word wraps (`overflow-wrap: break-word`, not `anywhere`: that splits every word in a narrow split column).
 - Canvas card head: the name keeps the icon's row and 8rem (`flex: 1 1 8rem`), the part chips wrap under it.
 - Titles for cut text: the "/" and "@" lists' label, example and meta (`pickerText()` in `drawPicker()`), the discussion head's channel line, the upload toast's file name, a media bar's name, a page card's name.
+- A reply's quote lines (`.ws-msg-quote`, `messageNode()`): the title is the line's whole text, then "Show the message this answers" on a second line (`quoteTitle()`, #10223). The line itself is an excerpt of 90 characters (`plain()`; the server's `ws_message_quotes_map()` for further quotes), so the title holds that excerpt, not the whole message.
 
 ## What was left as it is, and why?
 - The composer toolbar, hover bar, its menu, reactions, task card, approval card, change card, chips, link card, mail card, checklist, highlight and its bar read in 320 and 390 as they are.
 - The agent state line is #10029, fixed apart.
-- Bug issues for what needs a new look or other words: the rows shape's option picture beside a narrow text (#10222), a reply quote cut without its whole text as title, which is "go to the message" (#10223).
+- Bug issue for what needs a new look: the rows shape's option picture beside a narrow text (#10222).
 
 ## Gotchas?
 - A `@container` block written before a part's base rule loses to it on source order: `.ws-poll .ws-poll-split` carries the extra class for that.

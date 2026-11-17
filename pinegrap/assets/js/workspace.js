@@ -951,6 +951,15 @@
     // (label, the file's name), a bar with the share sent, "1.4 MB of 6.0
     // MB" and Cancel upload, which calls onCancel. progress(loaded, total)
     // moves it; remove() takes it away once the request has ended.
+    // A reply's quote line is cut with an ellipsis in a narrow column: its
+    // title carries the whole quoted text first and what a click does on
+    // the next line; with no text, the action alone.
+    function quoteTitle(text, action) {
+        var whole = String(text || '').trim();
+
+        return whole ? whole + '\n' + action : action;
+    }
+
     function uploadCard(label, name, onCancel) {
         toastHost();
 
@@ -12798,10 +12807,11 @@
             if (message.parent_id) {
                 var parent = self.findMessage(message.parent_id);
                 var quote = el('button', 'ws-msg-quote');
+                var quoted = (parent && !parent.deleted) ? ((parent.sender ? parent.sender.name + ': ' : '') + self.quoteText(parent)) : t('earlier_message');
                 quote.type = 'button';
-                quote.title = t('reply_go_to');
+                quote.title = quoteTitle(quoted, t('reply_go_to'));
                 quote.appendChild(icon('bi-reply', 'me-1'));
-                quote.appendChild(document.createTextNode((parent && !parent.deleted) ? ((parent.sender ? parent.sender.name + ': ' : '') + self.quoteText(parent)) : t('earlier_message')));
+                quote.appendChild(document.createTextNode(quoted));
 
                 // The message answered: brought into view and lit up for a
                 // moment, so which one it was is plain. One deleted since is
@@ -12821,10 +12831,11 @@
             // An answer to several: the others it answers, in their order.
             (message.quotes || []).forEach(function (other) {
                 var more = el('button', 'ws-msg-quote ws-msg-quote-more');
+                var otherQuoted = other.deleted ? t('earlier_message') : ((other.sender ? other.sender + ': ' : '') + other.text);
                 more.type = 'button';
-                more.title = t('reply_go_to');
+                more.title = quoteTitle(otherQuoted, t('reply_go_to'));
                 more.appendChild(icon('bi-reply', 'me-1'));
-                more.appendChild(document.createTextNode(other.deleted ? t('earlier_message') : ((other.sender ? other.sender + ': ' : '') + other.text)));
+                more.appendChild(document.createTextNode(otherQuoted));
                 more.addEventListener('click', function (event) {
                     event.stopPropagation();
 
