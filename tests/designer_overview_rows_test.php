@@ -265,5 +265,8 @@ function test_designer_overview_hint_cut_before_name()
 
 	pg_assert_true((bool) preg_match('/\.sd-tree-hint\s*\{[^}]*text-overflow:\s*ellipsis/', $css), 'the hint is cut with an ellipsis');
 	pg_assert_true((bool) preg_match('/\.sd-tree-lbl \{ flex: 0 0 auto;/', $css), 'the label does not shrink while a hint or a mark can');
-	pg_assert_true((bool) preg_match('/\.sd-tree-list li > \.sd-tree-lbl ~ :not\(\.sd-tree-sect-count\)\s*\{[^}]*flex-shrink:\s*100/', $css), 'what follows the label shrinks first');
+	pg_assert_true((bool) preg_match('/\.sd-tree-lbl ~ \.sd-tree-id-wrap \{[^}]*flex: 0 1000000 auto;[^}]*flex-wrap: wrap;[^}]*overflow: hidden/', $css), 'the id gives way first and wraps out of its line when too short');
+	pg_assert_true((bool) preg_match('/\.sd-tree-id-wrap > \.sd-tree-id \{[^}]*min-width: 5ch;[^}]*text-overflow: ellipsis/', $css), 'the id is cut with an ellipsis, never under five letters');
+	pg_assert_true((bool) preg_match('/\.sd-tree-lbl ~ \.sd-tree-hint \{ flex-shrink: 1; \}/', $css), 'the hint gives way after the id');
+	pg_assert_true((bool) preg_match('/\.sd-tree-list li > \.sd-tree-lbl ~ :not\(\.sd-tree-sect-count\)\s*\{[^}]*flex-shrink:\s*1000/', $css), 'what follows the label shrinks first');
 }

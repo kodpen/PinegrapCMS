@@ -15,6 +15,7 @@ description: Designer Overview (#10235): a chain of single-child wrappers folded
 ## Which names get a hint?
 - At each `renderTree()`, `_sdTreeCountNames()` counts the row names of the page (shared components' trees included). A row whose name occurs more than once, and that has no designer label (`_label`), shows `.sd-tree-hint` "· My orders" after the name.
 - The hint (`_sdTreeRowHint(node, 40)`): the element's own text (markup stripped), a picture's file name, a link's target when it has no text; else the first of these within its first 60 descendants. Cut to 40 characters with "…", then by CSS before the label ever is.
+- What gives way in a narrow row, in order: the `#id` (`.sd-tree-id-wrap`, cut with an ellipsis, left out when under five letters would stay: it wraps out of its one-line holder), the other marks, the hint; never the label (architect, channel 8613). A section's designer label is cut before its count.
 
 ## Where is the test?
 - `tests/designer_overview_rows_test.php`: a chain of four folded and opened, a selected chain open with its whole run, a lone wrapper, a closed wrapper, an editable area and content not folded; 61 links named alike with 61 hints; a picture's file name; a link's target; a long hint cut; the label's CSS never shrinking while a hint can.

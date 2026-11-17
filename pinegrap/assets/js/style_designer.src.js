@@ -32002,10 +32002,12 @@ const StyleDesigner = (function () {
             icon = '<span class="bi ' + (semTagIcons[node.props.tag] || 'bi-code-slash') + '"></span>';
         }
 
-        var idBadge = node.props.id ? '<span class="sd-tree-id">#' + esc(node.props.id) + '</span>' : '';
+        // The id gives way first: cut with an ellipsis, left out when only a
+        // few letters would stay (it wraps out of its one-line holder).
+        var idBadge = node.props.id ? '<span class="sd-tree-id-wrap"><span class="sd-tree-id" title="#' + esc(node.props.id) + '">#' + esc(node.props.id) + '</span></span>' : '';
         var displayLabel = _sdPartTreeLabel(node, getNodeLabel(node));
         var userLabelBadge = node.props._label
-            ? '<span class="sd-tree-user-label" title="' + esc(node.props._label) + '"><i class="bi bi-tag-fill"></i>' + esc(node.props._label) + '</span>'
+            ? '<span class="sd-tree-user-label" title="' + esc(node.props._label) + '"><i class="bi bi-tag-fill"></i><span class="sd-tree-user-label-t">' + esc(node.props._label) + '</span></span>'
             : '';
         var lockBadge = (node.type !== 'root' && node.props._locked)
             ? '<span class="sd-tree-lock-badge bi bi-lock-fill" title="' + esc(_sdT('Locked')) + '"></span>'
