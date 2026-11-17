@@ -837,18 +837,20 @@ function pg_picture_tr_untranslated($texts)
 
 /**
  * The name a language's picture is first given: its source's stem and the
- * language, as a PNG. Made unique by the caller; found only through
+ * language, in the picture's format (a canvas is a PNG, a photo keeps its
+ * own or its export's). Made unique by the caller; found only through
  * file_translation, never by this name. Pure.
  *
- * @param string $source the source's name
+ * @param string $source    the source's name
  * @param string $language
+ * @param string $extension
  * @return string
  */
-function pg_picture_tr_picture_name($source, $language)
+function pg_picture_tr_picture_name($source, $language, $extension = 'png')
 {
     $stem = preg_replace('/\.[a-z0-9]{2,5}$/i', '', (string) $source);
 
-    return $stem . '-' . strtolower(preg_replace('/[^A-Za-z0-9-]/', '', (string) $language)) . '.png';
+    return $stem . '-' . strtolower(preg_replace('/[^A-Za-z0-9-]/', '', (string) $language)) . '.' . strtolower((string) $extension);
 }
 
 /**
@@ -880,14 +882,45 @@ function pg_picture_tr_is_picture($file_id)
 }
 
 /**
- * A canvas file's live document and its hash: the newest version's, while
- * the file still holds its pixels; null for any other picture.
+ * Which kind of document a live version holds: 'canvas' (an artboard, no
+ * source picture), 'photo' (a source picture with layers over it) or ''.
+ * Works on the array and the object decode alike. Pure.
+ *
+ * @param mixed $doc
+ * @return string canvas | photo | ''
+ */
+function pg_picture_tr_doc_kind($doc)
+{
+    if (is_object($doc)) {
+        $doc = json_decode(json_encode($doc), true);
+    }
+
+    if (!is_array($doc) || ((isset($doc['v']) ? $doc['v'] : null) !== 1)) {
+        return '';
+    }
+
+    $board = !empty($doc['artboard']);
+    $source = isset($doc['source']) && is_array($doc['source']) && $doc['source'];
+
+    if ($board && !$source) {
+        return pg_image_editor_canvas_is_doc($doc) ? 'canvas' : '';
+    }
+
+    return ($source && !$board) ? 'photo' : '';
+}
+
+/**
+ * A picture's live document, its hash and its kind: the newest version's,
+ * while the file still holds its pixels. A photo's also names the base row
+ * the document is drawn on, which must still be there; null for any other
+ * picture.
  *
  * @param int    $file_id
  * @param string $name the file's stored name
- * @return array|null doc (decoded as objects), hash
+ * @return array|null doc (decoded as objects), hash, kind, base (the base
+ *                    row of a photo, null for a canvas)
  */
-function pg_picture_tr_canvas($file_id, $name)
+function pg_picture_tr_live_doc($file_id, $name)
 {
     $newest = pg_file_versions_ready() ? pg_file_versions_newest((int) $file_id) : null;
     $json = $newest ? (string) $newest['doc_json'] : '';
@@ -897,14 +930,27 @@ function pg_picture_tr_canvas($file_id, $name)
     }
 
     $doc = json_decode($json);
+    $kind = is_object($doc) ? pg_picture_tr_doc_kind($doc) : '';
+    $base = null;
 
-    if (!is_object($doc) || !pg_image_editor_canvas_is_doc($doc)) {
+    if ($kind === '') {
         return null;
+    }
+
+    // A photo is drawn on its base row, as the editor opens it; a base the
+    // retention removed leaves nothing to draw on.
+    if ($kind === 'photo') {
+        $base_no = pg_file_versions_base_no($newest);
+        $base = ($base_no > 0) ? db_item("SELECT * FROM file_versions WHERE file_id = '" . (int) $file_id . "' AND version_no = '" . (int) $base_no . "' AND doc_json = '' LIMIT 1") : null;
+
+        if (!$base || !is_file(pg_file_versions_path($base))) {
+            return null;
+        }
     }
 
     $hash = isset($newest['doc_hash']) ? (string) $newest['doc_hash'] : '';
 
-    return array('doc' => $doc, 'hash' => ($hash !== '') ? $hash : sha1($json));
+    return array('doc' => $doc, 'hash' => ($hash !== '') ? $hash : sha1($json), 'kind' => $kind, 'base' => $base);
 }
 
 /**
@@ -974,7 +1020,7 @@ function pg_picture_tr_languages_answer($request, $user)
     // The language helpers (target languages, labels) load with the store.
     pg_tr_load();
 
-    $canvas = pg_picture_tr_canvas($file_id, $file['row']['name']);
+    $canvas = pg_picture_tr_live_doc($file_id, $file['row']['name']);
     $targets = pg_tr_target_languages();
     $words = $canvas ? (int) db_value("SELECT COUNT(*) FROM translation_uses WHERE owner_type = 'file' AND owner_id = '$file_id'") : 0;
 
@@ -1013,7 +1059,9 @@ function pg_picture_tr_languages_answer($request, $user)
             'url'        => ($picture !== '') ? PATH . encode_url_path($picture) . '?v=' . (int) $row['drawn_at'] : '');
     }
 
-    return array(array('status' => 'success', 'words' => $words, 'hash' => $canvas['hash'], 'doc' => $canvas['doc'], 'languages' => $languages), 200);
+    // A photo's document is drawn on its base row (action picture).
+    return array(array('status' => 'success', 'words' => $words, 'hash' => $canvas['hash'], 'kind' => $canvas['kind'], 'doc' => $canvas['doc'],
+        'base' => $canvas['base'] ? (int) $canvas['base']['version_id'] : 0, 'name' => (string) $file['row']['name'], 'languages' => $languages), 200);
 }
 
 /**
@@ -1046,7 +1094,7 @@ function pg_picture_tr_draw_answer($request, $user)
     $file_id = (int) $file['row']['id'];
     $language = isset($request['language']) ? (string) $request['language'] : '';
     $targets = pg_tr_target_languages();
-    $canvas = pg_picture_tr_canvas($file_id, $file['row']['name']);
+    $canvas = pg_picture_tr_live_doc($file_id, $file['row']['name']);
     $texts = ($canvas && isset($targets[$language])) ? pg_picture_tr_language_texts($file_id, $language) : array();
     $why = pg_picture_tr_draw_refusal(array(
         'access'   => true,
@@ -1069,37 +1117,42 @@ function pg_picture_tr_draw_answer($request, $user)
         return pg_image_editor_refusal(lang('Invalid request.'));
     }
 
-    $board = $canvas['doc']->artboard;
-    $width = (int) round(max(16, min(8000, (float) $board->width)));
-    $height = (int) round(max(16, min(8000, (float) $board->height)));
+    // The picture's bytes: a canvas is the PNG drawn in the browser, a photo
+    // is drawn on its base by the save's own steps.
+    $drawn = ($canvas['kind'] === 'photo') ? pg_picture_tr_draw_photo($request, $file, $canvas) : pg_picture_tr_draw_canvas($request, $canvas);
+
+    if ($drawn['refusal']) {
+        return $drawn['refusal'];
+    }
+
     $now = time();
 
-    // A later draw writes over the language's picture, so its address stays.
+    // A later draw writes over the language's picture, so its address stays;
+    // one in another format (an export changed it) is replaced by a new file.
     $old = db_item("SELECT f.id, f.name, f.folder FROM file_translation ft INNER JOIN files f ON f.id = ft.picture_file_id
         WHERE ft.file_id = '$file_id' AND ft.language = '" . e($language) . "' LIMIT 1");
+    $gone = ($old && (strtolower(pathinfo((string) $old['name'], PATHINFO_EXTENSION)) !== $drawn['extension'])) ? (int) $old['id'] : 0;
+
+    if ($gone) {
+        $old = null;
+    }
+
     $folder = $old ? (int) $old['folder'] : (int) $file['row']['folder'];
     $name = $old ? (string) $old['name']
-        : get_unique_name(array('name' => prepare_file_name(pg_picture_tr_picture_name($file['row']['name'], $language)), 'type' => 'file'));
+        : get_unique_name(array('name' => prepare_file_name(pg_picture_tr_picture_name($file['row']['name'], $language, $drawn['extension'])), 'type' => 'file'));
 
     if (pg_upload_name_blocked($name)) {
+        @unlink($drawn['path']);
         return pg_image_editor_refusal(pg_upload_blocked_message($name));
     }
 
-    $path = FILE_DIRECTORY_PATH . '/' . $name;
-    $temporary = $path . '.' . (function_exists('getmypid') ? getmypid() : uniqid()) . '.tmp';
-
-    if (!pg_image_editor_take_png(isset($request['picture']) ? $request['picture'] : '', $temporary, $width, $height)) {
-        return pg_image_editor_refusal(lang('Invalid request.'));
-    }
-
-    pg_process_image_file($temporary);
-
-    if (!@rename($temporary, $path)) {
-        @unlink($temporary);
+    if (!@rename($drawn['path'], FILE_DIRECTORY_PATH . '/' . $name)) {
+        @unlink($drawn['path']);
         return pg_image_editor_refusal(lang('Sorry, the file could not be saved.'));
     }
 
-    $record = pg_image_editor_record($old ? 'replace' : 'new', $name, $folder, 'png', $old, $user);
+    @clearstatcache(true, FILE_DIRECTORY_PATH . '/' . $name);
+    $record = pg_image_editor_record($old ? 'replace' : 'new', $name, $folder, $drawn['extension'], $old, $user);
 
     if ($record[0]['status'] !== 'success') {
         return $record;
@@ -1113,6 +1166,10 @@ function pg_picture_tr_draw_answer($request, $user)
             drawn_at = VALUES(drawn_at), drawn_by = VALUES(drawn_by)",
         array($file_id, $language, (int) $record[0]['id'], $fit, (string) $canvas['hash'], $now, $now, (int) $user['id']));
 
+    if ($gone) {
+        pg_picture_tr_picture_delete($gone);
+    }
+
     // A page in this language shows the new picture from the next request.
     pg_page_cache_mark_dirty();
 
@@ -1120,4 +1177,88 @@ function pg_picture_tr_draw_answer($request, $user)
         'status' => 'success',
         'state'  => pg_picture_tr_list_state(array('state' => pg_picture_tr_state_after(0, 'draw'), 'fit' => $fit), count($texts), count($texts) - pg_picture_tr_untranslated($texts)),
         'url'    => PATH . encode_url_path($name) . '?v=' . $now), 200);
+}
+
+/**
+ * A canvas's picture for a language: the browser's PNG of the artboard's
+ * size, recompressed when that makes it smaller, in a temporary file.
+ *
+ * @param array $request picture
+ * @param array $live    pg_picture_tr_live_doc()
+ * @return array refusal (or null), path, extension
+ */
+function pg_picture_tr_draw_canvas($request, $live)
+{
+    $board = $live['doc']->artboard;
+    $width = (int) round(max(16, min(8000, (float) $board->width)));
+    $height = (int) round(max(16, min(8000, (float) $board->height)));
+    $path = FILE_DIRECTORY_PATH . '/picture-language.' . (function_exists('getmypid') ? getmypid() : uniqid()) . '.' . mt_rand() . '.tmp';
+
+    if (!pg_image_editor_take_png(isset($request['picture']) ? $request['picture'] : '', $path, $width, $height)) {
+        return array('refusal' => pg_image_editor_refusal(lang('Invalid request.')), 'path' => '', 'extension' => '');
+    }
+
+    pg_process_image_file($path);
+
+    return array('refusal' => null, 'path' => $path, 'extension' => 'png');
+}
+
+/**
+ * A photo's picture for a language, drawn as a save draws it: the recipe
+ * from the live document, the pixels of the base row that document names,
+ * and the parts the browser drew from it with the language's words (the
+ * overlay; the canvas around the picture, the masks and the colour layer
+ * are the document's own). The first frame of an animated photo; the
+ * photo's format, or the export's (a JPEG with a see-through erase is a
+ * PNG). The bytes in a temporary file.
+ *
+ * @param array $request overlay, extend, redact, masks, colour, export
+ * @param array $file    pg_image_editor_file()
+ * @param array $live    pg_picture_tr_live_doc() of kind photo
+ * @return array refusal (or null), path, extension
+ */
+function pg_picture_tr_draw_photo($request, $file, $live)
+{
+    $fail = function ($refusal) {
+        return array('refusal' => $refusal, 'path' => '', 'extension' => '');
+    };
+    $check = pg_image_edit_validate(json_decode(json_encode($live['doc']), true));
+
+    if (($check['error'] !== '') || $check['artboard']) {
+        return $fail(pg_image_editor_refusal(lang('Invalid request.')));
+    }
+
+    $export = pg_image_editor_export_options(isset($request['export']) ? $request['export'] : null, pg_image_editor_export_format_of($file['type']), pg_image_editor_export_formats());
+
+    if ($export === false) {
+        return $fail(pg_image_editor_refusal(lang('Invalid request.')));
+    }
+
+    @set_time_limit(120);
+
+    $edit = $check['edit'];
+    $edit['first_frame'] = true;
+    $parts = pg_image_editor_photo_parts($edit, $request, (string) $file['row']['name']);
+
+    if ($parts === false) {
+        return $fail(pg_image_editor_refusal(lang('Invalid request.')));
+    }
+
+    list($edit, $parts) = $parts;
+    $pixels = pg_image_editor_photo_pixels($edit, $parts, $request, $file, pg_file_versions_path($live['base']), $export);
+
+    if ($pixels['refusal']) {
+        return $fail($pixels['refusal']);
+    }
+
+    $name = (string) $file['row']['name'];
+    $extension = strtolower(pathinfo(($pixels['export']['format'] !== '') ? pg_image_editor_export_name($name, $pixels['export']['format']) : $name, PATHINFO_EXTENSION));
+    $path = FILE_DIRECTORY_PATH . '/picture-language.' . (function_exists('getmypid') ? getmypid() : uniqid()) . '.' . mt_rand() . '.tmp';
+
+    if (@file_put_contents($path, $pixels['data']) === false) {
+        @unlink($path);
+        return $fail(pg_image_editor_refusal(lang('Sorry, the file could not be saved.')));
+    }
+
+    return array('refusal' => null, 'path' => $path, 'extension' => $extension);
 }

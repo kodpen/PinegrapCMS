@@ -1484,12 +1484,14 @@
 
     // ---- Languages: a canvas file's pictures in the site's other languages ----
 
-    // A canvas opened from Files whose texts the site translates gets a
-    // Languages button in the top bar: each target language with its state,
-    // Draw and Draw all. A language's picture is drawn here, from the last
-    // saved document with that language's words, by the save's own renderer
-    // (drawArtboard() of a painter that opens no dialog), and posted to
-    // action picture_language_draw, which keeps it beside the source.
+    // A canvas or a photo with text layers opened from Files, whose texts the
+    // site translates, gets a Languages button in the top bar: each target
+    // language with its state, Draw and Draw all. A language's picture is
+    // drawn here, from the last saved document with that language's words,
+    // by the save's own renderer on a painter that opens no dialog: a
+    // canvas's whole picture (drawArtboard()), a photo's overlay and the
+    // parts a save sends with it, which the server draws on the photo's base
+    // (action picture_language_draw keeps it beside the source).
     X.icons.languages = 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM3.5 9h17M3.5 15h17M12 3c-2.4 2.6-3.6 5.6-3.6 9s1.2 6.4 3.6 9M12 3c2.4 2.6 3.6 5.6 3.6 9s-1.2 6.4-3.6 9';
 
     var LANG_STATES = { not_translated: 'langNotTranslated', translated: 'langTranslated', drawn: 'langDrawn', out_of_date: 'langOutOfDate', look: 'langLook' };
@@ -1523,7 +1525,7 @@
 
         openLanguagesFile.call(this, r);
 
-        if (!this.langBtn || !r || !r.canvas || this.opts.src) {
+        if (!this.langBtn || !r || !(r.canvas || r.base) || this.opts.src) {
             return;
         }
 
@@ -1663,11 +1665,84 @@
         });
     };
 
+    // A photo's base row as a picture the painter draws from (its colour
+    // layer, a matte's guide), read once per base.
+    Editor.prototype.langBaseImage = function (data) {
+        var cfg = X.config(), key = this.langFileId + ':' + data.base;
+
+        if (!this.langBases) {
+            this.langBases = {};
+        }
+
+        if (!this.langBases[key]) {
+            this.langBases[key] = fetch(cfg.api, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token: cfg.token || '', action: 'picture', file_id: this.langFileId, version_id: data.base })
+            }).then(function (res) {
+                if (!res.ok || ((res.headers.get('Content-Type') || '').indexOf('image/') !== 0)) {
+                    throw new Error('picture');
+                }
+
+                return res.blob();
+            }).then(function (blob) {
+                return new Promise(function (resolve, reject) {
+                    var img = new Image();
+
+                    img.onload = function () { resolve(img); };
+                    img.onerror = reject;
+                    img.src = URL.createObjectURL(blob);
+                });
+            });
+        }
+
+        return this.langBases[key];
+    };
+
+    // What a photo's save sends beside its document, drawn by the painter
+    // from the language's document: the overlay, the canvas around the
+    // picture, the masks of a redaction and of the selection's areas, a
+    // JPEG with a see-through erase as a PNG, and the colour layer where
+    // the server has no colour step. Null when it cannot be drawn here.
+    function photoParts(painter) {
+        var body = { overlay: painter.drawOverlay() }, doc = painter.doc, layout = M.saveLayout(doc);
+        var redact = painter.redactMasks ? painter.redactMasks() : [], masks = painter.areaMasks ? painter.areaMasks() : [];
+
+        if (layout) {
+            body.extend = layout;
+        }
+
+        if (redact.length) {
+            body.redact = redact;
+        }
+
+        if (masks.length) {
+            body.masks = masks;
+        }
+
+        if (painter.areaJpeg && painter.areaJpeg() && painter.areaSeeThrough()) {
+            body.export = { format: 'png' };
+        }
+
+        if (!X.config().serverColor && M.colorMatrix(M.colorValues(doc))) {
+            body.colour = painter.drawColour();
+
+            if (!body.colour) {
+                return null;
+            }
+        }
+
+        return body;
+    }
+
     // One language's picture: its words in the layers, each changed text
     // fitted to its source's box (smaller, never under the floor; the
     // middle kept upright, the aligned side kept across), drawn and posted.
     Editor.prototype.drawLanguage = function (data, lang) {
-        var self = this, opened = M.canvasOpenDoc(data.doc), put = opened ? M.languageDoc(opened, lang.texts) : null;
+        var self = this, photo = (data.kind === 'photo');
+        var opened = photo ? M.versionOpenDoc(data.doc, this.langFileId) : M.canvasOpenDoc(data.doc);
+        var put = opened ? M.languageDoc(opened, lang.texts) : null;
 
         if (!put) {
             return Promise.resolve(null);
@@ -1676,12 +1751,18 @@
         var painter = Object.create(Editor.prototype), mark = false;
 
         painter.doc = put.doc;
+        painter.opts = { fileId: this.langFileId, fileName: data.name || '' };
+        painter.file = { name: data.name || '' };
         painter.pictures = {};
         painter.textFonts = {};
         painter.layersDirty = true;
         painter.renderView = function () { /* no stage to draw */ };
 
-        return painter.layersReady().then(function () {
+        return (photo ? this.langBaseImage(data) : Promise.resolve(null)).then(function (img) {
+            painter.img = img;
+
+            return painter.layersReady();
+        }).then(function () {
             put.doc.layers.forEach(function (l) {
                 var src = put.source[l.id];
 
@@ -1705,7 +1786,19 @@
 
             return painter.layersReady();
         }).then(function () {
-            return self.request({ action: 'picture_language_draw', file_id: self.langFileId, language: lang.code, stamp: lang.stamp, fit: mark ? 1 : 0, picture: painter.drawArtboard() });
+            var body = photo ? photoParts(painter) : { picture: painter.drawArtboard() };
+
+            if (!body) {
+                return null;
+            }
+
+            body.action = 'picture_language_draw';
+            body.file_id = self.langFileId;
+            body.language = lang.code;
+            body.stamp = lang.stamp;
+            body.fit = mark ? 1 : 0;
+
+            return self.request(body);
         });
     };
 }(window.PgImageEditor.parts));
