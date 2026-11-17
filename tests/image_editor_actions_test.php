@@ -277,3 +277,21 @@ function test_image_editor_actions_object_bar_rule()
 	pg_assert_contains("'(max-width: 767.98px), (max-height: 499.98px)'", $js, 'the script asks the same media as the stylesheet');
 	pg_assert_contains('M.actBarPlace(', $js, 'placed by the pure function');
 }
+
+// The bar's and the popover's labels are the owning parts' keys where one
+// exists (Split clip, the phases); the new ones are the actions part's own.
+function test_image_editor_actions_owning_labels()
+{
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_image_editor_actions.js');
+	pg_assert_true(preg_match("#split: \['scissors', 'actSplit', function [^\n]*, false, 'clipSplit'\]#", $js) === 1, 'Split clip over the object, the phone\'s Split kept');
+	pg_assert_true(isset(pg_image_editor_strings_clip()['clipSplit']), 'Split clip is the clip part\'s');
+
+	$motion = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_image_editor_motion.js');
+	pg_assert_contains("[['in', 'motionIn'], ['loop', 'motionLoop'], ['out', 'motionOut']]", $motion, 'the popover\'s rows use the motion part\'s phase names');
+
+	$own = pg_image_editor_strings_actions();
+
+	foreach (array('actEditText', 'actMotion', 'actMore', 'actMoreOptions') as $key) {
+		pg_assert_true(isset($own[$key]), $key . ' is the actions part\'s');
+	}
+}

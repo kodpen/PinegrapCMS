@@ -1,24 +1,33 @@
 ---
 name: image-editor-actions
-description: The Design Canvas's selection bar on a small screen: which commands show (M.actionList()), where it sits, when it hides, why it exists, how it was checked
+description: The Design Canvas's selection bar, over the object on the desktop and at the stage's foot on a small screen: its commands (M.actionList()), labels, place and when it hides
 module: image_editor
 ---
 
 ## What is it, and why?
-- Part `actions` (`pg_image_editor_actions.js`, bundled before the context menu `ui/image-editor-menu.md`, which starts from the same list; labels `pg_image_editor_strings_actions()`; rules under its line at the end of `pg_image_editor.src.css`): the selection's main commands in a bar over the stage, only where the panel is a sheet (below 768 px wide or 500 px tall). On the desktop the panel shows the same buttons, so the stylesheet hides it there.
-- Owner (2026-11-04, a phone test): a selected sticker or picture could not be deleted (no Delete key, Select's sheet closed), and after a lasso the area's commands sat at the foot of a long sheet.
+- Part `actions` (`pg_image_editor_actions.js`, bundled before the context menu `ui/image-editor-menu.md`; labels `pg_image_editor_strings_actions()`; rules under its line in `pg_image_editor.src.css`): the selection's main commands as a bar on the stage.
+- Small screen (the panel a sheet: under 768 px wide or 500 px tall): at the stage's foot. Owner (2026-11-04, a phone test): a selected sticker could not be deleted there.
+- Desktop: over the selected object, so a command does not take the tool's panel away (#10003). Owner (2026-11-16, poll 103, message 7038): "Evet, böyle çıksın" (`workflow/decisions-made-product-67.md`).
 
-## Which commands show?
-- `M.actionList(state)` (the model's ACTIONS section) from `actionState()`. Layers selected with a tool that selects layers: Remove pin first while Free deformation has a pin chosen (`state.pin`), Options (while the sheet is closed), Split for one clip in the Animate tool (`state.split`, `image-editor-phone-rows.md`), Duplicate, Delete (off when all are locked).
-- The picture selected (`image-editor-picture-layer.md`): Options, Lock, Delete. An area with Select area: Options, then Erase inside, Keep only, Copy to a layer, Cut to a layer, Adjust inside where the area part has them (`areaErase()` …), Redact the selection, Invert, Deselect. Layers come before the picture, the picture before an area.
-- Options opens the sheet (and closes the layers list): arrange, align, opacity, colours, the area's shapes and feather are there. Arrange in the bar did not fit a 390 px phone: Delete was scrolled out of sight.
-- The commands call the parts' own methods (`addLayers()`, `removeLayers()`, `lockPicture()`, `deletePicture()`, `areaRedact()`, `areaInvert()`, `areaClear()`), so undo and the panel stay in step. Labels are the owning parts' keys; the bar's own are `actBar` (its aria-label) and `actOptions`.
+## Which commands show on the desktop?
+- `M.actionList(state)` with `state.place` `object` (`objectActions()`): one layer's own command (a text: Edit text; a video in Animate: Split), Motion in Animate (never a redaction), Duplicate, Delete, Lock, More. Several layers: Duplicate, Delete, Lock, More. Every layer locked: Unlock and More.
+- The picture and an area keep their commands in the panel there: no bar. More opens the context menu's list at the bar (`openMenu()`): order, align, flip are there, not in the bar.
+- Motion opens the Motion popover (`image-editor-motion.md`); a track row's button opens the same one (`image-editor-tracks.md`).
+
+## Which commands show on a small screen?
+- Layers: Remove pin while Free deformation has a pin chosen, Options (sheet closed), Split for one clip in Animate (`image-editor-phone-rows.md`), Duplicate, Delete (off when all are locked). The picture: Options, Lock, Delete. An area: Options, Erase inside, Keep only, Copy to a layer, Cut to a layer, Adjust inside, Redact, Invert, Deselect.
+- Options opens the sheet (arrange, align, colours, feather). The list is kept as approved (`workflow/decisions-made-product-28.md`).
+
+## Which labels does it use?
+- The owning parts' keys: `duplicate`, `delete`, `lock`, `unlock`, the area's. Split over the object is the clip part's `clipSplit` (Split clip), on the phone the phone part's approved `actSplit` (Split): a command's fifth entry in `COMMANDS` is its key over the object.
+- The bar's own: `actBar` (aria-label), `actOptions`, `actEditText`, `actMotion`, `actMore`, `actMoreOptions` (the popover's foot).
 
 ## Where does it sit, and when does it hide?
-- In the stage, centred, above what covers the stage's bottom (an open sheet's 12 px overlap on a phone held upright, the Animate bar's `stageInset`) and left of a sheet over the stage's right (`panelCover()`), through `--pgie-act-bottom` and `--pgie-act-right`. With the mini bar on a phone held upright (the mini bar at the bottom) it takes the top.
-- Only the bar takes presses (its wrapper has `pointer-events: none`); pointerdown, pointerup, dblclick and wheel stop on it, so a tap never reaches the tool and a swipe scrolls a long bar.
-- Hidden while dragging (`this.drag`), typing a text (`textEdit`), placing a polygon (`areaPoly`), cropping, after a failed open. Rebuilt only when its list changes.
+- Desktop: `M.actBarPlace(box, bar, stage)` from the drawn selection boxes: centred above, 8 px clear of the box and the turning handle; below it (`pgie-actbelow`) where there is no room; inside the stage, above the play bar and the tracks (`stageInset`). Redrawn with the selection box (zoom, pan, move).
+- Small screen: centred above what covers the stage's bottom (an open sheet, the play bar) and left of a sheet over its right (`--pgie-act-bottom`, `--pgie-act-right`); at the top with the mini bar on a phone held upright.
+- Hidden while dragging, typing a text, placing a polygon, cropping; over the object also while playing (not a pick's preview) or recording, and with no box drawn.
+- Only the bar takes presses: pointerdown, pointerup, dblclick and wheel stop on it. Arrows, Home and End move along it, Escape goes back to the stage.
 
 ## How was it checked?
-- `tests/image_editor_actions_test.php`: the lists for layers, locked layers, the picture, an area with and without the pixel commands; the bundle, the labels, the small-screen rule.
-- Browser (sandbox, 2026-11-04), 390×844 touch: a sticker selected with Select, Duplicate and Delete from the bar, Options opening its sheet; a lasso with the sheet open and closed, Invert, Deselect; the picture unlocked; 844×390 with and without the sheet; the mini bar (arrow, text) on top; hidden at 1280×800. With the area's pixel commands merged locally: eight commands scroll by a swipe that keeps the selection, and Keep only works from the bar.
+- `tests/image_editor_actions_test.php`: the lists per place, kind and lock; `actBarPlace()` at each edge; the stylesheet's two rules; the labels' owners (#10003, #10041).
+- Browser, 390×844 (2026-11-04) and 1440 and 1024 light and dark (#10003): the bar, a text, a video in Animate with the popover open, a layer at the top edge, a locked one.

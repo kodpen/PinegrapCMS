@@ -24,4 +24,5 @@ description: How the Design Canvas picks layers: Select's click, Shift, box, Sel
 - How it is checked: `tests/image_editor_select_press_test.php` (the pure rule per tool and state, and presses through `onDown` on an editor under Node).
 
 ## Where is the selection used?
-- The layer keys, the panel's arrange, align, opacity, duplicate and delete: `image-editor-layers.md`; on a small screen Duplicate and Delete in the selection bar: `image-editor-actions.md`; the combine buttons and the builder's click: `image-editor-builder.md`.
+- The layer keys, the panel's arrange, align, opacity, duplicate and delete: `image-editor-layers.md`; the combine buttons and the builder's click: `image-editor-builder.md`.
+- The selection bar (`image-editor-actions.md`): over the selected object on the desktop wherever the box shows, so also while Ctrl or Cmd is held in another tool; at the stage's foot on a small screen.
