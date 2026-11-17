@@ -85,6 +85,7 @@
 - erp-manual-invoice-form-and-snapshot.md: Manual invoice form mechanics (lines[n][field] arrays, template row, JS vs PHP totals), the account snapshot columns (4.51, 4.64 district and postcode) and extra document data.
 - erp-module-basics.md: ERP module switch and gate areas, the four permission columns, defensive constants, why tables always install, step names, menu slot 22 and titles, naming traps, where open ERP work is tracked.
 - erp-money-and-currency.md: ERP money storage (integer minor units), the single rounding point in money.php, tax-inclusive splits, home-currency rule, *_base columns, opt-in FX switch, rate history and the fx_diff ledger line.
+- erp-money-overflow.md: ERP amounts too large for an integer: the typed figure, the exchange rate bound and the home-currency total bound, checked where a document is saved or issued
 - erp-negative-price-lines.md: An order line of a product priced below zero: how the checkout, the ERP invoice, ERP returns and Paraşüt treat it (Paraşüt refuses it, #1297), and where such a line can still come from
 - erp-no-till-hint.md: What the ERP till pickers say when no usable till is set up (erp_no_till_hint()): the screens that call it, the transfer and cheque variants, why the save's refusal texts stay.
 - erp-not-built-on-purpose.md: What the ERP deliberately does not do today (auto matching, e-waybill, order split, payment link, payout imports, bank API, legal income statement) and what the Paraşüt driver has not seen live. [decision: decisions-made-product.md]
