@@ -1309,6 +1309,42 @@ function test_proto_hotspots_widget_settings_reach_pages()
 	pg_assert_same(array(), $out['bad'], 'settings that do not parse');
 }
 
+// A link the server fills per request (the account widget's "Profile",
+// href bound to __profile_url) leads to the page placing the widget of that
+// kind: that page is reached. A field with no such page, or one the map
+// does not know, reaches nothing; the link is still no hotspot.
+function test_proto_hotspots_bound_fields_reach_widget_pages()
+{
+	$ref = function ($sid) { return array('_id' => 'r' . $sid, 'type' => 'shared_ref', 'props' => array('sharedId' => $sid), 'children' => array()); };
+	$link = function ($id, $field) { return array('_id' => $id, 'type' => 'content', 'props' => array('contentType' => 'link', 'text' => $id, 'href' => '#', '_bindings' => array('href' => $field)), 'children' => array()); };
+	$pages = array(
+		array('key' => 'p10', 'page_id' => 10, 'page_name' => 'home', 'tree' => array('_id' => 'a', 'type' => 'root', 'children' => array($ref(2)))),
+		array('key' => 'p11', 'page_id' => 11, 'page_name' => 'hesabim', 'tree' => array('_id' => 'b', 'type' => 'root', 'children' => array($ref(3)))),
+		array('key' => 'p12', 'page_id' => 12, 'page_name' => 'profilim', 'tree' => array('_id' => 'c', 'type' => 'root', 'children' => array($ref(4)))),
+		array('key' => 'p13', 'page_id' => 13, 'page_name' => 'cikis', 'tree' => array('_id' => 'd', 'type' => 'root', 'children' => array($ref(5)))),
+		array('key' => 'p14', 'page_id' => 14, 'page_name' => 'bulten', 'tree' => array('_id' => 'e', 'type' => 'root', 'children' => array($link('x', '__unknown_url')))),
+	);
+	$shared = array(
+		2 => array('name' => 'Header', 'tree' => array('_id' => 'h', 'type' => 'root', 'children' => array($link('m', '__my_account_url')))),
+		3 => array('name' => 'Account', 'tree' => array('_id' => 'w', 'type' => 'root', 'children' => array($link('p', '__profile_url'), $link('q', '__change_password_url'))), 'system_region_config' => '{"regionType":"my_account"}'),
+		4 => array('name' => 'Profile', 'tree' => null, 'system_region_config' => '{"regionType":"account_profile"}'),
+		5 => array('name' => 'Logout', 'tree' => null, 'system_region_config' => '{"regionType":"logout"}'),
+	);
+	$out = proto_hotspots_test_node('var d = H.design(' . proto_hotspots_test_js($pages) . ', ' . proto_hotspots_test_js($shared) . ');'
+		. ' var l = H.layout(H.mark(d, ' . proto_hotspots_test_js(proto_hotspots_test_read()) . ', []), {});'
+		. ' var f = {}; l.frames.forEach(function (x) { f[x.id] = x; });'
+		. ' out = { urls: f["s:3"].urls, widget: [f["s:3"].widget, f["s:4"].widget, f["s:2"].widget], spots: d.shared.filter(function (s) { return s.id === 3; })[0].hotspots.length, unreached: H.problemsOf(l).unreached };');
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array('__profile_url', '__change_password_url'), $out['urls'], 'the widget\'s fields, each once');
+	pg_assert_same(array('my_account', 'account_profile', ''), $out['widget'], 'a system widget\'s kind');
+	pg_assert_same(0, $out['spots'], 'a field-bound link is still no hotspot');
+	pg_assert_same(array('p:p13', 'p:p14'), $out['unreached'], 'hesabim by the header\'s My account, profilim by the widget\'s Profile; no field leads to cikis; an unknown field leads nowhere');
+}
+
 // Which marks a picture shows (F5, F13): the selected frame all of its own;
 // another frame those starting an arrow into it; a shared part's link into
 // the selected page in amber. Nothing selected shows none.
