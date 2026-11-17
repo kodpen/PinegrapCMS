@@ -47,6 +47,7 @@
 - api-http-manners.md: External API manners (#10142): HEAD as GET without a body, Location on a 201, Content-Language on an error, exposed headers, the Basic challenge on credentials_missing
 - api-idempotency-key.md: External API Idempotency-Key: reservation row before the write, 409 idempotency_in_progress on an overlapping retry, errors give the key back, 300 s stale take-over, secrets kept out of the record
 - api-inventory-locations.md: Stock per location in the external API and MCP: GET /inventory/locations, /inventory, /inventory/moves, POST /inventory/transfer; scopes, refusals, dry run, inventory.changed
+- api-list-newest-first.md: sort=newest on the lists automation triggers sample (customers, form submissions, products, subscriptions, ERP invoices and quotes): the walk, the marked cursor, list_order.php
 - api-mcp-client-streams.md: The MCP client reads an event-stream answer only until the event that answers its request (api_http_request() option complete); why curl's error 23 then counts as success; other callers unchanged
 - api-mcp-client.md: The site as an MCP client (includes/mcp/client.php, the Workspace's MCP servers): what a refusal says (OAuth challenge, moved address, old /sse address, JSON-RPC error, timeout) and why
 - api-mcp-no-tool-routes.md: Which API routes carry 'mcp' => false and are no MCP tools: the polled sync, file downloads, own-words routes, Claude's queues, the person's decisions on a card, and why [decision: here]
