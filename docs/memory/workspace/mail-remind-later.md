@@ -6,7 +6,7 @@ description: Remind me later (IB10): the pane's menu and times, ws_mail_reminder
 ## What does the person see?
 - "Remind me later" (Sonra hatırlat) among the reading pane's tools of the E-mails screen, for any team member who may read the conversation (not only who may answer): "In an hour", "Tomorrow morning" (09:00), "Next week" (Monday 09:00), "Choose a time" (a drawer with the panel's date-and-time control and "Set reminder").
 - Times are in the person's zone (`USER_TIMEZONE`, else the site's); a chosen time follows Send later's limits (5 minutes to 60 days, a skipped hour refused, `ws_mail_later_parse()`).
-- Once set, the row leaves the list, the pane closes and the E-mails count drops. While one is set the button reads "Reminds you at …" and the menu adds "Cancel reminder". A search still finds the conversation, so it can be opened and cancelled.
+- Once set, the row leaves the list, the pane closes and the E-mails count drops. While one is set the button reads "Reminds you at …" and the menu adds "Cancel reminder". Cancel reminder brings the row back into the list at once (the list is asked again, `mail-screen-pane.md`; #10084). A search still finds the conversation, so it can be opened and cancelled.
 - Nobody else's list or count changes; the conversation's status, holder and card stay as they were.
 
 ## How does it come back?

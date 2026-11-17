@@ -12,9 +12,9 @@ description: The Prototype view draws only the selected frame's arrows: the core
 - The arrows run in right angles with rounded turns through the gaps between frames, to the nearest edge of their target, side by side where they share a gap; a moved frame routes its arrows again (`route: 'elbow'`, F14, PV5; ui/graph-canvas-core-routing.md).
 
 ## What does a shared part's link into the selected page do?
-- It draws no arrow (`sd-proto-from-shared` hides the in arrow in CSS). Its row on the shared frame turns amber and a line under that frame names it ("Cart icon → cart", `div.sd-proto-note`). Selecting the shared frame draws its own arrows. The focus announcement still counts it as one in.
+- It draws no arrow (`sd-proto-from-shared` hides the in arrow in CSS). Its mark on the shared frame's picture turns amber and a line under that frame names it ("Cart icon → cart", `div.sd-proto-note`). Selecting the shared frame draws its own arrows. The focus announcement still counts it as one in.
 
-## How are the rows marked until a frame shows its page?
-- `PGProtoHotspots.focusOf(layout, id)` answers `{ out, in, shared, lit }`; `_sdProtoFocusMarks()` runs on every change (`adapter.focusChanged`): the selected frame's rows in full, on other frames the rows that start an arrow into it lit (`sd-proto-row-lit`), the rest quiet (`sd-proto-row-quiet`).
+## Which marks show?
+- `PGProtoHotspots.focusOf(layout, id)` answers `{ out, in, shared, lit }`; `_sdProtoFocusMarks()` runs on every change (`adapter.focusChanged`) and after each picture loads: the marks of `markState()` (designer/prototype-marks.md), the notes under shared frames.
 - Tests: `test_proto_hotspots_focus_of_a_frame`, `test_proto_hotspots_view_focus_and_all_arrows`.
 - The canvas stays dark under the light panel theme (architect, 2026-11-16, agent channel message 5878).

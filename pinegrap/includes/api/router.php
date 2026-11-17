@@ -43,6 +43,10 @@ function api_request_method($set = null) {
 
 	$method = isset($_SERVER['REQUEST_METHOD']) ? strtoupper($_SERVER['REQUEST_METHOD']) : 'GET';
 
+	// HEAD is the GET of the same address; api_send() leaves the body out
+	// (api_request_is_head()).
+	$method = api_route_method($method);
+
 	// Some managed hosts and corporate proxies drop PATCH and DELETE outright.
 	// The override header is the usual way round it and is honoured only on a
 	// POST, so it can never widen what a GET is allowed to do.
@@ -261,6 +265,16 @@ function api_request_input($set = null) {
 
 			}
 
+			// A list with items decodes to an array too, and its 0, 1, 2 were
+			// read as field names: the endpoint answered "name is required".
+			// An empty [] stays an empty body, since json_encode() writes an
+			// empty PHP array that way.
+			if (api_json_body_is_list($raw, $decoded)) {
+
+				api_fail(400, 'invalid_json', lang('The request body must be a JSON object, not a list.'));
+
+			}
+
 			api_request_body_keys(array_keys($decoded));
 
 			$input = array_merge($input, $decoded);
@@ -325,6 +339,32 @@ function api_current_route($route = null) {
 function api_all_routes() {
 
 	return array_merge(api_open_routes(), api_discovery_routes(), api_schema());
+
+}
+
+// The path patterns of every GET route, for the Location of a 201
+// (api_location_path()).
+function api_get_route_patterns() {
+
+	static $patterns = null;
+
+	if ($patterns === null) {
+
+		$patterns = array();
+
+		foreach (api_all_routes() as $route) {
+
+			if ($route['method'] === 'GET') {
+
+				$patterns[] = api_route_pattern($route);
+
+			}
+
+		}
+
+	}
+
+	return $patterns;
 
 }
 
@@ -425,7 +465,7 @@ function api_route_match($method, $path) {
 
 	if (!empty($allowed)) {
 
-		api_extra_headers('Allow', implode(', ', array_unique($allowed)));
+		api_extra_headers('Allow', implode(', ', api_allow_methods($allowed)));
 
 		api_fail(405, 'method_not_allowed', lang(array(
 			'string' => 'This address does not accept {var:1} requests.',
@@ -448,7 +488,31 @@ function api_route_match($method, $path) {
    turned a price of "cheap" into zero and reported success.
    --------------------------------------------------------------------------- */
 
+// Every refusal of the router's own checks - a declared parameter, an
+// unknown field - is collected and answered at once (api_validate_collect()),
+// so a client fixes its call in one round instead of one field a round.
+// error.field and error.message stay the first refusal; error.errors lists
+// them all, at most api_field_errors_max(). A handler's own refusal stays one.
 function api_validate_input($route, $input) {
+
+	$checked = api_validate_collect($route, $input, api_request_body_keys());
+
+	if (!empty($checked['errors'])) {
+
+		api_fail_field_errors($checked['errors']);
+
+	}
+
+	return $checked['values'];
+
+}
+
+// The values and the refusals of a request, without answering: array('values'
+// => the typed values, 'errors' => list of array('field', 'code', 'message')).
+// $body_keys are the keys the body was sent with (api_request_body_keys()).
+function api_validate_collect($route, $input, $body_keys) {
+
+	$errors = array();
 
 	$values = array();
 
@@ -503,7 +567,7 @@ function api_validate_input($route, $input) {
 
 			if (!empty($param['required'])) {
 
-				api_fail_validation(lang(array('string' => '{var:1} is required.', 'vars' => $name)), $name);
+				$errors[] = api_field_error($name, 'required', lang(array('string' => '{var:1} is required.', 'vars' => $name)));
 
 			}
 
@@ -529,7 +593,15 @@ function api_validate_input($route, $input) {
 
 		}
 
-		$values[$name] = api_validate_value($param, $raw);
+		try {
+
+			$values[$name] = api_validate_value($param, $raw);
+
+		} catch (ApiFieldRefused $refused) {
+
+			$errors[] = $refused->row;
+
+		}
 
 	}
 
@@ -550,7 +622,7 @@ function api_validate_input($route, $input) {
 
 	}
 
-	foreach (api_request_body_keys() as $sent) {
+	foreach ((array)$body_keys as $sent) {
 
 		if (in_array($sent, $accepted, true)) {
 
@@ -560,14 +632,71 @@ function api_validate_input($route, $input) {
 
 		$shown = mb_substr((string)$sent, 0, 60);
 
-		api_fail_validation(lang(array(
+		$errors[] = api_field_error($shown, 'unknown_field', lang(array(
 			'string' => 'This endpoint does not take a field called {var:1}.',
 			'vars'   => $shown
-		)), $shown);
+		)));
 
 	}
 
-	return $values;
+	return array('values' => $values, 'errors' => $errors);
+
+}
+
+
+// The most rows error.errors carries: enough for any form a client sends,
+// small enough that a body of a thousand unknown keys is not echoed back.
+function api_field_errors_max() {
+
+	return 20;
+
+}
+
+// The 422 for the refusals api_validate_collect() found: the first as
+// error.field and error.message, every one (capped) in error.errors.
+function api_fail_field_errors($errors) {
+
+	$errors = array_slice(array_values((array)$errors), 0, api_field_errors_max());
+
+	api_fail(422, 'validation_failed', $errors[0]['message'], $errors[0]['field'], $errors);
+
+}
+
+// One row of error.errors.
+function api_field_error($field, $code, $message) {
+
+	return array('field' => (string)$field, 'code' => (string)$code, 'message' => (string)$message);
+
+}
+
+// Thrown by api_validate_value() for one parameter, caught by
+// api_validate_collect(), which goes on with the next.
+class ApiFieldRefused extends Exception {
+
+	public $row;
+
+	public function __construct($row) {
+
+		parent::__construct($row['message']);
+
+		$this->row = $row;
+
+	}
+
+}
+
+// A value refused by its declaration.
+function api_field_refuse($param, $code, $message) {
+
+	throw new ApiFieldRefused(api_field_error($param['name'], $code, $message));
+
+}
+
+// Whether a JSON body is a list with items: a body that starts with [ and
+// decoded to anything but the empty array.
+function api_json_body_is_list($raw, $decoded) {
+
+	return is_array($decoded) && !empty($decoded) && (substr(ltrim((string)$raw), 0, 1) === '[');
 
 }
 
@@ -580,13 +709,13 @@ function api_validate_bounds($param, $value) {
 
 	if (isset($param['min']) && $value < $param['min']) {
 
-		api_fail_validation(lang(array('string' => '{var:1} is below the smallest accepted value.', 'vars' => $name)), $name);
+		api_field_refuse($param, 'below_min', lang(array('string' => '{var:1} is below the smallest accepted value.', 'vars' => $name)));
 
 	}
 
 	if (isset($param['max']) && $value > $param['max']) {
 
-		api_fail_validation(lang(array('string' => '{var:1} is above the largest accepted value.', 'vars' => $name)), $name);
+		api_field_refuse($param, 'above_max', lang(array('string' => '{var:1} is above the largest accepted value.', 'vars' => $name)));
 
 	}
 
@@ -664,7 +793,7 @@ function api_validate_value($param, $raw) {
 
 	if (!api_value_is_single($param, $raw)) {
 
-		api_fail_validation(lang(array('string' => '{var:1} must be a single value, not a list or an object.', 'vars' => $name)), $name);
+		api_field_refuse($param, 'not_single', lang(array('string' => '{var:1} must be a single value, not a list or an object.', 'vars' => $name)));
 
 	}
 
@@ -674,7 +803,7 @@ function api_validate_value($param, $raw) {
 
 			if (!is_numeric($raw) || (string)(int)$raw !== (string)trim((string)$raw)) {
 
-				api_fail_validation(lang(array('string' => '{var:1} must be a whole number.', 'vars' => $name)), $name);
+				api_field_refuse($param, 'not_integer', lang(array('string' => '{var:1} must be a whole number.', 'vars' => $name)));
 
 			}
 
@@ -687,10 +816,10 @@ function api_validate_value($param, $raw) {
 			// change a price by a hundredfold in the wrong direction.
 			if (!api_money_is_whole($raw)) {
 
-				api_fail_validation(lang(array(
+				api_field_refuse($param, 'not_minor_units', lang(array(
 					'string' => '{var:1} must be a whole number of minor units, with no decimal separator.',
 					'vars'   => $name
-				)), $name);
+				)));
 
 			}
 
@@ -700,7 +829,7 @@ function api_validate_value($param, $raw) {
 
 			if (!is_numeric($raw)) {
 
-				api_fail_validation(lang(array('string' => '{var:1} must be a number.', 'vars' => $name)), $name);
+				api_field_refuse($param, 'not_number', lang(array('string' => '{var:1} must be a number.', 'vars' => $name)));
 
 			}
 
@@ -735,7 +864,7 @@ function api_validate_value($param, $raw) {
 
 			}
 
-			api_fail_validation(lang(array('string' => '{var:1} must be true or false.', 'vars' => $name)), $name);
+			api_field_refuse($param, 'not_boolean', lang(array('string' => '{var:1} must be true or false.', 'vars' => $name)));
 
 			return false;
 
@@ -745,10 +874,10 @@ function api_validate_value($param, $raw) {
 
 			if (!in_array($normalised, $param['values'], true)) {
 
-				api_fail_validation(lang(array(
+				api_field_refuse($param, 'not_allowed', lang(array(
 					'string' => '{var:1} must be one of: {var:2}',
 					'vars'   => array($name, implode(', ', $param['values']))
-				)), $name);
+				)));
 
 			}
 
@@ -762,10 +891,10 @@ function api_validate_value($param, $raw) {
 
 			if ($parsed === null) {
 
-				api_fail_validation(lang(array(
+				api_field_refuse($param, 'not_date', lang(array(
 					'string' => '{var:1} must be a date, in ISO-8601 or YYYY-MM-DD form.',
 					'vars'   => $name
-				)), $name);
+				)));
 
 			}
 
@@ -777,7 +906,7 @@ function api_validate_value($param, $raw) {
 			// is refused here, so the handler never reads 0, 1, 2 as field names.
 			if (!is_array($raw) || (!empty($raw) && array_values($raw) === $raw)) {
 
-				api_fail_validation(lang(array('string' => '{var:1} must be an object.', 'vars' => $name)), $name);
+				api_field_refuse($param, 'not_object', lang(array('string' => '{var:1} must be an object.', 'vars' => $name)));
 
 			}
 
@@ -787,25 +916,25 @@ function api_validate_value($param, $raw) {
 
 			if (!is_array($raw)) {
 
-				api_fail_validation(lang(array('string' => '{var:1} must be a list.', 'vars' => $name)), $name);
+				api_field_refuse($param, 'not_list', lang(array('string' => '{var:1} must be a list.', 'vars' => $name)));
 
 			}
 
 			if (isset($param['max_items']) && count($raw) > $param['max_items']) {
 
-				api_fail_validation(lang(array(
+				api_field_refuse($param, 'too_many_items', lang(array(
 					'string' => '{var:1} holds more than the {var:2} items accepted in one request.',
 					'vars'   => array($name, $param['max_items'])
-				)), $name);
+				)));
 
 			}
 
 			if (!api_list_items_are_single($param, $raw)) {
 
-				api_fail_validation(lang(array(
+				api_field_refuse($param, 'items_not_single', lang(array(
 					'string' => '{var:1} must hold single values, not lists or objects.',
 					'vars'   => $name
-				)), $name);
+				)));
 
 			}
 
@@ -817,10 +946,10 @@ function api_validate_value($param, $raw) {
 
 			if (isset($param['max_length']) && mb_strlen($value) > $param['max_length']) {
 
-				api_fail_validation(lang(array(
+				api_field_refuse($param, 'too_long', lang(array(
 					'string' => '{var:1} is longer than the {var:2} characters accepted.',
 					'vars'   => array($name, $param['max_length'])
-				)), $name);
+				)));
 
 			}
 

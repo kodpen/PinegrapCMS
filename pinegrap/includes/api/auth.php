@@ -202,6 +202,11 @@ function api_authenticate($input) {
 
 		}
 
+		// Challenged like a wrong key (api_fail_unauthorized()), so a client
+		// library that waits for the challenge before it sends credentials
+		// gets one.
+		api_basic_challenge();
+
 		api_fail(401, 'credentials_missing', lang('An API key and secret are required.'));
 
 	}

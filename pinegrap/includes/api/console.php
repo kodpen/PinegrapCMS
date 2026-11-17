@@ -158,13 +158,18 @@ function api_console_page($params) {
 		<div class="lg:col-5">
 			<div class="card h-100">
 				<div class="card-body py-5 small">
-					<p class="mb-3"><i class="bi bi-info-circle me-1"></i>' . lang('Authentication is HTTP Basic: the user name is the application key, the password is its secret. Money is always a whole number of minor units - 1999 is 19.99. Times are ISO-8601 in UTC. Listings are cursor paged: follow page.next_cursor until it is null. A write can be rehearsed before it is made: send X-Dry-Run: true and the endpoint runs every check it would run and answers instead of writing.') . '</p>
+					<h2 class="pg-title-status mb-3">' . lang('The first call') . '</h2>
 					<pre class="con-curl bg-1 rounded-4 p-3 mb-3">' . h($curl_example) . '</pre>
-					<p class="mb-0 opacity-75">' . lang('Where an endpoint says so, DELETE has a POST alias - either the same address answered to POST, or a /delete address - for servers that refuse the DELETE verb before it reaches the application.') . '</p>
+					<p class="mb-0 fg-2"><i class="bi bi-book me-1" aria-hidden="true"></i>' . lang(array(
+						'string' => 'Credentials, errors, paging, retries and limits are explained under {var:1}.',
+						'vars'   => '<a href="#conventions">' . h(lang('Conventions')) . '</a>'
+					)) . '</p>
 				</div>
 			</div>
 		</div>
 	</div>
+
+	' . api_console_conventions_html(api_console_conventions($base_url)) . '
 
 	<div class="doc-wrap">
 		<div class="doc-nav card"><div class="card-body p-3" id="doc_nav"></div></div>

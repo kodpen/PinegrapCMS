@@ -8,6 +8,12 @@
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
+// Include-only: every includer loads functions.php first. Opened by URL the
+// file stops here instead of failing on the explorer requires below.
+if (!defined('PG_FUNCTIONS_DIR')) {
+    exit;
+}
+
 // JSON sub-actions for the combined folder/page/file explorer
 // (view_folder_and_files.php). Included on demand by the "file_explorer"
 // action in api.php, which has already validated the user, the CSRF token

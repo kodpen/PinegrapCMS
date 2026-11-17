@@ -21,11 +21,7 @@ description: Plan content-review, steps CH1 to CH5: the table and its rules, the
 
 - CH3b (S) after CH3: the task box setting "the person the event names" (`steps.php`, `workspace_flow.js`), then the gallery template; pictures to the architect (`workflow/decisions-made-product-66.md`).
 
-- CH4 (S) after CH2: the API.
-  - Scope: `content_review:read` / `content_review:write` (same file).
-  - Existing files: the API schema (two rows); new: the resource file.
-  - Tests: the filters, the dry run, a user-role caller's rows (`api/api-user-role-rows.md`); `php tools/check_api_schema.php`.
-  - Features: V17.
+- CH4 Done (#10006): the API, `GET /content-review` and `POST /content-review/{kind}/{id}` (`api/api-content-review.md`); scope `content_review:read` / `:write` for roles 0-3 (architect, agent channel message 7025). Features: V17.
 
 - CH5 (S) close-out: every V number checked against the code with its PR; `platform/content-review.md`; this plan's three files deleted and its line in `plans/website-features.md` removed.
 

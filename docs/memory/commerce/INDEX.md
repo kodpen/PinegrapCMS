@@ -22,6 +22,7 @@
 - barcode-stock-scan-checks.md: Barcode stock increase/decrease and the product screen's barcode save: whole quantities only (pg_barcode_scan_quantity()), no product in the Recycle Bin or missing (#4447) [decision: decisions-made-product-20.md]
 - booking-deposit-payment.md: The booking widget's deposit payment (BK9b): hold kept, payment form posted to booking_slots.php, return and retry, paid on arrival, paid shown on the screens and the API
 - booking-deposits.md: Booking deposits (BK9a): booking_services.deposit and deposit_product_id, bookings.order_id and paid_at (11.0.169), the deposit order, marked paid from the order's completion, confirm or requested
+- booking-link-code.md: A staff member's meeting link (SL1): the code from the staff row and site key, one 404 for a wrong code or a member out of booking, its services and free times, ws_profiles.meeting_url
 - booking-manage.md: A customer's own booking (BK7): booking_manage.php from the mail's signed link, cancel and move within the policy window, .ics download, the my_account widget's bookings section
 - booking-messages.md: Booking mails, SMS, .ics and reminders: booking.* events, four campaign profile actions (11.0.161), the .ics attachment, SMS kind booking, reminders by the general job without a column [decision: decisions-made-product-19.md]
 - booking-retention.md: How long bookings are kept (cancelled rows pruned after 400 days by the general job) and what the personal data export and erasure do with a person's bookings (#5032) [decision: decisions-made-product-19.md]
@@ -89,8 +90,11 @@
 - counter-sale-keyboard-focus.md: Create Order screen (add_order.js): focus kept on the cart row, quick-amount chip and customer card when a server answer redraws them; Enter in a quantity box keeps the box
 - country-names-display.md: Country names on screen through pg_geo_country_label() and pg_geo_sort_by_label() in the current language; the starter dumps' corrected country rows (#2522) [decision: decisions-made-product-20.md]
 - country-names-in-addresses.md: The order view's address blocks and the address book name the stored country code in the site language; the country tokens keep the code
+- course-gate.md: The course gate in get_page.php: a lesson not open yet sends the member to the classroom page with a one-time notice; the "Courses" switch reader; the first-open row [decision: here]
+- course-tables.md: Courses' data (2026.11.0, step 11.0.234): the course, course_lesson and course_progress tables, the open-lesson rule, the enrolment day, rows written once, the certificate code [decision: decisions-made-product-34.md]
 - currency-form-rules.md: What the currency create/edit screens refuse and how the currency list sorts
 - currency-names-display.md: Stored currency names shown through pg_currency_label() in the panel language; the currency list's rate with the panel's separators (#4430)
+- customer-value-report-screen.md: Customers Report screen (view_customer_report.php, Reports menu): periods, tiles, months, cohorts, groups, top customers, who sees names, states before data (#10020)
 - customer-value-summary.md: Customer value summary (config_text customer_values): what counts, the customer key, the rebuild in the general job, the summary shape, the 200k-order measurement (#9995)
 - delivery-date-error-answer.md: get_delivery_date() (shipping.php) always answers with a delivery_date key, '' on every error, because its seven callers read it without a check
 - edit-product-undrawn-columns-kept.md: Edit Product's save leaves out the shipping, customs, zone, gift card and unlabelled custom-field columns the screen does not draw.
@@ -254,9 +258,10 @@
 - product-customs-fields.md: products.hs_code and origin_country (2026.11.0, 11.0.130, #3408): customs data per product, empty is the shop default; product screen, copy, import/export, products API [decision: decisions-made-product-7.md]
 - product-duplicate.md: What a product copy (duplicate_product() and the bulk duplicate_products.php) keeps: later columns via pg_product_copy_extra_sql(), the gallery, a bundle's contents and refresh
 - product-feed-decisions.md: Product feed decisions (plan approved 2026-10-19; PRs #561, #571, #572, #576, #577): search-only eligibility, catalog scope, no UCP manifest, fields not sent, GET /store/feeds
+- product-feed-google-xml.md: The fourth product feed format, google_xml (PR #10133): Google Merchant Center's RSS 2.0 file from the google_tsv rows, one XML escape helper, streamed like the others, content type, card switch
 - product-feed-serving.md: How product feeds are kept, built, served and watched (PR #571): config.product_feeds (11.0.4), tokens, product_feed_job.php, feed.php, WAF exemption, status tile
 - product-feed-streaming.md: How the daily product feed build streams a large catalog to data/feeds/ chunk by chunk (writer open/add/close, CSV/TSV work file), why, and the out-of-memory symptom it fixed (PR #1056)
-- product-feeds.md: Product feed builder (includes/fn/product_feeds.php, PR #561): which products go into the OpenAI JSONL/CSV and Google TSV feeds, field rules, skip reasons, variant families, writers
+- product-feeds.md: Product feed builder (includes/fn/product_feeds.php, PR #561): which products go into the OpenAI JSONL/CSV and Google TSV/XML feeds, field rules, skip reasons, variant families, writers
 - product-group-copy.md: Product group copies (duplicate_product_group.php, pg_catalog_copy_group()): product copy links, Recycle Bin, duplicate notice, default options, variant set form and price rules [decision: decisions-made-product-26.md]
 - product-group-edit-checks.md: Edit Product Group, Duplicate Product Group and Featured and New Items (PR #5551): the Recycle Bin left out of status changes and lists, the parent checked on the server, the duplicate form cleared
 - product-import-prices.md: Product import price cells (price, extra shipping, compare-at): one reader for spreadsheet numbers and typed figures; a row that is not an amount is named (#749, PR #1262)
@@ -269,6 +274,7 @@
 - product-price-history-offers.md: Offer rows of product_price_history (2026.11.0, PR #681): the hourly general-job record of what open offers charge a visitor with no code or account; why recorded, marker, lock, limits
 - product-price-history-retention.md: product_price_history keeps 13 months (396 days, PR #1425): the general job's daily trim pg_price_history_trim_run(), which old rows stay and why, how the pass walks, verification
 - product-price-history.md: product_price_history (2026.11.0, 11.0.2, PR #545): one row per change of the price sold at, pg_price_history_record() / queue after every writer, offer rows, initial rows, API read, limits
+- product-quantity-prices.md: Quantity prices on a product page (wholesale J3): the product.quantity_prices list, which offers make a break, the group condition, the price of a break, what draws nothing
 - product-reference-price-decisions.md: Reference price decisions: rule setting, coverage, compare-at only under manual, offers, POS, window end while a reduction runs (2026-10-27) [decision: decisions-made-widgets.md]
 - product-reference-price-storefront.md: Reference price on the storefront: __reference_price / __reference_label tokens, variant payload, legacy catalog print, one page read by pg_price_reference_page()
 - product-reference-price.md: Reference price ("price before the discount"): pg_price_history_reference(), the window query (PR #1803), the rule setting pg_price_reference_rule() (11.0.49), coverage, labels

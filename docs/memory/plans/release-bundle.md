@@ -34,5 +34,5 @@ priority: 6
 - Shared components, menus and collection records in a bundle (B18). Each is a later yes.
 
 ## Whose look?
-- The Bundles screen (RB2): the owner's.
+- Owner (2026-11-16, agent channel poll 107, message 7134): "Evet, böyle çıksın" to the Bundles screen (RB2 #9998).
 - Owner (2026-11-16, agent channel poll 106, message 7125): "Evet, böyle çıksın" to the publish and take-back dialogs (RB3 #9999); their words: `workflow/decisions-made-product-67.md`.

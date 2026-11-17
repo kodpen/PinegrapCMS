@@ -91,7 +91,7 @@ function api_menu_schema() {
 		'class'                       => 'string',
 		'active_item_class'           => 'string',
 		'items_count'                 => 'integer',
-		'updated_at'                  => 'string?',
+		'updated_at'                  => 'datetime?',
 		'updated_at_unix'             => 'integer',
 		'items'                       => 'MenuItem[]'
 	);
@@ -152,7 +152,7 @@ function api_menu_item_schema() {
 		'new_window'      => 'boolean',
 		'security'        => 'boolean',
 		'class'           => 'string',
-		'updated_at'      => 'string?',
+		'updated_at'      => 'datetime?',
 		'updated_at_unix' => 'integer'
 	);
 

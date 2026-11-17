@@ -269,8 +269,10 @@
     // options opens the panel on the phase last picked (a video's on the
     // clip panel's Motion tab); Escape or a press outside closes it, the
     // focus going back to Motion. Opens on the bar's side away from the
-    // object, so it never covers the object's middle.
-    Editor.prototype.openMotionPop = function (opener) {
+    // object, so it never covers the object's middle. refind(), when given,
+    // answers the opener anew after a redraw replaced it (a track row's
+    // button).
+    Editor.prototype.openMotionPop = function (opener, refind) {
         var self = this, l = this.motionLayers()[0];
 
         this.closeMotionPop();
@@ -281,7 +283,7 @@
 
         var pop = el('div', { class: 'pgie-mpop', role: 'dialog', 'aria-label': t('actMotion') });
 
-        this.motionPop = { el: pop, opener: opener, id: l.id, phase: 'in' };
+        this.motionPop = { el: pop, opener: opener, id: l.id, phase: 'in', refind: refind || null };
         ['pointerdown', 'pointerup', 'dblclick', 'wheel'].forEach(function (type) {
             pop.addEventListener(type, function (e) { e.stopPropagation(); });
         });
@@ -358,11 +360,12 @@
 
     // Above the bar when the bar is above the object, below it when the
     // bar is below; the other side when that one has no room; kept inside
-    // the window.
+    // the window. Opened elsewhere (a track row), above its button.
     Editor.prototype.placeMotionPop = function () {
         var p = this.motionPop, b = p.opener.getBoundingClientRect(), r = p.el.getBoundingClientRect();
-        var below = !!(this.actWrap && this.actWrap.classList.contains('pgie-actbelow')), gap = 8;
-        var bar = this.actBar ? this.actBar.getBoundingClientRect() : b;
+        var inBar = !!(this.actBar && this.actBar.contains(p.opener)), gap = 8;
+        var below = inBar && this.actWrap.classList.contains('pgie-actbelow');
+        var bar = inBar ? this.actBar.getBoundingClientRect() : b;
         var up = bar.top - gap - r.height, down = bar.bottom + gap, y;
 
         if (below) {
@@ -405,6 +408,10 @@
     // or while the bar is hidden (a drag, playing, recording).
     Editor.prototype.renderMotionPop = function () {
         var p = this.motionPop;
+
+        if (p && p.refind && !p.opener.isConnected) {
+            p.opener = p.refind() || p.opener;
+        }
 
         if (p && ((this.tool !== 'motion') || (this.sel.length !== 1) || (this.sel[0] !== p.id) || this.drag || this.playsAll() || this.recording || !p.opener.isConnected)) {
             this.closeMotionPop();

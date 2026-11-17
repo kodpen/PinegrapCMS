@@ -26,6 +26,8 @@ $pg_api_directory = dirname(__FILE__);
 
 require_once($pg_api_directory . '/db.php');
 require_once($pg_api_directory . '/response.php');
+require_once($pg_api_directory . '/fault.php');
+require_once($pg_api_directory . '/manners.php');
 require_once($pg_api_directory . '/time.php');
 require_once($pg_api_directory . '/log.php');
 require_once($pg_api_directory . '/keys.php');
@@ -46,6 +48,7 @@ require_once($pg_api_directory . '/resources/meta.php');
 require_once($pg_api_directory . '/resources/discovery.php');
 require_once($pg_api_directory . '/resources/forms.php');
 require_once($pg_api_directory . '/resources/seo.php');
+require_once($pg_api_directory . '/resources/content_review.php');
 require_once($pg_api_directory . '/resources/system.php');
 require_once($pg_api_directory . '/resources/reports.php');
 require_once($pg_api_directory . '/resources/page_clicks.php');

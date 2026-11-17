@@ -5,6 +5,7 @@ description: The date calendar in a panel drawer: drawn after the field in a hid
 
 ## Where does a drawer's calendar go?
 - `pg_fields.js` `inlineIn()` passes `inline: true` to `pgDateTime.attach()` for a field inside a `.drawer` (File Manager access drawer ACL expiry rows, API application drawer Security tab `d_expires`).
+- A field marked `data-pg-calendar-inline` gets the same anywhere: for a dialog too short to hold the 410 px popup above or below the field (Bundle settings' Publish time on a phone, #9998). The dialog grows with the calendar.
 - `attach()` puts a `.pg-date-inline` wrapper after the field and draws the calendar (`inputMode: false`) on a `<div>` in it: the library takes over its element's classes. It stays in the drawer's flow; a popup would hang off the drawer's scrolling body.
 
 ## When is it shown?

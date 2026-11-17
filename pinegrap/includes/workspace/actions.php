@@ -1891,9 +1891,11 @@ function ws_handle_action($action, $request)
                     return ws_change_allowed($viewer, $type, 0);
                 })),
                 'commands'    => ws_command_help($viewer),
+                // The order of the "/" list's groups, as /help has them.
+                'command_groups' => array_keys(ws_command_group_labels()),
                 // The days, estimates and priorities the argument popup
                 // offers after a command.
-                'command_values' => ws_command_suggestions(),
+                'command_values' => ws_command_suggestions(null, $viewer),
                 // The screen sends files as form parts (apiUpload()).
                 'upload'      => array('max' => ws_upload_form_max_bytes(), 'accept' => ''),
                 'interact'    => ws_interact_ready(),
@@ -2218,7 +2220,12 @@ function ws_handle_action($action, $request)
                     'from'      => (isset($request['from']) && is_scalar($request['from'])) ? $request['from'] : null,
                     'decision'  => !empty($request['decision']),
                     'on_sale'   => !empty($request['on_sale']),
+                    'table_id'  => (int) ($request['table_id'] ?? 0),
+                    'cells'     => (array) ($request['cells'] ?? array()),
                     'parent_id' => (int) ($request['parent_id'] ?? 0),
+                    // /recap: the last message read before this visit, as
+                    // the catch-up line hands it.
+                    'since_id'  => max(0, (int) ($request['since_id'] ?? 0)),
                 ));
 
                 if ($command !== null) {
@@ -3111,7 +3118,8 @@ function ws_handle_action($action, $request)
             $result = ws_mail_send($viewer, $mail + array('send_at' => ws_mail_undo_send_at($request, $later['at'], ws_mail_later_ready(), time())));
 
             if (!$result['ok']) {
-                return ws_action_error(ws_mail_send_error_text($result['error'], $result['detail'])) + array('code' => $result['error']);
+                return ws_action_error(ws_mail_send_error_text($result['error'], $result['detail']), ws_mail_send_error_field($result['error'], $result['detail'], $mail))
+                    + array('code' => $result['error']);
             }
 
             ws_mail_forward_line($viewer, $forward['source'], (int) $result['item_id']);
@@ -3303,8 +3311,8 @@ function ws_handle_action($action, $request)
 
             return ws_action_ok($answer);
 
-        // The E-mails screen: the next page of the list, a conversation in
-        // the reading pane (read from then on), Mark all as read
+        // The E-mails screen: the next page of the list (or the whole list
+        // after a change in the pane), a conversation in the reading pane (read from then on), Mark all as read
         // (mail_list.php, mail_pane.php, mail_reads.php).
         case 'ws_mail_rows':
         case 'ws_mail_pane':
@@ -3323,10 +3331,7 @@ function ws_handle_action($action, $request)
                 $filters = ws_mail_list_filters($request);
                 $list = ws_mail_list($viewer, $filters, time());
 
-                return ws_action_ok(array(
-                    'html' => ws_mail_list_rows_html($list['rows'], $filters, time()),
-                    'more' => ws_mail_list_more_html($filters, $list['next']),
-                ));
+                return ws_action_ok(ws_mail_rows_answer($list, $filters, time(), !empty($request['whole']), (int) ($request['conversation'] ?? 0)));
             }
 
             $pane = ws_mail_pane_open($viewer, (int) ($request['conversation_id'] ?? 0));
@@ -4264,6 +4269,19 @@ function ws_handle_action($action, $request)
             $error = function_exists('ws_mcp_agent_cancel') ? ws_mcp_agent_cancel($viewer, (int) ($request['request_id'] ?? 0)) : lang('That request could not be found.');
 
             return ($error === '') ? ws_action_ok() : ws_action_error($error);
+
+        // Right or Wrong on an agent's reply, or the mark taken back
+        // (verdict ''): the asker and the channel's managers only
+        // (agent_feedback.php).
+        case 'ws_agent_feedback':
+            $verdict = (string) ($request['verdict'] ?? '');
+            $marked = ws_agent_feedback_mark($viewer, (int) ($request['message_id'] ?? 0), ($verdict === '') ? null : $verdict, (string) ($request['reason'] ?? ''));
+
+            if (!$marked['ok']) {
+                return ws_action_error($marked['error']);
+            }
+
+            return ws_action_ok(array('feedback' => array('verdict' => $verdict, 'reason' => ($verdict === '') ? '' : (string) ($marked['reason'] ?? ''))));
 
         // Whether Pinegrap AI may be asked in a channel.
         case 'ws_channel_ai':

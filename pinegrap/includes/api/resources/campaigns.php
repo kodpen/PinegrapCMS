@@ -188,7 +188,7 @@ function api_campaign_schema() {
 		'bcc'              => 'string?',
 		'page_id'          => 'integer?',
 		'page_name'        => 'string?',
-		'send_at'          => 'string?',
+		'send_at'          => 'datetime?',
 		'profile_id'       => 'integer?',
 		'profile_name'     => 'string?',
 		'action'           => 'string?',
@@ -196,8 +196,8 @@ function api_campaign_schema() {
 		'order_id'         => 'integer?',
 		'recipients'       => array('total' => 'integer', 'sent' => 'integer', 'failed' => 'integer', 'pending' => 'integer'),
 		'created_by'       => 'string?',
-		'created_at'       => 'string?',
-		'updated_at'       => 'string?',
+		'created_at'       => 'datetime?',
+		'updated_at'       => 'datetime?',
 		'updated_at_unix'  => 'integer',
 		// The single read adds the message and the contact groups a manual
 		// campaign was put together from: the groups it went to and the groups
@@ -719,16 +719,16 @@ function api_sms_campaign_schema() {
 		'name'              => 'string',
 		'body'              => 'string',
 		'status'            => 'string',
-		'send_at'           => 'string?',
-		'queued_at'         => 'string?',
+		'send_at'           => 'datetime?',
+		'queued_at'         => 'datetime?',
 		'queued'            => 'integer',
 		'refused'           => 'integer',
 		'outbox'            => 'SmsCampaignOutbox?',
 		'contact_group_ids' => 'integer[]',
 		'excluded_contact_group_ids' => 'integer[]',
 		'created_by'        => 'string?',
-		'created_at'        => 'string?',
-		'updated_at'        => 'string?'
+		'created_at'        => 'datetime?',
+		'updated_at'        => 'datetime?'
 	);
 
 }

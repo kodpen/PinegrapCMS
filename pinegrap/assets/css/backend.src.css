@@ -12929,6 +12929,13 @@ b.ws-agent-card-anchor:focus-visible {
 .ws-agent-card-window .ws-agent-card-key {
   white-space: nowrap;
 }
+/* Right or Wrong: one line for 7 days, one for 30, stacked at the end. */
+.ws-agent-card-value.is-lines {
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0;
+  white-space: nowrap;
+}
 .ws-agent-card-high {
   color: var(--pg-tone-amber);
 }
@@ -14540,10 +14547,10 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
 @media (min-width: 1700px) {
   :where(.ws-pane-messages:not(.ws-thread-pane) > .ws-msg[data-ws-tone]) {
     --ws-msg-tone: var(--pg-primary);
-    background: color-mix(in srgb, var(--ws-msg-tone) 1.6%, transparent);
+    background: color-mix(in srgb, var(--ws-msg-tone) 5%, transparent);
   }
   .ws-pane-messages:not(.ws-thread-pane) > .ws-msg[data-ws-tone]:hover:not(.ws-msg-highlight, .ws-msg-selected) {
-    background: color-mix(in srgb, var(--ws-msg-tone) 2.6%, transparent);
+    background: color-mix(in srgb, var(--ws-msg-tone) 8%, transparent);
   }
   :where(html[data-bs-theme="dark"] .ws-pane-messages:not(.ws-thread-pane) > .ws-msg[data-ws-tone]) {
     background: color-mix(in srgb, var(--ws-msg-tone) 2.2%, transparent);
@@ -17570,9 +17577,23 @@ a.ws-chip-message:hover,
   .ws-mail-reading .ws-mail-list {
     display: none;
   }
+  /* While a mail is read the toolbar and its filters fold away (the id
+     outranks #button_bar's own display rule): they stood
+     about 490 px above the pane, so the mail began below the first screen.
+     The pane's Close brings the list and the toolbar back. */
+  .ws-mail-reading > #button_bar.pg-toolbar,
+  .ws-mail-reading > .ws-mail-check-line {
+    display: none;
+  }
   .ws-mail-pane {
     position: static;
     max-height: none;
+    padding: .5rem;
+  }
+  /* The pane's and each mail's paddings left a mail about 260 px of a
+     375 px screen. */
+  .ws-mail-pane .ws-mail-item {
+    padding: .5rem;
   }
 }
 /* The "/" list of a note's inserts, under the caret. */
@@ -17675,6 +17696,19 @@ a.ws-chip-message:hover,
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+/* A group's header in the "/" list (commandPickerGroups()): a muted line
+   as /help's group header, never picked, so no hover and no pointer. */
+.ws-picker-group {
+  padding: .5rem .5rem .2rem;
+  font-size: .75rem;
+  font-weight: 550;
+  color: var(--pg-fg-2);
+  cursor: default;
+  user-select: none;
+}
+.ws-picker-group:first-child {
+  padding-top: .25rem;
 }
 /* A registry agent in the @ menu: its icon with the state mark in the
    corner, its name cut before its role, and the usage mark of a window at
@@ -20542,6 +20576,44 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
 .ws-claude-state.ws-claude-failed,
 .ws-claude-state.ws-claude-cancelled {
   color: var(--pg-danger-fg-emphasis);
+}
+/* Right and Wrong under an agent's reply: the state line's colour at the
+   scale's 12 px; the chosen mark takes the answered or failed colour. */
+.ws-agent-feedback {
+  max-width: 34rem;
+  margin-top: .3rem;
+  font-size: .75rem;
+  color: var(--pg-fg-2);
+}
+.ws-agent-feedback-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .25rem;
+}
+.ws-agent-feedback-row .ws-agent-feedback-mark {
+  font-size: inherit;
+  color: inherit;
+}
+.ws-agent-feedback-row .ws-agent-feedback-mark.is-right {
+  color: var(--pg-success);
+}
+.ws-agent-feedback-row .ws-agent-feedback-mark.is-wrong {
+  color: var(--pg-danger-fg-emphasis);
+}
+.ws-agent-feedback-reason {
+  margin-top: .2rem;
+  overflow-wrap: anywhere;
+  font-style: italic;
+}
+.ws-agent-feedback-form {
+  display: grid;
+  gap: .3rem;
+  margin-top: .3rem;
+}
+.ws-agent-feedback-actions {
+  display: flex;
+  gap: .3rem;
 }
 /* One column no wider than the list: a card is never wider than its text
    column, so a flow drawing wider than the card scrolls in its own pane
@@ -29392,6 +29464,11 @@ body.erp_aging .pg-report-table th[scope="row"] {
   font-weight: 600;
   line-height: 1.3;
 }
+.pg-report-legends {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+}
 .pg-report-legend {
   display: inline-flex;
   align-items: center;
@@ -29731,6 +29808,26 @@ body.erp_aging .pg-report-table th[scope="row"] {
 .pg-report-table .pg-report-day {
   padding: 0 6px;
   min-width: 3.25rem;
+}
+/* The Customers report on a phone: the groups table's last-order rows as
+   blocks, their three cells one under the other, each under its column's
+   name (data-label), no sideways scroll; the period control and the
+   groups' definitions below. */
+@media (max-width: 575.98px) {
+  .pg-report-table.pg-customer-groups thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .pg-report-table.pg-customer-groups tr { display: block; padding: 8px 16px; border-bottom: 1px solid var(--pg-border-color-translucent); }
+  .pg-report-table.pg-customer-groups tbody > tr:last-child { border-bottom: 0; }
+  .pg-report-table.pg-customer-groups th,
+  .pg-report-table.pg-customer-groups td { display: block; height: auto; padding: 4px 0; border: 0; text-align: start !important; white-space: normal; position: static; background: none; max-width: none; }
+  .pg-report-table.pg-customer-groups th { font-weight: var(--pg-weight-strong); }
+  .pg-report-table.pg-customer-groups td::before { content: attr(data-label); display: block; font-size: var(--pg-text-meta); color: var(--pg-fg-3); }
+  /* The period control: two rows of three equal cells across the column,
+     no word cut and no sideways scroll. */
+  .pg-report-tools .pg-seg.pg-customer-periods { display: grid; grid-template-columns: repeat(3, 1fr); width: 100%; overflow: visible; }
+  .pg-report-tools .pg-customer-periods .pg-seg-item { justify-content: center; }
+  /* The groups' definitions: one line each. */
+  .pg-customer-group-terms > span { display: block; }
+  .pg-customer-group-terms .pg-customer-group-sep { display: none; }
 }
 /* The frame's foot: Show all under a table that lists its first rows. */
 .pg-report-frame-foot:not([hidden]) {
@@ -31404,6 +31501,98 @@ button.pg-var-chip:focus-visible {
     .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-adorn, > .form-range) > .pg-set-tile.pg-icon-tile {
       align-self: start;
     }
+  }
+}
+
+}
+
+/* Connections (connections.php): where the parts of a service's row and the
+   attention block sit. Every part is a look A recipe (card, inner rows,
+   tile, pill, group label, count, segmented filter); these rules only place
+   them. On a phone the state moves under the text. */
+@layer custom {
+
+.connections-find {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.connections-find > form {
+  flex: 0 1 22rem;
+  min-width: 0;
+}
+.connections-search {
+  width: 100%;
+}
+.connections-find > .pg-list-seg {
+  min-width: 0;
+  max-width: 100%;
+}
+.connections-attention {
+  border-color: color-mix(in srgb, var(--pg-tone-amber) 45%, transparent);
+}
+.connections-row {
+  width: 100%;
+  border: 0;
+  background: none;
+  color: inherit;
+  text-align: start;
+  text-decoration: none;
+}
+.connections-row:hover,
+.connections-row:focus-visible {
+  background: var(--pg-hover);
+}
+.connections-row-main {
+  flex: 1;
+  min-width: 0;
+}
+.connections-row-name {
+  display: block;
+  font-weight: var(--pg-weight-strong);
+  overflow-wrap: anywhere;
+}
+.connections-row-side {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+}
+.connections-row-chevron {
+  flex: none;
+  color: var(--pg-fg-3);
+}
+.connections-toggle[aria-expanded="true"] .connections-row-chevron {
+  transform: rotate(180deg);
+}
+.connections-list > * + *,
+.connections-panel {
+  border-top: 1px solid var(--pg-border-color-translucent);
+}
+.connections-panel {
+  padding: 16px 16px 20px 63px;
+}
+.connections-panel .list-group-item {
+  background: none;
+}
+
+@media (max-width: 575.98px) {
+  .connections-row {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+  .connections-row-main {
+    flex-basis: calc(100% - 90px);
+  }
+  .connections-row-side {
+    order: 3;
+    flex-basis: 100%;
+    padding-left: 47px;
+  }
+  .connections-panel {
+    padding-left: 16px;
   }
 }
 

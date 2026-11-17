@@ -119,8 +119,8 @@ function api_design_ad_schema() {
 		'caption'        => 'string',
 		'label'          => 'string',
 		'sort_order'     => 'integer',
-		'created_at'     => 'string?',
-		'updated_at'     => 'string?'
+		'created_at'     => 'datetime?',
+		'updated_at'     => 'datetime?'
 	);
 
 }
@@ -375,8 +375,8 @@ function api_design_ad_region_schema() {
 		'interval'            => 'integer',
 		'continuous'          => 'boolean',
 		'ads'                 => 'integer',
-		'created_at'          => 'string?',
-		'updated_at'          => 'string?'
+		'created_at'          => 'datetime?',
+		'updated_at'          => 'datetime?'
 	);
 
 }

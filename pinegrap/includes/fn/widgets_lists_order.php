@@ -35,7 +35,12 @@
 //                    the signed-in member's bookings, the bookings
 //                    section's two parts;
 //   account.orders   the signed-in member's orders, what the my account
-//                    widget's order history section draws.
+//                    widget's order history section draws;
+//   account.subscriptions the member's subscriptions with their action
+//                    forms, the subscriptions section;
+//   account.store_credit the member's store credit cards, and
+//   account.store_credit_uses each card's orders, keyed by
+//                    ^^__credit_id^^: the store credit section's cards.
 //
 // The order lists read ^^__ship_to_key^^: 0 outside a shipments list (the
 // static value: the whole order), the recipient's id inside one, so an items
@@ -302,6 +307,65 @@ function pg_sw_list_order_sources()
                 array('__booking_ics_url', lang('Add to calendar URL')),
             ),
         ),
+        // The member's subscriptions (pg_subscription_customer_view_rows()),
+        // newest first; the action forms are the section's own, with the
+        // form token.
+        'account.subscriptions' => array(
+            'family'       => 'account',
+            'key'          => 'account_id',
+            'label'        => lang('Subscriptions of the member'),
+            'arg'          => '',
+            'arg_required' => false,
+            'tokens'       => array(
+                array('__subscription_id', lang('Subscription ID')),
+                array('__subscription_product', lang('Product')),
+                array('__subscription_amount', lang('Amount')),
+                array('__subscription_status', lang('Status (raw text)')),
+                array('__subscription_status_label', lang('Status')),
+                array('__subscription_tone', lang('Status colour (warning, success or secondary)')),
+                array('__subscription_next', lang('Next charge or the last day')),
+                array('__subscription_price', lang('Price change notice')),
+                array('__subscription_card', lang('Card')),
+                array('__subscription_event', lang('Last event')),
+                array('__subscription_confirm_url', lang('Payment confirmation URL')),
+                array('__subscription_actions_html', lang('Pause, resume, cancel and card update forms (HTML)')),
+                array('__subscription_has_actions', lang('Offers an action (yes/no)')),
+            ),
+        ),
+        // The member's store credit cards (pg_credit_account_view()), newest
+        // first, and the orders that spent each.
+        'account.store_credit' => array(
+            'family'       => 'account',
+            'key'          => 'account_id',
+            'label'        => lang('Store credit of the member'),
+            'arg'          => '',
+            'arg_required' => false,
+            'tokens'       => array(
+                array('__credit_id', lang('Card ID')),
+                array('__credit_kind_label', lang('Source')),
+                array('__credit_reason', lang('Reason')),
+                array('__credit_state', lang('State (raw text)')),
+                array('__credit_state_label', lang('State')),
+                array('__credit_tone', lang('State colour (success, secondary or warning)')),
+                array('__credit_balance', lang('Balance')),
+                array('__credit_amount', lang('Amount')),
+                array('__credit_last_day', lang('Last day')),
+                array('__credit_has_uses', lang('Spent on an order (yes/no)')),
+            ),
+        ),
+        'account.store_credit_uses' => array(
+            'family'       => 'account',
+            'key'          => '__credit_id',
+            'label'        => lang('Orders that spent the card'),
+            'arg'          => '',
+            'arg_required' => false,
+            'tokens'       => array(
+                array('__credit_use_order_no', lang('Order number')),
+                array('__credit_use_order_url', lang('Order detail URL')),
+                array('__credit_use_date', lang('Order date')),
+                array('__credit_use_amount', lang('Amount spent')),
+            ),
+        ),
     );
 }
 
@@ -559,6 +623,70 @@ function pg_sw_list_account_booking_rows($account_id, $view)
         $out[$source] = array((int)$account_id => $rows);
     }
     return $out;
+}
+
+// The rows of the subscriptions list, as pg_sw_list_publish('account')
+// files them: array('account.subscriptions' => array($account_id => rows)).
+// $view: pg_subscription_customer_view_rows(). Plain words, escaped once by
+// the pass; the actions are the section's forms (a raw key).
+function pg_sw_list_account_subscription_rows($account_id, $view)
+{
+    $rows = array();
+    foreach ((array)$view as $s) {
+        if (!is_array($s)) continue;
+        $rows[] = array(
+            '__subscription_id'           => (string)(int)$s['id'],
+            '__subscription_product'      => (string)$s['product'],
+            '__subscription_amount'       => (string)$s['amount'],
+            '__subscription_status'       => (string)$s['status'],
+            '__subscription_status_label' => (string)$s['status_label'],
+            '__subscription_tone'         => (string)$s['tone'],
+            '__subscription_next'         => (string)$s['next'],
+            '__subscription_price'        => (string)$s['price'],
+            '__subscription_card'         => (string)$s['card'],
+            '__subscription_event'        => (string)$s['event'],
+            '__subscription_confirm_url'  => (string)$s['confirm_url'],
+            '__subscription_actions_html' => (string)$s['actions_html'],
+            '__subscription_has_actions'  => ((string)$s['actions_html'] !== '') ? '1' : '',
+        );
+    }
+    return array('account.subscriptions' => array((int)$account_id => $rows));
+}
+
+// The rows of the store credit lists: array('account.store_credit' =>
+// array($account_id => rows), 'account.store_credit_uses' => array(card id
+// => rows)). $cards: pg_credit_account_view()'s cards; an order with no
+// view order page links nowhere ('').
+function pg_sw_list_account_credit_rows($account_id, $cards)
+{
+    $rows = array();
+    $uses = array();
+    foreach ((array)$cards as $c) {
+        if (!is_array($c)) continue;
+        $id = (int)$c['id'];
+        $rows[] = array(
+            '__credit_id'          => (string)$id,
+            '__credit_kind_label'  => (string)$c['kind_label'],
+            '__credit_reason'      => (string)$c['reason'],
+            '__credit_state'       => (string)$c['state'],
+            '__credit_state_label' => (string)$c['state_label'],
+            '__credit_tone'        => pg_credit_account_tone((string)$c['state']),
+            '__credit_balance'     => (string)$c['balance_info'],
+            '__credit_amount'      => (string)$c['amount_info'],
+            '__credit_last_day'    => (string)$c['last_day_info'],
+            '__credit_has_uses'    => !empty($c['uses']) ? '1' : '',
+        );
+        $uses[$id] = array();
+        foreach ((array)$c['uses'] as $u) {
+            $uses[$id][] = array(
+                '__credit_use_order_no'  => (string)$u['order_number'],
+                '__credit_use_order_url' => (string)$u['view_url'],
+                '__credit_use_date'      => (string)$u['date_info'],
+                '__credit_use_amount'    => (string)$u['amount_info'],
+            );
+        }
+    }
+    return array('account.store_credit' => array((int)$account_id => $rows), 'account.store_credit_uses' => $uses);
 }
 
 // The rows of an item's product form lists: array('order.item_forms' =>

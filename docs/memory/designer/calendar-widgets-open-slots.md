@@ -5,7 +5,7 @@ module: widgets_calendar
 ---
 
 ## What did CB9 open?
-- Step CB9 of `plans/designer-closed-blocks-steps.md`; the census: [[canvas-closed-blocks-widgets]]. The grid lists themselves: [[widget-lists-calendar]].
+- Step CB9 (#9932) of the closed-blocks opening ([[canvas-closed-blocks]]); the census: [[canvas-closed-blocks-widgets]]. The grid lists themselves: [[widget-lists-calendar]].
 - Tree: the calendar view's `month_grid`. Settings only: the calendar view's `calendar_picker` and the event view's `reserve_form`; they depend on the request (the visitor's calendar and view, the address's other parameters, the event's places and stock, the form's token).
 
 ## How does a designer open the month grid?

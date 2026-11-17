@@ -289,3 +289,41 @@ function test_workspace_mail_list_wiring()
 	pg_assert_contains("replyForm(message, view, h);", $script, 'Reply still opens the drawer');
 	pg_assert_contains('node.appendChild(countBadge(item.count, false));', $side, 'the tile draws the number');
 }
+
+function test_workspace_mail_list_follows_pane()
+{
+	$filters = workspace_mail_list_test_filters();
+	$list = array('rows' => array(workspace_mail_list_test_row()), 'next' => '500-9');
+
+	$page = ws_mail_rows_answer($list, $filters, 1000, false, 0);
+	pg_assert_same(array('html', 'more'), array_keys($page), 'Load more: the rows and the next link');
+	pg_assert_same(ws_mail_list_rows_html($list['rows'], $filters, 1000), $page['html']);
+
+	$whole = ws_mail_rows_answer($list, $filters, 1000, true, 7);
+	pg_assert_same(array('list'), array_keys($whole), 'after a change in the pane: the whole list');
+	pg_assert_same(ws_mail_list_html($list, $filters, 1000, 7), $whole['list'], 'the open conversation stays marked');
+	pg_assert_contains(h(lang('No e-mail conversation matches.')), ws_mail_rows_answer(array('rows' => array(), 'next' => ''), $filters, 1000, true, 7)['list'], 'the last row gone');
+
+	pg_assert_same(array(), ws_mail_rows_answer($list, workspace_mail_list_test_filters(array('view' => 'drafts')), 1000, true, 7), 'the Drafts view keeps its own list');
+	pg_assert_same(array(), ws_mail_rows_answer($list, workspace_mail_list_test_filters(array('view' => 'blocked')), 1000, true, 7), 'so does Blocked');
+
+	$strings = ws_mail_screen_js_strings();
+	pg_assert_true(isset($strings['state_saved'], $strings['holder_saved']), 'the notices of a kept change');
+
+	$script = str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_mail.js'));
+	$actions = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/actions.php');
+	pg_assert_contains("h.api('ws_mail_rows', data).then(function (result) {\n                var list = root.querySelector('.ws-mail-list');", $script, 'the list asked again with the address\'s filters');
+	pg_assert_contains('ws_mail_rows_answer($list, $filters, time(), !empty($request[\'whole\']), (int) ($request[\'conversation\'] ?? 0))', $actions);
+}
+
+function test_workspace_mail_pane_on_a_phone()
+{
+	$css = str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css'));
+	$script = str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_mail.js'));
+	$phone = substr($css, (int) strpos($css, '@media (max-width: 767.98px) {' . "\n" . '  .ws-mail-reading .ws-mail-columns {'));
+
+	pg_assert_contains(".ws-mail-reading > #button_bar.pg-toolbar,\n  .ws-mail-reading > .ws-mail-check-line {\n    display: none;", $phone, 'the toolbar folds away while a mail is read on a phone');
+	pg_assert_contains('.ws-mail-pane .ws-mail-item {', $phone, 'the mail keeps the width the paddings took');
+	pg_assert_contains("if (phone()) {\n                        root.scrollIntoView({ block: 'start' });", $script, 'an opened mail starts on the first screen');
+	pg_assert_contains("window.matchMedia('(max-width: 767.98px)').matches", $script, 'the same width as the stylesheet');
+}

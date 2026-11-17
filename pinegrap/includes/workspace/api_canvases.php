@@ -272,7 +272,7 @@ function ws_api_canvas_one_returns()
             'agent_id'   => 'integer?',
             'agent'      => 'string?',
             'size'       => 'integer?',
-            'created_at' => 'string?',
+            'created_at' => 'datetime?',
         )),
     );
 }

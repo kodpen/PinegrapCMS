@@ -9,13 +9,14 @@ description: The Prototype view's links panel (PV6): the selected frame's links 
 - Why a link is broken, `brokenWhy(row)`: `menu` (a menu or region the read does not know), `kept` (kept by a page id whose page is gone), `address` (no address), `page` (no page at its address). The definition of broken stays `pg_link_resolve()` and its twin (K5).
 
 ## What does a click pick?
-- One state, `_sdProto.link = { frame, port }`, from a panel row (`_sdProtoPick()`) or a link row on a frame (click, Enter or Space: `_sdProtoPickRow()`, which scrolls its panel row into view). Its frame is selected unless the selected frame is the link's target; its row (`sd-proto-row-picked`) and arrow (`sd-proto-edge-picked`) are marked and `canvas.view.reveal()` brings the other end into view.
-- A row click on a frame no longer opens the editor: "Open in the editor" on the panel row does (`_sdProtoOpenRow()`, the tab opened, the node selected). "Change target" (drawable rows only, K2) and L, the menu key or Shift+F10 on the panel row open today's target menu (`_sdProtoMenuOpen(rowEl, anchor)`), placed at the panel row and giving the focus back to it.
+- One state, `_sdProto.link = { frame, port }`, from a panel row (`_sdProtoPick()`) or a link's mark on a picture (a press: `_sdProtoPickRow()`, which scrolls its panel row into view). Its frame is selected unless the selected frame is the link's target; its mark (`sd-proto-hot-picked`) and arrow (`sd-proto-edge-picked`) are marked and `canvas.view.reveal()` brings the other end into view.
+- "Open in the editor" on the panel row opens it (`_sdProtoOpenRow(frame, port)`, the tab opened, the node selected). "Change target" (drawable rows only, K2) and L, the menu key or Shift+F10 on the panel row open today's target menu (`_sdProtoMenuOpen(frame, port, anchor)`), placed at the panel row and giving the focus back to it.
 - A change of the selected frame lets go of a picked link that is neither the frame's own nor one into it; a redraw lets go of one whose row is gone.
 
 ## Where are the problems?
-- `brokenOf(layout)`: every broken row in the frames' order and each frame's count. The bar says "N links" and, when there are any, a red "N broken" button (`.sd-proto-broken`) opening `.sd-proto-problems`: one button per broken link (frame · label, why and address), which picks it. Escape closes it and refocuses the button; a press outside closes it.
+- `brokenOf(layout)`: every broken row in the frames' order and each frame's count. The bar says "N links" and, when there are any, a red "N broken" button (`.sd-proto-broken`) opening `.sd-proto-problems`, whose "Broken links" group has one button per broken link (frame · label, why and address), which picks it. A press outside closes it.
 - A frame with broken links carries a red count (`.sd-proto-badge`) on its head, also when dimmed.
+- Links without a target, pages no link leads to and "N to check": designer/prototype-problems.md.
 
 ## When is the panel open, and what does Play do?
 - The bar's "Links" button opens and closes it; the choice is kept in `localStorage` `pg_proto_list`. Without one it is open from 1,100 px and closed below; under 1,100 px it opens over the stage's right side.

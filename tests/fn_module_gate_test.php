@@ -34,3 +34,17 @@ function test_fn_modules_carry_the_gate()
 
 	pg_assert_same(array(), $missing, 'includes/fn/ modules without the PG_FUNCTIONS_DIR gate');
 }
+
+// The explorer helper at the root is included by panel screens, api.php
+// actions and the external API, never requested itself; opened by URL it
+// stops at the gate instead of failing on its first require of an explorer
+// file (PG_FUNCTIONS_DIR undefined).
+function test_view_folder_and_files_helper_carries_the_gate()
+{
+	$code = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_folder_and_files_f.php');
+	$gate = strpos($code, "if (!defined('PG_FUNCTIONS_DIR')) {\n    exit;\n}");
+	$first = preg_match('~^\s*(?:function|define|const|class|require)~m', $code, $m, PREG_OFFSET_CAPTURE) ? $m[0][1] : strlen($code);
+
+	pg_assert_true($gate !== false, 'view_folder_and_files_f.php has the gate');
+	pg_assert_true($gate < $first, 'the gate comes before any function or require');
+}

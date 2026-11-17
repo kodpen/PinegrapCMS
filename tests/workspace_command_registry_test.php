@@ -3,7 +3,7 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Tests for the command registry (includes/workspace/command_registry.php):
- * every entry's gate and API class name functions that exist, the commands keep today's order
+ * every entry names functions that exist, the commands keep today's order
  * and names, and an application's command named as a built-in one is
  * shadowed: kept, never offered, listed by the API as shadowed.
  *
@@ -33,9 +33,9 @@ require_once(PG_FUNCTIONS_DIR . '/includes/mcp/tools.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/api/scopes.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api.php');
 
-// Every entry's gate and API class name functions that are there, and every
-// field is filled.
-function test_workspace_command_registry_every_function_exists()
+// No name without a runner: every entry's runner, gate, live line and API
+// class name functions that are there, and every field is filled.
+function test_workspace_command_registry_every_key_has_a_runner()
 {
 	$registry = ws_command_registry();
 
@@ -44,13 +44,14 @@ function test_workspace_command_registry_every_function_exists()
 	foreach ($registry as $key => $entry) {
 		pg_assert_same($key, $entry['key'], $key . ' is listed under its key');
 
-		foreach (array('key', 'tr', 'en', 'label', 'description', 'example', 'args', 'names', 'group', 'where', 'gate', 'live', 'api', 'order') as $field) {
+		foreach (array('key', 'tr', 'en', 'label', 'description', 'example', 'args', 'names', 'group', 'where', 'gate', 'runner', 'live', 'api', 'order') as $field) {
 			pg_assert_true(array_key_exists($field, $entry), $key . ' has ' . $field);
 		}
 
 		pg_assert_true(in_array($entry['group'], ws_command_groups(), true), $key . ' is in a known group');
+		pg_assert_true(is_string($entry['runner']) && function_exists($entry['runner']), $key . ' runs: ' . $entry['runner']);
 		pg_assert_true(($entry['gate'] === '') || function_exists($entry['gate']), $key . ' gate: ' . $entry['gate']);
-		pg_assert_true(is_bool($entry['live']), $key . ' live line is said');
+		pg_assert_true(($entry['live'] === '') || function_exists($entry['live']), $key . ' live line: ' . $entry['live']);
 		pg_assert_true(in_array($entry['api'], array('preview', 'run'), true) || function_exists($entry['api']), $key . ' API class: ' . $entry['api']);
 	}
 
@@ -63,10 +64,10 @@ function test_workspace_command_registry_every_function_exists()
 // The order, the keys and the names are today's.
 function test_workspace_command_registry_keeps_the_order_and_names()
 {
-	pg_assert_same(array('task', 'assign', 'done', 'postpone', 'status', 'timer', 'schedule', 'away', 'meeting', 'decision', 'note', 'plan', 'poll', 'price', 'stock', 'create', 'product', 'wake', 'agent_channel', 'claude', 'ai', 'help'),
+	pg_assert_same(array('task', 'assign', 'done', 'postpone', 'status', 'timer', 'schedule', 'away', 'meeting', 'decision', 'note', 'plan', 'remind', 'poll', 'recap', 'price', 'stock', 'create', 'product', 'wake', 'agent_channel', 'claude', 'ai', 'help'),
 		array_keys(ws_command_registry()), 'the registry in picker order');
 
-	pg_assert_same(array('task', 'assign', 'done', 'postpone', 'status', 'timer', 'schedule', 'away', 'meeting', 'decision', 'note', 'plan', 'poll', 'price', 'stock', 'create', 'product', 'wake', 'agent_channel', 'help'),
+	pg_assert_same(array('task', 'assign', 'done', 'postpone', 'status', 'timer', 'schedule', 'away', 'meeting', 'decision', 'note', 'plan', 'remind', 'poll', 'recap', 'price', 'stock', 'create', 'product', 'wake', 'agent_channel', 'help'),
 		array_column(ws_commands(null), 'key'), 'without a person the assistants are left out');
 
 	pg_assert_same(array(
@@ -82,7 +83,9 @@ function test_workspace_command_registry_keeps_the_order_and_names()
 		'karar' => 'decision', 'decision' => 'decision',
 		'not' => 'note', 'note' => 'note',
 		'plan' => 'plan',
+		'hatırlat' => 'remind', 'hatirlat' => 'remind', 'remind' => 'remind',
 		'oylama' => 'poll', 'anket' => 'poll', 'sor' => 'poll', 'poll' => 'poll',
+		'özet' => 'recap', 'ozet' => 'recap', 'recap' => 'recap',
 		'fiyat' => 'price', 'price' => 'price',
 		'stok' => 'stock', 'stock' => 'stock',
 		'uyandır' => 'wake', 'uyandir' => 'wake', 'wake' => 'wake',
@@ -100,7 +103,7 @@ function test_workspace_command_registry_keeps_the_order_and_names()
 		}
 	}
 
-	pg_assert_same(array('task', 'status', 'timer', 'schedule', 'away', 'meeting'), $live, 'the commands with a live line');
+	pg_assert_same(array('task', 'status', 'timer', 'schedule', 'away', 'meeting', 'remind'), $live, 'the commands with a live line');
 
 	$classes = array();
 

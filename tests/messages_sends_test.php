@@ -234,3 +234,28 @@ function test_messages_sends_whatsapp_row()
 
 	pg_assert_same(array('delivery' => '', 'delivered_at' => 0, 'read_at' => 0, 'error_code' => ''), pg_messages_sends_whatsapp_delivery_row(array()), 'nothing written yet');
 }
+
+// A long address or error text is held to one line at its column's width
+// (the driver's widest cell size lowered on the cell), so the columns fit a
+// 1440 px window and the row's buttons stay in view; the whole error is the
+// cell's title, and the details panel and phone card show it whole.
+function test_messages_sends_long_cells_give_way()
+{
+	$columns = pg_messages_sends_columns();
+	$caps = pg_messages_sends_caps();
+	pg_assert_same($columns['recipient']['width'], $caps['recipient'], 'an address stops at its column');
+	pg_assert_same($columns['result']['width'], $caps['result'], 'a result stops at its column');
+
+	pg_assert_same(array(), pg_messages_sends_cell_cap('channel'), 'a short column keeps the list\'s cell size');
+	pg_assert_same(array('style' => '--pg-list-table-cell-max: 12rem', 'title' => 'a b'), pg_messages_sends_cell_cap('result', " a \n b "), 'the whole text, on one line, as the title');
+
+	$error = str_repeat('SMTP Error: Could not authenticate. ', 6);
+	$record = array('sid' => pg_messages_sends_sid(7, 1), 'at' => 1700000000, 'channel' => 'email', 'row_kind' => 'message', 'recipient' => 'a.long.address@example.com',
+		'what' => 'Your order', 'source' => 'order', 'state' => 'failed', 'done' => 0, 'total' => 0, 'error' => $error, 'attempts' => 3,
+		'next_at' => 0, 'expires' => 0);
+	$cell = pg_messages_sends_row($record, 1700000500)['cells']['result'];
+	pg_assert_same(false, strpos($cell['html'], 'white-space:normal'), 'the error does not wrap the row to many lines');
+	pg_assert_contains(h(trim($error)), $cell['html'], 'the whole error stays in the cell for the details panel');
+	pg_assert_same(trim($error), $cell['attributes']['title'], 'and is its title');
+	pg_assert_same('--pg-list-table-cell-max: 12rem', $cell['attributes']['style'], 'held to its column');
+}

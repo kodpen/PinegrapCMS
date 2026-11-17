@@ -72,7 +72,7 @@ function erp_api_quote_template_schema()
             'withholding_code' => 'string',
             'withholding_rate' => 'number',
         )),
-        'updated_at' => 'string',
+        'updated_at' => 'datetime',
     );
 }
 

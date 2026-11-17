@@ -6,7 +6,7 @@ description: Every plan carries a priority from 1 to 10 (owner 2026-11-15, agent
 ## What is the scale? (owner, 2026-11-15, agent channel message 5159)
 - His words: "bundan sonra planlara 1 ila 10 arası bir önceliklendirme koyalım. 2/10 düşük (şablon tasarımları ve özel talep dışı arayüz iyileştirmeleri), 6/10 özel talepler ve 9/10 acil güvenlik özellikleri ve 10/10 zamanı kısıtlı planlar"
 - 10: a plan with a time limit. 9: an urgent security feature. 6: a special request of the owner. 2: design templates and look improvements nobody asked for.
-- The numbers between are the architect's, for telling two plans of one kind apart; none is in use.
+- The numbers between are the architect's, for telling two plans of one kind apart. One is in use, and by the owner's own word: 4 for the integration plans (2026-11-17, `decisions-made-product-69.md`), below his other requests and above the look steps.
 - Only the owner makes a plan a 10 or a 9: he names the time limit or calls the security work urgent. The architect writes the date beside a 10 in its plan.
 
 ## Where is the number written?

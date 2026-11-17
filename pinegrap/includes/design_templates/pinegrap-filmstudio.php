@@ -220,7 +220,7 @@ $filmstudio_css = implode("\n", array(
 
 return array(
     'name'        => lang('Film Studio'),
-    'version'     => '2.0.2',
+    'version'     => '2.0.3',
     'framework'   => 'bootstrap5',
     'order'       => 127,
     'icon'        => 'bi-film',
