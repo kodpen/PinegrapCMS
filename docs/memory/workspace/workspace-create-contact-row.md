@@ -3,7 +3,7 @@ name: workspace-create-contact-row
 description: /create contact (/oluştur kişi) in a channel: how the line is read, the card, the drawer for a line missing a field, the contacts right per kind, the decision as a tag; /create row still to come
 ---
 
-## What does /create contact do? (CC7a)
+## What does /create contact do? (CC7a, PR #10187)
 - `/create contact Ada Lovelace, Acme Ltd, ada@example.com` (also `/oluştur kişi`, `kisi`): `ws_command_parse_contact()` takes an e-mail address anywhere, then the parts between commas: the name (first word the first name, the rest the last name), then the company.
 - `ws_command_contact()` hands the fields to `ws_command_create_card()`, the same card as /create product: rows of first name, last name, company and e-mail, the decision tick, Create, "All fields", Cancel. No "On sale" tick: a contact has no switch (`ws_quick_create_has_switch()`).
 - Written only by Create, through `ws_quick_create_save()` and the contacts writer of the catalogue (`ws_change_write_contact()`, `customer.created`). Several lines or a tag in the line are refused.
