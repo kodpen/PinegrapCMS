@@ -349,7 +349,7 @@ function ws_command_registry_records()
         ),
         array(
             'key' => 'create', 'tr' => 'oluştur', 'en' => 'create', 'label' => '/create · /oluştur',
-            'description' => lang('Creates a product or a product group, off sale, or a contact: the kind, then its name; a product takes a price and a #group if you like, a contact its company and e-mail after commas. Shown to you before it is created. Several product lines, one per line, make one card of drafts for you to apply.'),
+            'description' => lang('Creates a product or a product group, off sale, a contact, or a row of a workflow table: the kind, then its name; a product takes a price and a #group if you like, a contact its company and e-mail after commas, a row the table\'s name. Shown to you before it is created. Several product lines, one per line, make one card of drafts for you to apply.'),
             'example'     => lang('/create product Blue mug 149,90'),
             'args'        => array(
                 $arg('kind', 'record_kind', lang('kind'), false, 'kinds'),
@@ -369,6 +369,11 @@ function ws_command_registry_records()
                         $arg('email', 'text', lang('e-mail'), false),
                     ),
                     'example' => lang('/create contact Ada Lovelace, Acme Ltd, ada@example.com'),
+                ),
+                array(
+                    'words'   => array('satir', 'row'),
+                    'args'    => array($arg('table', 'text', lang('table'), false, '', array('multiple' => true))),
+                    'example' => lang('/create row Leads'),
                 ),
             ),
             'names' => array('oluştur', 'olustur', 'create'), 'group' => 'records', 'order' => 160,

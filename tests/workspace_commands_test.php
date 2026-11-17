@@ -323,7 +323,7 @@ function test_workspace_command_suggestions_are_read_by_the_parser()
 			$kinds[] = ws_command_parse_create($item['value'] . ' x')['kind'];
 		}
 
-		pg_assert_same(array('product', 'product_group', 'contact'), $kinds, $language . ' kinds, every one read');
+		pg_assert_same(array('product', 'product_group', 'contact', 'wtable_row'), $kinds, $language . ' kinds, every one read');
 	}
 
 	pg_assert_same('bugün', ws_command_suggestions('tr')['dates'][0]['value'], 'Turkish first day');
@@ -456,7 +456,7 @@ function test_workspace_command_product_from_a_file()
 
 	$actions = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/actions.php');
 	$send = substr($actions, strpos($actions, "case 'ws_send':"), 2000);
-	pg_assert_contains("'parent_id' => (int) (\$request['parent_id'] ?? 0),", substr($send, strpos($send, 'ws_command_run('), 600), 'the reply reaches the command');
+	pg_assert_contains("'parent_id' => (int) (\$request['parent_id'] ?? 0),", substr($send, strpos($send, 'ws_command_run('), 900), 'the reply reaches the command');
 
 	$attach = substr($actions, strpos($actions, "case 'ws_attach':"), 3500);
 	pg_assert_true(strpos($attach, '!ws_bulk_file_is_table(') < strpos($attach, 'ws_message_send_file_bytes('), 'a file that is no table is refused before it is posted');

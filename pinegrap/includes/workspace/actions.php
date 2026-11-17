@@ -2220,6 +2220,8 @@ function ws_handle_action($action, $request)
                     'from'      => (isset($request['from']) && is_scalar($request['from'])) ? $request['from'] : null,
                     'decision'  => !empty($request['decision']),
                     'on_sale'   => !empty($request['on_sale']),
+                    'table_id'  => (int) ($request['table_id'] ?? 0),
+                    'cells'     => (array) ($request['cells'] ?? array()),
                     'parent_id' => (int) ($request['parent_id'] ?? 0),
                 ));
 

@@ -19344,6 +19344,12 @@
                 self.autosize();
             };
 
+            // /create row: a form of the table's own fields.
+            if (preview.kind === 'wtable_row') {
+                self.drawRowCreate(command);
+                return;
+            }
+
             if (preview.missing && preview.missing.length) {
                 self.pending = null;
                 openRecord(preview.kind, 0, '', { values: command.values || {}, labels: command.labels || {}, channelId: self.channel.id, onCreated: created });
@@ -19423,6 +19429,99 @@
                 });
             });
             actions.appendChild(all);
+
+            var cancel = button('btn btn-sm btn-text theme-secondary', t('cancel'));
+            cancel.addEventListener('click', function () {
+                self.pending = null;
+                clear(self.previewBox);
+            });
+            actions.appendChild(cancel);
+            card.appendChild(actions);
+            box.appendChild(card);
+        },
+
+        // The /create row card: the table the line named, or a choice of the
+        // tables the person may write (choosing one draws the card again
+        // with its fields), then each field the row stores, empty, as the
+        // table screen draws them. Create sends what was filled in, as
+        // typed; the server reads it as the screen does. Nothing is written
+        // before Create.
+        drawRowCreate: function (command) {
+            var self = this;
+            var box = clear(self.previewBox);
+            var preview = command.preview;
+            var card = el('div', 'ws-preview');
+            var drawn = self.pending.body;
+            var inputs = {};
+            var tableId = preview.table_id || 0;
+
+            card.appendChild(el('div', 'fw-semibold mb-2', t('qc_command_title_row')));
+
+            var tables = el('select', 'form-control form-control-sm');
+            tables.appendChild(new Option(t('qc_row_choose'), ''));
+            (preview.tables || []).forEach(function (table) {
+                tables.appendChild(new Option(table.name, String(table.id), false, table.id === tableId));
+            });
+            tables.addEventListener('change', function () {
+                var id = parseInt(tables.value, 10) || 0;
+
+                if (id) {
+                    self.send({ body: drawn, table_id: id });
+                }
+            });
+            card.appendChild(saLabelled(t('qc_row_table'), tables, ''));
+
+            (preview.columns || []).forEach(function (column) {
+                var input;
+
+                if (column.type === 'checkbox') {
+                    var wrap = el('div', 'form-field mb-2');
+                    input = el('input', 'check');
+                    input.type = 'checkbox';
+                    input.id = nextId('ws-row-cell-');
+                    var label = el('label', 'small', column.name);
+                    label.htmlFor = input.id;
+                    wrap.appendChild(input);
+                    wrap.appendChild(label);
+                    input.read = function () { return input.checked ? '1' : '0'; };
+                    inputs[column.id] = input;
+                    card.appendChild(wrap);
+                    return;
+                }
+
+                if (column.choices.length || ['status', 'person', 'row'].indexOf(column.type) !== -1) {
+                    input = el('select', 'form-control form-control-sm');
+                    input.appendChild(new Option(t('qc_row_none'), ''));
+                    column.choices.forEach(function (choice) {
+                        input.appendChild(new Option(choice[1], choice[0]));
+                    });
+                } else if (column.type === 'text' || column.type === 'list') {
+                    input = el('textarea', 'form-control form-control-sm');
+                    input.rows = 2;
+                } else {
+                    input = el('input', 'form-control form-control-sm');
+                    input.type = (column.type === 'date') ? (column.time ? 'datetime-local' : 'date') : 'text';
+
+                    if (column.type === 'number' || column.type === 'money') {
+                        input.inputMode = 'decimal';
+                    }
+                }
+
+                input.read = function () { return input.value; };
+                inputs[column.id] = input;
+                card.appendChild(saLabelled(column.name, input, column.hint || ''));
+            });
+
+            var actions = el('div', 'd-flex flex-wrap gap-3 mt-3');
+            var create = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('qc_create'), 'bi-plus-lg');
+            create.disabled = !tableId;
+            create.addEventListener('click', function () {
+                var cells = {};
+
+                Object.keys(inputs).forEach(function (id) { cells[id] = inputs[id].read(); });
+                self.send({ confirm: 1, body: drawn, table_id: tableId, cells: cells });
+            });
+            actions.appendChild(create);
 
             var cancel = button('btn btn-sm btn-text theme-secondary', t('cancel'));
             cancel.addEventListener('click', function () {
