@@ -2759,33 +2759,24 @@
 }
 
 .pgie-trrow.pgie-trmo > .pgie-trname {
-  padding-right: 32px;
+  padding-right: 34px;
 }
 
 .pgie-trmotion {
   position: absolute;
-  top: 3px;
-  left: calc(var(--pgie-trname) - 27px);
-  /* Above a selected bar's tip, which a bar near 0 puts over the names. */
-  z-index: 2;
-  width: 22px;
-  height: 22px;
-  padding: 3px;
+  top: 2px;
+  left: calc(var(--pgie-trname) - 29px);
+  width: 24px;
+  height: 24px;
+  padding: 4px;
   border: 0;
   border-radius: 4px;
-  /* The row's own colour: a tip under it does not show through. */
-  background: var(--pgie-surface);
+  background: none;
   color: var(--pgie-muted);
   cursor: pointer;
 }
 
-.pgie-trrow.on .pgie-trmotion {
-  /* The selected row's colour may be see-through: laid over the surface. */
-  background: linear-gradient(var(--pgie-pw), var(--pgie-pw)), var(--pgie-surface);
-}
-
-.pgie-trmotion:hover,
-.pgie-trrow.on .pgie-trmotion:hover {
+.pgie-trmotion:hover {
   background: var(--pgie-line);
   color: var(--pgie-tx);
 }
@@ -2912,6 +2903,11 @@
 .pgie-trtip-left {
   left: auto;
   right: calc(100% + 12px);
+}
+
+/* A bar with room on neither side carries its tip at its start. */
+.pgie-trtip-in {
+  left: 8px;
 }
 
 .pgie-trplay {

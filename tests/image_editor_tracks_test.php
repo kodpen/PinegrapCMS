@@ -185,6 +185,43 @@ function test_image_editor_tracks_edit_out_and_loop()
 	pg_assert_same(array('delay' => 3100), $r['loopPast'], 'a tenth of a second before the exit at most');
 }
 
+// Where the selected bar's tip goes: right of the bar, left of it when the
+// bar ends past the middle, inside it at its start when neither side has
+// room (a whole-length loop), so it never leaves the lane.
+function test_image_editor_tracks_tip_place()
+{
+	$r = image_editor_tracks_node(
+		'var E = 5000;' . "\n"
+		. 'console.log(JSON.stringify({' . "\n"
+		. ' early: M.trackTipPlace(0, 800, E),' . "\n"
+		. ' half: M.trackTipPlace(1000, 2500, E),' . "\n"
+		. ' late: M.trackTipPlace(3000, 4500, E),' . "\n"
+		. ' lateWide: M.trackTipPlace(1500, 5000, E),' . "\n"
+		. ' whole: M.trackTipPlace(0, 5000, E),' . "\n"
+		. ' nearStart: M.trackTipPlace(200, 4200, E),' . "\n"
+		. ' longLeftRoom: M.trackTipPlace(0, 3600, E),' . "\n"
+		. ' zero: M.trackTipPlace(0, 0, 0)' . "\n"
+		. '}));'
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
+	pg_assert_same('right', $r['early'], 'a bar in the first half: right of it');
+	pg_assert_same('right', $r['half'], 'ending at the middle: right of it');
+	pg_assert_same('left', $r['late'], 'ending past the middle: left of it');
+	pg_assert_same('left', $r['lateWide'], 'starting a quarter in: left of it');
+	pg_assert_same('in', $r['whole'], 'a whole-length bar: inside it');
+	pg_assert_same('in', $r['nearStart'], 'from near 0 to past the middle, too little room right: inside it');
+	pg_assert_same('right', $r['longLeftRoom'], 'from 0 to past the middle with room right: right of it');
+	pg_assert_same('right', $r['zero'], 'no length: the usual side');
+
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_image_editor_tracks.js');
+	pg_assert_true(strpos($js, 'M.trackTipPlace(') !== false, 'the tracks part asks the rule');
+}
+
 // A row's Motion button: a layer that may move, unlocked and shown, never
 // a redaction, never on a phone.
 function test_image_editor_tracks_motion_button()

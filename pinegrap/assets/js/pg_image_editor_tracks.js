@@ -78,6 +78,12 @@
         return (kind ? t('motion_' + kind) : t(PHASE_LABELS[b.phase])) + ' · ' + seconds(b.from) + ' → ' + seconds(b.to);
     }
 
+    function tipClass(from, to, end) {
+        var at = M.trackTipPlace(from, to, end);
+
+        return 'pgie-trtip' + ((at === 'right') ? '' : ' pgie-trtip-' + at);
+    }
+
     Editor.prototype.tracksNode = function () {
         var self = this, end = this.motionEnd(), rows, ruler, head, s, phone = !!(window.matchMedia && window.matchMedia(NO_TRACKS).matches);
 
@@ -171,8 +177,9 @@
                     });
                 }
 
-                // Past the middle the tip goes left of the bar, inside the stage.
-                bar.appendChild(el('span', { class: 'pgie-trtip' + ((b.to > end / 2) ? ' pgie-trtip-left' : ''), text: barTip(l, b) }));
+                // Right of the bar, left of it past the middle, inside it
+                // where neither side has room: never over the names.
+                bar.appendChild(el('span', { class: tipClass(b.from, b.to, end), text: barTip(l, b) }));
             }
 
             lane.appendChild(bar);
@@ -303,6 +310,7 @@
 
                 if (tip) {
                     tip.textContent = barTip(start, nb);
+                    tip.className = tipClass(nb.from, nb.to, end);
                 }
             }
         };

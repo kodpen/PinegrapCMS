@@ -4210,6 +4210,27 @@
         return { delay: Math.round(end - nt), ms: Math.round(nt - nf), at: Math.round(nt) };
     }
 
+    // Where the selected bar's tip goes, from the bar's start and end and
+    // the length (ms): 'right' of the bar, 'left' of it when the bar ends
+    // past the middle, or 'in' it at its start when neither side has room
+    // (a whole-length loop), so the tip never leaves the lane over the
+    // names. Room is a quarter of the lane, about a tip's width.
+    var TRACK_TIP_ROOM = 0.25;
+
+    function trackTipPlace(from, to, end) {
+        var room = TRACK_TIP_ROOM * end;
+
+        if (!(end > 0) || (to <= end / 2)) {
+            return 'right';
+        }
+
+        if (from >= room) {
+            return 'left';
+        }
+
+        return (end - to >= room) ? 'right' : 'in';
+    }
+
     // Whether a track row offers the Motion button that opens the bar's
     // Motion popover: a shown, unlocked layer that may move (a redaction
     // never moves; a locked one's bar offers only Unlock and More), and
@@ -4218,7 +4239,7 @@
         return !!l && !phone && (l.type !== 'redact') && !l.locked && !l.hidden;
     }
 
-    var TRACKS = { TRACK_STEP: TRACK_STEP, trackBars: trackBars, trackTargets: trackTargets, trackSnap: trackSnap, trackEdit: trackEdit, trackMotionOn: trackMotionOn };
+    var TRACKS = { TRACK_STEP: TRACK_STEP, trackBars: trackBars, trackTargets: trackTargets, trackSnap: trackSnap, trackEdit: trackEdit, trackMotionOn: trackMotionOn, trackTipPlace: trackTipPlace };
 
     // -- frames and animation files (pg_image_editor_render.js) --
 
