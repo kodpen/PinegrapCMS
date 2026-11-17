@@ -15,7 +15,7 @@ description: Plan automation-platforms, steps AU1 to AU7: the contract and its t
   - Tests, red first: the order and the cursor of each list as a pure function; the default order unchanged.
   - Features: A4.
 
-- AU3 (S) The subscription limit: 50 for each application (architect 2026-11-17, agent channel message 7594, a technical bound).
+- AU3 (S) The subscription limit: 50 for each application (architect 2026-11-17, agent channel message 7594, a technical bound). Done: PR #10128.
   - `api_webhooks_create()` (`includes/api/resources/webhooks.php`) refuses the eleventh today. The number goes into one function and the 409's text takes it from there.
   - The PR body says how many rows one run of the dispatcher sends, so that 50 subscribers of one event are known to drain.
   - Features: A5.

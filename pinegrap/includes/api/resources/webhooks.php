@@ -156,15 +156,18 @@ function api_webhooks_create($params) {
 
 	$group_id = api_webhook_clean_channel_group(isset($params['channel_group_id']) ? $params['channel_group_id'] : 0, $clean);
 
-	if ((int)api_value("SELECT COUNT(*) FROM api_webhooks WHERE app_id = '" . (int)$app['id'] . "'") >= 10) {
+	if (api_webhook_subscription_limit_reached(api_value("SELECT COUNT(*) FROM api_webhooks WHERE app_id = '" . (int)$app['id'] . "'"))) {
 
-		api_fail(409, 'too_many_webhooks', lang('An application may hold ten subscriptions.'));
+		api_fail(409, 'too_many_webhooks', lang(array(
+			'string' => 'An application may hold {var:1} subscriptions.',
+			'vars'   => api_webhook_subscription_limit()
+		)));
 
 	}
 
 	// Above: the address answers, every event named exists, the group (if
 	// one is named) is there for those events, and the application is under
-	// its ten subscriptions. Below: the row, and the one and only time its
+	// its subscription limit. Below: the row, and the one and only time its
 	// secret is readable.
 	api_dry_run_stop('created', 'webhook', array(
 		'url'              => $params['url'],
