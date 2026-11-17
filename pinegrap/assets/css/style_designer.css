@@ -1139,6 +1139,7 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
     flex: 1 1 5ch; min-width: 5ch; max-width: max-content;
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right;
 }
+.sd-sect-sum-txt.sd-sect-sum-whole { flex: 0 0 auto; min-width: max-content; }
 .sd-sect-sum .sd-color-preview { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
 .sd-sect-hdr.sd-sect-open .sd-sect-sum,
 .sd-sect-hdr:has(+ .sd-sect-body[data-search-expanded]) .sd-sect-sum { display: none; }

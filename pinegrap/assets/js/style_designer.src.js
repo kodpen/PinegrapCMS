@@ -60269,7 +60269,8 @@ const StyleDesigner = (function () {
 
     // The count badge and the summary of a section's head (`sum` from
     // _sdChgSummary(), or null while it is not known yet). A count of 0
-    // draws no badge. The summary shows while the section is closed.
+    // draws no badge. The summary shows while the section is closed; a
+    // value may be cut, the words "default" and "none" never are.
     function _sdSectHeadExtras(sum) {
         if (!sum) return '<span class="sd-sect-sum"></span>';
         var badge = sum.count ? '<span class="sd-sect-count">' + sum.count + '</span>' : '';
@@ -60280,7 +60281,9 @@ const StyleDesigner = (function () {
         } else if (sum.kind === 'value') {
             inner = '<span class="sd-sect-sum-txt">' + esc(sum.text) + '</span>';
         } else {
-            inner = '<span class="sd-sect-sum-txt">' + esc(sum.kind === 'none' ? _sdT('none') : _sdT('default')) + '</span>';
+            // A word of the panel, not a value: whole or left out, never
+            // cut (a cut "varsayılan" reads as another word).
+            inner = '<span class="sd-sect-sum-txt sd-sect-sum-whole">' + esc(sum.kind === 'none' ? _sdT('none') : _sdT('default')) + '</span>';
         }
         return badge + '<span class="sd-sect-sum"><span class="sd-sect-sum-line">' + inner + '</span></span>';
     }

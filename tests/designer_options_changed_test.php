@@ -159,7 +159,8 @@ JS
 
 // A closed card carries its head, its summary and its count, never its
 // body; an open one carries the body and no summary. A count of 0 draws
-// no badge; the summary's text is escaped.
+// no badge; the summary's text is escaped. The words "default" and "none"
+// are shown whole or left out, never cut; a value may be cut.
 function test_designer_options_closed_card_has_no_body()
 {
 	$answer = designer_options_changed_test_run(<<<'JS'
@@ -181,6 +182,8 @@ out = {
 	openBadge: open.indexOf('sd-sect-count') !== -1 && /sd-sect-count[^>]*>0</.test(open),
 	openExpanded: open.indexOf('aria-expanded="true"') !== -1,
 	noneDefault: none.indexOf('>default<') !== -1,
+	noneWhole: none.indexOf('sd-sect-sum-txt sd-sect-sum-whole">default<') !== -1,
+	valueCut: shut.indexOf('sd-sect-sum-whole') === -1,
 	noneHasBody: none.indexOf('sd-prop-row') !== -1
 };
 JS
@@ -201,6 +204,8 @@ JS
 		'openBadge' => false,
 		'openExpanded' => true,
 		'noneDefault' => true,
+		'noneWhole' => true,
+		'valueCut' => true,
 		'noneHasBody' => false,
 	), $answer);
 }
