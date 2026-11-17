@@ -294,3 +294,115 @@ function test_api_answer_check_a_refused_key_is_no_difference()
 	pg_assert_same('', api_answer_check_refused(array('status' => 403, 'body' => '<html>')), 'an HTML 403 is a difference');
 	pg_assert_same('', api_answer_check_refused(array('status' => 500, 'body' => '{"error":{"code":"server_error"}}')), 'a 500 is a difference');
 }
+
+// A fetch over fixed answers, as the tool's reader hands them to the fill.
+function api_answer_check_test_fetch($answers)
+{
+	return function ($path) use ($answers) {
+		return isset($answers[$path]) ? $answers[$path] : null;
+	};
+}
+
+// #10155: a path parameter that is not id is filled from the row's field of
+// that name.
+function test_api_answer_check_fills_a_parameter_by_its_name()
+{
+	pg_assert_same(1, api_answer_check_param_value(array('id' => 51, 'n' => 1), 'n'), '{n} from n, not from id');
+	pg_assert_same(4, api_answer_check_param_value(array('user_id' => 4, 'role' => 'member'), 'user_id'), '{user_id} from a row with no id');
+	pg_assert_same('a-7', api_answer_check_param_value(array('agent_id' => 'a-7'), 'agent_id'), '{agent_id}');
+	pg_assert_same(3, api_answer_check_param_value(array('revision_no' => 3, 'current' => true), 'no'), '{no} from revision_no');
+	pg_assert_same(9, api_answer_check_param_value(array('id' => 9), 'submission_id'), 'a row without the field gives its id');
+	pg_assert_same(null, api_answer_check_param_value(array('id' => ''), 'id'), 'an empty id');
+
+	$fetch = api_answer_check_test_fetch(array(
+		'/workspace/flows' => array('data' => array(array('id' => 94))),
+		'/workspace/flows/94/versions' => array('data' => array(array('id' => 51, 'n' => 1))),
+		'/workspace/channels' => array('data' => array(array('id' => 2))),
+		'/workspace/channels/2/members' => array('data' => array(array('user_id' => 4))),
+	));
+
+	pg_assert_same('/workspace/flows/94/versions/1', api_answer_check_fill('/workspace/flows/{id}/versions/{n}', array(0, 0), $fetch), 'a version by its number');
+	pg_assert_same('/workspace/channels/2/members/4', api_answer_check_fill('/workspace/channels/{id}/members/{user_id}', array(), $fetch), 'a member by user_id');
+}
+
+// #10155: a refusal the route names for one record tries the next rows.
+function test_api_answer_check_a_refusal_the_route_names_tries_the_next_row()
+{
+	$route = array('path' => '/workspace/tasks/{id}/recurrence', 'description' => 'The series of a task. 404 for a task that has never repeated.');
+	$envelope = function ($status, $code) {
+		return array('status' => $status, 'headers' => '', 'body' => json_encode(array('error' => array('code' => $code))), 'error' => '');
+	};
+
+	pg_assert_same('status 404 not_found', api_answer_check_named_refusal($route, $envelope(404, 'not_found')), 'a 404 its description names');
+	pg_assert_same('', api_answer_check_named_refusal($route, $envelope(409, 'conflict')), 'a status the description does not name');
+	pg_assert_same('', api_answer_check_named_refusal($route, $envelope(500, 'server_error')), 'a 500 is never named');
+	pg_assert_same('', api_answer_check_named_refusal(array('path' => '/users', 'description' => '404 when none.'), $envelope(404, 'not_found')), 'a route without a parameter has no next row');
+	pg_assert_same('status 409 not_a_collection', api_answer_check_named_refusal(
+		array('path' => '/forms/{id}/submissions/{submission_id}/revisions', 'description' => 'Any other is answered 409 not_a_collection.'),
+		$envelope(409, 'not_a_collection')
+	), 'a 409 with its code');
+
+	// Row combinations: the first rows first, then the outer list moves.
+	pg_assert_same(array(array()), api_answer_check_tuples(0, 5), 'no parameter, one try');
+	pg_assert_same(array(array(0), array(1), array(2)), api_answer_check_tuples(1, 3), 'one parameter');
+	pg_assert_same(array(array(0, 0), array(1, 0), array(0, 1), array(1, 1)), api_answer_check_tuples(2, 2), 'two parameters');
+	pg_assert_same(5, API_ANSWER_CHECK_TRIES, 'at most five records a route');
+
+	$fetch = api_answer_check_test_fetch(array(
+		'/workspace/tasks' => array('data' => array(array('id' => 7), array('id' => 43))),
+	));
+	pg_assert_same('/workspace/tasks/43/recurrence', api_answer_check_fill('/workspace/tasks/{id}/recurrence', array(1), $fetch), 'the second task');
+	pg_assert_same(null, api_answer_check_fill('/workspace/tasks/{id}/recurrence', array(2), $fetch), 'past the end of the list');
+
+	pg_assert_same(
+		'every record tried (2) was refused as the route describes: /workspace/tasks/7/recurrence status 404 not_found; /workspace/tasks/43/recurrence status 404 not_found',
+		api_answer_check_refusal_skip(array('/workspace/tasks/7/recurrence status 404 not_found', '/workspace/tasks/43/recurrence status 404 not_found')),
+		'the SKIP reason'
+	);
+}
+
+// #10155: a record route with no list at its parent path reads the list the
+// table names for it.
+function test_api_answer_check_reaches_records_through_their_parent_list()
+{
+	$fetch = api_answer_check_test_fetch(array(
+		'/workspace/channels' => array('data' => array(array('id' => 2))),
+		'/workspace/channels/2/messages' => array('data' => array(array('id' => 31))),
+		'/workspace/channels/2/memory' => array('data' => array(array('id' => 12))),
+		'/workspace/mail/conversations' => array('data' => array(array('id' => 6))),
+		'/workspace/mail/conversations/6' => array('id' => 6, 'mails' => array(array('id' => 61))),
+		'/workspace/flows' => array('data' => array(array('id' => 94))),
+		'/workspace/flows/94/runs' => array('data' => array(array('id' => 300))),
+		'/workspace/flows/94' => array('id' => 94, 'draft' => array('nodes' => array(array('id' => 'n1', 'kind' => 'start')))),
+		'/design/pages' => array('data' => array(array('id' => 8))),
+		'/design/pages/8/proposals' => array('data' => array(array('id' => 70))),
+		'/store/countries' => array('data' => array(array('id' => 1, 'states' => array()), array('id' => 2, 'states' => array(array('id' => 55))))),
+		'/pages' => array('data' => array(array('id' => 4))),
+	));
+
+	$expect = array(
+		'/workspace/messages/{id}/readers'      => '/workspace/messages/31/readers',
+		'/workspace/messages/{id}/file/content' => '/workspace/messages/31/file/content',
+		'/workspace/messages/{id}/file/history' => '/workspace/messages/31/file/history',
+		'/workspace/messages/{id}/canvas'       => '/workspace/messages/31/canvas',
+		'/workspace/messages/{id}/page'         => '/workspace/messages/31/page',
+		'/workspace/messages/{id}/preamble'     => '/workspace/messages/31/preamble',
+		'/workspace/memory/{id}'                => '/workspace/memory/12',
+		'/workspace/mail/items/{id}'            => '/workspace/mail/items/61',
+		'/workspace/flow-runs/{id}'             => '/workspace/flow-runs/300',
+		'/workspace/flows/{id}/boxes/{node}/try' => '/workspace/flows/94/boxes/n1/try',
+		'/workspace/canvases/{id}'              => '/workspace/canvases/31',
+		'/workspace/canvases/{id}/table-choices' => '/workspace/canvases/31/table-choices',
+		'/design/proposals/{id}'                => '/design/proposals/70',
+		'/store/states/{id}'                    => '/store/states/55',
+		'/translations/pages/{id}'              => '/translations/pages/4',
+	);
+
+	foreach ($expect as $path => $url) {
+		pg_assert_same($url, api_answer_check_fill($path, array(), $fetch), $path);
+	}
+
+	pg_assert_same(array(array('id' => 55)), api_answer_check_rows(array('data' => array(array('states' => array(array('id' => 55))))), 'data[].states'), 'rows inside every row');
+	pg_assert_same(array(), api_answer_check_rows(null, 'data'), 'an answer not read');
+	pg_assert_same(null, api_answer_check_fill('/workspace/memory/{id}', array(), api_answer_check_test_fetch(array())), 'its parent list was not read');
+}
