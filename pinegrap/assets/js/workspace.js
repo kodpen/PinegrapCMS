@@ -906,6 +906,8 @@
         var title = el('div', 'fw-semibold', label);
         var file = el('div', 'small text-truncate', name);
         var bar = progressBar({ percent: 0 }, true, label);
+
+        file.title = name;
         var fill = bar.firstChild;
         var row = el('div', 'd-flex justify-content-between align-items-center gap-3 small mt-2');
         var bytes = el('span');
@@ -12639,7 +12641,10 @@
             // A person's message written through an OAuth connection: their
             // name, and the client it came through beside it.
             if (message.via) {
-                meta.appendChild(el('span', 'badge rounded-pill ws-via-badge', t('via_badge', message.via)));
+                var via = el('span', 'badge rounded-pill ws-via-badge', t('via_badge', message.via));
+
+                via.title = via.textContent;
+                meta.appendChild(via);
             }
 
             // An MCP agent's answer, under the agent's own name: who asked and
@@ -13548,7 +13553,10 @@
 
                 var bar = el('div', 'ws-media-bar');
                 bar.appendChild(icon(kind === 'video' ? 'bi-film' : 'bi-music-note-beamed'));
-                bar.appendChild(el('span', 'ws-grow text-truncate', file.name));
+                var barName = el('span', 'ws-grow text-truncate', file.name);
+
+                barName.title = file.name;
+                bar.appendChild(barName);
 
                 if (kind === 'video') {
                     var large = button('btn btn-sm btn-text theme-secondary py-0', '', 'bi-arrows-fullscreen', t('preview'));
@@ -13576,6 +13584,7 @@
             name.target = '_blank';
             name.rel = 'noopener';
             name.textContent = file.name;
+            name.title = file.name;
             text.appendChild(name);
             card.appendChild(text);
 
@@ -20563,6 +20572,15 @@
         drawPicker: function (items, emptyText) {
             var self = this;
             var picker = clear(self.picker);
+            // A line the row cuts with an ellipsis in a narrow column keeps
+            // its whole text as its title.
+            var pickerText = function (className, text) {
+                var node = el('span', className, text);
+
+                node.title = text;
+
+                return node;
+            };
 
             if (self.pickerMode === 'record') {
                 var types = el('div', 'ws-picker-types');
@@ -20662,11 +20680,11 @@
                 if (item.detail) {
                     var text = el('span', 'ws-picker-text');
 
-                    text.appendChild(el('span', 'ws-picker-label', item.label));
-                    text.appendChild(el('span', 'ws-picker-detail', item.detail));
+                    text.appendChild(pickerText('ws-picker-label', item.label));
+                    text.appendChild(pickerText('ws-picker-detail', item.detail));
                     row.appendChild(text);
                 } else {
-                    row.appendChild(el('span', 'ws-picker-label', item.label));
+                    row.appendChild(pickerText('ws-picker-label', item.label));
                 }
 
                 // The state in words for a screen reader; the dot shows it.
@@ -20692,7 +20710,7 @@
                     meta.appendChild(el('span', '', item.role));
                     row.appendChild(meta);
                 } else if (item.meta) {
-                    row.appendChild(el('span', 'ws-picker-meta', item.meta));
+                    row.appendChild(pickerText('ws-picker-meta', item.meta));
                 }
 
                 row.addEventListener('mousedown', function (event) {
@@ -22017,6 +22035,7 @@
             var where = el('div', 'ws-topic');
             var parent = (BOOT.channels || []).filter(function (item) { return item.id === thread.channel_id; })[0];
             where.textContent = t('th_in', parent ? parent.name : '');
+            where.title = where.textContent;
             title.appendChild(where);
             head.appendChild(title);
 
