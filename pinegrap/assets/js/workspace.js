@@ -19489,7 +19489,12 @@
                 return;
             }
 
-            var titles = { product_group: 'qc_command_title_group', contact: 'qc_command_title_contact' };
+            var titles = {
+                product_group: 'qc_command_title_group',
+                contact: 'qc_command_title_contact',
+                erp_account: 'qc_command_title_account',
+                calendar_event: 'qc_command_title_event'
+            };
             card.appendChild(el('div', 'fw-semibold', t(titles[preview.kind] || 'qc_command_title')));
 
             var list = el('dl');
@@ -25737,6 +25742,24 @@
                 row.appendChild(tickLabel);
                 row.appendChild(el('div', 'form-text mt-0', t('qc_unticked')));
                 input.read = function () { return input.checked; };
+            } else if ((meta.kind === 'ids') && meta.choices) {
+                // Records the workspace does not tag (an event's calendars):
+                // one of the person's own, chosen from a list.
+                var chosen = (Array.isArray(given) && given.length) ? parseInt(given[0], 10) : 0;
+                var select = el('select', 'pg-input');
+                select.appendChild(el('option', '', t('qc_row_none'))).value = '';
+                meta.choices.forEach(function (choice) {
+                    var option = el('option', '', choice.label);
+                    option.value = String(choice.id);
+                    option.selected = choice.id === chosen;
+                    select.appendChild(option);
+                });
+                select.read = function () {
+                    var id = parseInt(select.value, 10);
+                    return id ? [id] : [];
+                };
+                input = select;
+                row = lookField(label, select, select, '');
             } else if (meta.kind === 'ids') {
                 // One record, picked among those the person may tag.
                 var first = (Array.isArray(given) && given.length) ? parseInt(given[0], 10) : 0;
