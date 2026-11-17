@@ -510,6 +510,59 @@
         return node;
     }
 
+    // A button of the look's recipes (.pg-button and its ranks): the
+    // button's own gap spaces its icon, so the icon carries no margin.
+    function lookButton(className, label, iconName) {
+        var node = el('button', className);
+        node.type = 'button';
+
+        if (iconName) {
+            node.appendChild(icon(iconName, ''));
+        }
+
+        node.appendChild(document.createTextNode(label));
+
+        return node;
+    }
+
+    // A tick of the look's recipes (.pg-checkbox) with its label beside it,
+    // added to box; the tick is given back.
+    function lookCheck(box, label, checked, prefix) {
+        var wrap = el('div', 'd-flex align-items-center gap-2 mb-1');
+        var input = el('input', 'pg-checkbox');
+        input.type = 'checkbox';
+        input.checked = !!checked;
+        input.id = nextId(prefix);
+        var text = el('label', 'pg-text-2', label);
+        text.htmlFor = input.id;
+        wrap.appendChild(input);
+        wrap.appendChild(text);
+        box.appendChild(wrap);
+
+        return input;
+    }
+
+    // A field of the look's recipes: .pg-field-label over the control
+    // (.pg-input, or a .pg-input wrapper round it), the help under it.
+    function lookField(label, control, field, help) {
+        var wrap = el('div', 'mb-2');
+        var caption = el('label', 'pg-field-label', label);
+
+        if (!field.id) {
+            field.id = nextId('ws-look-field-');
+        }
+
+        caption.htmlFor = field.id;
+        wrap.appendChild(caption);
+        wrap.appendChild(control);
+
+        if (help) {
+            wrap.appendChild(el('div', 'pg-field-help', help));
+        }
+
+        return wrap;
+    }
+
     // "2026-10-16" as people write it: 16.10.2026.
     function dmy(value) {
         var parts = String(value || '').split('-');
@@ -19382,28 +19435,19 @@
             }
 
             // Kept in this channel as a decision, as from the record drawer.
-            var tick = el('div', 'form-field mb-1');
-            var decision = el('input', 'check');
-            decision.type = 'checkbox';
-            decision.checked = true;
-            decision.id = nextId('ws-cmd-decision-');
-            var tickLabel = el('label', 'small', t('qe_decision'));
-            tickLabel.htmlFor = decision.id;
-            tick.appendChild(decision);
-            tick.appendChild(tickLabel);
-            card.appendChild(tick);
+            var decision = lookCheck(card, t('qe_decision'), true, 'ws-cmd-decision-');
 
             // Save writes the text this card was drawn from, not what the box
             // holds by then, which nobody has seen as a card.
             var drawn = self.pending.body;
             var actions = el('div', 'd-flex flex-wrap gap-3 mt-3');
-            var save = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('qe_save'), 'bi-check2');
+            var save = lookButton('pg-button pg-button-fill pg-button-sm', t('qe_save'), 'bi-check2');
             save.addEventListener('click', function () {
                 self.send({ confirm: 1, body: drawn, from: command.from, decision: decision.checked ? 1 : 0 });
             });
             actions.appendChild(save);
 
-            var cancel = button('btn btn-sm btn-text theme-secondary', t('cancel'));
+            var cancel = lookButton('pg-button pg-button-ghost pg-button-sm', t('cancel'));
             cancel.addEventListener('click', function () {
                 self.pending = null;
                 clear(self.previewBox);
@@ -19462,18 +19506,7 @@
             card.appendChild(list);
 
             var tick = function (label, checked, prefix) {
-                var wrap = el('div', 'form-field mb-1');
-                var input = el('input', 'check');
-                input.type = 'checkbox';
-                input.checked = checked;
-                input.id = nextId(prefix);
-                var text = el('label', 'small', label);
-                text.htmlFor = input.id;
-                wrap.appendChild(input);
-                wrap.appendChild(text);
-                card.appendChild(wrap);
-
-                return input;
+                return lookCheck(card, label, checked, prefix);
             };
 
             var onSale = null;
@@ -19488,13 +19521,13 @@
             // Create makes what the card shows: the text it was drawn from,
             // not what the box holds by then, as on the /task card.
             var actions = el('div', 'd-flex flex-wrap gap-3 mt-3');
-            var create = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('qc_create'), 'bi-plus-lg');
+            var create = lookButton('pg-button pg-button-fill pg-button-sm', t('qc_create'), 'bi-plus-lg');
             create.addEventListener('click', function () {
                 self.send({ confirm: 1, body: drawn, decision: decision.checked ? 1 : 0, on_sale: (onSale && onSale.checked) ? 1 : 0 });
             });
             actions.appendChild(create);
 
-            var all = button('btn btn-sm btn-outline theme-secondary', t('qc_all_fields'), 'bi-layout-sidebar-inset-reverse');
+            var all = lookButton('pg-button pg-button-quiet pg-button-sm', t('qc_all_fields'), 'bi-layout-sidebar-inset-reverse');
             all.addEventListener('click', function () {
                 var values = {};
 
@@ -19519,7 +19552,7 @@
             });
             actions.appendChild(all);
 
-            var cancel = button('btn btn-sm btn-text theme-secondary', t('cancel'));
+            var cancel = lookButton('pg-button pg-button-ghost pg-button-sm', t('cancel'));
             cancel.addEventListener('click', function () {
                 self.pending = null;
                 clear(self.previewBox);
@@ -19539,14 +19572,14 @@
             var self = this;
             var box = clear(self.previewBox);
             var preview = command.preview;
-            var card = el('div', 'ws-preview');
+            var card = el('div', 'ws-preview ws-row-card');
             var drawn = self.pending.body;
             var inputs = {};
             var tableId = preview.table_id || 0;
 
             card.appendChild(el('div', 'fw-semibold mb-2', t('qc_command_title_row')));
 
-            var tables = el('select', 'form-control form-control-sm');
+            var tables = el('select', 'pg-input');
             tables.appendChild(new Option(t('qc_row_choose'), ''));
             (preview.tables || []).forEach(function (table) {
                 tables.appendChild(new Option(table.name, String(table.id), false, table.id === tableId));
@@ -19558,7 +19591,7 @@
                     self.send({ body: drawn, table_id: id });
                 }
             });
-            card.appendChild(saLabelled(t('qc_row_table'), tables, ''));
+            card.appendChild(lookField(t('qc_row_table'), tables, tables, ''));
 
             // Two fields a line on a wide screen; a long table scrolls
             // inside the card, so the box stays in view.
@@ -19574,35 +19607,34 @@
                     // On a wide screen, on the line of its neighbour's
                     // control, below that one's label.
                     cell.classList.add('md:pt-7');
-                    var wrap = el('div', 'form-field mb-2 d-flex align-items-center');
-                    wrap.style.minHeight = '2rem';
-                    input = el('input', 'check');
-                    input.type = 'checkbox';
-                    input.id = nextId('ws-row-cell-');
-                    var label = el('label', 'small', column.name);
-                    label.htmlFor = input.id;
-                    wrap.appendChild(input);
-                    wrap.appendChild(label);
+                    input = lookCheck(cell, column.name, false, 'ws-row-cell-');
+                    input.parentNode.style.minHeight = '2.25rem';
                     input.read = function () { return input.checked ? '1' : '0'; };
                     inputs[column.id] = input;
-                    cell.appendChild(wrap);
                     grid.appendChild(cell);
                     return;
                 }
 
                 if (column.choices.length || ['status', 'person', 'row'].indexOf(column.type) !== -1) {
-                    input = el('select', 'form-control form-control-sm');
+                    input = el('select', 'pg-input');
                     input.appendChild(new Option(t('qc_row_none'), ''));
                     column.choices.forEach(function (choice) {
                         input.appendChild(new Option(choice[1], choice[0]));
                     });
-                } else if (column.type === 'text' || column.type === 'list') {
-                    input = el('textarea', 'form-control form-control-sm');
+                } else if (column.type === 'list') {
+                    // One item a line: the recipe's text box.
+                    input = el('textarea', 'pg-input');
+                    input.rows = 2;
+                } else if (column.type === 'text') {
+                    // A text keeps its line breaks (a pasted address or
+                    // note): a text box, one line high at rest, growing
+                    // with its lines (.ws-row-text).
+                    input = el('textarea', 'pg-input ws-row-text');
                     input.rows = 1;
                 } else if (column.type === 'date') {
-                    input = pgDateField(el('input', 'form-control form-control-sm'), column.time ? 'datetime-local' : 'date');
+                    input = pgDateField(el('input', 'pg-input'), column.time ? 'datetime-local' : 'date');
                 } else {
-                    input = el('input', 'form-control form-control-sm');
+                    input = el('input', (column.type === 'money' && column.hint) ? '' : 'pg-input');
                     input.type = 'text';
 
                     if (column.type === 'number' || column.type === 'money') {
@@ -19613,24 +19645,22 @@
                 input.read = function () { return input.value; };
                 inputs[column.id] = input;
 
-                // Money: its currency beside the amount, as a suffix.
+                // Money: its currency beside the amount, the bare input in a
+                // .pg-input wrapper with .pg-input-end.
                 if (column.type === 'money' && column.hint) {
-                    var group = el('div', 'input-group input-group-sm');
+                    var group = el('span', 'pg-input');
                     group.appendChild(input);
-                    group.appendChild(el('span', 'input-group-text', column.hint));
-                    input.id = nextId('ws-row-cell-');
-                    var field = saLabelled(column.name, group, '');
-                    field.querySelector('label').htmlFor = input.id;
-                    cell.appendChild(field);
+                    group.appendChild(el('span', 'pg-input-end', column.hint));
+                    cell.appendChild(lookField(column.name, group, input, ''));
                 } else {
-                    cell.appendChild(saLabelled(column.name, input, column.hint || ''));
+                    cell.appendChild(lookField(column.name, input, input, column.hint || ''));
                 }
 
                 grid.appendChild(cell);
             });
 
             var actions = el('div', 'd-flex flex-wrap gap-3 mt-3');
-            var create = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('qc_create'), 'bi-plus-lg');
+            var create = lookButton('pg-button pg-button-fill pg-button-sm', t('qc_create'), 'bi-plus-lg');
             create.disabled = !tableId;
             create.addEventListener('click', function () {
                 var cells = {};
@@ -19640,7 +19670,7 @@
             });
             actions.appendChild(create);
 
-            var cancel = button('btn btn-sm btn-text theme-secondary', t('cancel'));
+            var cancel = lookButton('pg-button pg-button-ghost pg-button-sm', t('cancel'));
             cancel.addEventListener('click', function () {
                 self.pending = null;
                 clear(self.previewBox);

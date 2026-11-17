@@ -17851,6 +17851,17 @@ a.ws-chip-message:hover,
 .ws-preview dd {
   margin: 0;
 }
+/* The /create row card: a text column's box is one line high at rest and
+   grows with its lines up to eight where the browser can, scrolling past
+   them. The recipe's box (textarea.pg-input) is placed here, not changed. */
+.ws-row-card textarea.pg-input.ws-row-text {
+  min-height: 0;
+  max-height: calc(8lh + 20px);
+  /* One line as high as the card's other fields (36 px). */
+  padding-block: calc((36px - 1lh - 2px) / 2);
+  field-sizing: content;
+  overflow-y: auto;
+}
 .ws-warning {
   display: flex;
   gap: .4rem;
