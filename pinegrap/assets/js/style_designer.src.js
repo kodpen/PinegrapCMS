@@ -27198,11 +27198,9 @@ const StyleDesigner = (function () {
                     id: p.id ? String(p.id) : ''
                 };
             },
-            // The hint the overview gives a name the page repeats.
-            hint: function (n) {
-                var name = _sdPartTreeLabel(n, getNodeLabel(n));
-                return (!(n.props && n.props._label) && _sdTreeNames[name] > 1) ? _sdTreeRowHint(n, 40) : '';
-            },
+            // The row hint (its text, a file name, a link target); the part
+            // asks for it only for a name more than one result shows.
+            hint: function (n) { return _sdTreeRowHint(n, 40); },
             icon: _sdTreeIconHtml,
             pick: _sdTreeSearchPick,
             total: _sdTreeSearchTotal,

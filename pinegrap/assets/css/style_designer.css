@@ -4784,7 +4784,15 @@ body.sd-resizing * { cursor: col-resize !important; }
 }
 /* Show the selection sits left of collapse-all; the input runs under neither */
 .sd-ov-collapse-btn.sd-ov-reveal-btn { right: 28px; }
-#sd-ov-search-input { padding-right: 96px; }
+#sd-ov-search-input { padding-right: 96px; min-width: 0; }
+/* A narrow left column (a 1024 px window): the key hint gives way, the
+   count stays. */
+.sd-ov-search-box { container-type: inline-size; }
+@container (max-width: 230px) {
+    .sd-ov-search-kbd { display: none; }
+    #sd-ov-search-input { padding-right: 54px; }
+    .sd-ov-search-box:has(.sd-ov-search-count) #sd-ov-search-input { padding-right: 84px; }
+}
 /* The tree search: the key hint, or the count of results, left of the two
    buttons; the results take the tree's place while there are words. */
 .sd-ov-search-hint {

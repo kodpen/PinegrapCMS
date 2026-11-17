@@ -23,7 +23,8 @@ StyleDesigner.definePart('treesearch', function (K) {
 
     // At most this many results are drawn; the count says how many there are.
     var MAX_SHOWN = 100;
-    var state = { entries: [], hits: [], active: 0 };
+    // shown: how many entries show each name (label, else name), folded.
+    var state = { entries: [], hits: [], active: 0, shown: {} };
 
     // Folds a text for matching, one letter for one, so a place found in the
     // folded text is the same place in the text: lower case, the Turkish
@@ -121,7 +122,9 @@ StyleDesigner.definePart('treesearch', function (K) {
         else if (hit.field === 'cls' || hit.field === 'text') {
             var sn = _tsSnippet(e[hit.field], hit.at, hit.len, 48);
             extra = (hit.field === 'cls' ? '.' : '') + _tsMark(sn.text, sn.at, hit.len);
-        } else {
+        } else if (state.shown[_tsFold(shown)] > 1) {
+            // A name or label the page uses more than once: its hint tells
+            // the results apart.
             var hint = host.hint(e.node);
             if (hint && hint !== shown) extra = esc(hint);
         }
@@ -179,6 +182,11 @@ StyleDesigner.definePart('treesearch', function (K) {
         // Searches the page for `q` and draws the results.
         search: function (host, q) {
             state.entries = _tsIndex(host.root, host.kids, host.fields);
+            state.shown = {};
+            state.entries.forEach(function (e) {
+                var k = _tsFold(e.label || e.name);
+                state.shown[k] = (state.shown[k] || 0) + 1;
+            });
             var res = _tsMatch(state.entries, q, MAX_SHOWN);
             state.hits = res.hits;
             state.active = 0;

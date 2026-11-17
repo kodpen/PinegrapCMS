@@ -130,6 +130,28 @@ function test_designer_tree_search_finds_name_text_class_and_id()
 	pg_assert_same(0, $res['blank']['total'], 'blank words search nothing');
 }
 
+// A name or designer label more than one element shows gets the row hint
+// after it in its result, so three "App option" results read apart; a name
+// shown once gets none.
+function test_designer_tree_search_hints_names_shown_twice()
+{
+	$res = designer_tree_search_run('style_designer_treesearch.js', array('_tsFold', '_tsMark', '_tsSnippet', '_tsItem'),
+		'var _sdT = function (s) { return s; };' . "\n"
+		. 'function E(name, label) { return { node: { n: name + label }, name: name, label: label, path: [], fold: {} }; }' . "\n"
+		. 'var state = { active: 0, entries: [E("Div", "App option"), E("Div", "App option"), E("Fieldset", "App options")], shown: { "app option": 2, "app options": 1 } };' . "\n"
+		. 'var host = { icon: function () { return ""; }, hint: function (n) { return n.n === "DivApp option" ? "Notes" : "Other"; } };' . "\n"
+		. 'var hit = function (i) { return { i: i, field: "label", at: 0, len: 3 }; };' . "\n"
+		. 'console.log(JSON.stringify({ twice: _tsItem(host, hit(0), 0), once: _tsItem(host, hit(2), 1) }));');
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_true(strpos($res['twice'], '<span class="sd-ov-res-extra">· Notes</span>') !== false, 'a label shown twice gets its hint');
+	pg_assert_true(strpos($res['twice'], '<mark>App</mark> option') !== false, 'with the words marked in the label');
+	pg_assert_false(strpos($res['once'], 'sd-ov-res-extra') !== false, 'a label shown once gets none');
+}
+
 // A result's path: its section down to its parent; longer than four steps,
 // the section, a gap and the last two.
 function test_designer_tree_search_gives_each_result_its_path()
