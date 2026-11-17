@@ -215,7 +215,7 @@ function ws_command_registry_tasks()
 }
 
 /**
- * The plan commands: leave, meetings, a person's week.
+ * The plan commands: leave, meetings, a person's week, a reminder.
  *
  * @return array[]
  */
@@ -257,6 +257,19 @@ function ws_command_registry_plan()
             'args'        => array($arg('person', 'person', lang('@person'), true, 'people')),
             'names' => array('plan'), 'group' => 'plan', 'order' => 120,
             'runner' => 'ws_command_run_plan',
+        ),
+        array(
+            'key' => 'remind', 'tr' => 'hatırlat', 'en' => 'remind', 'label' => '/remind · /hatırlat',
+            'description' => lang('Puts a plan on My calendar that reminds you at its start: a day, a time such as 10:00, then what to remind. Without a time the New plan form opens filled.'),
+            'example'     => lang('/remind tomorrow 10:00 Send the quote'),
+            'args'        => array(
+                $arg('day', 'date', lang('day'), true, 'dates'),
+                $arg('time', 'time', lang('time'), true),
+                $arg('title', 'text', lang('what to remind'), false),
+            ),
+            'names' => array('hatırlat', 'hatirlat', 'remind'), 'group' => 'plan', 'order' => 125,
+            'gate' => 'ws_command_gate_remind', 'runner' => 'ws_command_run_remind', 'live' => 'ws_command_live_remind',
+            'api' => 'ws_api_command_kind_remind',
         ),
     );
 }
@@ -307,6 +320,14 @@ function ws_command_registry_channel()
             'args'        => array($arg('question', 'text', lang('question'), false), $arg('options', 'options', lang('| options'), true, '', array('multiple' => true))),
             'names' => array('oylama', 'anket', 'sor', 'poll'), 'group' => 'channel', 'order' => 130,
             'runner' => 'ws_command_run_poll', 'api' => 'ws_api_command_kind_poll',
+        ),
+        array(
+            'key' => 'recap', 'tr' => 'özet', 'en' => 'recap', 'label' => '/recap · /özet',
+            'description' => lang('Pinegrap AI sums up what you missed here since your last visit, only to you. Offered where the line over the conversation offers it.'),
+            'example'     => lang('/recap'),
+            'args'        => array(),
+            'names' => array('özet', 'ozet', 'recap'), 'group' => 'channel', 'order' => 135,
+            'gate' => 'ws_command_gate_recap', 'runner' => 'ws_command_run_recap',
         ),
         array(
             'key' => 'help', 'tr' => 'yardım', 'en' => 'help', 'label' => '/help · /yardım',
@@ -465,6 +486,18 @@ function ws_api_command_kind_poll($rest)
     $parts = array_filter(array_map('trim', explode('|', $rest)), 'strlen');
 
     return (count($parts) < 3) ? 'preview' : 'run';
+}
+
+/**
+ * The API class of /remind: without a time it opens the New plan form, so
+ * nothing is written; with one the plan is saved.
+ *
+ * @param string $rest
+ * @return string preview | run
+ */
+function ws_api_command_kind_remind($rest)
+{
+    return (ws_command_remind_data($rest)['time'] === '') ? 'preview' : 'run';
 }
 
 /**
