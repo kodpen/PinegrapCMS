@@ -6632,8 +6632,18 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
 .sd-proto-hot.sd-proto-mark-broken { border-color: #ff6b6b; background: rgba(255,107,107,.18); }
 .sd-proto-hot.sd-proto-hot-own, .sd-proto-hot.sd-proto-hot-lit, .sd-proto-hot.sd-proto-hot-shared { visibility: visible; }
 .sd-proto-hot.sd-proto-hot-shared { border-color: var(--pgc-in); background: color-mix(in srgb, var(--pgc-in) 22%, transparent); }
-.sd-proto-hot .pgc-port-out { display: none; }
-.sd-proto-hot.sd-proto-hot-own .pgc-port-out { display: block; }
+/* The whole mark is where its arrow is drawn from (F21); Tab reaches the
+   selected frame's marks (F23). */
+.sd-proto-hot.sd-proto-hot-own.sd-proto-hot-draw { cursor: grab; }
+.sd-proto-hot:focus-visible { outline: 2px solid var(--sd-accent); outline-offset: 2px; }
+/* The pointer on a mark or a links panel row lifts its arrow: drawn last,
+   thicker, the others faded. */
+.sd-proto .pgc-edges.sd-proto-lifting .pgc-edge:not(.sd-proto-edge-lift) { opacity: .25; }
+.sd-proto .pgc-edge.sd-proto-edge-lift .pgc-edge-line { stroke-width: 3; }
+/* An arrow being drawn from a mark or a head (F21, F22): the others fade,
+   the drawn one goes at full strength to the pointer. */
+.sd-proto .pgc-edges.sd-proto-drawing .pgc-edge { opacity: .2; }
+.sd-proto .pgc-edges.sd-proto-drawing .pgc-edge-temp { stroke: var(--sd-accent); stroke-width: 3; stroke-dasharray: none; opacity: 1; }
 .sd-proto-note { position: absolute; font-size: .75rem; line-height: 1.35; color: var(--pgc-in); pointer-events: none; }
 .sd-proto-note-line { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* Section headings (groups()), read at the zoom a large design fits at. */

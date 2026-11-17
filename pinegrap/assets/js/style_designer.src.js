@@ -71169,7 +71169,7 @@ const StyleDesigner = (function () {
     // undo history and content rights answer; the normal Save writes it.
     // Classic menus and regions stay read-only.
     var _sdProto = { open: false, ui: null, canvas: null, items: [], byId: {}, layout: null, view: { x: 40, y: 40, k: 1 }, seq: 0, selected: null, env: {}, warned: {}, menu: null,
-        link: null, broken: { list: [], count: {} }, problems: null,
+        link: null, lifted: '', drawing: false, broken: { list: [], count: {} }, problems: null,
         edgeTo: {},
         pics: { gen: 0, io: null, boxes: {}, near: {}, live: {}, wait: [], loading: 0, cache: {}, rects: {}, partH: {}, settle: 0, refill: 0 } };
 
@@ -71404,21 +71404,42 @@ const StyleDesigner = (function () {
                 return _sdProto.view;
             },
             items: function () { return _sdProto.items; },
-            // A link's mark on a picture: no drag, its link picked on
-            // release. Its port is the core's: an arrow drawn from it.
+            // A link's mark on a picture: a click picks its link, a drag
+            // draws its arrow (F21). The head of a drawn arrow: a drag
+            // points it elsewhere (F22). Either becomes the core's own
+            // 'connect' once it moves, so what may take the arrow lights up.
             press: function (event, next) {
-                if (event.target.closest && event.target.closest('.pgc-port-out')) return;
                 var row = event.target.closest ? event.target.closest('.sd-proto-hot') : null;
                 if (row) {
                     next.kind = 'row';
                     next.row = row;
+                    next.link = _sdProtoHotLink(row);
+                    return;
+                }
+                var head = _sdProtoHeadAt(event);
+                if (head) {
+                    next.kind = 'head';
+                    next.link = head;
+                    event.preventDefault();
                 }
             },
-            move: function () {},
+            move: function (event, drag) {
+                if ((drag.kind !== 'row' && drag.kind !== 'head') || !drag.link) return;
+                var item = _sdProto.byId[drag.link.frame];
+                var row = _sdProtoRow(item, drag.link.port);
+                if (!row || !window.PGProtoHotspots.drawable(row)) return;
+                _sdProtoMenuClose(false);
+                drag.kind = 'connect';
+                drag.from = item;
+                drag.port = row.port;
+                // The arrow being drawn is the one to see: the others fade.
+                _sdProtoDrawing(true);
+            },
             release: function (event, done) {
                 if (done.kind === 'row' && !done.moved && event.type === 'pointerup') _sdProtoPickRow(done.row);
+                if (done.kind === 'head' && !done.moved && event.type === 'pointerup') _sdProtoPick(done.link.frame, done.link.port, true);
             },
-            cancel: function () {},
+            cancel: function () { _sdProtoDrawing(false); },
             key: function (event) {
                 if (event.key === 'Escape') { _sdProtoClose(); return true; }
                 // The open tab's undo history, as on the canvas; the map is
@@ -71430,12 +71451,33 @@ const StyleDesigner = (function () {
                     _sdProtoLoad();
                     return true;
                 }
-                // A link's keys (Enter, L, the menu key) are on its row in
-                // the links panel.
+                // A mark of the selected frame (F23): Enter or Space picks
+                // its link; L, the menu key or Shift+F10 opens its target
+                // menu, the keyboard's way to draw its arrow.
+                var hot = event.target.closest ? event.target.closest('.sd-proto-hot') : null;
+                var act = hot ? window.PGProtoHotspots.markKey(event) : '';
+                if (act === 'pick') { _sdProtoPickRow(hot); return true; }
+                if (act === 'menu') {
+                    var link = _sdProtoHotLink(hot);
+                    return link ? _sdProtoMenuOpen(link.frame, link.port, hot) : false;
+                }
                 return false;
             }
         });
         _sdProto.canvas.bind();
+        // The pointer on a mark or a links panel row lifts its arrow out of
+        // the others.
+        ui.root.addEventListener('pointerover', function (event) {
+            if (_sdProto.drawing) return;
+            var hot = event.target.closest ? event.target.closest('.sd-proto-hot, .sd-proto-li[data-link]') : null;
+            var link = hot ? (hot.classList.contains('sd-proto-hot') ? _sdProtoHotLink(hot) : null) : null;
+            var id = link ? link.frame + '|' + link.port : (hot ? hot.getAttribute('data-link') : '');
+            _sdProtoLift(id || '');
+        });
+        // A drawn arrow let go of, on a target or not.
+        ['pointerup', 'pointercancel'].forEach(function (type) {
+            window.addEventListener(type, function () { if (_sdProto.drawing) _sdProtoDrawing(false); }, true);
+        });
         // A press outside the target menu closes it.
         ui.root.addEventListener('pointerdown', function (event) {
             if (_sdProto.menu && !_sdProto.menu.el.contains(event.target)) _sdProtoMenuClose(false);
@@ -71589,6 +71631,62 @@ const StyleDesigner = (function () {
         return window.PGProtoHotspots.markPort(item, rects ? (rects[port] || null) : undefined, to ? _sdProto.byId[to] : null);
     }
 
+    // The link a mark stands for: its frame's id and its row's port.
+    function _sdProtoHotLink(hot) {
+        var box = hot && hot.closest ? hot.closest('[data-node]') : null;
+        var item = box ? _sdProto.byId[box.getAttribute('data-node')] : null;
+        var row = item && item.rows ? item.rows[parseInt(hot.getAttribute('data-row'), 10) || 0] : null;
+        return row ? { frame: item.id, port: row.port } : null;
+    }
+
+    // The link of the drawn arrow whose head a press takes: the nearest
+    // head within 14 screen pixels of it, of the arrows shown (heads crowd
+    // on a frame's edge, so another arrow may be on top), else null. A
+    // press on a frame or a chip stays theirs (select, move).
+    function _sdProtoHeadAt(event) {
+        var ui = _sdProto.ui;
+        if (!ui || !_sdProto.layout || (event.target.closest && event.target.closest('[data-node]'))) return null;
+        var H = window.PGProtoHotspots;
+        var at = _sdProto.canvas.view.point(event.clientX, event.clientY);
+        var k = _sdProto.view.k;
+        var best = null;
+        var bestD = Infinity;
+        Array.prototype.forEach.call(ui.svg.querySelectorAll('g.pgc-edge[data-edge]'), function (group) {
+            var line = group.querySelector('path');
+            if (!line || !line.getTotalLength || window.getComputedStyle(group).display === 'none' || window.getComputedStyle(line).visibility === 'hidden') return;
+            var end = line.getPointAtLength(line.getTotalLength());
+            if (!H.nearHead({ x: end.x, y: end.y }, at, k)) return;
+            var d = (end.x - at.x) * (end.x - at.x) + (end.y - at.y) * (end.y - at.y);
+            if (d < bestD) { bestD = d; best = group.getAttribute('data-edge'); }
+        });
+        var edge = best ? _sdProto.layout.edges.filter(function (e) { return e.id === best; })[0] : null;
+        return edge ? { frame: edge.from, port: edge.port } : null;
+    }
+
+    // While an arrow is drawn from a mark or a head: every drawn arrow
+    // fades and the one being drawn goes at full strength to the pointer.
+    function _sdProtoDrawing(on) {
+        var ui = _sdProto.ui;
+        _sdProto.drawing = !!on;
+        _sdProtoLift('');
+        if (ui) ui.svg.classList.toggle('sd-proto-drawing', !!on);
+    }
+
+    // One arrow lifted out of the others ('' for none): drawn last, the
+    // others faded while it is.
+    function _sdProtoLift(id) {
+        var ui = _sdProto.ui;
+        if (!ui || _sdProto.lifted === id) return;
+        _sdProto.lifted = id;
+        var old = ui.svg.querySelector('.sd-proto-edge-lift');
+        if (old) old.classList.remove('sd-proto-edge-lift');
+        var group = id ? ui.svg.querySelector('g.pgc-edge[data-edge="' + id.replace(/"/g, '') + '"]') : null;
+        ui.svg.classList.toggle('sd-proto-lifting', !!group);
+        if (!group) return;
+        group.classList.add('sd-proto-edge-lift');
+        ui.svg.appendChild(group);
+    }
+
     // A loaded picture's marks (F5): a rounded rectangle over each link's
     // element, in the colour of where it leads; a link of a tree carries
     // the port its arrow is drawn from. Which of them show is
@@ -71609,11 +71707,16 @@ const StyleDesigner = (function () {
             hot.style.top = r.y + 'px';
             hot.style.width = Math.max(6, r.w) + 'px';
             hot.style.height = Math.max(6, r.h) + 'px';
-            hot.title = (row.from ? row.from + ' › ' + row.label : row.label) + (row.href ? ' · ' + row.href : '');
+            var name = row.from ? row.from + ' › ' + row.label : row.label;
+            hot.title = name + (row.href ? ' · ' + row.href : '');
+            hot.setAttribute('role', 'button');
+            hot.setAttribute('aria-label', name);
+            hot.tabIndex = -1;
+            // The whole mark is where its arrow is drawn from (F21).
             if (H.drawable(row)) {
-                var dot = canvas.port('out', row.port);
-                dot.title = _sdT('Drag to a page or an address to change where this link goes');
-                hot.appendChild(dot);
+                hot.classList.add('sd-proto-hot-draw');
+                hot.title += ' · ' + _sdT('Drag to a page or an address to change where this link goes');
+                hot.setAttribute('aria-keyshortcuts', 'L');
             }
             layer.appendChild(hot);
         });
@@ -71736,6 +71839,7 @@ const StyleDesigner = (function () {
         Array.prototype.slice.call(ui.boxes.querySelectorAll('.sd-proto-focused')).forEach(function (n) { n.classList.remove('sd-proto-focused'); });
         Array.prototype.slice.call(ui.boxes.querySelectorAll('.sd-proto-hot')).forEach(function (r) {
             r.classList.remove('sd-proto-hot-own', 'sd-proto-hot-lit', 'sd-proto-hot-shared');
+            r.tabIndex = -1;
         });
         if (id === null || id === undefined) return;
         var f = window.PGProtoHotspots.focusOf(_sdProto.layout, id);
@@ -71751,6 +71855,8 @@ const StyleDesigner = (function () {
                 var el = node.querySelector('.sd-proto-hot[data-row="' + i + '"]');
                 var state = mark[item.id + '|' + row.port];
                 if (el && state) el.classList.add('sd-proto-hot-' + state);
+                // Tab reaches the selected frame's marks after its frame (F23).
+                if (el && state === 'own') el.tabIndex = 0;
             });
         });
         var notes = {};
@@ -72083,6 +72189,8 @@ const StyleDesigner = (function () {
         l.edges.forEach(function (e) { _sdProto.edgeTo[e.id] = e.to; });
 
         Array.prototype.slice.call(ui.svg.querySelectorAll('g.pgc-edge')).forEach(function (g) { g.parentNode.removeChild(g); });
+        _sdProto.lifted = '';
+        ui.svg.classList.remove('sd-proto-lifting');
         _sdProtoPicReset(false);
         ui.boxes.innerHTML = '';
 
@@ -72601,13 +72709,17 @@ const StyleDesigner = (function () {
         ui.root.appendChild(el);
         _sdProto.menu = { el: el, rowEl: anchor };
 
-        // Under the row, or above it when it would leave the view.
+        // Under its row or mark, else above, else beside it, always inside
+        // the canvas under the view's bar (never over its zoom controls).
         var r = anchor.getBoundingClientRect();
         var o = ui.root.getBoundingClientRect();
-        var top = r.bottom - o.top + 2;
-        if (top + el.offsetHeight > o.height) top = Math.max(4, r.top - o.top - el.offsetHeight - 2);
-        el.style.left = Math.max(4, Math.min(r.left - o.left, o.width - el.offsetWidth - 4)) + 'px';
-        el.style.top = top + 'px';
+        var c = ui.stage.getBoundingClientRect();
+        var near = anchor.closest && anchor.closest('.sd-proto-list') ? ui.root.getBoundingClientRect() : c;
+        var area = { left: near.left - o.left, top: c.top - o.top, right: near.right - o.left, bottom: c.bottom - o.top };
+        el.style.maxHeight = Math.max(120, area.bottom - area.top - 8) + 'px';
+        var at = window.PGProtoHotspots.menuPlace({ left: r.left - o.left, top: r.top - o.top, right: r.right - o.left, bottom: r.bottom - o.top }, { w: el.offsetWidth, h: el.offsetHeight }, area);
+        el.style.left = at.left + 'px';
+        el.style.top = at.top + 'px';
 
         var first = el.querySelector('.sd-proto-menu-item[aria-checked="true"]') || el.querySelector('.sd-proto-menu-item');
         if (!first) el.tabIndex = -1;
