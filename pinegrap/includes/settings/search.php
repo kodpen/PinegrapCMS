@@ -154,7 +154,7 @@ function pg_settings_search_index($categories, $labels)
                 'card'   => (string) $id,
                 'title'  => $title,
                 'place'  => $place,
-                'keys'   => isset($category['keywords'][$id]) ? array_values($category['keywords'][$id]) : array(),
+                'keys'   => pg_connections_place_words('#settings/' . $key . '/' . $id, isset($category['keywords'][$id]) ? $category['keywords'][$id] : array()),
                 'fields' => $fields,
             );
         }

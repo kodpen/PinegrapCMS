@@ -223,9 +223,11 @@ function pg_panel_backend_search($request, $action)
                     'label' => lang('Settings') . ' - ' . $settings_section_label,
                     'icon'  => $settings_category['icon'],
                     'url'   => $base_url . '/' . pg_settings_url($settings_key) . '#' . $settings_section_id,
-                    'keys'  => isset($settings_category['keywords'][$settings_section_id])
-                        ? $settings_category['keywords'][$settings_section_id]
-                        : array());
+                    'keys'  => pg_connections_place_words(
+                        '#settings/' . $settings_key . '/' . $settings_section_id,
+                        isset($settings_category['keywords'][$settings_section_id])
+                            ? $settings_category['keywords'][$settings_section_id]
+                            : array()));
             }
         }
         // The System tools screen and every tool on it, from the groups the

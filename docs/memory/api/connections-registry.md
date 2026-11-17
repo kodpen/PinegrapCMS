@@ -8,6 +8,10 @@ module: connections_registry
 - One row per outside product or API the site connects to: `name`, `group` (`pg_connections_groups()`), the one `place` of its setting, a `state` reader or the reason in `no_state`, `uses` (English, a few words), and `covers`: the keys of the lists that already exist which the row stands for. Pure data in `includes/fn/connections_registry.php`; nothing reads the database or calls a service. Each row's place and reader: `connections-registry-rows.md`.
 - A place is a Site Settings card `#settings/<category>/<card>`, a System tools screen, or a screen of `pg_connections_other_screens()` (only `search_console.php`). Group labels and `uses` are English source text, translated where a screen draws them (the Connections screen adds their Turkish).
 
+## What follows the registry elsewhere?
+- Search (#PRNUM): every service's name is a search word of its place in the Site Settings search and the palette (`pg_connections_place_keys()`, `ui/settings-modal-search.md`); `search_console.php` is not in either, as before.
+- Integrations › Related screens links Application Access and the registry's System tools screens (`ui/settings-modal-architecture.md`).
+
 ## Which state readers are there?
 - `pg_connections_state_kinds()`: `account` (a connected account of a provider for a purpose; the only kind that reads "needs attention", from `reauth`), `app` (an enabled `connect_apps` row), `service` (`pg_connect_service_get()`), `config` (constants set, or the first equal to `equals`), `reader` (a function answering true from stored data), `marketplace`, `edoc`, `model`, `mcp`, `notify`.
 - Nothing is read yet: the Connections screen implements one reader per kind. A state that nothing stored can tell is left out and named (`no_state`), never kept in a new table.

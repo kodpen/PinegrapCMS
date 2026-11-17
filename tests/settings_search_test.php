@@ -444,3 +444,23 @@ function test_settings_search_turkish_keywords_keep_the_english_terms()
 		pg_assert_true(settings_search_test_palette_hits($query, $terms), $query . ' finds Private Label Branding in Turkish');
 	}
 }
+
+// A service typed in the search finds the card or tool its setting lives on
+// (the registry of outside services).
+function test_settings_search_finds_a_service_by_its_name()
+{
+	$index = pg_settings_search_index(
+		array('contact' => array('label' => 'Communication', 'sections' => array('pgset-sms' => 'SMS'), 'keywords' => array('pgset-sms' => array('sms')))),
+		array());
+
+	pg_assert_same('sms', $index[1]['keys'][0], 'the card keeps its own words first');
+	pg_assert_true(in_array('netgsm', $index[1]['keys'], true), 'Netgsm finds the SMS card');
+
+	$keys = pg_settings_tool_keys();
+
+	pg_assert_true(in_array('postmark', $keys['smtp_settings.php'], true), 'Postmark finds SMTP Settings');
+	pg_assert_true(in_array('trendyol', $keys['marketplace_settings.php'], true), 'Trendyol finds Marketplaces');
+	pg_assert_same(count($keys['marketplace_settings.php']), count(array_unique($keys['marketplace_settings.php'])), 'no word twice');
+
+	pg_assert_contains("pg_connections_place_words(\n                        '#settings/' . \$settings_key", settings_search_test_source('includes/panel/search.php'), 'the palette\'s cards gain the names too');
+}
