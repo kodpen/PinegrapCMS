@@ -23,6 +23,8 @@
 #     development first);
 #   - a stable tag's tree still holds the paths the release branch leaves out;
 #   - the RELEASE_KEY_ID repository variable is not a key id.
+# The flag is read from the release, not from the event, so a flag fixed on
+# the release page counts when the run is re-run.
 #
 # The assets are added once. A release that already has all three ends the
 # run without changes; one that has only some of them fails it with their
@@ -94,7 +96,6 @@ jobs:
           EVENT: ${{ github.event_name }}
           REPOSITORY: ${{ github.repository }}
           TAG: ${{ github.event.release.tag_name }}
-          PRERELEASE: ${{ github.event.release.prerelease }}
           RELEASE_ID: ${{ github.event.release.id }}
           KEY_ID: ${{ vars.RELEASE_KEY_ID }}
         run: |
@@ -119,6 +120,16 @@ jobs:
             exit 0
           fi
 
+          # A re-run replays the event as it was published, so the flag and
+          # the assets are read from the release as it is now: a pre-release
+          # flag fixed on the release page counts on the next re-run.
+          release="$(gh api "repos/$REPOSITORY/releases/$RELEASE_ID")"
+          if [ "$(jq -r '.tag_name' <<< "$release")" != "$TAG" ]; then
+            echo "::error::the release's tag is no longer $TAG; publish the release again"
+            exit 1
+          fi
+          prerelease="$(jq -r '.prerelease' <<< "$release")"
+
           if ! [[ "$TAG" =~ ^v([0-9]{4}\.([1-9]|1[0-2])\.(0|[1-9][0-9]{0,2}))(-beta\.([0-9]{12}))?$ ]]; then
             echo "::error::'$TAG' is not a release tag: v<year>.<month>.<patch>, or v<year>.<month>.<patch>-beta.<YYYYMMDDHHMM> for a pre-release"
             exit 1
@@ -126,11 +137,11 @@ jobs:
           tag_version="${BASH_REMATCH[1]}"
           stamp="${BASH_REMATCH[5]}"
 
-          if [ -n "$stamp" ] && [ "$PRERELEASE" != "true" ]; then
+          if [ -n "$stamp" ] && [ "$prerelease" != "true" ]; then
             echo "::error::$TAG is a beta tag but the release is not a pre-release"
             exit 1
           fi
-          if [ -z "$stamp" ] && [ "$PRERELEASE" = "true" ]; then
+          if [ -z "$stamp" ] && [ "$prerelease" = "true" ]; then
             echo "::error::$TAG is a pre-release; a beta tag is v$tag_version-beta.<YYYYMMDDHHMM>"
             exit 1
           fi
@@ -189,7 +200,7 @@ jobs:
 
           expected=(pinegrap_software_update.zip pinegrap_software.zip manifest.json)
           present=()
-          names="$(gh api "repos/$REPOSITORY/releases/$RELEASE_ID" --jq '.assets[].name')"
+          names="$(jq -r '.assets[].name' <<< "$release")"
           for name in "${expected[@]}"; do
             if grep -qxF "$name" <<< "$names"; then
               present+=("$name")
