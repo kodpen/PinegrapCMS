@@ -11,7 +11,8 @@ description: Download, backup and replace of a signed update (PR #3632, PG_VENDO
 - "Newer" is judged only at zip_version: newer than VERSION, or equal for Repair or for another beta build than the build file's (`update-beta-builds.md`).
 
 ## What is the manifest read as?
-- `pg_vendor_manifest_read()`: JSON with `schema` 1, `version`, `channel`, `build` ('' when absent), optional `git_ref` ('' when absent; a tag or commit name without a slash, else no manifest) and `artifacts`, a list whose one entry of `kind` `update` gives size (int) and sha256; none or two is no manifest (`manifest_mismatch`). Not yet checked against the vendor tool's real output: no signed release has been read end to end.
+- `pg_vendor_manifest_read()`: JSON with `schema` 1, `version`, `channel`, `build` ('' when absent), optional `git_ref` ('' when absent; a tag or commit name without a slash, else no manifest) and `artifacts`, a list whose one entry of `kind` `update` gives size (int) and sha256; none or two is no manifest (`manifest_mismatch`).
+- The release build's manifest fits (`release/release-packages.md`); `git_sha`, `min_from_version`, `key_id`, the `full` entry go unread. None signed is read end to end yet.
 
 ## What do backup and replace do?
 - Backup passes the pin's package to `pg_update_backup_create()`. Replace runs `pg_vendor_update_recheck()` (steps from `package`: size, sha256, in-ZIP version from the file on disk) right before `pg_extract_archive()`, so a file swapped after the download step is refused.
@@ -23,7 +24,7 @@ description: Download, backup and replace of a signed update (PR #3632, PG_VENDO
 
 ## Which keys?
 - `pg_vendor_release_keys()`: `kp-2026a` and `kp-2026b` since P5c (`vendor-api-release-keys.md`). A pin whose `sig_key_id` is another id is refused at the signature step as `unknown_key_id` (a security event), before any fetch.
-- Nothing is offered until signed packages exist, so P2 lands before the 2026.11.0 release branch (`plans/kodpen-vendor-api-client.md`); until then only `download_assistant.php` updates.
+- Nothing is offered until a release is signed: publishing adds the packages (`release/release-packages.md`), the owner signs them; until then only `download_assistant.php` updates.
 
 ## Tests?
 - `tests/vendor_update_steps_test.php`: every vector case after the check, the pending order, address rules, manifest shapes, a P-256 pair made with `pg_openssl_key_new()`, a ZIP built in the test, a file swapped before replace. The network path itself is not unit tested.

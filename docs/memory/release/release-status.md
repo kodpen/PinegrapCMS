@@ -10,7 +10,7 @@ description: Last released version (2026.4.10), the open version (2026.11.0, fir
 
 ## What is open?
 - 2026.11.0 (opened 2026-10-16), the first year.month.patch number (`version-numbering.md`), with its `versions.php` row and changelog section.
-- Released only after P2 (`plans/kodpen-vendor-api-client.md`): with the API client on, a release without signed packages never updates from the panel.
+- With the API client on, only a signed release updates from the panel (`release-packages.md`).
 - Its file `includes/migrations/2026.11.0.php` holds `upgrade_to_2026_11_0()`; each schema step is a sub-step `upgrade_2026_11_0_<topic>()` called from it with its label; a new step adds a call, not a file (`how-to-add-migration.md`).
 - A database that recorded `2026.11.0` before a step was added (dev, beta, demo sites on `development`) skips the steps added since: set `config.version` back to the last release (today `2026.4.10`) and rerun the upgrade (`rerun-upgrade-steps.md`).
 - Step labels (`11.0.` prefix, area ranges) and finding a free one: `version-numbering.md`.
@@ -20,7 +20,7 @@ description: Last released version (2026.4.10), the open version (2026.11.0, fir
 ## How is a release built?
 - Branch `release/<version>` = one "Release <version>" commit on top of `main` whose tree is `development`'s minus `CLAUDE.md`, `.claude/`, `docs/`, `tools/`, `tests/` (temporary index: `read-tree`, `rm -r --cached` those paths, `write-tree`, `commit-tree -p origin/main`; author Erdal Güral). The commit message is the short release notes, grouped by area.
 - Pull request `Release <version>` to `main`, body = the GitHub release notes (`## Release v<version>`, schema note, sections with emoji headings, upgrade notes, compare link). Merge with a merge commit titled `Merge pull request #<n> from kodpen/release/<version>`, never squash; development's own history never reaches `main`.
-- Tag `v<version>` on that merge commit and a GitHub release with the same body; publishing it pushes the Docker images to GHCR (platform/docker-image-publishing.md). A cloud session can push the release branch and merge through the GitHub API, but its git proxy drops tag pushes: tag and GitHub release come from the owner's machine or the GitHub web page (a release made there makes the tag).
+- Tag `v<version>` on that merge commit and a GitHub release with the same body; publishing it adds the packages (`release-packages.md`) and pushes the Docker images (platform/docker-image-publishing.md). A cloud session can push the release branch and merge through the GitHub API, but its git proxy drops tag pushes: tag and GitHub release come from the owner's machine or the GitHub web page (a release made there makes the tag).
 - CI PHP steps skip on branches without `tools/`. After a release this file is updated.
 
 ## What never ships in public notes?

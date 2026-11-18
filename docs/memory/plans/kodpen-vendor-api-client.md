@@ -1,10 +1,10 @@
 ---
 name: kodpen-vendor-api-client
-description: Plan (owner 2026-10-25 to 27): the Kodpen API client is on (P8); left is P2 before the 2026.11.0 release branch and P9, the api2 client removal in the next open version; steps in -steps
+description: Plan (owner 2026-10-25 to 27): the Kodpen API client is on (P8), releases get their packages (P2); left is P9, the api2 client removal in the next open version; steps in -steps
 ---
 
 ## Where does it stand?
-- 2026.11.0 asks `api.kodpen.com/v1` for licences and signed updates: the client in `includes/fn/vendor_api.php` is on since P8 (#8653). Contract: `platform/vendor-api-client.md` and its siblings; the open parts in `-design-update.md`.
+- 2026.11.0 asks `api.kodpen.com/v1` for licences and signed updates: the client in `includes/fn/vendor_api.php` is on since P8 (#8653). Contract: `platform/vendor-api-client.md` and its siblings; the packages: `release/release-packages.md`.
 - The api2 client branches are still in the code but no longer reached; setting the switch to false is the only way back to them, until P9 removes them.
 
 ## What is decided?
@@ -20,16 +20,15 @@ Source: the vendor plan's section 9 and its owner decisions, numbered as there (
 ## What is out of scope?
 - `download_assistant.php` (root) with its api2 call and key; any schema change (the build id is a file); `waf.php`; `pg_curl_tls()` and `ALLOW_INSECURE_UPDATE_TLS`; `pg_extract_archive()`; hosted gates; Pinegrap AI's key use; the `VERSION === '2026'` block.
 
-## What must land before the 2026.11.0 release branch?
-- P2. The keys are in `pg_vendor_release_keys()` since P5c (#10348). With no signed package `/releases/latest` offers nothing and the update check says no update: a 2026.11.0 without P2 never updates from the panel, only through `download_assistant.php`.
-- Still to prove before the release: a licence check and an update on the vendor's docker API; key fingerprints equal production's; packages signed only after the owner's own-clone check (vendor review finding 11); then one beta site updates from production.
+## What must happen before the 2026.11.0 release?
+- Publishing a release adds its packages since P2 (#10350), the keys ship since P5c (#10348). With no signed package `/releases/latest` offers nothing and the update check says no update: an unsigned 2026.11.0 updates only through `download_assistant.php`.
+- Still to do before the release: a licence check and an update on the vendor's docker API; key fingerprints equal production's; packages signed only after the owner's own-clone check (vendor review finding 11); then one beta site updates from production.
 - A 503 `not_live` licence answer shows the technical-reason card (15-min retry); stable offers nothing until a signed release (404 or an older adopted release); beta offers the pre-release the owner points at.
 
 ## Which questions are open?
 - Open on the vendor side, no step waits: the old fixed beta download on release day (how many sites meet Q1, `platform/update-beta-builds.md`); KVKK erasure (P7's note promises none); an outbox "try now".
-- Input: the primary key id `kp-2026a` as P2's repository variable.
 
 ## Where to start?
-- After the claim check: P2 (`.github/`, `docs/` only; it may run beside a step). P9 waits for the next open version.
+- P9, once the next version is open, after the claim check.
 
 Related: docs/memory/platform/license-check.md

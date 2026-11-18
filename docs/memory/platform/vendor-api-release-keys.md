@@ -5,7 +5,7 @@ description: The two release keys a signed update is verified with (PR #10348, p
 
 ## Which keys verify a release?
 - `pg_vendor_release_keys()` (`includes/fn/update.php`): key id => ECDSA P-256 public key PEM. `kp-2026a` signs releases; `kp-2026b` is the spare, kept offline.
-- The release answer names the signing key in `sig_key_id`, which the check step pins (`vendor-api-update.md`); the manifest carries no key id. The signature step refuses an id not in the list as `unknown_key_id`, a security event (`vendor-api-update-download.md`).
+- The release answer names the signing key in `sig_key_id`, which the check step pins (`vendor-api-update.md`); the manifest's `key_id` (`release/release-packages.md`) is not read. The signature step refuses an id not in the list as `unknown_key_id`, a security event (`vendor-api-update-download.md`).
 
 ## Where do they live and how do they change?
 - In the code only, never from config or the database; a key changes only with a release. A key is retired by a release signed with the other one that drops it.
