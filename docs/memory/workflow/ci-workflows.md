@@ -8,6 +8,7 @@ description: GitHub Actions workflows: what each runs and when, the PHP versions
 - `install-check.yml` (same triggers): the installer and every upgrade step on six MySQL/MariaDB images (`release/database-server-compatibility.md`); filtered on pull requests (`install-check-filter.md`).
 - `docker-check.yml`: the compose stack end to end, on pull requests that touch `docker/` or the files the images depend on and on every push to development (docs/memory/platform/docker.md).
 - `docker-publish.yml`: GHCR images when a release is published (docs/memory/platform/docker-image-publishing.md).
+- `release-packages.yml`: a published release's packages (docs/memory/release/release-packages.md).
 
 ## Which PHP versions do the checks run on?
 - `php-checks.yml` has two jobs: `checks` on PHP 8.3 (every step) and `php71` (#1534) on 7.1, the oldest PHP the product supports: `php tools/lint.php --vendored` (the bundled libraries too) and the unit tests (`-d memory_limit=-1`).
@@ -25,6 +26,6 @@ description: GitHub Actions workflows: what each runs and when, the PHP versions
 
 ## Which runners?
 - `ubuntu-latest`, except the Docker publish builds: `ubuntu-24.04` and `ubuntu-24.04-arm`, one per architecture (docs/memory/platform/docker-image-publishing.md).
-- `ubuntu-latest` moves from Ubuntu 24.04 to 26.04 between 2026-10-19 and 2026-11-19 (actions/runner-images#14748), so a run may land on either. A trial on `ubuntu-26.04` (draft PR #888, not merged) passed every job: PHP checks, the install check on all six databases, the Docker check and Docker publish's prepare job. Nothing is pinned; pin to `ubuntu-24.04` only if a job breaks on 26.04.
+- `ubuntu-latest` moves from Ubuntu 24.04 to 26.04 between 2026-10-19 and 2026-11-19 (actions/runner-images#14748), so a run may land on either. A trial on `ubuntu-26.04` (draft PR #888, not merged) passed every job. Nothing is pinned; pin to `ubuntu-24.04` only if a job breaks on 26.04.
 
 Related: docs/memory/workflow/static-analysis.md, docs/memory/workflow/git-branches-and-shared-files.md
