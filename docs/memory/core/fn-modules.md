@@ -266,6 +266,7 @@ description: Generated from the module field of the memory files: each includes/
 - `site_log_list`: [[site-log-paging]]
 - `site_migration`: [[migration-carries-designs]]
 - `site_push`: [[visitor-push-rules]], [[visitor-push-sender]], [[visitor-push-watch]]
+- `site_push_block`: [[visitor-push-block]]
 - `site_push_order`: [[visitor-push-order]]
 - `site_push_panel`: [[visitor-push-panel]]
 - `site_search`: [[site-search-index-text]], [[site-search-query-and-freshness]], [[site-search-skipped-pages]], [[site-search-terms-on-visit]], [[site-search-turkish-i]]
