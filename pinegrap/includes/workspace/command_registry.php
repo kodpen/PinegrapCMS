@@ -540,6 +540,14 @@ function ws_command_registry_agents()
 
     return array(
         array(
+            'key' => 'flow', 'tr' => 'akış', 'en' => 'flow', 'label' => '/flow · /akış',
+            'description' => lang('Starts a flow of this channel, as Start a flow does: pick it from the list. Without a flow the list of the channel\'s flows opens.'),
+            'example'     => lang('/flow New customer'),
+            'args'        => array($arg('flow', 'flow', lang('flow'), true, 'flows')),
+            'names' => array('akış', 'akis', 'flow'), 'group' => 'agents', 'where' => 'channel', 'order' => 175,
+            'gate' => 'ws_command_gate_flow', 'runner' => 'ws_command_run_flow', 'api' => 'preview',
+        ),
+        array(
             'key' => 'wake', 'tr' => 'uyandır', 'en' => 'wake', 'label' => '/wake · /uyandır',
             'description' => lang('Wakes an application agent of this channel on a schedule: every 30m, at 21:00, with a note; off stops it, the agent alone shows it.'),
             'example'     => lang('/wake @ci every 30m Look at the queue'),

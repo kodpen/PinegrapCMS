@@ -1029,7 +1029,21 @@ function ws_handle_action($action, $request)
                 return ws_action_error(lang('That flow could not be found.'));
             }
 
-            $result = ws_flow_run_start($viewer, $flow, ws_action_flow_run_fields($request));
+            $fields = ws_action_flow_run_fields($request);
+
+            // Started in a channel about a customer (the composer's Start a
+            // flow, the "/" list, /flow): the run is about them, as a run the
+            // canvas starts for a picked customer is, when the starter reads
+            // the contact.
+            if (isset($fields['channel_id']) && !isset($fields['contact_id'])) {
+                $contact_id = ws_flow_run_channel_contact($viewer, ws_channel($fields['channel_id']));
+
+                if ($contact_id > 0) {
+                    $fields['contact_id'] = $contact_id;
+                }
+            }
+
+            $result = ws_flow_run_start($viewer, $flow, $fields);
 
             if (!$result['ok']) {
                 return ws_action_error($result['error'], (string) $result['field']);
@@ -2011,14 +2025,19 @@ function ws_handle_action($action, $request)
                 ws_mail_read_rows($viewer, $rows);
             }
 
+            $flows_here = empty($request['as_thread']) ? ws_flows_here($viewer, $channel) : array();
+
             return ws_action_ok(array(
                 'briefing'   => $briefing,
                 'channel'    => ws_channel_detail($viewer, $channel),
                 // Polls, agent questions, the check-in and approval requests
                 // still open, over the conversation (open_items.php).
                 'open_items' => ws_channel_open_items($viewer, $channel),
-                // Add › Start a flow is offered only where it lists a flow.
-                'flows_here' => empty($request['as_thread']) && ws_flows_startable_in($viewer, $channel),
+                // Add › Start a flow is offered only where it lists a flow;
+                // the same flows, read once here, are the "/" list's and
+                // /flow's (ws_flows_here()).
+                'flows_here' => !empty($flows_here),
+                'flows'      => $flows_here,
                 'messages'   => ws_message_payloads($viewer, $rows),
                 'has_more'   => !empty($rows) && ((int) db_value("SELECT COUNT(*) FROM ws_messages WHERE channel_id = '" . (int) $channel['id'] . "' AND id < '" . (int) $rows[0]['id'] . "' AND id > '" . ws_channel_floor($channel['id']) . "'") > 0),
                 'era'        => null,

@@ -494,6 +494,30 @@ function ws_command_gate_create($viewer, $command)
 }
 
 /**
+ * /flow: offered to whoever the Workspace shows Flows to, in a public or
+ * private channel, as Add › Start a flow is (ws_flows_here()).
+ * Without a person or a channel, listed like the rest; the composer leaves
+ * it out of a channel where no flow can be started.
+ *
+ * @param array|null $viewer
+ * @param string     $command
+ * @param array|null $channel
+ * @return bool
+ */
+function ws_command_gate_flow($viewer, $command = '', $channel = null)
+{
+    if (!is_array($viewer)) {
+        return true;
+    }
+
+    if (!function_exists('ws_flows_nav_visible') || !ws_flows_nav_visible($viewer)) {
+        return false;
+    }
+
+    return !is_array($channel) || in_array((string) ($channel['kind'] ?? ''), array('public', 'private'), true);
+}
+
+/**
  * The kinds of argument a command takes, as the registry types them. The
  * composer suggests values for some of them (ws_commands(), suggest).
  *
@@ -501,7 +525,7 @@ function ws_command_gate_create($viewer, $command)
  */
 function ws_command_argument_kinds()
 {
-    return array('person', 'people', 'department', 'task', 'record', 'date', 'time', 'estimate', 'priority', 'status', 'amount', 'quantity', 'text', 'options', 'record_kind', 'health', 'notify');
+    return array('person', 'people', 'department', 'task', 'record', 'date', 'time', 'estimate', 'priority', 'status', 'amount', 'quantity', 'text', 'options', 'record_kind', 'health', 'notify', 'flow');
 }
 
 /**
@@ -2794,6 +2818,58 @@ function ws_command_live_checkin($viewer, $channel, $rest)
     }
 
     return $out;
+}
+
+/**
+ * /flow: the flow named after it, among those the person may start in this
+ * channel (ws_flows_runnable_in()), goes back to the composer, which asks
+ * and starts it as Start a flow does (ws_flow_run_start() through the panel
+ * action, with the channel and its customer). Nothing is started here, so a
+ * typed line never starts a flow on its own. Without a flow, or with a name
+ * that is none of them, the list of the channel's flows opens.
+ *
+ * @return array
+ */
+function ws_command_run_flow($viewer, $channel, $rest)
+{
+    if (!ws_command_gate_flow($viewer, 'flow', $channel) || !function_exists('ws_flows_here')) {
+        return array('type' => 'error', 'error' => lang('A flow is started only in a public or private channel.'));
+    }
+
+    $flows = ws_flows_here($viewer, $channel);
+
+    if (empty($flows)) {
+        return array('type' => 'error', 'error' => lang('No flow can be started in this channel.'));
+    }
+
+    $flow = ws_command_flow_named($flows, $rest);
+
+    return ($flow !== null) ? array('type' => 'flow_start', 'flow' => $flow) : array('type' => 'flow_form');
+}
+
+/**
+ * The flow whose name is the text, folded as command names are, among the
+ * channel's flows; null for none or an empty text.
+ *
+ * @param array[] $flows ws_flows_here() entries: id, name, version
+ * @param string  $text
+ * @return array|null
+ */
+function ws_command_flow_named($flows, $text)
+{
+    $text = ws_command_fold(trim(preg_replace('/\s+/u', ' ', (string) $text)));
+
+    if ($text === '') {
+        return null;
+    }
+
+    foreach ($flows as $flow) {
+        if (ws_command_fold(trim(preg_replace('/\s+/u', ' ', (string) $flow['name']))) === $text) {
+            return $flow;
+        }
+    }
+
+    return null;
 }
 
 /**
