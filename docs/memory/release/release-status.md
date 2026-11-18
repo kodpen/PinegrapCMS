@@ -10,7 +10,7 @@ description: Last released version (2026.4.10), the open version (2026.11.0, fir
 
 ## What is open?
 - 2026.11.0 (opened 2026-10-16), the first year.month.patch number (`version-numbering.md`), with its `versions.php` row and changelog section.
-- Released only after P2 and P5c (`plans/kodpen-vendor-api-client.md`): with the API client on, a release without signed packages and keys never updates from the panel.
+- Released only after P2 (`plans/kodpen-vendor-api-client.md`): with the API client on, a release without signed packages never updates from the panel.
 - Its file `includes/migrations/2026.11.0.php` holds `upgrade_to_2026_11_0()`; each schema step is a sub-step `upgrade_2026_11_0_<topic>()` called from it with its label; a new step adds a call, not a file (`how-to-add-migration.md`).
 - A database that recorded `2026.11.0` before a step was added (dev, beta, demo sites on `development`) skips the steps added since: set `config.version` back to the last release (today `2026.4.10`) and rerun the upgrade (`rerun-upgrade-steps.md`).
 - Step labels (`11.0.` prefix, area ranges) and finding a free one: `version-numbering.md`.
