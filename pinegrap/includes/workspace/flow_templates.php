@@ -577,6 +577,23 @@ function ws_flow_templates($fill)
             'edges' => array(array('start', 'wait', 'next'), array('wait', 'read', 'done'), array('read', 'open', 'done'), array('open', 'call', 'yes')));
     }
 
+    // A page or collection record past its review date: a task for the
+    // item's person, the one the event names; the person asked in the setup
+    // gets it when the item has nobody on the team.
+    if (in_array('content.review_due', $events, true)) {
+        $out[] = array('key' => 'content_review_due', 'category' => 'site', 'icon' => 'bi-calendar-check',
+            'title' => lang('A page is due for review'),
+            'help' => lang('When a page or collection record passes its review date, a task to read it again opens for its person.'),
+            'boxes' => array(
+                'start'  => $on('content.review_due'),
+                'review' => array('kind' => 'task', 'config' => array('title' => lang('Review {{trigger.name}}'),
+                    'description' => lang('Read it again and mark it reviewed on the Content review screen. Its review date was {{trigger.review_on}}.') . "\n" . '{{record_link}}',
+                    'assign' => 'event_person', 'fallback' => array($me), 'due_in' => 7, 'priority' => 'normal'),
+                    'setting' => array('person', 'fallback')),
+            ),
+            'edges' => array(array('start', 'review', 'next')));
+    }
+
     // Incoming forms sorted by Pinegrap AI from their answers: a task for a
     // sales question, another for a support request, spam ends, and a form
     // it cannot place is told to the person so none is lost. The AI box

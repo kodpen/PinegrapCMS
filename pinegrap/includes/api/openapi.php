@@ -1151,6 +1151,7 @@ function api_openapi_objects()
         'SystemStatus'   => 'api_system_status_schema',
         'SalesReport'    => 'api_sales_report_schema',
         'CartRecoveryReport' => 'api_cart_recovery_report_schema',
+        'CustomerValueReport' => 'api_customer_value_report_schema',
         'VitalsReport'   => 'api_vitals_report_schema',
         'PageClicksReport' => 'api_page_clicks_report_schema',
         'PageClicksElement' => 'api_page_clicks_element_schema',

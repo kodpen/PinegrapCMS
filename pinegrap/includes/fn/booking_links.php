@@ -171,7 +171,8 @@ function pg_booking_link_url($member)
 {
     $code = pg_booking_link_code($member, pg_booking_key());
 
-    return ($code === '') ? '' : URL_SCHEME . HOSTNAME_SETTING . PATH . 'book_with.php?c=' . $code;
+    // book_with.php sits beside the other root files, in the software folder.
+    return ($code === '') ? '' : URL_SCHEME . HOSTNAME_SETTING . PATH . SOFTWARE_DIRECTORY . '/book_with.php?c=' . $code;
 }
 
 /**
@@ -345,4 +346,159 @@ function pg_booking_link_booking_meeting_url($booking, $member_url)
     $url = pg_booking_link_meeting_url_clean((string) $member_url);
 
     return ($url === false) ? '' : $url;
+}
+
+/* ---------------------------------------------------------------------------
+   The page (book_with.php)
+   --------------------------------------------------------------------------- */
+
+/**
+ * The headers of the link's page: never kept by a browser, proxy or the
+ * page cache, never indexed, and the address with its code never handed to
+ * another site as a referrer. Pure.
+ *
+ * @return string[]
+ */
+function pg_booking_link_page_headers()
+{
+    return array(
+        'Cache-Control: no-store, private',
+        'X-Robots-Tag: noindex, nofollow',
+        'Referrer-Policy: no-referrer',
+    );
+}
+
+/**
+ * Why the page refuses a request before reading it, null when it does not:
+ * a POST from another site (pg_request_cross_site()) and an address over
+ * the bookings' rate limit. A GET from another site is a link someone
+ * followed and is answered. The form token is checked after this
+ * (validate_token_field()). Pure.
+ *
+ * @param bool $post
+ * @param bool $cross_site
+ * @param int  $throttled pg_booking_throttled(): 0 or the seconds to wait
+ * @return array|null status, message, retry (seconds, 0 for none)
+ */
+function pg_booking_link_refusal($post, $cross_site, $throttled)
+{
+    if ($post && $cross_site) {
+        return array('status' => 403, 'message' => lang('Invalid request.'), 'retry' => 0);
+    }
+
+    if ((int) $throttled > 0) {
+        return array('status' => 429, 'message' => lang('Too many requests from your address. Please wait a moment and try again.'), 'retry' => (int) $throttled);
+    }
+
+    return null;
+}
+
+/**
+ * The times a range of busy ranges must cover for a month or a day of the
+ * site's zone: a day more on each side, as the widget reads them. Pure.
+ *
+ * @param string $first 'YYYY-MM-DD' of the first day
+ * @param string $step  '+1 month' or '+1 day'
+ * @param string $zone
+ * @return int[] from, until
+ */
+function pg_booking_link_busy_window($first, $step, $zone)
+{
+    $start = new DateTime($first . ' 00:00:00', new DateTimeZone($zone));
+    $from = $start->getTimestamp() - 86400;
+
+    return array($from, $start->modify($step)->getTimestamp() + 86400);
+}
+
+/**
+ * The days of a month with a free time for the member alone, as the engine
+ * works them out. Pure.
+ *
+ * @param array  $service
+ * @param array  $member
+ * @param string $month  'YYYY-MM'
+ * @param array  $busy   staff id => ranges (pg_booking_link_busy())
+ * @param int    $now
+ * @param array  $policy pg_booking_widget_policy()
+ * @return string[] 'YYYY-MM-DD'
+ */
+function pg_booking_link_days($service, $member, $month, $busy, $now, $policy)
+{
+    return pg_booking_month_days($service, array($member), $month, $busy, $now, $policy);
+}
+
+/**
+ * The time this session holds through the member's link, null when it holds
+ * none or one that is not this link's (another member's, or a service the
+ * link no longer offers). Pure: the session's values come in.
+ *
+ * @param mixed $hold_id   $_SESSION['software']['booking_hold']
+ * @param mixed $hold_slot $_SESSION['software']['booking_hold_slot']
+ * @param array $member
+ * @param array $services  pg_booking_link_services()
+ * @return array|null id, service, start
+ */
+function pg_booking_link_held($hold_id, $hold_slot, $member, $services)
+{
+    if (((int) $hold_id <= 0) || !is_array($hold_slot) || (count($hold_slot) !== 3)) {
+        return null;
+    }
+
+    list($service_id, $staff_id, $start) = array_map('intval', array_values($hold_slot));
+
+    if (($staff_id !== (int) $member['id']) || ($start <= 0)) {
+        return null;
+    }
+
+    foreach ((array) $services as $service) {
+        if ((int) $service['id'] === $service_id) {
+            return array('id' => (int) $hold_id, 'service' => $service, 'start' => $start);
+        }
+    }
+
+    return null;
+}
+
+/**
+ * What the page says when a hold or a confirmation is not written, '' for a
+ * written one. Pure apart from the site's own words for a taken time.
+ *
+ * @param string $answer pg_booking_hold() / pg_booking_confirm() answer
+ * @return string
+ */
+function pg_booking_link_answer_text($answer)
+{
+    if ($answer === 'ok') {
+        return '';
+    }
+
+    if ($answer === 'taken') {
+        return pg_booking_widget_taken_text();
+    }
+
+    if ($answer === 'expired') {
+        return lang('The time we kept for you ran out and is no longer free. Please pick another one.');
+    }
+
+    return lang('Something went wrong. Please try again.');
+}
+
+/**
+ * The details a visitor sent with the link's form, cleaned and checked as
+ * the widget's are; the consent box is always on this form, so an unticked
+ * one is an error. Pure.
+ *
+ * @param array $post
+ * @return array values, errors (pg_booking_widget_details_clean())
+ */
+function pg_booking_link_details($post)
+{
+    $post = is_array($post) ? $post : array();
+    $input = array('consent' => !empty($post['consent']));
+
+    foreach (array('name', 'email', 'phone', 'notes') as $key) {
+        $input[$key] = (isset($post[$key]) && is_string($post[$key])) ? $post[$key] : '';
+    }
+
+    return pg_booking_widget_details_clean($input);
 }

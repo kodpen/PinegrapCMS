@@ -22,6 +22,6 @@ module: graph_canvas
 - Flows passes no `route`: every arrow a curve as before (its harness 40 of 40, with and without `--min`).
 
 ## Who uses it, and how is it checked?
-- The Prototype view passes `route: 'elbow'` (F14, PV5; designer/prototype-focus.md).
+- The Prototype view passes `route: 'elbow'` (PV5; designer/prototype-focus.md).
 - Tests: `test_graph_canvas_route` (neighbours in a row one line, far apart under the row, another row, a side column and a wrapped one from its farthest column, a box in the way, no way, path, lanes, 300 routes of a redraw under 100 ms as the best of three batches after a first one), `test_graph_canvas_elbow_arrows` (the view's switch in `create()`), `test_proto_hotspots_view_routes_arrows`.
 - Speed: about 50 ms for 300 routes over 40 pages and 50 shared parts on a cloud container; the first batch, while the script engine compiles the router, takes about 80 ms.

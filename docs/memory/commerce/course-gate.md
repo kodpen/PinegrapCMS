@@ -7,6 +7,7 @@ module: courses
 ## Where does the gate run?
 - `get_page.php`, right after the access control switch: `pg_course_gate($page_id, $folder_id, $access_control_type)`. A member who got that far may see the folder; the gate only asks whether the lesson is open yet.
 - It acts only with the "Courses" switch on, a signed-in member and a page of a private folder that is a lesson. A lesson in a public folder is a free preview and is never closed (Z7).
+- A lesson whose page is not right in the course's folder gates nothing (`pg_course_lesson_in_folder()`, Z17); the Courses screen names it (`course-screen.md`).
 - The decision is pure: `pg_course_gate_answer()` (switch, access type, lesson, lessons, done ids, enrolment day, today, may edit) over `pg_course_lesson_state()`. Tests in `tests/courses_test.php`.
 
 ## What does a closed lesson do?

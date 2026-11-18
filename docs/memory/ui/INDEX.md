@@ -83,7 +83,8 @@
 - commerce-form-group-names.md: Commerce forms names: State Country label, ship date Adjustment pair, shipping day sets, rate tiers and rate boxes, product group Display Type and gift card Format legends
 - commission-list-paging.md: The commission lists searched on the server, on the list table driver since #6380; issue #2038 (search found only the page PHP printed); what the screens keep
 - common-region-shared-form.md: The common region create and edit screens share includes/forms/common_region_form.php: what it holds, the label fixes, what stays in the screens
-- connections-screen-layout.md: Connections screen (connections.php, CN3): registry services in groups with their state, the attention block, search and filter, rows under their place's gate, each provider's panel [decision: here]
+- connections-screen-drawers.md: Connections screen's drawers (CN4): a provider's drawer with its application and accounts, the one service drawer filled from server templates, the last error only where stored, the other side's block
+- connections-screen-layout.md: Connections screen (connections.php, CN3): registry services in groups with their state, the attention block, search and filter, rows under their place's gate [decision: here]
 - contact-delete-notice-groups.md: The contact list's Delete All Contacts notice names the groups through pg_contact_list_deleted_groups_label(): escaped, only the user's groups.
 - contact-filter-keyboards.md: Contacts Advanced Filters: no address autofill, phone and web address keyboards, an unmasked e-mail box; the panel's permissive Inputmask email alias; Submitted Forms Referring URL keyboard
 - contact-form-checks.md: Create/Edit Contact save checks: membership date and negative rate refused, role 3 keeps a group on edit, picture posted as file_id or image_url, notes box, wording
@@ -399,7 +400,7 @@
 - liveform-notices-trap.md: Pitfalls: notices and warnings stay in the session until remove_form(), screens must print them, and a request run twice stacks the same notice.
 - loading-curtain.md: Panel transitions (pg_preloader_markup()): arrival curtain after 120 ms and held screens, the leaving bar after 150 ms until pagehide, what never shows it, the download cookie [decision: decisions-made-product-21.md]
 - login-region-shared-form.md: The login region create and edit screens share includes/forms/login_region_form.php: the columns, the Summary, the save bar, the default, what stays in the screens
-- look-check.md: tools/check_look.php (#8905): panel CSS outside look A's recipes (sizes or weights off the scale, colour literals) may only fall against its baseline; what it skips, --update
+- look-check.md: tools/check_look.php (#8905): off-recipe CSS sizes, weights, colours and old btn btn- / nav-tabs panel markup may only fall against its baseline; what it skips, --update
 - look-content-screens.md: Comments, short links, the 404 log, the accessibility report and page tests in look A (S1, #9773): titles, field spans per field, inline sizes to classes, what stayed
 - look-design-examples.md: The Design examples screen (design_examples.php, DL2 #8907): every look A recipe live in a light and a dark pane, the classes under each, what is not a recipe yet; where a step copies markup from [decision: decisions-made-workspace-26.md]
 - look-edit-field.md: Add and edit screens in look A: .form-label and .form-control in the screen's cards take the field label (13 / 550) and input (36 px) through one shared rule; what keeps its own
@@ -409,12 +410,15 @@
 - look-erp-lists.md: SH3: ERP lists in the look's list recipe: the plain list tables' heading and rows (erp-list-table), status badges as .pg-pill through pg_pill(), the Expenses filter card's labels
 - look-field-widths.md: Field widths of the add and edit screens in look A (DL5c, #9658): the 16 px field grid, the span per field kind from md up, pg-field-span-N for a field alone in its row, who sets which screen's spans [decision: here]
 - look-figure-cards.md: Look A's figure cards (SH4, #9725): .pg-figures, .pg-figure, -label, -value, -note as the report's figure; Orders, Commissions, Edit Invoice Settlement, Receipt amount, Marketplace Products hero
+- look-forms-files-screens.md: Form fields, the form list view, file, calendar event and booking screens in look A (S3, #10314): titles, group labels, field spans per field, what stayed and what waited for other PRs
+- look-group-heading-rank.md: Look A: a group heading inside a card is .pg-group-label and never outranks the card's title (architect, 2026-11-17, looks of S3 #10314 and S4 #10316) [decision: here]
 - look-icon-buttons.md: SH5: icon-only toolbar buttons and menu toggles of the old panel screens as look A's .pg-icon-button with a lang() name; what was left and why [decision: here]
 - look-kv-list.md: Look A's label and value list of a status column (.pg-kv, SH2, #9757): the markup, the second group under a hairline, the grey second line, which screens use it
 - look-list-title-settings-tile.md: Look A shared recipes (SH9, #9726): a list screen's count beside its title, a list's filters as a segmented control (pg_list_seg_filters()), the 34 px icon tile of a settings row (pg_settings_tile()) [decision: here]
 - look-mapping-grids.md: Column-mapping grids (one small select per column of an uploaded file) keep their own narrow columns in look A; the field widths of add and edit screens are for a record's fields [decision: here]
 - look-mark-over-picture.md: A mark laid over a picture (the poll's picture count, #10037): its own class, colours as the tokens --pg-media-mark-bg / -fg, the same in both themes; a recipe when a second is built [decision: decisions-made-workspace-38.md]
 - look-marketplace-ranks.md: SH10 (#9755): the Marketplaces and Marketplace Products screens' button ranks (one fill per view, one quiet rank per card) and their views and filter rows as link segments [decision: here]
+- look-menus-regions-screens.md: Menus, regions, ads, styles, theme and design files, the visitor and log screens in look A (S4, #10316): field spans per field, section titles, card tables, what stayed
 - look-new-parts.md: A step's new parts in the panel and Workspace are built from look A's recipes (owner 2026-11-17): pg-button, pg-seg for tabs, no btn btn- or nav-tabs in an added line; the count before a look [decision: decisions-made-panel-10.md]
 - look-order-screens.md: The order screens in look A (C1, #9681): View Order and View Return on the edit measure, cards that take pg-card, order lines as a card, status values, field widths
 - look-page-widths.md: Look A's page widths: edit screens centred at 1700 px (1300 + 24 + 376), lists as wide as their columns (1700 px to the window, details panel added), held while searching; tokens, rail [decision: decisions-made-panel-7.md, decisions-made-panel-8.md, decisions-made-product-48.md]

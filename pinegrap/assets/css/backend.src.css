@@ -28834,6 +28834,19 @@ select:not([multiple], [size]:not([size="1"])) :is(option, optgroup) {
   align-items: baseline;
   gap: 10px;
 }
+/* A head whose pill goes to a line of its own where the name and the pill
+   do not fit side by side: the name stands whole and breaks inside a word
+   only when it is longer than the column. */
+.pg-list-row-head-wrap {
+  flex-wrap: wrap;
+  align-items: center;
+  row-gap: 4px;
+}
+.pg-list-row-head-wrap > .pg-list-row-title {
+  flex: 1 1 auto;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
 .pg-list-row-title {
   flex: 1;
   min-width: 0;
@@ -31721,15 +31734,59 @@ button.pg-var-chip:focus-visible {
 .connections-toggle[aria-expanded="true"] .connections-row-chevron {
   transform: rotate(180deg);
 }
-.connections-list > * + *,
-.connections-panel {
+.connections-list > * + * {
   border-top: 1px solid var(--pg-border-color-translucent);
 }
-.connections-panel {
-  padding: 16px 16px 20px 63px;
+
+/* The drawers: 480 px floating off the right edge with the sheet's corners
+   and shadow (the report settings drawer's shape), sections split by a
+   line; on a phone a sheet from the bottom. */
+.connections-drawer {
+  --pg-drawer-width: 480px;
+  --pg-drawer-height: 88vh;
+  background: linear-gradient(180deg, var(--pg-surface-1), var(--pg-surface-2));
+  border-color: var(--pg-border-color-translucent);
+  box-shadow: var(--pg-shadow-sheet);
 }
-.connections-panel .list-group-item {
+@media (min-width: 576px) {
+  .connections-drawer {
+    --pg-drawer-inset: 12px;
+    --pg-drawer-border-radius: var(--pg-radius-sheet);
+  }
+}
+.connections-drawer.drawer-bottom {
+  border-start-start-radius: var(--pg-radius-sheet);
+  border-start-end-radius: var(--pg-radius-sheet);
+}
+.connections-drawer > .drawer-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 12px 12px 20px;
+  border-bottom: 1px solid var(--pg-border-color-translucent);
+}
+.connections-drawer-head {
+  flex: 1;
+  min-width: 0;
+}
+.connections-drawer > .drawer-body {
+  gap: 0;
+  padding: 0;
+}
+.connections-drawer > .drawer-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px 20px;
+  border-top: 1px solid var(--pg-border-color-translucent);
+}
+.connections-drawer .list-group-item {
   background: none;
+}
+.connections-app-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 @media (max-width: 575.98px) {
@@ -31745,8 +31802,84 @@ button.pg-var-chip:focus-visible {
     flex-basis: 100%;
     padding-left: 47px;
   }
-  .connections-panel {
-    padding-left: 16px;
+}
+
+}
+
+/* ==========================================================================
+   Courses: a course's lessons table (edit_course.php).
+   From 768 px a fixed layout: the two number columns are as wide as their
+   heading on one line, the page and quiz selects share the rest. Below it
+   each lesson stacks: its number at the left, the page across, the quiz
+   across, days and score side by side, the row's buttons last, each value
+   under its own label (the cell's data-label), so nothing a lesson needs
+   is cut or scrolled sideways at 390 px.
+   ========================================================================== */
+@layer custom {
+
+.pg-course-lessons th {
+  white-space: nowrap;
+}
+
+@media (min-width: 768px) {
+  .pg-course-lessons {
+    table-layout: fixed;
+    min-width: 40rem;
+  }
+  .pg-course-lessons .pg-course-col-number { width: 2.25rem; }
+  .pg-course-lessons .pg-course-col-days { width: 9rem; }
+  .pg-course-lessons .pg-course-col-quiz { width: 20%; }
+  .pg-course-lessons .pg-course-col-score { width: 8.5rem; }
+  .pg-course-lessons .pg-course-col-actions { width: 7rem; }
+}
+
+@media (max-width: 767.98px) {
+  .pg-course-lessons,
+  .pg-course-lessons tbody {
+    display: block;
+  }
+  .pg-course-lessons colgroup,
+  .pg-course-lessons thead {
+    display: none;
+  }
+  .pg-course-lessons tr {
+    display: grid;
+    grid-template-columns: 1.75rem minmax(0, 1fr) minmax(0, 1fr);
+    column-gap: .75rem;
+    row-gap: .5rem;
+    padding: .75rem 0;
+    border-bottom: 1px solid var(--bs-border-color);
+  }
+  .pg-course-lessons td {
+    display: block;
+    padding: 0;
+    border: 0;
+    background: none;
+    box-shadow: none;
+  }
+  .pg-course-lessons td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: .25rem;
+    font-size: var(--pg-text-meta);
+    color: var(--pg-fg-3);
+  }
+  .pg-course-lessons [data-pg-course-number] {
+    grid-row: 1 / span 4;
+    padding-top: 1.6rem;
+  }
+  .pg-course-lessons .pg-course-cell-page,
+  .pg-course-lessons .pg-course-cell-quiz,
+  .pg-course-lessons .pg-course-cell-actions {
+    grid-column: 2 / 4;
+  }
+  .pg-course-lessons .pg-course-cell-page { grid-row: 1; }
+  .pg-course-lessons .pg-course-cell-quiz { grid-row: 2; }
+  .pg-course-lessons .pg-course-cell-days { grid-column: 2; grid-row: 3; }
+  .pg-course-lessons .pg-course-cell-score { grid-column: 3; grid-row: 3; }
+  .pg-course-lessons .pg-course-cell-actions { grid-row: 4; }
+  .pg-course-lessons .pg-input {
+    width: 100%;
   }
 }
 

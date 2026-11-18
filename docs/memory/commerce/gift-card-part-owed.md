@@ -15,11 +15,12 @@ description: How an order's gift card part is counted (architect 2026-11-17, #10
 - The `driver` method keeps the payment cap: a payment service cannot give back what a card paid. `credit` and `manual` go up to the payment left plus the gift card part still owed.
 - The refund bonus is on the payment part only, `min(amount, payment left)` (owner, #7017, `store-credit-refunds.md`).
 - Not the sum of the order's refund rows less `refunded_amount`: refunds older than the table (2026.1.14) have no row, so the difference undercounts and the part could be given twice.
+- The split is `pg_return_refund_split($method, $amount, $remaining, $gift_card_owed)` (pure, payment money first, `null` above the cap); `pg_return_refund_plan()` gives `gift_card_owed` and `credit_remaining`, and the API refund checks the same split. The Payment Refund card's Amount box allows `credit_remaining`, suggests at most `remaining` when a driver is offered, and says how much gift cards or store credit paid; a driver amount that only fits as credit is refused with that sentence.
 - Why: `pg_return_refund()` refused every amount above the payment left, so what store credit or a gift card paid could not come back through a return, not even as credit (bug #10259).
 
 ## What does an order still owe of its gift card part?
 - What the cards gave less what returns gave back, never below 0: one helper in `includes/fn/ecommerce.php` and its SQL form. `pg_order_cancel_refund_owed()`, its `_sql` twin and the return's plan read it, so a cancellation after a return does not give the part twice.
 - A return is refunded only while its order is complete or exported (`pg_return_refund_order_open()`); a cancellation gives all that is owed at once and writes no `return_gift_card` row.
-- The fix of #10260 writes the helper, the fix of #10259 the rows; each corrects this file to what it built.
+- The helper came with the fix of #10260 (`order-gift-card-owed.md`), the rows with the fix of #10259 (test `tests/returns_gift_card_refund_test.php`).
 
 Related: docs/memory/commerce/store-credit-refunds.md, docs/memory/commerce/order-returns-refund.md, docs/memory/commerce/order-cancel-gift-cards.md, docs/memory/commerce/order-refunded-amount-writes.md

@@ -18,8 +18,10 @@
 
 function get_registration_entrance($properties = array()) {
 
-    $page_id = $properties['page_id'];
-    $device_type = $properties['device_type'];
+    // The default screen (forms.php, a site without a Registration Entrance
+    // page) passes no page, so there is no id and no device type.
+    $page_id = $properties['page_id'] ?? '';
+    $device_type = $properties['device_type'] ?? '';
 
     $layout_type = get_layout_type($page_id);
     

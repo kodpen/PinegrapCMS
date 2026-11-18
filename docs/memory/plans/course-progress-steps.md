@@ -11,7 +11,7 @@ description: Plan course-progress, steps CO1 to CO6: the tables and the rule of 
   - Tests, red first: the rule by days, by order, a done lesson staying open, an editor passing; the enrolment day from the first counting order and from the first open; a cancelled order not counting; the first-open row written once and never for a visitor; a completion written once; a changed code refused.
   - Features: Z1, Z2, Z3, Z5, Z6, Z10 (the server's side), Z16.
 
-- CO2 (M) after CO1: the Courses screen.
+- CO2 (M) after CO1: the Courses screen. Done in #10280.
   - Existing files: `includes/fn/output.php` (the menu link), `includes/settings/features.php` and `features.save.php` (the switch).
   - New: the root screens `view_courses.php` and `edit_course.php` with the learners list.
   - Pictures: the list, the editor with its lessons, the learners, a course with a problem (Z17). To the owner; not marked ready before his look.

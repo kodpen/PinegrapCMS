@@ -23,6 +23,7 @@
 - booking-deposit-payment.md: The booking widget's deposit payment (BK9b): hold kept, payment form posted to booking_slots.php, return and retry, paid on arrival, paid shown on the screens and the API
 - booking-deposits.md: Booking deposits (BK9a): booking_services.deposit and deposit_product_id, bookings.order_id and paid_at (11.0.169), the deposit order, marked paid from the order's completion, confirm or requested
 - booking-link-code.md: A staff member's meeting link (SL1): the code from the staff row and site key, one 404 for a wrong code or a member out of booking, its services and free times, ws_profiles.meeting_url
+- booking-link-page.md: The meeting link's page book_with.php (SL2): checks before reading, hold and confirm with source link, the one 404, the done card; the meeting address in the mails and the .ics
 - booking-manage.md: A customer's own booking (BK7): booking_manage.php from the mail's signed link, cancel and move within the policy window, .ics download, the my_account widget's bookings section
 - booking-messages.md: Booking mails, SMS, .ics and reminders: booking.* events, four campaign profile actions (11.0.161), the .ics attachment, SMS kind booking, reminders by the general job without a column [decision: decisions-made-product-19.md]
 - booking-retention.md: How long bookings are kept (cancelled rows pruned after 400 days by the general job) and what the personal data export and erasure do with a person's bookings (#5032) [decision: decisions-made-product-19.md]
@@ -91,9 +92,11 @@
 - country-names-display.md: Country names on screen through pg_geo_country_label() and pg_geo_sort_by_label() in the current language; the starter dumps' corrected country rows (#2522) [decision: decisions-made-product-20.md]
 - country-names-in-addresses.md: The order view's address blocks and the address book name the stored country code in the site language; the country tokens keep the code
 - course-gate.md: The course gate in get_page.php: a lesson not open yet sends the member to the classroom page with a one-time notice; the "Courses" switch reader; the first-open row [decision: here]
+- course-screen.md: The Courses screen (view_courses.php, edit_course.php): switch and menu link, who opens it, lessons and their save, problems named (Z17), learners, CSV, Reset progress [decision: here]
 - course-tables.md: Courses' data (2026.11.0, step 11.0.234): the course, course_lesson and course_progress tables, the open-lesson rule, the enrolment day, rows written once, the certificate code [decision: decisions-made-product-34.md]
 - currency-form-rules.md: What the currency create/edit screens refuse and how the currency list sorts
 - currency-names-display.md: Stored currency names shown through pg_currency_label() in the panel language; the currency list's rate with the panel's separators (#4430)
+- customer-value-groups-csv-api.md: What the Customers Report hands on: a contact group from a cell of the groups table, the top customers CSV, GET /reports/customer-value and who gets names (#10297)
 - customer-value-report-screen.md: Customers Report screen (view_customer_report.php, Reports menu): periods, tiles, months, cohorts, groups, top customers, who sees names, states before data (#10020)
 - customer-value-summary.md: Customer value summary (config_text customer_values): what counts, the customer key, the rebuild in the general job, the summary shape, the 200k-order measurement (#9995)
 - delivery-date-error-answer.md: get_delivery_date() (shipping.php) always answers with a delivery_date key, '' on every error, because its seven callers read it without a check
@@ -189,6 +192,7 @@
 - order-page-stored-figures.md: Order view (My Account) and receipt page/e-mail show a placed order's own orders.discount, tax and total (pg_order_page_figures), never the session cart's order_discount; what an unplaced order shows
 - order-payment-method-normalization.md: submit_order.php payment_method normalization to the four constants, the Pay With Iyzico ENUM addition (4.48) and the old Turkish layout cause.
 - order-preview-later-recipient-shipping.md: The classic Order Preview shows and counts the shipping of a recipient whose lines all start later, as submit_order.php charges it
+- order-preview-receipt-warnings.md: Why the built-in Order Preview and Order Receipt layouts write no PHP warnings on an empty cart, an order without shipping, items that are not shipped or a receipt page without its settings row
 - order-preview-step-links-and-installments.md: Order Preview without earlier checkout step pages in the session (pg_op_step_page_id/url, no Change link) and the Iyzipay installment table shared with Express Order (#4019)
 - order-reference-code-link.md: How the cart, quote and express order pages read the ?r= / ?reference_code= saved-cart link (one string, list = not given), and the order history screens' translated messages.
 - order-refunded-amount-writes.md: How orders.refunded_amount is written: every writer adds to the column (pg_order_refunded_add_expr()), the order screen's refund re-reads the total after the add

@@ -389,6 +389,7 @@
 - designer-node-ids.md: The designer's node ids (sd_N): each saved tree numbers its own, the counter kept above every loaded tree, a filled-in id never repeats one of its tree, issue badges on the issue's own node (#9958)
 - designer-note-author-stamping.md: Node notes get their author stamped in pg_designer_save_page via pg_stamp_note_authors, not in save_system_style; unchanged notes keep their stamp.
 - designer-option-change-panels.md: One Options panel select or switch change draws the Options panel and the node now; Layers rows, status bar, Attributes, HTML tree after the pause; badges of the redrawn element (#10013)
+- designer-options-controls.md: Options panel controls of the Visual Page Editor: button groups, the changed dot and its one-step reset, the size badge, length fields that refuse a bad value, rows stacked under 300 px
 - designer-options-panel-names.md: How controls of the visual editor's Options/Appearance panel get their accessible names (one naming pass), keyboard section headers, per-screen-size toggles, Styles inspector names
 - designer-options-panel-search.md: Options panel Search... box in the designer (filterPropertiesPanel()): what it matches, sections without rows, the No option matches line, Turkish İ and capitals
 - designer-options-section-cards.md: The Options panel's identity row and section cards (D3, D6–D9, D11): own section first and open, general sections closed with a count and summary, closed bodies not drawn, one source for changed rows [decision: here]
@@ -428,6 +429,7 @@
 - designer-sticky-panel-layout.md: Designer panel docking (docked drawer vs in-flow, 32px rail, sd-dock-* classes, _SD_DOCK_BP 992px, one layer at a time, three-strip bottom panel, rail icons) and the bottom panel edge drag.
 - designer-tab-anchor.md: A link or search result to an element inside a Bootstrap tab not shown opens that tab and scrolls to it: pg_bs_tips.js on load and hashchange, pg_search_highlight.js reveal() (#4823).
 - designer-tab-groups.md: Page tab order and named coloured groups in the designer (style.style_tab_layout): shape, own endpoint apart from Save, twin normalisers, colours, the open group, the fitting strip, drag.
+- designer-tab-states.md: A designer page tab's states beside its name (D49): changed dot, lock of a page another person edits, home icon, draft pill, end mark; order, tip, narrow form
 - designer-theme-light-selector-upgrade.md: Upgrade step 11.0.32 splits the Themes panel's old combined light block in designs, page copies, templates and old theme files with a PHP twin of the editor's split.
 - designer-theme-panel-light-selector.md: Which blocks the designer's Themes panel writes light and dark variables into, why colours and fonts/radii use different light selectors, and how old designs are split.
 - designer-theme-panel-value-check.md: What the Themes panel's text boxes write: one CSS value only (no ; { } < > comment, backslash or open bracket or quote), a colour row also a colour by CSS.supports; a refused box stays marked.
@@ -538,7 +540,9 @@
 - order-view-not-found.md: Order view widget with no, unknown or foreign order id: message with a My Account link and a 404 with noindex; account order links skip order receipt e-mail pages
 - overview-chains-hints.md: Designer Overview (#10235): a chain of single-child wrappers folded into one line, opened by a click or by a selection in it; a hint after a name the page repeats; the pure functions
 - overview-drop-targets.md: Designer Overview drop targets (#10263): the gap between rows as one 14 px target, the middle 14 px as "inside", the level picked by the pointer among legal parents, the label and the refused row
+- overview-long-drags.md: Designer Overview long drags (#10309): tree folded to its sections, a closed branch opened after 600 ms, 48 px scroll zones, the tree given back after Esc or a drop
 - overview-long-page.md: Designer Overview on a long page (#10207): section rows with counts, only the selection's section open on opening, 12 px indents and a depth badge, the sticky path, the pure functions
+- overview-search-map.md: Designer Overview (DP13): the tree search part (name, text, class, id; Turkish letters folded; results with their path; Ctrl+F) and the page map at the tree's right edge [decision: here]
 - page-conditions.md: W18: an element outside a widget shown by visit facts (signed in, cart) or the page's record (found, allow-listed values); stored-body markers decided per request, cache, editor
 - page-designer-retired.md: The legacy page designer (page_designer.php) retired in 2026.11.0: the owner's decision, where each of its jobs went, what was removed and kept, the rules that stay, what is left [decision: decisions-made-product-2.md, decisions-made-product-40.md]
 - page-drafts.md: Drafts of visual-designer pages (2026.4.7): the private Drafts folder, page_drafts and the folder a page returns to, how a save sets the state, new pages start as drafts, Save vs Publish, copies.
@@ -576,7 +580,7 @@
 - prototype-arrangement.md: The Prototype view's layout(): frames, rows, chips, arrows; a grid of tab-group sections in flow order, shared parts left (wrapped at the grid's height), chips right, Start, Fit's corner, Tidy up [decision: here]
 - prototype-drawing.md: The Prototype view's drawing from a mark (PV10, #10101): a mark's drag draws its arrow, an arrow head's drag re-points it, the marks' keys, the pointer lifting an arrow, a link named by its children [decision: here]
 - prototype-focus.md: The Prototype view draws only the selected frame's arrows: the core's focus, opening on the open tab, All arrows, row marks, a shared part's link as an amber note, arrow colours and heads [decision: here]
-- prototype-hotspots.md: The Prototype view's hotspot collector (assets/js/pg_proto_hotspots.js, window.PGProtoHotspots): which nodes are hotspots, shared frames, the map read's request, the marks, the layout
+- prototype-hotspots.md: The Prototype view's pure module (PGProtoHotspots): which nodes are hotspots, shared frames, the map read's request, the marks, and which file covers each of its other answers
 - prototype-links-in-code.md: Where a design's links sit in the code, page-name hrefs and renames, the resolver, editor state, rights and Publish: what the Prototype view reads
 - prototype-list.md: The Prototype view's links panel (PV6): the selected frame's links out and in and its shared parts, one picked link, Change target and Open in the editor, N broken and its list, the frame badge, Play
 - prototype-map-read.md: The Prototype view's server read (api.php designer prototype_map, includes/fn/prototype_map.php): what it is asked, what it answers, how hidden pages stay hidden
@@ -584,18 +588,20 @@
 - prototype-page-picture.md: The Prototype view's page picture in a frame (PV8): how it is built, the sandboxed frame, the link marker, the queue and the cap, the foot's count, what a redraw reuses [decision: here]
 - prototype-picture-check-numbers.md: The prototype canvas page picture check's measurements (PV7): both ways on a 41-page design, how and where each number was taken
 - prototype-picture-check.md: The prototype canvas page picture (PV7, architect 2026-11-16): the Preview document in a script-free readable frame, its sandbox and CSP, the link marker, the cap on live pictures [decision: here]
-- prototype-places.md: Where the Prototype view keeps a moved frame or chip: frames shared on the design in the tab layout's proto (#6232), the rest per browser; the twin normalisers
-- prototype-problems.md: The Prototype view's problems (PV11a): links without a target, pages no link leads to, "N to check", the three groups, the amber count and badge [decision: here]
-- prototype-suggest.md: The Prototype view's Suggest targets (PV11b): how a link without a target is matched to a page, the dialog's rows and keys, the dashed proposed arrows, what Apply writes [decision: here]
-- prototype-thumbnails.md: The Prototype view's frame sketch (PGProtoHotspots.sketch() bands, sketchBoxes()): the picture's loading state and fallback, and the 84-high strip of a frame without a picture
-- prototype-view-decisions.md: What was decided for the designer's Prototype view (owner 2026-10-24, #2446, 2026-11-01): where it lives, hrefs by name or page id, who draws, read-only sources, breakpoint, how an arrow saves [decision: decisions-made-product-23.md]
-- prototype-view.md: The designer's Prototype view (_sdProtoOpen()): toolbar toggle, frames and chips on the graph canvas core, row clicks, arrows drawn by hand, where positions are kept
+- prototype-places.md: Where the Prototype view keeps a moved frame or chip: frames shared on the design in the tab layout's proto (#6232), the rest per browser; the twin normalisers; what Tidy up clears
+- prototype-problems.md: The Prototype view's problems (PV11a): links without a target, pages no link leads to, "N to check", the three groups, the amber count and badge [decision: decisions-made-product-57.md]
+- prototype-suggest.md: The Prototype view's Suggest targets (PV11b): how a link without a target is matched to a page, the dialog's rows and keys, the dashed proposed arrows, what Apply writes [decision: decisions-made-product-57.md]
+- prototype-thumbnails.md: The Prototype view's frame sketch (PGProtoHotspots.sketch() bands, sketchBoxes(), _sdProtoThumb()): the page picture's loading state and fallback, and the 84 floor of a shared part's height
+- prototype-view-decisions.md: What was decided for the designer's Prototype view (owner 2026-10-24, #2446, 2026-11-01): where it lives, hrefs by name or page id, who draws, read-only sources, breakpoint, how an arrow saves [decision: decisions-made-product-23.md, decisions-made-product-63.md, decisions-made-product-72.md]
+- prototype-view-rules.md: What a later change to the designer's Prototype view must keep (K1 to K9), how its parts are split between the view and the graph canvas core, and what was left out of its rebuild [decision: decisions-made-product-57.md]
+- prototype-view.md: The designer's Prototype view (_sdProtoOpen()): what it is, its bar, how a drawing is built, how an arrow is written and opened in the editor, and which file covers each part [decision: decisions-made-product-57.md]
 - record-media-field-share-image.md: A form's RSS media upload opens with the record; og:image comes from the form's share image field, then the media field, and skips an upload an anonymous visitor cannot open (#2191, #2174, #2891)
 - record-value-page-links.md: A form list or detail link opening another page with the record's values in its address (__page_link + _bindParams.href): shape, pre-pass, escaping, values, Publish, export, editor, code view
 - record-view-counts.md: Views on record pages (form counters, people only, counted after sending) and form lists ordered by views, comments, recent views or newest activity; why not visitor_content_hourly
 - record-view-filters.md: form_item_view filters (opt-in record visibility, e.g. Status = Published): where they apply, fail-closed cases, the e-mail bypass, viewer_filter lists without feed or sitemap (#1194)
 - region-node-to-widget.md: "Make designable" on a classic menu, menu sequence, ad or tag cloud region node: the widget kind and setting per type, where the widget goes, what stays the same.
 - release-bundle-dialogs.md: The publish and take-back dialogs of a release bundle: what they post, the "changed since" choice, Publish disabled until chosen, focus on Cancel, their words [decision: here]
+- release-bundle-preview.md: A release bundle's preview (prototype.php?bundle=<id>): its waiting drafts, a link to a replaced page opening the replacement, the frame signed for the bundle, who opens it
 - release-bundle-publish-errors.md: A database error, fatal error or timeout while a release bundle publishes: what is taken back, what is left, why
 - release-bundle-publish.md: Publishing and taking back a release bundle: checks before any write, the writes, a failure taken back, partly published, what cannot come back
 - release-bundle-screen.md: The Bundles screen (page_bundles.php): the list, a bundle's pages with "Changed since", its three dialogs, Remove and Delete, what later steps add [decision: here]
