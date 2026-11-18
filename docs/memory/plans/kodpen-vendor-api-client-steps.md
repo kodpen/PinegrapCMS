@@ -6,7 +6,7 @@ description: Open step of plans/kodpen-vendor-api-client.md: P9 (api2 client rem
 ## Which steps are there?
 - S under 400, M about 1,000 product lines; lines of 2026-10-29. Every step: tests red first; PHP 7.1 syntax, optional APIs behind `function_exists()`; `tr_add`; memory (`platform/` unless named) in the PR. Done: `P<n> done (#n): <topic file>`.
 
-- Done: P1 #3203, P2 #PRNUM, P3 #3255, P4 #4381, P5a #3282, P5b #3632, P5c #10348, P6 #3755, P7 #4395, P8 #8653.
+- Done: P1 #3203, P2 #10350, P3 #3255, P4 #4381, P5a #3282, P5b #3632, P5c #10348, P6 #3755, P7 #4395, P8 #8653.
 - P8's PR body names its changelog line for the merging session: `[NEW] Added signed software updates and a new license check that shows the license type and its site rights.`
 
 - P9 (M, the next open version, #3205) Remove the api2 client branches, unreached since P8. What goes:

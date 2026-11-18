@@ -21,7 +21,7 @@ Source: the vendor plan's section 9 and its owner decisions, numbered as there (
 - `download_assistant.php` (root) with its api2 call and key; any schema change (the build id is a file); `waf.php`; `pg_curl_tls()` and `ALLOW_INSECURE_UPDATE_TLS`; `pg_extract_archive()`; hosted gates; Pinegrap AI's key use; the `VERSION === '2026'` block.
 
 ## What must happen before the 2026.11.0 release?
-- Publishing a release adds its packages since P2 (#PRNUM), the keys ship since P5c (#10348). With no signed package `/releases/latest` offers nothing and the update check says no update: an unsigned 2026.11.0 updates only through `download_assistant.php`.
+- Publishing a release adds its packages since P2 (#10350), the keys ship since P5c (#10348). With no signed package `/releases/latest` offers nothing and the update check says no update: an unsigned 2026.11.0 updates only through `download_assistant.php`.
 - Still to do before the release: a licence check and an update on the vendor's docker API; key fingerprints equal production's; packages signed only after the owner's own-clone check (vendor review finding 11); then one beta site updates from production.
 - A 503 `not_live` licence answer shows the technical-reason card (15-min retry); stable offers nothing until a signed release (404 or an older adopted release); beta offers the pre-release the owner points at.
 

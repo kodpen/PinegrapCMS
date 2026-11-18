@@ -1,6 +1,6 @@
 ---
 name: release-packages
-description: Release packages (P2, PR #PRNUM): release-packages.yml adds both ZIPs and manifest.json to a published release with the vendor's tool; checks before the build, RELEASE_KEY_ID, replacing the tool copy
+description: Release packages (P2, PR #10350): release-packages.yml adds both ZIPs and manifest.json to a published release with the vendor's tool; checks before the build, RELEASE_KEY_ID, replacing the tool copy
 ---
 
 ## What does a published release get?
