@@ -9,7 +9,7 @@ priority: 6
 - Owner (2026-11-17, poll 143, message 9281): "Evet, ayrıca kimse yokken sunucu da çizsin" (`workflow/decisions-made-product-75.md`).
 
 ## What stands in the way today?
-- Three things a person does by hand (`core/picture-text-translation-overview.md`): a page in another language must be opened once before the picture is listed (the page pass writes the waiting row); the picture's texts reach an engine only through the Translations screen; each language is drawn by pressing Draw in the Design Canvas's Languages list or "Draw the waiting pictures".
+- Three things a person does by hand (`core/picture-text-overview.md`): a page in another language must be opened once before the picture is listed (the page pass writes the waiting row); the picture's texts reach an engine only through the Translations screen; each language is drawn by pressing Draw in the Design Canvas's Languages list or "Draw the waiting pictures".
 
 ## What is reused?
 - The store, the states and the hooks (`core/picture-text-translation-store.md`); the queue's query and drawing (`core/picture-text-translation-queue.md`); the draw's checks: right, stamp, every text translated (`core/picture-text-translation-draw-server.md`); translate on save and its job guard (`core/content-translation-jobs-duplicates.md`); the server's drawing with its verdict, limits and probe (`platform/image-server-draw.md`).
