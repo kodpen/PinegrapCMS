@@ -1,0 +1,307 @@
+# Builds the two software packages of a published GitHub release and adds
+# them to the release as assets, with their unsigned manifest:
+#
+#   pinegrap_software_update.zip  the update package (the panel's update)
+#   pinegrap_software.zip         the full package (a new install)
+#   manifest.json                 version, channel, commit, the size and
+#                                 SHA-256 of both packages, the release key id
+#
+# The recipe is .github/release/build_packages.php, the vendor's package tool
+# copied byte for byte: the build checks its SHA-256 (TOOL_SHA256 below)
+# before running it, so a copy that differs from the vendor's stops the run.
+# A new copy of the tool edits both. The signature (manifest.json.sig) is
+# added later, offline; until then no site is offered the release.
+#
+# A release tagged v<version> is a stable build of the release branch; a
+# pre-release tagged v<version>-beta.<YYYYMMDDHHMM> (UTC) is a beta build of
+# development, with that stamp in its build id. The run stops before building
+# when:
+#   - the tag form and the pre-release flag disagree, or the stamp is not a
+#     real date;
+#   - the version the tag's tree ends on is not the tag's version;
+#   - a beta's version already has a stable release (open the next version on
+#     development first);
+#   - a stable tag's tree still holds the paths the release branch leaves out;
+#   - the RELEASE_KEY_ID repository variable is not a key id.
+#
+# The assets are added once. A release that already has all three ends the
+# run without changes; one that has only some of them fails it with their
+# names (delete them on the release page, then re-run). The release must
+# accept assets after it is published, so immutable releases stay off.
+#
+# Only the upload job has contents: write; the build runs with a read-only
+# token. Pull requests that change the workflow or the tool run the build of
+# their own commit (beta channel, no key id) without uploading anything.
+name: Release packages
+
+on:
+  release:
+    types: [published]
+  pull_request:
+    paths:
+      - ".github/workflows/release-packages.yml"
+      - ".github/release/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-packages-${{ github.event.release.tag_name || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  TOOL: .github/release/build_packages.php
+  TOOL_SHA256: "3ba6a1bf6eabd32792d760c1f6e49fa167ca938061ce57e3f89c277522f9c507"
+
+jobs:
+  build:
+    name: build the packages
+    if: ${{ github.repository_owner == 'kodpen' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      upload: ${{ steps.check.outputs.upload }}
+      tag: ${{ steps.check.outputs.tag }}
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: zip
+          coverage: none
+          tools: none
+
+      - name: Check the package tool (SHA-256)
+        run: |
+          set -euo pipefail
+          if ! echo "$TOOL_SHA256  $TOOL" | sha256sum -c -; then
+            echo "::error file=$TOOL::the package tool is not the copy this workflow pins (TOOL_SHA256)"
+            exit 1
+          fi
+
+      # Event values reach the script as environment variables, never as
+      # text inside it. The version is read from the tag's tree with the
+      # tool's own function, the same reading the build makes.
+      - name: Check the tag, the version and the release
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          REPOSITORY: ${{ github.repository }}
+          TAG: ${{ github.event.release.tag_name }}
+          PRERELEASE: ${{ github.event.release.prerelease }}
+          RELEASE_ID: ${{ github.event.release.id }}
+          KEY_ID: ${{ vars.RELEASE_KEY_ID }}
+        run: |
+          set -euo pipefail
+
+          read_version() {
+            git show "$1:pinegrap/includes/migrations/versions.php" \
+              | php -r "define('KP_BUILD_PACKAGES_LIBRARY', true); require \$argv[1]; echo bp_last_version((string) stream_get_contents(STDIN));" "$TOOL"
+          }
+
+          if [ "$EVENT" = "pull_request" ]; then
+            version="$(read_version HEAD)"
+            {
+              echo "upload=false"
+              echo "channel=beta"
+              echo "ref=HEAD"
+              echo "version=$version"
+              echo "build="
+              echo "key_id="
+            } >> "$GITHUB_OUTPUT"
+            echo "Pull request: beta build of $version from HEAD, nothing is uploaded."
+            exit 0
+          fi
+
+          if ! [[ "$TAG" =~ ^v([0-9]{4}\.([1-9]|1[0-2])\.(0|[1-9][0-9]{0,2}))(-beta\.([0-9]{12}))?$ ]]; then
+            echo "::error::'$TAG' is not a release tag: v<year>.<month>.<patch>, or v<year>.<month>.<patch>-beta.<YYYYMMDDHHMM> for a pre-release"
+            exit 1
+          fi
+          tag_version="${BASH_REMATCH[1]}"
+          stamp="${BASH_REMATCH[5]}"
+
+          if [ -n "$stamp" ] && [ "$PRERELEASE" != "true" ]; then
+            echo "::error::$TAG is a beta tag but the release is not a pre-release"
+            exit 1
+          fi
+          if [ -z "$stamp" ] && [ "$PRERELEASE" = "true" ]; then
+            echo "::error::$TAG is a pre-release; a beta tag is v$tag_version-beta.<YYYYMMDDHHMM>"
+            exit 1
+          fi
+          if [ -n "$stamp" ]; then
+            real="$(date -u -d "${stamp:0:8} ${stamp:8:2}:${stamp:10:2}" +%Y%m%d%H%M 2> /dev/null || true)"
+            if [ "$real" != "$stamp" ]; then
+              echo "::error::the stamp of $TAG is not a date and time (YYYYMMDDHHMM, UTC)"
+              exit 1
+            fi
+          fi
+
+          if ! [[ "$KEY_ID" =~ ^[a-z0-9][a-z0-9._-]{0,15}$ ]]; then
+            echo "::error::the RELEASE_KEY_ID repository variable is missing or not a key id (1-16 of a-z, 0-9, '.', '_', '-')"
+            exit 1
+          fi
+
+          # The tool builds the commit the tag names here; it must be the
+          # commit this run checked out (and whose tool it runs).
+          git fetch --no-tags --depth 1 origin "+refs/tags/$TAG:refs/tags/$TAG"
+          tag_sha="$(git rev-parse --verify --quiet "refs/tags/$TAG^{commit}" || true)"
+          if [ "$tag_sha" != "$GITHUB_SHA" ]; then
+            echo "::error::$TAG names ${tag_sha:-no commit}, not the checked-out $GITHUB_SHA"
+            exit 1
+          fi
+
+          version="$(read_version "$TAG")"
+          if [ "$version" != "$tag_version" ]; then
+            echo "::error::the tree of $TAG ends on version '$version', not $tag_version"
+            exit 1
+          fi
+
+          if [ -n "$stamp" ]; then
+            channel=beta
+            build="${GITHUB_SHA:0:7}.$stamp"
+            # Only a published release that is not a pre-release stops the
+            # beta; no release at all answers 404.
+            if stable="$(gh api "repos/$REPOSITORY/releases/tags/v$version" --jq 'if .prerelease or .draft then "" else .tag_name end' 2> "$RUNNER_TEMP/release.err")"; then
+              if [ -n "$stable" ]; then
+                echo "::error::$version already has a stable release; open the next version on development before a beta"
+                exit 1
+              fi
+            elif ! grep -q 'HTTP 404' "$RUNNER_TEMP/release.err"; then
+              cat "$RUNNER_TEMP/release.err" >&2
+              echo "::error::the releases of $REPOSITORY could not be read"
+              exit 1
+            fi
+          else
+            channel=stable
+            build=""
+            leftover="$(git ls-tree --name-only "$TAG" -- CLAUDE.md .claude docs tools tests)"
+            if [ -n "$leftover" ]; then
+              echo "::error::the tree of $TAG still holds paths the release branch leaves out: ${leftover//$'\n'/ }"
+              exit 1
+            fi
+          fi
+
+          expected=(pinegrap_software_update.zip pinegrap_software.zip manifest.json)
+          present=()
+          names="$(gh api "repos/$REPOSITORY/releases/$RELEASE_ID" --jq '.assets[].name')"
+          for name in "${expected[@]}"; do
+            if grep -qxF "$name" <<< "$names"; then
+              present+=("$name")
+            fi
+          done
+          if [ "${#present[@]}" -eq "${#expected[@]}" ]; then
+            echo "upload=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::$TAG already has its packages; nothing is built or uploaded"
+            exit 0
+          fi
+          if [ "${#present[@]}" -gt 0 ]; then
+            echo "::error::$TAG already has ${present[*]}; delete them on the release page, then re-run this workflow"
+            exit 1
+          fi
+
+          {
+            echo "upload=true"
+            echo "tag=$TAG"
+            echo "channel=$channel"
+            echo "ref=$TAG"
+            echo "version=$version"
+            echo "build=$build"
+            echo "key_id=$KEY_ID"
+          } >> "$GITHUB_OUTPUT"
+          echo "$TAG: $channel build of $version at $GITHUB_SHA${build:+, build $build}, key id $KEY_ID"
+
+      # An option whose value would be empty is left out: the tool refuses
+      # --build on stable, and without --key-id writes its placeholder.
+      - name: Build the packages (build_packages.php)
+        if: ${{ steps.check.outputs.upload == 'true' || github.event_name == 'pull_request' }}
+        env:
+          CHANNEL: ${{ steps.check.outputs.channel }}
+          REF: ${{ steps.check.outputs.ref }}
+          VERSION: ${{ steps.check.outputs.version }}
+          BUILD: ${{ steps.check.outputs.build }}
+          KEY_ID: ${{ steps.check.outputs.key_id }}
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/packages"
+          args=(--repo="$GITHUB_WORKSPACE" --ref="$REF" --channel="$CHANNEL" --out="$out")
+          if [ -n "$BUILD" ]; then
+            args+=(--build="$BUILD")
+          fi
+          if [ -n "$KEY_ID" ]; then
+            args+=(--key-id="$KEY_ID")
+          fi
+          php "$TOOL" "${args[@]}"
+
+          if ! jq -e \
+            --arg version "$VERSION" --arg channel "$CHANNEL" --arg ref "$REF" \
+            --arg sha "$(git rev-parse HEAD)" --arg build "$BUILD" --arg key "${KEY_ID:-unset}" \
+            '.schema == 1 and .version == $version and .channel == $channel
+              and .git_ref == $ref and .git_sha == $sha and .key_id == $key
+              and (if $channel == "beta" then (.build | type) == "string" and ($build == "" or .build == $build) else has("build") | not end)
+              and ([.artifacts[].file] | sort) == ["pinegrap_software.zip", "pinegrap_software_update.zip"]' \
+            "$out/manifest.json" > /dev/null; then
+            echo "::error::manifest.json does not describe this build"
+            cat "$out/manifest.json"
+            exit 1
+          fi
+          cat "$out/manifest.json"
+
+      - name: Keep the packages for the upload job
+        if: ${{ steps.check.outputs.upload == 'true' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: packages
+          path: |
+            ${{ runner.temp }}/packages/pinegrap_software_update.zip
+            ${{ runner.temp }}/packages/pinegrap_software.zip
+            ${{ runner.temp }}/packages/manifest.json
+          if-no-files-found: error
+          retention-days: 3
+
+  upload:
+    name: add the packages to the release
+    needs: build
+    if: ${{ needs.build.outputs.upload == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    steps:
+      - name: Download the packages
+        uses: actions/download-artifact@v8
+        with:
+          name: packages
+          path: ${{ runner.temp }}/packages
+
+      # The packages must still be the bytes manifest.json describes.
+      - name: Check the packages against the manifest
+        working-directory: ${{ runner.temp }}/packages
+        run: |
+          set -euo pipefail
+          jq -r '.artifacts[] | "\(.sha256)  \(.file)"' manifest.json | sha256sum -c -
+
+      # The manifest goes last: a release with a manifest has both packages.
+      # Never --clobber: an asset already there fails the upload.
+      - name: Upload to the release
+        working-directory: ${{ runner.temp }}/packages
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          TAG: ${{ needs.build.outputs.tag }}
+        run: |
+          set -euo pipefail
+          gh release upload "$TAG" pinegrap_software_update.zip pinegrap_software.zip --repo "$REPOSITORY"
+          gh release upload "$TAG" manifest.json --repo "$REPOSITORY"
+          {
+            echo "### $TAG"
+            echo
+            jq -r '"Pinegrap \(.version) (\(.channel)\(if .build then ", build \(.build)" else "" end)), key id \(.key_id)"' manifest.json
+            echo
+            jq -r '.artifacts[] | "- `\(.file)`: \(.size) bytes, sha256 `\(.sha256)`"' manifest.json
+          } >> "$GITHUB_STEP_SUMMARY"
