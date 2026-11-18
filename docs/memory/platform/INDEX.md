@@ -53,7 +53,7 @@
 - disable-functions-rule.md: Shared hosts remove functions via disable_functions; in PHP 8 they throw Error, so guard with function_exists() and treat their output as optional.
 - dkim-key-in-file-manager.md: dkim.key never leaves the server through the panel (no view, archive, copy, rename, channel copy) and only staff may give a file that name; pg_file_withheld(), pg_file_name_reserved()
 - docker-decisions.md: Owner's Docker decisions (2026-10-19/20): docker/ in the release tree, an addition only, no env in the product, nginx only, Software Update in the container left as it is
-- docker-image-publishing.md: Docker images on GHCR (PR #737): docker-publish.yml on a published release, pinegrap-app/-web for amd64 and arm64, tags v<version> and latest, re-run by tag, compose PG_IMAGE_TAG, package visibility
+- docker-image-publishing.md: Docker images on GHCR (PR #737): docker-publish.yml per published release (no pre-release), pinegrap-app/-web on amd64 and arm64, tags v<version> and latest, re-run by tag, PG_IMAGE_TAG, visibility
 - docker.md: docker/ compose stack (PR #565): app (PHP-FPM 8.3), web (nginx), MariaDB 10.11, cron gated on the database version, one-shot install service, data volume, nginx rules in step, CI check
 - editor-image-upload-refusals.md: The rich text editor's Image > Upload (editor_add_file.php): a discarded body, a missing file, an upload error code or a failed copy() is refused in the dialog, never inserted as a picture.
 - encryption-key-reseal-registry.md: Reset Encryption Key re-seals what pg_reseal_registry() lists, last in the same save; the entries, kinds and JSON fields, done/skipped/failed counts, the $key parameters of the sealing helpers [decision: decisions-made-product-25.md]
