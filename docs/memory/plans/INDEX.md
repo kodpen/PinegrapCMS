@@ -103,9 +103,9 @@
 - integrations-census-today-2.md: Census (2026-11-17) of the outside services the product connects to today, the rest: mail, SMS, chat, accounts, files, analytics, maps, AI, and what the market's lists hold that is absent here
 - integrations-census-today.md: Census (2026-11-17) of the outside services the product connects to today, the selling side: how they were counted, payments, shipping, marketplaces, e-documents, how a new one is added
 - integrations-census.md: Start file of the integrations census (2026-11-17, the owner's request in the agent channel): what was asked, the parts, the decisions that bind, the summary, what is still to decide
-- kodpen-vendor-api-client-design-update.md: Update contract of plans/kodpen-vendor-api-client.md still to build: which keys verify (P5c) and P2's release workflow; the built check, pin, download and beta builds are in platform/
-- kodpen-vendor-api-client-steps.md: Open steps of plans/kodpen-vendor-api-client.md: P2 and P5c before the 2026.11.0 release branch, P9 (api2 client removal) in the next open version; claim as [plan:kodpen-vendor-api-client] P<n>
-- kodpen-vendor-api-client.md: Plan (owner 2026-10-25 to 27): the Kodpen API client is on (P8); left are P2 and P5c before the 2026.11.0 release branch and P9, the api2 client removal in the next open version; steps in -steps
+- kodpen-vendor-api-client-design-update.md: Update contract of plans/kodpen-vendor-api-client.md still to build: P2's release workflow; the built check, pin, keys, download and beta builds are in platform/
+- kodpen-vendor-api-client-steps.md: Open steps of plans/kodpen-vendor-api-client.md: P2 before the 2026.11.0 release branch, P9 (api2 client removal) in the next open version; claim as [plan:kodpen-vendor-api-client] P<n>
+- kodpen-vendor-api-client.md: Plan (owner 2026-10-25 to 27): the Kodpen API client is on (P8); left is P2 before the 2026.11.0 release branch and P9, the api2 client removal in the next open version; steps in -steps
 - listen-block-features.md: Plan listen-block, features L1 to L13: the block and its mark, where the script comes from, what is read and in which language, when the button shows, its controls, the canvas and the Preview
 - listen-block-steps.md: Plan listen-block, steps LS1 to LS3: the script and its two doors, the block, close-out
 - listen-block.md: Plan (owner 2026-11-16, agent channel message 5667): a "Listen" block of the visual designer that reads the page's article aloud with the browser's own voice; steps LS1 to LS3
