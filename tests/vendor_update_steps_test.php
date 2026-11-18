@@ -359,8 +359,9 @@ function test_vendor_update_package_path()
 	}
 }
 
-// Two release keys ship: lower-case ids a manifest may name, P-256 public
-// keys, pinned by the SHA-256 of their PEM text so an edit shows here.
+// Two release keys ship: lower-case ids the release answer's sig_key_id may
+// name, P-256 public keys, pinned by the SHA-256 of their PEM text so an edit
+// shows here.
 function test_vendor_update_release_keys()
 {
 	$keys = pg_vendor_release_keys();
