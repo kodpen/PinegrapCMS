@@ -359,10 +359,33 @@ function test_vendor_update_package_path()
 	}
 }
 
-// No key ships before the owner's keys: every key id is unknown.
-function test_vendor_update_release_keys_are_empty()
+// Two release keys ship: lower-case ids the release answer's sig_key_id may
+// name, P-256 public keys, pinned by the SHA-256 of their PEM text so an edit
+// shows here.
+function test_vendor_update_release_keys()
 {
-	pg_assert_same(array(), pg_vendor_release_keys());
+	$keys = pg_vendor_release_keys();
+	$fingerprints = array(
+		'kp-2026a' => '9bf2cc54b9f9082e31b53473ad7a83c70828b12d22990b48a8170ff07973f260',
+		'kp-2026b' => '045efb2b879b7d7937e03cabbaee9677299b6f2924d8bf20a1e88da40c0f46ea',
+	);
+
+	pg_assert_same(array_keys($fingerprints), array_keys($keys), 'the two ids');
+
+	foreach ($keys as $id => $pem) {
+		pg_assert_same(1, preg_match('/\A[a-z0-9][a-z0-9._-]{0,15}\z/', $id), $id . ': an id the release check reads');
+		pg_assert_same($fingerprints[$id], hash('sha256', $pem), $id . ': fingerprint');
+
+		if (!function_exists('openssl_pkey_get_public')) {
+			continue;
+		}
+
+		$details = openssl_pkey_get_details(openssl_pkey_get_public($pem));
+
+		pg_assert_same(OPENSSL_KEYTYPE_EC, $details['type'], $id . ': an EC key');
+		pg_assert_same('prime256v1', $details['ec']['curve_name'], $id . ': P-256');
+		pg_assert_same($pem, $details['key'], $id . ': the PEM OpenSSL writes');
+	}
 }
 
 // Every refusal has its own text; the security events are the ones a

@@ -22,8 +22,8 @@ description: Download, backup and replace of a signed update (PR #3632, PG_VENDO
 - Refusal: `pg_vendor_update_refusal_message($reason)`, one text per reason. `pg_vendor_update_security_event()` marks the log line "refused as a security event" for a complete answer that is not the pinned release (bad signature, unknown key, manifest, foreign host or status, package, not a zip, in-ZIP version); not for `signature_unverifiable` or `not_newer`. A body past the cap counts as another size.
 
 ## Which keys?
-- `pg_vendor_release_keys()` is empty until P5c, so nothing installs: no release offered is no update; an offered one is refused at the signature step as `unknown_key_id` (a security event), before any fetch.
-- So P2 and P5c land before the 2026.11.0 release branch (`plans/kodpen-vendor-api-client.md`): a release without keys never updates from the panel, only by `download_assistant.php`.
+- `pg_vendor_release_keys()`: `kp-2026a` and `kp-2026b` since P5c (`vendor-api-release-keys.md`). A pin whose `sig_key_id` is another id is refused at the signature step as `unknown_key_id` (a security event), before any fetch.
+- Nothing is offered until signed packages exist, so P2 lands before the 2026.11.0 release branch (`plans/kodpen-vendor-api-client.md`); until then only `download_assistant.php` updates.
 
 ## Tests?
 - `tests/vendor_update_steps_test.php`: every vector case after the check, the pending order, address rules, manifest shapes, a P-256 pair made with `pg_openssl_key_new()`, a ZIP built in the test, a file swapped before replace. The network path itself is not unit tested.
