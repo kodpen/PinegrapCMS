@@ -17,4 +17,4 @@ module: site_push_order
 - The link (`pg_site_push_order_url()`): the "view order" page type with `?id=`, as a path; the home page when the site has none.
 
 ## What is not built yet?
-- The button "Notify me on this device" on the receipt page and the order view: it needs the subscribed browser's secret, kept by the site's script and worker of VP3. The door's action waits for it.
+- The button "Notify me on this device" on the receipt page and the order view (VP6b): it takes the subscribed browser's secret from `window.pgSitePush.secret()` (VP3, `visitor-push-block.md`) and posts the door's `order` action.
