@@ -453,6 +453,17 @@ function ws_command_registry_records()
             'gate' => 'ws_command_gate_product', 'runner' => 'ws_command_run_record', 'api' => 'preview',
         ),
         array(
+            'key' => 'tracking', 'tr' => 'kargo', 'en' => 'tracking', 'label' => '/tracking · /kargo',
+            'description' => lang('Sets the tracking numbers of an order that ships to one address; separate several with commas. Shown to you, old and new, before it is written; the customer is not e-mailed.'),
+            'example'     => lang('/tracking #1042 1Z999AA10123456784'),
+            'args'        => array(
+                $arg('order', 'record', lang('#order'), false, 'orders'),
+                $arg('numbers', 'text', lang('tracking number'), false, '', array('multiple' => true)),
+            ),
+            'names' => array('kargo', 'tracking'), 'group' => 'records', 'order' => 155,
+            'gate' => 'ws_command_gate_order', 'runner' => 'ws_command_run_tracking', 'api' => 'preview',
+        ),
+        array(
             'key' => 'create', 'tr' => 'oluştur', 'en' => 'create', 'label' => '/create · /oluştur',
             'description' => lang('Creates a product or a product group, off sale, a contact, a row of a workflow table, an ERP account or a calendar event: the kind, then its name; a product takes a price and a #group if you like, a contact its company and e-mail after commas, a row the table\'s name, an account its tax number and e-mail after commas, an event its day and time first. Shown to you before it is created. Several product lines, one per line, make one card of drafts for you to apply.'),
             'example'     => lang('/create product Blue mug 149,90'),

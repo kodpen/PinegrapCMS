@@ -4,9 +4,9 @@ description: The Prototype view's page picture in a frame (PV8): how it is built
 ---
 
 ## What does a frame show?
-- (PV8 #9896) Its head, then its page as the Preview draws it (F1): the Preview's own document for the tab's tree in a frame 1280 wide, cut at 1600, scaled to 228 x 285 (`PGProtoHotspots.picSize()`; box 298 with padding and border, `thumb` of `layout()`). A shared frame shows its part alone at the part's height (PV9, designer/prototype-marks.md). Way and its reasons: designer/prototype-picture-check.md.
+- (PV8 #9896) Its head, then its page as the Preview draws it: the Preview's own document for the tab's tree in a frame 1280 wide, cut at 1600, scaled to 228 x 285 (`PGProtoHotspots.picSize()`; box 298 with padding and border, `thumb` of `layout()`). A shared frame shows its part alone at the part's height (PV9, designer/prototype-marks.md). Way and its reasons: designer/prototype-picture-check.md.
 - The sketch (designer/prototype-thumbnails.md) is drawn under it while it loads and stays when it cannot be drawn. The picture fades in over 0.2 s, not with reduced motion.
-- A page taller than the cut gets a fade over its bottom (`picLong()`); one ending exactly at 1600 gets none. The foot says "+3 links below" (F3).
+- A page taller than the cut gets a fade over its bottom (`picLong()`); one ending exactly at 1600 gets none. The foot says "+3 links below".
 - Architect (2026-11-16, agent channel message 6079): the foot sits on the picture's lower edge above the fade, never as a row under it, so every frame keeps one height; the arrows of links it counts leave from it (designer/prototype-marks.md).
 - `vh` resolves against the 1600-high frame: a short page with `min-vh-100` fills the whole picture. Not a fault; it follows from the approved way.
 

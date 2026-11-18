@@ -8,7 +8,7 @@ description: Decisions list, product part 72 (2026-11-17): the "Suggest targets"
 
 ## Is the "Suggest targets" window of the Prototype view accepted? (owner, 2026-11-17, agent channel poll 137, message 8763)
 - "Evet, böyle çıksın" to one sheet of four pictures (PV11b #10243): the "Suggest targets" button with its count in the Prototype bar and the window beside the canvas on a wide screen; on a 390 px phone the window as wide as the screen, a long link name on a line of its own, a long page name ending in an ellipsis in the select box.
-- It was the plan's second look of his (`plans/prototype-canvas.md`, "Whose look?"). What the window does is in the memory file its PR brings.
+- It was the second look of his the rebuild asked for (`designer/prototype-view-decisions.md`). What the window does is in the memory file its PR brings.
 
 ## Does a gift card pay for a gift card product in the cart? (owner, 2026-11-17, agent channel poll 138, message 8802)
 - He chose "Ödemesin: kart yalnız diğer ürünlere uygulanır": the applied gift cards and store credit together take off no more than the part of the total that is not gift card lines. A gift card product is paid by another payment method.

@@ -81,6 +81,7 @@ function pg_booking_mail_field_meanings()
         'booking_name'       => lang('the customer\'s name'),
         'booking_reference'  => lang('the booking\'s number'),
         'booking_manage_url' => lang('a link where the customer moves or cancels the booking'),
+        'booking_meeting_url' => lang('the staff member\'s meeting address, for a booking made through their meeting link'),
     );
 }
 
@@ -206,6 +207,7 @@ function pg_booking_message_row($id)
         "SELECT
             bookings.*,
             booking_services.name AS service_name,
+            booking_staff.user_id AS staff_user_id,
             contacts.first_name AS staff_first_name,
             contacts.last_name AS staff_last_name
         FROM bookings
@@ -262,6 +264,7 @@ function pg_booking_message_values($row, $context)
         'name'       => (string) ($row['name'] ?? ''),
         'reference'  => (string) (int) ($row['id'] ?? 0),
         'manage_url' => (string) ($context['manage_url'] ?? ''),
+        'meeting_url' => (string) ($context['meeting_url'] ?? ''),
     );
 }
 
@@ -290,7 +293,8 @@ function pg_booking_mail_fields($values)
 
 /**
  * The context of a booking's messages on this site: its zone, formats,
- * address and manage link.
+ * address, manage link and, for a booking made through a meeting link, the
+ * staff member's meeting address as it stands now.
  *
  * @param array $row
  * @return array
@@ -305,7 +309,25 @@ function pg_booking_message_context($row)
         'time_code'  => pg_time_format_code(),
         'place'      => pg_booking_place(),
         'manage_url' => ((string) $row['status'] !== 'cancelled') ? pg_booking_manage_url((int) $row['id'], (int) $row['end_at']) : '',
+        'meeting_url' => pg_booking_message_meeting_url($row),
     );
+}
+
+/**
+ * The meeting address a booking's messages carry: the staff member's, read
+ * when the message is made, for a booking made through their meeting link
+ * only; '' for every other booking and a cancelled one.
+ *
+ * @param array $row pg_booking_message_row()
+ * @return string
+ */
+function pg_booking_message_meeting_url($row)
+{
+    if (((string) ($row['source'] ?? '') !== PG_BOOKING_LINK_SOURCE) || ((string) ($row['status'] ?? '') === 'cancelled')) {
+        return '';
+    }
+
+    return pg_booking_link_booking_meeting_url($row, pg_booking_link_meeting_url((int) ($row['staff_user_id'] ?? 0)));
 }
 
 /**
@@ -358,11 +380,13 @@ function pg_booking_ics_fold($line)
  * with a UID that stays the booking's, so a calendar that took the first
  * file updates the same entry from a later one: SEQUENCE grows with every
  * change, a moved booking carries its new times and a cancelled one STATUS
- * CANCELLED. Times in UTC.
+ * CANCELLED. Times in UTC. A meeting address is a CONFERENCE (RFC 7986) and
+ * a line of the description, and the place when the site has no address.
  *
  * @param array $booking id, start_at, end_at, status, created_at, updated_at,
  *                       service_name, staff_name
- * @param array $context host (the UID's domain), store, place, manage_url
+ * @param array $context host (the UID's domain), store, place, manage_url,
+ *                       meeting_url
  * @param int   $now     DTSTAMP
  * @return string CRLF line endings
  */
@@ -379,6 +403,11 @@ function pg_booking_ics($booking, $context, $now)
     $store = trim((string) ($context['store'] ?? ''));
     $staff = trim((string) ($booking['staff_name'] ?? ''));
     $manage = (string) ($context['manage_url'] ?? '');
+    $meeting = (string) ($context['meeting_url'] ?? '');
+    // A URI value is written as it is: one with a space or a control
+    // character is left out rather than break the file.
+    $meeting = (preg_match('/^https?:\/\/[^\s\x00-\x1F\x7F]+$/iD', $meeting) === 1) ? $meeting : '';
+    $place = trim((string) ($context['place'] ?? ''));
 
     $summary = (($service !== '') && ($store !== '')) ? $service . ' - ' . $store : (($service !== '') ? $service : $store);
 
@@ -386,6 +415,10 @@ function pg_booking_ics($booking, $context, $now)
 
     if ($staff !== '') {
         $description[] = $staff;
+    }
+
+    if ($meeting !== '') {
+        $description[] = $meeting;
     }
 
     if ($manage !== '') {
@@ -408,8 +441,12 @@ function pg_booking_ics($booking, $context, $now)
         'SUMMARY:' . pg_booking_ics_escape($summary),
     );
 
-    if (trim((string) ($context['place'] ?? '')) !== '') {
-        $lines[] = 'LOCATION:' . pg_booking_ics_escape(trim((string) $context['place']));
+    if (($place !== '') || ($meeting !== '')) {
+        $lines[] = 'LOCATION:' . pg_booking_ics_escape(($place !== '') ? $place : $meeting);
+    }
+
+    if ($meeting !== '') {
+        $lines[] = 'CONFERENCE;VALUE=URI:' . $meeting;
     }
 
     if ($description) {

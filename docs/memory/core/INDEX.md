@@ -113,6 +113,7 @@
 - lang-function-syntax.md: lang() call forms: plain, variables {var:N}, case modifiers |c |u |l, plural suffix, no text concatenated outside lang(), and the lang(['info' => true]) active-language query.
 - lang-loader.md: Where lang() lives (includes/fn/lang.php), how get_file.php loads it without functions.php, the software language a request outside init.php speaks
 - lang-placeholders.md: How lang() fills {var:N}, its case modifiers and {suffix}: one strtr() pass, values never re-scanned, plain {var} left for JavaScript
+- log-warnings-forms-default-screens.md: Form, calendar and default screen warnings of the PHP 8.5 error log fixed by cause (plan php-error-log-clean, EL5): what each screen now does when a row, a page or a posted key is missing
 - login-as-sign-out.md: Sign-out after Login as User: the operator lands on Edit User of that account, signed back in by their cookie, with a notice; without one the logout page (#9007)
 - mail-bounce-screens.md: Where the bounce record is shown: campaign delivery counts, the Suppressed contact view and export column, the contact card badge with Allow again, personal data export and erasure
 - mail-bounce-verp.md: VERP return path with a signed per-message token, pg_mail_parse_dsn() for delivery reports and ARF complaints, and the Workspace mailbox that reads bounces and records them
@@ -148,14 +149,18 @@
 - php-regions-eval-and-content.md: get_page_content.php evaluates the assembled page when PHP_REGIONS is on; who may write PHP, where content-level markup is defused with pg_defuse_php_tags(), and the site importer's fetch rules. [decision: decisions-made-product-39.md]
 - php-warning-causes-report-screens.md: PHP 8.5 warnings logged by the Visitor Report, Order Report, Edit Form List View and workspace rights: which cause is fixed where; the missing collection B row
 - php85-log-warnings-already-fixed.md: Four files of the owner's PHP 8.5 error log (duplicate_products, get_file, view_order, designer_ai) whose warnings were already fixed on development between 4 and 13 November 2026, with the PR of each
+- phpexcel-embedding.md: The bundled PHPExcel (includes/phpexcel, 1.8.x, no longer maintained): which screens load it, and the local patch that keeps it quiet on PHP 8.5
 - phpmailer-embedding.md: Which PHPMailer the product loads (6.12.0 from includes/phpmailer/src), the unloaded 5.2.22 files beside it, and why both are quiet on PHP 8.5 (#9470)
+- picture-text-overview.md: Picture text translation as a whole (owner 2026-11-16, built in #10028 to #10269): what it does, the decisions that bind it, what the first version leaves out and why, which file holds each part [decision: decisions-made-product-63.md, decisions-made-product-64.md]
 - picture-text-translation-doors.md: The file doors of a language's picture: it follows its source on a move, goes with it on a delete, is never swapped while the source is binned, counts in Disk Usage, the daily sweep's catch-up
 - picture-text-translation-draw-photo.md: A photo with text layers drawn per language from the Design Canvas Languages list (PT4b): the browser's overlay and parts, the server drawing on the base row as a save does, format kept
 - picture-text-translation-draw-server.md: The Design Canvas Languages list's server side (#10208): what a language's draw is checked by, where its picture is kept, how it is hidden from file lists, tests
 - picture-text-translation-draw.md: The Design Canvas Languages list (#10208): its rows and states, drawing only when every text is translated, the browser draw and the 70% fit floor [decision: here]
+- picture-text-translation-fit-letters.md: Picture text translation, a translated text's fit and its letters: the owner's words of 2026-11-17, what the draw already does in a browser and on the server, three open points [decision: here]
 - picture-text-translation-group.md: Pictures group of the Translations screen (#10102): file texts bounded to pictures with a file_translation row, whole site alike, extraction, Design Canvas link
 - picture-text-translation-page.md: Picture text translation's page pass: a page in another language shows a Design Canvas picture's drawn language version in src, srcset, og:image, links and style url(); waiting rows, one query
-- picture-text-translation-store.md: A Design Canvas picture's texts in the translation store: owner type file, layer fields read, file_translation states, what saves, deletes and translation writes do [decision: here]
+- picture-text-translation-queue.md: The picture drawing queue (#10266): "Draw the waiting pictures" on the Pictures group, the draw=1 view, which rows it draws, Stop and Continue
+- picture-text-translation-store.md: A Design Canvas picture's texts in the translation store: owner type file, layer fields read, file_translation states, what saves, deletes and translation writes do [decision: decisions-made-schema-25.md]
 - preg-replace-replacement-escaping.md: Text put into a page through preg_replace() goes through pg_regex_replacement(): $NN and \N in it are back references, "$400'dan" printed as "0'dan"; where it applies and the guard test
 - privacy-log-retention.md: How long audit_log and consent_log keep lines: config.audit_log_retention_years (11.0.47), the Audit Trail settings card, the daily job pass, why the answer in force stays
 - push-disabled-account.md: The device push queue drops a disabled or deleted account's queued rows and browsers instead of waking them (pg_push_account_wakeable())

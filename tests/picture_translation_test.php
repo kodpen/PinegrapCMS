@@ -202,9 +202,11 @@ function test_picture_translation_module_loaded()
 	pg_assert_true(function_exists('pg_picture_tr_saved'), 'loaded');
 }
 
-// Runs $script with the editor's model as M and answers its JSON; null
-// without Node.
-function picture_translation_node($script)
+// Runs $script with a script of assets/js (the editor's model unless named)
+// as $name, M by default, and answers its JSON; null without Node. The script
+// goes through a file, never `node -e`: on Windows the shell's quoting turns
+// the double quotes of an inline script into spaces.
+function picture_translation_node($script, $module = 'pg_image_editor_model.js', $name = 'M')
 {
 	if (!function_exists('exec')) {
 		return null;
@@ -224,7 +226,7 @@ function picture_translation_node($script)
 		return null;
 	}
 
-	file_put_contents($file, 'var M = require(' . json_encode(PG_FUNCTIONS_DIR . '/assets/js/pg_image_editor_model.js') . ');' . "\n" . $script);
+	file_put_contents($file, 'var ' . $name . ' = require(' . json_encode(PG_FUNCTIONS_DIR . '/assets/js/' . $module) . ');' . "\n" . $script);
 
 	$out = array();
 	@exec('node ' . escapeshellarg($file) . ' 2>&1', $out, $code);
@@ -419,4 +421,61 @@ function test_picture_translation_photo_kinds()
 	}
 
 	pg_assert_same(array('text' => 'Rebajas', 'file' => 9, 'base' => true, 'fitted' => array('t1')), $r, 'a photo\'s document takes the words as a canvas\'s does');
+}
+
+// The queue: the languages' rows waiting or out of date whose every text is
+// translated, of the languages that are drawn (no right to left), in a
+// bounded list.
+function test_picture_translation_queue_sql()
+{
+	$sql = pg_picture_tr_queue_sql(array('de', 'fr'), 200);
+
+	pg_assert_contains('ft.state IN (0, 2)', $sql, 'waiting and out of date rows');
+	pg_assert_contains("ft.language IN ('de', 'fr')", $sql, 'only the languages drawn');
+	pg_assert_contains("t.id IS NULL OR t.text = ''", $sql, 'a row with an untranslated text is left out');
+	pg_assert_contains('EXISTS (SELECT 1 FROM translation_uses', $sql, 'a picture with texts');
+	pg_assert_contains('LIMIT 200', $sql, 'bounded');
+	pg_assert_same('', pg_picture_tr_queue_sql(array(), 200), 'no language, no query');
+	pg_assert_contains("ft.language IN ('pt-BR')", pg_picture_tr_queue_sql(array('pt-BR'), 5), 'a code with a region');
+	pg_assert_false(strpos(pg_picture_tr_queue_sql(array("x' OR '1"), 5), "OR '1") !== false, 'a code with a quote does not reach the query');
+
+	// The Pictures group offers the queue; its view prints the editor and
+	// the queue's own script.
+	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/translations.php');
+	pg_assert_contains("'draw' => 1", $screen, 'a link to the queue');
+	pg_assert_contains('assets/js/picture_queue.js', $screen, 'the queue\'s script');
+	pg_assert_contains('pg_picture_tr_queue(', $screen, 'the queue\'s rows');
+	pg_assert_contains('data-pq-reason="1"', $screen, 'the reason a row waits is its own part, dropped once drawn');
+	pg_assert_contains('pg-list-row-head pg-list-row-head-wrap', $screen, 'the pill goes under a name it would cut');
+	pg_assert_contains('data-pq-edit="1" hidden', $screen, 'a row to look at by hand offers the Design Canvas, hidden until the run ends');
+	pg_assert_contains('data-pg-image-edit="\' . h($queue_item[\'name\'])', $screen, 'the button opens the row\'s picture');
+	pg_assert_contains('class="pg-button pg-button-quiet" id="pg_pq_stop"', $screen, 'Stop is quiet');
+	pg_assert_contains('class="pg-button pg-button-quiet pg-button-sm" href="\' . h($url(array(\'draw\' => 1', $screen, 'the group\'s button is quiet');
+}
+
+// The queue's script: the count left and the state a draw's answer gives.
+function test_picture_translation_queue_script()
+{
+	$r = picture_translation_node('console.log(JSON.stringify({'
+		. ' left: Q.left([{ status: "waiting" }, { status: "drawing" }, { status: "drawn" }, { status: "failed" }, { status: "waiting" }]),'
+		. ' drawn: Q.statusOf({ status: "success", state: "drawn" }),'
+		. ' look: Q.statusOf({ status: "success", state: "look" }),'
+		. ' refused: Q.statusOf({ status: "error", message: "No" }),'
+		. ' none: Q.statusOf(null),'
+		. ' skipped: Q.statusOf("skipped"),'
+		. ' reason: ["waiting", "drawing", "drawn", "look", "skipped", "failed"].map(Q.reasonShown),'
+		. ' edit: [Q.editShown("look", false), Q.editShown("look", true), Q.editShown("drawn", false), Q.editShown("failed", false)],'
+		. ' tone: [Q.buttonTone(true), Q.buttonTone(false)],'
+		. ' end: [[{ status: "drawn" }], [{ status: "drawn" }, { status: "look" }, { status: "look" }], [{ status: "failed" }, { status: "look" }]].map(function (rows) {'
+		. '  return Q.endText(rows, { done: "D", doneLook: "L{n}", doneFailed: "F{n}" }); })'
+		. '}));', 'picture_queue.js', 'Q');
+
+	if ($r === null) {
+		pg_assert_true(true, 'Node is not available');
+		return;
+	}
+
+	pg_assert_same(array('left' => 3, 'drawn' => 'drawn', 'look' => 'look', 'refused' => 'failed', 'none' => 'failed', 'skipped' => 'skipped',
+		'reason' => array(true, true, false, false, false, false), 'edit' => array(true, false, false, false),
+		'tone' => array('pg-button-quiet', 'pg-button-fill'), 'end' => array('D', 'L2', 'F1')), $r, 'left counts what is waiting or drawing; an answer gives the row\'s state; the reason goes once drawn; Look by hand offers the editor once the run ends; Stop is quiet, Continue the fill; the end line counts the rows to look at by hand, after the failed ones');
 }

@@ -1,12 +1,13 @@
 ---
 name: prototype-places
-description: Where the Prototype view keeps a moved frame or chip: frames shared on the design in the tab layout's proto (#6232), the rest per browser; the twin normalisers
+description: Where the Prototype view keeps a moved frame or chip: frames shared on the design in the tab layout's proto (#6232), the rest per browser; the twin normalisers; what Tidy up clears
 ---
 
 ## Where is a moved frame kept?
 - A frame of a saved tab (`p:p<page_id>`) or a shared component (`s:<id>`) moved by an operator who may arrange tabs (`_pgTabLayoutEditable()`) is kept on the design: `_sdProtoKeep()` writes `_pgTabProto` (`p<page_id>` / `s<id>` → `{x, y}`, whole units) and calls `_pgTabsLayoutSave()`, which posts the whole tab layout to `designer/tab_layout` with `proto` in it (designer/designer-tab-groups.md). Its browser place is dropped.
 - Chips (their id `c:<n>` is an index, not stable), unsaved tabs and a content-level operator's moves stay in `localStorage` `pg_proto_pos_<style id>` (id → x, y).
-- `_sdProtoSaved()` hands `layout()` the shared places (`PGProtoHotspots.places(_pgTabProto)`), the browser's on top. `_pgTabsApplyLayout()` loads `_pgTabProto` from `sdDesign.tabLayout.layout.proto`.
+- `_sdProtoSaved()` hands `layout()` the shared places (`PGProtoHotspots.places(_pgTabProto)`), the browser's on top; a kept place overrides the arrangement (designer/prototype-arrangement.md). `_pgTabsApplyLayout()` loads `_pgTabProto` from `sdDesign.tabLayout.layout.proto`.
+- "Tidy up" in the bar empties `_pgTabProto` through `_pgTabsLayoutSave()` and this browser's places for an operator who may arrange tabs; anyone else, and view mode, clears only the browser's (designer/prototype-arrangement.md).
 
 ## What is a valid place?
 - `pg_designer_tab_layout_proto()` (PHP, in `pg_designer_tab_layout_normalize()`): key `^[ps][1-9][0-9]{0,9}$`, a `p` key only for a page of the design, x and y numeric and finite, rounded, bounded to ±1,000,000; at most 500; others dropped. The key is left out of the layout when there are none.

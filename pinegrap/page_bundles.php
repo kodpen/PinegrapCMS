@@ -320,6 +320,23 @@ $output_items = $rows
 $output_dialogs = '';
 $output_buttons = '';
 
+// The preview plays the drafts still waiting in a bundle that holds them,
+// in a tab of its own (prototype.php?bundle=<id>).
+$waiting = 0;
+
+foreach ($items as $item) {
+    if (($item['status'] === 'waiting') && !$item['draft_gone']) {
+        $waiting++;
+    }
+}
+
+$output_preview = '';
+
+if ($waiting && pg_page_bundle_holds($bundle['status'])) {
+    $output_preview = '
+        <a class="pg-button pg-button-quiet pg-button-sm" href="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/prototype.php?bundle=' . (int) $bundle['id']) . '" target="_blank" rel="noopener" title="' . h(lang('Look at the drafts of the bundle together: a link to a page it replaces opens the replacement, other links open the site.')) . '"><i class="bi bi-play-circle" aria-hidden="true"></i>' . h(lang('Preview the bundle')) . '</a>';
+}
+
 if ($may_change) {
     list($copy_body, $copy_ok) = $page_select('page_bundle_live_page', 'live_page_id', lang('Page on the site'),
         lang('A copy is made in Drafts and stands for this page: publishing the bundle puts the copy\'s design, title and description on the page. A page with an open experiment cannot be added.'),
@@ -352,6 +369,8 @@ if ($may_change) {
         <button type="button" class="btn btn-sm btn-outline theme-primary" data-bs-toggle="dialog" data-bs-target="#page_bundle_add_draft"><i class="bi bi-file-earmark-plus me-1" aria-hidden="true"></i>' . h(lang('Add a draft')) . '</button>
         <button type="button" class="btn btn-sm btn-text theme-secondary" data-bs-toggle="dialog" data-bs-target="#page_bundle_settings"><i class="bi bi-gear me-1" aria-hidden="true"></i>' . h(lang('Bundle settings')) . '</button>';
 }
+
+$output_buttons .= $output_preview;
 
 if (pg_page_bundle_may_delete($bundle['status'])) {
     $output_buttons .= '

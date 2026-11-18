@@ -22,7 +22,7 @@ description: Plan designer-panels, steps DP1 to DP5: the chrome's tokens, the ri
   - Pictures: beside `options-1-content.jpg` and `measures-2-anatomy.jpg`, parts a, d, e, g.
   - Features: D3, D6, D7, D8, D9, D11. Keeps K2, K3, K10.
 
-- DP4 (M) after DP3: the controls and the changed dot.
+- DP4 (M) after DP3: the controls and the changed dot. Done in #10285.
   - Functions: `row()`, `mkRespRow()`, `mkNonRespRow()`; `.sd-prop-modified` becomes the dot.
   - Tests: reset as one undo step; an invalid value not written; the selected segment clicked removes the value; the size badge only on a value that starts at a size.
   - Pictures: every state of `measures-3-controls.jpg`, one crop each.

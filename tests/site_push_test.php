@@ -328,10 +328,10 @@ function test_site_push_send_plan()
 	pg_assert_same('busy', pg_push_outcome(429), '429 is busy');
 
 	$run = pg_test_function_source('pg_site_push_queue_run');
-	pg_assert_contains('isset($held[$row[\'service\']])', $run, 'a held service is skipped for the rest of the pass');
+	pg_assert_contains('pg_site_push_group_due($group, $held, $dropped)', $run, 'a held service is skipped for the rest of the pass');
 	pg_assert_contains('s.service = ?', $run, 'every waiting row of the held service waits');
 	pg_assert_contains('pg_cron_claim(PG_SITE_PUSH_LOCK', $run, 'one run at a time');
-	pg_assert_true(strpos($run, 'pg_cron_claim(') < strpos($run, 'pg_site_push_deliver('), 'claimed before sending');
+	pg_assert_true(strpos($run, 'pg_cron_claim(') < strpos($run, 'pg_site_push_deliver_many('), 'claimed before sending');
 	pg_assert_false(strpos($run, 'push_subscriptions') !== false, 'never the panel\'s table');
 }
 
@@ -365,6 +365,60 @@ function test_site_push_refused_subscription_removed()
 	pg_assert_contains('DELETE FROM site_push_queue', $drop, 'its queue rows go');
 	pg_assert_contains('DELETE FROM site_push_subscription', $drop, 'the subscription goes');
 	pg_assert_contains('pg_site_push_watch_forget(', $drop, 'its waits go');
+}
+
+function _site_push_test_row($message, $subscription, $service)
+{
+	return array('message_id' => (string) $message, 'subscription_id' => (string) $subscription, 'service' => $service, 'endpoint' => 'https://push.example/' . $subscription);
+}
+
+function test_site_push_page_groups()
+{
+	$rows = array();
+
+	for ($i = 1; $i <= PG_SITE_PUSH_PASS_ROWS; $i++) {
+		$rows[] = _site_push_test_row(7, $i, 'fcm');
+	}
+
+	$groups = pg_site_push_groups($rows);
+	pg_assert_same(20, PG_SITE_PUSH_GROUP, 'twenty pushes on the wire at once');
+	pg_assert_same(5, count($groups), 'a page of 100 is five groups');
+	pg_assert_same('1', $groups[0][0]['subscription_id'], 'the page keeps its order');
+	pg_assert_same('100', $groups[4][19]['subscription_id'], 'the last group ends with the last row');
+	pg_assert_same(array(array($rows[0]), array($rows[1])), pg_site_push_groups(array_slice($rows, 0, 2), 1), 'a group of one');
+	pg_assert_same(array(), pg_site_push_groups(array()), 'an empty page sends nothing');
+}
+
+function test_site_push_held_service_leaves_later_groups()
+{
+	$group = array(_site_push_test_row(1, 1, 'fcm'), _site_push_test_row(1, 2, 'apple'), _site_push_test_row(1, 3, 'fcm'), _site_push_test_row(1, 4, 'mozilla'));
+
+	pg_assert_same($group, pg_site_push_group_due($group, array(), array()), 'nothing held: the whole group goes');
+
+	$due = pg_site_push_group_due($group, array('fcm' => true), array());
+	pg_assert_same(array('2', '4'), array_column($due, 'subscription_id'), 'a service held in an earlier group is left');
+
+	$due = pg_site_push_group_due($group, array(), array(4 => true));
+	pg_assert_same(array('1', '2', '3'), array_column($due, 'subscription_id'), 'a subscription removed earlier is left');
+}
+
+function test_site_push_page_after_the_last_row()
+{
+	$first = pg_site_push_page_sql(5000, 0, 0);
+	pg_assert_contains("q.next_at <= '5000'", $first, 'only due rows');
+	pg_assert_contains("q.message_id > '0' OR (q.message_id = '0' AND q.subscription_id > '0')", $first, 'the first page starts at the beginning');
+	pg_assert_contains('ORDER BY q.message_id, q.subscription_id', $first, 'oldest message first');
+	pg_assert_contains('LIMIT ' . PG_SITE_PUSH_PASS_ROWS, $first, 'one page at a time');
+
+	$next = pg_site_push_page_sql(5000, 12, 340);
+	pg_assert_contains("q.message_id > '12' OR (q.message_id = '12' AND q.subscription_id > '340')", $next, 'the next page starts after the last row');
+	pg_assert_contains("q.subscription_id > '0'", pg_site_push_page_sql(5000, '1 OR 1=1', 'x'), 'the cursor is a number');
+
+	$run = pg_test_function_source('pg_site_push_queue_run');
+	pg_assert_contains('pg_site_push_page_sql($now, $after[0], $after[1])', $run, 'the pass reads page after page');
+	pg_assert_contains('count($rows) === PG_SITE_PUSH_PASS_ROWS', $run, 'a short page is the last');
+	pg_assert_contains('break 2', $run, 'the budget ends the pass between groups');
+	pg_assert_contains('api_http_request_many(', pg_test_function_source('pg_site_push_deliver_many'), 'a group goes out together');
 }
 
 function test_site_push_dropped_after_a_day_and_tidied()

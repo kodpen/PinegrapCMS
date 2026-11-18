@@ -23,4 +23,4 @@ description: Designer Overview drop targets (#10263): the gap between rows as on
 ## Which functions are pure, and where is the test?
 - `_sdTreeDropPick(p)` (zone, target, line indent, words), `_sdTreeDropWhy(code, name)` and `_sdTreeDropLabelPlace()` in `style_designer.src.js`, run under Node by `tests/designer_overview_drop_test.php`: the 7 px reach, the middle 14 px, a level only among legal parents, a refused target's reason, the label kept in a 1440 and a 390 px window.
 - The targets of one row and zone are asked once per drag (`_sdTreeDropMemo`), not on every pointer move.
-- Long drags (folding, opening after 600 ms, scroll zones, Esc) and moving without dragging are later steps of the plan.
+- Long drags (folding, opening after 600 ms, scroll zones, Esc): `overview-long-drags.md`. Moving without dragging is a later step of the plan.
