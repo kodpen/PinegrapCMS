@@ -13,7 +13,7 @@ description: The Prototype view's links panel: the selected frame's links out an
 - "Open in the editor", an icon on the panel row, opens it (`_sdProtoOpenRow(frame, port)`, the tab opened, the node selected).
 - A drawable row's target (K2) is a control on its own line under the label (`.sd-proto-li-target`, the name in a box with a caret, "Choose a page" in amber for a link without a target, the why in red for a broken one); it and L, the menu key or Shift+F10 on the row open today's target menu (`_sdProtoMenuOpen(frame, port, anchor)`), placed at the control and giving the focus back to it.
 - A row that may not be drawn keeps "→ target" or "No target" as text. `PGProtoHotspots.rowTarget(row)` says which: `{ control, state: empty|broken|set }`.
-- The control takes the row's width and cuts a long name with an ellipsis: checked at 1,100, 1,400 and 2,000 px, nothing passes the panel's right edge. Before (#PRNUM) the target was grey text and "Change target" a 24 px icon at the row's far end (owner, agent channel message 9492: the links were hard to reach).
+- The control takes the row's width and cuts a long name with an ellipsis: checked at 1,100, 1,400 and 2,000 px, nothing passes the panel's right edge. Before (#10394) the target was grey text and "Change target" a 24 px icon at the row's far end (owner, agent channel message 9492: the links were hard to reach).
 - A change of the selected frame lets go of a picked link that is neither the frame's own nor one into it; a redraw lets go of one whose row is gone.
 
 ## Where are the problems?
