@@ -6891,9 +6891,65 @@ function ws_api_task_seen_sql($viewer, $alias)
 }
 
 /**
+ * SQL for the discussions a person is a member of, opened on messages of the
+ * given channels: the candidates ws_api_readable_thread_ids() checks, each
+ * read as a channel there.
+ *
+ * @param int   $user_id
+ * @param int[] $parent_ids
+ * @return string empty when no channel is given
+ */
+function ws_api_thread_ids_sql($user_id, $parent_ids)
+{
+    $parent_ids = array_values(array_unique(array_filter(array_map('intval', (array) $parent_ids))));
+
+    if (empty($parent_ids) || ((int) $user_id <= 0)) {
+        return '';
+    }
+
+    return "SELECT t.channel_id FROM ws_threads t
+        INNER JOIN ws_channel_members m ON m.channel_id = t.channel_id AND m.user_id = '" . (int) $user_id . "'
+        WHERE t.parent_channel_id IN (" . implode(',', $parent_ids) . ")";
+}
+
+/**
+ * The ids of the discussions the owner may read, opened in the given
+ * channels: those they are a member of while they read the channel it is
+ * about (ws_can_read_channel()); for the application Claude works through,
+ * only those Claude may be asked in.
+ *
+ * @param array $viewer
+ * @param int[] $parent_ids ws_api_readable_channel_ids()
+ * @return int[]
+ */
+function ws_api_readable_thread_ids($viewer, $parent_ids)
+{
+    $sql = (function_exists('ws_threads_ready') && ws_threads_ready()) ? ws_api_thread_ids_sql($viewer['id'] ?? 0, $parent_ids) : '';
+
+    if ($sql === '') {
+        return array();
+    }
+
+    $claude = ws_api_is_claude();
+    $ids = array();
+
+    foreach ((array) db_values($sql) as $id) {
+        $channel = ws_channel((int) $id);
+
+        if (!$channel || !ws_can_read_channel($viewer, $channel) || ($claude && !ws_claude_channel_allowed($channel))) {
+            continue;
+        }
+
+        $ids[] = (int) $id;
+    }
+
+    return $ids;
+}
+
+/**
  * Which proposed changes the owner may read, as SQL over ws_ai_changes c:
- * those under answers in the channels the owner reads, and those waiting on
- * the tasks they see.
+ * those under answers in the channels and discussions the owner reads, and
+ * those waiting on the tasks they see.
  *
  * @param array $viewer
  * @return string
@@ -6902,6 +6958,7 @@ function ws_api_changes_reach_sql($viewer)
 {
     $reach = array();
     $channel_ids = ws_api_readable_channel_ids($viewer);
+    $channel_ids = array_merge($channel_ids, ws_api_readable_thread_ids($viewer, $channel_ids));
 
     if (!empty($channel_ids)) {
         $reach[] = "c.channel_id IN (" . implode(',', $channel_ids) . ")";
