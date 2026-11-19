@@ -164,6 +164,15 @@ function test_workspace_wtable_import_guess()
 	pg_assert_same('text', ws_wtable_import_guess(array('Ada', 'Bob', 'Cem', 'Dan'))['type'], 'labels all different are text');
 	pg_assert_same('text', ws_wtable_import_guess(array('Open', 'Open', 'Done'))['type'], 'too few values for a status');
 	pg_assert_same('text', ws_wtable_import_guess(array('12', 'twelve'))['type']);
+
+	// Phone numbers and postal codes are codes: as numbers they would lose
+	// their leading zero and their spacing.
+	pg_assert_same('text', ws_wtable_import_guess(array('0532 123 45 67', '0555 111 22 33'))['type'], 'phone numbers');
+	pg_assert_same('text', ws_wtable_import_guess(array('+90 532 111 22 33', '+49 30 1234567'))['type'], 'phone numbers with a country code');
+	pg_assert_same('text', ws_wtable_import_guess(array('532 123 45 67', '555 111 22 33'))['type'], 'digits grouped other than in thousands');
+	pg_assert_same('text', ws_wtable_import_guess(array('06100', '48000'))['type'], 'postal codes with a leading zero');
+	pg_assert_same('number', ws_wtable_import_guess(array('0', '0,5', '1 500', '-2'))['type'], 'a nought, a fraction and thousands are numbers');
+	pg_assert_same('number', ws_wtable_import_guess(array('34000', '48000'))['type'], 'whole numbers with no leading zero');
 }
 
 function test_workspace_wtable_import_match()
@@ -258,6 +267,26 @@ function test_workspace_wtable_import_row_cells()
 	pg_assert_same(array(3 => null), ws_wtable_import_row_cells(array('x'), array(1 => 3, 5 => 99), $columns), 'a short row and a gone column');
 }
 
+// The cells a file row fills: a box the file says no to is filled, so a
+// keyed import unticks it; an empty field fills nothing.
+function test_workspace_wtable_import_filled()
+{
+	$columns = array(3 => array('type' => 'text'), 4 => array('type' => 'checkbox'));
+	$map = array(0 => 3, 1 => 4);
+
+	$row = array('A', 'no');
+	pg_assert_same(array(3 => 'A', 4 => false), ws_wtable_import_filled($row, $map, ws_wtable_import_row_cells($row, $map, $columns)), 'no is written');
+
+	$row = array('A', '');
+	pg_assert_same(array(3 => 'A'), ws_wtable_import_filled($row, $map, ws_wtable_import_row_cells($row, $map, $columns)), 'an empty field is not');
+
+	$row = array('', 'hayır');
+	pg_assert_same(array(4 => false), ws_wtable_import_filled($row, $map, ws_wtable_import_row_cells($row, $map, $columns)), 'a row of a no alone is no empty row');
+
+	$row = array('', '');
+	pg_assert_same(array(), ws_wtable_import_filled($row, $map, ws_wtable_import_row_cells($row, $map, $columns)));
+}
+
 function test_workspace_wtable_import_file_table()
 {
 	$path = tempnam(sys_get_temp_dir(), 'pg_test_');
@@ -270,6 +299,13 @@ function test_workspace_wtable_import_file_table()
 	pg_assert_true($read['more'], 'a longer file is told');
 	pg_assert_true(!ws_wtable_import_file_table($path, 'list.csv', 10)['more']);
 	pg_assert_true(!ws_wtable_import_file_table($path, 'list.txt', 10)['ok'], 'only CSV and spreadsheets');
+
+	// Turkish Excel saves "CSV (comma delimited)" in Windows-1254.
+	file_put_contents($path, "Ad;\xDEehir\nAy\xFEe;\xDDzmir\nG\xFCl;Mu\xF0la\n");
+	$read = ws_wtable_import_file_table($path, 'list.csv', 10);
+
+	pg_assert_same(array(array('Ad', 'Şehir'), array('Ayşe', 'İzmir'), array('Gül', 'Muğla')), $read['table'], 'a file not in UTF-8 is read as the Turkish code page');
+	pg_assert_true(ws_wtable_import_keep_json($read['table']) !== '', 'the read table can be kept');
 
 	file_put_contents($path, "\n\n");
 	pg_assert_true(!ws_wtable_import_file_table($path, 'list.csv', 10)['ok'], 'an empty file');

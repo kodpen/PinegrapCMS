@@ -1081,6 +1081,16 @@ function ws_wtable_column_input_check($input, $old = null)
             $given['key'] = true;
         }
 
+        // Nor do they reset a number's or an amount's decimals or currency:
+        // a money column's amounts are minor units of its decimals.
+        if (($old !== null) && (($type === 'number') || ($type === 'money'))) {
+            foreach (array('decimals', 'currency') as $kept) {
+                if (!array_key_exists($kept, $given) && isset($old['options'][$kept])) {
+                    $given[$kept] = $old['options'][$kept];
+                }
+            }
+        }
+
         $options = ws_wtable_column_options_check($type, $given);
 
         if (!$options['ok']) {
@@ -1884,6 +1894,23 @@ function ws_wtable_column($table_id, $column_id)
 }
 
 /**
+ * Do a money column's new options keep its amounts at other decimals? Its
+ * cells are minor units of the decimals, so they must be rescaled. Pure.
+ *
+ * @param array $column  the column as it is
+ * @param array $options the options it is given, checked
+ * @return bool
+ */
+function ws_wtable_money_decimals_changed($column, $options)
+{
+    if (!is_array($column) || ((string) ($column['type'] ?? '') !== 'money') || !is_array($options) || !isset($options['decimals'])) {
+        return false;
+    }
+
+    return (int) $options['decimals'] !== (int) ($column['options']['decimals'] ?? 2);
+}
+
+/**
  * May the person rename a column or change its options? A new name is
  * written into the table's formulas that name the column
  * (ws_wtable_formulas_renamed()): formulas holds what they become, and a
@@ -1955,6 +1982,18 @@ function ws_wtable_column_update($viewer, $table, $column, $input)
 
     if (!$check['ok']) {
         return $check;
+    }
+
+    // A money column's amounts are minor units of its decimals: other
+    // decimals rescale every cell first, through the type change, so each
+    // amount keeps its value; one the new decimals would round refuses it
+    // (cells_not_converted, the cells in faults) and nothing changes.
+    if (isset($check['sets']['options']) && ws_wtable_money_decimals_changed($column, $check['sets']['options'])) {
+        $rescaled = ws_wtable_column_retype($viewer, $table, $column, array('type' => 'money', 'options' => $check['sets']['options']));
+
+        if (!$rescaled['ok']) {
+            return $rescaled;
+        }
     }
 
     $table_id = (int) $table['id'];

@@ -157,6 +157,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             $result['ok'] ? $liveform->add_notice(h(ws_wtable_screen_column_saved_text($result))) : $refused($result);
+
+            // Fewer decimals for an amount a cell holds: the cells are
+            // listed under the column, as a type change lists them.
+            if (!$result['ok'] && $column && !empty($result['faults'])) {
+                $_SESSION['software']['ws_wtable_retype'] = array(
+                    'table'  => (int) $table['id'],
+                    'column' => (int) $column['id'],
+                    'count'  => count($result['faults']),
+                    'faults' => array_slice($result['faults'], 0, 100),
+                );
+            }
+
             $back .= '#ws-wt-columns';
             break;
 
@@ -948,6 +960,8 @@ if (!$table) {
     $home = ws_wtable_home($table);
     $columns = ws_wtable_columns($id);
     $after = (is_string($_GET['after'] ?? null) && ((int) $_GET['after'] > 0)) ? (int) $_GET['after'] : 0;
+    // Two rows may share a position: the page goes on after the last row's id too.
+    $after_id = ($after && is_string($_GET['after_id'] ?? null) && ((int) $_GET['after_id'] > 0)) ? (int) $_GET['after_id'] : 0;
     $team = ws_team_members();
     $team_names = array();
 
@@ -989,10 +1003,11 @@ if (!$table) {
         // Filtered or sorted: worked out over every row, paged by an offset.
         $from = (is_string($_GET['from'] ?? null) && ((int) $_GET['from'] > 0)) ? (int) $_GET['from'] : 0;
         $after = 0;
+        $after_id = 0;
         $query_rows = ws_wtable_query_rows($columns, ws_wtable_rows($id, $columns), $query);
         $page = ws_wtable_query_page($query_rows, $from, 100);
     } else {
-        $page = ws_wtable_rows_page($id, $columns, $after, 100);
+        $page = ws_wtable_rows_page($id, $columns, $after, 100, $after_id);
 
         if ($totals_all) {
             $query_rows = ws_wtable_rows($id, $columns);
@@ -1000,7 +1015,7 @@ if (!$table) {
     }
 
     // What a link to this page of rows carries: the query and the page.
-    $page_qs = $query_qs . ($query_on ? ($from ? '&from=' . $from : '') : ($after ? '&after=' . $after : ''));
+    $page_qs = $query_qs . ($query_on ? ($from ? '&from=' . $from : '') : ws_wtable_screen_after_qs($after, $after_id));
 
     // The lookups of the rows shown, worked out for the reader.
     $page['rows'] = ws_wtable_joined_fill($viewer, $columns, $page['rows']);
@@ -1080,7 +1095,7 @@ if (!$table) {
         foreach (array('page' => lang('Rows shown'), 'all' => $query_on ? lang('All matching rows') : lang('All rows')) as $key => $label) {
             $here = (($key === 'all') === $totals_all);
             $switch_params = array_diff_key($query_params, array('totals' => 1)) + (($key === 'all') ? array('totals' => 'all') : array());
-            $totals_switch .= '<a class="btn btn-text theme-secondary' . ($here ? ' active' : '') . '" href="' . h($table_url . (empty($switch_params) ? '' : '&' . http_build_query($switch_params)) . ($query_on ? ($from ? '&from=' . $from : '') : ($after ? '&after=' . $after : ''))) . '#ws-wt-rows"'
+            $totals_switch .= '<a class="btn btn-text theme-secondary' . ($here ? ' active' : '') . '" href="' . h($table_url . (empty($switch_params) ? '' : '&' . http_build_query($switch_params)) . ($query_on ? ($from ? '&from=' . $from : '') : ws_wtable_screen_after_qs($after, $after_id))) . '#ws-wt-rows"'
                 . ($here ? ' aria-current="true"' : '') . '>' . h($label) . '</a>';
         }
 
@@ -1135,7 +1150,7 @@ if (!$table) {
     }
 
     if ($page['next'] !== null) {
-        $pager .= '<a class="btn btn-sm btn-text theme-secondary ms-auto" href="' . h($table_url . $query_qs . ($query_on ? '&from=' : '&after=') . (int) $page['next']) . '#ws-wt-rows">' . h(lang('Next page')) . '<i class="bi bi-chevron-right ms-1" aria-hidden="true"></i></a>';
+        $pager .= '<a class="btn btn-sm btn-text theme-secondary ms-auto" href="' . h($table_url . $query_qs . ($query_on ? '&from=' . (int) $page['next'] : ws_wtable_screen_after_qs((int) $page['next'], (int) ($page['next_id'] ?? 0)))) . '#ws-wt-rows">' . h(lang('Next page')) . '<i class="bi bi-chevron-right ms-1" aria-hidden="true"></i></a>';
     }
 
     if (empty($columns)) {

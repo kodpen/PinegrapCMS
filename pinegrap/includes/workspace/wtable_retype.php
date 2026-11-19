@@ -36,8 +36,8 @@ function ws_wtable_retype_types()
 }
 
 /**
- * Is it a change of type? Both types change, and they differ, or a list
- * turns from texts to numbers or back. Pure.
+ * Is it a change of type? Both types change, and they differ, a list
+ * turns from texts to numbers or back, or money takes other decimals. Pure.
  *
  * @param array $from column: type, options
  * @param array $to   column: type, options
@@ -53,7 +53,8 @@ function ws_wtable_retype_is_change($from, $to)
         return false;
     }
 
-    return ($a !== $b) || (($a === 'list') && (ws_wtable_list_of($from) !== ws_wtable_list_of($to)));
+    return ($a !== $b) || (($a === 'list') && (ws_wtable_list_of($from) !== ws_wtable_list_of($to)))
+        || (($a === 'money') && (ws_wtable_retype_unit($from) !== ws_wtable_retype_unit($to)));
 }
 
 /**
@@ -177,8 +178,9 @@ function ws_wtable_retype_candidate($from, $to, $value)
         return ws_wtable_retype_candidate($item_from, $to, $items[0]);
     }
 
-    // An item of a list into the type it already is.
-    if ($a === $b) {
+    // An item of a list into the type it already is; money at other
+    // decimals is rescaled below.
+    if (($a === $b) && ($a !== 'money')) {
         return $give($value);
     }
 
@@ -208,6 +210,24 @@ function ws_wtable_retype_candidate($from, $to, $value)
             return $none;
 
         case 'money':
+            // Other decimals: the same amount in the new minor units, worked
+            // out in whole numbers; a fraction the new decimals cannot hold
+            // is listed, never rounded away.
+            if ($a === 'money') {
+                $was = ws_wtable_retype_unit($from);
+                $now = ws_wtable_retype_unit($to);
+
+                if (!is_int($value)) {
+                    return $none;
+                }
+
+                if ($now >= $was) {
+                    return $give($value * intdiv($now, $was));
+                }
+
+                return ($value % intdiv($was, $now) === 0) ? $give(intdiv($value, intdiv($was, $now))) : array('value' => null, 'error' => 'decimals_lost');
+            }
+
             if ($a === 'number') {
                 return is_numeric($value) ? ws_wtable_retype_minor((float) $value, $to) : $none;
             }

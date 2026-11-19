@@ -149,6 +149,50 @@ function test_workspace_wtable_retype_from_numbers()
 	pg_assert_same(array(3), ws_wtable_retype_test('number', 'list', 3, array(), array('of' => 'number')));
 }
 
+// A money column's decimals change: amounts are kept in minor units, so
+// every cell is rescaled to keep its value, never read at the new scale.
+function test_workspace_wtable_retype_money_decimals()
+{
+	$money = function ($decimals) {
+		return array('type' => 'money', 'options' => array('decimals' => $decimals, 'currency' => 'TRY'));
+	};
+
+	pg_assert_true(ws_wtable_retype_is_change($money(2), $money(0)), 'other decimals are a change');
+	pg_assert_false(ws_wtable_retype_is_change($money(2), $money(2)), 'the same decimals are none');
+	pg_assert_same(125050, ws_wtable_retype_test('money', 'money', 12505, array('decimals' => 1), array('decimals' => 2)), '1250,5 at two decimals');
+	pg_assert_same(13, ws_wtable_retype_test('money', 'money', 1300, array('decimals' => 2), array('decimals' => 0)), '13,00 at no decimals');
+	pg_assert_same('error:decimals_lost', ws_wtable_retype_test('money', 'money', 1250, array('decimals' => 2), array('decimals' => 0)), '12,50 is never rounded away');
+	pg_assert_same(1250, ws_wtable_retype_test('money', 'money', 125, array('decimals' => 1), array()), 'no decimals given: two');
+
+	$rows = array(array('id' => 1, 'label' => 1, 'cells' => array('4' => 1250)), array('id' => 2, 'label' => 2, 'cells' => array('4' => 99)));
+	$plan = ws_wtable_retype_rows(array('id' => 4) + $money(2), $money(3), $rows);
+	pg_assert_same(array('row:1' => 12500, 'row:2' => 990), $plan['changed']);
+	pg_assert_same(array(), $plan['faults']);
+
+	$check = ws_wtable_retype_input_check(array('id' => 4) + $money(2), array('type' => 'money', 'options' => array('decimals' => 0, 'currency' => 'TRY')));
+	pg_assert_true($check['ok'], 'a decimals change goes through the type change');
+	pg_assert_same('type_same', ws_wtable_retype_input_check(array('id' => 4) + $money(2), array('type' => 'money', 'options' => array('decimals' => 2, 'currency' => 'EUR')))['error'], 'a currency alone changes no cell');
+	pg_assert_true(ws_wtable_money_decimals_changed(array('id' => 4) + $money(2), array('decimals' => 0)), 'the column form asks for a rescale');
+	pg_assert_false(ws_wtable_money_decimals_changed(array('id' => 4) + $money(2), array('decimals' => 2, 'currency' => 'EUR')));
+	pg_assert_false(ws_wtable_money_decimals_changed(array('id' => 4, 'type' => 'number', 'options' => array('decimals' => 2)), array('decimals' => 0)), 'a number keeps its figure');
+}
+
+// Options sent without decimals or currency keep the column's own: a
+// partial update never resets a money column to two decimals.
+function test_workspace_wtable_column_options_kept()
+{
+	$old = array('id' => 4, 'name' => 'Price', 'type' => 'money', 'options' => array('decimals' => 0, 'currency' => 'EUR'));
+	$check = ws_wtable_column_input_check(array('options' => array('currency' => 'USD')), $old);
+	pg_assert_true($check['ok']);
+	pg_assert_same(array('decimals' => 0, 'currency' => 'USD'), $check['sets']['options']);
+
+	$check = ws_wtable_column_input_check(array('options' => array('decimals' => 1)), $old);
+	pg_assert_same(array('decimals' => 1, 'currency' => 'EUR'), $check['sets']['options']);
+
+	$number = array('id' => 5, 'name' => 'Score', 'type' => 'number', 'options' => array('decimals' => 3));
+	pg_assert_same(3, ws_wtable_column_input_check(array('options' => array()), $number)['sets']['options']['decimals']);
+}
+
 // A date, a ticked box and a list into the other types.
 function test_workspace_wtable_retype_from_dates_boxes_and_lists()
 {
