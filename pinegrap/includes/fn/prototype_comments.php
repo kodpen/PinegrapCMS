@@ -802,3 +802,317 @@ function pg_proto_comment_burst()
 
     return true;
 }
+
+/* ---------------------------------------------------------------------------
+   The designer's side: the list, the presence stamp, the bell
+   --------------------------------------------------------------------------- */
+
+/**
+ * The comments of some rows as threads: each first comment (public shape)
+ * with its answers under 'answers', both oldest first. An answer whose first
+ * comment is not among the rows is left out. Pure.
+ *
+ * @param array[] $rows prototype_comments rows, in any order
+ * @return array[]
+ */
+function pg_proto_comment_threads($rows)
+{
+    $roots = array();
+    $answers = array();
+
+    foreach ((array) $rows as $row) {
+        if (!is_array($row) || !isset($row['id'])) {
+            continue;
+        }
+
+        if ((int) $row['parent_id'] === 0) {
+            $roots[(int) $row['id']] = pg_proto_comment_public($row) + array('answers' => array());
+        } else {
+            $answers[(int) $row['id']] = $row;
+        }
+    }
+
+    ksort($roots);
+    ksort($answers);
+
+    foreach ($answers as $row) {
+        $root = (int) $row['parent_id'];
+
+        if (isset($roots[$root])) {
+            $roots[$root]['answers'][] = pg_proto_comment_public($row);
+        }
+    }
+
+    return array_values($roots);
+}
+
+/**
+ * The designer's list: the threads grouped by page, the design's pages in
+ * the order given and a page that is gone (no name) after them; in a page the
+ * open threads first, then the resolved ones, each newest first; the open and
+ * resolved counts. A page without comments is left out. Pure.
+ *
+ * Each thread gets the number the customer sees on its pin ('n'): the
+ * viewer reads one page of one link and numbers its threads by the first
+ * comment, oldest first, resolved ones counted (pg_proto_comments.js,
+ * threads()); so numbers run per page and link. 'link_hint' names the link
+ * as the Share prototype dialog lists it, 'links' counts a page's links.
+ *
+ * @param array[] $threads pg_proto_comment_threads()
+ * @param array   $pages   page_id => name, in the order they are listed
+ * @param array   $hints   link_id => token_hint
+ * @return array[] page_id, name, open, resolved, links, threads
+ */
+function pg_proto_comment_list_pages($threads, $pages, $hints = array())
+{
+    $by_page = array();
+
+    foreach ((array) $threads as $thread) {
+        $by_page[(int) $thread['page_id']][] = $thread;
+    }
+
+    $order = array();
+
+    foreach ((array) $pages as $page_id => $name) {
+        if (isset($by_page[(int) $page_id])) {
+            $order[(int) $page_id] = (string) $name;
+        }
+    }
+
+    $gone = array_diff(array_keys($by_page), array_keys($order));
+    sort($gone);
+
+    foreach ($gone as $page_id) {
+        $order[(int) $page_id] = '';
+    }
+
+    $out = array();
+
+    foreach ($order as $page_id => $name) {
+        $list = $by_page[$page_id];
+
+        usort($list, function ($a, $b) {
+            return (int) $a['id'] - (int) $b['id'];
+        });
+
+        $count = array();
+
+        foreach ($list as $i => $thread) {
+            $link = (int) $thread['link_id'];
+            $count[$link] = isset($count[$link]) ? $count[$link] + 1 : 1;
+            $list[$i]['n'] = $count[$link];
+            $list[$i]['link_hint'] = isset($hints[$link]) ? (string) $hints[$link] : '';
+        }
+
+        usort($list, function ($a, $b) {
+            $a_open = ((int) $a['resolved_at'] === 0);
+            $b_open = ((int) $b['resolved_at'] === 0);
+
+            if ($a_open !== $b_open) {
+                return $a_open ? -1 : 1;
+            }
+
+            return (int) $b['id'] - (int) $a['id'];
+        });
+
+        $open = 0;
+
+        foreach ($list as $thread) {
+            $open += ((int) $thread['resolved_at'] === 0) ? 1 : 0;
+        }
+
+        $out[] = array(
+            'page_id' => (int) $page_id,
+            'name' => $name,
+            'open' => $open,
+            'resolved' => count($list) - $open,
+            'links' => count($count),
+            'threads' => $list,
+        );
+    }
+
+    return $out;
+}
+
+/**
+ * The designer's list of a design: every comment of its draft pages, over
+ * all its links, as pg_proto_comment_list_pages() gives it. The page names
+ * are read from the page table; a deleted page's comments stay and are
+ * listed without a name. The links' hints come from prototype_links.
+ *
+ * @param int $style_id
+ * @return array[]
+ */
+function pg_proto_comments_list_of_style($style_id)
+{
+    if (((int) $style_id <= 0) || !pg_proto_comments_ready()) {
+        return array();
+    }
+
+    $rows = db_items("SELECT * FROM prototype_comments WHERE style_id = '" . (int) $style_id . "' ORDER BY id LIMIT 2000");
+    $rows = is_array($rows) ? $rows : array();
+    $ids = array();
+    $link_ids = array();
+
+    foreach ($rows as $row) {
+        $ids[(int) $row['page_id']] = (int) $row['page_id'];
+        $link_ids[(int) $row['link_id']] = (int) $row['link_id'];
+    }
+
+    $pages = array();
+
+    if ($ids) {
+        $named = db_items("SELECT page_id, page_name FROM page WHERE page_id IN (" . implode(',', $ids) . ") ORDER BY page_name");
+
+        foreach (is_array($named) ? $named : array() as $page) {
+            $pages[(int) $page['page_id']] = (string) $page['page_name'];
+        }
+    }
+
+    $hints = array();
+
+    if ($link_ids) {
+        $links = db_items("SELECT id, token_hint FROM prototype_links WHERE id IN (" . implode(',', $link_ids) . ")");
+
+        foreach (is_array($links) ? $links : array() as $link) {
+            $hints[(int) $link['id']] = (string) $link['token_hint'];
+        }
+    }
+
+    return pg_proto_comment_list_pages(pg_proto_comment_threads($rows), $pages, $hints);
+}
+
+/**
+ * The statement that reads a design's stamp; '' for no design. idx_style
+ * (style_id) carries the id, so the newest id is read from the index.
+ *
+ * @param int $style_id
+ * @return string
+ */
+function pg_proto_comments_style_stamp_sql($style_id)
+{
+    return ((int) $style_id > 0) ? 'SELECT MAX(id) FROM prototype_comments WHERE style_id = ' . (int) $style_id : '';
+}
+
+/**
+ * The newest comment's id over a design, 0 for none: what the presence
+ * answer carries to a designer, so the editor fetches the list only when it
+ * moves. A comment on any page of the design moves it, open as a tab or not.
+ *
+ * @param int $style_id
+ * @return int
+ */
+function pg_proto_comments_style_stamp($style_id)
+{
+    $sql = pg_proto_comments_style_stamp_sql($style_id);
+
+    if (($sql === '') || !pg_proto_comments_ready()) {
+        return 0;
+    }
+
+    return (int) db_value($sql);
+}
+
+/**
+ * The bell line's words for a guest's comment, in the reader's language:
+ * the short title, the text under it (who, on which page) and the whole
+ * sentence. An empty name or page (a deleted comment or page) gives a
+ * text without them. Pure but for lang().
+ *
+ * @param string $page_name
+ * @param string $guest_name
+ * @return array short, brief, title
+ */
+function pg_proto_comment_bell_words($page_name, $guest_name)
+{
+    $page_name = (string) $page_name;
+    $guest_name = (string) $guest_name;
+    $short = lang('New prototype comment');
+
+    if (($page_name !== '') && ($guest_name !== '')) {
+        $brief = lang(array('string' => '{var:1} on {var:2}', 'vars' => array($guest_name, $page_name)));
+        $title = lang(array('string' => '{var:1} commented on the prototype of {var:2}.', 'vars' => array($guest_name, $page_name)));
+    } elseif ($page_name !== '') {
+        $brief = $page_name;
+        $title = lang(array('string' => 'A comment was written on the prototype of {var:1}.', 'vars' => array($page_name)));
+    } else {
+        $brief = lang('A comment on a prototype');
+        $title = lang('A comment was written on a prototype.');
+    }
+
+    return array('short' => $short, 'brief' => $brief, 'title' => $title);
+}
+
+/**
+ * Where the bell line leads: the design open on the page, with the
+ * Comments list open; the pages list when the design is gone.
+ *
+ * @param int $style_id
+ * @param int $page_id
+ * @return string
+ */
+function pg_proto_comment_bell_url($style_id, $page_id)
+{
+    if ((int) $style_id <= 0) {
+        return 'view_pages.php';
+    }
+
+    return 'edit_system_style.php?id=' . (int) $style_id . '&page=' . (int) $page_id . '&comments=1';
+}
+
+/**
+ * Tells the link's maker that a guest wrote on it: one bell line, at most one
+ * an hour per link. The hour is a firewall rate counter with the link's id as
+ * its subject (as the note lock's mail is counted), so no column on the link
+ * keeps it. A staff answer rings nothing.
+ *
+ * @param array $link prototype_links row
+ * @param array $row  the saved prototype_comments row
+ * @return bool whether a line was written
+ */
+function pg_proto_comment_bell($link, $row)
+{
+    if (!is_array($link) || !is_array($row) || ((int) $row['user_id'] > 0)) {
+        return false;
+    }
+
+    $maker = isset($link['created_by']) ? (int) $link['created_by'] : 0;
+
+    if ($maker <= 0) {
+        return false;
+    }
+
+    include_once(PG_FUNCTIONS_DIR . '/includes/notifications.php');
+
+    if (!pg_notification_targets_available()) {
+        return false;
+    }
+
+    if (function_exists('waf_rate_exceeded') && waf_rate_exceeded((string) (int) $link['id'], 'prototype-comment-bell', 1, 3600)) {
+        return false;
+    }
+
+    // The page's name: the words are made when the line is read.
+    $page = (string) db_value("SELECT page_name FROM page WHERE page_id = '" . (int) $row['page_id'] . "' LIMIT 1");
+
+    return (bool) db_q("INSERT INTO notifications (action, type, title, target_user_id, reference_id, user, readed, timestamp)
+        VALUES ('prototype_comment', 'info', ?, ?, ?, '', '0', UNIX_TIMESTAMP())",
+        array(mb_substr($page, 0, 250, 'UTF-8'), $maker, (int) $row['id']));
+}
+
+/**
+ * A bell line's words and address as the bell draws them: the guest's name
+ * and the design read through reference_id (the comment), the page's name
+ * from the title.
+ *
+ * @param array $notification
+ * @return array short, brief, title, url
+ */
+function pg_proto_comment_bell_display($notification)
+{
+    $row = pg_proto_comment_get(isset($notification['reference_id']) ? (int) $notification['reference_id'] : 0);
+    $words = pg_proto_comment_bell_words(isset($notification['title']) ? (string) $notification['title'] : '', $row ? (string) $row['author_name'] : '');
+
+    return $words + array('url' => $row ? pg_proto_comment_bell_url($row['style_id'], $row['page_id']) : 'view_pages.php');
+}
+

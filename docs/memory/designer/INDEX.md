@@ -311,6 +311,7 @@
 - designer-blocks-hotel.md: The Hotel block family (hotel- prefix, own palette group): room showcase, stay clock; general blocks placed instead; rules, test
 - designer-blocks-launch.md: The launch- block family (Product Launch): six blocks, their interactions, bento-features and the Variant Picker reused, the sticky spec head
 - designer-blocks-library.md: The Library block family (library- prefix): shelf hero with today's hours and formats, shelf mark guide with the ten subject classes, library card with its loans table
+- designer-blocks-listen.md: The listen- block family (Listen group): the "Listen" block that reads the article aloud in the visitor's browser; its buttons, canvas and Preview, the d-flex trap, what is left out
 - designer-blocks-marina.md: The Marina block family (marina- prefix, its own palette group): the pontoon plan and the arrival by sea, the blocks a marina places instead of adding, its pg-marina-* rules, its test
 - designer-blocks-museum.md: The Museum block family (museum- prefix, own palette group): exhibition hero, look closer, highlights trail; general blocks placed instead; rules, test
 - designer-blocks-music.md: The Music block family (music- prefix, own palette group): release hero, tour dates, press kit; general blocks placed instead; rules, test
@@ -394,6 +395,7 @@
 - designer-options-panel-names.md: How controls of the visual editor's Options/Appearance panel get their accessible names (one naming pass), keyboard section headers, per-screen-size toggles, Styles inspector names
 - designer-options-panel-search.md: Options panel Search... box in the designer (filterPropertiesPanel()): what it matches, sections without rows, the No option matches line, Turkish İ and capitals
 - designer-options-section-cards.md: The Options panel's identity row and section cards (D3, D6–D9, D11): own section first and open, general sections closed with a count and summary, closed bodies not drawn, one source for changed rows [decision: here]
+- designer-options-style-advanced.md: The Options panel's Style and Advanced tabs (DP5b): the sections' names and order, which open by themselves, the card ids a renamed section keeps
 - designer-options-tabs.md: The Options panel's three tabs Content, Style and Advanced (D4, D5, D14): which section goes where, the tab kept per kind, only the open tab built, the closed Translation and Bind data summaries
 - designer-overview-follows-selection.md: The designer's Overview tree follows the selection from every panel: one place opens and scrolls to the row (_sdTreeRevealSelection), identity lookup, instant scroll, when it must not move.
 - designer-page-names.md: Which names a visual-editor page may take: other pages, files, short links, site root entries, sitemap.xml/robots.txt, site language codes; why check_name_availability() is not used on the save path.
@@ -411,6 +413,7 @@
 - designer-preview-page-scripts.md: Platform scripts a designer page gets from its markup (theme switcher, tooltips/popovers, scroller buttons) on the page and in the Preview; one Bootstrap bundle; Preview link guard and dark view.
 - designer-preview-play.md: Links in the designer's Preview (#1867): a page link plays the open tab of that name, unsaved too; others open the site in a new tab; the Hotspots toggle
 - designer-prototype-comments-door.md: Prototype comments (prototype_comments): what a row keeps, the guest's door prototype_comment.php and its gates, the limits, plain text, delete with the design [decision: here]
+- designer-prototype-comments-list.md: The designer's side of prototype comments: the Comments button, pins on the canvas, the Prototype comments list, numbers as the customer sees them, the presence stamp, the bell line [decision: here]
 - designer-prototype-comments-rules.md: Prototype comments: what a later change must keep (a deleted link takes its comments, a deleted page's comments stay, personal data erase), and the architect's schema answer [decision: here]
 - designer-prototype-comments-viewer.md: The prototype viewer's comment mode for a share link with "Allow comments": node marks in the frame, the Comment button, the box, pins and threads, "Not on the page any more", what the frame may say
 - designer-prototype-share-link-frame.md: A prototype share link's frame: signed by link id (never the token), bound to the viewer's session; clicks go back through the viewer, new tabs by ?l=<id>; a failing page shows no reason

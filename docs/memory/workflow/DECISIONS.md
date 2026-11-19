@@ -421,6 +421,10 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-78.md: Where are the rules and the earlier parts?
 - decisions-made-product-78.md: Can a page's links be changed from the Prototype view with ease? (owner, 2026-11-19, in the architect's window, agent channel message 9492)
 - decisions-made-product-78.md: Is Incoming e-mail pinned to the main menu, and does the dashboard get a card of it? (owner, 2026-11-19, in the architect's window, agent channel message 9493; poll 154, message 9495)
+- decisions-made-product-78.md: Is a Gmail mailbox read through a connected Google account? (owner, 2026-11-19, poll 155, channel message 9698)
+- decisions-made-product-78.md: Do the settings guide a Google connection's set-up, and are the settings pages redrawn? (owner, 2026-11-19, in the architect's window, channel message 9750)
+- decisions-made-product-79.md: Where are the rules and the earlier parts?
+- decisions-made-product-79.md: How far does the product's own Excel and Word code go? (owner, 2026-11-19, channel messages 9747 and 9751; poll 156, message 9752)
 - decisions-made-product-8.md: Does Create Label refuse a Trendyol-carried package the common label does not cover? (#3568)
 - decisions-made-product-8.md: Are the starter dumps corrected for #3330? (#3567)
 - decisions-made-product-8.md: Is marketing SMS built in 2026.11.0? (#3570)
@@ -747,6 +751,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - commerce/address-labels-by-country.md: City and state labels that follow the country (İlçe and İl for Turkey): pg_address_labels(), the render stamp in designer widgets, init_country() on classic pages, default words only
 - commerce/back-in-stock-sms.md: Back-in-stock notice by SMS (PR #1864): kind stock (transactional, owner decision), the stock_back event, the optional number field, text instead of mail, the one-message promise
 - commerce/booking-deposit-late-payment.md: A booking deposit paid after its hold ran out (#10378): booked again under the staff lock while free, else an open request, deposit awaiting refund, honest widget text
+- commerce/booking-meeting-link.md: Start file of the meeting link: a staff member's "Book a time with <name>" page book_with.php and Workspace screen My meeting link; decisions, PRs, files, left out
 - commerce/card-data-manual-processing.md: Card data with no payment gateway (manual processing): the security code never stored, the number encrypted only, masked once the order is processed; refusal without openssl; hourly sweep
 - commerce/cart-recovery-figures.md: Recovered carts figures (PR #9796): what left, reached, came back, recovered and revenue count; the Visitors section, the dashboard card, GET /reports/cart-recovery
 - commerce/cart-recovery-touches.md: Recovered carts record (cart_recovery_touch, PR #9778): the touch row, its writers, the 6-hour left and 7-day recovered rule, the no-touch row, readiness, what was left out
@@ -755,6 +760,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - commerce/course-gate.md: The course gate in get_page.php: a lesson not open yet sends the member to the classroom page with a one-time notice; the "Courses" switch reader; the first-open row
 - commerce/course-screen.md: The Courses screen (view_courses.php, edit_course.php): switch and menu link, who opens it, lessons and their save, problems named (Z17), learners, CSV, Reset progress
 - commerce/course-tables.md: Courses' data (2026.11.0, step 11.0.234): the course, course_lesson and course_progress tables, the open-lesson rule, the enrolment day, rows written once, the certificate code
+- commerce/customer-value-report.md: Customers Report (customer value: repeat purchase, value per customer, cohorts, customer groups) as built: its parts, the decisions that bind it, what was left out, each feature U1-U15 with its PR
 - commerce/gift-card-line-credit-cap.md: Store credit and plain gift cards together pay at most the part of a checkout total that is not gift card lines (pg_gift_card_applied_discount), #10258, #10267
 - commerce/gift-card-part-owed.md: How an order's gift card part is counted (architect 2026-11-17, #10259, #10260): the cards gave SUM(applied_gift_cards.amount); a return gave back order_refunds rows of type return_gift_card
 - commerce/merchant-center-push.md: Per-product push to Google Merchant Center on the outbound marketplace layer (#4389, #4423): managed provider, mapping from the feed, queue, supplemental source
@@ -836,6 +842,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - designer/designer-options-section-cards.md: The Options panel's identity row and section cards (D3, D6–D9, D11): own section first and open, general sections closed with a count and summary, closed bodies not drawn, one source for changed rows
 - designer/designer-palette-tabs-and-blocks.md: Designer palette Components tab with a Components / Blocks list switch (building blocks vs ready sections): adding a block, shared list plumbing, recents strip, tab strip width.
 - designer/designer-prototype-comments-door.md: Prototype comments (prototype_comments): what a row keeps, the guest's door prototype_comment.php and its gates, the limits, plain text, delete with the design
+- designer/designer-prototype-comments-list.md: The designer's side of prototype comments: the Comments button, pins on the canvas, the Prototype comments list, numbers as the customer sees them, the presence stamp, the bell line
 - designer/designer-prototype-comments-rules.md: Prototype comments: what a later change must keep (a deleted link takes its comments, a deleted page's comments stay, personal data erase), and the architect's schema answer
 - designer/designer-publish-sheet-held-row.md: The Publish sheet's held row: where the hold comes from (an open experiment's variant, a release bundle's draft), the bundle's label and text, the toast and box title naming the bundle
 - designer/designer-right-column.md: The designer's right column (Options and Design tabs, 336 px default, kept width, narrow form under 300 px) and the bottom panel's closed strip and remembered state
@@ -905,6 +912,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - platform/content-review-announce.md: Content review's event and task (CH3, #10008): content.review_due once per item and date from the general job, the claim, where the event is named, Make a task through ws_followup_task_open()
 - platform/content-review-rules.md: Content review (content_review, 11.0.226, #9934): the table, which items count, date states in the site's time, the next date, the person, the daily sweep
 - platform/content-review-screen.md: The Content review screen (view_content_review.php, #9967): the list read as branches, filters, sorts, columns, the row menu, what a user (role 3) sees; actions in content-review-actions.md
+- platform/content-review.md: Content review start file: a person and a "review by" date for a page or collection record, the Content review screen, what binds it, which file holds what, what is left out
 - platform/image-editor-jpeg-start-quality.md: A JPEG turned, flipped or cropped (Design Canvas, rotate buttons, Optimize) starts at the lower of 92 and its own quality, so a save is not heavier (#9118)
 - platform/import-decisions.md: Why the content importers (WordPress, WooCommerce, Shopify) are built as they are: tables, nothing overwritten, readers on fixtures, reused writers, authors, what stays out
 - platform/iys-client.md: İYS client (PR #1895): account in connect_apps iys, dry run, daily push of e-mail consent answers and pull of refusals, contacts.iys_email_status, campaign filter
@@ -1102,6 +1110,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/channel-agents-panel.md: "Agents in this channel" of Channel settings (PF7, #9615): one compact row an agent, its settings asked in plain words, the state pill's words, the picture; owner's look 2026-11-15
 - workspace/channel-item-tags.md: A tag in a channel item asks the tagged assistant or wakes the tagged agent; outside a message body (polls, tasks, shared notes, table cells) only in agent channels, by managers
 - workspace/channel-members-agents.md: A channel's agents and guests among its members (#8936, GV2): agent faces in the head; People, Agents and Guests in Channel info; last seen, a person's and a guest's only for a manager
+- workspace/channel-memory-general.md: A memory record's project (ws_channel_memory.project) and the general memory (channel_id 0) the agent channels share: who keeps it, the checks, the routes, the sweep
 - workspace/channel-memory.md: A channel's memory (ws_channel_memory) and the decision mark by a person or an agent (ws_messages.marked_by_kind): rows, routes, the index in the brief, the Memory tab
 - workspace/channel-open-items-line.md: The open items line under a channel's pin (OI1 #9783) and on GET /workspace/channels/{id} (OI2 #9827): open polls, agent questions, the running check-in, waiting approvals; whose answer each waits for
 - workspace/channel-settings-drawer.md: The Channel settings drawer (channelForm(), #9616): four tabs, icon and colour popovers by the name, switches at the row end, one versions list; what stays in Channel info

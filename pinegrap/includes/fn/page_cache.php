@@ -1748,6 +1748,7 @@ function pg_page_cache_panel_sub_actions()
                 'template_delete', 'template_discard', 'tab_layout', 'revisions_list', 'revision_get',
                 'theme_look_css', 'theme_palette_css',
                 'prototype_links', 'prototype_link_create', 'prototype_link_address', 'prototype_link_revoke', 'prototype_map',
+                'proto_comments', 'proto_comment_answer', 'proto_comment_resolve', 'proto_comment_delete',
                 'ai_state', 'ai_ask', 'ai_status', 'ai_cancel', 'ai_apply', 'ai_dismiss'),
         ),
         'designer_file' => array(

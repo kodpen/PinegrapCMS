@@ -22,8 +22,9 @@ description: The designer's parts not needed to open a page: own bundles (pg_des
 - `fonts` (#8268, D5 part 6): the Google Fonts browser, `designer-fonts-part.md`.
 - `interactions` (#8281, D5 part 7): the Interactions section's rows and fields, `designer-interactions-part.md`.
 - `treesearch` (DP13): the Overview's tree search, `overview-search-map.md`.
+- `comments` (#10042): prototype comments, `designer-prototype-comments-list.md`.
 - The assistant code that stays in the core is small and needed at open: `_sdAiBridge()` (the part's view of the editor), the "Write with AI" marks of the page fields (`_pgAiMarks*`) and the alt-text button (`_sdAiAltButton()`).
 
 ## What comes next?
-- D5 is complete: every part the plan named (AI, import, code view, theme panel, Google Fonts browser, interactions) loads on first use.
+- D5 is complete: every part the plan named loads on first use.
 - `open` with `?sd_perf=1` (`designer-performance.md`) still needs a browser on a running site: not measured before or after this part.

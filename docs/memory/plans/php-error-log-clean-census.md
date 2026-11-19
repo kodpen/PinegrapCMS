@@ -17,7 +17,7 @@ description: PHP error log census (plan php-error-log-clean, EL1): what was read
 - The commit the main checkout ran at the time of the line comes from its `HEAD` reflog; the logged line's text is read there and looked up in `origin/development` (`f1586738ca`).
 - **gone #n**: the text is no longer there; #n is the PR whose commit removed it. **gone** with a reason: read by hand.
 - **still**: the line and the 30 lines above it are unchanged. **set since**: an undefined variable that now has one more assignment, likely gone. **check**: the line is there but the code above it changed; EL5 reads it first.
-- **EL4**: one of the four files EL4 still holds (`view_visitor_report.php`, `includes/workspace/access.php`, `includes/fn/order_report.php`, `edit_form_list_view.php`). EL4a's files (#9657) are gone.
+- **EL4**: one of the four files EL4 still held (`view_visitor_report.php`, `includes/workspace/access.php`, `includes/fn/order_report.php`, `edit_form_list_view.php`); EL4b (#10439) found their shapes gone, part 2. EL4a's files (#9657) are gone.
 
 ## Which fatal errors were real faults?
 - Still on development, with a `bug` issue: opening `view_folder_and_files_f.php` by URL (`PG_FUNCTIONS_DIR` undefined), #10052; the dashboard's System Status permission walk outrunning 300 s on a slow disk, #10053.
@@ -25,5 +25,6 @@ description: PHP error log census (plan php-error-log-clean, EL1): what was read
 - Not faults: eight "Cannot redeclare" on 3 Nov (a scratch script compiled every file in one process); ten design templates included alone from the command line on 1 Nov; `pg_label_account()` called by a scratch script; five "Call to undefined function" while a pull had updated a file before its module (each function exists and loads on development).
 - `init.php` 300 s at `session_start()`: requests waiting on a session held by one of the long requests above, not a fault of its own.
 
-## What do EL5's steps take?
-- The **still**, **check** and **set since** shapes of parts 2 and 3, by family: undefined variables in the classic order pages, missing keys in the theme CSS generator and designer style arrays, `$route['params']` in the API, missing page properties, float-to-int casts in ERP money.
+## What did EL5's steps take?
+- The **still**, **check** and **set since** shapes of parts 2 and 3, by family: the classic order pages (#10293), forms, calendar and default screens (#10304), ERP money casts (#10329), the last shapes (#10439). Most others were gone before their step; parts 2 and 3 name the PR of each.
+- Nothing in parts 2 and 3 is open. What is left there is not a fault of the code (a setting, a server folder, a warning written on purpose, unpatched dompdf), or the one 120 s query of 12 Oct that never came back. EL6 is next.

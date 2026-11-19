@@ -9,13 +9,13 @@ description: Steps AM1 to AM6 of plan api-clean-modern: the two failing routes, 
 - AM3 (S) A fatal error or an uncaught Throwable inside `integration.php` answers the envelope: 500 `server_error` as JSON with `request_id` and `X-Request-Id`. The answer never carries PHP's message; the log line carries the request id. Today the site's HTML error page comes back with no request id (seen on #10088). `mcp.php` is checked for the same. Done (#10120): `api-fault-envelope.md`.
 
 ## Which steps make the document true?
-- AM4 (M) A moment says `format: date-time` and a day `format: date`: 309 such fields are plain strings today, and three `User` fields say `type: datetime`, which OpenAPI does not have.
+- AM4 (M) done (#10151, #10209, #10437). A moment says `format: date-time` and a day `format: date`: 309 such fields are plain strings today, and three `User` fields say `type: datetime`, which OpenAPI does not have.
   - The declarations get a type word for each, mapped once in `api_openapi_type()`. Day or moment is read from the presenter (`api_time()` or `Y-m-d`), never from the field's name.
   - `seo.issues` rows declare `source`, `label`, `weight`, `earned` (#10090).
   - `tools/check_api_schema.php` refuses a type word the document cannot say.
   - If its files cross open PRs: AM4a (the words, the check, the core objects, `User`, `seo.issues`), then AM4b (Workspace and ERP objects).
   - AM4a done (#10151): `api-openapi-time-formats.md`; `seo.issues` was declared by #10116. AM4b done (#10209): the Workspace, ERP and translation objects.
-  - AM4c (S): the time fields of the files AM4b found held, when their PRs land: `includes/workspace/api_resources.php`, `api.php`, `api_commands.php` and `includes/api/resources/design.php`.
+  - AM4c done (#10437): `includes/workspace/api_resources.php`, `api.php` and `includes/api/resources/design.php`; `api_commands.php` had none. AM4 is done.
 - AM5 (M) done (#10136). `tools/check_api_answers.php` calls every GET route of a running site (lists first, then one record by a list's first id) and compares each answer with the document: status, JSON, required fields, types, null only where declared, undeclared fields. Read only.
   - Address, key and secret come from the environment as `tools/ws_client.php` reads them: never an argument, never printed.
   - It skips routes marked `moves_money` and binary answers, and keeps under the rate limit.

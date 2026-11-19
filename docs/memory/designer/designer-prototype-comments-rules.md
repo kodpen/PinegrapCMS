@@ -6,7 +6,7 @@ description: Prototype comments: what a later change must keep (a deleted link t
 ## What must a later change keep?
 - A `prototype_links` row is never deleted today. A step that one day deletes one deletes that link's comments in the same step: a reused id would show one customer's comments on another's link.
 - A deleted page's comments stay until the design is deleted; accepted, no separate sweep.
-- Personal data erase: a guest's typed name ties to no person, so the erase engine cannot reach it; the designer deletes the comment or the link's comments by hand. A deleted user's staff answers get a `pg_privacy_erase_tables()` entry in PN3.
+- Personal data erase: a guest's typed name ties to no person, so the erase engine cannot reach it; the designer deletes the comment or the link's comments by hand. A deleted user's staff answers keep their place: `pg_privacy_erase_tables()` entry `prototype_comments` replaces the name with `{name}` and sets `user_id` 0 (#10042).
 
 ## Why is the password's proof the session mark?
 - The password's proof is that mark, never the `pg_proto_pass_<id>` cookie: it is set for `prototype.php` alone and never reaches the door, so every password link's comment was refused (found in review of #9915). A browser without `Sec-Fetch-Site` (Safari before 16.4) sends `Origin: null` under the viewer's no-referrer policy and is refused 'origin'.

@@ -26,6 +26,7 @@
 - booking-link-code.md: A staff member's meeting link (SL1): the code from the staff row and site key, one 404 for a wrong code or a member out of booking, its services and free times, ws_profiles.meeting_url
 - booking-link-page.md: The meeting link's page book_with.php (SL2): checks before reading, hold and confirm with source link, the one 404, the done card; the meeting address in the mails and the .ics
 - booking-manage.md: A customer's own booking (BK7): booking_manage.php from the mail's signed link, cancel and move within the policy window, .ics download, the my_account widget's bookings section
+- booking-meeting-link.md: Start file of the meeting link: a staff member's "Book a time with <name>" page book_with.php and Workspace screen My meeting link; decisions, PRs, files, left out [decision: decisions-made-product-25.md, decisions-made-product-64.md, decisions-made-schema-26.md]
 - booking-messages.md: Booking mails, SMS, .ics and reminders: booking.* events, four campaign profile actions (11.0.161), the .ics attachment, SMS kind booking, reminders by the general job without a column [decision: decisions-made-product-19.md]
 - booking-retention.md: How long bookings are kept (cancelled rows pruned after 400 days by the general job) and what the personal data export and erasure do with a person's bookings (#5032) [decision: decisions-made-product-19.md]
 - bookings-decisions.md: Lasting rules of appointment bookings (plan closed in BK10): UTC times, no account needed, no new calendar engine, deposits via the form payment step, open retention work [decision: decisions-made-product-19.md, decisions-made-product-25.md, decisions-made-schema-10.md, decisions-made-schema-9.md]
@@ -101,6 +102,7 @@
 - currency-names-display.md: Stored currency names shown through pg_currency_label() in the panel language; the currency list's rate with the panel's separators (#4430)
 - customer-value-groups-csv-api.md: What the Customers Report hands on: a contact group from a cell of the groups table, the top customers CSV, GET /reports/customer-value and who gets names (#10297)
 - customer-value-report-screen.md: Customers Report screen (view_customer_report.php, Reports menu): periods, tiles, months, cohorts, groups, top customers, who sees names, states before data (#10020)
+- customer-value-report.md: Customers Report (customer value: repeat purchase, value per customer, cohorts, customer groups) as built: its parts, the decisions that bind it, what was left out, each feature U1-U15 with its PR [decision: here]
 - customer-value-summary.md: Customer value summary (config_text customer_values): what counts, the customer key, the rebuild in the general job, the summary shape, the 200k-order measurement (#9995)
 - delivery-date-error-answer.md: get_delivery_date() (shipping.php) always answers with a delivery_date key, '' on every error, because its seven callers read it without a check
 - edit-product-undrawn-columns-kept.md: Edit Product's save leaves out the shipping, customs, zone, gift card and unlabelled custom-field columns the screen does not draw.

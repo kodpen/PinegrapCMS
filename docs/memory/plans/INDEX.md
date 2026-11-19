@@ -51,15 +51,9 @@
 - connections-merges-cx10-google.md: CX10 of plan connections-merges, what Google's and Microsoft's pages add: the two redirect addresses, the APIs to enable, the "API not enabled" error, Google's verification warning
 - connections-merges-panel-rules.md: Connections management screen (plan connections-merges): the architect's rules for a service's panel: one connection per provider and its data step, the count stays 78, gates, card titles
 - connections-merges.md: Plan: Connections becomes the one place where outside services are set up (owner, poll 146); CX2 the voice card, CX3 E-mail sending, the screen accepted in poll 149, the build CX7 to CX11
-- content-review-features.md: Plan content-review, features V1 to V17: which items, what an item keeps, the states, the Content review screen, its actions, who sees what, the task, the flow event, the API
-- content-review-steps.md: Plan content-review, steps CH1 to CH5: the table and its rules, the Content review screen, the task and the flow event, the API, close-out
-- content-review.md: Plan (owner 2026-11-16, agent channel message 5667): a person and a "review by" date for a page or collection record, and the Content review screen of what is due; steps CH1 to CH5
 - course-progress-features.md: Plan course-progress, features Z1 to Z17: a course and its ordered lessons, when a lesson is open, marking done and quiz lessons, the learner's blocks, the certificate, the staff's learners list
 - course-progress-steps.md: Plan course-progress, steps CO1 to CO6: the tables and the rule of an open lesson, the Courses screen, the gate in the page's access path, the blocks and their script, the certificate, close-out
 - course-progress.md: Plan (owner 2026-11-16, agent channel poll 82): courses on the folder and pages that exist: ordered and timed lessons, progress, quiz lessons, a certificate, "My courses"; steps CO1 to CO6
-- customer-value-features.md: Plan customer-value, features U1 to U15: what counts as an order, who is a customer, the one summary the general job rebuilds, the Customers report's figures, rights, the API
-- customer-value-steps.md: Plan customer-value, steps CV1 to CV4: the measured rebuild and the one summary, the Customers report screen, the group from a cell with the CSV and the API, close-out
-- customer-value.md: Plan (owner 2026-11-16, agent channel poll 82): a Customers report of repeat purchase, value per customer, cohorts and customer groups, read from a summary the general job rebuilds; steps CV1 to CV4
 - design-template-bikeshop-design.md: Design of plans/design-template-bikeshop.md: the shipped features the Bike Shop template reuses, what it does not build, its look and Turkish words
 - design-template-bikeshop.md: Plan: the Bike Shop design template (pinegrap-bikeshop): bikes and parts catalog, repair and service requests, bike fitting, group rides calendar, news; small steps
 - design-template-own-looks-order.md: Order of the polishing round after Launch: every shipped template's family and pages steps, in which order, and where each template stands
@@ -107,17 +101,13 @@
 - integrations-census.md: Start file of the integrations census (2026-11-17, the owner's request in the agent channel): what was asked, the parts, the decisions that bind, the summary, what is still to decide
 - kodpen-vendor-api-client-steps.md: Open step of plans/kodpen-vendor-api-client.md: P9 (api2 client removal) in the next open version; claim as [plan:kodpen-vendor-api-client] P9
 - kodpen-vendor-api-client.md: Plan (owner 2026-10-25 to 27): the Kodpen API client is on (P8), releases get their packages (P2); left is P9, the api2 client removal in the next open version; steps in -steps
-- listen-block-features.md: Plan listen-block, features L1 to L13: the block and its mark, where the script comes from, what is read and in which language, when the button shows, its controls, the canvas and the Preview
-- listen-block-steps.md: Plan listen-block, steps LS1 to LS3: the script and its two doors, the block, close-out
-- listen-block.md: Plan (owner 2026-11-16, agent channel message 5667): a "Listen" block of the visual designer that reads the page's article aloud with the browser's own voice; steps LS1 to LS3
 - market-table-stakes.md: Plan (owner 2026-11-17): what the Turkish market's lists expect and the product lacks: a Google XML product feed now (TS1); the price sites, Craftgate and the integrators after 2026.11.0
 - marketplace-trendyol-hepsiburada.md: Plan (approved 2026-10-19): Trendyol (V2) and Hepsiburada on the n11 layer
-- meeting-link-features.md: Plan meeting-link, features M1 to M14: a staff member's link and its code, the address, the page, where free times come from, private plans left out, the booking, the meeting address, safety
-- meeting-link-steps.md: Plan meeting-link, steps SL1 to SL4: the link's code and rules with the profile's one column, the page a visitor books on, the Workspace screen "My meeting link", close-out
-- meeting-link.md: Plan (owner 2026-11-16, agent channel poll 82): a booking staff member's own "book a time with me" page at an address only they hand out, on the booking engine, no table; steps SL1 to SL4
 - mobile-api-shelved.md: Team-device API work for the closed-source Pinegrap Mobile app (restarted 2026-10-24 outside this repo): what exists (M1–M6), what M7 (native push) and M8 add, decisions, how its needs arrive
 - more-features-shared-files.md: The existing files that steps of more than one of the eight plans of plans/more-features.md touch, each with its steps and their order; two steps on the same file are never open together
 - more-features.md: Start file of the eight plans the owner chose from the second feature study (owner 2026-11-16, agent channel message 6424 and poll 82): his words, the architect's conditions, the plans
+- office-own-code-steps.md: Steps of plan office-own-code: previews OP1-OP4 (.csv, .ods, .xls, .pptx), sheet editing OE1-OE5, document editing OD1-OD3, shared Excel export OS1 and import reader OS2
+- office-own-code.md: Plan (owner 2026-11-19, poll 156 "Tam kapsam"): the own Office code grows after PHPExcel goes: more previews, wider editing, shared Excel export and import; order and rules
 - panel-design-language-dialogs.md: Look A's dialogs and drawers (#8860): the scrim, the three dialog widths, head, body and foot, the confirm dialog, the settings dialog's rail and pane, a drawer's sections and member rows
 - panel-design-language-look.md: Look A's numbers (second pass) for the panel's design language: type, surfaces and depth, fields, buttons, the segmented control, the status pill, the icon tile and tones, rows, what a title says
 - panel-design-language-report.md: Look A's report screen (#8955): ready reports and the period on top, four figures, the chart against the previous period, the grouped table and its total, the bars card, the settings drawer
@@ -136,11 +126,12 @@
 - panel-old-screens-rules.md: Old panel screens to look A: what the looks decided beyond the sheet: the owner's kept screens, address parts, a narrow field alone in its row, mapping grids, values the sheet does not name
 - panel-old-screens-shared-steps.md: Old panel screens to look A: the shared steps cut after the groups, SH1 to SH10 (field, status list, ERP lists, figure cards, icon buttons, save bar, list title) and KS1, KS2 on kept screens
 - panel-old-screens.md: Plan (owner 2026-11-15): the panel screens still drawn the old way move to look A; censuses done, LM2 the shared buttons, then one census group per step (C1 to C5, E1 to E5, S1 to S6)
-- php-error-log-clean-census-2.md: Error log census part 2 (plan php-error-log-clean): the files with shapes still open, most frequent first, from get_order_preview.php to includes/fn/forms.php; verdict words are explained in part 1
-- php-error-log-clean-census-3.md: Error log census part 3 (plan php-error-log-clean): the files with shapes still open, from init.php to the smallest; verdict words are explained in part 1
+- php-error-log-clean-census-2.md: Error log census part 2 (plan php-error-log-clean): files that held open shapes, get_order_preview.php to includes/fn/forms.php, each with the PR that closed it
+- php-error-log-clean-census-3.md: Error log census part 3 (plan php-error-log-clean): files that held open shapes, init.php to the smallest, each closed by its PR or left with its reason
 - php-error-log-clean-census-4.md: Error log census part 4 (plan php-error-log-clean): the shapes already gone on development, by file with the PR that removed them, most frequent first; nothing here is left for EL5
 - php-error-log-clean-census.md: PHP error log census (plan php-error-log-clean, EL1): what was read, totals, how shapes were checked, the fatal errors' verdicts; shapes by file in parts 2 to 4
 - php-error-log-clean.md: Plan (owner 2026-11-14): the PHP error log of the owner's dev machine read for Pinegrap's own deprecations and warnings on PHP 8.5, and their causes fixed; steps EL1 to EL6
+- phpexcel-own-code.md: Plan (2026-11-19): PHPExcel's four callers move to the product's own sheet reader and xlsx writer, then includes/phpexcel is removed; no format dropped; XL1-XL5
 - picture-text-auto-draw-steps.md: Plan picture-text-auto-draw, steps DA1 to DA5: rows and text jobs at save time, the waiting mark, the panel's background draw, the server's draw, the screens' words, close-out
 - picture-text-auto-draw.md: Plan (owner 2026-11-17, agent channel poll 143): a translated Design Canvas picture is drawn by itself, in an open panel in the background and by the server with nobody there; steps DA1 to DA5
 - place-map-census-2.md: Census MP1 of place-map, part 2: what OpenStreetMap's own tiles allow (tile usage policy, read 2026-11-16) and the security-header change the map needs (waf_csp_policy())

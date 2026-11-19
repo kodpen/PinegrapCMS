@@ -159,6 +159,6 @@ function test_workspace_notes_page_route_pages()
 	$resources = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/api_resources.php');
 
 	pg_assert_contains("'created_at'  => api_time(\$note['created_at'])", $resources, 'the object carries created_at');
-	pg_assert_contains("'created_at'  => 'string?'", $resources, 'and declares it');
+	pg_assert_contains("'created_at'  => 'datetime?'", $resources, 'and declares it');
 	pg_assert_true(preg_match('/function ws_api_notes_list\(\$params\)\s*\{.*?ws_notes_page\(.*?api_ok_list\(\$out, \$limit, \$next, \$page\[\'total\'\](?:, [^;]*)?\);/s', $resources) === 1, 'the list pages and reports the total');
 }

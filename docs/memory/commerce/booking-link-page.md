@@ -20,4 +20,4 @@ module: booking_links
 
 Test: `tests/book_with_test.php`. Clicked through on a throwaway install (#10073): services, days, times, form, errors, done, a taken time, a wrong code, desktop and phone.
 
-Related: [[booking-link-code]], [[booking-messages]], docs/memory/plans/meeting-link-features.md
+Related: [[booking-link-code]], [[booking-messages]], [[booking-meeting-link]]
