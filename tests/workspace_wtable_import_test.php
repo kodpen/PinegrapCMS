@@ -271,6 +271,13 @@ function test_workspace_wtable_import_file_table()
 	pg_assert_true(!ws_wtable_import_file_table($path, 'list.csv', 10)['more']);
 	pg_assert_true(!ws_wtable_import_file_table($path, 'list.txt', 10)['ok'], 'only CSV and spreadsheets');
 
+	// Turkish Excel saves "CSV (comma delimited)" in Windows-1254.
+	file_put_contents($path, "Ad;\xDEehir\nAy\xFEe;\xDDzmir\nG\xFCl;Mu\xF0la\n");
+	$read = ws_wtable_import_file_table($path, 'list.csv', 10);
+
+	pg_assert_same(array(array('Ad', 'Şehir'), array('Ayşe', 'İzmir'), array('Gül', 'Muğla')), $read['table'], 'a file not in UTF-8 is read as the Turkish code page');
+	pg_assert_true(ws_wtable_import_keep_json($read['table']) !== '', 'the read table can be kept');
+
 	file_put_contents($path, "\n\n");
 	pg_assert_true(!ws_wtable_import_file_table($path, 'list.csv', 10)['ok'], 'an empty file');
 

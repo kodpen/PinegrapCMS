@@ -530,10 +530,37 @@ function ws_wtable_import_row_cells($row, $map, $columns, $people = array())
 }
 
 /**
+ * A value read from a file as UTF-8: one that is not UTF-8 is taken to be
+ * the Windows Turkish code page, which Turkish Excel writes its "CSV
+ * (comma delimited)" in (ISO-8859-9 where mbstring lacks it; the two
+ * differ only in 0x80-0x9F). Pure.
+ *
+ * @param mixed $value
+ * @return string
+ */
+function ws_wtable_import_utf8($value)
+{
+    $value = (string) $value;
+
+    if (mb_check_encoding($value, 'UTF-8')) {
+        return $value;
+    }
+
+    static $encoding = null;
+
+    if ($encoding === null) {
+        $encoding = in_array('windows-1254', array_map('strtolower', mb_list_encodings()), true) ? 'Windows-1254' : 'ISO-8859-9';
+    }
+
+    return (string) mb_convert_encoding($value, 'UTF-8', $encoding);
+}
+
+/**
  * A CSV or spreadsheet file as a table of trimmed values, blank lines
  * dropped: a spreadsheet through the product import's reader, a CSV with
- * the separator its first line uses most. Reads one line more than $max so
- * that a longer file is told (more).
+ * the separator its first line uses most, values not in UTF-8 read as the
+ * Turkish code page (ws_wtable_import_utf8()). Reads one line more than
+ * $max so that a longer file is told (more).
  *
  * The one reader of a table file: the bulk product drafts read through it
  * too (ws_bulk_file_table()), capped at a product card's rows.
@@ -588,7 +615,7 @@ function ws_wtable_import_file_table($path, $file_name, $max)
             $row[0] = substr((string) $row[0], 3);
         }
 
-        $row = array_map('trim', array_map('strval', (array) $row));
+        $row = array_map('trim', array_map('ws_wtable_import_utf8', (array) $row));
 
         if (implode('', $row) === '') {
             continue;
@@ -1243,6 +1270,21 @@ function ws_wtable_import_create($viewer, $name, $plan, $rows)
 }
 
 /**
+ * A read table as the JSON ws_wtable_import_keep() writes, '' when it has
+ * none (a value not in UTF-8 makes json_encode() fail, and an empty file
+ * kept would show the person nothing at all). Pure.
+ *
+ * @param array $table
+ * @return string
+ */
+function ws_wtable_import_keep_json($table)
+{
+    $json = json_encode(array_values((array) $table), JSON_UNESCAPED_UNICODE);
+
+    return (is_string($json) && ($json !== '[]')) ? $json : '';
+}
+
+/**
  * Keep a read file between the upload and the confirmation: its table as
  * JSON in the system's temp folder, the path in the person's session. A
  * file kept before is dropped.
@@ -1257,9 +1299,15 @@ function ws_wtable_import_keep($read, $file_name, $table_id, $note = false)
 {
     ws_wtable_import_drop();
 
+    $json = ws_wtable_import_keep_json($read['table'] ?? array());
+
+    if ($json === '') {
+        return false;
+    }
+
     $path = @tempnam(sys_get_temp_dir(), 'pg_wtimport_');
 
-    if (($path === false) || (@file_put_contents($path, json_encode($read['table'], JSON_UNESCAPED_UNICODE)) === false)) {
+    if (($path === false) || (@file_put_contents($path, $json) !== strlen($json))) {
         return false;
     }
 
