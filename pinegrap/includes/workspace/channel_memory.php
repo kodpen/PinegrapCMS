@@ -570,6 +570,90 @@ function ws_memory_rows($channel_id, $expired = true)
 }
 
 /**
+ * The first line of a record's text as a row of the Memory tab shows it:
+ * the first line that is not blank, trimmed, cut at $max characters with an
+ * ellipsis. Pure.
+ *
+ * @param string $text
+ * @param int    $max
+ * @return string
+ */
+function ws_memory_first_line($text, $max = 160)
+{
+    foreach (preg_split('/\R/u', (string) $text) as $line) {
+        $line = trim((string) preg_replace('/\s+/u', ' ', $line));
+
+        if ($line !== '') {
+            return (mb_strlen($line) > $max) ? rtrim(mb_substr($line, 0, max(1, $max - 1))) . '…' : $line;
+        }
+    }
+
+    return '';
+}
+
+/**
+ * Records under their project headings, as the Memory tab folds them: the
+ * projects in alphabetical order (case left aside), the records without a
+ * project last, each heading's records in the order given (pinned first,
+ * then the newest, as ws_memory_rows() reads them). Pure.
+ *
+ * @param array[] $entries ws_memory_present() (project)
+ * @return array[] project ('' for none), entries
+ */
+function ws_memory_groups($entries)
+{
+    $groups = array();
+
+    foreach ((array) $entries as $entry) {
+        $project = ws_memory_project($entry['project'] ?? '');
+        $key = mb_strtolower($project);
+
+        if (!isset($groups[$key])) {
+            $groups[$key] = array('project' => $project, 'entries' => array());
+        }
+
+        $groups[$key]['entries'][] = $entry;
+    }
+
+    uksort($groups, function ($a, $b) {
+        if (($a === '') || ($b === '')) {
+            return ($a === '') - ($b === '');
+        }
+
+        return strcmp((string) $a, (string) $b);
+    });
+
+    return array_values($groups);
+}
+
+/**
+ * One part of the Memory tab: a memory's records with their text and first
+ * line, under their project headings (ws_memory_groups()).
+ *
+ * @param string $key      general | channel
+ * @param int    $channel_id 0 for the general memory
+ * @param bool   $can_post whoever reads it may write it
+ * @param bool   $can_move its records move to the general memory
+ * @return array key, can_post, can_move, count, groups
+ */
+function ws_memory_panel_part($key, $channel_id, $can_post, $can_move = false)
+{
+    $entries = array();
+
+    foreach (ws_memory_rows($channel_id) as $row) {
+        $entries[] = ws_memory_present($row) + array('first_line' => ws_memory_first_line($row['text']));
+    }
+
+    return array(
+        'key'      => $key,
+        'can_post' => (bool) $can_post,
+        'can_move' => (bool) $can_move,
+        'count'    => count($entries),
+        'groups'   => ws_memory_groups($entries),
+    );
+}
+
+/**
  * An entry as the panel and the API give it.
  *
  * @param array $row ws_channel_memory
@@ -923,5 +1007,16 @@ function ws_memory_js_strings()
         'mem_by'            => ws_js_template('Written by {var:1}', 1),
         'mem_changed_by'    => ws_js_template('Changed by {var:1}', 1),
         'mem_until'         => ws_js_template('Until {var:1}', 1),
+        'mem_general'       => lang('General memory'),
+        'mem_general_help'  => lang('Shared by every agent channel.'),
+        'mem_general_empty' => lang('Nothing in the general memory yet.'),
+        'mem_channel'       => lang('This channel\'s memory'),
+        'mem_project'       => lang('Project'),
+        'mem_project_help'  => lang('Entries are listed under their project. Left empty, under No project.'),
+        'mem_no_project'    => lang('No project'),
+        'mem_changed_on'    => ws_js_template('Changed on {var:1}', 1),
+        'mem_move'          => lang('Move to the general memory'),
+        'mem_move_ask'      => lang('Move this entry to the general memory? Every agent channel sees it then.'),
+        'mem_moved'         => lang('Moved to the general memory.'),
     );
 }

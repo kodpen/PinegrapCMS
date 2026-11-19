@@ -8760,6 +8760,7 @@
     "This channel is shared outside the team: {var:1}. They read everything written in the conversation.": "Bu kanal ekip dışıyla paylaşılıyor: {var:1}. Konuşmada yazılan her şeyi okurlar.",
     "This channel now": "Bu kanal şu an",
     "This channel was shared outside the team; no link is open now.": "Bu kanal ekip dışıyla paylaşılmıştı; şu an açık bir bağlantı yok.",
+    "This channel's memory": "Bu kanalın belleği",
     "This charter enquiry could not be found, or it is not yours to see.": "Bu kiralama talebi bulunamadı ya da görme yetkiniz yok.",
     "This class booking request could not be found, or it is not yours to see.": "Bu ders rezervasyon talebi bulunamadı ya da onu görme yetkiniz yok.",
     "This class is full": "Bu atölye dolu",

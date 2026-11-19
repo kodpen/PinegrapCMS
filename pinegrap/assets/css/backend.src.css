@@ -18432,43 +18432,111 @@ a.ws-chip-message:hover,
 .ws-summary-layout .card {
   border-radius: .875rem;
 }
-/* The Memory tab (workspace_memory.js): the hint with New record is one
-   card, the records cards in a grid that fills the pane. */
+/* The Memory tab (workspace_memory.js): in an agent channel the general
+   memory and the channel's own as two parts, each a card of project
+   headings that fold, one row per record under each. */
 .ws-memory {
   display: flex;
   flex-direction: column;
   gap: .75rem;
+  container-type: inline-size;
 }
-.ws-memory-intro {
+.ws-memory-part {
+  border: 1px solid var(--pg-border-color);
+  border-radius: .875rem;
+  background: var(--pg-card-bg);
+  overflow: hidden;
+}
+.ws-memory-part-head {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: .75rem;
   padding: .75rem .9rem;
-  border: 1px solid var(--pg-border-color);
-  border-radius: .875rem;
-  background: var(--pg-card-bg);
 }
-.ws-memory-intro > p {
+.ws-memory-part-head > div {
   flex: 1 1 20rem;
-  min-width: 0;
 }
-.ws-memory-list {
+.ws-memory-part-title {
+  margin: 0;
+}
+.ws-memory-part > .ws-empty {
+  margin: 0 .9rem .9rem;
+}
+.ws-memory-project {
+  border-top: 1px solid var(--pg-border-color);
+}
+.ws-memory-project-head {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .55rem .9rem;
+  font-weight: var(--pg-weight-strong);
+  cursor: pointer;
+  list-style: none;
+}
+.ws-memory-project-head::-webkit-details-marker {
+  display: none;
+}
+.ws-memory-chevron {
+  transition: transform .15s ease;
+}
+.ws-memory-project[open] .ws-memory-chevron {
+  transform: rotate(90deg);
+}
+.ws-memory-row {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr));
-  align-items: start;
+  grid-template-columns: 1.25rem minmax(0, 1fr) auto auto auto;
+  align-items: center;
   gap: .75rem;
+  padding: .5rem .9rem .5rem 1.75rem;
+  border-top: 1px solid var(--pg-border-color);
 }
-.ws-memory-list > .ws-empty {
-  grid-column: 1 / -1;
+.ws-memory-row:hover {
+  background: var(--pg-hover);
 }
-.ws-memory-entry {
-  min-width: 0;
-  padding: .75rem .9rem;
-  border: 1px solid var(--pg-border-color);
-  border-radius: .875rem;
-  background: var(--pg-card-bg);
+.ws-memory-expired {
+  opacity: .75;
+}
+.ws-memory-name {
+  font-weight: var(--pg-weight-strong);
+  overflow-wrap: anywhere;
+}
+.ws-memory-line {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ws-memory-tags {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: .25rem;
+  max-width: 16rem;
+}
+.ws-memory-date {
+  white-space: nowrap;
+}
+.ws-memory-actions {
+  display: flex;
+  gap: .25rem;
+}
+@container (max-width: 40rem) {
+  .ws-memory-row {
+    grid-template-columns: 1.25rem minmax(0, 1fr) auto;
+    padding-left: .9rem;
+  }
+  .ws-memory-tags,
+  .ws-memory-date {
+    grid-column: 2;
+    justify-content: flex-start;
+    max-width: none;
+  }
+  .ws-memory-actions {
+    grid-column: 3;
+    grid-row: 1;
+  }
 }
 /* An empty channel pane (Tasks, Decisions, Files, Summary, Board, Memory)
    shows its empty state in a dashed card. Other screens' .ws-empty (Today,
