@@ -1,6 +1,6 @@
 ---
 name: contact-form-checks
-description: Create/Edit Contact save checks: membership date and negative rate refused, role 3 keeps a group on edit, picture posted as file_id or image_url and drawn by pg_contact_image_address(), notes box, wording
+description: Create/Edit Contact save checks: date and rate refused, role 3 keeps a group, picture posted as file_id or image_url and drawn by pg_contact_image_address(), notes box, wording
 ---
 
 ## What does the save refuse?
