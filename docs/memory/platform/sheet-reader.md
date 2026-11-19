@@ -1,6 +1,6 @@
 ---
 name: sheet-reader
-description: The importers' own sheet reader (pg_sheet_rows(), includes/fn/sheet_read.php, #PR): .xlsx, .ods and .xls rows one at a time as typed cells, its limits, how it differs from PHPExcel
+description: The importers' own sheet reader (pg_sheet_rows(), includes/fn/sheet_read.php, #10466): .xlsx, .ods and .xls rows one at a time as typed cells, its limits, how it differs from PHPExcel
 module: sheet_read
 ---
 

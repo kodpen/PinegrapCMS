@@ -14,7 +14,8 @@ description: Plan (2026-11-19): PHPExcel's four callers move to the product's ow
 - The product's own: the xlsx reader of `includes/fn/office.php` (`pg_office_xlsx_cell_parts()`, `pg_office_reader_text()`, already used by the product import's own walk), the shared xlsx writer (`erp/erp-accountant-pack.md`), and `excel_reader2.php`, a one-file .xls reader the search index uses.
 
 ## What is built?
-- XL1, one sheet reader. A function in a new `includes/fn/` module gives a file's rows one at a time for .xlsx, .ods and .xls, with the import's value rules (booleans 1/0, its date text) and without the preview's row, column and string limits (`platform/office-dom-ceiling.md`); .ods keeps its cell ceiling (`platform/ods-cell-ceiling.md`); .xls is read through `excel_reader2.php`. Tests read the same fixture files with PHPExcel and with the new reader and compare cell by cell.
+- XL1, one sheet reader. Done in #10466 (`platform/sheet-reader.md`). A function in a new `includes/fn/` module gives a file's rows one at a time for .xlsx, .ods and .xls, with the import's value rules (booleans 1/0, its date text) and without the preview's row, column and string limits (`platform/office-dom-ceiling.md`); .ods keeps its cell ceiling (`platform/ods-cell-ceiling.md`); .xls is read through `excel_reader2.php`.
+  Tests read the same fixture files with PHPExcel and with the new reader and compare cell by cell.
 - XL2, the product import reads through it.
 - XL3, the bank statement import reads through it.
 - XL4, the Parasut export and the ERP export are written by the shared xlsx writer; a template's fixed rows become data in code. A test compares the written cells with those PHPExcel writes today from the same input.
