@@ -97,6 +97,20 @@ function test_booking_manage_page_names_the_zone()
 	pg_assert_contains("str_replace('{zone}', \$bm_times['zone'], lang('Times are in {zone}.'))", $page, 'the move times name the zone');
 }
 
+// A move offers other times only: the booking's own start, free once its own
+// range is taken out of the busy ones, moved nothing yet sent the
+// "rescheduled" mail, text and event.
+function test_booking_manage_move_leaves_out_the_own_start()
+{
+	pg_assert_same(array(100, 300), pg_booking_manage_other_starts(array(100, 200, 300), 200));
+	pg_assert_same(array(100, 300), pg_booking_manage_other_starts(array(100, 300), '200'), 'not among them: unchanged');
+	pg_assert_same(array(), pg_booking_manage_other_starts(array(200), 200), 'only the own start: none');
+
+	$reflection = new ReflectionFunction('pg_booking_manage_times');
+	$source = implode('', array_slice(file($reflection->getFileName()), $reflection->getStartLine() - 1, $reflection->getEndLine() - $reflection->getStartLine() + 1));
+	pg_assert_contains('pg_booking_manage_other_starts(', $source, 'the offered and the accepted times leave it out');
+}
+
 function test_booking_without_range()
 {
 	$ranges = array(array(100, 200), array(300, 400), array(300, 400));

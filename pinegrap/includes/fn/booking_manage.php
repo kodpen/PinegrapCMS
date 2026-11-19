@@ -249,8 +249,16 @@ function pg_booking_manage_days($row, $engine, $month, $now)
     $from = $first->getTimestamp() - 86400;
     $until = $first->modify('+1 month')->getTimestamp() + 86400;
     $busy = array((int) $engine[1]['id'] => pg_booking_manage_busy($row, $engine[1], $from, $until, $now));
+    $days = pg_booking_month_days($engine[0], array($engine[1]), $month, $busy, $now, $policy);
 
-    return pg_booking_month_days($engine[0], array($engine[1]), $month, $busy, $now, $policy);
+    // The booking's own day stays only with a time other than its own.
+    $own = (new DateTime('@' . (int) $row['start_at']))->setTimezone(new DateTimeZone($policy['zone']))->format('Y-m-d');
+
+    if (in_array($own, $days, true) && !pg_booking_manage_times($row, $engine, $own, $now)) {
+        $days = array_values(array_diff($days, array($own)));
+    }
+
+    return $days;
 }
 
 /**
@@ -272,7 +280,31 @@ function pg_booking_manage_times($row, $engine, $day, $now)
     $midnight = new DateTime($day . ' 00:00:00', new DateTimeZone($policy['zone']));
     $from = $midnight->getTimestamp() - 86400;
     $until = $midnight->modify('+1 day')->getTimestamp() + 86400;
-    return pg_booking_slots($engine[0], $engine[1], $day, pg_booking_manage_busy($row, $engine[1], $from, $until, $now), $now, $policy);
+    $starts = pg_booking_slots($engine[0], $engine[1], $day, pg_booking_manage_busy($row, $engine[1], $from, $until, $now), $now, $policy);
+
+    return pg_booking_manage_other_starts($starts, (int) $row['start_at']);
+}
+
+/**
+ * Free starts without the booking's own (pure): its range is taken out of
+ * the busy ones, so its start comes back free, and a move to it would move
+ * nothing yet send the rescheduled mail and text.
+ *
+ * @param int[] $starts
+ * @param int   $own
+ * @return int[]
+ */
+function pg_booking_manage_other_starts($starts, $own)
+{
+    $other = array();
+
+    foreach ((array) $starts as $start) {
+        if ((int) $start !== (int) $own) {
+            $other[] = $start;
+        }
+    }
+
+    return $other;
 }
 
 /**
