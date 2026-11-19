@@ -1053,6 +1053,49 @@ function test_proto_hotspots_mark_port_side()
 	pg_assert_same(array('x' => 248, 'y' => 42, 'side' => 'right'), $out['bare'], 'a frame with no box: its middle');
 }
 
+// An arrow's leg inside its frame: from the middle of its link's mark to
+// the port markPort() gives on the frame's edge, level with the mark on a
+// side edge, under it on the bottom; a link with no mark has none.
+function test_proto_hotspots_mark_leg_from_the_mark_to_the_edge()
+{
+	$frame = proto_hotspots_test_js(array('x' => 0, 'y' => 0, 'w' => 248, 'h' => 352, 'thumb' => 298));
+	$r = proto_hotspots_test_js(array('x' => 114, 'y' => 28.5, 'w' => 57, 'h' => 14.25));
+	$out = proto_hotspots_test_node('var t = { right: { x: 400, y: 0, w: 248, h: 352 }, below: { x: 100, y: 500, w: 248, h: 352 } };'
+		. ' out = { right: H.markLeg(' . $r . ', H.markPort(' . $frame . ', ' . $r . ', t.right)), below: H.markLeg(' . $r . ', H.markPort(' . $frame . ', ' . $r . ', t.below)),'
+		. ' foot: H.markLeg(null, H.markPort(' . $frame . ', null, t.right)), early: H.markLeg(undefined, H.markPort(' . $frame . ', undefined, t.right)), noPort: H.markLeg(' . $r . ', null) };');
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array('x1' => 152.5, 'y1' => 85.63, 'x2' => 248, 'y2' => 85.63), $out['right'], 'from the mark\'s middle across to the right edge, level with it');
+	pg_assert_same(array('x1' => 152.5, 'y1' => 85.63, 'x2' => 152.5, 'y2' => 352), $out['below'], 'down to the bottom edge under it');
+	pg_assert_same(null, $out['foot'], 'a link under the cut leaves from the foot: no leg');
+	pg_assert_same(null, $out['early'], 'no picture yet: no leg');
+	pg_assert_same(null, $out['noPort'], 'no port: no leg');
+}
+
+// The view draws the leg of each arrow shown in its frame, in the arrow's
+// colour, after the core routes it, and lifts and fades it with the arrow.
+function test_proto_hotspots_view_draws_the_leg_on_the_frame()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/style_designer.css');
+	$core = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_graph_canvas.js');
+
+	pg_assert_contains("_sdProtoLegsSoon();\n        return _sdProtoPortAt(item, port);", $source, 'every route of an arrow redraws the legs');
+	pg_assert_contains("var leg = H.markLeg(rects[e.port], _sdProtoPortAt(from, e.port));", $source, 'the leg ends where the arrow leaves the frame');
+	pg_assert_contains("if (!group || window.getComputedStyle(group).display === 'none') return;", $source, 'only the arrows shown have a leg');
+	pg_assert_contains("var state = list.contains('pgc-edge-in') ? 'in' : (list.contains('pgc-edge-faint') ? 'faint' : 'out');", $source, 'the leg takes its arrow\'s state');
+	pg_assert_contains("ui.boxes.classList.toggle('sd-proto-lifting', !!group);", $source, 'the pointer lifts the leg with its arrow');
+	pg_assert_contains("if (leg) leg.classList.add('sd-proto-leg-lift');", $source, 'the lifted arrow\'s leg is drawn thicker');
+	pg_assert_contains("ui.boxes.classList.toggle('sd-proto-drawing', !!on);", $source, 'the legs fade while an arrow is drawn');
+	pg_assert_false(strpos($core, 'sd-proto') !== false, 'the core knows nothing of the view');
+	foreach (array('.sd-proto-legs {', '.sd-proto-leg-out .sd-proto-leg-line', '.sd-proto-leg-in .sd-proto-leg-line', '.sd-proto-leg.sd-proto-leg-broken .sd-proto-leg-line', '.sd-proto .pgc-boxes.sd-proto-lifting .sd-proto-leg:not(.sd-proto-leg-lift)', '.sd-proto .pgc-boxes.sd-proto-drawing .sd-proto-leg') as $selector) {
+		pg_assert_contains($selector, $css, 'styled: ' . $selector);
+	}
+}
+
 // The view puts the marks on a loaded picture, starts each arrow at its
 // mark (portAt), draws a shared part's own picture and lays the frames out
 // again once a part is measured; the link rows are gone from the frames.

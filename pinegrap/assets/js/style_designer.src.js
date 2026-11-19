@@ -73951,6 +73951,12 @@ const StyleDesigner = (function () {
     // picture cannot show (F3); from the middle of the box until the
     // picture has loaded.
     function _sdProtoPort(item, port) {
+        // The core asks on every route of an arrow: its leg follows.
+        _sdProtoLegsSoon();
+        return _sdProtoPortAt(item, port);
+    }
+
+    function _sdProtoPortAt(item, port) {
         var rects = _sdProto.pics.rects[item.id];
         var to = _sdProto.edgeTo[item.id + '|' + port];
         return window.PGProtoHotspots.markPort(item, rects ? (rects[port] || null) : undefined, to ? _sdProto.byId[to] : null);
@@ -73994,7 +74000,9 @@ const StyleDesigner = (function () {
         var ui = _sdProto.ui;
         _sdProto.drawing = !!on;
         _sdProtoLift('');
-        if (ui) ui.svg.classList.toggle('sd-proto-drawing', !!on);
+        if (!ui) return;
+        ui.svg.classList.toggle('sd-proto-drawing', !!on);
+        ui.boxes.classList.toggle('sd-proto-drawing', !!on);
     }
 
     // One arrow lifted out of the others ('' for none): drawn last, the
@@ -74005,11 +74013,85 @@ const StyleDesigner = (function () {
         _sdProto.lifted = id;
         var old = ui.svg.querySelector('.sd-proto-edge-lift');
         if (old) old.classList.remove('sd-proto-edge-lift');
+        Array.prototype.slice.call(ui.boxes.querySelectorAll('.sd-proto-leg-lift')).forEach(function (n) { n.classList.remove('sd-proto-leg-lift'); });
         var group = id ? ui.svg.querySelector('g.pgc-edge[data-edge="' + id.replace(/"/g, '') + '"]') : null;
         ui.svg.classList.toggle('sd-proto-lifting', !!group);
+        ui.boxes.classList.toggle('sd-proto-lifting', !!group);
         if (!group) return;
         group.classList.add('sd-proto-edge-lift');
         ui.svg.appendChild(group);
+        // Its leg inside the frame goes with it.
+        var leg = ui.boxes.querySelector('.sd-proto-leg[data-edge="' + id.replace(/"/g, '') + '"]');
+        if (leg) leg.classList.add('sd-proto-leg-lift');
+    }
+
+    // The legs of the arrows shown, drawn once after the core has routed
+    // them (it asks portAt for each), the focus changed or a picture loaded.
+    function _sdProtoLegsSoon() {
+        if (_sdProto.legsSoon || !window.requestAnimationFrame) return;
+        _sdProto.legsSoon = window.requestAnimationFrame(function () {
+            _sdProto.legsSoon = 0;
+            _sdProtoLegs();
+        });
+    }
+
+    // An arrow starts on its link: the core routes it from the frame's
+    // edge, so for each arrow shown the view draws, over its frame's
+    // picture, the leg from the middle of the link's mark to that point on
+    // the edge (PGProtoHotspots.markLeg()) and a dot on the mark, in the
+    // arrow's colour; a link without a mark (the foot, no picture yet) has
+    // none. _sdProtoLift() and _sdProtoDrawing() lift and fade the legs
+    // with their arrows.
+    function _sdProtoLegs() {
+        var ui = _sdProto.ui;
+        var l = _sdProto.layout;
+        if (!ui) return;
+        Array.prototype.slice.call(ui.boxes.querySelectorAll('.sd-proto-legs')).forEach(function (n) { n.parentNode.removeChild(n); });
+        if (!l || !_sdProto.open) return;
+        var H = window.PGProtoHotspots;
+        var G = window.PGGraphCanvas;
+        var layers = {};
+        l.edges.forEach(function (e) {
+            var from = _sdProto.byId[e.from];
+            var rects = from ? _sdProto.pics.rects[from.id] : null;
+            if (!rects || !rects[e.port]) return;
+            var group = ui.svg.querySelector('g.pgc-edge[data-edge="' + String(e.id).replace(/"/g, '') + '"]');
+            if (!group || window.getComputedStyle(group).display === 'none') return;
+            var leg = H.markLeg(rects[e.port], _sdProtoPortAt(from, e.port));
+            if (!leg) return;
+            var layer = layers[from.id];
+            if (!layer) {
+                var node = ui.boxes.querySelector('[data-node="' + String(from.id).replace(/"/g, '') + '"]');
+                if (!node) return;
+                // Frame units start at the frame's outer corner, the
+                // layer at the inside of its border.
+                var style = window.getComputedStyle(node);
+                layer = G.svgEl('svg', 'sd-proto-legs');
+                layer.setAttribute('aria-hidden', 'true');
+                layer.setAttribute('width', String(from.w));
+                layer.setAttribute('height', String(from.h));
+                layer.style.left = -(parseFloat(style.borderLeftWidth) || 0) + 'px';
+                layer.style.top = -(parseFloat(style.borderTopWidth) || 0) + 'px';
+                node.appendChild(layer);
+                layers[from.id] = layer;
+            }
+            var list = group.classList;
+            var state = list.contains('pgc-edge-in') ? 'in' : (list.contains('pgc-edge-faint') ? 'faint' : 'out');
+            var g = G.svgEl('g', 'sd-proto-leg sd-proto-leg-' + state + (e.mark === 'broken' ? ' sd-proto-leg-broken' : '') + (e.id === _sdProto.lifted ? ' sd-proto-leg-lift' : ''));
+            g.setAttribute('data-edge', e.id);
+            var line = G.svgEl('line', 'sd-proto-leg-line');
+            line.setAttribute('x1', String(leg.x1));
+            line.setAttribute('y1', String(leg.y1));
+            line.setAttribute('x2', String(leg.x2));
+            line.setAttribute('y2', String(leg.y2));
+            var dot = G.svgEl('circle', 'sd-proto-leg-dot');
+            dot.setAttribute('cx', String(leg.x1));
+            dot.setAttribute('cy', String(leg.y1));
+            dot.setAttribute('r', '3');
+            g.appendChild(line);
+            g.appendChild(dot);
+            layer.appendChild(g);
+        });
     }
 
     // A loaded picture's marks (F5): a rounded rectangle over each link's
@@ -74151,6 +74233,7 @@ const StyleDesigner = (function () {
             _sdProto.ui.allEdges.setAttribute('aria-pressed', on ? 'true' : 'false');
         }
         if (_sdProto.canvas) _sdProto.canvas.allEdges(on);
+        _sdProtoLegsSoon();
     }
 
     // The selected frame's marks until a frame shows its page: its own rows
@@ -74251,6 +74334,7 @@ const StyleDesigner = (function () {
             if (id === null || (String(id) !== l.frame && !(edge && edge.to === String(id)))) _sdProto.link = null;
         }
         _sdProtoFocusMarks(id);
+        _sdProtoLegsSoon();
         _sdProtoPicked();
         _sdProtoListDraw();
         _sdProtoPlayState();
@@ -74556,6 +74640,7 @@ const StyleDesigner = (function () {
         Array.prototype.slice.call(ui.svg.querySelectorAll('g.pgc-edge')).forEach(function (g) { g.parentNode.removeChild(g); });
         _sdProto.lifted = '';
         ui.svg.classList.remove('sd-proto-lifting');
+        ui.boxes.classList.remove('sd-proto-lifting');
         _sdProtoPicReset(false);
         ui.boxes.innerHTML = '';
 
