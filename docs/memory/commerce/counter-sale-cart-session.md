@@ -1,6 +1,6 @@
 ---
 name: counter-sale-cart-session
-description: Counter sale (add_order.php) cart in its own session key and born a local order; what completion writes (order date, buyer name, no recipient); typed quantity 0 to 9999 only
+description: Counter sale (add_order.php): cart in its own session key, born a local order; what completion writes; quantity 0 to 9999, lowering never refused for stock; a deleted product's line name
 ---
 
 ## Where does the counter cart live?
@@ -15,5 +15,13 @@ description: Counter sale (add_order.php) cart in its own session key and born a
 
 ## Which quantities does the till take?
 - `local_sale_qty_input()`: a whole number from 0 (removes the line) to 9999. Empty, letters, a minus, `12,50`, `99999` are refused with "The quantity must be a whole number from 1 to 9999."; the box returns to its quantity (#5301). The "received" box reads an amount with a minus as nothing taken.
+- Only a raise is held against the stock (`local_sale_set_qty()`): a line above what the shelf holds now (sold elsewhere since) is lowered with the minus button or a smaller figure; completing the sale still refuses it while it is above. Before PR #10384 the minus answered "Only N in stock; no more can be added." and kept the line.
+
+## What does a line show once its product is deleted?
+- The code the order line was written with: `local_sale_lines()` and `local_sale_set_qty()` read `order_items.product_name` and `local_sale_product_label()` falls back to it (short description, product code, then that). Before PR #10384 the row, its Remove and Quantity labels and the removal message had no name. Test: `tests/local_sale_cart_test.php`.
+
+## What is still open?
+- Issue #10376: the completion skips the site's per-line work (gift cards, memberships, folder access, event spots, reward points).
+- Issue #10377: with tax switched off the counter still adds the zone's tax.
 
 Related: docs/memory/commerce/cart-order-creation.md, docs/memory/commerce/counter-sale-keyboard-focus.md
