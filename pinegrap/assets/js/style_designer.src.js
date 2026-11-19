@@ -81709,21 +81709,29 @@ const StyleDesigner = (function () {
                          (l.password ? '<span class="badge theme-secondary me-1"><span class="bi bi-lock me-1" aria-hidden="true"></span>' + esc(_sdT('Password')) + '</span>' : '') +
                          (l.locked ? '<span class="badge theme-danger me-1">' + esc(_sdT('Password locked')) + '</span>' : '') +
                          (l.comments ? '<span class="badge theme-secondary me-1"><span class="bi bi-chat-left-text me-1" aria-hidden="true"></span>' + esc(_sdT('Comments')) + '</span>' : '') +
-                         (l.state === 'expired' ? '<span class="badge theme-inverse me-1">' + esc(_sdT('Expired')) + '</span>' : '');
+                         (l.state === 'expired' ? '<span class="badge theme-inverse me-1">' + esc(_sdT('Expired')) + '</span>' : '') +
+                         (l.state === 'revoked' ? '<span class="badge theme-inverse me-1">' + esc(_sdT('Revoked')) + '</span>' : '');
+            // A revoked link is listed only while its comments are kept:
+            // "Delete comments" is all it offers.
+            var revoked = l.state === 'revoked';
+            var count = l.comment_count > 0 ? l.comment_count : 0;
             var facts = [
                 _sdT('Starts at: {var}', l.start_page ? l.start_page + (l.start_first ? ' (' + _sdT('the first draft') + ')' : '') : '-'),
-                l.expires_at > 0 ? (l.state === 'expired' ? _sdT('Expired: {var}', when(l.expires_at)) : _sdT('Expires: {var}', when(l.expires_at))) : _sdT('Expires: never'),
+                revoked ? _sdT('Revoked: {var}', when(l.revoked_at)) :
+                    (l.expires_at > 0 ? (l.state === 'expired' ? _sdT('Expired: {var}', when(l.expires_at)) : _sdT('Expires: {var}', when(l.expires_at))) : _sdT('Expires: never')),
                 _sdT('Opened {var} times', String(l.uses)),
                 l.last_used_at > 0 ? _sdT('Last opened: {var}', when(l.last_used_at)) : _sdT('Not opened yet')
             ];
-            var showable = state.canShow && l.can_show;
-            return '<li class="list-group-item px-3 py-3" data-ps-id="' + esc(String(l.id)) + '">' +
+            if (count) facts.push(_sdT('Comments: {var}', String(count)));
+            var showable = state.canShow && l.can_show && !revoked;
+            return '<li class="list-group-item px-3 py-3" data-ps-id="' + esc(String(l.id)) + '" data-ps-count="' + esc(String(count)) + '">' +
                        '<div class="d-flex flex-wrap align-items-center gap-3">' +
                            '<div class="me-auto">' + badges + '<code class="fg-secondary">' + esc(l.hint) + '…</code></div>' +
                            '<div class="btn-group btn-group-sm" role="group">' +
                                (showable ? '<button type="button" class="btn btn-outline theme-secondary" data-ps-copy><span class="bi bi-clipboard me-1" aria-hidden="true"></span>' + esc(_sdT('Copy address')) + '</button>' +
                                            '<button type="button" class="btn btn-outline theme-secondary" data-ps-show><span class="bi bi-eye me-1" aria-hidden="true"></span>' + esc(_sdT('Show address')) + '</button>' : '') +
-                               '<button type="button" class="btn btn-outline theme-danger" data-ps-revoke><span class="bi bi-x-circle me-1" aria-hidden="true"></span>' + esc(_sdT('Revoke')) + '</button>' +
+                               (l.comment_count > 0 ? '<button type="button" class="btn btn-outline theme-danger" data-ps-comments-delete><span class="bi bi-chat-left-text me-1" aria-hidden="true"></span>' + esc(_sdT('Delete comments')) + '</button>' : '') +
+                               (revoked ? '' : '<button type="button" class="btn btn-outline theme-danger" data-ps-revoke><span class="bi bi-x-circle me-1" aria-hidden="true"></span>' + esc(_sdT('Revoke')) + '</button>') +
                            '</div>' +
                        '</div>' +
                        '<div class="fg-secondary mt-1">' + facts.map(esc).join(' · ') +
@@ -81776,9 +81784,36 @@ const StyleDesigner = (function () {
                 return;
             }
             var item = e.target.closest('[data-ps-id]');
-            var btn = e.target.closest('[data-ps-copy],[data-ps-show],[data-ps-revoke]');
+            var btn = e.target.closest('[data-ps-copy],[data-ps-show],[data-ps-revoke],[data-ps-comments-delete]');
             if (!item || !btn || btn.disabled) return;
             var id = parseInt(item.getAttribute('data-ps-id'), 10);
+            // Every comment of the link, open and resolved, with their
+            // answers; asked first.
+            if (btn.hasAttribute('data-ps-comments-delete')) {
+                var drop = function () {
+                    btn.disabled = true;
+                    _pgApiPost('proto_comment_delete', { style_id: styleId, link_id: id }).then(function (res) {
+                        btn.disabled = false;
+                        if (!res || res.status !== 'success') {
+                            sdToast(esc((res && res.message) || _sdT('Sorry, we could not accept your request.')), 'error');
+                            return;
+                        }
+                        sdToast(esc(_sdT('The comments of this link were deleted.')), 'success');
+                        // The editor's Comments list, once loaded, drops them
+                        // too: a deletion need not move the heartbeat's stamp.
+                        if (_sdPartLoaded('comments')) _sdPartCall('comments', 'reload', []).catch(function () { /* read again on the next change */ });
+                        load();
+                    }).catch(function () { btn.disabled = false; sdToast(esc(_sdT('Network error.')), 'error'); });
+                };
+                var ask = _sdT('Delete the {var} comments and answers of this link? They cannot be brought back.', item.getAttribute('data-ps-count') || '0');
+                if (typeof window.pgConfirm === 'function') {
+                    window.pgConfirm({ title: _sdT('Delete comments'), message: ask, confirmText: _sdT('Yes, delete'), cancelText: _sdT('No'), variant: 'danger' })
+                        .then(function (ok) { if (ok) drop(); });
+                } else if (window.confirm(ask)) {
+                    drop();
+                }
+                return;
+            }
             if (btn.hasAttribute('data-ps-revoke')) {
                 var revoke = function () {
                     btn.disabled = true;

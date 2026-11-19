@@ -331,8 +331,23 @@ function pg_panel_designer($request, $action)
         case 'proto_comment_answer':
         case 'proto_comment_resolve':
         case 'proto_comment_delete':
-            $pc_row = pg_proto_comment_get(isset($request['comment_id']) ? (int)$request['comment_id'] : 0);
             $pc_style = isset($request['style_id']) ? (int)$request['style_id'] : 0;
+            // The Share prototype dialog's "Delete comments" names a link
+            // instead of a comment: every comment of that link, which must
+            // be one of the design named.
+            if (($sub === 'proto_comment_delete') && !empty($request['link_id'])) {
+                $pc_gone = pg_proto_comments_delete_link_of_design((int)$request['link_id'], $pc_style, (string)$user['username']);
+                if ($pc_gone === null) {
+                    respond(array('status' => 'error', 'message' => lang('The link could not be found.')));
+                }
+                respond(array(
+                    'status'  => 'success',
+                    'deleted' => $pc_gone,
+                    'stamp'   => pg_proto_comments_style_stamp($pc_style),
+                    'pages'   => pg_proto_comments_list_of_style($pc_style),
+                ));
+            }
+            $pc_row = pg_proto_comment_get(isset($request['comment_id']) ? (int)$request['comment_id'] : 0);
             // The comment must be one of the design the list was asked for.
             if (!$pc_row || (int)$pc_row['style_id'] !== $pc_style) {
                 respond(array('status' => 'error', 'message' => lang('This comment is no longer there.')));
