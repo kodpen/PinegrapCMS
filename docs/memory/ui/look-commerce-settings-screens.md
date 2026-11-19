@@ -1,6 +1,6 @@
 ---
 name: look-commerce-settings-screens
-description: Site Settings categories Commerce, Accounting and Bookings in look A (S5a, #PRNUM): buttons by rank, group headings, the stock and staff hours tables, what stayed
+description: Site Settings categories Commerce, Accounting and Bookings in look A (S5a, #10426): buttons by rank, group headings, the stock and staff hours tables, what stayed
 ---
 
 ## Which files moved?
