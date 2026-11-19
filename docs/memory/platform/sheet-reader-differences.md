@@ -15,6 +15,7 @@ module: sheet_read
 - A time alone is a fraction of a day: PHPExcel gave today's date (.xlsx, .xls) or 1970-01-01 (.ods) with it.
 - An .xls date with the product importer's data-only read was a day count; it is a date now, as in .xlsx.
 - Formulas: the result the file stores; PHPExcel recalculated them.
+- .ods merged ranges make no cells and only the asked sheet is walked: a file PHPExcel refused for an impossible span (0, negative) or a huge range or second sheet reads its values (`tests/ods_cell_ceiling_test.php`, bank import).
 
 ## How is it tested?
 - `tests/sheet_read_test.php`: the fixtures in `tests/fixtures/sheet_read/` (LibreOffice 24.2 .xlsx/.ods/.xls from one openpyxl workbook, a PHPExcel Excel5 .xls, 1904 workbooks) and `tests/fixtures/excel_reader2/products.xls` read by PHPExcel in its own process and by the reader, compared cell by cell; the differences above are listed there.
