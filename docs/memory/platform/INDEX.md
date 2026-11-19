@@ -55,6 +55,7 @@
 - docker-decisions.md: Owner's Docker decisions (2026-10-19/20): docker/ in the release tree, an addition only, no env in the product, nginx only, Software Update in the container left as it is
 - docker-image-publishing.md: Docker images on GHCR (PR #737): docker-publish.yml per published release (no pre-release), pinegrap-app/-web on amd64 and arm64, tags v<version> and latest, re-run by tag, PG_IMAGE_TAG, visibility
 - docker.md: docker/ compose stack (PR #565): app (PHP-FPM 8.3), web (nginx), MariaDB 10.11, cron gated on the database version, one-shot install service, data volume, nginx rules in step, CI check
+- download-assistant-session.md: Who starts the session in the root download_assistant.php: pinegrap/init.php on an installed site, the assistant itself (da_session_start()) only before an install (#10439)
 - editor-image-upload-refusals.md: The rich text editor's Image > Upload (editor_add_file.php): a discarded body, a missing file, an upload error code or a failed copy() is refused in the dialog, never inserted as a picture.
 - encryption-key-reseal-registry.md: Reset Encryption Key re-seals what pg_reseal_registry() lists, last in the same save; the entries, kinds and JSON fields, done/skipped/failed counts, the $key parameters of the sealing helpers [decision: decisions-made-product-25.md]
 - erp-documents-in-file-manager.md: Why a file the ERP module keeps (erp_doc_type set, no folder) is read-only in the file manager, the five doors that refuse it by name, and the Design Canvas's save that used to write over it

@@ -394,6 +394,7 @@
 - designer-options-panel-names.md: How controls of the visual editor's Options/Appearance panel get their accessible names (one naming pass), keyboard section headers, per-screen-size toggles, Styles inspector names
 - designer-options-panel-search.md: Options panel Search... box in the designer (filterPropertiesPanel()): what it matches, sections without rows, the No option matches line, Turkish İ and capitals
 - designer-options-section-cards.md: The Options panel's identity row and section cards (D3, D6–D9, D11): own section first and open, general sections closed with a count and summary, closed bodies not drawn, one source for changed rows [decision: here]
+- designer-options-style-advanced.md: The Options panel's Style and Advanced tabs (DP5b): the sections' names and order, which open by themselves, the card ids a renamed section keeps
 - designer-options-tabs.md: The Options panel's three tabs Content, Style and Advanced (D4, D5, D14): which section goes where, the tab kept per kind, only the open tab built, the closed Translation and Bind data summaries
 - designer-overview-follows-selection.md: The designer's Overview tree follows the selection from every panel: one place opens and scrolls to the row (_sdTreeRevealSelection), identity lookup, instant scroll, when it must not move.
 - designer-page-names.md: Which names a visual-editor page may take: other pages, files, short links, site root entries, sitemap.xml/robots.txt, site language codes; why check_name_availability() is not used on the save path.
