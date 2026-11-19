@@ -23,7 +23,8 @@ description: Image derivatives (PR #589) made by get_file.php for ?w=&f=: fixed 
 - Made after the session and DB connection are closed, with `ignore_user_abort` and a 120 s limit; sent with `readfile()`, never X-Sendfile.
 
 ## Which files get none?
-- ERP documents, workspace files and form/comment attachments (personal data). Access checks for the original hold for its derivatives.
+- ERP documents and form/comment attachments (personal data). Access checks for the original hold for its derivatives.
+- A workspace file gets only its 320 px copy in its own format, for any `?w=` (`workspace/workspace-channel-files-tab.md`).
 
 ## Why is the engine outside functions.php?
 - `includes/image_engine.php` holds `pg_process_image_file()`, its GD/Imagick halves, `pg_ini_bytes()` and the derivative functions; functions.php requires it, get_file.php only for `?w=`/`?f=` (defines `PG_GET_FILE`). Its functions call only each other and PHP; settings stay in `includes/fn/image.php`.
