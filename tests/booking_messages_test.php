@@ -321,6 +321,25 @@ function test_booking_messages_event_payload_and_catalogue()
 	pg_assert_same('booking:42:reminder:1793343600', pg_booking_sms_reference(booking_messages_test_row(), 'reminder'));
 }
 
+// sms_outbox.reference is UNIQUE: the 24-hour and the 2-hour reminder of a
+// booking need references of their own, or the second text is taken for a
+// repeat of the first and never queued.
+function test_booking_messages_each_reminder_has_its_own_sms_reference()
+{
+	$row = booking_messages_test_row(array('id' => 4294967295));
+	$day = pg_booking_sms_reference($row, 'reminder', 24);
+	$hours = pg_booking_sms_reference($row, 'reminder', 2);
+
+	pg_assert_true($day !== $hours, 'the 24-hour and the 2-hour reminder are two texts');
+	pg_assert_true(strlen(pg_booking_sms_reference($row, 'reminder', 8760)) <= 64, 'fits sms_outbox.reference VARCHAR(64)');
+	pg_assert_same('booking:42:confirmed:1793343600', pg_booking_sms_reference(booking_messages_test_row(), 'confirmed', 0), 'other events keep their reference');
+
+	// The reminder pass hands the due reminder's hours to the send.
+	$reflection = new ReflectionFunction('pg_booking_reminders_run');
+	$source = implode('', array_slice(file($reflection->getFileName()), $reflection->getStartLine() - 1, $reflection->getEndLine() - $reflection->getStartLine() + 1));
+	pg_assert_contains("pg_booking_message_send(\$row, 'reminder', \$due)", $source, 'the pass sends with the due hours');
+}
+
 // The four SMS events: kind booking (not commercial), offered only once the
 // booking tables exist, with the fields their texts use.
 function test_booking_messages_sms_events()
