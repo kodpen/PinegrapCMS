@@ -171,4 +171,3 @@
 - wholesale-features.md: Plan wholesale, features J1 to J11: an offer for a contact group, quantity prices on a product page, an account that uses another's prices, retail in public, a minimum order for a group
 - wholesale-steps.md: Plan wholesale, steps WS1 to WS7: the offers' group condition, an account using another's prices, its picker on the prices screen, the minimum order, quantity prices, the API, close-out
 - wholesale.md: Plan (owner 2026-11-16, agent channel poll 82): selling to businesses with what exists: offers for a contact group, one account using another's prices, a minimum order; no table; steps WS1 to WS7
-- workspace-memory-general.md: Plan (owner 2026-11-19): a general memory shared by the agent channels, records grouped by project and listed as rows; decisions read across agent channels; polls 150-152 answered; GM1-GM4
