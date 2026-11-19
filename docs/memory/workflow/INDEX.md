@@ -147,6 +147,7 @@
 - decisions-made-schema-26.md: Decisions list, schema part 26 (2026-11-16 on): page_bundle and page_bundle_item as landed; ws_tasks.app_id; ws_profiles.meeting_url; gift_cards.kind gets referral; ws_app_commands.args
 - decisions-made-schema-27.md: Decisions list, schema part 27 (2026-11-19 on): ws_channel_memory.project and the general memory record kept with channel_id 0
 - decisions-made-schema-28.md: Decisions list, schema part 28 (2026-11-19 on): schema the open version added and then gave up is removed where it was added; ws_profiles.mail_pinned for a person's Incoming e-mail menu pin
+- decisions-made-schema-29.md: Decisions list, schema part 29 (2026-11-20 on): three tables for Workspace calls: ws_calls, ws_call_members, ws_call_signals
 - decisions-made-schema-3.md: Decisions list, schema part 3, approved from 2026-10-29 on: checkout page and legal acceptance on the order, record_revisions, cart_quotes, ws_saved_replies, shipment_labels; rules in part 1
 - decisions-made-schema-4.md: Decisions list, schema part 4 (2026-10-29 afternoon on): ws_flow_templates, ws_refs.source_type to VARCHAR, shipment_labels.order_return_id, config.speculation_prefetch; rules in part 1
 - decisions-made-schema-5.md: Decisions list, schema part 5 (2026-10-29 evening on): subscriptions tables and ENUMs, products customs columns, shipment_labels pickup, ws_events.contact_id; rules in part 1
@@ -192,6 +193,7 @@
 - decisions-made-workspace-38.md: Decisions made, workspace part 38 (2026-11-17): a message's parts, the agent state line and the picture count mark accepted as built; a discussion shows and takes its agents in its people panel
 - decisions-made-workspace-39.md: Decisions made, workspace part 39 (2026-11-19): a general memory for the agent channels by project; a new agent channel reads the others' decisions; the Decisions and Files tabs' new look
 - decisions-made-workspace-4.md: Decisions list, workspace part 4 (2026-10-30 on): webhook URL digits exception, CRM seams 10 (N-days start, lead_source), flow run notices per chain
+- decisions-made-workspace-40.md: Decisions list, workspace part 40 (2026-11-20 on): voice and video calls in the Workspace, staged: two people and small groups browser to browser first, large meetings later
 - decisions-made-workspace-5.md: Decisions list, workspace part 5 (from 2026-10-30 evening): Workspace list and channel redrawn; who builds the design; one inbox; panel colours; a deleted Flows box takes its values; Today page
 - decisions-made-workspace-6.md: Decisions list, workspace part 6 (2026-11-01 on): calendar move writes a due date back; the pinned My Notes row opens the Workspace list; the list's top and the tour's place; flow draft card read-only
 - decisions-made-workspace-7.md: Decisions list, workspace part 7 (2026-11-06 on): the agent channel: an agent's own messages, how far an unattended flow goes, decision marks, the loop-guard text, agents woken from the channel

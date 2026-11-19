@@ -508,6 +508,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-schema-28.md: Where are the rules and the earlier parts?
 - decisions-made-schema-28.md: Is schema the open version added and then gave up kept? (owner, 2026-11-19, in the architect's window, agent channel message 9493)
 - decisions-made-schema-28.md: Where is a person's Incoming e-mail menu pin kept? (owner, 2026-11-19, agent channel poll 154, message 9495)
+- decisions-made-schema-29.md: Where are the rules and the earlier parts?
+- decisions-made-schema-29.md: Which tables do Workspace calls add? (owner, 2026-11-20, poll 158, channel message 9839)
 - decisions-made-schema-3.md: Where are the rules and the earlier steps?
 - decisions-made-schema-3.md: Which schema was approved on 2026-10-29?
 - decisions-made-schema-4.md: Where are the rules and the earlier steps?
@@ -687,6 +689,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-workspace-4.md: How does a customer with no order in N days produce a follow-up? (#3416, part 2)
 - decisions-made-workspace-4.md: Is `contacts.lead_source` picked from `referral_sources`? (#3416, part 3)
 - decisions-made-workspace-4.md: How many inbox lines do flow runs write? (#3526)
+- decisions-made-workspace-40.md: Where are the rules and the earlier parts?
+- decisions-made-workspace-40.md: Does the Workspace get voice and video calls? (owner, 2026-11-20, in the architect's window, channel message 9832; poll 157, message 9833)
 - decisions-made-workspace-5.md: How is the Workspace list laid out?
 - decisions-made-workspace-5.md: Does the channel screen change too?
 - decisions-made-workspace-5.md: Who builds the Workspace design?
