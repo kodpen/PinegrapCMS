@@ -136,6 +136,25 @@ function test_booking_widget_ws_busy()
 		'named people, the department and the company; an all-day event ends a second later');
 }
 
+// A holiday read from a calendar and left out under Workspace settings
+// ("Do not count", ws_events.skipped) is a working day: it takes no time,
+// as the Workspace calendar itself no longer shows it as a day off.
+function test_booking_widget_ws_busy_leaves_out_skipped_days()
+{
+	$staff = array(array('id' => 1, 'user_id' => 10));
+	$events = array(
+		array('scope' => 'company', 'department_id' => 0, 'people' => array(), 'starts_at' => 100, 'ends_at' => 199, 'all_day' => 1, 'skipped' => 1),
+		array('scope' => 'company', 'department_id' => 0, 'people' => array(), 'starts_at' => 500, 'ends_at' => 600, 'all_day' => 0, 'skipped' => '0'),
+	);
+
+	pg_assert_same(array(1 => array(array(500, 600))), pg_booking_ws_busy($events, $staff, array()), 'a day left out takes no time');
+
+	// The reader asks for the flag, so the pure part sees it.
+	$reflection = new ReflectionFunction('pg_booking_busy_between');
+	$source = implode('', array_slice(file($reflection->getFileName()), $reflection->getStartLine() - 1, $reflection->getEndLine() - $reflection->getStartLine() + 1));
+	pg_assert_contains("pg_schema_has('ws_events', 'skipped')", $source, 'the widget reads ws_events.skipped where it exists');
+}
+
 function test_booking_widget_render()
 {
 	$node = function ($tag, $props, $children = array()) {
