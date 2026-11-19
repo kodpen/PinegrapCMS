@@ -3,7 +3,8 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Tests for the counter sale's cart (includes/local_sale.php): which product
- * a scanned code adds.
+ * a scanned code adds and when a line's quantity change is refused for
+ * stock.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -130,6 +131,26 @@ fake_case(array(
 $found = local_sale_find_product('MUG-7');
 $out['code_find'] = array('product' => $found['product'] ? (int) $found['product']['id'] : 0, 'refusal' => (string) ($found['refusal'] ?? ''));
 
+// A cart line of 5 mugs while the shelf holds 3 (sold elsewhere since).
+$_SESSION['ecommerce']['local_sale_order_id'] = 50;
+$line = array(
+	array('value', "/SELECT status FROM orders WHERE id = '50'/", 'incomplete'),
+	array('item', "/FROM order_items oi\s+LEFT JOIN products p ON p.id = oi.product_id\s+WHERE oi.id = '11'/", array('id' => 11, 'product_id' => 7, 'quantity' => 5, 'product_name' => 'MUG-7', 'name' => 'MUG-7', 'short_description' => 'Blue mug', 'inventory' => 1, 'inventory_quantity' => 3)),
+	array('value', "/SUM\(quantity\)/", 0),
+);
+
+foreach (array('4', '5', '6') as $quantity) {
+	fake_case($line);
+	$set = local_sale_set_qty(11, $quantity);
+	$out['set_' . $quantity] = array('ok' => $set['ok'], 'message' => $set['message'], 'writes' => $GLOBALS['fake_writes']);
+}
+
+// The same line once the shelf is empty.
+$line[1][2]['inventory_quantity'] = 0;
+fake_case($line);
+$set = local_sale_set_qty(11, '4');
+$out['set_empty_shelf'] = array('ok' => $set['ok'], 'message' => $set['message'], 'writes' => $GLOBALS['fake_writes']);
+
 echo json_encode($out);
 PHP;
 
@@ -195,4 +216,30 @@ function test_local_sale_scan_finds_a_barcode_or_a_code()
 
 	pg_assert_same(array('product' => 7, 'refusal' => ''), $barcode, 'a barcode alone');
 	pg_assert_same(array('product' => 7, 'refusal' => ''), local_sale_cart_test_result('code_find'), 'a product code alone');
+}
+
+// Lowering a line above the stock is never refused: the minus button and a
+// smaller typed figure said "no more can be added" and kept the line where
+// completing the sale refuses it.
+function test_local_sale_set_qty_lowers_a_line_above_the_stock()
+{
+	$lower = local_sale_cart_test_result('set_4');
+
+	if ($lower === null) {
+		return;
+	}
+
+	pg_assert_same(true, $lower['ok'], 'five to four with three on the shelf');
+	pg_assert_contains("UPDATE order_items SET quantity = '4' WHERE id = '11'", implode("\n", $lower['writes']), 'written');
+
+	$same = local_sale_cart_test_result('set_5');
+	pg_assert_same(true, $same['ok'], 'the same figure again');
+
+	$raise = local_sale_cart_test_result('set_6');
+	pg_assert_same(false, $raise['ok'], 'raising past the stock is refused');
+	pg_assert_same('Only 3 in stock; no more can be added.', $raise['message'], 'refusal');
+	pg_assert_same(array(), $raise['writes'], 'nothing written');
+
+	$empty = local_sale_cart_test_result('set_empty_shelf');
+	pg_assert_same(true, $empty['ok'], 'lowered with nothing on the shelf');
 }

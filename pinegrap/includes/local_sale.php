@@ -651,11 +651,17 @@ function local_sale_set_qty($item_id, $quantity)
         return local_sale_ok(lang(array('string' => '{var:1} removed from the cart.', 'vars' => array(local_sale_product_label($item)))), array('level' => 'info'));
     }
 
-    $others = local_sale_cart_qty($order_id, $item['product_id'], $item['id']);
-    $stock_error = local_sale_stock_error($item, $others + $quantity);
+    // Only a raise is held against the stock. A line above what the shelf
+    // holds now (sold elsewhere since it was added) is lowered step by step
+    // with the minus button; completing the sale still refuses it while it
+    // is above (pg_local_order_line_errors()).
+    if ($quantity > (int) $item['quantity']) {
+        $others = local_sale_cart_qty($order_id, $item['product_id'], $item['id']);
+        $stock_error = local_sale_stock_error($item, $others + $quantity);
 
-    if ($stock_error !== '') {
-        return local_sale_fail($stock_error, array('line_errors' => array((int) $item['id'] => $stock_error), 'line_id' => (int) $item['id']));
+        if ($stock_error !== '') {
+            return local_sale_fail($stock_error, array('line_errors' => array((int) $item['id'] => $stock_error), 'line_id' => (int) $item['id']));
+        }
     }
 
     db("UPDATE order_items SET quantity = '" . $quantity . "' WHERE id = '" . (int) $item['id'] . "' AND order_id = '" . $order_id . "'");
