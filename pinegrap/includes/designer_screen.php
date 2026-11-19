@@ -235,6 +235,7 @@ function pg_designer_screen_render($ctx)
 
     require_once(PG_FUNCTIONS_DIR . '/includes/fn/layouts.php');
     require_once(PG_FUNCTIONS_DIR . '/includes/fn/legacy_design_theme.php');
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/listen.php');
 
     // The order and groups of the tabs, for the pages listed above.
     $tab_page_ids = array();
@@ -691,6 +692,10 @@ function pg_designer_screen_render($ctx)
                 'Format code'  => lang('Format code'),
                 'Minimap'      => lang('Minimap'),
             )) . ';
+            // The Listen block\'s labels in the page\'s language, as the
+            // published page gets them (pg_listen_inject()); the Preview
+            // writes them before pg_listen.js.
+            window.sdListenLabels = ' . encode_json(pg_listen_labels()) . ';
         </script>
         <script src="assets/js/codemirror_modal.js?v=' . pg_designer_asset_stamp('assets/js/codemirror_modal.js') . '"></script>
         <!-- Smart completion: the predictor and the Bootstrap vocabulary are

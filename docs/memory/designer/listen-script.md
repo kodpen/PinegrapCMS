@@ -6,7 +6,7 @@ module: listen
 
 ## How does the script reach a page?
 - `get_page_content.php` loads `includes/fn/listen.php` only when the drawn page holds `data-pg-listen` (not in an e-mail) and calls `pg_listen_inject()`: `window.pgListenLabels` (Listen, Pause, Resume, Stop through `lang()`) and `assets/js/pg_listen.js` deferred, once, before the last `</body>`.
-- The mark is found with `pg_listen_pattern()` (`\sdata-pg-listen(?=[\s=>\/])`, so `data-pg-listen-play` alone is no mark). The Preview's `_SD_PAGE_SCRIPTS` row uses the same expression; `tests/designer_page_scripts_test.php` compares them. The Preview has no labels: the script falls back to the English keys.
+- The mark is found with `pg_listen_pattern()` (`\sdata-pg-listen(?=[\s=>\/])`, so `data-pg-listen-play` alone is no mark). The Preview's `_SD_PAGE_SCRIPTS` row uses the same expression; `tests/designer_page_scripts_test.php` compares them. The Preview gets the same `pg_listen_labels()` before the script: `designer_screen.php` prints them as `window.sdListenLabels`, `_sdPreviewListenLabels()` writes them as `window.pgListenLabels` ([[designer-blocks-listen]]).
 
 ## What markup does it expect?
 - A root `[data-pg-listen]` with `hidden`; buttons `[data-pg-listen-play]`, `[data-pg-listen-pause]`, `[data-pg-listen-stop]` (the last two `hidden`), each with a `[data-pg-listen-text]` element the script fills with its label; a button without one gets `aria-label`. The root gets `data-pg-listen-state` idle / speaking / paused; Pause carries `aria-pressed` and reads "Resume" while paused.

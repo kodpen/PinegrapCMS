@@ -73540,9 +73540,10 @@ const StyleDesigner = (function () {
         var _pvBsJsRow = _pvJsRows.some(function (f) { return f.meta === 'bootstrap-js'; });
         if (_pvFw.js && !_pvBsJsRow) _pvJsInject += '    <script src="' + esc(_pvFw.js) + '"><\/script>\n';
         // The platform scripts the page's markup asks for, as on the front
-        // end; deferred, so they run after the framework's script.
+        // end; deferred, so they run after the framework's script. A script
+        // that reads labels gets them first, as on the front end.
         _sdPageScriptFiles(html).forEach(function (src) {
-            _pvJsInject += '    <script src="' + esc(src) + '" defer><\/script>\n';
+            _pvJsInject += _sdPreviewListenLabels(src, window.sdListenLabels) + '    <script src="' + esc(src) + '" defer><\/script>\n';
         });
         html = _sdInsertBeforeBodyEnd(html, _pvJsInject);
 
@@ -73585,6 +73586,16 @@ const StyleDesigner = (function () {
         var re = /<\/body\s*>/gi, m, at = -1;
         while ((m = re.exec(html)) !== null) at = m.index;
         return (at === -1) ? html + inject : html.slice(0, at) + inject + html.slice(at);
+    }
+
+    // The labels pg_listen.js reads (window.pgListenLabels), written before
+    // the script `src` as pg_listen_inject() writes them on the published
+    // page. `labels` is that page's pg_listen_labels() in the page's
+    // language (designer_screen.php prints it as window.sdListenLabels).
+    // '' for any other script, or without labels.
+    function _sdPreviewListenLabels(src, labels) {
+        if (!labels || !/\/assets\/js\/pg_listen\.js(?:[?#]|$)/.test(String(src || ''))) return '';
+        return '    <script>window.pgListenLabels = ' + JSON.stringify(labels).replace(/</g, '\\u003c') + ';<\/script>\n';
     }
 
     // The editor's own ?v= stamp (designer_screen.php prints it on this

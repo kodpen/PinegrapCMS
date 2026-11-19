@@ -49,7 +49,7 @@ StyleDesigner.registerBlockFamily(function (kit) {
 
     var buildButtons = function () {
         return kit.div('pg-listen my-3', _sdT('Listen'), [
-            button('play', 'btn btn-outline-primary', 'bi-volume-up', _sdT('Listen'), false),
+            button('play', 'btn btn-outline-primary', 'bi-play-fill', _sdT('Listen'), false),
             button('pause', 'btn btn-outline-secondary', 'bi-pause-fill', _sdT('Pause'), true),
             button('stop', 'btn btn-outline-secondary', 'bi-stop-fill', _sdT('Stop'), true)
         ], [
