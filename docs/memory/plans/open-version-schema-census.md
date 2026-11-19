@@ -9,7 +9,7 @@ description: Plan (owner 2026-11-19): find the tables, columns and indexes 2026.
 ## What is built?
 - SC1, the census: one worker, one docs-only PR, nothing removed. It reads the open version's migration file (`release/release-status.md` names it) sub-step by sub-step and lists every table, column and index the version adds, each with its step label and the PR that added it.
 - For each it says whether code under `pinegrap/` still reads or writes it: the name searched in PHP and JavaScript, and a name held only by its own step, `get_tables()` and tests counts as unused. It also lists what the same version replaced: two columns for one value, a column and a table for one record, a table whose rows a later step moved elsewhere.
-- The result is `release/open-version-schema-census.md` (one file per module when over 4 KB): unused, replaced, and a count of what is in use. What a released version brought is left out.
+- The result is `release/open-version-schema-census-list.md` (one file per module when over 4 KB): unused, replaced, and a count of what is in use. What a released version brought is left out.
 - The architect reads the list and marks each unused or replaced thing removed or kept, with the reason for a kept one.
 - SC2, the removals: one PR per module (Workspace, commerce, ERP, the rest). Each takes the adding lines out, adds the clean-up sub-step, corrects `get_tables()` and the memory files, names the `[SCHEME]` item's final state in its body, and is run twice on a dev database that ran the old step and once from the released schema.
 
