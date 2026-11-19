@@ -1298,6 +1298,24 @@
             apply();
         }
 
+        // One box ({ x, y }, its size from host.size()) whole in the middle,
+        // 48 px clear of the edges, the zoom between zoomMin and zoomMax; a
+        // box taller than the viewport at the smallest zoom shows its top.
+        function zoomTo(item) {
+            var rect = host.ui.viewport.getBoundingClientRect();
+
+            if (!item || !rect.width || !rect.height) {
+                return;
+            }
+
+            var size = sizeOf(host, item);
+            var k = clamp(Math.min((rect.width - 96) / Math.max(1, size.w), (rect.height - 96) / Math.max(1, size.h)), zoomMin, zoomMax);
+            var top = (size.h * k > rect.height - 96) ? 48 : (rect.height - size.h * k) / 2;
+
+            host.view({ x: (rect.width - size.w * k) / 2 - item.x * k, y: top - item.y * k, k: k });
+            apply();
+        }
+
         function point(clientX, clientY) {
             var rect = host.ui.viewport.getBoundingClientRect();
             var v = host.view();
@@ -1363,7 +1381,7 @@
             apply();
         }
 
-        return { apply: apply, zoomAt: zoomAt, zoomBy: zoomBy, fit: fit, point: point, reveal: reveal, wheel: wheel, pinchStart: pinchStart, pinchMove: pinchMove };
+        return { apply: apply, zoomAt: zoomAt, zoomBy: zoomBy, fit: fit, zoomTo: zoomTo, point: point, reveal: reveal, wheel: wheel, pinchStart: pinchStart, pinchMove: pinchMove };
     }
 
     // ── Autosave ───────────────────────────────────────────────────────

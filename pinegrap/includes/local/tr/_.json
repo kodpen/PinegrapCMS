@@ -2337,6 +2337,7 @@
     "{var}: outside the record, no record fills it": "{var}: kaydın dışında, onu hiçbir kayıt doldurmaz",
     "{var}: settings the site cannot read, nothing is drawn": "{var}: site ayarları okuyamıyor, hiçbir şey çizilmez",
     "{var}: this widget draws no such list": "{var}: bu widget böyle bir liste çizmez",
+    "{var}: zoomed in. Esc goes back to the whole map.": "{var}: yakınlaştırıldı. Esc tüm haritaya döner.",
     "{{count:forms_new}} new form submissions in the last day.": "Son bir günde {{count:forms_new}} yeni form kaydı geldi.",
     "{{count:forms_new}} new form submissions in the last hour.": "Son bir saatte {{count:forms_new}} yeni form kaydı geldi.",
     "{{count:invoices_overdue}} sales invoices are overdue, {{count:invoices_overdue_amount}} in all.": "{{count:invoices_overdue}} satış faturasının vadesi geçti, toplam {{count:invoices_overdue_amount}}.",

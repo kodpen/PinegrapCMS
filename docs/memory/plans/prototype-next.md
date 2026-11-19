@@ -13,7 +13,7 @@ description: Plan prototype-next (architect 2026-11-19), Prototype view: zoom to
 - PX6: Play: a click that misses flashes the clickable places; Play starts from the selected page.
 
 ## What is built?
-- PX1 (S), started: a double-click on a frame zooms the view to it; Esc or "All" goes back. The zoom to one box is the graph canvas core's (`designer/prototype-view-rules.md`, the split).
+- PX1 (S), done: #10476. A double-click or Enter on a frame zooms the view to it; Esc or "All" goes back (`designer/prototype-zoom.md`). The zoom to one box is the graph canvas core's `zoomTo()` (`designer/prototype-view-rules.md`, the split).
 - PX2 (M) after PX1: a row of the links panel dragged onto a frame or chip writes that link's target as an arrow does (`_sdProtoConnect()`, K1 to K3).
 - PX3 (S) after PX2: in the code a frame's head shows "No link leads here" (F27, a page no link reaches) and an amber count of its links without a target (F29); PX3 reads which one the words mean before it starts.
 - PX4 (M) after PX3: Ctrl+F in the view. Ctrl+F already goes to the Overview's tree search when the pointer or the focus is there, else to the browser's find; the view's keys are checked against it.

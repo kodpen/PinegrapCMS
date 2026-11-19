@@ -2084,3 +2084,50 @@ function test_proto_hotspots_view_grip_and_reach()
 		pg_assert_contains($selector, $css, 'styled: ' . $selector);
 	}
 }
+
+// Two taps zoom to a frame only when both ended on that frame, the second
+// less than ZOOM_TAP (450) ms after the first (a tap on a link mark, its
+// handle, an arrow or the empty canvas has no id), and only while the frame
+// is in the layout; a chip is no frame.
+function test_proto_hotspots_zoom_tap_of_a_double_click()
+{
+	$out = proto_hotspots_test_node('var laid = { frames: [{ id: "p:t1" }, { id: "s:5" }], chips: [{ id: "c:1" }] };'
+		. ' function t(id, time) { return { id: id, time: time }; }'
+		. ' out = [H.ZOOM_TAP, H.zoomTap(t("p:t1", 1000), t("p:t1", 1300), laid), H.zoomTap(t("s:5", 1000), t("s:5", 1449), laid),'
+		. ' H.zoomTap(t("p:t1", 1000), t("p:t1", 1450), laid), H.zoomTap(t("p:t1", 1300), t("p:t1", 1000), laid),'
+		. ' H.zoomTap(t("s:5", 1000), t("p:t1", 1100), laid), H.zoomTap(t("", 1000), t("p:t1", 1100), laid), H.zoomTap(t("", 1000), t("", 1100), laid),'
+		. ' H.zoomTap(t("c:1", 1000), t("c:1", 1100), laid), H.zoomTap(t("p:gone", 1000), t("p:gone", 1100), laid),'
+		. ' H.zoomTap(null, t("p:t1", 1100), laid), H.zoomTap(t("p:t1", 1000), t("p:t1", 1100), null)];');
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array(450, 'p:t1', 's:5', null, null, null, null, null, null, null, null, null), $out, 'two taps on one frame of the layout within 450 ms, else none');
+}
+
+// The view's side of the zoom to a frame (PX1): every release on the
+// canvas is a tap or breaks a pair, two taps or Enter on a frame zoom to it
+// with the core's zoomTo(), Esc and "All" put back the view from before;
+// Fit, a new arrangement and closing the view forget it.
+function test_proto_hotspots_view_zooms_to_a_frame()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/style_designer.css');
+
+	pg_assert_contains("_sdProtoTap((done.kind === 'move' && !done.moved && event.type === 'pointerup') ? done.item : null);", $source, 'a frame let go without a move is a tap');
+	pg_assert_contains("var id = window.PGProtoHotspots.zoomTap(_sdProto.tap, tap, _sdProto.layout);", $source, 'two taps on the same frame');
+	pg_assert_contains("_sdProto.tap = id ? null : tap;", $source, 'a zoom starts a new pair');
+	pg_assert_contains("_sdProto.canvas.view.zoomTo(item);", $source, 'the core zooms to the frame');
+	pg_assert_contains("if (!_sdProto.zoom) _sdProto.zoom = { id: '', back: { x: v.x, y: v.y, k: v.k } };", $source, 'the view from before the first zoom is kept');
+	pg_assert_contains("if (event.key === 'Escape') { if (!_sdProtoZoomBack()) _sdProtoClose(); return true; }", $source, 'Esc goes back first, then closes');
+	pg_assert_contains("if (event.key === 'Enter' && event.target.classList && event.target.classList.contains('sd-proto-frame')) return _sdProtoZoomTo(event.target.getAttribute('data-node'));", $source, 'Enter on a frame zooms to it');
+	pg_assert_contains("_sdT('All')", $source, 'the "All" control');
+	pg_assert_contains("_sdProtoZoomForget();\n            _sdProto.canvas.view.fit();", $source, 'Fit forgets the zoom');
+	pg_assert_contains("if (event.key === '0') _sdProtoZoomForget();", $source, 'the 0 key fits and forgets it');
+	pg_assert_contains("if (first) {\n            _sdProtoZoomForget();", $source, 'a new arrangement forgets it');
+	pg_assert_contains("_sdProtoZoomBack(true);\n        _sdProtoPicReset(true);", $source, 'closing the view puts the view back');
+	foreach (array('.sd-proto-zoomed {', '.sd-proto-zoomed[hidden] {', '.sd-proto-zoomed-all {', '.sd-proto .pgc-boxes {') as $selector) {
+		pg_assert_contains($selector, $css, 'styled: ' . $selector);
+	}
+}

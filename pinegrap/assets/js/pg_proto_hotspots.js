@@ -2179,6 +2179,30 @@
         return { x: frame.x, y: heading ? heading.y : frame.y };
     }
 
+    // A second tap on the same frame within this many milliseconds is a
+    // double-click, as the Flows canvas reads a box's double tap: the
+    // canvas captures the pointer, so the frame gets no dblclick.
+    var ZOOM_TAP = 450;
+
+    // The frame a tap zooms to: `last` and `tap` ({ id, time }) are where
+    // the last tap and this one ended (a frame's or chip's id, '' for
+    // anything else) and when. Both on one frame of the layout, this one
+    // less than ZOOM_TAP ms later: its id; else null.
+    function zoomTap(last, tap, laid) {
+        if (!isObject(last) || !isObject(tap) || !laid || !Array.isArray(laid.frames)) {
+            return null;
+        }
+
+        var id = String(tap.id || '');
+        var gap = Number(tap.time) - Number(last.time);
+
+        if (!id || String(last.id || '') !== id || !(gap >= 0 && gap < ZOOM_TAP)) {
+            return null;
+        }
+
+        return laid.frames.some(function (f) { return String(f.id) === id; }) ? id : null;
+    }
+
     // What the selected frame (its id, null for none) shows of a layout:
     // out, the ids of its arrows; in, the ids of the arrows into it from
     // page frames; shared, the links of shared frames into it, which draw
@@ -2508,6 +2532,8 @@
         drawTargets: drawTargets,
         focusOf: focusOf,
         fitStart: fitStart,
+        ZOOM_TAP: ZOOM_TAP,
+        zoomTap: zoomTap,
         listOf: listOf,
         rowTarget: rowTarget,
         brokenOf: brokenOf,
