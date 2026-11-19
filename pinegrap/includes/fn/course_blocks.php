@@ -32,6 +32,10 @@ define('PG_COURSE_VIEW_LIMIT', 120);
 define('PG_COURSE_VIEW_WINDOW', 600);
 define('PG_COURSE_PRESS_LIMIT', 30);
 define('PG_COURSE_PRESS_WINDOW', 600);
+// Checks of a certificate's code on certificate.php: a code is short, so
+// guessing one is kept slow.
+define('PG_COURSE_CHECK_LIMIT', 20);
+define('PG_COURSE_CHECK_WINDOW', 600);
 
 /**
  * The block's mark as an attribute of its own (not data-pg-course-item and
@@ -81,6 +85,7 @@ function pg_course_blocks_labels()
         'Rate'         => lang('Too many tries. Please wait a moment.'),
         'Failed'       => lang('Something went wrong. Please try again.'),
         'None'         => lang('You have no courses yet.'),
+        'Certificate'  => lang('Certificate'),
     );
 }
 
@@ -324,7 +329,8 @@ function pg_course_member_has_folder($folder_id)
  *
  * @param array $course  a course row
  * @param int   $page_id the page the blocks are on
- * @return array
+ * @return array pg_course_blocks_view() and certificate (its address, ''
+ *               before the completion or without "Certificate")
  */
 function pg_course_member_view(array $course, $page_id)
 {
@@ -341,15 +347,23 @@ function pg_course_member_view(array $course, $page_id)
     $done_ids = array();
     $enrolment_day = '';
     $can_edit = false;
+    $certificate = '';
 
     if ($member) {
         $progress = pg_course_member_progress((int) USER_ID, $course['id']);
+
+        // The certificate page (certificate.php) once the completion row
+        // is written and the course gives one.
+        if (!empty($course['certificate']) && ($progress['completed_at'] > 0)) {
+            $certificate = PATH . SOFTWARE_DIRECTORY . '/certificate.php?course=' . (int) $course['id'];
+        }
         $done_ids = $progress['done_ids'];
         $enrolment_day = pg_course_member_enrolment_day((int) USER_ID, $course, $progress);
         $can_edit = (bool) check_edit_access($course['folder_id']);
     }
 
-    return pg_course_blocks_view($course, $lessons, $member, $done_ids, $enrolment_day, date('Y-m-d'), $can_edit, $page_id);
+    return pg_course_blocks_view($course, $lessons, $member, $done_ids, $enrolment_day, date('Y-m-d'), $can_edit, $page_id)
+        + array('certificate' => $certificate);
 }
 
 /**
@@ -402,11 +416,29 @@ function pg_course_member_quiz_best($user_id, $quiz_page_id)
 }
 
 /**
- * Whether an address has sent more views or presses than its window
- * allows; a refusal is logged. False where the firewall's counter is
- * missing.
+ * The rate of each kind of course request: limit, window in seconds, the
+ * firewall's counter and the script a refusal is logged for. Pure.
  *
- * @param string $kind 'view' or 'press'
+ * @param string $kind 'view', 'press' or 'check'
+ * @return array limit, window, counter, script
+ */
+function pg_course_rate($kind)
+{
+    $rates = array(
+        'view'  => array('limit' => PG_COURSE_VIEW_LIMIT, 'window' => PG_COURSE_VIEW_WINDOW, 'counter' => 'course_view', 'script' => 'course_action.php'),
+        'press' => array('limit' => PG_COURSE_PRESS_LIMIT, 'window' => PG_COURSE_PRESS_WINDOW, 'counter' => 'course_press', 'script' => 'course_action.php'),
+        'check' => array('limit' => PG_COURSE_CHECK_LIMIT, 'window' => PG_COURSE_CHECK_WINDOW, 'counter' => 'course_check', 'script' => 'certificate.php'),
+    );
+
+    return isset($rates[$kind]) ? $rates[$kind] : $rates['view'];
+}
+
+/**
+ * Whether an address has sent more views, presses or code checks than its
+ * window allows; a refusal is logged. False where the firewall's counter
+ * is missing.
+ *
+ * @param string $kind 'view', 'press' or 'check'
  * @return bool
  */
 function pg_course_throttled($kind)
@@ -421,16 +453,14 @@ function pg_course_throttled($kind)
         return false;
     }
 
-    $press = ($kind === 'press');
-    $limit = $press ? PG_COURSE_PRESS_LIMIT : PG_COURSE_VIEW_LIMIT;
-    $window = $press ? PG_COURSE_PRESS_WINDOW : PG_COURSE_VIEW_WINDOW;
+    $rate = pg_course_rate($kind);
 
-    if (!waf_rate_exceeded(waf_ip_subject($ip), $press ? 'course_press' : 'course_view', $limit, $window)) {
+    if (!waf_rate_exceeded(waf_ip_subject($ip), $rate['counter'], $rate['limit'], $rate['window'])) {
         return false;
     }
 
     if (function_exists('waf_log_event') && isset(db::$con) && db::$con) {
-        waf_log_event('rate', 'rate-course', 'rate', 5, 'course_action.php', $limit . '/' . (int) round($window / 60) . 'min');
+        waf_log_event('rate', 'rate-course', 'rate', 5, $rate['script'], $rate['limit'] . '/' . (int) round($rate['window'] / 60) . 'min');
     }
 
     return true;

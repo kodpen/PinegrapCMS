@@ -138,6 +138,26 @@
         if (name) name.textContent = course.name;
     }
 
+    // A link to the member's certificate after the progress line, once the
+    // course is complete and gives one; drawn by the script, so the stored
+    // block needs no place for it.
+    function showCertificate(block, after, url) {
+        var link = first(block, 'data-pg-course-certificate');
+        if (!url) {
+            if (link) link.remove();
+            return;
+        }
+        if (!link) {
+            link = doc.createElement('a');
+            link.setAttribute('data-pg-course-certificate', '');
+            link.className = 'd-inline-block mt-2';
+            if (after && after.parentNode) after.parentNode.insertBefore(link, after.nextSibling);
+            else block.appendChild(link);
+        }
+        link.href = url;
+        link.textContent = text(labels, 'Certificate');
+    }
+
     function fillProgress(course) {
         blocks('progress').forEach(function (block) {
             var on = !!(course && course.member);
@@ -153,6 +173,7 @@
             }
             if (fill) fill.style.width = percent(course) + '%';
             if (count) count.textContent = countText(labels, course);
+            showCertificate(block, count || bar, course.certificate);
         });
     }
 

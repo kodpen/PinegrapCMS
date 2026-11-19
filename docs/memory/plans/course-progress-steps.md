@@ -30,7 +30,7 @@ description: Plan course-progress, steps CO1 to CO6: the tables and the rule of 
   - Pictures: dropped (agent channel message 9546); the unit tests pin the behaviour.
   - Features: Z8, Z9, Z11, Z12.
 
-- CO5 (M) after CO4: the certificate and the event.
+- CO5 (M) after CO4: the certificate and the event. Done in #10487.
   - Existing files: `includes/api/outbound/webhooks.php` and `includes/workspace/watch.php` (the event's name for webhooks and flows).
   - New: the root file `certificate.php` (the member's certificate, the public check).
   - Tests: a member who did not complete refused; a code of another course refused; the check's rate limit.
