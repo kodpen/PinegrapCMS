@@ -419,3 +419,100 @@ function test_workspace_agent_questions_settle_in_the_agents_name()
 	pg_assert_contains('$app_mark = $marked && ($app_id > 0) && ws_marks_kind_ready();', $send);
 	pg_assert_contains("(\$app_mark ? \$app_id : (int) \$viewer['id'])", $send, 'the application is the marker');
 }
+
+// In an agent channel the brief lists the general memory first, each line
+// naming its project, inside the same size as the channel's own index.
+function test_workspace_memory_digest_general_first()
+{
+	$now = 1000;
+	$general = array(
+		array('id' => 9, 'project' => 'Site  launch', 'title' => 'Release day', 'tags' => 'ci', 'pinned' => 0, 'expires_at' => 0, 'updated_at' => 40),
+		array('id' => 8, 'project' => '', 'title' => 'House rule', 'tags' => '', 'pinned' => 1, 'expires_at' => 0, 'updated_at' => 1),
+		array('id' => 7, 'project' => 'Old', 'title' => 'Gone', 'tags' => '', 'pinned' => 0, 'expires_at' => 900, 'updated_at' => 99),
+	);
+	$entries = array(array('id' => 1, 'title' => 'Own', 'tags' => array(), 'pinned' => 0, 'expires_at' => 0, 'updated_at' => 10));
+	$decisions = array(array('body' => 'Ship on Friday', 'marked_at' => 20));
+	$general_heading = 'General memory, shared by the agent channels (read an entry with workspace.memory.get, its id without the #):';
+	$heading = 'Channel memory (read an entry with workspace.memory.get, its id without the #):';
+
+	pg_assert_same($general_heading . "\n- #8 House rule\n- #9 Site launch: Release day [ci]\n\n" . $heading . "\n- #1 Own\n\nDecisions in this channel:\n- Ship on Friday",
+		ws_memory_digest($entries, $decisions, $now, WS_MEMORY_DIGEST_MAX, null, $general));
+
+	// Without the general records the digest is the channel's alone.
+	pg_assert_same(ws_memory_digest($entries, $decisions, $now), ws_memory_digest($entries, $decisions, $now, WS_MEMORY_DIGEST_MAX, null, array()));
+
+	// A general memory alone still makes a digest.
+	pg_assert_same($general_heading . "\n- #8 House rule\n- #9 Site launch: Release day [ci]", ws_memory_digest(array(), array(), $now, WS_MEMORY_DIGEST_MAX, null, $general));
+
+	// One size holds both: the general lines take their room first, and the
+	// count names the general list when a general line was left out.
+	$small = ws_memory_digest($entries, $decisions, $now, mb_strlen($general_heading) + 2 + 16, null, $general);
+	pg_assert_same($general_heading . "\n- #8 House rule\n\n(3 more not shown: list them with workspace.memory.general.list, workspace.memory.list and workspace.decisions.list.)", $small);
+}
+
+function test_workspace_memory_move_fault()
+{
+	$row = array('id' => 3, 'channel_id' => 5);
+	$agent = array('id' => 5, 'agent_channel' => 1);
+	$plain = array('id' => 5, 'agent_channel' => 0);
+
+	pg_assert_same(null, ws_memory_move_fault($row, $agent, true, true));
+
+	$general = ws_memory_move_fault(array('id' => 3, 'channel_id' => 0), null, true, true);
+	pg_assert_true(!$general['forbidden'] && ($general['error'] !== ''), 'already general: 422');
+
+	$post = ws_memory_move_fault($row, $agent, false, true);
+	pg_assert_true($post['forbidden'], 'not a poster of the channel');
+
+	$not_agent = ws_memory_move_fault($row, $plain, true, true);
+	pg_assert_true(!$not_agent['forbidden'] && ($not_agent['error'] !== ''), 'only an agent channel\'s records move');
+
+	$keeper = ws_memory_move_fault($row, $agent, true, false);
+	pg_assert_true($keeper['forbidden'], 'the mover must keep the general memory');
+
+	pg_assert_true(ws_memory_move_fault(null, $agent, true, true) !== null, 'no record');
+}
+
+function test_workspace_memory_general_routes()
+{
+	$routes = array();
+
+	foreach (ws_api_routes() as $route) {
+		$routes[$route['id']] = $route;
+	}
+
+	$expect = array(
+		'workspace.memory.general.list'   => array('GET', '/workspace/memory/general'),
+		'workspace.memory.general.create' => array('POST', '/workspace/memory/general'),
+		'workspace.memory.move_general'   => array('POST', '/workspace/memory/{id}/general'),
+	);
+
+	foreach ($expect as $id => $where) {
+		pg_assert_true(isset($routes[$id]), $id . ' is declared');
+
+		if (!isset($routes[$id])) {
+			continue;
+		}
+
+		pg_assert_same($where, array($routes[$id]['method'], $routes[$id]['path']), $id);
+		pg_assert_true(!isset($routes[$id]['mcp']) || ($routes[$id]['mcp'] !== false), $id . ' is a tool');
+
+		if ($where[0] !== 'GET') {
+			pg_assert_true(!empty($routes[$id]['dry_run']), $id . ' rehearses');
+		}
+	}
+
+	// GET /workspace/memory/{id} takes digits only, so "general" never reaches it.
+	$get = $routes['workspace.memory.get']['params'][0];
+	pg_assert_same(array('id', 'path', 'int'), array($get['name'], $get['in'], $get['type']));
+
+	$names = array_map(function ($param) {
+		return $param['name'];
+	}, $routes['workspace.memory.general.create']['params']);
+	pg_assert_true(in_array('project', $names, true) && !in_array('id', $names, true), 'a general record takes a project and no channel');
+
+	// The brief reads the general records only for an agent channel's asker who keeps them.
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/channel_memory.php');
+	pg_assert_contains("\$general = ws_memory_brief_general(\$viewer, \$channel) ? ws_memory_rows(0, false) : array();", $source);
+	pg_assert_contains('return function_exists(\'ws_agent_channel_is\') && ws_agent_channel_is($channel) && ws_memory_general_can($viewer);', $source);
+}
