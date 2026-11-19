@@ -2265,7 +2265,7 @@ function ws_mcp_agent_settings_field($server, $admin, $form = null)
     }
 
     $problem = (($current !== '') && !ws_mcp_agent_tool($server))
-        ? '<div class="form-text fg-danger">' . h($approve ? lang('This tool cannot take the messages now: turn it on below.') : lang('This tool cannot take the messages now: turn it on below as one that reads only.')) . '</div>'
+        ? '<div class="pg-field-help pg-field-error">' . h($approve ? lang('This tool cannot take the messages now: turn it on below.') : lang('This tool cannot take the messages now: turn it on below as one that reads only.')) . '</div>'
         : '';
 
     // On a server people sign in to, a tool that writes can take the
@@ -2276,9 +2276,9 @@ function ws_mcp_agent_settings_field($server, $admin, $form = null)
 
     return '
         <div class="mb-5">
-            <label class="form-label small fw-semibold" for="' . $field . '">' . h(lang(array('string' => 'Who answers @{var:1}', 'vars' => $server['alias']))) . '</label>
-            <select class="form-control form-control-sm" ' . ws_mcp_settings_name('agent_tool', (string) (int) $server['id'], $form) . ' id="' . $field . '"' . ($admin ? '' : ' disabled') . '>' . $options . '</select>
-            <div class="form-text">' . h(lang('A server that is an agent itself - another Pinegrap site, a company\'s own assistant - can answer on its own: a message written to the alias goes to the tool chosen here as it is, with the message it replies to, and the answer comes back under it. A task handed to the alias, or a note on a task that writes it, goes to it with the task\'s title and description, and the answer comes back in the task\'s Assistant part. Pinegrap AI is not needed.')) . ' ' . h($rule) . '</div>
+            <label class="pg-field-label" for="' . $field . '">' . h(lang(array('string' => 'Who answers @{var:1}', 'vars' => $server['alias']))) . '</label>
+            <select class="pg-input pg-input-sm" ' . ws_mcp_settings_name('agent_tool', (string) (int) $server['id'], $form) . ' id="' . $field . '"' . ($admin ? '' : ' disabled') . '>' . $options . '</select>
+            <div class="pg-field-help">' . h(lang('A server that is an agent itself - another Pinegrap site, a company\'s own assistant - can answer on its own: a message written to the alias goes to the tool chosen here as it is, with the message it replies to, and the answer comes back under it. A task handed to the alias, or a note on a task that writes it, goes to it with the task\'s title and description, and the answer comes back in the task\'s Assistant part. Pinegrap AI is not needed.')) . ' ' . h($rule) . '</div>
             ' . $problem . '
         </div>' . ws_mcp_agent_preamble_field($server, $admin, $form);
 }
@@ -2301,11 +2301,11 @@ function ws_mcp_agent_preamble_field($server, $admin, $form = null)
     $field = 'ws_mcp_' . (int) $server['id'] . '_preamble';
 
     return '
-        <div class="form-field mb-5">
+        <div class="d-flex align-items-start gap-3 mb-5">
             <input type="hidden" ' . ws_mcp_settings_name('agent_preamble', (string) (int) $server['id'], $form) . ' value="0"' . ($admin ? '' : ' disabled') . '>
-            <div class="switch"><input class="" type="checkbox" ' . ws_mcp_settings_name('agent_preamble', (string) (int) $server['id'], $form) . ' value="1" id="' . $field . '"' . (!empty($server['agent_preamble']) ? ' checked' : '') . ($admin ? '' : ' disabled') . '></div>
-            <label class="" for="' . $field . '">' . h(lang('Tell the agent about this site before each message')) . '</label>
-            <div class="form-text">' . h(lang('A short preamble goes before the message: this site\'s address, the time, who asked, the channel or task by name, the language to answer in and the rules Pinegrap AI follows. Nothing else written in the channel is sent.')) . '</div>
+            <input class="pg-switch" type="checkbox" ' . ws_mcp_settings_name('agent_preamble', (string) (int) $server['id'], $form) . ' value="1" id="' . $field . '" aria-describedby="' . $field . '-help"' . (!empty($server['agent_preamble']) ? ' checked' : '') . ($admin ? '' : ' disabled') . '>
+            <div><label class="pg-text-2" for="' . $field . '">' . h(lang('Tell the agent about this site before each message')) . '</label>
+            <div class="pg-field-help" id="' . $field . '-help">' . h(lang('A short preamble goes before the message: this site\'s address, the time, who asked, the channel or task by name, the language to answer in and the rules Pinegrap AI follows. Nothing else written in the channel is sent.')) . '</div></div>
         </div>';
 }
 
