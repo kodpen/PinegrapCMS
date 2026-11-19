@@ -248,15 +248,17 @@ function pg_pb_variant_group_id($product_id)
 
 /**
  * Whether a variant set member's posted attribute choice still fits its set:
- * every attribute must be one of the set's (when the set names any), and no
- * other member may already hold the same combination. Two members of one
+ * every attribute must be one of the set's and every set attribute must be
+ * chosen (when the set names any), and no other member may already hold the
+ * same combination. Two members of one
  * combination cannot be told apart by the storefront picker, and the
  * combination they replaced can no longer be bought.
  *
  * @param array $attributes      Posted pairs: array(array('attribute_id' => , 'option_id' => ), ...)
  * @param array $set_attributes  The set's attribute ids
  * @param array $siblings        Other members: product id => array(attribute id => option id)
- * @return array  array() when it fits; array('outside' => attribute id) or array('clash' => product id)
+ * @return array  array() when it fits; array('outside' => attribute id),
+ *                array('missing' => attribute id) or array('clash' => product id)
  */
 function pg_pb_variant_set_clash($attributes, $set_attributes, $siblings)
 {
@@ -276,6 +278,14 @@ function pg_pb_variant_set_clash($attributes, $set_attributes, $siblings)
         foreach (array_keys($posted) as $attribute_id) {
             if (!in_array($attribute_id, $set_attributes, true)) {
                 return array('outside' => $attribute_id);
+            }
+        }
+
+        // The storefront picker asks for one option of every set attribute,
+        // so a member missing one can no longer be picked or bought.
+        foreach ($set_attributes as $attribute_id) {
+            if (!isset($posted[$attribute_id])) {
+                return array('missing' => $attribute_id);
             }
         }
     }
@@ -400,6 +410,10 @@ function pg_pb_variant_set_problem($product_id, $variants, $cleared = FALSE)
         $name = db_value("SELECT name FROM product_attributes WHERE id = '" . (int) $clash['outside'] . "'");
 
         return lang(array('string' => 'The attribute {var:1} is not one of this variant set\'s attributes.', 'vars' => array((string) $name)));
+    }
+
+    if (isset($clash['missing'])) {
+        return lang('This product is a variant in a variant set: choose one option of each of its attributes.');
     }
 
     if (isset($clash['clash'])) {
