@@ -46,10 +46,13 @@ function test_webhook_subscription_limit_reached_at_the_limit()
 	pg_assert_true(api_webhook_subscription_limit_reached(51));
 }
 
-// POST /webhooks counts against the function and its 409 names the number.
+// The create check (POST /webhooks and the panel form) counts against the
+// function and its 409 names the number.
 function test_webhook_subscription_limit_used_by_create()
 {
-	$source = webhook_subscription_limit_test_source('api_webhooks_create');
+	pg_assert_contains('api_webhook_create_check(', webhook_subscription_limit_test_source('api_webhooks_create'));
+
+	$source = webhook_subscription_limit_test_source('api_webhook_create_check');
 	pg_assert_contains('api_webhook_subscription_limit_reached(', $source);
 	pg_assert_contains("'too_many_webhooks'", $source);
 	pg_assert_true(preg_match("~'vars'\s*=>\s*api_webhook_subscription_limit\(\)~", $source) === 1, 'the 409 text takes the number');

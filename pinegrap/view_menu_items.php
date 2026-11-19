@@ -268,9 +268,9 @@ pg_page_shell( array(
             </div>
 
             <div id="reorder_panel" class="card my-7" style="display:none">
-                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                <h2 class="card-header bg-reset border-0 pg-title-section">
                     ' . lang('Sort Items') . '
-                </div>
+                </h2>
                 <div class="card-body">
                     <p class="fg-secondary small">' . lang('Drag items to reorder or move to a different level.') . '</p>
                     <p id="sort_keys_hint" class="fg-secondary small">' . h(lang('With the keyboard, focus a grip: Up and Down move the item, Right moves it under the item above when that item has sub-items, Left moves it out one level.')) . '</p>

@@ -13,6 +13,7 @@ description: Plan designer-panels, the measure sheet as text, part 2: the Option
 - Changed dot: under the pointer an undo arrow with the tip "Reset to default"; a click is one undo step.
 - Badges: a tab's is filled `#5b9bff` on the open tab, `#262c36` elsewhere; a section's as the passive one; the screen size "MD" or "all" in `#f5b54a`, a click opens the chooser; a state badge "EN · not translated" or "translated".
 - Section card: open has the ground `#1f242c` and a 1 px line over its body; closed has no ground. The summary is a colour square, a single value as text, else "none" or "default".
+- Architect (2026-11-17, agent channel messages 8700, 8733) on DP3 as built: a section's head carries no icon; a heading's icon box shows its level's glyph; under 300 px a summary that would keep under five letters is left out, the colour square and the count stay. The default word is shown whole or left out, never cut ("varsa…" is a Turkish word of its own).
 - Box drawing: grey for an inherited or default value, filled blue for one set here, a frame for the one being typed; a value on an edge is 19 px wide; typed 0 to 5 or "auto"; Shift the opposite side too, Alt all four.
 - Tabs: Left and Right move; hover `rgba(255,255,255,.04)`.
 - Search: results 120 ms after typing; the first Esc clears, the second leaves; the clear mark has a 24 px target.
@@ -21,4 +22,4 @@ description: Plan designer-panels, the measure sheet as text, part 2: the Option
 
 ## What does the sheet not show?
 - A colour, icon or picture picker: it stays as today, at height 30 and corner 9.
-- A multiple selection: drawn before the step that needs it (`designer-panels-rules.md`). The panel under 300 px is drawn: `designer-panels-measures-4.md`.
+- The panel under 300 px: `designer-panels-measures-4.md`. Several elements selected: `designer-panels-measures-5.md`.

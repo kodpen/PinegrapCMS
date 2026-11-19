@@ -190,7 +190,7 @@ function ws_api_inbox_schema()
         'note_id'           => 'integer?',
         'plan_item_id'      => 'integer?',
         'meeting_url'       => 'string?',
-        'created_at'        => 'string',
+        'created_at'        => 'datetime',
         'deleted'           => 'boolean',
     );
 }

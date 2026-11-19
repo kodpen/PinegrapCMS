@@ -1,6 +1,6 @@
 ---
 name: poll-question-picture-box
-description: A question's own picture in the poll box (#9964) and the New poll form's "Question picture" field: the question shape, thumbnails, "Other", answered, what is left out
+description: A question's own picture in the poll box (#9964): the question shape, thumbnails, answered; the viewer's distinct pictures and count mark (#10023); the New poll form's "Question picture" field
 ---
 
 ## How does the box draw a question's picture?
@@ -9,6 +9,11 @@ description: A question's own picture in the poll box (#9964) and the New poll f
 - The picture stands large at the left in the `ws-poll-split` grid for a person's poll and an agent question alike, never following the rows; options with pictures keep thumbnails in their rows. Under 576 px it stands above the options.
 - Agent question: "Other" stays the words field with Send under the options (in `.ws-poll-column` beside the picture); one answer and no "Other" stays one click. Answered: the picture stays left of the green rows. Taken back: greyed with the box.
 - Drawn once: `renderMessage()` leaves out that message's file card; any other file card is unchanged. The figure (`pollQuestionFigure()`, a button, `alt` from the question's words, name "Open the question's picture") opens the viewer on it, the options' pictures after it (`pollPictures(poll, optionId, question)`).
+
+## Which pictures does the viewer hold, and what says how many?
+- `pollPictureList(poll, question)` (pure): the question's picture first, then the options' in order; one file (same address) on several options is one entry, captioned with the first of those options' labels; `start` maps each pictured option to its entry. `pollPictures()` opens the viewer over it, on the clicked option's entry (#10023; before, one sheet on two options showed twice).
+- The count mark (`pollFigureCount()`, `.ws-poll-picture-count`): `bi-images` and "{var:1} pictures" ("3 görsel") at the large figure's bottom right, when the list holds two or more; nearly opaque with a hairline, from the tokens `--pg-media-mark-bg` / `-fg` (one value for both themes: a picture does not change with the theme; architect, message 8559). One distinct picture: no mark. Not `.ws-poll-count`, a row's vote count.
+- The mark's words end the figure's name (`pollFigureName()`); here the count includes the options' thumbnails. Words, not carousel dots: dots would step the large picture, which the question's picture must not do.
 
 ## Why, and what is left out?
 - Owner (2026-11-16, `workflow/decisions-made-workspace-36.md`): one picture beside the question, in its box. The architect's readings: the picture is sent with the question; the large picture stays the question's while options show thumbnails; "Other" stays the words field of an agent question. Owner's look: poll 92 (agent channel 6751).

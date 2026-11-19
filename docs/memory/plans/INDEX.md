@@ -18,12 +18,12 @@
 - agent-channel.md: Plan (owner 2026-11-06, wake doors 2026-11-07): the Workspace channel from which the owner runs coordinators and agents: registry with @handles, wake rules and doors, scheduled wakes, queue, memory
 - agent-work-apart-features.md: Features W1 to W12 of plan agent-work-apart: an agent channel's tasks left out of the general task lists and counts, the toggle, the mark of a task an application created, its filter, the inventory
 - agent-work-apart.md: Plan (owner 2026-11-16, agent channel poll 80): an agent channel's tasks kept apart from the general task lists as its decisions are, a task an application created marked so; steps AW1 to AW4
-- agent-work-features.md: Plan (owner 2026-11-15, agent channel poll 49): an agent's duty text, its progress note, a task handed to a registry agent, Right or Wrong on an agent's answer; steps AF1 to AF5b
 - agents-card-settings.md: Plan (owner 2026-11-15): the Site Settings dialog keeps its place after a save; the agents' settings say what each door is for and are redrawn in the panel's look; AS1 to AS5
 - api-clean-modern-findings.md: What the test of 2026-11-17 measured on dev's external API: the GET sweep, write rounds, the document's gaps in figures, missing HTTP manners, the documentation pages; ground of plan api-clean-modern
 - api-clean-modern-steps-manners.md: Steps AM7 to AM13 of plan api-clean-modern: HEAD, Location and the 401 challenge, every wrong field, If-Match, delete twins, Accept-Language held, the documentation pages, close-out
 - api-clean-modern-steps.md: Steps AM1 to AM6 of plan api-clean-modern: the two failing routes, a fault as JSON, time formats in the document, the answer check tool, generated descriptions and example bodies
 - api-clean-modern.md: Plan (owner 2026-11-17): the external API made clean and modern after its test: failing routes, faults as JSON, a truthful document, HTTP manners, the documentation pages; steps AM1 to AM13
+- area-tab-strip-place.md: Plan (owner 2026-11-19, poll 153): an area's tab strip sits centred in the window on every tab screen whatever the screen's width; Communication first, then the other areas; TS1, TS2
 - auto-dialog-popups-census.md: Census PU1 of auto-dialog-popups: who touches auto_dialogs, open_dialog() and jQuery UI, ui-dialog styles, the cookie notice layer and pg:consent, a shared component drawn outside a page
 - auto-dialog-popups-steps.md: Steps PU1 to PU10 of plans/auto-dialog-popups.md: census, the dialog script, consent, the columns, the screens, designed content, the four blocks, counts, the recovered carts touch, close-out
 - auto-dialog-popups.md: Plan (owner 2026-11-15, poll 51 and agent channel message 5139): pop-ups built by growing Auto Dialogs: the browser's own dialog in place of jQuery UI, new triggers, designed content, counts
@@ -38,6 +38,7 @@
 - channel-commands-steps-2.md: Plan channel-commands, steps CC7 to CC12 and the close-out: /oluştur for a contact and a row, an ERP account and an event, /kargo, application arguments (a column), an agent's command
 - channel-commands-steps.md: Plan channel-commands, steps CC1 to CC6: the registry with no change of behaviour, the gate and grouped /help, /hatırlat and /özet, /onay /güncelleme /checkin, flows in the / list, the channel's own
 - channel-commands.md: Plan (owner 2026-11-16): channel commands grown in steps CC1 to CC12: a registry entry per command, commands for what has a button, records, flows in the / list, application arguments, agents
+- channel-decisions-files-tabs.md: Plan (owner 2026-11-19): a channel's Decisions tab as one list of wide cards, long ones folded, no sideways scroll; its Files tab with a count and a gallery light with hundreds of pictures; TD1, TD2
 - claude-plugin-bundle-steps.md: Plan claude-plugin-bundle, steps CB1 to CB5: the census and checks (done), the bundle in the plugin's repository, the "Connect to Claude" button now (CB4a), the listing, what waits for 2026.11.0
 - claude-plugin-bundle.md: Plan (owner 2026-11-14): a Pinegrap plugin bundle for Claude's directory: a site's MCP server connected by its address, skills for common site work, the listing; the repository is the owner's to open
 - click-scroll-map-features-2.md: Plan click-scroll-map, features C16 to C23: the switch and its empty state, the "Clicks and scrolling" section of Visitors, a page's own view, the report route, the designer's "Clicks" layer
@@ -48,9 +49,9 @@
 - collection-rows-features.md: Plan collection-rows, features R1 to R12: the kind and the field's value, the writer of a posted list, the editor on the panel's record screens, delete and History
 - collection-rows-steps.md: Plan collection-rows, steps RW1 to RW7: the kind and writer, the panel editor, delete and History, the API, the site form, the list on the record page, close-out
 - collection-rows.md: Plan (owner 2026-11-16, agent channel message 5667): a "Rows" field of a collection, a record's own rows added, removed and ordered on its form; steps RW1 to RW7
-- connections-hub-features.md: Plan connections-hub, features H1 to H13: the registry of outside services, its states and count, the Connections screen and its drawer, what follows the registry, the merges asked one by one
-- connections-hub-steps.md: Plan connections-hub, steps CN1 to CN7: the registry and its census, the sheet, the Connections screen, the drawers, the searches, the merges asked one by one, close-out; what every step keeps
-- connections-hub.md: Plan (owner 2026-11-17): one list in code of every outside service and one Connections screen drawn from it, the redraw of Connected accounts; features H1 to H13, steps CN1 to CN7
+- connections-merges-build.md: Plan connections-merges, the build after poll 149: CX7 the frame, CX8 GitHub, CX9 AI providers, CX10 Google and Microsoft, CX11 the other groups; the architect's cut
+- connections-merges-panel-rules.md: Connections management screen (plan connections-merges): the architect's rules for a service's panel: one connection per provider and its data step, the count stays 78, gates, card titles
+- connections-merges.md: Plan: Connections becomes the one place where outside services are set up (owner, poll 146); CX2 the voice card, CX3 E-mail sending, the screen accepted in poll 149, the build CX7 to CX11
 - content-review-features.md: Plan content-review, features V1 to V17: which items, what an item keeps, the states, the Content review screen, its actions, who sees what, the task, the flow event, the API
 - content-review-steps.md: Plan content-review, steps CH1 to CH5: the table and its rules, the Content review screen, the task and the flow event, the API, close-out
 - content-review.md: Plan (owner 2026-11-16, agent channel message 5667): a person and a "review by" date for a page or collection record, and the Content review screen of what is due; steps CH1 to CH5
@@ -65,6 +66,8 @@
 - design-template-own-looks-order.md: Order of the polishing round after Launch: every shipped template's family and pages steps, in which order, and where each template stands
 - design-template-own-looks.md: Plan (owner 2026-11-07): block families in their own source files (B0), Launch as an Apple-like product page (L1-L3), then a polishing round for every template
 - designer-panels-additions.md: Plan designer-panels: additions of other plans to the Options column, the Overview, the page strip or the canvas bar wait for that area's new shape (owner 2026-11-17); which steps wait
+- designer-panels-differences.md: Plan designer-panels: the list of differences between a landed step and its accepted picture, kept for the close-out DP25, which brings it to the owner as one list
+- designer-panels-drawings.md: Plan designer-panels: the sheets in `plans/designer-panels/`, what each shows, where its measures are as text, which board of `boards.html` it is and how a sheet is made from its board
 - designer-panels-features-2.md: Plan designer-panels, features D16 to D28: the spacing box and the size chooser, corners, layout by context, the search that also adds, the review view, copy and paste style
 - designer-panels-features-3.md: Plan designer-panels, features D29 to D44: the Overview tree for long pages: sections, folded chains, hints, search, the page map, wide drop targets, long drags, moving without dragging
 - designer-panels-features-4.md: Plan designer-panels, features D45 to D53: the page strip: the design's menu, the open group as a box, folded groups as chips, tab states, the Pages window, suggested groups
@@ -73,6 +76,10 @@
 - designer-panels-measures-2.md: Plan designer-panels, the measure sheet as text, part 2: the Options panel's parts in order with their sizes, and every control's states (measures-2-anatomy.jpg, measures-3-controls.jpg)
 - designer-panels-measures-3.md: Plan designer-panels, the measure sheet as text, part 3: where each of today's Options sections goes in the three tabs, and the measures of the Overview rows, the page strip and the canvas bar
 - designer-panels-measures-4.md: Plan designer-panels, the Options panel under 300 px as text (drawn at 240, `options-5-narrow-column.jpg`, owner 2026-11-17): identity, tabs, labels, stacked rows, quick strip, closed sections
+- designer-panels-measures-5.md: Plan designer-panels, several elements selected in the Options panel as text (`options-6-multiple-selection.jpg`, owner 2026-11-17): identity, tabs, "— Multiple —", the ring dot, badges, brush, filter
+- designer-panels-measures-6.md: Plan designer-panels, the Pages and Move windows on a 390 px phone as text (`phone-pages-move.jpg`, owner 2026-11-17): the bottom sheet, 44 px rows, the row menu, the lock, Move's bar
+- designer-panels-measures-7.md: Plan designer-panels, the page strip on a narrow screen as text (`page-strip-narrow-approval.jpg`, upper half, owner 2026-11-17): the six steps that make room, what never goes, the "+N" chips
+- designer-panels-measures-8.md: Plan designer-panels, publish approval's marks on the new page strip as text (`page-strip-narrow-approval.jpg`, lower half, owner 2026-11-17): the waiting pill, answer icons, the count, folded pages
 - designer-panels-measures.md: Plan designer-panels, the measure sheet as text, part 1: the chrome's colours with use and contrast, type, heights, corners, the focus ring and the changed dot (measures-1-tokens.jpg)
 - designer-panels-rules.md: Plan designer-panels: what today's editor does that no step may lose (K1 to K12), every step's rules, the screens no drawing shows yet, and what a step's PR body carries
 - designer-panels-steps-2.md: Plan designer-panels, steps DP6 to DP10 of the Options chain: layout by context, the spacing box and size chooser, corners, the search that also adds, the review view, copy and paste style
@@ -86,6 +93,7 @@
 - event-tickets-steps.md: Plan event-tickets, steps TK1 to TK6: tickets made and voided, the holder's page, the check-in screen, places given back and the waiting list, the API and the product's mark, close-out
 - event-tickets.md: Plan (owner 2026-11-16, agent channel poll 82): a ticket with a QR code per place of an order, check-in at the door from a phone, and a waiting list when an event is full; steps TK1 to TK6
 - github-channel-connection.md: Plan (owner 2026-11-08): connect GitHub with OAuth from Settings › Connections, the site sets its own webhook on chosen repositories and writes CI, pull request and label lines into a channel
+- incoming-mail-menu-card.md: Plan (owner 2026-11-19): Incoming e-mail pinned to the main menu, a card of it on the new dashboard for whoever may read it, the channel named in an open mail's head; IM1-IM3
 - integrations-census-aggregators.md: Census (2026-11-17) of services where one integration brings many: marketplace integrators, channel and feed tools, cargo and payment aggregators, what each states and whether its API is open
 - integrations-census-connectors.md: Census (2026-11-17) of AI assistants' connector directories for a site's own MCP server: Claude's URL pattern and install link, the MCP Registry, the ecosystem's size, what may be claimed
 - integrations-census-machinery.md: Census (2026-11-17) of what an outside program can do with a site: API size, webhooks as REST hooks, the OAuth and MCP servers, no address shared by all sites, what an automation app would miss
@@ -98,9 +106,8 @@
 - integrations-census-today-2.md: Census (2026-11-17) of the outside services the product connects to today, the rest: mail, SMS, chat, accounts, files, analytics, maps, AI, and what the market's lists hold that is absent here
 - integrations-census-today.md: Census (2026-11-17) of the outside services the product connects to today, the selling side: how they were counted, payments, shipping, marketplaces, e-documents, how a new one is added
 - integrations-census.md: Start file of the integrations census (2026-11-17, the owner's request in the agent channel): what was asked, the parts, the decisions that bind, the summary, what is still to decide
-- kodpen-vendor-api-client-design-update.md: Update contract of plans/kodpen-vendor-api-client.md still to build: which keys verify (P5c) and P2's release workflow; the built check, pin, download and beta builds are in platform/
-- kodpen-vendor-api-client-steps.md: Open steps of plans/kodpen-vendor-api-client.md: P2 and P5c before the 2026.11.0 release branch, P9 (api2 client removal) in the next open version; claim as [plan:kodpen-vendor-api-client] P<n>
-- kodpen-vendor-api-client.md: Plan (owner 2026-10-25 to 27): the Kodpen API client is on (P8); left are P2 and P5c before the 2026.11.0 release branch and P9, the api2 client removal in the next open version; steps in -steps
+- kodpen-vendor-api-client-steps.md: Open step of plans/kodpen-vendor-api-client.md: P9 (api2 client removal) in the next open version; claim as [plan:kodpen-vendor-api-client] P9
+- kodpen-vendor-api-client.md: Plan (owner 2026-10-25 to 27): the Kodpen API client is on (P8), releases get their packages (P2); left is P9, the api2 client removal in the next open version; steps in -steps
 - listen-block-features.md: Plan listen-block, features L1 to L13: the block and its mark, where the script comes from, what is read and in which language, when the button shows, its controls, the canvas and the Preview
 - listen-block-steps.md: Plan listen-block, steps LS1 to LS3: the script and its two doors, the block, close-out
 - listen-block.md: Plan (owner 2026-11-16, agent channel message 5667): a "Listen" block of the visual designer that reads the page's article aloud with the browser's own voice; steps LS1 to LS3
@@ -112,6 +119,7 @@
 - mobile-api-shelved.md: Team-device API work for the closed-source Pinegrap Mobile app (restarted 2026-10-24 outside this repo): what exists (M1–M6), what M7 (native push) and M8 add, decisions, how its needs arrive
 - more-features-shared-files.md: The existing files that steps of more than one of the eight plans of plans/more-features.md touch, each with its steps and their order; two steps on the same file are never open together
 - more-features.md: Start file of the eight plans the owner chose from the second feature study (owner 2026-11-16, agent channel message 6424 and poll 82): his words, the architect's conditions, the plans
+- open-version-schema-census.md: Plan (owner 2026-11-19): find the tables, columns and indexes 2026.11.0 added that no code uses any more and take them out where they were added; SC1 the census, SC2 the removals
 - panel-design-language-dialogs.md: Look A's dialogs and drawers (#8860): the scrim, the three dialog widths, head, body and foot, the confirm dialog, the settings dialog's rail and pane, a drawer's sections and member rows
 - panel-design-language-look.md: Look A's numbers (second pass) for the panel's design language: type, surfaces and depth, fields, buttons, the segmented control, the status pill, the icon tile and tones, rows, what a title says
 - panel-design-language-report.md: Look A's report screen (#8955): ready reports and the period on top, four figures, the chart against the previous period, the grouped table and its total, the bars card, the settings drawer
@@ -130,15 +138,13 @@
 - panel-old-screens-rules.md: Old panel screens to look A: what the looks decided beyond the sheet: the owner's kept screens, address parts, a narrow field alone in its row, mapping grids, values the sheet does not name
 - panel-old-screens-shared-steps.md: Old panel screens to look A: the shared steps cut after the groups, SH1 to SH10 (field, status list, ERP lists, figure cards, icon buttons, save bar, list title) and KS1, KS2 on kept screens
 - panel-old-screens.md: Plan (owner 2026-11-15): the panel screens still drawn the old way move to look A; censuses done, LM2 the shared buttons, then one census group per step (C1 to C5, E1 to E5, S1 to S6)
+- php-error-log-clean-census-2.md: Error log census part 2 (plan php-error-log-clean): the files with shapes still open, most frequent first, from get_order_preview.php to includes/fn/forms.php; verdict words are explained in part 1
+- php-error-log-clean-census-3.md: Error log census part 3 (plan php-error-log-clean): the files with shapes still open, from init.php to the smallest; verdict words are explained in part 1
+- php-error-log-clean-census-4.md: Error log census part 4 (plan php-error-log-clean): the shapes already gone on development, by file with the PR that removed them, most frequent first; nothing here is left for EL5
+- php-error-log-clean-census.md: PHP error log census (plan php-error-log-clean, EL1): what was read, totals, how shapes were checked, the fatal errors' verdicts; shapes by file in parts 2 to 4
 - php-error-log-clean.md: Plan (owner 2026-11-14): the PHP error log of the owner's dev machine read for Pinegrap's own deprecations and warnings on PHP 8.5, and their causes fixed; steps EL1 to EL6
-- picture-text-translation-census-draw.md: Picture text translation PT0 census, drawing: browser renderer without the editor, the server (fonts, three scripts), a longer text box, right-to-left
-- picture-text-translation-census-keep.md: Picture text translation PT0 census: keeping a language version (own table, source document, named file): schema, page pass cost, rename, delete, Recycle Bin, Disk Usage
-- picture-text-translation-census-places.md: Picture text translation PT0 census: every path writing a picture address into a page (nodes, HTML, products, srcset, backgrounds, og:image), what the page pass sees
-- picture-text-translation-census-store.md: Picture text translation PT0 census, store: picture texts in translation_uses, the Translations screen group, a job, pg_tr_translatable() on short words and prices
-- picture-text-translation-census.md: Picture text translation PT0 census start: where a Design Canvas document with text layers lives, which layer fields hold words, the parts, the questions for the owner
-- picture-text-translation-steps-2.md: Plan picture-text-translation, steps PT5 to PT7 and their order: the drawing queue, the file doors of a language's picture, the close-out
-- picture-text-translation-steps.md: Plan picture-text-translation, steps PT1 to PT4b: the table and the texts in the store, the page pass, the Pictures group, drawing a canvas picture and a photo in the Design Canvas
-- picture-text-translation.md: Plan (owner 2026-11-16): the texts in pictures translated: a Design Canvas picture's text layers enter the site translation, a page in another language shows its picture; steps PT1 to PT7
+- picture-text-auto-draw-steps.md: Plan picture-text-auto-draw, steps DA1 to DA5: rows and text jobs at save time, the waiting mark, the panel's background draw, the server's draw, the screens' words, close-out
+- picture-text-auto-draw.md: Plan (owner 2026-11-17, agent channel poll 143): a translated Design Canvas picture is drawn by itself, in an open panel in the background and by the server with nobody there; steps DA1 to DA5
 - place-map-census-2.md: Census MP1 of place-map, part 2: what OpenStreetMap's own tiles allow (tile usage policy, read 2026-11-16) and the security-header change the map needs (waf_csp_policy())
 - place-map-census-3.md: Census MP1 of place-map, part 3: how the cookie notice lists a service (pg_consent_page_services(), pg_consent_catalogue()), which class the map could go under, and the questions for the architect
 - place-map-census.md: Census MP1 of place-map, part 1: the three address providers' terms on keeping a looked-up coordinate and on showing it on another map (Google, Mapbox, Photon), read 2026-11-16
@@ -148,18 +154,10 @@
 - post-digest-features.md: Plan post-digest, features D1 to D13: the flow box that reads a list's records, the window of a run, the e-mail box's contact group as a campaign, the body, the ready flow, safety and rights
 - post-digest-steps.md: Plan post-digest, steps DG1 to DG5: the records box on the server, the contact group as a campaign, the canvas, the ready flow, close-out
 - post-digest.md: Plan (owner 2026-11-16, agent channel poll 82): new posts of a list sent by themselves as an e-mail to a contact group, from a general flow box and the campaign path, no table; steps DG1 to DG5
-- prototype-canvas-features-2.md: Plan prototype-canvas, features F15 to F25: the list of the selected page's links, the broken links found, drawing and changing an arrow, the bar
-- prototype-canvas-features-3.md: Plan prototype-canvas, features F26 to F34 from the owner's answer of 2026-11-16: empty links and unreached pages marked, a target suggested for empty links and written only when he applies
-- prototype-canvas-features.md: Plan prototype-canvas, features F1 to F14: what a frame of the Prototype view shows, how pages are arranged, which arrows are drawn and how an arrow runs
-- prototype-canvas-rules.md: Plan prototype-canvas: what today's Prototype view does that no step may lose (K1 to K9), the rules every step keeps, and what a step's PR body carries so that no feature is skipped
-- prototype-canvas-steps-2.md: Plan prototype-canvas, the view steps PV2, PV4, PV4b and PV6: the grid arrangement and Tidy up, the selected frame's arrows, many shared parts, the list and the problems
-- prototype-canvas-steps-3.md: Plan prototype-canvas, steps PV7 to PV10 and PV12: the page picture's technical check, the picture in the frame, marks on it, drawing from a mark, close-out
-- prototype-canvas-steps-4.md: Plan prototype-canvas, steps PV11a and PV11b from the owner's answer of 2026-11-16: empty links and unreached pages as problems, then the Suggest targets dialog
-- prototype-canvas-steps.md: Plan prototype-canvas, the engine steps PV1, PV3 and PV5: graph logic, focus and routing added to the graph canvas core as optional parts that Flows does not pass
-- prototype-canvas.md: Plan (owner 2026-11-15): the designer's Prototype view redrawn like Figma but clear: page pictures, the selected page's arrows, a link list, on a stronger graph canvas core; PV1 to PV12
 - prototype-comments-features.md: Plan prototype-comments, features P1 to P16: the link's "Allow comments", the viewer's comment mode, the guest's door, what a comment keeps, the designer's pins and list, the task
 - prototype-comments-steps.md: Plan prototype-comments, steps PN1 to PN5: the table and the guest's door, the viewer's comment mode, the designer's pins and list, the task, close-out
 - prototype-comments.md: Plan (owner 2026-11-16, agent channel message 5667): a customer pins comments on a prototype opened by its share link; the designer answers and resolves them; steps PN1 to PN5
+- prototype-link-editing.md: Plan (owner 2026-11-19): the Prototype view as a place to edit links: a target picker on the links panel's rows, arrows starting on the link, the selected page at full height; PL1-PL4
 - publish-approval-census-features.md: Plan publish-approval PA1 census: features A1 to A16, one line each, the function or file each builds on, or why it cannot be built as written
 - publish-approval-census-gate.md: Plan publish-approval PA1 census: how the content gate's merge (pg_designer_merge_restricted_tree) can be kept as a proposal's operations per node, and what is lost with the assistant's operations
 - publish-approval-census-places.md: Plan publish-approval PA1 census: where a design proposal is listed or drawn, an editor's save today, holding a shared component change
@@ -196,3 +194,4 @@
 - wholesale-features.md: Plan wholesale, features J1 to J11: an offer for a contact group, quantity prices on a product page, an account that uses another's prices, retail in public, a minimum order for a group
 - wholesale-steps.md: Plan wholesale, steps WS1 to WS7: the offers' group condition, an account using another's prices, its picker on the prices screen, the minimum order, quantity prices, the API, close-out
 - wholesale.md: Plan (owner 2026-11-16, agent channel poll 82): selling to businesses with what exists: offers for a contact group, one account using another's prices, a minimum order; no table; steps WS1 to WS7
+- workspace-memory-general.md: Plan (owner 2026-11-19): a general memory shared by the agent channels, records grouped by project and listed as rows; decisions read across agent channels; polls 150-152 answered; GM1-GM4

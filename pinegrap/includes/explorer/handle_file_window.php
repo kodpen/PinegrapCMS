@@ -284,6 +284,9 @@ function pg_explorer_handle_file_save($type, $request, $user)
     // has to be on the disk.
     pg_file_storage_bring_home(array($file_id));
 
+    // A new folder takes its languages' pictures along.
+    pg_picture_tr_follow(array($file_id));
+
     if ($audit_content) {
         pg_audit_record_file($file_id, $audit_before, $new_path);
     } else {

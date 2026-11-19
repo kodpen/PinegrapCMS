@@ -21,4 +21,4 @@ description: Decisions made, workspace part 34 (2026-11-15 on): an agent questio
 
 ## Does the agent's progress note come out as drawn? (owner, 2026-11-15, agent channel poll 53)
 - Yes. Asked "Ajanın ilerleme notu bu görünümle çıksın mı?" (message 5301, the before and after picture is message 5300), his own vote: "Evet, böyle çıksın".
-- This is his look at AF2 (#9782) of `plans/agent-work-features.md`: the note an agent leaves on a request it is working on, shown after "is working on it".
+- This is his look at AF2 (#9782) (`workspace/agent-progress-note.md`): the note an agent leaves on a request it is working on, shown after "is working on it".

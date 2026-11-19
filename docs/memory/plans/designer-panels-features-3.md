@@ -24,3 +24,4 @@ description: Plan designer-panels, features D29 to D44: the Overview tree for lo
 - (D42) The "Move…" window: the target is searched by name and listed with its path; Before, Into, After; "Move". The same window opens from the canvas toolbar and with M.
 - (D43) Keys on a row: Up and Down walk the rows, Left and Right close and open; Alt+Up and Alt+Down among siblings, Alt+Left and Alt+Right one level out and in; Ctrl+X then Ctrl+V.
 - (D44) Every move, dragged or not, is one undo step; the moved element stays selected and in view; a move `canDrop()` refuses does nothing and says why.
+- On a 390 px phone the "Move…" window is a sheet from the bottom: `designer-panels-measures-6.md` (`phone-pages-move.jpg`).

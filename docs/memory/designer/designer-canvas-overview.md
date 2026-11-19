@@ -14,7 +14,7 @@ description: Start file for the designer-canvas-* files: the canvas, its width b
 
 ## What are its parts, by the label on screen?
 - Width buttons ("768px · MD") and the resize handle: the canvas gets exactly that width; Bootstrap rules rebuilt across the wrappers, `sd-fx-fit`, what differs on purpose: `designer-canvas-page-parity.md`.
-- Dark (`#sd-vb-theme`) and the Themes tab's mode tabs, with any theme switcher on the page, as one state on the canvas `<html>`, never stored: `designer-canvas-theme-view.md`.
+- Dark canvas (`#sd-vb-theme`, a switch row of the canvas bar's View menu since DP22) and the Themes tab's mode tabs, with any theme switcher on the page, as one state on the canvas `<html>`, never stored: `designer-canvas-theme-view.md`.
 - Animations (`#sd-vb-motion`): the design's motion paused or played; the design's scripts run once per canvas document: `designer-canvas-design-assets.md`.
 - The context bar (`#sd-ctx-bar`: Dropdown, Navbar, Nav, Accordion, Modal actions), the element toolbar above, below or inside, the page root's name tag, the size badge: `designer-canvas-chrome-placement.md`.
 - Buttons, toggles and scrollers that work on the canvas as on the page (`_SD_CANVAS_CONTROLS`): `designer-canvas-controls.md`. Links never navigate; the editor opens dropdowns itself: `designer-canvas-links.md`.

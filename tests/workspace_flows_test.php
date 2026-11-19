@@ -195,6 +195,47 @@ function test_workspace_flows_task_box_settings()
 	pg_assert_same(array('bad_config'), $check(array('title' => '   ')), 'no title');
 	pg_assert_same(array('bad_config'), $check(array('title' => 'Job', 'assign' => 'creator', 'assignees' => array(3))), 'people and a rule');
 	pg_assert_same(array('bad_config'), $check(array('title' => 'Job', 'assign' => 'the boss')), 'a rule nobody knows');
+	pg_assert_same(array('bad_config'), $check(array('title' => 'Job', 'assign' => 'event_person')), 'the person the event names, with nobody to fall back on');
+	pg_assert_same(array(), $check(array('title' => 'Job', 'assign' => 'event_person', 'fallback' => array(4))), 'the person the event names, with a fallback');
+	pg_assert_false(ws_template_assign_valid('event_person'), 'a channel template has no event');
+}
+
+// The fallback people are kept for the rule "the person the event names"
+// only, whole numbers above 0, once each, at most 20.
+function test_workspace_flows_task_box_fallback_kept_for_its_rule()
+{
+	$config = function ($config) {
+		$graph = ws_flow_graph_normalize(array('nodes' => array(array('id' => 'job', 'kind' => 'task', 'config' => $config))));
+
+		return $graph['nodes'][0]['config'];
+	};
+
+	pg_assert_same(array(4, 9), $config(array('assign' => 'event_person', 'fallback' => array('4', 4, -2, 'x', 9)))['fallback']);
+	pg_assert_same(20, count($config(array('assign' => 'event_person', 'fallback' => range(1, 30)))['fallback']));
+	pg_assert_same(array(), $config(array('assign' => 'creator', 'fallback' => array(4)))['fallback'], 'another rule drops it');
+	pg_assert_same(array(), $config(array('assignees' => array(3), 'fallback' => array(4)))['fallback'], 'picked people drop it');
+}
+
+// The person the event names gets the task when they may; else the
+// fallback people who may; a run not started by an event falls back.
+function test_workspace_flows_task_event_person()
+{
+	$team = array(4, 7, 9);
+	$usable = function ($user_ids) use ($team) {
+		return !array_diff($user_ids, $team);
+	};
+	$event = function ($payload) {
+		return array('event' => 'content.review_due', 'event_payload' => $payload);
+	};
+
+	pg_assert_same(array('user_ids' => array(7), 'named' => true), ws_flow_task_event_person($event(array('user_id' => 7)), array(4), $usable));
+	pg_assert_same(array('user_ids' => array(7), 'named' => true), ws_flow_task_event_person($event(array('user_id' => '7')), array(4), $usable), 'a number as text');
+	pg_assert_same(array('user_ids' => array(4), 'named' => false), ws_flow_task_event_person($event(array('user_id' => 0)), array(4), $usable), 'nobody named');
+	pg_assert_same(array('user_ids' => array(4), 'named' => false), ws_flow_task_event_person($event(array()), array(4), $usable), 'no user_id');
+	pg_assert_same(array('user_ids' => array(4, 9), 'named' => false), ws_flow_task_event_person($event(array('user_id' => 12)), array(4, 12, 9, 4), $usable), 'not on the team: the fallback people who are');
+	pg_assert_same(array('user_ids' => array(), 'named' => false), ws_flow_task_event_person($event(array('user_id' => 12)), array(13), $usable), 'nobody may be given it');
+	pg_assert_same(array('user_ids' => array(4), 'named' => false), ws_flow_task_event_person(array('event_payload' => array('user_id' => 7)), array(4), $usable), 'a run not started by an event');
+	pg_assert_same(array('user_ids' => array(4), 'named' => false), ws_flow_task_event_person(array('event' => 'x', 'event_payload' => 'user_id'), array(4), $usable), 'a payload that is not a list');
 }
 
 // The graph comes back in its shape whatever was sent.
@@ -242,7 +283,7 @@ function test_workspace_flows_normalize_keeps_the_shape()
 	pg_assert_same(array(7, 9), $job['config']['assignees'], 'whole numbers above 0, once each');
 	pg_assert_same(3650, $job['config']['due_in']);
 	pg_assert_same('normal', $job['config']['priority']);
-	pg_assert_same(array('title', 'description', 'assignees', 'assign', 'due_in', 'priority', 'timeout'), array_keys($job['config']));
+	pg_assert_same(array('title', 'description', 'assignees', 'assign', 'fallback', 'due_in', 'priority', 'timeout'), array_keys($job['config']));
 
 	pg_assert_same(20, count($graph['nodes'][2]['config']['assignees']), 'at most 20 people');
 	pg_assert_same('', $graph['nodes'][2]['config']['due_in'], 'no due day');

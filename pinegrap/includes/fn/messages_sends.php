@@ -27,6 +27,9 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/mail_queue_list.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/messages_area.php');
+// functions.php does not load it; without it pg_sms_campaigns_ready() is
+// missing and the SMS campaigns branch is left out of the list.
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/sms_campaigns.php');
 
 /**
  * The branches of the list by number; 7 is the last free number (an eighth

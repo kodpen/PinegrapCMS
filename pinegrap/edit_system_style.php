@@ -189,7 +189,9 @@ if (!$_POST) {
         if ($del_folders > 0) {
             $del_message .= ' ' . lang(array('string' => '{var:1} folder(s) use it as their default design; that setting will be cleared.', 'vars' => $del_folders));
         }
-        $delete_button = '<button type="button" id="sd-delete-style" class="sd-icon-btn sd-icon-btn-danger" title="' . lang('Delete') . '" data-confirm-content="' . h($del_message) . '"><span class="bi bi-trash"></span></button>';
+        // An item of the design's menu: the divider shares its <li>, so
+        // whatever hides the item hides the divider with it.
+        $delete_button = '<li class="sd-design-menu-del"><hr class="menu-divider"><button type="button" id="sd-delete-style" class="menu-item sd-menu-item-danger" data-confirm-content="' . h($del_message) . '"><span class="bi bi-trash me-3" aria-hidden="true"></span>' . lang('Delete') . '</button></li>';
     }
 
     $active = isset($_GET['page']) ? (int)$_GET['page'] : 0;

@@ -620,7 +620,11 @@ function pg_credit_points_take_back($user_id, $points, $order_number)
  */
 function pg_credit_points_order_cancelled(array $order)
 {
-    if ((ECOMMERCE_REWARD_PROGRAM != true) || ((int) ($order['user_id'] ?? 0) <= 0) || ((string) ($order['status'] ?? '') === 'incomplete')) {
+    // The account the points went to: a counter sale's buyer, not its
+    // operator (pg_order_rights_user_id()).
+    $user_id = ((ECOMMERCE_REWARD_PROGRAM == true) && ((string) ($order['status'] ?? '') !== 'incomplete')) ? pg_order_rights_user_id($order) : 0;
+
+    if ($user_id <= 0) {
         return array('points' => 0, 'value' => 0, 'total' => 0);
     }
 
@@ -630,7 +634,7 @@ function pg_credit_points_order_cancelled(array $order)
         - pg_credit_points_of_lines($lines, $refunded['returned'], true)
         - $refunded['marked'];
 
-    return pg_credit_points_take_back($order['user_id'], max(0, $points), pg_order_log_number($order));
+    return pg_credit_points_take_back($user_id, max(0, $points), pg_order_log_number($order));
 }
 
 /**
@@ -651,14 +655,15 @@ function pg_credit_points_lines_refunded($order_id, array $quantities)
     }
 
     $order = db_item("SELECT id, user_id, status, order_number FROM orders WHERE id = '" . (int) $order_id . "'");
+    $user_id = is_array($order) ? pg_order_rights_user_id($order) : 0;
 
-    if (!is_array($order) || ((int) $order['user_id'] <= 0) || in_array((string) $order['status'], array('incomplete', 'cancelled'), true)) {
+    if (($user_id <= 0) || in_array((string) $order['status'], array('incomplete', 'cancelled'), true)) {
         return $none;
     }
 
     $points = pg_credit_points_of_lines(pg_credit_points_order_lines($order['id']), $quantities, true);
 
-    return pg_credit_points_take_back($order['user_id'], $points, pg_order_log_number($order));
+    return pg_credit_points_take_back($user_id, $points, pg_order_log_number($order));
 }
 
 /**

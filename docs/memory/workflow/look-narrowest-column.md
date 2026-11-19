@@ -22,3 +22,4 @@ description: Before any look, a step that draws in a message row or a side panel
 
 ## Where was it first applied?
 - 2026-11-16 and 17: the Customers report (CV2: the groups table stacks, the range control and the chart's legend fit), the follow-up row's two buttons (FW2), the prototype comment mode (PN2: a long thread, the off-page strip with five comments), the "Made by" mark (AW3: the word goes, the name stays).
+- The sweep and the state line he asked for: every part a message carries (#10226) and the agent state line (#10032), each accepted by the owner on one sheet on 2026-11-17 (polls 133 and 134, `decisions-made-workspace-38.md`).

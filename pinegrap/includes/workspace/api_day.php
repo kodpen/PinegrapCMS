@@ -177,19 +177,19 @@ function ws_api_plan_item_schema()
         'department_id' => 'integer?',
         'people'        => array('integer'),
         'all_day'       => 'boolean',
-        'start_date'    => 'string',
-        'end_date'      => 'string',
+        'start_date'    => 'date',
+        'end_date'      => 'date',
         'start_time'    => 'string?',
         'end_time'      => 'string?',
-        'starts_at'     => 'string?',
-        'ends_at'       => 'string?',
+        'starts_at'     => 'datetime?',
+        'ends_at'       => 'datetime?',
         'yearly'        => 'boolean',
         'from_calendar' => 'boolean',
         'meeting_url'   => 'string',
         'created_by'    => 'integer',
         'can_edit'      => 'boolean',
         'contact'       => 'WorkspacePlanItemContact?',
-        'created_at'    => 'string?',
+        'created_at'    => 'datetime?',
     );
 }
 
@@ -793,7 +793,7 @@ function ws_api_my_day_present($day)
 function ws_api_my_day_schema()
 {
     return array(
-        'date'             => 'string',
+        'date'             => 'date',
         'left_out'         => array('string'),
         'tasks_open'       => 'integer',
         'tasks_overdue'    => 'integer',
@@ -810,7 +810,7 @@ function ws_api_my_day_schema()
             'channel'    => 'string',
             'asked_by'   => 'string',
             'text'       => 'string',
-            'created_at' => 'string?',
+            'created_at' => 'datetime?',
         )),
         'written_to_me'    => array(array(
             'message_id' => 'integer',
@@ -820,7 +820,7 @@ function ws_api_my_day_schema()
             'unread'     => 'boolean',
             'sender'     => 'string',
             'text'       => 'string',
-            'created_at' => 'string?',
+            'created_at' => 'datetime?',
         )),
         'questions'        => array(array(
             'id'         => 'integer',
@@ -828,7 +828,7 @@ function ws_api_my_day_schema()
             'channel'    => array('id' => 'integer', 'name' => 'string', 'private' => 'boolean'),
             'question'   => 'string',
             'asker'      => 'WorkspaceMessageSender?',
-            'asked_at'   => 'string?',
+            'asked_at'   => 'datetime?',
         )),
         'questions_count'  => 'integer',
         'inbox_unread'     => 'integer',

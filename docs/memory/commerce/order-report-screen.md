@@ -1,14 +1,16 @@
 ---
 name: order-report-screen
-description: view_order_report.php: default filters (no carts, no cancelled orders), first-group rule, cart figures and shipping, form state after a save error, order date filter parsing.
+description: view_order_report.php: default filters (no carts, no cancelled orders), one group row per name, cart figures and shipping, form state after a save error, order date filter parsing.
 module: order_report
 ---
 
 ## Which orders does a new report count?
 - `pg_order_report_default_filters()`: `order_status is not equal to incomplete` and `… cancelled`, so a new report sums placed sales only. Saved reports keep their own filters; nothing is added to them. The status filter lists Cancelled beside Incomplete / Complete / Exported (PR #5812, issue #5758).
 
-## How does a row open a group?
-- `pg_order_report_new_group($name, $previous)`: the previous-name trackers start at `null`, so the first row always opens its groups even when its value is empty (no billing state, no payment method). With `''` as the start an empty first value never built its bucket and every figure raised "Undefined array key" (PR #5812, #5759).
+## How does a row find its group?
+- `pg_order_report_group_keys(&$index, $names)` files a row under the group of its name, without case, within its parent group, even when rows of other names came between. The query sorts by the collation (`utf8mb4_unicode_ci` reads Çorum, Corum and çorum as one value, in order number order); comparing each row with the previous one printed Çorum twice with its orders split (PR #10381).
+- A name not seen before gets the next key (level 1 from 1, nested levels from 0), an empty one too, so the first row always opens its groups: with an empty first value the bucket was never built and every figure raised "Undefined array key" (PR #5812, #5759). Spellings that differ by more than case stay separate rows.
+- Filters: `order-report-filters.md`.
 
 ## How is a cart summed when a filter names a product or a recipient?
 - The report's WHERE only picks the carts (`orders.id IN (SELECT … $where AND status = 'incomplete')`); each picked cart is summed from all its active lines (`order_items AS cart_items`). Filtering the lines themselves dropped the cart's other products, and joining `ship_tos` on `orders.id` counted each line once per recipient (#5762).

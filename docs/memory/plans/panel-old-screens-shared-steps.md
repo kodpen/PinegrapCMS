@@ -20,6 +20,9 @@ description: Old panel screens to look A: the shared steps cut after the groups,
 - SH6c (S, #9803) The save bar on a phone: three actions in one row, not three full rows (`ui/save-bar-phone.md`). Done, waiting for the merge.
 - SH10 (M, #9755) The Marketplace screens: the view buttons, the filter chips and the button ranks. One filled button per view (the toolbar's); a card's own actions share one rank, the same across the view's cards and the status column.
 
+## What is noted for a later shared step?
+- Architect (2026-11-17, looks of S3 #10314 and S4 #10316), seen and left by the group steps: old buttons inside a card (Add Filter on Edit Form List View, `btn-solid theme-primary`) and the rich text editor's white page in dark. Not cut into steps yet.
+
 ## Which can be given now?
 - KS2 (small fix, `[iş]`, no look) Add Product's field widths, by the owner's answer (`workflow/decisions-made-panel-9.md`); #9658 has landed.
 

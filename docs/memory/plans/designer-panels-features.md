@@ -11,6 +11,7 @@ description: Plan designer-panels, features D1 to D15: the Options panel's colum
 - (D3) The identity row: icon box, the element's name, its tag badge, the last three steps of its path (a click selects that parent), a brush (D27) and a three-dot menu with what the panel head offers today.
 - (D4) Three tabs: Content, Style, Advanced. A tab's badge counts its changed rows and is absent at 0; the open tab's badge is filled. Left and Right move between tabs. The tab is remembered per element kind.
 - (D5) Where each of today's sections goes is the table of `designer-panels-measures-3.md`. No section and no row is dropped.
+- Several elements selected: `designer-panels-measures-5.md` (`options-6-multiple-selection.jpg`).
 
 ## How does a section look and open?
 - (D6) A card. The element's own section is first and open. A general section is closed and shows a summary: a colour square, a single value as text, else "none" or "default"; and a badge counting its changed rows. Open or closed is kept per section in the browser as today (`sd_cs_<sid>`).

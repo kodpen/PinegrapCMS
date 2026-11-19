@@ -209,8 +209,8 @@ function ws_api_agent_report_schema()
     return array(
         'handle'      => 'string',
         'model'       => 'string',
-        'windows'     => array(array('name' => 'string', 'percent' => 'integer', 'resets_at' => 'string?')),
-        'reported_at' => 'string?',
+        'windows'     => array(array('name' => 'string', 'percent' => 'integer', 'resets_at' => 'datetime?')),
+        'reported_at' => 'datetime?',
     );
 }
 
@@ -283,7 +283,7 @@ function ws_api_agent_report_set($params)
 // What the wake routes return.
 function ws_api_agent_wake_schema()
 {
-    return array('handle' => 'string', 'every' => 'integer', 'next_at' => 'string?', 'note' => 'string');
+    return array('handle' => 'string', 'every' => 'integer', 'next_at' => 'datetime?', 'note' => 'string');
 }
 
 /**
@@ -872,7 +872,7 @@ function ws_api_agent_feedback_schema()
             'days_7'  => array('right' => 'integer', 'wrong' => 'integer'),
             'days_30' => array('right' => 'integer', 'wrong' => 'integer'),
         ),
-        'marks'  => array(array('message_id' => 'integer', 'request_id' => 'integer', 'channel_id' => 'integer', 'verdict' => 'string', 'reason' => 'string', 'marked_at' => 'string')),
+        'marks'  => array(array('message_id' => 'integer', 'request_id' => 'integer', 'channel_id' => 'integer', 'verdict' => 'string', 'reason' => 'string', 'marked_at' => 'datetime')),
     );
 }
 

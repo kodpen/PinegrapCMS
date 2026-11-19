@@ -12,7 +12,7 @@ description: PHP 8.5 warnings logged by the Visitor Report, Order Report, Edit F
 - No other cause was found in the code.
 
 ## Order Report (`includes/fn/order_report.php`)?
-- Gone since 104df4ee2 (2 November): a first row whose group value was empty did not open its group, so `pg_order_report_add()` added into a missing bucket ("Undefined array key" for `count` and every figure). `pg_order_report_new_group()` opens a group on the first row whatever its name (`tests/order_report_totals_test.php`).
+- Gone since 104df4ee2 (2 November): a first row whose group value was empty did not open its group, so `pg_order_report_add()` added into a missing bucket ("Undefined array key" for `count` and every figure). `pg_order_report_group_keys()` opens a group for the first row whatever its name (`commerce/order-report-screen.md`, `tests/order_report_totals_test.php`).
 
 ## Edit Form List View (`edit_form_list_view.php`)?
 - While a Page Style of collection B is previewed, the screen reads the view's collection B row (`get_page_type_properties(..., 'b')`). A view never saved in that state has none, `db_item()` returns null, and Header, Layout, Footer and the advanced search layout read offsets of null.

@@ -6,7 +6,7 @@ module: whatsapp_design
 
 ## Where is it?
 - `whatsapp_template.php` (new: no id; a template: `?id=`), role <= 2 as the WhatsApp card. Functions in `includes/fn/whatsapp_design.php`, script `assets/js/whatsapp_template.js` (served as written, no twin), CSS block "Look A: WhatsApp template designer" in `backend.src.css`. Drawn after `platform/whatsapp-look/template-designer.html`.
-- No link leads to it yet: the WhatsApp list of Communication › Templates (WA3b) links New template and each row to it. Breadcrumb and Cancel go to `messages_templates.php`.
+- Opened by "New template" and each row's name on Communication › Templates (role <= 2). Breadcrumb and Cancel go to `messages_templates.php`.
 
 ## What does a draft hold?
 - A `whatsapp_templates` row with `meta_id` NULL and status DRAFT: name, language, category, `parameter_format` POSITIONAL, `components` as Meta's API reads them (HEADER and BUTTONS kept as stored, BODY with `example.body_text`, FOOTER when not empty).
@@ -14,7 +14,7 @@ module: whatsapp_design
 - Save updates only while the row is still a draft (`meta_id IS NULL AND status = 'DRAFT'`); name and language must be free (`uq_name_language`), refused on the Name field.
 
 ## What does the check refuse?
-- `pg_whatsapp_design_check()` (pure, tested): name not `[a-z0-9_]{1,512}`; type or language not offered; empty body or over 1024 characters; a variable not written `{{n}}`, numbers with a gap, more than 20, a body starting or ending with a variable; a missing sample (marked on its sample field); samples and labels over 200; footer over 60 or with braces.
+- `pg_whatsapp_design_check()` (pure, tested): name not `[a-z0-9_]{1,512}`; type not offered; a language not offered, unless WhatsApp holds the template; empty body or over 1024 characters; a variable not written `{{n}}`, numbers with a gap, more than 20, a body starting or ending with a variable; a missing sample (marked on its sample field); samples and labels over 200; footer over 60 or with braces.
 - Languages: `pg_whatsapp_design_languages()`, Meta's codes with each language's own name (no translation); a template from Meta in another language is shown by its code.
 
 ## How is the preview drawn?
@@ -29,7 +29,7 @@ module: whatsapp_design
 - Owner (2026-11-13): `{{1}}` in the message box confuses a user; each variable is a draggable Bootstrap chip naming what it stands for (customer name, order number …), dragged in, moved or removed; Meta's `{{n}}` stays in the stored body (channel 25 #2222). Built in WA8b (#9376): `ui/variable-chips.md`; the labels are the chips' names (`pg_whatsapp_design_chip_labels()`: "Value 2" without one).
 
 ## What is described elsewhere?
-- Header, buttons, Send for approval, a rejected template: `whatsapp-template-approval.md` (WA9). The type Authentication has no own form yet.
+- Header, buttons, Send for approval, a rejected template: `whatsapp-template-approval.md` (WA9). Why Authentication is not offered: `whatsapp-template-authentication.md`.
 
 ## How was it verified?
 - `tests/whatsapp_design_test.php`. On the sandbox: new draft, a missing sample, saved, a taken name; pictures dark and light, wide and phone. No Meta account: the test send was not run against Meta.

@@ -17,13 +17,14 @@ description: /create contact (/oluştur kişi) in a channel: how the line is rea
 - Once the kind word is typed, the registry entry's `variants` line for it (architect, message 8138): `/oluştur kişi <ad soyad>, <şirket>, <e-posta>` with its own example. Product and group keep the command's line; before a kind, `<tür>`. `commandArgument()` in workspace.js swaps the arguments; an argument's `after` writes the comma. CC7b and CC8 add their kinds' lines there.
 
 ## Who is offered it?
-- Each kind of /create is the right of its record's screen: `ws_command_create_types_for()` asks `ws_change_allowed()` per kind (products and groups the e-commerce right, a contact the contacts right). `ws_command_gate_create()` offers /create to a person with one kind; `ws_command_create()` refuses a kind outside them with "You may not create this kind of record."; the kind popup (`ws_command_suggestions(null, $viewer)`) lists only theirs. /product keeps `ws_command_gate_product()`.
+- Each kind of /create is the right of its record's screen: `ws_command_create_types_for()` asks `ws_command_create_may()` per kind (products and groups the e-commerce right, a contact the contacts right, a row a table to write).
+- `ws_command_gate_create()` offers /create to a person with one kind; `ws_command_create()` refuses a kind outside them with "You may not create this kind of record."; the kind popup (`ws_command_suggestions(null, $viewer)`) lists only theirs. /product keeps `ws_command_gate_product()`.
 
 ## What does the decision say?
 - "{tag} was added." with no lines: the lines would show the e-mail address to members without the contacts right; the tag shows the contact only to who may see it.
 
 ## What about /create row (K22)?
-- CC7b, its own PR. No new `#` tag kind (architect, message 8138): the words after `satır` match the names of the tables the person may write (the whole name without case, else a prefix only one table has); none or several make the table the card's first field.
+- Its own file: workspace-create-row-command.md.
 
 ## Tests?
 - tests/workspace_command_create_contact_test.php; the kinds in workspace_commands_test.php and workspace_quick_create_test.php.

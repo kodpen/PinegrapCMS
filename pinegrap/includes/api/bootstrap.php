@@ -28,6 +28,7 @@ require_once($pg_api_directory . '/db.php');
 require_once($pg_api_directory . '/response.php');
 require_once($pg_api_directory . '/fault.php');
 require_once($pg_api_directory . '/manners.php');
+require_once($pg_api_directory . '/preconditions.php');
 require_once($pg_api_directory . '/time.php');
 require_once($pg_api_directory . '/log.php');
 require_once($pg_api_directory . '/keys.php');
@@ -343,6 +344,10 @@ function api_run() {
 		}
 
 	}
+
+	// An update sent with If-Match is refused with 412 when the record has
+	// changed since the client read it (includes/api/preconditions.php).
+	api_if_match_check($route);
 
 	call_user_func($route['handler'], $params);
 

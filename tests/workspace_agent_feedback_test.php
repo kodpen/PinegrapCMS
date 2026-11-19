@@ -5,7 +5,8 @@
  * Tests for Right or Wrong on an agent's reply
  * (includes/workspace/agent_feedback.php) that need no database: who may
  * mark and who is refused, the reason's limit, the 7- and 30-day counts, the
- * route kept to the agent's own key, the migration step and the
+ * route kept to the agent's own key, the person's mark from a team devices
+ * session and on the API's message, the migration step and the
  * instructions line.
  *
  * @author      Erdal Güral (Kodpen)
@@ -207,4 +208,68 @@ function test_workspace_agent_feedback_counts_text()
 
 	pg_assert_contains('ws_agent_feedback_counts_text(', (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/agent_activity.php'), 'the Agents card row');
 	pg_assert_contains("'feedback'     =>", (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/agent_card.php'), 'the agent card');
+}
+
+// The person's route: a team devices session only, no MCP tool, the panel's
+// check before the rehearsal and the one writer after it.
+function test_workspace_agent_feedback_person_route()
+{
+	$found = null;
+
+	foreach (ws_api_routes() as $route) {
+		if ($route['id'] === 'workspace.messages.agent_feedback') {
+			$found = $route;
+		}
+	}
+
+	pg_assert_true(is_array($found), 'the route is listed');
+	pg_assert_same(array('POST', '/workspace/messages/{id}/agent-feedback', 'workspace:write', false, true), array($found['method'], $found['path'], $found['scope'], $found['mcp'], $found['dry_run']));
+
+	$params = array();
+
+	foreach ($found['params'] as $param) {
+		$params[$param['name']] = $param;
+	}
+
+	pg_assert_true(!empty($params['verdict']['nullable']), 'null takes the mark back');
+	pg_assert_same(array('right', 'wrong'), $params['verdict']['values']);
+	pg_assert_same(WS_AGENT_FEEDBACK_REASON_MAX, $params['reason']['max_length']);
+
+	$function = new ReflectionFunction('ws_api_messages_agent_feedback');
+	$lines = file($function->getFileName());
+	$source = implode('', array_slice($lines, $function->getStartLine() - 1, $function->getEndLine() - $function->getStartLine() + 1));
+	$at = -1;
+
+	foreach (array('ws_api_own_words_only(', 'ws_agent_feedback_ready()', 'ws_agent_feedback_check(', 'api_dry_run_stop(', 'ws_agent_feedback_mark(') as $call) {
+		$next = strpos($source, $call);
+		pg_assert_true(($next !== false) && ($next > $at), $call . ' in its order');
+		$at = $next;
+	}
+
+	pg_assert_contains("\$verdict = (\$verdict === '') ? null : \$verdict;", $source, 'an empty verdict takes the mark back');
+}
+
+// The refusals keep the writer's status.
+function test_workspace_agent_feedback_person_route_refusals()
+{
+	$function = new ReflectionFunction('ws_api_agent_feedback_refusal');
+	$lines = file($function->getFileName());
+	$source = implode('', array_slice($lines, $function->getStartLine() - 1, $function->getEndLine() - $function->getStartLine() + 1));
+
+	pg_assert_contains('api_fail_not_found(', $source, '404');
+	pg_assert_contains("api_fail(403, 'forbidden'", $source, '403');
+	pg_assert_contains("api_fail(503, 'service_unavailable'", $source, '503');
+	pg_assert_contains("api_fail_validation((string) \$result['error'], \$result['field'] ?? null)", $source, '422 with its field');
+}
+
+// The API's message carries the mark as the panel's payload does, read once
+// for a page.
+function test_workspace_agent_feedback_on_the_api_message()
+{
+	pg_assert_same('WorkspaceMessageFeedback?', ws_api_message_schema()['feedback']);
+	pg_assert_same(array('verdict' => 'string', 'reason' => 'string'), ws_api_message_feedback_schema());
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/api_resources.php');
+	pg_assert_contains("'feedback'       => \$deleted ? null : (\$feedback[(int) \$row['id']] ?? null),", $source, 'null on a deleted message and for other readers');
+	pg_assert_contains('$feedback = function_exists(\'ws_agent_feedback_map\') ? ws_agent_feedback_map($viewer, $ids) : array();', $source, 'one read for a page');
 }

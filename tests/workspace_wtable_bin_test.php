@@ -146,7 +146,7 @@ function test_ws_wtable_bin_rollbacks_delete_for_good()
 // runs with the recurring job.
 function test_ws_wtable_bin_restore_and_purge()
 {
-	$restore = ws_wtable_bin_test_code('ws_wtable_row_restore');
+	$restore = ws_wtable_bin_test_code('ws_wtable_row_restore_write');
 
 	pg_assert_true(strpos($restore, 'ws_wtable_row_bin_drop(') < strpos($restore, 'INSERT INTO ws_wtable_rows'), 'the entry is claimed first');
 	pg_assert_contains("ws_wtable_row_announce('restored'", $restore);

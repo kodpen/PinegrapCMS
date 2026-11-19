@@ -77,15 +77,17 @@ function workspace_quick_create_test_js($source, $name)
 	return '';
 }
 
-// A person makes three kinds of the catalogue: products and product groups
-// (the e-commerce right) and contacts (the contacts right).
+// A person makes five kinds of the catalogue: products and product groups
+// (the e-commerce right), contacts (the contacts right), ERP accounts (the
+// ERP right) and calendar events (the calendars right).
 function test_workspace_quick_create_types()
 {
-	pg_assert_same(array('product', 'product_group', 'contact'), ws_quick_create_types(), 'products, product groups and contacts');
+	pg_assert_same(array('product', 'product_group', 'contact', 'erp_account', 'calendar_event'), ws_quick_create_types(), 'products, product groups, contacts, ERP accounts and calendar events');
+	$rights = array('product' => 'ecommerce', 'product_group' => 'ecommerce', 'contact' => 'contacts', 'erp_account' => 'erp', 'calendar_event' => 'calendars');
 
 	foreach (ws_quick_create_types() as $type) {
 		pg_assert_true(in_array('create', (array) pg_test_ws_change_types()[$type]['actions'], true), $type . ' takes create in the catalogue');
-		pg_assert_same(($type === 'contact') ? 'contacts' : 'ecommerce', pg_test_ws_change_types()[$type]['right'], $type . ' needs the right of its own screen');
+		pg_assert_same($rights[$type], pg_test_ws_change_types()[$type]['right'], $type . ' needs the right of its own screen');
 	}
 }
 
@@ -183,7 +185,8 @@ function test_workspace_quick_create_form_from_the_catalogue()
 			pg_assert_true(in_array($name, $names, true), $type . ' short list names a field of its form: ' . $name);
 		}
 
-		pg_assert_same(($type === 'contact') ? 'first_name' : 'name', ws_quick_create_short_list($type)[0], $type . ' starts with its name');
+		$first = array('contact' => 'first_name', 'erp_account' => 'title');
+		pg_assert_same($first[$type] ?? 'name', ws_quick_create_short_list($type)[0], $type . ' starts with its name');
 	}
 }
 
@@ -335,7 +338,7 @@ function test_workspace_quick_create_screen_wiring()
 	pg_assert_contains("api('ws_record_fields', { type: type, id: 0 })", $js, 'and loads the empty form');
 	pg_assert_contains('openCreate: function (type, options) {', $js, 'the palette is lent the new mode');
 	pg_assert_contains("result.command.type === 'create_preview'", $js, 'the /product card is drawn');
-	pg_assert_contains("var titles = { product_group: 'qc_command_title_group', contact: 'qc_command_title_contact' };", workspace_quick_create_test_js($js, 'drawCreatePreview'), 'a group\'s card is headed as a group, a contact\'s as a contact');
+	pg_assert_contains("product_group: 'qc_command_title_group',\n                contact: 'qc_command_title_contact',", workspace_quick_create_test_js($js, 'drawCreatePreview'), 'a group\'s card is headed as a group, a contact\'s as a contact');
 	pg_assert_contains("if (source === 'kinds') {", workspace_quick_create_test_js($js, 'openArgument'), 'the popup offers what /create makes');
 
 	$palette = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_palette.js');

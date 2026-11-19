@@ -1,0 +1,4 @@
+# The package tool is the vendor's file byte for byte; the release workflow
+# checks its SHA-256 before running it, so no checkout may convert its line
+# endings (core.autocrlf=true included).
+build_packages.php -text

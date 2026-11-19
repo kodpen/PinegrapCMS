@@ -4,7 +4,7 @@ description: The Prototype view's link marks on a page picture (PV9, #10040): re
 ---
 
 ## What is a mark?
-- (F5) A rounded rectangle over a link's element on its frame's picture (`span.sd-proto-hot` in `div.sd-proto-hots`, `_sdProtoHots()`): blue when it leads somewhere, red when broken, amber for a shared part's link into the selected page (F13). The frame has no link rows any more; the links panel lists them (designer/prototype-list.md).
+- A rounded rectangle over a link's element on its frame's picture (`span.sd-proto-hot` in `div.sd-proto-hots`, `_sdProtoHots()`): blue when it leads somewhere, red when broken, amber for a shared part's link into the selected page. The frame has no link rows any more; the links panel lists them (designer/prototype-list.md).
 - Its place: `PGProtoHotspots.picRects(rows, marks, sharedId)` from the markers read after `load` (designer/prototype-page-picture.md), page pixels times the scale, cut at 1600; the first element seen counts. Not seen: no size (hidden, a closed dropdown), at or under the cut, outside the 1280 width, no marker (a menu or region, a link not written).
 
 ## Which marks show?
@@ -12,8 +12,8 @@ description: The Prototype view's link marks on a page picture (PV9, #10040): re
 - A click on a mark picks its link (`_sdProtoPickRow()`), as a panel row does; the picked one is drawn thicker (`sd-proto-hot-picked`). Drawing from a mark, its keys and the lifted arrow: designer/prototype-drawing.md.
 
 ## Where does an arrow start?
-- (F14) The view's `portAt` is `_sdProtoPort()`, `markPort(frame, rect, target)`: the side facing the target (right or left when it lies wholly beside the frame, else bottom or top; its own frame or none: right); on a left or right edge level with the mark's middle, on the top or bottom edge across from it.
-- (F3) A link the picture cannot show leaves from the foot on the fade (18 above the box's lower edge); before the picture has loaded, from the middle of the box. A load (and a picture dropped by the cap) calls `canvas.reroute([id])`.
+- The view's `portAt` is `_sdProtoPort()`, `markPort(frame, rect, target)`: the side facing the target (right or left when it lies wholly beside the frame, else bottom or top; its own frame or none: right); on a left or right edge level with the mark's middle, on the top or bottom edge across from it.
+- A link the picture cannot show leaves from the foot on the fade (18 above the box's lower edge); before the picture has loaded, from the middle of the box. A load (and a picture dropped by the cap) calls `canvas.reroute([id])`.
 - The core routes from a frame's edge, so the line between the mark and the edge is not drawn.
 
 ## What does a shared frame show?

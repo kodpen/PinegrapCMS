@@ -130,6 +130,23 @@ function test_messages_automatic_today_figure()
 	pg_assert_same('999+', pg_messages_automatic_today(1000, 1000), 'at the cap');
 }
 
+// Who may send campaigns but not open the flows sees a note in place of the
+// list. Once the profiles' conversion report turns quiet (30 days after it
+// ended) it is drawn under that note as well as under the list; before, the
+// note branch left it out and the report vanished from the tab.
+function test_messages_automatic_quiet_report_under_the_note()
+{
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/messages_automatic.php');
+	$start = strpos($source, 'if (!$automatic_flows) {');
+
+	pg_assert_true($start !== false, 'the note branch');
+
+	$branch = substr($source, $start, strpos($source, 'exit();', $start) - $start);
+
+	pg_assert_contains('$profile_flows_after', $branch, 'the quiet report under the note');
+	pg_assert_contains('. $profile_flows_after', substr($source, strpos($source, 'pg_list_table_html(')), 'and under the list');
+}
+
 function test_messages_automatic_tab_gate_admits_flow_builders()
 {
 	pg_assert_same(array('automatic'), pg_messages_tabs_for(3, false, true), 'a role 3 team member without the campaign right opens Automatic sends only');

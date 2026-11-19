@@ -44,7 +44,7 @@ function pg_ad_region_form_card($liveform, $name_field, $defaults = false)
                                 </h2>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 md:col-6 my-3">
+                                        <div class="col-12 my-3">
                                             <label for="name" class="form-label">' . lang(array('string'=>'{var:1} Name','vars'=>lang('Ad Region'))) . '</label>
                                             <div class="input-group">
                                                 <div class="input-group-text">' . h('<ad>') . '</div>
@@ -52,7 +52,7 @@ function pg_ad_region_form_card($liveform, $name_field, $defaults = false)
                                                 <div class="input-group-text">' . h('</ad>') . '</div>
                                             </div>
                                         </div>
-                                        <h3 class="h5 mt-12">' . lang('Region Behavior') . '</h3>
+                                        <h3 class="pg-group-label mt-12">' . lang('Region Behavior') . '</h3>
                                         <div class="col-12">
                                             <fieldset>
                                                 <legend class="form-label fs-md">' . lang('Display Type') . '</legend>
@@ -81,13 +81,13 @@ function pg_ad_region_form_card($liveform, $name_field, $defaults = false)
                                                                 <label class="" for="fade">' . lang('Fade') . '</label>
                                                             </div>
                                                         </fieldset>
-                                                        <div class="col-12 md:col-6 lg:col-4 my-1">
+                                                        <div class="col-12 pg-field-span-3 my-1">
                                                             <label class="form-label" for="transition_duration">' . lang('Transition Duration') . '</label>
                                                             <label class="form-control form-adorn form-adorn-end">
                                                                 <span class="form-adorn-text" aria-hidden="true">' . lang('milliseconds') . '</span>
                                                                 ' . $liveform->output_field(array('type'=>'text', 'name'=>'transition_duration', 'id'=>'transition_duration', 'class'=>'form-ghost text-end', 'inputmode'=>'numeric', 'maxlength'=>'4', 'data-inputmask-alias'=>'integer', 'data-inputmask-allowminus'=>'false', 'data-inputmask-placeholder'=>'0')) . '
                                                             </label>
-                                                            <div class="form-text text-end">' . lang('leave blank for default, 1 for instant, 1000 for 1 second') . '</div>
+                                                            <div class="form-text">' . lang('leave blank for default, 1 for instant, 1000 for 1 second') . '</div>
                                                         </div>
                                                         <div class="col-12 my-1">
                                                             <div class="form-field">
@@ -98,7 +98,7 @@ function pg_ad_region_form_card($liveform, $name_field, $defaults = false)
                                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                                                                 <div class="popover-body">
                                                                     <div class="row">
-                                                                        <div class="col-12 md:col-6 lg:col-4 my-1">
+                                                                        <div class="col-12 pg-field-span-3 my-1">
                                                                             <label class="form-label" for="slideshow_interval">' . lang('Interval') . '</label>
                                                                             <label class="form-control form-adorn form-adorn-end">
                                                                                 <span class="form-adorn-text" aria-hidden="true">' . lang('seconds') . '</span>

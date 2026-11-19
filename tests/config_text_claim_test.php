@@ -53,7 +53,7 @@ function test_window_passes_claim_the_time_they_read()
 
 	pg_assert_contains("pg_config_text_claim('booking_reminders_at', \$stored, (string) \$now)", $booking, 'booking reminders claim the time read');
 	pg_assert_false(strpos($booking, "pg_config_text_save('booking_reminders_at'") !== false, 'booking reminders no longer write unconditionally');
-	pg_assert_true(strpos($booking, 'pg_config_text_claim(') < strpos($booking, "pg_booking_message_send(\$row, 'reminder')"), 'the claim comes before the send');
+	pg_assert_true(strpos($booking, 'pg_config_text_claim(') < strpos($booking, "pg_booking_message_send(\$row, 'reminder', \$due)"), 'the claim comes before the send');
 
 	pg_assert_contains("pg_config_text_claim('credit_mails_at', \$stored, (string) \$now)", $credit, 'credit notices claim the time read');
 	pg_assert_false(strpos($credit, "pg_config_text_save('credit_mails_at'") !== false, 'credit notices no longer write unconditionally');

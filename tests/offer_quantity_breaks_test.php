@@ -66,12 +66,33 @@ function test_offer_quantity_break_rows_kept()
 	pg_assert_same(array(), pg_offer_quantity_break_rows(array(array('quantity' => 5, 'amount' => 100, 'percentage' => 0)), 0, 0), 'a free product has no break');
 }
 
+// The visitor's own price is the lowest of the list price, a member's
+// agreed price and a running campaign without a rule: the cart keeps the
+// cheapest offer per line, so a break is charged only below it.
+function test_offer_quantity_ceiling()
+{
+	pg_assert_same(8000, pg_offer_quantity_ceiling(10000, 10000, array(array('amount' => 0, 'percentage' => 20))), 'a campaign at 20% off 100.00');
+	pg_assert_same(7500, pg_offer_quantity_ceiling(10000, 10000, array(
+		array('amount' => 0, 'percentage' => 20),
+		array('amount' => 2500, 'percentage' => 0),
+	)), 'the cheapest campaign');
+	pg_assert_same(7000, pg_offer_quantity_ceiling(10000, 7000, array(array('amount' => 0, 'percentage' => 20))), 'a lower member price stays');
+	pg_assert_same(8500, pg_offer_quantity_ceiling(10000, 8500, array()), 'a member price, no campaign: as before');
+	pg_assert_same(10000, pg_offer_quantity_ceiling(10000, 10000, null), 'no campaign: the list price');
+	pg_assert_same(0, pg_offer_quantity_ceiling(10000, 10000, array(array('amount' => 20000, 'percentage' => 0))), 'never below zero');
+	pg_assert_same(10000, pg_offer_quantity_ceiling(10000, 10000, array('junk', array('amount' => 0, 'percentage' => 0))), 'no discount');
+
+	$breaks = array(array('quantity' => 10, 'amount' => 0, 'percentage' => 10));
+	pg_assert_same(array(), pg_offer_quantity_break_rows($breaks, 10000, pg_offer_quantity_ceiling(10000, 10000, array(array('amount' => 0, 'percentage' => 20)))), 'a break dearer than the campaign price is not listed');
+	pg_assert_same(array(array('quantity' => 10, 'price' => 9000)), pg_offer_quantity_break_rows($breaks, 10000, pg_offer_quantity_ceiling(10000, 10000, array())), 'no campaign: listed as before');
+}
+
 // Runs $body in a PHP process of its own with the offers code on a fake
 // database: product 11 at 100.00 in product group 2; user 5's contact is
 // in contact group 3, user 6's in group 4; $offers the rows the break
 // query answers; $conditions the offer_conditions rows by offer id.
 // Answers the JSON $body prints, null when PHP cannot be started.
-function offer_quantity_breaks_run($user_id, $offers, $conditions, $body)
+function offer_quantity_breaks_run($user_id, $offers, $conditions, $body, $campaigns = array())
 {
 	if (!function_exists('exec') || !defined('PHP_BINARY') || (PHP_BINARY === '')) {
 		return null;
@@ -88,10 +109,12 @@ function offer_quantity_breaks_run($user_id, $offers, $conditions, $body)
 		. ($user_id ? 'define("USER_ID", ' . (int) $user_id . ');' . "\n" : '')
 		. '$GLOBALS["offers"] = ' . var_export($offers, true) . ';' . "\n"
 		. '$GLOBALS["conds"] = ' . var_export($conditions, true) . ';' . "\n"
+		. '$GLOBALS["campaigns"] = ' . var_export($campaigns, true) . ';' . "\n"
 		. <<<'PHP'
 $GLOBALS['contacts'] = array(5 => 50, 6 => 60);
 $GLOBALS['xref'] = array(50 => array(3), 60 => array(4));
 $GLOBALS['sql'] = array();
+$GLOBALS['campaign_sql'] = array();
 
 function e($value) { return addslashes((string) $value); }
 function lang($text) { return is_array($text) ? $text['string'] : $text; }
@@ -120,6 +143,10 @@ function db_items($sql)
 {
 	if (preg_match("/FROM offer_conditions\s+WHERE offer_id = '(\d+)'/", $sql, $m)) {
 		return isset($GLOBALS['conds'][(int) $m[1]]) ? $GLOBALS['conds'][(int) $m[1]] : array();
+	}
+	if (strpos($sql, 'offer_rules.id IS NULL') !== false) {
+		$GLOBALS['campaign_sql'][] = preg_replace('/\s+/', ' ', trim($sql));
+		return $GLOBALS['campaigns'];
 	}
 	if (strpos($sql, 'offer_rules_products_xref') !== false) {
 		$GLOBALS['sql'][] = preg_replace('/\s+/', ' ', trim($sql));
@@ -217,6 +244,54 @@ function test_offer_quantity_breaks_read()
 	$bad = offer_quantity_breaks_run(5, $offers, $conditions, 'echo json_encode(array("breaks" => pg_offer_quantity_breaks(0, 10000, 10000), "sql" => $GLOBALS["sql"]));');
 	pg_assert_same(array(), $bad['breaks'], 'no product');
 	pg_assert_same(array(), $bad['sql'], 'nothing read without a product');
+}
+
+// A running campaign on product 11 without a rule (20% off: 80.00) is the
+// ceiling: a break at 10% for 10 is not listed, one at 30% for 20 is. A
+// campaign for another product, for a contact group the visitor is not
+// in, or one that asks about the cart, changes nothing.
+function test_offer_quantity_breaks_campaign()
+{
+	$offers = array(
+		offer_quantity_breaks_offer(1, 10, 10),
+		offer_quantity_breaks_offer(2, 20, 30),
+	);
+	$body = 'echo json_encode(array("breaks" => pg_offer_quantity_breaks(11, 10000, 10000), "sql" => $GLOBALS["campaign_sql"]));';
+	$campaign = offer_quantity_breaks_offer(9, 0, 20);
+
+	$r = offer_quantity_breaks_run(6, $offers, array(), $body, array($campaign));
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
+	pg_assert_same(array(array('quantity' => 20, 'price' => 7000)), $r['breaks'], 'only the break below the campaign price');
+	pg_assert_same(1, count($r['sql']), 'one campaign query');
+	pg_assert_contains('offers.require_code = 0', $r['sql'][0], 'a campaign that waits for a code is not counted');
+
+	$others = array(
+		offer_quantity_breaks_offer(9, 0, 20, array('discount_product_product_id' => 99)),
+		offer_quantity_breaks_offer(10, 0, 20),
+		offer_quantity_breaks_offer(11, 0, 20),
+		offer_quantity_breaks_offer(12, 0, 20, array('status' => 'disabled')),
+	);
+	$conditions = array(
+		10 => array(array('type' => 'contact group', 'int_value' => 3, 'text_value' => '')),
+		11 => array(array('type' => 'cart quantity', 'int_value' => 3, 'text_value' => '')),
+	);
+	$r = offer_quantity_breaks_run(6, $offers, $conditions, $body, $others);
+	pg_assert_same(array(
+		array('quantity' => 10, 'price' => 9000),
+		array('quantity' => 20, 'price' => 7000),
+	), $r['breaks'], 'no campaign for this visitor: the breaks as before');
+
+	$r = offer_quantity_breaks_run(5, $offers, $conditions, $body, $others);
+	pg_assert_same(array(array('quantity' => 20, 'price' => 7000)), $r['breaks'], 'the group member gets the group campaign');
+
+	$r = offer_quantity_breaks_run(6, array(), array(), $body, array($campaign));
+	pg_assert_same(array(), $r['breaks'], 'no break, no campaign read');
+	pg_assert_same(array(), $r['sql'], 'nothing read without a break');
 }
 
 // One row per break: the quantity, the price as text with the currency

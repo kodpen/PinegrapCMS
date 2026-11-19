@@ -1,6 +1,6 @@
 ---
 name: mail-transport-failure
-description: PHP mail() failing with no SMTP server set is permanent, stores the product sentence, sends no sender notice, and the mail queue screen warns with a link to SMTP Settings
+description: PHP mail() failing with no SMTP server set is permanent, stores the product sentence, sends no sender notice, and the mail queue screen warns with a link to E-mail sending
 module: mail, mail_queue
 ---
 
@@ -18,7 +18,7 @@ module: mail, mail_queue
 ## What does the queue and the panel do?
 - Permanent: given up at attempt 1 (`mail-queue-permanent-errors.md`), one bell row per message, or the summary row for more than 3 in one run, as for any permanent failure.
 - Ops `mail_failures` counts rows with attempts > 0 that are queued or failed, once per row: a row given up at once counts exactly as a retrying one did, so the alert fires at the same volume; its text is now the sentence.
-- `mail_queue.php` shows one warning above the counters, with a link to `smtp_settings.php`, while the newest tried row (sent, or attempts > 0) is failed with one of the two sentences (`pg_mail_transport_warning_shown()`, English source or current translation). A message sent after SMTP is set up ends it. No schema change.
+- `messages_sends.php` shows one warning above the counters, with Open E-mail sending (`pg_settings_link('mail_sending', 'pgset-mail-transport')`), while the newest tried row (sent, or attempts > 0) is failed with one of the two sentences (`pg_mail_transport_warning_shown()`, English source or current translation). A message sent after SMTP is set up ends it. No schema change.
 
 ## How was it verified?
 - `tests/mail_transport_test.php` (fake PHPMailer whose `preSend()`/`postSend()` answer as told). Not run on a live server without `mail()`.

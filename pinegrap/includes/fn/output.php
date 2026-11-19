@@ -4081,6 +4081,11 @@ function output_menu($properties = false)
         if (function_exists('pg_content_review_ready') && pg_content_review_ready()) {
             $menu_items[2]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_content_review.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-calendar-check bi-me-2\'>' . lang('Content review') . '</a>';
         }
+        // PAGES > Courses (view_courses.php): managers and up, while the
+        // Courses switch is on.
+        if (($user['role'] < 3) && function_exists('pg_course_switch_on') && pg_course_ready() && pg_course_switch_on()) {
+            $menu_items[2]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_courses.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-mortarboard bi-me-2\'>' . lang('Courses') . '</a>';
+        }
         // PAGES > Search and audits (search_audits.php: the search index and
         // the SEO, structure and accessibility passes, managers and up)
         if ($user['role'] < 3) {
@@ -4864,6 +4869,8 @@ function output_menu($properties = false)
         case 'view_not_found_log.php':
         case 'view_accessibility.php':
         case 'view_content_review.php':
+        case 'view_courses.php':
+        case 'edit_course.php':
         case 'view_auto_dialogs.php':
         case 'add_auto_dialog.php':
         case 'edit_auto_dialog.php':
@@ -5198,7 +5205,6 @@ function output_menu($properties = false)
         case 'system_tools.php':
         case 'view_log.php':
         case 'view_audit_log.php':
-        case 'smtp_settings.php':
         case 'api_settings.php':
         case 'connections.php':
         case 'marketplace_settings.php':
@@ -8016,6 +8022,7 @@ function pg_js_bundles()
         'assets/js/style_designer_theme.min.js'    => array('assets/js/style_designer_theme.js'),
         'assets/js/style_designer_fonts.min.js'    => array('assets/js/style_designer_fonts.js'),
         'assets/js/style_designer_interactions.min.js' => array('assets/js/style_designer_interactions.js'),
+        'assets/js/style_designer_treesearch.min.js' => array('assets/js/style_designer_treesearch.js'),
         // The cloud file picker of the Upload File screen (add_file.php).
         'assets/js/cloud_file_picker.min.js'       => array('assets/js/cloud_file_picker.js'),
         // The new dashboard (includes/dashboard/v2/page.php): the grid and
@@ -8089,6 +8096,9 @@ function pg_designer_parts()
         // The Interactions section's rows of the properties panel: the
         // effect, trigger and timing fields and the Play button.
         'interactions' => 'assets/js/style_designer_interactions.min.js',
+        // The Overview's tree search: the page's elements found by name,
+        // text, class and id, listed with their path.
+        'treesearch' => 'assets/js/style_designer_treesearch.min.js',
     );
 }
 

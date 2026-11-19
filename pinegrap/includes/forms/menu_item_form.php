@@ -53,7 +53,7 @@ function pg_menu_item_form_cards($liveform, $form = array())
                                 </h2>
                                 <div class="card-body pt-0">
                                     <div class="row">
-                                        <div class="col-12 md:col-6 my-3">
+                                        <div class="col-12 my-3">
                                             <label for="name" class="form-label">' . lang('Menu Item Name') . '</label>
                                             ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'class'=>'form-control', 'maxlength'=>'100', 'required'=>'required')) . '
                                         </div>
@@ -114,7 +114,7 @@ function pg_menu_item_form_cards($liveform, $form = array())
                                                     'maxlength' => '255')) . pg_fields_script() . '
                                                 <div class="input-group-text bg-reset border-0">"&gt;</div>
                                             </div>
-                                            <div class="form-text text-end">' . lang('One or More Custom Classes for the Menu Item. Separate classes with a space') . '</div>
+                                            <div class="form-text">' . lang('One or More Custom Classes for the Menu Item. Separate classes with a space') . '</div>
                                         </div>
                                     </div>
                                 </div>

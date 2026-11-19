@@ -21,13 +21,14 @@ module: booking_messages
 - `pg_booking_ics()` (pure): METHOD:PUBLISH, one VEVENT, UID `booking-<id>@<host>`, UTC times, SEQUENCE `updated_at - created_at`, STATUS CONFIRMED / TENTATIVE / CANCELLED. RFC 5545 escaping, CRLF, folded at 75 octets.
 
 ## Which SMS go out?
-- Events `booking_confirmed`, `booking_reminder`, `booking_rescheduled`, `booking_cancelled` in `pg_sms_message_events()`, kind `booking` (not commercial) in `pg_sms_kinds()`, off until switched on, shown on the SMS card only once the tables exist (`pg_sms_message_event_shown(…, $booking_on)`). To `bookings.phone`; reference `booking:<id>:<event>:<start_at>`, so a moved booking is told again and a repeated call is not. Fields store, name, service, date, time, manage_url.
+- Events `booking_confirmed`, `booking_reminder`, `booking_rescheduled`, `booking_cancelled` in `pg_sms_message_events()`, kind `booking` (not commercial) in `pg_sms_kinds()`, off until switched on, shown on the SMS card only once the tables exist (`pg_sms_message_event_shown(…, $booking_on)`). To `bookings.phone`; fields store, name, service, date, time, manage_url.
+- Reference `booking:<id>:<event>:<start_at>`: a moved booking is told again, a repeated call is not. A reminder's names its hours (`reminder-2h`): `sms_outbox.reference` is unique, so the 2 h text under the 24 h one's was not queued (#10399).
 
 ## How do reminders go once without a column?
-- No `bookings.reminded` column: #5032's shape has none. The general job runs `pg_booking_reminders_run(time())` before the mail and SMS passes. It keeps its last pass time in `config_text` `booking_reminders_at` (claimed before sending, `platform/job-pass-time-claim.md`: a dying pass loses reminders, never doubles them; a first pass looks back 15 min, after a long stop at most a day).
-- `pg_booking_reminder_due()` (pure): a reminder's moment is start − hours (`pg_booking_policy()['reminder_hours']`, 24 and 2 while BK2's setting is not there); due when the moment fell in (last, now], the booking is confirmed, not started, and `updated_at` ≤ the moment (booked or changed after it: no reminder). Only the nearest passed moment counts, so after a stop an old 24 h reminder is not sent next to the 2 h one.
+- No `bookings.reminded` column (#5032). The general job runs `pg_booking_reminders_run(time())` before the mail and SMS passes. It keeps its last pass time in `config_text` `booking_reminders_at` (claimed before sending, `platform/job-pass-time-claim.md`: a dying pass loses reminders, never doubles them; it looks back 15 min first, at most a day after a stop).
+- `pg_booking_reminder_due()` (pure): a reminder's moment is start − hours (`pg_booking_policy()['reminder_hours']`, else 24 and 2); due when the moment fell in (last, now], the booking is confirmed, not started, and `updated_at` ≤ the moment (booked or changed after it: no reminder). Only the nearest passed moment counts: after a stop an old 24 h reminder never goes beside the 2 h one.
 
 ## How was it verified?
-- `tests/booking_messages_test.php` (step, .ics, DST times, fields, staff name, reminders, SMS, profile actions). No dev database or live provider run.
+- `tests/booking_messages_test.php`. No dev database or live provider run.
 
 Related: docs/memory/commerce/bookings-model.md, docs/memory/commerce/subscriptions-mails.md, docs/memory/platform/sms-order-messages.md

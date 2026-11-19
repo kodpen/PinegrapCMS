@@ -202,7 +202,7 @@ function pg_user_form_reward_points($value)
 
 /**
  * Whether a user text fits its varchar(100) column (user_username,
- * user_badge_label). A lenient server cuts a longer value, which also gets
+ * user_email, user_password_hint, user_badge_label). A lenient server cuts a longer value, which also gets
  * around the uniqueness check run on the whole value. Pure.
  *
  * @param mixed $value
@@ -216,7 +216,8 @@ function pg_user_form_text_fits($value)
 /**
  * The posted fields that cannot be stored as sent, field => 'invalid' or
  * 'too_long': Reward Points that are not a whole number in the column's
- * range, a username or badge label longer than its column. A lenient server
+ * range, a username, e-mail address, password hint or badge label longer
+ * than its column. A lenient server
  * would clamp or cut them and the screen would still say it saved. Pure.
  *
  * @param array $post
@@ -230,7 +231,7 @@ function pg_user_form_field_problems($post)
         $problems['reward_points'] = 'invalid';
     }
 
-    foreach (array('username', 'badge_label') as $field) {
+    foreach (array('username', 'email', 'password_hint', 'badge_label') as $field) {
         if (isset($post[$field]) && is_scalar($post[$field]) && !pg_user_form_text_fits($post[$field])) {
             $problems[$field] = 'too_long';
         }
@@ -251,6 +252,8 @@ function pg_user_form_field_problem_message($field, $problem)
     $labels = array(
         'reward_points' => lang('Reward Points'),
         'username' => lang('Username'),
+        'email' => lang('User Email'),
+        'password_hint' => lang('User Password Hint'),
         'badge_label' => lang('Badge Label'),
     );
 

@@ -113,9 +113,12 @@ function pg_proto_clean_fragment($value)
  * @param string $key      ENCRYPTION_KEY
  * @param string $sub      the part of a pretty address after the page name
  * @param string $record   a record code (?r=)
+ * @param mixed  $bundle_id a release bundle whose preview the frame draws,
+ *                          0 for a design's prototype (its signature stays
+ *                          as it was)
  * @return string 64 hex characters, '' when any part is missing
  */
-function pg_proto_frame_sign($style_id, $page_id, $user_id, $expires, $key, $sub = '', $record = '')
+function pg_proto_frame_sign($style_id, $page_id, $user_id, $expires, $key, $sub = '', $record = '', $bundle_id = 0)
 {
     $style_id = (int) $style_id;
     $page_id = (int) $page_id;
@@ -127,8 +130,12 @@ function pg_proto_frame_sign($style_id, $page_id, $user_id, $expires, $key, $sub
         return '';
     }
 
+    // The item and the record are escaped, so a bundle's part can never be
+    // read as theirs: a bundle's address does not open a design's frame, nor
+    // the other way round.
     return hash_hmac('sha256', 'prototype-frame:' . $style_id . ':' . $page_id . ':' . $user_id . ':' . $expires
-        . ':' . rawurlencode((string) $sub) . ':' . rawurlencode((string) $record), $key);
+        . ':' . rawurlencode((string) $sub) . ':' . rawurlencode((string) $record)
+        . (((int) $bundle_id > 0) ? ':bundle:' . (int) $bundle_id : ''), $key);
 }
 
 /**
@@ -246,10 +253,11 @@ function pg_proto_split_language($item, $languages)
 /**
  * The query string of a frame address, without the leading "?".
  *
- * @param string $bind pg_proto_frame_bind(), '' for none
+ * @param string $bind      pg_proto_frame_bind(), '' for none
+ * @param int    $bundle_id a release bundle's preview (k=), 0 for none
  * @return string
  */
-function pg_proto_frame_query($style_id, $page_id, $user_id, $expires, $signature, $sub = '', $record = '', $bind = '')
+function pg_proto_frame_query($style_id, $page_id, $user_id, $expires, $signature, $sub = '', $record = '', $bind = '', $bundle_id = 0)
 {
     $query = 'frame=1'
         . '&s=' . (int) $style_id
@@ -260,6 +268,10 @@ function pg_proto_frame_query($style_id, $page_id, $user_id, $expires, $signatur
 
     if ((string) $bind !== '') {
         $query .= '&b=' . rawurlencode((string) $bind);
+    }
+
+    if ((int) $bundle_id > 0) {
+        $query .= '&k=' . (int) $bundle_id;
     }
 
     if ((string) $sub !== '') {
@@ -279,10 +291,12 @@ function pg_proto_frame_query($style_id, $page_id, $user_id, $expires, $signatur
  * lower-case hex characters. Anything else is no address. The record code
  * and the sub-address are optional and dropped when they are not plain text;
  * a binding that is not 64 hex characters is read as none (an address that
- * is not bound, not a forged one).
+ * is not bound, not a forged one). A release bundle (k) is optional, a
+ * plain positive whole number when given.
  *
  * @param mixed $source $_GET
- * @return array|null s, p, u, e (int), sig, sub, r, b (string)
+ * @return array|null s, p, u, e, k (int, 0 for no bundle), sig, sub, r, b
+ *                    (string)
  */
 function pg_proto_frame_parse($source)
 {
@@ -306,6 +320,18 @@ function pg_proto_frame_parse($source)
 
     if (!is_string($signature) || (preg_match('/^[0-9a-f]{64}$/', $signature) !== 1)) {
         return null;
+    }
+
+    $parsed['k'] = 0;
+
+    if (isset($source['k'])) {
+        $bundle = $source['k'];
+
+        if (!is_string($bundle) || (preg_match('/^[1-9][0-9]{0,9}$/', $bundle) !== 1) || ((string) (int) $bundle !== $bundle)) {
+            return null;
+        }
+
+        $parsed['k'] = (int) $bundle;
     }
 
     $parsed['sig'] = $signature;
@@ -338,7 +364,8 @@ function pg_proto_frame_state($parsed, $key, $now, $client = null)
     }
 
     $expected = pg_proto_frame_sign($parsed['s'], $parsed['p'], $parsed['u'], $parsed['e'], $key,
-        isset($parsed['sub']) ? $parsed['sub'] : '', isset($parsed['r']) ? $parsed['r'] : '');
+        isset($parsed['sub']) ? $parsed['sub'] : '', isset($parsed['r']) ? $parsed['r'] : '',
+        isset($parsed['k']) ? (int) $parsed['k'] : 0);
 
     if (($expected === '') || !hash_equals($expected, (string) $parsed['sig'])) {
         return 'invalid';
@@ -371,16 +398,27 @@ function pg_proto_frame_state($parsed, $key, $now, $client = null)
  * order of the editor's tab strip (pg_designer_tab_layout_normalize(): the
  * listed tabs, then the rest by id).
  *
+ * A release bundle's preview passes the bundle's pages: then the set is the
+ * drafts still waiting in it, once each, in the bundle's order (they may
+ * belong to more than one design, so no tab strip orders them), and each
+ * page says which live page it replaces (0 for a new page) and its design.
+ *
  * @param array             $rows            page rows of the design: page_id,
  *                                           page_name, page_title,
  *                                           page_folder, publish_at
- *                                           (optional)
+ *                                           (optional), page_style (read
+ *                                           for a bundle)
  * @param int               $draft_folder_id pg_page_draft_folder_id()
  * @param int[]             $bin_folder_ids  pg_recycle_bin_folder_ids()
  * @param array|string|null $tab_layout      style.style_tab_layout
- * @return array[] id, name, title, publish_at, scheduled
+ * @param array|null        $bundle_items    pg_page_bundle_items() rows:
+ *                                           draft_page_id, live_page_id,
+ *                                           live_name, status; null for a
+ *                                           design's prototype
+ * @return array[] id, name, title, publish_at, scheduled; for a bundle also
+ *                 replaces, replaces_name, style
  */
-function pg_proto_page_set($rows, $draft_folder_id, $bin_folder_ids, $tab_layout)
+function pg_proto_page_set($rows, $draft_folder_id, $bin_folder_ids, $tab_layout, $bundle_items = null)
 {
     $draft_folder_id = (int) $draft_folder_id;
 
@@ -427,6 +465,10 @@ function pg_proto_page_set($rows, $draft_folder_id, $bin_folder_ids, $tab_layout
         return array();
     }
 
+    if (is_array($bundle_items)) {
+        return pg_proto_bundle_page_order($pages, $rows, $bundle_items);
+    }
+
     $layout = pg_designer_tab_layout_normalize($tab_layout, array_keys($pages));
     $ordered = array();
 
@@ -435,6 +477,85 @@ function pg_proto_page_set($rows, $draft_folder_id, $bin_folder_ids, $tab_layout
     }
 
     return $ordered;
+}
+
+/**
+ * A bundle's drafts in the bundle's order (pg_proto_page_set()): an item
+ * already written to the site, a draft no longer in Drafts and a second
+ * listing of the same draft are left out. Pure.
+ *
+ * @param array[] $pages        id => pg_proto_page_set() page, Drafts only
+ * @param array   $rows         the page rows, for page_style
+ * @param array   $bundle_items pg_page_bundle_items() rows
+ * @return array[]
+ */
+function pg_proto_bundle_page_order($pages, $rows, $bundle_items)
+{
+    $styles = array();
+
+    foreach ((array) $rows as $row) {
+        if (is_array($row) && isset($row['page_id'])) {
+            $styles[(int) $row['page_id']] = isset($row['page_style']) ? (int) $row['page_style'] : 0;
+        }
+    }
+
+    $ordered = array();
+    $seen = array();
+
+    foreach ((array) $bundle_items as $item) {
+        if (!is_array($item) || !isset($item['draft_page_id']) || (isset($item['status']) && ((string) $item['status'] !== 'waiting'))) {
+            continue;
+        }
+
+        $id = (int) $item['draft_page_id'];
+
+        if (!isset($pages[$id]) || isset($seen[$id])) {
+            continue;
+        }
+
+        $seen[$id] = true;
+        $page = $pages[$id];
+        $page['replaces'] = isset($item['live_page_id']) ? max(0, (int) $item['live_page_id']) : 0;
+        $page['replaces_name'] = ($page['replaces'] > 0) && isset($item['live_name']) ? (string) $item['live_name'] : '';
+        $page['style'] = isset($styles[$id]) ? $styles[$id] : 0;
+        $ordered[] = $page;
+    }
+
+    return $ordered;
+}
+
+/**
+ * The live pages a bundle's preview replaces: live page id => the draft
+ * drawn in its place (pg_proto_link_target()'s ctx replaced). Empty for a
+ * design's prototype. Pure.
+ *
+ * @param array[] $pages pg_proto_page_set()
+ * @return array
+ */
+function pg_proto_bundle_replaced($pages)
+{
+    $replaced = array();
+
+    foreach ((array) $pages as $page) {
+        if (!empty($page['replaces']) && !isset($replaced[(int) $page['replaces']])) {
+            $replaced[(int) $page['replaces']] = (int) $page['id'];
+        }
+    }
+
+    return $replaced;
+}
+
+/**
+ * The viewer's address for a release bundle's preview, which the bar's and
+ * the frame's links add a page to (pg_proto_viewer_url()).
+ *
+ * @param string $viewer    PATH . SOFTWARE_DIRECTORY . '/prototype.php'
+ * @param int    $bundle_id
+ * @return string
+ */
+function pg_proto_bundle_viewer($viewer, $bundle_id)
+{
+    return (string) $viewer . '?bundle=' . (int) $bundle_id;
 }
 
 /**
@@ -553,12 +674,17 @@ function pg_proto_view_target($ctx, $page_id, $sub, $record, $fragment)
  * goes nowhere), external (another host), contact (mailto, tel, sms), and
  * '' for what is left as it is (a bare anchor, a script address, a toggle).
  *
+ * In a release bundle's preview a link to a live page the bundle replaces
+ * opens its replacement, with the item, record and section it names; every
+ * other live page opens on the site.
+ *
  * @param string $href decoded attribute value
  * @param array  $ctx  env, maps, form_names (pg_link_resolve_item()),
  *                     proto (page id => true), draft_folder, bin_folders
  *                     (folder id => true), current_page, current_sub,
  *                     current_record (the view in the frame), languages
- *                     (pg_tr_prefix_map()), viewer
+ *                     (pg_tr_prefix_map()), viewer, replaced (optional:
+ *                     pg_proto_bundle_replaced())
  * @return array kind, page_id, href ('' for draft and broken)
  */
 function pg_proto_link_target($href, $ctx)
@@ -642,6 +768,13 @@ function pg_proto_link_target($href, $ctx)
             $page_id = (int) $maps['pages'][$prefix]['id'];
             $sub = trim(mb_substr($item, mb_strpos($item, '/') + 1), '/');
         }
+    }
+
+    // A page the bundle replaces is drawn as its replacement; another
+    // language's version stays the live one, since the frame draws the
+    // source language only.
+    if (($page_id > 0) && ($split['language'] === '') && isset($ctx['replaced'][$page_id])) {
+        return pg_proto_view_target($ctx, (int) $ctx['replaced'][$page_id], $sub, $record, $fragment);
     }
 
     $in_proto = ($page_id > 0) && isset($proto[$page_id]);
@@ -1227,8 +1360,11 @@ function pg_proto_frame_comment_script()
  *
  * @param array $view design, pages (pg_proto_page_set()), current, fallback,
  *                    fallback_text (optional), frame_url, viewer, close_url
- *                    ('' for none), software, lang, error, comments
- *                    (optional)
+ *                    ('' for none), software, lang, error, empty_title and
+ *                    empty_text (optional: what an empty set says),
+ *                    wide_pages (optional: the page chooser is not held
+ *                    to 16rem, for a release bundle's longer names),
+ *                    comments (optional)
  * @return string
  */
 function pg_proto_shell_html($view)
@@ -1262,6 +1398,12 @@ function pg_proto_shell_html($view)
             $label .= ' (' . lang('scheduled to go live') . ')';
         }
 
+        // A bundle's replacement keeps its own title and names the live
+        // page it stands for.
+        if (!empty($page['replaces'])) {
+            $label .= ' (' . lang(array('string' => 'replaces {var:1}', 'vars' => array(((string) $page['replaces_name'] !== '') ? (string) $page['replaces_name'] : '#' . (int) $page['replaces']))) . ')';
+        }
+
         $options .= '<option value="' . h(pg_proto_viewer_url($viewer, $page['id'])) . '"' . (($page['id'] === $current) ? ' selected' : '') . '>' . h($label) . '</option>';
     }
 
@@ -1276,7 +1418,7 @@ function pg_proto_shell_html($view)
     $nav = '';
 
     if ($pages) {
-        $nav = '<div class="pg-proto-nav">'
+        $nav = '<div class="pg-proto-nav' . (!empty($view['wide_pages']) ? ' pg-proto-nav-wide' : '') . '">'
             . $step(($index >= 0) ? $index - 1 : -1, 'bi-chevron-left', lang('Previous page'))
             . '<select class="form-control form-control-sm" id="pg-proto-pages" aria-label="' . h(lang('Pages')) . '">' . $options . '</select>'
             . $step(($index >= 0) ? $index + 1 : -1, 'bi-chevron-right', lang('Next page'))
@@ -1294,8 +1436,8 @@ function pg_proto_shell_html($view)
     if ($error !== '') {
         $main = '<div class="pg-proto-empty"><p class="mb-0">' . h($error) . '</p></div>';
     } elseif (($frame_url === '') || !$pages) {
-        $main = '<div class="pg-proto-empty"><p class="fw-semibold mb-1">' . h(lang('This design has no draft pages.')) . '</p>'
-            . '<p class="fg-secondary small mb-0">' . h(lang('Save a page as a draft in the Page Design Studio to play it here as a prototype.')) . '</p></div>';
+        $main = '<div class="pg-proto-empty"><p class="fw-semibold mb-1">' . h(isset($view['empty_title']) ? (string) $view['empty_title'] : lang('This design has no draft pages.')) . '</p>'
+            . '<p class="fg-secondary small mb-0">' . h(isset($view['empty_text']) ? (string) $view['empty_text'] : lang('Save a page as a draft in the Page Design Studio to play it here as a prototype.')) . '</p></div>';
     } else {
         $main = '<iframe id="pg-proto-frame" class="pg-proto-frame" src="' . h($frame_url) . '"'
             . ' title="' . h(lang('Prototype')) . '"'
@@ -1333,6 +1475,12 @@ body.pg-proto { display: flex; flex-direction: column; margin: 0; overflow: hidd
 .pg-proto-name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pg-proto-nav { display: flex; align-items: center; gap: .375rem; flex: 0 1 auto; min-width: 0; }
 .pg-proto-nav select.form-control { width: auto; max-width: 16rem; min-width: 8rem; }
+/* A wide chooser is as wide as its longest name needs, up to the bar\'s
+   width; the bar wraps it to its own row before a name is cut. */
+@media (min-width: 576px) {
+  .pg-proto-nav-wide { max-width: 100%; }
+  .pg-proto-nav-wide select.form-control { max-width: none; }
+}
 .pg-proto-count { white-space: nowrap; }
 .pg-proto-tools { display: flex; align-items: center; gap: .375rem; margin-left: auto; }
 .pg-proto-frame { flex: 1 1 auto; width: 100%; border: 0; background: #fff; }
@@ -1548,6 +1696,55 @@ function pg_proto_design_pages($style_id)
     $layout = pg_style_tab_layout_ready() ? (string) db_value("SELECT style_tab_layout FROM style WHERE style_id = '" . $style_id . "'") : '';
 
     return pg_proto_page_set($rows, $draft_folder, pg_recycle_bin_folder_ids(), $layout);
+}
+
+/**
+ * A release bundle's preview (pg_proto_page_set() with the bundle): the
+ * drafts still waiting in a bundle that holds them (open, scheduled, partly
+ * published). A published, taken back or deleted bundle has none.
+ *
+ * @param int $bundle_id
+ * @return array[]
+ */
+function pg_proto_bundle_pages($bundle_id)
+{
+    $bundle_id = (int) $bundle_id;
+    $draft_folder = pg_page_draft_folder_id(false);
+
+    if (($bundle_id <= 0) || ($draft_folder <= 0) || !function_exists('pg_page_bundle_get')) {
+        return array();
+    }
+
+    $bundle = pg_page_bundle_get($bundle_id);
+
+    if (($bundle === null) || !pg_page_bundle_holds($bundle['status'])) {
+        return array();
+    }
+
+    $items = pg_page_bundle_items($bundle_id);
+    $ids = array();
+
+    foreach ($items as $item) {
+        if ((string) $item['status'] === 'waiting') {
+            $ids[(int) $item['draft_page_id']] = (int) $item['draft_page_id'];
+        }
+    }
+
+    if (!$ids) {
+        return array();
+    }
+
+    $schedule = function_exists('pg_page_schedule_ready') && pg_page_schedule_ready();
+
+    $rows = db_items(
+        "SELECT page_id, page_name, page_title, page_folder, page_style" . ($schedule ? ", publish_at" : "") . "
+        FROM page
+        WHERE page_id IN ('" . implode("', '", $ids) . "')
+            AND " . pg_page_visual_design_sql() . "
+            AND page_folder = '" . (int) $draft_folder . "'" . pg_designer_not_binned_sql('page_folder') . "
+        ORDER BY page_id");
+
+    return pg_proto_page_set($rows, $draft_folder, pg_recycle_bin_folder_ids(), '', $items);
 }
 
 /**

@@ -211,7 +211,7 @@ function ws_api_commands_delete($params)
 // The answers of a command that are shown back before anything is written.
 function ws_api_command_preview_types()
 {
-    return array('preview', 'record_preview', 'create_preview', 'poll_form');
+    return array('preview', 'record_preview', 'create_preview', 'poll_form', 'plan_form', 'approval_form', 'status_form', 'checkin_form', 'leave_card', 'search', 'memory_form', 'flow_start', 'flow_form');
 }
 
 /**

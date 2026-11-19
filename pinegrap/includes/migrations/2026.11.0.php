@@ -224,6 +224,9 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_site_push_watch();         // 11.0.229
 	upgrade_2026_11_0_ws_meeting_url();          // 11.0.232
 	upgrade_2026_11_0_file_translation();        // 11.0.231
+	upgrade_2026_11_0_ws_memory_project();       // 11.0.236
+	upgrade_2026_11_0_whatsapp_inbox_read_drop(); // 11.0.237
+	upgrade_2026_11_0_ws_saved_replies_cleanup(); // 11.0.238
 
 }
 
@@ -3472,7 +3475,8 @@ function upgrade_2026_11_0_workspace_thread_follow() {
 // composer, each under its shortcut. scope is 'personal' for every row this
 // release writes; it is there now so that team replies come later without a
 // second change to this table or a rebuild of uq_shortcut, which keeps a
-// shortcut once per person and scope. body keeps {customer} and {order} as
+// shortcut once per person and scope; its left column user_id also finds a
+// person's rows, so the table has no index of user_id alone. body keeps {customer} and {order} as
 // typed: they are filled when the reply is put in, so no customer data is
 // stored. The rows go with their user (delete_users.php, edit_user.php).
 function upgrade_2026_11_0_workspace_saved_replies() {
@@ -3487,11 +3491,23 @@ function upgrade_2026_11_0_workspace_saved_replies() {
 		created_at   INT UNSIGNED NOT NULL DEFAULT 0,
 		updated_at   INT UNSIGNED NOT NULL DEFAULT 0,
 		PRIMARY KEY (id),
-		KEY idx_user (user_id),
 		UNIQUE KEY uq_shortcut (user_id, scope, shortcut)
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Workspace: the table for saved replies is added: texts a person keeps under a short word and puts into a message. It stays empty until somebody saves a reply.');
+
+}
+
+// ws_saved_replies without idx_user (2026.11.0, 11.0.238). A database that
+// ran 11.0.114 before the index left that step has KEY idx_user (user_id);
+// uq_shortcut (user_id, scope, shortcut) starts with the same column and
+// answers every lookup it served, so the duplicate is dropped. Nothing is
+// done where the table or the index is absent.
+function upgrade_2026_11_0_ws_saved_replies_cleanup() {
+
+	if (install_table_exists('ws_saved_replies') && install_index_exists('ws_saved_replies', 'uq_shortcut')) {
+		install_drop_index('ws_saved_replies', 'idx_user');
+	}
 
 }
 
@@ -5661,6 +5677,23 @@ function upgrade_2026_11_0_ws_channel_memory() {
 }
 
 
+// The general memory and a memory record's project (2026.11.0, 11.0.236;
+// includes/workspace/channel_memory.php).
+//
+// ws_channel_memory.project: the project a record is filed under (80
+// characters, '' for none), so the Memory tab can group records under
+// project headings. A record with channel_id 0 belongs to no channel: it is
+// the general memory every agent channel shares, read and written by whoever
+// may post in an agent channel. The channels' records stay where they are,
+// with no project.
+function upgrade_2026_11_0_ws_memory_project() {
+
+	install_add_column('ws_channel_memory', 'project', "VARCHAR(80) NOT NULL DEFAULT '' AFTER channel_id");
+
+	install_note('Workspace: memory records can be filed under a project, and a general memory is shared by the agent channels. Existing records stay in their channels with no project.');
+
+}
+
 // The undo journal of an agent's applied change (2026.11.0, 11.0.174;
 // includes/workspace/agent_tiers.php).
 //
@@ -6449,8 +6482,6 @@ function upgrade_2026_11_0_whatsapp_inbox() {
 		media_id          VARCHAR(64) NOT NULL DEFAULT '',
 		media_mime        VARCHAR(100) NOT NULL DEFAULT '',
 		context_wamid     VARCHAR(128) NOT NULL DEFAULT '',
-		read_user_id      INT UNSIGNED NOT NULL DEFAULT 0,
-		read_at           INT UNSIGNED NOT NULL DEFAULT 0,
 		PRIMARY KEY (id),
 		UNIQUE KEY uq_wamid (wamid),
 		KEY idx_contact (contact_id, received_at),
@@ -7496,5 +7527,16 @@ function upgrade_2026_11_0_file_translation() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Picture texts: the table for a picture\'s versions in the site\'s other languages is ready; nothing changes on the site until one is drawn.');
+
+}
+
+// whatsapp_inbox.read_user_id and read_at were created by an earlier form of
+// 11.0.198 and never written or read; a read mark is added by the step that
+// builds one. 11.0.198 no longer creates them; this step drops them from
+// databases that ran the earlier form and does nothing where they are absent.
+function upgrade_2026_11_0_whatsapp_inbox_read_drop() {
+
+	install_drop_column('whatsapp_inbox', 'read_user_id');
+	install_drop_column('whatsapp_inbox', 'read_at');
 
 }

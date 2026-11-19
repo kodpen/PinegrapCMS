@@ -11,14 +11,14 @@ description: Plan release-bundle, steps RB1 to RB8 (RB0, the owner's answer, is 
   - Existing files: `includes/fn/experiments_sheet.php` (one more answer in `pg_experiment_variant_hold_message()`, which the save, the bin and the API's delete already ask), `functions.php` (the module).
   - New: `includes/fn/page_bundles.php` (ready check, a bundle read and written, a copy added as `pg_experiment_sheet_create()` copies a variant, a draft added, a page removed, the statuses and their moves, the "changed since" check), `tests/page_bundles_test.php`.
   - Tests, red first: the allowed moves, one open bundle per draft and per live page, the hold's four refusals, "changed since".
-  - Features: B1 to B6; B5 without the Publish sheet's held row (RB2b).
+  - Features: B1 to B6; B5's Publish sheet row in RB2b.
 
 - RB2 Done (#9998): the Bundles screen; the owner's look, agent channel poll 107.
   - New: the root screen `page_bundles.php`, built as `page_experiments.php` is.
   - Pictures: the list, a bundle with a new page, a replacement and a "changed since" one, the two Add dialogs, a phone. To the owner; not marked ready before his look.
   - Features: the screen's side of B1 to B6.
 
-- RB2b (S) after RB1, when no open PR holds assets/js/style_designer.src.js: the Publish sheet's held row for a bundled draft. The row state held and its disabled box as an experiment's variant has them; the row's words name the bundle, never an experiment; the page load gives the sheet the hold and its text from pg_page_bundle_hold(). Pictures at 1440 and 390, light and dark, to the architect. Features: B5 (the sheet).
+- RB2b Done (#10191): the Publish sheet's held row for a bundled draft. The page load's state from `pg_experiment_editor_config()` (`pg_experiment_editor_page_state()`), the row's label and note in `pg_designer_publish.js`; `designer/designer-publish-sheet-held-row.md`. Pictures to the architect. Features: B5 (the sheet).
 
 - RB3 Done (#9999): publish and take back.
   - New, in the module: the checks (`pg_collab_may_edit_page()`, the dry run of `pg_designer_save_page()`), the writes (`pg_page_draft_move()`, the page save with the source `bundle`), the take back (`pg_page_revision_get()` and a save with the source `restore`).
@@ -28,7 +28,7 @@ description: Plan release-bundle, steps RB1 to RB8 (RB0, the owner's answer, is 
 
 - RB4 Done (#10108): the time. Existing files: `job.php` (one pass). The person's name swapped as `api_design_save_as_owner()` does. Features: B13.
 
-- RB5 (M) after RB2: the preview. Existing files: `prototype.php` and `includes/fn/prototype.php` (`pg_proto_page_set()` takes a bundle; the link resolver opens a replacement). Features: B14.
+- RB5 Done (#10296): the preview. Existing files: `prototype.php` and `includes/fn/prototype.php` (`pg_proto_page_set()` takes a bundle; the link resolver opens a replacement). Features: B14.
 
 - RB6 (S) after RB5: the share link. A bundle named on `prototype_links` (its place the architect's, in the PR). Features: B15.
 
