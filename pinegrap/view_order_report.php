@@ -749,7 +749,7 @@ if (!$_POST) {
             $where .= "AND ";
         }
         
-        $where .= "(" . prepare_sql_operation($filter['operator'], $operand_1, $operand_2) . ") ";
+        $where .= "(" . pg_order_report_filter_sql($operand_1, $filter['operator'], $operand_2) . ") ";
     }
     
     // if there are no order date filters, then add filter for date changer

@@ -61,3 +61,44 @@ function test_order_report_screen_skips_and_refuses_a_filter_with_no_field()
 	pg_assert_contains("if (pg_order_report_filter_column(\$liveform->get_field_value('filter_' . \$i . '_field')) === '') {", $source, 'the save checks the field');
 	pg_assert_contains("lang('Please select a field for each filter.')", $source, 'with the shared message');
 }
+
+// "Does not contain" and "is not equal to" on a field of the order's lines
+// or recipients keep an order only when none of them matches: compared row
+// by row through the join, the order's other product passed and an order
+// holding the excluded product was listed.
+function test_order_report_negative_filter_on_lines_asks_that_none_matches()
+{
+	pg_assert_same(
+		"NOT EXISTS (SELECT 1 FROM orders AS filter_order LEFT JOIN order_items ON order_items.order_id = filter_order.id WHERE (filter_order.id = orders.id) AND (IFNULL(order_items.product_name, '') LIKE '%PGS-1003%'))",
+		pg_order_report_filter_sql('order_items.product_name', 'does not contain', 'PGS-1003'),
+		'no line holds the product'
+	);
+	pg_assert_same(
+		"NOT EXISTS (SELECT 1 FROM orders AS filter_order LEFT JOIN ship_tos ON ship_tos.order_id = filter_order.id WHERE (filter_order.id = orders.id) AND (IFNULL(ship_tos.state, '') = 'CA'))",
+		pg_order_report_filter_sql('ship_tos.state', 'is not equal to', 'CA'),
+		'no recipient in the state'
+	);
+}
+
+// The other comparisons, and every comparison of the order's own columns,
+// stay the row-by-row condition.
+function test_order_report_other_filters_keep_their_condition()
+{
+	foreach (array('contains', 'is equal to', 'is less than', 'is greater than or equal to') as $operator) {
+		pg_assert_same(
+			prepare_sql_operation($operator, 'order_items.product_name', 'Mug'),
+			pg_order_report_filter_sql('order_items.product_name', $operator, 'Mug'),
+			'product name ' . $operator
+		);
+	}
+
+	foreach (array('does not contain', 'is not equal to', 'contains') as $operator) {
+		pg_assert_same(
+			prepare_sql_operation($operator, 'orders.billing_city', 'Bursa'),
+			pg_order_report_filter_sql('orders.billing_city', $operator, 'Bursa'),
+			'billing city ' . $operator
+		);
+	}
+
+	pg_assert_contains("pg_order_report_filter_sql(\$operand_1, \$filter['operator'], \$operand_2)", order_report_filters_source(), 'the screen builds its conditions with it');
+}

@@ -267,6 +267,34 @@ function pg_order_report_filter_column($field, $from = null, $to = null)
 }
 
 /**
+ * A filter's condition on its column (pg_order_report_filter_column()). A
+ * column of the order's lines or recipients is read through the joined row,
+ * so a comparison keeps an order when one of its lines or recipients
+ * matches. "Does not contain" and "is not equal to" keep it only when none
+ * matches: row by row, the order's other product passed and an order
+ * holding the excluded product was listed. An order with no line or
+ * recipient is read as one empty row, as the join reads it.
+ *
+ * @param string $column    the filter's column
+ * @param string $operator  the filter's operator
+ * @param string $operand_2 the value it is compared with
+ * @return string
+ */
+function pg_order_report_filter_sql($column, $operator, $operand_2)
+{
+    $negations = array('does not contain' => 'contains', 'is not equal to' => 'is equal to');
+
+    foreach (array('order_items', 'ship_tos') as $table) {
+        if ((strpos($column, $table . '.') === 0) && isset($negations[$operator])) {
+            return "NOT EXISTS (SELECT 1 FROM orders AS filter_order LEFT JOIN " . $table . " ON " . $table . ".order_id = filter_order.id"
+                . " WHERE (filter_order.id = orders.id) AND (" . prepare_sql_operation($negations[$operator], $column, $operand_2) . "))";
+        }
+    }
+
+    return prepare_sql_operation($operator, $column, $operand_2);
+}
+
+/**
  * Whether a "day(s) ago" count can be stored: a whole number from 0 up to
  * what the INT UNSIGNED column holds; empty means today. Pure.
  *
