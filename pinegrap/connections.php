@@ -45,6 +45,23 @@ $providers = array_filter(pg_connect_providers(), function ($provider) {
 	return !(isset($provider['accounts']) && ($provider['accounts'] === false));
 });
 
+// Asks the provider whether one of the site's accounts still works, and says so.
+function connections_check_account($account, $liveform) {
+
+	$check = pg_connect_check($account);
+
+	if ($check['ok']) {
+
+		$liveform->add_notice(lang(array('string' => '{var:1} works.', 'vars' => h($account['label']))));
+
+	} else {
+
+		$liveform->add_error(lang(array('string' => '{var:1} does not work: {var:2}', 'vars' => array(h($account['label']), h($check['error'])))));
+
+	}
+
+}
+
 // The Workspace's view of the user, for the GitHub repository links, whose
 // gate is the Workspace settings right; null when the Workspace is off.
 function connections_workspace_viewer($user) {
@@ -163,13 +180,7 @@ if ($_POST) {
 					foreach (pg_connect_accounts(array('provider' => $provider_key, 'user_id' => 0)) as $account) {
 
 						$tried++;
-						$check = pg_connect_check($account);
-
-						if ($check['ok']) {
-							$liveform->add_notice(lang(array('string' => '{var:1} works.', 'vars' => h($account['label']))));
-						} else {
-							$liveform->add_error(lang(array('string' => '{var:1} does not work: {var:2}', 'vars' => array(h($account['label']), h($check['error'])))));
-						}
+						connections_check_account($account, $liveform);
 
 					}
 
@@ -212,17 +223,7 @@ if ($_POST) {
 		if (is_array($account) && ($account['user_id'] === 0)) {
 
 			$return_provider = $account['provider'];
-			$check = pg_connect_check($account);
-
-			if ($check['ok']) {
-
-				$liveform->add_notice(lang(array('string' => '{var:1} works.', 'vars' => h($account['label']))));
-
-			} else {
-
-				$liveform->add_error(lang(array('string' => '{var:1} does not work: {var:2}', 'vars' => array(h($account['label']), h($check['error'])))));
-
-			}
+			connections_check_account($account, $liveform);
 
 		}
 
