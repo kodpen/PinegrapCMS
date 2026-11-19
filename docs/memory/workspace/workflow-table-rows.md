@@ -22,6 +22,7 @@ description: Workflow table rows (wtable_rows.php, T1b): add, change, delete, mo
 
 ## Are person and record-link cells written?
 - Yes, since T1b2: the privacy export and erasure read them (`pg_privacy_wtable_rows()`, `core/personal-data-erasure.md`), so `ws_wtable_row_closed_types()` is empty. A later type holding personal data the privacy paths cannot read goes into that list; its non-empty value is then `not_writable_yet`, emptying allowed.
+- A person cell names someone on the team (`ws_team_ids()`), else `not_person` (`ws_wtable_person_cells_refusal()` in the add and change checks, so the screen, API, import and flow boxes too). A person the row already holds is not checked again: a row whose person left the team stays editable. Before #10366 any positive id was kept, a customer's account or none.
 
 ## How are formula columns worked out?
 - On every read, never stored (`ws_wtable_formula_values()`). The expression names other columns by name (`Price * Quantity`), bound once per read by `ws_calc_bind()` with the column id as slot, then `ws_calc_evaluate()` per row.
