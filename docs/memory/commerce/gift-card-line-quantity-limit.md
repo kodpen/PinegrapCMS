@@ -18,7 +18,7 @@ module: order_completion
 - Cart update keeps the line's quantity and marks `quantity[<id>]` (`quantities[<id>]` in `cart_action.php`) with the error.
 - `submit_order()` refuses an order with a line over the limit (a cart filled before the limit) until the quantity is lowered.
 - The external API order and quote creation get the same rule separately.
-- Create Order (the counter sale, `includes/local_sale.php`): `local_sale_set_qty()` asks `pg_order_item_quantity_allowed()` and `local_sale_add_item()` reads the refusal (PR #10384). Before, a typed 101 was written and an add past the limit said "Product not found or is disabled.". Whether the counter should sell a gift card at all (its completion issues none): issue #10376.
+- Create Order (the counter sale, `includes/local_sale.php`) adds no gift card at all (counter-sale-site-line-stages, #10376); `local_sale_set_qty()` still holds a gift card line a cart already had to the limit with `pg_order_item_quantity_allowed()` (PR #10384). Before, a typed 101 was written.
 
 ## Tests?
 - `tests/gift_card_line_quantity_test.php`: the limit, the refusal record read once, and that every door calls the check.
