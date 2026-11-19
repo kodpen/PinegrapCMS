@@ -10,7 +10,8 @@
  * draws nothing. The editor's Preview loads the same file from its twin row
  * in _SD_PAGE_SCRIPTS (assets/js/style_designer.src.js). The worker itself
  * is site_push_sw.php. Loaded by get_page_content.php only when the mark is
- * there, and by site_push_sw.php.
+ * there (or an order's button "Notify me on this device"), and by
+ * site_push_sw.php.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -47,6 +48,19 @@ function pg_site_push_block_on_page($content)
 }
 
 /**
+ * Whether a page's HTML holds the button "Notify me on this device" of an
+ * order (pg_site_push_order_button_html()). Pure.
+ *
+ * @param string $content page HTML
+ * @return bool
+ */
+function pg_site_push_order_on_page($content)
+{
+    return stripos((string) $content, 'data-pg-push-order') !== false
+        && (bool) preg_match('/\sdata-pg-push-order=/i', (string) $content);
+}
+
+/**
  * The settings the block's script reads, from the site's path and software
  * directory. The scope is the site's root; the worker answers with
  * Service-Worker-Allowed for it. Pure.
@@ -70,7 +84,8 @@ function pg_site_push_block_settings($path, $software, $key)
 
 /**
  * The script and its settings before the page's last </body>, once, for a
- * page holding the block (pg_site_push_block_on_page()). Nothing while the
+ * page holding the block (pg_site_push_block_on_page()) or an order's button
+ * (pg_site_push_order_on_page()). Nothing while the
  * switch is off or the site has no VAPID key: the block stays hidden.
  * Asked once every shared component and system widget is drawn in, so the
  * file follows the block wherever it was placed.
@@ -84,7 +99,7 @@ function pg_site_push_block_settings($path, $software, $key)
  */
 function pg_site_push_block_inject($content, $settings = null, $src = null)
 {
-    if (!pg_site_push_block_on_page($content)) return $content;
+    if (!pg_site_push_block_on_page($content) && !pg_site_push_order_on_page($content)) return $content;
     if (strpos($content, '/assets/js/pg_site_push.js') !== false) return $content;
 
     if ($settings === null) {

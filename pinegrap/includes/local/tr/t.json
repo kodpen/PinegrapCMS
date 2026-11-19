@@ -8851,6 +8851,7 @@
     "This device": "Bu cihaz",
     "This device was locked by the site owner and cannot be signed out here.": "Bu cihaz site sahibi tarafından kilitlendi ve buradan kapatılamaz.",
     "This device will be signed out and will have to sign in again.": "Bu cihazın oturumu kapatılacak ve yeniden oturum açması gerekecek.",
+    "This device will be told when the order is shipped and when it is delivered.": "Sipariş kargoya verildiğinde ve teslim edildiğinde bu cihaza bildirim gelecek.",
     "This dish is no longer on the menu. The kitchen may have moved on to the next season.": "Bu yemek artık menüde yok. Mutfak bir sonraki mevsime geçmiş olabilir.",
     "This district is not in the district list of {var:1}. Check the address before shipping.": "Bu ilçe {var:1} ilçeleri arasında yok. Göndermeden önce adresi kontrol edin.",
     "This district is not in the district list. Check the address before shipping.": "Bu ilçe listede yok. Göndermeden önce adresi kontrol edin.",

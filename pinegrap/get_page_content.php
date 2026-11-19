@@ -3308,6 +3308,13 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                                 'device_type' => $device_type,
                                 'page_id' => $system_region_properties['page_id'])) . '
                         </div>';
+
+                    // "Notify me on this device" for the order shown; the
+                    // screen above has already refused a visitor who does not
+                    // own it. Not in an e-mail.
+                    if (!$email) {
+                        $system_output .= pg_site_push_order_button(is_scalar($_GET['id'] ?? null) ? (int) $_GET['id'] : 0);
+                    }
                     
                     break;
 
@@ -3810,6 +3817,12 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                     $system_output .= get_order_receipt(array(
                         'page_id' => $system_region_properties['page_id'],
                         'device_type' => $device_type));
+
+                    // "Notify me on this device" for the order this session
+                    // has just completed. Not in an e-mail.
+                    if (!$email) {
+                        $system_output .= pg_site_push_order_button((int) ($_SESSION['ecommerce']['completed_order_id'] ?? 0));
+                    }
 
                     break;
 

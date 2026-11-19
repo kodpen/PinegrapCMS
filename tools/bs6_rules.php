@@ -804,6 +804,7 @@ function bs6_site_functions()
 		'includes/fn/payments.php' => array('pg_payment_box'),
 		'includes/fn/privacy.php' => array('pg_consent_sms_checkout_row'),
 		'includes/fn/returns.php' => array('pg_return_actions_html', 'pg_return_badge_class', 'pg_return_form_html', 'pg_returns_list_html'),
+		'includes/fn/site_push_order.php' => array('pg_site_push_order_button_html'),
 		'includes/fn/sms_codes.php' => array('pg_sms_cod_field_html'),
 	);
 }
