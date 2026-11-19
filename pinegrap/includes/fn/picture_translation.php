@@ -1525,7 +1525,12 @@ function pg_picture_tr_rtl($language)
  * set up), and the list is then left closed.
  *
  *   { file_id } -> { status, words, hash, doc, languages: [{ code, name,
- *   rtl, state, total, translated, texts, stamp, url }] }
+ *   rtl, state, queued, total, translated, texts, stamp, url }] }
+ *
+ * queued: the language has a row that is not drawn (waiting or out of
+ * date), so a page has shown the picture in it: the Design Canvas draws such
+ * a language again right after a Save; one without a row is never drawn by
+ * itself.
  *
  * @return array array(payload, HTTP status)
  */
@@ -1579,6 +1584,7 @@ function pg_picture_tr_languages_answer($request, $user)
             'name'       => pg_tr_language_label($code),
             'rtl'        => pg_picture_tr_rtl($code),
             'state'      => pg_picture_tr_list_state($row, count($texts), $translated),
+            'queued'     => ($row !== null) && ((int) $row['state'] !== 1),
             'total'      => count($texts),
             'translated' => $translated,
             'texts'      => $texts,

@@ -10,7 +10,7 @@ description: Plan picture-text-auto-draw, steps DA1 to DA5: rows and text jobs a
   - The mark: set where a row starts to wait or becomes drawable (a waiting row, a save, a translation written), cleared when the queue's query finds nothing; kept where reading it costs no query.
   - The keeping part of `pg_picture_tr_draw_answer()` becomes a function of its own (the `files` row, the upsert, the page cache), called with a user id or 0.
   - Tests, red first: rows at a page save (words, no words, right to left, another host); the job's texts and guards; the mark's moves; the keep with 0.
-- DA2 (M) after DA1: the panel draws in the background.
+- DA2 (M) after DA1: the panel draws in the background. Done: #10428.
   - New `assets/js/picture_auto.js`, standalone. The panel's footer prints its tag only while the mark is set and the user's queue (`pg_picture_tr_queue()`) is not empty.
   - It waits for an idle, visible tab, takes a lock so that one tab draws (`navigator.locks`, else a lease in `localStorage`), loads the Design Canvas bundle and draws the rows one at a time with the queue's drawing, moved out of `picture_queue.js` into a part both load (no copy). It stops when the tab is hidden; a failed row is not tried again in that page view.
   - The Design Canvas after a Save: the same draw for that picture at once.

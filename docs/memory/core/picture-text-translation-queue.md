@@ -14,8 +14,9 @@ module: picture_translation
 - The button's count is `count(pg_picture_tr_queue())`, so it is at most 200.
 
 ## How is a row drawn?
-- `assets/js/picture_queue.js` (standalone, not in a bundle) loads the Design Canvas bundle (`pg_image_editor_includes()`, `pgImageEditor.load()`) and draws with the editor's own `drawLanguage()` on a painter per picture, as the Languages list does. A picture's live document is read once (`picture_languages`); each language is posted to `picture_language_draw`, which checks right, stamp and every text translated as before.
-- One row at a time in this browser; nothing is drawn while nobody has the page open.
+- `assets/js/picture_queue.js` (standalone, not in a bundle) loads the Design Canvas bundle (`pg_image_editor_includes()`, `pgImageEditor.load()`) and draws each row with `PgImageEditor.parts.drawWaiting()`, shared with the background draw (`picture-text-auto-panel.md`). A picture's live document is read once (`picture_languages`); each language is posted to `picture_language_draw`, which checks right, stamp and every text translated as before.
+- One row at a time in this browser; the background draw does nothing in this view.
+- A row drawn meanwhile (by another tab) is not drawn again: it ends as its state (`M.languageRowPlan()`).
 - A row ends as Picture drawn, Look by hand (a text fell under the fit floor), Not every text is translated (`languageDrawable()` false since the page was built) or failed with the server's message. Once its draw ends the reason it waited (Not drawn yet / Out of date) goes; the line keeps the language and the pill says the result (`reasonShown()`).
 - A Look by hand row offers "Edit in the Design Canvas" (`data-pg-image-edit`, the editor the view already loads) once the run has ended or stopped, never while a draw runs (`editShown()`).
 - At a narrow width the pill goes to its own line under the name (`pg-list-row-head-wrap`): the name stands whole, never cut with an ellipsis.
@@ -26,4 +27,4 @@ module: picture_translation
 - At the end the count reads "Done; {n} could not be drawn." when a row failed, else "All the waiting pictures are drawn; {n} to look at by hand." when a row ended Look by hand (architect, channel 25 message 8978), else "All the waiting pictures are drawn." (`endText()`); Stop hides when nothing is left.
 
 ## Where are its tests?
-- `tests/picture_translation_test.php`: the query (states, languages, untranslated left out, bound, codes), the screen's link and view, and under Node the script's count left and an answer's state.
+- `tests/picture_translation_test.php`: the query (states, languages, untranslated left out, bound, codes), the screen's link and view, and under Node the script's count left; a row's plan and end: `tests/picture_auto_test.php`.

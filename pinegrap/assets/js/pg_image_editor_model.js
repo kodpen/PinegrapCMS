@@ -2676,8 +2676,46 @@
         });
     }
 
+    // A waiting row of the queue (a picture and a language), from its
+    // language as read when it is drawn: failed when the language is not
+    // listed any more, drawn or look when it was drawn meanwhile (nothing to
+    // draw again), skipped when a text is no longer translated, else draw.
+    function languageRowPlan(lang) {
+        if (!lang) {
+            return 'failed';
+        }
+
+        if ((lang.state === 'drawn') || (lang.state === 'look')) {
+            return lang.state;
+        }
+
+        return languageDrawable(lang) ? 'draw' : 'skipped';
+    }
+
+    // A row's end from its draw's answer: drawn, look (a text did not fit
+    // at the smallest size) or failed.
+    function languageRowStatus(r) {
+        if (r && (r.status === 'success')) {
+            return (r.state === 'look') ? 'look' : 'drawn';
+        }
+
+        return 'failed';
+    }
+
+    // The languages drawn after a Save: those with a row that waits (queued:
+    // waiting or out of date) and may be drawn. A language without a row is
+    // shown by no page, so it is not drawn.
+    function languagesWaiting(list) {
+        return (list || []).filter(function (lang) {
+            return !!lang.queued && languageDrawable(lang);
+        }).map(function (lang) {
+            return lang.code;
+        });
+    }
+
     var ARTBOARD = {
         LANGUAGE_FLOOR: LANGUAGE_FLOOR, languageFit: languageFit, languageDoc: languageDoc, languageDrawable: languageDrawable, languagesToDraw: languagesToDraw,
+        languageRowPlan: languageRowPlan, languageRowStatus: languageRowStatus, languagesWaiting: languagesWaiting,
         BOARD_PRESETS: BOARD_PRESETS, BOARD_BACKGROUNDS: BOARD_BACKGROUNDS, boardSide: boardSide, boardPreset: boardPreset,
         boardDrag: boardDrag, boardAnchored: boardAnchored, boardAround: boardAround, applyBoard: applyBoard,
         canvasBox: canvasBox, FRAME_OUT: FRAME_OUT, frameOutward: frameOutward, framePads: framePads, saveBox: saveBox,
