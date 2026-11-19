@@ -18,7 +18,7 @@ description: Plan (owner 2026-11-19): the Prototype view as a place to edit link
 - PL2, the arrow starts on its link. For each arrow shown the view draws the leg from the mark's middle to the arrow's port on the frame's edge and a dot on the mark, in the arrow's colour, lifted and faded with it (`_sdProtoLift()`, `_sdProtoDrawing()`). The leg is the view's own, drawn in the frame; the core is not changed.
 - PL3, the selected page at full height. The foot becomes a button: "Show the whole page" opens the selected frame's picture to the page's height (at most 6400 px of page), every link gets its mark, and the frames below move down as they do for a measured shared part (`_sdProtoPicSettle()`). "Show less", or another frame selected, closes it. One frame open at a time; nothing is stored.
 - PL4, a handle to pull. The pointer or the focus on a drawable mark of the selected frame shows a round "+" handle beside it, 20 px on screen at any zoom; a drag from it draws as a drag from the mark does. A mark smaller than 12 px on screen takes presses 4 px around it.
-- Order PL1, PL2, PL3, PL4, one PR each; no schema, no endpoint. Each keeps K1 to K9 (`designer/prototype-view-rules.md`), adds its tests to `tests/proto_hotspots_test.php` and sends one composed picture (the home page selected, before and after) to the architect before the label.
+- Order PL1, PL2, PL3, PL4, one PR each; no schema, no endpoint. Each keeps K1 to K9 (`designer/prototype-view-rules.md`) and adds its tests to `tests/proto_hotspots_test.php`.
 
 ## What is decided?
 - The owner's words: `workflow/decisions-made-product-78.md`. The view he accepted on 2026-11-17 (`workflow/decisions-made-product-70.md`) stays; the steps change how a link is reached and changed.
