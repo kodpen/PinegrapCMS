@@ -19,6 +19,6 @@ description: A Gmail or Google Workspace mailbox (S5d, #10431): IMAP with an app
 
 ## What would Google OAuth reading take?
 - A `google` entry in `mail_read`'s `scopes` and `imap_scopes` (`https://mail.google.com/`, the scope Gmail IMAP's XOAUTH2 takes), a Connect button for Google beside Microsoft's, and the preset choosing the connected account; sign-in already speaks XOAUTH2 (`ws_mail_box_login()`). Answers through the account need a Gmail send path for purpose `mail_read`.
-- `https://mail.google.com/` is a restricted scope: public use needs Google's verification and a security assessment; in Testing the access lapses after 7 days. Not built: the architect decides (asked by K1, 2026-11-19).
+- `https://mail.google.com/` is a restricted scope: public use needs Google's verification and a security assessment; in Testing the access lapses after 7 days. Not built: architect (2026-11-19): reading a Gmail box with a connected account is a new feature, and the owner is asked separately.
 
 Related: docs/memory/workspace/mail-microsoft.md, docs/memory/ui/look-settings-mailboxes.md

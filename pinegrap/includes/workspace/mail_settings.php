@@ -309,12 +309,18 @@ function ws_mail_box_accounts()
  * person who may connect the site's accounts (connect.php: a manager and
  * above); others are told who can.
  *
+ * While the site's Microsoft application is not set up, connect.php can only
+ * refuse the sign-in, so no button is drawn: a sentence links to the
+ * application's drawer on Connections instead.
+ *
  * @param array       $viewer
- * @param string|null $form the Site Settings form's id: a button of the hidden
- *                          Connect form pgset_mail_connect instead of a form
+ * @param string|null $form  the Site Settings form's id: a button of the hidden
+ *                           Connect form pgset_mail_connect instead of a form
+ * @param bool|null   $ready the Microsoft application is set up; null asks
+ *                           ws_mail_connect_ready()
  * @return string HTML
  */
-function ws_mail_connect_form($viewer, $form = null)
+function ws_mail_connect_form($viewer, $form = null, $ready = null)
 {
     if (!function_exists('pg_connect_start_fields') || !function_exists('pg_connect_purpose') || !pg_connect_purpose('mail_read')) {
         return '';
@@ -322,6 +328,12 @@ function ws_mail_connect_form($viewer, $form = null)
 
     if ((int) $viewer['role'] > 2) {
         return '<div class="pg-field-help mt-3">' . h(lang('A Microsoft 365 mailbox is read through a connected account; a manager or an administrator connects it here or in Settings › Connections.')) . '</div>';
+    }
+
+    if (!(($ready === null) ? ws_mail_connect_ready() : $ready)) {
+        return '
+                <div class="pg-field-help mt-3"><i class="bi bi-microsoft" aria-hidden="true"></i> '
+                    . '<a href="connections.php#connections-microsoft">' . h(lang('Set up the Microsoft application first')) . '</a></div>';
     }
 
     // In Site Settings the card sits inside the settings form: its button
@@ -341,6 +353,17 @@ function ws_mail_connect_form($viewer, $form = null)
                     <button type="submit" class="pg-button pg-button-quiet pg-button-sm"><i class="bi bi-microsoft" aria-hidden="true"></i>' . h(lang('Connect a Microsoft account for mailboxes')) . '</button>
                     <span class="pg-text-meta">' . h(lang('Sign in with the mailbox\'s own account; the site\'s Microsoft application must be set up in Settings › Connections first.')) . '</span>
                 </form>';
+}
+
+/**
+ * Whether a Microsoft account can be connected for Reading mailboxes: the
+ * site's Microsoft application is set up (pg_connect_app_ready()).
+ *
+ * @return bool
+ */
+function ws_mail_connect_ready()
+{
+    return function_exists('pg_connect_app') && function_exists('pg_connect_app_ready') && pg_connect_app_ready(pg_connect_app('microsoft'));
 }
 
 /**
