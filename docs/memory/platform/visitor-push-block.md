@@ -9,9 +9,9 @@ module: site_push_block
 
 ## How does the block reach a page?
 - Palette, Forms & Access, "Newsletter: Notify Me" (`newsletter-notify`, `style_designer_blocks_push.js`). A section marked `data-pg-push` and `hidden`, holding `data-pg-push-ask` (button `data-pg-push-on`), `data-pg-push-done` (button `data-pg-push-stop`), `data-pg-push-blocked` and `data-pg-push-failed`, the last three `hidden`.
-- `get_page_content.php` loads `includes/fn/site_push_block.php` only for a page holding `data-pg-push` (not in an e-mail); `pg_site_push_block_inject()` adds `window.pgSitePushConfig` (door, worker, scope = the site's path, public VAPID key) and `assets/js/pg_site_push.js` before the last `</body>`, once, and only while `pg_site_push_enabled()` and a key exist. Switched off, the block draws nothing.
-- The Preview's `_SD_PAGE_SCRIPTS` row uses `pg_site_push_block_pattern()`'s expression (`tests/designer_page_scripts_test.php`). The Preview, without settings, shows nothing.
-- The canvas (`IFRAME_CSS` rule) and the palette sketch draw the root; the other states stay hidden there.
+- `get_page_content.php` loads `includes/fn/site_push_block.php` only for a page holding `data-pg-push` (not in an e-mail); `pg_site_push_block_inject()` adds `window.pgSitePushConfig` (door, worker, scope = the site's path, public VAPID key) and `assets/js/pg_site_push.js` before the last `</body>`, once, and only while `pg_site_push_enabled()` and a key exist. Off, it draws nothing.
+- The Preview's `_SD_PAGE_SCRIPTS` row uses `pg_site_push_block_pattern()`'s expression (`tests/designer_page_scripts_test.php`). The Preview shows nothing.
+- The canvas (`IFRAME_CSS` rule) and the palette sketch draw the root; other states stay hidden.
 
 ## What does the script do?
 - Shows the root only with a secure page, `serviceWorker`, `PushManager`, `Notification`, IndexedDB and a key (an iPhone's Safari tab has none: App mode).
