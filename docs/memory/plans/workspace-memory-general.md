@@ -21,7 +21,7 @@ description: Plan (owner 2026-11-19): a general memory shared by the agent chann
 - GM2: every agent channel's brief carries the general index before the channel's own, inside the same character limit; the API and MCP tools list, read and write general records; a channel's record can be moved to the general memory.
 - GM3: the Memory tab as the owner's picture shows it: project headings that fold, under each one row per record (pin, name, the first line of its text, tags, change date, Edit, Delete), the general memory and the channel's own as two parts; the same list reached outside a channel too.
 - GM4: an agent channel's Decisions tab chooses between "This channel" and "All agent channels", and its brief's decisions block reads all of them; an "Agent channel" switch in the channel settings and in the New channel form, writing the same flag as the command, for a channel manager only.
-- Each step: its unit tests, and for GM3 one composed picture to the architect before the label.
+- Each step: its unit tests.
 
 ## How does the plan close?
 - `workspace/channel-memory.md` and the Memory tab's look file say the new state and this plan is deleted.

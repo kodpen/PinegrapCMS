@@ -12,7 +12,7 @@ description: Plan (owner 2026-11-19, poll 153): an area's tab strip sits centred
 
 ## What is built?
 - Owner (2026-11-19, poll 153, `workflow/decisions-made-panel-10.md`): "Pencerenin ortasında". The strip is centred in the window's content area, not in its screen's `#content`, so a list's or an edit screen's own width no longer moves it; the lists' width rule stays.
-- TS1, Communication. The strip takes that place on its six tabs and the old screens inside the shell, at every window width from 390 to 2560 px; the pointer stays on the strip from tab to tab. `tests/messages_area_test.php` and `tests/look_page_widths_test.php` pin it. One composed picture of two tabs at 2560 px, before and after, to the architect.
+- TS1, Communication. The strip takes that place on its six tabs and the old screens inside the shell, at every window width from 390 to 2560 px; the pointer stays on the strip from tab to tab. `tests/messages_area_test.php` and `tests/look_page_widths_test.php` pin it.
 - TS2, the other areas. The worker first lists every group of screens that share a strip of links (the `.pg-seg` strips printed above a screen's toolbar, the ERP and store areas among them) with each screen's width class, then gives them the same rule through one shared class, never per screen.
 - The rule is written into `ui/look-page-widths.md` by TS1.
 

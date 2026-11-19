@@ -20,7 +20,7 @@ description: Decisions list, product part 77 (2026-11-17): the Connections manag
 ## How is it cut into steps? (the architect's cut, not his words)
 - Architect (2026-11-17), in `plans/connections-merges.md` at priority 10, one step per PR: the frame (a service's page with "Durum" and "Kullanıldığı yerler" from the registry, the row's one action, the entry row; no field moves, a service without a page keeps its drawer until its step); GitHub; the AI providers (after CX2 has landed); Google and Microsoft; then the other groups, one step each in the census's order.
 - CX1 is closed by it. CX4 (a provider's client typed in one place) is answered by the provider's page. CX5 (the names) comes when the pages exist. CX2 and CX3 go on as chosen in polls 147 and 148.
-- Each step's pictures (1440 and 390, light and one dark, Turkish) come to the architect before the step is marked ready. The owner is asked again only for a page that needs something the sheet does not show; a table or a column is asked of the architect first.
+- No step sends pictures since 2026-11-19 (`look-pictures-none.md`). The owner is asked again only for a page that needs something the sheet does not show; a table or a column is asked of the architect first.
 - The technical rules of a page: `plans/connections-merges-panel-rules.md`. One note from the look: Google's "Hesap bağla" is a quiet button, the filled one on a page is a card's "Kaydet".
 
 Related: docs/memory/workflow/decisions-made.md, docs/memory/workflow/decisions-made-product-76.md

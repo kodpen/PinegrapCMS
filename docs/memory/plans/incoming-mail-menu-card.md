@@ -19,7 +19,7 @@ description: Plan (owner 2026-11-19): Incoming e-mail pinned to the main menu, a
 - IM2, the card. A card `mail` on the new dashboard, offered in the gallery to whoever may open the tab: the head with the unread count and a link to the tab, then the newest eight conversations of the Incoming view as the screen lists them (`ws_mail_list()`, so the card never shows what the screen hides): sender, bold while unread, the subject, the time. A row opens `messages_mail.php?conversation=<id>`. Empty: "No e-mail waiting".
 - The card reads only the frame's `--pgd-*` tokens, so the four card faces and the backdrops draw it (`ui/dashboard-v2-drawn-look.md`, `ui/dashboard-v2-looks.md`). Its contract: `ui/dashboard-v2-storage.md`.
 - IM3, the channel seen. In the open conversation's head the channel leaves the muted line and becomes a pill reading "In #name", a link to the mail's card in the channel; a box kept in no channel shows none. The list row keeps its channel.
-- One PR each; IM1 holds the schema step. Each sends one composed picture (light and one dark, Turkish) to the architect before the label.
+- One PR each; IM1 holds the schema step.
 
 ## What is decided?
 - The owner's words: `workflow/decisions-made-product-78.md`. Architect (2026-11-19): the card goes to the new dashboard only, since the old one stays as it is by his decision of 2026-11-01; eight rows and the pill's wording are the reading of his words.

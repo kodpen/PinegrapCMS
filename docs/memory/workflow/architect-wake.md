@@ -15,13 +15,14 @@ description: What wakes the architect session (owner, 2026-11-16): a mention in 
 - One `send_later` at the time he gave ("gece tr saatiyle 12:00 da devam edelim" was 21:00 UTC). Requests that arrive meanwhile wait and are answered at the return.
 - Owner (2026-11-16, agent channel message 7039): during such a pause the questions for the architect go to him; the architect takes over at the return.
 
-## How is the week's pause of 2026-11-17 kept?
-- Owner (2026-11-17, agent channel message 9427): "bu haftalık paydos edelim haftaya yeniden başlayalım geliştirmeye": coordinators hand over what they hold, the architect does the remaining checks, the merger lands what is ready and closes; whoever is done removes its timers and its waiting door, and coordinators archive finished workers.
-- So the architect's waiter and check-ins are taken down once its own PR has landed and no look is asked; nothing wakes it until he starts the work again. A draft still open then waits for next week.
-- Open at the pause, for the return: the Connections management screen's steps (`plans/connections-merges.md`; each step's pictures come to the architect); DA1 of `plans/picture-text-auto-draw-steps.md` is free for a worker; Ahmet's next work is named once SL2 #10073, CH3b #10077 and its check_look job have landed. This paragraph is deleted at the return.
+## When did the week's pause of 2026-11-17 end?
+- Owner (2026-11-17, agent channel message 9427): "bu haftalık paydos edelim haftaya yeniden başlayalım geliştirmeye"; whoever was done took its timers and its waiting door down.
+- Owner (2026-11-19, agent channel message 9531): "geliştirme başladı. normal rutine dönebilirsin"; "en önemliden az önemliye doğru ilerleyelim"; "prmerge genel koordinatörlüğe devam eder bu sayede mimar (fable 5.2) fazla kota harcamamış olur".
+- So the architect's waiter runs again. The merging session, as general coordinator, answers the coordinators' simple questions and passes on only what needs a decision. K1 and Exar first close the open issues, then take plan steps.
+- The order of plans the architect named that day: SC1 of `plans/open-version-schema-census.md`; TS1 and TD1; GM1 to GM4; PL1 to PL4; IM1 to IM3; then the plans already running.
 
 ## What is the economy mode, and who works meanwhile?
 - Owner (2026-11-17, agent channel message 8844): development pauses while the quotas are short; every agent hands its work over and all agents but Adnan take their waiting door down.
 - Owner (2026-11-17, message 8919): "şu anda geliştirme sadece bunlar ile devam ediyor": the merger, the architect, Exar (coordinates, wide quota) and Adnan (workers sized to its quota, nothing left half done); "mimar tasarruf modunda devam etsin".
 - Owner (2026-11-17, agent channel voice message 9215): Ahmet, the coordinator on the local dev machine, works again. It first closes the work it had open, with no new step or worker until that has landed; then the architect names its work (message 9217).
-- Economy mode: the waiter stays; short answers; only what somebody waits for; one composed picture per look where it serves; memory in one batch PR, not one per decision. It holds until he says otherwise.
+- Economy mode: the waiter stays; short answers; only what somebody waits for; no look pictures (`look-pictures-none.md`); memory in one batch PR, not one per decision. It holds until he says otherwise.
