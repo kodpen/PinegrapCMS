@@ -1643,6 +1643,7 @@
     "A memory entry has at most {var:1} tags.": "Bir hafıza kaydının en çok {var:1} etiketi olur.",
     "A memory entry needs a title.": "Bir hafıza kaydının başlığı olmalı.",
     "A memory entry's expiry must be in the future, or left empty.": "Bir hafıza kaydının bitiş zamanı ileride olmalı ya da boş bırakılmalı.",
+    "A memory entry's project is at most {var:1} characters.": "Bir bellek kaydının projesi en fazla {var:1} karakterdir.",
     "A memory entry's text is at most {var:1} characters.": "Bir hafıza kaydının metni en çok {var:1} karakterdir.",
     "A memory entry's title is at most {var:1} characters.": "Bir hafıza kaydının başlığı en çok {var:1} karakterdir.",
     "A mention in every episode of the season": "Sezonun her bölümünde anons",

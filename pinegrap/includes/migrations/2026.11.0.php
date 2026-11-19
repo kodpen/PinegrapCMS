@@ -224,6 +224,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_site_push_watch();         // 11.0.229
 	upgrade_2026_11_0_ws_meeting_url();          // 11.0.232
 	upgrade_2026_11_0_file_translation();        // 11.0.231
+	upgrade_2026_11_0_ws_memory_project();       // 11.0.236
 
 }
 
@@ -5660,6 +5661,23 @@ function upgrade_2026_11_0_ws_channel_memory() {
 
 }
 
+
+// The general memory and a memory record's project (2026.11.0, 11.0.236;
+// includes/workspace/channel_memory.php).
+//
+// ws_channel_memory.project: the project a record is filed under (80
+// characters, '' for none), so the Memory tab can group records under
+// project headings. A record with channel_id 0 belongs to no channel: it is
+// the general memory every agent channel shares, read and written by whoever
+// may post in an agent channel. The channels' records stay where they are,
+// with no project.
+function upgrade_2026_11_0_ws_memory_project() {
+
+	install_add_column('ws_channel_memory', 'project', "VARCHAR(80) NOT NULL DEFAULT '' AFTER channel_id");
+
+	install_note('Workspace: memory records can be filed under a project, and a general memory is shared by the agent channels. Existing records stay in their channels with no project.');
+
+}
 
 // The undo journal of an agent's applied change (2026.11.0, 11.0.174;
 // includes/workspace/agent_tiers.php).
