@@ -21786,13 +21786,40 @@
         drawFiles: function () {
             var self = this;
             var pane = self.pane;
+            // The server gives the files a page at a time, newest first:
+            // every page read so far, whether older files are left, where
+            // the next page starts and how many picture tiles the reader
+            // has asked for.
+            var loaded = [];
+            var older = false;
+            var cursor = 0;
+            var tiles = FILE_PAGE;
 
             pane.appendChild(skeleton(2, 'ws-skeleton-sm'));
 
-            api('ws_channel_files', { channel_id: self.channel.id }).then(function (data) {
+            // The next page; the tab is drawn again with it, where it was.
+            var loadPage = function () {
+                var params = { channel_id: self.channel.id };
+
+                if (cursor > 0) {
+                    params.before = cursor;
+                }
+
+                api('ws_channel_files', params).then(function (data) {
+                    loaded = loaded.concat(data.messages || []);
+                    older = !!data.more;
+                    cursor = data.before || 0;
+
+                    var top = pane.scrollTop;
+                    draw();
+                    pane.scrollTop = top;
+                }).catch(fail);
+            };
+
+            var draw = function () {
                 clear(pane);
 
-                var withFile = data.messages.filter(function (message) { return !!message.file; });
+                var withFile = loaded.filter(function (message) { return !!message.file; });
                 var images = withFile.filter(function (message) { return message.file.image; });
                 var videos = withFile.filter(function (message) { return message.file.kind === 'video'; });
                 // Voice messages and other sound files under their own title,
@@ -21867,7 +21894,8 @@
                         img.alt = message.file.name;
                         img.loading = 'lazy';
                         img.decoding = 'async';
-                        img.src = message.file.url;
+                        // The picture's small copy; the viewer opens the original.
+                        img.src = message.file.thumb || message.file.url;
                         tile.appendChild(img);
 
                         var caption = el('span', 'ws-gallery-caption');
@@ -21894,15 +21922,35 @@
                             more = null;
                         }
 
-                        if (shown < images.length) {
-                            more = lookButton('pg-button pg-button-quiet pg-button-sm ws-gallery-more', t('files_more_pictures', Math.min(FILE_PAGE, images.length - shown)), 'bi-chevron-down');
-                            more.addEventListener('click', drawPage);
+                        // Pictures read but not drawn come first; then the
+                        // server's next page, which may hold more.
+                        if (shown < images.length || older) {
+                            more = lookButton('pg-button pg-button-quiet pg-button-sm ws-gallery-more', (shown < images.length)
+                                ? t('files_more_pictures', Math.min(FILE_PAGE, images.length - shown)) : t('files_older'), 'bi-chevron-down');
+                            more.addEventListener('click', showMore);
                             pictures.appendChild(more);
                         }
                     };
 
+                    var showMore = function () {
+                        tiles = shown + FILE_PAGE;
+
+                        if (shown < images.length) {
+                            drawPage();
+                        } else {
+                            more.disabled = true;
+                            loadPage();
+                        }
+                    };
+
                     pictures.appendChild(grid);
-                    drawPage();
+
+                    // Drawn again after a page arrived: as many tiles as the
+                    // reader had asked for.
+                    do {
+                        drawPage();
+                    } while (shown < Math.min(tiles, images.length));
+
                     pane.appendChild(pictures);
                 }
 
@@ -21992,7 +22040,19 @@
 
                 fileRows(t('voice_and_audio'), audios);
                 fileRows(t('documents'), others);
-            }).catch(fail);
+
+                // Older files of every kind come with the server's next page.
+                if (older) {
+                    var olderButton = lookButton('pg-button pg-button-quiet pg-button-sm ws-files-older', t('files_older'), 'bi-chevron-down');
+                    olderButton.addEventListener('click', function () {
+                        olderButton.disabled = true;
+                        loadPage();
+                    });
+                    pane.appendChild(olderButton);
+                }
+            };
+
+            loadPage();
         },
 
         drawTasks: function () {

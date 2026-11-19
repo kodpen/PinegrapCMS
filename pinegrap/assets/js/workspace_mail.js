@@ -1365,6 +1365,85 @@
             });
         }
 
+        // Incoming e-mail pinned to the person's main menu (mail_menu.php),
+        // or taken off it: the row under the Workspace is added or taken
+        // away without a reload, drawn as the next page's server draws it
+        // (output_menu(), slot 27). This page is the tab, so a pinned row
+        // lights in Communication's place.
+        function menuRow(pinned, data) {
+            each('#menu_item_27', function (row) {
+                row.parentNode.removeChild(row);
+            });
+
+            each('#menu_item_9', function (communication) {
+                communication.classList.toggle('active', !pinned);
+            });
+
+            if (!pinned) {
+                return;
+            }
+
+            each('.pg-menu-main', function (list) {
+                var communication = list.querySelector('#menu_item_9');
+                var row = h.el('a', 'list-group-item list-group-item-action border-0 no-popover active');
+                var anchor = null;
+
+                // After the last row of the untitled group that is there.
+                ['menu_item_24', 'menu_item_23', 'menu_item_26', 'menu_item_0'].some(function (id) {
+                    anchor = list.querySelector('#' + id);
+
+                    return !!anchor;
+                });
+
+                row.id = 'menu_item_27';
+                row.href = window.location.pathname;
+                row.title = w('menu_label');
+                row.setAttribute('aria-current', 'page');
+
+                if (communication && communication.getAttribute('target')) {
+                    row.setAttribute('target', communication.getAttribute('target'));
+                }
+
+                row.innerHTML = data.icon || '';
+
+                if (!row.firstChild) {
+                    row.appendChild(h.icon('bi-envelope', 'me-3 campaigns-color'));
+                }
+
+                row.appendChild(h.el('span', 'list-group-text', w('menu_label')));
+                row.insertAdjacentHTML('beforeend', data.badge || '');
+
+                if (anchor) {
+                    anchor.parentNode.insertBefore(row, anchor.nextSibling);
+                } else {
+                    list.insertBefore(row, list.firstChild);
+                }
+            });
+        }
+
+        // Pin to main menu on the toolbar; its label says what the next
+        // click does.
+        function menuPin(target) {
+            var wanted = target.getAttribute('data-ws-mail-menu-pin') !== '1';
+
+            target.disabled = true;
+
+            h.api('ws_mail_menu_pin', { pinned: wanted ? 1 : 0 }).then(function (data) {
+                var pinned = !!data.pinned;
+
+                target.setAttribute('data-ws-mail-menu-pin', pinned ? '1' : '0');
+                target.innerHTML = '';
+                target.appendChild(h.icon(pinned ? 'bi-pin-angle-fill' : 'bi-pin-angle'));
+                target.appendChild(document.createTextNode(w(pinned ? 'menu_unpin' : 'menu_pin')));
+                menuRow(pinned, data);
+                h.toast(w(pinned ? 'menu_pinned' : 'menu_unpinned'), 'success');
+            }).catch(function (error) {
+                h.fail(error);
+            }).then(function () {
+                target.disabled = false;
+            });
+        }
+
         function read(row) {
             var hidden = row.querySelector('.ws-mail-who + .visually-hidden');
 
@@ -2036,7 +2115,7 @@
         }
 
         root.addEventListener('click', function (event) {
-            var target = event.target.closest('[data-ws-mail-more], [data-ws-mail-read-all], [data-ws-mail-check], [data-ws-mail-row], [data-ws-mail-new], [data-ws-mail-my-settings], [data-ws-mail-unblock], [data-ws-mail-forward], [data-ws-mail-calendar], [data-ws-mail-close], [data-ws-mail-draft-open], [data-ws-mail-draft-remove]');
+            var target = event.target.closest('[data-ws-mail-more], [data-ws-mail-read-all], [data-ws-mail-check], [data-ws-mail-row], [data-ws-mail-new], [data-ws-mail-my-settings], [data-ws-mail-menu-pin], [data-ws-mail-unblock], [data-ws-mail-forward], [data-ws-mail-calendar], [data-ws-mail-close], [data-ws-mail-draft-open], [data-ws-mail-draft-remove]');
 
             // A new tab or window keeps the link's own way.
             if (!target || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) {
@@ -2053,6 +2132,8 @@
                 unblock(target);
             } else if (target.hasAttribute('data-ws-mail-my-settings')) {
                 mySettings(h);
+            } else if (target.hasAttribute('data-ws-mail-menu-pin')) {
+                menuPin(target);
             } else if (target.hasAttribute('data-ws-mail-new')) {
                 // The new conversation opens in the pane once sent.
                 compose(h, { sent: function (data) { open(data.conversation_id); } });

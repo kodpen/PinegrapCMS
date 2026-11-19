@@ -551,6 +551,7 @@ function ws_file_edit_js_strings()
         'pane_show_more'       => lang('Show more'),
         'pane_show_less'       => lang('Show less'),
         'files_more_pictures'  => ws_js_template('Show {var:1} more pictures', 1),
+        'files_older'          => lang('Show older files'),
         'file_edit_image'      => lang('Edit the picture'),
         'file_edit_text'       => lang('Open the text'),
         'file_edit_put'        => lang('Put the edited picture in its place'),

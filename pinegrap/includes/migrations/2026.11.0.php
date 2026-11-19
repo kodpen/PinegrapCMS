@@ -227,6 +227,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ws_memory_project();       // 11.0.236
 	upgrade_2026_11_0_whatsapp_inbox_read_drop(); // 11.0.237
 	upgrade_2026_11_0_ws_saved_replies_cleanup(); // 11.0.238
+	upgrade_2026_11_0_ws_mail_menu_pin();         // 11.0.239
 
 }
 
@@ -7538,5 +7539,25 @@ function upgrade_2026_11_0_whatsapp_inbox_read_drop() {
 
 	install_drop_column('whatsapp_inbox', 'read_user_id');
 	install_drop_column('whatsapp_inbox', 'read_at');
+
+}
+
+// Incoming e-mail pinned to a person's own main menu (Pin to main menu on
+// the tab, includes/workspace/mail_menu.php), as My Notes is with
+// notes_pinned: 0 is not pinned, so nobody's menu changes until they pin it.
+// The person's ws_profiles row is made on the first pin when they have none.
+function upgrade_2026_11_0_ws_mail_menu_pin() {
+
+	if (!install_table_exists('ws_profiles')) {
+
+		install_skipped('ws_profiles does not exist, skipped');
+
+		return;
+
+	}
+
+	install_add_column('ws_profiles', 'mail_pinned', "TINYINT(1) NOT NULL DEFAULT 0");
+
+	install_note('Communication: a person can pin Incoming e-mail to their own main menu.');
 
 }

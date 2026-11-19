@@ -3769,6 +3769,24 @@ function pg_menu_icon($name, $color_class = '', $space = 'me-3')
                 '<path class="pg-mi-a" d="M9 8.5h6M9 12h6M9 15.5h3.5" stroke-width="1.6"/>';
             break;
 
+        case 'mail':
+            // Incoming e-mail pinned to the menu: an envelope with a letter
+            // coming out of it. The back is a tint, the letter and the
+            // pocket's front are opaque, so the pocket hides the letter's
+            // foot; on hover the letter comes up (backend.src.css).
+            $pocket = 'M3 10.5l9 6 9-6v8a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 18.5z';
+            $letter = 'M6.5 14V5a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v9';
+            $body =
+                '<path' . $d . ' d="M3 10.5h18v8a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 18.5z"/>' .
+                '<g class="pg-mi-a pg-mi-sheet">' .
+                '<path class="pg-mi-at pg-mi-solid"' . $tint . ' d="' . $letter . 'z"/>' .
+                '<path d="' . $letter . '" stroke-width="1.5"/>' .
+                '<path d="M9.5 7.5h5M9.5 10h3" stroke-width="1.5"/>' .
+                '</g>' .
+                '<path class="pg-mi-2 pg-mi-solid"' . $tint . ' d="' . $pocket . '"/>' .
+                '<path d="M3 10.5v8A2.5 2.5 0 0 0 5.5 21h13a2.5 2.5 0 0 0 2.5-2.5v-8M3 10.5h3.5M17.5 10.5H21M3 10.5l9 6 9-6"/>';
+            break;
+
         case 'folders':
             $flap = 'M3 17.5v-6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v6a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z';
             $body =
@@ -4290,6 +4308,23 @@ function output_menu($properties = false)
         if (in_array('mail', $messages_tabs, true)) {
             $menu_items[9]['badge'] = pg_messages_mail_unread($user);
             $menu_items[9]['badge_title'] = lang(array('string' => '{var:1} unread e-mail conversation(s)', 'vars' => $menu_items[9]['badge']));
+        }
+
+        // Incoming e-mail pinned to the menu by the person (Pin to main menu
+        // on the tab, includes/workspace/mail_menu.php): a row of its own
+        // under the Workspace and My Notes (pg_menu_categories()), slot 27,
+        // the next free one, never reused. One screen, so no panel; it
+        // carries the unread count Communication's row has, counted once.
+        // Communication keeps its row and its tab. The tab's gate is asked
+        // above, so nobody gets a row that leads to a refusal.
+        if (in_array('mail', $messages_tabs, true) && function_exists('ws_mail_menu_pinned') && ws_mail_menu_pinned((int) $user['id'])) {
+            $menu_items[27]['id'] = 27;
+            $menu_items[27]['href'] = 'messages_mail.php';
+            $menu_items[27]['menu_icon'] = 'mail';
+            $menu_items[27]['color_class'] = 'campaigns-color';
+            $menu_items[27]['title'] = 'Incoming e-mail';
+            $menu_items[27]['badge'] = $menu_items[9]['badge'];
+            $menu_items[27]['badge_title'] = $menu_items[9]['badge_title'];
         }
     }
 
@@ -4940,8 +4975,11 @@ function output_menu($properties = false)
         case 'messages_sends.php':
         case 'messages_channels.php':
         case 'messages_notifications.php':
-        case 'messages_mail.php':
             $active_menu = 9;
+            break;
+        case 'messages_mail.php':
+            // Pinned to the menu, Incoming e-mail lights its own row.
+            $active_menu = isset($menu_items[27]) ? 27 : 9;
             break;
         case 'erp_dashboard.php':
         case 'erp_accounts.php':
@@ -5432,8 +5470,10 @@ function pg_menu_categories()
 {
     return array(
         // Automation flows (26) between the Dashboard and the Workspace: they
-        // reach every part of the site, so they sit under no heading.
-        ''           => array('label' => '', 'slots' => array(0, 26, 23, 24)),
+        // reach every part of the site, so they sit under no heading. A
+        // person's pinned Incoming e-mail (27) comes after the Workspace and
+        // My Notes.
+        ''           => array('label' => '', 'slots' => array(0, 26, 23, 24, 27)),
         'content'    => array('label' => 'Content', 'slots' => array(2, 1, 4, 5)),
         'design'     => array('label' => 'Design', 'slots' => array(21)),
         'ecommerce'  => array('label' => 'Ecommerce', 'slots' => array(10, 11, 12, 14, 15)),

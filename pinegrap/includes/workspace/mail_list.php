@@ -667,7 +667,8 @@ function ws_mail_list_more_html($filters, $next)
  * (each keeping the other words), "First answer overdue" as a toggle, the
  * search and Mark all as read. Status, Held by and the toggle only while a
  * support box is among the reader's (ws_mail_list_support()); Kind only
- * while conversations of more than one transport are.
+ * while conversations of more than one transport are. Pin to main menu
+ * puts the tab into the person's own main menu (mail_menu.php).
  *
  * @param array    $filters    ws_mail_list_filters()
  * @param array    $boxes      ws_mail_list_boxes()
@@ -677,9 +678,11 @@ function ws_mail_list_more_html($filters, $next)
  * @param bool     $can_check  the person reads a mailbox with a server (Check e-mail)
  * @param bool     $calendar   the Workspace is on, so My calendar opens (ws_enabled())
  * @param bool     $blocked    the person may see blocked mail (ws_mail_blocked_box_ids())
+ * @param bool|null $pin       the tab is pinned to the person's main menu
+ *                             (ws_mail_menu_pinned()); null draws no pin
  * @return string HTML
  */
-function ws_mail_list_filters_html($filters, $boxes = array(), $can_send = false, $support = true, $transports = array(), $can_check = false, $calendar = true, $blocked = false)
+function ws_mail_list_filters_html($filters, $boxes = array(), $can_send = false, $support = true, $transports = array(), $can_check = false, $calendar = true, $blocked = false, $pin = null)
 {
     // Blocked mail and drafts have no conversation of their own, so no
     // status, holder, kind or first-answer filter.
@@ -764,7 +767,7 @@ function ws_mail_list_filters_html($filters, $boxes = array(), $can_send = false
     return pg_screen_toolbar(array(
         'primary'   => $can_send ? '<button type="button" class="btn btn-sm btn-solid theme-primary rounded-pill px-5" data-ws-mail-new><i class="bi bi-pencil-square me-2" aria-hidden="true"></i>' . h(lang('New e-mail')) . '</button>' : '',
         'secondary' => $check . '<button type="button" class="btn btn-sm btn-text theme-secondary" data-ws-mail-read-all><i class="bi bi-check2-all me-1" aria-hidden="true"></i>' . h(lang('Mark all as read')) . '</button>'
-            . ws_mail_list_my_calendar_html($calendar) . ws_mail_list_my_settings_html($can_send),
+            . ws_mail_list_my_calendar_html($calendar) . ws_mail_list_my_settings_html($can_send) . ws_mail_menu_pin_html($pin),
         'search'    => $search,
         'view'      => '<span class="ws-mail-toolbar-break" aria-hidden="true"></span><div class="btn-group btn-group-sm" role="group" aria-label="' . h(lang('View')) . '">' . $views . '</div>',
     ));
