@@ -1,10 +1,10 @@
 ---
 name: mail-overview
-description: Workspace e-mail as a whole: mailboxes, the card or a box's room, the E-mails screen, sending, answers, routing, status, the API; which file holds each part, which PR built it
+description: Workspace e-mail as a whole: mailboxes, the card or a box's room, the Incoming e-mail screen, sending, answers, routing, status, the API; which file holds each part, which PR built it
 ---
 
 ## What is it?
-- Mail to a Workspace mailbox (`ws_mail_boxes`) becomes a conversation: a card in the box's channel, or in its own room when it is kept in no channel. The team reads it on the E-mails screen or in the channel and answers, forwards or writes new mail from the box's address through the mail queue.
+- Mail to a Workspace mailbox (`ws_mail_boxes`) becomes a conversation: a card in the box's channel, or in its own room when it is kept in no channel. The team reads it on the Incoming e-mail screen or in the channel and answers, forwards or writes new mail from the box's address through the mail queue.
 - Built as slices G1-G8 (incoming e-mail, #2444), steps WM1-WM14 (the E-mails screen, owner 2026-11-10 and 2026-11-11, #8604, #8765) and MT1-MT6 (a person's chat reads, drafts and sends, owner 2026-11-14, `workflow/decisions-made-workspace-26.md`).
 
 ## Which decisions bind it?
@@ -13,18 +13,16 @@ description: Workspace e-mail as a whole: mailboxes, the card or a box's room, t
 ## Which parts are there?
 - Reading a box: `mail-fetch.md`, Check e-mail on the list `mail-check.md`, Block sender and the Blocked view `mail-blocks.md`, `mail-imap-client.md`, `mail-microsoft.md`; the parse and the store: `mail-parse.md`, `mail-ingest.md`, `mail-html.md`; routes and the customer's line: `mail-routing.md`.
 - The card in a channel and the Mailboxes card of the settings: `mail-card.md`, `workspace-mail-settings-dialog.md`; a box kept in no channel: `mail-room.md`; the "Support box" switch: `mail-support-box.md`.
-- The E-mails screen (Incoming, Sent, Not sent, filters, the row, the menu): `mail-list.md`, pinned to a person's main menu `ui/main-menu-mail-row.md`; the reading pane and unread marks: `mail-screen-pane.md`, `mail-html-preview.md`; Remind me later and if no answer comes: `mail-remind-later.md`, `mail-no-answer.md`.
+- The Incoming e-mail screen (views, filters, the row, the menu): `mail-list.md`, pinned to a person's main menu `ui/main-menu-mail-row.md`, a card on the new dashboard `ui/dashboard-v2-mail-card.md`; the reading pane and unread marks: `mail-screen-pane.md`, `mail-html-preview.md`, the channel's pill `mail-pane-channel-pill.md`; Remind me later and if no answer comes: `mail-remind-later.md`, `mail-no-answer.md`.
 - Sending: `mail-send.md`, `mail-send-outcome.md`, `core/mail-queue-outcome.md`, `mail-email-fields.md`, `mail-sent-and-bounces.md`; a box's Sent folder read back: `mail-sent-folder.md`; New e-mail: `mail-compose.md`, its address suggestions `mail-suggest.md`; a person's own signature: `mail-own-signature.md`; Send later and Undo send: `mail-send-later.md`, `mail-undo-send.md`; Forward as e-mail: `mail-forward.md`; Reply by e-mail: `mail-reply.md`.
 - Status, holder, first-answer time, automatic answer: `mail-status.md`; incoming mail rules: `mail-rules.md`; "I am away" and its stand-in: `mail-away.md`; who is told and the event: `mail-notices-and-event.md`; Pinegrap AI's suggestion: `mail-triage.md`; the API and MCP: `mail-api.md`, one mail read `mail-api-reading.md`, drafts `mail-drafts.md` and their pill `mail-drafts-app-pill.md`, sending `mail-send-scope.md`, HTML and files `mail-api-html-files.md`.
 - Tables: `mail-tables.md`, `mail-tables-sending.md`.
 
 ## Where is each part?
-- Server: `includes/workspace/mail*.php`, one file per part (`mail.php` ingest and card, `mail_send`, `mail_list`, `mail_pane`, `mail_drafts` …), `api_mail*.php`; the screen `workspace_mail.php`.
+- Server: `includes/workspace/mail*.php`, one file per part (`mail.php` ingest and card, `mail_send`, `mail_list`, `mail_pane`, `mail_drafts` …), `api_mail*.php`; the screen `messages_mail.php`.
 - Screen script: `assets/js/workspace_mail.js` in the `workspace.min.js` bundle; the guarded frame `workspace_mail_frame.php`.
 - A mailbox's features, one module each: `mail_check`, `mail_signature`, `mail_blocks`, `mail_suggest`, `mail_later` (Send later and Undo send), `mail_sent_folder`, `mail_rules`, `mail_away`, `mail_remind` (Remind me later and if no answer comes).
-
-## Which PR built each slice?
-- `mail-prs.md`: the slices G1-G8, WM1-WM14, MT1-MT6 and IB1-IB8 with their PRs.
+- Each slice's PR (G1-G8, WM1-WM14, MT1-MT6, IB1-IB14, IM1-IM3): `mail-prs.md`.
 
 ## How is a part added?
 - Who may answer asks `ws_mail_can_answer()`, never `ws_can_post_channel()` alone: a box's room is no channel to post in.

@@ -15,7 +15,8 @@ description: Decisions list, product part 78 (2026-11-19 on): Prototype view edi
 - "eposta gelen kutusu ana menüye sabitlenebilsin. ve bir widgeti olsun yetki dahilinde gösterim (gelen kutusu mesaj başlıkları yeterli olur tıklandığında gelen kutusuna yönlensin, widget temalarıyla uyumlu bir widget ayarlayalım)".
 - How it is pinned, poll 154: "Her kişi kendisi sabitler (Notlarım gibi)". Not chosen: one site-wide switch. The column: `decisions-made-schema-28.md`.
 - Of a mail a box writes into a channel: "epostanın başlık alanında yazıldığı kanal adı yazsın."
-- The architect's reading, not his words: the card goes to the new dashboard only, the old one staying untouched by his decision of 2026-11-01; the channel, written small in the open mail's head today, becomes a pill there. Plan: `plans/incoming-mail-menu-card.md`.
+- He also asked whether more than one mailbox can be set up. It can, so nothing was built: the Mailboxes card adds boxes (`workspace/workspace-mail-settings-dialog.md`), the list offers a Mailbox select (`workspace/mail-list.md`).
+- The architect's reading, not his words: the card goes to the new dashboard only (the old one stays untouched by his decision of 2026-11-01) and shows eight rows; the channel, written small in the open mail's head, becomes a pill there. Built: the pin (#10408, `ui/main-menu-mail-row.md`), the card (#10429, `ui/dashboard-v2-mail-card.md`), the pill (#10435, `workspace/mail-pane-channel-pill.md`).
 
 ## Is a Gmail mailbox read through a connected Google account? (owner, 2026-11-19, poll 155, channel message 9698)
 - "Evet, eklensin": a mailbox may be read by a connected Google account as a Microsoft one is, beside IMAP with an app password. Asked after his "gelen kutusu için google kurmak zor sanırım".
