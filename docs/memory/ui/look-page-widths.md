@@ -17,7 +17,7 @@ description: Look A's page widths: edit screens centred at 1700 px (1300 + 24 + 
 ## How does an add or edit screen sit?
 - `#content` is at most 1700 px plus its 1rem padding, centred. From lg (1024 px) the row is a grid: form column up to 1300, status column 376, 24 between, the save bar across both. On a narrower window the form column gives way first; below lg they stack in source order as `edit-screen-wide-layout.md` says.
 - A screen with a section rail (from 1280 px) centres the rail and the 1700 px content as one group, so the rail stays beside the form; the awaiting state books the same width.
-- Fields keep the 12-column grid and widen with the form column; a card stays one per row. Owner (2026-11-13, #9271): the measure alone; two cards abreast is the way back if stretched fields look wrong (a new question); fields side by side at content width was turned down.
+- Fields keep the 12-column grid and widen with the form column; a card stays one per row. Owner (2026-11-13, #9271): the measure alone; two cards abreast is the way back if stretched fields look wrong; fields side by side at content width was turned down.
 
 ## How wide is a list?
 - `#content` is `fit-content`: as wide as the list's columns (and the toolbar) need, at least 1700 px plus padding (1732) or the window when narrower, at most the window, centred. Report screens (`pg-measure-report`) read the same token.
@@ -25,7 +25,8 @@ description: Look A's page widths: edit screens centred at 1700 px (1300 + 24 + 
 - Only the name column (the driver's first column) takes the slack: its inline width from the column spec is dropped (`width: auto !important`), so the table gives a wider box to it first; the other columns keep their spec widths. When the list is wider than the window, the name column is as wide as its content.
 - The products list's default columns need about 2,350 px: it fills the window and scrolls sideways. A box's own scrollbar counts in its width.
 - The toolbar search above a list is 300 px.
+- An area's tab strip over a list or edit screen is centred in the window; the measures stay (owner 2026-11-19, poll 153; `area-tab-strip-centred.md`).
 - While search words or a filter are set, the box keeps the width it had before them (#9017).
-- How: the driver's `holdWidth()` (`pg_list_table.js`) sets `--pg-list-held` on `#content` before the rows first change: `heldWidth(width, panel)`, the box's width less an open panel. The stylesheet takes the larger of it and the measure and adds an open panel. It was an inline `min-width` before #9185, which kept a panel opened later from widening the box.
+- How: the driver's `holdWidth()` (`pg_list_table.js`) sets `--pg-list-held` on `#content` before the rows first change: `heldWidth(width, panel)`, the box's width less an open panel. The stylesheet takes the larger of it and the measure and adds an open panel.
 
-Related: docs/memory/ui/look-type-and-recipes.md, docs/memory/ui/area-tab-strip-centred.md (tab strips)
+Related: docs/memory/ui/look-type-and-recipes.md, docs/memory/ui/area-tab-strip-centred.md

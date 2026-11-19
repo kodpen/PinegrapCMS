@@ -17,6 +17,6 @@ description: Decisions list, panel part 10 (2026-11-17 on): every newly drawn sc
 - "Pencerenin ortasında": the strip is centred in the window on every tab screen of its area, whatever the screen's own width, and the lists' width rule stays.
 - Asked on his words that day (agent channel message 9493), with two pictures of Communication: "tablardan birisi sola dayanıyor. diğeri tabı ortaya çekiyor (tablo genişliği yüzünden) bu başka sayfalarda da fark ettim kullanıcı deneyimini etkiliyor."
 - Not chosen: at the left with every tab of the area as wide as the window; at the window's left with the content left centred.
-- Plan: `plans/area-tab-strip-place.md`.
+- Built in #10390 and #10413: `ui/area-tab-strip-centred.md`.
 
 Related: docs/memory/workflow/decisions-made.md, docs/memory/ui/look-new-parts.md, docs/memory/ui/look-page-widths.md
