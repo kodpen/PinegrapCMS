@@ -47,16 +47,28 @@ function test_connections_provider_drawer_keeps_what_the_screen_did()
 	}
 }
 
-function test_connections_service_drawer_repeats_no_field()
+function test_connections_service_page_repeats_no_field()
 {
 	$source = connections_layout_source();
-	$detail = substr($source, (int) strpos($source, 'function connections_service_detail('), 6000);
+	$page = substr($source, (int) strpos($source, 'function connections_service_page('), 9000);
 
-	pg_assert_contains('<dialog class="drawer drawer-end connections-drawer" id="connections-detail"', $source, 'one drawer for the services');
-	pg_assert_contains('<template id="connections-detail-', $detail, 'each service\'s drawer content is drawn on the server');
-	pg_assert_true(strpos($detail, '<input') === false && strpos($detail, '<form') === false, 'no field of a setting is repeated in it');
-	pg_assert_contains('pg_connections_screen_last_error(', $detail, 'the last error on file');
-	pg_assert_contains("lang('Open its settings')", $detail, 'one button opens the setting\'s one place');
+	pg_assert_true(strpos($source, 'id="connections-detail"') === false, 'a service opens its page, not a drawer');
+	pg_assert_contains('href="\' . h(pg_connections_screen_page_url($id)) . \'"', $source, 'a service row leads to its page');
+	pg_assert_contains("array('label' => lang('Connections'), 'url' =>", $source, 'the page\'s breadcrumb leads back to the list');
+	pg_assert_contains("h(lang('Status'))", $page, 'the Status card');
+	pg_assert_contains("h(lang('Where it is used'))", $page, 'the Where it is used card');
+	pg_assert_true(strpos($page, "lang('Status')") < strpos($page, "lang('Where it is used')"), 'Status comes first');
+	pg_assert_true(strpos($page, '<input') === false && strpos($page, '<form') === false, 'no field of a setting is repeated on it');
+	pg_assert_contains('pg_connections_screen_last_error(', $page, 'the last error on file');
+	pg_assert_contains("lang('Open its settings')", $page, 'one button opens the setting\'s one place');
+	pg_assert_contains('name="connections_return"', $source, 'a write from the page comes back to it');
+}
+
+function test_connections_row_offers_one_action()
+{
+	$source = connections_layout_source();
+
+	pg_assert_contains('(pg_connections_screen_action($row[\'state\']) === \'connect\') ? lang(\'Connect\') : lang(\'Manage\')', $source, 'Connect or Manage on every row');
 }
 
 function test_connections_other_side_leads_to_application_access()

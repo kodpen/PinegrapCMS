@@ -6,6 +6,7 @@ module: connections_screen
 
 ## What is the screen?
 - System tools › Connections › Connections (`connections.php`), "Bağlantılar", for a manager; the redraw of Connected accounts as CN2's sheet shows it (owner 2026-11-17, `workflow/decisions-made-product-70.md`). Tool label and search words in `pg_settings_tool_groups()` / `pg_settings_tool_keys()` of `includes/settings/registry.php`.
+- Each row shows its state pill and one action, "Connect" ("Bağla") while not connected, else "Manage" ("Yönet") (`pg_connections_screen_action()`); a service row is a link to its page (`connections-service-page.md`), a provider row opens its drawer.
 - Rows: the account providers first (group "Account providers", from `pg_connect_providers()`, sign-in-only Apple left out: it is the Sign in with Apple row), then every row of `pg_connections_registry()` in `pg_connections_groups()` order.
 
 ## How is a row's state read?
