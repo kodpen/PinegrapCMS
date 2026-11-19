@@ -6,7 +6,7 @@ module: whatsapp_design
 
 ## Where is it?
 - `whatsapp_template.php` (new: no id; a template: `?id=`), role <= 2 as the WhatsApp card. Functions in `includes/fn/whatsapp_design.php`, script `assets/js/whatsapp_template.js` (served as written, no twin), CSS block "Look A: WhatsApp template designer" in `backend.src.css`. Drawn after `platform/whatsapp-look/template-designer.html`.
-- No link leads to it yet: the WhatsApp list of Communication › Templates (WA3b) links New template and each row to it. Breadcrumb and Cancel go to `messages_templates.php`.
+- Reached from Communication › Templates, card "WhatsApp templates": "New template" and each row's name (role <= 2; `ui/messages-area-templates-tab.md`). Breadcrumb and Cancel go to `messages_templates.php`.
 
 ## What does a draft hold?
 - A `whatsapp_templates` row with `meta_id` NULL and status DRAFT: name, language, category, `parameter_format` POSITIONAL, `components` as Meta's API reads them (HEADER and BUTTONS kept as stored, BODY with `example.body_text`, FOOTER when not empty).
