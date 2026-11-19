@@ -11,6 +11,9 @@ description: Why driver subscriptions are built as they are (approved 2026-10-19
 - PSP-run (iyzico Subscription API, Stripe Subscriptions with `invoice.*` webhooks) is a later slice only if iyzico's stored-card non-3DS permission is not granted to ordinary merchants; until a merchant has it, subscriptions through iyzico stay off (a driver setting).
 - Stripe `authentication_required` makes the row `past_due` and sends a confirmation link.
 
+## Why is `subscriptions.remote_id` kept though nothing reads it?
+- Store mode writes `''` (`pg_subscription_row_from_order_line()`, `includes/fn/subscriptions.php`) and no code reads it. The architect kept it in the 2026.11.0 schema census (2026-11-19, PR #10391): it is the subscription's id at the payment provider, part of the subscription model the store-mode driver is planned on, and already on every row; removing it would only mean adding it back.
+
 ## What stays as it was?
 - Legacy gateway profiles are not migrated: their columns and job stay; `recurring_payment_job.php` gained a second branch for driver subscriptions.
 - Express-order totals: the first charge is a normal line, a renewal reuses the stored line price; nothing in the totals code changed.
