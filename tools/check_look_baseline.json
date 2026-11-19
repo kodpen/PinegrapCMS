@@ -682,6 +682,10 @@
         "button": 4,
         "tabs": 0
     },
+    "includes/fn/mail_settings.php": {
+        "button": 1,
+        "tabs": 0
+    },
     "includes/fn/merchant_center_push.php": {
         "button": 1,
         "tabs": 0
@@ -1119,10 +1123,6 @@
         "tabs": 0
     },
     "settings_pane.php": {
-        "button": 1,
-        "tabs": 0
-    },
-    "smtp_settings.php": {
         "button": 1,
         "tabs": 0
     },
