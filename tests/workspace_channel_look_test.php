@@ -313,19 +313,22 @@ function test_workspace_channel_panes_board_toolbar_is_chips_and_columns_cards()
 	pg_assert_contains("    .ws-cb-col.ws-cb-col-current {\n        display: flex;", $css, 'a phone still shows the picked column');
 }
 
-function test_workspace_channel_panes_memory_is_cards()
+function test_workspace_channel_panes_memory_is_rows_under_projects()
 {
 	$memory = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_memory.js');
 
 	pg_assert_false(strpos($memory, 'list-group') !== false, 'no list-group rows');
-	pg_assert_contains("var intro = el('div', 'ws-memory-intro');", $memory, 'the hint is a card');
-	pg_assert_contains('intro.appendChild(add);', $memory, 'with New record in it');
-	pg_assert_contains("el('div', 'ws-memory-entry d-flex align-items-start gap-3'", $memory, 'each record is a card');
+	pg_assert_false(strpos($memory, 'btn btn-') !== false, 'buttons from look A only');
+	pg_assert_contains("var box = el('details', 'ws-memory-project');", $memory, 'a project heading folds');
+	pg_assert_contains("var row = el('div', 'ws-memory-row'", $memory, 'each record is a row');
+	pg_assert_contains("el('div', 'ws-memory-line pg-text-meta', entry.first_line)", $memory, 'with the first line of its text');
+	pg_assert_contains("el('div', 'ws-memory-date pg-text-meta', dayShown(entry.updated_at))", $memory, 'and its change date');
+	pg_assert_contains("var section = el('section', 'ws-memory-part');", $memory, 'the general memory and the channel\'s are parts');
 
 	$css = workspace_channel_look_css();
-	pg_assert_contains('border: 1px solid', workspace_channel_look_block($css, '.ws-memory-intro'), 'the hint card has a border');
-	pg_assert_contains('border: 1px solid', workspace_channel_look_block($css, '.ws-memory-entry'), 'and so does a record');
-	pg_assert_contains('display: grid;', workspace_channel_look_block($css, '.ws-memory-list'), 'records are a grid');
+	pg_assert_contains('border: 1px solid', workspace_channel_look_block($css, '.ws-memory-part'), 'a part is a card');
+	pg_assert_contains('display: grid;', workspace_channel_look_block($css, '.ws-memory-row'), 'a row lines up its columns');
+	pg_assert_contains('transform: rotate(90deg);', workspace_channel_look_block($css, '.ws-memory-project[open] .ws-memory-chevron'), 'an open heading turns its chevron');
 }
 
 function test_workspace_channel_panes_empty_states_are_dashed_cards()

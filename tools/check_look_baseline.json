@@ -198,10 +198,6 @@
         "button": 25,
         "tabs": 0
     },
-    "assets/js/workspace_memory.js": {
-        "button": 5,
-        "tabs": 0
-    },
     "assets/js/workspace_note_group_shares.js": {
         "button": 2,
         "tabs": 0

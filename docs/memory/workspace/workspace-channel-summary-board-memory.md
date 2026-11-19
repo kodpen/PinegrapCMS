@@ -1,6 +1,6 @@
 ---
 name: workspace-channel-summary-board-memory
-description: The channel's Summary, Board and Memory tabs as cards and the channel panes' empty states in a dashed card (CL3 #8703); the workflow table's board and other screens' empty states unchanged
+description: The channel's Summary and Board tabs as cards and the channel panes' empty states in a dashed card (CL3 #8703); the Memory tab is in workspace-memory-tab.md
 ---
 
 ## How does the Summary tab look?
@@ -17,7 +17,7 @@ description: The channel's Summary, Board and Memory tabs as cards and the chann
 - The workflow table's board (`mountSource()`, `.ws-wt-board`) keeps its columns (`.ws-cb-col`, `flex: 0 0 17rem`, 2px transparent border, `--pg-bg-1`) and cards: it is not the channel screen. An empty column keeps `ws-cb-empty` without a dashed card: the column is already a card.
 
 ## How does the Memory tab look?
-- `list()` in workspace_memory.js draws `.ws-memory-intro` (the hint and New record) above `.ws-memory-list`, a grid of `.ws-memory-entry` cards (`minmax(min(100%, 22rem), 1fr)`); no `list-group`. A record keeps pin, title, tags, Expired, text, meta, Edit and Delete; an expired one is at 75% opacity. `.ws-memory` lost `p-5` (the pane pads it); the form opens as before.
+- Rows under folding project headings since GM3a: `workspace-memory-tab.md`.
 
 ## How are empty channel panes drawn?
 - `.ws-pane:is(.ws-pane-tasks, .ws-pane-decisions, .ws-pane-files, .ws-pane-summary, .ws-pane-board, .ws-pane-memory) .ws-empty` is a dashed card (1px dashed `--pg-border-color`, `.875rem`, `--pg-card-bg`). The grids' rules still make it span (`.ws-task-grid > .ws-empty`, `.ws-pane-decisions > :is(.ws-empty, .ws-skeleton)`, `.ws-memory-list > .ws-empty`). Memory's empty line is now a `.ws-empty`.

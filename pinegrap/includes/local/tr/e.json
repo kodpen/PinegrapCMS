@@ -1085,6 +1085,7 @@
     "Entrance": "Giriş",
     "Entrance kinds": "Giriş türleri",
     "Entries": "İçerikler",
+    "Entries are listed under their project. Left empty, under No project.": "Kayıtlar projelerinin altında listelenir. Boş bırakılırsa Projesiz başlığı altında.",
     "Entries closed": "Katılım kapandı",
     "Entries of a folder": "Bir klasörün içerikleri",
     "Entries the Firewall screen offers for Trusted Proxies": "Güvenlik Duvarı ekranının Güvenilen Vekil Sunucular için önerdiği girdiler",
