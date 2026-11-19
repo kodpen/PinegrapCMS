@@ -37,6 +37,21 @@ function ws_saved_replies_test_source($name)
 	return preg_replace('~^\s*//.*$~m', '', implode('', array_slice($lines, $function->getStartLine() - 1, $function->getEndLine() - $function->getStartLine() + 1)));
 }
 
+// One function of a migration file as text, from its header to its closing
+// brace at the start of a line; '' when the file has no such function.
+function ws_saved_replies_test_migration_body($source, $name)
+{
+	$start = strpos($source, 'function ' . $name . '() {');
+
+	if ($start === false) {
+		return '';
+	}
+
+	$end = strpos($source, "\n}\n", $start);
+
+	return substr($source, $start, ($end === false) ? null : ($end - $start + 2));
+}
+
 function ws_saved_replies_test_routes()
 {
 	$routes = array();
@@ -311,6 +326,13 @@ function test_ws_saved_replies_table_wiring()
 	$migration = file_get_contents(PG_FUNCTIONS_DIR . '/includes/migrations/2026.11.0.php');
 	pg_assert_contains('upgrade_2026_11_0_workspace_saved_replies(); // 11.0.114', $migration);
 	pg_assert_contains('UNIQUE KEY uq_shortcut (user_id, scope, shortcut)', $migration);
+
+	// uq_shortcut's left column finds a person's rows: no index of user_id
+	// alone is created, and one an earlier run made is dropped.
+	$step = ws_saved_replies_test_migration_body($migration, 'upgrade_2026_11_0_workspace_saved_replies');
+	pg_assert_false(strpos($step, 'idx_user'), 'no KEY idx_user in 11.0.114');
+	pg_assert_contains('upgrade_2026_11_0_ws_saved_replies_cleanup(); // 11.0.237', $migration);
+	pg_assert_contains("install_drop_index('ws_saved_replies', 'idx_user');", ws_saved_replies_test_migration_body($migration, 'upgrade_2026_11_0_ws_saved_replies_cleanup'));
 	pg_assert_contains('upgrade_2026_11_0_ws_team_replies();         // 11.0.179', $migration);
 	pg_assert_contains("install_add_column('user', 'manage_workspace_replies', \"TINYINT UNSIGNED NOT NULL DEFAULT 0\")", $migration);
 
