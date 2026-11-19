@@ -1116,3 +1116,156 @@ function pg_proto_comment_bell_display($notification)
     return $words + array('url' => $row ? pg_proto_comment_bell_url($row['style_id'], $row['page_id']) : 'view_pages.php');
 }
 
+/* ---------------------------------------------------------------------------
+   Make a task: a comment followed up in the Workspace
+   --------------------------------------------------------------------------- */
+
+/**
+ * Whether the Workspace is on, with its files loaded: they load only when a
+ * comment is to become a task or the list asks whether it can.
+ *
+ * @return bool
+ */
+function pg_proto_comment_workspace()
+{
+    if (!defined('WORKSPACE_ENABLED') || !WORKSPACE_ENABLED || !is_file(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php')) {
+        return false;
+    }
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
+
+    return function_exists('ws_followup_task_open') && function_exists('ws_viewer');
+}
+
+/**
+ * Whether "Make a task" is offered, pure: only with the Workspace on and
+ * the designer on its team (a profile can take a staff account out of it).
+ *
+ * @param bool $workspace pg_proto_comment_workspace()
+ * @param bool $member    the designer's ws_viewer() member right
+ * @return bool
+ */
+function pg_proto_comment_task_offered($workspace, $member)
+{
+    return (bool) $workspace && (bool) $member;
+}
+
+/**
+ * Whether this designer is offered "Make a task": what the Comments list
+ * answer carries, so the button is drawn only where pressing it can work.
+ *
+ * @param array $user validate_user()
+ * @return bool
+ */
+function pg_proto_comment_task_offered_to($user)
+{
+    $workspace = pg_proto_comment_workspace();
+    $viewer = $workspace ? ws_viewer($user) : array();
+
+    return pg_proto_comment_task_offered($workspace, !empty($viewer['member']));
+}
+
+/**
+ * A guest's words as data inside a Workspace text, pure: angle brackets
+ * become ‹ › so no tag (<@user:1>, <#order:5>) is read or stored and no
+ * markup is formed, and a line loses the start of a titled block or a code
+ * fence (::: and ```).
+ *
+ * @param string $text
+ * @return string
+ */
+function pg_proto_comment_task_words($text)
+{
+    $text = str_replace(array('<', '>'), array('‹', '›'), (string) $text);
+
+    return trim(preg_replace('/^[ \t]*(?::::|```)/mu', '', $text));
+}
+
+/**
+ * A guest's words quoted line by line ("> "), as data. Pure.
+ *
+ * @param string $text
+ * @return string
+ */
+function pg_proto_comment_task_quote($text)
+{
+    $lines = array();
+
+    foreach (preg_split('/\R/u', pg_proto_comment_task_words($text)) as $line) {
+        $lines[] = rtrim('> ' . $line);
+    }
+
+    return implode("\n", $lines);
+}
+
+/**
+ * The follow-up "Make a task" opens, pure (ws_followup_task_data()'s
+ * input): the designer's own task on no channel, the comment's page tagged,
+ * due today with no reminder (it is due at once), the guest's words quoted
+ * under a line that says who wrote them, from outside the team, and where.
+ *
+ * @param array  $row       the prototype_comments row
+ * @param string $page_name
+ * @param string $today     Y-m-d
+ * @return array
+ */
+function pg_proto_comment_task_input($row, $page_name, $today)
+{
+    $page_name = (string) $page_name;
+    $name = preg_replace('/\s+/u', ' ', pg_proto_comment_task_words(isset($row['author_name']) ? $row['author_name'] : ''));
+
+    return array(
+        'title'          => lang(array('string' => 'Prototype comment on {var:1}', 'vars' => array($page_name))),
+        'description'    => lang(array('string' => '{var:1} (guest, outside the team) commented on the prototype of {var:2}:', 'vars' => array($name, $page_name)))
+            . "\n" . pg_proto_comment_task_quote(isset($row['body']) ? $row['body'] : ''),
+        'refs'           => array(array('type' => 'page', 'id' => (int) $row['page_id'])),
+        'channel_id'     => 0,
+        'assignees'      => array(),
+        'due_date'       => (string) $today,
+        'remind_minutes' => null,
+    );
+}
+
+/**
+ * "Make a task" on a comment of the designer's list: the designer's own
+ * follow-up, opened as them through ws_followup_task_open() with $once
+ * false, so a second comment on the same page, or the same one pressed
+ * again, opens a task of its own.
+ *
+ * @param array $user       validate_user() of the designer
+ * @param int   $comment_id
+ * @param int   $style_id   the design the list was asked for
+ * @return array ok, error, task_id
+ */
+function pg_proto_comment_task_open(array $user, $comment_id, $style_id)
+{
+    $fail = function ($error) {
+        return array('ok' => false, 'error' => $error, 'task_id' => 0);
+    };
+
+    $row = pg_proto_comment_get($comment_id);
+
+    if (!$row || ((int) $row['style_id'] !== (int) $style_id)) {
+        return $fail(lang('This comment is no longer there.'));
+    }
+
+    $workspace = pg_proto_comment_workspace();
+    $viewer = $workspace ? ws_viewer($user) : array();
+
+    if (!pg_proto_comment_task_offered($workspace, !empty($viewer['member']))) {
+        return $fail(lang('A task can be made only with the Workspace on, by a member of its team.'));
+    }
+
+    $page_name = (string) db_value("SELECT page_name FROM page WHERE page_id = '" . (int) $row['page_id'] . "' LIMIT 1");
+
+    if ($page_name === '') {
+        return $fail(lang('This page is no longer there.'));
+    }
+
+    $opened = ws_followup_task_open($viewer, pg_proto_comment_task_input($row, $page_name, date('Y-m-d')), false);
+
+    return $opened['ok']
+        ? array('ok' => true, 'error' => '', 'task_id' => (int) $opened['task_id'])
+        : $fail((string) $opened['error']);
+}
+

@@ -5,8 +5,9 @@
  * design's prototype through its share links (prototype_comments). The pins
  * of the open tab's page, numbered, over the canvas at the place each
  * comment names inside its node, and the Comments list by page with its open
- * and resolved threads: Answer, Resolve and Reopen, Delete. A thread whose
- * node is no longer on its page stays in the list and says so.
+ * and resolved threads: Answer, Resolve and Reopen, Make a task (with the
+ * Workspace on), Delete. A thread whose node is no longer on its page stays
+ * in the list and says so.
  *
  * Designers only (sdDesign.parts.comments). Not needed to open a page: the
  * presence heartbeat runs it once the design has a comment, handing it the
@@ -42,7 +43,9 @@ StyleDesigner.definePart('comments', function (K) {
         fetching: null,
         focus: 0,           // the thread the list shows marked
         answering: 0,       // the thread whose answer box is open
-        deleting: 0         // the thread whose delete asks to be confirmed
+        deleting: 0,        // the thread whose delete asks to be confirmed
+        task: false,        // whether "Make a task" is offered (the Workspace on, a member)
+        made: {}            // thread id => the task made of it while the editor is open
     };
 
     function styleId() {
@@ -78,6 +81,8 @@ StyleDesigner.definePart('comments', function (K) {
         if (!res || res.status !== 'success') return false;
         S.pages = Array.isArray(res.pages) ? res.pages : [];
         S.stamp = parseInt(res.stamp, 10) || 0;
+        // Only the list's own answer says it; an action's answer keeps it.
+        if (typeof res.task === 'boolean') S.task = res.task;
         return true;
     }
 
@@ -102,6 +107,32 @@ StyleDesigner.definePart('comments', function (K) {
             }
             S.seen = S.stamp;
             drawAll();
+            return true;
+        }, function () {
+            sdToast(esc(_sdT('Sorry, we could not accept your request.')), 'error');
+            return false;
+        });
+    }
+
+    // The Workspace task a thread became, in a new browser tab so the
+    // editor's unsaved work stays open.
+    function taskLink(taskId, cls) {
+        return '<a class="' + cls + '" href="workspace_tasks.php?task=' + encodeURIComponent(String(taskId)) + '" target="_blank" rel="noopener">' + esc(_sdT('Open task')) + '</a>';
+    }
+
+    // "Make a task": the designer's own task with the page tagged and the
+    // comment quoted. Every press opens one of its own; once made, the thread
+    // offers the task instead of a second press.
+    function makeTask(threadId) {
+        return _pgApiPost('proto_comment_task', { style_id: styleId(), comment_id: threadId }).then(function (res) {
+            var taskId = (res && res.status === 'success') ? (parseInt(res.task_id, 10) || 0) : 0;
+            if (!taskId) {
+                sdToast(esc((res && res.message) || _sdT('Sorry, we could not accept your request.')), 'error');
+                return false;
+            }
+            S.made[threadId] = taskId;
+            drawPanel();
+            sdToast(esc(_sdT('A task was made for this comment.')) + ' ' + taskLink(taskId, 'alert-link'), 'success');
             return true;
         }, function () {
             sdToast(esc(_sdT('Sorry, we could not accept your request.')), 'error');
@@ -198,6 +229,7 @@ StyleDesigner.definePart('comments', function (K) {
             if (what === 'go') { goTo(id); return; }
             if (what === 'answer') { S.answering = (S.answering === id) ? 0 : id; S.deleting = 0; drawPanel(); focusAnswer(id); return; }
             if (what === 'resolve' || what === 'reopen') { busy(t, act('proto_comment_resolve', id, { resolved: what === 'resolve' ? 1 : 0 })); return; }
+            if (what === 'task') { busy(t, makeTask(id)); return; }
             if (what === 'delete') { S.deleting = id; S.answering = 0; drawPanel(); return; }
             if (what === 'delete-no') { S.deleting = 0; drawPanel(); return; }
             if (what === 'delete-yes') { S.deleting = 0; busy(t, act('proto_comment_delete', id)); return; }
@@ -257,6 +289,13 @@ StyleDesigner.definePart('comments', function (K) {
                 (resolved
                     ? '<button type="button" class="btn btn-sm btn-text theme-secondary" data-pc="reopen" data-id="' + t.id + '"><span class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></span>' + esc(_sdT('Reopen')) + '</button>'
                     : '<button type="button" class="btn btn-sm btn-text theme-success" data-pc="resolve" data-id="' + t.id + '"><span class="bi bi-check2 me-1" aria-hidden="true"></span>' + esc(_sdT('Resolve')) + '</button>') +
+                // "Make a task" only with the Workspace on, for a member of
+                // its team, on an open thread whose page is still there.
+                ((S.task && !resolved && page.name !== '')
+                    ? (S.made[t.id]
+                        ? taskLink(S.made[t.id], 'btn btn-sm btn-text theme-secondary')
+                        : '<button type="button" class="btn btn-sm btn-text theme-secondary" data-pc="task" data-id="' + t.id + '"><span class="bi bi-check2-square me-1" aria-hidden="true"></span>' + esc(_sdT('Make a task')) + '</button>')
+                    : '') +
                 '<button type="button" class="btn btn-sm btn-text theme-danger ms-auto" data-pc="delete" data-id="' + t.id + '" aria-label="' + esc(_sdT('Delete')) + '" title="' + esc(_sdT('Delete')) + '"><span class="bi bi-trash" aria-hidden="true"></span></button>' +
                 '</div>';
         }

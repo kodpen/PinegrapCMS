@@ -9,7 +9,7 @@ module: prototype_comments
 - The list covers the whole design, every link and draft page, grouped by page; **Open** and **Resolved** tabs; open threads first, newest first. A staff answer carries the Team badge the viewer shows.
 - The pins show the open threads, or the resolved ones while the Resolved tab is on. A pin whose point is out of the frame's view is not drawn. Clicking a pin opens the list at its thread; clicking a thread's number switches to its tab and scrolls to the node.
 - "Not on the page any more": told on the canvas for the open tab, from the page's tree for other tabs; nothing is said for a page not open as a tab.
-- **Answer** writes a staff answer under the designer's name (`pg_proto_comment_answer()`); **Resolve**/**Reopen** the whole thread; **Delete** asks inline and takes the answers with it.
+- **Answer** writes a staff answer under the designer's name (`pg_proto_comment_answer()`); **Resolve**/**Reopen** the whole thread; **Delete** asks inline and takes the answers with it; **Make a task**: `designer-prototype-comments-task.md`.
 - Colours come from the chrome's tokens only (`designer-chrome-tokens.md`): a pin is `--sd-warning`, a resolved one `--sd-success`.
 
 ## Which number does a thread carry?

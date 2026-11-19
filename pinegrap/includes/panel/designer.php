@@ -312,7 +312,20 @@ function pg_panel_designer($request, $action)
                 'status' => 'success',
                 'stamp'  => pg_proto_comments_style_stamp($pc_style),
                 'pages'  => pg_proto_comments_list_of_style($pc_style),
+                // "Make a task" is drawn only with the Workspace on, for a
+                // member of its team.
+                'task'   => pg_proto_comment_task_offered_to($user),
             ));
+            break;
+
+        // "Make a task" on a thread: the designer's own Workspace task about
+        // the comment; the list does not change, so the answer is the task.
+        case 'proto_comment_task':
+            $pc_task = pg_proto_comment_task_open($user, isset($request['comment_id']) ? (int)$request['comment_id'] : 0, isset($request['style_id']) ? (int)$request['style_id'] : 0);
+            if (!$pc_task['ok']) {
+                respond(array('status' => 'error', 'message' => $pc_task['error']));
+            }
+            respond(array('status' => 'success', 'task_id' => $pc_task['task_id']));
             break;
 
         case 'proto_comment_answer':
