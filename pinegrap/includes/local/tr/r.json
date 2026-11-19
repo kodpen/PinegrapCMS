@@ -286,6 +286,7 @@
     "Reading Journal": "Okuma Günlüğü",
     "Reading Measure": "Okuma Sütunu",
     "Reading Time": "Okuma Süresi",
+    "Reading a mailbox asks for full access to Gmail, one of Google's restricted scopes: until Google has verified the application, Google shows \"Google hasn't verified this app\" before the account allows it.": "Posta kutusunu okumak Gmail'e tam erişim ister; bu, Google'ın kısıtlı kapsamlarından biridir: Google uygulamayı doğrulayana kadar hesap izin vermeden önce \"Google bu uygulamayı doğrulamadı\" uyarısını gösterir.",
     "Reading a mailbox by itself comes later; until then an .eml file saved from a mail program can be brought in by hand.": "Kutunun kendiliğinden okunması daha sonra gelecek; o zamana dek bir e-posta programından kaydedilen .eml dosyası elle alınabilir.",
     "Reading a number plate from twenty metres.": "Yirmi metreden bir plakayı okumak.",
     "Reading about type": "Yazı karakterleri üzerine okuyorum",

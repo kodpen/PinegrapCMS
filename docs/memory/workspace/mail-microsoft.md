@@ -23,3 +23,5 @@ description: A Workspace mailbox on Microsoft 365 or Outlook.com (G4): purpose m
 
 ## Tests?
 - `tests/imap_client_test.php` (XOAUTH2 with and without SASL-IR, refusal, not offered), `tests/workspace_mail_connection_test.php`, `tests/workspace_mail_card_test.php`.
+
+Related: docs/memory/workspace/mail-google.md

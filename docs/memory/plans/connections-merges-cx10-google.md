@@ -12,4 +12,6 @@ description: CX10 of plan connections-merges, what Google's and Microsoft's page
 - (4) The note gives three ways: a) in "Testing", add the account to "Test users" and pass the warning with "Advanced" › go to the site; b) a Google Workspace organisation's "Internal" app shows none; c) for public use, apply for Google's verification.
 - (4) Also: in Testing, Google drops the granted access after 7 days and the account is connected again. Every sentence is checked against Google's current documentation when CX10 is built; none that is not certain.
 
+- Where a mailbox is connected with Google, MG1 drew (1), the Gmail API of (2) and (4) inside the box form's Gmail part (`workspace/mail-google.md`); CX10 draws them on Google's page.
+
 Related: docs/memory/plans/connections-merges-build.md

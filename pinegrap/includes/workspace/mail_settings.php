@@ -48,7 +48,7 @@ function ws_mail_providers()
 {
     return array(
         'gmail'  => array('label' => lang('Gmail or Google Workspace'), 'host' => 'imap.gmail.com', 'port' => 993, 'smtp_host' => 'smtp.gmail.com', 'smtp_port' => 465, 'auth_server' => 'mx.google.com',
-            'hint' => lang('Turn on 2-Step Verification for the account and use an app password; Google refuses the account\'s own password.')),
+            'hint' => lang('Connect the Google account for Reading mailboxes and choose it as the connected account, or turn on 2-Step Verification and use an app password; Google refuses the account\'s own password.')),
         'yandex' => array('label' => 'Yandex', 'host' => 'imap.yandex.com', 'port' => 993, 'smtp_host' => 'smtp.yandex.com', 'smtp_port' => 465, 'auth_server' => '',
             'hint' => lang('Allow access by mail programs in the Yandex mail settings and use an app password.')),
         'icloud' => array('label' => 'iCloud', 'host' => 'imap.mail.me.com', 'port' => 993, 'smtp_host' => 'smtp.mail.me.com', 'smtp_port' => 587, 'auth_server' => '',
@@ -305,65 +305,112 @@ function ws_mail_box_accounts()
 }
 
 /**
- * The button that connects a Microsoft account for Reading mailboxes, for a
- * person who may connect the site's accounts (connect.php: a manager and
- * above); others are told who can.
+ * The button that connects a Microsoft or Google account for Reading
+ * mailboxes, for a person who may connect the site's accounts (connect.php:
+ * a manager and above); others are told who can.
  *
- * While the site's Microsoft application is not set up, connect.php can only
+ * While the provider's application is not set up, connect.php can only
  * refuse the sign-in, so no button is drawn: a sentence links to the
  * application's drawer on Connections instead.
  *
  * @param array       $viewer
- * @param string|null $form  the Site Settings form's id: a button of the hidden
- *                           Connect form pgset_mail_connect instead of a form
- * @param bool|null   $ready the Microsoft application is set up; null asks
- *                           ws_mail_connect_ready()
+ * @param string|null $form     the Site Settings form's id: a button of the
+ *                              hidden Connect form (ws_mail_connect_form_id())
+ *                              instead of a form
+ * @param bool|null   $ready    the provider's application is set up; null
+ *                              asks ws_mail_connect_ready()
+ * @param string      $provider microsoft | google
  * @return string HTML
  */
-function ws_mail_connect_form($viewer, $form = null, $ready = null)
+function ws_mail_connect_form($viewer, $form = null, $ready = null, $provider = 'microsoft')
 {
     if (!function_exists('pg_connect_start_fields') || !function_exists('pg_connect_purpose') || !pg_connect_purpose('mail_read')) {
         return '';
     }
 
+    $google = ($provider === 'google');
+    $provider = $google ? 'google' : 'microsoft';
+    $icon = '<i class="bi bi-' . $provider . '" aria-hidden="true"></i>';
+
     if ((int) $viewer['role'] > 2) {
-        return '<div class="pg-field-help mt-3">' . h(lang('A Microsoft 365 mailbox is read through a connected account; a manager or an administrator connects it here or in Settings › Connections.')) . '</div>';
+        return '<div class="pg-field-help mt-3">' . h($google
+            ? lang('A Gmail mailbox can be read through a connected account; a manager or an administrator connects it here or in Settings › Connections.')
+            : lang('A Microsoft 365 mailbox is read through a connected account; a manager or an administrator connects it here or in Settings › Connections.')) . '</div>';
     }
 
-    if (!(($ready === null) ? ws_mail_connect_ready() : $ready)) {
+    if (!(($ready === null) ? ws_mail_connect_ready($provider) : $ready)) {
         return '
-                <div class="pg-field-help mt-3"><i class="bi bi-microsoft" aria-hidden="true"></i> '
-                    . '<a href="connections.php#connections-microsoft">' . h(lang('Set up the Microsoft application first')) . '</a></div>';
+                <div class="pg-field-help mt-3">' . $icon . ' '
+                    . '<a href="connections.php#connections-' . $provider . '">' . h($google ? lang('Set up the Google application first') : lang('Set up the Microsoft application first')) . '</a>'
+                    . ($google ? ' ' . h(lang('Until it is set up, Google cannot be asked for the account.')) : '') . '</div>';
     }
 
-    // In Site Settings the card sits inside the settings form: its button
-    // submits the hidden Connect form the category hands over
-    // (includes/settings/workspace_channels.php).
+    $button = $icon . h($google ? lang('Connect a Google account for mailboxes') : lang('Connect a Microsoft account for mailboxes'));
+    $note = h($google
+        ? lang('Sign in with the mailbox\'s own Google account; it then shows under Connected account.')
+        : lang('Sign in with the mailbox\'s own account; the site\'s Microsoft application must be set up in Settings › Connections first.'));
+
+    // In Site Settings the card and the box's drawer sit inside the settings
+    // form: the button submits the hidden Connect form the category hands
+    // over (includes/settings/mailboxes.php).
     if ($form !== null) {
         return '
                 <div class="mt-3 d-flex flex-wrap align-items-center gap-3">
-                    <button type="submit" form="pgset_mail_connect" class="pg-button pg-button-quiet pg-button-sm"><i class="bi bi-microsoft" aria-hidden="true"></i>' . h(lang('Connect a Microsoft account for mailboxes')) . '</button>
-                    <span class="pg-text-meta">' . h(lang('Sign in with the mailbox\'s own account; the site\'s Microsoft application must be set up in Settings › Connections first.')) . '</span>
+                    <button type="submit" form="' . ws_mail_connect_form_id($provider) . '" class="pg-button pg-button-quiet pg-button-sm">' . $button . '</button>
+                    <span class="pg-text-meta">' . $note . '</span>
                 </div>';
     }
 
     return '
                 <form method="post" action="connect.php" class="mt-3 d-flex flex-wrap align-items-center gap-3">
-                    ' . pg_connect_start_fields('microsoft', 'mail_read', pg_settings_workspace_link('ws-mail')) . '
-                    <button type="submit" class="pg-button pg-button-quiet pg-button-sm"><i class="bi bi-microsoft" aria-hidden="true"></i>' . h(lang('Connect a Microsoft account for mailboxes')) . '</button>
-                    <span class="pg-text-meta">' . h(lang('Sign in with the mailbox\'s own account; the site\'s Microsoft application must be set up in Settings › Connections first.')) . '</span>
+                    ' . pg_connect_start_fields($provider, 'mail_read', pg_settings_workspace_link('ws-mail')) . '
+                    <button type="submit" class="pg-button pg-button-quiet pg-button-sm">' . $button . '</button>
+                    <span class="pg-text-meta">' . $note . '</span>
                 </form>';
 }
 
 /**
- * Whether a Microsoft account can be connected for Reading mailboxes: the
- * site's Microsoft application is set up (pg_connect_app_ready()).
+ * The id of Mailboxes' hidden Connect form for a provider. Pure.
  *
+ * @param string $provider microsoft | google
+ * @return string
+ */
+function ws_mail_connect_form_id($provider = 'microsoft')
+{
+    return ($provider === 'google') ? 'pgset_mail_connect_google' : 'pgset_mail_connect';
+}
+
+/**
+ * Whether an account of a provider can be connected for Reading mailboxes:
+ * the site's application for it is set up (pg_connect_app_ready()).
+ *
+ * @param string $provider microsoft | google
  * @return bool
  */
-function ws_mail_connect_ready()
+function ws_mail_connect_ready($provider = 'microsoft')
 {
-    return function_exists('pg_connect_app') && function_exists('pg_connect_app_ready') && pg_connect_app_ready(pg_connect_app('microsoft'));
+    return function_exists('pg_connect_app') && function_exists('pg_connect_app_ready')
+        && pg_connect_app_ready(pg_connect_app(($provider === 'google') ? 'google' : 'microsoft'));
+}
+
+/**
+ * What the Gmail part of a box's form shows beside its words: the Connect
+ * button for this person (ws_mail_connect_form()) and the addresses Google
+ * Cloud must list as redirect URIs (Sign in with Google's and connect.php's).
+ *
+ * @param array  $viewer
+ * @param string $form the Site Settings form's id
+ * @return array connect (HTML), addresses (string[])
+ */
+function ws_mail_google_parts($viewer, $form)
+{
+    $addresses = array();
+
+    if (function_exists('pg_signin_redirect_uri') && function_exists('pg_connect_redirect_uri')) {
+        $addresses = array_values(array_unique(array(pg_signin_redirect_uri('google'), pg_connect_redirect_uri())));
+    }
+
+    return array('connect' => ws_mail_connect_form($viewer, $form, null, 'google'), 'addresses' => $addresses);
 }
 
 /**
@@ -897,9 +944,11 @@ function ws_mail_sent_position_resets($before, $after)
  * @param bool       $rooms_only ws_mail_box_rooms_only(): kept in the mailbox
  *                             itself, so no channel, routing or suggestion
  *                             under a card is offered
+ * @param array      $google   ws_mail_google_parts(): the Gmail part's Connect
+ *                             button and redirect addresses
  * @return string
  */
-function ws_mail_box_form($self_url, $box, $channels, $ai_ready = false, $form = null, $rooms_only = false)
+function ws_mail_box_form($self_url, $box, $channels, $ai_ready = false, $form = null, $rooms_only = false, $google = array())
 {
     $id = $box ? (int) $box['id'] : 0;
     $prefix = 'ws_mail_' . $id . '_';
@@ -934,7 +983,7 @@ function ws_mail_box_form($self_url, $box, $channels, $ai_ready = false, $form =
                     <div class="pg-field-help">' . h(lang('The server that receives this mailbox\'s mail and writes Authentication-Results. Only its verdict is believed; left empty, every sender stays unverified and no mail is tied to a customer.')) . '</div>
                 </div>
                 ' . ($rooms_only ? '' : ws_mail_route_fields($prefix, $box, $channels)) . '
-                ' . ws_mail_box_server_fields($prefix, $box, $settings) . '
+                ' . ws_mail_box_server_fields($prefix, $box, $settings, $google) . '
                 <div class="md:col-12">
                     <label class="pg-field-label" for="' . $prefix . 'signature">' . h(lang('Signature')) . '</label>
                     <textarea class="pg-input" name="signature" id="' . $prefix . 'signature" rows="3" maxlength="' . WS_MAIL_SIGNATURE_MAX . '">' . h(ws_mail_box_signature($box)) . '</textarea>
@@ -1027,9 +1076,10 @@ function ws_mail_settings_dialog_input($post, $id)
  * @param string     $prefix
  * @param array|null $box
  * @param array      $settings ws_mail_box_settings()
+ * @param array      $google   ws_mail_google_parts()
  * @return string
  */
-function ws_mail_box_server_fields($prefix, $box, $settings)
+function ws_mail_box_server_fields($prefix, $box, $settings, $google = array())
 {
     $provider = (string) ($settings['provider'] ?? '');
     $options = '<option value="">' . h(lang('None: only .eml files')) . '</option>';
@@ -1075,7 +1125,7 @@ function ws_mail_box_server_fields($prefix, $box, $settings)
                     <label class="pg-field-label" for="' . $prefix . 'port">' . h(lang('Port')) . '</label>
                     <input class="pg-input" type="number" name="port" id="' . $prefix . 'port" min="1" max="65535" value="' . ws_mail_box_port_shown($settings['port'] ?? 0, $provider, 'port') . '">
                 </div>
-                ' . ws_mail_google_steps($provider) . '
+                ' . ws_mail_google_steps($provider, $prefix, ws_mail_google_way($settings), $google) . '
                 <div class="md:col-6">
                     <label class="pg-field-label" for="' . $prefix . 'user">' . h(lang('User name')) . '</label>
                     <input class="pg-input" type="text" spellcheck="false" autocapitalize="off" name="user" id="' . $prefix . 'user" maxlength="255" value="' . h((string) ($settings['user'] ?? '')) . '" autocomplete="off">
@@ -1087,7 +1137,7 @@ function ws_mail_box_server_fields($prefix, $box, $settings)
                 <div class="md:col-12">
                     <label class="pg-field-label" for="' . $prefix . 'connection">' . h(lang('Connected account')) . '</label>
                     <select class="pg-input" name="connection_id" id="' . $prefix . 'connection"' . (($via === 'connection') ? ' required' : '') . '>' . $accounts . '</select>
-                    <div class="pg-field-help">' . h(lang('Microsoft 365 and Outlook.com sign in with a connected account instead of a password.')) . '</div>
+                    <div class="pg-field-help">' . h(lang('Microsoft 365 and Outlook.com sign in with a connected account instead of a password; Gmail can too.')) . '</div>
                 </div>
                 <div class="md:col-4">
                     <label class="pg-field-label" for="' . $prefix . 'folder">' . h(lang('Folder to read')) . '</label>
@@ -1147,20 +1197,49 @@ function ws_mail_box_server_fields($prefix, $box, $settings)
 }
 
 /**
- * The steps that connect a Gmail or Google Workspace mailbox, in the order
- * they are done, shown while that service is chosen. Google is read over
- * IMAP with an app password: the account's own password is refused, and a
- * Google account in Settings › Connections serves sending only. Pure but
- * for the words.
+ * Which way a Gmail box's form opens on: the connected account for a box
+ * that has one or keeps no password (a new box), the app password for a
+ * box that keeps one, so a box working today shows what it uses. Pure.
+ *
+ * @param array $settings ws_mail_box_settings()
+ * @return string connection | password
+ */
+function ws_mail_google_way($settings)
+{
+    if ((int) ($settings['connection_id'] ?? 0) > 0) {
+        return 'connection';
+    }
+
+    return !empty($settings['secret']) ? 'password' : 'connection';
+}
+
+/**
+ * The ways a Gmail or Google Workspace mailbox signs in, shown while that
+ * service is chosen: a connected Google account (purpose mail_read, IMAP
+ * with XOAUTH2, answers through the Gmail API), with the Google
+ * application's redirect addresses, the API to enable and Google's
+ * verification warning; or an app password, the account's own password
+ * being refused. "Sign in with" only shows one of them and is not stored.
+ * Pure but for the words.
  *
  * @param string $provider the box's ws_mail_providers() key
+ * @param string $prefix   the form's id prefix
+ * @param string $way      ws_mail_google_way()
+ * @param array  $google   ws_mail_google_parts()
  * @return string HTML
  */
-function ws_mail_google_steps($provider)
+function ws_mail_google_steps($provider, $prefix = 'ws_mail_0_', $way = 'connection', $google = array())
 {
     $link = function ($url, $text) {
         return '<a href="' . h($url) . '" target="_blank" rel="noopener noreferrer">' . h($text) . '</a>';
     };
+    $way = ($way === 'password') ? 'password' : 'connection';
+    $connected = array(
+        h(lang('Connect the mailbox\'s own Google account with the button below; Google asks the account to allow reading and sending its mail.')),
+        h(lang('Choose that account as the Connected account below. The user name is the mailbox\'s address; no password is typed.')),
+        h(lang('Under Sending answers, choose The connected account: answers leave from the Google account through the Gmail API.')),
+        h(lang('Save, then press Test connection on the mailbox\'s row.')),
+    );
     $steps = array(
         h(lang('Use the mailbox\'s own Google account: the address typed above.')),
         lang(array('string' => 'Turn on 2-Step Verification for that account in {var:1}.', 'vars' => $link('https://myaccount.google.com/security', lang('Google Account › Security')))),
@@ -1173,15 +1252,53 @@ function ws_mail_google_steps($provider)
         lang('Nothing is turned on in Gmail itself: Google keeps IMAP access on for every account since January 2025.'),
         lang('App passwords are not offered when 2-Step Verification uses only security keys, when the account has Advanced Protection, or for a work or school account whose organisation does not allow them: ask its administrator.'),
         lang('When the account\'s Google password changes, Google revokes its app passwords: create a new one and type it here.'),
-        lang('A Google account connected in Settings › Connections sends the site\'s e-mail (E-mail sending); it does not read a mailbox.'),
     );
+    $warning = array(
+        lang('Reading a mailbox asks for full access to Gmail, one of Google\'s restricted scopes: until Google has verified the application, Google shows "Google hasn\'t verified this app" before the account allows it.'),
+        lang('While the application\'s publishing status is Testing, only the accounts listed under Test users can connect, and they pass that warning to go on.'),
+        lang('In Testing, Google ends the access seven days after it was given: the account is then connected again.'),
+        lang('In a Google Workspace organisation, an application whose user type is Internal serves only the organisation\'s accounts and needs no verification.'),
+        lang('For any other account, publish the application and have it verified by Google; for this scope Google also asks for a security assessment.'),
+    );
+    $addresses = '';
+
+    foreach (array_values((array) ($google['addresses'] ?? array())) as $index => $address) {
+        $id = $prefix . 'google_redirect_' . ($index + 1);
+        $addresses .= '
+                                <div class="d-flex align-items-center gap-2 mt-2">
+                                    <input type="text" class="pg-input font-monospace flex-grow-1 min-w-0" id="' . h($id) . '" value="' . h((string) $address) . '" readonly aria-label="' . h(lang('Redirect address')) . '">
+                                    <button type="button" class="pg-button pg-button-quiet pg-button-sm" data-ws-mail-copy="' . h($id) . '"><i class="bi bi-clipboard" aria-hidden="true"></i>' . h(lang('Copy')) . '</button>
+                                </div>';
+    }
+
+    if ($addresses !== '') {
+        $addresses = '
+                                <p class="pg-text-2 mt-3 mb-0">' . h(lang('Add both addresses to the application\'s OAuth client in Google Cloud, under Authorized redirect URIs:')) . '</p>' . $addresses . '
+                                <div class="pg-field-help" role="status" aria-live="polite" data-ws-mail-copied="' . h(lang('Copied')) . '" data-ws-mail-refused="' . h(lang('The browser did not let the text be copied. Select it and copy it from here.')) . '"></div>';
+    }
 
     return '
                 <div class="md:col-12' . (($provider === 'gmail') ? '' : ' d-none') . '" data-ws-mail-when="provider=gmail">
                     <div class="pg-card-inner p-3">
                         <h4 class="pg-group-label mb-2">' . h(lang('Connecting a Gmail or Google Workspace mailbox')) . '</h4>
-                        <ol class="pg-text-2 mb-2 ps-4"><li>' . implode('</li><li>', $steps) . '</li></ol>
-                        <ul class="pg-field-help mb-0 ps-4"><li>' . implode('</li><li>', array_map('h', $notes)) . '</li></ul>
+                        <label class="pg-field-label" for="' . h($prefix) . 'google_way">' . h(lang('Sign in with')) . '</label>
+                        <select class="pg-input" name="google_way" id="' . h($prefix) . 'google_way">
+                            <option value="connection"' . (($way === 'connection') ? ' selected' : '') . '>' . h(lang('A connected Google account')) . '</option>
+                            <option value="password"' . (($way === 'password') ? ' selected' : '') . '>' . h(lang('An app password')) . '</option>
+                        </select>
+                        <div class="mt-3' . (($way === 'connection') ? '' : ' d-none') . '" data-ws-mail-when="google_way=connection">
+                            <ol class="pg-text-2 mb-2 ps-4"><li>' . implode('</li><li>', $connected) . '</li></ol>
+                            ' . (string) ($google['connect'] ?? '') . '
+                            <details class="mt-3"><summary class="pg-text-2">' . h(lang('Setting up the Google application')) . '</summary>' . $addresses . '
+                                <p class="pg-text-2 mt-3 mb-0">' . lang(array('string' => 'Turn on the Gmail API in the same Google Cloud project; answers are sent through it: {var:1}.', 'vars' => $link('https://console.cloud.google.com/apis/library/gmail.googleapis.com', lang('Gmail API')))) . '</p>
+                                <h5 class="pg-group-label mt-3 mb-2">' . h(lang('Google\'s verification warning')) . '</h5>
+                                <ul class="pg-field-help mb-0 ps-4"><li>' . implode('</li><li>', array_map('h', $warning)) . '</li></ul>
+                            </details>
+                        </div>
+                        <div class="mt-3' . (($way === 'password') ? '' : ' d-none') . '" data-ws-mail-when="google_way=password">
+                            <ol class="pg-text-2 mb-2 ps-4"><li>' . implode('</li><li>', $steps) . '</li></ol>
+                            <ul class="pg-field-help mb-0 ps-4"><li>' . implode('</li><li>', array_map('h', $notes)) . '</li></ul>
+                        </div>
                     </div>
                 </div>';
 }
@@ -1463,13 +1580,13 @@ function ws_settings_mail_drawer($box, $viewer, $form, $in_dialog)
     $rooms_only = ws_mail_box_rooms_only($box, ws_enabled());
 
     if (!$box) {
-        return pg_settings_drawer('pgset-ws-mail-0', h(lang('Add a mailbox')), ws_mail_box_form('', null, $channels, $ai_ready, $form, $rooms_only), $in_dialog);
+        return pg_settings_drawer('pgset-ws-mail-0', h(lang('Add a mailbox')), ws_mail_box_form('', null, $channels, $ai_ready, $form, $rooms_only, ws_mail_google_parts($viewer, $form)), $in_dialog);
     }
 
     $id = (int) $box['id'];
 
     return pg_settings_drawer('pgset-ws-mail-' . $id, h((string) $box['name']) . ' · ' . h((string) $box['address']),
-        ws_mail_box_form('', $box, $channels, $ai_ready, $form, $rooms_only)
+        ws_mail_box_form('', $box, $channels, $ai_ready, $form, $rooms_only, ws_mail_google_parts($viewer, $form))
         . '<div class="border-top pt-5 mt-5">' . ws_mail_eml_form(pg_settings_url('mailboxes'), $id, true) . '</div>', $in_dialog);
 }
 
@@ -1552,11 +1669,46 @@ function ws_mail_settings_script()
             }
 
             document.addEventListener(\'change\', function (event) {
-                var form = (event.target.closest && /(^|\\[)(after_fetch|reply_via|kept_in|support|provider)\\]?$/.test(event.target.name || \'\')) ? event.target.closest(\'.ws-mail-box-form\') : null;
+                var form = (event.target.closest && /(^|\\[)(after_fetch|reply_via|kept_in|support|provider|google_way)\\]?$/.test(event.target.name || \'\')) ? event.target.closest(\'.ws-mail-box-form\') : null;
 
                 if (form) {
                     startPlain(form, event.target);
                     sync(form);
+                }
+            });
+
+            // A redirect address of the Gmail part is copied; the line under the
+            // addresses says whether it was. Plain http has no clipboard API
+            // and a write can be refused: the text is then selected.
+            document.addEventListener(\'click\', function (event) {
+                var button = event.target.closest ? event.target.closest(\'[data-ws-mail-copy]\') : null;
+                var input = button ? document.getElementById(button.getAttribute(\'data-ws-mail-copy\')) : null;
+                var status = button ? button.closest(\'details\').querySelector(\'[data-ws-mail-copied]\') : null;
+
+                if (!input || !status) {
+                    return;
+                }
+
+                var done = function () {
+                    status.textContent = status.getAttribute(\'data-ws-mail-copied\');
+                };
+                var fallback = function () {
+                    var copied = false;
+
+                    input.focus();
+                    input.select();
+
+                    try {
+                        copied = document.execCommand(\'copy\');
+                    } catch (error) {}
+
+                    status.textContent = status.getAttribute(copied ? \'data-ws-mail-copied\' : \'data-ws-mail-refused\');
+                };
+
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(input.value).then(done, fallback);
+                } else {
+                    fallback();
                 }
             });
         })();
