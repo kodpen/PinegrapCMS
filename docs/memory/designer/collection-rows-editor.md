@@ -6,6 +6,7 @@ description: The rows editor of a collection's Record rows field on Add and Edit
 ## What does the record screen draw for a rows field?
 - `pg_submitted_form_fields_markup()` hands a text box of kind `rows` to `pg_coll_rows_field_markup()` (`includes/fn/collection_rows.php`). The writer and spec: `collection-rows-writer.md`.
 - A box `[data-pg-rows]` holding `pg_coll_rows_editor_config()` as JSON (columns, rows, refusals, limit) and `pg_coll_rows_editor_words()`; `assets/js/pg_collection_rows.js` (served as written, with the vendored SortableJS tag) draws a plain table: one column per field the table takes, the grip (drag, or arrow keys on it), Move up, Move down, Remove, "Add row" (off at the limit).
+- Look A (`ui/look-new-parts.md`): the row actions are `pg-icon-button pg-icon-button-sm` (an end of the list adds `opacity-50` to its disabled Move up or Move down), "Add row" is `pg-button pg-button-quiet pg-button-sm`.
 - A field that cannot draw (`pg_coll_rows_spec()` refused) shows its reason and posts nothing, so its rows stay.
 - Inputs: text box and text area as text, pick list as a select (several when multiple), check box group as boxes.
 - Date and time are the panel's one date control, as the record's own field (`ui/panel-date-field-opt-in.md`): a text box with `data-pg-date` / `data-pg-time` from the column's `hook`, `pgFields.init()` on every draw; the screen prints the picker options and `pg_fields_script()` (`pg_coll_rows_picker_kinds()`).

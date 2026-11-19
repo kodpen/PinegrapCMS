@@ -43,7 +43,7 @@
     }
 
     function iconButton(name, label, className) {
-        var button = el('button', 'btn btn-sm btn-text theme-secondary ' + (className || ''));
+        var button = el('button', 'pg-icon-button pg-icon-button-sm ' + (className || ''));
         button.type = 'button';
         button.setAttribute('aria-label', label);
         button.title = label;
@@ -251,14 +251,17 @@
                     var actions = el('td', 'text-nowrap text-end');
                     var up = iconButton('bi-arrow-up', words.up || '');
                     up.disabled = index === 0;
+                    // The icon button recipe has no disabled look of its own.
+                    if (up.disabled) up.classList.add('opacity-50');
                     up.addEventListener('click', function () { moveRow(index, index - 1, false); });
                     var down = iconButton('bi-arrow-down', words.down || '');
                     down.disabled = index === rows.length - 1;
+                    if (down.disabled) down.classList.add('opacity-50');
                     down.addEventListener('click', function () { moveRow(index, index + 1, false); });
                     actions.appendChild(up);
                     actions.appendChild(down);
                     if (row.open) {
-                        var open = el('a', 'btn btn-sm btn-text theme-secondary');
+                        var open = el('a', 'pg-icon-button pg-icon-button-sm');
                         open.href = row.open;
                         open.target = '_blank';
                         open.rel = 'noopener';
@@ -304,9 +307,9 @@
             // The date and time cells just drawn get the panel's control.
             if (window.pgFields && typeof window.pgFields.init === 'function') window.pgFields.init(holder);
 
-            var add = el('button', 'btn btn-sm btn-outline theme-primary');
+            var add = el('button', 'pg-button pg-button-quiet pg-button-sm');
             add.type = 'button';
-            add.appendChild(icon('bi-plus-lg me-1'));
+            add.appendChild(icon('bi-plus-lg'));
             add.appendChild(el('span', 'pg-btn-label', words.add || ''));
             if (rows.length >= max) {
                 add.disabled = true;
