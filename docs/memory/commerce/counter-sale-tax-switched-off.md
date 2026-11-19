@@ -8,7 +8,7 @@ description: With the Commerce tax off a counter sale charges the price and no V
 - The order's ERP invoice then carries VAT 0 on each line (the line's `tax_total`).
 
 ## What does the counter charge?
-- The same (PR for #10377). `local_sale_line_rate()` and `update_order_item_taxes()` take a line's rate from one rule, `pg_order_line_tax_rate($tax_on, $taxable, $product_rate, $zone_rate)`: 0 while `pg_tax_switched_on()` is false, for a product that is not taxable, or in no zone (false or 0); else the product's rate, the zone's when NULL.
+- The same (PR #10407, issue #10377). `local_sale_line_rate()` and `update_order_item_taxes()` take a line's rate from one rule, `pg_order_line_tax_rate($tax_on, $taxable, $product_rate, $zone_rate)`: 0 while `pg_tax_switched_on()` is false, for a product that is not taxable, or in no zone (false or 0); else the product's rate, the zone's when NULL.
 - `pg_local_order_complete()` step 4 writes `order_items.tax_rate` only while the tax is on, as the checkout.
 - Before, the counter added the store zone's VAT on top of the price with the tax off: a 100.00 product was charged 120.00. A zone rate of 0 also taxed at the product's own rate at the counter only.
 

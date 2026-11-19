@@ -4,7 +4,7 @@ description: A counter sale (Create Order, POST /orders) runs the site checkout'
 ---
 
 ## What does a counter sale do with each line?
-- `pg_local_order_complete()` step 5 runs the site checkout's own `pg_order_complete_lines()` (PR for #10376): stock, an event's spots, a membership, folder access, reward points, a product's forms, comment and e-mailed page, its product_ordered campaigns and contact group. Then, as `pg_order_complete()` does: `pg_order_complete_private_access()`, `pg_order_complete_rewards()` (+ the membership group) and `pg_order_complete_contact_groups()`.
+- `pg_local_order_complete()` step 5 runs the site checkout's own `pg_order_complete_lines()` (PR #10407, issue #10376): stock, an event's spots, a membership, folder access, reward points, a product's forms, comment and e-mailed page, its product_ordered campaigns and contact group. Then, as `pg_order_complete()` does: `pg_order_complete_private_access()`, `pg_order_complete_rewards()` (+ the membership group) and `pg_order_complete_contact_groups()`.
 - The stock comes off through `pg_order_complete_line_stock()` with source `local_sale` (`stock_source` in the order array; the stage's `$source`, default `checkout`), so the counter's stock moves, flag, bell and `inventory.changed` are the checkout's.
 - Not run (not line work): the receipt, order_completed and order_abandoned campaigns, commission, ship dates, visitor and experiment.
 - Before, the counter took only the stock: a membership, folder access, points or a contact group bought at the till was never given.
