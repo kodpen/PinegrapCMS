@@ -11604,6 +11604,7 @@
     "transfer, ticket, colleague, name change": "devir, bilet, iş arkadaşı, isim değişikliği",
     "transit, cities": "ulaşım, şehirler",
     "transit, downtown, city budget": "ulaşım, şehir merkezi, belediye bütçesi",
+    "translated": "çevrildi",
     "translation states were changed through the API ({var:1}, {var:2}, {var:3} text(s))": "API üzerinden çeviri durumları değiştirildi ({var:1}, {var:2}, {var:3} metin)",
     "translations were cleared ({var:1}, {var:2}, {var:3} text(s))": "çeviriler temizlendi ({var:1}, {var:2}, {var:3} metin)",
     "translations were imported from a CSV file ({var:1}, {var:2} text(s))": "çeviriler bir CSV dosyasından içe aktarıldı ({var:1}, {var:2} metin)",

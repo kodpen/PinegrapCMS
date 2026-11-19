@@ -239,6 +239,19 @@ function test_designer_chrome_measures()
 	}
 }
 
+// The open Options tab's badge is filled with the accent: its number is
+// written in the panel's ground, as white on the accent reads under 3:1.
+function test_designer_chrome_open_tab_badge()
+{
+	$css = designer_chrome_source('assets/css/style_designer.css');
+	$t = designer_chrome_tokens();
+	$rule = '.sd-otab.active .sd-otab-count { background: var(--sd-accent); color: var(--sd-panel-bg); }';
+
+	pg_assert_true(strpos($css, $rule) !== false, 'the open tab\'s badge: the panel\'s ground on the accent');
+	pg_assert_true(designer_chrome_ratio(designer_chrome_rgb($t['panel-bg']), designer_chrome_rgb($t['accent'])) >= 4.5, 'its number reads 4.5:1');
+	pg_assert_true(designer_chrome_ratio(array(255, 255, 255), designer_chrome_rgb($t['accent'])) < 3, 'white would not');
+}
+
 // The rules of the Options panel, the Overview, the page strip and the
 // canvas bar take every colour from a token: no hex, rgb() or named colour.
 function test_designer_chrome_areas_read_tokens_only()
