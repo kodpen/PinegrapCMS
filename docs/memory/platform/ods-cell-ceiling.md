@@ -16,7 +16,7 @@ description: PHPExcel's .ods reader makes cells of repeated rows/columns and mer
 
 ## What do the importers do?
 - `pg_products_import_ods_load($path, $data_only, &$error)` (import_products_f.php): `pg_products_import_ods_check()`, the reader with `PG_PRODUCTS_IMPORT_ODS_MAX_CELLS` (the part ceiling / 64 = 131,072), then the first sheet's used range (last data row × last data column) at most `PG_PRODUCTS_IMPORT_ODS_MAX_RANGE` (1,048,576). Over either → "The file is too large."; anything thrown → "The file could not be read."
-- The product importer calls it with data only, `erp_bank_read_spreadsheet()` with formats.
+- Only `erp_bank_read_spreadsheet()` calls it (with formats) until XL3; the product importer reads an .ods through the sheet reader, with the same ceilings (`sheet-reader.md`, `product-import-sheets.md`).
 - Cost at the ceilings (PHP 8.3, 128M): 131,072 cells in 5–6 s and 63 MB; both ceilings at once in the bank import 95 MB.
 
 ## Which honest files does it refuse?
