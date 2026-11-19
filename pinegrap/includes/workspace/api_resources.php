@@ -1110,7 +1110,7 @@ function ws_api_message_canvas($row, $canvases)
     );
 }
 
-function ws_api_message_present($viewer, $row, $refs, $reactions = null, $acks = null, $threads = null, $hidden = null, $polls = null, $proposals = null, $note_cards = null, $checks = null, $forwards = null, $group_cards = null, $canvases = null, $link_previews = null)
+function ws_api_message_present($viewer, $row, $refs, $reactions = null, $acks = null, $threads = null, $hidden = null, $polls = null, $proposals = null, $note_cards = null, $checks = null, $forwards = null, $group_cards = null, $canvases = null, $link_previews = null, $feedback = null)
 {
     // Who ticked its checklist (interact.php).
     if ($checks === null) {
@@ -1156,6 +1156,12 @@ function ws_api_message_present($viewer, $row, $refs, $reactions = null, $acks =
         $threads = ws_api_message_threads($viewer, array($row['id']));
     }
 
+    // Right or Wrong on an agent's reply, for the asker and the channel's
+    // managers only (agent_feedback.php).
+    if ($feedback === null) {
+        $feedback = function_exists('ws_agent_feedback_map') ? ws_agent_feedback_map($viewer, array($row['id'])) : array();
+    }
+
     $ack = $acks[(int) $row['id']] ?? null;
 
     $emoji = array();
@@ -1183,7 +1189,7 @@ function ws_api_message_present($viewer, $row, $refs, $reactions = null, $acks =
             $app = ws_proposal_sender($app, $proposals[(int) $row['id']]);
         }
 
-        $sender = array('user_id' => null, 'name' => $app['name']);
+        $sender = ws_api_message_app_sender($app);
     } elseif (($row['sender_kind'] === 'guest') && function_exists('ws_guest_sender')) {
         $sender = array('user_id' => null, 'name' => ws_guest_sender((int) $row['sender_id'])['name']);
     } elseif (($row['sender_kind'] === 'mail') && function_exists('ws_mail_sender')) {
@@ -1264,7 +1270,31 @@ function ws_api_message_present($viewer, $row, $refs, $reactions = null, $acks =
         'via'            => ws_api_message_via($row, ws_message_via_names(array($row))),
         // The card of its first web address (link_preview.php).
         'link_preview'   => ws_api_message_link_preview($row, $link_previews),
+        // Right or Wrong on an agent's reply (POST
+        // /workspace/messages/{id}/agent-feedback): verdict '' while
+        // unmarked, null for anybody but the asker and the managers.
+        'feedback'       => $deleted ? null : ($feedback[(int) $row['id']] ?? null),
         'created_at'  => api_time($row['created_at']),
+    );
+}
+
+/**
+ * The sender of an application's message, from ws_app_sender(): app_id
+ * keys a run of its lines, and agent, claude and ai say it answers people,
+ * so its one-line messages never fold. Pure.
+ *
+ * @param array $app ws_app_sender(), or ws_proposal_sender() over it
+ * @return array user_id (null), name, app_id, agent, claude, ai
+ */
+function ws_api_message_app_sender($app)
+{
+    return array(
+        'user_id' => null,
+        'name'    => (string) ($app['name'] ?? ''),
+        'app_id'  => ((int) ($app['app_id'] ?? 0) > 0) ? (int) $app['app_id'] : null,
+        'agent'   => !empty($app['agent']),
+        'claude'  => !empty($app['claude']),
+        'ai'      => !empty($app['ai']),
     );
 }
 
@@ -1307,6 +1337,7 @@ function ws_api_message_schema()
         )),
         'via'         => 'WorkspaceMessageVia?',
         'link_preview'   => 'WorkspaceMessageLinkPreview?',
+        'feedback'       => 'WorkspaceMessageFeedback?',
         'created_at'  => 'string',
     );
 }
@@ -1350,9 +1381,17 @@ function ws_api_message_mail_schema()
 // workspace itself, carrying no file, with no discussion started from it.
 // An object written inline cannot say it may be null, so each is declared
 // on its own.
+// app_id, agent, claude and ai come on an application's message only
+// (ws_api_message_app_sender()).
 function ws_api_message_sender_schema()
 {
-    return array('user_id' => 'integer?', 'name' => 'string');
+    return array('user_id' => 'integer?', 'name' => 'string', 'app_id' => 'integer?', 'agent' => 'boolean', 'claude' => 'boolean', 'ai' => 'boolean');
+}
+
+// The mark on an agent's reply (ws_agent_feedback_offer()).
+function ws_api_message_feedback_schema()
+{
+    return array('verdict' => 'string', 'reason' => 'string');
 }
 
 function ws_api_message_file_schema()
@@ -1823,12 +1862,13 @@ function ws_api_messages_present($viewer, $rows)
     $group_cards = function_exists('ws_note_group_cards_map') ? ws_note_group_cards_map($viewer, $ids) : array();
     $canvases = function_exists('ws_canvas_message_states') ? ws_canvas_message_states(ws_api_message_canvas_file_ids($rows)) : array();
     $link_previews = function_exists('ws_link_preview_card_rows_map') ? ws_link_preview_card_rows_map($ids) : array();
+    $feedback = function_exists('ws_agent_feedback_map') ? ws_agent_feedback_map($viewer, $ids) : array();
     $out = array();
 
     // A message the person deleted for themselves stays in the page, marked
     // hidden, so that since_id and before_id still page past it.
     foreach ($rows as $row) {
-        $out[] = ws_api_message_present($viewer, $row, $refs, $reactions, $acks, $threads, $hidden, $polls, $proposals, $note_cards, $checks, $forwards, $group_cards, $canvases, $link_previews);
+        $out[] = ws_api_message_present($viewer, $row, $refs, $reactions, $acks, $threads, $hidden, $polls, $proposals, $note_cards, $checks, $forwards, $group_cards, $canvases, $link_previews, $feedback);
     }
 
     return $out;
@@ -3978,6 +4018,68 @@ function ws_api_messages_readers($params)
         'agents'     => array_map('ws_api_message_reader_agent', array_merge($seen['agents_seen'], $seen['agents_waiting'], $seen['agents_quiet'])),
         'ack'        => $ack,
     ));
+}
+
+/**
+ * POST /workspace/messages/{id}/agent-feedback: the person marks an agent's
+ * answer right or wrong, or takes the mark back, through the panel's one
+ * writer (ws_agent_feedback_mark()) and its refusals.
+ */
+function ws_api_messages_agent_feedback($params)
+{
+    $viewer = ws_api_viewer();
+
+    ws_api_own_words_only(lang('Only the person\'s own team devices session (POST /auth/login) can mark an agent\'s answer; an application key or an OAuth connection cannot do it for them.'));
+
+    if (!ws_agent_feedback_ready()) {
+        api_fail(503, 'service_unavailable', lang('The database has to be updated first.'));
+    }
+
+    $message_id = (int) $params['id'];
+    $verdict = (string) ($params['verdict'] ?? '');
+    $verdict = ($verdict === '') ? null : $verdict;
+    $reason = (string) ($params['reason'] ?? '');
+    $place = ws_agent_feedback_place($viewer, $message_id);
+    $check = ws_agent_feedback_check($viewer, $place['request'], $place['message'], $place['can_read'], $place['can_manage'], $verdict, $reason);
+
+    ws_api_agent_feedback_refusal($check);
+
+    api_dry_run_stop(($verdict === null) ? 'cleared' : 'marked', 'workspace_agent_feedback', array('message_id' => $message_id, 'verdict' => (string) $verdict));
+
+    $marked = ws_agent_feedback_mark($viewer, $message_id, $verdict, $reason);
+
+    ws_api_agent_feedback_refusal($marked);
+
+    api_ok(array('feedback' => array('verdict' => (string) $verdict, 'reason' => ($verdict === null) ? '' : (string) ($marked['reason'] ?? ''))));
+}
+
+/**
+ * Answers a refusal of ws_agent_feedback_check() or ws_agent_feedback_mark()
+ * with its own status; returns on ok.
+ *
+ * @param array $result ok; or status, error, field
+ */
+function ws_api_agent_feedback_refusal($result)
+{
+    if (!empty($result['ok'])) {
+        return;
+    }
+
+    $status = (int) ($result['status'] ?? 422);
+
+    if ($status === 404) {
+        api_fail_not_found(lang('Message'));
+    }
+
+    if ($status === 403) {
+        api_fail(403, 'forbidden', (string) $result['error']);
+    }
+
+    if ($status === 503) {
+        api_fail(503, 'service_unavailable', (string) $result['error']);
+    }
+
+    api_fail_validation((string) $result['error'], $result['field'] ?? null);
 }
 
 /**
