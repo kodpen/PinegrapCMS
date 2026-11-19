@@ -59,7 +59,7 @@ if (pg_merchant_ready()) {
         if ($merchant_app_ready) {
             $merchant_body = '
                                             <div class="col-12">
-                                                <button type="submit" form="pgset_merchant_connect" class="btn btn-sm btn-outline theme-primary rounded-pill"><i class="bi bi-google me-1" aria-hidden="true"></i>' . lang('Connect a Google account') . '</button>
+                                                <button type="submit" form="pgset_merchant_connect" class="pg-button pg-button-quiet pg-button-sm"><i class="bi bi-google" aria-hidden="true"></i>' . lang('Connect a Google account') . '</button>
                                             </div>';
 
             // Forms cannot be nested, so the button above submits this one
@@ -151,15 +151,15 @@ if (pg_merchant_ready()) {
                                                 <div class="form-text">' . $merchant_issues . '</div>
                                             </div>' . $merchant_country_field . '
                                             <div class="col-12">
-                                                <button type="submit" name="merchant_register" value="1" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-cloud-upload me-1" aria-hidden="true"></i>' . lang('Register the feed again') . '</button>
-                                                <button type="submit" name="merchant_check" value="1" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-clipboard-check me-1" aria-hidden="true"></i>' . lang('Check issues now') . '</button>
-                                                <button type="submit" name="merchant_unlink" value="1" class="btn btn-sm btn-outline theme-warning" onclick="return confirm(' . h(json_encode(lang('Stop using this Merchant Center account? The data source stays in Merchant Center until you delete it there.'))) . ')"><i class="bi bi-x-circle me-1" aria-hidden="true"></i>' . lang('Stop using this account') . '</button>
+                                                <button type="submit" name="merchant_register" value="1" class="pg-button pg-button-quiet pg-button-sm"><i class="bi bi-cloud-upload" aria-hidden="true"></i>' . lang('Register the feed again') . '</button>
+                                                <button type="submit" name="merchant_check" value="1" class="pg-button pg-button-quiet pg-button-sm"><i class="bi bi-clipboard-check" aria-hidden="true"></i>' . lang('Check issues now') . '</button>
+                                                <button type="submit" name="merchant_unlink" value="1" class="pg-button pg-button-danger pg-button-sm" onclick="return confirm(' . h(json_encode(lang('Stop using this Merchant Center account? The data source stays in Merchant Center until you delete it there.'))) . ')"><i class="bi bi-x-circle" aria-hidden="true"></i>' . lang('Stop using this account') . '</button>
                                             </div>';
     }
 
     $product_feeds_merchant = '
                                         <div class="col-12">
-                                            <h6 class="mb-1">' . lang('Google Merchant Center') . '</h6>
+                                            <h3 class="pg-group-label mb-1">' . lang('Google Merchant Center') . '</h3>
                                             <div class="form-text">' . lang('Gives Google the address of the product feed to fetch every day and shows the product problems Merchant Center reports.') . '</div>
                                         </div>' . $merchant_body . '
                                         <input type="hidden" name="merchant_card" value="1"/>';

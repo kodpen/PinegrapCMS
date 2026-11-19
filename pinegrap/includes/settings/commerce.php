@@ -77,7 +77,7 @@ $pg_settings_cards[] = '
                                                         <div class="col-12 ">
                                                             <div class="form-field">
                                                                 <div class="switch"><input value="1"' . $barcode_enabled_checked . ' class="collapse-switcher" type="checkbox" id="barcode_enabled" name="barcode_enabled" data-bs-target="#barcode_settings_row"/></div>
-                                                                <label class="fw-semibold" for="barcode_enabled"><i class="bi bi-upc-scan me-1"></i>' . lang('Enable Barcode Feature') . '</label>
+                                                                <label class="" for="barcode_enabled"><i class="bi bi-upc-scan me-1"></i>' . lang('Enable Barcode Feature') . '</label>
                                                             </div>
                                                             <div class="collapse popover fade bs-popover-bottom p-0 " id="barcode_settings_row">
                                                                 <div class="popover-arrow" style="position:absolute;left:0px;transform:translate(30px,0px);"></div>
@@ -163,7 +163,7 @@ $pg_settings_cards[] = '
                                                                             </div>
                                                                             </fieldset>
                                                                         </div>
-                                                                        <div class="col-12 "><h6 class="fg-secondary mb-0">' . lang('USPS') . '</h6></div>
+                                                                        <div class="col-12 "><h3 class="pg-group-label mb-0">' . lang('USPS') . '</h3></div>
                                                                         ' . pg_carrier_api_settings_fields('usps', $usps_legacy_set) . '
                                                                         ' . pg_carrier_api_test_button('usps') . '
                                                                         <div class="col-12 ">
@@ -270,11 +270,11 @@ foreach ($stock_card_locations as $stock_card_location) {
     $stock_card_id = (int) $stock_card_location['id'];
     $stock_card_rows .= '
                         <tr>
-                            <td><input type="text" class="form-control form-control-sm" name="stock_location_name[' . $stock_card_id . ']" maxlength="' . PG_STOCK_NAME_LENGTH . '" value="' . h($stock_card_location['name']) . '" aria-label="' . h(lang('Name')) . '" required /></td>
-                            <td><input type="text" class="form-control form-control-sm" name="stock_location_address[' . $stock_card_id . ']" maxlength="' . PG_STOCK_ADDRESS_LENGTH . '" value="' . h((string) $stock_card_location['address']) . '" aria-label="' . h(lang(array('string' => 'Address of {var:1}', 'vars' => array($stock_card_location['name'])))) . '" /></td>
-                            <td><input type="number" min="0" max="65535" step="1" class="form-control form-control-sm" style="width:5.5rem" name="stock_location_order[' . $stock_card_id . ']" value="' . (int) $stock_card_location['sort_order'] . '" aria-label="' . h(lang(array('string' => 'Order of {var:1}', 'vars' => array($stock_card_location['name'])))) . '" /></td>
-                            <td class="text-center"><input type="radio" class="radio" name="stock_location_default" value="' . $stock_card_id . '"' . (($stock_card_id === $stock_card_default) ? ' checked' : '') . ' aria-label="' . h(lang(array('string' => 'Make {var:1} the default', 'vars' => array($stock_card_location['name'])))) . '" /></td>
-                            <td class="text-center"><div class="switch d-inline-block"><input type="checkbox" value="1" name="stock_location_enabled[' . $stock_card_id . ']"' . (((int) $stock_card_location['enabled'] === 1) ? ' checked' : '') . ' aria-label="' . h(lang(array('string' => '{var:1} is on', 'vars' => array($stock_card_location['name'])))) . '" /></div></td>
+                            <td class="pg-embedded-table-text"><input type="text" class="form-control form-control-sm" name="stock_location_name[' . $stock_card_id . ']" maxlength="' . PG_STOCK_NAME_LENGTH . '" value="' . h($stock_card_location['name']) . '" aria-label="' . h(lang('Name')) . '" required /></td>
+                            <td class="pg-embedded-table-text"><input type="text" class="form-control form-control-sm" name="stock_location_address[' . $stock_card_id . ']" maxlength="' . PG_STOCK_ADDRESS_LENGTH . '" value="' . h((string) $stock_card_location['address']) . '" aria-label="' . h(lang(array('string' => 'Address of {var:1}', 'vars' => array($stock_card_location['name'])))) . '" /></td>
+                            <td><input type="number" min="0" max="65535" step="1" class="form-control form-control-sm pg-embedded-table-number" name="stock_location_order[' . $stock_card_id . ']" value="' . (int) $stock_card_location['sort_order'] . '" aria-label="' . h(lang(array('string' => 'Order of {var:1}', 'vars' => array($stock_card_location['name'])))) . '" /></td>
+                            <td class="pg-embedded-table-tight text-center"><input type="radio" class="radio" name="stock_location_default" value="' . $stock_card_id . '"' . (($stock_card_id === $stock_card_default) ? ' checked' : '') . ' aria-label="' . h(lang(array('string' => 'Make {var:1} the default', 'vars' => array($stock_card_location['name'])))) . '" /></td>
+                            <td class="pg-embedded-table-tight text-center"><div class="switch d-inline-block"><input type="checkbox" value="1" name="stock_location_enabled[' . $stock_card_id . ']"' . (((int) $stock_card_location['enabled'] === 1) ? ' checked' : '') . ' aria-label="' . h(lang(array('string' => '{var:1} is on', 'vars' => array($stock_card_location['name'])))) . '" /></div></td>
                         </tr>';
 }
 
@@ -293,15 +293,15 @@ $pg_settings_cards[] = '
                     <input type="hidden" name="stock_location_card" value="1" />' . (($stock_card_rows !== '') ? '
                     <div class="col-12">
                         <div class="table-responsive">
-                            <table class="table table-sm align-middle small mb-0">
+                            <table class="table table-hover mb-0 pg-embedded-table">
                                 <caption class="visually-hidden">' . lang('Stock locations') . '</caption>
                                 <thead>
                                     <tr>
                                         <th scope="col">' . lang('Name') . '</th>
                                         <th scope="col">' . lang('Address') . '</th>
                                         <th scope="col">' . lang('Order') . '</th>
-                                        <th scope="col" class="text-center">' . lang('Default') . '</th>
-                                        <th scope="col" class="text-center">' . lang('On') . '</th>
+                                        <th scope="col" class="pg-embedded-table-tight text-center">' . lang('Default') . '</th>
+                                        <th scope="col" class="pg-embedded-table-tight text-center">' . lang('On') . '</th>
                                     </tr>
                                 </thead>
                                 <tbody>' . $stock_card_rows . '
@@ -310,7 +310,7 @@ $pg_settings_cards[] = '
                         </div>
                         <div class="form-text">' . lang('A location that is turned off takes no transfers; the units it holds still count in the product\'s stock.') . '</div>
                     </div>' : '') . '
-                    <div class="col-12 mb-0"><h6 class="fg-secondary">' . lang('New location') . '</h6></div>
+                    <div class="col-12 mb-0"><h3 class="pg-group-label mb-0">' . lang('New location') . '</h3></div>
                     <div class="pg-f-md">
                         <label for="stock_location_new_name" class="form-label">' . lang('Name') . '</label>
                         <input type="text" name="stock_location_new_name" id="stock_location_new_name" class="form-control" maxlength="' . PG_STOCK_NAME_LENGTH . '" value="" />
@@ -321,7 +321,7 @@ $pg_settings_cards[] = '
                         <div class="form-text">' . lang('Added when you save.') . '</div>
                     </div>
                     <div class="col-12">
-                        <a class="btn btn-sm btn-text theme-secondary" href="view_stock_moves.php"><i class="bi bi-clock-history me-1" aria-hidden="true"></i>' . lang('Stock history') . '</a>
+                        <a class="pg-button pg-button-ghost pg-button-sm" href="view_stock_moves.php"><i class="bi bi-clock-history" aria-hidden="true"></i>' . lang('Stock history') . '</a>
                     </div>' : '') . '
                 </div>
             </div>
@@ -368,7 +368,7 @@ $pg_settings_cards[] = '
                                                                             <label for="ecommerce_gift_card_validity_days" class="form-label">' . lang('Validity Length') . '</label>
                                                                             <label class="form-control form-adorn form-adorn-end">
                                                                                 <span class="form-adorn-text" aria-hidden="true">' . lang('day(s)') . '</span>
-                                                                                <input type="text" name="ecommerce_gift_card_validity_days" id="ecommerce_gift_card_validity_days" class="form-ghost" value="' . $ecommerce_gift_card_validity_days . '" size="7" maxlength="7" inputmode="numeric" data-inputmask-alias="decimal"  style="text-align: right;" />
+                                                                                <input type="text" name="ecommerce_gift_card_validity_days" id="ecommerce_gift_card_validity_days" class="form-ghost text-end" value="' . $ecommerce_gift_card_validity_days . '" size="7" maxlength="7" inputmode="numeric" data-inputmask-alias="decimal" />
                                                                             </label>
                                                                             <div class="form-text">' . lang('leave blank for no expiration') . '</div>
                                                                         </div>
@@ -410,7 +410,7 @@ $pg_settings_cards[] = '
                                                             <label for="credit_refund_bonus" class="form-label">' . lang('Bonus on refunds given as store credit') . '</label>
                                                             <label class="form-control form-adorn form-adorn-end">
                                                                 <span class="form-adorn-text" aria-hidden="true">%</span>
-                                                                <input value="' . h($credit_refund_bonus) . '" type="text" name="credit_refund_bonus" id="credit_refund_bonus" class="form-ghost" size="6" maxlength="6" inputmode="decimal" style="text-align: right;" />
+                                                                <input value="' . h($credit_refund_bonus) . '" type="text" name="credit_refund_bonus" id="credit_refund_bonus" class="form-ghost text-end" size="6" maxlength="6" inputmode="decimal" />
                                                             </label>
                                                             <div class="form-text">(' . lang('leave blank for no bonus') . ')</div>
                                                         </div>
@@ -427,22 +427,22 @@ $pg_settings_cards[] = '
                                                                             <label for="ecommerce_reward_program_points" class="form-label">' . lang('Goal') . '</label>
                                                                             <label class="form-control form-adorn form-adorn-end">
                                                                                 <span class="form-adorn-text" aria-hidden="true">' . lang('point(s)') . '</span>
-                                                                                <input value="' . $ecommerce_reward_program_points . '" type="text" name="ecommerce_reward_program_points" id="ecommerce_reward_program_points" class="form-ghost" size="6" maxlength="6" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="0"  style="text-align: right;" />
+                                                                                <input value="' . $ecommerce_reward_program_points . '" type="text" name="ecommerce_reward_program_points" id="ecommerce_reward_program_points" class="form-ghost text-end" size="6" maxlength="6" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="0" />
                                                                             </label>
                                                                         </div>
                                                                         <div class="pg-f-xs">
                                                                             <label for="credit_points_per_unit" class="form-label">' . lang('Points per unit of store credit') . '</label>
                                                                             <label class="form-control form-adorn form-adorn-end">
                                                                                 <span class="form-adorn-text" aria-hidden="true">' . lang('point(s)') . '</span>
-                                                                                <input value="' . h($credit_points_per_unit) . '" type="text" name="credit_points_per_unit" id="credit_points_per_unit" class="form-ghost" size="8" maxlength="12" inputmode="decimal" style="text-align: right;" />
+                                                                                <input value="' . h($credit_points_per_unit) . '" type="text" name="credit_points_per_unit" id="credit_points_per_unit" class="form-ghost text-end" size="8" maxlength="12" inputmode="decimal" />
                                                                             </label>
-                                                                            <div class="form-text text-end">(' . lang('leave blank to keep points from turning into store credit') . ')</div>
+                                                                            <div class="form-text">(' . lang('leave blank to keep points from turning into store credit') . ')</div>
                                                                         </div>
                                                                         <div class="pg-f-xs">
                                                                             <label for="credit_points_smallest" class="form-label">' . lang('Smallest conversion') . '</label>
                                                                             <label class="form-control form-adorn form-adorn-end">
                                                                                 <span class="form-adorn-text" aria-hidden="true">' . h(BASE_CURRENCY_CODE) . '</span>
-                                                                                <input value="' . h($credit_points_smallest) . '" type="text" name="credit_points_smallest" id="credit_points_smallest" class="form-ghost" size="8" maxlength="14" inputmode="decimal" style="text-align: right;" />
+                                                                                <input value="' . h($credit_points_smallest) . '" type="text" name="credit_points_smallest" id="credit_points_smallest" class="form-ghost text-end" size="8" maxlength="14" inputmode="decimal" />
                                                                             </label>
                                                                         </div>
                                                                         <div class="col-12 ">
@@ -458,9 +458,9 @@ $pg_settings_cards[] = '
                                                                                             <label for="ecommerce_reward_program_membership_days" class="form-label">' . lang('Membership Length') . '</label>
                                                                                             <label class="form-control form-adorn form-adorn-end">
                                                                                                 <span class="form-adorn-text" aria-hidden="true">' . lang('day(s)') . '</span>
-                                                                                                <input value="' . $ecommerce_reward_program_membership_days . '" type="text" name="ecommerce_reward_program_membership_days" id="ecommerce_reward_program_membership_days" class="form-ghost" size="5" maxlength="5" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="0"  style="text-align: right;" />
+                                                                                                <input value="' . $ecommerce_reward_program_membership_days . '" type="text" name="ecommerce_reward_program_membership_days" id="ecommerce_reward_program_membership_days" class="form-ghost text-end" size="5" maxlength="5" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="0" />
                                                                                             </label>
-                                                                                            <div class="form-text text-end">(' . lang('leave blank for lifetime membership') . ')</div>
+                                                                                            <div class="form-text">(' . lang('leave blank for lifetime membership') . ')</div>
                                                                                         </div>
                                                                                     </div>
                                                                                 </div>
@@ -477,7 +477,7 @@ $pg_settings_cards[] = '
                                                                                    <div class="row gy-5">
                                                                                         <div class="pg-f-md">
                                                                                             <label class="form-label" for="ecommerce_reward_program_email_bcc_email_address">' . lang('BCC E-mail Address') . '</label>
-                                                                                            <input type="text" value="' . h($ecommerce_reward_program_email_bcc_email_address) . '" class="form-control text-end" id="ecommerce_reward_program_email_bcc_email_address" name="ecommerce_reward_program_email_bcc_email_address" maxlength="100" inputmode="email" data-inputmask-alias="email"/>
+                                                                                            <input type="text" value="' . h($ecommerce_reward_program_email_bcc_email_address) . '" class="form-control" id="ecommerce_reward_program_email_bcc_email_address" name="ecommerce_reward_program_email_bcc_email_address" maxlength="100" inputmode="email" data-inputmask-alias="email"/>
                                                                                         </div>
                                                                                         <div class="pg-f-md">
                                                                                             <label class="form-label" for="ecommerce_reward_program_email_subject">' . lang('Subject') . '</label>
@@ -707,7 +707,7 @@ $pg_settings_cards[] = '
                                                                                             <label for="ecommerce_surcharge_percentage" class="form-label">' . lang('Surcharge') . '</label>
                                                                                             <label class="form-control form-adorn form-adorn-end">
                                                                                                 <span class="form-adorn-text" aria-hidden="true">%</span>
-                                                                                                <input value="' . $ecommerce_surcharge_percentage . '" type="text" name="ecommerce_surcharge_percentage" id="ecommerce_surcharge_percentage" class="form-ghost" size="7" maxlength="7" inputmode="decimal" data-inputmask-alias="decimal" data-inputmask-placeholder="0"  style="text-align: right;" />
+                                                                                                <input value="' . $ecommerce_surcharge_percentage . '" type="text" name="ecommerce_surcharge_percentage" id="ecommerce_surcharge_percentage" class="form-ghost text-end" size="7" maxlength="7" inputmode="decimal" data-inputmask-alias="decimal" data-inputmask-placeholder="0" />
                                                                                             </label>
                                                                                         </div>
                                                                                         <div class="col-12 " id="ecommerce_iyzipay_threeds_row" style="' . $ecommerce_iyzipay_3ds_row_style . '">
@@ -923,7 +923,7 @@ $pg_settings_cards[] = '
                                                             <label for="affiliate_default_commission_rate" class="form-label">' . lang('Default Commission Rate') . '</label>
                                                             <label class="form-control form-adorn form-adorn-end">
                                                                 <span class="form-adorn-text" aria-hidden="true">%</span>
-                                                                <input value="' . $affiliate_default_commission_rate . '" type="text" name="affiliate_default_commission_rate" id="affiliate_default_commission_rate" class="form-ghost" size="6" maxlength="6" inputmode="decimal" data-inputmask-alias="decimal" data-inputmask-placeholder="0"  style="text-align: right;" />
+                                                                <input value="' . $affiliate_default_commission_rate . '" type="text" name="affiliate_default_commission_rate" id="affiliate_default_commission_rate" class="form-ghost text-end" size="6" maxlength="6" inputmode="decimal" data-inputmask-alias="decimal" data-inputmask-placeholder="0" />
                                                             </label>
                                                         </div>
                                                         <div class="pg-f-md">
@@ -967,11 +967,11 @@ foreach (pg_product_feed_format_texts() as $product_feeds_format => $product_fee
         $product_feeds_token = pg_product_feed_token($product_feeds_entry);
 
         $product_feeds_address = '
-                                            <div class="input-group input-group-sm mt-3 pg-f-lg">
+                                            <div class="d-flex align-items-center gap-2 mt-3 pg-f-lg">
                                                 ' . (($product_feeds_token !== '')
                                                     ? '<input type="text" class="form-control" readonly value="' . h(pg_product_feed_url($product_feeds_token)) . '" aria-label="' . h(lang('Feed address')) . '" onfocus="this.select()" />'
                                                     : '<span class="form-control fg-secondary">' . h(lang('This address cannot be shown again on this site. Make a new address to see it.')) . '</span>') . '
-                                                <button type="submit" name="product_feed_new_address" value="' . h($product_feeds_format) . '" class="btn btn-sm btn-outline theme-warning" onclick="return confirm(' . h(json_encode(lang('Make a new address? The current address stops working at once, so the platforms that read it must be given the new one.'))) . ')"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . lang('New address') . '</button>
+                                                <button type="submit" name="product_feed_new_address" value="' . h($product_feeds_format) . '" class="pg-button pg-button-danger pg-button-sm text-nowrap" onclick="return confirm(' . h(json_encode(lang('Make a new address? The current address stops working at once, so the platforms that read it must be given the new one.'))) . ')"><i class="bi bi-arrow-repeat" aria-hidden="true"></i>' . lang('New address') . '</button>
                                             </div>';
     }
 
@@ -1024,7 +1024,7 @@ $pg_settings_cards[] = '
                                             <div class="form-text fg-warning">' . h($product_feeds_notice) . '</div>' : '') . '
                                         </div>
                                         ' . $product_feeds_rows . '
-                                        <div class="col-12 mb-0"><h6 class="fg-secondary">' . lang('Seller') . '</h6></div>
+                                        <div class="col-12 mb-0"><h3 class="pg-group-label mb-0">' . lang('Seller') . '</h3></div>
                                         <div class="pg-f-md">
                                             <label for="product_feed_seller_name" class="form-label">' . lang('Seller name') . '</label>
                                             <input type="text" name="product_feed_seller_name" id="product_feed_seller_name" class="form-control" maxlength="255" value="' . h(($product_feeds_settings['seller_name'] !== '') ? $product_feeds_settings['seller_name'] : (defined('ORGANIZATION_NAME') ? ORGANIZATION_NAME : '')) . '"/>
@@ -1057,7 +1057,7 @@ $pg_settings_cards[] = '
                                         </div>
                                         <div class="col-12">
                                             <div class="form-text mb-3">' . lang('Changes reach the feeds at the next daily build. A feed you switch on is built when you save.') . '</div>
-                                            <button type="submit" name="product_feed_build" value="1" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . lang('Save and build now') . '</button>
+                                            <button type="submit" name="product_feed_build" value="1" class="pg-button pg-button-quiet pg-button-sm"><i class="bi bi-arrow-repeat" aria-hidden="true"></i>' . lang('Save and build now') . '</button>
                                         </div>' . $product_feeds_merchant . '
                                    </div>
                                 </div>
