@@ -26,4 +26,4 @@ description: An uncaught Throwable or a fatal error inside integration.php or mc
 - After a fatal error the shutdown function writes the answer directly and does not exit, so later shutdown functions still run.
 
 ## Where is it tested?
-- `tests/api_fault_test.php`: which errors are fatal, answering only before headers, the envelope, the generic sentence, the MCP body. Introduced by step AM3 of plan api-clean-modern.
+- `tests/api_fault_test.php`: which errors are fatal, answering only before headers, the envelope, the generic sentence, the MCP body. Added by PR #10120.

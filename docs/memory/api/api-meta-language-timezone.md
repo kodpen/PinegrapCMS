@@ -8,6 +8,11 @@ description: GET /meta language and site.timezone, GET /auth/me language: which 
 - One helper, `api_text_language()` (`includes/api/resources/meta.php`), over the pure `api_text_language_pick($frontend, $suspended, $enforced, $software, $has_file)`: `FRONTEND_LANGUAGE` unless `pg_tr_suspend()`, then `ENFORCEMENT_SOFTWARE_LANGUAGE`, then `SOFTWARE_LANGUAGE`, then `en`, the order `lang(array('info' => 1))` uses (`includes/fn/core.php`). Empty values fall through.
 - A code without a language file (`pg_tr_ui_has_file()`) is answered `en`: `?pg_lang=de` on `integration.php` sets `FRONTEND_LANGUAGE`, but only `en` and `tr` have files and `lang()` keeps the English source text for `de`. So the field never names a language the texts are not in.
 
+## May a call pick its language with Accept-Language?
+- Not today: `error.message` comes in the site's language whatever `Accept-Language` says, and `Content-Language` names it (`api-http-manners.md`).
+- Held by the architect (2026-11-17), not decided: `Accept-Language: en` or `tr` picking the language of `error.message` for one call. Browsers and phones send the header by themselves, and a call-wide language would also reach what the call stores or sends.
+- Before any build, a census: the texts a call stores or sends (notification and inbox texts, mail) and what `?pg_lang=` does today. Only if the choice can be kept to the answer does the architect ask the owner. `tests/api_console_conventions_test.php` keeps the pages from promising it.
+
 ## What does `site.timezone` say?
 - The IANA name PHP runs in once `init.php` has set it: `date_default_timezone_get()` through `api_meta_timezone()`, the site's `TIMEZONE` setting or the server's zone when the setting is empty. Never `''`; no offset, the name carries daylight saving.
 - It is the site's zone, not the person's: `GET /auth/me` `user.timezone` is the profile zone, `''` when unset. Clients use the site zone for the day `GET /reports/sales` groups by, Workspace's `worked_on` limit and the week's Monday.

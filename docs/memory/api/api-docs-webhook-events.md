@@ -17,7 +17,7 @@ description: The Webhook events section of the API reference (api_docs.php and i
 - `tests/api_console_events_test.php`: the anchor, a block's fields, types, nullable note and envelope, an event with no fields, and on the live catalogue one block per event, each linked and each with an example.
 - `tests/api_console_conventions_test.php` counts one `doc-ep-head` per endpoint, the intro, the errors block and one per event.
 
-## What is left to other plans?
-- The pages' opening and headings: plan `api-clean-modern` (AM12 also edits `console_view.php`, so it is not open beside a step here).
+## Who owns the pages' opening and headings?
+- The Conventions section and the heading outline: `api-docs-conventions.md` (#10144). This note covers only the events section.
 
 Related: docs/memory/api/api-webhook-event-payloads.md, docs/memory/api/api-docs-conventions.md
