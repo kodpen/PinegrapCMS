@@ -826,13 +826,18 @@ function pg_tr_csv_export($language, $scope = 'all', $only_pending = false)
  * and named in 'problems' with its file line and reason. A file without the
  * hash or translation column writes nothing and says so in 'error'.
  * Imported texts are written as reviewed unless $as_machine says otherwise.
+ * A row whose translation is the one already stored is counted as unchanged
+ * and not written: the export lists every text, so a file sent back after a
+ * few fixes carries every other row untouched, and writing those would mark
+ * unread machine translations reviewed (or reviewed ones machine) and
+ * relabel them as imported.
  *
- * @return array('written' => int, 'skipped' => int, 'stale' => int, 'rejected' => int,
- *               'problems' => array of string, 'error' => string)
+ * @return array('written' => int, 'unchanged' => int, 'skipped' => int, 'stale' => int,
+ *               'rejected' => int, 'problems' => array of string, 'error' => string)
  */
 function pg_tr_csv_import($language, $csv, $user_id = 0, $as_machine = false)
 {
-    $summary = array('written' => 0, 'skipped' => 0, 'stale' => 0, 'rejected' => 0, 'problems' => array(), 'error' => '');
+    $summary = array('written' => 0, 'unchanged' => 0, 'skipped' => 0, 'stale' => 0, 'rejected' => 0, 'problems' => array(), 'error' => '');
     $missing_columns = lang('The file has no hash and translation columns. Import a file the Export CSV button wrote.');
     $csv = (string) $csv;
 
@@ -914,6 +919,13 @@ function pg_tr_csv_import($language, $csv, $user_id = 0, $as_machine = false)
             continue;
         }
 
+        $stored = db_value("SELECT text FROM translations WHERE string_id = '" . (int) $string['id'] . "' AND language = '" . e($language) . "' LIMIT 1");
+
+        if (pg_tr_csv_import_unchanged($stored, $clean)) {
+            $summary['unchanged']++;
+            continue;
+        }
+
         pg_tr_save_translation((int) $string['id'], $language, $clean, 'import', $as_machine ? 'machine' : 'reviewed', $user_id, $check['suspicious'] ? 1 : 0, true);
         $summary['written']++;
     }
@@ -921,6 +933,19 @@ function pg_tr_csv_import($language, $csv, $user_id = 0, $as_machine = false)
     fclose($handle);
 
     return $summary;
+}
+
+/**
+ * Whether a CSV row's cleaned translation is the text already stored for
+ * its language ($stored null: none stored yet).
+ *
+ * @param string|null $stored
+ * @param string      $clean
+ * @return bool
+ */
+function pg_tr_csv_import_unchanged($stored, $clean)
+{
+    return ($stored !== null) && ((string) $stored === (string) $clean);
 }
 
 /**

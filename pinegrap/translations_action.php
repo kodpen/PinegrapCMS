@@ -591,8 +591,8 @@ if ($summary['error'] !== '') {
 log_activity(lang(array('string' => 'translations were imported from a CSV file ({var:1}, {var:2} text(s))', 'vars' => array($language, $summary['written']))), $_SESSION['sessionusername']);
 
 $liveform->add_notice(lang(array(
-    'string' => 'CSV import: {var:1} translation(s) written, {var:2} empty row(s) skipped, {var:3} row(s) whose text has since changed, {var:4} row(s) rejected.',
-    'vars'   => array($summary['written'], $summary['skipped'], $summary['stale'], $summary['rejected']))));
+    'string' => 'CSV import: {var:1} translation(s) written, {var:2} unchanged, {var:3} empty row(s) skipped, {var:4} row(s) whose text has since changed, {var:5} row(s) rejected.',
+    'vars'   => array($summary['written'], $summary['unchanged'], $summary['skipped'], $summary['stale'], $summary['rejected']))));
 
 // The first rejected rows, each with its file line and reason.
 if ($summary['problems']) {

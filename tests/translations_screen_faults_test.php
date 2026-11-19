@@ -86,3 +86,34 @@ function test_translations_review_on_an_edited_row_saves_the_typed_text()
 	pg_assert_contains('saveRow(reviewRow, review, next)', $branch, 'and saves it with the new status');
 	pg_assert_true((bool) preg_match("/function saveRow\\(row, button, status\\) \\{[\\s\\S]*?action: 'save'[\\s\\S]*?status: status/", $js), 'the save sends the status it is given');
 }
+
+// A CSV row whose translation is the one already stored is left as it is.
+function test_translations_csv_import_unchanged_row()
+{
+	pg_assert_true(pg_tr_csv_import_unchanged('Merhaba', 'Merhaba'), 'the same text');
+	pg_assert_true(!pg_tr_csv_import_unchanged('Merhaba', 'Merhaba dünya'), 'an edited text');
+	pg_assert_true(!pg_tr_csv_import_unchanged(null, 'Merhaba'), 'no translation stored yet');
+	pg_assert_true(!pg_tr_csv_import_unchanged('Merhaba ', 'Merhaba'), 'a changed space is a change');
+}
+
+// The export lists every text with its translation, so a file sent back
+// after fixing a few rows carries every other row untouched. The import
+// wrote them all again: by default each untouched machine translation was
+// marked reviewed (the Machine filter emptied without anyone reading them),
+// with "Import as machine translations" each reviewed one went back to
+// machine, and every row was relabelled as a CSV import. Untouched rows are
+// now counted as unchanged and not written.
+function test_translations_csv_import_leaves_unchanged_rows()
+{
+	$body = translations_faults_test_body('includes/translate/jobs.php', 'pg_tr_csv_import');
+	$same = strpos($body, 'pg_tr_csv_import_unchanged(');
+	$write = strpos($body, 'pg_tr_save_translation(');
+
+	pg_assert_true(($same !== false) && ($write !== false) && ($same < $write), 'an unchanged row is found before anything is written');
+	pg_assert_contains("\$summary['unchanged']++;", $body, 'and counted');
+	pg_assert_contains("'unchanged' => 0", $body, 'the summary has the count');
+
+	$action = (string) file_get_contents(PG_FUNCTIONS_DIR . '/translations_action.php');
+	pg_assert_contains("{var:2} unchanged", $action, 'the import notice names the unchanged rows');
+	pg_assert_contains("\$summary['unchanged']", $action, 'with their count');
+}
