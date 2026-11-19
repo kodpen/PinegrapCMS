@@ -4356,8 +4356,10 @@ function ws_handle_action($action, $request)
 
         // A channel's memory (channel_memory.php): every entry with its
         // text, the expired ones too; written by whoever may post here.
+        // general=1 addresses the general memory (channel_id 0) instead,
+        // kept by whoever may post in an agent channel.
         case 'ws_memory_list':
-            $channel = ws_action_channel($viewer, $request);
+            $channel = ws_memory_action_channel($viewer, $request);
 
             if (!is_array($channel)) {
                 return ws_action_error($channel);
@@ -4365,11 +4367,11 @@ function ws_handle_action($action, $request)
 
             return ws_action_ok(array(
                 'entries'  => array_map('ws_memory_present', ws_memory_rows($channel['id'])),
-                'can_post' => ws_can_post_channel($viewer, $channel),
+                'can_post' => ws_memory_can_write($viewer, $channel),
             ));
 
         case 'ws_memory_save':
-            $channel = ws_action_channel($viewer, $request);
+            $channel = ws_memory_action_channel($viewer, $request);
 
             if (!is_array($channel)) {
                 return ws_action_error($channel);
@@ -4394,6 +4396,11 @@ function ws_handle_action($action, $request)
                 'pinned'     => !empty($request['pinned']),
                 'expires_at' => ($expires === '') ? 0 : (int) strtotime($expires . ' 23:59:59'),
             );
+
+            if (array_key_exists('project', $request)) {
+                $input['project'] = (string) $request['project'];
+            }
+
             $check = ws_memory_check($viewer, $channel, $input, $current);
 
             if (!$check['ok']) {
@@ -4407,7 +4414,7 @@ function ws_handle_action($action, $request)
         case 'ws_memory_delete':
             $row = ws_memory_row((int) ($request['id'] ?? 0));
 
-            if (!$row || !ws_can_read_channel($viewer, ws_channel($row['channel_id']))) {
+            if (!$row || !ws_memory_can_read($viewer, $row)) {
                 return ws_action_error(lang('That memory entry could not be found.'));
             }
 
