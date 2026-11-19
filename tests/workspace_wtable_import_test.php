@@ -267,6 +267,26 @@ function test_workspace_wtable_import_row_cells()
 	pg_assert_same(array(3 => null), ws_wtable_import_row_cells(array('x'), array(1 => 3, 5 => 99), $columns), 'a short row and a gone column');
 }
 
+// The cells a file row fills: a box the file says no to is filled, so a
+// keyed import unticks it; an empty field fills nothing.
+function test_workspace_wtable_import_filled()
+{
+	$columns = array(3 => array('type' => 'text'), 4 => array('type' => 'checkbox'));
+	$map = array(0 => 3, 1 => 4);
+
+	$row = array('A', 'no');
+	pg_assert_same(array(3 => 'A', 4 => false), ws_wtable_import_filled($row, $map, ws_wtable_import_row_cells($row, $map, $columns)), 'no is written');
+
+	$row = array('A', '');
+	pg_assert_same(array(3 => 'A'), ws_wtable_import_filled($row, $map, ws_wtable_import_row_cells($row, $map, $columns)), 'an empty field is not');
+
+	$row = array('', 'hayır');
+	pg_assert_same(array(4 => false), ws_wtable_import_filled($row, $map, ws_wtable_import_row_cells($row, $map, $columns)), 'a row of a no alone is no empty row');
+
+	$row = array('', '');
+	pg_assert_same(array(), ws_wtable_import_filled($row, $map, ws_wtable_import_row_cells($row, $map, $columns)));
+}
+
 function test_workspace_wtable_import_file_table()
 {
 	$path = tempnam(sys_get_temp_dir(), 'pg_test_');

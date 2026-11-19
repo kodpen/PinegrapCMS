@@ -551,6 +551,38 @@ function ws_wtable_import_row_cells($row, $map, $columns, $people = array())
 }
 
 /**
+ * The cells a file row fills, of ws_wtable_import_row_cells(): a value,
+ * or an unticked box whose field the file wrote (no, 0), so that a keyed
+ * import lays it over the row and unticks it; an empty field fills
+ * nothing. Pure.
+ *
+ * @param array $row   the file row's values
+ * @param array $map   file column index => column id
+ * @param array $cells column id => value
+ * @return array column id => value
+ */
+function ws_wtable_import_filled($row, $map, $cells)
+{
+    $written = array();
+
+    foreach ((array) $map as $i => $id) {
+        if (trim((string) ($row[$i] ?? '')) !== '') {
+            $written[$id] = true;
+        }
+    }
+
+    $filled = array();
+
+    foreach ((array) $cells as $id => $value) {
+        if (($value !== null) && (($value !== false) || isset($written[$id]))) {
+            $filled[$id] = $value;
+        }
+    }
+
+    return $filled;
+}
+
+/**
  * A value read from a file as UTF-8: one that is not UTF-8 is taken to be
  * the Windows Turkish code page, which Turkish Excel writes its "CSV
  * (comma delimited)" in (ISO-8859-9 where mbstring lacks it; the two
@@ -993,10 +1025,7 @@ function ws_wtable_import_rows($viewer, $table, $rows, $map)
 
     foreach (array_values($rows) as $i => $row) {
         $cells = ws_wtable_import_row_cells($row, $map, $columns, $people);
-
-        $filled = array_filter($cells, function ($value) {
-            return ($value !== null) && ($value !== false);
-        });
+        $filled = ws_wtable_import_filled($row, $map, $cells);
 
         if (empty($filled)) {
             continue;
@@ -1165,11 +1194,8 @@ function ws_wtable_import_rows_check($columns, $map, $rows, $room, $people = arr
 
     foreach ($rows as $i => $row) {
         $cells = ws_wtable_import_row_cells($row, $map, $columns, $people);
-        $filled = array_filter($cells, function ($value) {
-            return ($value !== null) && ($value !== false);
-        });
 
-        if (empty($filled)) {
+        if (empty(ws_wtable_import_filled($row, $map, $cells))) {
             continue;
         }
 
