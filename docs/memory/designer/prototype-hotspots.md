@@ -28,4 +28,3 @@ description: The Prototype view's pure module (PGProtoHotspots): which nodes are
 - `listOf()`, `brokenOf()`, `brokenWhy()`: designer/prototype-list.md. `problemsOf()`, `widgetPages()`, `widgetKind()`: designer/prototype-problems.md. `boundTo()`, `markBound()` (a link kept by page id): designer/page-link-by-id.md.
 - `drawable()`, `drawTargets()`, `hrefTo()`, `hrefPatch()`, `setHtmlHref()`, `applyPatch()`: designer/prototype-view.md. `nearHead()`, `markKey()`, `menuPlace()`: designer/prototype-drawing.md.
 - `suggest()`, `foldWords()`, `headingOf()`, `suggestRows()`, `suggestBatch()`: designer/prototype-suggest.md.
-- `canvasMarks()`, `canvasRequest()` (the editor canvas's link marks): designer/canvas-link-marks.md.
