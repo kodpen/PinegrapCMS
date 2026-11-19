@@ -678,21 +678,22 @@ function ws_wtable_rows_after_sql($after, $after_id = 0)
 
 /**
  * One page of a table's rows in order, as read: the rows after a position,
- * and the position the next page starts after (null on the last page).
+ * and the position the next page starts after (null on the last page) with
+ * the id of that row (next_id), since two rows may share a position.
  *
  * @param int   $table_id
  * @param array $columns ws_wtable_columns()
  * @param int   $after    the position of the last row of the page before, 0 for the first
  * @param int   $limit    1-250
  * @param int   $after_id the id of that row, 0 when not known
- * @return array rows (ws_wtable_row_out()), next
+ * @return array rows (ws_wtable_row_out()), next, next_id
  */
 function ws_wtable_rows_page($table_id, $columns, $after, $limit, $after_id = 0)
 {
     $limit = max(1, min(250, (int) $limit));
 
     if (!ws_wtables_ready() || ((int) $table_id <= 0)) {
-        return array('rows' => array(), 'next' => null);
+        return array('rows' => array(), 'next' => null, 'next_id' => null);
     }
 
     $records = (array) db_items("SELECT * FROM ws_wtable_rows WHERE table_id = '" . (int) $table_id . "'
@@ -705,7 +706,9 @@ function ws_wtable_rows_page($table_id, $columns, $after, $limit, $after_id = 0)
         $rows[] = ws_wtable_row_out($record, $columns, $bound);
     }
 
-    return array('rows' => $rows, 'next' => ($more && !empty($rows)) ? (int) $rows[count($rows) - 1]['position'] : null);
+    $last = ($more && !empty($rows)) ? $rows[count($rows) - 1] : null;
+
+    return array('rows' => $rows, 'next' => $last ? (int) $last['position'] : null, 'next_id' => $last ? (int) $last['id'] : null);
 }
 
 /* ---------------------------------------------------------------------------
