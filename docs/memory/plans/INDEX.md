@@ -37,7 +37,6 @@
 - channel-commands-steps-2.md: Plan channel-commands, steps CC7 to CC12 and the close-out: /oluştur for a contact and a row, an ERP account and an event, /kargo, application arguments (a column), an agent's command
 - channel-commands-steps.md: Plan channel-commands, steps CC1 to CC6: the registry with no change of behaviour, the gate and grouped /help, /hatırlat and /özet, /onay /güncelleme /checkin, flows in the / list, the channel's own
 - channel-commands.md: Plan (owner 2026-11-16): channel commands grown in steps CC1 to CC12: a registry entry per command, commands for what has a button, records, flows in the / list, application arguments, agents
-- channel-decisions-files-tabs.md: Plan (owner 2026-11-19): a channel's Decisions tab as one list of wide cards, long ones folded, no sideways scroll; its Files tab with a count and a gallery light with hundreds of pictures; TD1, TD2
 - claude-plugin-bundle-steps.md: Plan claude-plugin-bundle, steps CB1 to CB5: the census and checks (done), the bundle in the plugin's repository, the "Connect to Claude" button now (CB4a), the listing, what waits for 2026.11.0
 - claude-plugin-bundle.md: Plan (owner 2026-11-14): a Pinegrap plugin bundle for Claude's directory: a site's MCP server connected by its address, skills for common site work, the listing; the repository is the owner's to open
 - click-scroll-map-features-2.md: Plan click-scroll-map, features C16 to C23: the switch and its empty state, the "Clicks and scrolling" section of Visitors, a page's own view, the report route, the designer's "Clicks" layer
