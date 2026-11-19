@@ -26,7 +26,7 @@ description: Plan prototype-comments, steps PN1 to PN5: the table and the guest'
   - A `pg_privacy_erase_tables()` entry for a deleted user's answers (the name replaced, `user_id` set to 0): the screen that first writes a staff answer is here (architect, agent channel message 6207).
   - Features: P12 to P15.
 
-- PN4 (S) after PN3: the task. "Make a task" through `ws_followup_task_open()` with `$once` false. Tests: the task's fields, no button with the Workspace off. Features: P16.
+- PN4 (S) after PN3: the task. In progress. "Make a task" through `ws_followup_task_open()` with `$once` false. Tests: the task's fields, no button with the Workspace off. Features: P16.
 
 - PN5 (S) close-out: every P number checked against the code with its PR; `designer/prototype-comments.md`; this plan's three files deleted and its line in `plans/website-features.md` removed.
 
