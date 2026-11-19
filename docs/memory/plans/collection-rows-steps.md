@@ -27,9 +27,9 @@ description: Plan collection-rows, steps RW1 to RW7: the kind and writer, the pa
   - Tests: `rows` on a single read, codes on a list read, a foreign code and a code of another record's list 422, the import's skipped cell; `php tools/check_api_schema.php`.
   - Features: R13, R14, R19.
 
-- RW5 (M) after RW2: the site form.
+- RW5 (M) after RW2: the site form. Done: #10455.
   - Existing files: `includes/fn/custom_form.php` (the branch of RW1 now draws the editor in Bootstrap 5.3.8 markup), `custom_form.php` (the writer called after its record is saved).
-  - Pictures: the editor on a designed form at 1440 and 390, light and dark. To the owner.
+  - The pictures to the owner are dropped (agent channel message 9546); unit tests pin the behaviour.
   - Features: R16.
 
 - RW6 (S) after RW1: the list on the record page. Done: #9897.

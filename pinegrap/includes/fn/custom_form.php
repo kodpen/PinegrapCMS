@@ -1525,7 +1525,7 @@ function pg_cf_field_map($page_id)
 
     $map = array();
     foreach ((array)db_items(
-        "SELECT id, name, label, type, required, multiple, maxlength, size,
+        "SELECT id, page_id, name, label, type, required, multiple, maxlength, size,
                 `rows`, cols, default_value, use_folder_name_for_default_value,
                 contact_field, office_use_only, wysiwyg, information, rss_field"
          . (pg_cf_form_fields_has_column('validation_regex')
@@ -2232,8 +2232,9 @@ function pg_cf_apply_field_bindings(&$tree, $map, $lf = null, $cf_folder_id = 0,
         // just the input would leave its label and an empty Bootstrap block
         // behind, so the label pointing at it goes too, and a wrapper left
         // with nothing in it goes after them. A rows field
-        // (includes/fn/collection_rows.php) has no control on a site form
-        // yet, for staff either: it goes the same way.
+        // (includes/fn/collection_rows.php) that the visitor may fill is
+        // replaced by the rows editor, which prints its own label; one that
+        // cannot draw goes the same way as an office-use-only field.
         $drop_ids = array();
         foreach ($tree['children'] as $child) {
             if (!is_array($child)) continue;
@@ -2245,9 +2246,10 @@ function pg_cf_apply_field_bindings(&$tree, $map, $lf = null, $cf_folder_id = 0,
             if ($ck === '' || !isset($map[$ck])) continue;
             $rows_kind = pg_coll_field_kind(isset($map[$ck]['collection_kind']) ? $map[$ck]['collection_kind'] : '',
                 isset($map[$ck]['type']) ? (string)$map[$ck]['type'] : '') === 'rows';
-            if (!$rows_kind && ($staff
-                || (empty($map[$ck]['office_use_only']) && empty($map[$ck]['_pg_cf_sms_dropped'])))) continue;
-            $drop_ids[] = array('node' => $child, 'id' => isset($ca['id']) ? (string)$ca['id'] : '');
+            $shown = $staff || (empty($map[$ck]['office_use_only']) && empty($map[$ck]['_pg_cf_sms_dropped']));
+            if (!$rows_kind && $shown) continue;
+            $drop_ids[] = array('node' => $child, 'id' => isset($ca['id']) ? (string)$ca['id'] : '',
+                'html' => ($rows_kind && $shown) ? pg_coll_rows_site_editor($map[$ck], $lf) : '');
         }
         if (!empty($drop_ids)) {
             $labels_for = array();
@@ -2256,7 +2258,15 @@ function pg_cf_apply_field_bindings(&$tree, $map, $lf = null, $cf_folder_id = 0,
             foreach ($tree['children'] as $child) {
                 if (!is_array($child)) { $kept[] = $child; continue; }
                 $skip = false;
-                foreach ($drop_ids as $d) { if ($child === $d['node']) { $skip = true; break; } }
+                foreach ($drop_ids as $d) {
+                    if ($child !== $d['node']) continue;
+                    $skip = true;
+                    if ($d['html'] !== '') {
+                        $kept[] = array('type' => 'content', 'children' => array(),
+                            'props' => array('contentType' => 'custom_html', 'html' => $d['html']));
+                    }
+                    break;
+                }
                 if (!$skip && isset($child['props']['tag'])
                     && strtolower((string)$child['props']['tag']) === 'label') {
                     $la = _pg_cf_node_attrs($child);

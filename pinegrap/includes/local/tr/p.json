@@ -1690,6 +1690,7 @@
     "Please Enter Values Here": "Lütfen Değerleri Buraya Giriniz",
     "Please Wait": "Lütfen Bekleyin",
     "Please add an option.": "Lütfen bir seçenek ekleyin.",
+    "Please add at least one row to {var:1}": "Lütfen {var:1} alanına en az bir satır ekleyin",
     "Please add one \"Use Page\" system region before continuing.": "Devam etmeden önce bir \"Sayfayı Kullan\" sistem bölgesi ekleyin.",
     "Please agree to how your details are kept.": "Lütfen bilgilerinizin nasıl saklanacağını onaylayın.",
     "Please allow pop-up windows for this site to print barcodes.": "Barkod yazdırmak için bu site adına açılır pencerelere izin verin.",
