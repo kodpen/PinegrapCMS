@@ -1104,6 +1104,8 @@
     "Changed": "Değişti",
     "Changed at {var:1}": "{var:1} tarafında son değişiklik",
     "Changed by Pinegrap AI": "Pinegrap AI değiştirdi",
+    "Changed in all {var} elements": "{var} öğenin hepsinde değişti",
+    "Changed in {var:1} of {var:2} elements": "{var:2} öğenin {var:1} tanesinde değişti",
     "Changed invitation": "Değişen davet",
     "Changed last": "Son değişenler",
     "Changed on Cloudflare": "Cloudflare'da değiştirilmiş",
