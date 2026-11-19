@@ -15,7 +15,7 @@ writes every string as an inline text cell and never a formula.
 
 ## Why does it matter?
 
-PHPExcel, which wrote the sheets before #PRNUM, typed a string starting with
+PHPExcel, which wrote the sheets before #10502, typed a string starting with
 `=` as a formula and the error words (`#N/A` …) as an error through its
 default binder. A checkout name like `=HYPERLINK("http://x.test","a")` was
 saved as a live formula and reached Paraşüt as its result; explicit text

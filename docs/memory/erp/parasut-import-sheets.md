@@ -6,7 +6,7 @@ module: parasut_sheet
 
 ## Who writes a Paraşüt sheet?
 - Orders > Export for Paraşüt Selected (`edit_orders.php`): both sheets in one zip. The ERP export's Paraşüt profiles (`includes/erp/export.php`, `erp_export_write_xlsx()`): one sheet each.
-- Both through `pg_xlsx_write_layout()` (`includes/fn/xlsx_write.php`) with `pg_parasut_sheet_layout('invoices' | 'contacts')` (`includes/fn/parasut_sheet.php`). Before #PRNUM the orders export filled `includes/phpexcel/templates/*.xlsx` with PHPExcel and the ERP export rewrote the same files' worksheet as a zip.
+- Both through `pg_xlsx_write_layout()` (`includes/fn/xlsx_write.php`) with `pg_parasut_sheet_layout('invoices' | 'contacts')` (`includes/fn/parasut_sheet.php`). Before #10502 the orders export filled `includes/phpexcel/templates/*.xlsx` with PHPExcel and the ERP export rewrote the same files' worksheet as a zip.
 
 ## What is the head?
 - Row 1 Paraşüt's help note (merged A1:F1 invoices, A1:E1 contacts, with the template's row height), row 2 empty, row 3 the headings in Paraşüt's Turkish words; data from row 4 (`PG_PARASUT_SHEET_FIRST_ROW`). The column widths are the templates'. The texts stay Turkish in any panel language: they are Paraşüt's, not ours.

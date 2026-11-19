@@ -4,7 +4,7 @@ description: The bundled PHPExcel (includes/phpexcel, 1.8.x, no longer maintaine
 ---
 
 ## Which code loads includes/phpexcel?
-- No export: the Parasut export of Orders and the ERP export are written by the shared xlsx writer since #PRNUM (`erp/parasut-import-sheets.md`); `includes/phpexcel/templates/` is read only by `tests/phpexcel_library_php85_test.php`.
+- No export: the Parasut export of Orders and the ERP export are written by the shared xlsx writer since #10502 (`erp/parasut-import-sheets.md`); `includes/phpexcel/templates/` is read only by `tests/phpexcel_library_php85_test.php`.
 - The product import (`import_products_f.php`) and the bank statement import (`includes/erp/bank_import.php`): .xlsx, .xls and .ods read cell by cell (Excel2007, Excel5, OOCalc readers).
 - The CSV reader and writer, the Excel5 writer, charts and the PDF and HTML writers are not used by the product.
 
