@@ -99,3 +99,26 @@ function test_settings_tool_and_import_pages_take_the_edit_measure()
 	pg_assert_contains("body.pg-measure-edit:has(#pg-chat-root) .row > .order-3 > nav.buttons.navigation > .container {\n    margin-inline-end: var(--pg-chat-clearance);", look_page_widths_test_source('assets/css/backend.src.css'), 'the save bar buttons end before the chat launcher');
 	pg_assert_contains("body.pg-measure-edit.pg-measure-single #content {\n  max-width: calc(var(--pg-measure-form) + 2rem);", look_page_widths_test_block(), 'a one-column page is the form column wide');
 }
+
+function test_communication_tab_strip_sits_centred_in_the_window()
+{
+	$css = look_page_widths_test_source('assets/css/backend.src.css');
+
+	pg_assert_contains(".pg-messages-tabs {\n  display: flex;", $css, 'the strip is a flex row');
+	pg_assert_contains(".pg-messages-tabs > .pg-seg {\n  margin-inline: auto;\n}", $css, 'the segmented control is centred in it, still scrollable from its first tab');
+	pg_assert_contains("  .pg-messages-tabs .pg-seg {\n    display: flex;\n    flex: 1 1 auto;", $css, 'on a phone the strip fills the line as before');
+	pg_assert_contains("body.pg-measure-list #content {\n  width: fit-content;", $css, 'a list box is fit-content');
+	pg_assert_contains("  max-width: 100%;\n  margin-inline: auto;\n}", $css, 'and centred, so its centre is the window\'s');
+
+	// Every screen printing the strip has a #content centred in the window:
+	// the full width, or the list measure (fit-content, auto margins). An edit
+	// measure with a section rail would shift the centre, so none is allowed.
+	$screens = array('messages_mail', 'view_email_campaigns', 'messages_sends', 'view_email_campaign_profiles');
+
+	foreach ($screens as $screen) {
+		$source = look_page_widths_test_source($screen . '.php');
+		pg_assert_contains('pg_messages_tab_strip_for(', $source, $screen . ' prints the strip');
+		pg_assert_true(strpos($source, 'pg-measure-edit') === false && strpos($source, 'pg-has-rail') === false, $screen . ' keeps its content box centred');
+	}
+	pg_assert_true(strpos(look_page_widths_test_source('includes/fn/messages_area.php'), 'pg-measure-') === false, 'a new tab screen fills the window');
+}

@@ -11,7 +11,8 @@ module: messages_area
 
 ## How is the tab strip drawn?
 - `pg_messages_tab_strip_for($key, $user)` prints `nav.pg-messages-tabs` > `.pg-seg` of links, the open one `is-active` with `aria-current="page"` (MA12 #9363; its look: `messages-area-look.md`); a tab the viewer may not open is left out, and with fewer than two tabs no strip is drawn. Links, not `role=tab`: each tab is an address.
-- A new tab screen uses `pg_messages_tab_page()` (heading "Communication", the strip, the body, the footer). An old screen inside the shell prints the strip above its toolbar.
+- A new tab screen uses `pg_messages_tab_page()` (heading "Communication", the strip, the body, the footer). An old screen inside the shell prints it first in `#content`, notices and toolbar under it.
+- Centred in the window on every tab: `area-tab-strip-centred.md`.
 
 ## Which old screens sit inside the shell?
 - Campaigns tab: `view_email_campaigns.php` (below). My Campaign Profiles is reached from Automatic sends' note until MA9.
