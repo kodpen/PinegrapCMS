@@ -1354,6 +1354,7 @@
     "For an agent that runs on a model.": "Bir modelde çalışan ajan için.",
     "For an agent that starts work on each knock. A knock starts a new run; it never wakes a session that is already open.": "Her dürtmede işe yeniden başlayan bir ajan için. Her dürtme yeni bir çalışma başlatır; açık olan bir oturumu asla uyandırmaz.",
     "For an invoice, a team or a course you would rather not pay for online. We answer within a working day and open the course for you.": "Fatura, ekip ya da çevrim içi ödemek istemediğiniz bir kurs için. Bir iş günü içinde yanıtlar ve kursu sizin için açarız.",
+    "For any other account, publish the application and have it verified by Google; for this scope Google also asks for a security assessment.": "Diğer hesaplar için uygulamayı yayınlayıp Google'a doğrulatın; Google bu kapsam için ayrıca bir güvenlik değerlendirmesi ister.",
     "For any other project (Bootstrap 6, Tailwind, your own CSS). Its CSS and JS files come in as they are, framework included; nothing is added.": "Diğer her proje için (Bootstrap 6, Tailwind, kendi CSS'iniz). CSS ve JS dosyaları çatısıyla birlikte olduğu gibi gelir; üstüne bir şey eklenmez.",
     "For anyone over forty, or with heart disease in the family.": "Kırk yaş üstü herkes ya da ailesinde kalp hastalığı olanlar için.",
     "For anyone who always wanted to try; no experience needed.": "Hep denemek isteyen herkes için; deneyim gerekmez.",
