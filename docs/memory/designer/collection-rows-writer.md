@@ -8,7 +8,7 @@ module: collection_rows
 - A text box of a collection form with the Kind "Rows" (`rows` in `pg_coll_kinds()`, twin `_CF_KINDS`). It names a child collection in `form_fields.reference_page_id` (`pg_coll_field_reference()` keeps it as for a reference; no schema).
 - The Form Field panel's Kind offers it with a collection picker: only forms used as a collection, never this form (`_swFormOptions(cur, skip, true)`; `list_custom_forms` carries `collection`).
 - A row is a record of the child collection made by the rows writer; it stands in one record's list only. The parent's value is the rows' reference codes in order, joined ", " like a reference text box (`pg_coll_rows_value()`, read back by `pg_coll_rows_codes()`). The child needs no link or order field.
-- Plan and owner's decision on delete: `plans/collection-rows.md` (until its close-out).
+- Decisions, the R numbers with their PRs and what is still open: `collection-rows.md`.
 
 ## What can a rows field draw?
 - `pg_coll_rows_spec()` (pure; `pg_coll_rows_spec_for()` reads the child with `pg_coll_rows_child()`): the child's page and the fields the table takes (text box, text area that is not rich text, pick list, check box, date, time; never a rows field: no rows inside rows), the rest in `others`.

@@ -17,7 +17,6 @@ priority: 6
 - The rules every step keeps: `plans/website-features-rules.md`. The existing files several plans touch: `plans/website-features-shared-files.md`.
 
 ## Which plans are there, in the proposed order?
-- `collection-rows.md`: rows inside a record (a recipe's steps), edited on the record's own form.
 - `click-scroll-map.md`: which links and buttons of a page are clicked and how far visitors scroll.
 - `prototype-comments.md`: a customer's pinned comments on a shared prototype.
 - `visitor-push.md`: notifications a visitor without an account subscribes to.
