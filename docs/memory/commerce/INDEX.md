@@ -101,6 +101,7 @@
 - currency-names-display.md: Stored currency names shown through pg_currency_label() in the panel language; the currency list's rate with the panel's separators (#4430)
 - customer-value-groups-csv-api.md: What the Customers Report hands on: a contact group from a cell of the groups table, the top customers CSV, GET /reports/customer-value and who gets names (#10297)
 - customer-value-report-screen.md: Customers Report screen (view_customer_report.php, Reports menu): periods, tiles, months, cohorts, groups, top customers, who sees names, states before data (#10020)
+- customer-value-report.md: Customers Report (customer value: repeat purchase, value per customer, cohorts, customer groups) as built: its parts, the decisions that bind it, what was left out, each feature U1-U15 with its PR [decision: here]
 - customer-value-summary.md: Customer value summary (config_text customer_values): what counts, the customer key, the rebuild in the general job, the summary shape, the 200k-order measurement (#9995)
 - delivery-date-error-answer.md: get_delivery_date() (shipping.php) always answers with a delivery_date key, '' on every error, because its seven callers read it without a check
 - edit-product-undrawn-columns-kept.md: Edit Product's save leaves out the shipping, customs, zone, gift card and unlabelled custom-field columns the screen does not draw.

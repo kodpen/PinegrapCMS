@@ -757,6 +757,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - commerce/course-gate.md: The course gate in get_page.php: a lesson not open yet sends the member to the classroom page with a one-time notice; the "Courses" switch reader; the first-open row
 - commerce/course-screen.md: The Courses screen (view_courses.php, edit_course.php): switch and menu link, who opens it, lessons and their save, problems named (Z17), learners, CSV, Reset progress
 - commerce/course-tables.md: Courses' data (2026.11.0, step 11.0.234): the course, course_lesson and course_progress tables, the open-lesson rule, the enrolment day, rows written once, the certificate code
+- commerce/customer-value-report.md: Customers Report (customer value: repeat purchase, value per customer, cohorts, customer groups) as built: its parts, the decisions that bind it, what was left out, each feature U1-U15 with its PR
 - commerce/gift-card-line-credit-cap.md: Store credit and plain gift cards together pay at most the part of a checkout total that is not gift card lines (pg_gift_card_applied_discount), #10258, #10267
 - commerce/gift-card-part-owed.md: How an order's gift card part is counted (architect 2026-11-17, #10259, #10260): the cards gave SUM(applied_gift_cards.amount); a return gave back order_refunds rows of type return_gift_card
 - commerce/merchant-center-push.md: Per-product push to Google Merchant Center on the outbound marketplace layer (#4389, #4423): managed provider, mapping from the feed, queue, supplemental source
