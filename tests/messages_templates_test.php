@@ -132,6 +132,34 @@ function test_messages_templates_whatsapp_card()
 	pg_assert_contains('Meta &lt;said&gt; no', $html, 'a failed read, escaped');
 }
 
+function test_messages_templates_whatsapp_card_opens_the_designer()
+{
+	$templates = messages_templates_test_whatsapp();
+
+	foreach ($templates as $index => $template) {
+		$templates[$index]['id'] = (string) ($index + 11);
+	}
+
+	$rows = pg_messages_template_whatsapp_rows($templates);
+	pg_assert_same(array(11, 12, 13, 14, 15), array_column($rows, 'id'), 'each row keeps its template\'s id');
+
+	$state = array('sub' => 'Read', 'error' => '', 'refresh' => '', 'token' => '', 'settings' => 'settings.php#pgset-whatsapp', 'empty' => 'None', 'designer' => 'whatsapp_template.php');
+	$html = pg_messages_template_whatsapp_card($rows, $state);
+	pg_assert_contains('href="whatsapp_template.php?id=15"', $html, 'a draft opens in the designer');
+	pg_assert_contains('href="whatsapp_template.php?id=12"', $html, 'a rejected template opens in the designer');
+	pg_assert_contains('<a class="pg-button pg-button-sm" href="whatsapp_template.php">', $html, 'New template opens an empty designer');
+	pg_assert_contains('href="settings.php#pgset-whatsapp"', $html, 'the way to the settings stays');
+
+	$state['refresh'] = 'messages_templates.php';
+	$html = pg_messages_template_whatsapp_card($rows, $state);
+	pg_assert_contains('value="whatsapp_refresh"', $html, 'Refresh beside New template');
+	pg_assert_contains('href="whatsapp_template.php"', $html, 'New template beside Refresh');
+
+	$state['designer'] = '';
+	$html = pg_messages_template_whatsapp_card($rows, $state);
+	pg_assert_false(strpos($html, 'whatsapp_template.php') !== false, 'no designer for a campaign maker');
+}
+
 function test_messages_templates_email_designs_card()
 {
 	$rows = pg_messages_template_email_rows(array(

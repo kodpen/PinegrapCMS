@@ -49,8 +49,15 @@ $liveform = new liveform('workspace_meeting_link');
 $screen_url = URL_SCHEME . HOSTNAME_SETTING . PATH . SOFTWARE_DIRECTORY . '/workspace_meeting_link.php';
 
 $user_id = (int) $user['id'];
-$target = pg_booking_link_short_target($member, pg_booking_key(), PATH);
-$short = pg_booking_link_short_link($target);
+$target = pg_booking_link_short_target($member, pg_booking_key(), PATH, SOFTWARE_DIRECTORY);
+$short = pg_booking_link_short_link(array($target, pg_booking_link_short_target($member, pg_booking_key(), PATH, '')));
+
+// A short address saved by the screen's first version points at the site's
+// root, where the page is not: it is pointed at the link's own path.
+if ($short && ((string) $short['url'] !== $target)) {
+    db_q("UPDATE short_links SET url = ? WHERE id = ?", array($target, (string) (int) $short['id']));
+    $short['url'] = $target;
+}
 
 /* ---------------------------------------------------------------------------
    Writes
