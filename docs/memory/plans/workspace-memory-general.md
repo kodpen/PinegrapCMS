@@ -1,6 +1,6 @@
 ---
 name: workspace-memory-general
-description: Plan (owner 2026-11-19): a general memory shared by the agent channels, records grouped by project and listed as rows, so a new agent channel knows what the old one knew; polls 150-152 answered; GM1-GM4
+description: Plan (owner 2026-11-19): a general memory shared by the agent channels, records grouped by project and listed as rows; decisions read across agent channels; polls 150-152 answered; GM1-GM4
 ---
 
 ## What did the owner ask?
