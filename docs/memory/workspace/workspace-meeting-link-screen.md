@@ -23,4 +23,8 @@ module: booking_link_screen
 ## Where is the meeting address saved?
 - The Meeting address card posts to `pg_booking_link_meeting_url_save()` (cleaned by `ws_meeting_url_clean()`, empty is none); a wrong address comes back as the field's error.
 
-Test: `tests/booking_link_screen_test.php`. Link and code: `docs/memory/commerce/booking-link-code.md`.
+## Which API route reads it?
+- `GET /workspace/meeting-link` (`workspace.meeting_link.get`, `includes/workspace/api_meeting_link.php`, #10344): `bookable`, `link_url` and `short_url` (null for none), `meeting_url` ('' for none), `services` `{id, name, length_minutes, price, offered, reason}` (price in minor units, reason '' or `deposit`), for a team device client.
+- `workspace:read`, `ws_api_person_only()` (a key 403); no booking staff 404 `not_found`, as the screen. Read only: it does not put an old short link's path right, the screen does. Pure answer: `ws_api_meeting_link_present()`.
+
+Test: `tests/booking_link_screen_test.php`, `tests/workspace_api_meeting_link_test.php`. Link and code: `docs/memory/commerce/booking-link-code.md`.
