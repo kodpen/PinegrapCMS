@@ -89,6 +89,8 @@
 - counter-sale-cart-session.md: Counter sale (add_order.php): cart in its own session key, born a local order; what completion writes; quantity 0 to 9999, lowering never refused for stock; a deleted product's line name
 - counter-sale-cash-and-add-quantity.md: Counter sale (add_order.php): cash received short of the total is refused before the sale is claimed; the next product's quantity is a whole 1-9999 and a line never passes 9999 (#5772, #5774)
 - counter-sale-keyboard-focus.md: Create Order screen (add_order.js): focus kept on the cart row, quick-amount chip and customer card when a server answer redraws them; Enter in a quantity box keeps the box
+- counter-sale-site-line-stages.md: A counter sale (Create Order, POST /orders) runs the site checkout's line stages for the buyer's account; rights follow pg_order_rights_user_id(); gift cards are refused at the counter (#10376)
+- counter-sale-tax-switched-off.md: With the Commerce tax off a counter sale charges the price and no VAT, as the site's checkout does; one rate rule for both doors, pg_order_line_tax_rate() (#10377)
 - country-names-display.md: Country names on screen through pg_geo_country_label() and pg_geo_sort_by_label() in the current language; the starter dumps' corrected country rows (#2522) [decision: decisions-made-product-20.md]
 - country-names-in-addresses.md: The order view's address blocks and the address book name the stored country code in the site language; the country tokens keep the code
 - course-gate.md: The course gate in get_page.php: a lesson not open yet sends the member to the classroom page with a one-time notice; the "Courses" switch reader; the first-open row [decision: here]
