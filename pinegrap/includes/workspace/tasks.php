@@ -1167,6 +1167,18 @@ function ws_tasks_agent_out_sql($column = 't.channel_id', $agents = null)
 }
 
 /**
+ * A count of the rows a condition keeps, for a SELECT that counts other rows
+ * beside it: COUNT(*) when there is no condition. Pure.
+ *
+ * @param string $condition ws_tasks_agent_out_sql(), '' for none
+ * @return string
+ */
+function ws_tasks_agent_count_sql($condition)
+{
+    return ((string) $condition === '') ? 'COUNT(*)' : 'COALESCE(SUM(CASE WHEN ' . $condition . ' THEN 1 ELSE 0 END), 0)';
+}
+
+/**
  * Whether ws_tasks_agent_rule() keeps a task in this channel (a task in no
  * channel is no agent channel's task).
  *
