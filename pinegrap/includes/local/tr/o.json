@@ -977,6 +977,7 @@
     "Only a waiting request of a push door can be knocked, by the person who asked or an administrator.": "Yalnızca gönderim kapılı bir ajanın bekleyen isteği için kapı çalınabilir; bunu isteyen kişi ya da bir yönetici yapabilir.",
     "Only add Comment if Submitted Form was updated": "Yalnızca Gönderi Formu güncellendiyse Yorum ekleyin",
     "Only addresses on the same host as the website URL are read, at most {var:1} items.": "Yalnızca web sitesi URL'si ile aynı sunucudaki adresler okunur, en çok {var:1} öğe.",
+    "Only administrators and designers can change a release bundle.": "Bir yayın paketini yalnızca yöneticiler ve tasarımcılar değiştirebilir.",
     "Only administrators and designers can make a release bundle.": "Yayın paketini yalnızca yöneticiler ve tasarımcılar oluşturabilir.",
     "Only administrators and designers can publish a release bundle.": "Yayın paketini yalnızca yöneticiler ve tasarımcılar yayınlayabilir.",
     "Only administrators and designers can share a dashboard layout.": "Pano düzenini yalnız yöneticiler ve tasarımcılar paylaşabilir.",
