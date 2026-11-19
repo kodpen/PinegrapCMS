@@ -4390,10 +4390,18 @@ function ws_handle_action($action, $request)
                 return ws_action_error($channel);
             }
 
-            return ws_action_ok(array(
-                'entries'  => array_map('ws_memory_present', ws_memory_rows($channel['id'])),
-                'can_post' => ws_memory_can_write($viewer, $channel),
-            ));
+            // In an agent channel, for whoever keeps it, the general memory
+            // comes first as its own part; a channel's records move there.
+            $parts = array();
+            $general = !ws_memory_is_general($channel, 'id') && ws_memory_brief_general($viewer, $channel);
+
+            if ($general) {
+                $parts[] = ws_memory_panel_part('general', 0, true);
+            }
+
+            $parts[] = ws_memory_panel_part(ws_memory_is_general($channel, 'id') ? 'general' : 'channel', $channel['id'], ws_memory_can_write($viewer, $channel), $general);
+
+            return ws_action_ok(array('parts' => $parts));
 
         case 'ws_memory_save':
             $channel = ws_memory_action_channel($viewer, $request);
@@ -4446,6 +4454,24 @@ function ws_handle_action($action, $request)
             $result = ws_memory_delete($viewer, $row);
 
             return $result['ok'] ? ws_action_ok() : ws_action_error($result['error']);
+
+        // A channel's record moved to the general memory (GM2's check).
+        case 'ws_memory_move':
+            $row = ws_memory_row((int) ($request['id'] ?? 0));
+
+            if (!$row || !ws_memory_can_read($viewer, $row)) {
+                return ws_action_error(lang('That memory entry could not be found.'));
+            }
+
+            $check = ws_memory_move_check($viewer, $row);
+
+            if (!$check['ok']) {
+                return ws_action_error($check['error']);
+            }
+
+            ws_memory_move_general($row, 'user', $viewer['id']);
+
+            return ws_action_ok(array('entry' => ws_memory_present(ws_memory_row($row['id']))));
 
         case 'ws_channel_files':
             $channel = ws_action_channel($viewer, $request);

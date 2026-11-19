@@ -330,7 +330,7 @@ $pg_settings_cards[] = '
         if ($page_rebuild_ready) {
             $output_page_rebuild_field = '
                             <div class="col-12 ">
-                                <button type="submit" name="submit_rebuild_pages" value="1" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . lang('Save and rebuild page HTML') . '</button>
+                                <button type="submit" name="submit_rebuild_pages" value="1" class="pg-button pg-button-quiet pg-button-sm"><i class="bi bi-arrow-repeat" aria-hidden="true"></i>' . lang('Save and rebuild page HTML') . '</button>
                                 <div class="form-text">' . lang('Page Design Studio pages keep the HTML drawn when they were last saved. This draws every page again from what was saved, so pages published before responsive images, or before a format was switched on or off, get the current picture markup. Their content, modified date and author do not change.') . '</div>
                             </div>';
         }
@@ -725,8 +725,8 @@ $pg_settings_cards[] = '
                                             </div>' : '') . '
                                         </div>
                                         <div class="col-12">
-                                            <button type="submit" name="submit_test_tsa" value="1" class="btn btn-sm btn-outline theme-secondary">
-                                                <i class="bi bi-clock-history me-1"></i>' . lang('Test The Time Stamp') . '
+                                            <button type="submit" name="submit_test_tsa" value="1" class="pg-button pg-button-quiet pg-button-sm">
+                                                <i class="bi bi-clock-history"></i>' . lang('Test The Time Stamp') . '
                                             </button>
                                             <div class="form-text">' . lang('Saves this card and then asks the authority to stamp a throwaway digest, so the answer describes what was just entered. No counter is spent beyond that one stamp.') . '</div>
                                         </div>

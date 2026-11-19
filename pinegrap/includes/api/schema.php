@@ -5389,7 +5389,8 @@ function api_schema() {
 				array('name' => 'audience',      'in' => 'body', 'type' => 'enum', 'values' => array('anyone', 'team'), 'required' => true, 'description' => 'anyone: whoever has the link; team: signed-in administrators, designers and managers.'),
 				array('name' => 'duration',      'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'How long the link opens, in seconds from now. Required for anyone.'),
 				array('name' => 'start_page_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'A draft page of the design the prototype opens on.'),
-				array('name' => 'password',      'in' => 'body', 'type' => 'string', 'max_length' => 128, 'secret' => true, 'description' => 'Asked before the prototype opens. 6 to 128 characters, taken as sent (not trimmed); spaces alone are refused.')
+				array('name' => 'password',      'in' => 'body', 'type' => 'string', 'max_length' => 128, 'secret' => true, 'description' => 'Asked before the prototype opens. 6 to 128 characters, taken as sent (not trimmed); spaces alone are refused.'),
+				array('name' => 'allow_comments', 'in' => 'body', 'type' => 'bool', 'default' => false, 'description' => 'Whoever opens the link can pin comments with a name on its pages and answer them. Off unless sent as true.')
 			)
 		),
 

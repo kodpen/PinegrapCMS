@@ -430,6 +430,7 @@
 - look-report-erp-screens.md: ERP Dashboard, Cash Flow, Profit and Aging on look A's report recipes (#9696): server-drawn figure cards, the tools rows, the profit chart on the report view, what stayed [decision: here]
 - look-report-screens.md: Report screens in look A (DL5e, #8981): order, visitor, shipping and ERP tax reports; head, strip, tools row, table frame, drawer, the choices made and what is not done
 - look-screen-widths.md: Root panel screens outside the look's widths (no pg-measure-edit, -list or -report, or a container of their own) on 2026-11-13, and the PR that took each (#9230, #9330, #9249) [decision: decisions-made-panel-7.md, decisions-made-panel-8.md]
+- look-settings-maintenance-security.md: Site Settings Maintenance, Firewall, Security and Features in look A (S5b of panel-old-screens): quiet small buttons, group labels, the auto-bans table, what stayed
 - look-settings-screens.md: Settings screens in look A (DL5d, #8952): dialog size, rail, head and foot; cards as a title over an inner card of rows, page and dialog; 32 px fields, switch; what is not done
 - look-shared-buttons.md: LM2 (#9680): the toolbar's primary pill and labelled text buttons as look A's .pg-button, the save bar's buttons by role; what was left and why [decision: here]
 - look-switch.md: The look's switch (#9197): .pg-switch and the settings card and report drawer .switch, one drawing: white 18 px thumb, accent gradient, focus ring, disabled; the missing thumb [decision: decisions-made-panel-7.md, decisions-made-panel-8.md, decisions-made-product-48.md]

@@ -10,7 +10,7 @@ description: Plan collection-rows, steps RW1 to RW7: the kind and writer, the pa
   - Tests, red first: the spec's refusals, the writer's order of writes, a foreign code refused, the limit, a refused row writing nothing, a failure midway leaving no row behind.
   - Features: R1 to R7, R15.
 
-- RW2 (M) after RW1: the editor on the panel's record screens.
+- RW2 (M) after RW1: the editor on the panel's record screens. Done: #9898.
   - Existing files: `includes/forms/submitted_form_form.php` (one branch in `pg_submitted_form_fields_markup()`), `add_submitted_form.php` and `edit_submitted_form.php` (the writer called once the record is written).
   - New: the renderer in the module, `assets/js/pg_collection_rows.js` (the table, the JSON field, the vendored SortableJS).
   - Pictures: an empty field, three rows, a refused row, a field the table does not take, a phone. To the owner; not marked ready before his look.

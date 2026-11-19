@@ -76,7 +76,7 @@ function test_prototype_links_plan_for_anyone_needs_an_expiry_of_at_most_ninety_
 
 	$plan = pg_proto_link_plan(prototype_links_test_input(), array(11), prototype_links_test_durations(), $now);
 	pg_assert_true($plan['ok']);
-	pg_assert_same(array('audience' => 'anyone', 'start_page_id' => 0, 'expires_at' => $now + 604800, 'password' => ''), $plan['link']);
+	pg_assert_same(array('audience' => 'anyone', 'start_page_id' => 0, 'expires_at' => $now + 604800, 'password' => '', 'allow_comments' => 0), $plan['link']);
 }
 
 function test_prototype_links_plan_for_the_team_may_have_no_expiry()

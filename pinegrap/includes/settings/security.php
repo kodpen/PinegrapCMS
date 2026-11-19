@@ -37,14 +37,14 @@ if ($form_limits_ready) {
                                                             <label for="' . $form_limit_input[0] . '" class="form-label">' . h($form_limit_input[1]) . '</label>
                                                             <label class="form-control form-adorn form-adorn-end">
                                                                 <span class="form-adorn-text" aria-hidden="true">' . h($form_limit_input[3]) . '</span>
-                                                                <input type="text" name="' . $form_limit_input[0] . '" id="' . $form_limit_input[0] . '" class="form-ghost" value="' . (int) $form_limit_input[2] . '" size="5" maxlength="5" inputmode="numeric" style="text-align: right;"/>
+                                                                <input type="text" name="' . $form_limit_input[0] . '" id="' . $form_limit_input[0] . '" class="form-ghost text-end" value="' . (int) $form_limit_input[2] . '" size="5" maxlength="5" inputmode="numeric"/>
                                                             </label>
                                                         </div>';
     }
 
     $output_form_limits = '
                                         <div class="col-12">
-                                            <div class="form-label fw-bold mb-1">' . lang('Form Submission Limits') . '</div>
+                                            <div class="pg-group-label mb-1">' . lang('Form Submission Limits') . '</div>
                                             <div class="form-text mt-0">' . lang('How many custom form submissions are accepted from one visitor address, and for one e-mail address or e-mail domain the form mails, subscribes or registers. A form refused by a limit is shown again with what was typed. Staff are not counted. 0 turns a limit off. The e-mail domain limit is off by default: every visitor with an address at that domain shares it, so a few submissions could refuse a whole provider such as gmail.com for an hour.') . '</div>
                                             <div class="row gy-5 mt-0">' . $form_limit_inputs . '
                                             </div>
@@ -64,7 +64,7 @@ $pg_settings_cards[] = '
         <div class="card">
             <div class="card-header bg-reset border-0 d-flex flex-wrap justify-content-between align-items-center">
                 <span class="pg-title-section">' . lang('Session & Password') . '</span>
-                <a href="view_sessions.php" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-shield-lock me-1"></i>' . lang('Sessions') . '</a>
+                <a href="view_sessions.php" class="pg-button pg-button-quiet pg-button-sm"><i class="bi bi-shield-lock"></i>' . lang('Sessions') . '</a>
             </div>
             <div class="card-body">
                 <div class="row gy-5">
@@ -230,7 +230,7 @@ if ($audit_retention_ready) {
         <div class="card">
             <div class="card-header bg-reset border-0 d-flex flex-wrap justify-content-between align-items-center">
                 <span class="pg-title-section">' . lang('Audit Trail') . '</span>
-                <a class="btn btn-sm btn-outline theme-secondary" href="view_audit_log.php">' . lang('Open it') . '</a>
+                <a class="pg-button pg-button-quiet pg-button-sm" href="view_audit_log.php">' . lang('Open it') . '</a>
             </div>
             <div class="card-body">
                 <div class="row gy-12">
@@ -238,7 +238,7 @@ if ($audit_retention_ready) {
                                             <label for="audit_log_retention_years" class="form-label">' . lang('Keep audit trail lines for') . '</label>
                                             <label class="form-control form-adorn form-adorn-end pg-f-sm">
                                                 <span class="form-adorn-text" aria-hidden="true">' . lang('years') . '</span>
-                                                <input type="text" name="audit_log_retention_years" id="audit_log_retention_years" class="form-ghost" value="' . (int) $audit_retention_years . '" size="3" maxlength="2" inputmode="numeric" style="text-align: right;"/>
+                                                <input type="text" name="audit_log_retention_years" id="audit_log_retention_years" class="form-ghost text-end" value="' . (int) $audit_retention_years . '" size="3" maxlength="2" inputmode="numeric"/>
                                             </label>
                                             <div class="form-text">' . h(lang(array('string' => 'Who changed what, with the values before and after. Older lines are removed by the general job once a day. 0 keeps every line; otherwise {var:1} to {var:2} years. The consent log keeps its history for {var:3} years, and always the answer in force.', 'vars' => array($audit_retention_limits['audit_min'], $audit_retention_limits['audit_max'], $audit_retention_limits['consent_years'])))) . '</div>
                                         </div>
@@ -298,7 +298,7 @@ $signin_not_ready = '<div class="alert theme-info mb-0 py-3 small" role="alert">
 // provider switched on whose application is incomplete stays hidden, and
 // the card says so instead of leaving the operator to wonder.
 $signin_state = function_exists('pg_signin_button_state') ? pg_signin_button_state() : array('shown' => array(), 'hidden' => array());
-$signin_state_html = '<div class="col-12"><div class="small mb-0">'
+$signin_state_html = '<div class="col-12"><div class="pg-text-meta mb-0">'
     . ($signin_state['shown']
         ? '<i class="bi bi-eye me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Buttons visitors see now, together and in this order on every sign-in, registration and membership screen: {var:1}', 'vars' => implode(', ', $signin_state['shown']))))
         : '<i class="bi bi-eye-slash me-1" aria-hidden="true"></i>' . h(lang('No sign-in button is shown to visitors now.')))
@@ -327,7 +327,7 @@ if ($signin_ready) {
                                                             ' . ($signin_microsoft_app_ready
                                                                 ? '<div class="alert theme-success py-3 small mb-3">' . h(lang('Work, school and personal Microsoft accounts sign in through the Microsoft application of Connected accounts.')) . '</div>'
                                                                 : '<div class="alert theme-warning py-3 small mb-3">' . h(lang('Set up the Microsoft application on Connected accounts first. Until then the button stays hidden.')) . '</div>') . '
-                                                            <a href="connections.php" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-plug me-1" aria-hidden="true"></i>' . h(lang('Connected accounts')) . '</a>
+                                                            <a href="connections.php" class="pg-button pg-button-quiet pg-button-sm"><i class="bi bi-plug" aria-hidden="true"></i>' . h(lang('Connected accounts')) . '</a>
                                                         </div>'
                                                         . $signin_redirect_field('signin_microsoft_redirect', lang('Redirect URI (add this as a further Web redirect URI to the Microsoft application)')) . '
                                                         <div class="col-12">
@@ -364,7 +364,7 @@ if ($signin_ready) {
                                                             ? '<div class="col-12"><div class="alert theme-warning py-3 small mb-0">' . h(lang('Fill in the Services ID, the Team ID, the Key ID and the private key. Until then the button stays hidden.')) . '</div></div>'
                                                             : '') . '
                                                         <div class="col-12">
-                                                            <ol class="small ps-5 mb-0">' . $signin_apple_steps . '</ol>
+                                                            <ol class="pg-text-meta ps-5 mb-0">' . $signin_apple_steps . '</ol>
                                                         </div>'
                                                         . $signin_redirect_field('signin_apple_redirect', lang('Return URL (add this to the Services ID)')) . '
                                                         <div class="col-12">
@@ -381,11 +381,11 @@ if ($signin_ready) {
                                                         </div>
                                                         <div class="col-12">
                                                             <label class="form-label" for="apple_private_key">' . lang('Private key (.p8)') . '</label>
-                                                            <textarea class="form-control font-monospace small" id="apple_private_key" name="apple_private_key" rows="4" autocomplete="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" placeholder="' . h($signin_apple_key_stored ? lang('Stored. Leave empty to keep it.') : '-----BEGIN PRIVATE KEY-----') . '"></textarea>
+                                                            <textarea class="form-control font-monospace" id="apple_private_key" name="apple_private_key" rows="4" autocomplete="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" placeholder="' . h($signin_apple_key_stored ? lang('Stored. Leave empty to keep it.') : '-----BEGIN PRIVATE KEY-----') . '"></textarea>
                                                             <div class="form-text">' . h(lang('Kept encrypted with the site\'s key and never shown again.')) . '</div>
                                                         </div>
                                                         <div class="col-12">
-                                                            <a class="btn btn-sm btn-outline theme-secondary" href="' . h(is_array($signin_apple_provider) ? $signin_apple_provider['console_url'] : '') . '" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Open the {var:1} console', 'vars' => 'Apple'))) . '</a>
+                                                            <a class="pg-button pg-button-quiet pg-button-sm" href="' . h(is_array($signin_apple_provider) ? $signin_apple_provider['console_url'] : '') . '" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>' . h(lang(array('string' => 'Open the {var:1} console', 'vars' => 'Apple'))) . '</a>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -458,7 +458,7 @@ $pg_settings_cards[] = '
                                                         <div class="pg-f-lg">
                                                             <label for="membership_expiration_warning_email_subject" class="form-label">' . lang('Subject') . '</label>
                                                             <input type="text" name="membership_expiration_warning_email_subject" id="membership_expiration_warning_email_subject" class="form-control" value="' . h($membership_expiration_warning_email_subject) . '"/>
-                                                            <div class="form-text text-end">' . lang('Member\'s Expiration Date will be appended to Subject') . '</div>
+                                                            <div class="form-text">' . lang('Member\'s Expiration Date will be appended to Subject') . '</div>
                                                         </div>
                                                         <div class="pg-f-lg">
                                                             <label for="membership_expiration_warning_email_page_id" class="form-label">' . lang('Page') . '</label>

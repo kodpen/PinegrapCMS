@@ -11,7 +11,7 @@ description: Plan prototype-comments, steps PN1 to PN5: the table and the guest'
   - Tests, red first: each refusal of the door (another session, no token, another origin, a page the link does not show, the limits), plain text kept, a place out of bounds refused.
   - Features: P7 to P11.
 
-- PN2 (M) after PN1: the viewer's comment mode.
+- PN2 (M) after PN1: the viewer's comment mode. Done: #10025.
   - Existing files: `prototype.php` (the frame branch draws with node marks for such a link only, `pg_designer_audit_render()`), `includes/fn/prototype.php` (`pg_proto_frame_inject()`: the pin click; `pg_proto_shell_html()`: the button, the box, the pins and threads), the Share prototype dialog and the API's link routes ("Allow comments").
   - Tests: no node mark without the flag, the frame's message taken only as a place.
   - The viewer reads one page's comments by page and link (`pg_proto_comments_of_link_page()`, idx_page), never the link's whole list on each page: resolved comments are kept, so that list grows (architect, agent channel message 6207).

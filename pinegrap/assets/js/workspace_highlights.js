@@ -1,8 +1,8 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Workspace - a reader's highlights on a message: the mini toolbar that
- * shows on a selection in a message's text ("For everyone", "For me"), the
+ * Workspace - a reader's highlights on a message: the toolbar that shows on
+ * a selection in a message's text ("Highlight for [everyone] [me]"), the
  * highlights drawn into the message's body in their maker's colour, and the
  * card that opens on one (who made it, for whom, the note; the note and
  * Remove for who may).
@@ -15,7 +15,8 @@
  * message's plain text it is (includes/workspace/highlights.php). This file
  * is the browser's twin of that plain text and of finding a quote in it:
  * fold(), plainFromHtml(), find(), occurrenceAt() and textMap() are pure and
- * read the server's fixtures under Node (tests/workspace_highlights_test.php).
+ * read the server's fixtures under Node (tests/workspace_highlights_test.php),
+ * as do the toolbar's barTop() and sentenceAround().
  * The body's text is never changed: a highlight is a <mark> around pieces of
  * text already drawn, and one whose quote is not in the drawn text is not
  * drawn.
@@ -331,12 +332,46 @@
         state.card = null;
     }
 
-    function place(box, rect, below) {
-        var top = below ? rect.bottom + window.scrollY + 8 : rect.top + window.scrollY - box.offsetHeight - 8;
+    /**
+     * The top edge, in page coordinates, of a box of the given height over
+     * rect (or under it when below), 8 px apart. Optional bounds (a visible
+     * rectangle, such as the message list's) keep it inside them: a place
+     * past their edge moves to that edge. Never above the page's top.
+     */
+    function barTop(rect, height, below, bounds, scrollY) {
+        var top = below ? rect.bottom + scrollY + 8 : rect.top + scrollY - height - 8;
+
+        if (bounds) {
+            top = Math.max(bounds.top + scrollY + 8, Math.min(top, bounds.bottom + scrollY - height - 8));
+        }
+
+        return Math.max(scrollY + 8, top);
+    }
+
+    function place(box, rect, below, bounds) {
         var left = Math.max(8, Math.min(rect.left + window.scrollX, window.scrollX + document.documentElement.clientWidth - box.offsetWidth - 8));
 
-        box.style.top = Math.max(window.scrollY + 8, top) + 'px';
+        box.style.top = barTop(rect, box.offsetHeight, below, bounds, window.scrollY) + 'px';
         box.style.left = left + 'px';
+    }
+
+    /**
+     * The words of a translated sentence before and after its placeholder,
+     * trimmed: "Highlight for {1}" gives ['Highlight for', ''], "{1} için
+     * vurgula" ['', 'için vurgula']. Without the placeholder the words lead.
+     */
+    function sentenceAround(sentence, holder) {
+        var text = String(sentence == null ? '' : sentence);
+        var at = text.indexOf(holder);
+        var trim = function (part) {
+            return part.split(holder).join('').replace(/^\s+|\s+$/g, '');
+        };
+
+        if (at < 0) {
+            return [trim(text), ''];
+        }
+
+        return [trim(text.slice(0, at)), trim(text.slice(at + holder.length))];
     }
 
     // A button of the panel's look that runs a function on a press.
@@ -540,12 +575,12 @@
 
         var message = spot.body.wsHlMessage;
         var tooLong = chars(spot.quote) > QUOTE_MAX;
-        var bar = h.el('div', 'ws-hl-bar btn-group');
+        var bar = h.el('div', 'ws-hl-bar pg-floatbar');
         bar.setAttribute('role', 'toolbar');
         bar.setAttribute('aria-label', h.t('hl_toolbar'));
 
-        var add = function (scope, label) {
-            var button = press('btn btn-sm btn-subtle theme-secondary', label, 'bi-highlighter', function () {
+        var add = function (parent, className, scope, label, name, hint) {
+            var button = press(className, label, '', function () {
                 var selection = window.getSelection();
 
                 closeBar();
@@ -557,19 +592,46 @@
                 send('ws_highlight_set', { message_id: message.id, quote: spot.quote, occurrence: spot.occurrence, scope: scope }, spot.body).catch(function () {});
             });
 
+            // The visible word is part of a sentence: the button's name is the
+            // whole sentence ("Highlight for everyone").
+            button.setAttribute('aria-label', name);
+            button.title = hint;
             button.disabled = tooLong;
-            bar.appendChild(button);
+            parent.appendChild(button);
         };
 
-        // "For everyone" only where the reader may react (H4).
+        // One sentence, the highlighter once at its start: "Highlight for
+        // [everyone] [me]", the pair (one segmented control) standing where
+        // the language's sentence puts it. Only "for me", a ghost button,
+        // where the reader may not react (H4).
+        var line = h.el('div', 'ws-hl-bar-line');
+
+        line.appendChild(h.icon('bi-highlighter', 'ws-hl-bar-icon'));
+
         if (message.can_react) {
-            add('all', h.t('hl_for_everyone'));
+            var holder = '\u0001';
+            var parts = sentenceAround(h.t('hl_bar_sentence', holder), holder);
+            var pair = h.el('div', 'pg-seg ws-hl-bar-pair');
+            var words = function (text) {
+                if (text) {
+                    line.appendChild(h.el('span', 'ws-hl-bar-text pg-text-2', text));
+                }
+            };
+
+            pair.setAttribute('role', 'group');
+            add(pair, 'pg-seg-item', 'all', h.t('hl_bar_word_everyone'), h.t('hl_bar_everyone'), h.t('hl_bar_everyone_hint'));
+            add(pair, 'pg-seg-item', 'me', h.t('hl_bar_word_me'), h.t('hl_bar_me'), h.t('hl_bar_me_hint'));
+            words(parts[0]);
+            line.appendChild(pair);
+            words(parts[1]);
+        } else {
+            add(line, 'pg-button pg-button-ghost pg-button-sm ws-hl-bar-one', 'me', h.t('hl_bar_me'), h.t('hl_bar_me'), h.t('hl_bar_me_hint'));
         }
 
-        add('me', h.t('hl_for_me'));
+        bar.appendChild(line);
 
         if (tooLong) {
-            bar.appendChild(h.el('span', 'ws-hl-bar-note small', h.t('hl_shorter')));
+            bar.appendChild(h.el('span', 'ws-hl-bar-note pg-text-meta', h.t('hl_shorter')));
         }
 
         // A press keeps the selection: the bar never takes the focus.
@@ -582,8 +644,13 @@
 
         var rect = spot.range.getBoundingClientRect();
         var touch = !!(h.touchScreen && h.touchScreen());
+        // The bar stays inside the visible message list, never over the
+        // composer or above the list, however far the selection runs.
+        var list = closest(spot.body, '.ws-pane-messages, .ws-messages');
+        var bounds = list ? list.getBoundingClientRect() : null;
+        var ceiling = bounds ? Math.max(0, bounds.top) : 0;
 
-        place(bar, rect, touch || rect.top < bar.offsetHeight + 16);
+        place(bar, rect, touch || rect.top - ceiling < bar.offsetHeight + 16, bounds);
     }
 
     function later() {
@@ -1019,7 +1086,7 @@
 
     var api = {
         fold: fold, plainFromHtml: plainFromHtml, find: find, occurrenceAt: occurrenceAt, textMap: textMap, piecesOf: piecesOf, attach: attach,
-        flashParam: flashParam, mineHref: mineHref, mineRemoveRequest: mineRemoveRequest, mineRemoveCount: mineRemoveCount, myList: myList
+        barTop: barTop, sentenceAround: sentenceAround, flashParam: flashParam, mineHref: mineHref, mineRemoveRequest: mineRemoveRequest, mineRemoveCount: mineRemoveCount, myList: myList
     };
 
     if (typeof window !== 'undefined') {

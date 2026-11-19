@@ -80,7 +80,7 @@ function test_settings_card_code_fields_are_named()
 
 	foreach ($jobs as $job) {
 		$id = 'cron_job_' . $job;
-		pg_assert_contains('<h5 id="' . $id . '_title">', $general, $id . ': its heading has an id');
+		pg_assert_contains('<h4 class="pg-group-label" id="' . $id . '_title">', $general, $id . ': its heading has an id');
 		pg_assert_contains('<textarea id="' . $id . '" aria-labelledby="' . $id . '_title">', $general, $id . ': its textarea is named by the heading');
 	}
 }

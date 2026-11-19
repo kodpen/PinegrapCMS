@@ -1075,6 +1075,21 @@ function pg_proto_rewrite_links($html, $classify, $strings = array())
 }
 
 /**
+ * Whether a frame is drawn for comments: with node marks (data-pg-node) and
+ * the comment script. Only a share link's frame, and only with the link's
+ * "Allow comments" on a site that keeps comments; the staff viewer (no link)
+ * and every served page stay as they are. Pure.
+ *
+ * @param array|null $link  prototype_links row, null for the staff viewer
+ * @param bool       $ready pg_proto_comments_ready()
+ * @return bool
+ */
+function pg_proto_frame_comment_mode($link, $ready)
+{
+    return (bool) $ready && is_array($link) && !empty($link['allow_comments']) && ((string) $link['allow_comments'] !== '0');
+}
+
+/**
  * The frame's own additions to a drawn page: robots and referrer meta tags,
  * the cookie and storage shim and the marks' styles at the start of the
  * head, the helper script at the end of the body. The script outlines the
@@ -1083,8 +1098,16 @@ function pg_proto_rewrite_links($html, $classify, $strings = array())
  * new tab, and says why a form does not send (the frame's sandbox stops the
  * submission itself).
  *
+ * With `comments` (a link's frame drawn for comments,
+ * pg_proto_frame_comment_mode()) the script also has the comment mode: while
+ * the viewer has it on, a click follows nothing and is posted to the viewer
+ * as a place (the nearest marked node and the click inside it as two
+ * percentages), and the pins the viewer sends are drawn over their nodes. The
+ * frame never gets a comment's name or text, only its number and place.
+ *
  * @param string $html
- * @param array  $strings forms, broken, draft
+ * @param array  $strings forms, broken, draft; comments (bool), pin (the
+ *                        pin's label, {n} for its number)
  * @param array  $cookies name => value the shim's jar starts with (the
  *                        cookie notice's answer)
  * @return string
@@ -1097,6 +1120,11 @@ function pg_proto_frame_inject($html, $strings, $cookies = array())
         'broken' => isset($strings['broken']) ? (string) $strings['broken'] : '',
         'draft' => isset($strings['draft']) ? (string) $strings['draft'] : '',
     );
+    $comments = !empty($strings['comments']);
+
+    if ($comments) {
+        $config['pin'] = isset($strings['pin']) ? (string) $strings['pin'] : '{n}';
+    }
 
     $jar = array();
 
@@ -1149,6 +1177,7 @@ function pg_proto_frame_inject($html, $strings, $cookies = array())
         . '.pg-proto-toast{position:fixed;left:50%;bottom:16px;z-index:2147483647;max-width:calc(100% - 32px);padding:8px 14px;border-radius:8px;background:rgba(33,37,41,.95);color:#fff;font:14px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif;opacity:0;pointer-events:none;transform:translate(-50%,12px);transition:opacity .2s,transform .2s}'
         . '.pg-proto-toast-on{opacity:1;transform:translate(-50%,0)}'
         . '@media (prefers-reduced-motion:reduce){.pg-proto-toast{transition:none}}'
+        . ($comments ? pg_proto_frame_comment_css() : '')
         . '</style>';
 
     $script = '<script id="pg-proto-frame">(function () {'
@@ -1160,6 +1189,7 @@ function pg_proto_frame_inject($html, $strings, $cookies = array())
         . 'toastEl.textContent = text; toastEl.classList.add("pg-proto-toast-on");'
         . 'clearTimeout(toastTimer); toastTimer = setTimeout(function () { toastEl.classList.remove("pg-proto-toast-on"); }, 2600);'
         . '}'
+        . ($comments ? 'var pgComment = { on: false };document.addEventListener("click", function (e) { if (pgComment.on && pgComment.click) pgComment.click(e); }, true);' : '')
         . 'window.addEventListener("message", function (e) {'
         . 'if (e.source !== window.parent || !e.data || e.data.pgPrototype !== "hotspots") return;'
         . 'root.classList.toggle("pg-proto-hotspots", !!e.data.on);'
@@ -1207,6 +1237,7 @@ function pg_proto_frame_inject($html, $strings, $cookies = array())
         . 'a.setAttribute("target", "_blank"); a.setAttribute("rel", "noopener noreferrer");'
         . '}, true);'
         . 'document.addEventListener("submit", function (e) { e.preventDefault(); e.stopImmediatePropagation(); toast(cfg.forms); }, true);'
+        . ($comments ? pg_proto_frame_comment_script() : '')
         . 'try { window.parent.postMessage({ pgPrototype: "ready" }, "*"); } catch (err) {}'
         . '})();</script>';
 
@@ -1227,6 +1258,94 @@ function pg_proto_frame_inject($html, $strings, $cookies = array())
 }
 
 /**
+ * The comment mode's styles in the frame: the crosshair while the mode is on,
+ * the pins (a drop whose point is the place), a resolved one greyed, the one
+ * open in the viewer ringed, the new one while its box is open dashed.
+ *
+ * @return string
+ */
+function pg_proto_frame_comment_css()
+{
+    return 'html.pg-proto-commenting,html.pg-proto-commenting *{cursor:crosshair!important}'
+        . '.pg-proto-pins{position:fixed;inset:0;z-index:2147483646;pointer-events:none;overflow:hidden}'
+        . '.pg-proto-pin{position:absolute;box-sizing:border-box;min-width:28px;height:28px;margin:-28px 0 0 0;padding:0 7px;border:2px solid #fff;border-radius:14px 14px 14px 2px;background:#0d6efd;color:#fff;font:600 12px/24px system-ui,-apple-system,"Segoe UI",sans-serif;text-align:center;box-shadow:0 2px 6px rgba(0,0,0,.35);cursor:pointer!important;pointer-events:auto}'
+        . '.pg-proto-pin:focus-visible{outline:3px solid rgba(13,110,253,.5);outline-offset:2px}'
+        . '.pg-proto-pin-done{background:#6c757d}'
+        . '.pg-proto-pin-on{box-shadow:0 0 0 3px rgba(13,110,253,.45),0 2px 6px rgba(0,0,0,.35)}'
+        . '.pg-proto-pin-draft{background:#fff;color:#0d6efd;border:2px dashed #0d6efd}';
+}
+
+/**
+ * The comment mode's part of the frame script (pg_proto_frame_inject()),
+ * inside its closure: `cfg.pin`, `root` and `pgComment` (the click hook
+ * registered before the link handler, so a click in the mode follows no
+ * link) are there. Messages from the viewer: `comment` with on, pins
+ * [{id, n, node, x, y, done}], draft {node, x, y} or null, and active (a pin
+ * id). To the viewer: `place` {node, x, y, vx, vy}, `pin` {id, vx, vy} and
+ * `missing` {ids}: the pins whose node is not drawn on the page.
+ *
+ * @return string
+ */
+function pg_proto_frame_comment_script()
+{
+    return 'var pins = [], draft = null, active = 0, layer = null, lastMissing = "", tick = 0, timer = 0;'
+        . 'var NODE = /^[A-Za-z0-9_-]{1,64}$/;'
+        . 'function num(v) { return typeof v === "number" && isFinite(v) && v >= 0 && v <= 100; }'
+        . 'function pinOk(p) { return p && NODE.test(String(p.node)) && num(p.x) && num(p.y); }'
+        . 'function nodeEl(id) { return document.querySelector("[data-pg-node=\"" + id + "\"]"); }'
+        . 'function drawn(el) { if (!el) return null; var r = el.getBoundingClientRect(); return (r.width > 0 || r.height > 0) ? r : null; }'
+        . 'function draw() {'
+        . 'tick = 0;'
+        . 'if (!document.body) return;'
+        . 'if (!layer) { layer = document.createElement("div"); layer.className = "pg-proto-pins"; document.body.appendChild(layer); }'
+        . 'layer.textContent = "";'
+        . 'var missing = [], list = pins.slice();'
+        . 'if (draft) list.push({ id: 0, n: "+", node: draft.node, x: draft.x, y: draft.y });'
+        . 'list.forEach(function (p) {'
+        . 'var r = drawn(nodeEl(p.node));'
+        . 'if (!r) { if (p.id) missing.push(p.id); return; }'
+        . 'if (!pgComment.on) return;'
+        . 'var b = document.createElement("button");'
+        . 'b.type = "button";'
+        . 'b.className = "pg-proto-pin" + (p.done ? " pg-proto-pin-done" : "") + (p.id ? "" : " pg-proto-pin-draft") + ((p.id && p.id === active) ? " pg-proto-pin-on" : "");'
+        . 'b.textContent = String(p.n);'
+        . 'b.style.left = Math.round(r.left + r.width * p.x / 100) + "px";'
+        . 'b.style.top = Math.round(r.top + r.height * p.y / 100) + "px";'
+        . 'if (p.id) { b.setAttribute("data-pg-pin", String(p.id)); b.setAttribute("aria-label", String(cfg.pin).replace("{n}", String(p.n))); } else { b.tabIndex = -1; b.setAttribute("aria-hidden", "true"); }'
+        . 'layer.appendChild(b);'
+        . '});'
+        . 'var key = missing.join(",");'
+        . 'if (key !== lastMissing) { lastMissing = key; try { window.parent.postMessage({ pgPrototype: "missing", ids: missing }, "*"); } catch (err) {} }'
+        . '}'
+        . 'function soon() { if (!tick) tick = (window.requestAnimationFrame || setTimeout)(draw); }'
+        . 'window.addEventListener("scroll", soon, true);'
+        . 'window.addEventListener("resize", soon);'
+        . 'window.addEventListener("load", soon);'
+        // A page that moves on its own (a slider, an image loading late)
+        // moves the nodes under the pins.
+        . 'function watch() { clearInterval(timer); timer = (pgComment.on && pins.length + (draft ? 1 : 0)) ? setInterval(soon, 700) : 0; }'
+        . 'window.addEventListener("message", function (e) {'
+        . 'if (e.source !== window.parent || !e.data || e.data.pgPrototype !== "comment") return;'
+        . 'pgComment.on = !!e.data.on;'
+        . 'root.classList.toggle("pg-proto-commenting", pgComment.on);'
+        . 'pins = Array.isArray(e.data.pins) ? e.data.pins.filter(function (p) { return pinOk(p) && typeof p.id === "number" && p.id > 0; }).slice(0, 500) : [];'
+        . 'draft = pinOk(e.data.draft) ? e.data.draft : null;'
+        . 'active = (typeof e.data.active === "number") ? e.data.active : 0;'
+        . 'lastMissing = null;'
+        . 'draw(); watch();'
+        . '});'
+        . 'pgComment.click = function (e) {'
+        . 'e.preventDefault(); e.stopImmediatePropagation();'
+        . 'var t = e.target, pin = (t && t.closest) ? t.closest("[data-pg-pin]") : null;'
+        . 'if (pin) { var pr = pin.getBoundingClientRect(); window.parent.postMessage({ pgPrototype: "pin", id: parseInt(pin.getAttribute("data-pg-pin"), 10), vx: pr.left, vy: pr.bottom }, "*"); return; }'
+        . 'var el = (t && t.closest) ? t.closest("[data-pg-node]") : null, r = drawn(el);'
+        . 'if (!r) return;'
+        . 'var x = Math.min(100, Math.max(0, (e.clientX - r.left) / (r.width || 1) * 100)), y = Math.min(100, Math.max(0, (e.clientY - r.top) / (r.height || 1) * 100));'
+        . 'window.parent.postMessage({ pgPrototype: "place", node: el.getAttribute("data-pg-node"), x: Math.round(x * 100) / 100, y: Math.round(y * 100) / 100, vx: e.clientX, vy: e.clientY }, "*");'
+        . '};';
+}
+
+/**
  * The viewer's page: the bar and the frame the draft is drawn in.
  *
  * The frame's sandbox gives the page its scripts, new tabs and a click that
@@ -1235,12 +1354,17 @@ function pg_proto_frame_inject($html, $strings, $cookies = array())
  * its scripts nor its requests carry the viewer's session cookie or reach
  * the site's storage.
  *
+ * A share link with "Allow comments" adds `comments`: the comment mode's
+ * settings (pg_proto_viewer_comments()), printed as JSON for
+ * assets/js/pg_proto_comments.js with the Comment button and its bar.
+ *
  * @param array $view design, pages (pg_proto_page_set()), current, fallback,
  *                    fallback_text (optional), frame_url, viewer, close_url
  *                    ('' for none), software, lang, error, empty_title and
  *                    empty_text (optional: what an empty set says),
  *                    wide_pages (optional: the page chooser is not held
- *                    to 16rem, for a release bundle's longer names)
+ *                    to 16rem, for a release bundle's longer names),
+ *                    comments (optional)
  * @return string
  */
 function pg_proto_shell_html($view)
@@ -1257,6 +1381,8 @@ function pg_proto_shell_html($view)
     $version = function ($path) {
         return (string) @filemtime(PG_FUNCTIONS_DIR . $path);
     };
+    // The comment mode only with a frame to comment on.
+    $comments = (isset($view['comments']) && is_array($view['comments']) && ($frame_url !== '') && ($error === '') && $pages) ? $view['comments'] : null;
 
     $index = -1;
     $options = '';
@@ -1339,6 +1465,8 @@ function pg_proto_shell_html($view)
   --pg-bg-1: var(--bs-bg-1);
   --pg-bg-body: var(--bs-bg-body);
   --pg-border-color: var(--bs-border-color);
+  --pg-fg-body: var(--bs-fg-body);
+  --pg-fg-2: var(--bs-fg-2);
 }
 html, body { height: 100%; }
 body.pg-proto { display: flex; flex-direction: column; margin: 0; overflow: hidden; background: var(--pg-bg-1); }
@@ -1357,6 +1485,7 @@ body.pg-proto { display: flex; flex-direction: column; margin: 0; overflow: hidd
 .pg-proto-tools { display: flex; align-items: center; gap: .375rem; margin-left: auto; }
 .pg-proto-frame { flex: 1 1 auto; width: 100%; border: 0; background: #fff; }
 .pg-proto-empty { flex: 1 1 auto; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2rem 1rem; text-align: center; }
+' . (($comments !== null) ? pg_proto_shell_comment_css() : '') . '
 @media (max-width: 575.98px) {
   .pg-proto-bar { padding: .375rem .75rem; }
   .pg-proto-tools .pg-proto-label { display: none; }
@@ -1370,12 +1499,15 @@ body.pg-proto { display: flex; flex-direction: column; margin: 0; overflow: hidd
 <div class="pg-proto-title"><span class="badge theme-primary">' . h(lang('Prototype')) . '</span><span class="pg-proto-name" title="' . h($design) . '">' . h($design) . '</span></div>
 ' . $nav . '
 <div class="pg-proto-tools">
+' . (($comments !== null) ? '<button type="button" class="btn btn-sm btn-outline theme-primary" id="pg-proto-comment" aria-pressed="false" title="' . h(lang('Click a spot on the page to leave a comment')) . '"><span class="bi bi-chat-left-text" aria-hidden="true"></span> <span class="pg-proto-label">' . h(lang('Comment')) . '</span> <span class="badge theme-primary d-none" data-pc-count></span></button>' : '') . '
 <button type="button" class="btn btn-sm btn-outline theme-primary" id="pg-proto-hotspots" aria-pressed="false" title="' . h(lang('Outline the links you can click')) . '"' . (($frame_url === '' || $error !== '') ? ' disabled' : '') . '><span class="bi bi-hand-index" aria-hidden="true"></span> <span class="pg-proto-label">' . h(lang('Hotspots')) . '</span></button>
 ' . (($close_url !== '') ? '<a class="btn btn-sm btn-outline theme-secondary" id="pg-proto-close" href="' . h($close_url) . '" title="' . h(lang('Close')) . '"><span class="bi bi-x-lg" aria-hidden="true"></span><span class="visually-hidden">' . h(lang('Close')) . '</span></a>' : '') . '
 </div>
 </nav>
+' . (($comments !== null) ? '<div class="pg-proto-cbar d-none" id="pg-proto-cbar" role="region" aria-label="' . h(lang('Comments')) . '"></div>' : '') . '
 ' . $notice . '
 ' . $main . '
+' . (($comments !== null) ? '<script type="application/json" id="pg-proto-comment-data">' . json_encode($comments, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . '</script>' . pg_js_bundle_tags('assets/js/pg_proto_comments.min.js') : '') . '
 <script>
 (function () {
     var frame = document.getElementById("pg-proto-frame");
@@ -1435,6 +1567,104 @@ body.pg-proto { display: flex; flex-direction: column; margin: 0; overflow: hidd
 </script>
 </body>
 </html>';
+}
+
+/**
+ * The comment mode's styles in the viewer: the bar under the toolbar (the
+ * hint and "Not on the page any more"), the box beside the spot, a sheet at
+ * the bottom on a phone.
+ *
+ * @return string
+ */
+function pg_proto_shell_comment_css()
+{
+    return '.pg-proto-cbar { display: flex; align-items: center; flex-wrap: wrap; gap: .375rem 1rem; padding: .375rem 1rem; background: var(--pg-bg-body); border-bottom: 1px solid var(--pg-border-color); font-size: .875rem; }
+.pg-proto-cbar.d-none { display: none; }
+.pg-proto-cbar-hint { color: var(--pg-fg-2); }
+.pg-proto-gone { display: flex; align-items: center; gap: .375rem .5rem; flex: 1 1 20rem; min-width: 0; }
+.pg-proto-gone-title { flex: 0 0 auto; white-space: nowrap; }
+.pg-proto-gone-row { display: flex; gap: .375rem; flex: 1 1 auto; min-width: 0; overflow-x: auto; scrollbar-width: thin; padding-bottom: 2px; }
+.pg-proto-gone-item { flex: 0 0 auto; }
+.pg-proto-gone-text { display: inline-block; max-width: 14rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }
+.pg-proto-box { position: fixed; z-index: 1050; width: 20rem; max-width: calc(100vw - 16px); max-height: calc(100vh - 16px); display: flex; flex-direction: column; background: var(--pg-bg-body); border: 1px solid var(--pg-border-color); border-radius: .5rem; box-shadow: 0 .5rem 1.5rem color-mix(in srgb, var(--pg-fg-body) 20%, transparent); font-size: .875rem; }
+.pg-proto-box-head { display: flex; align-items: center; justify-content: space-between; gap: .5rem; padding: .5rem .75rem; border-bottom: 1px solid var(--pg-border-color); }
+.pg-proto-box-body { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; padding: .75rem; overflow-y: auto; }
+.pg-proto-box-note { margin-bottom: .5rem; }
+.pg-proto-items { flex: 1 1 auto; min-height: 4rem; overflow-y: auto; list-style: none; margin: 0 0 .75rem; padding: 0; }
+.pg-proto-box-foot { flex: 0 0 auto; }
+.pg-proto-resolved { padding: .5rem .75rem; border-radius: .375rem; background: var(--pg-bg-1); color: var(--pg-fg-2); }
+.pg-proto-item + .pg-proto-item { margin-top: .5rem; padding-top: .5rem; border-top: 1px solid var(--pg-border-color); }
+.pg-proto-item-head { display: flex; align-items: baseline; gap: .25rem .5rem; min-width: 0; }
+.pg-proto-item-name { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pg-proto-item-head .badge, .pg-proto-item-time { flex: 0 0 auto; }
+.pg-proto-item-time { font-size: .75rem; white-space: nowrap; }
+.pg-proto-item-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+@media (max-width: 575.98px) {
+  .pg-proto-cbar { padding: .375rem .75rem; }
+  .pg-proto-gone { flex-basis: 100%; }
+  .pg-proto-box { left: 0 !important; right: 0; top: auto !important; bottom: 0; width: auto; max-width: none; max-height: 70vh; border-radius: .75rem .75rem 0 0; }
+}';
+}
+
+/**
+ * The comment mode's settings for a share link's viewer: where to send, the
+ * link, the page drawn and the form token, the page's comments of this link
+ * (pg_proto_comments_of_link_page(), never the link's whole list), the
+ * limits and the words. Null when the link takes no comments.
+ *
+ * @param array  $link    prototype_links row
+ * @param int    $page_id the page drawn
+ * @param string $door    prototype_comment.php's address
+ * @param string $token   the session's form token
+ * @param string $lang    the page's language
+ * @return array|null
+ */
+function pg_proto_viewer_comments($link, $page_id, $door, $token, $lang)
+{
+    if (!pg_proto_link_comments_allowed($link) || ((int) $page_id <= 0)) {
+        return null;
+    }
+
+    $rows = array();
+
+    foreach (pg_proto_comments_of_link_page((int) $link['id'], (int) $page_id) as $row) {
+        $item = pg_proto_comment_public($row);
+        // The viewer needs neither the link nor the page again.
+        unset($item['link_id'], $item['page_id']);
+        $rows[] = $item;
+    }
+
+    $limits = pg_proto_comment_limits();
+
+    return array(
+        'door' => (string) $door,
+        'link' => (int) $link['id'],
+        'page' => (int) $page_id,
+        'token' => (string) $token,
+        'lang' => (string) $lang,
+        'nameMax' => (int) $limits['name'],
+        'textMax' => (int) $limits['text'],
+        'comments' => $rows,
+        'strings' => array(
+            'hint' => lang('Click a spot on the page to leave a comment.'),
+            'gone' => lang('Not on the page any more'),
+            'goneNote' => lang('The part of the page this comment was left on is not on the page any more.'),
+            'newComment' => lang('New comment'),
+            'thread' => lang('Comment {n}'),
+            'name' => lang('Your name'),
+            'comment' => lang('Comment'),
+            'answer' => lang('Answer'),
+            'send' => lang('Send'),
+            'answerSend' => lang('Send answer'),
+            'team' => lang('Team'),
+            'resolved' => lang('This comment was resolved.'),
+            'nameNeeded' => lang('Write your name.'),
+            'textNeeded' => lang('Write a comment.'),
+            'failed' => lang('Sorry, we could not accept your request.'),
+            'network' => lang('Network error.'),
+            'close' => lang('Close'),
+        ),
+    );
 }
 
 /**
