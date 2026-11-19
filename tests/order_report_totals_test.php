@@ -113,13 +113,56 @@ function test_order_report_charge_columns_only_when_non_zero()
 	pg_assert_same(array('surcharge', 'installment_charges'), pg_order_report_charge_columns($grand), 'the charges that hold money, in column order');
 }
 
+function order_report_test_group_keys(array $rows)
+{
+	$index = array();
+	$keys = array();
+
+	foreach ($rows as $names) {
+		$keys[] = pg_order_report_group_keys($index, $names);
+	}
+
+	return $keys;
+}
+
 function test_order_report_first_row_opens_a_group_even_when_its_name_is_empty()
 {
-	pg_assert_same(true, pg_order_report_new_group('', null), 'the first row opens a group with no name');
-	pg_assert_same(true, pg_order_report_new_group('Ankara', null), 'the first row opens a named group');
-	pg_assert_same(false, pg_order_report_new_group('', ''), 'a second empty name stays in the group');
-	pg_assert_same(false, pg_order_report_new_group('ANKARA', 'ankara'), 'names compare without case');
-	pg_assert_same(true, pg_order_report_new_group('Bursa', 'Ankara'), 'a new name opens a group');
+	pg_assert_same(array(array(1), array(1), array(2)), order_report_test_group_keys(array(array(''), array(''), array('Ankara'))), 'an empty first name gets a group of its own');
+	pg_assert_same(array(array(1, 0), array(1, 0)), order_report_test_group_keys(array(array('', ''), array('', ''))), 'empty names on every level');
+	pg_assert_same(array(array(1), array(1)), order_report_test_group_keys(array(array('ANKARA'), array('ankara'))), 'names compare without case');
+}
+
+// The query sorts by the database's collation, which reads Çorum and Corum
+// as one value and leaves them in order number order: a row goes back to the
+// group of its name, so no name is printed twice with its orders split.
+function test_order_report_rows_go_back_to_their_group()
+{
+	pg_assert_same(
+		array(array(1), array(2), array(1), array(2), array(3)),
+		order_report_test_group_keys(array(array('Çorum'), array('Corum'), array('Çorum'), array('corum'), array('Denizli'))),
+		'one group per spelling, each once'
+	);
+
+	pg_assert_same(
+		array(array(1, 0), array(1, 1), array(1, 0), array(2, 0), array(1, 1), array(2, 1)),
+		order_report_test_group_keys(array(
+			array('Bursa', 'Card'), array('Bursa', 'Cash'), array('Bursa', 'card'),
+			array('Ankara', 'Card'), array('BURSA', 'Cash'), array('Ankara', 'Cash'),
+		)),
+		'a level under another counts from 0 in each parent'
+	);
+
+	pg_assert_same(
+		array(array(1, 0, 0), array(1, 0, 1), array(1, 0, 0)),
+		order_report_test_group_keys(array(array('2026', '11', 'Çorum'), array('2026', '11', 'Corum'), array('2026', '11', 'Çorum'))),
+		'the third level'
+	);
+
+	pg_assert_same(array(array(1), array(2)), order_report_test_group_keys(array(array('10'), array('010'))), 'numeric names stay apart');
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_order_report.php');
+	pg_assert_same(3, substr_count($source, 'pg_order_report_group_keys($group_index, '), 'every summarize-by level files its rows by name');
+	pg_assert_false(strpos($source, 'previous_summarize_by_') !== false, 'no comparison with the previous row');
 }
 
 function test_order_report_new_report_leaves_out_carts_and_cancelled_orders()

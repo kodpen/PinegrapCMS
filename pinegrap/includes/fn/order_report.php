@@ -166,21 +166,38 @@ function pg_order_report_charge_columns($grand)
 }
 
 /**
- * Whether a row opens a new group: always the first row ($previous null),
- * whatever its name, so an empty first value still gets its group; after
- * that a name that differs from the previous one, without case. Pure.
+ * The group keys a row is filed under, one per summarize-by level, level 1
+ * first. A name is matched without case within its parent group, also when
+ * rows of other names came in between: the query sorts by the database's
+ * collation, which reads Çorum and Corum as one value and leaves them in
+ * order number order, so opening a group on every change of name printed
+ * Çorum twice with its orders split. A name not seen before, an empty one
+ * included, gets the next key of its parent: level 1 counts from 1, the
+ * levels under it from 0, as the screen's arrays are keyed.
  *
- * @param string      $name     the row's group value
- * @param string|null $previous the previous row's value, null on the first row
- * @return bool
+ * @param array $index the keys given so far, updated: parent path => (name => key)
+ * @param array $names the row's group values, level 1 first
+ * @return array the key per level
  */
-function pg_order_report_new_group($name, $previous)
+function pg_order_report_group_keys(array &$index, array $names)
 {
-    if ($previous === null) {
-        return true;
+    $keys = array();
+    $parent = '';
+
+    foreach (array_values($names) as $level => $name) {
+        // The prefix keeps a numeric name ('10', '010') a string key.
+        $name = 'g' . mb_strtolower(trim((string) $name));
+
+        if (!isset($index[$parent][$name])) {
+            $index[$parent][$name] = (isset($index[$parent]) ? count($index[$parent]) : 0) + (($level === 0) ? 1 : 0);
+        }
+
+        $key = $index[$parent][$name];
+        $keys[] = $key;
+        $parent .= '/' . $key;
     }
 
-    return mb_strtolower((string) $name) !== mb_strtolower((string) $previous);
+    return $keys;
 }
 
 /**

@@ -879,15 +879,10 @@ if (!$_POST) {
     
     $results = array();
 
-    // Group keys and the previous-name trackers the cases below compare against.
-    // null until the first row: that row always opens its groups, an empty
-    // value (no billing state, no payment method) included.
-    $summarize_by_1_key = 0;
-    $summarize_by_2_key = 0;
-    $summarize_by_3_key = 0;
-    $previous_summarize_by_1_name = null;
-    $previous_summarize_by_2_name = null;
-    $previous_summarize_by_3_name = null;
+    // Each row is filed under the group of its name on every level
+    // (pg_order_report_group_keys()); a group is opened by its first row,
+    // an empty name (no billing state, no payment method) included.
+    $group_index = array();
 
     // Every order is counted into its groups and the grand total with the
     // same figures (includes/fn/order_report.php), whatever the summarize-by.
@@ -903,92 +898,72 @@ if (!$_POST) {
                 $grand = pg_order_report_add($grand, $order);
             }
             break;
-        
+
         case 1:
             while ($row = mysqli_fetch_array($result)) {
 
                 $summarize_by_1_name = trim((string) $row[0]);
-                
-                // if we have a new summarize by in summarize by 1, increment key and store name
-                if (pg_order_report_new_group($summarize_by_1_name, $previous_summarize_by_1_name)) {
-                    $summarize_by_1_key++;
+
+                list($summarize_by_1_key) = pg_order_report_group_keys($group_index, array($summarize_by_1_name));
+
+                if (!isset($results[$summarize_by_1_key])) {
                     $results[$summarize_by_1_key] = pg_order_report_bucket($summarize_by_1_name);
                 }
-                
+
                 $order = pg_order_report_order($row, $incomplete_orders[$row['id']] ?? null);
 
                 $results[$summarize_by_1_key]['orders'][] = $order;
                 $results[$summarize_by_1_key] = pg_order_report_add($results[$summarize_by_1_key], $order);
                 $grand = pg_order_report_add($grand, $order);
-                
-                $previous_summarize_by_1_name = $summarize_by_1_name;
             }
             break;
-        
+
         case 2:
             while ($row = mysqli_fetch_array($result)) {
 
                 $summarize_by_1_name = trim((string) $row[0]);
                 $summarize_by_2_name = trim((string) $row[1]);
-                
-                // if we have a new summarize by in summarize by 1, increment key and store name, and reset key and store name for summarize by 2
-                if (pg_order_report_new_group($summarize_by_1_name, $previous_summarize_by_1_name)) {
-                    $summarize_by_1_key++;
+
+                list($summarize_by_1_key, $summarize_by_2_key) = pg_order_report_group_keys($group_index, array($summarize_by_1_name, $summarize_by_2_name));
+
+                if (!isset($results[$summarize_by_1_key])) {
                     $results[$summarize_by_1_key] = pg_order_report_bucket($summarize_by_1_name);
-                    
-                    $summarize_by_2_key = 0;
-                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key] = pg_order_report_bucket($summarize_by_2_name);
-                    
-                // else if we have a new summarize by in summarize by 2, increment key and store name
-                } elseif (pg_order_report_new_group($summarize_by_2_name, $previous_summarize_by_2_name)) {
-                    $summarize_by_2_key++;
+                }
+
+                if (!isset($results[$summarize_by_1_key]['results'][$summarize_by_2_key])) {
                     $results[$summarize_by_1_key]['results'][$summarize_by_2_key] = pg_order_report_bucket($summarize_by_2_name);
                 }
-                
+
                 $order = pg_order_report_order($row, $incomplete_orders[$row['id']] ?? null);
 
                 $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['orders'][] = $order;
                 $results[$summarize_by_1_key] = pg_order_report_add($results[$summarize_by_1_key], $order);
                 $results[$summarize_by_1_key]['results'][$summarize_by_2_key] = pg_order_report_add($results[$summarize_by_1_key]['results'][$summarize_by_2_key], $order);
                 $grand = pg_order_report_add($grand, $order);
-                
-                $previous_summarize_by_1_name = $summarize_by_1_name;
-                $previous_summarize_by_2_name = $summarize_by_2_name;
             }
             break;
-            
+
         case 3:
             while ($row = mysqli_fetch_array($result)) {
-                
+
                 $summarize_by_1_name = trim((string) $row[0]);
                 $summarize_by_2_name = trim((string) $row[1]);
                 $summarize_by_3_name = trim((string) $row[2]);
-                
-                // if we have a new summarize by in summarize by 1, increment key and store name, and reset key and store name for summarize by 2 and summarize by 3
-                if (pg_order_report_new_group($summarize_by_1_name, $previous_summarize_by_1_name)) {
-                    $summarize_by_1_key++;
+
+                list($summarize_by_1_key, $summarize_by_2_key, $summarize_by_3_key) = pg_order_report_group_keys($group_index, array($summarize_by_1_name, $summarize_by_2_name, $summarize_by_3_name));
+
+                if (!isset($results[$summarize_by_1_key])) {
                     $results[$summarize_by_1_key] = pg_order_report_bucket($summarize_by_1_name);
-                    
-                    $summarize_by_2_key = 0;
+                }
+
+                if (!isset($results[$summarize_by_1_key]['results'][$summarize_by_2_key])) {
                     $results[$summarize_by_1_key]['results'][$summarize_by_2_key] = pg_order_report_bucket($summarize_by_2_name);
-                    
-                    $summarize_by_3_key = 0;
-                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['results'][$summarize_by_3_key] = pg_order_report_bucket($summarize_by_3_name);
-                    
-                // else if we have a new summarize by in summarize by 2, increment key and store name and reset key and store name for summarize by 3
-                } elseif (pg_order_report_new_group($summarize_by_2_name, $previous_summarize_by_2_name)) {
-                    $summarize_by_2_key++;
-                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key] = pg_order_report_bucket($summarize_by_2_name);
-                    
-                    $summarize_by_3_key = 0;
-                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['results'][$summarize_by_3_key] = pg_order_report_bucket($summarize_by_3_name);
-                    
-                // else if we have a new summarize by in summarize by 3, increment key and store name
-                } elseif (pg_order_report_new_group($summarize_by_3_name, $previous_summarize_by_3_name)) {
-                    $summarize_by_3_key++;
+                }
+
+                if (!isset($results[$summarize_by_1_key]['results'][$summarize_by_2_key]['results'][$summarize_by_3_key])) {
                     $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['results'][$summarize_by_3_key] = pg_order_report_bucket($summarize_by_3_name);
                 }
-                
+
                 $order = pg_order_report_order($row, $incomplete_orders[$row['id']] ?? null);
 
                 $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['results'][$summarize_by_3_key]['orders'][] = $order;
@@ -996,10 +971,6 @@ if (!$_POST) {
                 $results[$summarize_by_1_key]['results'][$summarize_by_2_key] = pg_order_report_add($results[$summarize_by_1_key]['results'][$summarize_by_2_key], $order);
                 $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['results'][$summarize_by_3_key] = pg_order_report_add($results[$summarize_by_1_key]['results'][$summarize_by_2_key]['results'][$summarize_by_3_key], $order);
                 $grand = pg_order_report_add($grand, $order);
-                
-                $previous_summarize_by_1_name = $summarize_by_1_name;
-                $previous_summarize_by_2_name = $summarize_by_2_name;
-                $previous_summarize_by_3_name = $summarize_by_3_name;
             }
             break;
     }
