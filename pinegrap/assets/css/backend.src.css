@@ -30607,22 +30607,11 @@ textarea.pg-campaign-text {
   }
 }
 
-/* The area's tab strip: the segmented control, one line at any width. Under
-   576 px only the open tab shows its label, the others their icon.
-   The strip sits centred in the window's content area on every tab: each
-   tab screen's #content is centred there (the full width, or a list's
-   fit-content box with auto margins), so centring the strip in #content puts
-   it in the same place whatever width the screen takes. The auto margins
-   keep a strip wider than the window scrollable from its first tab, where
-   justify-content: center would cut off its start. */
+/* Communication's tab strip (an area strip, .pg-area-tabs): the segmented
+   control, one line at any width. Under 576 px only the open tab shows its
+   label, the others their icon. */
 .pg-messages-tabs {
-  display: flex;
   margin-bottom: 20px;
-  max-width: 100%;
-  overflow-x: auto;
-}
-.pg-messages-tabs > .pg-seg {
-  margin-inline: auto;
 }
 /* A notice under the strip. */
 .pg-messages-note {
@@ -31721,6 +31710,23 @@ button.pg-var-chip:focus-visible {
 }
 .pg-list-seg > .pg-seg-item {
   flex: none;
+}
+
+/* An area's tab strip: the segmented control of links shared by a group of
+   screens (or a screen's views), printed first in #content above the
+   toolbar. It sits centred in the window's content area on every tab: each
+   tab screen's #content is centred there (the full width, or a list's
+   fit-content box with auto margins), so centring the strip in #content puts
+   it in the same place whatever width the screen takes. The auto margins
+   keep a strip wider than the window scrollable from its first tab, where
+   justify-content: center would cut off its start. */
+.pg-area-tabs {
+  display: flex;
+  max-width: 100%;
+  overflow-x: auto;
+}
+.pg-area-tabs > .pg-seg {
+  margin-inline: auto;
 }
 
 /* Site Log: the range segments, the type segments and the range on screen
