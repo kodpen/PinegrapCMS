@@ -572,6 +572,11 @@ function local_sale_add_item($code, $product_id, $quantity)
     });
 
     if ($added === false) {
+        // add_order_item() refuses a gift card line past its unit limit.
+        if (pg_gift_card_quantity_refusal_take()) {
+            return local_sale_fail(local_sale_product_label($product) . ': ' . pg_gift_card_line_quantity_error(), array('field' => 'product'));
+        }
+
         return local_sale_fail(lang('Product not found or is disabled.'), array('field' => 'product'));
     }
 
@@ -657,6 +662,13 @@ function local_sale_set_qty($item_id, $quantity)
     if ($quantity <= 0) {
         db("DELETE FROM order_items WHERE id = '" . (int) $item['id'] . "' AND order_id = '" . $order_id . "'");
         return local_sale_ok(lang(array('string' => '{var:1} removed from the cart.', 'vars' => array(local_sale_product_label($item)))), array('level' => 'info'));
+    }
+
+    // A gift card line issues one card per unit, up to a limit.
+    if (!pg_order_item_quantity_allowed($item['id'], $quantity)) {
+        $error = pg_gift_card_line_quantity_error();
+
+        return local_sale_fail($error, array('line_errors' => array((int) $item['id'] => $error), 'line_id' => (int) $item['id']));
     }
 
     // Only a raise is held against the stock. A line above what the shelf

@@ -3,8 +3,9 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Tests for the counter sale's cart (includes/local_sale.php): which product
- * a scanned code adds, when a line's quantity change is refused for stock,
- * and the name a line keeps once its product is gone.
+ * a scanned code adds, when a line's quantity change is refused (stock, a
+ * gift card line's limit) and the name a line keeps once its product is
+ * gone.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -84,6 +85,7 @@ function lang($text)
 }
 
 require $pg_dir . '/includes/fn/ecommerce.php';
+require $pg_dir . '/includes/fn/order_completion.php';
 require $pg_dir . '/includes/local_sale.php';
 
 $mug = array('id' => 7, 'name' => 'MUG-7', 'short_description' => 'Blue mug', 'enabled' => 1, 'inventory' => 0, 'inventory_quantity' => 0);
@@ -150,6 +152,22 @@ $line[1][2]['inventory_quantity'] = 0;
 fake_case($line);
 $set = local_sale_set_qty(11, '4');
 $out['set_empty_shelf'] = array('ok' => $set['ok'], 'message' => $set['message'], 'writes' => $GLOBALS['fake_writes']);
+
+// A gift card line holds at most 100 units, as on the site's cart.
+$gift = array(
+	array('value', "/SELECT status FROM orders WHERE id = '50'/", 'incomplete'),
+	array('item', "/WHERE oi.id = '13'/", array('id' => 13, 'product_id' => 40, 'quantity' => 100, 'product_name' => 'GIFT-40', 'name' => 'GIFT-40', 'short_description' => 'Gift card', 'inventory' => 0, 'inventory_quantity' => 0)),
+	array('value', "/SELECT products.gift_card\s+FROM order_items/", 1),
+	array('value', "/SUM\(quantity\)/", 0),
+);
+
+fake_case($gift);
+$set = local_sale_set_qty(13, '101');
+$out['gift_101'] = array('ok' => $set['ok'], 'message' => $set['message'], 'writes' => $GLOBALS['fake_writes']);
+
+fake_case($gift);
+$set = local_sale_set_qty(13, '99');
+$out['gift_99'] = array('ok' => $set['ok'], 'message' => $set['message'], 'writes' => $GLOBALS['fake_writes']);
 
 // A line whose product was deleted from the catalogue is removed by name.
 fake_case(array(
@@ -271,4 +289,27 @@ function test_local_sale_deleted_product_line_keeps_its_name()
 
 	pg_assert_same(true, $removed['ok'], 'removed');
 	pg_assert_same('LAMP-30 removed from the cart.', $removed['message'], 'named');
+}
+
+// A gift card line issues one card per unit up to 100: the counter refuses
+// more as every cart door does, with the same words. A typed 101 used to be
+// written and an add past the limit said "Product not found or is
+// disabled."
+function test_local_sale_gift_card_line_limit()
+{
+	$over = local_sale_cart_test_result('gift_101');
+
+	if ($over === null) {
+		return;
+	}
+
+	pg_assert_same(false, $over['ok'], '101 refused');
+	pg_assert_same('A gift card line can hold at most 100 units', $over['message'], 'the cart\'s words');
+	pg_assert_same(array(), $over['writes'], 'nothing written');
+
+	$under = local_sale_cart_test_result('gift_99');
+	pg_assert_same(true, $under['ok'], '99 taken');
+
+	$source = (string) file_get_contents(dirname(__DIR__) . '/pinegrap/includes/local_sale.php');
+	pg_assert_contains('if (pg_gift_card_quantity_refusal_take()) {', $source, 'a refused add names the limit');
 }
