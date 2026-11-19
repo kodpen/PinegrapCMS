@@ -600,14 +600,16 @@ function pg_connections_screen_page_providers()
 
 /**
  * The cards of a service's page, in their order: "status", "details" (its
- * provider's application, for a manager), "uses", then "repositories" on
+ * provider's application, for a manager; an AI provider's key, for who may
+ * change the assistants), "uses", then "repositories" on
  * GitHub's page for a holder of the Workspace settings right. Each card
  * keeps the gate of the place it came from; a card the viewer may not open
  * is left out. Pure.
  *
  * @param string $id  the service's registry key
  * @param array  $can 'manager' (bool), 'repositories' (bool: may manage
- *                    the GitHub repository links)
+ *                    the GitHub repository links), 'ai' (bool: may change
+ *                    the assistants, connections_ai_may_manage())
  * @return array list of card keys
  */
 function pg_connections_screen_page_cards($id, $can)
@@ -615,6 +617,8 @@ function pg_connections_screen_page_cards($id, $can)
     $cards = array('status');
 
     if (!empty($can['manager']) && isset(pg_connections_screen_page_providers()[$id])) {
+        $cards[] = 'details';
+    } elseif (!empty($can['ai']) && isset(pg_ai_connection_services()[$id])) {
         $cards[] = 'details';
     }
 
