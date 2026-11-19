@@ -22,7 +22,7 @@ priority: 10
 
 ## Which steps are there?
 - CX1 GitHub: closed by the build steps CX7 to CX11 (sheet: messages 9308 to 9320).
-- CX2 Voice message transcripts: the owner chose in poll 147 (message 9350) that the card moves to Assistants and agents and the category is named "Kanallar"; the key moves to Connections in CX9.
+- CX2 Voice message transcripts: the owner chose in poll 147 (message 9350) that the card moves to Assistants and agents and the category is named "Kanallar"; the key moves to Connections in CX9. Built: #10332.
 - CX3 Mail, as its sheet (messages 9351 to 9365). Owner (2026-11-17, poll 148, message 9374): a Site Settings category "E-posta gönderimi" between Communication and Mailboxes; SMTP Settings leaves System tools, its old addresses open it; the campaign's two texts and MailChimp join it. Two steps, CX3a and CX3b.
 - CX6 The management screen's sheet. Drawn: messages 9405 to 9422; the owner's yes: poll 149 (message 9425).
 - CX7 to CX11, the build (poll 149's yes, messages 9423 and 9425): `connections-merges-build.md`.

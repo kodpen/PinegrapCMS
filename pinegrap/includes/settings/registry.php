@@ -512,11 +512,12 @@ function pg_settings_categories()
             'group' => 'workspace',
             'gate'  => 'workspace',
             'icon'  => 'bi-robot',
-            'description' => lang('Claude, the agents, Pinegrap AI, the MCP servers and bulk changes.'),
+            'description' => lang('Claude, the agents, Pinegrap AI, voice transcripts, the MCP servers and bulk changes.'),
             'sections' => array(
                 'pgset-ws-claude'            => lang('Claude in the channels'),
                 'pgset-ws-agents'            => lang('Workspace agents'),
                 'pgset-ws-ai'                => lang('Pinegrap AI in the channels'),
+                'pgset-ws-voice'             => lang('Voice message transcripts'),
                 'pgset-ws-mcp'               => lang('MCP servers'),
                 'pgset-ws-bulk'              => lang('Bulk changes by the assistants'),
                 'pgset-ws-canvas-templates'  => lang('Canvas templates'),
@@ -525,6 +526,7 @@ function pg_settings_categories()
                 'pgset-ws-claude'            => pg_settings_keywords(lang('workspace, claude, assistant, routine, key, secret, daily summary, connection')),
                 'pgset-ws-agents'            => pg_settings_keywords(lang('workspace, agent, agents, handle, push door, poll door, model, provider, token limit')),
                 'pgset-ws-ai'                => pg_settings_keywords(lang('workspace, pinegrap ai, assistant, licence, subscription key, key, connection')),
+                'pgset-ws-voice'             => pg_settings_keywords(lang('workspace, voice, transcript, speech, spoken answers, key')),
                 'pgset-ws-bulk'              => pg_settings_keywords(lang('workspace, bulk changes, assistant, delete in bulk, claude, pinegrap ai')),
                 'pgset-ws-mcp'               => pg_settings_keywords(lang('workspace, mcp, mcp server, tools')),
                 'pgset-ws-canvas-templates'  => pg_settings_keywords(lang('workspace, canvas, template, design, agent, named layers')),
@@ -536,20 +538,18 @@ function pg_settings_categories()
         ),
 
         'workspace_channels' => array(
-            'label' => lang('Channels, mail and voice'),
+            'label' => lang('Channels'),
             'group' => 'workspace',
             'gate'  => 'workspace',
             'icon'  => 'bi-chat-square-text',
-            'description' => lang('Channel templates, voice transcripts, GitHub links and link previews.'),
+            'description' => lang('Channel templates, GitHub links and link previews.'),
             'sections' => array(
                 'pgset-ws-templates'       => lang('Channel templates'),
-                'pgset-ws-voice'           => lang('Voice message transcripts'),
                 'pgset-ws-github'          => lang('GitHub repositories'),
                 'pgset-ws-link-preview'    => lang('Link previews'),
             ),
             'keywords' => array(
                 'pgset-ws-templates'       => pg_settings_keywords(lang('workspace, channel template, templates, archive')),
-                'pgset-ws-voice'           => pg_settings_keywords(lang('workspace, voice, transcript, speech, spoken answers, key')),
                 'pgset-ws-github'          => pg_settings_keywords(lang('workspace, github, repository, webhook, pull request')),
                 'pgset-ws-link-preview'    => pg_settings_keywords(lang('workspace, link, preview, card, web address')),
             ),
@@ -1011,9 +1011,11 @@ function pg_settings_legacy_anchors()
         'ws-agents'        => array('workspace_assistants', 'pgset-ws-agents'),
         'ws-ai'            => array('workspace_assistants', 'pgset-ws-ai'),
         'ws-mcp'           => array('workspace_assistants', 'pgset-ws-mcp'),
+        // Voice message transcripts moved from Channels into Assistants and agents.
+        'ws-voice'         => array('workspace_assistants', 'pgset-ws-voice'),
+        'pgset-ws-voice'   => array('workspace_assistants', 'pgset-ws-voice'),
         'ws-templates'     => array('workspace_channels', 'pgset-ws-templates'),
         'ws-mail'          => array('mailboxes', 'pgset-ws-mail'),
-        'ws-voice'         => array('workspace_channels', 'pgset-ws-voice'),
         'ws-github'        => array('workspace_channels', 'pgset-ws-github'),
     );
 }

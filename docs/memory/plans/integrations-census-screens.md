@@ -20,7 +20,7 @@ description: Census (2026-11-17) of where an administrator connects an outside s
 - The developer route is no product screen: only this repository's CI (`php-checks.yml` job `channel`, `agent-channel.yml`) with an Application Access key and four repository secrets. The Connections screen lists GitHub three times: Account providers, Other, MCP connectors.
 
 ## AI and mail?
-- AI keys in six places: the subscription key (Pinegrap AI), "Claude in the channels", a key for each assistant on "Workspace agents", "Voice message transcripts", "Translation Engines", and AI programs that come in on Application Access.
+- AI keys in six places: the subscription key on General › Software (the licence, also read by update checks and the push broker; "Pinegrap AI in the channels" has no key of its own and uses it), "Claude in the channels", a key for each assistant on "Workspace agents", "Voice message transcripts" (two keys: transcripts and spoken answers), "Translation Engines" (the Google Cloud Translation key), and AI programs that come in on Application Access, which holds no AI key of the site's.
 - Mail in four: SMTP Settings outside Site Settings, the Google or Microsoft application on Connected accounts, Mailboxes, and Communication for campaigns and MailChimp.
 
 ## What binds a change?
