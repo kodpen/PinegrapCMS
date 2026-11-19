@@ -25,7 +25,7 @@ description: The channel's Tasks, Decisions and Files tabs as cards (CL2, CL4, T
 ## Why?
 - Owner (2026-11-10): the channel screen is "line after line"; the before/after picture he approved shows tasks as cards in a grid. CL2 of the channel look (`workspace-channel-screen.md`).
 - Owner (2026-11-11), on the Decisions tab on dev (six narrow cards a row, gaps under short ones, a green edge on each): cards up to twice as wide and one under the other, the green gone, a modern card; Tasks the same. CL4 (#8759).
-- Owner (2026-11-19): the Decisions tab ran past the screen and scrolled sideways; long decisions folded, cards wider, one under the other. Architect (2026-11-19): one column and the fold at about eight lines read his words; the Tasks tab keeps its columns. TD1 of `plans/channel-decisions-files-tabs.md`.
+- Owner (2026-11-19): the Decisions tab ran past the screen and scrolled sideways; long decisions folded, cards wider, one under the other. Architect (2026-11-19): one column, the fold at about eight lines and 60 tiles a page read his words, changed on his look if he wants; the Tasks tab keeps its columns. TD1 (#10396).
 
 ## How was it checked?
 - #8688: sandbox before/after at 1440 and 390 px, light and dark (Tasks open and all, Decisions with a decision and a note, Files with pictures and documents); `tests/workspace_channel_look_test.php` pins the source. Dev look after landing.
