@@ -20,6 +20,6 @@ description: Decisions made, workspace part 39 (2026-11-19): a general memory fo
 ## How do a channel's Decisions and Files tabs look? (owner, 2026-11-19, in the architect's window)
 - Decisions: "karar uzunsa katlansın ve kararlar dikey kaydırmalı kartlarda olsun(daha geniş kartlar olsun) bu alan modernleşsin."
 - Files: a count on the tab, and less stutter with the channel's 298 pictures: "tasarım olarak oldukça hoş ama kasmayı azaltacak bir yol varsa iyi olur."
-- Plan: `plans/channel-decisions-files-tabs.md`.
+- Built in TD1 (#10396) and TD2 (#10415): `workspace/workspace-channel-panes.md`, `workspace/workspace-channel-files-tab.md`.
 
 Related: docs/memory/workflow/decisions-made.md, docs/memory/workspace/channel-memory.md, docs/memory/workspace/workspace-channel-panes.md

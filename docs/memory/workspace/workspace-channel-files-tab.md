@@ -12,7 +12,7 @@ description: A channel's Files tab (drawFiles() in workspace.js): its groups, th
 - The viewer (`viewImages(gallery, index)`) still steps through every picture, drawn or not. A tile keeps its 4 / 3 box before its picture arrives; the `img` is `loading="lazy"` and `decoding="async"`.
 - A tile draws `file.thumb`, the picture's 320 px copy (`ws_file_thumb_url()` in `includes/workspace/files.php`: `?w=320` on JPEG, PNG and WebP; GIF and SVG keep their address); the viewer, Open in new tab and Download keep the original (TD2, #10415).
 - `get_file.php` makes that copy for a workspace file after its Workspace checks: only 320 px in the picture's own format, whatever `w`/`f` ask, sent `private`. It is the derivative-cache copy `ws_file_preview()` already kept for the API (`api/api-file-endpoints.md`).
-- Owner (2026-11-19): 298 pictures in the agent channel made the tab stutter.
+- Owner (2026-11-19): 298 pictures in the agent channel made the tab stutter, and the tab had no count. Architect (2026-11-19): 60 tiles a page reads his words, changed on his look if he wants (TD1 #10396, TD2 #10415).
 
 ## How are the files read from the server?
 - A page at a time: `ws_channel_files` takes `before` and answers `messages`, `more` and `before` (`ws_channel_files_page()`, 200 files a page, `ws_channel_files_page_cut()` reads one row more to know whether older ones are left). The cursor is the last row read, not the last message drawn, so a left-out payload is never read twice.
