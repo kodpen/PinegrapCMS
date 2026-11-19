@@ -2979,6 +2979,7 @@
     "Comment text (HTML)": "Yorum metni (HTML)",
     "Comment text (message)": "Yorum metni (message)",
     "Comment {n}": "Yorum {n}",
+    "Comment {var}": "Yorum {var}",
     "Comments": "Yorumlar",
     "Comments Area": "Yorumlar Alanı",
     "Comments Block": "Yorumlar Bloğu",

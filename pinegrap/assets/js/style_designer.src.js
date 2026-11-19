@@ -80184,6 +80184,7 @@ const StyleDesigner = (function () {
             _pgTabsSyncBusy();
             _collabSetMode(res.may_edit !== false, res.holder || null);
             _collabSyncNotes(res.notes);
+            if (typeof res.proto_comments === 'number' && (res.proto_comments > 0 || _sdPartLoaded('comments')) && _sdPartUrls('comments')) _sdPartCall('comments', 'beat', [res.proto_comments]).catch(function () { /* the next beat asks again */ });
             return res;
         }).catch(function () { return null; });
     }
