@@ -485,6 +485,11 @@ function ws_wtable_screen_query_bar($self_url, $table_id, $columns, $screen, $te
     $sorts = '<option value="0">' . h(lang('Table order')) . '</option>';
 
     foreach ($columns as $column_id => $item) {
+        // Rows are never sorted by a lookup or a rollup: the store refuses it.
+        if (ws_wtable_joined_type((string) $item['type'])) {
+            continue;
+        }
+
         $sorts .= '<option value="' . (int) $column_id . '"' . (((int) $column_id === (int) $screen['sort']) ? ' selected' : '') . '>' . h($item['name']) . '</option>';
     }
 
