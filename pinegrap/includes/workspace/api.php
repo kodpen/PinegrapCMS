@@ -38,6 +38,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_resources.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_highlights.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_claude.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_proposals.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_customer.php');
@@ -68,7 +69,6 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_message_files.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_thread_close.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_channel_access.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_meeting_link.php');
-require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_highlights.php');
 
 /**
  * The permission rows on the Application Access screen.
