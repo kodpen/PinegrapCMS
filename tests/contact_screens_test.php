@@ -182,3 +182,17 @@ function test_contact_screens_edit_contact_return_key_saves()
 	$badge = contact_screens_source('includes/fn/mail_bounce_report.php');
 	pg_assert_contains('<button type="submit" name="submit_allow_again"', $badge, 'the badge carries the named Allow again submit');
 }
+
+// The picture address of an Unsplash pick (contacts.image) is posted back in
+// a hidden image_url field. It was printed with the SQL escape e(), which
+// leaves a quote standing in HTML (it only adds a backslash), so a stored
+// address with a quote broke out of the value and its markup ran on Edit
+// Contact; a quote or backslash also came back doubled on the next save.
+function test_contact_screens_edit_contact_image_url_html_escaped()
+{
+	$source = contact_screens_source('edit_contact.php');
+
+	pg_assert_true((bool) preg_match('/<input type="hidden" name="image_url" id="image_url" value="(.*?)" ?\/?>/', $source, $match), 'edit contact: image_url field found');
+	pg_assert_same("' . h(\$row['image']) . '", $match[1], 'edit contact: image_url value escaped for HTML');
+	pg_assert_false(strpos($source, "e(\$row['image'])") !== false, 'edit contact: no SQL escape on the picture address');
+}
