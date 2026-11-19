@@ -250,6 +250,7 @@ function test_designer_canvas_link_marks_wiring()
 	pg_assert_contains('H.canvasRequest(designed)', $run, 'the read asked for what can be broken');
 	pg_assert_contains("_pgApiPost('prototype_map', ", $run, 'and its read');
 	pg_assert_contains('_sdTextInnerSelect(node, path);', $open, 'the link selected, a text\'s link picked inside it');
+	pg_assert_contains('_sdTreeRevealSelection(true);', $open, 'the Overview follows the selection');
 	pg_assert_contains("_sdRcolShow('options');", $open, 'the Options panel shown');
 	pg_assert_contains("_sdDockSetOpen('right', true);", $open, 'a docked panel opened');
 	pg_assert_contains('_sdOptReveal(', $open, 'a field in a closed card or another tab drawn');
@@ -263,4 +264,6 @@ function test_designer_canvas_link_marks_wiring()
 	pg_assert_same(1, preg_match('/\.sd-lm \{[^}]*background: var\(--sd-danger\)/', $css), 'a broken link red');
 	pg_assert_same(1, preg_match('/\.sd-lm\.sd-lm-empty \{[^}]*background: var\(--sd-warning\)/', $css), 'a link without a target amber');
 	pg_assert_same(1, preg_match('/\.sd-lm-layer \{[^}]*pointer-events: none/', $css), 'the layer lets every other click through');
+	pg_assert_same(1, preg_match('/\.sd-lm-layer \{[^}]*z-index: 20;/', $css), 'under the docked panels and the Prototype view');
+	pg_assert_same(1, preg_match('/\.sd-lm \{[^}]*width: 18px; height: 18px;/', $css), 'the badge size of the measures');
 }
