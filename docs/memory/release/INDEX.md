@@ -7,6 +7,7 @@
 - migration-long-steps.md: How an upgrade step that may outrun the web server's time limit is written: restart-safe work, the 30 s pass budget and install_pause(), backfills with a cursor in config, schema apart from data.
 - migration-step-helpers.md: How to write an upgrade step with the runner.php install_* helpers: check-then-act, exact-name probes, re-runnable data statements, enum-narrowing MODIFY. [decision: decisions-made-schema.md]
 - migration-system-layout.md: Where DB schema changes live (includes/migrations files and roles) and how version entry functions and sub-steps are named. Direct SQL for schema is forbidden.
+- open-version-schema-census-list.md: Census of the schema 2026.11.0 adds (SC1): what no code reads or writes, what was found replaced or redundant, and the count of what is in use, for the architect's remove-or-keep marks
 - release-packages.md: Release packages (P2, PR #10350): release-packages.yml adds both ZIPs and manifest.json to a published release with the vendor's tool; checks before the build, RELEASE_KEY_ID, replacing the tool copy
 - release-sandbox-checks.md: What no running site has confirmed yet and a sandbox pass (tools/setup_sandbox.sh) checks before 2026.11.0 is released: the 2026-10-19 security fixes on other servers, InnoDB search, list speed
 - release-status.md: Last released version (2026.4.10), the open version (2026.11.0, first calendar-versioned number), its migration file and step labels, how a release branch, tag and GitHub release are made
