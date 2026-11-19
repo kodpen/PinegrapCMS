@@ -265,6 +265,7 @@
 - product-compare-at-price.md: products.compare_at_price (2026.11.0, 11.0.2, PR #658), the merchant's "was" price: NULL/0 rules, product screen switch, list column, import/export, API field, copy paths, what does not read it yet
 - product-customs-fields.md: products.hs_code and origin_country (2026.11.0, 11.0.130, #3408): customs data per product, empty is the shop default; product screen, copy, import/export, products API [decision: decisions-made-product-7.md]
 - product-duplicate.md: What a product copy (duplicate_product() and the bulk duplicate_products.php) keeps: later columns via pg_product_copy_extra_sql(), the gallery, a bundle's contents and refresh
+- product-edit-group-links.md: Edit Product save writes only the product groups added or taken off, so each group link keeps its sort order, featured mark and new date
 - product-feed-decisions.md: Product feed decisions (plan approved 2026-10-19; PRs #561, #571, #572, #576, #577): search-only eligibility, catalog scope, no UCP manifest, fields not sent, GET /store/feeds
 - product-feed-google-xml.md: The fourth product feed format, google_xml (PR #10133): Google Merchant Center's RSS 2.0 file from the google_tsv rows, one XML escape helper, streamed like the others, content type, card switch
 - product-feed-serving.md: How product feeds are kept, built, served and watched (PR #571): config.product_feeds (11.0.4), tokens, product_feed_job.php, feed.php, WAF exemption, status tile
