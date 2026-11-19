@@ -160,3 +160,32 @@ function test_courses_admin_learners_csv_rows()
 	pg_assert_same(array('2', '4', '', ''), array_slice($rows[1], 3), 'figures, and no times for none');
 	pg_assert_same('\'=HYPERLINK(""x"")', csv_cell($rows[1][0]), 'the writer guards a formula');
 }
+
+// A browser leaves a disabled field out of the post. Every lesson row must
+// post one value to each of the five parallel lists, or a quiz lesson after
+// a lesson without one reads another row's score (or none, and the save is
+// refused).
+function test_courses_admin_lesson_row_posts_every_list()
+{
+	$plain = pg_course_lesson_row_html(array('id' => 3, 'page_id' => 41, 'open_days' => 0, 'quiz_page_id' => 0, 'quiz_pass_score' => 0), '<option value="41">A</option>', '<option value="0">No quiz</option>');
+	$quiz = pg_course_lesson_row_html(array('id' => 4, 'page_id' => 42, 'open_days' => 7, 'quiz_page_id' => 90, 'quiz_pass_score' => 70), '<option value="42">B</option>', '<option value="90">Quiz</option>');
+
+	foreach (array('lesson_id', 'lesson_page', 'lesson_days', 'lesson_quiz', 'lesson_score') as $list) {
+		pg_assert_same(1, substr_count($plain, 'name="' . $list . '[]"'), 'a lesson without a quiz posts ' . $list);
+		pg_assert_same(1, substr_count($quiz, 'name="' . $list . '[]"'), 'a quiz lesson posts ' . $list);
+	}
+
+	pg_assert_false((bool) preg_match('/<(input|select)\b[^>]*\bname="lesson_[a-z]+\[\]"[^>]*\sdisabled\b/', $plain), 'no posted field of a lesson without a quiz is disabled');
+	pg_assert_contains('readonly', $plain, 'its score field cannot be typed in');
+	pg_assert_contains('value="70"', $quiz, 'a quiz lesson shows its score');
+	pg_assert_false(strpos($quiz, 'readonly') !== false, 'and can change it');
+
+	// What the browser then posts for the two rows reads back right.
+	$input = pg_course_input(array(
+		'name' => 'Course', 'folder_id' => '7',
+		'lesson_id' => array('3', '4'), 'lesson_page' => array('41', '42'), 'lesson_days' => array('0', '7'),
+		'lesson_quiz' => array('0', '90'), 'lesson_score' => array('', '70'),
+	));
+	pg_assert_same(array(), $input['errors'], 'the save is not refused');
+	pg_assert_same(70, $input['lessons'][1]['quiz_pass_score'], 'the quiz lesson keeps its own score');
+}
