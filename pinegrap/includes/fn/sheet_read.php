@@ -812,7 +812,10 @@ function pg_sheet_xls_load($path, $sheet)
         return 'read';
     }
 
-    require_once(PG_FUNCTIONS_DIR . '/excel_reader2.php');
+    // PHP 7 reports the library's PHP 4 constructors as deprecated while it
+    // compiles the file; a reported notice there stopped the load halfway,
+    // before its constants. The reader never calls those constructors.
+    @require_once(PG_FUNCTIONS_DIR . '/excel_reader2.php');
     require_once(PG_FUNCTIONS_DIR . '/includes/sheet_read_xls.php');
 
     $reader = new Pg_Sheet_Xls_Reader((int) $sheet);
