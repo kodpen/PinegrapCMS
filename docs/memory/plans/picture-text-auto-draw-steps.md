@@ -17,7 +17,7 @@ description: Plan picture-text-auto-draw, steps DA1 to DA5: rows and text jobs a
   - Tests under Node: the lock, the order, the stop, a failed row; the footer's tag. A sandbox run (a unit test cannot reach the bundle's draw): a picture saved, translated and drawn with no press.
 - DA3 (M) after DA1, beside DA2: the server draws with nobody there. Done: #10433.
   - `pg_picture_tr_draw_due($budget)` in `translation_job.php` after `pg_tr_jobs_run_due()`, only while the mark is set and `pg_image_draw_can()` passes shapes and text: queue rows of any folder not in the Recycle Bin, canvas documents only, under `pg_image_draw_guarded()` and inside the budget.
-  - The language document and the fit in PHP (twins of `M.languageDoc()` and `M.languageFit()`: floor 0.7, `fit` 1 below it) with the server's own letter widths; then `pg_image_draw_plan()`'s verdict on that document. A row it cannot draw whole is left as it is.
+  - The language document and the fit in PHP (twins of `M.languageDoc()` and `M.languageFit()`: floor 0.7, `fit` 1 below it) with the server's own letter widths; then `pg_image_draw_plan()`'s verdict on that document. A row it cannot draw whole is left.
   - Kept through DA1's function with `drawn_by` 0. System Status shows the Canvas Drawing row also when the site has a target language.
   - Tests: the twins on fixtures shared with the script; a plain document drawn; a sticker, an effect, a missing font and a photo left; the budget; the mark cleared. A sandbox run with Imagick.
 - DA4 (S) after DA2 and DA3: the screens' words.
