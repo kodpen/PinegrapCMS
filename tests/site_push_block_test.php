@@ -134,6 +134,29 @@ function test_site_push_block_worker_prelude()
 	pg_assert_false(strpos($line, '"icon"') !== false, 'no icon without a site icon');
 	pg_assert_contains('"door":"/pinegrap/site_push.php"', $line);
 	pg_assert_contains('"icon":"/apple-touch-icon.png"', pg_site_push_worker_prelude('/d', 'n', 't', '/apple-touch-icon.png'));
+	pg_assert_false(strpos($line, '"offline"') !== false, 'no offline page outside app mode');
+
+	$offline = pg_site_push_worker_offline('/site/', 'pinegrap', 'tr', 'Offline', 'No connection.', 'Try again');
+	pg_assert_same(array('skip' => '/site/pinegrap/', 'lang' => 'tr', 'title' => 'Offline', 'text' => 'No connection.', 'retry' => 'Try again'), $offline);
+	pg_assert_same('', pg_site_push_worker_offline('/', 'pinegrap', 'tr"><x', 'a', 'b', 'c')['lang'], 'a strange language code is left out');
+	pg_assert_contains('"offline":{"skip":"/site/pinegrap/","lang":"tr"', pg_site_push_worker_prelude('/d', 'n', 't', '', $offline));
+}
+
+// App mode (N17): its own switch, off by default, working only beside the
+// notifications switch; the worker file asks it.
+function test_site_push_block_app_mode()
+{
+	pg_assert_same('site_push_app', PG_SITE_PUSH_APP_SWITCH);
+	pg_assert_same('standalone', pg_site_push_app_display(true));
+	pg_assert_same('browser', pg_site_push_app_display(false));
+
+	$module = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/site_push.php');
+	pg_assert_contains('return pg_site_push_app_on() && pg_site_push_enabled();', $module);
+	pg_assert_contains("return pg_config_text(PG_SITE_PUSH_APP_SWITCH) === '1';", $module);
+
+	$php = (string) file_get_contents(PG_FUNCTIONS_DIR . '/site_push_sw.php');
+	pg_assert_contains('$site_push_sw_offline = pg_site_push_app_mode()', $php);
+	pg_assert_contains("lang('You are offline')", $php);
 }
 
 // The worker file answers for the site's root and loads no session.
@@ -145,7 +168,7 @@ function test_site_push_block_worker_file()
 	pg_assert_contains("header('Content-Type: application/javascript; charset=utf-8');", $php);
 
 	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_site_push_sw.js');
-	pg_assert_false(strpos($js, "'fetch'") !== false, 'no fetch handler (N2)');
+	pg_assert_contains("if (conf.offline) {\n            sw.addEventListener('fetch'", $js, 'a fetch handler only in app mode (N2, N17)');
 }
 
 function test_site_push_block_page_content_loads_the_module()
@@ -466,6 +489,62 @@ console.log(JSON.stringify({ shown: sw.shown, post: sw.posts[0], handlers: Objec
 	), $r['targets']);
 }
 
+// App mode's worker (N17): a page load that the network fails gets the
+// offline page; the panel, other requests and a working network pass by.
+function test_site_push_block_worker_offline_page()
+{
+	$r = _site_push_block_node('
+function scope(offline, down) {
+  var sw = fakeWorkerScope("", { message: null });
+  if (offline) sw.pgSitePushWorker.offline = { skip: "/pg/", lang: "tr", title: "You are offline", text: "No <connection>.", retry: "Try again" };
+  sw.Response = function (body, init) { this.body = body; this.status = init.status; this.headers = init.headers; };
+  var asked = [];
+  sw.fetch = function (req) { asked.push(req.url); return down ? Promise.reject(new TypeError("Failed to fetch")) : Promise.resolve({ fromNetwork: true }); };
+  sw.asked = asked;
+  W.start(sw);
+  return sw;
+}
+async function load(sw, req) {
+  var got = null;
+  sw.on.fetch({ request: req, respondWith: function (p) { got = p; } });
+  return got ? await got : "untouched";
+}
+var page = { mode: "navigate", method: "GET", url: "https://shop.example/news" };
+var plain = scope(false, true);
+var down = scope(true, true);
+var up = scope(true, false);
+var answer = await load(down, page);
+console.log(JSON.stringify({
+  plainHandlers: Object.keys(plain.on).sort(),
+  handlers: Object.keys(down.on).sort(),
+  answer: { status: answer.status, type: answer.headers["Content-Type"], body: answer.body },
+  up: await load(up, page),
+  panel: await load(down, { mode: "navigate", method: "GET", url: "https://shop.example/pg/welcome.php" }),
+  post: await load(down, { mode: "navigate", method: "POST", url: "https://shop.example/form" }),
+  image: await load(down, { mode: "no-cors", method: "GET", url: "https://shop.example/a.png" }),
+  other: await load(down, { mode: "navigate", method: "GET", url: "https://other.example/" }),
+  asked: down.asked
+}));');
+	if (!_site_push_block_ran($r)) {
+		return;
+	}
+	pg_assert_same(array('install', 'notificationclick', 'push'), $r['plainHandlers'], 'outside app mode: no fetch handler (N2)');
+	pg_assert_same(array('fetch', 'install', 'notificationclick', 'push'), $r['handlers']);
+
+	pg_assert_same(503, $r['answer']['status']);
+	pg_assert_same('text/html; charset=utf-8', $r['answer']['type']);
+	foreach (array('<html lang="tr">', '<h1>You are offline</h1>', 'No &lt;connection&gt;.', '<a href="">Try again</a>', '<p>Shop</p>') as $part) {
+		pg_assert_contains($part, $r['answer']['body']);
+	}
+	pg_assert_false(strpos($r['answer']['body'], '<script') !== false, 'no script on the offline page');
+
+	pg_assert_same(array('fromNetwork' => true), $r['up'], 'a working network answers as before');
+	foreach (array('panel', 'post', 'image', 'other') as $k) {
+		pg_assert_same('untouched', $r[$k], $k . ' never passes through the worker');
+	}
+	pg_assert_same(array('https://shop.example/news'), $r['asked'], 'only the page load went through the worker');
+}
+
 // -- the block and the switch ------------------------------------------------
 
 function test_site_push_block_family()
@@ -507,6 +586,9 @@ function test_site_push_block_features_card()
 
 	$save = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/features.save.php');
 	pg_assert_contains("pg_site_push_switch_save((bool) post_value('site_push_on'));", $save);
+	pg_assert_contains("(pg_site_push_app_on() ? ' checked=\"checked\"' : '')", $card);
+	pg_assert_contains('name="site_push_app_on"', $card);
+	pg_assert_contains("pg_site_push_app_save((bool) post_value('site_push_app_on'));", $save);
 
 	$registry = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/registry.php');
 	pg_assert_contains("'pgset-site-push' => lang('Visitor notifications'),", $registry);

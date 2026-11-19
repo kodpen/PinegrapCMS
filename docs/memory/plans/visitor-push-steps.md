@@ -42,7 +42,7 @@ description: Plan visitor-push, steps VP1 to VP8: the tables and the door, the s
 - VP6b (S) after VP3: the button "Notify me on this device" on the order pages (`action=order`). Features: N16.
   - Done: #10480.
 
-- VP7 (S) after VP3: app mode. Existing files: `get_site_icon.php` (the manifest's `display`), the worker file (the offline page). Features: N17.
+- VP7 (S) after VP3: app mode (`get_site_icon.php`, the worker; N17). Done: #10481 (`platform/visitor-push-app-mode.md`).
 
 - VP8 (S) close-out: every N number checked against the code with its PR; `platform/visitor-push.md`; this plan's three files deleted and its line in `plans/website-features.md` removed.
 

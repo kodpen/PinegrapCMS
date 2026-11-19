@@ -53,6 +53,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     // (includes/fn/site_push.php), only when its card was on the form.
     if (array_key_exists('site_push_card', $_POST) && function_exists('pg_site_push_switch_save')) {
         pg_site_push_switch_save((bool) post_value('site_push_on'));
+        pg_site_push_app_save((bool) post_value('site_push_app_on'));
     }
 
     // Content changes that wait for approval: one config_text row. A form

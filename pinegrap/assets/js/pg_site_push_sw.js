@@ -6,8 +6,11 @@
  * and self.pgSitePushWorker set before it: the door's address (site_push.php),
  * the site's name, a short fixed text and the site icon.
  *
- * It handles a push and a click on a notification, nothing else: no fetch
- * handler, so no request of the site or the panel passes through it. The
+ * It handles a push and a click on a notification. A fetch handler is added
+ * only in app mode (self.pgSitePushWorker.offline): a page load of the site
+ * goes to the network untouched, and only when the network fails is an
+ * offline page answered instead; nothing is cached, and the software
+ * directory (the panel) and every other request never pass through it. The
  * push carries no text. Woken, the worker posts its subscription's secret
  * (kept in IndexedDB by assets/js/pg_site_push.js) to the door and shows the
  * waiting message; when there is none or it cannot be read, it still shows
@@ -105,8 +108,57 @@
         }).catch(function () { return null; });
     }
 
+    function esc(text) {
+        return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    // Whether a request gets the offline page when the network fails: a
+    // GET page load of this site in app mode, outside the software
+    // directory. Pure.
+    function offlineFor(request, conf, scope) {
+        var o = conf && conf.offline;
+        if (!o || !request || request.mode !== 'navigate' || request.method !== 'GET') return false;
+        var home = String(scope || '/');
+        var url = String(request.url || '');
+        if (url.indexOf(home) !== 0) return false;
+        var path;
+        try { path = new URL(url).pathname; } catch (e) { return false; }
+        return !(o.skip && path.indexOf(String(o.skip)) === 0);
+    }
+
+    // The offline page: the site's name, the heading, a line and a link
+    // that loads the same address again. No script, no outside file. Pure.
+    function offlinePage(conf) {
+        var o = (conf && conf.offline) || {};
+        var name = String((conf && conf.name) || '');
+        return '<!DOCTYPE html><html' + (o.lang ? ' lang="' + esc(o.lang) + '"' : '') + '><head><meta charset="utf-8">'
+            + '<meta name="viewport" content="width=device-width, initial-scale=1">'
+            + '<title>' + esc(o.title || '') + (name ? ' - ' + esc(name) : '') + '</title>'
+            + '<style>body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:#fff;color:#212529;'
+            + 'display:flex;min-height:100vh;align-items:center;justify-content:center;text-align:center}'
+            + 'main{padding:24px;max-width:28rem}h1{font-size:1.5rem;margin:0 0 .75rem}p{margin:0 0 1.5rem;line-height:1.5}'
+            + 'a{display:inline-block;padding:.625rem 1.25rem;border-radius:.375rem;background:#212529;color:#fff;text-decoration:none}'
+            + 'a:focus-visible{outline:3px solid #0d6efd;outline-offset:2px}'
+            + '@media (prefers-color-scheme:dark){body{background:#212529;color:#f8f9fa}a{background:#f8f9fa;color:#212529}}</style>'
+            + '</head><body><main>' + (name ? '<p>' + esc(name) + '</p>' : '')
+            + '<h1>' + esc(o.title || '') + '</h1><p>' + esc(o.text || '') + '</p>'
+            + '<a href="">' + esc(o.retry || '') + '</a></main></body></html>';
+    }
+
     function start(sw) {
         var conf = sw.pgSitePushWorker || {};
+
+        if (conf.offline) {
+            sw.addEventListener('fetch', function (event) {
+                if (!offlineFor(event.request, conf, sw.registration.scope)) return;
+                event.respondWith(sw.fetch(event.request).catch(function () {
+                    return new sw.Response(offlinePage(conf), {
+                        status: 503,
+                        headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }
+                    });
+                }));
+            });
+        }
 
         sw.addEventListener('install', function () { sw.skipWaiting(); });
 
@@ -137,5 +189,5 @@
         });
     }
 
-    return { notice: notice, target: target, start: start };
+    return { notice: notice, target: target, offlineFor: offlineFor, offlinePage: offlinePage, start: start };
 });
