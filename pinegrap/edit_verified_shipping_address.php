@@ -29,6 +29,11 @@ if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM verified_shipping_address
     output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
 }
 
+// The address fields are single values. One posted as an array counts as
+// not given: cast to text it printed "Array to string conversion", and a
+// text field was saved as "Array".
+pg_request_single_values(array('company', 'address_1', 'address_2', 'city', 'state_id', 'zip_code'));
+
 include_once('liveform.class.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/forms/verified_shipping_address_form.php');
 $liveform = new liveform('edit_verified_shipping_address');
