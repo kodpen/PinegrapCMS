@@ -780,6 +780,13 @@
                     return;
                 }
 
+                if (data.busy) {
+                    // Another run (the scheduled job or a second open
+                    // screen) is working the job: look again shortly, the
+                    // counts above follow its progress.
+                    return new Promise(function (resolve) { window.setTimeout(resolve, 5000); }).then(step);
+                }
+
                 if (data.error && !data.done) {
                     // The engine answered with an error and nothing was
                     // translated. What keeps failing is left to the

@@ -263,15 +263,35 @@ function pg_tr_job_cancel($job_id)
 }
 
 /**
+ * The name of a job's run lock, as SQL. GET_LOCK names belong to the whole
+ * database server, so the database is part of the name; hashed, so a long
+ * database name never pushes it past the 64 characters a name may have.
+ *
+ * @param int $job_id
+ * @return string  An SQL expression
+ */
+function pg_tr_job_lock_sql($job_id)
+{
+    $job_id = is_numeric($job_id) ? (int) $job_id : 0;
+
+    return "CONCAT('pg_tr_job_', MD5(CONCAT(DATABASE(), ':', " . $job_id . ")))";
+}
+
+/**
  * Works a server engine's job for up to $budget seconds. Returns how many
  * items were answered in this call and whether the job is finished.
  *
- * @return array('done' => int, 'failed' => int, 'finished' => bool, 'error' => string)
+ * One run at a time: the screen's run calls, a second open screen and the
+ * scheduled job all work the same open job, and two runs at once would read
+ * the same waiting texts and send each to the engine twice. A run that finds
+ * the job taken works nothing and answers 'busy'.
+ *
+ * @return array('done' => int, 'failed' => int, 'finished' => bool, 'busy' => bool, 'error' => string)
  */
 function pg_tr_job_run_server($job_id, $budget = 20)
 {
     $job = pg_tr_job_get($job_id);
-    $result = array('done' => 0, 'failed' => 0, 'finished' => false, 'error' => '');
+    $result = array('done' => 0, 'failed' => 0, 'finished' => false, 'busy' => false, 'error' => '');
 
     if (!$job || !in_array($job['status'], array('queued', 'running'), true)) {
         $result['finished'] = true;
@@ -299,7 +319,19 @@ function pg_tr_job_run_server($job_id, $budget = 20)
         return $result;
     }
 
-    db("UPDATE translation_jobs SET status = 'running', claimed_at = '" . time() . "' WHERE id = '" . (int) $job_id . "'");
+    // Only a plain 0 means another run holds the job; a server that cannot
+    // answer (null) still works it, without the protection the lock adds.
+    $lock = pg_tr_job_lock_sql($job_id);
+    $got = db_value("SELECT GET_LOCK(" . $lock . ", 0)");
+
+    if (($got !== null) && ((string) $got === '0')) {
+        $result['busy'] = true;
+        return $result;
+    }
+
+    // A job cancelled or closed by another run since it was read above stays
+    // so.
+    db("UPDATE translation_jobs SET status = 'running', claimed_at = '" . time() . "' WHERE id = '" . (int) $job_id . "' AND status IN ('queued', 'running')");
 
     // A model call may take most of a minute on its own; the budget is
     // checked between batches, not inside one.
@@ -376,6 +408,10 @@ function pg_tr_job_run_server($job_id, $budget = 20)
     }
 
     $result['finished'] = (pg_tr_job_close_if_complete($job_id) !== '');
+
+    if ((string) $got === '1') {
+        db_value("SELECT RELEASE_LOCK(" . $lock . ")");
+    }
 
     return $result;
 }
