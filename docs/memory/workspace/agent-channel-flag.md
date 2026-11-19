@@ -1,15 +1,17 @@
 ---
 name: agent-channel-flag
-description: Agent channel switch (ws_channels.agent_channel, #8440): /agent-channel on|off; its decisions and tasks kept apart from the general screens, the dashboard and the API lists
+description: Agent channel switch (ws_channels.agent_channel, #8440): the command, Channel settings and the New channel form; its decisions and tasks kept apart from the general screens and the API lists
 ---
 
 ## What is an agent channel?
 - A channel whose `ws_channels.agent_channel` is 1 (step 11.0.180, `upgrade_2026_11_0_ws_agent_channel()`; owner 2026-11-08, `workflow/decisions-made-schema-13.md`, `decisions-made-workspace-9.md`). Every channel starts off. Agents and tests write many decisions there, so they do not mix with the team's.
-- An explicit switch, not "a channel with an agent member": a clear test for keeping its decisions apart. A settings screen for agent channels is a later plan, once the testing is complete.
+- An explicit switch, not "a channel with an agent member": a clear test for keeping its decisions apart.
 - Code: `includes/workspace/agent_channel.php`. Read the column only after `ws_agent_channel_ready()` (files land before the upgrade); without it every channel reads as a team channel and the command answers "The database has to be updated first."
 
 ## How is it switched?
-- `/agent-channel on|off` (also `/ajan-kanalı`, `/ajan-kanali`; on/aç/açık, off/kapat/kapalı) in the channel: a channel manager only (`ws_can_manage_channel()`, as the agent tier); a system line names who switched it. Bare, it tells the person the state. A discussion (kind `thread`) is refused: switch its channel.
+- `/agent-channel on|off` (also `/ajan-kanalı`, `/ajan-kanali`; on/aç/açık, off/kapat/kapalı) in the channel; bare, it tells the person the state.
+- The Agent channel switch on the General tab of Channel settings and in the New channel form (owner poll 152, GM4 #10471): `agentChannelSwitchShown()` draws it for a manager (`can_manage`), never on a discussion or the note-to-channel form; `agent_channel` rides `ws_channel_update` / `ws_channel_create`.
+- All three go through `ws_agent_channel_set()`: a channel manager only (`ws_can_manage_channel()`), a discussion (kind `thread`) refused, a system line naming who switched it.
 - The API shows it read only: `agent_channel` on the channel shape (`ws_channel_brief()`, `ws_api_channel_present()`); no route sets it.
 
 ## Where are its decisions kept apart?
@@ -24,4 +26,4 @@ description: Agent channel switch (ws_channels.agent_channel, #8440): /agent-cha
 - Counts follow their lists (#9960): the dashboard's Team card and the Pipeline card's tasks box leave agent channels' tasks out (`ws_tasks_agent_out_sql()`); Today, the My tasks and Week cards and the tasks done figure count the reader's own tasks, kept whatever the channel.
 
 ## What is unchanged?
-- The channel's own Decisions tab, its board and brief, the agent's memory digest, and who may read a decision.
+- Who may read a decision. An agent channel's own Decisions tab and its brief read every agent channel's decisions (`agent-channel-decisions.md`).

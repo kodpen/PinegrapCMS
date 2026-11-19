@@ -265,6 +265,14 @@ function ws_js_strings()
         'no_conflicts'           => lang('No clashes in the next two weeks.'),
         'no_customer'            => lang('Not about a customer'),
         'no_decisions'           => lang('No decisions or notes yet. Any message can be kept as one from its menu.'),
+        // An agent channel's Decisions tab and the channel form's Agent
+        // channel switch (agent_channel.php).
+        'dec_scope'              => lang('Which decisions'),
+        'dec_scope_channel'      => lang('This channel'),
+        'dec_scope_agents'       => lang('All agent channels'),
+        'dec_in_channel'         => ws_js_template('In #{var:1}', 1),
+        'agent_channel_label'    => lang('Agent channel'),
+        'agent_channel_help'     => lang('Its decisions stay apart from the other channels\' decisions, and it reads the decisions of every agent channel. Only a manager of the channel may switch it.'),
         'no_department'          => lang('No department'),
         'no_files'               => lang('No files have been posted here yet.'),
         'no_messages'            => lang('No messages yet. Say what the channel is for.'),
@@ -1086,6 +1094,7 @@ function ws_screen_config($viewer, $mode, $extra = array())
         'channel_icons' => ws_channel_icons_ready() ? ws_channel_icon_choices_js() : array(),
         'groups'       => ws_can_manage_groups($viewer) ? array('manage' => true, 'depth' => WS_GROUP_DEPTH) : array('manage' => false, 'depth' => WS_GROUP_DEPTH),
         'eras'         => ws_eras_ready(),
+        'agent_channels' => ws_agent_channel_ready(),
         'pins'         => ws_pins_ready(),
         'approvals'    => ws_approvals_ready() ? array('max' => WS_APPROVAL_MAX_PEOPLE, 'guests' => ws_approval_can_ask_guests($viewer) ? WS_APPROVAL_MAX_GUESTS : 0) : null,
         'acks'         => ws_acks_ready(),

@@ -2729,19 +2729,27 @@ function ws_message_mark($viewer, $message, $kind, $app_id = 0)
  * The decisions and notes of a channel, newest first, with its answered
  * agent questions among them by the time they were answered.
  *
- * @param array $viewer
- * @param int   $channel_id
+ * @param array      $viewer
+ * @param int        $channel_id
+ * @param int[]|null $channel_ids the channels read instead of the one alone
+ *                                (an agent channel's All agent channels)
  * @return array[]
  */
-function ws_channel_decisions($viewer, $channel_id)
+function ws_channel_decisions($viewer, $channel_id, $channel_ids = null)
 {
+    $ids = array_values(array_unique(array_map('intval', ($channel_ids === null) ? array($channel_id) : (array) $channel_ids)));
+
+    if (!$ids) {
+        return array();
+    }
+
     $rows = (array) db_items("SELECT * FROM ws_messages
-        WHERE channel_id = '" . (int) $channel_id . "' AND kind IN ('decision', 'note') AND deleted_at = 0
+        WHERE channel_id IN (" . implode(',', $ids) . ") AND kind IN ('decision', 'note') AND deleted_at = 0
         ORDER BY marked_at DESC, id DESC
         LIMIT 300");
 
     if (function_exists('ws_agent_question_decision_messages')) {
-        $rows = ws_agent_question_decisions_merge($rows, ws_agent_question_decision_messages($channel_id, 300), 300);
+        $rows = ws_agent_question_decisions_merge($rows, ws_agent_question_decision_messages($ids, 300), 300);
     }
 
     return ws_message_payloads($viewer, $rows);

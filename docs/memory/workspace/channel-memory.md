@@ -6,13 +6,13 @@ description: A channel's memory (ws_channel_memory) and the decision mark by a p
 ## What holds a channel's memory?
 - `ws_channel_memory` (step 11.0.173, `upgrade_2026_11_0_ws_channel_memory()`): title (150), text (4000), tags (comma list, lower case, at most 10 of 32 characters: `ws_memory_tags()`), pinned, `expires_at` (0 never), `author_kind`/`author_id` and `updated_by_kind`/`updated_by_id` (`user` or `app`, the same pair as `ws_messages.sender_kind`/`sender_id`). Every channel has one, an agent channel or not; a discussion's rows go with it in `ws_threads_purge()`.
 - Read with `ws_memory_ready()` first (files land before the upgrade). Checks: `ws_memory_check()` (panel and API share it; fields left out keep their value; an unchanged past expiry is not refused again) over the pure `ws_memory_entry_fault()`. Writes `ws_memory_save()`, `ws_memory_delete()`. Whoever may post in the channel writes and deletes entries.
-- `ws_memory_sweep()` in `workspace_recurring_job.php` deletes entries expired more than 30 days ago and those of channels that are gone.
+- `ws_memory_sweep()` (`workspace_recurring_job.php`) deletes entries expired 30 days ago and those of gone channels.
 
 ## What does an agent's brief carry?
 - The index only, never texts (owner 2026-11-08, #8188): `ws_memory_digest()` gives "- #id title [tags]" lines, pinned first then the newest, expired left out; in an agent channel after the general index (`channel-memory-general.md`).
-- Then "Decisions in this channel": the newest `WS_MEMORY_BRIEF_DECISIONS` (10), then "(N older decisions not shown: list them with workspace.decisions.list.)". `ws_memory_brief()` reads ten and counts the rest (#8756; `workflow/agent-channel-reads.md`).
+- Then "Decisions in this channel": the newest `WS_MEMORY_BRIEF_DECISIONS` (10) and a count of the older ones; `ws_memory_brief()` reads ten and counts the rest (#8756). An agent channel's are every agent channel's (`agent-channel-decisions.md`).
+- The brief's read-more line names `?limit=<n>` (`agent_queue.php`; `$more` in `ws_ai_briefing()`).
 - All within `WS_MEMORY_DIGEST_MAX` characters: a line that does not fit is left out with every line after it. One closing count ("(N more not shown: …)") holds them and the older decisions.
-- The brief's read-more line names `?limit=<n>` and asks for only as many messages as needed (`agent_queue.php`; `$more` in `ws_ai_briefing()`).
 - `ws_ai_memory_parts()` puts it in a `channel memory` data block of Claude's brief (`ws_ai_briefing()`), the app agent's brief and the preamble (`GET /workspace/messages/{id}/preamble`): one digest for all. Pinegrap AI gets none (no tool reads an entry).
 
 ## Who marked a message?
@@ -24,4 +24,4 @@ description: A channel's memory (ws_channel_memory) and the decision mark by a p
 - `api_memory.php` (`ws_memory_api_routes()`): `workspace.messages.mark` (`POST /workspace/messages/{id}/mark`, kind decision, note or message), `workspace.memory.list` (`GET /workspace/channels/{id}/memory`, no texts; `expired`, `tag`), `.get`, `.create` (201), `.update` (POST with PATCH), `.delete` with its `delete_post` twin. All rehearse, all are MCP tools. `no_expiry` takes an expiry off.
 
 ## Where is the Memory tab?
-- `assets/js/workspace_memory.js` (`PGWsMemory.mount()`), panel actions `ws_memory_list|save|delete|move`; parts and rows: `workspace-memory-tab.md`. The tab shows when the channel has an allowed agent row (`ws_memory_tab_shown()`, `channel.memory.tab` in `ws_channel_detail()`); otherwise the channel settings drawer's Channel memory button opens it (owner 2026-11-08).
+- `assets/js/workspace_memory.js` (`PGWsMemory.mount()`), panel actions `ws_memory_list|save|delete|move`; rows under project headings: `workspace-memory-tab.md`; the general memory: `channel-memory-general.md`. The tab shows when the channel has an allowed agent row (`ws_memory_tab_shown()`, `channel.memory.tab` in `ws_channel_detail()`); otherwise the channel settings drawer's Channel memory button opens it (owner 2026-11-08).

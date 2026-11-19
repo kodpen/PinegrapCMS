@@ -3648,6 +3648,16 @@ function ws_handle_action($action, $request)
 
             $made = array('channel_id' => $result['channel_id']);
 
+            // The form's Agent channel switch: the maker manages the new
+            // channel, so the same switch as /agent-channel on.
+            if (!empty($request['agent_channel']) && ws_agent_channel_ready()) {
+                $switched = ws_agent_channel_set($viewer, ws_channel($result['channel_id']), true);
+
+                if (!$switched['ok']) {
+                    $made['warning'] = $switched['error'];
+                }
+            }
+
             if ($template) {
                 $applied = ws_template_apply($viewer, ws_channel($result['channel_id']), $template, array('new_channel' => true));
                 $made[($applied['ok'] && !$applied['warning']) ? 'notice' : 'warning'] = $applied['ok'] ? $applied['message'] : $applied['error'];
@@ -3725,7 +3735,20 @@ function ws_handle_action($action, $request)
 
             $result = ws_channel_update($viewer, $channel, $data);
 
-            return $result['ok'] ? ws_action_ok() : ws_action_error($result['error'], $result['field']);
+            if (!$result['ok']) {
+                return ws_action_error($result['error'], $result['field']);
+            }
+
+            // Channel settings' Agent channel switch, as /agent-channel on|off.
+            if (array_key_exists('agent_channel', $request)) {
+                $switched = ws_agent_channel_set($viewer, ws_channel($channel['id']), !empty($request['agent_channel']));
+
+                if (!$switched['ok']) {
+                    return ws_action_error($switched['error'], 'agent_channel');
+                }
+            }
+
+            return ws_action_ok();
 
         // A customer and the records tied to it, for the channel form to show
         // before it is saved (includes/workspace/customer.php).
@@ -4377,7 +4400,16 @@ function ws_handle_action($action, $request)
                 return ws_action_error($channel);
             }
 
-            return ws_action_ok(array('messages' => ws_channel_decisions($viewer, $channel['id'])));
+            // An agent channel's tab may ask for every agent channel's
+            // decisions (scope=agents), each named by its channel.
+            $scope = ws_agent_channel_scope($request['scope'] ?? '');
+            $readable = (ws_agent_channel_is($channel) && ($scope === 'agents')) ? ws_agent_channel_readable($viewer) : array();
+            $ids = ws_agent_channel_decision_ids($channel, $readable, $scope);
+
+            return ws_action_ok(array(
+                'messages' => ws_agent_channel_decision_names(ws_channel_decisions($viewer, $channel['id'], $ids), $channel['id'], $readable),
+                'scope'    => (count($ids) > 1) ? 'agents' : 'channel',
+            ));
 
         // A channel's memory (channel_memory.php): every entry with its
         // text, the expired ones too; written by whoever may post here.
