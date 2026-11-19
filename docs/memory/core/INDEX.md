@@ -84,6 +84,7 @@
 - email-campaign-send-claims.md: Send now and the campaign job claim recipients with one conditional UPDATE, so overlapping runs never deliver twice; follow-ups only from the run that finished the campaign
 - email-campaign-send.md: Send now and the campaign job share includes/fn/email_campaign_send.php: mail properties with purpose, refused deliveries stored as attempts, finish counts only deliveries
 - error-path-missing-methods.md: liveform has add_error() for form-level messages vs mark_error() per field; never call a method that does not exist on error branches (PHP 8 gives a blank HTTP 500).
+- error-reporting.md: How PHP errors are reported (SET_ERROR_REPORTING, php_errors.log on Site Log), how a PHP error log is read and its warnings fixed by cause, never with @; what the 2026 PHP 8.5 log clean-up left
 - error-screen-language-and-status.md: The error screen output_error() draws: a site error in the site's language (pg_tr_finalize()), a panel screen's error in the panel's own frame (#9024); which "not found" screens answer 404
 - excel-reader2-embedding.md: The bundled excel_reader2.php (php-excel-reader 2.22) that reads an uploaded .xls for the site search index, and the local patch that makes it run and stay quiet on PHP 8
 - explorer-handler-files.md: pg_explorer_handle() after the split: the prelude and the dispatch, one handler per sub-action in includes/explorer/handle_*.php, where a new one goes, the tests
@@ -115,7 +116,7 @@
 - lang-function-syntax.md: lang() call forms: plain, variables {var:N}, case modifiers |c |u |l, plural suffix, no text concatenated outside lang(), and the lang(['info' => true]) active-language query.
 - lang-loader.md: Where lang() lives (includes/fn/lang.php), how get_file.php loads it without functions.php, the software language a request outside init.php speaks
 - lang-placeholders.md: How lang() fills {var:N}, its case modifiers and {suffix}: one strtr() pass, values never re-scanned, plain {var} left for JavaScript
-- log-warnings-forms-default-screens.md: Form, calendar and default screen warnings of the PHP 8.5 error log fixed by cause (plan php-error-log-clean, EL5): what each screen now does when a row, a page or a posted key is missing
+- log-warnings-forms-default-screens.md: Form, calendar and default screen warnings of the PHP 8.5 error log fixed by cause (#10304, `error-reporting.md`): what each screen now does when a row, a page or a posted key is missing
 - login-as-sign-out.md: Sign-out after Login as User: the operator lands on Edit User of that account, signed back in by their cookie, with a notice; without one the logout page (#9007)
 - mail-bounce-screens.md: Where the bounce record is shown: campaign delivery counts, the Suppressed contact view and export column, the contact card badge with Allow again, personal data export and erasure
 - mail-bounce-verp.md: VERP return path with a signed per-message token, pg_mail_parse_dsn() for delivery reports and ARF complaints, and the Workspace mailbox that reads bounces and records them
