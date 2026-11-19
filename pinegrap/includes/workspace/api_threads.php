@@ -117,10 +117,10 @@ function ws_api_thread_schema()
         'can_follow'      => 'boolean',
         'started_by'      => 'WorkspacePerson?',
         'closed_by'       => 'WorkspacePerson?',
-        'closed_at'       => 'string?',
-        'kept_until'      => 'string?',
-        'last_message_at' => 'string?',
-        'created_at'      => 'string?',
+        'closed_at'       => 'datetime?',
+        'kept_until'      => 'datetime?',
+        'last_message_at' => 'datetime?',
+        'created_at'      => 'datetime?',
     );
 }
 
@@ -464,11 +464,11 @@ function ws_api_scheduled_message_schema()
         'text'       => 'string',
         'body'       => 'string',
         'parent_id'  => 'integer?',
-        'send_at'    => 'string?',
+        'send_at'    => 'datetime?',
         'status'     => 'string',
         'error'      => 'string?',
-        'created_at' => 'string?',
-        'updated_at' => 'string?',
+        'created_at' => 'datetime?',
+        'updated_at' => 'datetime?',
     );
 }
 
@@ -1049,7 +1049,7 @@ function ws_api_note_version_schema()
         'note_id'  => 'integer',
         'title'    => 'string',
         'saved_by' => 'WorkspacePerson?',
-        'saved_at' => 'string?',
+        'saved_at' => 'datetime?',
         'size'     => 'integer',
         'text'     => 'string?',
         'body'     => 'string?',

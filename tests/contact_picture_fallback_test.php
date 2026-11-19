@@ -61,6 +61,31 @@ function test_contact_screens_take_the_no_picture_branch_for_a_deleted_file()
 	pg_assert_true(strpos($print, "\$row['image']") === false, 'print order reads no column its query lacks');
 }
 
+// contacts.image holds the address of a picture with no files row (an
+// Unsplash pick); older rows may hold a bare file name. Edit Contact put PATH
+// before every address, so an Unsplash picture loaded "/https://…" and showed
+// the failure mark; the Contacts list printed a bare name without PATH.
+function test_contact_image_address()
+{
+	$unsplash = 'https://images.unsplash.com/photo-1?ixid=a&w=400';
+
+	pg_assert_same($unsplash, pg_contact_image_address($unsplash, '/site/'), 'an Unsplash address as it is');
+	pg_assert_same('http://example.com/a.jpg', pg_contact_image_address('http://example.com/a.jpg', '/site/'), 'an http address as it is');
+	pg_assert_same('HTTPS://example.com/a.jpg', pg_contact_image_address('HTTPS://example.com/a.jpg', '/site/'), 'the scheme in capitals');
+	pg_assert_same('//cdn.example.com/a.jpg', pg_contact_image_address('//cdn.example.com/a.jpg', '/site/'), 'a scheme-relative address as it is');
+	pg_assert_same('/site/a.jpg', pg_contact_image_address('/site/a.jpg', '/site/'), 'a root-relative address as it is');
+	pg_assert_same('/site/a.jpg', pg_contact_image_address('a.jpg', '/site/'), 'a bare file name after the base');
+	pg_assert_same('', pg_contact_image_address('', '/site/'), 'no address');
+	pg_assert_same('', pg_contact_image_address(null, '/site/'), 'a missing address');
+
+	$edit_contact = contact_picture_fallback_source('edit_contact.php');
+	pg_assert_contains("data-src=\"' . h(pg_contact_image_address(\$row['image'])) . '\"", $edit_contact, 'Edit Contact draws the address through the helper');
+	pg_assert_true(strpos($edit_contact, "PATH . h(\$row['image'])") === false, 'Edit Contact no longer puts PATH before an address');
+
+	$list = contact_picture_fallback_source('includes/fn/contact_list.php');
+	pg_assert_contains("\$lazy . h(pg_contact_image_address(\$contact['image']))", $list, 'the Contacts list draws the address through the helper');
+}
+
 function test_product_thumbs_need_their_file_on_disk()
 {
 	$widget = contact_picture_fallback_source('includes/dashboard/widgets/widget_9.php');

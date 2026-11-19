@@ -503,8 +503,8 @@ function api_calendar_event_schema() {
 			'product_id'     => 'integer?'
 		),
 		'unpublish_days'    => 'integer',
-		'created_at'        => 'string?',
-		'updated_at'        => 'string?',
+		'created_at'        => 'datetime?',
+		'updated_at'        => 'datetime?',
 		'updated_at_unix'   => 'integer',
 		'description'       => 'string'
 	);
@@ -530,7 +530,7 @@ function api_calendar_schema() {
 		'id'          => 'integer',
 		'name'        => 'string',
 		'event_count' => 'integer',
-		'updated_at'  => 'string?'
+		'updated_at'  => 'datetime?'
 	);
 
 }
@@ -1325,8 +1325,8 @@ function api_calendar_location_schema() {
 		'id'          => 'integer',
 		'name'        => 'string',
 		'event_count' => 'integer',
-		'created_at'  => 'string?',
-		'updated_at'  => 'string?'
+		'created_at'  => 'datetime?',
+		'updated_at'  => 'datetime?'
 	);
 
 }
@@ -1574,7 +1574,7 @@ function api_calendar_reservation_schema() {
 		'order_status'      => 'string',
 		'recurrence_number' => 'integer',
 		'quantity'          => 'integer',
-		'reserved_at'       => 'string?',
+		'reserved_at'       => 'datetime?',
 		'customer'          => 'CalendarReservationCustomer?'
 	);
 

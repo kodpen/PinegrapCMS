@@ -8,7 +8,7 @@ module: graph_canvas
 - `assets/js/pg_graph_canvas.js`, bundle `pg_graph_canvas.min.js`, printed before its user (the flows screen: `ws_screen_assets()`).
 - It owns what a box-and-arrow canvas needs whatever its boxes mean: geometry helpers, undo history, `viewport(host)`, and `create(adapter)` (pointer, pinch, Space, zoom keys, `destroy()`).
 - Sizes per box, named ports, other targets, stable arrow ids, partial redraw, thumbnails (slice 4): `ui/graph-canvas-core-sizes-ports.md`.
-- Focus, faint arrows, headings: `ui/graph-canvas-core-focus.md`.
+- Focus, faint arrows, headings: `ui/graph-canvas-core-focus.md`; `-logic.md`, `-routing.md`; `dashed()`: designer/prototype-suggest.md.
 
 ## Why a core with adapters?
 - Owner, 2026-10-24 (#2445): the Flows canvas serves other features too, so the generic part is one core named `pg_graph_canvas` / `pgc-` and each user brings an adapter; the second user is the designer's Prototype view (`designer/prototype-view.md`).
@@ -21,7 +21,7 @@ module: graph_canvas
 ## What does create() draw and drag since 2c (#4518)?
 - `box(item, {className, into, out, fill})`: focus, role, `data-node`, `data-refocus`, in port, the adapter's content, out port (titled while `editable()`); `place()` calls `adapter.placed()`; `edge(index, from, to)` adds the arrow's group to `ui.svg`; `mark(selected)`; `announce(text)` on `ui.live`.
 - A press the adapter's `press()` leaves without a kind is the core's: out port → `connect` (`canConnect()`, `connected(from, to)`), box → `move` (`moved(item)`; `none` read-only), arrow → selected, else pan. `cancel()` puts a moved box back. Flows keeps its data threads, the double tap and the empty-canvas click in its hooks.
-- The adapter is built before the Workspace lends its `t()`: give `text` and `boxRole` as functions that read it late (the harness caught `t is not a function`).
+- The adapter is built before the Workspace lends its `t()`: give `text` and `boxRole` as functions that read it late.
 
 ## How does autosave work (2d, #4557)?
 - `G.autosave(host)` (not tied to `create()`): `changed()`, `later()` (save after `host.delay`), `save({keepalive})`, `flush()`, `leave(leaving)`. Its state is kept on `host.record`; Flows passes its `state`, so `state.dirty`, `saving`, `saveError`, `conflict`, `leaveSent` keep their readers.

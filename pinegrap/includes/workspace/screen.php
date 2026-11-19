@@ -92,6 +92,8 @@ function ws_js_strings()
         'cmd_extra_estimate'     => lang('How long it takes, like ~2h'),
         'cmd_extra_people'       => lang('Who does it: a person or a department'),
         'cmd_extra_priority'     => lang('How urgent it is, like !urgent'),
+        'cmd_flow_meta'          => lang('Start this flow'),
+        'cmd_flows'              => lang('Flows'),
         'cmd_keys'               => lang('Tab: write · ↑↓: choose · Esc: close'),
         'commands'               => lang('Slash commands'),
         'completed_on'           => ws_js_template('Finished {var:1}', 1),
@@ -356,6 +358,11 @@ function ws_js_strings()
         'poll_other_placeholder' => lang('Write your own answer'),
         'poll_picture_open'      => ws_js_template('Open the picture of {var:1}', 1),
         'poll_question_picture_open' => lang('Open the question\'s picture'),
+        'poll_pictures_count'    => ws_js_template('{var:1} pictures', 1),
+        'poll_question_picture'  => lang('Question picture'),
+        'poll_question_picture_help' => lang('One picture shown large beside the options. It is sent with the question and needs no message of its own.'),
+        'poll_question_picture_upload' => lang('Upload a picture'),
+        'poll_question_picture_locked' => lang('Somebody has answered, so the question keeps the picture it was asked with.'),
         'poll_recommended'       => lang('Recommended'),
         'poll_take_back'         => lang('Take back the poll'),
         'poll_take_back_confirm' => lang('Take this poll back? It stays in the channel greyed out, takes no more votes and writes no result.'),
@@ -942,7 +949,7 @@ function ws_screen_config($viewer, $mode, $extra = array())
 
     // The search box of every screen (palette.php) and a channel's board
     // (channel_board.php).
-    $strings = array_merge($strings, ws_palette_js_strings(), ws_channel_board_js_strings(), ws_memory_js_strings(), ws_channel_agents_js_strings(), ws_agent_card_js_strings(), ws_person_card_js_strings(), ws_message_ref_js_strings());
+    $strings = array_merge($strings, ws_palette_js_strings(), ws_channel_board_js_strings(), ws_memory_js_strings(), ws_channel_agents_js_strings(), ws_agent_card_js_strings(), ws_agent_feedback_js_strings(), ws_person_card_js_strings(), ws_message_ref_js_strings());
     // The time spent on tasks and the tasks they wait for
     // (assets/js/workspace_task_time.js, workspace_task_links.js).
     $strings = array_merge($strings, ws_task_time_js_strings(), ws_task_links_js_strings());

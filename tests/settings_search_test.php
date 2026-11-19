@@ -120,6 +120,7 @@ function test_settings_search_every_category_names_its_group()
 		'privacy'     => 'site',
 		'languages'   => 'site',
 		'contact'     => 'site',
+		'mail_sending' => 'site',
 		'mailboxes'   => 'site',
 		'security'    => 'security',
 		'firewall'    => 'security',
@@ -206,9 +207,9 @@ function test_settings_search_index_from_registry_and_labels()
 	));
 
 	pg_assert_same(array(
-		array('pane' => 'features', 'card' => '', 'title' => 'Features', 'place' => '', 'keys' => array(), 'fields' => array()),
-		array('pane' => 'features', 'card' => 'pgset-features', 'title' => 'Feature Options', 'place' => 'Features', 'keys' => array('cart', 'prefetch'), 'fields' => array('Prefetch Menu Links')),
-		array('pane' => 'features', 'card' => 'pgset-images', 'title' => 'Image Optimization', 'place' => 'Features', 'keys' => array(), 'fields' => array()),
+		array('pane' => 'features', 'card' => '', 'title' => 'Features', 'place' => '', 'keys' => array(), 'fields' => array(), 'services' => array()),
+		array('pane' => 'features', 'card' => 'pgset-features', 'title' => 'Feature Options', 'place' => 'Features', 'keys' => array('cart', 'prefetch'), 'fields' => array('Prefetch Menu Links'), 'services' => array()),
+		array('pane' => 'features', 'card' => 'pgset-images', 'title' => 'Image Optimization', 'place' => 'Features', 'keys' => array(), 'fields' => array(), 'services' => array()),
 	), $index, 'a category row, then its cards with their keywords and the labels beside the title');
 }
 
@@ -443,4 +444,180 @@ function test_settings_search_turkish_keywords_keep_the_english_terms()
 	foreach (array('private label', 'white label', 'özel etiket') as $query) {
 		pg_assert_true(settings_search_test_palette_hits($query, $terms), $query . ' finds Private Label Branding in Turkish');
 	}
+}
+
+// A service typed in the search finds the card or tool its setting lives on
+// (the registry of outside services): the dialog ranks the names after
+// every other match, the palette takes them as keywords.
+function test_settings_search_finds_a_service_by_its_name()
+{
+	$index = pg_settings_search_index(
+		array('contact' => array('label' => 'Communication', 'sections' => array('pgset-sms' => 'SMS'), 'keywords' => array('pgset-sms' => array('sms')))),
+		array());
+
+	pg_assert_same(array('sms'), $index[1]['keys'], 'the card keeps its own words');
+	pg_assert_true(in_array('netgsm', $index[1]['services'], true), 'Netgsm finds the SMS card');
+
+	$mail = pg_settings_search_index(
+		array('mail_sending' => array('label' => 'E-mail sending', 'sections' => array('pgset-mail-transport' => 'Sending service'), 'keywords' => array('pgset-mail-transport' => array('smtp')))),
+		array());
+
+	pg_assert_true(in_array('postmark', $mail[1]['services'], true), 'Postmark finds the Sending service card');
+
+	$rows = pg_settings_search_tool_rows(array(array('label' => 'Connections', 'icon' => 'bi-plug', 'items' => array(
+		array('label' => 'Marketplaces', 'icon' => 'bi-buildings', 'url' => 'marketplace_settings.php'),
+	))), '/pg/');
+
+	pg_assert_true(in_array('trendyol', $rows[1]['services'], true), 'Trendyol finds Marketplaces in the dialog');
+	pg_assert_same(array(), $rows[0]['services'], 'the System tools row holds no service');
+
+	$actions = pg_panel_search_tool_actions(array(array('label' => 'Connections', 'icon' => 'bi-plug', 'items' => array(
+		array('label' => 'Marketplaces', 'icon' => 'bi-buildings', 'url' => 'marketplace_settings.php'),
+	))), '/pg', array());
+
+	pg_assert_true(in_array('trendyol', $actions[1]['keys'], true), 'Trendyol finds Marketplaces in the palette');
+	pg_assert_same(count($actions[1]['keys']), count(array_unique($actions[1]['keys'])), 'no word twice');
+
+	pg_assert_contains("pg_connections_place_words(\n                        '#settings/' . \$settings_key", settings_search_test_source('includes/panel/search.php'), 'the palette\'s cards gain the names too');
+}
+
+// The search rows of every card and System tools screen, as the dialog's
+// index holds them, without or with the names of the outside services each
+// place holds ('services'; the palette merges them into its keywords). Card
+// titles are their ids; keywords are the English sources.
+function settings_search_test_service_rows($with_services)
+{
+	$source = settings_search_test_source('includes/settings/registry.php');
+	$lists = settings_search_test_keyword_sources();
+	$rows = array();
+
+	preg_match_all("/\n        '([a-z_]+)' => array\(\n            'label'.*?'sections' => array\((.*?)\n            \),/s", $source, $match);
+
+	foreach ($match[1] as $i => $category) {
+		preg_match_all("/'(pgset-[a-z0-9-]+)'/", $match[2][$i], $ids);
+
+		foreach ($ids[1] as $id) {
+			$row = settings_search_test_row($id, isset($lists[$id]) ? settings_search_test_terms($lists[$id], 'en') : array());
+
+			if ($with_services) {
+				$row['services'] = pg_connections_place_services('#settings/' . $category . '/' . $id);
+			}
+
+			$rows[] = $row;
+		}
+	}
+
+	foreach (pg_settings_tool_keys() as $script => $words) {
+		$row = settings_search_test_row($script, $words);
+
+		if ($with_services) {
+			$row['services'] = pg_connections_place_services($script);
+		}
+
+		$rows[] = $row;
+	}
+
+	return $rows;
+}
+
+// The titles of the hits the dialog shows (its first 30) for each query, in
+// one Node run; null when Node is missing (skipped).
+function settings_search_test_shown_hits($rows, $queries)
+{
+	$out = array();
+	$code = 1;
+	@exec('node --version 2>&1', $out, $code);
+	if ($code !== 0) {
+		return null;
+	}
+
+	$js = settings_search_test_source('assets/js/backend.src.js');
+	$code_js = '';
+
+	foreach (array('fold', 'wordStarts', 'score', 'rankHits') as $name) {
+		$start = strpos($js, "\n    function " . $name . '(');
+		$end = strpos($js, "\n    }\n", $start);
+		$code_js .= substr($js, $start, $end - $start + 6) . "\n";
+	}
+
+	$code_js .= 'var rows = ' . json_encode($rows) . ', out = {};' . "\n"
+		. json_encode(array_values($queries)) . '.forEach(function (raw) {'
+		. ' var q = fold(raw).replace(/\s+/g, " ").trim();'
+		. ' out[raw] = rankHits(rows, q).slice(0, 30).map(function (h) { return h.row.title; }); });' . "\n"
+		. 'console.log(JSON.stringify(out));';
+
+	$file = tempnam(sys_get_temp_dir(), 'pgsss');
+	file_put_contents($file, $code_js);
+	$out = array();
+	exec('node ' . escapeshellarg($file) . ' 2>&1', $out, $code);
+	unlink($file);
+	pg_assert_same(0, $code, 'the Node script runs: ' . implode("\n", array_slice($out, 0, 8)));
+	$res = json_decode(implode("\n", $out), true);
+
+	return is_array($res) ? $res : null;
+}
+
+// The queries the service names could disturb: every name, its first two
+// and three letters, and every word a card or tool already answered to.
+function settings_search_test_service_queries()
+{
+	$queries = array();
+
+	foreach (pg_connections_place_keys() as $names) {
+		foreach ($names as $name) {
+			$queries[$name] = true;
+			$queries[mb_substr($name, 0, 2, 'UTF-8')] = true;
+			$queries[mb_substr($name, 0, 3, 'UTF-8')] = true;
+		}
+	}
+
+	foreach (settings_search_test_service_rows(false) as $row) {
+		foreach ($row['keys'] as $key) {
+			$queries[(string) $key] = true;
+		}
+	}
+
+	return array_map('strval', array_keys($queries));
+}
+
+// The service names only add: every card or tool the dialog showed for a
+// query before it still shows (within its first 30), and the palette, which
+// keeps every action one of whose keys matches, keeps every earlier match.
+function test_settings_search_service_names_keep_every_earlier_hit()
+{
+	$queries = settings_search_test_service_queries();
+	$before = settings_search_test_shown_hits(settings_search_test_service_rows(false), $queries);
+	$after = settings_search_test_shown_hits(settings_search_test_service_rows(true), $queries);
+
+	if (($before === null) || ($after === null)) {
+		return;
+	}
+
+	$lost = array();
+
+	foreach ($queries as $query) {
+		foreach (array_diff($before[$query], $after[$query]) as $title) {
+			$lost[] = $query . ' → ' . $title;
+		}
+	}
+
+	pg_assert_same(array(), $lost, 'the dialog keeps every earlier hit');
+	pg_assert_true(in_array('pgset-ws-agents', $after['deepseek'], true) && !in_array('pgset-ws-agents', $before['deepseek'], true), 'deepseek newly finds the Agents card');
+	pg_assert_same(array(), $before['deepseek'], 'deepseek found nothing before');
+
+	$lost = array();
+	$old = settings_search_test_service_rows(false);
+	$new = settings_search_test_service_rows(true);
+
+	foreach ($queries as $query) {
+		foreach ($old as $i => $row) {
+			$palette = array_merge($new[$i]['keys'], isset($new[$i]['services']) ? $new[$i]['services'] : array());
+
+			if (settings_search_test_palette_hits($query, $row['keys']) && !settings_search_test_palette_hits($query, $palette)) {
+				$lost[] = $query . ' → ' . $row['title'];
+			}
+		}
+	}
+
+	pg_assert_same(array(), $lost, 'the palette keeps every earlier hit');
 }

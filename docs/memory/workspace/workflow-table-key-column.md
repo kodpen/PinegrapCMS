@@ -11,13 +11,13 @@ description: The key column of a workflow table (wtable_keys.php, PR #8509): tex
 ## What does the store refuse?
 - Making a column the key (`ws_wtable_column_key_check()`): `key_taken` 409 when another column is the key; `key_not_unique` 409 while rows are empty in it or repeat a value, with `rows` (the `#` numbers, at most 20), `rows_count` and `empty`. A new key column is empty on every row, so it is accepted only on an empty table.
 - A row (create, update, restore from the bin): `cells_invalid` with the key column's code `key_empty` or `duplicate_key` (`ws_wtable_key_cells_refusal()`).
-- Create and update run under `GET_LOCK('pg_wtable_key_<table id>', 5)` when the table has a key; the bodies are `ws_wtable_row_create_write()` / `_update_write()`, the public functions wrap them with `try/finally`.
+- Create, update and restore from the bin run under `GET_LOCK('pg_wtable_key_<table id>', 5)` when the table has a key; the bodies are `ws_wtable_row_create_write()` / `_update_write()` / `ws_wtable_row_restore_write()`, the public functions wrap them with `try/finally`. The restore took no lock before #10367 (fixed by PR #10398), so a restore and an add at once could leave two rows with one key.
 
 ## Where is it used?
 - Screen: a "The table's key" checkbox on text and number columns, a Key badge in the columns card; the refusal names the rows (`ws_wtable_screen_refusal_text()`).
 - Row boxes: `by: key` ("By its key"), any text or one value; `ws_wtable_row_keyed()` reads the rows in PHP. A table without a key finds no row.
 - API: `GET /workspace/tables/{id}/rows?key=` lists that row or none; 422 on a table without a key. 409 messages name the rows.
-- Import (`ws_wtable_import_rows()`): a file row whose key the table holds changes that row with the file's filled cells (`updated` in the report and the API answer); others are added. The dry run (`ws_wtable_import_rows_check()`) still counts every file row as an add.
+- Import (`ws_wtable_import_rows()`): a file row whose key the table holds changes that row with the file's filled cells, a written no for a box included (`workflow-table-import-values.md`) (`updated` in the report and the API answer); others are added. The dry run (`ws_wtable_import_rows_check()`) still counts every file row as an add.
 
 ## What must a column type change keep?
 - The key column's type does not change while it is the key (`key_column`, PR #8512), and a type change never makes a key (`key_on_retype`): the key is set in the column form, through its own check. Allowing text↔number with `ws_wtable_key_faults()` over `ws_wtable_retype_rows()` is a follow-up.

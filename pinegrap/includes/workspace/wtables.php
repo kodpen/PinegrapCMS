@@ -381,7 +381,7 @@ function ws_wtable_is_whole($value)
  * is a whole number of minor units, refused when it has a fraction rather
  * than cut; a date is YYYY-MM-DD, with HH:MM after a space when the column
  * keeps a time; a person is a user id, whether they are on the team is
- * the store's check; a status is one of the column's keys; a record link
+ * the store's check (ws_wtable_person_cells_refusal()); a status is one of the column's keys; a record link
  * is a kind and an id, the kind among the column's kinds when it names any;
  * a list is a list of texts or numbers (ws_wtable_list_check()); a row
  * link is a row id (whether that row is there is the store's check,
@@ -1079,6 +1079,16 @@ function ws_wtable_column_input_check($input, $old = null)
         // Options sent without the key keep it: only key false takes it away.
         if (($old !== null) && !array_key_exists('key', $given) && !empty($old['options']['key'])) {
             $given['key'] = true;
+        }
+
+        // Nor do they reset a number's or an amount's decimals or currency:
+        // a money column's amounts are minor units of its decimals.
+        if (($old !== null) && (($type === 'number') || ($type === 'money'))) {
+            foreach (array('decimals', 'currency') as $kept) {
+                if (!array_key_exists($kept, $given) && isset($old['options'][$kept])) {
+                    $given[$kept] = $old['options'][$kept];
+                }
+            }
         }
 
         $options = ws_wtable_column_options_check($type, $given);
@@ -1884,6 +1894,23 @@ function ws_wtable_column($table_id, $column_id)
 }
 
 /**
+ * Do a money column's new options keep its amounts at other decimals? Its
+ * cells are minor units of the decimals, so they must be rescaled. Pure.
+ *
+ * @param array $column  the column as it is
+ * @param array $options the options it is given, checked
+ * @return bool
+ */
+function ws_wtable_money_decimals_changed($column, $options)
+{
+    if (!is_array($column) || ((string) ($column['type'] ?? '') !== 'money') || !is_array($options) || !isset($options['decimals'])) {
+        return false;
+    }
+
+    return (int) $options['decimals'] !== (int) ($column['options']['decimals'] ?? 2);
+}
+
+/**
  * May the person rename a column or change its options? A new name is
  * written into the table's formulas that name the column
  * (ws_wtable_formulas_renamed()): formulas holds what they become, and a
@@ -1955,6 +1982,18 @@ function ws_wtable_column_update($viewer, $table, $column, $input)
 
     if (!$check['ok']) {
         return $check;
+    }
+
+    // A money column's amounts are minor units of its decimals: other
+    // decimals rescale every cell first, through the type change, so each
+    // amount keeps its value; one the new decimals would round refuses it
+    // (cells_not_converted, the cells in faults) and nothing changes.
+    if (isset($check['sets']['options']) && ws_wtable_money_decimals_changed($column, $check['sets']['options'])) {
+        $rescaled = ws_wtable_column_retype($viewer, $table, $column, array('type' => 'money', 'options' => $check['sets']['options']));
+
+        if (!$rescaled['ok']) {
+            return $rescaled;
+        }
     }
 
     $table_id = (int) $table['id'];

@@ -96,6 +96,17 @@ function get_order_preview($properties) {
         $output_discount = '';
         $output_card_verification_number_help = '';
 
+        // An empty cart skips the item loop, an order without a shipping
+        // recipient never prepares a shipping row and tax may be off, yet the
+        // totals and payment parts below read all of these.
+        $recurring_products_exist = false;
+        $recurring_transaction = false;
+        $applied_offers = array();
+        $charged_item_ids = array();
+        $output_grand_tax = '';
+        $output_grand_shipping = '';
+        $output_recurring_products = '';
+
         // set shipping to false until we find out that this is a shipping order
         $shipping = false;
 
@@ -112,10 +123,6 @@ function get_order_preview($properties) {
 
         // if there is at least one product in cart
         if ($ship_tos) {
-            // set recurring variables to false before we check all products for recurring
-            $recurring_products_exist = false;
-            $recurring_transaction = FALSE;
-            
             // intialize payment periods array that we will use to store data about payment periods for recurring products
             $payment_periods = array(
                 'Monthly' => '',
@@ -134,16 +141,10 @@ function get_order_preview($properties) {
                     'tax' => 0);
             }
             
-            $applied_offers = array();
-            
             // create array for storing inventory quantity for products,
             // so we can keep track of remaining inventory quantity as we loop through order items,
             // so that we can determine if out of stock message should be shown for an order item
             $inventory_quantities = array();
-
-            // The lines charged today, for their tax after the order discount
-            // (pg_order_items_charged_tax()).
-            $charged_item_ids = array();
 
             // loop through all ship tos
             foreach ($ship_tos as $ship_to_id) {
@@ -256,6 +257,9 @@ function get_order_preview($properties) {
                 }
 
                 $output_products = '';
+                // A recipient without a shipping address (ship to 0) gets no
+                // shipping row.
+                $output_shipping = '';
                 $output_recurring_products = '';
                 $row_count = 1;
 
@@ -1139,14 +1143,13 @@ function get_order_preview($properties) {
                     $output_gift_card_label_plural_suffix = 's';
                 }
                 
-                // if the total gift card balance is less than the grand total, then set the gift card discount to the total gift card balance
-                if ($total_gift_card_balance < $grand_total) {
-                    $gift_card_discount = $total_gift_card_balance;
-                    
-                // else the total gift card balance is greater than or equal to the grand total, so set the gift card discount to the grand total
-                } else {
-                    $gift_card_discount = $grand_total;
-                }
+                // Store credit and plain cards together pay at most the part of the
+                // total that is not gift card lines, as submit_order.php charges it
+                // (pg_gift_card_applied_discount()).
+                $applied_balances = pg_gift_card_applied_balances((int) $order_id);
+                $gift_card_discount = pg_gift_card_applied_discount((int) round($grand_total * 100),
+                    pg_order_items_gift_card_lines_part($charged_item_ids, (int) round($order_discount * 100)),
+                    $applied_balances['credit'], $applied_balances['cards'])['discount'] / 100;
                 
                 // update the grand total
                 $grand_total = $grand_total - $gift_card_discount;
@@ -2722,14 +2725,13 @@ function get_order_preview($properties) {
                 // gift card, then prepare gift card info.
                 if (($total > 0) and $applied_gift_cards) {
                     
-                    // if the total gift card balance is less than the grand total, then set the gift card discount to the total gift card balance
-                    if ($total_gift_card_balance < $total) {
-                        $gift_card_discount = $total_gift_card_balance;
-                        
-                    // else the total gift card balance is greater than or equal to the grand total, so set the gift card discount to the grand total
-                    } else {
-                        $gift_card_discount = $total;
-                    }
+                    // Store credit and plain cards together pay at most the part of the
+                    // total that is not gift card lines, as submit_order.php charges it
+                    // (pg_gift_card_applied_discount()).
+                    $applied_balances = pg_gift_card_applied_balances((int) ($_SESSION['ecommerce']['order_id'] ?? 0));
+                    $gift_card_discount = pg_gift_card_applied_discount((int) round($total * 100),
+                        pg_order_items_gift_card_lines_part($charged_item_ids, (int) round($discount * 100)),
+                        $applied_balances['credit'], $applied_balances['cards'])['discount'] / 100;
                     
                     // update the grand total
                     $total -= $gift_card_discount;

@@ -534,6 +534,51 @@ function pg_oauth_resource_normalise($resource) {
 
 }
 
+// The link that opens Claude's "Add custom connector" dialog with the name and
+// the MCP server address filled in, or '' when the address cannot be a
+// connector: Claude connects only to https. The address is passed exactly as
+// the site names it in its answers, because the client compares the two; only
+// its own query and fragment are left out, so nothing in it can add a
+// parameter to the link. Both values are URL-encoded; the caller escapes the
+// link for the attribute it is printed in.
+function pg_oauth_claude_connect_link($mcp_address, $name) {
+
+	if (!is_string($mcp_address)) {
+
+		return '';
+
+	}
+
+	$address = trim($mcp_address);
+
+	$cut = strcspn($address, '?#');
+
+	$address = substr($address, 0, $cut);
+
+	$parts = parse_url($address);
+
+	if (!is_array($parts) || !isset($parts['scheme'], $parts['host'])
+		|| (strtolower($parts['scheme']) !== 'https') || ($parts['host'] === '')
+		|| isset($parts['user']) || isset($parts['pass'])) {
+
+		return '';
+
+	}
+
+	$name = is_string($name) ? trim($name) : '';
+
+	if ($name === '') {
+
+		$name = 'Pinegrap';
+
+	}
+
+	return 'https://claude.ai/customize/connectors?modal=add-custom-connector'
+		. '&connectorName=' . rawurlencode($name)
+		. '&connectorUrl=' . rawurlencode($address);
+
+}
+
 // The largest client metadata document read, in bytes. The document holds a
 // name, a few addresses and a handful of flags; the draft that defines it
 // suggests 5 KB, and anything much bigger is not a client describing itself.

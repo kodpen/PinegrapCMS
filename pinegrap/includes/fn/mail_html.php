@@ -321,6 +321,10 @@ function pg_mail_html_cid($value)
  * picture of the mail is named by data-pg-cid, an embedded raster picture
  * keeps its src; anything else gives nothing.
  *
+ * A protocol-relative address (//host/path) is read as https first: the
+ * mail has no page address of its own to take a scheme from, and older
+ * newsletter templates still write pictures that way.
+ *
  * In the outgoing mode an https address stays where it was and every
  * other outside address (plain http, a Content-ID) is left out.
  *
@@ -335,6 +339,10 @@ function pg_mail_html_picture($name, $value, $outgoing = false)
 
     if (preg_match('/[\x00-\x1F\x7F]/', $value)) {
         return array();
+    }
+
+    if (strpos($value, '//') === 0) {
+        $value = 'https:' . $value;
     }
 
     if ($outgoing && !preg_match('#^data:#i', $value)) {

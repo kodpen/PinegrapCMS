@@ -88,6 +88,25 @@ function test_whatsapp_design_check()
 	pg_assert_true(isset($errors['footer']), 'a variable in the footer');
 }
 
+function test_whatsapp_design_check_keeps_a_rejected_template_language()
+{
+	// A template made in WhatsApp Manager in a language the designer does not
+	// offer, then rejected: its language field is locked, so the check may
+	// not refuse it, or the template can never be corrected.
+	$rejected = pg_whatsapp_design_from_row(array(
+		'id' => 9, 'meta_id' => '771', 'name' => 'order_ready', 'language' => 'ja', 'category' => 'UTILITY', 'status' => 'REJECTED',
+		'reason' => 'INVALID_FORMAT', 'parameter_format' => 'POSITIONAL', 'samples' => '',
+		'components' => json_encode(array(array('type' => 'BODY', 'text' => 'Hello there.'))),
+	));
+	$design = pg_whatsapp_design_posted(array('category' => 'UTILITY', 'body' => 'Hello {{1}}, it is ready.', 'sample_1' => 'Jo'), $rejected);
+
+	pg_assert_same('ja', $design['language'], 'the stored language is kept');
+	pg_assert_same(array(), pg_whatsapp_design_check($design), 'and accepted');
+
+	$errors = pg_whatsapp_design_check(whatsapp_design_test_posted(array('language' => 'ja')));
+	pg_assert_true(isset($errors['language']), 'a new draft still takes only an offered language');
+}
+
 function test_whatsapp_design_components_and_samples()
 {
 	$design = whatsapp_design_test_posted();
@@ -179,7 +198,7 @@ function test_whatsapp_design_format_html()
 
 function test_whatsapp_design_lists()
 {
-	pg_assert_same(array('UTILITY', 'MARKETING', 'AUTHENTICATION'), array_keys(pg_whatsapp_design_categories()), 'types');
+	pg_assert_same(array('UTILITY', 'MARKETING'), array_keys(pg_whatsapp_design_categories()), 'types offered: Authentication is not, Meta takes only its fixed code shape');
 	pg_assert_true(isset(pg_whatsapp_design_languages()['tr'], pg_whatsapp_design_languages()['en_US']), 'languages');
 
 	foreach (array_keys(pg_whatsapp_design_languages()) as $code) {
@@ -308,4 +327,37 @@ function test_whatsapp_design_submission_and_test_send()
 
 	pg_assert_same('K7', pg_whatsapp_design_url_sample(array('url' => 'https://a.com/c?k={{1}}', 'example' => array('https://a.com/c?k=K7'))), 'sample read from Meta\'s example');
 	pg_assert_same('', pg_whatsapp_design_url_sample(array('url' => 'https://a.com/{{1}}', 'example' => array('https://b.com/K7'))), 'an example of another address');
+}
+
+function test_whatsapp_design_deletable()
+{
+	$design = pg_whatsapp_design_new();
+	pg_assert_false(pg_whatsapp_design_deletable($design), 'a template not saved yet has nothing to delete');
+
+	$design['id'] = 7;
+	pg_assert_true(pg_whatsapp_design_deletable($design), 'a saved draft is deleted');
+
+	$design['meta_id'] = '991';
+	$design['status'] = 'REJECTED';
+	pg_assert_false(pg_whatsapp_design_deletable($design), 'a template WhatsApp holds is not deleted here, rejected or not');
+
+	$design['status'] = 'DRAFT';
+	pg_assert_false(pg_whatsapp_design_deletable($design), 'a row with a Meta id is never deleted as a draft');
+}
+
+function test_whatsapp_design_category_choices()
+{
+	$choices = pg_whatsapp_design_category_choices('UTILITY');
+	pg_assert_same(array('UTILITY', 'MARKETING'), array_keys($choices), 'a new template is offered utility and marketing');
+	pg_assert_true($choices['UTILITY']['offered'] && $choices['MARKETING']['offered'], 'both can be chosen');
+
+	$choices = pg_whatsapp_design_category_choices('AUTHENTICATION');
+	pg_assert_same(array('UTILITY', 'MARKETING', 'AUTHENTICATION'), array_keys($choices), 'a saved authentication template still shows its type');
+	pg_assert_false($choices['AUTHENTICATION']['offered'], 'but it cannot be chosen again');
+	pg_assert_same(pg_whatsapp_template_category_label('AUTHENTICATION'), $choices['AUTHENTICATION']['label'], 'by its label');
+
+	pg_assert_same(array('UTILITY', 'MARKETING'), array_keys(pg_whatsapp_design_category_choices('OTHER')), 'an unknown type is not shown');
+
+	$errors = pg_whatsapp_design_check(whatsapp_design_test_posted(array('category' => 'AUTHENTICATION')));
+	pg_assert_true(isset($errors['category']), 'an authentication draft is not saved or sent');
 }

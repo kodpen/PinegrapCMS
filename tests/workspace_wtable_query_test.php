@@ -270,3 +270,22 @@ function test_workspace_wtable_query_screen_bar()
 	pg_assert_false(strpos($bare, 'name="totals"') !== false);
 	pg_assert_contains('Condition 1: no.', $bare);
 }
+
+// A lookup or rollup column is offered neither as a condition's column nor
+// to sort by: the rows are never sorted by one.
+function test_workspace_wtable_query_bar_leaves_joined_columns_out()
+{
+	$columns = array(
+		'3' => array('id' => 3, 'name' => 'Name', 'type' => 'text', 'options' => array()),
+		'8' => array('id' => 8, 'name' => 'Client city', 'type' => 'lookup', 'options' => array()),
+		'9' => array('id' => 9, 'name' => 'Order total', 'type' => 'rollup', 'options' => array()),
+	);
+
+	$html = ws_wtable_screen_query_bar('workspace_wtables.php', 7, $columns, ws_wtable_query_from_get(array()), array(), '', false);
+	preg_match('~<select[^>]*name="sort"[^>]*>(.*?)</select>~s', $html, $sort);
+
+	pg_assert_contains('>Name</option>', $sort[1] ?? '');
+	pg_assert_false(strpos($sort[1] ?? '', 'Client city') !== false, 'no lookup to sort by');
+	pg_assert_false(strpos($sort[1] ?? '', 'Order total') !== false, 'no rollup to sort by');
+	pg_assert_contains(lang('The rows cannot be sorted by a lookup or rollup column.'), ws_wtable_query_refusal($columns, ws_wtable_query(array(), 'all', 8)), 'the store refuses one');
+}

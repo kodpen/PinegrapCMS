@@ -14,7 +14,7 @@ description: Liveform field names and pagers: aria-label, file id, required impo
 - Import pickers and the Submitted Forms custom form select carry `required` (the server refuses them empty); Import Design's Website URL has `required` + `inputmode="url"` and no hand-written `*`. Pinned by `tests/import_screen_fields_test.php`.
 
 ## Why do Migration's source sign-in and marketplace secrets say new-password?
-- The browser filled the panel's own saved sign-in into Migration's source e-mail/password (then sent to the typed URL) and into a marketplace secret box, where on an edit it replaced the stored secret. `autocomplete="off"` is ignored on password fields; `new-password` (as `smtp_settings.php`) keeps it out.
+- The browser filled the panel's own saved sign-in into Migration's source e-mail/password (then sent to the typed URL) and into a marketplace secret box, where on an edit it replaced the stored secret. `autocomplete="off"` is ignored on password fields; `new-password` (as `includes/settings/mail_sending.php`) keeps it out.
 - The API console (`includes/api/console.php`, `/docs`) has the same trap: its Secret key box said `off`, so the panel sign-in landed in Application key / Secret key and Connect sent it as HTTP Basic. `con_secret` says `new-password` since #3159; `con_key` stays `off`.
 
 ## Why does the default Set Password card hold a hidden username field?

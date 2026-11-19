@@ -2999,8 +2999,10 @@ function ws_flow_step_run($step)
  * named on the box are given it as they are (ws_task_create() refuses them
  * when the owner may no longer give them work). A rule is resolved now as a
  * channel template resolves it (ws_template_assignees()), "whoever starts
- * the run" being the run's starter; somebody it means who cannot be found,
- * or to whom the owner may not give work, leaves the task with nobody on it.
+ * the run" being the run's starter and "the person the event names" the
+ * run's event's person or the box's fallback people
+ * (ws_flow_task_event_person()); somebody it means who cannot be found, or
+ * to whom the owner may not give work, leaves the task with nobody on it.
  *
  * @param array $owner
  * @param array $config        the box's settings
@@ -3021,6 +3023,18 @@ function ws_flow_step_task_people($owner, $config, $run, $department_id)
     $rule = (string) $config['assign'];
 
     if (($rule === '') || ($rule === 'none')) {
+        return $out;
+    }
+
+    // The person the event names, else the box's fallback people; nobody
+    // the owner may give it to leaves it with nobody on it.
+    if ($rule === 'event_person') {
+        $given = ws_flow_task_event_person(ws_flow_run_context($run), (array) ($config['fallback'] ?? array()), function ($user_ids) use ($owner) {
+            return ws_is_team_member((int) $user_ids[0]) && ws_can_assign_to($owner, $user_ids);
+        });
+        $out['user_ids'] = $given['user_ids'];
+        $out['unassigned'] = empty($given['user_ids']);
+
         return $out;
     }
 

@@ -68,7 +68,7 @@ function test_graph_canvas_css_on_pgc_tokens()
 
 	pg_assert_true((bool) preg_match('/var CLASSES = \{(.*?)\};/s', $core, $block), 'the core names its classes');
 	preg_match_all("/(\w+): '([\w-]+)'/", $block[1], $names, PREG_SET_ORDER);
-	pg_assert_same(14, count($names), 'fourteen class names');
+	pg_assert_same(15, count($names), 'fifteen class names');
 
 	foreach ($names as $name) {
 		pg_assert_same(0, strpos($name[2], 'pgc-'), $name[1] . ' is a pgc- class');
@@ -782,6 +782,51 @@ JS
 		array('pgc-group pgc-group-group', 'g1', '0px', '-40px', '900px', 'pgc-group-label', 'Shop', 'pgc-group-rule'),
 		array('pgc-group pgc-group-side', 'side', '1200px', '-40px', '160px', 'pgc-group-label', 'Outside', 'pgc-group-rule'),
 	), 'true'), $result['groups'], 'groups(): headings with a label and a rule behind the boxes, drawn again in place');
+}
+
+// A set of proposed arrows (dashed()): drawn dashed with the class and a
+// dash of their own, in place of the set drawn before; an empty list takes
+// them all away; the other arrows are left as they were.
+function test_graph_canvas_dashed_edges()
+{
+	$result = graph_canvas_test_node(graph_canvas_test_dom() . <<<'JS'
+var out = {};
+var layer = new El('div');
+ui.layer = layer;
+ui.boxes = layer.appendChild(new El('div'));
+ui.svg = layer.appendChild(new El('svg'));
+ui.temp = ui.svg.appendChild(new El('path'));
+ui.live = new El('div');
+ui.viewport.addEventListener = function () {};
+var items = { a: { id: 'a', x: 0, y: 0 }, b: { id: 'b', x: 300, y: 0 }, c: { id: 'c', x: 600, y: 0 } };
+var canvas = G.create({
+    ui: ui, focus: true,
+    view: function (next) { if (next) { state.view = next; } return state.view; },
+    items: function () { return Object.keys(items).map(function (k) { return items[k]; }); },
+    text: function (key) { return key; },
+    item: function (id) { return items[id] || null; },
+    editable: function () { return false; },
+    select: function () {}, press: function () { return true; },
+    move: function () {}, release: function () {}, cancel: function () {}, key: function () { return false; }
+});
+Object.keys(items).forEach(function (k) { ui.boxes.appendChild(canvas.box(items[k], {})); });
+canvas.edge('ab', items.a, items.b);
+canvas.focus('a');
+function drawn() { return ui.svg.children.filter(function (g) { return g.attrs && g.attrs['data-edge']; }).map(function (g) { return [g.attrs['data-edge'], g.className, g.children[0].attrs['stroke-dasharray'] || '']; }); }
+out.first = [canvas.dashed([{ id: 'x1', from: items.a, to: items.c, port: null }, { id: 'x2', from: items.a, to: null }]), drawn()];
+out.again = [canvas.dashed([{ id: 'x3', from: items.a, to: items.b }]), drawn()];
+out.none = [canvas.dashed([]), drawn()];
+console.log(JSON.stringify(out));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array(1, array(array('ab', 'pgc-edge pgc-edge-out', ''), array('x1', 'pgc-edge pgc-edge-dashed pgc-edge-out', '6 4'))), $result['first'], 'a proposed arrow drawn dashed beside the others; one without a target left out');
+	pg_assert_same(array(1, array(array('ab', 'pgc-edge pgc-edge-out', ''), array('x3', 'pgc-edge pgc-edge-dashed pgc-edge-out', '6 4'))), $result['again'], 'a new set takes the place of the one before');
+	pg_assert_same(array(0, array(array('ab', 'pgc-edge pgc-edge-out', ''))), $result['none'], 'an empty list takes them away; the drawn arrows stay');
 }
 
 // The autosave (autosave()): a change is sent once the changes pause; a

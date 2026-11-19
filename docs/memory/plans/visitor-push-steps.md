@@ -21,10 +21,11 @@ description: Plan visitor-push, steps VP1 to VP8: the tables and the door, the s
   - Done: #9957 (`platform/visitor-push-sender.md`).
 
 - VP3 (M) after VP1: the block and the switch.
-  - Existing files: `get_page_content.php` (the script for a page whose markup carries `data-pg-push`), `assets/js/style_designer.src.js` (one row in `_SD_PAGE_SCRIPTS`), `includes/settings/features.php` and `features.save.php` (the card).
+  - Existing files: `get_page_content.php`, `assets/js/style_designer.src.js` (one row in `_SD_PAGE_SCRIPTS`), `includes/settings/features.php` and `features.save.php` (the card).
   - New: the worker file, `assets/js/pg_site_push.js`, the block family's file with its test.
   - Pictures: the block's three states, a browser that cannot subscribe showing nothing, the notification itself, a phone. To the owner; not marked ready before his look.
   - Features: N1 to N3, N12 (the worker's side).
+  - Done: #10288 (`platform/visitor-push-block.md`).
 
 - VP4 (M) after VP2: the panel.
   - Existing files: `includes/fn/messages_area.php` (the card in `pg_messages_channel_cards()`, `ui/messages-area-rules.md`).
@@ -33,6 +34,7 @@ description: Plan visitor-push, steps VP1 to VP8: the tables and the door, the s
   - Done: #9977 (`ui/visitor-push-panel.md`; pictures: agent channel message 6765).
 
 - VP5 (S) after VP2: stock. Existing files: `includes/fn/stock_notify.php` (the push branch of `pg_stock_notify_send()`, `commerce/back-in-stock-sms.md`), the product page's request. Its message is `kind` 2 (6528). Features: N15.
+  - Done: #9975 (`platform/visitor-push-stock.md`).
 
 - VP6 (S) after VP2: an order. Existing files: `includes/fn/events.php` (one listener in `pg_event_record()`), the order's own pages. Its message is `kind` 3 (6528). Features: N16.
   - Done: #9976, the server's side and the shared table `site_push_watch` (owner poll 94, architect 6785): `platform/visitor-push-watch.md`, `visitor-push-order.md`.

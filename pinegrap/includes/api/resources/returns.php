@@ -451,7 +451,9 @@ function api_return_action_check($row, $params, $context = array()) {
 
 			}
 
-			if ($amount > (int)$plan['remaining']) {
+			// A recorded refund may also give back the gift card part still
+			// owed; the payment service gives back payment money alone.
+			if (pg_return_refund_split($method, $amount, (int)$plan['remaining'], isset($plan['gift_card_owed']) ? (int)$plan['gift_card_owed'] : 0) === null) {
 
 				return $refuse(422, 'validation_failed', lang('The refund amount exceeds the remaining refundable amount.'), 'amount');
 

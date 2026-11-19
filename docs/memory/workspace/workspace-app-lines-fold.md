@@ -20,7 +20,7 @@ description: A run of an application's one-line messages folds into its newest l
 - `ws_app_sender()` adds `agent` from `ws_app_is_agent()`, cached with the sender.
 
 ## How is the fold drawn?
-- `foldAppLines()` runs after `drawMessages()`, a live arrival, `replaceMessage()` and `removeMessageNode()`: it removes its rows, clears `.ws-msg-folded` / `.ws-msg-fold-head`, then folds again from `appLineRuns()`. The stored messages, the API, unread counts and the bell do not change.
+- `foldAppLines()` runs after `drawMessages()`, a live arrival, `replaceMessage()` and `removeMessageNode()`: it removes its rows, clears `.ws-msg-folded` / `.ws-msg-fold-head`, then folds again from `appLineRuns()`. The stored messages, the API, unread counts and the bell do not change. A team device client folds by the API sender's `app_id` and skips `agent`, `claude`, `ai` (`api/workspace-api-message-sender-feedback.md`).
 - Opened runs are kept in `appLinesOpen` by message id, so a line arriving live joins an open run open; switching channel or choice clears it.
 - `jumpTo()` and `open()` with a message id call `revealAppLine()`, which opens the run that holds it; the arrow keys skip folded lines.
 - The choice is `localStorage` `ws-app-lines:<channel id>` (`all` / `hidden`; Folded removes the key); it does not follow the reader to another device.

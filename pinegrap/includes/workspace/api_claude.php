@@ -481,14 +481,14 @@ function ws_api_claude_request_schema()
         'design'           => array('page_id' => 'integer', 'page_name' => 'string', 'node_id' => 'string', 'scope' => 'string', 'from_editor' => 'boolean'),
         'task'             => ws_api_claude_task_schema(),
         'summary'          => 'boolean',
-        'wake'             => array('kind' => 'string', 'note' => 'string', 'due_at' => 'string?'),
+        'wake'             => array('kind' => 'string', 'note' => 'string', 'due_at' => 'datetime?'),
         'requested_by'     => array('user_id' => 'integer', 'name' => 'string', 'app_id' => 'integer', 'app_handle' => 'string', 'app_name' => 'string'),
         'reply_message_id' => 'integer?',
         'no_answer'        => 'boolean',
         'error'            => 'string',
-        'created_at'       => 'string',
-        'claimed_at'       => 'string?',
-        'progress'         => array('text' => 'string', 'at' => 'string?'),
+        'created_at'       => 'datetime',
+        'claimed_at'       => 'datetime?',
+        'progress'         => array('text' => 'string', 'at' => 'datetime?'),
     );
 }
 
@@ -599,8 +599,8 @@ function ws_api_claude_task_schema()
         'description' => 'string',
         'status'      => 'string',
         'priority'    => 'string',
-        'start_date'  => 'string?',
-        'due_date'    => 'string?',
+        'start_date'  => 'date?',
+        'due_date'    => 'date?',
         'channel_id'  => 'integer',
         'handed_over' => 'boolean',
         'assignees'   => array('string'),
@@ -1607,9 +1607,9 @@ function ws_api_channel_context_schema()
         'channel'    => array('id' => 'integer', 'name' => 'string', 'kind' => 'string', 'topic' => 'string', 'summary' => 'string'),
         'left_out'   => array('string'),
         'thread'     => 'WorkspaceContextThread?',
-        'decisions'  => array(array('id' => 'integer', 'kind' => 'string', 'author' => 'string', 'text' => 'string', 'created_at' => 'string')),
-        'messages'   => array(array('id' => 'integer', 'parent_id' => 'integer?', 'kind' => 'string', 'sender_kind' => 'string', 'author' => 'string', 'outside' => 'boolean', 'text' => 'string', 'transcript' => 'string?', 'task_id' => 'integer?', 'created_at' => 'string')),
-        'open_tasks' => array(array('id' => 'integer', 'number' => 'string', 'title' => 'string', 'status' => 'string', 'due_date' => 'string?', 'assignees' => array(array('user_id' => 'integer', 'name' => 'string')))),
+        'decisions'  => array(array('id' => 'integer', 'kind' => 'string', 'author' => 'string', 'text' => 'string', 'created_at' => 'datetime')),
+        'messages'   => array(array('id' => 'integer', 'parent_id' => 'integer?', 'kind' => 'string', 'sender_kind' => 'string', 'author' => 'string', 'outside' => 'boolean', 'text' => 'string', 'transcript' => 'string?', 'task_id' => 'integer?', 'created_at' => 'datetime')),
+        'open_tasks' => array(array('id' => 'integer', 'number' => 'string', 'title' => 'string', 'status' => 'string', 'due_date' => 'date?', 'assignees' => array(array('user_id' => 'integer', 'name' => 'string')))),
     );
 }
 
@@ -1625,5 +1625,5 @@ function ws_api_context_thread_schema()
 
 function ws_api_context_message_schema()
 {
-    return array('id' => 'integer', 'kind' => 'string', 'sender_kind' => 'string', 'author' => 'string', 'text' => 'string', 'transcript' => 'string?', 'task_id' => 'integer?', 'created_at' => 'string');
+    return array('id' => 'integer', 'kind' => 'string', 'sender_kind' => 'string', 'author' => 'string', 'text' => 'string', 'transcript' => 'string?', 'task_id' => 'integer?', 'created_at' => 'datetime');
 }

@@ -12,7 +12,7 @@ description: Which save paths write audit_log rows, how they read the row before
 
 ## Where is it written?
 - Inside shared helpers (callers add none): `pg_recycle_page()`, `pg_delete_page_record()`, `pg_delete_file_record()`, `pg_pb_delete_product()`, `delete_order()`, `_pg_offer_delete()`, `duplicate_page()`, `duplicate_products()`, `duplicate_product()`, `update_product_group_status()` (one `update` per product it switches); the Recycle Bin purge and folder deletes use them.
-- Settings: `includes/settings/screen.php`, `fragment.php` (label: `audit-trail-settings-name.md`), `smtp_settings.php`. API keys: `api_settings.php` (apps, devices, OAuth clients).
+- Settings: `includes/settings/screen.php`, `fragment.php` (label: `audit-trail-settings-name.md`), `includes/fn/mail_settings.php`. API keys: `api_settings.php` (apps, devices, OAuth clients).
 - Products: `add_product.php`, `edit_product.php`, `edit_products.php`, API `products.php`, `pg_pb_bin_variant_set()`, the file manager's catalog (name, bin, restore, on/off, bulk and quick edit), `barcode_increase_inventory.php` / `barcode_decrease_inventory.php`, `find_and_replace.php`.
 - Pages: `add_page.php`, `edit_page.php`, `edit_pages.php`, API `pages.php`, file manager (rename, move, bin, restore, bulk edit), `mass_edit.php` (grid and Find & Replace card: one line per changed page).
 - Orders: `edit_orders.php`, `view_order.php` (cancel, refund, marked paid or refunded, restore), API `orders.php`, the list's Status cell (`pg_order_quick_update()`), the exports in `view_orders.php` and `shipworks.php` (`complete` → `exported`, one line per order the UPDATE changed).

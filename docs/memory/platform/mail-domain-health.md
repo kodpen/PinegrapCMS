@@ -1,11 +1,11 @@
 ---
 name: mail-domain-health
-description: The "Sending domain" card of SMTP Settings (SPF, DKIM, DMARC judged from DNS, the record to copy, 30-day bounce and complaint rates) and the mail_reputation operations alert
+description: The "Sending domain" card of E-mail sending (SPF, DKIM, DMARC judged from DNS, the record to copy, 30-day bounce and complaint rates) and the mail_reputation operations alert
 module: mail_domain_health
 ---
 
 ## Where is it?
-- `smtp_settings.php`, card `#mail_domain_card` under the DKIM card; logic in `includes/fn/mail_domain_health.php`, loaded by the screen and by `pg_ops_alerts_check_mail_reputation()` (not by `functions.php`). Settings has no E-mail category in `includes/settings/`: SMTP Settings is the e-mail screen. 2026.11.0, #5445.
+- Site Settings › E-mail sending (`includes/settings/mail_sending.php`), card `pgset-mail-domain` after the DKIM card, the card itself still `#mail_domain_card`; the alert links `settings_mail_sending.php#pgset-mail-domain` (#10404). Logic in `includes/fn/mail_domain_health.php`, loaded by the category and by `pg_ops_alerts_check_mail_reputation()` (not by `functions.php`). 2026.11.0, #5445.
 
 ## Which domain and records are checked?
 - Domain: `DKIM_DOMAIN` unless empty or the default config's `example.com`, else the domain of `EMAIL_ADDRESS` (`pg_mail_sending_domain()`). Selector `DKIM_SELECTOR`, else `pinegrap` (as `email()` signs).

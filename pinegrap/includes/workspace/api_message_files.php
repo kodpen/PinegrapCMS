@@ -95,7 +95,7 @@ function ws_message_file_api_routes()
 // What one entry of ws_api_message_file_version() is.
 function ws_api_message_file_version_schema()
 {
-    return array('name' => 'string', 'url' => 'string', 'edited_by' => array('user_id' => 'integer', 'name' => 'string'), 'created_at' => 'string');
+    return array('name' => 'string', 'url' => 'string', 'edited_by' => array('user_id' => 'integer', 'name' => 'string'), 'created_at' => 'datetime');
 }
 
 /**

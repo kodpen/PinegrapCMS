@@ -20,12 +20,12 @@ description: MA0 census (2026-11-13): today's campaign, campaign profile, SMS ca
 - Every campaign, profile and SMS campaign screen: `validate_email_access()` (`includes/fn/auth.php`): role <= 2, or role 3 with the Campaign Manager right (`user_manage_emails`, "Send Campaigns" on the Users list).
 - A role 3 user sees and changes only rows they created: `email_campaigns.created_user_id`, `email_campaign_profiles.created_user_id`, `sms_campaigns.created_by`. Checked in each screen and in `pg_email_campaign_list()`.
 - Create Campaign also asks `check_view_access()` for the body page's folder and `validate_contact_group_access()` for each recipient group.
-- Mail queue, SMTP Settings and the Site Settings dialog (the Communication cards): `validate_area_access($user, 'manager')`, role <= 2. The queue holds password resets and receipts, so a role 3 campaign maker never sees it.
+- Mail queue, E-mail sending and the Site Settings dialog (the Communication cards): `validate_area_access($user, 'manager')`, role <= 2. The queue holds password resets and receipts, so a role 3 campaign maker never sees it.
 - `email_campaign_job.php` and `mail_job.php` run from cron; opened in a browser they ask manager.
 - The SMS campaign screens also need `pg_sms_campaigns_ready()` (the 11.0.137 tables).
 
 ## Which Communication settings cards are there?
 - Site Settings category `contact`, "Communication" (İletişim), `includes/settings/contact.php`: Campaigns (Opt-In Label, Plain Text Footer), Chat, MailChimp, SMS (provider, sender, test message), SMS Messages (order and back-in-stock texts), İYS.
-- The e-mail sender is SMTP Settings (`smtp_settings.php`, System row). WhatsApp's card: `whatsapp-connection.md`.
+- The e-mail sender is Site Settings › E-mail sending (`includes/settings/mail_sending.php`). WhatsApp's card: `whatsapp-connection.md`.
 
 Related: [[messages-area-census-tabs]], [[messages-area-census-addresses]], [[messages-area-census-sends]]

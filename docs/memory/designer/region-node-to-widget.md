@@ -5,6 +5,7 @@ description: "Make designable" on a classic menu, menu sequence, ad or tag cloud
 
 ## What does it do?
 - The Region panel of a `menu`, `menu_sequence`, `ad` or `tag_cloud` region node with a name shows "Make designable" (`_sdRegionWidgetPropsHtml()`). `_sdRegionMakeWidget()` creates a widget of the matching kind with its starter layout (`_swCreateRow()`), sets the setting that names the region to the node's `regionName`, and puts its `shared_ref` in the node's place. One undo step; the row stays if undone, listed in the design.
+- A `login`, `cart` or `comments_block` node, named or not, gets the same button (CB10, #10060): `SD_REGION_WIDGETS_PLAIN` gives `login_region`, `cart_link`, `comments` with their defaults; the classic region's own settings (a login region's row, a cart region's labels) are not carried, the panel says so. Both go through `_sdRegionToWidget()`.
 - Map `SD_REGION_WIDGETS`: menu -> `menu_region` / `menu_name`, menu_sequence -> `menu_sequence_region` / `menu_name`, ad -> `ad_region` / `ad_region_name`, tag_cloud -> `tag_cloud_region` / `search_page_name` ([[menu-widget]], [[menu-sequence-widget]], [[ad-region-widget]], [[tag-cloud-widget]]).
 
 ## Where does it reach?

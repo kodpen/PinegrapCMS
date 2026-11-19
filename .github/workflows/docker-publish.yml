@@ -6,14 +6,15 @@
 #   ghcr.io/kodpen/pinegrap-web   nginx with the static files
 #
 # Each image is tagged with the release tag (v2026.11.0), and with latest when
-# the release is the repository's latest release (not a pre-release, not an
-# older version published again). Both are built for linux/amd64 and
+# the release is the repository's latest release (not an older version
+# published again). A pre-release (a beta build) publishes no image: the run
+# skips its jobs. Both are built for linux/amd64 and
 # linux/arm64, each on a runner of its own architecture (no emulation), pushed
 # by digest and joined into one multi-platform image per tag.
 #
 # Run workflow (workflow_dispatch) with a tag publishes an existing release
 # again, for example after a failed run. It accepts only the tag of a
-# published release in the year.month.patch form.
+# published release in the year.month.patch form that is not a pre-release.
 #
 # Pull requests that change what the images are built from run the same
 # builds for both architectures without logging in or pushing.
@@ -49,8 +50,11 @@ env:
   IMAGE_PREFIX: ghcr.io/kodpen/pinegrap
 
 jobs:
+  # A pre-release (a beta build) publishes no image; build and merge need
+  # this job, so they are skipped with it.
   prepare:
     name: resolve the release
+    if: ${{ github.event_name != 'release' || !github.event.release.prerelease }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
@@ -98,8 +102,12 @@ jobs:
           fi
 
           # A draft has no release behind its tag; the endpoint answers 404.
-          if ! gh api "repos/$REPOSITORY/releases/tags/$tag" --jq '.tag_name' > /dev/null; then
+          if ! prerelease="$(gh api "repos/$REPOSITORY/releases/tags/$tag" --jq '.prerelease')"; then
             echo "::error::$tag has no published release"
+            exit 1
+          fi
+          if [ "$prerelease" = "true" ]; then
+            echo "::error::$tag is a pre-release (a beta build), which publishes no image"
             exit 1
           fi
 

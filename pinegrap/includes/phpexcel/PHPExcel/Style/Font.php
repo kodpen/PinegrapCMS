@@ -98,6 +98,13 @@ class PHPExcel_Style_Font extends PHPExcel_Style_Supervisor implements PHPExcel_
     protected $color;
 
     /**
+     * Colour index the Excel5 reader holds until it has read the palette
+     *
+     * @var int
+     */
+    public $colorIndex;
+
+    /**
      * Create a new PHPExcel_Style_Font
      *
      * @param    boolean    $isSupervisor    Flag indicating if this is a supervisor or not
@@ -503,7 +510,7 @@ class PHPExcel_Style_Font extends PHPExcel_Style_Supervisor implements PHPExcel_
      * @throws    PHPExcel_Exception
      * @return PHPExcel_Style_Font
      */
-    public function setColor(PHPExcel_Style_Color $pValue = null)
+    public function setColor(?PHPExcel_Style_Color $pValue = null)
     {
         // make sure parameter is a real color and not a supervisor
         $color = $pValue->getIsSupervisor() ? $pValue->getSharedComponent() : $pValue;

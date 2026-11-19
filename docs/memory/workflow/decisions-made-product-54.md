@@ -4,10 +4,10 @@ description: Decisions made, product part 54: the designer's closed blocks are o
 ---
 
 ## In which order are the designer's closed blocks opened? (owner, 2026-11-15, channel message 4146)
-- CB1 of `plans/designer-closed-blocks.md`: the list of `designer/canvas-closed-blocks.md` and its proposed order went to the owner as a poll.
+- CB1 of the closed-blocks opening: the list of `designer/canvas-closed-blocks.md` and its proposed order went to the owner as a poll.
 - Offered the proposed order, "the shop first", "login, sign-up and forms first" and "another order", the owner voted: "Önerilen sıra (Önerilen)".
 - The order: comments widget slots, comment e-mails, custom form slots, messages, shop (catalog detail, catalog, cart, checkout steps, the order), login and sign-up, search pagination, booking steps, calendar, classic sites. Custom HTML, SVG and Custom PHP stay closed.
-- The steps: `plans/designer-closed-blocks-steps.md`, one family per step.
+- The steps, one family per step, and what each opened: `designer/canvas-closed-blocks.md`.
 - The architect's reading, not his words: the comment e-mails' fixed markup stays for a page with no Comments card, so the question the list left for CB1 ("may the fixed markup go on sites without a card") is not asked; nothing changes on a running site.
 
 ## Does the visitor AI assistant start now? (owner, 2026-11-15, channel message 4147)

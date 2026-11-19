@@ -20,6 +20,9 @@ module: whatsapp_design
 ## What can be edited?
 - A draft, or a REJECTED template (`pg_whatsapp_design_editable()`): its name and language stay (fields disabled, kept by `pg_whatsapp_design_posted()`). In review, approved and others are read-only. A rejected template saved but not sent again is overwritten by the next refresh.
 
+## Can a draft be deleted?
+- Since #10355: "Delete draft" in the bar, with a confirm, for a saved draft never sent (`pg_whatsapp_design_deletable()`, pure). `pg_whatsapp_design_delete()` deletes under the same condition (no Meta id, DRAFT), then Templates; name and language are free again. Before, a draft stayed for good (the refresh skips rows without a Meta id). A template WhatsApp holds is not deleted here.
+
 ## What does the test send do with media and links?
 - A media header goes as a `link` to the file's public address, only when `pg_file_open_to_everyone()`; otherwise refused. A link button's variable is filled with its sample, a copy-code button with its sample code (`whatsapp-offer-codes.md`). One-time-code buttons are refused.
 

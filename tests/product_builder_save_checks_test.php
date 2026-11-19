@@ -98,7 +98,9 @@ function test_product_builder_variant_set_clash()
 	pg_assert_same(array('clash' => 205), pg_pb_variant_set_clash($pair(39, 11), $set, $siblings), 'order of the pairs does not matter');
 	pg_assert_same(array('outside' => 3), pg_pb_variant_set_clash(array(array('attribute_id' => 3, 'option_id' => 5)), $set, $siblings), 'an attribute outside the set');
 	pg_assert_same(array(), pg_pb_variant_set_clash(array(array('attribute_id' => 3, 'option_id' => 5)), array(), array()), 'a set naming no attributes');
-	pg_assert_same(array(), pg_pb_variant_set_clash(array(array('attribute_id' => 1, 'option_id' => 38)), $set, $siblings), 'a part of a combination is not a clash');
+	pg_assert_same(array('missing' => 2), pg_pb_variant_set_clash(array(array('attribute_id' => 1, 'option_id' => 38)), $set, $siblings), 'a part of a combination leaves the picker no way to it');
+	pg_assert_same(array('missing' => 1), pg_pb_variant_set_clash(array(array('attribute_id' => 2, 'option_id' => 11)), $set, array()), 'the first attribute left out');
+	pg_assert_same(array(), pg_pb_variant_set_clash(array(array('attribute_id' => 1, 'option_id' => 38)), array(), $siblings), 'a set naming no attributes asks for none');
 	pg_assert_same(array(), pg_pb_variant_set_clash(array(), $set, $siblings), 'nothing chosen');
 }
 

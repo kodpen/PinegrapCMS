@@ -240,3 +240,40 @@ function test_email_designs_copy_tree()
 	);
 	pg_assert_same(array(9 => 'Welcome E-mail', 10 => 'Welcome E-mail'), pg_email_design_template_matches(array('email-welcome' => 'Welcome E-mail'), $pages), 'a template page by its name, a taken name numbered');
 }
+
+// Collects the _id of every node of a tree.
+function _email_designs_test_ids($node, &$ids)
+{
+	$ids[] = isset($node['_id']) ? (string) $node['_id'] : '';
+	if (!empty($node['children']) && is_array($node['children'])) {
+		foreach ($node['children'] as $child) {
+			_email_designs_test_ids($child, $ids);
+		}
+	}
+}
+
+function test_email_designs_new_page_gives_every_node_an_id()
+{
+	$ids = array();
+	_email_designs_test_ids(pg_email_design_new_page(1)['tree'], $ids);
+
+	pg_assert_same(9, count($ids), 'the root and the eight starter elements');
+	pg_assert_same(array(), array_values(array_filter($ids, function ($id) { return !preg_match('/^sd_\d+$/', $id); })), 'each in the editor\'s form');
+	pg_assert_same(count($ids), count(array_unique($ids)), 'no two alike');
+}
+
+function test_email_designs_new_page_keeps_ids_and_fills_a_ready_tree()
+{
+	$tree = array('type' => 'root', 'props' => array('pgEmail' => 1), 'children' => array(
+		array('type' => 'semantic', '_id' => 'sd_7', 'props' => array('tag' => 'p'), 'children' => array()),
+		array('type' => 'semantic', 'props' => array('tag' => 'p'), 'children' => array(
+			array('type' => 'semantic', 'props' => array('tag' => 'a'), 'children' => array()),
+		)),
+	));
+	$page = pg_email_design_new_page(1, '', $tree);
+
+	pg_assert_same('sd_7', $page['tree']['children'][0]['_id'], 'an id already there is kept');
+	$ids = array();
+	_email_designs_test_ids($page['tree'], $ids);
+	pg_assert_same(array('sd_8', 'sd_7', 'sd_9', 'sd_10'), $ids, 'the missing ones count on past the highest');
+}

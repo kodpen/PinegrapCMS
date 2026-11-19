@@ -5,7 +5,7 @@ description: Bootstrap 6 .collapse traps: sections behind a panel switch stayed 
 
 ## Why did sections behind a switch never open?
 - v6 has two unlayered rules: `.collapse{overflow-y:clip}` and `.collapse:not(.show){display:none;block-size:0}`. The switcher code (`input.collapse-switcher` in `assets/js/backend.src.js`) only called jQuery `.toggle(returned)`, an inline `display:block`, and never added `.show`, so a plain `.collapse` target was shown at height 0.
-- Seen on: Add User / Import Users / Edit User "Show badge next to username", SMTP Settings Campaign SMTP fields, form field "Default Value" (`show-reverse`), page form item "Allow submitter to edit…" (#2585).
+- Seen on: Add User / Import Users / Edit User "Show badge next to username", E-mail sending Campaign SMTP fields, form field "Default Value" (`show-reverse`), page form item "Allow submitter to edit…" (#2585).
 
 ## What sets .show now?
 - `pgCollapseSwitcherShow(target, shown)` toggles `.show` on `.collapse:not(.popover)` targets. The delegated click/change handler and `pgSyncCollapseSwitchers()` (first paint) call it right after `.toggle(returned)`; the sibling-radio loop calls it with `false` when it hides another radio's section.

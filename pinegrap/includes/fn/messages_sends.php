@@ -27,6 +27,9 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/mail_queue_list.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/messages_area.php');
+// functions.php does not load it; without it pg_sms_campaigns_ready() is
+// missing and the SMS campaigns branch is left out of the list.
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/sms_campaigns.php');
 
 /**
  * The branches of the list by number; 7 is the last free number (an eighth
@@ -557,12 +560,12 @@ function pg_messages_sends_columns()
 
     return array(
         'what' => array('heading' => lang('Message'), 'width' => '22rem', 'sort' => 'what'),
-        'recipient' => array('heading' => lang('To'), 'width' => '14rem', 'sort' => 'recipient'),
+        'recipient' => array('heading' => lang('To'), 'width' => '12rem', 'sort' => 'recipient'),
         'channel' => array('heading' => lang('Channel'), 'width' => '7rem', 'sort' => pg_list_label_order('channel', pg_messages_sends_channels())),
         'source' => array('heading' => lang('Source'), 'width' => '10rem', 'sort' => pg_list_label_order('source', pg_messages_sends_sources())),
         'state' => array('heading' => lang('Status'), 'width' => '9rem', 'kind' => 'badge', 'sort' => pg_list_label_order('state', $states)),
-        'result' => array('heading' => lang('Result'), 'width' => '16rem'),
-        'at' => array('heading' => lang('Date'), 'width' => '11rem', 'kind' => 'date', 'sort' => 'at'),
+        'result' => array('heading' => lang('Result'), 'width' => '12rem'),
+        'at' => array('heading' => lang('Date'), 'width' => '10rem', 'kind' => 'date', 'sort' => 'at'),
         'actions' => array('heading' => lang('Action'), 'width' => '6rem', 'kind' => 'actions'),
     );
 }
@@ -637,6 +640,49 @@ function pg_messages_sends_delete_question(array $record)
     }
 
     return pg_mail_queue_list_delete_question($record['state'] === 'sent' ? 'sent' : 'queued');
+}
+
+/**
+ * The attributes that hold a long cell of the list to one line at its
+ * column's width: the list's widest cell size (--pg-list-table-cell-max)
+ * lowered to it, so the columns fit a 1440 px window and the row's buttons
+ * stay in view; the text runs on with an ellipsis. The whole text is the
+ * cell's title and, whole, in the details panel and the phone card, which
+ * do not read the cap. Pure.
+ *
+ * @param string $key   the column's key (pg_messages_sends_caps())
+ * @param string $title the cell's whole text, plain; '' for no title
+ * @return array attribute => value, for pg_list_cell()
+ */
+function pg_messages_sends_cell_cap($key, $title = '')
+{
+    $caps = pg_messages_sends_caps();
+    $attributes = array();
+
+    if (isset($caps[$key])) {
+        $attributes['style'] = '--pg-list-table-cell-max: ' . $caps[$key];
+    }
+
+    $title = trim(preg_replace('/\s+/u', ' ', (string) $title));
+
+    if ($title !== '') {
+        $attributes['title'] = $title;
+    }
+
+    return $attributes;
+}
+
+/**
+ * The widest size of the list's long cells, so a long subject, address or
+ * error text does not widen its column: the columns' widths
+ * (pg_messages_sends_columns()) and the message's own; the message wraps
+ * inside it (pg_mail_queue_list_wrap()). Pure.
+ *
+ * @return array column key => CSS length
+ */
+function pg_messages_sends_caps()
+{
+    return array('what' => '15rem', 'recipient' => '12rem', 'result' => '12rem');
 }
 
 /**
@@ -727,7 +773,7 @@ function pg_messages_sends_row(array $record, $now)
         }
 
         if ((string) $record['error'] !== '') {
-            $result .= pg_mail_queue_list_wrap('<span class="small fg-danger">' . h((string) $record['error']) . '</span>');
+            $result .= ' <span class="small fg-danger">' . h((string) $record['error']) . '</span>';
         }
     }
 
@@ -749,12 +795,12 @@ function pg_messages_sends_row(array $record, $now)
     $source = (string) $record['source'];
 
     return array('id' => $sid, 'class' => '', 'cells' => array(
-        'what' => pg_list_cell($what_html, 'align-middle'),
-        'recipient' => pg_list_cell($recipient, 'align-middle text-nowrap'),
+        'what' => pg_list_cell($what_html, 'align-middle', pg_messages_sends_cell_cap('what')),
+        'recipient' => pg_list_cell($recipient, 'align-middle text-nowrap', pg_messages_sends_cell_cap('recipient', strip_tags(html_entity_decode($recipient, ENT_QUOTES, 'UTF-8')))),
         'channel' => pg_list_cell(pg_messages_sends_channel_cell((string) $record['channel'], isset($channels[$record['channel']]) ? $channels[$record['channel']] : (string) $record['channel']), 'align-middle text-nowrap'),
         'source' => pg_list_cell(h(isset($sources[$source]) ? $sources[$source] : $source), 'align-middle'),
         'state' => pg_list_cell(pg_messages_sends_pill($state[0], $state[1]), 'align-middle text-nowrap'),
-        'result' => pg_list_cell($result, 'align-middle'),
+        'result' => pg_list_cell($result, 'align-middle', pg_messages_sends_cell_cap('result', (string) $record['error'])),
         'at' => pg_list_cell(((int) $record['at'] > 0) ? pg_mail_queue_list_time($record['at']) : '', 'align-middle text-nowrap'),
         'actions' => pg_list_cell($buttons, 'align-middle text-nowrap'),
     ));

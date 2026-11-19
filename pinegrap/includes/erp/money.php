@@ -28,6 +28,17 @@ if (!defined('ERP_MAX_LINE_AMOUNT')) {
 if (!defined('ERP_MAX_QUANTITY')) {
     define('ERP_MAX_QUANTITY', 1000000000000);
 }
+// The largest exchange rate a document takes: the rate columns are
+// DECIMAL(15,6), nine whole digits.
+if (!defined('ERP_MAX_EXCHANGE_RATE')) {
+    define('ERP_MAX_EXCHANGE_RATE', 999999999.999999);
+}
+// The largest document total in kurus once converted into the home currency
+// (ten quadrillion in the main unit): erp_to_base() casts the product of an
+// amount and a rate, and a float past PHP_INT_MAX is not an integer.
+if (!defined('ERP_MAX_BASE_AMOUNT')) {
+    define('ERP_MAX_BASE_AMOUNT', 1000000000000000000);
+}
 
 /**
  * Whether typed text is an amount and nothing else: an optional leading
@@ -53,7 +64,8 @@ function erp_amount_text_valid($text)
  * currency symbol does not turn the figure into zero.
  *
  * @param string|int|float $value
- * @return int  Kurus, negative when the input carried a minus sign
+ * @return int|float  Kurus, negative when the input carried a minus sign; a
+ *                    float only for a figure of more than 16 whole digits
  */
 function erp_kurus($value)
 {
@@ -95,6 +107,17 @@ function erp_kurus($value)
     }
 
     $fraction = substr(str_pad($fraction, 2, '0'), 0, 2);
+    $whole = ltrim($whole, '0');
+
+    // More whole digits than an integer of kurus holds: the figure is read
+    // as the float it is, for the caller's own cap to refuse, instead of
+    // being cast to an int it does not fit.
+    if (strlen($whole) > 16) {
+        $kurus = ((float) $whole * 100) + (int) $fraction;
+
+        return $negative ? -$kurus : $kurus;
+    }
+
     $kurus = ((int) $whole * 100) + (int) $fraction;
 
     return $negative ? -$kurus : $kurus;
@@ -565,6 +588,42 @@ function erp_rate_amount($total, $rate)
 function erp_to_base($kurus, $exchange_rate)
 {
     return (int) round(((int) $kurus) * ((float) $exchange_rate));
+}
+
+/**
+ * Why an exchange rate typed on a document cannot be taken, or '' when it can:
+ * one the rate columns cannot store, or not a number at all.
+ *
+ * @param float $exchange_rate  Base units per unit of the document currency
+ * @return string  Translated reason, '' when the rate is fine
+ */
+function erp_exchange_rate_refusal($exchange_rate)
+{
+    $exchange_rate = (float) $exchange_rate;
+
+    if (is_nan($exchange_rate) || ($exchange_rate < 0)) {
+        return lang('Enter an exchange rate greater than zero.');
+    }
+
+    if ($exchange_rate > ERP_MAX_EXCHANGE_RATE) {
+        return lang('The exchange rate is too large.');
+    }
+
+    return '';
+}
+
+/**
+ * Whether an amount converted at a rate stays within ERP_MAX_BASE_AMOUNT, so
+ * erp_to_base() returns a true integer; checked before a document is saved
+ * or issued in a foreign currency.
+ *
+ * @param int|float $kurus          Amount in the document currency
+ * @param float     $exchange_rate  Base units per unit of the document currency
+ * @return bool
+ */
+function erp_base_amount_fits($kurus, $exchange_rate)
+{
+    return (abs((float) $kurus) * abs((float) $exchange_rate)) <= ERP_MAX_BASE_AMOUNT;
 }
 
 /**

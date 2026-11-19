@@ -1057,8 +1057,8 @@ function erp_api_invoice_recurrence_schema()
         'account_title' => 'string',
         'every_months' => 'integer',
         'day_of_month' => 'integer',
-        'next_date' => 'string?',
-        'end_date' => 'string?',
+        'next_date' => 'date?',
+        'end_date' => 'date?',
         'mode' => 'string',
         'currency' => 'string',
         'grand_total' => 'integer',
@@ -1067,9 +1067,9 @@ function erp_api_invoice_recurrence_schema()
         'last_number' => 'string',
         'last_error' => 'string',
         'status' => 'string',
-        'stopped_at' => 'string?',
-        'created_at' => 'string?',
-        'updated_at' => 'string?',
+        'stopped_at' => 'datetime?',
+        'created_at' => 'datetime?',
+        'updated_at' => 'datetime?',
     );
 }
 

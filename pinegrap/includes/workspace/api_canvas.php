@@ -214,7 +214,7 @@ function ws_api_canvas_returns()
             'user_id'    => 'integer?',
             'agent_id'   => 'integer?',
             'agent'      => 'string?',
-            'created_at' => 'string?',
+            'created_at' => 'datetime?',
         )),
     );
 }

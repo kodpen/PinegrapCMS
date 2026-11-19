@@ -11,7 +11,8 @@ module: messages_area
 
 ## How is the tab strip drawn?
 - `pg_messages_tab_strip_for($key, $user)` prints `nav.pg-messages-tabs` > `.pg-seg` of links, the open one `is-active` with `aria-current="page"` (MA12 #9363; its look: `messages-area-look.md`); a tab the viewer may not open is left out, and with fewer than two tabs no strip is drawn. Links, not `role=tab`: each tab is an address.
-- A new tab screen uses `pg_messages_tab_page()` (heading "Communication", the strip, the body, the footer). An old screen inside the shell prints the strip above its toolbar.
+- A new tab screen uses `pg_messages_tab_page()` (heading "Communication", the strip, the body, the footer). An old screen inside the shell prints it first in `#content`, notices and toolbar under it.
+- Centred in the window on every tab: `area-tab-strip-centred.md`.
 
 ## Which old screens sit inside the shell?
 - Campaigns tab: `view_email_campaigns.php` (below). My Campaign Profiles is reached from Automatic sends' note until MA9.
@@ -23,8 +24,8 @@ module: messages_area
 - Sends has its list since MA2b (`platform/messages-area-sends.md`); Automatic sends since MA8 (`messages-area-automatic-tab.md`).
 
 ## What does the Channels tab show? (MA7, #9200)
-- Four cards, two to a row and all as high as the highest (MA12): E-mail, SMS, WhatsApp, İYS; each card a link to its settings (SMTP Settings, the Communication cards) with a state pill and one line.
-- E-mail always sends, so its pill is the sending domain's health: the worst of SPF, DKIM and DMARC (`pg_messages_health_worst()`), looked up in DNS on each visit as SMTP Settings does. Line: sender address, transport or SMTP host, sending domain.
+- Four cards, two to a row and all as high as the highest (MA12): E-mail, SMS, WhatsApp, İYS; each card a link to its settings (E-mail sending, the Communication cards) with a state pill and one line.
+- E-mail always sends, so its pill is the sending domain's health: the worst of SPF, DKIM and DMARC (`pg_messages_health_worst()`), looked up in DNS on each visit as E-mail sending does. Line: sender address, transport or SMTP host, sending domain.
 - SMS, WhatsApp, İYS: Connected (complete and on), Incomplete (switched on, a field missing), Off. Lines: provider and sender; number and verified name; brand code and the test environment.
 - `pg_messages_channel_cards($facts, $urls)` is pure and tested; `pg_messages_channel_facts()` reads the accounts.
 

@@ -5,7 +5,7 @@ module: widgets_order_preview
 ---
 
 ## What did CB6d1 open?
-- Step CB6d of `plans/designer-closed-blocks-steps.md`, cut by size; census [[canvas-closed-blocks-widgets]]. Shop steps before it: [[catalog-detail-open-blocks]], [[catalog-listing-open-blocks]], [[cart-open-blocks]].
+- Step CB6d1 (#9920) of the closed-blocks opening ([[canvas-closed-blocks]]), cut by size; census [[canvas-closed-blocks-widgets]]. Shop steps before it: [[catalog-detail-open-blocks]], [[catalog-listing-open-blocks]], [[cart-open-blocks]].
 - Tree: the order preview's `applied_offers`, `applied_gift_cards`, `recurring_payments` sections: lists of the `checkout` family ([[widget-lists-checkout]]).
 - Settings only: `card_installments`, `installment_table` (the shopper's card and the gateway's plans).
 - `order_recipients` opened in CB6d2: [[checkout-open-recipients]]. `billing_form` and the custom shipping and billing forms stay as their form draws them.

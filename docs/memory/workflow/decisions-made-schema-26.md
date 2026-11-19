@@ -1,6 +1,6 @@
 ---
 name: decisions-made-schema-26
-description: Decisions list, schema part 26 (2026-11-16 on): the release bundle tables page_bundle and page_bundle_item as landed; ws_tasks.app_id for the creating application
+description: Decisions list, schema part 26 (2026-11-16 on): page_bundle and page_bundle_item as landed; ws_tasks.app_id; ws_profiles.meeting_url; gift_cards.kind gets referral; ws_app_commands.args
 ---
 
 ## Where are the rules and the earlier parts?
@@ -17,3 +17,15 @@ description: Decisions list, schema part 26 (2026-11-16 on): the release bundle 
 - Architect (message 6897, on AW3's draft PR #9994): `app_id` INT UNSIGNED NOT NULL DEFAULT 0 after `creator_id`, 0 for a person, the name the other Workspace tables give the writing application. No backfill.
 - Index `idx_app (app_id, status)`, the pattern of `idx_delegate` and `idx_department` on the same table: the lists filter by status with it, and `made_by=apps` is the call an agent repeats. "Made by agents" reads `app_id > 0`, "Made by people" `app_id = 0`.
 - The column only says who created the task: no right is read from it. A deleted application's number stays on the row. No other column or table for the plan.
+
+## Which column keeps a member's meeting address? (architect, 2026-11-16, on SL1's draft PR #10031)
+- `ws_profiles.meeting_url` VARCHAR(500) NULL after `quiet_hours`, by `install_add_column()`, step 11.0.232; no index, no backfill. The owner had asked that what exists be grown instead of a table (poll 84).
+- Written only through `ws_meeting_url_clean()`; an empty address is stored as NULL and readers treat NULL and '' alike.
+
+## How does a gift card become a referral reward? (architect, 2026-11-16, agent channel message 7257, on RF1's draft PR #10033)
+- `gift_cards.kind` is widened with the value `referral` in step 11.0.233: the step reads the column's values and appends the new one; the install definition and the kinds list get it too. No table.
+
+## Which column keeps an application command's arguments? (architect, 2026-11-17, on CC10's draft PR #10322)
+- The owner allowed one column and left it to the architect (poll 97, `decisions-made-schema-25.md`). Confirmed: `ws_app_commands.args TEXT NULL`, added by one sub-step of 2026.11.0 with `install_add_column()`; JSON like `ws_poll_options.links`. NULL or an empty list is a command without a definition, which works as before.
+- The shape is confirmed as the draft PR's proposal gives it: at most 8 arguments, every kind of `ws_command_argument_kinds()`, `suggest` set by the server from the kind, an omitted `args` keeping the stored definition, `values` in the event only with a definition.
+- Added by the architect: a stored value that does not decode to a list is read as no definition, never an error for the writer.

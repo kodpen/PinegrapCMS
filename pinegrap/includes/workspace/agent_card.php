@@ -298,6 +298,7 @@ function ws_agent_card_js_strings()
         'ac_seen'         => lang('Last seen'),
         'ac_today'        => lang('Today'),
         'ac_today_counts' => ws_js_template('{var:1} answered · {var:2} failed', 2),
+        'ac_feedback'     => lang('Right or Wrong'),
         'ac_high'         => lang('This window is at 90% or more of its limit.'),
         'ac_wakes'        => lang('Wakes'),
         'ac_duty'         => lang('Duty'),
@@ -321,7 +322,9 @@ function ws_agent_card($viewer, $channel, $agent_id, $now)
 {
     $row = null;
 
-    foreach (ws_channel_agents($channel['id']) as $candidate) {
+    // In a discussion, the channel's agents asked there by name too
+    // (ws_channel_member_agent_list()).
+    foreach (ws_channel_member_agent_list($channel) as $candidate) {
         if ((int) $candidate['agent']['id'] === (int) $agent_id) {
             $row = $candidate;
             break;
@@ -357,6 +360,9 @@ function ws_agent_card($viewer, $channel, $agent_id, $now)
         'reported'     => $reported ? lang(array('string' => 'As the agent reported it {var:1}; the site cannot check it.', 'vars' => ws_seen_ago_words($report_at, $now))) : '',
         'stale'        => $reported && (((int) $now - $report_at) >= WS_AGENT_REPORT_STALE_AFTER),
         'today'        => array('answered' => (int) ($mine['answered'] ?? 0), 'failed' => (int) ($mine['failed'] ?? 0)),
+        // How people marked its answers, a line for 7 and one for 30 days;
+        // empty while none was in 30 days.
+        'feedback'     => function_exists('ws_agent_feedback_counts_by_agent') ? ws_agent_feedback_counts_lines(ws_agent_feedback_counts_by_agent($now)[ws_agent_request_value($agent)] ?? null) : array(),
         'last_message' => $last ? array('id' => $last['id'], 'when' => ws_seen_ago_words($last['at'], $now)) : null,
         'channels'     => ws_agent_reader_channels($viewer, $agent['id']),
         'tier'         => (int) $row['tier'],

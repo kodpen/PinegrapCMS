@@ -26,4 +26,4 @@ module: image_editor
 - "From the source" and "On the timeline" (in → out and the length), "Same source" beside the size when another layer plays the same file, Split clip (`M.clipSplit()` at the playhead, 0.1 s of source on both sides, else a message; the second part right above the first, selected; the first keeps the entrance, the second the exit), and in Animate a note on dragging.
 
 ## Which keys and quick controls edit a clip?
-- I and O trim, S and the play bar's Split split, the scissors chip on a row: `image-editor-clip-keys.md`. The phone's rows and touch-sized grips: `image-editor-phone-rows.md`.
+- I and O trim; S, the play bar's Split, the scissors chip on a row and Split clip on the bar over a selected clip split: `image-editor-clip-keys.md` (#9972, #10003). The phone's rows and touch-sized grips: `image-editor-phone-rows.md`.

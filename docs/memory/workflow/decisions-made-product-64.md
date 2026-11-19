@@ -16,16 +16,16 @@ description: Decisions list, product part 64 (2026-11-16 on): the second study's
 ## How are the texts in pictures translated in the first version? (owner, 2026-11-16, agent channel poll 98, message 6808)
 - His request: "görsellerdeki metinlerde çeviri olayını da 6/10 olarak öne alalım". Asked after the census with four points, he chose "Evet, böyle olsun".
 - The pictures: made in the Design Canvas, their text standing as layers, shown by a page opened in another language. Writing inside a photo or a scan is not in the first version.
-- A language's picture is drawn by a signed-in person in the panel, in their browser; nothing is drawn with nobody there.
+- A language's picture was to be drawn only by a signed-in person; replaced on 2026-11-17 by poll 143 (`decisions-made-product-75.md`).
 - While a language's picture is not ready, or once the source changed, a visitor sees the source picture. Not chosen: "Evet, ama eskiyince eski çeviri görünsün" (an old translated picture may show a wrong price or campaign).
-- The languages' pictures in a small table of their own, columns the architect's: `decisions-made-schema-25.md`. Plan: `plans/picture-text-translation.md`.
+- The languages' pictures in a small table of their own, columns the architect's: `decisions-made-schema-25.md`. Built in #10028 to #10269: `core/picture-text-overview.md`.
 
 ## Which records does a post digest's run take? (architect, 2026-11-16, agent channel message 6791)
 - Those dated between the earlier run that counts and this one. An earlier run counts when its flow run is done or still open; a failed or cancelled one does not, so its records go with the next run. The first run starts at the version's publish time; "Try" reads and sends nothing.
 - A record's date is `submitted_timestamp`; where the list page's own filter holds exactly one "date field <= now" condition, the later of the two. No column on `forms`.
 
 ## What does the place map use to find an address, and where is it listed in the notice? (architect, 2026-11-16, agent channel message 6794)
-- "Find from the address" and a visitor's typed address use Photon only: a Google result may not be kept past 30 days or shown on another map, a Mapbox one only on Mapbox tiles. With such an account the button is not drawn and a line says why.
+- "Find from the address" and a visitor's typed address use Photon only: a Google result may not be kept past 30 days or shown on another map, a Mapbox one only on Mapbox tiles. Which Photon, and the button: `decisions-made-product-66.md`.
 - The map is a `marketing` service of the cookie notice, listed only on a page that carries the map with the Maps switch on; no third class. The security headers do not change. Plan: `plans/place-map.md`.
 
 ## Does a back-in-stock notice on the device replace the mail or SMS? (architect, 2026-11-16, agent channel message 6786)

@@ -2416,12 +2416,23 @@ function pg_vendor_release_check($mode)
 /**
  * The public keys a release manifest may be signed with: key id => PEM. They
  * ship in the code and change only with a release; never read from config.
+ * kp-2026a signs releases; kp-2026b is the spare kept offline, so a release
+ * signed with it can retire kp-2026a.
  *
  * @return array
  */
 function pg_vendor_release_keys()
 {
-    return array();
+    return array(
+        'kp-2026a' => "-----BEGIN PUBLIC KEY-----\n"
+            . "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEGDRL8nkBsNmnT3mFkXfFLQt4kJR+\n"
+            . "kenzrCt4yGHu+/31T/a5l6jtBv3E0cKDNCCEmC8lyfBhaJb9485wcqSx1A==\n"
+            . "-----END PUBLIC KEY-----\n",
+        'kp-2026b' => "-----BEGIN PUBLIC KEY-----\n"
+            . "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEPVi8zM6zWQvs/rnvN6jDgYhclMGo\n"
+            . "Li6u6nIITG9XAz0M/H0YjeUdYQ3efBI5jhtlEeTthMVmmg5VUpbdBA66Cg==\n"
+            . "-----END PUBLIC KEY-----\n",
+    );
 }
 
 /**

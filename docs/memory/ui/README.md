@@ -27,6 +27,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - Mark a chips, select2, date or time field with its `data-pg-*` hook and print `pg_fields_script()`; read and write it through `pgChips`/`pgCombobox`/`pgDatePicker`/`pgDateTimeField`, never call tagin, select2 or the jQuery UI pickers from a panel screen (`pg-field-wrappers.md`).
 - Never style every child of a `:has()` element (`X:has(…) > *`, `> :not(…)`, `X:has(…) *`): Chromium then restyles the whole document on each DOM insertion; put the `:has()` on the subject (`css-has-whole-document-restyle.md`, `tests/css_has_restyle_test.php`).
 - Build a panel screen from look A's recipes and `--pg-*` tokens; a screen's own class only places things. A part no recipe draws is drawn first and asked on an `architect` issue; `tools/check_look.php` lets sizes, weights and colours outside the recipes only fall (`look-check.md`, `look-type-and-recipes.md`).
+- Draw whatever a step adds to the panel with look A's buttons (`pg-button`, `pg-icon-button`) and its segmented control (`pg-seg`) for tabs: no `btn btn-…`, `nav-tabs`, `nav-pills` or `nav-underline` in an added line; the count of them goes into the look's closing message (`look-new-parts.md`).
 <!-- key-rules:end -->
 
 ## Clusters
@@ -35,14 +36,15 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - `bootstrap-6-*`: 12 files; start at `bootstrap-6.md`.
 - `calendar-event-*`: 6 files.
 - `dashboard-v2-*`: 27 files; start at `dashboard-v2-overview.md`.
-- `email-campaign-*`: 7 files.
-- `image-editor-*`: 72 files; start at `image-editor-overview.md`.
+- `email-campaign-*`: 8 files.
+- `image-editor-*`: 73 files; start at `image-editor-overview.md`.
 - `list-table-*`: 50 files; start at `list-table-overview.md`.
 - `main-menu-*`: 14 files; start at `main-menu-overview.md`.
 - `messages-area-*`: 9 files; start at `messages-area-overview.md`.
 - `settings-card-*`: 7 files.
 - `settings-modal-*`: 14 files; start at `settings-modal-overview.md`.
 - `submitted-form-*`: 6 files.
+- `translations-screen-*`: 6 files.
 
 ## Files
 
