@@ -693,6 +693,17 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         $content = pg_place_list_inject($content, (int) $page_id);
     }
 
+    // ── Course blocks ───────────────────────────────────────────────────────────
+    // The learner's blocks carry data-pg-course, no script, and are hidden;
+    // while the "Courses" switch is on the page brings the script and its
+    // settings (pg_course_blocks_inject()), and the script asks
+    // course_action.php for the member's view. The module loads only for
+    // such a page. Not in an e-mail.
+    if (!$email && stripos($content, 'data-pg-course') !== false) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/course_blocks.php');
+        $content = pg_course_blocks_inject($content, (int) $page_id);
+    }
+
     // ── Notify me ───────────────────────────────────────────────────────────────
     // A "Notify me" block carries data-pg-push, no script, and is hidden; while
     // visitor notifications are on the page brings the script and its settings

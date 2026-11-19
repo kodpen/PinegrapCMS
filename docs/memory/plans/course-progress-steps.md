@@ -23,11 +23,11 @@ description: Plan course-progress, steps CO1 to CO6: the tables and the rule of 
   - Pictures: the notice on the classroom page. To the architect.
   - Features: Z7.
 
-- CO4 (M) after CO1: the blocks and their script.
+- CO4 (M) after CO1: the blocks and their script. Done in #10454.
   - Existing files: `get_page_content.php` (the script for a page whose markup carries `data-pg-course`), `assets/js/style_designer.src.js` (the palette rows and one row in `_SD_PAGE_SCRIPTS`; held by other open PRs: the step names the clash).
   - New: the root file `course_action.php` (the member's progress, the press), `assets/js/pg_course.js`, the block family's file with its test.
   - Tests: a press without access, on a closed lesson, without the token and over the rate refused; a quiz lesson below and at the needed score; two presses writing one row.
-  - Pictures: each block's states, signed out, a phone. To the owner.
+  - Pictures: dropped (agent channel message 9546); the unit tests pin the behaviour.
   - Features: Z8, Z9, Z11, Z12.
 
 - CO5 (M) after CO4: the certificate and the event.

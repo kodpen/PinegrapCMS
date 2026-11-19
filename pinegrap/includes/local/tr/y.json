@@ -430,6 +430,7 @@
     "You have confirm the sale transaction with the 'Confirm' button or press the 'Delete' button to cancel it.": "Satış işlemini 'Onayla' butonu ile onaylamanız veya iptal etmek için 'Sil' butonuna basmanız gerekiyor.",
     "You have logged out successfully.": "Başarıyla çıkış yaptınız.",
     "You have logged out successfully. <a href=\"{var:1}/\">Login</a>.": "Başarıyla çıkış yaptınız. <a href=\"{var:1}/\">Giriş Yap</a>.",
+    "You have no courses yet.": "Henüz kursunuz yok.",
     "You have no e-mail address, so no test was mailed.": "E-posta adresiniz olmadığı için deneme gönderilmedi.",
     "You have no invoices yet.": "Henüz faturanız yok.",
     "You have no profile yet. Fill in the form to introduce yourself to the community.": "Henüz profiliniz yok. Kendinizi topluluğa tanıtmak için formu doldurun.",
