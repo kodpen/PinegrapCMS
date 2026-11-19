@@ -34,7 +34,7 @@ function ws_quiet_hours_api_routes()
             'id'          => 'workspace.quiet_hours.set',
             'method'      => 'POST',
             'path'        => '/workspace/quiet-hours',
-            'scope'       => 'account:write',
+            'scope'       => 'workspace:write',
             'handler'     => 'ws_api_quiet_hours_set',
             'dry_run'     => true,
             'mcp'         => false,

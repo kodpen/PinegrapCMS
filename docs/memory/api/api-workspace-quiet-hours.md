@@ -10,7 +10,7 @@ module: quiet_hours
 
 ## How is it set?
 - `POST /workspace/quiet-hours` (`includes/workspace/api_quiet_hours.php`, `ws_api_quiet_hours_set()`), body `start`, `end`, `off_days`, optional `user_id`. Answers `{quiet_hours}` as the panel action does. Both times empty, or equal, clears the range.
-- Scope `account:write`, which a team devices session always holds. `ws_api_own_words_only()` first: an application key and an OAuth connection get 403; `'mcp' => false`.
+- Scope `workspace:write`, as every Workspace route asks one of the module's scopes. `ws_api_own_words_only()` first: an application key and an OAuth connection get 403; `'mcp' => false`.
 - Then `pg_quiet_hours_save_check()` (a `user_id` naming somebody else is 403, a bad time 422 `validation_failed` with field `start` or `end`), then `api_dry_run_stop()`, then `ws_quiet_hours_save()`. No column: 503 `service_unavailable`.
 
 ## Tests?

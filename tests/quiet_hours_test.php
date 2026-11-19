@@ -171,7 +171,7 @@ function test_quiet_hours_save_is_the_panel_action_and_the_device_route_only()
 	pg_assert_true(is_array($route), 'the route is declared');
 	pg_assert_same('POST', $route['method']);
 	pg_assert_same('/workspace/quiet-hours', $route['path']);
-	pg_assert_same('account:write', $route['scope']);
+	pg_assert_same('workspace:write', $route['scope']);
 	pg_assert_false($route['mcp'], 'no MCP tool');
 	pg_assert_true($route['dry_run'], 'takes X-Dry-Run');
 
