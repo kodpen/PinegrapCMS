@@ -1523,6 +1523,7 @@
     "{var:1} of {var:2} left carts ({var:3} %) could not be reached: they have no e-mail address.": "{var:2} terk edilmiş sepetin {var:1} tanesine (%{var:3}) ulaşılamadı: e-posta adresleri yok.",
     "{var:1} of {var:2} left carts ({var:3} %) could not be reached: {var:4} with no e-mail address, {var:5} with no consent to commercial mail.": "{var:2} terk edilmiş sepetin {var:1} tanesine (%{var:3}) ulaşılamadı: {var:4} tanesinin e-posta adresi yok, {var:5} tanesinin ticari ileti izni yok.",
     "{var:1} of {var:2} left carts ({var:3} %) hold a product that is out of stock.": "{var:2} terk edilmiş sepetin {var:1} tanesinde (%{var:3}) stokta olmayan bir ürün var.",
+    "{var:1} of {var:2} lessons done": "{var:2} dersten {var:1} tanesi tamamlandı",
     "{var:1} of {var:2} lifts open": "{var:2} tesisten {var:1} tanesi açık",
     "{var:1} of {var:2} linked products have a title and a description ({var:3} are missing one or both)": "Bağlı {var:2} üründen {var:1} tanesinin başlığı ve açıklaması var ({var:3} tanesinde biri veya ikisi eksik)",
     "{var:1} of {var:2} pages are drafts": "{var:2} sayfanın {var:1} tanesi taslak",

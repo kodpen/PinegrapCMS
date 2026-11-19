@@ -1787,6 +1787,7 @@
     "Opens at the start of next month for seven weeks": "Gelecek ayın başında yedi haftalığına açılıyor",
     "Opens in the autumn": "Sonbaharda açılıyor",
     "Opens next winter": "Gelecek kış açılıyor",
+    "Opens on {var:1}": "{var:1} tarihinde açılır",
     "Opens once the page is saved.": "Sayfa kaydedilince açılır.",
     "Opens onto the reading garden": "Okuma bahçesine açılır",
     "Opens the form to paste a token.": "Jetonu yapıştırmak için formu açar.",
