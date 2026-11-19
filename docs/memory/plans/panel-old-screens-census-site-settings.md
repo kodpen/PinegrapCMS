@@ -17,3 +17,6 @@ description: Census LM1b against look A (S5): the Site Settings categories in in
 - Accounting `accounting.php` 459 / 10 / 2 / 28 / 12 → 34; Bookings `bookings.php` 472 / 13 / 6 / 21 / 2 → 17 (the staff hours grid, two tables); Features `features.php` 609 / 7 / 3 / 19 / 12 → 31.
 - Smaller: Privacy `privacy.php` → 25, Contact `contact.php` → 35, Languages `languages.php` → 18, SEO `seo.php` → 17, Team `workspace_team.php` → 25, Fediverse `fediverse.php` → 12 (three tables), Appearance → 19, API → 19, General → 16, `privacy_analytics.php` → 3.
 - Shared code: `screen.php` (the page) → 7, `prep.php` 2,496 / 20 / 8 → 20; `modal.php`, `fragment.php`, `registry.php`, `search.php`, the `*.save.php` files and the Workspace assistant and channel cards draw nothing old.
+
+## Which categories have moved, and where?
+- Mailboxes (`mailboxes.php`, the card and drawers of `includes/workspace/mail_settings.php`): S5d, in progress.
