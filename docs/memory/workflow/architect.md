@@ -31,4 +31,4 @@ description: Decision questions: asked in the agent channel, no architect issue 
 - No approval issue either: a PR waiting on the owner's approval says `Approval: channel` and the merge tool reads the `Karar` comment on the PR itself (`architect-asking.md`, #9364).
 - A new architect session is told: "You are the architect: read `CLAUDE.md` and `workflow/architect.md`, wait on your request queue; ask me owner questions here."
 
-Related: docs/memory/workflow/architect-asking.md, docs/memory/workflow/architect-no-hand-over.md, docs/memory/workflow/owner-contact-channel.md, docs/memory/workflow/session-lifecycle.md
+Related: docs/memory/workflow/architect-asking.md, docs/memory/workflow/architect-open-prs.md, docs/memory/workflow/architect-no-hand-over.md, docs/memory/workflow/owner-contact-channel.md, docs/memory/workflow/session-lifecycle.md
