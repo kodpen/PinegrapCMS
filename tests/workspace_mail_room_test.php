@@ -256,6 +256,7 @@ function test_workspace_mail_room_on_the_emails_screen()
 	pg_assert_contains('Ayşe &lt;ayse@example.com&gt; · Support</div>', $html, 'the customer and the mailbox, no channel');
 	pg_assert_same(false, strpos($html, 'workspace.php?channel='), 'nothing leads into the room');
 	pg_assert_same(false, strpos($html, h(lang('Open in channel'))));
+	pg_assert_same(false, strpos($html, 'ws-mail-pane-channel'), 'no channel pill');
 
 	$pane['items'] = array_fill(0, WS_MAIL_PANE_MAX, $item);
 

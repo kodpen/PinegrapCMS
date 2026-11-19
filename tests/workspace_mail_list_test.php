@@ -211,7 +211,8 @@ function test_workspace_mail_pane_html()
 	$html = ws_mail_pane_html($pane, '/pg/');
 
 	pg_assert_contains('<h2 class="h5 mb-1" tabindex="-1">Order &lt;late&gt;</h2>', $html, 'the subject as text');
-	pg_assert_contains('Ayşe &lt;ayse@example.com&gt; · Support · #support', $html, 'customer, mailbox, channel');
+	pg_assert_contains('Ayşe &lt;ayse@example.com&gt; · Support</div>', $html, 'customer and mailbox on the muted line, the channel left it');
+	pg_assert_contains('<div class="mt-1">' . ws_mail_pane_channel_pill('support', '/pg/workspace.php?channel=3&message=90') . '</div>', $html, 'the channel as a pill under it');
 	pg_assert_contains('href="/pg/workspace.php?channel=3&amp;message=90"', $html, 'the card in its channel');
 	pg_assert_contains('<article class="ws-mail-item ws-mail-in text-break">', $html);
 	pg_assert_contains('<article class="ws-mail-item ws-mail-out text-break">', $html);
@@ -236,6 +237,31 @@ function test_workspace_mail_pane_html()
 	$missing = ws_mail_pane_page_html(null, '/pg/', 'messages_mail.php');
 	pg_assert_contains('<p class="ws-empty">' . h(lang('This conversation cannot be opened.')) . '</p>', $missing, 'one it may not read');
 	pg_assert_contains('href="messages_mail.php" data-ws-mail-close', $missing);
+
+	// With the Workspace off no channel opens, so none is named.
+	$off = ws_mail_pane_html($pane, '/pg/', '', false);
+
+	pg_assert_contains('Ayşe &lt;ayse@example.com&gt; · Support</div>', $off);
+	pg_assert_same(false, strpos($off, 'ws-mail-pane-channel'), 'no pill');
+	pg_assert_same(false, strpos($off, '#support'), 'no channel name');
+}
+
+function test_workspace_mail_pane_channel_pill()
+{
+	$text = lang(array('string' => 'In #{var:1}', 'vars' => 'sales'));
+
+	pg_assert_same('<a class="pg-pill pg-tone-blue ws-mail-pane-channel" href="/pg/workspace.php?channel=3&amp;message=90" title="' . h($text) . '">'
+		. '<span class="ws-mail-pane-channel-text">' . h($text) . '</span></a>',
+		ws_mail_pane_channel_pill('sales', '/pg/workspace.php?channel=3&message=90'), 'a link to the card in its channel, the whole words in its title');
+	pg_assert_contains('In #sales', lang(array('string' => 'In #{var:1}', 'vars' => 'sales', 'language' => 'en')), 'the English words');
+	pg_assert_contains('#sales', lang(array('string' => 'In #{var:1}', 'vars' => 'sales', 'language' => 'tr')), 'the Turkish words name it too');
+	pg_assert_true(lang(array('string' => 'In #{var:1}', 'language' => 'tr', 'if_known' => true)) !== null, 'translated');
+
+	$odd = ws_mail_pane_channel_pill('<b>"x"</b>', '/pg/workspace.php?channel=3&message=90" onclick="x');
+
+	pg_assert_contains('#&lt;b&gt;&quot;x&quot;&lt;/b&gt;', $odd, 'the name escaped');
+	pg_assert_same(false, strpos($odd, '<b>'), 'no markup from the name');
+	pg_assert_contains('message=90&quot; onclick=&quot;x"', $odd, 'the address escaped');
 }
 
 function test_workspace_mail_side_count()
