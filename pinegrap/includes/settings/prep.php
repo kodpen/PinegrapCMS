@@ -494,7 +494,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             $erp_edoc_status = '';
 
             if (is_array($erp_edoc_row) && ((int) $erp_edoc_row['checked_at'] > 0)) {
-                $erp_edoc_status = '<div class="small mt-1 ' . (($erp_edoc_row['check_status'] === 'ok') ? 'fg-success' : 'fg-secondary') . '"><i class="bi ' . (($erp_edoc_row['check_status'] === 'ok') ? 'bi-check-circle' : 'bi-info-circle') . ' me-1"></i>'
+                $erp_edoc_status = '<div class="pg-text-meta mt-1 ' . (($erp_edoc_row['check_status'] === 'ok') ? 'fg-success' : 'fg-secondary') . '"><i class="bi ' . (($erp_edoc_row['check_status'] === 'ok') ? 'bi-check-circle' : 'bi-info-circle') . ' me-1"></i>'
                     . h(lang(array('string' => 'Last checked {var:1}: {var:2}', 'vars' => array(get_absolute_time(array('timestamp' => (int) $erp_edoc_row['checked_at'], 'format' => 'plain_text')), (string) $erp_edoc_row['check_message'])))) . '</div>';
             }
 

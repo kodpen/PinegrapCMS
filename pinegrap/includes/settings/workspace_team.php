@@ -53,7 +53,7 @@ foreach ($ws_departments as $ws_department) {
 $pg_settings_modals[] = ws_settings_department_drawer(null, array(), null, $ws_form, !empty($pg_settings_in_dialog));
 
 if ($ws_department_rows === '') {
-    $ws_department_rows = '<div class="ws-empty small py-5"><i class="bi bi-diagram-3" aria-hidden="true"></i>' . h(lang('No departments yet. A department groups people so work can be handed to it and its lead sees its board.')) . '</div>';
+    $ws_department_rows = '<div class="ws-empty pg-text-meta py-5"><i class="bi bi-diagram-3" aria-hidden="true"></i>' . h(lang('No departments yet. A department groups people so work can be handed to it and its lead sees its board.')) . '</div>';
 }
 
 $pg_settings_cards[] = '
@@ -154,7 +154,7 @@ if (ws_workdays_ready()) {
         if ($ws_days['count'] > 0) {
             $pg_settings_modals[] = pg_settings_drawer('pgset-ws-feed-' . $ws_id, h($ws_feed['name']), '
             <p class="pg-text-meta">' . h(lang('A day that is not a day off at this company can be left out; reading the calendar again keeps the choice.')) . '</p>
-            <ul class="list-unstyled small mb-0">' . $ws_days['html'] . '</ul>', !empty($pg_settings_in_dialog));
+            <ul class="list-unstyled pg-text-meta mb-0">' . $ws_days['html'] . '</ul>', !empty($pg_settings_in_dialog));
         }
     }
 

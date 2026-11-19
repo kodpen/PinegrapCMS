@@ -17,6 +17,7 @@ description: Site Settings Privacy to General and the settings page toolbar in l
 - Pills: Google key stored teal / no key gray, an AI engine's "ready" teal, Fediverse delivery status (Waiting amber, Sent teal, Failed rose), the e-document capability gray and test environment amber.
 - Tables (Team members, the three Fediverse tables, Legal Documents' fields) are `table table-hover mb-0 pg-embedded-table` (`look-embedded-table.md`).
 - Number fields in an adorned box: inline `text-align: right` became `text-end` (Privacy, Appearance, API, the sign-in throttle in prep).
+- Small text outside alerts is `pg-text-meta` (#10485): prep's e-document "Last checked" line (tone kept), the empty Departments text (`ws-empty`) and a holiday calendar's Days list.
 - Icon tiles: the four Application API switches (`system`) and the Integrations link rows (34 px tile instead of a grey icon).
 
 ## What are the Date Format and Time Format?
