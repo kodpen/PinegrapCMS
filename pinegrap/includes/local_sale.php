@@ -319,7 +319,7 @@ function local_sale_lines($order_id)
     }
 
     $rows = db_items(
-        "SELECT oi.id, oi.product_id, oi.quantity, oi.price, oi.added_by_offer,
+        "SELECT oi.id, oi.product_id, oi.product_name, oi.quantity, oi.price, oi.added_by_offer,
                 p.name, p.short_description, p.image_name, p.enabled,
                 p.inventory, p.inventory_quantity, p.taxable, p.tax_rate
          FROM order_items oi
@@ -428,8 +428,13 @@ function local_sale_stock_error($product, $wanted, $completing = false)
  * "silikon" followed by Enter adds the one silicone the shop carries, and
  * two matches ask the operator to pick.
  *
+ * A code that is a barcode of one product and the product code of another
+ * adds neither, as the barcode stock screens refuse it
+ * (pg_barcode_scan_product()): taking the barcode's product sold the other
+ * product than the label the operator scanned.
+ *
  * @param string $code
- * @return array  product => row|null, matches => int
+ * @return array  product => row|null, matches => int, refusal => string
  */
 function local_sale_find_product($code)
 {
@@ -437,22 +442,27 @@ function local_sale_find_product($code)
     $columns = "id, name, short_description, enabled, inventory, inventory_quantity";
 
     if ($code === '') {
-        return array('product' => null, 'matches' => 0);
+        return array('product' => null, 'matches' => 0, 'refusal' => '');
     }
 
     if (defined('BARCODE_ENABLED') && BARCODE_ENABLED) {
-        $product_id = (int) db_value("SELECT product_id FROM product_barcodes WHERE barcode = '" . escape($code) . "' LIMIT 1");
-        if ($product_id > 0) {
-            $product = db_item("SELECT " . $columns . " FROM products WHERE id = '" . $product_id . "' LIMIT 1");
+        $scan = pg_barcode_scan_product($code);
+
+        if ($scan['refusal'] !== '') {
+            return array('product' => null, 'matches' => 0, 'refusal' => $scan['refusal']);
+        }
+
+        if ($scan['id'] > 0) {
+            $product = db_item("SELECT " . $columns . " FROM products WHERE id = '" . (int) $scan['id'] . "' LIMIT 1");
             if ($product) {
-                return array('product' => $product, 'matches' => 1);
+                return array('product' => $product, 'matches' => 1, 'refusal' => '');
             }
         }
     }
 
     $product = db_item("SELECT " . $columns . " FROM products WHERE name = '" . escape($code) . "' AND enabled = '1' LIMIT 1");
     if ($product) {
-        return array('product' => $product, 'matches' => 1);
+        return array('product' => $product, 'matches' => 1, 'refusal' => '');
     }
 
     $like = escape(escape_like(mb_substr($code, 0, 100)));
@@ -463,23 +473,31 @@ function local_sale_find_product($code)
     );
 
     if (is_array($found) && (count($found) === 1)) {
-        return array('product' => $found[0], 'matches' => 1);
+        return array('product' => $found[0], 'matches' => 1, 'refusal' => '');
     }
 
-    return array('product' => null, 'matches' => is_array($found) ? count($found) : 0);
+    return array('product' => null, 'matches' => is_array($found) ? count($found) : 0, 'refusal' => '');
 }
 
 /**
- * The name people know a product by: the short description, else the code.
+ * The name people know a product by: the short description, else the code,
+ * else (a cart line whose product was deleted) the code the order line was
+ * written with.
  *
  * @param array $row
  * @return string
  */
 function local_sale_product_label($row)
 {
-    $label = trim((string) ($row['short_description'] ?? ''));
+    foreach (array('short_description', 'name', 'product_name') as $key) {
+        $label = trim((string) ($row[$key] ?? ''));
 
-    return ($label !== '') ? $label : (string) ($row['name'] ?? '');
+        if ($label !== '') {
+            return $label;
+        }
+    }
+
+    return '';
 }
 
 /* ---------------------------------------------------------------------
@@ -512,6 +530,9 @@ function local_sale_add_item($code, $product_id, $quantity)
         $found = local_sale_find_product($code);
         $product = $found['product'];
 
+        if ($found['refusal'] !== '') {
+            return local_sale_fail($found['refusal'], array('field' => 'product'));
+        }
         if (!$product && ($found['matches'] > 1)) {
             return local_sale_fail(lang(array('string' => 'More than one product matches “{var:1}”. Pick one from the list.', 'vars' => array($code))), array('field' => 'product', 'level' => 'warning'));
         }
@@ -551,6 +572,11 @@ function local_sale_add_item($code, $product_id, $quantity)
     });
 
     if ($added === false) {
+        // add_order_item() refuses a gift card line past its unit limit.
+        if (pg_gift_card_quantity_refusal_take()) {
+            return local_sale_fail(local_sale_product_label($product) . ': ' . pg_gift_card_line_quantity_error(), array('field' => 'product'));
+        }
+
         return local_sale_fail(lang('Product not found or is disabled.'), array('field' => 'product'));
     }
 
@@ -614,7 +640,7 @@ function local_sale_set_qty($item_id, $quantity)
     }
 
     $item = db_item(
-        "SELECT oi.id, oi.product_id, oi.quantity, p.name, p.short_description, p.inventory, p.inventory_quantity
+        "SELECT oi.id, oi.product_id, oi.product_name, oi.quantity, p.name, p.short_description, p.inventory, p.inventory_quantity
          FROM order_items oi
          LEFT JOIN products p ON p.id = oi.product_id
          WHERE oi.id = '" . (int) $item_id . "' AND oi.order_id = '" . $order_id . "'
@@ -638,11 +664,24 @@ function local_sale_set_qty($item_id, $quantity)
         return local_sale_ok(lang(array('string' => '{var:1} removed from the cart.', 'vars' => array(local_sale_product_label($item)))), array('level' => 'info'));
     }
 
-    $others = local_sale_cart_qty($order_id, $item['product_id'], $item['id']);
-    $stock_error = local_sale_stock_error($item, $others + $quantity);
+    // A gift card line issues one card per unit, up to a limit.
+    if (!pg_order_item_quantity_allowed($item['id'], $quantity)) {
+        $error = pg_gift_card_line_quantity_error();
 
-    if ($stock_error !== '') {
-        return local_sale_fail($stock_error, array('line_errors' => array((int) $item['id'] => $stock_error), 'line_id' => (int) $item['id']));
+        return local_sale_fail($error, array('line_errors' => array((int) $item['id'] => $error), 'line_id' => (int) $item['id']));
+    }
+
+    // Only a raise is held against the stock. A line above what the shelf
+    // holds now (sold elsewhere since it was added) is lowered step by step
+    // with the minus button; completing the sale still refuses it while it
+    // is above (pg_local_order_line_errors()).
+    if ($quantity > (int) $item['quantity']) {
+        $others = local_sale_cart_qty($order_id, $item['product_id'], $item['id']);
+        $stock_error = local_sale_stock_error($item, $others + $quantity);
+
+        if ($stock_error !== '') {
+            return local_sale_fail($stock_error, array('line_errors' => array((int) $item['id'] => $stock_error), 'line_id' => (int) $item['id']));
+        }
     }
 
     db("UPDATE order_items SET quantity = '" . $quantity . "' WHERE id = '" . (int) $item['id'] . "' AND order_id = '" . $order_id . "'");
@@ -1170,8 +1209,10 @@ function local_sale_render_rows($lines, $line_errors = array(), $flash_id = 0)
             ? '<img class="pg-sale-thumb" src="' . PATH . h($line['image_name']) . '" alt="" loading="lazy" width="40" height="40">'
             : '<span class="pg-sale-thumb" aria-hidden="true"><i class="bi bi-box-seam"></i></span>';
 
-        // The code under the name, unless the code is the name.
-        $sub = (trim((string) $line['name']) !== $label) ? '<span class="font-monospace">' . h($line['name']) . '</span>' : '';
+        // The code under the name, unless the code is the name or the
+        // product is gone.
+        $code = trim((string) $line['name']);
+        $sub = (($code !== '') && ($code !== $label)) ? '<span class="font-monospace">' . h($code) . '</span>' : '';
         if ($tracked) {
             $sub .= (($sub !== '') ? ' · ' : '') . h(lang(array('string' => 'In stock: {var:1}', 'vars' => array((int) $line['inventory_quantity']))));
             if ($at_limit) {

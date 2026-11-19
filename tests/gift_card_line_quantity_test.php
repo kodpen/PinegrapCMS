@@ -55,13 +55,14 @@ function test_gift_card_line_limit_is_checked_at_every_door()
 		'express_order.php' => 'pg_gift_card_line_quantity_allowed(',
 		'cart_action.php' => 'pg_order_item_quantity_allowed(',
 		'submit_order.php' => 'pg_order_gift_card_lines_over_limit(',
+		'includes/local_sale.php' => 'pg_order_item_quantity_allowed(',
 	);
 
 	foreach ($doors as $file => $call) {
 		pg_assert_true(strpos((string) file_get_contents($root . $file), $call) !== false, $file . ' checks the gift card line limit');
 	}
 
-	foreach (array('shopping_cart.php', 'express_order.php', 'cart_action.php', 'add_to_cart.php', 'catalog_detail.php', 'order_form.php') as $file) {
+	foreach (array('shopping_cart.php', 'express_order.php', 'cart_action.php', 'add_to_cart.php', 'catalog_detail.php', 'order_form.php', 'includes/local_sale.php') as $file) {
 		pg_assert_true(strpos((string) file_get_contents($root . $file), 'pg_gift_card_quantity_refusal_take()') !== false, $file . ' shows a refused gift card add');
 	}
 }
