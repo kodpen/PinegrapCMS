@@ -100,17 +100,41 @@ function pg_whatsapp_design_languages()
 }
 
 /**
- * The template types in the order the designer offers them.
+ * The template types in the order the designer offers them. Authentication
+ * is not offered: Meta takes a code template only in its fixed shape (its
+ * own text, an OTP button), not the free message the designer writes.
  *
- * @return array MARKETING, UTILITY, AUTHENTICATION => label
+ * @return array UTILITY, MARKETING => label
  */
 function pg_whatsapp_design_categories()
 {
     return array(
-        'UTILITY'        => pg_whatsapp_template_category_label('UTILITY'),
-        'MARKETING'      => pg_whatsapp_template_category_label('MARKETING'),
-        'AUTHENTICATION' => pg_whatsapp_template_category_label('AUTHENTICATION'),
+        'UTILITY'   => pg_whatsapp_template_category_label('UTILITY'),
+        'MARKETING' => pg_whatsapp_template_category_label('MARKETING'),
     );
+}
+
+/**
+ * The type buttons the designer draws for a template of a type: the offered
+ * types, and a saved template's own type when it is one Meta knows but the
+ * designer does not offer (Authentication), shown but not to be chosen.
+ *
+ * @param string $category the template's type
+ * @return array type => label, offered (bool)
+ */
+function pg_whatsapp_design_category_choices($category)
+{
+    $choices = array();
+
+    foreach (pg_whatsapp_design_categories() as $value => $label) {
+        $choices[$value] = array('label' => $label, 'offered' => true);
+    }
+
+    if (!isset($choices[$category]) && in_array($category, explode(',', PG_WHATSAPP_CATEGORIES), true)) {
+        $choices[$category] = array('label' => pg_whatsapp_template_category_label($category), 'offered' => false);
+    }
+
+    return $choices;
 }
 
 /**

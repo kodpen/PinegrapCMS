@@ -147,7 +147,9 @@ if ($_POST) {
     }
 }
 
-$categories = pg_whatsapp_design_categories();
+// A saved Authentication template still shows its type, which is no longer
+// offered for a new template or a change of type.
+$categories = pg_whatsapp_design_category_choices($design['category']);
 $languages = pg_whatsapp_design_languages();
 
 // A template read from Meta may be in a language the designer does not
@@ -186,8 +188,8 @@ foreach (array(1 => lang('Design'), 2 => lang('WhatsApp approval'), 3 => lang('U
 // Basics: name, type, language.
 $output_types = '';
 
-foreach ($categories as $value => $label) {
-    $output_types .= '<button type="button" class="pg-seg-item" data-pg-wa-category="' . h($value) . '" aria-pressed="' . (($design['category'] === $value) ? 'true' : 'false') . '"' . $disabled . '>' . h($label) . '</button>';
+foreach ($categories as $value => $choice) {
+    $output_types .= '<button type="button" class="pg-seg-item" data-pg-wa-category="' . h($value) . '" aria-pressed="' . (($design['category'] === $value) ? 'true' : 'false') . '"' . ($choice['offered'] ? $disabled : ' disabled') . '>' . h($choice['label']) . '</button>';
 }
 
 $output_languages = '';
