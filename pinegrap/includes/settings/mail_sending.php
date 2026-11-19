@@ -3,8 +3,10 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Site Settings › E-mail sending: the cards of the former SMTP Settings
- * screen. What they save and run is includes/fn/mail_settings.php; the
- * settings are config.php defines, read here from the constants.
+ * screen, the campaign texts and MailChimp. What the mail cards save and run
+ * is includes/fn/mail_settings.php, config.php defines read here from the
+ * constants; the campaign texts and MailChimp are config row columns,
+ * prepared by includes/settings/prep.php.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -147,6 +149,16 @@ $pg_settings_cards[] = '
                                             </div>
                                         </div>
                                     </div>
+                                    <div class="row gy-5 mt-3">
+                                        <div class="col-12 lg:col-6">
+                                            <label for="opt_in_label" class="form-label">' . lang('Opt-In Label') . '</label>
+                                            <input type="text" name="opt_in_label" id="opt_in_label" class="form-control" value="' . h($opt_in_label) . '" maxlength="255">
+                                        </div>
+                                        <div class="col-12">
+                                            <label for="plain_text_email_campaign_footer" class="form-label">' . lang('Plain Text Footer') . '</label>
+                                            <textarea name="plain_text_email_campaign_footer" id="plain_text_email_campaign_footer" class="form-control">' . h($plain_text_email_campaign_footer) . '</textarea>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>';
@@ -200,6 +212,64 @@ $pg_settings_cards[] = '
 $pg_settings_cards[] = '
                         <div id="pgset-mail-domain" class="pg-set-card">
                             ' . pg_mail_domain_health_card(pg_mail_domain_health(), false) . '
+                        </div>';
+
+// ── MailChimp ──
+// Written to the config row by this category's save, checked at Mailchimp
+// first (mail_sending.save.php).
+$pg_settings_cards[] = '
+                        <div id="pgset-mailchimp" class="pg-set-card">
+                            <div class="card">
+                                <div class="card-header bg-reset border-0 pg-title-section">
+                                    <span lang="en">' . lang('MailChimp') . '</span>
+                                </div>
+                                <div class="card-body">
+                                    <div class="form-field">' . pg_settings_tile('envelope-paper', 'team') . '
+                                        <div class="switch"><input type="checkbox" name="mailchimp" id="mailchimp" value="1"' . $mailchimp_checked . ' class="collapse-switcher" data-bs-target="#mailchimp_row"></div>
+                                        <label for="mailchimp">' . lang('MailChimp Sync') . '</label><div class="form-text">' . lang('Auto-export customers, orders, & products to MailChimp regularly. Requires cron job (job.php).') . '</div>
+                                    </div>
+                                    <div class="collapse" id="mailchimp_row">
+                                        <div class="row gy-5 mt-0">
+                                            <div class="col-12 lg:col-8">
+                                                <label for="mailchimp_key" class="form-label">' . lang('API Key') . '</label>
+                                                <input type="text" name="mailchimp_key" id="mailchimp_key" class="form-control" value="" maxlength="100" autocomplete="off" spellcheck="false" placeholder="' . ($mailchimp_key_stored ? h(lang('Leave blank to keep the stored key')) : '') . '">' . ($mailchimp_key_stored ? '
+                                                <div class="form-text">' . lang('A secret is saved (never shown here). Type a new value only to replace it.') . '</div>
+                                                <div class="form-field mt-2">
+                                                    <input value="1" class="check" type="checkbox" id="mailchimp_key_clear" name="mailchimp_key_clear">
+                                                    <label for="mailchimp_key_clear">' . lang('Remove the stored key') . '</label>
+                                                </div>' : '') . '
+                                            </div>
+                                            <div class="col-12 lg:col-6">
+                                                <label for="mailchimp_list_id" class="form-label">' . lang('List ID') . '</label>
+                                                <input type="text" name="mailchimp_list_id" id="mailchimp_list_id" class="form-control" value="' . h($mailchimp_list_id) . '" maxlength="100">
+                                            </div>
+                                            <div class="col-12 lg:col-6">
+                                                <label for="mailchimp_store_id" class="form-label">' . lang('Store ID') . '</label>
+                                                <input type="text" name="mailchimp_store_id" id="mailchimp_store_id" class="form-control" value="' . h($mailchimp_store_id) . '" maxlength="100">
+                                            </div>
+                                            <div class="col-12 md:col-6">
+                                                <label for="mailchimp_sync_days" class="form-label">' . lang('Historical Sync') . '</label>
+                                                <label class="form-control form-adorn form-adorn-end">
+                                                    <span class="form-adorn-text" aria-hidden="true">' . lang('days in the past') . '</span>
+                                                    <input type="text" name="mailchimp_sync_days" id="mailchimp_sync_days" class="form-ghost text-end" value="' . h($mailchimp_sync_days ? $mailchimp_sync_days : '') . '" maxlength="6" inputmode="numeric" data-inputmask-alias="decimal">
+                                                </label>
+                                                <div class="form-text">' . lang('Set how far in the past to sync orders. Leave blank to sync all historical orders.') . '</div>
+                                            </div>
+                                            <div class="col-12 md:col-6">
+                                                <label for="mailchimp_sync_limit" class="form-label">' . lang('Limit Sync') . '</label>
+                                                <input type="text" name="mailchimp_sync_limit" id="mailchimp_sync_limit" class="form-control text-end" value="' . h($mailchimp_sync_limit ? $mailchimp_sync_limit : '') . '" maxlength="6" inputmode="numeric" data-inputmask-alias="decimal">
+                                                <div class="form-text">' . lang('max number of orders to sync each time cron job runs') . '</div>
+                                            </div>
+                                            <div class="col-12">
+                                                <div class="form-field">
+                                                    <div class="switch"><input type="checkbox" name="mailchimp_automation" id="mailchimp_automation" value="1"' . $mailchimp_automation_checked . '></div>
+                                                    <label for="mailchimp_automation">' . lang('Automation') . '</label><div class="form-text fg-danger">' . lang('only enable after all historical orders have been synced, to start sending MailChimp automation campaigns') . '</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>';
 
 // The Connect buttons sit inside the settings form and submit these by their

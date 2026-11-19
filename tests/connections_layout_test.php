@@ -68,7 +68,7 @@ function test_connections_row_offers_one_action()
 {
 	$source = connections_layout_source();
 
-	pg_assert_contains('(pg_connections_screen_action($row[\'state\']) === \'connect\') ? lang(\'Connect\') : lang(\'Manage\')', $source, 'Connect or Manage on every row');
+	pg_assert_contains('(($row[\'kind\'] !== \'settings\') && (pg_connections_screen_action($row[\'state\']) === \'connect\')) ? lang(\'Connect\') : lang(\'Manage\')', $source, 'Connect or Manage on every row, Manage on the E-mail sending row');
 }
 
 function test_connections_other_side_leads_to_application_access()

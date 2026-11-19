@@ -461,7 +461,7 @@ function pg_connections_registry()
         'microsoft_mail' => array('name' => 'Microsoft 365 mail', 'group' => 'email', 'place' => '#settings/mail_sending/pgset-mail-system', 'uses' => 'Sending the site\'s mail, and reading mailboxes',
             'state' => array('kind' => 'account', 'provider' => 'microsoft', 'purpose' => 'mail', 'attention' => true),
             'covers' => array('purpose' => array('mail', 'mail_read'))),
-        'mailchimp' => array('name' => 'Mailchimp', 'group' => 'email', 'place' => '#settings/contact/pgset-mailchimp', 'uses' => 'Keeps a list of subscribers in step',
+        'mailchimp' => array('name' => 'Mailchimp', 'group' => 'email', 'place' => '#settings/mail_sending/pgset-mailchimp', 'uses' => 'Keeps a list of subscribers in step',
             'state' => array('kind' => 'config', 'names' => array('MAILCHIMP'))),
 
         // SMS, consent and messaging.
