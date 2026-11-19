@@ -230,6 +230,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ws_mail_menu_pin();         // 11.0.239
 	upgrade_2026_11_0_ws_task_app();             // 11.0.230
 	upgrade_2026_11_0_ai_connections();          // 11.0.240
+	upgrade_2026_11_0_ai_connections_voice();    // 11.0.241
 
 }
 
@@ -6692,6 +6693,70 @@ function upgrade_2026_11_0_ai_connections() {
 
 	if ($moved > 0) {
 		install_note('Connections: ' . $moved . ' AI provider key(s) became the provider\'s connection; ' . $emptied . ' assistant(s) now use it.');
+	}
+
+}
+
+// The voice feature's keys join OpenAI's connection (11.0.241,
+// includes/fn/ai_connections.php), after the assistants' (11.0.240), by the
+// same rule: where OpenAI has no connection yet, the transcripts' key (or
+// the spoken answers', when they go to OpenAI too) becomes it; a key equal
+// to the connection's is emptied, so the feature calls with the same key
+// from the connection; a key that differs, or one of another address, stays.
+// Run again it finds nothing to move.
+function upgrade_2026_11_0_ai_connections_voice() {
+
+	if (!function_exists('pg_ai_connection_voice_move') || !function_exists('pg_connect_schema_ready') || !pg_connect_schema_ready() || !function_exists('pg_config_text')) {
+
+		install_skipped('AI connections: the voice keys were not moved, because includes/fn/ai_connections.php is out of date. Upload the files of this version again and run the upgrade.');
+
+		return;
+
+	}
+
+	$open = function ($name) {
+
+		$sealed = pg_config_text($name);
+
+		if (strpos($sealed, ':') === false) {
+			return '';
+		}
+
+		list($cipher, $iv) = explode(':', $sealed, 2);
+
+		return trim((string) decode_ssl_keys($cipher, $iv));
+
+	};
+
+	if ((strpos(pg_config_text('ws_voice_key'), ':') === false) && (strpos(pg_config_text('ws_voice_speech_key'), ':') === false)) {
+		return;
+	}
+
+	if (!pg_connect_can_seal()) {
+
+		install_skipped('AI connections: this site has no encryption key, so voice transcripts keep their own key.');
+
+		return;
+
+	}
+
+	$move = pg_ai_connection_voice_move(pg_ai_connection_key('openai'), array(
+		'url'        => pg_config_text('ws_voice_url'),
+		'key'        => $open('ws_voice_key'),
+		'speech_url' => pg_config_text('ws_voice_speech_url'),
+		'speech_key' => $open('ws_voice_speech_key'),
+	));
+
+	if ($move['store'] && !pg_ai_connection_save('openai', 'OpenAI', $move['connection'])) {
+		return;
+	}
+
+	foreach ($move['empty'] as $name) {
+		pg_config_text_save($name, '');
+	}
+
+	if ($move['store'] || $move['empty']) {
+		install_note('Connections: voice transcripts now use OpenAI\'s connection' . ($move['store'] ? ', made from their key' : '') . '.');
 	}
 
 }

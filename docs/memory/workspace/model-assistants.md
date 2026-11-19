@@ -16,7 +16,7 @@ description: Model assistants (ws_agents kind 'model'): providers and their data
 ## Who sets it up?
 - The Agents card of A3b (`agents_settings.php`) keeps the row: handle, name, provider, model, sealed key, application. `ws_model_base_problem()` checks the chat API address (only azure and custom take one, in `door_url`; only custom may be http). `ws_model_agent_test($id)` gives the card's Try a sentence; `ws_model_agent_missing()` says what keeps it from answering.
 - On the card (step A6b): the provider is a select of `ws_model_providers()` with the model hints under the model field; its own Address field (`agent_base`, saved to `door_url` for a model agent, so it never clashes with a push door's address on the new-agent form); the provider's terms under the select; Try (`agent_test`).
-- `ws_agent_save_check()` refuses an unknown provider and an address `ws_model_base_problem()` refuses; a provider whose `key` is true needs its own key or its provider's connection (`api/ai-connections.md`).
+- `ws_agent_save_check()` refuses an unknown provider and an address `ws_model_base_problem()` refuses; a provider with a connection takes no key on the form (`api/ai-connections-feature-cards.md`).
 
 ## What do the providers do with the words? (checked 2026-11-08; Anthropic 2026-11-12)
 - On the card per provider (`ws_model_providers()['terms']`, one provider's: `ws_model_provider_terms()`); no channel screen shows it.

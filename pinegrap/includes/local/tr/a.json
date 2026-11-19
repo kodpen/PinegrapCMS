@@ -6736,6 +6736,7 @@
     "Any seat in the house, at every performance": "Her temsilde salondaki herhangi bir koltuk",
     "Any seat in the stalls or circle, from Monday to Thursday": "Pazartesiden perşembeye salon veya balkonda herhangi bir koltuk",
     "Any service that answers like OpenAI's /audio/speech. Left empty, the transcripts' address is used.": "OpenAI'ın /audio/speech ucu gibi yanıt veren herhangi bir hizmet. Boş bırakılırsa dökümlerin adresi kullanılır.",
+    "Any service that answers like OpenAI's /audio/transcriptions.": "OpenAI'nin /audio/transcriptions adresi gibi yanıt veren her servis.",
     "Any service that answers like OpenAI's /audio/transcriptions. Left empty, OpenAI is used.": "OpenAI'ın /audio/transcriptions adresi gibi yanıt veren herhangi bir hizmet. Boş bırakılırsa OpenAI kullanılır.",
     "Any smartphone that switches on, of any brand. A phone that does not switch on still gets a recycling quote.": "Açılan her akıllı telefon, markası ne olursa olsun. Açılmayan bir telefon da geri dönüşüm teklifi alır.",
     "Any stage experience, access or medical needs, and what they would love to do.": "Sahne deneyimi, erişim ya da sağlık ihtiyaçları ve en çok ne yapmak istediği.",
