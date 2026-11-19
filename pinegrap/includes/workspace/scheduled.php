@@ -612,6 +612,36 @@ function ws_scheduled_money_metrics()
 }
 
 /**
+ * The channel condition of a task count: the channel the action names, or,
+ * with none named, every channel but the agent channels and the discussions
+ * under them, as the general task lists leave them out (tasks.php,
+ * ws_tasks_agent_rule()). Pure.
+ *
+ * @param array   $metric ws_scheduled_metrics() entry
+ * @param int     $param  the channel named, 0 for none
+ * @param array[] $agents ws_tasks_agent_channels()
+ * @return string '' or an " AND ..." condition on channel_id
+ */
+function ws_scheduled_metric_channel_sql($metric, $param, $agents)
+{
+    if (($metric['scope'] ?? '') !== 'channel') {
+        return '';
+    }
+
+    if ((int) $param > 0) {
+        return " AND channel_id = '" . (int) $param . "'";
+    }
+
+    if (empty($agents)) {
+        return '';
+    }
+
+    $out = ws_tasks_agent_sql(ws_tasks_agent_rule((array) $agents, ''), 'channel_id');
+
+    return ($out === '') ? '' : ' AND ' . $out;
+}
+
+/**
  * One count now.
  *
  * @param array  $viewer the creator: a count they may not see, or one of a
@@ -647,7 +677,7 @@ function ws_scheduled_metric_value($viewer, $key, $param = 0, $since = 0)
     $since = ((int) $since > 0) ? (int) $since : time() - 86400;
     $today = date('Y-m-d');
     $midnight = strtotime($today . ' 00:00:00');
-    $channel = (($metric['scope'] === 'channel') && ((int) $param > 0)) ? " AND channel_id = '" . (int) $param . "'" : '';
+    $channel = ws_scheduled_metric_channel_sql($metric, $param, function_exists('ws_tasks_agent_channels') ? ws_tasks_agent_channels() : array());
     $open = "status NOT IN ('done', 'cancelled')";
     $value = 0;
 
@@ -669,7 +699,7 @@ function ws_scheduled_metric_value($viewer, $key, $param = 0, $since = 0)
             break;
 
         case 'time_logged_week':
-            $value = ws_task_time_week_minutes(($channel !== '') ? (int) $param : 0);
+            $value = ws_task_time_week_minutes((int) $param, function_exists('ws_tasks_agent_out_sql') ? ws_tasks_agent_out_sql('t.channel_id') : '');
             break;
 
         case 'forms_new':
