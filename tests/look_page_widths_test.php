@@ -104,8 +104,9 @@ function test_communication_tab_strip_sits_centred_in_the_window()
 {
 	$css = look_page_widths_test_source('assets/css/backend.src.css');
 
-	pg_assert_contains(".pg-messages-tabs {\n  display: flex;", $css, 'the strip is a flex row');
-	pg_assert_contains(".pg-messages-tabs > .pg-seg {\n  margin-inline: auto;\n}", $css, 'the segmented control is centred in it, still scrollable from its first tab');
+	pg_assert_contains(".pg-area-tabs {\n  display: flex;", $css, 'the strip is a flex row');
+	pg_assert_contains(".pg-area-tabs > .pg-seg {\n  margin-inline: auto;\n}", $css, 'the segmented control is centred in it, still scrollable from its first tab');
+	pg_assert_contains('<nav class="pg-area-tabs pg-messages-tabs"', look_page_widths_test_source('includes/fn/messages_area.php'), 'Communication takes the shared class');
 	pg_assert_contains("  .pg-messages-tabs .pg-seg {\n    display: flex;\n    flex: 1 1 auto;", $css, 'on a phone the strip fills the line as before');
 	pg_assert_contains("body.pg-measure-list #content {\n  width: fit-content;", $css, 'a list box is fit-content');
 	pg_assert_contains("  max-width: 100%;\n  margin-inline: auto;\n}", $css, 'and centred, so its centre is the window\'s');
@@ -121,4 +122,25 @@ function test_communication_tab_strip_sits_centred_in_the_window()
 		pg_assert_true(strpos($source, 'pg-measure-edit') === false && strpos($source, 'pg-has-rail') === false, $screen . ' keeps its content box centred');
 	}
 	pg_assert_true(strpos(look_page_widths_test_source('includes/fn/messages_area.php'), 'pg-measure-') === false, 'a new tab screen fills the window');
+}
+
+function test_area_tab_strips_share_one_class()
+{
+	$css = look_page_widths_test_source('assets/css/backend.src.css');
+
+	// The place is the shared class's alone: no area strip centres itself.
+	pg_assert_true(strpos($css, '.pg-messages-tabs > .pg-seg {') === false, 'Communication has no rule of its own for the place');
+	pg_assert_true(preg_match('/\.pg-area-tabs[^{]*\{[^}]*justify-content:\s*center/', $css) === 0, 'no centring that cuts off a scrolled strip\'s start');
+
+	// The marketplace products screen's views (the store area): the strip,
+	// then the messages, on a list box centred in the window.
+	$source = look_page_widths_test_source('marketplace_products.php');
+	pg_assert_contains('<nav class="pg-area-tabs mpp-modes" aria-label="\' . h(lang(\'Display\')) . \'"><div class="pg-seg pg-list-seg">', $source, 'the store views take the shared class');
+	pg_assert_true(strpos($source, '.mpp-modes { margin-bottom: 14px; }') !== false, 'the screen only spaces its strip');
+	$strip = strpos($source, '<nav class="pg-area-tabs mpp-modes"');
+	$flash = strpos($source, '<div id="mpp-flash"');
+	pg_assert_true($strip !== false && $flash !== false && $strip < $flash, 'the messages come under the strip');
+	pg_assert_true(strpos(substr($source, strpos($source, '<main id="content"'), $strip - strpos($source, '<main id="content"')), 'alert') === false, 'nothing is printed above the strip');
+	pg_assert_contains("'extra classes'       => 'mp-screen pg-measure-list'", $source, 'a list box, centred');
+	pg_assert_true(strpos($source, 'pg-measure-edit') === false && strpos($source, 'pg-has-rail') === false, 'no edit measure or rail shifts the centre');
 }
