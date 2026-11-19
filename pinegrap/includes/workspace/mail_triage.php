@@ -94,11 +94,11 @@ function ws_mail_triage_field($prefix, $box, $ai_ready)
 
     return '
                 <div class="md:col-12' . ((ws_mail_box_kept_in($box) === 'mailbox') ? ' d-none' : '') . '" data-ws-mail-when="kept_in=channel">
-                    <div class="form-field">
-                        <div class="switch"><input type="checkbox" name="ai_triage" value="1" id="' . $prefix . 'ai_triage"' . (ws_mail_triage_on($box) ? ' checked' : '') . '></div>
+                    <div class="d-flex align-items-center gap-3">
+                        <input class="pg-switch" type="checkbox" name="ai_triage" value="1" id="' . $prefix . 'ai_triage"' . (ws_mail_triage_on($box) ? ' checked' : '') . '>
                         <label for="' . $prefix . 'ai_triage">' . h(lang('Pinegrap AI suggests on new conversations')) . '</label>
                     </div>
-                    <div class="form-text">' . h(lang('Once per new conversation Pinegrap AI writes a summary, a status, a member to give it to and a reply draft under the card. Nothing is sent or changed until a member does it. Only where Pinegrap AI may be asked in the channel; each suggestion counts as a Pinegrap AI answer.')) . '</div>
+                    <div class="pg-field-help">' . h(lang('Once per new conversation Pinegrap AI writes a summary, a status, a member to give it to and a reply draft under the card. Nothing is sent or changed until a member does it. Only where Pinegrap AI may be asked in the channel; each suggestion counts as a Pinegrap AI answer.')) . '</div>
                 </div>';
 }
 

@@ -8,6 +8,7 @@ description: Census LM1b against look A (S5): the Site Settings categories in in
 
 ## What is done, and what is left on every category?
 - Done (DL5d, #8952): the dialog, its rail, head and foot; each card a title over an inner card of rows; fields and switches; the page at the edit measure with the floating save bar.
+- Mailboxes (`mailboxes.php`, the card and drawers of `includes/workspace/mail_settings.php`): done in S5d (#10431), `ui/look-settings-mailboxes.md`.
 - Left, shared: no row has the 34 px icon tile; the segmented control and small quiet button as row controls are not used; buttons inside card headers keep Bootstrap classes; the page toolbar (category menu, chips) is unchanged.
 
 ## Which categories carry the most old markup?
