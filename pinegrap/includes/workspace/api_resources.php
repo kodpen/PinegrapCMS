@@ -1110,7 +1110,7 @@ function ws_api_message_canvas($row, $canvases)
     );
 }
 
-function ws_api_message_present($viewer, $row, $refs, $reactions = null, $acks = null, $threads = null, $hidden = null, $polls = null, $proposals = null, $note_cards = null, $checks = null, $forwards = null, $group_cards = null, $canvases = null, $link_previews = null, $feedback = null)
+function ws_api_message_present($viewer, $row, $refs, $reactions = null, $acks = null, $threads = null, $hidden = null, $polls = null, $proposals = null, $note_cards = null, $checks = null, $forwards = null, $group_cards = null, $canvases = null, $link_previews = null, $feedback = null, $highlights = null)
 {
     // Who ticked its checklist (interact.php).
     if ($checks === null) {
@@ -1162,6 +1162,12 @@ function ws_api_message_present($viewer, $row, $refs, $reactions = null, $acks =
         $feedback = function_exists('ws_agent_feedback_map') ? ws_agent_feedback_map($viewer, array($row['id'])) : array();
     }
 
+    // Readers' highlights and the text they index (api_highlights.php).
+    if ($highlights === null) {
+        $highlights = ws_api_message_highlights_map($viewer, array($row));
+    }
+
+    $highlight = $highlights[(int) $row['id']] ?? null;
     $ack = $acks[(int) $row['id']] ?? null;
 
     $emoji = array();
@@ -1274,6 +1280,12 @@ function ws_api_message_present($viewer, $row, $refs, $reactions = null, $acks =
         // /workspace/messages/{id}/agent-feedback): verdict '' while
         // unmarked, null for anybody but the asker and the managers.
         'feedback'       => $deleted ? null : ($feedback[(int) $row['id']] ?? null),
+        // Readers' highlights (POST /workspace/messages/{id}/highlights):
+        // quote and occurrence index highlight_text, the body as the panel
+        // draws it for this reader, white space folded.
+        'highlights'        => $highlight ? $highlight['rows'] : array(),
+        'highlight_text'    => $highlight ? $highlight['text'] : '',
+        'can_highlight_all' => $highlight ? $highlight['can_all'] : false,
         'created_at'  => api_time($row['created_at']),
     );
 }
@@ -1338,6 +1350,9 @@ function ws_api_message_schema()
         'via'         => 'WorkspaceMessageVia?',
         'link_preview'   => 'WorkspaceMessageLinkPreview?',
         'feedback'       => 'WorkspaceMessageFeedback?',
+        'highlights'        => 'WorkspaceMessageHighlight[]',
+        'highlight_text'    => 'string',
+        'can_highlight_all' => 'boolean',
         'created_at'  => 'string',
     );
 }
@@ -1863,12 +1878,13 @@ function ws_api_messages_present($viewer, $rows)
     $canvases = function_exists('ws_canvas_message_states') ? ws_canvas_message_states(ws_api_message_canvas_file_ids($rows)) : array();
     $link_previews = function_exists('ws_link_preview_card_rows_map') ? ws_link_preview_card_rows_map($ids) : array();
     $feedback = function_exists('ws_agent_feedback_map') ? ws_agent_feedback_map($viewer, $ids) : array();
+    $highlights = ws_api_message_highlights_map($viewer, $rows);
     $out = array();
 
     // A message the person deleted for themselves stays in the page, marked
     // hidden, so that since_id and before_id still page past it.
     foreach ($rows as $row) {
-        $out[] = ws_api_message_present($viewer, $row, $refs, $reactions, $acks, $threads, $hidden, $polls, $proposals, $note_cards, $checks, $forwards, $group_cards, $canvases, $link_previews, $feedback);
+        $out[] = ws_api_message_present($viewer, $row, $refs, $reactions, $acks, $threads, $hidden, $polls, $proposals, $note_cards, $checks, $forwards, $group_cards, $canvases, $link_previews, $feedback, $highlights);
     }
 
     return $out;
