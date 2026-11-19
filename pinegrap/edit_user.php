@@ -1327,8 +1327,13 @@ if (!$_POST) {
     
     // if user was selected for delete
     if (($_POST['submit_delete'] ?? '') == 'Delete') {
-        $result = db_q("SELECT user_role FROM user WHERE user_id = ?", array((string) $audit_user_id)) or output_error('Query failed.');
-        $role = (mysqli_fetch_assoc($result) ?: array('user_role' => null))['user_role'];
+        $result = db_q("SELECT user_role, user_username FROM user WHERE user_id = ?", array((string) $audit_user_id)) or output_error('Query failed.');
+        $deleted_user = mysqli_fetch_assoc($result) ?: array('user_role' => null, 'user_username' => '');
+        $role = $deleted_user['user_role'];
+
+        // The Site Log names the account as stored: the Username field may
+        // hold an unsaved edit, or nothing at all.
+        $deleted_username = (string) $deleted_user['user_username'];
 
         // The last enabled administrator is not deleted.
         $allow_delete = !(($user['role'] == 0) && ($role == 0) && pg_user_is_last_admin($audit_user_id));
@@ -1337,7 +1342,7 @@ if (!$_POST) {
         if ($allow_delete == true) {
             pg_user_delete($audit_user_id);
 
-            log_activity(lang(array('string'=>'user ({var:1}) was deleted','vars'=>$_POST['username'])), $_SESSION['sessionusername']);
+            log_activity(lang(array('string'=>'user ({var:1}) was deleted','vars'=>$deleted_username)), $_SESSION['sessionusername']);
             
             $liveform_view_users->add_notice(lang('The user has been deleted.'));
             
