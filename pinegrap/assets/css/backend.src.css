@@ -18572,6 +18572,15 @@ a.ws-chip-message:hover,
 .ws-board-item.ws-item-due {
   font-weight: 700;
 }
+/* "Made by <application>" on a board card, under its title. */
+.ws-board-item .ws-board-made-by {
+  display: block;
+  font-size: var(--pg-text-meta);
+  font-weight: 400;
+  color: var(--pg-fg-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .ws-board-item.ws-item-urgent {
   box-shadow: inset 3px 0 0 var(--pg-danger);
 }

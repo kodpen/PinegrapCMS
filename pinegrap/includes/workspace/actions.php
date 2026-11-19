@@ -5075,6 +5075,7 @@ function ws_handle_action($action, $request)
                 'priority'      => (string) ($request['priority'] ?? ''),
                 'soon'          => min(90, max(0, (int) ($request['soon'] ?? 0))),
                 'agent_channels' => ws_agent_channel_mode($request['agent_channels'] ?? ''),
+                'made_by'        => ws_task_made_by_mode($request['made_by'] ?? ''),
             );
 
             // "Everything" is the board holder's view.
@@ -5090,6 +5091,8 @@ function ws_handle_action($action, $request)
                 'tasks'          => ws_tasks_list($viewer, $filters),
                 'agent_channels' => ws_tasks_agent_count($agent_names),
                 'agent_names'    => (object) $agent_names,
+                // The "Made by agents" filter shows once tasks carry the mark.
+                'made_by_ready'  => ws_task_app_ready(),
             ));
 
         case 'ws_board':
