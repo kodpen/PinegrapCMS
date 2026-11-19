@@ -182,6 +182,43 @@ function pg_pb_product_group_ids($product_id)
 
 
 /**
+ * The group links an Edit Product save changes: the groups posted that the
+ * product is not in yet, and the groups it is in that were not posted.
+ *
+ * A link row (products_groups_xref) also holds the product's sort order in
+ * the group, its featured mark and its new date, set on Edit Product Group
+ * and Featured and New Items. Rewriting every row on each save reset all
+ * three, so only the difference is written. Pure.
+ *
+ * @param array $stored group ids the product is in now
+ * @param mixed $posted the posted catalog_group_ids
+ * @return array 'add' => group ids, 'remove' => group ids
+ */
+function pg_pb_group_links_change($stored, $posted)
+{
+    $clean = function ($ids) {
+        $out = array();
+
+        foreach ((array) $ids as $id) {
+            if (is_scalar($id) && preg_match('/^[0-9]+$/', trim((string) $id)) && ((int) $id > 0)) {
+                $out[(int) $id] = (int) $id;
+            }
+        }
+
+        return $out;
+    };
+
+    $stored = $clean($stored);
+    $posted = $clean($posted);
+
+    return array(
+        'add'    => array_values(array_diff_key($posted, $stored)),
+        'remove' => array_values(array_diff_key($stored, $posted)),
+    );
+}
+
+
+/**
  * The select-type ("variant set") group a product belongs to, or 0.
  *
  * A product can sit in several groups, but only one of them can be the variant
@@ -6821,18 +6858,24 @@ function pg_pb_update_product($product_id)
         ));
     }
 
-    db("DELETE FROM products_groups_xref WHERE product = '" . e($product_id) . "'");
+    // Only the groups added or taken off: a row the product stays in keeps
+    // its sort order, featured mark and new date (pg_pb_group_links_change()).
+    $group_links = pg_pb_group_links_change(
+        pg_pb_product_group_ids($product_id),
+        (isset($_POST['catalog_group_ids']) && is_array($_POST['catalog_group_ids'])) ? $_POST['catalog_group_ids'] : array());
 
-    if (!empty($_POST['catalog_group_ids']) && is_array($_POST['catalog_group_ids'])) {
-        foreach ($_POST['catalog_group_ids'] as $group_id) {
-            $group_id = (int) $group_id;
-            if ($group_id) {
-                pg_pb_insert_row('products_groups_xref', array(
-                    'product'       => $product_id,
-                    'product_group' => $group_id,
-                ));
-            }
-        }
+    if ($group_links['remove']) {
+        db(
+            "DELETE FROM products_groups_xref
+            WHERE product = '" . e($product_id) . "'
+            AND product_group IN (" . implode(', ', array_map('intval', $group_links['remove'])) . ")");
+    }
+
+    foreach ($group_links['add'] as $group_id) {
+        pg_pb_insert_row('products_groups_xref', array(
+            'product'       => $product_id,
+            'product_group' => (int) $group_id,
+        ));
     }
 
     if ($shipping_on) {
