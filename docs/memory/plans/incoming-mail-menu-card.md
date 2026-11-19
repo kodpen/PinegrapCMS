@@ -21,6 +21,10 @@ description: Plan (owner 2026-11-19): Incoming e-mail pinned to the main menu, a
 - IM3, the channel seen. In the open conversation's head the channel leaves the muted line and becomes a pill reading "In #name", a link to the mail's card in the channel; a box kept in no channel shows none. The list row keeps its channel.
 - One PR each; IM1 holds the schema step.
 
+## Where does each step stand?
+- IM1 done, #10408 (`ui/main-menu-mail-row.md`): step 11.0.239, slot 27, the icon `mail`.
+- IM2, IM3: wait for IM1's merge.
+
 ## What is decided?
 - The owner's words: `workflow/decisions-made-product-78.md`. Architect (2026-11-19): the card goes to the new dashboard only, since the old one stays as it is by his decision of 2026-11-01; eight rows and the pill's wording are the reading of his words.
 

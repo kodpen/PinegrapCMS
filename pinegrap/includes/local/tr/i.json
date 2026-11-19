@@ -854,6 +854,8 @@
     "Incoming e-invoices are read from the e-document provider, and no provider is selected.": "Gelen e-faturalar e-belge sağlayıcısından okunur; seçili bir sağlayıcı yok.",
     "Incoming e-invoices to take in": "Alınmayı bekleyen gelen e-faturalar",
     "Incoming e-mail": "Gelen e-posta",
+    "Incoming e-mail is in the main menu now.": "Gelen e-posta artık ana menüde.",
+    "Incoming e-mail is no longer in the main menu; Communication still has it.": "Gelen e-posta artık ana menüde değil; İletişim'de duruyor.",
     "Incoming mail rules": "Gelen e-posta kuralları",
     "Incoming · {var:1}": "Gelen · {var:1}",
     "Incomplete": "Tamamlanmamış",
