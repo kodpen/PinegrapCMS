@@ -13,18 +13,19 @@ module: picture_translation
 - `pg_picture_tr_saved()` from `pg_file_versions_after_save()` (a photo's replace), `pg_image_editor_canvas_keep()` with `$words` true (only `pg_image_editor_save_canvas()`, a canvas in Files) and the Versions drawer's Restore (`pg_image_editor_action_restore()`).
 - A Workspace canvas (a member's or an agent's) keeps no texts: its callers leave `$words` false.
 - A flat save (no document kept) removes the file's uses. Every save turns the file's drawn rows out of date.
+- `pg_picture_tr_saved($file_id, $doc, $user_id)`: the three callers pass the signed-in user. A save with words of a file with a row also sets the waiting mark and opens its texts' job (`picture-text-auto-rows.md`).
 
 ## Which pictures are counted and sent?
 - Only those a page in another language has shown (a `file_translation` row), in the Pictures group and in the whole site alike: `picture-text-translation-group.md`. Every canvas picture with words has uses; without the bound a banner nobody shows went to the engines and weighed on the site counts.
 
 ## What does file_translation hold?
 - Step `upgrade_2026_11_0_file_translation()` (11.0.231, after 11.0.230 of `task.app_id`), listed in `get_tables()`. One row per source file and language (columns `workflow/decisions-made-schema-25.md`): `state` 0 waiting, 1 drawn, 2 out of date; only 1 is shown (`pg_picture_tr_shown()`). Moves: `pg_picture_tr_state_after()`: a save or a changed translation turns 1 into 2; a draw makes any row 1.
-- `pg_picture_tr_translation_written()` runs in `pg_tr_save_translation()` before the write (after the reviewed-kept refusal): drawn rows of the language whose file uses the string go to 2 when the text is new or differs.
+- `pg_picture_tr_translation_written()` runs in `pg_tr_save_translation()` before the write (after the reviewed-kept refusal): drawn rows of the language whose file uses the string go to 2 when the text is new or differs. A written text of a row waiting or out of date sets the waiting mark (asked only while it is clear).
 - `pg_picture_tr_translations_removed()` after an emptied box (`translations_action.php`), back to pending over the API and Clear translations (`pg_tr_clear()`): a drawn row whose file uses a text with no translation goes to 2.
 
 ## When do a file's texts and rows go?
 - Deleted for good: `pg_file_versions_delete_file()` calls `pg_picture_tr_forget()` first (uses, rows and each language's picture file). Strings and translations stay.
-- Binned or changed outside the editor (rotate, Optimize, an upload over it): the daily `pg_file_versions_sweep()` ends with `pg_picture_tr_prune()` in what is left of its budget (`pg_picture_tr_prune_reason()`).
+- Binned or changed outside the editor (rotate, Optimize, an upload over it): the daily `pg_file_versions_sweep()` ends with `pg_picture_tr_prune()` in what is left of its budget (`pg_picture_tr_prune_reason()`), then `pg_picture_tr_mark_check()`.
 
 ## Where is it tested?
 - `tests/picture_translation_test.php`: words read and skipped, the shared hash, flat versions, prune reasons, state moves, the hooks' places, the whole-site condition. The database paths were not run.

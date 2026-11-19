@@ -4,7 +4,7 @@ description: Plan picture-text-auto-draw, steps DA1 to DA5: rows and text jobs a
 ---
 
 ## Which steps are there?
-- DA1 (M) Rows, jobs and the mark; server only, nothing drawn yet.
+- DA1 (M) Rows, jobs and the mark; server only, nothing drawn yet. Done: #10409.
   - A page saved in the visual editor writes the waiting rows of the Design Canvas pictures it shows that have words, for every left-to-right target language, by the page pass's own address rule and one query, no document decoded. The first visit still writes them.
   - The texts' job: beside the page's translate-on-save job (`pg_tr_auto_update()`), the file texts of those pictures; a canvas save of a picture with a row opens one of its own. Same lock and open-job guard; never from a visit, never for a language without "translate on save".
   - The mark: set where a row starts to wait or becomes drawable (a waiting row, a save, a translation written), cleared when the queue's query finds nothing; kept where reading it costs no query.

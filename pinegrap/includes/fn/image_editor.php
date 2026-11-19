@@ -2568,7 +2568,7 @@ function pg_file_versions_after_save($file_id, $path, $doc, $base, $user_id, $re
 
     // The texts of the picture are the kept document's now (none when it
     // could not be kept), and its languages' pictures are out of date.
-    pg_picture_tr_saved($file_id, ($json !== '') ? json_decode($json, true) : null);
+    pg_picture_tr_saved($file_id, ($json !== '') ? json_decode($json, true) : null, $user_id);
 }
 
 // A version as the drawer lists it: kind original, restored, redacted or
@@ -2704,7 +2704,7 @@ function pg_image_editor_action_restore($request, $user)
     if ((int) $row['version_id'] !== (int) ($newest ? $newest['version_id'] : 0)) {
         pg_file_versions_add($file_id, $file['path'], (string) $row['doc_json'], 'restore', $user['id'], (int) $row['redacted'] === 1);
         pg_file_versions_prune($file_id);
-        pg_picture_tr_saved($file_id, pg_picture_tr_row_doc($row));
+        pg_picture_tr_saved($file_id, pg_picture_tr_row_doc($row), $user['id']);
     }
 
     $state = pg_file_versions_open_state($file_id, $file['path']);
@@ -3188,7 +3188,7 @@ function pg_image_editor_canvas_keep($file_id, $doc, $user_id, $source = 'new', 
     // The texts of the canvas are the kept document's (none when it was not
     // kept: the file holds flat pixels now).
     if ($words) {
-        pg_picture_tr_saved($file_id, $kept ? json_decode($json, true) : null);
+        pg_picture_tr_saved($file_id, $kept ? json_decode($json, true) : null, $user_id);
     }
 
     return $kept;
