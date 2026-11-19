@@ -398,7 +398,9 @@ function pg_whatsapp_design_check($design)
         $errors['category'] = lang('Choose the template type.');
     }
 
-    if (!isset(pg_whatsapp_design_languages()[$design['language']])) {
+    // A template WhatsApp holds keeps the language it has there (its field is
+    // locked), which may be one the designer does not offer.
+    if (($design['meta_id'] === '') && !isset(pg_whatsapp_design_languages()[$design['language']])) {
         $errors['language'] = lang('Choose the template language.');
     }
 
@@ -455,6 +457,10 @@ function pg_whatsapp_design_check($design)
                         $errors['button_' . $row] = $message;
                     }
                 }
+            } elseif ($field === 'offer_variable') {
+                // The designer draws no "The code goes in" field (the chip
+                // decides it), so the message goes under the offer's choice.
+                $errors['offer_mode'] = $message;
             } else {
                 $errors[$field] = $message;
             }
