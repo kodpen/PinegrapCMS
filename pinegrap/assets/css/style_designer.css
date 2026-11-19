@@ -1574,6 +1574,26 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
 }
 .sd-canvas-wrapper { position:relative; }
 
+/* The link marks over the canvas (_sdLinkMarksDraw()): red on a broken
+   link, amber on a link without a target, at the right edge of its
+   element. The layer covers the part of the canvas frame in view and lets
+   every other click through; it stays under the Prototype view and the
+   docked panels. */
+.sd-lm-layer { position: absolute; z-index: 20; overflow: hidden; pointer-events: none; }
+.sd-lm {
+    position: absolute; transform: translate(-50%, -50%);
+    width: 18px; height: 18px; padding: 0;
+    display: flex; align-items: center; justify-content: center;
+    border: 1px solid var(--sd-panel-bg); border-radius: 50%;
+    background: var(--sd-danger); color: var(--sd-panel-bg);
+    font-size: 10.5px; line-height: 1;
+    box-shadow: 0 1px 3px color-mix(in srgb, var(--sd-shadow) 45%, transparent);
+    cursor: pointer; pointer-events: auto;
+}
+.sd-lm.sd-lm-empty { background: var(--sd-warning); }
+.sd-lm:hover { filter: brightness(1.12); }
+.sd-lm:focus-visible { outline: none; border-color: var(--sd-accent); box-shadow: 0 0 0 3px var(--sd-accent-soft); }
+
 /* ── Color pickers (Text Col / Bg Col / Border Color) ──
    Custom dropdown widget so each option can render a colored dot to the LEFT of the name —
    native <select><option> on Windows Chrome ignores background-image and most CSS.
