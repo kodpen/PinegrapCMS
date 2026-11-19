@@ -1,6 +1,6 @@
 ---
 name: api-meta-workspace-values
-description: The workspace object on GET /meta: default_task_minutes (WS_DEFAULT_TASK_MINUTES) and day_minutes (WS_DAY_MINUTES), for a team device's task form (issue #10345)
+description: The workspace object on GET /meta: default_task_minutes (WS_DEFAULT_TASK_MINUTES) and day_minutes (WS_DAY_MINUTES), for a team device's task form (issue #10345, PR #10388)
 ---
 
 ## What does `workspace` on GET /meta say?

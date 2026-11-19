@@ -1,6 +1,6 @@
 ---
 name: api-workspace-quiet-hours
-description: A person's own quiet hours over the API: quiet_hours on GET /auth/me, POST /workspace/quiet-hours from a team devices session only, the quiet_hours feature key (issue #10347)
+description: A person's own quiet hours over the API: quiet_hours on GET /auth/me, POST /workspace/quiet-hours from a team devices session only, the quiet_hours feature key (issue #10347, PR #10388)
 module: quiet_hours
 ---
 
