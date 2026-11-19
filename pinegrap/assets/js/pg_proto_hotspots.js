@@ -1873,6 +1873,18 @@
         };
     }
 
+    // How a links panel row (one of listOf()'s outgoing) shows where its
+    // link goes: { control, state }. `control` is true for a row an arrow
+    // may be drawn from, whose target is a button opening the target menu;
+    // a read-only row keeps it as text. `state` is 'empty' for a link
+    // without a target, 'broken' for a broken one, else 'set'.
+    function rowTarget(row) {
+        var r = isObject(row) ? row : {};
+        var state = (r.mark === 'empty') ? 'empty' : ((str(r.why) !== '') ? 'broken' : 'set');
+
+        return { control: !!r.drawable, state: state };
+    }
+
     // Every broken link of a layout, in its frames' order: { list: [{ frame,
     // port, label, href, why }], count: { frame id: n } }.
     function brokenOf(laid) {
@@ -2325,6 +2337,7 @@
         focusOf: focusOf,
         fitStart: fitStart,
         listOf: listOf,
+        rowTarget: rowTarget,
         brokenOf: brokenOf,
         problemsOf: problemsOf,
         widgetPages: widgetPages,

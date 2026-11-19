@@ -74320,9 +74320,11 @@ const StyleDesigner = (function () {
         return target.kind === 'chip' ? _sdProtoChipText(target) : _sdProtoFrameName(target);
     }
 
-    // The selected frame's links (F15): out, each with "Change target" and
-    // "Open in the editor" (F17); in, a shared part's said so; a page's
-    // shared parts, each selecting its frame. From the marked layout
+    // The selected frame's links (F15): out, each with its target as a
+    // control opening the target menu ("Choose a page" for a link without
+    // one; text on a row that may not be drawn) and "Open in the editor"
+    // (F17); in, a shared part's said so; a page's shared parts, each
+    // selecting its frame. From the marked layout
     // (PGProtoHotspots.listOf()), never from the canvas.
     function _sdProtoListDraw() {
         var ui = _sdProto.ui;
@@ -74366,9 +74368,11 @@ const StyleDesigner = (function () {
             var main = _sdProtoEl('button', 'sd-proto-li-main');
             main.type = 'button';
             main.appendChild(_sdProtoMarkIcon(row.mark));
+            var shows = window.PGProtoHotspots.rowTarget(row);
+            var where = shows.state === 'broken' ? _sdProtoWhy(row.why) : (shows.state === 'empty' ? '' : _sdProtoTargetName(row));
             var text = _sdProtoEl('span', 'sd-proto-li-text');
             text.appendChild(_sdProtoEl('span', 'sd-proto-li-label', row.label));
-            text.appendChild(_sdProtoEl('span', 'sd-proto-li-to', row.why ? _sdProtoWhy(row.why) : (row.mark === 'empty' ? _sdT('No target') : '→ ' + _sdProtoTargetName(row))));
+            if (!shows.control) text.appendChild(_sdProtoEl('span', 'sd-proto-li-to', shows.state === 'empty' ? _sdT('No target') : (shows.state === 'broken' ? where : '→ ' + where)));
             main.appendChild(text);
             main.addEventListener('click', function () { _sdProtoPick(data.id, row.port, false); });
             var change = function (anchor) { return _sdProtoMenuOpen(data.id, row.port, anchor); };
@@ -74379,18 +74383,30 @@ const StyleDesigner = (function () {
                 if (menuKey && row.drawable && change(main)) event.preventDefault();
             });
             var li = line(outBox, data.id + '|' + row.port, main);
+            li.classList.add('sd-proto-li-out');
             if (row.why) li.classList.add('sd-proto-li-broken');
             if (row.mark === 'empty') li.classList.add('sd-proto-li-empty');
             var acts = _sdProtoEl('span', 'sd-proto-li-acts');
-            if (row.drawable) {
-                main.setAttribute('aria-keyshortcuts', 'L');
-                var changeBtn = _sdProtoListButton('sd-proto-li-act', 'bi-signpost-split', _sdT('Change target'), function () { change(changeBtn); });
-                acts.appendChild(changeBtn);
-            }
             acts.appendChild(_sdProtoListButton('sd-proto-li-act', 'bi-box-arrow-in-up-left', _sdT('Open in the editor'), function () {
                 _sdProtoOpenRow(data.id, row.port);
             }));
             li.appendChild(acts);
+            // The target as a control on its own line under the label, so
+            // it is in reach at the panel's narrowest; it opens the same
+            // target menu as L on the row or on the link's mark.
+            if (shows.control) {
+                main.setAttribute('aria-keyshortcuts', 'L');
+                var pick = _sdProtoEl('button', 'sd-proto-li-target sd-proto-li-target-' + shows.state);
+                pick.type = 'button';
+                pick.title = _sdT('Change target');
+                pick.setAttribute('aria-haspopup', 'menu');
+                pick.setAttribute('aria-label', shows.state === 'empty' ? _sdT('Choose a page') : _sdT('Change target: {var:1}', where));
+                pick.appendChild(_sdProtoEl('span', 'sd-proto-li-target-name', shows.state === 'empty' ? _sdT('Choose a page') : where));
+                pick.appendChild(_sdProtoEl('span', 'bi bi-chevron-down sd-proto-li-caret'));
+                pick.lastChild.setAttribute('aria-hidden', 'true');
+                pick.addEventListener('click', function () { change(pick); });
+                li.appendChild(pick);
+            }
         });
 
         var inBox = section(_sdT('Incoming · {var:1}', data.incoming.length));
