@@ -15,6 +15,7 @@ description: Which Workspace API writes the person must make themselves: ws_api_
 - Starting and cancelling a flow run: `'mcp' => false`, refusing `ws_api_is_assistant()` (Claude's routine uses REST with its key); an integration's key passes (`test_ws_api_flow_runs_writes_are_no_tools`).
 
 ## Which writes need the team devices session? (`ws_api_own_words_only()`)
+- Marking an agent's answer right or wrong (#10340).
 - Changing or deleting the person's own words (edit, delete, delete for me), and anything opened in their name that later runs as their word or that only they may change: a scheduled message, changing, taking back or asking again a person's poll (an application only its own, `agent-questions.md`), a pin (`ws_api_pin_target()`), publishing a flow (drafting is open to both: `workspace-flows-store.md`), sharing one or taking a share back (`test_ws_api_flow_shares_routes`).
 - Key and OAuth are refused there (#371, #375): a connection writes as the application, so what it set up would later read as the person's word. Both may still list and cancel the owner's scheduled messages.
 - A published flow moved to another home channel is refused to both by `ws_api_flow_home_move_gate()`, inside the draft change, which stays a tool: the gate checks `ws_api_device_writes_as_person()` itself, not through `ws_api_own_words_only()`.
