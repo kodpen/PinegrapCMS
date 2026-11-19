@@ -895,8 +895,10 @@ function pg_booking_release_session_hold($now)
 
     // A hold with a deposit order is cancelled, not removed: a payment that
     // still arrives for the order finds its booking (pg_booking_deposit_mark_paid()).
+    // It keeps its hold_until, which marks it as a hold that gave its time
+    // back (pg_booking_deposit_lapsed()).
     if (pg_booking_deposit_ready()) {
-        db_q("UPDATE bookings SET status = 'cancelled', slot_at = NULL, hold_until = 0, updated_at = ? WHERE id = ? AND status = 'held' AND order_id > 0", array((int) $now, $id));
+        db_q("UPDATE bookings SET status = 'cancelled', slot_at = NULL, updated_at = ? WHERE id = ? AND status = 'held' AND order_id > 0", array((int) $now, $id));
         pg_booking_pay_pending_forget();
     }
 

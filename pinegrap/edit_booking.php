@@ -505,11 +505,14 @@ $deposit = pg_booking_deposit_view(pg_booking_deposit_rows(array($booking))[0]);
 
 if ($deposit['state'] !== 'none') {
     $order_label = h(lang('Order')) . ' ' . h(($deposit['order_number'] !== '') ? '#' . $deposit['order_number'] : '#' . $deposit['order_id']);
-    $facts[lang('Deposit')] = '<span class="badge badge-subtle ' . (($deposit['state'] === 'paid') ? 'theme-success' : 'theme-warning') . '">' . h(pg_booking_deposit_label($deposit)) . '</span>'
+    $facts[lang('Deposit')] = '<span class="badge badge-subtle ' . pg_booking_deposit_tone($deposit) . '">' . h(pg_booking_deposit_label($deposit)) . '</span>'
         . (($deposit['paid_at'] > 0) ? ' ' . h(pg_booking_agenda_time($deposit['paid_at'], true)) : '')
         . '<br>' . ((((int) $user['role'] <= 2) || !empty($user['manage_ecommerce']))
             ? '<a href="view_order.php?id=' . (int) $deposit['order_id'] . '">' . $order_label . '</a>'
-            : $order_label);
+            : $order_label)
+        . (($deposit['state'] === 'refund')
+            ? '<div class="small fg-secondary mt-4">' . h(lang('It was paid after its hold ran out, when the time had been taken. Get in touch with the customer: refund the deposit, or confirm this booking if its time is free again.')) . '</div>'
+            : '');
 }
 
 $facts_html = '';

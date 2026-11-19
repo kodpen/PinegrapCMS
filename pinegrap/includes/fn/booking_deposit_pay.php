@@ -13,8 +13,10 @@
  *
  * A paid order confirms the booking from its completion
  * (pg_booking_deposit_mark_paid()); a payment that arrives after the hold
- * ran out makes it requested. "Paid on arrival" (offline payment) completes
- * the order unpaid and the booking becomes requested.
+ * ran out books the time again while it is free, else the booking waits as
+ * a request with its deposit awaiting a refund, and the visitor is told so.
+ * "Paid on arrival" (offline payment) completes the order unpaid and the
+ * booking becomes requested.
  *
  * The session keeps the open payment in software.booking_pay: booking_id,
  * order_id, page (the widget's page to come back to), driver, state, error.
@@ -39,10 +41,15 @@ const PG_BOOKING_PAY_FRAGMENT = 'pg-booking-payment';
 /**
  * A booking's deposit as the screens show it. Pure.
  *
- * @param array $row bookings row with order_id, paid_at and, when read,
- *                   order_number
- * @return array state ('none', 'unpaid' or 'paid'), paid_at, order_id,
- *               order_number ('' when the order has none yet)
+ * 'refund' is a paid deposit on an open request: only a payment that came
+ * after the hold ran out and found the time taken leaves a request paid
+ * (pg_booking_deposit_outcome() 'lost'). It awaits a refund, made by hand,
+ * until staff confirm the booking (its time free again) or cancel it.
+ *
+ * @param array $row bookings row with order_id, paid_at, status and, when
+ *                   read, order_number
+ * @return array state ('none', 'unpaid', 'paid' or 'refund'), paid_at,
+ *               order_id, order_number ('' when the order has none yet)
  */
 function pg_booking_deposit_view($row)
 {
@@ -50,9 +57,10 @@ function pg_booking_deposit_view($row)
     $order_id = (int) ($row['order_id'] ?? 0);
     $paid_at = (int) ($row['paid_at'] ?? 0);
     $number = (string) ($row['order_number'] ?? '');
+    $paid = ((string) ($row['status'] ?? '') === 'requested') ? 'refund' : 'paid';
 
     return array(
-        'state'        => ($order_id <= 0) ? 'none' : (($paid_at > 0) ? 'paid' : 'unpaid'),
+        'state'        => ($order_id <= 0) ? 'none' : (($paid_at > 0) ? $paid : 'unpaid'),
         'paid_at'      => $paid_at,
         'order_id'     => $order_id,
         'order_number' => (($number !== '') && ($number !== '0')) ? $number : '',
@@ -60,8 +68,8 @@ function pg_booking_deposit_view($row)
 }
 
 /**
- * The words of a deposit's state: "Deposit paid", "Deposit not paid", ''
- * for a booking without a deposit order.
+ * The words of a deposit's state: "Deposit paid", "Deposit not paid",
+ * "Deposit awaiting refund", '' for a booking without a deposit order.
  *
  * @param array $view pg_booking_deposit_view()
  * @return string
@@ -74,14 +82,37 @@ function pg_booking_deposit_label($view)
         return lang('Deposit paid');
     }
 
+    if ($state === 'refund') {
+        return lang('Deposit awaiting refund');
+    }
+
     return ($state === 'unpaid') ? lang('Deposit not paid') : '';
 }
 
 /**
- * The agenda's small mark of a booking's deposit, after its status badge:
- * a coin, green when paid. '' for a booking without a deposit order.
+ * The badge colour of a deposit's state: green when paid, red when it
+ * awaits a refund, amber while unpaid.
  *
- * @param array $row bookings row (order_id, paid_at)
+ * @param array $view pg_booking_deposit_view()
+ * @return string
+ */
+function pg_booking_deposit_tone($view)
+{
+    $state = (string) ($view['state'] ?? 'none');
+
+    if ($state === 'paid') {
+        return 'theme-success';
+    }
+
+    return ($state === 'refund') ? 'theme-danger' : 'theme-warning';
+}
+
+/**
+ * The agenda's small mark of a booking's deposit, after its status badge:
+ * a coin, coloured by pg_booking_deposit_tone(). '' for a booking without a
+ * deposit order.
+ *
+ * @param array $row bookings row (order_id, paid_at, status)
  * @return string HTML
  */
 function pg_booking_deposit_badge($row)
@@ -94,7 +125,7 @@ function pg_booking_deposit_badge($row)
 
     $label = pg_booking_deposit_label($view);
 
-    return ' <span class="badge badge-subtle ' . (($view['state'] === 'paid') ? 'theme-success' : 'theme-warning') . '" title="' . h($label) . '">'
+    return ' <span class="badge badge-subtle ' . pg_booking_deposit_tone($view) . '" title="' . h($label) . '">'
          . '<i class="bi bi-coin" aria-hidden="true"></i><span class="visually-hidden">' . h($label) . '</span></span>';
 }
 
@@ -517,10 +548,32 @@ function pg_booking_pay_state_request()
 
     // The session's hold is a booking (or a request) now.
     unset($_SESSION['software']['booking_hold'], $_SESSION['software']['booking_hold_slot']);
-    $status = (string) db_value("SELECT status FROM bookings WHERE id = '$paid' LIMIT 1");
+    $row = db_item("SELECT status, order_id, paid_at FROM bookings WHERE id = '$paid' LIMIT 1");
 
-    // A card payment still being confirmed leaves the row held: it is
-    // confirmed when the service's message completes the order.
-    return array('ok' => true, 'state' => 'done', 'status' => $status,
-        'message' => pg_booking_widget_done_text(($status === 'confirmed') ? 'confirmed' : 'requested', pg_booking_texts()));
+    return array('ok' => true, 'state' => 'done', 'status' => is_array($row) ? (string) $row['status'] : '',
+        'message' => pg_booking_pay_done_text($row, pg_booking_texts()));
+}
+
+/**
+ * The words that end a paid booking in the widget. Pure. A booking whose
+ * payment came after its hold ran out and found the time taken (a deposit
+ * awaiting a refund) or one cancelled meanwhile is told the truth: the time
+ * is no longer held and the team gets in touch about the deposit. A card
+ * payment still being confirmed leaves the row held: it reads as a request,
+ * confirmed when the service's message completes the order.
+ *
+ * @param array|null $row   bookings row: status, order_id, paid_at
+ * @param array      $texts as pg_booking_texts()
+ * @return string
+ */
+function pg_booking_pay_done_text($row, $texts)
+{
+    $row = is_array($row) ? $row : array();
+    $status = (string) ($row['status'] ?? '');
+
+    if (($status === 'cancelled') || (pg_booking_deposit_view($row)['state'] === 'refund')) {
+        return lang('Your payment arrived after the time we kept for you ran out, and the time is no longer held for you. Our team will get in touch with you about your deposit.');
+    }
+
+    return pg_booking_widget_done_text(($status === 'confirmed') ? 'confirmed' : 'requested', $texts);
 }

@@ -3450,6 +3450,7 @@
     "The deposit is paid in advance as a one-line order of this product. A deposit of 0 asks for none.": "Peşinat, bu ürünün tek satırlık bir siparişi olarak önceden ödenir. 0 tutarı peşinat istemez.",
     "The deposit is written in the contract, usually one or two months' rent, and kept until the keys come back.": "Depozito sözleşmede yazılıdır, genellikle bir ya da iki aylık kiradır ve anahtarlar geri gelene kadar tutulur.",
     "The deposit must be a part of the price: no more than the price, and only for a service with a price.": "Peşinat fiyatın bir parçası olmalıdır: fiyattan fazla olamaz ve yalnızca fiyatı olan bir hizmette istenebilir.",
+    "The deposit of booking #{var:1} was paid after its hold ran out and its time was taken: the booking waits as a request and the deposit awaits a refund.": "#{var:1} numaralı randevunun kaporası, tutma süresi dolduktan ve saati başkasına geçtikten sonra ödendi: randevu talep olarak bekliyor, kapora iade bekliyor.",
     "The deposit paid with a catering request.": "Catering talebiyle birlikte ödenen kapora.",
     "The deposit that holds one traveller's place on %s, once we have confirmed your booking request.": "Rezervasyon talebinizi onayladıktan sonra %s turunda bir gezginin yerini ayıran kapora.",
     "The deposit that holds your places on a confirmed tour, and gift cards for someone who dreams of a journey.": "Onaylanmış bir turda yerlerinizi ayıran kapora ve bir seyahat hayal eden biri için hediye kartları.",

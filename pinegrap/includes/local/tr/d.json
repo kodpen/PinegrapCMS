@@ -629,6 +629,7 @@
     "Depending on the page's access control, these pages can be found using the built-in site search feature.": "Sayfanın erişim kontrolüne bağlı olarak, bu sayfalar yerleşik site arama özelliği kullanılarak bulunabilir.",
     "Deploy the rule, wait a minute, then press Check through Cloudflare here.": "Kuralı yayınlayın, bir dakika bekleyin, sonra burada Cloudflare üzerinden denetle düğmesine basın.",
     "Deposit": "Peşinat",
+    "Deposit awaiting refund": "Kapora iade bekliyor",
     "Deposit held and returned by the rules": "Depozito kurallara göre tutulur ve iade edilir",
     "Deposit not paid": "Kapora ödenmedi",
     "Deposit paid": "Kapora ödendi",
