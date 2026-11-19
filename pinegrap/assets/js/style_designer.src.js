@@ -73865,6 +73865,9 @@ const StyleDesigner = (function () {
     var _sdProto = { open: false, ui: null, canvas: null, items: [], byId: {}, layout: null, view: { x: 40, y: 40, k: 1 }, seq: 0, selected: null, env: {}, warned: {}, menu: null,
         link: null, lifted: '', drawing: false, broken: { list: [], count: {} }, issues: null, problems: null, suggest: null,
         edgeTo: {},
+        // The "+" handle (_sdProtoGrip()): the mark it stands beside, the
+        // mark under the pointer, the zoom the marks' reach was set at.
+        grip: { hot: null, hover: null, k: 0, soon: 0, hide: 0 },
         pics: { gen: 0, io: null, boxes: {}, near: {}, live: {}, wait: [], loading: 0, cache: {}, rects: {}, partH: {}, pageH: {}, full: null, settle: 0, refill: 0 } };
 
     // Pictures (_sdProtoPicMake()): at most this many loading at once, the
@@ -74116,10 +74119,12 @@ const StyleDesigner = (function () {
             connected: function (from, to, port) { _sdProtoConnect(from, to, port); },
             // The core reads the view on every pan and zoom (and changes it
             // in place): the pictures near the view are made again soon
-            // after it settles.
+            // after it settles; a new zoom resizes the handle and the small
+            // marks' reach.
             view: function (next) {
                 if (next) _sdProto.view = next;
                 _sdProtoPicSoon();
+                _sdProtoZoomSoon();
                 return _sdProto.view;
             },
             items: function () { return _sdProto.items; },
@@ -74130,8 +74135,10 @@ const StyleDesigner = (function () {
             // draws its arrow (F21). The head of a drawn arrow: a drag
             // points it elsewhere (F22). Either becomes the core's own
             // 'connect' once it moves, so what may take the arrow lights up.
+            // The "+" handle beside a mark is that mark (_sdProtoGrip()).
             press: function (event, next) {
-                var row = event.target.closest ? event.target.closest('.sd-proto-hot') : null;
+                var grip = event.target.closest ? event.target.closest('.sd-proto-grip') : null;
+                var row = grip ? _sdProto.grip.hot : (event.target.closest ? event.target.closest('.sd-proto-hot') : null);
                 if (row) {
                     next.kind = 'row';
                     next.row = row;
@@ -74188,14 +74195,28 @@ const StyleDesigner = (function () {
         });
         _sdProto.canvas.bind();
         // The pointer on a mark or a links panel row lifts its arrow out of
-        // the others.
+        // the others; on a drawable mark of the selected frame it shows
+        // the "+" handle, which stands for its mark.
+        ui.grip = _sdProtoEl('span', 'sd-proto-grip');
+        ui.grip.hidden = true;
+        ui.grip.setAttribute('aria-hidden', 'true');
+        ui.grip.appendChild(_sdProtoEl('span', 'sd-proto-grip-dot bi bi-plus-lg'));
         ui.root.addEventListener('pointerover', function (event) {
             if (_sdProto.drawing) return;
-            var hot = event.target.closest ? event.target.closest('.sd-proto-hot, .sd-proto-li[data-link]') : null;
-            var link = hot ? (hot.classList.contains('sd-proto-hot') ? _sdProtoHotLink(hot) : null) : null;
-            var id = link ? link.frame + '|' + link.port : (hot ? hot.getAttribute('data-link') : '');
+            var t = event.target;
+            var hot = !t.closest ? null : (t.closest('.sd-proto-grip') ? _sdProto.grip.hot : t.closest('.sd-proto-hot, .sd-proto-li[data-link]'));
+            var mark = hot && hot.classList.contains('sd-proto-hot') ? hot : null;
+            var link = mark ? _sdProtoHotLink(mark) : null;
+            var id = link ? link.frame + '|' + link.port : (hot && !mark ? hot.getAttribute('data-link') : '');
             _sdProtoLift(id || '');
+            // A held button (a press, a drag: the canvas holds the pointer)
+            // leaves the handle where it is.
+            if (!event.buttons) _sdProtoGripHover(mark);
         });
+        ui.root.addEventListener('pointerleave', function () { if (!_sdProto.drawing) _sdProtoGripHover(null); });
+        // Tab onto a drawable mark shows its handle too.
+        ui.boxes.addEventListener('focusin', function () { _sdProtoGripFor(); });
+        ui.boxes.addEventListener('focusout', function (event) { _sdProtoGripFor(event.relatedTarget); });
         window.addEventListener('resize', function () { if (_sdProto.open) _sdProtoStatusFit(); });
         // A drawn arrow let go of, on a target or not.
         ['pointerup', 'pointercancel'].forEach(function (type) {
@@ -74266,6 +74287,9 @@ const StyleDesigner = (function () {
         _sdProto.open = false;
         _sdProto.seq++;
         if (_sdProto.canvas) _sdProto.canvas.cancel();
+        clearTimeout(_sdProto.grip.hide);
+        _sdProto.grip.hover = null;
+        _sdProtoGrip(null);
         _sdProtoPicReset(true);
         if (_sdProto.ui) _sdProto.ui.root.hidden = true;
         _sdProtoButtonState();
@@ -74534,8 +74558,8 @@ const StyleDesigner = (function () {
             hot.setAttribute('data-row', String(i));
             hot.style.left = r.x + 'px';
             hot.style.top = r.y + 'px';
-            hot.style.width = Math.max(6, r.w) + 'px';
-            hot.style.height = Math.max(6, r.h) + 'px';
+            hot.style.width = Math.max(H.MARK.min, r.w) + 'px';
+            hot.style.height = Math.max(H.MARK.min, r.h) + 'px';
             var name = row.from ? row.from + ' › ' + row.label : row.label;
             hot.title = name + (row.href ? ' · ' + row.href : '');
             hot.setAttribute('role', 'button');
@@ -74675,6 +74699,7 @@ const StyleDesigner = (function () {
             r.classList.remove('sd-proto-hot-own', 'sd-proto-hot-lit', 'sd-proto-hot-shared');
             r.tabIndex = -1;
         });
+        _sdProtoGrip(null);
         _sdProto.layout.frames.forEach(function (item) { _sdProtoPicFoot(item, id); });
         if (id === null || id === undefined) return;
         var f = window.PGProtoHotspots.focusOf(_sdProto.layout, id);
@@ -74706,6 +74731,110 @@ const StyleDesigner = (function () {
             notes[frameId].forEach(function (line) { note.appendChild(_sdProtoEl('div', 'sd-proto-note-line', line)); });
             ui.boxes.appendChild(note);
         });
+        // The marks shown take their reach; the handle comes back on the
+        // mark under the pointer or in focus when it is still drawable.
+        _sdProtoReach();
+        _sdProtoGripFor();
+    }
+
+    // A mark's place and size as drawn, in its picture's units.
+    function _sdProtoHotRect(hot) {
+        return { x: parseFloat(hot.style.left) || 0, y: parseFloat(hot.style.top) || 0, w: parseFloat(hot.style.width) || 0, h: parseFloat(hot.style.height) || 0 };
+    }
+
+    // A mark shown under 12 screen pixels wide or high takes presses 4
+    // screen pixels around it (PGProtoHotspots.markReach(); the CSS draws
+    // that edge from --sd-proto-reach). Set when the marks shown change and
+    // when the zoom does.
+    function _sdProtoReach() {
+        var ui = _sdProto.ui;
+        if (!ui) return;
+        var k = _sdProto.view.k;
+        _sdProto.grip.k = k;
+        Array.prototype.forEach.call(ui.boxes.querySelectorAll('.sd-proto-hot-own, .sd-proto-hot-lit, .sd-proto-hot-shared'), function (hot) {
+            var reach = window.PGProtoHotspots.markReach(_sdProtoHotRect(hot), k);
+            hot.classList.toggle('sd-proto-hot-reach', reach > 0);
+            if (reach > 0) hot.style.setProperty('--sd-proto-reach', reach + 'px');
+            else hot.style.removeProperty('--sd-proto-reach');
+        });
+    }
+
+    // After a pan or zoom: at a new zoom the reach and the handle are set
+    // again, once on the next frame.
+    function _sdProtoZoomSoon() {
+        var g = _sdProto.grip;
+        if (g.soon || !window.requestAnimationFrame) return;
+        g.soon = window.requestAnimationFrame(function () {
+            g.soon = 0;
+            if (!_sdProto.open || _sdProto.view.k === g.k) return;
+            _sdProtoReach();
+            if (g.hot) _sdProtoGrip(g.hot);
+        });
+    }
+
+    // Whether a mark gets the "+" handle: a drawable mark (K2) of the
+    // selected frame, still on the canvas.
+    function _sdProtoGripOk(el) {
+        var ui = _sdProto.ui;
+        return !!(el && ui && el.classList && el.classList.contains('sd-proto-hot-own') && el.classList.contains('sd-proto-hot-draw') && ui.boxes.contains(el));
+    }
+
+    // The handle goes to the mark under the pointer, else to the mark in
+    // focus (`focus`, the element taking it, when given), else away.
+    function _sdProtoGripFor(focus) {
+        var g = _sdProto.grip;
+        if (!arguments.length) focus = document.activeElement;
+        _sdProtoGrip(_sdProtoGripOk(g.hover) ? g.hover : (_sdProtoGripOk(focus) ? focus : null));
+    }
+
+    // The pointer onto a mark (null: off every mark). Off a mark the handle
+    // stays a moment, so the pointer can cross from a tall mark onto it.
+    function _sdProtoGripHover(mark) {
+        var g = _sdProto.grip;
+        clearTimeout(g.hide);
+        g.hide = 0;
+        if (mark) {
+            g.hover = mark;
+            if (g.hot !== mark) _sdProtoGripFor();
+            return;
+        }
+        if (!g.hover) return;
+        g.hide = setTimeout(function () {
+            g.hide = 0;
+            g.hover = null;
+            _sdProtoGripFor();
+        }, 250);
+    }
+
+    // The round "+" handle beside a drawable mark of the selected frame
+    // (null hides it): 20 screen pixels at any zoom, on the side
+    // PGProtoHotspots.markGrip() gives, in the mark's own layer. It stands
+    // for its mark: a press on it is the mark's press (a drag draws the
+    // link's arrow, a click picks the link); the keyboard keeps L.
+    function _sdProtoGrip(hot) {
+        var ui = _sdProto.ui;
+        if (!ui || !ui.grip) return;
+        var el = ui.grip;
+        if (!hot) {
+            _sdProto.grip.hot = null;
+            el.hidden = true;
+            if (el.parentNode) el.parentNode.removeChild(el);
+            return;
+        }
+        var layer = hot.parentNode;
+        var others = [];
+        Array.prototype.forEach.call(layer.querySelectorAll('.sd-proto-hot-own'), function (n) { if (n !== hot) others.push(_sdProtoHotRect(n)); });
+        var at = window.PGProtoHotspots.markGrip(_sdProtoHotRect(hot), { w: layer.clientWidth, h: layer.clientHeight }, _sdProto.view.k, others);
+        _sdProto.grip.hot = hot;
+        el.className = 'sd-proto-grip sd-proto-grip-' + at.side;
+        el.style.left = at.x + 'px';
+        el.style.top = at.y + 'px';
+        el.style.width = at.w + 'px';
+        el.style.height = at.h + 'px';
+        el.style.transform = 'scale(' + at.scale + ')';
+        el.title = hot.title;
+        if (el.parentNode !== layer) layer.appendChild(el);
+        el.hidden = false;
     }
 
     // ── The links panel and the problems (F15-F20, F24) ──

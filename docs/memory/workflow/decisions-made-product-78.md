@@ -9,7 +9,7 @@ description: Decisions list, product part 78 (2026-11-19 on): Prototype view edi
 ## Can a page's links be changed from the Prototype view with ease? (owner, 2026-11-19, in the architect's window, agent channel message 9492)
 - "prototipten sayfa bağlantılarını düzenlemek çok zor. mesela ana sayfada +2 bağlantı diyor ama o alandaki bağlantılara erişemiyorsun bile. ayrıca oklar bağlantının üzerinden de başlamıyor", with a picture of the view, the home page selected.
 - Said of the view he accepted on 2026-11-17 (`decisions-made-product-70.md`). It stays, and three things change: a link under the picture's cut is reached, an arrow starts on its link, a link's target is changed without fine work.
-- The architect's reading, not his words: the four steps of `plans/prototype-link-editing.md` (a target picker on the links panel's rows, the leg from the mark to the frame's edge, the selected page at full height, a handle to pull).
+- The architect's reading, not his words: four steps, built: a target picker on the links panel's rows (#10394, `designer/prototype-list.md`), the leg from the mark to the frame's edge (#10414, `designer/prototype-marks.md`), the selected page at full height (#10424, `designer/prototype-page-whole.md`), a handle to pull (#10444, `designer/prototype-grip.md`).
 
 ## Is Incoming e-mail pinned to the main menu, and does the dashboard get a card of it? (owner, 2026-11-19, in the architect's window, agent channel message 9493; poll 154, message 9495)
 - "eposta gelen kutusu ana menüye sabitlenebilsin. ve bir widgeti olsun yetki dahilinde gösterim (gelen kutusu mesaj başlıkları yeterli olur tıklandığında gelen kutusuna yönlensin, widget temalarıyla uyumlu bir widget ayarlayalım)".

@@ -24,7 +24,7 @@ description: The Prototype view's pure module (PGProtoHotspots): which nodes are
 ## Which file covers each other answer?
 - `layout()`, `fitStart()`, `places()`, `placeKey()`: designer/prototype-arrangement.md, designer/prototype-places.md.
 - `picSize()`, `picDoc()`, `picHead()`, `PIC_FRAME`, `picMark(s)`, `picFoot()`, `picLong()`, `picOrder()`, `picRefill()`: designer/prototype-page-picture.md. `sketch()`, `sketchBoxes()`: designer/prototype-thumbnails.md.
-- `picRects()`, `picPartBox()`, `markPort()`, `markState()`: designer/prototype-marks.md. `focusOf()`: designer/prototype-focus.md.
+- `picRects()`, `picPartBox()`, `markPort()`, `markState()`: designer/prototype-marks.md. `markReach()`, `markGrip()`: designer/prototype-grip.md. `focusOf()`: designer/prototype-focus.md.
 - `listOf()`, `brokenOf()`, `brokenWhy()`: designer/prototype-list.md. `problemsOf()`, `widgetPages()`, `widgetKind()`: designer/prototype-problems.md. `boundTo()`, `markBound()` (a link kept by page id): designer/page-link-by-id.md.
 - `drawable()`, `drawTargets()`, `hrefTo()`, `hrefPatch()`, `setHtmlHref()`, `applyPatch()`: designer/prototype-view.md. `nearHead()`, `markKey()`, `menuPlace()`: designer/prototype-drawing.md.
 - `suggest()`, `foldWords()`, `headingOf()`, `suggestRows()`, `suggestBatch()`: designer/prototype-suggest.md.
