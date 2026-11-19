@@ -530,15 +530,18 @@ function pg_booking_event_payload($row)
 
 /**
  * The SMS reference of a booking's message: once per event and start, so a
- * moved booking is told again and a repeated call is not.
+ * moved booking is told again and a repeated call is not. A reminder names
+ * its hours too: sms_outbox.reference is unique, so the 2-hour reminder
+ * under the 24-hour one's reference would never be queued.
  *
  * @param array  $row
  * @param string $event
+ * @param int    $hours a reminder's hours before the start, 0 for none
  * @return string
  */
-function pg_booking_sms_reference($row, $event)
+function pg_booking_sms_reference($row, $event, $hours = 0)
 {
-    return 'booking:' . (int) $row['id'] . ':' . $event . ':' . (int) $row['start_at'];
+    return 'booking:' . (int) $row['id'] . ':' . $event . (((int) $hours > 0) ? '-' . (int) $hours . 'h' : '') . ':' . (int) $row['start_at'];
 }
 
 /**
@@ -548,9 +551,10 @@ function pg_booking_sms_reference($row, $event)
  *
  * @param array  $row   pg_booking_message_row()
  * @param string $event confirmed, reminder, rescheduled, cancelled
+ * @param int    $hours a reminder's hours before the start
  * @return void
  */
-function pg_booking_message_send($row, $event)
+function pg_booking_message_send($row, $event, $hours = 0)
 {
     $action = pg_booking_message_action($event);
 
@@ -580,7 +584,7 @@ function pg_booking_message_send($row, $event)
             'date'       => $values['date'],
             'time'       => $values['time'],
             'manage_url' => $values['manage_url'],
-        ), pg_booking_sms_reference($row, $event));
+        ), pg_booking_sms_reference($row, $event, $hours));
     }
 }
 
@@ -763,7 +767,9 @@ function pg_booking_reminders_run($now)
     $sent = 0;
 
     foreach ($rows as $candidate) {
-        if (pg_booking_reminder_due($candidate['start_at'], $candidate['updated_at'], $hours, $last, $now) === 0) {
+        $due = pg_booking_reminder_due($candidate['start_at'], $candidate['updated_at'], $hours, $last, $now);
+
+        if ($due === 0) {
             continue;
         }
 
@@ -771,7 +777,7 @@ function pg_booking_reminders_run($now)
             $row = pg_booking_message_row((int) $candidate['id']);
 
             if ($row) {
-                pg_booking_message_send($row, 'reminder');
+                pg_booking_message_send($row, 'reminder', $due);
                 $sent++;
             }
         } catch (\Throwable $exception) {

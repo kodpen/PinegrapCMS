@@ -14,6 +14,8 @@ module: booking_manage
 
 ## How is a move chosen and written?
 - No script: month links (`&m=`, this month to the horizon's, `pg_booking_manage_months()`), the free days (`pg_booking_manage_days()` → `pg_booking_month_days()`), then the day's times (`&d=`, `pg_booking_manage_times()` → `pg_booking_slots()`) as submit buttons. The visitor's policy applies (lead, horizon, step); the booking's own range is taken out of the busy times (`pg_booking_manage_busy()`: the first range equal to its times; bookings come first in `pg_booking_busy_between()`).
+- Its own start is never offered (`pg_booking_manage_other_starts()`), and its day only with another time: a move to it moved nothing yet sent the rescheduled mail and text (#10399).
+- The facts carry Time zone and the times "Times are in {zone}.", as the rule names the zone with every time (#10399).
 - The POST checks the start is still offered, then `pg_booking_manage_move()`: under the staff lock (`pg_booking_lock_name()`) the overlap check without the own row, one UPDATE of start, end, slot and the new link hash `WHERE id AND status AND start_at` (read values); 1062 is "just taken", 0 rows "changed meanwhile". Then `pg_booking_changed($id, 'rescheduled')` and a redirect to the new link (the token follows `end_at`).
 - Cancel: `pg_booking_manage_cancel()`, one UPDATE (`status = 'cancelled', slot_at = NULL`) from the status read, then `pg_booking_changed($id, 'cancelled')`. The old link keeps opening the cancelled booking until its end.
 
