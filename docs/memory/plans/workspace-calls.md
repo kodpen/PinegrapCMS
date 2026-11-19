@@ -25,7 +25,7 @@ description: Plan (owner 2026-11-20, polls 157 and 158): voice and video calls i
 ## Which rules does every step keep?
 - No library, no CDN, no outside service but the STUN and TURN addresses of the card. No recording, no transcript, nothing of the media stored.
 - A call rings only while the Workspace is open in a browser; the plan adds no push service.
-- The signalling route's shape (which live read carries it, how often) is CL1's census in its first commit; it must not raise what an idle channel costs the server.
+- The signalling route's shape (which live read carries it, how often) is CL1's census, `workspace/calls-signalling.md`; it must not raise what an idle channel costs the server.
 - Texts through `lang()`; look A; tests for the server's rules (who may, the full call, the clean-up) and, for the browser side, Chromium with fake media devices.
 
 ## How does the plan close?
