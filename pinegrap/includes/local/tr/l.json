@@ -663,6 +663,7 @@
     "Left empty, its own code is used: {var:1}": "Boş bırakılırsa kendi kodu kullanılır: {var:1}",
     "Left empty, saving asks İYS for the brands of the İYS code and takes the only one; with several, pick one after saving.": "Boş bırakılırsa kaydetme İYS'den bu İYS numarasının markalarını ister ve tek marka varsa onu alır; birden çok varsa kaydettikten sonra birini seçin.",
     "Left empty, the first words of the message.": "Boş bırakılırsa mesajın ilk sözcükleri.",
+    "Left empty, the key of the provider's connection on Connections is used.": "Boş bırakılırsa sağlayıcının Bağlantılar'daki bağlantısının anahtarı kullanılır.",
     "Left empty, the kind is used as the title.": "Boş bırakılırsa türü başlık olarak kullanılır.",
     "Left empty, the link works for {var:1} days. The customer gets no reminder.": "Boş bırakılırsa bağlantı {var:1} gün geçerli olur. Müşteriye hatırlatma gönderilmez.",
     "Left empty, the stock is not tracked, unless {var:1} is set to Yes: then it is tracked from 0.": "Boş bırakılırsa stok takip edilmez; {var:1} Evet yapılırsa stok 0'dan takip edilir.",

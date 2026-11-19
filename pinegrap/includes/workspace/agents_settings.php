@@ -147,8 +147,10 @@ function ws_agents_settings_check($viewer, $id, $input)
 
     $providers = ws_model_providers();
 
+    // Without a key of its own an assistant uses its provider's connection.
     if (($check['values']['kind'] === 'model') && $providers[$check['values']['provider']]['key']
-        && (($key === '') || (($key === null) && !($current && $current['key_set'])))) {
+        && (($key === '') || (($key === null) && !($current && $current['key_set'])))
+        && !(function_exists('pg_ai_connection_ready') && pg_ai_connection_ready($check['values']['provider']))) {
         return $fail(lang('Paste the service\'s API key.'), 'key');
     }
 
@@ -408,7 +410,7 @@ function ws_agents_settings_form($self_url, $agent, $apps, $admin, $form = null)
         $rows .= $field('model', lang('Model'), $input('model', $value('model'), ' maxlength="100"'), implode(' · ', $hints), $when_kind('model'), $shown);
         $rows .= $field('base', lang('Address'), $input('base', ($kind === 'model') ? $value('door_url') : '', ' type="url" maxlength="500" placeholder="https://your-resource.openai.azure.com/openai/v1"'), lang('Only for Azure OpenAI and a custom address: the chat API\'s address.'),
             'provider=' . implode('|', $own_address), in_array($chosen, $own_address, true));
-        $rows .= $field('key', lang('Provider key'), $secret('key', $agent && $agent['key_set']), '', $when_kind('model'), $shown);
+        $rows .= $field('key', lang('Provider key'), $secret('key', $agent && $agent['key_set']), lang('Left empty, the key of the provider\'s connection on Connections is used.'), $when_kind('model'), $shown);
 
         if (ws_agent_token_limit_ready()) {
             $limit = $agent ? ws_agent_token_limit((int) $agent['id']) : 0;

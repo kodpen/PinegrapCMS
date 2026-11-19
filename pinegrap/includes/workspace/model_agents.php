@@ -683,6 +683,25 @@ function ws_model_config_over($config, $agent)
 }
 
 /**
+ * The key a model assistant calls with: a key handed in for a try
+ * (key_plain), else its own, else its provider's connection on Connections
+ * (pg_ai_connection_key_for()).
+ *
+ * @param array $agent the raw row
+ * @return string '' when there is none to read
+ */
+function ws_model_agent_key($agent)
+{
+    if (isset($agent['key_plain'])) {
+        return (string) $agent['key_plain'];
+    }
+
+    $own = ws_agent_unseal($agent['key_sealed'] ?? '');
+
+    return function_exists('pg_ai_connection_key_for') ? pg_ai_connection_key_for((string) ($agent['provider'] ?? ''), $own) : $own;
+}
+
+/**
  * One chat call to a model assistant's API, answered in ws_ai_http()'s shape.
  *
  * @param array  $agent   the raw row
@@ -707,7 +726,7 @@ function ws_model_http($agent, $method, $path, $payload = null, $timeout = 60)
         'connect_timeout'  => 8,
         'timeout'          => max(5, (int) $timeout),
         'user_agent'       => 'Pinegrap/' . (defined('VERSION') ? VERSION : '') . ' (workspace-model)',
-        'headers'          => ws_model_headers($provider, ws_agent_unseal($agent['key_sealed'] ?? '')),
+        'headers'          => ws_model_headers($provider, ws_model_agent_key($agent)),
         'allow_http'       => ($provider === 'custom'),
     );
 
@@ -948,7 +967,7 @@ function ws_model_agent_missing($agent)
         return lang('Its chat API address is missing.');
     }
 
-    if ($provider['key'] && (ws_agent_unseal($agent['key_sealed'] ?? '') === '')) {
+    if ($provider['key'] && (ws_model_agent_key($agent) === '')) {
         return lang('Its key is missing or cannot be read on this server any more: paste it again.');
     }
 

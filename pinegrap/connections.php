@@ -76,6 +76,30 @@ function connections_workspace_viewer($user) {
 
 }
 
+// May the user change an AI provider's connection? Its key came from the
+// assistants' card, so it keeps that card's gate: the Assistants and agents
+// category of Site Settings and the Workspace's administrator, who alone
+// changes the assistants.
+function connections_ai_may_manage($user) {
+
+	if (!defined('PG_SETTINGS_MENU')) {
+		define('PG_SETTINGS_MENU', true);
+	}
+
+	require_once(PG_FUNCTIONS_DIR . '/includes/settings/registry.php');
+
+	$categories = pg_settings_categories_for($user, null, pg_settings_categories());
+
+	if (!isset($categories[pg_ai_connection_category()])) {
+		return false;
+	}
+
+	$viewer = connections_workspace_viewer($user);
+
+	return is_array($viewer) && ((int) $viewer['role'] === 0) && function_exists('ws_model_providers');
+
+}
+
 /* ---------------------------------------------------------------------------
    Writes
    --------------------------------------------------------------------------- */
@@ -100,6 +124,78 @@ if ($_POST) {
 
 		header('Location: ' . $screen_url . '?service=github#connections-repositories');
 		exit();
+
+	}
+
+	// An AI provider's connection: its key saved, tried or removed, or an
+	// assistant's own key given up for it.
+	if (in_array($action, array('ai_save', 'ai_remove', 'ai_use_connection'), true)) {
+
+		$ai_service = (isset($_POST['connections_return']) && is_string($_POST['connections_return'])) ? $_POST['connections_return'] : '';
+		$ai_services = pg_ai_connection_services();
+
+		if (isset($ai_services[$ai_service]) && connections_ai_may_manage($user)) {
+
+			$ai_provider = $ai_services[$ai_service];
+			$ai_name = ws_model_provider_name($ai_provider);
+
+			if ($action === 'ai_save') {
+
+				$ai_key = (isset($_POST['ai_key']) && is_string($_POST['ai_key'])) ? trim($_POST['ai_key']) : '';
+				$ai_saved = false;
+
+				if (($ai_key === '') && !pg_ai_connection_ready($ai_provider)) {
+					$liveform->add_error(lang('Paste the service\'s API key.'));
+				} elseif (($ai_key !== '') && !pg_ai_connection_key_shape_ok($ai_key)) {
+					$liveform->add_error(lang('The key is 8 to 512 characters without spaces.'));
+				} elseif (($ai_key !== '') && !pg_ai_connection_save($ai_provider, $ai_name, $ai_key)) {
+					$liveform->add_error(lang('This site has no encryption key, so it cannot keep the key.'));
+				} else {
+					$ai_saved = true;
+
+					if ($ai_key !== '') {
+						$liveform->add_notice(lang(array('string' => 'The {var:1} key was saved.', 'vars' => $ai_name)));
+						log_activity(lang(array('string' => 'changed the {var:1} connection', 'vars' => $ai_name)), $_SESSION['sessionusername']);
+					}
+				}
+
+				// Save and try: the key just saved, or the stored one, is
+				// shown to the provider.
+				if ($ai_saved && !empty($_POST['submit_try'])) {
+
+					$ai_try = pg_ai_connection_try($ai_provider, pg_ai_connection_key($ai_provider));
+
+					if ($ai_try['ok'] === false) {
+						$liveform->add_error(h($ai_try['message']));
+					} else {
+						$liveform->add_notice(h($ai_try['message']));
+					}
+
+				}
+
+			} elseif ($action === 'ai_remove') {
+
+				pg_ai_connection_remove($ai_provider);
+
+				$liveform->add_notice(lang(array('string' => '{var:1} was disconnected.', 'vars' => h($ai_name))));
+				log_activity(lang(array('string' => 'removed the {var:1} connection', 'vars' => $ai_name)), $_SESSION['sessionusername']);
+
+			} else {
+
+				$ai_agent = ws_model_agent_row(isset($_POST['connection_id']) ? (int) $_POST['connection_id'] : 0);
+
+				if (is_array($ai_agent) && ((string) $ai_agent['provider'] === $ai_provider) && pg_ai_connection_ready($ai_provider)) {
+
+					db("UPDATE ws_agents SET key_sealed = NULL, updated_at = UNIX_TIMESTAMP() WHERE id = '" . (int) $ai_agent['id'] . "' AND kind = 'model'");
+
+					$liveform->add_notice(lang(array('string' => '{var:1} uses the connection\'s key now.', 'vars' => h($ai_agent['name']))));
+					log_activity(lang(array('string' => 'set the assistant {var:1} to use the {var:2} connection', 'vars' => array($ai_agent['name'], $ai_name))), $_SESSION['sessionusername']);
+
+				}
+
+			}
+
+		}
 
 	}
 
@@ -426,10 +522,17 @@ $group_icons = array(
 
 $rows = array();
 $provider_uses = array();
+$ai_services = pg_ai_connection_services();
 
 foreach ($registry as $id => $service) {
 
 	if (!pg_connections_screen_may_see($service['place'], $open_categories, $tool_labels, $is_manager)) {
+		continue;
+	}
+
+	// An AI provider's connection keeps the gate of the assistants' card its
+	// key came from.
+	if (isset($ai_services[$id]) && empty($open_categories[pg_ai_connection_category()])) {
 		continue;
 	}
 
@@ -533,6 +636,92 @@ $counts = pg_connections_screen_counts(pg_connections_screen_search($list_rows, 
 $shown = pg_connections_screen_filter(pg_connections_screen_search($list_rows, $query), $filter);
 $order = pg_connections_screen_order($shown, array_keys($group_labels));
 $folding = ($query === '') && ($filter === '');
+
+/* An AI provider's page: "Connection details" holds its key for a user
+   who may change the assistants, with Remove the key under Status; "Where
+   it is used" lists the assistants of the provider, each with the key it
+   calls with and, when it keeps one of its own, "Use the connection's
+   key". */
+
+function connections_ai_page($page, $id, $name, $provider, $may_manage, $can_seal) {
+
+	$ready = pg_ai_connection_ready($provider);
+	$agents_url = pg_settings_link(pg_ai_connection_category(), 'pgset-ws-agents');
+
+	if ($may_manage && in_array('details', $page['cards'], true)) {
+
+		$terms = function_exists('ws_model_provider_terms') ? ws_model_provider_terms($provider) : '';
+
+		$page['details'] = '
+		<section class="pg-card p-5 mb-6" id="connections-details" aria-labelledby="connections-page-details">
+			<h2 class="pg-title-section mb-1" id="connections-page-details">' . h(lang('Connection details')) . '</h2>
+			<p class="pg-card-sub mb-4">' . h(lang(array('string' => 'The {var:1} key every assistant of this provider uses, unless it keeps one of its own.', 'vars' => $name))) . '</p>
+			<form method="post" action="connections.php" class="connections-app-form">
+				' . get_token_field() . '
+				<input type="hidden" name="connections_action" value="ai_save">
+				<input type="hidden" name="connections_return" value="' . h($id) . '">
+				<div>
+					<label class="pg-field-label" for="connections_ai_key">' . h(lang('API key')) . '</label>
+					<input type="password" class="pg-input font-monospace" id="connections_ai_key" name="ai_key" value="" maxlength="512" autocomplete="new-password"
+						placeholder="' . h($ready ? lang('Stored. Leave empty to keep it.') : '') . '">
+					' . (($terms !== '') ? '<div class="pg-field-help">' . h(lang($terms)) . '</div>' : '') . '
+				</div>
+				<div class="d-flex flex-wrap align-items-center gap-3">
+					<button type="submit" name="submit_save" class="pg-button pg-button-sm pg-button-fill"' . ($can_seal ? '' : ' disabled') . '>' . h(lang('Save')) . '</button>
+					<button type="submit" name="submit_try" value="1" class="pg-button pg-button-sm pg-button-quiet"' . ($can_seal ? '' : ' disabled') . '>' . h(lang('Save and try')) . '</button>
+				</div>
+			</form>
+		</section>';
+
+		if ($ready) {
+			$page['status_extra'] = '
+			<div class="mt-4">
+				<button type="button" class="pg-button pg-button-sm pg-button-danger connections-action" data-action="ai_remove" data-id="0"
+					data-confirm="' . h(lang(array('string' => 'The {var:1} key is removed: the assistants without a key of their own stop until it is typed again.', 'vars' => $name))) . '">
+					<i class="bi bi-x-circle me-1" aria-hidden="true"></i>' . h(lang('Disconnect')) . '</button>
+			</div>';
+		}
+
+	}
+
+	$rows = '';
+
+	foreach (pg_ai_connection_users($provider, function_exists('ws_model_agents') ? ws_model_agents() : array()) as $agent) {
+
+		if ($agent['own']) {
+			$line = lang('Uses its own key');
+			$side = $may_manage && $ready
+				? '<button type="button" class="pg-button pg-button-sm pg-button-quiet connections-action" data-action="ai_use_connection" data-id="' . $agent['id'] . '"
+					data-confirm="' . h(lang(array('string' => '{var:1} gives up its own key and calls with the connection\'s key.', 'vars' => $agent['name']))) . '">' . h(lang('Use the connection\'s key')) . '</button>'
+				: connections_state_pill('connected');
+		} else {
+			$line = lang('Uses the connection\'s key');
+			$side = connections_state_pill($ready ? 'connected' : 'not_connected');
+		}
+
+		$rows .= '
+				<div class="pg-card-inner-row connections-row">
+					<span class="connections-row-main">
+						<a class="connections-row-name" href="' . h($agents_url) . '">' . h($agent['name']) . '</a>
+						<span class="pg-text-meta d-block">' . h(lang('Workspace assistant')) . ' · ' . h($line) . '</span>
+					</span>
+					<span class="connections-row-side">' . $side . '</span>
+				</div>';
+
+	}
+
+	$page['uses'] = ($rows !== '') ? $rows : '
+				<a class="pg-card-inner-row connections-row" href="' . h($agents_url) . '">
+					<span class="connections-row-main">
+						<span class="connections-row-name">' . h(lang('Workspace assistants')) . '</span>
+						<span class="pg-text-meta d-block">' . h(lang('No assistant uses it yet.')) . '</span>
+					</span>
+					<i class="bi bi-chevron-right connections-row-chevron" aria-hidden="true"></i>
+				</a>';
+
+	return $page;
+
+}
 
 /* Why a provider's application cannot connect yet; '' when it can. */
 
@@ -871,8 +1060,10 @@ function connections_service_page($id, $service, $row, $tile, $facts, $providers
 
 	$on_card = (substr($service['place'], 0, 1) === '#');
 
+	$extra .= $page['status_extra'];
+
 	// Where its settings are, unless they are on this page.
-	$place = ($page['details'] !== '') ? '' : '
+	$place = (($page['details'] !== '') || $page['here']) ? '' : '
 			<div class="mt-5">
 				<p class="pg-text-2 mb-1">' . h($on_card
 					? lang('This service\'s settings are on its card in Site Settings; here only its state is shown.')
@@ -891,7 +1082,9 @@ function connections_service_page($id, $service, $row, $tile, $facts, $providers
 					</span>
 					<span class="connections-row-side">' . connections_state_pill($row['state']) . '</span>';
 
-	if ($page['own'] !== '') {
+	if ($page['uses'] !== '') {
+		$use_row = $page['uses'];
+	} elseif ($page['own'] !== '') {
 		$use_row = '<a class="pg-card-inner-row connections-row" href="#connections-repositories">' . $use_inner . '
 					<i class="bi bi-chevron-right connections-row-chevron" aria-hidden="true"></i></a>';
 	} elseif ($page['details'] !== '') {
@@ -1180,11 +1373,20 @@ if ($page_id !== '') {
 		'cards'   => pg_connections_screen_page_cards($page_id, array(
 			'manager'      => $is_manager,
 			'repositories' => is_array($ws_viewer) && ws_github_links_ready() && ws_github_links_can_manage($ws_viewer),
+			'ai'           => isset($ai_services[$page_id]) && connections_ai_may_manage($user),
 		)),
-		'details' => '',
-		'note'    => '',
-		'own'     => '',
+		'details'      => '',
+		'note'         => '',
+		'own'          => '',
+		'uses'         => '',
+		'status_extra' => '',
+		'here'         => isset($ai_services[$page_id]),
 	);
+
+	// An AI provider's page: its key, and the assistants that use it.
+	if (isset($ai_services[$page_id])) {
+		$page = connections_ai_page($page, $page_id, $page_row['name'], $ai_services[$page_id], connections_ai_may_manage($user), $can_seal);
+	}
 
 	if (in_array('details', $page['cards'], true) && isset($providers[$page_provider])) {
 

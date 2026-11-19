@@ -229,6 +229,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ws_saved_replies_cleanup(); // 11.0.238
 	upgrade_2026_11_0_ws_mail_menu_pin();         // 11.0.239
 	upgrade_2026_11_0_ws_task_app();             // 11.0.230
+	upgrade_2026_11_0_ai_connections();          // 11.0.240
 
 }
 
@@ -6607,6 +6608,91 @@ function upgrade_2026_11_0_ws_personal_plans() {
 	}
 
 	install_note('Workspace: a person can add their own private plans to My calendar.');
+
+}
+
+// One connection per AI provider (11.0.240, includes/fn/ai_connections.php):
+// no table or column. Where a provider has no connection yet, the first key
+// its model assistants hold (by id) becomes it, kept sealed among the
+// connected accounts' service entries (ai_<provider>); an assistant's key
+// equal to its provider's connection is emptied, so it calls with the
+// connection's key, the same key as before; a key that differs stays and
+// goes on working. Run again it finds nothing to move.
+function upgrade_2026_11_0_ai_connections() {
+
+	if (!install_table_exists('ws_agents') || !install_column_exists('ws_agents', 'key_sealed')) {
+
+		install_skipped('ws_agents does not exist, skipped');
+
+		return;
+
+	}
+
+	if (!function_exists('pg_ai_connection_move') || !function_exists('pg_connect_schema_ready') || !pg_connect_schema_ready()) {
+
+		install_skipped('AI connections: the assistants\' keys were not moved, because includes/fn/ai_connections.php is out of date. Upload the files of this version again and run the upgrade.');
+
+		return;
+
+	}
+
+	if (!pg_connect_can_seal()) {
+
+		install_skipped('AI connections: this site has no encryption key, so the assistants keep their own keys.');
+
+		return;
+
+	}
+
+	$moved = 0;
+	$emptied = 0;
+
+	$registry = pg_connections_registry();
+
+	foreach (pg_ai_connection_services() as $service => $provider) {
+
+		$agents = array();
+
+		foreach ((array) db_items("SELECT id, key_sealed FROM ws_agents
+			WHERE kind = 'model' AND provider = '" . e($provider) . "' AND key_sealed IS NOT NULL AND key_sealed <> ''
+			ORDER BY id") as $row) {
+
+			$sealed = (string) $row['key_sealed'];
+			$key = '';
+
+			if (strpos($sealed, ':') !== false) {
+				list($cipher, $iv) = explode(':', $sealed, 2);
+				$key = trim((string) decode_ssl_keys($cipher, $iv));
+			}
+
+			$agents[] = array('id' => (int) $row['id'], 'key' => $key);
+
+		}
+
+		$move = pg_ai_connection_move(pg_ai_connection_key($provider), $agents);
+
+		if ($move['store']) {
+
+			if (!pg_ai_connection_save($provider, isset($registry[$service]) ? $registry[$service]['name'] : $provider, $move['connection'])) {
+				continue;
+			}
+
+			$moved++;
+
+		}
+
+		foreach ($move['empty'] as $id) {
+
+			db("UPDATE ws_agents SET key_sealed = NULL WHERE id = '" . (int) $id . "' AND kind = 'model'");
+			$emptied++;
+
+		}
+
+	}
+
+	if ($moved > 0) {
+		install_note('Connections: ' . $moved . ' AI provider key(s) became the provider\'s connection; ' . $emptied . ' assistant(s) now use it.');
+	}
 
 }
 

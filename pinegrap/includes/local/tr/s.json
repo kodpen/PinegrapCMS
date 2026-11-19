@@ -6014,6 +6014,7 @@
     "session token was revoked": "oturum belirteci iptal edilmiş",
     "sessions ended because the email address was blocked ({var:1})": "e-posta adresi engellendiği için oturumlar sonlandırıldı ({var:1})",
     "set": "takım",
+    "set the assistant {var:1} to use the {var:2} connection": "{var:1} asistanını {var:2} bağlantısını kullanacak şekilde ayarladı",
     "set visit, attend, shoot day, client": "set ziyareti, katılım, çekim günü, müşteri",
     "set-password": "parola-belirle",
     "settings were modified": "ayarlar düzenlendi",
