@@ -12,7 +12,7 @@ description: Plan (owner 2026-11-19): a channel's Decisions tab as one list of w
 - Files: the tabs mark Decisions, Tasks and Summary with a count (`counts.` in `assets/js/workspace.js`), Files not. Every gallery tile loads the picture's original file (`img.src = message.file.url` in `drawFiles()`): lazily, but full size. `ws_channel_file_rows()` reads the newest 300 files only, so older ones leave the tab unseen.
 
 ## What is built?
-- TD1 (one PR, no schema). Decisions: one list down the pane, a card as wide as the pane up to about 72rem; a decision longer than about eight lines is folded behind Show more / Show less, its head line and Show in conversation always seen; one column on a phone as now. Files: the count beside the tab's name; the gallery drawn 60 tiles at a time with Show more, tiles of a set size so nothing jumps.
+- TD1 (one PR, no schema) — done (#10396). Decisions: one list down the pane, a card as wide as the pane up to about 72rem; a decision longer than about eight lines is folded behind Show more / Show less, its head line and Show in conversation always seen; one column on a phone as now. Files: the count beside the tab's name; the gallery drawn 60 tiles at a time with Show more, tiles of a set size so nothing jumps.
 - TD2 (one PR). Gallery tiles ask a small copy of the picture, not the original, and the server gives the files in pages, so the 300 limit goes. The worker first looks in `platform/` memory for the resize the site already has; a new route or a stored small copy is a question to the architect.
 - Each step: its unit tests (`tests/workspace_channel_look_test.php`, `tests/workspace_files_tab_test.php`); the owner looks on dev after it lands.
 

@@ -14725,22 +14725,27 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
   background: color-mix(in srgb, var(--pg-info) 15%, transparent);
   color: var(--pg-info-fg-emphasis);
 }
-/* On the Decisions tab each one is a card of its own. The cards flow in
-   columns that fill the pane, top to bottom and then the next column, so a
-   short card leaves no gap under it; a column is --ws-flow-col wide or up
-   to about twice that, one on a phone. The tag names the kind: no coloured
+/* On the Decisions tab each one is a card of its own, one under the other
+   down the pane: a card is as wide as the pane up to --ws-decision-max, so
+   nothing runs past the side and the pane only scrolls down (columns on a
+   pane of set height grew sideways). The tag names the kind: no coloured
    edge (a status update's either). In the conversation they keep the
    rhythm of the messages around them. */
 .ws-pane-decisions {
-  columns: var(--ws-flow-col);
-  column-gap: 1rem;
+  --ws-decision-max: 72rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  overflow-x: hidden;
 }
-.ws-pane-decisions > :is(.ws-empty, .ws-skeleton) {
-  column-span: all;
+.ws-pane-decisions > * {
+  width: 100%;
+  max-width: var(--ws-decision-max);
+  margin-inline: auto;
 }
 .ws-pane-decisions > .ws-msg {
-  break-inside: avoid;
-  margin: 0 0 1rem;
+  flex-shrink: 0;
+  margin-block: 0;
   padding: .9rem 1.1rem 1rem;
   border: 1px solid var(--pg-border-color);
   border-radius: 1rem;
@@ -14777,6 +14782,19 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
 }
 .ws-pane-decisions > .ws-msg .ws-msg-body {
   line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+/* A decision longer than about eight lines is folded (foldLong() in
+   workspace.js): its text fades out under the eighth line and Show more
+   under it opens the rest. */
+.ws-pane-decisions > .ws-msg .ws-msg-main > .ws-msg-body.ws-folded {
+  max-height: calc(1.55em * 8);
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(to bottom, currentColor 70%, transparent);
+  mask-image: linear-gradient(to bottom, currentColor 70%, transparent);
+}
+.ws-pane-decisions > .ws-msg .ws-fold-toggle {
+  margin-top: .35rem;
 }
 /* ── Workspace: status updates and check-ins (assets/js/workspace_status.js) ── */
 .ws-msg-status {
@@ -19036,6 +19054,15 @@ a.ws-chip-message:hover,
 }
 .ws-file-group > .ws-gallery {
   margin-bottom: 0;
+}
+/* The gallery is drawn a page at a time (FILE_PAGE in workspace.js); each
+   tile keeps its 4 / 3 box before its picture arrives, so a page loading
+   in moves nothing, and Show more under the grid draws the next page. */
+.ws-gallery-tile img {
+  display: block;
+}
+.ws-file-group > .ws-gallery-more {
+  margin-top: .6rem;
 }
 .ws-file-group .ws-file-list {
   border: 0;
