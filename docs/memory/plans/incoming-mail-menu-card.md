@@ -14,11 +14,12 @@ description: Plan (owner 2026-11-19): Incoming e-mail pinned to the main menu, a
 - The channel is already written: on a list row after the box's name, and in the open conversation's head as "customer · box · #channel" in small muted text, with Open in channel beside it (`ws_mail_pane_html()`).
 
 ## What is built?
-- IM1, the pin. Owner poll 154 (2026-11-19) decides between a pin each person sets, as My Notes has, and one site-wide switch; the first needs a column `ws_profiles.mail_pinned`. Either way: a row "Incoming e-mail" in the menu's untitled group under Workspace, in the next free slot (27), shown only to whoever `ws_mail_list_visible()` admits, carrying the unread count, lighting on `messages_mail.php`; Communication's own row and tab stay.
+- IM1, the pin. Owner (2026-11-19, poll 154): "Her kişi kendisi sabitler (Notlarım gibi)". "Pin to main menu" on the Incoming e-mail screen writes `ws_profiles.mail_pinned` (a sub-step of the open version, `workflow/decisions-made-schema-28.md`), as My Notes writes `notes_pinned`.
+- The pinned row "Incoming e-mail" sits in the menu's untitled group under Workspace, in the next free slot (27), only for whoever `ws_mail_list_visible()` admits; it carries the unread count and lights on `messages_mail.php`. Communication's own row and tab stay.
 - IM2, the card. A card `mail` on the new dashboard, offered in the gallery to whoever may open the tab: the head with the unread count and a link to the tab, then the newest eight conversations of the Incoming view as the screen lists them (`ws_mail_list()`, so the card never shows what the screen hides): sender, bold while unread, the subject, the time. A row opens `messages_mail.php?conversation=<id>`. Empty: "No e-mail waiting".
 - The card reads only the frame's `--pgd-*` tokens, so the four card faces and the backdrops draw it (`ui/dashboard-v2-drawn-look.md`, `ui/dashboard-v2-looks.md`). Its contract: `ui/dashboard-v2-storage.md`.
 - IM3, the channel seen. In the open conversation's head the channel leaves the muted line and becomes a pill reading "In #name", a link to the mail's card in the channel; a box kept in no channel shows none. The list row keeps its channel.
-- One PR each; IM1 holds the schema step when the poll chooses the person's pin. Each sends one composed picture (light and one dark, Turkish) to the architect before the label.
+- One PR each; IM1 holds the schema step. Each sends one composed picture (light and one dark, Turkish) to the architect before the label.
 
 ## What is decided?
 - The owner's words: `workflow/decisions-made-product-78.md`. Architect (2026-11-19): the card goes to the new dashboard only, since the old one stays as it is by his decision of 2026-11-01; eight rows and the pill's wording are the reading of his words.
