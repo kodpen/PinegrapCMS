@@ -19,7 +19,6 @@ priority: 6
 ## Which plans are there, in the proposed order?
 - `collection-rows.md`: rows inside a record (a recipe's steps), edited on the record's own form.
 - `click-scroll-map.md`: which links and buttons of a page are clicked and how far visitors scroll.
-- `prototype-comments.md`: a customer's pinned comments on a shared prototype.
 - `visitor-push.md`: notifications a visitor without an account subscribes to.
 - `release-bundle.md`: several pages prepared, previewed, published and taken back together.
 - `publish-approval.md`: a content editor's change waits for a designer's yes.
