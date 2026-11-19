@@ -10,7 +10,7 @@ description: Which live read carries a Workspace call (CL1 census): ws_sync and 
 ## Why does an idle channel cost the server nothing more?
 - A stamp file `data/temp/ws_calls_live` exists only while a call is live somewhere on the site. Without it, neither read runs a call query: one file check, no database.
 - With it: one indexed read of the channel's live call, and the reader's signals only while the reader is in that call.
-- Where `data/temp` cannot be written, the reads ask the database each time (one indexed row), as there is no stamp to trust.
+- Where `data/temp` cannot be written, the reads ask the database each time (one indexed row of the channel's live call), as there is no stamp to trust; the clean-up then runs only where a call is live.
 
 ## How often does a browser in a call look?
 - Every second while it is in a call (the client, CL2); at the channel's usual 4 s otherwise.
