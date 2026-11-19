@@ -9,9 +9,9 @@ description: A channel's memory (ws_channel_memory) and the decision mark by a p
 - `ws_memory_sweep()` in `workspace_recurring_job.php` deletes entries expired more than 30 days ago and those of channels that are gone.
 
 ## What does an agent's brief carry?
-- The index only, never texts (owner 2026-11-08, #8188): `ws_memory_digest()` gives "- #id title [tags]" lines, pinned first then the most recently changed, expired left out. The agent reads entries with `workspace.memory.get`.
+- The index only, never texts (owner 2026-11-08, #8188): `ws_memory_digest()` gives "- #id title [tags]" lines, pinned first then the newest, expired left out; in an agent channel after the general index (`channel-memory-general.md`).
 - Then "Decisions in this channel": the newest `WS_MEMORY_BRIEF_DECISIONS` (10), then "(N older decisions not shown: list them with workspace.decisions.list.)". `ws_memory_brief()` reads ten and counts the rest (#8756; `workflow/agent-channel-reads.md`).
-- All within `WS_MEMORY_DIGEST_MAX` characters: a line that does not fit is left out with every line after it. One closing count then holds them and the older decisions ("(N more not shown: …)"), never two.
+- All within `WS_MEMORY_DIGEST_MAX` characters: a line that does not fit is left out with every line after it. One closing count ("(N more not shown: …)") holds them and the older decisions.
 - The brief's read-more line names `?limit=<n>` and asks for only as many messages as needed (`agent_queue.php`; `$more` in `ws_ai_briefing()`).
 - `ws_ai_memory_parts()` puts it in a `channel memory` data block of Claude's brief (`ws_ai_briefing()`), the app agent's brief and the preamble (`GET /workspace/messages/{id}/preamble`): one digest for all. Pinegrap AI gets none (no tool reads an entry).
 
