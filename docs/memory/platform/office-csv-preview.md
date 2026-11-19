@@ -19,6 +19,7 @@ module: office
 ## How are the cells read, and how much?
 - `pg_office_csv_records()`: a quoted cell runs over separators and line breaks, a doubled quote is one quote, text after the closing quote is kept; CRLF, LF or a lone CR ends a record; a blank line is an empty row; a quote never closed runs to the end; rows carry their record's number.
 - The workbook preview's limits (`office-files.md`): 2,000 rows, 200 columns, 120,000 cells. The read takes the file's first 8 MB (`PG_OFFICE_MAX_CSV`) in whole lines; the record it stops inside is left out and the sheet says only the beginning is shown.
+- The records are split on the file's own bytes (every character looked for is ASCII) and only the kept cells are converted, so the file is never held twice: an 8 MB Windows-1254 file read to 2,000 rows took about 26 MB over the request's start, against 54 MB when the whole text was converted first.
 - Tests: `tests/office_csv_test.php`.
 
 Related: docs/memory/platform/office-files.md, docs/memory/plans/office-own-code-steps.md

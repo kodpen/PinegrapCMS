@@ -1928,7 +1928,11 @@ function pg_office_csv_text($bytes, $encoding)
  * them the rest is left and $truncated set. When the text is not the whole
  * file ($whole false), the record it ends inside is left out too.
  *
- * @param string $text      UTF-8
+ * Every character looked for is ASCII, which no byte of a UTF-8 or
+ * Windows-1254 character above it can be, so the file's own bytes are read
+ * as they are and only the cells kept are converted (pg_office_csv_read()).
+ *
+ * @param string $text      the file's bytes, or UTF-8
  * @param string $delimiter one character
  * @param bool   $whole     the text runs to the file's end
  * @param bool   $truncated set when something was left out
@@ -2030,7 +2034,7 @@ function pg_office_csv_records($text, $delimiter, $whole, &$truncated, $max_rows
  * quotes is not counted, so "Kaya; Ali",30 is a comma file, and a comma in
  * every number of a semicolon file (Excel in Turkish) does not win.
  *
- * @param string $text UTF-8
+ * @param string $text the file's bytes, or UTF-8 (see pg_office_csv_records())
  * @param string $name the file's name, for its own separator
  * @return string comma | semicolon | tab
  */
@@ -2124,12 +2128,12 @@ function pg_office_csv_read($path, $name, $choice = array())
 
     // Past the limit only the whole lines are kept: a line break is never
     // inside a character, so the set is guessed on whole characters, and
-    // the record cut short is left out by the reading.
+    // the record cut short is left out by the reading. The search ends
+    // before the one byte read past the limit.
     $whole = (strlen($bytes) <= PG_OFFICE_MAX_CSV);
 
     if (!$whole) {
-        $bytes = (string) substr($bytes, 0, PG_OFFICE_MAX_CSV);
-        $line_end = max((int) strrpos($bytes, "\n"), (int) strrpos($bytes, "\r"));
+        $line_end = max((int) strrpos($bytes, "\n", -2), (int) strrpos($bytes, "\r", -2));
         $bytes = ($line_end > 0) ? (string) substr($bytes, 0, $line_end + 1) : '';
     }
 
@@ -2141,14 +2145,26 @@ function pg_office_csv_read($path, $name, $choice = array())
         $encoding = pg_office_csv_encoding($bytes);
     }
 
-    $text = pg_office_csv_text($bytes, $encoding);
+    if (strncmp($bytes, "\xEF\xBB\xBF", 3) === 0) {
+        $bytes = (string) substr($bytes, 3);
+    }
+
     $delimiter = isset($choice['delimiter']) ? (string) $choice['delimiter'] : '';
 
     if (!isset($delimiters[$delimiter])) {
-        $delimiter = pg_office_csv_delimiter($text, $name);
+        $delimiter = pg_office_csv_delimiter($bytes, $name);
     }
 
-    $rows = pg_office_csv_records($text, $delimiters[$delimiter], $whole, $cut);
+    // Read on the bytes and converted a cell at a time, so the file is never
+    // held a second time in its larger UTF-8 form.
+    $rows = pg_office_csv_records($bytes, $delimiters[$delimiter], $whole, $cut);
+    unset($bytes);
+
+    foreach ($rows as $index => $row) {
+        foreach ($row['cells'] as $column => $cell) {
+            $rows[$index]['cells'][$column] = pg_office_csv_text($cell, $encoding);
+        }
+    }
 
     return array(
         'ok'        => true,
