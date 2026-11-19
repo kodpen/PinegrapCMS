@@ -164,6 +164,15 @@ function test_workspace_wtable_import_guess()
 	pg_assert_same('text', ws_wtable_import_guess(array('Ada', 'Bob', 'Cem', 'Dan'))['type'], 'labels all different are text');
 	pg_assert_same('text', ws_wtable_import_guess(array('Open', 'Open', 'Done'))['type'], 'too few values for a status');
 	pg_assert_same('text', ws_wtable_import_guess(array('12', 'twelve'))['type']);
+
+	// Phone numbers and postal codes are codes: as numbers they would lose
+	// their leading zero and their spacing.
+	pg_assert_same('text', ws_wtable_import_guess(array('0532 123 45 67', '0555 111 22 33'))['type'], 'phone numbers');
+	pg_assert_same('text', ws_wtable_import_guess(array('+90 532 111 22 33', '+49 30 1234567'))['type'], 'phone numbers with a country code');
+	pg_assert_same('text', ws_wtable_import_guess(array('532 123 45 67', '555 111 22 33'))['type'], 'digits grouped other than in thousands');
+	pg_assert_same('text', ws_wtable_import_guess(array('06100', '48000'))['type'], 'postal codes with a leading zero');
+	pg_assert_same('number', ws_wtable_import_guess(array('0', '0,5', '1 500', '-2'))['type'], 'a nought, a fraction and thousands are numbers');
+	pg_assert_same('number', ws_wtable_import_guess(array('34000', '48000'))['type'], 'whole numbers with no leading zero');
 }
 
 function test_workspace_wtable_import_match()

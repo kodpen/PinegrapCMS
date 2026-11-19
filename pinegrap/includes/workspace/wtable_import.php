@@ -220,9 +220,30 @@ function ws_wtable_import_checkbox($text, $digits = true)
 }
 
 /**
+ * Is a value written as a code rather than a quantity: a leading + or 0
+ * before a digit (a phone number, a postal code), or digits grouped by
+ * spaces other than in thousands (532 123 45 67)? Read as a number it
+ * would lose the zero and the spacing. Pure.
+ *
+ * @param string $text
+ * @return bool
+ */
+function ws_wtable_import_code_like($text)
+{
+    $text = trim(str_replace("\xC2\xA0", ' ', (string) $text));
+
+    if (preg_match('/^(?:\+|0[0-9])/', $text)) {
+        return true;
+    }
+
+    return (bool) preg_match('/[0-9] +[0-9]/', $text) && !preg_match('/^-?[0-9]{1,3}(?: [0-9]{3})+(?:[.,][0-9]+)?$/', $text);
+}
+
+/**
  * The type a column's values suggest, with the options it is made with.
  * Every non-empty value must read as the type: a tick word, a date, an
- * amount with a currency, a number; few labels repeated make a status;
+ * amount with a currency, a number not written as a code
+ * (ws_wtable_import_code_like()); few labels repeated make a status;
  * anything else is text. People and record links are never guessed.
  *
  * @param string[] $values
@@ -270,7 +291,7 @@ function ws_wtable_import_guess($values)
             }
         } elseif (($type === 'date') && !$all('ws_wtable_import_date')) {
             continue;
-        } elseif (($type === 'number') && !$all('ws_wtable_import_number')) {
+        } elseif (($type === 'number') && (!$all('ws_wtable_import_number') || array_filter($filled, 'ws_wtable_import_code_like'))) {
             continue;
         } elseif ($type === 'status') {
             $labels = array_unique(array_map('ws_fold', $filled));
