@@ -7349,6 +7349,24 @@
         return rows;
     }
 
+    // The Decisions tab's choice in an agent channel: this channel's
+    // decisions, or every agent channel's. Pure.
+    function decisionScope(value) {
+        return (value === 'agents') ? 'agents' : 'channel';
+    }
+
+    // Whether the channel form shows the Agent channel switch: once the
+    // database has the column, to a channel's manager (never on a
+    // discussion), and on a new channel, whose maker manages it; not on
+    // the form that turns a note into a channel. Pure.
+    function agentChannelSwitchShown(channel, ready, fromNote) {
+        if (!ready || fromNote) {
+            return false;
+        }
+
+        return !channel || (!!channel.can_manage && (channel.kind !== 'thread'));
+    }
+
     // The tabs of the Channel settings drawer: General always, the others
     // when the channel has something to show there, in the drawer's order.
     // Pure.
@@ -7869,6 +7887,33 @@
         dept.id = nextId('ws-ch-dept-');
         general.appendChild(formRow(t('department'), dept));
 
+        // The Agent channel switch, as /agent-channel on|off
+        // (agent_channel.php): a row of Site Settings, the switch at its end.
+        var agentSwitch = null;
+
+        if (agentChannelSwitchShown(channel, !!CFG.agent_channels, !!defaults.note_id)) {
+            var agentCard = el('div', 'pg-card-inner mb-5');
+            var agentRow = agentCard.appendChild(el('div', 'pg-card-inner-row ws-switch-row'));
+            var agentWords = el('div', 'flex-grow-1 min-w-0');
+
+            agentSwitch = el('input', 'pg-switch');
+            agentSwitch.type = 'checkbox';
+            agentSwitch.id = nextId('ws-ch-agent-');
+            agentSwitch.checked = channel ? !!channel.agent_channel : !!defaults.agent_channel;
+
+            var agentLabel = el('label', 'pg-list-row-title', t('agent_channel_label'));
+            var agentHelp = el('div', 'pg-text-meta', t('agent_channel_help'));
+
+            agentLabel.htmlFor = agentSwitch.id;
+            agentHelp.id = agentSwitch.id + '-help';
+            agentSwitch.setAttribute('aria-describedby', agentHelp.id);
+            agentWords.appendChild(agentLabel);
+            agentWords.appendChild(agentHelp);
+            agentRow.appendChild(agentWords);
+            agentRow.appendChild(agentSwitch);
+            general.appendChild(agentCard);
+        }
+
         var members = null;
 
         if (!channel) {
@@ -8064,6 +8109,10 @@
 
             if (watch) {
                 data.watch = watch.value();
+            }
+
+            if (agentSwitch) {
+                data.agent_channel = agentSwitch.checked ? 1 : 0;
             }
 
             if (!channel && defaults.group_id) {
@@ -21742,11 +21791,39 @@
         loadList: function (action, emptyText) {
             var self = this;
             var pane = self.pane;
+            var channel = self.channel;
+            // An agent channel's Decisions tab reads this channel's decisions
+            // or every agent channel's (agent_channel.php); the choice stays
+            // while the screen is open.
+            var scoped = (action === 'ws_channel_decisions') && !!channel.agent_channel;
+            var scope = scoped ? decisionScope(self.decisionScope) : 'channel';
 
             pane.appendChild(skeleton(2, 'ws-skeleton-sm'));
 
-            api(action, { channel_id: self.channel.id }).then(function (data) {
+            api(action, { channel_id: channel.id, scope: scope }).then(function (data) {
+                if ((self.channel !== channel) || (self.pane !== pane)) {
+                    return;
+                }
+
                 clear(pane);
+
+                if (scoped) {
+                    var holder = el('div', 'ws-decisions-scope');
+                    var seg = formParts.seg(t('dec_scope'), [['channel', t('dec_scope_channel')], ['agents', t('dec_scope_agents')]], function (value) {
+                        if (value !== scope) {
+                            self.decisionScope = value;
+                            clear(pane);
+                            self.loadList(action, emptyText);
+                        }
+                    });
+
+                    Object.keys(seg.items).forEach(function (key) {
+                        seg.items[key].setAttribute('aria-pressed', (key === scope) ? 'true' : 'false');
+                        seg.items[key].classList.toggle('is-active', key === scope);
+                    });
+                    holder.appendChild(seg.node);
+                    pane.appendChild(holder);
+                }
 
                 if (!data.messages.length) {
                     var empty = el('div', 'ws-empty');
@@ -21761,8 +21838,16 @@
                 data.messages.forEach(function (message) {
                     var node = self.messageNode(message, null);
                     var jump = button('btn btn-sm btn-text theme-secondary', t('show_in_conversation'), 'bi-arrow-right-short');
-                    jump.addEventListener('click', function () { self.open(self.channel.id, message.id); });
-                    node.querySelector('.ws-msg-meta').appendChild(jump);
+                    var meta = node.querySelector('.ws-msg-meta');
+
+                    jump.addEventListener('click', function () { self.open(message.channel_id || channel.id, message.id); });
+
+                    // Made in another agent channel: the card names it.
+                    if (message.channel_name) {
+                        meta.appendChild(el('span', 'ws-decision-where pg-text-meta', t('dec_in_channel', message.channel_name)));
+                    }
+
+                    meta.appendChild(jump);
                     pane.appendChild(node);
 
                     var body = node.querySelector('.ws-msg-main > .ws-msg-body');

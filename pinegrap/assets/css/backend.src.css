@@ -14930,6 +14930,12 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
   line-height: 1.55;
   overflow-wrap: anywhere;
 }
+/* An agent channel's choice between its own decisions and every agent
+   channel's sits above the cards; a card from another agent channel names
+   it in its head line. */
+.ws-pane-decisions > .ws-decisions-scope {
+  display: flex;
+}
 /* A decision longer than about eight lines is folded (foldLong() in
    workspace.js): its text fades out under the eighth line and Show more
    under it opens the rest. */

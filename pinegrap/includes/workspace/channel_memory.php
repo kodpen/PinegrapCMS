@@ -190,9 +190,12 @@ function ws_memory_entry_fault($entry, $now)
  * @param int|null $decisions_total the channel's decisions, when $decisions
  *                                  holds only the newest; null counts $decisions
  * @param array[]  $general   the general memory's records, as $entries plus project
+ * @param bool     $across    the decisions are every agent channel's: the
+ *                            heading says so and a decision's channel
+ *                            (its 'channel' name, '' for this one) leads its line
  * @return string '' when there is nothing to tell
  */
-function ws_memory_digest($entries, $decisions, $now, $max = WS_MEMORY_DIGEST_MAX, $decisions_total = null, $general = array())
+function ws_memory_digest($entries, $decisions, $now, $max = WS_MEMORY_DIGEST_MAX, $decisions_total = null, $general = array(), $across = false)
 {
     $given = count((array) $decisions);
     $decisions = array_slice(array_values((array) $decisions), 0, WS_MEMORY_BRIEF_DECISIONS);
@@ -246,8 +249,10 @@ function ws_memory_digest($entries, $decisions, $now, $max = WS_MEMORY_DIGEST_MA
     foreach ($decisions as $decision) {
         $body = $one_line($decision['body'] ?? '');
 
+        $where = $across ? $one_line($decision['channel'] ?? '') : '';
+
         if ($body !== '') {
-            $sections['decisions'][] = '- ' . $body;
+            $sections['decisions'][] = '- ' . (($where !== '') ? '#' . $where . ': ' : '') . $body;
         }
     }
 
@@ -258,7 +263,7 @@ function ws_memory_digest($entries, $decisions, $now, $max = WS_MEMORY_DIGEST_MA
     $headings = array(
         'general'   => 'General memory, shared by the agent channels (read an entry with workspace.memory.get, its id without the #):',
         'memory'    => 'Channel memory (read an entry with workspace.memory.get, its id without the #):',
-        'decisions' => 'Decisions in this channel:',
+        'decisions' => $across ? 'Decisions in the agent channels (one made in another channel names it first):' : 'Decisions in this channel:',
     );
     $out = array();
     $used = 0;
@@ -296,10 +301,12 @@ function ws_memory_digest($entries, $decisions, $now, $max = WS_MEMORY_DIGEST_MA
 
     // One count closes the digest: the lines the size left out and the
     // older decisions together, or the older decisions alone.
+    $decisions_list = $across ? 'workspace.decisions.list (agent_channels only)' : 'workspace.decisions.list';
+
     if ($left > 0) {
-        $out[] = '(' . ($left + $older) . ' more not shown: list them with ' . ($left_general ? 'workspace.memory.general.list, ' : '') . 'workspace.memory.list and workspace.decisions.list.)';
+        $out[] = '(' . ($left + $older) . ' more not shown: list them with ' . ($left_general ? 'workspace.memory.general.list, ' : '') . 'workspace.memory.list and ' . $decisions_list . '.)';
     } elseif ($older > 0) {
-        $out[] = '(' . $older . ' older decisions not shown: list them with workspace.decisions.list.)';
+        $out[] = '(' . $older . ' older decisions not shown: list them with ' . $decisions_list . '.)';
     }
 
     return implode("\n\n", $out);
@@ -926,6 +933,7 @@ function ws_memory_sweep($limit = 500)
  * The memory part of an agent's brief for a channel: in an agent channel the
  * index of the general memory first (for an asker who keeps it), then the
  * index of its live entries and its decision lines (ws_memory_digest()),
+ * an agent channel's taken from every agent channel the asker may read,
  * the text as the asker reads it.
  *
  * @param array $viewer
@@ -938,14 +946,22 @@ function ws_memory_brief($viewer, $channel)
         return '';
     }
 
+    // An agent channel's brief reads the decisions of every agent channel
+    // the asker may read, each line naming the channel it was made in.
+    $readable = ws_agent_channel_is($channel) ? ws_agent_channel_readable($viewer) : array();
+    $ids = ws_agent_channel_decision_ids($channel, $readable, 'agents');
+    $across = (count($ids) > 1);
+    $named = function ($channel_id) use ($channel, $readable) {
+        return ((int) $channel_id !== (int) $channel['id']) ? (string) ($readable[(int) $channel_id]['name'] ?? '') : '';
+    };
     $decisions = array();
-    $where = "channel_id = '" . (int) $channel['id'] . "' AND kind = 'decision' AND deleted_at = 0";
+    $where = "channel_id IN (" . implode(',', $ids) . ") AND kind = 'decision' AND deleted_at = 0";
 
-    foreach ((array) db_items("SELECT body, marked_at FROM ws_messages
+    foreach ((array) db_items("SELECT channel_id, body, marked_at FROM ws_messages
         WHERE " . $where . "
         ORDER BY marked_at DESC, id DESC
         LIMIT " . (int) WS_MEMORY_BRIEF_DECISIONS) as $row) {
-        $decisions[] = array('body' => ws_plain_text($viewer, (string) $row['body']), 'marked_at' => (int) $row['marked_at']);
+        $decisions[] = array('body' => ws_plain_text($viewer, (string) $row['body']), 'marked_at' => (int) $row['marked_at'], 'channel' => $named($row['channel_id']));
     }
 
     $total = (count($decisions) < WS_MEMORY_BRIEF_DECISIONS) ? count($decisions) : (int) db_value("SELECT COUNT(*) FROM ws_messages WHERE " . $where);
@@ -953,14 +969,19 @@ function ws_memory_brief($viewer, $channel)
     // An answered agent question is a decision with no outcome line
     // (agent_question.php): question — answer (who), in time order with the rest.
     if (function_exists('ws_agent_question_decisions')) {
-        $answered = ws_agent_question_decisions($viewer, $channel, WS_MEMORY_BRIEF_DECISIONS);
+        $answered = ws_agent_question_decisions($viewer, $channel, WS_MEMORY_BRIEF_DECISIONS, $ids);
+
+        foreach ($answered['lines'] as $index => $line) {
+            $answered['lines'][$index]['channel'] = $named($line['channel_id'] ?? $channel['id']);
+        }
+
         $decisions = ws_agent_question_decisions_merge($decisions, $answered['lines'], WS_MEMORY_BRIEF_DECISIONS);
         $total += $answered['total'];
     }
 
     $general = ws_memory_brief_general($viewer, $channel) ? ws_memory_rows(0, false) : array();
 
-    return ws_memory_digest(ws_memory_rows($channel['id'], false), $decisions, time(), WS_MEMORY_DIGEST_MAX, $total, $general);
+    return ws_memory_digest(ws_memory_rows($channel['id'], false), $decisions, time(), WS_MEMORY_DIGEST_MAX, $total, $general, $across);
 }
 
 /**
