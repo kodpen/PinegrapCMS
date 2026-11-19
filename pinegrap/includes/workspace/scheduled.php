@@ -632,6 +632,10 @@ function ws_scheduled_metric_channel_sql($metric, $param, $agents)
         return " AND channel_id = '" . (int) $param . "'";
     }
 
+    if (empty($agents)) {
+        return '';
+    }
+
     $out = ws_tasks_agent_sql(ws_tasks_agent_rule((array) $agents, ''), 'channel_id');
 
     return ($out === '') ? '' : ' AND ' . $out;
@@ -673,7 +677,7 @@ function ws_scheduled_metric_value($viewer, $key, $param = 0, $since = 0)
     $since = ((int) $since > 0) ? (int) $since : time() - 86400;
     $today = date('Y-m-d');
     $midnight = strtotime($today . ' 00:00:00');
-    $channel = ws_scheduled_metric_channel_sql($metric, $param, ws_tasks_agent_channels());
+    $channel = ws_scheduled_metric_channel_sql($metric, $param, function_exists('ws_tasks_agent_channels') ? ws_tasks_agent_channels() : array());
     $open = "status NOT IN ('done', 'cancelled')";
     $value = 0;
 
@@ -695,7 +699,7 @@ function ws_scheduled_metric_value($viewer, $key, $param = 0, $since = 0)
             break;
 
         case 'time_logged_week':
-            $value = ws_task_time_week_minutes((int) $param, ws_tasks_agent_out_sql('t.channel_id'));
+            $value = ws_task_time_week_minutes((int) $param, function_exists('ws_tasks_agent_out_sql') ? ws_tasks_agent_out_sql('t.channel_id') : '');
             break;
 
         case 'forms_new':
