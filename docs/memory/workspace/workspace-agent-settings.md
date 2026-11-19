@@ -7,6 +7,10 @@ description: The Workspace agents card in Site Settings (Assistants and agents) 
 - PR #8814 (SW4a of the Workspace settings move, [[workspace-settings-overview]]): in Assistants and agents, section `pgset-ws-agents`, after Claude. Each agent is a line with Edit; its door error, its activity and its form open in a drawer `pgset-ws-agent-<id>`, Add an agent in `pgset-ws-agent-0` (`ws_settings_agent_drawer()`). The old screen's address redirects here (PR #8931).
 - `pg_settings_legacy_anchors()` maps `ws-agents` to the card.
 
+## How are the row and the drawer drawn? (#9830)
+- A row by the recipe of "Agents in this channel" (`ws_agents_settings_row_html()`): picture, name, `@handle`, role pill, state pill (`ws_agents_settings_state()`: the channel rows' words and tones, Off for an agent turned off), one summary line (`ws_agents_settings_summary()`), door warnings under it, Edit last.
+- The drawer: head, "Now" (`ws_agents_settings_facts_html()`: state, waiting requests, last seen, today, model, reported usage windows in the agent card's boxes), "Requests", start text, the form in sections. Save, Try, Delete (`ws_agents_settings_buttons()`) stand in the drawer's foot (`pg_settings_drawer()`'s `$foot`).
+
 ## What does the form show?
 - Owner (2026-11-11, `workflow/decisions-made-workspace-15.md`): only the chosen kind's fields. Kind first (a new agent; an agent's kind never changes), then handle and name; an application's: application, door, the push address and token only for a push door; a model's: provider, model, key, the address only for a provider without one of its own (Azure OpenAI, custom).
 - Under a closed "Advanced": status, wake interval, wake note, the monthly token limit (model). Nothing dropped.

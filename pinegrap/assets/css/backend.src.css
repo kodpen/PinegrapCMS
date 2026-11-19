@@ -11442,6 +11442,21 @@ body.pg-side-panel-open .pg-chat-launcher {
   overscroll-behavior: contain;
   overflow-wrap: anywhere;
 }
+/* A drawer's own buttons (Save, Try, Delete): a foot under the scrolling
+   body, always in view. */
+.pg-sm-drawer-foot {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: .75rem 1.25rem;
+  border-top: var(--pg-border-width) solid var(--pg-border-color-translucent);
+  background: var(--pg-bg-body);
+}
+.pg-set-drawer-foot {
+  justify-content: flex-start;
+}
 /* Tapping beside the drawer closes it; the pane shows dimmed through. */
 .pg-sm-dscrim {
   position: absolute;
@@ -11483,6 +11498,7 @@ body.pg-side-panel-open .pg-chat-launcher {
   .pg-sm-drawer { width: 100%; }
   .pg-sm-drawer-head { padding-inline: .875rem; }
   .pg-sm-drawer-body { padding: 1rem .875rem; }
+  .pg-sm-drawer-foot { padding-inline: .875rem; }
 }
 @media (prefers-reduced-motion: reduce) {
   .pg-sm-drawer,
@@ -12879,6 +12895,130 @@ body.workspace .ws-shell-main > #button_bar {
     order: 3;
     max-width: calc(100% - 52px);
     margin-inline-start: 52px;
+  }
+}
+/* Site Settings' agents card (agents_settings.php): each agent a row by the
+   recipe of "Agents in this channel" in one inner card, Edit always at the
+   row's end; its drawer in sections over the agent card's boxes. The
+   classes only place things. */
+.ws-agset-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+}
+.ws-agset-row + .ws-agset-row {
+  border-top: 1px solid var(--pg-border-color-translucent);
+}
+.ws-agset-face {
+  position: relative;
+  flex: none;
+  overflow: hidden;
+}
+.ws-agset-picture {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.ws-agset-main {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  gap: 2px;
+  min-width: 0;
+}
+.ws-agset-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  min-width: 0;
+}
+.ws-agset-name > .pg-list-row-title {
+  flex: 0 0 auto;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ws-agset-state {
+  flex: none;
+  max-width: 40%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ws-agset-edit {
+  flex: none;
+}
+.ws-agset-drawer-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.ws-agset-section {
+  margin-top: 24px;
+}
+.ws-agent-form:first-child > .ws-agset-section:first-child {
+  margin-top: 0;
+}
+.ws-agset-section > .pg-group-label {
+  margin: 0 0 8px;
+}
+.ws-agset-section > .ws-agent-card-box:first-of-type {
+  margin-top: 0;
+}
+.ws-agset-section > [data-ws-agent-door-state],
+.ws-agset-section > .alert {
+  margin-top: 12px;
+}
+.ws-agset-advanced > summary {
+  cursor: pointer;
+}
+.ws-agset-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+.ws-agset-delete {
+  margin-inline-start: auto;
+}
+@media (max-width: 575.98px) {
+  /* On a phone the name and Edit share the first line; the summary, the
+     warnings and the state's pill take the row's full width under them. */
+  .ws-agset-row {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    column-gap: 12px;
+    row-gap: 6px;
+    padding: 12px;
+  }
+  .ws-agset-main {
+    display: contents;
+  }
+  .ws-agset-main > * {
+    grid-column: 1 / -1;
+  }
+  .ws-agset-face {
+    grid-column: 1;
+    grid-row: 1;
+    align-self: start;
+  }
+  .ws-agset-main > .ws-agset-name {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .ws-agset-edit {
+    grid-column: 3;
+    grid-row: 1;
+    align-self: start;
+  }
+  .ws-agset-state {
+    grid-column: 1 / -1;
+    justify-self: start;
+    max-width: 100%;
   }
 }
 /* The agent card (workspace.js agentCardShow()): a floating .pg-card on

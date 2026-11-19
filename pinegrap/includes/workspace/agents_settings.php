@@ -290,7 +290,7 @@ function ws_agents_settings_form($self_url, $agent, $apps, $admin, $form = null)
         return h((string) ($agent ? $agent[$field] : $default));
     };
     $select = function ($field, $options, $chosen, $extra = '') use ($p, $disabled, $name) {
-        $out = '<select class="form-control form-control-sm" name="' . h($name($field)) . '" id="' . $p . $field . '" data-ws-agent-field="' . $field . '"' . $disabled . $extra . '>';
+        $out = '<select class="pg-input pg-input-sm" name=""' . h($name($field)) . '" id="' . $p . $field . '" data-ws-agent-field="' . $field . '"' . $disabled . $extra . '>';
 
         foreach ($options as $key => $label) {
             $out .= '<option value="' . h((string) $key) . '"' . (((string) $key === (string) $chosen) ? ' selected' : '') . '>' . h($label) . '</option>';
@@ -301,16 +301,21 @@ function ws_agents_settings_form($self_url, $agent, $apps, $admin, $form = null)
     // $when: field=value[|value] of the field it hangs on; hidden while that
     // field holds another value.
     $field = function ($field, $label, $control, $help = '', $when = '', $shown = true) use ($p) {
-        return '<div class="md:col-6' . ($shown ? '' : ' d-none') . '"' . (($when !== '') ? ' data-ws-agent-when="' . h($when) . '"' : '') . '><label class="form-label" for="' . $p . $field . '">' . h($label) . '</label>' . $control
-            . (($help !== '') ? '<div class="form-text">' . h($help) . '</div>' : '') . '</div>';
+        // The help is the field's description (the look's field recipe).
+        if ($help !== '') {
+            $control = preg_replace('~ id="' . preg_quote($p . $field, '~') . '"~', '$0 aria-describedby="' . $p . $field . '-help"', $control, 1);
+        }
+
+        return '<div class="md:col-6' . ($shown ? '' : ' d-none') . '"' . (($when !== '') ? ' data-ws-agent-when="' . h($when) . '"' : '') . '><label class="pg-field-label" for="' . $p . $field . '">' . h($label) . '</label>' . $control
+            . (($help !== '') ? '<div class="pg-field-help" id="' . $p . $field . '-help">' . h($help) . '</div>' : '') . '</div>';
     };
     $input = function ($field, $current, $extra = '') use ($p, $disabled, $name) {
-        return '<input class="form-control form-control-sm" name="' . h($name($field)) . '" id="' . $p . $field . '" value="' . $current . '"' . $extra . $disabled . '>';
+        return '<input class="pg-input pg-input-sm" name="' . h($name($field)) . '" id="' . $p . $field . '" value="' . $current . '"' . $extra . $disabled . '>';
     };
     $secret = function ($field, $set) use ($p, $disabled, $name) {
-        return '<input class="form-control form-control-sm font-monospace" type="password" name="' . h($name($field)) . '" id="' . $p . $field . '" autocomplete="new-password" placeholder="'
+        return '<input class="pg-input pg-input-sm font-monospace" type="password" name="' . h($name($field)) . '" id="' . $p . $field . '" autocomplete="new-password" placeholder="'
             . h($set ? lang('Stored. Type a new one to replace it.') : '') . '"' . $disabled . '>'
-            . ($set ? '<div class="form-field mt-2"><input class="check" type="checkbox" name="' . h($name($field . '_clear')) . '" value="1" id="' . $p . $field . '-clear"' . $disabled . '><label class="small" for="' . $p . $field . '-clear">' . h(lang('Remove the stored one')) . '</label></div>' : '');
+            . ($set ? '<label class="ws-agset-check pg-text-2" for="' . $p . $field . '-clear"><input class="pg-checkbox" type="checkbox" name="' . h($name($field . '_clear')) . '" value="1" id="' . $p . $field . '-clear"' . $disabled . '><span>' . h(lang('Remove the stored one')) . '</span></label>' : '');
     };
 
     // The door as two described choices: what each is for, not how it works.
@@ -322,12 +327,13 @@ function ws_agents_settings_form($self_url, $agent, $apps, $admin, $form = null)
         $out = '';
 
         foreach ($choices as $key => $words) {
-            $out .= '<div class="form-field mt-2"><input class="radio" type="radio" name="' . h($name('door_kind')) . '" value="' . $key . '" id="' . $p . 'door_kind-' . $key . '" data-ws-agent-field="door_kind"'
+            // A radio row with its line, as "Agents in this channel" asks its questions.
+            $out .= '<label class="ws-cha-choice" for="' . $p . 'door_kind-' . $key . '"><input class="ws-cha-radio" type="radio" name="' . h($name('door_kind')) . '" value="' . $key . '" id="' . $p . 'door_kind-' . $key . '" data-ws-agent-field="door_kind"'
                 . (($key === (string) $chosen) ? ' checked' : '') . $disabled . '>'
-                . '<label for="' . $p . 'door_kind-' . $key . '"><span class="d-block">' . h($words[0]) . '</span><span class="d-block small fg-secondary">' . h($words[1]) . '</span></label></div>';
+                . '<span class="ws-cha-choice-text"><span class="ws-cha-choice-title">' . h($words[0]) . '</span><span class="pg-text-meta">' . h($words[1]) . '</span></span></label>';
         }
 
-        return '<div class="col-12"' . (($when !== '') ? ' data-ws-agent-when="' . h($when) . '"' : '') . '><fieldset><legend class="form-label">' . h(lang('Door')) . '</legend>' . $out . '</fieldset></div>';
+        return '<div class="col-12"' . (($when !== '') ? ' data-ws-agent-when="' . h($when) . '"' : '') . '><fieldset class="ws-cha-choices"><legend class="pg-field-label">' . h(lang('Door')) . '</legend>' . $out . '</fieldset></div>';
     };
 
     $app_options = array(0 => lang('Choose an application'));
@@ -358,10 +364,14 @@ function ws_agents_settings_form($self_url, $agent, $apps, $admin, $form = null)
 
     // The same for the duty. Claude's routine has instructions of its own.
     if (!$claude && pg_schema_has('ws_agents', 'duty')) {
-        $rows .= '<div class="col-12"><label class="form-label" for="' . $p . 'duty">' . h(lang('Duty')) . '</label>'
-            . '<textarea class="form-control form-control-sm" name="' . h($name('duty')) . '" id="' . $p . 'duty" rows="4" maxlength="' . WS_AGENT_DUTY_MAX . '"' . $disabled . '>' . $value('duty') . '</textarea>'
-            . '<div class="form-text">' . h(lang(array('string' => 'What the agent is there for, in your words, up to {var:1} characters. The agent card shows it to the channel\'s readers; an application agent also reads it in its instructions.', 'vars' => WS_AGENT_DUTY_MAX))) . '</div></div>';
+        $rows .= '<div class="col-12"><label class="pg-field-label" for="' . $p . 'duty">' . h(lang('Duty')) . '</label>'
+            . '<textarea class="pg-input" name="' . h($name('duty')) . '" id="' . $p . 'duty" rows="4" maxlength="' . WS_AGENT_DUTY_MAX . '" aria-describedby="' . $p . 'duty-help"' . $disabled . '>' . $value('duty') . '</textarea>'
+            . '<div class="pg-field-help" id="' . $p . 'duty-help">' . h(lang(array('string' => 'What the agent is there for, in your words, up to {var:1} characters. The agent card shows it to the channel\'s readers; an application agent also reads it in its instructions.', 'vars' => WS_AGENT_DUTY_MAX))) . '</div></div>';
     }
+
+    // Who it is above, how it is reached under it.
+    $who = $rows;
+    $rows = '';
 
     if (!$claude && ($kind === 'app')) {
         $push = $agent && ($agent['door_kind'] === 'push');
@@ -370,7 +380,7 @@ function ws_agents_settings_form($self_url, $agent, $apps, $admin, $form = null)
         $rows .= $doors($agent ? $agent['door_kind'] : 'poll', $when_kind('app'));
         // Shown while the address is a routine's (the script follows the typing).
         $routine = $agent && ws_claude_url_valid(trim((string) $agent['door_url']));
-        $routine_help = '<div class="form-text' . ($routine ? '' : ' d-none') . '" data-ws-agent-routine-help>'
+        $routine_help = '<div class="pg-field-help' . ($routine ? '' : ' d-none') . '" data-ws-agent-routine-help>'
             . h(lang('A routine\'s address: every knock starts a new run of that routine and never wakes a session that is already open. An agent that keeps one session open uses the poll door.')) . '</div>';
         $rows .= $field('door_url', lang('Push address'), $input('door_url', $value('door_url'), ' type="url" maxlength="500" placeholder="https://…"') . $routine_help, lang('A push carries only ids and the site\'s address, never the brief.'), 'door_kind=push', $push);
         $rows .= $field('door_secret', lang('Push token'), $secret('door_secret', $agent && $agent['door_secret_set']), '', 'door_kind=push', $push);
@@ -411,28 +421,20 @@ function ws_agents_settings_form($self_url, $agent, $apps, $admin, $form = null)
         . $field('wake_note', lang('Wake note'), $input('wake_note', $value('wake_note'), ' maxlength="250"'))
         . $advanced;
 
-    // A card button: the old screen's form posts ws_action; the dialog's is
-    // a named submit button of the settings form carrying the agent's id.
-    $button = function ($action, $class, $label, $confirm = '') use ($dialog, $form, $id) {
-        $ask = ($confirm !== '') ? ' onclick="return confirm(' . h(json_encode($confirm)) . ');"' : '';
-
-        return $dialog
-            ? '<button type="submit" name="ws_' . $action . '" value="' . $id . '" form="' . h($form) . '" class="' . $class . '"' . $ask . '>' . h($label) . '</button>'
-            : '<button type="submit" name="ws_action" value="' . $action . '" class="' . $class . '"' . $ask . '>' . h($label) . '</button>';
+    // In a section of its own each: who it is, how it is reached, Advanced
+    // closed. The dialog's buttons stand in the drawer's foot
+    // (ws_agents_settings_buttons()); the old screen's under the form.
+    $section = function ($label, $inside) {
+        return '<section class="ws-agset-section"><h4 class="pg-group-label">' . h($label) . '</h4><div class="row g-4">' . $inside . '</div></section>';
     };
-
-    $try = ($agent && ($kind === 'model') && $admin) ? $button('agent_test', 'btn btn-sm btn-outline theme-secondary', lang('Try')) : '';
-    $delete = ($agent && !$claude && $admin) ? $button('agent_delete', 'btn btn-sm btn-text theme-danger', lang('Delete'), lang('Delete this agent? It leaves every channel it is in.')) : '';
-    $save = $button('agent_save', 'btn btn-sm btn-solid theme-primary', $agent ? lang('Save') : lang('Add'));
-
     $body = '
-            ' . ($claude ? '<p class="small fg-secondary">' . h(lang('Claude\'s routine, its address and token, is set on the Claude card.')) . '</p>' : '') . '
-            <div class="row g-5">' . $rows . '</div>
-            <details class="mt-5">
-                <summary class="small fw-semibold">' . h(lang('Advanced')) . '</summary>
-                <div class="row g-5 mt-1">' . $advanced . '</div>
+            ' . ($claude ? '<p class="pg-field-help mt-0">' . h(lang('Claude\'s routine, its address and token, is set on the Claude card.')) . '</p>' : '') . '
+            ' . $section(lang('Who it is'), $who) . (($rows !== '') ? $section(lang('How it is reached'), $rows) : '') . '
+            <details class="ws-agset-section ws-agset-advanced">
+                <summary class="pg-group-label">' . h(lang('Advanced')) . '</summary>
+                <div class="row g-4 mt-1">' . $advanced . '</div>
             </details>
-            ' . ($admin ? '<div class="d-flex gap-3 mt-5">' . $save . $try . $delete . '</div>' : '');
+            ' . (($admin && !$dialog) ? '<div class="d-flex gap-3 mt-5">' . ws_agents_settings_buttons($agent, $admin) . '</div>' : '');
 
     if ($dialog) {
         return '<div class="ws-agent-form">' . $body . '</div>';
@@ -443,6 +445,39 @@ function ws_agents_settings_form($self_url, $agent, $apps, $admin, $form = null)
             ' . get_token_field() . '
             <input type="hidden" name="agent_id" value="' . $id . '">' . $body . '
         </form>';
+}
+
+/**
+ * An agent form's buttons: Save (Add for a new agent), Try for a model
+ * agent, Delete at the end. The old screen's form posts ws_action; in the
+ * dialog ($form, the settings form's id) each is a named submit button of
+ * the settings form carrying the agent's id (ws_agent_save, ws_agent_test,
+ * ws_agent_delete), drawn in the drawer's foot.
+ *
+ * @param array|null  $agent ws_agent_shape()
+ * @param bool        $admin
+ * @param string|null $form
+ * @return string HTML, empty for a viewer who cannot change agents
+ */
+function ws_agents_settings_buttons($agent, $admin, $form = null)
+{
+    if (!$admin) {
+        return '';
+    }
+
+    $id = $agent ? (int) $agent['id'] : 0;
+    $dialog = ($form !== null);
+    $button = function ($action, $class, $label, $confirm = '') use ($dialog, $form, $id) {
+        $ask = ($confirm !== '') ? ' onclick="return confirm(' . h(json_encode($confirm)) . ');"' : '';
+
+        return $dialog
+            ? '<button type="submit" name="ws_' . $action . '" value="' . $id . '" form="' . h($form) . '" class="' . $class . '"' . $ask . '>' . h($label) . '</button>'
+            : '<button type="submit" name="ws_action" value="' . $action . '" class="' . $class . '"' . $ask . '>' . h($label) . '</button>';
+    };
+
+    return $button('agent_save', 'pg-button pg-button-fill pg-button-sm', $agent ? lang('Save') : lang('Add'))
+        . (($agent && ($agent['kind'] === 'model')) ? $button('agent_test', 'pg-button pg-button-quiet pg-button-sm', lang('Try')) : '')
+        . (($agent && ($agent['kind'] !== 'claude')) ? $button('agent_delete', 'pg-button pg-button-danger pg-button-sm ws-agset-delete', lang('Delete'), lang('Delete this agent? It leaves every channel it is in.')) : '');
 }
 
 /**
@@ -544,6 +579,177 @@ function ws_agents_settings_line_html($agent)
 }
 
 /**
+ * An agent's picture on its row and in its drawer: its own picture over the
+ * robot mark in a quiet tile of its colour, as "Agents in this channel"
+ * draws it (workspace.js agentFace()); never a person's round face.
+ *
+ * @param array $agent ws_agent_shape()
+ * @return string HTML
+ */
+function ws_agents_settings_face_html($agent)
+{
+    // workspace.js AVATAR_THEMES, by the agent's id.
+    $themes = array('theme-primary', 'theme-info', 'theme-warning', 'theme-accent', 'theme-danger', 'theme-secondary', 'theme-success', 'theme-inverse');
+    $avatar = ws_channel_agent_avatar_url($agent['avatar'] ?? '');
+    $icon = ((string) ($agent['kind'] ?? '') === 'model') ? 'bi-stars' : 'bi-robot';
+
+    return '<span class="avatar avatar-subtle ws-agent-face ws-agset-face ' . $themes[abs((int) ($agent['id'] ?? 0)) % 8] . '" aria-hidden="true"><i class="bi ' . $icon . '"></i>'
+        . (($avatar !== '') ? '<img class="ws-agset-picture" src="' . h($avatar) . '" alt="" loading="lazy" onerror="this.remove()">' : '') . '</span>';
+}
+
+/**
+ * The state pill of an agent's row and drawer, in the words and tones of
+ * "Agents in this channel" (ws_channel_agent_panel_state()): off or paused
+ * first, then working or waiting on a request, else when it was last seen.
+ * Pure but for lang().
+ *
+ * @param array $agent  ws_agent_shape()
+ * @param array $counts ws_agent_request_counts() of every agent
+ * @param int   $now
+ * @return array state, words, tone (a pg-tone-* class), seen (ws_channel_member_agent()'s), counts (this agent's)
+ */
+function ws_agents_settings_state($agent, $counts, $now)
+{
+    $member = ws_channel_member_agent(array('agent' => $agent, 'wake_rule' => 'mention', 'wake_prefix' => ''), $now, (array) $counts);
+    $mine = ((array) $counts)[ws_agent_request_value($agent)] ?? array();
+    $mine += array('queued' => 0, 'working' => 0, 'answered' => 0, 'failed' => 0);
+    $state = ws_channel_agent_panel_state((string) $agent['status'] === 'active', $member['seen_state'], $member['state'] ?? '');
+    $tones = array('working' => 'pg-tone-blue', 'waiting' => 'pg-tone-amber', 'late' => 'pg-tone-amber', 'paused' => 'pg-tone-gray', 'on' => 'pg-tone-teal', 'ready' => 'pg-tone-teal', 'off' => 'pg-tone-gray');
+
+    if ((string) $agent['status'] === 'off') {
+        $words = lang('Off');
+    } elseif ($state === 'paused') {
+        $words = lang('Paused');
+    } elseif ($state === 'working') {
+        $words = lang('Working on a request');
+    } elseif ($state === 'waiting') {
+        $words = ($mine['queued'] > 1) ? str_replace('{1}', (string) (int) $mine['queued'], lang('{1} requests are waiting')) : lang('A request is waiting');
+    } else {
+        $words = ws_channel_agent_state_words($agent, ws_agent_seen_words($agent, $now), $member['seen']);
+    }
+
+    return array('state' => $state, 'words' => $words, 'tone' => $tones[$state] ?? 'pg-tone-gray', 'seen' => (string) $member['seen'], 'counts' => $mine);
+}
+
+/**
+ * The one summary line of an agent's row: how it is reached (a door and its
+ * last knock, or the model it runs on) and its wake interval. Pure but for
+ * lang() and date().
+ *
+ * @param array $agent ws_agent_shape()
+ * @return string
+ */
+function ws_agents_settings_summary($agent)
+{
+    $parts = array();
+
+    if ((string) $agent['kind'] === 'model') {
+        $parts[] = trim(ws_model_provider_name((string) $agent['provider']) . ' · ' . (string) $agent['model'], ' ·');
+    } else {
+        // Keys of their own: "Poll" is a vote and "Handle" a user name elsewhere.
+        $door = ($agent['door_kind'] === 'push') ? lang('Push door') : lang('Poll door');
+        $parts[] = ((int) $agent['door_last_knock'] > 0) ? $door . ', ' . lang(array('string' => 'last {var:1}', 'vars' => date('d.m.Y H:i', (int) $agent['door_last_knock']))) : $door;
+    }
+
+    if ((int) $agent['wake_every'] > 0) {
+        $parts[] = lang(array('string' => 'every {var:1} min', 'vars' => (int) $agent['wake_every']));
+    }
+
+    return implode(' · ', array_filter($parts, 'strlen'));
+}
+
+/**
+ * One agent's row in the Site Settings dialog, by the recipe of "Agents in
+ * this channel": picture, name, handle, role pill, state pill, one summary
+ * line, a door's warnings under it, and Edit always at the row's end.
+ *
+ * @param array  $agent    ws_agent_shape()
+ * @param array  $counts   ws_agent_request_counts() of every agent
+ * @param int    $now
+ * @param string $warnings HTML: the door's error and the double door
+ * @return string HTML
+ */
+function ws_agents_settings_row_html($agent, $counts, $now, $warnings = '')
+{
+    $drawer = 'pgset-ws-agent-' . (int) $agent['id'];
+    $state = ws_agents_settings_state($agent, $counts, $now);
+    $role = ws_agent_role_label($agent['role'] ?? '');
+    $summary = ws_agents_settings_summary($agent);
+
+    return '
+            <div class="ws-agset-row" id="pgset-ws-agent-row-' . (int) $agent['id'] . '">
+                ' . ws_agents_settings_face_html($agent) . '
+                <div class="ws-agset-main">
+                    <div class="ws-agset-name">
+                        <strong class="pg-list-row-title">' . h(($agent['name'] !== '') ? $agent['name'] : '@' . $agent['handle']) . '</strong>
+                        <span class="pg-text-meta">@' . h($agent['handle']) . '</span>
+                        ' . (($role !== '') ? '<span class="pg-pill pg-tone-violet">' . h($role) . '</span>' : '') . '
+                    </div>
+                    ' . (($summary !== '') ? '<div class="pg-text-meta ws-agset-summary">' . h($summary) . '</div>' : '') . '
+                    ' . $warnings . '
+                </div>
+                <span class="pg-pill ws-agset-state ' . $state['tone'] . '"' . (($state['seen'] !== '') ? ' title="' . h($state['seen']) . '"' : '') . '>' . h($state['words']) . '</span>
+                <button type="button" class="pg-button pg-button-quiet pg-button-sm ws-agset-edit" data-bs-toggle="drawer" data-bs-target="#' . $drawer . '" aria-controls="' . $drawer . '" aria-label="' . h(lang(array('string' => '{var:1}: {var:2}', 'vars' => array(lang('Edit'), '@' . $agent['handle'])))) . '"><i class="bi bi-pencil" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Edit')) . '</span></button>
+            </div>';
+}
+
+/**
+ * What an agent's drawer tells first, in the agent card's boxes (PF2): its
+ * state, the requests waiting for it, when it was last seen, today's
+ * answers, the model and each usage window as the agent reported them.
+ *
+ * @param array $agent  ws_agent_shape()
+ * @param array $counts ws_agent_request_counts() of every agent
+ * @param int   $now
+ * @return string HTML
+ */
+function ws_agents_settings_facts_html($agent, $counts, $now)
+{
+    $state = ws_agents_settings_state($agent, $counts, $now);
+    $mine = $state['counts'];
+    $row = function ($key, $value_html, $class = '') {
+        return '<div class="ws-agent-card-row' . $class . '"><span class="ws-agent-card-key">' . h($key) . '</span><span class="ws-agent-card-value">' . $value_html . '</span></div>';
+    };
+    $rows = $row(lang('State now'), '<span class="pg-pill ' . $state['tone'] . '">' . h($state['words']) . '</span>')
+        . $row(lang('Waiting for it'), h(lang(array('string' => '{var:1} requests', 'vars' => (int) $mine['queued']))), ' pg-tabular');
+
+    if ($state['seen'] !== '') {
+        $rows .= $row(lang('Last seen'), h($state['seen']));
+    }
+
+    $rows .= $row(lang('Today'), h(lang(array('string' => '{var:1} answered · {var:2} failed', 'vars' => array((int) $mine['answered'], (int) $mine['failed'])))), ' pg-tabular');
+
+    $report_at = (int) ($agent['report_at'] ?? 0);
+    $reported = ((string) $agent['kind'] === 'app') && ($report_at > 0);
+    $model = ((string) $agent['kind'] === 'model') ? (string) $agent['model'] : ($reported ? (string) ($agent['report_model'] ?? '') : '');
+
+    if ($model !== '') {
+        $rows .= $row(lang('Model'), h($model));
+    }
+
+    $box = '<div class="ws-agent-card-box">' . $rows . '</div>';
+
+    if (!$reported) {
+        return $box;
+    }
+
+    // The windows as the agent reported them, muted once a day old.
+    $windows = '';
+
+    foreach (ws_agent_card_windows(ws_agent_report_windows($agent['report_usage'] ?? '')) as $window) {
+        $percent = max(0, min(100, (int) $window['percent']));
+        $windows .= '<div class="ws-agent-card-window' . ($window['high'] ? ' is-high' : '') . '"' . ($window['high'] ? ' title="' . h(lang('This window is at 90% or more of its limit.')) . '"' : '') . '>'
+            . $row($window['label'], '<span class="pg-tabular">' . $percent . '%</span><span class="pg-text-meta">' . h($window['resets']) . '</span>')
+            . '<div class="ws-agent-card-bar" role="progressbar" aria-label="' . h($window['label']) . '" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' . $percent . '"><span style="width: ' . $percent . '%"></span></div></div>';
+    }
+
+    $stale = (($now - $report_at) >= WS_AGENT_REPORT_STALE_AFTER);
+
+    return $box . (($windows !== '') ? '<div class="ws-agent-card-box' . ($stale ? ' is-stale' : '') . '">' . $windows . '</div>' : '')
+        . '<p class="pg-field-help mb-0">' . h(lang(array('string' => 'As the agent reported it {var:1}; the site cannot check it.', 'vars' => ws_seen_ago_words($report_at, $now)))) . '</p>';
+}
+
+/**
  * The agents card.
  *
  * In the Site Settings dialog ($form, the settings form's id) each agent is
@@ -566,6 +772,9 @@ function ws_agents_settings_card($self_url, $viewer, $form = null)
     $list = '';
     $agents = ws_agents_list();
     $counts = function_exists('ws_agent_activity_read_counts') ? ws_agent_activity_read_counts($agents) : array();
+    $now = time();
+    // The dialog's rows tell each agent's state as the channels do (PF2).
+    $requests = ($form !== null) ? ws_agent_request_counts($agents, $now) : array();
     $intro = h(lang('Agents act as members of the channels they are added to, each through its own application. In each channel its manager chooses when it is woken and what it may do by itself.'));
 
     foreach ($agents as $agent) {
@@ -574,13 +783,7 @@ function ws_agents_settings_card($self_url, $viewer, $form = null)
         $error .= ws_agent_door_double($agent) ? '<div class="small fg-danger" data-ws-agent-door-double>' . h(ws_agent_door_double_words()) . '</div>' : '';
 
         if ($form !== null) {
-            $drawer = 'pgset-ws-agent-' . (int) $agent['id'];
-            $list .= '
-            <div class="d-flex flex-wrap align-items-center gap-3 border-bottom py-3">
-                ' . ws_agents_settings_line_html($agent) . '
-                <button type="button" class="btn btn-sm btn-text theme-secondary" data-bs-toggle="drawer" data-bs-target="#' . $drawer . '" aria-controls="' . $drawer . '" aria-label="' . h(lang(array('string' => '{var:1}: {var:2}', 'vars' => array(lang('Edit'), '@' . $agent['handle'])))) . '"><i class="bi bi-pencil me-1" aria-hidden="true"></i>' . h(lang('Edit')) . '</button>
-                ' . (($error !== '') ? '<div class="w-100">' . $error . '</div>' : '') . '
-            </div>';
+            $list .= ws_agents_settings_row_html($agent, $requests, $now, $error);
             continue;
         }
 
@@ -608,7 +811,7 @@ function ws_agents_settings_card($self_url, $viewer, $form = null)
             </div>
             <div class="card-body">
                 <p class="small fg-secondary">' . $intro . '</p>
-                ' . $list . '
+                ' . (empty($agents) ? $list : '<div class="pg-card-inner ws-agset-list">' . $list . '</div>') . '
             </div>
         </div>
     </div>' . ws_agents_settings_script();
@@ -639,20 +842,36 @@ function ws_agents_settings_card($self_url, $viewer, $form = null)
  * @param bool       $in_dialog pg_settings_drawer()'s
  * @return string HTML
  */
-function ws_settings_agent_drawer($agent, $viewer, $apps, $counts, $form, $in_dialog)
+function ws_settings_agent_drawer($agent, $viewer, $apps, $counts, $form, $in_dialog, $requests = null)
 {
     $admin = ((int) $viewer['role'] === 0);
+    $foot = ws_agents_settings_buttons($agent, $admin, $form);
 
     if (!$agent) {
-        return pg_settings_drawer('pgset-ws-agent-0', h(lang('Add an agent')), ws_agents_settings_form('', null, $apps, $admin, $form), $in_dialog);
+        return pg_settings_drawer('pgset-ws-agent-0', h(lang('Add an agent')), ws_agents_settings_form('', null, $apps, $admin, $form), $in_dialog, $foot);
     }
 
-    $state = ws_agent_door_state_words($agent, time());
+    $now = time();
+    $requests = is_array($requests) ? $requests : ws_agent_request_counts(array($agent), $now);
+    $state = ws_agent_door_state_words($agent, $now);
     $door_error = ws_agent_door_error_shown($agent);
-    $error = ($state !== '') ? '<p class="small fg-secondary" data-ws-agent-door-state>' . h($state) . '</p>' : '';
+    $error = ($state !== '') ? '<p class="pg-text-2 mb-0" data-ws-agent-door-state>' . h($state) . '</p>' : '';
     $error .= ($door_error !== '') ? '<div class="alert theme-danger small py-3">' . h($door_error) . '</div>' : '';
     $error .= ws_agent_door_double($agent) ? '<div class="alert theme-danger small py-3" data-ws-agent-door-double>' . h(ws_agent_door_double_words()) . '</div>' : '';
+    $activity = function_exists('ws_agent_activity_block') ? ws_agent_activity_block('', $viewer, $agent, $counts, $form) : '';
+    $role = ws_agent_role_label($agent['role'] ?? '');
 
-    return pg_settings_drawer('pgset-ws-agent-' . (int) $agent['id'], '@' . h($agent['handle']) . ' · ' . h($agent['name']),
-        $error . ws_agent_start_box($agent) . (function_exists('ws_agent_activity_block') ? '<div class="mb-5">' . ws_agent_activity_block('', $viewer, $agent, $counts, $form) . '</div>' : '') . ws_agents_settings_form('', $agent, $apps, $admin, $form), $in_dialog);
+    // Who it is at the top, then what it is doing now, its requests, how to
+    // start it, and its form.
+    // The title names it; the head adds its picture, role and summary.
+    $head = '<div class="ws-agset-drawer-head">' . ws_agents_settings_face_html($agent) . '<div class="ws-agset-main">'
+        . (($role !== '') ? '<div class="ws-agset-name"><span class="pg-pill pg-tone-violet">' . h($role) . '</span></div>' : '')
+        . '<div class="pg-text-meta">' . h(ws_agents_settings_summary($agent)) . '</div></div></div>';
+    $body = $head
+        . '<section class="ws-agset-section"><h4 class="pg-group-label">' . h(lang('Now')) . '</h4>' . ws_agents_settings_facts_html($agent, $requests, $now) . $error . '</section>'
+        . (($activity !== '') ? '<section class="ws-agset-section"><h4 class="pg-group-label">' . h(lang('Requests')) . '</h4>' . $activity . '</section>' : '')
+        . ws_agent_start_box($agent)
+        . ws_agents_settings_form('', $agent, $apps, $admin, $form);
+
+    return pg_settings_drawer('pgset-ws-agent-' . (int) $agent['id'], '@' . h($agent['handle']) . ' · ' . h($agent['name']), $body, $in_dialog, $foot);
 }

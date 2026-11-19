@@ -72,9 +72,11 @@ if ($ws_card !== '') {
     $ws_apps = ws_agents_settings_apps();
     $ws_agents = ws_agents_list();
     $ws_counts = function_exists('ws_agent_activity_read_counts') ? ws_agent_activity_read_counts($ws_agents) : array();
+    // Every agent's open and today's requests, read once for the drawers.
+    $ws_requests = ws_agent_request_counts($ws_agents, time());
 
     foreach ($ws_agents as $ws_agent) {
-        $pg_settings_modals[] = ws_settings_agent_drawer($ws_agent, $ws_viewer, $ws_apps, $ws_counts, $ws_form, !empty($pg_settings_in_dialog));
+        $pg_settings_modals[] = ws_settings_agent_drawer($ws_agent, $ws_viewer, $ws_apps, $ws_counts, $ws_form, !empty($pg_settings_in_dialog), $ws_requests);
     }
 
     if ((int) $ws_viewer['role'] === 0) {

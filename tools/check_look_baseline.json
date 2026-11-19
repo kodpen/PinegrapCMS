@@ -959,7 +959,7 @@
         "tabs": 0
     },
     "includes/workspace/agents_settings.php": {
-        "button": 5,
+        "button": 1,
         "tabs": 0
     },
     "includes/workspace/ai.php": {
