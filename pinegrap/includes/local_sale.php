@@ -319,7 +319,7 @@ function local_sale_lines($order_id)
     }
 
     $rows = db_items(
-        "SELECT oi.id, oi.product_id, oi.quantity, oi.price, oi.added_by_offer,
+        "SELECT oi.id, oi.product_id, oi.product_name, oi.quantity, oi.price, oi.added_by_offer,
                 p.name, p.short_description, p.image_name, p.enabled,
                 p.inventory, p.inventory_quantity, p.taxable, p.tax_rate
          FROM order_items oi
@@ -480,16 +480,24 @@ function local_sale_find_product($code)
 }
 
 /**
- * The name people know a product by: the short description, else the code.
+ * The name people know a product by: the short description, else the code,
+ * else (a cart line whose product was deleted) the code the order line was
+ * written with.
  *
  * @param array $row
  * @return string
  */
 function local_sale_product_label($row)
 {
-    $label = trim((string) ($row['short_description'] ?? ''));
+    foreach (array('short_description', 'name', 'product_name') as $key) {
+        $label = trim((string) ($row[$key] ?? ''));
 
-    return ($label !== '') ? $label : (string) ($row['name'] ?? '');
+        if ($label !== '') {
+            return $label;
+        }
+    }
+
+    return '';
 }
 
 /* ---------------------------------------------------------------------
@@ -627,7 +635,7 @@ function local_sale_set_qty($item_id, $quantity)
     }
 
     $item = db_item(
-        "SELECT oi.id, oi.product_id, oi.quantity, p.name, p.short_description, p.inventory, p.inventory_quantity
+        "SELECT oi.id, oi.product_id, oi.product_name, oi.quantity, p.name, p.short_description, p.inventory, p.inventory_quantity
          FROM order_items oi
          LEFT JOIN products p ON p.id = oi.product_id
          WHERE oi.id = '" . (int) $item_id . "' AND oi.order_id = '" . $order_id . "'
@@ -1189,8 +1197,10 @@ function local_sale_render_rows($lines, $line_errors = array(), $flash_id = 0)
             ? '<img class="pg-sale-thumb" src="' . PATH . h($line['image_name']) . '" alt="" loading="lazy" width="40" height="40">'
             : '<span class="pg-sale-thumb" aria-hidden="true"><i class="bi bi-box-seam"></i></span>';
 
-        // The code under the name, unless the code is the name.
-        $sub = (trim((string) $line['name']) !== $label) ? '<span class="font-monospace">' . h($line['name']) . '</span>' : '';
+        // The code under the name, unless the code is the name or the
+        // product is gone.
+        $code = trim((string) $line['name']);
+        $sub = (($code !== '') && ($code !== $label)) ? '<span class="font-monospace">' . h($code) . '</span>' : '';
         if ($tracked) {
             $sub .= (($sub !== '') ? ' · ' : '') . h(lang(array('string' => 'In stock: {var:1}', 'vars' => array((int) $line['inventory_quantity']))));
             if ($at_limit) {

@@ -3,8 +3,8 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Tests for the counter sale's cart (includes/local_sale.php): which product
- * a scanned code adds and when a line's quantity change is refused for
- * stock.
+ * a scanned code adds, when a line's quantity change is refused for stock,
+ * and the name a line keeps once its product is gone.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -151,6 +151,14 @@ fake_case($line);
 $set = local_sale_set_qty(11, '4');
 $out['set_empty_shelf'] = array('ok' => $set['ok'], 'message' => $set['message'], 'writes' => $GLOBALS['fake_writes']);
 
+// A line whose product was deleted from the catalogue is removed by name.
+fake_case(array(
+	array('value', "/SELECT status FROM orders WHERE id = '50'/", 'incomplete'),
+	array('item', "/WHERE oi.id = '12'/", array('id' => 12, 'product_id' => 30, 'quantity' => 1, 'product_name' => 'LAMP-30', 'name' => null, 'short_description' => null, 'inventory' => null, 'inventory_quantity' => null)),
+));
+$set = local_sale_set_qty(12, '0');
+$out['remove_deleted'] = array('ok' => $set['ok'], 'message' => $set['message']);
+
 echo json_encode($out);
 PHP;
 
@@ -242,4 +250,25 @@ function test_local_sale_set_qty_lowers_a_line_above_the_stock()
 
 	$empty = local_sale_cart_test_result('set_empty_shelf');
 	pg_assert_same(true, $empty['ok'], 'lowered with nothing on the shelf');
+}
+
+// A line whose product was deleted keeps the name the order line was
+// written with: the cart row, its buttons and the messages had none.
+function test_local_sale_deleted_product_line_keeps_its_name()
+{
+	pg_assert_same('LAMP-30', local_sale_product_label(array('name' => null, 'short_description' => null, 'product_name' => 'LAMP-30')), 'the order line\'s name');
+	pg_assert_same('Blue mug', local_sale_product_label(array('name' => 'MUG-7', 'short_description' => 'Blue mug', 'product_name' => 'MUG-7')), 'the short description first');
+	pg_assert_same('MUG-7', local_sale_product_label(array('name' => 'MUG-7', 'short_description' => '', 'product_name' => 'OLD')), 'then the product code');
+
+	$source = (string) file_get_contents(dirname(__DIR__) . '/pinegrap/includes/local_sale.php');
+	pg_assert_contains('SELECT oi.id, oi.product_id, oi.product_name, oi.quantity, oi.price, oi.added_by_offer,', $source, 'the cart lines read it');
+
+	$removed = local_sale_cart_test_result('remove_deleted');
+
+	if ($removed === null) {
+		return;
+	}
+
+	pg_assert_same(true, $removed['ok'], 'removed');
+	pg_assert_same('LAMP-30 removed from the cart.', $removed['message'], 'named');
 }
