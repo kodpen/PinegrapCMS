@@ -211,3 +211,32 @@ function test_book_with_meeting_address_as_a_mail_field()
 	$mail = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/mail.php');
 	pg_assert_contains("'booking_meeting_url'", $mail, 'the meeting address loses the editor\'s http://');
 }
+
+// Confirm sent twice (a second click, or the form sent again from the
+// browser's history) finds the hold already booked: the page shows the
+// booking this session made with the member, not "the time ran out", so the
+// visitor does not book a second time.
+function test_book_with_confirm_sent_twice_shows_the_booking()
+{
+	$member = _book_with_test_member();
+
+	pg_assert_true(pg_booking_link_resent(array(91, 'token', 'confirmed', 7), $member), 'this member\'s booking from this session');
+	pg_assert_same(false, pg_booking_link_resent(array(91, 'token', 'confirmed', 8), $member), 'a booking with another member');
+	pg_assert_same(false, pg_booking_link_resent(null, $member), 'no booking in this session');
+	pg_assert_same(false, pg_booking_link_resent(array(0, '', 'confirmed', 7), $member));
+	pg_assert_same(false, pg_booking_link_resent(array(91, 'token', 'confirmed'), $member), 'a value without the member');
+
+	$source = _book_with_test_source();
+	pg_assert_contains("pg_booking_link_resent(\$_SESSION['software']['booking_link_done'] ?? null, \$bw_member)", $source, 'checked when no hold is left');
+	pg_assert_contains("(string) \$bw_done['token'], \$bw_status, (int) \$bw_member['id'])", $source, 'the booking is kept with its member');
+}
+
+// A meeting link is handed to people anywhere: the times, the held time and
+// the done card name the site's zone they are in, as the booking widget does.
+function test_book_with_times_name_the_zone()
+{
+	pg_assert_contains('Europe/Istanbul', pg_booking_link_zone_note('Europe/Istanbul'));
+
+	$source = _book_with_test_source();
+	pg_assert_same(3, substr_count($source, 'pg_booking_link_zone_note('), 'under the times, with the held time and on the done card');
+}
