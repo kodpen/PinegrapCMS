@@ -4140,7 +4140,8 @@ function ws_handle_action($action, $request)
             return $result['ok'] ? ws_action_ok() : ws_action_error($result['error']);
 
         // The person's own quiet hours (notify.php): their own session only,
-        // never for another person; no API route or MCP tool.
+        // never for another person; no MCP tool (the API route is the team
+        // devices session's own, api_quiet_hours.php).
         case 'ws_quiet_hours_save':
             $result = ws_quiet_hours_save($viewer, $request);
 
