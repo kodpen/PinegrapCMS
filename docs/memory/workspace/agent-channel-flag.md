@@ -1,6 +1,6 @@
 ---
 name: agent-channel-flag
-description: Agent channel switch (ws_channels.agent_channel, #8440): the command, Channel settings and the New channel form; its decisions kept apart from the general screens and the API lists; its tasks: agent-channel-readers
+description: Agent channel switch (ws_channels.agent_channel, #8440): command, Channel settings, New channel form; decisions kept apart from general screens and API lists; tasks: agent-channel-readers
 ---
 
 ## What is an agent channel?
