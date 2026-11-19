@@ -25310,6 +25310,13 @@ const StyleDesigner = (function () {
         searchWrap.innerHTML =
             '<span class="bi bi-search"></span>' +
             '<input type="text" id="sd-props-search" placeholder="' + esc(_sdT('Search...')) + '" autocomplete="off">';
+        // Over the search: the selected element's identity row and its
+        // tabs (_sdPropsHead()).
+        var propsHead = document.createElement('div');
+        propsHead.id = 'sd-props-head';
+        propsHead.className = 'sd-props-head';
+        propsHead.hidden = true;
+        optPane.appendChild(propsHead);
         optPane.appendChild(searchWrap);
         if (props) optPane.appendChild(props);
         outer.insertBefore(designPane, outer.firstChild);
@@ -25404,6 +25411,8 @@ const StyleDesigner = (function () {
 
         if (!q) {
             _sdPropsSearchEmpty('');
+            // The search drew every tab: the open one is drawn alone again.
+            if (panel.querySelector('[data-sd-otab-all]')) { renderProperties(); return; }
             // Restore bodies that were temporarily expanded during search
             panel.querySelectorAll('.sd-sect-body[data-search-expanded]').forEach(function(body) {
                 body.style.display = 'none';
@@ -25415,9 +25424,10 @@ const StyleDesigner = (function () {
             return;
         }
 
-        // The bodies of closed cards are held back; the search draws the
-        // panel with all of them first (renderProperties() filters again).
-        if (panel.querySelector('[data-sd-lazy]')) { renderProperties(); return; }
+        // The bodies of closed cards and the tabs not open are held back;
+        // the search draws the panel with all of them first
+        // (renderProperties() filters again).
+        if (panel.querySelector('[data-sd-lazy], [data-sd-held]')) { renderProperties(); return; }
 
         var isSect = function(el) {
             return el.classList.contains('sd-props-section') || el.classList.contains('sd-app-sect');
@@ -27757,11 +27767,10 @@ const StyleDesigner = (function () {
     // Scroll & highlight the right-panel control for a given class
     function focusClassControl(cls) {
         var ctrl = findControlForClass(cls);
-        // The control may sit in a closed card whose body was not drawn.
-        if (!ctrl && document.querySelector('#sd-properties [data-sd-lazy]')) {
-            _sdSectAllOnce = true;
-            renderProperties();
-            ctrl = findControlForClass(cls);
+        // The control may sit in a closed card whose body was not drawn, or
+        // in a tab that is not open.
+        if (!ctrl && document.querySelector('#sd-properties [data-sd-lazy], #sd-properties [data-sd-held]')) {
+            ctrl = _sdOptReveal(function () { return findControlForClass(cls); });
         }
         if (!ctrl) return;
         // A button group's select is hidden: its selected segment stands in.
@@ -34021,19 +34030,41 @@ const StyleDesigner = (function () {
         });
     }
 
-    function _sdTrLoad(n) {
+    // Where node `n`'s translations go: the drawn box, or the head of the
+    // closed Translation card, whose body is built when it opens.
+    function _sdTrTarget(n) {
+        if (!n) return null;
         var box = document.getElementById('sd-tr-box');
-        if (!box || !n) return;
+        if (box) return box.getAttribute('data-node') === String(n._id || '') ? box : null;
+        var card = document.querySelector('#sd-properties [data-sd-key="tr"]');
+        return (card && selectedNode === n) ? card : null;
+    }
+
+    function _sdTrPut(el, data) {
+        if (el.id === 'sd-tr-box') { _sdTrDraw(el, data); return; }
+        // The closed card: its state in the head (_sdTrState()), or no card
+        // when the element has no wording to translate, as the box does.
+        var segs = data.segments || [];
+        if (!segs.length) { el.parentNode.removeChild(el); return; }
+        var hdr = el.querySelector(':scope > .sd-sect-hdr');
+        if (!hdr) return;
+        hdr.querySelectorAll(':scope > .sd-sect-count, :scope > .sd-sect-sum').forEach(function (x) { x.remove(); });
+        hdr.insertAdjacentHTML('beforeend', _sdSectHeadExtras(_sdTrState(segs, _sdTrConfig().languages.map(function (l) { return l.code; }))));
+    }
+
+    function _sdTrLoad(n) {
+        var box = _sdTrTarget(n);
+        if (!box) return;
         var node = { type: n.type, props: n.props || {} };
         var key = JSON.stringify(node);
-        if (_sdTrCache[key]) { _sdTrDraw(box, _sdTrCache[key]); return; }
+        if (_sdTrCache[key]) { _sdTrPut(box, _sdTrCache[key]); return; }
         var seq = ++_sdTrSeq;
         clearTimeout(_sdTrTimer);
         _sdTrTimer = setTimeout(function () {
             _sdTrCall({ action: 'node', node: node }).then(function (data) {
                 _sdTrCache[key] = data;
-                var now = document.getElementById('sd-tr-box');
-                if (seq === _sdTrSeq && now && now.getAttribute('data-node') === String(n._id || '')) _sdTrDraw(now, data);
+                var now = _sdTrTarget(n);
+                if (seq === _sdTrSeq && now) _sdTrPut(now, data);
             }).catch(function (err) {
                 var now = document.getElementById('sd-tr-box');
                 if (seq === _sdTrSeq && now) now.innerHTML = '<div class="sd-tr-note fg-danger">' + esc(err.message) + '</div>';
@@ -34143,7 +34174,7 @@ const StyleDesigner = (function () {
             h += '<button type="button" class="btn btn-sm btn-outline theme-primary w-100 mt-3" data-sd-il-act="split"><span class="bi bi-distribute-horizontal me-1" aria-hidden="true"></span>' + esc(_sdT('Split into elements')) + '</button>' +
                 '<div style="font-size:.7rem;opacity:.75;margin-top:4px">' + esc(_sdT('This text is links only: each becomes an element of its own, to select, edit and move.')) + '</div>';
         }
-        return sect('bi-link-45deg', _sdT('Links in the text'), '<div class="sd-il" data-sd-il-node="' + esc(n._id || '') + '">' + h + '</div>');
+        return _sdSectKey(sect('bi-link-45deg', _sdT('Links in the text'), '<div class="sd-il" data-sd-il-node="' + esc(n._id || '') + '">' + h + '</div>'), 'link');
     }
 
     // Every change goes through the text: parsed, changed, written back, as
@@ -35098,44 +35129,129 @@ const StyleDesigner = (function () {
         return out;
     }
 
-    // The count and the summary of every section card on the panel, from
+    // The count and the summary of every section card under `root`, from
     // the dots markModifiedProps() put on its rows: on screen for a drawn
-    // body, on a detached copy for a held-back one.
-    function _sdSectHeadsFill(panel) {
-        panel.querySelectorAll('[data-sd-card]').forEach(function (card) {
+    // body, on a detached copy for a held-back one. Bind data sums up its
+    // bound fields; Translation's state comes from _sdTrLoad(). Returns
+    // the changed rows of the cards at the top, a tab's count.
+    function _sdSectHeadsFill(root) {
+        var total = 0;
+        root.querySelectorAll('[data-sd-card]').forEach(function (card) {
             var hdr = card.querySelector(':scope > .sd-sect-hdr');
             var body = card.querySelector(':scope > .sd-sect-body');
-            if (!hdr || !body) return;
+            var key = card.getAttribute('data-sd-key');
+            if (!hdr || !body || key === 'tr') return;
             var sid = body.getAttribute('data-sd-lazy');
-            var root = body;
+            var rowsAt = body;
             if (sid) {
-                root = _sdSectExpand(sid);
-                markModifiedProps(root);
+                rowsAt = _sdSectExpand(sid);
+                markModifiedProps(rowsAt);
             }
-            var rows = Array.prototype.map.call(root.querySelectorAll('.sd-prop-label.sd-prop-modified, .sd-sp-label.sd-prop-modified'), _sdChgRowOf);
+            var rows = Array.prototype.map.call(rowsAt.querySelectorAll('.sd-prop-label.sd-prop-modified, .sd-sp-label.sd-prop-modified'), _sdChgRowOf);
             var sum = _sdChgSummary(rows);
+            if (key === 'bind') {
+                var bound = _sdBindSum(Array.prototype.map.call(rowsAt.querySelectorAll('select[data-bind-prop]'), function (s) {
+                    var o = s.value ? s.options[s.selectedIndex] : null;
+                    return o ? o.text : '';
+                }));
+                bound.count = sum.count;
+                sum = bound;
+            }
+            var outer = card.parentElement ? card.parentElement.closest('[data-sd-card]') : null;
+            if (!outer || !root.contains(outer)) total += sum.count;
             hdr.querySelectorAll(':scope > .sd-sect-count, :scope > .sd-sect-sum').forEach(function (el) { el.remove(); });
             hdr.insertAdjacentHTML('beforeend', _sdSectHeadExtras(sum));
         });
+        return total;
     }
 
-    // Opens the closed card whose held-back body holds element `id` and
-    // draws the panel again; true when there was one.
+    // Draws the panel with every tab and every section's body, finds the
+    // element `find()` returns, opens the cards around it and draws its tab
+    // with it; returns the element as drawn then, or null.
+    function _sdOptReveal(find) {
+        _sdSectAllOnce = true;
+        renderProperties();
+        var el = find();
+        if (el) {
+            for (var c = el.closest('[data-sd-card]'); c; c = c.parentElement ? c.parentElement.closest('[data-sd-card]') : null) {
+                try { localStorage.setItem('sd_cs_' + c.getAttribute('data-sd-card'), '0'); } catch (e) {}
+            }
+            var pane = el.closest('[data-sd-otab]');
+            if (pane) _sdOptTab = pane.getAttribute('data-sd-otab');
+        }
+        renderProperties();
+        return el ? find() : null;
+    }
+
+    // Opens the closed card, or the tab not drawn, that holds element `id`
+    // and draws the panel again; true when there was one.
     function _sdSectOpenFor(id) {
         var needle = 'id="' + id + '"';
-        var hit = Object.keys(_sdPanelLazy).filter(function (sid) { return String(_sdPanelLazy[sid]).indexOf(needle) !== -1; });
-        if (!hit.length) return false;
-        hit.forEach(function (sid) { try { localStorage.setItem('sd_cs_' + sid, '0'); } catch (e) {} });
-        renderProperties();
-        return true;
+        var has = function (map) { return Object.keys(map).some(function (k) { return String(map[k]).indexOf(needle) !== -1; }); };
+        if (!has(_sdPanelLazy) && !has(_sdOptHeld)) return false;
+        return !!_sdOptReveal(function () { return document.getElementById(id); });
     }
 
     // The kind of element the panel showed last (_sdPanelKind()); '' after
     // a panel of another sort (none, read-only, several, a text's inner).
     var _sdPanelLastKind = '';
-    // Set for one draw: build every section's body (the search, a jump to a
-    // control in a closed section).
+    // Set for one draw: build every section's body and draw every tab (the
+    // search, a jump to a control in a closed section or another tab).
     var _sdSectAllOnce = false;
+    // The open tab of the single element's panel, and the markup of the
+    // tabs not drawn, by tab.
+    var _sdOptTab = 'content';
+    var _sdOptHeld = {};
+
+    // The changed rows of a tab not drawn: its markup on a detached copy,
+    // marked as the panel would be.
+    function _sdOptHeldCount(html) {
+        var t = document.createElement('template');
+        t.innerHTML = html;
+        _sdHideBootstrapControls(t.content);
+        markModifiedProps(t.content);
+        return _sdSectHeadsFill(t.content);
+    }
+
+    // The head over the Options search: the identity row and the tab strip
+    // of the single element's panel; hidden for every other panel.
+    function _sdPropsHead(node, shown, counts) {
+        var head = document.getElementById('sd-props-head');
+        if (!head) return;
+        head.hidden = !node;
+        head.innerHTML = node ? _sdIdentityRow(node) + _sdOptTabStrip(shown, _sdOptTab, counts) : '';
+        if (!node) return;
+        _sdIdentityBind(head, node);
+        var strip = head.querySelector('.sd-otabs');
+        if (!strip) return;
+        strip.addEventListener('click', function (e) {
+            var t = e.target.closest ? e.target.closest('.sd-otab') : null;
+            if (t) _sdOptTabGo(t.getAttribute('data-otab'), false);
+        });
+        // Left and Right move between the tabs, as in a tab list.
+        strip.addEventListener('keydown', function (e) {
+            if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+            e.preventDefault();
+            e.stopPropagation();
+            _sdOptTabGo(_sdOptTabNext(_sdOptTab, shown, e.key === 'ArrowRight' ? 1 : -1), true);
+        });
+    }
+
+    // Opens tab `tab` of the Options panel at its top. A search in the box
+    // is cleared: a tab shows its own sections.
+    function _sdOptTabGo(tab, focus) {
+        var panel = document.getElementById('sd-properties');
+        var box = document.getElementById('sd-props-search');
+        var searching = !!(box && box.value.trim());
+        if (!panel || !tab || (tab === _sdOptTab && !searching)) return;
+        if (box) box.value = '';
+        _sdPropsSearchEmpty('');
+        _sdOptTab = tab;
+        panel.scrollTop = 0;
+        renderProperties();
+        var btn = focus ? document.querySelector('#sd-props-head .sd-otab[data-otab="' + tab + '"]') : null;
+        if (btn) btn.focus();
+    }
 
     function renderProperties() {
         var panel = document.getElementById('sd-properties');
@@ -35145,9 +35261,12 @@ const StyleDesigner = (function () {
         _sdControlsInit(panel);
         var _kind = _sdPanelKind(selectedNode);
         var _keepScroll = (_kind && _kind === _sdPanelLastKind) ? panel.scrollTop : 0;
+        _sdOptTab = _sdOptTabKeep(_kind, _sdPanelLastKind, _sdOptTab);
         _sdPanelLastKind = '';
         _sdPanelLazy = {};
+        _sdOptHeld = {};
         _sdSectBuild = null;
+        _sdPropsHead(null);
         if (!selectedNode) {
             panel.innerHTML = '<div class="sd-props-empty"><div><span class="bi bi-cursor d-block mb-3" style="font-size:1.5rem"></span>' + esc(_sdT('Select an element to edit its properties')) + '</div></div>';
             return;
@@ -35255,8 +35374,8 @@ const StyleDesigner = (function () {
         migrateNodeLinkProps(selectedNode);
 
         _sdPanelLastKind = _kind;
-        // While the search has text every body is built: it looks through
-        // all of them.
+        // While the search has text every body is built and every tab
+        // drawn: it looks through all of them.
         var _srchBox = document.getElementById('sd-props-search');
         var _allBodies = _sdSectAllOnce || !!(_srchBox && _srchBox.value.trim());
         _sdSectAllOnce = false;
@@ -35282,18 +35401,17 @@ const StyleDesigner = (function () {
 
         // An element drawing a Bootstrap icon through its class gets the icon
         // picker an icon node has (_sdBiIconSection()).
-        optHtml = _sdBiIconSection(selectedNode) + optHtml;
+        optHtml = _sdSectKey(_sdBiIconSection(selectedNode), 'icon') + optHtml;
 
         // Search and SERP: the part of the page a site search result points at.
-        optHtml += propsSearchSection(selectedNode);
+        optHtml += _sdSectKey(propsSearchSection(selectedNode), 'search');
 
         // Interactions: the node's entrance, hover, click, sticky,
         // parallax or scroll-linked effect (props._fx).
         optHtml += propsInteractions(selectedNode);
 
-        // Data binding section — shown ONLY when selectedNode is inside a system widget.
-        // Renders nothing for nodes outside system widgets (zero overhead in the common case).
-        optHtml = propsDataBinding(selectedNode) + optHtml;
+        // Bind data, or Show by the visit alone (_sdBindKeyed()).
+        optHtml = _sdBindKeyed(propsDataBinding(selectedNode)) + optHtml;
 
         // Ancestor context sections — walk up the tree, show the nearest
         // "notable" ancestor's key options at the top of the panel.
@@ -35330,15 +35448,28 @@ const StyleDesigner = (function () {
             }
         }
 
-        // The Appearance section runs in the same flow as the options. The
-        // element's own section comes first, under the identity row.
-        var _restHtml = _sdTrSection(selectedNode) + ctxHtml + optHtml + rowCss(selectedNode);
+        // Each section goes to its tab by its key (_sdOptPlan()). Only the
+        // open tab is drawn; the others are held back, counted. The search
+        // and a jump to a control draw every tab.
+        var _keyed = _sdSectTakeKeyed(_sdSectKey(_sdTrSection(selectedNode), 'tr') + optHtml + rowCss(selectedNode));
         var _build = _sdSectBuild;
         _sdSectBuild = null;
         _sdPanelLazy = _build.lazy || {};
-        panel.innerHTML = _sdIdentityRow(selectedNode) + '<div class="sd-tab-content">' + _cfSettingsShortcut(selectedNode) + _sdCommentsSettingsShortcut(selectedNode) +
-            _sdPartSettingsBox(selectedNode) + _own.own + _restHtml + '</div>';
-        _sdIdentityBind(panel, selectedNode);
+        var _plan = _sdOptPlan([
+            { key: 'shortcut', html: _cfSettingsShortcut(selectedNode) + _sdCommentsSettingsShortcut(selectedNode) + _sdPartSettingsBox(selectedNode) },
+            { key: 'own', html: _own.own },
+            { key: 'context', html: ctxHtml },
+            { key: 'element', html: _keyed.rest }
+        ].concat(_keyed.keyed));
+        var _shown = _sdOptTabsShown(_plan);
+        _sdOptTab = _sdOptTabPick(_sdOptTab, _shown);
+        var _drawn = '';
+        _shown.forEach(function (t) {
+            if (_allBodies || t === _sdOptTab) _drawn += '<div class="sd-otab-pane" data-sd-otab="' + t + '">' + _plan[t] + '</div>';
+            else _sdOptHeld[t] = _plan[t];
+        });
+        panel.innerHTML = '<div class="sd-tab-content"' + (_allBodies ? ' data-sd-otab-all="1"' : '') +
+            (Object.keys(_sdOptHeld).length ? ' data-sd-held="1"' : '') + '>' + _drawn + '</div>';
         _sdHideBootstrapControls(panel);
         bindPropEvents();
         _sdPartSettingsBind(selectedNode);
@@ -35348,9 +35479,12 @@ const StyleDesigner = (function () {
         if (_cmtOpenBtn) _cmtOpenBtn.addEventListener('click', function () { _sdOpenWidgetSection(this.dataset.swId, 'sd-cmt-settings'); });
         _sdIlBind(selectedNode);
         _sdFxBind(selectedNode);
-        _sdTrLoad(selectedNode);
         markModifiedProps();
-        _sdSectHeadsFill(panel);
+        var _counts = {};
+        panel.querySelectorAll('[data-sd-otab]').forEach(function (pane) { _counts[pane.getAttribute('data-sd-otab')] = _sdSectHeadsFill(pane); });
+        Object.keys(_sdOptHeld).forEach(function (t) { _counts[t] = _sdOptHeldCount(_sdOptHeld[t]); });
+        _sdTrLoad(selectedNode);
+        _sdPropsHead(selectedNode, _shown, _counts);
         panel.scrollTop = _keepScroll;
         // Re-apply search filter if user had typed something
         var srch = document.getElementById('sd-props-search');
@@ -35479,7 +35613,7 @@ const StyleDesigner = (function () {
     // runs to fill it.
     function propsInteractions(n) {
         if (!_sdFxTakes(n)) return '';
-        return sect('bi-stars', _sdT('Interactions'), '<div data-sd-fx-body></div>');
+        return _sdSectKey(sect('bi-stars', _sdT('Interactions'), '<div data-sd-fx-body></div>'), 'interactions');
     }
 
     // Fills the section's body once the panel is drawn. A collapsed
@@ -50102,14 +50236,14 @@ const StyleDesigner = (function () {
             ? _sdBoundHrefNotice(n)
             : '<div class="input-group input-group-sm"><input type="text" id="sd-prop-lo-href" class="form-control" data-prop="href" value="' + esc(href) + '" placeholder="#"><button class="btn btn-outline theme-secondary" type="button" onclick="window.sdOpenFilePicker(\'sd-prop-lo-href\',\'href\')" title="' + esc(_sdT('Choose a File')) + '"><i class="bi bi-folder2-open"></i></button></div>';
 
-        return sect('bi-link-45deg', _sdT('Link Options'),
+        return _sdSectKey(sect('bi-link-45deg', _sdT('Link Options'),
             row(_sdT('URL'), urlRowLO) +
             row(_sdT('Target'), sel('target', [['',_sdT('Default')],['_blank',_sdT('New Tab (_blank)')],['_self',_sdT('Same Window')],['_parent',_sdT('Parent')],['_top', _sdT('Top Window')]], target)) +
             row(_sdT('Relationship'), sel('rel', relOpts, rel)) +
             row(_sdT('Style'), linkStyleSel) +
             (lsVal === 'btn' ? _sdBtnClassRows(cls) : '') +
             row(_sdT('Stretch'), swAttr('data-util-toggle="stretched-link"', isStretched) + _sdStretchHint(isStretched))
-        );
+        ), 'link');
     }
 
     // What a stretched link covers, said while it is on: the nearest box
@@ -50186,7 +50320,7 @@ const StyleDesigner = (function () {
 
         var tColors = ['','primary','secondary','success','danger','warning','info','light','dark','white','black','body','muted','body-emphasis','|','primary-emphasis','secondary-emphasis','success-emphasis','danger-emphasis','warning-emphasis','info-emphasis'];
         var bColors = ['','primary','secondary','success','danger','warning','info','light','dark','white','black','body','body-secondary','body-tertiary','transparent','|','primary-subtle','secondary-subtle','success-subtle','danger-subtle','warning-subtle','info-subtle'];
-        return sect('bi-type', _sdT('Text Options'),
+        return _sdSectKey(sect('bi-type', _sdT('Text Options'),
             _alignHtml +
             row(_sdT('Color'),        colorSelectGroup('text-', tColors)) +
             row(_sdT('Color Opacity'),selStyleGroup(n.props, ['text-opacity-25','text-opacity-50','text-opacity-75','text-opacity-100'], 'Default')) +
@@ -50202,7 +50336,7 @@ const StyleDesigner = (function () {
             row(_sdT('No Wrap'),      swAttr('data-util-toggle="text-nowrap"', hasCls('text-nowrap'))) +
             row(_sdT('Truncate'),     swAttr('data-util-toggle="text-truncate"', hasCls('text-truncate'))) +
             row(_sdT('Text Break'),   swAttr('data-util-toggle="text-break"', hasCls('text-break')))
-        );
+        ), 'text');
     }
 
     // ── Unified Link / Button / Input / Select / Textarea options panel ───────
@@ -54152,17 +54286,88 @@ const StyleDesigner = (function () {
     }
 
     // Takes the element's own section out of `html` (the markup of its own
-    // options): the first card in it, drawn open unless this browser closed
-    // it. Returns { own, rest }.
+    // options): the first card at its top level that is not another tab's
+    // (Text options), drawn open unless this browser closed it. Returns
+    // { own, rest }.
     function _sdSectTakeOwn(html) {
         var b = _sdSectBuild;
-        var m = b ? /data-sd-card="([^"]+)"/.exec(html) : null;
-        var o = m ? b.cards[m[1]] : null;
-        if (!o || html.indexOf(o.html) === -1) return { own: '', rest: html };
+        var re = /data-sd-card="([^"]+)"/g, m, o = null;
+        while (b && !o && (m = re.exec(html))) {
+            var c = b.cards[m[1]];
+            var at = c ? html.indexOf(c.html) : -1;
+            if (at === -1 || _sdHtmlDepth(html.slice(0, at)) !== 0) continue;
+            if (c.key && _sdOptTabOf(c.key) !== 'content') { re.lastIndex = Math.max(re.lastIndex, at + c.html.length); continue; }
+            o = c;
+        }
+        if (!o) return { own: '', rest: html };
         var rest = html.replace(o.html, function () { return ''; });
         o.open = _sdSectOpenRead(o.stored, true);
         if (o.open && b.lazy) delete b.lazy[o.sid];
         return { own: _sdSectCard(o), rest: rest };
+    }
+
+    // The card built at the start of `html` while the single element's
+    // panel is built, or null. `loose`: its markup may have been changed
+    // after it was built.
+    function _sdSectAt(html, loose) {
+        var b = _sdSectBuild;
+        html = String(html || '');
+        var m = b ? /^<div[^>]*\sdata-sd-card="([^"]+)"/.exec(html) : null;
+        var o = m ? b.cards[m[1]] : null;
+        return (o && (loose || html.indexOf(o.html) === 0)) ? o : null;
+    }
+
+    // Gives the card at the start of `html` its key, the section's name for
+    // its tab (_sdOptTabOf()); any other markup is returned as it is.
+    function _sdSectKey(html, key) {
+        var o = _sdSectAt(html);
+        if (!o) return html;
+        var was = o.html.length;
+        o.key = key;
+        o.html = _sdSectCard(o);
+        return o.html + String(html).slice(was);
+    }
+
+    // Takes the keyed cards at the top level of `html` out of it, in their
+    // order. Returns { keyed: [{ key, html }], rest }.
+    function _sdSectTakeKeyed(html) {
+        var b = _sdSectBuild, keyed = [], rest = String(html || '');
+        if (!b) return { keyed: keyed, rest: rest };
+        var re = /data-sd-card="([^"]+)"/g, m;
+        while ((m = re.exec(rest))) {
+            var o = b.cards[m[1]];
+            var at = (o && o.key) ? rest.indexOf(o.html) : -1;
+            if (at === -1 || _sdHtmlDepth(rest.slice(0, at)) !== 0) continue;
+            keyed.push({ key: o.key, html: o.html });
+            re.lastIndex = Math.max(re.lastIndex, at + o.html.length);
+        }
+        keyed.forEach(function (k) { rest = rest.replace(k.html, function () { return ''; }); });
+        return { keyed: keyed, rest: rest };
+    }
+
+    // propsDataBinding() puts its extra rows (Show by the visit) before the
+    // last '</div></div>' of its card, the end of the body. A closed card
+    // has no body drawn, so they are moved into the body it holds back and
+    // the card is drawn again from it.
+    function _sdSectSlotFix(html) {
+        var o = _sdSectAt(html, true);
+        html = String(html || '');
+        if (!o || html === o.html) return html;
+        var at = o.html.lastIndexOf('</div></div>');
+        var add = html.length - o.html.length;
+        if (at < 0 || add <= 0 || html.slice(0, at) !== o.html.slice(0, at) || html.slice(at + add) !== o.html.slice(at)) return html;
+        o.body += html.substr(at, add);
+        if (_sdSectBuild.lazy && Object.prototype.hasOwnProperty.call(_sdSectBuild.lazy, o.sid)) _sdSectBuild.lazy[o.sid] = o.body;
+        o.html = _sdSectCard(o);
+        return o.html;
+    }
+
+    // propsDataBinding()'s card in its tab: Show by the visit alone (no
+    // field to bind) is Advanced's, a card with fields is Bind data.
+    function _sdBindKeyed(html) {
+        html = _sdSectSlotFix(html);
+        var o = _sdSectAt(html);
+        return o ? _sdSectKey(html, o.head === _sdT('Show by the visit') ? 'visit' : 'bind') : html;
     }
 
     // Property HTML helpers
@@ -55379,7 +55584,10 @@ const StyleDesigner = (function () {
 
         // Section order — Colors first (most visual), then layout:
         //   Colors → Display&Sizing → Border → Styling → Spacing → Flexbox → Tooltip → Accessibility
-        return colorsHtml + lHtml + borderHtml + stylingHtml + spacingHtml + fxHtml + tooltipHtml + accessibilityHtml;
+        // Each section with the key of its tab (_sdOptTabOf()).
+        return _sdSectKey(colorsHtml, 'colors') + _sdSectKey(lHtml, 'display') + _sdSectKey(borderHtml, 'border') +
+            _sdSectKey(stylingHtml, 'styling') + _sdSectKey(spacingHtml, 'spacing') + _sdSectKey(fxHtml, 'flexbox') +
+            _sdSectKey(tooltipHtml, 'tooltip') + _sdSectKey(accessibilityHtml, 'accessibility');
     }
     function capFirst(s) { return s.charAt(0).toUpperCase() + s.slice(1).replace(/([A-Z])/g, ' $1'); }
     // The Options row label of an element prop drawn by the generic loops:
@@ -61335,7 +61543,15 @@ const StyleDesigner = (function () {
         if (!sum) return '<span class="sd-sect-sum"></span>';
         var badge = sum.count ? '<span class="sd-sect-count">' + sum.count + '</span>' : '';
         var inner;
-        if (sum.kind === 'color') {
+        if (sum.kind === 'state') {
+            // A state ("EN · not translated"): a badge, amber while
+            // something is missing.
+            return badge + '<span class="sd-sect-sum"><span class="sd-sect-sum-line"><span class="sd-sect-state' + (sum.warn ? ' is-warn' : '') + '">' + esc(sum.text) + '</span></span></span>';
+        }
+        if (sum.kind === 'word') {
+            // A word of the panel given whole ("not bound").
+            inner = '<span class="sd-sect-sum-txt sd-sect-sum-whole">' + esc(sum.text) + '</span>';
+        } else if (sum.kind === 'color') {
             inner = '<span class="sd-color-preview ' + esc(sum.swatch) + '" aria-hidden="true"></span>' +
                 '<span class="sd-sect-sum-txt">' + esc(sum.text) + '</span>';
         } else if (sum.kind === 'value') {
@@ -61349,12 +61565,13 @@ const StyleDesigner = (function () {
     }
 
     // A section card's markup. o: { sid, cls, hdrCls, head (markup), body
-    // (markup), open, lazy, sum }. A closed card of the single element's
-    // panel (lazy) carries no body: it is built when the card opens.
+    // (markup), open, lazy, sum, key }. A closed card of the single
+    // element's panel (lazy) carries no body: it is built when the card
+    // opens. `key` names the section for its tab (_sdOptTabOf()).
     function _sdSectCard(o) {
         var open = !!o.open;
         var hold = !open && o.lazy;
-        return '<div class="' + o.cls + ' sd-card" data-sd-card="' + o.sid + '">' +
+        return '<div class="' + o.cls + ' sd-card" data-sd-card="' + o.sid + '"' + (o.key ? ' data-sd-key="' + o.key + '"' : '') + '>' +
             '<div class="' + o.hdrCls + ' sd-sect-hdr' + (open ? ' sd-sect-open' : '') + '" data-sid="' + o.sid + '" role="button" tabindex="0" aria-expanded="' + (open ? 'true' : 'false') + '">' +
                 '<span class="sd-sect-chev bi bi-chevron-right" aria-hidden="true"></span>' +
                 '<span class="sd-sect-title">' + o.head + '</span>' +
@@ -61364,6 +61581,132 @@ const StyleDesigner = (function () {
         '</div>';
     }
     // ── end of what counts as changed
+
+    // ── The Options tabs: pure helpers ──
+    // No DOM and no editor state: the tab each section of the single
+    // element's panel goes to, the tabs' order and strip, and the closed
+    // Translation and Bind data summaries.
+    // tests/designer_options_tabs_test.php runs them under Node.
+
+    var _SD_OPT_TABS = ['content', 'style', 'advanced'];
+
+    // The tab of a section by the key its builder gives it: Text options,
+    // Spacing, Colours, Border, Display and size and Styling in Style;
+    // Flexbox, Show by the visit, Accessibility, Tooltip, Search and SERP
+    // and Interactions in Advanced. The element's own section and its other
+    // sections, Link, Bind data, Translation and a section without a key
+    // stay with the element, in Content.
+    var _SD_OPT_TAB_OF = {
+        text: 'style', spacing: 'style', colors: 'style', border: 'style', display: 'style', styling: 'style',
+        flexbox: 'advanced', visit: 'advanced', accessibility: 'advanced', tooltip: 'advanced', search: 'advanced', interactions: 'advanced'
+    };
+    function _sdOptTabOf(key) {
+        return Object.prototype.hasOwnProperty.call(_SD_OPT_TAB_OF, key) ? _SD_OPT_TAB_OF[key] : 'content';
+    }
+
+    // Content's order: the shortcut bars, the element's own section, its
+    // other sections (Quick Layouts), its icon, Link, the parent's options,
+    // Translation, Bind data. A key not listed ranks with the element's.
+    var _SD_OPT_CONTENT_RANK = { shortcut: 0, own: 1, element: 2, icon: 3, link: 4, context: 5, tr: 6, bind: 7 };
+
+    // The markup of each tab from the panel's pieces [{ key, html }] in the
+    // order they were built: Content's by the rank above, Style's and
+    // Advanced's as built. Nothing is dropped.
+    function _sdOptPlan(pieces) {
+        var out = { content: '', style: '', advanced: '' };
+        var rank = function (k) { return Object.prototype.hasOwnProperty.call(_SD_OPT_CONTENT_RANK, k) ? _SD_OPT_CONTENT_RANK[k] : _SD_OPT_CONTENT_RANK.element; };
+        var content = [];
+        (pieces || []).forEach(function (p, i) {
+            if (!p || !p.html) return;
+            var tab = _sdOptTabOf(p.key);
+            if (tab === 'content') content.push({ html: p.html, rank: rank(p.key), at: i });
+            else out[tab] += p.html;
+        });
+        content.sort(function (a, b) { return (a.rank - b.rank) || (a.at - b.at); });
+        out.content = content.map(function (c) { return c.html; }).join('');
+        return out;
+    }
+
+    // The tabs drawn, in their order: a tab without a section is not.
+    function _sdOptTabsShown(plan) {
+        return _SD_OPT_TABS.filter(function (t) { return !!(plan && String(plan[t] || '').trim()); });
+    }
+
+    // The tab that opens: the one asked for when it is drawn, else the
+    // first one drawn.
+    function _sdOptTabPick(want, shown) {
+        shown = shown || [];
+        return shown.indexOf(want) !== -1 ? want : (shown[0] || 'content');
+    }
+
+    // The tab for the next panel: an element of the same kind keeps it;
+    // another kind, or a panel of another sort before it, opens Content.
+    function _sdOptTabKeep(kind, lastKind, tab) {
+        return (kind && kind === lastKind && _SD_OPT_TABS.indexOf(tab) !== -1) ? tab : 'content';
+    }
+
+    // The tab Left (dir < 0) or Right moves to among the drawn ones, round
+    // from the last to the first.
+    function _sdOptTabNext(cur, shown, dir) {
+        shown = shown || [];
+        if (!shown.length) return cur;
+        var at = shown.indexOf(cur);
+        if (at === -1) return shown[0];
+        return shown[(at + (dir < 0 ? shown.length - 1 : 1)) % shown.length];
+    }
+
+    // The tab strip: a tab list of the drawn tabs, the open one selected
+    // and the only one reached with Tab. A tab's badge counts its changed
+    // rows (`counts` by tab) and is left out at 0.
+    function _sdOptTabStrip(shown, open, counts) {
+        if (!shown || !shown.length) return '';
+        var names = { content: _sdT('Content'), style: _sdT('Style'), advanced: _sdT('Advanced') };
+        var icons = { content: 'bi-card-text', style: 'bi-palette', advanced: 'bi-gear' };
+        return '<div class="sd-otabs" role="tablist" aria-label="' + esc(_sdT('Option tabs')) + '">' +
+            shown.map(function (t) {
+                var on = t === open;
+                var n = (counts && counts[t]) || 0;
+                return '<button type="button" class="sd-otab' + (on ? ' active' : '') + '" role="tab" data-otab="' + t + '" aria-controls="sd-properties"' +
+                    ' aria-selected="' + (on ? 'true' : 'false') + '" tabindex="' + (on ? '0' : '-1') + '"' +
+                    (n ? ' aria-label="' + esc(_sdT('{var:1}, {var:2} changed', [names[t], n])) + '"' : '') + '>' +
+                    '<span class="bi ' + icons[t] + '" aria-hidden="true"></span>' +
+                    '<span class="sd-otab-txt">' + esc(names[t]) + '</span>' +
+                    (n ? '<span class="sd-otab-count" aria-hidden="true">' + n + '</span>' : '') +
+                '</button>';
+            }).join('') +
+        '</div>';
+    }
+
+    // The closed Translation card's summary: the codes of the languages a
+    // segment still lacks ("EN · not translated"), else "translated".
+    // `segs` as the server sends them ({ translations: { code: { text } } }).
+    function _sdTrState(segs, codes) {
+        var missing = (codes || []).filter(function (c) {
+            return (segs || []).some(function (s) {
+                var t = ((s && s.translations) || {})[c];
+                return !(t && t.text);
+            });
+        });
+        if (missing.length) {
+            return { count: 0, kind: 'state', warn: true, text: _sdT('{var} · not translated', missing.map(function (c) { return String(c).toUpperCase(); }).join(', ')) };
+        }
+        return { count: 0, kind: 'state', warn: false, text: _sdT('translated') };
+    }
+
+    // The closed Bind data card's summary: the first bound field, else
+    // "not bound". `bound` holds each binding's chosen name, '' unbound.
+    function _sdBindSum(bound) {
+        var first = (bound || []).map(function (t) { return String(t == null ? '' : t).trim(); }).filter(Boolean)[0];
+        return first ? { count: 0, kind: 'value', text: first, swatch: '' } : { count: 0, kind: 'word', text: _sdT('not bound'), swatch: '' };
+    }
+
+    // How many <div>s a cut of markup leaves open: 0 at the start of a
+    // top-level block, where a keyed card may be taken out.
+    function _sdHtmlDepth(prefix) {
+        var s = String(prefix || '');
+        return (s.match(/<div\b/g) || []).length - (s.match(/<\/div>/g) || []).length;
+    }
+    // ── end of the Options tabs
 
     // ── The Options panel controls: pure helpers ──
     // No DOM and no editor state here: how a row's control is drawn and
