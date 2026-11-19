@@ -577,9 +577,6 @@ function pg_settings_categories()
                 'pgset-ws-github'          => pg_settings_keywords(lang('workspace, github, repository, webhook, pull request')),
                 'pgset-ws-link-preview'    => pg_settings_keywords(lang('workspace, link, preview, card, web address')),
             ),
-            'lists' => array(
-                'ws_github' => 2,
-            ),
         ),
 
     );
@@ -1044,7 +1041,10 @@ function pg_settings_legacy_anchors()
         // card anchors (smtp_settings.php#mail_domain_card).
         'mail_transport_card' => array('mail_sending', 'pgset-mail-transport'),
         'mail_domain_card' => array('mail_sending', 'pgset-mail-domain'),
+        // The GitHub repository links are managed on GitHub's page of
+        // Connections; the card that held them keeps its place and leads there.
         'ws-github'        => array('workspace_channels', 'pgset-ws-github'),
+        'pgset-ws-github'  => array('workspace_channels', 'pgset-ws-github'),
     );
 }
 

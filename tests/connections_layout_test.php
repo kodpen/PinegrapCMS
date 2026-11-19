@@ -84,7 +84,7 @@ function test_connections_other_side_leads_to_application_access()
 function test_connections_application_fields_are_look_a_fields()
 {
 	$source = connections_layout_source();
-	$start = (int) strpos($source, 'function connections_provider_drawer(');
+	$start = (int) strpos($source, 'function connections_app_form(');
 	$drawers = substr($source, $start, (int) strpos($source, '/* The attention block:') - $start);
 
 	foreach (array('redirect', 'client_id', 'client_secret') as $id) {
@@ -96,4 +96,37 @@ function test_connections_application_fields_are_look_a_fields()
 	pg_assert_true(preg_match('~</button>\s*</div>\s*<div class="pg-field-help connections-copy-status"~', $drawers) === 1, 'the copy status follows the row the script reads');
 	pg_assert_true(preg_match('~class="(btn|form-control|form-label|form-text|nav-|switch")~', $drawers) === 0, 'no old button, field or tab markup in the drawers');
 	pg_assert_true(strpos($drawers, 'font-monospace') === false, 'the redirect address in the text face');
+}
+
+function test_connections_github_page_holds_its_connection_and_its_links()
+{
+	if (!defined('PG_SETTINGS_MENU')) {
+		define('PG_SETTINGS_MENU', true);
+	}
+
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/connections_screen.php');
+	require_once(PG_FUNCTIONS_DIR . '/includes/settings/registry.php');
+
+	$source = connections_layout_source();
+
+	pg_assert_same(array('status', 'details', 'uses', 'repositories'), pg_connections_screen_page_cards('github', array('manager' => true, 'repositories' => true)), 'Status, Connection details, Where it is used, then Repository links');
+	pg_assert_same(array('status', 'details', 'uses'), pg_connections_screen_page_cards('github', array('manager' => true, 'repositories' => false)), 'the links keep the Workspace settings right');
+	pg_assert_same(array('status', 'uses'), pg_connections_screen_page_cards('github', array('manager' => false, 'repositories' => false)), 'the application keeps the screen\'s manager gate');
+	pg_assert_same(array('status', 'uses'), pg_connections_screen_page_cards('stripe', array('manager' => true, 'repositories' => true)), 'a service whose settings are elsewhere has no card of its own yet');
+	pg_assert_same('github', pg_connections_screen_page_providers()['github'] ?? null, 'GitHub\'s application is set up on its page');
+
+	pg_assert_contains("connections_app_form(\$page_provider, \$providers[\$page_provider], \$provider_apps[\$page_provider]", $source, 'the page draws the provider\'s application');
+	pg_assert_contains('name="submit_save" class="pg-button pg-button-sm pg-button-fill"', $source, 'Save is the one filled button');
+	pg_assert_contains('name="submit_try" value="1" class="pg-button pg-button-sm pg-button-quiet"', $source, 'Save and try is quiet');
+	pg_assert_contains("h(lang('Connection details'))", $source, 'the card is titled by what it holds');
+	pg_assert_contains("lang('The GitHub MCP connector of the Workspace\\'s assistants is a connection of its own, with its own token.')", $source, 'the MCP connector is named under Where it is used');
+	pg_assert_contains('ws_github_links_settings_post($ws_viewer, $ws_action, $liveform)', $source, 'the links are written on the page');
+	pg_assert_contains('ws_github_links_can_manage($ws_viewer)', $source, 'under the Workspace settings right');
+
+	$links = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/github_links.php');
+	pg_assert_contains("h(lang('Repository links'))", $links, 'the card on the page');
+	pg_assert_contains('id="pgset-ws-github"', $links, 'the Site Settings card keeps its address');
+	pg_assert_contains("h(lang('Manage in Connections'))", $links, 'and leads to the page');
+	pg_assert_same(array('workspace_channels', 'pgset-ws-github'), pg_settings_legacy_anchors()['pgset-ws-github'] ?? null, 'its own anchor lands on it');
+	pg_assert_same('connections.php', pg_connections_registry()['github']['place'], 'the registry names the new place');
 }
