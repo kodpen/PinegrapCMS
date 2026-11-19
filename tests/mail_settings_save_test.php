@@ -2,11 +2,12 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * What SMTP Settings writes (smtp_settings.php, includes/fn/mail_settings.php):
+ * What Site Settings › E-mail sending writes (includes/settings/mail_sending.save.php,
+ * includes/fn/mail_settings.php):
  * one save writes config.php, a kept SMTP password is checked before anything
  * is written, and each button runs after a successful save with the values
- * it saved. The test e-mail goes out on the next page view, whose constants
- * hold the new settings.
+ * it saved. The test e-mail goes out on the pane read after the save, whose
+ * constants hold the new settings.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -25,21 +26,27 @@ function mail_settings_save_module()
 	return (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/mail_settings.php');
 }
 
+// The category's save (Site Settings › E-mail sending).
 function mail_settings_save_screen()
 {
-	return (string) file_get_contents(PG_FUNCTIONS_DIR . '/smtp_settings.php');
+	return (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/mail_sending.save.php');
 }
 
-// The posted branch of a button, from its isset() check to the redirect
-// that ends it.
+// The category's cards.
+function mail_settings_save_cards()
+{
+	return (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/mail_sending.php');
+}
+
+// A button's branch of the save, from its post_value() check to the next
+// branch or the end.
 function mail_settings_save_branch($post_name)
 {
 	$source = mail_settings_save_screen();
-	$post = strpos($source, 'validate_token_field();');
-	$from = ($post === false) ? false : strpos($source, "isset(\$_POST['" . $post_name . "'])", $post);
-	$to = ($from === false) ? false : strpos($source, 'exit;', $from);
+	$from = strpos($source, "post_value('" . $post_name . "')");
+	$to = ($from === false) ? false : strpos($source, '} elseif', $from);
 
-	return (($from === false) || ($to === false)) ? '' : substr($source, $from, $to - $from);
+	return ($from === false) ? '' : substr($source, $from, (($to === false) ? strlen($source) : $to) - $from);
 }
 
 // A function's body, from its declaration to the next one.
@@ -55,8 +62,9 @@ function mail_settings_save_function($name)
 function test_mail_settings_save_is_one_function()
 {
 	pg_assert_same(1, substr_count(mail_settings_save_module(), 'pg_write_config_file('), 'config.php is written in one place');
-	pg_assert_contains('$saved = pg_mail_settings_save($_POST, $liveform_settings);', mail_settings_save_screen(), 'the screen saves through it');
-	pg_assert_same(0, substr_count(mail_settings_save_screen(), 'pg_write_config_file('), 'the screen writes nothing itself');
+	pg_assert_contains('$mail_saved = pg_mail_settings_save($_POST, $liveform);', mail_settings_save_screen(), 'the category saves through it');
+	pg_assert_same(0, substr_count(mail_settings_save_screen(), 'pg_write_config_file('), 'the category writes nothing itself');
+	pg_assert_same(0, substr_count(mail_settings_save_screen(), 'UPDATE config'), 'the category writes no config row column');
 	pg_assert_same(array(
 		'SYSTEM_SMTP_HOSTNAME', 'SYSTEM_SMTP_USERNAME', 'SYSTEM_SMTP_PASSWORD', 'SYSTEM_SMTP_PORT',
 		'EMAIL_CAMPAIGN_JOB', 'EMAIL_CAMPAIGN_JOB_NUMBER_OF_EMAILS',
@@ -83,14 +91,17 @@ function test_mail_settings_save_uses_the_kept_password_check()
 // Each button's job runs only after a successful save, with what it saved.
 function test_mail_settings_save_buttons_run_after_the_save()
 {
-	foreach (array('generate_dkim_key' => 'pg_mail_settings_dkim_generate($saved', 'test_dkim' => 'pg_mail_settings_dkim_test($saved') as $button => $job) {
-		$branch = mail_settings_save_branch($button);
-		$save = strpos($branch, '$saved = smtp_settings_save($liveform_settings);');
-		$stop = strpos($branch, 'if ($saved !== false)');
-		$run = strpos($branch, $job);
+	$source = mail_settings_save_screen();
+	$save = strpos($source, '$mail_saved = pg_mail_settings_save(');
+	$stop = strpos($source, 'if ($mail_saved !== false) {');
 
-		pg_assert_true($save !== false, $button . ' saves the boxes');
-		pg_assert_true(($stop !== false) && ($stop > $save) && ($run > $stop), $button . ': a failed save stops before the job');
+	pg_assert_true(($save !== false) && ($stop > $save), 'the boxes are saved first, and a failed save stops');
+
+	foreach (array('generate_dkim_key' => 'pg_mail_settings_dkim_generate($mail_saved', 'test_dkim' => 'pg_mail_settings_dkim_test($mail_saved') as $button => $job) {
+		$branch = mail_settings_save_branch($button);
+
+		pg_assert_contains($job, $branch, $button . ' runs its job with the saved values');
+		pg_assert_true(strpos($source, "post_value('" . $button . "')") > $stop, $button . ': only after a successful save');
 	}
 
 	foreach (array('pg_mail_settings_dkim_generate', 'pg_mail_settings_dkim_test') as $name) {
@@ -102,7 +113,7 @@ function test_mail_settings_save_buttons_run_after_the_save()
 	}
 }
 
-// The posting request only sets the flag; the next page view sends.
+// The posting request only sets the flag; the pane read after it sends.
 function test_mail_settings_save_test_mail_waits_for_the_next_view()
 {
 	$source = mail_settings_save_screen();
@@ -110,20 +121,21 @@ function test_mail_settings_save_test_mail_waits_for_the_next_view()
 	$send = mail_settings_save_function('pg_mail_settings_send_test');
 	$unset = strpos($send, "unset(\$_SESSION['smtp_settings_send_test']);");
 	$mail = strpos($send, "'type'               => 'system'");
-	$get = strpos($source, 'if (!$_POST) {');
-	$post = strpos($source, 'validate_token_field();');
-	$read = strpos($source, 'pg_mail_settings_send_test($liveform);');
+	$cards = mail_settings_save_cards();
+	$guard = strpos($cards, "if (empty(\$_GET['search'])) {");
+	$read = strpos($cards, 'pg_mail_settings_send_test($liveform);');
 
-	pg_assert_true(strpos($branch, "\$_SESSION['smtp_settings_send_test'] = true;") > strpos($branch, 'smtp_settings_save('), 'the test is queued only after a successful save');
-	pg_assert_false(strpos($branch, 'email(') !== false, 'the posting request does not send: its constants hold the old settings');
-	pg_assert_true(($read !== false) && ($read > $get) && ($read < $post), 'the next page view sends the test');
+	pg_assert_contains("\$_SESSION['smtp_settings_send_test'] = true;", $branch, 'the test is queued by its button');
+	pg_assert_true(strpos($source, "post_value('send_system_email')") > strpos($source, 'if ($mail_saved !== false) {'), 'the test is queued only after a successful save');
+	pg_assert_false(strpos($source, 'email(') !== false, 'the posting request does not send: its constants hold the old settings');
+	pg_assert_true(($guard !== false) && ($read > $guard), 'the cards send the test, never while the search index draws them');
 	pg_assert_true(($unset !== false) && ($mail !== false) && ($unset < $mail), 'the flag is cleared before sending, so a reload does not send again');
 }
 
 // The labels say the buttons save first.
 function test_mail_settings_save_labels_say_they_save()
 {
-	$source = mail_settings_save_screen();
+	$source = mail_settings_save_cards();
 
 	pg_assert_contains("lang('Save and send a test')", $source);
 	pg_assert_contains("lang('Save and test')", $source);

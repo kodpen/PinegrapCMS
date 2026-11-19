@@ -1755,6 +1755,7 @@
     "district, neighbourhood, location, coverage, do you come to": "ilçe, mahalle, konum, kapsama, geliyor musunuz",
     "district, quarter, area, neighbourhood": "semt, bölge, mahalle",
     "divorce, custody, alimony, will, inheritance, estate": "boşanma, velayet, nafaka, vasiyet, miras, tereke",
+    "dkim, selector, domain, txt record, dns, signature": "dkim, seçici, selector, alan adı, domain, txt kaydı, txt record, dns, imza, signature",
     "docs": "dokumanlar",
     "docs sections, documentation, guides": "doküman bölümleri, belgeler, rehberler",
     "docs, announcements, contributing": "dokümanlar, duyurular, katkı",

@@ -243,6 +243,30 @@ function pg_settings_categories()
             ),
         ),
 
+        // What the site's e-mail is sent through: SMTP Settings' cards, which
+        // write config.php defines (includes/fn/mail_settings.php), not the
+        // config row.
+        'mail_sending' => array(
+            'label' => lang('E-mail sending'),
+            'group' => 'site',
+            'icon'  => 'bi-envelope-at',
+            'description' => lang('The service or server the site\'s e-mail is sent through, the campaign job, DKIM and the sending domain.'),
+            'sections' => array(
+                'pgset-mail-transport' => lang('Sending service'),
+                'pgset-mail-system'    => lang('System'),
+                'pgset-mail-campaign'  => lang('Campaign'),
+                'pgset-mail-dkim'      => lang('DKIM TXT Record'),
+                'pgset-mail-domain'    => lang('Sending domain'),
+            ),
+            'keywords' => array(
+                'pgset-mail-transport' => pg_settings_keywords(lang('smtp, mail, e-mail, sending service, postmark, mailgun, brevo, resend, amazon ses, api key, webhook')),
+                'pgset-mail-system'    => pg_settings_keywords(lang('smtp, mail, e-mail, hostname, port, username, password, gmail, microsoft, connected account, test e-mail')),
+                'pgset-mail-campaign'  => pg_settings_keywords(lang('campaign, campaign job, smtp, e-mail campaign, bulk mail')),
+                'pgset-mail-dkim'      => pg_settings_keywords(lang('dkim, selector, domain, txt record, dns, signature')),
+                'pgset-mail-domain'    => pg_settings_keywords(lang('spf, dkim, dmarc, bounce, complaint, spam, reputation, sending domain')),
+            ),
+        ),
+
         // Incoming e-mail's boxes, read in Communication › Incoming e-mail.
         // Opened by a holder of the Workspace settings right whatever the
         // Workspace's switch says (gate 'mail', pg_settings_mail_settings_allowed()).
@@ -1016,6 +1040,10 @@ function pg_settings_legacy_anchors()
         'pgset-ws-voice'   => array('workspace_assistants', 'pgset-ws-voice'),
         'ws-templates'     => array('workspace_channels', 'pgset-ws-templates'),
         'ws-mail'          => array('mailboxes', 'pgset-ws-mail'),
+        // SMTP Settings became the E-mail sending category; its screen's
+        // card anchors (smtp_settings.php#mail_domain_card).
+        'mail_transport_card' => array('mail_sending', 'pgset-mail-transport'),
+        'mail_domain_card' => array('mail_sending', 'pgset-mail-domain'),
         'ws-github'        => array('workspace_channels', 'pgset-ws-github'),
     );
 }
@@ -1165,9 +1193,9 @@ function pg_settings_tool_groups($user)
         ),
     );
 
-    // Connections: mail, lists, apps.
+    // Connections: apps and marketplaces. Mail sending is the E-mail
+    // sending category of the dialog.
     $connections = array(
-        array('label' => lang('SMTP Settings'),      'icon' => 'bi-envelope-at', 'url' => 'smtp_settings.php'),
         array('label' => lang('Application Access'), 'icon' => 'bi-key',         'url' => 'api_settings.php'),
         array('label' => lang('Connections'),        'icon' => 'bi-cloud-check', 'url' => 'connections.php'),
     );
@@ -1280,7 +1308,6 @@ function pg_settings_tool_keys()
         'view_log.php'              => array('log', 'kayit', 'site log', 'journal', 'akt'),
         'view_audit_log.php'        => array('denetim', 'denetim izi', 'audit', 'audit trail', 'kim degistirdi', 'den'),
         'view_sessions.php'         => array('oturum', 'oturumlar', 'session', 'sessions', 'giris yapan', 'otu'),
-        'smtp_settings.php'         => array('smtp', 'mail ayar', 'email ayar', 'smtpayar'),
         'api_settings.php'          => array('uygulama erisimi', 'uygulama erişimi', 'api anahtar', 'application access', 'api key', 'token', 'uyg'),
         'connections.php'           => array('baglanti', 'connections', 'bagli hesap', 'connected account', 'entegrasyon', 'integration', 'dis hizmet', 'service', 'google', 'microsoft', 'oauth', 'bagla', 'connect'),
         'marketplace_settings.php'  => array('pazaryeri', 'pazar yeri', 'marketplace', 'trendyol', 'hepsiburada', 'n11', 'paz'),

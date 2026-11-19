@@ -20,7 +20,7 @@ $user = validate_user();
 validate_area_access($user, 'manager');
 
 $urls = array(
-    'email'    => 'smtp_settings.php',
+    'email'    => pg_settings_link('mail_sending'),
     'sms'      => pg_settings_link('contact', 'pgset-sms'),
     'whatsapp' => pg_settings_link('contact', 'pgset-whatsapp'),
     'iys'      => pg_settings_link('contact', 'pgset-iys'),

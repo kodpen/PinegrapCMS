@@ -4489,6 +4489,7 @@
     "campaign profile ({var:1}) was modified": "kampanya profili ({var:1}) düzenlendi",
     "campaign profile(s)": "kampanya profili",
     "campaign smtp settings": "kampanya smtp ayarları",
+    "campaign, campaign job, smtp, e-mail campaign, bulk mail": "kampanya, campaign, kampanya görevi, campaign job, smtp, e-posta kampanyası, e-mail campaign, toplu e-posta, bulk mail",
     "campaign, newsletter, subscribe, opt-in, footer": "campaign, newsletter, subscribe, opt-in, footer, kampanya, bulten, bülten, abone, onay, alt bilgi",
     "campaign, newsletter, subscribe, organization, address": "campaign, newsletter, subscribe, organization, address, kampanya, bulten, abone, kurum, adres",
     "campaign, restricted, earmark": "kampanya, şartlı bağış, amaca özel",

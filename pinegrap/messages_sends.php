@@ -177,7 +177,7 @@ if ($sends_manager) {
         WHERE (status = 'sent') OR (attempts > 0)
         ORDER BY id DESC
         LIMIT 1"))) {
-        $sends_transport_warning = pg_messages_note(pg_mail_transport_failure_sentence(), lang('Open SMTP Settings'), PATH . SOFTWARE_DIRECTORY . '/smtp_settings.php', 'amber', 'alert');
+        $sends_transport_warning = pg_messages_note(pg_mail_transport_failure_sentence(), lang('Open E-mail sending'), PATH . SOFTWARE_DIRECTORY . '/' . pg_settings_link('mail_sending', 'pgset-mail-transport'), 'amber', 'alert');
     }
 
     $sends_state_line = $sends_transport_warning . '<p class="pg-text-meta pg-messages-state">' . $sends_state_line . ' · ' . lang('Last run of the mail queue') . ': '

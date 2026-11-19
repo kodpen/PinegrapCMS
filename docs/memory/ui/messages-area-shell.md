@@ -24,8 +24,8 @@ module: messages_area
 - Sends has its list since MA2b (`platform/messages-area-sends.md`); Automatic sends since MA8 (`messages-area-automatic-tab.md`).
 
 ## What does the Channels tab show? (MA7, #9200)
-- Four cards, two to a row and all as high as the highest (MA12): E-mail, SMS, WhatsApp, İYS; each card a link to its settings (SMTP Settings, the Communication cards) with a state pill and one line.
-- E-mail always sends, so its pill is the sending domain's health: the worst of SPF, DKIM and DMARC (`pg_messages_health_worst()`), looked up in DNS on each visit as SMTP Settings does. Line: sender address, transport or SMTP host, sending domain.
+- Four cards, two to a row and all as high as the highest (MA12): E-mail, SMS, WhatsApp, İYS; each card a link to its settings (E-mail sending, the Communication cards) with a state pill and one line.
+- E-mail always sends, so its pill is the sending domain's health: the worst of SPF, DKIM and DMARC (`pg_messages_health_worst()`), looked up in DNS on each visit as E-mail sending does. Line: sender address, transport or SMTP host, sending domain.
 - SMS, WhatsApp, İYS: Connected (complete and on), Incomplete (switched on, a field missing), Off. Lines: provider and sender; number and verified name; brand code and the test environment.
 - `pg_messages_channel_cards($facts, $urls)` is pure and tested; `pg_messages_channel_facts()` reads the accounts.
 

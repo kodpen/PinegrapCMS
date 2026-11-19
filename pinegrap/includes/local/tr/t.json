@@ -6787,6 +6787,7 @@
     "The service did not say whether the pickup was booked. Check it there before asking again.": "Hizmet, kuryenin çağrılıp çağrılmadığını bildirmedi. Yeniden istemeden önce hizmetin kendi ekranından kontrol edin.",
     "The service does not register the site on its own. Register an application in its developer settings with the redirect address {var:1}, then enter its client ID here.": "Hizmet siteyi kendiliğinden kaydetmiyor. Hizmetin geliştirici ayarlarında yönlendirme adresi {var:1} olan bir uygulama kaydedin, sonra istemci kimliğini buraya girin.",
     "The service is published.": "Hizmet yayımlandı.",
+    "The service or server the site's e-mail is sent through, the campaign job, DKIM and the sending domain.": "Sitenin e-postalarının gönderildiği servis ya da sunucu, kampanya görevi, DKIM ve gönderen alan adı.",
     "The service refused the pickup request: {var:1}": "Hizmet kurye talebini reddetti: {var:1}",
     "The service refused to cancel the label: {var:1}": "Servis etiketi iptal etmeyi reddetti: {var:1}",
     "The service request could not be found.": "Servis talebi bulunamadı.",

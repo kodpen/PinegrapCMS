@@ -209,7 +209,7 @@ function test_settings_system_tools_menu_row()
 	pg_assert_contains("\$menu_items[25]['title'] = 'System tools';", $source, 'titled as the screen');
 	pg_assert_contains('$menu_panels_nested .= $menu_tools[\'panels\'];', $source, 'its group panels join the nested ones');
 
-	$tools = array('system_tools.php', 'view_log.php', 'view_audit_log.php', 'smtp_settings.php', 'api_settings.php', 'connections.php', 'marketplace_settings.php', 'software_update.php', 'software_repair.php', 'view_performance_log.php', 'clean_up.php', 'database_engine.php', 'mail_queue.php', 'backups.php', 'cloudflare.php');
+	$tools = array('system_tools.php', 'view_log.php', 'view_audit_log.php', 'api_settings.php', 'connections.php', 'marketplace_settings.php', 'software_update.php', 'software_repair.php', 'view_performance_log.php', 'clean_up.php', 'database_engine.php', 'mail_queue.php', 'backups.php', 'cloudflare.php');
 
 	foreach ($tools as $script) {
 		pg_assert_same('25', settings_system_tools_menu_case_slot($source, $script), $script . ' marks the System tools row');

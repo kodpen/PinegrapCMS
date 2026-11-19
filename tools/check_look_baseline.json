@@ -674,16 +674,8 @@
         "button": 1,
         "tabs": 0
     },
-    "includes/fn/mail_domain_health.php": {
-        "button": 1,
-        "tabs": 0
-    },
     "includes/fn/mail_queue_list.php": {
         "button": 4,
-        "tabs": 0
-    },
-    "includes/fn/mail_settings.php": {
-        "button": 1,
         "tabs": 0
     },
     "includes/fn/merchant_center_push.php": {
