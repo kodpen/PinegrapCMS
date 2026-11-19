@@ -331,7 +331,7 @@ function test_ws_saved_replies_table_wiring()
 	// alone is created, and one an earlier run made is dropped.
 	$step = ws_saved_replies_test_migration_body($migration, 'upgrade_2026_11_0_workspace_saved_replies');
 	pg_assert_false(strpos($step, 'idx_user'), 'no KEY idx_user in 11.0.114');
-	pg_assert_contains('upgrade_2026_11_0_ws_saved_replies_cleanup(); // 11.0.237', $migration);
+	pg_assert_contains('upgrade_2026_11_0_ws_saved_replies_cleanup(); // 11.0.238', $migration);
 	pg_assert_contains("install_drop_index('ws_saved_replies', 'idx_user');", ws_saved_replies_test_migration_body($migration, 'upgrade_2026_11_0_ws_saved_replies_cleanup'));
 	pg_assert_contains('upgrade_2026_11_0_ws_team_replies();         // 11.0.179', $migration);
 	pg_assert_contains("install_add_column('user', 'manage_workspace_replies', \"TINYINT UNSIGNED NOT NULL DEFAULT 0\")", $migration);

@@ -5,7 +5,7 @@ description: Saved replies (ws_saved_replies, 11.0.114, #3090): the table, perso
 
 ## What is kept?
 - `ws_saved_replies` (step 11.0.114, `install_create_table()`): `user_id`, `scope` (VARCHAR(16), 'personal'), `shortcut` (VARCHAR(32)), `title` (VARCHAR(100)), `body` (TEXT), `created_at`/`updated_at`; `UNIQUE uq_shortcut (user_id, scope, shortcut)` (#3075: team replies without a table change).
-- Its left column finds a person's rows, so no `idx_user (user_id)`: it left 11.0.114 in #10403, and 11.0.237 `upgrade_2026_11_0_ws_saved_replies_cleanup()` drops it where it was made.
+- Its left column finds a person's rows, so no `idx_user (user_id)`: it left 11.0.114 in #10403, and 11.0.238 `upgrade_2026_11_0_ws_saved_replies_cleanup()` drops it where it was made.
 - A team reply (#8405) is a row with `scope` `team` and `user_id` 0: the unique key keeps a team shortcut unique for the whole team, and deleting a user takes no team reply along. `ws_saved_reply_owner_id()` gives the user_id a scope's rows carry; `ws_saved_reply_scope()` turns anything but exactly `team` into `personal`.
 - `body` keeps `{customer}` and `{order}` as typed; they are filled when the reply is put in (10b, from the channel's customer, `ws_customer_summary()`), so no customer data is stored.
 - The rows go with their user: `delete_users.php` and `edit_user.php` delete them beside `users_messages_xref`.

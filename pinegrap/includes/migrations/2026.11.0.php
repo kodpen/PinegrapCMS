@@ -224,7 +224,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_site_push_watch();         // 11.0.229
 	upgrade_2026_11_0_ws_meeting_url();          // 11.0.232
 	upgrade_2026_11_0_file_translation();        // 11.0.231
-	upgrade_2026_11_0_ws_saved_replies_cleanup(); // 11.0.237
+	upgrade_2026_11_0_ws_saved_replies_cleanup(); // 11.0.238
 
 }
 
@@ -3496,7 +3496,7 @@ function upgrade_2026_11_0_workspace_saved_replies() {
 
 }
 
-// ws_saved_replies without idx_user (2026.11.0, 11.0.237). A database that
+// ws_saved_replies without idx_user (2026.11.0, 11.0.238). A database that
 // ran 11.0.114 before the index left that step has KEY idx_user (user_id);
 // uq_shortcut (user_id, scope, shortcut) starts with the same column and
 // answers every lookup it served, so the duplicate is dropped. Nothing is
