@@ -283,6 +283,18 @@
         }
     });
 
+    // Typed and not saved: a filter, a page link, a language switch or the
+    // screen's own reload after a job would drop it without a word. The
+    // browser shows its own question.
+    window.addEventListener('beforeunload', function (event) {
+        if (!app.querySelector('.pg-tr-row.pg-tr-dirty')) {
+            return;
+        }
+
+        event.preventDefault();
+        event.returnValue = '';
+    });
+
     // Ctrl+Enter in a box saves it.
     app.addEventListener('keydown', function (event) {
         var target = event.target;

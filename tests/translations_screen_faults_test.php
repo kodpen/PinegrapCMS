@@ -117,3 +117,13 @@ function test_translations_csv_import_leaves_unchanged_rows()
 	pg_assert_contains("{var:2} unchanged", $action, 'the import notice names the unchanged rows');
 	pg_assert_contains("\$summary['unchanged']", $action, 'with their count');
 }
+
+// Typed, unsaved translations were lost without a word on a filter chip, a
+// page link, a language switch or the screen's own reload after a job. The
+// browser now asks while a row is marked unsaved.
+function test_translations_screen_asks_before_leaving_unsaved_rows()
+{
+	$js = translations_faults_test_js();
+
+	pg_assert_true((bool) preg_match("/addEventListener\\('beforeunload', function \\(event\\) \\{[\\s\\S]{0,300}?querySelector\\('\\.pg-tr-row\\.pg-tr-dirty'\\)[\\s\\S]{0,200}?event\\.preventDefault\\(\\);[\\s\\S]{0,80}?event\\.returnValue = '';/", $js), 'a row with unsaved text makes the browser ask');
+}
