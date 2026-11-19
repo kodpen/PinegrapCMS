@@ -850,34 +850,6 @@
         "button": 1,
         "tabs": 0
     },
-    "includes/settings/appearance.php": {
-        "button": 1,
-        "tabs": 0
-    },
-    "includes/settings/fediverse.php": {
-        "button": 4,
-        "tabs": 0
-    },
-    "includes/settings/languages.php": {
-        "button": 1,
-        "tabs": 0
-    },
-    "includes/settings/prep.php": {
-        "button": 2,
-        "tabs": 0
-    },
-    "includes/settings/privacy_analytics.php": {
-        "button": 3,
-        "tabs": 0
-    },
-    "includes/settings/seo.php": {
-        "button": 5,
-        "tabs": 0
-    },
-    "includes/settings/workspace_team.php": {
-        "button": 8,
-        "tabs": 0
-    },
     "includes/templates/edit_auto_dialog.php": {
         "button": 1,
         "tabs": 0

@@ -25,8 +25,9 @@ description: Settings screens in look A (DL5d, #8952): dialog size, rail, head a
 - Body class `pg-measure-edit`: the content centred at 1700 px (since #9269); a page with no status column adds `pg-measure-single` and sits at the form column, 1300 px (#9330). Its save bar is the floating bar from 576 px, "Save" filled.
 
 ## What is not done yet?
-- The 34 px icon tile at a row's left, the segmented control and small quiet button as row controls: per-row markup, card by card.
+- The 34 px icon tile only where every row of a card can carry one (`look-list-title-settings-tile.md`); mixed cards keep none.
 - The foot's amber pill counting unsaved changes and "Undo" (a new behaviour, not only a look).
-- Buttons inside card headers keep their Bootstrap classes, but in Maintenance, Firewall, Security and Features (quiet small `pg-button`, `look-settings-maintenance-security.md`); the page's toolbar (category menu, chips) is unchanged; the page draws one look card per settings card, not one surface for all.
+- The page draws one look card per settings card, not one surface for all.
+- The categories' own moves: S5a `look-commerce-settings-screens.md`, S5b `look-settings-maintenance-security.md`, S5c (the rest and the page toolbar) `look-settings-other-categories.md`, Mailboxes `look-settings-mailboxes.md`.
 
 Related: docs/memory/ui/settings-modal-overview.md

@@ -107,7 +107,7 @@ $pg_settings_cards[] = $ap_card('pgset-fediverse', lang('Fediverse account'), '
                     </div>
                     <div class="col-12">' . ($ap_on ? '
                         <div class="form-text mb-3">' . lang(array('string' => 'Followed as {var:1}.', 'vars' => '<strong>' . h($ap_address) . '</strong>')) . '</div>
-                        <button type="submit" name="ap_lookup" value="1" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-search me-1" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Look me up') . '</span></button>
+                        <button type="submit" name="ap_lookup" value="1" class="pg-button pg-button-quiet pg-button-sm"><i class="bi bi-search" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Look me up') . '</span></button>
                         <div class="form-text">' . lang('Saves, then asks the site\'s own WebFinger through its public address, as a Fediverse server would.') . '</div>' : '
                         <div class="form-text">' . lang('While this is off the site has no Fediverse address.') . '</div>') . '
                     </div>');
@@ -169,7 +169,7 @@ foreach (pg_ap_block_list() as $ap_block) {
                                 <tr>
                                     <td>' . (($ap_block['kind'] === 'domain') ? lang('Server') : lang('Account')) . '</td>
                                     <td class="text-break">' . h($ap_block['value']) . '</td>
-                                    <td class="text-end"><button type="submit" name="ap_block_remove" value="' . (int) $ap_block['id'] . '" class="btn btn-sm btn-outline theme-secondary"><span class="pg-btn-label">' . lang('Lift') . '</span></button></td>
+                                    <td class="text-end"><button type="submit" name="ap_block_remove" value="' . (int) $ap_block['id'] . '" class="pg-button pg-button-quiet pg-button-sm"><span class="pg-btn-label">' . lang('Lift') . '</span></button></td>
                                 </tr>';
 }
 
@@ -177,7 +177,7 @@ $pg_settings_cards[] = $ap_card('pgset-fediverse-followers', lang('Followers and
                     <div class="col-12">
                         <div class="form-text mb-3">' . lang(array('string' => 'Followers: {var:1}', 'vars' => $ap_follower_count)) . (($ap_follower_count > count($ap_followers)) ? ' ' . lang(array('string' => '(the newest {var:1} are listed)', 'vars' => count($ap_followers))) : '') . '</div>' . ($ap_follower_rows !== '' ? '
                         <div class="table-responsive">
-                            <table class="table table-sm align-middle small mb-0">
+                            <table class="table table-hover mb-0 pg-embedded-table">
                                 <thead><tr><th scope="col">' . lang('Name') . '</th><th scope="col">' . lang('Address') . '</th><th scope="col">' . lang('Since') . '</th></tr></thead>
                                 <tbody>' . $ap_follower_rows . '
                                 </tbody>
@@ -185,9 +185,9 @@ $pg_settings_cards[] = $ap_card('pgset-fediverse-followers', lang('Followers and
                         </div>' : '') . '
                     </div>
                     <div class="col-12">
-                        <div class="form-label">' . lang('Blocked accounts and servers') . '</div>' . ($ap_block_rows !== '' ? '
+                        <h3 class="pg-group-label">' . lang('Blocked accounts and servers') . '</h3>' . ($ap_block_rows !== '' ? '
                         <div class="table-responsive">
-                            <table class="table table-sm align-middle small mb-0">
+                            <table class="table table-hover mb-0 pg-embedded-table">
                                 <tbody>' . $ap_block_rows . '
                                 </tbody>
                             </table>
@@ -206,29 +206,30 @@ $pg_settings_cards[] = $ap_card('pgset-fediverse-followers', lang('Followers and
                         <input type="text" name="ap_block_value" id="ap_block_value" class="form-control" value="" autocomplete="off" spellcheck="false" placeholder="https://mastodon.example/users/name"/>
                     </div>
                     <div class="col-12">
-                        <button type="submit" name="ap_block_add" value="1" class="btn btn-sm btn-outline theme-danger" onclick="return confirm(' . h(json_encode(lang('Block it? Its followers, reactions and comments are removed and do not come back when the block is lifted.'))) . ');"><i class="bi bi-slash-circle me-1" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Block') . '</span></button>
+                        <button type="submit" name="ap_block_add" value="1" class="pg-button pg-button-danger pg-button-sm" onclick="return confirm(' . h(json_encode(lang('Block it? Its followers, reactions and comments are removed and do not come back when the block is lifted.'))) . ');"><i class="bi bi-slash-circle" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Block') . '</span></button>
                     </div>');
 
 // ── Deliveries ──
 $ap_delivery_rows = '';
 $ap_states = array('queued' => lang('Waiting'), 'sent' => lang('Sent'), 'failed' => lang('Failed'));
+$ap_state_tones = array('queued' => 'pg-tone-amber', 'sent' => 'pg-tone-teal', 'failed' => 'pg-tone-rose');
 
 foreach (pg_ap_delivery_log(50) as $ap_delivery) {
     $ap_delivery_rows .= '
                                 <tr>
                                     <td>' . h($ap_delivery['type']) . '</td>
                                     <td class="text-break">' . h($ap_delivery['host']) . '</td>
-                                    <td>' . h(isset($ap_states[$ap_delivery['state']]) ? $ap_states[$ap_delivery['state']] : $ap_delivery['state']) . '</td>
+                                    <td><span class="pg-pill ' . (isset($ap_state_tones[$ap_delivery['state']]) ? $ap_state_tones[$ap_delivery['state']] : 'pg-tone-gray') . '">' . h(isset($ap_states[$ap_delivery['state']]) ? $ap_states[$ap_delivery['state']] : $ap_delivery['state']) . '</span></td>
                                     <td class="text-end">' . (int) $ap_delivery['attempts'] . '</td>
                                     <td class="text-nowrap">' . ($ap_delivery['created_at'] ? get_absolute_time(array('timestamp' => $ap_delivery['created_at'])) : '') . '</td>
-                                    <td class="text-end">' . ($ap_delivery['retry'] ? '<button type="submit" name="ap_retry" value="' . $ap_delivery['id'] . '" class="btn btn-sm btn-outline theme-secondary"><span class="pg-btn-label">' . lang('Try again') . '</span></button>' : '') . '</td>
+                                    <td class="text-end">' . ($ap_delivery['retry'] ? '<button type="submit" name="ap_retry" value="' . $ap_delivery['id'] . '" class="pg-button pg-button-quiet pg-button-sm"><span class="pg-btn-label">' . lang('Try again') . '</span></button>' : '') . '</td>
                                 </tr>';
 }
 
 $pg_settings_cards[] = $ap_card('pgset-fediverse-deliveries', lang('Deliveries'), '
                     <div class="col-12">' . ($ap_delivery_rows !== '' ? '
                         <div class="table-responsive">
-                            <table class="table table-sm align-middle small mb-0">
+                            <table class="table table-hover mb-0 pg-embedded-table">
                                 <thead><tr><th scope="col">' . lang('Activity') . '</th><th scope="col">' . lang('Server') . '</th><th scope="col">' . lang('Status') . '</th><th scope="col" class="text-end">' . lang('Attempts') . '</th><th scope="col">' . lang('Queued') . '</th><th scope="col"><span class="visually-hidden">' . lang('Actions') . '</span></th></tr></thead>
                                 <tbody>' . $ap_delivery_rows . '
                                 </tbody>
