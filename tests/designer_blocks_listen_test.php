@@ -126,6 +126,8 @@ function test_designer_block_listen_tree()
 		pg_assert_true(array_key_exists('data-pg-listen-text', _test_listen_block_attrs($btn['children'][1])), 'the label the script fills');
 	}
 	pg_assert_same(array('Listen', 'Pause', 'Stop'), array_map(function ($b) { return $b['children'][1]['props']['text']; }, $root['children']));
+	// (L1) Listen starts the voice: a play icon, beside pause and stop.
+	pg_assert_same(array('bi-play-fill', 'bi-pause-fill', 'bi-stop-fill'), array_map(function ($b) { return $b['children'][0]['props']['iconName']; }, $root['children']));
 	pg_assert_same('false', _test_listen_block_attrs($root['children'][1])['aria-pressed'], 'the pause state is told');
 }
 

@@ -14,6 +14,6 @@ description: Decisions list, schema part 28 (2026-11-19 on): schema the open ver
 
 ## Where is a person's Incoming e-mail menu pin kept? (owner, 2026-11-19, agent channel poll 154, message 9495)
 - "Her kişi kendisi sabitler (Notlarım gibi)", the option that named the column: `ws_profiles.mail_pinned`, beside `notes_pinned`, added by one sub-step of the open version with `install_add_column()`. The other choice, one site-wide switch in config, needed none.
-- Plan: `plans/incoming-mail-menu-card.md`, step IM1.
+- Built in #10408, step 11.0.239 of 2026.11.0: `ui/main-menu-mail-row.md`.
 
 Related: docs/memory/workflow/decisions-made.md, docs/memory/release/released-vs-open-version.md

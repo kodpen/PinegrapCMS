@@ -2017,3 +2017,70 @@ function test_proto_hotspots_view_opens_the_page_whole()
 	pg_assert_contains("_sdT('Show less')", $source, 'the close button\'s words');
 	pg_assert_contains('.sd-proto-pic-foot.sd-proto-pic-foot-on {', $css, 'the button is styled');
 }
+
+// A mark under 12 screen pixels wide or high (drawn at least 6) takes
+// presses 4 screen pixels around it at any zoom: the reach in frame units.
+function test_proto_hotspots_mark_reach_for_a_small_mark()
+{
+	$out = proto_hotspots_test_node('out = [H.markReach({ w: 6, h: 6 }, 1), H.markReach({ w: 57, h: 14 }, 1), H.markReach({ w: 57, h: 14 }, 0.5), H.markReach({ w: 2, h: 2 }, 2),'
+		. ' H.markReach({ w: 57, h: 14 }, 0.3), H.markReach({ w: 10, h: 40 }, 1), H.markReach(null, 1), H.markReach({ w: 2, h: 2 }, 0)];');
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array(4, 0, 8, 0, 13.33, 4, 0, 4), $out, 'small on screen: 4 screen pixels in frame units; 12 or more: none; drawn at least 6; no zoom reads as 1');
+}
+
+// The "+" handle beside a drawable mark: 20 screen pixels and 4 from the
+// mark at any zoom (its box in screen pixels, scaled by 1 / k), right of
+// the mark, else left when the right runs past the picture's box, else
+// under or over it when a neighbour's mark is in the way; level with the
+// mark, kept inside the box.
+function test_proto_hotspots_mark_grip_beside_the_mark()
+{
+	$room = proto_hotspots_test_js(array('w' => 228, 'h' => 285));
+	$nav = proto_hotspots_test_js(array(array('x' => 20, 'y' => 4, 'w' => 30, 'h' => 6), array('x' => 88, 'y' => 4, 'w' => 30, 'h' => 6)));
+	$out = proto_hotspots_test_node('var room = ' . $room . ';'
+		. ' out = { right: H.markGrip({ x: 20, y: 40, w: 57, h: 14 }, room, 1, []), edge: H.markGrip({ x: 200, y: 40, w: 20, h: 14 }, room, 1),'
+		. ' nav: H.markGrip({ x: 54, y: 4, w: 30, h: 6 }, room, 1, ' . $nav . '),'
+		. ' out: H.markGrip({ x: 20, y: 40, w: 57, h: 14 }, room, 0.5, []), in: H.markGrip({ x: 20, y: 40, w: 57, h: 14 }, room, 2, []),'
+		. ' top: H.markGrip({ x: 20, y: 0, w: 30, h: 6 }, room, 0.5, []), tiny: H.markGrip({ x: 100, y: 100, w: 2, h: 2 }, room, 1, []),'
+		. ' wide: H.markGrip({ x: -10, y: 0, w: 248, h: 285 }, room, 1, []), none: H.markGrip(null, room, 1, []) };');
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array('side' => 'right', 'x' => 77, 'y' => 37, 'w' => 24, 'h' => 20, 'scale' => 1), $out['right'], 'right of the mark, level with its middle');
+	pg_assert_same(array('side' => 'left', 'x' => 176, 'y' => 37, 'w' => 24, 'h' => 20, 'scale' => 1), $out['edge'], 'at the picture\'s right edge: left of it');
+	pg_assert_same(array('side' => 'below', 'x' => 59, 'y' => 10, 'w' => 20, 'h' => 24, 'scale' => 1), $out['nav'], 'between two neighbours in a menu: under it');
+	pg_assert_same(array('side' => 'right', 'x' => 77, 'y' => 27, 'w' => 24, 'h' => 20, 'scale' => 2), $out['out'], 'zoomed out: twice as large in frame units, the same on screen');
+	pg_assert_same(array('side' => 'right', 'x' => 77, 'y' => 42, 'w' => 24, 'h' => 20, 'scale' => 0.5), $out['in'], 'zoomed in: half as large');
+	pg_assert_same(array('side' => 'right', 'x' => 50, 'y' => -6, 'w' => 24, 'h' => 20, 'scale' => 2), $out['top'], 'kept inside the picture\'s box');
+	pg_assert_same(array('side' => 'right', 'x' => 106, 'y' => 93, 'w' => 24, 'h' => 20, 'scale' => 1), $out['tiny'], 'beside the mark as drawn, at least 6');
+	pg_assert_same(array('side' => 'right', 'x' => 214, 'y' => 132.5, 'w' => 24, 'h' => 20, 'scale' => 1), $out['wide'], 'no room on any side: over the mark\'s right end, inside the box');
+	pg_assert_same(null, $out['none'], 'no mark, no handle');
+}
+
+// The view's side: the pointer or the focus on a drawable mark of the
+// selected frame shows the handle, which stands for its mark (a press on
+// it is the mark's: a click picks, a drag draws); the handle and the small
+// marks' reach follow the zoom; nothing new is written.
+function test_proto_hotspots_view_grip_and_reach()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/style_designer.css');
+
+	pg_assert_contains("var row = grip ? _sdProto.grip.hot : (event.target.closest ? event.target.closest('.sd-proto-hot') : null);", $source, 'a press on the handle is a press on its mark');
+	pg_assert_contains("return !!(el && ui && el.classList && el.classList.contains('sd-proto-hot-own') && el.classList.contains('sd-proto-hot-draw') && ui.boxes.contains(el));", $source, 'only a drawable mark of the selected frame gets the handle');
+	pg_assert_contains("_sdProtoGrip(_sdProtoGripOk(g.hover) ? g.hover : (_sdProtoGripOk(focus) ? focus : null));", $source, 'the pointer first, else the focus');
+	pg_assert_contains("var at = window.PGProtoHotspots.markGrip(_sdProtoHotRect(hot), { w: layer.clientWidth, h: layer.clientHeight }, _sdProto.view.k, others);", $source, 'placed by markGrip() at the zoom');
+	pg_assert_contains("el.style.transform = 'scale(' + at.scale + ')';", $source, '20 screen pixels at any zoom');
+	pg_assert_contains("var reach = window.PGProtoHotspots.markReach(_sdProtoHotRect(hot), k);", $source, 'the reach of the marks shown');
+	pg_assert_contains("_sdProtoZoomSoon();", $source, 'both follow the zoom');
+	pg_assert_contains("ui.boxes.addEventListener('focusin', function () { _sdProtoGripFor(); });", $source, 'the focus shows the handle');
+	foreach (array('.sd-proto-grip {', '.sd-proto-grip-dot {', '.sd-proto-grip-below {', '.sd-proto-hot.sd-proto-hot-reach::before {', '.sd-proto .pgc-boxes.sd-proto-drawing .sd-proto-grip {') as $selector) {
+		pg_assert_contains($selector, $css, 'styled: ' . $selector);
+	}
+}

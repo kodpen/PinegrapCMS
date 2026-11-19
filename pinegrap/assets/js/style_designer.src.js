@@ -7230,6 +7230,10 @@ const StyleDesigner = (function () {
         // a browser that can subscribe; the canvas draws it as it will look
         // before the visitor presses (its other states stay hidden).
         '[data-pg-push][hidden] { display:block !important; }',
+        // A course block is hidden in its markup until its script has the
+        // member's view; the canvas draws it as it will look (its status
+        // line, Continue and empty line stay hidden).
+        '[data-pg-course][hidden] { display:block !important; }',
     ];
 
     // The canvas stylesheet for this design: everything for a Bootstrap design,
@@ -35207,6 +35211,21 @@ const StyleDesigner = (function () {
     var _sdOptTab = 'content';
     var _sdOptHeld = {};
 
+    // What the open rules of Style and Advanced read for node `n`
+    // (_sdOptOpenByDefault()): a text element, a flex box, a parent that is
+    // one, a Show by the visit condition set.
+    function _sdOptCtx(n) {
+        var p = n.props || {};
+        var up = _sdAnyParent(n);
+        var par = up ? up.parent : null;
+        return {
+            text: _sdOptIsText(n.type, p.tag, p.contentType),
+            flex: _sdOptIsFlex(n.type, p.cssClass),
+            parentFlex: !!(par && _sdOptIsFlex(par.type, (par.props || {}).cssClass)),
+            visit: _sdCondRowsOf(n).length > 0
+        };
+    }
+
     // The changed rows of a tab not drawn: its markup on a detached copy,
     // marked as the panel would be.
     function _sdOptHeldCount(html) {
@@ -35383,7 +35402,7 @@ const StyleDesigner = (function () {
         var _srchBox = document.getElementById('sd-props-search');
         var _allBodies = _sdSectAllOnce || !!(_srchBox && _srchBox.value.trim());
         _sdSectAllOnce = false;
-        _sdSectBuild = { cards: {}, lazy: _allBodies ? null : {} };
+        _sdSectBuild = { cards: {}, lazy: _allBodies ? null : {}, ctx: _sdOptCtx(selectedNode) };
 
         // Options section (node-specific)
         var optHtml = '';
@@ -50324,7 +50343,7 @@ const StyleDesigner = (function () {
 
         var tColors = ['','primary','secondary','success','danger','warning','info','light','dark','white','black','body','muted','body-emphasis','|','primary-emphasis','secondary-emphasis','success-emphasis','danger-emphasis','warning-emphasis','info-emphasis'];
         var bColors = ['','primary','secondary','success','danger','warning','info','light','dark','white','black','body','body-secondary','body-tertiary','transparent','|','primary-subtle','secondary-subtle','success-subtle','danger-subtle','warning-subtle','info-subtle'];
-        return _sdSectKey(sect('bi-type', _sdT('Text Options'),
+        return _sdSectKey(sect('bi-type', _sdT('Text'),
             _alignHtml +
             row(_sdT('Color'),        colorSelectGroup('text-', tColors)) +
             row(_sdT('Color Opacity'),selStyleGroup(n.props, ['text-opacity-25','text-opacity-50','text-opacity-75','text-opacity-100'], 'Default')) +
@@ -50339,7 +50358,8 @@ const StyleDesigner = (function () {
             row(_sdT('Monospace'),    swAttr('data-util-toggle="font-monospace"', hasCls('font-monospace'))) +
             row(_sdT('No Wrap'),      swAttr('data-util-toggle="text-nowrap"', hasCls('text-nowrap'))) +
             row(_sdT('Truncate'),     swAttr('data-util-toggle="text-truncate"', hasCls('text-truncate'))) +
-            row(_sdT('Text Break'),   swAttr('data-util-toggle="text-break"', hasCls('text-break')))
+            row(_sdT('Text Break'),   swAttr('data-util-toggle="text-break"', hasCls('text-break'))),
+            _sdT('Text Options')
         ), 'text');
     }
 
@@ -54328,6 +54348,17 @@ const StyleDesigner = (function () {
         if (!o) return html;
         var was = o.html.length;
         o.key = key;
+        // A Style or Advanced section opens by its own rule while this
+        // browser kept nothing for it (_sdOptOpenByDefault()); its body is
+        // held back or drawn to match.
+        var b = _sdSectBuild;
+        if (b.ctx && _sdOptTabOf(key) !== 'content') {
+            o.open = _sdSectOpenRead(o.stored, _sdOptOpenByDefault(key, b.ctx));
+            if (b.lazy) {
+                if (o.open) delete b.lazy[o.sid];
+                else b.lazy[o.sid] = o.body;
+            }
+        }
         o.html = _sdSectCard(o);
         return o.html + String(html).slice(was);
     }
@@ -54374,9 +54405,11 @@ const StyleDesigner = (function () {
         return o ? _sdSectKey(html, o.head === _sdT('Show by the visit') ? 'visit' : 'bind') : html;
     }
 
-    // Property HTML helpers
-    function sect(icon, title, body) {
-        var sid = 'sdsc' + (icon + title).replace(/[^a-zA-Z0-9]/g, '').toLowerCase().slice(0, 24);
+    // Property HTML helpers. `idName`: the name the card's id is made
+    // from when it is not `title` (a renamed section keeps its id, so the
+    // open state this browser kept under sd_cs_<sid> stays).
+    function sect(icon, title, body, idName) {
+        var sid = 'sdsc' + (icon + (idName || title)).replace(/[^a-zA-Z0-9]/g, '').toLowerCase().slice(0, 24);
         // A card's head carries no icon: the arrow, the name, the count.
         return _sdSectMake(sid, 'sd-props-section', 'sd-props-section-title', title, body);
     }
@@ -55067,8 +55100,9 @@ const StyleDesigner = (function () {
         }
 
         // ── Appearance collapsible sub-section wrapper ──
-        function as(title, content) {
-            var sid = 'sdsc-ap-' + title.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+        // `idName` as sect()'s: a renamed section keeps its id.
+        function as(title, content, idName) {
+            var sid = 'sdsc-ap-' + (idName || title).replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
             return _sdSectMake(sid, 'sd-app-sect', 'sd-app-sect-hdr', title, content);
         }
 
@@ -55209,7 +55243,7 @@ const StyleDesigner = (function () {
             _overflowRow +
             _arHtml +
         '</div>';
-        var dsHtml = as(_sdT('Display &amp; Sizing'), _dsBody);
+        var dsHtml = as(_sdT('Size and display'), _dsBody, _sdT('Display &amp; Sizing'));
 
         // ── Flexbox ──
         // All flex utilities support responsive variants: flex-{bp}-row, justify-content-{bp}-center, etc.
@@ -55240,7 +55274,7 @@ const StyleDesigner = (function () {
             mkRespRow(_sdT('Flex Order'),      'order-',            orderValues,    _sdT('Default')) +
             mkRespRow(_sdT('Gap'),             'gap-',              gapValues,      _sdT('Default')) +
         '</div>';
-        var fxHtml = as(_sdT('Flexbox'), _fxBody);
+        var fxHtml = as(_sdT('Layout'), _fxBody, _sdT('Flexbox'));
 
         // dsHtml and fxHtml live in separate slots of the final return — Colors + Border should sit
         // between Display&Sizing and Flexbox (those are the most-used properties after Display),
@@ -55346,7 +55380,7 @@ const StyleDesigner = (function () {
         function _radList(prefix) {
             return _radSizes.map(function (n) { return prefix + n; });
         }
-        var borderHtml = as(_sdT('Border'),
+        var borderHtml = as(_sdT('Border and corner'),
             row(_sdT('Border'), borderSideSel) +
             row(_sdT('Color'),  colorSelectGroup('border-', borderColors)) +
             row(_sdT('Width'),  selStyleGroup(n.props, ['border-1','border-2','border-3','border-4','border-5'], 'Default')) +
@@ -55354,12 +55388,13 @@ const StyleDesigner = (function () {
             row(_sdT('Top Radius'),    selStyleGroup(n.props, _radList('rounded-top-'),    'Default')) +
             row(_sdT('Right Radius'),  selStyleGroup(n.props, _radList('rounded-end-'),    'Default')) +
             row(_sdT('Bottom Radius'), selStyleGroup(n.props, _radList('rounded-bottom-'), 'Default')) +
-            row(_sdT('Left Radius'),   selStyleGroup(n.props, _radList('rounded-start-'),  'Default'))
+            row(_sdT('Left Radius'),   selStyleGroup(n.props, _radList('rounded-start-'),  'Default')),
+            _sdT('Border')
         );
 
-        // Colors — consolidates Text Col + Bg Col + Shadow under one appearance roof.
-        // Shadow moved here from its own section so all visual tweaks are in one place.
-        // Also includes custom background image/color/gradient inline-style customization.
+        // Color and background: text and background colours, opacities and
+        // the custom background image/color/gradient inline style. The
+        // shadow is in Shadow and effect.
         var _bgImgRaw = getAttrStyleProp(n, 'background-image');
         var _bgImgUrl = '', _bgGradType = 'none', _bgGradStr = '';
         if (/^linear-gradient/i.test(_bgImgRaw))      { _bgGradType = 'linear'; _bgGradStr = _bgImgRaw; }
@@ -55534,7 +55569,7 @@ const StyleDesigner = (function () {
                 '</div>' +
             '</div>';
 
-        var colorsHtml = as(_sdT('Colors'),
+        var colorsHtml = as(_sdT('Color and background'),
             row(_sdT('Text Color'),   colorSelectGroup('text-', tColors)) +
             row(_sdT('Text Opacity'), selStyleGroup(n.props, ['text-opacity-25','text-opacity-50','text-opacity-75','text-opacity-100'], 'Default')) +
             '<div class="sd-sp-divider"></div>' +
@@ -55543,9 +55578,8 @@ const StyleDesigner = (function () {
             row(_sdT('Gradient'),     swAttr('data-util-toggle="bg-gradient"', (' ' + cls + ' ').indexOf(' bg-gradient ') !== -1)) +
             '<div class="sd-sp-divider"></div>' +
             row(_sdT('Opacity'),      selStyleGroup(n.props, ['opacity-0','opacity-25','opacity-50','opacity-75','opacity-100'], 'Default')) +
-            '<div class="sd-sp-divider"></div>' +
-            row(_sdT('Shadow'),       selStyleGroup(n.props, ['shadow-none','shadow-sm','shadow','shadow-lg'], 'Default')) +
-            bgSection
+            bgSection,
+            _sdT('Colors')
         );
 
         // ── Tooltip ──
@@ -55558,15 +55592,17 @@ const StyleDesigner = (function () {
             row(_sdT('Text'),      '<input type="text" class="form-control form-control-sm" data-prop="tooltipTitle" value="' + esc(_ttTitle) + '" placeholder="' + esc(_sdT('Tooltip text...')) + '">')
         );
 
-        // ── Styling (placeholder / focus-ring etc.) ──
-        // New consolidated section. Currently hosts Placeholder (loading skeleton) and Focus
-        // Ring switches. Future: migrate Border/Colors/Effects here for a single visual-tweak
-        // panel — deferred to keep this change scoped.
-        var stylingHtml = as(_sdT('Styling'),
+        // ── Shadow and effect ──
+        // The shadow, then the loading placeholder and the focus ring (the
+        // section once named Styling, whose card id it keeps).
+        var stylingHtml = as(_sdT('Shadow and effect'),
+            row(_sdT('Shadow'),      selStyleGroup(n.props, ['shadow-none','shadow-sm','shadow','shadow-lg'], 'Default')) +
+            '<div class="sd-sp-divider"></div>' +
             row(_sdT('Placeholder'), sw('placeholderMode', !!p.placeholderMode)) +
             row(_sdT('Animation'),   sel('placeholderAnim', [['',_sdT('None')],['glow',_sdT('Glow')],['wave',_sdT('Wave')]], p.placeholderAnim || '')) +
             '<div class="sd-sp-divider"></div>' +
-            row(_sdT('Focus Ring'),  sw('focusRing', !!p.focusRing))
+            row(_sdT('Focus Ring'),  sw('focusRing', !!p.focusRing)),
+            _sdT('Styling')
         );
 
         // ── Accessibility ──
@@ -55586,9 +55622,9 @@ const StyleDesigner = (function () {
             row(_sdT('Aria Describedby'),  '<input type="text" class="form-control form-control-sm" data-nodeattr="aria-describedby" value="' + esc(_aDBy) + '" placeholder="' + esc(_sdT('id of describing element')) + '">')
         );
 
-        // Section order — Colors first (most visual), then layout:
-        //   Colors → Display&Sizing → Border → Styling → Spacing → Flexbox → Tooltip → Accessibility
-        // Each section with the key of its tab (_sdOptTabOf()).
+        // Each section with the key of its tab (_sdOptTabOf()); the single
+        // element's panel puts them in its tabs' order (_sdOptPlan()), the
+        // several-element panel draws them in this order.
         return _sdSectKey(colorsHtml, 'colors') + _sdSectKey(lHtml, 'display') + _sdSectKey(borderHtml, 'border') +
             _sdSectKey(stylingHtml, 'styling') + _sdSectKey(spacingHtml, 'spacing') + _sdSectKey(fxHtml, 'flexbox') +
             _sdSectKey(tooltipHtml, 'tooltip') + _sdSectKey(accessibilityHtml, 'accessibility');
@@ -61594,12 +61630,13 @@ const StyleDesigner = (function () {
 
     var _SD_OPT_TABS = ['content', 'style', 'advanced'];
 
-    // The tab of a section by the key its builder gives it: Text options,
-    // Spacing, Colours, Border, Display and size and Styling in Style;
-    // Flexbox, Show by the visit, Accessibility, Tooltip, Search and SERP
-    // and Interactions in Advanced. The element's own section and its other
-    // sections, Link, Bind data, Translation and a section without a key
-    // stay with the element, in Content.
+    // The tab of a section by the key its builder gives it: Text (text),
+    // Spacing, Color and background (colors), Border and corner (border),
+    // Size and display (display) and Shadow and effect (styling) in Style;
+    // Layout (flexbox), Show by the visit, Accessibility, Tooltip, Search
+    // and SERP and Interactions in Advanced. The element's own section and
+    // its other sections, Link, Bind data, Translation and a section
+    // without a key stay with the element, in Content.
     var _SD_OPT_TAB_OF = {
         text: 'style', spacing: 'style', colors: 'style', border: 'style', display: 'style', styling: 'style',
         flexbox: 'advanced', visit: 'advanced', accessibility: 'advanced', tooltip: 'advanced', search: 'advanced', interactions: 'advanced'
@@ -61608,27 +61645,66 @@ const StyleDesigner = (function () {
         return Object.prototype.hasOwnProperty.call(_SD_OPT_TAB_OF, key) ? _SD_OPT_TAB_OF[key] : 'content';
     }
 
-    // Content's order: the shortcut bars, the element's own section, its
-    // other sections (Quick Layouts), its icon, Link, the parent's options,
-    // Translation, Bind data. A key not listed ranks with the element's.
-    var _SD_OPT_CONTENT_RANK = { shortcut: 0, own: 1, element: 2, icon: 3, link: 4, context: 5, tr: 6, bind: 7 };
+    // Each tab's order. Content: the shortcut bars, the element's own
+    // section, its other sections (Quick Layouts), its icon, Link, the
+    // parent's options, Translation, Bind data; a key not listed ranks with
+    // the element's. Style: Text, Spacing, Color and background, Border and
+    // corner, Size and display, Shadow and effect. Advanced: Layout, Show by
+    // the visit, Accessibility, Tooltip, Search and SERP, Interactions.
+    var _SD_OPT_RANK = {
+        content: { shortcut: 0, own: 1, element: 2, icon: 3, link: 4, context: 5, tr: 6, bind: 7 },
+        style: { text: 0, spacing: 1, colors: 2, border: 3, display: 4, styling: 5 },
+        advanced: { flexbox: 0, visit: 1, accessibility: 2, tooltip: 3, search: 4, interactions: 5 }
+    };
 
     // The markup of each tab from the panel's pieces [{ key, html }] in the
-    // order they were built: Content's by the rank above, Style's and
-    // Advanced's as built. Nothing is dropped.
+    // order they were built, each tab in its order above; pieces of one
+    // rank keep the order they were built in. Nothing is dropped.
     function _sdOptPlan(pieces) {
-        var out = { content: '', style: '', advanced: '' };
-        var rank = function (k) { return Object.prototype.hasOwnProperty.call(_SD_OPT_CONTENT_RANK, k) ? _SD_OPT_CONTENT_RANK[k] : _SD_OPT_CONTENT_RANK.element; };
-        var content = [];
+        var by = { content: [], style: [], advanced: [] };
         (pieces || []).forEach(function (p, i) {
             if (!p || !p.html) return;
             var tab = _sdOptTabOf(p.key);
-            if (tab === 'content') content.push({ html: p.html, rank: rank(p.key), at: i });
-            else out[tab] += p.html;
+            var ranks = _SD_OPT_RANK[tab];
+            var r = Object.prototype.hasOwnProperty.call(ranks, p.key) ? ranks[p.key] : (tab === 'content' ? ranks.element : 99);
+            by[tab].push({ html: p.html, rank: r, at: i });
         });
-        content.sort(function (a, b) { return (a.rank - b.rank) || (a.at - b.at); });
-        out.content = content.map(function (c) { return c.html; }).join('');
+        var out = {};
+        _SD_OPT_TABS.forEach(function (t) {
+            by[t].sort(function (a, b) { return (a.rank - b.rank) || (a.at - b.at); });
+            out[t] = by[t].map(function (c) { return c.html; }).join('');
+        });
         return out;
+    }
+
+    // Whether a Style or Advanced section opens while this browser kept
+    // nothing for it (a kept state wins, _sdSectOpenRead()). `ctx`:
+    // { text, flex, parentFlex, visit } from _sdOptCtx(). Text opens on a
+    // text element, Spacing always, Layout on a flex box or the child of
+    // one, Show by the visit when a condition is set; the others stay
+    // closed.
+    function _sdOptOpenByDefault(key, ctx) {
+        ctx = ctx || {};
+        if (key === 'text') return !!ctx.text;
+        if (key === 'spacing') return true;
+        if (key === 'flexbox') return !!(ctx.flex || ctx.parentFlex);
+        if (key === 'visit') return !!ctx.visit;
+        return false;
+    }
+
+    // A text element: a heading, a paragraph or a span, the elements whose
+    // Text section offers the display sizes (propsTextOptions()). `type`,
+    // `tag` and `ct` (the content type) as the node has them.
+    function _sdOptIsText(type, tag, ct) {
+        if (type === 'semantic') return /^(h[1-6]|p|span)$/.test(String(tag || ''));
+        return type === 'content' && (ct === 'heading' || ct === 'paragraph');
+    }
+
+    // A flex box: a grid row, or an element whose classes make it one
+    // (Bootstrap's row, d-flex or d-inline-flex at any screen size).
+    function _sdOptIsFlex(type, cls) {
+        if (type === 'row') return true;
+        return /(^|\s)(row|d-((sm|md|lg|xl|xxl)-)?(inline-)?flex)(?=\s|$)/.test(String(cls || ''));
     }
 
     // The tabs drawn, in their order: a tab without a section is not.
@@ -73468,9 +73544,10 @@ const StyleDesigner = (function () {
         var _pvBsJsRow = _pvJsRows.some(function (f) { return f.meta === 'bootstrap-js'; });
         if (_pvFw.js && !_pvBsJsRow) _pvJsInject += '    <script src="' + esc(_pvFw.js) + '"><\/script>\n';
         // The platform scripts the page's markup asks for, as on the front
-        // end; deferred, so they run after the framework's script.
+        // end; deferred, so they run after the framework's script. A script
+        // that reads labels gets them first, as on the front end.
         _sdPageScriptFiles(html).forEach(function (src) {
-            _pvJsInject += '    <script src="' + esc(src) + '" defer><\/script>\n';
+            _pvJsInject += _sdPreviewListenLabels(src, window.sdListenLabels) + '    <script src="' + esc(src) + '" defer><\/script>\n';
         });
         html = _sdInsertBeforeBodyEnd(html, _pvJsInject);
 
@@ -73515,6 +73592,16 @@ const StyleDesigner = (function () {
         return (at === -1) ? html + inject : html.slice(0, at) + inject + html.slice(at);
     }
 
+    // The labels pg_listen.js reads (window.pgListenLabels), written before
+    // the script `src` as pg_listen_inject() writes them on the published
+    // page. `labels` is that page's pg_listen_labels() in the page's
+    // language (designer_screen.php prints it as window.sdListenLabels).
+    // '' for any other script, or without labels.
+    function _sdPreviewListenLabels(src, labels) {
+        if (!labels || !/\/assets\/js\/pg_listen\.js(?:[?#]|$)/.test(String(src || ''))) return '';
+        return '    <script>window.pgListenLabels = ' + JSON.stringify(labels).replace(/</g, '\\u003c') + ';<\/script>\n';
+    }
+
     // The editor's own ?v= stamp (designer_screen.php prints it on this
     // script), added to the platform scripts the Preview loads so a copy
     // cached before an upgrade is not used; the page uses ?v= too.
@@ -73539,7 +73626,8 @@ const StyleDesigner = (function () {
         { test: /\sdata-pg-fx(?=[\s=>\/])/i, file: 'assets/js/pg_fx.min.js' },
         { test: /\sdata-pg-listen(?=[\s=>\/])/i, file: 'assets/js/pg_listen.js' },
         { test: /\sdata-pg-map(?=[\s=>\/])/i, file: 'assets/js/pg_map.js' },
-        { test: /\sdata-pg-push(?=[\s=>\/])/i, file: 'assets/js/pg_site_push.js' }
+        { test: /\sdata-pg-push(?=[\s=>\/])/i, file: 'assets/js/pg_site_push.js' },
+        { test: /\sdata-pg-course(?=[\s=>\/])/i, file: 'assets/js/pg_course.js' }
     ];
 
     // The absolute addresses of the platform scripts `markup` asks for (the
@@ -73793,6 +73881,9 @@ const StyleDesigner = (function () {
     var _sdProto = { open: false, ui: null, canvas: null, items: [], byId: {}, layout: null, view: { x: 40, y: 40, k: 1 }, seq: 0, selected: null, env: {}, warned: {}, menu: null,
         link: null, lifted: '', drawing: false, broken: { list: [], count: {} }, issues: null, problems: null, suggest: null,
         edgeTo: {},
+        // The "+" handle (_sdProtoGrip()): the mark it stands beside, the
+        // mark under the pointer, the zoom the marks' reach was set at.
+        grip: { hot: null, hover: null, k: 0, soon: 0, hide: 0 },
         pics: { gen: 0, io: null, boxes: {}, near: {}, live: {}, wait: [], loading: 0, cache: {}, rects: {}, partH: {}, pageH: {}, full: null, settle: 0, refill: 0 } };
 
     // Pictures (_sdProtoPicMake()): at most this many loading at once, the
@@ -74044,10 +74135,12 @@ const StyleDesigner = (function () {
             connected: function (from, to, port) { _sdProtoConnect(from, to, port); },
             // The core reads the view on every pan and zoom (and changes it
             // in place): the pictures near the view are made again soon
-            // after it settles.
+            // after it settles; a new zoom resizes the handle and the small
+            // marks' reach.
             view: function (next) {
                 if (next) _sdProto.view = next;
                 _sdProtoPicSoon();
+                _sdProtoZoomSoon();
                 return _sdProto.view;
             },
             items: function () { return _sdProto.items; },
@@ -74058,8 +74151,10 @@ const StyleDesigner = (function () {
             // draws its arrow (F21). The head of a drawn arrow: a drag
             // points it elsewhere (F22). Either becomes the core's own
             // 'connect' once it moves, so what may take the arrow lights up.
+            // The "+" handle beside a mark is that mark (_sdProtoGrip()).
             press: function (event, next) {
-                var row = event.target.closest ? event.target.closest('.sd-proto-hot') : null;
+                var grip = event.target.closest ? event.target.closest('.sd-proto-grip') : null;
+                var row = grip ? _sdProto.grip.hot : (event.target.closest ? event.target.closest('.sd-proto-hot') : null);
                 if (row) {
                     next.kind = 'row';
                     next.row = row;
@@ -74116,14 +74211,28 @@ const StyleDesigner = (function () {
         });
         _sdProto.canvas.bind();
         // The pointer on a mark or a links panel row lifts its arrow out of
-        // the others.
+        // the others; on a drawable mark of the selected frame it shows
+        // the "+" handle, which stands for its mark.
+        ui.grip = _sdProtoEl('span', 'sd-proto-grip');
+        ui.grip.hidden = true;
+        ui.grip.setAttribute('aria-hidden', 'true');
+        ui.grip.appendChild(_sdProtoEl('span', 'sd-proto-grip-dot bi bi-plus-lg'));
         ui.root.addEventListener('pointerover', function (event) {
             if (_sdProto.drawing) return;
-            var hot = event.target.closest ? event.target.closest('.sd-proto-hot, .sd-proto-li[data-link]') : null;
-            var link = hot ? (hot.classList.contains('sd-proto-hot') ? _sdProtoHotLink(hot) : null) : null;
-            var id = link ? link.frame + '|' + link.port : (hot ? hot.getAttribute('data-link') : '');
+            var t = event.target;
+            var hot = !t.closest ? null : (t.closest('.sd-proto-grip') ? _sdProto.grip.hot : t.closest('.sd-proto-hot, .sd-proto-li[data-link]'));
+            var mark = hot && hot.classList.contains('sd-proto-hot') ? hot : null;
+            var link = mark ? _sdProtoHotLink(mark) : null;
+            var id = link ? link.frame + '|' + link.port : (hot && !mark ? hot.getAttribute('data-link') : '');
             _sdProtoLift(id || '');
+            // A held button (a press, a drag: the canvas holds the pointer)
+            // leaves the handle where it is.
+            if (!event.buttons) _sdProtoGripHover(mark);
         });
+        ui.root.addEventListener('pointerleave', function () { if (!_sdProto.drawing) _sdProtoGripHover(null); });
+        // Tab onto a drawable mark shows its handle too.
+        ui.boxes.addEventListener('focusin', function () { _sdProtoGripFor(); });
+        ui.boxes.addEventListener('focusout', function (event) { _sdProtoGripFor(event.relatedTarget); });
         window.addEventListener('resize', function () { if (_sdProto.open) _sdProtoStatusFit(); });
         // A drawn arrow let go of, on a target or not.
         ['pointerup', 'pointercancel'].forEach(function (type) {
@@ -74194,6 +74303,9 @@ const StyleDesigner = (function () {
         _sdProto.open = false;
         _sdProto.seq++;
         if (_sdProto.canvas) _sdProto.canvas.cancel();
+        clearTimeout(_sdProto.grip.hide);
+        _sdProto.grip.hover = null;
+        _sdProtoGrip(null);
         _sdProtoPicReset(true);
         if (_sdProto.ui) _sdProto.ui.root.hidden = true;
         _sdProtoButtonState();
@@ -74462,8 +74574,8 @@ const StyleDesigner = (function () {
             hot.setAttribute('data-row', String(i));
             hot.style.left = r.x + 'px';
             hot.style.top = r.y + 'px';
-            hot.style.width = Math.max(6, r.w) + 'px';
-            hot.style.height = Math.max(6, r.h) + 'px';
+            hot.style.width = Math.max(H.MARK.min, r.w) + 'px';
+            hot.style.height = Math.max(H.MARK.min, r.h) + 'px';
             var name = row.from ? row.from + ' › ' + row.label : row.label;
             hot.title = name + (row.href ? ' · ' + row.href : '');
             hot.setAttribute('role', 'button');
@@ -74603,6 +74715,7 @@ const StyleDesigner = (function () {
             r.classList.remove('sd-proto-hot-own', 'sd-proto-hot-lit', 'sd-proto-hot-shared');
             r.tabIndex = -1;
         });
+        _sdProtoGrip(null);
         _sdProto.layout.frames.forEach(function (item) { _sdProtoPicFoot(item, id); });
         if (id === null || id === undefined) return;
         var f = window.PGProtoHotspots.focusOf(_sdProto.layout, id);
@@ -74634,6 +74747,110 @@ const StyleDesigner = (function () {
             notes[frameId].forEach(function (line) { note.appendChild(_sdProtoEl('div', 'sd-proto-note-line', line)); });
             ui.boxes.appendChild(note);
         });
+        // The marks shown take their reach; the handle comes back on the
+        // mark under the pointer or in focus when it is still drawable.
+        _sdProtoReach();
+        _sdProtoGripFor();
+    }
+
+    // A mark's place and size as drawn, in its picture's units.
+    function _sdProtoHotRect(hot) {
+        return { x: parseFloat(hot.style.left) || 0, y: parseFloat(hot.style.top) || 0, w: parseFloat(hot.style.width) || 0, h: parseFloat(hot.style.height) || 0 };
+    }
+
+    // A mark shown under 12 screen pixels wide or high takes presses 4
+    // screen pixels around it (PGProtoHotspots.markReach(); the CSS draws
+    // that edge from --sd-proto-reach). Set when the marks shown change and
+    // when the zoom does.
+    function _sdProtoReach() {
+        var ui = _sdProto.ui;
+        if (!ui) return;
+        var k = _sdProto.view.k;
+        _sdProto.grip.k = k;
+        Array.prototype.forEach.call(ui.boxes.querySelectorAll('.sd-proto-hot-own, .sd-proto-hot-lit, .sd-proto-hot-shared'), function (hot) {
+            var reach = window.PGProtoHotspots.markReach(_sdProtoHotRect(hot), k);
+            hot.classList.toggle('sd-proto-hot-reach', reach > 0);
+            if (reach > 0) hot.style.setProperty('--sd-proto-reach', reach + 'px');
+            else hot.style.removeProperty('--sd-proto-reach');
+        });
+    }
+
+    // After a pan or zoom: at a new zoom the reach and the handle are set
+    // again, once on the next frame.
+    function _sdProtoZoomSoon() {
+        var g = _sdProto.grip;
+        if (g.soon || !window.requestAnimationFrame) return;
+        g.soon = window.requestAnimationFrame(function () {
+            g.soon = 0;
+            if (!_sdProto.open || _sdProto.view.k === g.k) return;
+            _sdProtoReach();
+            if (g.hot) _sdProtoGrip(g.hot);
+        });
+    }
+
+    // Whether a mark gets the "+" handle: a drawable mark (K2) of the
+    // selected frame, still on the canvas.
+    function _sdProtoGripOk(el) {
+        var ui = _sdProto.ui;
+        return !!(el && ui && el.classList && el.classList.contains('sd-proto-hot-own') && el.classList.contains('sd-proto-hot-draw') && ui.boxes.contains(el));
+    }
+
+    // The handle goes to the mark under the pointer, else to the mark in
+    // focus (`focus`, the element taking it, when given), else away.
+    function _sdProtoGripFor(focus) {
+        var g = _sdProto.grip;
+        if (!arguments.length) focus = document.activeElement;
+        _sdProtoGrip(_sdProtoGripOk(g.hover) ? g.hover : (_sdProtoGripOk(focus) ? focus : null));
+    }
+
+    // The pointer onto a mark (null: off every mark). Off a mark the handle
+    // stays a moment, so the pointer can cross from a tall mark onto it.
+    function _sdProtoGripHover(mark) {
+        var g = _sdProto.grip;
+        clearTimeout(g.hide);
+        g.hide = 0;
+        if (mark) {
+            g.hover = mark;
+            if (g.hot !== mark) _sdProtoGripFor();
+            return;
+        }
+        if (!g.hover) return;
+        g.hide = setTimeout(function () {
+            g.hide = 0;
+            g.hover = null;
+            _sdProtoGripFor();
+        }, 250);
+    }
+
+    // The round "+" handle beside a drawable mark of the selected frame
+    // (null hides it): 20 screen pixels at any zoom, on the side
+    // PGProtoHotspots.markGrip() gives, in the mark's own layer. It stands
+    // for its mark: a press on it is the mark's press (a drag draws the
+    // link's arrow, a click picks the link); the keyboard keeps L.
+    function _sdProtoGrip(hot) {
+        var ui = _sdProto.ui;
+        if (!ui || !ui.grip) return;
+        var el = ui.grip;
+        if (!hot) {
+            _sdProto.grip.hot = null;
+            el.hidden = true;
+            if (el.parentNode) el.parentNode.removeChild(el);
+            return;
+        }
+        var layer = hot.parentNode;
+        var others = [];
+        Array.prototype.forEach.call(layer.querySelectorAll('.sd-proto-hot-own'), function (n) { if (n !== hot) others.push(_sdProtoHotRect(n)); });
+        var at = window.PGProtoHotspots.markGrip(_sdProtoHotRect(hot), { w: layer.clientWidth, h: layer.clientHeight }, _sdProto.view.k, others);
+        _sdProto.grip.hot = hot;
+        el.className = 'sd-proto-grip sd-proto-grip-' + at.side;
+        el.style.left = at.x + 'px';
+        el.style.top = at.y + 'px';
+        el.style.width = at.w + 'px';
+        el.style.height = at.h + 'px';
+        el.style.transform = 'scale(' + at.scale + ')';
+        el.title = hot.title;
+        if (el.parentNode !== layer) layer.appendChild(el);
+        el.hidden = false;
     }
 
     // ── The links panel and the problems (F15-F20, F24) ──
@@ -80184,6 +80401,7 @@ const StyleDesigner = (function () {
             _pgTabsSyncBusy();
             _collabSetMode(res.may_edit !== false, res.holder || null);
             _collabSyncNotes(res.notes);
+            if (typeof res.proto_comments === 'number' && (res.proto_comments > 0 || _sdPartLoaded('comments')) && _sdPartUrls('comments')) _sdPartCall('comments', 'beat', [res.proto_comments]).catch(function () { /* the next beat asks again */ });
             return res;
         }).catch(function () { return null; });
     }
@@ -85457,10 +85675,11 @@ const StyleDesigner = (function () {
                 !has(c, 'navbar-collapse') && !has(c, 'd-block')) return true;
             if ((has(c, 'carousel-item') || has(c, 'tab-pane')) && !has(c, 'active')) return true;
             if (bp(c, 'd', 'none|block|flex|inline|inline-block|inline-flex|grid|table|table-cell|table-row|contents') === 'none') return true;
-            // A Listen or "Notify me" root is hidden until its script shows
-            // it; the canvas draws it (IFRAME_CSS), so the sketch does too.
+            // A Listen, "Notify me" or course block's root is hidden until
+            // its script shows it; the canvas draws it (IFRAME_CSS), so the
+            // sketch does too.
             return attr(n, 'hidden') !== null && attr(n, 'data-pg-listen') === null &&
-                attr(n, 'data-pg-push') === null;
+                attr(n, 'data-pg-push') === null && attr(n, 'data-pg-course') === null;
         }
         // A block that is itself a dropdown shows its menu open.
         function kids(n) {

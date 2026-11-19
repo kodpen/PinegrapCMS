@@ -13,7 +13,7 @@ description: Decisions list, product part 65 (2026-11-16 on): the place map defa
 
 ## Does the Content review screen come out as shown? (owner, 2026-11-16, agent channel poll 100, message 6855)
 - Owner: "Evet, böyle çıksın", on the sheet of agent channel message 6854: the list of pages and collection records with who reads each again and by when, the row menu's four actions and the selection bar, the three windows (the person, the date, the clearing), the dark theme and the phone.
-- The screen stands as CH2 built it (PR #9967); a later change he would see on it comes to him again. Plan: `plans/content-review.md`.
+- The screen stands as CH2 built it (PR #9967); a later change he would see on it comes to him again. Feature: `platform/content-review.md`.
 
 ## Which amount does a contact group's minimum order compare? (architect, 2026-11-16, agent channel message 6895)
 - The cart's goods subtotal, before discounts, tax and shipping. Why: the offers' order ladder measures an order by its subtotal too, and the customer can check the missing amount against the cart's "Subtotal" line.

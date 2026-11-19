@@ -6,7 +6,7 @@ module: listen
 
 ## How does the script reach a page?
 - `get_page_content.php` loads `includes/fn/listen.php` only when the drawn page holds `data-pg-listen` (not in an e-mail) and calls `pg_listen_inject()`: `window.pgListenLabels` (Listen, Pause, Resume, Stop through `lang()`) and `assets/js/pg_listen.js` deferred, once, before the last `</body>`.
-- The mark is found with `pg_listen_pattern()` (`\sdata-pg-listen(?=[\s=>\/])`, so `data-pg-listen-play` alone is no mark). The Preview's `_SD_PAGE_SCRIPTS` row uses the same expression; `tests/designer_page_scripts_test.php` compares them. The Preview has no labels: the script falls back to the English keys.
+- The mark is found with `pg_listen_pattern()` (`\sdata-pg-listen(?=[\s=>\/])`, so `data-pg-listen-play` alone is no mark). The Preview's `_SD_PAGE_SCRIPTS` row uses the same expression; `tests/designer_page_scripts_test.php` compares them. The Preview gets the same `pg_listen_labels()` before the script: `designer_screen.php` prints them as `window.sdListenLabels`, `_sdPreviewListenLabels()` writes them as `window.pgListenLabels` ([[designer-blocks-listen]]).
 
 ## What markup does it expect?
 - A root `[data-pg-listen]` with `hidden`; buttons `[data-pg-listen-play]`, `[data-pg-listen-pause]`, `[data-pg-listen-stop]` (the last two `hidden`), each with a `[data-pg-listen-text]` element the script fills with its label; a button without one gets `aria-label`. The root gets `data-pg-listen-state` idle / speaking / paused; Pause carries `aria-pressed` and reads "Resume" while paused.
@@ -20,8 +20,7 @@ module: listen
 - Only with `speechSynthesis`, a page language, something to read, and a voice for the page's language (`hasVoice()`: same tag, else same language in another region); asked again on `voiceschanged`. Otherwise the root stays hidden.
 - One block speaks at a time; Stop, the end, `pagehide` and a hidden page put the button back and move the focus to it. No request, storage or cookie.
 
-## What is the block?
-- `assets/js/style_designer_blocks_listen.js` (prefix `listen-`, group Listen, type `listen-buttons`): the root above with `role="group"` and an aria-label, three `btn-outline-*` buttons with a Bootstrap icon (`aria-hidden`) and the label span; rule `pg-listen` (the row's flex layout only on `:not([hidden])`, 44 px buttons). Never a display utility (`d-flex`) on the root: it is `!important` after Bootstrap's `[hidden]` rule and showed the buttons without a voice.
-- Bootstrap's `[hidden] { display:none !important }` would hide it on the canvas too: one `IFRAME_CSS` line (`.sd-wrap > [data-pg-listen][hidden]`) draws the root there, idle and silent, and the palette's hover sketch (`_sdBlockSketch()`'s `hidden()`) draws it too; the Preview loads the script and behaves as the page.
+## Where is the block?
+- The palette block that carries this markup, its rule, the canvas and the Preview: [[designer-blocks-listen]].
 
-Tests: `tests/listen_script_test.php`, `tests/designer_blocks_listen_test.php` (under Node, `tests/fixtures/listen/dom.js`).
+Tests: `tests/listen_script_test.php` (under Node, `tests/fixtures/listen/dom.js`).

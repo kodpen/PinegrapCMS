@@ -49,10 +49,10 @@ function pg_test_form_adorn_cases()
 		// The gift card amount (create) and balance (edit), drawn by the shared form.
 		array($root . 'includes/forms/gift_card_form.php', '\'id\' => $field', '<label for="\' . $field . \'"', 'form-adorn-end', ''),
 		array($root . 'workspace_template.php', 'id="ws_tpl_icon"', 'for="ws_tpl_icon"', '', 'id="ws_tpl_icon_preview"'),
-		array($root . 'includes/workspace/mcp_catalogue.php', 'id="ws_mcp_probe_alias"', 'for="ws_mcp_probe_alias"', 'form-control-sm', '>@</span>'),
-		array($root . 'includes/workspace/mcp.php', 'id="\' . $prefix . \'alias"', 'for="\' . $prefix . \'alias"', 'form-control-sm', '>@</span>'),
 		array($root . 'includes/forms/ad_region_form.php', "'id'=>'transition_duration'", '<label class="form-label" for="transition_duration"', 'form-adorn-end', "lang('milliseconds')"),
 		array($root . 'includes/forms/ad_region_form.php', "'id'=>'slideshow_interval'", '<label class="form-label" for="slideshow_interval"', 'form-adorn-end', "lang('seconds')"),
+		// The MCP alias fields are the look's pg-input wrapper, checked in
+		// settings_workspace_assistant_cards_look_test.php.
 		// Toolbar search fields: the input names itself with aria-label.
 		array($root . 'view_folders.php', 'id="filter_input"', '', 'form-control-sm', 'bi bi-search'),
 		array($root . 'view_folders.php', 'id="transfer_filter"', '', 'form-control-sm', 'bi bi-search'),
@@ -246,10 +246,10 @@ function test_bs6_form_adorn_settings_cards_keep_no_single_add_on_group()
 	$root = dirname(__DIR__) . '/pinegrap/includes/settings/';
 
 	// The groups left are the ones form-adorn cannot hold: two add-ons
-	// (language address prefix), a hint on the add-on (membership warning) and
-	// a button (SEO). The feed address and the Paraşüt connect code set their
-	// button beside the field as a small look A button, in no group.
-	$left = array('languages.php' => 1, 'security.php' => 1, 'seo.php' => 1);
+	// (language address prefix) and a hint on the add-on (membership warning).
+	// The feed address, the Paraşüt connect code and the IndexNow key set
+	// their button beside the field as a small look A button, in no group.
+	$left = array('languages.php' => 1, 'security.php' => 1);
 
 	foreach (array('api.php', 'appearance.php', 'commerce.php', 'contact.php', 'features.php', 'firewall.php', 'languages.php', 'prep.php', 'privacy.php', 'screen.php', 'security.php', 'seo.php') as $file) {
 		$source = (string) file_get_contents($root . $file);

@@ -263,6 +263,10 @@ function pg_panel_designer($request, $action)
                               'may_edit' => true, 'peers' => array(), 'holder' => null));
             }
             pg_collab_beat($co_key, $co_style, $co_page, $user['id']);
+            // A designer's editor hears of prototype comments on this
+            // design through the newest comment's id; a content operator
+            // never reads them.
+            $co_proto = pg_designer_is_full($user) && pg_proto_comments_ready();
             // `takeover`: this person's OTHER tab holds the page and they
             // asked for it here. The claim evicts a holder only when it
             // is the same user — the flag cannot take a page from
@@ -292,6 +296,67 @@ function pg_panel_designer($request, $action)
                 // editor compares this with what it already has and only
                 // asks for the notes of a page whose number moved.
                 'notes'    => pg_collab_note_stamps($co_style),
+            ) + ($co_proto ? array('proto_comments' => pg_proto_comments_style_stamp($co_style)) : array()));
+            break;
+
+        // ── PROTOTYPE COMMENTS ───────────────────────────────────────
+        // The designer's Comments list of a design (all its links and draft
+        // pages) and what the list does with a thread. Designers only: the
+        // content operator's allow-list above does not name them.
+        case 'proto_comments':
+            $pc_style = isset($request['style_id']) ? (int)$request['style_id'] : 0;
+            if (!pg_proto_comments_ready() || $pc_style <= 0) {
+                respond(array('status' => 'error', 'message' => lang('Invalid ID.')));
+            }
+            respond(array(
+                'status' => 'success',
+                'stamp'  => pg_proto_comments_style_stamp($pc_style),
+                'pages'  => pg_proto_comments_list_of_style($pc_style),
+                // "Make a task" is drawn only with the Workspace on, for a
+                // member of its team.
+                'task'   => pg_proto_comment_task_offered_to($user),
+            ));
+            break;
+
+        // "Make a task" on a thread: the designer's own Workspace task about
+        // the comment; the list does not change, so the answer is the task.
+        case 'proto_comment_task':
+            $pc_task = pg_proto_comment_task_open($user, isset($request['comment_id']) ? (int)$request['comment_id'] : 0, isset($request['style_id']) ? (int)$request['style_id'] : 0);
+            if (!$pc_task['ok']) {
+                respond(array('status' => 'error', 'message' => $pc_task['error']));
+            }
+            respond(array('status' => 'success', 'task_id' => $pc_task['task_id']));
+            break;
+
+        case 'proto_comment_answer':
+        case 'proto_comment_resolve':
+        case 'proto_comment_delete':
+            $pc_row = pg_proto_comment_get(isset($request['comment_id']) ? (int)$request['comment_id'] : 0);
+            $pc_style = isset($request['style_id']) ? (int)$request['style_id'] : 0;
+            // The comment must be one of the design the list was asked for.
+            if (!$pc_row || (int)$pc_row['style_id'] !== $pc_style) {
+                respond(array('status' => 'error', 'message' => lang('This comment is no longer there.')));
+            }
+            $pc_ok = false;
+            if ($sub === 'proto_comment_answer') {
+                require_once(PG_FUNCTIONS_DIR . '/includes/designer_collab.php');
+                $pc_brief = pg_collab_user_brief($user['id']);
+                $pc_ok = pg_proto_comment_answer($pc_row['id'], isset($request['text']) ? $request['text'] : '', $user['id'], $pc_brief['name']) > 0;
+                if (!$pc_ok) {
+                    respond(array('status' => 'error', 'message' => lang('Write an answer of at most 1,000 characters.')));
+                }
+            } elseif ($sub === 'proto_comment_resolve') {
+                $pc_ok = pg_proto_comment_resolve($pc_row['id'], $user['id'], !empty($request['resolved']));
+            } else {
+                $pc_ok = pg_proto_comment_delete($pc_row['id']) > 0;
+            }
+            if (!$pc_ok) {
+                respond(array('status' => 'error', 'message' => lang('Sorry, we could not accept your request.')));
+            }
+            respond(array(
+                'status' => 'success',
+                'stamp'  => pg_proto_comments_style_stamp($pc_style),
+                'pages'  => pg_proto_comments_list_of_style($pc_style),
             ));
             break;
 

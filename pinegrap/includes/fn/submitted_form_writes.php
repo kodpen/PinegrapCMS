@@ -230,11 +230,13 @@ function pg_submitted_form_create($liveform, $fields, $page_id, $complete, $user
  * Deletes a submitted form with everything that names it: its uploaded
  * files, the forms and form_data rows, its signatures, its view rows and its
  * comment thread (data/submitted-form-delete-thread.md), then announces
- * form.submission.deleted.
+ * form.submission.deleted. The rows its Record rows fields list go with it,
+ * each deleted the same way once the record is gone
+ * (pg_coll_rows_delete_rows()).
  *
  * @param int|string $form_id
- * @return array|false  The names of the files deleted with it, false when
- *                      the record could not be deleted
+ * @return array|false  The names of the files deleted with it and its rows,
+ *                      false when the record could not be deleted
  */
 function pg_submitted_form_delete($form_id)
 {
@@ -246,6 +248,13 @@ function pg_submitted_form_delete($form_id)
 
     // What the announcement names, read while the row is there.
     $record = db_item("SELECT page_id, reference_code FROM forms WHERE id = '" . $form_id . "'");
+
+    // The rows its Record rows fields list, read while their codes are there.
+    $row_ids = pg_coll_rows_held_ids(array($form_id));
+
+    if ($row_ids === false) {
+        return false;
+    }
 
     $result = db_q(
         "SELECT
@@ -301,6 +310,13 @@ function pg_submitted_form_delete($form_id)
             'form_id'        => (int) $record['page_id'],
             'reference_code' => (string) $record['reference_code'],
         ));
+    }
+
+    // Each row is a record of its own; a row that lists rows of its own
+    // takes them with it, and a list that comes back to a deleted record
+    // finds nothing left to delete.
+    if ($row_ids) {
+        $deleted_files = array_merge($deleted_files, pg_coll_rows_delete_rows($row_ids, 'pg_submitted_form_delete'));
     }
 
     return $deleted_files;

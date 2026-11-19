@@ -44,8 +44,8 @@ foreach ($ws_departments as $ws_department) {
     $ws_archive_label = $ws_department['archived'] ? lang('Bring it back') : lang('Move to the archive');
 
     $ws_department_rows .= ws_settings_department_row_html($ws_department, $ws_people_by_id, $ws_channel, '
-                    <button type="button" class="btn btn-sm btn-text theme-secondary" data-bs-toggle="drawer" data-bs-target="#pgset-ws-dept-' . $ws_id . '" aria-controls="pgset-ws-dept-' . $ws_id . '" aria-label="' . h(lang(array('string' => '{var:1}: {var:2}', 'vars' => array(lang('Edit'), $ws_department['name'])))) . '"><i class="bi bi-pencil me-1" aria-hidden="true"></i>' . h(lang('Edit')) . '</button>
-                    <button type="submit" name="ws_department_archive" value="' . $ws_id . '" class="btn btn-sm btn-text theme-secondary" title="' . h($ws_archive_label) . '" aria-label="' . h(lang(array('string' => '{var:1}: {var:2}', 'vars' => array($ws_archive_label, $ws_department['name'])))) . '"><i class="bi ' . ($ws_department['archived'] ? 'bi-arrow-counterclockwise' : 'bi-archive') . '" aria-hidden="true"></i></button>');
+                    <button type="button" class="pg-button pg-button-ghost pg-button-sm" data-bs-toggle="drawer" data-bs-target="#pgset-ws-dept-' . $ws_id . '" aria-controls="pgset-ws-dept-' . $ws_id . '" aria-label="' . h(lang(array('string' => '{var:1}: {var:2}', 'vars' => array(lang('Edit'), $ws_department['name'])))) . '"><i class="bi bi-pencil" aria-hidden="true"></i>' . h(lang('Edit')) . '</button>
+                    <button type="submit" name="ws_department_archive" value="' . $ws_id . '" class="pg-icon-button pg-icon-button-sm" title="' . h($ws_archive_label) . '" aria-label="' . h(lang(array('string' => '{var:1}: {var:2}', 'vars' => array($ws_archive_label, $ws_department['name'])))) . '"><i class="bi ' . ($ws_department['archived'] ? 'bi-arrow-counterclockwise' : 'bi-archive') . '" aria-hidden="true"></i></button>');
 
     $pg_settings_modals[] = ws_settings_department_drawer($ws_department, ws_settings_department_primary_ids($ws_id), $ws_channel, $ws_form, !empty($pg_settings_in_dialog));
 }
@@ -61,7 +61,7 @@ $pg_settings_cards[] = '
         <div class="card">
             <div class="card-header bg-reset border-0 d-flex align-items-center gap-3">
                 <span class="pg-title-section ws-grow">' . h(lang('Departments')) . '</span>
-                <button type="button" class="btn btn-sm btn-outline theme-primary rounded-pill" data-bs-toggle="drawer" data-bs-target="#pgset-ws-dept-0" aria-controls="pgset-ws-dept-0"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . h(lang('New department')) . '</button>
+                <button type="button" class="pg-button pg-button-quiet pg-button-sm" data-bs-toggle="drawer" data-bs-target="#pgset-ws-dept-0" aria-controls="pgset-ws-dept-0"><i class="bi bi-plus-lg" aria-hidden="true"></i>' . h(lang('New department')) . '</button>
             </div>
             <div class="card-body">
                 ' . $ws_department_rows . '
@@ -78,7 +78,7 @@ $pg_settings_cards[] = '
             </div>
             <div class="card-body">
                 <div class="table-responsive">
-                    <table class="table table-sm align-middle small mb-3">
+                    <table class="table table-hover mb-3 pg-embedded-table">
                         <thead>
                             <tr>
                                 <th>' . h(lang('Team member')) . '</th>
@@ -148,12 +148,12 @@ if (ws_workdays_ready()) {
         $ws_id = (int) $ws_feed['id'];
         $ws_days = ws_holiday_feed_days_html($ws_feed, $ws_button);
         $ws_feeds .= ws_holiday_feed_row_html($ws_feed, $ws_calendar_departments, $ws_days['left_out'], $ws_button, ($ws_days['count'] > 0)
-            ? $ws_drawer_button('pgset-ws-feed-' . $ws_id, 'btn btn-sm btn-text theme-secondary', '<i class="bi bi-list-ul me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Days ({var:1})', 'vars' => $ws_days['count']))), lang(array('string' => 'Days from this calendar ({var:1})', 'vars' => $ws_days['count'])))
+            ? $ws_drawer_button('pgset-ws-feed-' . $ws_id, 'pg-button pg-button-ghost pg-button-sm', '<i class="bi bi-list-ul" aria-hidden="true"></i>' . h(lang(array('string' => 'Days ({var:1})', 'vars' => $ws_days['count']))), lang(array('string' => 'Days from this calendar ({var:1})', 'vars' => $ws_days['count'])))
             : '');
 
         if ($ws_days['count'] > 0) {
             $pg_settings_modals[] = pg_settings_drawer('pgset-ws-feed-' . $ws_id, h($ws_feed['name']), '
-            <p class="small fg-secondary">' . h(lang('A day that is not a day off at this company can be left out; reading the calendar again keeps the choice.')) . '</p>
+            <p class="pg-text-meta">' . h(lang('A day that is not a day off at this company can be left out; reading the calendar again keeps the choice.')) . '</p>
             <ul class="list-unstyled small mb-0">' . $ws_days['html'] . '</ul>', !empty($pg_settings_in_dialog));
         }
     }
@@ -166,11 +166,11 @@ if (ws_workdays_ready()) {
 
     $pg_settings_modals[] = pg_settings_drawer('pgset-ws-holiday-new', h(lang('Add a holiday')), ws_holidays_add_fields_html('holiday_add', $ws_calendar_departments, $ws_name('holiday_add'), 'pgset_ws_hol_', $ws_form) . '
                             </div>
-            <button type="submit" name="ws_holiday_add" value="1" form="' . h($ws_form) . '" class="btn btn-sm btn-solid theme-primary rounded-pill px-5 mt-5"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . h(lang('Add')) . '</button>', !empty($pg_settings_in_dialog));
+            <button type="submit" name="ws_holiday_add" value="1" form="' . h($ws_form) . '" class="pg-button pg-button-fill mt-5">' . h(lang('Add')) . '</button>', !empty($pg_settings_in_dialog));
 
     $pg_settings_modals[] = pg_settings_drawer('pgset-ws-feed-new', h(lang('Add a calendar address')), ws_holidays_add_fields_html('feed_add', $ws_calendar_departments, $ws_name('feed_add'), 'pgset_ws_feed_', $ws_form) . '
                     </div>
-            <button type="submit" name="ws_feed_add" value="1" form="' . h($ws_form) . '" class="btn btn-sm btn-solid theme-primary rounded-pill px-5 mt-5"><i class="bi bi-cloud-download me-1" aria-hidden="true"></i>' . h(lang('Add and read')) . '</button>', !empty($pg_settings_in_dialog));
+            <button type="submit" name="ws_feed_add" value="1" form="' . h($ws_form) . '" class="pg-button pg-button-fill mt-5">' . h(lang('Add and read')) . '</button>', !empty($pg_settings_in_dialog));
 
     $pg_settings_cards[] = '
     <div id="pgset-ws-calendar" class="pg-set-card">
@@ -182,7 +182,7 @@ if (ws_workdays_ready()) {
                 ' . ws_holidays_settings_intro_html() . '
                 <div class="d-flex align-items-center gap-3 mb-2">
                     <h3 class="pg-group-label mb-0 ws-grow">' . h(lang('Holidays')) . '</h3>
-                    ' . $ws_drawer_button('pgset-ws-holiday-new', 'btn btn-sm btn-outline theme-primary rounded-pill', '<i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . h(lang('Add a holiday'))) . '
+                    ' . $ws_drawer_button('pgset-ws-holiday-new', 'pg-button pg-button-quiet pg-button-sm', '<i class="bi bi-plus-lg" aria-hidden="true"></i>' . h(lang('Add a holiday'))) . '
                 </div>
                 ' . ws_holidays_rows_html($ws_calendar_departments, $ws_button) . '
                 ' . ws_holidays_next_html($ws_calendar_departments) . '
@@ -190,7 +190,7 @@ if (ws_workdays_ready()) {
                 ' . ws_holiday_feeds_intro_html() . '
                 ' . $ws_feeds . '
                 <div class="mt-3">
-                    ' . $ws_drawer_button('pgset-ws-feed-new', 'btn btn-sm btn-outline theme-primary rounded-pill', '<i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . h(lang('Add a calendar address'))) . '
+                    ' . $ws_drawer_button('pgset-ws-feed-new', 'pg-button pg-button-quiet pg-button-sm', '<i class="bi bi-plus-lg" aria-hidden="true"></i>' . h(lang('Add a calendar address'))) . '
                 </div>
             </div>
         </div>

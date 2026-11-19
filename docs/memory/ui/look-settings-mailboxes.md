@@ -12,7 +12,7 @@ description: Site Settings › Mailboxes in look A (S5d, #10431): purpose line a
 ## What moved in the box form?
 - `form-label` → `pg-field-label`, `form-control form-control-sm` → `pg-input` (selects and the signature textarea too), `form-text` → `pg-field-help`, the switches (On, Support box, Automatic answer, Pinegrap AI suggests) are `input.pg-switch`, the check boxes (bounces, sent copy, Sent folder, the room's people and departments) `input.pg-checkbox`, each beside its label in a flex row. Section titles (Reading the mailbox, Sending answers, Routing, Automatic answer) are `h3.pg-group-label`.
 - The helpers of other files drawn only in this form moved with it: `mail_room.php`, `mail_route.php`, `mail_status.php`, `mail_triage.php`. Field names, ids, what a save stores and the texts stayed.
-- The Gmail steps between the service and the user name: `workspace/mail-google-mailbox.md`.
+- The Gmail part between the service and the user name: `workspace/mail-google.md`.
 - `tools/check_look_baseline.json`: `mail_settings.php` 11 → 0 old buttons.
 
 ## What is not done?

@@ -37,6 +37,32 @@ if ($form_ids === false) {
     output_error(lang('Query failed.'));
 }
 
+// The question Delete Selected asks, with the rows of Record rows fields
+// that go with the selected forms the user may delete (the list's script
+// asks it as the selection changes). Nothing is deleted.
+if (!empty($_POST['rows_count'])) {
+    $rows_form_ids = array();
+
+    foreach ((array) $form_ids as $form_id) {
+        $folder = db_item("SELECT page.page_folder AS folder_id FROM forms LEFT JOIN page ON forms.page_id = page.page_id WHERE forms.id = '" . (int) $form_id . "'");
+
+        if ($folder && (check_edit_access($folder['folder_id']) == true)) {
+            $rows_form_ids[] = (int) $form_id;
+        }
+    }
+
+    $rows_held = pg_coll_rows_held_ids($rows_form_ids);
+
+    header('Content-Type: application/json; charset=utf-8');
+    print json_encode(array(
+        'question' => pg_coll_rows_delete_question(
+            lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('submitted form(s)')))),
+            is_array($rows_held) ? count($rows_held) : 0,
+            true),
+    ));
+    exit;
+}
+
 if ($form_ids === null) {
     output_error(lang('Too many forms are selected. Select fewer forms and try again.') . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
 }

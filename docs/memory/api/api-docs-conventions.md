@@ -19,4 +19,4 @@ description: The Conventions section and the heading outline of the API referenc
 - The panel page adds `scroll-margin-top` under the fixed navbar so an index link lands below it.
 
 ## What moved out of the pages?
-- The one-paragraph summary (HTTP Basic, minor units, ISO-8601, cursor paging, X-Dry-Run) on both pages, the console's DELETE alias line and the rate-limit sentence under Errors: Conventions says each now (#10144, step AM12 of plan api-clean-modern). The console's side card keeps the first `curl` call and links to Conventions.
+- The one-paragraph summary (HTTP Basic, minor units, ISO-8601, cursor paging, X-Dry-Run) on both pages, the console's DELETE alias line and the rate-limit sentence under Errors: Conventions says each now (#10144). The console's side card keeps the first `curl` call and links to Conventions.

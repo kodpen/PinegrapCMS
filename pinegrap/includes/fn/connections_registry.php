@@ -153,7 +153,9 @@ function pg_connections_not_services()
  * A row: 'name', 'group' (a key of pg_connections_groups()), 'place'
  * ('#settings/<category>/<card>' or a System tools script), 'state' (a reader
  * of pg_connections_state_kinds(), or null with the reason in 'no_state'),
- * 'uses' (English, a few words) and optionally 'covers' (list name => keys).
+ * 'uses' (English, a few words), optionally 'covers' (list name => keys)
+ * and 'found_at' (a card its name still finds in the settings search after
+ * its settings moved to its page on Connections).
  *
  * @param mixed $row
  * @return array list of key names
@@ -308,8 +310,12 @@ function pg_connections_place_keys()
     foreach (pg_connections_registry() as $row) {
         $name = mb_strtolower(str_replace('İ', 'i', $row['name']), 'UTF-8');
 
-        if (!isset($keys[$row['place']]) || !in_array($name, $keys[$row['place']], true)) {
-            $keys[$row['place']][] = $name;
+        // A service whose settings moved to its page on Connections is
+        // still found at the card that chooses it ('found_at').
+        foreach (array_filter(array($row['place'], isset($row['found_at']) ? $row['found_at'] : '')) as $place) {
+            if (!isset($keys[$place]) || !in_array($name, $keys[$place], true)) {
+                $keys[$place][] = $name;
+            }
         }
     }
 
@@ -455,9 +461,9 @@ function pg_connections_registry()
         'ses' => array('name' => 'Amazon SES', 'group' => 'email', 'place' => '#settings/mail_sending/pgset-mail-transport', 'uses' => 'Sending the site\'s mail',
             'state' => array('kind' => 'app', 'key' => 'mail_ses'),
             'covers' => array('mail' => array('ses'))),
-        'gmail' => array('name' => 'Gmail', 'group' => 'email', 'place' => '#settings/mail_sending/pgset-mail-system', 'uses' => 'Sending the site\'s mail through a Google account',
+        'gmail' => array('name' => 'Gmail', 'group' => 'email', 'place' => '#settings/mail_sending/pgset-mail-system', 'uses' => 'Sending the site\'s mail, and reading mailboxes',
             'state' => array('kind' => 'account', 'provider' => 'google', 'purpose' => 'mail', 'attention' => true),
-            'covers' => array('purpose' => array('mail'))),
+            'covers' => array('purpose' => array('mail', 'mail_read'))),
         'microsoft_mail' => array('name' => 'Microsoft 365 mail', 'group' => 'email', 'place' => '#settings/mail_sending/pgset-mail-system', 'uses' => 'Sending the site\'s mail, and reading mailboxes',
             'state' => array('kind' => 'account', 'provider' => 'microsoft', 'purpose' => 'mail', 'attention' => true),
             'covers' => array('purpose' => array('mail', 'mail_read'))),
@@ -546,31 +552,32 @@ function pg_connections_registry()
         'dbip' => array('name' => 'DB-IP', 'group' => 'maps', 'place' => '#settings/firewall/pgset-countries', 'uses' => 'The country of a visitor\'s address',
             'state' => null, 'no_state' => 'A free database the site fetches; no account or key.'),
 
-        // AI.
+        // AI. A provider's key is its connection, typed on its page on
+        // Connections (includes/fn/ai_connections.php).
         'pinegrap_ai' => array('name' => 'Pinegrap AI', 'group' => 'ai', 'place' => '#settings/workspace_assistants/pgset-ws-ai', 'uses' => 'Writing help and translation on the licence key',
             'state' => array('kind' => 'reader', 'function' => 'ws_ai_ready')),
         'claude' => array('name' => 'Claude', 'group' => 'ai', 'place' => '#settings/workspace_assistants/pgset-ws-claude', 'uses' => 'Claude in the channels, through a routine',
             'state' => array('kind' => 'reader', 'function' => 'ws_claude_ready')),
-        'openai' => array('name' => 'OpenAI', 'group' => 'ai', 'place' => '#settings/workspace_assistants/pgset-ws-agents', 'uses' => 'Workspace assistants',
-            'state' => array('kind' => 'model', 'key' => 'openai'),
+        'openai' => array('name' => 'OpenAI', 'group' => 'ai', 'place' => 'connections.php', 'found_at' => '#settings/workspace_assistants/pgset-ws-agents', 'uses' => 'Workspace assistants',
+            'state' => array('kind' => 'reader', 'function' => 'pg_ai_connection_ready', 'args' => array('openai')),
             'covers' => array('model' => array('openai'))),
-        'anthropic' => array('name' => 'Anthropic', 'group' => 'ai', 'place' => '#settings/workspace_assistants/pgset-ws-agents', 'uses' => 'Workspace assistants',
-            'state' => array('kind' => 'model', 'key' => 'anthropic'),
+        'anthropic' => array('name' => 'Anthropic', 'group' => 'ai', 'place' => 'connections.php', 'found_at' => '#settings/workspace_assistants/pgset-ws-agents', 'uses' => 'Workspace assistants',
+            'state' => array('kind' => 'reader', 'function' => 'pg_ai_connection_ready', 'args' => array('anthropic')),
             'covers' => array('model' => array('anthropic'))),
-        'gemini' => array('name' => 'Google Gemini', 'group' => 'ai', 'place' => '#settings/workspace_assistants/pgset-ws-agents', 'uses' => 'Workspace assistants',
-            'state' => array('kind' => 'model', 'key' => 'gemini'),
+        'gemini' => array('name' => 'Google Gemini', 'group' => 'ai', 'place' => 'connections.php', 'found_at' => '#settings/workspace_assistants/pgset-ws-agents', 'uses' => 'Workspace assistants',
+            'state' => array('kind' => 'reader', 'function' => 'pg_ai_connection_ready', 'args' => array('gemini')),
             'covers' => array('model' => array('gemini'))),
-        'mistral' => array('name' => 'Mistral', 'group' => 'ai', 'place' => '#settings/workspace_assistants/pgset-ws-agents', 'uses' => 'Workspace assistants',
-            'state' => array('kind' => 'model', 'key' => 'mistral'),
+        'mistral' => array('name' => 'Mistral', 'group' => 'ai', 'place' => 'connections.php', 'found_at' => '#settings/workspace_assistants/pgset-ws-agents', 'uses' => 'Workspace assistants',
+            'state' => array('kind' => 'reader', 'function' => 'pg_ai_connection_ready', 'args' => array('mistral')),
             'covers' => array('model' => array('mistral'))),
-        'deepseek' => array('name' => 'DeepSeek', 'group' => 'ai', 'place' => '#settings/workspace_assistants/pgset-ws-agents', 'uses' => 'Workspace assistants',
-            'state' => array('kind' => 'model', 'key' => 'deepseek'),
+        'deepseek' => array('name' => 'DeepSeek', 'group' => 'ai', 'place' => 'connections.php', 'found_at' => '#settings/workspace_assistants/pgset-ws-agents', 'uses' => 'Workspace assistants',
+            'state' => array('kind' => 'reader', 'function' => 'pg_ai_connection_ready', 'args' => array('deepseek')),
             'covers' => array('model' => array('deepseek'))),
-        'openrouter' => array('name' => 'OpenRouter', 'group' => 'ai', 'place' => '#settings/workspace_assistants/pgset-ws-agents', 'uses' => 'Workspace assistants',
-            'state' => array('kind' => 'model', 'key' => 'openrouter'),
+        'openrouter' => array('name' => 'OpenRouter', 'group' => 'ai', 'place' => 'connections.php', 'found_at' => '#settings/workspace_assistants/pgset-ws-agents', 'uses' => 'Workspace assistants',
+            'state' => array('kind' => 'reader', 'function' => 'pg_ai_connection_ready', 'args' => array('openrouter')),
             'covers' => array('model' => array('openrouter'))),
-        'azure_openai' => array('name' => 'Azure OpenAI', 'group' => 'ai', 'place' => '#settings/workspace_assistants/pgset-ws-agents', 'uses' => 'Workspace assistants',
-            'state' => array('kind' => 'model', 'key' => 'azure'),
+        'azure_openai' => array('name' => 'Azure OpenAI', 'group' => 'ai', 'place' => 'connections.php', 'found_at' => '#settings/workspace_assistants/pgset-ws-agents', 'uses' => 'Workspace assistants',
+            'state' => array('kind' => 'reader', 'function' => 'pg_ai_connection_ready', 'args' => array('azure')),
             'covers' => array('model' => array('azure'))),
         'google_translate' => array('name' => 'Google Cloud Translation', 'group' => 'ai', 'place' => '#settings/languages/pgset-translation-engines', 'uses' => 'Translating pages and texts',
             'state' => array('kind' => 'config', 'names' => array('TRANSLATION_GOOGLE_KEY_ENC'))),

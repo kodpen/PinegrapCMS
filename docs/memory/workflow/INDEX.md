@@ -9,6 +9,7 @@
 - agent-channel-reads.md: How much of a Workspace channel an agent session reads per turn: the message that woke it, its request and brief, no history; at most 5 messages for a check; more only when a person asks [decision: here]
 - agent-channel-request-wait.md: tools/ws_wait.php --requests, a session's waiter on its own request queue (GET /workspace/agent-requests): which request wakes it, the printed line, the interval, exits, restarting
 - agent-channel-wake.md: How a session waits on the agent channel: on its request queue (tools/ws_wait.php --requests), what makes a request (a mention, @herkes, a reply), on changes, the handles typed [decision: here]
+- api-answer-check-run.md: Working rule: who runs tools/check_api_answers.php, when and how: a running site with a database, settings from the environment only, never in CI, findings filed as bug issues
 - architect-asking.md: How a session asks a decision question or the owner's approval of screenshots: search first, one message in the agent channel naming the architect, the PR back to draft, the session ends [decision: here]
 - architect-decision-record.md: An owner's answer stands in the agent channel, quoted by the architect, before the decisions list names it; a decisions entry that names no channel message is held by the merging session [decision: decisions-made-panel-4.md]
 - architect-no-hand-over.md: The architect session does not hand over to a fresh session at a token count (2026-11-10): auto-compact summarises its context in place; what it reads again after a compaction
@@ -120,8 +121,10 @@
 - decisions-made-product-75.md: Decisions list, product part 75 (2026-11-17): pictures drawn by themselves and by the server (poll 143); looks of the notification block (142) and the meeting link page (144); CH3b's change (145)
 - decisions-made-product-76.md: Decisions list, product part 76 (2026-11-17): connectors managed in one place on Connections (poll 146); Voice message transcripts card moves (147); "E-posta gönderimi" category (148)
 - decisions-made-product-77.md: Decisions list, product part 77 (2026-11-17): the Connections management screen's look accepted (poll 149): the list, a service's page, feature cards without a key, the "Bağlantılar ›" entry
-- decisions-made-product-78.md: Decisions list, product part 78 (2026-11-19 on): the Prototype view becomes a place to edit a page's links; Incoming e-mail pinned to a person's main menu and as a dashboard card
+- decisions-made-product-78.md: Decisions list, product part 78 (2026-11-19 on): Prototype view edits links; Incoming e-mail pinned and as a card; Gmail read by a connected account; Google set-up guidance
+- decisions-made-product-79.md: Decisions list, product part 79 (2026-11-19 on): the own Office code replaces PHPExcel and grows to full scope: more previews, wider editing, shared Excel export and import
 - decisions-made-product-8.md: Decisions list, product part 8 (2026-10-30 midday on): Trendyol-carried packages refused by Create Label, starter dump corrections for #3330, marketing SMS in 2026.11.0, forum template wording
+- decisions-made-product-80.md: Decisions list, product part 80 (2026-11-20 on): Design Canvas layer groups and a layer attached to another; the phone's Workspace writing box with the field on top
 - decisions-made-product-9.md: Decisions list, product part 9 (2026-10-30 afternoon on): form rules for visitors only, marketplace orders invoiced behind a switch, sales quote guest links and templates, Workspace density switch
 - decisions-made-product.md: Decisions list, product part: express order and order preview totals, cookie window as the only translated UI text, publish-only editing, robots.txt vs noindex, ERP limits, erasure.
 - decisions-made-schema-10.md: Decisions list, schema part 10 (2026-11-01 on): search engines appended to the visitors ENUM; the ActivityPub reactions table; the joined-a-group profile action; booking deposits

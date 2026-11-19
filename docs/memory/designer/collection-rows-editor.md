@@ -26,4 +26,6 @@ description: The rows editor of a collection's Record rows field on Add and Edit
 - An existing row gets "Open the row" (its Edit Submitted Form in a new tab) when the child has fields the table does not take (a file, rich text, a radio group); below the table "Filled on the row's own screen:" names them.
 - The row's own screen shows "Row of" in its Summary card with a link back: `pg_coll_rows_parent_of()` finds the record whose rows field holds the code (`pg_coll_reference_holds_sql()`), `pg_coll_rows_parent_row()` draws the line.
 
+The same editor on a designed site form: `collection-rows-site-form.md`.
+
 Tests: `tests/collections_rows_test.php` (posted list, config, one named field, the parent line).

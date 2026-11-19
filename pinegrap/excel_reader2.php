@@ -93,7 +93,22 @@ function v($data, $pos) {
 
 class OLERead {
 	var $data = '';
-	function OLERead() {
+	// Pinegrap: declared, as PHP 8.2 deprecates creating them on the fly.
+	var $error;
+	var $numBigBlockDepotBlocks;
+	var $sbdStartBlock;
+	var $rootStartBlock;
+	var $extensionBlock;
+	var $numExtensionBlocks;
+	var $bigBlockChain;
+	var $smallBlockChain;
+	var $entry;
+	var $props;
+	var $wrkbook;
+	var $rootentry;
+	// Pinegrap: __construct(), as PHP 8 never runs a method named like its
+	// class as the constructor.
+	function __construct() {
 	}
 	
 	function read($sFileName) {
@@ -684,6 +699,12 @@ class Spreadsheet_Excel_Reader {
 	var $_columnsFormat = array ();
 	var $_rowoffset = 1;
 	var $_coloffset = 1;
+	// Pinegrap: declared, as PHP 8.2 deprecates creating them on the fly.
+	var $_encoderFunction;
+	var $store_extended_info;
+	var $version;
+	var $nineteenFour;
+	var $sn;
 	
 	/**
 	 * List of default date formats used by Excel
@@ -792,15 +813,20 @@ class Spreadsheet_Excel_Reader {
 	 * Constructor
 	 *
 	 * Some basic initialisation
+	 *
+	 * Pinegrap: __construct(), as PHP 8 never runs a method named like its
+	 * class as the constructor.
 	 */
-	function Spreadsheet_Excel_Reader($file = '', $store_extended_info = true, $outputEncoding = '') {
+	function __construct($file = '', $store_extended_info = true, $outputEncoding = '') {
 		$this->_ole = new OLERead ( );
 		$this->setUTFEncoder ( 'iconv' );
 		if ($outputEncoding != '') {
 			$this->setOutputEncoding ( $outputEncoding );
 		}
 		for($i = 1; $i < 245; $i ++) {
-			$name = strtolower ( ((($i - 1) / 26 >= 1) ? chr ( ($i - 1) / 26 + 64 ) : '') . chr ( ($i - 1) % 26 + 65 ) );
+			// Pinegrap: (int) hands chr() the whole number it took from the
+			// float anyway, without PHP 8.1's "loses precision" deprecation.
+			$name = strtolower ( ((($i - 1) / 26 >= 1) ? chr ( (int) (($i - 1) / 26) + 64 ) : '') . chr ( ($i - 1) % 26 + 65 ) );
 			$this->colnames [$name] = $i;
 			$this->colindexes [$i] = $name;
 		}

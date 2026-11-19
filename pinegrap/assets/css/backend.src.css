@@ -14930,6 +14930,12 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
   line-height: 1.55;
   overflow-wrap: anywhere;
 }
+/* An agent channel's choice between its own decisions and every agent
+   channel's sits above the cards; a card from another agent channel names
+   it in its head line. */
+.ws-pane-decisions > .ws-decisions-scope {
+  display: flex;
+}
 /* A decision longer than about eight lines is folded (foldLong() in
    workspace.js): its text fades out under the eighth line and Show more
    under it opens the rest. */
@@ -17778,6 +17784,24 @@ a.ws-chip-message:hover,
   margin-bottom: .75rem;
   padding-bottom: .5rem;
   border-bottom: 1px solid var(--pg-border-color-translucent);
+}
+/* The conversation's channel in the head (ws_mail_pane_channel_pill()): a
+   status pill that is a link, so the link's underline shows only on hover
+   and focus; a long name is cut inside the pane's width, never widening it,
+   the whole words in its title. */
+.ws-mail-pane-channel {
+  max-width: 100%;
+  min-width: 0;
+  text-decoration: none;
+}
+.ws-mail-pane-channel-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ws-mail-pane-channel:is(:hover, :focus-visible) .ws-mail-pane-channel-text {
+  text-decoration: underline;
 }
 .ws-mail-pane-tools {
   display: flex;
@@ -21415,8 +21439,8 @@ html[data-bs-theme="dark"] .ws-fd-tone-text-2 { --ws-fd-tone: #f0c060; }
   align-items: flex-start;
   gap: .35rem;
 }
-.ws-claude-copy .form-control {
-  font-size: .76rem;
+.ws-claude-copy .pg-input {
+  font-size: var(--pg-text-meta);
 }
 .ws-claude-steps {
   display: grid;
@@ -21478,12 +21502,8 @@ html[data-bs-theme="dark"] .ws-fd-tone-text-2 { --ws-fd-tone: #f0c060; }
   top: calc(var(--pg-navbar-h) + 1rem);
 }
 .ws-claude-recent-row {
-  display: flex;
   align-items: flex-start;
-  gap: .5rem;
-  padding: .4rem 0;
-  border-bottom: 1px solid var(--pg-border-color);
-  font-size: .84rem;
+  font-size: var(--pg-text-2);
 }
 .ws-claude-recent-row > .bi {
   margin-top: .15rem;
@@ -28669,6 +28689,10 @@ body.pg-measure-edit .row > .order-3 > nav.buttons.navigation,
   backdrop-filter: blur(16px);
   box-shadow: var(--pg-shadow-float);
 }
+/* The settings page's bar sticks half a line above the window's edge. */
+#pg_settings_page_form > nav.buttons.navigation {
+  bottom: .5rem;
+}
 /* pg_save_bar()'s sticky column holds the bar's bottom margin: outside a
    flex row (straight in a form, after a card) the margin would collapse out
    of the column and the bar would sit on the window's bottom edge. */
@@ -28980,7 +29004,8 @@ select:not([multiple], [size]:not([size="1"])) :is(option, optgroup) {
 }
 .pg-button:focus-visible,
 .pg-icon-button:focus-visible,
-.pg-seg-item:focus-visible {
+.pg-seg-item:focus-visible,
+.pg-seg-item:has(> input:focus-visible) {
   outline: 2px solid var(--pg-accent);
   outline-offset: 2px;
 }
@@ -29015,7 +29040,8 @@ select:not([multiple], [size]:not([size="1"])) :is(option, optgroup) {
 .pg-seg-item.is-active,
 .pg-seg-item[aria-pressed="true"],
 .pg-seg-item[aria-selected="true"],
-.pg-seg-item[aria-current="true"] {
+.pg-seg-item[aria-current="true"],
+.pg-seg-item:has(> input:checked) {
   background: var(--pg-thumb);
   color: var(--pg-fg-body);
   box-shadow: var(--pg-thumb-shadow);

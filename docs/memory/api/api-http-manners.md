@@ -25,4 +25,4 @@ description: External API manners (#10142): HEAD as GET without a body, Location
 - While OAuth is on, `api_fail()` puts the Bearer challenge in its place. The MCP endpoint's `credentials_missing` gets no Basic challenge: MCP clients sign in through OAuth.
 
 ## Where is it tested?
-- `tests/api_manners_test.php`. Introduced by step AM7 of plan api-clean-modern.
+- `tests/api_manners_test.php`. Added by PR #10142.

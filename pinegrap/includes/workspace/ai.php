@@ -4863,6 +4863,20 @@ function ws_ai_license_label()
 }
 
 /**
+ * The pill tone of a licence state (ws_ai_license_label()'s tone): teal when
+ * valid, amber while pending, rose for a problem, gray otherwise.
+ *
+ * @param string $tone success | warning | danger | secondary
+ * @return string a pg-tone-* class
+ */
+function ws_ai_license_tone($tone)
+{
+    $tones = array('success' => 'pg-tone-teal', 'warning' => 'pg-tone-amber', 'danger' => 'pg-tone-rose');
+
+    return $tones[(string) $tone] ?? 'pg-tone-gray';
+}
+
+/**
  * Saves the card, tries the connection, or makes Pinegrap AI's key.
  *
  * @param array    $viewer
@@ -5220,13 +5234,7 @@ function ws_ai_settings_card($self_url, $viewer, $form = null)
         }
     }
 
-    if (empty($missing)) {
-        $state = '<span class="badge theme-success">' . h(lang('Ready')) . '</span>';
-    } elseif (!$config['enabled']) {
-        $state = '<span class="badge theme-secondary">' . h(lang('Off')) . '</span>';
-    } else {
-        $state = '<span class="badge theme-warning">' . h(lang('Not ready')) . '</span>';
-    }
+    $state = ws_assistant_state_pill($missing, $config['enabled']);
 
     $status_list = '';
 
@@ -5252,30 +5260,30 @@ function ws_ai_settings_card($self_url, $viewer, $form = null)
         }
 
         $recent .= '
-            <li class="ws-claude-recent-row">
+            <li class="pg-card-inner-row ws-claude-recent-row">
                 <i class="bi ' . h($line['icon']) . '" aria-hidden="true"></i>
                 <div class="ws-grow">
                     ' . $where . '
-                    <span class="fg-secondary">· ' . h(ws_time_label($row['created_at'])) . '</span>
-                    <div class="small">' . h($line['label']) . '</div>
+                    <span class="pg-text-meta">· ' . h(ws_time_label($row['created_at'])) . '</span>
+                    <div class="pg-text-2">' . h($line['label']) . '</div>
                 </div>
             </li>';
     }
 
     if ($recent === '') {
-        $recent = '<li class="fg-secondary small">' . h(lang('Nobody has asked Pinegrap AI yet.')) . '</li>';
+        $recent = '<li class="pg-card-inner-row pg-text-meta">' . h(lang('Nobody has asked Pinegrap AI yet.')) . '</li>';
     }
 
     $steps = array(
         array(
             lang('An application for Pinegrap AI'),
             lang('Press Create Pinegrap AI\'s key above: it makes the application Pinegrap AI writes through, without a secret, so it cannot sign in anywhere. To use another application, make it in Application Access, apart from Claude\'s, and choose it under Use another application.'),
-            '<a class="btn btn-sm btn-outline theme-secondary" href="' . h($base . 'api_settings.php') . '"><i class="bi bi-key me-1" aria-hidden="true"></i>' . h(lang('Application Access')) . '</a>',
+            '<a class="pg-button pg-button-quiet pg-button-sm" href="' . h($base . 'api_settings.php') . '"><i class="bi bi-key" aria-hidden="true"></i>' . h(lang('Application Access')) . '</a>',
         ),
         array(
             lang('The licence key'),
             lang('Enter the subscription key of your Pinegrap Premium licence under Site Settings › General › Software. It is checked against the site\'s address: a key that does not match or has expired does not work.'),
-            '<a class="btn btn-sm btn-outline theme-secondary" href="' . h($base . pg_settings_link('general', 'pgset-software')) . '"><i class="bi bi-gear me-1" aria-hidden="true"></i>' . h(lang('Site Settings › General › Software')) . '</a>',
+            '<a class="pg-button pg-button-quiet pg-button-sm" href="' . h($base . pg_settings_link('general', 'pgset-software')) . '"><i class="bi bi-gear" aria-hidden="true"></i>' . h(lang('Site Settings › General › Software')) . '</a>',
         ),
         array(
             lang('Try it'),
@@ -5289,8 +5297,8 @@ function ws_ai_settings_card($self_url, $viewer, $form = null)
     foreach ($steps as $step) {
         $guide .= '
             <li class="ws-claude-step">
-                <div class="small fw-semibold">' . h($step[0]) . '</div>
-                <div class="small fg-secondary mb-3">' . h($step[1]) . '</div>
+                <div class="pg-field-label">' . h($step[0]) . '</div>
+                <div class="pg-text-2 fg-secondary mb-3">' . h($step[1]) . '</div>
                 ' . $step[2] . '
             </li>';
     }
@@ -5304,8 +5312,8 @@ function ws_ai_settings_card($self_url, $viewer, $form = null)
         require_once PG_FUNCTIONS_DIR . '/includes/api/scopes.php';
 
         $key_block = '
-                        ' . $button('ai_key_create', 'btn btn-sm btn-solid theme-primary rounded-pill px-5', '<i class="bi bi-key me-1" aria-hidden="true"></i>' . h(lang('Create Pinegrap AI\'s key')), '
-                            <div class="form-text">' . h(lang(array('string' => 'The key reads every kind of record except {var:1} and writes only in the Workspace and the Tasks. It has no secret and cannot sign in anywhere: Pinegrap AI runs inside this site.', 'vars' => implode(', ', api_assistant_scopes_left_out())))) . '</div>', 'ws-claude-key mb-7');
+                        ' . $button('ai_key_create', 'pg-button pg-button-quiet pg-button-sm', '<i class="bi bi-key" aria-hidden="true"></i>' . h(lang('Create Pinegrap AI\'s key')), '
+                            <div class="pg-field-help">' . h(lang(array('string' => 'The key reads every kind of record except {var:1} and writes only in the Workspace and the Tasks. It has no secret and cannot sign in anywhere: Pinegrap AI runs inside this site.', 'vars' => implode(', ', api_assistant_scopes_left_out())))) . '</div>', 'ws-claude-key ws-agset-section mt-0');
     } elseif ($admin) {
         require_once PG_FUNCTIONS_DIR . '/includes/api/keys.php';
 
@@ -5314,12 +5322,12 @@ function ws_ai_settings_card($self_url, $viewer, $form = null)
         $doors = (array) db_item("SELECT kind, api_secret_hash, api_secret_prev_hash, api_secret_prev_expires FROM api_apps WHERE id = '" . (int) $app['id'] . "'");
 
         $key_block = '
-                        <div class="ws-claude-key mb-7">
-                            <div class="small fw-semibold mb-1">' . h(lang('The application Pinegrap AI writes through')) . ': ' . h($app['name']) . ' <span class="fg-secondary">#' . (int) $app['id'] . '</span></div>
-                            <div class="small fg-secondary">' . h(api_app_can_sign_in($doors, time())
+                        <section class="ws-claude-key ws-agset-section mt-0">
+                            <h4 class="pg-group-label">' . h(lang('The application Pinegrap AI writes through')) . ': ' . h($app['name']) . ' <span class="pg-text-meta">#' . (int) $app['id'] . '</span></h4>
+                            <div class="pg-text-2">' . h(api_app_can_sign_in($doors, time())
                                 ? lang('Pinegrap AI uses only this application\'s name and permissions; its key and secret are not needed here.')
                                 : lang('It cannot sign in anywhere and needs no secret: Pinegrap AI runs inside this site.')) . '</div>
-                        </div>';
+                        </section>';
     }
 
     $head = $dialog
@@ -5345,46 +5353,46 @@ function ws_ai_settings_card($self_url, $viewer, $form = null)
                         ' . ($dialog ? '<div class="ws-ai-connection">' : '<form method="post" action="' . h($self_url) . '#ws-ai">
                             ' . get_token_field() . '
                             <input type="hidden" name="ws_action" value="ai">') . '
-                            <div class="form-field mb-5">
-                                <div class="switch"><input class="" type="checkbox" name="' . $field_name('enabled') . '" value="1" id="ws_ai_enabled"' . ($config['enabled'] ? ' checked' : '') . $disabled . '></div>
-                                <label class="" for="ws_ai_enabled">' . h(lang('Pinegrap AI can be asked in the channels with @ai')) . '</label>
-                                <div class="form-text">' . h(lang('The model at ai.pinegrap.com answers, with the site\'s subscription key. What is written in a channel where it is asked is sent there. Public channels are open to it, private ones only when their manager allows it.')) . '</div>
+                            <div class="d-flex align-items-start gap-3">
+                                <input class="pg-switch" type="checkbox" name="' . $field_name('enabled') . '" value="1" id="ws_ai_enabled" aria-describedby="ws_ai_enabled-help"' . ($config['enabled'] ? ' checked' : '') . $disabled . '>
+                                <div><label class="pg-text-2" for="ws_ai_enabled">' . h(lang('Pinegrap AI can be asked in the channels with @ai')) . '</label>
+                                <div class="pg-field-help" id="ws_ai_enabled-help">' . h(lang('The model at ai.pinegrap.com answers, with the site\'s subscription key. What is written in a channel where it is asked is sent there. Public channels are open to it, private ones only when their manager allows it.')) . '</div></div>
                             </div>
-                            <details class="mb-5">
-                                <summary class="small fw-semibold">' . h(lang('Use another application')) . '</summary>
+                            <details class="ws-agset-section ws-agset-advanced">
+                                <summary class="pg-group-label">' . h(lang('Use another application')) . '</summary>
                                 <div class="mt-3">
-                                    <label class="form-label" for="ws_ai_app_id">' . h(lang('The application Pinegrap AI writes through')) . '</label>
-                                    <select class="form-control form-control-sm" name="' . $field_name('app_id') . '" id="ws_ai_app_id"' . $disabled . '>' . $options . '</select>
-                                    <ul class="list-unstyled small mt-3 mb-0 ws-claude-scopes">' . $scope_rows . '</ul>
-                                    <div class="form-text">' . h(empty($readable)
+                                    <label class="pg-field-label" for="ws_ai_app_id">' . h(lang('The application Pinegrap AI writes through')) . '</label>
+                                    <select class="pg-input pg-input-sm" name="' . $field_name('app_id') . '" id="ws_ai_app_id"' . $disabled . '>' . $options . '</select>
+                                    <ul class="list-unstyled pg-text-2 mt-3 mb-0 ws-claude-scopes">' . $scope_rows . '</ul>
+                                    <div class="pg-field-help">' . h(empty($readable)
                                         ? lang('It reads no records: Pinegrap AI sees the channels and the tasks only.')
                                         : lang(array('string' => 'It may also read: {var:1}', 'vars' => implode(', ', $readable))) . '.') . ' ' . h(lang('It reads with the rights of the person who asked, never more.')) . '</div>
                                 </div>
                             </details>
-                            <div class="mb-5">
-                                <div class="form-label mb-1">' . h(lang('Licence')) . '</div>
-                                <div class="form-text mt-0">' . h(lang('Pinegrap AI is part of Pinegrap Premium and works with the subscription key of the site; it has no key of its own.')) . ' <a href="' . h($base . pg_settings_link('general', 'pgset-software')) . '">' . h(lang('Site Settings › General › Software')) . '</a></div>
+                            <div class="ws-agset-section">
+                                <div class="pg-field-label">' . h(lang('Licence')) . '</div>
+                                <div class="pg-field-help mt-0">' . h(lang('Pinegrap AI is part of Pinegrap Premium and works with the subscription key of the site; it has no key of its own.')) . ' <a href="' . h($base . pg_settings_link('general', 'pgset-software')) . '">' . h(lang('Site Settings › General › Software')) . '</a></div>
                             </div>
-                            ' . ($admin ? ($dialog ? '' : '<button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5"><i class="bi bi-check2 me-1" aria-hidden="true"></i>' . h(lang('Save')) . '</button>') : '<div class="form-text">' . h(lang('Only an administrator can connect Pinegrap AI.')) . '</div>') . '
+                            ' . ($admin ? ($dialog ? '' : '<button type="submit" class="pg-button pg-button-fill pg-button-sm mt-5">' . h(lang('Save')) . '</button>') : '<div class="pg-field-help">' . h(lang('Only an administrator can connect Pinegrap AI.')) . '</div>') . '
                         ' . ($dialog ? '</div>' : '</form>') . '
-                        <details class="mt-7 ws-claude-guide"' . (empty($missing) ? '' : ' open') . '>
-                            <summary class="small fw-semibold">' . h(lang('How to connect it')) . '</summary>
-                            <ol class="ws-claude-steps mt-5">' . $guide . '</ol>
+                        <details class="ws-agset-section ws-agset-advanced ws-claude-guide"' . (empty($missing) ? '' : ' open') . '>
+                            <summary class="pg-group-label">' . h(lang('How to connect it')) . '</summary>
+                            <ol class="ws-claude-steps mt-4">' . $guide . '</ol>
                         </details>
                     </div>
                     <div class="lg:col-5">
                         <div class="ws-claude-status">
-                            <div class="small fw-semibold mb-1">' . h(lang('Licence')) . '</div>
-                            <div class="mb-5"><span class="badge theme-' . h($license['tone']) . ' text-wrap text-start">' . h($license['label']) . '</span></div>
-                            ' . (($config['model'] !== '') ? '<div class="small fg-secondary mb-5">' . h(lang('Model')) . ': <code>' . h($config['model']) . '</code></div>' : '') . '
-                            ' . (!empty($missing) ? '<div class="small fw-semibold mb-1">' . h(lang('Still missing')) . '</div><ul class="small mb-5">' . $status_list . '</ul>' : '') . '
+                            <h4 class="pg-group-label">' . h(lang('Licence')) . '</h4>
+                            <div class="mb-5"><span class="pg-pill ' . h(ws_ai_license_tone($license['tone'])) . ' text-wrap text-start">' . h($license['label']) . '</span></div>
+                            ' . (($config['model'] !== '') ? '<div class="pg-text-2 mb-5"><span class="pg-text-meta">' . h(lang('Model')) . ':</span> <code>' . h($config['model']) . '</code></div>' : '') . '
+                            ' . (!empty($missing) ? '<h4 class="pg-group-label">' . h(lang('Still missing')) . '</h4><ul class="pg-text-2 mb-5">' . $status_list . '</ul>' : '') . '
                             ' . (($config['error'] !== '') ? '<div class="alert theme-danger small py-3">' . h($config['error']) . '</div>' : '') . '
                             ' . (($config['hold_until'] > time()) ? '<div class="alert theme-warning small py-3">' . h(lang(array('string' => 'Requests wait until {var:1}.', 'vars' => date('d.m.Y H:i', $config['hold_until'])))) . '</div>' : '') . '
-                            ' . ($admin && $config['license_set'] ? $button('ai_test', 'btn btn-sm btn-outline theme-secondary', '<i class="bi bi-plug me-1" aria-hidden="true"></i>' . h(lang('Try the connection')), '
-                                <div class="form-text">' . h(lang('Checks the licence and asks the model for a one-word answer; it may take up to a minute.')) . '</div>', 'mb-5') : '') . '
-                            ' . (ws_ai_tokens_ready() ? '<div class="small fg-secondary mb-5">' . h(ws_ai_tokens_line(ws_ai_read_tokens())) . '</div>' : '') . '
-                            <div class="small fw-semibold mb-1">' . h(lang('The latest requests')) . '</div>
-                            <ul class="list-unstyled ws-claude-recent">' . $recent . '</ul>
+                            ' . ($admin && $config['license_set'] ? $button('ai_test', 'pg-button pg-button-quiet pg-button-sm', '<i class="bi bi-plug" aria-hidden="true"></i>' . h(lang('Try the connection')), '
+                                <div class="pg-field-help">' . h(lang('Checks the licence and asks the model for a one-word answer; it may take up to a minute.')) . '</div>', 'mb-5') : '') . '
+                            ' . (ws_ai_tokens_ready() ? '<div class="pg-text-2 fg-secondary mb-5">' . h(ws_ai_tokens_line(ws_ai_read_tokens())) . '</div>' : '') . '
+                            <h4 class="pg-group-label">' . h(lang('The latest requests')) . '</h4>
+                            <ul class="list-unstyled pg-card-inner ws-claude-recent">' . $recent . '</ul>
                         </div>
                     </div>
                 </div>

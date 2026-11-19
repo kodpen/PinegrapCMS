@@ -64,10 +64,13 @@
 - collection-lists.md: Collection fields in lists and feeds (C4a, C4b2, C5a): numeric sort, reference filters printing the label, records referencing the shown record, feed categories by label, images
 - collection-references.md: A form list or detail element prints a field of the record, product or page a reference points at (__ref binding, spec, one read per form, escaping, what is never read)
 - collection-revisions.md: Collection item revisions (record_revisions, 11.0.123, C7a #3068; History and restore C7b #3099): which items, which writers, what a row holds, the History section, restore, retention, erasure
+- collection-rows-delete-history.md: Collection "Rows" field on delete and in History: a deleted record's rows go with it, the delete confirmations name the count, a loaded revision keeps only rows that exist [decision: here]
 - collection-rows-editor.md: The rows editor of a collection's Record rows field on Add and Edit Submitted Form: the table, the one JSON field rows_<id>, check before save, write after, Open the row and the Row of link back
 - collection-rows-list.md: A record's rows listed on its record page: the dynamic value "Rows of the shown record" (shown record rows) and the record view's "Rows of this record" button
 - collection-rows-outside.md: Collection "Rows" field outside its editor: the API read (codes, rows, kind), the check of an API or Workspace write, the import leaving the column out
+- collection-rows-site-form.md: The rows editor on a designed site form: Bootstrap 5.3.8 look, the list checked before the record is written and written after it, the 256 KB bound
 - collection-rows-writer.md: Collection "Rows" field kind: rows as child collection records, codes in order on the parent, the spec, the writer and its order of writes, the 100-row limit
+- collection-rows.md: Start file of the collection "Record rows" field (Kind "Rows"): rows of a record as child records, decisions, file map, R1 to R19 with PRs, open items [decision: here]
 - collection-template-refs.md: A template's reference into another tab's form (_cf.ref tab:<key>): Publish, forms target first, sample references by label, blog categories, export (C6b1, C6b2)
 - collections-decisions.md: Typed collections over designer forms: why a form with a flag, the approved schema (#2393, #3051), why items have no schedule columns (#3746), what C1–C7 built and where it is described [decision: decisions-made-product-10.md, decisions-made-schema-3.md]
 - comment-admin-notification.md: The administrator e-mail add_comment.php sends about a new comment: queued, written in the staff language, attachment line only when a file came
@@ -297,6 +300,7 @@
 - designer-blocks-clinic.md: The Clinic block family (clinic- prefix, own palette group): doctors' week, care guide; general blocks placed instead; rules, test
 - designer-blocks-conference.md: The Conference block family (conference- prefix): opening hero with a badge on its lanyard, day agenda with parallel sessions, speaker line-up as a poster; blocks placed instead; tests
 - designer-blocks-construction.md: The Construction block family (construction- prefix, own palette group): site board hero, project progress, neighbour notice; general blocks placed instead; rules, test
+- designer-blocks-course.md: The course block family (course- prefix, Courses group): four hidden blocks filled by pg_course.js, the marks it reads, canvas and Preview rows, test
 - designer-blocks-coworking.md: The coworking- block family (Coworking group): the workspace hero, what it reuses instead (spaces, plans, amenities, floors), its pg-cw-* rules, its test
 - designer-blocks-cta.md: General CTA blocks in a family file (cta- prefix, core Marketing group): the sticky bar; where it sticks, its rule, who uses it
 - designer-blocks-dealership.md: The Car Dealership block family (dealership- prefix, own palette group): showroom panel, stock finder, three ways in; general blocks placed instead; rules, test
@@ -311,6 +315,7 @@
 - designer-blocks-hotel.md: The Hotel block family (hotel- prefix, own palette group): room showcase, stay clock; general blocks placed instead; rules, test
 - designer-blocks-launch.md: The launch- block family (Product Launch): six blocks, their interactions, bento-features and the Variant Picker reused, the sticky spec head
 - designer-blocks-library.md: The Library block family (library- prefix): shelf hero with today's hours and formats, shelf mark guide with the ten subject classes, library card with its loans table
+- designer-blocks-listen.md: The listen- block family (Listen group): the "Listen" block that reads the article aloud in the visitor's browser; its buttons, canvas and Preview, the d-flex trap, what is left out
 - designer-blocks-marina.md: The Marina block family (marina- prefix, its own palette group): the pontoon plan and the arrival by sea, the blocks a marina places instead of adding, its pg-marina-* rules, its test
 - designer-blocks-museum.md: The Museum block family (museum- prefix, own palette group): exhibition hero, look closer, highlights trail; general blocks placed instead; rules, test
 - designer-blocks-music.md: The Music block family (music- prefix, own palette group): release hero, tour dates, press kit; general blocks placed instead; rules, test
@@ -394,6 +399,7 @@
 - designer-options-panel-names.md: How controls of the visual editor's Options/Appearance panel get their accessible names (one naming pass), keyboard section headers, per-screen-size toggles, Styles inspector names
 - designer-options-panel-search.md: Options panel Search... box in the designer (filterPropertiesPanel()): what it matches, sections without rows, the No option matches line, Turkish İ and capitals
 - designer-options-section-cards.md: The Options panel's identity row and section cards (D3, D6–D9, D11): own section first and open, general sections closed with a count and summary, closed bodies not drawn, one source for changed rows [decision: here]
+- designer-options-style-advanced.md: The Options panel's Style and Advanced tabs (DP5b): the sections' names and order, which open by themselves, the card ids a renamed section keeps
 - designer-options-tabs.md: The Options panel's three tabs Content, Style and Advanced (D4, D5, D14): which section goes where, the tab kept per kind, only the open tab built, the closed Translation and Bind data summaries
 - designer-overview-follows-selection.md: The designer's Overview tree follows the selection from every panel: one place opens and scrolls to the row (_sdTreeRevealSelection), identity lookup, instant scroll, when it must not move.
 - designer-page-names.md: Which names a visual-editor page may take: other pages, files, short links, site root entries, sitemap.xml/robots.txt, site language codes; why check_name_availability() is not used on the save path.
@@ -411,7 +417,9 @@
 - designer-preview-page-scripts.md: Platform scripts a designer page gets from its markup (theme switcher, tooltips/popovers, scroller buttons) on the page and in the Preview; one Bootstrap bundle; Preview link guard and dark view.
 - designer-preview-play.md: Links in the designer's Preview (#1867): a page link plays the open tab of that name, unsaved too; others open the site in a new tab; the Hotspots toggle
 - designer-prototype-comments-door.md: Prototype comments (prototype_comments): what a row keeps, the guest's door prototype_comment.php and its gates, the limits, plain text, delete with the design [decision: here]
+- designer-prototype-comments-list.md: The designer's side of prototype comments: the Comments button, pins on the canvas, the Prototype comments list, numbers as the customer sees them, the presence stamp, the bell line [decision: here]
 - designer-prototype-comments-rules.md: Prototype comments: what a later change must keep (a deleted link takes its comments, a deleted page's comments stay, personal data erase), and the architect's schema answer [decision: here]
+- designer-prototype-comments-task.md: "Make a task" on a thread of the designer's Prototype comments list (PN4, #10459): when it shows, the task's fields, the guest's words quoted as data, a task of its own per press
 - designer-prototype-comments-viewer.md: The prototype viewer's comment mode for a share link with "Allow comments": node marks in the frame, the Comment button, the box, pins and threads, "Not on the page any more", what the frame may say
 - designer-prototype-share-link-frame.md: A prototype share link's frame: signed by link id (never the token), bound to the viewer's session; clicks go back through the viewer, new tabs by ?l=<id>; a failing page shows no reason
 - designer-prototype-share-links.md: Share links of a design's prototype (prototype_links, 11.0.35): makers, audiences, what anyone sees, the password lock, the token kept out of logs and the frame, uses, revoked with the design
@@ -584,13 +592,14 @@
 - prototype-arrangement.md: The Prototype view's layout(): frames, rows, chips, arrows; a grid of tab-group sections in flow order, shared parts left (wrapped at the grid's height), chips right, Start, Fit's corner, Tidy up [decision: here]
 - prototype-drawing.md: The Prototype view's drawing from a mark (PV10, #10101): a mark's drag draws its arrow, an arrow head's drag re-points it, the marks' keys, the pointer lifting an arrow, a link named by its children [decision: here]
 - prototype-focus.md: The Prototype view draws only the selected frame's arrows: the core's focus, opening on the open tab, All arrows, row marks, a shared part's link as an amber note, arrow colours and heads [decision: here]
+- prototype-grip.md: The Prototype view's "+" handle beside a drawable mark (PL4, #10444): when it shows, where it goes, 20 px at any zoom, a press on it is the mark's; a small mark's 4 px reach [decision: decisions-made-product-78.md]
 - prototype-hotspots.md: The Prototype view's pure module (PGProtoHotspots): which nodes are hotspots, shared frames, the map read's request, the marks, and which file covers each of its other answers
 - prototype-links-in-code.md: Where a design's links sit in the code, page-name hrefs and renames, the resolver, editor state, rights and Publish: what the Prototype view reads
-- prototype-list.md: The Prototype view's links panel: the selected frame's links out and in, its shared parts, one picked link, the target control, Open in the editor, N broken, the badge, Play
+- prototype-list.md: The Prototype view's links panel: the selected frame's links out and in, its shared parts, one picked link, the target control, Open in the editor, N broken, the badge, Play [decision: decisions-made-product-78.md]
 - prototype-map-read.md: The Prototype view's server read (api.php designer prototype_map, includes/fn/prototype_map.php): what it is asked, what it answers, how hidden pages stay hidden
-- prototype-marks.md: The Prototype view's link marks on a page picture (PV9, #10040): rectangles read from the picture, which show, arrows leaving from a mark or the foot, a shared part's own picture and height [decision: here]
+- prototype-marks.md: The Prototype view's link marks on a page picture (PV9, #10040): rectangles read from the picture, which show, arrows leaving from a mark or the foot, a shared part's own picture and height [decision: decisions-made-product-78.md]
 - prototype-page-picture.md: The Prototype view's page picture in a frame (PV8): how it is built, the sandboxed frame, the link marker, the queue and the cap, the foot's count, what a redraw reuses [decision: here]
-- prototype-page-whole.md: The Prototype view's selected page opened whole (PL3): the foot as a button, Show the whole page and Show less, the 6400 px limit, pinned viewport heights, the frames below moved, one open at a time [decision: here]
+- prototype-page-whole.md: The Prototype view's selected page opened whole (PL3): the foot as a button, Show the whole page and Show less, the 6400 px limit, pinned viewport heights, the frames below moved, one open at a time [decision: decisions-made-product-78.md]
 - prototype-picture-check-numbers.md: The prototype canvas page picture check's measurements (PV7): both ways on a 41-page design, how and where each number was taken
 - prototype-picture-check.md: The prototype canvas page picture (PV7, architect 2026-11-16): the Preview document in a script-free readable frame, its sandbox and CSP, the link marker, the cap on live pictures [decision: here]
 - prototype-places.md: Where the Prototype view keeps a moved frame or chip: frames shared on the design in the tab layout's proto (#6232), the rest per browser; the twin normalisers; what Tidy up clears

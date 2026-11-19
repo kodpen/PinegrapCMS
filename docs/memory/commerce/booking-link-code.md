@@ -24,4 +24,4 @@ The page that books through the link: [[booking-link-page]].
 
 Test: `tests/booking_links_test.php`.
 
-Related: docs/memory/commerce/bookings-model.md, docs/memory/plans/meeting-link-features.md
+Related: docs/memory/commerce/bookings-model.md, [[booking-meeting-link]]

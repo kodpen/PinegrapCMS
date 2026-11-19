@@ -2802,7 +2802,7 @@ function pg_image_editor_strings_artboard()
         'importSite'        => lang('From the site'),
         'importError'       => lang('This file cannot be imported.'),
         'languages'         => lang('Languages'),
-        'langNote'          => lang('Each language\'s picture is drawn from the last saved version with its translated words, and shown on the pages in that language.'),
+        'langNote'          => lang('Each language\'s picture is drawn by itself from the last saved version once all its texts are translated, and shown on the pages in that language; "Draw" does it now.'),
         'langUnsaved'       => lang('Changes not saved yet are not in these pictures.'),
         'langLoading'       => lang('Loading…'),
         'langError'         => lang('The languages could not be loaded.'),

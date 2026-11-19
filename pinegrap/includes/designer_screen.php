@@ -235,6 +235,7 @@ function pg_designer_screen_render($ctx)
 
     require_once(PG_FUNCTIONS_DIR . '/includes/fn/layouts.php');
     require_once(PG_FUNCTIONS_DIR . '/includes/fn/legacy_design_theme.php');
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/listen.php');
 
     // The order and groups of the tabs, for the pages listed above.
     $tab_page_ids = array();
@@ -374,7 +375,9 @@ function pg_designer_screen_render($ctx)
         'ai'            => $sd_ai,
         // The editor's parts not needed to open a page, run on first use
         // (pg_designer_parts()): their file addresses by name.
-        'parts'         => (object) pg_designer_part_urls(array_merge(array('import', 'code', 'theme', 'fonts', 'interactions', 'treesearch'), !empty($sd_ai['enabled']) ? array('ai') : array())),
+        // The prototype comments' pins and list ('comments') only to a
+        // designer, once the site keeps comments.
+        'parts'         => (object) pg_designer_part_urls(array_merge(array('import', 'code', 'theme', 'fonts', 'interactions', 'treesearch'), !empty($sd_ai['enabled']) ? array('ai') : array(), ($access === PG_DESIGNER_ACCESS_FULL && pg_proto_comments_ready()) ? array('comments') : array())),
         // The Translate section of the options panel: the site's other
         // languages, null on a site with one language.
         'translate'     => function_exists('pg_tr_editor_config') ? pg_tr_editor_config($user) : null,
@@ -689,6 +692,10 @@ function pg_designer_screen_render($ctx)
                 'Format code'  => lang('Format code'),
                 'Minimap'      => lang('Minimap'),
             )) . ';
+            // The Listen block\'s labels in the page\'s language, as the
+            // published page gets them (pg_listen_inject()); the Preview
+            // writes them before pg_listen.js.
+            window.sdListenLabels = ' . encode_json(pg_listen_labels()) . ';
         </script>
         <script src="assets/js/codemirror_modal.js?v=' . pg_designer_asset_stamp('assets/js/codemirror_modal.js') . '"></script>
         <!-- Smart completion: the predictor and the Bootstrap vocabulary are

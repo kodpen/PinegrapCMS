@@ -5,6 +5,7 @@ description: The Prototype view's drawing from a mark (PV10, #10101): a mark's d
 
 ## How is an arrow drawn or re-pointed?
 - (PV10 #10101) A drag of a drawable mark of the selected frame draws its arrow: the press is kind `row`, and past 4 px the view's `move` turns it into the core's `connect`, so the frames and chips that may take it light up (`pgc-target`) and `connected()` writes it (designer/prototype-view.md).
+- (PL4 #10444) A drag from the round "+" handle beside such a mark draws the same way; a small mark takes presses 4 px around it (designer/prototype-grip.md).
 - A press on the canvas or an arrow within 14 screen pixels of a shown arrow's head takes the nearest head (`_sdProtoHeadAt()`, `nearHead()`): a drag points the link elsewhere, a click picks it. A press on a frame stays the frame's: heads crowd on a frame's head bar, and a click there picked a link instead of selecting the frame.
 - What is written: `_sdProtoConnect()` as before (the tab opened, the lock, `_sdMayEdit()`, undo, the shared and live page warnings, once per opening; designer/prototype-view.md). K1 to K4 (designer/prototype-view-rules.md) are unchanged.
 

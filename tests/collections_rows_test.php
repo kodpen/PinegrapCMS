@@ -7,7 +7,8 @@
  * refusals, a record's codes in order, the check of one row, the writer's
  * order of writes, a code of another record refused, the limit, a refused
  * row writing nothing and a failure midway leaving no row behind, and the
- * rows control drawn as nothing on a site form.
+ * rows control on a site form: nothing when it cannot draw, else the rows
+ * editor in the site's look.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -303,6 +304,8 @@ function test_collections_rows_writer_failure_midway_leaves_no_row()
 	pg_assert_same(array('b2'), $result['left'], 'a removed row that could not be deleted is named');
 }
 
+// A rows control whose child collection cannot be read (no database here)
+// draws nothing on a site form: the control, its label and its wrapper go.
 function test_collections_rows_control_draws_nothing_on_a_site_form()
 {
 	$label = array('type' => 'semantic', 'props' => array('tag' => 'label', 'text' => 'Steps',
@@ -428,8 +431,96 @@ function test_collections_rows_date_and_time_cells_use_the_panel_picker()
 	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_collection_rows.js');
 	preg_match_all('/\.type\s*=\s*([^;]+);/', $js, $m);
 	foreach ($m[1] as $value) {
-		pg_assert_true(in_array(trim($value), array("'text'", "'checkbox'", "'button'"), true), 'the script gives no input a type from a variable: ' . $value);
+		pg_assert_true(in_array(trim($value), array("'text'", "'checkbox'", "'button'", "(column.input === 'date') ? 'date' : 'time'"), true), 'the script gives no input a type from a variable: ' . $value);
 	}
+	pg_assert_contains("look.nativeDates && (column.input === 'date' || column.input === 'time')", $js, 'the browser\'s date input only in the site look');
+	pg_assert_contains("nativeDates: false", $js, 'which the panel look turns off');
 	pg_assert_contains('column.hook', $js, 'the cell takes its column\'s hook');
 	pg_assert_contains('pgFields.init(', $js, 'and is drawn by the panel\'s field script');
+}
+
+
+function _collections_rows_site_tree()
+{
+	$label = array('type' => 'semantic', 'props' => array('tag' => 'label', 'text' => 'Steps',
+		'_attrs' => array(array('name' => 'for', 'value' => 'steps'))), 'children' => array());
+	$input = array('type' => 'semantic', 'props' => array('tag' => 'input',
+		'_attrs' => array(array('name' => 'type', 'value' => 'text'), array('name' => 'name', 'value' => 'steps'), array('name' => 'id', 'value' => 'steps'))), 'children' => array());
+	$wrap = array('type' => 'semantic', 'props' => array('tag' => 'div'), 'children' => array($label, $input));
+	return array('type' => 'semantic', 'props' => array('tag' => 'form'), 'children' => array($wrap));
+}
+
+function _collections_rows_site_row($office_use_only = 0)
+{
+	return array(
+		'id' => 901, 'page_id' => 30, 'name' => 'steps', 'label' => 'Steps', 'type' => 'text box', 'required' => 0,
+		'multiple' => 0, 'maxlength' => 0, 'size' => 0, 'rows' => 0, 'cols' => 0, 'default_value' => '',
+		'use_folder_name_for_default_value' => 0, 'contact_field' => '', 'office_use_only' => $office_use_only,
+		'wysiwyg' => 0, 'information' => '', 'rss_field' => '', 'validation_regex' => '', 'validation_message' => '',
+		'collection_kind' => 'rows', 'reference_page_id' => 40, 'rows_spec' => _collections_rows_spec(),
+	);
+}
+
+// A rows field the visitor may fill is drawn as the rows editor in place of
+// its control; its label goes, since the editor prints its own.
+function test_collections_rows_site_form_draws_the_editor()
+{
+	foreach (array(false, true) as $staff) {
+		$tree = _collections_rows_site_tree();
+		pg_cf_apply_field_bindings($tree, array('steps' => _collections_rows_site_row()), null, 0, $staff, array());
+		$wrap = $tree['children'][0];
+		pg_assert_same(1, count($wrap['children']), 'the label and the control make way for the editor' . ($staff ? ' (staff)' : ''));
+		pg_assert_same('custom_html', $wrap['children'][0]['props']['contentType']);
+		$html = $wrap['children'][0]['props']['html'];
+		pg_assert_contains('name="rows_901"', $html, 'the list travels in one field');
+		pg_assert_contains('&quot;look&quot;:&quot;site&quot;', $html, 'the script is told the site look');
+		pg_assert_contains('id="rows_label_901">Steps</span>', $html, 'the editor prints the label');
+	}
+
+	// An office-use-only rows field is not the visitor's: it goes as before.
+	$tree = _collections_rows_site_tree();
+	pg_cf_apply_field_bindings($tree, array('steps' => _collections_rows_site_row(1)), null, 0, false, array());
+	pg_assert_same(0, count($tree['children']), 'office use only: nothing for a visitor');
+	$tree = _collections_rows_site_tree();
+	pg_cf_apply_field_bindings($tree, array('steps' => _collections_rows_site_row(1)), null, 0, true, array());
+	pg_assert_contains('name="rows_901"', $tree['children'][0]['children'][0]['props']['html'], 'office use only: staff fill it');
+}
+
+function test_collections_rows_site_config()
+{
+	$fields = array(
+		_collections_rows_field_row(71, 'step', 'text box'),
+		_collections_rows_field_row(81, 'day', 'date'),
+		_collections_rows_field_row(73, 'photo', 'file upload'),
+	);
+	$spec = pg_coll_rows_spec(_collections_rows_field(), _collections_rows_child($fields));
+	$config = pg_coll_rows_site_config($spec, array(array('id' => 501, 'reference_code' => 'a1', 'values' => array(71 => 'Mix'))), array());
+
+	pg_assert_same('site', $config['look']);
+	pg_assert_same('', $config['columns'][1]['hook'], 'a date is the browser\'s input, not the panel picker');
+	pg_assert_same('date', $config['columns'][1]['input']);
+	pg_assert_same('', $config['rows'][0]['open'], 'no row opens on a record screen from a site');
+	pg_assert_same(array(), $config['others'], 'nor are the fields only that screen fills named');
+	pg_assert_same('Mix', $config['rows'][0]['values']['71']);
+}
+
+function test_collections_rows_site_markup()
+{
+	$html = pg_coll_rows_site_markup(array('id' => 901, 'label' => 'Steps <b>'), pg_coll_rows_site_config(_collections_rows_spec(), array(), array()), '[{"code":""}]');
+
+	pg_assert_same(1, preg_match_all('/\sname="/', $html), 'one named field');
+	pg_assert_contains('value="[{&quot;code&quot;:&quot;&quot;}]"', $html, 'the posted list comes back escaped');
+	pg_assert_contains('Steps &lt;b&gt;', $html, 'the label is escaped');
+	pg_assert_contains('class="mb-3 pg-coll-rows-field"', $html, 'a Bootstrap 5 field block');
+	pg_assert_true(strpos($html, 'pg-icon-button') === false && strpos($html, 'fg-secondary') === false, 'no panel class on a site');
+}
+
+function test_collections_rows_site_refusal()
+{
+	pg_assert_contains('at least one row', pg_coll_rows_site_refusal(array(), true, true, 'Steps'), 'a required field submitted with no row');
+	pg_assert_contains('at least one row', pg_coll_rows_site_refusal(null, true, true, 'Steps'), 'or with no list at all');
+	pg_assert_same('', pg_coll_rows_site_refusal(array(), true, false, 'Steps'), 'Save for later asks no row');
+	pg_assert_same('', pg_coll_rows_site_refusal(array(), false, true, 'Steps'), 'an optional field may stay empty');
+	pg_assert_same('', pg_coll_rows_site_refusal(array(array('code' => '')), true, true, 'Steps'));
+	pg_assert_true(pg_coll_rows_posted_max_bytes() >= 65536, 'a hundred short rows fit');
 }

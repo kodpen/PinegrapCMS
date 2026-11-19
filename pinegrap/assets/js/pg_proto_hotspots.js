@@ -1475,6 +1475,96 @@
         };
     }
 
+    // A mark as the view draws it and reaches it: at least `min` frame
+    // units each way; the "+" handle `grip` screen pixels across and `gap`
+    // from its mark; a mark under `small` screen pixels wide or high takes
+    // presses `reach` screen pixels around it.
+    var MARK = { min: 6, grip: 20, gap: 4, small: 12, reach: 4 };
+
+    // How far around a mark (`rect`, picRects()) a press still takes it at
+    // zoom `k`, in frame units: MARK.reach screen pixels when the mark as
+    // drawn is under MARK.small screen pixels wide or high, else 0.
+    function markReach(rect, k) {
+        var zoom = Number(k) > 0 ? Number(k) : 1;
+
+        if (!isObject(rect)) {
+            return 0;
+        }
+
+        var w = Math.max(MARK.min, Number(rect.w) || 0) * zoom;
+        var h = Math.max(MARK.min, Number(rect.h) || 0) * zoom;
+
+        return (w < MARK.small || h < MARK.small) ? round2(MARK.reach / zoom) : 0;
+    }
+
+    // Where the "+" handle of a drawable mark goes, a drag from it drawing
+    // the mark's arrow. `rect` is the mark (picRects(), drawn at least
+    // MARK.min), `room` ({ w, h }) the marks' layer over the picture, `k`
+    // the zoom, `others` the other marks shown on that picture. The handle
+    // is MARK.grip screen pixels at any zoom, MARK.gap from the mark, and
+    // its box spans the gap so the pointer crosses onto it: right of the
+    // mark, level with its middle; else left of it, under it or over it,
+    // the first that stays inside the picture's box (the layer and the
+    // box's padding, FRAME.pic.x and .y) and covers no other mark; else
+    // the first inside the box; else over the mark's right end. Answers
+    // { side, x, y } (its box's top left in the layer's units), { w, h }
+    // (its box in screen pixels) and `scale` (1 / k, to draw it at), or
+    // null without a mark.
+    function markGrip(rect, room, k, others) {
+        if (!isObject(rect)) {
+            return null;
+        }
+
+        var zoom = Number(k) > 0 ? Number(k) : 1;
+        var area = isObject(room) ? room : {};
+        var p = FRAME.pic;
+        var x = Number(rect.x) || 0;
+        var y = Number(rect.y) || 0;
+        var w = Math.max(MARK.min, Number(rect.w) || 0);
+        var h = Math.max(MARK.min, Number(rect.h) || 0);
+        // The handle and, with its gap, its box's length, in frame units.
+        var size = MARK.grip / zoom;
+        var span = (MARK.grip + MARK.gap) / zoom;
+        var minX = -p.x;
+        var maxX = (Number(area.w) || 0) + p.x;
+        var minY = -p.y;
+        var maxY = (Number(area.h) || 0) + p.y;
+        var clamp = function (v, lo, hi) { return Math.max(lo, Math.min(v, hi)); };
+        var level = clamp(y + h / 2 - size / 2, minY, maxY - size);
+        var under = clamp(x + w / 2 - size / 2, minX, maxX - size);
+        var sides = [
+            { side: 'right', x: x + w, y: level, w: span, h: size, room: x + w + span <= maxX },
+            { side: 'left', x: x - span, y: level, w: span, h: size, room: x - span >= minX },
+            { side: 'below', x: under, y: y + h, w: size, h: span, room: y + h + span <= maxY },
+            { side: 'above', x: under, y: y - span, w: size, h: span, room: y - span >= minY }
+        ];
+        var covers = function (one) {
+            return (Array.isArray(others) ? others : []).some(function (o) {
+                if (!isObject(o)) {
+                    return false;
+                }
+
+                var ox = Number(o.x) || 0;
+                var oy = Number(o.y) || 0;
+
+                return one.x < ox + Math.max(MARK.min, Number(o.w) || 0) && ox < one.x + one.w
+                    && one.y < oy + Math.max(MARK.min, Number(o.h) || 0) && oy < one.y + one.h;
+            });
+        };
+        var fit = sides.filter(function (one) { return one.room; });
+        var pick = fit.filter(function (one) { return !covers(one); })[0] || fit[0] || sides[0];
+        var across = pick.side === 'right' || pick.side === 'left';
+
+        return {
+            side: pick.side,
+            x: round2(clamp(pick.x, minX, maxX - pick.w)),
+            y: round2(clamp(pick.y, minY, maxY - pick.h)),
+            w: across ? MARK.grip + MARK.gap : MARK.grip,
+            h: across ? MARK.grip : MARK.grip + MARK.gap,
+            scale: Math.round(10000 / zoom) / 10000
+        };
+    }
+
     // The attributes of a picture's frame: only `allow-same-origin`, so the
     // view reads its document and no script of it runs; it takes no focus
     // and no pointer and says nothing to a screen reader (the rows list the
@@ -2384,6 +2474,9 @@
         picVh: picVh,
         markPort: markPort,
         markLeg: markLeg,
+        MARK: MARK,
+        markReach: markReach,
+        markGrip: markGrip,
         markState: markState,
         picOrder: picOrder,
         picRefill: picRefill,

@@ -561,3 +561,37 @@ function test_workspace_memory_tab_parts_wiring()
 	pg_assert_contains("return general ? { general: 1 } : { channel_id: channel.id };", $script, 'a general record is written with general=1');
 	pg_assert_contains('fields.project = project.value;', $script, 'the form files a record under a project');
 }
+
+// Outside a channel the general memory is a drawer of the channel screen,
+// listed by ws_memory_list with general=1 alone.
+function test_workspace_memory_general_drawer_wiring()
+{
+	$script = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js');
+
+	pg_assert_contains("} else if (query.panel === 'memory') {", $script, 'the More entry\'s address opens it');
+	pg_assert_contains("memory: function () { self.showMemory(); },", $script, 'the list opens it in place');
+	pg_assert_contains("window.PGWsMemory.mount(body, { general: true });", $script, 'the general part alone');
+
+	$memory = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_memory.js');
+	pg_assert_contains("h.api('ws_memory_list', target(!!channel.general))", $memory, 'listed with general=1');
+
+	$nav = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/nav.php');
+	pg_assert_contains("'memory'        => function_exists('ws_memory_general_can') && ws_memory_general_can(\$viewer),", $nav, 'under the general memory\'s gate');
+}
+
+// An agent channel's brief reads every agent channel's decisions: the heading
+// says so and a decision made in another channel names it first.
+function test_workspace_channel_memory_digest_across_agent_channels()
+{
+	$decisions = array(
+		array('body' => 'Ship on Friday', 'marked_at' => 30, 'channel' => ''),
+		array('body' => "Keep the\nold API", 'marked_at' => 20, 'channel' => 'old dev'),
+	);
+	$heading = 'Decisions in the agent channels (one made in another channel names it first):';
+
+	pg_assert_same($heading . "\n- Ship on Friday\n- #old dev: Keep the old API", ws_memory_digest(array(), $decisions, 100, WS_MEMORY_DIGEST_MAX, null, array(), true));
+	pg_assert_same("Decisions in this channel:\n- Ship on Friday\n- Keep the old API", ws_memory_digest(array(), $decisions, 100), 'one channel: no names');
+
+	$many = array_fill(0, 12, array('body' => 'x', 'marked_at' => 1, 'channel' => ''));
+	pg_assert_contains('workspace.decisions.list (agent_channels only)', ws_memory_digest(array(), $many, 100, WS_MEMORY_DIGEST_MAX, 40, array(), true), 'the count says where the rest are');
+}

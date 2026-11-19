@@ -193,9 +193,11 @@ function test_settings_workspace_assistants_secret_drawer()
 	// The drawer's body reads the site's address and prompt, so its source
 	// is read rather than drawn.
 	$html = settings_workspace_assistants_test_function('includes/workspace/claude.php', 'ws_claude_credentials_drawer_html')
-		. settings_workspace_assistants_test_function('includes/workspace/claude.php', 'ws_claude_credentials_html');
+		. settings_workspace_assistants_test_function('includes/workspace/claude.php', 'ws_claude_credentials_html')
+		. settings_workspace_assistants_test_function('includes/workspace/claude.php', 'ws_claude_credentials_drawer_foot_html');
 	pg_assert_contains('ws_claude_credentials_html($credentials, \'pgset-ws-claude-secret\')', $html, 'the same fields as the old window');
-	pg_assert_contains('id="pgset-ws-claude-secret-done" disabled', $html, 'Close waits for the tick');
+	pg_assert_contains('id="pgset-ws-claude-secret-done" disabled', $html, 'Close waits for the tick, in the drawer\'s foot');
+	pg_assert_contains('ws_claude_credentials_drawer_foot_html());', settings_workspace_assistants_test_source('includes/settings/workspace_assistants.php'), 'the foot is the drawer\'s');
 	pg_assert_contains("body.innerHTML = \\'\\';", $html, 'closing takes the secret out');
 	pg_assert_false(strpos($html, 'name=') !== false, 'nothing of it is posted with the form');
 }

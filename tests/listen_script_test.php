@@ -269,6 +269,53 @@ function test_listen_inject()
 	pg_assert_same(array('Listen', 'Pause', 'Resume', 'Stop'), array_keys(pg_listen_labels()));
 }
 
+// -- the Preview's labels (L11, L13) ------------------------------------------
+
+// The editor's _sdPreviewListenLabels(), from its declaration to its end.
+function _listen_preview_labels_js()
+{
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	$start = strpos($js, "\n    function _sdPreviewListenLabels(");
+	$end = $start === false ? false : strpos($js, "\n    }\n", $start);
+	pg_assert_true($start !== false && $end !== false, 'the editor holds _sdPreviewListenLabels()');
+	return ($start === false || $end === false) ? '' : substr($js, $start, $end + 6 - $start);
+}
+
+// The Preview gives pg_listen.js the labels the published page gets, before
+// the script: pg_listen_labels() in the page's language, printed on the
+// editor's screen.
+function test_listen_preview_labels()
+{
+	$labels = array('Listen' => 'Dinle', 'Pause' => 'Duraklat', 'Resume' => 'Devam ettir', 'Stop' => 'Durdur </script>');
+	$r = _listen_node(_listen_preview_labels_js() . '
+var L2 = ' . json_encode($labels) . ';
+console.log(JSON.stringify({
+  listen: _sdPreviewListenLabels("https://x.test/pinegrap/assets/js/pg_listen.js?v=5", L2),
+  other: _sdPreviewListenLabels("https://x.test/pinegrap/assets/js/pg_map.js?v=5", L2),
+  none: _sdPreviewListenLabels("https://x.test/pinegrap/assets/js/pg_listen.js?v=5", undefined)
+}));');
+	if (!_listen_ran($r)) {
+		return;
+	}
+	$m = array();
+	pg_assert_true((bool) preg_match('~^    <script>window\.pgListenLabels = (\{.*\});</script>\n$~s', $r['listen'], $m), 'one script before pg_listen.js: ' . $r['listen']);
+	pg_assert_same($labels, json_decode(isset($m[1]) ? $m[1] : '', true), 'the labels as given');
+	pg_assert_same(1, substr_count($r['listen'], '</script>'), 'a label cannot end the script');
+	pg_assert_same('', $r['other'], 'only for the Listen script');
+	pg_assert_same('', $r['none'], 'nothing without labels');
+
+	// The same object the published page's door writes.
+	$page = pg_listen_inject('<body><div data-pg-listen hidden></div></body>', '/x/pg_listen.js');
+	pg_assert_true((bool) preg_match('~<script>window\.pgListenLabels = (\{.*?\});</script>~', $page, $m));
+	pg_assert_same(pg_listen_labels(), json_decode($m[1], true));
+
+	$core = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	pg_assert_contains("_pvJsInject += _sdPreviewListenLabels(src, window.sdListenLabels) + '    <script src=\"' + esc(src) + '\" defer><\\/script>\\n';", $core, 'the Preview writes them before the script');
+	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/designer_screen.php');
+	pg_assert_contains("require_once(PG_FUNCTIONS_DIR . '/includes/fn/listen.php');", $screen);
+	pg_assert_contains("window.sdListenLabels = ' . encode_json(pg_listen_labels()) . ';", $screen, 'the editor gets pg_listen_labels()');
+}
+
 function test_listen_wiring()
 {
 	$page = (string) file_get_contents(PG_FUNCTIONS_DIR . '/get_page_content.php');

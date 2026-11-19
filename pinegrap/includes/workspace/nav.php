@@ -56,6 +56,9 @@ function ws_nav_groups($viewer, $flags = null)
             // A booking staff member's own meeting link (booking_link_screen.php).
             'meeting_link'  => function_exists('pg_booking_link_screen_member') && isset($viewer['id'])
                 && (pg_booking_link_screen_member((int) $viewer['id']) !== null),
+            // The general memory the agent channels share, for whoever may
+            // post in one of them (channel_memory.php).
+            'memory'        => function_exists('ws_memory_general_can') && ws_memory_general_can($viewer),
         );
     }
 
@@ -115,6 +118,12 @@ function ws_nav_groups($viewer, $flags = null)
 
     if (!empty($flags['meeting_link'])) {
         $groups['more'][] = array('key' => 'meeting_link', 'label' => lang('My meeting link'), 'icon' => 'bi-person-video3', 'url' => $base . 'workspace_meeting_link.php');
+    }
+
+    // Read outside a channel too, so a new agent channel finds what the
+    // old ones kept; it opens as a drawer on the channel screen.
+    if (!empty($flags['memory'])) {
+        $groups['more'][] = array('key' => 'memory', 'label' => lang('General memory'), 'icon' => 'bi-journal-bookmark', 'url' => $base . 'workspace.php?view=home&panel=memory');
     }
 
     $groups['more'][] = array('key' => 'archived', 'label' => lang('Archived channels'), 'icon' => 'bi-archive', 'url' => $base . 'workspace.php?view=home&panel=archived');
