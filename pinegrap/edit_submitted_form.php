@@ -487,7 +487,7 @@ if (!$_POST) {
                                 . pg_submitted_form_status_row(lang('IP Address'), h($output_ip_address)) . '
                                         </dl>'),
                             pg_save_bar_return_button() . '
-                                        <button type="submit" name="delete_button" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('submitted form')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>' . $output_buttons
+                                        <button type="submit" name="delete_button" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . h(pg_coll_rows_delete_question(lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('submitted form')))), count((array) pg_coll_rows_held_ids(array($id))), false)) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>' . $output_buttons
                         ) . '
                     </form>' . $output_payment_form . '
                     ' . ($history_enabled ? pg_record_revision_history_markup($id, $page_id, (is_scalar($_GET['compare'] ?? null) ? (int) $_GET['compare'] : 0), $send_to) : '') . '
