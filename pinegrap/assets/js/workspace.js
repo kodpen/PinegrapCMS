@@ -2658,6 +2658,9 @@
     var DRAFT_DAYS = 14;
     var DRAFT_KEEP = 50;
 
+    // The pictures the Files tab's gallery draws at a time (drawFiles()).
+    var FILE_PAGE = 60;
+
     function draftKey(site, viewer, channelId, threadId) {
         var thread = parseInt(threadId, 10) || 0;
 
@@ -11614,9 +11617,9 @@
             }
         },
 
-        // The marks on the tabs: how many decisions and open tasks there are,
-        // and whether the summary is written, so a tab says it holds
-        // something before it is opened.
+        // The marks on the tabs: how many decisions, open tasks and files
+        // there are, and whether the summary is written, so a tab says it
+        // holds something before it is opened.
         drawTabMarks: function () {
             var self = this;
             var counts = (self.channel && self.channel.tab_counts) || null;
@@ -11625,7 +11628,7 @@
                 return;
             }
 
-            [['decisions', counts.decisions, 'tab_decisions_count'], ['tasks', counts.tasks, 'tab_tasks_count'], ['summary', counts.summary ? 1 : 0, 'tab_summary_written']].forEach(function (mark) {
+            [['decisions', counts.decisions, 'tab_decisions_count'], ['tasks', counts.tasks, 'tab_tasks_count'], ['files', counts.files, 'tab_files_count'], ['summary', counts.summary ? 1 : 0, 'tab_summary_written']].forEach(function (mark) {
                 var tab = self.tabsNode.querySelector('[data-ws-tab="' + mark[0] + '"]');
                 var was = tab ? tab.querySelector('.ws-tab-mark') : null;
 
@@ -21725,14 +21728,57 @@
                     return;
                 }
 
+                var bodies = [];
+
                 data.messages.forEach(function (message) {
                     var node = self.messageNode(message, null);
                     var jump = button('btn btn-sm btn-text theme-secondary', t('show_in_conversation'), 'bi-arrow-right-short');
                     jump.addEventListener('click', function () { self.open(self.channel.id, message.id); });
                     node.querySelector('.ws-msg-meta').appendChild(jump);
                     pane.appendChild(node);
+
+                    var body = node.querySelector('.ws-msg-main > .ws-msg-body');
+
+                    if (body) {
+                        body.classList.add('ws-folded');
+                        bodies.push(body);
+                    }
                 });
+
+                self.foldLong(bodies);
             }).catch(fail);
+        },
+
+        // A decision longer than about eight lines stays folded (.ws-folded
+        // caps its height) behind Show more / Show less; its head line with
+        // Show in conversation stays above it. All heights are read first,
+        // then the classes and buttons changed, so the pane is laid out
+        // once, not once per card.
+        foldLong: function (bodies) {
+            var long = bodies.filter(function (body) {
+                return body.scrollHeight > body.clientHeight + 2;
+            });
+
+            bodies.forEach(function (body) {
+                if (long.indexOf(body) < 0) {
+                    body.classList.remove('ws-folded');
+                }
+            });
+
+            long.forEach(function (body) {
+                var toggle = lookButton('pg-button pg-button-ghost pg-button-sm ws-fold-toggle', t('pane_show_more'), 'bi-chevron-down');
+
+                toggle.setAttribute('aria-expanded', 'false');
+                toggle.addEventListener('click', function () {
+                    var open = body.classList.toggle('ws-folded') === false;
+
+                    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+                    clear(toggle);
+                    toggle.appendChild(icon(open ? 'bi-chevron-up' : 'bi-chevron-down', ''));
+                    toggle.appendChild(document.createTextNode(t(open ? 'pane_show_less' : 'pane_show_more')));
+                });
+                body.insertAdjacentElement('afterend', toggle);
+            });
         },
 
         // The channel's files: the pictures as a gallery that opens in the
@@ -21808,16 +21854,20 @@
                     var pictures = el('section', 'ws-file-group');
                     pictures.appendChild(el('div', 'ws-section-title', t('images') + ' · ' + images.length));
                     var grid = el('div', 'ws-gallery');
+                    var shown = 0;
+                    var more = null;
 
-                    images.forEach(function (message, index) {
+                    // One tile; the viewer still steps through every picture.
+                    var drawTile = function (message, index) {
                         var tile = el('button', 'ws-gallery-tile');
                         tile.type = 'button';
                         tile.title = message.file.name;
 
                         var img = el('img');
-                        img.src = message.file.url;
                         img.alt = message.file.name;
                         img.loading = 'lazy';
+                        img.decoding = 'async';
+                        img.src = message.file.url;
                         tile.appendChild(img);
 
                         var caption = el('span', 'ws-gallery-caption');
@@ -21828,9 +21878,31 @@
                         tile.addEventListener('click', function () { viewImages(gallery, index); });
                         onContext(tile, function () { return fileMenu(message, index); });
                         grid.appendChild(tile);
-                    });
+                    };
+
+                    // The gallery is drawn FILE_PAGE tiles at a time: a
+                    // channel with hundreds of pictures builds and loads only
+                    // the first page until Show more asks for the next.
+                    var drawPage = function () {
+                        images.slice(shown, shown + FILE_PAGE).forEach(function (message, offset) {
+                            drawTile(message, shown + offset);
+                        });
+                        shown = Math.min(images.length, shown + FILE_PAGE);
+
+                        if (more) {
+                            more.remove();
+                            more = null;
+                        }
+
+                        if (shown < images.length) {
+                            more = lookButton('pg-button pg-button-quiet pg-button-sm ws-gallery-more', t('files_more_pictures', Math.min(FILE_PAGE, images.length - shown)), 'bi-chevron-down');
+                            more.addEventListener('click', drawPage);
+                            pictures.appendChild(more);
+                        }
+                    };
 
                     pictures.appendChild(grid);
+                    drawPage();
                     pane.appendChild(pictures);
                 }
 
