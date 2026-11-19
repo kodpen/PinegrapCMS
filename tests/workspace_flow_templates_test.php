@@ -46,6 +46,7 @@ function ws_flow_templates_test_fill($overrides = array())
 			'comments_pending', 'visitors_yesterday', 'stock_low', 'invoices_overdue', 'orders_new'),
 		'recap_ai' => false,
 		'join'     => true,
+		'records_mail' => true,
 		'events'   => array('order.created', 'form.submitted', 'stock.low', 'workspace.task.overdue', 'workspace.approval.decided',
 			'order.delivered', 'order.return.requested', 'booking.cancelled', 'order.cancelled', 'booking.confirmed', 'workspace.flow.run.failed',
 			'erp.invoice.overdue', 'product.review.created', 'subscription.failed', 'cart_quote.created', 'content.review_due'),
@@ -68,6 +69,14 @@ function ws_flow_templates_test_value($type)
 			return 'team@example.org';
 		case 'text':
 			return 'Stand-up in five minutes.';
+		case 'page':
+			return 12;
+		case 'group':
+			return 4;
+		case 'subject':
+			return 'New this week';
+		case 'day':
+			return array(3);
 	}
 
 	return null;
@@ -1104,4 +1113,74 @@ function test_workspace_flow_templates_sort_incoming_forms()
 	};
 	pg_assert_false(in_array('form_sort', $keys(array('recap_ai' => false)), true), 'it needs Pinegrap AI');
 	pg_assert_false(in_array('form_sort', $keys(array('recap_ai' => true, 'events' => array('order.created'))), true), 'it needs its event');
+}
+
+// The digest of new posts (D10): weekly at a day and hour, the records new
+// since the last run, a count of 0 ends, else one e-mail to a contact group
+// with those records drawn; offered only with records_mail.
+function test_workspace_flow_templates_post_digest()
+{
+	pg_assert_false(in_array('post_digest', array_column(ws_flow_templates(ws_flow_templates_test_fill(array('records_mail' => false))), 'key'), true), 'not offered without a group and a list page');
+
+	$by_key = array_column(ws_flow_templates(ws_flow_templates_test_fill()), null, 'key');
+	pg_assert_true(isset($by_key['post_digest']), 'offered');
+
+	$template = $by_key['post_digest'];
+	$nodes = array_column($template['graph']['nodes'], null, 'id');
+
+	pg_assert_same('site', $template['category']);
+	pg_assert_same(lang('Digest of new posts'), $template['title']);
+	pg_assert_same('schedule', $template['start']);
+	pg_assert_same(array('start', 'read', 'none', 'stop', 'mail'), array_keys($nodes), 'its five boxes');
+	pg_assert_same(array('weekly', array(1), '09:00', '2026-10-28'),
+		array($nodes['start']['config']['repeat'], $nodes['start']['config']['days'], $nodes['start']['config']['time'], $nodes['start']['config']['date']), 'weekly, Monday 09:00, from tomorrow');
+	pg_assert_same(array('list_records', 1), array($nodes['read']['kind'], $nodes['read']['config']['only_new']), 'only records new since the last run');
+	pg_assert_same(array('type' => 'value', 'ref' => '{{node.read.count}}', 'op' => 'eq', 'value' => '0'), $nodes['none']['config']['rule'], 'count is 0');
+	pg_assert_same('end', $nodes['stop']['kind']);
+
+	$mail = $nodes['mail']['config'];
+	pg_assert_same(array('email', 'group', 'marketing', 'read'), array($nodes['mail']['kind'], $mail['recipient'], $mail['purpose'], $mail['records']), 'a campaign to a group with the records drawn');
+	pg_assert_true(($mail['subject'] !== '') && ($mail['body'] !== ''), 'a subject and a text of its own');
+
+	$edges = array_map(function ($edge) {
+		return array($edge['from'], $edge['to'], $edge['on']);
+	}, $template['graph']['edges']);
+	pg_assert_same(array(array('start', 'read', 'next'), array('read', 'none', 'done'), array('none', 'stop', 'yes'), array('none', 'mail', 'no')), $edges, 'nothing sent at 0');
+
+	// Its setup asks the day, the time, the list page, the group and the subject.
+	$settings = array_column($template['settings'], 'targets', 'type');
+	pg_assert_same(array('day', 'time', 'page', 'group', 'subject'), array_keys($settings));
+	pg_assert_same(array(array('start', 'days')), $settings['day']);
+	pg_assert_same(array(array('read', 'page_id')), $settings['page']);
+	pg_assert_same(array(array('mail', 'group_id')), $settings['group']);
+	pg_assert_same(array(array('mail', 'subject')), $settings['subject']);
+	pg_assert_same(1, $template['threads'], 'the condition reads the count');
+}
+
+// The answers of its setup, checked and written into its boxes.
+function test_workspace_flow_templates_post_digest_answers()
+{
+	$template = array_column(ws_flow_templates(ws_flow_templates_test_fill()), null, 'key')['post_digest'];
+	$good = array('day' => '5', 'time' => '7:30', 'page' => '12', 'group' => 4, 'subject' => "  New   this\nweek ");
+	$check = ws_flow_template_answers_check($template, $good);
+
+	pg_assert_true($check['ok'], 'accepted');
+	pg_assert_same(array('day' => array(5), 'time' => '07:30', 'page' => 12, 'group' => 4, 'subject' => 'New this week'), $check['values']);
+	pg_assert_same(array(6), ws_flow_template_answers_check($template, array('day' => array(6)) + $good)['values']['day'], 'a list of one');
+
+	foreach (array('day' => array(0, '8', 'mon', array()), 'page' => array(0, '', 'x'), 'group' => array(0, null), 'subject' => array('', '   ', str_repeat('a', 251))) as $type => $bad) {
+		foreach ($bad as $value) {
+			$refused = ws_flow_template_answers_check($template, array($type => $value) + $good);
+			pg_assert_same(array(false, $type), array($refused['ok'], $refused['field']), $type . ' refused: ' . json_encode($value));
+		}
+	}
+
+	pg_assert_true(ws_flow_template_answers_check($template, array('subject' => str_repeat('a', 250)) + $good)['ok'], '250 characters');
+
+	$graph = ws_flow_template_apply($template, $template['graph'], $check['values']);
+	$nodes = array_column($graph['nodes'], 'config', 'id');
+
+	pg_assert_same(array(array(5), '07:30', 12, 4, 'New this week'),
+		array($nodes['start']['days'], $nodes['start']['time'], $nodes['read']['page_id'], $nodes['mail']['group_id'], $nodes['mail']['subject']));
+	pg_assert_same(array(), array_column(ws_flow_graph_check($graph), 'text'), 'publishable as filled');
 }

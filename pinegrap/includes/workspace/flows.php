@@ -3978,6 +3978,8 @@ function ws_flow_js_strings()
         'fl_tpl_set_address'  => lang('E-mail addresses'),
         'fl_tpl_set_table'    => lang('Table'),
         'fl_tpl_set_text'     => lang('Message'),
+        'fl_tpl_set_group'    => lang('Contact group'),
+        'fl_tpl_set_day'      => lang('Day of the week'),
         'fl_tpl_save'         => lang('Save as template'),
         'fl_tpl_save_help'    => lang('The boxes and arrows of the draft are kept, without a webhook\'s address. Everyone who builds flows on this site finds it among the templates.'),
         'fl_tpl_save_do'      => lang('Save template'),

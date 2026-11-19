@@ -76,7 +76,8 @@
     var BOX_W = G.BOX_W;
     var BOX_H = G.BOX_H;
     // The label of each kind of template setting (ws_flow_template_setting_types()).
-    var SETTINGS = { channel: 'fl_tpl_set_channel', person: 'fl_tpl_set_person', time: 'fl_tpl_set_time', url: 'fl_tpl_set_url', address: 'fl_tpl_set_address', table: 'fl_tpl_set_table', text: 'fl_tpl_set_text' };
+    var SETTINGS = { channel: 'fl_tpl_set_channel', person: 'fl_tpl_set_person', time: 'fl_tpl_set_time', url: 'fl_tpl_set_url', address: 'fl_tpl_set_address', table: 'fl_tpl_set_table', text: 'fl_tpl_set_text',
+        page: 'fl_records_page', group: 'fl_tpl_set_group', subject: 'fl_email_subject', day: 'fl_tpl_set_day' };
     var SAVE_DELAY = 1500;
     // Browsers refuse a keepalive request body over 64 KiB; the action and
     // the token ride on top of the draft.
@@ -2447,16 +2448,42 @@
             });
         } else if (type === 'time') {
             control = dateInput('time', value, function (typed) { answers.time = typed; });
+        } else if ((type === 'page') || (type === 'group')) {
+            // The list pages a records box may read, the contact groups an
+            // e-mail box may send to; the server checks both on publish.
+            var choices = (type === 'page')
+                ? recordsPages().map(function (item) { return [item.id, item.title ? item.title + ' (' + item.name + ')' : item.name]; })
+                : mailGroups().map(function (item) { return [item.id, item.name]; });
+            var listed = choices.some(function (item) { return item[0] === value; });
+
+            answers[type] = listed ? value : 0;
+            control = K.select([[0, t((type === 'page') ? 'fl_records_page_pick' : 'fl_email_group_pick')]].concat(choices), answers[type]);
+            control.addEventListener('change', function () { answers[type] = parseInt(control.value, 10) || 0; });
+        } else if (type === 'day') {
+            // A weekly start keeps its days as a list; the setup asks one.
+            var day = (Array.isArray(value) && value.length) ? value[0] : 1;
+
+            answers.day = day;
+            control = K.select([1, 2, 3, 4, 5, 6, 7].map(function (item) { return [item, t(DAYS[item])]; }), day);
+            control.addEventListener('change', function () { answers.day = parseInt(control.value, 10) || 0; });
         } else {
             control = el('input', 'form-control form-control-sm');
             control.type = (type === 'url') ? 'url' : 'text';
             control.value = value || '';
+
+            if (type === 'subject') {
+                control.maxLength = 250;
+            }
+
             control.addEventListener('input', function () { answers[type] = control.value; });
         }
 
         control.setAttribute('data-setting', type);
 
-        return field(t(SETTINGS[type] || type), control, (type === 'address') ? t('fl_email_to_help') : '');
+        // A list page's help says which records a run leaves out.
+        var help = { address: 'fl_email_to_help', page: 'fl_records_only_new_help' }[type];
+
+        return field(t(SETTINGS[type] || type), control, help ? t(help) : '');
     }
 
     // The template's few settings, then Open on canvas (the answers into the
