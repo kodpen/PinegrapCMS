@@ -544,6 +544,13 @@ function ws_file_versions_counts($rows, $viewer_id)
 function ws_file_edit_js_strings()
 {
     return array(
+        // The channel's Files tab: the mark beside its name and the
+        // gallery's next page; Show more / Show less also open and close a
+        // long decision on the Decisions tab.
+        'tab_files_count'      => ws_js_template('{var:1} files', 1),
+        'pane_show_more'       => lang('Show more'),
+        'pane_show_less'       => lang('Show less'),
+        'files_more_pictures'  => ws_js_template('Show {var:1} more pictures', 1),
         'file_edit_image'      => lang('Edit the picture'),
         'file_edit_text'       => lang('Open the text'),
         'file_edit_put'        => lang('Put the edited picture in its place'),

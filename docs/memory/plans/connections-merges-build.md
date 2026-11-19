@@ -12,7 +12,7 @@ description: Plan connections-merges, the build after poll 149: CX7 the frame, C
 - A page that needs something the sheet does not show, or a table or a column, goes to the architect first.
 
 ## Which steps are there?
-- CX7 The frame: a service's page (`connections.php?service=<key>`, breadcrumb, "Durum", "Kullanıldığı yerler" read from the registry), the list row with its one action, the "Bağlantılar ›" row in the Site Settings list. No field moves yet; a service without a page keeps its drawer until its step.
+- CX7 The frame: a service's page (`connections.php?service=<key>`, breadcrumb, "Durum", "Kullanıldığı yerler" read from the registry), the list row with its one action, the "Bağlantılar ›" row in the Site Settings list. No field moves yet; a service without a page keeps its drawer until its step. Done in #10400 (the mail routes fold into one row with CX3b's category).
 - CX8 GitHub: "Bağlantı bilgileri" on its page; the repository links move from the "GitHub depoları" card, with a `pg_settings_legacy_anchors()` row and the registry row's `place` in the same step.
 - CX9 AI providers, after CX2 has landed: one connection per provider, the idempotent data step and the feature cards without a key (Voice message transcripts, the assistants and agents), as `connections-merges-panel-rules.md` says.
 - CX10 Google and Microsoft: the application and each connected account on the provider's page. It answers CX4 (a provider's client is typed on its page).

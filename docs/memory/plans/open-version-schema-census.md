@@ -12,6 +12,7 @@ description: Plan (owner 2026-11-19): find the tables, columns and indexes 2026.
 - The result is `release/open-version-schema-census-list.md` (one file per module when over 4 KB): unused, replaced, and a count of what is in use. What a released version brought is left out.
 - The architect reads the list and marks each unused or replaced thing removed or kept, with the reason for a kept one.
 - SC2, the removals: one PR per module (Workspace, commerce, ERP, the rest). Each takes the adding lines out, adds the clean-up sub-step, corrects `get_tables()` and the memory files, names the `[SCHEME]` item's final state in its body, and is run twice on a dev database that ran the old step and once from the released schema.
+- SC2a, the rest: `whatsapp_inbox.read_user_id` and `read_at` removed (11.0.237). Done: PR #10402. `subscriptions.remote_id` (commerce) kept, so commerce needs no SC2 PR; `ws_saved_replies.idx_user` (Workspace) is removed in its own PR.
 
 ## What holds from now on?
 - The PR that gives a structure up removes it in the same PR; no later census is needed for it.

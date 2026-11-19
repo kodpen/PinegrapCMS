@@ -727,6 +727,48 @@ function ws_wtable_cells_refusal($errors)
 }
 
 /**
+ * Why the person cells among checked cells are refused, null when none is:
+ * each names someone on the team (not_person), as the row form offers only
+ * the team; a customer's account or an id no account has would show that
+ * customer's name, or a bare #id, to everyone who reads the table. A person
+ * the row already holds is not checked again, so a row whose person has
+ * left the team keeps its other cells editable.
+ *
+ * @param array      $columns  column id => column
+ * @param array      $cells    column id => checked value
+ * @param array      $old      column id => value the row holds
+ * @param int[]|null $team_ids the team's ids, null to read them (ws_team_ids())
+ * @return array|null ws_wtable_cells_refusal()
+ */
+function ws_wtable_person_cells_refusal($columns, $cells, $old = array(), $team_ids = null)
+{
+    $given = array();
+
+    foreach ((array) $cells as $column_id => $value) {
+        if ((($columns[(string) $column_id]['type'] ?? '') !== 'person') || !is_int($value) || (($old[(string) $column_id] ?? null) === $value)) {
+            continue;
+        }
+
+        $given[(string) $column_id] = $value;
+    }
+
+    if (empty($given)) {
+        return null;
+    }
+
+    $team = array_map('intval', ($team_ids === null) ? ws_team_ids() : (array) $team_ids);
+    $errors = array();
+
+    foreach ($given as $column_id => $value) {
+        if (!in_array($value, $team, true)) {
+            $errors[$column_id] = 'not_person';
+        }
+    }
+
+    return empty($errors) ? null : ws_wtable_cells_refusal($errors);
+}
+
+/**
  * Mark a table changed by a row write, so that it comes first among its
  * owner's tables.
  *
@@ -762,6 +804,10 @@ function ws_wtable_row_create_check($viewer, $table, $input)
 
     if ($key === null) {
         $key = ws_wtable_link_cells_refusal($viewer, $columns, $cells['cells']);
+    }
+
+    if ($key === null) {
+        $key = ws_wtable_person_cells_refusal($columns, $cells['cells']);
     }
 
     if ($key !== null) {
@@ -891,6 +937,10 @@ function ws_wtable_row_update_check($viewer, $table, $row, $input)
 
     if ($key === null) {
         $key = ws_wtable_link_cells_refusal($viewer, $columns, $cells['cells'], ws_wtable_cells_decode($row['cells'] ?? null));
+    }
+
+    if ($key === null) {
+        $key = ws_wtable_person_cells_refusal($columns, $cells['cells'], ws_wtable_cells_decode($row['cells'] ?? null));
     }
 
     if ($key !== null) {

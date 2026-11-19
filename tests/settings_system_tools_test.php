@@ -227,3 +227,15 @@ function test_settings_system_tools_menu_row()
 
 	pg_assert_same(null, settings_system_tools_menu_case_slot($source, 'view_sessions.php'), 'view_sessions.php stays unmarked');
 }
+
+function test_settings_connections_row_above_system_tools()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/settings/modal.php');
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/modal.php');
+
+	pg_assert_contains('connections.php', pg_settings_connections_link(true), 'a manager gets the Connections row');
+	pg_assert_same('', pg_settings_connections_link(false), 'nobody else does');
+	pg_assert_contains('pg_settings_connections_link($reader[\'manager\'])', $source, 'under the manager gate');
+	pg_assert_true(strpos($source, '\' . $output_connections . \'') < strpos($source, '\' . $output_tools . \''), 'just above System tools');
+}

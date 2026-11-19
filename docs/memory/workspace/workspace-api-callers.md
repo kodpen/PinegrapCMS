@@ -16,10 +16,11 @@ description: Which Workspace API writes the person must make themselves: ws_api_
 
 ## Which writes need the team devices session? (`ws_api_own_words_only()`)
 - Marking an agent's answer right or wrong (#10340).
-- Changing or deleting the person's own words (edit, delete, delete for me), and anything opened in their name that later runs as their word or that only they may change: a scheduled message, changing, taking back or asking again a person's poll (an application only its own, `agent-questions.md`), a pin (`ws_api_pin_target()`), publishing a flow (drafting is open to both: `workspace-flows-store.md`), sharing one or taking a share back (`test_ws_api_flow_shares_routes`).
+- Editing or deleting the person's own words (edit, delete for me), and anything opened in their name that later runs as their word or that only they may change: a scheduled message, changing, taking back or asking again a person's poll (an application only its own, `agent-questions.md`), a pin (`ws_api_pin_target()`), publishing a flow (drafting is open to both: `workspace-flows-store.md`), sharing one or taking a share back (`test_ws_api_flow_shares_routes`).
+- Setting one's own quiet hours (`api/api-workspace-quiet-hours.md`).
 - Key and OAuth are refused there (#371, #375): a connection writes as the application, so what it set up would later read as the person's word. Both may still list and cancel the owner's scheduled messages.
 - A published flow moved to another home channel is refused to both by `ws_api_flow_home_move_gate()`, inside the draft change, which stays a tool: the gate checks `ws_api_device_writes_as_person()` itself, not through `ws_api_own_words_only()`.
-- Such a route, whether it calls the gate itself or through a helper, carries `'mcp' => false`: an MCP client always comes through an OAuth connection and would get 403 on every call (`test_ws_api_own_words_routes_are_no_tools`).
+- Such a route, gated directly or through a helper, carries `'mcp' => false`: an MCP client always comes through an OAuth connection and would get 403 on every call (`test_ws_api_own_words_routes_are_no_tools`).
 - Its refusal names "team devices session (POST /auth/login)" and "OAuth connection", never "signed in on a device", as a connection is a device row too (`test_ws_api_own_words_refusals_name_the_team_devices_session`).
 
 ## Which write is an application's only?

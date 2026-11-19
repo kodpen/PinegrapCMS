@@ -11,7 +11,7 @@ description: The key column of a workflow table (wtable_keys.php, PR #8509): tex
 ## What does the store refuse?
 - Making a column the key (`ws_wtable_column_key_check()`): `key_taken` 409 when another column is the key; `key_not_unique` 409 while rows are empty in it or repeat a value, with `rows` (the `#` numbers, at most 20), `rows_count` and `empty`. A new key column is empty on every row, so it is accepted only on an empty table.
 - A row (create, update, restore from the bin): `cells_invalid` with the key column's code `key_empty` or `duplicate_key` (`ws_wtable_key_cells_refusal()`).
-- Create and update run under `GET_LOCK('pg_wtable_key_<table id>', 5)` when the table has a key; the bodies are `ws_wtable_row_create_write()` / `_update_write()`, the public functions wrap them with `try/finally`.
+- Create, update and restore from the bin run under `GET_LOCK('pg_wtable_key_<table id>', 5)` when the table has a key; the bodies are `ws_wtable_row_create_write()` / `_update_write()` / `ws_wtable_row_restore_write()`, the public functions wrap them with `try/finally`. The restore took no lock before #10367 (fixed by PR #10398), so a restore and an add at once could leave two rows with one key.
 
 ## Where is it used?
 - Screen: a "The table's key" checkbox on text and number columns, a Key badge in the columns card; the refusal names the rows (`ws_wtable_screen_refusal_text()`).

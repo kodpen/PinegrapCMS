@@ -23,9 +23,9 @@ description: Look A's page widths: edit screens centred at 1700 px (1300 + 24 + 
 - `#content` is `fit-content`: as wide as the list's columns (and the toolbar) need, at least 1700 px plus padding (1732) or the window when narrower, at most the window, centred. Report screens (`pg-measure-report`) read the same token.
 - From 1024 px an open details panel adds its 20rem to that least width, up to the window (`#content:has(.pg-list-table-details:not([hidden]))`): the rows keep their closed width while the window has room. Below 1024 px the panel is a sheet.
 - Only the name column (the driver's first column) takes the slack: its inline width from the column spec is dropped (`width: auto !important`), so the table gives a wider box to it first; the other columns keep their spec widths. When the list is wider than the window, the name column is as wide as its content.
-- The products list's default columns need about 2,350 px: it fills the window and scrolls sideways. A box's own scrollbar counts in its width (about 15 px over 1732).
-- The toolbar search above a list is 300 px (a phone keeps the toolbar's full-line rule).
+- The products list's default columns need about 2,350 px: it fills the window and scrolls sideways. A box's own scrollbar counts in its width.
+- The toolbar search above a list is 300 px.
 - While search words or a filter are set, the box keeps the width it had before them (#9017).
 - How: the driver's `holdWidth()` (`pg_list_table.js`) sets `--pg-list-held` on `#content` before the rows first change: `heldWidth(width, panel)`, the box's width less an open panel. The stylesheet takes the larger of it and the measure and adds an open panel. It was an inline `min-width` before #9185, which kept a panel opened later from widening the box.
 
-Related: docs/memory/ui/look-type-and-recipes.md
+Related: docs/memory/ui/look-type-and-recipes.md, docs/memory/ui/area-tab-strip-centred.md (tab strips)
