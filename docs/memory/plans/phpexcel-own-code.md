@@ -17,7 +17,7 @@ description: Plan (2026-11-19): PHPExcel's four callers move to the product's ow
 - XL1, one sheet reader. Done in #10466 (`platform/sheet-reader.md`). A function in a new `includes/fn/` module gives a file's rows one at a time for .xlsx, .ods and .xls, with the import's value rules (booleans 1/0, its date text) and without the preview's row, column and string limits (`platform/office-dom-ceiling.md`); .ods keeps its cell ceiling (`platform/ods-cell-ceiling.md`); .xls is read through `excel_reader2.php`.
   Tests read the same fixture files with PHPExcel and with the new reader and compare cell by cell.
 - XL2, the product import reads through it.
-- XL3, the bank statement import reads through it.
+- XL3, the bank statement import reads through it. Done in #XL3PR (`erp/erp-bank-statements.md`).
 - XL4, the Parasut export and the ERP export are written by the shared xlsx writer; a template's fixed rows become data in code. A test compares the written cells with those PHPExcel writes today from the same input.
 - XL5, removal. `includes/phpexcel` is deleted and listed in `clean_up.php` so an upgraded site loses it too; `tests/phpexcel_library_php85_test.php` and the PHPExcel part of `tests/bundled_library_php85_test.php` go; every other mention found by a search is cleared.
 - Order XL1, then XL2, XL3 and XL4 in any order, XL5 last; one PR each; no schema, no new text on a screen.

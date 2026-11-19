@@ -5,7 +5,7 @@ description: The bundled excel_reader2.php (php-excel-reader 2.22) that reads an
 
 ## Which code loads excel_reader2.php?
 - Only `convert_xls_to_text()` in `update_search_index.php`: the cells of an uploaded .xls file, every sheet, become the file's text in the site search index.
-- The product import and the bank statement import read .xls with PHPExcel instead (`phpexcel-embedding.md`).
+- The bank statement import reads .xls through it too, by subclasses in `includes/sheet_read_xls.php` (`platform/sheet-reader.md`); the product import reads .xls with PHPExcel (`phpexcel-embedding.md`).
 
 ## What broke on PHP 8?
 - `OLERead` and `Spreadsheet_Excel_Reader` had PHP 4 constructors (a method named like the class). PHP 8 never runs those, so the reader was never set up and `convert_xls_to_text()` returned '' without a notice.
