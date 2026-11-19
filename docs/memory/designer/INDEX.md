@@ -70,6 +70,7 @@
 - collection-rows-outside.md: Collection "Rows" field outside its editor: the API read (codes, rows, kind), the check of an API or Workspace write, the import leaving the column out
 - collection-rows-site-form.md: The rows editor on a designed site form: Bootstrap 5.3.8 look, the list checked before the record is written and written after it, the 256 KB bound
 - collection-rows-writer.md: Collection "Rows" field kind: rows as child collection records, codes in order on the parent, the spec, the writer and its order of writes, the 100-row limit
+- collection-rows.md: Start file of the collection "Record rows" field (Kind "Rows"): rows of a record as child records, decisions, file map, R1 to R19 with PRs, open items [decision: here]
 - collection-template-refs.md: A template's reference into another tab's form (_cf.ref tab:<key>): Publish, forms target first, sample references by label, blog categories, export (C6b1, C6b2)
 - collections-decisions.md: Typed collections over designer forms: why a form with a flag, the approved schema (#2393, #3051), why items have no schedule columns (#3746), what C1–C7 built and where it is described [decision: decisions-made-product-10.md, decisions-made-schema-3.md]
 - comment-admin-notification.md: The administrator e-mail add_comment.php sends about a new comment: queued, written in the staff language, attachment line only when a file came

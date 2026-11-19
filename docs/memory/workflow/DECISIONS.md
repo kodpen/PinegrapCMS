@@ -815,6 +815,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - designer/classic-regions-in-designer.md: Where each classic region type goes in the visual designer (common, designer, dynamic, page, data-driven regions), the owner's decisions behind it, and what is still open
 - designer/classic-style-to-design.md: A classic style opened in the visual designer (L2, #2370): the style list button, the frame as shared components, page trees placing them, what Save writes and what stays
 - designer/collection-rows-delete-history.md: Collection "Rows" field on delete and in History: a deleted record's rows go with it, the delete confirmations name the count, a loaded revision keeps only rows that exist
+- designer/collection-rows.md: Start file of the collection "Record rows" field (Kind "Rows"): rows of a record as child records, decisions, file map, R1 to R19 with PRs, open items
 - designer/collections-decisions.md: Typed collections over designer forms: why a form with a flag, the approved schema (#2393, #3051), why items have no schedule columns (#3746), what C1–C7 built and where it is described
 - designer/comment-email-pages-system-region.md: Comment e-mail pages: what their System region prints, the canvas note saying so on a page that keeps it, why the design templates keep it, the fixed markup kept
 - designer/comment-thread-rules.md: Comment rules the classic comments block shares with the widget (pg_comments_settings, _allow_new, _viewer, _rows, _thread_order); its HTML stays byte for byte, its quirks kept
