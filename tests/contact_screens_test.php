@@ -154,3 +154,31 @@ function test_contact_screens_edit_contact_saved_notice_without_send_to()
 	pg_assert_contains("if ((\$send_to === '') || (mb_strpos(\$send_to, 'view_contacts.php') !== false)) {", $source, 'empty send to counts as the list');
 	pg_assert_false(strpos($source, "(isset(\$_REQUEST['send_to']) == FALSE) ||") !== false, 'the empty field no longer hides the notice');
 }
+
+// Return in an Edit Contact field presses the form's first submit button.
+// With the address suppressed, the subscriber card prints Allow again
+// (pg_mail_bounce_contact_badge()) before the save bar, so Return lifted the
+// block and dropped the edits. The form opens with a hidden nameless submit
+// instead, which reaches the save branch.
+function test_contact_screens_edit_contact_return_key_saves()
+{
+	$source = contact_screens_source('edit_contact.php');
+	$start = strpos($source, '<form name="form" action="edit_contact.php"');
+	pg_assert_true($start !== false, 'edit contact: main form found');
+	$cards = strpos($source, 'pg_contact_form_layout(', $start);
+	pg_assert_true($cards !== false, 'edit contact: the cards follow the form opening');
+	$opening = substr($source, $start, $cards - $start);
+
+	pg_assert_true((bool) preg_match('/<button\b[^>]*type="submit"[^>]*>/', $opening, $match), 'edit contact: a submit button opens the form');
+	pg_assert_false(strpos($match[0], 'name=') !== false, 'edit contact: the first submit button has no name');
+	pg_assert_contains('visually-hidden', $match[0], 'edit contact: the first submit button is hidden');
+	pg_assert_contains('tabindex="-1"', $match[0], 'edit contact: the first submit button is out of the tab order');
+	pg_assert_contains('aria-hidden="true"', $match[0], 'edit contact: the first submit button is hidden from screen readers');
+	pg_assert_contains('pg_mail_bounce_contact_badge(', substr($source, $cards), 'edit contact: Allow again stays in the subscriber card');
+
+	// The save branch is the final else: it needs no button name.
+	pg_assert_false(strpos($source, "\$_POST['submit_save']") !== false, 'edit contact: the save branch reads no button name');
+
+	$badge = contact_screens_source('includes/fn/mail_bounce_report.php');
+	pg_assert_contains('<button type="submit" name="submit_allow_again"', $badge, 'the badge carries the named Allow again submit');
+}

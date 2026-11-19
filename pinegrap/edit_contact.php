@@ -272,6 +272,11 @@ if (!$_POST) {
 
     $email_address = h($row['email_address']);
 
+    // Return in a field presses the form's first submit button. While the
+    // address is suppressed the subscriber card holds Allow again, printed
+    // before the save bar, so the form opens with a hidden nameless submit:
+    // it reaches the save branch (the final else, which reads no button
+    // name), as on Edit User.
     print
     pg_page_shell(
         array(
@@ -290,6 +295,7 @@ if (!$_POST) {
                 ' . $liveform_edit_contact->output_notices() . '
                 <form name="form" action="edit_contact.php" method="post">
                     ' . get_token_field() . '
+                    <button type="submit" class="visually-hidden" tabindex="-1" aria-hidden="true"></button>
                     <input type="hidden" id="send_to" name="send_to" value="' . (isset($_REQUEST['send_to']) ? h($_REQUEST['send_to']) : '') . '" />
                     ' . pg_contact_form_layout(
                         pg_contact_form_name_card($row, false) . '
