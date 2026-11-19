@@ -10,7 +10,7 @@ description: The Options panel's three tabs Content, Style and Advanced (D4, D5,
 
 ## Which section goes in which tab?
 - A builder marks its card with a key (`_sdSectKey()`, `data-sd-key`); `_SD_OPT_TAB_OF` maps it: text, spacing, colors, border, display, styling to Style; flexbox, visit, accessibility, tooltip, search, interactions to Advanced; anything else to Content.
-- Content's order (`_SD_OPT_CONTENT_RANK`): shortcut bars, the element's own section, its other cards (Quick Layouts, form, choices, widget sections), the icon picker, Link (with Links in the text), the parent's options, Translation, Bind data. Style and Advanced keep the order the builders draw; their names and open rules are DP5b.
+- Content's order (`_SD_OPT_RANK.content`): shortcut bars, the element's own section, its other cards (Quick Layouts, form, choices, widget sections), the icon picker, Link (with Links in the text), the parent's options, Translation, Bind data. Style's and Advanced's order, names and open rules: `designer-options-style-advanced.md`.
 - Show by the visit alone is Advanced; with bind fields it stays inside Bind data. `_sdSectTakeKeyed()` lifts top-level keyed cards out; `_sdOptPlan()` places every piece once, so no section is dropped (D5).
 
 ## Which tab opens?

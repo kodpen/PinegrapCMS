@@ -12,7 +12,8 @@ description: The Options panel's identity row and section cards (D3, D6–D9, D1
 - `sect()` and `as()` both draw a card through `_sdSectMake()` / `_sdSectCard()`: arrow, name (no icon, so every name starts on one line), a count badge (absent at 0), and a summary shown while closed.
 - The summary gives way first: cut with an ellipsis, left out when under five letters would stay (it wraps out of its one-line holder, as the Overview's id does); the colour square and the count stay. The words "default" and "none" are shown whole or left out, never cut (a cut "varsayılan" reads "varsa…", another word). Architect (2026-11-17, agent channel 8700, 8733).
 - A card the search shows rows of has its arrow open.
-- In the single element's panel (`renderProperties()` sets `_sdSectBuild`) the first card of the element's own options markup that belongs to Content is its own section (`_sdSectTakeOwn()`): put first in Content, open unless this browser closed it. Every other card is general and closed until this browser opened it. Kept per browser in `sd_cs_<sid>` as before (`_sdSectOpenRead()`). Outside that panel (several elements, a text's inner element) a section opens as before.
+- In the single element's panel (`renderProperties()` sets `_sdSectBuild`) the first card of the element's own options markup that belongs to Content is its own section (`_sdSectTakeOwn()`): put first in Content, open unless this browser closed it.
+- Every other card is general and closed until this browser opened it; a Style or Advanced card follows its own open rule (`designer-options-style-advanced.md`). Kept per browser in `sd_cs_<sid>` as before (`_sdSectOpenRead()`). Outside that panel (several elements, a text's inner element) a section opens as before.
 
 ## Is a closed card's body built?
 - No. Its markup waits in `_sdPanelLazy[sid]`; a click on the head stores it open and draws the panel again, keeping the scroll and the head's focus.
