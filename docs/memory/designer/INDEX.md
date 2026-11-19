@@ -582,7 +582,7 @@
 - prototype-focus.md: The Prototype view draws only the selected frame's arrows: the core's focus, opening on the open tab, All arrows, row marks, a shared part's link as an amber note, arrow colours and heads [decision: here]
 - prototype-hotspots.md: The Prototype view's pure module (PGProtoHotspots): which nodes are hotspots, shared frames, the map read's request, the marks, and which file covers each of its other answers
 - prototype-links-in-code.md: Where a design's links sit in the code, page-name hrefs and renames, the resolver, editor state, rights and Publish: what the Prototype view reads
-- prototype-list.md: The Prototype view's links panel (PV6): the selected frame's links out and in and its shared parts, one picked link, Change target and Open in the editor, N broken and its list, the frame badge, Play
+- prototype-list.md: The Prototype view's links panel: the selected frame's links out and in, its shared parts, one picked link, the target control, Open in the editor, N broken, the badge, Play
 - prototype-map-read.md: The Prototype view's server read (api.php designer prototype_map, includes/fn/prototype_map.php): what it is asked, what it answers, how hidden pages stay hidden
 - prototype-marks.md: The Prototype view's link marks on a page picture (PV9, #10040): rectangles read from the picture, which show, arrows leaving from a mark or the foot, a shared part's own picture and height [decision: here]
 - prototype-page-picture.md: The Prototype view's page picture in a frame (PV8): how it is built, the sandboxed frame, the link marker, the queue and the cap, the foot's count, what a redraw reuses [decision: here]

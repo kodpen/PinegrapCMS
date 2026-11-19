@@ -20,6 +20,7 @@
 - api-console-try-fields.md: API documentation Try it fields (fieldsFor() in includes/api/console_view.php): each field gets an id from a page-wide counter and its caption is a <label for>
 - app-screen-messages.md: Application-like screens (File Manager, visual designer) show liveform messages as their own toasts; a send_to redirect leaves its notice on the screen it opens [decision: decisions-made-panel-2.md]
 - approve-affiliate-shared-form.md: approve_affiliate.php draws its request card, Summary and save bar through includes/forms/approve_affiliate_form.php (wide layout, step B11); what the screen keeps, the website link rule
+- area-tab-strip-centred.md: An area's tab strip sits centred in the window on every tab whatever the screen's width (owner 2026-11-19, poll 153); Communication since TS1; how, and the notices under it [decision: here]
 - arrival-date-shared-form.md: The arrival date create and edit screens share includes/forms/arrival_date_form.php: what it holds, what stays in the screens
 - ascii-names-in-urls-iis.md: IIS hands non-ASCII paths over in the ANSI code page: file names made ASCII, the request address read back as UTF-8 (pg_request_uri_utf8); no stored file name ends in a dot
 - audit-log-paging.md: The audit trail list (view_audit_log.php) on the list table driver, sorted and searched on the server; changes read when a line's fold opens; filters stay in the address
@@ -83,11 +84,12 @@
 - commerce-form-group-names.md: Commerce forms names: State Country label, ship date Adjustment pair, shipping day sets, rate tiers and rate boxes, product group Display Type and gift card Format legends
 - commission-list-paging.md: The commission lists searched on the server, on the list table driver since #6380; issue #2038 (search found only the page PHP printed); what the screens keep
 - common-region-shared-form.md: The common region create and edit screens share includes/forms/common_region_form.php: what it holds, the label fixes, what stays in the screens
-- connections-screen-drawers.md: Connections screen's drawers (CN4): a provider's drawer with its application and accounts, the one service drawer filled from server templates, the last error only where stored, the other side's block
+- connections-screen-drawers.md: Connections screen's drawers (CN4): a provider's drawer with its application and accounts, the last error only where stored, the other side's block
 - connections-screen-layout.md: Connections screen (connections.php, CN3): registry services in groups with their state, the attention block, search and filter, rows under their place's gate [decision: here]
+- connections-service-page.md: A service's own page on Connections (connections.php?service=<key>, CX7): Status and Where it is used from the registry, the Connections row in Site Settings
 - contact-delete-notice-groups.md: The contact list's Delete All Contacts notice names the groups through pg_contact_list_deleted_groups_label(): escaped, only the user's groups.
 - contact-filter-keyboards.md: Contacts Advanced Filters: no address autofill, phone and web address keyboards, an unmasked e-mail box; the panel's permissive Inputmask email alias; Submitted Forms Referring URL keyboard
-- contact-form-checks.md: Create/Edit Contact save checks: membership date and negative rate refused, role 3 keeps a group on edit, picture posted as file_id or image_url, notes box, wording
+- contact-form-checks.md: Create/Edit Contact save checks: date and rate refused, role 3 keeps a group, picture posted as file_id or image_url and drawn by pg_contact_image_address(), notes box, wording
 - contact-group-rules.md: Rule editor of a contact group filled by rules (Edit Contact Group, pg_audience_editor.js): switch, rows, pickers, live count, Refresh now, the save, list columns, contact card chips
 - contact-group-shared-form.md: The contact group create and edit screens share includes/forms/contact_group_form.php: what it holds, what stays in the screens, one required message, the list sorted on shown values
 - contact-list-filters.md: Contacts list filters (contact_list.php): offered groups only, [None] from [All], range to today, box search, typed date, period links keep the view, export formula guard
@@ -165,6 +167,7 @@
 - dialog-result-after-close.md: A Bootstrap 6 dialog or drawer hands its result to the page only once closed; the writing box's + menu windows put in nothing before that (#4196); the caret after a card [decision: here]
 - duplicate-products-options.md: Duplicate Products (duplicate_products.php) copy options as a titled card of labelled form-field boxes above the list (step B11, #7552)
 - dynamic-region-shared-form.md: The dynamic region create and edit screens share includes/forms/dynamic_region_form.php: what it holds, the label fix, what stays in the screens
+- edit-contact-return-key.md: Return in an Edit Contact field saves through a hidden nameless first submit; before, with the address suppressed, it pressed Allow again, lifted the block and dropped the edits
 - edit-css-screen-layout.md: Edit CSS (edit_theme_css.php) on the wide edit layout: the code card, the Summary rows, the save bar, what stays in the screen
 - edit-file-header.md: Edit File (edit_file.php) layout and status column: preview, Summary mirroring the File Manager details ("W × H px", optimized, last change with name, address), access, Where is it used?
 - edit-js-screen-layout.md: Edit JS (edit_javascript.php) on the wide edit layout: the code card, the Summary rows, the save bar, what stays in the screen
