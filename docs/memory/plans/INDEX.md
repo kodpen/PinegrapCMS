@@ -18,7 +18,6 @@
 - agent-channel.md: Plan (owner 2026-11-06, wake doors 2026-11-07): the Workspace channel from which the owner runs coordinators and agents: registry with @handles, wake rules and doors, scheduled wakes, queue, memory
 - agent-work-apart-features.md: Features W1 to W12 of plan agent-work-apart: an agent channel's tasks left out of the general task lists and counts, the toggle, the mark of a task an application created, its filter, the inventory
 - agent-work-apart.md: Plan (owner 2026-11-16, agent channel poll 80): an agent channel's tasks kept apart from the general task lists as its decisions are, a task an application created marked so; steps AW1 to AW4
-- agents-card-settings.md: Plan (owner 2026-11-15): the Site Settings dialog keeps its place after a save; the agents' settings say what each door is for and are redrawn in the panel's look; AS1 to AS5
 - api-clean-modern-findings.md: What the test of 2026-11-17 measured on dev's external API: the GET sweep, write rounds, the document's gaps in figures, missing HTTP manners, the documentation pages; ground of plan api-clean-modern
 - api-clean-modern-steps-manners.md: Steps AM7 to AM13 of plan api-clean-modern: HEAD, Location and the 401 challenge, every wrong field, If-Match, delete twins, Accept-Language held, the documentation pages, close-out
 - api-clean-modern-steps.md: Steps AM1 to AM6 of plan api-clean-modern: the two failing routes, a fault as JSON, time formats in the document, the answer check tool, generated descriptions and example bodies

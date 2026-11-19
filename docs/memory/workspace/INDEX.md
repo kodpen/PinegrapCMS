@@ -28,7 +28,7 @@
 - agent-door-knock-trial.md: Push door trial (dev, 2026-11-13): the site's knock reached a signed receiver in the same second; what a session on a personal computer still needs
 - agent-door-routine-double.md: A routine's address as push door starts a new run per knock, never an open session: the address's help says so; the card warns while a poll also holds the key (#9595)
 - agent-door-routine-trial.md: Push door on a routine's fire address, tried on dev (2026-11-13, 2026-11-15): every knock starts a new cloud session, never wakes an open one, and the new run cannot pass the knock on either [decision: here]
-- agent-door-words.md: The agent form's "Door" field as two described choices, the door's state sentence in its drawer, door_error cleared on a door change and shown only for a push door (#9759) [decision: here]
+- agent-door-words.md: The agent form's "Door" field as two described choices, the door's state sentence in its drawer, door_error cleared on a door change and shown only for a push door (#9759) [decision: decisions-made-panel-9.md]
 - agent-doors.md: The agents' request queue: wake rules make one ws_ai_requests row per agent (agent:<id>, model:<id>), the brakes, the push knock and its retry, the agent-requests routes (A4a #8221)
 - agent-duty.md: An agent's duty text (AF1 #9785, AF3 #9821): the "Duty" box on the agent's form, ws_agents.duty TEXT NULL, "Your duty" and the channel's other agents in its instructions, the agent card [decision: decisions-made-schema-21.md, decisions-made-workspace-33.md]
 - agent-edit-hold.md: An agent waits while its message is edited: the edit box's beat, held_until, "Being edited, @agent is waiting", 409 editing / edited, a save in each status (#8869) [decision: decisions-made-schema-16.md, decisions-made-workspace-14.md]
@@ -225,7 +225,7 @@
 - workflow-tables.md: Workflow tables (11.0.110, #2746): the four ws_wtable* tables column by column, ws_wtable_access(), column changes; JSON person/link cells and the privacy reader
 - workspace-agent-preamble.md: The site preamble an MCP agent (switch ws_mcp_servers.agent_preamble, 11.0.111, off by default) and an outside app (GET /workspace/messages/{id}/preamble) get, and what stays out
 - workspace-agent-replies.md: Replies over the API (parent_id on workspace.messages.create, parent_id on the message object) and "no answer needed" on Claude's answer route (no_answer): what each takes and refuses
-- workspace-agent-settings.md: The Workspace agents card in Site Settings (Assistants and agents) and on Workspace Settings: drawers, field and button names, the form by kind with Advanced, the shared check and write [decision: here]
+- workspace-agent-settings.md: Workspace agents card in Site Settings (Assistants and agents) and Workspace Settings: rows, drawers, field and button names, form by kind, what a save keeps, shared check and write [decision: decisions-made-panel-9.md]
 - workspace-ai-call-timeout.md: How long one Pinegrap AI model call may take (500 s, PG_AI_CALL_TIMEOUT 20-600), why it is no longer 55 s, what still cuts a call off, the levers to measure before changing limits [decision: here]
 - workspace-ai-rewrite.md: "Rewrite with AI" in the Workspace composer (ai_write target ws_message): what the model reads, the button, Use as one undo step, tags kept, no AI mark
 - workspace-api-bin-flow-blocks-followup.md: Workspace API routes of CA16 (#9831): a binned table row deleted for good (person only, no MCP tool), a draft flow from a table, titled blocks searched and read, a customer channel's follow-up

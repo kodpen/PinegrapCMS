@@ -637,13 +637,13 @@
 - settings-modal-card-extras.md: What a Site Settings card hands over beside its markup (PR #8710): its drawer or a hidden Connect form, never a dialog; the extras box and the CSS left from the old dialog path [decision: decisions-made-panel-3.md]
 - settings-modal-dirty-tracking.md: How the settings dialog decides "unsaved changes": two-question criterion, snapshot(), baseline in paint(), hand gesture triggering its own review.
 - settings-modal-drawer.md: A settings card's drawer: a panel that slides in from the Site Settings dialog's right edge over the pane, never a second dialog; markup, hand-over, Escape, focus, page path (PR #8658).
-- settings-modal-endpoint.md: settings_pane.php rules: always JSON, pg_error_throws, access gate, manual CSRF, remove_form, re-read after save, reload on a language change, Safe Mode scheme change, a stale page.
+- settings-modal-endpoint.md: settings_pane.php rules: always JSON, pg_error_throws, access gate, manual CSRF, remove_form, re-read after save (place kept), reload on a language change, Safe Mode scheme change, a stale page.
 - settings-modal-entry-points.md: How Site Settings opens: header gear button, pgOpenSettings, URL hooks via fromUrl, pg_settings_link, legacy anchors, orphaned settings.php, removed hub.
 - settings-modal-injected-markup.md: Rules for settings pane markup injected by AJAX: jQuery .html(), pg_settings_scripts, scope-taking initializers, delegated listeners, code fields.
 - settings-modal-layout.md: Settings modal layout and CSS pitfalls: three sizes, min-height 0 scroll chain, dialog margin height, dvh, phone fullscreen width, drawer visibility.
 - settings-modal-navigation.md: Settings modal vs rest of panel: no settings breadcrumbs/back button, pgSettingsGo, the leaving bar, one dialog after another, return URL, notice handoff.
 - settings-modal-overview.md: Start file for the settings-modal-* files: Site Settings dialog (gear button, list, Search settings, pane, card drawer, Unsaved Changes), decisions, which file holds what, adding a card
-- settings-modal-save-place.md: After a save the Site Settings dialog keeps the form's scroll, opens the drawer the save came from again and says "saved" in one toast; when the drawer stays shut (#9751) [decision: here]
+- settings-modal-save-place.md: After a save the Site Settings dialog keeps the form's scroll, opens the drawer the save came from again and says "saved" in one toast; when the drawer stays shut (#9751) [decision: decisions-made-panel-9.md]
 - settings-modal-search.md: The Site Settings dialog's search box (index, system tools, ranking, Turkish keywords keeping English terms) and how a text names a card's place [decision: decisions-made-product-14.md]
 - settings-organization-card.md: Site Settings General › Organization card: which fields it gathered from where, who saves them, the two support e-mail fields, the ERP Settings pointer. [decision: decisions-made-product-11.md]
 - settings-pane-stale-page.md: A settings pane asked by a page left open across an update: the panel script stamp in the dialog's address, the Reload line instead of the cards, the pure compare (#8787)
