@@ -552,6 +552,12 @@ function pg_user_delete($user_id)
         pg_credit_forget_user($user_id);
     }
 
+    // Course progress (lessons done, completions) is the member's alone: a
+    // later account given the same id must not inherit it.
+    if (function_exists('pg_course_forget_user')) {
+        pg_course_forget_user($user_id);
+    }
+
     db_q("DELETE FROM user WHERE user_id = ?", array($id)) or output_error('Query failed.');
 
     pg_audit_record('delete', 'user', $user_id, $audit_before);
